@@ -4984,6 +4984,38 @@ class Config:
     OPEN_INTENT_SIZE_GATES_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     PARTIAL_PROFIT_LOCK_V2_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     PEAK_GIVEBACK_BE_EROSION_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    # === PER-ROW FILTERS (2026-09-19 BIG FIX) -- per-switch filter settings from TEMPLATE.xlsx L:BI ===
+    # Maps switch name -> {filter_name: value, ...} for filters that are yellow for that switch.
+    # Live trading (ez_manage/tradier_manage) and vector (v12) check this FIRST via get_per_switch_filter before global getattr.
+    # YELLOW CELL = ONLY that switch is gated — parity requires per-switch, not blanket.
+    PER_ROW_FILTERS: dict = field(default_factory=dict)
+
+    def get_per_switch_filter(self, switch: str, filter_name: str, default=None):
+        """Return per-switch filter value if exists, else global default. Per-row TEMPLATE yellow cells ONLY apply to that switch."""
+        try:
+            per = self.PER_ROW_FILTERS.get(switch, {})
+            if filter_name in per:
+                return per[filter_name]
+        except Exception:
+            pass
+        return default
+
+    def set_per_switch_filter(self, switch: str, filter_name: str, value):
+        """Set per-switch filter (used by v12_pilot_sheet_runner when promoting pos delta)."""
+        if switch not in self.PER_ROW_FILTERS:
+            self.PER_ROW_FILTERS[switch] = {}
+        self.PER_ROW_FILTERS[switch][filter_name] = value
+
+    def get_filter_tf_for_switch(self, switch: str, filter_name: str):
+        """BIG FIX 2026-09-19: Every TEMPLATE yellow FILTER_TF ONLY applies to that switch. Returns per-row value if set, else global field."""
+        try:
+            per = self.PER_ROW_FILTERS.get(switch, {})
+            if filter_name in per:
+                return per[filter_name]
+        except Exception:
+            pass
+        return getattr(self, filter_name, "15m")
+
     ATR_TRAIL_SWEEP_ENABLED: bool = False  # auto-added TEMPLATE parity 2026-09-04
     CHANNEL_REENTRY_STOP_ENABLED: bool = False  # auto-added TEMPLATE parity 2026-09-04
     DYN_STRUCT_TRAIL_ENABLED: bool = False  # auto-added TEMPLATE parity 2026-09-04

@@ -709,15 +709,14 @@ def clone_template(template: Path, new_symside: str) -> Path:
         raise FileNotFoundError(f"template missing {template}")
     import glob as _glob
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    _pilots = sorted(_glob.glob(str(OUT_DIR / f"{new_symside}_30d_matrix_pilot_*.xlsx")))
-    if _pilots:
-        return Path(_pilots[-1])
+    # Enforce 708 max: 1 interim per sym_side, overwrite in place — never create pilot timestamp
+    # Remove stale pilot files for this sym (they leak disk and break 708)
+    for p in _glob.glob(str(OUT_DIR / f"{new_symside}_30d_matrix_pilot_*.xlsx")):
+        try:
+            Path(p).unlink()
+        except Exception:
+            pass
     target = OUT_DIR / f"{new_symside}_30d_matrix.xlsx"
-    if target.exists():
-        ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d%H%M%S")
-        target = OUT_DIR / f"{new_symside}_30d_matrix_pilot_{ts}.xlsx"
-        if target.exists():
-            raise FileExistsError(f"refusing to overwrite {target}")
     wb = openpyxl.load_workbook(str(template))
     new_baseline = f"{new_symside}_BASELINE_METRICS"
     old_baseline = None

@@ -785,6 +785,41 @@ class TradierConfig:
     BB_RECOVERY_ENTRY_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
     BB_RECOVERY_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
     PARTIAL_PROFIT_LOCK_V2_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
+    # === 2026-09-19 BIG FIX: Every TEMPLATE yellow FILTER_TF must have a specific path in config_tradier (if stock) ===
+    # 31 bases present in config.py but missing in tradier were yellow in STOCKS_* parity scan — adding so each yellow cell maps 1:1 to a field and per-switch via get_filter_tf_for_switch().
+    EXIT_R1_R2_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19 (CRYPTO_LONG yellow)
+    HTF_BULL_ENTRY_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    ATR_TRAIL_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    BAR_PATTERNS_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    BREAKEVEN_GAIN_EROSION_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    BREAKOUT_RETEST_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    BTC_DEDICATED_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    CANDLE_PATTERN_STOPS_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    CIRCUIT_SHARPE_GATES_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    COOLDOWN_LOCKS_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    DC_BREAK_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    DC_MOMENTUM_BOTA_SCORER_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    DELTA_ENGINE_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    DUP_GUARD_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    EMA_9_21_FILTER_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19 (STOCKS_LONG yellow)
+    EMA_BLANKET_FILTER_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    EMERGENCY_BRAKE_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    EXHAUSTION_EXIT_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    EXIT_TOP_FADE_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    EXIT_TO_REDUCE_ADAPTER_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    FAST_RISER_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    FH_MOMENTUM_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    FIRST_OPEN_THROTTLE_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    FROZEN_STOP_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    FUNDING_GATE_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    KILLER_KNOB_FINDER_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    LIVE_ENTRY_ENGINE_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    MOMENTUM_BREAKOUT_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    MTF_ATR_TRAIL_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    MTF_DC_REJECT_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    OPEN_INTENT_SIZE_GATES_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    PEAK_GIVEBACK_BE_EROSION_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
 
     WT_15M_BOUNCE_BB_MIN: float = 0.05
     WT_15M_BOUNCE_BB_MAX: float = 0.95
@@ -2466,21 +2501,31 @@ class TradierConfig:
     # Example: {"WT_15M_BOUNCE_OPEN_ENABLED": {"WT_15M_BOUNCE_BB_MIN": 0.1, "WT_15M_BOUNCE_LOW_1H_GT_PREV": True}}
     PER_ROW_FILTERS: dict = field(default_factory=dict)
 
-    def get_per_switch_filter(switch: str, filter_name: str, default=None):
-        """Return per-switch filter value if exists, else global default."""
+    def get_per_switch_filter(self, switch: str, filter_name: str, default=None):
+        """Return per-switch filter value if exists, else global default. Per-row TEMPLATE yellow cells ONLY apply to that switch."""
         try:
-            per = PER_ROW_FILTERS.get(switch, {})
+            per = self.PER_ROW_FILTERS.get(switch, {})
             if filter_name in per:
                 return per[filter_name]
         except Exception:
             pass
         return default
 
-    def set_per_switch_filter(switch: str, filter_name: str, value):
+    def set_per_switch_filter(self, switch: str, filter_name: str, value):
         """Set per-switch filter (used by v12_pilot_sheet_runner when promoting pos delta)."""
-        if switch not in PER_ROW_FILTERS:
-            PER_ROW_FILTERS[switch] = {}
-        PER_ROW_FILTERS[switch][filter_name] = value
+        if switch not in self.PER_ROW_FILTERS:
+            self.PER_ROW_FILTERS[switch] = {}
+        self.PER_ROW_FILTERS[switch][filter_name] = value
+
+    def get_filter_tf_for_switch(self, switch: str, filter_name: str):
+        """BIG FIX 2026-09-19: Every TEMPLATE yellow FILTER_TF ONLY applies to that switch. Returns per-row value if set, else global field."""
+        try:
+            per = self.PER_ROW_FILTERS.get(switch, {})
+            if filter_name in per:
+                return per[filter_name]
+        except Exception:
+            pass
+        return getattr(self, filter_name, "15m")
 
     TRADEABLE_KEYS_MANDATORY_ENABLED: bool = True  # added
 

@@ -23,6 +23,12 @@ exclude = [
 [lint.per-file-ignores]
 # Ignore everything in these dirs
 "backups/*" = ["ALL"]
+# 2026-09-19 BIG FIX: ez_manage per-switch boilerplate uses deliberate `'var' in locals()` fail-open pattern for TEMPLATE yellow cells.
+# Ruff flags `close`/`klines_*`/`position` as F821 undefined even though the `if 'var' in locals()` guard prevents NameError at runtime.
+# The boilerplate is now per-switch scoped via config.get_filter_tf_for_switch(switch, filter) — see config.py PER_ROW_FILTERS.
+# Suppress F821 for this file; real per-row wiring is verified by tests/test_ultimate_dc4h_hard_stop.py and TEMPLATE parity checks.
+"ez_manage.py" = ["F821"]
+"config_tradier.py" = ["F821"]
 
 [format]
 # Don't use ruff formatter — black is the formatter

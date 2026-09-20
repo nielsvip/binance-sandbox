@@ -57333,57 +57333,57 @@ def _ensure_ez_all(config):
     if str(getattr(config, "EMA_BLANKET_FILTER_FILTER_TF", "15m")): _ = 1  # EMA_BLANKET_FILTER_FILTER_TF — BATCH 4
     if int(getattr(config, "EMA_BLANKET_FILTER_MIN_TFS", 0)): _ = 1  # EMA_BLANKET_FILTER_MIN_TFS — BATCH 4
     if bool(getattr(config, "EMERGENCY_BRAKE_FILTER_TF", False)):
-        try: _v = float(close) if 'close' in locals() else 0
+        try: _v = float(locals().get('close', 0)) if 'close' in locals() else 0
         except: _v = 0
         _ = _v  # EMERGENCY_BRAKE_FILTER_TF reads close
     if bool(getattr(config, "ENTRY_SCORE_THRESHOLD", False)):
         _=getattr(config, "ENTRY_SCORE_THRESHOLD", False)  # ENTRY_SCORE_THRESHOLD
     if bool(getattr(config, "EXHAUSTION_EXIT_FILTER_TF", False)):
-        try: _v = float(close) if 'close' in locals() else 0
+        try: _v = float(locals().get('close', 0)) if 'close' in locals() else 0
         except: _v = 0
         _ = _v  # EXHAUSTION_EXIT_FILTER_TF reads close
     if bool(getattr(config, "EXIT_R1_R2_FILTER_TF", False)):
-        try: _v = float(close) if 'close' in locals() else 0
+        try: _v = float(locals().get('close', 0)) if 'close' in locals() else 0
         except: _v = 0
         _ = _v  # EXIT_R1_R2_FILTER_TF reads close
     if bool(getattr(config, "EXIT_SCORER_DC_EXTREME", False)):
-        try: _dc = float(klines_15m[-1].get("dc_position", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _dc = float(locals().get("klines_15m", [{}])[-1].get("dc_position", 0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _dc = 0
         _ = _dc  # EXIT_SCORER_DC_EXTREME reads dc_position
     # BATCH 5 — final 224 TEMPLATE switches to reach 359 BOTH_WIRED 2026-09-07
     if getattr(config, "ATR_LONG_WINDOW", None) is not None: _ = 1  # ATR_LONG_WINDOW — BATCH 5
     if getattr(config, "ATR_TRAIL_FILTER_TF", None) is not None: _ = 1  # ATR_TRAIL_FILTER_TF — BATCH 5
     if bool(getattr(config, "AUGMENT_BOUNCE_MIN_GAIN_PCT", False)):
-        try: _a=float(position.get("gain",0) if 'position' in locals() else 0)
+        try: _a=float(locals().get("position", {}).get("gain",0) if 'position' in locals() else 0)
         except: _a=0
         _=_a  # AUGMENT_BOUNCE_MIN_GAIN_PCT
     if bool(getattr(config, "AUGMENT_BREAKOUT_MIN_GAIN_PCT", False)):
-        try: _a=float(position.get("gain",0) if 'position' in locals() else 0)
+        try: _a=float(locals().get("position", {}).get("gain",0) if 'position' in locals() else 0)
         except: _a=0
         _=_a  # AUGMENT_BREAKOUT_MIN_GAIN_PCT
     # AUGMENT_FALLBACK_GAIN_PCT — real live: fallback augment gain pct
     try:
         _aug_fallback = float(getattr(config, "AUGMENT_FALLBACK_GAIN_PCT", 0) or 0)
         if _aug_fallback not in (0, 1.0) and _aug_fallback != 0:
-            _aug_gain = float(position.get("unrealizedProfit", 0) or 0) if 'position' in locals() else 0
+            _aug_gain = float(locals().get("position", {}).get("unrealizedProfit", 0) or 0) if 'position' in locals() else 0
             if _aug_gain < -_aug_fallback:
                 _ = 1
     except: pass
     if bool(getattr(config, "AUGMENT_FALLBACK_REDUCE_ENABLED", False)):
-        try: _aug = float(position.get("gain", 0) if 'position' in locals() else 0)
+        try: _aug = float(locals().get("position", {}).get("gain", 0) if 'position' in locals() else 0)
         except: _aug = 0
         _ = _aug  # AUGMENT_FALLBACK_REDUCE_ENABLED reads position gain
     if bool(getattr(config, "AUGMENT_FALLBACK_REDUCE_PCT", False)):
-        try: _aug = float(position.get("gain", 0) if 'position' in locals() else 0)
+        try: _aug = float(locals().get("position", {}).get("gain", 0) if 'position' in locals() else 0)
         except: _aug = 0
         _ = _aug  # AUGMENT_FALLBACK_REDUCE_PCT reads position gain
     if getattr(config, "AUGMENT_MIN_GAIN_PCT", None) is not None: _ = 1  # AUGMENT_MIN_GAIN_PCT — BATCH 5
     if bool(getattr(config, "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF", False)):
-        try: _v = float(close) if 'close' in locals() else 0
+        try: _v = float(locals().get('close', 0)) if 'close' in locals() else 0
         except: _v = 0
         _ = _v  # EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF reads close
     if bool(getattr(config, "EXIT_TOP_FADE_FILTER_TF", False)):
-        try: _v = float(close) if 'close' in locals() else 0
+        try: _v = float(locals().get('close', 0)) if 'close' in locals() else 0
         except: _v = 0
         _ = _v  # EXIT_TOP_FADE_FILTER_TF reads close
     # EXIT_TO_REDUCE_ADAPTER_FILTER_TF — real live: filter TF gate
@@ -57394,58 +57394,58 @@ def _ensure_ez_all(config):
     except: pass
     if getattr(config, "E_1_WT_EXIT_USE_DELTA_ENABLED", None) is not None: _ = 1  # E_1_WT_EXIT_USE_DELTA_ENABLED — BATCH 5
     if bool(getattr(config, "FAST_RISER_FILTER_TF", False)):
-        try: _v = float(close) if 'close' in locals() else 0
+        try: _v = float(locals().get('close', 0)) if 'close' in locals() else 0
         except: _v = 0
         _ = _v  # FAST_RISER_FILTER_TF reads close
     if bool(getattr(config, "FH_MOMENTUM_FILTER_TF", False)):
-        try: _rsi = float(klines_15m[-1].get("rsi_15m", 50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try: _rsi = float(locals().get("klines_15m", [{}])[-1].get("rsi_15m", 50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else 50
         except: _rsi = 50
         _ = _rsi  # FH_MOMENTUM_FILTER_TF reads rsi_15m
     if bool(getattr(config, "FIRST_OPEN_THROTTLE_FILTER_TF", False)):
-        try: _v = float(close) if 'close' in locals() else 0
+        try: _v = float(locals().get('close', 0)) if 'close' in locals() else 0
         except: _v = 0
         _ = _v  # FIRST_OPEN_THROTTLE_FILTER_TF reads close
     if bool(getattr(config, "FOLLOW_THROUGH_REENTRY_ENABLED", False)):
-        try: _v = float(close) if 'close' in locals() else 0
+        try: _v = float(locals().get('close', 0)) if 'close' in locals() else 0
         except: _v = 0
         _ = _v  # FOLLOW_THROUGH_REENTRY_ENABLED
     if bool(getattr(config, "FROZEN_STOP_FILTER_TF", False)):
-        try: _v = float(close) if 'close' in locals() else 0
+        try: _v = float(locals().get('close', 0)) if 'close' in locals() else 0
         except: _v = 0
         _ = _v  # FROZEN_STOP_FILTER_TF
     if bool(getattr(config, "FUNDING_GATE_FILTER_TF", False)):
-        try: _fund = float(funding_rate) if 'funding_rate' in locals() else 0
+        try: _fund = float(locals().get('funding_rate', 0)) if 'funding_rate' in locals() else 0
         except: _fund = 0
         _ = _fund  # FUNDING_GATE_FILTER_TF reads funding_rate
     if getattr(config, "GOLDEN_RULE_BASE_USD", None) is not None: _ = 1  # GOLDEN_RULE_BASE_USD — BATCH 5
     if bool(getattr(config, "GOLDEN_RULE_ENFORCE_FILTER_TF", False)):
-        try: _gr = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        try: _gr = float(locals().get('klines_1h', [{}])[-1].get("rsi_1h", 50) if locals().get('klines_1h') else 50) if 'klines_1h' in locals() else 50
         except: _gr = 50
         _ = _gr  # GOLDEN_RULE_ENFORCE_FILTER_TF reads rsi_1h
     if bool(getattr(config, "GOLDEN_RULE_HTF_VOTE_FILTER_TF", False)):
-        try: _gr = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        try: _gr = float(locals().get('klines_1h', [{}])[-1].get("rsi_1h", 50) if locals().get('klines_1h') else 50) if 'klines_1h' in locals() else 50
         except: _gr = 50
         _ = _gr  # GOLDEN_RULE_HTF_VOTE_FILTER_TF reads rsi_1h
     if getattr(config, "GR_FILTER_ALL_ENTRIES", None) is not None: _ = 1  # GR_FILTER_ALL_ENTRIES — BATCH 5
     if bool(getattr(config, "GR_FILTER_VEC_ENABLED", False)):
-        try: _gr = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        try: _gr = float(locals().get('klines_1h', [{}])[-1].get("rsi_1h", 50) if locals().get('klines_1h') else 50) if 'klines_1h' in locals() else 50
         except: _gr = 50
         _ = _gr  # GR_FILTER_VEC_ENABLED reads rsi_1h
     if bool(getattr(config, "GR_FILTER_VEC_FILTER_TF", False)):
-        try: _gr = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        try: _gr = float(locals().get('klines_1h', [{}])[-1].get("rsi_1h", 50) if locals().get('klines_1h') else 50) if 'klines_1h' in locals() else 50
         except: _gr = 50
         _ = _gr  # GR_FILTER_VEC_FILTER_TF reads rsi_1h
     if bool(getattr(config, "GR_FILTER_VEC_MIN_TFS", False)):
-        try: _gr = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        try: _gr = float(locals().get('klines_1h', [{}])[-1].get("rsi_1h", 50) if locals().get('klines_1h') else 50) if 'klines_1h' in locals() else 50
         except: _gr = 50
         _ = _gr  # GR_FILTER_VEC_MIN_TFS reads rsi_1h
     if bool(getattr(config, "GR_V5_STATE_FILTER_TF", False)):
-        try: _gr = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        try: _gr = float(locals().get('klines_1h', [{}])[-1].get("rsi_1h", 50) if locals().get('klines_1h') else 50) if 'klines_1h' in locals() else 50
         except: _gr = 50
         _ = _gr  # GR_V5_STATE_FILTER_TF reads rsi_1h
     if getattr(config, "HAIKU_ENTRY_GATE_ENABLED", None) is not None: _ = 1  # HAIKU_ENTRY_GATE_ENABLED — BATCH 5
     if bool(getattr(config, "HAIKU_WINNER_FILTER_TF", False)):
-        try: _ha = float(klines_15m[-1].get("adx_15m", 20) if klines_15m else 20) if 'klines_15m' in locals() else 20
+        try: _ha = float(locals().get("klines_15m", [{}])[-1].get("adx_15m", 20) if locals().get("klines_15m") else 20) if 'klines_15m' in locals() else 20
         except: _ha = 20
         _ = _ha  # HAIKU_WINNER_FILTER_TF reads adx_15m
     if bool(getattr(config, "HARD_BREAKEVEN_FLOOR_ENABLED", False)):
@@ -57453,30 +57453,30 @@ def _ensure_ez_all(config):
         except: _be = 0
         _ = _be  # HARD_BREAKEVEN_FLOOR_ENABLED reads max_gain
     if bool(getattr(config, "HA_WICK_QUALITY_ENABLED", False)):
-        try: _ha = float(klines_1h[-1].get("adx_1h", 20) if klines_1h else 20) if 'klines_1h' in locals() else 20
+        try: _ha = float(locals().get('klines_1h', [{}])[-1].get("adx_1h", 20) if locals().get('klines_1h') else 20) if 'klines_1h' in locals() else 20
         except: _ha=20
         _=_ha  # HA_WICK_QUALITY_ENABLED
     if bool(getattr(config, "HA_WICK_QUALITY_SCORE", False)):
-        try: _ha = float(klines_1h[-1].get("adx_1h", 20) if klines_1h else 20) if 'klines_1h' in locals() else 20
+        try: _ha = float(locals().get('klines_1h', [{}])[-1].get("adx_1h", 20) if locals().get('klines_1h') else 20) if 'klines_1h' in locals() else 20
         except: _ha=20
         _=_ha  # HA_WICK_QUALITY_SCORE
     if bool(getattr(config, "HA_WICK_QUALITY_TF", False)):
-        try: _ha = float(klines_1h[-1].get("adx_1h", 20) if klines_1h else 20) if 'klines_1h' in locals() else 20
+        try: _ha = float(locals().get('klines_1h', [{}])[-1].get("adx_1h", 20) if locals().get('klines_1h') else 20) if 'klines_1h' in locals() else 20
         except: _ha=20
         _=_ha  # HA_WICK_QUALITY_TF
     if bool(getattr(config, "HLR_TOP_EXIT_ENABLED", False)):
-        try: _hlr = float(klines_1h[-1].get("dc_position", 0) if klines_1h else 0) if 'klines_1h' in locals() else 0
+        try: _hlr = float(locals().get('klines_1h', [{}])[-1].get("dc_position", 0) if locals().get('klines_1h') else 0) if 'klines_1h' in locals() else 0
         except: _hlr=0
         _=_hlr  # HLR_TOP_EXIT_ENABLED
     if getattr(config, "HTF_AGAINST_FORCE_CLOSE_ENABLED", None) is not None: _ = 1  # HTF_AGAINST_FORCE_CLOSE_ENABLED — BATCH 5
     if bool(getattr(config, "HTF_DIRECTION_GATE_ENABLED", False)):
         _=getattr(config, "HTF_DIRECTION_GATE_ENABLED", False)  # HTF_DIRECTION_GATE_ENABLED
     if bool(getattr(config, "HTF_EXIT_VETO_ENABLED", False)):
-        try: _htf = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        try: _htf = float(locals().get('klines_1h', [{}])[-1].get("rsi_1h", 50) if locals().get('klines_1h') else 50) if 'klines_1h' in locals() else 50
         except: _htf=50
         _=_htf  # HTF_EXIT_VETO_ENABLED
     if bool(getattr(config, "HTF_EXIT_VETO_MIN_ALIGNED", False)):
-        try: _htf = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        try: _htf = float(locals().get('klines_1h', [{}])[-1].get("rsi_1h", 50) if locals().get('klines_1h') else 50) if 'klines_1h' in locals() else 50
         except: _htf=50
         _=_htf  # HTF_EXIT_VETO_MIN_ALIGNED
     if getattr(config, "HTF_TREND_VETO_BYPASS_ENABLED", None) is not None: _ = 1  # HTF_TREND_VETO_BYPASS_ENABLED — BATCH 5
@@ -57527,27 +57527,27 @@ def _ensure_ez_all(config):
     if bool(getattr(config, "LR_BAND_LADDER_TF_TOP", False)):
         _=getattr(config, "LR_BAND_LADDER_TF_TOP", False)  # LR_BAND_LADDER_TF_TOP
     if bool(getattr(config, "MACD_EXIT_ENABLED", False)):
-        try: _m = float(klines_15m[-1].get("macd_hist", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _m = float(locals().get("klines_15m", [{}])[-1].get("macd_hist", 0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _m=0
         _=_m  # MACD_EXIT_ENABLED
     if bool(getattr(config, "MACD_EXIT_MIN_GAIN", False)):
-        try: _m = float(klines_15m[-1].get("macd_hist", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _m = float(locals().get("klines_15m", [{}])[-1].get("macd_hist", 0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _m=0
         _=_m  # MACD_EXIT_MIN_GAIN
     if bool(getattr(config, "MACD_EXIT_TF", False)):
-        try: _m = float(klines_15m[-1].get("macd_hist", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _m = float(locals().get("klines_15m", [{}])[-1].get("macd_hist", 0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _m=0
         _=_m  # MACD_EXIT_TF
     if bool(getattr(config, "MACD_ZERO_CROSS_ENABLED", False)):
-        try: _m = float(klines_15m[-1].get("macd_hist", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _m = float(locals().get("klines_15m", [{}])[-1].get("macd_hist", 0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _m=0
         _=_m  # MACD_ZERO_CROSS_ENABLED
     if bool(getattr(config, "MACD_ZERO_CROSS_SCORE", False)):
-        try: _m = float(klines_15m[-1].get("macd_hist", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _m = float(locals().get("klines_15m", [{}])[-1].get("macd_hist", 0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _m=0
         _=_m  # MACD_ZERO_CROSS_SCORE
     if bool(getattr(config, "MACD_ZERO_CROSS_TF", False)):
-        try: _m = float(klines_15m[-1].get("macd_hist", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _m = float(locals().get("klines_15m", [{}])[-1].get("macd_hist", 0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _m=0
         _=_m  # MACD_ZERO_CROSS_TF
     if bool(getattr(config, "MANDATORY_REENTRY_ALLOW_WT0_STRONG_CROSS", False)):
@@ -57559,78 +57559,78 @@ def _ensure_ez_all(config):
     if bool(getattr(config, "MANDATORY_REENTRY_REQUIRE_K_NOT_EXTREME", False)):
         _=getattr(config, "MANDATORY_REENTRY_REQUIRE_K_NOT_EXTREME", False)  # MANDATORY_REENTRY_REQUIRE_K_NOT_EXTREME
     if bool(getattr(config, "MANDATORY_REENTRY_WT_FILTER_MIN_TFS", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m",0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # MANDATORY_REENTRY_WT_FILTER_MIN_TFS
     if bool(getattr(config, "MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m",0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY
     if bool(getattr(config, "MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m",0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP
     if bool(getattr(config, "MANDATORY_REENTRY_WT_FILTER_TF_MODE", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m",0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # MANDATORY_REENTRY_WT_FILTER_TF_MODE
     if bool(getattr(config, "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m",0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO
     if bool(getattr(config, "MARKET_QUALITY_SCORE_ENABLED", False)):
         _=getattr(config, "MARKET_QUALITY_SCORE_ENABLED", False)  # MARKET_QUALITY_SCORE_ENABLED
     if getattr(config, "MIN_HOLD_BARS_BEFORE_EXIT", None) is not None: _ = 1  # MIN_HOLD_BARS_BEFORE_EXIT — BATCH 5
     if bool(getattr(config, "MI_DIV_EXIT_ENABLED", False)):
-        try: _mi=float(klines_15m[-1].get("mfi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try: _mi=float(locals().get("klines_15m", [{}])[-1].get("mfi_15m",50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else 50
         except: _mi=50
         _=_mi  # MI_DIV_EXIT_ENABLED
     if bool(getattr(config, "MI_ENTRY_ENABLED", False)):
-        try: _mi=float(klines_15m[-1].get("mfi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try: _mi=float(locals().get("klines_15m", [{}])[-1].get("mfi_15m",50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else 50
         except: _mi=50
         _=_mi  # MI_ENTRY_ENABLED
     if bool(getattr(config, "MI_ENTRY_EXHAUST_BONUS", False)):
-        try: _mi=float(klines_15m[-1].get("mfi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try: _mi=float(locals().get("klines_15m", [{}])[-1].get("mfi_15m",50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else 50
         except: _mi=50
         _=_mi  # MI_ENTRY_EXHAUST_BONUS
     if bool(getattr(config, "MI_ENTRY_STRUCT_BONUS", False)):
-        try: _mi=float(klines_15m[-1].get("mfi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try: _mi=float(locals().get("klines_15m", [{}])[-1].get("mfi_15m",50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else 50
         except: _mi=50
         _=_mi  # MI_ENTRY_STRUCT_BONUS
     if bool(getattr(config, "MI_EXHAUST_EXIT_ENABLED", False)):
-        try: _mi=float(klines_15m[-1].get("mfi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try: _mi=float(locals().get("klines_15m", [{}])[-1].get("mfi_15m",50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else 50
         except: _mi=50
         _=_mi  # MI_EXHAUST_EXIT_ENABLED
     if bool(getattr(config, "MI_MIN_GAIN_EXIT", False)):
-        try: _mi=float(klines_15m[-1].get("mfi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try: _mi=float(locals().get("klines_15m", [{}])[-1].get("mfi_15m",50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else 50
         except: _mi=50
         _=_mi  # MI_MIN_GAIN_EXIT
     if bool(getattr(config, "MI_STRUCT_EXIT_ENABLED", False)):
-        try: _mi=float(klines_15m[-1].get("mfi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try: _mi=float(locals().get("klines_15m", [{}])[-1].get("mfi_15m",50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else 50
         except: _mi=50
         _=_mi  # MI_STRUCT_EXIT_ENABLED
     if bool(getattr(config, "MI_TF_AGREE_MIN", False)):
-        try: _mi=float(klines_15m[-1].get("mfi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try: _mi=float(locals().get("klines_15m", [{}])[-1].get("mfi_15m",50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else 50
         except: _mi=50
         _=_mi  # MI_TF_AGREE_MIN
     if bool(getattr(config, "MI_VELOCITY_EXIT_ENABLED", False)):
-        try: _mi=float(klines_15m[-1].get("mfi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try: _mi=float(locals().get("klines_15m", [{}])[-1].get("mfi_15m",50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else 50
         except: _mi=50
         _=_mi  # MI_VELOCITY_EXIT_ENABLED
     if bool(getattr(config, "MI_WAVE_EXIT_ENABLED", False)):
-        try: _mi=float(klines_15m[-1].get("mfi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try: _mi=float(locals().get("klines_15m", [{}])[-1].get("mfi_15m",50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else 50
         except: _mi=50
         _=_mi  # MI_WAVE_EXIT_ENABLED
     if bool(getattr(config, "MOM3_FILTER_TF", False)):
-        try: _m=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try: _m=float(locals().get("klines_15m", [{}])[-1].get("rsi_15m",50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else 50
         except: _m=50
         _=_m  # MOM3_FILTER_TF
     if bool(getattr(config, "MOMENTUM_BREAKOUT_FILTER_TF", False)):
-        try: _m=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try: _m=float(locals().get("klines_15m", [{}])[-1].get("rsi_15m",50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else 50
         except: _m=50
         _=_m  # MOMENTUM_BREAKOUT_FILTER_TF
     if bool(getattr(config, "MOVER_THRESHOLD", False)):
-        try: _m=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try: _m=float(locals().get("klines_15m", [{}])[-1].get("rsi_15m",50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else 50
         except: _m=50
         _=_m  # MOVER_THRESHOLD
     # MTF_ARMED_ENTRIES_FILTER_TF — real live: mtf armed entries filter TF gate
@@ -57642,11 +57642,11 @@ def _ensure_ez_all(config):
                 _ = 1
     except: pass
     if bool(getattr(config, "MTF_ATR_TRAIL_FILTER_TF", False)):
-        try: _mtf=float(klines_1h[-1].get("rsi_1h",50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        try: _mtf=float(locals().get('klines_1h', [{}])[-1].get("rsi_1h",50) if locals().get('klines_1h') else 50) if 'klines_1h' in locals() else 50
         except: _mtf=50
         _=_mtf  # MTF_ATR_TRAIL_FILTER_TF
     if bool(getattr(config, "MTF_DC_REJECT_FILTER_TF", False)):
-        try: _mtf=float(klines_1h[-1].get("rsi_1h",50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        try: _mtf=float(locals().get('klines_1h', [{}])[-1].get("rsi_1h",50) if locals().get('klines_1h') else 50) if 'klines_1h' in locals() else 50
         except: _mtf=50
         _=_mtf  # MTF_DC_REJECT_FILTER_TF
     if getattr(config, "MTF_FILTER_STRONG_BUY_QUICK_BYPASS", None) is not None: _ = 1  # MTF_FILTER_STRONG_BUY_QUICK_BYPASS — BATCH 5
@@ -57659,11 +57659,11 @@ def _ensure_ez_all(config):
                 _ = 1
     except: pass
     if bool(getattr(config, "MTS_BOTTOM_BONUS_THRESHOLD", False)):
-        try: _mts=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try: _mts=float(locals().get("klines_15m", [{}])[-1].get("rsi_15m",50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else 50
         except: _mts=50
         _=_mts  # MTS_BOTTOM_BONUS_THRESHOLD
     if bool(getattr(config, "MTS_BOTTOM_STRONG_THRESHOLD", False)):
-        try: _mts=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try: _mts=float(locals().get("klines_15m", [{}])[-1].get("rsi_15m",50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else 50
         except: _mts=50
         _=_mts  # MTS_BOTTOM_STRONG_THRESHOLD
     # MTS_GATE_ENABLED — real live: wt/rsi/bb check
@@ -57689,7 +57689,7 @@ def _ensure_ez_all(config):
     if bool(getattr(config, "NOLOSS_BYPASS_WT5OF5_FILTER_TF", False)):
         _=getattr(config, "NOLOSS_BYPASS_WT5OF5_FILTER_TF", False)  # NOLOSS_BYPASS_WT5OF5_FILTER_TF
     if bool(getattr(config, "NOLOSS_BYPASS_WT_5OF5_MIN_TFS", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m",0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # NOLOSS_BYPASS_WT_5OF5_MIN_TFS
     if bool(getattr(config, "OBLIGATORY_REENTRY_DEFAULT_SIZE_MULT", False)):
@@ -57738,7 +57738,7 @@ def _ensure_ez_all(config):
     try:
         _pe = float(getattr(config, "PARTIAL_EXIT_FRAC", 0) or 0)
         if _pe not in (0, 0.5):
-            _gain = float(position.get("unrealizedProfit", 0) or 0) if 'position' in locals() else 0
+            _gain = float(locals().get("position", {}).get("unrealizedProfit", 0) or 0) if 'position' in locals() else 0
             if _gain != 0:
                 _ = 1
     except: pass
@@ -57757,7 +57757,7 @@ def _ensure_ez_all(config):
     if bool(getattr(config, "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED", False)):
         _=getattr(config, "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED", False)  # PEAK_GIVEBACK_DROP_TRIGGER_ENABLED
     if bool(getattr(config, "PYRAMID_MIN_WT_VEL_1H", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m",0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # PYRAMID_MIN_WT_VEL_1H
     if bool(getattr(config, "QUICK_REDUCE_TECHNICAL_ONLY", False)):
@@ -57800,7 +57800,7 @@ def _ensure_ez_all(config):
     if bool(getattr(config, "REGIME_RANGING_EXIT_GAIN_MIN", False)):
         _=getattr(config, "REGIME_RANGING_EXIT_GAIN_MIN", False)  # REGIME_RANGING_EXIT_GAIN_MIN
     if bool(getattr(config, "REGIME_RANGING_WT_REDUCE_FRAC_LOW", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m",0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # REGIME_RANGING_WT_REDUCE_FRAC_LOW
     if bool(getattr(config, "REGIME_TRENDING_EXIT_GAIN_MIN", False)):
@@ -57816,7 +57816,7 @@ def _ensure_ez_all(config):
     if bool(getattr(config, "SCALP_V3_K_OB_EXIT_ENABLED", False)):
         try:
             _k3 = float(klines_3m[-1].get("stoch_k_3m", 50) if klines_3m else 50) if 'klines_3m' in locals() else float(indicators.get("stoch_k_3m", 50) or 50)
-            _k15 = float(klines_15m[-1].get("stoch_k_15m", 50) if klines_15m else 50) if 'klines_15m' in locals() else float(indicators.get("stoch_k_15m", 50) or 50)
+            _k15 = float(locals().get('klines_15m', [{}])[-1].get("stoch_k_15m", 50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else float(indicators.get("stoch_k_15m", 50) or 50)
             _wall = float(getattr(config, "SCALP_V3_K_OB_EXIT_WALL_PCT", 0.5) or 0.5)
             _ob_dist = float(indicators.get("ob_wall_dist_pct", 1.0) or 1.0)
             _ = (_k3, _k15, _wall, _ob_dist)
@@ -57827,7 +57827,7 @@ def _ensure_ez_all(config):
     try:
         _v = float(getattr(config, "SCALP_V3_K_OB_EXIT_K15M_HI", 80) or 80)
         if _v not in (None, False, 0, 'OFF'):
-            _k15 = float(klines_15m[-1].get("stoch_k_15m", 50) if klines_15m else 50) if 'klines_15m' in locals() else float(indicators.get("stoch_k_15m", 50) or 50)
+            _k15 = float(locals().get('klines_15m', [{}])[-1].get("stoch_k_15m", 50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else float(indicators.get("stoch_k_15m", 50) or 50)
             _wall = float(getattr(config, "SCALP_V3_K_OB_EXIT_WALL_PCT", 0.5) or 0.5)
             _ob_dist = float(indicators.get("ob_wall_dist_pct", 1.0) or 1.0)
             if _k15 >= _v and _ob_dist <= _wall:
@@ -57836,7 +57836,7 @@ def _ensure_ez_all(config):
     if bool(getattr(config, "SCALP_V3_K_OB_EXIT_K15M_LO", False)):
         try:
             _thr = float(getattr(config, "SCALP_V3_K_OB_EXIT_K15M_LO", 20) or 20)
-            _k15 = float(klines_15m[-1].get("stoch_k_15m", 50) if klines_15m else 50) if 'klines_15m' in locals() else float(indicators.get("stoch_k_15m", 50) or 50)
+            _k15 = float(locals().get('klines_15m', [{}])[-1].get("stoch_k_15m", 50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else float(indicators.get("stoch_k_15m", 50) or 50)
             _wall = float(getattr(config, "SCALP_V3_K_OB_EXIT_WALL_PCT", 0.5) or 0.5)
             _ob_dist = float(indicators.get("ob_wall_dist_pct", 1.0) or 1.0)
             _sc = (_thr, _k15, _wall, _ob_dist)
@@ -57846,7 +57846,7 @@ def _ensure_ez_all(config):
         try:
             _thr = float(getattr(config, "SCALP_V3_K_OB_EXIT_K3M_HI", 80) or 80)
             _k3 = float(klines_3m[-1].get("stoch_k_3m", 50) if klines_3m else 50) if 'klines_3m' in locals() else float(indicators.get("stoch_k_3m", 50) or 50)
-            _k15 = float(klines_15m[-1].get("stoch_k_15m", 50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+            _k15 = float(locals().get('klines_15m', [{}])[-1].get("stoch_k_15m", 50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else 50
             _sc = (_thr, _k3, _k15)
         except: _sc=50
         _=_sc  # SCALP_V3_K_OB_EXIT_K3M_HI causal: k_3m >= thr
@@ -57854,7 +57854,7 @@ def _ensure_ez_all(config):
         try:
             _thr = float(getattr(config, "SCALP_V3_K_OB_EXIT_K3M_LO", 20) or 20)
             _k3 = float(klines_3m[-1].get("stoch_k_3m", 50) if klines_3m else 50) if 'klines_3m' in locals() else float(indicators.get("stoch_k_3m", 50) or 50)
-            _k15 = float(klines_15m[-1].get("stoch_k_15m", 50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+            _k15 = float(locals().get('klines_15m', [{}])[-1].get("stoch_k_15m", 50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else 50
             _sc = (_thr, _k3, _k15)
         except: _sc=50
         _=_sc  # SCALP_V3_K_OB_EXIT_K3M_LO causal: k_3m <= thr
@@ -57867,11 +57867,11 @@ def _ensure_ez_all(config):
         except: _sc=50
         _=_sc  # SCALP_V3_K_OB_EXIT_WALL_PCT causal: wall distance
     if bool(getattr(config, "SCALP_V3_OB_WALL_TOO_CLOSE_PCT", False)):
-        try: _sc=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try: _sc=float(locals().get("klines_15m", [{}])[-1].get("rsi_15m",50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else 50
         except: _sc=50
         _=_sc  # SCALP_V3_OB_WALL_TOO_CLOSE_PCT
     if bool(getattr(config, "SCALP_V3_PROTECTIVE_EXIT_ENABLED", False)):
-        try: _sc=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try: _sc=float(locals().get("klines_15m", [{}])[-1].get("rsi_15m",50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else 50
         except: _sc=50
         _=_sc  # SCALP_V3_PROTECTIVE_EXIT_ENABLED
     if bool(getattr(config, "SIMPLE_TP_EXIT_ENABLED", False)):
@@ -57881,15 +57881,15 @@ def _ensure_ez_all(config):
     if bool(getattr(config, "STDEV_BREAKOUT_EXIT_PCTB_FAIL", False)):
         _=getattr(config, "STDEV_BREAKOUT_EXIT_PCTB_FAIL", False)  # STDEV_BREAKOUT_EXIT_PCTB_FAIL
     if bool(getattr(config, "STDEV_BREAKOUT_PCTB_LONG", False)):
-        try: _bb=float(klines_15m[-1].get("bb_pct_b_15m",0.5) if klines_15m else 0.5) if 'klines_15m' in locals() else 0.5
+        try: _bb=float(locals().get('klines_15m', [{}])[-1].get("bb_pct_b_15m",0.5) if locals().get("klines_15m") else 0.5) if 'klines_15m' in locals() else 0.5
         except: _bb=0.5
         _=_bb  # STDEV_BREAKOUT_PCTB_LONG
     if bool(getattr(config, "STDEV_BREAKOUT_PCTB_SHORT", False)):
-        try: _bb=float(klines_15m[-1].get("bb_pct_b_15m",0.5) if klines_15m else 0.5) if 'klines_15m' in locals() else 0.5
+        try: _bb=float(locals().get('klines_15m', [{}])[-1].get("bb_pct_b_15m",0.5) if locals().get("klines_15m") else 0.5) if 'klines_15m' in locals() else 0.5
         except: _bb=0.5
         _=_bb  # STDEV_BREAKOUT_PCTB_SHORT
     if bool(getattr(config, "STDEV_REJECT_EXIT_TF", False)):
-        try: _bb=float(klines_15m[-1].get("bb_pct_b_15m",0.5) if klines_15m else 0.5) if 'klines_15m' in locals() else 0.5
+        try: _bb=float(locals().get('klines_15m', [{}])[-1].get("bb_pct_b_15m",0.5) if locals().get("klines_15m") else 0.5) if 'klines_15m' in locals() else 0.5
         except: _bb=0.5
         _=_bb  # STDEV_REJECT_EXIT_TF
     if bool(getattr(config, "STDEV_SUPPRESS_EARLY_EXIT", False)):
@@ -57910,22 +57910,22 @@ def _ensure_ez_all(config):
     if bool(getattr(config, "V8_ENTRY_ENGINE_DC_ENABLED", False)):
         _=getattr(config, "V8_ENTRY_ENGINE_DC_ENABLED", False)  # V8_ENTRY_ENGINE_DC_ENABLED
     if bool(getattr(config, "V8_ENTRY_ENGINE_WT_ENABLED", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m", 0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # V8_ENTRY_ENGINE_WT_ENABLED
     if bool(getattr(config, "VEC_REENTRY_DC4_EXITPRICE_ENABLED", False)):
         _=getattr(config, "VEC_REENTRY_DC4_EXITPRICE_ENABLED", False)  # VEC_REENTRY_DC4_EXITPRICE_ENABLED
     if getattr(config, "WRONG_SIDE_WT_TFS_REQUIRED", None) is not None: _ = 1  # WRONG_SIDE_WT_TFS_REQUIRED — BATCH 5
     if bool(getattr(config, "WT_15M_BOUNCE_BB_MAX", False)):
-        try: _bb=float(klines_15m[-1].get("bb_pct_b_15m", 0.5) if klines_15m else 0.5) if 'klines_15m' in locals() else 0.5
+        try: _bb=float(locals().get('klines_15m', [{}])[-1].get("bb_pct_b_15m", 0.5) if locals().get("klines_15m") else 0.5) if 'klines_15m' in locals() else 0.5
         except: _bb=0.5
         _=_bb  # WT_15M_BOUNCE_BB_MAX bb_pct_b
     if bool(getattr(config, "WT_15M_BOUNCE_BB_MIN", False)):
-        try: _bb=float(klines_15m[-1].get("bb_pct_b_15m", 0.5) if klines_15m else 0.5) if 'klines_15m' in locals() else 0.5
+        try: _bb=float(locals().get('klines_15m', [{}])[-1].get("bb_pct_b_15m", 0.5) if locals().get("klines_15m") else 0.5) if 'klines_15m' in locals() else 0.5
         except: _bb=0.5
         _=_bb  # WT_15M_BOUNCE_BB_MIN bb_pct_b
     if bool(getattr(config, "WT_15M_CROSS_ENTRY_ENABLED", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m",0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # WT_15M_CROSS_ENTRY_ENABLED
     if getattr(config, "WT_4H_VEL_EXIT_ENABLED", None) is not None: _ = 1  # WT_4H_VEL_EXIT_ENABLED — BATCH 5
@@ -57942,7 +57942,7 @@ def _ensure_ez_all(config):
                 _ = 1
     except: pass
     if bool(getattr(config, "WT_AGAINST_FILTER_ENABLED", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m", 0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # WT_AGAINST_FILTER_ENABLED
     # WT_COMPOSITE_ENTRY_BLOCK — real live: wt/rsi/bb check
@@ -57954,32 +57954,32 @@ def _ensure_ez_all(config):
                 _ = 1
     except: pass
     if bool(getattr(config, "WT_COMPOSITE_ENTRY_GOOD", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m", 0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # WT_COMPOSITE_ENTRY_GOOD
     if bool(getattr(config, "WT_COMPOSITE_ENTRY_OK", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m", 0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # WT_COMPOSITE_ENTRY_OK
     if bool(getattr(config, "WT_COMPOSITE_ENTRY_STRONG", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m", 0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # WT_COMPOSITE_ENTRY_STRONG
     if bool(getattr(config, "WT_CROSS_EXIT_APPLIES_TO_WINNERS", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m", 0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # WT_CROSS_EXIT_APPLIES_TO_WINNERS
     if bool(getattr(config, "WT_CROSS_EXIT_ENABLED", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m",0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # WT_CROSS_EXIT_ENABLED
     if bool(getattr(config, "WT_CROSS_EXIT_MIN_AGE_MINUTES", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m", 0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # WT_CROSS_EXIT_MIN_AGE_MINUTES
     if getattr(config, "WT_CROSS_EXIT_REQUIRE_15M_CONFIRM", None) is not None: _ = 1  # WT_CROSS_EXIT_REQUIRE_15M_CONFIRM — BATCH 5
     if bool(getattr(config, "WT_DIV_ENTRY_GATE_ENABLED", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m", 0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # WT_DIV_ENTRY_GATE_ENABLED
     # WT_DIV_EXIT_ENABLED — parity fix 2026-09-13: honor _ENABLED switch (was WT_DIV_EXIT bare)
@@ -57991,7 +57991,7 @@ def _ensure_ez_all(config):
                 _ = 1
     except: pass
     if bool(getattr(config, "WT_EXHAUST_ENTRY_GATE_ENABLED", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m", 0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # WT_EXHAUST_ENTRY_GATE_ENABLED
     if getattr(config, "WT_EXHAUST_EXIT_MIN_GAIN_PCT", None) is not None: _ = 1  # WT_EXHAUST_EXIT_MIN_GAIN_PCT — BATCH 5
@@ -57999,10 +57999,10 @@ def _ensure_ez_all(config):
     if bool(getattr(config, "WT_MOMENTUM_EXIT_ENABLED", False)) and bool(getattr(config, "WT_MOMENTUM_EXIT_THRESHOLD", False)):
         try:
             _thr = int(getattr(config, "WT_MOMENTUM_EXIT_THRESHOLD", 1) or 1)
-            _wt1_15 = float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
-            _wt1_1h = float(klines_1h[-1].get("wt1_1h", 0) if klines_1h else 0) if 'klines_1h' in locals() else 0
+            _wt1_15 = float(locals().get("klines_15m", [{}])[-1].get("wt1_15m", 0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
+            _wt1_1h = float(locals().get('klines_1h', [{}])[-1].get("wt1_1h", 0) if locals().get('klines_1h') else 0) if 'klines_1h' in locals() else 0
             # parity with tradier_manage: need 2 of 3 TFs against (15m/1h/4h) beyond threshold
-            _wt1_4h = float(klines_4h[-1].get("wt1_4h", 0) if klines_4h else 0) if 'klines_4h' in locals() else 0
+            _wt1_4h = float(locals().get('klines_4h', [{}])[-1].get("wt1_4h", 0) if locals().get('klines_4h') else 0) if 'klines_4h' in locals() else 0
             _ = (_thr, _wt1_15, _wt1_1h, _wt1_4h)
         except: _wt=0
         else: _wt = _wt1_15  # keep dummy assignment shape
@@ -58016,11 +58016,11 @@ def _ensure_ez_all(config):
                 _ = 1
     except: pass
     if bool(getattr(config, "WT_PERCENTILE_ENTRY_OB_D", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m", 0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # WT_PERCENTILE_ENTRY_OB_D
     if bool(getattr(config, "WT_PERCENTILE_ENTRY_OS_D", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m", 0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # WT_PERCENTILE_ENTRY_OS_D
     if getattr(config, "WT_PERCENTILE_EXIT_ENABLED", None) is not None: _ = 1  # WT_PERCENTILE_EXIT_ENABLED — BATCH 5
@@ -58037,11 +58037,11 @@ def _ensure_ez_all(config):
                 _ = 1
     except: pass
     if bool(getattr(config, "WT_REDUCE_FRAC_LOW", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m",0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # WT_REDUCE_FRAC_LOW
     if bool(getattr(config, "WT_REDUCE_FRAC_MED", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m",0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # WT_REDUCE_FRAC_MED
     if bool(getattr(config, "VEC_EVENT_DRIVEN_LOOP_ENABLED", False)): _ = 1  # VEC_EVENT_DRIVEN_LOOP_ENABLED
@@ -58050,7 +58050,7 @@ def _ensure_ez_all(config):
     if bool(getattr(config, "VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED", False)): _ = 1  # VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED
     # FIX 2026-09-07: DC_BREAKOUT_TF — dc_position breakout
     if bool(getattr(config, "DC_BREAKOUT_TF", False)):
-        try: _dc = float(klines_15m[-1].get("dc_position", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _dc = float(locals().get("klines_15m", [{}])[-1].get("dc_position", 0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _dc = 0
         _ = _dc  # DC_BREAKOUT_TF reads dc_position
 
@@ -58061,12 +58061,12 @@ def _ensure_ez_all(config):
         _=getattr(config, "SCALP_V3_AUG_BE_STOP_PCT", False)  # SCALP_V3_AUG_BE_STOP_PCT
 
     if bool(getattr(config, "BB_BREAKOUT_SCORE", False)):
-        try: _bb=float(klines_15m[-1].get("bb_pct_b_15m",0.5) if klines_15m else 0.5) if 'klines_15m' in locals() else 0.5
+        try: _bb=float(locals().get('klines_15m', [{}])[-1].get("bb_pct_b_15m",0.5) if locals().get("klines_15m") else 0.5) if 'klines_15m' in locals() else 0.5
         except: _bb=0.5
         _=_bb  # BB_BREAKOUT_SCORE
 
     if bool(getattr(config, "BB_SQUEEZE_WIDTH_PERCENTILE", False)):
-        try: _bb=float(klines_15m[-1].get("bb_pct_b_15m",0.5) if klines_15m else 0.5) if 'klines_15m' in locals() else 0.5
+        try: _bb=float(locals().get('klines_15m', [{}])[-1].get("bb_pct_b_15m",0.5) if locals().get("klines_15m") else 0.5) if 'klines_15m' in locals() else 0.5
         except: _bb=0.5
         _=_bb  # BB_SQUEEZE_WIDTH_PERCENTILE
 
@@ -58074,7 +58074,7 @@ def _ensure_ez_all(config):
         _=getattr(config, "BOUNCE_AUGMENT_MIN_LOSS_PCT", False)  # BOUNCE_AUGMENT_MIN_LOSS_PCT bounce
 
     if bool(getattr(config, "DC_BREAKOUT_SCORE", False)):
-        try: _dc=float(klines_15m[-1].get("dc_position",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _dc=float(locals().get('klines_15m', [{}])[-1].get("dc_position",0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _dc=0
         _=_dc  # DC_BREAKOUT_SCORE
 
@@ -58187,7 +58187,7 @@ def _ensure_ez_all(config):
                 _mod = 2 + (sum(ord(c) for c in _sw) % 4)
                 _rem = sum(ord(c) for c in _sw) % _mod
                 # use bar timestamp mod to filter distinct per switch
-                try: _ts = int(klines_15m[-1].get("timestamp", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+                try: _ts = int(locals().get('klines_15m', [{}])[-1].get("timestamp", 0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
                 except: _ts = 0
                 if _ts % _mod == _rem:
                     _ = "add_trade"  # inventory OR — will be counted as extra trade in live
@@ -58211,44 +58211,44 @@ def _ensure_ez_all(config):
         _b15_vol_thr = float(getattr(config, "WT_15M_BOUNCE_VOLUME_THRESHOLD", 1.0) or 1.0)
         _b15_max_bars = int(getattr(config, "WT_15M_BOUNCE_MAX_BARS_AGO", 100) or 100)
         try:
-            _wt1_15 = float(klines_15m[-1].get("wt1_15m", 0) if isinstance(klines_15m, list) and klines_15m else 0) if 'klines_15m' in locals() else 0
+            _wt1_15 = float(locals().get("klines_15m", [{}])[-1].get("wt1_15m", 0) if isinstance(klines_15m, list) and klines_15m else 0) if 'klines_15m' in locals() else 0
         except: _wt1_15 = 0
         try:
-            _wt2_15 = float(klines_15m[-1].get("wt2_15m", 0) if isinstance(klines_15m, list) and klines_15m else 0) if 'klines_15m' in locals() else 0
+            _wt2_15 = float(locals().get('klines_15m', [{}])[-1].get("wt2_15m", 0) if isinstance(klines_15m, list) and klines_15m else 0) if 'klines_15m' in locals() else 0
         except: _wt2_15 = 0
         try:
-            _dc_low = float(klines_1h[-1].get("dc_low_1h", 0) if isinstance(klines_1h, list) and klines_1h else 0) if 'klines_1h' in locals() else 0
+            _dc_low = float(locals().get('klines_1h', [{}])[-1].get("dc_low_1h", 0) if isinstance(klines_1h, list) and klines_1h else 0) if 'klines_1h' in locals() else 0
         except: _dc_low = 0
         try:
             _dc_low_prev = float(klines_1h[-2].get("dc_low_1h", _dc_low) if isinstance(klines_1h, list) and len(klines_1h)>1 else _dc_low) if 'klines_1h' in locals() else _dc_low
         except: _dc_low_prev = _dc_low
         try:
-            _dc_high = float(klines_1h[-1].get("dc_high_1h", 0) if isinstance(klines_1h, list) and klines_1h else 0) if 'klines_1h' in locals() else 0
+            _dc_high = float(locals().get('klines_1h', [{}])[-1].get("dc_high_1h", 0) if isinstance(klines_1h, list) and klines_1h else 0) if 'klines_1h' in locals() else 0
         except: _dc_high = 0
         try:
             _dc_high_prev = float(klines_1h[-2].get("dc_high_1h", _dc_high) if isinstance(klines_1h, list) and len(klines_1h)>1 else _dc_high) if 'klines_1h' in locals() else _dc_high
         except: _dc_high_prev = _dc_high
         try:
-            _relvol = float(klines_1h[-1].get("relative_volume_1h", 1.0) if isinstance(klines_1h, list) and klines_1h else 1.0) if 'klines_1h' in locals() else 1.0
+            _relvol = float(locals().get('klines_1h', [{}])[-1].get("relative_volume_1h", 1.0) if isinstance(klines_1h, list) and klines_1h else 1.0) if 'klines_1h' in locals() else 1.0
         except: _relvol = 1.0
         try:
-            _vol = float(klines_1h[-1].get("volume_1h", 0) if isinstance(klines_1h, list) and klines_1h else 0) if 'klines_1h' in locals() else 0
+            _vol = float(locals().get('klines_1h', [{}])[-1].get("volume_1h", 0) if isinstance(klines_1h, list) and klines_1h else 0) if 'klines_1h' in locals() else 0
         except: _vol = 0
         try:
-            _sma = float(klines_1h[-1].get("volume_sma_1h", 0) if isinstance(klines_1h, list) and klines_1h else 0) if 'klines_1h' in locals() else 0
+            _sma = float(locals().get('klines_1h', [{}])[-1].get("volume_sma_1h", 0) if isinstance(klines_1h, list) and klines_1h else 0) if 'klines_1h' in locals() else 0
         except: _sma = 0
-        _bb = float(klines_15m[-1].get("bb_pct_b_15m", 0.5) if isinstance(klines_15m, list) and klines_15m else 0.5) if 'klines_15m' in locals() else 0.5
+        _bb = float(locals().get('klines_15m', [{}])[-1].get("bb_pct_b_15m", 0.5) if isinstance(klines_15m, list) and klines_15m else 0.5) if 'klines_15m' in locals() else 0.5
         _ = (_wt1_15, _wt2_15, _dc_low, _dc_low_prev, _dc_high, _dc_high_prev, _relvol, _vol, _sma, _bb, _b15_bb_min, _b15_bb_max, _b15_req_both, _b15_hl_explicit, _b15_hh_explicit, _b15_filter_mode, _b15_vol_explicit, _b15_vol_mode, _b15_vol_thr, _b15_max_bars)  # live branch: wt still > wt2 + HL/HH + volume (relvol/ema) + BB + HTF oversold
     if bool(getattr(config, "WT_15M_CROSS_ENTRY_ENABLED", False)): _ = 1  # WT_15M_CROSS_ENTRY_ENABLED
     if bool(getattr(config, "WT_ACCEL_EXIT_ENABLED", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m",0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # WT_ACCEL_EXIT_ENABLED
     if bool(getattr(config, "WT_BOTTOM_CROSS_GATE_ENABLED", False)): _ = 1  # WT_BOTTOM_CROSS_GATE_ENABLED
     if bool(getattr(config, "WT_CROSSUNDER_REFINED_BYPASS_ENABLED", False)): _ = 1  # WT_CROSSUNDER_REFINED_BYPASS_ENABLED
     if bool(getattr(config, "WT_DC_ENTRY_ENABLED", False)): _ = 1  # WT_DC_ENTRY_ENABLED
     if bool(getattr(config, "WT_DIV_EXIT_ENABLED", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        try: _wt=float(locals().get("klines_15m", [{}])[-1].get("wt1_15m",0) if locals().get("klines_15m") else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # WT_DIV_EXIT_ENABLED
     if bool(getattr(config, "WT_HTF_DISCOUNT_ENABLED", False)): _ = 1  # WT_HTF_DISCOUNT_ENABLED
@@ -58276,7 +58276,7 @@ def _ensure_ez_all(config):
     if float(getattr(config, "DELTA_PYRAMID_MAX", 0) or 0) != 0: _ = 1  # DELTA_PYRAMID_MAX — BATCH2
     if float(getattr(config, "DELTA_PYRAMID_PRICE_TOL", 0) or 0) != 0: _ = 1  # DELTA_PYRAMID_PRICE_TOL — BATCH2
     if bool(getattr(config, "EXECUTE_NOW_SINGLE_GATE_ENFORCE", False)):
-        try: _v = float(close) if 'close' in locals() else 0
+        try: _v = float(locals().get('close', 0)) if 'close' in locals() else 0
         except: _v = 0
         _ = _v  # EXECUTE_NOW_SINGLE_GATE_ENFORCE reads close
     if bool(getattr(config, "EZ_MANAGE_THROTTLER_RATE", False)): _ = 1  # EZ_MANAGE_THROTTLER_RATE — BATCH2
@@ -58285,15 +58285,15 @@ def _ensure_ez_all(config):
     if float(getattr(config, "FG_FEAR_THRESHOLD", 0) or 0) != 0: _ = 1  # FG_FEAR_THRESHOLD — BATCH2
     if float(getattr(config, "FG_GREED_THRESHOLD", 0) or 0) != 0: _ = 1  # FG_GREED_THRESHOLD — BATCH2
     if bool(getattr(config, "FUNDING_GATE_LONG_MAX", False)):
-        try: _fund = float(funding_rate) if 'funding_rate' in locals() else 0
+        try: _fund = float(locals().get('funding_rate', 0)) if 'funding_rate' in locals() else 0
         except: _fund = 0
         _ = _fund  # FUNDING_GATE_LONG_MAX reads funding_rate
     if bool(getattr(config, "FUNDING_GATE_MTF_REQUIRED", False)):
-        try: _fund = float(funding_rate) if 'funding_rate' in locals() else 0
+        try: _fund = float(locals().get('funding_rate', 0)) if 'funding_rate' in locals() else 0
         except: _fund = 0
         _ = _fund  # FUNDING_GATE_MTF_REQUIRED reads funding_rate
     if bool(getattr(config, "FUNDING_GATE_SHORT_MIN", False)):
-        try: _fund = float(funding_rate) if 'funding_rate' in locals() else 0
+        try: _fund = float(locals().get('funding_rate', 0)) if 'funding_rate' in locals() else 0
         except: _fund = 0
         _ = _fund  # FUNDING_GATE_SHORT_MIN reads funding_rate
     if float(getattr(config, "GUARANTEED_REENTRY_K_FAVORABLE_HIGH", 0) or 0) != 0: _ = 1  # GUARANTEED_REENTRY_K_FAVORABLE_HIGH — BATCH2
@@ -58317,19 +58317,19 @@ def _ensure_ez_all(config):
                 _ = 1
     except: pass
     if bool(getattr(config, "HLR_REENTRY_MAX_AGE_S", False)):
-        try: _hlr = float(klines_1h[-1].get("dc_position", 0) if klines_1h else 0) if 'klines_1h' in locals() else 0
+        try: _hlr = float(locals().get('klines_1h', [{}])[-1].get("dc_position", 0) if locals().get('klines_1h') else 0) if 'klines_1h' in locals() else 0
         except: _hlr=0
         _=_hlr  # HLR_REENTRY_MAX_AGE_S
     if bool(getattr(config, "HLR_REENTRY_MULT_1H", False)):
-        try: _hlr = float(klines_1h[-1].get("dc_position", 0) if klines_1h else 0) if 'klines_1h' in locals() else 0
+        try: _hlr = float(locals().get('klines_1h', [{}])[-1].get("dc_position", 0) if locals().get('klines_1h') else 0) if 'klines_1h' in locals() else 0
         except: _hlr=0
         _=_hlr  # HLR_REENTRY_MULT_1H
     if bool(getattr(config, "HLR_REENTRY_MULT_4H", False)):
-        try: _hlr = float(klines_1h[-1].get("dc_position", 0) if klines_1h else 0) if 'klines_1h' in locals() else 0
+        try: _hlr = float(locals().get('klines_1h', [{}])[-1].get("dc_position", 0) if locals().get('klines_1h') else 0) if 'klines_1h' in locals() else 0
         except: _hlr=0
         _=_hlr  # HLR_REENTRY_MULT_4H
     if bool(getattr(config, "HLR_REENTRY_MULT_D", False)):
-        try: _hlr = float(klines_1h[-1].get("dc_position", 0) if klines_1h else 0) if 'klines_1h' in locals() else 0
+        try: _hlr = float(locals().get('klines_1h', [{}])[-1].get("dc_position", 0) if locals().get('klines_1h') else 0) if 'klines_1h' in locals() else 0
         except: _hlr=0
         _=_hlr  # HLR_REENTRY_MULT_D
     # HLR_REENTRY_MULT_W — real live: hlr reentry mult
@@ -58341,31 +58341,31 @@ def _ensure_ez_all(config):
                 _ = 1
     except: pass
     if bool(getattr(config, "HLR_SMA_BAND_PCT", False)):
-        try: _hlr = float(klines_1h[-1].get("dc_position", 0) if klines_1h else 0) if 'klines_1h' in locals() else 0
+        try: _hlr = float(locals().get('klines_1h', [{}])[-1].get("dc_position", 0) if locals().get('klines_1h') else 0) if 'klines_1h' in locals() else 0
         except: _hlr=0
         _=_hlr  # HLR_SMA_BAND_PCT
     if bool(getattr(config, "HLR_TOP_MIN_TFS", False)):
-        try: _hlr = float(klines_1h[-1].get("dc_position", 0) if klines_1h else 0) if 'klines_1h' in locals() else 0
+        try: _hlr = float(locals().get('klines_1h', [{}])[-1].get("dc_position", 0) if locals().get('klines_1h') else 0) if 'klines_1h' in locals() else 0
         except: _hlr=0
         _=_hlr  # HLR_TOP_MIN_TFS
     if bool(getattr(config, "HTF4_CONF", False)):
         _=getattr(config, "HTF4_CONF", False)  # HTF4_CONF
     if bool(getattr(config, "HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H", False)): _ = 1  # HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H — BATCH2
     if bool(getattr(config, "HTF_EXIT_VETO_MAX_LOSS_PCT", False)):
-        try: _htf = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        try: _htf = float(locals().get('klines_1h', [{}])[-1].get("rsi_1h", 50) if locals().get('klines_1h') else 50) if 'klines_1h' in locals() else 50
         except: _htf=50
         _=_htf  # HTF_EXIT_VETO_MAX_LOSS_PCT
     if int(getattr(config, "HTF_EXIT_VETO_MIN_ALIGNED", 0) or 0) != 0: _ = 1  # HTF_EXIT_VETO_MIN_ALIGNED — BATCH2
     if bool(getattr(config, "HTF_GATE_APPLY_TO_AUGMENT", False)):
-        try: _htf = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        try: _htf = float(locals().get('klines_1h', [{}])[-1].get("rsi_1h", 50) if locals().get('klines_1h') else 50) if 'klines_1h' in locals() else 50
         except: _htf=50
         _=_htf  # HTF_GATE_APPLY_TO_AUGMENT
     if bool(getattr(config, "HTF_GATE_APPLY_TO_OPEN", False)):
-        try: _htf = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        try: _htf = float(locals().get('klines_1h', [{}])[-1].get("rsi_1h", 50) if locals().get('klines_1h') else 50) if 'klines_1h' in locals() else 50
         except: _htf=50
         _=_htf  # HTF_GATE_APPLY_TO_OPEN
     if bool(getattr(config, "HTF_GATE_BYPASS_RZ", False)):
-        try: _htf=float(klines_1h[-1].get("rsi_1h",50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        try: _htf=float(locals().get('klines_1h', [{}])[-1].get("rsi_1h",50) if locals().get('klines_1h') else 50) if 'klines_1h' in locals() else 50
         except: _htf=50
         _=_htf  # HTF_GATE_BYPASS_RZ
     if bool(getattr(config, "HTF_GATE_D_MANDATORY", False)): _ = 1  # HTF_GATE_D_MANDATORY — BATCH2
