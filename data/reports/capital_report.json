@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-20 22:50 UTC",
- "total_capital_usd": 35.94,
+ "generated_at": "2026-09-20 23:04 UTC",
+ "total_capital_usd": 12.17,
  "tier_capital": {
   "A": 0.0,
-  "B": 35.94,
+  "B": 12.17,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:DASHUSDT_SHORT",
-   "symbol": "DASHUSDT",
+   "pk": "flz:HYPEUSDT_LONG",
+   "symbol": "HYPEUSDT",
    "account": "flz",
-   "value_usd": 35.94,
-   "gain_pct": -0.188,
+   "value_usd": 12.17,
+   "gain_pct": -0.212,
    "tier": "B",
-   "perf_mult": 4.22,
-   "amt": 0.624,
-   "mark": 57.5883157
+   "perf_mult": 2.3,
+   "amt": 0.13,
+   "mark": 93.63759048
   }
  ]
 }
