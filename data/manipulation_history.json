@@ -13567,5 +13567,23 @@
     ],
     "timestamp": "2026-09-19T20:16:49.952933+00:00",
     "price": 0.003722
+  },
+  {
+    "symbol": "ZILUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.0x (from rankings)"
+    ],
+    "timestamp": "2026-09-20T01:32:24.485883+00:00",
+    "price": 0.002995
+  },
+  {
+    "symbol": "ENSUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.1x (from rankings)"
+    ],
+    "timestamp": "2026-09-20T01:57:19.130294+00:00",
+    "price": 5.714
   }
 ]
