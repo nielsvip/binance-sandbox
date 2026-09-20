@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-20 00:08 UTC",
- "total_capital_usd": 6.6,
+ "generated_at": "2026-09-20 00:33 UTC",
+ "total_capital_usd": 47.04,
  "tier_capital": {
   "A": 0.0,
-  "B": 6.6,
+  "B": 47.04,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:MANAUSDT_LONG",
-   "symbol": "MANAUSDT",
-   "account": "men",
-   "value_usd": 6.6,
-   "gain_pct": 0.277,
+   "pk": "flz:HYPEUSDT_LONG",
+   "symbol": "HYPEUSDT",
+   "account": "flz",
+   "value_usd": 47.04,
+   "gain_pct": 0.074,
    "tier": "B",
-   "perf_mult": 4.7,
-   "amt": 80.0,
-   "mark": 0.0825
+   "perf_mult": 2.3,
+   "amt": 0.51,
+   "mark": 92.245
   }
  ]
 }

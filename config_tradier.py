@@ -164,6 +164,7 @@ class TradierConfig:
     WT_DC_DIRECT_DC_TF: str = "1h"  # direct-path DC TF: 15m|1h|4h|D
     DC_BREAKOUT_TF_EXPANDED: str = "1h"  # alias with expanded options: 15m|1h|4h|D|W — mirrors DC_BREAKOUT_TF
     EXIT_VELOCITY_WT_TFS: str = "1h,4h,D"  # EXIT_VELOCITY WT check T inn — 15m|1h|4h|D combinations
+    DC_HARD_STOP_TF: str = "4h"  # ULTIMATE_DC HARD_STOP TF: 4h|D — per sym_side, D is wider so fewer stops; monitor if 4h kills results
     LIVE_ENTRY_ENGINE_WT_ENABLED: bool = True       # convergent: wt_all3 dominates tradier winners (Sharpe 7.71 @ 79 trades)
     LIVE_ENTRY_ENGINE_STOCH_ENABLED: bool = True    # convergent: k4h<20 paired with wt_all3
     LIVE_ENTRY_ENGINE_DC_ENABLED: bool = True       # convergent on crypto side; harmless on tradier when no dc_x signal

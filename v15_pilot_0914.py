@@ -1149,6 +1149,17 @@ def main():
         pass
     try:
         progress = json.loads(progress_path.read_text())
+        # FIX 2026-09-20: NEVER deteriorate vs BEST baseline — cumulative must be max of stored, baseline, and hustler_best
+        # Prevents IBM_LONG repeat where S1 recomputes lower gain than BEST (just leave settings as is = 0 delta, never negative)
+        try:
+            _prev_cum = float(progress.get("cumulative_gain") or baseline_gain)
+            _prev_hust = float(progress.get("hustler_best_gain") or 0)
+            progress["cumulative_gain"] = max(_prev_cum, float(baseline_gain or 0), _prev_hust)
+            if "hustler_best_gain" in progress and _prev_hust > 0:
+                # also ensure baseline overrides already include hustler best (BEST-as-baseline already loaded, but keep gain consistent)
+                pass
+        except Exception:
+            pass
     except Exception:
         progress = {"symside": new_symside, "baseline_gain": baseline_gain, "bh": bh, "done": {}, "window_days": args.window_days}
     # RESPECT s3/s5 shuffles and stdev: fetch latest progress from S1 peer if on s3/s5 to avoid overwriting better numbers
@@ -1196,7 +1207,8 @@ def main():
                     pass
     except Exception as _re2:
         print(f"[respect-warn] {_re2}", flush=True)
-    cumulative_gain = progress.get("cumulative_gain", baseline_gain)
+    # Enforce monotonic baseline: never underperform BEST (leave settings as is = 0 delta)
+    cumulative_gain = max(float(progress.get("cumulative_gain") or baseline_gain), float(baseline_gain or 0), float(progress.get("hustler_best_gain") or 0))
     cumulative_overrides = dict(progress.get("cumulative_overrides", overrides))
     cumulative_overrides = {k: v for k, v in cumulative_overrides.items() if not (isinstance(v, str) and " + " in v)}
     _bl_trades = int(baseline_live.get("trades") or 0)

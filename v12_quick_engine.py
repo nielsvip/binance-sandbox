@@ -4620,6 +4620,7 @@ class QuickConfig:
     WT_DC_DIRECT_DC_TF: str = "1h"
     DC_BREAKOUT_TF_EXPANDED: str = "1h"
     EXIT_VELOCITY_WT_TFS: str = "1h,4h,D"
+    DC_HARD_STOP_TF: str = "4h"  # ULTIMATE_DC HARD_STOP TF: 4h|D — per sym_side sweepable; D wider = fewer stops
     # ── 2026-09-03 HARD SHORT GATES — baked (mirrors tradier_manage) ──
     ROTATION_S_FINAL_SCORE_MAX: float = 0.35
     ROTATION_S_WT_BEAR_ALIGN_MIN: int = 2
@@ -21584,8 +21585,17 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     if n < 100:
         return None
     close = _base_safe(npz, 'close', n, cfg)
-    dc_high_4h = _safe(npz, 'dc_high_4h', n)
-    dc_low_4h = _safe(npz, 'dc_low_4h', n)
+    # HARD_STOP TF switch: 4h (tight) vs D (wide) per sym_side
+    _hs_tf_v12 = str(getattr(cfg, 'DC_HARD_STOP_TF', '4h') or '4h').strip().upper()
+    _hs_tf_v12 = 'D' if _hs_tf_v12 in ('D', '1D', 'DAILY') else '4h'
+    if _hs_tf_v12 == 'D':
+        dc_high_4h = _safe(npz, 'dc_high_D', n); dc_low_4h = _safe(npz, 'dc_low_D', n)
+        # fallback to 4h if D missing
+        if (dc_high_4h == 0).all() and (dc_low_4h == 0).all():
+            dc_high_4h = _safe(npz, 'dc_high_4h', n); dc_low_4h = _safe(npz, 'dc_low_4h', n)
+    else:
+        dc_high_4h = _safe(npz, 'dc_high_4h', n)
+        dc_low_4h = _safe(npz, 'dc_low_4h', n)
     entry_sig = compute_entry_signals(npz, n, is_long, cfg)
     exit_sig = compute_exit_signals(npz, n, is_long, cfg)
     augment_sig, augment_mult = compute_augment_signals(npz, n, is_long, cfg)
@@ -21992,8 +22002,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         live_pnl_pct = ((px - pos['avg_price']) / pos['avg_price'] * 100) if is_long else ((pos['avg_price'] - px) / pos['avg_price'] * 100)
         pos['peak_pnl_pct'] = max(pos['peak_pnl_pct'], live_pnl_pct)
         held_bars = i - pos['entry_bar']
-        # 2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP: DC 4H CHANNEL BREACH.
-        # No trade may be held through dc_low_4h (LONG) / dc_high_4h (SHORT) at any loss. Gain/min_hold/NOLOSS-agnostic, HARD_STOP.
+        # 2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP: DC CHANNEL BREACH TF = DC_HARD_STOP_TF (4h|D)
+        # No trade may be held through dc_low_TF (LONG) / dc_high_TF (SHORT) at any loss. TF per sym_side, D wider.
         try:
             _ult_lvl = float(dc_low_4h[i]) if is_long else float(dc_high_4h[i])
             _ult_breach = (_ult_lvl > 0) and ((is_long and px <= _ult_lvl) or ((not is_long) and px >= _ult_lvl))
@@ -22002,7 +22012,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
                 _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
                 _tsu = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
-                trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': 'ULTIMATE_DC_4H_HARD_STOP', 'type': 'CLOSE', 'ts': _tsu, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': 'ULTIMATE_DC_4H_HARD_STOP', 'bars_held': int(i - pos['entry_bar'])})
+                _hs_reason = f"ULTIMATE_DC_{_hs_tf_v12}_HARD_STOP"
+                trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _hs_reason, 'type': 'CLOSE', 'ts': _tsu, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _hs_reason, 'bars_held': int(i - pos['entry_bar'])})
                 pos = None; cd = cooldown_bars; has_closed_before = True
                 continue
         except Exception:

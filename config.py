@@ -70,6 +70,7 @@ class Config:
     WT_DC_DIRECT_DC_TF: str = "1h"  # direct-path DC TF: 15m|1h|4h|D
     DC_BREAKOUT_TF_EXPANDED: str = "1h"  # alias with expanded options: 15m|1h|4h|D|W — mirrors DC_BREAKOUT_TF
     EXIT_VELOCITY_WT_TFS: str = "1h,4h,D"  # EXIT_VELOCITY WT check T inn — 15m|1h|4h|D combinations
+    DC_HARD_STOP_TF: str = "4h"  # ULTIMATE_DC HARD_STOP TF: 4h|D — per sym_side, D is wider so fewer stops; monitor if 4h kills results
     GR_HTF_DIRECT_ENTRY_SCORE_MIN: float = 12.0
     GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE: float = 27.0
     GR_HTF_DIRECT_ENTRY_ENABLED: bool = True

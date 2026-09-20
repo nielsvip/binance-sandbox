@@ -13,9 +13,9 @@ SRC_SPREADSHEET_FINALS="niels@157.180.125.52:~/binance-sandbox/SPREADSHEETS/*FIN
 SRC_SPREADSHEET_TABS="niels@157.180.125.52:~/binance-sandbox/SPREADSHEETS/*_chart.html"
 mkdir -p "$DST" "$DST_V15" "$DST_CHARTS"
 echo "[$(date)] Sync S1 -> Mac xls... (TEMPLATE* excluded - Mac is source of truth, never S1->Mac)"
-rsync -avz --progress --exclude='*TEMPLATE*' --exclude='*_20*.xlsx' --exclude='*pilot*.xlsx' -e "ssh -o BatchMode=yes" "$SRC" "$DST" 2>&1 | tail -n 20
+rsync -avz --progress --exclude='*TEMPLATE*' --exclude='*_20*.xlsx' --exclude='*pilot*.xlsx' --exclude='V15_AVG*' -e "ssh -o BatchMode=yes" "$SRC" "$DST" 2>&1 | tail -n 20
 echo "[$(date)] Sync S1 -> Mac V15_V16_CELL_BY_CELL xls..."
-rsync -avz --progress --exclude='*_20*.xlsx' --exclude='*pilot*.xlsx' -e "ssh -o BatchMode=yes" "$SRC_V15" "$DST_V15" 2>&1 | tail -n 20
+rsync -avz --progress --exclude='*_20*.xlsx' --exclude='*pilot*.xlsx' --exclude='V15_AVG*' -e "ssh -o BatchMode=yes" "$SRC_V15" "$DST_V15" 2>&1 | tail -n 20
 echo "[$(date)] Sync S1 -> Mac SPREADSHEET COMPLETE/FINAL charts..."
 rsync -avz --progress -e "ssh -o BatchMode=yes" "$SRC_SPREADSHEET_CHARTS" "$DST" 2>&1 | tail -n 20
 rsync -avz --progress -e "ssh -o BatchMode=yes" "$SRC_SPREADSHEET_FINALS" "$DST" 2>&1 | tail -n 20
