@@ -64,7 +64,7 @@ def stable_hash(s: str) -> int:
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 ORDER_CANDIDATES = [
-    # 2026-09-20 TRB-first urgent — s1 crypto FLZ 16, s2/s5/s6 stocks TRB 13 each, 0 overlap, RESUMED queues take priority over BEST
+    # 2026-09-20 TRB-first urgent — s1 crypto FLZ 16, s2/s5/s6 stocks TRB 13 each, 0 overlap. NO repeats before all 83 urgent have FINAL pos gain (per V15_URGENT_FINAL_83.json pending 81). Fallback to BEST/RUNNING_ORDER disabled until urgent final.
     ROOT / "SPREADSHEETS" / "V15_SERVER_QUEUE_S1.txt",
     ROOT / "SPREADSHEETS" / "V15_SERVER_QUEUE_S2.txt",
     ROOT / "SPREADSHEETS" / "V15_SERVER_QUEUE_S5.txt",
@@ -78,12 +78,10 @@ ORDER_CANDIDATES = [
     ROOT / "SPREADSHEETS" / "V15_RESUMED_QUEUE_S5_STOCKS_PHASE1_MISSING30.txt",
     ROOT / "SPREADSHEETS" / "V15_RESUMED_QUEUE_S6_STOCKS_PHASE1_MISSING30.txt",
     pathlib.Path.home() / "binance-sandbox" / "SPREADSHEETS" / "V15_RESUMED_QUEUE_S1_CRYPTO_FLZ_16.txt",
-    ROOT / "SPREADSHEETS" / "V15_BEST_QUEUE_S1.txt",
-    ROOT / "SPREADSHEETS" / "V15_BEST_QUEUE_S2.txt",
-    pathlib.Path.home() / "binance-sandbox" / "SPREADSHEETS" / "V15_BEST_QUEUE_S1.txt",
-    ROOT / "SPREADSHEETS" / "V15_RUNNING_ORDER_TRB_FLZ.txt",
-    pathlib.Path.home() / "binance-sandbox" / "SPREADSHEETS" / "V15_RUNNING_ORDER_TRB_FLZ.txt",
+    ROOT / "SPREADSHEETS" / "V15_URGENT_FINAL_83.json",
 ]
+# URGENT-ONLY gate — if pending urgent >0, do NOT fallback to BEST/RUNNING_ORDER (prevents repeats before urgent finals)
+URGENT_ONLY_UNTIL_FINAL = True
 VENV_PY = pathlib.Path.home() / "binance-sandbox" / ".venv" / "bin" / "python"
 ALT_VENV = pathlib.Path.home() / ".conda" / "envs" / "binance_env" / "bin" / "python"
 S1_HOST = "10.0.0.3"  # tradingnet internal — reachable from s2/s3/s5/s1 without gateway
@@ -127,16 +125,45 @@ def find_order() -> pathlib.Path | None:
                     return p
     except:
         pass
-    # Fallback to BEST (old) only if no SERVER_QUEUE exists
+    # URGENT-ONLY: if V15_URGENT_FINAL_83.json pending>0, never fallback to BEST/RUNNING_ORDER (no repeats before urgent finals)
+    try:
+        urgent_path = ROOT / "SPREADSHEETS/V15_URGENT_FINAL_83.json"
+        if urgent_path.exists():
+            import json as _js
+            _d=_js.load(open(urgent_path))
+            if _d.get("pending_urgent", 0) > 0 and _d.get("urgent_total", 83) > len(_d.get("final_pos_gain_list", [])):
+                # urgent still pending — only allow urgent queues, skip BEST fallback
+                for p in ORDER_CANDIDATES:
+                    if p.exists() and ("V15_SERVER_QUEUE" in str(p) or "V15_RESUMED_QUEUE" in str(p)):
+                        return p
+                # also check per-host RESUMED
+                # no urgent queue found but pending>0 → return None (herd will idle, not run repeats)
+                return None
+    except Exception:
+        pass
+    # Fallback to BEST (old) only if no SERVER_QUEUE exists and urgent pending 0
     is_s2 = "s2" in me.lower() or "htz-v15-s2" in me
     host_best = ROOT / ("SPREADSHEETS/V15_BEST_QUEUE_S2.txt" if is_s2 else "SPREADSHEETS/V15_BEST_QUEUE_S1.txt")
     if host_best.exists():
-        # only use BEST if no SERVER_QUEUE at all
+        # only use BEST if no SERVER_QUEUE at all and no pending urgent
         has_server_q = any((ROOT / f"SPREADSHEETS/V15_SERVER_QUEUE_S{s}.txt").exists() for s in ["1","2","5","6"])
         if not has_server_q:
-            return host_best
+            try:
+                _d2=json.load(open(ROOT/"SPREADSHEETS/V15_URGENT_FINAL_83.json")) if (ROOT/"SPREADSHEETS/V15_URGENT_FINAL_83.json").exists() else {"pending_urgent":0}
+                if _d2.get("pending_urgent",0)==0:
+                    return host_best
+            except:
+                return host_best
     for p in ORDER_CANDIDATES:
         if p.exists():
+            # if pending urgent, skip non-urgent candidates
+            if "V15_BEST" in str(p) or "V15_RUNNING_ORDER" in str(p):
+                try:
+                    _d3=json.load(open(ROOT/"SPREADSHEETS/V15_URGENT_FINAL_83.json")) if (ROOT/"SPREADSHEETS/V15_URGENT_FINAL_83.json").exists() else {"pending_urgent":0}
+                    if _d3.get("pending_urgent",0)>0:
+                        continue
+                except:
+                    pass
             return p
     # try to fetch BEST + fallback from S1
     try:
@@ -237,6 +264,9 @@ def local_done_set(order: list[str]) -> set[str]:
         try:
             if p.stat().st_size < 500_000:
                 continue
+            # Timestamped interim (*_2026*.xlsx) is NOT FINAL — never count as done (superseded as soon as FINAL exists, per user 2026-09-20)
+            if "_2026" in p.name:
+                continue
             # BEST freshness: if xlsx older than its category TEMPLATE, skip (needs re-run on latest)
             if is_best and tmpl_mtimes:
                 # infer category from sym
@@ -295,6 +325,8 @@ def global_done_set(order: list[str]) -> set[str] | None:
                             continue
                         mtime = int(parts[0])
                         name = parts[1]
+                        if "_2026" in name:
+                            continue  # timestamped interim not FINAL
                         for s in order:
                             if s in name:
                                 is_stock = "USDC" not in s and "USDT" not in s
@@ -312,6 +344,8 @@ def global_done_set(order: list[str]) -> set[str] | None:
                 names = out.strip().splitlines()
                 done = set()
                 for name in names:
+                    if "_2026" in name:
+                        continue  # timestamped interim not FINAL
                     for s in order:
                         if s in name:
                             done.add(s)
@@ -322,8 +356,8 @@ def global_done_set(order: list[str]) -> set[str] | None:
 
 
 def strict_global_done_set(order: list[str]) -> set[str] | None:
-    # STRICT: ANY xlsx filename containing symside counts as done, even <500k, even bh variants
-    # This is the user 2026-09-16 DESTROY law: nothing ever recomputes a sym_side already computed EVER
+    # STRICT: ANY xlsx filename containing symside counts as done, even <500k, even bh variants, but NOT timestamped interim (*_2026) per 2026-09-20 urgent-only law
+    # This is the user 2026-09-16 DESTROY law: nothing ever recomputes a sym_side already computed EVER — but interim is not final, so not counted
     for host in [S1_HOST, S1_FALLBACK]:
         try:
             out = subprocess.check_output(["ssh", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=no", f"niels@{host}", "ls ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/*.xlsx 2>/dev/null | xargs -I{} basename {} 2>/dev/null; echo __END__; ls ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/*.bak 2>/dev/null | xargs -I{} basename {} 2>/dev/null; echo __END2__"], timeout=10, text=True)
@@ -333,6 +367,8 @@ def strict_global_done_set(order: list[str]) -> set[str] | None:
             for name in xlsx_names:
                 if not name.strip() or name.startswith("__"):
                     continue
+                if "_2026" in name:
+                    continue  # interim not final
                 for s in order:
                     if s in name:
                         done.add(s)
