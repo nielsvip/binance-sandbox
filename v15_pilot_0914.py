@@ -983,12 +983,16 @@ def main():
                 print(f"[baseline-json] loaded {len(_base_over)} overrides from {bj} as new baseline for shuffle", flush=True)
         except Exception as _e:
             print(f"[baseline-json-warn] {args.baseline_json} {_e}", flush=True)
-    # disabled switches for next round: never had pos delta → skip to speed up
+    # disabled switches for next round: never had pos delta → reduce frequency per category_side (not never)
+    # USER 2026-09-20: don't rebuild templates yet, but speed up by trying never-pos filters less often per category_side
+    # Per-category file: data/reports/lifecycle_pilot/disabled_switches_never_pos_per_category.json (CRYPTO_LONG etc.)
     disabled_switches = set()
-    if args.disable_switches_file:
-        try:
-            import json as _js3
-            import pathlib as _pl3
+    disabled_per_category = {}
+    try:
+        import json as _js3
+        import pathlib as _pl3
+        # 1) explicit --disable-switches-file if passed (legacy global)
+        if args.disable_switches_file:
             dj = _pl3.Path(args.disable_switches_file)
             if dj.exists():
                 _dis = _js3.loads(dj.read_text())
@@ -997,8 +1001,18 @@ def main():
                 elif isinstance(_dis, dict):
                     disabled_switches = set(_dis.keys())
                 print(f"[disable-switches] loaded {len(disabled_switches)} disabled switches from {dj} for speed (220 never pos)", flush=True)
-        except Exception as _e:
-            print(f"[disable-switches-warn] {args.disable_switches_file} {_e}", flush=True)
+        # 2) per-category file — always load for frequency reduction (category_side aware)
+        _pc_path = _pl3.Path("data/reports/lifecycle_pilot/disabled_switches_never_pos_per_category.json")
+        if not _pc_path.exists():
+            _pc_path = _pl3.Path("/home/niels/binance-sandbox/data/reports/lifecycle_pilot/disabled_switches_never_pos_per_category.json")
+        if _pc_path.exists():
+            _pc = _js3.loads(_pc_path.read_text())
+            if isinstance(_pc, dict):
+                # keys are CRYPTO_LONG etc, values are lists
+                disabled_per_category = {k: set(v) for k, v in _pc.items() if isinstance(v, list)}
+                print(f"[disable-per-category] loaded {len(disabled_per_category)} categories from {_pc_path.name}", flush=True)
+    except Exception as _e:
+        print(f"[disable-switches-warn] {_e}", flush=True)
     defaults = get_defaults_for_symside(new_symside)
     overrides, warns = sanitize_overrides(overrides, defaults)
     if warns:
@@ -1487,10 +1501,24 @@ def main():
         def _process_0914_row_helper(sheet: str, r: int, switch: str, cand):
             """Full per-row evaluator: naked + ALL yellows vs cumulative_before, writes L:BI yellows, updates progress/cumulative_gain. Mirrors sequential body."""
             nonlocal cumulative_gain, progress, cumulative_overrides, wb_path, flags_md, prepared, defaults, baseline_gain, args
-            # skip disabled switches that never had pos delta for speed (next round)
-            if switch in disabled_switches:
-                print(f"[SKIP-DISABLED] {switch} never had pos delta, skipping for speed (shuffle)", flush=True)
-                return 0
+            # disabled: reduce frequency per category_side, not never — W15M sacred never skip
+            # If switch is in per-category never-pos, try only 20% of the time (1 in 5 hustles) to speed up, else skip
+            _is_w15m = "W15M" in switch or "WT_15M" in switch or "WT_CHAN_15m" in switch or "WT_AVG_15m" in switch or "WT_15M_BOUNCE" in switch
+            if not _is_w15m:
+                # per-category frequency reduction
+                try:
+                    _cat = ("CRYPTO" if "USDT" in new_symside or "USDC" in new_symside else "STOCKS") + "_" + new_symside.rsplit("_",1)[-1]
+                    _cat_set = disabled_per_category.get(_cat, set())
+                    if switch in _cat_set:
+                        import random as _rnd
+                        if _rnd.random() > 0.20:  # 20% try, 80% skip to speed up
+                            print(f"[SKIP-PER-CATEGORY] {switch} never pos for {_cat}, skipping 80% to speed up", flush=True)
+                            return 0
+                except:
+                    pass
+                if switch in disabled_switches:
+                    print(f"[SKIP-DISABLED] {switch} never had pos delta, skipping for speed (shuffle)", flush=True)
+                    return 0
             # Build header map for this sheet
             wb_h, htc = _get_wb_keep(sheet)
             ws_h = wb_h[sheet] if sheet in wb_h.sheetnames else None
@@ -1791,9 +1819,21 @@ def main():
                         break
 
             for (r, switch, cand) in rows:
-                if switch in disabled_switches:
-                    print(f"[SKIP-DISABLED] {switch} never had pos delta, skipping for speed (shuffle)", flush=True)
-                    continue
+                _is_w15m_seq = "W15M" in switch or "WT_15M" in switch or "WT_CHAN_15m" in switch or "WT_AVG_15m" in switch or "WT_15M_BOUNCE" in switch
+                if not _is_w15m_seq:
+                    try:
+                        _cat_seq = ("CRYPTO" if "USDT" in new_symside or "USDC" in new_symside else "STOCKS") + "_" + new_symside.rsplit("_",1)[-1]
+                        _cat_set_seq = disabled_per_category.get(_cat_seq, set())
+                        if switch in _cat_set_seq:
+                            import random as _rnd_seq
+                            if _rnd_seq.random() > 0.20:
+                                print(f"[SKIP-PER-CATEGORY] {switch} never pos for {_cat_seq}, skipping 80% to speed up", flush=True)
+                                continue
+                    except:
+                        pass
+                    if switch in disabled_switches:
+                        print(f"[SKIP-DISABLED] {switch} never had pos delta, skipping for speed (shuffle)", flush=True)
+                        continue
                 cell_start = time.time()
                 key = f"{sheet}!{r}:{switch}={cand}"
                 # YELLOW SET FOR A SINGLE SWITCH (this row): SPECIFIC filters gated
