@@ -8448,6 +8448,11 @@ async def periodic_evaluate_reentry_loop(trade_manager):
 
             # Dispatch to Monitor
             for acc, keys in re_keys_by_acct.items():
+                # USER 2026-09-21 CRITICAL: tra NEVER re-enters (no buys) — GFV deletion risk
+                if acc == 'tra':
+                    if keys:
+                        logger.info(f"[{acc}] ♻️ SKIPPING {len(keys)} tra reentry candidates — TRA_NO_BUYS")
+                    continue
                 if keys:
                     logger.info(f"[{acc}] ♻️ Evaluating {len(keys)} positions for Re-Entry...")
                     # await trade_manager.strategy.evaluate_reentry(symbol,position, indicators)
@@ -9608,7 +9613,9 @@ async def monitor_entries(order_queue: "OrderQueue", trade_manager, account_key:
             
             # Use centralized check
             is_allowed = trade_manager.is_symbol_tradeable(symbol, account_key, position_side)
-            if force: is_allowed = True
+            # USER 2026-09-21 CRITICAL: tra NEVER buys — force bypass must NOT open tra (GFV day-trade risk)
+            if force and account_key != 'tra':
+                is_allowed = True
 
             if not is_allowed:
                 # TEMP LIVE FIX before 100k complete: allow TRB 148 (was V8_NOT_VERIFIED_TEMP_ALLOWED + FILTER BLOCK for 100+ sides Friday 0 trades)
@@ -10026,6 +10033,27 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             if force: logger.info(f"[{account_key}] SKIP {symbol}: Price is Zero.")
             return "NO_PRICE"
         is_long = (position_side == "LONG")
+        # USER 2026-09-21 CRITICAL: tra sell-only sleeve — NEVER buys, ONLY sell on dc_low_D breach (GFV deletion risk).
+        # This is the sole exit allowed for tra. All other exits (4h trail, R1, WT exits, ratio trims) are blocked for tra.
+        # Flat tra positions never generate entry candidates — they only return TRA_NO_BUYS.
+        if account_key == 'tra':
+            if not has_position:
+                return "TRA_NO_BUYS_SELL_ONLY"
+            # has_position: only DC_LOW_D (LONG) / DC_HIGH_D (SHORT) breach closes the position
+            try:
+                _tra_dc_low = safe_fetch_float(i.get('dc_low_D', 0) or (indicators_raw.get('dc_low_D', 0) if isinstance(indicators_raw, dict) else 0) or 0, 0.0)
+                _tra_dc_high = safe_fetch_float(i.get('dc_high_D', 0) or (indicators_raw.get('dc_high_D', 0) if isinstance(indicators_raw, dict) else 0) or 0, 0.0)
+                _tra_breach = (is_long and _tra_dc_low > 0 and current_price <= _tra_dc_low) or ((not is_long) and _tra_dc_high > 0 and current_price >= _tra_dc_high)
+                if _tra_breach:
+                    _tra_gain = safe_fetch_float(getattr(position, 'gain', 0), 0.0)
+                    _tra_lvl = _tra_dc_low if is_long else _tra_dc_high
+                    logger.critical(f"⛔ [TRA_DC_D_HARD_STOP] {position_key}: price {current_price:.4f} breached {'dc_low_D' if is_long else 'dc_high_D'} {_tra_lvl:.4f} g={_tra_gain:.2f}% → HARD_STOP CLOSE (tra sell-only)")
+                    await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"TRA_DC_D_HARD_STOP_{'LONG' if is_long else 'SHORT'}_px{current_price:.4f}_lvl{_tra_lvl:.4f}_g{_tra_gain:.2f}", 100.0, override_qty=999999)
+                    return "TRA_DC_D_HARD_STOP_CLOSED"
+                return "TRA_HOLD_NO_DC_D_BREACH"
+            except Exception as _tra_e:
+                logger.warning(f"[TRA_DC_D_HARD_STOP] {position_key} probe err: {_tra_e}")
+                return "TRA_HOLD_NO_DC_D_BREACH"
         # 2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP: DC CHANNEL BREACH (ALL ACCOUNTS).
         # LONG close <= dc_low_TF, SHORT close >= dc_high_TF where TF = DC_HARD_STOP_TF (4h|D) per sym_side. Gain/age-agnostic, no veto, HARD_STOP.
         # Monitor: if 4h kills results for some symbols, D (wider) is chosen per sym_side via TEMPLATE/hustle.
@@ -13679,22 +13707,30 @@ async def process_symbols_periodically(order_queue: OrderQueue, trade_manager, a
             ]
 
             # Candidate keys (non-open) — every 90s only
-            # tra is a CASH (non-margin) account → never queue SHORT candidates.
-            # Without this guard the scan loop spent every cycle generating SHORT
-            # entry signals on tra that the Tradier API would reject as
-            # "shorting requires margin", churning state and decision logs.
-            _tra_long_only = (account_key == 'tra' and _cfg_auto('TRA_LONG_ONLY', True))
-            candidate_keys = []
-            if now - last_candidate_scan >= CANDIDATE_INTERVAL:
-                _short_keys = [] if _tra_long_only else [f"{account_key}:{s}_SHORT" for s in shorts]
-                all_candidates = (
-                    [f"{account_key}:{s}_LONG" for s in longs] +
-                    _short_keys
-                )
-                candidate_keys = [k for k in all_candidates if k not in open_keys]
-                last_candidate_scan = now
-                _short_label = "(SUPPRESSED:cash_account)" if _tra_long_only else f"{len(shorts)}S"
-                print(f"[SCAN] {account_key}: {len(longs)}L/{_short_label} syms, {len(open_keys)} open, {len(candidate_keys)} candidates, market={'OPEN' if is_regular_trading_hours() else 'CLOSED'}", flush=True)
+            # USER 2026-09-21 CRITICAL: tra NEVER buys — zero candidates ever (GFV day-trade risk).
+            # It may only SELL when price breaches dc_low_D; candidate scans must be empty.
+            if account_key == 'tra':
+                candidate_keys = []
+                if now - last_candidate_scan >= CANDIDATE_INTERVAL:
+                    last_candidate_scan = now
+                    print(f"[SCAN] {account_key}: 0L/0S candidates (TRA_NO_BUYS) {len(open_keys)} open, market={'OPEN' if is_regular_trading_hours() else 'CLOSED'}", flush=True)
+            else:
+                # tra is a CASH (non-margin) account → never queue SHORT candidates.
+                # Without this guard the scan loop spent every cycle generating SHORT
+                # entry signals on tra that the Tradier API would reject as
+                # "shorting requires margin", churning state and decision logs.
+                _tra_long_only = (account_key == 'tra' and _cfg_auto('TRA_LONG_ONLY', True))
+                candidate_keys = []
+                if now - last_candidate_scan >= CANDIDATE_INTERVAL:
+                    _short_keys = [] if _tra_long_only else [f"{account_key}:{s}_SHORT" for s in shorts]
+                    all_candidates = (
+                        [f"{account_key}:{s}_LONG" for s in longs] +
+                        _short_keys
+                    )
+                    candidate_keys = [k for k in all_candidates if k not in open_keys]
+                    last_candidate_scan = now
+                    _short_label = "(SUPPRESSED:cash_account)" if _tra_long_only else f"{len(shorts)}S"
+                    print(f"[SCAN] {account_key}: {len(longs)}L/{_short_label} syms, {len(open_keys)} open, {len(candidate_keys)} candidates, market={'OPEN' if is_regular_trading_hours() else 'CLOSED'}", flush=True)
 
             all_keys = open_keys + candidate_keys
 
@@ -13825,6 +13861,12 @@ async def continuous_queue_processor(order_queue: OrderQueue, trade_manager, acc
             await asyncio.sleep(5)
 
 async def periodic_override_check(trade_manager, account_key):
+    # USER 2026-09-21 CRITICAL: tra never uses ratio/overbought trims — only DC_D breach
+    if account_key == 'tra':
+        logger.info("[periodic_override_check] tra SKIPPED — sell-only on DC_D breach")
+        while getattr(trade_manager, "running", False):
+            await asyncio.sleep(300)
+        return
     current_account.set(account_key)
     while getattr(trade_manager, "running", False):
         try:
@@ -13937,6 +13979,12 @@ async def periodic_override_check(trade_manager, account_key):
 
 async def monitor_stale_augmentations(trade_manager, account_key, order_queue):
     """Monitor positions that were augmented but have become stale (no update for 2 hours)"""
+    # USER 2026-09-21 CRITICAL: tra never augments — skip stale-aug entirely
+    if account_key == 'tra':
+        logger.info("[monitor_stale_augmentations] tra SKIPPED — sell-only sleeve")
+        while getattr(trade_manager, "running", False):
+            await asyncio.sleep(300)
+        return
     current_account.set(account_key)
     while getattr(trade_manager, "running", False):
         try:
@@ -24884,9 +24932,12 @@ class TradierTradeManager:
                                     _hist_buys += 1
                 except Exception as _he:
                     logger.error(f"[TRA_DAILY_BUY_LIMIT] ledger count failed ({_he}) — using in-memory only")
-                # USER 2026-08-14: tra NEVER buys - sell only before loss in selloff
-                if account_key == 'tra' and not _cfg_auto('TRA_ALLOW_BUYS', False):
-                    return False, "TRA_NO_BUYS_SELL_ONLY", 0
+                # USER 2026-09-21 CRITICAL: tra NEVER buys EVER — unconditional block (GFV day-trade = account deleted)
+                if account_key == 'tra':
+                    if lock_acquired and self.redis_manager:
+                        try: await self.redis_manager.delete(exec_lock_key)
+                        except Exception: pass
+                    return False, "TRA_NO_BUYS_SELL_ONLY_GFV_DELETION_RISK", 0
                 _tra_max = int(_cfg_auto('TRA_MAX_BUYS_PER_DAY', 1))
                 # 4 DAYS no buying after a sell on cash tra (GFV 5 flags -> ban at 6)
                 _tra_cooldown_h = float(_cfg_auto('TRA_BUY_COOLDOWN_AFTER_SELL_HOURS', 96.0))
@@ -25390,6 +25441,9 @@ class TradierTradeManager:
                     await asyncio.sleep(60)
                     continue
                 for acc in self.target_accounts:
+                    # USER 2026-09-21 CRITICAL: tra NEVER re-enters — skip entire reentry monitor
+                    if acc == 'tra':
+                        continue
                     candidates = self._load_reentry_candidates(acc)
                     if not candidates:
                         continue
@@ -30326,6 +30380,12 @@ class StockSentimentStrategy:
             return # Only one per scan loop
             
 async def monitor_direct_high_gain_positions(trade_manager, order_queue):
+    # USER 2026-09-21 CRITICAL: tra never augments — this loop is disabled (sell-only on DC_D)
+    logger.info("[HIGH_GAIN_MONITOR] tra monitor DISABLED — TRA_NO_BUYS")
+    while getattr(trade_manager, "running", False):
+        await asyncio.sleep(300)
+        continue
+    # unreachable original logic kept below for reference but never executes
     while getattr(trade_manager, "running", False):
         try:
             await asyncio.sleep(75)
@@ -30373,6 +30433,12 @@ async def monitor_direct_high_gain_positions(trade_manager, order_queue):
 
 async def periodic_direct_high_gain_reopen(trade_manager, order_queue, account_key):
     """Periodically check for re-opening high gain positions that were reduced"""
+    # USER 2026-09-21 CRITICAL: tra never reopens — no buys
+    if account_key == 'tra':
+        logger.info("[periodic_direct_high_gain_reopen] tra SKIPPED — sell-only")
+        while getattr(trade_manager, "running", False):
+            await asyncio.sleep(300)
+        return
     current_account.set(account_key)
     while getattr(trade_manager, "running", False):
         try:
@@ -30394,6 +30460,9 @@ async def direct_high_gain_augmentation(position_key: str, order_queue: OrderQue
     """Direct high gain augmentation for Tradier - checks if profitable position should be augmented"""
     try:
         account_key, symbol, position_side = parse_position_key(position_key)
+        # USER 2026-09-21 CRITICAL: tra never augments
+        if account_key == 'tra':
+            return
         current_account.set(account_key)
         
         # Check if symbol is shortable before trying to augment short

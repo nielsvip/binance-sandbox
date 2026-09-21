@@ -1,32 +1,32 @@
 {
- "generated_at": "2026-09-21 17:46 UTC",
- "total_capital_usd": 55.75,
+ "generated_at": "2026-09-21 18:26 UTC",
+ "total_capital_usd": 30.51,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 55.75
+  "B": 30.51,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
-  "C": 1
+  "B": 1,
+  "C": 0
  },
  "winners": [],
- "losers": [
-  "fin:COTIUSDT_SHORT"
+ "losers": [],
+ "mediocre": [
+  "flz:SOLUSDC_LONG"
  ],
- "mediocre": [],
  "positions": [
   {
-   "pk": "fin:COTIUSDT_SHORT",
-   "symbol": "COTIUSDT",
-   "account": "fin",
-   "value_usd": 55.75,
-   "gain_pct": 0.081,
-   "tier": "C",
-   "perf_mult": 0.55,
-   "amt": 3232.0,
-   "mark": 0.017249
+   "pk": "flz:SOLUSDC_LONG",
+   "symbol": "SOLUSDC",
+   "account": "flz",
+   "value_usd": 30.51,
+   "gain_pct": -0.096,
+   "tier": "B",
+   "perf_mult": 0.64,
+   "amt": 0.26,
+   "mark": 117.36
   }
  ]
 }

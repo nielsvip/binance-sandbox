@@ -484,7 +484,7 @@ def _atomic_write_json(path: Path, data: dict):
         except Exception:
             pass
 
-def _validate_e_chain_and_yellows(progress: dict, wb_path: pathlib.Path | None = None):
+def _validate_e_chain_and_yellows(progress: dict, wb_path: Path | None = None):
     """Integrated from tests/test_v15_e_bland.py — ensures no E drop and F/Yellow/Orange are real.
     Called after each sheet and at final: checks progress.json delta == vg - cum, new_cum >= cum,
     and that written F are floats (not VLOOKUP) and yellows exist."""
@@ -996,6 +996,26 @@ def main():
         except Exception as _e:
             print(f"[baseline-json-warn] {args.baseline_json} {_e}", flush=True)
     # disabled switches for next round: never had pos delta → reduce frequency per category_side (not never)
+    # 2026-09-21 KG LAW — KINDERGARTEN HTF+LTF FILTERS MUST NEVER BE SKIPPED: structural gate, if KG untested all 67 rerun
+    KG_NEVER_SKIP = {
+        "HTF_TREND_VETO_ENABLED", "HTF_TREND_VETO_BYPASS_ENABLED", "HTF_DIRECTION_GATE_ENABLED", "HTF_EXIT_VETO_ENABLED",
+        "HTF_GATE_BYPASS_RZ", "HTF_GATE_D_MANDATORY", "HTF_GATE_MIN_CONFIRMATIONS", "HTF4_CONF",
+        "MTF_ARMED_ENTRY_ENABLED", "MTF_FILTER_STRONG_BUY_QUICK_BYPASS", "MTF_GR_MIN_IND", "MTS_GATE_ENABLED",
+        "TOP_OF_RANGE_BLOCK_ENABLED", "GR_FILTER_ALL_ENTRIES", "OPEN_RATE_BREAKER_ENABLED", "COUNTER_TREND_ADD_BLOCK_ENABLED",
+        "DELTA_REENTRY_FILTER_ENABLED", "EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED", "MANDATORY_REENTRY_WT_FILTER_MIN_TFS",
+        "W15M", "WT_15M", "WT_CHAN_15m", "WT_AVG_15m", "WT_15M_BOUNCE", "WT_DC", "WT_CROSS",
+        "BB_SQUEEZE", "ADX_RANGING_THRESHOLD",
+    }
+    def _is_kg_never_skip(sw: str) -> bool:
+        if not sw:
+            return False
+        if sw in KG_NEVER_SKIP:
+            return True
+        # substring match for WT/HTF/MTF/GR/TOP/ADX/BB variants not enumerated exactly
+        for _kg in ("HTF_", "MTF_", "MTS_", "WT_", "W15M", "TOP_OF_RANGE", "GR_FILTER", "GR_", "ADX_", "BB_SQUEEZE", "COUNTER_TREND", "DELTA_REENTRY", "EXIT_BLOCKER", "MANDATORY_REENTRY", "OPEN_RATE"):
+            if _kg in sw:
+                return True
+        return False
     # USER 2026-09-20: don't rebuild templates yet, but speed up by trying never-pos filters less often per category_side
     # Per-category file: data/reports/lifecycle_pilot/disabled_switches_never_pos_per_category.json (CRYPTO_LONG etc.)
     disabled_switches = set()
@@ -1023,6 +1043,18 @@ def main():
                 # keys are CRYPTO_LONG etc, values are lists
                 disabled_per_category = {k: set(v) for k, v in _pc.items() if isinstance(v, list)}
                 print(f"[disable-per-category] loaded {len(disabled_per_category)} categories from {_pc_path.name}", flush=True)
+        # 2026-09-21 KG LAW: purge KG from disabled sets so KG never skipped even if file lists them
+        try:
+            disabled_switches = {s for s in disabled_switches if not _is_kg_never_skip(s)}
+            for _k in list(disabled_per_category.keys()):
+                _orig = len(disabled_per_category[_k])
+                disabled_per_category[_k] = {s for s in disabled_per_category[_k] if not _is_kg_never_skip(s)}
+                if len(disabled_per_category[_k]) != _orig:
+                    print(f"[KG-purge] {_k}: removed {_orig - len(disabled_per_category[_k])} KG from disabled", flush=True)
+            if disabled_switches or disabled_per_category:
+                print(f"[KG-guard] disabled after purge: global {len(disabled_switches)} cats {len(disabled_per_category)} KG never-skip {len(KG_NEVER_SKIP)}", flush=True)
+        except Exception as _e2:
+            print(f"[KG-purge-warn] {_e2}", flush=True)
     except Exception as _e:
         print(f"[disable-switches-warn] {_e}", flush=True)
     defaults = get_defaults_for_symside(new_symside)
@@ -1513,10 +1545,12 @@ def main():
         def _process_0914_row_helper(sheet: str, r: int, switch: str, cand):
             """Full per-row evaluator: naked + ALL yellows vs cumulative_before, writes L:BI yellows, updates progress/cumulative_gain. Mirrors sequential body."""
             nonlocal cumulative_gain, progress, cumulative_overrides, wb_path, flags_md, prepared, defaults, baseline_gain, args
-            # disabled: reduce frequency per category_side, not never — W15M sacred never skip
-            # If switch is in per-category never-pos, try only 20% of the time (1 in 5 hustles) to speed up, else skip
-            _is_w15m = "W15M" in switch or "WT_15M" in switch or "WT_CHAN_15m" in switch or "WT_AVG_15m" in switch or "WT_15M_BOUNCE" in switch
-            if not _is_w15m:
+            # 2026-09-21 KG LAW: KINDERGARTEN HTF+LTF never skip — overrides per-category/disabled speed gate
+            if _is_kg_never_skip(switch):
+                pass  # never skip KG
+            elif "W15M" in switch or "WT_15M" in switch or "WT_CHAN_15m" in switch or "WT_AVG_15m" in switch or "WT_15M_BOUNCE" in switch:
+                pass  # W15M sacred never skip (legacy, now covered by KG)
+            else:
                 # per-category frequency reduction
                 try:
                     _cat = ("CRYPTO" if "USDT" in new_symside or "USDC" in new_symside else "STOCKS") + "_" + new_symside.rsplit("_",1)[-1]
@@ -1831,7 +1865,10 @@ def main():
                         break
 
             for (r, switch, cand) in rows:
-                _is_w15m_seq = "W15M" in switch or "WT_15M" in switch or "WT_CHAN_15m" in switch or "WT_AVG_15m" in switch or "WT_15M_BOUNCE" in switch
+                if _is_kg_never_skip(switch):
+                    _is_w15m_seq = True  # KG never skip
+                else:
+                    _is_w15m_seq = "W15M" in switch or "WT_15M" in switch or "WT_CHAN_15m" in switch or "WT_AVG_15m" in switch or "WT_15M_BOUNCE" in switch
                 if not _is_w15m_seq:
                     try:
                         _cat_seq = ("CRYPTO" if "USDT" in new_symside or "USDC" in new_symside else "STOCKS") + "_" + new_symside.rsplit("_",1)[-1]
@@ -2532,6 +2569,7 @@ def main():
             # Prune list derived from workflow: 39 distinct that stall (only 0/neg) — keep the other 26
             _PRUNED_ORANGE = {"EZ_MANAGE_THROTTLER_RATE","HA_WICK_QUALITY_ENABLED","HA_WICK_QUALITY_SCORE","HA_WICK_QUALITY_TF","HLR_SMA_BAND_PCT","HLR_TOP_MIN_TFS","HTF4_CONF","HTF_DIRECTION_GATE_ENABLED","HTF_GATE_BYPASS_RZ","HTF_GATE_D_MANDATORY","HTF_GATE_MIN_CONFIRMATIONS","HTF_TREND_VETO_BYPASS_ENABLED","HTF_TREND_VETO_BYPASS_REASONS","LEADERBOARD_FILTER","LH_HL_FILTER_ENABLED","LH_HL_FILTER_MODE","LH_HL_FILTER_REQUIRE_BOTH","LIVE_VEC_EMERGENCY_BRAKE_ENABLED","LR_BAND_LADDER_STOCH_EXTREME","LR_BAND_LADDER_TF_BOTTOM","LR_BAND_LADDER_TF_TOP","MANDATORY_REENTRY_WT_FILTER_MIN_TFS","MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY","MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP","MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO","MARKET_QUALITY_SCORE_ENABLED","MI_TF_AGREE_MIN","MOVER_THRESHOLD","MTF_FILTER_STRONG_BUY_QUICK_BYPASS","MTF_GR_MIN_IND","MTS_BOTTOM_BONUS_THRESHOLD","MTS_BOTTOM_STRONG_THRESHOLD","MTS_GATE_ENABLED","NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT","NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST","NEW_POSITION_MAX_LOSS_THRESHOLD","OI_CONFIRM_ENABLED","OI_CONFIRM_MIN_CHANGE_PCT","OI_CONFIRM_MIN_PRICE_PCT"}
             try:
+                lifecycle = sheet.split("_")[0]
                 _global_cands = []
                 for _e in _load_filter_dictionary():
                     # orange per-sheet = GENERAL only (SPECIFIC is yellow per-switch above)

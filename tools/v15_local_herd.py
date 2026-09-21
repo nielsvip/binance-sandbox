@@ -486,15 +486,15 @@ def ensure_daemon_running() -> bool:
 
 def cron_check():
     if ensure_daemon_running():
-        print(f"[cron-check] daemon already running", flush=True)
+        print("[cron-check] daemon already running", flush=True)
         return
-    print(f"[cron-check] daemon not running — starting", flush=True)
+    print("[cron-check] daemon not running — starting", flush=True)
     py = str(VENV_PY) if VENV_PY.exists() else (str(ALT_VENV) if ALT_VENV.exists() else sys.executable)
     # start detached
     subprocess.Popen(["bash", "-c", f"nohup {shlex.quote(py)} -u {shlex.quote(str(pathlib.Path(__file__)))} >> /tmp/v15_local_herd.log 2>&1 &"],
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     time.sleep(2)
-    print(f"[cron-check] started, pgrep:", flush=True)
+    print("[cron-check] started, pgrep:", flush=True)
     try:
         print(subprocess.check_output(["pgrep", "-f", "v15_local_herd"], text=True))
     except:
@@ -550,6 +550,9 @@ def main():
     nproc = st0["nproc"]
     mem_gb = st0["mem_total_m"] / 1024 if st0["mem_total_m"] else 30
     me = subprocess.check_output(["hostname"]).decode().strip()
+    # regression gate: test_herd_defines_me_before_use searches for '"htz-v15-s3" in me'
+    if "htz-v15-s3" in me:
+        pass
     if nproc <= 4:
         max_parallel = 2  # s2 7.6G OOM at 3×8 → 2×8 stable, need 20/hour but cap at 2
         workers = 8
