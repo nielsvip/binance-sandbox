@@ -36,7 +36,7 @@ class Config:
     def __hash__(self):
         return id(self)
 
-    BASE_TF: str = "3m"  # parity 2026-08-17: vector->live (was vector-only)
+    BASE_TF: str = "15m"  # 2026-09-21 OFF by default — 3m/5m trading without guaranteed reentry cannot be verified with NPZ (Mac 0 *.npz, S1 3m incomplete, forward S1-only). No entries/augments/exits at 3m/5m until forward proves +delta; only RULE_B_3M/5M exit stays ON per user. Was 3m 2026-08-17, now 15m.
     BB_PCTB_ENTRY_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
     COOLDOWN_BARS: int = 3  # parity 2026-08-17: vector->live (was vector-only)
     ENTRY_SCORE_THRESHOLD: float = 18.0  # parity 2026-08-17: vector->live (was vector-only)
@@ -184,7 +184,7 @@ class Config:
     # ═══ SCALP_V2 — PRIORITY P0 (test first, week 1) ═══════════════════════════
     SCALP_MODE: bool = False               # P0: ON for inf. V8 showed -0.30 Sharpe BUT that was with ISOLATE=False (main exits interfered). Now ISOLATE=True + inf excluded from hedging.
     SCALP_REDUCE_ENABLED: bool = False     # 2026-05-30 USER: OFF. The AdvancedSignalRater.rate "SCALP_REDUCE" profit-protect reduces (TIGHT_LEASH_PROFIT_SAVE/Quick_Profit/DECENT_GAIN_PROTECT) cut winners early — gated at queue_trade_action. Breakeven-lock (+0.5%->+0.02%) remains the sanctioned profit protection. ROLLBACK: True.
-    RULE_B_3M_EXIT_ENABLED: bool = False     # 2026-09-21 OFF by default — 3m exits without guaranteed reentry cannot be verified with NPZ (Mac 0 *.npz, S1 3m incomplete, forward S1-only). Enable only if forward live vs vector proves +delta (hourly SPREADSHEETS/FORWARD_*.xlsx P3). Was True 2026-05-30, now False per user. ROLLBACK: True.
+    RULE_B_3M_EXIT_ENABLED: bool = True     # 2026-09-21 ON per user — exit on 3m switch stays ON while general 3m/5m trading (BASE_TF etc) stays OFF (no entries/augments/exits at 3m/5m) until forward proves otherwise. Was False 2026-09-21, now True. ROLLBACK: False.
     QUICK_REDUCE_TECHNICAL_ONLY: bool = True  # 2026-06-02 USER MANDATE: DISABLE the QUICK_REDUCE stochastic/euphoria traps (AB_S200/EUPHORIA_TIGHTEN/Overbought_safety/SIMPLE_TP/NO_PROFIT 'Get Out'/Stagnant — hardcoded since 2026-03-03, never approved, never backtested, cut 76% of reduces with no technical breakdown incl 164 above-sma200 winners). When True, a reduce/close from rate(is_exit) only fires if the reason carries a SANCTIONED TECHNICAL token (R1 dc_low4 / R2 WT-vel / MTF-ATR-trail / DC break / MTF / HTF/ALL_TF against / RULE_B 3m struct / FAST_CUT_LOSS / PARTIAL-PROFIT-LOCK / HEDGE_FAILED); pure stochastic reduces are suppressed (logged QUICK_REDUCE_TRAP_SUPPRESSED). Gate: ez_positions_quick.py ~14538. ROLLBACK: False.
     PARITY_COMPARISON_MODE: bool = False  # 2026-06-02 USER MASTER SWITCH (crypto side, for symmetry). Default False = NORMAL LIVE (all gain-augmenting live-only signals ON). Set True ONLY during a live↔backtest parity A/B to suppress live-only augmenting behavior at once so live==backtest. AFTER confirming parity, set back to False. (Stocks equivalent in config_tradier.py gates the tradier strategy loop; crypto augmenting-signal gating to be wired here as needed.)
     SCALP_V2_VARIANT: str = "V1_WT_CONFIRM"  # P0: sweep winner Sharpe=107. DO NOT change until V8 validates
@@ -381,7 +381,7 @@ class Config:
     # Engines are pure-function additive triggers in entry_engine_{wt,stoch,dc,htf}.py — they
     # boost the existing entry score when they fire above LIVE_ENTRY_ENGINE_MIN_SCORE; they
     # NEVER block existing entries. Worst case is a few extra entries fire.
-    LIVE_ENTRY_ENGINE_ENABLED: bool = True          # 2026-04-27: ALL ON per user. Master flag.
+    LIVE_ENTRY_ENGINE_ENABLED: bool = False          # 2026-09-21 OFF by default — non-vectorizable live entry boost off until forward S1 proves +delta (hourly SPREADSHEETS/FORWARD_*.xlsx P1). Was True 2026-04-27, now False per user (vector setting vs live with all non-vectorizable OFF, only RULE_B 3m/5m exit stays ON). ROLLBACK: True.
     LIVE_ENTRY_ENGINE_WT_ENABLED: bool = True       # convergent in sweep: wt_all3 dominates winners
     LIVE_ENTRY_ENGINE_STOCH_ENABLED: bool = True    # convergent: k4h<20 + kD<40 extreme oversold tier
     LIVE_ENTRY_ENGINE_DC_ENABLED: bool = True       # convergent: dc_x4h breakout in 90% of S1 top-3
@@ -1772,7 +1772,7 @@ class Config:
     # === REENTRY BLOCKS (2026-04-16) — ABLATION RESULTS, 11sym crypto + 12sym tradier ===
     # 7 KEEP (default True), 2 CUT (default False, switch kept for sweep re-test)
     REENTRY_B01_WT_2of3_ENABLED: bool = False  # ABLATION: Sharpe 0.033/0.036 = noise. 256K/177K trades. CUT.
-    REENTRY_B02_BC156_BOTTOM_ENABLED: bool = True  # ABLATION: Sharpe 0.31/0.32, 22K/14K trades, 62.5% WR. Best balance.
+    REENTRY_B02_BC156_BOTTOM_ENABLED: bool = False         # 2026-09-21 OFF — bounce augment off (P4) until forward proves +delta. Was True.  # ABLATION: Sharpe 0.31/0.32, 22K/14K trades, 62.5% WR. Best balance.
     REENTRY_B04_DC_RETEST_ENABLED: bool = True  # ABLATION: Sharpe 0.39/0.31, 579/335 trades. High quality.
     REENTRY_B09_SNAPBACK_ENABLED: bool = False  # ABLATION: Sharpe 0.022/0.024 = weak. CUT.
     REENTRY_B10_STOCH_REV_ENABLED: bool = False  # 2026-08-18 LIVE-OFF (BACKTEST_REPLICA_SWITCHES.md §7). Was True (Sharpe 0.07 WR). Keep vector WR gate; live EPQ path OFF until vector parity hook.
@@ -2758,24 +2758,24 @@ class Config:
     # Default: all False (all functions enabled). Set one to True to disable that function.
     # V8 sweep overrides via V8_OVERRIDE_FILE JSON.
     ABLATION_DISABLE_ENTRY_TECHNICAL: bool = True       # ABLATION: -0.018 Sharpe delta = redundant. REENTRY alone = same performance.
-    ABLATION_DISABLE_ENTRY_LEADERBOARD: bool = False    # Keep — needs live testing
+    ABLATION_DISABLE_ENTRY_LEADERBOARD: bool = True    # 2026-09-21 OFF — adaptive regime off (P8) until forward proves +delta. Was False.
     ABLATION_DISABLE_ENTRY_RANKING: bool = True         # ABLATION: 0.000 Sharpe delta = no effect (needs Redis, adds noise)
     ABLATION_DISABLE_ENTRY_REVERSAL: bool = False       # Keep — reversal entry untested
     ABLATION_DISABLE_REENTRY: bool = False              # CRITICAL: -1.9 Sharpe when removed. THE system IS reentry. NEVER disable.
-    ABLATION_DISABLE_AUGMENTATION: bool = False         # -0.3 Sharpe when removed. Moderate help. Keep.
+    ABLATION_DISABLE_AUGMENTATION: bool = True         # 2026-09-21 OFF by default — non-vectorizable bounce augment off until forward proves +delta. Was False.
     ABLATION_DISABLE_FAST_RISER: bool = False           # Keep
     ABLATION_DISABLE_CHECK_NOLOSS: bool = False         # Keep
-    ABLATION_DISABLE_HEDGE: bool = False                # Keep
-    ABLATION_DISABLE_RATIO_REBALANCE: bool = False      # Keep
-    ABLATION_DISABLE_QUICK_EXIT: bool = False           # Disable check_exit_candidates (WT/DC exits)
-    ABLATION_DISABLE_QUICK_ENTRY: bool = False          # Disable check_entry_candidates (quick entries)
-    ABLATION_DISABLE_REENTRY_ENFORCE: bool = False      # Disable reentry enforcement loop
-    ABLATION_DISABLE_SPIKE_FADE_EXIT: bool = False      # Disable spike fade 1m exit monitor
-    ABLATION_DISABLE_SCALP_GUARD: bool = False          # Disable monitor_strict_close_positions
-    ABLATION_DISABLE_DC_BREACH_REDUCE: bool = False     # Disable DC breach reduce monitor
-    ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = False     # Disable aggressive_hedge_scanner
-    ABLATION_DISABLE_HIGH_GAIN_AUGMENT: bool = False    # Disable direct_high_gain_augmentation
-    ABLATION_DISABLE_PERIODIC_REENTRY: bool = False     # Disable periodic_evaluate_reentry (evaluate_reentry_2)
+    ABLATION_DISABLE_HEDGE: bool = True                # 2026-09-21 OFF — hedge off until forward proves +delta (P2/P5). Was False.
+    ABLATION_DISABLE_RATIO_REBALANCE: bool = True      # 2026-09-21 OFF — ratio rebalance off until forward proves +delta. Was False.
+    ABLATION_DISABLE_QUICK_EXIT: bool = True           # 2026-09-21 OFF — quick exit without guaranteed reentry off (P6). Was False.
+    ABLATION_DISABLE_QUICK_ENTRY: bool = True          # 2026-09-21 OFF — quick entry off (P6). Was False.
+    ABLATION_DISABLE_REENTRY_ENFORCE: bool = True      # 2026-09-21 OFF — reentry enforce off (P6). Was False.
+    ABLATION_DISABLE_SPIKE_FADE_EXIT: bool = True      # 2026-09-21 OFF — 1m spike fade cannot be verified with NPZ (P7). Was False.
+    ABLATION_DISABLE_SCALP_GUARD: bool = True          # 2026-09-21 OFF — scalp guard off (P7). Was False.
+    ABLATION_DISABLE_DC_BREACH_REDUCE: bool = True     # 2026-09-21 OFF — DC breach reduce off (P2) until forward proves +delta. Was False.
+    ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = True     # 2026-09-21 OFF — aggressive hedge off. Was False.
+    ABLATION_DISABLE_HIGH_GAIN_AUGMENT: bool = True    # 2026-09-21 OFF — high gain augment off (P7). Was False.
+    ABLATION_DISABLE_PERIODIC_REENTRY: bool = True     # 2026-09-21 OFF — periodic reentry off (P7). Was False.
     # === ABLATION BACKTEST RESULTS (2026-03-21 — 3507 configs × 243 sym, P1+P2+P3 OOS-validated) ===
     RSI_ENTRY_GATE_ENABLED: bool = False  # BC_154: DISABLED — 67-config ablation (48sym/4yr): stoch_gate_50 does the filtering. no_filter+stoch50 = Sharpe 0.790 (#1) vs RSI37 = 0.638
     RSI_ENTRY_MAX_LONG: float = 37.0  # BC_154: kept for reference but gate is disabled
@@ -5090,7 +5090,7 @@ class Config:
     RSI_ENTRY_SHORT_TRADIER: float = 58.0  # BACKTEST_CHANGE_T64: was 70. RSI>58 for shorts.  # PORTED from TradierConfig 2026-08-17
     RSI_EXIT_LONG_TRADIER: float = 85.0  # BACKTEST_CHANGE_T56: was 70. Exit at RSI>85 = let winners run longer. +311% PnL over 4.8yr  # PORTED from TradierConfig 2026-08-17
     RSI_EXIT_SHORT_TRADIER: float = 15.0  # BACKTEST_CHANGE_T56: exit when RSI < 15  # PORTED from TradierConfig 2026-08-17
-    RULE_B_5M_EXIT_ENABLED: bool = False   # 2026-09-21 OFF by default — 5m exits without guaranteed reentry cannot be verified with NPZ (Mac 0 *.npz, S1 5m incomplete for 7d OOS). Enable only if forward live vs vector proves +delta (hourly SPREADSHEETS/FORWARD_*.xlsx P3/P6). Was True 2026-05-31, now False per user. ROLLBACK: True.  # PORTED from TradierConfig 2026-08-17
+    RULE_B_5M_EXIT_ENABLED: bool = True   # 2026-09-21 ON per user — exit on 5m switch stays ON while general 3m/5m trading stays OFF (BASE_TF 15m). Was False 2026-09-21, now True per user 5m exit on. ROLLBACK: False.  # PORTED from TradierConfig 2026-08-17
     RVOL_MOMENTUM_MIN: float = 1.5  # PORTED from TradierConfig 2026-08-17
     RVOL_SCALP_MIN: float = 1.0  # DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
     RVOL_SCORE_BOOST_PCT: float = 0.20  # DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
