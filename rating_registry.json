@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-21T10:52:42.139777+00:00",
+  "timestamp": "2026-09-21T11:13:48.828904+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -20,12 +20,6 @@
     },
     {
       "symbol": "DOTUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "BNBUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -56,6 +50,12 @@
     },
     {
       "symbol": "AMATUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "AAVEUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -235,7 +235,25 @@
       "short_score": 0
     },
     {
+      "symbol": "SOLUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "1INCHUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "DASHUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "BTCUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -271,72 +289,39 @@
       "short_score": 0
     },
     {
-      "symbol": "1INCHUSDT",
-      "net_score": 10.7,
-      "long_score": 10.7,
-      "short_score": 0
-    },
-    {
-      "symbol": "SOLUSDC",
-      "net_score": 11.3,
-      "long_score": 11.3,
-      "short_score": 0
-    },
-    {
-      "symbol": "AAVEUSDC",
-      "net_score": 11.6,
-      "long_score": 11.6,
+      "symbol": "BNBUSDC",
+      "net_score": 10.1,
+      "long_score": 10.1,
       "short_score": 0
     },
     {
       "symbol": "LINKUSDC",
-      "net_score": 12.1,
-      "long_score": 12.1,
-      "short_score": 0
-    },
-    {
-      "symbol": "BTCUSDC",
-      "net_score": 12.1,
-      "long_score": 12.1,
+      "net_score": 10.9,
+      "long_score": 10.9,
       "short_score": 0
     },
     {
       "symbol": "GRAMUSDT",
-      "net_score": 12.4,
-      "long_score": 12.4,
+      "net_score": 11.3,
+      "long_score": 11.3,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "GRAMUSDT",
-      12.4,
-      1.427
-    ],
-    [
-      "BTCUSDC",
-      12.1,
-      84180.3
+      11.3,
+      1.428
     ],
     [
       "LINKUSDC",
-      12.1,
-      13.008
+      10.9,
+      13.06647255
     ],
     [
-      "AAVEUSDC",
-      11.6,
-      146.44728413
-    ],
-    [
-      "SOLUSDC",
-      11.3,
-      115.79
-    ],
-    [
-      "1INCHUSDT",
-      10.7,
-      0.10267
+      "BNBUSDC",
+      10.1,
+      787.42
     ]
   ],
   "top_shorts": [],
