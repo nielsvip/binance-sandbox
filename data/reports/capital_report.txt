@@ -1,21 +1,20 @@
-CAPITAL ALLOCATION REPORT — 2026-09-21 20:46 UTC
+CAPITAL ALLOCATION REPORT — 2026-09-21 20:55 UTC
 ================================================================================
-Total capital deployed: $345.46 across 7 positions
+Total capital deployed: $549.52 across 3 positions
 
 TIER DISTRIBUTION:
   Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $    345.47 (100.0%) — 7 positions
-  Tier C: $      0.00 (  0.0%) — 0 positions
+  Tier B: $    501.90 ( 91.3%) — 2 positions
+  Tier C: $     47.61 (  8.7%) — 1 positions
 
   ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
 
 WINNERS — augment these (A-tier, in gain) [0]:
   (none)
 
-LOSERS — reduce allocation (C-tier or losing) [1]:
-                     ang:ETHUSDC_LONG  $   25.03  gain=-0.67%  tier=B  mult=1.10
+LOSERS — reduce allocation (C-tier or losing) [2]:
+                     flz:ETHUSDT_LONG  $  328.08  gain=-0.65%  tier=B  mult=1.00
+                     flz:SOLUSDC_LONG  $   47.61  gain=+0.36%  tier=C  mult=0.53
 
-MEDIOCRE — capital sitting idle [3]:
-                     ang:BTCUSDC_LONG  $  173.86  gain=+0.06%  tier=B
-                    ang:AVAXUSDC_LONG  $   79.81  gain=-0.06%  tier=B
-                      ang:ARUSDT_LONG  $    5.84  gain=+0.02%  tier=B
+MEDIOCRE — capital sitting idle [1]:
+                     flz:BTCUSDT_LONG  $  173.82  gain=+0.07%  tier=B
