@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-21T04:21:03.111187+00:00",
+  "timestamp": "2026-09-21T04:46:24.759709+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -20,12 +20,6 @@
     },
     {
       "symbol": "BBUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "GRAMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -98,12 +92,6 @@
     },
     {
       "symbol": "ONDOUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "1INCHUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -325,6 +313,12 @@
       "short_score": 0
     },
     {
+      "symbol": "MINAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ZENUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -373,12 +367,6 @@
       "short_score": 0
     },
     {
-      "symbol": "KSMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "XRPUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -397,28 +385,50 @@
       "short_score": 0
     },
     {
-      "symbol": "MINAUSDT",
-      "net_score": 11.3,
-      "long_score": 11.3,
+      "symbol": "1INCHUSDT",
+      "net_score": 10.6,
+      "long_score": 10.6,
+      "short_score": 0
+    },
+    {
+      "symbol": "KSMUSDT",
+      "net_score": 11.5,
+      "long_score": 11.5,
       "short_score": 0
     },
     {
       "symbol": "EGLDUSDT",
-      "net_score": 15.1,
-      "long_score": 15.1,
+      "net_score": 16.7,
+      "long_score": 16.7,
+      "short_score": 0
+    },
+    {
+      "symbol": "GRAMUSDT",
+      "net_score": 19.2,
+      "long_score": 19.2,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "EGLDUSDT",
-      15.1,
-      4.07524749
+      "GRAMUSDT",
+      19.2,
+      1.408
     ],
     [
-      "MINAUSDT",
-      11.3,
-      0.12759
+      "EGLDUSDT",
+      16.7,
+      4.15501296
+    ],
+    [
+      "KSMUSDT",
+      11.5,
+      4.56083333
+    ],
+    [
+      "1INCHUSDT",
+      10.6,
+      0.10068
     ]
   ],
   "top_shorts": [],
