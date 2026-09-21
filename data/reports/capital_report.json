@@ -1,67 +1,32 @@
 {
- "generated_at": "2026-09-21 22:12 UTC",
- "total_capital_usd": 576.34,
+ "generated_at": "2026-09-21 22:31 UTC",
+ "total_capital_usd": 31.98,
  "tier_capital": {
   "A": 0.0,
-  "B": 576.34,
-  "C": 0.0
+  "B": 0.0,
+  "C": 31.98
  },
  "tier_count": {
   "A": 0,
-  "B": 4,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "flz:ETHUSDT_LONG"
+  "men:ADAUSDC_LONG"
  ],
- "mediocre": [
-  "flz:BNBUSDC_LONG"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "flz:ETHUSDT_LONG",
-   "symbol": "ETHUSDT",
-   "account": "flz",
-   "value_usd": 327.17,
-   "gain_pct": -0.924,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.118,
-   "mark": 2772.62
-  },
-  {
-   "pk": "flz:BTCUSDT_LONG",
-   "symbol": "BTCUSDT",
-   "account": "flz",
-   "value_usd": 173.07,
-   "gain_pct": -0.365,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.002,
-   "mark": 86533.0
-  },
-  {
-   "pk": "flz:BNBUSDC_LONG",
-   "symbol": "BNBUSDC",
-   "account": "flz",
-   "value_usd": 72.51,
-   "gain_pct": 0.037,
-   "tier": "B",
-   "perf_mult": 0.87,
-   "amt": 0.09,
-   "mark": 805.69914219
-  },
-  {
-   "pk": "flz:XRPUSDC_LONG",
-   "symbol": "XRPUSDC",
-   "account": "flz",
-   "value_usd": 3.59,
-   "gain_pct": 1.347,
-   "tier": "B",
-   "perf_mult": 2.83,
-   "amt": 2.3,
-   "mark": 1.5606
+   "pk": "men:ADAUSDC_LONG",
+   "symbol": "ADAUSDC",
+   "account": "men",
+   "value_usd": 31.98,
+   "gain_pct": -0.1,
+   "tier": "C",
+   "perf_mult": 0.45,
+   "amt": 130.4,
+   "mark": 0.24522022
   }
  ]
 }

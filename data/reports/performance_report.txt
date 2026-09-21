@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-21 22:11 UTC
+PERFORMANCE REPORT — 2026-09-21 22:23 UTC
 ================================================================================
 Total: 157 symbols | A=4 B=125 C=28
 Window: 14 days | Min trades: 5
@@ -14,34 +14,35 @@ Window: 14 days | Min trades: 5
              MSTR  WR=100%  avg=+12.10%  total=+94.2%  trades=  6  mult=6.40
              HOOD  WR=100%  avg=+7.50%  total=+33.6%  trades=  4  mult=1.00
              META  WR=50%  avg=+0.84%  total=+15.7%  trades= 18  mult=6.09
-          XRPUSDC  WR=57%  avg=+0.08%  total=+12.5%  trades=147  mult=2.83 ** OPEN **
+          XRPUSDC  WR=57%  avg=+0.08%  total=+12.6%  trades=150  mult=2.86
              CIEN  WR=38%  avg=+1.37%  total=+11.1%  trades=  8  mult=3.70
              AMAT  WR=100%  avg=+2.44%  total=+10.1%  trades=  4  mult=1.00
          RUNEUSDT  WR=56%  avg=+0.91%  total=+8.3%  trades=  9  mult=4.20
           ZECUSDT  WR=86%  avg=+0.68%  total=+4.8%  trades=  7  mult=4.86
              TSLA  WR=31%  avg=+0.35%  total=+4.5%  trades= 13  mult=0.76
+          XLMUSDT  WR=54%  avg=+0.16%  total=+4.3%  trades= 26  mult=2.78
         ETHFIUSDC  WR=65%  avg=+0.11%  total=+4.3%  trades= 37  mult=4.45
           XTZUSDT  WR=53%  avg=+0.10%  total=+4.2%  trades= 43  mult=2.28
-          XLMUSDT  WR=52%  avg=+0.13%  total=+3.2%  trades= 25  mult=2.21
              CRWV  WR=67%  avg=+0.37%  total=+2.8%  trades=  9  mult=3.47
           ZECUSDC  WR=67%  avg=+0.26%  total=+2.4%  trades=  9  mult=3.15
           RLCUSDT  WR=59%  avg=+0.13%  total=+2.3%  trades= 17  mult=3.12
              BMNR  WR=72%  avg=+0.17%  total=+2.1%  trades= 32  mult=6.11
               PBF  WR=100%  avg=+0.97%  total=+1.9%  trades=  2  mult=1.00
               MPC  WR=67%  avg=+0.32%  total=+1.8%  trades=  6  mult=2.54
-          DOTUSDT  WR=55%  avg=+0.06%  total=+1.8%  trades= 29  mult=2.34
+          DOTUSDT  WR=55%  avg=+0.05%  total=+1.7%  trades= 31  mult=2.23
          FLOWUSDT  WR=50%  avg=+0.14%  total=+1.6%  trades= 12  mult=1.55
          LINKUSDC  WR=75%  avg=+0.40%  total=+1.6%  trades=  4  mult=1.00
          MANAUSDT  WR=89%  avg=+0.18%  total=+1.6%  trades=  9  mult=4.69
+          BNBUSDC  WR=48%  avg=+0.05%  total=+1.6%  trades= 33  mult=1.05
              PYPL  WR=50%  avg=+0.08%  total=+1.6%  trades= 20  mult=1.55
          ALGOUSDT  WR=53%  avg=+0.09%  total=+1.3%  trades= 15  mult=1.89
         PARTIUSDT  WR=57%  avg=+0.08%  total=+1.2%  trades= 14  mult=2.30
               GME  WR=50%  avg=+0.29%  total=+1.2%  trades=  4  mult=1.00
               APO  WR=67%  avg=+0.35%  total=+1.0%  trades=  3  mult=1.00
-          BNBUSDC  WR=47%  avg=+0.03%  total=+1.0%  trades= 32  mult=0.87 ** OPEN **
          RKLBUSDT  WR=71%  avg=+0.15%  total=+1.0%  trades=  7  mult=2.70
          EGLDUSDT  WR=58%  avg=+0.08%  total=+1.0%  trades= 12  mult=2.24
          ASTSUSDT  WR=75%  avg=+0.22%  total=+0.9%  trades=  4  mult=1.00
+          UNIUSDC  WR=100%  avg=+0.28%  total=+0.8%  trades=  3  mult=1.00
               NOC  WR=78%  avg=+0.09%  total=+0.8%  trades=  9  mult=3.53
           ZRXUSDT  WR=44%  avg=+0.09%  total=+0.8%  trades=  9  mult=0.93
                MU  WR=79%  avg=+0.08%  total=+0.8%  trades= 19  mult=6.48
@@ -55,7 +56,6 @@ Window: 14 days | Min trades: 5
          DASHUSDT  WR=66%  avg=+0.01%  total=+0.5%  trades= 35  mult=3.92
              RBLX  WR=100%  avg=+0.23%  total=+0.5%  trades=  2  mult=1.00
           BTCUSDC  WR=46%  avg=+0.02%  total=+0.5%  trades= 26  mult=0.80
-          UNIUSDC  WR=100%  avg=+0.21%  total=+0.4%  trades=  2  mult=1.00
           SKYUSDT  WR=73%  avg=+0.03%  total=+0.4%  trades= 11  mult=3.38
          AAVEUSDC  WR=75%  avg=+0.07%  total=+0.3%  trades=  4  mult=1.00
          AVAXUSDC  WR=100%  avg=+0.09%  total=+0.3%  trades=  3  mult=1.00
@@ -167,7 +167,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=40%  avg=-1.77%  total=-61.4%  trades= 52  mult=0.17
 
 SUMMARY:
-  Total PnL (all symbols): +1436.2%
+  Total PnL (all symbols): +1438.4%
   Avg win rate: 50%
   A-tier avg mult: 10.00
   C-tier avg mult: 0.40
