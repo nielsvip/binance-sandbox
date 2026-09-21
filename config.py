@@ -1561,7 +1561,7 @@ class Config:
     # ROLLBACK: set ENABLED + BYPASS_GATES = True (live default pre-2026-05-17).
     # REVERTED 2026-05-18 18:30: restored 2026-05-10 NON-NEGOTIABLE mandate value (True).
     # 2026-05-17 flip to False had no sample-floor evidence; isolated vec sweep queued.
-    WT_3M_FORCE_OPEN_ENABLED: bool = True  # 2026-09-07 UNLOCK obligatory reentry per user — was False (2026-09-03 churn fix). Re-enabled: flat tradeable key with wt1_3m>wt2_3m must always have a position (obligatory). FLZ was flat-while-trending because force-open OFF. Churn now controlled by lower MIN_HOLD 10 + 60s cooldown, not by killing force-open. ROLLBACK: False.
+    WT_3M_FORCE_OPEN_ENABLED: bool = False  # 2026-09-21 CHURN FIX ≥15m parity — disabled 3m force-open (was True 2026-09-07). Live churn: 3m WT cross queued OPENs that backtest per_sym 15m settings never produced (tradeable_keys pruned 133→57). Re-enable only after forward 15m-only proves +delta. ROLLBACK: True.
     # 2026-09-03 FLZ 10/min CHURN GUARD — hard halt at 10 trades/min (EMERGENCY_BRAKE). ROLLBACK: 0 to disable.
     EMERGENCY_BRAKE_MAX_TRADES_PER_MIN: int = 10  # 10 trades/min → halt & .FLZ_TRADING_HALTED sentinel. Profitable closes (>0.1% gain) still bypass.
     WT_3M_FORCE_OPEN_BYPASS_GATES: bool = True  # USER 2026-06-01: Enable bypass gates to ensure always-open operative status.
@@ -2060,7 +2060,7 @@ class Config:
     MOMENTUM_SMA_WATCHDOG_ENABLED: bool = True
     MOMENTUM_SMA_WATCHDOG_INTERVAL_S: float = 60.0
     MOMENTUM_SMA_WATCHDOG_PCT: float = 1.0          # 2026-05-31 USER: 2.0->1.0 (global per_sym sweep: 1% median pool_sharpe 0.155 > 2% 0.150). Per-sym pct_entry from FINAL book overrides this. price must be > this % above sma_200_15m
-    OBLIGATORY_SMA200_WT3M_ENABLED: bool = True     # 2026-09-04 REINSTATED per user: short calls accurate — reinstate START_POSITION_SIZE 14 probationary until proven real (user 02:22). Keep wt1_15m/1h + hh/hl rally block + 60m holds.
+    OBLIGATORY_SMA200_WT3M_ENABLED: bool = False     # 2026-09-21 CHURN FIX ≥15m parity — disabled 3m WT obligatory (was True 2026-09-04). Used wt1_3m cross for FORCE-OPEN that backtest 15m settings never produced. Re-enable only with 15m WT proof. ROLLBACK: True.
     OBLIGATORY_SMA200_PCT: float = 1.0              # distance beyond sma_200_15m (%) that triggers the obligatory open
     OBLIGATORY_OPEN_USD: float = 14.0  # 2026-09-04 probationary START size per user short reinstate until proven              # notional $ for each obligatory open (escalates via the watchdog ladder on subsequent WT crosses)
     PERSYM_FINAL_BOOK_ENABLED: bool = True          # 2026-08-21 REVERTED per user: keep True so 900*900 verified winners can promote without config flip. Files wiped 410->0 so NO TRADING until verified repopulates; 96 old tradeable from 110-key sweep is gone.
@@ -2276,7 +2276,7 @@ class Config:
     # 2026-04-16 per user directive: NO _LONG tradeable_keys can be without a position while price > dc_high_3m and rising. vv for _SHORT.
     # Extends existing _process_single_override_check to also OPEN from zero (it currently skips zero positions at line 18061).
     # Respects tradeable_keys (hand-picked), HTF_GATE via queue_trade_action gates downstream, and ratio gates.
-    TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED: bool = True  # 2026-04-16: re-enabled. The HTF_TREND_VETO block is fixed separately via HTF_TREND_VETO_BYPASS_REASONS.
+    TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED: bool = False  # 2026-09-21 CHURN FIX ≥15m parity — disabled 3m dc_high/low mandatory (was True). Queued 3m DC break OPENs (px>dc_high_3m) that per_sym 15m backtest never produced. Only 15m/1h/4h/D breaks should open when BASE_TF=15m. ROLLBACK: True.
     TRADEABLE_KEYS_MANDATORY_SIZE_USD: float = 9.0  # uses START_POSITION_SIZE if <=0
     # ═══ 2026-04-16 MARKET-DATA INTEGRATION — route 598 pre-computed composite fields into scoring + winner protection ═══
     # Per user directive: "integrate ALL values, understand ST/LT outperformers, best buys get priority, don't close too soon".

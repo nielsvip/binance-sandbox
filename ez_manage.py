@@ -43153,53 +43153,61 @@ async def _process_single_override_check(
                             and _falling_z
                         )
                         if _trigger_z:
-                            _tiny_usd = float(
-                                getattr(
-                                    config, "TRADEABLE_KEYS_MANDATORY_SIZE_USD", 9.0
-                                )
-                            ) or float(getattr(config, "START_POSITION_SIZE", 9.0))
-                            _reason_z = f"TRADEABLE_KEYS_MANDATORY_{'LONG_dc_high_3m' if _is_long_z else 'SHORT_dc_low_3m'}_3M_px{_px_z:.6f}_dc{(_dch3m_z if _is_long_z else _dcl3m_z):.6f}_k3{_k3_z:.0f}/{_k3p_z:.0f}_ha{_ha3_z}"
-                            logger.warning(
-                                f"[TRADEABLE_KEYS_MANDATORY] {position_key}: ZERO position in tradeable_keys + px {'>' if _is_long_z else '<'} dc_{'high' if _is_long_z else 'low'}_3m ({_px_z:.6f} {'>' if _is_long_z else '<'} {(_dch3m_z if _is_long_z else _dcl3m_z):.6f}) + {'rising' if _is_long_z else 'falling'} → OPEN ~${_tiny_usd:.0f}"
-                            )
-                            _r1s_tkm = safe_fetch_float(
-                                _ind_z.get(
-                                    ("dc_low4_3m" if _is_long_z else "dc_high4_3m") if bool(getattr(config, "R1_USE_DC_4BAR", True)) else ("dc_low_3m" if _is_long_z else "dc_high_3m")
-                                ),
-                                0.0,
-                            )
-                            if _r1s_tkm > 0 and position and float(getattr(position, "r1_stop_price", 0.0) or 0.0) <= 0:  # 2026-07-01 R1 freeze-at-entry (crypto): capture dc_low at buy, do NOT chase it up
-                                position.r1_stop_price = _r1s_tkm
-                            if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+                            _tkm_live_ok, _tkm_live_why = True, "PER_SYM_GATE_OFF"
+                            try:
+                                _tkm_live_ok, _tkm_live_why = _ezm_is_live_side_enabled(_sym_z, _side_z)
+                            except Exception:
                                 pass
+                            if not _tkm_live_ok:
+                                logger.warning(f"[TRADEABLE_KEYS_MANDATORY_PER_SYM_BLOCK] {position_key}: SKIP 3m DC break — per_sym 15m backtest would not have traded {_side_z}: {_tkm_live_why}")
                             else:
-                                _fo_tkm_gr_ok = True
-                                _fo_tkm_gr_min = int(getattr(config, "WT_3M_FORCE_OPEN_GR_VOTE_MIN", 15))
-                                _fo_tkm_min_tfs = int(getattr(config, "WT_3M_FORCE_OPEN_GR_MIN_TFS", 0))
-                                _fo_tkm_min_ind = int(getattr(config, "WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF", 5))
-                                if bool(getattr(config, "WT_3M_FORCE_OPEN_GR_GATE_ENABLED", True)) and (_fo_tkm_gr_min > 0 or _fo_tkm_min_tfs > 0):
-                                    try:
-                                        from golden_rule_htf import \
-                                            _ind_score as _grf_score_tkm
-                                        _fo_tkm_tf_scores = [(_tf, _grf_score_tkm(_ind_z, _tf, _is_long_z, _px_z)[0]) for _tf in ("3m", "15m", "1h", "4h", "D")]
-                                        _fo_tkm_votes = sum(s for _, s in _fo_tkm_tf_scores)
-                                        if _fo_tkm_gr_min > 0 and _fo_tkm_votes < _fo_tkm_gr_min:
-                                            _fo_tkm_gr_ok = False
-                                        if _fo_tkm_gr_ok and _fo_tkm_min_tfs > 0:
-                                            _fo_tkm_tfs_ok = sum(1 for _, s in _fo_tkm_tf_scores if s >= _fo_tkm_min_ind)
-                                            if _fo_tkm_tfs_ok < _fo_tkm_min_tfs:
-                                                _fo_tkm_gr_ok = False
-                                    except Exception:
-                                        pass
-                                if _fo_tkm_gr_ok:
-                                    await queue_trade_action(
-                                        order_queue,
-                                        trade_manager,
-                                        position_key,
-                                        "OPEN",
-                                        _reason_z,
-                                        75.0,
+                                _tiny_usd = float(
+                                    getattr(
+                                        config, "TRADEABLE_KEYS_MANDATORY_SIZE_USD", 9.0
                                     )
+                                ) or float(getattr(config, "START_POSITION_SIZE", 9.0))
+                                _reason_z = f"TRADEABLE_KEYS_MANDATORY_{'LONG_dc_high_3m' if _is_long_z else 'SHORT_dc_low_3m'}_3M_px{_px_z:.6f}_dc{(_dch3m_z if _is_long_z else _dcl3m_z):.6f}_k3{_k3_z:.0f}/{_k3p_z:.0f}_ha{_ha3_z}"
+                                logger.warning(
+                                    f"[TRADEABLE_KEYS_MANDATORY] {position_key}: ZERO position in tradeable_keys + px {'>' if _is_long_z else '<'} dc_{'high' if _is_long_z else 'low'}_3m ({_px_z:.6f} {'>' if _is_long_z else '<'} {(_dch3m_z if _is_long_z else _dcl3m_z):.6f}) + {'rising' if _is_long_z else 'falling'} → OPEN ~${_tiny_usd:.0f}"
+                                )
+                                _r1s_tkm = safe_fetch_float(
+                                    _ind_z.get(
+                                        ("dc_low4_3m" if _is_long_z else "dc_high4_3m") if bool(getattr(config, "R1_USE_DC_4BAR", True)) else ("dc_low_3m" if _is_long_z else "dc_high_3m")
+                                    ),
+                                    0.0,
+                                )
+                                if _r1s_tkm > 0 and position and float(getattr(position, "r1_stop_price", 0.0) or 0.0) <= 0:  # 2026-07-01 R1 freeze-at-entry (crypto): capture dc_low at buy, do NOT chase it up
+                                    position.r1_stop_price = _r1s_tkm
+                                if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+                                    pass
+                                else:
+                                    _fo_tkm_gr_ok = True
+                                    _fo_tkm_gr_min = int(getattr(config, "WT_3M_FORCE_OPEN_GR_VOTE_MIN", 15))
+                                    _fo_tkm_min_tfs = int(getattr(config, "WT_3M_FORCE_OPEN_GR_MIN_TFS", 0))
+                                    _fo_tkm_min_ind = int(getattr(config, "WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF", 5))
+                                    if bool(getattr(config, "WT_3M_FORCE_OPEN_GR_GATE_ENABLED", True)) and (_fo_tkm_gr_min > 0 or _fo_tkm_min_tfs > 0):
+                                        try:
+                                            from golden_rule_htf import \
+                                                _ind_score as _grf_score_tkm
+                                            _fo_tkm_tf_scores = [(_tf, _grf_score_tkm(_ind_z, _tf, _is_long_z, _px_z)[0]) for _tf in ("3m", "15m", "1h", "4h", "D")]
+                                            _fo_tkm_votes = sum(s for _, s in _fo_tkm_tf_scores)
+                                            if _fo_tkm_gr_min > 0 and _fo_tkm_votes < _fo_tkm_gr_min:
+                                                _fo_tkm_gr_ok = False
+                                            if _fo_tkm_gr_ok and _fo_tkm_min_tfs > 0:
+                                                _fo_tkm_tfs_ok = sum(1 for _, s in _fo_tkm_tf_scores if s >= _fo_tkm_min_ind)
+                                                if _fo_tkm_tfs_ok < _fo_tkm_min_tfs:
+                                                    _fo_tkm_gr_ok = False
+                                        except Exception:
+                                            pass
+                                    if _fo_tkm_gr_ok:
+                                        await queue_trade_action(
+                                            order_queue,
+                                            trade_manager,
+                                            position_key,
+                                            "OPEN",
+                                            _reason_z,
+                                            75.0,
+                                        )
                         # 2026-05-10 USER NON-NEGOTIABLE: WT_3M_FORCE_OPEN — runs in parallel
                         # to the DC trigger above. Any tradeable_key with wt1_3m > wt2_3m (LONG)
                         # / wt1_3m < wt2_3m (SHORT) MUST have a position. Reopen after every close.
