@@ -15781,5 +15781,23 @@
     ],
     "timestamp": "2026-09-21T01:49:38.325670+00:00",
     "price": 653.49
+  },
+  {
+    "symbol": "ADAUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.2x (from rankings)"
+    ],
+    "timestamp": "2026-09-21T02:07:13.494064+00:00",
+    "price": 0.2081
+  },
+  {
+    "symbol": "BCHUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.5x (from rankings)"
+    ],
+    "timestamp": "2026-09-21T02:12:52.095082+00:00",
+    "price": 222.45055858
   }
 ]

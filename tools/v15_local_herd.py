@@ -677,9 +677,21 @@ def main():
             if not npz.exists() or npz.stat().st_size < 100_000:
                 # also check S1 via ssh quick head? skip scp wait, just skip if not local — S1 has 990, s3/s5 will be synced, but BEATUSDT/TXN have 0 everywhere
                 continue
-            # FLZ + stocks hash shard for no double calculations (even when S1 reachable, FLZ has no queue_boss)
-            if (stable_hash(s) % 4) != host_idx:
-                continue
+            # FLZ + stocks hash shard for no double calculations (even when S1 reachable, FLZ has no queue_boss) — disabled for urgent 83 (user 2026-09-20: no repeats before urgent finals, s1 crypto 16 / s2 s5 s6 stocks 13 each already disjoint via queue_boss)
+            try:
+                _up = pathlib.Path(ROOT / "SPREADSHEETS/V15_URGENT_FINAL_83.json")
+                if _up.exists():
+                    import json as _js2
+                    _ud = _js2.load(open(_up))
+                    if _ud.get("pending_urgent", 0) > 0 and s in set(_ud.get("urgent_trb_67", []) + _ud.get("urgent_flz_16", [])):
+                        pass  # urgent 83 already sharded via V15_SERVER_QUEUE_S*.txt, don't hash-filter
+                    elif (stable_hash(s) % 4) != host_idx:
+                        continue
+                elif (stable_hash(s) % 4) != host_idx:
+                    continue
+            except:
+                if (stable_hash(s) % 4) != host_idx:
+                    continue
             pending.append(s)
     # reorder: FLZ crypto first, then stocks rerun with winning settings (user: FLZ first, then stocks with winning defaults) — independent work list per server via hash, resume not redo
     flz_first = [s for s in pending if not _is_stock(s)] + [s for s in pending if _is_stock(s)]
