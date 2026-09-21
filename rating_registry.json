@@ -1,11 +1,17 @@
 {
-  "timestamp": "2026-09-21T00:01:36.890918+00:00",
+  "timestamp": "2026-09-21T00:23:37.582530+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 69
   },
   "unified_ranking": [
+    {
+      "symbol": "BTCDOMUSDT",
+      "net_score": -14.0,
+      "long_score": 0,
+      "short_score": 14.0
+    },
     {
       "symbol": "ZILUSDT",
       "net_score": 0,
@@ -241,7 +247,7 @@
       "short_score": 0
     },
     {
-      "symbol": "ASMLUSDT",
+      "symbol": "USARUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -289,12 +295,6 @@
       "short_score": 0
     },
     {
-      "symbol": "BTCDOMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ETHFIUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -314,6 +314,12 @@
     },
     {
       "symbol": "ZRXUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "AMATUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -409,31 +415,26 @@
       "short_score": 0
     },
     {
-      "symbol": "AMATUSDT",
-      "net_score": 14.8,
-      "long_score": 14.8,
-      "short_score": 0
-    },
-    {
-      "symbol": "USARUSDT",
-      "net_score": 15.6,
-      "long_score": 15.6,
+      "symbol": "ASMLUSDT",
+      "net_score": 11.4,
+      "long_score": 11.4,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "USARUSDT",
-      15.6,
-      15.83
-    ],
-    [
-      "AMATUSDT",
-      14.8,
-      448.99
+      "ASMLUSDT",
+      11.4,
+      1682.2
     ]
   ],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "BTCDOMUSDT",
+      14.0,
+      5068.2
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
