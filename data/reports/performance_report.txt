@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-21 07:21 UTC
+PERFORMANCE REPORT — 2026-09-21 07:54 UTC
 ================================================================================
 Total: 143 symbols | A=2 B=113 C=28
 Window: 14 days | Min trades: 5
@@ -54,7 +54,6 @@ Window: 14 days | Min trades: 5
          GRAMUSDT  WR=88%  avg=+0.02%  total=+0.1%  trades=  8  mult=3.75
               PSX  WR=50%  avg=+0.06%  total=+0.1%  trades=  2  mult=1.00
           SOLUSDC  WR=41%  avg=+0.01%  total=+0.1%  trades= 17  mult=0.63
-         DASHUSDT  WR=68%  avg=+0.00%  total=+0.1%  trades= 31  mult=4.22
          HYPEUSDT  WR=57%  avg=+0.00%  total=+0.1%  trades= 42  mult=2.30
           INXUSDT  WR=100%  avg=+0.03%  total=+0.1%  trades=  3  mult=1.00
           WLDUSDC  WR=40%  avg=+0.00%  total=+0.1%  trades= 63  mult=0.55
@@ -94,6 +93,7 @@ Window: 14 days | Min trades: 5
           WMTUSDT  WR=56%  avg=-0.02%  total=-0.2%  trades=  9  mult=1.39
            OPUSDT  WR=50%  avg=-0.02%  total=-0.2%  trades=  8  mult=0.97
           ZILUSDT  WR=33%  avg=-0.07%  total=-0.2%  trades=  3  mult=1.00
+         DASHUSDT  WR=64%  avg=-0.01%  total=-0.2%  trades= 33  mult=3.41
           TRBUSDT  WR=50%  avg=-0.07%  total=-0.3%  trades=  4  mult=1.00
           SNXUSDT  WR=50%  avg=-0.03%  total=-0.3%  trades=  8  mult=0.96
              CIBR  WR=0%  avg=-0.28%  total=-0.3%  trades=  1  mult=1.00
@@ -153,7 +153,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=30%  avg=-2.47%  total=-67.3%  trades= 44  mult=0.15
 
 SUMMARY:
-  Total PnL (all symbols): +650.9%
+  Total PnL (all symbols): +650.5%
   Avg win rate: 48%
   A-tier avg mult: 9.10
   C-tier avg mult: 0.40
