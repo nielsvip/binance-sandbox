@@ -1,4 +1,4 @@
-# Copilot Status — 2026-09-21 21:52:06 UTC
+# Copilot Status — 2026-09-21 22:12:33 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:USAR_SHORT — 2026-09-21T21:50:02
-- **RATIO_IMBALANCE** [crypto] ang — 2026-09-21T21:50:03
-- **RATIO_IMBALANCE** [crypto] flz — 2026-09-21T21:50:03
-- **RATIO_IMBALANCE** [crypto] ang — 2026-09-21T21:51:04
-- **RATIO_IMBALANCE** [crypto] flz — 2026-09-21T21:51:04
-- **STALE_INDICATORS** [tradier]  — 2026-09-21T21:52:05
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-21T21:52:05
-- **BIG_LOSER** [tradier] trc:USAR_SHORT — 2026-09-21T21:52:05
-- **RATIO_IMBALANCE** [crypto] ang — 2026-09-21T21:52:05
-- **RATIO_IMBALANCE** [crypto] flz — 2026-09-21T21:52:05
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-21T22:09:29
+- **STALE_INDICATORS** [tradier]  — 2026-09-21T22:10:30
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-21T22:10:30
+- **BIG_LOSER** [tradier] trc:USAR_SHORT — 2026-09-21T22:10:30
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-21T22:10:30
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-21T22:11:31
+- **STALE_INDICATORS** [tradier]  — 2026-09-21T22:12:32
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-21T22:12:32
+- **BIG_LOSER** [tradier] trc:USAR_SHORT — 2026-09-21T22:12:32
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-21T22:12:32
 
 ## Missed Trades (trader comparison)
 
