@@ -1,21 +1,21 @@
-# Copilot Status — 2026-09-20 12:52:46 UTC
+# Copilot Status — 2026-09-21 15:59:57 UTC
 
-**Market Hours:** NO | **Tradier Priority:** NO
+**Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
 **New opens this hour:** 0 / 3
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-09-20T12:34:22
-- **STALE_INDICATORS** [tradier]  — 2026-09-20T12:36:25
-- **STALE_INDICATORS** [tradier]  — 2026-09-20T12:38:27
-- **STALE_INDICATORS** [tradier]  — 2026-09-20T12:40:30
-- **STALE_INDICATORS** [tradier]  — 2026-09-20T12:42:33
-- **STALE_INDICATORS** [tradier]  — 2026-09-20T12:44:36
-- **STALE_INDICATORS** [tradier]  — 2026-09-20T12:46:38
-- **STALE_INDICATORS** [tradier]  — 2026-09-20T12:48:40
-- **STALE_INDICATORS** [tradier]  — 2026-09-20T12:50:42
-- **STALE_INDICATORS** [tradier]  — 2026-09-20T12:52:45
+- **BIG_LOSER** [tradier] trc:USAR_SHORT — 2026-09-21T15:58:38
+- **BIG_LOSER** [tradier] trc:LSCC_SHORT — 2026-09-21T15:58:38
+- **STALE_INDICATORS** [tradier]  — 2026-09-21T15:59:08
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-21T15:59:08
+- **BIG_LOSER** [tradier] trc:USAR_SHORT — 2026-09-21T15:59:08
+- **BIG_LOSER** [tradier] trc:LSCC_SHORT — 2026-09-21T15:59:08
+- **STALE_INDICATORS** [tradier]  — 2026-09-21T15:59:39
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-21T15:59:39
+- **BIG_LOSER** [tradier] trc:USAR_SHORT — 2026-09-21T15:59:39
+- **BIG_LOSER** [tradier] trc:LSCC_SHORT — 2026-09-21T15:59:39
 
 ## Missed Trades (trader comparison)
 
@@ -27,23 +27,20 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 5 | **Watching for reentry:** 1 | **Reentered:** 0
+**Held:** 6 | **Watching for reentry:** 1 | **Reentered:** 0
 
-- HELD: **MSTR** LONG (tradier) peak +21.4%, now +16.8%
-- HELD: **COIN** LONG (tradier) peak +18.5%, now +17.2%
-- HELD: **MU** LONG (tradier) peak +9.8%, now +9.7%
-- HELD: **PSX** LONG (tradier) peak +5.0%, now +3.5%
-- HELD: **AXTI** LONG (tradier) peak +3.6%, now +1.7%
+- HELD: **COIN** LONG (tradier) peak +25.6%, now +22.8%
+- HELD: **AXTI** LONG (tradier) peak +18.4%, now +14.7%
+- HELD: **MU** LONG (tradier) peak +15.0%, now +1.8%
+- HELD: **BMNR** LONG (tradier) peak +8.6%, now +2.0%
+- HELD: **MRVL** LONG (tradier) peak +6.8%, now +6.3%
+- HELD: **PSX** LONG (tradier) peak +5.0%, now +1.7%
 
-- WATCHING: **COPX** LONG (tradier) peaked +3.1%, exited 0m ago
+- WATCHING: **COPX** LONG (tradier) peaked +4.2%, exited 0m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 50
-- [MEDIUM] tradier_manage.py for trc is NOT running
-- [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_positions.py is NOT running
-- [MEDIUM] tradier_manage.py for trb is NOT running
-- [MEDIUM] tradier_manage.py for trc is NOT running
+**Issues (last 1h):** 1
+- [HIGH] ez_prices.py is NOT running

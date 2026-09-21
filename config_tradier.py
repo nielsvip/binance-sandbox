@@ -112,7 +112,7 @@ class TradierConfig:
     SCALP_TOP_MOVERS_N: int = 14             # Candidate pool size
     SCALP_MIN_REL_VOL: float = 1.1           # Min relative volume to qualify
     SCALP_MIN_MOVE_PCT: float = 0.003      # Min 0.3% 5m deviation from ema_20_5m — 2026-07-08 GAINMO triage: 0.3→0.003 (consumer treats as FRACTION; 0.3 = 30% = scalps never qualify, unit bug)
-    MAX_ORDER_VALUE: float = 5000.0  # STDEV_SLOPE fix 2026-09-14: was 2500 (5x START) capped 10x D ladder; now 500*10=5000
+    MAX_ORDER_VALUE: float = 7000.0  # STDEV_SLOPE fix 2026-09-14: was 2500 (5x START) capped 10x D ladder; now 500*10=5000
     ACCOUNT_SIDE_MAPPING: Dict[str, List[str]] = field(default_factory=lambda: {"tra": ["LONG"]})  # DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     # tra = SATOSHIT-only account. Block all other strategies (HODL, rotation, RSI2, gap fill, ORB, EP).
     TRA_SATOSHIT_ONLY: bool = True
@@ -184,11 +184,11 @@ class TradierConfig:
     # allowlist remains authoritative for new entries; this list must not be
     # interpreted as exact-V8 validation or as permission to cross LONG/SHORT
     # direction boundaries.
-    ALWAYS_TRADEABLE = ["NVDA",  "GOOG", "META", "MSFT", "GLD", "XOP", "GDX","USO", "CVX", "XOM", "SLV", "SNDK", "MU", "VT", "XLE", "AXTI", "MNTS", "LSCC", "MP", "AG", "HL", "AU", "PAAS", "COPX", "MU", "SPCX","NEM", "FCX"] #LEGACY 
+    ALWAYS_TRADEABLE = ["NVDA",  "GOOG", "META", "MSFT", "GLD", "XOP", "GDX","USO", "CVX", "XOM", "SLV", "SNDK", "MU", "VT", "XLE", "AXTI", "MNTS", "LSCC", "MP", "AG", "HL", "AU", "PAAS", "COPX", "MU", "SPCX","NEM", "FCX","ZCSH"] #LEGACY 
     # 2026-07-10 USER MANDATE: these must be in the trb universes every rankings cycle
     # ("need to be trading no matter what"); injected by tradier_rankings before save.
-    TRADIER_MANDATORY_LONG_TRB = ["MU", "SNDK", "NVDA", "GOOGL", "META", "MSFT", "AAPL", "ASML", "TSLA", "AMZN", "MRVL", "RBLX", "VLO", "INTC", "MSTR", "IBIT", "HOOD", "VT", "GLD", "SLV", "COPX", "QQQ", "SPY","BMNR","COIN", "HOOD"]  # VT added USER 2026-07-11; OLED(wsh0.80) USAR(wsh0.59) added USER 2026-07-21; GLD/COPX added USER 2026-08-15 TradingView long (INTC already there, RBLX stays short, PLTR both); QQQ/SPY added USER 2026-08-17 index steady
-    TRADIER_MANDATORY_SHORT_TRB = ["MSTR", "MU", "NVDA", "WDAY", "HAO", "PLTR", "TSLA", "AMZN", "AAPL", "RBLX","BMNR","COIN","HOOD"]  # PLTR both sides per USER 2026-08-15 (was long only, now also short)
+    TRADIER_MANDATORY_LONG_TRB = ["MU", "SNDK", "NVDA", "GOOGL", "META", "MSFT", "AAPL", "ASML", "TSLA", "AMZN", "MRVL", "RBLX", "VLO", "INTC", "MSTR", "IBIT", "HOOD", "VT", "GLD", "SLV", "COPX", "QQQ", "SPY","BMNR","COIN", "HOOD","ZCSH"]  # VT added USER 2026-07-11; OLED(wsh0.80) USAR(wsh0.59) added USER 2026-07-21; GLD/COPX added USER 2026-08-15 TradingView long (INTC already there, RBLX stays short, PLTR both); QQQ/SPY added USER 2026-08-17 index steady
+    TRADIER_MANDATORY_SHORT_TRB = ["MSTR", "MU", "NVDA", "WDAY", "HAO", "PLTR", "TSLA", "AMZN", "AAPL", "RBLX","BMNR","COIN","HOOD","ZCSH"]  # PLTR both sides per USER 2026-08-15 (was long only, now also short)
     NON_SHORTABLE = {"FIX", "AXTI", "FCN", "ASML", "HAO", "ETHE", "TCEHY", "ALMU", "XIACF", "BITO", "GBTC", "MARA", "CLSK", "HIVE", "CAN", "BTBT", "CUBT", "ETH", "BTC", "QUBT", "GLD", "ETHD", "AGCO", "SBIT", "INOD", "BTCL", "DIME", "UCO", "PDBC", "COPX", "BLOK", "USO", "UNG", "BOIL", "WEAT", "CORN", "DBA", "GDXJ", "XME", "XOP", "OIH", "URA", "URNM", "ITA", "PPA", "MOO", "REMX", "IPI", "LSB", "UAN", "ASC", "EGLE", "GNK", "NAT", "TNK", "NNE", "DNN", "PLL", "SGML", "MAG", "BTG", "ICL", "SQM", "GOGL", "SBLK", "DAC", "FRO", "ZIM", "GOLD", "UNG"}
     EXCEPTIONS = ['GOOGL', 'MSFT', 'NVDA', 'CVX', 'XOM', 'IBIT', 'GLD', 'ETH', 'XLE', 'GDX', 'USO', 'SLV'] #4* max order size and max pos size
     # === 2026-04-27 STOCKS OPTIONS-OI INJECTION (READ-ONLY) ===

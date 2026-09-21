@@ -204,7 +204,9 @@ class VectorizedReentryEvaluator:
             return None
         positionAmt = abs(float(getattr(position, 'positionAmt', 0)))
         position_value = positionAmt * current_price
-        if position_value > 2 * float(getattr(self.config, 'MIN_POSITION_SIZE', 55.0)):
+        # REAL protection: reported flat positions (amt==0) are REENTRY candidates — must not be blocked by size filter.
+        # Only block if still holding (>3*START) — matches live process_single_reentry_evaluation 3*MIN guard.
+        if positionAmt > 0 and position_value > 3 * float(getattr(self.config, 'MIN_POSITION_SIZE', 55.0)):
             return None
         pre = self._precomputed.get(symbol)
         if not pre:
@@ -214,8 +216,14 @@ class VectorizedReentryEvaluator:
         bar_idx = ctx.get('_v8_bar_idx', 0)
         if bar_idx >= pre["n"]:
             bar_idx = pre["n"] - 1
+        # REAL: restore same value or more — use prior max_quantity if existed before, not just START.
+        # Grandfathered reentry (flat→restore) bypasses small caps.
         start_size = float(getattr(self.config, 'START_POSITION_SIZE', 18.0))
-        re_qty = start_size / max(current_price, 1e-9)
+        prior_max = float(getattr(position, 'max_quantity', 0) or 0)
+        if prior_max > 0:
+            re_qty = max(prior_max, start_size / max(current_price, 1e-9))
+        else:
+            re_qty = start_size / max(current_price, 1e-9)
         if s["wt_2of3_ok"][bar_idx]:
             return ReentrySignal(
                 action="REENTRY",

@@ -10115,7 +10115,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             "GR_HTF_DIRECT_ENTRY_SCORE_MIN": 0.0,
             "LIVE_ENTRY_ENGINE_MIN_SCORE": 0.0,
             "LOCAL_EXTREMES_MIN_SCORE": 0.0,
-            "AUGMENTATION_COOLDOWN_MINUTES": 0,
+            "AUGMENTATION_COOLDOWN_MINUTES": 5,
             "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED": True,
             "LR_BAND_E02_EXIT_ENABLED": True,
         }

@@ -1677,5 +1677,22 @@
     "sources": {
       "API_ABSENCE": 2
     }
+  },
+  "flz:XRPUSDC_LONG": {
+    "count": 5,
+    "first_seen_zero_at": "2026-09-21T15:35:38.745278+00:00",
+    "last_increment_at": "2026-09-21T15:40:20.244581+00:00",
+    "sources": {
+      "API_ABSENCE": 4
+    },
+    "last_seen": "2026-09-21T15:37:34.081258+00:00"
+  },
+  "flz:SOLUSDC_LONG": {
+    "count": 4,
+    "first_seen_zero_at": "2026-09-21T15:57:08.562299+00:00",
+    "last_increment_at": "2026-09-21T15:59:52.961205+00:00",
+    "sources": {
+      "API_ABSENCE": 4
+    }
   }
 }

@@ -874,10 +874,14 @@ def main():
         print("[warn] Mac allowed for writing/testing only — not for real sweeps (S1 required for full universe)", flush=True)
 
     if args.window_days == 365 or args.window_days >= 100:
-        print("BLOCKED: 1yr requires 30D gate — run 30D first", file=sys.stderr)
-        sys.exit(2)
-    if args.window_days not in (30, 20, 7, 1):
-        print(f"BLOCKED: only 30/20/7/1 allowed, got {args.window_days}", file=sys.stderr)
+        # USER 2026-09-20: 365D retest with found 30D settings allowed when baseline-json provided (found settings gate)
+        if not args.baseline_json or not Path(args.baseline_json).exists():
+            print("BLOCKED: 1yr requires 30D gate — run 30D first (or provide --baseline-json with found 30D settings for 365D retest)", file=sys.stderr)
+            sys.exit(2)
+        else:
+            print(f"[365D-ALLOWED] 365D retest with found settings {args.baseline_json}", flush=True)
+    if args.window_days not in (30, 20, 7, 1, 365):
+        print(f"BLOCKED: only 30/20/7/1/365 allowed, got {args.window_days}", file=sys.stderr)
         sys.exit(2)
 
     if args.sym_side:
@@ -905,8 +909,16 @@ def main():
         if os.getenv("FORCE_DC_RERUN") == "1":
             print(f"[FORCE-DC-RERUN] {new_symside} hard-stop rerun forced (dc_low_4h LONG / dc_high_4h SHORT can never be broken)", flush=True)
         elif _early_prog and _early_prog.get("final_gain") is not None and len(_early_prog.get("done", {})) >= 50:
-            # worst_first second round with baseline-json is allowed to retouch for yellows/orange per tab (filters need deltas) - not just shuffle
-            if args.baseline_json and args.seq_mode in ("shuffle", "worst2best", "worst_first"):
+            # FIX 2026-09-21: allow resume of incomplete sheets (done < 2800 or no FINAL xlsx) — herd was idle on HAO/VT etc with 2238 done but no FINAL
+            _done_cnt = len(_early_prog.get("done", {}))
+            _has_final = any((ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}*.xlsx").parent.glob(f"{new_symside}_30d_matrix.xlsx")) or any((ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}_bh*.xlsx").parent.glob(f"{new_symside}_bh*.xlsx"))
+            # check both local ROOT and sandbox path
+            if not _has_final:
+                import pathlib as _pl2
+                _has_final = any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_30d_matrix.xlsx")) or any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_bh*.xlsx"))
+            if _done_cnt < 2800 and not _has_final:
+                print(f"[RESUME-ALLOW] {new_symside} incomplete final_gain {_early_prog.get('final_gain'):.2f} done {_done_cnt} no FINAL xlsx — resuming", flush=True)
+            elif args.baseline_json and args.seq_mode in ("shuffle", "worst2best", "worst_first"):
                 print(f"[{args.seq_mode.upper()}-ALLOW] {new_symside} already finished final_gain {_early_prog.get('final_gain'):.2f} but {args.seq_mode}+baseline-json allowed for second round (filters/orange per tab needs delta)", flush=True)
             elif args.seq_mode == "shuffle" and args.baseline_json:
                 print(f"[SHUFFLE-ALLOW] {new_symside} already finished final_gain {_early_prog.get('final_gain'):.2f} but shuffle+baseline-json allowed for second round", flush=True)
@@ -3143,10 +3155,13 @@ def main():
                 print(f"[365D-SAMPLE-WARN] 365D trades {_365_trades} <30 floor — diagnostic only, not for promotion", flush=True)
             # Create 365D xlsx with delta (clone template, write 365D metrics + Results_30d_Deltas equivalent)
             try:
-                _365_target = OUT_DIR / f"{new_symside}_365d_matrix.xlsx"
+                # gain/bh in filename per user request (like 30D bh/gain: _bhm4p58_gain0p12_365d)
+                _bh_str = f"bh{'m' if _365_bh is not None and _365_bh<0 else ''}{abs(_365_bh):.2f}".replace('.','p') if _365_bh is not None else "bhnan"
+                _gain_str = f"gain{'m' if _365_gain is not None and _365_gain<0 else ''}{abs(_365_gain):.2f}".replace('.','p') if _365_gain is not None else "gainnan"
+                _365_target = OUT_DIR / f"{new_symside}_{_bh_str}_{_gain_str}_365d_matrix.xlsx"
                 if _365_target.exists():
                     _ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d%H%M%S")
-                    _365_target = OUT_DIR / f"{new_symside}_365d_matrix_{_ts}.xlsx"
+                    _365_target = OUT_DIR / f"{new_symside}_{_bh_str}_{_gain_str}_365d_matrix_{_ts}.xlsx"
                 if not template.exists():
                     template = TEMPLATE
                 import shutil as _sh

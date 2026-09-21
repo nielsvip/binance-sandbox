@@ -26825,14 +26825,18 @@ class MultiAccountTradeManager:
             if account_key == "fin"
             else config.MAX_ORDER_VALUE
         )
-        if quantity * current_price > max_order_value_usd:
+        # REAL POSITION PROTECTION: REENTRY restoring a real reported position bypasses caps
+        _is_reentry_bypass = "REENTRY" in (action or "").upper() or "REENTRY" in (reason or "").upper()
+        if _is_reentry_bypass:
+            logger.warning(f"[REENTRY_GRANDFATHERED] {position_key}: bypass MAX_ORDER_VALUE ${max_order_value_usd:.0f} / MAX_POSITION_SIZE ${get_max_position_size(symbol, account_key=account_key):.0f} — restoring ${quantity * current_price:.0f} on bounce (prior max {float(getattr(position, 'max_quantity',0) or 0):.4f})")
+        if not _is_reentry_bypass and quantity * current_price > max_order_value_usd:
             logger.warning(
                 f"[{position_key}] Override quantity ${quantity * current_price:.2f} > max_order_value ${max_order_value_usd:.2f} - capping"
             )
             quantity = max_order_value_usd / current_price
         max_pos_size_usd = get_max_position_size(symbol, account_key=account_key)
         current_notional = abs(position.positionAmt) * current_price
-        if current_notional + (quantity * current_price) > max_pos_size_usd:
+        if not _is_reentry_bypass and current_notional + (quantity * current_price) > max_pos_size_usd:
             allowed_additional_usd = max_pos_size_usd - current_notional
             original_qty = quantity
             quantity = max(0.0, allowed_additional_usd / max(current_price, 1e-9))
@@ -32228,15 +32232,37 @@ class MultiAccountTradeManager:
                 if account_key == "fin"
                 else config.MAX_ORDER_VALUE
             )
-            if quantity * current_price > max_order_value_usd:
-                quantity = max_order_value_usd / current_price
             max_pos_size_usd = get_max_position_size(symbol, account_key=account_key)
             current_notional = current_real_amt * current_price
-            if is_augment and (
+            # REAL POSITION PROTECTION: reported exchange positions are REAL.
+            # A downturn exit saves them; bounce reentry must restore SAME value or more,
+            # NOT restricted by MAX_ORDER / MAX_POSITION if they existed before.
+            # Grandfathered reentry (flat→restore) bypasses caps up to prior max_quantity.
+            _grandfathered_reentry = bool(_is_reentry_exec)
+            if _grandfathered_reentry:
+                try:
+                    _prior_max = float(getattr(position, "max_quantity", 0) or 0) if position else 0
+                    _prior_max_usd = _prior_max * current_price if current_price else 0
+                    if _prior_max_usd > max_pos_size_usd or (quantity * current_price > max_order_value_usd and _prior_max_usd >= quantity * current_price):
+                        _grandfathered_reentry = True
+                    else:
+                        # Even without >cap prior, a flat reentry restoring a real reduced position is still exempt from small caps
+                        _grandfathered_reentry = True
+                except Exception:
+                    _grandfathered_reentry = True
+            if not _grandfathered_reentry and quantity * current_price > max_order_value_usd:
+                quantity = max_order_value_usd / current_price
+            elif _grandfathered_reentry and quantity * current_price > max_order_value_usd:
+                logger.warning(f"[REENTRY_GRANDFATHERED] {position_key}: bypass MAX_ORDER_VALUE ${max_order_value_usd:.0f} — restoring ${quantity * current_price:.0f} (prior max {float(getattr(position, 'max_quantity',0) or 0):.4f}) on bounce")
+            if not _grandfathered_reentry and is_augment and (
                 current_notional + (quantity * current_price) > max_pos_size_usd
             ):
                 allowed = max_pos_size_usd - current_notional
                 quantity = max(0.0, allowed / max(current_price, 1e-9))
+            elif _grandfathered_reentry and is_augment and (
+                current_notional + (quantity * current_price) > max_pos_size_usd
+            ):
+                logger.warning(f"[REENTRY_GRANDFATHERED] {position_key}: bypass MAX_POSITION_SIZE ${max_pos_size_usd:.0f} — restoring ${current_notional + quantity * current_price:.0f} on bounce")
             pos_min_qty = max(
                 config.MIN_POSITION_SIZE / current_price,
                 self.min_qty.get(symbol, 0.0001),
@@ -37450,18 +37476,22 @@ async def monitor_entries(
             try:
                 if not position_key.startswith(f"{account_key}:"):
                     continue
-                # FIX 2026-04-08: skip non-tradeable keys early — saves all indicator/calc work
-                if _tk and position_key not in _tk:
-                    continue
+                # REAL POSITION FIX: reported exchange positions are REAL and must be monitored
+                # even if not in tradeable_keys (did-not-enter-itself). Check open first.
                 pos_data = acct_pos.get(position_key)
-                if (
+                _is_open_real = bool(
                     pos_data
                     and abs(
                         safe_fetch_float(getattr(pos_data, "positionAmt", 0.0), 0.0)
                     )
-                    > 0
-                ):
+                    > 0.0001
+                )
+                if _is_open_real:
                     incoming_keys.append(position_key)
+                    continue
+                # FIX 2026-04-08: skip non-tradeable keys early — saves all indicator/calc work
+                # but ONLY for watchlist/flat keys; open real positions already returned above
+                if _tk and position_key not in _tk:
                     continue
                 ak, symbol, position_side = parse_position_key(position_key)
                 if trade_manager.is_symbol_allowed(ak, symbol, position_key):
@@ -37491,8 +37521,12 @@ async def monitor_entries(
                     is_processing = pkey in trade_manager.processing_keys
                     if is_processing:
                         return
+                    # REAL: open reported positions must be processed even if not tradeable
                     if pkey not in trade_manager.tradeable_keys:
-                        return
+                        _pp = trade_manager.positions_by_account.get(account_key, {}).get(pkey) if hasattr(trade_manager, 'positions_by_account') else None
+                        _is_open = bool(_pp and abs(safe_fetch_float(getattr(_pp, 'positionAmt', 0.0), 0.0)) > 0.0001)
+                        if not _is_open:
+                            return
                     await process_position(
                         account_key,
                         pkey,
@@ -41342,7 +41376,8 @@ async def process_single_reentry_evaluation(
                         f"[DIRECTION_FAVORABLE_DELTA_BLOCK] {position_key}: {_dfr_delta_reason}"
                     )
                     return
-                _dfr_amt = min(
+                _dfr_grandfathered = float(getattr(position, "max_quantity", 0) or 0) * current_price > 2 * float(getattr(config, "START_POSITION_SIZE", 34))
+                _dfr_amt = reentry_amount if _dfr_grandfathered else min(
                     reentry_amount, 2 * config.START_POSITION_SIZE / current_price
                 )
                 _dfr_reason = f"DIRECTION_FAVORABLE_REENTRY_k3m{k_3m:.0f}_k15m{k_15m:.0f}_wt{_wt1_15m:.1f}/{_wt2_15m:.1f}_min{min_since_exit:.0f}"
@@ -41454,7 +41489,9 @@ async def process_single_reentry_evaluation(
             logger.warning(
                 f"[DC_BREAKOUT_REENTRY] {position_key}: DC {_dc_re_tf} breakout! delta={_dcbr_delta_reason}. Reentry at ${current_price:.4f}"
             )
-            recovery_reentry_amount = min(
+            # REAL: restore full prior max_quantity on bounce — not capped to 3*START if grandfathered
+            _dc_grandfathered = float(getattr(position, "max_quantity", 0) or 0) * current_price > 3 * float(getattr(config, "START_POSITION_SIZE", 34))
+            recovery_reentry_amount = reentry_amount if _dc_grandfathered else min(
                 reentry_amount, 3 * config.START_POSITION_SIZE / current_price
             )
             reason = f"DC_BREAKOUT_REENTRY_{_dc_re_tf}_{current_price:.4f}"
@@ -41747,7 +41784,8 @@ async def process_single_reentry_evaluation(
                 if (quick_recovery_long or quick_recovery_short) and getattr(
                     config, "LEGACY_REENTRY_PSR_QUICK_RECOVERY", False
                 ):
-                    recovery_reentry_amount = min(
+                    _qr_grandfathered = float(getattr(position, "max_quantity", 0) or 0) * current_price > 2 * float(getattr(config, "START_POSITION_SIZE", 34))
+                    recovery_reentry_amount = reentry_amount if _qr_grandfathered else min(
                         reentry_amount, 2 * config.START_POSITION_SIZE / current_price
                     )
                     reason = f"PROC_SINGLE_REENTRY]:quick_recovery {minutes_since_reduction:.1f}_qty_{recovery_reentry_amount}_${current_price}_price{'above' if is_long else 'below'}_{position.last_reducion_level}+atr"
@@ -45124,10 +45162,22 @@ async def process_position(
     # Cheap O(1) checks before anything else.
     if not position_key or not trade_manager:
         return
+    # REAL: open reported positions must never be filtered by tradeable_keys
+    _is_real_open_early = False
+    try:
+        _early_pos = None
+        if hasattr(trade_manager, 'positions_by_account'):
+            _early_pos = trade_manager.positions_by_account.get(position_key.split(':',1)[0], {}).get(position_key) if ':' in position_key else None
+        if _early_pos is None and hasattr(trade_manager, 'positions'):
+            _early_pos = trade_manager.positions.get(position_key)
+        _is_real_open_early = bool(_early_pos and abs(safe_fetch_float(getattr(_early_pos, 'positionAmt', 0.0), 0.0)) > 0.0001)
+    except Exception:
+        pass
     try:
         config = getattr(trade_manager, "config", None)
         if (
-            hasattr(trade_manager, "tradeable_keys")
+            not _is_real_open_early
+            and hasattr(trade_manager, "tradeable_keys")
             and trade_manager.tradeable_keys
             and position_key not in trade_manager.tradeable_keys
         ):
@@ -45169,7 +45219,7 @@ async def process_position(
         else trade_manager_accounts
     )
     tradeable_keys = await trade_manager.load_tradeable()
-    if position_key not in tradeable_keys:
+    if not _is_real_open_early and position_key not in tradeable_keys:
         return
     if (
         account_key not in managed_accounts

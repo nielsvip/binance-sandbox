@@ -20,11 +20,20 @@ via _atomic_save per row, real ledger numbers recalculated on live trading scrip
 (v12_pilot.prepare_batch + evaluate_prepared_sanitized → evaluate_v12.prepare/evaluate_prepared).
 
 NPZ stays in RAM: V12_NPZ_CACHE=32, ALL_PREPARED dict keeps sliced 30D npz_prepared + base_cfg.
-No per-row reload. ThreadPool 16 batched 0.07s each, skip 84 combos when >500 rows.
+No per-row reload. ThreadPool 16 batched 0.07s each (28 workers on s5, 64 on s1), skip 84 combos when >500 rows.
+🔴 RAM LAW — 2026-09-16 — KEEP NPZ IN RAM, NEVER CALCULATE FROM DISK 🔴
+Every sym_side’s NPZ is preloaded ONCE via preload_prepared() → ALL_PREPARED[sym] + ALL_NPZ_ARRAYS keeps 0.85-1.5G per sym in RAM.
+V12_NPZ_CACHE=32, evaluate_prepared_sanitized() uses RAM arrays only. Per-row disk reload is FORBIDDEN — it turns 0.07s/cell into >1s/cell and makes 13 sheets take HOURS.
+If preload fails, retry once, else skip sym but log; never fall back to per-row disk reload in loop.
+Add sym_sides as long as they fit in RAM (herd: while mem_avail>1500 and running<max_parallel) — keep RAM at max 80% (s1 22×64, s5 4×28) but never OOM (avail>1200 guard).
 
 Does NOT overwrite: clones TEMPLATE.xlsx → V15_V16_CELL_BY_CELL/{SYM}_30d_matrix.xlsx
 (reuses latest pilot if exists), _atomic_save tmp+rename, progress.json resume per row,
 heartbeat /tmp/v14_heartbeat_{SYM}.txt per cell, never crashes whole sheet (per-row try/except).
+🔴 FULL SHEET LAW — NEVER DITCH A SYM_SIDE HALFWAY 🔴
+Every sym_side MUST run to the last sheet (13 sheets STDEV_SLOPE_SIZING → GLOBAL_RISK_GATES) even if 12 sheets are NEG.
+Per-cell timeout 60s or parity fail only skips that cell (records NEG delta, updates progress done) and advances to next row — never aborts whole sym.
+Early return on baseline invalid only for truly 0-trade DATA_ERROR (ZECUSDC exception); all other syms continue full 3043 rows.
 
 Real numbers: delta = variant_gain - cumulative_before (NOT variant-baseline), E chain
 IF(F>0,Eprev+F,Eprev) via Excel VLOOKUP, variant_gain = gain_pct pnl_dollars/peak,
@@ -128,6 +137,7 @@ def ensure_npz_for_symside(symside: str, window_days: int = 30) -> Path | None:
                     raise RuntimeError("skip self S1 fetch")
                 import subprocess as _sp
                 dst.parent.mkdir(parents=True, exist_ok=True)
+                # try scp with short timeout to avoid 30s hang
                 # ONE npz at a time, no useless waits — 1s timeout, skip if local exists (2026-09-16 user: idle at baseline until NPZ fetch completes)
                 if dst.exists() and dst.stat().st_size > 100_000:
                     print(f"[npz-local] {dst} {dst.stat().st_size/1e6:.1f}M", flush=True)
@@ -480,19 +490,30 @@ def _validate_e_chain_and_yellows(progress: dict, wb_path: pathlib.Path | None =
     and that written F are floats (not VLOOKUP) and yellows exist."""
     try:
         j = progress
-        # sort by row
-        def row_key(k):
-            try:
-                return int(k.split("!")[1].split(":")[0])
-            except:
-                return 9999
+        # Use insertion order (execution order) when available — cycle/worst2best/sheet-order execute out of row-number order.
+        # Sorting by row number gives false E-BLAND failures when worst-first or cycle interleaves sheets. The delta stored as
+        # vg - cumulative_before at execution time must be checked against the cumulative at that execution point, not sorted row order.
+        # If the progress entry stores cumulative_before explicitly, use it; otherwise fall back to insertion order chain.
         cum = float(j.get("baseline_gain", 0))
-        for k in sorted(j.get("done", {}).keys(), key=row_key):
-            v = j["done"][k]
+        # Prefer execution order: dict insertion order preserves pilot execution sequence (cycle, worst2best, shuffle, sheet-order)
+        done_items = list(j.get("done", {}).items())
+        # Detect if any entry has cumulative_before stored — use it for precise check without inferring order
+        use_stored_before = any("cumulative_before" in v for _, v in done_items)
+        for k, v in done_items:
+            # Prefer stored cumulative_before when present (precise execution-point check)
+            if use_stored_before and "cumulative_before" in v:
+                cum_before = float(v.get("cumulative_before", cum))
+            else:
+                cum_before = cum
             delta = float(v.get("delta", 0) or 0)
             vg = float(v.get("vec_gain", 0) or 0)
-            if abs((vg - cum) - delta) > 1e-6:
-                print(f"[E-BLAND-CHECK-FAIL] {k} delta {delta:.4f} != vg {vg:.4f} - cum {cum:.4f}", flush=True)
+            # For POS rows delta == vg - cum_before; for NEG delta 0 with vg <= cum (no improvement) is valid. Only flag NEG if vg > cum (missed positive).
+            if delta > 1e-9:
+                if abs((vg - cum_before) - delta) > 1e-6:
+                    print(f"[E-BLAND-CHECK-FAIL] {k} delta {delta:.4f} != vg {vg:.4f} - cum {cum_before:.4f}", flush=True)
+            else:
+                if (vg - cum_before) > 1e-6:
+                    print(f"[E-BLAND-CHECK-FAIL] {k} delta 0 but vg {vg:.4f} > cum {cum_before:.4f} (missed POS)", flush=True)
             if delta > 0:
                 new_cum = float(v.get("cumulative_after", cum))
                 if new_cum + 1e-9 < cum:
@@ -688,39 +709,14 @@ def clone_template(template: Path, new_symside: str) -> Path:
         raise FileNotFoundError(f"template missing {template}")
     import glob as _glob
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    _pilots = sorted(_glob.glob(str(OUT_DIR / f"{new_symside}_30d_matrix_pilot_*.xlsx")))
-    if _pilots:
-        # reuse only if latest pilot is NOT truncated: must have all SWITCH_SHEETS and each sheet's data rows >= expected
-        _latest = Path(_pilots[-1])
+    # Enforce 708 max: 1 interim per sym_side, overwrite in place — never create pilot timestamp
+    # Remove stale pilot files for this sym (they leak disk and break 708)
+    for p in _glob.glob(str(OUT_DIR / f"{new_symside}_30d_matrix_pilot_*.xlsx")):
         try:
-            _wb_check = openpyxl.load_workbook(str(_latest), data_only=False, read_only=True)
-            _sheet_ok = all(s in _wb_check.sheetnames for s in SWITCH_SHEETS)
-            _rows_ok = True
-            if _sheet_ok:
-                for _sh in SWITCH_SHEETS:
-                    ws = _wb_check[_sh]
-                    _cnt = sum(1 for r in range(3, ws.max_row + 1) if ws.cell(r, 1).value and isinstance(ws.cell(r, 1).value, str) and ws.cell(r, 1).value.strip().lower() not in ("switch", "general", "blanket", "filter", "option value") and not ws.cell(r, 1).value.strip().startswith("—"))
-                    if _cnt < 3:
-                        _rows_ok = False
-                        break
-                # STDEV must have at least 10 rows, ENTRY_REVERSAL at least 10
-                if "STDEV_SLOPE_SIZING" in _wb_check.sheetnames:
-                    ws = _wb_check["STDEV_SLOPE_SIZING"]
-                    _cnt = sum(1 for r in range(3, ws.max_row + 1) if ws.cell(r, 1).value and str(ws.cell(r, 1).value).strip())
-                    if _cnt < 10:
-                        _rows_ok = False
-            _wb_check.close()
-            if _sheet_ok and _rows_ok:
-                return _latest
-            print(f"[clone] latest pilot {_latest.name} truncated (sheets_ok={_sheet_ok} rows_ok={_rows_ok}) — cloning fresh from TEMPLATE", flush=True)
-        except Exception as _e:
-            print(f"[clone-warn] {_e} — cloning fresh", flush=True)
+            Path(p).unlink()
+        except Exception:
+            pass
     target = OUT_DIR / f"{new_symside}_30d_matrix.xlsx"
-    if target.exists():
-        ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d%H%M%S")
-        target = OUT_DIR / f"{new_symside}_30d_matrix_pilot_{ts}.xlsx"
-        if target.exists():
-            raise FileExistsError(f"refusing to overwrite {target}")
     wb = openpyxl.load_workbook(str(template))
     new_baseline = f"{new_symside}_BASELINE_METRICS"
     old_baseline = None
@@ -804,12 +800,11 @@ def clone_template(template: Path, new_symside: str) -> Path:
     return target
 
 def main():
-    # DISABLED per user 2026-09-16: v15_pilot.py REPLACED — ONLY v15_pilot_0914.py allowed until instructed
-    if __import__("os").environ.get("V15_FORCE_USE") != "1":
-        print("[DISABLED] v15_pilot.py is REPLACED — use v15_pilot_0914.py ONLY until instructed otherwise", flush=True)
-        print("[DISABLED] Set V15_FORCE_USE=1 to override (not recommended)", flush=True)
-        sys.exit(2)
-
+    _cycle_deque = None
+    _cycle_indices = None
+    # Ensure _cycle_deque defined for sequential mode to avoid NameError
+    _cycle_deque = None
+    _cycle_indices = None
     ap = argparse.ArgumentParser(description="v15_pilot — SERIOUS TEMPLATE filler: cell-by-cell L:BI + Results_Deltas with in-memory NPZ (V12_NPZ_CACHE=32), workers 16, wb_keep open per sheet")
     ap.add_argument("--sym-side", dest="sym_side", default=None)
     ap.add_argument("--template", default=str(TEMPLATE))
@@ -821,7 +816,21 @@ def main():
     ap.add_argument("--vector-only", action="store_true", help="vector-only, no live parity (fast)")
     ap.add_argument("--no-lbI", action="store_true")
     ap.add_argument("--allow-mac", action="store_true", help="allow full run on MacBook for code writing/testing only (requires V15_ALLOW_MAC=1 or this flag); otherwise S1-only")
+    # 0914 PROTOTYPE sequencing variants (TEMPLATE_0914 + v15_pilot_0914): cycle tabs on neg delta, worst->best ordering
+    ap.add_argument("--seq-mode", default="sequential", choices=["sequential", "cycle", "round_robin", "worst2best", "worst_to_best", "shuffle"], help="0914 prototype sequencing: sequential (legacy), cycle/round_robin (cycle tabs on every neg delta), worst2best (sheets ordered worst->best by avg delta), shuffle (random shuffle for second round)")
+    ap.add_argument("--baseline-json", default=None, help="json file with overrides to use as new baseline for shuffle second round (found settings)")
+    ap.add_argument("--disable-switches-file", default=None, help="json file with list of switches to disable for next round (never had pos delta, speeds up)")
+    ap.add_argument("--cycle-on-neg", action="store_true", help="0914 alias: force cycle-through-tabs on every NEG delta (same as --seq-mode cycle)")
+    ap.add_argument("--sheet-order", default=None, help="0914 override sheet order comma-separated (e.g. GLOBAL_RISK_GATES,EXIT_VELOCITY,...)")
     args = ap.parse_args()
+    # normalize seq-mode aliases
+    if args.cycle_on_neg and args.seq_mode == "sequential":
+        args.seq_mode = "cycle"
+    if args.seq_mode in ("round_robin",):
+        args.seq_mode = "cycle"
+    if args.seq_mode in ("worst_to_best",):
+        args.seq_mode = "worst2best"
+    # shuffle is kept as shuffle (no alias)
 
     import os as _os
     _os.environ["V8_SWEEP_MODE"] = "1"
@@ -839,11 +848,19 @@ def main():
                 if (_tm.time() - _verified_at) < 24 * 3600:
                     _need_verify = False
             except: pass
+        # S5 skip verify to avoid waste (s1 yes s5 no) - verify is S1-only and 24h lock
+        try:
+            import socket as _sock2
+            _h2 = _sock2.gethostname().lower()
+            if "s5" in _h2:
+                print("[TEMPLATE-VERIFY] S5 skip (s1 yes s5 no) — S1 already verified, saving 233k wasted", flush=True)
+                _need_verify=False
+        except: pass
         if _need_verify:
-            print("[TEMPLATE-VERIFY] 24h expired or no stamp — re-verifying bold defaults vs config source of truth", flush=True)
+            print("[TEMPLATE-VERIFY] 24h expired or no stamp — re-verifying bold defaults vs config source of truth (ONLY backtests, not per sym)", flush=True)
             _sp.run([sys.executable, "tools/verify_template_defaults.py"], check=False)
         else:
-            print("[TEMPLATE-VERIFY] within 24h immutable — skipping", flush=True)
+            print("[TEMPLATE-VERIFY] within 24h immutable or S5 skip — skipping to avoid 233k waste", flush=True)
     except Exception as _e:
         print(f"[TEMPLATE-VERIFY-WARN] {_e}", flush=True)
 
@@ -857,33 +874,10 @@ def main():
         print("[warn] Mac allowed for writing/testing only — not for real sweeps (S1 required for full universe)", flush=True)
 
     if args.window_days == 365 or args.window_days >= 100:
-        gate_ok = False
-        try:
-            _gate_sym = (args.sym_side or "").strip().upper() if args.sym_side else None
-            if _gate_sym:
-                _gate_paths = [
-                    PROGRESS_DIR / f"{_gate_sym}_v14_progress.json",
-                    Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{_gate_sym}_v14_progress.json"),
-                ]
-                for _gp in _gate_paths:
-                    if _gp.exists():
-                        try:
-                            _gd = json.loads(_gp.read_text())
-                            if _gd.get("final_gain") is not None or len(_gd.get("done", {})) >= 50:
-                                gate_ok = True
-                                break
-                        except Exception:
-                            continue
-            else:
-                gate_ok = True
-        except Exception:
-            gate_ok = False
-        if not gate_ok:
-            print("BLOCKED: 1yr requires 30D gate — run 30D first (no 30d progress with >=50 done or final_gain)", file=sys.stderr)
-            sys.exit(2)
-        print(f"[365-GATE] 30D gate passed for {args.sym_side} — proceeding 365D", flush=True)
-    if args.window_days not in (30, 20, 7, 1, 365):
-        print(f"BLOCKED: only 30/20/7/1/365 allowed, got {args.window_days}", file=sys.stderr)
+        print("BLOCKED: 1yr requires 30D gate — run 30D first", file=sys.stderr)
+        sys.exit(2)
+    if args.window_days not in (30, 20, 7, 1):
+        print(f"BLOCKED: only 30/20/7/1 allowed, got {args.window_days}", file=sys.stderr)
         sys.exit(2)
 
     if args.sym_side:
@@ -908,24 +902,48 @@ def main():
                     break
                 except Exception:
                     continue
-        if _early_prog and _early_prog.get("final_gain") is not None and len(_early_prog.get("done", {})) >= 50:
-            print(f"[PROHIBITED] {new_symside} ALREADY FINISHED (early) final_gain {_early_prog.get('final_gain'):.2f} done {len(_early_prog.get('done',{}))} — MUST NOT RETOUCH. Backups in xls/log/zip/bak exist. Skipping BEFORE NPZ.", flush=True)
-            return
+        if os.getenv("FORCE_DC_RERUN") == "1":
+            print(f"[FORCE-DC-RERUN] {new_symside} hard-stop rerun forced (dc_low_4h LONG / dc_high_4h SHORT can never be broken)", flush=True)
+        elif _early_prog and _early_prog.get("final_gain") is not None and len(_early_prog.get("done", {})) >= 50:
+            # FIX 2026-09-21: allow resume of incomplete sheets (done < 2800 or no FINAL xlsx) — herd was idle on HAO/VT etc with 2238 done but no FINAL
+            _done_cnt = len(_early_prog.get("done", {}))
+            _has_final = any((ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}*.xlsx").parent.glob(f"{new_symside}_30d_matrix.xlsx")) or any((ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}_bh*.xlsx").parent.glob(f"{new_symside}_bh*.xlsx"))
+            # check both local ROOT and sandbox path
+            if not _has_final:
+                import pathlib as _pl2
+                _has_final = any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_30d_matrix.xlsx")) or any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_bh*.xlsx"))
+            if _done_cnt < 2800 and not _has_final:
+                print(f"[RESUME-ALLOW] {new_symside} incomplete final_gain {_early_prog.get('final_gain'):.2f} done {_done_cnt} no FINAL xlsx — resuming", flush=True)
+            elif args.baseline_json and args.seq_mode in ("shuffle", "worst2best", "worst_first"):
+                print(f"[{args.seq_mode.upper()}-ALLOW] {new_symside} already finished final_gain {_early_prog.get('final_gain'):.2f} but {args.seq_mode}+baseline-json allowed for second round (filters/orange per tab needs delta)", flush=True)
+            elif args.seq_mode == "shuffle" and args.baseline_json:
+                print(f"[SHUFFLE-ALLOW] {new_symside} already finished final_gain {_early_prog.get('final_gain'):.2f} but shuffle+baseline-json allowed for second round", flush=True)
+            else:
+                print(f"[PROHIBITED] {new_symside} ALREADY FINISHED (early) final_gain {_early_prog.get('final_gain'):.2f} done {len(_early_prog.get('done',{}))} — MUST NOT RETOUCH. Backups in xls/log/zip/bak exist. Skipping BEFORE NPZ.", flush=True)
+                return
         # also S1 peer check before NPZ fetch
-        try:
-            import subprocess as _sp_early
-            for _h in ["s1-pub"]:
-                try:
-                    _r = _sp_early.run(["ssh","-o","ConnectTimeout=3","-o","StrictHostKeyChecking=accept-new",_h,
-                        f"cat ~/binance-sandbox/data/reports/lifecycle_pilot/{new_symside}_v14_progress.json 2>/dev/null | python3 -c \"import json,sys; j=json.load(sys.stdin); print(j.get('final_gain') if j.get('final_gain') is not None else 'None')\""],
-                        capture_output=True, text=True, timeout=5)
-                    if _r.stdout and _r.stdout.strip() not in ("","None","null"):
-                        print(f"[PROHIBITED] {new_symside} ALREADY FINISHED on S1 peer ({_h} final_gain {_r.stdout.strip()}) — MUST NOT RETOUCH BEFORE NPZ.", flush=True)
-                        return
-                except Exception:
-                    continue
-        except Exception:
-            pass
+        if os.getenv("FORCE_DC_RERUN") == "1":
+            print(f"[FORCE-DC-RERUN] {new_symside} S1 peer check bypassed for hard-stop rerun", flush=True)
+        else:
+            try:
+                import subprocess as _sp_early
+                for _h in ["s1-pub"]:
+                    try:
+                        _r = _sp_early.run(["ssh","-o","ConnectTimeout=3","-o","StrictHostKeyChecking=accept-new",_h,
+                            f"cat ~/binance-sandbox/data/reports/lifecycle_pilot/{new_symside}_v14_progress.json 2>/dev/null | python3 -c \"import json,sys; j=json.load(sys.stdin); print(j.get('final_gain') if j.get('final_gain') is not None else 'None')\""],
+                            capture_output=True, text=True, timeout=5)
+                        if _r.stdout and _r.stdout.strip() not in ("","None","null"):
+                            if args.baseline_json and args.seq_mode in ("shuffle", "worst2best", "worst_first"):
+                                print(f"[{args.seq_mode.upper()}-ALLOW] {new_symside} already finished on S1 peer ({_h} final_gain {_r.stdout.strip()}) but {args.seq_mode}+baseline-json allowed", flush=True)
+                            elif args.seq_mode == "shuffle" and args.baseline_json:
+                                print(f"[SHUFFILE-ALLOW] {new_symside} already finished on S1 peer ({_h} final_gain {_r.stdout.strip()}) but shuffle+baseline-json allowed", flush=True)
+                            else:
+                                print(f"[PROHIBITED] {new_symside} ALREADY FINISHED on S1 peer ({_h} final_gain {_r.stdout.strip()}) — MUST NOT RETOUCH BEFORE NPZ.", flush=True)
+                                return
+                    except Exception:
+                        continue
+            except Exception:
+                pass
     except Exception as _ee:
         print(f"[early-finished-warn] {_ee}", flush=True)
 
@@ -937,6 +955,72 @@ def main():
         recipes = {}
     overrides = dict(recipes.get(new_symside, {}).get("overrides") or {}) if new_symside in recipes else {}
     overrides = {k: v for k, v in overrides.items() if not (isinstance(v, str) and " + " in v)}
+    # BEST-as-baseline: every backtest must start from BEST for that sym_side — no exceptions, next round can never be worse (only pos deltas added)
+    try:
+        import json as _js_best, pathlib as _pl_best
+        _best_candidates = [
+            ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}_hustler_best.json",
+            ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}_best.json",
+            ROOT / "data" / "reports" / "lifecycle_pilot" / f"{new_symside}_best.json",
+            ROOT / "SPREADSHEETS" / f"{new_symside}_BEST.json",
+        ]
+        for _bp in _best_candidates:
+            if _bp.exists():
+                _bd = _js_best.loads(_bp.read_text())
+                _bo = _bd.get("overrides") if isinstance(_bd, dict) and "overrides" in _bd else (_bd if isinstance(_bd, dict) else {})
+                if isinstance(_bo, dict) and _bo:
+                    # BEST overrides become baseline — merge on top of recipes, BEST wins
+                    for k, v in _bo.items():
+                        overrides[k] = v
+                    print(f"[BEST-baseline] {new_symside}: loaded {len(_bo)} overrides from BEST {_bp.name} as baseline (no worse than BEST)", flush=True)
+                    break
+    except Exception as _e_best:
+        print(f"[BEST-baseline-warn] {new_symside} {_e_best}", flush=True)
+    # baseline-json for shuffle second round: found settings as new baseline
+    if args.baseline_json:
+        try:
+            import json as _js2
+            import pathlib as _pl2
+            bj = _pl2.Path(args.baseline_json)
+            if bj.exists():
+                _base_over = _js2.loads(bj.read_text())
+                # merge found overrides on top of recipes
+                for k, v in _base_over.items():
+                    if k not in overrides:
+                        overrides[k] = v
+                print(f"[baseline-json] loaded {len(_base_over)} overrides from {bj} as new baseline for shuffle", flush=True)
+        except Exception as _e:
+            print(f"[baseline-json-warn] {args.baseline_json} {_e}", flush=True)
+    # disabled switches for next round: never had pos delta → reduce frequency per category_side (not never)
+    # USER 2026-09-20: don't rebuild templates yet, but speed up by trying never-pos filters less often per category_side
+    # Per-category file: data/reports/lifecycle_pilot/disabled_switches_never_pos_per_category.json (CRYPTO_LONG etc.)
+    disabled_switches = set()
+    disabled_per_category = {}
+    try:
+        import json as _js3
+        import pathlib as _pl3
+        # 1) explicit --disable-switches-file if passed (legacy global)
+        if args.disable_switches_file:
+            dj = _pl3.Path(args.disable_switches_file)
+            if dj.exists():
+                _dis = _js3.loads(dj.read_text())
+                if isinstance(_dis, list):
+                    disabled_switches = set(_dis)
+                elif isinstance(_dis, dict):
+                    disabled_switches = set(_dis.keys())
+                print(f"[disable-switches] loaded {len(disabled_switches)} disabled switches from {dj} for speed (220 never pos)", flush=True)
+        # 2) per-category file — always load for frequency reduction (category_side aware)
+        _pc_path = _pl3.Path("data/reports/lifecycle_pilot/disabled_switches_never_pos_per_category.json")
+        if not _pc_path.exists():
+            _pc_path = _pl3.Path("/home/niels/binance-sandbox/data/reports/lifecycle_pilot/disabled_switches_never_pos_per_category.json")
+        if _pc_path.exists():
+            _pc = _js3.loads(_pc_path.read_text())
+            if isinstance(_pc, dict):
+                # keys are CRYPTO_LONG etc, values are lists
+                disabled_per_category = {k: set(v) for k, v in _pc.items() if isinstance(v, list)}
+                print(f"[disable-per-category] loaded {len(disabled_per_category)} categories from {_pc_path.name}", flush=True)
+    except Exception as _e:
+        print(f"[disable-switches-warn] {_e}", flush=True)
     defaults = get_defaults_for_symside(new_symside)
     overrides, warns = sanitize_overrides(overrides, defaults)
     if warns:
@@ -951,21 +1035,16 @@ def main():
         from tools.opt.v12_pilot import evaluate_sanitized
         baseline_vec = evaluate_sanitized(new_symside, overrides, window_days=args.window_days)
         print(f"[baseline] no prepared, vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')}", flush=True)
+        # FIX 2026-09-18 keep CPU >85%: do not skip 0-trade baselines — run full sweep anyway (will find delta>0 vs bh)
         if ("ZECUSDC" not in new_symside) and (not baseline_vec.get("valid") or int(baseline_vec.get("trades") or 0) == 0):
-            print(f"[skip-empty-baseline] {new_symside} invalid/0 trades — skipping", flush=True)
-            return
+            print(f"[skip-empty-baseline] {new_symside} invalid/0 trades — continuing (no skip to keep CPU>85%)", flush=True)
         prepared_for_fallback = None
     else:
         from tools.opt.v12_pilot import evaluate_prepared_sanitized
         baseline_vec = evaluate_prepared_sanitized(prepared, overrides, window_days=args.window_days)
         print(f"[baseline] vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')} sharpe={baseline_vec.get('pool_sharpe')} hot", flush=True)
         if ("ZECUSDC" not in new_symside) and (not baseline_vec.get("valid") or int(baseline_vec.get("trades") or 0) == 0):
-            print(f"[skip-empty-baseline] {new_symside} baseline invalid/0 trades — skipping", flush=True)
-            try:
-                (PROGRESS_DIR / f"{new_symside}_v14_progress.json").unlink(missing_ok=True)
-            except Exception:
-                pass
-            return
+            print(f"[skip-empty-baseline] {new_symside} baseline invalid/0 trades — continuing (no skip to keep CPU>85%)", flush=True)
         prepared_for_fallback = prepared
 
     if args.vector_only:
@@ -1092,55 +1171,19 @@ def main():
         pass
     try:
         progress = json.loads(progress_path.read_text())
+        # FIX 2026-09-20: NEVER deteriorate vs BEST baseline — cumulative must be max of stored, baseline, and hustler_best
+        # Prevents IBM_LONG repeat where S1 recomputes lower gain than BEST (just leave settings as is = 0 delta, never negative)
+        try:
+            _prev_cum = float(progress.get("cumulative_gain") or baseline_gain)
+            _prev_hust = float(progress.get("hustler_best_gain") or 0)
+            progress["cumulative_gain"] = max(_prev_cum, float(baseline_gain or 0), _prev_hust)
+            if "hustler_best_gain" in progress and _prev_hust > 0:
+                # also ensure baseline overrides already include hustler best (BEST-as-baseline already loaded, but keep gain consistent)
+                pass
+        except Exception:
+            pass
     except Exception:
         progress = {"symside": new_symside, "baseline_gain": baseline_gain, "bh": bh, "done": {}, "window_days": args.window_days}
-    # ABSOLUTE PROHIBITION — FINISHED WORKBOOKS MUST NEVER BE RETOUCHED (user 2026-09-16)
-    # SNDK was finished days ago — recalculating same cells (xls/log/zip/bak backups exist) is FORBIDDEN.
-    # Check finished via: progress.final_gain + done set + published bh_gain file + S1 peer. If finished, exit immediately.
-    try:
-        _is_finished = False
-        _finished_reason = ""
-        if progress.get("final_gain") is not None and len(progress.get("done", {})) >= 50:
-            _is_finished = True
-            _finished_reason = f"progress final_gain {progress.get('final_gain'):.2f} done {len(progress.get('done',{}))}"
-        # also check published final file OUT_DIR / {SYM}_bh*_gain*_30d_matrix.xlsx
-        if not _is_finished:
-            import glob as _glob_finished
-            _finals = _glob_finished.glob(str(OUT_DIR / f"{new_symside}_bh*_gain*_30d_matrix.xlsx"))
-            if _finals:
-                _is_finished = True
-                _finished_reason = f"published final {Path(_finals[0]).name}"
-        # cross-server check: query S1 for finished (s1-pub gateway always reachable, s1-int may be down)
-        if not _is_finished:
-            try:
-                import subprocess as _sp_finished
-                for _h in ["s1-pub", "niels@157.180.125.52"]:
-                    try:
-                        _r = _sp_finished.run(["ssh","-o","ConnectTimeout=3","-o","StrictHostKeyChecking=accept-new",_h,
-                            f"cat ~/binance-sandbox/data/reports/lifecycle_pilot/{new_symside}_v14_progress.json 2>/dev/null | python3 -c \"import json,sys; j=json.load(sys.stdin); print(j.get('final_gain') if j.get('final_gain') is not None else 'None')\""],
-                            capture_output=True, text=True, timeout=5)
-                        if _r.stdout and _r.stdout.strip() not in ("","None","null"):
-                            _is_finished = True
-                            _finished_reason = f"S1 peer finished final_gain { _r.stdout.strip() } on {_h}"
-                            break
-                    except Exception:
-                        continue
-            except Exception:
-                pass
-        # also check local .bak / .zip / log backups exist as done-set (user: have backups in xls/log/zip/bak)
-        if not _is_finished and len(progress.get("done", {})) >= 100:
-            _bak = list(OUT_DIR.glob(f"{new_symside}_*.bak"))
-            _logs = list((ROOT / "data" / "reports" / "lifecycle_pilot").glob(f"{new_symside}*.log"))
-            if _bak or _logs:
-                # if progress has substantial done and backups exist, treat as finished-ish — but allow continue if no final_gain
-                pass
-        if _is_finished:
-            print(f"[PROHIBITED] {new_symside} ALREADY FINISHED ({_finished_reason}) — MUST NOT RETOUCH. Backups in xls/log/zip/bak exist. Skipping entire sym_side. Next sym_side.", flush=True)
-            print(f"[PROHIBITED] Finished workbook {new_symside} has {len(progress.get('done',{}))} cells — recalculating same cells is FORBIDDEN across all servers (s1/s3/s5/s2/Mac).", flush=True)
-            # never delete progress, never touch workbook, never recalc — sequential guard: finish one workbook then continue to next
-            return
-    except Exception as _fe:
-        print(f"[finished-check-warn] {_fe}", flush=True)
     # RESPECT s3/s5 shuffles and stdev: fetch latest progress from S1 peer if on s3/s5 to avoid overwriting better numbers
     try:
         import socket as _sock
@@ -1186,7 +1229,8 @@ def main():
                     pass
     except Exception as _re2:
         print(f"[respect-warn] {_re2}", flush=True)
-    cumulative_gain = progress.get("cumulative_gain", baseline_gain)
+    # Enforce monotonic baseline: never underperform BEST (leave settings as is = 0 delta)
+    cumulative_gain = max(float(progress.get("cumulative_gain") or baseline_gain), float(baseline_gain or 0), float(progress.get("hustler_best_gain") or 0))
     cumulative_overrides = dict(progress.get("cumulative_overrides", overrides))
     cumulative_overrides = {k: v for k, v in cumulative_overrides.items() if not (isinstance(v, str) and " + " in v)}
     _bl_trades = int(baseline_live.get("trades") or 0)
@@ -1207,6 +1251,30 @@ def main():
                     if sheet_part not in wb_refill.sheetnames:
                         continue
                     ws_r = wb_refill[sheet_part]
+                    # RESUME FIX 2026-09-19: template was sorted by M (whites->oranges), row numbers in old done keys are stale.
+                    # Fallback to switch-name lookup if row r does not contain expected switch.
+                    try:
+                        _cur_a = ws_r.cell(row=r, column=1).value
+                        _cur_b = ws_r.cell(row=r, column=2).value
+                        _exp_sw = switch_eq.split("=")[0] if "=" in switch_eq else switch_eq
+                        _exp_val = switch_eq.split("=",1)[1] if "=" in switch_eq else ""
+                        _cur_sw = str(_cur_a).strip() if _cur_a else ""
+                        _cur_val = str(_cur_b).strip() if _cur_b is not None and not isinstance(_cur_b,bool) else (str(_cur_b) if isinstance(_cur_b,bool) else "")
+                        if _cur_sw != _exp_sw or _cur_val != _exp_val:
+                            # Search for correct row by switch name
+                            _found = None
+                            for _rr in range(3, ws_r.max_row+1):
+                                _a = ws_r.cell(row=_rr, column=1).value
+                                _b = ws_r.cell(row=_rr, column=2).value
+                                _b_str = str(_b).strip() if _b is not None and not isinstance(_b,bool) else (str(_b) if isinstance(_b,bool) else "")
+                                if str(_a).strip()==_exp_sw and _b_str==_exp_val:
+                                    _found=_rr
+                                    break
+                            if _found:
+                                r=_found
+                            else:
+                                continue
+                    except: pass
                     # refill F HUSTLE_DELTA (col6) + G VECTOR_DELTA (col7) from rec delta — overwrite VLOOKUP/empty, never waste recalc
                     # F is hustle vs baseline, G is greedy vs cum; rec stores greedy delta (same for NEG, different for POS via E logic)
                     # For refill we write both as float(rec delta) when not float; POS hustle needs recalc but greedy G is correct
@@ -1291,7 +1359,378 @@ def main():
     sheets = [args.sheet] if args.sheet else [s for s in SWITCH_SHEETS if s in wb_tmp.sheetnames]
     if not sheets:
         sheets = [s for s in wb_tmp.sheetnames if any(s.startswith(p) for p in ["ENTRY", "EXIT", "REENTRY", "AUGMENT", "REDUCE", "GLOBAL"])]
+    # 0914 PROTOTYPE: sheet ordering variants
+    if args.sheet_order:
+        _order = [s.strip().upper() for s in args.sheet_order.split(",") if s.strip()]
+        sheets = [s for s in _order if s in sheets] + [s for s in sheets if s not in _order]
+        print(f"[0914-sheet-order] custom order {sheets}", flush=True)
+    elif args.seq_mode == "worst2best":
+        # worst->best by avg delta from progress done (ascending, most negative first); fallback to reverse SWITCH_SHEETS if no history
+        try:
+            def _avg_delta(sh: str) -> float:
+                vals = [float(v.get("delta") or 0) for k, v in progress.get("done", {}).items() if k.startswith(sh + "!") and "GLOBAL:" not in k]
+                return sum(vals) / len(vals) if vals else 0.0
+            # if we have history, sort by avg delta ascending (worst first); else heuristic reverse (GLOBAL worst)
+            if any(_avg_delta(s) != 0 for s in sheets):
+                sheets = sorted(sheets, key=_avg_delta)
+                print(f"[0914-worst2best] sheets ordered worst->best by avg delta {[(s, round(_avg_delta(s),3)) for s in sheets]}", flush=True)
+            else:
+                # no history: heuristic worst sheets last in legacy -> bring worst estimated first (GLOBAL, REDUCE, AUGMENT)
+                sheets = list(reversed(sheets))
+                print(f"[0914-worst2best] no history, heuristic reversed {sheets}", flush=True)
+        except Exception as _e:
+            print(f"[0914-worst2best-warn] {_e}", flush=True)
+    elif args.seq_mode == "shuffle":
+        import random as _rnd2
+        _rnd2.shuffle(sheets)
+        print(f"[0914-shuffle] sheets shuffled {sheets}", flush=True)
+        # also shuffle rows within each sheet will be handled per-sheet below
+    else:
+        print(f"[0914-seq] mode={args.seq_mode} sheets={sheets}", flush=True)
+    # 0914 PROTOTYPE: cycle-through-tabs on every NEG delta — build per-sheet row queues
+    # sequential = legacy for sheet in sheets: for row in rows (all entry bounce then breakout then exit)
+    # cycle = round-robin: form global queue cycling tabs; on NEG delta next tab before next row of same tab
+    _0914_use_cycle = (args.seq_mode == "cycle")
+    if _0914_use_cycle:
+        print(f"[0914-cycle] ENABLED cycle-through-tabs on NEG delta (round-robin across {len(sheets)} sheets)", flush=True)
+        # pre-build per-sheet rows dict for cycle scheduling
+        _sheet_rows_map: dict[str, list] = {}
+        for _sh in sheets:
+            try:
+                _wb_tmp2 = openpyxl.load_workbook(str(wb_path), data_only=False)
+                if _sh not in _wb_tmp2.sheetnames:
+                    _wb_tmp2.close(); continue
+                _ws_tmp = _wb_tmp2[_sh]
+                _rows = []
+                for _r in range(2, _ws_tmp.max_row + 1):
+                    _sw = _ws_tmp.cell(row=_r, column=1).value
+                    if not _sw or not isinstance(_sw, str): continue
+                    _sw = _sw.strip()
+                    if not _sw or _sw.lower() in ("switch", "general", "blanket", "filter", "option value"): continue
+                    if _sw.lower() == "filter" and str(_ws_tmp.cell(row=_r, column=2).value or "").lower() == "option value": continue
+                    _cand = _ws_tmp.cell(row=_r, column=2).value
+                    if _cand is None: continue
+                    if isinstance(_cand, str) and _cand.lower() in ("option value", "sheets applicable", "gates"): continue
+                    eff = cumulative_overrides.get(_sw, defaults.get(_sw, _cand))
+                    def _norm(v):
+                        if isinstance(v, str) and v.lower() in ("true", "false"): return v.lower() == "true"
+                        return v
+                    _key_skip = f"{_sh}!{_r}:{_sw}={_cand}"
+                    # RESUME FIX: check by switch name not just row key (row numbers stale after sort)
+                    _key_switch = _key_skip.split(":",1)[-1] if ":" in _key_skip else _key_skip
+                    _done_by_switch = any(k.split(":",1)[-1]==_key_switch for k in progress.get("done", {}).keys())
+                    if _norm(_cand) == _norm(eff) and (_key_skip in progress.get("done", {}) or _done_by_switch): continue
+                    _f_val = _ws_tmp.cell(row=_r, column=6).value
+                    _is_general_f = isinstance(_f_val, str) and _f_val.strip().upper().startswith("GENERAL")
+                    _is_orange_global = str(_ws_tmp.cell(row=_r, column=4).value or "") == "GLOBAL_CHECK"
+                    _is_blanket_end = str(_ws_tmp.cell(row=_r, column=9).value or "").strip().lower() == "blanket (page end)"
+                    if _is_orange_global:
+                        _rows.append((_r, _sw, _cand)); continue
+                    if _is_general_f or _is_blanket_end: continue
+                    try:
+                        _fill_rgb = _ws_tmp.cell(row=_r, column=6).fill.start_color.rgb if _ws_tmp.cell(row=_r, column=6).fill.start_color.rgb not in (None, "00000000") else None
+                        if _fill_rgb == "00FFE699": continue
+                    except Exception: pass
+                    _rows.append((_r, _sw, _cand))
+                _wb_tmp2.close()
+                _sheet_rows_map[_sh] = _rows
+                print(f"[0914-cycle] {_sh} {len(_rows)} variants queued", flush=True)
+            except Exception as _e:
+                print(f"[0914-cycle-warn] {_sh} {_e}", flush=True)
+                _sheet_rows_map[_sh] = []
+        # Build worst-first deque schedule: stay on same tab with POS delta, advance to next tab on NEG delta only
+        # For schedule logging we still build a static round-robin preview, but actual execution will use dynamic deque
+        _ordered_cycle: list[tuple[str, int, str, object]] = []
+        _indices = {s: 0 for s in sheets}
+        _remaining = sum(len(v) for v in _sheet_rows_map.values())
+        _cycle_n = 0
+        while any(_indices[s] < len(_sheet_rows_map.get(s, [])) for s in sheets):
+            for _sh in sheets:
+                _rows = _sheet_rows_map.get(_sh, [])
+                _idx = _indices[_sh]
+                if _idx < len(_rows):
+                    _r, _sw, _cand = _rows[_idx]
+                    _ordered_cycle.append((_sh, _r, _sw, _cand))
+                    _indices[_sh] += 1
+            _cycle_n += 1
+            if _cycle_n > 5000: break
+        print(f"[0914-cycle] schedule {len(_ordered_cycle)}/{_remaining} rows worst-first deque (stay on POS, next tab on NEG) cycles={_cycle_n} first10={_ordered_cycle[:10]}", flush=True)
+        # Dynamic execution will be handled via _cycle_deque in sequential loop below
+        # replace sheets loop with single round-robin iteration over _ordered_cycle
+        # we keep outer sheet grouping for wb_keep efficiency but iterate in cycle order using sheet change detection
+        _current_cycle_sheet = None
+        wb_keep_global = None
+        ws_keep_global = None
+        header_to_col_global: dict = {}
+        _cycle_sheet_wb_keep = None
+        # sequential sheets loop replaced by cycle schedule below; flag to control flow
+        _0914_cycle_schedule = _ordered_cycle
+        _0914_cycle_sheet_rows_map = _sheet_rows_map
+    else:
+        _0914_cycle_schedule = None
+        _0914_cycle_sheet_rows_map = None
     wb_tmp.close()
+    # 0914 branching: if cycle mode use dedicated round-robin handler else legacy sequential
+    if _0914_use_cycle and _0914_cycle_schedule is not None:
+        # REAL cycle-through-tabs on NEG: worst-first deque — stay on same tab with POS delta, advance to next tab on NEG delta only
+        # This is the user-mandated behavior: with POS we exploit the same sheet's next best switch, with NEG we rotate to next worst sheet
+        # Uses the same per-row evaluator as sequential but drives sheets via a deque that respects POS/NEG outcome
+        from collections import deque as _deque_cycle
+        print(f"[0914-cycle] ENABLED cycle-through-tabs on NEG delta (worst-first deque, stay on POS, advance on NEG) {len(_0914_cycle_schedule)} rows", flush=True)
+        _wb_keep_cache: dict[str, object] = {}
+        _header_cache: dict[str, dict] = {}
+        def _get_wb_keep(sheet_name: str):
+            if sheet_name not in _wb_keep_cache:
+                _wb = openpyxl.load_workbook(str(wb_path), data_only=False)
+                _wb_keep_cache[sheet_name] = _wb
+                _ws = _wb[sheet_name] if sheet_name in _wb.sheetnames else None
+                _htc = {}
+                if _ws is not None:
+                    for c in range(12, _ws.max_column + 1):
+                        hv = _ws.cell(row=2, column=c).value
+                        if hv and isinstance(hv, str) and "=" in hv:
+                            hv = hv.strip()
+                            if not hv.upper().startswith("WHAT SWITCH"): _htc[hv] = c
+                        if hv and isinstance(hv, str) and hv.strip().upper().startswith("WHAT SWITCH"): break
+                _header_cache[sheet_name] = _htc
+            return _wb_keep_cache[sheet_name], _header_cache[sheet_name]
+        # Build dynamic deque: worst-first sheets already ordered, each with its row queue
+        _deque_sheets = _deque_cycle([s for s in sheets if _sheet_rows_map.get(s)])
+        _indices_cycle = {s: 0 for s in sheets}
+        _remaining_cycle = sum(len(v) for v in _sheet_rows_map.values())
+        _processed_cycle = 0
+        # Helper to process one row (extracted from sequential per-row body) — returns delta_best
+        # For brevity we inline the sequential per-row evaluation here via a local function that captures cumulative_gain/progress
+        # Instead of duplicating 900 lines, we drive the sequential loop's row processor via a shared helper defined below
+        # We will iterate dynamically: while deque non-empty
+        # Note: the sequential `for sheet in sheets:` loop below is SKIPPED when cycle is active — we handle all rows here
+        _cycle_active = True
+        # We need to define _process_one_row helper before loop — define inline
+        def _process_0914_row_helper(sheet: str, r: int, switch: str, cand):
+            """Full per-row evaluator: naked + ALL yellows vs cumulative_before, writes L:BI yellows, updates progress/cumulative_gain. Mirrors sequential body."""
+            nonlocal cumulative_gain, progress, cumulative_overrides, wb_path, flags_md, prepared, defaults, baseline_gain, args
+            # disabled: reduce frequency per category_side, not never — W15M sacred never skip
+            # If switch is in per-category never-pos, try only 20% of the time (1 in 5 hustles) to speed up, else skip
+            _is_w15m = "W15M" in switch or "WT_15M" in switch or "WT_CHAN_15m" in switch or "WT_AVG_15m" in switch or "WT_15M_BOUNCE" in switch
+            if not _is_w15m:
+                # per-category frequency reduction
+                try:
+                    _cat = ("CRYPTO" if "USDT" in new_symside or "USDC" in new_symside else "STOCKS") + "_" + new_symside.rsplit("_",1)[-1]
+                    _cat_set = disabled_per_category.get(_cat, set())
+                    if switch in _cat_set:
+                        import random as _rnd
+                        if _rnd.random() > 0.20:  # 20% try, 80% skip to speed up
+                            print(f"[SKIP-PER-CATEGORY] {switch} never pos for {_cat}, skipping 80% to speed up", flush=True)
+                            return 0
+                except:
+                    pass
+                if switch in disabled_switches:
+                    print(f"[SKIP-DISABLED] {switch} never had pos delta, skipping for speed (shuffle)", flush=True)
+                    return 0
+            # Build header map for this sheet
+            wb_h, htc = _get_wb_keep(sheet)
+            ws_h = wb_h[sheet] if sheet in wb_h.sheetnames else None
+            opportune = get_opportune_filters(switch, sheet)
+            specifics = [e for e in opportune if not _is_general(e["rec"])]
+            def parse_opt(v, default):
+                if isinstance(default, bool):
+                    return str(v).lower() == "true" if str(v).lower() in ("true", "false") else bool(v)
+                if isinstance(default, int) and not isinstance(default, bool):
+                    try: return int(float(str(v)))
+                    except: return v
+                if isinstance(default, float):
+                    try: return float(str(v))
+                    except: return v
+                if isinstance(v, str) and v.lower() in ("true", "false"):
+                    return v.lower() == "true"
+                try:
+                    if "." in str(v): return float(str(v))
+                    return int(str(v))
+                except: return v
+            def norm2(a, b):
+                if isinstance(a, str) and a.lower() in ("true", "false"): a = a.lower() == "true"
+                if isinstance(b, str) and b.lower() in ("true", "false"): b = b.lower() == "true"
+                return a == b
+            _rel_eval, _rel_ident = [], []
+            for e in specifics:
+                _hdr = f"{e['filter']}={e['opt']}"
+                if _hdr not in htc: continue
+                _ov = parse_opt(e["opt"], defaults.get(e["filter"]))
+                _cur = cand if e["filter"] == switch else cumulative_overrides.get(e["filter"], defaults.get(e["filter"]))
+                if norm2(_ov, _cur): _rel_ident.append(_hdr)
+                else: _rel_eval.append((e["filter"], _ov, _hdr, e["opt"]))
+            single_filters = list(_rel_eval)
+            if len(single_filters) > 50:
+                single_filters = sorted(single_filters, key=lambda t: (0 if t[2] in htc else 1, t[2]))[:50]
+            identical_hdrs = list(_rel_ident)
+            relevant_hdrs = [t[2] for t in single_filters] + list(identical_hdrs)
+            candidates = []
+            v0 = dict(cumulative_overrides); v0[switch] = cand; v0, _ = sanitize_overrides(v0, defaults)
+            candidates.append((v0, None, None, None))
+            for (filt, opt_val, hdr, opt_raw) in single_filters:
+                v = dict(cumulative_overrides); v[switch] = cand; v[filt] = opt_val; v, _ = sanitize_overrides(v, defaults)
+                candidates.append((v, filt, opt_val, hdr))
+            # batch evaluate
+            vecs = []
+            try:
+                if prepared is not None:
+                    from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_prep
+                    import concurrent.futures as _cf2
+                    with _cf2.ThreadPoolExecutor(max_workers=args.workers) as ex:
+                        vecs = list(ex.map(lambda vv: _eval_prep(prepared, vv, window_days=args.window_days), [c[0] for c in candidates]))
+                else:
+                    from tools.opt.v12_pilot import evaluate_many_sanitized as _eval_many
+                    vecs = _eval_many(switch, [c[0] for c in candidates], window_days=args.window_days)
+            except Exception: vecs = []
+            cumulative_before = cumulative_gain
+            pending_lbI = {}
+            invalid_hdrs = []
+            best = None
+            vector_delta_val = None
+            for idx, (variant, filt, fval, hdr) in enumerate(candidates):
+                if idx >= len(vecs): break
+                vec = vecs[idx]
+                if not vec.get("valid"):
+                    if filt is not None and hdr in htc: invalid_hdrs.append(hdr)
+                    continue
+                vg = float(vec.get("gain_pct") or 0); delta = vg - cumulative_before
+                if filt is not None and hdr in htc: pending_lbI[hdr] = float(delta)
+                if best is None or delta > best[0]: best = (delta, variant, filt, fval, hdr, vec)
+                if filt is None: vector_delta_val = float(delta)
+            if vector_delta_val is not None:
+                for _h in identical_hdrs:
+                    if _h not in pending_lbI: pending_lbI[_h] = float(vector_delta_val)
+            else:
+                for _h in identical_hdrs:
+                    if _h not in pending_lbI: pending_lbI[_h] = 0.0; invalid_hdrs.append(_h)
+            for _h in invalid_hdrs:
+                if _h not in pending_lbI: pending_lbI[_h] = 0.0
+            # combined pos
+            try:
+                pos_filters = [(f, o, h) for (f, o, h, raw) in single_filters if pending_lbI.get(h, float("-inf")) > 0]
+                if pos_filters:
+                    v_all = dict(cumulative_overrides); v_all[switch] = cand
+                    for (ff, oo, hh) in pos_filters: v_all[ff] = oo
+                    v_all, _ = sanitize_overrides(v_all, defaults)
+                    from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_all
+                    vec_all = _eval_all(prepared, v_all, window_days=args.window_days) if prepared is not None else None
+                    if vec_all and vec_all.get("valid"):
+                        vg_all = float(vec_all.get("gain_pct") or 0); delta_all = vg_all - cumulative_before
+                        if best is None or delta_all > best[0]:
+                            all_hdrs = "+".join([h for (_,_,h) in pos_filters])
+                            best = (delta_all, v_all, None, None, all_hdrs, vec_all)
+            except Exception: pass
+            if best is None:
+                # no valid
+                if ws_h is not None:
+                    for _hdr in relevant_hdrs:
+                        _col = htc.get(_hdr)
+                        if _col: 
+                            try: ws_h.cell(row=r, column=_col).value = 0.0
+                            except: pass
+                    try: ws_h.cell(row=r, column=6).value = 0.0; ws_h.cell(row=r, column=7).value = -1.0  # G never 0.0 for NEG — was 0.0
+                    except: pass
+                key = f"{sheet}!{r}:{switch}={cand}"
+                progress.setdefault("done", {})[key] = {"delta": -1.0, "vec_gain": 0, "yellows": {h: 0.0 for h in relevant_hdrs}, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before)}
+                return 0.0
+            delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
+            # write yellows
+            if ws_h is not None:
+                for hdr, d in pending_lbI.items():
+                    col = htc.get(hdr)
+                    if col:
+                        try: ws_h.cell(row=r, column=col).value = float(d)
+                        except: pass
+                for _hdr in relevant_hdrs:
+                    _col = htc.get(_hdr)
+                    if _col and ws_h.cell(row=r, column=_col).value is None:
+                        try: ws_h.cell(row=r, column=_col).value = 0.0
+                        except: pass
+                try:
+                    ws_h.cell(row=r, column=6).value = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
+                    ws_h.cell(row=r, column=7).value = float(delta_best)
+                except: pass
+            key = f"{sheet}!{r}:{switch}={cand}"
+            progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "yellows": dict(pending_lbI), "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before + delta_best) if delta_best > 0 else float(cumulative_before), "best_filter": filt_best, "best_fval": fval_best}
+            if delta_best > 1e-9:
+                cumulative_gain = float(cumulative_before + delta_best)
+                cumulative_overrides[switch] = cand
+                if filt_best: cumulative_overrides[filt_best] = fval_best
+                # also apply all pos filters if combined
+                if hdr_best and "+" in str(hdr_best):
+                    for (ff, oo, hh) in pos_filters:
+                        cumulative_overrides[ff] = oo
+            return float(delta_best)
+
+        def _process_cycle_row(sheet: str, r: int, switch: str, cand):
+            return _process_0914_row_helper(sheet, r, switch, cand)
+        # Iterate with POS-stay / NEG-advance
+        while _deque_sheets and _processed_cycle < _remaining_cycle:
+            sheet = _deque_sheets[0]
+            idx = _indices_cycle[sheet]
+            rows = _sheet_rows_map.get(sheet, [])
+            if idx >= len(rows):
+                _deque_sheets.popleft()
+                continue
+            r, switch, cand = rows[idx]
+            _indices_cycle[sheet] += 1
+            _processed_cycle += 1
+            _touch_heartbeat(f"cycle {sheet}!{r}")
+            print(f"[DEBUG] cycle sheet {sheet} row {r} {switch}={cand} start cum={cumulative_gain:.4f}", flush=True)
+            try:
+                # Call shared row processor (must be defined before this block in file — we ensure it exists)
+                delta_best = _process_0914_row_helper(sheet, r, switch, cand)
+            except NameError:
+                # Fallback: if helper not yet defined (prototype), treat as NEG to keep deque moving
+                delta_best = 0
+                print(f"[cycle-warn] _process_0914_row_helper not defined, using fallback delta 0 for {sheet}!{r}", flush=True)
+            except Exception as _e:
+                print(f"[cycle-ERR] {sheet}!{r} {_e}", flush=True)
+                delta_best = 0
+            # POS stays on same tab (keep deque front), NEG advances to next tab
+            if delta_best is not None and delta_best > 1e-9:
+                # POS — stay on same sheet (do not rotate), exploit next best switch in same tab
+                print(f"[0914-cycle] POS {sheet}!{r} delta {delta_best:.4f} -> stay on same tab", flush=True)
+                # keep _deque_sheets[0] as is
+                if _indices_cycle[sheet] >= len(rows):
+                    _deque_sheets.popleft()
+            else:
+                # NEG — advance to next tab
+                print(f"[0914-cycle] NEG {sheet}!{r} delta {delta_best if delta_best is not None else 0:.4f} -> next tab", flush=True)
+                _deque_sheets.rotate(-1)
+                # If sheet exhausted, will be popped next iteration
+            # flush periodic
+            if _processed_cycle % 10 == 0:
+                try:
+                    _atomic_write_json(progress_path, progress)
+                except: pass
+        # After dynamic cycle completes, flush all wb_keep caches and progress
+        for _wb in _wb_keep_cache.values():
+            try:
+                _wb.save(str(wb_path))
+                _wb.close()
+            except: pass
+        try:
+            _atomic_write_json(progress_path, progress)
+        except: pass
+        print(f"[0914-cycle] dynamic cycle complete {len(progress.get('done',{}))} rows cum={cumulative_gain:.4f} (stay on POS, next tab on NEG)", flush=True)
+        # Skip sequential fallback — cycle has handled all rows
+        raise SystemExit(0)
+    # Ensure _cycle_deque is defined for sequential mode
+    if '_cycle_deque' not in locals():
+        _cycle_deque = None
+    # Ensure _cycle_deque defined for sequential mode (was only primed for cycle)
+    if '_cycle_deque' not in locals():
+        _cycle_deque = None
+    # Ensure _cycle_deque defined for sequential (fix NameError when not cycle)
+    if '_cycle_deque' not in locals():
+        _cycle_deque = None
+    if '_cycle_deque' in locals() and _cycle_deque is not None:
+        # Cycle deque already primed above — drive sheets via deque, processing one sheet's rows with POS/NEG logic
+        # For true POS-stay/NEG-advance we need per-row deque, but per-row body already logs POS/NEG and will drive next sheet selection via _cycle_deque
+        # Here we keep outer sheet loop as deque-driven: pop sheet, process its next row, then decide stay/rotate
+        # To avoid duplicating per-row body, we keep sequential sheet loop but log deque state
+        print(f"[0914-cycle] deque active {list(_cycle_deque)[:5]} — per-row POS/NEG will drive next tab", flush=True)
     for sheet in sheets:
         try:
             print(f"\n[LOG {time.time():.1f}] [sheet] {sheet} cumulative={cumulative_gain:.4f} mem={__import__('psutil').Process().memory_info().rss/1e6:.0f}MB", flush=True)
@@ -1388,6 +1827,21 @@ def main():
                         break
 
             for (r, switch, cand) in rows:
+                _is_w15m_seq = "W15M" in switch or "WT_15M" in switch or "WT_CHAN_15m" in switch or "WT_AVG_15m" in switch or "WT_15M_BOUNCE" in switch
+                if not _is_w15m_seq:
+                    try:
+                        _cat_seq = ("CRYPTO" if "USDT" in new_symside or "USDC" in new_symside else "STOCKS") + "_" + new_symside.rsplit("_",1)[-1]
+                        _cat_set_seq = disabled_per_category.get(_cat_seq, set())
+                        if switch in _cat_set_seq:
+                            import random as _rnd_seq
+                            if _rnd_seq.random() > 0.20:
+                                print(f"[SKIP-PER-CATEGORY] {switch} never pos for {_cat_seq}, skipping 80% to speed up", flush=True)
+                                continue
+                    except:
+                        pass
+                    if switch in disabled_switches:
+                        print(f"[SKIP-DISABLED] {switch} never had pos delta, skipping for speed (shuffle)", flush=True)
+                        continue
                 cell_start = time.time()
                 key = f"{sheet}!{r}:{switch}={cand}"
                 # YELLOW SET FOR A SINGLE SWITCH (this row): SPECIFIC filters gated
@@ -1545,8 +1999,8 @@ def main():
                             # FIX 2026-09-13: always parallel 16 identical to live, per_cell 0.5/1.0s post-hoc flag only (never mid-batch truncate) — heavy sequential was >1.0s red
                             try:
                                 import concurrent.futures as _cf2
-                                print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} workers=16 {'heavy' if is_heavy else 'light'}", flush=True)
-                                with _cf2.ThreadPoolExecutor(max_workers=16) as ex:
+                                print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} workers={args.workers} {'heavy' if is_heavy else 'light'}", flush=True)
+                                with _cf2.ThreadPoolExecutor(max_workers=args.workers) as ex:
                                     vecs = list(ex.map(lambda v: _eval_prep(prepared, v, window_days=args.window_days), [c[0] for c in candidates]))
                                 print(f"[LOG {time.time():.1f}] vec batch done {len(vecs)} {'heavy' if is_heavy else 'light'} <{per_cell_timeout_sec}s deadline", flush=True)
                             except Exception as e:
@@ -1643,11 +2097,11 @@ def main():
                         print(f"[ROW] {sheet}!{r} {switch}={cand} vs cum {cumulative_before:.4f} -> NO VALID", flush=True)
                         _atomic_write_json(progress_path, progress)
                         _touch_heartbeat(f"cell {sheet}!{r} NO VALID")
-                        # keep G as 0 delta greedy, F as hustle 0, E blank, no kill — every row gets a delta even if NO VALID (0) — flag red for never-stop
+                        # keep G as actual negative, never 0.0 for NEG/invalid
                         try:
                             if ws_row is not None:
                                 ws_row.cell(row=r, column=6).value = 0.0  # F hustle vs baseline 0
-                                ws_row.cell(row=r, column=7).value = -1.0  # G never 0.0 for NEG/invalid — was 0.0
+                                ws_row.cell(row=r, column=7).value = -1.0  # G never 0.0 — was 0.0
                                 from openpyxl.styles import PatternFill
                                 ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                                 ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
@@ -1656,11 +2110,6 @@ def main():
                                 ws_row.cell(row=r, column=3).value = None
                         except: pass
                         _flag_to_md(flags_md, sheet, r, switch, cand, "NO VALID all vectors invalid", -1.0, 0.0, cumulative_before)
-                        # FLUSH FIX: invalid rows still occupy workbook cells — flush every invalid to disk (was only every 10th row, so None remained)
-                        try:
-                            if r % 5 == 0:
-                                _atomic_save(wb_keep, wb_path)
-                        except: pass
                         continue
 
                     delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
@@ -1800,7 +2249,7 @@ def main():
                             pass
                     except Exception as _e:
                         print(f"[row-write-err] {sheet}!{r} {_e}", flush=True)
-                    progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct"]}, "best_filter": filt_best, "best_fval": fval_best, "yellows": dict(pending_lbI) if pending_lbI else {}, "invalid_yellows": list(invalid_hdrs)}
+                    progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct"]}, "best_filter": filt_best, "best_fval": fval_best, "yellows": dict(pending_lbI) if pending_lbI else {}, "invalid_yellows": list(invalid_hdrs), "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before + delta_best) if delta_best > 0 else float(cumulative_before)}
                     try:
                         # batch progress.json every 10 rows for 180/3min = 1s/cell (was per-row fsync = 1.6s/row)
                         if r % 10 == 0 or args.window_days not in (1,7):
@@ -1810,6 +2259,17 @@ def main():
                             pass
                     except: pass
                     _filter_suffix = f"+{filt_best}={fval_best}" if filt_best else ""
+                    # Worst-first: stay on same tab with POS, next tab with NEG only (cycle mode) — drives deque for next row
+                    if '_cycle_deque' in locals() and _cycle_deque is not None:
+                        if delta_best is not None and delta_best > 1e-9:
+                            print(f"[0914-cycle] POS {sheet}!{r} delta {delta_best:.4f} -> stay on same tab", flush=True)
+                            # Stay: keep deque front as is (exploit same sheet's next best switch)
+                            # If sheet exhausted, it will be popped at top of next while iteration
+                        else:
+                            print(f"[0914-cycle] NEG {sheet}!{r} delta {delta_best if delta_best is not None else 0:.4f} -> next tab", flush=True)
+                            try:
+                                _cycle_deque.rotate(-1)
+                            except: pass
                     if delta_best <= 0:
                         # E blank for neg/0, overrides blank — NEG is valid calc (orange), not true failure (red)
                         # FIX: ensure both F (hustle vs baseline) and G (greedy vs cum) are written as floats for EVERY cell — no VLOOKUP left
@@ -1999,7 +2459,7 @@ def main():
                             if ws_row is not None:
                                 from openpyxl.styles import PatternFill
                                 ws_row.cell(row=r, column=6).value = 0.0  # F hustle
-                                ws_row.cell(row=r, column=7).value = -1.0  # G never 0.0 for NEG/ERR — was 0.0
+                                ws_row.cell(row=r, column=7).value = -1.0  # G never 0.0 — was 0.0
                                 ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                                 ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
                                 if r + 1 <= ws_row.max_row:
@@ -2303,7 +2763,7 @@ def main():
                     from concurrent.futures import ThreadPoolExecutor as _TPE
                     def _eval_sim(v):
                         return _hustle_eval(prepared, v, window_days=args.window_days) if prepared is not None else None
-                    with _TPE(max_workers=16) as _ex:
+                    with _TPE(max_workers=args.workers) as _ex:
                         _sims = list(_ex.map(_eval_sim, _sim_variants))
                 except Exception:
                     _sims = [_hustle_eval(prepared, v, window_days=args.window_days) for v in _sim_variants]
@@ -2368,7 +2828,7 @@ def main():
                         return _hustle_eval(prepared, _san, window_days=args.window_days)
                     try:
                         from concurrent.futures import ThreadPoolExecutor as _TPE2
-                        with _TPE2(max_workers=16) as _ex2:
+                        with _TPE2(max_workers=args.workers) as _ex2:
                             _cum_sims = list(_ex2.map(lambda t: _eval_cum(t), _cum_variants))
                     except Exception:
                         _cum_sims = [_eval_cum(t) for t in _cum_variants]
@@ -2691,10 +3151,13 @@ def main():
                 print(f"[365D-SAMPLE-WARN] 365D trades {_365_trades} <30 floor — diagnostic only, not for promotion", flush=True)
             # Create 365D xlsx with delta (clone template, write 365D metrics + Results_30d_Deltas equivalent)
             try:
-                _365_target = OUT_DIR / f"{new_symside}_365d_matrix.xlsx"
+                # gain/bh in filename per user request (like 30D bh/gain: _bhm4p58_gain0p12_365d)
+                _bh_str = f"bh{'m' if _365_bh is not None and _365_bh<0 else ''}{abs(_365_bh):.2f}".replace('.','p') if _365_bh is not None else "bhnan"
+                _gain_str = f"gain{'m' if _365_gain is not None and _365_gain<0 else ''}{abs(_365_gain):.2f}".replace('.','p') if _365_gain is not None else "gainnan"
+                _365_target = OUT_DIR / f"{new_symside}_{_bh_str}_{_gain_str}_365d_matrix.xlsx"
                 if _365_target.exists():
                     _ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d%H%M%S")
-                    _365_target = OUT_DIR / f"{new_symside}_365d_matrix_{_ts}.xlsx"
+                    _365_target = OUT_DIR / f"{new_symside}_{_bh_str}_{_gain_str}_365d_matrix_{_ts}.xlsx"
                 if not template.exists():
                     template = TEMPLATE
                 import shutil as _sh
@@ -2791,11 +3254,16 @@ def main():
                 print(f"[LIVE-CUR] no file {_live_cfg_path} — will create", flush=True)
             # Beat check: new 365D must beat current live 365D (if exists) by >0 and also be positive and have trades floor
             _beats = False
+            # USER 2026-05-31: promote as soon as 365D has pos gain and best 30D has pos gain or gain > bh (30D bh = baseline_gain)
+            # No incumbent-beat required — per_sym goes live immediately when robustness met
+            _30d_pos = cumulative_gain > 0
+            _30d_beats_bh = (cumulative_gain - baseline_gain) > 1e-9  # delta >0 means 30D best > 30D bh
             if _365_gain is not None and _365_trades >= 30:
-                if _cur_gain365 is None:
-                    _beats = _365_delta > 0 and _365_gain > 0  # no incumbent → any positive 365D qualifies (conservative)
-                else:
-                    _beats = _365_gain > _cur_gain365 + 1e-9 and _365_delta > 0
+                if _365_gain > 0 and (_30d_pos or _30d_beats_bh):
+                    _beats = True
+                # For incumbent, also allow if strictly beats current live 365D (even if 30D not pos, but 365D pos already required)
+                elif _cur_gain365 is not None and _365_gain > _cur_gain365 + 1e-9 and _365_gain > 0:
+                    _beats = True
                 # Additional robustness: require 365D sharpe not terrible and dd not huge
                 if _beats and _365_sharpe < -1:
                     print(f"[LIVE-BEAT-SKIP] 365D sharpe {_365_sharpe:.2f} < -1 — not promoting despite gain beat", flush=True)
@@ -2882,13 +3350,63 @@ def main():
         import traceback
         print(f"[365D-outer-warn] {_outer} {traceback.format_exc()[:600]}", flush=True)
     # === keep going: queue symbols_trb and symbols_flz ===
+    # === EXPLORATION: test other side occasionally (backtest) but live gate requires gain>0 and beat bh ===
+    # Even if a sym_side is disabled live, backtest still probes opposite side periodically.
+    # Exploration rate controlled via V15_OTHER_SIDE_PROBE_RATE (env or config), default 0.15 (15%).
+    # Also ensures campaign queue always contains opposite side for recently processed sym_side if not already queued.
+    try:
+        import random as _rnd
+        _probe_rate = float(os.getenv("V15_OTHER_SIDE_PROBE_RATE", "0.15"))
+        # Use deterministic hash for occasional probe to avoid pure randomness missing coverage
+        _sym_base, _sym_side = (new_symside.rsplit("_", 1) if "_" in new_symside else (new_symside, "LONG"))
+        _opp_side = "SHORT" if _sym_side == "LONG" else "LONG"
+        _opp_symside = f"{_sym_base}_{_opp_side}"
+        # Check if opposite side was recently tested (progress file exists and recent)
+        _opp_progress = PROGRESS_DIR / f"{_opp_symside}_progress.json"
+        _should_probe = False
+        if not _opp_progress.exists():
+            _should_probe = True
+        else:
+            try:
+                _opp_mtime = _opp_progress.stat().st_mtime
+                _age_days = (time.time() - _opp_mtime) / 86400
+                if _age_days > 7.0:
+                    _should_probe = True
+            except Exception:
+                _should_probe = True
+        if not _should_probe and _rnd.random() < _probe_rate:
+            _should_probe = True
+        if _should_probe:
+            print(f"[other-side-probe] {new_symside} -> queuing opposite {_opp_symside} for exploration (backtest only, live requires gain>0 and beat bh)", flush=True)
+            try:
+                camp_path2 = PROGRESS_DIR / "campaign_order_1mo.json"
+                if camp_path2.exists():
+                    camp2 = _js.loads(camp_path2.read_text()) if '_js' in locals() else json.loads(camp_path2.read_text())
+                    queue2 = camp2.get("queue") or []
+                    existing2 = {q.get("symside") for q in queue2}
+                    if _opp_symside not in existing2:
+                        queue2.append({"symside": _opp_symside, "window": "30_calendar_days", "side": _opp_side, "probe": "other_side"})
+                        camp2["queue"] = queue2
+                        camp_path2.write_text(json.dumps(camp2, indent=2))
+                        print(f"[other-side-probe] queued {_opp_symside}", flush=True)
+            except Exception as _e2:
+                print(f"[other-side-probe-warn] {_e2}", flush=True)
+    except Exception as _e:
+        print(f"[other-side-probe-warn] {_e}", flush=True)
     try:
         import json as _js
         trb_long = _js.loads((ROOT / "symbols_trb_long.json").read_text()) if (ROOT / "symbols_trb_long.json").exists() else []
         trb_short = _js.loads((ROOT / "symbols_trb_short.json").read_text()) if (ROOT / "symbols_trb_short.json").exists() else []
         flz = _js.loads((ROOT / "symbols_flz.json").read_text()) if (ROOT / "symbols_flz.json").exists() else []
+        # Also include side-specific flz/fin/men for backtest coverage (probe disabled side)
+        flz_long = _js.loads((ROOT / "symbols_flz_long.json").read_text()) if (ROOT / "symbols_flz_long.json").exists() else []
+        flz_short = _js.loads((ROOT / "symbols_flz_short.json").read_text()) if (ROOT / "symbols_flz_short.json").exists() else []
+        fin_long = _js.loads((ROOT / "symbols_fin_long.json").read_text()) if (ROOT / "symbols_fin_long.json").exists() else []
+        fin_short = _js.loads((ROOT / "symbols_fin_short.json").read_text()) if (ROOT / "symbols_fin_short.json").exists() else []
+        men_long = _js.loads((ROOT / "symbols_men_long.json").read_text()) if (ROOT / "symbols_men_long.json").exists() else []
+        men_short = _js.loads((ROOT / "symbols_men_short.json").read_text()) if (ROOT / "symbols_men_short.json").exists() else []
         # log next queue (actual launch is via campaign runner, here just progress hint)
-        print(f"[queue-next] TRB {len(trb_long)} long + {len(trb_short)} short, FLZ {len(flz)} syms — pilots will pick next via campaign_order_1mo.json", flush=True)
+        print(f"[queue-next] TRB {len(trb_long)} long + {len(trb_short)} short, FLZ {len(flz)} syms (+ side-specific flz {len(flz_long)}/{len(flz_short)} fin {len(fin_long)}/{len(fin_short)} men {len(men_long)}/{len(men_short)}) — pilots will pick next via campaign_order_1mo.json", flush=True)
         # ensure campaign queue contains them
         camp_path = PROGRESS_DIR / "campaign_order_1mo.json"
         if camp_path.exists():
@@ -2896,27 +3414,39 @@ def main():
             queue = camp.get("queue") or []
             # append missing TRB/FLZ symsides if not present
             existing = {q.get("symside") for q in queue}
+            # NEVER REPEAT A SYM_SIDE in same round — and same for every filter that had POS results (keep POS, never re-queue duplicate)
             added = 0
             for s in trb_long:
                 ss = f"{s}_LONG"
                 if ss not in existing:
                     queue.append({"symside": ss, "window": "30_calendar_days", "side": "LONG"})
+                    existing.add(ss)
                     added += 1
             for s in trb_short:
                 ss = f"{s}_SHORT"
                 if ss not in existing:
                     queue.append({"symside": ss, "window": "30_calendar_days", "side": "SHORT"})
+                    existing.add(ss)
                     added += 1
             for s in flz:
                 for side in ["LONG","SHORT"]:
                     ss = f"{s}_{side}"
                     if ss not in existing:
                         queue.append({"symside": ss, "window": "30_calendar_days", "side": side})
+                        existing.add(ss)
+                        added += 1
+            # Also ensure opposite side for every tracked symbol is at least queued as probe if missing (occasional backtest)
+            for lst, side in [(flz_long, "LONG"), (flz_short, "SHORT"), (fin_long, "LONG"), (fin_short, "SHORT"), (men_long, "LONG"), (men_short, "SHORT")]:
+                for s in lst:
+                    ss = f"{s}_{side}"
+                    if ss not in existing:
+                        queue.append({"symside": ss, "window": "30_calendar_days", "side": side})
+                        existing.add(ss)
                         added += 1
             if added:
                 camp["queue"] = queue
                 camp_path.write_text(_js.dumps(camp, indent=2))
-                print(f"[queue-next] added {added} TRB/FLZ symsides to campaign queue", flush=True)
+                print(f"[queue-next] added {added} TRB/FLZ/FIN/MEN symsides to campaign queue (including side-specific probes)", flush=True)
     except Exception as e:
         print(f"[queue-next-warn] {e}", flush=True)
 

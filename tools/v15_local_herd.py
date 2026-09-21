@@ -59,6 +59,11 @@ import pathlib
 import re
 from collections import deque
 import hashlib
+def _sym_match(filename: str, sym_side: str) -> bool:
+    # exact sym_side match: filename starts with SYM_SIDE followed by '_' or '.' or exact
+    return filename == sym_side or filename.startswith(sym_side + "_") or filename.startswith(sym_side + ".")
+
+
 def stable_hash(s: str) -> int:
     return int(hashlib.md5(s.encode()).hexdigest(), 16)
 
@@ -274,7 +279,7 @@ def local_done_set(order: list[str]) -> set[str]:
                 # find matching sym in order that is contained in name
                 matched = None
                 for s in order:
-                    if s in name:
+                    if _sym_match(name, s):
                         matched = s
                         break
                 if matched:
@@ -286,7 +291,7 @@ def local_done_set(order: list[str]) -> set[str]:
                         continue  # stale, not done — needs re-validation on latest TEMPLATE_*
             name = p.name
             for s in order:
-                if s in name:
+                if _sym_match(name, s):
                     done.add(s)
         except:
             continue
@@ -327,8 +332,12 @@ def global_done_set(order: list[str]) -> set[str] | None:
                         name = parts[1]
                         if "_2026" in name:
                             continue  # timestamped interim not FINAL
+                        # use exact prefix match, not substring (MU_LONG must not match ALMU_LONG)
+                        base = name.rsplit("/", 1)[-1] if "/" in name else name
+                        # name from stat is full path basename already, but ensure
+                        base = base.strip()
                         for s in order:
-                            if s in name:
+                            if _sym_match(base, s):
                                 is_stock = "USDC" not in s and "USDT" not in s
                                 suffix = "LONG" if s.endswith("_LONG") else "SHORT"
                                 cat = f"{'STOCKS' if is_stock else 'CRYPTO'}_{suffix}"
@@ -340,14 +349,18 @@ def global_done_set(order: list[str]) -> set[str] | None:
                         continue
                 return done
             else:
-                out = subprocess.check_output(["ssh", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=no", f"niels@{host}", "ls ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/*.xlsx 2>/dev/null | xargs -I{} basename {}"], timeout=10, text=True)
+                # Fix 2026-09-21: also require >500k and ignore _pilot interim (same as local_done) — prevents HAO_SHORT_pilot_*.xlsx counting as FINAL and clearing s5 todo to 0
+                out = subprocess.check_output(["ssh", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=no", f"niels@{host}", "stat -c '%s %n' ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/*.xlsx 2>/dev/null | awk '$1>500000{print $2}' | xargs -I{} basename {} 2>/dev/null"], timeout=10, text=True)
                 names = out.strip().splitlines()
                 done = set()
                 for name in names:
-                    if "_2026" in name:
-                        continue  # timestamped interim not FINAL
+                    if "_2026" in name or "_pilot" in name:
+                        continue  # timestamped interim or pilot interim not FINAL
+                    if ".bak" in name or ".tmp" in name:
+                        continue
+                    base = name.rsplit("/", 1)[-1].strip()
                     for s in order:
-                        if s in name:
+                        if _sym_match(base, s):
                             done.add(s)
                 return done
         except:
@@ -369,8 +382,9 @@ def strict_global_done_set(order: list[str]) -> set[str] | None:
                     continue
                 if "_2026" in name:
                     continue  # interim not final
+                base = name.strip()
                 for s in order:
-                    if s in name:
+                    if _sym_match(base, s):
                         done.add(s)
             return done
         except:
@@ -633,8 +647,24 @@ def main():
                     queue_boss[sym] = host
     except:
         pass
-    # map hostname to queue suffix
-    me_suffix = "1" if "niels" in me and "htz" not in me else ("2" if "htz-v15-s2" in me else ("5" if "htz-v15-s5" in me else ("6" if "htz-v15-s6" in me else "1")))
+    # map hostname to queue suffix — support both short (s5/s6) and long (htz-v15-s5) names
+    me_l = me.lower()
+    if "niels" in me_l and "htz" not in me_l:
+        me_suffix = "1"
+    elif "htz-v15-s2" in me_l or me_l.strip() == "s2" or me_l.startswith("s2-") or "s2." in me_l:
+        me_suffix = "2"
+    elif "htz-v15-s5" in me_l or me_l.strip() == "s5" or me_l.startswith("s5-") or me_l == "s5" or me_l.startswith("s5."):
+        me_suffix = "5"
+    elif "htz-v15-s6" in me_l or me_l.strip() == "s6" or me_l.startswith("s6-") or me_l == "s6" or me_l.startswith("s6."):
+        me_suffix = "6"
+    elif "s5" in me_l:
+        me_suffix = "5"
+    elif "s6" in me_l:
+        me_suffix = "6"
+    elif "s2" in me_l:
+        me_suffix = "2"
+    else:
+        me_suffix = "1"
     ram_bases = set()
     try:
         for p in list(pathlib.Path("/home/niels/binance-sandbox/data/reports/lifecycle_pilot").glob("*_pilot_progress.json")) + list(pathlib.Path("/home/niels/binance-sandbox/data/reports/lifecycle_pilot").glob("*_v14_progress.json")):
@@ -1046,9 +1076,12 @@ def main():
                                     todo.append(s)
                 else:
                     # refill todo from global missing that belongs to us (hash shard, no double)
+                    # FIX 2026-09-21: per-server queues V15_SERVER_QUEUE_S*.txt are already disjoint — no hash filtering
+                    # After PHASE2 switches order to 354, hash sharding resumes
+                    is_server_queue = "V15_SERVER_QUEUE" in str(order_path) and len(order) in (13, 16)
                     for s in order:
                         if s not in combined_done and s not in todo:
-                            if (stable_hash(s) % 4) != host_idx:
+                            if not is_server_queue and (stable_hash(s) % 4) != host_idx:
                                 continue
                             todo.append(s)
                     if todo:
@@ -1118,10 +1151,10 @@ def main():
                     continue
                 if cand in local_done:
                     continue
-                # DEATH PENALTY: if ANY xlsx for this symside exists locally OR globally (even <500k, even bh_gain), NEVER relaunch
+                # DEATH PENALTY: if FINAL xlsx exists locally (prefix match, >500k, no _2026/_pilot) OR globally, NEVER relaunch
                 try:
-                    import glob as _glob
-                    if list(pathlib.Path("/home/niels/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL").glob(f"{cand}*.xlsx")):
+                    has_final_local = any(p.stat().st_size >= 500_000 and "_2026" not in p.name and "_pilot" not in p.name for p in pathlib.Path("/home/niels/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL").glob(f"{cand}*.xlsx"))
+                    if has_final_local:
                         continue
                     if cand in (global_done_set(order) or set()):
                         continue

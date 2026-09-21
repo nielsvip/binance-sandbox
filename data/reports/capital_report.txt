@@ -1,19 +1,20 @@
-CAPITAL ALLOCATION REPORT — 2026-09-21 12:26 UTC
+CAPITAL ALLOCATION REPORT — 2026-09-21 15:07 UTC
 ================================================================================
-Total capital deployed: $24.51 across 1 positions
+Total capital deployed: $11.98 across 1 positions
 
 TIER DISTRIBUTION:
   Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $     24.51 (100.0%) — 1 positions
-  Tier C: $      0.00 (  0.0%) — 0 positions
+  Tier B: $      0.00 (  0.0%) — 0 positions
+  Tier C: $     11.98 (100.0%) — 1 positions
 
   ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
+  ** C-tier OVERWEIGHT: 100% vs target <20% — reduce poor performers **
 
 WINNERS — augment these (A-tier, in gain) [0]:
   (none)
 
-LOSERS — reduce allocation (C-tier or losing) [0]:
-  (none)
+LOSERS — reduce allocation (C-tier or losing) [1]:
+                    fin:COTIUSDT_LONG  $   11.98  gain=-0.10%  tier=C  mult=0.56
 
 MEDIOCRE — capital sitting idle [0]:
   (none)

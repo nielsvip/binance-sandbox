@@ -97,11 +97,11 @@ class Config:
     MAX_POSITION_SIZE_FIN: float = 200.0  # 2026-03-30: Same. Was $4000.
     HIGH_GAIN_AUGMENTATION_MIN_SIZE = 50  # BACKTEST_CHANGE_25: was 200. Lower threshold lets more winners get augmented
 
-    MAX_ORDER_VALUE: float = 200.0  # 2026-03-30: 1/50 rule. Was $280.
-    MAX_ORDER_VALUE_MEN: float = 200.0  # STDEV_SLOPE fix 2026-09-14: was 60 (4.2x START) capped ladder; now >=10x START (14*10=140) so 10x D ladder can express.
-    MAX_ORDER_VALUE_FIN: float = 200.0  # STDEV_SLOPE fix 2026-09-14: was 60 →200 for 10x ladder parity.
+    MAX_ORDER_VALUE: float = 300.0  # 2026-03-30: 1/50 rule. Was $280.
+    MAX_ORDER_VALUE_MEN: float = 300.0  # STDEV_SLOPE fix 2026-09-14: was 60 (4.2x START) capped ladder; now >=10x START (14*10=140) so 10x D ladder can express.
+    MAX_ORDER_VALUE_FIN: float = 300.0  # STDEV_SLOPE fix 2026-09-14: was 60 →200 for 10x ladder parity.
     EMERGENCY_OVERSIZE_GUARD_ENABLED: bool = False  # 2026-09-03 KILLED per user: MAKER_PROFIT_EXIT_FORCE_REDUCE_OVERSIZE_81 firing on FLZ (maker wrapper at 81>$20). Finandy TP ladder bug guard causes commission churn, default OFF.
-    START_POSITION_SIZE: float = 14.0  # Start size per entry. Capped by MAX_POSITION_SIZE.
+    START_POSITION_SIZE: float = 34.0  # Start size per entry. Capped by MAX_POSITION_SIZE.
 
     # PnL Deterioration Settings
     PNL_DECAY_START_HOURS: int = 1  # HOURS
@@ -3413,7 +3413,7 @@ class Config:
             # "MIN_GAIN": 1.2,#emergency mode
             # "MAX_POSITION_SIZE_MEN": 800.0,#emergency mode
             # "MAX_POSITION_SIZE_FIN": 900.0#emergency mode
-            "START_POSITION_SIZE": 6.0,  # emergency mode
+            "START_POSITION_SIZE": 16.0,  # emergency mode
             "MAX_POSITION_SIZE": 155.0,
             "MAX_ORDER_VALUE": 80.0,
             "MAX_ORDER_VALUE_MEN": 440.0,
@@ -3437,17 +3437,17 @@ class Config:
             # "MIN_GAIN": 0.8,#emergency mode
             # "MAX_POSITION_SIZE_MEN": 160.0,#emergency mode
             # "MAX_POSITION_SIZE_FIN": 300.0#emergency mode
-            "START_POSITION_SIZE": 18.0,
-            "MAX_POSITION_SIZE": 180.0,  # STDEV_SLOPE fix 2026-09-14: was 20 (1.11x START) capped 10x D ladder; now 18*10=180
+            "START_POSITION_SIZE": 28.0,
+            "MAX_POSITION_SIZE": 780.0,  # STDEV_SLOPE fix 2026-09-14: was 20 (1.11x START) capped 10x D ladder; now 18*10=180
             "MAX_ORDER_VALUE": 180.0,  # STDEV_SLOPE fix 2026-09-14: was 20 →180 for 10x ladder parity
-            "MAX_ORDER_VALUE_MEN": 180.0,  # STDEV_SLOPE fix 2026-09-14: was 20 →180
-            "MAX_ORDER_VALUE_FIN": 180.0,  # STDEV_SLOPE fix 2026-09-14: was 20 →180
+            "MAX_ORDER_VALUE_MEN": 280.0,  # STDEV_SLOPE fix 2026-09-14: was 20 →180
+            "MAX_ORDER_VALUE_FIN": 280.0,  # STDEV_SLOPE fix 2026-09-14: was 20 →180
             "HIGH_GAIN_AUGMENTATION_MIN_SIZE": 50,  # BACKTEST_CHANGE_25: was 100
             "REDUCTION_COOLDOWN_SECONDS": 15.0,  # BACKTEST_CHANGE_42: was 30. Faster gain-taking on 3m
             "AUGMENTATION_COOLDOWN_SECONDS": 90.0,  # BACKTEST_CHANGE_41: was 160. 3m TF needs faster aug
             "MIN_GAIN": 3.0,  # was 5.0. 3.0% survives 1.5% reversal after 50% aug
-            "MAX_POSITION_SIZE_MEN": 180.0,  # STDEV_SLOPE fix 2026-09-14: was 20 →180 for 10x ladder
-            "MAX_POSITION_SIZE_FIN": 180.0,  # STDEV_SLOPE fix 2026-09-14: was 20 →180
+            "MAX_POSITION_SIZE_MEN": 280.0,  # STDEV_SLOPE fix 2026-09-14: was 20 →180 for 10x ladder
+            "MAX_POSITION_SIZE_FIN": 280.0,  # STDEV_SLOPE fix 2026-09-14: was 20 →180
         }
         extreme = {
             "START_POSITION_SIZE": 70.0,

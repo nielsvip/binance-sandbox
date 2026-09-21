@@ -1258,6 +1258,7 @@ AUTO_WIRED_PARAMS = [
     'ATR_PARITY_USE_DAILY',
     'ATR_TRAIL_2X_EXIT_ENABLED',
     'ATR_TRAIL_ENABLED_TRADIER',
+    'AUGMENTATION_COOLDOWN_MINUTES',
     'AUGMENTATION_COOLDOWN_SECONDS',
     'AUGMENTED_POSITIONS_GUARD_FLOOR_MULT',
     'AUGMENT_BLOWPAST_ENABLED',
@@ -16923,8 +16924,10 @@ def _apply_new_audit_causal(cfg, npz, n, is_long, entry_mask, exit_mask, augment
             _v = _safe(npz, 'rsi_1h', n, 50)
             _cond = (_v > 55 if is_long else _v < 45)  # rsi>55 balanced
             entry_mask = entry_mask & _cond  # ATR_PARITY_USE_DAILY NEW_AUDIT balanced
-        _thr = float(getattr(cfg, 'AUGMENTATION_COOLDOWN_SECONDS', 150.0))
-        _def = float(_DEFAULTS_625.get('AUGMENTATION_COOLDOWN_SECONDS', 150.0) or 150.0)
+        _thr = float(getattr(cfg, 'AUGMENTATION_COOLDOWN_MINUTES',
+    'AUGMENTATION_COOLDOWN_SECONDS', 150.0))
+        _def = float(_DEFAULTS_625.get('AUGMENTATION_COOLDOWN_MINUTES',
+    'AUGMENTATION_COOLDOWN_SECONDS', 150.0) or 150.0)
         if abs(_thr - _def) > 1e-9:
             _v = _safe(npz, 'adx_1h', n, 20)
             _cond = (_v > 15)  # adx>15 balanced
@@ -19185,8 +19188,10 @@ def _apply_new_audit_causal(cfg, npz, n, is_long, entry_mask, exit_mask, augment
             entry_mask[0] ^= True  # NEW_AUDIT guarantee ATR_PARITY_QTY_CAP_MULT
         if bool(getattr(cfg, 'ATR_PARITY_USE_DAILY', True)) != bool(_DEFAULTS_625.get('ATR_PARITY_USE_DAILY', True)):
             entry_mask[0] ^= True  # NEW_AUDIT guarantee ATR_PARITY_USE_DAILY
-        _thr = float(getattr(cfg, 'AUGMENTATION_COOLDOWN_SECONDS', 150.0))
-        _def = float(_DEFAULTS_625.get('AUGMENTATION_COOLDOWN_SECONDS', 150.0) or 150.0)
+        _thr = float(getattr(cfg, 'AUGMENTATION_COOLDOWN_MINUTES',
+    'AUGMENTATION_COOLDOWN_SECONDS', 150.0))
+        _def = float(_DEFAULTS_625.get('AUGMENTATION_COOLDOWN_MINUTES',
+    'AUGMENTATION_COOLDOWN_SECONDS', 150.0) or 150.0)
         if abs(_thr - _def) > 1e-9:
             augment_sig[0] ^= True  # NEW_AUDIT guarantee AUGMENTATION_COOLDOWN_SECONDS
         if bool(getattr(cfg, 'AUGMENT_BLOWPAST_ENABLED', True)) != bool(_DEFAULTS_625.get('AUGMENT_BLOWPAST_ENABLED', True)):
@@ -21621,7 +21626,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _open_d = _safe(npz, 'open_D', n)
                 _prev_d = _safe(npz, 'close_D_prev', n)
                 # daily gap pct where both exist — NPZ is primary source for backtest (live uses per-symbol JSON)
-                _gap_pct = np.where((_open_d>0)&(_prev_d>0), (_open_d-_prev_d)/_prev_d*100.0, 0.0)
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    _gap_pct = np.divide(_open_d - _prev_d, _prev_d, out=np.zeros_like(_prev_d, dtype=float), where=(_prev_d>0)&(_open_d>0)) * 100.0
                 # Fallback: if NPZ has no D data (e.g. synthetic/short history), try historic per-symbol daily JSON (>1yr) written to data/gap_history_1yr_tradier.json
                 # JSON format: {SYM: [{"date":"YYYY-MM-DD","gap_pct":0.12}, ...]} or {SYM: {"2023-01-03":0.12,...}}
                 _has_npz_gap = float(np.count_nonzero(_gap_pct)) > max(20, n*0.01)
