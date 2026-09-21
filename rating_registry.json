@@ -1,11 +1,17 @@
 {
-  "timestamp": "2026-09-21T12:42:34.867183+00:00",
+  "timestamp": "2026-09-21T13:03:43.835328+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 68
   },
   "unified_ranking": [
+    {
+      "symbol": "AAPLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
     {
       "symbol": "ZECUSDC",
       "net_score": 0,
@@ -14,12 +20,6 @@
     },
     {
       "symbol": "USARUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "IOTXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -62,12 +62,6 @@
     },
     {
       "symbol": "ASMLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ALGOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -259,12 +253,6 @@
       "short_score": 0
     },
     {
-      "symbol": "LINKUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "RLCUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -355,6 +343,12 @@
       "short_score": 0
     },
     {
+      "symbol": "SUSHIUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "MINAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -379,72 +373,83 @@
       "short_score": 0
     },
     {
-      "symbol": "ATOMUSDT",
-      "net_score": 11.1,
-      "long_score": 11.1,
+      "symbol": "LINKUSDC",
+      "net_score": 10.9,
+      "long_score": 10.9,
       "short_score": 0
     },
     {
-      "symbol": "SUSHIUSDT",
-      "net_score": 11.5,
-      "long_score": 11.5,
-      "short_score": 0
-    },
-    {
-      "symbol": "ADAUSDC",
-      "net_score": 13.6,
-      "long_score": 13.6,
+      "symbol": "ALGOUSDT",
+      "net_score": 11.3,
+      "long_score": 11.3,
       "short_score": 0
     },
     {
       "symbol": "BNBUSDC",
-      "net_score": 13.6,
-      "long_score": 13.6,
+      "net_score": 11.9,
+      "long_score": 11.9,
+      "short_score": 0
+    },
+    {
+      "symbol": "ATOMUSDT",
+      "net_score": 12.5,
+      "long_score": 12.5,
       "short_score": 0
     },
     {
       "symbol": "PYPLUSDT",
-      "net_score": 14.0,
-      "long_score": 14.0,
+      "net_score": 14.5,
+      "long_score": 14.5,
       "short_score": 0
     },
     {
-      "symbol": "AAPLUSDT",
-      "net_score": 18.0,
-      "long_score": 18.0,
+      "symbol": "IOTXUSDT",
+      "net_score": 15.2,
+      "long_score": 15.2,
+      "short_score": 0
+    },
+    {
+      "symbol": "ADAUSDC",
+      "net_score": 15.5,
+      "long_score": 15.5,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "AAPLUSDT",
-      18.0,
-      336.45
+      "ADAUSDC",
+      15.5,
+      0.2458
+    ],
+    [
+      "IOTXUSDT",
+      15.2,
+      0.0037082
     ],
     [
       "PYPLUSDT",
-      14.0,
-      52.84
-    ],
-    [
-      "ADAUSDC",
-      13.6,
-      0.24730717
-    ],
-    [
-      "BNBUSDC",
-      13.6,
-      789.93
-    ],
-    [
-      "SUSHIUSDT",
-      11.5,
-      0.2619
+      14.5,
+      52.75352918
     ],
     [
       "ATOMUSDT",
-      11.1,
-      1.809
+      12.5,
+      1.815
+    ],
+    [
+      "BNBUSDC",
+      11.9,
+      790.36903306
+    ],
+    [
+      "ALGOUSDT",
+      11.3,
+      0.11594601
+    ],
+    [
+      "LINKUSDC",
+      10.9,
+      13.10810432
     ]
   ],
   "top_shorts": [],
