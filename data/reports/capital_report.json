@@ -1,30 +1,32 @@
 {
- "generated_at": "2026-09-21 06:48 UTC",
- "total_capital_usd": 3.3,
+ "generated_at": "2026-09-21 07:15 UTC",
+ "total_capital_usd": 77.19,
  "tier_capital": {
   "A": 0.0,
-  "B": 3.3,
-  "C": 0.0
+  "B": 0.0,
+  "C": 77.19
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "flz:BNBUSDC_LONG"
+ ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:XRPUSDC_LONG",
-   "symbol": "XRPUSDC",
+   "pk": "flz:BNBUSDC_LONG",
+   "symbol": "BNBUSDC",
    "account": "flz",
-   "value_usd": 3.3,
-   "gain_pct": 0.471,
-   "tier": "B",
-   "perf_mult": 1.97,
-   "amt": 2.3,
-   "mark": 1.43351345
+   "value_usd": 77.19,
+   "gain_pct": -0.101,
+   "tier": "C",
+   "perf_mult": 0.48,
+   "amt": 0.1,
+   "mark": 771.89
   }
  ]
 }
