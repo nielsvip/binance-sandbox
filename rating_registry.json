@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-21T03:56:32.686322+00:00",
+  "timestamp": "2026-09-21T04:21:03.111187+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -398,27 +398,27 @@
     },
     {
       "symbol": "MINAUSDT",
-      "net_score": 12.5,
-      "long_score": 12.5,
+      "net_score": 11.3,
+      "long_score": 11.3,
       "short_score": 0
     },
     {
       "symbol": "EGLDUSDT",
-      "net_score": 12.5,
-      "long_score": 12.5,
+      "net_score": 15.1,
+      "long_score": 15.1,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "EGLDUSDT",
-      12.5,
-      4.12047771
+      15.1,
+      4.07524749
     ],
     [
       "MINAUSDT",
-      12.5,
-      0.12905
+      11.3,
+      0.12759
     ]
   ],
   "top_shorts": [],
