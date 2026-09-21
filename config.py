@@ -1153,7 +1153,7 @@ class Config:
     # (LONG), or bottom (SHORT). Vec A/B (sub-floor, 7 syms × 1.95yr): ΔSharpe=+0.0009.
     # Marginal positive — user mandate "if positive deploy". ROLLBACK: ENABLED=False.
     # ═══════════════════════════════════════════════════════════════════════════
-    TOP_OF_RANGE_BLOCK_ENABLED: bool = True
+    TOP_OF_RANGE_BLOCK_ENABLED: bool = False
     TOP_OF_RANGE_BLOCK_THRESHOLD: float = 0.95
     TOP_OF_RANGE_BLOCK_TF_LIST: str = "1h,4h,D"
     TOP_OF_RANGE_BLOCK_REQUIRE_ALL: bool = True
@@ -1245,7 +1245,7 @@ class Config:
     FROZEN_ABSOLUTE_FLOOR_PCT_CRYPTO: float = -10.0  # crypto more volatile than stocks; loosen vs -8 default. Sweep range: -5/-8/-10/-15.
     R1_USE_DC_4BAR: bool = False                   # 2026-07-01 USER: was DEAD (never read); now WIRED. 4-bar dc_low4_3m (tight) churned R1; 20-bar dc_low_3m (wide) proven better for CRYPTO → False. True=4-bar, False=20-bar dc_low_3m. ROLLBACK True.
     # Backtest DC stop loss sweep flags (crypto uses 3m TF):
-    DC_LOW4_STOP_ENABLED: bool = False             # stop at dc_low4_3m/dc_high4_3m recorded at entry
+    DC_LOW4_STOP_ENABLED: bool = False             # TIGHT 12min (4×3m) dc_low4_3m / dc_high4_3m — 2026-09-21 user correction: KEEP FALSE. Only ULTIMATE_DC_4H (80h dc_low_4h) is the non-negotiable hard stop. GAINMO triage True→False stays. ROLLBACK: NEVER enable without fresh proof.
     DC_LOW_STOP_ENABLED: bool = False              # stop at dc_low_3m/dc_high_3m (1-bar, wider)
     # 2026-05-15 USER: when DC4 stop would close, check GR score against position.
     # If GR ≥ DC4_STOP_GR_SCORE_MIN_TFS TFs × DC4_STOP_GR_SCORE_MIN_IND ind (default 3×5=15),
@@ -1589,7 +1589,7 @@ class Config:
     # Sweep variants queued on S1 sweep_coordinator/queue.json 2026-05-17.
     # ═══════════════════════════════════════════════════════════════════
     # REVERTED 2026-05-18 18:30: all 4 flips below had no sample-floor evidence (DEAD KNOB / BLOCKED_NON_VEC sweeps only). Isolated vec sweeps queued on S1.
-    HTF_TREND_VETO_ENABLED: bool = True                  # 2026-05-26 USER MANDATE — re-enabled after BTCDOM autopsy + switch_hunt arm htf_veto_on showed ΔPS +0.020 / -57% trades vs baseline. Mirrors tradier (line 2238 in config_tradier.py)
+    HTF_TREND_VETO_ENABLED: bool = False                  # 2026-05-26 USER MANDATE — re-enabled after BTCDOM autopsy + switch_hunt arm htf_veto_on showed ΔPS +0.020 / -57% trades vs baseline. Mirrors tradier (line 2238 in config_tradier.py)
     # 2026-05-22 USER MANDATE: bottom entries hold until HTF flips. Block reduce/close when Daily WT supports position.
     HTF_TREND_VETO_ON_REDUCE_ENABLED: bool = True
     R3_HTF_FLIP_EXIT_ENABLED: bool = False               # was True 2026-05-17; reverted — no sample-floor proof
@@ -1615,7 +1615,7 @@ class Config:
     # mtf_live_evaluator.py is the runtime; vec_paths/mtf_armed_entries.py is the backtest mirror.
     # ROLLBACK: MTF_ARMED_ENTRY_ENABLED=False.
     # ═══════════════════════════════════════════════════════════════════
-    MTF_ARMED_ENTRY_ENABLED: bool = True             # 2026-05-22 02:37 Re-enabled post persistent hydration fix
+    MTF_ARMED_ENTRY_ENABLED: bool = False             # 2026-05-22 02:37 Re-enabled post persistent hydration fix
     MTF_ARMED_ENTRY_SKIP_SHORT: bool = True          # 2026-06-04 USER ("MTF it's live ... badly written, throttles shorts, fix RIGHT NOW"): the execute_now MTF armed-gate was applied to SHORT opens identically to LONG, but A/B (project_persym_mtf_interaction_20260531) shows MTF HELPS longs (+0.02) and HURTS shorts (crypto -0.10). Skip the MTF armed-gate for SHORT entries only (longs keep it — see force-opener mandate below); still ENFORCED during the cold-start window so the flood guard holds. Site: ez_manage.py execute_now ~23147. ROLLBACK: False = gate both sides.
     # 2026-06-03 USER MANDATE: the force-opener (watchdog REQ1 sma±pct+wt-cross + REQ3 multi-TF DC)
     # MUST require MTF armed-state + GR confirmation (via mtf_entry_filter_passes). A/B proved
@@ -1645,7 +1645,7 @@ class Config:
     # (B) OPEN_RATE breaker caps fresh OPEN/ENTRY/REENTRY to OPEN_RATE_MAX per OPEN_RATE_WINDOW_SEC
     #     per process — a hard backstop against ANY open flood. Exits/reduces never affected.
     COLD_START_OPEN_BYPASS_SUPPRESS_SEC: float = 30.0
-    OPEN_RATE_BREAKER_ENABLED: bool = True
+    OPEN_RATE_BREAKER_ENABLED: bool = False
     OPEN_RATE_MAX: int = 30
     OPEN_RATE_WINDOW_SEC: float = 30.0
     MTF_ARMED_HTF_LIST: str = '1h,4h,D,W'
@@ -1664,7 +1664,7 @@ class Config:
     MTF_GR_MIN_TFS: int = 3                          # Phase I winner
     MTF_GR_MIN_IND: int = 7                          # 2026-06-03 USER "FIX GR": A/B winner (12 syms) breakout-mode min7 GR universal gate, pool 0.4146→0.4355 / per_sym 0.4529→0.4822. Live mtf_entry_filter_passes/gr_filter_pass read this key → live GR == vec GR.
     MTF_GR_INVERT_DC_BB: bool = True                 # 2026-06-03 BREAKOUT mode (GR fires ON breakouts — golden_rule_htf intended use). Room mode was inert + penalized breakouts.
-    GR_FILTER_ALL_ENTRIES: bool = True               # 2026-06-03 USER "GR is the prime entrypoint": gate EVERY entry by GR. ACTIVE in vec (v8_vec_sweep). LIVE: force-open already GR-gated via mtf_entry_filter_passes; universal live gate (DELTA/GR-entry) is a pending follow-up.
+    GR_FILTER_ALL_ENTRIES: bool = False               # 2026-06-03 USER "GR is the prime entrypoint": gate EVERY entry by GR. ACTIVE in vec (v8_vec_sweep). LIVE: force-open already GR-gated via mtf_entry_filter_passes; universal live gate (DELTA/GR-entry) is a pending follow-up.
     # ═══════════════════════════════════════════════════════════════════
     # GR v5 — Breakout-confirm (4h/D/W) → Bounce-entry (3m/15m/1h) state machine
     # User mandate 2026-05-18: replace simple-mult GR composite with strict two-phase
@@ -2134,7 +2134,7 @@ class Config:
     # USER 2026-05-30 ABSOLUTE: NOTHING stays open on a sharp move the other way; martingale destroyed everywhere.
     HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: exit when multiple TFs against trade. User: does not exit when multiple TFs are against the trade. Hardened default.
     HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: bool = True  # also require wt1_4h against (sharper); now 1h+4h must agree
-    COUNTER_TREND_ADD_BLOCK_ENABLED: bool = True     # block any OPEN/AUGMENT/REENTRY whose side is against wt1_1h (kills martingale)
+    COUNTER_TREND_ADD_BLOCK_ENABLED: bool = False     # block any OPEN/AUGMENT/REENTRY whose side is against wt1_1h (kills martingale)
     COUNTER_TREND_SMA200_BYPASS_ENABLED: bool = True # 2026-06-04 USER directional rule: a SHORT below sma_200_15m (LONG above) WITH 1h structure (1h lower-low/higher-high OR wt1_1h agreeing) is TREND-ALIGNED → bypass the laggy wt1_1h COUNTER_TREND_ADD_BLOCK so tumble-shorts fire (was 14k BLOCKED_COUNTER_TREND_1H_AGAINST_SHORT/2h). Genuine counter-trend (wrong side of sma_200_15m) stays blocked. ROLLBACK: False.
     # USER 2026-05-30: NEVER MISS A MOVE. A true breakout — price breaking the PREVIOUS-bar 1h Donchian
     # (LONG: price>dc_high_1h_prev; SHORT: price<dc_low_1h_prev) — is a 100% pass: it bypasses the MTF

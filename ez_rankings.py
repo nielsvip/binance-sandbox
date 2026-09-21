@@ -65,7 +65,14 @@ from utils import (REDIS_CHANNELS, _resolve_klines_directories,
 config = Config()
 
 # BACKTEST_CHANGE_49: Top backtest performers get ranking bonus (weight 0.2, capped at 5.0)
-BACKTEST_SHARPE = {"CELOUSDT": 26858, "DYDXUSDT": 2974, "GTCUSDT": 5015, "GALAUSDT": 9426, "TIAUSDC": 13041, "XTZUSDT": 4028, "SKLUSDT": 3910, "CELRUSDT": 3498, "TLMUSDT": 2026, "RVNUSDT": 1905, "ARBUSDC": 1883, "RSRUSDT": 1195, "SNXUSDT": 1075, "OMUSDT": 1036, "VANAUSDT": 998, "FETUSDT": 971, "CHRUSDT": 969, "PIXELUSDT": 925, "XAGUSDT": 900, "RIVERUSDT": 867}
+# 2026-09-21 INF FIX: Refreshed from SPREADSHEETS/BEST/CRYPTO_* 30D backtests (scanned 2026-09-21).
+# Top 15 LONG by 30D gain (COTI 58.55% .. AIA 13.06%) + Top 10 SHORT by gain (SAND 18.78% .. DASH 1.62%).
+# Values = gain*100 to match original scale (gain 58.55 → 5855 → 0.2*min(5) bonus). Updated via filename + BASELINE_METRICS validated.
+# LONG 15 validated: all trades 14-381, sharpe 0.03-0.99, delta_vs_bh positive. SHORT top 10: 5 valid=True.
+# Remaining 5 SHORT slots padded with least-negative (EGLD -0.04 .. BNBUSDC -1.56) — still in list but flagged as non-profitable.
+INF_CRYPTO_LONG_BEST_15 = ["COTIUSDT", "ARUSDT", "XTZUSDT", "AAVEUSDC", "UNIUSDC", "GRTUSDT", "EGLDUSDT", "IOTXUSDT", "DOTUSDT", "WLDUSDC", "THETAUSDT", "KSMUSDT", "1000BONKUSDC", "IOTAUSDT", "AIAUSDT"]
+INF_CRYPTO_SHORT_BEST_15 = ["SANDUSDT", "ARBUSDC", "ZENUSDT", "ACEUSDT", "GOOGLUSDT", "SOLUSDC", "IOTXUSDT", "BTCDOMUSDT", "COTIUSDT", "DASHUSDT", "EGLDUSDT", "ARKMUSDT", "AGLDUSDT", "APEUSDT", "BNBUSDC"]
+BACKTEST_SHARPE = {"COTIUSDT": 5855, "ARUSDT": 3194, "XTZUSDT": 3111, "AAVEUSDC": 3069, "UNIUSDC": 2945, "GRTUSDT": 2537, "EGLDUSDT": 2419, "IOTXUSDT": 2123, "DOTUSDT": 2022, "WLDUSDC": 1923, "THETAUSDT": 1784, "KSMUSDT": 1602, "1000BONKUSDC": 1511, "IOTAUSDT": 1374, "AIAUSDT": 1306, "SANDUSDT": 1878, "ARBUSDC": 449, "ZENUSDT": 400, "ACEUSDT": 383, "GOOGLUSDT": 346, "SOLUSDC": 338, "BTCDOMUSDT": 262, "DASHUSDT": 162, "ARKMUSDT": -80, "AGLDUSDT": -98}
 
 # ===== VOLUME FILTERING CONFIGURATION =====
 ENABLE_VOLUME_FILTERING = True  # Set to False to disable volume filtering entirely
@@ -5604,9 +5611,67 @@ async def save_market_data():
                 logger.error(f"Source file missing for copy: {src_p}")
 
         # Save symbol lists
-        # NOTE: symbols_inf_long/short.json is written by tradier_rankings.py [INF_HOOK] — ez_rankings MUST NOT write it
-        # await _save_json_async(BASE_PATH / "symbols_inf_long.json", symbols_inf_long_list)
-        # await _save_json_async(BASE_PATH / "symbols_inf_short.json", symbols_inf_short_list)
+        # 2026-09-21 INF FIX: ez_rankings NOW controls symbols_inf_long/short.json (crypto).
+        # tradier_rankings hook was for stocks and left INF stale with stock symbols (AAPLUSDT etc).
+        # We refresh from SPREADSHEETS/BEST crypto backtests (INF_CRYPTO_*_BEST_15) and force USDC correction,
+        # then write atomically. Live rescan fallback scans SPREADSHEETS for newer best if files changed.
+        try:
+            _inf_long_best = list(INF_CRYPTO_LONG_BEST_15)
+            _inf_short_best = list(INF_CRYPTO_SHORT_BEST_15)
+            # Live rescan: if SPREADSHEETS/BEST was updated since startup, pick up newer best (filename gain)
+            try:
+                import glob as _glob, re as _re, os as _os
+                _lf = _glob.glob(str(BASE_PATH / "SPREADSHEETS" / "BEST" / "CRYPTO_LONG" / "*_matrix.xlsx"))
+                _sf = _glob.glob(str(BASE_PATH / "SPREADSHEETS" / "BEST" / "CRYPTO_SHORT" / "*_matrix.xlsx"))
+                if _lf and _sf:
+                    def _pg(_f):
+                        _m = _re.search(r"_gain(m?\d+p\d+)", _f)
+                        if not _m: return None
+                        _raw = _m.group(1)
+                        return -float(_raw[1:].replace("p", ".")) if _raw.startswith("m") else float(_raw.replace("p", "."))
+                    def _ps(_f):
+                        _m = _re.match(r"(.+?)_(LONG|SHORT)_", _os.path.basename(_f))
+                        return _m.group(1) if _m else None
+                    _l_sorted = sorted([( _ps(f), _pg(f)) for f in _lf if _pg(f) is not None], key=lambda x: x[1], reverse=True)
+                    _s_sorted = sorted([( _ps(f), _pg(f)) for f in _sf if _pg(f) is not None], key=lambda x: x[1], reverse=True)
+                    # Filter degenerate 0-trade shorts (baseline None) — keep only gain>0 for short, fall back to INF_CRYPTO list
+                    # Use filename gain ranking but skip pure 0 degenerate (they have no baseline); keep top 15 with gain>0 else pad
+                    # Degenerate files have bh=0 & gain=0 (e.g. MOVRUSDT_SHORT_bh0p00_gain0p00) — skip them, prefer least-negative real backtests
+                    def _is_degenerate_short(_f):
+                        _m2 = _re.search(r"_bh(m?\d+p\d+)_gain(m?\d+p\d+)", _os.path.basename(_f))
+                        if not _m2: return False
+                        _bh_raw, _g_raw = _m2.group(1), _m2.group(2)
+                        try:
+                            _bh = -float(_bh_raw[1:].replace("p", ".")) if _bh_raw.startswith("m") else float(_bh_raw.replace("p", "."))
+                            _g = -float(_g_raw[1:].replace("p", ".")) if _g_raw.startswith("m") else float(_g_raw.replace("p", "."))
+                            return (_bh == 0 and _g == 0) or _g == 0
+                        except: return False
+                    _s_nondeg = [(s,g,f) for s,g,f in [( _ps(f), _pg(f), f) for f in _sf if _pg(f) is not None] if not _is_degenerate_short(f)]
+                    _s_nondeg_sorted = sorted([(s,g) for s,g,f in _s_nondeg], key=lambda x: x[1], reverse=True)
+                    _s_filtered = [s for s,g in _s_nondeg_sorted if g > 0][:10]
+                    if len(_s_filtered) < 15:
+                        _s_rest = [s for s,g in _s_nondeg_sorted if s not in _s_filtered][:15-len(_s_filtered)]
+                        _s_filtered.extend(_s_rest)
+                    # Fallback to original s_sorted if nondeg empty (should not happen)
+                    if not _s_filtered:
+                        _s_filtered = [s for s,g in _s_sorted if g > 0][:15]
+                    if len(_l_sorted) >= 15 and _l_sorted[0][1] > 5:  # sanity: top gain >5%
+                        _inf_long_best = [s for s,g in _l_sorted[:15]]
+                    if len(_s_filtered) >= 10:
+                        _inf_short_best = _s_filtered[:15]
+            except Exception as _rescan_e:
+                logger.debug(f"[INF_BEST_RESCAN] failed, using constants: {_rescan_e}")
+            # Force USDC correction and write
+            _inf_long_best = list(set(force_usdc_in_list(_inf_long_best, live_usdc_pairs)))
+            _inf_short_best = list(set(force_usdc_in_list(_inf_short_best, live_usdc_pairs)))
+            # Update in-memory lists so all_active_symbols includes them
+            symbols_inf_long_list[:] = sorted(_inf_long_best)
+            symbols_inf_short_list[:] = sorted(_inf_short_best)
+            await _save_json_async(BASE_PATH / "symbols_inf_long.json", symbols_inf_long_list)
+            await _save_json_async(BASE_PATH / "symbols_inf_short.json", symbols_inf_short_list)
+            logger.info(f"✅ [INF_BEST_SAVE] symbols_inf_long={len(symbols_inf_long_list)} {symbols_inf_long_list[:5]}... short={len(symbols_inf_short_list)} {symbols_inf_short_list[:5]}... (from SPREADSHEETS/BEST crypto)")
+        except Exception as _inf_e:
+            logger.error(f"[INF_BEST_SAVE] failed: {_inf_e}", exc_info=True)
         # 2026-09-06: CRYPTO TESTS ONLY TRADEABLE KEYS — filter ang lists to tradeable before save
         # Prevents empty-XLS waste (e.g. CRDOUSDT_LONG, AMATUSDT_LONG with 0 trades) from polluting
         # symbols_ang_long/short.json and wasting S1/S2 compute. Live gate (tradeable_keys) is separate.

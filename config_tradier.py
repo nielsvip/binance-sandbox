@@ -1095,7 +1095,7 @@ class TradierConfig:
     R1_USE_DC_4BAR: bool = True                    # 2026-07-01 wired (was DEAD) + A/B-testable. STOCKS STAY 4-bar dc_low4_5m pending A/B — 20-bar proven for crypto only, unproven on $70k. True=4-bar, False=20-bar dc_low_5m.
     R1_TF: str = '5m'                              # tradier base TF
     # Backtest DC stop loss sweep flags (tradier uses 5m TF):
-    DC_LOW4_STOP_ENABLED: bool = False            # 2026-07-08 GAINMO triage: True→False — armed %-class stop in a no-stop-loss system, undated flip, also silently changed the backtest baseline (backtest_v8_engine reads this)
+    DC_LOW4_STOP_ENABLED: bool = False            # TIGHT 20min (4×5m) dc_low4_5m / dc_high4_5m — 2026-09-21 user correction: KEEP FALSE. Only ULTIMATE_DC_4H (80h dc_low_4h/dc_high_4h) is the non-negotiable hard stop. GAINMO triage True→False stays.
     DC_LOW_STOP_ENABLED: bool = False             # 2026-07-08 GAINMO triage: True→False — same reason as DC_LOW4_STOP_ENABLED
     # Generalized frozen stop (engine-level; backcompat: DC_LOW_4H_FROZEN_STOP_ENABLED still works)
     DC_LOW_FROZEN_STOP_ENABLED: bool = True       # RECONNECT 2026-09-01 user mandate: dc_low_4h/dc_high_4h ON by default, per_sym can only override (was False)       # master switch; sweep variants set True + TF
@@ -2534,7 +2534,7 @@ class TradierConfig:
 
     SBA_BOUNCE_ENABLED: bool = True  # vectorizable parity 2026-09-08: mirror QuickConfig (SBA bounce confluence BB+K+WT)
 
-    COUNTER_TREND_ADD_BLOCK_ENABLED: bool = True  # vectorizable parity 2026-09-08: block OPEN/AUGMENT/REENTRY against wt1_1h (same default as QuickConfig/config.py)
+    COUNTER_TREND_ADD_BLOCK_ENABLED: bool = False  # vectorizable parity 2026-09-08: block OPEN/AUGMENT/REENTRY against wt1_1h (same default as QuickConfig/config.py)
     COUNTER_TREND_SMA200_BYPASS_ENABLED: bool = True  # vectorizable parity 2026-09-08: trend-aligned bypass for sma_200_15m + 1h structure (same default as QuickConfig/config.py)
 
     CYCLE_TP_ENABLED: bool = False  # added
@@ -2555,7 +2555,7 @@ class TradierConfig:
 
     MARKET_JUMP_THRESHOLD_PCT: float = 0.0  # vectorizable parity 2026-09-08: companion to MARKET_CRASH
 
-    TOP_OF_RANGE_BLOCK_ENABLED: bool = True  # vectorizable parity 2026-09-08: top-of-range block (config.py True) alphabetical parity
+    TOP_OF_RANGE_BLOCK_ENABLED: bool = False  # vectorizable parity 2026-09-08: top-of-range block (config.py True) alphabetical parity
 
     UNIVERSAL_NOLOSS_GATE: bool = False  # vectorizable parity 2026-09-08: blanket noloss OFF LIMITS per user (config.py False)
 

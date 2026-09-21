@@ -874,10 +874,14 @@ def main():
         print("[warn] Mac allowed for writing/testing only — not for real sweeps (S1 required for full universe)", flush=True)
 
     if args.window_days == 365 or args.window_days >= 100:
-        print("BLOCKED: 1yr requires 30D gate — run 30D first", file=sys.stderr)
-        sys.exit(2)
-    if args.window_days not in (30, 20, 7, 1):
-        print(f"BLOCKED: only 30/20/7/1 allowed, got {args.window_days}", file=sys.stderr)
+        # USER 2026-09-20: 365D retest with found 30D settings allowed when baseline-json provided (found settings gate)
+        if not args.baseline_json or not Path(args.baseline_json).exists():
+            print("BLOCKED: 1yr requires 30D gate — run 30D first (or provide --baseline-json with found 30D settings for 365D retest)", file=sys.stderr)
+            sys.exit(2)
+        else:
+            print(f"[365D-ALLOWED] 365D retest with found settings {args.baseline_json}", flush=True)
+    if args.window_days not in (30, 20, 7, 1, 365):
+        print(f"BLOCKED: only 30/20/7/1/365 allowed, got {args.window_days}", file=sys.stderr)
         sys.exit(2)
 
     if args.sym_side:

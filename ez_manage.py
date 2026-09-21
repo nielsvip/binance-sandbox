@@ -24778,9 +24778,23 @@ class MultiAccountTradeManager:
                     _htfv_thresh = float(getattr(config, "HTF_TREND_VETO_SCORE_MIN_ABS", 5.0))
                     if is_long and _htf_dir_eta == "BEAR" and _htf_score_eta <= -_htfv_thresh:
                         logger.warning(f"[HTF_TREND_VETO] {position_key}: BLOCKED LONG — dir=BEAR htfScore={_htf_score_eta} thr=-{_htfv_thresh:.0f} gain={_htf_pos_gain:.2f}% reason={(reason or '')[:60]}")
+                        try:
+                            from live_filter_per_sym_retest import maybe_queue_filter_retest as _lfq
+                            _sym = position_key.split(':')[-1].rsplit('_',1)[0] if position_key and ':' in position_key else ''
+                            _side = position_key.split('_')[-1] if position_key else 'LONG'
+                            _acct = position_key.split(':',1)[0] if position_key and ':' in position_key else ''
+                            _lfq(_sym, _side, f"BLOCKED_HTF_TREND_VETO_LONG_htfScore={_htf_score_eta}", _acct)
+                        except Exception: pass
                         return f"{position_key}_BLOCKED_HTF_TREND_VETO_LONG_htfScore={_htf_score_eta}"
                     if not is_long and _htf_dir_eta == "BULL" and _htf_score_eta >= _htfv_thresh:
                         logger.warning(f"[HTF_TREND_VETO] {position_key}: BLOCKED SHORT — dir=BULL htfScore={_htf_score_eta} thr={_htfv_thresh:.0f} gain={_htf_pos_gain:.2f}% reason={(reason or '')[:60]}")
+                        try:
+                            from live_filter_per_sym_retest import maybe_queue_filter_retest as _lfq
+                            _sym = position_key.split(':')[-1].rsplit('_',1)[0] if position_key and ':' in position_key else ''
+                            _side = position_key.split('_')[-1] if position_key else 'SHORT'
+                            _acct = position_key.split(':',1)[0] if position_key and ':' in position_key else ''
+                            _lfq(_sym, _side, f"BLOCKED_HTF_TREND_VETO_SHORT_htfScore={_htf_score_eta}", _acct)
+                        except Exception: pass
                         return f"{position_key}_BLOCKED_HTF_TREND_VETO_SHORT_htfScore={_htf_score_eta}"
             if (
                 position
@@ -29183,6 +29197,10 @@ class MultiAccountTradeManager:
                                 _ctb_aligned = (current_price < _ctb_sma200) and _ctb_struct
                     if (abs(_ctb_w1) > 1e-9 or abs(_ctb_w2) > 1e-9) and not _ctb_aligned and ((_ctb_is_long and _ctb_w1 < _ctb_w2) or ((not _ctb_is_long) and _ctb_w1 > _ctb_w2)):
                         logger.critical(f"🚫 [COUNTER_TREND_ADD_BLOCK] {position_key}: BLOCKED {action} — side against wt1_1h ({_ctb_w1:.1f}vs{_ctb_w2:.1f}). NO open/add against the 1h. reason={(reason or '')[:50]}")
+                        try:
+                            from live_filter_per_sym_retest import maybe_queue_filter_retest as _lfq
+                            _lfq(symbol or (position_key.split(':')[-1].rsplit('_',1)[0] if position_key else ''), position_side, f"BLOCKED_COUNTER_TREND_1H_AGAINST_{position_side}", account_key or (position_key.split(':',1)[0] if position_key and ':' in position_key else ''))
+                        except Exception: pass
                         return f"BLOCKED_COUNTER_TREND_1H_AGAINST_{position_side}"
         except Exception as _ctbe:
             logger.warning(f"[COUNTER_TREND_ADD_BLOCK] check error (fail-open): {_ctbe}")
@@ -29216,6 +29234,10 @@ class MultiAccountTradeManager:
                         _gr_min_ind_eff = min(_gr_min_ind_eff, 4)
                 if _gr_ind and not _mle_gr.gr_filter_pass(_gr_ind, position_side, "crypto", config, min_ind=_gr_min_ind_eff):
                     logger.warning(f"🟡 [GR_FILTER_ALL_ENTRIES] {position_key}: BLOCKED {action} — GR filter fail (breakout min{_gr_min_ind_eff}). reason={(reason or '')[:50]}")
+                    try:
+                        from live_filter_per_sym_retest import maybe_queue_filter_retest as _lfq
+                        _lfq(symbol or (position_key.split(':')[-1].rsplit('_',1)[0] if position_key else ''), position_side, f"BLOCKED_GR_FILTER_{position_side}", account_key or (position_key.split(':',1)[0] if position_key and ':' in position_key else ''))
+                    except Exception: pass
                     return f"BLOCKED_GR_FILTER_{position_side}"
         except Exception as _gre:
             logger.warning(f"[GR_FILTER_ALL_ENTRIES] check error (fail-open): {_gre}")
@@ -29360,6 +29382,10 @@ class MultiAccountTradeManager:
                         if _tor_blocked:
                             _tor_levels = ",".join([f"{tf}={lvl:.2f}" for tf, lvl in zip(_tor_tfs, [(_tor_price - safe_fetch_float(_tor_ind.get(f'dc_low_{tf}'), 0.0)) / max(1e-9, safe_fetch_float(_tor_ind.get(f'dc_high_{tf}'), 1.0) - safe_fetch_float(_tor_ind.get(f'dc_low_{tf}'), 0.0)) for tf in _tor_tfs])])
                             logger.warning(f"[TOP_OF_RANGE_BLOCK] {position_key} act={action} side={_tor_side_str}: BLOCKED price={_tor_price:.6f} dc_pos[{_tor_levels}] threshold={_tor_threshold} reason={(reason or '')[:50]}")
+                            try:
+                                from live_filter_per_sym_retest import maybe_queue_filter_retest as _lfq
+                                _lfq(symbol or (position_key.split(':')[-1].rsplit('_',1)[0] if position_key else ''), _tor_side_str, f"BLOCKED_TOP_OF_RANGE_{_tor_side_str}_thr{_tor_threshold}", account_key or (position_key.split(':',1)[0] if position_key and ':' in position_key else ''))
+                            except Exception: pass
                             return f"BLOCKED_TOP_OF_RANGE_{_tor_side_str}_thr{_tor_threshold}"
         except Exception as _tor_e:
             logger.warning(f"[TOP_OF_RANGE_BLOCK] {position_key}: check error (fail-open): {_tor_e}")
@@ -29385,6 +29411,10 @@ class MultiAccountTradeManager:
                     _blk_pass = (_blk_closed_lh or _blk_forming_ll) if _blk_is_long else (_blk_closed_hl or _blk_forming_ll)
                     if not _blk_pass:
                         logger.warning(f"[EXIT_BLOCKER_LH_LL] {position_key}: BLOCKED action={action} reason={(reason or '')[:60]} — no LH closed (pk={_blk_pk_s}) nor LL forming (low={_blk_low:.4f} prev={_blk_low_prev:.4f})")
+                        try:
+                            from live_filter_per_sym_retest import maybe_queue_filter_retest as _lfq
+                            _lfq(symbol or (position_key.split(':')[-1].rsplit('_',1)[0] if position_key else ''), position_side, "BLOCKED_EXIT_LH_LL_REQUIRED", account_key or (position_key.split(':',1)[0] if position_key and ':' in position_key else ''))
+                        except Exception: pass
                         return "BLOCKED_EXIT_LH_LL_REQUIRED"
         except Exception as _blk_e:
             logger.debug(f"[EXIT_BLOCKER_LH_LL] {position_key}: check skipped ({_blk_e})")
@@ -29519,6 +29549,10 @@ class MultiAccountTradeManager:
                         )
                         if not _mtf_ok:
                             logger.warning(f"[MTF_FILTER_BLOCK] {position_key} act={action} side={_mtf_side}: {_mtf_reason}")
+                            try:
+                                from live_filter_per_sym_retest import maybe_queue_filter_retest as _lfq
+                                _lfq(symbol or (position_key.split(':')[-1].rsplit('_',1)[0] if position_key else ''), _mtf_side, f"BLOCKED_{_mtf_reason}", account_key or (position_key.split(':',1)[0] if position_key and ':' in position_key else ''))
+                            except Exception: pass
                             return f"BLOCKED_{_mtf_reason}"
                         # Apply per-sym MTF_SIZE_MULT (Phase K 3-tier: 1.0 SAFE / 0.5 LUMPY)
                         _mtf_mult = _mle.mtf_size_mult_for(_psym_get, _mtf_sym, _mtf_side, default=1.0)
@@ -29548,6 +29582,10 @@ class MultiAccountTradeManager:
                     _RECENT_OPEN_ATTEMPTS.popleft()
                 if len(_RECENT_OPEN_ATTEMPTS) >= _orb_max:
                     logger.critical(f"🚨 [OPEN_RATE_BREAKER] {position_key}: BLOCKED — {len(_RECENT_OPEN_ATTEMPTS)} fresh opens in last {_orb_win:.0f}s >= max {_orb_max}. Flood circuit-breaker tripped. act={_kill_act} reason={(reason or '')[:40]}")
+                    try:
+                        from live_filter_per_sym_retest import maybe_queue_filter_retest as _lfq
+                        _lfq(symbol or (position_key.split(':')[-1].rsplit('_',1)[0] if position_key else ''), position_side, f"BLOCKED_OPEN_RATE_BREAKER_{len(_RECENT_OPEN_ATTEMPTS)}_in_{int(_orb_win)}s", account_key or (position_key.split(':',1)[0] if position_key and ':' in position_key else ''))
+                    except Exception: pass
                     return f"BLOCKED_OPEN_RATE_BREAKER_{len(_RECENT_OPEN_ATTEMPTS)}_in_{int(_orb_win)}s"
                 _RECENT_OPEN_ATTEMPTS.append(_orb_now)
         except Exception as _orb_e:

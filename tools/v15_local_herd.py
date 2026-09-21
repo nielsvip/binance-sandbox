@@ -131,6 +131,7 @@ def find_order() -> pathlib.Path | None:
     except:
         pass
     # URGENT-ONLY: if V15_URGENT_FINAL_83.json pending>0, never fallback to BEST/RUNNING_ORDER (no repeats before urgent finals)
+    # FIX 2026-09-21: urgent queues are per-host disjoint — return HOST-SPECIFIC first, not first in list (S1) for any host
     try:
         urgent_path = ROOT / "SPREADSHEETS/V15_URGENT_FINAL_83.json"
         if urgent_path.exists():
@@ -138,6 +139,14 @@ def find_order() -> pathlib.Path | None:
             _d=_js.load(open(urgent_path))
             if _d.get("pending_urgent", 0) > 0 and _d.get("urgent_total", 83) > len(_d.get("final_pos_gain_list", [])):
                 # urgent still pending — only allow urgent queues, skip BEST fallback
+                # try host-specific first
+                if 'suffix' in locals() and suffix:
+                    hp = ROOT / f"SPREADSHEETS/V15_SERVER_QUEUE_{suffix}.txt"
+                    if hp.exists() and hp.stat().st_size > 5:
+                        return hp
+                    alt_hp = pathlib.Path.home() / f"binance-sandbox/SPREADSHEETS/V15_SERVER_QUEUE_{suffix}.txt"
+                    if alt_hp.exists() and alt_hp.stat().st_size > 5:
+                        return alt_hp
                 for p in ORDER_CANDIDATES:
                     if p.exists() and ("V15_SERVER_QUEUE" in str(p) or "V15_RESUMED_QUEUE" in str(p)):
                         return p
@@ -514,9 +523,13 @@ def main():
     # FLZ merge: skip for BEST validation queues (V15_BEST_QUEUE_S*.txt) — they are exact 32/28 top-delta per category, no FLZ append
     is_best_order = "V15_BEST_QUEUE" in str(order_path)
     # FLZ merge: if V15 is primary and FLZ exists, append FLZ crypto (except BTCUSDC_LONG verified fail) for combined 152+244
+    # FIX 2026-09-21: S1-only FLZ — V15_SERVER_QUEUE_S1 is FLZ 16, S2/S5/S6 are TRB 13 each must stay disjoint (no FLZ overlap)
+    is_s1_order = "V15_SERVER_QUEUE_S1" in str(order_path)
     for flz_candidate in [ROOT / "SPREADSHEETS" / "FLZ_RUNNING_ORDER.txt", pathlib.Path.home() / "binance-sandbox" / "SPREADSHEETS" / "FLZ_RUNNING_ORDER.txt"]:
         if is_best_order:
             continue  # BEST validation is exact per-server queue, no FLZ contamination
+        if not is_s1_order:
+            continue  # FLZ only for S1 (crypto), S2/S5/S6 stocks stay disjoint
         if flz_candidate.exists() and str(order_path) != str(flz_candidate):
             try:
                 flz_order = load_order(flz_candidate)

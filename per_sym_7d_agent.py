@@ -527,9 +527,10 @@ def load_account_syms(account: str) -> List[str]:
         'fin': ['symbols_fin.json'],
         'men': ['symbols_men.json'],
         'ang': ['symbols_ang_long.json', 'symbols_ang_short.json'],
-        # 2026-07-19 USER: inf now reconfigures over men's universe (per_sym + 7D reapplied
-        # on the same symbols as men) for a live A/B comparison. See BACKTEST_BIBLE.md.
-        'inf': ['symbols_men_long.json', 'symbols_men_short.json'],
+        # 2026-09-21 INF FIX: inf now reconfigures over its OWN crypto best universe
+        # (symbols_inf_long/short.json) — restored from 2026-07-19 men-mirror (A/B test ended).
+        # ez_rankings now controls INF via SPREADSHEETS/BEST crypto backtests (15 long + 15 short).
+        'inf': ['symbols_inf_long.json', 'symbols_inf_short.json'],
     }.get(account, [])
     syms: List[str] = []
     seen = set()
