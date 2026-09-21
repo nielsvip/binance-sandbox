@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-21 03:02 UTC",
- "total_capital_usd": 3.26,
+ "generated_at": "2026-09-21 03:28 UTC",
+ "total_capital_usd": 3.27,
  "tier_capital": {
   "A": 0.0,
-  "B": 3.26,
+  "B": 3.27,
   "C": 0.0
  },
  "tier_count": {
@@ -19,12 +19,12 @@
    "pk": "flz:XRPUSDC_LONG",
    "symbol": "XRPUSDC",
    "account": "flz",
-   "value_usd": 3.26,
-   "gain_pct": 0.272,
+   "value_usd": 3.27,
+   "gain_pct": -0.166,
    "tier": "B",
-   "perf_mult": 1.64,
+   "perf_mult": 1.9,
    "amt": 2.3,
-   "mark": 1.41833442
+   "mark": 1.4211
   }
  ]
 }
