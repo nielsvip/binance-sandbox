@@ -16204,5 +16204,23 @@
     ],
     "timestamp": "2026-09-21T09:22:07.926054+00:00",
     "price": 125.88469068
+  },
+  {
+    "symbol": "AMDUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 6.5x (from rankings)"
+    ],
+    "timestamp": "2026-09-21T09:25:04.919745+00:00",
+    "price": 484.16
+  },
+  {
+    "symbol": "1000BONKUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.1x (from rankings)"
+    ],
+    "timestamp": "2026-09-21T09:38:55.596392+00:00",
+    "price": 0.002728
   }
 ]
