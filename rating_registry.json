@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-21T04:46:24.759709+00:00",
+  "timestamp": "2026-09-21T05:11:35.860771+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -92,6 +92,12 @@
     },
     {
       "symbol": "ONDOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "1INCHUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -367,6 +373,12 @@
       "short_score": 0
     },
     {
+      "symbol": "KSMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "XRPUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -385,50 +397,28 @@
       "short_score": 0
     },
     {
-      "symbol": "1INCHUSDT",
-      "net_score": 10.6,
-      "long_score": 10.6,
-      "short_score": 0
-    },
-    {
-      "symbol": "KSMUSDT",
-      "net_score": 11.5,
-      "long_score": 11.5,
-      "short_score": 0
-    },
-    {
       "symbol": "EGLDUSDT",
-      "net_score": 16.7,
-      "long_score": 16.7,
+      "net_score": 13.3,
+      "long_score": 13.3,
       "short_score": 0
     },
     {
       "symbol": "GRAMUSDT",
-      "net_score": 19.2,
-      "long_score": 19.2,
+      "net_score": 15.6,
+      "long_score": 15.6,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "GRAMUSDT",
-      19.2,
-      1.408
+      15.6,
+      1.40124867
     ],
     [
       "EGLDUSDT",
-      16.7,
-      4.15501296
-    ],
-    [
-      "KSMUSDT",
-      11.5,
-      4.56083333
-    ],
-    [
-      "1INCHUSDT",
-      10.6,
-      0.10068
+      13.3,
+      4.041
     ]
   ],
   "top_shorts": [],
