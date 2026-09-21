@@ -1,43 +1,45 @@
 {
- "generated_at": "2026-09-21 05:28 UTC",
- "total_capital_usd": 182.07,
+ "generated_at": "2026-09-21 05:45 UTC",
+ "total_capital_usd": 154.67,
  "tier_capital": {
   "A": 0.0,
-  "B": 182.07,
-  "C": 0.0
+  "B": 77.34,
+  "C": 77.33
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
-  "C": 0
+  "B": 1,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "flz:DASHUSDT_SHORT"
+  "flz:BNBUSDC_LONG"
  ],
- "mediocre": [],
+ "mediocre": [
+  "flz:ETHUSDC_LONG"
+ ],
  "positions": [
   {
-   "pk": "flz:HYPEUSDT_LONG",
-   "symbol": "HYPEUSDT",
+   "pk": "flz:ETHUSDC_LONG",
+   "symbol": "ETHUSDC",
    "account": "flz",
-   "value_usd": 179.6,
-   "gain_pct": 0.0,
+   "value_usd": 77.34,
+   "gain_pct": -0.041,
    "tier": "B",
-   "perf_mult": 2.3,
-   "amt": 1.91,
-   "mark": 94.033
+   "perf_mult": 0.9,
+   "amt": 0.029,
+   "mark": 2666.89315521
   },
   {
-   "pk": "flz:DASHUSDT_SHORT",
-   "symbol": "DASHUSDT",
+   "pk": "flz:BNBUSDC_LONG",
+   "symbol": "BNBUSDC",
    "account": "flz",
-   "value_usd": 2.47,
-   "gain_pct": -0.953,
-   "tier": "B",
-   "perf_mult": 4.02,
-   "amt": 0.043,
-   "mark": 57.43207044
+   "value_usd": 77.33,
+   "gain_pct": 0.036,
+   "tier": "C",
+   "perf_mult": 0.55,
+   "amt": 0.1,
+   "mark": 773.3
   }
  ]
 }
