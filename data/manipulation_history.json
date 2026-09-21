@@ -15754,5 +15754,32 @@
     ],
     "timestamp": "2026-09-21T01:14:03.083677+00:00",
     "price": 219.82
+  },
+  {
+    "symbol": "BABAUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.0x (from rankings)"
+    ],
+    "timestamp": "2026-09-21T01:36:02.722904+00:00",
+    "price": 109.05
+  },
+  {
+    "symbol": "AAOIUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.1x (from rankings)"
+    ],
+    "timestamp": "2026-09-21T01:49:38.325670+00:00",
+    "price": 96.86
+  },
+  {
+    "symbol": "METAUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.1x (from rankings)"
+    ],
+    "timestamp": "2026-09-21T01:49:38.325670+00:00",
+    "price": 653.49
   }
 ]

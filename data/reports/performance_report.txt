@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-21 01:27 UTC
+PERFORMANCE REPORT — 2026-09-21 01:54 UTC
 ================================================================================
 Total: 146 symbols | A=2 B=114 C=30
 Window: 14 days | Min trades: 5
@@ -30,10 +30,10 @@ Window: 14 days | Min trades: 5
               GME  WR=50%  avg=+0.29%  total=+1.2%  trades=  4  mult=1.00
           ZROUSDT  WR=100%  avg=+0.57%  total=+1.1%  trades=  2  mult=1.00
          RKLBUSDT  WR=71%  avg=+0.15%  total=+1.0%  trades=  7  mult=2.70
-          XRPUSDC  WR=56%  avg=+0.01%  total=+0.9%  trades=108  mult=2.06 ** OPEN **
          ASTSUSDT  WR=75%  avg=+0.22%  total=+0.9%  trades=  4  mult=1.00
               NOC  WR=78%  avg=+0.09%  total=+0.8%  trades=  9  mult=3.53
           ZRXUSDT  WR=44%  avg=+0.09%  total=+0.8%  trades=  9  mult=0.93
+          XRPUSDC  WR=55%  avg=+0.01%  total=+0.8%  trades=110  mult=1.87
           ETHUSDC  WR=52%  avg=+0.04%  total=+0.8%  trades= 21  mult=1.67
           XLMUSDT  WR=52%  avg=+0.03%  total=+0.7%  trades= 21  mult=1.66
           PTBUSDT  WR=54%  avg=+0.02%  total=+0.6%  trades= 26  mult=1.85
@@ -41,10 +41,10 @@ Window: 14 days | Min trades: 5
           WIFUSDC  WR=88%  avg=+0.07%  total=+0.6%  trades=  8  mult=3.89
           RSRUSDT  WR=100%  avg=+0.24%  total=+0.5%  trades=  2  mult=1.00
          LINKUSDC  WR=75%  avg=+0.12%  total=+0.5%  trades=  4  mult=1.00
-          BTCUSDC  WR=50%  avg=+0.02%  total=+0.4%  trades= 22  mult=1.13
           SKYUSDT  WR=73%  avg=+0.03%  total=+0.4%  trades= 11  mult=3.38
          EGLDUSDT  WR=60%  avg=+0.04%  total=+0.3%  trades= 10  mult=2.02
           KSMUSDT  WR=100%  avg=+0.04%  total=+0.3%  trades=  8  mult=4.70
+          BTCUSDC  WR=48%  avg=+0.01%  total=+0.3%  trades= 23  mult=0.88
          MASKUSDT  WR=25%  avg=+0.07%  total=+0.3%  trades=  4  mult=1.00
          AAVEUSDC  WR=75%  avg=+0.07%  total=+0.3%  trades=  4  mult=1.00
          BMNRUSDT  WR=83%  avg=+0.04%  total=+0.2%  trades=  6  mult=2.87
@@ -85,16 +85,16 @@ Window: 14 days | Min trades: 5
           ICPUSDT  WR=0%  avg=-0.03%  total=-0.0%  trades=  1  mult=1.00
          DELLUSDT  WR=50%  avg=-0.01%  total=-0.0%  trades=  4  mult=1.00
           BIOUSDC  WR=0%  avg=-0.02%  total=-0.0%  trades=  2  mult=1.00
+          DOTUSDT  WR=52%  avg=-0.00%  total=-0.0%  trades= 25  mult=1.35
           ZENUSDT  WR=0%  avg=-0.04%  total=-0.0%  trades=  1  mult=1.00
-          DOTUSDT  WR=50%  avg=-0.00%  total=-0.1%  trades= 26  mult=0.99
-          ENSUSDT  WR=50%  avg=-0.02%  total=-0.1%  trades=  2  mult=1.00
        RENDERUSDT  WR=0%  avg=-0.05%  total=-0.1%  trades=  1  mult=1.00
          ONDOUSDT  WR=33%  avg=-0.02%  total=-0.1%  trades=  3  mult=1.00
+          ENSUSDT  WR=0%  avg=-0.07%  total=-0.1%  trades=  1  mult=1.00
            ARUSDT  WR=0%  avg=-0.07%  total=-0.1%  trades=  1  mult=1.00
          USARUSDT  WR=75%  avg=-0.03%  total=-0.1%  trades=  4  mult=1.00
               HON  WR=0%  avg=-0.08%  total=-0.2%  trades=  2  mult=1.00
            OPUSDT  WR=50%  avg=-0.02%  total=-0.2%  trades=  8  mult=0.97
-          ZILUSDT  WR=50%  avg=-0.05%  total=-0.2%  trades=  4  mult=1.00
+          ZILUSDT  WR=33%  avg=-0.07%  total=-0.2%  trades=  3  mult=1.00
           TRBUSDT  WR=50%  avg=-0.07%  total=-0.3%  trades=  4  mult=1.00
           SNXUSDT  WR=50%  avg=-0.03%  total=-0.3%  trades=  8  mult=0.96
              CIBR  WR=0%  avg=-0.28%  total=-0.3%  trades=  1  mult=1.00
@@ -136,7 +136,7 @@ Window: 14 days | Min trades: 5
                VT  WR=29%  avg=-0.22%  total=-1.5%  trades=  7  mult=0.55
         1INCHUSDT  WR=14%  avg=-0.24%  total=-1.7%  trades=  7  mult=0.44
               LOW  WR=38%  avg=-0.29%  total=-2.3%  trades=  8  mult=0.57
-          VETUSDT  WR=21%  avg=-0.11%  total=-3.1%  trades= 29  mult=0.27
+          VETUSDT  WR=22%  avg=-0.11%  total=-2.8%  trades= 27  mult=0.28
              META  WR=25%  avg=-0.34%  total=-4.1%  trades= 12  mult=0.35
              IBIT  WR=17%  avg=-0.74%  total=-4.4%  trades=  6  mult=0.41
              SNOW  WR=33%  avg=-0.55%  total=-5.1%  trades=  9  mult=0.43
