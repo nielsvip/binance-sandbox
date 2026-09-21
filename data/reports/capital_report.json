@@ -1,30 +1,102 @@
 {
- "generated_at": "2026-09-21 20:20 UTC",
- "total_capital_usd": 9.09,
+ "generated_at": "2026-09-21 20:46 UTC",
+ "total_capital_usd": 345.46,
  "tier_capital": {
   "A": 0.0,
-  "B": 9.09,
+  "B": 345.47,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 7,
   "C": 0
  },
  "winners": [],
- "losers": [],
- "mediocre": [],
+ "losers": [
+  "ang:ETHUSDC_LONG"
+ ],
+ "mediocre": [
+  "ang:BTCUSDC_LONG",
+  "ang:AVAXUSDC_LONG",
+  "ang:ARUSDT_LONG"
+ ],
  "positions": [
   {
-   "pk": "inf:DOTUSDT_LONG",
-   "symbol": "DOTUSDT",
-   "account": "inf",
-   "value_usd": 9.09,
-   "gain_pct": 0.376,
+   "pk": "ang:BTCUSDC_LONG",
+   "symbol": "BTCUSDC",
+   "account": "ang",
+   "value_usd": 173.86,
+   "gain_pct": 0.062,
    "tier": "B",
-   "perf_mult": 1.34,
-   "amt": 7.7,
-   "mark": 1.18092869
+   "perf_mult": 0.78,
+   "amt": 0.002,
+   "mark": 86928.36886341
+  },
+  {
+   "pk": "ang:AVAXUSDC_LONG",
+   "symbol": "AVAXUSDC",
+   "account": "ang",
+   "value_usd": 79.81,
+   "gain_pct": -0.058,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 7.22,
+   "mark": 11.05379692
+  },
+  {
+   "pk": "ang:EGLDUSDT_LONG",
+   "symbol": "EGLDUSDT",
+   "account": "ang",
+   "value_usd": 33.21,
+   "gain_pct": 0.06,
+   "tier": "B",
+   "perf_mult": 2.02,
+   "amt": 7.8,
+   "mark": 4.25754921
+  },
+  {
+   "pk": "ang:ETHUSDC_LONG",
+   "symbol": "ETHUSDC",
+   "account": "ang",
+   "value_usd": 25.03,
+   "gain_pct": -0.672,
+   "tier": "B",
+   "perf_mult": 1.1,
+   "amt": 0.009,
+   "mark": 2780.88136228
+  },
+  {
+   "pk": "ang:XLMUSDT_LONG",
+   "symbol": "XLMUSDT",
+   "account": "ang",
+   "value_usd": 23.25,
+   "gain_pct": -0.066,
+   "tier": "B",
+   "perf_mult": 1.75,
+   "amt": 109.0,
+   "mark": 0.21327623
+  },
+  {
+   "pk": "ang:ARUSDT_LONG",
+   "symbol": "ARUSDT",
+   "account": "ang",
+   "value_usd": 5.84,
+   "gain_pct": 0.024,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 1.3,
+   "mark": 4.4907931
+  },
+  {
+   "pk": "ang:LINKUSDC_LONG",
+   "symbol": "LINKUSDC",
+   "account": "ang",
+   "value_usd": 4.47,
+   "gain_pct": 0.685,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 0.34,
+   "mark": 13.14245765
   }
  ]
 }
