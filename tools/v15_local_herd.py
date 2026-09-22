@@ -587,6 +587,16 @@ def main():
             host_idx = int(ip.split(".")[-1]) % 4
         except:
             host_idx = 0
+    # FIX 2026-09-22: s2 hostname misconfig niels -> use IP octet to correct host_idx (s1=3, s2=4, s5=7, s6=8)
+    try:
+        ip = subprocess.check_output(["hostname", "-I"], text=True).split()[0]
+        octet = int(ip.split(".")[-1])
+        ip_map = {3: 0, 4: 1, 7: 2, 8: 3}
+        if octet in ip_map and host_idx != ip_map[octet] and (me == "niels" or host_idx == 0):
+            host_idx = ip_map[octet]
+            print(f"[host-fix] hostname {me} corrected to host_idx {host_idx} via IP {ip}", flush=True)
+    except:
+        pass
 
 
     # Scan local unfinished: *.bak, *.tmp, and progress.json with done < expected (not 0 and not complete)
@@ -681,6 +691,16 @@ def main():
         me_suffix = "2"
     else:
         me_suffix = "1"
+    # FIX 2026-09-22: s2 hostname niels but IP 10.0.0.4 -> correct me_suffix via IP
+    try:
+        ip2 = subprocess.check_output(["hostname", "-I"], text=True).split()[0]
+        octet2 = int(ip2.split(".")[-1])
+        ip_suffix = {3: "1", 4: "2", 7: "5", 8: "6"}
+        if octet2 in ip_suffix and me_suffix != ip_suffix[octet2] and me_l.strip() == "niels":
+            me_suffix = ip_suffix[octet2]
+            print(f"[host-fix] me_suffix corrected to {me_suffix} via IP {ip2}", flush=True)
+    except:
+        pass
     ram_bases = set()
     try:
         for p in list(pathlib.Path("/home/niels/binance-sandbox/data/reports/lifecycle_pilot").glob("*_pilot_progress.json")) + list(pathlib.Path("/home/niels/binance-sandbox/data/reports/lifecycle_pilot").glob("*_v14_progress.json")):

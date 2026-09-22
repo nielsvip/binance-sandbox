@@ -14824,10 +14824,13 @@ def _apply_625_generic_gates(npz, n, is_long, cfg, entry_mask, exit_mask):
         _v = _safe(npz, 'relative_volume_1h', n, 50)
         _b = 50 + (_thr % 15)-7.5
         e = e & (_v < _b if is_long else _v > _b)
-    # EMA_9_21_FILTER_ENABLED (bool) -> exit via wt_velocity_4h
-    if bool(getattr(cfg, 'EMA_9_21_FILTER_ENABLED', False)) != bool(_DEFAULTS_625.get('EMA_9_21_FILTER_ENABLED', False)):
-        _v = _safe(npz, 'wt_velocity_4h', n, 50)
-        x = x | (_v > 80 if is_long else _v < 20)
+    # EMA_9_21_FILTER_ENABLED (bool) -> entry ONLY, never exit — was incorrectly exit via wt_velocity_4h, fixed 2026-09-22
+    # ENTRY filter only: no exit block. Previous line x | wt_velocity_4h>80 blocked exits in gain (small-green stuck). Now handled only in _compute_base_entry as ENTRY SWITCH (KINDERGARTEN 15m EMA 9x21 cross OR). No x change here.
+    # Ensure exits still close in gain: when WT_SIMPLE guarantee is on, opposite WT cross guarantees exit (prevents 0-trade stuck-open)
+    if bool(getattr(cfg, 'WT_SIMPLE_GUARANTEE_ENABLED', False)):
+        _wt1_15 = _safe(npz, 'wt1_15m', n, 0)
+        _wt2_15 = _safe(npz, 'wt2_15m', n, 0)
+        x = x | ((_wt1_15 < _wt2_15) if is_long else (_wt1_15 > _wt2_15))
     # EMA_DIST_LONG_THRESHOLD (num) -> entry via rsi_1h
     _thr = float(getattr(cfg, 'EMA_DIST_LONG_THRESHOLD', 0))
     _def = float(_DEFAULTS_625.get('EMA_DIST_LONG_THRESHOLD', 0) or 0)
