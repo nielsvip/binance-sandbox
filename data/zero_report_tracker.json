@@ -1521,18 +1521,6 @@
       "API_ABSENCE": 2
     }
   },
-  "fin:SANDUSDT_SHORT": {
-    "count": 2,
-    "first_seen": "2026-08-12T22:23:12.522015+00:00",
-    "source": "phantom_kill_bootstrap",
-    "last_seen": "2026-08-12T22:40:46.124972+00:00"
-  },
-  "fin:SNXUSDT_SHORT": {
-    "count": 1,
-    "first_seen": "2026-08-12T22:40:46.124970+00:00",
-    "source": "phantom_kill_bootstrap",
-    "last_seen": "2026-08-12T22:40:46.124971+00:00"
-  },
   "men:RUNEUSDT_SHORT": {
     "count": 2,
     "first_seen_zero_at": "2026-08-12 23:40:44.690873+00:00",
@@ -1661,12 +1649,13 @@
       "API_ABSENCE": 2
     }
   },
-  "flz:DOGEUSDC_SHORT": {
+  "flz:HYPEUSDT_LONG": {
     "count": 2,
-    "first_seen_zero_at": "2026-09-22 10:35:33.984618+00:00",
-    "last_increment_at": "2026-09-22 10:36:07.169763+00:00",
+    "first_seen_zero_at": "2026-09-22 00:28:24.617206+00:00",
+    "last_increment_at": "2026-09-22 00:28:24.617206+00:00",
     "sources": {
-      "API_ABSENCE": 2
-    }
+      "API_ABSENCE": 1
+    },
+    "last_seen": "2026-09-22T00:28:36.089022+00:00"
   }
 }
