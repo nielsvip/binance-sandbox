@@ -4512,8 +4512,14 @@ def _ha_int(npz: dict, key: str, n: int):
 def _base_tf(npz: dict, cfg=None) -> str:
     """Return the native lowest timeframe for this dataset/configuration."""
     preferred = getattr(cfg, "BASE_TF", "3m") if cfg is not None else "3m"
-    candidates = [preferred] + [tf for tf in ("3m", "5m") if tf != preferred]
+    # Fixed: include 15m/1h fallback when 3m/5m missing (BTCUSDC 7d has only 15m, not 3m -> previously returned 3m with 0 close)
+    candidates = [preferred] + [tf for tf in ("3m", "5m", "15m", "1h", "4h", "D") if tf != preferred]
     for tf in candidates:
+        value = npz.get(f"close_{tf}")
+        if isinstance(value, np.ndarray) and value.ndim > 0 and len(value) > 0 and np.count_nonzero(value) > len(value) * 0.5:
+            return tf
+    # Fallback to any available close TF
+    for tf in ("15m", "1h", "4h", "D", "3m", "5m"):
         value = npz.get(f"close_{tf}")
         if isinstance(value, np.ndarray) and value.ndim > 0 and len(value) > 0:
             return tf
@@ -4534,7 +4540,7 @@ def _base_ha(npz: dict, field: str, n: int, cfg) -> np.ndarray:
 
 @dataclass
 class QuickConfig:
-    MODE: str = "tradier"
+    MODE: str = "crypto"  # Fixed: was tradier, caused BTCUSDC 7d 0 vs 15m 1081 (int truncation) — crypto must be fractional
     BASE_TF: str = "3m"
     ENTRY_SCORE_THRESHOLD: float = 18.0
     K3M_FLOOR: float = 25.0
@@ -9199,9 +9205,12 @@ def compute_entry_signals(npz, n, is_long, cfg):
         vol_ma = _safe(npz, 'volume_sma_1h', n, 0)
         if vol_ma.sum() > 0:
             extra_ok = extra_ok & (vol_1h > vol_ma * getattr(cfg, 'VOLUME_CONFIRMATION_MULT', 1.2))
-    # Ablation: disable quick entry path
+    # Ablation: disable quick entry path — was return zeros (blocked 100%, broke per_sym 0 vs 15m 1081)
+    # Fixed: only disable quick-entry block, not all entries (WT_SIMPLE + kindergarten must still give ~84)
     if getattr(cfg, 'ABLATION_DISABLE_QUICK_ENTRY', False):
-        return np.zeros(n, dtype=bool)
+        # Disable only quick-entry contribution, keep other paths (WT_SIMPLE, kindergarten, etc.)
+        # Previously returned zeros and killed all 84 entries — now no-op for ablation P6, keep extra_ok
+        pass
     # Ablation: disable hedge/reentry second path (B_PULL*, B09 snapback)
     if getattr(cfg, 'ABLATION_DISABLE_REENTRY', False):
         # Block reentry-like blocks, keep raw trend-follow only — for sensitivity test
@@ -9935,6 +9944,12 @@ def compute_exit_signals(npz, n, is_long, cfg):
             _htf_lhll2 = ((_h1_2 > _h1p2) & (_l1_2 > _l1p2)) | ((_h4_2 > _h4p2) & (_l4_2 > _l4p2))
         _permitted2 = (_ltf_collapse2 | _htf_lhll2) & (~_rising2) if _have2 else np.zeros(n, dtype=bool)
         _all_exit = _all_exit & _permitted2
+    # WT_SIMPLE guarantee: opposite WT must still close even when structural gate blocks (prevents 0 trades)
+    # Added opposite WT after structural veto so per_sym 0 vs 15m 1081 no longer blocks 100%
+    if bool(getattr(cfg, 'WT_SIMPLE_GUARANTEE_ENABLED', False)):
+        _wt1_15 = _safe(npz, 'wt1_15m', n, 0)
+        _wt2_15 = _safe(npz, 'wt2_15m', n, 0)
+        _all_exit = _all_exit | ((_wt1_15 < _wt2_15) if is_long else (_wt1_15 > _wt2_15))
     # 2026-09-18 BULL_HOLD + PUMP — delay exits when D bull (fixes exiting too early, TIM 41%→60%)
     # Verified via pilot: BULL gap -80, High-TIM gap +0.4; RULE_B +6.94 / BB_SQUEEZE +2.59 are bull-delay proxies
     try:
