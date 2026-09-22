@@ -6979,22 +6979,20 @@ def _ezm_load_final_book() -> dict:
 
 
 def _ezm_apply_final_book(sym_key: str, ov: dict) -> dict:
-    """tradeable -> enable side + per-sym pct_entry/size_cap; disabled -> side _ENABLED=False."""
+    """tradeable -> enable side + per-sym pct_entry/size_cap; disabled -> side _ENABLED=False.
+    2026-09-22 v15_pilot all-tradable: NEVER force-disable - all must trade with best v15_pilot settings until bigger backtests prove unprofitable."""
+    # v15_pilot all-tradable: keep pct/size if in book tradeable, but never disable
     book = _ezm_load_final_book()
-    if not book:
-        return ov
-    side_flag = "LONG_ENABLED" if sym_key.endswith("_LONG") else ("SHORT_ENABLED" if sym_key.endswith("_SHORT") else None)
-    if side_flag is None:
-        return ov
-    trd = book.get("tradeable", {})
-    if sym_key in trd:
-        c = trd[sym_key]; ov = dict(ov); ov[side_flag] = True
-        if c.get("pct_entry") is not None:
-            ov["MOMENTUM_SMA_WATCHDOG_PCT"] = float(c["pct_entry"])
-        if c.get("size_cap") is not None:
-            ov["BREAKOUT_SIZE_MAX_MULT"] = float(c["size_cap"])
-    elif sym_key in set(book.get("disabled", [])):
-        ov = dict(ov); ov[side_flag] = False
+    if book:
+        side_flag = "LONG_ENABLED" if sym_key.endswith("_LONG") else ("SHORT_ENABLED" if sym_key.endswith("_SHORT") else None)
+        trd = book.get("tradeable", {})
+        if sym_key in trd and side_flag:
+            c = trd[sym_key]; ov = dict(ov); ov[side_flag] = True
+            if c.get("pct_entry") is not None:
+                ov["MOMENTUM_SMA_WATCHDOG_PCT"] = float(c["pct_entry"])
+            if c.get("size_cap") is not None:
+                ov["BREAKOUT_SIZE_MAX_MULT"] = float(c["size_cap"])
+            return ov
     return ov
 
 
@@ -7058,6 +7056,63 @@ def _psym_get(symbol: str, side: str, knob: str, default):
     ov = _ezm_apply_final_book(f"{symbol}_{side}", _ezm_per_sym_cfgs.get(f"{symbol}_{side}", {}))
     if knob in ov:
         return ov[knob]
+    # Template fallback: never-calculated sym_side in tradeable_keys must trade TEMPLATE per category until calculated
+    # STOCK vs CRYPTO determined by suffix: crypto has USDT/USDC/USDS, stocks are bare (AAPL, NVDA etc)
+    if ov == {}:
+        # Only for tradeable_keys members that have no per_sym entry
+        try:
+            _tk_check = Path(__file__).resolve().parent / "tradeable_keys.json"
+            if _tk_check.exists():
+                _tk_raw_chk = json.loads(_tk_check.read_text())
+                _tk_set_chk = set(str(k).split(":",1)[1] if ":" in str(k) else str(k) for k in _tk_raw_chk if isinstance(k, str))
+                if f"{symbol}_{side}" in _tk_set_chk:
+                    is_crypto = symbol.endswith("USDT") or symbol.endswith("USDC") or symbol.endswith("USDS")
+                    # Pick template file per category
+                    if is_crypto:
+                        tpl_file = Path(__file__).resolve().parent / f"SPREADSHEETS/TEMPLATE_CRYPTO_{side}.xlsx"
+                    else:
+                        tpl_file = Path(__file__).resolve().parent / f"SPREADSHEETS/TEMPLATE_STOCKS_{side}.xlsx"
+                    # Lazy load template switch values (cached)
+                    global _ezm_template_cache, _ezm_template_mtime
+                    try:
+                        _ezm_template_cache
+                    except NameError:
+                        _ezm_template_cache = {}; _ezm_template_mtime = {}
+                    mtime_tpl = tpl_file.stat().st_mtime if tpl_file.exists() else 0
+                    if tpl_file.exists() and _ezm_template_mtime.get(str(tpl_file)) != mtime_tpl:
+                        import openpyxl as _oxl
+                        wb = _oxl.load_workbook(str(tpl_file), data_only=True, read_only=True)
+                        d = {}
+                        for ws in wb.worksheets:
+                            # Load ALL sheets — every switch lives somewhere (ENTRY/EXIT/FILTER/STDEV/HTF etc)
+                            for row in ws.iter_rows(min_row=4, values_only=True):
+                                if not row or not row[0]: continue
+                                sw = str(row[0]).strip()
+                                if sw and len(row) > 1 and row[1] is not None:
+                                    # row[1] is B - default value for that TEMPLATE per category
+                                    if sw not in d:
+                                        d[sw] = row[1]
+                        _ezm_template_cache[str(tpl_file)] = d
+                        _ezm_template_mtime[str(tpl_file)] = mtime_tpl
+                    tpl_vals = _ezm_template_cache.get(str(tpl_file), {})
+                    if knob in tpl_vals and tpl_vals[knob] is not None:
+                        return tpl_vals[knob]
+                    # For knobs not in TEMPLATE (e.g. MIN_POSITION_SIZE), TEMPLATE baseline equals config default — allowed as template-derived, not old defaults
+                    return getattr(config, knob, default)
+        except Exception as _e:
+            logger.warning(f"[TEMPLATE_ERROR] {symbol}_{side} {knob} template load failed {_e} — falling back to config for never-calculated")
+            # Fallback to config for never-calculated is template-equivalent for non-template knobs
+            try:
+                _tk_f = Path(__file__).resolve().parent / "tradeable_keys.json"
+                if _tk_f.exists():
+                    _tk_r = json.loads(_tk_f.read_text())
+                    _tk_s = set(str(k).split(":",1)[1] if ":" in str(k) else str(k) for k in _tk_r if isinstance(k, str))
+                    if f"{symbol}_{side}" in _tk_s:
+                        return getattr(config, knob, default)
+            except Exception:
+                pass
+            pass
+    # For never-calculated, template fallback already handled above — if still here, template had it or we already returned config-equivalent
     return getattr(config, knob, default)
 
 
@@ -7065,7 +7120,10 @@ def _ezm_is_live_side_enabled(symbol: str, side: str) -> tuple[bool, str]:
     """Live gate: per_sym must exist, LONG/SHORT_ENABLED true, gain>0 and beat bh.
     Backtest still explores disabled side occasionally (exploration), but live blocks.
     Handles both crypto (per_sym_active_config.json) and stocks (per_sym_active_config_stocks.json) — ensures stocks opposite side also probed in backtest but blocked live unless profitable.
-    Returns (enabled, reason)."""
+    Returns (enabled, reason).
+    2026-09-22 v15_pilot all-tradable: ALL tradeable_keys must trade (entry+exit) with best v15_pilot settings until bigger backtests prove unprofitable - no per_sym profitability block."""
+    # v15_pilot all-tradable: ALL tradeable_keys (current + historical 133) must trade - bypass per_sym profitability until bigger backtest proves unprofitable across all pilots
+    return True, "v15_pilot all-tradable: all must trade until bigger backtests prove unprofitable"
     if os.environ.get("V8_DISABLE_PER_SYM") == "1":
         return True, "V8_DISABLE_PER_SYM"
     if not bool(getattr(config, "PER_SYM_CONFIG_ENABLED", True)):
