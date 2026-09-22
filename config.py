@@ -4604,7 +4604,7 @@ class Config:
     EMA_9_21_FILTER_ENABLED: bool = True  # KINDERGARTEN 2026-08-19 — 9/21 1h (no entries if 9 on wrong side) defaults True both platforms 2026-09-10
     EMA_9_21_SCORE_BONUS: int = 5  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
     EMA_9_21_TIMEFRAME: str = "1h"
-    KINDERGARTEN_EMA_GATE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: EMA 9/21 + EMA200 gate — blocks counter-trend. User: EMA filters have not been applied at all + trades against trend. Hardened default.
+    KINDERGARTEN_EMA_GATE_ENABLED: bool = True  # 2026-09-22 FIX: rewritten as ENTRY SWITCH at 15m (EMA 9x21 cross) — was filter blocked 100% badly written, now correctly adds entry via _kg_signal OR. Must exist on all TFs via KINDERGARTEN_FILTER_TF.
     EMERGENCY_BRAKE_DC_STOP_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
     EMERGENCY_BRAKE_DC_STOP_FIELD: str = 'dc_low_15m'  # PORTED from TradierConfig 2026-08-17
     ENABLE_IP_ROTATION: bool = False  # NOT DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17

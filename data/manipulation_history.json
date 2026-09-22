@@ -19678,5 +19678,32 @@
     ],
     "timestamp": "2026-09-22T13:20:49.848825+00:00",
     "price": 6.345
+  },
+  {
+    "symbol": "1000BONKUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.2x (from rankings)"
+    ],
+    "timestamp": "2026-09-22T13:33:16.212532+00:00",
+    "price": 0.002728
+  },
+  {
+    "symbol": "ADAUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.1x (from rankings)"
+    ],
+    "timestamp": "2026-09-22T13:35:53.193721+00:00",
+    "price": 0.2081
+  },
+  {
+    "symbol": "PENGUUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.3x (from rankings)"
+    ],
+    "timestamp": "2026-09-22T13:43:36.541060+00:00",
+    "price": 0.00708
   }
 ]

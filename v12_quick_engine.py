@@ -6974,7 +6974,7 @@ class QuickConfig:
     IN_GAIN_TREND_REDUCE_FRAC: float = 0.5
     K3M_CAP: int = 80
     K3M_CAP_BREAKOUT_BYPASS: bool = True
-    KINDERGARTEN_EMA_GATE_ENABLED: bool = False  # 2026-09-22 FIX: was True blocked 100% — badly written, fixed to 40% not 100% but disabled by default, per_sym enables
+    KINDERGARTEN_EMA_GATE_ENABLED: bool = True  # 2026-09-22 FIX: rewritten as ENTRY SWITCH at 15m (EMA 9x21 cross) — was filter blocked 100% badly written, now correctly adds entry via _kg_signal OR, not block
     KINDERGARTEN_CUMULATIVE_MODE: bool = True  # 2026-09-14 FIX: cumulate all kindergarten filters (not OR single-pick)
     KINDERGARTEN_CUMULATIVE_MIN_TFS: int = 1
     KINDERGARTEN_STRICT_TFS: str = ""
@@ -9445,13 +9445,10 @@ def compute_entry_signals(npz, n, is_long, cfg):
     # SBA_BOUNCE gating: when enabled, bounce entries require bounce score to pass (otherwise filtered)
     if bool(getattr(cfg, 'SBA_BOUNCE_ENABLED', False)):
         _base_entry = _base_entry & _sba_bounce_vec
-    # KINDERGARTEN TREND FILTER — blocks counter-trend entries when EMA gates enabled
-    # When KINDERGARTEN_EMA_GATE_ENABLED or EMA_9_21_FILTER_ENABLED is True, require
-    # EMA 9/21 alignment on required TFs. This restores the kindergarten 9/21 50/50 filter
-    # that was bypassed by the 2026-09-07 gates-OFF fix which caused suicidal scalps
-    # against negative WT / StochRSI / MFI on multiple TFs (MRVL_SHORT whistleblower).
-    _kg_ok = np.ones(n, dtype=bool)
-    # FTF DEPENDENT: KINDERGARTEN_FILTER_TF determines which TFs are tested — must be in _ALL_FILTER_TF and sweepable per TF
+    # KINDERGARTEN EMA CROSS — REWRITTEN 2026-09-22: was filter (AND _kg_ok) blocked 100% badly written — now ENTRY SWITCH at 15m (EMA 9x21 cross)
+    # User: then rewrite it correctly and put it back — its an ema cross. Now correctly: EMA 9 crosses 21 on KINDERGARTEN_FILTER_TF (15m default) adds entry, NOT blocks.
+    # FTF dependent: KINDERGARTEN_FILTER_TF in _ALL_FILTER_TF, sweepable per TF (15m/1h/4h/D/W). When enabled, ORs EMA cross signal, never blocks 100%.
+    _kg_signal = np.zeros(n, dtype=bool)
     _kg_filter_tf = str(getattr(cfg, 'KINDERGARTEN_FILTER_TF', getattr(cfg, 'EMA_9_21_FILTER_FILTER_TF', '15m')) or '15m')
     _kg_filter_tfs = [t.strip() for t in _kg_filter_tf.split(',') if t.strip()] if _kg_filter_tf not in ('OFF', 'off', '') else []
     if (bool(getattr(cfg, 'KINDERGARTEN_EMA_GATE_ENABLED', False)) or bool(getattr(cfg, 'EMA_9_21_FILTER_ENABLED', False))) and _kg_filter_tfs:
@@ -9509,19 +9506,20 @@ def compute_entry_signals(npz, n, is_long, cfg):
                     _strict_ok = np.ones(n, dtype=bool)
                     for _c in _strict_checks:
                         _strict_ok &= _c
-                    _kg_ok &= _strict_ok
-                # Cumulative still over all checks, not just strict
+                    _kg_signal |= _strict_ok
+                # Cumulative still over all checks, not just strict — now ENTRY SWITCH not filter
                 _stack = np.stack(_kg_checks, axis=0) if len(_kg_checks)>1 else _kg_checks[0][None,:]
                 _cnt = _stack.sum(axis=0) if len(_kg_checks)>1 else _kg_checks[0].astype(int)
-                _kg_ok &= (_cnt >= _min_tfs)
+                _kg_signal |= (_cnt >= _min_tfs)
             else:
                 if len(_kg_checks) == 1:
-                    _kg_ok &= _kg_checks[0]
+                    _kg_signal |= _kg_checks[0]
                 else:
                     _stack = np.stack(_kg_checks, axis=0)
                     _cnt = _stack.sum(axis=0)
-                    _kg_ok &= (_cnt >= _min_tfs)
-    _base_entry = _base_entry & _kg_ok
+                    _kg_signal |= (_cnt >= _min_tfs)
+        # ENTRY SWITCH: OR EMA cross signal, never block 100% — FTF dependent per KINDERGARTEN_FILTER_TF
+        _base_entry = _base_entry | _kg_signal
     # WT_SIMPLE_GUARANTEE — previously unconditional OR that forced trades against trend.
     # Now behind explicit flag (default OFF). Only when enabled does wt1>wt2 guarantee entry.
     if bool(getattr(cfg, 'WT_SIMPLE_GUARANTEE_ENABLED', False)):
