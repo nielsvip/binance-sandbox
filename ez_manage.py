@@ -35535,10 +35535,32 @@ class MultiAccountTradeManager:
                             if not _is_long:
                                 logger.warning(f"[WD_SHORT_TRACE] {position_key}: SKIP side_disabled")
                             continue
-                        # ═══ 2026-06-04 USER OBLIGATORY OPEN — 2026-09-04 REINSTATED START 14 probationary per user short calls accurate (02:22) ═══
-                        # SHORT in rally now START size only + wt1_15m/1h hh/hl gate + 60m holds guard 20% loss bounce.
-                        # ROLLBACK: OBLIGATORY_SMA200_WT3M_ENABLED=False.
-                        if bool(getattr(config, "OBLIGATORY_SMA200_WT3M_ENABLED", True)) and _sma15 > 0 and _px > 0:
+                        # ═══ 2026-09-22 EMA50 15m OBLIGATORY — per user: BASE_TF=15m, 3m disabled, use ema_50_15m + wt1_15m instead of sma200_15m+wt1_3m ═══
+                        # Uses ema_50_15m + wt1_15m cross for FORCE-OPEN on 15m TF only. Legacy SMA200 WT3M remains disabled.
+                        _ema50_15m = safe_fetch_float(ind.get("ema_50_15m", 0), 0)
+                        if bool(getattr(config, "OBLIGATORY_EMA50_15M_ENABLED", True)) and _ema50_15m > 0 and _px > 0:
+                            _ob_pct_ema = float(getattr(config, "OBLIGATORY_EMA50_15M_PCT", 1.0)) / 100.0
+                            _wt1_15m_prev_ob = safe_fetch_float(ind.get("wt1_15m_prev", _wt1_15m), _wt1_15m)
+                            _ob_falling_ema = (_wt1_15m < _wt2_15m) or (_wt1_15m < _wt1_15m_prev_ob)
+                            _ob_rising_ema = (_wt1_15m > _wt2_15m) or (_wt1_15m > _wt1_15m_prev_ob)
+                            _ob_hit_ema = (((not _is_long) and _px < _ema50_15m * (1.0 - _ob_pct_ema) and _ob_falling_ema) or (_is_long and _px > _ema50_15m * (1.0 + _ob_pct_ema) and _ob_rising_ema))
+                            if _ob_hit_ema:
+                                _ob_usd_ema = float(getattr(config, "OBLIGATORY_OPEN_USD", 00.0))
+                                _ob_reason_ema = f"OBLIGATORY_OPEN_{side}_EMA50_15M_px{_px:.6f}_ema50_{_ema50_15m:.6f}_wt15m{_wt1_15m:.1f}/{_wt2_15m:.1f}_usd{_ob_usd_ema:.0f}"
+                                logger.critical(f"🩳 [OBLIGATORY_OPEN_EMA50] {position_key}: FORCE-OPEN {side} ~${_ob_usd_ema:.0f} (px {_px:.6f} vs ema50_15m {_ema50_15m:.6f}, wt1_15m {_wt1_15m:.1f}/{_wt2_15m:.1f}) — {_ob_reason_ema}")
+                                await queue_trade_action(self.order_queue, self, position_key, "OPEN", _ob_reason_ema, 95.0, override_qty=(_ob_usd_ema / _px))
+                                continue
+                        # ── EMA50 15m ENTRY FILTER — per user: NOT trigger but filter (BASE_TF=15m, ema_50_15m available) ──
+                        if bool(getattr(config, "EMA50_15M_ENTRY_FILTER_ENABLED", True)) and _ema50_15m > 0 and _px > 0:
+                            _ema_filter_pct = float(getattr(config, "EMA50_15M_ENTRY_FILTER_PCT", 0.0)) / 100.0
+                            if _is_long and _px <= _ema50_15m * (1.0 + _ema_filter_pct):
+                                logger.warning(f"[EMA50_FILTER] {position_key}: BLOCKED LONG price {_px:.6f} <= ema50_15m {_ema50_15m:.6f} — entry filter")
+                                continue
+                            if (not _is_long) and _px >= _ema50_15m * (1.0 - _ema_filter_pct):
+                                logger.warning(f"[EMA50_FILTER] {position_key}: BLOCKED SHORT price {_px:.6f} >= ema50_15m {_ema50_15m:.6f} — entry filter")
+                                continue
+                        # Legacy SMA200 WT3M obligatory kept disabled (ROLLBACK: False)
+                        if bool(getattr(config, "OBLIGATORY_SMA200_WT3M_ENABLED", False)) and _sma15 > 0 and _px > 0:
                             _ob_pct = float(getattr(config, "OBLIGATORY_SMA200_PCT", 1.0)) / 100.0
                             _wt1_3m_prev_ob = safe_fetch_float(ind.get("wt1_3m_prev", _wt1_3m), _wt1_3m)
                             _ob_falling = (_wt1_3m < _wt2_3m) or (_wt1_3m < _wt1_3m_prev_ob)

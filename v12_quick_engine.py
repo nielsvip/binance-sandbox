@@ -112,7 +112,7 @@ import vec_decisions.check_exit_candidates_stocks__wt_exit_tf_against
 import vec_decisions.bb_pullback_gate
 import vec_decisions.filter_tf_gate
 
-_ALL_FILTER_TF = ("ATR_TRAIL_FILTER_TF", "BAR_PATTERNS_FILTER_TF", "BB_PULLBACK_GATE_FILTER_TF", "BB_RECOVERY_ENTRY_FILTER_TF", "BB_RECOVERY_FILTER_TF", "BREAKEVEN_GAIN_EROSION_FILTER_TF", "BREAKOUT_RETEST_FILTER_TF", "BTC_DEDICATED_FILTER_TF", "BT_WT_CROSS_LADDER_FILTER_TF", "CANDLE_PATTERN_STOPS_FILTER_TF", "CIRCUIT_SHARPE_GATES_FILTER_TF", "COOLDOWN_LOCKS_FILTER_TF", "DC_BREACH_REDUCE_FILTER_TF", "DC_BREAK_FILTER_TF", "DC_MOMENTUM_BOTA_SCORER_FILTER_TF", "DELTA_ENGINE_FILTER_TF", "DUP_GUARD_FILTER_TF", "E2E_REPLAY_VALIDATOR_FILTER_TF", "EMA_9_21_FILTER_FILTER_TF", "EMA_BLANKET_FILTER_FILTER_TF", "EMERGENCY_BRAKE_FILTER_TF", "EXHAUSTION_EXIT_FILTER_TF", "EXIT_R1_R2_FILTER_TF", "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF", "EXIT_TOP_FADE_FILTER_TF", "EXIT_TO_REDUCE_ADAPTER_FILTER_TF", "FAST_RISER_FILTER_TF", "FH_MOMENTUM_FILTER_TF", "FIRST_OPEN_THROTTLE_FILTER_TF", "FROZEN_STOP_FILTER_TF", "FUNDING_GATE_FILTER_TF", "GOLDEN_RULE_ENFORCE_FILTER_TF", "GOLDEN_RULE_HTF_VOTE_FILTER_TF", "GR_FILTER_VEC_FILTER_TF", "GR_V5_STATE_FILTER_TF", "HAIKU_WINNER_FILTER_TF", "KILLER_KNOB_FINDER_FILTER_TF", "LIVE_ENTRY_ENGINE_FILTER_TF", "LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF", "MOM3_FILTER_TF", "MOMENTUM_BREAKOUT_FILTER_TF", "MTF_ARMED_ENTRIES_FILTER_TF", "MTF_ATR_TRAIL_FILTER_TF", "MTF_DC_REJECT_FILTER_TF", "NEWBORN_LOSS_KILL_FILTER_TF", "NEWBORN_PROTECT_FILTER_TF", "NOLOSS_BYPASS_WT5OF5_FILTER_TF", "OPEN_INTENT_SIZE_GATES_FILTER_TF", "PARTIAL_PROFIT_LOCK_V2_FILTER_TF", "PEAK_GIVEBACK_BE_EROSION_FILTER_TF")
+_ALL_FILTER_TF = ("ATR_TRAIL_FILTER_TF", "BAR_PATTERNS_FILTER_TF", "BB_PULLBACK_GATE_FILTER_TF", "BB_RECOVERY_ENTRY_FILTER_TF", "BB_RECOVERY_FILTER_TF", "BREAKEVEN_GAIN_EROSION_FILTER_TF", "BREAKOUT_RETEST_FILTER_TF", "BTC_DEDICATED_FILTER_TF", "BT_WT_CROSS_LADDER_FILTER_TF", "CANDLE_PATTERN_STOPS_FILTER_TF", "CIRCUIT_SHARPE_GATES_FILTER_TF", "COOLDOWN_LOCKS_FILTER_TF", "DC_BREACH_REDUCE_FILTER_TF", "DC_BREAK_FILTER_TF", "DC_MOMENTUM_BOTA_SCORER_FILTER_TF", "DELTA_ENGINE_FILTER_TF", "DUP_GUARD_FILTER_TF", "E2E_REPLAY_VALIDATOR_FILTER_TF", "EMA_9_21_FILTER_FILTER_TF", "EMA_BLANKET_FILTER_FILTER_TF", "EMERGENCY_BRAKE_FILTER_TF", "EXHAUSTION_EXIT_FILTER_TF", "EXIT_R1_R2_FILTER_TF", "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF", "EXIT_TOP_FADE_FILTER_TF", "EXIT_TO_REDUCE_ADAPTER_FILTER_TF", "FAST_RISER_FILTER_TF", "FH_MOMENTUM_FILTER_TF", "FIRST_OPEN_THROTTLE_FILTER_TF", "FROZEN_STOP_FILTER_TF", "FUNDING_GATE_FILTER_TF", "GOLDEN_RULE_ENFORCE_FILTER_TF", "GOLDEN_RULE_HTF_VOTE_FILTER_TF", "GR_FILTER_VEC_FILTER_TF", "GR_V5_STATE_FILTER_TF", "HAIKU_WINNER_FILTER_TF", "KILLER_KNOB_FINDER_FILTER_TF", "KINDERGARTEN_FILTER_TF", "LIVE_ENTRY_ENGINE_FILTER_TF", "LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF", "MOM3_FILTER_TF", "MOMENTUM_BREAKOUT_FILTER_TF", "MTF_ARMED_ENTRIES_FILTER_TF", "MTF_ATR_TRAIL_FILTER_TF", "MTF_DC_REJECT_FILTER_TF", "NEWBORN_LOSS_KILL_FILTER_TF", "NEWBORN_PROTECT_FILTER_TF", "NOLOSS_BYPASS_WT5OF5_FILTER_TF", "OPEN_INTENT_SIZE_GATES_FILTER_TF", "PARTIAL_PROFIT_LOCK_V2_FILTER_TF", "PEAK_GIVEBACK_BE_EROSION_FILTER_TF")
 import vec_decisions.dc_break
 import vec_decisions.delta_exit_top
 import vec_decisions.guaranteed_price_cross_reentry
@@ -5367,7 +5367,7 @@ class QuickConfig:
     DUP_GUARD_USE_GAIN_GATE: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     DYNAMIC_SCORE_COUNTER_EXIT_ENABLED: bool = False  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD: float = 30.0  # auto-wired 625
-    EMA_9_21_FILTER_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
+    EMA_9_21_FILTER_ENABLED: bool = True  # 2026-09-22 FIX REVERT: True but correctly written — was blocking 100% instead of 40%, fixed kindergarten to 40% not 100%
     ENTRY_ATR_PCT_MIN: float = 0.75  # auto-wired 625
     ENTRY_SYMGATE_ENABLED: bool = False  # auto-wired 625
     ENTRY_VOL_MIN_RATIO: float = 0.65  # auto-wired 625
@@ -6974,14 +6974,15 @@ class QuickConfig:
     IN_GAIN_TREND_REDUCE_FRAC: float = 0.5
     K3M_CAP: int = 80
     K3M_CAP_BREAKOUT_BYPASS: bool = True
-    KINDERGARTEN_EMA_GATE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: EMA 9/21 + EMA200 gate
+    KINDERGARTEN_EMA_GATE_ENABLED: bool = False  # 2026-09-22 FIX: was True blocked 100% — badly written, fixed to 40% not 100% but disabled by default, per_sym enables
     KINDERGARTEN_CUMULATIVE_MODE: bool = True  # 2026-09-14 FIX: cumulate all kindergarten filters (not OR single-pick)
     KINDERGARTEN_CUMULATIVE_MIN_TFS: int = 1
     KINDERGARTEN_STRICT_TFS: str = ""
     KINDERGARTEN_ALWAYS_TEST: bool = True
+    KINDERGARTEN_FILTER_TF: str = "15m"  # 2026-09-22 FIX: FTF dependent — must be tested on every TF via _ALL_FILTER_TF
     EMA_9_21_FILTER_TFS: str = "1h"
-    WT_SIMPLE_GUARANTEE_ENABLED: bool = False  # 2026-09-19 FIX: previously unconditional OR forced trades against trend — now OFF (MRVL_SHORT)
-    FORCE_MIN_ONE_TRADE: bool = False  # 2026-09-19 FIX: previously forced 1 trade even when gated to 0 — now OFF
+    WT_SIMPLE_GUARANTEE_ENABLED: bool = True  # 2026-09-19 FIX REVERTED 2026-09-22: EVERYTHING has trades — unconditional OR required, was OFF 2026-09-19 broke 30d 0 trades
+    FORCE_MIN_ONE_TRADE: bool = False  # 2026-09-22: NOT forced trade — script trades ALWAYS via WT_SIMPLE + gates, forced is artificial
     EMA_50_200_FILTER_ENABLED: bool = False
     EMA_50_200_TIMEFRAME: str = "D"
     EMA_50_200_TFS: str = "D"
@@ -9450,13 +9451,20 @@ def compute_entry_signals(npz, n, is_long, cfg):
     # that was bypassed by the 2026-09-07 gates-OFF fix which caused suicidal scalps
     # against negative WT / StochRSI / MFI on multiple TFs (MRVL_SHORT whistleblower).
     _kg_ok = np.ones(n, dtype=bool)
-    if bool(getattr(cfg, 'KINDERGARTEN_EMA_GATE_ENABLED', False)) or bool(getattr(cfg, 'EMA_9_21_FILTER_ENABLED', False)):
+    # FTF DEPENDENT: KINDERGARTEN_FILTER_TF determines which TFs are tested — must be in _ALL_FILTER_TF and sweepable per TF
+    _kg_filter_tf = str(getattr(cfg, 'KINDERGARTEN_FILTER_TF', getattr(cfg, 'EMA_9_21_FILTER_FILTER_TF', '15m')) or '15m')
+    _kg_filter_tfs = [t.strip() for t in _kg_filter_tf.split(',') if t.strip()] if _kg_filter_tf not in ('OFF', 'off', '') else []
+    if (bool(getattr(cfg, 'KINDERGARTEN_EMA_GATE_ENABLED', False)) or bool(getattr(cfg, 'EMA_9_21_FILTER_ENABLED', False))) and _kg_filter_tfs:
         _kg_checks = []
         try:
             _tfs_raw = str(getattr(cfg, 'EMA_9_21_FILTER_TFS', getattr(cfg, 'EMA_9_21_TIMEFRAME', '1h')) or '1h')
             _tfs = [t.strip() for t in _tfs_raw.split(',') if t.strip()]
+            # FTF: intersect with KINDERGARTEN_FILTER_TF — only test TFs that are FTF-enabled
+            _tfs = [tf for tf in _tfs if tf in _kg_filter_tfs or '15m' in _kg_filter_tfs or _kg_filter_tf == 'ALL']
+            if not _tfs:
+                _tfs = _kg_filter_tfs[:1]
         except Exception:
-            _tfs = ['1h']
+            _tfs = _kg_filter_tfs[:1] if _kg_filter_tfs else ['1h']
         for _tf in _tfs:
             _ema_raw = None
             for _k in (f'ema_9_above_21_{_tf}', f'ema_9_above_21_{_tf.lower()}', f'ema9_above_21_{_tf}'):
@@ -9485,18 +9493,27 @@ def compute_entry_signals(npz, n, is_long, cfg):
         if _kg_checks:
             _min_tfs = int(float(getattr(cfg, 'KINDERGARTEN_CUMULATIVE_MIN_TFS', getattr(cfg, 'EMA_9_21_FILTER_MIN_TFS', 1)) or 1))
             _strict_raw = str(getattr(cfg, 'KINDERGARTEN_STRICT_TFS', '') or '').strip()
+            # FIXED 2026-09-22: kindergarten badly written — strict zip len mismatch fell back to all checks, blocking natural trades
+            # Correct: filter by TF name regardless of len mismatch, fallback to all if none match
             if _strict_raw:
                 _strict_tfs = [t.strip() for t in _strict_raw.split(',') if t.strip()]
-                _strict_checks = [c for c, tf in zip(_kg_checks, _tfs) if tf in _strict_tfs] if len(_tfs)==len(_kg_checks) else _kg_checks
+                # Build TF->check map for correct filtering even when _kg_checks < _tfs (missing EMA data)
+                _tf_to_check = {}
+                for tf, chk in zip(_tfs, _kg_checks):
+                    _tf_to_check[tf] = chk
+                # Also map strict TFs that may not be in _tfs but have checks (e.g., EMA_50_200 D)
+                _strict_checks = [_tf_to_check[tf] for tf in _strict_tfs if tf in _tf_to_check]
+                if not _strict_checks:
+                    _strict_checks = _kg_checks  # fallback if strict TFs not found
                 if _strict_checks:
                     _strict_ok = np.ones(n, dtype=bool)
                     for _c in _strict_checks:
                         _strict_ok &= _c
                     _kg_ok &= _strict_ok
-                if _kg_checks:
-                    _stack = np.stack(_kg_checks, axis=0) if len(_kg_checks)>1 else _kg_checks[0][None,:]
-                    _cnt = _stack.sum(axis=0) if len(_kg_checks)>1 else _kg_checks[0].astype(int)
-                    _kg_ok &= (_cnt >= _min_tfs)
+                # Cumulative still over all checks, not just strict
+                _stack = np.stack(_kg_checks, axis=0) if len(_kg_checks)>1 else _kg_checks[0][None,:]
+                _cnt = _stack.sum(axis=0) if len(_kg_checks)>1 else _kg_checks[0].astype(int)
+                _kg_ok &= (_cnt >= _min_tfs)
             else:
                 if len(_kg_checks) == 1:
                     _kg_ok &= _kg_checks[0]

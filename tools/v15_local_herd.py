@@ -763,10 +763,10 @@ def main():
         running = st["running"]
         oom = st["oom"]
 
-        # OOM guard — never let avail < 1G, kill youngest if needed
-        if oom or avail < 1200:
+        # OOM guard — never let avail < 400M, kill youngest if needed (920M is NOT OOM — 30G hosts produce 12/20m)
+        if oom or avail < 500:
             print(f"[OOM] avail {avail}M oom={oom} cpu {cpu:.1f}% ram {ram_used:.1f}% — throttling, no launches", flush=True)
-            if avail < 800 and running:
+            if avail < 350 and running:
                 victim = running[-1]
                 print(f"[OOM-KILL] killing youngest {victim}", flush=True)
                 subprocess.run(["pkill", "-f", f"v15_pilot.*{victim}"], timeout=5)

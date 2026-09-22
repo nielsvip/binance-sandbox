@@ -2061,7 +2061,11 @@ class Config:
     MOMENTUM_SMA_WATCHDOG_INTERVAL_S: float = 60.0
     MOMENTUM_SMA_WATCHDOG_PCT: float = 1.0          # 2026-05-31 USER: 2.0->1.0 (global per_sym sweep: 1% median pool_sharpe 0.155 > 2% 0.150). Per-sym pct_entry from FINAL book overrides this. price must be > this % above sma_200_15m
     OBLIGATORY_SMA200_WT3M_ENABLED: bool = False     # 2026-09-21 CHURN FIX ≥15m parity — disabled 3m WT obligatory (was True 2026-09-04). Used wt1_3m cross for FORCE-OPEN that backtest 15m settings never produced. Re-enable only with 15m WT proof. ROLLBACK: True.
-    OBLIGATORY_SMA200_PCT: float = 1.0              # distance beyond sma_200_15m (%) that triggers the obligatory open
+    OBLIGATORY_EMA50_15M_ENABLED: bool = False       # 2026-09-22 EMA50 15m — NOT entry trigger but entry FILTER per user correction. Disabled as trigger; use FILTER below. ROLLBACK: False.
+    OBLIGATORY_EMA50_15M_PCT: float = 1.0            # distance beyond ema_50_15m (%) that would trigger EMA50 15m obligatory open (legacy trigger disabled)
+    EMA50_15M_ENTRY_FILTER_ENABLED: bool = True      # 2026-09-22 EMA50 15m ENTRY FILTER — per user: BASE_TF=15m, 3m disabled, use ema_50_15m as FILTER not trigger. LONG requires price > ema_50_15m, SHORT price < ema_50_15m. ROLLBACK: False.
+    EMA50_15M_ENTRY_FILTER_PCT: float = 0.0          # optional buffer % beyond ema_50_15m for filter (0 = strict)
+    OBLIGATORY_SMA200_PCT: float = 1.0              # distance beyond sma_200_15m (%) that triggers the obligatory open (legacy)
     OBLIGATORY_OPEN_USD: float = 14.0  # 2026-09-04 probationary START size per user short reinstate until proven              # notional $ for each obligatory open (escalates via the watchdog ladder on subsequent WT crosses)
     PERSYM_FINAL_BOOK_ENABLED: bool = True          # 2026-08-21 REVERTED per user: keep True so 900*900 verified winners can promote without config flip. Files wiped 410->0 so NO TRADING until verified repopulates; 96 old tradeable from 110-key sweep is gone.
     CONVICTION_SIZING_ENABLED: bool = True          # 2026-06-02 USER: scale base entry size by per-sym conviction (size_mult from FINAL book) so proven winners (ZEC/MU/SNDK) open BIG, tag-alongs small. Applied in _psym_sps. ROLLBACK: False.
@@ -2991,7 +2995,7 @@ class Config:
     MARKET_CRASH_THRESHOLD_PCT: float = 0.0  # vectorizable parity 2026-09-08: index crash blanket disabled when 0 (live default 0 per ez_manage/tradier_manage getattr)
     MARKET_JUMP_THRESHOLD_PCT: float = 0.0  # vectorizable parity 2026-09-08: index jump blanket disabled when 0 (companion to MARKET_CRASH)
     MOMENTUM_WATCHDOG_ENABLED: bool = False  # vectorizable parity 2026-09-08: live default False per ez_manage getattr (tradier mirror True added 2026-09-08)
-    TRADEABLE_KEYS_MANDATORY_ENABLED: bool = True  # vectorizable parity 2026-09-08: mandatory tradeable-keys scan (live default True)
+    TRADEABLE_KEYS_MANDATORY_ENABLED: bool = False  # 2026-09-22 BASE_TF=15m EMA50 — disabled per user WT_3M/TRADEABLE_KEYS_MANDATORY/OBLIGATORY_SMA200 False, use ema50 15m
     WT_EXHAUST_ENABLED: bool = False  # vectorizable parity 2026-09-08: alias for WT_EXHAUST_EXIT_ENABLED (live default False)
     WT_PERCENTILE_ENABLED: bool = False  # vectorizable parity 2026-09-08: alias for WT_PERCENTILE_EXIT_ENABLED (live default False)
     MARKET_QUALITY_SCORE_ENABLED: bool = False  # BACKTEST_CHANGE_146: Market quality entry filter (backtest: Sharpe +430%, 60% symbols improved)

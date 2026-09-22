@@ -2528,7 +2528,7 @@ class TradierConfig:
             pass
         return getattr(self, filter_name, "15m")
 
-    TRADEABLE_KEYS_MANDATORY_ENABLED: bool = True  # added
+    TRADEABLE_KEYS_MANDATORY_ENABLED: bool = False  # 2026-09-22 BASE_TF=15m EMA50 — disabled per user WT_3M/TRADEABLE_KEYS_MANDATORY/OBLIGATORY_SMA200 False, use ema50 15m
 
     MOMENTUM_WATCHDOG_ENABLED: bool = True  # added
 
