@@ -1,30 +1,55 @@
 {
- "generated_at": "2026-09-22 05:59 UTC",
- "total_capital_usd": 31.83,
+ "generated_at": "2026-09-22 06:21 UTC",
+ "total_capital_usd": 516.55,
  "tier_capital": {
   "A": 0.0,
-  "B": 31.83,
+  "B": 516.55,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 3,
   "C": 0
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "flz:ETHUSDT_LONG",
+  "flz:BTCUSDT_LONG"
+ ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:1000BONKUSDC_LONG",
-   "symbol": "1000BONKUSDC",
-   "account": "inf",
-   "value_usd": 31.83,
-   "gain_pct": 0.149,
+   "pk": "flz:ETHUSDT_LONG",
+   "symbol": "ETHUSDT",
+   "account": "flz",
+   "value_usd": 321.58,
+   "gain_pct": -2.616,
    "tier": "B",
-   "perf_mult": 1.61,
-   "amt": 8748.0,
-   "mark": 0.00363863
+   "perf_mult": 1.0,
+   "amt": 0.118,
+   "mark": 2725.25425421
+  },
+  {
+   "pk": "flz:BTCUSDT_LONG",
+   "symbol": "BTCUSDT",
+   "account": "flz",
+   "value_usd": 170.45,
+   "gain_pct": -1.871,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 0.002,
+   "mark": 85225.00358321
+  },
+  {
+   "pk": "flz:ETHUSDC_LONG",
+   "symbol": "ETHUSDC",
+   "account": "flz",
+   "value_usd": 24.52,
+   "gain_pct": -0.383,
+   "tier": "B",
+   "perf_mult": 0.92,
+   "amt": 0.009,
+   "mark": 2724.78273135
   }
  ]
 }
