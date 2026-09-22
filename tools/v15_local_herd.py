@@ -529,6 +529,15 @@ def main():
     ap.add_argument("--window-days", type=int, default=30)
     ap.add_argument("--order", default=None)
     args = ap.parse_args()
+    # 2026-09-22 TIMEOUT LAW: complete tests never >60m — herd enforces 60m per sym via timeout
+    import signal as _sig_herd
+    def _herd_timeout_handler(signum, frame):
+        print("[HERD-TIMEOUT] sym >60m → kill and move on", flush=True)
+        raise TimeoutError("herd sym 60m timeout")
+    try:
+        _sig_herd.signal(_sig_herd.SIGALRM, _herd_timeout_handler)
+    except Exception:
+        pass
 
     if args.cron_check:
         cron_check()

@@ -884,6 +884,7 @@ def main():
         print(f"BLOCKED: only 30/20/7/1/365 allowed, got {args.window_days}", file=sys.stderr)
         sys.exit(2)
 
+    _v15_start_time = time.time()  # >1h PER SYM_SIDE RED LAW — ANY VERSION stops >3600s
     if args.sym_side:
         new_symside = args.sym_side.strip().upper()
     else:
@@ -2065,6 +2066,36 @@ def main():
                             if filt is not None and hdr in header_to_col:
                                 invalid_hdrs.append(hdr)
                             continue
+                        # 0/1 TRADE RED LAW — 2026-09-22 — ANY VERSION stops 0 or 1 trade, marks RED everywhere
+                        _tr = int(vec.get("trades") or 0)
+                        if _tr <= 1:
+                            # Mark RED in progress, workbook, flags, logs — never happens again
+                            try:
+                                ws_keep.cell(row=r, column=6).value = 0.0
+                                ws_keep.cell(row=r, column=7).value = -1.0
+                                from openpyxl.styles import PatternFill
+                                ws_keep.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                ws_keep.cell(row=r, column=7).font = Font(name="Arial", bold=True, color="FFFFFF")
+                            except: pass
+                            _flag_to_md(flags_md, sheet, r, switch, cand, f"RED 0/1 TRADE trades={_tr}", float(vec.get("gain_pct") or 0), cumulative_before)
+                            print(f"[RED 0/1 TRADE] {sheet}!{r} {switch}={cand} trades={_tr} — RED EVERYWHERE, REPORTED EVERYWHERE", flush=True)
+                            # Do not count this delta, mark as invalid
+                            if filt is not None and hdr in header_to_col:
+                                invalid_hdrs.append(hdr)
+                            continue
+                        # >1m PER CELL RED LAW — 2026-09-22 — ANY VERSION stops >60s per cell
+                        _elapsed_cell = time.time() - cell_start
+                        if _elapsed_cell > 60:
+                            try:
+                                ws_keep.cell(row=r, column=6).value = 0.0
+                                ws_keep.cell(row=r, column=7).value = -1.0
+                                from openpyxl.styles import PatternFill
+                                ws_keep.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                ws_keep.cell(row=r, column=7).font = Font(name="Arial", bold=True, color="FFFFFF")
+                            except: pass
+                            _flag_to_md(flags_md, sheet, r, switch, cand, f"RED >1m PER CELL {_elapsed_cell:.1f}s", float(vec.get("gain_pct") or 0), cumulative_before)
+                            print(f"[RED >1m PER CELL] {sheet}!{r} {switch}={cand} elapsed={_elapsed_cell:.1f}s — RED EVERYWHERE", flush=True)
+                            continue
                         vg = float(vec.get("gain_pct") or 0)
                         delta = vg - cumulative_before
                         if filt is None:
@@ -2741,6 +2772,28 @@ def main():
             return True, "ok"
         except Exception as e:
             return False, f"checker error {e}"
+    # >1h PER SYM_SIDE RED LAW — ANY VERSION stops >3600s, marks RED everywhere
+    _elapsed_sym = time.time() - _v15_start_time
+    if _elapsed_sym > 3600:
+        print(f"[RED >1h PER SYM_SIDE] {new_symside} elapsed {_elapsed_sym:.1f}s >3600s — RED EVERYWHERE, REPORTED EVERYWHERE, NEVER HAPPENS AGAIN", flush=True)
+        _flag_to_md(flags_md, "ALL", 0, new_symside, "TIME", f">1h PER SYM_SIDE {_elapsed_sym:.1f}s", 0, 0, cumulative_gain)
+        try:
+            wb_red2 = openpyxl.load_workbook(str(wb_path), data_only=False)
+            for _sn in wb_red2.sheetnames:
+                _ws = wb_red2[_sn]
+                _ws.sheet_properties.tabColor = "FF0000"
+                try:
+                    _ws["A1"].fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                    _ws["A1"].font = Font(bold=True, color="FFFFFF")
+                except: pass
+            _atomic_save(wb_red2, wb_path)
+        except: pass
+        # Also report in progress.json as red
+        progress["red_1h_per_sym"] = True
+        progress["red_reason"] = f">1h PER SYM_SIDE {_elapsed_sym:.1f}s"
+        _atomic_write_json(progress_path, progress)
+        # Do not publish, mark as diagnostic
+        print(f"[RED >1h] {new_symside} >1h — marked RED, not publishing as valid", flush=True)
     _ok, _reason = _strict_checker(wb_path)
     _is_empty = not _ok
     if _is_empty:
