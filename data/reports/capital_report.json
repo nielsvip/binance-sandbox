@@ -1,32 +1,32 @@
 {
- "generated_at": "2026-09-22 02:22 UTC",
- "total_capital_usd": 31.76,
+ "generated_at": "2026-09-22 02:40 UTC",
+ "total_capital_usd": 32.01,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 31.76
+  "B": 32.01,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
-  "C": 1
+  "B": 1,
+  "C": 0
  },
  "winners": [],
- "losers": [
-  "men:IOTXUSDT_LONG"
+ "losers": [],
+ "mediocre": [
+  "fin:SANDUSDT_SHORT"
  ],
- "mediocre": [],
  "positions": [
   {
-   "pk": "men:IOTXUSDT_LONG",
-   "symbol": "IOTXUSDT",
-   "account": "men",
-   "value_usd": 31.76,
-   "gain_pct": -0.724,
-   "tier": "C",
-   "perf_mult": 0.54,
-   "amt": 8528.0,
-   "mark": 0.00372466
+   "pk": "fin:SANDUSDT_SHORT",
+   "symbol": "SANDUSDT",
+   "account": "fin",
+   "value_usd": 32.01,
+   "gain_pct": 0.0,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 763.0,
+   "mark": 0.04195
   }
  ]
 }

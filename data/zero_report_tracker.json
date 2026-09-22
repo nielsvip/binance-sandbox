@@ -655,12 +655,6 @@
     "source": "phantom_kill_bootstrap",
     "last_seen": "2026-04-07T23:29:56.031855+00:00"
   },
-  "ang:HOTUSDT_LONG": {
-    "count": 2,
-    "first_seen": "2026-04-07T23:29:03.545099+00:00",
-    "source": "phantom_kill_bootstrap",
-    "last_seen": "2026-04-07T23:29:56.031868+00:00"
-  },
   "ang:FLUXUSDT_SHORT": {
     "count": 2,
     "first_seen": "2026-04-08T02:10:08.252107+00:00",
@@ -1669,5 +1663,13 @@
       "API_ABSENCE": 1
     },
     "last_seen": "2026-09-22T00:28:36.089022+00:00"
+  },
+  "ang:TIAUSDC_LONG": {
+    "count": 2,
+    "first_seen_zero_at": "2026-09-22T02:45:58.262413+00:00",
+    "last_increment_at": "2026-09-22T02:46:21.937403+00:00",
+    "sources": {
+      "API_ABSENCE": 2
+    }
   }
 }
