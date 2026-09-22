@@ -1,14 +1,14 @@
 {
- "generated_at": "2026-09-22 12:13 UTC",
- "total_capital_usd": 552.01,
+ "generated_at": "2026-09-22 12:34 UTC",
+ "total_capital_usd": 589.83,
  "tier_capital": {
   "A": 0.0,
-  "B": 495.71,
-  "C": 56.29
+  "B": 533.49,
+  "C": 56.34
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
+  "B": 3,
   "C": 1
  },
  "winners": [],
@@ -23,34 +23,45 @@
    "pk": "flz:ETHUSDT_LONG",
    "symbol": "ETHUSDT",
    "account": "flz",
-   "value_usd": 323.8,
-   "gain_pct": -1.943,
+   "value_usd": 324.29,
+   "gain_pct": -1.797,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 0.118,
-   "mark": 2744.1
+   "mark": 2748.19010853
   },
   {
    "pk": "flz:BTCUSDT_LONG",
    "symbol": "BTCUSDT",
    "account": "flz",
-   "value_usd": 171.91,
-   "gain_pct": -1.028,
+   "value_usd": 172.07,
+   "gain_pct": -0.94,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 0.002,
-   "mark": 85956.98961594
+   "mark": 86034.1
   },
   {
    "pk": "flz:SOLUSDC_LONG",
    "symbol": "SOLUSDC",
    "account": "flz",
-   "value_usd": 56.29,
-   "gain_pct": 0.127,
+   "value_usd": 56.34,
+   "gain_pct": 0.216,
    "tier": "C",
    "perf_mult": 0.49,
    "amt": 0.48,
-   "mark": 117.2707306
+   "mark": 117.37507061
+  },
+  {
+   "pk": "flz:XRPUSDC_LONG",
+   "symbol": "XRPUSDC",
+   "account": "flz",
+   "value_usd": 37.13,
+   "gain_pct": 0.302,
+   "tier": "B",
+   "perf_mult": 2.15,
+   "amt": 24.1,
+   "mark": 1.5407967
   }
  ]
 }
