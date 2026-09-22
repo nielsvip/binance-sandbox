@@ -1661,13 +1661,20 @@
       "API_ABSENCE": 2
     }
   },
-  "flz:HYPEUSDT_LONG": {
+  "flz:SOLUSDC_LONG": {
     "count": 2,
-    "first_seen_zero_at": "2026-09-22T00:28:24.617206+00:00",
-    "last_increment_at": "2026-09-22T00:28:24.617206+00:00",
+    "first_seen_zero_at": "2026-09-21T20:40:06.369209+00:00",
+    "last_increment_at": "2026-09-21T20:40:46.900846+00:00",
     "sources": {
-      "API_ABSENCE": 1
-    },
-    "last_seen": "2026-09-22T00:28:36.089022+00:00"
+      "API_ABSENCE": 2
+    }
+  },
+  "flz:XRPUSDC_LONG": {
+    "count": 2,
+    "first_seen_zero_at": "2026-09-21T23:50:16.207426+00:00",
+    "last_increment_at": "2026-09-21T23:50:56.370207+00:00",
+    "sources": {
+      "API_ABSENCE": 2
+    }
   }
 }
