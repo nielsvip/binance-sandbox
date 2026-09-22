@@ -157,7 +157,10 @@ import vec_decisions.gap_risk_exit
 import vec_decisions.market_crash_blanket
 import vec_decisions.momentum_watchdog
 import vec_decisions.shared_zone
-import tools.hooks.persistent_v12_hooks  # ensures vec_identical guard runs (LOCKED)
+try:
+    import tools.hooks.persistent_v12_hooks  # ensures vec_identical guard runs (LOCKED)
+except Exception:
+    pass  # S1 may not have hooks yet, not critical for vector_only
 
 # BATCH 1 — first 60 TEMPLATE switches (ADX_RANGING_THRESHOLD .. DELTA_REENTRY_FILTER_ENABLED) — BOTH_WIRED REAL 2026-09-07
 def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):

@@ -1,57 +1,43 @@
 {
- "generated_at": "2026-09-22 15:52 UTC",
- "total_capital_usd": 668.87,
+ "generated_at": "2026-09-22 16:52 UTC",
+ "total_capital_usd": 497.54,
  "tier_capital": {
   "A": 0.0,
-  "B": 668.86,
+  "B": 497.54,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 3,
+  "B": 2,
   "C": 0
  },
  "winners": [],
  "losers": [
-  "flz:ETHUSDT_LONG",
-  "flz:BTCUSDT_LONG"
+  "flz:ETHUSDT_LONG"
  ],
- "mediocre": [
-  "flz:BTCUSDC_LONG"
- ],
+ "mediocre": [],
  "positions": [
   {
    "pk": "flz:ETHUSDT_LONG",
    "symbol": "ETHUSDT",
    "account": "flz",
-   "value_usd": 323.68,
-   "gain_pct": -1.979,
+   "value_usd": 324.44,
+   "gain_pct": -1.751,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 0.118,
-   "mark": 2743.08
+   "mark": 2749.47604651
   },
   {
    "pk": "flz:BTCUSDT_LONG",
    "symbol": "BTCUSDT",
    "account": "flz",
-   "value_usd": 172.59,
-   "gain_pct": -0.638,
+   "value_usd": 173.1,
+   "gain_pct": -0.345,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 0.002,
-   "mark": 86296.1
-  },
-  {
-   "pk": "flz:BTCUSDC_LONG",
-   "symbol": "BTCUSDC",
-   "account": "flz",
-   "value_usd": 172.59,
-   "gain_pct": 0.078,
-   "tier": "B",
-   "perf_mult": 0.8,
-   "amt": 0.002,
-   "mark": 86296.0
+   "mark": 86550.1
   }
  ]
 }
