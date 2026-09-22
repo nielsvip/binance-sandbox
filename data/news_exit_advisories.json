@@ -1,22 +1,94 @@
 {
-  "generated_at": "2026-09-22T14:46:50.704347+00:00",
-  "count": 2,
+  "generated_at": "2026-09-22T19:58:44.308521+00:00",
+  "count": 11,
   "advisories": [
     {
-      "symbol": "BABA",
+      "symbol": "ABBV",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.53 threshold=0.45",
-      "score": 0.527,
-      "ts": "2026-09-22T14:46:50.704222+00:00"
+      "reason": "bullish_news_score=0.58 threshold=0.45",
+      "score": 0.583,
+      "ts": "2026-09-22T19:58:44.308239+00:00"
     },
     {
-      "symbol": "GILD",
+      "symbol": "ADP",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.51 threshold=0.45",
-      "score": 0.513,
-      "ts": "2026-09-22T14:46:50.704287+00:00"
+      "score": 0.506,
+      "ts": "2026-09-22T19:58:44.308303+00:00"
+    },
+    {
+      "symbol": "AEM",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.47 threshold=0.45",
+      "score": 0.467,
+      "ts": "2026-09-22T19:58:44.308306+00:00"
+    },
+    {
+      "symbol": "AGCO",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.77 threshold=0.45",
+      "score": 0.765,
+      "ts": "2026-09-22T19:58:44.308309+00:00"
+    },
+    {
+      "symbol": "AGI",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.58 threshold=0.45",
+      "score": 0.577,
+      "ts": "2026-09-22T19:58:44.308312+00:00"
+    },
+    {
+      "symbol": "AU",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.81 threshold=0.45",
+      "score": 0.805,
+      "ts": "2026-09-22T19:58:44.308315+00:00"
+    },
+    {
+      "symbol": "BHVN",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.48 threshold=0.45",
+      "score": 0.479,
+      "ts": "2026-09-22T19:58:44.308318+00:00"
+    },
+    {
+      "symbol": "CIBR",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.56 threshold=0.45",
+      "score": 0.56,
+      "ts": "2026-09-22T19:58:44.308321+00:00"
+    },
+    {
+      "symbol": "CRWD",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.46 threshold=0.45",
+      "score": 0.456,
+      "ts": "2026-09-22T19:58:44.308325+00:00"
+    },
+    {
+      "symbol": "INTC",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.86 threshold=0.45",
+      "score": 0.856,
+      "ts": "2026-09-22T19:58:44.308335+00:00"
+    },
+    {
+      "symbol": "NVDA",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.78 threshold=0.45",
+      "score": 0.784,
+      "ts": "2026-09-22T19:58:44.308351+00:00"
     }
   ]
 }
