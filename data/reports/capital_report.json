@@ -1,55 +1,32 @@
 {
- "generated_at": "2026-09-22 09:46 UTC",
- "total_capital_usd": 575.97,
+ "generated_at": "2026-09-22 10:29 UTC",
+ "total_capital_usd": 31.98,
  "tier_capital": {
   "A": 0.0,
-  "B": 575.97,
+  "B": 31.98,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 3,
+  "B": 1,
   "C": 0
  },
  "winners": [],
- "losers": [
-  "flz:ETHUSDT_LONG",
-  "flz:BTCUSDT_LONG"
+ "losers": [],
+ "mediocre": [
+  "inf:ARBUSDC_SHORT"
  ],
- "mediocre": [],
  "positions": [
   {
-   "pk": "flz:ETHUSDT_LONG",
-   "symbol": "ETHUSDT",
-   "account": "flz",
-   "value_usd": 323.6,
-   "gain_pct": -2.004,
+   "pk": "inf:ARBUSDC_SHORT",
+   "symbol": "ARBUSDC",
+   "account": "inf",
+   "value_usd": 31.98,
+   "gain_pct": -0.091,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 0.118,
-   "mark": 2742.38
-  },
-  {
-   "pk": "flz:BTCUSDT_LONG",
-   "symbol": "BTCUSDT",
-   "account": "flz",
-   "value_usd": 172.01,
-   "gain_pct": -0.971,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.002,
-   "mark": 86006.57613768
-  },
-  {
-   "pk": "flz:XRPUSDC_LONG",
-   "symbol": "XRPUSDC",
-   "account": "flz",
-   "value_usd": 80.36,
-   "gain_pct": 0.293,
-   "tier": "B",
-   "perf_mult": 2.04,
-   "amt": 52.2,
-   "mark": 1.53942672
+   "amt": 147.6,
+   "mark": 0.2166343
   }
  ]
 }
