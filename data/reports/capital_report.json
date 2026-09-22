@@ -1,14 +1,14 @@
 {
- "generated_at": "2026-09-22 17:52 UTC",
- "total_capital_usd": 584.73,
+ "generated_at": "2026-09-22 18:44 UTC",
+ "total_capital_usd": 497.05,
  "tier_capital": {
   "A": 0.0,
-  "B": 584.73,
+  "B": 497.05,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 3,
+  "B": 2,
   "C": 0
  },
  "winners": [],
@@ -16,42 +16,29 @@
   "flz:ETHUSDT_LONG",
   "flz:BTCUSDT_LONG"
  ],
- "mediocre": [
-  "flz:BTCDOMUSDT_SHORT"
- ],
+ "mediocre": [],
  "positions": [
   {
    "pk": "flz:ETHUSDT_LONG",
    "symbol": "ETHUSDT",
    "account": "flz",
-   "value_usd": 324.15,
-   "gain_pct": -1.837,
+   "value_usd": 324.3,
+   "gain_pct": -1.792,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 0.118,
-   "mark": 2747.07
+   "mark": 2748.31
   },
   {
    "pk": "flz:BTCUSDT_LONG",
    "symbol": "BTCUSDT",
    "account": "flz",
-   "value_usd": 172.76,
-   "gain_pct": -0.539,
+   "value_usd": 172.75,
+   "gain_pct": -0.547,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 0.002,
-   "mark": 86381.92149275
-  },
-  {
-   "pk": "flz:BTCDOMUSDT_SHORT",
-   "symbol": "BTCDOMUSDT",
-   "account": "flz",
-   "value_usd": 87.82,
-   "gain_pct": -0.159,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.017,
-   "mark": 5165.6
+   "mark": 86375.0
   }
  ]
 }
