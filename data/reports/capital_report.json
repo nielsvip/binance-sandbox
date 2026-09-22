@@ -1,32 +1,67 @@
 {
- "generated_at": "2026-09-22 11:29 UTC",
- "total_capital_usd": 31.97,
+ "generated_at": "2026-09-22 11:59 UTC",
+ "total_capital_usd": 630.68,
  "tier_capital": {
   "A": 0.0,
-  "B": 31.97,
-  "C": 0.0
+  "B": 574.42,
+  "C": 56.26
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 3,
+  "C": 1
  },
  "winners": [],
- "losers": [],
- "mediocre": [
-  "inf:ARBUSDC_SHORT"
+ "losers": [
+  "flz:ETHUSDT_LONG",
+  "flz:BTCUSDT_LONG",
+  "flz:SOLUSDC_LONG"
  ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "inf:ARBUSDC_SHORT",
-   "symbol": "ARBUSDC",
-   "account": "inf",
-   "value_usd": 31.97,
-   "gain_pct": 0.1,
+   "pk": "flz:ETHUSDT_LONG",
+   "symbol": "ETHUSDT",
+   "account": "flz",
+   "value_usd": 323.33,
+   "gain_pct": -2.085,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 147.5,
-   "mark": 0.21675
+   "amt": 0.118,
+   "mark": 2740.11187249
+  },
+  {
+   "pk": "flz:BTCUSDT_LONG",
+   "symbol": "BTCUSDT",
+   "account": "flz",
+   "value_usd": 171.85,
+   "gain_pct": -1.065,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 0.002,
+   "mark": 85925.52745127
+  },
+  {
+   "pk": "flz:HYPEUSDT_LONG",
+   "symbol": "HYPEUSDT",
+   "account": "flz",
+   "value_usd": 79.24,
+   "gain_pct": 0.056,
+   "tier": "B",
+   "perf_mult": 3.59,
+   "amt": 0.83,
+   "mark": 95.47198333
+  },
+  {
+   "pk": "flz:SOLUSDC_LONG",
+   "symbol": "SOLUSDC",
+   "account": "flz",
+   "value_usd": 56.26,
+   "gain_pct": 0.069,
+   "tier": "C",
+   "perf_mult": 0.49,
+   "amt": 0.48,
+   "mark": 117.20309504
   }
  ]
 }
