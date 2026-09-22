@@ -1,23 +1,11 @@
 {
-  "timestamp": "2026-09-22T20:04:41.603582+00:00",
+  "timestamp": "2026-09-22T20:23:22.630880+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 95
+    "total_ranked": 105
   },
   "unified_ranking": [
-    {
-      "symbol": "COHRUSDT",
-      "net_score": -15.2,
-      "long_score": 0,
-      "short_score": 15.2
-    },
-    {
-      "symbol": "AXSUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
     {
       "symbol": "SANDUSDT",
       "net_score": 0,
@@ -25,7 +13,19 @@
       "short_score": 0
     },
     {
+      "symbol": "COSTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "AVGOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "MSFTUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -67,6 +67,12 @@
       "short_score": 0
     },
     {
+      "symbol": "CRWDUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "XTZUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -80,6 +86,12 @@
     },
     {
       "symbol": "WUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "NFLXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -140,6 +152,18 @@
     },
     {
       "symbol": "LUNA2USDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ONDOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "BTCUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -217,6 +241,18 @@
       "short_score": 0
     },
     {
+      "symbol": "ASTSUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "COHRUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "NEARUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -265,6 +301,12 @@
       "short_score": 0
     },
     {
+      "symbol": "SUSHIUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ADBEUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -272,6 +314,12 @@
     },
     {
       "symbol": "1000PEPEUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "SEIUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -295,6 +343,12 @@
       "short_score": 0
     },
     {
+      "symbol": "DOTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ARKMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -307,7 +361,19 @@
       "short_score": 0
     },
     {
+      "symbol": "WLFIUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ATOMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "LINKUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -397,6 +463,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ZKUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "DELLUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -433,6 +505,12 @@
       "short_score": 0
     },
     {
+      "symbol": "SUIUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "BNBUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -452,6 +530,12 @@
     },
     {
       "symbol": "ARBUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "TRBUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -505,12 +589,6 @@
       "short_score": 0
     },
     {
-      "symbol": "TIAUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ARMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -529,6 +607,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ZROUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "WLDUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -541,81 +625,31 @@
       "short_score": 0
     },
     {
-      "symbol": "BTCUSDC",
-      "net_score": 10.9,
-      "long_score": 10.9,
+      "symbol": "AXSUSDT",
+      "net_score": 10.2,
+      "long_score": 10.2,
       "short_score": 0
     },
     {
-      "symbol": "MSFTUSDT",
-      "net_score": 11.7,
-      "long_score": 11.7,
-      "short_score": 0
-    },
-    {
-      "symbol": "ASTSUSDT",
-      "net_score": 11.7,
-      "long_score": 11.7,
-      "short_score": 0
-    },
-    {
-      "symbol": "NFLXUSDT",
-      "net_score": 21.8,
-      "long_score": 21.8,
-      "short_score": 0
-    },
-    {
-      "symbol": "CRWDUSDT",
-      "net_score": 22.8,
-      "long_score": 22.8,
-      "short_score": 0
-    },
-    {
-      "symbol": "COSTUSDT",
-      "net_score": 23.7,
-      "long_score": 23.7,
+      "symbol": "TIAUSDC",
+      "net_score": 14.3,
+      "long_score": 14.3,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "COSTUSDT",
-      23.7,
-      918.74
+      "TIAUSDC",
+      14.3,
+      0.491
     ],
     [
-      "CRWDUSDT",
-      22.8,
-      234.61901698
-    ],
-    [
-      "NFLXUSDT",
-      21.8,
-      80.22
-    ],
-    [
-      "ASTSUSDT",
-      11.7,
-      59.55
-    ],
-    [
-      "MSFTUSDT",
-      11.7,
-      500.57
-    ],
-    [
-      "BTCUSDC",
-      10.9,
-      78487.78635479
+      "AXSUSDT",
+      10.2,
+      1.1041
     ]
   ],
-  "top_shorts": [
-    [
-      "COHRUSDT",
-      15.2,
-      270.11
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
