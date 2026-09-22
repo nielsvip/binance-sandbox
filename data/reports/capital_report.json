@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-22 05:45 UTC",
- "total_capital_usd": 24.18,
+ "generated_at": "2026-09-22 05:59 UTC",
+ "total_capital_usd": 31.83,
  "tier_capital": {
   "A": 0.0,
-  "B": 24.18,
+  "B": 31.83,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:ZECUSDC_LONG",
-   "symbol": "ZECUSDC",
-   "account": "ang",
-   "value_usd": 24.18,
-   "gain_pct": -0.052,
+   "pk": "inf:1000BONKUSDC_LONG",
+   "symbol": "1000BONKUSDC",
+   "account": "inf",
+   "value_usd": 31.83,
+   "gain_pct": 0.149,
    "tier": "B",
-   "perf_mult": 3.05,
-   "amt": 0.016,
-   "mark": 1511.45337699
+   "perf_mult": 1.61,
+   "amt": 8748.0,
+   "mark": 0.00363863
   }
  ]
 }
