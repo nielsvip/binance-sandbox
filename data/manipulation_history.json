@@ -19660,5 +19660,23 @@
     ],
     "timestamp": "2026-09-22T12:45:06.180626+00:00",
     "price": 222.45055858
+  },
+  {
+    "symbol": "IOTXUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.1x (from rankings)"
+    ],
+    "timestamp": "2026-09-22T13:07:25.639031+00:00",
+    "price": 0.003174
+  },
+  {
+    "symbol": "UNIUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 6.6x (from rankings)"
+    ],
+    "timestamp": "2026-09-22T13:20:49.848825+00:00",
+    "price": 6.345
   }
 ]
