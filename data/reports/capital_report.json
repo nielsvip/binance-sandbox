@@ -1,56 +1,32 @@
 {
- "generated_at": "2026-09-22 20:59 UTC",
- "total_capital_usd": 502.03,
+ "generated_at": "2026-09-22 21:16 UTC",
+ "total_capital_usd": 31.05,
  "tier_capital": {
   "A": 0.0,
-  "B": 502.02,
-  "C": 0.0
+  "B": 0.0,
+  "C": 31.05
  },
  "tier_count": {
   "A": 0,
-  "B": 3,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "flz:ETHUSDT_LONG",
-  "flz:BTCUSDT_LONG",
-  "flz:WLDUSDC_LONG"
+  "ang:MINAUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:ETHUSDT_LONG",
-   "symbol": "ETHUSDT",
-   "account": "flz",
-   "value_usd": 324.2,
-   "gain_pct": -1.821,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.118,
-   "mark": 2747.5
-  },
-  {
-   "pk": "flz:BTCUSDT_LONG",
-   "symbol": "BTCUSDT",
-   "account": "flz",
-   "value_usd": 172.31,
-   "gain_pct": -0.799,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.002,
-   "mark": 86156.1
-  },
-  {
-   "pk": "flz:WLDUSDC_LONG",
-   "symbol": "WLDUSDC",
-   "account": "flz",
-   "value_usd": 5.51,
-   "gain_pct": -0.536,
-   "tier": "B",
-   "perf_mult": 0.58,
-   "amt": 11.9,
-   "mark": 0.4633042
+   "pk": "ang:MINAUSDT_LONG",
+   "symbol": "MINAUSDT",
+   "account": "ang",
+   "value_usd": 31.05,
+   "gain_pct": -0.08,
+   "tier": "C",
+   "perf_mult": 0.45,
+   "amt": 198.0,
+   "mark": 0.15684
   }
  ]
 }
