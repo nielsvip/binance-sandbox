@@ -1669,40 +1669,69 @@ def main():
                         _col = htc.get(_hdr)
                         if _col: 
                             try:
-                                ws_h.cell(row=r, column=_col).value = None
-                                from openpyxl.styles import PatternFill as _PF_neg
-                                ws_h.cell(row=r, column=_col).fill = _PF_neg(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                # ALWAYS WRITE TO EVERY YELLOW BUT AFTER CALCULATING DELTA FOR THE FILTER ON THE SPECIFIC SWITCH — even when delta -1.0, write candidate yellows
+                                _cand_y = pending_lbI.get(_hdr)
+                                if _cand_y is not None:
+                                    ws_h.cell(row=r, column=_col).value = float(_cand_y)
+                                else:
+                                    ws_h.cell(row=r, column=_col).value = 0.0
                             except: pass
                     try: ws_h.cell(row=r, column=6).value = 0.0; ws_h.cell(row=r, column=7).value = -1.0  # G never 0.0 for NEG — was 0.0
                     except: pass
                 key = f"{sheet}!{r}:{switch}={cand}"
-                # VIRUS DESTROYED: never write yellows 0.0 without pos delta — yellows {} empty red
-                progress.setdefault("done", {})[key] = {"delta": -1.0, "vec_gain": 0, "yellows": {}, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before)}
+                # ALWAYS WRITE YELLOWS AFTER DELTA — even when delta -1.0, yellows are candidate values, baseline never without pos delta
+                progress.setdefault("done", {})[key] = {"delta": -1.0, "vec_gain": 0, "yellows": {h: float(pending_lbI.get(h, 0.0)) for h in relevant_hdrs}, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before)}
                 return 0.0
             delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
-            # write yellows
+            delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
+            # SWITCH UNDERSTANDS IT CAN NOT PASS TO NEXT ROW UNTIL ALL YELLOW CELLS HAVE BEEN CALCULATED APPLYING THE SPECIFIC FILTER IN THAT COLUMN — per-yellow delta inside yellow cell, add to own delta if positive, baseline never without pos delta
             if ws_h is not None:
-                for hdr, d in pending_lbI.items():
-                    col = htc.get(hdr)
-                    if col:
-                        try: ws_h.cell(row=r, column=col).value = float(d)
-                        except: pass
+                _per_yellow_sum = 0.0
                 for _hdr in relevant_hdrs:
                     _col = htc.get(_hdr)
-                    if _col and ws_h.cell(row=r, column=_col).value is None:
-                        try: ws_h.cell(row=r, column=_col).value = 0.0
-                        except: pass
+                    if not _col:
+                        continue
+                    # FILTER IN HEADER APPLIED ONLY TO SWITCH IN THAT ROW — never to other rows without yellow in that column
+                    if _hdr not in pending_lbI:
+                        continue
+                    # per-yellow delta must be calculated applying the specific filter in that column — block until done
+                    try:
+                        _cand_y = pending_lbI.get(_hdr)
+                        _single_variant = dict(pending_lbI)
+                        _single_variant[_hdr] = _cand_y
+                        from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_y
+                        _vec_y = _eval_y(prepared, _single_variant, window_days=args.window_days) if prepared is not None else {"valid": False}
+                        _delta_y = float(_vec_y.get("gain_pct", 0) - cumulative_before) if _vec_y.get("valid") else -1.0
+                        # write delta inside the yellow cell — always write after delta calc for this switch's filter only
+                        ws_h.cell(row=r, column=_col).value = float(_delta_y)
+                        if _delta_y > 1e-9:
+                            from openpyxl.styles import PatternFill as _PF_y
+                            ws_h.cell(row=r, column=_col).fill = _PF_y(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+                            _per_yellow_sum += float(_delta_y)
+                        else:
+                            from openpyxl.styles import PatternFill as _PF_yn
+                            ws_h.cell(row=r, column=_col).fill = _PF_yn(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+                    except Exception:
+                        pass
+                # add per-yellow positive deltas to own delta if positive
+                if _per_yellow_sum > 1e-9:
+                    delta_best = float(delta_best + _per_yellow_sum) if delta_best > -0.9 else float(_per_yellow_sum)
+                    try:
+                        ws_h.cell(row=r, column=7).value = float(delta_best)
+                    except: pass
                 try:
                     ws_h.cell(row=r, column=6).value = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                    ws_h.cell(row=r, column=7).value = float(delta_best)
+                    if ws_h.cell(row=r, column=7).value is None or float(ws_h.cell(row=r, column=7).value or 0) == 0:
+                        ws_h.cell(row=r, column=7).value = float(delta_best)
                 except: pass
+            else:
+                delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
             key = f"{sheet}!{r}:{switch}={cand}"
-            progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "yellows": dict(pending_lbI), "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before + delta_best) if delta_best > 0 else float(cumulative_before), "best_filter": filt_best, "best_fval": fval_best}
+            progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "yellows": {h: float(pending_lbI.get(h, 0.0)) for h in relevant_hdrs}, "yellows_delta": {h: float(ws_h.cell(row=r, column=htc.get(h)).value) if ws_h is not None and htc.get(h) else 0.0 for h in relevant_hdrs}, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before + delta_best) if delta_best > 0 else float(cumulative_before), "best_filter": filt_best, "best_fval": fval_best}
             if delta_best > 1e-9:
                 cumulative_gain = float(cumulative_before + delta_best)
                 cumulative_overrides[switch] = cand
                 if filt_best: cumulative_overrides[filt_best] = fval_best
-                # also apply all pos filters if combined
                 if hdr_best and "+" in str(hdr_best):
                     for (ff, oo, hh) in pos_filters:
                         cumulative_overrides[ff] = oo
@@ -2204,22 +2233,21 @@ def main():
                         except Exception as _e:
                             print(f"[baseline-fallback-warn] {sheet}!{r} {_e}", flush=True)
                     if best is None:
-                        # NO VALID: still fill this row's relevant yellows as flagged 0.0 (same convention as F/G=0.0 red) so no formula survives
+                        # ALWAYS WRITE TO EVERY YELLOW BUT AFTER CALCULATING DELTA — even when NO VALID, write candidate yellows, baseline never without pos delta
                         try:
                             if ws_row is not None:
-                                from openpyxl.styles import PatternFill as _PF_virus
                                 for _hdr in relevant_hdrs:
                                     _col = header_to_col.get(_hdr)
                                     if not _col:
                                         continue
                                     try:
-                                        ws_row.cell(row=r, column=_col).value = None
-                                        ws_row.cell(row=r, column=_col).fill = _PF_virus(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                        # candidate yellows from pending_lbI (already calculated delta for this switch)
+                                        _y = pending_lbI.get(_hdr) if 'pending_lbI' in locals() else None
+                                        ws_row.cell(row=r, column=_col).value = float(_y) if _y is not None else 0.0
                                     except Exception:
                                         pass
                         except: pass
-                        # VIRUS DESTROYED 2026-09-22: never write baseline without pos delta — delta -1.0 red, yellows None red, not 0
-                        progress.setdefault("done", {})[key] = {"delta": -1.0, "reason": "all vectors invalid DESTROYED no baseline without pos delta", "yellows": {}, "invalid_yellows": list(relevant_hdrs)}
+                        progress.setdefault("done", {})[key] = {"delta": -1.0, "reason": "all vectors invalid", "yellows": {h: float((pending_lbI.get(h) if 'pending_lbI' in locals() and pending_lbI.get(h) is not None else 0.0)) for h in relevant_hdrs}, "invalid_yellows": list(relevant_hdrs)}
                         print(f"[ROW] {sheet}!{r} {switch}={cand} vs cum {cumulative_before:.4f} -> NO VALID", flush=True)
                         _atomic_write_json(progress_path, progress)
                         _touch_heartbeat(f"cell {sheet}!{r} NO VALID")
@@ -2285,10 +2313,8 @@ def main():
                                                     pass
                                         if not _skip_zero:
                                             try:
-                                                # VIRUS DESTROYED: never write 0.0 without pos delta — leave None red
-                                                ws_row.cell(row=r, column=_col).value = None
-                                                from openpyxl.styles import PatternFill as _PF_miss
-                                                ws_row.cell(row=r, column=_col).fill = _PF_miss(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                                # ALWAYS WRITE TO EVERY YELLOW BUT AFTER CALCULATING DELTA — write candidate 0.0 (candidate is 0 when no valid) after delta calc
+                                                ws_row.cell(row=r, column=_col).value = 0.0
                                             except Exception:
                                                 pass
                                         _missing.append(_hdr)
