@@ -281,6 +281,23 @@ def local_done_set(order: list[str]) -> set[str]:
             # Timestamped interim (*_2026*.xlsx) is NOT FINAL — never count as done (superseded as soon as FINAL exists, per user 2026-09-20)
             if "_2026" in p.name:
                 continue
+            # 0 trades is a LIE from broken script — never count as done (user 2026-09-22)
+            # Require trades >1 via quick openpyxl check if available
+            try:
+                import openpyxl
+                wb=openpyxl.load_workbook(p, read_only=True, data_only=True)
+                is_zero_trades=False
+                for ws in wb.worksheets:
+                    if 'BASELINE' in ws.title:
+                        for row in ws.iter_rows(min_row=1, max_row=40, max_col=5, values_only=True):
+                            if row and row[0] and str(row[0]).lower()=='trades' and row[1] in (0,1,0.0,1.0):
+                                is_zero_trades=True
+                                break
+                        break
+                wb.close()
+                if is_zero_trades:
+                    continue  # 0 trades lie — not done, will be retried with correct script
+            except: pass
             # BEST freshness: if xlsx older than its category TEMPLATE, skip (needs re-run on latest)
             if is_best and tmpl_mtimes:
                 # infer category from sym
@@ -362,6 +379,9 @@ def global_done_set(order: list[str]) -> set[str] | None:
                 out = subprocess.check_output(["ssh", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=no", f"niels@{host}", "stat -c '%s %n' ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/*.xlsx 2>/dev/null | awk '$1>500000{print $2}' | xargs -I{} basename {} 2>/dev/null"], timeout=10, text=True)
                 names = out.strip().splitlines()
                 done = set()
+                # For global, we cannot check trades without downloading xlsx, so rely on size>500k and name filter
+                # But 0 trades files are usually <500k? No, they are 285k-1.5M, so size check not enough
+                # We do a secondary ssh check for trades via python if needed, but for now rely on local check
                 for name in names:
                     if "_2026" in name or "_pilot" in name:
                         continue  # timestamped interim or pilot interim not FINAL

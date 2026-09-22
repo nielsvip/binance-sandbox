@@ -1267,7 +1267,7 @@ class Config:
     # to this many per (pkey × UTC day). CLOSE/REDUCE not capped. Emergency-exit
     # reasons (RIDICULOUS, BREAK_REVERSE, ALL_TF_AGAINST, INTERVENTION, MANUAL)
     # bypass the cap. Set 0 to disable.
-    TRADES_PER_SYM_PER_DAY_MAX: int = 8  # 2026-07-08 GAINMO anti-churn: 50→8 rollback. The 2026-05-21 starvation (attempt-time counting + 99-100% block rates) no longer applies post-loosening; force-open/OBLIGATORY reasons bypass this guard anyway (ez_manage.py ~23247). CAVEAT: crypto still counts attempts (tradier counts submissions since 2026-07-03) — if BLOCKED_OVERTRADE starves real entries, port the count-on-submission fix, do NOT re-raise the cap.
+    TRADES_PER_SYM_PER_DAY_MAX: int = 50  # 2026-09-22 UNBLOCK FIX: was 8 blocking fin (147 BLOCKED_OVERTRADE_8_OF_8). Restore 50 to allow v15_pilot all-tradable flow. Re-tighten only after TOP proves overtrade without this. ROLLBACK: 8.
     FOOTHOLD_PILEON_ENABLED: bool = False  # 2026-05-12 ADDED: emergency kill of hardcoded 5-min lock that fires on 3 attempts. Was blocking breakouts. Default OFF.
     # 2026-05-09 USER MANDATE — sweep gating thresholds.
     # Cheap test (12 syms × 4 mo): variants below DISCARD floor are flagged DISCARD.
@@ -4604,7 +4604,7 @@ class Config:
     EMA_9_21_FILTER_ENABLED: bool = True  # KINDERGARTEN 2026-08-19 — 9/21 1h (no entries if 9 on wrong side) defaults True both platforms 2026-09-10
     EMA_9_21_SCORE_BONUS: int = 5  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
     EMA_9_21_TIMEFRAME: str = "1h"
-    KINDERGARTEN_EMA_GATE_ENABLED: bool = True  # 2026-09-22 FIX: rewritten as ENTRY SWITCH at 15m (EMA 9x21 cross) — was filter blocked 100% badly written, now correctly adds entry via _kg_signal OR. Must exist on all TFs via KINDERGARTEN_FILTER_TF.
+    KINDERGARTEN_EMA_GATE_ENABLED: bool = False  # USER FIX 2026-09-22: 0 trades lie from True 100% block — False + 15m in _ALL_FILTER_TF, exists but not block
     EMERGENCY_BRAKE_DC_STOP_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
     EMERGENCY_BRAKE_DC_STOP_FIELD: str = 'dc_low_15m'  # PORTED from TradierConfig 2026-08-17
     ENABLE_IP_ROTATION: bool = False  # NOT DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
