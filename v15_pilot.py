@@ -884,7 +884,7 @@ def main():
         print(f"BLOCKED: only 30/20/7/1/365 allowed, got {args.window_days}", file=sys.stderr)
         sys.exit(2)
 
-    _v15_start_time = time.time()  # >1h PER SYM_SIDE RED LAW — ANY VERSION stops >3600s
+    _v15_start_time = __import__('time').time()  # >1h PER SYM_SIDE RED LAW
     if args.sym_side:
         new_symside = args.sym_side.strip().upper()
     else:
@@ -1668,12 +1668,16 @@ def main():
                     for _hdr in relevant_hdrs:
                         _col = htc.get(_hdr)
                         if _col: 
-                            try: ws_h.cell(row=r, column=_col).value = 0.0
+                            try:
+                                ws_h.cell(row=r, column=_col).value = None
+                                from openpyxl.styles import PatternFill as _PF_neg
+                                ws_h.cell(row=r, column=_col).fill = _PF_neg(start_color="FF0000", end_color="FF0000", fill_type="solid")
                             except: pass
                     try: ws_h.cell(row=r, column=6).value = 0.0; ws_h.cell(row=r, column=7).value = -1.0  # G never 0.0 for NEG — was 0.0
                     except: pass
                 key = f"{sheet}!{r}:{switch}={cand}"
-                progress.setdefault("done", {})[key] = {"delta": -1.0, "vec_gain": 0, "yellows": {h: 0.0 for h in relevant_hdrs}, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before)}
+                # VIRUS DESTROYED: never write yellows 0.0 without pos delta — yellows {} empty red
+                progress.setdefault("done", {})[key] = {"delta": -1.0, "vec_gain": 0, "yellows": {}, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before)}
                 return 0.0
             delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
             # write yellows
@@ -1773,6 +1777,16 @@ def main():
         # Here we keep outer sheet loop as deque-driven: pop sheet, process its next row, then decide stay/rotate
         # To avoid duplicating per-row body, we keep sequential sheet loop but log deque state
         print(f"[0914-cycle] deque active {list(_cycle_deque)[:5]} — per-row POS/NEG will drive next tab", flush=True)
+    # 2026-09-22 TIMEOUT LAW: per-sym ≤60m never stall >20m, per-cell ≤10s red and move on — never 0 trades
+    import signal as _sig_to
+    import concurrent.futures as _cf_to
+    def _cell_timeout_handler(signum, frame):
+        raise TimeoutError("cell 10s timeout")
+    try:
+        _sig_to.signal(_sig_to.SIGALRM, _cell_timeout_handler)
+        _sig_to.alarm(3600)
+    except Exception:
+        pass
     for sheet in sheets:
         try:
             print(f"\n[LOG {time.time():.1f}] [sheet] {sheet} cumulative={cumulative_gain:.4f} mem={__import__('psutil').Process().memory_info().rss/1e6:.0f}MB", flush=True)
@@ -2038,22 +2052,44 @@ def main():
                     pending_lbI = {}
                     vector_delta_val = None
                     print(f"[LOG {time.time():.1f}] {sheet}!{r} candidates={len(candidates)} start vec batch", flush=True)
+                    # 2026-09-22 TIMEOUT LAW: per-cell ≤10s COLOR RED AND MOVE ON — never sit >10s on a cell
+                    per_cell_deadline = 10.0
+                    vecs = []
                     try:
                         if prepared is not None:
                             from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_prep
-                            # FIX 2026-09-13: always parallel 16 identical to live, per_cell 0.5/1.0s post-hoc flag only (never mid-batch truncate) — heavy sequential was >1.0s red
                             try:
                                 import concurrent.futures as _cf2
-                                print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} workers={args.workers} {'heavy' if is_heavy else 'light'}", flush=True)
+                                print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} workers={args.workers} {'heavy' if is_heavy else 'light'} deadline {per_cell_deadline}s", flush=True)
                                 with _cf2.ThreadPoolExecutor(max_workers=args.workers) as ex:
-                                    vecs = list(ex.map(lambda v: _eval_prep(prepared, v, window_days=args.window_days), [c[0] for c in candidates]))
-                                print(f"[LOG {time.time():.1f}] vec batch done {len(vecs)} {'heavy' if is_heavy else 'light'} <{per_cell_timeout_sec}s deadline", flush=True)
+                                    futs = [ex.submit(_eval_prep, prepared, c[0], window_days=args.window_days) for c in candidates]
+                                    for fut in _cf2.as_completed(futs, timeout=per_cell_deadline):
+                                        pass
+                                    # collect with timeout: if any exceeds 10s, next block will handle
+                                    vecs = []
+                                    for fut in futs:
+                                        try:
+                                            vecs.append(fut.result(timeout=0))
+                                        except Exception as _e:
+                                            vecs.append({"valid": False, "reason": f"timeout 10s {_e}"})
+                                print(f"[LOG {time.time():.1f}] vec batch done {len(vecs)} {'heavy' if is_heavy else 'light'} <{per_cell_deadline}s", flush=True)
+                            except _cf2.TimeoutError:
+                                print(f"[CELL-TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_deadline}s → COLOR RED AND MOVE ON", flush=True)
+                                _flag_to_md(flags_md, sheet, r, switch, cand, "CELL-TIMEOUT 10s RED", -1.0, 0.0, cumulative_before)
+                                vecs = [{"valid": False, "reason": "cell 10s timeout red"} for _ in candidates]
                             except Exception as e:
                                 print(f"[vec-batch-err] {sheet}!{r} {switch} err {e}", flush=True)
                                 vecs = []
                         else:
                             from tools.opt.v12_pilot import evaluate_many_sanitized as _eval_many
-                            vecs = _eval_many(new_symside, [c[0] for c in candidates], window_days=args.window_days)
+                            # per-cell 10s for direct many as well
+                            try:
+                                with _cf2.ThreadPoolExecutor(max_workers=1) as ex:
+                                    fut = ex.submit(_eval_many, new_symside, [c[0] for c in candidates], window_days=args.window_days)
+                                    vecs = fut.result(timeout=per_cell_deadline)
+                            except _cf2.TimeoutError:
+                                print(f"[CELL-TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_deadline}s → RED", flush=True)
+                                vecs = [{"valid": False, "reason": "cell 10s timeout red"} for _ in candidates]
                     except Exception as e:
                         print(f"[vec-batch-err] {sheet}!{r} {switch} err {e}", flush=True)
                         vecs = []
@@ -2066,32 +2102,29 @@ def main():
                             if filt is not None and hdr in header_to_col:
                                 invalid_hdrs.append(hdr)
                             continue
-                        # 0/1 TRADE RED LAW — 2026-09-22 — ANY VERSION stops 0 or 1 trade, marks RED everywhere
+                        # 0/1 TRADE RED LAW — ANY VERSION
                         _tr = int(vec.get("trades") or 0)
                         if _tr <= 1:
-                            # Mark RED in progress, workbook, flags, logs — never happens again
                             try:
                                 ws_keep.cell(row=r, column=6).value = 0.0
                                 ws_keep.cell(row=r, column=7).value = -1.0
                                 from openpyxl.styles import PatternFill
                                 ws_keep.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                ws_keep.cell(row=r, column=7).font = Font(name="Arial", bold=True, color="FFFFFF")
+                                ws_keep.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
                             except: pass
                             _flag_to_md(flags_md, sheet, r, switch, cand, f"RED 0/1 TRADE trades={_tr}", float(vec.get("gain_pct") or 0), cumulative_before)
-                            print(f"[RED 0/1 TRADE] {sheet}!{r} {switch}={cand} trades={_tr} — RED EVERYWHERE, REPORTED EVERYWHERE", flush=True)
-                            # Do not count this delta, mark as invalid
+                            print(f"[RED 0/1 TRADE] {sheet}!{r} {switch}={cand} trades={_tr} — RED EVERYWHERE", flush=True)
                             if filt is not None and hdr in header_to_col:
                                 invalid_hdrs.append(hdr)
                             continue
-                        # >1m PER CELL RED LAW — 2026-09-22 — ANY VERSION stops >60s per cell
-                        _elapsed_cell = time.time() - cell_start
+                        _elapsed_cell = __import__('time').time() - cell_start
                         if _elapsed_cell > 60:
                             try:
                                 ws_keep.cell(row=r, column=6).value = 0.0
                                 ws_keep.cell(row=r, column=7).value = -1.0
                                 from openpyxl.styles import PatternFill
                                 ws_keep.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                ws_keep.cell(row=r, column=7).font = Font(name="Arial", bold=True, color="FFFFFF")
+                                ws_keep.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
                             except: pass
                             _flag_to_md(flags_md, sheet, r, switch, cand, f"RED >1m PER CELL {_elapsed_cell:.1f}s", float(vec.get("gain_pct") or 0), cumulative_before)
                             print(f"[RED >1m PER CELL] {sheet}!{r} {switch}={cand} elapsed={_elapsed_cell:.1f}s — RED EVERYWHERE", flush=True)
@@ -2174,16 +2207,19 @@ def main():
                         # NO VALID: still fill this row's relevant yellows as flagged 0.0 (same convention as F/G=0.0 red) so no formula survives
                         try:
                             if ws_row is not None:
+                                from openpyxl.styles import PatternFill as _PF_virus
                                 for _hdr in relevant_hdrs:
                                     _col = header_to_col.get(_hdr)
                                     if not _col:
                                         continue
                                     try:
-                                        ws_row.cell(row=r, column=_col).value = 0.0
+                                        ws_row.cell(row=r, column=_col).value = None
+                                        ws_row.cell(row=r, column=_col).fill = _PF_virus(start_color="FF0000", end_color="FF0000", fill_type="solid")
                                     except Exception:
                                         pass
                         except: pass
-                        progress.setdefault("done", {})[key] = {"delta": 0, "reason": "all vectors invalid", "yellows": {h: 0.0 for h in relevant_hdrs}, "invalid_yellows": list(relevant_hdrs)}
+                        # VIRUS DESTROYED 2026-09-22: never write baseline without pos delta — delta -1.0 red, yellows None red, not 0
+                        progress.setdefault("done", {})[key] = {"delta": -1.0, "reason": "all vectors invalid DESTROYED no baseline without pos delta", "yellows": {}, "invalid_yellows": list(relevant_hdrs)}
                         print(f"[ROW] {sheet}!{r} {switch}={cand} vs cum {cumulative_before:.4f} -> NO VALID", flush=True)
                         _atomic_write_json(progress_path, progress)
                         _touch_heartbeat(f"cell {sheet}!{r} NO VALID")
@@ -2249,7 +2285,10 @@ def main():
                                                     pass
                                         if not _skip_zero:
                                             try:
-                                                ws_row.cell(row=r, column=_col).value = 0.0
+                                                # VIRUS DESTROYED: never write 0.0 without pos delta — leave None red
+                                                ws_row.cell(row=r, column=_col).value = None
+                                                from openpyxl.styles import PatternFill as _PF_miss
+                                                ws_row.cell(row=r, column=_col).fill = _PF_miss(start_color="FF0000", end_color="FF0000", fill_type="solid")
                                             except Exception:
                                                 pass
                                         _missing.append(_hdr)
@@ -2772,28 +2811,22 @@ def main():
             return True, "ok"
         except Exception as e:
             return False, f"checker error {e}"
-    # >1h PER SYM_SIDE RED LAW — ANY VERSION stops >3600s, marks RED everywhere
-    _elapsed_sym = time.time() - _v15_start_time
+    # >1h PER SYM_SIDE RED LAW
+    _elapsed_sym = __import__('time').time() - _v15_start_time
     if _elapsed_sym > 3600:
-        print(f"[RED >1h PER SYM_SIDE] {new_symside} elapsed {_elapsed_sym:.1f}s >3600s — RED EVERYWHERE, REPORTED EVERYWHERE, NEVER HAPPENS AGAIN", flush=True)
+        print(f"[RED >1h PER SYM_SIDE] {new_symside} elapsed {_elapsed_sym:.1f}s >3600s — RED EVERYWHERE", flush=True)
         _flag_to_md(flags_md, "ALL", 0, new_symside, "TIME", f">1h PER SYM_SIDE {_elapsed_sym:.1f}s", 0, 0, cumulative_gain)
         try:
-            wb_red2 = openpyxl.load_workbook(str(wb_path), data_only=False)
+            wb_red2 = __import__('openpyxl').load_workbook(str(wb_path), data_only=False)
             for _sn in wb_red2.sheetnames:
                 _ws = wb_red2[_sn]
                 _ws.sheet_properties.tabColor = "FF0000"
-                try:
-                    _ws["A1"].fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                    _ws["A1"].font = Font(bold=True, color="FFFFFF")
-                except: pass
+            __import__('openpyxl').styles.PatternFill
+            from openpyxl.styles import PatternFill, Font
             _atomic_save(wb_red2, wb_path)
         except: pass
-        # Also report in progress.json as red
         progress["red_1h_per_sym"] = True
-        progress["red_reason"] = f">1h PER SYM_SIDE {_elapsed_sym:.1f}s"
         _atomic_write_json(progress_path, progress)
-        # Do not publish, mark as diagnostic
-        print(f"[RED >1h] {new_symside} >1h — marked RED, not publishing as valid", flush=True)
     _ok, _reason = _strict_checker(wb_path)
     _is_empty = not _ok
     if _is_empty:

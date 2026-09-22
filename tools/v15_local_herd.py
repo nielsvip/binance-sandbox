@@ -445,7 +445,7 @@ def launch(symside: str, workers: int, window_days: int = 30) -> bool:
     # routing: STOCKS use worst-first + STOCKS templates; CRYPTO use worst-first with V15_CRYPTO templates if they exist (regenerating), else regular
     is_stock = "USDC" not in symside and "USDT" not in symside
     if is_stock:
-        pilot = ROOT / "v15_pilot_0914.py"
+        pilot = ROOT / "v15_pilot.py"
         if not pilot.exists():
             pilot = ROOT / "v15_pilot.py"
         # prefer V15 stocks templates (1.9M) if present, else legacy
@@ -471,7 +471,7 @@ def launch(symside: str, workers: int, window_days: int = 30) -> bool:
             pilot = ROOT / "v15_pilot.py"
             extra = ""
         else:
-            pilot = ROOT / "v15_pilot_0914.py"
+            pilot = ROOT / "v15_pilot.py"
             if not pilot.exists():
                 pilot = ROOT / "v15_pilot.py"
                 extra = ""
