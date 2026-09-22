@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-21 23:33 UTC",
- "total_capital_usd": 34.16,
+ "generated_at": "2026-09-21 23:59 UTC",
+ "total_capital_usd": 21.51,
  "tier_capital": {
   "A": 0.0,
-  "B": 34.16,
+  "B": 21.51,
   "C": 0.0
  },
  "tier_count": {
@@ -13,20 +13,18 @@
  },
  "winners": [],
  "losers": [],
- "mediocre": [
-  "ang:C98USDT_SHORT"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "ang:C98USDT_SHORT",
-   "symbol": "C98USDT",
-   "account": "ang",
-   "value_usd": 34.16,
-   "gain_pct": 0.039,
+   "pk": "men:XRPUSDC_LONG",
+   "symbol": "XRPUSDC",
+   "account": "men",
+   "value_usd": 21.51,
+   "gain_pct": -0.013,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 2110.0,
-   "mark": 0.01619
+   "perf_mult": 2.94,
+   "amt": 14.0,
+   "mark": 1.5367
   }
  ]
 }
