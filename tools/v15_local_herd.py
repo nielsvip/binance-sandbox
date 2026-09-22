@@ -835,81 +835,9 @@ def main():
                                 print(f"[DONE] all {len(order)} done locally+globally — verifying sheets", flush=True)
                                 missing = [s for s in order if s not in combined_done]
                                 if not missing:
-                                    print(f"[DONE] ALL SHEETS FILLED — {len(order)}/{len(order)} — starting SHUFFLE second round", flush=True)
-                                    try:
-                                        base_dir = pathlib.Path.home() / "binance-sandbox" / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
-                                        done_with_mtime = []
-                                        for s in order:
-                                            candidates = list(base_dir.glob(f"{s}*.xlsx"))
-                                            if candidates:
-                                                oldest = min(candidates, key=lambda p: p.stat().st_mtime)
-                                                done_with_mtime.append((oldest.stat().st_mtime, s))
-                                        done_with_mtime.sort()
-                                        # SHARD hustle: each server takes disjoint oldest by hash %4 - NO DUPLICATE sym_sides between servers
-                                        oldest_all = [s for _, s in done_with_mtime]
-                                        oldest_n = [s for s in oldest_all if (stable_hash(s) % 4) == host_idx][:5]
-                                        if not oldest_n:
-                                            oldest_n = [s for s in oldest_all if (stable_hash(s) % 4) == host_idx][:3] or oldest_all[:1]
-                                        if not oldest_n:
-                                            oldest_n = order[:5]
-                                        print(f"[SHUFFLE-ROUND] oldest 5: {oldest_n}", flush=True)
-                                        for sym in oldest_n:
-                                            try:
-                                                prog = pathlib.Path.home() / f"binance-sandbox/data/reports/lifecycle_pilot/{sym}_v14_progress.json"
-                                                if not prog.exists():
-                                                    prog = pathlib.Path.home() / f"binance-sandbox/data/reports/lifecycle_pilot/{sym}_pilot_progress.json"
-                                                baseline_json = None
-                                                if prog.exists():
-                                                    j = json.loads(prog.read_text())
-                                                    pos_overrides = {}
-                                                    for k, v in j.get("done", {}).items():
-                                                        if v.get("delta") and v["delta"] > 0:
-                                                            try:
-                                                                switch = k.split(":")[1].split("=")[0]
-                                                                cand = k.split("=")[1]
-                                                                if cand.lower() == "true":
-                                                                    cand_val = True
-                                                                elif cand.lower() == "false":
-                                                                    cand_val = False
-                                                                else:
-                                                                    try:
-                                                                        cand_val = float(cand) if "." in cand else int(cand)
-                                                                    except:
-                                                                        cand_val = cand
-                                                                pos_overrides[switch] = cand_val
-                                                            except:
-                                                                continue
-                                                    if pos_overrides:
-                                                        baseline_path = pathlib.Path.home() / f"binance-sandbox/data/reports/lifecycle_pilot/{sym}_shuffle_baseline.json"
-                                                        baseline_path.write_text(json.dumps(pos_overrides, indent=2))
-                                                        baseline_json = str(baseline_path)
-                                                py = str(VENV_PY) if VENV_PY.exists() else (str(ALT_VENV) if ALT_VENV.exists() else sys.executable)
-                                                is_stock = "USDC" not in sym and "USDT" not in sym
-                                                pilot = ROOT / "v15_pilot_0914.py"
-                                                tmpl = f"SPREADSHEETS/TEMPLATE_STOCKS_{'LONG' if sym.endswith('_LONG') else 'SHORT'}.xlsx" if is_stock else f"SPREADSHEETS/TEMPLATE_CRYPTO_{'LONG' if sym.endswith('_LONG') else 'SHORT'}.xlsx"
-                                                if not (ROOT / tmpl).exists():
-                                                    tmpl = "SPREADSHEETS/TEMPLATE.xlsx"
-                                                # HUSTLE distinct order per host: 0 shuffle,1 worst2best,2 cycle,3 round_robin
-                                                _modes = ["shuffle", "worst2best", "cycle", "round_robin"]
-                                                extra = f" --seq-mode {_modes[host_idx % 4]}"
-                                                if baseline_json:
-                                                    extra += f" --baseline-json {shlex.quote(baseline_json)}"
-                                                disable_file = pathlib.Path.home() / "binance-sandbox/data/reports/lifecycle_pilot/disabled_switches_never_pos.json"
-                                                if disable_file.exists():
-                                                    extra += f" --disable-switches-file {shlex.quote(str(disable_file))}"
-                                                    print(f"[SHUFFLE-DISABLE] {sym} skip 220 never-pos", flush=True)
-                                                cmd = f"nohup {shlex.quote(py)} -u {shlex.quote(str(pilot))} --sym-side {shlex.quote(sym)} --template {shlex.quote(str(ROOT / tmpl))}{extra} --window-days {args.window_days} --vector-only --workers {workers} > /tmp/v15_{sym}_shuffle.log 2>&1 & echo $!"
-                                                out = subprocess.check_output(["bash", "-c", cmd], text=True, timeout=10)
-                                                pid = out.strip().splitlines()[-1].strip()
-                                                print(f"[SHUFFLE-launch] {sym} {extra.strip()} pid {pid} {'OK' if pid.isdigit() else 'FAIL'}", flush=True)
-                                                todo.append(sym)
-                                            except Exception as e:
-                                                print(f"[SHUFFLE-ERR] {sym} {e}", flush=True)
-                                                todo.append(sym)
-                                        print(f"[SHUFFLE-ROUND] queued {len(oldest_n)} oldest for shuffle", flush=True)
-                                    except Exception as e:
-                                        print(f"[SHUFFLE-ERR] {e}", flush=True)
-                                        break
+                                    print(f"[DONE] ALL SHEETS FILLED — {len(order)}/{len(order)} — NO SHUFFLE (work to do) — idle 60s", flush=True)
+                                    time.sleep(10)
+                                    break
                                 else:
                                     print(f"[DONE-WARN] still missing {missing[:5]} — requeue", flush=True)
                                     for s in missing:
@@ -920,172 +848,16 @@ def main():
                             # fallback to original done check
                             missing = [s for s in order if s not in combined_done]
                             if not missing:
-                                print(f"[DONE] ALL SHEETS FILLED — {len(order)}/{len(order)} — starting SHUFFLE second round", flush=True)
-                                try:
-                                    base_dir = pathlib.Path.home() / "binance-sandbox" / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
-                                    done_with_mtime = []
-                                    for s in order:
-                                        candidates = list(base_dir.glob(f"{s}*.xlsx"))
-                                        if candidates:
-                                            oldest = min(candidates, key=lambda p: p.stat().st_mtime)
-                                            done_with_mtime.append((oldest.stat().st_mtime, s))
-                                    done_with_mtime.sort()
-                                    oldest_n = [s for _, s in done_with_mtime[:5]]
-                                    if not oldest_n:
-                                        oldest_n = order[:5]
-                                    print(f"[SHUFFLE-ROUND] oldest 5: {oldest_n}", flush=True)
-                                    for sym in oldest_n:
-                                        try:
-                                            prog = pathlib.Path.home() / f"binance-sandbox/data/reports/lifecycle_pilot/{sym}_v14_progress.json"
-                                            if not prog.exists():
-                                                prog = pathlib.Path.home() / f"binance-sandbox/data/reports/lifecycle_pilot/{sym}_pilot_progress.json"
-                                            baseline_json = None
-                                            if prog.exists():
-                                                j = json.loads(prog.read_text())
-                                                pos_overrides = {}
-                                                for k, v in j.get("done", {}).items():
-                                                    if v.get("delta") and v["delta"] > 0:
-                                                        try:
-                                                            switch = k.split(":")[1].split("=")[0]
-                                                            cand = k.split("=")[1]
-                                                            if cand.lower() == "true":
-                                                                cand_val = True
-                                                            elif cand.lower() == "false":
-                                                                cand_val = False
-                                                            else:
-                                                                try:
-                                                                    cand_val = float(cand) if "." in cand else int(cand)
-                                                                except:
-                                                                    cand_val = cand
-                                                            pos_overrides[switch] = cand_val
-                                                        except:
-                                                            continue
-                                                if pos_overrides:
-                                                    baseline_path = pathlib.Path.home() / f"binance-sandbox/data/reports/lifecycle_pilot/{sym}_shuffle_baseline.json"
-                                                    baseline_path.write_text(json.dumps(pos_overrides, indent=2))
-                                                    baseline_json = str(baseline_path)
-                                            py = str(VENV_PY) if VENV_PY.exists() else (str(ALT_VENV) if ALT_VENV.exists() else sys.executable)
-                                            is_stock = "USDC" not in sym and "USDT" not in sym
-                                            pilot = ROOT / "v15_pilot_0914.py"
-                                            tmpl = f"SPREADSHEETS/TEMPLATE_STOCKS_{'LONG' if sym.endswith('_LONG') else 'SHORT'}.xlsx" if is_stock else f"SPREADSHEETS/TEMPLATE_CRYPTO_{'LONG' if sym.endswith('_LONG') else 'SHORT'}.xlsx"
-                                            if not (ROOT / tmpl).exists():
-                                                tmpl = "SPREADSHEETS/TEMPLATE.xlsx"
-                                            _modes = ["shuffle", "worst2best", "cycle", "round_robin"]
-                                            extra = f" --seq-mode {_modes[host_idx % 4]}"
-                                            if baseline_json:
-                                                extra += f" --baseline-json {shlex.quote(baseline_json)}"
-                                            disable_file = pathlib.Path.home() / "binance-sandbox/data/reports/lifecycle_pilot/disabled_switches_never_pos.json"
-                                            if disable_file.exists():
-                                                extra += f" --disable-switches-file {shlex.quote(str(disable_file))}"
-                                                print(f"[SHUFFLE-DISABLE] {sym} skip 220 never-pos", flush=True)
-                                            cmd = f"nohup {shlex.quote(py)} -u {shlex.quote(str(pilot))} --sym-side {shlex.quote(sym)} --template {shlex.quote(str(ROOT / tmpl))}{extra} --window-days {args.window_days} --vector-only --workers {workers} > /tmp/v15_{sym}_shuffle.log 2>&1 & echo $!"
-                                            out = subprocess.check_output(["bash", "-c", cmd], text=True, timeout=10)
-                                            pid = out.strip().splitlines()[-1].strip()
-                                            print(f"[SHUFFLE-launch] {sym} shuffle pid {pid} {'OK' if pid.isdigit() else 'FAIL'}", flush=True)
-                                            todo.append(sym)
-                                        except Exception as e:
-                                            print(f"[SHUFFLE-ERR] {sym} {e}", flush=True)
-                                            todo.append(sym)
-                                    print(f"[SHUFFLE-ROUND] queued {len(oldest_n)} oldest for shuffle", flush=True)
-                                except Exception as e:
-                                    print(f"[SHUFFLE-ERR] {e}", flush=True)
-                                    break
+                                print(f"[DONE] ALL SHEETS FILLED — {len(order)}/{len(order)} — NO SHUFFLE (work to do) — idle 60s", flush=True)
+                                time.sleep(10)
+                                break
                     else:
                         print(f"[DONE] all {len(order)} done locally+globally — verifying sheets", flush=True)
                         missing = [s for s in order if s not in combined_done]
                         if not missing:
-                            # SHUFFLE SECOND ROUND: when all done, rerun oldest with found settings as baseline + shuffle
-                            print(f"[DONE] ALL SHEETS FILLED — {len(order)}/{len(order)} — starting SHUFFLE second round with found baseline", flush=True)
-                            try:
-                                # find oldest done by xlsx mtime
-                                base_dir = pathlib.Path.home() / "binance-sandbox" / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
-                                done_with_mtime = []
-                                for s in order:
-                                    # find most recent xlsx for this sym
-                                    candidates = list(base_dir.glob(f"{s}*.xlsx"))
-                                    if candidates:
-                                        # use oldest (earliest mtime) among candidates
-                                        oldest = min(candidates, key=lambda p: p.stat().st_mtime)
-                                        done_with_mtime.append((oldest.stat().st_mtime, s))
-                                done_with_mtime.sort()
-                                # SHARD hustle: disjoint per server
-                                oldest_all = [s for _, s in done_with_mtime]
-                                oldest_n = [s for s in oldest_all if (stable_hash(s) % 4) == host_idx][:5]
-                                if not oldest_n:
-                                    oldest_n = order[:5]
-                                print(f"[SHUFFLE-ROUND] oldest 5: {oldest_n}", flush=True)
-                                # for each oldest, extract best overrides as baseline json for shuffle
-                                for sym in oldest_n:
-                                    try:
-                                        prog = pathlib.Path.home() / f"binance-sandbox/data/reports/lifecycle_pilot/{sym}_v14_progress.json"
-                                        if not prog.exists():
-                                            prog = pathlib.Path.home() / f"binance-sandbox/data/reports/lifecycle_pilot/{sym}_pilot_progress.json"
-                                        baseline_json = None
-                                        if prog.exists():
-                                            j = json.loads(prog.read_text())
-                                            # find best delta entry
-                                            best_k = None
-                                            best_d = None
-                                            for k, v in j.get("done", {}).items():
-                                                d = v.get("delta")
-                                                if d is not None and (best_d is None or d > best_d):
-                                                    best_d = d
-                                                    best_k = k
-                                            # best_k contains switch=cand, we need to reconstruct overrides from done keys
-                                            # For now, collect all positive deltas as baseline overrides (hustler style)
-                                            pos_overrides = {}
-                                            for k, v in j.get("done", {}).items():
-                                                if v.get("delta") and v["delta"] > 0:
-                                                    # k is like "SHEET!row:switch=cand"
-                                                    try:
-                                                        switch = k.split(":")[1].split("=")[0]
-                                                        cand = k.split("=")[1]
-                                                        # cand may be "True" or "0.5" etc, try to parse
-                                                        if cand.lower() == "true":
-                                                            cand_val = True
-                                                        elif cand.lower() == "false":
-                                                            cand_val = False
-                                                        else:
-                                                            try:
-                                                                cand_val = float(cand) if "." in cand else int(cand)
-                                                            except:
-                                                                cand_val = cand
-                                                        pos_overrides[switch] = cand_val
-                                                    except:
-                                                        continue
-                                            if pos_overrides:
-                                                baseline_path = pathlib.Path.home() / f"binance-sandbox/data/reports/lifecycle_pilot/{sym}_shuffle_baseline.json"
-                                                baseline_path.write_text(json.dumps(pos_overrides, indent=2))
-                                                baseline_json = str(baseline_path)
-                                                print(f"[SHUFFLE-BASELINE] {sym} wrote {len(pos_overrides)} overrides to {baseline_path} best {best_d}", flush=True)
-                                        # launch with shuffle + baseline — distinct per host
-                                        py = str(VENV_PY) if VENV_PY.exists() else (str(ALT_VENV) if ALT_VENV.exists() else sys.executable)
-                                        is_stock = "USDC" not in sym and "USDT" not in sym
-                                        pilot = ROOT / "v15_pilot_0914.py"
-                                        tmpl = f"SPREADSHEETS/TEMPLATE_STOCKS_{'LONG' if sym.endswith('_LONG') else 'SHORT'}.xlsx" if is_stock else f"SPREADSHEETS/TEMPLATE_CRYPTO_{'LONG' if sym.endswith('_LONG') else 'SHORT'}.xlsx"
-                                        if not (ROOT / tmpl).exists():
-                                            tmpl = "SPREADSHEETS/TEMPLATE.xlsx"
-                                        _modes = ["shuffle", "worst2best", "cycle", "round_robin"]
-                                        extra = f" --seq-mode {_modes[host_idx % 4]}"
-                                        if baseline_json:
-                                            extra += f" --baseline-json {shlex.quote(baseline_json)}"
-                                        disable_file = pathlib.Path.home() / "binance-sandbox/data/reports/lifecycle_pilot/disabled_switches_never_pos.json"
-                                        if disable_file.exists():
-                                            extra += f" --disable-switches-file {shlex.quote(str(disable_file))}"
-                                            print(f"[SHUFFLE-DISABLE] {sym} skip 220 never-pos", flush=True)
-                                        cmd = f"nohup {shlex.quote(py)} -u {shlex.quote(str(pilot))} --sym-side {shlex.quote(sym)} --template {shlex.quote(str(ROOT / tmpl))}{extra} --window-days {args.window_days} --vector-only --workers {workers} > /tmp/v15_{sym}_shuffle.log 2>&1 & echo $!"
-                                        out = subprocess.check_output(["bash", "-c", cmd], text=True, timeout=10)
-                                        pid = out.strip().splitlines()[-1].strip()
-                                        print(f"[SHUFFLE-launch] {sym} shuffle baseline {bool(baseline_json)} pid {pid} {'OK' if pid.isdigit() else 'FAIL'}", flush=True)
-                                        todo.append(sym)
-                                    except Exception as e:
-                                        print(f"[SHUFFLE-ERR] {sym} {e}", flush=True)
-                                        todo.append(sym)
-                                # also push to todo for herd to track
-                                print(f"[SHUFFLE-ROUND] queued {len(oldest_n)} oldest for shuffle second round", flush=True)
-                            except Exception as e:
-                                print(f"[SHUFFLE-ERR] {e}", flush=True)
-                                break
+                            print(f"[DONE] ALL SHEETS FILLED — {len(order)}/{len(order)} — NO SHUFFLE (work to do) — idle 60s", flush=True)
+                            time.sleep(10)
+                            break
                         else:
                             print(f"[DONE-WARN] still missing {missing[:5]} — requeue", flush=True)
                             for s in missing:
