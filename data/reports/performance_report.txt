@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-22 22:49 UTC
+PERFORMANCE REPORT — 2026-09-22 23:12 UTC
 ================================================================================
 Total: 164 symbols | A=7 B=128 C=29
 Window: 14 days | Min trades: 5
@@ -10,7 +10,7 @@ Window: 14 days | Min trades: 5
              MSTR  WR=92%  avg=+6.22%  total=+98.3%  trades= 12  mult=10.00
              NVDA  WR=87%  avg=+3.77%  total=+72.3%  trades= 15  mult=10.00
                MU  WR=84%  avg=+2.12%  total=+64.5%  trades= 25  mult=10.00
-         HYPEUSDT  WR=64%  avg=+0.31%  total=+14.7%  trades= 45  mult=5.69
+         HYPEUSDT  WR=65%  avg=+0.31%  total=+14.8%  trades= 46  mult=5.80
 
 --- TIER B (128 symbols) ---
              SNDK  WR=100%  avg=+14.87%  total=+163.8%  trades=  7  mult=7.30
@@ -131,9 +131,9 @@ Window: 14 days | Min trades: 5
          CELRUSDT  WR=75%  avg=-0.22%  total=-0.9%  trades=  4  mult=1.00
              RDDT  WR=0%  avg=-0.46%  total=-0.9%  trades=  2  mult=1.00
               GLD  WR=0%  avg=-0.24%  total=-1.0%  trades=  4  mult=1.00
+          ETHUSDC  WR=50%  avg=-0.02%  total=-1.0%  trades= 44  mult=0.94
           AIAUSDT  WR=0%  avg=-1.07%  total=-1.1%  trades=  1  mult=1.00
        RAYSOLUSDT  WR=25%  avg=-0.28%  total=-1.1%  trades=  4  mult=1.00
-          ETHUSDC  WR=49%  avg=-0.03%  total=-1.2%  trades= 43  mult=0.85
          QTUMUSDT  WR=54%  avg=-0.05%  total=-1.4%  trades= 26  mult=1.32
               NEM  WR=0%  avg=-0.69%  total=-2.0%  trades=  3  mult=1.00
              UUUU  WR=0%  avg=-1.07%  total=-2.1%  trades=  2  mult=1.00
@@ -174,7 +174,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=32%  avg=-1.98%  total=-74.1%  trades= 66  mult=0.15
 
 SUMMARY:
-  Total PnL (all symbols): +1456.4%
+  Total PnL (all symbols): +1456.7%
   Avg win rate: 49%
-  A-tier avg mult: 9.38
+  A-tier avg mult: 9.40
   C-tier avg mult: 0.42

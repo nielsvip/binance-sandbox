@@ -304,6 +304,7 @@ def _token_overlap(gates: str, switch: str) -> bool:
 def _is_general(rec: str) -> bool:
     return rec.strip().upper().startswith("GENERAL")
 
+VIRUS_FILTERS = {"BB_BOUNCE_ENTRY_TF", "BB_BOUNCE"}
 def get_opportune_filters(switch: str, sheet: str) -> list[dict]:
     if not switch or not sheet:
         return []
@@ -311,6 +312,8 @@ def get_opportune_filters(switch: str, sheet: str) -> list[dict]:
     rows = _load_filter_dictionary()
     out = []
     for e in rows:
+        if e.get("filter") in VIRUS_FILTERS:
+            continue
         rec = (e["rec"] or "").strip().upper()
         if rec == "UNLIKELY" or "UNLIKELY" in rec:
             continue
@@ -660,6 +663,8 @@ def ensure_lbI_headers(wb_path: Path):
         union = set()
         for sw in sheet_switches:
             for e in get_opportune_filters(sw, sheet):
+                if e.get("filter") in VIRUS_FILTERS:
+                    continue
                 if _is_general(e["rec"]):
                     continue
                 union.add(f"{e['filter']}={e['opt']}")
@@ -1685,24 +1690,25 @@ def main():
             delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
             delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
             # SWITCH UNDERSTANDS IT CAN NOT PASS TO NEXT ROW UNTIL ALL YELLOW CELLS HAVE BEEN CALCULATED APPLYING THE SPECIFIC FILTER IN THAT COLUMN — per-yellow delta inside yellow cell, add to own delta if positive, baseline never without pos delta
+            # DESTROY VIRUS: never write numbers in BASELINE without pos delta; never re-evaluate pending_lbI as overrides dict (was virus writing BB_BOUNCE garbage)
             if ws_h is not None:
                 _per_yellow_sum = 0.0
                 for _hdr in relevant_hdrs:
+                    if _hdr.split("=")[0] in VIRUS_FILTERS:
+                        continue
                     _col = htc.get(_hdr)
                     if not _col:
                         continue
                     # FILTER IN HEADER APPLIED ONLY TO SWITCH IN THAT ROW — never to other rows without yellow in that column
                     if _hdr not in pending_lbI:
                         continue
-                    # per-yellow delta must be calculated applying the specific filter in that column — block until done
+                    # per-yellow delta already calculated applying the specific filter in that column — block until done (pending_lbI holds it)
                     try:
                         _cand_y = pending_lbI.get(_hdr)
-                        _single_variant = dict(pending_lbI)
-                        _single_variant[_hdr] = _cand_y
-                        from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_y
-                        _vec_y = _eval_y(prepared, _single_variant, window_days=args.window_days) if prepared is not None else {"valid": False}
-                        _delta_y = float(_vec_y.get("gain_pct", 0) - cumulative_before) if _vec_y.get("valid") else -1.0
-                        # write delta inside the yellow cell — always write after delta calc for this switch's filter only
+                        if _cand_y is None:
+                            continue
+                        _delta_y = float(_cand_y)
+                        # write delta inside the yellow cell — always write after delta calc for this switch's filter only (REPORT INTO YELLOW CELLS)
                         ws_h.cell(row=r, column=_col).value = float(_delta_y)
                         if _delta_y > 1e-9:
                             from openpyxl.styles import PatternFill as _PF_y
@@ -1713,16 +1719,27 @@ def main():
                             ws_h.cell(row=r, column=_col).fill = _PF_yn(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
                     except Exception:
                         pass
-                # add per-yellow positive deltas to own delta if positive
+                # add per-yellow positive deltas to own delta if positive (REPORT INTO VECTOR_DELTA)
                 if _per_yellow_sum > 1e-9:
                     delta_best = float(delta_best + _per_yellow_sum) if delta_best > -0.9 else float(_per_yellow_sum)
                     try:
                         ws_h.cell(row=r, column=7).value = float(delta_best)
                     except: pass
                 try:
+                    # REPORT INTO BASELINE (F is hustle vs baseline) and VECTOR_DELTA (G greedy vs cum) — never into BB_BOUNCE etc
                     ws_h.cell(row=r, column=6).value = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
                     if ws_h.cell(row=r, column=7).value is None or float(ws_h.cell(row=r, column=7).value or 0) == 0:
                         ws_h.cell(row=r, column=7).value = float(delta_best)
+                    # E BASELINE only when pos delta — never write numbers without pos delta (virus destroyed)
+                    if delta_best > 1e-9:
+                        ws_h.cell(row=r, column=5).value = float(cumulative_before)
+                        ws_h.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="006100")
+                    else:
+                        if r + 1 <= ws_h.max_row:
+                            try:
+                                ws_h.cell(row=r+1, column=5).value = None
+                            except: pass
+                        ws_h.cell(row=r, column=3).value = None
                 except: pass
             else:
                 delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
@@ -2004,16 +2021,8 @@ def main():
                                         _wsk.cell(row=r, column=_cc).value = None
                             except Exception:
                                 pass
-                            try:
-                                _e_cell = _wsk.cell(row=r, column=5)
-                                _is_pos = bool(prev.get("delta") and prev["delta"] > 0)
-                                _exp = float(prev.get("vec_gain", 0) or 0) - float(prev.get("delta") or 0)
-                                if _is_pos and not isinstance(_e_cell.value, float):
-                                    _e_cell.value = float(_exp)
-                                elif not _is_pos and _e_cell.value not in (None, ""):
-                                    _e_cell.value = None
-                            except Exception:
-                                pass
+                            # DESTROYED DOUBLE E: never rewrite BASELINE (col5 E) on resume — single write only at promotion, E never overwritten
+                            pass
                     except Exception:
                         pass
                     if prev.get("delta") and prev["delta"] > 0:
@@ -2217,21 +2226,7 @@ def main():
 
                     wb_row = wb_keep
                     ws_row = wb_keep[sheet] if sheet in wb_keep.sheetnames else None
-                    # 2026-09-22 FIX 0-results: baseline validTrue but all switch vectors invalid -> fallback to baseline delta, not 0
-                    if best is None and 'cumulative_before' in locals():
-                        try:
-                            from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_base
-                            if prepared is not None:
-                                v_base = dict(cumulative_overrides)
-                                v_base, _ = sanitize_overrides(v_base, defaults)
-                                vec_base = _eval_base(prepared, v_base, window_days=args.window_days)
-                                if vec_base.get("valid"):
-                                    vg_base = float(vec_base.get("gain_pct") or 0)
-                                    delta_base = vg_base - cumulative_before
-                                    best = (delta_base, v_base, None, None, "BASELINE_FALLBACK", vec_base)
-                                    print(f"[BASELINE FALLBACK] {sheet}!{r} {switch}={cand} baseline delta={delta_base:.4f} vs 0", flush=True)
-                        except Exception as _e:
-                            print(f"[baseline-fallback-warn] {sheet}!{r} {_e}", flush=True)
+                    # DESTROYED: BASELINE_FALLBACK was virus writing fake baseline delta without pos delta — NEVER fallback, best None means NO VALID
                     if best is None:
                         # ALWAYS WRITE TO EVERY YELLOW BUT AFTER CALCULATING DELTA — even when NO VALID, write candidate yellows, baseline never without pos delta
                         try:
@@ -2391,9 +2386,8 @@ def main():
                                             fr = _rr
                                             break
                                     _atomic_save._first_r_cache[sheet] = fr or r
-                                if r == _atomic_save._first_r_cache[sheet]:
-                                    ws_row.cell(row=r, column=5).value = float(cumulative_before)
-                                    ws_row.cell(row=r, column=5).font = Font(name="Arial", bold=False, color="006100")
+                                # DESTROYED DOUBLE E: first-row E was duplicate write without pos check — single E write only at promotion block below
+                                pass
                                 # Dual: F (6) is hustle vs baseline, G (7) is greedy vs cum
                                 _h_for_row = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
                                 ws_row.cell(row=r, column=6).value = float(_h_for_row)
