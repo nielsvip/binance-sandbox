@@ -2121,6 +2121,21 @@ def main():
 
                     wb_row = wb_keep
                     ws_row = wb_keep[sheet] if sheet in wb_keep.sheetnames else None
+                    # 2026-09-22 FIX 0-results: baseline validTrue but all switch vectors invalid -> fallback to baseline delta, not 0
+                    if best is None and 'cumulative_before' in locals():
+                        try:
+                            from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_base
+                            if prepared is not None:
+                                v_base = dict(cumulative_overrides)
+                                v_base, _ = sanitize_overrides(v_base, defaults)
+                                vec_base = _eval_base(prepared, v_base, window_days=args.window_days)
+                                if vec_base.get("valid"):
+                                    vg_base = float(vec_base.get("gain_pct") or 0)
+                                    delta_base = vg_base - cumulative_before
+                                    best = (delta_base, v_base, None, None, "BASELINE_FALLBACK", vec_base)
+                                    print(f"[BASELINE FALLBACK] {sheet}!{r} {switch}={cand} baseline delta={delta_base:.4f} vs 0", flush=True)
+                        except Exception as _e:
+                            print(f"[baseline-fallback-warn] {sheet}!{r} {_e}", flush=True)
                     if best is None:
                         # NO VALID: still fill this row's relevant yellows as flagged 0.0 (same convention as F/G=0.0 red) so no formula survives
                         try:

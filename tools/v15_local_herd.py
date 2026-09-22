@@ -798,11 +798,12 @@ def main():
                 pass
             # if we have no todo but global shows missing, take from global missing (shard may have been too narrow)
             if not todo:
-                # check if globally all 104 done — then continue to full 354 universe (TRB/MEN/FIN/ANG etc per user: STOCKS no USDT/USDC first, then crypto, then TRB/MEN/FIN/ANG)
+                # check if globally all done — then continue to full 354 universe (TRB/MEN/FIN/ANG etc per user: STOCKS no USDT/USDC first, then crypto, then TRB/MEN/FIN/ANG)
+                # FIX 2026-09-22: S* 13/16 done must also switch to FULL 354, not SHUFFLE same 13 for days (server time)
                 if len(combined_done) >= len(order):
-                    # if this was the 104 TRB_FLZ order, switch to full 354 universe
+                    # if this was the S* 13/16 or 104 TRB_FLZ order, switch to full 354 universe
                     order_path_full = ROOT / "SPREADSHEETS" / "V15_FULL_354.txt"
-                    if order_path_full.exists() and len(order) in (104,152,396):
+                    if order_path_full.exists() and len(order) in (13,16,32,28,104,152,396):
                         try:
                             full_order = [l.strip() for l in order_path_full.read_text().splitlines() if l.strip()]
                             # dedupe, keep order
