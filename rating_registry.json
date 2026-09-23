@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-09-23T10:52:47.244120+00:00",
+  "timestamp": "2026-09-23T11:13:32.646134+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 107
+    "total_ranked": 108
   },
   "unified_ranking": [
     {
@@ -62,12 +62,6 @@
     },
     {
       "symbol": "BTCDOMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ARPAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -140,6 +134,12 @@
     },
     {
       "symbol": "DASHUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "GRTUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -643,17 +643,23 @@
       "short_score": 0
     },
     {
-      "symbol": "GRTUSDT",
-      "net_score": 10.8,
-      "long_score": 10.8,
+      "symbol": "ONDOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ARPAUSDT",
+      "net_score": 10.0,
+      "long_score": 10.0,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "GRTUSDT",
-      10.8,
-      0.02731
+      "ARPAUSDT",
+      10.0,
+      0.0115532
     ]
   ],
   "top_shorts": [],
