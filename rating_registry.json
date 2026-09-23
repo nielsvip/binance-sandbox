@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-09-23T05:32:18.718290+00:00",
+  "timestamp": "2026-09-23T05:54:28.386908+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 99
+    "total_ranked": 100
   },
   "unified_ranking": [
     {
@@ -403,6 +403,12 @@
       "short_score": 0
     },
     {
+      "symbol": "IOTAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "MINAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -446,6 +452,12 @@
     },
     {
       "symbol": "ONDOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "POPCATUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -523,12 +535,6 @@
       "short_score": 0
     },
     {
-      "symbol": "AIAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ETCUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -583,39 +589,34 @@
       "short_score": 0
     },
     {
-      "symbol": "IOTAUSDT",
-      "net_score": 10.2,
-      "long_score": 10.2,
+      "symbol": "ADAUSDC",
+      "net_score": 10.0,
+      "long_score": 10.0,
+      "short_score": 0
+    },
+    {
+      "symbol": "AIAUSDT",
+      "net_score": 11.4,
+      "long_score": 11.4,
       "short_score": 0
     },
     {
       "symbol": "RIFUSDT",
-      "net_score": 10.4,
-      "long_score": 10.4,
-      "short_score": 0
-    },
-    {
-      "symbol": "ADAUSDC",
-      "net_score": 13.0,
-      "long_score": 13.0,
+      "net_score": 12.6,
+      "long_score": 12.6,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "ADAUSDC",
-      13.0,
-      0.25757245
-    ],
-    [
       "RIFUSDT",
-      10.4,
-      0.09372851
+      12.6,
+      0.09439202
     ],
     [
-      "IOTAUSDT",
-      10.2,
-      0.05
+      "AIAUSDT",
+      11.4,
+      0.07065
     ]
   ],
   "top_shorts": [],
