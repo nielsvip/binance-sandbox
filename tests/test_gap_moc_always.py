@@ -1,9 +1,9 @@
 """Gap sentinel ALWAYS — per user 2026-09-23:
 
 - Calculates close→open gap (open_D - close_D_prev)/close_D_prev*100 for EVERY
-  position EVERY DAY, rolling 30d per-symbol avg in data/gap_inventory_tradier_per_symbol.json
-- Last 90m (14:30-16:00 ET) closes longs when avg < -0.10% and shorts when avg > +0.10%
-- AND reopens first 120m (09:30-11:30 ET) next day — unconditional after any dip/DC check,
+  position EVERY DAY, rolling 20d (1 month) per-symbol avg in data/gap_inventory_tradier_per_symbol.json
+- Last 90m (14:30-16:00 ET) closes longs when avg < -0.10% (POS keep long) and shorts when avg > +0.10% (NEG keep short) on local high / dc_low4_3m breakdown vv short
+- AND reopens first 120m (09:30-11:30 ET) next day on local low / dc_low4_3m breakout vv short — unconditional after any dip/DC check,
   forced at end of window so EVERY gap-exit is retried.
 - Same behavior in live (tradier_manage) and backtest (v12_quick_engine) — ALWAYS.
 

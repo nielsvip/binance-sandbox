@@ -1,10 +1,11 @@
-"""Regression for 2026-09-11 GAP_MOC per-symbol ONLY fix (retuned 2026-09-11 to 0.10 per user).
+"""Regression for 2026-09-11 GAP_MOC per-symbol ONLY fix (retuned 2026-09-11 to 0.10 per user, 2026-09-23 E to 20d).
 
 Verifies:
-- tradier_manage loads per-symbol inventory from data/gap_inventory_tradier_per_symbol.json (30d, counted daily via open_D/close_D_prev)
+- tradier_manage loads per-symbol inventory from data/gap_inventory_tradier_per_symbol.json (20d, counted daily via open_D/close_D_prev per spec E: last 20 opens vs prior closes)
 - Avg gap = sum_gap_pct / days, stored in that file, counted how often
 - 90m pre-close sentinel uses ONLY per-symbol avg (not market-wide bias): longs close when avg < -thr (gap-down), shorts when avg > +thr, near 0 (|avg|<=0.10) only VV closes — anything >0.10 closes at top/bottom
-- Morning reentry in first 90m reopens at local bottom long / top short (wt_ok or ha_ok or dip_ok) if still attractive (not VV)
+- POS avg keep long / NEG keep short, else close last 90m on local high / dc_low4_3m breakdown vv short; reopen first 120m on local low / dc_low4_3m breakout vv short
+- Morning reentry in first 120m reopens at local low / dc_low4_3m breakout vv short (wt_ok or ha_ok or dip_ok or dc_breakout) if still attractive (not VV), forced at 119m
 """
 import importlib, json, pathlib, sys
 import config_tradier, tradier_manage
@@ -13,8 +14,8 @@ def test_per_symbol_config_exists():
     cfg = config_tradier.TradierConfig()
     assert hasattr(cfg, "GAP_PER_SYMBOL_INVENTORY_FILE")
     assert cfg.GAP_PER_SYMBOL_INVENTORY_FILE == "data/gap_inventory_tradier_per_symbol.json"
-    assert cfg.GAP_PER_SYMBOL_AVG_THRESH_PCT == 0.10  # retuned 2026-09-11 per user: anything >0.10 avg/day closes
-    assert cfg.GAP_PER_SYMBOL_LOOKBACK_DAYS == 30
+    assert cfg.GAP_PER_SYMBOL_AVG_THRESH_PCT == 0.10  # retuned 2026-09-11 per user: anything >0.10 avg/day closes; 2026-09-23 E: 20d per spec (POS keep long NEG keep short)
+    assert cfg.GAP_PER_SYMBOL_LOOKBACK_DAYS == 20
     # market-wide kept only for recording
     assert cfg.GAP_INVENTORY_FILE == "data/gap_inventory_tradier.json"
 
@@ -26,7 +27,7 @@ def test_per_symbol_inventory_file_shape():
     # sample shape
     sample = next(iter(data.values()))
     assert "days" in sample and "sum_gap_pct" in sample
-    assert sample["days"] == 30
+    assert sample["days"] == 20  # 20 trading days (1 month) per spec E
     # last5 or last_gaps
     assert "last5" in sample or "last_gaps" in sample or "last_gaps" in sample or True  # allow either key
     # at least one has last5

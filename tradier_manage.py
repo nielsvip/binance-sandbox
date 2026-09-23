@@ -9117,9 +9117,9 @@ def _gap_per_symbol_should_close(is_long: bool, avg_gap: Optional[float]) -> boo
         return avg_gap > thr
 
 def _is_small_top_for_gap_exit(indicators: dict, is_long: bool) -> bool:
-    """Small top/bottom detection for GAP_MOC exits in last 90min.
-    Long top = wt1_15m < wt2_15m OR ha_15m red OR wt1_5m < wt2_5m OR 5m close < prev close.
-    Short bottom = opposite. If no WT/HA fields, fall back to price down/up tick."""
+    """Small top/bottom detection for GAP_MOC exits in last 90min — spec E: local high / dc_low4_3m breakdown for long vv short.
+    Long top = wt1_15m < wt2_15m OR ha red OR 5m down OR current < dc_low_4h (breakdown). Short bottom = opposite + dc_high_4h breakout.
+    Any single signal suffices for 90m close trigger."""
     try:
         if not bool(_cfg_auto('GAP_MOC_REQUIRE_TOP', True)):
             return True
@@ -9128,14 +9128,21 @@ def _is_small_top_for_gap_exit(indicators: dict, is_long: bool) -> bool:
             wt5_down = float(indicators.get('wt1_5m', 0) or 0) < float(indicators.get('wt2_5m', 0) or 0)
             ha_red = str(indicators.get('ha_15m', '')).lower() == 'red' or str(indicators.get('ha_5m', '')).lower() == 'red'
             px_down = float(indicators.get('close_5m', 0) or 0) < float(indicators.get('close_5m_prev', 0) or 0) if indicators.get('close_5m_prev') else False
-            # Any single small-top signal suffices (any small pullback top in last 90m)
-            return wt15_down or wt5_down or ha_red or px_down
+            # dc_low4_3m breakdown for long: current < dc_low_4h (or dc_low_4h_3m if present) — spec E
+            cur = float(indicators.get('current_price', indicators.get('close_3m', indicators.get('close_5m', 0))) or 0)
+            dc_low = float(indicators.get('dc_low_4h_3m', indicators.get('dc_low_4h', 0)) or 0)
+            dc_breakdown = (cur > 0 and dc_low > 0 and cur < dc_low)
+            # Any single small-top signal suffices (any small pullback top or dc breakdown in last 90m)
+            return wt15_down or wt5_down or ha_red or px_down or dc_breakdown
         else:
             wt15_up = float(indicators.get('wt1_15m', 0) or 0) > float(indicators.get('wt2_15m', 0) or 0)
             wt5_up = float(indicators.get('wt1_5m', 0) or 0) > float(indicators.get('wt2_5m', 0) or 0)
             ha_green = str(indicators.get('ha_15m', '')).lower() == 'green' or str(indicators.get('ha_5m', '')).lower() == 'green'
             px_up = float(indicators.get('close_5m', 0) or 0) > float(indicators.get('close_5m_prev', 0) or 0) if indicators.get('close_5m_prev') else False
-            return wt15_up or wt5_up or ha_green or px_up
+            cur = float(indicators.get('current_price', indicators.get('close_3m', indicators.get('close_5m', 0))) or 0)
+            dc_high = float(indicators.get('dc_high_4h_3m', indicators.get('dc_high_4h', 0)) or 0)
+            dc_breakdown = (cur > 0 and dc_high > 0 and cur > dc_high)
+            return wt15_up or wt5_up or ha_green or px_up or dc_breakdown
     except Exception:
         return True
 
@@ -9169,8 +9176,8 @@ def _gap_per_symbol_inventory_record_from_cache(indicators_cache: dict):
     """ALWAYS daily per-symbol close→open gap writer — called once per day after 09:35 ET.
 
     Calculates (open_D - close_D_prev)/close_D_prev*100 for EVERY symbol in
-    indicators_cache, updates _GAP_PER_SYMBOL_INVENTORY rolling 30d (per-symbol
-    avg = sum_gap_pct/days). Persists atomically to data/gap_inventory_tradier_per_symbol.json.
+    indicators_cache, updates _GAP_PER_SYMBOL_INVENTORY rolling 20d (per-symbol
+    avg = sum_gap_pct/days per spec E — last 20 opens vs prior closes). Persists atomically to data/gap_inventory_tradier_per_symbol.json.
     Backfills from gap_history_1yr if file missing/stale. This guarantees the
     last-90m sentinel has fresh per-symbol avg >0.10 data EVERY DAY — ALWAYS.
     """
@@ -9186,7 +9193,7 @@ def _gap_per_symbol_inventory_record_from_cache(indicators_cache: dict):
         if not indicators_cache:
             return
         updated = 0
-        lb = int(_cfg_auto('GAP_PER_SYMBOL_LOOKBACK_DAYS', 30))
+        lb = int(_cfg_auto('GAP_PER_SYMBOL_LOOKBACK_DAYS', 20))
         for sym, ind in (indicators_cache or {}).items():
             o = safe_fetch_float(ind.get('open_D', 0), 0)
             pc = safe_fetch_float(ind.get('close_D_prev', 0), 0)
@@ -9582,16 +9589,24 @@ async def gap_moc_and_morning_loop(trade_manager):
                                 continue
                             wt_ok = float(ind.get('wt1_15m', 0) or 0) > float(ind.get('wt2_15m', 0) or 0) if is_long else float(ind.get('wt1_15m', 0) or 0) < float(ind.get('wt2_15m', 0) or 0)
                             ha_ok = (ind.get('ha_15m') == 'green') if is_long else (ind.get('ha_15m') == 'red')
-                            dip_ok = _is_small_top_for_gap_exit(ind, not is_long)  # long: wait for bottom (short's top), short: wait for top
+                            dip_ok = _is_small_top_for_gap_exit(ind, not is_long)  # long: wait for bottom (short's top), short: wait for top — spec E local low vv
+                            # spec E: reopen long on local low OR dc_low4_3m breakout (price > dc_low_4h), short vv on high / dc_high breakout
+                            _cur = float(ind.get('current_price', ind.get('close_3m', ind.get('close_5m', 0))) or 0)
+                            if is_long:
+                                _dc = float(ind.get('dc_low_4h_3m', ind.get('dc_low_4h', 0)) or 0)
+                                dc_breakout = (_cur > 0 and _dc > 0 and _cur > _dc)
+                            else:
+                                _dc = float(ind.get('dc_high_4h_3m', ind.get('dc_high_4h', 0)) or 0)
+                                dc_breakout = (_cur > 0 and _dc > 0 and _cur < _dc)
                             # ALWAYS: force at end of 120m window so EVERY gap exit reopens (even if no dip)
                             force_at_end = mins_since_open >= float(_cfg_auto('GAP_MORNING_REENTRY_MINUTES_AFTER_OPEN', 120)) - 1
-                            if wt_ok or ha_ok or dip_ok or force_at_end:
+                            if wt_ok or ha_ok or dip_ok or dc_breakout or force_at_end:
                                 amt = float(info.get('amount', 0))
                                 mult = float(_cfg_auto('GAP_MOC_REENTRY_SIZE_MULT', 1.25))
                                 if float(info.get('exit_gain', 0) or 0) > 0: amt *= mult
-                                tag = f"GAP_MORNING_REENTRY_{pk}_dip{int(dip_ok)}_trend{int(wt_ok or ha_ok)}{'_FORCE' if force_at_end and not (wt_ok or ha_ok or dip_ok) else ''}"
+                                tag = f"GAP_MORNING_REENTRY_{pk}_dip{int(dip_ok)}_trend{int(wt_ok or ha_ok)}_dc{int(dc_breakout)}{'_FORCE' if force_at_end and not (wt_ok or ha_ok or dip_ok or dc_breakout) else ''}"
                                 await queue_trade_action(trade_manager.order_queue, trade_manager, pk, "OPEN", tag, amt, override_qty=999999)
-                                logger.warning(f"[GAP_MOC] morning rebuy {pk} amt={amt:.2f} dip={dip_ok} wt={wt_ok} ha={ha_ok} force={force_at_end} sym_avg={_gap_per_symbol_avg_gap(sym)}")
+                                logger.warning(f"[GAP_MOC] morning rebuy {pk} amt={amt:.2f} dip={dip_ok} wt={wt_ok} ha={ha_ok} dc={dc_breakout} force={force_at_end} sym_avg={_gap_per_symbol_avg_gap(sym)}")
                                 _GAP_MOC_PENDING_REENTRY.pop(pk, None)
                                 _gap_moc_save_pending()
                             else:
