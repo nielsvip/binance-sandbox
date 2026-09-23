@@ -1315,7 +1315,7 @@ class TradierConfig:
     GAP_MOC_REQUIRE_TOP: bool = True  # only exit longs at small top (WT down / HA flip), shorts at bottom
     GAP_MOC_FORCE_MOC_AT_CLOSE: bool = True  # force MOC at deadline even if no top (gap safety)
     GAP_MORNING_REENTRY_ENABLED: bool = True  # re-enter first hours if trend still right
-    GAP_MORNING_REENTRY_MINUTES_AFTER_OPEN: int = 90  # 09:30-11:00 ET window
+    GAP_MORNING_REENTRY_MINUTES_AFTER_OPEN: int = 120  # 09:30-11:30 ET window — ALWAYS per spec 2026-09-23 (neg>0.1% longs / pos>0.1% shorts close last 90m, reopen first 120m)
     GAP_MOC_HOLD_POSITIVE_BIAS_PCT: float = 0.30  # if sum_pos_gap - sum_neg_gap >0.30% keep open hoping for pos gap (unless dc_4h_high danger)
     # Safety: never hold overnight close to dc_4h_high when wt_15 or 1h pointing down
     GAP_MOC_DC_WT_SAFETY_ENABLED: bool = True

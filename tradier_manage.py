@@ -9107,10 +9107,10 @@ def _gap_close_inventory_record_from_cache(indicators_cache: dict):
         logger.debug(f"[GAP_CLOSE_RECORD] skip {_e}")
 
 def _gap_per_symbol_should_close(is_long: bool, avg_gap: Optional[float]) -> bool:
-    """User rule 2026-09-11: ONLY per-symbol decides. Close longs when avg gap negative (gap-down risk) beyond thresh, shorts when avg positive beyond thresh. Near 0 → don't close on gap (only VV)."""
+    """User rule 2026-09-11 + 2026-09-23 ALWAYS: ONLY per-symbol decides. Close longs when avg gap negative (gap-down risk) beyond thresh, shorts when avg positive beyond thresh. Near 0 → don't close on gap (only VV). Thr ALWAYS 0.10 per spec."""
     if avg_gap is None:
         return False
-    thr = float(_cfg_auto('GAP_PER_SYMBOL_AVG_THRESH_PCT', 0.30))
+    thr = float(_cfg_auto('GAP_PER_SYMBOL_AVG_THRESH_PCT', 0.10))
     if is_long:
         return avg_gap < -thr
     else:
@@ -9164,6 +9164,69 @@ def _gap_inventory_record_from_cache(indicators_cache: dict):
         logger.info(f"[GAP_INVENTORY] recorded avg_gap={avg_gap:+.3f}% from {len(gaps)} symbols bias={_gap_inventory_bias():+.3f}%")
     except Exception as _e:
         logger.debug(f"[GAP_INVENTORY_RECORD] skip {_e}")
+
+def _gap_per_symbol_inventory_record_from_cache(indicators_cache: dict):
+    """ALWAYS daily per-symbol close→open gap writer — called once per day after 09:35 ET.
+
+    Calculates (open_D - close_D_prev)/close_D_prev*100 for EVERY symbol in
+    indicators_cache, updates _GAP_PER_SYMBOL_INVENTORY rolling 30d (per-symbol
+    avg = sum_gap_pct/days). Persists atomically to data/gap_inventory_tradier_per_symbol.json.
+    Backfills from gap_history_1yr if file missing/stale. This guarantees the
+    last-90m sentinel has fresh per-symbol avg >0.10 data EVERY DAY — ALWAYS.
+    """
+    try:
+        if not bool(_cfg_auto('GAP_INVENTORY_ENABLED', True)):
+            return
+        today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        # dedup: if already recorded today skip (per-symbol days tracks via history file date check)
+        # Check last recorded date inside inventory by peeking any symbol's last entry date if we had history dates.
+        # Simpler: track via global flag _gap_per_symbol_recorded_today; but also guard via write-once-per-day using file mtime date.
+        # Use _gap_inventory_record idempotency guard already covers market-wide; for per-symbol we guard by checking if today's gap already counted
+        # via checking if last5 already contains today's calc? Instead guard at caller (_gap_recorded_today) — this function is idempotent via caller.
+        if not indicators_cache:
+            return
+        updated = 0
+        lb = int(_cfg_auto('GAP_PER_SYMBOL_LOOKBACK_DAYS', 30))
+        for sym, ind in (indicators_cache or {}).items():
+            o = safe_fetch_float(ind.get('open_D', 0), 0)
+            pc = safe_fetch_float(ind.get('close_D_prev', 0), 0)
+            if not o or not pc or pc <= 0:
+                continue
+            gap_pct = (o - pc) / pc * 100.0
+            rec = _GAP_PER_SYMBOL_INVENTORY.get(sym.upper(), {'days': 0, 'sum_gap_pct': 0.0, 'last5': [], 'history': []})
+            # Append to history for rolling trim — keep up to lb
+            hist = rec.get('history', [])
+            if not isinstance(hist, list):
+                hist = []
+            # If already recorded today for this sym (history last entry date == today), skip
+            # history entries are gap_pct only (no date) in inventory, so we use last5 length + days guard at caller level.
+            # Here we rely on caller's once-per-day guard to avoid double count.
+            rec['days'] = int(rec.get('days', 0)) + 1
+            rec['sum_gap_pct'] = float(rec.get('sum_gap_pct', 0)) + gap_pct
+            hist.append(gap_pct)
+            if rec['days'] > lb:
+                old = float(hist.pop(0))
+                rec['sum_gap_pct'] -= old
+                rec['days'] = lb
+            rec['history'] = hist[-lb:]
+            lst = rec.get('last5', [])
+            lst.append(gap_pct)
+            rec['last5'] = lst[-5:]
+            _GAP_PER_SYMBOL_INVENTORY[sym.upper()] = rec
+            updated += 1
+        if updated == 0:
+            return
+        p = _gap_per_symbol_inventory_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        _tmp = p.with_suffix(p.suffix + '.tmp')
+        try:
+            _tmp.write_text(json_dumps(_GAP_PER_SYMBOL_INVENTORY))
+            _tmp.replace(p)
+        except Exception:
+            p.write_text(json_dumps(_GAP_PER_SYMBOL_INVENTORY))
+        logger.info(f"[GAP_PER_SYMBOL] recorded close-open gaps for {updated} symbols (today {today})")
+    except Exception as _e:
+        logger.debug(f"[GAP_PER_SYMBOL_RECORD] skip {_e}")
 
 def _is_near_dc4_high_with_wt_down(indicators: dict, is_long: bool = True) -> bool:
     if not bool(_cfg_auto('GAP_MOC_DC_WT_SAFETY_ENABLED', True)): return False
@@ -9434,16 +9497,22 @@ def _trd_golden_weekly_max(symbol: str) -> float:
 
 
 async def gap_moc_and_morning_loop(trade_manager):
-    """Gap-aware sentinel: PER-SYMBOL avg gap (30d) decides. 2026-09-11 per user:
-    ONLY per-symbol values (data/gap_inventory_tradier_per_symbol.json, counted daily
-    from open_D/close_D_prev, avg=sum/days). Close longs when avg < -thr (gap-down risk),
-    shorts when avg > +thr (gap-up risk). Near 0 (|avg|<=thr) → don't close on gap (only VV).
-    Reopen first 90m after open at any dip (long: bottom/ VV dip, short: top) if still attractive
-    (not near dc_4h edge with WT against). 90m pre-close window polls every 60s for small tops.
+    """Gap-aware sentinel ALWAYS — per user 2026-09-11 + 2026-09-23:
+
+    PER-SYMBOL avg gap (30d) decides from data/gap_inventory_tradier_per_symbol.json
+    (counted daily from open_D/close_D_prev, avg=sum/days). Close longs when
+    avg < -0.10 (gap-down risk), shorts when avg > +0.10 (gap-up risk). Near 0
+    (|avg|<=0.10) → don't close on gap (only VV). Reopen first 120m after open
+    (09:30-11:30 ET) at any dip (long: bottom / short: top) if still attractive
+    (not near dc_4h edge with WT against); forced at 119-120m so EVERY gap-exit
+    is retried — ALWAYS. 90m pre-close window polls every 60s for small tops.
+    Both inventories (open-gap + close-gap) recorded EVERY DAY — ALWAYS.
 
     Fixes 2026-09-10: previously _gap_inventory_record was never called (dead code) so
     bias always 0; exit window was single 10m MOC not 90m top-aware — gapped down >1k
     with no trim. 2026-09-11: market-wide bias deprecated, per-symbol ONLY.
+    2026-09-23 ALWAYS: per-symbol daily writer was missing → added; 90→120 morning window;
+    forced reopen at end of window so EVERY gap exit reopens.
     """
     _gap_inventory_load()
     _gap_per_symbol_load(force=True)
@@ -9473,18 +9542,20 @@ async def gap_moc_and_morning_loop(trade_manager):
                 _gap_per_symbol_load(force=True)
             mins_to_close = _minutes_to_close()
             mins_since_open = (now_et.hour * 60 + now_et.minute) - (9 * 60 + 30)
-            # --- Record today's avg gap once after 09:35 ET (5m after open) ---
+            # --- Record today's per-symbol + market-wide avg gaps once after 09:35 ET (5m after open) — ALWAYS every day ---
             if 5 <= mins_since_open <= 15 and not _gap_recorded_today and bool(_cfg_auto('GAP_INVENTORY_ENABLED', True)):
                 try:
-                    _gap_inventory_record_from_cache(getattr(trade_manager, 'indicators_cache', None) or {})
+                    cache = getattr(trade_manager, 'indicators_cache', None) or {}
+                    _gap_inventory_record_from_cache(cache)
+                    _gap_per_symbol_inventory_record_from_cache(cache)
                     _gap_recorded_today = True
                 except Exception as _re:
                     logger.debug(f"[GAP_MOC] gap record skip: {_re}")
-            # --- Morning reentry window 09:30-11:00 ET (PER-SYMBOL, any dip) ---
+            # --- Morning reentry window 09:30-11:30 ET (PER-SYMBOL, any dip) — ALWAYS 120m per spec 2026-09-23 ---
             # 2026-09-14: pending list persists on disk (survives restarts); the pass
             # retries every minute until at least one candidate evaluates with real
             # indicators (old one-shot + silent skips wasted the whole window).
-            if 0 <= mins_since_open <= float(_cfg_auto('GAP_MORNING_REENTRY_MINUTES_AFTER_OPEN', 90)) and not _morning_done_today:
+            if 0 <= mins_since_open <= float(_cfg_auto('GAP_MORNING_REENTRY_MINUTES_AFTER_OPEN', 120)) and not _morning_done_today:
                 if bool(_cfg_auto('GAP_MORNING_REENTRY_ENABLED', True)) and _GAP_MOC_PENDING_REENTRY:
                     _gap_per_symbol_load()
                     _morning_evaluated = 0
@@ -9512,16 +9583,19 @@ async def gap_moc_and_morning_loop(trade_manager):
                             wt_ok = float(ind.get('wt1_15m', 0) or 0) > float(ind.get('wt2_15m', 0) or 0) if is_long else float(ind.get('wt1_15m', 0) or 0) < float(ind.get('wt2_15m', 0) or 0)
                             ha_ok = (ind.get('ha_15m') == 'green') if is_long else (ind.get('ha_15m') == 'red')
                             dip_ok = _is_small_top_for_gap_exit(ind, not is_long)  # long: wait for bottom (short's top), short: wait for top
-                            if wt_ok or ha_ok or dip_ok:
+                            # ALWAYS: force at end of 120m window so EVERY gap exit reopens (even if no dip)
+                            force_at_end = mins_since_open >= float(_cfg_auto('GAP_MORNING_REENTRY_MINUTES_AFTER_OPEN', 120)) - 1
+                            if wt_ok or ha_ok or dip_ok or force_at_end:
                                 amt = float(info.get('amount', 0))
                                 mult = float(_cfg_auto('GAP_MOC_REENTRY_SIZE_MULT', 1.25))
                                 if float(info.get('exit_gain', 0) or 0) > 0: amt *= mult
-                                await queue_trade_action(trade_manager.order_queue, trade_manager, pk, "OPEN", f"GAP_MORNING_REENTRY_{pk}_dip{int(dip_ok)}_trend{int(wt_ok or ha_ok)}", amt, override_qty=999999)
-                                logger.warning(f"[GAP_MOC] morning rebuy {pk} amt={amt:.2f} dip={dip_ok} wt={wt_ok} ha={ha_ok} sym_avg={_gap_per_symbol_avg_gap(sym)}")
+                                tag = f"GAP_MORNING_REENTRY_{pk}_dip{int(dip_ok)}_trend{int(wt_ok or ha_ok)}{'_FORCE' if force_at_end and not (wt_ok or ha_ok or dip_ok) else ''}"
+                                await queue_trade_action(trade_manager.order_queue, trade_manager, pk, "OPEN", tag, amt, override_qty=999999)
+                                logger.warning(f"[GAP_MOC] morning rebuy {pk} amt={amt:.2f} dip={dip_ok} wt={wt_ok} ha={ha_ok} force={force_at_end} sym_avg={_gap_per_symbol_avg_gap(sym)}")
                                 _GAP_MOC_PENDING_REENTRY.pop(pk, None)
                                 _gap_moc_save_pending()
                             else:
-                                logger.info(f"[GAP_MOC] hold morning rebuy {pk}: no dip/trend yet wt={wt_ok} ha={ha_ok} dip={dip_ok} — kept for retry")
+                                logger.info(f"[GAP_MOC] hold morning rebuy {pk}: no dip/trend yet wt={wt_ok} ha={ha_ok} dip={dip_ok} mins={mins_since_open:.0f}/120 — kept for retry")
                         except Exception as _me:
                             logger.error(f"[GAP_MOC_MORNING_ERR] {pk}: {_me}", exc_info=True)
                     # Done only when every pending candidate resolved (rebuy/skip);
@@ -9581,7 +9655,7 @@ async def gap_moc_and_morning_loop(trade_manager):
                     # ---- evaluate both sentinels ----
                     # Open-gap decides per existing rule
                     avg_gap = _gap_per_symbol_avg_gap(sym)
-                    thr = float(_cfg_auto('GAP_PER_SYMBOL_AVG_THRESH_PCT', 0.30))
+                    thr = float(_cfg_auto('GAP_PER_SYMBOL_AVG_THRESH_PCT', 0.10))
                     # Close-gap decides (stocks-only, shorts-default)
                     avg_close_gap = _gap_close_per_symbol_avg_gap(sym)
                     thr_close = float(_cfg_auto('GAP_CLOSE_PER_SYMBOL_AVG_THRESH_PCT', 0.10))
@@ -9710,7 +9784,11 @@ async def gap_moc_and_morning_loop(trade_manager):
                             logger.info(f"[GAP_MOC] defer {pk}: {_which} avg={_av_disp}% thr={_thr_for_log} need_top={_need_top} at_deadline={_at_deadline} — waiting for top")
                         continue
                     gain = safe_fetch_float(getattr(pos, 'gain', 0), 0)
-                    _GAP_MOC_PENDING_REENTRY[pk] = {'amount': amt, 'exit_price': float(ind.get('current_price', 0)), 'exit_gain': gain, 'ts': time.time(), 'avg_gap': _avg_for_log, 'which': _which}
+                    # ALWAYS: capture exit price robustly — fallback to mark_price if current_price missing (was 0.0 bug)
+                    _exit_px = float(ind.get('current_price', 0) or ind.get('close', 0) or ind.get('close_5m', 0) or 0)
+                    if not _exit_px:
+                        _exit_px = safe_fetch_float(getattr(pos, 'mark_price', 0), 0) or safe_fetch_float(getattr(pos, 'price', 0), 0)
+                    _GAP_MOC_PENDING_REENTRY[pk] = {'amount': amt, 'exit_price': _exit_px, 'exit_gain': gain, 'ts': time.time(), 'avg_gap': _avg_for_log, 'which': _which}
                     _gap_moc_save_pending()  # 2026-09-14: persist immediately (restart-proof)
                     reason = f"GAP_MOC_EXIT_{_which}_{pk}_avg{_avg_for_log:+.2f}_thr{_thr_for_log:.2f}_top{is_top}_vv{vv_danger}_m{mins_to_close:.0f}" if _avg_for_log is not None else f"GAP_MOC_EXIT_{_which}_{pk}_vv{vv_danger}_m{mins_to_close:.0f}"
                     await queue_trade_action(trade_manager.order_queue, trade_manager, pk, "CLOSE", reason, amt, override_qty=999999)

@@ -6794,7 +6794,7 @@ class QuickConfig:
     GAP_MOC_HOLD_POSITIVE_BIAS_PCT: float = 0.3
     GAP_MOC_REENTRY_SIZE_MULT: float = 1.25
     GAP_MORNING_REENTRY_ENABLED: bool = True
-    GAP_MORNING_REENTRY_MINUTES_AFTER_OPEN: int = 90
+    GAP_MORNING_REENTRY_MINUTES_AFTER_OPEN: int = 120  # ALWAYS 2026-09-23: 120m (09:30-11:30) per spec — neg>0.10 longs / pos>0.10 shorts close last 90m, reopen first 120m
     # CLOSE-GAP (2026-09-14 — separate from open-gap, stocks-only, always tested, shorts default)
     GAP_CLOSE_INVENTORY_ENABLED: bool = True
     GAP_CLOSE_PER_SYMBOL_INVENTORY_FILE: str = 'data/gap_close_inventory_tradier_per_symbol.json'
