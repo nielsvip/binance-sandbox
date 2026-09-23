@@ -1,56 +1,43 @@
 {
- "generated_at": "2026-09-23 00:21 UTC",
- "total_capital_usd": 584.47,
+ "generated_at": "2026-09-23 00:39 UTC",
+ "total_capital_usd": 498.87,
  "tier_capital": {
   "A": 0.0,
-  "B": 584.47,
+  "B": 498.87,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 3,
+  "B": 2,
   "C": 0
  },
  "winners": [],
  "losers": [
   "flz:ETHUSDT_LONG"
  ],
- "mediocre": [
-  "flz:WLDUSDC_LONG"
- ],
+ "mediocre": [],
  "positions": [
   {
    "pk": "flz:ETHUSDT_LONG",
    "symbol": "ETHUSDT",
    "account": "flz",
-   "value_usd": 325.36,
-   "gain_pct": -1.471,
+   "value_usd": 325.92,
+   "gain_pct": -1.302,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 0.118,
-   "mark": 2757.29653488
+   "mark": 2762.03439535
   },
   {
    "pk": "flz:BTCUSDT_LONG",
    "symbol": "BTCUSDT",
    "account": "flz",
-   "value_usd": 172.85,
-   "gain_pct": -0.491,
+   "value_usd": 172.95,
+   "gain_pct": -0.435,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 0.002,
-   "mark": 86423.57512319
-  },
-  {
-   "pk": "flz:WLDUSDC_LONG",
-   "symbol": "WLDUSDC",
-   "account": "flz",
-   "value_usd": 86.26,
-   "gain_pct": -0.059,
-   "tier": "B",
-   "perf_mult": 0.58,
-   "amt": 180.8,
-   "mark": 0.4771
+   "mark": 86472.58760145
   }
  ]
 }
