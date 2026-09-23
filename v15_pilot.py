@@ -86,13 +86,15 @@ OUT_DIR = ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
 PROGRESS_DIR = ROOT / "data" / "reports" / "lifecycle_pilot"
 FLAGS_DIR = ROOT / "data" / "reports" / "v15_flags"
 SWITCH_SHEETS = [
-    "STDEV_SLOPE_SIZING", "ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES",
     "EXIT_STRUCTURAL", "EXIT_VELOCITY",
     "REENTRY_WINDOWED", "REENTRY_ADAPTIVE",
     "AUGMENT_TREND", "AUGMENT_RISK_SIZING",
     "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER",
     "GLOBAL_RISK_GATES",
 ]
+# STDEV_SLOPE_SIZING skipped per user 2026-09-23 — not written correctly, waste of time; 12 tabs need numbers for 354 sym_sides
+SKIP_SHEETS = {"STDEV_SLOPE_SIZING"}
 
 ALL_PREPARED: dict[str, dict] = {}
 ALL_NPZ_ARRAYS: dict[str, dict] = {}
@@ -910,7 +912,7 @@ def main():
     ap.add_argument("--no-lbI", action="store_true")
     ap.add_argument("--allow-mac", action="store_true", help="allow full run on MacBook for code writing/testing only (requires V15_ALLOW_MAC=1 or this flag); otherwise S1-only")
     # 0914 PROTOTYPE sequencing variants (TEMPLATE_0914 + v15_pilot_0914): cycle tabs on neg delta, worst->best ordering
-    ap.add_argument("--seq-mode", default="sequential", choices=["sequential", "cycle", "round_robin", "worst2best", "worst_to_best", "shuffle"], help="0914 prototype sequencing: sequential (legacy), cycle/round_robin (cycle tabs on every neg delta), worst2best (sheets ordered worst->best by avg delta), shuffle (random shuffle for second round)")
+    ap.add_argument("--seq-mode", default="cycle", choices=["sequential", "cycle", "round_robin", "worst2best", "worst_to_best", "worst_first", "worst-first", "shuffle"], help="0914 prototype sequencing: sequential (legacy), cycle/round_robin/worst_first (WORST_FIRST: cycle tabs on every NEG delta — not rearranging), worst2best/worst_to_best (sheets ordered worst->best by avg delta), shuffle (random shuffle for second round) — default cycle per user WORST_FIRST spec")
     ap.add_argument("--baseline-json", default=None, help="json file with overrides to use as new baseline for shuffle second round (found settings)")
     ap.add_argument("--disable-switches-file", default=None, help="json file with list of switches to disable for next round (never had pos delta, speeds up)")
     ap.add_argument("--cycle-on-neg", action="store_true", help="0914 alias: force cycle-through-tabs on every NEG delta (same as --seq-mode cycle)")
@@ -919,7 +921,7 @@ def main():
     # normalize seq-mode aliases
     if args.cycle_on_neg and args.seq_mode == "sequential":
         args.seq_mode = "cycle"
-    if args.seq_mode in ("round_robin",):
+    if args.seq_mode in ("round_robin", "worst_first", "worst-first"):
         args.seq_mode = "cycle"
     if args.seq_mode in ("worst_to_best",):
         args.seq_mode = "worst2best"
@@ -1416,7 +1418,21 @@ def main():
     if not args.no_lbI:
         ensure_lbI_headers(wb_path)
         print("[headers] L:BI ensured", flush=True)
-    # FIRST THING: fill override column C with start settings from latest best test for this sym_side, then baseline calc is already on those overrides
+    # FIRST THING per user spec: ALL non-defaults from BEST into C on EVERY tab, THEN baseline calc
+    # Baseline was already calc'd with overrides dict before clone; C fill is visual copy for audit
+    # Re-verify baseline after C fill with same overrides in RAM (<1s/cell, NPZ hot) to guarantee E2==BEST baseline
+    try:
+        from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_check
+        if 'prepared' in locals() and prepared is not None:
+            _chk = _eval_check(prepared, overrides, window_days=args.window_days)
+            _chk_gain = float(_chk.get("gain_pct") or 0)
+            if abs(_chk_gain - baseline_gain) > 1e-6:
+                print(f"[BASELINE-RECHECK] gain {_chk_gain:.4f} vs earlier {baseline_gain:.4f} — using recheck (C-filled overrides)", flush=True)
+                baseline_gain = _chk_gain
+                bh = float(_chk.get("bh_pct") or bh)
+    except Exception as _e_re:
+        print(f"[BASELINE-RECHECK-warn] {_e_re}", flush=True)
+    # Fill C
     try:
         import openpyxl as _op2c
         wb_c = _op2c.load_workbook(str(wb_path))
@@ -2175,10 +2191,8 @@ def main():
             if delta_best > 1e-9:
                 cumulative_gain = float(cumulative_before + delta_best)
                 cumulative_overrides[switch] = cand
-                if filt_best: cumulative_overrides[filt_best] = fval_best
-                # FIX 2026-09-23: yellow filter isolation — per-yellow deltas already added to delta_best above,
-                # but filter itself does NOT persist to cumulative_overrides for other switches (isolated to this row)
-                # previously pos_filters were persisted here, violating isolation — removed
+                # YELLOW FILTERS are FOR THAT SWITCH ONLY — never persist to cumulative_overrides (isolated per-row)
+                # ORANGE filters (GLOBAL/tab-level) persist separately via orange handler, not here
             return float(delta_best)
 
         def _process_cycle_row(sheet: str, r: int, switch: str, cand):
