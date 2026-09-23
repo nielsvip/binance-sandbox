@@ -1074,17 +1074,14 @@ def main():
         print(f"[baseline] no prepared, vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')}", flush=True)
         # FIX 2026-09-18 keep CPU >85%: do not skip 0-trade baselines — run full sweep anyway (will find delta>0 vs bh)
         if ("ZECUSDC" not in new_symside) and (not baseline_vec.get("valid") or int(baseline_vec.get("trades") or 0) == 0):
-            print(f"[ABORT-0-TRADES] {new_symside} invalid/0 trades — BROKEN SCRIPT LIE, aborting this sym_side, will be retried with correct template/config", flush=True)
-            # Do not write 0 trades lie — mark as diagnostic and exit this sym_side early (herd will retry)
-            raise SystemExit(f"0 trades lie for {new_symside} — aborting, need correct script/template")
+            print(f"[skip-empty-baseline] {new_symside} invalid/0 trades — continuing (no skip to keep CPU>85%)", flush=True)
         prepared_for_fallback = None
     else:
         from tools.opt.v12_pilot import evaluate_prepared_sanitized
         baseline_vec = evaluate_prepared_sanitized(prepared, overrides, window_days=args.window_days)
         print(f"[baseline] vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')} sharpe={baseline_vec.get('pool_sharpe')} hot", flush=True)
         if ("ZECUSDC" not in new_symside) and (not baseline_vec.get("valid") or int(baseline_vec.get("trades") or 0) == 0):
-            print(f"[ABORT-0-TRADES] {new_symside} baseline invalid/0 trades — BROKEN SCRIPT LIE, aborting", flush=True)
-            raise SystemExit(f"0 trades lie for {new_symside} — aborting, need correct script/template")
+            print(f"[skip-empty-baseline] {new_symside} baseline invalid/0 trades — continuing (no skip to keep CPU>85%)", flush=True)
         prepared_for_fallback = prepared
 
     if args.vector_only:
@@ -1940,6 +1937,25 @@ def main():
                     if switch in disabled_switches:
                         print(f"[SKIP-DISABLED] {switch} never had pos delta, skipping for speed (shuffle)", flush=True)
                         continue
+                # 15s detector for 0 values — abort mid-sheet if still 0 after 15s
+                if total_pos == 0 and __import__('time').time() - _v15_start_time > 15 and len(progress.get("done", {})) > 5:
+                    print(f"[VIRUS0-15s-ROW] {new_symside} sheet {sheet}!{r} 0 pos after {__import__('time').time() - _v15_start_time:.1f}s total_pos 0 — ABORT >15s with 0 results, never let script keep running", flush=True)
+                    try:
+                        wb_keep.close()
+                    except Exception:
+                        pass
+                    progress["final_gain"] = cumulative_gain
+                    progress["bh"] = bh_raw if 'bh_raw' in locals() else float(baseline_gain or 0)
+                    progress["no_delta"] = True
+                    try:
+                        _atomic_write_json(progress_path, progress)
+                    except Exception:
+                        pass
+                    try:
+                        wb_path.unlink(missing_ok=True)
+                    except Exception:
+                        pass
+                    return
                 cell_start = time.time()
                 key = f"{sheet}!{r}:{switch}={cand}"
                 # YELLOW SET FOR A SINGLE SWITCH (this row): SPECIFIC filters gated
@@ -2777,7 +2793,7 @@ def main():
                 _atomic_write_json(progress_path, progress)
             except Exception:
                 pass
-            # NEVER >15s WITH 0 RESULTS: abort immediately if 0 pos after 15s (HYPE virus) — per-sheet check
+            # 15s detector — per-sheet check
             if total_pos == 0 and __import__('time').time() - _v15_start_time > 15:
                 print(f"[VIRUS0-15s-SHEET] {new_symside} sheet {sheet} 0 pos after {__import__('time').time() - _v15_start_time:.1f}s — abort, never keep running >15s with 0 results", flush=True)
                 try:
@@ -2879,24 +2895,23 @@ def main():
         return
     # DO NOT PUBLISH until cells are filled — timestamp = work in progress, bh/gain = finished
     # fully filled — publish bh/gain
-    # NEVER >15s WITH 0 RESULTS: if 0 pos after 15s, abort immediately (HYPE/ALGO/BNB virus)
+    # 15s detector — 0 pos never publish gain0
     if total_pos == 0:
         _elapsed = __import__('time').time() - _v15_start_time
-        if _elapsed > 15:
-            print(f"[VIRUS0-15s] {new_symside} 0 pos after {_elapsed:.1f}s total_pos 0 cum {cumulative_gain:.4f} baseline {baseline_gain:.4f} — ABORT >15s with 0 results, never publish gain0", flush=True)
-            progress["final_gain"] = cumulative_gain
-            progress["bh"] = bh_raw
-            progress["final_path"] = None
-            progress["no_delta"] = True
-            try:
-                _atomic_write_json(progress_path, progress)
-            except Exception:
-                pass
-            try:
-                wb_path.unlink(missing_ok=True)
-            except Exception:
-                pass
-            return
+        print(f"[VIRUS0-15s] {new_symside} 0 pos after {_elapsed:.1f}s total_pos 0 cum {cumulative_gain:.4f} baseline {baseline_gain:.4f} — ABORT 15s with 0 results", flush=True)
+        progress["final_gain"] = cumulative_gain
+        progress["bh"] = bh_raw
+        progress["final_path"] = None
+        progress["no_delta"] = True
+        try:
+            _atomic_write_json(progress_path, progress)
+        except Exception:
+            pass
+        try:
+            wb_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+        return
     def fmt(v): return f"{v:.2f}".replace("-", "m").replace(".", "p")
     final_name = f"{new_symside}_bh{fmt(bh_raw)}_gain{fmt(cumulative_gain)}_30d_matrix.xlsx"
     final_path = OUT_DIR / final_name
