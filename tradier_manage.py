@@ -9589,15 +9589,15 @@ async def gap_moc_and_morning_loop(trade_manager):
                                 continue
                             wt_ok = float(ind.get('wt1_15m', 0) or 0) > float(ind.get('wt2_15m', 0) or 0) if is_long else float(ind.get('wt1_15m', 0) or 0) < float(ind.get('wt2_15m', 0) or 0)
                             ha_ok = (ind.get('ha_15m') == 'green') if is_long else (ind.get('ha_15m') == 'red')
-                            dip_ok = _is_small_top_for_gap_exit(ind, not is_long)  # long: wait for bottom (short's top), short: wait for top — spec E local low vv
-                            # spec E: reopen long on local low OR dc_low4_3m breakout (price > dc_low_4h), short vv on high / dc_high breakout
+                            dip_ok = _is_small_top_for_gap_exit(ind, not is_long)  # long: wait for bottom (short's top), short: wait for top — spec E local low vv = bounce before breaking low
+                            # spec E CORRECTED 2026-09-23 22:15: reopen long on local low bounce OR dc_high breakout (price > dc_high_4h), short vv on high / dc_low breakdown. BREAKS LOW => DO NOT BUY long, BREAKS HIGH => BUY long
                             _cur = float(ind.get('current_price', ind.get('close_3m', ind.get('close_5m', 0))) or 0)
                             if is_long:
-                                _dc = float(ind.get('dc_low_4h_3m', ind.get('dc_low_4h', 0)) or 0)
-                                dc_breakout = (_cur > 0 and _dc > 0 and _cur > _dc)
-                            else:
                                 _dc = float(ind.get('dc_high_4h_3m', ind.get('dc_high_4h', 0)) or 0)
-                                dc_breakout = (_cur > 0 and _dc > 0 and _cur < _dc)
+                                dc_breakout = (_cur > 0 and _dc > 0 and _cur > _dc)  # high breakout = buy long
+                            else:
+                                _dc = float(ind.get('dc_low_4h_3m', ind.get('dc_low_4h', 0)) or 0)
+                                dc_breakout = (_cur > 0 and _dc > 0 and _cur < _dc)  # low breakdown = buy short (sell)
                             # ALWAYS: force at end of 120m window so EVERY gap exit reopens (even if no dip)
                             force_at_end = mins_since_open >= float(_cfg_auto('GAP_MORNING_REENTRY_MINUTES_AFTER_OPEN', 120)) - 1
                             if wt_ok or ha_ok or dip_ok or dc_breakout or force_at_end:
