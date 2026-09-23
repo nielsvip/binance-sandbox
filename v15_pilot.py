@@ -1072,36 +1072,30 @@ def main():
         from tools.opt.v12_pilot import evaluate_sanitized
         baseline_vec = evaluate_sanitized(new_symside, overrides, window_days=args.window_days)
         print(f"[baseline] no prepared, vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')}", flush=True)
-        # FIX 2026-09-23 NEVER WAIT FOR 0 TRADES — fail fast diagnostic, no sweep (except ZECUSDC which is expected 0-trade edge)
-        if ("ZECUSDC" not in new_symside) and (not baseline_vec.get("valid") or int(baseline_vec.get("trades") or 0) == 0):
-            print(f"[0-TRADES-FAST-FAIL] {new_symside} invalid/0 trades — DIAGNOSTIC ONLY, skipping full sweep (never wait)", flush=True)
-            # write diagnostic progress so herd knows not to retry immediately
-            try:
-                diag_path = PROGRESS_DIR / f"{new_symside}_{args.window_days}d_progress.json"
-                diag_path.parent.mkdir(parents=True, exist_ok=True)
-                _diag = {"symside": new_symside, "baseline_gain": float(baseline_vec.get("gain_pct") or 0), "bh": float(baseline_vec.get("bh_pct") or 0), "valid": False, "trades": int(baseline_vec.get("trades") or 0), "reason": "0 trades baseline — DATA_ERROR NPZ missing or broken, never wait", "done": {}, "no_delta": True, "zero_trades_diagnostic": True}
-                import json as _js0
-                diag_path.write_text(_js0.dumps(_diag, indent=2))
-            except Exception as _e:
-                print(f"[diag-warn] {new_symside} {_e}", flush=True)
-            # do not run 3043 rows — return immediately so herd moves on
-            return
+        # FIX 2026-09-23: 0-TRADES means trades==0 only, not valid==False with trades>0 (MANA/ALGO 9 trades valid False was false-positive)
+        # Always persist baseline to XLS before any early return — herd audit requires E2 + BASELINE_METRICS even for 0-trade.
+        _is_zero = int(baseline_vec.get("trades") or 0) == 0
+        if ("ZECUSDC" not in new_symside) and _is_zero:
+            print(f"[0-TRADES-FAST-FAIL] {new_symside} 0 trades — writing baseline XLS then diagnostic (never wait sweep)", flush=True)
+            # fall through to baseline_gain/bh + clone/write below; set flag to skip sweep after baseline write
+            _zero_trades_early = True
+        else:
+            _zero_trades_early = False
+            if not baseline_vec.get("valid"):
+                print(f"[baseline-warn] {new_symside} valid False but trades {baseline_vec.get('trades')} — proceeding, not diagnostic", flush=True)
         prepared_for_fallback = None
     else:
         from tools.opt.v12_pilot import evaluate_prepared_sanitized
         baseline_vec = evaluate_prepared_sanitized(prepared, overrides, window_days=args.window_days)
         print(f"[baseline] vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')} sharpe={baseline_vec.get('pool_sharpe')} hot", flush=True)
-        if ("ZECUSDC" not in new_symside) and (not baseline_vec.get("valid") or int(baseline_vec.get("trades") or 0) == 0):
-            print(f"[0-TRADES-FAST-FAIL] {new_symside} baseline invalid/0 trades — DIAGNOSTIC ONLY, skipping full sweep (never wait)", flush=True)
-            try:
-                diag_path = PROGRESS_DIR / f"{new_symside}_{args.window_days}d_progress.json"
-                diag_path.parent.mkdir(parents=True, exist_ok=True)
-                _diag = {"symside": new_symside, "baseline_gain": float(baseline_vec.get("gain_pct") or 0), "bh": float(baseline_vec.get("bh_pct") or 0), "valid": False, "trades": int(baseline_vec.get("trades") or 0), "reason": "0 trades baseline — DATA_ERROR NPZ missing or broken, never wait", "done": {}, "no_delta": True, "zero_trades_diagnostic": True}
-                import json as _js0
-                diag_path.write_text(_js0.dumps(_diag, indent=2))
-            except Exception as _e:
-                print(f"[diag-warn] {new_symside} {_e}", flush=True)
-            return
+        _is_zero = int(baseline_vec.get("trades") or 0) == 0
+        if ("ZECUSDC" not in new_symside) and _is_zero:
+            print(f"[0-TRADES-FAST-FAIL] {new_symside} 0 trades — writing baseline XLS then diagnostic", flush=True)
+            _zero_trades_early = True
+        else:
+            _zero_trades_early = False
+            if not baseline_vec.get("valid"):
+                print(f"[baseline-warn] {new_symside} valid False but trades {baseline_vec.get('trades')} — proceeding", flush=True)
         prepared_for_fallback = prepared
 
     if args.vector_only:
@@ -1177,7 +1171,33 @@ def main():
     if not args.no_lbI:
         ensure_lbI_headers(wb_path)
         print("[headers] L:BI ensured", flush=True)
+    # FIX empty sheets - ensure E2 numeric visible (was BASELINE string)
+    try:
+        import openpyxl as _op2b
+        wb_fix = _op2b.load_workbook(str(wb_path))
+        for sname in SWITCH_SHEETS:
+            if sname in wb_fix.sheetnames and sname == SWITCH_SHEETS[0]:
+                ws_fix = wb_fix[sname]
+                ws_fix.cell(row=2, column=5).value = float(baseline_gain)
+        wb_fix.save(str(wb_path))
+        print(f"[baseline] E2 numeric written {baseline_gain:.4f} to {SWITCH_SHEETS[0]}!E2", flush=True)
+    except Exception as e:
+        import traceback as _tb2
+        print(f"[baseline E2 write warn] {e} {_tb2.format_exc()[:500]}", flush=True)
     print(f"[baseline] E2={baseline_gain:.4f} bh={bh:.4f} trades={baseline_live.get('trades')} NPZ hot={prepared is not None}", flush=True)
+    # If 0-trades early, diagnostic was deferred until after baseline XLS persisted — write it and skip sweep
+    if locals().get("_zero_trades_early"):
+        try:
+            diag_path = PROGRESS_DIR / f"{new_symside}_{args.window_days}d_progress.json"
+            diag_path.parent.mkdir(parents=True, exist_ok=True)
+            _diag = {"symside": new_symside, "baseline_gain": float(baseline_vec.get("gain_pct") or 0), "bh": float(baseline_vec.get("bh_pct") or 0), "valid": False, "trades": int(baseline_vec.get("trades") or 0), "reason": "0 trades baseline — DATA_ERROR NPZ missing or broken, never wait", "done": {}, "no_delta": True, "zero_trades_diagnostic": True}
+            import json as _js0
+            # preserve baseline sheet already written — do not delete XLS
+            diag_path.write_text(_js0.dumps(_diag, indent=2))
+        except Exception as _e:
+            print(f"[diag-warn] {new_symside} {_e}", flush=True)
+        print(f"[0-TRADES] baseline XLS persisted at {wb_path}, sweep skipped — herd moves on", flush=True)
+        return
     if args.dry_run:
         print("[dry-run] done", flush=True)
         return
@@ -2470,10 +2490,9 @@ def main():
                             continue
                         print(f"[ROW] {sheet}!{r} {switch}={cand}{_filter_suffix} vec_gain={float(vec_best.get('gain_pct') or 0):.4f} delta={delta_best:.4f} vs cum {cumulative_before:.4f} -> NEG trades vec={vec_best.get('trades')} sharpe={float(vec_best.get('pool_sharpe') or 0):.4f}", flush=True)
                         _touch_heartbeat(f"cell {sheet}!{r} NEG")
-                        # flush every 10 rows for minute-by-minute visibility (no per-row read, only per-cell writes + batched save)
+                        # FIX empty sheets - save per row so baseline/delta visible within seconds (was 10 rows batched)
                         try:
-                            if r % 10 == 0:
-                                _atomic_save(wb_keep, wb_path)
+                            _atomic_save(wb_keep, wb_path)
                         except: pass
                         continue
                     print(f"[ROW] {sheet}!{r} {switch}={cand}{_filter_suffix} vec_gain={float(vec_best.get('gain_pct') or 0):.4f} delta={delta_best:.4f} vs cum {cumulative_before:.4f} -> POSITIVE candidate", flush=True)
@@ -2584,12 +2603,9 @@ def main():
                             ws_row.cell(row=r, column=7).font = Font(name="Arial", bold=True, color="9C5700")
                             ws_row.cell(row=r, column=6).value = float(_hustle_delta_vs_baseline) if _hustle_delta_vs_baseline is not None else None  # F = HUSTLE_DELTA vs baseline
                             ws_row.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="006100")
-                            # E for this row (col 5) is cumulative_before (spec: E is previous winning cum, not vec_gain), not new_cum
-                            ws_row.cell(row=r, column=5).value = float(cumulative_before) if delta_best > 0 else None
-                            if delta_best > 0:
-                                ws_row.cell(row=r, column=5).font = Font(name="Arial", bold=True, color="006100")
-                            else:
-                                ws_row.cell(row=r, column=5).font = Font(name="Arial", bold=False, color="000000")
+                            # E for this row (col 5) is cumulative_before - always numeric per user (was None for NEG -> empty trash)
+                            ws_row.cell(row=r, column=5).value = float(cumulative_before)
+                            ws_row.cell(row=r, column=5).font = Font(name="Arial", bold=True, color="006100") if delta_best > 0 else Font(name="Arial", bold=False, color="000000")
                             # next row's E will be set when that row is evaluated, not now
                             # keep old next-row blank for NEG to avoid carry-over, but not needed as E for next row will be overwritten when that row is processed
                             if r + 1 <= ws_row.max_row and delta_best <= 0:
@@ -2621,11 +2637,10 @@ def main():
                         pass
                     print(f"[PROMOTE] {sheet}!{r} {switch}={cand}" + (f"+{filt_best}={fval_best}" if filt_best else "") + f" delta={delta_best:.4f} cum->{cumulative_gain:.4f}", flush=True)
                     _touch_heartbeat(f"cell {sheet}!{r} PROMOTE")
-                    # BATCHED FLUSH every 10 rows to keep 40min target (was per-row save -> strand at 21)
+                    # FIX empty - flush per row so XLS shows numbers within seconds (was 10 batched)
                     try:
-                        if r % 10 == 0:
-                            print(f"[BATCH FLUSH] {sheet} row {r} cum {cumulative_gain:.4f}", flush=True)
-                            _atomic_save(wb_keep, wb_path)
+                        print(f"[FLUSH] {sheet} row {r} cum {cumulative_gain:.4f}", flush=True)
+                        _atomic_save(wb_keep, wb_path)
                     except Exception:
                         pass
                 except Exception as e:
@@ -2652,8 +2667,7 @@ def main():
                     continue
                 # periodic flush for NEG/parity paths as well
                 try:
-                    if r % 10 == 0:
-                        _atomic_save(wb_keep, wb_path)
+                    _atomic_save(wb_keep, wb_path)
                 except Exception:
                     pass
                 if _check_per_cell_timeout(cell_start):

@@ -4113,10 +4113,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     # opposite side (e.g. LONG verification emitting STRONG_SELL).
     _verify_side = os.environ.get("V8_ISOLATE_SIDE", "").upper()
     if _verify_side not in {"LONG", "SHORT"}:
-        _long_enabled = bool(getattr(config, "LONG_ENABLED", True))
-        _short_enabled = bool(getattr(config, "SHORT_ENABLED", True))
-        _verify_side = "LONG" if _long_enabled and not _short_enabled else (
-            "SHORT" if _short_enabled and not _long_enabled else "")
+        # ERASED LONG_ENABLED/SHORT_ENABLED per user 2026-09-23: _SHORT means not is_long
+        _verify_side = ""
     _position_sides = [_verify_side] if _verify_side else ["LONG", "SHORT"]
     if _verify_side:
         v8_logger.info("V8 side-isolated scalar replay: %s", _verify_side)

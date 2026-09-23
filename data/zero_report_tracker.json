@@ -1650,5 +1650,24 @@
     "sources": {
       "API_ABSENCE": 16
     }
+  },
+  "flz:ZECUSDC_LONG": {
+    "count": 3,
+    "first_seen": "2026-09-23T14:36:59.977404+00:00",
+    "source": "phantom_kill_bootstrap",
+    "last_seen": "2026-09-23T14:37:33.515789+00:00",
+    "last_increment_at": "2026-09-23T14:37:03.289014+00:00",
+    "sources": {
+      "API_ABSENCE": 1
+    }
+  },
+  "flz:WLDUSDC_SHORT": {
+    "count": 2,
+    "first_seen_zero_at": "2026-09-23T14:58:52.148187+00:00",
+    "last_increment_at": "2026-09-23T14:58:52.148187+00:00",
+    "sources": {
+      "API_ABSENCE": 1
+    },
+    "last_seen": "2026-09-23T14:59:01.568157+00:00"
   }
 }

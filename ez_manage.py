@@ -6979,15 +6979,13 @@ def _ezm_load_final_book() -> dict:
 
 
 def _ezm_apply_final_book(sym_key: str, ov: dict) -> dict:
-    """tradeable -> enable side + per-sym pct_entry/size_cap; disabled -> side _ENABLED=False.
-    2026-09-22 v15_pilot all-tradable: NEVER force-disable - all must trade with best v15_pilot settings until bigger backtests prove unprofitable."""
-    # v15_pilot all-tradable: keep pct/size if in book tradeable, but never disable
+    """tradeable -> per-sym pct_entry/size_cap; ERASED LONG_ENABLED/SHORT_ENABLED per user 2026-09-23: _SHORT means not is_long, no bare flag needed."""
+    # v15_pilot all-tradable: keep pct/size if in book tradeable, but never use LONG_ENABLED/SHORT_ENABLED
     book = _ezm_load_final_book()
     if book:
-        side_flag = "LONG_ENABLED" if sym_key.endswith("_LONG") else ("SHORT_ENABLED" if sym_key.endswith("_SHORT") else None)
         trd = book.get("tradeable", {})
-        if sym_key in trd and side_flag:
-            c = trd[sym_key]; ov = dict(ov); ov[side_flag] = True
+        if sym_key in trd:
+            c = trd[sym_key]; ov = dict(ov)
             if c.get("pct_entry") is not None:
                 ov["MOMENTUM_SMA_WATCHDOG_PCT"] = float(c["pct_entry"])
             if c.get("size_cap") is not None:
@@ -7187,11 +7185,8 @@ def _ezm_is_live_side_enabled(symbol: str, side: str) -> tuple[bool, str]:
             return False, f"no per_sym entry {key} -> ancient defaults"
     # Stocks case: use stocks per_sym (already loaded as raw_entry with is_stock True)
     if is_stock:
-        # Check LONG/SHORT_ENABLED via stocks overrides if present
-        flag = "LONG_ENABLED" if side == "LONG" else "SHORT_ENABLED"
-        ov_s = raw_entry.get("overrides", {})
-        if flag in ov_s and not bool(ov_s[flag]):
-            return False, f"stocks {flag}=False"
+        # ERASED LONG_ENABLED/SHORT_ENABLED per user 2026-09-23: _SHORT means not is_long
+        pass
         # Stocks live gate: check BEST first (gain>0 and beat bh) then ps wsharpe/pnl
         try:
             import re as _re2
@@ -7220,16 +7215,8 @@ def _ezm_is_live_side_enabled(symbol: str, side: str) -> tuple[bool, str]:
         if w2 is not None and w2 <= 0 and pnl2 is not None and pnl2 <= 0:
             return False, f"stocks w {w2} pnl {pnl2} not profitable"
         return True, "stocks live enabled gain>0 and beats bh"
-    # Check LONG/SHORT_ENABLED flag (via overrides + final book)
+    # ERASED LONG_ENABLED/SHORT_ENABLED per user 2026-09-23: _SHORT means not is_long, no bare flag
     ov = _ezm_apply_final_book(key, _ezm_per_sym_cfgs.get(key, {}))
-    flag = "LONG_ENABLED" if side == "LONG" else "SHORT_ENABLED"
-    if flag in ov and not bool(ov[flag]):
-        return False, f"{flag}=False"
-    if flag not in ov:
-        # Also check raw overrides directly
-        raw_ov = raw_entry.get("overrides", {})
-        if flag in raw_ov and not bool(raw_ov[flag]):
-            return False, f"raw {flag}=False"
     # Live gate: gain>0 AND beat bh per side — if both sides positive keep both, if one loses a lot keep one
     # If per_sym has no gain/bh (vectorized_opt with only wsharpe), use wsharpe>0 as fallback (backtest still probes)
     g = raw_entry.get("acc_gain_pct")
@@ -29331,11 +29318,7 @@ class MultiAccountTradeManager:
                 and "HEDGE" not in _kill_act
                 and "HEDGE" not in (reason or "").upper()
             ):
-                _psd_flag = "LONG_ENABLED" if position_side == "LONG" else "SHORT_ENABLED"
-                if not bool(_psym_get(symbol, position_side, _psd_flag, True)):
-                    logger.critical(f"🚫 [PER_SYM_SIDE_DISABLED] {position_key}: BLOCKED {_psd_flag}=False (no positive backtest). action={action} reason={(reason or '')[:80]}")
-                    return f"BLOCKED_PER_SYM_SIDE_DISABLED_{position_side}"
-                # Additional live gate: gain>0 and beat bh (backtest still explores, live blocked)
+                # ERASED LONG_ENABLED/SHORT_ENABLED per user 2026-09-23: _SHORT means not is_long, no bare flag
                 _live_ok, _live_reason = _ezm_is_live_side_enabled(symbol, position_side)
                 if not _live_ok:
                     logger.critical(f"🚫 [PER_SYM_LIVE_GATE] {position_key}: BLOCKED live side not profitable gain>0 and beat bh required. side={position_side} reason={_live_reason} action={action}")

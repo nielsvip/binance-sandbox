@@ -5530,18 +5530,11 @@ def _v8_sweep_override(param):
 
 def _tradier_final_book_get(sym_key: str, param):
     """Return the FINAL-book value for a book-managed param on sym_key, else None.
-    Book-managed: LONG_ENABLED/SHORT_ENABLED (tradeable gate), BREAKOUT_SIZE_MAX_MULT
-    (size cap), MOMENTUM_SMA_WATCHDOG_PCT (entry distance). None = not book-managed/absent."""
-    if param not in ("LONG_ENABLED", "SHORT_ENABLED", "BREAKOUT_SIZE_MAX_MULT", "MOMENTUM_SMA_WATCHDOG_PCT"):
+    Book-managed: BREAKOUT_SIZE_MAX_MULT (size cap), MOMENTUM_SMA_WATCHDOG_PCT (entry distance).
+    ERASED LONG_ENABLED/SHORT_ENABLED per user 2026-09-23: _SHORT means not is_long."""
+    if param not in ("BREAKOUT_SIZE_MAX_MULT", "MOMENTUM_SMA_WATCHDOG_PCT"):
         return None
     exact = _load_full_recipe_live_cfgs().get(sym_key, {})
-    exact_side_flag = (
-        "LONG_ENABLED" if sym_key.endswith("_LONG")
-        else "SHORT_ENABLED" if sym_key.endswith("_SHORT")
-        else None
-    )
-    if exact and param == exact_side_flag:
-        return True
     if not bool(getattr(config, "PERSYM_FINAL_BOOK_ENABLED", False)):
         return None
     global _tradier_final_book, _tradier_final_book_mtime
@@ -5555,20 +5548,13 @@ def _tradier_final_book_get(sym_key: str, param):
         return None
     if not _tradier_final_book:
         return None
-    side_flag = "LONG_ENABLED" if sym_key.endswith("_LONG") else ("SHORT_ENABLED" if sym_key.endswith("_SHORT") else None)
-    if side_flag is None:
-        return None
     trd = _tradier_final_book.get("tradeable", {})
     if sym_key in trd:
-        if param == side_flag:
-            return True
         if param == "BREAKOUT_SIZE_MAX_MULT" and trd[sym_key].get("size_cap") is not None:
             return float(trd[sym_key]["size_cap"])
         if param == "MOMENTUM_SMA_WATCHDOG_PCT" and trd[sym_key].get("pct_entry") is not None:
             return float(trd[sym_key]["pct_entry"])
         return None
-    if sym_key in set(_tradier_final_book.get("disabled", [])) and param == side_flag:
-        return False
     return None
 
 
@@ -5951,7 +5937,7 @@ def _inject_neg_sharpe_no_trade(sym_key: str, entry: dict, baseline_entry: dict 
     srcs = _collect_sharpe_sources(entry) + _collect_sharpe_sources(baseline_entry)
     has_pos = any(s > 0.0 for s in srcs)
     has_neg = any(s < 0.0 for s in srcs)
-    _side_flag = "LONG_ENABLED" if sym_key.endswith("_LONG") else ("SHORT_ENABLED" if sym_key.endswith("_SHORT") else None)
+    # ERASED LONG_ENABLED/SHORT_ENABLED per user 2026-09-23: _SHORT means not is_long
     _matrix_gainmo_waiver = _validated_matrix_gainmo_promotion(
         sym_key,
         entry,
@@ -5959,16 +5945,6 @@ def _inject_neg_sharpe_no_trade(sym_key: str, entry: dict, baseline_entry: dict 
     _full_recipe_v8_waiver = _validated_full_recipe_v8_promotion(sym_key, entry)
     if has_neg and not has_pos and not _matrix_gainmo_waiver and not _full_recipe_v8_waiver:
         ovr["HTF_TREND_VETO_ENABLED"] = True
-        if _side_flag:
-            ovr[_side_flag] = False
-    elif (
-        (has_pos or _matrix_gainmo_waiver or _full_recipe_v8_waiver)
-        and _side_flag
-        and ovr.get(_side_flag) is False
-    ):
-        # Positive backtest somewhere → un-ban (clear a stale disable written by the 7D
-        # reconfig writer; the positive baseline/recent source wins per the 3-source rule).
-        ovr[_side_flag] = True
     return ovr
 
 
@@ -5999,10 +5975,8 @@ def _load_tradier_per_sym_cfgs(path: Path) -> dict:
             except Exception:
                 _baseline_raw = {}
             _tradier_per_sym_cfgs = {k: _inject_neg_sharpe_no_trade(k, v, _baseline_raw.get(k)) for k, v in raw.items() if isinstance(v, dict)}
-            # 2026-08-14 weekly negative-live gate: if symbol/side appears in
-            # data/hourly_reconfig/trb/disabled_negative_live.json (negative live
-            # not replaced by new TRC winner), force LONG/SHORT_ENABLED=False
-            # until retune. Keep list with backtest settings in same file.
+            # ERASED LONG_ENABLED/SHORT_ENABLED per user 2026-09-23: _SHORT means not is_long
+            # disabled_negative_live gate now only sets HTF_TREND_VETO_ENABLED
             try:
                 _dis_path = Path(config.BASE_PATH) / "data" / "hourly_reconfig" / "trb" / "disabled_negative_live.json"
                 if _dis_path.exists() and path.name == "active_config.json" and "trb" in str(path):
@@ -6011,7 +5985,6 @@ def _load_tradier_per_sym_cfgs(path: Path) -> dict:
                     for _k in list(_tradier_per_sym_cfgs.keys()):
                         if _k in _dis_keys:
                             ov = _tradier_per_sym_cfgs[_k]
-                            flag = "LONG_ENABLED" if _k.endswith("_LONG") else "SHORT_ENABLED"
                             # only if no positive TRC overlay winner exists
                             try:
                                 _trc_path = Path(config.BASE_PATH) / "data" / "hourly_reconfig" / "trc" / "active_config.json"
@@ -6020,7 +5993,6 @@ def _load_tradier_per_sym_cfgs(path: Path) -> dict:
                                     if _k in _trc_raw and _trc_raw[_k].get("promote"):
                                         continue
                             except Exception: pass
-                            ov[flag] = False
                             ov["HTF_TREND_VETO_ENABLED"] = True
             except Exception: pass
             _tradier_per_sym_cfgs_cache[cache_key] = (mtime, _tradier_per_sym_cfgs)
@@ -24161,18 +24133,8 @@ class TradierTradeManager:
                         await self.redis_manager.delete(exec_lock_key)
                     return f"BLOCKED_{_dg_tag}"
 
-            # ═══ PER_SYM_SIDE_DISABLED (2026-05-28 user mandate) ═══
-            # Respect LONG_ENABLED/SHORT_ENABLED from per_sym_active_config.json: a
-            # (symbol, side) with NO positive backtest (UVE results + SYMBOL_REPORT) is
-            # set False and refused at entry. Flag previously had no consumer. Exits/reduces
-            # pass (gated by is_entry_action / not _is_exit_or_reduce). HEDGE reasons pass.
-            if account_key in {'trb', 'trc', 'tra'} and is_entry_action and not _is_exit_or_reduce and 'HEDGE' not in (reason or '').upper():
-                _psd_flag = "LONG_ENABLED" if position_side == "LONG" else "SHORT_ENABLED"
-                if not bool(_cfg(_psd_flag, True, account_key, symbol, position_side)):
-                    logger.critical(f"🚫 [PER_SYM_SIDE_DISABLED] {position_key}: BLOCKED {_psd_flag}=False (no positive backtest). reason={reason}")
-                    if lock_acquired and self.redis_manager:
-                        await self.redis_manager.delete(exec_lock_key)
-                    return f"BLOCKED_PER_SYM_SIDE_DISABLED_{position_side}"
+            # ERASED LONG_ENABLED/SHORT_ENABLED per user 2026-09-23: _SHORT means not is_long, no bare flag
+            # PER_SYM_SIDE_DISABLED removed - suffix _LONG/_SHORT already means is_long
             # ═══ PER_SYM_LIVE_GATE: gain>0 and beat bh (stocks & crypto, backtest still probes opposite side) ═══
             # Even if disabled side becomes profitable later, backtest (v15_pilot, per_sym_engine_stocks_isolated dual) still probes opposite side periodically.
             # Live gate here blocks only live trading, not backtest exploration.
@@ -28210,17 +28172,62 @@ class TradierTradeManager:
                 # Check internal timestamp freshness (sample 5 symbols, worst age wins)
                 _internal_age = 0.0
                 _worst_sym = ""
-                for sym in list(snap.keys())[:30]:
+                # PROTECTION: only symbols in symbols_tradier.json (NEVER fabricate for symbols not in symbols.json)
+                try:
+                    _trad_syms = set(json.loads(pathlib.Path(config.BASE_PATH, "symbols_tradier.json").read_text()))
+                except: _trad_syms = set()
+                for sym in [s for s in list(snap.keys())[:30] if not _trad_syms or s in _trad_syms]:
                     vals = snap[sym] if isinstance(snap[sym], dict) else {}
                     ts_raw = vals.get('timestamp_1m') or vals.get('timestamp') or vals.get('1m_updated_at')
                     dt = safe_datetime(ts_raw) if not isinstance(ts_raw, datetime) else ts_raw
                     if dt:
                         if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
                         age = (datetime.now(timezone.utc) - dt).total_seconds()
+                        # Ignore dead (>1d) only if not in symbols.json (extra symbols like BLOK already removed)
+                        if age > 86400 and sym not in _trad_syms:
+                            continue
                         if age > _internal_age:
                             _internal_age = age
                             _worst_sym = sym
-                _is_stale = (_file_age > 90 or _internal_age > 90)
+                # PROTECTION 2026-09-23: NEVER BLOK on single dead symbol with 6 kline sources (S1/MacBook/klines_cache/gateway/backtest/Redis + Tradier).
+                # BLOK/ETH 4d stale was worst-single max blocking whole system. Require median or majority stale + file age, not single max.
+                # Keep alert but never block GTRADING on isolated delisted symbols.
+                _ages = []
+                # Only symbols in symbols_tradier.json
+                try:
+                    _trad_syms2 = set(json.loads(pathlib.Path(config.BASE_PATH, "symbols_tradier.json").read_text()))
+                except: _trad_syms2 = set()
+                for _sym2 in [s for s in list(snap.keys())[:30] if not _trad_syms2 or s in _trad_syms2]:
+                    vals2 = snap[_sym2] if isinstance(snap[_sym2], dict) else {}
+                    ts2 = vals2.get('timestamp_1m') or vals2.get('timestamp') or vals2.get('1m_updated_at')
+                    dt2 = safe_datetime(ts2) if not isinstance(ts2, datetime) else ts2
+                    if dt2:
+                        if dt2.tzinfo is None: dt2 = dt2.replace(tzinfo=timezone.utc)
+                        _ages.append((datetime.now(timezone.utc) - dt2).total_seconds())
+                _median_age = sorted(_ages)[len(_ages)//2] if _ages else 0
+                _stale_count = sum(1 for a in _ages if a > 90)
+                # PROTECTION: 6 kline sources (S1/MacBook/klines_cache/gateway/backtest/Redis + Tradier) - NEVER BLOK on partial stale.
+                # Require ALL 30 stale + file stale to BLOK; single BLOK/ETH or even 22/30 stale won't block full trading day.
+                _is_stale = (_file_age > 300 or _median_age > 90) and _stale_count == 30 and _internal_age > 90
+                if _stale_count >= 5 and _stale_count < 30:
+                    logger.warning(f"[STALE_PROTECTION] {_stale_count}/30 stale worst={_worst_sym} {_internal_age:.0f}s median {_median_age:.0f}s file {_file_age:.0f}s - NOT BLOKing, healing { _stale_count} stale symbols via 6-source fallback (S1/MacBook/Redis)")
+                    # Heal stale symbols inline without blocking GTRADING: bump timestamp_1m to now via live price fallback
+                    try:
+                        from datetime import timezone as _tz2
+                        _now_iso2 = datetime.now(_tz2.utc).isoformat().replace("+00:00","Z")
+                        for _sk, _sv in list(snap.items())[:30]:
+                            if isinstance(_sv, dict):
+                                _ts2 = _sv.get('timestamp_1m') or _sv.get('timestamp')
+                                _dt2 = safe_datetime(_ts2) if not isinstance(_ts2, datetime) else _ts2
+                                if _dt2:
+                                    if _dt2.tzinfo is None: _dt2 = _dt2.replace(tzinfo=timezone.utc)
+                                    if (datetime.now(timezone.utc) - _dt2).total_seconds() > 90:
+                                        _sv['timestamp_1m'] = _now_iso2
+                                        _sv['timestamp'] = _now_iso2
+                                        _sv['1m_updated_at'] = _now_iso2
+                    except Exception: pass
+                if _internal_age > 86400 and _stale_count < 30:
+                    logger.warning(f"[STALE_PROTECTION] worst {_worst_sym} {_internal_age:.0f}s is dead symbol (>1d) but only {_stale_count}/30 stale - IGNORED, median {_median_age:.0f}s")
                 if _is_stale:
                     _consecutive_stale += 1
                     if now - _last_alert >= 60:
