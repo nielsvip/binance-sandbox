@@ -1,30 +1,44 @@
 {
- "generated_at": "2026-09-23 18:28 UTC",
- "total_capital_usd": 21.76,
+ "generated_at": "2026-09-23 18:46 UTC",
+ "total_capital_usd": 104.89,
  "tier_capital": {
   "A": 0.0,
-  "B": 21.76,
+  "B": 104.89,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 2,
   "C": 0
  },
  "winners": [],
  "losers": [],
- "mediocre": [],
+ "mediocre": [
+  "ang:TRUMPUSDC_SHORT",
+  "ang:PLTRUSDT_LONG"
+ ],
  "positions": [
   {
-   "pk": "men:XRPUSDC_LONG",
-   "symbol": "XRPUSDC",
-   "account": "men",
-   "value_usd": 21.76,
-   "gain_pct": -0.384,
+   "pk": "ang:TRUMPUSDC_SHORT",
+   "symbol": "TRUMPUSDC",
+   "account": "ang",
+   "value_usd": 80.09,
+   "gain_pct": -0.222,
    "tier": "B",
-   "perf_mult": 1.63,
-   "amt": 14.6,
-   "mark": 1.4903
+   "perf_mult": 1.0,
+   "amt": 40.96,
+   "mark": 1.95532281
+  },
+  {
+   "pk": "ang:PLTRUSDT_LONG",
+   "symbol": "PLTRUSDT",
+   "account": "ang",
+   "value_usd": 24.8,
+   "gain_pct": 0.015,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 0.13,
+   "mark": 190.74829138
   }
  ]
 }
