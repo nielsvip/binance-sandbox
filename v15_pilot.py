@@ -1164,9 +1164,9 @@ def main():
             bj = _pl2.Path(args.baseline_json)
             if bj.exists():
                 _base_over = _js2.loads(bj.read_text())
-                # merge found overrides on top of recipes
+                # BEST must WIN — overwrite, not `if k not in` guard (bug caused -33% baseline)
                 for k, v in _base_over.items():
-                    if k not in overrides:
+                    if overrides.get(k) != v:
                         overrides[k] = v
                 print(f"[baseline-json] loaded {len(_base_over)} overrides from {bj} as new baseline for shuffle", flush=True)
         except Exception as _e:
@@ -1241,9 +1241,14 @@ def main():
 
     # Find or generate NPZ on S1 before starting (old/unavailable)
     ensure_npz_for_symside(new_symside, args.window_days)
-    # Keep NPZ in RAM
+    # Keep NPZ in RAM — S1 ONLY: Mac has truncated NPZ (134×10G) → 0 trades DATA_ERROR trash
     prepared = preload_prepared(new_symside, args.window_days)
     if prepared is None:
+        import platform
+        _is_mac = platform.system() == "Darwin"
+        if _is_mac:
+            print(f"[BLOCKED] {new_symside} NO PREPARED on Mac — NPZ truncated (Mac 134 files vs S1 473). ABORT, run on S1 via s1-int only.", flush=True)
+            raise SystemExit(2)
         from tools.opt.v12_pilot import evaluate_sanitized
         baseline_vec = evaluate_sanitized(new_symside, overrides, window_days=args.window_days)
         print(f"[baseline] no prepared, vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')}", flush=True)
@@ -1440,13 +1445,15 @@ def main():
         import traceback as _tb_c
         print(f"[BEST-C-FILL-warn] {e} {_tb_c.format_exc()[:400]}", flush=True)
     # FIX empty sheets - ensure E2 numeric visible (was BASELINE string) + immediate baseline check
+    # CRITICAL: E2 must be cumulative start (previous BEST), not just vec baseline. If progress has higher cum, use it.
     try:
         import openpyxl as _op2b
         wb_fix = _op2b.load_workbook(str(wb_path))
+        _e2_start = float(cumulative_gain if 'cumulative_gain' in locals() and cumulative_gain > baseline_gain else baseline_gain)
         for sname in SWITCH_SHEETS:
             if sname in wb_fix.sheetnames and sname == SWITCH_SHEETS[0]:
                 ws_fix = wb_fix[sname]
-                ws_fix.cell(row=2, column=5).value = float(baseline_gain)
+                ws_fix.cell(row=2, column=5).value = float(_e2_start)
                 # also ensure first row yellows are not left as VLOOKUP — they will be filled per-row but set orange placeholder to prove immediate baseline
                 try:
                     first_r = 3
@@ -1679,6 +1686,20 @@ def main():
         print(f"[respect-warn] {_re2}", flush=True)
     # Enforce monotonic baseline: never underperform BEST (leave settings as is = 0 delta)
     cumulative_gain = max(float(progress.get("cumulative_gain") or baseline_gain), float(baseline_gain or 0), float(progress.get("hustler_best_gain") or 0))
+    # FIX: E2 must be cumulative start (previous BEST), not just vec baseline. Overwrite E2 if cum > baseline.
+    if cumulative_gain > baseline_gain + 1e-9:
+        try:
+            import openpyxl as _op2c2
+            _wb_e2 = _op2c2.load_workbook(str(wb_path))
+            for _sn in SWITCH_SHEETS:
+                if _sn in _wb_e2.sheetnames and _sn == SWITCH_SHEETS[0]:
+                    _wb_e2[_sn].cell(row=2, column=5).value = float(cumulative_gain)
+                    print(f"[E2-FIX] {new_symside} E2 {baseline_gain:.4f} -> cum {cumulative_gain:.4f} (previous BEST) to prevent -33% lie", flush=True)
+                    break
+            _wb_e2.save(str(wb_path))
+            baseline_gain = float(cumulative_gain)
+        except Exception as _e_e2:
+            print(f"[E2-FIX-warn] {_e_e2}", flush=True)
     cumulative_overrides = dict(progress.get("cumulative_overrides", overrides))
     cumulative_overrides = {k: v for k, v in cumulative_overrides.items() if not (isinstance(v, str) and " + " in v)}
     _bl_trades = int(baseline_live.get("trades") or 0)
