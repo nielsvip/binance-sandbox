@@ -1,6 +1,6 @@
-PERFORMANCE REPORT — 2026-09-23 09:05 UTC
+PERFORMANCE REPORT — 2026-09-23 09:45 UTC
 ================================================================================
-Total: 160 symbols | A=6 B=124 C=30
+Total: 160 symbols | A=6 B=125 C=29
 Window: 14 days | Min trades: 5
 
 --- TIER A (6 symbols) ---
@@ -11,7 +11,7 @@ Window: 14 days | Min trades: 5
              NVDA  WR=87%  avg=+3.77%  total=+72.3%  trades= 15  mult=10.00
                MU  WR=84%  avg=+2.12%  total=+64.5%  trades= 25  mult=10.00
 
---- TIER B (124 symbols) ---
+--- TIER B (125 symbols) ---
              SNDK  WR=100%  avg=+14.87%  total=+163.8%  trades=  7  mult=7.30
              HOOD  WR=100%  avg=+7.50%  total=+33.6%  trades=  4  mult=1.00
              META  WR=50%  avg=+0.81%  total=+18.7%  trades= 22  mult=6.44
@@ -114,6 +114,7 @@ Window: 14 days | Min trades: 5
          LRCXUSDT  WR=0%  avg=-0.14%  total=-0.1%  trades=  1  mult=1.00
            OPUSDT  WR=50%  avg=-0.02%  total=-0.2%  trades=  8  mult=0.97
           ACEUSDT  WR=50%  avg=-0.01%  total=-0.2%  trades= 16  mult=0.96
+          WMTUSDT  WR=50%  avg=-0.06%  total=-0.2%  trades=  4  mult=1.00
              CIBR  WR=0%  avg=-0.28%  total=-0.3%  trades=  1  mult=1.00
          AMZNUSDT  WR=33%  avg=-0.10%  total=-0.3%  trades=  3  mult=1.00
               APO  WR=50%  avg=-0.04%  total=-0.3%  trades=  8  mult=0.96
@@ -137,11 +138,10 @@ Window: 14 days | Min trades: 5
          IOTXUSDT  WR=47%  avg=-0.13%  total=-7.0%  trades= 55  mult=0.62
              SMCI  WR=0%  avg=-2.73%  total=-10.5%  trades=  4  mult=1.00
 
---- TIER C (30 symbols) ---
+--- TIER C (29 symbols) ---
           ZRXUSDT  WR=43%  avg=-0.00%  total=-0.0%  trades=  7  mult=0.83
      1000PEPEUSDC  WR=33%  avg=-0.02%  total=-0.2%  trades=  9  mult=0.61
         PENGUUSDC  WR=44%  avg=-0.03%  total=-0.2%  trades=  9  mult=0.81
-          WMTUSDT  WR=40%  avg=-0.06%  total=-0.3%  trades=  5  mult=0.80
         THETAUSDT  WR=44%  avg=-0.05%  total=-0.5%  trades=  9  mult=0.79
           KASUSDT  WR=38%  avg=-0.09%  total=-0.7%  trades=  8  mult=0.66
               SLV  WR=38%  avg=-0.05%  total=-0.8%  trades= 16  mult=0.52
@@ -173,4 +173,4 @@ SUMMARY:
   Total PnL (all symbols): +1440.2%
   Avg win rate: 50%
   A-tier avg mult: 10.00
-  C-tier avg mult: 0.44
+  C-tier avg mult: 0.43
