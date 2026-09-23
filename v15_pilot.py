@@ -448,6 +448,21 @@ def _atomic_save(wb, wb_path: Path):
     versioned = str(wb_path).replace(".xlsx", f"_{_tm.strftime('%Y%m%d%H%M%S', _tm.gmtime())}.xlsx") if "MATRIX" in str(wb_path).upper() else None
     try:
         wb.save(tmp)
+        # VALIDATE tmp is a complete zip before replacing live file — prevents 225KB truncation death
+        try:
+            import zipfile as _zf_v
+            _z = _zf_v.ZipFile(tmp, 'r')
+            _ok = len(_z.namelist()) >= 10
+            _z.close()
+            if not _ok:
+                raise RuntimeError(f"tmp zip has only {len(_z.namelist())} entries, expected >=10")
+        except Exception as _e_v:
+            print(f"[atomic-save-VALIDATE-FAIL] {wb_path.name} tmp invalid {_e_v} — keep previous file, do not replace", flush=True)
+            try:
+                _os.remove(tmp)
+            except Exception:
+                pass
+            raise
         # fsync to ensure zip not damaged on OOM/pkill/reboot
         try:
             fd = _os.open(tmp, _os.O_RDONLY)
@@ -643,7 +658,15 @@ def parity_ok(live: dict, vec: dict, allow_zero_baseline: bool = False) -> tuple
     return True, "parity ok"
 
 def ensure_lbI_headers(wb_path: Path):
-    wb = openpyxl.load_workbook(str(wb_path))
+    # NO STALLING EVER: missing wb (race delete) -> skip, don't crash pilot
+    if not wb_path.exists():
+        print(f"[ensure_lbI_headers] {wb_path} missing — skip (herd will recreate)", flush=True)
+        return
+    try:
+        wb = openpyxl.load_workbook(str(wb_path))
+    except Exception as e:
+        print(f"[ensure_lbI_headers] load fail {e} — skip", flush=True)
+        return
     fd_rows = _load_filter_dictionary()
     for sheet in SWITCH_SHEETS:
         if sheet not in wb.sheetnames:
@@ -658,7 +681,7 @@ def ensure_lbI_headers(wb_path: Path):
         existing = set()
         scan_max = max(ws.max_column, 12)
         stale = []
-        for c in range(12, scan_max + 1):
+        for c in range(15, scan_max + 1):
             try:
                 hv = ws.cell(row=2, column=c).value
             except Exception:
@@ -717,10 +740,38 @@ def ensure_lbI_headers(wb_path: Path):
             headers.append(hdr)
             if len(headers) >= 220:
                 break
-        col = 12
+        # Preserve L:is_default (12) , M:AVG DELTA (13), N:POS_SYM (14), plus legacy O:P duplicates — yellows start after last reserved
+        # Template has duplicates: row2 C13/C14 hold AVG/POS and row1 C15/C16 also hold them. Detect reserved cols dynamically.
+        reserved = set()
+        for rc in (12, 13, 14, 15, 16):
+            try:
+                v1 = ws.cell(1, rc).value
+                v2 = ws.cell(2, rc).value
+                if v1 and isinstance(v1, str) and v1.strip() in ("AVG_DELTA", "POS_SYM", "AVG DELTA", "POS SYM"):
+                    reserved.add(rc)
+                if v2 and isinstance(v2, str) and v2.strip() in ("AVG DELTA", "POS_SYM", "AVG DELTA", "POS SYM", "is_default (backup if bold lost)", "is_default"):
+                    reserved.add(rc)
+                # also preserve any col where row2 is AVG DELTA / POS_SYM label
+                if v2 in ("AVG DELTA", "POS_SYM"):
+                    reserved.add(rc)
+                if v1 in ("AVG_DELTA", "POS_SYM"):
+                    reserved.add(rc)
+            except Exception:
+                pass
+        # Always preserve L(12)=is_default, M(13)=AVG DELTA, N(14)=POS_SYM, and legacy O(15)/P(16) if they hold those headers
+        for forced in (12, 13, 14):
+            reserved.add(forced)
+        # If O/P (15,16) currently hold AVG_DELTA/POS_SYM in row1, also preserve them — yellows start at Q(17)
+        if ws.cell(1, 15).value in ("AVG_DELTA", "AVG DELTA") or ws.cell(2, 13).value == "AVG DELTA":
+            reserved.add(15)
+            reserved.add(16)
+        col = 17 if (15 in reserved and 16 in reserved) else 15
+        # Ensure we skip any reserved col
         for hdr in headers:
             if hdr in existing:
                 continue
+            while col in reserved:
+                col += 1
             try:
                 c = ws.cell(row=2, column=col)
                 if str(getattr(c, "__class__", "")).endswith("MergedCell"):
@@ -777,8 +828,19 @@ def clone_template(template: Path, new_symside: str) -> Path:
                     c.value = f"=MAX('{prev}'!E$2:E$5000)"
                     c.font = Font(name="Arial", bold=True, color="006100")
         # Fix E column formulas per spec: BLANK when G<=0 (greedy), not Eprev. Template is =IF(G4="",E3,IF(G4>0,E3+G4,E3)) greedy cum.
+        # CLEAN TRASH: delete #NUM!, #NAME?, #VALUE!, #REF!, #DIV/0! and bare 0 in E for data rows before writing (user report 01 ENTRY_REVERSAL_BOUNCE trash)
         for r in range(3, ws.max_row + 1):
             e_val = ws.cell(row=r, column=5).value
+            if isinstance(e_val, str) and e_val.startswith("#"):
+                ws.cell(row=r, column=5).value = None
+                e_val = None
+            elif e_val == 0 and r > 2:
+                ws.cell(row=r, column=5).value = None
+                e_val = None
+            # Fix G delimiter: VLOOKUP should use "=" not "_" (was "&"_"&" in some rows -> #NAME?/0)
+            g_val = ws.cell(row=r, column=7).value
+            if isinstance(g_val, str) and 'VLOOKUP' in g_val and '&"_"&' in g_val:
+                ws.cell(row=r, column=7).value = g_val.replace('&"_"&', '&"="&')
             if isinstance(e_val, str) and (e_val.startswith("=IF(F") or e_val.startswith("=IF(G")):
                 # replace trailing ,Eprev) with ,"") to keep blank on NEG greedy (E only filled when G>0)
                 # =IF(G4="",E3,IF(G4>0,E3+G4,E3)) -> =IF(G4="", "",IF(G4>0,E3+G4,""))
@@ -1013,6 +1075,7 @@ def main():
     except Exception as _e_best:
         print(f"[BEST-baseline-warn] {new_symside} {_e_best}", flush=True)
     # PREVIOUS-TEST-as-baseline: always load best overrides from previous progress/xls for sym_side first, then calc baseline on those overrides
+    # FIX: BEST must WIN — overwrite recipes/defaults, not behind `if k not in overrides` guard
     try:
         import json as _js_prev_prog
         _prev_prog_path = PROGRESS_DIR / f"{new_symside}_v14_progress.json"
@@ -1021,15 +1084,16 @@ def main():
             _co = _pd.get("cumulative_overrides") or _pd.get("overrides") or {}
             _added = 0
             for k, v in _co.items():
-                if k not in overrides and not (isinstance(v, str) and " + " in v):
-                    overrides[k] = v
-                    _added += 1
+                if not (isinstance(v, str) and " + " in v):
+                    if overrides.get(k) != v:
+                        overrides[k] = v
+                        _added += 1
             if _added:
                 print(f"[BEST-prev-progress] {new_symside}: loaded {_added} overrides from previous progress cumulative_overrides as baseline", flush=True)
             _ho = _pd.get("hustler_overrides") or {}
             _added2 = 0
             for k, v in _ho.items():
-                if k not in overrides:
+                if overrides.get(k) != v:
                     overrides[k] = v
                     _added2 += 1
             if _added2:
@@ -1050,22 +1114,42 @@ def main():
                     _a = _ws_prev.cell(row=_r, column=1).value
                     _c = _ws_prev.cell(row=_r, column=3).value
                     _f = _ws_prev.cell(row=_r, column=6).value
-                    if _a and _c and str(_c).strip() not in ("", "None", "none") and isinstance(_f, (int, float)) and _f > 0:
-                        _parts = str(_c).split(" + ")
-                        for _part in _parts:
-                            if "=" in _part:
-                                _k, _v = _part.split("=", 1)
-                                _k = _k.strip()
-                                _v = _v.strip()
-                                if _v.lower() in ("true", "false"):
-                                    _v_parsed = _v.lower() == "true"
-                                else:
-                                    try:
-                                        _vf = float(_v)
-                                        _v_parsed = _vf
-                                    except:
-                                        _v_parsed = _v
-                                if _k not in overrides:
+                    if _a and _c and str(_c).strip() not in ("", "None", "none"):
+                        # Promoted rows: C = "K=V + K=V ..." (F>0), baseline rows: C = single value (no "=")
+                        # Handle both: if "=" in C, parse history string; else treat C as value for switch _a
+                        if isinstance(_f, (int, float)) and _f > 0 and "=" in str(_c):
+                            _parts = str(_c).split(" + ")
+                            for _part in _parts:
+                                if "=" in _part:
+                                    _k, _v = _part.split("=", 1)
+                                    _k = _k.strip()
+                                    _v = _v.strip()
+                                    if _v.lower() in ("true", "false"):
+                                        _v_parsed = _v.lower() == "true"
+                                    else:
+                                        try:
+                                            _vf = float(_v)
+                                            _v_parsed = _vf
+                                        except:
+                                            _v_parsed = _v
+                                    if overrides.get(_k) != _v_parsed:
+                                        overrides[_k] = _v_parsed
+                                        _added_xls += 1
+                        elif _a and str(_a).strip():
+                            # Baseline override: column A is switch, column C is its value
+                            _k = str(_a).strip()
+                            _v_raw = str(_c).strip() if isinstance(_c, str) else _c
+                            if isinstance(_v_raw, str) and _v_raw.lower() in ("true", "false"):
+                                _v_parsed = _v_raw.lower() == "true"
+                            else:
+                                try:
+                                    _vf = float(str(_v_raw))
+                                    _v_parsed = _vf
+                                except:
+                                    _v_parsed = _v_raw
+                            if overrides.get(_k) != _v_parsed:
+                                # only count if switch looks like a real config key (contains "_" and not empty)
+                                if "_" in _k and len(_k) > 5:
                                     overrides[_k] = _v_parsed
                                     _added_xls += 1
             if _added_xls:
@@ -1163,22 +1247,15 @@ def main():
         from tools.opt.v12_pilot import evaluate_sanitized
         baseline_vec = evaluate_sanitized(new_symside, overrides, window_days=args.window_days)
         print(f"[baseline] no prepared, vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')}", flush=True)
-        # FIX 2026-09-23: 0-TRADES means trades==0 only (MANA/ALGO 9 trades valid False was false-positive → not 0). Do NOT create XLS for 0 trades: no baseline, no delta, no waste — diagnostic only, never to mac.
+        # 0-TRADES: still create XLS with baseline so herd audit sees E2 + BASELINE_METRICS; only skip sweep, never skip baseline
         _is_zero = int(baseline_vec.get("trades") or 0) == 0
         if ("ZECUSDC" not in new_symside) and _is_zero:
-            print(f"[0-TRADES-FAST-FAIL] {new_symside} 0 trades — DIAGNOSTIC ONLY, no XLS, skipping full sweep (never waste CPU/disk/mac)", flush=True)
-            try:
-                diag_path = PROGRESS_DIR / f"{new_symside}_{args.window_days}d_progress.json"
-                diag_path.parent.mkdir(parents=True, exist_ok=True)
-                _diag = {"symside": new_symside, "baseline_gain": float(baseline_vec.get("gain_pct") or 0), "bh": float(baseline_vec.get("bh_pct") or 0), "valid": False, "trades": int(baseline_vec.get("trades") or 0), "reason": "0 trades baseline — DATA_ERROR NPZ short history, no XLS, never waste", "done": {}, "no_delta": True, "zero_trades_diagnostic": True}
-                import json as _js0
-                diag_path.write_text(_js0.dumps(_diag, indent=2))
-            except Exception as _e:
-                print(f"[diag-warn] {new_symside} {_e}", flush=True)
-            return
-        _zero_trades_early = False
-        if not baseline_vec.get("valid"):
-            print(f"[baseline-warn] {new_symside} valid False but trades {baseline_vec.get('trades')} — proceeding, not diagnostic", flush=True)
+            print(f"[0-TRADES-FAST-FAIL] {new_symside} 0 trades — will still write baseline XLS then skip sweep", flush=True)
+            _zero_trades_early = True
+        else:
+            _zero_trades_early = False
+            if not baseline_vec.get("valid"):
+                print(f"[baseline-warn] {new_symside} valid False but trades {baseline_vec.get('trades')} — proceeding, not diagnostic", flush=True)
         prepared_for_fallback = None
     else:
         from tools.opt.v12_pilot import evaluate_prepared_sanitized
@@ -1186,19 +1263,12 @@ def main():
         print(f"[baseline] vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')} sharpe={baseline_vec.get('pool_sharpe')} hot", flush=True)
         _is_zero = int(baseline_vec.get("trades") or 0) == 0
         if ("ZECUSDC" not in new_symside) and _is_zero:
-            print(f"[0-TRADES-FAST-FAIL] {new_symside} 0 trades — DIAGNOSTIC ONLY, no XLS, skipping (no waste)", flush=True)
-            try:
-                diag_path = PROGRESS_DIR / f"{new_symside}_{args.window_days}d_progress.json"
-                diag_path.parent.mkdir(parents=True, exist_ok=True)
-                _diag = {"symside": new_symside, "baseline_gain": float(baseline_vec.get("gain_pct") or 0), "bh": float(baseline_vec.get("bh_pct") or 0), "valid": False, "trades": int(baseline_vec.get("trades") or 0), "reason": "0 trades baseline — DATA_ERROR NPZ short history, no XLS, never waste", "done": {}, "no_delta": True, "zero_trades_diagnostic": True}
-                import json as _js0
-                diag_path.write_text(_js0.dumps(_diag, indent=2))
-            except Exception as _e:
-                print(f"[diag-warn] {new_symside} {_e}", flush=True)
-            return
-        _zero_trades_early = False
-        if not baseline_vec.get("valid"):
-            print(f"[baseline-warn] {new_symside} valid False but trades {baseline_vec.get('trades')} — proceeding", flush=True)
+            print(f"[0-TRADES-FAST-FAIL] {new_symside} 0 trades — will still write baseline XLS then skip sweep", flush=True)
+            _zero_trades_early = True
+        else:
+            _zero_trades_early = False
+            if not baseline_vec.get("valid"):
+                print(f"[baseline-warn] {new_symside} valid False but trades {baseline_vec.get('trades')} — proceeding", flush=True)
         prepared_for_fallback = prepared
 
     if args.vector_only:
@@ -2422,8 +2492,8 @@ def main():
                     pending_lbI = {}
                     vector_delta_val = None
                     print(f"[LOG {time.time():.1f}] {sheet}!{r} candidates={len(candidates)} start vec batch", flush=True)
-                    # 2026-09-22 TIMEOUT LAW: per-cell ≤10s COLOR RED AND MOVE ON — never sit >10s on a cell
-                    per_cell_deadline = 10.0
+                    # 2026-09-23 YELLOW-ONLY LAW: only that row's switch yellows, couple seconds → RED cell + RED TAB, never >1h per workbook
+                    per_cell_deadline = 2.5
                     vecs = []
                     try:
                         if prepared is not None:
@@ -2445,21 +2515,31 @@ def main():
                                 print(f"[LOG {time.time():.1f}] vec batch done {len(vecs)} {'heavy' if is_heavy else 'light'} <{per_cell_deadline}s", flush=True)
                             except _cf2.TimeoutError:
                                 print(f"[CELL-TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_deadline}s → COLOR RED AND MOVE ON", flush=True)
-                                _flag_to_md(flags_md, sheet, r, switch, cand, "CELL-TIMEOUT 10s RED", -1.0, 0.0, cumulative_before)
-                                vecs = [{"valid": False, "reason": "cell 10s timeout red"} for _ in candidates]
+                                _flag_to_md(flags_md, sheet, r, switch, cand, f"CELL-TIMEOUT {per_cell_deadline}s RED", -1.0, 0.0, cumulative_before)
+                                # RED TAB: mark sheet tab red when any cell times out (never >1h per workbook)
+                                try:
+                                    if ws_keep is not None:
+                                        from openpyxl.styles import PatternFill
+                                        ws_keep.sheet_properties.tabColor = "FF0000"
+                                except: pass
+                                vecs = [{"valid": False, "reason": f"cell {per_cell_deadline}s timeout red"} for _ in candidates]
                             except Exception as e:
                                 print(f"[vec-batch-err] {sheet}!{r} {switch} err {e}", flush=True)
                                 vecs = []
                         else:
                             from tools.opt.v12_pilot import evaluate_many_sanitized as _eval_many
-                            # per-cell 10s for direct many as well
+                            # per-cell couple seconds for direct many as well
                             try:
                                 with _cf2.ThreadPoolExecutor(max_workers=1) as ex:
                                     fut = ex.submit(_eval_many, new_symside, [c[0] for c in candidates], window_days=args.window_days)
                                     vecs = fut.result(timeout=per_cell_deadline)
                             except _cf2.TimeoutError:
                                 print(f"[CELL-TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_deadline}s → RED", flush=True)
-                                vecs = [{"valid": False, "reason": "cell 10s timeout red"} for _ in candidates]
+                                try:
+                                    if ws_keep is not None:
+                                        ws_keep.sheet_properties.tabColor = "FF0000"
+                                except: pass
+                                vecs = [{"valid": False, "reason": f"cell {per_cell_deadline}s timeout red"} for _ in candidates]
                     except Exception as e:
                         print(f"[vec-batch-err] {sheet}!{r} {switch} err {e}", flush=True)
                         vecs = []
@@ -2812,7 +2892,8 @@ def main():
                         live_best = vec_best
                     else:
                         import concurrent.futures as _cf
-                        with _cf.ThreadPoolExecutor(max_workers=16) as ex:
+                        # NO STALLING EVER: use all workers, never wait 90s on live — timeout and continue
+                        with _cf.ThreadPoolExecutor(max_workers=args.workers) as ex:
                             fut = ex.submit(live_evaluate, new_symside, dict(variant_best), args.window_days)
                             try:
                                 live_best = fut.result(timeout=90)
@@ -2995,8 +3076,19 @@ def main():
                     _atomic_save(wb_keep, wb_path)
                 except Exception:
                     pass
+                # ENSURE NO EMPTY AFTER 8 LINES: every row must have F numeric (0 if timeout/error) + red cell + red tab, never VLOOKUP/None
+                try:
+                    if ws_row is not None and ws_row.cell(row=r, column=6).value in (None, ""):
+                        from openpyxl.styles import PatternFill
+                        ws_row.cell(row=r, column=6).value = 0.0
+                        ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                        ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                        if ws_keep is not None:
+                            ws_keep.sheet_properties.tabColor = "FF0000"
+                        _flag_to_md(flags_md, sheet, r, switch, cand, "EMPTY after 8 lines -> 0 RED TAB", 0.0, 0.0, cumulative_before)
+                except: pass
                 if _check_per_cell_timeout(cell_start):
-                    print(f"[PER_CELL TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_timeout_sec}s — flag red, skip move on, take as much time as needed next cell", flush=True)
+                    print(f"[PER_CELL TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_timeout_sec}s — flag red + TAB RED, skip move on, never >1h per workbook", flush=True)
                     try:
                         if ws_row is not None:
                             from openpyxl.styles import PatternFill
@@ -3004,6 +3096,8 @@ def main():
                             ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
                             if ws_row.cell(row=r, column=6).value in (None, "") or isinstance(ws_row.cell(row=r, column=6).value, str):
                                 ws_row.cell(row=r, column=6).value = 0.0
+                            if ws_keep is not None:
+                                ws_keep.sheet_properties.tabColor = "FF0000"
                         _flag_to_md(flags_md, sheet, r, switch, cand, f"PER_CELL TIMEOUT {per_cell_timeout_sec}s", 0.0, 0.0, cumulative_before)
                     except: pass
 
