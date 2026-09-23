@@ -304,7 +304,6 @@ def _token_overlap(gates: str, switch: str) -> bool:
 def _is_general(rec: str) -> bool:
     return rec.strip().upper().startswith("GENERAL")
 
-VIRUS_FILTERS = {"BB_BOUNCE_ENTRY_TF", "BB_BOUNCE"}
 def get_opportune_filters(switch: str, sheet: str) -> list[dict]:
     if not switch or not sheet:
         return []
@@ -312,8 +311,6 @@ def get_opportune_filters(switch: str, sheet: str) -> list[dict]:
     rows = _load_filter_dictionary()
     out = []
     for e in rows:
-        if e.get("filter") in VIRUS_FILTERS:
-            continue
         rec = (e["rec"] or "").strip().upper()
         if rec == "UNLIKELY" or "UNLIKELY" in rec:
             continue
@@ -663,8 +660,6 @@ def ensure_lbI_headers(wb_path: Path):
         union = set()
         for sw in sheet_switches:
             for e in get_opportune_filters(sw, sheet):
-                if e.get("filter") in VIRUS_FILTERS:
-                    continue
                 if _is_general(e["rec"]):
                     continue
                 union.add(f"{e['filter']}={e['opt']}")
@@ -1694,8 +1689,6 @@ def main():
             if ws_h is not None:
                 _per_yellow_sum = 0.0
                 for _hdr in relevant_hdrs:
-                    if _hdr.split("=")[0] in VIRUS_FILTERS:
-                        continue
                     _col = htc.get(_hdr)
                     if not _col:
                         continue

@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-22 23:56 UTC
+PERFORMANCE REPORT — 2026-09-23 00:20 UTC
 ================================================================================
 Total: 164 symbols | A=6 B=129 C=29
 Window: 14 days | Min trades: 5
@@ -16,7 +16,7 @@ Window: 14 days | Min trades: 5
              HOOD  WR=100%  avg=+7.50%  total=+33.6%  trades=  4  mult=1.00
           XRPUSDC  WR=57%  avg=+0.13%  total=+27.6%  trades=190  mult=3.11
              META  WR=50%  avg=+0.81%  total=+18.7%  trades= 22  mult=6.44
-         HYPEUSDT  WR=65%  avg=+0.29%  total=+14.4%  trades= 48  mult=5.55
+         HYPEUSDT  WR=65%  avg=+0.28%  total=+14.5%  trades= 49  mult=5.65
              CIEN  WR=38%  avg=+1.37%  total=+11.1%  trades=  8  mult=3.70
              AMAT  WR=100%  avg=+2.44%  total=+10.1%  trades=  4  mult=1.00
          RUNEUSDT  WR=56%  avg=+0.91%  total=+8.3%  trades=  9  mult=4.20
@@ -58,7 +58,7 @@ Window: 14 days | Min trades: 5
           PTBUSDT  WR=54%  avg=+0.02%  total=+0.6%  trades= 26  mult=1.85
                BA  WR=38%  avg=+0.07%  total=+0.6%  trades=  8  mult=0.76
           WIFUSDC  WR=88%  avg=+0.07%  total=+0.6%  trades=  8  mult=3.89
-          WLDUSDC  WR=41%  avg=+0.01%  total=+0.5%  trades= 64  mult=0.58
+          WLDUSDC  WR=41%  avg=+0.01%  total=+0.5%  trades= 64  mult=0.58 ** OPEN **
              BABA  WR=100%  avg=+0.50%  total=+0.5%  trades=  1  mult=1.00
           RSRUSDT  WR=100%  avg=+0.24%  total=+0.5%  trades=  2  mult=1.00
           SKYUSDT  WR=73%  avg=+0.03%  total=+0.4%  trades= 11  mult=3.38
@@ -71,7 +71,6 @@ Window: 14 days | Min trades: 5
          AXTIUSDT  WR=100%  avg=+0.06%  total=+0.2%  trades=  3  mult=1.00
           TRBUSDT  WR=75%  avg=+0.05%  total=+0.2%  trades=  4  mult=1.00
      1000SHIBUSDC  WR=50%  avg=+0.09%  total=+0.2%  trades=  2  mult=1.00
-        THETAUSDT  WR=60%  avg=+0.02%  total=+0.1%  trades=  5  mult=1.49
          COMPUSDT  WR=100%  avg=+0.10%  total=+0.1%  trades=  1  mult=1.00
           INXUSDT  WR=100%  avg=+0.03%  total=+0.1%  trades=  3  mult=1.00
          SANDUSDT  WR=54%  avg=+0.00%  total=+0.1%  trades= 24  mult=1.78
@@ -122,6 +121,7 @@ Window: 14 days | Min trades: 5
          HOODUSDT  WR=0%  avg=-0.32%  total=-0.3%  trades=  1  mult=1.00
     1000FLOKIUSDT  WR=25%  avg=-0.09%  total=-0.4%  trades=  4  mult=1.00
              CRWD  WR=33%  avg=-0.13%  total=-0.4%  trades=  3  mult=1.00
+        THETAUSDT  WR=57%  avg=-0.06%  total=-0.4%  trades=  7  mult=1.31
           LPTUSDT  WR=50%  avg=-0.11%  total=-0.4%  trades=  4  mult=1.00
           ADAUSDC  WR=48%  avg=-0.02%  total=-0.5%  trades= 29  mult=0.84
          DOGEUSDC  WR=0%  avg=-0.51%  total=-0.5%  trades=  1  mult=1.00
@@ -174,7 +174,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=32%  avg=-1.98%  total=-74.1%  trades= 66  mult=0.15
 
 SUMMARY:
-  Total PnL (all symbols): +1456.5%
+  Total PnL (all symbols): +1456.1%
   Avg win rate: 49%
   A-tier avg mult: 10.00
   C-tier avg mult: 0.42
