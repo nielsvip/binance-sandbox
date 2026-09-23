@@ -1,21 +1,20 @@
-CAPITAL ALLOCATION REPORT — 2026-09-23 20:05 UTC
+CAPITAL ALLOCATION REPORT — 2026-09-23 20:08 UTC
 ================================================================================
-Total capital deployed: $1,052.25 across 4 positions
+Total capital deployed: $11.45 across 1 positions
 
 TIER DISTRIBUTION:
   Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $  1,052.25 (100.0%) — 4 positions
-  Tier C: $      0.00 (  0.0%) — 0 positions
+  Tier B: $      0.00 (  0.0%) — 0 positions
+  Tier C: $     11.45 (100.0%) — 1 positions
 
   ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
+  ** C-tier OVERWEIGHT: 100% vs target <20% — reduce poor performers **
 
 WINNERS — augment these (A-tier, in gain) [0]:
   (none)
 
-LOSERS — reduce allocation (C-tier or losing) [3]:
-                     flz:ETHUSDT_LONG  $  635.59  gain=-3.86%  tier=B  mult=1.00
-                     flz:BTCUSDT_LONG  $  168.53  gain=-2.98%  tier=B  mult=1.00
-                     flz:XRPUSDC_LONG  $   79.55  gain=-0.69%  tier=B  mult=1.22
+LOSERS — reduce allocation (C-tier or losing) [1]:
+                    fin:SNXUSDT_SHORT  $   11.45  gain=-0.04%  tier=C  mult=0.33
 
 MEDIOCRE — capital sitting idle [0]:
   (none)
