@@ -1957,9 +1957,25 @@ def main():
                     if switch in disabled_switches:
                         print(f"[SKIP-DISABLED] {switch} never had pos delta, skipping for speed (shuffle)", flush=True)
                         continue
-                # FIX 2026-09-23: removed 15s mid-sheet abort — FULL SHEET LAW requires run to last sheet even if 0 pos; log only
+                # 2026-09-23 LOUD baseline/delta guard — keep yellow calcs, but if NO deltas at all (even NEG) after 60s, LOUD stop (never hang)
+                if len(progress.get("done", {})) == 0 and __import__('time').time() - _v15_start_time > 60:
+                    print(f"[LOUD-STOP-NO-DELTA-ROW] {new_symside} sheet {sheet}!{r} NO deltas after {__import__('time').time() - _v15_start_time:.1f}s total_pos {total_pos} done {len(progress.get('done',{}))} — LOUD STOP baseline or deltas not produced in seconds", flush=True)
+                    try: _flag_to_md(flags_md, sheet, r, new_symside, "NO_DELTA", f"no delta after 60s", 0, 0, cumulative_gain)
+                    except: pass
+                    try: wb_keep.close()
+                    except: pass
+                    progress["loud_stop_no_delta"] = True
+                    progress["final_gain"] = cumulative_gain
+                    progress["bh"] = bh_raw if 'bh_raw' in locals() else float(baseline_gain or 0)
+                    try: _atomic_write_json(progress_path, progress)
+                    except: pass
+                    try: wb_path.unlink(missing_ok=True)
+                    except: pass
+                    print(f"[LOUD-STOP] {new_symside} deleted {wb_path.name} — yellow calcs preserved but no deltas, fix NPZ/template", flush=True)
+                    return
+                # old VIRUS0 pos-only check now log-only (pos==0 is ok if NEG deltas exist, keep filling)
                 if total_pos == 0 and __import__('time').time() - _v15_start_time > 15 and len(progress.get("done", {})) > 5:
-                    print(f"[VIRUS0-15s-ROW-DISABLED] {new_symside} sheet {sheet}!{r} 0 pos after {__import__('time').time() - _v15_start_time:.1f}s total_pos 0 — continuing (abort disabled per FULL SHEET LAW)", flush=True)
+                    print(f"[VIRUS0-15s-ROW-DISABLED] {new_symside} sheet {sheet}!{r} 0 pos after {__import__('time').time() - _v15_start_time:.1f}s total_pos 0 — continuing (abort disabled per FULL SHEET LAW, yellows kept)", flush=True)
                 cell_start = time.time()
                 key = f"{sheet}!{r}:{switch}={cand}"
                 # YELLOW SET FOR A SINGLE SWITCH (this row): SPECIFIC filters gated
@@ -2797,9 +2813,25 @@ def main():
                 _atomic_write_json(progress_path, progress)
             except Exception:
                 pass
-            # FIX 2026-09-23: removed 15s per-sheet abort — FULL SHEET LAW; log only
+            # 2026-09-23 LOUD per-sheet delta guard — if still NO deltas after 90s, LOUD stop
+            if len(progress.get("done", {})) == 0 and __import__('time').time() - _v15_start_time > 90:
+                print(f"[LOUD-STOP-NO-DELTA-SHEET] {new_symside} sheet {sheet} NO deltas after {__import__('time').time() - _v15_start_time:.1f}s — LOUD STOP", flush=True)
+                try: _flag_to_md(flags_md, sheet, 0, new_symside, "NO_DELTA_SHEET", f"no delta after 90s sheet {sheet}", 0, 0, cumulative_gain)
+                except: pass
+                try: wb_keep.close()
+                except: pass
+                progress["loud_stop_no_delta_sheet"] = True
+                progress["final_gain"] = cumulative_gain
+                progress["bh"] = bh_raw if 'bh_raw' in locals() else 0
+                try: _atomic_write_json(progress_path, progress)
+                except: pass
+                try: wb_path.unlink(missing_ok=True)
+                except: pass
+                print(f"[LOUD-STOP] {new_symside} sheet {sheet} deleted — no deltas in seconds", flush=True)
+                return
+            # old pos-only sheet check now log-only
             if total_pos == 0 and __import__('time').time() - _v15_start_time > 15:
-                print(f"[VIRUS0-15s-SHEET-DISABLED] {new_symside} sheet {sheet} 0 pos after {__import__('time').time() - _v15_start_time:.1f}s — continuing (abort disabled)", flush=True)
+                print(f"[VIRUS0-15s-SHEET-DISABLED] {new_symside} sheet {sheet} 0 pos after {__import__('time').time() - _v15_start_time:.1f}s — continuing (abort disabled, yellows kept)", flush=True)
         except Exception as _sheet_e:
             import traceback
             print(f"[sheet-ERR] {sheet} {_sheet_e} {traceback.format_exc()[:800]}", flush=True)
@@ -2882,10 +2914,27 @@ def main():
         return
     # DO NOT PUBLISH until cells are filled — timestamp = work in progress, bh/gain = finished
     # fully filled — publish bh/gain
-    # FIX 2026-09-23: removed 15s final abort — allow 0-pos sheets to publish (baseline numbers still written); log only
+    # 2026-09-23 LOUD if no baseline/delta at all after seconds — keep yellows but loud stop if truly no deltas
+    if len(progress.get("done", {})) == 0:
+        _elapsed = __import__('time').time() - _v15_start_time
+        print(f"[LOUD-STOP-NO-DELTA-FINAL] {new_symside} NO deltas after {_elapsed:.1f}s total_pos 0 cum {cumulative_gain:.4f} baseline {baseline_gain:.4f} — LOUD STOP no deltas in seconds", flush=True)
+        try: _flag_to_md(flags_md, "ALL", 0, new_symside, "NO_DELTA_FINAL", f"no delta after {_elapsed:.1f}s", 0, 0, cumulative_gain)
+        except: pass
+        progress["loud_stop_no_delta_final"] = True
+        progress["final_gain"] = cumulative_gain
+        progress["bh"] = bh_raw
+        progress["final_path"] = None
+        progress["no_delta"] = True
+        try: _atomic_write_json(progress_path, progress)
+        except: pass
+        try: wb_path.unlink(missing_ok=True)
+        except: pass
+        print(f"[LOUD-STOP] {new_symside} deleted {wb_path.name} — no baseline/deltas", flush=True)
+        return
+    # old pos-only final check now log-only (pos==0 with deltas is ok, yellows kept)
     if total_pos == 0:
         _elapsed = __import__('time').time() - _v15_start_time
-        print(f"[VIRUS0-15s-DISABLED] {new_symside} 0 pos after {_elapsed:.1f}s total_pos 0 cum {cumulative_gain:.4f} baseline {baseline_gain:.4f} — continuing to publish (abort disabled)", flush=True)
+        print(f"[VIRUS0-15s-DISABLED] {new_symside} 0 pos after {_elapsed:.1f}s total_pos 0 cum {cumulative_gain:.4f} baseline {baseline_gain:.4f} — continuing to publish (abort disabled, yellows kept, deltas exist)", flush=True)
     def fmt(v): return f"{v:.2f}".replace("-", "m").replace(".", "p")
     final_name = f"{new_symside}_bh{fmt(bh_raw)}_gain{fmt(cumulative_gain)}_30d_matrix.xlsx"
     final_path = OUT_DIR / final_name
