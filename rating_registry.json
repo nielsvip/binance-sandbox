@@ -1,11 +1,23 @@
 {
-  "timestamp": "2026-09-23T20:31:16.202234+00:00",
+  "timestamp": "2026-09-23T20:50:40.300621+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 122
   },
   "unified_ranking": [
+    {
+      "symbol": "CRWVUSDT",
+      "net_score": -14.0,
+      "long_score": 0,
+      "short_score": 14.0
+    },
+    {
+      "symbol": "AXTIUSDT",
+      "net_score": -12.1,
+      "long_score": 0,
+      "short_score": 12.1
+    },
     {
       "symbol": "MRVLUSDT",
       "net_score": 0,
@@ -595,12 +607,6 @@
       "short_score": 0
     },
     {
-      "symbol": "AXTIUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "BMNRUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -632,12 +638,6 @@
     },
     {
       "symbol": "ZROUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "CRWVUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -740,7 +740,18 @@
     }
   ],
   "top_longs": [],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "CRWVUSDT",
+      14.0,
+      86.88022355
+    ],
+    [
+      "AXTIUSDT",
+      12.1,
+      72.667072
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
