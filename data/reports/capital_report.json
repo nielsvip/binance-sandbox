@@ -1,14 +1,14 @@
 {
- "generated_at": "2026-09-23 16:37 UTC",
- "total_capital_usd": 158.35,
+ "generated_at": "2026-09-23 18:28 UTC",
+ "total_capital_usd": 21.76,
  "tier_capital": {
   "A": 0.0,
-  "B": 158.35,
+  "B": 21.76,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
+  "B": 1,
   "C": 0
  },
  "winners": [],
@@ -16,26 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:ARUSDT_LONG",
-   "symbol": "ARUSDT",
-   "account": "ang",
-   "value_usd": 79.36,
-   "gain_pct": -0.439,
+   "pk": "men:XRPUSDC_LONG",
+   "symbol": "XRPUSDC",
+   "account": "men",
+   "value_usd": 21.76,
+   "gain_pct": -0.384,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 17.3,
-   "mark": 4.587
-  },
-  {
-   "pk": "ang:NFLXUSDT_SHORT",
-   "symbol": "NFLXUSDT",
-   "account": "ang",
-   "value_usd": 78.99,
-   "gain_pct": 0.576,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 1.1,
-   "mark": 71.81
+   "perf_mult": 1.63,
+   "amt": 14.6,
+   "mark": 1.4903
   }
  ]
 }

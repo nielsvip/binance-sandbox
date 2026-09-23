@@ -12224,6 +12224,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     else:
                         if _wtdc_htf_gate == 'none':
                             _wtdc_htf_gate = '4h_d'
+                    # 2026-09-23 FIX: init _htf_block else UnboundLocalError at line 12046 when default 4h/D gate takes no branch (seen 50+ crashes in trb log .3)
+                    _htf_block = False
                     # TF-HTF2 expanded gate (vector parity): when WT_DC_TF_HTF/HTF2 differ from legacy 4h/D, use them with AND/OR mode
                     _wt_dc_htf = str(_cfg_auto('WT_DC_TF_HTF', '4h')).lower()
                     _wt_dc_htf2 = str(_cfg_auto('WT_DC_TF_HTF2', 'D')).lower()
@@ -18105,7 +18107,31 @@ class StockStrategy:
                 _grde_exit_score_min = float(_cfg_auto('GR_HTF_DIRECT_EXIT_SCORE', 22.0))
                 # ── 2026-08-27 USER: make GR_HTF_DIRECT_EXIT more conditional if churning (2 + 3-4) ──
                 # 1) gain>0.3% OR age>30m gate — stops 19×0.00% instant flips (S1 BTCUSDC baseline)
-                _gr_age_min = (time.time() - float(getattr(position, 'opened_at', 0) or getattr(position, 'entry_time', 0) or time.time()))/60.0 if getattr(position, 'opened_at', None) or getattr(position, 'entry_time', None) else 999.0
+                # 2026-09-23 FIX: opened_at is datetime (or ISO string) in TradierPosition, not float — float(datetime) raises TypeError seen in trb logs (BMNR/DINO/PSX)
+                _gr_opened_raw = getattr(position, 'opened_at', None) or getattr(position, 'entry_time', None)
+                _gr_age_min = 999.0
+                if _gr_opened_raw is not None:
+                    try:
+                        if isinstance(_gr_opened_raw, (int, float)):
+                            _gr_ts = float(_gr_opened_raw)
+                        elif isinstance(_gr_opened_raw, datetime):
+                            _gr_dt = _gr_opened_raw
+                            if _gr_dt.tzinfo is None:
+                                _gr_dt = _gr_dt.replace(tzinfo=timezone.utc)
+                            _gr_ts = _gr_dt.timestamp()
+                        elif isinstance(_gr_opened_raw, str):
+                            try:
+                                _gr_dt = datetime.fromisoformat(_gr_opened_raw.replace('Z', '+00:00'))
+                                if _gr_dt.tzinfo is None:
+                                    _gr_dt = _gr_dt.replace(tzinfo=timezone.utc)
+                                _gr_ts = _gr_dt.timestamp()
+                            except Exception:
+                                _gr_ts = float(_gr_opened_raw)
+                        else:
+                            _gr_ts = float(_gr_opened_raw)
+                        _gr_age_min = (time.time() - _gr_ts) / 60.0
+                    except Exception:
+                        _gr_age_min = 999.0
                 try:
                     _gr_age_min = float(_gr_age_min)
                 except Exception:

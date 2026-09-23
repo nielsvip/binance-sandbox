@@ -26708,6 +26708,20 @@ class MultiAccountTradeManager:
                 quantity = max(quantity, _psym_sps(symbol, position_side) / current_price)
         min_augment_qty_usd = pos_min_qty * current_price
         if "AUGMENT" in action:
+            # 2026-09-23 FIX: k_1m/k_3m/k_15m/k_1h/k_4h were only defined inside `if not override_used` earlier branch, but AUGMENT sizing runs even when override_qty used (PLTR/ZEC logs 16:35 Handle order exception UnboundLocalError k_1m at line 26737) → ensure always defined.
+            try:
+                k_1m = safe_fetch_float((i or {}).get("k_1m", 50), 50)
+                d_1m = safe_fetch_float((i or {}).get("d_1m", 50), 50)
+                k_3m = safe_fetch_float((i or {}).get("k_3m", 50), 50)
+                d_3m = safe_fetch_float((i or {}).get("d_3m", 50), 50)
+                k_15m = safe_fetch_float((i or {}).get("k_15m", 50), 50)
+                d_15m = safe_fetch_float((i or {}).get("d_15m", 50), 50)
+                k_1h = safe_fetch_float((i or {}).get("k_1h", 50), 50)
+                d_1h = safe_fetch_float((i or {}).get("d_1h", 50), 50)
+                k_4h = safe_fetch_float((i or {}).get("k_4h", 50), 50)
+                d_4h = safe_fetch_float((i or {}).get("d_4h", 50), 50)
+            except Exception:
+                k_1m = d_1m = k_3m = d_3m = k_15m = d_15m = k_1h = d_1h = k_4h = d_4h = 50
             # 2026-05-18 per-sym overlay (compute once)
             _sps_aug = _psym_sps(symbol, position_side)
             if position.gain > 5 * config.MIN_GAIN:
