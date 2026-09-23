@@ -1,22 +1,22 @@
-PERFORMANCE REPORT — 2026-09-22 23:31 UTC
+PERFORMANCE REPORT — 2026-09-22 23:56 UTC
 ================================================================================
-Total: 164 symbols | A=7 B=128 C=29
+Total: 164 symbols | A=6 B=129 C=29
 Window: 14 days | Min trades: 5
 
---- TIER A (7 symbols) ---
+--- TIER A (6 symbols) ---
              DELL  WR=83%  avg=+2.84%  total=+748.5%  trades= 77  mult=10.00
              COIN  WR=84%  avg=+7.09%  total=+241.9%  trades= 19  mult=10.00
              MRVL  WR=70%  avg=+5.04%  total=+162.6%  trades= 20  mult=10.00
              MSTR  WR=92%  avg=+6.22%  total=+98.3%  trades= 12  mult=10.00
              NVDA  WR=87%  avg=+3.77%  total=+72.3%  trades= 15  mult=10.00
                MU  WR=84%  avg=+2.12%  total=+64.5%  trades= 25  mult=10.00
-         HYPEUSDT  WR=66%  avg=+0.30%  total=+14.9%  trades= 47  mult=5.90
 
---- TIER B (128 symbols) ---
+--- TIER B (129 symbols) ---
              SNDK  WR=100%  avg=+14.87%  total=+163.8%  trades=  7  mult=7.30
              HOOD  WR=100%  avg=+7.50%  total=+33.6%  trades=  4  mult=1.00
           XRPUSDC  WR=57%  avg=+0.13%  total=+27.6%  trades=190  mult=3.11
              META  WR=50%  avg=+0.81%  total=+18.7%  trades= 22  mult=6.44
+         HYPEUSDT  WR=65%  avg=+0.29%  total=+14.4%  trades= 48  mult=5.55
              CIEN  WR=38%  avg=+1.37%  total=+11.1%  trades=  8  mult=3.70
              AMAT  WR=100%  avg=+2.44%  total=+10.1%  trades=  4  mult=1.00
          RUNEUSDT  WR=56%  avg=+0.91%  total=+8.3%  trades=  9  mult=4.20
@@ -174,7 +174,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=32%  avg=-1.98%  total=-74.1%  trades= 66  mult=0.15
 
 SUMMARY:
-  Total PnL (all symbols): +1457.0%
+  Total PnL (all symbols): +1456.5%
   Avg win rate: 49%
-  A-tier avg mult: 9.41
+  A-tier avg mult: 10.00
   C-tier avg mult: 0.42
