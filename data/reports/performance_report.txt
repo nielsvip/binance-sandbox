@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-23 00:39 UTC
+PERFORMANCE REPORT — 2026-09-23 01:02 UTC
 ================================================================================
 Total: 164 symbols | A=6 B=129 C=29
 Window: 14 days | Min trades: 5
@@ -23,7 +23,7 @@ Window: 14 days | Min trades: 5
              PYPL  WR=58%  avg=+0.25%  total=+6.2%  trades= 24  mult=4.21
           XTZUSDT  WR=56%  avg=+0.10%  total=+4.7%  trades= 45  mult=2.70
               LOW  WR=54%  avg=+0.32%  total=+4.2%  trades= 13  mult=2.84
-          XLMUSDT  WR=52%  avg=+0.14%  total=+3.9%  trades= 27  mult=2.29
+          XLMUSDT  WR=54%  avg=+0.14%  total=+4.0%  trades= 28  mult=2.59
         ETHFIUSDC  WR=63%  avg=+0.09%  total=+3.3%  trades= 35  mult=3.95
          NEARUSDC  WR=50%  avg=+0.54%  total=+3.2%  trades=  6  mult=2.10
              SNOW  WR=60%  avg=+0.67%  total=+3.2%  trades=  5  mult=2.59
@@ -58,7 +58,7 @@ Window: 14 days | Min trades: 5
           PTBUSDT  WR=54%  avg=+0.02%  total=+0.6%  trades= 26  mult=1.85
                BA  WR=38%  avg=+0.07%  total=+0.6%  trades=  8  mult=0.76
           WIFUSDC  WR=88%  avg=+0.07%  total=+0.6%  trades=  8  mult=3.89
-          WLDUSDC  WR=41%  avg=+0.01%  total=+0.5%  trades= 64  mult=0.58
+          WLDUSDC  WR=41%  avg=+0.01%  total=+0.5%  trades= 64  mult=0.58 ** OPEN **
              BABA  WR=100%  avg=+0.50%  total=+0.5%  trades=  1  mult=1.00
           RSRUSDT  WR=100%  avg=+0.24%  total=+0.5%  trades=  2  mult=1.00
           SKYUSDT  WR=73%  avg=+0.03%  total=+0.4%  trades= 11  mult=3.38
@@ -174,7 +174,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=32%  avg=-1.98%  total=-74.1%  trades= 66  mult=0.15
 
 SUMMARY:
-  Total PnL (all symbols): +1455.9%
+  Total PnL (all symbols): +1456.0%
   Avg win rate: 49%
   A-tier avg mult: 10.00
   C-tier avg mult: 0.42

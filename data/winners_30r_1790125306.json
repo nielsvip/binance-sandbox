@@ -37,9 +37,9 @@
   },
   {
     "symbol": "STRKUSDT",
-    "returns_15m": 1.4164305949008411,
-    "returns_3m": 2.0427553444180515,
-    "gain_score": 8.171
+    "returns_15m": 1.680473372781054,
+    "returns_3m": 1.9700925706147576,
+    "gain_score": 7.88
   },
   {
     "symbol": "MVLLUSDT",
@@ -55,9 +55,15 @@
   },
   {
     "symbol": "SPXUSDT",
-    "returns_15m": 1.121246674268342,
-    "returns_3m": 1.720512330338369,
-    "gain_score": 6.882
+    "returns_15m": 0.9294385432473474,
+    "returns_3m": 1.584574264986631,
+    "gain_score": 6.338
+  },
+  {
+    "symbol": "POPCATUSDT",
+    "returns_15m": 0.5745184183845894,
+    "returns_3m": 1.2761613067891793,
+    "gain_score": 5.105
   },
   {
     "symbol": "USUALUSDT",
@@ -73,21 +79,15 @@
   },
   {
     "symbol": "CRCLUSDT",
-    "returns_15m": 1.0564124234100993,
-    "returns_3m": 1.1846837317537446,
-    "gain_score": 4.739
-  },
-  {
-    "symbol": "POPCATUSDT",
-    "returns_15m": 1.121304791029563,
-    "returns_3m": 1.121304791029563,
-    "gain_score": 4.485
+    "returns_15m": 1.1525853864862043,
+    "returns_3m": 1.2489415749364865,
+    "gain_score": 4.996
   },
   {
     "symbol": "BCHUSDC",
-    "returns_15m": 0.73886610233587,
-    "returns_3m": 1.0327624938005135,
-    "gain_score": 4.131
+    "returns_15m": 0.3389928724575581,
+    "returns_3m": 1.1448932503869902,
+    "gain_score": 4.58
   },
   {
     "symbol": "SKHYUSDT",
@@ -138,10 +138,10 @@
     "gain_score": 2.625
   },
   {
-    "symbol": "NVDAUSDT",
-    "returns_15m": 0.47208987192375923,
-    "returns_3m": 0.6040180330021427,
-    "gain_score": 2.416
+    "symbol": "XRPUSDC",
+    "returns_15m": 0.8144453563987569,
+    "returns_3m": 0.5668220178863772,
+    "gain_score": 2.267
   },
   {
     "symbol": "MINAUSDT",
@@ -150,16 +150,16 @@
     "gain_score": 2.233
   },
   {
+    "symbol": "NVDAUSDT",
+    "returns_15m": 0.5336132616017141,
+    "returns_3m": 0.53801067273204,
+    "gain_score": 2.152
+  },
+  {
     "symbol": "WDCUSDT",
     "returns_15m": 0.08630175408314683,
     "returns_3m": 0.5178764897074727,
     "gain_score": 2.072
-  },
-  {
-    "symbol": "XRPUSDC",
-    "returns_15m": 0.776270116756073,
-    "returns_3m": 0.5161777665869309,
-    "gain_score": 2.065
   },
   {
     "symbol": "NOWUSDT",
