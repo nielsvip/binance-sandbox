@@ -1092,15 +1092,6 @@
       "API_ABSENCE": 2
     }
   },
-  "ang:TRUMPUSDC_SHORT": {
-    "count": 2,
-    "first_seen_zero_at": "2026-05-15T08:29:19.984940+00:00",
-    "last_increment_at": "2026-05-15T08:29:19.984940+00:00",
-    "sources": {
-      "API_ABSENCE": 1
-    },
-    "last_seen": "2026-05-15T08:29:22.435121+00:00"
-  },
   "inf:PNUTUSDC_SHORT": {
     "count": 2,
     "first_seen_zero_at": "2026-05-17T03:14:35.268931+00:00",
@@ -1678,13 +1669,28 @@
       "API_ABSENCE": 2
     }
   },
-  "men:ALGOUSDT_SHORT": {
+  "ang:GALAUSDT_SHORT": {
     "count": 2,
-    "first_seen_zero_at": "2026-09-23T18:53:27.208362+00:00",
-    "last_increment_at": "2026-09-23T18:53:27.208362+00:00",
+    "first_seen_zero_at": "2026-09-23T19:13:34.655582+00:00",
+    "last_increment_at": "2026-09-23T19:13:57.703276+00:00",
     "sources": {
-      "API_ABSENCE": 1
-    },
-    "last_seen": "2026-09-23T18:53:30.571902+00:00"
+      "API_ABSENCE": 2
+    }
+  },
+  "ang:API3USDT_SHORT": {
+    "count": 2,
+    "first_seen_zero_at": "2026-09-23T19:45:00.796466+00:00",
+    "last_increment_at": "2026-09-23T19:45:30.369011+00:00",
+    "sources": {
+      "API_ABSENCE": 2
+    }
+  },
+  "inf:ARUSDT_LONG": {
+    "count": 2,
+    "first_seen_zero_at": "2026-09-23T20:07:46.064910+00:00",
+    "last_increment_at": "2026-09-23T20:08:07.312053+00:00",
+    "sources": {
+      "API_ABSENCE": 2
+    }
   }
 }
