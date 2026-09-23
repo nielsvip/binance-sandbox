@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-23T15:05:43.466548+00:00",
+  "generated_at": "2026-09-23T16:39:17.875766+00:00",
   "count": 3,
   "advisories": [
     {
@@ -8,7 +8,7 @@
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.57 threshold=0.45",
       "score": 0.572,
-      "ts": "2026-09-23T15:05:43.466356+00:00"
+      "ts": "2026-09-23T16:39:17.875651+00:00"
     },
     {
       "symbol": "INTC",
@@ -16,7 +16,7 @@
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.86 threshold=0.45",
       "score": 0.855,
-      "ts": "2026-09-23T15:05:43.466454+00:00"
+      "ts": "2026-09-23T16:39:17.875701+00:00"
     },
     {
       "symbol": "NVDA",
@@ -24,7 +24,7 @@
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.68 threshold=0.45",
       "score": 0.678,
-      "ts": "2026-09-23T15:05:43.466465+00:00"
+      "ts": "2026-09-23T16:39:17.875711+00:00"
     }
   ]
 }

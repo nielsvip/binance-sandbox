@@ -981,6 +981,66 @@ def main():
                     break
     except Exception as _e_best:
         print(f"[BEST-baseline-warn] {new_symside} {_e_best}", flush=True)
+    # PREVIOUS-TEST-as-baseline: always load best overrides from previous progress/xls for sym_side first, then calc baseline on those overrides
+    try:
+        import json as _js_prev_prog
+        _prev_prog_path = PROGRESS_DIR / f"{new_symside}_v14_progress.json"
+        if _prev_prog_path.exists():
+            _pd = _js_prev_prog.loads(_prev_prog_path.read_text())
+            _co = _pd.get("cumulative_overrides") or _pd.get("overrides") or {}
+            _added = 0
+            for k, v in _co.items():
+                if k not in overrides and not (isinstance(v, str) and " + " in v):
+                    overrides[k] = v
+                    _added += 1
+            if _added:
+                print(f"[BEST-prev-progress] {new_symside}: loaded {_added} overrides from previous progress cumulative_overrides as baseline", flush=True)
+            _ho = _pd.get("hustler_overrides") or {}
+            _added2 = 0
+            for k, v in _ho.items():
+                if k not in overrides:
+                    overrides[k] = v
+                    _added2 += 1
+            if _added2:
+                print(f"[BEST-prev-progress] {new_symside}: loaded {_added2} hustler_overrides as baseline", flush=True)
+    except Exception as _e_prev_prog:
+        print(f"[BEST-prev-progress-warn] {_e_prev_prog}", flush=True)
+    try:
+        _xls_prev = OUT_DIR / f"{new_symside}_30d_matrix.xlsx"
+        if _xls_prev.exists():
+            import openpyxl as _op_prev
+            _wb_prev = _op_prev.load_workbook(str(_xls_prev), data_only=True, read_only=True)
+            _added_xls = 0
+            for _sheet in SWITCH_SHEETS:
+                if _sheet not in _wb_prev.sheetnames:
+                    continue
+                _ws_prev = _wb_prev[_sheet]
+                for _r in range(3, _ws_prev.max_row + 1):
+                    _a = _ws_prev.cell(row=_r, column=1).value
+                    _c = _ws_prev.cell(row=_r, column=3).value
+                    _f = _ws_prev.cell(row=_r, column=6).value
+                    if _a and _c and str(_c).strip() not in ("", "None", "none") and isinstance(_f, (int, float)) and _f > 0:
+                        _parts = str(_c).split(" + ")
+                        for _part in _parts:
+                            if "=" in _part:
+                                _k, _v = _part.split("=", 1)
+                                _k = _k.strip()
+                                _v = _v.strip()
+                                if _v.lower() in ("true", "false"):
+                                    _v_parsed = _v.lower() == "true"
+                                else:
+                                    try:
+                                        _vf = float(_v)
+                                        _v_parsed = _vf
+                                    except:
+                                        _v_parsed = _v
+                                if _k not in overrides:
+                                    overrides[_k] = _v_parsed
+                                    _added_xls += 1
+            if _added_xls:
+                print(f"[BEST-prev-xls] {new_symside}: loaded {_added_xls} overrides from previous XLS {_xls_prev.name} as baseline", flush=True)
+    except Exception as _e_xls:
+        print(f"[BEST-prev-xls-warn] {_e_xls}", flush=True)
     # baseline-json for shuffle second round: found settings as new baseline
     if args.baseline_json:
         try:
@@ -1072,17 +1132,22 @@ def main():
         from tools.opt.v12_pilot import evaluate_sanitized
         baseline_vec = evaluate_sanitized(new_symside, overrides, window_days=args.window_days)
         print(f"[baseline] no prepared, vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')}", flush=True)
-        # FIX 2026-09-23: 0-TRADES means trades==0 only, not valid==False with trades>0 (MANA/ALGO 9 trades valid False was false-positive)
-        # Always persist baseline to XLS before any early return — herd audit requires E2 + BASELINE_METRICS even for 0-trade.
+        # FIX 2026-09-23: 0-TRADES means trades==0 only (MANA/ALGO 9 trades valid False was false-positive → not 0). Do NOT create XLS for 0 trades: no baseline, no delta, no waste — diagnostic only, never to mac.
         _is_zero = int(baseline_vec.get("trades") or 0) == 0
         if ("ZECUSDC" not in new_symside) and _is_zero:
-            print(f"[0-TRADES-FAST-FAIL] {new_symside} 0 trades — writing baseline XLS then diagnostic (never wait sweep)", flush=True)
-            # fall through to baseline_gain/bh + clone/write below; set flag to skip sweep after baseline write
-            _zero_trades_early = True
-        else:
-            _zero_trades_early = False
-            if not baseline_vec.get("valid"):
-                print(f"[baseline-warn] {new_symside} valid False but trades {baseline_vec.get('trades')} — proceeding, not diagnostic", flush=True)
+            print(f"[0-TRADES-FAST-FAIL] {new_symside} 0 trades — DIAGNOSTIC ONLY, no XLS, skipping full sweep (never waste CPU/disk/mac)", flush=True)
+            try:
+                diag_path = PROGRESS_DIR / f"{new_symside}_{args.window_days}d_progress.json"
+                diag_path.parent.mkdir(parents=True, exist_ok=True)
+                _diag = {"symside": new_symside, "baseline_gain": float(baseline_vec.get("gain_pct") or 0), "bh": float(baseline_vec.get("bh_pct") or 0), "valid": False, "trades": int(baseline_vec.get("trades") or 0), "reason": "0 trades baseline — DATA_ERROR NPZ short history, no XLS, never waste", "done": {}, "no_delta": True, "zero_trades_diagnostic": True}
+                import json as _js0
+                diag_path.write_text(_js0.dumps(_diag, indent=2))
+            except Exception as _e:
+                print(f"[diag-warn] {new_symside} {_e}", flush=True)
+            return
+        _zero_trades_early = False
+        if not baseline_vec.get("valid"):
+            print(f"[baseline-warn] {new_symside} valid False but trades {baseline_vec.get('trades')} — proceeding, not diagnostic", flush=True)
         prepared_for_fallback = None
     else:
         from tools.opt.v12_pilot import evaluate_prepared_sanitized
@@ -1090,12 +1155,19 @@ def main():
         print(f"[baseline] vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')} sharpe={baseline_vec.get('pool_sharpe')} hot", flush=True)
         _is_zero = int(baseline_vec.get("trades") or 0) == 0
         if ("ZECUSDC" not in new_symside) and _is_zero:
-            print(f"[0-TRADES-FAST-FAIL] {new_symside} 0 trades — writing baseline XLS then diagnostic", flush=True)
-            _zero_trades_early = True
-        else:
-            _zero_trades_early = False
-            if not baseline_vec.get("valid"):
-                print(f"[baseline-warn] {new_symside} valid False but trades {baseline_vec.get('trades')} — proceeding", flush=True)
+            print(f"[0-TRADES-FAST-FAIL] {new_symside} 0 trades — DIAGNOSTIC ONLY, no XLS, skipping (no waste)", flush=True)
+            try:
+                diag_path = PROGRESS_DIR / f"{new_symside}_{args.window_days}d_progress.json"
+                diag_path.parent.mkdir(parents=True, exist_ok=True)
+                _diag = {"symside": new_symside, "baseline_gain": float(baseline_vec.get("gain_pct") or 0), "bh": float(baseline_vec.get("bh_pct") or 0), "valid": False, "trades": int(baseline_vec.get("trades") or 0), "reason": "0 trades baseline — DATA_ERROR NPZ short history, no XLS, never waste", "done": {}, "no_delta": True, "zero_trades_diagnostic": True}
+                import json as _js0
+                diag_path.write_text(_js0.dumps(_diag, indent=2))
+            except Exception as _e:
+                print(f"[diag-warn] {new_symside} {_e}", flush=True)
+            return
+        _zero_trades_early = False
+        if not baseline_vec.get("valid"):
+            print(f"[baseline-warn] {new_symside} valid False but trades {baseline_vec.get('trades')} — proceeding", flush=True)
         prepared_for_fallback = prepared
 
     if args.vector_only:
@@ -1116,6 +1188,47 @@ def main():
             baseline_live = baseline_vec
     baseline_gain = float(baseline_live.get("gain_pct") or baseline_vec.get("gain_pct") or 0.0)
     bh = float(baseline_live.get("bh_pct") or baseline_vec.get("bh_pct") or 0.0)
+    # FIX 2026-09-23: baseline 0.00 is a lie — must be calculated from previous test OR defaults for cat_side, never 0.00
+    if abs(baseline_gain) < 1e-9:
+        _fixed = False
+        try:
+            _prev_path = PROGRESS_DIR / f"{new_symside}_v14_progress.json"
+            if _prev_path.exists():
+                import json as _js_prev
+                _prev = json.loads(_prev_path.read_text())
+                _prev_base = float(_prev.get("baseline_gain") or 0)
+                _prev_bh = float(_prev.get("bh") or 0)
+                if abs(_prev_base) > 1e-9:
+                    baseline_gain = _prev_base
+                    if abs(_prev_bh) > 1e-9:
+                        bh = _prev_bh
+                    print(f"[baseline-fix] 0.00 lie -> using previous {baseline_gain:.4f} bh {bh:.4f}", flush=True)
+                    _fixed = True
+        except Exception as _e_prev:
+            print(f"[baseline-fix-prev-warn] {_e_prev}", flush=True)
+        if not _fixed:
+            try:
+                _cat_defaults = get_defaults_for_symside(new_symside)
+                # evaluate with cat_side defaults to get real baseline
+                _eval = None
+                if prepared_for_fallback is not None:
+                    from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_prep
+                    _eval = _eval_prep(prepared_for_fallback, {}, window_days=args.window_days)
+                else:
+                    from tools.opt.v12_pilot import evaluate_sanitized as _eval_san
+                    _eval = _eval_san(new_symside, {}, window_days=args.window_days)
+                if _eval and _eval.get("gain_pct") is not None:
+                    _recalc = float(_eval.get("gain_pct") or 0)
+                    _recalc_bh = float(_eval.get("bh_pct") or bh or 0)
+                    if abs(_recalc) > 1e-9:
+                        baseline_gain = _recalc
+                        bh = _recalc_bh
+                        print(f"[baseline-fix] 0.00 lie -> recalculated defaults {baseline_gain:.4f} bh {bh:.4f}", flush=True)
+                        _fixed = True
+            except Exception as _e_recalc:
+                print(f"[baseline-fix-recalc-warn] {_e_recalc}", flush=True)
+        if not _fixed:
+            print(f"[baseline-fix] WARNING baseline still 0.00 for {new_symside} bh {bh:.4f} — will proceed but this is a lie", flush=True)
 
     # clone
     template = Path(args.template)
@@ -2471,6 +2584,9 @@ def main():
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
                                 from openpyxl.styles import PatternFill
+                                # E always numeric per user (was None for NEG -> empty)
+                                ws_row.cell(row=r, column=5).value = float(cumulative_before)
+                                ws_row.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", bold=False, color="000000")
                                 _hustle_neg = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
                                 ws_row.cell(row=r, column=6).value = float(_hustle_neg) if _hustle_neg is not None else None
                                 ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="006100")

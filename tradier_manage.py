@@ -1594,6 +1594,248 @@ def _rz_standalone_exit_gate(indicators: dict, is_long: bool, signal, config) ->
     return passed, reason
 
 
+def _weekly_max_shares_tradier(position, current_price: float, symbol: str = None, account_key: str = None) -> float:
+    """Weekly max position size in shares for reentry sizing (ZCSH fix 2026-09-23).
+
+    Bug: gradual reductions left last_reduction_amount=1 so reentry used 1 share
+    while peak was 19+ shares.  Fix: base all reentries on max position over
+    last week (10-150% of that), not last reduction chunk.
+
+    Sources in priority:
+      1) position.max_quantity with 7-day decay (24h flat -> target 2*START/price)
+      2) reenter_data cumulative reenter_amount
+      3) history jsonl peak qty in last 7d
+      4) START_POSITION_SIZE / price fallback
+    Clamped >=1.0 share. Never raises.
+    """
+    try:
+        price = float(current_price) if current_price and float(current_price) > 0 else 0.0
+        if position is not None:
+            mq = float(getattr(position, 'max_quantity', 0) or 0)
+            if mq > 0 and price > 0:
+                # deteriorate if flat >24h (mirrors TradierPositionManager.deteriorate_max_quantity)
+                try:
+                    amt = abs(float(getattr(position, 'positionAmt', 0) or 0))
+                    if amt == 0:
+                        lt = getattr(position, 'last_reduction_time', None)
+                        if lt is not None:
+                            if isinstance(lt, str):
+                                lt = datetime.fromisoformat(str(lt).replace('Z', '+00:00'))
+                            if getattr(lt, 'tzinfo', None) is None and isinstance(lt, datetime):
+                                lt = lt.replace(tzinfo=timezone.utc)
+                            if isinstance(lt, datetime):
+                                hrs = (datetime.now(timezone.utc) - lt).total_seconds() / 3600.0
+                                if hrs > 24:
+                                    target = 2 * float(getattr(config, 'START_POSITION_SIZE', 500.0)) / max(price, 1e-9)
+                                    if hrs >= 168:
+                                        mq = min(mq, target)
+                                    else:
+                                        progress = min(1.0, max(0.0, (hrs - 24) / 144.0))
+                                        if mq > target:
+                                            mq = mq - (mq - target) * progress
+                except Exception:
+                    pass
+                return max(1.0, float(mq))
+        # fallback 2: try history scan for weekly peak (if position has no max_quantity)
+        if symbol and price > 0:
+            try:
+                # look in trb/trc history dirs for last 7d max
+                for _acc in (account_key and [account_key] or ['trb', 'trc']):
+                    hist = Path(config.DATA_DIR) / 'history' / _acc / f"{symbol}_{'LONG' if getattr(position, 'position_side', 'LONG') == 'LONG' else 'SHORT'}.jsonl"
+                    if not hist.exists():
+                        hist2 = Path(config.BASE_PATH) / _acc / f"history_{symbol}.jsonl"
+                        if hist2.exists():
+                            hist = hist2
+                        else:
+                            continue
+                    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+                    peak = 0.0
+                    try:
+                        txt = hist.read_text()
+                        for line in txt.strip().split('\n')[-800:]:
+                            if not line.strip():
+                                continue
+                            try:
+                                rec = json.loads(line)
+                                ts = rec.get('ts', '')
+                                try:
+                                    dt = datetime.fromisoformat(str(ts).replace('Z', '+00:00'))
+                                    if dt.tzinfo is None:
+                                        dt = dt.replace(tzinfo=timezone.utc)
+                                    if dt < cutoff:
+                                        continue
+                                except Exception:
+                                    pass
+                                q = float(rec.get('qty', 0) or 0)
+                                if q > peak:
+                                    peak = q
+                                # also try value/price
+                                if rec.get('value') and rec.get('price'):
+                                    try:
+                                        v = float(rec.get('value', 0))
+                                        p = float(rec.get('price', 0))
+                                        if p > 0:
+                                            qs = v / p
+                                            if qs > peak:
+                                                peak = qs
+                                    except Exception:
+                                        pass
+                            except Exception:
+                                continue
+                    except Exception:
+                        pass
+                    if peak >= 1.0:
+                        return max(1.0, float(peak))
+            except Exception:
+                pass
+    except Exception:
+        pass
+    try:
+        p = float(current_price) if current_price and float(current_price) > 0 else 1.0
+        return max(1.0, float(getattr(config, 'START_POSITION_SIZE', 500.0)) / max(p, 1e-9))
+    except Exception:
+        return 1.0
+
+
+def _reentry_bounce_scale_tradier(indicators: dict, is_long: bool, hours_since_exit: float = None) -> float:
+    """Bounce-quality scale 0.10-1.50 for weekly-max reentry (ZCSH fix).
+
+    Maps WT favor count + k_5m rising + level to 10-150%.  Weak bounce still
+    reenters but at 10%, strong at 150%.  Never raises, clamped 0.10-1.50.
+    """
+    try:
+        i = indicators or {}
+        wt1_5 = float(i.get('wt1_5m', 0) or 0)
+        wt2_5 = float(i.get('wt2_5m', 0) or 0)
+        wt1_15 = float(i.get('wt1_15m', 0) or 0)
+        wt2_15 = float(i.get('wt2_15m', 0) or 0)
+        wt1_1h = float(i.get('wt1_1h', 0) or 0)
+        wt2_1h = float(i.get('wt2_1h', 0) or 0)
+        k5 = float(i.get('k_5m', 50) or 50)
+        kp5 = float(i.get('k_5m_prev', 50) or 50)
+        k15 = float(i.get('k_15m', 50) or 50)
+        kp15 = float(i.get('k_15m_prev', 50) or 50)
+        wt_fav = 0
+        if is_long:
+            if wt1_5 > wt2_5:
+                wt_fav += 1
+            if wt1_15 > wt2_15:
+                wt_fav += 1
+            if wt1_1h > wt2_1h:
+                wt_fav += 1
+            rising = k5 > kp5 or k15 > kp15
+        else:
+            if wt1_5 < wt2_5:
+                wt_fav += 1
+            if wt1_15 < wt2_15:
+                wt_fav += 1
+            if wt1_1h < wt2_1h:
+                wt_fav += 1
+            rising = k5 < kp5 or k15 < kp15
+        if wt_fav >= 3 and rising:
+            base = 1.5
+        elif wt_fav >= 2 and rising:
+            base = 1.0
+        elif wt_fav >= 2:
+            base = 0.65
+        elif wt_fav >= 1 and rising:
+            base = 0.4
+        elif wt_fav >= 1:
+            base = 0.25
+        else:
+            base = 0.12
+        # slight boost for fresh reentry (<2h) where momentum just flipped
+        if hours_since_exit is not None:
+            try:
+                hrs = float(hours_since_exit)
+                if hrs < 0.5 and base < 1.0:
+                    base = min(1.5, base * 1.25)
+            except Exception:
+                pass
+        return max(0.10, min(1.50, float(base)))
+    except Exception:
+        return 0.8
+
+
+def _stdev_mult_tradier(indicators: dict, is_long: bool) -> float:
+    """STDEV slope multiplier 1.0-5.0 for reentry (user 2026-09-23 second clause).
+
+    Gradient from BOTTOM stdev line (-2.5 stdev from D slope line) to top.
+    Uses lrL_pct_b_D (D timeframe regression channel, 2.5 stdev).  Long:
+    5x at bottom (pct_b=0), 1x at top (pct_b=1).  Short: opposite (1x at 0,
+    5x at 1).  Linear 5->1.  Below bottom stays 5x, above top stays 1x
+    (clamped).  Falls back to 1h/4h/D if D missing, else 1.0 (neutral).
+    Never raises, clamped 1.0-5.0.
+    """
+    try:
+        i = indicators or {}
+        # prefer D, then 4h, 1h, 15m
+        pct_b = None
+        for tf in ('D', '4h', '1h', '15m', '5m'):
+            v = i.get(f'lrL_pct_b_{tf}')
+            if v is None:
+                v = i.get(f'lr_pct_b_{tf}')
+            if v is not None:
+                try:
+                    pct_b = float(v)
+                    break
+                except Exception:
+                    continue
+        if pct_b is None:
+            # fallback to bb_pct_b
+            for tf in ('D', '4h', '1h'):
+                v = i.get(f'bb_pct_b_{tf}')
+                if v is not None:
+                    try:
+                        pct_b = float(v)
+                        break
+                    except Exception:
+                        continue
+        if pct_b is None or pct_b != pct_b:
+            return 1.0
+        # clamp 0-1, but keep outside as 5x/1x extremes
+        if pct_b <= 0.0:
+            return 5.0 if is_long else 1.0
+        if pct_b >= 1.0:
+            return 1.0 if is_long else 5.0
+        pb = max(0.0, min(1.0, float(pct_b)))
+        if is_long:
+            mult = 5.0 - 4.0 * pb
+        else:
+            mult = 1.0 + 4.0 * pb
+        return max(1.0, min(5.0, float(mult)))
+    except Exception:
+        return 1.0
+
+
+def _reentry_stdev_bounce_combined_scale(indicators: dict, is_long: bool, hours_since_exit: float = None) -> tuple[float, float, float]:
+    """Combine bounce (0.1-1.5) and stdev (1-5) into final 0.10-1.50 weekly scale.
+
+    Level determines stdev_mult (1-5).  Map stdev 1->0.10, 5->1.50 linearly,
+    then multiply by bounce scale and renormalize to 0.10-1.50 so STDEV
+    level + bounce quality jointly decide position inside weekly range.
+    Returns (final_scale, bounce_scale, stdev_mult).
+    Never raises.
+    """
+    try:
+        bounce = _reentry_bounce_scale_tradier(indicators, is_long, hours_since_exit)
+        stdev = _stdev_mult_tradier(indicators, is_long)
+        # map stdev 1-5 to 0.30-1.50 base (so bottom level alone gives 1.50, top gives 0.30)
+        # then combine with bounce via geometric mean / weighted: final = sqrt(bounce * stdev_mapped)
+        # keeps dependence on both but stays inside 0.10-1.50.
+        stdev_mapped = 0.10 + (stdev - 1.0) / 4.0 * 1.40  # 1->0.10, 5->1.50
+        # also consider pure level extreme: if stdev_mapped is very low/high, blend
+        combined = (bounce * 0.65 + stdev_mapped * 0.35)  # bounce dominant, level secondary
+        # if both strong, push to max
+        if bounce >= 1.45 and stdev_mapped >= 1.40:
+            combined = 1.50
+        elif bounce <= 0.15 and stdev_mapped <= 0.20:
+            combined = 0.10
+        return max(0.10, min(1.50, float(combined))), bounce, stdev
+    except Exception:
+        return 0.8, 0.8, 1.0
+
+
 def _ee_reentry_boost(symbol, indicators, is_long, cfg):
     """Pure-additive engine evaluator for REENTRY paths. Engines NEVER block reentries.
     Returns (size_mult, tag_str). size_mult==1.0 + empty tag = pass-through (default).
@@ -13465,10 +13707,13 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                 hours_since_exit = (datetime.now(timezone.utc) - exit_time).total_seconds() / 3600.0
                 if hours_since_exit < 2.0:
                     is_recent_reentry = True
-                    last_reduction_amount = getattr(position, 'last_reduction_amount', None) if position else None
-                    if last_reduction_amount and float(last_reduction_amount) > 0:
-                        final_override_qty = float(last_reduction_amount)
-                        logger.info(f"[queue_trade_action] Recent reentry (<2h): Using position.last_reduction_amount={final_override_qty} as override_qty")
+                    # ZCSH fix 2026-09-23: NEVER use last_reduction_amount (1 after 19->1 bleed). Weekly max is the source.
+                    # Keep flag for logging but DO NOT overwrite override_qty with last chunk. evaluate_reentry already computed weekly qty.
+                    try:
+                        _qta_weekly = _weekly_max_shares_tradier(position, current_price, symbol, account_key)
+                        logger.info(f"[queue_trade_action] Recent reentry (<2h): weekly={_qta_weekly:.1f} last_red={getattr(position, 'last_reduction_amount', 0)} override_qty={override_qty} — weekly wins")
+                    except Exception:
+                        pass
         if action == "OPEN":
             quantity = override_qty if override_qty else await trade_manager.calculate_position_size(symbol, current_price, account_key=account_key)
         elif action in ["REDUCE", "CLOSE"]:
@@ -20262,8 +20507,10 @@ class StockStrategy:
                                         _gr_trend_ok = float(_gr_ind.get('wt1_D', 0) or 0) < float(_gr_ind.get('wt2_D', 0) or 0)
                                 if _gr_trend_ok:
                                     _gr_size_pct = float(_cfg('GAP_RISK_REENTRY_SIZE_PCT', 100.0, _gr_acct, symbol, _gr_side) or 100.0)
-                                    _gr_qty = max(1.0, (config.START_POSITION_SIZE * _gr_size_pct / 100.0) / max(current_price, 1e-9))
-                                    logger.warning(f"[GAP_REENTRY_FILL] {symbol} {'L' if is_long else 'S'}: gap reentry — fill_target={_gr_fill:.2f} cur={current_price:.2f} gap_open={_gr.get('gap_open'):.2f} prev_close={_gr.get('prev_close'):.2f} days={_gr_hours/24:.1f}/{_gr_max_days} — REENTER")
+                                    _gr_weekly = _weekly_max_shares_tradier(position, current_price, symbol, _gr_acct)
+                                    _gr_scale, _gr_bounce, _gr_stdev = _reentry_stdev_bounce_combined_scale(i or {}, is_long, _gr_hours)
+                                    _gr_qty = max(1.0, _gr_weekly * (_gr_size_pct / 100.0) * _gr_scale)
+                                    logger.warning(f"[GAP_REENTRY_FILL] {symbol} {'L' if is_long else 'S'}: gap reentry — fill_target={_gr_fill:.2f} cur={current_price:.2f} gap_open={_gr.get('gap_open'):.2f} prev_close={_gr.get('prev_close'):.2f} days={_gr_hours/24:.1f}/{_gr_max_days} weekly={_gr_weekly:.1f} bounce={_gr_bounce:.2f} stdev={_gr_stdev:.1f} scale={_gr_scale:.2f} — REENTER")
                                     _gap_re_pending.pop(_gap_re_key, None)
                                     return "REENTRY", f"GAP_RISK_REENTRY_FILL_o{_gr.get('gap_open',0):.2f}_p{_gr.get('prev_close',0):.2f}_fill{_gr_fill:.2f}", 80.0, _gr_qty
         except Exception as _gr_e:
@@ -20323,8 +20570,10 @@ class StockStrategy:
                                 _mr_crosses.append(f'stoch_cross_{_mr_tf}')
                     if _mr_levels or _mr_crosses:
                         _mr_trigger = '+'.join(_mr_levels + _mr_crosses)
-                        _mr_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
-                        _mr_reason = f"MU_CORRECTION_REENTRY_{_mr_trigger}_age{_mr_age:.0f}m"
+                        _mr_weekly = _weekly_max_shares_tradier(position, current_price, symbol, _mr_acct)
+                        _mr_scale, _mr_b, _mr_s = _reentry_stdev_bounce_combined_scale(i or {}, is_long, _mr_age / 60.0)
+                        _mr_qty = max(1.0, _mr_weekly * _mr_scale)
+                        _mr_reason = f"MU_CORRECTION_REENTRY_{_mr_trigger}_age{_mr_age:.0f}m_weekly{_mr_weekly:.1f}_b{_mr_b:.2f}_s{_mr_s:.1f}"
                         logger.warning(f"[MU_CORRECTION_REENTRY] {symbol} {_mr_side}: {_mr_reason} qty={_mr_qty:.4f}")
                         return "REENTRY_OPEN", _mr_reason, 90.0, _mr_qty
         except Exception as _mr_err:
@@ -20355,10 +20604,12 @@ class StockStrategy:
                             except Exception:
                                 pass
                         if _hc_age_min >= 0.0:
-                            _hc_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
+                            _hc_weekly = _weekly_max_shares_tradier(position, current_price, symbol, current_account.get('') or 'trb')
+                            _hc_scale, _hc_b, _hc_s = _reentry_stdev_bounce_combined_scale(i or {}, is_long, _hc_age_min / 60.0)
+                            _hc_qty = max(1.0, _hc_weekly * _hc_scale)
                             _hc_side = "LONG" if is_long else "SHORT"
-                            _hc_reason = f"HARDCODED_RALLY_REENTRY_{_hc_side}_close{current_price:.4f}>exit{_hc_last_px:.4f}_wt{_hc_wt1:.1f}>{_hc_wt1_prev:.1f}" if is_long else f"HARDCODED_RALLY_REENTRY_{_hc_side}_close{current_price:.4f}<exit{_hc_last_px:.4f}_wt{_hc_wt1:.1f}<{_hc_wt1_prev:.1f}"
-                            logger.warning(f"[HARDCODED_RALLY_REENTRY] {symbol} {_hc_side}: {_hc_reason} age={_hc_age_min:.0f}m — REOPEN")
+                            _hc_reason = f"HARDCODED_RALLY_REENTRY_{_hc_side}_close{current_price:.4f}>exit{_hc_last_px:.4f}_wt{_hc_wt1:.1f}>{_hc_wt1_prev:.1f}_w{_hc_weekly:.1f}_s{_hc_scale:.2f}" if is_long else f"HARDCODED_RALLY_REENTRY_{_hc_side}_close{current_price:.4f}<exit{_hc_last_px:.4f}_wt{_hc_wt1:.1f}<{_hc_wt1_prev:.1f}_w{_hc_weekly:.1f}_s{_hc_scale:.2f}"
+                            logger.warning(f"[HARDCODED_RALLY_REENTRY] {symbol} {_hc_side}: {_hc_reason} age={_hc_age_min:.0f}m weekly={_hc_weekly:.1f} scale={_hc_scale:.2f} — REOPEN")
                             return "REENTRY_OPEN", _hc_reason, 90.0, _hc_qty
         except Exception as _hc_e:
             logger.debug(f"[HARDCODED_RALLY_REENTRY] {symbol}: check skipped ({type(_hc_e).__name__}: {_hc_e})")
@@ -20400,9 +20651,11 @@ class StockStrategy:
                     if _xb_gate_ok and not _xb_dcb_ok:
                         logger.info(f"[PRICE_CROSS_BACK_DC_BREAK_HOLD] {symbol} {'L' if is_long else 'S'}: cur={current_price:.4f} not past {_xb_dckey}={_xb_dclvl:.4f} — churn guard, skip reentry")
                     elif _xb_gate_ok:
-                        _xb_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
-                        _xb_trigger = f"{'CROSSED_BACK' if _xb_favorable else f'WITHIN_BAND_{_xb_band_pct:.2f}%'}_{_xb_gate_reason}"
-                        logger.warning(f"[PRICE_CROSS_BACK_REENTRY] {symbol} {'L' if is_long else 'S'}: cur={current_price:.4f} vs exit={_xb_last_px:.4f} ({_xb_dist_pct:.2f}%) age={_xb_age_min:.0f}m trigger={_xb_trigger} — REOPEN")
+                        _xb_weekly = _weekly_max_shares_tradier(position, current_price, symbol, current_account.get('') or 'trb')
+                        _xb_scale, _xb_b, _xb_s = _reentry_stdev_bounce_combined_scale(i or {}, is_long, _xb_age_min / 60.0)
+                        _xb_qty = max(1.0, _xb_weekly * _xb_scale)
+                        _xb_trigger = f"{'CROSSED_BACK' if _xb_favorable else f'WITHIN_BAND_{_xb_band_pct:.2f}%'}_{_xb_gate_reason}_w{_xb_weekly:.1f}_s{_xb_scale:.2f}"
+                        logger.warning(f"[PRICE_CROSS_BACK_REENTRY] {symbol} {'L' if is_long else 'S'}: cur={current_price:.4f} vs exit={_xb_last_px:.4f} ({_xb_dist_pct:.2f}%) age={_xb_age_min:.0f}m trigger={_xb_trigger} weekly={_xb_weekly:.1f} bounce={_xb_b:.2f} stdev={_xb_s:.1f} — REOPEN")
                         return "REENTRY_OPEN", f"PRICE_CROSS_BACK_exit{_xb_last_px:.4f}_cur{current_price:.4f}_dist{_xb_dist_pct:.2f}%_age{_xb_age_min:.0f}m_{_xb_trigger}", 90.0, _xb_qty
         # ═══ RECOVERY_AUGMENT — PARTIAL-CLOSE RECOVERY REENTRY (2026-05-20 → 2026-09-11 REENTRY CLARIFIED) ═══
         # Sibling to PRICE_CROSS_BACK: fires when position is PARTIALLY closed
@@ -20458,11 +20711,13 @@ class StockStrategy:
                                 _ra_gate_ok = False
                         if _ra_wt_ok and _ra_gate_ok and _ra_gain_ok:
                             _ra_size_pct = float(_cfg_auto('RECOVERY_AUGMENT_SIZE_PCT', 1.0))
-                            _ra_qty = (config.START_POSITION_SIZE / max(current_price, 1e-9)) * _ra_size_pct
+                            _ra_weekly = _weekly_max_shares_tradier(position, current_price, symbol, current_account.get('') or 'trb')
+                            _ra_scale, _ra_b, _ra_s = _reentry_stdev_bounce_combined_scale(i or {}, is_long, _ra_age_min / 60.0)
+                            _ra_qty = max(1.0, _ra_weekly * _ra_scale * _ra_size_pct)
                             try:
                                 if _ra_one_fire: position.recovery_fired = True
                             except Exception: pass
-                            logger.critical(f"[RECOVERY_AUG] {symbol} {'L' if is_long else 'S'}: PARTIAL_RECOVERY positionAmt={positionAmt:.4f} cur={current_price:.4f} ≈ exit={_ra_last_px:.4f} ({_ra_dist_pct:.3f}% within {_ra_band_pct:.2f}%) age={_ra_age_min:.0f}m gain={_ra_cur_gain:.2f}%>={_ra_min_gain_gate:.2f}% wt_ok={_ra_wt_ok} → AUGMENT qty={_ra_qty:.4f}")
+                            logger.critical(f"[RECOVERY_AUG] {symbol} {'L' if is_long else 'S'}: PARTIAL_RECOVERY positionAmt={positionAmt:.4f} cur={current_price:.4f} ≈ exit={_ra_last_px:.4f} ({_ra_dist_pct:.3f}% within {_ra_band_pct:.2f}%) age={_ra_age_min:.0f}m gain={_ra_cur_gain:.2f}%>={_ra_min_gain_gate:.2f}% weekly={_ra_weekly:.1f} scale={_ra_scale:.2f} wt_ok={_ra_wt_ok} → qty={_ra_qty:.4f}")
                             return "REENTRY_OPEN", f"RECOVERY_AUG_PARTIAL_exit{_ra_last_px:.4f}_cur{current_price:.4f}_dist{_ra_dist_pct:.3f}%_age{_ra_age_min:.0f}m", 95.0, _ra_qty
         entry_price = float(getattr(position, 'entry_price', current_price) or current_price)
         max_q = float(getattr(position, 'max_positionSize', 0) or positionAmt)
@@ -20516,12 +20771,16 @@ class StockStrategy:
             _mom_ok_t = (is_long and k_5m_t2 > k_5m_prev_t2) or (not is_long and k_5m_t2 < k_5m_prev_t2)
             _not_exh_t = not ((is_long and k_5m_t2 > 95) or (not is_long and k_5m_t2 < 5))
             if _trend_past_t and _mom_ok_t and _not_exh_t:
-                _t2_qty_t = config.START_POSITION_SIZE / max(current_price, 1e-9) * _t2_size_t
-                logger.warning(f"[TIER2_CHASE] {'LONG' if is_long else 'SHORT'} {symbol}: Trend past exit {_last_red_px:.2f}→{current_price:.2f} ({last_red_age_min:.0f}min) — chase at {_t2_size_t*100:.0f}% qty={_t2_qty_t:.2f}")
-                return "REENTRY_OPEN", f"TIER2_CHASE_exit{_last_red_px:.2f}_cur{current_price:.2f}_t{last_red_age_min:.0f}m", 75.0, _t2_qty_t
+                _t2_weekly = _weekly_max_shares_tradier(position, current_price, symbol, current_account.get('') or 'trb')
+                _t2_scale, _t2_bb, _t2_ss = _reentry_stdev_bounce_combined_scale(i or {}, is_long, last_red_age_min / 60.0)
+                _t2_qty_t = max(1.0, _t2_weekly * _t2_scale * float(_t2_size_t))
+                logger.warning(f"[TIER2_CHASE] {'LONG' if is_long else 'SHORT'} {symbol}: Trend past exit {_last_red_px:.2f}→{current_price:.2f} ({last_red_age_min:.0f}min) weekly={_t2_weekly:.1f} scale={_t2_scale:.2f} chase at {_t2_size_t*100:.0f}% qty={_t2_qty_t:.2f}")
+                return "REENTRY_OPEN", f"TIER2_CHASE_exit{_last_red_px:.2f}_cur{current_price:.2f}_t{last_red_age_min:.0f}m_w{_t2_weekly:.1f}_s{_t2_scale:.2f}", 75.0, _t2_qty_t
             if last_red_age_min >= _t2_max_t and _not_exh_t:
-                _forced_qty_t = config.START_POSITION_SIZE / max(current_price, 1e-9) * 0.5
-                logger.warning(f"[TIER2_FORCED] {'LONG' if is_long else 'SHORT'} {symbol}: {last_red_age_min:.0f}min overdue — forced min reentry qty={_forced_qty_t:.2f}")
+                _t2f_weekly = _weekly_max_shares_tradier(position, current_price, symbol, current_account.get('') or 'trb')
+                _t2f_scale, _, _ = _reentry_stdev_bounce_combined_scale(i or {}, is_long, last_red_age_min / 60.0)
+                _forced_qty_t = max(1.0, _t2f_weekly * max(0.10, _t2f_scale * 0.5))
+                logger.warning(f"[TIER2_FORCED] {'LONG' if is_long else 'SHORT'} {symbol}: {last_red_age_min:.0f}min overdue weekly={_t2f_weekly:.1f} scale={_t2f_scale:.2f} — forced min reentry qty={_forced_qty_t:.2f}")
                 return "REENTRY_OPEN", f"TIER2_FORCED_{last_red_age_min:.0f}min_exit{_last_red_px:.2f}", 60.0, _forced_qty_t
             if last_red_age_min >= 60.0:
                 logger.warning(f"⚠️ [REENTRY_OVERDUE] {symbol}: {last_red_age_min:.0f}min since exit at {_last_red_px:.2f}, waiting! k5m={k_5m_t2:.0f}")
@@ -20541,16 +20800,20 @@ class StockStrategy:
                 _below_prev = (_last_price_prev > 0 and _last_price_prev <= _ema200_1h_prev) or current_price <= _ema200_1h * 1.002  # small tolerance
                 _above_now = current_price > _ema200_1h
                 if _above_now and _below_prev:
-                    _emaq = config.START_POSITION_SIZE / max(current_price, 1e-9) * 0.8
-                    logger.warning(f"[EMA200_1H_BOUNCE] LONG {symbol}: price {current_price:.2f} crossed back above ema_200_1h {_ema200_1h:.2f} — REENTER qty={_emaq:.2f}")
-                    return "REENTRY_OPEN", f"EMA200_1H_BOUNCE_LONG_px{current_price:.2f}>ema{_ema200_1h:.2f}", 80.0, _emaq
+                    _ema_weekly = _weekly_max_shares_tradier(position, current_price, symbol, current_account.get('') or 'trb')
+                    _ema_scale, _ema_b, _ema_s = _reentry_stdev_bounce_combined_scale(i or {}, is_long, last_red_age_min / 60.0)
+                    _emaq = max(1.0, _ema_weekly * _ema_scale * 0.8)
+                    logger.warning(f"[EMA200_1H_BOUNCE] LONG {symbol}: price {current_price:.2f} crossed back above ema_200_1h {_ema200_1h:.2f} weekly={_ema_weekly:.1f} scale={_ema_scale:.2f} — REENTER qty={_emaq:.2f}")
+                    return "REENTRY_OPEN", f"EMA200_1H_BOUNCE_LONG_px{current_price:.2f}>ema{_ema200_1h:.2f}_w{_ema_weekly:.1f}_s{_ema_scale:.2f}", 80.0, _emaq
             # SHORT: mirror — price was ≥ ema_200_1h, now below
             else:
                 _above_prev = (_last_price_prev > 0 and _last_price_prev >= _ema200_1h_prev) or current_price >= _ema200_1h * 0.998
                 _below_now = current_price < _ema200_1h
                 if _below_now and _above_prev:
-                    _emaq = config.START_POSITION_SIZE / max(current_price, 1e-9) * 0.8
-                    logger.warning(f"[EMA200_1H_BOUNCE] SHORT {symbol}: price {current_price:.2f} crossed back below ema_200_1h {_ema200_1h:.2f} — REENTER qty={_emaq:.2f}")
+                    _ema_weekly2 = _weekly_max_shares_tradier(position, current_price, symbol, current_account.get('') or 'trb')
+                    _ema_scale2, _ema_b2, _ema_s2 = _reentry_stdev_bounce_combined_scale(i or {}, is_long, last_red_age_min / 60.0)
+                    _emaq = max(1.0, _ema_weekly2 * _ema_scale2 * 0.8)
+                    logger.warning(f"[EMA200_1H_BOUNCE] SHORT {symbol}: price {current_price:.2f} crossed back below ema_200_1h {_ema200_1h:.2f} weekly={_ema_weekly2:.1f} scale={_ema_scale2:.2f} — REENTER qty={_emaq:.2f}")
                     return "REENTRY_OPEN", f"EMA200_1H_BOUNCE_SHORT_px{current_price:.2f}<ema{_ema200_1h:.2f}", 80.0, _emaq
         # === BOUNCE_REENTRY_K_RESET (2026-04-26) — wires DEAD switches BOUNCE_REENTRY_K_RESET_{LONG,SHORT}_TRADIER ===
         # K-reset bounce: previous bar's K was at/below the LONG threshold (default 35) and current K bounced
@@ -20560,12 +20823,16 @@ class StockStrategy:
             _kr_long = int(_cfg_auto('BOUNCE_REENTRY_K_RESET_LONG_TRADIER', 35))
             _kr_short = int(_cfg_auto('BOUNCE_REENTRY_K_RESET_SHORT_TRADIER', 65))
             if is_long and k_5m_prev_t2 <= _kr_long and k_5m_t2 > _kr_long and k_5m_t2 > k_5m_prev_t2:
-                _kr_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
-                logger.warning(f"[BOUNCE_REENTRY_K_RESET] LONG {symbol}: k_5m {k_5m_prev_t2:.0f}→{k_5m_t2:.0f} bounced above reset_long={_kr_long} — REENTER qty={_kr_qty:.2f}")
-                return "REENTRY_OPEN", f"BOUNCE_REENTRY_K_RESET_LONG_k{k_5m_t2:.0f}_from{k_5m_prev_t2:.0f}_thresh{_kr_long}", 75.0, _kr_qty
+                _kr_weekly = _weekly_max_shares_tradier(position, current_price, symbol, current_account.get('') or 'trb')
+                _kr_scale, _kr_b, _kr_s = _reentry_stdev_bounce_combined_scale(i or {}, is_long, last_red_age_min / 60.0)
+                _kr_qty = max(1.0, _kr_weekly * _kr_scale)
+                logger.warning(f"[BOUNCE_REENTRY_K_RESET] LONG {symbol}: k_5m {k_5m_prev_t2:.0f}→{k_5m_t2:.0f} bounced above reset_long={_kr_long} weekly={_kr_weekly:.1f} scale={_kr_scale:.2f} — REENTER qty={_kr_qty:.2f}")
+                return "REENTRY_OPEN", f"BOUNCE_REENTRY_K_RESET_LONG_k{k_5m_t2:.0f}_from{k_5m_prev_t2:.0f}_thresh{_kr_long}_w{_kr_weekly:.1f}_s{_kr_scale:.2f}", 75.0, _kr_qty
             if (not is_long) and k_5m_prev_t2 >= _kr_short and k_5m_t2 < _kr_short and k_5m_t2 < k_5m_prev_t2:
-                _kr_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
-                logger.warning(f"[BOUNCE_REENTRY_K_RESET] SHORT {symbol}: k_5m {k_5m_prev_t2:.0f}→{k_5m_t2:.0f} bounced below reset_short={_kr_short} — REENTER qty={_kr_qty:.2f}")
+                _kr_weekly2 = _weekly_max_shares_tradier(position, current_price, symbol, current_account.get('') or 'trb')
+                _kr_scale2, _kr_b2, _kr_s2 = _reentry_stdev_bounce_combined_scale(i or {}, is_long, last_red_age_min / 60.0)
+                _kr_qty = max(1.0, _kr_weekly2 * _kr_scale2)
+                logger.warning(f"[BOUNCE_REENTRY_K_RESET] SHORT {symbol}: k_5m {k_5m_prev_t2:.0f}→{k_5m_t2:.0f} bounced below reset_short={_kr_short} weekly={_kr_weekly2:.1f} scale={_kr_scale2:.2f} — REENTER qty={_kr_qty:.2f}")
                 return "REENTRY_OPEN", f"BOUNCE_REENTRY_K_RESET_SHORT_k{k_5m_t2:.0f}_from{k_5m_prev_t2:.0f}_thresh{_kr_short}", 75.0, _kr_qty
         # === 2/3 WT IN FAVOR = REENTER NOW (matches exit signal mirror) ===
         # Backtest: 198,264/198,321 reentries (99.97%), median 55min wait
@@ -20615,8 +20882,10 @@ class StockStrategy:
             _htf_fav_re = sum(1 for w1, w2 in [(_wt1_1h, _wt2_1h), (_wt1_4h, _wt2_4h), (_wt1_D_re, _wt2_D_re)] if (w1 > w2 if is_long else w1 < w2))
             if _htf_fav_re < _rally_htf_min:
                 return "NO_ACTION", f"RALLY_HTF_GATE_htf={_htf_fav_re}<{_rally_htf_min}_1h={_wt1_1h:.0f}/{_wt2_1h:.0f}_4h={_wt1_4h:.0f}/{_wt2_4h:.0f}_D={_wt1_D_re:.0f}/{_wt2_D_re:.0f}", 0.0, 0.0
-            _re_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
-            logger.warning(f"[WT_2of3_REENTRY] {'L' if is_long else 'S'} {symbol}: {_wt_fav}/3 WT favor k5m={k_5m_t2:.0f} k15m={k_15m_t2:.0f} htf={_htf_fav_re}/3 → REENTER qty={_re_qty:.2f}")
+            _wt_weekly = _weekly_max_shares_tradier(position, current_price, symbol, current_account.get('') or 'trb')
+            _wt_scale, _wt_b, _wt_s = _reentry_stdev_bounce_combined_scale(i or {}, is_long, last_red_age_min / 60.0)
+            _re_qty = max(1.0, _wt_weekly * _wt_scale)
+            logger.warning(f"[WT_2of3_REENTRY] {'L' if is_long else 'S'} {symbol}: {_wt_fav}/3 WT favor k5m={k_5m_t2:.0f} k15m={k_15m_t2:.0f} htf={_htf_fav_re}/3 weekly={_wt_weekly:.1f} scale={_wt_scale:.2f} → REENTER qty={_re_qty:.2f}")
             return "REENTRY_OPEN", f"WT_2of3_REENTRY_{_wt_fav}of3_favor_htf{_htf_fav_re}", 85.0, _re_qty
         _wt_cross_bull_5m = i.get('wt_cross_bull_5m', i.get('wt_cross_5m') == "BULL")
         _wt_cross_bear_5m = i.get('wt_cross_bear_5m', i.get('wt_cross_5m') == "BEAR")
@@ -20674,13 +20943,20 @@ class StockStrategy:
                 _reentry_size_mult = min(2.0, _reentry_size_mult * 1.3)
                 logger.info(f"[REENTRY_BEAR_DIV] SHORT {symbol}: Bearish divergence detected — {_reentry_size_mult:.1f}x size")
 
-        # ── ALL GATES PASSED — Size based on LAST REDUCTION (not start size) ──
-        _last_red_amt = abs(float(getattr(position, 'last_reduction_amount', 0) or 0))
-        _start_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
-        base_qty = max(_last_red_amt, _start_qty) if _last_red_amt > 0 else _start_qty  # Never less than what we just sold
+        # ── ALL GATES PASSED — Size based on WEEKLY MAX (10-150%) + STDEV 1-5x + bounce (ZCSH fix 2026-09-23) ──
+        # Bug: last_reduction_amount was 1 after gradual 19->1 bleed; should be 10-150% of weekly max (max_quantity 7d decay).
+        _weekly_max = _weekly_max_shares_tradier(position, current_price, symbol, current_account.get('') or 'trb')
+        _combined_scale, _comb_bounce, _comb_stdev = _reentry_stdev_bounce_combined_scale(i or {}, is_long, last_red_age_min / 60.0)
+        # weekly * combined scale = 10-150% of weekly max modulated by level (stdev 1-5x) + bounce quality
+        base_qty = max(1.0, _weekly_max * _combined_scale)
         # 2026-04-26 — wires DEAD switch REENTRY_TIER1_SIZE_MULT_TRADIER. Default 1.5 preserves prior 1.5× cap behavior.
+        # Keep as additional cap but now applied to weekly base (not last_red). Cap ensures never >150% even if caller passed large.
         _tier1_mult = float(_cfg_auto('REENTRY_TIER1_SIZE_MULT_TRADIER', 1.5))
-        if max_q: base_qty = min(base_qty * _tier1_mult, max(1.0, max_q - positionAmt))
+        # tier1 was the 150% cap; combined_scale already caps at 1.5, so this is second cap to max_q - positionAmt room.
+        if max_q: base_qty = min(base_qty * min(_tier1_mult, 1.5), max(1.0, max_q - positionAmt))
+        # also enforce explicit weekly 10-150% bounds post cap
+        base_qty = max(_weekly_max * 0.10, min(_weekly_max * 1.50, base_qty))
+        logger.info(f"[REENTRY_BASE_WEEKLY] {symbol} {'L' if is_long else 'S'}: weekly={_weekly_max:.1f} bounce={_comb_bounce:.2f} stdev={_comb_stdev:.1f} combined={_combined_scale:.2f} → base_qty={base_qty:.1f} (was last_red={float(getattr(position, 'last_reduction_amount', 0) or 0):.1f})")
 
         dc_high_15m_val = float(i.get('dc_high_15m', 0))
         dc_low_15m_val = float(i.get('dc_low_15m', 0))
@@ -25715,18 +25991,33 @@ class TradierTradeManager:
                                 cand["reentry_note"] = "already_open_by_scanner"
                                 changed = True
                                 continue
+                            # WEEKLY-MAX REENTRY SIZING (ZCSH fix 2026-09-23): use 10-150% of weekly max, not last reduction chunk.
+                            # pos_amt_at_exit is 1 after gradual 19->1 bleed; weekly max from position.max_quantity is 19+.
+                            _mon_pos = self.get_position(pk)
+                            _mon_weekly = _weekly_max_shares_tradier(_mon_pos, current_price, symbol, acc)
+                            # fallback when position missing (flat, purged): derive weekly from history or START
+                            if _mon_weekly < 2 and float(cand.get("position_amt_at_exit", 0) or 0) > _mon_weekly:
+                                _mon_weekly = max(_mon_weekly, float(cand.get("position_amt_at_exit", 0)))
+                            _mon_scale, _mon_bounce, _mon_stdev = _reentry_stdev_bounce_combined_scale(i or {}, side == "LONG", hours_since)
+                            # cand pos_amt_at_exit may be stale 1-share; use weekly*scale as primary, keep cand as floor only if larger
                             pos_amt_at_exit = float(cand.get("position_amt_at_exit", 0))
                             _calc_size = max(1, int(await self.calculate_position_size(symbol, current_price, account_key=acc)))
-                            if pos_amt_at_exit > 0:
-                                reentry_qty = max(_calc_size, max(1, int(pos_amt_at_exit)))
-                            else:
-                                reentry_qty = _calc_size
+                            # weekly based qty (10-150% of weekly max modulated by bounce+stdev)
+                            _weekly_qty = max(1, int(_mon_weekly * _mon_scale))
+                            # use max of weekly_qty, calc_size, and pos_amt_at_exit*scale (so large historical peak not ignored)
+                            _cand_scaled = max(1, int(pos_amt_at_exit * _mon_scale)) if pos_amt_at_exit > 0 else 0
+                            reentry_qty = max(_weekly_qty, _calc_size, _cand_scaled)
+                            # enforce explicit 10-150% weekly bounds
+                            reentry_qty = max(int(_mon_weekly * 0.10), min(int(_mon_weekly * 1.50), reentry_qty))
+                            reentry_qty = max(1, reentry_qty)
+                            logger.info(f"[REENTRY_MONITOR_WEEKLY] {pk}: weekly={_mon_weekly:.1f} bounce={_mon_bounce:.2f} stdev={_mon_stdev:.1f} scale={_mon_scale:.2f} → weekly_qty={_weekly_qty} calc={_calc_size} cand={pos_amt_at_exit:.0f} → reentry_qty={reentry_qty}")
                             if _g60_fired or (_fav_fired and _fav_k15m_partial):
                                 reentry_qty = max(1, int(reentry_qty * 0.5))
                             position_side = side
                             order_side = "BUY" if side == "LONG" else "SELL"
                             # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
                             _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, side == "LONG", config)
+                            _ee_tag = _ee_tag + f" weekly={_mon_weekly:.0f}x{_mon_scale:.2f}"
                             reentry_qty = max(1, int(reentry_qty * _ee_mult))
                             reentry_reason = f"REENTRY_MONITOR exit@{exit_price:.2f} now@{current_price:.2f} k5m={k_5m:.0f} wt={wt_support}" + _ee_tag
                             api_side = "buy" if side == "LONG" else "sell_short"
