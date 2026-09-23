@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-09-23T07:01:44.561750+00:00",
+  "timestamp": "2026-09-23T07:22:13.135044+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 69
+    "total_ranked": 74
   },
   "unified_ranking": [
     {
@@ -44,12 +44,6 @@
     },
     {
       "symbol": "BTCDOMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ARPAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -103,12 +97,6 @@
       "short_score": 0
     },
     {
-      "symbol": "GRTUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "LINKUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -128,6 +116,18 @@
     },
     {
       "symbol": "GRAMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "IOTAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "HOTUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -229,6 +229,12 @@
       "short_score": 0
     },
     {
+      "symbol": "SUIUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "XLMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -277,6 +283,12 @@
       "short_score": 0
     },
     {
+      "symbol": "HBARUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "WLDUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -308,6 +320,12 @@
     },
     {
       "symbol": "CRWVUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "TAOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -350,6 +368,12 @@
     },
     {
       "symbol": "ZENUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ETCUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -403,39 +427,50 @@
       "short_score": 0
     },
     {
-      "symbol": "IOTAUSDT",
-      "net_score": 11.1,
-      "long_score": 11.1,
+      "symbol": "ARPAUSDT",
+      "net_score": 10.3,
+      "long_score": 10.3,
+      "short_score": 0
+    },
+    {
+      "symbol": "GRTUSDT",
+      "net_score": 10.7,
+      "long_score": 10.7,
       "short_score": 0
     },
     {
       "symbol": "AIAUSDT",
-      "net_score": 11.5,
-      "long_score": 11.5,
+      "net_score": 13.6,
+      "long_score": 13.6,
       "short_score": 0
     },
     {
       "symbol": "RIFUSDT",
-      "net_score": 14.4,
-      "long_score": 14.4,
+      "net_score": 14.0,
+      "long_score": 14.0,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "RIFUSDT",
-      14.4,
-      0.09533
+      14.0,
+      0.09597
     ],
     [
       "AIAUSDT",
-      11.5,
-      0.07121982
+      13.6,
+      0.07108467
     ],
     [
-      "IOTAUSDT",
-      11.1,
-      0.0505249
+      "GRTUSDT",
+      10.7,
+      0.02672
+    ],
+    [
+      "ARPAUSDT",
+      10.3,
+      0.011405
     ]
   ],
   "top_shorts": [],
