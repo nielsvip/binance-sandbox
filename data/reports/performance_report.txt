@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-23 04:00 UTC
+PERFORMANCE REPORT — 2026-09-23 04:21 UTC
 ================================================================================
 Total: 164 symbols | A=6 B=129 C=29
 Window: 14 days | Min trades: 5
@@ -13,7 +13,7 @@ Window: 14 days | Min trades: 5
 
 --- TIER B (129 symbols) ---
              SNDK  WR=100%  avg=+14.87%  total=+163.8%  trades=  7  mult=7.30
-          XRPUSDC  WR=59%  avg=+0.17%  total=+38.9%  trades=200  mult=3.74
+          XRPUSDC  WR=59%  avg=+0.17%  total=+40.2%  trades=201  mult=3.80
              HOOD  WR=100%  avg=+7.50%  total=+33.6%  trades=  4  mult=1.00
              META  WR=50%  avg=+0.81%  total=+18.7%  trades= 22  mult=6.44
          HYPEUSDT  WR=66%  avg=+0.28%  total=+14.7%  trades= 50  mult=5.76
@@ -113,7 +113,7 @@ Window: 14 days | Min trades: 5
              EXEL  WR=0%  avg=-0.08%  total=-0.1%  trades=  1  mult=1.00
          USARUSDT  WR=75%  avg=-0.03%  total=-0.1%  trades=  4  mult=1.00
          LRCXUSDT  WR=0%  avg=-0.14%  total=-0.1%  trades=  1  mult=1.00
-          ETHUSDC  WR=53%  avg=-0.00%  total=-0.2%  trades= 47  mult=1.55
+          ETHUSDC  WR=53%  avg=-0.00%  total=-0.2%  trades= 47  mult=1.55 ** OPEN **
            OPUSDT  WR=50%  avg=-0.02%  total=-0.2%  trades=  8  mult=0.97
           ZILUSDT  WR=33%  avg=-0.07%  total=-0.2%  trades=  3  mult=1.00
           ACEUSDT  WR=50%  avg=-0.01%  total=-0.2%  trades= 16  mult=0.96
@@ -174,7 +174,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=32%  avg=-1.98%  total=-74.1%  trades= 66  mult=0.15
 
 SUMMARY:
-  Total PnL (all symbols): +1467.7%
+  Total PnL (all symbols): +1469.0%
   Avg win rate: 49%
   A-tier avg mult: 10.00
   C-tier avg mult: 0.43
