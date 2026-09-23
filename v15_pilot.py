@@ -2879,11 +2879,15 @@ def main():
             return True, "ok"
         except Exception as e:
             return False, f"checker error {e}"
-    # >1h PER SYM_SIDE RED LAW
+    # >1h PER SYM_SIDE RED LAW — NEVER HANG OVER HOUR, LOUD STOP
     _elapsed_sym = __import__('time').time() - _v15_start_time
     if _elapsed_sym > 3600:
-        print(f"[RED >1h PER SYM_SIDE] {new_symside} elapsed {_elapsed_sym:.1f}s >3600s — RED EVERYWHERE", flush=True)
-        _flag_to_md(flags_md, "ALL", 0, new_symside, "TIME", f">1h PER SYM_SIDE {_elapsed_sym:.1f}s", 0, 0, cumulative_gain)
+        print(f"[LOUD-STOP-RED >1h PER SYM_SIDE] {new_symside} elapsed {_elapsed_sym:.1f}s >3600s — RED EVERYWHERE, HARD STOP NEVER HANG", flush=True)
+        _flag_to_md(flags_md, "ALL", 0, new_symside, "TIME", f">1h PER SYM_SIDE {_elapsed_sym:.1f}s HARD STOP", 0, 0, cumulative_gain)
+        try:
+            # cancel alarm
+            __import__('signal').alarm(0)
+        except: pass
         try:
             wb_red2 = __import__('openpyxl').load_workbook(str(wb_path), data_only=False)
             for _sn in wb_red2.sheetnames:
@@ -2894,7 +2898,11 @@ def main():
             _atomic_save(wb_red2, wb_path)
         except: pass
         progress["red_1h_per_sym"] = True
-        _atomic_write_json(progress_path, progress)
+        progress["loud_stop_1h"] = True
+        try: _atomic_write_json(progress_path, progress)
+        except: pass
+        print(f"[LOUD-STOP-1H] {new_symside} elapsed {_elapsed_sym:.1f}s — never hang over hour, returning", flush=True)
+        return
     _ok, _reason = _strict_checker(wb_path)
     _is_empty = not _ok
     if _is_empty:
