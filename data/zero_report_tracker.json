@@ -1242,6 +1242,15 @@
     },
     "last_seen": "2026-06-08T18:17:24.094061+00:00"
   },
+  "ang:PTBUSDT_LONG": {
+    "count": 2,
+    "first_seen_zero_at": "2026-06-08T18:17:21.245572+00:00",
+    "last_increment_at": "2026-06-08T18:17:21.245572+00:00",
+    "sources": {
+      "API_ABSENCE": 1
+    },
+    "last_seen": "2026-06-08T18:17:24.094055+00:00"
+  },
   "ang:ETHFIUSDC_SHORT": {
     "count": 1,
     "first_seen": "2026-06-09T19:56:44.824196+00:00",
@@ -1634,13 +1643,12 @@
       "API_ABSENCE": 2
     }
   },
-  "ang:LRCXUSDT_LONG": {
-    "count": 2,
-    "first_seen_zero_at": "2026-09-22T20:36:16.765387+00:00",
-    "last_increment_at": "2026-09-22T20:36:16.765387+00:00",
+  "ang:ATOMUSDT_SHORT": {
+    "count": 16,
+    "first_seen_zero_at": "2026-09-22T19:16:13.742340+00:00",
+    "last_increment_at": "2026-09-22T19:38:31.282327+00:00",
     "sources": {
-      "API_ABSENCE": 1
-    },
-    "last_seen": "2026-09-22T20:36:20.994548+00:00"
+      "API_ABSENCE": 16
+    }
   }
 }

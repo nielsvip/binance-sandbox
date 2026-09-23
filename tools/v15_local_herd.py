@@ -613,11 +613,12 @@ def main():
         workers = 8
     else:
         # USER 2026-09-18 22:00 HUSTLE 56 workers — templates reduced 90% (161K vs 1.9M) so 56× vector 0.07s/cell finishes in minutes
+        # 2026-09-23 USER REQUEST: 56 workers 4 sym_sides at a time no OOM + stall->red
         if "niels" in me and "htz" not in me:
-            max_parallel = 6  # s1 trading host - 6×56 + trading(11) = >90% saturated, RAM 70-95% via 6×2G=12G + trading
+            max_parallel = 4  # s1 also 4 syms as requested (USER 2026-09-23 56x4 no OOM)
             workers = 56
         else:
-            max_parallel = 12 # s2/s3/s5 - 12×56 threads = 672 threads → 90%+ on 16c via burst, RAM 70-95%
+            max_parallel = 4 # s2/s3/s5 - 4×56 threads = 224 threads, RAM 4×1.5G=6G <32G never OOM, 4 syms as requested
             workers = 56
     print(f"[herd-local] nproc={nproc} mem={mem_gb:.1f}G -> max_parallel={max_parallel} workers={workers}", flush=True)
 
