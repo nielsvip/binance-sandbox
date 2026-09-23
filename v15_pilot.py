@@ -1566,25 +1566,21 @@ def main():
         def _process_0914_row_helper(sheet: str, r: int, switch: str, cand):
             """Full per-row evaluator: naked + ALL yellows vs cumulative_before, writes L:BI yellows, updates progress/cumulative_gain. Mirrors sequential body."""
             nonlocal cumulative_gain, progress, cumulative_overrides, wb_path, flags_md, prepared, defaults, baseline_gain, args
-            # FORWARD FIX 2026-09-23: YELLOW-BLOCK + SPEED — keep YELLOW-BLOCK for sampled rows but restore 80% skip to produce baseline/deltas within seconds. Old no-skip made 80-yellow rows take >10s and triggered LOUD-STOP deletion before any delta. Sampling 20% of disabled/category rows keeps speed <1.0s while still calculating ALL yellows for rows that do run (no row advance until yellows done).
+            # EVERY ROW+EVERY YELLOW per user - no skip, every disabled/category row still calculated (was 80% skip waste)
             if _is_kg_never_skip(switch):
-                pass  # never skip KG
+                pass
             elif "W15M" in switch or "WT_15M" in switch or "WT_CHAN_15m" in switch or "WT_AVG_15m" in switch or "WT_15M_BOUNCE" in switch:
-                pass  # W15M sacred never skip
+                pass
             else:
                 try:
                     _cat = ("CRYPTO" if "USDT" in new_symside or "USDC" in new_symside else "STOCKS") + "_" + new_symside.rsplit("_",1)[-1]
                     _cat_set = disabled_per_category.get(_cat, set())
                     if switch in _cat_set:
-                        import random as _rnd
-                        if _rnd.random() > 0.20:  # 20% try, 80% skip to produce deltas within seconds
-                            print(f"[SKIP-PER-CATEGORY] {switch} never pos for {_cat}, skipping 80% to speed up (yellow-block sampled)", flush=True)
-                            return 0
+                        print(f"[NO-SKIP] {switch} in disabled_per_category for {_cat} - still calculating ALL yellows per user (no 80% skip)", flush=True)
+                    if switch in disabled_switches:
+                        print(f"[NO-SKIP] {switch} in disabled_switches - still calculating ALL yellows per user", flush=True)
                 except:
                     pass
-                if switch in disabled_switches:
-                    print(f"[SKIP-DISABLED] {switch} never had pos delta, skipping for speed (yellow-block sampled)", flush=True)
-                    return 0
             # Build header map for this sheet
             wb_h, htc = _get_wb_keep(sheet)
             ws_h = wb_h[sheet] if sheet in wb_h.sheetnames else None
@@ -1618,9 +1614,7 @@ def main():
                 if norm2(_ov, _cur): _rel_ident.append(_hdr)
                 else: _rel_eval.append((e["filter"], _ov, _hdr, e["opt"]))
             single_filters = list(_rel_eval)
-            # FORWARD FIX 2026-09-23: 50-cap to produce deltas within seconds — old no-cap made 80-yellow rows take >10s and hit LOUD-STOP before any delta. Cap 50 keeps <1.0s while still yellow-block for sampled row (all 50 calculated before row advance, remainder marked RED 0.0 without blocking).
-            if len(single_filters) > 50:
-                single_filters = sorted(single_filters, key=lambda t: (0 if t[2] in htc else 1, t[2]))[:50]
+            # YELLOW-BLOCK: NO CAP - every single row and every yellow cell must be calculated per user 6h all >BH, cap is waste. All yellows calculated before row advance.
             identical_hdrs = list(_rel_ident)
             relevant_hdrs = [t[2] for t in single_filters] + list(identical_hdrs)
             candidates = []
@@ -1956,17 +1950,14 @@ def main():
                     _is_w15m_seq = "W15M" in switch or "WT_15M" in switch or "WT_CHAN_15m" in switch or "WT_AVG_15m" in switch or "WT_15M_BOUNCE" in switch
                 # FORWARD FIX 2026-09-23: restore 80% skip to produce deltas within seconds — no-skip made every disabled row calculate 50+ yellows (>10s) and hit LOUD-STOP before first delta. Keep yellow-block for sampled rows.
                 if not _is_w15m_seq:
+                    # EVERY ROW+EVERY YELLOW per user - no skip
                     try:
                         _cat_seq = ("CRYPTO" if "USDT" in new_symside or "USDC" in new_symside else "STOCKS") + "_" + new_symside.rsplit("_",1)[-1]
                         _cat_set_seq = disabled_per_category.get(_cat_seq, set())
                         if switch in _cat_set_seq:
-                            import random as _rnd_seq
-                            if _rnd_seq.random() > 0.20:
-                                print(f"[SKIP-PER-CATEGORY] {switch} never pos for {_cat_seq}, skipping 80% to speed up (yellow-block sampled)", flush=True)
-                                continue
+                            print(f"[NO-SKIP] {switch} in disabled_per_category for {_cat_seq} - still calculating ALL yellows per user", flush=True)
                         if switch in disabled_switches:
-                            print(f"[SKIP-DISABLED] {switch} never had pos delta, skipping for speed (yellow-block sampled)", flush=True)
-                            continue
+                            print(f"[NO-SKIP] {switch} in disabled_switches - still calculating ALL yellows per user", flush=True)
                     except:
                         pass
                 # FORWARD FIX 2026-09-23: LOUD guard log-only — old delete+return destroyed workbook before baseline/delta could appear within seconds. Now log but continue to produce deltas.
@@ -2089,15 +2080,8 @@ def main():
                     # 1s per cell + entire F until 200 then next tab max baseline: heavy 2333 bars -> 0.6s/candidate
                     # Keep distinct per row, not blanket same, ensure ENTIRE row F until 200 calculated
                     before_len = len(single_filters)
-                    # FORWARD FIX 2026-09-23: 50-cap to produce deltas within seconds — old no-cap made 80-yellow rows take >10s and hit LOUD-STOP before first delta. Cap 50 keeps <1.0s while still yellow-block for sampled row.
-                    if len(single_filters) > 50:
-                        def _rank_all(t):
-                            hdr = t[2]
-                            in_hdr = 0 if hdr in header_to_col else 1
-                            return (in_hdr, t[2])
-                        single_filters = sorted(single_filters, key=_rank_all)[:50]
-                        print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top50 capped (was ALL {before_len}) <1.0s greedy+hustle", flush=True)
-                    elif len(single_filters) > 0:
+                    # YELLOW-BLOCK: NO CAP - every single row and every yellow cell must be calculated, cap is waste per user. All yellows before row advance.
+                    if len(single_filters) > 0:
                         print(f"[filter-full] {switch} {before_len} filters full eval <1.0s greedy+hustle", flush=True)
                     # No blanket same: each row's Y is its own switch+filter deltas, not copied; entire F until 200 via cumulative max baseline next tab
                     candidates = []
@@ -2476,6 +2460,14 @@ def main():
                         except Exception:
                             pass
                         _flag_to_md(flags_md, sheet, r, switch, cand, "NEG delta<=0 blocks", delta_best, float(vec_best.get("gain_pct") or 0), cumulative_before)
+                        # FORWARD FIX 2026-09-23: ZERO-STOP - fed up with 0 deltas wasting CPU
+                        if abs(float(delta_best)) < 1e-9:
+                            print(f"[ZERO-STOP] {new_symside} sheet {sheet}!{r} {switch}={cand} delta 0.0000 vs cum {cumulative_before:.4f} - STOP FIX IMMEDIATELY per user", flush=True)
+                            try: _flag_to_md(flags_md, sheet, r, new_symside, "ZERO", f"delta 0 at {sheet}!{r} {switch}", 0, 0, cumulative_before)
+                            except: pass
+                            # do not promote 0, skip but log
+                            _touch_heartbeat(f"cell {sheet}!{r} ZERO")
+                            continue
                         print(f"[ROW] {sheet}!{r} {switch}={cand}{_filter_suffix} vec_gain={float(vec_best.get('gain_pct') or 0):.4f} delta={delta_best:.4f} vs cum {cumulative_before:.4f} -> NEG trades vec={vec_best.get('trades')} sharpe={float(vec_best.get('pool_sharpe') or 0):.4f}", flush=True)
                         _touch_heartbeat(f"cell {sheet}!{r} NEG")
                         # flush every 10 rows for minute-by-minute visibility (no per-row read, only per-cell writes + batched save)

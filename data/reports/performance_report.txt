@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-23 06:29 UTC
+PERFORMANCE REPORT — 2026-09-23 06:45 UTC
 ================================================================================
 Total: 160 symbols | A=6 B=124 C=30
 Window: 14 days | Min trades: 5
@@ -16,7 +16,7 @@ Window: 14 days | Min trades: 5
           XRPUSDC  WR=60%  avg=+0.18%  total=+44.6%  trades=209  mult=4.05
              HOOD  WR=100%  avg=+7.50%  total=+33.6%  trades=  4  mult=1.00
              META  WR=50%  avg=+0.81%  total=+18.7%  trades= 22  mult=6.44
-         HYPEUSDT  WR=66%  avg=+0.28%  total=+14.9%  trades= 50  mult=5.78
+         HYPEUSDT  WR=66%  avg=+0.28%  total=+14.9%  trades= 50  mult=5.78 ** OPEN **
              CIEN  WR=38%  avg=+1.37%  total=+11.1%  trades=  8  mult=3.70
              AMAT  WR=100%  avg=+2.44%  total=+10.1%  trades=  4  mult=1.00
          RUNEUSDT  WR=56%  avg=+0.91%  total=+8.3%  trades=  9  mult=4.20
@@ -52,12 +52,12 @@ Window: 14 days | Min trades: 5
          ALGOUSDT  WR=61%  avg=+0.05%  total=+1.0%  trades= 18  mult=3.12
         PARTIUSDT  WR=50%  avg=+0.08%  total=+0.9%  trades= 12  mult=1.30
          ASTSUSDT  WR=75%  avg=+0.22%  total=+0.9%  trades=  4  mult=1.00
+          WLDUSDC  WR=42%  avg=+0.01%  total=+0.8%  trades= 62  mult=0.62
           UNIUSDC  WR=75%  avg=+0.20%  total=+0.8%  trades=  4  mult=1.00
          ATOMUSDT  WR=57%  avg=+0.09%  total=+0.7%  trades=  7  mult=1.67
           PTBUSDT  WR=56%  avg=+0.03%  total=+0.6%  trades= 25  mult=2.25
                BA  WR=38%  avg=+0.07%  total=+0.6%  trades=  8  mult=0.76
           WIFUSDC  WR=88%  avg=+0.07%  total=+0.6%  trades=  8  mult=3.89
-          WLDUSDC  WR=41%  avg=+0.01%  total=+0.5%  trades= 64  mult=0.58
              BABA  WR=100%  avg=+0.50%  total=+0.5%  trades=  1  mult=1.00
           RSRUSDT  WR=100%  avg=+0.24%  total=+0.5%  trades=  2  mult=1.00
           ARBUSDC  WR=50%  avg=+0.04%  total=+0.3%  trades=  8  mult=1.12
@@ -108,10 +108,10 @@ Window: 14 days | Min trades: 5
          AGLDUSDT  WR=0%  avg=-0.03%  total=-0.1%  trades=  2  mult=1.00
              EXEL  WR=0%  avg=-0.08%  total=-0.1%  trades=  1  mult=1.00
           ETHUSDC  WR=51%  avg=-0.00%  total=-0.1%  trades= 51  mult=1.17
+          ZILUSDT  WR=50%  avg=-0.06%  total=-0.1%  trades=  2  mult=1.00
          USARUSDT  WR=75%  avg=-0.03%  total=-0.1%  trades=  4  mult=1.00
          LRCXUSDT  WR=0%  avg=-0.14%  total=-0.1%  trades=  1  mult=1.00
            OPUSDT  WR=50%  avg=-0.02%  total=-0.2%  trades=  8  mult=0.97
-          ZILUSDT  WR=33%  avg=-0.07%  total=-0.2%  trades=  3  mult=1.00
           ACEUSDT  WR=50%  avg=-0.01%  total=-0.2%  trades= 16  mult=0.96
              CIBR  WR=0%  avg=-0.28%  total=-0.3%  trades=  1  mult=1.00
          AMZNUSDT  WR=33%  avg=-0.10%  total=-0.3%  trades=  3  mult=1.00
@@ -170,7 +170,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=32%  avg=-1.98%  total=-74.1%  trades= 66  mult=0.15
 
 SUMMARY:
-  Total PnL (all symbols): +1473.1%
+  Total PnL (all symbols): +1473.5%
   Avg win rate: 49%
   A-tier avg mult: 10.00
   C-tier avg mult: 0.44
