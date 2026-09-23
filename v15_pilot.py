@@ -1566,26 +1566,22 @@ def main():
         def _process_0914_row_helper(sheet: str, r: int, switch: str, cand):
             """Full per-row evaluator: naked + ALL yellows vs cumulative_before, writes L:BI yellows, updates progress/cumulative_gain. Mirrors sequential body."""
             nonlocal cumulative_gain, progress, cumulative_overrides, wb_path, flags_md, prepared, defaults, baseline_gain, args
-            # 2026-09-21 KG LAW: KINDERGARTEN HTF+LTF never skip — overrides per-category/disabled speed gate
+            # 🔴 YELLOW-BLOCK LAW 2026-09-23 CORRECTION 2: NO ROW ADVANCE UNTIL ALL YELLOWS CALCULATED — WITHOUT BLOCKING PROGRESS, ERROR CELLS MARKED RED
+            # Disabled/per-category skips are FORBIDDEN from bypassing yellow evaluation — every switch's full SPECIFIC yellow set
+            # must be calculated (switch=cand + that one filter vs cumulative_before) before delta is summed. Skipping the row
+            # would leave yellows uncalculated and violate YELLOW-ONLY. Log the category/disabled status but STILL CALCULATE.
             if _is_kg_never_skip(switch):
-                pass  # never skip KG
-            elif "W15M" in switch or "WT_15M" in switch or "WT_CHAN_15m" in switch or "WT_AVG_15m" in switch or "WT_15M_BOUNCE" in switch:
-                pass  # W15M sacred never skip (legacy, now covered by KG)
+                pass
             else:
-                # per-category frequency reduction
                 try:
                     _cat = ("CRYPTO" if "USDT" in new_symside or "USDC" in new_symside else "STOCKS") + "_" + new_symside.rsplit("_",1)[-1]
                     _cat_set = disabled_per_category.get(_cat, set())
                     if switch in _cat_set:
-                        import random as _rnd
-                        if _rnd.random() > 0.20:  # 20% try, 80% skip to speed up
-                            print(f"[SKIP-PER-CATEGORY] {switch} never pos for {_cat}, skipping 80% to speed up", flush=True)
-                            return 0
+                        print(f"[YELLOW-BLOCK-NO-SKIP] {switch} in disabled_per_category for {_cat} — still calculating ALL yellows before row advance (no 80% skip)", flush=True)
+                    if switch in disabled_switches:
+                        print(f"[YELLOW-BLOCK-NO-SKIP] {switch} in disabled_switches — still calculating ALL yellows before row advance (no speed skip)", flush=True)
                 except:
                     pass
-                if switch in disabled_switches:
-                    print(f"[SKIP-DISABLED] {switch} never had pos delta, skipping for speed (shuffle)", flush=True)
-                    return 0
             # Build header map for this sheet
             wb_h, htc = _get_wb_keep(sheet)
             ws_h = wb_h[sheet] if sheet in wb_h.sheetnames else None
@@ -1619,8 +1615,8 @@ def main():
                 if norm2(_ov, _cur): _rel_ident.append(_hdr)
                 else: _rel_eval.append((e["filter"], _ov, _hdr, e["opt"]))
             single_filters = list(_rel_eval)
-            if len(single_filters) > 50:
-                single_filters = sorted(single_filters, key=lambda t: (0 if t[2] in htc else 1, t[2]))[:50]
+            # 🔴 YELLOW-BLOCK LAW: NO CAP — calculate ALL SPECIFIC yellows for this switch before row advance.
+            # Previous 50-cap left yellows uncalculated and broke the law. With V12_NPZ_CACHE=32 + ThreadPool this fits <10s even for 80 yellows; errors are marked RED without blocking.
             identical_hdrs = list(_rel_ident)
             relevant_hdrs = [t[2] for t in single_filters] + list(identical_hdrs)
             candidates = []
@@ -1650,7 +1646,18 @@ def main():
                 if idx >= len(vecs): break
                 vec = vecs[idx]
                 if not vec.get("valid"):
-                    if filt is not None and hdr in htc: invalid_hdrs.append(hdr)
+                    if filt is not None and hdr in htc:
+                        invalid_hdrs.append(hdr)
+                        try:
+                            _col = htc.get(hdr)
+                            if _col and ws_h is not None:
+                                from openpyxl.styles import PatternFill as _PF_red_h
+                                _c = ws_h.cell(row=r, column=_col)
+                                _c.value = 0.0
+                                _c.fill = _PF_red_h(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                _c.font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                        except: pass
+                        pending_lbI[hdr] = 0.0
                     continue
                 vg = float(vec.get("gain_pct") or 0); delta = vg - cumulative_before
                 if filt is not None and hdr in htc: pending_lbI[hdr] = float(delta)
@@ -1943,20 +1950,17 @@ def main():
                     _is_w15m_seq = True  # KG never skip
                 else:
                     _is_w15m_seq = "W15M" in switch or "WT_15M" in switch or "WT_CHAN_15m" in switch or "WT_AVG_15m" in switch or "WT_15M_BOUNCE" in switch
+                # 🔴 YELLOW-BLOCK LAW 2026-09-23: NO SKIP before yellows — log category/disabled but still calculate ALL yellows for this row
                 if not _is_w15m_seq:
                     try:
                         _cat_seq = ("CRYPTO" if "USDT" in new_symside or "USDC" in new_symside else "STOCKS") + "_" + new_symside.rsplit("_",1)[-1]
                         _cat_set_seq = disabled_per_category.get(_cat_seq, set())
                         if switch in _cat_set_seq:
-                            import random as _rnd_seq
-                            if _rnd_seq.random() > 0.20:
-                                print(f"[SKIP-PER-CATEGORY] {switch} never pos for {_cat_seq}, skipping 80% to speed up", flush=True)
-                                continue
+                            print(f"[YELLOW-BLOCK-NO-SKIP] {switch} in disabled_per_category for {_cat_seq} — still calculating ALL yellows", flush=True)
+                        if switch in disabled_switches:
+                            print(f"[YELLOW-BLOCK-NO-SKIP] {switch} in disabled_switches — still calculating ALL yellows", flush=True)
                     except:
                         pass
-                    if switch in disabled_switches:
-                        print(f"[SKIP-DISABLED] {switch} never had pos delta, skipping for speed (shuffle)", flush=True)
-                        continue
                 # 2026-09-23 LOUD baseline/delta guard — keep yellow calcs, but if NO deltas at all (even NEG) after 60s, LOUD stop (never hang)
                 if len(progress.get("done", {})) == 0 and __import__('time').time() - _v15_start_time > 60:
                     print(f"[LOUD-STOP-NO-DELTA-ROW] {new_symside} sheet {sheet}!{r} NO deltas after {__import__('time').time() - _v15_start_time:.1f}s total_pos {total_pos} done {len(progress.get('done',{}))} — LOUD STOP baseline or deltas not produced in seconds", flush=True)
@@ -2091,15 +2095,9 @@ def main():
                     # FILTER EVALUATION POLICY — user mandate: EVERY CELL CHANGES A VALUE, NOTHING CAN BE COPIED, 2 DELTAS NEVER SAME
                     # Previous limit 4 per row caused same deltas and incomplete yellows. Now evaluate ALL applicable filters per row.
                     # With V12_NPZ_CACHE=32 + ThreadPool16, 50 candidates ~0.22s < 1.0s budget, so full evaluation fits.
-                    # Only cap at 50 to protect extreme heavy rows (>2000 bars + 80 filters) from timeout; prioritize L:BI headers.
-                    if len(single_filters) > 50:
-                        def _rank_all(t):
-                            hdr = t[2]
-                            in_hdr = 0 if hdr in header_to_col else 1
-                            return (in_hdr, t[2])
-                        single_filters = sorted(single_filters, key=_rank_all)[:50]
-                        print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top50 capped (was ALL {before_len}) <1.0s greedy+hustle", flush=True)
-                    elif len(single_filters) > 0:
+                    # 🔴 YELLOW-BLOCK LAW: NO CAP — calculate ALL yellows before row advance, mark errors RED without blocking.
+                    # Previous 50-cap dropped yellows and broke the law; even heavy rows (80 yellows) fit in <10s vec batch — timeout cells are marked RED and still counted as calculated before delta sum.
+                    if len(single_filters) > 0:
                         print(f"[filter-full] {switch} {before_len} filters full eval <1.0s greedy+hustle", flush=True)
                     # No blanket same: each row's Y is its own switch+filter deltas, not copied; entire F until 200 via cumulative max baseline next tab
                     candidates = []
@@ -2168,6 +2166,18 @@ def main():
                         if not vec.get("valid"):
                             if filt is not None and hdr in header_to_col:
                                 invalid_hdrs.append(hdr)
+                                # 🔴 MARK RED without blocking — yellow cell error still counts as calculated before row advance
+                                if hdr in header_to_col:
+                                    try:
+                                        _yc = ws_keep.cell(row=r, column=header_to_col[hdr]) if 'ws_keep' in locals() and ws_keep is not None else None
+                                        if _yc is not None:
+                                            from openpyxl.styles import PatternFill as _PF_red
+                                            _yc.value = 0.0
+                                            _yc.fill = _PF_red(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                            _yc.font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                                    except: pass
+                                    pending_lbI[hdr] = 0.0
+                            # per-yellow invalid is still a calculated yellow — continue to next yellow, do NOT block row
                             continue
                         # 0/1 TRADE RED LAW — ANY VERSION
                         _tr = int(vec.get("trades") or 0)
