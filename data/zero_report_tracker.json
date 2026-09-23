@@ -1651,13 +1651,22 @@
       "API_ABSENCE": 16
     }
   },
-  "inf:WLDUSDC_LONG": {
+  "flz:XRPUSDC_LONG": {
+    "count": 3,
+    "first_seen_zero_at": "2026-09-23T08:25:53.729343+00:00",
+    "last_increment_at": "2026-09-23T08:26:26.819347+00:00",
+    "sources": {
+      "API_ABSENCE": 2
+    },
+    "last_seen": "2026-09-23T08:26:31.030897+00:00"
+  },
+  "flz:ZECUSDC_LONG": {
     "count": 2,
-    "first_seen_zero_at": "2026-09-22T20:51:03.555639+00:00",
-    "last_increment_at": "2026-09-22T20:51:03.555639+00:00",
+    "first_seen_zero_at": "2026-09-23T08:26:26.819347+00:00",
+    "last_increment_at": "2026-09-23T08:26:26.819347+00:00",
     "sources": {
       "API_ABSENCE": 1
     },
-    "last_seen": "2026-09-22T20:51:23.633433+00:00"
+    "last_seen": "2026-09-23T08:26:31.030856+00:00"
   }
 }
