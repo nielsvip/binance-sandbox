@@ -658,7 +658,15 @@ def parity_ok(live: dict, vec: dict, allow_zero_baseline: bool = False) -> tuple
     return True, "parity ok"
 
 def ensure_lbI_headers(wb_path: Path):
-    wb = openpyxl.load_workbook(str(wb_path))
+    # NO STALLING EVER: missing wb (race delete) -> skip, don't crash pilot
+    if not wb_path.exists():
+        print(f"[ensure_lbI_headers] {wb_path} missing — skip (herd will recreate)", flush=True)
+        return
+    try:
+        wb = openpyxl.load_workbook(str(wb_path))
+    except Exception as e:
+        print(f"[ensure_lbI_headers] load fail {e} — skip", flush=True)
+        return
     fd_rows = _load_filter_dictionary()
     for sheet in SWITCH_SHEETS:
         if sheet not in wb.sheetnames:
@@ -2850,7 +2858,8 @@ def main():
                         live_best = vec_best
                     else:
                         import concurrent.futures as _cf
-                        with _cf.ThreadPoolExecutor(max_workers=16) as ex:
+                        # NO STALLING EVER: use all workers, never wait 90s on live — timeout and continue
+                        with _cf.ThreadPoolExecutor(max_workers=args.workers) as ex:
                             fut = ex.submit(live_evaluate, new_symside, dict(variant_best), args.window_days)
                             try:
                                 live_best = fut.result(timeout=90)
