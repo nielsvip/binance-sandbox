@@ -2777,6 +2777,26 @@ def main():
                 _atomic_write_json(progress_path, progress)
             except Exception:
                 pass
+            # NEVER >15s WITH 0 RESULTS: abort immediately if 0 pos after 15s (HYPE virus) — per-sheet check
+            if total_pos == 0 and __import__('time').time() - _v15_start_time > 15:
+                print(f"[VIRUS0-15s-SHEET] {new_symside} sheet {sheet} 0 pos after {__import__('time').time() - _v15_start_time:.1f}s — abort, never keep running >15s with 0 results", flush=True)
+                try:
+                    wb_keep.close()
+                except Exception:
+                    pass
+                # mark diagnostic and clean up
+                progress["final_gain"] = cumulative_gain
+                progress["bh"] = bh_raw if 'bh_raw' in locals() else 0
+                progress["no_delta"] = True
+                try:
+                    _atomic_write_json(progress_path, progress)
+                except Exception:
+                    pass
+                try:
+                    wb_path.unlink(missing_ok=True)
+                except Exception:
+                    pass
+                return
         except Exception as _sheet_e:
             import traceback
             print(f"[sheet-ERR] {sheet} {_sheet_e} {traceback.format_exc()[:800]}", flush=True)
@@ -2859,6 +2879,24 @@ def main():
         return
     # DO NOT PUBLISH until cells are filled — timestamp = work in progress, bh/gain = finished
     # fully filled — publish bh/gain
+    # NEVER >15s WITH 0 RESULTS: if 0 pos after 15s, abort immediately (HYPE/ALGO/BNB virus)
+    if total_pos == 0:
+        _elapsed = __import__('time').time() - _v15_start_time
+        if _elapsed > 15:
+            print(f"[VIRUS0-15s] {new_symside} 0 pos after {_elapsed:.1f}s total_pos 0 cum {cumulative_gain:.4f} baseline {baseline_gain:.4f} — ABORT >15s with 0 results, never publish gain0", flush=True)
+            progress["final_gain"] = cumulative_gain
+            progress["bh"] = bh_raw
+            progress["final_path"] = None
+            progress["no_delta"] = True
+            try:
+                _atomic_write_json(progress_path, progress)
+            except Exception:
+                pass
+            try:
+                wb_path.unlink(missing_ok=True)
+            except Exception:
+                pass
+            return
     def fmt(v): return f"{v:.2f}".replace("-", "m").replace(".", "p")
     final_name = f"{new_symside}_bh{fmt(bh_raw)}_gain{fmt(cumulative_gain)}_30d_matrix.xlsx"
     final_path = OUT_DIR / final_name

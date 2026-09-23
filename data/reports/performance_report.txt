@@ -1,6 +1,6 @@
-PERFORMANCE REPORT — 2026-09-23 01:15 UTC
+PERFORMANCE REPORT — 2026-09-23 01:45 UTC
 ================================================================================
-Total: 164 symbols | A=6 B=129 C=29
+Total: 164 symbols | A=6 B=130 C=28
 Window: 14 days | Min trades: 5
 
 --- TIER A (6 symbols) ---
@@ -11,10 +11,10 @@ Window: 14 days | Min trades: 5
              NVDA  WR=87%  avg=+3.77%  total=+72.3%  trades= 15  mult=10.00
                MU  WR=84%  avg=+2.12%  total=+64.5%  trades= 25  mult=10.00
 
---- TIER B (129 symbols) ---
+--- TIER B (130 symbols) ---
              SNDK  WR=100%  avg=+14.87%  total=+163.8%  trades=  7  mult=7.30
              HOOD  WR=100%  avg=+7.50%  total=+33.6%  trades=  4  mult=1.00
-          XRPUSDC  WR=57%  avg=+0.13%  total=+27.6%  trades=190  mult=3.11
+          XRPUSDC  WR=57%  avg=+0.14%  total=+30.4%  trades=191  mult=3.22
              META  WR=50%  avg=+0.81%  total=+18.7%  trades= 22  mult=6.44
          HYPEUSDT  WR=66%  avg=+0.28%  total=+14.7%  trades= 50  mult=5.76
              CIEN  WR=38%  avg=+1.37%  total=+11.1%  trades=  8  mult=3.70
@@ -23,7 +23,7 @@ Window: 14 days | Min trades: 5
              PYPL  WR=58%  avg=+0.25%  total=+6.2%  trades= 24  mult=4.21
           XTZUSDT  WR=56%  avg=+0.10%  total=+4.7%  trades= 45  mult=2.70
               LOW  WR=54%  avg=+0.32%  total=+4.2%  trades= 13  mult=2.84
-          XLMUSDT  WR=54%  avg=+0.14%  total=+4.0%  trades= 28  mult=2.59
+          XLMUSDT  WR=47%  avg=+0.11%  total=+3.5%  trades= 32  mult=1.17
         ETHFIUSDC  WR=63%  avg=+0.09%  total=+3.3%  trades= 35  mult=3.95
          NEARUSDC  WR=50%  avg=+0.54%  total=+3.2%  trades=  6  mult=2.10
              SNOW  WR=60%  avg=+0.67%  total=+3.2%  trades=  5  mult=2.59
@@ -82,6 +82,7 @@ Window: 14 days | Min trades: 5
               HON  WR=29%  avg=+0.01%  total=+0.1%  trades=  7  mult=0.63
          GRAMUSDT  WR=83%  avg=+0.01%  total=+0.1%  trades=  6  mult=2.82
           SUIUSDC  WR=100%  avg=+0.03%  total=+0.1%  trades=  2  mult=1.00
+          SOLUSDC  WR=42%  avg=+0.00%  total=+0.1%  trades= 43  mult=0.61
           APEUSDT  WR=67%  avg=+0.01%  total=+0.0%  trades=  3  mult=1.00
           ARMUSDT  WR=100%  avg=+0.04%  total=+0.0%  trades=  1  mult=1.00
           NOTUSDT  WR=67%  avg=+0.01%  total=+0.0%  trades=  3  mult=1.00
@@ -142,8 +143,7 @@ Window: 14 days | Min trades: 5
          IOTXUSDT  WR=47%  avg=-0.13%  total=-7.0%  trades= 55  mult=0.62
              SMCI  WR=0%  avg=-2.73%  total=-10.5%  trades=  4  mult=1.00
 
---- TIER C (29 symbols) ---
-          SOLUSDC  WR=41%  avg=-0.00%  total=-0.1%  trades= 41  mult=0.59
+--- TIER C (28 symbols) ---
      1000PEPEUSDC  WR=33%  avg=-0.02%  total=-0.2%  trades=  9  mult=0.61
         PENGUUSDC  WR=44%  avg=-0.03%  total=-0.2%  trades=  9  mult=0.81
           WMTUSDT  WR=40%  avg=-0.06%  total=-0.3%  trades=  5  mult=0.80
@@ -174,7 +174,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=32%  avg=-1.98%  total=-74.1%  trades= 66  mult=0.15
 
 SUMMARY:
-  Total PnL (all symbols): +1456.0%
+  Total PnL (all symbols): +1458.4%
   Avg win rate: 49%
   A-tier avg mult: 10.00
-  C-tier avg mult: 0.42
+  C-tier avg mult: 0.41
