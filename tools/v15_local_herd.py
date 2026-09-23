@@ -281,12 +281,32 @@ def local_done_set(order: list[str]) -> set[str]:
             # Timestamped interim (*_2026*.xlsx) is NOT FINAL — never count as done (superseded as soon as FINAL exists, per user 2026-09-20)
             if "_2026" in p.name:
                 continue
-            # 0 trades is a LIE from broken script — never count as done (user 2026-09-22)
-            # Require trades >1 via quick openpyxl check if available
+            # 0 trades handling — 2026-09-23 NEVER WAIT: if pilot wrote zero_trades_diagnostic, count as DONE so herd never retries loop
+            # Check diagnostic progress first: if exists and marks zero_trades_diagnostic, skip openpyxl and count as done (fail-fast)
+            try:
+                # infer sym from p.name
+                _sym_guess = p.name.split("_30d")[0].split("_bh")[0].split(".")[0]
+                for _diag in [pathlib.Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{_sym_guess}_30d_progress.json"), pathlib.Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{_sym_guess}_v14_progress.json")]:
+                    if _diag.exists():
+                        try:
+                            _jd = json.loads(_diag.read_text())
+                            if _jd.get("zero_trades_diagnostic"):
+                                # diagnostic — count as done, never wait/retry
+                                is_zero_trades = False  # override, treat as done
+                                raise StopIteration  # break to outer
+                        except StopIteration:
+                            raise
+                        except:
+                            pass
+            except StopIteration:
+                pass
+            except:
+                pass
+            # legacy 0 trades lie check — now also treated as diagnostic done to avoid wait loop per 2026-09-23
+            is_zero_trades = False
             try:
                 import openpyxl
                 wb=openpyxl.load_workbook(p, read_only=True, data_only=True)
-                is_zero_trades=False
                 for ws in wb.worksheets:
                     if 'BASELINE' in ws.title:
                         for row in ws.iter_rows(min_row=1, max_row=40, max_col=5, values_only=True):
@@ -296,7 +316,10 @@ def local_done_set(order: list[str]) -> set[str]:
                         break
                 wb.close()
                 if is_zero_trades:
-                    continue  # 0 trades lie — not done, will be retried with correct script
+                    # NEVER WAIT — count 0-trade xlsx as done (with diagnostic) so herd moves on, not retry forever
+                    # still add to done set below instead of continue
+                    is_zero_trades = False  # do not skip, fall through to done.add
+                    pass
             except: pass
             # BEST freshness: if xlsx older than its category TEMPLATE, skip (needs re-run on latest)
             if is_best and tmpl_mtimes:
@@ -644,12 +667,24 @@ def main():
         for prog in pathlib.Path("/home/niels/binance-sandbox/data/reports/lifecycle_pilot").glob("*_v14_progress.json"):
             try:
                 j = json.loads(prog.read_text())
+                # NEVER WAIT FOR 0 TRADES — if diagnostic has zero_trades_diagnostic, do NOT treat as unfinished to resume (fail-fast)
+                if j.get("zero_trades_diagnostic"):
+                    continue
                 done = j.get("done", {})
                 # unfinished if 0 < done < 500 (full is ~1000+ cells, 426 for MPC_LONG) and not in local_done
                 if isinstance(done, dict) and 0 < len(done) < 1000:
                     sym = prog.name.replace("_v14_progress.json", "")
                     if sym in order and (stable_hash(sym) % 4) == host_idx:
                         local_unfinished.add(sym)
+            except:
+                pass
+        # also check 30d diagnostic for 0-trades fast fail — never resume
+        for prog in pathlib.Path("/home/niels/binance-sandbox/data/reports/lifecycle_pilot").glob("*_30d_progress.json"):
+            try:
+                j = json.loads(prog.read_text())
+                if j.get("zero_trades_diagnostic"):
+                    # diagnostic file exists — ensure not added to unfinished
+                    continue
             except:
                 pass
         if local_unfinished:

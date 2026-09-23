@@ -1,11 +1,11 @@
 {
-  "name": "v15_pilot_current_on_new_template",
+  "name": "v15_pilot_fixed_fresh",
   "engine": "generic",
   "launch": {
     "cmd": "python3",
-    "args": ["-u", "v15_pilot.py", "--sym-side", "AAPL_LONG", "--window-days", "30", "--vector-only", "--allow-mac", "--template", "SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx"]
+    "args": ["-u", "v15_pilot.py", "--sym-side", "SOLUSDC_LONG", "--window-days", "30", "--vector-only", "--allow-mac", "--template", "SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx"]
   },
-  "log": { "stdout": true, "paths": ["/tmp/v15_new_mac.log"] },
+  "log": { "stdout": true, "paths": ["/tmp/sol.log"] },
   "sourceRoots": ["."],
   "vars": {}
 }

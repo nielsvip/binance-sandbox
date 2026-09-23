@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-09-23T02:12:24.393979+00:00",
+  "timestamp": "2026-09-23T02:39:55.480144+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 71
+    "total_ranked": 78
   },
   "unified_ranking": [
     {
@@ -55,7 +55,19 @@
       "short_score": 0
     },
     {
+      "symbol": "NFLXUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ACTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "DASHUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -67,7 +79,13 @@
       "short_score": 0
     },
     {
-      "symbol": "DASHUSDT",
+      "symbol": "DOTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "BTCUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -85,13 +103,13 @@
       "short_score": 0
     },
     {
-      "symbol": "ETHFIUSDC",
+      "symbol": "MANAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "MANAUSDT",
+      "symbol": "ETHFIUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -115,6 +133,12 @@
       "short_score": 0
     },
     {
+      "symbol": "PENGUUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "AGLDUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -127,7 +151,19 @@
       "short_score": 0
     },
     {
+      "symbol": "BCHUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "XTZUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ASTSUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -163,12 +199,6 @@
       "short_score": 0
     },
     {
-      "symbol": "ETHUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "GRAMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -176,6 +206,12 @@
     },
     {
       "symbol": "RIFUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ETHUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -199,7 +235,7 @@
       "short_score": 0
     },
     {
-      "symbol": "GRTUSDT",
+      "symbol": "MSFTUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -241,7 +277,19 @@
       "short_score": 0
     },
     {
+      "symbol": "STRKUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SANDUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ETCUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -289,13 +337,13 @@
       "short_score": 0
     },
     {
-      "symbol": "SNXUSDT",
+      "symbol": "ZKUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "ZKUSDT",
+      "symbol": "SNXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -308,6 +356,12 @@
     },
     {
       "symbol": "IOTAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "POPCATUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -326,6 +380,12 @@
     },
     {
       "symbol": "BTCDOMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "LUNA2USDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -409,50 +469,17 @@
       "short_score": 0
     },
     {
-      "symbol": "BTCUSDC",
-      "net_score": 10.9,
-      "long_score": 10.9,
-      "short_score": 0
-    },
-    {
-      "symbol": "ASTSUSDT",
-      "net_score": 11.7,
-      "long_score": 11.7,
-      "short_score": 0
-    },
-    {
-      "symbol": "MSFTUSDT",
-      "net_score": 11.7,
-      "long_score": 11.7,
-      "short_score": 0
-    },
-    {
-      "symbol": "NFLXUSDT",
-      "net_score": 21.8,
-      "long_score": 21.8,
+      "symbol": "GRTUSDT",
+      "net_score": 17.5,
+      "long_score": 17.5,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "NFLXUSDT",
-      21.8,
-      80.22
-    ],
-    [
-      "ASTSUSDT",
-      11.7,
-      59.55
-    ],
-    [
-      "MSFTUSDT",
-      11.7,
-      500.57
-    ],
-    [
-      "BTCUSDC",
-      10.9,
-      78487.78635479
+      "GRTUSDT",
+      17.5,
+      0.02671
     ]
   ],
   "top_shorts": [],

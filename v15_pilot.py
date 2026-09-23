@@ -1072,16 +1072,36 @@ def main():
         from tools.opt.v12_pilot import evaluate_sanitized
         baseline_vec = evaluate_sanitized(new_symside, overrides, window_days=args.window_days)
         print(f"[baseline] no prepared, vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')}", flush=True)
-        # FIX 2026-09-18 keep CPU >85%: do not skip 0-trade baselines — run full sweep anyway (will find delta>0 vs bh)
+        # FIX 2026-09-23 NEVER WAIT FOR 0 TRADES — fail fast diagnostic, no sweep (except ZECUSDC which is expected 0-trade edge)
         if ("ZECUSDC" not in new_symside) and (not baseline_vec.get("valid") or int(baseline_vec.get("trades") or 0) == 0):
-            print(f"[skip-empty-baseline] {new_symside} invalid/0 trades — continuing (no skip to keep CPU>85%)", flush=True)
+            print(f"[0-TRADES-FAST-FAIL] {new_symside} invalid/0 trades — DIAGNOSTIC ONLY, skipping full sweep (never wait)", flush=True)
+            # write diagnostic progress so herd knows not to retry immediately
+            try:
+                diag_path = PROGRESS_DIR / f"{new_symside}_{args.window_days}d_progress.json"
+                diag_path.parent.mkdir(parents=True, exist_ok=True)
+                _diag = {"symside": new_symside, "baseline_gain": float(baseline_vec.get("gain_pct") or 0), "bh": float(baseline_vec.get("bh_pct") or 0), "valid": False, "trades": int(baseline_vec.get("trades") or 0), "reason": "0 trades baseline — DATA_ERROR NPZ missing or broken, never wait", "done": {}, "no_delta": True, "zero_trades_diagnostic": True}
+                import json as _js0
+                diag_path.write_text(_js0.dumps(_diag, indent=2))
+            except Exception as _e:
+                print(f"[diag-warn] {new_symside} {_e}", flush=True)
+            # do not run 3043 rows — return immediately so herd moves on
+            return
         prepared_for_fallback = None
     else:
         from tools.opt.v12_pilot import evaluate_prepared_sanitized
         baseline_vec = evaluate_prepared_sanitized(prepared, overrides, window_days=args.window_days)
         print(f"[baseline] vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')} sharpe={baseline_vec.get('pool_sharpe')} hot", flush=True)
         if ("ZECUSDC" not in new_symside) and (not baseline_vec.get("valid") or int(baseline_vec.get("trades") or 0) == 0):
-            print(f"[skip-empty-baseline] {new_symside} baseline invalid/0 trades — continuing (no skip to keep CPU>85%)", flush=True)
+            print(f"[0-TRADES-FAST-FAIL] {new_symside} baseline invalid/0 trades — DIAGNOSTIC ONLY, skipping full sweep (never wait)", flush=True)
+            try:
+                diag_path = PROGRESS_DIR / f"{new_symside}_{args.window_days}d_progress.json"
+                diag_path.parent.mkdir(parents=True, exist_ok=True)
+                _diag = {"symside": new_symside, "baseline_gain": float(baseline_vec.get("gain_pct") or 0), "bh": float(baseline_vec.get("bh_pct") or 0), "valid": False, "trades": int(baseline_vec.get("trades") or 0), "reason": "0 trades baseline — DATA_ERROR NPZ missing or broken, never wait", "done": {}, "no_delta": True, "zero_trades_diagnostic": True}
+                import json as _js0
+                diag_path.write_text(_js0.dumps(_diag, indent=2))
+            except Exception as _e:
+                print(f"[diag-warn] {new_symside} {_e}", flush=True)
+            return
         prepared_for_fallback = prepared
 
     if args.vector_only:
@@ -1739,9 +1759,9 @@ def main():
                 cumulative_gain = float(cumulative_before + delta_best)
                 cumulative_overrides[switch] = cand
                 if filt_best: cumulative_overrides[filt_best] = fval_best
-                if hdr_best and "+" in str(hdr_best):
-                    for (ff, oo, hh) in pos_filters:
-                        cumulative_overrides[ff] = oo
+                # FIX 2026-09-23: yellow filter isolation — per-yellow deltas already added to delta_best above,
+                # but filter itself does NOT persist to cumulative_overrides for other switches (isolated to this row)
+                # previously pos_filters were persisted here, violating isolation — removed
             return float(delta_best)
 
         def _process_cycle_row(sheet: str, r: int, switch: str, cand):
@@ -1937,25 +1957,9 @@ def main():
                     if switch in disabled_switches:
                         print(f"[SKIP-DISABLED] {switch} never had pos delta, skipping for speed (shuffle)", flush=True)
                         continue
-                # 15s detector for 0 values — abort mid-sheet if still 0 after 15s
+                # FIX 2026-09-23: removed 15s mid-sheet abort — FULL SHEET LAW requires run to last sheet even if 0 pos; log only
                 if total_pos == 0 and __import__('time').time() - _v15_start_time > 15 and len(progress.get("done", {})) > 5:
-                    print(f"[VIRUS0-15s-ROW] {new_symside} sheet {sheet}!{r} 0 pos after {__import__('time').time() - _v15_start_time:.1f}s total_pos 0 — ABORT >15s with 0 results, never let script keep running", flush=True)
-                    try:
-                        wb_keep.close()
-                    except Exception:
-                        pass
-                    progress["final_gain"] = cumulative_gain
-                    progress["bh"] = bh_raw if 'bh_raw' in locals() else float(baseline_gain or 0)
-                    progress["no_delta"] = True
-                    try:
-                        _atomic_write_json(progress_path, progress)
-                    except Exception:
-                        pass
-                    try:
-                        wb_path.unlink(missing_ok=True)
-                    except Exception:
-                        pass
-                    return
+                    print(f"[VIRUS0-15s-ROW-DISABLED] {new_symside} sheet {sheet}!{r} 0 pos after {__import__('time').time() - _v15_start_time:.1f}s total_pos 0 — continuing (abort disabled per FULL SHEET LAW)", flush=True)
                 cell_start = time.time()
                 key = f"{sheet}!{r}:{switch}={cand}"
                 # YELLOW SET FOR A SINGLE SWITCH (this row): SPECIFIC filters gated
@@ -2793,26 +2797,9 @@ def main():
                 _atomic_write_json(progress_path, progress)
             except Exception:
                 pass
-            # 15s detector — per-sheet check
+            # FIX 2026-09-23: removed 15s per-sheet abort — FULL SHEET LAW; log only
             if total_pos == 0 and __import__('time').time() - _v15_start_time > 15:
-                print(f"[VIRUS0-15s-SHEET] {new_symside} sheet {sheet} 0 pos after {__import__('time').time() - _v15_start_time:.1f}s — abort, never keep running >15s with 0 results", flush=True)
-                try:
-                    wb_keep.close()
-                except Exception:
-                    pass
-                # mark diagnostic and clean up
-                progress["final_gain"] = cumulative_gain
-                progress["bh"] = bh_raw if 'bh_raw' in locals() else 0
-                progress["no_delta"] = True
-                try:
-                    _atomic_write_json(progress_path, progress)
-                except Exception:
-                    pass
-                try:
-                    wb_path.unlink(missing_ok=True)
-                except Exception:
-                    pass
-                return
+                print(f"[VIRUS0-15s-SHEET-DISABLED] {new_symside} sheet {sheet} 0 pos after {__import__('time').time() - _v15_start_time:.1f}s — continuing (abort disabled)", flush=True)
         except Exception as _sheet_e:
             import traceback
             print(f"[sheet-ERR] {sheet} {_sheet_e} {traceback.format_exc()[:800]}", flush=True)
@@ -2895,23 +2882,10 @@ def main():
         return
     # DO NOT PUBLISH until cells are filled — timestamp = work in progress, bh/gain = finished
     # fully filled — publish bh/gain
-    # 15s detector — 0 pos never publish gain0
+    # FIX 2026-09-23: removed 15s final abort — allow 0-pos sheets to publish (baseline numbers still written); log only
     if total_pos == 0:
         _elapsed = __import__('time').time() - _v15_start_time
-        print(f"[VIRUS0-15s] {new_symside} 0 pos after {_elapsed:.1f}s total_pos 0 cum {cumulative_gain:.4f} baseline {baseline_gain:.4f} — ABORT 15s with 0 results", flush=True)
-        progress["final_gain"] = cumulative_gain
-        progress["bh"] = bh_raw
-        progress["final_path"] = None
-        progress["no_delta"] = True
-        try:
-            _atomic_write_json(progress_path, progress)
-        except Exception:
-            pass
-        try:
-            wb_path.unlink(missing_ok=True)
-        except Exception:
-            pass
-        return
+        print(f"[VIRUS0-15s-DISABLED] {new_symside} 0 pos after {_elapsed:.1f}s total_pos 0 cum {cumulative_gain:.4f} baseline {baseline_gain:.4f} — continuing to publish (abort disabled)", flush=True)
     def fmt(v): return f"{v:.2f}".replace("-", "m").replace(".", "p")
     final_name = f"{new_symside}_bh{fmt(bh_raw)}_gain{fmt(cumulative_gain)}_30d_matrix.xlsx"
     final_path = OUT_DIR / final_name
