@@ -746,14 +746,14 @@ class Config:
     # Live wire: ez_market_data.funding_rate_loop refreshes hourly into data_manager._cold_data[sym]['funding_rate'].
     # Backtest wire: NPZ field `funding_rate_{ltf}` (forward-filled) — already integrated in backtest_v8_precompute._inject_funding_oi.
     # Live entry gate: ez_positions_quick.execute_trade_wrapper reads `funding_rate*` from indicator dict.
-    FUNDING_GATE_ENABLED: bool = True               # 2026-04-27 default ON in live per user directive (was OFF in pre-existing sweep knob)
+    FUNDING_GATE_ENABLED: bool = False              # 2026-09-23 DESTROY: was True blocking FLZ longs on high funding during multiplies (SOL/ZEC/DOGE/BTC/ETH). DESTROYED per user: vector per_sym already proven, no funding gate needed.
     FUNDING_GATE_LONG_MAX: float = 0.0005           # reject NEW LONG when funding_rate >= 0.05%
     FUNDING_GATE_SHORT_MIN: float = -0.0005         # reject NEW SHORT when funding_rate <= -0.05%
-    FUNDING_HEDGE_GATE_ENABLED: bool = True         # apply funding gate to hedge entries too (helps "wrong moment" hedge open)
+    FUNDING_HEDGE_GATE_ENABLED: bool = False        # DESTROYED same — was True
     FUNDING_GATE_MTF_REQUIRED: bool = True          # 2026-05-31 ENABLED: only veto when HTF WaveTrend disagrees with the trade. Data (9.3M bars, 24h fwd): naive long-block +0.150% (HURTS — kills momentum longs) vs MTF long-block bull<=0 -0.912% (filters only worst longs); naive short-block +0.427% vs MTF short-block bear<=1 +1.078% (targets squeezes). False = legacy naive snapshot gate.
     FUNDING_GATE_MTF_LONG_MAX_BULL_TFS: int = 0     # BEST: block NEW LONG only if 0 of (15m,1h,4h,D) are WT-bullish (wt1>wt2) — HTF fully bearish. blocked-long 24h fwd -0.912% n=6860.
     FUNDING_GATE_MTF_SHORT_MAX_BEAR_TFS: int = 1    # BEST: block NEW SHORT only if <=1 of (15m,1h,4h,D) WT-bearish (wt1<wt2) — HTF not confirmed-down. blocked-short 24h fwd +1.078% n=9525.
-    OI_CONFIRM_ENABLED: bool = True                 # 2026-04-27: live ON per user directive after Batch 1 A/B (+40% max / +107% avg). Backtest reconfirm queued. 4-quadrant OI×price (Schabacker classic).
+    OI_CONFIRM_ENABLED: bool = False                # 2026-09-23 DESTROY: was True blocking entries when OI not confirming. Vector per_sym already handles OI via backtest — DESTROYED to let FLZ trade multiplies.
     OI_CONFIRM_MIN_CHANGE_PCT: float = 0.5          # |oi_change_1h_pct| must exceed this to consider OI move significant
     OI_CONFIRM_MIN_PRICE_PCT: float = 0.3           # |price_change_1h_pct| must exceed this; gate fires only when BOTH oi+price are significant
     OI_HEDGE_GATE_ENABLED: bool = False             # apply OI gate to hedge entries too (default OFF)
@@ -869,8 +869,8 @@ class Config:
     # Catches EVERY buy-side source (QUICK_OPEN, MOMENTUM_WATCHDOG, WT_3M_ESCALATE, daemon reentry) because
     # all route through execute_now. Reuses the existing _recent_reduces stamp. DEFAULT-OFF — proven in
     # backtest/counterfactual before enabling live. ROLLBACK: RECENT_REDUCTION_GUARD_ENABLED=False.
-    RECENT_REDUCTION_GUARD_ENABLED: bool = True   # 2026-06-03 ENABLED (USER: crypto churning) — blocks bare exit-price cross-back re-adds (DAEMON_PRICE_CROSS_REENTRY/QUICK_OPEN/WT_3M_ESCALATE) within WINDOW_S of a reduce unless a genuine Donchian breakout. ROLLBACK: False.
-    RECENT_REDUCTION_GUARD_WINDOW_S: float = 300.0   # 2026-09-10 REENTRY FIX CRYPTO: 450→300s (5min) — 450 blocked valid 5-7min trend continuations (golden DC-break). 300 keeps anti-churn (3 fires/tick + DC filter) but recaptures missed rallies. Stocks stays 450. ROLLBACK: 450.
+    RECENT_REDUCTION_GUARD_ENABLED: bool = False  # 2026-09-23 DESTROY: was True 300s blocking FLZ reentry on ZEC/SOL/DOGE/BTC/ETH multiplies. DESTROYED per user: must REENTER immediately after exit. DC-break 4bar still available as signal but not as gate. ROLLBACK: True 300.
+    RECENT_REDUCTION_GUARD_WINDOW_S: float = 60.0    # 2026-09-23 DESTROYED window 300→60s — minimal anti-churn only. If re-enabled, 60s max.
     RECENT_REDUCTION_GUARD_USE_4BAR: bool = True
     # 2026-06-03 USER MANDATE: S1 = live trader, Mac = testing only. On a NON-server box, execute_now
     # + send_webhook refuse live orders when the server holds a fresh heartbeat for the account → no
@@ -1434,7 +1434,7 @@ class Config:
     WT_REDUCE_FRAC_LOW: float = 0.15  # V4: was 0.30. At gains 0.3-0.5%, only reduce 15% (was 30%).
     WT_REDUCE_FRAC_MED: float = 0.25  # V4: was 0.50. At gains 0.5-1.0%, only reduce 25% (was 50%).
     WT_REDUCE_FRAC_HIGH: float = 0.50  # V4: at gains 1-3%, reduce 50% (was 70%).
-    MIN_HOLD_BARS_BEFORE_EXIT: int = 10  # 2026-09-07 UNLOCK per user — was 32 (96min at 3m). Lowered to 10 (30min) to let MTF/WT exits fire sooner; was blocking profitable exits on FLZ. Per_sym 48 still overrides FLZ winners where proven. ROLLBACK: 32.
+    MIN_HOLD_BARS_BEFORE_EXIT: int = 3   # 2026-09-23 DESTROY: was 10 (per_sym still 48) blocking timely FLZ exit on ZEC/SOL/DOGE/BTC/ETH. DESTROYED to 3 bars (9min at 3m) so exits fire fast and reentry can happen. Per_sym 48 overrides still patched below. ROLLBACK: 10.
     # === BOUNCE-TOP EXIT FOR LOSERS (proven on stocks, adapted for crypto) ===
     # Wait for price to bounce toward entry, exit at TOP of bounce = smallest possible loss
     # Mandatory reentry follows: 150% at pullback, 200% at rising WT cross

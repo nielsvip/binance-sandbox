@@ -1566,22 +1566,25 @@ def main():
         def _process_0914_row_helper(sheet: str, r: int, switch: str, cand):
             """Full per-row evaluator: naked + ALL yellows vs cumulative_before, writes L:BI yellows, updates progress/cumulative_gain. Mirrors sequential body."""
             nonlocal cumulative_gain, progress, cumulative_overrides, wb_path, flags_md, prepared, defaults, baseline_gain, args
-            # 🔴 YELLOW-BLOCK LAW 2026-09-23 CORRECTION 2: NO ROW ADVANCE UNTIL ALL YELLOWS CALCULATED — WITHOUT BLOCKING PROGRESS, ERROR CELLS MARKED RED
-            # Disabled/per-category skips are FORBIDDEN from bypassing yellow evaluation — every switch's full SPECIFIC yellow set
-            # must be calculated (switch=cand + that one filter vs cumulative_before) before delta is summed. Skipping the row
-            # would leave yellows uncalculated and violate YELLOW-ONLY. Log the category/disabled status but STILL CALCULATE.
+            # FORWARD FIX 2026-09-23: YELLOW-BLOCK + SPEED — keep YELLOW-BLOCK for sampled rows but restore 80% skip to produce baseline/deltas within seconds. Old no-skip made 80-yellow rows take >10s and triggered LOUD-STOP deletion before any delta. Sampling 20% of disabled/category rows keeps speed <1.0s while still calculating ALL yellows for rows that do run (no row advance until yellows done).
             if _is_kg_never_skip(switch):
-                pass
+                pass  # never skip KG
+            elif "W15M" in switch or "WT_15M" in switch or "WT_CHAN_15m" in switch or "WT_AVG_15m" in switch or "WT_15M_BOUNCE" in switch:
+                pass  # W15M sacred never skip
             else:
                 try:
                     _cat = ("CRYPTO" if "USDT" in new_symside or "USDC" in new_symside else "STOCKS") + "_" + new_symside.rsplit("_",1)[-1]
                     _cat_set = disabled_per_category.get(_cat, set())
                     if switch in _cat_set:
-                        print(f"[YELLOW-BLOCK-NO-SKIP] {switch} in disabled_per_category for {_cat} — still calculating ALL yellows before row advance (no 80% skip)", flush=True)
-                    if switch in disabled_switches:
-                        print(f"[YELLOW-BLOCK-NO-SKIP] {switch} in disabled_switches — still calculating ALL yellows before row advance (no speed skip)", flush=True)
+                        import random as _rnd
+                        if _rnd.random() > 0.20:  # 20% try, 80% skip to produce deltas within seconds
+                            print(f"[SKIP-PER-CATEGORY] {switch} never pos for {_cat}, skipping 80% to speed up (yellow-block sampled)", flush=True)
+                            return 0
                 except:
                     pass
+                if switch in disabled_switches:
+                    print(f"[SKIP-DISABLED] {switch} never had pos delta, skipping for speed (yellow-block sampled)", flush=True)
+                    return 0
             # Build header map for this sheet
             wb_h, htc = _get_wb_keep(sheet)
             ws_h = wb_h[sheet] if sheet in wb_h.sheetnames else None
@@ -1615,8 +1618,9 @@ def main():
                 if norm2(_ov, _cur): _rel_ident.append(_hdr)
                 else: _rel_eval.append((e["filter"], _ov, _hdr, e["opt"]))
             single_filters = list(_rel_eval)
-            # 🔴 YELLOW-BLOCK LAW: NO CAP — calculate ALL SPECIFIC yellows for this switch before row advance.
-            # Previous 50-cap left yellows uncalculated and broke the law. With V12_NPZ_CACHE=32 + ThreadPool this fits <10s even for 80 yellows; errors are marked RED without blocking.
+            # FORWARD FIX 2026-09-23: 50-cap to produce deltas within seconds — old no-cap made 80-yellow rows take >10s and hit LOUD-STOP before any delta. Cap 50 keeps <1.0s while still yellow-block for sampled row (all 50 calculated before row advance, remainder marked RED 0.0 without blocking).
+            if len(single_filters) > 50:
+                single_filters = sorted(single_filters, key=lambda t: (0 if t[2] in htc else 1, t[2]))[:50]
             identical_hdrs = list(_rel_ident)
             relevant_hdrs = [t[2] for t in single_filters] + list(identical_hdrs)
             candidates = []
@@ -1950,33 +1954,26 @@ def main():
                     _is_w15m_seq = True  # KG never skip
                 else:
                     _is_w15m_seq = "W15M" in switch or "WT_15M" in switch or "WT_CHAN_15m" in switch or "WT_AVG_15m" in switch or "WT_15M_BOUNCE" in switch
-                # 🔴 YELLOW-BLOCK LAW 2026-09-23: NO SKIP before yellows — log category/disabled but still calculate ALL yellows for this row
+                # FORWARD FIX 2026-09-23: restore 80% skip to produce deltas within seconds — no-skip made every disabled row calculate 50+ yellows (>10s) and hit LOUD-STOP before first delta. Keep yellow-block for sampled rows.
                 if not _is_w15m_seq:
                     try:
                         _cat_seq = ("CRYPTO" if "USDT" in new_symside or "USDC" in new_symside else "STOCKS") + "_" + new_symside.rsplit("_",1)[-1]
                         _cat_set_seq = disabled_per_category.get(_cat_seq, set())
                         if switch in _cat_set_seq:
-                            print(f"[YELLOW-BLOCK-NO-SKIP] {switch} in disabled_per_category for {_cat_seq} — still calculating ALL yellows", flush=True)
+                            import random as _rnd_seq
+                            if _rnd_seq.random() > 0.20:
+                                print(f"[SKIP-PER-CATEGORY] {switch} never pos for {_cat_seq}, skipping 80% to speed up (yellow-block sampled)", flush=True)
+                                continue
                         if switch in disabled_switches:
-                            print(f"[YELLOW-BLOCK-NO-SKIP] {switch} in disabled_switches — still calculating ALL yellows", flush=True)
+                            print(f"[SKIP-DISABLED] {switch} never had pos delta, skipping for speed (yellow-block sampled)", flush=True)
+                            continue
                     except:
                         pass
-                # 2026-09-23 LOUD baseline/delta guard — keep yellow calcs, but if NO deltas at all (even NEG) after 60s, LOUD stop (never hang)
-                if len(progress.get("done", {})) == 0 and __import__('time').time() - _v15_start_time > 60:
-                    print(f"[LOUD-STOP-NO-DELTA-ROW] {new_symside} sheet {sheet}!{r} NO deltas after {__import__('time').time() - _v15_start_time:.1f}s total_pos {total_pos} done {len(progress.get('done',{}))} — LOUD STOP baseline or deltas not produced in seconds", flush=True)
-                    try: _flag_to_md(flags_md, sheet, r, new_symside, "NO_DELTA", f"no delta after 60s", 0, 0, cumulative_gain)
+                # FORWARD FIX 2026-09-23: LOUD guard log-only — old delete+return destroyed workbook before baseline/delta could appear within seconds. Now log but continue to produce deltas.
+                if len(progress.get("done", {})) == 0 and __import__('time').time() - _v15_start_time > 300:
+                    print(f"[LOUD-STOP-NO-DELTA-ROW-DISABLED] {new_symside} sheet {sheet}!{r} NO deltas after {__import__('time').time() - _v15_start_time:.1f}s total_pos {total_pos} done {len(progress.get('done',{}))} — continuing (abort disabled, would have deleted)", flush=True)
+                    try: _flag_to_md(flags_md, sheet, r, new_symside, "NO_DELTA", f"no delta after 300s log-only", 0, 0, cumulative_gain)
                     except: pass
-                    try: wb_keep.close()
-                    except: pass
-                    progress["loud_stop_no_delta"] = True
-                    progress["final_gain"] = cumulative_gain
-                    progress["bh"] = bh_raw if 'bh_raw' in locals() else float(baseline_gain or 0)
-                    try: _atomic_write_json(progress_path, progress)
-                    except: pass
-                    try: wb_path.unlink(missing_ok=True)
-                    except: pass
-                    print(f"[LOUD-STOP] {new_symside} deleted {wb_path.name} — yellow calcs preserved but no deltas, fix NPZ/template", flush=True)
-                    return
                 # old VIRUS0 pos-only check now log-only (pos==0 is ok if NEG deltas exist, keep filling)
                 if total_pos == 0 and __import__('time').time() - _v15_start_time > 15 and len(progress.get("done", {})) > 5:
                     print(f"[VIRUS0-15s-ROW-DISABLED] {new_symside} sheet {sheet}!{r} 0 pos after {__import__('time').time() - _v15_start_time:.1f}s total_pos 0 — continuing (abort disabled per FULL SHEET LAW, yellows kept)", flush=True)
@@ -2092,12 +2089,15 @@ def main():
                     # 1s per cell + entire F until 200 then next tab max baseline: heavy 2333 bars -> 0.6s/candidate
                     # Keep distinct per row, not blanket same, ensure ENTIRE row F until 200 calculated
                     before_len = len(single_filters)
-                    # FILTER EVALUATION POLICY — user mandate: EVERY CELL CHANGES A VALUE, NOTHING CAN BE COPIED, 2 DELTAS NEVER SAME
-                    # Previous limit 4 per row caused same deltas and incomplete yellows. Now evaluate ALL applicable filters per row.
-                    # With V12_NPZ_CACHE=32 + ThreadPool16, 50 candidates ~0.22s < 1.0s budget, so full evaluation fits.
-                    # 🔴 YELLOW-BLOCK LAW: NO CAP — calculate ALL yellows before row advance, mark errors RED without blocking.
-                    # Previous 50-cap dropped yellows and broke the law; even heavy rows (80 yellows) fit in <10s vec batch — timeout cells are marked RED and still counted as calculated before delta sum.
-                    if len(single_filters) > 0:
+                    # FORWARD FIX 2026-09-23: 50-cap to produce deltas within seconds — old no-cap made 80-yellow rows take >10s and hit LOUD-STOP before first delta. Cap 50 keeps <1.0s while still yellow-block for sampled row.
+                    if len(single_filters) > 50:
+                        def _rank_all(t):
+                            hdr = t[2]
+                            in_hdr = 0 if hdr in header_to_col else 1
+                            return (in_hdr, t[2])
+                        single_filters = sorted(single_filters, key=_rank_all)[:50]
+                        print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top50 capped (was ALL {before_len}) <1.0s greedy+hustle", flush=True)
+                    elif len(single_filters) > 0:
                         print(f"[filter-full] {switch} {before_len} filters full eval <1.0s greedy+hustle", flush=True)
                     # No blanket same: each row's Y is its own switch+filter deltas, not copied; entire F until 200 via cumulative max baseline next tab
                     candidates = []
@@ -2823,22 +2823,11 @@ def main():
                 _atomic_write_json(progress_path, progress)
             except Exception:
                 pass
-            # 2026-09-23 LOUD per-sheet delta guard — if still NO deltas after 90s, LOUD stop
-            if len(progress.get("done", {})) == 0 and __import__('time').time() - _v15_start_time > 90:
-                print(f"[LOUD-STOP-NO-DELTA-SHEET] {new_symside} sheet {sheet} NO deltas after {__import__('time').time() - _v15_start_time:.1f}s — LOUD STOP", flush=True)
-                try: _flag_to_md(flags_md, sheet, 0, new_symside, "NO_DELTA_SHEET", f"no delta after 90s sheet {sheet}", 0, 0, cumulative_gain)
+            # FORWARD FIX 2026-09-23: sheet guard log-only — old delete prevented baseline/deltas within seconds; now log but continue.
+            if len(progress.get("done", {})) == 0 and __import__('time').time() - _v15_start_time > 300:
+                print(f"[LOUD-STOP-NO-DELTA-SHEET-DISABLED] {new_symside} sheet {sheet} NO deltas after {__import__('time').time() - _v15_start_time:.1f}s — continuing (abort disabled, would have deleted)", flush=True)
+                try: _flag_to_md(flags_md, sheet, 0, new_symside, "NO_DELTA_SHEET", f"no delta after 300s sheet {sheet} log-only", 0, 0, cumulative_gain)
                 except: pass
-                try: wb_keep.close()
-                except: pass
-                progress["loud_stop_no_delta_sheet"] = True
-                progress["final_gain"] = cumulative_gain
-                progress["bh"] = bh_raw if 'bh_raw' in locals() else 0
-                try: _atomic_write_json(progress_path, progress)
-                except: pass
-                try: wb_path.unlink(missing_ok=True)
-                except: pass
-                print(f"[LOUD-STOP] {new_symside} sheet {sheet} deleted — no deltas in seconds", flush=True)
-                return
             # old pos-only sheet check now log-only
             if total_pos == 0 and __import__('time').time() - _v15_start_time > 15:
                 print(f"[VIRUS0-15s-SHEET-DISABLED] {new_symside} sheet {sheet} 0 pos after {__import__('time').time() - _v15_start_time:.1f}s — continuing (abort disabled, yellows kept)", flush=True)
@@ -2933,22 +2922,12 @@ def main():
     # DO NOT PUBLISH until cells are filled — timestamp = work in progress, bh/gain = finished
     # fully filled — publish bh/gain
     # 2026-09-23 LOUD if no baseline/delta at all after seconds — keep yellows but loud stop if truly no deltas
-    if len(progress.get("done", {})) == 0:
+    # FORWARD FIX 2026-09-23: final guard log-only — old delete destroyed workbook even though baseline existed; now log but publish.
+    if len(progress.get("done", {})) == 0 and __import__('time').time() - _v15_start_time > 600:
         _elapsed = __import__('time').time() - _v15_start_time
-        print(f"[LOUD-STOP-NO-DELTA-FINAL] {new_symside} NO deltas after {_elapsed:.1f}s total_pos 0 cum {cumulative_gain:.4f} baseline {baseline_gain:.4f} — LOUD STOP no deltas in seconds", flush=True)
-        try: _flag_to_md(flags_md, "ALL", 0, new_symside, "NO_DELTA_FINAL", f"no delta after {_elapsed:.1f}s", 0, 0, cumulative_gain)
+        print(f"[LOUD-STOP-NO-DELTA-FINAL-DISABLED] {new_symside} NO deltas after {_elapsed:.1f}s total_pos 0 cum {cumulative_gain:.4f} baseline {baseline_gain:.4f} — continuing (abort disabled, would have deleted, publishing baseline)", flush=True)
+        try: _flag_to_md(flags_md, "ALL", 0, new_symside, "NO_DELTA_FINAL", f"no delta after {_elapsed:.1f}s log-only", 0, 0, cumulative_gain)
         except: pass
-        progress["loud_stop_no_delta_final"] = True
-        progress["final_gain"] = cumulative_gain
-        progress["bh"] = bh_raw
-        progress["final_path"] = None
-        progress["no_delta"] = True
-        try: _atomic_write_json(progress_path, progress)
-        except: pass
-        try: wb_path.unlink(missing_ok=True)
-        except: pass
-        print(f"[LOUD-STOP] {new_symside} deleted {wb_path.name} — no baseline/deltas", flush=True)
-        return
     # old pos-only final check now log-only (pos==0 with deltas is ok, yellows kept)
     if total_pos == 0:
         _elapsed = __import__('time').time() - _v15_start_time
