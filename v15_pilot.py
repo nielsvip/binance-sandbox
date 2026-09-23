@@ -673,7 +673,7 @@ def ensure_lbI_headers(wb_path: Path):
         existing = set()
         scan_max = max(ws.max_column, 12)
         stale = []
-        for c in range(12, scan_max + 1):
+        for c in range(15, scan_max + 1):
             try:
                 hv = ws.cell(row=2, column=c).value
             except Exception:
@@ -732,10 +732,14 @@ def ensure_lbI_headers(wb_path: Path):
             headers.append(hdr)
             if len(headers) >= 220:
                 break
-        col = 12
+        # Preserve L:is_default, M:AVG DELTA, N:POS_SYM — yellows start at O (col 15)
+        col = 15
         for hdr in headers:
             if hdr in existing:
                 continue
+            # skip reserved M/N if they still hold AVG DELTA / POS_SYM
+            while col in (13, 14):
+                col += 1
             try:
                 c = ws.cell(row=2, column=col)
                 if str(getattr(c, "__class__", "")).endswith("MergedCell"):
