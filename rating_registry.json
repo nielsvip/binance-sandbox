@@ -1,11 +1,17 @@
 {
-  "timestamp": "2026-09-23T11:13:32.646134+00:00",
+  "timestamp": "2026-09-23T11:35:28.839538+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 108
   },
   "unified_ranking": [
+    {
+      "symbol": "CRWVUSDT",
+      "net_score": -11.2,
+      "long_score": 0,
+      "short_score": 11.2
+    },
     {
       "symbol": "HYPEUSDT",
       "net_score": 0,
@@ -62,6 +68,12 @@
     },
     {
       "symbol": "BTCDOMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ARPAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -481,12 +493,6 @@
       "short_score": 0
     },
     {
-      "symbol": "CRWVUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "DOGEUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -647,22 +653,16 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "ARPAUSDT",
-      "net_score": 10.0,
-      "long_score": 10.0,
-      "short_score": 0
     }
   ],
-  "top_longs": [
+  "top_longs": [],
+  "top_shorts": [
     [
-      "ARPAUSDT",
-      10.0,
-      0.0115532
+      "CRWVUSDT",
+      11.2,
+      86.49
     ]
   ],
-  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
