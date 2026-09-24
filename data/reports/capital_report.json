@@ -1,30 +1,55 @@
 {
- "generated_at": "2026-09-24 14:47 UTC",
- "total_capital_usd": 11.38,
+ "generated_at": "2026-09-24 15:16 UTC",
+ "total_capital_usd": 318.48,
  "tier_capital": {
   "A": 0.0,
-  "B": 11.38,
-  "C": 0.0
+  "B": 169.04,
+  "C": 149.44
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 2,
+  "C": 1
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "ang:NEARUSDC_LONG",
+  "ang:AVGOUSDT_SHORT"
+ ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:XTZUSDT_LONG",
-   "symbol": "XTZUSDT",
-   "account": "inf",
-   "value_usd": 11.38,
-   "gain_pct": -0.064,
+   "pk": "ang:AVGOUSDT_SHORT",
+   "symbol": "AVGOUSDT",
+   "account": "ang",
+   "value_usd": 149.44,
+   "gain_pct": 0.338,
+   "tier": "C",
+   "perf_mult": 0.62,
+   "amt": 0.43,
+   "mark": 347.54282879
+  },
+  {
+   "pk": "ang:NEARUSDC_LONG",
+   "symbol": "NEARUSDC",
+   "account": "ang",
+   "value_usd": 144.51,
+   "gain_pct": -4.473,
    "tier": "B",
-   "perf_mult": 3.5,
-   "amt": 34.5,
-   "mark": 0.32988932
+   "perf_mult": 1.0,
+   "amt": 32.0,
+   "mark": 4.516
+  },
+  {
+   "pk": "ang:AMDUSDT_LONG",
+   "symbol": "AMDUSDT",
+   "account": "ang",
+   "value_usd": 24.53,
+   "gain_pct": -0.346,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 0.04,
+   "mark": 613.16
   }
  ]
 }
