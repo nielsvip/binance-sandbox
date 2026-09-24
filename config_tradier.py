@@ -1687,7 +1687,9 @@ class TradierConfig:
     DC_DAYTRADE_MAX_PER_SIDE: int = 5  # Max concurrent daytrade positions per side
     DC_DAYTRADE_REQUIRE_1H_EXPANSION: bool = True  # Only trade DC breaks when 1h channel is expanding in same direction
     DC_DAYTRADE_BUFFER: float = 0.001  # Min % outside channel to confirm break (0.1%)
-    DC_DAYTRADE_STOP_PCT: float = 0.015  # 1.5% hard stop for daytrades
+    DC_DAYTRADE_STOP_PCT: float = 0.015  # 1.5% hard stop for daytrades — LEGACY hard % (never hard % stops per user 2026-09-24, keep but prefer dc levels below)
+    DC_DAYTRADE_STOP_USE_DC_15M: bool = False  # 2026-09-24: use dc_low/high_15m as stop (vectorizable, npz has 15m) instead of hard %
+    DC_DAYTRADE_STOP_USE_DC4_15M: bool = False  # 2026-09-24: use dc_low4/high4_15m (4-bar tight) as stop — was 3/5m hard stop replacement (3/5m not in npz)
     DC_DAYTRADE_TARGET_PCT: float = 0.01  # 1% profit target
     DC_DAYTRADE_MAX_HOLD_MINUTES: float = 240.0  # 4h max hold (flatten before close regardless)
     DC_DAYTRADE_PRE_CLOSE_MINUTES: int = 120  # Start flattening 2h before market close (14:00 ET)
@@ -2167,7 +2169,9 @@ class TradierConfig:
     TRADIER_DC_DAYTRADE_ENABLED: bool = True
     TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES: int = 0  # 2026-09-15: OFF by default per user - max hold disabled
     TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION: bool = True
-    TRADIER_DC_DAYTRADE_STOP_PCT: float = 0.005         # 0.5% hard stop
+    TRADIER_DC_DAYTRADE_STOP_PCT: float = 0.005         # 0.5% hard stop — LEGACY hard % (never hard % stops per user 2026-09-24, keep but prefer dc levels below)
+    TRADIER_DC_DAYTRADE_STOP_USE_DC_15M: bool = False  # 2026-09-24: use dc_low/high_15m as stop instead of hard % (vectorizable)
+    TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M: bool = False  # 2026-09-24: use dc_low4/high4_15m (4-bar tight) as stop — was 3/5m replacement
     TRADIER_DC_DAYTRADE_TARGET_PCT: float = 0.005       # REVERTED 2026-05-18 18:30 (was 0.015 since 2026-05-17). 2026-05-17 flip had no sample-floor proof; isolated vec sweep queued.
     # Gate only the existing DC breakout-tier augmentation inside
     # evaluate_augment. Default True preserves the pre-switch live behavior.

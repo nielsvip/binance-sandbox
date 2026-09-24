@@ -13164,13 +13164,25 @@ def _apply_625_exit_gates(npz, n, is_long, cfg, exit_mask):
         _v = _safe(npz, 'stoch_k_1h', n, 50)
         _bound = 50 + (_thr % 30) - 15
         out = out | (_v > _bound if is_long else _v < _bound)
-    # DC_DAYTRADE_STOP_PCT (num) -> mfi_1h
+    # DC_DAYTRADE_STOP_PCT (num) -> mfi_1h — LEGACY hard % (never hard % stops per user, keep but prefer dc levels below)
     _thr = float(getattr(cfg, 'DC_DAYTRADE_STOP_PCT', 0))
     _def = float(_DEFAULTS_625.get('DC_DAYTRADE_STOP_PCT', 0) or 0)
     if abs(_thr - _def) > 1e-9:
         _v = _safe(npz, 'mfi_1h', n, 50)
         _bound = 50 + (_thr % 20) -10
         out = out | (_v > _bound if is_long else _v < _bound)
+    # DC_DAYTRADE_STOP_USE_DC_15M (bool) -> dc_low/high_15m (vectorizable, npz has 15m, was 3/5m not in npz)
+    if bool(getattr(cfg, 'DC_DAYTRADE_STOP_USE_DC_15M', False)) != bool(_DEFAULTS_625.get('DC_DAYTRADE_STOP_USE_DC_15M', False)):
+        close = _base_safe(npz, 'close', n, cfg)
+        dc_low_15m = _safe(npz, 'dc_low_15m', n)
+        dc_high_15m = _safe(npz, 'dc_high_15m', n)
+        out = out | (close < dc_low_15m if is_long else close > dc_high_15m)
+    # DC_DAYTRADE_STOP_USE_DC4_15M (bool) -> dc_low4/high4_15m (4-bar tight, 3/5m replacement)
+    if bool(getattr(cfg, 'DC_DAYTRADE_STOP_USE_DC4_15M', False)) != bool(_DEFAULTS_625.get('DC_DAYTRADE_STOP_USE_DC4_15M', False)):
+        close = _base_safe(npz, 'close', n, cfg)
+        dc_low4_15m = _safe(npz, 'dc_low4_15m', n)
+        dc_high4_15m = _safe(npz, 'dc_high4_15m', n)
+        out = out | (close < dc_low4_15m if is_long else close > dc_high4_15m)
     # DC_RECOVERY_EXIT_ENABLED (bool) -> bb_pct_b_1h
     if bool(getattr(cfg, 'DC_RECOVERY_EXIT_ENABLED', False)) != bool(_DEFAULTS_625.get('DC_RECOVERY_EXIT_ENABLED', False)):
         _v = _safe(npz, 'bb_pct_b_1h', n, 0.5)
@@ -13842,13 +13854,25 @@ def _apply_625_exit_gates(npz, n, is_long, cfg, exit_mask):
     if bool(getattr(cfg, 'TF_FOCUS_EXIT_HARD_GATE', False)) != bool(_DEFAULTS_625.get('TF_FOCUS_EXIT_HARD_GATE', False)):
         _v = _safe(npz, 'wt_velocity_4h', n, 0)
         out = out | (_v < -3 if is_long else _v > 3)
-    # TRADIER_DC_DAYTRADE_STOP_PCT (num) -> atr_1h
+    # TRADIER_DC_DAYTRADE_STOP_PCT (num) -> atr_1h — LEGACY hard % (never hard % stops per user, keep but prefer dc levels below)
     _thr = float(getattr(cfg, 'TRADIER_DC_DAYTRADE_STOP_PCT', 0))
     _def = float(_DEFAULTS_625.get('TRADIER_DC_DAYTRADE_STOP_PCT', 0) or 0)
     if abs(_thr - _def) > 1e-9:
         _v = _safe(npz, 'atr_1h', n, 0)
         _c = _base_safe(npz, 'close', n, cfg)
         out = out | (_v > abs(_thr) * 0.01 * _c)
+    # TRADIER_DC_DAYTRADE_STOP_USE_DC_15M (bool) -> dc_low/high_15m
+    if bool(getattr(cfg, 'TRADIER_DC_DAYTRADE_STOP_USE_DC_15M', False)) != bool(_DEFAULTS_625.get('TRADIER_DC_DAYTRADE_STOP_USE_DC_15M', False)):
+        close = _base_safe(npz, 'close', n, cfg)
+        dc_low_15m = _safe(npz, 'dc_low_15m', n)
+        dc_high_15m = _safe(npz, 'dc_high_15m', n)
+        out = out | (close < dc_low_15m if is_long else close > dc_high_15m)
+    # TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M (bool) -> dc_low4/high4_15m
+    if bool(getattr(cfg, 'TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M', False)) != bool(_DEFAULTS_625.get('TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M', False)):
+        close = _base_safe(npz, 'close', n, cfg)
+        dc_low4_15m = _safe(npz, 'dc_low4_15m', n)
+        dc_high4_15m = _safe(npz, 'dc_high4_15m', n)
+        out = out | (close < dc_low4_15m if is_long else close > dc_high4_15m)
     # TRADIER_MI_EXIT_ENABLED_TRADIER (bool) -> dc_position_15m
     if bool(getattr(cfg, 'TRADIER_MI_EXIT_ENABLED_TRADIER', False)) != bool(_DEFAULTS_625.get('TRADIER_MI_EXIT_ENABLED_TRADIER', False)):
         _v = _safe(npz, 'dc_position_15m', n, 0.5)
