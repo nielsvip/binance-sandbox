@@ -107,7 +107,7 @@ def _apply_visual(ws, r, c, fill=None, font=None, is_bold=False):
         pass
 
 def _clear_vlookup_formulas(ws):
-    """Pilot decides — no formulas in data rows r>=3 for C/E/F/G/H/I/K. Clear any VLOOKUP/IF. GLOBAL_RISK_GATES waived only if explicitly documented."""
+    """Pilot decides — no formulas in data rows r>=3 for C/E/F/G/H/I/K. Clear any VLOOKUP/IF. GLOBAL_RISK_GATES waived only if explicitly documented. Also erase Blanket (page end)."""
     for r in range(3, ws.max_row + 1):
         for col in (3, 5, 6, 7, 8, 9, 11):  # C,E,F,G,H,I,K
             try:
@@ -117,8 +117,20 @@ def _clear_vlookup_formulas(ws):
                     if ws.title == "GLOBAL_RISK_GATES" and col in (7, 8, 9):
                         continue
                     ws.cell(row=r, column=col).value = None
+                # Erase Blanket (page end) from H col8
+                if col == 8 and isinstance(v, str) and "Blanket" in v:
+                    ws.cell(row=r, column=col).value = None
+                    ws.cell(row=r, column=col).fill = __import__("openpyxl").styles.PatternFill(fill_type=None)
             except Exception:
                 pass
+        # Also check col8 for Blanket even if not in loop (already handled) and any Blanket incols
+        try:
+            hv = ws.cell(row=r, column=8).value
+            if isinstance(hv, str) and "Blanket" in hv:
+                ws.cell(row=r, column=8).value = None
+                ws.cell(row=r, column=8).fill = __import__("openpyxl").styles.PatternFill(fill_type=None)
+        except Exception:
+            pass
 
 def _write_per_row_HIK(ws, r, live_delta, live_sharpe, per_row_filters):
     """Per-row H/I/K — H=LIVE_DELTA col8, I=LIVE_SHARPE col9, K=PER_ROW_FILTERS col11. Applied every row, not just at sheet-complete."""
@@ -2069,9 +2081,9 @@ def main():
                         ws_r.cell(row=r, column=7).font = Font(name="Arial", size=10, bold=True, color="9C5700")
                         ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
                         # H/I/K per-row (added for gap fix)
-                        try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else (float(delta_best) if 'delta_best' in locals() else 0.0)
+                        try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else None
                         except: _hk_ld = 0.0
-                        try: _hk_ls = float((live_best or {}).get('pool_sharpe') or (vec_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() or 'vec_best' in locals() else 0.0
+                        try: _hk_ls = float((live_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() and live_best is not None and (live_best or {}).get('pool_sharpe') is not None else None
                         except: _hk_ls = 0.0
                         try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
                         except: _hk_pf = ""
@@ -2921,9 +2933,9 @@ def main():
                                 ws_keep.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
                                 ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
                                 # H/I/K per-row (added for gap fix)
-                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else (float(delta_best) if 'delta_best' in locals() else 0.0)
+                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else None
                                 except: _hk_ld = 0.0
-                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or (vec_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() or 'vec_best' in locals() else 0.0
+                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() and live_best is not None and (live_best or {}).get('pool_sharpe') is not None else None
                                 except: _hk_ls = 0.0
                                 try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
                                 except: _hk_pf = ""
@@ -2946,9 +2958,9 @@ def main():
                                 ws_keep.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
                                 ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
                                 # H/I/K per-row (added for gap fix)
-                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else (float(delta_best) if 'delta_best' in locals() else 0.0)
+                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else None
                                 except: _hk_ld = 0.0
-                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or (vec_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() or 'vec_best' in locals() else 0.0
+                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() and live_best is not None and (live_best or {}).get('pool_sharpe') is not None else None
                                 except: _hk_ls = 0.0
                                 try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
                                 except: _hk_pf = ""
@@ -3233,9 +3245,9 @@ def main():
                                 ws_row.cell(row=r, column=7).font = Font(name="Arial", size=10, bold=True, color="9C5700")
                                 ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
                                 # H/I/K per-row (added for gap fix)
-                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else (float(delta_best) if 'delta_best' in locals() else 0.0)
+                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else None
                                 except: _hk_ld = 0.0
-                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or (vec_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() or 'vec_best' in locals() else 0.0
+                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() and live_best is not None and (live_best or {}).get('pool_sharpe') is not None else None
                                 except: _hk_ls = 0.0
                                 try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
                                 except: _hk_pf = ""
@@ -3289,9 +3301,9 @@ def main():
                                 ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="000000")
                                 ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
                                 # H/I/K per-row (added for gap fix)
-                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else (float(delta_best) if 'delta_best' in locals() else 0.0)
+                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else None
                                 except: _hk_ld = 0.0
-                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or (vec_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() or 'vec_best' in locals() else 0.0
+                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() and live_best is not None and (live_best or {}).get('pool_sharpe') is not None else None
                                 except: _hk_ls = 0.0
                                 try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
                                 except: _hk_pf = ""
@@ -3360,9 +3372,9 @@ def main():
                                 ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
                                 ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
                                 # H/I/K per-row (added for gap fix)
-                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else (float(delta_best) if 'delta_best' in locals() else 0.0)
+                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else None
                                 except: _hk_ld = 0.0
-                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or (vec_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() or 'vec_best' in locals() else 0.0
+                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() and live_best is not None and (live_best or {}).get('pool_sharpe') is not None else None
                                 except: _hk_ls = 0.0
                                 try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
                                 except: _hk_pf = ""
@@ -3402,9 +3414,9 @@ def main():
                                 ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
                                 ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
                                 # H/I/K per-row (added for gap fix)
-                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else (float(delta_best) if 'delta_best' in locals() else 0.0)
+                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else None
                                 except: _hk_ld = 0.0
-                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or (vec_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() or 'vec_best' in locals() else 0.0
+                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() and live_best is not None and (live_best or {}).get('pool_sharpe') is not None else None
                                 except: _hk_ls = 0.0
                                 try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
                                 except: _hk_pf = ""
@@ -3436,9 +3448,9 @@ def main():
                                 ws_row.cell(row=r, column=7).font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
                                 ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
                                 # H/I/K per-row (added for gap fix)
-                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else (float(delta_best) if 'delta_best' in locals() else 0.0)
+                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else None
                                 except: _hk_ld = 0.0
-                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or (vec_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() or 'vec_best' in locals() else 0.0
+                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() and live_best is not None and (live_best or {}).get('pool_sharpe') is not None else None
                                 except: _hk_ls = 0.0
                                 try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
                                 except: _hk_pf = ""
@@ -3476,9 +3488,9 @@ def main():
                             ws_row.cell(row=r, column=7).font = Font(name="Arial", size=10, bold=True, color="9C5700")
                             ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
                             # H/I/K per-row (added for gap fix)
-                            try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else (float(delta_best) if 'delta_best' in locals() else 0.0)
+                            try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else None
                             except: _hk_ld = 0.0
-                            try: _hk_ls = float((live_best or {}).get('pool_sharpe') or (vec_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() or 'vec_best' in locals() else 0.0
+                            try: _hk_ls = float((live_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() and live_best is not None and (live_best or {}).get('pool_sharpe') is not None else None
                             except: _hk_ls = 0.0
                             try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
                             except: _hk_pf = ""
@@ -3551,9 +3563,9 @@ def main():
                                 ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
                                 ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
                                 # H/I/K per-row (added for gap fix)
-                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else (float(delta_best) if 'delta_best' in locals() else 0.0)
+                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else None
                                 except: _hk_ld = 0.0
-                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or (vec_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() or 'vec_best' in locals() else 0.0
+                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() and live_best is not None and (live_best or {}).get('pool_sharpe') is not None else None
                                 except: _hk_ls = 0.0
                                 try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
                                 except: _hk_pf = ""

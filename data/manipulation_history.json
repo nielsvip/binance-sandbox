@@ -2631,5 +2631,23 @@
     ],
     "timestamp": "2026-09-24T21:22:50.710211+00:00",
     "price": 0.009264
+  },
+  {
+    "symbol": "LINKUSDC",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 11.8x normal"
+    ],
+    "timestamp": "2026-09-24T21:38:10.584069+00:00",
+    "price": 13.213
+  },
+  {
+    "symbol": "NEARUSDC",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 10.1x normal"
+    ],
+    "timestamp": "2026-09-24T21:38:10.584069+00:00",
+    "price": 4.664
   }
 ]
