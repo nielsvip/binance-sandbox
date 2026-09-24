@@ -126,8 +126,8 @@ SWITCH_SHEETS = [
     "GLOBAL_RISK_GATES",
     "STDEV_SLOPE_SIZING",
 ]
-# USER 2026-09-24: STDEV_SLOPE_SIZING runs LAST — discarded until all other cells are filled
-SKIP_SHEETS = set()
+# USER 2026-09-24: STDEV_SLOPE_SIZING runs LAST and is SKIPPED for now (until all other cells are filled); V15_WITH_STDEV=1 re-enables
+SKIP_SHEETS = set() if os.environ.get("V15_WITH_STDEV") == "1" else {"STDEV_SLOPE_SIZING"}
 # USER 2026-09-24: zero importance — NPZ has no 3m/5m bars, no max-usd, no size multipliers
 SKIP_SWITCH_PATTERNS = ("RELATIVE_VOLUME_3M", "RELATIVE_VOLUME_5M", "_3M_", "_5M_", "MAX_USD", "SIZE_MULT", "_MULTIPLIER")
 def _is_npz_irrelevant(name) -> bool:
@@ -1856,6 +1856,7 @@ def main():
             sheets = ["ENTRY_REVERSAL_BOUNCE"] + [x for x in sheets if x != "ENTRY_REVERSAL_BOUNCE"]
         if "STDEV_SLOPE_SIZING" in sheets:
             sheets = [x for x in sheets if x != "STDEV_SLOPE_SIZING"] + ["STDEV_SLOPE_SIZING"]
+        sheets = [x for x in sheets if x not in SKIP_SHEETS]
         print(f"[sheet-order] {sheets}", flush=True)
     if args.seq_mode == "cycle":
         print("[seq-mode] cycle -> sequential (tabs must finish in order)", flush=True)
