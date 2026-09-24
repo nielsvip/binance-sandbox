@@ -1,44 +1,32 @@
 {
- "generated_at": "2026-09-24 04:23 UTC",
- "total_capital_usd": 301.68,
+ "generated_at": "2026-09-24 05:03 UTC",
+ "total_capital_usd": 39.63,
  "tier_capital": {
   "A": 0.0,
-  "B": 176.98,
-  "C": 124.69
+  "B": 0.0,
+  "C": 39.63
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 0,
   "C": 1
  },
  "winners": [],
  "losers": [
-  "ang:CRWDUSDT_LONG",
-  "ang:SNXUSDT_SHORT"
+  "fin:SNXUSDT_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:CRWDUSDT_LONG",
-   "symbol": "CRWDUSDT",
-   "account": "ang",
-   "value_usd": 176.98,
-   "gain_pct": -0.571,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.68,
-   "mark": 260.27
-  },
-  {
-   "pk": "ang:SNXUSDT_SHORT",
+   "pk": "fin:SNXUSDT_SHORT",
    "symbol": "SNXUSDT",
-   "account": "ang",
-   "value_usd": 124.69,
-   "gain_pct": 0.412,
+   "account": "fin",
+   "value_usd": 39.63,
+   "gain_pct": 0.0,
    "tier": "C",
-   "perf_mult": 0.45,
-   "amt": 534.7,
-   "mark": 0.2332
+   "perf_mult": 0.37,
+   "amt": 167.7,
+   "mark": 0.2363
   }
  ]
 }
