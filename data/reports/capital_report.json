@@ -1,10 +1,10 @@
 {
- "generated_at": "2026-09-24 05:03 UTC",
- "total_capital_usd": 39.63,
+ "generated_at": "2026-09-24 06:03 UTC",
+ "total_capital_usd": 39.52,
  "tier_capital": {
   "A": 0.0,
   "B": 0.0,
-  "C": 39.63
+  "C": 39.52
  },
  "tier_count": {
   "A": 0,
@@ -21,12 +21,12 @@
    "pk": "fin:SNXUSDT_SHORT",
    "symbol": "SNXUSDT",
    "account": "fin",
-   "value_usd": 39.63,
-   "gain_pct": 0.0,
+   "value_usd": 39.52,
+   "gain_pct": 0.929,
    "tier": "C",
    "perf_mult": 0.37,
    "amt": 167.7,
-   "mark": 0.2363
+   "mark": 0.23564243
   }
  ]
 }
