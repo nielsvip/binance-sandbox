@@ -7120,12 +7120,12 @@ def _psym_get(symbol: str, side: str, knob: str, default):
     return getattr(config, knob, default)
 
 
-def _ezm_is_live_side_enabled(symbol: str, side: str) -> tuple[bool, str]:
+def _ezm_is_live_side_enabled(symbol: str, side: str, account_key: str | None = None) -> tuple[bool, str]:
     """Live gate: per_sym must exist, gain>0 and beat bh.
     Backtest still explores disabled side occasionally (exploration), but live blocks.
     Handles both crypto (per_sym_active_config.json) and stocks (per_sym_active_config_stocks.json).
     PARITY 2026-09-24: restored — live trades exactly what per_sym recommends.
-    For never-calculated tradeable_keys members, TEMPLATE fallback is allowed until per_sym exists.
+    2026-09-24 account fix: tradeable_keys are per-account (ang:..., inf:... etc.) so TEMPLATE fallback checks per-account, not global.
     Returns (enabled, reason)."""
     if os.environ.get("V8_DISABLE_PER_SYM") == "1":
         return True, "V8_DISABLE_PER_SYM"
@@ -7167,14 +7167,19 @@ def _ezm_is_live_side_enabled(symbol: str, side: str) -> tuple[bool, str]:
         if raw_entry is not None:
             is_stock = True
         else:
-            # PARITY 2026-09-24: never-calculated tradeable_keys members trade TEMPLATE until per_sym exists — takes precedence over BEST gate
+            # PARITY 2026-09-24 account fix: per-account tradeable_keys (ang:..., inf:...) so check account prefix
             try:
                 _tk_path = Path(__file__).resolve().parent / "tradeable_keys.json"
                 if _tk_path.exists():
                     _tk_raw2 = json.loads(_tk_path.read_text())
-                    _tk_set2 = set(str(k).split(":", 1)[1] if ":" in str(k) else str(k) for k in _tk_raw2 if isinstance(k, str))
-                    if f"{symbol}_{side}" in _tk_set2:
-                        return True, f"TEMPLATE fallback until per_sym calculated for {key}"
+                    if account_key:
+                        if f"{account_key}:{symbol}_{side}" in _tk_raw2:
+                            return True, f"TEMPLATE fallback until per_sym calculated for {account_key}:{key}"
+                    else:
+                        # no account: fallback to any-account check (e.g. global verify)
+                        _tk_set2 = set(str(k).split(":", 1)[1] if ":" in str(k) else str(k) for k in _tk_raw2 if isinstance(k, str))
+                        if f"{symbol}_{side}" in _tk_set2:
+                            return True, f"TEMPLATE fallback until per_sym calculated for {key} (any account)"
             except Exception:
                 pass
             # Also check BEST matrices for stocks (SPREADSHEETS/BEST/STOCKS_{SIDE}) as secondary gate for non-tradeable
@@ -29445,7 +29450,9 @@ class MultiAccountTradeManager:
                 and "HEDGE" not in (reason or "").upper()
             ):
                 # ERASED LONG_ENABLED/SHORT_ENABLED per user 2026-09-23: _SHORT means not is_long, no bare flag
-                _live_ok, _live_reason = _ezm_is_live_side_enabled(symbol, position_side)
+                # per-account gate: parse account from position_key (ang:..., inf:...)
+                _acct_for_gate = position_key.split(":")[0] if position_key and ":" in position_key else None
+                _live_ok, _live_reason = _ezm_is_live_side_enabled(symbol, position_side, _acct_for_gate)
                 if not _live_ok:
                     logger.critical(f"🚫 [PER_SYM_LIVE_GATE] {position_key}: BLOCKED live side not profitable gain>0 and beat bh required. side={position_side} reason={_live_reason} action={action}")
                     return f"BLOCKED_PER_SYM_LIVE_GATE_{position_side}"
@@ -43364,7 +43371,8 @@ async def _process_single_override_check(
                         if _trigger_z:
                             _tkm_live_ok, _tkm_live_why = True, "PER_SYM_GATE_OFF"
                             try:
-                                _tkm_live_ok, _tkm_live_why = _ezm_is_live_side_enabled(_sym_z, _side_z)
+                                _acct_z = position_key.split(":")[0] if position_key and ":" in position_key else None
+                                _tkm_live_ok, _tkm_live_why = _ezm_is_live_side_enabled(_sym_z, _side_z, _acct_z)
                             except Exception:
                                 pass
                             if not _tkm_live_ok:

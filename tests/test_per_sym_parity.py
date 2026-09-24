@@ -64,25 +64,39 @@ def test_tradier_global_merges_stocks():
 
 
 def test_live_gate_template_fallback_for_tradeable():
-    # AXTIUSDT_LONG is in tradeable_keys but has no crypto per_sym; should be TEMPLATE allowed now (was BEST-blocked before)
-    tk = set(json.loads(Path("tradeable_keys.json").read_text()))
-    tk_syms = set(k.split(":", 1)[1] if ":" in k else k for k in tk)
-    candidate = None
+    # per-account TEMPLATE fallback: tradeable_keys are per-account (ang:..., flz:...) so gate must be per-account
+    raw = json.loads(Path("tradeable_keys.json").read_text())
+    # find a sym_side that exists for one account but not another, and has no per_sym
     raw_crypto = json.loads((Path("data/hourly_reconfig/per_sym_active_config.json")).read_text())
-    for sym_side in sorted(tk_syms):
-        if sym_side not in raw_crypto:
-            # also not in stocks
-            raw_stocks = json.loads((Path("data/hourly_reconfig/per_sym_active_config_stocks.json")).read_text())
+    raw_stocks = json.loads((Path("data/hourly_reconfig/per_sym_active_config_stocks.json")).read_text())
+    # pick first raw entry with account prefix
+    sample = None
+    for k in raw:
+        if ":" not in k:
+            continue
+        acct, sym_side = k.split(":", 1)
+        if sym_side not in raw_crypto and sym_side.replace("USDT", "").replace("USDC", "").split("_")[0] + "_" + sym_side.rsplit("_", 1)[1] not in raw_stocks:
+            # ensure not in per_sym
             base = sym_side.rsplit("_", 1)[0].replace("USDT", "").replace("USDC", "")
             side = sym_side.rsplit("_", 1)[1]
             if sym_side not in raw_stocks and f"{base}_{side}" not in raw_stocks:
-                candidate = sym_side
+                sample = (acct, sym_side)
                 break
-    if candidate:
-        sym, side = candidate.rsplit("_", 1)
-        ok, reason = em._ezm_is_live_side_enabled(sym, side)
-        assert ok is True, f"tradeable {candidate} without per_sym should be TEMPLATE allowed, got {ok} {reason}"
-        assert "TEMPLATE" in reason
+    if not sample:
+        return
+    acct, sym_side = sample
+    sym, side = sym_side.rsplit("_", 1)
+    ok, reason = em._ezm_is_live_side_enabled(sym, side, acct)
+    assert ok is True, f"tradeable {acct}:{sym_side} without per_sym should be TEMPLATE allowed per-account, got {ok} {reason}"
+    assert "TEMPLATE" in reason
+    # same sym_side for different account not in tradeable should be blocked (no TEMPLATE)
+    other_acct = "ang" if acct != "ang" else "flz"
+    if f"{other_acct}:{sym_side}" not in raw:
+        ok2, _ = em._ezm_is_live_side_enabled(sym, side, other_acct)
+        assert ok2 is False, f"non-tradeable {other_acct}:{sym_side} should be blocked, got {ok2}"
+    # also verify old global fallback still works when no account given
+    ok3, _ = em._ezm_is_live_side_enabled(sym, side)
+    assert ok3 is True, "global fallback without account should still allow any-account TEMPLATE"
 
 
 def test_live_gate_still_blocks_unprofitable():
