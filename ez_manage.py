@@ -29851,7 +29851,6 @@ class MultiAccountTradeManager:
                 and "REDUCE" not in _kill_act
             ):
                 _ot_max = int(getattr(config, "TRADES_PER_SYM_PER_DAY_MAX", 8))
-                # 2026-09-24 ALTSEASON FIX: expand emergency bypass so high-frequency alt season entries don't burn cap on retries; cap raised to 200 and retries don't count.
                 _ot_emerg = (
                     "RIDICULOUS" in str(reason or "").upper()
                     or "BREAK_REVERSE" in str(reason or "").upper()
@@ -29867,24 +29866,39 @@ class MultiAccountTradeManager:
                     or "REENTRY" in str(reason or "").upper()
                 )
                 if _ot_max > 0 and not _ot_emerg:
-                    if not hasattr(self, "_overtrade_counter"):
-                        self._overtrade_counter = {}
-                    _ot_today = datetime.now(timezone.utc).strftime("%Y%m%d")
-                    _ot_key = f"{_ot_today}:{position_key}"
-                    _ot_n = self._overtrade_counter.get(_ot_key, 0)
-                    # Trim yesterday's entries
-                    if len(self._overtrade_counter) > 5000:
-                        self._overtrade_counter = {
-                            k: v
-                            for k, v in self._overtrade_counter.items()
-                            if k.startswith(_ot_today)
-                        }
+                    # Count ONLY executed fills from data/history/<acct>/<SYM_SIDE>.jsonl (NOT proposed decisions).
+                    # history types are AUGMENT (OPEN counted as AUGMENT) + OPEN if present; REDUCE/CLOSE not counted.
+                    try:
+                        _ot_acct = (account_key or (position_key.split(":")[0] if position_key and ":" in position_key else "")).strip()
+                        _ot_symside = (position_key.split(":", 1)[-1] if position_key and ":" in position_key else str(position_key or "")).strip()
+                        _ot_hist_path = Path(getattr(config, "BASE_PATH", Path.home() / "binance")) / "data" / "history" / _ot_acct / f"{_ot_symside}.jsonl"
+                        _ot_today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                        _ot_n = 0
+                        if _ot_hist_path.exists():
+                            import json as _ot_json
+                            with open(_ot_hist_path, errors="replace") as _ot_f:
+                                for _ot_line in _ot_f:
+                                    _ot_line = _ot_line.strip()
+                                    if not _ot_line:
+                                        continue
+                                    try:
+                                        _ot_rec = _ot_json.loads(_ot_line)
+                                    except Exception:
+                                        continue
+                                    _ot_ts = str(_ot_rec.get("ts", "") or _ot_rec.get("timestamp", ""))
+                                    if not _ot_ts.startswith(_ot_today_str):
+                                        continue
+                                    _ot_typ = str(_ot_rec.get("type", "")).upper()
+                                    if _ot_typ in ("OPEN", "AUGMENT", "REENTRY", "QUICK_OPEN", "QUICK_AUGMENT"):
+                                        _ot_n += 1
+                    except Exception as _ot_cnt_e:
+                        logger.warning(f"[OVERTRADE_GUARD] history count error (fail-open): {_ot_cnt_e}")
+                        _ot_n = 0
                     if _ot_n >= _ot_max:
                         logger.warning(
-                            f"🚦 [OVERTRADE_GUARD] {position_key}: BLOCKED — already {_ot_n} opens today (cap={_ot_max}). action={action} reason={(reason or '')[:80]}"
+                            f"🚦 [OVERTRADE_GUARD] {position_key}: BLOCKED — already {_ot_n} fills today in history (cap={_ot_max}). action={action} reason={(reason or '')[:80]}"
                         )
                         return f"BLOCKED_OVERTRADE_{_ot_n}_OF_{_ot_max}"
-                    self._overtrade_counter[_ot_key] = _ot_n + 1
         except Exception as _ot_e:
             logger.warning(f"[OVERTRADE_GUARD] check error (fail-open): {_ot_e}")
         # ═══════════════════════════════════════════════════════════════════════════

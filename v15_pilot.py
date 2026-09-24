@@ -1426,16 +1426,16 @@ def main():
                 except: pass
     except Exception as _e2:
         print(f"[NPZ-WARN] {_e2}", flush=True)
-    # Keep NPZ in RAM — timeout 25s, no hang (cold NPZ ~1G needs >10s first load)
+    # Keep NPZ in RAM — timeout 40s, no hang (cold NPZ ~1G needs >25s first load, never >1h per workbook)
     _ex2 = None
     try:
         import concurrent.futures as _cf_pre
         _ex2 = _cf_pre.ThreadPoolExecutor(max_workers=1)
         _fut2 = _ex2.submit(preload_prepared, new_symside, args.window_days)
         try:
-            prepared = _fut2.result(timeout=25)
+            prepared = _fut2.result(timeout=40)
         except Exception as _e_pre:
-            print(f"[PRELOAD-TIMEOUT] {new_symside} preload >25s {_e_pre} — mark red tab and continue with disk fallback", flush=True)
+            print(f"[PRELOAD-TIMEOUT] {new_symside} preload >40s {_e_pre} — mark red tab and continue with disk fallback", flush=True)
             try:
                 _fut2.cancel()
             except: pass

@@ -13472,21 +13472,43 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                     os.environ.get("V8_RATE_GUARD_DISABLED") == "1"
                 )
                 if _ot_max > 0 and not _ot_emerg and not _ot_research_disabled:
-                    global _OVERTRADE_COUNTER
-                    if '_OVERTRADE_COUNTER' not in globals():
-                        _OVERTRADE_COUNTER = {}
-                    _ot_today = datetime.now(timezone.utc).strftime('%Y%m%d')
-                    _ot_key = f"{_ot_today}:{position_key}"
-                    _ot_n = _OVERTRADE_COUNTER.get(_ot_key, 0)
-                    if len(_OVERTRADE_COUNTER) > 5000:
-                        _OVERTRADE_COUNTER = {k: v for k, v in _OVERTRADE_COUNTER.items() if k.startswith(_ot_today)}
+                    # Count ONLY executed fills from data/history (crypto) / data/tradier/history (stocks) - NOT proposed decisions.
+                    try:
+                        _ot_acct = (position_key.split(":")[0] if position_key and ":" in position_key else "").strip()
+                        _ot_symside = (position_key.split(":", 1)[-1] if position_key and ":" in position_key else str(position_key or "")).strip()
+                        # tradier history lives under data/tradier/history/<acct>/ or data/history/<acct>/
+                        _ot_base = Path(getattr(config_tradier, "BASE_PATH", Path.home() / "binance") if "config_tradier" in globals() else Path.home() / "binance")
+                        _ot_candidates = [
+                            _ot_base / "data" / "tradier" / "history" / _ot_acct / f"{_ot_symside}.jsonl",
+                            _ot_base / "data" / "history" / _ot_acct / f"{_ot_symside}.jsonl",
+                        ]
+                        _ot_hist = next((p for p in _ot_candidates if p.exists()), _ot_candidates[0])
+                        _ot_today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                        _ot_n = 0
+                        if _ot_hist.exists():
+                            import json as _ot_j
+                            with open(_ot_hist, errors="replace") as _ot_f:
+                                for _ot_line in _ot_f:
+                                    _ot_line = _ot_line.strip()
+                                    if not _ot_line:
+                                        continue
+                                    try:
+                                        _ot_rec = _ot_j.loads(_ot_line)
+                                    except Exception:
+                                        continue
+                                    _ot_ts = str(_ot_rec.get("ts", "") or _ot_rec.get("timestamp", ""))
+                                    if not _ot_ts.startswith(_ot_today_str):
+                                        continue
+                                    _ot_typ = str(_ot_rec.get("type", "")).upper()
+                                    if _ot_typ in ("OPEN", "AUGMENT", "REENTRY", "QUICK_OPEN", "QUICK_AUGMENT"):
+                                        _ot_n += 1
+                    except Exception as _ot_cnt_e:
+                        logger.warning(f"[OVERTRADE_GUARD] history count error (fail-open): {_ot_cnt_e}")
+                        _ot_n = 0
                     if _ot_n >= _ot_max:
-                        logger.warning(f"🚦 [OVERTRADE_GUARD] {position_key}: BLOCKED — already {_ot_n} opens today (cap={_ot_max}). action={action} reason={(reason or '')[:80]}")
+                        logger.warning(f"🚦 [OVERTRADE_GUARD] {position_key}: BLOCKED — already {_ot_n} fills today in history (cap={_ot_max}). action={action} reason={(reason or '')[:80]}")
                         _direct_queue_gate_note(trade_manager, position_key, reason, "OVERTRADE_GUARD")
                         return False
-                    # [2026-07-03] counter no longer incremented on ATTEMPT — moved to confirmed
-                    # order submission (see [TRADE] SENT site). Blocked attempts kept burning the
-                    # whole 8/day allowance with 0 actual opens (shorts died on their own attempts).
         except Exception as _ot_e:
             logger.warning(f"[OVERTRADE_GUARD] check error (fail-open): {_ot_e}")
         # ⏳ CLOSE_REFIRE_GUARD [2026-07-03]: do not resubmit a CLOSE/REDUCE while the previous

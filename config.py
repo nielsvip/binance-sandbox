@@ -1268,7 +1268,7 @@ class Config:
     # reasons (RIDICULOUS, BREAK_REVERSE, ALL_TF_AGAINST, INTERVENTION, MANUAL)
     # bypass the cap. Set 0 to disable.
     # 2026-09-24 ALTSEASON FIX: 50→200 to allow dozens of intraday alt swings without cap death; counter increments only on successful fills (ez_manage fix) so 200 is safe.
-    TRADES_PER_SYM_PER_DAY_MAX: int = 200  # 2026-09-24 ALTSEASON: was 50 (still BLOCKED_OVERTRADE_50_OF_50 on ang 2026-09-24). Raise for alt volatility. ROLLBACK: 50.
+    TRADES_PER_SYM_PER_DAY_MAX: int = 6  # TEMPLATE_CRYPTO_LONG bold default (GLOBAL_RISK_GATES!6). Counts ONLY executed fills in data/history/<acct>/, NOT proposed decisions.
     FOOTHOLD_PILEON_ENABLED: bool = False  # 2026-05-12 ADDED: emergency kill of hardcoded 5-min lock that fires on 3 attempts. Was blocking breakouts. Default OFF.
     # 2026-05-09 USER MANDATE — sweep gating thresholds.
     # Cheap test (12 syms × 4 mo): variants below DISCARD floor are flagged DISCARD.
@@ -3055,7 +3055,7 @@ class Config:
     REDUCTION_COOLDOWN_SECONDS = 90.0
     AUGMENTATION_COOLDOWN_SECONDS = 540.0
 
-    PERSIST = 72.0  # hours to stay in tradeable_keys after deletion (ang — 3 days)
+    PERSIST = 48.0  # hours to stay in tradeable_keys after deletion (ang — 2 days max per user)
     PERSIST_INF: float = 4.0   # hours: inf extends for minutes-hours only (not days)
     PERSIST_FLZ: float = 0.0   # 0 = no separate persistence needed; cleanup_positions loop adds both sides when symbol not in winners/losers
     PERSIST_MEN: float = 24.0  # hours: retention for men keys after falling out of classification

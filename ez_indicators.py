@@ -440,7 +440,9 @@ def with_mark_price(df: pd.DataFrame, mark_price: Optional[float]) -> pd.DataFra
 
 def load_symbols() -> List[str]:
     collected: Set[str] = set()
-    files = [config.SYMBOLS_FILE, Path.cwd() / "symbols.json"]
+    # tradeable_keys is authoritative per-account guide; include its base symbols so indicators stay fresh for all tradeable
+    _tk_path = config.BASE_PATH / "tradeable_keys.json" if hasattr(config, "BASE_PATH") else Path.cwd() / "tradeable_keys.json"
+    files = [config.SYMBOLS_FILE, Path.cwd() / "symbols.json", _tk_path]
     unique_paths = []
     seen_paths = set()
     for p in files:
@@ -481,7 +483,17 @@ def load_symbols() -> List[str]:
                             collected.update(str(s).strip().upper() for s in data[key])
                             break
                 elif isinstance(data, list):
-                    collected.update(str(symbol).strip().upper() for symbol in data)
+                    # tradeable_keys entries are "acct:SYMBOL_SIDE" — extract base SYMBOL
+                    if "tradeable_keys" in str(path):
+                        for entry in data:
+                            try:
+                                base = str(entry).split(":", 1)[-1].rsplit("_", 1)[0].strip().upper() if ":" in str(entry) else str(entry).rsplit("_", 1)[0].strip().upper()
+                                if base:
+                                    collected.add(base)
+                            except Exception:
+                                pass
+                    else:
+                        collected.update(str(symbol).strip().upper() for symbol in data)
                 
                 added = len(collected) - count_before
                 if added > 0:

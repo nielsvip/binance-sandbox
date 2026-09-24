@@ -51,7 +51,7 @@ KLINES_DIRS = [
     BASE_PATH / "klines_cache_gateway",
     BASE_PATH / "klines_cache_macbook"
 ]
-SYMBOLS_FILES = ["symbols_active.json", "symbols.json"]
+SYMBOLS_FILES = ["symbols_active.json", "tradeable_keys.json", "symbols.json"]
 REDIS_URL = "redis://127.0.0.1:6379/0"
 LOG_FILE = Path.home() / "logs" / "ez_market_data.log"
 

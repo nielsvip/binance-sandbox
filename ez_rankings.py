@@ -5547,6 +5547,25 @@ async def save_market_data():
         all_active_symbols.update(symbols_ang_long_list)
         all_active_symbols.update(symbols_ang_short_list)
 
+        # Include ALL tradeable_keys base symbols (per-account guide, not just ang/inf)
+        # tradeable_keys.json is the authoritative per-account universe (261 keys); symbols_active is emergency fallback only
+        try:
+            _tk_path2 = BASE_PATH / "tradeable_keys.json"
+            if _tk_path2.exists():
+                import json as _tkj
+                _tk_raw2 = _tkj.loads(_tk_path2.read_text())
+                if isinstance(_tk_raw2, list):
+                    for _k in _tk_raw2:
+                        # key format: acct:SYMBOL_SIDE e.g. ang:BTCUSDC_LONG
+                        try:
+                            _base = str(_k).split(":", 1)[-1].rsplit("_", 1)[0] if ":" in str(_k) else str(_k).rsplit("_", 1)[0]
+                            if _base:
+                                all_active_symbols.add(_base.strip().upper())
+                        except Exception:
+                            pass
+        except Exception as _e2:
+            logger.warning(f"[symbols_active] Could not add tradeable_keys symbols: {_e2}")
+
         # Always include symbols with open positions so they get fresh indicators
         # even if they've fallen off the ranked lists
         try:
