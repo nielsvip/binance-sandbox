@@ -1593,34 +1593,57 @@ def main():
     if not args.no_lbI:
         ensure_lbI_headers(wb_path)
         print("[headers] L:BI ensured", flush=True)
-    # FIRST THING: fill override column C with start settings from latest best test for this sym_side, then baseline calc is already on those overrides
+    print(f"[STEP] BEST-C-FILL start", flush=True)
+    # FIRST THING: fill override column C with start settings — timeout 10s, never hang
     try:
-        import openpyxl as _op2c
-        wb_c = _op2c.load_workbook(str(wb_path))
-        filled_c = 0
-        for sname in SWITCH_SHEETS:
-            if sname not in wb_c.sheetnames:
-                continue
-            ws_c = wb_c[sname]
-            for r in range(3, ws_c.max_row + 1):
-                sw = ws_c.cell(row=r, column=1).value
-                if not sw or not isinstance(sw, str):
+        import concurrent.futures as _cf_best
+        def _do_best_c_fill():
+            import openpyxl as _op2c
+            wb_c = _op2c.load_workbook(str(wb_path))
+            filled_c = 0
+            for sname in SWITCH_SHEETS:
+                if sname not in wb_c.sheetnames:
                     continue
-                sw = sw.strip()
-                if sw in overrides:
-                    # preserve type: bool stays bool, numbers stay numbers, strings as is
-                    val = overrides[sw]
-                    # only fill if C currently empty or different to avoid clobbering per-row pos delta logic later
-                    cur_c = ws_c.cell(row=r, column=3).value
-                    if cur_c is None or str(cur_c) != str(val):
-                        ws_c.cell(row=r, column=3).value = val
-                        filled_c += 1
-        if filled_c:
-            wb_c.save(str(wb_path))
-        print(f"[BEST-C-FILL] {new_symside}: filled {filled_c} override column C cells from {len(overrides)} start overrides (BEST as baseline)", flush=True)
+                ws_c = wb_c[sname]
+                # cap rows to avoid 50000 hang
+                max_r = min(ws_c.max_row, 2000)
+                for r in range(3, max_r + 1):
+                    sw = ws_c.cell(row=r, column=1).value
+                    if not sw or not isinstance(sw, str):
+                        continue
+                    sw = sw.strip()
+                    if sw in overrides:
+                        val = overrides[sw]
+                        cur_c = ws_c.cell(row=r, column=3).value
+                        if cur_c is None or str(cur_c) != str(val):
+                            ws_c.cell(row=r, column=3).value = val
+                            filled_c += 1
+            if filled_c:
+                wb_c.save(str(wb_path))
+            return filled_c
+        with _cf_best.ThreadPoolExecutor(max_workers=1) as _exb:
+            _futb = _exb.submit(_do_best_c_fill)
+            try:
+                filled_c = _futb.result(timeout=10)
+                print(f"[BEST-C-FILL] {new_symside}: filled {filled_c} override column C cells from {len(overrides)} start overrides (BEST as baseline)", flush=True)
+            except Exception as _e_b:
+                print(f"[BEST-C-FILL-TIMEOUT] {new_symside} >10s {_e_b} — mark RED tab and skip, never hang", flush=True)
+                try:
+                    _futb.cancel()
+                except: pass
+                # mark tab red
+                try:
+                    import openpyxl as _op2c2
+                    wb_tmp = _op2c2.load_workbook(str(wb_path))
+                    for sname in SWITCH_SHEETS:
+                        if sname in wb_tmp.sheetnames:
+                            wb_tmp[sname].sheet_properties.tabColor = "FF0000"
+                    wb_tmp.save(str(wb_path))
+                except: pass
     except Exception as e:
         import traceback as _tb_c
         print(f"[BEST-C-FILL-warn] {e} {_tb_c.format_exc()[:400]}", flush=True)
+    print(f"[STEP] BEST-C-FILL done", flush=True)
     # FIX empty sheets - ensure E2 numeric visible (was BASELINE string) + immediate baseline check
     try:
         import openpyxl as _op2b

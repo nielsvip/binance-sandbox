@@ -32,14 +32,24 @@ CRITICAL = [
     "utils.py", "ez_satoshit.py",
     "backtest_v8_engine.py", "backtest_v8_harness.py", "backtest_v8_sweep.py",
     "v12_quick_engine.py", "v12_wide_engine.py",
+    "v15_pilot.py", "backtest_v12_engine.py",
+    "v12_quick_engine_fast.py", "v12_quick_engine_fast_v2.py", "v12_quick_engine_v2_fixed.py",
     "SPREADSHEETS/TEMPLATE.xlsx", "SPREADSHEETS/TEMPLATE.xlsx.sha256",
     "SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx", "SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx",
     "SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx", "SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx",
     "vec_decisions/bb_pullback_gate.py", "vec_decisions/filter_tf_gate.py", "tradier_matrix_gates.py",
     "sweep_cockpit.py", "v8_watchdog.py", "cpu_enforcer.py", "log_healer.py",
-    "LOCKED_FILES.md", "CLAUDE.md",
+    "LOCKED_FILES.md", "CLAUDE.md", "BACKTEST_BIBLE.md",
     "symbols_tradier.json", "symbols_tradier.last_known_good.json",
     "start_everything_1.command", "start_everything_2.command", "start_everything_3.command",
+]
+# Glob patterns for v15/v12 family — every version kept in /backups
+CRITICAL_GLOBS = [
+    "v15_*.py",
+    "v12_*.py",
+    "backtest_v12*.py",
+    "tools/test_all_filters_brute.py",
+    "tools/v15*.py",
 ]
 
 MASTER_SYMBOLS = REPO / "symbols_tradier.json"
@@ -84,7 +94,20 @@ def backup_cycle():
                 saved += 1
             except Exception as e:
                 log(f"  SKIP {fn}: {e}")
-    log(f"Backup {ts}: {saved}/{len(CRITICAL)} files → {dest}")
+    # Glob family: v15/v12/backtest_v12 — every matching file kept
+    import glob as _glob
+    for pat in CRITICAL_GLOBS:
+        for src_str in _glob.glob(str(REPO / pat)):
+            src = Path(src_str)
+            try:
+                rel = src.relative_to(REPO)
+                target = dest / rel
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, target)
+                saved += 1
+            except Exception as e:
+                log(f"  SKIP {rel}: {e}")
+    log(f"Backup {ts}: {saved} files → {dest}")
     # Smart pruning: only delete when disk usage exceeds 5GB.
     # Keep versions with LARGEST edit gaps (stable versions that ran longest).
     import os as _os

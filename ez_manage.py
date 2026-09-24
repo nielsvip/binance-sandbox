@@ -28686,7 +28686,33 @@ class MultiAccountTradeManager:
                 logger.warning(
                     f"🛡️ [HEDGE_MAKER_TIMEOUT] {position_key}: all tracked orders confirmed dead, no fill detected — safe to fall through to webhook"
                 )
-            if remaining > (qty_abs * 0.1):
+            # 2026-09-24 EXIT-FILL GUARANTEE: exits must always fill. Maker is obligatory but if it times out
+            # (PLTR: 5x Canceled maker closes at 193.2 gave up with no fill), force taker fallback for REDUCE.
+            # For OPEN we suppress to avoid double-order (sentinel -1.0), for REDUCE we MUST fill.
+            if ta == "REDUCE":
+                if remaining > (step * 0.5):  # any meaningful remainder, not just >10%
+                    logger.warning(
+                        f"[MAKER_FALLBACK_EXIT] {position_key} timeout REDUCE remaining={remaining:.6f}/{qty_abs:.6f} -> webhook MARKET fallback to guarantee close."
+                    )
+                    await self.send_webhook(
+                        position_key,
+                        account_key,
+                        symbol,
+                        positionAmt,
+                        remaining,
+                        float(lp),
+                        side,
+                        position_side,
+                        f"{unique_id}:FALLBACK_EXIT",
+                        False,
+                        f"{reason}_TIMEOUT_EXIT",
+                        level=None,
+                        stoch_required=False,
+                        order_ids_to_cancel=tracked_order_ids,
+                    )
+                else:
+                    logger.info(f"[MAKER_EXIT_DONE] {position_key} timeout but remaining {remaining:.6f} < step, considered filled")
+            elif remaining > (qty_abs * 0.1):
                 logger.warning(
                     f"[MAKER_FALLBACK] {position_key} timeout. Sending remaining {remaining} to webhook."
                 )

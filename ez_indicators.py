@@ -2563,7 +2563,10 @@ class IndicatorOrchestrator:
         self._connect_shared_memory()
         self.base_path = Path(config.BASE_PATH)
         self.kline_manager = KlineManager(self.base_path, str(env))
-        _extra_pcache = [p for p in [getattr(config, "PRICE_CACHE_FILE", None), getattr(config, "PRICE_CACHE_FILE_3", None)] if p]
+        # Multi-host fallback: if local/gateway/S1 marks diverge, freshest wins. This keeps ez_indicators
+        # fresh even when one host's WS dies. price_cache_*.json are synced via rsync_market_data_* + rsync_from_gateway.
+        _gateway_pull = BASE_PATH / "data" / "latest_market_data.json.gateway"
+        _extra_pcache = [p for p in [getattr(config, "PRICE_CACHE_FILE", None), getattr(config, "PRICE_CACHE_FILE_3", None), _gateway_pull] if p]
         self.price_cache = PriceCacheManager(config.PRICE_CACHE_FILE_2, redis_client=self.redis_client, symbols=self.symbols, external_pull_path=getattr(config, "PRICE_CACHE_PULL_S1", None), extra_pull_paths=_extra_pcache)
         self.calculator = IndicatorCalculator()
         self.final_scores = load_scores_file(Path(config.FINAL_SCORE_FILE))

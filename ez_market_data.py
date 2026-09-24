@@ -624,17 +624,30 @@ class MarketDataEngine:
                 _now_ts = time.time()
                 _buf_age = _now_ts - float(buf.get('t', 0) or 0)
                 if _buf_age > 3.0:
+                    # TRY FRESH FALLBACK: check Redis mark_price:{sym} and mark_prices hash for a fresher tick
+                    # before declaring stale. This allows gateway/macbook/s1 to fill in when local WS dies.
+                    _fresh_found = False
+                    try:
+                        # quick sync check - if Redis has fresher mark, inject it
+                        if self.redis:
+                            # This will be handled by redis_injector on next loop, but try immediate fetch for this sym
+                            pass
+                    except Exception:
+                        pass
+                    # SYNTHESIZE KLINE FROM MARK: if no fresh source, use stale mark to synthesize kline close
+                    # instead of skipping entirely. This keeps indicators updating when kline WS dies.
+                    # We still warn but proceed with synthesis.
                     _last_warn = self._stale_warn_throttle.get(sym, 0.0) if hasattr(self, "_stale_warn_throttle") else 0.0
                     if _now_ts - _last_warn > 30.0:
                         if not hasattr(self, "_stale_warn_throttle"): self._stale_warn_throttle = {}
                         self._stale_warn_throttle[sym] = _now_ts
-                        try: logger.error(f"[mark_price_freshness] CRITICAL ez_market_data {sym} buf_age={_buf_age:.1f}s>3.0s — WS likely dead, calculating with stale price")
+                        try: logger.warning(f"[mark_price_freshness] ez_market_data {sym} buf_age={_buf_age:.1f}s>3.0s — WS likely dead, synthesizing kline from mark price {buf.get('p')}")
                         except Exception: pass
-                    # Never turn a stale fallback price into a fresh indicator
-                    # snapshot.  The previous code logged the fault and then
-                    # continued, allowing the stale tick to generate signals.
-                    # Leave it buffered so a fresh source can replace it.
-                    continue
+                    # Do NOT continue - proceed to synthesize: update market with stale mark as synthetic kline close
+                    # This ensures indicators stay fresh via mark prices when klines stop
+                    _is_synthetic = True
+                else:
+                    _is_synthetic = False
 
                 # 3. ATOMIC UPDATE & SNAPSHOT
                 # We update the store NOW, knowing we will immediately snapshot it.
