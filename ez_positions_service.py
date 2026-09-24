@@ -11524,7 +11524,8 @@ class PositionService:
                     try :
                         last_monitored = self.last_symbol_monitored.get(symbol, 0.0)
                         age = now_ts - last_monitored if last_monitored > 0 else 999.0
-                        if age > 90.0:
+                        # 30min tolerance per user - not trading 1/3/5m, stale 90s is normal
+                        if age > 1800.0:
                             symbols_stale.append((symbol, age))
                     except Exception: pass
                 if symbols_stale:
@@ -11541,11 +11542,32 @@ class PositionService:
                             indicator_ts = getattr(self, 'indicators_timestamp', None)
                             if isinstance(indicator_ts, datetime):
                                 indicator_age = (now_dt - (indicator_ts.replace(tzinfo=timezone.utc) if indicator_ts.tzinfo is None else indicator_ts)).total_seconds()
-                                if indicator_age > 180.0:
+                                # 2026-09-24 not trading 1/3/5m -> 30min (1800s) old indicators still tradable per user. Only >30min forces refresh.
+                                if indicator_age > 1800.0:
                                     blocker_found = True
                                     logger.critical(f"[SYMBOL_WATCHDOG] 🔥 {symbol} INDICATOR_SNAPSHOT_STALE age={indicator_age:.1f}s - forcing refresh")
                                     if hasattr(self, 'ensure_indicator_snapshot_ready'):
                                         asyncio.create_task(self.ensure_indicator_snapshot_ready({'service': self, 'symbol': symbol, 'logger': self.logger}))
+                                elif indicator_age > 180.0:
+                                    # 3-30min old: log but do not block trading, keep orders going
+                                    logger.info(f"[SYMBOL_WATCHDOG] {symbol} indicators age={indicator_age:.1f}s (3-30min old) - still tradable, orders keep going")
+                                # Emergency price-only monitoring when >30min old: even without indicators, monitor mark_price for emergency closes
+                                if indicator_age > 1800.0:
+                                    # Check open positions for this symbol for large loss via mark_price vs entry
+                                    for account_key in getattr(self, 'accounts', {}).keys():
+                                        for position_key, position in getattr(self, 'positions_by_account', {}).get(account_key, {}).items():
+                                            if position and getattr(position, 'symbol', None) == symbol:
+                                                amt = safe_fetch_float(getattr(position, 'positionAmt', 0), 0.0)
+                                                if abs(amt) > 0:
+                                                    entry = safe_fetch_float(getattr(position, 'entry_price', 0), 0.0)
+                                                    mark = safe_fetch_float(getattr(position, 'mark_price', 0), 0.0)
+                                                    if entry > 0 and mark > 0:
+                                                        pnl_pct = (mark - entry) / entry * 100.0 * (1 if amt > 0 else -1)
+                                                        if pnl_pct < -5.0:  # 5% emergency loss
+                                                            logger.critical(f"[EMERGENCY_PRICE_CLOSE] {position_key} indicators {indicator_age:.0f}s old but pnl {pnl_pct:.1f}% <-5% -> emergency close without indicators")
+                                                            # Schedule emergency close via positions_service if available
+                                                            if hasattr(self, 'close_position_emergency'):
+                                                                asyncio.create_task(self.close_position_emergency(position_key, f"EMERGENCY_PRICE_{pnl_pct:.1f}%"))
                             positions_stale = []
                             accounts_with_stale = set()
                             for account_key in getattr(self, 'accounts', {}).keys():

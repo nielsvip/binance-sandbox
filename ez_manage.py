@@ -54222,7 +54222,8 @@ async def symbol_monitoring_watchdog(
                         symbol, 0.0
                     )
                     age = now_ts - last_monitored if last_monitored > 0 else 999.0
-                    if age > 90.0:
+                    # 30min tolerance per user - not trading 1/3/5m, stale 90s is normal
+                    if age > 1800.0:
                         symbols_stale.append((symbol, age))
                 except Exception:
                     pass
@@ -54253,7 +54254,8 @@ async def symbol_monitoring_watchdog(
                             indicator_age = (
                                 now_dt - indicator_ts_fixed
                             ).total_seconds()
-                            if indicator_age > 180.0:
+                            # 2026-09-24 not trading 1/3/5m -> 30min (1800s) old indicators still tradable per user. Only >30min forces refresh.
+                            if indicator_age > 1800.0:
                                 blocker_found = True
                                 logger.critical(
                                     f"[SYMBOL_WATCHDOG] 🔥 {symbol} INDICATOR_SNAPSHOT_STALE age={indicator_age:.1f}s - forcing refresh"
@@ -54270,6 +54272,22 @@ async def symbol_monitoring_watchdog(
                                             }
                                         )
                                     )
+                                # Emergency price-only monitoring when >30min old: even without indicators, monitor mark_price for emergency closes
+                                for account_key in account_keys:
+                                    for position_key, position in trade_manager.get_positions_by_account(account_key).items():
+                                        if position and getattr(position, 'symbol', None) == symbol:
+                                            amt = safe_fetch_float(getattr(position, 'positionAmt', 0), 0.0)
+                                            if abs(amt) > 0:
+                                                entry = safe_fetch_float(getattr(position, 'entry_price', 0), 0.0)
+                                                mark = safe_fetch_float(getattr(position, 'mark_price', 0), 0.0)
+                                                if entry > 0 and mark > 0:
+                                                    pnl_pct = (mark - entry) / entry * 100.0 * (1 if amt > 0 else -1)
+                                                    if pnl_pct < -5.0:
+                                                        logger.critical(f"[EMERGENCY_PRICE_CLOSE] {position_key} indicators {indicator_age:.0f}s old but pnl {pnl_pct:.1f}% <-5% -> emergency close without indicators")
+                                                        # Schedule emergency market close via trade_manager if available
+                                                        if hasattr(trade_manager, 'execute_now'):
+                                                            asyncio.create_task(trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=amt, side=("SELL" if amt > 0 else "BUY"), position_side=("LONG" if amt > 0 else "SHORT"), quantity=abs(float(amt)), old_price=mark, reason=f"EMERGENCY_PRICE_{pnl_pct:.1f}%", is_full_close=True))
+                                # Do not return - still allow normal trading with 30min old indicators
                         positions_stale = []
                         for account_key in account_keys:
                             if account_key not in allowed_accounts:

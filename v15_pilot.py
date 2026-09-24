@@ -1087,8 +1087,14 @@ def main():
                 _need_verify=False
         except: pass
         if _need_verify:
-            print("[TEMPLATE-VERIFY] 24h expired or no stamp — re-verifying bold defaults vs config source of truth (ONLY backtests, not per sym)", flush=True)
-            _sp.run([sys.executable, "tools/verify_template_defaults.py"], check=False)
+            if os.getenv("V15_FORCE_USE") == "1" or os.getenv("FORCE_DC_RERUN") == "1":
+                print("[TEMPLATE-VERIFY] V15_FORCE_USE/FORCE_DC_RERUN — skip verify to avoid hang, never block pilot", flush=True)
+            else:
+                print("[TEMPLATE-VERIFY] 24h expired or no stamp — re-verifying bold defaults vs config source of truth (ONLY backtests, not per sym)", flush=True)
+                try:
+                    _sp.run([sys.executable, "tools/verify_template_defaults.py"], check=False, timeout=8)
+                except Exception as _e_v:
+                    print(f"[TEMPLATE-VERIFY-TIMEOUT] skip verify >8s {_e_v} — never hang", flush=True)
         else:
             print("[TEMPLATE-VERIFY] within 24h immutable or S5 skip — skipping to avoid 233k waste", flush=True)
     except Exception as _e:
@@ -1237,9 +1243,13 @@ def main():
                 print(f"[BEST-prev-progress] {new_symside}: loaded {_added2} hustler_overrides as baseline", flush=True)
     except Exception as _e_prev_prog:
         print(f"[BEST-prev-progress-warn] {_e_prev_prog}", flush=True)
+    print(f"[STEP] xls_prev start", flush=True)
     try:
-        _xls_prev = OUT_DIR / f"{new_symside}_30d_matrix.xlsx"
-        if _xls_prev.exists():
+        import concurrent.futures as _cf_xls
+        def _do_xls_prev():
+            _xls_prev = OUT_DIR / f"{new_symside}_30d_matrix.xlsx"
+            if not _xls_prev.exists():
+                return 0
             import openpyxl as _op_prev
             _wb_prev = _op_prev.load_workbook(str(_xls_prev), data_only=True, read_only=True)
             _added_xls = 0
@@ -1247,7 +1257,7 @@ def main():
                 if _sheet not in _wb_prev.sheetnames:
                     continue
                 _ws_prev = _wb_prev[_sheet]
-                for _r in range(3, _ws_prev.max_row + 1):
+                for _r in range(3, min(_ws_prev.max_row, 500) + 1):
                     _a = _ws_prev.cell(row=_r, column=1).value
                     _c = _ws_prev.cell(row=_r, column=3).value
                     _f = _ws_prev.cell(row=_r, column=6).value
@@ -1291,8 +1301,23 @@ def main():
                                     _added_xls += 1
             if _added_xls:
                 print(f"[BEST-prev-xls] {new_symside}: loaded {_added_xls} overrides from previous XLS {_xls_prev.name} as baseline", flush=True)
+            return _added_xls
+        _ex_xls = _cf_xls.ThreadPoolExecutor(max_workers=1)
+        _fut_xls = _ex_xls.submit(_do_xls_prev)
+        try:
+            _added_xls = _fut_xls.result(timeout=10)
+            if _added_xls:
+                print(f"[BEST-prev-xls] {new_symside}: loaded {_added_xls} overrides from previous XLS as baseline", flush=True)
+        except Exception as _e_xls:
+            print(f"[BEST-prev-xls-TIMEOUT] {new_symside} >10s {_e_xls} — skip xls, use progress only, never hang", flush=True)
+            try: _fut_xls.cancel()
+            except: pass
+        finally:
+            try: _ex_xls.shutdown(wait=False)
+            except: pass
     except Exception as _e_xls:
         print(f"[BEST-prev-xls-warn] {_e_xls}", flush=True)
+    print(f"[STEP] after xls_prev", flush=True)
     # baseline-json for shuffle second round: found settings as new baseline
     if args.baseline_json:
         try:
@@ -1401,27 +1426,60 @@ def main():
                 except: pass
     except Exception as _e2:
         print(f"[NPZ-WARN] {_e2}", flush=True)
-    # Keep NPZ in RAM — timeout 10s
+    # Keep NPZ in RAM — timeout 25s, no hang (cold NPZ ~1G needs >10s first load)
+    _ex2 = None
     try:
         import concurrent.futures as _cf_pre
-        with _cf_pre.ThreadPoolExecutor(max_workers=1) as _ex2:
-            _fut2 = _ex2.submit(preload_prepared, new_symside, args.window_days)
+        _ex2 = _cf_pre.ThreadPoolExecutor(max_workers=1)
+        _fut2 = _ex2.submit(preload_prepared, new_symside, args.window_days)
+        try:
+            prepared = _fut2.result(timeout=25)
+        except Exception as _e_pre:
+            print(f"[PRELOAD-TIMEOUT] {new_symside} preload >25s {_e_pre} — mark red tab and continue with disk fallback", flush=True)
             try:
-                prepared = _fut2.result(timeout=10)
-            except Exception as _e_pre:
-                print(f"[PRELOAD-TIMEOUT] {new_symside} preload >10s {_e_pre} — mark red tab and continue", flush=True)
-                try:
-                    _fut2.cancel()
-                except: pass
-                prepared = None
+                _fut2.cancel()
+            except: pass
+            prepared = None
     except Exception as _e3:
         print(f"[PRELOAD-WARN] {_e3}", flush=True)
         prepared = None
+    finally:
+        try:
+            if _ex2 is not None:
+                _ex2.shutdown(wait=False)
+        except: pass
+    # Late preload may have succeeded after timeout into ALL_PREPARED — reuse hot
+    if 'prepared' not in locals() or prepared is None:
+        prepared = None
+    if prepared is None and new_symside in ALL_PREPARED:
+        prepared = ALL_PREPARED[new_symside]
+        print(f"[PRELOAD-LATE-HOT] {new_symside} reuse hot from ALL_PREPARED after timeout", flush=True)
+    print(f"[STEP] after preload prepared={prepared is not None}", flush=True)
     if 'prepared' not in locals() or prepared is None:
         prepared = None
     if prepared is None:
-        from tools.opt.v12_pilot import evaluate_sanitized
-        baseline_vec = evaluate_sanitized(new_symside, overrides, window_days=args.window_days)
+        print(f"[STEP] baseline evaluate start", flush=True)
+        _ex_base = None
+        try:
+            import concurrent.futures as _cf_base
+            _ex_base = _cf_base.ThreadPoolExecutor(max_workers=1)
+            from tools.opt.v12_pilot import evaluate_sanitized
+            _fut_base = _ex_base.submit(evaluate_sanitized, new_symside, overrides, window_days=args.window_days)
+            try:
+                baseline_vec = _fut_base.result(timeout=60)
+            except Exception as _e_base:
+                print(f"[BASELINE-TIMEOUT] {new_symside} evaluate_sanitized >60s {_e_base} — mark RED and use empty baseline", flush=True)
+                try: _fut_base.cancel()
+                except: pass
+                baseline_vec = {"valid": False, "gain_pct": 0, "trades": 0, "pool_sharpe": 0, "bh_pct": 0, "invalid_reason": "timeout"}
+        except Exception as _e2:
+            print(f"[baseline-warn2] {_e2}", flush=True)
+            baseline_vec = {"valid": False, "gain_pct": 0, "trades": 0, "pool_sharpe": 0, "bh_pct": 0, "invalid_reason": "error"}
+        finally:
+            try:
+                if _ex_base is not None:
+                    _ex_base.shutdown(wait=False)
+            except: pass
         print(f"[baseline] no prepared, vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')}", flush=True)
         # 0-TRADES: still create XLS with baseline so herd audit sees E2 + BASELINE_METRICS; only skip sweep, never skip baseline
         _is_zero = int(baseline_vec.get("trades") or 0) == 0

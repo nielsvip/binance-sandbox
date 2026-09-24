@@ -10191,7 +10191,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 if _j2:
                     _j2_ts = _j2.get('timestamp_1m') or _j2.get('timestamp') or _j2.get('1m_updated_at')
                     _j2_dt = safe_datetime(_j2_ts) if not isinstance(_j2_ts, datetime) else _j2_ts
-                    if _j2_dt and (datetime.now(timezone.utc) - _j2_dt).total_seconds() < 1200:
+                    # 2026-09-24 not trading 1/3/5m -> 30min (1800s) old indicators still tradable per user. Only >30min is stale.
+                    if _j2_dt and (datetime.now(timezone.utc) - _j2_dt).total_seconds() < 1800:
                         indicators_raw = _j2
                         freshness_reason = f"Age:{(datetime.now(timezone.utc)-_j2_dt).total_seconds():.0f}s[JSON_FALLBACK]"
                         macro_fresh = True
