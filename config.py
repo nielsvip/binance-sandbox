@@ -1267,7 +1267,8 @@ class Config:
     # to this many per (pkey × UTC day). CLOSE/REDUCE not capped. Emergency-exit
     # reasons (RIDICULOUS, BREAK_REVERSE, ALL_TF_AGAINST, INTERVENTION, MANUAL)
     # bypass the cap. Set 0 to disable.
-    TRADES_PER_SYM_PER_DAY_MAX: int = 50  # 2026-09-22 UNBLOCK FIX: was 8 blocking fin (147 BLOCKED_OVERTRADE_8_OF_8). Restore 50 to allow v15_pilot all-tradable flow. Re-tighten only after TOP proves overtrade without this. ROLLBACK: 8.
+    # 2026-09-24 ALTSEASON FIX: 50→200 to allow dozens of intraday alt swings without cap death; counter increments only on successful fills (ez_manage fix) so 200 is safe.
+    TRADES_PER_SYM_PER_DAY_MAX: int = 200  # 2026-09-24 ALTSEASON: was 50 (still BLOCKED_OVERTRADE_50_OF_50 on ang 2026-09-24). Raise for alt volatility. ROLLBACK: 50.
     FOOTHOLD_PILEON_ENABLED: bool = False  # 2026-05-12 ADDED: emergency kill of hardcoded 5-min lock that fires on 3 attempts. Was blocking breakouts. Default OFF.
     # 2026-05-09 USER MANDATE — sweep gating thresholds.
     # Cheap test (12 syms × 4 mo): variants below DISCARD floor are flagged DISCARD.
@@ -2107,7 +2108,7 @@ class Config:
     FORMATION_CUP_HANDLE_EXIT_ENABLED: bool = False
     FORMATION_TREND_STRUCTURE_ENTRY_ENABLED: bool = False
     FORMATION_TREND_STRUCTURE_EXIT_ENABLED: bool = False
-    MOMENTUM_SMA_WATCHDOG_COOLDOWN_S: float = 300.0 # per-key re-fire cooldown
+    MOMENTUM_SMA_WATCHDOG_COOLDOWN_S: float = 60.0 # 2026-09-24 ALTSEASON FIX: was 300→60 — alt season needs rapid re-entry on every 1-2% extension, not 5min throttle. ROLLBACK: 300.
     # ═══════════════════════════════════════════════════════════════════
     # 2026-06-03 USER MANDATE — MULTI-TF DONCHIAN FORCE-OPEN + ESCALATING AUGMENT.
     # "NOTHING can be flat below/above dc_low/high_15m, and a HUGE position below/above
@@ -2797,8 +2798,8 @@ class Config:
     # === BC_170-174: COPY TRADER NPZ GATES (50k+ trades, 110+ traders, 426 NPZ indicators) ===
     # ADDITIVE gates — only block bad entries, never create new ones. Default OFF until V8 validated.
     CT_WT_VELOCITY_GATE_ENABLED: bool = True  # BC_170: ENABLED 2026-04-08. 5yr validated: Sharpe 1.94→5.26, 100% monthly positive, keeps 67% of trades. Don't trade against 1h WT velocity.
-    GOLDEN_RULE_HTF_MIN_TFS: int = 3  # 2026-05-22 RESTORED 1→3: triage set 1 with no backtest. TFs=[3m,15m,1h,4h,D]. ROLLBACK: 1 (triage).
-    GOLDEN_RULE_MIN_IND: int = 5  # 2026-05-22 RESTORED 2→5: triage set 2 with no backtest. Per-TF: need this many of [WT,RSI,MFI,DC,BB] to agree. ROLLBACK: 2 (triage).
+    GOLDEN_RULE_HTF_MIN_TFS: int = 1  # 2026-09-24 ALTSEASON FIX: was 3→1 — 3 TFs×5 indicators blocked nearly all entries (logs: GOLDEN_RULE_CONSENSUS_BLOCK NO_ACTIVATION). Alt season needs high throughput; 1 TF agreement allows entries while still filtering chop. ROLLBACK: 3.
+    GOLDEN_RULE_MIN_IND: int = 2  # 2026-09-24 ALTSEASON FIX: was 5→2 — 5/5 indicators per TF is too strict for fast alts (15m/1h signals disagree intraday). 2/5 allows WT+DC or WT+RSI consensus. ROLLBACK: 5.
     # 2026-05-12 USER MANDATE: alternate TOTAL-VOTE-SCORE gate (multiplicative).
     # When > 0: passes if SUM across all TFs of (indicators_agreeing per TF) >= GR_TOTAL_VOTE_SCORE_MIN.
     # Range: 1 (loosest, 1 vote anywhere) ... 35 (5 TFs × 7 indicators all agreeing — tightest possible for crypto).

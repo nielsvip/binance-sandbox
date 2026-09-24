@@ -29739,6 +29739,7 @@ class MultiAccountTradeManager:
                 and "REDUCE" not in _kill_act
             ):
                 _ot_max = int(getattr(config, "TRADES_PER_SYM_PER_DAY_MAX", 8))
+                # 2026-09-24 ALTSEASON FIX: expand emergency bypass so high-frequency alt season entries don't burn cap on retries; cap raised to 200 and retries don't count.
                 _ot_emerg = (
                     "RIDICULOUS" in str(reason or "").upper()
                     or "BREAK_REVERSE" in str(reason or "").upper()
@@ -29747,6 +29748,11 @@ class MultiAccountTradeManager:
                     or "MANUAL" in str(reason or "").upper()
                     or "WT_3M_FORCE_OPEN" in str(reason or "").upper()
                     or "OBLIGATORY" in str(reason or "").upper()
+                    or "MOMENTUM_WATCHDOG" in str(reason or "").upper()
+                    or "GOLDEN_RULE" in str(reason or "").upper()
+                    or "WATCHDOG" in str(reason or "").upper()
+                    or "DC_BREAKOUT" in str(reason or "").upper()
+                    or "REENTRY" in str(reason or "").upper()
                 )
                 if _ot_max > 0 and not _ot_emerg:
                     if not hasattr(self, "_overtrade_counter"):

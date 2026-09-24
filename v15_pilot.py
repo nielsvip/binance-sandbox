@@ -1473,7 +1473,7 @@ def main():
         for sname in SWITCH_SHEETS:
             if sname in wb_fix.sheetnames and sname == SWITCH_SHEETS[0]:
                 ws_fix = wb_fix[sname]
-                ws_fix.cell(row=2, column=5).value = float(baseline_gain)
+                ws_fix.cell(row=3, column=5).value = float(baseline_gain)  # HEADER FIX keep E2 BASELINE
                 # also ensure first row yellows are not left as VLOOKUP — they will be filled per-row but set orange placeholder to prove immediate baseline
                 try:
                     first_r = 3
@@ -1497,7 +1497,7 @@ def main():
                     for _sn in SWITCH_SHEETS:
                         if _sn in _wb_fix2.sheetnames and _sn == SWITCH_SHEETS[0]:
                             _ws_fix2 = _wb_fix2[_sn]
-                            _ws_fix2.cell(row=2, column=5).value = float(baseline_gain) if abs(float(baseline_gain)) > 1e-9 else float(baseline_live.get("gain_pct") or 0)
+                            _ws_fix2.cell(row=3, column=5).value = float(baseline_gain) if abs(float(baseline_gain)) > 1e-9 else float(baseline_live.get("gain_pct") or 0)
                     _wb_fix2.save(str(wb_path))
                     _t_g.sleep(0.3)
                     _wb_g2 = _op2b.load_workbook(str(wb_path), data_only=True, read_only=True)
@@ -2109,7 +2109,7 @@ def main():
                         _col = htc.get(_hdr)
                         if _col: 
                             try:
-                                # ALWAYS WRITE TO EVERY YELLOW BUT AFTER CALCULATING DELTA FOR THE FILTER ON THE SPECIFIC SWITCH — even when delta -1.0, write candidate yellows
+                                # PRECISE YELLOW: ONLY write yellow box filter if pos delta inside yellow box per user
                                 _cand_y = pending_lbI.get(_hdr)
                                 if _cand_y is not None:
                                     ws_h.cell(row=r, column=_col).value = float(_cand_y)
@@ -2120,7 +2120,8 @@ def main():
                     except: pass
                 key = f"{sheet}!{r}:{switch}={cand}"
                 # ALWAYS WRITE YELLOWS AFTER DELTA — even when delta -1.0, yellows are candidate values, baseline never without pos delta
-                progress.setdefault("done", {})[key] = {"delta": -1.0, "vec_gain": 0, "yellows": {h: float(pending_lbI.get(h, 0.0)) for h in relevant_hdrs}, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before)}
+                pos_y = {h: float(v) for h,v in (pending_lbI or {}).items() if float(v or 0) > 1e-9}
+                progress.setdefault("done", {})[key] = {"delta": -1.0, "vec_gain": 0, "yellows": pos_y, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before)}
                 return 0.0
             delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
             delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
@@ -3005,10 +3006,16 @@ def main():
                     try:
                         if ws_row is not None:
                             # ALL overrides used if pos delta
+                            # PRECISE C: switch + options + filter settings for yellow box filters ONLY IF pos delta
                             all_over = []
+                            pos_yellows = {h: d for h, d in (pending_lbI or {}).items() if float(d or 0) > 1e-9}
                             for k2, v2 in variant_best.items():
                                 if str(defaults.get(k2)) != str(v2):
-                                    all_over.append(f"{k2}={v2}")
+                                    # only include if it's the switch itself or a yellow filter with pos delta
+                                    if k2 == switch or k2 in pos_yellows or str(v2) in [str(x) for x in pos_yellows.values()]:
+                                        all_over.append(f"{k2}={v2}")
+                                    elif any(k2 in str(yf) for yf in pos_yellows):
+                                        all_over.append(f"{k2}={v2}")
                             overrides_str = " + ".join(all_over) if all_over else str(cand)
                             ws_row.cell(row=r, column=3).value = overrides_str
                             ws_row.cell(row=r, column=3).font = Font(name="Arial", bold=True, color="006100")

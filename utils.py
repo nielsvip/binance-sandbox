@@ -101,21 +101,74 @@ def is_sandbox_account(config_obj, account_key: str) -> bool:
     return getattr(config_obj, 'SANDBOX_MODE', False) and account_key in getattr(config_obj, 'SANDBOX_ACCOUNTS', [])
 
 def orjson_default(obj):
-    if isinstance(obj, (np.bool_, bool)):
+    # 2026-09-24 ALTSEASON FIX: handle numpy 2.x where np.bool8 removed and np.bool is python bool
+    # Robustly catch ANY numpy bool type via np.generic check + bool conversion
+    if isinstance(obj, bool):
         return bool(obj)
-    if isinstance(obj, (np.floating, float)):
+    if isinstance(obj, np.generic):
+        try:
+            if isinstance(obj, np.bool_):
+                return bool(obj)
+        except Exception:
+            pass
+        # fallback: any numpy scalar bool -> bool, numbers -> float/int
+        try:
+            if obj.dtype == np.bool_ or str(obj.dtype) == "bool":
+                return bool(obj)
+        except Exception:
+            pass
+        if isinstance(obj, np.floating):
+            try:
+                return float(obj) if not np.isnan(obj) else None
+            except Exception:
+                return float(obj)
+        if isinstance(obj, np.integer):
+            return int(obj)
+        # generic fallback: try bool then float
+        try:
+            if obj.dtype.kind == "b":
+                return bool(obj)
+        except Exception:
+            pass
+    if isinstance(obj, np.floating):
         return float(obj) if not np.isnan(obj) else None
-    if isinstance(obj, (np.integer, int)):
+    if isinstance(obj, np.integer):
         return int(obj)
     if isinstance(obj, np.ndarray):
         return obj.tolist()
     raise TypeError(f"Type {type(obj)} not serializable")
 def default_serializer(obj):
-    if isinstance(obj, (np.bool_, np.bool8)):
+    if isinstance(obj, bool):
         return bool(obj)
-    if isinstance(obj, (np.floating, np.float64, np.float32)):
-        return float(obj) if not np.isnan(obj) else None
-    if isinstance(obj, (np.integer, np.int64, np.int32)):
+    if isinstance(obj, np.generic):
+        try:
+            if isinstance(obj, np.bool_):
+                return bool(obj)
+        except Exception:
+            pass
+        try:
+            if hasattr(obj, "dtype") and str(getattr(obj, "dtype", "")) == "bool":
+                return bool(obj)
+        except Exception:
+            pass
+        try:
+            if getattr(obj, "dtype", None) is not None and getattr(obj.dtype, "kind", None) == "b":
+                return bool(obj)
+        except Exception:
+            pass
+        if isinstance(obj, np.floating):
+            try:
+                return float(obj) if not np.isnan(obj) else None
+            except Exception:
+                return float(obj)
+        if isinstance(obj, np.integer):
+            return int(obj)
+    if isinstance(obj, np.floating):
+        try:
+            return float(obj) if not np.isnan(obj) else None
+        except Exception:
+            return float(obj)
+    if isinstance(obj, np.integer):
         return int(obj)
     if isinstance(obj, np.ndarray):
         return obj.tolist()
