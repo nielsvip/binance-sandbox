@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-23 23:53 UTC",
- "total_capital_usd": 807.36,
+ "generated_at": "2026-09-24 00:53 UTC",
+ "total_capital_usd": 808.52,
  "tier_capital": {
   "A": 0.0,
-  "B": 807.36,
+  "B": 808.52,
   "C": 0.0
  },
  "tier_count": {
@@ -22,23 +22,23 @@
    "pk": "flz:ETHUSDT_LONG",
    "symbol": "ETHUSDT",
    "account": "flz",
-   "value_usd": 638.67,
-   "gain_pct": -3.395,
+   "value_usd": 639.65,
+   "gain_pct": -3.246,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 0.238,
-   "mark": 2683.49107057
+   "mark": 2687.61096124
   },
   {
    "pk": "flz:BTCUSDT_LONG",
    "symbol": "BTCUSDT",
    "account": "flz",
-   "value_usd": 168.69,
-   "gain_pct": -2.886,
+   "value_usd": 168.87,
+   "gain_pct": -2.784,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 0.002,
-   "mark": 84343.3329985
+   "mark": 84432.6
   }
  ]
 }
