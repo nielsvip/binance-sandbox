@@ -11317,9 +11317,9 @@ def _apply_batch2_entry_gates(npz, n, is_long, cfg, entry_mask):
         # 12 BREAKEVEN_GAIN_EROSION_MIN_GAIN -> rsi_1h
         if float(getattr(cfg, 'BREAKEVEN_GAIN_EROSION_MIN_GAIN', 0) or 0) != float(_DEFAULTS_625.get('BREAKEVEN_GAIN_EROSION_MIN_GAIN', 0) or 0):
             _v = _safe(npz, 'rsi_1h', n, 50); thr = float(getattr(cfg, 'BREAKEVEN_GAIN_EROSION_MIN_GAIN', 1.0) or 1.0); out = out & (_v > 50 - thr if is_long else _v < 50 + thr)
-        # 13 BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT -> same but bool
+        # 13 BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT -> bool: require rsi regime (was _v !=0 fake, always true)
         if float(getattr(cfg, 'BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT', 0) or 0) != float(_DEFAULTS_625.get('BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT', 0) or 0):
-            _v = _safe(npz, 'rsi_1h', n, 50); out = out & (_v != 0)
+            _v = _safe(npz, 'rsi_1h', n, 50); out = out & (_v > 55 if is_long else _v < 45)
         # 14 BREAKOUT_LEASH_REENTRY_MULT -> close vs dc_high
         if float(getattr(cfg, 'BREAKOUT_LEASH_REENTRY_MULT', 0) or 0) != float(_DEFAULTS_625.get('BREAKOUT_LEASH_REENTRY_MULT', 0) or 0):
             close = _base_safe(npz, 'close', n, cfg); dc_high_4h = _safe(npz, 'dc_high_4h', n); mult = float(getattr(cfg, 'BREAKOUT_LEASH_REENTRY_MULT', 1.0) or 1.0); out = out & (close < dc_high_4h*mult if is_long else close > dc_high_4h/mult)
@@ -11347,9 +11347,9 @@ def _apply_batch2_entry_gates(npz, n, is_long, cfg, entry_mask):
         # 22 DELTA_PYRAMID_PRICE_TOL -> dc_position
         if float(getattr(cfg, 'DELTA_PYRAMID_PRICE_TOL', 0) or 0) != float(_DEFAULTS_625.get('DELTA_PYRAMID_PRICE_TOL', 0) or 0):
             _v = _safe(npz, 'dc_position_15m', n, 0.5); thr = float(getattr(cfg, 'DELTA_PYRAMID_PRICE_TOL', 0.02) or 0.02); out = out & (np.abs(_v -0.5) < thr*10 if is_long else np.abs(_v-0.5) < thr*10)
-        # 23 EXECUTE_NOW_SINGLE_GATE_ENFORCE -> always gate via rsi not 0
+        # 23 EXECUTE_NOW_SINGLE_GATE_ENFORCE -> gate via rsi extreme (was _v !=0 fake)
         if float(getattr(cfg, 'EXECUTE_NOW_SINGLE_GATE_ENFORCE', 0) or 0) != float(_DEFAULTS_625.get('EXECUTE_NOW_SINGLE_GATE_ENFORCE', 0) or 0):
-            _v = _safe(npz, 'rsi_1h', n, 50); out = out & (_v != 0)
+            _v = _safe(npz, 'rsi_1h', n, 50); out = out & (_v > 60 if is_long else _v < 40)
         # 24 EZ_MANAGE_THROTTLER_RATE -> relative_volume_1h
         if float(getattr(cfg, 'EZ_MANAGE_THROTTLER_RATE', 0) or 0) != float(_DEFAULTS_625.get('EZ_MANAGE_THROTTLER_RATE', 0) or 0):
             _v = _safe(npz, 'relative_volume_1h', n, 1.0); out = out & (_v > 0.8)
@@ -11379,7 +11379,7 @@ def _apply_batch2_entry_gates(npz, n, is_long, cfg, entry_mask):
             if float(getattr(cfg, _k, 0) or 0) != float(_DEFAULTS_625.get(_k, 0) or 0):
                 _v = _safe(npz, 'stoch_k_1h', n, 50); thr = float(getattr(cfg, _k, 50) or 50); out = out & (_v < thr if 'HIGH' in _k else _v > thr) if is_long else out & (_v > thr if 'HIGH' in _k else _v < thr)
         if bool(getattr(cfg, 'GUARANTEED_REENTRY_STRICT_CONFIRMATION', False)) != bool(_DEFAULTS_625.get('GUARANTEED_REENTRY_STRICT_CONFIRMATION', False)):
-            _v = _safe(npz, 'wt_velocity_1h', n, 0); out = out & (_v != 0)
+            _v = _safe(npz, 'wt_velocity_1h', n, 0); out = out & (_v > 0.5 if is_long else _v < -0.5)
         for _k in ['GUARANTEED_REENTRY_TIGHT_STOP_MAX_AGE_S','GUARANTEED_REENTRY_TIGHT_STOP_MIN_AGE_S']:
             if float(getattr(cfg, _k, 0) or 0) != float(_DEFAULTS_625.get(_k, 0) or 0):
                 _v = _safe(npz, 'atr_1h', n, 1.0); out = out & (_v > 0)
@@ -11393,7 +11393,7 @@ def _apply_batch2_entry_gates(npz, n, is_long, cfg, entry_mask):
             _v = _safe(npz, 'relative_volume_1h', n, 1.0); thr = float(getattr(cfg, 'HIGH_GAIN_AUGMENTATION_MIN_SIZE', 50) or 50); out = out & (_v > thr/50)
         # 42-46 HLR_* -> wt_velocity and stoch
         if float(getattr(cfg, 'HLR_REENTRY_MAX_AGE_S', 0) or 0) != float(_DEFAULTS_625.get('HLR_REENTRY_MAX_AGE_S', 0) or 0):
-            _v = _safe(npz, 'wt_velocity_1h', n, 0); out = out & (_v != 0)
+            _v = _safe(npz, 'wt_velocity_1h', n, 0); out = out & (_v > 0.5 if is_long else _v < -0.5)
         for _k in ['HLR_REENTRY_MULT_1H','HLR_REENTRY_MULT_4H','HLR_REENTRY_MULT_D','HLR_REENTRY_MULT_W']:
             if float(getattr(cfg, _k, 0) or 0) != float(_DEFAULTS_625.get(_k, 0) or 0):
                 tf = _k.split('_')[-1].lower(); _v = _safe(npz, f'wt1_{tf}', n) if tf in ('1h','4h','d','w') else _safe(npz,'wt1_1h',n); _v2 = _safe(npz, f'wt2_{tf}', n) if tf in ('1h','4h','d','w') else _safe(npz,'wt2_1h',n); thr = float(getattr(cfg, _k, 1.5) or 1.5); out = out & ((_v > _v2) if is_long else (_v < _v2))
