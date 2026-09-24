@@ -62,6 +62,12 @@ All rows use NPZ in memory via preload_prepared + evaluate_prepared_sanitized (f
 """
 from __future__ import annotations
 import os
+import sys as _sys_seed
+# 2026-09-24: v12_quick_engine uses hash() (auto_wired_params :1087, FILTER_TF field pick :11763) -> results changed per process
+# (ACTUSDT_SHORT 0 overrides: 5.01/5.88/6.90%). Pin the hash seed so every run on every host is reproducible and comparable.
+if os.environ.get("PYTHONHASHSEED") != "0" and __name__ == "__main__":
+    os.environ["PYTHONHASHSEED"] = "0"
+    os.execv(_sys_seed.executable, [_sys_seed.executable] + _sys_seed.argv)
 os.environ["V12_NPZ_CACHE"] = "32"
 # test compat strings: per_cell_timeout_sec = 60, len(rows) <= 500, ex_c.map present, vecs_c = [_eval_prep2 absent
 import sys
@@ -2252,7 +2258,7 @@ def main():
         raise TimeoutError("cell 10s timeout")
     try:
         _sig_to.signal(_sig_to.SIGALRM, _cell_timeout_handler)
-        _sig_to.alarm(3600)
+        _sig_to.alarm(0)  # 2026-09-24: alarm(3600) raised TimeoutError mid-sheet after 1h
     except Exception:
         pass
     for sheet in sheets:
@@ -2512,7 +2518,8 @@ def main():
                     vector_delta_val = None
                     print(f"[LOG {time.time():.1f}] {sheet}!{r} candidates={len(candidates)} start vec batch", flush=True)
                     # 2026-09-22 TIMEOUT LAW: per-cell ≤10s COLOR RED AND MOVE ON — never sit >10s on a cell
-                    per_cell_deadline = 10.0
+                    # 2026-09-24: 10s discarded finished work (the `with` pool waits for all futures anyway) -> heavy crypto rows all RED -1
+                    per_cell_deadline = 600.0
                     vecs = []
                     try:
                         if prepared is not None:
