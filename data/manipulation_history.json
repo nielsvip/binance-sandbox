@@ -2403,5 +2403,23 @@
     ],
     "timestamp": "2026-09-24T19:14:24.230139+00:00",
     "price": 0.0427
+  },
+  {
+    "symbol": "BLURUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 21.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-24T19:27:52.209597+00:00",
+    "price": 0.02003
+  },
+  {
+    "symbol": "CELRUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-24T19:27:52.209597+00:00",
+    "price": 0.002966
   }
 ]
