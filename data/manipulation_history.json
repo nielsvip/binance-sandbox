@@ -2559,5 +2559,50 @@
     ],
     "timestamp": "2026-09-24T20:39:29.975869+00:00",
     "price": 7.388
+  },
+  {
+    "symbol": "SKYUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.4x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-24T20:44:01.259278+00:00",
+    "price": 0.07565
+  },
+  {
+    "symbol": "ARKMUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-24T20:44:01.259278+00:00",
+    "price": 0.129
+  },
+  {
+    "symbol": "BIGTIMEUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 15.7x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-24T20:44:01.259278+00:00",
+    "price": 0.008432
+  },
+  {
+    "symbol": "PUMPUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 10.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-24T20:52:44.273562+00:00",
+    "price": 0.003889
+  },
+  {
+    "symbol": "IOTAUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 25.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-24T20:57:33.469601+00:00",
+    "price": 0.0479
   }
 ]
