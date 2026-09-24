@@ -1,32 +1,43 @@
 {
- "generated_at": "2026-09-24 16:16 UTC",
- "total_capital_usd": 24.97,
+ "generated_at": "2026-09-24 16:40 UTC",
+ "total_capital_usd": 112.78,
  "tier_capital": {
   "A": 0.0,
-  "B": 24.97,
+  "B": 112.78,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 2,
   "C": 0
  },
  "winners": [],
  "losers": [],
  "mediocre": [
-  "ang:MORPHOUSDT_LONG"
+  "men:IOTXUSDT_LONG"
  ],
  "positions": [
   {
-   "pk": "ang:MORPHOUSDT_LONG",
-   "symbol": "MORPHOUSDT",
-   "account": "ang",
-   "value_usd": 24.97,
-   "gain_pct": 0.039,
+   "pk": "men:IOTXUSDT_LONG",
+   "symbol": "IOTXUSDT",
+   "account": "men",
+   "value_usd": 56.44,
+   "gain_pct": -0.194,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 8.8,
-   "mark": 2.8375
+   "perf_mult": 0.64,
+   "amt": 15271.0,
+   "mark": 0.003696
+  },
+  {
+   "pk": "men:ADAUSDC_LONG",
+   "symbol": "ADAUSDC",
+   "account": "men",
+   "value_usd": 56.34,
+   "gain_pct": 0.651,
+   "tier": "B",
+   "perf_mult": 1.52,
+   "amt": 224.7,
+   "mark": 0.25072209
   }
  ]
 }
