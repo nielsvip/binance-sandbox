@@ -2649,5 +2649,32 @@
     ],
     "timestamp": "2026-09-24T21:38:10.584069+00:00",
     "price": 4.664
+  },
+  {
+    "symbol": "SAGAUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 12.6x normal"
+    ],
+    "timestamp": "2026-09-24T21:51:45.406505+00:00",
+    "price": 0.05988
+  },
+  {
+    "symbol": "BSVUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-24T22:08:57.930591+00:00",
+    "price": 21.64
+  },
+  {
+    "symbol": "TRUMPUSDC",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 7.8x normal"
+    ],
+    "timestamp": "2026-09-24T22:10:48.724994+00:00",
+    "price": 2.10714393
   }
 ]
