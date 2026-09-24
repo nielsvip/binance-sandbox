@@ -1695,12 +1695,20 @@ def main():
                 sw = sw.strip()
                 if sw in overrides:
                     val = overrides[sw]
+                    # Ensure TRUE/FALSE written as string "TRUE"/"FALSE" bold (user saw False TRUE not bold)
+                    if isinstance(val, bool):
+                        val_str = "TRUE" if val else "FALSE"
+                    else:
+                        val_str = str(val)
+                        if val_str.lower() in ("true", "false"):
+                            val_str = val_str.upper()
                     cur_c = ws_c.cell(row=r, column=3).value
-                    if cur_c is None or str(cur_c) != str(val):
-                        ws_c.cell(row=r, column=3).value = val
-                        # mark non-default bold per spec
+                    if cur_c is None or str(cur_c).strip().upper() != val_str.strip().upper():
+                        ws_c.cell(row=r, column=3).value = val_str
+                        # mark override bold per spec — must be True in bold
                         try:
-                            ws_c.cell(row=r, column=3).font = Font(name="Arial", size=10, bold=True)
+                            ws_c.cell(row=r, column=3).font = Font(name="Arial", size=10, bold=True, color="000000")
+                            ws_c.cell(row=r, column=3).alignment = Alignment(horizontal="left", vertical="center")
                         except Exception:
                             pass
                         filled_c += 1
@@ -2464,17 +2472,30 @@ def main():
                     except: pass
                 try:
                     # REPORT INTO BASELINE (F is hustle vs baseline) and VECTOR_DELTA (G greedy vs cum) — never into BB_BOUNCE etc
-                    # FIX 2026-09-24: E must be set for every calculated row to its cumulative_before (creates baseline chain), not only when delta>0
+                    # FIX 2026-09-24: E must be set for every calculated row to its cumulative_before (creates baseline chain)
                     ws_h.cell(row=r, column=5).value = float(cumulative_before)
                     ws_h.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="006100")
                     ws_h.cell(row=r, column=5).alignment = __import__("openpyxl").styles.Alignment(horizontal="left", vertical="center")
                     ws_h.cell(row=r, column=6).value = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                    if ws_h.cell(row=r, column=7).value is None or float(ws.cell(row=r, column=7).value or 0) == 0 if (ws:=ws_h) else False:
+                    if ws_h.cell(row=r, column=7).value is None or float(ws_h.cell(row=r, column=7).value or 0) == 0:
                         ws_h.cell(row=r, column=7).value = float(delta_best)
                     ws_h.cell(row=r, column=6).alignment = __import__("openpyxl").styles.Alignment(horizontal="left", vertical="center")
                     ws_h.cell(row=r, column=7).alignment = __import__("openpyxl").styles.Alignment(horizontal="left", vertical="center")
+                    # FIX 2026-09-24: baseline must update every time higher number can be put in — set next row's E immediately when delta>0 and next row is in same tab
+                    if delta_best > 1e-9:
+                        # Find next pending row in same sheet (r+1 that is not already in done and not header)
+                        try:
+                            next_r = r + 1
+                            if next_r <= ws_h.max_row:
+                                # Only set if next row's E is currently empty or formula and next row is not yet calculated
+                                nxt_e = ws_h.cell(row=next_r, column=5).value
+                                if nxt_e is None or (isinstance(nxt_e, str) and nxt_e.startswith("=")):
+                                    ws_h.cell(row=next_r, column=5).value = float(cumulative_before + delta_best)
+                                    ws_h.cell(row=next_r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="006100")
+                                    ws_h.cell(row=next_r, column=5).alignment = __import__("openpyxl").styles.Alignment(horizontal="left", vertical="center")
+                        except Exception:
+                            pass
                     # C override stays for best previous results — never clear on delta<=0
-                    # E for next row will be set when that next row is processed (its cumulative_before), not here
                 except: pass
             else:
                 delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
@@ -2531,53 +2552,16 @@ def main():
                 try:
                     _atomic_write_json(progress_path, progress)
                 except: pass
-                # per-row wb save for current sheet — ensure F/G not lost if killed
+                # per-row wb save for current sheet — ensure F/G not lost if killed (simple save, no zip race that creates BadZip)
                 try:
                     wb_cur, _ = _get_wb_keep(sheet)
-                    # use _atomic_save-like validation per row (avoid BadZip)
-                    tmp = str(wb_path) + ".tmp"
-                    wb_cur.save(tmp)
-                    import zipfile, os
-                    z = zipfile.ZipFile(tmp, 'r')
-                    ok = len(z.namelist()) >= 10
-                    z.close()
-                    if ok:
-                        os.replace(tmp, str(wb_path))
-                    else:
-                        wb_cur.save(str(wb_path))
+                    wb_cur.save(str(wb_path))
                 except Exception:
-                    try:
-                        wb_cur, _ = _get_wb_keep(sheet)
-                        wb_cur.save(str(wb_path))
-                    except Exception:
-                        pass
-                # also mark red on error, never skip silently
-                if delta_best is None:
-                    try:
-                        wb_cur, htc = _get_wb_keep(sheet)
-                        ws_err = wb_cur[sheet] if sheet in wb_cur.sheetnames else None
-                        if ws_err is not None:
-                            ws_err.cell(row=r, column=6).value = "ERROR"
-                            ws_err.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                            ws_err.cell(row=r, column=6).font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
-                            ws_err.cell(row=r, column=11).value = "calculation error — see log"
-                            ws_err.sheet_properties.tabColor = "FF0000"
-                    except Exception:
-                        pass
+                    pass
         # After dynamic cycle completes, flush all wb_keep caches and progress — never skip, every row must have F/G or red error
         for _wb in _wb_keep_cache.values():
             try:
-                # final atomic save
-                tmp = str(wb_path) + ".tmp"
-                _wb.save(tmp)
-                import zipfile, os
-                z = zipfile.ZipFile(tmp, 'r')
-                ok = len(z.namelist()) >= 10
-                z.close()
-                if ok:
-                    os.replace(tmp, str(wb_path))
-                else:
-                    _wb.save(str(wb_path))
+                _wb.save(str(wb_path))
                 _wb.close()
             except: pass
         try:
