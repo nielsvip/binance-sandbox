@@ -31529,6 +31529,9 @@ class StockDaytradeWing:
         # 2026-09-24: dc level variants for daytrade stop (vectorizable, npz 15m has dc, 3/5m not in npz)
         stop_use_dc_15m = bool(_cfg_auto('DC_DAYTRADE_STOP_USE_DC_15M', False) or _cfg_auto('TRADIER_DC_DAYTRADE_STOP_USE_DC_15M', False))
         stop_use_dc4_15m = bool(_cfg_auto('DC_DAYTRADE_STOP_USE_DC4_15M', False) or _cfg_auto('TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M', False))
+        target_use_dc_15m = bool(_cfg_auto('DC_DAYTRADE_TARGET_USE_DC_15M', False) or _cfg_auto('TRADIER_DC_DAYTRADE_TARGET_USE_DC_15M', False))
+        target_use_dc4_15m = bool(_cfg_auto('DC_DAYTRADE_TARGET_USE_DC4_15M', False) or _cfg_auto('TRADIER_DC_DAYTRADE_TARGET_USE_DC4_15M', False))
+        target_dc_buffer = float(_cfg_auto('DC_DAYTRADE_TARGET_DC_BUFFER_PCT', _cfg_auto('TRADIER_DC_DAYTRADE_TARGET_DC_BUFFER_PCT', 0.002)) or 0.002)
         target_pct = _cfg_auto('DC_DAYTRADE_TARGET_PCT', 0.01)
         max_hold = _cfg_auto('DC_DAYTRADE_MAX_HOLD_MINUTES', 240.0)
         noloss_min = _cfg_auto('NOLOSS_MIN_PROFIT_PCT_TRADIER', 1.0) / 100.0
@@ -31580,6 +31583,16 @@ class StockDaytradeWing:
                 if _dc_stop > 0:
                     if (is_long and price < _dc_stop) or (not is_long and price > _dc_stop):
                         should_exit = True; exit_reason = f"DT_DC_{'4_' if stop_use_dc4_15m else ''}15M_STOP {gain_pct:.2%} dc={_dc_stop:.2f}"
+            # 2026-09-24: dc level target variants (near dc for breakout re-entry) — several % via TEMPLATE already sweepable, plus dc
+            elif (target_use_dc_15m or target_use_dc4_15m) and not should_exit:
+                _sym_data_tgt = snapshot.get(pos.symbol.upper(), {}) or {}
+                _dc_tgt = 0
+                if target_use_dc4_15m:
+                    _dc_tgt = safe_fetch_float(_sym_data_tgt.get('dc_high4_15m' if is_long else 'dc_low4_15m', 0))
+                if target_use_dc_15m and _dc_tgt == 0:
+                    _dc_tgt = safe_fetch_float(_sym_data_tgt.get('dc_high_15m' if is_long else 'dc_low_15m', 0))
+                if _dc_tgt > 0 and abs(price - _dc_tgt) / _dc_tgt < target_dc_buffer:
+                    should_exit = True; exit_reason = f"DT_DC_{'4_' if target_use_dc4_15m else ''}15M_TARGET {gain_pct:.2%} dc={_dc_tgt:.2f}"
             elif gain_pct >= _effective_target:
                 should_exit = True
                 exit_reason = f"DT_TARGET_ATR {gain_pct:.2%}" if (_dt_atr_enabled and _atr_target_pct > target_pct) else f"DT_TARGET {gain_pct:.2%}"

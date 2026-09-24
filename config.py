@@ -4546,7 +4546,10 @@ class Config:
     DC_DAYTRADE_STOP_PCT: float = 0.015  # 1.5% hard stop for daytrades — LEGACY hard % (never set hard % stops per user 2026-09-24, keep as switch but prefer dc levels below)  # PORTED from TradierConfig 2026-08-17
     DC_DAYTRADE_STOP_USE_DC_15M: bool = False  # 2026-09-24: use dc_low/high_15m as stop (vectorizable, npz has 15m) instead of hard % — sweepable variant
     DC_DAYTRADE_STOP_USE_DC4_15M: bool = False  # 2026-09-24: use dc_low4/high4_15m (4-bar tight) as stop — sweepable variant, was 3/5m hard stop replacement (3/5m not in npz, 15m is)
-    DC_DAYTRADE_TARGET_PCT: float = 0.01  # 1% profit target  # PORTED from TradierConfig 2026-08-17
+    DC_DAYTRADE_TARGET_PCT: float = 0.01  # 1% profit target — 2026-09-24: sweep several % (0.005, 0.01, 0.015, 0.02) via TEMPLATE, plus dc variants below
+    DC_DAYTRADE_TARGET_USE_DC_15M: bool = False  # 2026-09-24: use near dc_high/low_15m as target for breakout re-entry (vectorizable, get out and back in immediately if breakout)
+    DC_DAYTRADE_TARGET_USE_DC4_15M: bool = False  # 2026-09-24: use near dc_high4/low4_15m as target — tighter 4-bar for breakout re-entry
+    DC_DAYTRADE_TARGET_DC_BUFFER_PCT: float = 0.002  # 0.2% buffer near dc for target (when USE_DC_* True, exit when close within 0.2% of dc)
     DC_ENTRY_VETO_ENABLED_TRADIER: bool = False  # SENTINEL_FIX 2026-04-14: when True, DC_POSITION_ENTRY_THRESHOLD gates entries (require dc_pos in zone). Default False = live unchanged.  # PORTED from TradierConfig 2026-08-17
     DC_LOW_FROZEN_STOP_ENABLED: bool = False       # master switch; sweep variants set True + TF  # PORTED from TradierConfig 2026-08-17
     DC_LOW_FROZEN_STOP_FLOOR_PCT: float = -999.0  # abs loss floor; -999 = off  # PORTED from TradierConfig 2026-08-17

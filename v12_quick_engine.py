@@ -14752,13 +14752,27 @@ def _apply_625_generic_gates(npz, n, is_long, cfg, entry_mask, exit_mask):
     if bool(getattr(cfg, 'DC_DAYTRADE_STOCH_FILTER', False)) != bool(_DEFAULTS_625.get('DC_DAYTRADE_STOCH_FILTER', False)):
         _v = _safe(npz, 'mfi_1h', n, 50)
         x = x | (_v > 80 if is_long else _v < 20)
-    # DC_DAYTRADE_TARGET_PCT (num) -> entry via stoch_k
+    # DC_DAYTRADE_TARGET_PCT (num) -> entry via stoch_k — also sweep several % (0.005,0.01,0.015,0.02) via TEMPLATE
     _thr = float(getattr(cfg, 'DC_DAYTRADE_TARGET_PCT', 0))
     _def = float(_DEFAULTS_625.get('DC_DAYTRADE_TARGET_PCT', 0) or 0)
     if abs(_thr - _def) > 1e-9:
         _v = _safe(npz, 'stoch_k', n, 50)
         _b = 50 + (_thr % 15)-7.5
         e = e & (_v < _b if is_long else _v > _b)
+    # DC_DAYTRADE_TARGET_USE_DC_15M (bool) -> near dc 15m as target for breakout re-entry (vectorizable)
+    if bool(getattr(cfg, 'DC_DAYTRADE_TARGET_USE_DC_15M', False)) != bool(_DEFAULTS_625.get('DC_DAYTRADE_TARGET_USE_DC_15M', False)):
+        close = _base_safe(npz, 'close', n, cfg)
+        dc_high_15m = _safe(npz, 'dc_high_15m', n)
+        dc_low_15m = _safe(npz, 'dc_low_15m', n)
+        buf = float(getattr(cfg, 'DC_DAYTRADE_TARGET_DC_BUFFER_PCT', 0.002))
+        out = out | ((np.abs(close - dc_high_15m) / np.maximum(dc_high_15m, 1e-9) < buf) if is_long else (np.abs(close - dc_low_15m) / np.maximum(dc_low_15m, 1e-9) < buf))
+    # DC_DAYTRADE_TARGET_USE_DC4_15M (bool) -> near dc4 15m as target
+    if bool(getattr(cfg, 'DC_DAYTRADE_TARGET_USE_DC4_15M', False)) != bool(_DEFAULTS_625.get('DC_DAYTRADE_TARGET_USE_DC4_15M', False)):
+        close = _base_safe(npz, 'close', n, cfg)
+        dc_high4_15m = _safe(npz, 'dc_high4_15m', n)
+        dc_low4_15m = _safe(npz, 'dc_low4_15m', n)
+        buf = float(getattr(cfg, 'DC_DAYTRADE_TARGET_DC_BUFFER_PCT', 0.002))
+        out = out | ((np.abs(close - dc_high4_15m) / np.maximum(dc_high4_15m, 1e-9) < buf) if is_long else (np.abs(close - dc_low4_15m) / np.maximum(dc_low4_15m, 1e-9) < buf))
     # DD_KELLY_ENABLED (bool) -> exit via rsi_1h
     if bool(getattr(cfg, 'DD_KELLY_ENABLED', False)) != bool(_DEFAULTS_625.get('DD_KELLY_ENABLED', False)):
         _v = _safe(npz, 'rsi_1h', n, 50)
@@ -16475,6 +16489,20 @@ def _apply_PZ_causal(cfg, npz, n, is_long, entry_mask, _safe):
         _cond = _v > _thr
         entry_mask = entry_mask & _cond  # getattr(cfg,"TRADIER_DC_DAYTRADE_TARGET_PCT",...) adjacent to entry_mask &
         _ = getattr(cfg, "TRADIER_DC_DAYTRADE_TARGET_PCT", 0.005)
+    # TRADIER_DC_DAYTRADE_TARGET_USE_DC_15M (bool) -> near dc 15m as target for breakout re-entry
+    if bool(getattr(cfg, "TRADIER_DC_DAYTRADE_TARGET_USE_DC_15M", False)) != bool(_DEFAULTS_625.get("TRADIER_DC_DAYTRADE_TARGET_USE_DC_15M", False)):
+        close = _base_safe(npz, 'close', n, cfg)
+        dc_high_15m = _safe(npz, 'dc_high_15m', n)
+        dc_low_15m = _safe(npz, 'dc_low_15m', n)
+        buf = float(getattr(cfg, "TRADIER_DC_DAYTRADE_TARGET_DC_BUFFER_PCT", getattr(cfg, "DC_DAYTRADE_TARGET_DC_BUFFER_PCT", 0.002)))
+        entry_mask = entry_mask & ((np.abs(close - dc_high_15m) / np.maximum(dc_high_15m, 1e-9) < buf) if is_long else (np.abs(close - dc_low_15m) / np.maximum(dc_low_15m, 1e-9) < buf))
+    # TRADIER_DC_DAYTRADE_TARGET_USE_DC4_15M (bool) -> near dc4 15m
+    if bool(getattr(cfg, "TRADIER_DC_DAYTRADE_TARGET_USE_DC4_15M", False)) != bool(_DEFAULTS_625.get("TRADIER_DC_DAYTRADE_TARGET_USE_DC4_15M", False)):
+        close = _base_safe(npz, 'close', n, cfg)
+        dc_high4_15m = _safe(npz, 'dc_high4_15m', n)
+        dc_low4_15m = _safe(npz, 'dc_low4_15m', n)
+        buf = float(getattr(cfg, "TRADIER_DC_DAYTRADE_TARGET_DC_BUFFER_PCT", getattr(cfg, "DC_DAYTRADE_TARGET_DC_BUFFER_PCT", 0.002)))
+        entry_mask = entry_mask & ((np.abs(close - dc_high4_15m) / np.maximum(dc_high4_15m, 1e-9) < buf) if is_long else (np.abs(close - dc_low4_15m) / np.maximum(dc_low4_15m, 1e-9) < buf))
     # CAUSAL: TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED mirrors live stub (wt1>wt2 50% true)
     if bool(getattr(cfg, "TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED", True)):
         _w1 = _safe(npz, 'wt1_15m', n)

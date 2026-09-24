@@ -2172,7 +2172,10 @@ class TradierConfig:
     TRADIER_DC_DAYTRADE_STOP_PCT: float = 0.005         # 0.5% hard stop — LEGACY hard % (never hard % stops per user 2026-09-24, keep but prefer dc levels below)
     TRADIER_DC_DAYTRADE_STOP_USE_DC_15M: bool = False  # 2026-09-24: use dc_low/high_15m as stop instead of hard % (vectorizable)
     TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M: bool = False  # 2026-09-24: use dc_low4/high4_15m (4-bar tight) as stop — was 3/5m replacement
-    TRADIER_DC_DAYTRADE_TARGET_PCT: float = 0.005       # REVERTED 2026-05-18 18:30 (was 0.015 since 2026-05-17). 2026-05-17 flip had no sample-floor proof; isolated vec sweep queued.
+    TRADIER_DC_DAYTRADE_TARGET_PCT: float = 0.005       # REVERTED 2026-05-18 18:30 (was 0.015 since 2026-05-17). 2026-05-17 flip had no sample-floor proof; isolated vec sweep queued. — 2026-09-24: sweep 1.5% and several % (0.005, 0.01, 0.015, 0.02) plus dc variants below
+    TRADIER_DC_DAYTRADE_TARGET_USE_DC_15M: bool = False  # 2026-09-24: use near dc_high/low_15m as target for breakout re-entry (vectorizable)
+    TRADIER_DC_DAYTRADE_TARGET_USE_DC4_15M: bool = False  # 2026-09-24: use near dc_high4/low4_15m as target — tighter 4-bar
+    TRADIER_DC_DAYTRADE_TARGET_DC_BUFFER_PCT: float = 0.002  # 0.2% buffer near dc for target
     # Gate only the existing DC breakout-tier augmentation inside
     # evaluate_augment. Default True preserves the pre-switch live behavior.
     # WT_D_BOUNCE_AUG and TRAILING_AUG are separate paths and are unaffected.
