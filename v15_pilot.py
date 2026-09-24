@@ -919,6 +919,32 @@ def clone_template(template: Path, new_symside: str) -> Path:
         except Exception:
             pass
     target = OUT_DIR / f"{new_symside}_30d_matrix.xlsx"
+    # FIX 2026-09-24: never overwrite a valid filled workbook with empty template — reuse if exists and has F filled and is valid zip
+    if target.exists():
+        try:
+            import zipfile
+            z = zipfile.ZipFile(str(target), 'r')
+            ok = len(z.namelist()) >= 10
+            z.close()
+            if ok:
+                # check if already has F filled (at least one switch sheet has numeric F)
+                try:
+                    wb_check = openpyxl.load_workbook(str(target), data_only=True, read_only=True)
+                    has_f = False
+                    for sn in ["ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "GLOBAL_RISK_GATES"]:
+                        if sn in wb_check.sheetnames:
+                            ws = wb_check[sn]
+                            if any(isinstance(ws.cell(r, 6).value, (int, float)) for r in range(3, min(15, ws.max_row + 1))):
+                                has_f = True
+                                break
+                    wb_check.close()
+                    if has_f:
+                        print(f"[clone] {target.name} already exists with F filled — reuse, not overwrite", flush=True)
+                        return target
+                except Exception:
+                    pass
+        except Exception:
+            pass
     wb = openpyxl.load_workbook(str(template))
     new_baseline = f"{new_symside}_BASELINE_METRICS"
     old_baseline = None
@@ -1652,55 +1678,67 @@ def main():
         ensure_lbI_headers(wb_path)
         print("[headers] L:BI ensured", flush=True)
     print(f"[STEP] BEST-C-FILL start", flush=True)
-    # FIRST THING: fill override column C with start settings — timeout 10s, never hang
+    # FIRST THING: fill override column C with start settings — MUST complete before baseline E3, no skip, no timeout hide
     try:
-        import concurrent.futures as _cf_best
-        def _do_best_c_fill():
-            import openpyxl as _op2c
-            wb_c = _op2c.load_workbook(str(wb_path))
-            filled_c = 0
-            for sname in SWITCH_SHEETS:
-                if sname not in wb_c.sheetnames:
+        import openpyxl as _op2c
+        wb_c = _op2c.load_workbook(str(wb_path))
+        filled_c = 0
+        for sname in SWITCH_SHEETS:
+            if sname not in wb_c.sheetnames:
+                continue
+            ws_c = wb_c[sname]
+            # no cap — must fill every row that matches an override, this creates the first baseline E3
+            for r in range(3, ws_c.max_row + 1):
+                sw = ws_c.cell(row=r, column=1).value
+                if not sw or not isinstance(sw, str):
                     continue
-                ws_c = wb_c[sname]
-                # cap rows to avoid 50000 hang
-                max_r = min(ws_c.max_row, 2000)
-                for r in range(3, max_r + 1):
-                    sw = ws_c.cell(row=r, column=1).value
-                    if not sw or not isinstance(sw, str):
-                        continue
-                    sw = sw.strip()
-                    if sw in overrides:
-                        val = overrides[sw]
-                        cur_c = ws_c.cell(row=r, column=3).value
-                        if cur_c is None or str(cur_c) != str(val):
-                            ws_c.cell(row=r, column=3).value = val
-                            filled_c += 1
-            if filled_c:
-                wb_c.save(str(wb_path))
-            return filled_c
-        with _cf_best.ThreadPoolExecutor(max_workers=1) as _exb:
-            _futb = _exb.submit(_do_best_c_fill)
+                sw = sw.strip()
+                if sw in overrides:
+                    val = overrides[sw]
+                    cur_c = ws_c.cell(row=r, column=3).value
+                    if cur_c is None or str(cur_c) != str(val):
+                        ws_c.cell(row=r, column=3).value = val
+                        # mark non-default bold per spec
+                        try:
+                            ws_c.cell(row=r, column=3).font = Font(name="Arial", size=10, bold=True)
+                        except Exception:
+                            pass
+                        filled_c += 1
+        if filled_c:
+            # atomic save with validation — never leave BadZip
             try:
-                filled_c = _futb.result(timeout=10)
-                print(f"[BEST-C-FILL] {new_symside}: filled {filled_c} override column C cells from {len(overrides)} start overrides (BEST as baseline)", flush=True)
-            except Exception as _e_b:
-                print(f"[BEST-C-FILL-TIMEOUT] {new_symside} >10s {_e_b} — mark RED tab and skip, never hang", flush=True)
-                try:
-                    _futb.cancel()
-                except: pass
-                # mark tab red
-                try:
-                    import openpyxl as _op2c2
-                    wb_tmp = _op2c2.load_workbook(str(wb_path))
-                    for sname in SWITCH_SHEETS:
-                        if sname in wb_tmp.sheetnames:
-                            wb_tmp[sname].sheet_properties.tabColor = "FF0000"
-                    wb_tmp.save(str(wb_path))
-                except: pass
+                tmp = str(wb_path) + ".tmp"
+                wb_c.save(tmp)
+                import zipfile, os
+                z = zipfile.ZipFile(tmp, 'r')
+                ok = len(z.namelist()) >= 10
+                z.close()
+                if ok:
+                    os.replace(tmp, str(wb_path))
+                else:
+                    raise RuntimeError("tmp zip too small")
+            except Exception:
+                wb_c.save(str(wb_path))
+        print(f"[BEST-C-FILL] {new_symside}: filled {filled_c} override column C cells from {len(overrides)} start overrides (BEST as baseline) — baseline E3 will be computed from these", flush=True)
+        if filled_c == 0 and len(overrides) > 0:
+            print(f"[BEST-C-FILL-WARN] {new_symside} had {len(overrides)} overrides but filled 0 — check switch names vs template A col", flush=True)
     except Exception as e:
         import traceback as _tb_c
         print(f"[BEST-C-FILL-warn] {e} {_tb_c.format_exc()[:400]}", flush=True)
+        # on error, mark red cell with explanation, never silently skip
+        try:
+            import openpyxl as _op2c2
+            wb_tmp = _op2c2.load_workbook(str(wb_path))
+            for sname in SWITCH_SHEETS:
+                if sname in wb_tmp.sheetnames:
+                    ws = wb_tmp[sname]
+                    ws.cell(row=3, column=3).value = f"ERROR: BEST-C-FILL failed {e}"
+                    ws.cell(row=3, column=3).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                    ws.cell(row=3, column=3).font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
+                    ws.sheet_properties.tabColor = "FF0000"
+            wb_tmp.save(str(wb_path))
+        except Exception:
+            pass
     print(f"[STEP] BEST-C-FILL done", flush=True)
     # FIX empty sheets - ensure E2 numeric visible (was BASELINE string) + immediate baseline check
     try:
@@ -2426,19 +2464,17 @@ def main():
                     except: pass
                 try:
                     # REPORT INTO BASELINE (F is hustle vs baseline) and VECTOR_DELTA (G greedy vs cum) — never into BB_BOUNCE etc
+                    # FIX 2026-09-24: E must be set for every calculated row to its cumulative_before (creates baseline chain), not only when delta>0
+                    ws_h.cell(row=r, column=5).value = float(cumulative_before)
+                    ws_h.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="006100")
+                    ws_h.cell(row=r, column=5).alignment = __import__("openpyxl").styles.Alignment(horizontal="left", vertical="center")
                     ws_h.cell(row=r, column=6).value = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                    if ws_h.cell(row=r, column=7).value is None or float(ws_h.cell(row=r, column=7).value or 0) == 0:
+                    if ws_h.cell(row=r, column=7).value is None or float(ws.cell(row=r, column=7).value or 0) == 0 if (ws:=ws_h) else False:
                         ws_h.cell(row=r, column=7).value = float(delta_best)
-                    # E BASELINE only when pos delta — never write numbers without pos delta (virus destroyed)
-                    if delta_best > 1e-9:
-                        ws_h.cell(row=r, column=5).value = float(cumulative_before)
-                        ws_h.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="006100")
-                    else:
-                        if r + 1 <= ws_h.max_row:
-                            try:
-                                ws_h.cell(row=r+1, column=5).value = None
-                            except: pass
-                        ws_h.cell(row=r, column=3).value = None
+                    ws_h.cell(row=r, column=6).alignment = __import__("openpyxl").styles.Alignment(horizontal="left", vertical="center")
+                    ws_h.cell(row=r, column=7).alignment = __import__("openpyxl").styles.Alignment(horizontal="left", vertical="center")
+                    # C override stays for best previous results — never clear on delta<=0
+                    # E for next row will be set when that next row is processed (its cumulative_before), not here
                 except: pass
             else:
                 delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
@@ -2490,15 +2526,58 @@ def main():
                 print(f"[0914-cycle] NEG {sheet}!{r} delta {delta_best if delta_best is not None else 0:.4f} -> next tab", flush=True)
                 _deque_sheets.rotate(-1)
                 # If sheet exhausted, will be popped next iteration
-            # flush periodic
-            if _processed_cycle % 10 == 0:
+            # flush periodic — progress and workbook per row, never lose CPU
+            if _processed_cycle % 5 == 0:
                 try:
                     _atomic_write_json(progress_path, progress)
                 except: pass
-        # After dynamic cycle completes, flush all wb_keep caches and progress
+                # per-row wb save for current sheet — ensure F/G not lost if killed
+                try:
+                    wb_cur, _ = _get_wb_keep(sheet)
+                    # use _atomic_save-like validation per row (avoid BadZip)
+                    tmp = str(wb_path) + ".tmp"
+                    wb_cur.save(tmp)
+                    import zipfile, os
+                    z = zipfile.ZipFile(tmp, 'r')
+                    ok = len(z.namelist()) >= 10
+                    z.close()
+                    if ok:
+                        os.replace(tmp, str(wb_path))
+                    else:
+                        wb_cur.save(str(wb_path))
+                except Exception:
+                    try:
+                        wb_cur, _ = _get_wb_keep(sheet)
+                        wb_cur.save(str(wb_path))
+                    except Exception:
+                        pass
+                # also mark red on error, never skip silently
+                if delta_best is None:
+                    try:
+                        wb_cur, htc = _get_wb_keep(sheet)
+                        ws_err = wb_cur[sheet] if sheet in wb_cur.sheetnames else None
+                        if ws_err is not None:
+                            ws_err.cell(row=r, column=6).value = "ERROR"
+                            ws_err.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                            ws_err.cell(row=r, column=6).font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
+                            ws_err.cell(row=r, column=11).value = "calculation error — see log"
+                            ws_err.sheet_properties.tabColor = "FF0000"
+                    except Exception:
+                        pass
+        # After dynamic cycle completes, flush all wb_keep caches and progress — never skip, every row must have F/G or red error
         for _wb in _wb_keep_cache.values():
             try:
-                _wb.save(str(wb_path))
+                # final atomic save
+                tmp = str(wb_path) + ".tmp"
+                _wb.save(tmp)
+                import zipfile, os
+                z = zipfile.ZipFile(tmp, 'r')
+                ok = len(z.namelist()) >= 10
+                z.close()
+                if ok:
+                    os.replace(tmp, str(wb_path))
+                else:
+                    _wb.save(str(wb_path))
                 _wb.close()
             except: pass
         try:
