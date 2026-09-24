@@ -1558,15 +1558,6 @@
     },
     "last_seen": "2026-08-17T17:34:44.510537+00:00"
   },
-  "fin:IOTXUSDT_SHORT": {
-    "count": 2,
-    "first_seen_zero_at": "2026-08-17T18:36:00.385951+00:00",
-    "last_increment_at": "2026-08-17T18:36:00.385951+00:00",
-    "sources": {
-      "API_ABSENCE": 1
-    },
-    "last_seen": "2026-08-17T18:36:10.244563+00:00"
-  },
   "fin:LTCUSDC_SHORT": {
     "count": 1,
     "first_seen_zero_at": "2026-08-17T23:38:45.245914+00:00",
@@ -1676,14 +1667,6 @@
       "API_ABSENCE": 2
     }
   },
-  "flz:HYPEUSDT_SHORT": {
-    "count": 2,
-    "first_seen_zero_at": "2026-09-23T20:21:09.173768+00:00",
-    "last_increment_at": "2026-09-23T20:21:36.288743+00:00",
-    "sources": {
-      "API_ABSENCE": 2
-    }
-  },
   "inf:ROSEUSDT_LONG": {
     "count": 4,
     "first_seen_zero_at": "2026-09-24T17:58:05.089988+00:00",
@@ -1694,11 +1677,11 @@
     "last_seen": "2026-09-24T17:58:23.611196+00:00"
   },
   "inf:ARBUSDC_SHORT": {
-    "count": 5,
+    "count": 4,
     "first_seen_zero_at": "2026-09-24T18:04:16.774581+00:00",
-    "last_increment_at": "2026-09-24T18:09:08.695191+00:00",
+    "last_increment_at": "2026-09-24T18:08:09.310430+00:00",
     "sources": {
-      "API_ABSENCE": 5
+      "API_ABSENCE": 4
     }
   },
   "inf:IOTAUSDT_LONG": {
@@ -1708,5 +1691,14 @@
     "sources": {
       "API_ABSENCE": 2
     }
+  },
+  "flz:XRPUSDC_LONG": {
+    "count": 2,
+    "first_seen_zero_at": "2026-09-24T18:09:10.891670+00:00",
+    "last_increment_at": "2026-09-24T18:09:10.891670+00:00",
+    "sources": {
+      "API_ABSENCE": 1
+    },
+    "last_seen": "2026-09-24T18:09:32.175536+00:00"
   }
 }

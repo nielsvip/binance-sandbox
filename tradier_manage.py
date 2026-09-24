@@ -6286,20 +6286,36 @@ class _PerKeyCfgView:
 
 
 def _load_global_per_sym_cfgs() -> dict:
-    """Load per-symbol custom overrides from data/hourly_reconfig/per_sym_active_config.json.
-    Same file that ez_positions_quick._get_per_sym_overrides reads — single source of truth
-    for per-symbol settings written by per_sym_trb_profiles / per_sym_crypto_profiles / per_sym_flz8_profiles.
+    """Load per-symbol custom overrides from data/hourly_reconfig/*.
+
+    PARITY 2026-09-24: now merges BOTH per_sym_active_config.json (crypto) AND
+    per_sym_active_config_stocks.json (stocks 216 keys). Previously only crypto
+    was read, so stocks fallback was always empty — trb/active_config.json is
+    the primary but when a stocks side is missing there, global stocks overrides
+    must still flow. Both files are _inject_neg_sharpe_no_trade'd.
     V8_DISABLE_PER_SYM=1 forces config defaults (live-vs-sandbox parity audit)."""
     if os.environ.get("V8_DISABLE_PER_SYM") == "1":
         return {}
     global _global_per_sym_cfgs, _global_per_sym_cfgs_mtime
     try:
-        mtime = _global_per_sym_cfgs_path.stat().st_mtime
-        if mtime != _global_per_sym_cfgs_mtime:
-            with _global_per_sym_cfgs_path.open() as _f:
-                raw = json.load(_f)
-            _global_per_sym_cfgs = {k: _inject_neg_sharpe_no_trade(k, v) for k, v in raw.items() if isinstance(v, dict)}
-            _global_per_sym_cfgs_mtime = mtime
+        stocks_path = Path(config.BASE_PATH) / "data" / "hourly_reconfig" / "per_sym_active_config_stocks.json"
+        mtime_main = _global_per_sym_cfgs_path.stat().st_mtime if _global_per_sym_cfgs_path.exists() else 0
+        mtime_stocks = stocks_path.stat().st_mtime if stocks_path.exists() else 0
+        newest = max(mtime_main, mtime_stocks)
+        if newest != _global_per_sym_cfgs_mtime:
+            merged: dict = {}
+            for p in (_global_per_sym_cfgs_path, stocks_path):
+                if p.exists():
+                    try:
+                        with p.open() as _f:
+                            raw = json.load(_f)
+                        for k, v in raw.items():
+                            if isinstance(v, dict) and k != "_meta":
+                                merged[k] = _inject_neg_sharpe_no_trade(k, v)
+                    except Exception:
+                        continue
+            _global_per_sym_cfgs = merged
+            _global_per_sym_cfgs_mtime = newest
     except Exception:
         pass
     return _global_per_sym_cfgs

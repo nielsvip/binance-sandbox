@@ -70,6 +70,10 @@ def _run_variant_task_worker_stocks(args):
     return {"pool_sharpe": 0.0, "time_weighted_sharpe": 0.0, "trades": 0, "win_rate_pct": 0.0, "avg_gain_trade_pct": 0.0, "gain_per_yr_pct": 0.0, "max_dd_pct": 0.0, "long_trades": 0, "short_trades": 0}
 
 def sweep_variants(sym: str, variants: List[Dict[str, Any]], years_back: float = 7.0 / 365.25, chunk_size: int = 10_000, verbose: bool = True, n_years_for_yr_metrics: Optional[float] = None) -> Dict[str, np.ndarray]:
+    """PARITY 2026-09-24: now honors chunk_size via batched dispatch to bound memory.
+    Previously chunk_size was ignored (all variants submitted at once, ProcessPool held
+    N futures in RAM — for N=10k variants each NPZ is ~tens of MB, OOM on S1).
+    Now dispatches in chunks of `chunk_size` variants per batch."""
     t0 = time.time()
     try:
         npz, ts = load_npz(sym, "tradier", start_ts=None)
@@ -85,20 +89,23 @@ def sweep_variants(sym: str, variants: List[Dict[str, Any]], years_back: float =
     start_ts = int(ts_5m[-1] - int(years_back * 365.25 * 86400))
     import multiprocessing
     n_workers = max(1, min(4, (multiprocessing.cpu_count() or 4) - 1))
-    tasks = [(sym, start_ts, var, years_back) for var in variants]
+    cs = max(1, int(chunk_size))
     from concurrent.futures import ProcessPoolExecutor, as_completed
-    with ProcessPoolExecutor(max_workers=n_workers) as executor:
-        futures = {executor.submit(_run_variant_task_worker_stocks, t): idx for idx, t in enumerate(tasks)}
-        for fut in as_completed(futures):
-            idx = futures[fut]
-            try:
-                res = fut.result()
-                if res is not None:
-                    pool_sharpe[idx], tw_sharpe[idx], trades[idx] = res["pool_sharpe"], res["time_weighted_sharpe"], res["trades"]
-                    win_rate[idx], avg_gain[idx], gain_per_yr[idx] = res["win_rate_pct"], res["avg_gain_trade_pct"], res["gain_per_yr_pct"]
-                    max_dd[idx], long_trades[idx], short_trades[idx] = res["max_dd_pct"], res["long_trades"], res["short_trades"]
-            except Exception:
-                pass
+    for chunk_start in range(0, n_v, cs):
+        chunk_end = min(chunk_start + cs, n_v)
+        tasks = [(sym, start_ts, variants[i], years_back) for i in range(chunk_start, chunk_end)]
+        with ProcessPoolExecutor(max_workers=n_workers) as executor:
+            futures = {executor.submit(_run_variant_task_worker_stocks, t): idx for idx, t in zip(range(chunk_start, chunk_end), tasks)}
+            for fut in as_completed(futures):
+                idx = futures[fut]
+                try:
+                    res = fut.result()
+                    if res is not None:
+                        pool_sharpe[idx], tw_sharpe[idx], trades[idx] = res["pool_sharpe"], res["time_weighted_sharpe"], res["trades"]
+                        win_rate[idx], avg_gain[idx], gain_per_yr[idx] = res["win_rate_pct"], res["avg_gain_trade_pct"], res["gain_per_yr_pct"]
+                        max_dd[idx], long_trades[idx], short_trades[idx] = res["max_dd_pct"], res["long_trades"], res["short_trades"]
+                except Exception:
+                    pass
     return {"pool_sharpe": pool_sharpe, "time_weighted_sharpe": tw_sharpe, "trades": trades, "win_rate_pct": win_rate, "avg_gain_trade_pct": avg_gain, "gain_per_yr_pct": gain_per_yr, "max_dd_pct": max_dd, "long_trades": long_trades, "short_trades": short_trades}
 
 def _empty_scoreboard(n: int) -> Dict[str, np.ndarray]:

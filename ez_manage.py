@@ -7031,10 +7031,15 @@ def _ezm_load_inf_7d() -> dict:
 def _psym_get(symbol: str, side: str, knob: str, default):
     """Per-sym knob lookup. Returns per-sym override if present for
     (symbol, side) AND override dict contains knob; else falls back to
-    getattr(config, knob, default)."""
+    getattr(config, knob, default).
+
+    2026-09-24: crypto-only — per_sym_active_config.json only. Stock equivalents
+    (AAPLUSDT etc) are NOT traded via ez_manage yet; inf is dedicated to best
+    crypto performers. Stocks file is for tradier_manage only (see _load_global_per_sym_cfgs).
+    The earlier dual-read that merged stocks into crypto via USDT suffix is
+    reverted until stock equivalents are enabled."""
     if os.environ.get("V8_DISABLE_PER_SYM") == "1":
         return getattr(config, knob, default)
-    # 2026-08-21 USER MANDATE WIPED: NO per_sym trading until 900*900 vector+live verified — honor PER_SYM_CONFIG_ENABLED=False
     if not bool(getattr(config, "PER_SYM_CONFIG_ENABLED", True)):
         return getattr(config, knob, default)
     global _ezm_per_sym_cfgs, _ezm_per_sym_cfgs_mtime, _ezm_per_sym_raw, _ezm_per_sym_raw_mtime
@@ -7043,15 +7048,16 @@ def _psym_get(symbol: str, side: str, knob: str, default):
         if mtime != _ezm_per_sym_cfgs_mtime:
             with _ezm_per_sym_cfgs_path.open() as _f:
                 raw = json.load(_f)
-            _ezm_per_sym_cfgs = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict)}
-            _ezm_per_sym_raw = {k: v for k, v in raw.items() if isinstance(v, dict)}
+            _ezm_per_sym_cfgs = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict) and k != "_meta"}
+            _ezm_per_sym_raw = {k: v for k, v in raw.items() if isinstance(v, dict) and k != "_meta"}
             _ezm_per_sym_cfgs_mtime = mtime
             _ezm_per_sym_raw_mtime = mtime
     except FileNotFoundError:
         pass
     except Exception:
         pass
-    ov = _ezm_apply_final_book(f"{symbol}_{side}", _ezm_per_sym_cfgs.get(f"{symbol}_{side}", {}))
+    key = f"{symbol}_{side}"
+    ov = _ezm_apply_final_book(key, _ezm_per_sym_cfgs.get(key, {}))
     if knob in ov:
         return ov[knob]
     # Template fallback: never-calculated sym_side in tradeable_keys must trade TEMPLATE per category until calculated
@@ -7115,13 +7121,12 @@ def _psym_get(symbol: str, side: str, knob: str, default):
 
 
 def _ezm_is_live_side_enabled(symbol: str, side: str) -> tuple[bool, str]:
-    """Live gate: per_sym must exist, LONG/SHORT_ENABLED true, gain>0 and beat bh.
+    """Live gate: per_sym must exist, gain>0 and beat bh.
     Backtest still explores disabled side occasionally (exploration), but live blocks.
-    Handles both crypto (per_sym_active_config.json) and stocks (per_sym_active_config_stocks.json) — ensures stocks opposite side also probed in backtest but blocked live unless profitable.
-    Returns (enabled, reason).
-    2026-09-22 v15_pilot all-tradable: ALL tradeable_keys must trade (entry+exit) with best v15_pilot settings until bigger backtests prove unprofitable - no per_sym profitability block."""
-    # v15_pilot all-tradable: ALL tradeable_keys (current + historical 133) must trade - bypass per_sym profitability until bigger backtest proves unprofitable across all pilots
-    return True, "v15_pilot all-tradable: all must trade until bigger backtests prove unprofitable"
+    Handles both crypto (per_sym_active_config.json) and stocks (per_sym_active_config_stocks.json).
+    PARITY 2026-09-24: restored — live trades exactly what per_sym recommends.
+    For never-calculated tradeable_keys members, TEMPLATE fallback is allowed until per_sym exists.
+    Returns (enabled, reason)."""
     if os.environ.get("V8_DISABLE_PER_SYM") == "1":
         return True, "V8_DISABLE_PER_SYM"
     if not bool(getattr(config, "PER_SYM_CONFIG_ENABLED", True)):
@@ -7156,20 +7161,27 @@ def _ezm_is_live_side_enabled(symbol: str, side: str) -> tuple[bool, str]:
     raw_entry = _ezm_per_sym_raw.get(key)
     is_stock = False
     if raw_entry is None:
-        # Try stocks per_sym with base symbol (strip USDT/USDC) — stocks use base like SNDK_LONG
         base = symbol.replace("USDT", "").replace("USDC", "")
         base_key = f"{base}_{side}"
         raw_entry = _ezm_per_sym_stocks_raw.get(base_key) or _ezm_per_sym_stocks_raw.get(key)
         if raw_entry is not None:
             is_stock = True
         else:
-            # Also check BEST matrices for stocks (SPREADSHEETS/BEST/STOCKS_{SIDE}) as secondary gate
-            # If BEST shows gain<=0 or gain<=bh, block live but backtest still probes
+            # PARITY 2026-09-24: never-calculated tradeable_keys members trade TEMPLATE until per_sym exists — takes precedence over BEST gate
+            try:
+                _tk_path = Path(__file__).resolve().parent / "tradeable_keys.json"
+                if _tk_path.exists():
+                    _tk_raw2 = json.loads(_tk_path.read_text())
+                    _tk_set2 = set(str(k).split(":", 1)[1] if ":" in str(k) else str(k) for k in _tk_raw2 if isinstance(k, str))
+                    if f"{symbol}_{side}" in _tk_set2:
+                        return True, f"TEMPLATE fallback until per_sym calculated for {key}"
+            except Exception:
+                pass
+            # Also check BEST matrices for stocks (SPREADSHEETS/BEST/STOCKS_{SIDE}) as secondary gate for non-tradeable
             try:
                 import re as _re
                 pattern = _re.compile(r"(.+?)_(LONG|SHORT)_bh(.+?)_gain(.+?)_30d_matrix")
                 def _pg(s): return -float(s[1:].replace('p','.')) if s.startswith('m') else float(s.replace('p','.'))
-                # Quick check: if BEST file exists for this stock side, use its bh/gain
                 best_dir = Path(__file__).resolve().parent / f"SPREADSHEETS/BEST/STOCKS_{side}"
                 if best_dir.exists():
                     for f in best_dir.iterdir():
@@ -7177,7 +7189,6 @@ def _ezm_is_live_side_enabled(symbol: str, side: str) -> tuple[bool, str]:
                             m = pattern.match(f.name)
                             if m:
                                 bh = _pg(m.group(3)); gain = _pg(m.group(4))
-                                # Live needs gain>0 AND beat bh per side — if both sides positive keep both, if one loses keep one
                                 if gain <= 0 or gain <= bh:
                                     return False, f"BEST stock {base}_{side} gain {gain} bh {bh} not beating (needs gain>0 AND beat bh)"
             except Exception:
@@ -28143,8 +28154,9 @@ class MultiAccountTradeManager:
             if (is_long and side == "SELL") or (not is_long and side == "BUY")
             else "OPEN"
         )
-        # 2026-09-10 FINANDY DEAD — maker must intend at least 30s before webhook fallback (user mandate). Was 5s/10s.
-        TIMEOUT = 30.0
+        # 2026-09-24 FINANDY BANKRUPT — webhooks dead, fallback must be Binance MARKET order.
+        # Extend maker chase to 60-90s (user mandate) before taker fallback. Was 30s.
+        TIMEOUT = 90.0
         POLL_INTERVAL = 0.1
         RETRY_DELAY = 0.05
         ak, symbol, p_side = parse_position_key(position_key)
@@ -28417,10 +28429,20 @@ class MultiAccountTradeManager:
                 qty_str = f"{_rem_dec}"
                 try:
                     lp = Decimal(str(current_price))
+                    # 2026-09-24 RUNAWAY OVERRIDE: if price runs fast into order direction, chasing as maker worsens fill.
+                    # For BUY, if ba/mid runs up quickly from initial, market would have locked better price than chasing.
+                    # For SELL, if bb/mid runs down quickly. Detect runaway and break to MARKET fallback immediately.
+                    if not hasattr(self, "_maker_initial_mid"):
+                        self._maker_initial_mid = {}
+                    _init_mid = self._maker_initial_mid.get(position_key)
                     # If OB deferral is active, quantize the wall-target to tick and use it.
                     if _ob_target_override is not None:
                         _quant = (_ob_target_override // tick) * tick
                         target_price_str = str(_quant)
+                        if _init_mid is None:
+                            try:
+                                self._maker_initial_mid[position_key] = float(_quant)
+                            except: pass
                     else:
                         book = await asyncio.to_thread(
                             client.futures_order_book, symbol=symbol, limit=5
@@ -28429,6 +28451,57 @@ class MultiAccountTradeManager:
                             Decimal(book["bids"][0][0]),
                             Decimal(book["asks"][0][0]),
                         )
+                        _mid = float((bb + ba) / 2)
+                        if _init_mid is None:
+                            self._maker_initial_mid[position_key] = _mid
+                            _init_mid = _mid
+                        else:
+                            # Check runaway: threshold 0.30% for REDUCE (exits), 0.50% for OPEN
+                            _runaway_pct = 0.30 if ta == "REDUCE" else 0.50
+                            _runaway_pct = float(getattr(config, "MAKER_RUNAWAY_PCT", _runaway_pct))
+                            if side == "BUY":
+                                # BUY benefits from low price; if mid runs up, maker chase worsens
+                                _runaway = ((_mid - _init_mid) / _init_mid * 100.0) if _init_mid else 0.0
+                                if _runaway > _runaway_pct:
+                                    logger.warning(f"🏃 [MAKER_RUNAWAY] {position_key} BUY mid {_init_mid:.4f}->{_mid:.4f} +{_runaway:.2f}% >{_runaway_pct}% -> MARKET instead of chasing {bb}+tick")
+                                    # Cancel existing maker before market fallback
+                                    if active_order_id:
+                                        try:
+                                            await asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=active_order_id)
+                                        except: pass
+                                        active_order_id = None
+                                    # Force market fallback via remaining logic
+                                    _qty_runaway = (Decimal(str(max(0.0, qty_abs - executed_qty))) // step) * step
+                                    if not _qty_runaway.is_zero():
+                                        _exec_now_wire_tripwire("futures_create_order:maker_runaway_market", position_key, reason)
+                                        try:
+                                            await asyncio.to_thread(client.futures_create_order, symbol=symbol, side=side, positionSide=position_side, quantity=str(_qty_runaway), type=ORDER_TYPE_MARKET)
+                                            logger.critical(f"[MAKER_RUNAWAY_MARKET] {position_key} BUY MARKET {_qty_runaway} at runaway +{_runaway:.2f}%")
+                                            executed_qty += float(_qty_runaway)
+                                            filled = True
+                                        except Exception as _re:
+                                            logger.error(f"[MAKER_RUNAWAY_MARKET_FAIL] {position_key}: {_re}")
+                                    break
+                            else:  # SELL
+                                _runaway = ((_init_mid - _mid) / _init_mid * 100.0) if _init_mid else 0.0
+                                if _runaway > _runaway_pct:
+                                    logger.warning(f"🏃 [MAKER_RUNAWAY] {position_key} SELL mid {_init_mid:.4f}->{_mid:.4f} -{_runaway:.2f}% >{_runaway_pct}% -> MARKET instead of chasing {ba}-tick")
+                                    if active_order_id:
+                                        try:
+                                            await asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=active_order_id)
+                                        except: pass
+                                        active_order_id = None
+                                    _qty_runaway = (Decimal(str(max(0.0, qty_abs - executed_qty))) // step) * step
+                                    if not _qty_runaway.is_zero():
+                                        _exec_now_wire_tripwire("futures_create_order:maker_runaway_market", position_key, reason)
+                                        try:
+                                            await asyncio.to_thread(client.futures_create_order, symbol=symbol, side=side, positionSide=position_side, quantity=str(_qty_runaway), type=ORDER_TYPE_MARKET)
+                                            logger.critical(f"[MAKER_RUNAWAY_MARKET] {position_key} SELL MARKET {_qty_runaway} at runaway -{_runaway:.2f}%")
+                                            executed_qty += float(_qty_runaway)
+                                            filled = True
+                                        except Exception as _re:
+                                            logger.error(f"[MAKER_RUNAWAY_MARKET_FAIL] {position_key}: {_re}")
+                                    break
                         if side == "BUY":
                             target = bb + tick
                             target_price_str = str(target if target < ba else bb)
@@ -28686,52 +28759,65 @@ class MultiAccountTradeManager:
                 logger.warning(
                     f"🛡️ [HEDGE_MAKER_TIMEOUT] {position_key}: all tracked orders confirmed dead, no fill detected — safe to fall through to webhook"
                 )
-            # 2026-09-24 EXIT-FILL GUARANTEE: exits must always fill. Maker is obligatory but if it times out
-            # (PLTR: 5x Canceled maker closes at 193.2 gave up with no fill), force taker fallback for REDUCE.
-            # For OPEN we suppress to avoid double-order (sentinel -1.0), for REDUCE we MUST fill.
+            # 2026-09-24 EXIT-FILL GUARANTEE: Finandy bankrupt -> webhook dead. Maker 90s chase (was 30s),
+            # then Binance MARKET fallback to guarantee fill. Critical for REDUCE (exits) - PLTR 5x Canceled at 193.2 gave up.
             if ta == "REDUCE":
                 if remaining > (step * 0.5):  # any meaningful remainder, not just >10%
                     logger.warning(
-                        f"[MAKER_FALLBACK_EXIT] {position_key} timeout REDUCE remaining={remaining:.6f}/{qty_abs:.6f} -> webhook MARKET fallback to guarantee close."
+                        f"[MAKER_FALLBACK_EXIT] {position_key} timeout REDUCE remaining={remaining:.6f}/{qty_abs:.6f} -> MARKET fallback to guarantee close."
                     )
-                    await self.send_webhook(
-                        position_key,
-                        account_key,
-                        symbol,
-                        positionAmt,
-                        remaining,
-                        float(lp),
-                        side,
-                        position_side,
-                        f"{unique_id}:FALLBACK_EXIT",
-                        False,
-                        f"{reason}_TIMEOUT_EXIT",
-                        level=None,
-                        stoch_required=False,
-                        order_ids_to_cancel=tracked_order_ids,
-                    )
+                    # Cancel any lingering maker orders before market fallback
+                    for _tid in tracked_order_ids or []:
+                        try:
+                            await asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=_tid)
+                        except Exception:
+                            pass
+                    _qty_market = (Decimal(str(remaining)) // step) * step
+                    if not _qty_market.is_zero():
+                        _exec_now_wire_tripwire("futures_create_order:maker_fallback_market", position_key, reason)
+                        try:
+                            await asyncio.to_thread(
+                                client.futures_create_order,
+                                symbol=symbol,
+                                side=side,
+                                positionSide=position_side,
+                                quantity=str(_qty_market),
+                                type=ORDER_TYPE_MARKET,
+                            )
+                            logger.critical(f"[MAKER_FALLBACK_MARKET] {position_key} REDUCE MARKET {side} {_qty_market} sent")
+                        except Exception as _me:
+                            logger.error(f"[MAKER_FALLBACK_MARKET_FAIL] {position_key}: {_me}")
+                            # Last resort: try webhook (dead) for logging only
+                            try:
+                                await self.send_webhook(position_key, account_key, symbol, positionAmt, remaining, float(lp), side, position_side, f"{unique_id}:FALLBACK_EXIT", False, f"{reason}_TIMEOUT_EXIT", order_ids_to_cancel=tracked_order_ids)
+                            except Exception:
+                                pass
                 else:
                     logger.info(f"[MAKER_EXIT_DONE] {position_key} timeout but remaining {remaining:.6f} < step, considered filled")
             elif remaining > (qty_abs * 0.1):
                 logger.warning(
-                    f"[MAKER_FALLBACK] {position_key} timeout. Sending remaining {remaining} to webhook."
+                    f"[MAKER_FALLBACK_OPEN] {position_key} timeout OPEN remaining={remaining:.6f}/{qty_abs:.6f} -> MARKET fallback after 90s maker chase."
                 )
-                await self.send_webhook(
-                    position_key,
-                    account_key,
-                    symbol,
-                    positionAmt,
-                    remaining,
-                    float(lp),
-                    side,
-                    position_side,
-                    f"{unique_id}:FALLBACK",
-                    False,
-                    f"{reason}_TIMEOUT",
-                    level=None,
-                    stoch_required=False,
-                    order_ids_to_cancel=tracked_order_ids,
-                )
+                for _tid in tracked_order_ids or []:
+                    try:
+                        await asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=_tid)
+                    except Exception:
+                        pass
+                _qty_market = (Decimal(str(remaining)) // step) * step
+                if not _qty_market.is_zero():
+                    _exec_now_wire_tripwire("futures_create_order:maker_fallback_market_open", position_key, reason)
+                    try:
+                        await asyncio.to_thread(
+                            client.futures_create_order,
+                            symbol=symbol,
+                            side=side,
+                            positionSide=position_side,
+                            quantity=str(_qty_market),
+                            type=ORDER_TYPE_MARKET,
+                        )
+                        logger.critical(f"[MAKER_FALLBACK_MARKET] {position_key} OPEN MARKET {side} {_qty_market} sent")
+                    except Exception as _me:
+                        logger.error(f"[MAKER_FALLBACK_MARKET_FAIL] {position_key}: {_me}")
             await release_locks(success_fill=True)
             return True, qty_abs
         except Exception as e:

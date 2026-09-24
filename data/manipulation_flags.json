@@ -103,28 +103,29 @@
     "reasons": [
       "PRICE_RANGE_3M: 27.5% range (spike detected)"
     ],
-    "flagged_at": "2026-09-24T18:08:16.560349+00:00",
-    "flagged_at_ts": 1790273296.5603468,
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
     "size_multiplier": 0.3,
     "max_usd": 10.0,
     "relative_volume_3m": 0,
     "relative_volume_1h": 0,
-    "current_price": 0.03923
+    "current_price": 0.03077983
   },
   "VANRYUSDT": {
-    "severity": 2,
-    "severity_label": "SUSPICIOUS",
+    "severity": 3,
+    "severity_label": "CONFIRMED_MANIPULATION",
     "reasons": [
+      "DEAD_COIN: price -72% below SMA200",
       "PRICE_RANGE_3M: 256.7% range (spike detected)",
       "PRICE_RANGE_1H: 256.7% range"
     ],
-    "flagged_at": "2026-09-24T18:08:16.560349+00:00",
-    "flagged_at_ts": 1790273296.5603468,
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
     "size_multiplier": 0.3,
     "max_usd": 10.0,
     "relative_volume_3m": 0,
     "relative_volume_1h": 0,
-    "current_price": 0.003228
+    "current_price": 0.000905
   },
   "BCHUSDC": {
     "severity": 2,
@@ -214,15 +215,16 @@
     "severity": 2,
     "severity_label": "SUSPICIOUS",
     "reasons": [
-      "PRICE_RANGE_3M: 35.6% range (spike detected)"
+      "PRICE_RANGE_3M: 35.6% range (spike detected)",
+      "PRICE_RANGE_1H: 57.8% range"
     ],
-    "flagged_at": "2026-09-24T18:08:16.560349+00:00",
-    "flagged_at_ts": 1790273296.5603468,
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
     "size_multiplier": 0.3,
     "max_usd": 10.0,
     "relative_volume_3m": 1.9995620254060844,
-    "relative_volume_1h": 1.1005224849395139,
-    "current_price": 0.011937
+    "relative_volume_1h": 2.4926803652837926,
+    "current_price": 0.01179601
   },
   "ZECUSDC": {
     "severity": 2,
@@ -279,5 +281,285 @@
     "relative_volume_3m": 0.4262511570892846,
     "relative_volume_1h": 0.20857179565044734,
     "current_price": 49.31
+  },
+  "1000XECUSDT": {
+    "severity": 2,
+    "severity_label": "SUSPICIOUS",
+    "reasons": [
+      "WICK_RATIO_3M: 21.1x (wick >> body = manipulation candle)"
+    ],
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
+    "size_multiplier": 0.3,
+    "max_usd": 10.0,
+    "relative_volume_3m": 1.10880988741872,
+    "relative_volume_1h": 0.8588091265773892,
+    "current_price": 0.00907814
+  },
+  "EWJUSDT": {
+    "severity": 2,
+    "severity_label": "SUSPICIOUS",
+    "reasons": [
+      "WICK_RATIO_3M: 12.0x (wick >> body = manipulation candle)"
+    ],
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
+    "size_multiplier": 0.3,
+    "max_usd": 10.0,
+    "relative_volume_3m": 0.5701754385964911,
+    "relative_volume_1h": 0.08597415752441306,
+    "current_price": 95.82
+  },
+  "HMSTRUSDT": {
+    "severity": 2,
+    "severity_label": "SUSPICIOUS",
+    "reasons": [
+      "WICK_RATIO_3M: 15.0x (wick >> body = manipulation candle)"
+    ],
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
+    "size_multiplier": 0.3,
+    "max_usd": 10.0,
+    "relative_volume_3m": 1.6299099518247357,
+    "relative_volume_1h": 0.35198045764001656,
+    "current_price": 0.0001798
+  },
+  "IRENUSDT": {
+    "severity": 2,
+    "severity_label": "SUSPICIOUS",
+    "reasons": [
+      "WICK_RATIO_3M: 22.5x (wick >> body = manipulation candle)"
+    ],
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
+    "size_multiplier": 0.3,
+    "max_usd": 10.0,
+    "relative_volume_3m": 1.809250025502648,
+    "relative_volume_1h": 2.4748580937208198,
+    "current_price": 46.43
+  },
+  "KSMUSDT": {
+    "severity": 2,
+    "severity_label": "SUSPICIOUS",
+    "reasons": [
+      "WICK_RATIO_3M: 25.0x (wick >> body = manipulation candle)"
+    ],
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
+    "size_multiplier": 0.3,
+    "max_usd": 10.0,
+    "relative_volume_3m": 0.46333705836843464,
+    "relative_volume_1h": 0.891384548611111,
+    "current_price": 4.597
+  },
+  "LTCUSDC": {
+    "severity": 2,
+    "severity_label": "SUSPICIOUS",
+    "reasons": [
+      "VOL_SPIKE_3M: 12.6x normal (threshold 12.0x)"
+    ],
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
+    "size_multiplier": 0.3,
+    "max_usd": 10.0,
+    "relative_volume_3m": 12.580022396530515,
+    "relative_volume_1h": 0.7323982371985397,
+    "current_price": 71.88196168
+  },
+  "MUUUSDT": {
+    "severity": 2,
+    "severity_label": "SUSPICIOUS",
+    "reasons": [
+      "WICK_RATIO_3M: 52.7x (wick >> body = manipulation candle)"
+    ],
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
+    "size_multiplier": 0.3,
+    "max_usd": 10.0,
+    "relative_volume_3m": 0.7032902115905815,
+    "relative_volume_1h": 2.259334606652767,
+    "current_price": 37.0439846
+  },
+  "NEIROUSDT": {
+    "severity": 2,
+    "severity_label": "SUSPICIOUS",
+    "reasons": [
+      "WICK_RATIO_3M: 8.6x (wick >> body = manipulation candle)"
+    ],
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
+    "size_multiplier": 0.3,
+    "max_usd": 10.0,
+    "relative_volume_3m": 0.910916001359983,
+    "relative_volume_1h": 2.2075821803970355,
+    "current_price": 9.108e-05
+  },
+  "ONDOUSDT": {
+    "severity": 2,
+    "severity_label": "SUSPICIOUS",
+    "reasons": [
+      "PRICE_RANGE_1H: 30.1% range"
+    ],
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
+    "size_multiplier": 0.3,
+    "max_usd": 10.0,
+    "relative_volume_3m": 1.7255027619269974,
+    "relative_volume_1h": 1.5003146979536743,
+    "current_price": 0.50268732
+  },
+  "ONDSUSDT": {
+    "severity": 2,
+    "severity_label": "SUSPICIOUS",
+    "reasons": [
+      "WICK_RATIO_3M: 18.4x (wick >> body = manipulation candle)"
+    ],
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
+    "size_multiplier": 0.3,
+    "max_usd": 10.0,
+    "relative_volume_3m": 0.6368309794430317,
+    "relative_volume_1h": 0.8736363303647465,
+    "current_price": 7.637
+  },
+  "PARTIUSDT": {
+    "severity": 2,
+    "severity_label": "SUSPICIOUS",
+    "reasons": [
+      "WICK_RATIO_3M: 36.1x (wick >> body = manipulation candle)"
+    ],
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
+    "size_multiplier": 0.3,
+    "max_usd": 10.0,
+    "relative_volume_3m": 0.13997224032159775,
+    "relative_volume_1h": 1.3880083325151198,
+    "current_price": 0.02593498
+  },
+  "PNUTUSDC": {
+    "severity": 2,
+    "severity_label": "SUSPICIOUS",
+    "reasons": [
+      "WICK_RATIO_3M: 9.7x (wick >> body = manipulation candle)"
+    ],
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
+    "size_multiplier": 0.3,
+    "max_usd": 10.0,
+    "relative_volume_3m": 0.6077124239534423,
+    "relative_volume_1h": 3.100243954624609,
+    "current_price": 0.05511608
+  },
+  "PUMPUSDT": {
+    "severity": 2,
+    "severity_label": "SUSPICIOUS",
+    "reasons": [
+      "WICK_RATIO_3M: 15.0x (wick >> body = manipulation candle)"
+    ],
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
+    "size_multiplier": 0.3,
+    "max_usd": 10.0,
+    "relative_volume_3m": 0.9286924310537841,
+    "relative_volume_1h": 0.21386566734762227,
+    "current_price": 0.003896
+  },
+  "RUNEUSDT": {
+    "severity": 2,
+    "severity_label": "SUSPICIOUS",
+    "reasons": [
+      "WICK_RATIO_3M: 9.2x (wick >> body = manipulation candle)"
+    ],
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
+    "size_multiplier": 0.3,
+    "max_usd": 10.0,
+    "relative_volume_3m": 0.6340896090071182,
+    "relative_volume_1h": 0.9753434210139827,
+    "current_price": 0.63191339
+  },
+  "SHAZUSDT": {
+    "severity": 2,
+    "severity_label": "SUSPICIOUS",
+    "reasons": [
+      "WICK_RATIO_3M: 13.5x (wick >> body = manipulation candle)"
+    ],
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
+    "size_multiplier": 0.3,
+    "max_usd": 10.0,
+    "relative_volume_3m": 0.18773523982231036,
+    "relative_volume_1h": 1.9757684646210603,
+    "current_price": 57.36
+  },
+  "SSVUSDT": {
+    "severity": 2,
+    "severity_label": "SUSPICIOUS",
+    "reasons": [
+      "WICK_RATIO_3M: 8.3x (wick >> body = manipulation candle)"
+    ],
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
+    "size_multiplier": 0.3,
+    "max_usd": 10.0,
+    "relative_volume_3m": 0.23684708448807418,
+    "relative_volume_1h": 0.9035407656356041,
+    "current_price": 3.07685729
+  },
+  "TAOUSDT": {
+    "severity": 2,
+    "severity_label": "SUSPICIOUS",
+    "reasons": [
+      "WICK_RATIO_3M: 11.9x (wick >> body = manipulation candle)"
+    ],
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
+    "size_multiplier": 0.3,
+    "max_usd": 10.0,
+    "relative_volume_3m": 0.6465471930259112,
+    "relative_volume_1h": 0.3025570528937728,
+    "current_price": 293.51625766
+  },
+  "TWTUSDT": {
+    "severity": 2,
+    "severity_label": "SUSPICIOUS",
+    "reasons": [
+      "WICK_RATIO_3M: 23.0x (wick >> body = manipulation candle)"
+    ],
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
+    "size_multiplier": 0.3,
+    "max_usd": 10.0,
+    "relative_volume_3m": 0.25782289764461913,
+    "relative_volume_1h": 0.30395764416306337,
+    "current_price": 0.576
+  },
+  "UMAUSDT": {
+    "severity": 2,
+    "severity_label": "SUSPICIOUS",
+    "reasons": [
+      "WICK_RATIO_3M: 18.4x (wick >> body = manipulation candle)"
+    ],
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
+    "size_multiplier": 0.3,
+    "max_usd": 10.0,
+    "relative_volume_3m": 0.4055863133055001,
+    "relative_volume_1h": 0.24006467211313148,
+    "current_price": 0.40904348
+  },
+  "UVXYUSDT": {
+    "severity": 2,
+    "severity_label": "SUSPICIOUS",
+    "reasons": [
+      "WICK_RATIO_3M: 9.4x (wick >> body = manipulation candle)"
+    ],
+    "flagged_at": "2026-09-24T18:32:35.057514+00:00",
+    "flagged_at_ts": 1790274755.057513,
+    "size_multiplier": 0.3,
+    "max_usd": 10.0,
+    "relative_volume_3m": 1.983455407939303,
+    "relative_volume_1h": 0.30642817243725995,
+    "current_price": 17.23173159
   }
 }
