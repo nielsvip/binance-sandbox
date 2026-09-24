@@ -1,45 +1,44 @@
 {
- "generated_at": "2026-09-24 03:23 UTC",
- "total_capital_usd": 302.74,
+ "generated_at": "2026-09-24 03:53 UTC",
+ "total_capital_usd": 804.36,
  "tier_capital": {
   "A": 0.0,
-  "B": 177.73,
-  "C": 125.01
+  "B": 804.36,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 1
+  "B": 2,
+  "C": 0
  },
  "winners": [],
  "losers": [
-  "ang:SNXUSDT_SHORT"
+  "flz:ETHUSDT_LONG",
+  "flz:BTCUSDT_LONG"
  ],
- "mediocre": [
-  "ang:CRWDUSDT_LONG"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "ang:CRWDUSDT_LONG",
-   "symbol": "CRWDUSDT",
-   "account": "ang",
-   "value_usd": 177.73,
-   "gain_pct": -0.086,
+   "pk": "flz:ETHUSDT_LONG",
+   "symbol": "ETHUSDT",
+   "account": "flz",
+   "value_usd": 636.59,
+   "gain_pct": -3.71,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 0.68,
-   "mark": 261.37
+   "amt": 0.238,
+   "mark": 2674.74
   },
   {
-   "pk": "ang:SNXUSDT_SHORT",
-   "symbol": "SNXUSDT",
-   "account": "ang",
-   "value_usd": 125.01,
-   "gain_pct": 0.037,
-   "tier": "C",
-   "perf_mult": 0.45,
-   "amt": 534.7,
-   "mark": 0.2338
+   "pk": "flz:BTCUSDT_LONG",
+   "symbol": "BTCUSDT",
+   "account": "flz",
+   "value_usd": 167.77,
+   "gain_pct": -3.415,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 0.002,
+   "mark": 83884.33562219
   }
  ]
 }
