@@ -86,13 +86,15 @@ OUT_DIR = ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
 PROGRESS_DIR = ROOT / "data" / "reports" / "lifecycle_pilot"
 FLAGS_DIR = ROOT / "data" / "reports" / "v15_flags"
 SWITCH_SHEETS = [
-    "STDEV_SLOPE_SIZING", "ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES",
     "EXIT_STRUCTURAL", "EXIT_VELOCITY",
     "REENTRY_WINDOWED", "REENTRY_ADAPTIVE",
     "AUGMENT_TREND", "AUGMENT_RISK_SIZING",
     "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER",
     "GLOBAL_RISK_GATES",
 ]
+# 12-tab: STDEV_SLOPE_SIZING skipped — 3803 rows (was 4801 with STDEV). Sheet stays in TEMPLATE but never calculated.
+SKIP_SHEETS = {"STDEV_SLOPE_SIZING"}
 
 ALL_PREPARED: dict[str, dict] = {}
 ALL_NPZ_ARRAYS: dict[str, dict] = {}
@@ -658,7 +660,21 @@ def parity_ok(live: dict, vec: dict, allow_zero_baseline: bool = False) -> tuple
     return True, "parity ok"
 
 def ensure_lbI_headers(wb_path: Path):
-    wb = openpyxl.load_workbook(str(wb_path))
+    try:
+        wb = openpyxl.load_workbook(str(wb_path))
+    except FileNotFoundError:
+        # Clone was deleted as empty vomit before headers — recreate from template
+        try:
+            tmpl = next((p for p in [Path("SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx"), Path("SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx"), Path("SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx"), Path("SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx"), Path("SPREADSHEETS/TEMPLATE.xlsx")] if p.exists()), None)
+            if tmpl and tmpl.exists():
+                import shutil
+                shutil.copy(str(tmpl), str(wb_path))
+                wb = openpyxl.load_workbook(str(wb_path))
+            else:
+                raise
+        except Exception as e:
+            print(f"[ensure_lbI_headers] missing {wb_path} and no template {e}", flush=True)
+            return
     fd_rows = _load_filter_dictionary()
     for sheet in SWITCH_SHEETS:
         if sheet not in wb.sheetnames:
@@ -874,7 +890,7 @@ def main():
     ap.add_argument("--no-lbI", action="store_true")
     ap.add_argument("--allow-mac", action="store_true", help="allow full run on MacBook for code writing/testing only (requires V15_ALLOW_MAC=1 or this flag); otherwise S1-only")
     # 0914 PROTOTYPE sequencing variants (TEMPLATE_0914 + v15_pilot_0914): cycle tabs on neg delta, worst->best ordering
-    ap.add_argument("--seq-mode", default="sequential", choices=["sequential", "cycle", "round_robin", "worst2best", "worst_to_best", "shuffle"], help="0914 prototype sequencing: sequential (legacy), cycle/round_robin (cycle tabs on every neg delta), worst2best (sheets ordered worst->best by avg delta), shuffle (random shuffle for second round)")
+    ap.add_argument("--seq-mode", default="cycle", choices=["sequential", "cycle", "round_robin", "worst2best", "worst_to_best", "worst_first", "worst-first", "shuffle"], help="0914 prototype sequencing: sequential (legacy), cycle/round_robin (cycle tabs on every neg delta), worst2best (sheets ordered worst->best by avg delta), shuffle (random shuffle for second round)")
     ap.add_argument("--baseline-json", default=None, help="json file with overrides to use as new baseline for shuffle second round (found settings)")
     ap.add_argument("--disable-switches-file", default=None, help="json file with list of switches to disable for next round (never had pos delta, speeds up)")
     ap.add_argument("--cycle-on-neg", action="store_true", help="0914 alias: force cycle-through-tabs on every NEG delta (same as --seq-mode cycle)")
@@ -883,7 +899,7 @@ def main():
     # normalize seq-mode aliases
     if args.cycle_on_neg and args.seq_mode == "sequential":
         args.seq_mode = "cycle"
-    if args.seq_mode in ("round_robin",):
+    if args.seq_mode in ("round_robin", "worst_first", "worst-first"):
         args.seq_mode = "cycle"
     if args.seq_mode in ("worst_to_best",):
         args.seq_mode = "worst2best"
