@@ -1,17 +1,11 @@
 {
-  "timestamp": "2026-09-24T21:05:08.983039+00:00",
+  "timestamp": "2026-09-24T21:26:26.090423+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 92
   },
   "unified_ranking": [
-    {
-      "symbol": "SNDKUSDT",
-      "net_score": -12.0,
-      "long_score": 0,
-      "short_score": 12.0
-    },
     {
       "symbol": "ARUSDT",
       "net_score": 0,
@@ -541,6 +535,12 @@
       "short_score": 0
     },
     {
+      "symbol": "SNDKUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "1000PEPEUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -571,13 +571,7 @@
       775.93
     ]
   ],
-  "top_shorts": [
-    [
-      "SNDKUSDT",
-      12.0,
-      1737.01
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,

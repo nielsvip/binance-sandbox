@@ -2604,5 +2604,32 @@
     ],
     "timestamp": "2026-09-24T20:57:33.469601+00:00",
     "price": 0.0479
+  },
+  {
+    "symbol": "1000SHIBUSDC",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 6.2x normal"
+    ],
+    "timestamp": "2026-09-24T21:10:34.523331+00:00",
+    "price": 0.005804
+  },
+  {
+    "symbol": "BLURUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 21.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-24T21:12:22.924232+00:00",
+    "price": 0.02003
+  },
+  {
+    "symbol": "VETUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 15.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-24T21:22:50.710211+00:00",
+    "price": 0.009264
   }
 ]
