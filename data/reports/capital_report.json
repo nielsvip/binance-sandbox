@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-24 14:16 UTC",
- "total_capital_usd": 180.33,
+ "generated_at": "2026-09-24 14:47 UTC",
+ "total_capital_usd": 11.38,
  "tier_capital": {
   "A": 0.0,
-  "B": 180.33,
+  "B": 11.38,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:LTCUSDC_LONG",
-   "symbol": "LTCUSDC",
-   "account": "ang",
-   "value_usd": 180.33,
-   "gain_pct": 0.403,
+   "pk": "inf:XTZUSDT_LONG",
+   "symbol": "XTZUSDT",
+   "account": "inf",
+   "value_usd": 11.38,
+   "gain_pct": -0.064,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 2.508,
-   "mark": 71.90284573
+   "perf_mult": 3.5,
+   "amt": 34.5,
+   "mark": 0.32988932
   }
  ]
 }
