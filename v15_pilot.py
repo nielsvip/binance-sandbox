@@ -1376,6 +1376,11 @@ def main():
         else:
             import shutil
             shutil.copy2(template, target)
+            try:
+                import os as _os_chmod
+                _os_chmod.chmod(target, 0o644)
+            except Exception:
+                pass
             wb_path = target
             print(f"[clone] -> {wb_path}", flush=True)
     else:
