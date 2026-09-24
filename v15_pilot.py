@@ -992,6 +992,7 @@ def clone_template(template: Path, new_symside: str) -> Path:
                         c.value = c.value.replace("ADP_LONG_BASELINE_METRICS", new_baseline)
     # E2 chain: first sheet = B2 from baseline metrics, subsequent sheets = MAX(prev!E) for cumulative; will be overwritten per-row with blank-if-neg logic
     for idx, name in enumerate(SWITCH_SHEETS):
+        print(f"[TAB-START] {new_symside} {name} baseline {ws.cell(row=2, column=5).value} idx {idx}", flush=True)
         if name not in wb.sheetnames:
             continue
         ws = wb[name]
@@ -1100,9 +1101,9 @@ def main():
         args.seq_mode = "worst2best"
     # shuffle is kept as shuffle (no alias)
 
-    import os as _os
-    _os.environ["V8_SWEEP_MODE"] = "1"
-    _os.environ.pop("V8_KEEP_ENTRY_GATES", None)
+    import os
+    os.environ["V8_SWEEP_MODE"] = "1"
+    os.environ.pop("V8_KEEP_ENTRY_GATES", None)
     # 24h TEMPLATE defaults verifier — bold B values are source-of-truth, immutable 24h
     try:
         import subprocess as _sp, pathlib as _pl
