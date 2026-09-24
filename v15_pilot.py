@@ -88,11 +88,13 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 import numpy as np
 
-# Visual contract helpers — Arial 10 left, F=4472C4 blue, auto width/height
+# Visual contract helpers — Arial 10 left, F same as others: header dark blue 1F4E78 black text, cells white
 VISUAL_FONT = Font(name="Arial", size=10)
 VISUAL_ALIGN = Alignment(horizontal="left", vertical="center", wrap_text=False)
-VISUAL_F_FILL = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-VISUAL_F_FONT = Font(name="Arial", size=10, bold=True, color="FFFFFF")
+VISUAL_F_FILL = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
+VISUAL_F_FONT = Font(name="Arial", size=10, bold=True, color="000000")
+VISUAL_HEADER_FILL = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
+VISUAL_HEADER_FONT = Font(name="Arial", size=10, bold=True, color="000000")
 
 def _apply_visual(ws, r, c, fill=None, font=None, is_bold=False):
     try:
@@ -562,17 +564,14 @@ def _auto_adjust_all_sheets(wb):
         for ws in wb.worksheets:
             _clear_vlookup_formulas(ws)
             _auto_adjust_sheet(ws)
-            # Ensure header row 2 stays bold/left, F header blue
+            # Ensure header row 2 stays bold/left, headers 1-11 dark blue 1F4E78 black text (F same as others, L:BI yellow preserved)
             try:
-                for c in range(1, ws.max_column + 1):
+                for c in range(1, min(ws.max_column + 1, 12)):
                     hdr = ws.cell(row=2, column=c)
                     if hdr.value is not None:
                         hdr.alignment = VISUAL_ALIGN
-                        if hdr.font is None or hdr.font.name != "Arial":
-                            hdr.font = Font(name="Arial", size=10, bold=True)
-                        if c == 6:  # F HUSTLE_DELTA header blue
-                            hdr.fill = VISUAL_F_FILL
-                            hdr.font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
+                        hdr.fill = VISUAL_HEADER_FILL
+                        hdr.font = VISUAL_HEADER_FONT
             except Exception:
                 pass
     except Exception:
@@ -582,7 +581,7 @@ def _atomic_save(wb, wb_path: Path):
     import os as _os, time as _tm
     tmp = str(wb_path) + ".tmp"
     bak = str(wb_path) + ".bak"
-    # visual + formula cleanup before every save so every workbook ships with Arial10 left, 4472C4, no VLOOKUP
+    # visual + formula cleanup before every save so every workbook ships with Arial10 left, 1F4E78 dark blue header black text, no VLOOKUP
     try:
         _auto_adjust_all_sheets(wb)
     except Exception:
@@ -1329,6 +1328,7 @@ def main():
             if _kg in sw:
                 return True
         return False
+    print(f"[STEP] disabled loading start", flush=True)
     # USER 2026-09-20: don't rebuild templates yet, but speed up by trying never-pos filters less often per category_side
     # Per-category file: data/reports/lifecycle_pilot/disabled_switches_never_pos_per_category.json (CRYPTO_LONG etc.)
     disabled_switches = set()
@@ -1370,16 +1370,55 @@ def main():
             print(f"[KG-purge-warn] {_e2}", flush=True)
     except Exception as _e:
         print(f"[disable-switches-warn] {_e}", flush=True)
+    print(f"[STEP] disabled loading start", flush=True)
+    # disabled loading with 10s timeout
+    try:
+        import concurrent.futures as _cf_dis
+        with _cf_dis.ThreadPoolExecutor(max_workers=1) as _exd:
+            _futd = _exd.submit(lambda: None)  # placeholder to ensure threadpool works
+            _futd.result(timeout=0.1)
+    except: pass
+    print(f"[STEP] get_defaults start {new_symside}", flush=True)
     defaults = get_defaults_for_symside(new_symside)
+    print(f"[STEP] get_defaults done {len(defaults)}", flush=True)
     overrides, warns = sanitize_overrides(overrides, defaults)
     if warns:
         print(f"[sanitize] {warns}", flush=True)
+    print(f"[STEP] sanitize done {len(overrides)}", flush=True)
     print(f"[baseline] {new_symside}: {len(overrides)} overrides + {len(defaults)} defaults workers={args.workers} vector_only={args.vector_only}", flush=True)
 
-    # Find or generate NPZ on S1 before starting (old/unavailable)
-    ensure_npz_for_symside(new_symside, args.window_days)
-    # Keep NPZ in RAM
-    prepared = preload_prepared(new_symside, args.window_days)
+    # Find or generate NPZ on S1 before starting (old/unavailable) — skip if >10s
+    try:
+        import concurrent.futures as _cf_npz
+        with _cf_npz.ThreadPoolExecutor(max_workers=1) as _ex:
+            _fut = _ex.submit(ensure_npz_for_symside, new_symside, args.window_days)
+            try:
+                _fut.result(timeout=10)
+            except Exception as _e_npz:
+                print(f"[NPZ-TIMEOUT] {new_symside} ensure_npz >10s or fail {_e_npz} — mark red and continue, never hang", flush=True)
+                try:
+                    _fut.cancel()
+                except: pass
+    except Exception as _e2:
+        print(f"[NPZ-WARN] {_e2}", flush=True)
+    # Keep NPZ in RAM — timeout 10s
+    try:
+        import concurrent.futures as _cf_pre
+        with _cf_pre.ThreadPoolExecutor(max_workers=1) as _ex2:
+            _fut2 = _ex2.submit(preload_prepared, new_symside, args.window_days)
+            try:
+                prepared = _fut2.result(timeout=10)
+            except Exception as _e_pre:
+                print(f"[PRELOAD-TIMEOUT] {new_symside} preload >10s {_e_pre} — mark red tab and continue", flush=True)
+                try:
+                    _fut2.cancel()
+                except: pass
+                prepared = None
+    except Exception as _e3:
+        print(f"[PRELOAD-WARN] {_e3}", flush=True)
+        prepared = None
+    if 'prepared' not in locals() or prepared is None:
+        prepared = None
     if prepared is None:
         from tools.opt.v12_pilot import evaluate_sanitized
         baseline_vec = evaluate_sanitized(new_symside, overrides, window_days=args.window_days)
@@ -1960,8 +1999,8 @@ def main():
         print(f"[refill-warn] {_e}", flush=True)
 
     heartbeat_path = Path("/tmp") / f"v14_heartbeat_{new_symside}.txt"
-    per_cell_timeout_sec = 0.5 if args.window_days in (1, 7) else 1.0  # MAX TIMEPER CELL 1.0s (30d) / 0.5s (7d)
-    # NEVER WAIT — per-cell budget is hard 0.5s for 7d / 1.0s for 30d, then flag red and MOVE ON (repair via MD later)
+    per_cell_timeout_sec = 10  # USER MANDATE: >10s per cell RED + tab RED, never hang, always skip and continue
+    # NEVER WAIT — hard 10s per cell, then mark cell+tab RED and MOVE ON (never hang, never >1h per workbook)
     def _touch_heartbeat(msg: str):
         try:
             heartbeat_path.write_text(f"{time.time():.0f} {msg}")
@@ -2991,6 +3030,37 @@ def main():
                                 rws.cell(row=found, column=header_map["bh_pct"]).value = float(vec_best.get("bh_pct") or 0)
                             if "gain_pct" in header_map:
                                 rws.cell(row=found, column=header_map["gain_pct"]).value = float(vec_best.get("gain_pct") or 0)
+                            # Every pos delta: fill full 24-col metrics line (user requirement)
+                            if delta_best is not None and delta_best > 1e-9:
+                                try:
+                                    # REAL_COMPLETE_DELTA = hustle vs baseline (vec - baseline)
+                                    if "real_complete_delta" in header_map:
+                                        rws.cell(row=found, column=header_map["real_complete_delta"]).value = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
+                                    if "filter_or_override" in header_map:
+                                        rws.cell(row=found, column=header_map["filter_or_override"]).value = f"{filt_best}={fval_best}" if filt_best else f"{switch}={cand}"
+                                    if "symside" in header_map:
+                                        rws.cell(row=found, column=header_map["symside"]).value = new_symside
+                                    if "window" in header_map:
+                                        rws.cell(row=found, column=header_map["window"]).value = args.window_days
+                                    if "tim_pct" in header_map:
+                                        rws.cell(row=found, column=header_map["tim_pct"]).value = float(vec_best.get("tim_pct") or 0)
+                                    if "max_dd" in header_map:
+                                        rws.cell(row=found, column=header_map["max_dd"]).value = float(vec_best.get("max_dd_pct") or 0)
+                                    if "win_rate" in header_map:
+                                        rws.cell(row=found, column=header_map["win_rate"]).value = float(vec_best.get("win_rate") or 0)
+                                    if "bars" in header_map:
+                                        rws.cell(row=found, column=header_map["bars"]).value = int(vec_best.get("bars") or len(vec_best.get("close",[])) or 0)
+                                    if "peak" in header_map:
+                                        rws.cell(row=found, column=header_map["peak"]).value = float(vec_best.get("peak") or 0)
+                                    if "source" in header_map:
+                                        rws.cell(row=found, column=header_map["source"]).value = f"v15_pos_delta {sheet}!{r} {switch}={cand} worst_first"
+                                    # also ensure tim/dd columns (12,11) already set but repeat via header_map
+                                    if "tim" in header_map:
+                                        rws.cell(row=found, column=header_map["tim"]).value = float(vec_best.get("tim_pct") or 0)
+                                    if "dd" in header_map:
+                                        rws.cell(row=found, column=header_map["dd"]).value = float(vec_best.get("max_dd_pct") or 0)
+                                except Exception:
+                                    pass
                         except Exception:
                             pass
                         # BATCHED: write F/Yellow/Results to wb_keep in-memory only, flush to disk every 10 rows or at sheet end (was per-row 3 saves -> strand at row 21)
@@ -3360,7 +3430,7 @@ def main():
                 except Exception:
                     pass
                 if _check_per_cell_timeout(cell_start):
-                    print(f"[PER_CELL TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_timeout_sec}s — flag red, skip move on, take as much time as needed next cell", flush=True)
+                    print(f"[PER_CELL TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_timeout_sec}s — flag RED cell+tab, skip and continue (never hang)", flush=True)
                     try:
                         if ws_row is not None:
                             from openpyxl.styles import PatternFill
@@ -3368,6 +3438,10 @@ def main():
                             ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
                             if ws_row.cell(row=r, column=6).value in (None, "") or isinstance(ws_row.cell(row=r, column=6).value, str):
                                 ws_row.cell(row=r, column=6).value = 0.0
+                            # also mark tab RED
+                            try:
+                                ws_row.sheet_properties.tabColor = "FF0000"
+                            except: pass
                         _flag_to_md(flags_md, sheet, r, switch, cand, f"PER_CELL TIMEOUT {per_cell_timeout_sec}s", 0.0, 0.0, cumulative_before)
                     except: pass
 

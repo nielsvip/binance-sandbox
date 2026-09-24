@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-24 17:28 UTC",
- "total_capital_usd": 57.86,
+ "generated_at": "2026-09-24 17:48 UTC",
+ "total_capital_usd": 12.07,
  "tier_capital": {
   "A": 0.0,
-  "B": 57.86,
+  "B": 12.07,
   "C": 0.0
  },
  "tier_count": {
@@ -13,20 +13,18 @@
  },
  "winners": [],
  "losers": [],
- "mediocre": [
-  "ang:PLTRUSDT_LONG"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "ang:PLTRUSDT_LONG",
-   "symbol": "PLTRUSDT",
-   "account": "ang",
-   "value_usd": 57.86,
-   "gain_pct": -0.207,
+   "pk": "fin:XRPUSDC_LONG",
+   "symbol": "XRPUSDC",
+   "account": "fin",
+   "value_usd": 12.07,
+   "gain_pct": 0.0,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.3,
-   "mark": 192.85191722
+   "perf_mult": 1.36,
+   "amt": 7.9,
+   "mark": 1.52844725
   }
  ]
 }
