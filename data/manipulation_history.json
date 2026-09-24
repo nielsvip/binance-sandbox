@@ -2421,5 +2421,98 @@
     ],
     "timestamp": "2026-09-24T19:27:52.209597+00:00",
     "price": 0.002966
+  },
+  {
+    "symbol": "1000XECUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-24T19:39:11.537729+00:00",
+    "price": 0.009069
+  },
+  {
+    "symbol": "BANDUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-24T19:39:11.537729+00:00",
+    "price": 0.2187
+  },
+  {
+    "symbol": "BMNRUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-24T19:39:11.537729+00:00",
+    "price": 27.74
+  },
+  {
+    "symbol": "INXUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 12.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-24T19:39:11.537729+00:00",
+    "price": 0.006156
+  },
+  {
+    "symbol": "ONDOUSDT",
+    "severity": 2,
+    "reasons": [
+      "PRICE_RANGE_1H: 30.1% range"
+    ],
+    "timestamp": "2026-09-24T19:39:11.537729+00:00",
+    "price": 0.5182
+  },
+  {
+    "symbol": "STORJUSDT",
+    "severity": 2,
+    "reasons": [
+      "PRICE_RANGE_3M: 27.5% range (spike detected)"
+    ],
+    "timestamp": "2026-09-24T19:39:11.537729+00:00",
+    "price": 0.03923
+  },
+  {
+    "symbol": "VANRYUSDT",
+    "severity": 3,
+    "reasons": [
+      "DEAD_COIN: price -72% below SMA200",
+      "PRICE_RANGE_3M: 256.7% range (spike detected)",
+      "PRICE_RANGE_1H: 256.7% range"
+    ],
+    "timestamp": "2026-09-24T19:39:11.537729+00:00",
+    "price": 0.000905
+  },
+  {
+    "symbol": "XAIUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 6.2x normal",
+      "PRICE_RANGE_1H: 57.2% range"
+    ],
+    "timestamp": "2026-09-24T19:39:11.537729+00:00",
+    "price": 0.011405
+  },
+  {
+    "symbol": "XMRUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 19.7x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-24T19:39:11.537729+00:00",
+    "price": 551.27
+  },
+  {
+    "symbol": "USTCUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.1x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-24T19:45:46.901924+00:00",
+    "price": 0.005863
   }
 ]
