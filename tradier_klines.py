@@ -137,6 +137,7 @@ def export_atomic(df, path):
             if path.stat().st_size > 1000:
                 logger.error("refusing write to unreadable existing cache %s", path)
                 return False
+    records = [{key: (None if isinstance(value, float) and (value != value or value in (float("inf"), float("-inf"))) else value) for key, value in row.items()} for row in records]
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
     with tmp.open("w", encoding="utf-8") as handle:

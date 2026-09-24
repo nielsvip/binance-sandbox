@@ -85,8 +85,90 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import openpyxl
-from openpyxl.styles import Font, PatternFill
+from openpyxl.styles import Font, PatternFill, Alignment
 import numpy as np
+
+# Visual contract helpers — Arial 10 left, F=4472C4 blue, auto width/height
+VISUAL_FONT = Font(name="Arial", size=10)
+VISUAL_ALIGN = Alignment(horizontal="left", vertical="center", wrap_text=False)
+VISUAL_F_FILL = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+VISUAL_F_FONT = Font(name="Arial", size=10, bold=True, color="FFFFFF")
+
+def _apply_visual(ws, r, c, fill=None, font=None, is_bold=False):
+    try:
+        cell = ws.cell(row=r, column=c)
+        cell.font = font or Font(name="Arial", size=10, bold=is_bold)
+        cell.alignment = VISUAL_ALIGN
+        if fill is not None:
+            cell.fill = fill
+    except Exception:
+        pass
+
+def _clear_vlookup_formulas(ws):
+    """Pilot decides — no formulas in data rows r>=3 for C/E/F/G/H/I/K. Clear any VLOOKUP/IF. GLOBAL_RISK_GATES waived only if explicitly documented."""
+    for r in range(3, ws.max_row + 1):
+        for col in (3, 5, 6, 7, 8, 9, 11):  # C,E,F,G,H,I,K
+            try:
+                v = ws.cell(row=r, column=col).value
+                if isinstance(v, str) and v.startswith("="):
+                    # GLOBAL_RISK_GATES exception: keep G/H/I formulas only if sheet is GLOBAL and col in 7,8,9 and row has no prior calc
+                    if ws.title == "GLOBAL_RISK_GATES" and col in (7, 8, 9):
+                        continue
+                    ws.cell(row=r, column=col).value = None
+            except Exception:
+                pass
+
+def _write_per_row_HIK(ws, r, live_delta, live_sharpe, per_row_filters):
+    """Per-row H/I/K — H=LIVE_DELTA col8, I=LIVE_SHARPE col9, K=PER_ROW_FILTERS col11. Applied every row, not just at sheet-complete."""
+    try:
+        if ws is None:
+            return
+        # H col8
+        try:
+            ws.cell(row=r, column=8).value = float(live_delta) if live_delta is not None else None
+            ws.cell(row=r, column=8).font = Font(name="Arial", size=10, bold=False)
+            ws.cell(row=r, column=8).alignment = VISUAL_ALIGN
+        except Exception:
+            pass
+        # I col9
+        try:
+            ws.cell(row=r, column=9).value = float(live_sharpe) if live_sharpe is not None else None
+            ws.cell(row=r, column=9).font = Font(name="Arial", size=10, bold=False)
+            ws.cell(row=r, column=9).alignment = VISUAL_ALIGN
+        except Exception:
+            pass
+        # K col11
+        try:
+            ws.cell(row=r, column=11).value = str(per_row_filters) if per_row_filters else None
+            ws.cell(row=r, column=11).font = Font(name="Arial", size=10, bold=False)
+            ws.cell(row=r, column=11).alignment = VISUAL_ALIGN
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+def _auto_adjust_sheet(ws):
+    """Auto adjust column width (max len+2 cap 30) and row height 15 per row. Called after _atomic_save."""
+    try:
+        for col in ws.columns:
+            max_len = 0
+            col_letter = col[0].column_letter
+            for cell in col:
+                try:
+                    if cell.value is not None:
+                        l = len(str(cell.value))
+                        if l > max_len:
+                            max_len = l
+                except Exception:
+                    pass
+            ws.column_dimensions[col_letter].width = min(max_len + 2, 30)
+        for row in ws.iter_rows():
+            try:
+                ws.row_dimensions[row[0].row].height = 15
+            except Exception:
+                pass
+    except Exception:
+        pass
 
 TEMPLATE = ROOT / "SPREADSHEETS" / "TEMPLATE.xlsx"
 TEMPLATE_STOCKS_LONG = ROOT / "SPREADSHEETS" / "TEMPLATE_STOCKS_LONG.xlsx"
@@ -474,10 +556,37 @@ def _flag_to_md(flags_md: Path, sheet: str, r: int, switch: str, cand, reason: s
     except Exception:
         pass
 
+def _auto_adjust_all_sheets(wb):
+    """Visual: Arial 10 left, auto width cap 30, row height 15 for all sheets. Called before _atomic_save."""
+    try:
+        for ws in wb.worksheets:
+            _clear_vlookup_formulas(ws)
+            _auto_adjust_sheet(ws)
+            # Ensure header row 2 stays bold/left, F header blue
+            try:
+                for c in range(1, ws.max_column + 1):
+                    hdr = ws.cell(row=2, column=c)
+                    if hdr.value is not None:
+                        hdr.alignment = VISUAL_ALIGN
+                        if hdr.font is None or hdr.font.name != "Arial":
+                            hdr.font = Font(name="Arial", size=10, bold=True)
+                        if c == 6:  # F HUSTLE_DELTA header blue
+                            hdr.fill = VISUAL_F_FILL
+                            hdr.font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
+            except Exception:
+                pass
+    except Exception:
+        pass
+
 def _atomic_save(wb, wb_path: Path):
     import os as _os, time as _tm
     tmp = str(wb_path) + ".tmp"
     bak = str(wb_path) + ".bak"
+    # visual + formula cleanup before every save so every workbook ships with Arial10 left, 4472C4, no VLOOKUP
+    try:
+        _auto_adjust_all_sheets(wb)
+    except Exception:
+        pass
     # versioned save: new filename every save, keep last 13 sheets in 3min, never recalc old cells
     versioned = str(wb_path).replace(".xlsx", f"_{_tm.strftime('%Y%m%d%H%M%S', _tm.gmtime())}.xlsx") if "MATRIX" in str(wb_path).upper() else None
     try:
@@ -1488,50 +1597,63 @@ def main():
                         ws_fix.cell(row=first_r, column=5).value = float(baseline_gain if 'baseline_gain' in locals() else 0)
                 except: pass
         wb_fix.save(str(wb_path))
-        print(f"[baseline] E2 numeric written {baseline_gain:.4f} to {SWITCH_SHEETS[0]}!E2", flush=True)
-        # immediate guard: stop if no baseline within seconds
+        print(f"[baseline] E3 numeric written {baseline_gain:.4f} to {SWITCH_SHEETS[0]}!E3 (E2 header 'BASELINE' preserved)", flush=True)
+        # immediate guard: check E3 numeric (E2 is header 'BASELINE' per spec — never abort on header)
         try:
             import time as _t_g
             _t_g.sleep(0.5)
             _wb_g = _op2b.load_workbook(str(wb_path), data_only=True, read_only=True)
             _ws_g = _wb_g[SWITCH_SHEETS[0]] if SWITCH_SHEETS[0] in _wb_g.sheetnames else None
-            _e2 = _ws_g.cell(row=2, column=5).value if _ws_g else None
-            if _e2 is None or (isinstance(_e2, str) and _e2.strip().upper() == "BASELINE"):
-                print(f"[BASELINE-GUARD] {new_symside} E2 still empty/str after 0.5s -> FIXING", flush=True)
+            _e3 = _ws_g.cell(row=3, column=5).value if _ws_g else None
+            _e2_hdr = _ws_g.cell(row=2, column=5).value if _ws_g else None
+            # header must be 'BASELINE', baseline numeric in E3
+            hdr_ok = isinstance(_e2_hdr, str) and _e2_hdr.strip().upper() == "BASELINE"
+            if _e3 is None or (isinstance(_e3, str) and _e3.strip().upper() == "BASELINE"):
+                print(f"[BASELINE-GUARD] {new_symside} E3 still empty/str ({_e3!r}) after 0.5s (E2 hdr={_e2_hdr!r}) -> FIXING", flush=True)
                 try:
-                    # self-fix: rewrite E2 immediately
                     _wb_fix2 = _op2b.load_workbook(str(wb_path))
                     for _sn in SWITCH_SHEETS:
                         if _sn in _wb_fix2.sheetnames and _sn == SWITCH_SHEETS[0]:
                             _ws_fix2 = _wb_fix2[_sn]
+                            # restore header then baseline
+                            _ws_fix2.cell(row=2, column=5).value = "BASELINE"
                             _ws_fix2.cell(row=3, column=5).value = float(baseline_gain) if abs(float(baseline_gain)) > 1e-9 else float(baseline_live.get("gain_pct") or 0)
                     _wb_fix2.save(str(wb_path))
                     _t_g.sleep(0.3)
                     _wb_g2 = _op2b.load_workbook(str(wb_path), data_only=True, read_only=True)
                     _ws_g2 = _wb_g2[SWITCH_SHEETS[0]] if SWITCH_SHEETS[0] in _wb_g2.sheetnames else None
+                    _e3b = _ws_g2.cell(row=3, column=5).value if _ws_g2 else None
                     _e2b = _ws_g2.cell(row=2, column=5).value if _ws_g2 else None
-                    if _e2b is None or (isinstance(_e2b, str) and _e2b.strip().upper() == "BASELINE"):
-                        try: _macbook_desktop_notify(f"🚨 {new_symside} E2 EMPTY", f"E2 still empty after fix gain {baseline_gain:.2f} — ABORT", critical=True)
+                    if _e3b is None or (isinstance(_e3b, str) and _e3b.strip().upper() == "BASELINE"):
+                        try: _macbook_desktop_notify(f"🚨 {new_symside} E3 EMPTY", f"E3 still empty after fix gain {baseline_gain:.2f} — ABORT", critical=True)
                         except: pass
-                        print(f"[BASELINE-GUARD] {new_symside} E2 still empty after fix -> ABORT", flush=True)
+                        print(f"[BASELINE-GUARD] {new_symside} E3 still empty after fix -> ABORT", flush=True)
                         raise SystemExit(2)
-                    print(f"[BASELINE-GUARD] {new_symside} E2 fixed to {_e2b}", flush=True)
+                    print(f"[BASELINE-GUARD] {new_symside} E3 fixed to {_e3b} (E2 hdr={_e2b!r})", flush=True)
                 except SystemExit:
                     raise
                 except Exception as _e_fix:
                     print(f"[BASELINE-GUARD-fix-warn] {_e_fix}", flush=True)
                     raise SystemExit(2)
             else:
-                # also check 0.00 lie
+                # also check 0.00 lie on E3
                 try:
-                    if isinstance(_e2, (int,float)) and abs(float(_e2)) < 1e-9:
-                        print(f"[BASELINE-GUARD] {new_symside} E2=0.00 lie -> FIXING", flush=True)
+                    if isinstance(_e3, (int,float)) and abs(float(_e3)) < 1e-9 and not hdr_ok:
+                        print(f"[BASELINE-GUARD] {new_symside} E3=0.00 lie -> FIXING", flush=True)
                         raise ValueError("0.00 lie")
                 except ValueError:
-                    try: _macbook_desktop_notify(f"🚨 {new_symside} BASELINE 0.00", f"E2 0.00 lie — aborting to fix", critical=True)
+                    try: _macbook_desktop_notify(f"🚨 {new_symside} BASELINE 0.00", f"E3 0.00 lie — aborting to fix", critical=True)
                     except: pass
                     raise SystemExit(2)
-                print(f"[BASELINE-GUARD] {new_symside} E2={_e2} ok within 0.5s", flush=True)
+                if not hdr_ok:
+                    print(f"[BASELINE-GUARD-WARN] {new_symside} E2 header corrupt {_e2_hdr!r} — repairing but not aborting", flush=True)
+                    try:
+                        _wb_fix_hdr = _op2b.load_workbook(str(wb_path))
+                        _ws_hdr = _wb_fix_hdr[SWITCH_SHEETS[0]]
+                        _ws_hdr.cell(row=2, column=5).value = "BASELINE"
+                        _wb_fix_hdr.save(str(wb_path))
+                    except: pass
+                print(f"[BASELINE-GUARD] {new_symside} E3={_e3} E2 hdr={_e2_hdr!r} ok within 0.5s", flush=True)
         except SystemExit:
             raise
         except Exception as _e_g:
@@ -1547,7 +1669,7 @@ def main():
     try:
         _macbook_desktop_notify(f"📊 {new_symside} BASELINE", f"gain {baseline_gain:.2f}% bh {bh:.2f}% trades {baseline_live.get('trades')} sharpe {float(baseline_live.get('pool_sharpe') or 0):.2f} E2 {baseline_gain:.2f} C-filled {filled_c if 'filled_c' in locals() else 0}", critical=False)
     except: pass
-    # SELF-MONITOR thread: continuously watch E2 baseline, abort & fix if empty/0
+    # SELF-MONITOR thread: continuously watch E3 baseline (E2 is header 'BASELINE' preserved per spec), abort & fix if empty/0
     try:
         import threading as _th_mon, time as _t_mon
         def _baseline_self_monitor():
@@ -1558,15 +1680,17 @@ def main():
                     import openpyxl as _op_mon
                     _wb_m = _op_mon.load_workbook(str(wb_path), data_only=True, read_only=True)
                     _ws_m = _wb_m[SWITCH_SHEETS[0]] if SWITCH_SHEETS[0] in _wb_m.sheetnames else None
-                    _e2m = _ws_m.cell(row=2, column=5).value if _ws_m else None
-                    _is_empty = _e2m is None or (isinstance(_e2m, str) and _e2m.strip().upper() in ("BASELINE", ""))
-                    _is_zero = isinstance(_e2m, (int,float)) and abs(float(_e2m)) < 1e-9
-                    if _is_empty or _is_zero:
+                    _e3m = _ws_m.cell(row=3, column=5).value if _ws_m else None
+                    _e2m_hdr = _ws_m.cell(row=2, column=5).value if _ws_m else None
+                    _is_empty = _e3m is None or (isinstance(_e3m, str) and _e3m.strip() == "")
+                    _is_zero = isinstance(_e3m, (int,float)) and abs(float(_e3m)) < 1e-9
+                    _hdr_corrupt = isinstance(_e2m_hdr, (int,float))
+                    if _is_empty or _is_zero or _hdr_corrupt:
                         _fails += 1
-                        print(f"[SELF-MONITOR] {new_symside} E2 empty/0 ({_e2m}) fail {_fails}/3 -> fixing", flush=True)
-                        try: _macbook_desktop_notify(f"🚨 {new_symside} SELF-MONITOR", f"E2 empty/0 {_e2m} — fixing attempt {_fails}", critical=True)
+                        print(f"[SELF-MONITOR] {new_symside} E3 empty/0 ({_e3m}) hdr={_e2m_hdr!r} fail {_fails}/3 -> fixing", flush=True)
+                        try: _macbook_desktop_notify(f"🚨 {new_symside} SELF-MONITOR", f"E3 empty/0 {_e3m} hdr {_e2m_hdr!r} — fixing attempt {_fails}", critical=True)
                         except: pass
-                        # fix: rewrite
+                        # fix: rewrite E3 (baseline), preserve E2 header 'BASELINE'
                         try:
                             _wb_f = _op_mon.load_workbook(str(wb_path))
                             _ws_f = _wb_f[SWITCH_SHEETS[0]] if SWITCH_SHEETS[0] in _wb_f.sheetnames else None
@@ -1574,12 +1698,15 @@ def main():
                                 _fix_val = float(baseline_gain) if abs(float(baseline_gain)) > 1e-9 else float(baseline_live.get("gain_pct") or 0)
                                 if abs(_fix_val) < 1e-9:
                                     _fix_val = float(baseline_vec.get("gain_pct") or 0)
-                                _ws_f.cell(row=2, column=5).value = _fix_val
+                                _ws_f.cell(row=3, column=5).value = _fix_val
+                                # restore header if overwritten by prior buggy runs
+                                if isinstance(_ws_f.cell(row=2, column=5).value, (int,float)) or _ws_f.cell(row=2, column=5).value is None:
+                                    _ws_f.cell(row=2, column=5).value = "BASELINE"
                                 _wb_f.save(str(wb_path))
                         except: pass
                         if _fails >= 3:
-                            print(f"[SELF-MONITOR] {new_symside} E2 still empty/0 after 3 fixes -> ABORT", flush=True)
-                            try: _macbook_desktop_notify(f"🚨 {new_symside} ABORT", f"E2 empty/0 after 3 fixes — aborting herd will retry", critical=True)
+                            print(f"[SELF-MONITOR] {new_symside} E3 still empty/0 after 3 fixes -> ABORT", flush=True)
+                            try: _macbook_desktop_notify(f"🚨 {new_symside} ABORT", f"E3 empty/0 after 3 fixes — aborting herd will retry", critical=True)
                             except: pass
                             import os as _os_m
                             _os_m._exit(2)
@@ -1765,7 +1892,7 @@ def main():
                     _need = rec.get("delta") is not None and (not _is_float or abs(float(_rv) - float(rec["delta"])) > 1e-9)
                     if _need:
                         ws_r.cell(row=r, column=6).value = float(rec["delta"])
-                        ws_r.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="9C5700")
+                        ws_r.cell(row=r, column=6).font = Font(name="Arial", size=10, bold=True, color="9C5700")
                         refilled += 1
                     # also refill G VECTOR_DELTA (col7) greedy delta — was missing, left VLOOKUP strand
                     _gv = ws_r.cell(row=r, column=7).value
@@ -1773,7 +1900,18 @@ def main():
                     _g_need = rec.get("delta") is not None and (not _g_is_float or abs(float(_gv) - float(rec["delta"])) > 1e-9)
                     if _g_need:
                         ws_r.cell(row=r, column=7).value = float(rec["delta"])
-                        ws_r.cell(row=r, column=7).font = Font(name="Arial", bold=True, color="9C5700")
+                        ws_r.cell(row=r, column=7).font = Font(name="Arial", size=10, bold=True, color="9C5700")
+                        ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
+                        # H/I/K per-row (added for gap fix)
+                        try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else (float(delta_best) if 'delta_best' in locals() else 0.0)
+                        except: _hk_ld = 0.0
+                        try: _hk_ls = float((live_best or {}).get('pool_sharpe') or (vec_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() or 'vec_best' in locals() else 0.0
+                        except: _hk_ls = 0.0
+                        try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
+                        except: _hk_pf = ""
+                        _write_per_row_HIK(ws_row, r, _hk_ld, _hk_ls, _hk_pf)
+                        try: _clear_vlookup_formulas(ws_row)
+                        except: pass
                         refilled += 1
                     # refill yellows L:BI from rec.get yellows if stored
                     _y = rec.get("yellows") or rec.get("pending_lbI") or {}
@@ -2078,7 +2216,7 @@ def main():
                                 _c = ws_h.cell(row=r, column=_col)
                                 _c.value = 0.0
                                 _c.fill = _PF_red_h(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                _c.font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                                _c.font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
                         except: pass
                         pending_lbI[hdr] = 0.0
                     continue
@@ -2584,7 +2722,7 @@ def main():
                                             from openpyxl.styles import PatternFill as _PF_red
                                             _yc.value = 0.0
                                             _yc.fill = _PF_red(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                            _yc.font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                                            _yc.font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
                                     except: pass
                                     pending_lbI[hdr] = 0.0
                             # per-yellow invalid is still a calculated yellow — continue to next yellow, do NOT block row
@@ -2597,7 +2735,18 @@ def main():
                                 ws_keep.cell(row=r, column=7).value = -1.0
                                 from openpyxl.styles import PatternFill
                                 ws_keep.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                ws_keep.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                                ws_keep.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
+                                ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
+                                # H/I/K per-row (added for gap fix)
+                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else (float(delta_best) if 'delta_best' in locals() else 0.0)
+                                except: _hk_ld = 0.0
+                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or (vec_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() or 'vec_best' in locals() else 0.0
+                                except: _hk_ls = 0.0
+                                try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
+                                except: _hk_pf = ""
+                                _write_per_row_HIK(ws_row, r, _hk_ld, _hk_ls, _hk_pf)
+                                try: _clear_vlookup_formulas(ws_row)
+                                except: pass
                             except: pass
                             _flag_to_md(flags_md, sheet, r, switch, cand, f"RED 0/1 TRADE trades={_tr}", float(vec.get("gain_pct") or 0), cumulative_before)
                             print(f"[RED 0/1 TRADE] {sheet}!{r} {switch}={cand} trades={_tr} — RED EVERYWHERE", flush=True)
@@ -2611,7 +2760,18 @@ def main():
                                 ws_keep.cell(row=r, column=7).value = -1.0
                                 from openpyxl.styles import PatternFill
                                 ws_keep.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                ws_keep.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                                ws_keep.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
+                                ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
+                                # H/I/K per-row (added for gap fix)
+                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else (float(delta_best) if 'delta_best' in locals() else 0.0)
+                                except: _hk_ld = 0.0
+                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or (vec_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() or 'vec_best' in locals() else 0.0
+                                except: _hk_ls = 0.0
+                                try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
+                                except: _hk_pf = ""
+                                _write_per_row_HIK(ws_row, r, _hk_ld, _hk_ls, _hk_pf)
+                                try: _clear_vlookup_formulas(ws_row)
+                                except: pass
                             except: pass
                             _flag_to_md(flags_md, sheet, r, switch, cand, f"RED >1m PER CELL {_elapsed_cell:.1f}s", float(vec.get("gain_pct") or 0), cumulative_before)
                             print(f"[RED >1m PER CELL] {sheet}!{r} {switch}={cand} elapsed={_elapsed_cell:.1f}s — RED EVERYWHERE", flush=True)
@@ -2701,11 +2861,17 @@ def main():
                                 ws_row.cell(row=r, column=5).value = float(cumulative_before)
                                 ws_row.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", bold=False, color="000000")
                                 ws_row.cell(row=r, column=6).value = 0.0  # F hustle vs baseline 0
-                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="006100")
+                                ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL
+                                ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
+                                ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
                                 ws_row.cell(row=r, column=7).value = -1.0  # G never 0.0 — was 0.0
                                 from openpyxl.styles import PatternFill
                                 ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                                ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
+                                ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
+                                ws_row.cell(row=r, column=5).alignment = VISUAL_ALIGN
+                                _write_per_row_HIK(ws_row, r, 0.0, 0.0, "")
+                                _clear_vlookup_formulas(ws_row)
                                 if r + 1 <= ws_row.max_row:
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
@@ -2846,9 +3012,22 @@ def main():
                                 # Dual: F (6) is hustle vs baseline, G (7) is greedy vs cum
                                 _h_for_row = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
                                 ws_row.cell(row=r, column=6).value = float(_h_for_row)
-                                ws_row.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="006100")
+                                ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL
+                                ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
+                                ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
                                 ws_row.cell(row=r, column=7).value = float(delta_best)
-                                ws_row.cell(row=r, column=7).font = Font(name="Arial", bold=True, color="9C5700")
+                                ws_row.cell(row=r, column=7).font = Font(name="Arial", size=10, bold=True, color="9C5700")
+                                ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
+                                # H/I/K per-row (added for gap fix)
+                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else (float(delta_best) if 'delta_best' in locals() else 0.0)
+                                except: _hk_ld = 0.0
+                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or (vec_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() or 'vec_best' in locals() else 0.0
+                                except: _hk_ls = 0.0
+                                try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
+                                except: _hk_pf = ""
+                                _write_per_row_HIK(ws_row, r, _hk_ld, _hk_ls, _hk_pf)
+                                try: _clear_vlookup_formulas(ws_row)
+                                except: pass
                         except Exception:
                             pass
                     except Exception as _e:
@@ -2888,10 +3067,23 @@ def main():
                                 ws_row.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", bold=False, color="000000")
                                 _hustle_neg = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
                                 ws_row.cell(row=r, column=6).value = float(_hustle_neg) if _hustle_neg is not None else None
-                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="006100")
+                                ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL
+                                ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
+                                ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
                                 ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None
                                 ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FFA500", end_color="FFA500", fill_type="solid")
-                                ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="000000")
+                                ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="000000")
+                                ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
+                                # H/I/K per-row (added for gap fix)
+                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else (float(delta_best) if 'delta_best' in locals() else 0.0)
+                                except: _hk_ld = 0.0
+                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or (vec_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() or 'vec_best' in locals() else 0.0
+                                except: _hk_ls = 0.0
+                                try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
+                                except: _hk_pf = ""
+                                _write_per_row_HIK(ws_row, r, _hk_ld, _hk_ls, _hk_pf)
+                                try: _clear_vlookup_formulas(ws_row)
+                                except: pass
                         except Exception:
                             pass
                         _flag_to_md(flags_md, sheet, r, switch, cand, "NEG delta<=0 blocks", delta_best, float(vec_best.get("gain_pct") or 0), cumulative_before)
@@ -2946,10 +3138,23 @@ def main():
                                 from openpyxl.styles import PatternFill
                                 _h_delta = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
                                 ws_row.cell(row=r, column=6).value = float(_h_delta) if _h_delta is not None else None
-                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="006100")
+                                ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL
+                                ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
+                                ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
                                 ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None
                                 ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                                ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
+                                ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
+                                # H/I/K per-row (added for gap fix)
+                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else (float(delta_best) if 'delta_best' in locals() else 0.0)
+                                except: _hk_ld = 0.0
+                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or (vec_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() or 'vec_best' in locals() else 0.0
+                                except: _hk_ls = 0.0
+                                try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
+                                except: _hk_pf = ""
+                                _write_per_row_HIK(ws_row, r, _hk_ld, _hk_ls, _hk_pf)
+                                try: _clear_vlookup_formulas(ws_row)
+                                except: pass
                         except Exception:
                             pass
                         _flag_to_md(flags_md, sheet, r, switch, cand, f"parity-fail {reason}", delta_best, float(vec_best.get("gain_pct") or 0), cumulative_before)
@@ -2975,10 +3180,23 @@ def main():
                                 from openpyxl.styles import PatternFill
                                 _h_delta2 = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
                                 ws_row.cell(row=r, column=6).value = float(_h_delta2) if _h_delta2 is not None else None
-                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="006100")
+                                ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL
+                                ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
+                                ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
                                 ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None
                                 ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                                ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
+                                ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
+                                # H/I/K per-row (added for gap fix)
+                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else (float(delta_best) if 'delta_best' in locals() else 0.0)
+                                except: _hk_ld = 0.0
+                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or (vec_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() or 'vec_best' in locals() else 0.0
+                                except: _hk_ls = 0.0
+                                try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
+                                except: _hk_pf = ""
+                                _write_per_row_HIK(ws_row, r, _hk_ld, _hk_ls, _hk_pf)
+                                try: _clear_vlookup_formulas(ws_row)
+                                except: pass
                         except Exception:
                             pass
                         _flag_to_md(flags_md, sheet, r, switch, cand, f"live-neg {live_delta}", delta_best, float(vec_best.get("gain_pct") or 0), cumulative_before)
@@ -3001,7 +3219,18 @@ def main():
                                 ws_row.cell(row=r, column=7).value = float(delta_best)
                                 from openpyxl.styles import PatternFill
                                 ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                ws_row.cell(row=r, column=7).font = Font(name="Arial", bold=True, color="FFFFFF")
+                                ws_row.cell(row=r, column=7).font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
+                                ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
+                                # H/I/K per-row (added for gap fix)
+                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else (float(delta_best) if 'delta_best' in locals() else 0.0)
+                                except: _hk_ld = 0.0
+                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or (vec_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() or 'vec_best' in locals() else 0.0
+                                except: _hk_ls = 0.0
+                                try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
+                                except: _hk_pf = ""
+                                _write_per_row_HIK(ws_row, r, _hk_ld, _hk_ls, _hk_pf)
+                                try: _clear_vlookup_formulas(ws_row)
+                                except: pass
                         except Exception:
                             pass
                         _flag_to_md(flags_md, sheet, r, switch, cand, f"E-BLAND drop {new_cum:.4f} < {cumulative_gain:.4f}", delta_best, float(vec_best.get("gain_pct") or 0), cumulative_before)
@@ -3030,9 +3259,22 @@ def main():
                             # Dual system: E stays greedy (cumulative_before), F is hustle vs baseline, G is greedy delta
                             _hustle_delta_vs_baseline = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
                             ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None  # G = greedy VECTOR_DELTA vs cum
-                            ws_row.cell(row=r, column=7).font = Font(name="Arial", bold=True, color="9C5700")
+                            ws_row.cell(row=r, column=7).font = Font(name="Arial", size=10, bold=True, color="9C5700")
+                            ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
+                            # H/I/K per-row (added for gap fix)
+                            try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else (float(delta_best) if 'delta_best' in locals() else 0.0)
+                            except: _hk_ld = 0.0
+                            try: _hk_ls = float((live_best or {}).get('pool_sharpe') or (vec_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() or 'vec_best' in locals() else 0.0
+                            except: _hk_ls = 0.0
+                            try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
+                            except: _hk_pf = ""
+                            _write_per_row_HIK(ws_row, r, _hk_ld, _hk_ls, _hk_pf)
+                            try: _clear_vlookup_formulas(ws_row)
+                            except: pass
                             ws_row.cell(row=r, column=6).value = float(_hustle_delta_vs_baseline) if _hustle_delta_vs_baseline is not None else None  # F = HUSTLE_DELTA vs baseline
-                            ws_row.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="006100")
+                            ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL
+                            ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
+                            ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
                             # E for this row (col 5) is cumulative_before - always numeric per user (was None for NEG -> empty trash)
                             ws_row.cell(row=r, column=5).value = float(cumulative_before)
                             ws_row.cell(row=r, column=5).font = Font(name="Arial", bold=True, color="006100") if delta_best > 0 else Font(name="Arial", bold=False, color="000000")
@@ -3092,7 +3334,18 @@ def main():
                                 ws_row.cell(row=r, column=6).value = 0.0  # F hustle
                                 ws_row.cell(row=r, column=7).value = -1.0  # G never 0.0 — was 0.0
                                 ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                                ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
+                                ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
+                                # H/I/K per-row (added for gap fix)
+                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else (float(delta_best) if 'delta_best' in locals() else 0.0)
+                                except: _hk_ld = 0.0
+                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or (vec_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() or 'vec_best' in locals() else 0.0
+                                except: _hk_ls = 0.0
+                                try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
+                                except: _hk_pf = ""
+                                _write_per_row_HIK(ws_row, r, _hk_ld, _hk_ls, _hk_pf)
+                                try: _clear_vlookup_formulas(ws_row)
+                                except: pass
                                 if r + 1 <= ws_row.max_row:
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
@@ -3112,7 +3365,7 @@ def main():
                         if ws_row is not None:
                             from openpyxl.styles import PatternFill
                             ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                            ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                            ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
                             if ws_row.cell(row=r, column=6).value in (None, "") or isinstance(ws_row.cell(row=r, column=6).value, str):
                                 ws_row.cell(row=r, column=6).value = 0.0
                         _flag_to_md(flags_md, sheet, r, switch, cand, f"PER_CELL TIMEOUT {per_cell_timeout_sec}s", 0.0, 0.0, cumulative_before)
@@ -3127,7 +3380,7 @@ def main():
                         if isinstance(_v, str) and "VLOOKUP" in _v:
                             from openpyxl.styles import PatternFill
                             ws_keep.cell(row=_r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                            ws_keep.cell(row=_r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                            ws_keep.cell(row=_r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
                             _flag_to_md(flags_md, sheet, _r, ws_keep.cell(row=_r, column=1).value, ws_keep.cell(row=_r, column=2).value, "VLOOKUP strand not calculated", _v, "", "")
                     except: pass
                 print(f"[SHEET FLUSH] {sheet} final save", flush=True)

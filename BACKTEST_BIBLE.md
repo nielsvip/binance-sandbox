@@ -107,3 +107,35 @@ Parity = `v12_quick_engine` vs `backtest_v12_engine` on **same frozen 30d NPZ** 
 ---
 
 For full v12 parity, 15m gate, RTH, and per-sym contract, see original §§1.5–12 (retained above, 4194-line condensed bible).
+
+---
+## V15 PILOT WORKBOOK FILL CONTRACT — COMPLETE SHEETS, LAST-3-DAY INGEST, CHARTS, 365D, PARITY (2026-09-24)
+
+**Every sheet is fully filled — never empty tabs.** Pilot is ONLY writer; formulas NEVER in data rows r>=3 for C/E/F/G/H/I/K (cleared via `_clear_vlookup_formulas` except documented GLOBAL_RISK_GATES waiver). Every non-default in override column C bold green 006100 with Arial 10 left.
+
+| Column | Header (row2) | Per-row value (pilot, not formula) | r>=3 rule |
+|---|---|---|---|
+| C | override | switch + options + yellow-filter settings **ONLY IF** pos delta inside yellow box (>1e-9) | pos-only, bold if non-default, orange never above white |
+| E | BASELINE (row2 header preserved, E3 = baseline_gain) | cumulative_before (previous winning gain) — numeric E3, header E2='BASELINE' never overwritten | Self-monitor checks E3 numeric, restores E2 header if corrupted, aborts only after 3 fails |
+| F | HUSTLE_DELTA | vec_gain - baseline_gain (vs baseline) | Arial 10 left, fill #4472C4 blue, font white bold, auto width+2 cap30 height15, every row float not VLOOKUP |
+| G | VECTOR_DELTA | delta_best = vec_gain - cumulative_before (vs cum, per-yellow sum added) | float, green pos / red neg, every row filled pos or neg, never leave VLOOKUP |
+| H | LIVE_DELTA (col8) | live_gain - cumulative_before (parity live) | **Per-row** written via `_write_per_row_HIK` alongside F/G, Arial10 left |
+| I | LIVE_SHARPE (col9) | live pool_sharpe deltas per row | Per-row via HIK |
+| K | PER_ROW_FILTERS (col11) | comma-joined pos yellows for that switch | Per-row via HIK |
+| L:BI | yellow headers row2 (col_by_header lookup) | per-yellow delta inside yellow cell vs cumulative_before, written before row advance | pos-only added to C/K/G via _per_yellow_sum>1e-9, all yellows for row calculated (no cap), 0.0 backstop for empty |
+
+**Visual contract:** All cells Arial 10 left aligned, row height 15, column width auto max_len+2 cap30 via `_auto_adjust_all_sheets` called before every `_atomic_save`. HUSTLE_DELTA F background #4472C4 blue (not 006100), no blueish/orange outside C. DC_BREAKOUT_SCORE int 10 / TF '15m' string / False/True not FALSE/TRUE preserved. Blanket comments removed from LIVE_DELTA.
+
+**Sequential fill:** 12 tabs (STDEV_SLOPE_SIZING in SKIP_SHEETS, never calculated, sheet stays but skipped). worst_first / cycle / shuffle modes supported; cycle rotates deque on NEG delta. Every row in every tab filled in order pos or neg before next tab. Hustle beam width 64 depth 10 + exhaustive top12 subsets finds max combination vs baseline+cum.
+
+**E-chain guard:** Baseline written to E3 (float), E2 header 'BASELINE' preserved via `ws_fix.cell(row=3,col5)=baseline` and self-monitor that checks E3 numeric and restores header without overwriting numeric. `_validate_e_chain_and_yellows` asserts delta==vg-cum and new_cum>=old.
+
+**Last-3-day ingestion:** Before baseline, pilot searches `SPREADSHEETS/` + `SPREADSHEETS/V15_V16_CELL_BY_CELL/` + `data/reports/lifecycle_pilot/*_v14_progress.json` for BEST overrides for that sym_side. `cumulative_overrides`/`hustler_best.json` best wins over defaults (never `if k not in`). Done entries from progress.json repopulate yellows and are respected via `respect STDEV/shuffle max delta` logic; `_atomic_save` zip>=10 valid prevents BadZip loss. `S1` is writer, Mac mirror via `sync_s1_to_mac.sh` — progress json correlation via `_v14_progress.json` per sym_side.
+
+**Charts:** Per-sheet `write_zoomable_chart(symside, sheet, overrides, 30)` and per-complete `write_zoomable_chart(symside, None, cumulative_overrides, 30, suffix='30D_REAL_ZOOMABLE')` + `30D_BIGGEST_DELTA_ZOOMABLE`. Chart is offline file:// Chart.js 4.4.1 zoom/pan with bh and gain in title/filename (`{sym}_bh{gain}_30d_matrix.xlsx` and HTML `title: bh {bh:.2f}% gain {gain:.2f}%`). 365D chart via `suffix='365D_REAL_ZOOMABLE'` after 365D rerun.
+
+**365D robustness:** After 30D greedy+hustle, pilot prepares 365D NPZ via `prepare_batch(sym,365)`, evaluates best vs baseline via `evaluate_prepared_sanitized` and live parity, checks `365D delta <50% of 30D delta` warns overfit, `trades<30` diagnostic-only, dd/sharpe gates. Creates `*_365d_matrix.xlsx` with bh/gain in filename and `_BASELINE_METRICS` rows for 365D metrics. No promotion without pos gain unless 30D pos or >bh.
+
+**Parity:** Every pos delta verified via `live_evaluate(sym, overrides, 30)` (backtest_v12_engine scalar bar-by-bar) vs `vector_evaluate_cached` (v12_quick_engine vector, V12_NPZ_CACHE=32, RAM via preload_prepared). `parity_ok` requires trade ratio 0.80..1.25 and gain mismatch <0.5pp and <15%. Per-row parity fail marks red and logs flags.md without aborting sheet. Final switch-by-switch live verification on winning set.
+
+**Sync:** Edit only on Mac, then `rsync -az -e "ssh -S none -o StrictHostKeyChecking=accept-new"` to `~/binance-sandbox/` on S1 (canonical) + S5, `md5sum` verify. `S1` NPZ 473x31G (16c 30Gi), Mac 134x10G never backtests except --dry-run.
