@@ -82,6 +82,31 @@ from openpyxl.styles import Font, PatternFill
 import numpy as np
 
 TEMPLATE = ROOT / "SPREADSHEETS" / "TEMPLATE.xlsx"
+TEMPLATE_STOCKS_LONG = ROOT / "SPREADSHEETS" / "TEMPLATE_STOCKS_LONG.xlsx"
+TEMPLATE_STOCKS_SHORT = ROOT / "SPREADSHEETS" / "TEMPLATE_STOCKS_SHORT.xlsx"
+TEMPLATE_CRYPTO_LONG = ROOT / "SPREADSHEETS" / "TEMPLATE_CRYPTO_LONG.xlsx"
+TEMPLATE_CRYPTO_SHORT = ROOT / "SPREADSHEETS" / "TEMPLATE_CRYPTO_SHORT.xlsx"
+
+
+def get_template_for_symside(symside: str) -> Path:
+    """User 2026-09-24: TEMPLATE.xlsx discarded — pick side-specific template per symside."""
+    s = symside.upper()
+    is_crypto = s.endswith(("USDT", "USDC", "USD1", "BUSD", "FDUSD", "TUSD", "DAI"))
+    is_long = s.endswith("_LONG")
+    # crypto vs stocks, long vs short
+    if is_crypto:
+        cand = TEMPLATE_CRYPTO_LONG if is_long else TEMPLATE_CRYPTO_SHORT
+    else:
+        cand = TEMPLATE_STOCKS_LONG if is_long else TEMPLATE_STOCKS_SHORT
+    if cand.exists():
+        return cand
+    # fallback chain
+    for p in [TEMPLATE_STOCKS_LONG, TEMPLATE_STOCKS_SHORT, TEMPLATE_CRYPTO_LONG, TEMPLATE_CRYPTO_SHORT, TEMPLATE]:
+        if p.exists():
+            return p
+    return TEMPLATE
+
+
 OUT_DIR = ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
 PROGRESS_DIR = ROOT / "data" / "reports" / "lifecycle_pilot"
 FLAGS_DIR = ROOT / "data" / "reports" / "v15_flags"
@@ -795,6 +820,23 @@ def clone_template(template: Path, new_symside: str) -> Path:
                 for c in row:
                     if isinstance(c.value, str) and old_baseline in c.value:
                         c.value = c.value.replace(old_baseline, new_baseline).replace("TEMPLATE", new_symside.split("_")[0]).replace("ADP_LONG", new_symside)
+    else:
+        # 2026-09-24 FIX: latest TEMPLATE_STOCKS_/CRYPTO_*.xlsx have NO baseline sheet — create it
+        if new_baseline not in wb.sheetnames:
+            ws = wb.create_sheet(new_baseline)
+            ws["A1"] = "metric"
+            ws["B1"] = "value"
+            ws["A2"] = "gain_pct"
+            ws["A3"] = "bh_pct"
+        # fix E3 broken reference TEMPLATE_BASELINE_METRICS!B2 -> new_baseline!B2 for first SWITCH sheet
+        for sheet_name in wb.sheetnames:
+            ws2 = wb[sheet_name]
+            for row in ws2.iter_rows():
+                for c in row:
+                    if isinstance(c.value, str) and "TEMPLATE_BASELINE_METRICS" in c.value:
+                        c.value = c.value.replace("TEMPLATE_BASELINE_METRICS", new_baseline).replace("TEMPLATE", new_symside.split("_")[0]).replace("ADP_LONG", new_symside)
+                    elif isinstance(c.value, str) and "ADP_LONG_BASELINE_METRICS" in c.value:
+                        c.value = c.value.replace("ADP_LONG_BASELINE_METRICS", new_baseline)
     # E2 chain: first sheet = B2 from baseline metrics, subsequent sheets = MAX(prev!E) for cumulative; will be overwritten per-row with blank-if-neg logic
     for idx, name in enumerate(SWITCH_SHEETS):
         if name not in wb.sheetnames:
@@ -1144,10 +1186,9 @@ def main():
             bj = _pl2.Path(args.baseline_json)
             if bj.exists():
                 _base_over = _js2.loads(bj.read_text())
-                # merge found overrides on top of recipes
+                # FIX 2026-09-24: BEST must win — overwrite, not guard
                 for k, v in _base_over.items():
-                    if k not in overrides:
-                        overrides[k] = v
+                    overrides[k] = v
                 print(f"[baseline-json] loaded {len(_base_over)} overrides from {bj} as new baseline for shuffle", flush=True)
         except Exception as _e:
             print(f"[baseline-json-warn] {args.baseline_json} {_e}", flush=True)
@@ -1337,10 +1378,16 @@ def main():
             if not _fixed:
                 print(f"[baseline-fix] WARNING baseline still 0.00 for {new_symside} bh {bh:.4f} — will proceed but this is a lie", flush=True)
 
-    # clone
+    # clone — 2026-09-24: auto-select side-specific template if generic/default passed
     template = Path(args.template)
     if not template.exists():
-        template = TEMPLATE
+        template = get_template_for_symside(new_symside)
+    # if user passed generic TEMPLATE.xlsx but side-specific exists, prefer side-specific
+    elif template == TEMPLATE and template.exists():
+        side_specific = get_template_for_symside(new_symside)
+        if side_specific != TEMPLATE and side_specific.exists():
+            print(f"[TEMPLATE-AUTO] {new_symside}: {template.name} -> {side_specific.name} (side-specific)", flush=True)
+            template = side_specific
     if args.out:
         target = Path(args.out)
         if target.exists():
