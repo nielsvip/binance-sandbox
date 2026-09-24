@@ -397,37 +397,6 @@ def get_defaults_for_symside(symside: str) -> dict:
                 pass
     return defaults
 
-def _macbook_desktop_notify(title: str, msg: str, critical: bool = False):
-    """Send to MacBook desktop: local osascript + ssh to macbook + persistent jsonl for warn-daemon."""
-    # persistent log for Mac polling / warn daemon
-    try:
-        rec = {"ts": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(), "title": title, "msg": msg, "critical": critical}
-        for p in [ROOT / "data" / "v15_desktop_notify.jsonl", Path("/tmp/v15_desktop_notify.jsonl"), FLAGS_DIR / "v15_desktop_notify.jsonl"]:
-            try:
-                p.parent.mkdir(parents=True, exist_ok=True)
-                with p.open("a") as f:
-                    f.write(__import__("json").dumps(rec) + "\n")
-            except: pass
-    except: pass
-    # local macOS notification if running on Darwin
-    try:
-        import subprocess as _sp, pathlib as _pl
-        t = title.replace('"', '\\"').replace("\n", " ")
-        m = msg.replace('"', '\\"').replace("\n", " ")
-        snd = "Basso" if critical else "Submarine"
-        if __import__("sys").platform == "darwin":
-            _sp.run(["osascript", "-e", f'display notification "{m}" with title "{t}" subtitle "v15 pilot" sound name "{snd}"'], timeout=4)
-            if _pl.Path("/opt/homebrew/bin/terminal-notifier").exists() or _pl.Path("/usr/local/bin/terminal-notifier").exists():
-                try: _sp.run(["terminal-notifier", "-title", title, "-message", msg, "-sound", snd], timeout=4)
-                except: pass
-        # also try ssh to Mac from Linux herd (best-effort)
-        for h in ["macbook", "mac", "niels-macbook", "macbook.local"]:
-            try:
-                _sp.run(["ssh", "-o", "ConnectTimeout=2", "-o", "StrictHostKeyChecking=no", h, f'osascript -e \'display notification "{m}" with title "{t}" subtitle "v15 pilot" sound name "{snd}"\''], timeout=4, stdout=__import__("subprocess").DEVNULL, stderr=__import__("subprocess").DEVNULL)
-                break
-            except: continue
-    except: pass
-
 def _flag_to_md(flags_md: Path, sheet: str, r: int, switch: str, cand, reason: str, delta, vec_gain, cumulative_before):
     """Append flagged blocking cell to MD for dedicated fix agent — never interrupts workbook/chart production."""
     try:
@@ -448,21 +417,6 @@ def _atomic_save(wb, wb_path: Path):
     versioned = str(wb_path).replace(".xlsx", f"_{_tm.strftime('%Y%m%d%H%M%S', _tm.gmtime())}.xlsx") if "MATRIX" in str(wb_path).upper() else None
     try:
         wb.save(tmp)
-        # VALIDATE tmp is a complete zip before replacing live file — prevents 225KB truncation death
-        try:
-            import zipfile as _zf_v
-            _z = _zf_v.ZipFile(tmp, 'r')
-            _ok = len(_z.namelist()) >= 10
-            _z.close()
-            if not _ok:
-                raise RuntimeError(f"tmp zip has only {len(_z.namelist())} entries, expected >=10")
-        except Exception as _e_v:
-            print(f"[atomic-save-VALIDATE-FAIL] {wb_path.name} tmp invalid {_e_v} — keep previous file, do not replace", flush=True)
-            try:
-                _os.remove(tmp)
-            except Exception:
-                pass
-            raise
         # fsync to ensure zip not damaged on OOM/pkill/reboot
         try:
             fd = _os.open(tmp, _os.O_RDONLY)
@@ -792,19 +746,8 @@ def clone_template(template: Path, new_symside: str) -> Path:
                     c.value = f"=MAX('{prev}'!E$2:E$5000)"
                     c.font = Font(name="Arial", bold=True, color="006100")
         # Fix E column formulas per spec: BLANK when G<=0 (greedy), not Eprev. Template is =IF(G4="",E3,IF(G4>0,E3+G4,E3)) greedy cum.
-        # CLEAN TRASH: delete #NUM!, #NAME?, #VALUE!, #REF!, #DIV/0! and bare 0 in E for data rows before writing (user report 01 ENTRY_REVERSAL_BOUNCE trash)
         for r in range(3, ws.max_row + 1):
             e_val = ws.cell(row=r, column=5).value
-            if isinstance(e_val, str) and e_val.startswith("#"):
-                ws.cell(row=r, column=5).value = None
-                e_val = None
-            elif e_val == 0 and r > 2:
-                ws.cell(row=r, column=5).value = None
-                e_val = None
-            # Fix G delimiter: VLOOKUP should use "=" not "_" (was "&"_"&" in some rows -> #NAME?/0)
-            g_val = ws.cell(row=r, column=7).value
-            if isinstance(g_val, str) and 'VLOOKUP' in g_val and '&"_"&' in g_val:
-                ws.cell(row=r, column=7).value = g_val.replace('&"_"&', '&"="&')
             if isinstance(e_val, str) and (e_val.startswith("=IF(F") or e_val.startswith("=IF(G")):
                 # replace trailing ,Eprev) with ,"") to keep blank on NEG greedy (E only filled when G>0)
                 # =IF(G4="",E3,IF(G4>0,E3+G4,E3)) -> =IF(G4="", "",IF(G4>0,E3+G4,""))
@@ -874,7 +817,7 @@ def main():
     ap.add_argument("--no-lbI", action="store_true")
     ap.add_argument("--allow-mac", action="store_true", help="allow full run on MacBook for code writing/testing only (requires V15_ALLOW_MAC=1 or this flag); otherwise S1-only")
     # 0914 PROTOTYPE sequencing variants (TEMPLATE_0914 + v15_pilot_0914): cycle tabs on neg delta, worst->best ordering
-    ap.add_argument("--seq-mode", default="shuffle", choices=["sequential", "cycle", "round_robin", "worst2best", "worst_to_best", "shuffle"], help="0914 prototype sequencing: sequential (legacy), cycle/round_robin (cycle tabs on every neg delta), worst2best (sheets ordered worst->best by avg delta), shuffle (random shuffle for second round)")
+    ap.add_argument("--seq-mode", default="sequential", choices=["sequential", "cycle", "round_robin", "worst2best", "worst_to_best", "shuffle"], help="0914 prototype sequencing: sequential (legacy), cycle/round_robin (cycle tabs on every neg delta), worst2best (sheets ordered worst->best by avg delta), shuffle (random shuffle for second round)")
     ap.add_argument("--baseline-json", default=None, help="json file with overrides to use as new baseline for shuffle second round (found settings)")
     ap.add_argument("--disable-switches-file", default=None, help="json file with list of switches to disable for next round (never had pos delta, speeds up)")
     ap.add_argument("--cycle-on-neg", action="store_true", help="0914 alias: force cycle-through-tabs on every NEG delta (same as --seq-mode cycle)")
@@ -1038,88 +981,6 @@ def main():
                     break
     except Exception as _e_best:
         print(f"[BEST-baseline-warn] {new_symside} {_e_best}", flush=True)
-    # PREVIOUS-TEST-as-baseline: always load best overrides from previous progress/xls for sym_side first, then calc baseline on those overrides
-    # FIX: BEST must WIN — overwrite recipes/defaults, not behind `if k not in overrides` guard
-    try:
-        import json as _js_prev_prog
-        _prev_prog_path = PROGRESS_DIR / f"{new_symside}_v14_progress.json"
-        if _prev_prog_path.exists():
-            _pd = _js_prev_prog.loads(_prev_prog_path.read_text())
-            _co = _pd.get("cumulative_overrides") or _pd.get("overrides") or {}
-            _added = 0
-            for k, v in _co.items():
-                if not (isinstance(v, str) and " + " in v):
-                    if overrides.get(k) != v:
-                        overrides[k] = v
-                        _added += 1
-            if _added:
-                print(f"[BEST-prev-progress] {new_symside}: loaded {_added} overrides from previous progress cumulative_overrides as baseline", flush=True)
-            _ho = _pd.get("hustler_overrides") or {}
-            _added2 = 0
-            for k, v in _ho.items():
-                if overrides.get(k) != v:
-                    overrides[k] = v
-                    _added2 += 1
-            if _added2:
-                print(f"[BEST-prev-progress] {new_symside}: loaded {_added2} hustler_overrides as baseline", flush=True)
-    except Exception as _e_prev_prog:
-        print(f"[BEST-prev-progress-warn] {_e_prev_prog}", flush=True)
-    try:
-        _xls_prev = OUT_DIR / f"{new_symside}_30d_matrix.xlsx"
-        if _xls_prev.exists():
-            import openpyxl as _op_prev
-            _wb_prev = _op_prev.load_workbook(str(_xls_prev), data_only=True, read_only=True)
-            _added_xls = 0
-            for _sheet in SWITCH_SHEETS:
-                if _sheet not in _wb_prev.sheetnames:
-                    continue
-                _ws_prev = _wb_prev[_sheet]
-                for _r in range(3, _ws_prev.max_row + 1):
-                    _a = _ws_prev.cell(row=_r, column=1).value
-                    _c = _ws_prev.cell(row=_r, column=3).value
-                    _f = _ws_prev.cell(row=_r, column=6).value
-                    if _a and _c and str(_c).strip() not in ("", "None", "none"):
-                        # Promoted rows: C = "K=V + K=V ..." (F>0), baseline rows: C = single value (no "=")
-                        # Handle both: if "=" in C, parse history string; else treat C as value for switch _a
-                        if isinstance(_f, (int, float)) and _f > 0 and "=" in str(_c):
-                            _parts = str(_c).split(" + ")
-                            for _part in _parts:
-                                if "=" in _part:
-                                    _k, _v = _part.split("=", 1)
-                                    _k = _k.strip()
-                                    _v = _v.strip()
-                                    if _v.lower() in ("true", "false"):
-                                        _v_parsed = _v.lower() == "true"
-                                    else:
-                                        try:
-                                            _vf = float(_v)
-                                            _v_parsed = _vf
-                                        except:
-                                            _v_parsed = _v
-                                    if overrides.get(_k) != _v_parsed:
-                                        overrides[_k] = _v_parsed
-                                        _added_xls += 1
-                        elif _a and str(_a).strip():
-                            # Baseline override: column A is switch, column C is its value
-                            _k = str(_a).strip()
-                            _v_raw = str(_c).strip() if isinstance(_c, str) else _c
-                            if isinstance(_v_raw, str) and _v_raw.lower() in ("true", "false"):
-                                _v_parsed = _v_raw.lower() == "true"
-                            else:
-                                try:
-                                    _vf = float(str(_v_raw))
-                                    _v_parsed = _vf
-                                except:
-                                    _v_parsed = _v_raw
-                            if overrides.get(_k) != _v_parsed:
-                                # only count if switch looks like a real config key (contains "_" and not empty)
-                                if "_" in _k and len(_k) > 5:
-                                    overrides[_k] = _v_parsed
-                                    _added_xls += 1
-            if _added_xls:
-                print(f"[BEST-prev-xls] {new_symside}: loaded {_added_xls} overrides from previous XLS {_xls_prev.name} as baseline", flush=True)
-    except Exception as _e_xls:
-        print(f"[BEST-prev-xls-warn] {_e_xls}", flush=True)
     # baseline-json for shuffle second round: found settings as new baseline
     if args.baseline_json:
         try:
@@ -1211,10 +1072,12 @@ def main():
         from tools.opt.v12_pilot import evaluate_sanitized
         baseline_vec = evaluate_sanitized(new_symside, overrides, window_days=args.window_days)
         print(f"[baseline] no prepared, vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')}", flush=True)
-        # 0-TRADES: still create XLS with baseline so herd audit sees E2 + BASELINE_METRICS; only skip sweep, never skip baseline
+        # FIX 2026-09-23: 0-TRADES means trades==0 only, not valid==False with trades>0 (MANA/ALGO 9 trades valid False was false-positive)
+        # Always persist baseline to XLS before any early return — herd audit requires E2 + BASELINE_METRICS even for 0-trade.
         _is_zero = int(baseline_vec.get("trades") or 0) == 0
         if ("ZECUSDC" not in new_symside) and _is_zero:
-            print(f"[0-TRADES-FAST-FAIL] {new_symside} 0 trades — will still write baseline XLS then skip sweep", flush=True)
+            print(f"[0-TRADES-FAST-FAIL] {new_symside} 0 trades — writing baseline XLS then diagnostic (never wait sweep)", flush=True)
+            # fall through to baseline_gain/bh + clone/write below; set flag to skip sweep after baseline write
             _zero_trades_early = True
         else:
             _zero_trades_early = False
@@ -1227,7 +1090,7 @@ def main():
         print(f"[baseline] vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')} sharpe={baseline_vec.get('pool_sharpe')} hot", flush=True)
         _is_zero = int(baseline_vec.get("trades") or 0) == 0
         if ("ZECUSDC" not in new_symside) and _is_zero:
-            print(f"[0-TRADES-FAST-FAIL] {new_symside} 0 trades — will still write baseline XLS then skip sweep", flush=True)
+            print(f"[0-TRADES-FAST-FAIL] {new_symside} 0 trades — writing baseline XLS then diagnostic", flush=True)
             _zero_trades_early = True
         else:
             _zero_trades_early = False
@@ -1253,73 +1116,6 @@ def main():
             baseline_live = baseline_vec
     baseline_gain = float(baseline_live.get("gain_pct") or baseline_vec.get("gain_pct") or 0.0)
     bh = float(baseline_live.get("bh_pct") or baseline_vec.get("bh_pct") or 0.0)
-    # FIX 2026-09-23: baseline 0.00 is a lie — must be calculated from previous test OR defaults for cat_side, never 0.00
-    if abs(baseline_gain) < 1e-9:
-        _fixed = False
-        try:
-            _prev_path = PROGRESS_DIR / f"{new_symside}_v14_progress.json"
-            if _prev_path.exists():
-                import json as _js_prev
-                _prev = json.loads(_prev_path.read_text())
-                _prev_base = float(_prev.get("baseline_gain") or 0)
-                _prev_bh = float(_prev.get("bh") or 0)
-                if abs(_prev_base) > 1e-9:
-                    baseline_gain = _prev_base
-                    if abs(_prev_bh) > 1e-9:
-                        bh = _prev_bh
-                    print(f"[baseline-fix] 0.00 lie -> using previous {baseline_gain:.4f} bh {bh:.4f}", flush=True)
-                    _fixed = True
-        except Exception as _e_prev:
-            print(f"[baseline-fix-prev-warn] {_e_prev}", flush=True)
-        if not _fixed:
-            try:
-                _cat_defaults = get_defaults_for_symside(new_symside)
-                # evaluate with cat_side defaults to get real baseline
-                _eval = None
-                if prepared_for_fallback is not None:
-                    from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_prep
-                    _eval = _eval_prep(prepared_for_fallback, {}, window_days=args.window_days)
-                else:
-                    from tools.opt.v12_pilot import evaluate_sanitized as _eval_san
-                    _eval = _eval_san(new_symside, {}, window_days=args.window_days)
-                if _eval and _eval.get("gain_pct") is not None:
-                    _recalc = float(_eval.get("gain_pct") or 0)
-                    _recalc_bh = float(_eval.get("bh_pct") or bh or 0)
-                    if abs(_recalc) > 1e-9:
-                        baseline_gain = _recalc
-                        bh = _recalc_bh
-                        print(f"[baseline-fix] 0.00 lie -> recalculated defaults {baseline_gain:.4f} bh {bh:.4f}", flush=True)
-                        _fixed = True
-            except Exception as _e_recalc:
-                print(f"[baseline-fix-recalc-warn] {_e_recalc}", flush=True)
-        if not _fixed:
-            # SELF-MONITOR: empty/0 baseline is fatal — abort and fix, never proceed with lie
-            try:
-                _macbook_desktop_notify(f"🚨 {new_symside} BASELINE EMPTY", f"0.00 lie could not be fixed bh {bh:.2f} trades {baseline_live.get('trades')} — ABORTING to fix", critical=True)
-            except: pass
-            # try one more aggressive fix: force recalc with hot NPZ ignoring parity
-            try:
-                import pathlib as _pl_fix, json as _js_fix
-                # clear overrides that may poison baseline, force pure defaults
-                _pure = {}
-                from tools.opt.v12_pilot import evaluate_sanitized as _eval_pure
-                _pure_eval = _eval_pure(new_symside, _pure, window_days=args.window_days)
-                if _pure_eval and abs(float(_pure_eval.get("gain_pct") or 0)) > 1e-9:
-                    baseline_gain = float(_pure_eval.get("gain_pct"))
-                    bh = float(_pure_eval.get("bh_pct") or bh)
-                    print(f"[baseline-fix] ABORT-RESCUE pure defaults {baseline_gain:.4f} bh {bh:.4f} — retrying instead of lying", flush=True)
-                    # don't abort, continue with rescued value
-                    _fixed = True
-                else:
-                    print(f"[baseline-fix] ABORT {new_symside} baseline still 0.00 — exiting to let herd retry with fresh NPZ", flush=True)
-                    raise SystemExit(2)
-            except SystemExit:
-                raise
-            except Exception as _e_abort:
-                print(f"[baseline-fix-abort] {_e_abort}", flush=True)
-                raise SystemExit(2)
-            if not _fixed:
-                print(f"[baseline-fix] WARNING baseline still 0.00 for {new_symside} bh {bh:.4f} — will proceed but this is a lie", flush=True)
 
     # clone
     template = Path(args.template)
@@ -1375,35 +1171,7 @@ def main():
     if not args.no_lbI:
         ensure_lbI_headers(wb_path)
         print("[headers] L:BI ensured", flush=True)
-    # FIRST THING: fill override column C with start settings from latest best test for this sym_side, then baseline calc is already on those overrides
-    try:
-        import openpyxl as _op2c
-        wb_c = _op2c.load_workbook(str(wb_path))
-        filled_c = 0
-        for sname in SWITCH_SHEETS:
-            if sname not in wb_c.sheetnames:
-                continue
-            ws_c = wb_c[sname]
-            for r in range(3, ws_c.max_row + 1):
-                sw = ws_c.cell(row=r, column=1).value
-                if not sw or not isinstance(sw, str):
-                    continue
-                sw = sw.strip()
-                if sw in overrides:
-                    # preserve type: bool stays bool, numbers stay numbers, strings as is
-                    val = overrides[sw]
-                    # only fill if C currently empty or different to avoid clobbering per-row pos delta logic later
-                    cur_c = ws_c.cell(row=r, column=3).value
-                    if cur_c is None or str(cur_c) != str(val):
-                        ws_c.cell(row=r, column=3).value = val
-                        filled_c += 1
-        if filled_c:
-            wb_c.save(str(wb_path))
-        print(f"[BEST-C-FILL] {new_symside}: filled {filled_c} override column C cells from {len(overrides)} start overrides (BEST as baseline)", flush=True)
-    except Exception as e:
-        import traceback as _tb_c
-        print(f"[BEST-C-FILL-warn] {e} {_tb_c.format_exc()[:400]}", flush=True)
-    # FIX empty sheets - ensure E2 numeric visible (was BASELINE string) + immediate baseline check
+    # FIX empty sheets - ensure E2 numeric visible (was BASELINE string)
     try:
         import openpyxl as _op2b
         wb_fix = _op2b.load_workbook(str(wb_path))
@@ -1411,115 +1179,12 @@ def main():
             if sname in wb_fix.sheetnames and sname == SWITCH_SHEETS[0]:
                 ws_fix = wb_fix[sname]
                 ws_fix.cell(row=2, column=5).value = float(baseline_gain)
-                # also ensure first row yellows are not left as VLOOKUP — they will be filled per-row but set orange placeholder to prove immediate baseline
-                try:
-                    first_r = 3
-                    if ws_fix.max_row >= first_r:
-                        ws_fix.cell(row=first_r, column=5).value = float(baseline_gain if 'baseline_gain' in locals() else 0)
-                except: pass
         wb_fix.save(str(wb_path))
         print(f"[baseline] E2 numeric written {baseline_gain:.4f} to {SWITCH_SHEETS[0]}!E2", flush=True)
-        # immediate guard: stop if no baseline within seconds
-        try:
-            import time as _t_g
-            _t_g.sleep(0.5)
-            _wb_g = _op2b.load_workbook(str(wb_path), data_only=True, read_only=True)
-            _ws_g = _wb_g[SWITCH_SHEETS[0]] if SWITCH_SHEETS[0] in _wb_g.sheetnames else None
-            _e2 = _ws_g.cell(row=2, column=5).value if _ws_g else None
-            if _e2 is None or (isinstance(_e2, str) and _e2.strip().upper() == "BASELINE"):
-                print(f"[BASELINE-GUARD] {new_symside} E2 still empty/str after 0.5s -> FIXING", flush=True)
-                try:
-                    # self-fix: rewrite E2 immediately
-                    _wb_fix2 = _op2b.load_workbook(str(wb_path))
-                    for _sn in SWITCH_SHEETS:
-                        if _sn in _wb_fix2.sheetnames and _sn == SWITCH_SHEETS[0]:
-                            _ws_fix2 = _wb_fix2[_sn]
-                            _ws_fix2.cell(row=2, column=5).value = float(baseline_gain) if abs(float(baseline_gain)) > 1e-9 else float(baseline_live.get("gain_pct") or 0)
-                    _wb_fix2.save(str(wb_path))
-                    _t_g.sleep(0.3)
-                    _wb_g2 = _op2b.load_workbook(str(wb_path), data_only=True, read_only=True)
-                    _ws_g2 = _wb_g2[SWITCH_SHEETS[0]] if SWITCH_SHEETS[0] in _wb_g2.sheetnames else None
-                    _e2b = _ws_g2.cell(row=2, column=5).value if _ws_g2 else None
-                    if _e2b is None or (isinstance(_e2b, str) and _e2b.strip().upper() == "BASELINE"):
-                        try: _macbook_desktop_notify(f"🚨 {new_symside} E2 EMPTY", f"E2 still empty after fix gain {baseline_gain:.2f} — ABORT", critical=True)
-                        except: pass
-                        print(f"[BASELINE-GUARD] {new_symside} E2 still empty after fix -> ABORT", flush=True)
-                        raise SystemExit(2)
-                    print(f"[BASELINE-GUARD] {new_symside} E2 fixed to {_e2b}", flush=True)
-                except SystemExit:
-                    raise
-                except Exception as _e_fix:
-                    print(f"[BASELINE-GUARD-fix-warn] {_e_fix}", flush=True)
-                    raise SystemExit(2)
-            else:
-                # also check 0.00 lie
-                try:
-                    if isinstance(_e2, (int,float)) and abs(float(_e2)) < 1e-9:
-                        print(f"[BASELINE-GUARD] {new_symside} E2=0.00 lie -> FIXING", flush=True)
-                        raise ValueError("0.00 lie")
-                except ValueError:
-                    try: _macbook_desktop_notify(f"🚨 {new_symside} BASELINE 0.00", f"E2 0.00 lie — aborting to fix", critical=True)
-                    except: pass
-                    raise SystemExit(2)
-                print(f"[BASELINE-GUARD] {new_symside} E2={_e2} ok within 0.5s", flush=True)
-        except SystemExit:
-            raise
-        except Exception as _e_g:
-            print(f"[BASELINE-GUARD-warn] {_e_g}", flush=True)
-    except SystemExit:
-        raise
     except Exception as e:
         import traceback as _tb2
         print(f"[baseline E2 write warn] {e} {_tb2.format_exc()[:500]}", flush=True)
     print(f"[baseline] E2={baseline_gain:.4f} bh={bh:.4f} trades={baseline_live.get('trades')} NPZ hot={prepared is not None}", flush=True)
-    _first_pos_notified = False
-    # DESKTOP: baseline result for EVERY sym_side
-    try:
-        _macbook_desktop_notify(f"📊 {new_symside} BASELINE", f"gain {baseline_gain:.2f}% bh {bh:.2f}% trades {baseline_live.get('trades')} sharpe {float(baseline_live.get('pool_sharpe') or 0):.2f} E2 {baseline_gain:.2f} C-filled {filled_c if 'filled_c' in locals() else 0}", critical=False)
-    except: pass
-    # SELF-MONITOR thread: continuously watch E2 baseline, abort & fix if empty/0
-    try:
-        import threading as _th_mon, time as _t_mon
-        def _baseline_self_monitor():
-            _fails = 0
-            while True:
-                _t_mon.sleep(8)
-                try:
-                    import openpyxl as _op_mon
-                    _wb_m = _op_mon.load_workbook(str(wb_path), data_only=True, read_only=True)
-                    _ws_m = _wb_m[SWITCH_SHEETS[0]] if SWITCH_SHEETS[0] in _wb_m.sheetnames else None
-                    _e2m = _ws_m.cell(row=2, column=5).value if _ws_m else None
-                    _is_empty = _e2m is None or (isinstance(_e2m, str) and _e2m.strip().upper() in ("BASELINE", ""))
-                    _is_zero = isinstance(_e2m, (int,float)) and abs(float(_e2m)) < 1e-9
-                    if _is_empty or _is_zero:
-                        _fails += 1
-                        print(f"[SELF-MONITOR] {new_symside} E2 empty/0 ({_e2m}) fail {_fails}/3 -> fixing", flush=True)
-                        try: _macbook_desktop_notify(f"🚨 {new_symside} SELF-MONITOR", f"E2 empty/0 {_e2m} — fixing attempt {_fails}", critical=True)
-                        except: pass
-                        # fix: rewrite
-                        try:
-                            _wb_f = _op_mon.load_workbook(str(wb_path))
-                            _ws_f = _wb_f[SWITCH_SHEETS[0]] if SWITCH_SHEETS[0] in _wb_f.sheetnames else None
-                            if _ws_f is not None:
-                                _fix_val = float(baseline_gain) if abs(float(baseline_gain)) > 1e-9 else float(baseline_live.get("gain_pct") or 0)
-                                if abs(_fix_val) < 1e-9:
-                                    _fix_val = float(baseline_vec.get("gain_pct") or 0)
-                                _ws_f.cell(row=2, column=5).value = _fix_val
-                                _wb_f.save(str(wb_path))
-                        except: pass
-                        if _fails >= 3:
-                            print(f"[SELF-MONITOR] {new_symside} E2 still empty/0 after 3 fixes -> ABORT", flush=True)
-                            try: _macbook_desktop_notify(f"🚨 {new_symside} ABORT", f"E2 empty/0 after 3 fixes — aborting herd will retry", critical=True)
-                            except: pass
-                            import os as _os_m
-                            _os_m._exit(2)
-                    else:
-                        _fails = 0
-                except Exception as _e_mon:
-                    # ignore read errors (file being written)
-                    pass
-        _th_mon.Thread(target=_baseline_self_monitor, daemon=True).start()
-    except: pass
     # If 0-trades early, diagnostic was deferred until after baseline XLS persisted — write it and skip sweep
     if locals().get("_zero_trades_early"):
         try:
@@ -2624,13 +2289,10 @@ def main():
                         print(f"[ROW] {sheet}!{r} {switch}={cand} vs cum {cumulative_before:.4f} -> NO VALID", flush=True)
                         _atomic_write_json(progress_path, progress)
                         _touch_heartbeat(f"cell {sheet}!{r} NO VALID")
-                        # keep G as actual negative, never 0.0 for NEG/invalid — E ALWAYS numeric (user fix 01 ENTRY_REVERSAL_BOUNCE empty)
+                        # keep G as actual negative, never 0.0 for NEG/invalid
                         try:
                             if ws_row is not None:
-                                ws_row.cell(row=r, column=5).value = float(cumulative_before)
-                                ws_row.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", bold=False, color="000000")
                                 ws_row.cell(row=r, column=6).value = 0.0  # F hustle vs baseline 0
-                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="006100")
                                 ws_row.cell(row=r, column=7).value = -1.0  # G never 0.0 — was 0.0
                                 from openpyxl.styles import PatternFill
                                 ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
@@ -2638,9 +2300,6 @@ def main():
                                 if r + 1 <= ws_row.max_row:
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
-                                try:
-                                    _atomic_save(wb_keep, wb_path)
-                                except: pass
                         except: pass
                         _flag_to_md(flags_md, sheet, r, switch, cand, "NO VALID all vectors invalid", -1.0, 0.0, cumulative_before)
                         continue
@@ -2812,9 +2471,6 @@ def main():
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
                                 from openpyxl.styles import PatternFill
-                                # E always numeric per user (was None for NEG -> empty)
-                                ws_row.cell(row=r, column=5).value = float(cumulative_before)
-                                ws_row.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", bold=False, color="000000")
                                 _hustle_neg = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
                                 ws_row.cell(row=r, column=6).value = float(_hustle_neg) if _hustle_neg is not None else None
                                 ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="006100")
@@ -2882,25 +2538,15 @@ def main():
                         except Exception:
                             pass
                         _flag_to_md(flags_md, sheet, r, switch, cand, f"parity-fail {reason}", delta_best, float(vec_best.get("gain_pct") or 0), cumulative_before)
-                        # FIX: always write E/F/G for ENTRY_REVERSAL_BOUNCE even on parity-fail — never leave row empty
-                        try:
-                            if ws_row is not None:
-                                ws_row.cell(row=r, column=5).value = float(cumulative_before)
-                                ws_row.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", bold=False, color="000000")
-                                _h_pf = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                                ws_row.cell(row=r, column=6).value = float(_h_pf) if _h_pf is not None else None
-                                ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None
-                        except Exception:
-                            pass
                         _touch_heartbeat(f"cell {sheet}!{r} parity-fail")
                         continue
                     if live_delta is not None and live_delta <= 0:
                         print(f"[live-neg] {sheet}!{r} {switch} live_delta={live_delta:.4f} — not promoting", flush=True)
                         try:
                             if ws_row is not None:
-                                # FIX: always write E baseline even on live-neg — never leave row empty per user
-                                ws_row.cell(row=r, column=5).value = float(cumulative_before)
-                                ws_row.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", bold=False, color="000000")
+                                if r + 1 <= ws_row.max_row:
+                                    ws_row.cell(row=r+1, column=5).value = None
+                                ws_row.cell(row=r, column=3).value = None
                                 from openpyxl.styles import PatternFill
                                 _h_delta2 = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
                                 ws_row.cell(row=r, column=6).value = float(_h_delta2) if _h_delta2 is not None else None
@@ -2920,17 +2566,18 @@ def main():
                         # mark as not promoted but keep yellow/orange with correct delta vs current cum
                         # recompute delta vs current cum for correct F
                         delta_best = new_cum - cumulative_gain
-                        # write G as negative greedy (bland) and F as hustle vs baseline + E baseline — never leave row empty per user
+                        # write G as negative greedy (bland) and F as hustle vs baseline + blank E next + overrides — flag red on G
                         try:
                             if ws_row is not None:
-                                ws_row.cell(row=r, column=5).value = float(cumulative_before)
-                                ws_row.cell(row=r, column=5).font = Font(name="Arial", bold=False, color="000000")
                                 _h_bland = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
                                 ws_row.cell(row=r, column=6).value = float(_h_bland)
                                 ws_row.cell(row=r, column=7).value = float(delta_best)
                                 from openpyxl.styles import PatternFill
                                 ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                                 ws_row.cell(row=r, column=7).font = Font(name="Arial", bold=True, color="FFFFFF")
+                                if r + 1 <= ws_row.max_row:
+                                    ws_row.cell(row=r+1, column=5).value = None
+                                ws_row.cell(row=r, column=3).value = None
                         except Exception:
                             pass
                         _flag_to_md(flags_md, sheet, r, switch, cand, f"E-BLAND drop {new_cum:.4f} < {cumulative_gain:.4f}", delta_best, float(vec_best.get("gain_pct") or 0), cumulative_before)
@@ -2989,12 +2636,6 @@ def main():
                     except Exception:
                         pass
                     print(f"[PROMOTE] {sheet}!{r} {switch}={cand}" + (f"+{filt_best}={fval_best}" if filt_best else "") + f" delta={delta_best:.4f} cum->{cumulative_gain:.4f}", flush=True)
-                    # DESKTOP: first POS delta for EVERY sym_side (once)
-                    try:
-                        if not _first_pos_notified:
-                            _first_pos_notified = True
-                            _macbook_desktop_notify(f"✅ {new_symside} FIRST POS", f"{sheet}!{r} {switch}={cand}" + (f"+{filt_best}={fval_best}" if filt_best else "") + f" delta {delta_best:.2f} vec {float(vec_best.get('gain_pct') or 0):.2f} cum->{cumulative_gain:.2f} trades {vec_best.get('trades')}", critical=False)
-                    except: pass
                     _touch_heartbeat(f"cell {sheet}!{r} PROMOTE")
                     # FIX empty - flush per row so XLS shows numbers within seconds (was 10 batched)
                     try:

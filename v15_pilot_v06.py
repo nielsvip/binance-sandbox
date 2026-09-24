@@ -448,21 +448,6 @@ def _atomic_save(wb, wb_path: Path):
     versioned = str(wb_path).replace(".xlsx", f"_{_tm.strftime('%Y%m%d%H%M%S', _tm.gmtime())}.xlsx") if "MATRIX" in str(wb_path).upper() else None
     try:
         wb.save(tmp)
-        # VALIDATE tmp is a complete zip before replacing live file — prevents 225KB truncation death
-        try:
-            import zipfile as _zf_v
-            _z = _zf_v.ZipFile(tmp, 'r')
-            _ok = len(_z.namelist()) >= 10
-            _z.close()
-            if not _ok:
-                raise RuntimeError(f"tmp zip has only {len(_z.namelist())} entries, expected >=10")
-        except Exception as _e_v:
-            print(f"[atomic-save-VALIDATE-FAIL] {wb_path.name} tmp invalid {_e_v} — keep previous file, do not replace", flush=True)
-            try:
-                _os.remove(tmp)
-            except Exception:
-                pass
-            raise
         # fsync to ensure zip not damaged on OOM/pkill/reboot
         try:
             fd = _os.open(tmp, _os.O_RDONLY)
@@ -792,19 +777,8 @@ def clone_template(template: Path, new_symside: str) -> Path:
                     c.value = f"=MAX('{prev}'!E$2:E$5000)"
                     c.font = Font(name="Arial", bold=True, color="006100")
         # Fix E column formulas per spec: BLANK when G<=0 (greedy), not Eprev. Template is =IF(G4="",E3,IF(G4>0,E3+G4,E3)) greedy cum.
-        # CLEAN TRASH: delete #NUM!, #NAME?, #VALUE!, #REF!, #DIV/0! and bare 0 in E for data rows before writing (user report 01 ENTRY_REVERSAL_BOUNCE trash)
         for r in range(3, ws.max_row + 1):
             e_val = ws.cell(row=r, column=5).value
-            if isinstance(e_val, str) and e_val.startswith("#"):
-                ws.cell(row=r, column=5).value = None
-                e_val = None
-            elif e_val == 0 and r > 2:
-                ws.cell(row=r, column=5).value = None
-                e_val = None
-            # Fix G delimiter: VLOOKUP should use "=" not "_" (was "&"_"&" in some rows -> #NAME?/0)
-            g_val = ws.cell(row=r, column=7).value
-            if isinstance(g_val, str) and 'VLOOKUP' in g_val and '&"_"&' in g_val:
-                ws.cell(row=r, column=7).value = g_val.replace('&"_"&', '&"="&')
             if isinstance(e_val, str) and (e_val.startswith("=IF(F") or e_val.startswith("=IF(G")):
                 # replace trailing ,Eprev) with ,"") to keep blank on NEG greedy (E only filled when G>0)
                 # =IF(G4="",E3,IF(G4>0,E3+G4,E3)) -> =IF(G4="", "",IF(G4>0,E3+G4,""))
@@ -874,7 +848,7 @@ def main():
     ap.add_argument("--no-lbI", action="store_true")
     ap.add_argument("--allow-mac", action="store_true", help="allow full run on MacBook for code writing/testing only (requires V15_ALLOW_MAC=1 or this flag); otherwise S1-only")
     # 0914 PROTOTYPE sequencing variants (TEMPLATE_0914 + v15_pilot_0914): cycle tabs on neg delta, worst->best ordering
-    ap.add_argument("--seq-mode", default="worst2best", choices=["sequential", "cycle", "round_robin", "worst2best", "worst_to_best", "shuffle"], help="0914 prototype sequencing: sequential (legacy), cycle/round_robin (cycle tabs on every neg delta), worst2best (sheets ordered worst->best by avg delta), shuffle (random shuffle for second round)")
+    ap.add_argument("--seq-mode", default="sequential", choices=["sequential", "cycle", "round_robin", "worst2best", "worst_to_best", "shuffle"], help="0914 prototype sequencing: sequential (legacy), cycle/round_robin (cycle tabs on every neg delta), worst2best (sheets ordered worst->best by avg delta), shuffle (random shuffle for second round)")
     ap.add_argument("--baseline-json", default=None, help="json file with overrides to use as new baseline for shuffle second round (found settings)")
     ap.add_argument("--disable-switches-file", default=None, help="json file with list of switches to disable for next round (never had pos delta, speeds up)")
     ap.add_argument("--cycle-on-neg", action="store_true", help="0914 alias: force cycle-through-tabs on every NEG delta (same as --seq-mode cycle)")
@@ -1039,7 +1013,6 @@ def main():
     except Exception as _e_best:
         print(f"[BEST-baseline-warn] {new_symside} {_e_best}", flush=True)
     # PREVIOUS-TEST-as-baseline: always load best overrides from previous progress/xls for sym_side first, then calc baseline on those overrides
-    # FIX: BEST must WIN — overwrite recipes/defaults, not behind `if k not in overrides` guard
     try:
         import json as _js_prev_prog
         _prev_prog_path = PROGRESS_DIR / f"{new_symside}_v14_progress.json"
@@ -1048,16 +1021,15 @@ def main():
             _co = _pd.get("cumulative_overrides") or _pd.get("overrides") or {}
             _added = 0
             for k, v in _co.items():
-                if not (isinstance(v, str) and " + " in v):
-                    if overrides.get(k) != v:
-                        overrides[k] = v
-                        _added += 1
+                if k not in overrides and not (isinstance(v, str) and " + " in v):
+                    overrides[k] = v
+                    _added += 1
             if _added:
                 print(f"[BEST-prev-progress] {new_symside}: loaded {_added} overrides from previous progress cumulative_overrides as baseline", flush=True)
             _ho = _pd.get("hustler_overrides") or {}
             _added2 = 0
             for k, v in _ho.items():
-                if overrides.get(k) != v:
+                if k not in overrides:
                     overrides[k] = v
                     _added2 += 1
             if _added2:
@@ -1078,42 +1050,22 @@ def main():
                     _a = _ws_prev.cell(row=_r, column=1).value
                     _c = _ws_prev.cell(row=_r, column=3).value
                     _f = _ws_prev.cell(row=_r, column=6).value
-                    if _a and _c and str(_c).strip() not in ("", "None", "none"):
-                        # Promoted rows: C = "K=V + K=V ..." (F>0), baseline rows: C = single value (no "=")
-                        # Handle both: if "=" in C, parse history string; else treat C as value for switch _a
-                        if isinstance(_f, (int, float)) and _f > 0 and "=" in str(_c):
-                            _parts = str(_c).split(" + ")
-                            for _part in _parts:
-                                if "=" in _part:
-                                    _k, _v = _part.split("=", 1)
-                                    _k = _k.strip()
-                                    _v = _v.strip()
-                                    if _v.lower() in ("true", "false"):
-                                        _v_parsed = _v.lower() == "true"
-                                    else:
-                                        try:
-                                            _vf = float(_v)
-                                            _v_parsed = _vf
-                                        except:
-                                            _v_parsed = _v
-                                    if overrides.get(_k) != _v_parsed:
-                                        overrides[_k] = _v_parsed
-                                        _added_xls += 1
-                        elif _a and str(_a).strip():
-                            # Baseline override: column A is switch, column C is its value
-                            _k = str(_a).strip()
-                            _v_raw = str(_c).strip() if isinstance(_c, str) else _c
-                            if isinstance(_v_raw, str) and _v_raw.lower() in ("true", "false"):
-                                _v_parsed = _v_raw.lower() == "true"
-                            else:
-                                try:
-                                    _vf = float(str(_v_raw))
-                                    _v_parsed = _vf
-                                except:
-                                    _v_parsed = _v_raw
-                            if overrides.get(_k) != _v_parsed:
-                                # only count if switch looks like a real config key (contains "_" and not empty)
-                                if "_" in _k and len(_k) > 5:
+                    if _a and _c and str(_c).strip() not in ("", "None", "none") and isinstance(_f, (int, float)) and _f > 0:
+                        _parts = str(_c).split(" + ")
+                        for _part in _parts:
+                            if "=" in _part:
+                                _k, _v = _part.split("=", 1)
+                                _k = _k.strip()
+                                _v = _v.strip()
+                                if _v.lower() in ("true", "false"):
+                                    _v_parsed = _v.lower() == "true"
+                                else:
+                                    try:
+                                        _vf = float(_v)
+                                        _v_parsed = _vf
+                                    except:
+                                        _v_parsed = _v
+                                if _k not in overrides:
                                     overrides[_k] = _v_parsed
                                     _added_xls += 1
             if _added_xls:
@@ -1211,15 +1163,22 @@ def main():
         from tools.opt.v12_pilot import evaluate_sanitized
         baseline_vec = evaluate_sanitized(new_symside, overrides, window_days=args.window_days)
         print(f"[baseline] no prepared, vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')}", flush=True)
-        # 0-TRADES: still create XLS with baseline so herd audit sees E2 + BASELINE_METRICS; only skip sweep, never skip baseline
+        # FIX 2026-09-23: 0-TRADES means trades==0 only (MANA/ALGO 9 trades valid False was false-positive → not 0). Do NOT create XLS for 0 trades: no baseline, no delta, no waste — diagnostic only, never to mac.
         _is_zero = int(baseline_vec.get("trades") or 0) == 0
         if ("ZECUSDC" not in new_symside) and _is_zero:
-            print(f"[0-TRADES-FAST-FAIL] {new_symside} 0 trades — will still write baseline XLS then skip sweep", flush=True)
-            _zero_trades_early = True
-        else:
-            _zero_trades_early = False
-            if not baseline_vec.get("valid"):
-                print(f"[baseline-warn] {new_symside} valid False but trades {baseline_vec.get('trades')} — proceeding, not diagnostic", flush=True)
+            print(f"[0-TRADES-FAST-FAIL] {new_symside} 0 trades — DIAGNOSTIC ONLY, no XLS, skipping full sweep (never waste CPU/disk/mac)", flush=True)
+            try:
+                diag_path = PROGRESS_DIR / f"{new_symside}_{args.window_days}d_progress.json"
+                diag_path.parent.mkdir(parents=True, exist_ok=True)
+                _diag = {"symside": new_symside, "baseline_gain": float(baseline_vec.get("gain_pct") or 0), "bh": float(baseline_vec.get("bh_pct") or 0), "valid": False, "trades": int(baseline_vec.get("trades") or 0), "reason": "0 trades baseline — DATA_ERROR NPZ short history, no XLS, never waste", "done": {}, "no_delta": True, "zero_trades_diagnostic": True}
+                import json as _js0
+                diag_path.write_text(_js0.dumps(_diag, indent=2))
+            except Exception as _e:
+                print(f"[diag-warn] {new_symside} {_e}", flush=True)
+            return
+        _zero_trades_early = False
+        if not baseline_vec.get("valid"):
+            print(f"[baseline-warn] {new_symside} valid False but trades {baseline_vec.get('trades')} — proceeding, not diagnostic", flush=True)
         prepared_for_fallback = None
     else:
         from tools.opt.v12_pilot import evaluate_prepared_sanitized
@@ -1227,12 +1186,19 @@ def main():
         print(f"[baseline] vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')} sharpe={baseline_vec.get('pool_sharpe')} hot", flush=True)
         _is_zero = int(baseline_vec.get("trades") or 0) == 0
         if ("ZECUSDC" not in new_symside) and _is_zero:
-            print(f"[0-TRADES-FAST-FAIL] {new_symside} 0 trades — will still write baseline XLS then skip sweep", flush=True)
-            _zero_trades_early = True
-        else:
-            _zero_trades_early = False
-            if not baseline_vec.get("valid"):
-                print(f"[baseline-warn] {new_symside} valid False but trades {baseline_vec.get('trades')} — proceeding", flush=True)
+            print(f"[0-TRADES-FAST-FAIL] {new_symside} 0 trades — DIAGNOSTIC ONLY, no XLS, skipping (no waste)", flush=True)
+            try:
+                diag_path = PROGRESS_DIR / f"{new_symside}_{args.window_days}d_progress.json"
+                diag_path.parent.mkdir(parents=True, exist_ok=True)
+                _diag = {"symside": new_symside, "baseline_gain": float(baseline_vec.get("gain_pct") or 0), "bh": float(baseline_vec.get("bh_pct") or 0), "valid": False, "trades": int(baseline_vec.get("trades") or 0), "reason": "0 trades baseline — DATA_ERROR NPZ short history, no XLS, never waste", "done": {}, "no_delta": True, "zero_trades_diagnostic": True}
+                import json as _js0
+                diag_path.write_text(_js0.dumps(_diag, indent=2))
+            except Exception as _e:
+                print(f"[diag-warn] {new_symside} {_e}", flush=True)
+            return
+        _zero_trades_early = False
+        if not baseline_vec.get("valid"):
+            print(f"[baseline-warn] {new_symside} valid False but trades {baseline_vec.get('trades')} — proceeding", flush=True)
         prepared_for_fallback = prepared
 
     if args.vector_only:

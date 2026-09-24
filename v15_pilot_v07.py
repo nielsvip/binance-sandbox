@@ -658,7 +658,15 @@ def parity_ok(live: dict, vec: dict, allow_zero_baseline: bool = False) -> tuple
     return True, "parity ok"
 
 def ensure_lbI_headers(wb_path: Path):
-    wb = openpyxl.load_workbook(str(wb_path))
+    # NO STALLING EVER: missing wb (race delete) -> skip, don't crash pilot
+    if not wb_path.exists():
+        print(f"[ensure_lbI_headers] {wb_path} missing — skip (herd will recreate)", flush=True)
+        return
+    try:
+        wb = openpyxl.load_workbook(str(wb_path))
+    except Exception as e:
+        print(f"[ensure_lbI_headers] load fail {e} — skip", flush=True)
+        return
     fd_rows = _load_filter_dictionary()
     for sheet in SWITCH_SHEETS:
         if sheet not in wb.sheetnames:
@@ -673,7 +681,7 @@ def ensure_lbI_headers(wb_path: Path):
         existing = set()
         scan_max = max(ws.max_column, 12)
         stale = []
-        for c in range(12, scan_max + 1):
+        for c in range(15, scan_max + 1):
             try:
                 hv = ws.cell(row=2, column=c).value
             except Exception:
@@ -732,10 +740,14 @@ def ensure_lbI_headers(wb_path: Path):
             headers.append(hdr)
             if len(headers) >= 220:
                 break
-        col = 12
+        # Preserve L:is_default, M:AVG DELTA, N:POS_SYM — yellows start at O (col 15)
+        col = 15
         for hdr in headers:
             if hdr in existing:
                 continue
+            # skip reserved M/N if they still hold AVG DELTA / POS_SYM
+            while col in (13, 14):
+                col += 1
             try:
                 c = ws.cell(row=2, column=col)
                 if str(getattr(c, "__class__", "")).endswith("MergedCell"):
@@ -874,7 +886,7 @@ def main():
     ap.add_argument("--no-lbI", action="store_true")
     ap.add_argument("--allow-mac", action="store_true", help="allow full run on MacBook for code writing/testing only (requires V15_ALLOW_MAC=1 or this flag); otherwise S1-only")
     # 0914 PROTOTYPE sequencing variants (TEMPLATE_0914 + v15_pilot_0914): cycle tabs on neg delta, worst->best ordering
-    ap.add_argument("--seq-mode", default="worst2best", choices=["sequential", "cycle", "round_robin", "worst2best", "worst_to_best", "shuffle"], help="0914 prototype sequencing: sequential (legacy), cycle/round_robin (cycle tabs on every neg delta), worst2best (sheets ordered worst->best by avg delta), shuffle (random shuffle for second round)")
+    ap.add_argument("--seq-mode", default="sequential", choices=["sequential", "cycle", "round_robin", "worst2best", "worst_to_best", "shuffle"], help="0914 prototype sequencing: sequential (legacy), cycle/round_robin (cycle tabs on every neg delta), worst2best (sheets ordered worst->best by avg delta), shuffle (random shuffle for second round)")
     ap.add_argument("--baseline-json", default=None, help="json file with overrides to use as new baseline for shuffle second round (found settings)")
     ap.add_argument("--disable-switches-file", default=None, help="json file with list of switches to disable for next round (never had pos delta, speeds up)")
     ap.add_argument("--cycle-on-neg", action="store_true", help="0914 alias: force cycle-through-tabs on every NEG delta (same as --seq-mode cycle)")
@@ -2846,7 +2858,8 @@ def main():
                         live_best = vec_best
                     else:
                         import concurrent.futures as _cf
-                        with _cf.ThreadPoolExecutor(max_workers=16) as ex:
+                        # NO STALLING EVER: use all workers, never wait 90s on live — timeout and continue
+                        with _cf.ThreadPoolExecutor(max_workers=args.workers) as ex:
                             fut = ex.submit(live_evaluate, new_symside, dict(variant_best), args.window_days)
                             try:
                                 live_best = fut.result(timeout=90)

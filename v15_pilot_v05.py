@@ -658,7 +658,15 @@ def parity_ok(live: dict, vec: dict, allow_zero_baseline: bool = False) -> tuple
     return True, "parity ok"
 
 def ensure_lbI_headers(wb_path: Path):
-    wb = openpyxl.load_workbook(str(wb_path))
+    # NO STALLING EVER: missing wb (race delete) -> skip, don't crash pilot
+    if not wb_path.exists():
+        print(f"[ensure_lbI_headers] {wb_path} missing — skip (herd will recreate)", flush=True)
+        return
+    try:
+        wb = openpyxl.load_workbook(str(wb_path))
+    except Exception as e:
+        print(f"[ensure_lbI_headers] load fail {e} — skip", flush=True)
+        return
     fd_rows = _load_filter_dictionary()
     for sheet in SWITCH_SHEETS:
         if sheet not in wb.sheetnames:
@@ -673,7 +681,7 @@ def ensure_lbI_headers(wb_path: Path):
         existing = set()
         scan_max = max(ws.max_column, 12)
         stale = []
-        for c in range(12, scan_max + 1):
+        for c in range(15, scan_max + 1):
             try:
                 hv = ws.cell(row=2, column=c).value
             except Exception:
@@ -732,10 +740,38 @@ def ensure_lbI_headers(wb_path: Path):
             headers.append(hdr)
             if len(headers) >= 220:
                 break
-        col = 12
+        # Preserve L:is_default (12) , M:AVG DELTA (13), N:POS_SYM (14), plus legacy O:P duplicates — yellows start after last reserved
+        # Template has duplicates: row2 C13/C14 hold AVG/POS and row1 C15/C16 also hold them. Detect reserved cols dynamically.
+        reserved = set()
+        for rc in (12, 13, 14, 15, 16):
+            try:
+                v1 = ws.cell(1, rc).value
+                v2 = ws.cell(2, rc).value
+                if v1 and isinstance(v1, str) and v1.strip() in ("AVG_DELTA", "POS_SYM", "AVG DELTA", "POS SYM"):
+                    reserved.add(rc)
+                if v2 and isinstance(v2, str) and v2.strip() in ("AVG DELTA", "POS_SYM", "AVG DELTA", "POS SYM", "is_default (backup if bold lost)", "is_default"):
+                    reserved.add(rc)
+                # also preserve any col where row2 is AVG DELTA / POS_SYM label
+                if v2 in ("AVG DELTA", "POS_SYM"):
+                    reserved.add(rc)
+                if v1 in ("AVG_DELTA", "POS_SYM"):
+                    reserved.add(rc)
+            except Exception:
+                pass
+        # Always preserve L(12)=is_default, M(13)=AVG DELTA, N(14)=POS_SYM, and legacy O(15)/P(16) if they hold those headers
+        for forced in (12, 13, 14):
+            reserved.add(forced)
+        # If O/P (15,16) currently hold AVG_DELTA/POS_SYM in row1, also preserve them — yellows start at Q(17)
+        if ws.cell(1, 15).value in ("AVG_DELTA", "AVG DELTA") or ws.cell(2, 13).value == "AVG DELTA":
+            reserved.add(15)
+            reserved.add(16)
+        col = 17 if (15 in reserved and 16 in reserved) else 15
+        # Ensure we skip any reserved col
         for hdr in headers:
             if hdr in existing:
                 continue
+            while col in reserved:
+                col += 1
             try:
                 c = ws.cell(row=2, column=col)
                 if str(getattr(c, "__class__", "")).endswith("MergedCell"):
@@ -874,7 +910,7 @@ def main():
     ap.add_argument("--no-lbI", action="store_true")
     ap.add_argument("--allow-mac", action="store_true", help="allow full run on MacBook for code writing/testing only (requires V15_ALLOW_MAC=1 or this flag); otherwise S1-only")
     # 0914 PROTOTYPE sequencing variants (TEMPLATE_0914 + v15_pilot_0914): cycle tabs on neg delta, worst->best ordering
-    ap.add_argument("--seq-mode", default="worst2best", choices=["sequential", "cycle", "round_robin", "worst2best", "worst_to_best", "shuffle"], help="0914 prototype sequencing: sequential (legacy), cycle/round_robin (cycle tabs on every neg delta), worst2best (sheets ordered worst->best by avg delta), shuffle (random shuffle for second round)")
+    ap.add_argument("--seq-mode", default="sequential", choices=["sequential", "cycle", "round_robin", "worst2best", "worst_to_best", "shuffle"], help="0914 prototype sequencing: sequential (legacy), cycle/round_robin (cycle tabs on every neg delta), worst2best (sheets ordered worst->best by avg delta), shuffle (random shuffle for second round)")
     ap.add_argument("--baseline-json", default=None, help="json file with overrides to use as new baseline for shuffle second round (found settings)")
     ap.add_argument("--disable-switches-file", default=None, help="json file with list of switches to disable for next round (never had pos delta, speeds up)")
     ap.add_argument("--cycle-on-neg", action="store_true", help="0914 alias: force cycle-through-tabs on every NEG delta (same as --seq-mode cycle)")
@@ -2456,8 +2492,8 @@ def main():
                     pending_lbI = {}
                     vector_delta_val = None
                     print(f"[LOG {time.time():.1f}] {sheet}!{r} candidates={len(candidates)} start vec batch", flush=True)
-                    # 2026-09-22 TIMEOUT LAW: per-cell ≤10s COLOR RED AND MOVE ON — never sit >10s on a cell
-                    per_cell_deadline = 10.0
+                    # 2026-09-23 YELLOW-ONLY LAW: only that row's switch yellows, couple seconds → RED cell + RED TAB, never >1h per workbook
+                    per_cell_deadline = 2.5
                     vecs = []
                     try:
                         if prepared is not None:
@@ -2479,21 +2515,31 @@ def main():
                                 print(f"[LOG {time.time():.1f}] vec batch done {len(vecs)} {'heavy' if is_heavy else 'light'} <{per_cell_deadline}s", flush=True)
                             except _cf2.TimeoutError:
                                 print(f"[CELL-TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_deadline}s → COLOR RED AND MOVE ON", flush=True)
-                                _flag_to_md(flags_md, sheet, r, switch, cand, "CELL-TIMEOUT 10s RED", -1.0, 0.0, cumulative_before)
-                                vecs = [{"valid": False, "reason": "cell 10s timeout red"} for _ in candidates]
+                                _flag_to_md(flags_md, sheet, r, switch, cand, f"CELL-TIMEOUT {per_cell_deadline}s RED", -1.0, 0.0, cumulative_before)
+                                # RED TAB: mark sheet tab red when any cell times out (never >1h per workbook)
+                                try:
+                                    if ws_keep is not None:
+                                        from openpyxl.styles import PatternFill
+                                        ws_keep.sheet_properties.tabColor = "FF0000"
+                                except: pass
+                                vecs = [{"valid": False, "reason": f"cell {per_cell_deadline}s timeout red"} for _ in candidates]
                             except Exception as e:
                                 print(f"[vec-batch-err] {sheet}!{r} {switch} err {e}", flush=True)
                                 vecs = []
                         else:
                             from tools.opt.v12_pilot import evaluate_many_sanitized as _eval_many
-                            # per-cell 10s for direct many as well
+                            # per-cell couple seconds for direct many as well
                             try:
                                 with _cf2.ThreadPoolExecutor(max_workers=1) as ex:
                                     fut = ex.submit(_eval_many, new_symside, [c[0] for c in candidates], window_days=args.window_days)
                                     vecs = fut.result(timeout=per_cell_deadline)
                             except _cf2.TimeoutError:
                                 print(f"[CELL-TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_deadline}s → RED", flush=True)
-                                vecs = [{"valid": False, "reason": "cell 10s timeout red"} for _ in candidates]
+                                try:
+                                    if ws_keep is not None:
+                                        ws_keep.sheet_properties.tabColor = "FF0000"
+                                except: pass
+                                vecs = [{"valid": False, "reason": f"cell {per_cell_deadline}s timeout red"} for _ in candidates]
                     except Exception as e:
                         print(f"[vec-batch-err] {sheet}!{r} {switch} err {e}", flush=True)
                         vecs = []
@@ -2846,7 +2892,8 @@ def main():
                         live_best = vec_best
                     else:
                         import concurrent.futures as _cf
-                        with _cf.ThreadPoolExecutor(max_workers=16) as ex:
+                        # NO STALLING EVER: use all workers, never wait 90s on live — timeout and continue
+                        with _cf.ThreadPoolExecutor(max_workers=args.workers) as ex:
                             fut = ex.submit(live_evaluate, new_symside, dict(variant_best), args.window_days)
                             try:
                                 live_best = fut.result(timeout=90)
@@ -3029,8 +3076,19 @@ def main():
                     _atomic_save(wb_keep, wb_path)
                 except Exception:
                     pass
+                # ENSURE NO EMPTY AFTER 8 LINES: every row must have F numeric (0 if timeout/error) + red cell + red tab, never VLOOKUP/None
+                try:
+                    if ws_row is not None and ws_row.cell(row=r, column=6).value in (None, ""):
+                        from openpyxl.styles import PatternFill
+                        ws_row.cell(row=r, column=6).value = 0.0
+                        ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                        ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                        if ws_keep is not None:
+                            ws_keep.sheet_properties.tabColor = "FF0000"
+                        _flag_to_md(flags_md, sheet, r, switch, cand, "EMPTY after 8 lines -> 0 RED TAB", 0.0, 0.0, cumulative_before)
+                except: pass
                 if _check_per_cell_timeout(cell_start):
-                    print(f"[PER_CELL TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_timeout_sec}s — flag red, skip move on, take as much time as needed next cell", flush=True)
+                    print(f"[PER_CELL TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_timeout_sec}s — flag red + TAB RED, skip move on, never >1h per workbook", flush=True)
                     try:
                         if ws_row is not None:
                             from openpyxl.styles import PatternFill
@@ -3038,6 +3096,8 @@ def main():
                             ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
                             if ws_row.cell(row=r, column=6).value in (None, "") or isinstance(ws_row.cell(row=r, column=6).value, str):
                                 ws_row.cell(row=r, column=6).value = 0.0
+                            if ws_keep is not None:
+                                ws_keep.sheet_properties.tabColor = "FF0000"
                         _flag_to_md(flags_md, sheet, r, switch, cand, f"PER_CELL TIMEOUT {per_cell_timeout_sec}s", 0.0, 0.0, cumulative_before)
                     except: pass
 
