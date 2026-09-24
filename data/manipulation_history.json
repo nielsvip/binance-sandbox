@@ -2676,5 +2676,23 @@
     ],
     "timestamp": "2026-09-24T22:10:48.724994+00:00",
     "price": 2.10714393
+  },
+  {
+    "symbol": "SUIUSDC",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 10.5x normal"
+    ],
+    "timestamp": "2026-09-24T22:13:34.072653+00:00",
+    "price": 0.9998
+  },
+  {
+    "symbol": "ADAUSDC",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 7.5x normal"
+    ],
+    "timestamp": "2026-09-24T22:20:17.589434+00:00",
+    "price": 0.2485
   }
 ]
