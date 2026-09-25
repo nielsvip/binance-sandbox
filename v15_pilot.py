@@ -829,16 +829,6 @@ def ensure_lbI_headers(wb_path: Path):
             return
     fd_rows = _load_filter_dictionary()
     for sheet in SWITCH_SHEETS:
-        # USER 2026-09-25: 4 sym_sides per hour => 15 min per sym_side, if incomplete save and exit to next
-        if __import__('time').time() - _v15_start_time > 900:
-            print(f"[4-PER-HOUR] 15min timeout before sheet {sheet} ({__import__('time').time() - _v15_start_time:.1f}s) — saving {wb_path.name} and exiting to next sym_side", flush=True)
-            try:
-                _atomic_save(wb, wb_path)
-            except: pass
-            try:
-                _atomic_write_json(progress_path, progress)
-            except: pass
-            break
         if sheet not in wb.sheetnames:
             continue
         ws = wb[sheet]
@@ -1169,7 +1159,7 @@ def main():
         print(f"BLOCKED: only 30/20/7/1/365 allowed, got {args.window_days}", file=sys.stderr)
         sys.exit(2)
 
-    _v15_start_time = __import__('time').time()  # USER 2026-09-25: 4 sym_sides per hour => 15 min per sym_side, if incomplete go to next solve later
+    _v15_start_time = __import__('time').time()  # USER 2026-09-25: 4 sym_sides per hour = 10min NPZ load + whatever it takes for calcs, KEEP NPZ IN MEMORY, 4 at a time (max_parallel 4, 80% RAM), NEVER break off 5min after start — monitor baseline, if no baseline generated within 20min skip to next to avoid wasting 24h
     if args.sym_side:
         new_symside = args.sym_side.strip().upper()
     else:
@@ -2714,16 +2704,6 @@ def main():
                         break
 
             for (r, switch, cand) in rows:
-                # USER 2026-09-25: 4 per hour => 15 min per sym, if incomplete save and go to next
-                if __import__('time').time() - _v15_start_time > 900:
-                    print(f"[4-PER-HOUR] 15min timeout at row {r} ({__import__('time').time() - _v15_start_time:.1f}s) — saving {wb_path.name} and exiting", flush=True)
-                    try:
-                        _atomic_save(wb_keep, wb_path)
-                    except: pass
-                    try:
-                        _atomic_write_json(progress_path, progress)
-                    except: pass
-                    break
                 if _is_kg_never_skip(switch):
                     _is_w15m_seq = True  # KG never skip
                 else:
@@ -3279,29 +3259,6 @@ def main():
                             pass
                     except Exception as _e:
                         print(f"[row-write-err] {sheet}!{r} {_e}", flush=True)
-                    # FLAG-not-STOP + SYNTHETIC guard: red is FLAG, show must go on, >4 sym_sides per hour, repetitive = DEATH PENALTY synthetic
-                    try:
-                        _recent = progress.get("_recent_deltas", [])
-                        _recent.append(float(delta_best))
-                        if len(_recent) > 5:
-                            _recent = _recent[-5:]
-                        progress["_recent_deltas"] = _recent
-                        # repetitive = same delta 5x => synthetic DEATH PENALTY, flag red but DO NOT STOP, continue calculations
-                        if len(_recent) == 5 and len(set(round(x,12) for x in _recent)) == 1:
-                            print(f"[SYNTHETIC-REPETITIVE] {new_symside} sheet {sheet}!{r} delta {delta_best:.14f} repeated 5x — FLAG RED synthetic, show must go on", flush=True)
-                            try:
-                                if ws_row is not None:
-                                    from openpyxl.styles import PatternFill
-                                    ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                    ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
-                                    ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                    ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
-                                    ws_row.sheet_properties.tabColor = "FF0000"
-                                _flag_to_md(flags_md, sheet, r, switch, cand, f"SYNTHETIC repetitive {delta_best:.14f} 5x FLAG", delta_best, float(vec_best.get("gain_pct") or 0), cumulative_before)
-                            except: pass
-                            # do NOT stop, do NOT skip, continue as FLAG — show must go on >4/hr
-                            pass
-                    except: pass
                     progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct","win_rate","bars","peak","n_syms","years","avg_gain_trade","gain_per_yr","sym_sharpe"]}, "best_filter": filt_best, "best_fval": fval_best, "yellows": dict(pending_lbI) if pending_lbI else {}, "invalid_yellows": list(invalid_hdrs), "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before + delta_best) if delta_best > 0 else float(cumulative_before)}
                     try:
                         # batch progress.json every 10 rows for 180/3min = 1s/cell (was per-row fsync = 1.6s/row)
@@ -3800,16 +3757,6 @@ def main():
             # old pos-only sheet check now log-only
             if total_pos == 0 and __import__('time').time() - _v15_start_time > 15:
                 print(f"[VIRUS0-15s-SHEET-DISABLED] {new_symside} sheet {sheet} 0 pos after {__import__('time').time() - _v15_start_time:.1f}s — continuing (abort disabled, yellows kept)", flush=True)
-            # USER 2026-09-25: 4 sym_sides per hour => 15 min (900s) per sym_side, if incomplete save and exit to next
-            if __import__('time').time() - _v15_start_time > 900:
-                print(f"[4-PER-HOUR] {new_symside} 15min timeout ({__import__('time').time() - _v15_start_time:.1f}s) — saving current sheet and exiting to next sym_side (incomplete will be solved later)", flush=True)
-                try:
-                    _atomic_save(wb_keep, wb_path)
-                except: pass
-                try:
-                    _atomic_write_json(progress_path, progress)
-                except: pass
-                break
         except Exception as _sheet_e:
             import traceback
             print(f"[sheet-ERR] {sheet} {_sheet_e} {traceback.format_exc()[:800]}", flush=True)
