@@ -3259,7 +3259,7 @@ def main():
                             pass
                     except Exception as _e:
                         print(f"[row-write-err] {sheet}!{r} {_e}", flush=True)
-                    progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct"]}, "best_filter": filt_best, "best_fval": fval_best, "yellows": dict(pending_lbI) if pending_lbI else {}, "invalid_yellows": list(invalid_hdrs), "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before + delta_best) if delta_best > 0 else float(cumulative_before)}
+                    progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct","win_rate","bars","peak","n_syms","years","avg_gain_trade","gain_per_yr","sym_sharpe"]}, "best_filter": filt_best, "best_fval": fval_best, "yellows": dict(pending_lbI) if pending_lbI else {}, "invalid_yellows": list(invalid_hdrs), "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before + delta_best) if delta_best > 0 else float(cumulative_before)}
                     try:
                         # batch progress.json every 10 rows for 180/3min = 1s/cell (was per-row fsync = 1.6s/row)
                         if r % 10 == 0 or args.window_days not in (1,7):
