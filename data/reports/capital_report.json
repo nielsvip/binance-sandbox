@@ -1,32 +1,44 @@
 {
- "generated_at": "2026-09-25 05:10 UTC",
- "total_capital_usd": 32.1,
+ "generated_at": "2026-09-25 05:26 UTC",
+ "total_capital_usd": 10.13,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 32.1
+  "B": 5.05,
+  "C": 5.08
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
+  "B": 1,
   "C": 1
  },
  "winners": [],
  "losers": [
-  "inf:IOTAUSDT_LONG"
+  "men:XLMUSDT_LONG",
+  "men:1INCHUSDT_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:IOTAUSDT_LONG",
-   "symbol": "IOTAUSDT",
-   "account": "inf",
-   "value_usd": 32.1,
-   "gain_pct": -0.115,
+   "pk": "men:1INCHUSDT_SHORT",
+   "symbol": "1INCHUSDT",
+   "account": "men",
+   "value_usd": 5.08,
+   "gain_pct": 0.114,
    "tier": "C",
-   "perf_mult": 0.6,
-   "amt": 668.1,
-   "mark": 0.04804819
+   "perf_mult": 0.34,
+   "amt": 51.0,
+   "mark": 0.09966882
+  },
+  {
+   "pk": "men:XLMUSDT_LONG",
+   "symbol": "XLMUSDT",
+   "account": "men",
+   "value_usd": 5.05,
+   "gain_pct": -0.7,
+   "tier": "B",
+   "perf_mult": 1.11,
+   "amt": 23.0,
+   "mark": 0.21937087
   }
  ]
 }
