@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-25 19:42 UTC",
- "total_capital_usd": 243.65,
+ "generated_at": "2026-09-25 20:42 UTC",
+ "total_capital_usd": 243.64,
  "tier_capital": {
   "A": 0.0,
-  "B": 243.65,
+  "B": 243.63,
   "C": 0.0
  },
  "tier_count": {
@@ -24,7 +24,7 @@
    "symbol": "BTCUSDT",
    "account": "flz",
    "value_usd": 167.87,
-   "gain_pct": -3.665,
+   "gain_pct": -3.355,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 0.002,
@@ -34,12 +34,12 @@
    "pk": "flz:BTCDOMUSDT_SHORT",
    "symbol": "BTCDOMUSDT",
    "account": "flz",
-   "value_usd": 75.78,
-   "gain_pct": 0.165,
+   "value_usd": 75.76,
+   "gain_pct": 0.146,
    "tier": "B",
    "perf_mult": 0.83,
    "amt": 0.015,
-   "mark": 5052.1
+   "mark": 5050.85214876
   }
  ]
 }

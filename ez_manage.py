@@ -41420,15 +41420,40 @@ async def process_single_reentry_evaluation(
                     f"[proces s_single_reentry_evaluation] {position_key}: NOT_ALLOWED - account_key {account_key} not in positions_by_account"
                 )
             return
-        # 2026-09-26 GUARANTEED REENTRY AFTER STOP (user: do NOT hedge, keep stops, GUARANTEE REENTRY)
-        # Any reentry whose origin reason is a technical stop (MTF_ATR_TRAIL, R1/R2/R3, DC breach, WT cross etc.)
-        # must bypass LOSING_POSITION_HARD_BLOCK / NON_TRADEABLE pre-flight when tradeable.
-        # Keep tradeable check but bypass losing-position block for guaranteed stops — the whole point is to buy the bounce after selling the bottom.
+        # 2026-09-27 GUARANTEED REENTRY FOR ANY EXITED POSITION (user: reentry is ONLY for flat after ANY exit,
+        # bottom exit is STUPID, reentry must happen at better price or worst case at exit price, NEVER exit and not reenter when symbol moves right — suicide)
+        # Flat = no position, no gain (Amt 0). Any flat with reentry_level>0 is guaranteed candidate, not just MTF_ATR tags.
+        # Keep tradeable sacred, but guarantee re-buy when price moves right (LONG: cur >= reentry_level, SHORT: cur <= reentry_level) or better.
         _guaranteed_reentry = False
+        _is_flat_for_guarantee = False
         try:
-            _rd_reason_up = str((reentry_data.get("reason") if isinstance(reentry_data, dict) else "") or "").upper()
-            _guaranteed_tags = ("MTF_ATR_TRAIL","MTF_DC_REJECT","MTF_BB_REJECT","MTF_GR","R1_DC_LOW4","R2_WT_VEL","R3_HTF","DC_HOPELESS","FROZEN_ACT_STOP","NEWBORN_LOSS_KILL","HEDGE_FAILED","DAEMON_REENTRY_STALE","WT15M_AGAINST","ALL_TF_AGAINST","HTF_AGAINST","RIDICULOUS","UNDERWATER","DC_BB_D_BREAK","GR_HTF_DIRECT_EXIT")
-            _guaranteed_reentry = any(t in _rd_reason_up for t in _guaranteed_tags)
+            _pos_g = trade_manager.positions.get(position_key) if hasattr(trade_manager, "positions") else None
+            if _pos_g is None:
+                _pos_g = trade_manager.positions_by_account.get(account_key, {}).get(position_key) if hasattr(trade_manager, "positions_by_account") else None
+            _amt_g = float(getattr(_pos_g, "positionAmt", 0) or 0) if _pos_g is not None else 0.0
+            _is_flat_for_guarantee = abs(_amt_g) < 1e-9
+        except Exception:
+            _is_flat_for_guarantee = False
+        try:
+            _rlvl_g = 0.0
+            if isinstance(reentry_data, dict):
+                _rlvl_g = float(reentry_data.get("reentry_level", 0) or reentry_data.get("exit_price", 0) or 0)
+            if _rlvl_g <= 0 and _is_flat_for_guarantee:
+                # also check position.last_reduction_price if flat
+                try:
+                    _pos2 = trade_manager.positions_by_account.get(account_key, {}).get(position_key) if hasattr(trade_manager, "positions_by_account") else None
+                    _rlvl_g = float(getattr(_pos2, "last_reduction_price", 0) or 0)
+                except Exception:
+                    pass
+            # Any flat with a valid exit level is guaranteed — bottom exit tag is STUPID, guarantee is for ANY exit
+            if _is_flat_for_guarantee and _rlvl_g > 0:
+                _guaranteed_reentry = True
+            else:
+                # fallback to legacy tag check for residual edge (kept for compatibility)
+                _rd_reason_up = str((reentry_data.get("reason") if isinstance(reentry_data, dict) else "") or "").upper()
+                _guaranteed_tags = ("MTF_ATR_TRAIL","MTF_DC_REJECT","MTF_BB_REJECT","MTF_GR","R1_DC_LOW4","R2_WT_VEL","R3_HTF","DC_HOPELESS","FROZEN_ACT_STOP","NEWBORN_LOSS_KILL","HEDGE_FAILED","DAEMON_REENTRY_STALE","WT15M_AGAINST","ALL_TF_AGAINST","HTF_AGAINST","RIDICULOUS","UNDERWATER","DC_BB_D_BREAK","GR_HTF_DIRECT_EXIT")
+                if any(t in _rd_reason_up for t in _guaranteed_tags) and _is_flat_for_guarantee:
+                    _guaranteed_reentry = True
         except Exception:
             _guaranteed_reentry = False
         # 2026-04-28: pre-flight eligibility gate — skip if execute_now would BLOCK
@@ -41444,8 +41469,19 @@ async def process_single_reentry_evaluation(
             )
             if not _ok:
                 # Guaranteed reentry bypasses LOSING gate but still respects NON_TRADEABLE (sacred)
-                if _guaranteed_reentry and "NON_TRADEABLE" not in str(_gate_why).upper():
-                    logger.info(f"[GUARANTEED_REENTRY_BYPASS] {position_key}: bypassing {_gate_why} — guaranteed after stop (keep stops, no hedge, must re-buy bounce)")
+                # CORRECTED 2026-09-26: flat = no gain, no position. If holding (Amt>0, gain exists) there is no reentry.
+                # Only bypass LOSING when flat (Amt~0) — reentry is for bounce after flat, not augmenting a loser.
+                _is_flat_for_bypass = False
+                try:
+                    _pos_for_bypass = trade_manager.positions.get(position_key) if hasattr(trade_manager, "positions") else None
+                    if _pos_for_bypass is None:
+                        _pos_for_bypass = trade_manager.positions_by_account.get(account_key, {}).get(position_key) if hasattr(trade_manager, "positions_by_account") else None
+                    _amt_for_bypass = float(getattr(_pos_for_bypass, "positionAmt", 0) or 0) if _pos_for_bypass is not None else 0.0
+                    _is_flat_for_bypass = abs(_amt_for_bypass) < 1e-9
+                except Exception:
+                    _is_flat_for_bypass = False
+                if _guaranteed_reentry and _is_flat_for_bypass and "NON_TRADEABLE" not in str(_gate_why).upper():
+                    logger.info(f"[GUARANTEED_REENTRY_BYPASS] {position_key}: bypassing {_gate_why} — guaranteed after stop flat, must re-buy bounce (flat Amt 0, no gain)")
                 else:
                     return
         except Exception:
@@ -42128,7 +42164,10 @@ async def process_single_reentry_evaluation(
                     f"[PULLBACK_REENTRY] {position_key}: HTF confirmed (k_1h={k_1h:.1f}, k_4h={k_4h:.1f}) + bounce (k_3m={k_3m:.1f})"
                 )
         if k_3m is None or d_3m is None or k_15m is None or d_15m is None:
-            return
+            if not (_guaranteed_reentry and _is_flat_for_guarantee):
+                return
+        _tmp_stoch_ready = (is_long and (k_3m > d_3m or t_up_3m) and (k_15m > d_15m or t_up_15m)) or (not is_long and (k_3m < d_3m or not t_up_3m) and (k_15m < d_15m or not t_up_15m))
+        logger.warning(f"[STOCH_READY_CHECK] {position_key}: k_3m={k_3m} d_3m={d_3m} k_15m={k_15m} d_15m={d_15m stoch_ready={_tmp_stoch_ready} guaranteed={_guaranteed_reentry} flat={_is_flat_for_guarantee} is_long={is_long}")
         stoch_ready = (
             is_long and (k_3m > d_3m or t_up_3m) and (k_15m > d_15m or t_up_15m)
         ) or (
@@ -42137,7 +42176,11 @@ async def process_single_reentry_evaluation(
             and (k_15m < d_15m or not t_up_15m)
         )
         if not stoch_ready:
-            return
+            if _guaranteed_reentry and _is_flat_for_guarantee:
+                logger.warning(f"[GUARANTEED_STOCH_BYPASS] {position_key}: bypassing stoch_ready block for flat guaranteed reentry")
+            else:
+                logger.warning(f"[STOCH_READY_BLOCK] {position_key}: stoch_ready False and not guaranteed flat -> return")
+                return
         last_reduction_time = getattr(position, "last_reduction_time", None)
         last_reduction_price = safe_fetch_float(
             getattr(position, "last_reduction_price", 0.0), 0.0
@@ -42700,6 +42743,29 @@ async def process_single_reentry_evaluation(
                         logger.info(
                             f"[proces s_single_reentry_evaluation] {position_key}: DC_BOUNCE NOT_ALLOWED - conditions not met"
                         )
+        # FINAL GUARANTEED FALLBACK: ANY flat exited position must reenter at better price or worst at exit price when symbol moves right — suicide otherwise
+        # Flat = no position, no gain. Any flat with reentry_level>0 is guaranteed candidate (not just MTF tags). Re-buy if price is at/beyond exit in right direction (LONG cur>=exit, SHORT cur<=exit) or at better price (LONG cur<=exit dip, SHORT cur>=exit peak)
+        logger.warning(f"[GUARANTEED_FALLBACK_CHECK] {position_key}: guaranteed={_guaranteed_reentry} flat={_is_flat_for_guarantee} reentry_level={reentry_level:.4f} cur={current_price:.4f} is_long={is_long} positionAmt={positionAmt:.4f}")
+        if _guaranteed_reentry and _is_flat_for_guarantee and reentry_level > 0 and current_price > 0:
+            _right_long = is_long and current_price >= reentry_level * 0.999
+            _right_short = (not is_long) and current_price <= reentry_level * 1.001
+            _better_long = is_long and current_price <= reentry_level
+            _better_short = (not is_long) and current_price >= reentry_level
+            _should_reenter = _right_long or _right_short or _better_long or _better_short
+            logger.warning(f"[GUARANTEED_FALLBACK_DECISION] {position_key}: right_long={_right_long} right_short={_right_short} better_long={_better_long} better_short={_better_short} should={_should_reenter}")
+            if _should_reenter:
+                _fb_reason = f"GUARANTEED_ANY_EXIT_REENTRY_{'BETTER' if (_better_long or _better_short) else 'RIGHT'}_cur{current_price:.4f}_exit{reentry_level:.4f}"
+                logger.warning(f"[GUARANTEED_ANY_EXIT_REENTRY] {position_key}: flat {positionAmt:.4f} exit {reentry_level:.4f} cur {current_price:.4f} is_long {is_long} -> re-buy at {'better' if (_better_long or _better_short) else 'exit/worst'} price")
+                _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config)
+                _fb_reason = _fb_reason + _ee_tag
+                result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _fb_reason, 80.0, override_qty=reentry_amount)
+                if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
+                    logger.warning(f"[GUARANTEED_ANY_EXIT_REENTRY] {position_key}: QUEUED at {current_price:.4f} exit {reentry_level:.4f}")
+                return
+            else:
+                logger.warning(f"[GUARANTEED_FALLBACK_NO_REENTER] {position_key}: guaranteed true but price not right/better -> no reentry")
+        else:
+            logger.warning(f"[GUARANTEED_FALLBACK_SKIP] {position_key}: not guaranteed flat or no level guaranteed={_guaranteed_reentry} flat={_is_flat_for_guarantee} lvl={reentry_level:.4f}")
     except Exception as e:
         logger.debug(
             f"[evaluate_reentry_2] Error processing {position_key}: {e}", exc_info=True
