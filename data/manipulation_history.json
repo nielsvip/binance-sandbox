@@ -1195,5 +1195,23 @@
     ],
     "timestamp": "2026-09-25T13:43:30.301800+00:00",
     "price": 0.03072124
+  },
+  {
+    "symbol": "TSLAUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.1x (from rankings)"
+    ],
+    "timestamp": "2026-09-25T14:02:05.187467+00:00",
+    "price": 378.19
+  },
+  {
+    "symbol": "COSTUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.0x (from rankings)"
+    ],
+    "timestamp": "2026-09-25T14:20:09.899240+00:00",
+    "price": 899.46
   }
 ]

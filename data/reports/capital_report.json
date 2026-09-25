@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-25 13:26 UTC",
- "total_capital_usd": 31.88,
+ "generated_at": "2026-09-25 14:26 UTC",
+ "total_capital_usd": 31.4,
  "tier_capital": {
   "A": 0.0,
-  "B": 31.88,
+  "B": 31.4,
   "C": 0.0
  },
  "tier_count": {
@@ -12,19 +12,21 @@
   "C": 0
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "men:ADAUSDC_LONG"
+ ],
  "mediocre": [],
  "positions": [
   {
    "pk": "men:ADAUSDC_LONG",
    "symbol": "ADAUSDC",
    "account": "men",
-   "value_usd": 31.88,
-   "gain_pct": -0.373,
+   "value_usd": 31.4,
+   "gain_pct": -1.788,
    "tier": "B",
    "perf_mult": 1.51,
    "amt": 124.6,
-   "mark": 0.25587351
+   "mark": 0.252
   }
  ]
 }
