@@ -6901,6 +6901,34 @@ except ImportError:
     JSONDecodeError = json.JSONDecodeError
 load_environment_from_gpg(None)
 _ezm_base_config = Config()
+try:
+    from config_tradier import TradierConfig as _TradierConfig
+    _ezm_base_tradier = _TradierConfig()
+except Exception:
+    _ezm_base_tradier = _ezm_base_config
+# Cache stock symbol set for base selection (STOCK vs CRYPTO)
+try:
+    _STOCK_SYMBOLS = {k.split("_")[0] for k in json.loads((Path(__file__).parent / "data/hourly_reconfig/per_sym_active_config_stocks.json").read_text()).keys() if not k.startswith("_")}
+except Exception:
+    _STOCK_SYMBOLS = set()
+try:
+    _CRYPTO_SYMBOLS = {k.split("_")[0] for k in json.loads((Path(__file__).parent / "data/hourly_reconfig/per_sym_active_config.json").read_text()).keys() if not k.startswith("_")}
+except Exception:
+    _CRYPTO_SYMBOLS = set()
+def _is_stock_symbol(sym: str) -> bool:
+    # STOCK/CRYPTO disambiguation for base defaults — STOCK symbols are tradier universe
+    if sym in _STOCK_SYMBOLS:
+        return True
+    if sym in _CRYPTO_SYMBOLS:
+        return False
+    # Heuristic fallback: known stock tickers vs crypto suffix
+    _known_stocks = {"AAPL","MSFT","NVDA","GOOGL","META","TSLA","AMZN","AMD","NFLX","SPY","QQQ","IBIT","COIN","MSTR","BRK","JPM","XOM","GLD","SLV","XLE","SNDK","MU"}
+    if sym in _known_stocks:
+        return True
+    if sym.endswith("USDT") or sym.endswith("USDC"):
+        # crypto-like but unknown — treat as crypto
+        return False
+    return False
 # ── PER-SYM CONTEXT VAR for global proxy (wiring all switches without per-site edits) ──
 from contextvars import ContextVar as _CtxVar
 _psym_ctx_var: _CtxVar = _CtxVar("_psym_ctx_var", default=None)
@@ -7423,42 +7451,64 @@ def _psym_sps(symbol: str, side: str):
 # ── PER-SYM GLOBAL PROXY — makes every config.KNOB / getattr(config, KNOB) per-sym aware ──
 # Without this, only ~50 explicit _psym_get sites were wired and 28/29 XLM overrides were inert.
 # The proxy consults _psym_ctx_var (set at process_position entry) and returns the per-sym
-# override if present, else falls back to the base config. No per-site edits needed.
+# override if present, else falls back to the base STOCK/CRYPTO_LONG/SHORT template defaults.
+# No per-site edits needed — base is chosen per sym_side from the 4 TEMPLATE defaults
+# (TEMPLATE_CRYPTO_LONG, TEMPLATE_CRYPTO_SHORT, TEMPLATE_STOCKS_LONG, TEMPLATE_STOCKS_SHORT)
+# via Config vs TradierConfig (crypto vs stock) and side-aware fallback.
 class _PerSymProxy:
     __slots__ = ("_inner",)
     def __init__(self, inner):
         object.__setattr__(self, "_inner", inner)
+    def _base_for(self, sym: str, side: str):
+        # STOCK/CRYPTO_LONG/SHORT disambiguation — base defaults are the 4 TEMPLATE sheets
+        # Live source of truth is Config (crypto) vs TradierConfig (stocks); LONG/SHORT share
+        # the same base object but side is retained for future template divergence and logging.
+        try:
+            if _is_stock_symbol(sym):
+                return _ezm_base_tradier
+            else:
+                return _ezm_base_config
+        except Exception:
+            return object.__getattribute__(self, "_inner")
     def __getattr__(self, name):
         inner = object.__getattribute__(self, "_inner")
         ctx = _psym_ctx_var.get()
         if ctx is not None and not name.startswith("_"):
             try:
                 sym, side = ctx
-                if sym and side and not os.environ.get("V8_DISABLE_PER_SYM"):
-                    # lazy load per_sym if needed — replicate _psym_get loading without recursion
-                    try:
-                        mtime = _ezm_per_sym_cfgs_path.stat().st_mtime
-                        if mtime != _ezm_per_sym_cfgs_mtime:
-                            with _ezm_per_sym_cfgs_path.open() as _f:
-                                raw = json.load(_f)
-                            globals()["_ezm_per_sym_cfgs"] = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict) and k != "_meta"}
-                            globals()["_ezm_per_sym_cfgs_mtime"] = mtime
-                    except Exception:
-                        pass
-                    ov = _ezm_per_sym_cfgs.get(f"{sym}_{side}")
-                    if ov is not None and name in ov:
-                        return ov[name]
-                    # final-book overlay
-                    try:
-                        book = _ezm_load_final_book()
-                        if book:
-                            trd = book.get("tradeable", {}).get(f"{sym}_{side}", {})
-                            if name == "MOMENTUM_SMA_WATCHDOG_PCT" and trd.get("pct_entry") is not None:
-                                return float(trd["pct_entry"])
-                            if name == "BREAKOUT_SIZE_MAX_MULT" and trd.get("size_cap") is not None:
-                                return float(trd["size_cap"])
-                    except Exception:
-                        pass
+                if sym and side:
+                    # Per-sym override only when V8 not disabled
+                    if not os.environ.get("V8_DISABLE_PER_SYM"):
+                        try:
+                            mtime = _ezm_per_sym_cfgs_path.stat().st_mtime
+                            if mtime != _ezm_per_sym_cfgs_mtime:
+                                with _ezm_per_sym_cfgs_path.open() as _f:
+                                    raw = json.load(_f)
+                                globals()["_ezm_per_sym_cfgs"] = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict) and k != "_meta"}
+                                globals()["_ezm_per_sym_cfgs_mtime"] = mtime
+                        except Exception:
+                            pass
+                        ov = _ezm_per_sym_cfgs.get(f"{sym}_{side}")
+                        if ov is not None and name in ov:
+                            return ov[name]
+                        # final-book overlay
+                        try:
+                            book = _ezm_load_final_book()
+                            if book:
+                                trd = book.get("tradeable", {}).get(f"{sym}_{side}", {})
+                                if name == "MOMENTUM_SMA_WATCHDOG_PCT" and trd.get("pct_entry") is not None:
+                                    return float(trd["pct_entry"])
+                                if name == "BREAKOUT_SIZE_MAX_MULT" and trd.get("size_cap") is not None:
+                                    return float(trd["size_cap"])
+                        except Exception:
+                            pass
+                    # Fallback to STOCK/CRYPTO_LONG/SHORT template base even when V8 disabled
+                    base = self._base_for(sym, side)
+                    if base is not inner:
+                        try:
+                            return getattr(base, name)
+                        except Exception:
+                            pass
             except Exception:
                 pass
         return getattr(inner, name)
@@ -7468,7 +7518,7 @@ class _PerSymProxy:
         else:
             setattr(object.__getattribute__(self, "_inner"), name, value)
     def __getattribute__(self, name):
-        if name in ("_inner", "__class__", "__dict__", "__slots__", "__weakref__"):
+        if name in ("_inner", "__class__", "__dict__", "__slots__", "__weakref__", "_base_for"):
             return object.__getattribute__(self, name)
         inner = object.__getattribute__(self, "_inner")
         # Direct per-sym intercept for attribute access
@@ -7476,19 +7526,27 @@ class _PerSymProxy:
         if ctx is not None and not name.startswith("_") and name.isupper():
             try:
                 sym, side = ctx
-                if sym and side and not os.environ.get("V8_DISABLE_PER_SYM"):
+                if sym and side:
+                    if not os.environ.get("V8_DISABLE_PER_SYM"):
+                        try:
+                            mtime = _ezm_per_sym_cfgs_path.stat().st_mtime
+                            if mtime != _ezm_per_sym_cfgs_mtime:
+                                with _ezm_per_sym_cfgs_path.open() as _f:
+                                    raw = json.load(_f)
+                                globals()["_ezm_per_sym_cfgs"] = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict) and k != "_meta"}
+                                globals()["_ezm_per_sym_cfgs_mtime"] = mtime
+                        except Exception:
+                            pass
+                        ov = _ezm_per_sym_cfgs.get(f"{sym}_{side}")
+                        if ov is not None and name in ov:
+                            return ov[name]
+                    # Fallback to STOCK/CRYPTO_LONG/SHORT template base even when V8 disabled
                     try:
-                        mtime = _ezm_per_sym_cfgs_path.stat().st_mtime
-                        if mtime != _ezm_per_sym_cfgs_mtime:
-                            with _ezm_per_sym_cfgs_path.open() as _f:
-                                raw = json.load(_f)
-                            globals()["_ezm_per_sym_cfgs"] = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict) and k != "_meta"}
-                            globals()["_ezm_per_sym_cfgs_mtime"] = mtime
+                        base = object.__getattribute__(self, "_base_for")(sym, side)
+                        if base is not inner:
+                            return getattr(base, name)
                     except Exception:
                         pass
-                    ov = _ezm_per_sym_cfgs.get(f"{sym}_{side}")
-                    if ov is not None and name in ov:
-                        return ov[name]
             except Exception:
                 pass
         return getattr(inner, name)

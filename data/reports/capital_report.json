@@ -1,32 +1,45 @@
 {
- "generated_at": "2026-09-25 17:39 UTC",
- "total_capital_usd": 31.62,
+ "generated_at": "2026-09-25 19:42 UTC",
+ "total_capital_usd": 243.65,
  "tier_capital": {
   "A": 0.0,
-  "B": 31.62,
+  "B": 243.65,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 2,
   "C": 0
  },
  "winners": [],
  "losers": [
-  "men:ADAUSDC_LONG"
+  "flz:BTCUSDT_LONG"
  ],
- "mediocre": [],
+ "mediocre": [
+  "flz:BTCDOMUSDT_SHORT"
+ ],
  "positions": [
   {
-   "pk": "men:ADAUSDC_LONG",
-   "symbol": "ADAUSDC",
-   "account": "men",
-   "value_usd": 31.62,
-   "gain_pct": -0.526,
+   "pk": "flz:BTCUSDT_LONG",
+   "symbol": "BTCUSDT",
+   "account": "flz",
+   "value_usd": 167.87,
+   "gain_pct": -3.665,
    "tier": "B",
-   "perf_mult": 1.51,
-   "amt": 124.6,
-   "mark": 0.2538
+   "perf_mult": 1.0,
+   "amt": 0.002,
+   "mark": 83936.45
+  },
+  {
+   "pk": "flz:BTCDOMUSDT_SHORT",
+   "symbol": "BTCDOMUSDT",
+   "account": "flz",
+   "value_usd": 75.78,
+   "gain_pct": 0.165,
+   "tier": "B",
+   "perf_mult": 0.83,
+   "amt": 0.015,
+   "mark": 5052.1
   }
  ]
 }

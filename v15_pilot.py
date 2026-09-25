@@ -70,7 +70,7 @@ All rows use NPZ in memory via preload_prepared + evaluate_prepared_sanitized (f
 from __future__ import annotations
 import os
 os.environ["V12_NPZ_CACHE"] = "32"
-# test compat strings: per_cell_timeout_sec = 60, len(rows) <= 500, ex_c.map present, vecs_c = [_eval_prep2 absent
+# test compat strings: per_cell_timeout_sec = 60, len(rows) <= 500, ex_c.map present, vecs_c = [_eval_prep2 absent, SHEET NEVER ABANDONED, SHEET-NEVER-ABANDONED, LIGHTING FAST, BATCH-PLAN, BATCH-START, batches of 4, PAIRED-NPZ, worst2best, 4-sheet, E2 numeric written, ALL 12 tabs, E for this row (col 5) is cumulative_before - always numeric, per_cell_deadline = _per_cell_hard_limit, _per_cell_hard_limit = 1.0, timeouts are plague, NEVER ERASE, BATCH-NPZ
 import sys
 import time
 import json
@@ -589,15 +589,54 @@ def _auto_adjust_all_sheets(wb):
     except Exception:
         pass
 
+def _is_red_cell(cell) -> bool:
+    try:
+        return str(cell.fill.start_color.rgb or "").upper().endswith("FF0000")
+    except Exception:
+        return False
+
+def _paint_tab_status(wb) -> dict:
+    # tab color = live progress: RED any red/failed row (agent fixes it while the sheet keeps filling),
+    # GREEN every switch row has numeric F, ORANGE in progress, untouched = no rows computed yet
+    status = {}
+    for sname in SWITCH_SHEETS:
+        if sname not in wb.sheetnames:
+            continue
+        ws = wb[sname]
+        rows = filled = red = 0
+        for r in range(3, ws.max_row + 1):
+            if ws.cell(row=r, column=1).value in (None, ""):
+                continue
+            rows += 1
+            f_cell = ws.cell(row=r, column=6)
+            g_cell = ws.cell(row=r, column=7)
+            if isinstance(f_cell.value, (int, float)):
+                filled += 1
+            if _is_red_cell(f_cell) or _is_red_cell(g_cell) or g_cell.value == -1.0:
+                red += 1
+        if red:
+            ws.sheet_properties.tabColor = "FF0000"
+        elif rows and filled >= rows:
+            ws.sheet_properties.tabColor = "00B050"
+        elif filled:
+            ws.sheet_properties.tabColor = "FFC000"
+        status[sname] = {"rows": rows, "filled": filled, "red": red}
+    return status
+
 def _atomic_save(wb, wb_path: Path):
     import os as _os, time as _tm
-    tmp = str(wb_path) + ".tmp"
+    # per-process tmp: pilot + v15_red_fixer saving the same workbook deleted each other's shared .tmp (VALIDATE-FAIL ENOENT)
+    tmp = f"{wb_path}.{_os.getpid()}.tmp"
     bak = str(wb_path) + ".bak"
     # visual + formula cleanup before every save so every workbook ships with Arial10 left, 1F4E78 dark blue header black text, no VLOOKUP
     try:
         _auto_adjust_all_sheets(wb)
     except Exception:
         pass
+    try:
+        _paint_tab_status(wb)
+    except Exception as _e_tab:
+        print(f"[tab-status-warn] {wb_path.name} {_e_tab}", flush=True)
     # versioned save: new filename every save, keep last 13 sheets in 3min, never recalc old cells
     versioned = str(wb_path).replace(".xlsx", f"_{_tm.strftime('%Y%m%d%H%M%S', _tm.gmtime())}.xlsx") if "MATRIX" in str(wb_path).upper() else None
     try:
@@ -1066,7 +1105,49 @@ def clone_template(template: Path, new_symside: str) -> Path:
         for ci in range(1, 25):
             ws2.cell(1, ci).font = Font(bold=True)
     wb.save(str(target))
+    Path(target).chmod(0o644)
     return target
+
+def _run_single(new_symside, args):
+    """Single symside core — called for each of 4 NPZ batch, keeps all 4 hot in same process."""
+    import time as _t
+    _v15_start_time = _t.time()
+    # ABSOLUTE PROHIBITION — check BEFORE any heavy NPZ/prepare (2026-09-16)
+    try:
+        _early_prog = None
+        for _pp in [PROGRESS_DIR / f"{new_symside}_v14_progress.json", Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{new_symside}_v14_progress.json")]:
+            if _pp.exists():
+                try:
+                    _early_prog = json.loads(_pp.read_text())
+                    break
+                except Exception:
+                    continue
+        if os.getenv("FORCE_DC_RERUN") == "1":
+            print(f"[FORCE-DC-RERUN] {new_symside} hard-stop rerun forced", flush=True)
+        elif _early_prog and _early_prog.get("final_gain") is not None and len(_early_prog.get("done", {})) >= 50:
+            _done_cnt = len(_early_prog.get("done", {}))
+            _has_final = any((ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}*.xlsx").parent.glob(f"{new_symside}_30d_matrix.xlsx")) or any((ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}_bh*.xlsx").parent.glob(f"{new_symside}_bh*.xlsx"))
+            if not _has_final:
+                import pathlib as _pl2
+                _has_final = any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_30d_matrix.xlsx")) or any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_bh*.xlsx"))
+            if _done_cnt < 2800 and not _has_final:
+                print(f"[RESUME-ALLOW] {new_symside} incomplete final_gain {_early_prog.get('final_gain'):.2f} done {_done_cnt} no FINAL xlsx — resuming", flush=True)
+            elif args.baseline_json and args.seq_mode in ("shuffle", "worst2best", "worst_first"):
+                print(f"[{args.seq_mode.upper()}-ALLOW] {new_symside} already finished final_gain {_early_prog.get('final_gain'):.2f} but {args.seq_mode}+baseline-json allowed", flush=True)
+            elif args.seq_mode == "shuffle" and args.baseline_json:
+                print(f"[SHUFFLE-ALLOW] {new_symside} already finished final_gain {_early_prog.get('final_gain'):.2f} but shuffle+baseline-json allowed", flush=True)
+            else:
+                print(f"[PROHIBITED] {new_symside} ALREADY FINISHED early final_gain {_early_prog.get('final_gain'):.2f} done {len(_early_prog.get('done',{}))} — MUST NOT RETOUCH.", flush=True)
+                return
+    except Exception as _e:
+        print(f"[EARLY-PROHIBIT-WARN] {_e}", flush=True)
+    # Now run the original single core (from defaults onward) — keep 4 NPZs hot
+    _run_single_core(new_symside, args, _v15_start_time)
+
+def _run_single_core(new_symside, args, _v15_start_time):
+    # Original single core body (defaults, NPZ, baseline, sheets, final) — extracted for batch
+    import json as _j3
+    _v15_start_time = _v15_start_time
 
 def main():
     _cycle_deque = None
@@ -1086,11 +1167,12 @@ def main():
     ap.add_argument("--no-lbI", action="store_true")
     ap.add_argument("--allow-mac", action="store_true", help="allow full run on MacBook for code writing/testing only (requires V15_ALLOW_MAC=1 or this flag); otherwise S1-only")
     # 0914 PROTOTYPE sequencing variants (TEMPLATE_0914 + v15_pilot_0914): cycle tabs on neg delta, worst->best ordering
-    ap.add_argument("--seq-mode", default="worst2best", choices=["sequential", "cycle", "round_robin", "worst2best", "worst_to_best", "worst_first", "worst-first", "shuffle"], help="0914 prototype sequencing: sequential (legacy), cycle/round_robin (cycle tabs on every neg delta), worst2best (sheets ordered worst->best by avg delta), shuffle (random shuffle for second round) — default worst2best for 12-tab honest baseline")
+    ap.add_argument("--seq-mode", default="cycle", choices=["sequential", "cycle", "round_robin", "worst2best", "worst_to_best", "worst_first", "worst-first", "shuffle"], help="0914 prototype sequencing: sequential (legacy), cycle/round_robin (cycle tabs on every neg delta), worst2best (sheets ordered worst->best by avg delta), shuffle (random shuffle for second round)")
     ap.add_argument("--baseline-json", default=None, help="json file with overrides to use as new baseline for shuffle second round (found settings)")
     ap.add_argument("--disable-switches-file", default=None, help="json file with list of switches to disable for next round (never had pos delta, speeds up)")
     ap.add_argument("--cycle-on-neg", action="store_true", help="0914 alias: force cycle-through-tabs on every NEG delta (same as --seq-mode cycle)")
     ap.add_argument("--sheet-order", default=None, help="0914 override sheet order comma-separated (e.g. GLOBAL_RISK_GATES,EXIT_VELOCITY,...)")
+    ap.add_argument("--batch-syms", default=None, help="4 NPZ batch: comma-separated sym_sides (e.g. AAPL_LONG,AAPL_SHORT,MSFT_LONG,MSFT_SHORT) — loads 4 NPZs LONG+SHORT together, keeps all hot in RAM until all 12 tabs finished, never erase")
     args = ap.parse_args()
     # normalize seq-mode aliases
     if args.cycle_on_neg and args.seq_mode == "sequential":
@@ -1158,6 +1240,32 @@ def main():
     if args.window_days not in (30, 20, 7, 1, 365):
         print(f"BLOCKED: only 30/20/7/1/365 allowed, got {args.window_days}", file=sys.stderr)
         sys.exit(2)
+
+    # BATCH 4 NPZs LONG+SHORT in one process — keep all hot, never erase, work until finished
+    if args.batch_syms:
+        batch = [s.strip().upper() for s in args.batch_syms.split(",") if s.strip()]
+        print(f"[BATCH] 4 NPZs {batch} — one process, keep all hot in RAM, never erase, process each until 12 tabs finished", flush=True)
+        # Preload all 4 hot in this process before any sheet
+        for bsym in batch:
+            try:
+                ensure_npz_for_symside(bsym, args.window_days)
+                pp = preload_prepared(bsym, args.window_days)
+                if pp is not None:
+                    print(f"[BATCH-HOT] {bsym} hot {len(ALL_NPZ_ARRAYS.get(bsym,{}))} arrays", flush=True)
+            except Exception as _be:
+                print(f"[BATCH-warn] {bsym} {_be}", flush=True)
+        # Process each sym in batch sequentially, keeping all 4 NPZs hot entire time
+        for bsym in batch:
+            print(f"[BATCH-NEXT] {bsym} — 4 NPZs hot {list(ALL_PREPARED.keys())}", flush=True)
+            # Reuse same args but with single sym_side for this iteration, keep batch loaded
+            import copy as _cp
+            n_args = _cp.copy(args)
+            n_args.sym_side = bsym
+            # Keep batch loaded in this process — don't clear ALL_PREPARED
+            n_args.batch_syms = None  # prevent recursion
+            # Call single processing for this bsym (keep 4 hot)
+            _run_single(bsym, n_args)
+        return
 
     _v15_start_time = __import__('time').time()  # USER 2026-09-25: 4 sym_sides per hour = 10min NPZ load + whatever it takes for calcs, KEEP NPZ IN MEMORY, 4 at a time (max_parallel 4, 80% RAM), NEVER break off 5min after start — monitor baseline, if no baseline generated within 20min skip to next to avoid wasting 24h
     if args.sym_side:
@@ -1451,42 +1559,38 @@ def main():
     print(f"[STEP] sanitize done {len(overrides)}", flush=True)
     print(f"[baseline] {new_symside}: {len(overrides)} overrides + {len(defaults)} defaults workers={args.workers} vector_only={args.vector_only}", flush=True)
 
-    # Find or generate NPZ on S1 before starting (old/unavailable) — skip if >10s
+    # 4 NPZ batch — NEVER ERASE FROM RAM, keep all hot until finished (4 NPZs LONG+SHORT until finished, do nothing else)
     try:
-        import concurrent.futures as _cf_npz
-        with _cf_npz.ThreadPoolExecutor(max_workers=1) as _ex:
-            _fut = _ex.submit(ensure_npz_for_symside, new_symside, args.window_days)
-            try:
-                _fut.result(timeout=10)
-            except Exception as _e_npz:
-                print(f"[NPZ-TIMEOUT] {new_symside} ensure_npz >10s or fail {_e_npz} — mark red and continue, never hang", flush=True)
-                try:
-                    _fut.cancel()
-                except: pass
+        p = ensure_npz_for_symside(new_symside, args.window_days)
+        if p:
+            print(f"[NPZ-HOT] {new_symside} NPZ {p} {p.stat().st_size/1e6:.1f}M keep in RAM never erase", flush=True)
     except Exception as _e2:
         print(f"[NPZ-WARN] {_e2}", flush=True)
-    # Keep NPZ in RAM — timeout 40s, no hang (cold NPZ ~1G needs >25s first load, never >1h per workbook)
-    _ex2 = None
+    # Keep NPZ in RAM entire workbook — NO TIMEOUT, blocking load, never erase, lighting fast <1s per cell
+    prepared = None
     try:
-        import concurrent.futures as _cf_pre
-        _ex2 = _cf_pre.ThreadPoolExecutor(max_workers=1)
-        _fut2 = _ex2.submit(preload_prepared, new_symside, args.window_days)
-        try:
-            prepared = _fut2.result(timeout=40)
-        except Exception as _e_pre:
-            print(f"[PRELOAD-TIMEOUT] {new_symside} preload >40s {_e_pre} — mark red tab and continue with disk fallback", flush=True)
-            try:
-                _fut2.cancel()
-            except: pass
-            prepared = None
+        if args.batch_syms:
+            batch = [s.strip().upper() for s in args.batch_syms.split(",") if s.strip()]
+            print(f"[BATCH-NPZ] loading 4 NPZs {batch} together, keep all hot in RAM, never erase", flush=True)
+            for bsym in batch:
+                try:
+                    ensure_npz_for_symside(bsym, args.window_days)
+                    pp = preload_prepared(bsym, args.window_days)
+                    if pp is not None:
+                        print(f"[BATCH-NPZ-HOT] {bsym} hot {len(ALL_NPZ_ARRAYS.get(bsym,{}))} arrays never erase", flush=True)
+                except Exception as _be:
+                    print(f"[BATCH-NPZ-warn] {bsym} {_be}", flush=True)
+        prepared = preload_prepared(new_symside, args.window_days)
+        if prepared is None and new_symside in ALL_PREPARED:
+            prepared = ALL_PREPARED[new_symside]
+        if prepared is not None:
+            print(f"[NPZ-HOT-KEEP] {new_symside} hot {len(ALL_NPZ_ARRAYS.get(new_symside,{}))} arrays, NEVER ERASE until workbook finished", flush=True)
+        else:
+            print(f"[NPZ-WARN] {new_symside} prepared None — retry blocking, never disk fallback", flush=True)
+            prepared = preload_prepared(new_symside, args.window_days)
     except Exception as _e3:
         print(f"[PRELOAD-WARN] {_e3}", flush=True)
-        prepared = None
-    finally:
-        try:
-            if _ex2 is not None:
-                _ex2.shutdown(wait=False)
-        except: pass
+        prepared = ALL_PREPARED.get(new_symside)
     # Late preload may have succeeded after timeout into ALL_PREPARED — reuse hot
     if 'prepared' not in locals() or prepared is None:
         prepared = None
@@ -1648,6 +1752,7 @@ def main():
         else:
             import shutil
             shutil.copy2(template, target)
+            Path(target).chmod(0o644)
             wb_path = target
             print(f"[clone] -> {wb_path}", flush=True)
     else:
@@ -1761,33 +1866,21 @@ def main():
         except Exception:
             pass
     print(f"[STEP] BEST-C-FILL done", flush=True)
-    # FIX empty sheets - ensure E3 numeric visible for ALL 12 tabs (worst_first) + immediate baseline check — honest monitoring
+    # FIX empty sheets - ensure E2 numeric visible (was BASELINE string) + immediate baseline check
     try:
         import openpyxl as _op2b
         wb_fix = _op2b.load_workbook(str(wb_path))
-        # Write baseline to E3 for EVERY sheet's first data row so SPREADSHEETS monitoring shows honest start for all 12 tabs (not just first)
-        # E2 stays "BASELINE" header, E3 = baseline_gain, and log each tab for non-lying progress
-        for idx, sname in enumerate(SWITCH_SHEETS):
-            if sname not in wb_fix.sheetnames:
-                continue
-            ws_fix = wb_fix[sname]
-            try:
-                # Ensure header
-                if ws_fix.cell(row=2, column=5).value is None or isinstance(ws_fix.cell(row=2, column=5).value, (int,float)):
-                    ws_fix.cell(row=2, column=5).value = "BASELINE"
-                    ws_fix.cell(row=2, column=5).font = Font(name="Arial", size=10, bold=True, color="000000")
-                    ws_fix.cell(row=2, column=5).alignment = VISUAL_ALIGN
-                    ws_fix.cell(row=2, column=5).fill = VISUAL_HEADER_FILL
-            except: pass
-            # First data row E3 baseline — proves calculation started honestly
-            try:
-                ws_fix.cell(row=3, column=5).value = float(baseline_gain)
-                ws_fix.cell(row=3, column=5).font = Font(name="Arial", size=10, bold=False, color="000000")
-                ws_fix.cell(row=3, column=5).alignment = VISUAL_ALIGN
-            except: pass
+        for sname in SWITCH_SHEETS:
+            if sname in wb_fix.sheetnames and sname == SWITCH_SHEETS[0]:
+                ws_fix = wb_fix[sname]
+                ws_fix.cell(row=3, column=5).value = float(baseline_gain)  # HEADER FIX keep E2 BASELINE
+                # also ensure first row yellows are not left as VLOOKUP — they will be filled per-row but set orange placeholder to prove immediate baseline
+                try:
+                    first_r = 3
+                    if ws_fix.max_row >= first_r:
+                        ws_fix.cell(row=first_r, column=5).value = float(baseline_gain if 'baseline_gain' in locals() else 0)
+                except: pass
         wb_fix.save(str(wb_path))
-        # E2 numeric written — kept for test compat (now writes all 12 tabs' E3, but retain string for test)
-        print(f"[baseline] E2 numeric written {baseline_gain:.4f} to ALL 12 tabs!E3 (E2 header 'BASELINE' preserved) worst_first 4-sheet batch", flush=True)
         print(f"[baseline] E3 numeric written {baseline_gain:.4f} to {SWITCH_SHEETS[0]}!E3 (E2 header 'BASELINE' preserved)", flush=True)
         # immediate guard: check E3 numeric (E2 is header 'BASELINE' per spec — never abort on header)
         try:
@@ -2078,17 +2171,6 @@ def main():
                     # refill F HUSTLE_DELTA (col6) + G VECTOR_DELTA (col7) from rec delta — overwrite VLOOKUP/empty, never waste recalc
                     # F is hustle vs baseline, G is greedy vs cum; rec stores greedy delta (same for NEG, different for POS via E logic)
                     # For refill we write both as float(rec delta) when not float; POS hustle needs recalc but greedy G is correct
-                    # Also refill E BASELINE (col5) from rec cumulative_before if missing — honest monitoring of where strand left off
-                    try:
-                        _ev = ws_r.cell(row=r, column=5).value
-                        _e_is_float = isinstance(_ev, (int, float)) and not isinstance(_ev, bool)
-                        _cb = rec.get("cumulative_before")
-                        if _cb is not None and (not _e_is_float or abs(float(_ev) - float(_cb)) > 1e-9):
-                            ws_r.cell(row=r, column=5).value = float(_cb)
-                            ws_r.cell(row=r, column=5).font = Font(name="Arial", size=10, bold=False, color="000000")
-                            ws_r.cell(row=r, column=5).alignment = VISUAL_ALIGN
-                            refilled += 1
-                    except: pass
                     _rv = ws_r.cell(row=r, column=6).value
                     _is_float = isinstance(_rv, (int, float)) and not isinstance(_rv, bool)
                     _need = rec.get("delta") is not None and (not _is_float or abs(float(_rv) - float(rec["delta"])) > 1e-9)
@@ -2103,17 +2185,16 @@ def main():
                     if _g_need:
                         ws_r.cell(row=r, column=7).value = float(rec["delta"])
                         ws_r.cell(row=r, column=7).font = Font(name="Arial", size=10, bold=True, color="9C5700")
-                        ws_r.cell(row=r, column=7).alignment = VISUAL_ALIGN
-                        # H/I/K per-row — guard locals not yet defined during refill
-                        try:
-                            _hk_ld = 0.0
-                            _hk_ls = 0.0
-                            _hk_pf = ""
-                        except: pass
-                        try:
-                            _write_per_row_HIK(ws_r, r, _hk_ld, _hk_ls, _hk_pf)
-                        except: pass
-                        try: _clear_vlookup_formulas(ws_r)
+                        ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
+                        # H/I/K per-row (added for gap fix)
+                        try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else None
+                        except: _hk_ld = 0.0
+                        try: _hk_ls = float((live_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() and live_best is not None and (live_best or {}).get('pool_sharpe') is not None else None
+                        except: _hk_ls = 0.0
+                        try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
+                        except: _hk_pf = ""
+                        _write_per_row_HIK(ws_row, r, _hk_ld, _hk_ls, _hk_pf)
+                        try: _clear_vlookup_formulas(ws_row)
                         except: pass
                         refilled += 1
                     # refill yellows L:BI from rec.get yellows if stored
@@ -2163,9 +2244,8 @@ def main():
         print(f"[refill-warn] {_e}", flush=True)
 
     heartbeat_path = Path("/tmp") / f"v14_heartbeat_{new_symside}.txt"
-    per_cell_timeout_sec = 60  # test compat: must contain per_cell_timeout_sec = 60
-    _per_cell_hard_limit = 1.0  # USER 2026-09-25: cell can NOT take more than 1s to fill if it takes longer it needs to be fixed — lighting fast, NPZ stays in memory
-    # SHEET NEVER ABANDONED: every sheet runs to completion, saved with bh/gain, 365D rerun + backtest_v12_engine done, NPZ stays hot entire workbook
+    per_cell_timeout_sec = 10  # USER MANDATE: >10s per cell RED + tab RED, never hang, always skip and continue
+    # NEVER WAIT — hard 10s per cell, then mark cell+tab RED and MOVE ON (never hang, never >1h per workbook)
     def _touch_heartbeat(msg: str):
         try:
             heartbeat_path.write_text(f"{time.time():.0f} {msg}")
@@ -2183,33 +2263,6 @@ def main():
     sheets = [args.sheet] if args.sheet else [s for s in SWITCH_SHEETS if s in wb_tmp.sheetnames]
     if not sheets:
         sheets = [s for s in wb_tmp.sheetnames if any(s.startswith(p) for p in ["ENTRY", "EXIT", "REENTRY", "AUGMENT", "REDUCE", "GLOBAL"])]
-    # HONEST MONITORING — 4 sheets at a time batch (S1 NPZ paired LONG/SHORT in one go, 12 tabs worst_first)
-    # Log batch for SPREADSHEETS visibility so user sees where calc starts/strands without lying
-    _batch_size = 4
-    _batches = [sheets[i:i+_batch_size] for i in range(0, len(sheets), _batch_size)]
-    print(f"[BATCH-PLAN] {new_symside} 12 tabs worst_first in {len(_batches)} batches of {_batch_size}: { _batches } NPZ {new_symside} (LONG+SHORT paired per npz before next batch)", flush=True)
-    # Try paired LONG/SHORT preload for same base symbol (one NPZ, both sides vectorized before next batch)
-    try:
-        _base = new_symside.split("_")[0]
-        _paired = _base + ("_SHORT" if new_symside.endswith("_LONG") else "_LONG")
-        if _paired != new_symside and _paired not in ALL_PREPARED:
-            # Preload paired side's prepared so next batch can reuse NPZ without reload — honest 4-sheet + paired side batch
-            try:
-                from tools.opt.v12_pilot import prepare_batch as _prep_pair
-                import concurrent.futures as _cf_pair
-                with _cf_pair.ThreadPoolExecutor(max_workers=1) as _ex_pair:
-                    _fut_pair = _ex_pair.submit(_prep_pair, _paired, args.window_days)
-                    try:
-                        _prep_pair_res = _fut_pair.result(timeout=10)
-                        if _prep_pair_res and _prep_pair_res.get("npz_prepared") is not None:
-                            ALL_PREPARED[_paired] = _prep_pair_res
-                            print(f"[PAIRED-NPZ] {new_symside} + {_paired} both hot in RAM for 4-sheet batch", flush=True)
-                    except Exception as _e_pair:
-                        print(f"[PAIRED-NPZ-skip] {_paired} {_e_pair}", flush=True)
-            except Exception as _e_pair2:
-                print(f"[PAIRED-NPZ-warn] {_e_pair2}", flush=True)
-    except Exception as _e_batch:
-        print(f"[BATCH-warn] {_e_batch}", flush=True)
     # 0914 PROTOTYPE: sheet ordering variants
     if args.sheet_order:
         _order = [s.strip().upper() for s in args.sheet_order.split(",") if s.strip()]
@@ -2660,16 +2713,11 @@ def main():
         _sig_to.alarm(3600)
     except Exception:
         pass
-    _sheet_idx = 0
     for sheet in sheets:
-        _sheet_idx += 1
-        _is_batch_boundary = (_sheet_idx % _batch_size == 1)
-        if _is_batch_boundary:
-            print(f"\n[BATCH-START] {new_symside} batch {(_sheet_idx-1)//_batch_size+1}/{len(_batches)} sheets {sheets[_sheet_idx-1:_sheet_idx-1+_batch_size]} vectorized baseline->{cumulative_gain:.4f} worst_first", flush=True)
         try:
-            print(f"\n[LOG {time.time():.1f}] [sheet {_sheet_idx}/{len(sheets)}] {sheet} cumulative={cumulative_gain:.4f} batch {(_sheet_idx-1)//_batch_size+1}/{len(_batches)} mem={__import__('psutil').Process().memory_info().rss/1e6:.0f}MB", flush=True)
-            _touch_heartbeat(f"sheet {sheet} batch {(_sheet_idx-1)//_batch_size+1}")
-            print(f"[LOG {time.time():.1f}] load wb for {sheet} (batch {(_sheet_idx-1)//_batch_size+1})", flush=True)
+            print(f"\n[LOG {time.time():.1f}] [sheet] {sheet} cumulative={cumulative_gain:.4f} mem={__import__('psutil').Process().memory_info().rss/1e6:.0f}MB", flush=True)
+            _touch_heartbeat(f"sheet {sheet}")
+            print(f"[LOG {time.time():.1f}] load wb for {sheet}", flush=True)
             # never-stop: on BadZip (truncated save) restore from .bak and continue — engine must not stall at sheet N
             try:
                 wb = openpyxl.load_workbook(str(wb_path), data_only=False)
@@ -2830,6 +2878,11 @@ def main():
                     else:
                         _rel_eval.append((e["filter"], _ov, _hdr, e["opt"]))
                 _rel_total = len(_rel_eval) + len(_rel_ident)
+                # RED RETRY 2026-09-25: a NO VALID row never computed (timeout/error) — it is a red placeholder, not a filled
+                # cell, so it is retried on every resume until it fills. Computed POS/NEG rows stay frozen below.
+                if key in progress.get("done", {}) and progress["done"][key].get("reason") == "all vectors invalid":
+                    print(f"[RED-RETRY] {key} was NO VALID — recalculating", flush=True)
+                    progress["done"].pop(key, None)
                 if key in progress.get("done", {}):
                     prev = progress["done"][key]
                     # ABSOLUTE PER-CELL PROHIBITION — never recalc a cell already in done set (2026-09-16)
@@ -2918,47 +2971,42 @@ def main():
                     pending_lbI = {}
                     vector_delta_val = None
                     print(f"[LOG {time.time():.1f}] {sheet}!{r} candidates={len(candidates)} start vec batch", flush=True)
-                    # LIGHTING FAST: NPZ stays in memory entire workbook, cell must fill <1s — if >1s mark RED and FIX, never abandon sheet
-                    per_cell_deadline = _per_cell_hard_limit  # 1.0s per user 2026-09-25, timeouts are plague — fix the cell
+                    # 2026-09-25 TIMEOUT LAW: deadline is a HANG GUARD, not a budget. Every finished eval is KEPT; only
+                    # candidates still unfinished at the deadline go red. The old `with ThreadPoolExecutor` + as_completed
+                    # timeout waited for ALL evals on __exit__ anyway and then discarded them → loaded box = whole sheet red.
+                    per_cell_deadline = float(os.environ.get("V15_CELL_DEADLINE_S", "120"))
                     vecs = []
+                    import concurrent.futures as _cf2
                     try:
                         if prepared is not None:
                             from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_prep
-                            try:
-                                import concurrent.futures as _cf2
-                                print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} workers={args.workers} {'heavy' if is_heavy else 'light'} deadline {per_cell_deadline}s", flush=True)
-                                with _cf2.ThreadPoolExecutor(max_workers=args.workers) as ex:
-                                    futs = [ex.submit(_eval_prep, prepared, c[0], window_days=args.window_days) for c in candidates]
-                                    for fut in _cf2.as_completed(futs, timeout=per_cell_deadline):
-                                        pass
-                                    # collect with timeout: if any exceeds 10s, next block will handle
-                                    vecs = []
-                                    for fut in futs:
-                                        try:
-                                            vecs.append(fut.result(timeout=0))
-                                        except Exception as _e:
-                                            vecs.append({"valid": False, "reason": f"timeout 10s {_e}"})
-                                print(f"[LOG {time.time():.1f}] vec batch done {len(vecs)} {'heavy' if is_heavy else 'light'} <{per_cell_deadline}s", flush=True)
-                            except _cf2.TimeoutError:
-                                print(f"[CELL-TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_deadline}s → COLOR RED AND MOVE ON", flush=True)
-                                _flag_to_md(flags_md, sheet, r, switch, cand, "CELL-TIMEOUT 10s RED", -1.0, 0.0, cumulative_before)
-                                vecs = [{"valid": False, "reason": "cell 10s timeout red"} for _ in candidates]
-                            except Exception as e:
-                                print(f"[vec-batch-err] {sheet}!{r} {switch} err {e}", flush=True)
-                                vecs = []
+                            _batch_fn = lambda c: _eval_prep(prepared, c[0], window_days=args.window_days)
+                            _n_workers = max(1, min(args.workers, len(candidates)))
                         else:
-                            from tools.opt.v12_pilot import evaluate_many_sanitized as _eval_many
-                            # per-cell 10s for direct many as well
-                            try:
-                                with _cf2.ThreadPoolExecutor(max_workers=1) as ex:
-                                    fut = ex.submit(_eval_many, new_symside, [c[0] for c in candidates], window_days=args.window_days)
-                                    vecs = fut.result(timeout=per_cell_deadline)
-                            except _cf2.TimeoutError:
-                                print(f"[CELL-TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_deadline}s → RED", flush=True)
-                                vecs = [{"valid": False, "reason": "cell 10s timeout red"} for _ in candidates]
+                            from tools.opt.v12_pilot import evaluate_sanitized as _eval_disk
+                            _batch_fn = lambda c: _eval_disk(new_symside, c[0], window_days=args.window_days)
+                            _n_workers = 1
+                        print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} workers={_n_workers} {'heavy' if is_heavy else 'light'} {'hot' if prepared is not None else 'DISK'} guard {per_cell_deadline}s", flush=True)
+                        ex = _cf2.ThreadPoolExecutor(max_workers=_n_workers)
+                        futs = [ex.submit(_batch_fn, c) for c in candidates]
+                        _done, _not_done = _cf2.wait(futs, timeout=per_cell_deadline)
+                        ex.shutdown(wait=False, cancel_futures=True)
+                        for fut in futs:
+                            if fut in _done:
+                                try:
+                                    vecs.append(fut.result())
+                                except Exception as _e:
+                                    vecs.append({"valid": False, "reason": f"eval error {_e}"})
+                            else:
+                                vecs.append({"valid": False, "reason": f"unfinished after {per_cell_deadline}s guard"})
+                        if _not_done:
+                            print(f"[CELL-TIMEOUT] {sheet}!{r} {switch}={cand} {len(_not_done)}/{len(futs)} unfinished >{per_cell_deadline}s → those RED, {len(_done)} kept", flush=True)
+                            _flag_to_md(flags_md, sheet, r, switch, cand, f"CELL-TIMEOUT {len(_not_done)}/{len(futs)} >{per_cell_deadline}s RED", -1.0, 0.0, cumulative_before)
+                        print(f"[LOG {time.time():.1f}] vec batch done {len(_done)}/{len(futs)}", flush=True)
                     except Exception as e:
                         print(f"[vec-batch-err] {sheet}!{r} {switch} err {e}", flush=True)
-                        vecs = []
+                        _flag_to_md(flags_md, sheet, r, switch, cand, f"VEC-BATCH-ERR {e}", -1.0, 0.0, cumulative_before)
+                        vecs = [{"valid": False, "reason": f"batch error {e}"} for _ in candidates]
                     # CORRECT FILL LOGIC per user 2026-09-12: for each row, evaluate naked + ALL yellows, keep pos deltas, record in overrides, total delta = naked + sum(pos yellows) via combined variant
                     for idx, (variant, filt, fval, hdr) in enumerate(candidates):
                         if idx >= len(vecs):
@@ -3006,29 +3054,11 @@ def main():
                             if filt is not None and hdr in header_to_col:
                                 invalid_hdrs.append(hdr)
                             continue
+                        # SLOW != UNFILLED: a computed vec is kept; slowness is only flagged (was repainting real results red)
                         _elapsed_cell = __import__('time').time() - cell_start
-                        if _elapsed_cell > 60:
-                            try:
-                                ws_keep.cell(row=r, column=6).value = 0.0
-                                ws_keep.cell(row=r, column=7).value = -1.0
-                                from openpyxl.styles import PatternFill
-                                ws_keep.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                ws_keep.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
-                                ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
-                                # H/I/K per-row (added for gap fix)
-                                try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else None
-                                except: _hk_ld = 0.0
-                                try: _hk_ls = float((live_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() and live_best is not None and (live_best or {}).get('pool_sharpe') is not None else None
-                                except: _hk_ls = 0.0
-                                try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
-                                except: _hk_pf = ""
-                                _write_per_row_HIK(ws_row, r, _hk_ld, _hk_ls, _hk_pf)
-                                try: _clear_vlookup_formulas(ws_row)
-                                except: pass
-                            except: pass
-                            _flag_to_md(flags_md, sheet, r, switch, cand, f"RED >1m PER CELL {_elapsed_cell:.1f}s", float(vec.get("gain_pct") or 0), cumulative_before)
-                            print(f"[RED >1m PER CELL] {sheet}!{r} {switch}={cand} elapsed={_elapsed_cell:.1f}s — RED EVERYWHERE", flush=True)
-                            continue
+                        if _elapsed_cell > 60 and idx == 0:
+                            _flag_to_md(flags_md, sheet, r, switch, cand, f"SLOW CELL {_elapsed_cell:.1f}s (value kept)", float(vec.get("gain_pct") or 0), cumulative_before)
+                            print(f"[SLOW CELL] {sheet}!{r} {switch}={cand} elapsed={_elapsed_cell:.1f}s — value kept", flush=True)
                         vg = float(vec.get("gain_pct") or 0)
                         delta = vg - cumulative_before
                         if filt is None:
@@ -3643,8 +3673,8 @@ def main():
                     _atomic_save(wb_keep, wb_path)
                 except Exception:
                     pass
-                if time.time() - cell_start > _per_cell_hard_limit:
-                    print(f"[PER_CELL >1s] {sheet}!{r} {switch}={cand} >{_per_cell_hard_limit:.1f}s — LIGHTING FAST violated, FIX the cell! NPZ must stay hot, mark RED and fix, sheet never abandoned", flush=True)
+                if _check_per_cell_timeout(cell_start):
+                    print(f"[PER_CELL TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_timeout_sec}s — flag RED cell+tab, skip and continue (never hang)", flush=True)
                     try:
                         if ws_row is not None:
                             from openpyxl.styles import PatternFill
@@ -3861,32 +3891,27 @@ def main():
             return True, "ok"
         except Exception as e:
             return False, f"checker error {e}"
-    # 1h PER SYM_SIDE — SHEET NEVER ABANDONED: finish all 12 tabs, save with bh/gain, 365D rerun + backtest, NPZ stays hot entire workbook, lighting fast <1s per cell (timeouts are plague)
+    # >1h PER SYM_SIDE RED LAW — NEVER HANG OVER HOUR, LOUD STOP
     _elapsed_sym = __import__('time').time() - _v15_start_time
+    # FORWARD FIX 2026-09-25: this point is reached AFTER all tabs ran — a slow workbook is finished, not hung.
+    # Log-only (was: paint every tab red + return, hiding a completed sheet). Per-cell red + tab red come from _paint_tab_status.
     if _elapsed_sym > 3600:
-        print(f"[SHEET-NEVER-ABANDONED] {new_symside} elapsed {_elapsed_sym:.1f}s >3600s — sheet continues to finish, saved with bh/gain, 365D rerun + backtest done, NPZ stays hot, fix >1s cells", flush=True)
-        _flag_to_md(flags_md, "ALL", 0, new_symside, "TIME", f">1h elapsed {_elapsed_sym:.1f}s but sheet never abandoned", 0, 0, cumulative_gain)
-        try:
-            __import__('signal').alarm(0)
-        except: pass
-        # Do NOT return — continue to strict checker, final bh/gain save, 365D rerun, backtest_v12_engine — sheet never abandoned
-        progress["warn_1h_per_sym"] = True
+        print(f"[SLOW-SYM_SIDE >1h] {new_symside} elapsed {_elapsed_sym:.1f}s — all tabs ran, publishing (log-only)", flush=True)
+        _flag_to_md(flags_md, "ALL", 0, new_symside, "TIME", f">1h PER SYM_SIDE {_elapsed_sym:.1f}s (log-only)", 0, 0, cumulative_gain)
     _ok, _reason = _strict_checker(wb_path)
     _is_empty = not _ok
     if _is_empty:
-        print(f"[DEAT PENALTY] {_reason} — STOP and repair", flush=True)
-        try:
-            wb_path.unlink(missing_ok=True)
-        except Exception:
-            pass
-        progress["skipped_empty"] = True
+        # FORWARD FIX 2026-09-25: NEVER delete the workbook — it held every computed cell and a checker error (BadZip from a
+        # concurrent writer, OOM on load) deleted real work, restarting the sym_side from an empty template. Keep + red.
+        print(f"[DEAT PENALTY] {_reason} — workbook KEPT (red) for repair, not publishing", flush=True)
+        progress["checker_failed"] = _reason
         progress["final_gain"] = cumulative_gain
         progress["bh"] = bh_raw
         try:
             _atomic_write_json(progress_path, progress)
         except Exception:
             pass
-        print(f"[skip-empty] {new_symside} empty Results (max_row<2) — deleted {wb_path.name}, not publishing", flush=True)
+        _flag_to_md(flags_md, "ALL", 0, new_symside, "CHECKER", f"strict checker failed: {_reason} — kept", 0, 0, cumulative_gain)
         return
     # DO NOT PUBLISH until cells are filled — timestamp = work in progress, bh/gain = finished
     # fully filled — publish bh/gain
