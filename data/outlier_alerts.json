@@ -1,27 +1,20 @@
 {
  "active": [
   {
-   "position_key": "ang:ALGOUSDT_LONG",
-   "symbol": "ALGOUSDT",
-   "type": "STALE_ACTIVITY",
-   "severity": "WARNING",
-   "idle_h": 7.9
-  },
-  {
    "position_key": "ang:XLMUSDT_LONG",
    "symbol": "XLMUSDT",
    "type": "STALE_ACTIVITY",
    "severity": "WARNING",
-   "idle_h": 7.9
+   "idle_h": 8.3
   }
  ],
- "last_scan": "2026-09-25T12:02:26.335785+00:00",
+ "last_scan": "2026-09-25T12:23:26.364866+00:00",
  "summary": {
   "stuck": 0,
   "runaway_loss": 0,
-  "stale_activity": 2,
-  "total": 2,
+  "stale_activity": 1,
+  "total": 1,
   "critical": 0,
-  "positions_scanned": 2
+  "positions_scanned": 1
  }
 }
