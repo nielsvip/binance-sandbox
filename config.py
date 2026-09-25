@@ -2139,6 +2139,10 @@ class Config:
     # USER 2026-05-30 ABSOLUTE: NOTHING stays open on a sharp move the other way; martingale destroyed everywhere.
     HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: exit when multiple TFs against trade. User: does not exit when multiple TFs are against the trade. Hardened default.
     HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: bool = True  # also require wt1_4h against (sharper); now 1h+4h must agree
+    # 2026-09-27 BOTTOM-EXIT FIX: never exit LONG at bottom (dc low break) when HTF WT still bullish — exit at top not bottom. If DC low did break, immediate churn reentry while HTF WT with direction.
+    BOTTOM_EXIT_HTF_WT_VETO_ENABLED: bool = True  # block R1/ULTIMATE_DC/NEWBORN bottom exits when HTF WT with position (LONG bullish / SHORT bearish) — prevents stupid bottom exit
+    HTF_WT_CHURN_REENTRY_ENABLED: bool = True  # immediate reentry if flat after ANY exit but HTF WT still with direction — churn OK, burn commissions to not miss bounce
+    HTF_WT_CHURN_REENTRY_MAX_AGE_MIN: float = 120.0  # churn window 2h after exit — within this, HTF WT bullish reenters even at same price
     COUNTER_TREND_ADD_BLOCK_ENABLED: bool = False     # block any OPEN/AUGMENT/REENTRY whose side is against wt1_1h (kills martingale)
     COUNTER_TREND_SMA200_BYPASS_ENABLED: bool = True # 2026-06-04 USER directional rule: a SHORT below sma_200_15m (LONG above) WITH 1h structure (1h lower-low/higher-high OR wt1_1h agreeing) is TREND-ALIGNED → bypass the laggy wt1_1h COUNTER_TREND_ADD_BLOCK so tumble-shorts fire (was 14k BLOCKED_COUNTER_TREND_1H_AGAINST_SHORT/2h). Genuine counter-trend (wrong side of sma_200_15m) stays blocked. ROLLBACK: False.
     # USER 2026-05-30: NEVER MISS A MOVE. A true breakout — price breaking the PREVIOUS-bar 1h Donchian

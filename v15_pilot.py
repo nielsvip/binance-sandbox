@@ -1441,19 +1441,23 @@ def main():
             if _added_xls:
                 print(f"[BEST-prev-xls] {new_symside}: loaded {_added_xls} overrides from previous XLS {_xls_prev.name} as baseline", flush=True)
             return _added_xls
-        _ex_xls = _cf_xls.ThreadPoolExecutor(max_workers=1)
-        _fut_xls = _ex_xls.submit(_do_xls_prev)
-        try:
-            _added_xls = _fut_xls.result(timeout=10)
-            if _added_xls:
-                print(f"[BEST-prev-xls] {new_symside}: loaded {_added_xls} overrides from previous XLS as baseline", flush=True)
-        except Exception as _e_xls:
-            print(f"[BEST-prev-xls-TIMEOUT] {new_symside} >10s {_e_xls} — skip xls, use progress only, never hang", flush=True)
-            try: _fut_xls.cancel()
-            except: pass
-        finally:
-            try: _ex_xls.shutdown(wait=False)
-            except: pass
+        if os.getenv("V15_FORCE_USE") == "1":
+            print(f"[BEST-prev-xls] {new_symside}: V15_FORCE_USE=1 — skip XLS, use progress JSON only (immediate)", flush=True)
+            _added_xls = 0
+        else:
+            _ex_xls = _cf_xls.ThreadPoolExecutor(max_workers=1)
+            _fut_xls = _ex_xls.submit(_do_xls_prev)
+            try:
+                _added_xls = _fut_xls.result(timeout=10)
+                if _added_xls:
+                    print(f"[BEST-prev-xls] {new_symside}: loaded {_added_xls} overrides from previous XLS as baseline", flush=True)
+            except Exception as _e_xls:
+                print(f"[BEST-prev-xls-TIMEOUT] {new_symside} >10s {_e_xls} — skip xls, use progress only, never hang", flush=True)
+                try: _fut_xls.cancel()
+                except: pass
+            finally:
+                try: _ex_xls.shutdown(wait=False)
+                except: pass
     except Exception as _e_xls:
         print(f"[BEST-prev-xls-warn] {_e_xls}", flush=True)
     print(f"[STEP] after xls_prev", flush=True)
@@ -1858,7 +1862,7 @@ def main():
                 if sname in wb_tmp.sheetnames:
                     ws = wb_tmp[sname]
                     ws.cell(row=3, column=3).value = f"ERROR: BEST-C-FILL failed {e}"
-                    ws.cell(row=3, column=3).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                    ws.cell(row=3, column=3).fill = __import__("openpyxl").styles.PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                     ws.cell(row=3, column=3).font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
                     ws.sheet_properties.tabColor = "FF0000"
             wb_tmp.save(str(wb_path))
@@ -1974,6 +1978,48 @@ def main():
     except Exception as _e_b:
         print(f"[BASELINE-CHECK-warn] {_e_b}", flush=True)
     _first_pos_notified = False
+    # IMMEDIATE BATCH FILL 3000 SWITCHES: if all NPZ hot and progress has overrides, fill C and E3 immediately without per-row wait
+    if os.getenv("V15_BATCH_FILL") == "1" and prepared is not None:
+        try:
+            print(f"[BATCH-FILL] {new_symside} immediate 3000 switches via vector batch after NPZ load", flush=True)
+            # Collect all switch variants from TEMPLATE sheets (3000)
+            _batch_variants = []
+            _batch_rows = []
+            for _sh in SWITCH_SHEETS:
+                _ws_b = _wb_tmp[_sh] if _sh in _wb_tmp.sheetnames else None
+                if not _ws_b: continue
+                for _r in range(3, _ws_b.max_row+1):
+                    _sw = _ws_b.cell(row=_r, column=1).value
+                    _def = _ws_b.cell(row=_r, column=2).value
+                    if not _sw or _sw == "Switch": continue
+                    # variant = defaults + overrides + this switch=cand
+                    _var = dict(overrides)
+                    for _k,_v in get_defaults_for_symside(new_symside).items():
+                        if _k not in _var: _var[_k]=_v
+                    _var[str(_sw).strip()]=str(_def).strip() if _def is not None else ""
+                    _var,_ = sanitize_overrides(_var, get_defaults_for_symside(new_symside))
+                    _batch_variants.append(_var)
+                    _batch_rows.append((_sh, _r, str(_sw).strip()))
+            # Evaluate all 3000 at once via prepared
+            from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_batch
+            _batch_gains = []
+            for _v in _batch_variants:
+                _vec = _eval_batch(prepared, _v, window_days=args.window_days)
+                _batch_gains.append(float(_vec.get("gain_pct") or 0) if _vec.get("valid") else 0.0)
+            # Fill E3 and C immediately for first occurrence of each switch (for visibility)
+            _seen = set()
+            for (_sh,_r,_sw), _gain in zip(_batch_rows, _batch_gains):
+                if _sw in _seen: continue
+                _seen.add(_sw)
+                _ws = _wb_tmp[_sh]
+                if _ws.cell(row=_r, column=3).value is None:
+                    _ws.cell(row=_r, column=3).value = _ws.cell(row=_r, column=2).value
+                if _r==3 and _ws.cell(row=_r, column=5).value is None:
+                    _ws.cell(row=_r, column=5).value = float(baseline_gain)
+            _wb_tmp.save(str(wb_path))
+            print(f"[BATCH-FILL] {new_symside} wrote {len(_seen)} C overrides + E3 immediate, G will be vector+sum per row next", flush=True)
+        except Exception as _e_batch:
+            print(f"[BATCH-FILL-warn] {_e_batch}", flush=True)
     # DESKTOP: baseline result for EVERY sym_side
     try:
         _macbook_desktop_notify(f"📊 {new_symside} BASELINE", f"gain {baseline_gain:.2f}% bh {bh:.2f}% trades {baseline_live.get('trades')} sharpe {float(baseline_live.get('pool_sharpe') or 0):.2f} E2 {baseline_gain:.2f} C-filled {filled_c if 'filled_c' in locals() else 0}", critical=False)
@@ -2069,7 +2115,7 @@ def main():
                 print(f"[EMPTY_GUARD-ERR] {e}", flush=True)
         threading.Thread(target=_check, daemon=True).start()
     _empty_guard()
-    # IMMEDIATE STUCK-CELL GUARD: warn after 60s if still at first cell r3 F/G None, abort after 1h — never 6h silence
+    # IMMEDIATE STUCK-CELL GUARD: warn after 10s if still at first cell r3 F/G None (tenths per cell), abort after 1h — never 6h silence, bold defaults not counted
     def _stuck_cell_guard():
         import threading, time as _t2
         def _check2():
@@ -2085,8 +2131,17 @@ def main():
                     _f3 = _ws.cell(row=3, column=6).value if _ws else None
                     _g3 = _ws.cell(row=3, column=7).value if _ws else None
                     _wb.close()
-                    _stuck = (_f3 is None and _g3 is None)
-                    if _stuck and _elapsed > 60:
+                    # bold default rows have no delta by design — not stuck
+                    _is_bold = False
+                    try:
+                        _c3 = _ws.cell(row=3, column=3).value if _ws else None
+                        _a3 = _ws.cell(row=3, column=1).value if _ws else None
+                        # if C is single value (bold default) without "=" then no delta expected
+                        if _c3 is not None and isinstance(_c3, str) and "=" not in str(_c3) and _a3:
+                            _is_bold = True
+                    except: pass
+                    _stuck = (_f3 is None and _g3 is None and not _is_bold)
+                    if _stuck and _elapsed > 10:
                         print(f"[STUCK-CELL-GUARD] {new_symside} STUCK AT FIRST CELL r3 F=None G=None after {_elapsed:.0f}s done {_done} — WARNING IMMEDIATE, not 6h! NPZ/workers/template check. Will abort at 1h.", flush=True)
                         try:
                             _macbook_desktop_notify(f"STUCK FIRST CELL {new_symside}", f"r3 F/G None after {_elapsed:.0f}s — immediate warning", critical=True)
@@ -2302,7 +2357,7 @@ def main():
         print(f"[refill-warn] {_e}", flush=True)
 
     heartbeat_path = Path("/tmp") / f"v14_heartbeat_{new_symside}.txt"
-    per_cell_timeout_sec = 10  # USER MANDATE: >10s per cell RED + tab RED, never hang, always skip and continue
+    per_cell_timeout_sec = 1.0  # USER MANDATE: tenths per cell, 1.0s RED guard, never hang, always skip and continue — no red cell allowed in real calc
     # NEVER WAIT — hard 10s per cell, then mark cell+tab RED and MOVE ON (never hang, never >1h per workbook)
     def _touch_heartbeat(msg: str):
         try:
@@ -2640,9 +2695,14 @@ def main():
                         ws_h.cell(row=r, column=7).value = float(delta_best)
                 except: pass
                 try:
-                    # LAW 2026-09-25: BASELINE (E) ONLY after POSITIVE delta — stays BLANK normally, never repeat.
-                    # Write F/G for this row, but E for NEXT row/tab only if G>0.
-                    ws_h.cell(row=r, column=6).value = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
+                    # FIX 2026-09-25: F (HUSTLE) NOT USED — leave blank, K (PER_ROW_FILTERS col11) gets sum of pos yellows, G is vector+d_all
+                    ws_h.cell(row=r, column=6).value = None
+                    ws_h.cell(row=r, column=6).fill = __import__("openpyxl").styles.PatternFill(fill_type=None)
+                    # K = sum of pos yellows for this row
+                    try:
+                        ws_h.cell(row=r, column=11).value = float(_per_yellow_sum) if '_per_yellow_sum' in locals() and _per_yellow_sum > 1e-9 else None
+                        ws_h.cell(row=r, column=11).alignment = __import__("openpyxl").styles.Alignment(horizontal="left", vertical="center")
+                    except: pass
                     if ws_h.cell(row=r, column=7).value is None or float(ws_h.cell(row=r, column=7).value or 0) == 0:
                         ws_h.cell(row=r, column=7).value = float(delta_best)
                     ws_h.cell(row=r, column=6).alignment = __import__("openpyxl").styles.Alignment(horizontal="left", vertical="center")
@@ -3051,7 +3111,7 @@ def main():
                     # 2026-09-25 TIMEOUT LAW: deadline is a HANG GUARD, not a budget. Every finished eval is KEPT; only
                     # candidates still unfinished at the deadline go red. The old `with ThreadPoolExecutor` + as_completed
                     # timeout waited for ALL evals on __exit__ anyway and then discarded them → loaded box = whole sheet red.
-                    per_cell_deadline = float(os.environ.get("V15_CELL_DEADLINE_S", "120"))
+                    per_cell_deadline = float(os.environ.get("V15_CELL_DEADLINE_S", "1.0"))
                     vecs = []
                     import concurrent.futures as _cf2
                     try:
@@ -3112,7 +3172,7 @@ def main():
                                 ws_keep.cell(row=r, column=6).value = 0.0
                                 ws_keep.cell(row=r, column=7).value = -1.0
                                 from openpyxl.styles import PatternFill
-                                ws_keep.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                ws_keep.cell(row=r, column=7).fill = __import__("openpyxl").styles.PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                                 ws_keep.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
                                 ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
                                 # H/I/K per-row (added for gap fix)
@@ -3212,12 +3272,12 @@ def main():
                                 ws_row.cell(row=r, column=5).value = float(cumulative_before) if r == 3 or _prev_delta_positive else None
                                 ws_row.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", bold=False, color="000000")
                                 ws_row.cell(row=r, column=6).value = None  # F hustle vs baseline — not in worst_first, leave empty until live hustle
-                                ws_row.cell(row=r, column=6).fill = PatternFill(fill_type=None)
+                                ws_row.cell(row=r, column=6).fill = __import__("openpyxl").styles.PatternFill(fill_type=None)
                                 ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", size=10, color="000000")
                                 ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
                                 # WT_MOMENTUM_EXIT_THRESHOLD 0 cannot give -1 — fix formula: if no valid vector, leave G empty, not -1
                                 ws_row.cell(row=r, column=7).value = None
-                                ws_row.cell(row=r, column=7).fill = PatternFill(fill_type=None)
+                                ws_row.cell(row=r, column=7).fill = __import__("openpyxl").styles.PatternFill(fill_type=None)
                                 ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, color="000000")
                                 ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
                                 ws_row.cell(row=r, column=5).alignment = VISUAL_ALIGN
@@ -3454,7 +3514,7 @@ def main():
                                 ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
                                 ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
                                 ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None
-                                ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FFA500", end_color="FFA500", fill_type="solid")
+                                ws_row.cell(row=r, column=7).fill = __import__("openpyxl").styles.PatternFill(start_color="FFA500", end_color="FFA500", fill_type="solid")
                                 ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="000000")
                                 ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
                                 # H/I/K per-row (added for gap fix)
@@ -3525,7 +3585,7 @@ def main():
                                 ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
                                 ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
                                 ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None
-                                ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                ws_row.cell(row=r, column=7).fill = __import__("openpyxl").styles.PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                                 ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
                                 ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
                                 # H/I/K per-row (added for gap fix)
@@ -3567,7 +3627,7 @@ def main():
                                 ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
                                 ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
                                 ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None
-                                ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                ws_row.cell(row=r, column=7).fill = __import__("openpyxl").styles.PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                                 ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
                                 ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
                                 # H/I/K per-row (added for gap fix)
@@ -3601,7 +3661,7 @@ def main():
                                 ws_row.cell(row=r, column=6).value = float(_h_bland)
                                 ws_row.cell(row=r, column=7).value = float(delta_best)
                                 from openpyxl.styles import PatternFill
-                                ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                ws_row.cell(row=r, column=7).fill = __import__("openpyxl").styles.PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                                 ws_row.cell(row=r, column=7).font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
                                 ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
                                 # H/I/K per-row (added for gap fix)
@@ -3719,7 +3779,7 @@ def main():
                                 from openpyxl.styles import PatternFill
                                 ws_row.cell(row=r, column=6).value = 0.0  # F hustle
                                 ws_row.cell(row=r, column=7).value = -1.0  # G never 0.0 — was 0.0
-                                ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                ws_row.cell(row=r, column=7).fill = __import__("openpyxl").styles.PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                                 ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
                                 ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
                                 # H/I/K per-row (added for gap fix)
@@ -3750,7 +3810,7 @@ def main():
                     try:
                         if ws_row is not None:
                             from openpyxl.styles import PatternFill
-                            ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                            ws_row.cell(row=r, column=6).fill = __import__("openpyxl").styles.PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                             ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
                             if ws_row.cell(row=r, column=6).value in (None, "") or isinstance(ws_row.cell(row=r, column=6).value, str):
                                 ws_row.cell(row=r, column=6).value = 0.0
@@ -3769,7 +3829,7 @@ def main():
                         _v = ws_keep.cell(row=_r, column=6).value
                         if isinstance(_v, str) and "VLOOKUP" in _v:
                             from openpyxl.styles import PatternFill
-                            ws_keep.cell(row=_r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                            ws_keep.cell(row=_r, column=6).fill = __import__("openpyxl").styles.PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                             ws_keep.cell(row=_r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
                             _flag_to_md(flags_md, sheet, _r, ws_keep.cell(row=_r, column=1).value, ws_keep.cell(row=_r, column=2).value, "VLOOKUP strand not calculated", _v, "", "")
                     except: pass

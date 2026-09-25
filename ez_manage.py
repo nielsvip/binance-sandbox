@@ -46051,6 +46051,22 @@ async def process_position(
             _ult_dc_high = safe_fetch_float(_pp_shared_ind.get(_hs_k_high_ez, 0) or _pp_shared_ind.get("dc_high_4h", 0) or 0, 0.0)
             _ult_breached = (_ult_is_long and _ult_dc_low > 0 and current_price <= _ult_dc_low) or ((not _ult_is_long) and _ult_dc_high > 0 and current_price >= _ult_dc_high)
             if _ult_breached:
+                # 2026-09-27 BOTTOM-EXIT FIX: don't exit at bottom when HTF WT still with position — exit at top not bottom
+                if bool(getattr(config, "BOTTOM_EXIT_HTF_WT_VETO_ENABLED", True)):
+                    try:
+                        _v_wt1_1h = safe_fetch_float(_pp_shared_ind.get("wt1_1h", 0), 0.0)
+                        _v_wt2_1h = safe_fetch_float(_pp_shared_ind.get("wt2_1h", 0), 0.0)
+                        _v_wt1_15m = safe_fetch_float(_pp_shared_ind.get("wt1_15m", 0), 0.0)
+                        _v_wt2_15m = safe_fetch_float(_pp_shared_ind.get("wt2_15m", 0), 0.0)
+                        _v_wt1_4h = safe_fetch_float(_pp_shared_ind.get("wt1_4h", 0), 0.0)
+                        _v_wt2_4h = safe_fetch_float(_pp_shared_ind.get("wt2_4h", 0), 0.0)
+                        _v_htf_with = (_ult_is_long and (_v_wt1_1h > _v_wt2_1h or _v_wt1_15m > _v_wt2_15m or _v_wt1_4h > _v_wt2_4h)) or ((not _ult_is_long) and (_v_wt1_1h < _v_wt2_1h or _v_wt1_15m < _v_wt2_15m or _v_wt1_4h < _v_wt2_4h))
+                        if _v_htf_with:
+                            logger.warning(f"🛡️ [BOTTOM_EXIT_HTF_WT_VETO_ULTIMATE_DC] {position_key}: DC_{_hs_tf_ez} breached {current_price:.6f} <= {_ult_dc_low if _ult_is_long else _ult_dc_high:.6f} BUT HTF WT still WITH position (wt1_1h {_v_wt1_1h:.1f}/{_v_wt2_1h:.1f} wt15m {_v_wt1_15m:.1f}/{_v_wt2_15m:.1f} wt4h {_v_wt1_4h:.1f}/{_v_wt2_4h:.1f}) → VETO bottom exit, hold for top exit")
+                            _ult_breached = False
+                    except Exception:
+                        pass
+            if _ult_breached:
                 _ult_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                 _ult_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
                 _ult_side = "SELL" if _ult_is_long else "BUY"
@@ -46097,34 +46113,56 @@ async def process_position(
                 _nlk_is_long_for_vel = position_side == "LONG"
                 _nlk_vel_ok = (_nlk_is_long_for_vel and _nlk_vel_used < 0) or ((not _nlk_is_long_for_vel) and _nlk_vel_used > 0)
             if 0 <= _nlk_age_min <= _nlk_window and _nlk_gain <= _nlk_threshold and _nlk_vel_ok:
-                _nlk_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
-                _nlk_is_long = position_side == "LONG"
-                _nlk_close_side = "SELL" if _nlk_is_long else "BUY"
-                _nlk_entry = safe_fetch_float(getattr(position, "entry_price", 0), 0)
-                _nlk_entry_sig = (getattr(position, "last_signal", "") or getattr(position, "open_reason", "") or "?")
-                logger.error(
-                    f"⛔ [NEWBORN_LOSS_KILL] {position_key}: age={_nlk_age_min:.1f}m (≤{_nlk_window}m) gain={_nlk_gain:.2f}% (≤{_nlk_threshold:.2f}%) vel={_nlk_vel_used:.2f} price={current_price:.6f} entry={_nlk_entry:.6f} entry_sig={_nlk_entry_sig[:40]} → CLOSE"
-                )
-                try:
-                    _nlk_result = await trade_manager.execute_now(
-                        position_key=position_key,
-                        account_key=account_key,
-                        symbol=symbol,
-                        original_positionAmt=_nlk_amt,
-                        side=_nlk_close_side,
-                        position_side=position_side,
-                        quantity=_nlk_amt,
-                        old_price=current_price,
-                        unique_id=f"NEWBORN_LOSS_KILL_{int(time.time())}",
-                        reason=f"NEWBORN_LOSS_KILL_age{_nlk_age_min:.1f}m_g{_nlk_gain:.2f}_entry_{str(_nlk_entry_sig)[:30]}",
-                        is_full_close=True,
-                        action="CLOSE",
+                # 2026-09-27 BOTTOM-EXIT FIX: veto newborn bottom exit when HTF WT with position
+                _nlk_veto = False
+                if bool(getattr(config, "BOTTOM_EXIT_HTF_WT_VETO_ENABLED", True)):
+                    try:
+                        if _pp_shared_ind is None:
+                            _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                        _n_wt1_1h = safe_fetch_float(_pp_shared_ind.get("wt1_1h", 0), 0.0)
+                        _n_wt2_1h = safe_fetch_float(_pp_shared_ind.get("wt2_1h", 0), 0.0)
+                        _n_wt1_15m = safe_fetch_float(_pp_shared_ind.get("wt1_15m", 0), 0.0)
+                        _n_wt2_15m = safe_fetch_float(_pp_shared_ind.get("wt2_15m", 0), 0.0)
+                        _n_wt1_4h = safe_fetch_float(_pp_shared_ind.get("wt1_4h", 0), 0.0)
+                        _n_wt2_4h = safe_fetch_float(_pp_shared_ind.get("wt2_4h", 0), 0.0)
+                        _n_is_long = position_side == "LONG"
+                        _n_htf_with = (_n_is_long and (_n_wt1_1h > _n_wt2_1h or _n_wt1_15m > _n_wt2_15m or _n_wt1_4h > _n_wt2_4h)) or ((not _n_is_long) and (_n_wt1_1h < _n_wt2_1h or _n_wt1_15m < _n_wt2_15m or _n_wt1_4h < _n_wt2_4h))
+                        if _n_htf_with:
+                            logger.warning(f"🛡️ [BOTTOM_EXIT_HTF_WT_VETO_NEWBORN] {position_key}: newborn g={_nlk_gain:.2f}% BUT HTF WT with position (wt1_1h {_n_wt1_1h:.1f}/{_n_wt2_1h:.1f}) → VETO bottom exit, hold")
+                            _nlk_veto = True
+                    except Exception:
+                        pass
+                if _nlk_veto:
+                    logger.info(f"[NEWBORN_LOSS_KILL_VETOED] {position_key}: vetoed by HTF WT with position, not closing")
+                else:
+                    _nlk_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
+                    _nlk_is_long = position_side == "LONG"
+                    _nlk_close_side = "SELL" if _nlk_is_long else "BUY"
+                    _nlk_entry = safe_fetch_float(getattr(position, "entry_price", 0), 0)
+                    _nlk_entry_sig = (getattr(position, "last_signal", "") or getattr(position, "open_reason", "") or "?")
+                    logger.error(
+                        f"⛔ [NEWBORN_LOSS_KILL] {position_key}: age={_nlk_age_min:.1f}m (≤{_nlk_window}m) gain={_nlk_gain:.2f}% (≤{_nlk_threshold:.2f}%) vel={_nlk_vel_used:.2f} price={current_price:.6f} entry={_nlk_entry:.6f} entry_sig={_nlk_entry_sig[:40]} → CLOSE"
                     )
-                    if not (isinstance(_nlk_result, str) and ("BLOCK" in _nlk_result.upper() or "SKIP" in _nlk_result.upper() or "REJECT" in _nlk_result.upper())):
-                        trade_manager.processing_keys.discard(position_key)
-                        return f"{EvalStatus.ACTION_TAKEN}:NEWBORN_LOSS_KILL_CLOSED"
-                except Exception as _nlk_exec_err:
-                    logger.error(f"[NEWBORN_LOSS_KILL] {position_key}: execute_now failed: {_nlk_exec_err}")
+                    try:
+                        _nlk_result = await trade_manager.execute_now(
+                            position_key=position_key,
+                            account_key=account_key,
+                            symbol=symbol,
+                            original_positionAmt=_nlk_amt,
+                            side=_nlk_close_side,
+                            position_side=position_side,
+                            quantity=_nlk_amt,
+                            old_price=current_price,
+                            unique_id=f"NEWBORN_LOSS_KILL_{int(time.time())}",
+                            reason=f"NEWBORN_LOSS_KILL_age{_nlk_age_min:.1f}m_g{_nlk_gain:.2f}_entry_{str(_nlk_entry_sig)[:30]}",
+                            is_full_close=True,
+                            action="CLOSE",
+                        )
+                        if not (isinstance(_nlk_result, str) and ("BLOCK" in _nlk_result.upper() or "SKIP" in _nlk_result.upper() or "REJECT" in _nlk_result.upper())):
+                            trade_manager.processing_keys.discard(position_key)
+                            return f"{EvalStatus.ACTION_TAKEN}:NEWBORN_LOSS_KILL_CLOSED"
+                    except Exception as _nlk_exec_err:
+                        logger.error(f"[NEWBORN_LOSS_KILL] {position_key}: execute_now failed: {_nlk_exec_err}")
         except Exception as _nlk_outer:
             logger.debug(f"[NEWBORN_LOSS_KILL] {position_key} probe err: {_nlk_outer}")
     # ═══════════════════════════════════════════════════════════════════════════
@@ -46317,6 +46355,21 @@ async def process_position(
                     _r1_gain_probe = safe_fetch_float(getattr(position, "gain", 0), 0)
                     if _r1_gain_probe > -0.5:
                         _r1_breached = False
+                # 2026-09-27 BOTTOM-EXIT FIX: R1 bottom exit veto when HTF WT with position
+                if _r1_breached and bool(getattr(config, "BOTTOM_EXIT_HTF_WT_VETO_ENABLED", True)):
+                    try:
+                        _rv_wt1_1h = safe_fetch_float(_pp_shared_ind.get("wt1_1h", 0), 0.0)
+                        _rv_wt2_1h = safe_fetch_float(_pp_shared_ind.get("wt2_1h", 0), 0.0)
+                        _rv_wt1_15m = safe_fetch_float(_pp_shared_ind.get("wt1_15m", 0), 0.0)
+                        _rv_wt2_15m = safe_fetch_float(_pp_shared_ind.get("wt2_15m", 0), 0.0)
+                        _rv_wt1_4h = safe_fetch_float(_pp_shared_ind.get("wt1_4h", 0), 0.0)
+                        _rv_wt2_4h = safe_fetch_float(_pp_shared_ind.get("wt2_4h", 0), 0.0)
+                        _rv_htf_with = (_r1_is_long and (_rv_wt1_1h > _rv_wt2_1h or _rv_wt1_15m > _rv_wt2_15m or _rv_wt1_4h > _rv_wt2_4h)) or ((not _r1_is_long) and (_rv_wt1_1h < _rv_wt2_1h or _rv_wt1_15m < _rv_wt2_15m or _rv_wt1_4h < _rv_wt2_4h))
+                        if _rv_htf_with:
+                            logger.warning(f"🛡️ [BOTTOM_EXIT_HTF_WT_VETO_R1] {position_key}: R1 {_r1_breach_reason} breached {current_price:.6f} vs stop {_r1_stop:.6f} BUT HTF WT with position (wt1_1h {_rv_wt1_1h:.1f}/{_rv_wt2_1h:.1f} wt15m {_rv_wt1_15m:.1f}/{_rv_wt2_15m:.1f}) → VETO bottom exit")
+                            _r1_breached = False
+                    except Exception:
+                        pass
                 if _r1_breached:
                     _r1_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                     _r1_close_side = "SELL" if _r1_is_long else "BUY"
