@@ -3279,6 +3279,29 @@ def main():
                             pass
                     except Exception as _e:
                         print(f"[row-write-err] {sheet}!{r} {_e}", flush=True)
+                    # FLAG-not-STOP + SYNTHETIC guard: red is FLAG, show must go on, >4 sym_sides per hour, repetitive = DEATH PENALTY synthetic
+                    try:
+                        _recent = progress.get("_recent_deltas", [])
+                        _recent.append(float(delta_best))
+                        if len(_recent) > 5:
+                            _recent = _recent[-5:]
+                        progress["_recent_deltas"] = _recent
+                        # repetitive = same delta 5x => synthetic DEATH PENALTY, flag red but DO NOT STOP, continue calculations
+                        if len(_recent) == 5 and len(set(round(x,12) for x in _recent)) == 1:
+                            print(f"[SYNTHETIC-REPETITIVE] {new_symside} sheet {sheet}!{r} delta {delta_best:.14f} repeated 5x — FLAG RED synthetic, show must go on", flush=True)
+                            try:
+                                if ws_row is not None:
+                                    from openpyxl.styles import PatternFill
+                                    ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                    ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
+                                    ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                    ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
+                                    ws_row.sheet_properties.tabColor = "FF0000"
+                                _flag_to_md(flags_md, sheet, r, switch, cand, f"SYNTHETIC repetitive {delta_best:.14f} 5x FLAG", delta_best, float(vec_best.get("gain_pct") or 0), cumulative_before)
+                            except: pass
+                            # do NOT stop, do NOT skip, continue as FLAG — show must go on >4/hr
+                            pass
+                    except: pass
                     progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct","win_rate","bars","peak","n_syms","years","avg_gain_trade","gain_per_yr","sym_sharpe"]}, "best_filter": filt_best, "best_fval": fval_best, "yellows": dict(pending_lbI) if pending_lbI else {}, "invalid_yellows": list(invalid_hdrs), "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before + delta_best) if delta_best > 0 else float(cumulative_before)}
                     try:
                         # batch progress.json every 10 rows for 180/3min = 1s/cell (was per-row fsync = 1.6s/row)
