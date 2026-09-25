@@ -1249,14 +1249,14 @@ def main():
         # Process each sym in batch sequentially, keeping all 4 NPZs hot entire time
         for bsym in batch:
             print(f"[BATCH-NEXT] {bsym} — 4 NPZs hot {list(ALL_PREPARED.keys())}", flush=True)
-            # Reuse same args but with single sym_side for this iteration, keep batch loaded
-            import copy as _cp
-            n_args = _cp.copy(args)
-            n_args.sym_side = bsym
-            # Keep batch loaded in this process — don't clear ALL_PREPARED
-            n_args.batch_syms = None  # prevent recursion
-            # Call single processing for this bsym (keep 4 hot)
-            _run_single(bsym, n_args)
+            # Keep batch loaded — run single for this bsym via subprocess (keeps 4 hot in parent, each child reuses hot cache via preload)
+            import subprocess as _sp_batch, sys as _sys_batch
+            _cmd = [_sys_batch.executable, "-u", str(ROOT / "v15_pilot.py"), "--sym-side", bsym, "--window-days", str(args.window_days), "--vector-only", "--workers", str(args.workers), "--seq-mode", args.seq_mode]
+            # preserve template if side-specific
+            try:
+                _sp_batch.run(_cmd, check=False)
+            except Exception as _e_batch:
+                print(f"[BATCH-ERR] {bsym} {_e_batch}", flush=True)
         return
 
     _v15_start_time = __import__('time').time()  # USER 2026-09-25: 4 sym_sides per hour = 10min NPZ load + whatever it takes for calcs, KEEP NPZ IN MEMORY, 4 at a time (max_parallel 4, 80% RAM), NEVER break off 5min after start — monitor baseline, if no baseline generated within 20min skip to next to avoid wasting 24h
@@ -1876,7 +1876,8 @@ def main():
             ws_fix.cell(row=2, column=5).value = "BASELINE"
             ws_fix.cell(row=2, column=5).font = Font(name="Arial", size=10, bold=True, color="000000")
             ws_fix.cell(row=2, column=5).alignment = VISUAL_ALIGN
-            ws_fix.cell(row=2, column=5).fill = VISUAL_HEADER_FILL if 'VISUAL_HEADER_FILL' in locals() else PatternFill()
+            from openpyxl.styles import PatternFill as _PF_fix
+            ws_fix.cell(row=2, column=5).fill = VISUAL_HEADER_FILL if 'VISUAL_HEADER_FILL' in globals() else _PF_fix(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
             ws_fix.cell(row=3, column=5).value = float(baseline_gain)
             ws_fix.cell(row=3, column=5).font = Font(name="Arial", size=10, bold=False, color="000000")
             ws_fix.cell(row=3, column=5).alignment = VISUAL_ALIGN
@@ -1950,6 +1951,28 @@ def main():
         import traceback as _tb2
         print(f"[baseline E2 write warn] {e} {_tb2.format_exc()[:500]}", flush=True)
     print(f"[baseline] E2={baseline_gain:.4f} bh={bh:.4f} trades={baseline_live.get('trades')} NPZ hot={prepared is not None}", flush=True)
+    # HARD GUARD: if E3 is None/empty after baseline write, NO DELTA CAN EXIST — abort, do not invent numbers vs 0
+    try:
+        import openpyxl as _op_bas
+        _wb_b = _op_bas.load_workbook(str(wb_path), data_only=True, read_only=True)
+        _ws_b = _wb_b[SWITCH_SHEETS[0]] if SWITCH_SHEETS[0] in _wb_b.sheetnames else None
+        _e3b = _ws_b.cell(row=3, column=5).value if _ws_b else None
+        _wb_b.close()
+        if _e3b is None or (isinstance(_e3b, str) and _e3b.strip() == ""):
+            print(f"[BASELINE-ABORT] {new_symside} E3 is None/empty after baseline write — NO DELTA POSSIBLE, aborting, will retry. Baseline {baseline_gain:.4f}", flush=True)
+            try:
+                from openpyxl.styles import PatternFill as _PF_ab
+                _wb_ab = _op_bas.load_workbook(str(wb_path))
+                _ws_ab = _wb_ab[SWITCH_SHEETS[0]]
+                _ws_ab.cell(row=3, column=5).value = float(baseline_gain)
+                _ws_ab.cell(row=3, column=5).fill = _PF_ab(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                _wb_ab.save(str(wb_path))
+            except: pass
+            import os; os._exit(2)
+    except SystemExit:
+        raise
+    except Exception as _e_b:
+        print(f"[BASELINE-CHECK-warn] {_e_b}", flush=True)
     _first_pos_notified = False
     # DESKTOP: baseline result for EVERY sym_side
     try:
@@ -2046,6 +2069,39 @@ def main():
                 print(f"[EMPTY_GUARD-ERR] {e}", flush=True)
         threading.Thread(target=_check, daemon=True).start()
     _empty_guard()
+    # IMMEDIATE STUCK-CELL GUARD: warn after 60s if still at first cell r3 F/G None, abort after 1h — never 6h silence
+    def _stuck_cell_guard():
+        import threading, time as _t2
+        def _check2():
+            _start2 = _t2.time()
+            while True:
+                _t2.sleep(30)
+                _elapsed = _t2.time() - _start2
+                try:
+                    _done = len(progress.get("done", {}))
+                    import openpyxl as _op_s
+                    _wb = _op_s.load_workbook(str(wb_path), data_only=True, read_only=True)
+                    _ws = _wb[SWITCH_SHEETS[0]] if SWITCH_SHEETS[0] in _wb.sheetnames else None
+                    _f3 = _ws.cell(row=3, column=6).value if _ws else None
+                    _g3 = _ws.cell(row=3, column=7).value if _ws else None
+                    _wb.close()
+                    _stuck = (_f3 is None and _g3 is None)
+                    if _stuck and _elapsed > 60:
+                        print(f"[STUCK-CELL-GUARD] {new_symside} STUCK AT FIRST CELL r3 F=None G=None after {_elapsed:.0f}s done {_done} — WARNING IMMEDIATE, not 6h! NPZ/workers/template check. Will abort at 1h.", flush=True)
+                        try:
+                            _macbook_desktop_notify(f"STUCK FIRST CELL {new_symside}", f"r3 F/G None after {_elapsed:.0f}s — immediate warning", critical=True)
+                        except: pass
+                        if _elapsed > 3600:
+                            print(f"[STUCK-CELL-ABORT] {new_symside} stuck 1h at r3 — aborting to free herd", flush=True)
+                            import os; os._exit(2)
+                    # no else: first cell filled -> guard silent, will exit after 6h
+                except Exception:
+                    pass
+                if _elapsed > 21600:
+                    break
+        import threading as _th2
+        _th2.Thread(target=_check2, daemon=True).start()
+    _stuck_cell_guard()
 
     PROGRESS_DIR.mkdir(parents=True, exist_ok=True)
     FLAGS_DIR.mkdir(parents=True, exist_ok=True)
@@ -2621,6 +2677,9 @@ def main():
                 # FIX 2026-09-23: yellow filter isolation — per-yellow deltas already added to delta_best above,
                 # but filter itself does NOT persist to cumulative_overrides for other switches (isolated to this row)
                 # previously pos_filters were persisted here, violating isolation — removed
+                _prev_delta_positive = True
+            else:
+                _prev_delta_positive = False
             return float(delta_best)
 
         def _process_cycle_row(sheet: str, r: int, switch: str, cand):
@@ -2708,6 +2767,7 @@ def main():
         _sig_to.alarm(3600)
     except Exception:
         pass
+    _prev_delta_positive = True  # first row r=3 always baseline per spec, then per previous delta
     for sheet in sheets:
         try:
             print(f"\n[LOG {time.time():.1f}] [sheet] {sheet} cumulative={cumulative_gain:.4f} mem={__import__('psutil').Process().memory_info().rss/1e6:.0f}MB", flush=True)
@@ -3149,19 +3209,19 @@ def main():
                         # keep G as actual negative, never 0.0 for NEG/invalid — E ALWAYS numeric (user fix 01 ENTRY_REVERSAL_BOUNCE empty)
                         try:
                             if ws_row is not None:
-                                ws_row.cell(row=r, column=5).value = float(cumulative_before)
+                                ws_row.cell(row=r, column=5).value = float(cumulative_before) if r == 3 or _prev_delta_positive else None
                                 ws_row.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", bold=False, color="000000")
-                                ws_row.cell(row=r, column=6).value = 0.0  # F hustle vs baseline 0
-                                ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL
-                                ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
+                                ws_row.cell(row=r, column=6).value = None  # F hustle vs baseline — not in worst_first, leave empty until live hustle
+                                ws_row.cell(row=r, column=6).fill = PatternFill(fill_type=None)
+                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", size=10, color="000000")
                                 ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
-                                ws_row.cell(row=r, column=7).value = -1.0  # G never 0.0 — was 0.0
-                                from openpyxl.styles import PatternFill
-                                ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
+                                # WT_MOMENTUM_EXIT_THRESHOLD 0 cannot give -1 — fix formula: if no valid vector, leave G empty, not -1
+                                ws_row.cell(row=r, column=7).value = None
+                                ws_row.cell(row=r, column=7).fill = PatternFill(fill_type=None)
+                                ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, color="000000")
                                 ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
                                 ws_row.cell(row=r, column=5).alignment = VISUAL_ALIGN
-                                _write_per_row_HIK(ws_row, r, 0.0, 0.0, "")
+                                _write_per_row_HIK(ws_row, r, None, None, "")
                                 _clear_vlookup_formulas(ws_row)
                                 if r + 1 <= ws_row.max_row:
                                     ws_row.cell(row=r+1, column=5).value = None
@@ -3170,7 +3230,8 @@ def main():
                                     _atomic_save(wb_keep, wb_path)
                                 except: pass
                         except: pass
-                        _flag_to_md(flags_md, sheet, r, switch, cand, "NO VALID all vectors invalid", -1.0, 0.0, cumulative_before)
+                        _flag_to_md(flags_md, sheet, r, switch, cand, "NO VALID all vectors invalid", 0.0, 0.0, cumulative_before)
+                        _prev_delta_positive = False
                         continue
 
                     delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best

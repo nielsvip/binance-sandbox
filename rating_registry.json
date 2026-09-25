@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-09-25T22:17:53.372703+00:00",
+  "timestamp": "2026-09-25T22:47:12.696449+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 135
+    "total_ranked": 136
   },
   "unified_ranking": [
     {
@@ -206,6 +206,12 @@
     },
     {
       "symbol": "GRAMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "PUMPUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
