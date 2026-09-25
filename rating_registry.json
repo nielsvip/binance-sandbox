@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-09-25T00:46:29.344451+00:00",
+  "timestamp": "2026-09-25T01:30:28.991301+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 113
+    "total_ranked": 114
   },
   "unified_ranking": [
     {
@@ -170,6 +170,12 @@
     },
     {
       "symbol": "WLFIUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "HMSTRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
