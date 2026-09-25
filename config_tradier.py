@@ -17,9 +17,11 @@ from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional
 from weakref import WeakSet
 
-from dotenv import load_dotenv
-
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
 
 @dataclass
 class TradierConfig:
