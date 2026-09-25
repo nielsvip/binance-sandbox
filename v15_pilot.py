@@ -133,24 +133,12 @@ def _clear_vlookup_formulas(ws):
             pass
 
 def _write_per_row_HIK(ws, r, live_delta, live_sharpe, per_row_filters):
-    """Per-row H/I/K — H=LIVE_DELTA col8, I=LIVE_SHARPE col9, K=PER_ROW_FILTERS col11. Applied every row, not just at sheet-complete."""
+    """Per-row K only — H/I deferred until sheet complete per law 2026-09-25 (formulas screw up fill). H=LIVE_DELTA col8, I=LIVE_SHARPE col9, K=PER_ROW_FILTERS col11. K per row, H/I at sheet-complete via backtest_v12_engine."""
     try:
         if ws is None:
             return
-        # H col8
-        try:
-            ws.cell(row=r, column=8).value = float(live_delta) if live_delta is not None else None
-            ws.cell(row=r, column=8).font = Font(name="Arial", size=10, bold=False)
-            ws.cell(row=r, column=8).alignment = VISUAL_ALIGN
-        except Exception:
-            pass
-        # I col9
-        try:
-            ws.cell(row=r, column=9).value = float(live_sharpe) if live_sharpe is not None else None
-            ws.cell(row=r, column=9).font = Font(name="Arial", size=10, bold=False)
-            ws.cell(row=r, column=9).alignment = VISUAL_ALIGN
-        except Exception:
-            pass
+        # H/I deferred per law — do NOT write per row (screws up fill, formulas). Only K per row.
+        # H col8 and I col9 will be filled when entire sheet complete via backtest_v12_engine parity.
         # K col11
         try:
             ws.cell(row=r, column=11).value = str(per_row_filters) if per_row_filters else None
@@ -418,16 +406,20 @@ def _token_overlap(gates: str, switch: str) -> bool:
         return True
     if gates.lower() == switch.lower():
         return True
-    if gates in switch or switch in gates:
-        return True
+    # STRICT: require gates to be exactly the switch or a specific gated mapping, not random token overlap like AZ/BA/BB for ETN
+    # Previously returned True on single token overlap (e.g., FILTER) causing RANDOM filters — now require at least 2 tokens or exact switch containment with CV/CW yellows
     import re
-    _STOP = {"filter","enabled","threshold","tf","gate","gates","switch","switches","exactly","it","the","and","for","with","only","gated"}
+    _STOP = {"filter","enabled","threshold","tf","gate","gates","switch","switches","exactly","it","the","and","for","with","only","gated","mode","value","level","type"}
     def toks(s): return [t for t in re.split(r"[ _\-\/]+", s.lower()) if len(t) > 3 and t not in _STOP]
     gt = set(toks(gates))
     st = set(toks(switch))
-    # require at least one non-generic token overlap, not just FILTER
-    if gt & st:
-        # also require overlap token length >=4 or specific like ATR, EMA, ADX
+    # Require at least 2 tokens overlap or exact switch token in gates, and gates must be specific to this switch's sheet lifecycle (CV/CW yellows for E3)
+    inter = gt & st
+    if len(inter) >= 2:
+        return True
+    # For E3 row yellows CV CW etc., require switch name appears in gates with at least one strong token (e.g., WT_15M_BOUNCE, ATR, etc.)
+    if switch.lower() in gates.lower() and len(inter) >= 1:
+        # Ensure not just generic FILTER token
         return True
     return False
 
@@ -1666,6 +1658,13 @@ def main():
             baseline_live = baseline_vec
     baseline_gain = float(baseline_live.get("gain_pct") or baseline_vec.get("gain_pct") or 0.0)
     bh = float(baseline_live.get("bh_pct") or baseline_vec.get("bh_pct") or 0.0)
+    # baseline reversed for short: if long is 7.2 short is -7.2 (same NPZ, opposite side)
+    if new_symside.endswith("_SHORT"):
+        baseline_gain = -abs(baseline_gain) if baseline_gain != 0 else baseline_gain
+        bh = -abs(bh) if bh != 0 else bh
+    elif new_symside.endswith("_LONG"):
+        baseline_gain = abs(baseline_gain) if baseline_gain != 0 else baseline_gain
+        bh = abs(bh) if bh != 0 else bh
     # FIX 2026-09-23: baseline 0.00 is a lie — must be calculated from previous test OR defaults for cat_side, never 0.00
     if abs(baseline_gain) < 1e-9:
         _fixed = False
@@ -2461,9 +2460,9 @@ def main():
                 if norm2(_ov, _cur): _rel_ident.append(_hdr)
                 else: _rel_eval.append((e["filter"], _ov, _hdr, e["opt"]))
             single_filters = list(_rel_eval)
-            # YELLOW-BLOCK: NO CAP - every single row and every yellow cell must be calculated per user 6h all >BH, cap is waste. All yellows calculated before row advance.
-            identical_hdrs = list(_rel_ident)
-            relevant_hdrs = [t[2] for t in single_filters] + list(identical_hdrs)
+            # YELLOW-ONLY FIX 2026-09-25: ONLY yellow cells for that one switch — identical filters (same value as cumulative) are NOT yellow, skip synthetic copy
+            identical_hdrs = []
+            relevant_hdrs = [t[2] for t in single_filters]
             candidates = []
             v0 = dict(cumulative_overrides); v0[switch] = cand; v0, _ = sanitize_overrides(v0, defaults)
             candidates.append((v0, None, None, None))
@@ -2508,14 +2507,7 @@ def main():
                 if filt is not None and hdr in htc: pending_lbI[hdr] = float(delta)
                 if best is None or delta > best[0]: best = (delta, variant, filt, fval, hdr, vec)
                 if filt is None: vector_delta_val = float(delta)
-            if vector_delta_val is not None:
-                for _h in identical_hdrs:
-                    if _h not in pending_lbI: pending_lbI[_h] = float(vector_delta_val)
-            else:
-                for _h in identical_hdrs:
-                    if _h not in pending_lbI: pending_lbI[_h] = 0.0; invalid_hdrs.append(_h)
-            for _h in invalid_hdrs:
-                if _h not in pending_lbI: pending_lbI[_h] = 0.0
+            # identical not written — yellow-only
             # combined pos
             try:
                 pos_filters = [(f, o, h) for (f, o, h, raw) in single_filters if pending_lbI.get(h, float("-inf")) > 0]
@@ -2589,30 +2581,30 @@ def main():
                         ws_h.cell(row=r, column=7).value = float(delta_best)
                     except: pass
                 try:
-                    # REPORT INTO BASELINE (F is hustle vs baseline) and VECTOR_DELTA (G greedy vs cum) — never into BB_BOUNCE etc
-                    # FIX 2026-09-24: E must be set for every calculated row to its cumulative_before (creates baseline chain)
-                    ws_h.cell(row=r, column=5).value = float(cumulative_before)
-                    ws_h.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="006100")
-                    ws_h.cell(row=r, column=5).alignment = __import__("openpyxl").styles.Alignment(horizontal="left", vertical="center")
+                    # LAW 2026-09-25: BASELINE (E) ONLY after POSITIVE delta — stays BLANK normally, never repeat.
+                    # Write F/G for this row, but E for NEXT row/tab only if G>0.
                     ws_h.cell(row=r, column=6).value = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
                     if ws_h.cell(row=r, column=7).value is None or float(ws_h.cell(row=r, column=7).value or 0) == 0:
                         ws_h.cell(row=r, column=7).value = float(delta_best)
                     ws_h.cell(row=r, column=6).alignment = __import__("openpyxl").styles.Alignment(horizontal="left", vertical="center")
                     ws_h.cell(row=r, column=7).alignment = __import__("openpyxl").styles.Alignment(horizontal="left", vertical="center")
-                    # FIX 2026-09-24: baseline must update every time higher number can be put in — set next row's E immediately when delta>0 and next row is in same tab
+                    # Only set NEXT row's E if delta>0 (add to previous baseline) — per law: POS delta -> add delta to baseline in next row
                     if delta_best > 1e-9:
-                        # Find next pending row in same sheet (r+1 that is not already in done and not header)
                         try:
                             next_r = r + 1
                             if next_r <= ws_h.max_row:
-                                # Only set if next row's E is currently empty or formula and next row is not yet calculated
                                 nxt_e = ws_h.cell(row=next_r, column=5).value
-                                if nxt_e is None or (isinstance(nxt_e, str) and nxt_e.startswith("=")):
+                                # Only set next E if currently BLANK (None) — never overwrite or repeat
+                                if nxt_e is None or (isinstance(nxt_e, str) and nxt_e.strip() == ""):
                                     ws_h.cell(row=next_r, column=5).value = float(cumulative_before + delta_best)
                                     ws_h.cell(row=next_r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="006100")
                                     ws_h.cell(row=next_r, column=5).alignment = __import__("openpyxl").styles.Alignment(horizontal="left", vertical="center")
+                            else:
+                                # Next row is next tab's first pending row — handled by outer loop's baseline carry
+                                pass
                         except Exception:
                             pass
+                    # Else NEG/0 delta -> DO NOT write baseline in next row, move to next tab's first pending row (handled by sheet deque)
                     # C override stays for best previous results — never clear on delta<=0
                 except: pass
             else:
@@ -2857,6 +2849,28 @@ def main():
                         return int(str(v))
                     except:
                         return v
+                # BOLD IS DEFAULT SO IT IS ALREADY IN BASELINE — delta at bold row is synthetic fabrication, STOP and FIX
+                try:
+                    _is_bold_default = False
+                    try:
+                        _b_font = ws.cell(row=r, column=2).font
+                        _is_bold_default = bool(_b_font.bold)
+                    except: pass
+                    if _is_bold_default:
+                        print(f"[BOLD-DEFAULT-NO-DELTA] {sheet}!{r} {switch}={cand} B is bold default already in baseline {cumulative_before:.4f} — delta at bold is synthetic, skipping delta calc for this row", flush=True)
+                        # Do not fabricate delta for bold default row — its value is baseline, not delta
+                        # Ensure F/G for bold row stays 0/None, not fabricated
+                        try:
+                            if ws_keep is not None and sheet in wb_keep.sheetnames:
+                                _wsk_bold = wb_keep[sheet]
+                                _wsk_bold.cell(row=r, column=6).value = 0.0
+                                _wsk_bold.cell(row=r, column=6).font = Font(name="Arial", size=10, bold=False, color="000000")
+                                _wsk_bold.cell(row=r, column=7).value = 0.0
+                                _wsk_bold.cell(row=r, column=7).font = Font(name="Arial", size=10, bold=False, color="000000")
+                        except: pass
+                        # Skip to next row, do not add to progress done with fabricated delta
+                        continue
+                except: pass
                 def norm2(a, b):
                     if isinstance(a, str) and a.lower() in ("true", "false"):
                         a = a.lower() == "true"
@@ -2942,9 +2956,9 @@ def main():
                     # per-cell budget (post-hoc flag, never mid-batch truncate).
                     is_heavy = len(np.asarray(prepared["npz_prepared"].get("close", []))) > 2000 if prepared else False
                     single_filters = list(_rel_eval)
-                    identical_hdrs = list(_rel_ident)
+                    identical_hdrs = []
                     invalid_hdrs = []
-                    relevant_hdrs = [t[2] for t in single_filters] + list(identical_hdrs)
+                    relevant_hdrs = [t[2] for t in single_filters]
                     if _rel_unmapped:
                         _flag_to_md(flags_md, sheet, r, switch, cand, f"header gap {len(_rel_unmapped)} relevant w/o L:BI col", 0.0, 0.0, cumulative_before)
                     # 1s per cell + entire F until 200 then next tab max baseline: heavy 2333 bars -> 0.6s/candidate
@@ -3072,16 +3086,7 @@ def main():
                         if filt is None:
                             vector_delta_val = float(delta)
 
-                    # identical-variant headers reuse the naked delta; invalid vecs get flagged 0.0 — no yellow left as formula/empty
-                    if vector_delta_val is not None:
-                        for _h in identical_hdrs:
-                            if _h not in pending_lbI:
-                                pending_lbI[_h] = float(vector_delta_val)
-                    else:
-                        for _h in identical_hdrs:
-                            if _h not in pending_lbI:
-                                pending_lbI[_h] = 0.0
-                                invalid_hdrs.append(_h)
+                    # identical not written — yellow-only, skip synthetic
                     for _h in invalid_hdrs:
                         if _h not in pending_lbI:
                             pending_lbI[_h] = 0.0
@@ -3569,17 +3574,20 @@ def main():
                             overrides_str = " + ".join(all_over) if all_over else str(cand)
                             ws_row.cell(row=r, column=3).value = overrides_str
                             ws_row.cell(row=r, column=3).font = Font(name="Arial", bold=True, color="006100")
-                            # baseline for this row: E_r = cumulative_before (spec: E is previous winning cum), F is HUSTLE_DELTA vs baseline, G is VECTOR_DELTA greedy vs cum
-                            # Dual system: E stays greedy (cumulative_before), F is hustle vs baseline, G is greedy delta
-                            _hustle_delta_vs_baseline = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
+                            # baseline for this row: E_r = cumulative_before (spec: E is previous winning cum), G is VECTOR_DELTA greedy vs cum, H/I empty until live
+                            # worst_first: hustle_delta NOT available (we are not in hustle mode) — F is HUSTLE only in hustle mode, else F is same as G or empty
+                            if args.seq_mode in ("worst_first", "worst2best", "worst-first"):
+                                _hustle_delta_vs_baseline = None  # not in hustle mode
+                                ws_row.cell(row=r, column=6).value = None  # F empty in worst_first
+                            else:
+                                _hustle_delta_vs_baseline = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
+                                ws_row.cell(row=r, column=6).value = float(_hustle_delta_vs_baseline) if _hustle_delta_vs_baseline is not None else None  # F = HUSTLE_DELTA vs baseline
                             ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None  # G = greedy VECTOR_DELTA vs cum
                             ws_row.cell(row=r, column=7).font = Font(name="Arial", size=10, bold=True, color="9C5700")
                             ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
-                            # H/I/K per-row (added for gap fix)
-                            try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else None
-                            except: _hk_ld = 0.0
-                            try: _hk_ls = float((live_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() and live_best is not None and (live_best or {}).get('pool_sharpe') is not None else None
-                            except: _hk_ls = 0.0
+                            # H/I empty until live backtest — first millions of other calculations, then live
+                            _hk_ld = None
+                            _hk_ls = None
                             try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
                             except: _hk_pf = ""
                             _write_per_row_HIK(ws_row, r, _hk_ld, _hk_ls, _hk_pf)
