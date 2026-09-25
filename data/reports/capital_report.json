@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-25 02:26 UTC",
- "total_capital_usd": 56.24,
+ "generated_at": "2026-09-25 03:26 UTC",
+ "total_capital_usd": 55.48,
  "tier_capital": {
   "A": 0.0,
-  "B": 56.24,
+  "B": 55.48,
   "C": 0.0
  },
  "tier_count": {
@@ -12,19 +12,21 @@
   "C": 0
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "men:ALGOUSDT_LONG"
+ ],
  "mediocre": [],
  "positions": [
   {
    "pk": "men:ALGOUSDT_LONG",
    "symbol": "ALGOUSDT",
    "account": "men",
-   "value_usd": 56.24,
-   "gain_pct": 0.699,
+   "value_usd": 55.48,
+   "gain_pct": -0.716,
    "tier": "B",
    "perf_mult": 2.31,
    "amt": 496.0,
-   "mark": 0.11338633
+   "mark": 0.11186207
   }
  ]
 }
