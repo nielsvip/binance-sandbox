@@ -1,14 +1,22 @@
 {
-  "generated_at": "2026-09-25T17:57:26.965917+00:00",
-  "count": 1,
+  "generated_at": "2026-09-25T18:30:14.677234+00:00",
+  "count": 2,
   "advisories": [
     {
       "symbol": "META",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.67 threshold=0.45",
-      "score": 0.669,
-      "ts": "2026-09-25T17:57:26.965882+00:00"
+      "reason": "bullish_news_score=0.80 threshold=0.45",
+      "score": 0.796,
+      "ts": "2026-09-25T18:30:14.677137+00:00"
+    },
+    {
+      "symbol": "CAT",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.72 threshold=0.45",
+      "score": 0.717,
+      "ts": "2026-09-25T18:30:14.677151+00:00"
     }
   ]
 }
