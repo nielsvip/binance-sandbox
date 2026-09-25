@@ -1633,6 +1633,16 @@
       "API_ABSENCE": 16
     }
   },
+  "flz:ZECUSDC_LONG": {
+    "count": 3,
+    "first_seen": "2026-09-23T14:36:59.977404+00:00",
+    "source": "phantom_kill_bootstrap",
+    "last_seen": "2026-09-23T14:37:33.515789+00:00",
+    "last_increment_at": "2026-09-23T14:37:03.289014+00:00",
+    "sources": {
+      "API_ABSENCE": 1
+    }
+  },
   "fin:SNXUSDT_SHORT": {
     "count": 2,
     "first_seen_zero_at": "2026-09-23T16:29:11.380925+00:00",
@@ -1681,5 +1691,14 @@
     "sources": {
       "API_ABSENCE": 2
     }
+  },
+  "flz:XRPUSDC_LONG": {
+    "count": 2,
+    "first_seen_zero_at": "2026-09-24T18:09:10.891670+00:00",
+    "last_increment_at": "2026-09-24T18:09:10.891670+00:00",
+    "sources": {
+      "API_ABSENCE": 1
+    },
+    "last_seen": "2026-09-24T18:09:32.175536+00:00"
   }
 }
