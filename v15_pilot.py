@@ -829,6 +829,16 @@ def ensure_lbI_headers(wb_path: Path):
             return
     fd_rows = _load_filter_dictionary()
     for sheet in SWITCH_SHEETS:
+        # USER 2026-09-25: 4 sym_sides per hour => 15 min per sym_side, if incomplete save and exit to next
+        if __import__('time').time() - _v15_start_time > 900:
+            print(f"[4-PER-HOUR] 15min timeout before sheet {sheet} ({__import__('time').time() - _v15_start_time:.1f}s) — saving {wb_path.name} and exiting to next sym_side", flush=True)
+            try:
+                _atomic_save(wb, wb_path)
+            except: pass
+            try:
+                _atomic_write_json(progress_path, progress)
+            except: pass
+            break
         if sheet not in wb.sheetnames:
             continue
         ws = wb[sheet]
@@ -1159,7 +1169,7 @@ def main():
         print(f"BLOCKED: only 30/20/7/1/365 allowed, got {args.window_days}", file=sys.stderr)
         sys.exit(2)
 
-    _v15_start_time = __import__('time').time()  # >1h PER SYM_SIDE RED LAW
+    _v15_start_time = __import__('time').time()  # USER 2026-09-25: 4 sym_sides per hour => 15 min per sym_side, if incomplete go to next solve later
     if args.sym_side:
         new_symside = args.sym_side.strip().upper()
     else:
@@ -2704,6 +2714,16 @@ def main():
                         break
 
             for (r, switch, cand) in rows:
+                # USER 2026-09-25: 4 per hour => 15 min per sym, if incomplete save and go to next
+                if __import__('time').time() - _v15_start_time > 900:
+                    print(f"[4-PER-HOUR] 15min timeout at row {r} ({__import__('time').time() - _v15_start_time:.1f}s) — saving {wb_path.name} and exiting", flush=True)
+                    try:
+                        _atomic_save(wb_keep, wb_path)
+                    except: pass
+                    try:
+                        _atomic_write_json(progress_path, progress)
+                    except: pass
+                    break
                 if _is_kg_never_skip(switch):
                     _is_w15m_seq = True  # KG never skip
                 else:
@@ -3757,6 +3777,16 @@ def main():
             # old pos-only sheet check now log-only
             if total_pos == 0 and __import__('time').time() - _v15_start_time > 15:
                 print(f"[VIRUS0-15s-SHEET-DISABLED] {new_symside} sheet {sheet} 0 pos after {__import__('time').time() - _v15_start_time:.1f}s — continuing (abort disabled, yellows kept)", flush=True)
+            # USER 2026-09-25: 4 sym_sides per hour => 15 min (900s) per sym_side, if incomplete save and exit to next
+            if __import__('time').time() - _v15_start_time > 900:
+                print(f"[4-PER-HOUR] {new_symside} 15min timeout ({__import__('time').time() - _v15_start_time:.1f}s) — saving current sheet and exiting to next sym_side (incomplete will be solved later)", flush=True)
+                try:
+                    _atomic_save(wb_keep, wb_path)
+                except: pass
+                try:
+                    _atomic_write_json(progress_path, progress)
+                except: pass
+                break
         except Exception as _sheet_e:
             import traceback
             print(f"[sheet-ERR] {sheet} {_sheet_e} {traceback.format_exc()[:800]}", flush=True)
