@@ -1,16 +1,10 @@
 {
-  "generated_at": "2026-09-24T13:25:05Z",
-  "data_age_minutes": 1349.0,
-  "symbols_scanned": 115,
+  "generated_at": "2026-09-25T13:25:06Z",
+  "data_age_minutes": 2789.0,
+  "symbols_scanned": 109,
   "market_bias": "LONG",
-  "summary": "10 BUY setups, 9 SHORT setups, 74 HOLD, 39 AVOID \u2014 from 136 trb symbols",
+  "summary": "12 BUY setups, 9 SHORT setups, 70 HOLD, 32 AVOID \u2014 from 130 trb symbols",
   "top_buys": [
-    {
-      "symbol": "BMNR",
-      "confidence": "HIGH",
-      "note": "WT 1h+4h+D bullish, stoch 27 (NEUTRAL), MFI 47 (CONFIRMING), momentum BUILDING",
-      "cautions": []
-    },
     {
       "symbol": "CLS",
       "confidence": "HIGH",
@@ -18,33 +12,41 @@
       "cautions": []
     },
     {
-      "symbol": "TSLA",
-      "confidence": "MEDIUM",
-      "note": "WT 1h+4h bullish, stoch 77 (NEUTRAL), MFI 42 (CONFIRMING), momentum FADING",
-      "cautions": [
-        "4h momentum fading \u2014 size down"
-      ]
+      "symbol": "CLF",
+      "confidence": "HIGH",
+      "note": "WT 1h+4h+D bullish, stoch 54 (NEUTRAL), MFI 60 (CONFIRMING), momentum BUILDING",
+      "cautions": []
     },
     {
-      "symbol": "ARM",
+      "symbol": "DE",
       "confidence": "MEDIUM",
-      "note": "WT 4h+D bullish, stoch 37 (NEUTRAL), MFI 52 (CONFIRMING), momentum BUILDING",
-      "cautions": [
-        "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
-      ]
+      "note": "WT 1h+4h bullish, stoch 50 (NEUTRAL), MFI 61 (CONFIRMING), momentum BUILDING",
+      "cautions": []
     },
     {
-      "symbol": "AMD",
+      "symbol": "QLYS",
       "confidence": "MEDIUM",
-      "note": "WT 4h+D bullish, stoch 79 (NEUTRAL), MFI 46 (CONFIRMING), momentum FLAT",
-      "cautions": [
-        "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
-      ]
+      "note": "WT 1h+4h bullish, stoch 50 (NEUTRAL), MFI 58 (CONFIRMING), momentum BUILDING",
+      "cautions": []
+    },
+    {
+      "symbol": "COPX",
+      "confidence": "MEDIUM",
+      "note": "WT 1h+4h bullish, stoch 65 (NEUTRAL), MFI 55 (CONFIRMING), momentum FLAT",
+      "cautions": []
     },
     {
       "symbol": "SMCI",
       "confidence": "MEDIUM",
       "note": "WT 1h+4h bullish, stoch 67 (NEUTRAL), MFI 40 (CONFIRMING), momentum FADING",
+      "cautions": [
+        "4h momentum fading \u2014 size down"
+      ]
+    },
+    {
+      "symbol": "TSLA",
+      "confidence": "MEDIUM",
+      "note": "WT 1h+4h bullish, stoch 77 (NEUTRAL), MFI 42 (CONFIRMING), momentum FADING",
       "cautions": [
         "4h momentum fading \u2014 size down"
       ]
@@ -62,16 +64,26 @@
       "cautions": []
     },
     {
-      "symbol": "COPX",
+      "symbol": "ARM",
       "confidence": "MEDIUM",
-      "note": "WT 1h+4h bullish, stoch 65 (NEUTRAL), MFI 55 (CONFIRMING), momentum FLAT",
+      "note": "WT 4h+D bullish, stoch 37 (NEUTRAL), MFI 52 (CONFIRMING), momentum BUILDING",
+      "cautions": [
+        "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
+      ]
+    },
+    {
+      "symbol": "TSM",
+      "confidence": "MEDIUM",
+      "note": "WT 1h+4h bullish, stoch 77 (NEUTRAL), MFI 64 (CONFIRMING), momentum FLAT",
       "cautions": []
     },
     {
-      "symbol": "QLYS",
+      "symbol": "AMD",
       "confidence": "MEDIUM",
-      "note": "WT 1h+4h bullish, stoch 50 (NEUTRAL), MFI 58 (CONFIRMING), momentum BUILDING",
-      "cautions": []
+      "note": "WT 4h+D bullish, stoch 79 (NEUTRAL), MFI 46 (CONFIRMING), momentum FLAT",
+      "cautions": [
+        "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
+      ]
     }
   ],
   "top_shorts": [
@@ -79,36 +91,6 @@
       "symbol": "ADBE",
       "confidence": "HIGH",
       "note": "WT 1h+4h+D bearish, stoch 57 (NEUTRAL), MFI 51 (CONFIRMING), momentum BUILDING",
-      "cautions": [
-        "4h momentum still building \u2014 trail stop"
-      ]
-    },
-    {
-      "symbol": "CAT",
-      "confidence": "MEDIUM",
-      "note": "WT 1h+D bearish, stoch 30 (NEUTRAL), MFI 26 (CONFIRMING), momentum BUILDING",
-      "cautions": [
-        "4h momentum still building \u2014 trail stop"
-      ]
-    },
-    {
-      "symbol": "HAO",
-      "confidence": "MEDIUM",
-      "note": "WT 1h+4h bearish, stoch 85 (OVERBOUGHT), MFI 51 (CONFIRMING), momentum FADING",
-      "cautions": []
-    },
-    {
-      "symbol": "ALKT",
-      "confidence": "MEDIUM",
-      "note": "WT 4h+D bearish, stoch 38 (NEUTRAL), MFI 32 (CONFIRMING), momentum BUILDING",
-      "cautions": [
-        "4h momentum still building \u2014 trail stop"
-      ]
-    },
-    {
-      "symbol": "GOOGL",
-      "confidence": "MEDIUM",
-      "note": "WT 1h+4h bearish, stoch 32 (NEUTRAL), MFI 45 (CONFIRMING), momentum BUILDING",
       "cautions": [
         "4h momentum still building \u2014 trail stop"
       ]
@@ -122,14 +104,6 @@
       ]
     },
     {
-      "symbol": "BKR",
-      "confidence": "MEDIUM",
-      "note": "WT 1h+D bearish, stoch 26 (NEUTRAL), MFI 51 (CONFIRMING), momentum BUILDING",
-      "cautions": [
-        "4h momentum still building \u2014 trail stop"
-      ]
-    },
-    {
       "symbol": "AMZN",
       "confidence": "MEDIUM",
       "note": "WT 1h+D bearish, stoch 60 (NEUTRAL), MFI 86 (WEAK), momentum BUILDING",
@@ -138,19 +112,63 @@
       ]
     },
     {
+      "symbol": "GOOGL",
+      "confidence": "MEDIUM",
+      "note": "WT 1h+4h bearish, stoch 32 (NEUTRAL), MFI 45 (CONFIRMING), momentum BUILDING",
+      "cautions": [
+        "4h momentum still building \u2014 trail stop"
+      ]
+    },
+    {
       "symbol": "APO",
       "confidence": "MEDIUM",
       "note": "WT 1h+D bearish, stoch 53 (NEUTRAL), MFI 25 (CONFIRMING), momentum FADING",
+      "cautions": []
+    },
+    {
+      "symbol": "ALKT",
+      "confidence": "MEDIUM",
+      "note": "WT 4h+D bearish, stoch 38 (NEUTRAL), MFI 32 (CONFIRMING), momentum BUILDING",
+      "cautions": [
+        "4h momentum still building \u2014 trail stop"
+      ]
+    },
+    {
+      "symbol": "BKR",
+      "confidence": "MEDIUM",
+      "note": "WT 1h+D bearish, stoch 26 (NEUTRAL), MFI 51 (CONFIRMING), momentum BUILDING",
+      "cautions": [
+        "4h momentum still building \u2014 trail stop"
+      ]
+    },
+    {
+      "symbol": "NFLX",
+      "confidence": "MEDIUM",
+      "note": "WT 1h+4h bearish, stoch 53 (NEUTRAL), MFI 46 (CONFIRMING), momentum FADING",
+      "cautions": []
+    },
+    {
+      "symbol": "HAO",
+      "confidence": "MEDIUM",
+      "note": "WT 1h+4h bearish, stoch 85 (OVERBOUGHT), MFI 51 (CONFIRMING), momentum FADING",
       "cautions": []
     }
   ],
   "top_holds": [
     {
-      "symbol": "LITE",
+      "symbol": "FNV",
       "confidence": "LOW",
-      "note": "WT 4h bullish, stoch 42 (NEUTRAL), MFI 48 (CONFIRMING), momentum FADING",
+      "note": "WT 1h bullish, stoch 14 (OVERSOLD), MFI 35 (WEAK), momentum FLAT",
       "cautions": [
-        "Only 4h bullish \u2014 wait for alignment"
+        "Only 1h bullish \u2014 wait for alignment"
+      ]
+    },
+    {
+      "symbol": "ASML",
+      "confidence": "LOW",
+      "note": "WT 1h+4h bullish, stoch 36 (NEUTRAL), MFI 31 (WEAK), momentum BUILDING",
+      "cautions": [
+        "MFI weak (31) \u2014 flow not confirming"
       ]
     },
     {
@@ -162,57 +180,25 @@
       ]
     },
     {
-      "symbol": "NEM",
+      "symbol": "PLTR",
       "confidence": "LOW",
-      "note": "WT 1h bullish, stoch 10 (OVERSOLD), MFI 48 (CONFIRMING), momentum FADING",
-      "cautions": [
-        "Only 1h bullish \u2014 wait for alignment"
-      ]
-    },
-    {
-      "symbol": "VLO",
-      "confidence": "LOW",
-      "note": "WT 4h bullish, stoch 52 (NEUTRAL), MFI 52 (CONFIRMING), momentum FADING",
+      "note": "WT 4h bullish, stoch 88 (OVERBOUGHT), MFI 59 (CONFIRMING), momentum FLAT",
       "cautions": [
         "Only 4h bullish \u2014 wait for alignment"
       ]
     },
     {
-      "symbol": "VICR",
+      "symbol": "SNDK",
       "confidence": "LOW",
-      "note": "WT 1h+4h bullish, stoch 100 (OVERBOUGHT), MFI 79 (CONFIRMING), momentum BUILDING",
+      "note": "WT 4h bullish, stoch 50 (NEUTRAL), MFI 44 (CONFIRMING), momentum BUILDING",
       "cautions": [
-        "Stoch overbought (100) \u2014 wait for pullback"
+        "Only 4h bullish \u2014 wait for alignment"
       ]
     },
     {
-      "symbol": "VLO",
+      "symbol": "LOW",
       "confidence": "LOW",
-      "note": "WT 1h bearish, stoch 52 (NEUTRAL), MFI 52 (CONFIRMING), momentum FADING",
-      "cautions": [
-        "Only 1h bearish \u2014 wait for alignment"
-      ]
-    },
-    {
-      "symbol": "GM",
-      "confidence": "LOW",
-      "note": "WT 4h bearish, stoch 6 (OVERSOLD), MFI 24 (CONFIRMING), momentum FLAT",
-      "cautions": [
-        "Only 4h bearish \u2014 wait for alignment"
-      ]
-    },
-    {
-      "symbol": "BWXT",
-      "confidence": "LOW",
-      "note": "WT 1h+D bearish, stoch 9 (OVERSOLD), MFI 10 (CONFIRMING), momentum BUILDING",
-      "cautions": [
-        "Stoch oversold (9) \u2014 risk of bounce"
-      ]
-    },
-    {
-      "symbol": "RTX",
-      "confidence": "LOW",
-      "note": "WT 4h bearish, stoch 83 (OVERBOUGHT), MFI 48 (CONFIRMING), momentum FADING",
+      "note": "WT 4h bearish, stoch 58 (NEUTRAL), MFI 34 (CONFIRMING), momentum FADING",
       "cautions": [
         "Only 4h bearish \u2014 wait for alignment"
       ]
@@ -224,28 +210,139 @@
       "cautions": [
         "Only 4h bearish \u2014 wait for alignment"
       ]
+    },
+    {
+      "symbol": "PLTR",
+      "confidence": "LOW",
+      "note": "WT 1h bearish, stoch 88 (OVERBOUGHT), MFI 59 (CONFIRMING), momentum FLAT",
+      "cautions": [
+        "Only 1h bearish \u2014 wait for alignment"
+      ]
+    },
+    {
+      "symbol": "NVDA",
+      "confidence": "LOW",
+      "note": "WT 1h bearish, stoch 63 (NEUTRAL), MFI 59 (CONFIRMING), momentum BUILDING",
+      "cautions": [
+        "Only 1h bearish \u2014 wait for alignment"
+      ]
+    },
+    {
+      "symbol": "CVS",
+      "confidence": "LOW",
+      "note": "WT 4h bearish, stoch 2 (OVERSOLD), MFI 3 (CONFIRMING), momentum BUILDING",
+      "cautions": [
+        "Only 4h bearish \u2014 wait for alignment"
+      ]
     }
   ],
   "assessments": {
-    "LITE": {
+    "DE": {
+      "long": {
+        "side": "long",
+        "recommendation": "BUY",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [],
+        "note": "WT 1h+4h bullish, stoch 50 (NEUTRAL), MFI 61 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "QLYS": {
+      "long": {
+        "side": "long",
+        "recommendation": "BUY",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [],
+        "note": "WT 1h+4h bullish, stoch 50 (NEUTRAL), MFI 58 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "FNV": {
       "long": {
         "side": "long",
         "recommendation": "HOLD",
         "confidence": "LOW",
         "tf_bias": {
-          "1h": "BEAR",
+          "1h": "BULL",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "OVERSOLD",
+        "mfi_status": "WEAK",
+        "momentum": "FLAT",
+        "cautions": [
+          "Only 1h bullish \u2014 wait for alignment"
+        ],
+        "note": "WT 1h bullish, stoch 14 (OVERSOLD), MFI 35 (WEAK), momentum FLAT"
+      }
+    },
+    "COPX": {
+      "long": {
+        "side": "long",
+        "recommendation": "BUY",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BULL",
           "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FLAT",
+        "cautions": [],
+        "note": "WT 1h+4h bullish, stoch 65 (NEUTRAL), MFI 55 (CONFIRMING), momentum FLAT"
+      }
+    },
+    "ASML": {
+      "long": {
+        "side": "long",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BULL",
+          "D": "BEAR"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "WEAK",
+        "momentum": "BUILDING",
+        "cautions": [
+          "MFI weak (31) \u2014 flow not confirming"
+        ],
+        "note": "WT 1h+4h bullish, stoch 36 (NEUTRAL), MFI 31 (WEAK), momentum BUILDING"
+      }
+    },
+    "DELL": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BEAR",
           "D": "?"
         },
         "stoch_status": "NEUTRAL",
         "mfi_status": "CONFIRMING",
         "momentum": "FADING",
         "cautions": [
-          "Only 4h bullish \u2014 wait for alignment",
-          "1h stoch oversold (9) \u2014 bounce potential",
-          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
+          "WT bearish across TFs \u2014 wrong side"
         ],
-        "note": "WT 4h bullish, stoch 42 (NEUTRAL), MFI 48 (CONFIRMING), momentum FADING"
+        "note": "WT bearish all TFs, stoch 70 (NEUTRAL), MFI 58 (CONFIRMING), momentum FADING"
       }
     },
     "QQQ": {
@@ -268,6 +365,83 @@
         "note": "WT 4h bullish, stoch 92 (OVERBOUGHT), MFI 50 (CONFIRMING), momentum BUILDING"
       }
     },
+    "PLTR": {
+      "long": {
+        "side": "long",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "OVERBOUGHT",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FLAT",
+        "cautions": [
+          "Only 4h bullish \u2014 wait for alignment",
+          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
+        ],
+        "note": "WT 4h bullish, stoch 88 (OVERBOUGHT), MFI 59 (CONFIRMING), momentum FLAT"
+      },
+      "short": {
+        "side": "short",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "OVERBOUGHT",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FLAT",
+        "cautions": [
+          "Only 1h bearish \u2014 wait for alignment",
+          "1h stoch overbought (87) \u2014 short entry timing good"
+        ],
+        "note": "WT 1h bearish, stoch 88 (OVERBOUGHT), MFI 59 (CONFIRMING), momentum FLAT"
+      }
+    },
+    "CRWD": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "OVERBOUGHT",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FADING",
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs, stoch 81 (OVERBOUGHT), MFI 67 (CONFIRMING), momentum FADING"
+      }
+    },
+    "SNDK": {
+      "long": {
+        "side": "long",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "Only 4h bullish \u2014 wait for alignment",
+          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
+        ],
+        "note": "WT 4h bullish, stoch 50 (NEUTRAL), MFI 44 (CONFIRMING), momentum BUILDING"
+      }
+    },
     "NEM": {
       "long": {
         "side": "long",
@@ -285,6 +459,177 @@
           "Only 1h bullish \u2014 wait for alignment"
         ],
         "note": "WT 1h bullish, stoch 10 (OVERSOLD), MFI 48 (CONFIRMING), momentum FADING"
+      }
+    },
+    "NVDA": {
+      "long": {
+        "side": "long",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "Only 4h bullish \u2014 wait for alignment",
+          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
+        ],
+        "note": "WT 4h bullish, stoch 63 (NEUTRAL), MFI 59 (CONFIRMING), momentum BUILDING"
+      },
+      "short": {
+        "side": "short",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "Only 1h bearish \u2014 wait for alignment",
+          "1h stoch overbought (99) \u2014 short entry timing good"
+        ],
+        "note": "WT 1h bearish, stoch 63 (NEUTRAL), MFI 59 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "MSTR": {
+      "long": {
+        "side": "long",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "Only 4h bullish \u2014 wait for alignment",
+          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
+        ],
+        "note": "WT 4h bullish, stoch 47 (NEUTRAL), MFI 51 (CONFIRMING), momentum BUILDING"
+      },
+      "short": {
+        "side": "short",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "Only 1h bearish \u2014 wait for alignment",
+          "1h stoch overbought (87) \u2014 short entry timing good"
+        ],
+        "note": "WT 1h bearish, stoch 47 (NEUTRAL), MFI 51 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "CLS": {
+      "long": {
+        "side": "long",
+        "recommendation": "BUY",
+        "confidence": "HIGH",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BULL",
+          "D": "BULL"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [],
+        "note": "WT 1h+4h+D bullish, stoch 29 (NEUTRAL), MFI 54 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "LITE": {
+      "long": {
+        "side": "long",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FADING",
+        "cautions": [
+          "Only 4h bullish \u2014 wait for alignment",
+          "1h stoch oversold (9) \u2014 bounce potential",
+          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
+        ],
+        "note": "WT 4h bullish, stoch 42 (NEUTRAL), MFI 48 (CONFIRMING), momentum FADING"
+      }
+    },
+    "SMCI": {
+      "long": {
+        "side": "long",
+        "recommendation": "BUY",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FADING",
+        "cautions": [
+          "4h momentum fading \u2014 size down"
+        ],
+        "note": "WT 1h+4h bullish, stoch 67 (NEUTRAL), MFI 40 (CONFIRMING), momentum FADING"
+      }
+    },
+    "AMZN": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "HIGH",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "BEAR"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "HTF bearish \u2014 wrong direction",
+          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
+        ],
+        "note": "WT 4h bullish, stoch 60 (NEUTRAL), MFI 86 (CONFIRMING), momentum BUILDING"
+      },
+      "short": {
+        "side": "short",
+        "recommendation": "SHORT",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "BEAR"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "WEAK",
+        "momentum": "BUILDING",
+        "cautions": [
+          "MFI confirming (86) \u2014 flow still flowing down",
+          "4h momentum still building \u2014 trail stop"
+        ],
+        "note": "WT 1h+D bearish, stoch 60 (NEUTRAL), MFI 86 (WEAK), momentum BUILDING"
       }
     },
     "VLO": {
@@ -306,13 +651,35 @@
           "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
         ],
         "note": "WT 4h bullish, stoch 52 (NEUTRAL), MFI 52 (CONFIRMING), momentum FADING"
-      },
-      "short": {
-        "side": "short",
+      }
+    },
+    "A": {
+      "long": {
+        "side": "long",
         "recommendation": "HOLD",
         "confidence": "LOW",
         "tf_bias": {
           "1h": "BEAR",
+          "4h": "BULL",
+          "D": "BULL"
+        },
+        "stoch_status": "OVERBOUGHT",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FADING",
+        "cautions": [
+          "Stoch overbought (99) \u2014 wait for pullback",
+          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
+        ],
+        "note": "WT 4h+D bullish, stoch 99 (OVERBOUGHT), MFI 97 (CONFIRMING), momentum FADING"
+      }
+    },
+    "TSLA": {
+      "long": {
+        "side": "long",
+        "recommendation": "BUY",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BULL",
           "4h": "BULL",
           "D": "?"
         },
@@ -320,28 +687,62 @@
         "mfi_status": "CONFIRMING",
         "momentum": "FADING",
         "cautions": [
-          "Only 1h bearish \u2014 wait for alignment"
+          "4h momentum fading \u2014 size down"
         ],
-        "note": "WT 1h bearish, stoch 52 (NEUTRAL), MFI 52 (CONFIRMING), momentum FADING"
-      }
-    },
-    "VICR": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
+        "note": "WT 1h+4h bullish, stoch 77 (NEUTRAL), MFI 42 (CONFIRMING), momentum FADING"
+      },
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
         "tf_bias": {
           "1h": "BULL",
           "4h": "BULL",
           "D": "?"
         },
-        "stoch_status": "OVERBOUGHT",
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FADING",
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs, stoch 77 (NEUTRAL), MFI 42 (CONFIRMING), momentum FADING"
+      }
+    },
+    "GOOGL": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
         "mfi_status": "CONFIRMING",
         "momentum": "BUILDING",
         "cautions": [
-          "Stoch overbought (100) \u2014 wait for pullback"
+          "WT bearish across TFs \u2014 wrong side"
         ],
-        "note": "WT 1h+4h bullish, stoch 100 (OVERBOUGHT), MFI 79 (CONFIRMING), momentum BUILDING"
+        "note": "WT bearish all TFs, stoch 32 (NEUTRAL), MFI 45 (CONFIRMING), momentum BUILDING"
+      },
+      "short": {
+        "side": "short",
+        "recommendation": "SHORT",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "4h momentum still building \u2014 trail stop"
+        ],
+        "note": "WT 1h+4h bearish, stoch 32 (NEUTRAL), MFI 45 (CONFIRMING), momentum BUILDING"
       }
     },
     "AXTI": {
@@ -364,49 +765,89 @@
         "note": "WT 4h+D bullish, stoch 54 (NEUTRAL), MFI 1 (WEAK), momentum BUILDING"
       }
     },
-    "MCD": {
+    "AGCO": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "HIGH",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BEAR",
+          "D": "BULL"
+        },
+        "stoch_status": "OVERSOLD",
+        "mfi_status": "WEAK",
+        "momentum": "BUILDING",
+        "cautions": [
+          "HTF bearish \u2014 wrong direction",
+          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
+        ],
+        "note": "WT D bullish, stoch 16 (OVERSOLD), MFI 20 (WEAK), momentum BUILDING"
+      }
+    },
+    "DAR": {
       "long": {
         "side": "long",
         "recommendation": "HOLD",
         "confidence": "LOW",
         "tf_bias": {
           "1h": "BULL",
-          "4h": "BULL",
+          "4h": "BEAR",
           "D": "?"
         },
         "stoch_status": "NEUTRAL",
-        "mfi_status": "WEAK",
-        "momentum": "BUILDING",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FADING",
         "cautions": [
-          "MFI weak (15) \u2014 flow not confirming"
+          "Only 1h bullish \u2014 wait for alignment",
+          "1h stoch oversold (8) \u2014 bounce potential"
         ],
-        "note": "WT 1h+4h bullish, stoch 33 (NEUTRAL), MFI 15 (WEAK), momentum BUILDING"
+        "note": "WT 1h bullish, stoch 45 (NEUTRAL), MFI 47 (CONFIRMING), momentum FADING"
       },
       "short": {
         "side": "short",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
         "tf_bias": {
           "1h": "BULL",
-          "4h": "BULL",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FADING",
+        "cautions": [
+          "Only 4h bearish \u2014 wait for alignment"
+        ],
+        "note": "WT 4h bearish, stoch 45 (NEUTRAL), MFI 47 (CONFIRMING), momentum FADING"
+      }
+    },
+    "MSFT": {
+      "long": {
+        "side": "long",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BEAR",
           "D": "?"
         },
         "stoch_status": "NEUTRAL",
         "mfi_status": "CONFIRMING",
         "momentum": "BUILDING",
         "cautions": [
-          "WT bullish across TFs \u2014 wrong side to short"
+          "Only 1h bullish \u2014 wait for alignment"
         ],
-        "note": "WT bullish all TFs, stoch 33 (NEUTRAL), MFI 15 (CONFIRMING), momentum BUILDING"
+        "note": "WT 1h bullish, stoch 29 (NEUTRAL), MFI 46 (CONFIRMING), momentum BUILDING"
       }
     },
-    "MRK": {
+    "ZCSH": {
       "long": {
         "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
         "tf_bias": {
-          "1h": "BULL",
+          "1h": "BEAR",
           "4h": "?",
           "D": "?"
         },
@@ -414,12 +855,121 @@
         "mfi_status": "CONFIRMING",
         "momentum": null,
         "cautions": [
-          "Only 1h bullish \u2014 wait for alignment"
+          "WT bearish across TFs \u2014 wrong side"
         ],
-        "note": "WT 1h bullish, stoch 72 (NEUTRAL), MFI 100 (CONFIRMING)"
+        "note": "WT bearish all TFs, stoch 42 (NEUTRAL), MFI 41 (CONFIRMING)"
+      },
+      "short": {
+        "side": "short",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": null,
+        "cautions": [
+          "Only 1h bearish \u2014 wait for alignment"
+        ],
+        "note": "WT 1h bearish, stoch 42 (NEUTRAL), MFI 41 (CONFIRMING)"
       }
     },
-    "MPC": {
+    "CLF": {
+      "long": {
+        "side": "long",
+        "recommendation": "BUY",
+        "confidence": "HIGH",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BULL",
+          "D": "BULL"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [],
+        "note": "WT 1h+4h+D bullish, stoch 54 (NEUTRAL), MFI 60 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "AAPL": {
+      "long": {
+        "side": "long",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "BULL"
+        },
+        "stoch_status": "OVERBOUGHT",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FLAT",
+        "cautions": [
+          "Stoch overbought (86) \u2014 wait for pullback",
+          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
+        ],
+        "note": "WT 4h+D bullish, stoch 86 (OVERBOUGHT), MFI 86 (CONFIRMING), momentum FLAT"
+      },
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "HIGH",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "BULL"
+        },
+        "stoch_status": "OVERBOUGHT",
+        "mfi_status": "WEAK",
+        "momentum": "FLAT",
+        "cautions": [
+          "HTF bullish \u2014 wrong direction for short"
+        ],
+        "note": "WT 1h bearish, stoch 86 (OVERBOUGHT), MFI 86 (WEAK), momentum FLAT"
+      }
+    },
+    "VICR": {
+      "long": {
+        "side": "long",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "OVERBOUGHT",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "Stoch overbought (100) \u2014 wait for pullback"
+        ],
+        "note": "WT 1h+4h bullish, stoch 100 (OVERBOUGHT), MFI 79 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "RGLD": {
+      "long": {
+        "side": "long",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FADING",
+        "cautions": [
+          "Only 1h bullish \u2014 wait for alignment"
+        ],
+        "note": "WT 1h bullish, stoch 24 (NEUTRAL), MFI 57 (CONFIRMING), momentum FADING"
+      }
+    },
+    "LNG": {
       "long": {
         "side": "long",
         "recommendation": "HOLD",
@@ -431,12 +981,48 @@
         },
         "stoch_status": "NEUTRAL",
         "mfi_status": "CONFIRMING",
-        "momentum": "FADING",
+        "momentum": "BUILDING",
         "cautions": [
           "Only 4h bullish \u2014 wait for alignment",
           "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
         ],
-        "note": "WT 4h bullish, stoch 77 (NEUTRAL), MFI 77 (CONFIRMING), momentum FADING"
+        "note": "WT 4h bullish, stoch 35 (NEUTRAL), MFI 48 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "CRM": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "OVERSOLD",
+        "mfi_status": "WEAK",
+        "momentum": "FLAT",
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs, stoch 3 (OVERSOLD), MFI 32 (WEAK), momentum FLAT"
+      }
+    },
+    "GILD": {
+      "long": {
+        "side": "long",
+        "recommendation": "BUY",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FLAT",
+        "cautions": [],
+        "note": "WT 1h+4h bullish, stoch 54 (NEUTRAL), MFI 54 (CONFIRMING), momentum FLAT"
       }
     },
     "SLV": {
@@ -478,82 +1064,7 @@
         "note": "WT 4h bullish, stoch 92 (OVERBOUGHT), MFI 65 (CONFIRMING), momentum BUILDING"
       }
     },
-    "ASML": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BULL",
-          "D": "BEAR"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "WEAK",
-        "momentum": "BUILDING",
-        "cautions": [
-          "MFI weak (31) \u2014 flow not confirming"
-        ],
-        "note": "WT 1h+4h bullish, stoch 36 (NEUTRAL), MFI 31 (WEAK), momentum BUILDING"
-      }
-    },
-    "A": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "BULL"
-        },
-        "stoch_status": "OVERBOUGHT",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FADING",
-        "cautions": [
-          "Stoch overbought (99) \u2014 wait for pullback",
-          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
-        ],
-        "note": "WT 4h+D bullish, stoch 99 (OVERBOUGHT), MFI 97 (CONFIRMING), momentum FADING"
-      }
-    },
-    "ZCSH": {
-      "long": {
-        "side": "long",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "?",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": null,
-        "cautions": [
-          "WT bearish across TFs \u2014 wrong side"
-        ],
-        "note": "WT bearish all TFs, stoch 42 (NEUTRAL), MFI 41 (CONFIRMING)"
-      },
-      "short": {
-        "side": "short",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "?",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": null,
-        "cautions": [
-          "Only 1h bearish \u2014 wait for alignment"
-        ],
-        "note": "WT 1h bearish, stoch 42 (NEUTRAL), MFI 41 (CONFIRMING)"
-      }
-    },
-    "MU": {
+    "COHR": {
       "long": {
         "side": "long",
         "recommendation": "HOLD",
@@ -570,44 +1081,7 @@
           "Only 4h bullish \u2014 wait for alignment",
           "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
         ],
-        "note": "WT 4h bullish, stoch 42 (NEUTRAL), MFI 57 (CONFIRMING), momentum BUILDING"
-      },
-      "short": {
-        "side": "short",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "Only 1h bearish \u2014 wait for alignment",
-          "1h stoch overbought (94) \u2014 short entry timing good"
-        ],
-        "note": "WT 1h bearish, stoch 42 (NEUTRAL), MFI 57 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "PR": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "Only 1h bullish \u2014 wait for alignment"
-        ],
-        "note": "WT 1h bullish, stoch 22 (NEUTRAL), MFI 61 (CONFIRMING), momentum BUILDING"
+        "note": "WT 4h bullish, stoch 51 (NEUTRAL), MFI 87 (CONFIRMING), momentum BUILDING"
       }
     },
     "ZETA": {
@@ -627,6 +1101,117 @@
           "WT bearish across TFs \u2014 wrong side"
         ],
         "note": "WT bearish all TFs, stoch 22 (NEUTRAL), MFI 45 (CONFIRMING), momentum FADING"
+      }
+    },
+    "BHP": {
+      "long": {
+        "side": "long",
+        "recommendation": "BUY",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BULL",
+          "D": "BEAR"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [],
+        "note": "WT 1h+4h bullish, stoch 38 (NEUTRAL), MFI 48 (CONFIRMING), momentum BUILDING"
+      },
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "HIGH",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BULL",
+          "D": "BEAR"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "HTF bullish \u2014 wrong direction for short"
+        ],
+        "note": "WT D bearish, stoch 38 (NEUTRAL), MFI 48 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "GLD": {
+      "long": {
+        "side": "long",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": "OVERBOUGHT",
+        "mfi_status": "CONFIRMING",
+        "momentum": null,
+        "cautions": [
+          "Only 1h bullish \u2014 wait for alignment"
+        ],
+        "note": "WT 1h bullish, stoch 83 (OVERBOUGHT), MFI 44 (CONFIRMING)"
+      }
+    },
+    "PSX": {
+      "long": {
+        "side": "long",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "OVERBOUGHT",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "Only 4h bullish \u2014 wait for alignment",
+          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
+        ],
+        "note": "WT 4h bullish, stoch 81 (OVERBOUGHT), MFI 70 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "ARM": {
+      "long": {
+        "side": "long",
+        "recommendation": "BUY",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "BULL"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
+        ],
+        "note": "WT 4h+D bullish, stoch 37 (NEUTRAL), MFI 52 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "META": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FADING",
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs, stoch 70 (NEUTRAL), MFI 51 (CONFIRMING), momentum FADING"
       }
     },
     "HOOD": {
@@ -667,389 +1252,26 @@
         "note": "WT 1h bearish, stoch 40 (NEUTRAL), MFI 46 (CONFIRMING), momentum BUILDING"
       }
     },
-    "GLD": {
+    "VT": {
       "long": {
         "side": "long",
         "recommendation": "HOLD",
         "confidence": "LOW",
         "tf_bias": {
           "1h": "BULL",
-          "4h": "?",
-          "D": "?"
-        },
-        "stoch_status": "OVERBOUGHT",
-        "mfi_status": "CONFIRMING",
-        "momentum": null,
-        "cautions": [
-          "Only 1h bullish \u2014 wait for alignment"
-        ],
-        "note": "WT 1h bullish, stoch 83 (OVERBOUGHT), MFI 44 (CONFIRMING)"
-      }
-    },
-    "PLTR": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "OVERBOUGHT",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FLAT",
-        "cautions": [
-          "Only 4h bullish \u2014 wait for alignment",
-          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
-        ],
-        "note": "WT 4h bullish, stoch 88 (OVERBOUGHT), MFI 59 (CONFIRMING), momentum FLAT"
-      },
-      "short": {
-        "side": "short",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "OVERBOUGHT",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FLAT",
-        "cautions": [
-          "Only 1h bearish \u2014 wait for alignment",
-          "1h stoch overbought (87) \u2014 short entry timing good"
-        ],
-        "note": "WT 1h bearish, stoch 88 (OVERBOUGHT), MFI 59 (CONFIRMING), momentum FLAT"
-      }
-    },
-    "MSTR": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
           "4h": "BULL",
           "D": "?"
         },
         "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "Only 4h bullish \u2014 wait for alignment",
-          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
-        ],
-        "note": "WT 4h bullish, stoch 47 (NEUTRAL), MFI 51 (CONFIRMING), momentum BUILDING"
-      },
-      "short": {
-        "side": "short",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "Only 1h bearish \u2014 wait for alignment",
-          "1h stoch overbought (87) \u2014 short entry timing good"
-        ],
-        "note": "WT 1h bearish, stoch 47 (NEUTRAL), MFI 51 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "META": {
-      "long": {
-        "side": "long",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FADING",
-        "cautions": [
-          "WT bearish across TFs \u2014 wrong side"
-        ],
-        "note": "WT bearish all TFs, stoch 70 (NEUTRAL), MFI 51 (CONFIRMING), momentum FADING"
-      }
-    },
-    "TSLA": {
-      "long": {
-        "side": "long",
-        "recommendation": "BUY",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FADING",
-        "cautions": [
-          "4h momentum fading \u2014 size down"
-        ],
-        "note": "WT 1h+4h bullish, stoch 77 (NEUTRAL), MFI 42 (CONFIRMING), momentum FADING"
-      },
-      "short": {
-        "side": "short",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FADING",
-        "cautions": [
-          "WT bullish across TFs \u2014 wrong side to short"
-        ],
-        "note": "WT bullish all TFs, stoch 77 (NEUTRAL), MFI 42 (CONFIRMING), momentum FADING"
-      }
-    },
-    "IBIT": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "OVERSOLD",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "Only 4h bullish \u2014 wait for alignment",
-          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
-        ],
-        "note": "WT 4h bullish, stoch 13 (OVERSOLD), MFI 60 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "ARM": {
-      "long": {
-        "side": "long",
-        "recommendation": "BUY",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "BULL"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
-        ],
-        "note": "WT 4h+D bullish, stoch 37 (NEUTRAL), MFI 52 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "TECK": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FADING",
-        "cautions": [
-          "Only 1h bullish \u2014 wait for alignment"
-        ],
-        "note": "WT 1h bullish, stoch 44 (NEUTRAL), MFI 42 (CONFIRMING), momentum FADING"
-      }
-    },
-    "DHR": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "?",
-          "D": "?"
-        },
-        "stoch_status": "OVERBOUGHT",
-        "mfi_status": "CONFIRMING",
-        "momentum": null,
-        "cautions": [
-          "Only 1h bullish \u2014 wait for alignment"
-        ],
-        "note": "WT 1h bullish, stoch 93 (OVERBOUGHT), MFI 59 (CONFIRMING)"
-      }
-    },
-    "TGT": {
-      "long": {
-        "side": "long",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "?",
-          "4h": "?",
-          "D": "?"
-        },
-        "stoch_status": null,
-        "mfi_status": null,
-        "momentum": null,
-        "cautions": [
-          "WT bearish across TFs \u2014 wrong side"
-        ],
-        "note": "WT bearish all TFs"
-      }
-    },
-    "AMD": {
-      "long": {
-        "side": "long",
-        "recommendation": "BUY",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "BULL"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FLAT",
-        "cautions": [
-          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
-        ],
-        "note": "WT 4h+D bullish, stoch 79 (NEUTRAL), MFI 46 (CONFIRMING), momentum FLAT"
-      }
-    },
-    "AAPL": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "BULL"
-        },
-        "stoch_status": "OVERBOUGHT",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FLAT",
-        "cautions": [
-          "Stoch overbought (86) \u2014 wait for pullback",
-          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
-        ],
-        "note": "WT 4h+D bullish, stoch 86 (OVERBOUGHT), MFI 86 (CONFIRMING), momentum FLAT"
-      },
-      "short": {
-        "side": "short",
-        "recommendation": "AVOID",
-        "confidence": "HIGH",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "BULL"
-        },
-        "stoch_status": "OVERBOUGHT",
-        "mfi_status": "WEAK",
-        "momentum": "FLAT",
-        "cautions": [
-          "HTF bullish \u2014 wrong direction for short"
-        ],
-        "note": "WT 1h bearish, stoch 86 (OVERBOUGHT), MFI 86 (WEAK), momentum FLAT"
-      }
-    },
-    "DINO": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "Only 4h bullish \u2014 wait for alignment",
-          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
-        ],
-        "note": "WT 4h bullish, stoch 59 (NEUTRAL), MFI 46 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "AGCO": {
-      "long": {
-        "side": "long",
-        "recommendation": "AVOID",
-        "confidence": "HIGH",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BEAR",
-          "D": "BULL"
-        },
-        "stoch_status": "OVERSOLD",
         "mfi_status": "WEAK",
         "momentum": "BUILDING",
         "cautions": [
-          "HTF bearish \u2014 wrong direction",
-          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
+          "MFI weak (34) \u2014 flow not confirming"
         ],
-        "note": "WT D bullish, stoch 16 (OVERSOLD), MFI 20 (WEAK), momentum BUILDING"
+        "note": "WT 1h+4h bullish, stoch 59 (NEUTRAL), MFI 34 (WEAK), momentum BUILDING"
       }
     },
-    "LNG": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "Only 4h bullish \u2014 wait for alignment",
-          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
-        ],
-        "note": "WT 4h bullish, stoch 35 (NEUTRAL), MFI 48 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "PSX": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "OVERBOUGHT",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "Only 4h bullish \u2014 wait for alignment",
-          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
-        ],
-        "note": "WT 4h bullish, stoch 81 (OVERBOUGHT), MFI 70 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "SCCO": {
+    "MOS": {
       "long": {
         "side": "long",
         "recommendation": "HOLD",
@@ -1059,276 +1281,35 @@
           "4h": "BEAR",
           "D": "?"
         },
-        "stoch_status": "OVERSOLD",
-        "mfi_status": "WEAK",
-        "momentum": "FADING",
-        "cautions": [
-          "Only 1h bullish \u2014 wait for alignment"
-        ],
-        "note": "WT 1h bullish, stoch 17 (OVERSOLD), MFI 38 (WEAK), momentum FADING"
-      }
-    },
-    "SMCI": {
-      "long": {
-        "side": "long",
-        "recommendation": "BUY",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BULL",
-          "D": "?"
-        },
         "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FADING",
-        "cautions": [
-          "4h momentum fading \u2014 size down"
-        ],
-        "note": "WT 1h+4h bullish, stoch 67 (NEUTRAL), MFI 40 (CONFIRMING), momentum FADING"
-      }
-    },
-    "FNV": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "OVERSOLD",
         "mfi_status": "WEAK",
         "momentum": "FLAT",
         "cautions": [
           "Only 1h bullish \u2014 wait for alignment"
         ],
-        "note": "WT 1h bullish, stoch 14 (OVERSOLD), MFI 35 (WEAK), momentum FLAT"
+        "note": "WT 1h bullish, stoch 28 (NEUTRAL), MFI 28 (WEAK), momentum FLAT"
       }
     },
-    "RBLX": {
+    "CIBR": {
       "long": {
         "side": "long",
         "recommendation": "HOLD",
         "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "Only 4h bullish \u2014 wait for alignment",
-          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
-        ],
-        "note": "WT 4h bullish, stoch 37 (NEUTRAL), MFI 73 (CONFIRMING), momentum BUILDING"
-      },
-      "short": {
-        "side": "short",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "WEAK",
-        "momentum": "BUILDING",
-        "cautions": [
-          "Only 1h bearish \u2014 wait for alignment"
-        ],
-        "note": "WT 1h bearish, stoch 37 (NEUTRAL), MFI 73 (WEAK), momentum BUILDING"
-      }
-    },
-    "NVDA": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "Only 4h bullish \u2014 wait for alignment",
-          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
-        ],
-        "note": "WT 4h bullish, stoch 63 (NEUTRAL), MFI 59 (CONFIRMING), momentum BUILDING"
-      },
-      "short": {
-        "side": "short",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "Only 1h bearish \u2014 wait for alignment",
-          "1h stoch overbought (99) \u2014 short entry timing good"
-        ],
-        "note": "WT 1h bearish, stoch 63 (NEUTRAL), MFI 59 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "GILD": {
-      "long": {
-        "side": "long",
-        "recommendation": "BUY",
-        "confidence": "MEDIUM",
         "tf_bias": {
           "1h": "BULL",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FLAT",
-        "cautions": [],
-        "note": "WT 1h+4h bullish, stoch 54 (NEUTRAL), MFI 54 (CONFIRMING), momentum FLAT"
-      }
-    },
-    "SPY": {
-      "long": {
-        "side": "long",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BEAR",
           "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "WEAK",
-        "momentum": "FADING",
-        "cautions": [
-          "WT bearish across TFs \u2014 wrong side"
-        ],
-        "note": "WT bearish all TFs, stoch 79 (NEUTRAL), MFI 36 (WEAK), momentum FADING"
-      }
-    },
-    "CRM": {
-      "long": {
-        "side": "long",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "OVERSOLD",
-        "mfi_status": "WEAK",
-        "momentum": "FLAT",
-        "cautions": [
-          "WT bearish across TFs \u2014 wrong side"
-        ],
-        "note": "WT bearish all TFs, stoch 3 (OVERSOLD), MFI 32 (WEAK), momentum FLAT"
-      }
-    },
-    "NFLX": {
-      "long": {
-        "side": "long",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FADING",
-        "cautions": [
-          "WT bearish across TFs \u2014 wrong side"
-        ],
-        "note": "WT bearish all TFs, stoch 53 (NEUTRAL), MFI 46 (CONFIRMING), momentum FADING"
-      }
-    },
-    "COHR": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "Only 4h bullish \u2014 wait for alignment",
-          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
-        ],
-        "note": "WT 4h bullish, stoch 51 (NEUTRAL), MFI 87 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "BMNR": {
-      "long": {
-        "side": "long",
-        "recommendation": "BUY",
-        "confidence": "HIGH",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BULL",
           "D": "BULL"
         },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [],
-        "note": "WT 1h+4h+D bullish, stoch 27 (NEUTRAL), MFI 47 (CONFIRMING), momentum BUILDING"
-      },
-      "short": {
-        "side": "short",
-        "recommendation": "AVOID",
-        "confidence": "HIGH",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BULL",
-          "D": "BULL"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "WT bullish across TFs \u2014 wrong side to short"
-        ],
-        "note": "WT bullish all TFs, stoch 27 (NEUTRAL), MFI 47 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "DELL": {
-      "long": {
-        "side": "long",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
+        "stoch_status": "OVERBOUGHT",
         "mfi_status": "CONFIRMING",
         "momentum": "FADING",
         "cautions": [
-          "WT bearish across TFs \u2014 wrong side"
+          "Stoch overbought (83) \u2014 wait for pullback"
         ],
-        "note": "WT bearish all TFs, stoch 70 (NEUTRAL), MFI 58 (CONFIRMING), momentum FADING"
+        "note": "WT 1h+D bullish, stoch 83 (OVERBOUGHT), MFI 51 (CONFIRMING), momentum FADING"
       }
     },
-    "SNDK": {
+    "INTC": {
       "long": {
         "side": "long",
         "recommendation": "HOLD",
@@ -1340,12 +1321,12 @@
         },
         "stoch_status": "NEUTRAL",
         "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
+        "momentum": "FADING",
         "cautions": [
           "Only 4h bullish \u2014 wait for alignment",
           "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
         ],
-        "note": "WT 4h bullish, stoch 50 (NEUTRAL), MFI 44 (CONFIRMING), momentum BUILDING"
+        "note": "WT 4h bullish, stoch 38 (NEUTRAL), MFI 56 (CONFIRMING), momentum FADING"
       }
     },
     "TMO": {
@@ -1405,41 +1386,7 @@
         "note": "WT bullish all TFs, stoch 28 (NEUTRAL), MFI 32 (CONFIRMING), momentum BUILDING"
       }
     },
-    "BHP": {
-      "long": {
-        "side": "long",
-        "recommendation": "BUY",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BULL",
-          "D": "BEAR"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [],
-        "note": "WT 1h+4h bullish, stoch 38 (NEUTRAL), MFI 48 (CONFIRMING), momentum BUILDING"
-      },
-      "short": {
-        "side": "short",
-        "recommendation": "AVOID",
-        "confidence": "HIGH",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BULL",
-          "D": "BEAR"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "HTF bullish \u2014 wrong direction for short"
-        ],
-        "note": "WT D bearish, stoch 38 (NEUTRAL), MFI 48 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "COPX": {
+    "TSM": {
       "long": {
         "side": "long",
         "recommendation": "BUY",
@@ -1453,7 +1400,142 @@
         "mfi_status": "CONFIRMING",
         "momentum": "FLAT",
         "cautions": [],
-        "note": "WT 1h+4h bullish, stoch 65 (NEUTRAL), MFI 55 (CONFIRMING), momentum FLAT"
+        "note": "WT 1h+4h bullish, stoch 77 (NEUTRAL), MFI 64 (CONFIRMING), momentum FLAT"
+      }
+    },
+    "TECK": {
+      "long": {
+        "side": "long",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FADING",
+        "cautions": [
+          "Only 1h bullish \u2014 wait for alignment"
+        ],
+        "note": "WT 1h bullish, stoch 44 (NEUTRAL), MFI 42 (CONFIRMING), momentum FADING"
+      }
+    },
+    "MRK": {
+      "long": {
+        "side": "long",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": null,
+        "cautions": [
+          "Only 1h bullish \u2014 wait for alignment"
+        ],
+        "note": "WT 1h bullish, stoch 72 (NEUTRAL), MFI 100 (CONFIRMING)"
+      }
+    },
+    "MPC": {
+      "long": {
+        "side": "long",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FADING",
+        "cautions": [
+          "Only 4h bullish \u2014 wait for alignment",
+          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
+        ],
+        "note": "WT 4h bullish, stoch 77 (NEUTRAL), MFI 77 (CONFIRMING), momentum FADING"
+      }
+    },
+    "DINO": {
+      "long": {
+        "side": "long",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "Only 4h bullish \u2014 wait for alignment",
+          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
+        ],
+        "note": "WT 4h bullish, stoch 59 (NEUTRAL), MFI 46 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "MU": {
+      "long": {
+        "side": "long",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "Only 4h bullish \u2014 wait for alignment",
+          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
+        ],
+        "note": "WT 4h bullish, stoch 42 (NEUTRAL), MFI 57 (CONFIRMING), momentum BUILDING"
+      },
+      "short": {
+        "side": "short",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "Only 1h bearish \u2014 wait for alignment",
+          "1h stoch overbought (94) \u2014 short entry timing good"
+        ],
+        "note": "WT 1h bearish, stoch 42 (NEUTRAL), MFI 57 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "AMD": {
+      "long": {
+        "side": "long",
+        "recommendation": "BUY",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "BULL"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FLAT",
+        "cautions": [
+          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
+        ],
+        "note": "WT 4h+D bullish, stoch 79 (NEUTRAL), MFI 46 (CONFIRMING), momentum FLAT"
       }
     },
     "AEM": {
@@ -1475,248 +1557,7 @@
         "note": "WT 1h bullish, stoch 80 (OVERBOUGHT), MFI 54 (CONFIRMING), momentum FADING"
       }
     },
-    "GOOGL": {
-      "long": {
-        "side": "long",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "WT bearish across TFs \u2014 wrong side"
-        ],
-        "note": "WT bearish all TFs, stoch 32 (NEUTRAL), MFI 45 (CONFIRMING), momentum BUILDING"
-      },
-      "short": {
-        "side": "short",
-        "recommendation": "SHORT",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "4h momentum still building \u2014 trail stop"
-        ],
-        "note": "WT 1h+4h bearish, stoch 32 (NEUTRAL), MFI 45 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "CLS": {
-      "long": {
-        "side": "long",
-        "recommendation": "BUY",
-        "confidence": "HIGH",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BULL",
-          "D": "BULL"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [],
-        "note": "WT 1h+4h+D bullish, stoch 29 (NEUTRAL), MFI 54 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "MSFT": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "Only 1h bullish \u2014 wait for alignment"
-        ],
-        "note": "WT 1h bullish, stoch 29 (NEUTRAL), MFI 46 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "WPM": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "?",
-          "D": "?"
-        },
-        "stoch_status": "OVERBOUGHT",
-        "mfi_status": "CONFIRMING",
-        "momentum": null,
-        "cautions": [
-          "Only 1h bullish \u2014 wait for alignment"
-        ],
-        "note": "WT 1h bullish, stoch 82 (OVERBOUGHT), MFI 74 (CONFIRMING)"
-      }
-    },
-    "SHOP": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "WEAK",
-        "momentum": "FADING",
-        "cautions": [
-          "Only 1h bullish \u2014 wait for alignment"
-        ],
-        "note": "WT 1h bullish, stoch 36 (NEUTRAL), MFI 33 (WEAK), momentum FADING"
-      }
-    },
-    "CRWD": {
-      "long": {
-        "side": "long",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "OVERBOUGHT",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FADING",
-        "cautions": [
-          "WT bearish across TFs \u2014 wrong side"
-        ],
-        "note": "WT bearish all TFs, stoch 81 (OVERBOUGHT), MFI 67 (CONFIRMING), momentum FADING"
-      }
-    },
-    "VT": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "WEAK",
-        "momentum": "BUILDING",
-        "cautions": [
-          "MFI weak (34) \u2014 flow not confirming"
-        ],
-        "note": "WT 1h+4h bullish, stoch 59 (NEUTRAL), MFI 34 (WEAK), momentum BUILDING"
-      }
-    },
-    "QLYS": {
-      "long": {
-        "side": "long",
-        "recommendation": "BUY",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [],
-        "note": "WT 1h+4h bullish, stoch 50 (NEUTRAL), MFI 58 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "AMZN": {
-      "long": {
-        "side": "long",
-        "recommendation": "AVOID",
-        "confidence": "HIGH",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "BEAR"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "HTF bearish \u2014 wrong direction",
-          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
-        ],
-        "note": "WT 4h bullish, stoch 60 (NEUTRAL), MFI 86 (CONFIRMING), momentum BUILDING"
-      },
-      "short": {
-        "side": "short",
-        "recommendation": "SHORT",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "BEAR"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "WEAK",
-        "momentum": "BUILDING",
-        "cautions": [
-          "MFI confirming (86) \u2014 flow still flowing down",
-          "4h momentum still building \u2014 trail stop"
-        ],
-        "note": "WT 1h+D bearish, stoch 60 (NEUTRAL), MFI 86 (WEAK), momentum BUILDING"
-      }
-    },
-    "MOS": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "WEAK",
-        "momentum": "FLAT",
-        "cautions": [
-          "Only 1h bullish \u2014 wait for alignment"
-        ],
-        "note": "WT 1h bullish, stoch 28 (NEUTRAL), MFI 28 (WEAK), momentum FLAT"
-      }
-    },
-    "RGLD": {
-      "long": {
-        "side": "long",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FADING",
-        "cautions": [
-          "Only 1h bullish \u2014 wait for alignment"
-        ],
-        "note": "WT 1h bullish, stoch 24 (NEUTRAL), MFI 57 (CONFIRMING), momentum FADING"
-      }
-    },
-    "INTC": {
+    "IBIT": {
       "long": {
         "side": "long",
         "recommendation": "HOLD",
@@ -1726,14 +1567,72 @@
           "4h": "BULL",
           "D": "?"
         },
-        "stoch_status": "NEUTRAL",
+        "stoch_status": "OVERSOLD",
         "mfi_status": "CONFIRMING",
-        "momentum": "FADING",
+        "momentum": "BUILDING",
         "cautions": [
           "Only 4h bullish \u2014 wait for alignment",
           "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
         ],
-        "note": "WT 4h bullish, stoch 38 (NEUTRAL), MFI 56 (CONFIRMING), momentum FADING"
+        "note": "WT 4h bullish, stoch 13 (OVERSOLD), MFI 60 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "SPY": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "WEAK",
+        "momentum": "FADING",
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs, stoch 79 (NEUTRAL), MFI 36 (WEAK), momentum FADING"
+      }
+    },
+    "DHR": {
+      "long": {
+        "side": "long",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": "OVERBOUGHT",
+        "mfi_status": "CONFIRMING",
+        "momentum": null,
+        "cautions": [
+          "Only 1h bullish \u2014 wait for alignment"
+        ],
+        "note": "WT 1h bullish, stoch 93 (OVERBOUGHT), MFI 59 (CONFIRMING)"
+      }
+    },
+    "RBLX": {
+      "long": {
+        "side": "long",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "Only 4h bullish \u2014 wait for alignment",
+          "LTF pullback (1h bearish) within HTF uptrend \u2014 buy dip"
+        ],
+        "note": "WT 4h bullish, stoch 37 (NEUTRAL), MFI 73 (CONFIRMING), momentum BUILDING"
       },
       "short": {
         "side": "short",
@@ -1745,259 +1644,12 @@
           "D": "?"
         },
         "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FADING",
-        "cautions": [
-          "Only 1h bearish \u2014 wait for alignment",
-          "1h stoch overbought (84) \u2014 short entry timing good"
-        ],
-        "note": "WT 1h bearish, stoch 38 (NEUTRAL), MFI 56 (CONFIRMING), momentum FADING"
-      }
-    },
-    "CAT": {
-      "short": {
-        "side": "short",
-        "recommendation": "SHORT",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "BEAR"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "4h momentum still building \u2014 trail stop"
-        ],
-        "note": "WT 1h+D bearish, stoch 30 (NEUTRAL), MFI 26 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "HAO": {
-      "short": {
-        "side": "short",
-        "recommendation": "SHORT",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "OVERBOUGHT",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FADING",
-        "cautions": [],
-        "note": "WT 1h+4h bearish, stoch 85 (OVERBOUGHT), MFI 51 (CONFIRMING), momentum FADING"
-      }
-    },
-    "UEC": {
-      "short": {
-        "side": "short",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "?",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": null,
-        "cautions": [
-          "WT bullish across TFs \u2014 wrong side to short"
-        ],
-        "note": "WT bullish all TFs, stoch 70 (NEUTRAL), MFI 51 (CONFIRMING)"
-      }
-    },
-    "GM": {
-      "short": {
-        "side": "short",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "OVERSOLD",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FLAT",
-        "cautions": [
-          "Only 4h bearish \u2014 wait for alignment"
-        ],
-        "note": "WT 4h bearish, stoch 6 (OVERSOLD), MFI 24 (CONFIRMING), momentum FLAT"
-      }
-    },
-    "BWXT": {
-      "short": {
-        "side": "short",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "BEAR"
-        },
-        "stoch_status": "OVERSOLD",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "Stoch oversold (9) \u2014 risk of bounce"
-        ],
-        "note": "WT 1h+D bearish, stoch 9 (OVERSOLD), MFI 10 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "RTX": {
-      "short": {
-        "side": "short",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "OVERBOUGHT",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FADING",
-        "cautions": [
-          "Only 4h bearish \u2014 wait for alignment"
-        ],
-        "note": "WT 4h bearish, stoch 83 (OVERBOUGHT), MFI 48 (CONFIRMING), momentum FADING"
-      }
-    },
-    "WDAY": {
-      "short": {
-        "side": "short",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
         "mfi_status": "WEAK",
         "momentum": "BUILDING",
         "cautions": [
-          "WT bullish across TFs \u2014 wrong side to short"
+          "Only 1h bearish \u2014 wait for alignment"
         ],
-        "note": "WT bullish all TFs, stoch 78 (NEUTRAL), MFI 63 (WEAK), momentum BUILDING"
-      }
-    },
-    "STLD": {
-      "short": {
-        "side": "short",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FADING",
-        "cautions": [
-          "Only 4h bearish \u2014 wait for alignment"
-        ],
-        "note": "WT 4h bearish, stoch 63 (NEUTRAL), MFI 41 (CONFIRMING), momentum FADING"
-      }
-    },
-    "CMC": {
-      "short": {
-        "side": "short",
-        "recommendation": "AVOID",
-        "confidence": "HIGH",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BULL",
-          "D": "BEAR"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "HTF bullish \u2014 wrong direction for short"
-        ],
-        "note": "WT D bearish, stoch 33 (NEUTRAL), MFI 43 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "AR": {
-      "short": {
-        "side": "short",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BEAR",
-          "D": "BEAR"
-        },
-        "stoch_status": "OVERSOLD",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "Stoch oversold (17) \u2014 risk of bounce",
-          "1h stoch overbought (85) \u2014 short entry timing good"
-        ],
-        "note": "WT 4h+D bearish, stoch 17 (OVERSOLD), MFI 41 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "ELD": {
-      "short": {
-        "side": "short",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "?",
-          "4h": "?",
-          "D": "?"
-        },
-        "stoch_status": null,
-        "mfi_status": null,
-        "momentum": null,
-        "cautions": [
-          "WT bullish across TFs \u2014 wrong side to short"
-        ],
-        "note": "WT bullish all TFs"
-      }
-    },
-    "AU": {
-      "short": {
-        "side": "short",
-        "recommendation": "AVOID",
-        "confidence": "HIGH",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BULL",
-          "D": "BEAR"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "HTF bullish \u2014 wrong direction for short"
-        ],
-        "note": "WT D bearish, stoch 36 (NEUTRAL), MFI 51 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "SMG": {
-      "short": {
-        "side": "short",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FADING",
-        "cautions": [
-          "Only 4h bearish \u2014 wait for alignment"
-        ],
-        "note": "WT 4h bearish, stoch 74 (NEUTRAL), MFI 51 (CONFIRMING), momentum FADING"
+        "note": "WT 1h bearish, stoch 37 (NEUTRAL), MFI 73 (WEAK), momentum BUILDING"
       }
     },
     "AXON": {
@@ -2019,6 +1671,102 @@
         "note": "WT D bearish, stoch 60 (NEUTRAL), MFI 39 (CONFIRMING), momentum FLAT"
       }
     },
+    "LOW": {
+      "short": {
+        "side": "short",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FADING",
+        "cautions": [
+          "Only 4h bearish \u2014 wait for alignment"
+        ],
+        "note": "WT 4h bearish, stoch 58 (NEUTRAL), MFI 34 (CONFIRMING), momentum FADING"
+      }
+    },
+    "STLD": {
+      "short": {
+        "side": "short",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FADING",
+        "cautions": [
+          "Only 4h bearish \u2014 wait for alignment"
+        ],
+        "note": "WT 4h bearish, stoch 63 (NEUTRAL), MFI 41 (CONFIRMING), momentum FADING"
+      }
+    },
+    "FDX": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs, stoch 23 (NEUTRAL), MFI 46 (CONFIRMING)"
+      }
+    },
+    "BABA": {
+      "short": {
+        "side": "short",
+        "recommendation": "SHORT",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "BEAR"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "WEAK",
+        "momentum": "BUILDING",
+        "cautions": [
+          "MFI confirming (66) \u2014 flow still flowing down",
+          "4h momentum still building \u2014 trail stop"
+        ],
+        "note": "WT 1h+D bearish, stoch 71 (NEUTRAL), MFI 66 (WEAK), momentum BUILDING"
+      }
+    },
+    "BMNR": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "HIGH",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BULL",
+          "D": "BULL"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs, stoch 27 (NEUTRAL), MFI 47 (CONFIRMING), momentum BUILDING"
+      }
+    },
     "CVS": {
       "short": {
         "side": "short",
@@ -2038,7 +1786,83 @@
         "note": "WT 4h bearish, stoch 2 (OVERSOLD), MFI 3 (CONFIRMING), momentum BUILDING"
       }
     },
-    "HD": {
+    "CMC": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "HIGH",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BULL",
+          "D": "BEAR"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "HTF bullish \u2014 wrong direction for short"
+        ],
+        "note": "WT D bearish, stoch 33 (NEUTRAL), MFI 43 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "LAC": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs, stoch 23 (NEUTRAL), MFI 20 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "RDDT": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "MNTS": {
+      "short": {
+        "side": "short",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FADING",
+        "cautions": [
+          "Only 1h bearish \u2014 wait for alignment"
+        ],
+        "note": "WT 1h bearish, stoch 52 (NEUTRAL), MFI 57 (CONFIRMING), momentum FADING"
+      }
+    },
+    "SMG": {
       "short": {
         "side": "short",
         "recommendation": "HOLD",
@@ -2054,7 +1878,401 @@
         "cautions": [
           "Only 4h bearish \u2014 wait for alignment"
         ],
-        "note": "WT 4h bearish, stoch 48 (NEUTRAL), MFI 47 (CONFIRMING), momentum FADING"
+        "note": "WT 4h bearish, stoch 74 (NEUTRAL), MFI 51 (CONFIRMING), momentum FADING"
+      }
+    },
+    "APO": {
+      "short": {
+        "side": "short",
+        "recommendation": "SHORT",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "BEAR"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FADING",
+        "cautions": [],
+        "note": "WT 1h+D bearish, stoch 53 (NEUTRAL), MFI 25 (CONFIRMING), momentum FADING"
+      }
+    },
+    "GM": {
+      "short": {
+        "side": "short",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "OVERSOLD",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FLAT",
+        "cautions": [
+          "Only 4h bearish \u2014 wait for alignment"
+        ],
+        "note": "WT 4h bearish, stoch 6 (OVERSOLD), MFI 24 (CONFIRMING), momentum FLAT"
+      }
+    },
+    "VALE": {
+      "short": {
+        "side": "short",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "OVERSOLD",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "Only 4h bearish \u2014 wait for alignment"
+        ],
+        "note": "WT 4h bearish, stoch 8 (OVERSOLD), MFI 12 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "OLED": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "WEAK",
+        "momentum": "BUILDING",
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs, stoch 28 (NEUTRAL), MFI 77 (WEAK), momentum BUILDING"
+      }
+    },
+    "HII": {
+      "short": {
+        "side": "short",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FADING",
+        "cautions": [
+          "Only 4h bearish \u2014 wait for alignment"
+        ],
+        "note": "WT 4h bearish, stoch 48 (NEUTRAL), MFI 49 (CONFIRMING), momentum FADING"
+      }
+    },
+    "NUE": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs, stoch 26 (NEUTRAL), MFI 36 (CONFIRMING)"
+      }
+    },
+    "NKE": {
+      "short": {
+        "side": "short",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "OVERSOLD",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FLAT",
+        "cautions": [
+          "Only 4h bearish \u2014 wait for alignment",
+          "1h stoch overbought (82) \u2014 short entry timing good"
+        ],
+        "note": "WT 4h bearish, stoch 3 (OVERSOLD), MFI 48 (CONFIRMING), momentum FLAT"
+      }
+    },
+    "ELD": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "ALKT": {
+      "short": {
+        "side": "short",
+        "recommendation": "SHORT",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BEAR",
+          "D": "BEAR"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "4h momentum still building \u2014 trail stop"
+        ],
+        "note": "WT 4h+D bearish, stoch 38 (NEUTRAL), MFI 32 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "GE": {
+      "short": {
+        "side": "short",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "OVERBOUGHT",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FADING",
+        "cautions": [
+          "Only 4h bearish \u2014 wait for alignment"
+        ],
+        "note": "WT 4h bearish, stoch 85 (OVERBOUGHT), MFI 51 (CONFIRMING), momentum FADING"
+      }
+    },
+    "UUUU": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BULL",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FLAT",
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs, stoch 39 (NEUTRAL), MFI 19 (CONFIRMING), momentum FLAT"
+      }
+    },
+    "BKR": {
+      "short": {
+        "side": "short",
+        "recommendation": "SHORT",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "BEAR"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "4h momentum still building \u2014 trail stop"
+        ],
+        "note": "WT 1h+D bearish, stoch 26 (NEUTRAL), MFI 51 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "BIDU": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "HIGH",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BULL",
+          "D": "BULL"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs, stoch 29 (NEUTRAL), MFI 45 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "USAR": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs, stoch 55 (NEUTRAL), MFI 39 (CONFIRMING)"
+      }
+    },
+    "FANG": {
+      "short": {
+        "side": "short",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "OVERSOLD",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FLAT",
+        "cautions": [
+          "Only 4h bearish \u2014 wait for alignment"
+        ],
+        "note": "WT 4h bearish, stoch 13 (OVERSOLD), MFI 55 (CONFIRMING), momentum FLAT"
+      }
+    },
+    "PYPL": {
+      "short": {
+        "side": "short",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FLAT",
+        "cautions": [
+          "Only 4h bearish \u2014 wait for alignment"
+        ],
+        "note": "WT 4h bearish, stoch 56 (NEUTRAL), MFI 38 (CONFIRMING), momentum FLAT"
+      }
+    },
+    "AMAT": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "HIGH",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BULL",
+          "D": "BULL"
+        },
+        "stoch_status": "OVERBOUGHT",
+        "mfi_status": "WEAK",
+        "momentum": "BUILDING",
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs, stoch 100 (OVERBOUGHT), MFI 82 (WEAK), momentum BUILDING"
+      }
+    },
+    "BWXT": {
+      "short": {
+        "side": "short",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BULL",
+          "D": "BEAR"
+        },
+        "stoch_status": "OVERSOLD",
+        "mfi_status": "CONFIRMING",
+        "momentum": "BUILDING",
+        "cautions": [
+          "Stoch oversold (9) \u2014 risk of bounce"
+        ],
+        "note": "WT 1h+D bearish, stoch 9 (OVERSOLD), MFI 10 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "RIO": {
+      "short": {
+        "side": "short",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BULL",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "OVERSOLD",
+        "mfi_status": "WEAK",
+        "momentum": "FADING",
+        "cautions": [
+          "Only 4h bearish \u2014 wait for alignment"
+        ],
+        "note": "WT 4h bearish, stoch 11 (OVERSOLD), MFI 63 (WEAK), momentum FADING"
+      }
+    },
+    "NFLX": {
+      "short": {
+        "side": "short",
+        "recommendation": "SHORT",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FADING",
+        "cautions": [],
+        "note": "WT 1h+4h bearish, stoch 53 (NEUTRAL), MFI 46 (CONFIRMING), momentum FADING"
+      }
+    },
+    "HAO": {
+      "short": {
+        "side": "short",
+        "recommendation": "SHORT",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "BEAR",
+          "D": "?"
+        },
+        "stoch_status": "OVERBOUGHT",
+        "mfi_status": "CONFIRMING",
+        "momentum": "FADING",
+        "cautions": [],
+        "note": "WT 1h+4h bearish, stoch 85 (OVERBOUGHT), MFI 51 (CONFIRMING), momentum FADING"
       }
     },
     "STZ": {
@@ -2095,45 +2313,46 @@
         "note": "WT bullish all TFs, stoch 49 (NEUTRAL), MFI 77 (WEAK), momentum BUILDING"
       }
     },
-    "WMT": {
-      "short": {
-        "side": "short",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "?",
-          "4h": "?",
-          "D": "?"
-        },
-        "stoch_status": null,
-        "mfi_status": null,
-        "momentum": null,
-        "cautions": [
-          "WT bullish across TFs \u2014 wrong side to short"
-        ],
-        "note": "WT bullish all TFs"
-      }
-    },
-    "EOG": {
+    "COST": {
       "short": {
         "side": "short",
         "recommendation": "HOLD",
         "confidence": "LOW",
         "tf_bias": {
-          "1h": "BULL",
-          "4h": "BEAR",
+          "1h": "BEAR",
+          "4h": "BULL",
           "D": "?"
         },
-        "stoch_status": "OVERSOLD",
+        "stoch_status": "NEUTRAL",
         "mfi_status": "CONFIRMING",
         "momentum": "BUILDING",
         "cautions": [
-          "Only 4h bearish \u2014 wait for alignment"
+          "Only 1h bearish \u2014 wait for alignment",
+          "1h stoch overbought (85) \u2014 short entry timing good"
         ],
-        "note": "WT 4h bearish, stoch 8 (OVERSOLD), MFI 53 (CONFIRMING), momentum BUILDING"
+        "note": "WT 1h bearish, stoch 35 (NEUTRAL), MFI 56 (CONFIRMING), momentum BUILDING"
       }
     },
-    "UUUU": {
+    "VZ": {
+      "short": {
+        "side": "short",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": "NEUTRAL",
+        "mfi_status": "CONFIRMING",
+        "momentum": null,
+        "cautions": [
+          "Only 1h bearish \u2014 wait for alignment"
+        ],
+        "note": "WT 1h bearish, stoch 26 (NEUTRAL), MFI 17 (CONFIRMING)"
+      }
+    },
+    "WDAY": {
       "short": {
         "side": "short",
         "recommendation": "AVOID",
@@ -2144,31 +2363,50 @@
           "D": "?"
         },
         "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FLAT",
+        "mfi_status": "WEAK",
+        "momentum": "BUILDING",
         "cautions": [
           "WT bullish across TFs \u2014 wrong side to short"
         ],
-        "note": "WT bullish all TFs, stoch 39 (NEUTRAL), MFI 19 (CONFIRMING), momentum FLAT"
+        "note": "WT bullish all TFs, stoch 78 (NEUTRAL), MFI 63 (WEAK), momentum BUILDING"
       }
     },
-    "UPS": {
+    "QBTS": {
       "short": {
         "side": "short",
         "recommendation": "HOLD",
         "confidence": "LOW",
         "tf_bias": {
-          "1h": "BULL",
-          "4h": "BEAR",
+          "1h": "BEAR",
+          "4h": "BULL",
           "D": "?"
         },
         "stoch_status": "NEUTRAL",
         "mfi_status": "CONFIRMING",
         "momentum": "BUILDING",
         "cautions": [
-          "Only 4h bearish \u2014 wait for alignment"
+          "Only 1h bearish \u2014 wait for alignment"
         ],
-        "note": "WT 4h bearish, stoch 48 (NEUTRAL), MFI 55 (CONFIRMING), momentum BUILDING"
+        "note": "WT 1h bearish, stoch 43 (NEUTRAL), MFI 31 (CONFIRMING), momentum BUILDING"
+      }
+    },
+    "NOC": {
+      "short": {
+        "side": "short",
+        "recommendation": "HOLD",
+        "confidence": "LOW",
+        "tf_bias": {
+          "1h": "BEAR",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": "OVERSOLD",
+        "mfi_status": "CONFIRMING",
+        "momentum": null,
+        "cautions": [
+          "Only 1h bearish \u2014 wait for alignment"
+        ],
+        "note": "WT 1h bearish, stoch 18 (OVERSOLD), MFI 39 (CONFIRMING)"
       }
     },
     "ADBE": {
@@ -2190,26 +2428,7 @@
         "note": "WT 1h+4h+D bearish, stoch 57 (NEUTRAL), MFI 51 (CONFIRMING), momentum BUILDING"
       }
     },
-    "VALE": {
-      "short": {
-        "side": "short",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "OVERSOLD",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "Only 4h bearish \u2014 wait for alignment"
-        ],
-        "note": "WT 4h bearish, stoch 8 (OVERSOLD), MFI 12 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "LOW": {
+    "HD": {
       "short": {
         "side": "short",
         "recommendation": "HOLD",
@@ -2225,49 +2444,10 @@
         "cautions": [
           "Only 4h bearish \u2014 wait for alignment"
         ],
-        "note": "WT 4h bearish, stoch 58 (NEUTRAL), MFI 34 (CONFIRMING), momentum FADING"
+        "note": "WT 4h bearish, stoch 48 (NEUTRAL), MFI 47 (CONFIRMING), momentum FADING"
       }
     },
-    "BIDU": {
-      "short": {
-        "side": "short",
-        "recommendation": "AVOID",
-        "confidence": "HIGH",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BULL",
-          "D": "BULL"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "WT bullish across TFs \u2014 wrong side to short"
-        ],
-        "note": "WT bullish all TFs, stoch 29 (NEUTRAL), MFI 45 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "COST": {
-      "short": {
-        "side": "short",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "Only 1h bearish \u2014 wait for alignment",
-          "1h stoch overbought (85) \u2014 short entry timing good"
-        ],
-        "note": "WT 1h bearish, stoch 35 (NEUTRAL), MFI 56 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "NUE": {
+    "UEC": {
       "short": {
         "side": "short",
         "recommendation": "AVOID",
@@ -2283,29 +2463,10 @@
         "cautions": [
           "WT bullish across TFs \u2014 wrong side to short"
         ],
-        "note": "WT bullish all TFs, stoch 26 (NEUTRAL), MFI 36 (CONFIRMING)"
+        "note": "WT bullish all TFs, stoch 70 (NEUTRAL), MFI 51 (CONFIRMING)"
       }
     },
-    "MO": {
-      "short": {
-        "side": "short",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "?",
-          "4h": "?",
-          "D": "?"
-        },
-        "stoch_status": null,
-        "mfi_status": null,
-        "momentum": null,
-        "cautions": [
-          "WT bullish across TFs \u2014 wrong side to short"
-        ],
-        "note": "WT bullish all TFs"
-      }
-    },
-    "DAR": {
+    "RTX": {
       "short": {
         "side": "short",
         "recommendation": "HOLD",
@@ -2315,32 +2476,13 @@
           "4h": "BEAR",
           "D": "?"
         },
-        "stoch_status": "NEUTRAL",
+        "stoch_status": "OVERBOUGHT",
         "mfi_status": "CONFIRMING",
         "momentum": "FADING",
         "cautions": [
           "Only 4h bearish \u2014 wait for alignment"
         ],
-        "note": "WT 4h bearish, stoch 45 (NEUTRAL), MFI 47 (CONFIRMING), momentum FADING"
-      }
-    },
-    "QBTS": {
-      "short": {
-        "side": "short",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "Only 1h bearish \u2014 wait for alignment"
-        ],
-        "note": "WT 1h bearish, stoch 43 (NEUTRAL), MFI 31 (CONFIRMING), momentum BUILDING"
+        "note": "WT 4h bearish, stoch 83 (OVERBOUGHT), MFI 48 (CONFIRMING), momentum FADING"
       }
     },
     "RS": {
@@ -2381,46 +2523,7 @@
         "note": "WT 4h bearish, stoch 69 (NEUTRAL), MFI 44 (CONFIRMING), momentum FADING"
       }
     },
-    "NKE": {
-      "short": {
-        "side": "short",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "OVERSOLD",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FLAT",
-        "cautions": [
-          "Only 4h bearish \u2014 wait for alignment",
-          "1h stoch overbought (82) \u2014 short entry timing good"
-        ],
-        "note": "WT 4h bearish, stoch 3 (OVERSOLD), MFI 48 (CONFIRMING), momentum FLAT"
-      }
-    },
-    "AMAT": {
-      "short": {
-        "side": "short",
-        "recommendation": "AVOID",
-        "confidence": "HIGH",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BULL",
-          "D": "BULL"
-        },
-        "stoch_status": "OVERBOUGHT",
-        "mfi_status": "WEAK",
-        "momentum": "BUILDING",
-        "cautions": [
-          "WT bullish across TFs \u2014 wrong side to short"
-        ],
-        "note": "WT bullish all TFs, stoch 100 (OVERBOUGHT), MFI 82 (WEAK), momentum BUILDING"
-      }
-    },
-    "HII": {
+    "UPS": {
       "short": {
         "side": "short",
         "recommendation": "HOLD",
@@ -2432,202 +2535,11 @@
         },
         "stoch_status": "NEUTRAL",
         "mfi_status": "CONFIRMING",
-        "momentum": "FADING",
+        "momentum": "BUILDING",
         "cautions": [
           "Only 4h bearish \u2014 wait for alignment"
         ],
-        "note": "WT 4h bearish, stoch 48 (NEUTRAL), MFI 49 (CONFIRMING), momentum FADING"
-      }
-    },
-    "ALKT": {
-      "short": {
-        "side": "short",
-        "recommendation": "SHORT",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BEAR",
-          "D": "BEAR"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "4h momentum still building \u2014 trail stop"
-        ],
-        "note": "WT 4h+D bearish, stoch 38 (NEUTRAL), MFI 32 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "HON": {
-      "short": {
-        "side": "short",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "?",
-          "4h": "?",
-          "D": "?"
-        },
-        "stoch_status": null,
-        "mfi_status": null,
-        "momentum": null,
-        "cautions": [
-          "WT bullish across TFs \u2014 wrong side to short"
-        ],
-        "note": "WT bullish all TFs"
-      }
-    },
-    "VZ": {
-      "short": {
-        "side": "short",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "?",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": null,
-        "cautions": [
-          "Only 1h bearish \u2014 wait for alignment"
-        ],
-        "note": "WT 1h bearish, stoch 26 (NEUTRAL), MFI 17 (CONFIRMING)"
-      }
-    },
-    "RDDT": {
-      "short": {
-        "side": "short",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "?",
-          "4h": "?",
-          "D": "?"
-        },
-        "stoch_status": null,
-        "mfi_status": null,
-        "momentum": null,
-        "cautions": [
-          "WT bullish across TFs \u2014 wrong side to short"
-        ],
-        "note": "WT bullish all TFs"
-      }
-    },
-    "LSCC": {
-      "short": {
-        "side": "short",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "?",
-          "4h": "?",
-          "D": "?"
-        },
-        "stoch_status": null,
-        "mfi_status": null,
-        "momentum": null,
-        "cautions": [
-          "WT bullish across TFs \u2014 wrong side to short"
-        ],
-        "note": "WT bullish all TFs"
-      }
-    },
-    "PRI": {
-      "short": {
-        "side": "short",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "?",
-          "4h": "?",
-          "D": "?"
-        },
-        "stoch_status": null,
-        "mfi_status": null,
-        "momentum": null,
-        "cautions": [
-          "WT bullish across TFs \u2014 wrong side to short"
-        ],
-        "note": "WT bullish all TFs"
-      }
-    },
-    "NOC": {
-      "short": {
-        "side": "short",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "?",
-          "D": "?"
-        },
-        "stoch_status": "OVERSOLD",
-        "mfi_status": "CONFIRMING",
-        "momentum": null,
-        "cautions": [
-          "Only 1h bearish \u2014 wait for alignment"
-        ],
-        "note": "WT 1h bearish, stoch 18 (OVERSOLD), MFI 39 (CONFIRMING)"
-      }
-    },
-    "BABA": {
-      "short": {
-        "side": "short",
-        "recommendation": "SHORT",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "BEAR"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "WEAK",
-        "momentum": "BUILDING",
-        "cautions": [
-          "MFI confirming (66) \u2014 flow still flowing down",
-          "4h momentum still building \u2014 trail stop"
-        ],
-        "note": "WT 1h+D bearish, stoch 71 (NEUTRAL), MFI 66 (WEAK), momentum BUILDING"
-      }
-    },
-    "GE": {
-      "short": {
-        "side": "short",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "BEAR",
-          "D": "?"
-        },
-        "stoch_status": "OVERBOUGHT",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FADING",
-        "cautions": [
-          "Only 4h bearish \u2014 wait for alignment"
-        ],
-        "note": "WT 4h bearish, stoch 85 (OVERBOUGHT), MFI 51 (CONFIRMING), momentum FADING"
-      }
-    },
-    "MNTS": {
-      "short": {
-        "side": "short",
-        "recommendation": "HOLD",
-        "confidence": "LOW",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FADING",
-        "cautions": [
-          "Only 1h bearish \u2014 wait for alignment"
-        ],
-        "note": "WT 1h bearish, stoch 52 (NEUTRAL), MFI 57 (CONFIRMING), momentum FADING"
+        "note": "WT 4h bearish, stoch 48 (NEUTRAL), MFI 55 (CONFIRMING), momentum BUILDING"
       }
     },
     "TTD": {
@@ -2647,80 +2559,6 @@
           "Stoch oversold (13) \u2014 risk of bounce"
         ],
         "note": "WT 1h+4h bearish, stoch 13 (OVERSOLD), MFI 44 (CONFIRMING), momentum FLAT"
-      }
-    },
-    "BKR": {
-      "short": {
-        "side": "short",
-        "recommendation": "SHORT",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "BEAR"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "BUILDING",
-        "cautions": [
-          "4h momentum still building \u2014 trail stop"
-        ],
-        "note": "WT 1h+D bearish, stoch 26 (NEUTRAL), MFI 51 (CONFIRMING), momentum BUILDING"
-      }
-    },
-    "UNH": {
-      "short": {
-        "side": "short",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "?",
-          "D": "?"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": null,
-        "cautions": [
-          "WT bullish across TFs \u2014 wrong side to short"
-        ],
-        "note": "WT bullish all TFs, stoch 56 (NEUTRAL), MFI 39 (CONFIRMING)"
-      }
-    },
-    "GME": {
-      "short": {
-        "side": "short",
-        "recommendation": "AVOID",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BULL",
-          "4h": "?",
-          "D": "?"
-        },
-        "stoch_status": "OVERBOUGHT",
-        "mfi_status": "WEAK",
-        "momentum": null,
-        "cautions": [
-          "WT bullish across TFs \u2014 wrong side to short"
-        ],
-        "note": "WT bullish all TFs, stoch 92 (OVERBOUGHT), MFI 84 (WEAK)"
-      }
-    },
-    "APO": {
-      "short": {
-        "side": "short",
-        "recommendation": "SHORT",
-        "confidence": "MEDIUM",
-        "tf_bias": {
-          "1h": "BEAR",
-          "4h": "BULL",
-          "D": "BEAR"
-        },
-        "stoch_status": "NEUTRAL",
-        "mfi_status": "CONFIRMING",
-        "momentum": "FADING",
-        "cautions": [],
-        "note": "WT 1h+D bearish, stoch 53 (NEUTRAL), MFI 25 (CONFIRMING), momentum FADING"
       }
     }
   }

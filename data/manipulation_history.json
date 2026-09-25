@@ -1168,5 +1168,32 @@
     ],
     "timestamp": "2026-09-25T12:09:11.017588+00:00",
     "price": 0.005597
+  },
+  {
+    "symbol": "ENAUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.5x (from rankings)"
+    ],
+    "timestamp": "2026-09-25T13:14:13.953601+00:00",
+    "price": 0.2224
+  },
+  {
+    "symbol": "MSFTUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.2x (from rankings)"
+    ],
+    "timestamp": "2026-09-25T13:38:18.546917+00:00",
+    "price": 496.79084167
+  },
+  {
+    "symbol": "BIOUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.3x (from rankings)"
+    ],
+    "timestamp": "2026-09-25T13:43:30.301800+00:00",
+    "price": 0.03072124
   }
 ]
