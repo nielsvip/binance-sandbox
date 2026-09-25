@@ -14850,7 +14850,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     should_close = True
                 elif ("CLOSE" in rec_exit or "REDUCE" in rec_exit or "PROFIT" in rec_exit or "EXIT" in rec_exit or "DECAY" in rec_exit or score_exit < -4) and not _in_grace_period:
                     should_close = True
-                if should_close and bool(getattr(config, "QUICK_REDUCE_TECHNICAL_ONLY", True)) and hard_exit_reason is None:
+                if should_close and bool(_psym_get(symbol, position_side, "QUICK_REDUCE_TECHNICAL_ONLY", getattr(config, "QUICK_REDUCE_TECHNICAL_ONLY", True))) and hard_exit_reason is None:
                     _stoch_family = str(rec_exit).upper().strip() in ("WEAK_REDUCE", "NO_PROFIT", "STRONG_REDUCE", "SCALP_REDUCE", "NOW_REDUCE", "REDUCE")
                     _rt = (str(reason_exit) + "|" + str(rec_exit)).upper()
                     _named_tech = any(_t in _rt for _t in ("RULE_B_3M", "MTF_ATR_TRAIL", "R1_DC", "R2_WT", "WT_4H_VEL", "WT_CROSS", "WT_PERCENTILE", "WT_EXHAUST", "WT_DIV", "WT_ACCEL", "WT_MOMENTUM_EXIT", "GR_EXIT", "DC_HOPELESS", "HTF_AGAINST", "ALL_TF_AGAINST", "FAST_CUT_LOSS", "WRONG_SIDE", "PARTIAL", "PPL", "BREAK_EVEN", "HEDGE_FAILED", "PANIC"))
