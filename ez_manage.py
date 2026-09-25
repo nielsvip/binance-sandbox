@@ -6901,34 +6901,8 @@ except ImportError:
     JSONDecodeError = json.JSONDecodeError
 load_environment_from_gpg(None)
 _ezm_base_config = Config()
-try:
-    from config_tradier import TradierConfig as _TradierConfig
-    _ezm_base_tradier = _TradierConfig()
-except Exception:
-    _ezm_base_tradier = _ezm_base_config
-# Cache stock symbol set for base selection (STOCK vs CRYPTO)
-try:
-    _STOCK_SYMBOLS = {k.split("_")[0] for k in json.loads((Path(__file__).parent / "data/hourly_reconfig/per_sym_active_config_stocks.json").read_text()).keys() if not k.startswith("_")}
-except Exception:
-    _STOCK_SYMBOLS = set()
-try:
-    _CRYPTO_SYMBOLS = {k.split("_")[0] for k in json.loads((Path(__file__).parent / "data/hourly_reconfig/per_sym_active_config.json").read_text()).keys() if not k.startswith("_")}
-except Exception:
-    _CRYPTO_SYMBOLS = set()
-def _is_stock_symbol(sym: str) -> bool:
-    # STOCK/CRYPTO disambiguation for base defaults — STOCK symbols are tradier universe
-    if sym in _STOCK_SYMBOLS:
-        return True
-    if sym in _CRYPTO_SYMBOLS:
-        return False
-    # Heuristic fallback: known stock tickers vs crypto suffix
-    _known_stocks = {"AAPL","MSFT","NVDA","GOOGL","META","TSLA","AMZN","AMD","NFLX","SPY","QQQ","IBIT","COIN","MSTR","BRK","JPM","XOM","GLD","SLV","XLE","SNDK","MU"}
-    if sym in _known_stocks:
-        return True
-    if sym.endswith("USDT") or sym.endswith("USDC"):
-        # crypto-like but unknown — treat as crypto
-        return False
-    return False
+# ez_ is CRYPTO ONLY per user 2026-09-26 — do NOT handle stocks here. Base is always crypto Config (28/1.0 via _apply_mode NORMAL).
+# Tradier stocks are handled separately in tradier_manage (500/100). No stock/cross pollination.
 # ── PER-SYM CONTEXT VAR for global proxy (wiring all switches without per-site edits) ──
 from contextvars import ContextVar as _CtxVar
 _psym_ctx_var: _CtxVar = _CtxVar("_psym_ctx_var", default=None)
@@ -7451,25 +7425,15 @@ def _psym_sps(symbol: str, side: str):
 # ── PER-SYM GLOBAL PROXY — makes every config.KNOB / getattr(config, KNOB) per-sym aware ──
 # Without this, only ~50 explicit _psym_get sites were wired and 28/29 XLM overrides were inert.
 # The proxy consults _psym_ctx_var (set at process_position entry) and returns the per-sym
-# override if present, else falls back to the base STOCK/CRYPTO_LONG/SHORT template defaults.
-# No per-site edits needed — base is chosen per sym_side from the 4 TEMPLATE defaults
-# (TEMPLATE_CRYPTO_LONG, TEMPLATE_CRYPTO_SHORT, TEMPLATE_STOCKS_LONG, TEMPLATE_STOCKS_SHORT)
-# via Config vs TradierConfig (crypto vs stock) and side-aware fallback.
+# override if present, else falls back to the base CRYPTO template defaults (28/1.0).
+# No per-site edits needed — base is always crypto Config (ez_ is CRYPTO ONLY, tradier separate).
 class _PerSymProxy:
     __slots__ = ("_inner",)
     def __init__(self, inner):
         object.__setattr__(self, "_inner", inner)
     def _base_for(self, sym: str, side: str):
-        # STOCK/CRYPTO_LONG/SHORT disambiguation — base defaults are the 4 TEMPLATE sheets
-        # Live source of truth is Config (crypto) vs TradierConfig (stocks); LONG/SHORT share
-        # the same base object but side is retained for future template divergence and logging.
-        try:
-            if _is_stock_symbol(sym):
-                return _ezm_base_tradier
-            else:
-                return _ezm_base_config
-        except Exception:
-            return object.__getattribute__(self, "_inner")
+        # ez_ is CRYPTO ONLY — base is always crypto Config (28/1.0 via NORMAL mode)
+        return object.__getattribute__(self, "_inner")
     def __getattr__(self, name):
         inner = object.__getattribute__(self, "_inner")
         ctx = _psym_ctx_var.get()

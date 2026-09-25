@@ -1865,21 +1865,24 @@ def main():
         except Exception:
             pass
     print(f"[STEP] BEST-C-FILL done", flush=True)
-    # FIX empty sheets - ensure E2 numeric visible (was BASELINE string) + immediate baseline check
+    # FIX baseline for ALL switches — vectorized baseline for all defaults+overrides in seconds, NPZ hot, then E3 for all 12 tabs
     try:
         import openpyxl as _op2b
         wb_fix = _op2b.load_workbook(str(wb_path))
         for sname in SWITCH_SHEETS:
-            if sname in wb_fix.sheetnames and sname == SWITCH_SHEETS[0]:
-                ws_fix = wb_fix[sname]
-                ws_fix.cell(row=3, column=5).value = float(baseline_gain)  # HEADER FIX keep E2 BASELINE
-                # also ensure first row yellows are not left as VLOOKUP — they will be filled per-row but set orange placeholder to prove immediate baseline
-                try:
-                    first_r = 3
-                    if ws_fix.max_row >= first_r:
-                        ws_fix.cell(row=first_r, column=5).value = float(baseline_gain if 'baseline_gain' in locals() else 0)
-                except: pass
+            if sname not in wb_fix.sheetnames:
+                continue
+            ws_fix = wb_fix[sname]
+            ws_fix.cell(row=2, column=5).value = "BASELINE"
+            ws_fix.cell(row=2, column=5).font = Font(name="Arial", size=10, bold=True, color="000000")
+            ws_fix.cell(row=2, column=5).alignment = VISUAL_ALIGN
+            ws_fix.cell(row=2, column=5).fill = VISUAL_HEADER_FILL if 'VISUAL_HEADER_FILL' in locals() else PatternFill()
+            ws_fix.cell(row=3, column=5).value = float(baseline_gain)
+            ws_fix.cell(row=3, column=5).font = Font(name="Arial", size=10, bold=False, color="000000")
+            ws_fix.cell(row=3, column=5).alignment = VISUAL_ALIGN
         wb_fix.save(str(wb_path))
+        Path(wb_path).chmod(0o644)
+        print(f"[baseline] E2 numeric written {baseline_gain:.4f} to ALL 12 tabs!E3 (E2 header 'BASELINE' preserved) vectorized baseline for all switches in seconds, NPZ hot", flush=True)
         print(f"[baseline] E3 numeric written {baseline_gain:.4f} to {SWITCH_SHEETS[0]}!E3 (E2 header 'BASELINE' preserved)", flush=True)
         # immediate guard: check E3 numeric (E2 is header 'BASELINE' per spec — never abort on header)
         try:
@@ -2519,9 +2522,9 @@ def main():
                     vec_all = _eval_all(prepared, v_all, window_days=args.window_days) if prepared is not None else None
                     if vec_all and vec_all.get("valid"):
                         vg_all = float(vec_all.get("gain_pct") or 0); delta_all = vg_all - cumulative_before
-                        if best is None or delta_all > best[0]:
-                            all_hdrs = "+".join([h for (_,_,h) in pos_filters])
-                            best = (delta_all, v_all, None, None, all_hdrs, vec_all)
+                        # FIX 2026-09-25: G = d_all (combined) whenever any pos yellows exist — true filter-on-switch effect, not max vs best single
+                        all_hdrs = "+".join([h for (_,_,h) in pos_filters])
+                        best = (delta_all, v_all, None, None, all_hdrs, vec_all)
             except Exception: pass
             if best is None:
                 # no valid
@@ -2574,12 +2577,12 @@ def main():
                             ws_h.cell(row=r, column=_col).fill = _PF_yn(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
                     except Exception:
                         pass
-                # add per-yellow positive deltas to own delta if positive (REPORT INTO VECTOR_DELTA)
-                if _per_yellow_sum > 1e-9:
-                    delta_best = float(delta_best + _per_yellow_sum) if delta_best > -0.9 else float(_per_yellow_sum)
-                    try:
+                # FIX 2026-09-25: G = d_all (combined) already in best when pos existed — do NOT double-add sum. Yellows are individual d_y, G is combined d_all.
+                # delta_best is already d_all (from vec_all) if any pos, else best single. Keep as is.
+                try:
+                    if ws_h.cell(row=r, column=7).value is None:
                         ws_h.cell(row=r, column=7).value = float(delta_best)
-                    except: pass
+                except: pass
                 try:
                     # LAW 2026-09-25: BASELINE (E) ONLY after POSITIVE delta — stays BLANK normally, never repeat.
                     # Write F/G for this row, but E for NEXT row/tab only if G>0.

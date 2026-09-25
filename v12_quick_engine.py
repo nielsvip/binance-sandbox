@@ -4552,9 +4552,9 @@ class QuickConfig:
     NOLOSS_ENABLED: bool = True
     DC_RECOVERY_EXIT_ENABLED: bool = False  # live parity: config_tradier True (was False, caused 0 trades)
     DC_RECOVERY_EXIT_TOLERANCE_PCT: float = 0.25
-    START_POSITION_SIZE: float = 500.0  # parity 2026-09-14: tradier live 500 vs vec 2000 caused 4x gain mismatch (vec cap 38502 vs live 2492) — align to config_tradier.TradierConfig
+    START_POSITION_SIZE: float = 28.0  # parity 2026-09-26: live Config 28.0 vs vec 500 caused 17x mismatch — align to config.Config crypto. Bold in TEMPLATE_CRYPTO_LONG.
     CRYPTO_ROUND_TRIP_COMMISSION_PCT: float = 0.08  # USER 2026-08-08: binance futures 0.08% round trip; tradier is commission-free
-    MIN_POSITION_SIZE: float = 55.0
+    MIN_POSITION_SIZE: float = 1.0  # parity 2026-09-26: live Config 1.0 vs vec 55 caused 55x mismatch — align to config.Config crypto. Bold in TEMPLATE_CRYPTO.
     CT_WT_VELOCITY_GATE_ENABLED: bool = False
     CT_WT_VELOCITY_1H_MIN: float = 0.0
     CT_DC_CROSSOVER_SKIP_ENABLED: bool = False  # DISABLED LIVE TEST 2026-08-17: was True closing TRB winners via 9386
@@ -5407,7 +5407,7 @@ class QuickConfig:
     EXIT_SCORER_MIN_CONDITIONS: float = 3  # auto-wired 625
     EXIT_SCORER_PARTIAL_SCORE: float = 20.0  # auto-wired 625
     EXIT_SENTIMENT_ENABLED: bool = False  # auto-wired 625
-    EXIT_STDEV_BREAKOUT_FAIL_ENABLED: bool = False  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
+    EXIT_STDEV_BREAKOUT_FAIL_ENABLED: bool = True  # parity 2026-09-26: live Config True crypto vs vec False caused 0 trades — align to live. Bold in TEMPLATE_CRYPTO_LONG/SHORT.
     EXIT_STRUCT_BREAK_5M_ENABLED: bool = False  # auto-wired 625
     EXIT_STRUCT_DC_BREAK_ENABLED: bool = False  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     EXIT_TREND_REVERSAL_ENABLED: bool = False  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
@@ -5784,7 +5784,7 @@ class QuickConfig:
     TRC_SMFI_LONG_BUDGET: float = 4950.0  # auto-wired 625
     TRC_SMFI_POSITION_SIZE: float = 990.0  # auto-wired 625
     TRC_SMFI_SHORT_BUDGET: float = 4950.0  # auto-wired 625
-    TRC_START_POSITION_SIZE: float = 330.0  # parity 2026-09-14: live 330 vs vec 165 (2x) — align to config_tradier
+    TRC_START_POSITION_SIZE: float = 500.0  # TRADIER 500-2000 per user 2026-09-26 — keep tradier 500 (crypto is 28). Do not touch tradier aside from this parity.
     TRC_SWING_LONG_BUDGET: float = 50000.0  # auto-wired 625
     TRC_SWING_SHORT_BUDGET: float = 50000.0  # auto-wired 625
     TREND_GATES: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
