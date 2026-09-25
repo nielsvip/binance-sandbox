@@ -1,4 +1,4 @@
-# Copilot Status — 2026-09-25 10:13:16 UTC
+# Copilot Status — 2026-09-25 10:54:03 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:RS_SHORT — 2026-09-25T10:10:32
-- **RATIO_IMBALANCE** [crypto] fin — 2026-09-25T10:10:53
-- **RATIO_IMBALANCE** [crypto] flz — 2026-09-25T10:10:53
-- **RATIO_IMBALANCE** [crypto] fin — 2026-09-25T10:11:54
-- **RATIO_IMBALANCE** [crypto] flz — 2026-09-25T10:11:54
-- **STALE_INDICATORS** [tradier]  — 2026-09-25T10:12:35
-- **BIG_LOSER** [tradier] trb:RS_SHORT — 2026-09-25T10:12:35
-- **BIG_LOSER** [tradier] trc:RS_SHORT — 2026-09-25T10:12:35
-- **RATIO_IMBALANCE** [crypto] fin — 2026-09-25T10:12:56
-- **RATIO_IMBALANCE** [crypto] flz — 2026-09-25T10:12:56
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-25T10:51:41
+- **RATIO_IMBALANCE** [crypto] ang — 2026-09-25T10:52:42
+- **RATIO_IMBALANCE** [crypto] fin — 2026-09-25T10:52:42
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-25T10:52:42
+- **STALE_INDICATORS** [tradier]  — 2026-09-25T10:53:22
+- **BIG_LOSER** [tradier] trb:RS_SHORT — 2026-09-25T10:53:22
+- **BIG_LOSER** [tradier] trc:RS_SHORT — 2026-09-25T10:53:22
+- **RATIO_IMBALANCE** [crypto] ang — 2026-09-25T10:53:43
+- **RATIO_IMBALANCE** [crypto] fin — 2026-09-25T10:53:43
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-25T10:53:43
 
 ## Missed Trades (trader comparison)
 
@@ -31,7 +31,7 @@ _None_
 
 - HELD: **GME** LONG (tradier) peak +11.8%, now +10.6%
 - HELD: **AXTI** LONG (tradier) peak +6.8%, now +2.9%
-- HELD: **ALGOUSDT** LONG (crypto) peak +4.9%, now +3.7%
+- HELD: **ALGOUSDT** LONG (crypto) peak +4.9%, now +3.9%
 - HELD: **AU** LONG (tradier) peak +4.5%, now +-4.3%
 - HELD: **SNOW** LONG (tradier) peak +4.5%, now +0.3%
 - HELD: **MU** LONG (tradier) peak +3.1%, now +3.1%
