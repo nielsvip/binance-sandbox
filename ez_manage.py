@@ -42069,8 +42069,11 @@ async def process_single_reentry_evaluation(
             from ez_reentry import check_reentry_confirmation as _chk_re
             _gate_ok, _gate_reason = _chk_re(i, is_long, config)
             if not _gate_ok:
-                logger.info(f"[MANDATORY_PRICE_CROSS_BLOCKED] {position_key}: gate refused ({_gate_reason})")
-                return
+                if _guaranteed_reentry and _is_flat_for_guarantee:
+                    logger.warning(f"[GUARANTEED_PRICE_CROSS_BYPASS] {position_key}: bypassing gate {_gate_reason} for flat guaranteed reentry at exit/worst price")
+                else:
+                    logger.info(f"[MANDATORY_PRICE_CROSS_BLOCKED] {position_key}: gate refused ({_gate_reason})")
+                    return
             # 2026-04-26 RATE LIMIT (rogue-loop fix): refuse to fire MANDATORY_PRICE_CROSS
             # twice on the same position_key within MIN_INTERVAL seconds. The original bug
             # was that this fires every cycle while price > exit_level, even AFTER a
@@ -42167,7 +42170,7 @@ async def process_single_reentry_evaluation(
             if not (_guaranteed_reentry and _is_flat_for_guarantee):
                 return
         _tmp_stoch_ready = (is_long and (k_3m > d_3m or t_up_3m) and (k_15m > d_15m or t_up_15m)) or (not is_long and (k_3m < d_3m or not t_up_3m) and (k_15m < d_15m or not t_up_15m))
-        logger.warning(f"[STOCH_READY_CHECK] {position_key}: k_3m={k_3m} d_3m={d_3m} k_15m={k_15m} d_15m={d_15m stoch_ready={_tmp_stoch_ready} guaranteed={_guaranteed_reentry} flat={_is_flat_for_guarantee} is_long={is_long}")
+        logger.warning(f"[STOCH_READY_CHECK] {position_key} stoch_ready={_tmp_stoch_ready}")
         stoch_ready = (
             is_long and (k_3m > d_3m or t_up_3m) and (k_15m > d_15m or t_up_15m)
         ) or (
@@ -42380,7 +42383,10 @@ async def process_single_reentry_evaluation(
             return
         # LEGACY STOCH CROSSOVER PATH — default OFF 2026-04-17 (user rule: WT only, not stoch)
         if not getattr(config, "REENTRY2_STOCH_CROSS_ENABLED", False):
-            return
+            if _guaranteed_reentry and _is_flat_for_guarantee:
+                logger.warning(f"[GUARANTEED_STOCH_CROSS_BYPASS] {position_key}: bypassing legacy STOCH_CROSS disable for flat guaranteed reentry -> going to final fallback")
+            else:
+                return
         invalidated_state = trade_manager.reentry_invalidated.get(position_key, {})
         is_invalidated = invalidated_state.get("invalidated", False)
         stoch_crossover_3m = (is_long and k_3m > d_3m and k_3m_prev <= d_3m_prev) or (
