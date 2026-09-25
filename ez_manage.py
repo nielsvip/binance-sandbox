@@ -6900,7 +6900,19 @@ except ImportError:
 
     JSONDecodeError = json.JSONDecodeError
 load_environment_from_gpg(None)
-config = Config()
+_ezm_base_config = Config()
+# ── PER-SYM CONTEXT VAR for global proxy (wiring all switches without per-site edits) ──
+from contextvars import ContextVar as _CtxVar
+_psym_ctx_var: _CtxVar = _CtxVar("_psym_ctx_var", default=None)
+def _psym_ctx_set(symbol: str, side: str):
+    return _psym_ctx_var.set((symbol, side) if symbol and side else None)
+def _psym_ctx_clear(tok):
+    try:
+        _psym_ctx_var.reset(tok)
+    except Exception:
+        _psym_ctx_var.set(None)
+# placeholder; PerSym proxy defined after _psym_get block wraps this base
+config = _ezm_base_config
 current_env = get_current_environment()
 
 
@@ -7393,21 +7405,96 @@ def _psym_sps(symbol: str, side: str):
             return float(ov["START_POSITION_SIZE"]) * _cv
     except Exception:
         pass
-    base = float(getattr(config, "START_POSITION_SIZE", 45.0)) * _ezm_conviction_mult(symbol, side)
+    base = float(getattr(_ezm_base_config, "START_POSITION_SIZE", 45.0)) * _ezm_conviction_mult(symbol, side)
     # GOLDEN PULLBACK exceptional quantity — caller passes indicators via thread-local _GOLDEN_PULLBACK_CTX if available
     try:
         ctx = getattr(_psym_sps, "_golden_ctx", None)
-        if ctx and ctx.get("symbol") == symbol and ctx.get("side") == side and bool(getattr(config, "GOLDEN_PULLBACK_ENABLED", True)):
+        if ctx and ctx.get("symbol") == symbol and ctx.get("side") == side and bool(getattr(_ezm_base_config, "GOLDEN_PULLBACK_ENABLED", True)):
             if _golden_pullback_is_golden(symbol, ctx.get("indicators", {}), side == "LONG"):
                 weekly_max = _golden_weekly_max(symbol)
                 if weekly_max > 0:
-                    mult = float(getattr(config, "GOLDEN_PULLBACK_SIZE_MULT", 2.0))
-                    cap_mult = float(getattr(config, "GOLDEN_PULLBACK_SIZE_CAP_MULT", 4.0))
+                    mult = float(getattr(_ezm_base_config, "GOLDEN_PULLBACK_SIZE_MULT", 2.0))
+                    cap_mult = float(getattr(_ezm_base_config, "GOLDEN_PULLBACK_SIZE_CAP_MULT", 4.0))
                     golden_size = weekly_max * mult
-                    base = max(base, min(golden_size, float(getattr(config, "START_POSITION_SIZE", 45.0)) * cap_mult))
+                    base = max(base, min(golden_size, float(getattr(_ezm_base_config, "START_POSITION_SIZE", 45.0)) * cap_mult))
     except Exception: pass
     return base
 
+# ── PER-SYM GLOBAL PROXY — makes every config.KNOB / getattr(config, KNOB) per-sym aware ──
+# Without this, only ~50 explicit _psym_get sites were wired and 28/29 XLM overrides were inert.
+# The proxy consults _psym_ctx_var (set at process_position entry) and returns the per-sym
+# override if present, else falls back to the base config. No per-site edits needed.
+class _PerSymProxy:
+    __slots__ = ("_inner",)
+    def __init__(self, inner):
+        object.__setattr__(self, "_inner", inner)
+    def __getattr__(self, name):
+        inner = object.__getattribute__(self, "_inner")
+        ctx = _psym_ctx_var.get()
+        if ctx is not None and not name.startswith("_"):
+            try:
+                sym, side = ctx
+                if sym and side and not os.environ.get("V8_DISABLE_PER_SYM"):
+                    # lazy load per_sym if needed — replicate _psym_get loading without recursion
+                    try:
+                        mtime = _ezm_per_sym_cfgs_path.stat().st_mtime
+                        if mtime != _ezm_per_sym_cfgs_mtime:
+                            with _ezm_per_sym_cfgs_path.open() as _f:
+                                raw = json.load(_f)
+                            globals()["_ezm_per_sym_cfgs"] = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict) and k != "_meta"}
+                            globals()["_ezm_per_sym_cfgs_mtime"] = mtime
+                    except Exception:
+                        pass
+                    ov = _ezm_per_sym_cfgs.get(f"{sym}_{side}")
+                    if ov is not None and name in ov:
+                        return ov[name]
+                    # final-book overlay
+                    try:
+                        book = _ezm_load_final_book()
+                        if book:
+                            trd = book.get("tradeable", {}).get(f"{sym}_{side}", {})
+                            if name == "MOMENTUM_SMA_WATCHDOG_PCT" and trd.get("pct_entry") is not None:
+                                return float(trd["pct_entry"])
+                            if name == "BREAKOUT_SIZE_MAX_MULT" and trd.get("size_cap") is not None:
+                                return float(trd["size_cap"])
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+        return getattr(inner, name)
+    def __setattr__(self, name, value):
+        if name == "_inner":
+            object.__setattr__(self, name, value)
+        else:
+            setattr(object.__getattribute__(self, "_inner"), name, value)
+    def __getattribute__(self, name):
+        if name in ("_inner", "__class__", "__dict__", "__slots__", "__weakref__"):
+            return object.__getattribute__(self, name)
+        inner = object.__getattribute__(self, "_inner")
+        # Direct per-sym intercept for attribute access
+        ctx = _psym_ctx_var.get()
+        if ctx is not None and not name.startswith("_") and name.isupper():
+            try:
+                sym, side = ctx
+                if sym and side and not os.environ.get("V8_DISABLE_PER_SYM"):
+                    try:
+                        mtime = _ezm_per_sym_cfgs_path.stat().st_mtime
+                        if mtime != _ezm_per_sym_cfgs_mtime:
+                            with _ezm_per_sym_cfgs_path.open() as _f:
+                                raw = json.load(_f)
+                            globals()["_ezm_per_sym_cfgs"] = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict) and k != "_meta"}
+                            globals()["_ezm_per_sym_cfgs_mtime"] = mtime
+                    except Exception:
+                        pass
+                    ov = _ezm_per_sym_cfgs.get(f"{sym}_{side}")
+                    if ov is not None and name in ov:
+                        return ov[name]
+            except Exception:
+                pass
+        return getattr(inner, name)
+
+# Wrap base config so every getattr(config, KNOB) and config.KNOB is per-sym aware via ctx
+config = _PerSymProxy(_ezm_base_config)
 
 paper_trading_logger = logging.getLogger("paper_trading")
 paper_trading_logger.propagate = False
@@ -30770,44 +30857,11 @@ class MultiAccountTradeManager:
             _recent_opens[position_key] = time.time()
             _AUGMENT_LOCK[position_key] = time.time()
         if _is_open_action and position_key:
-            # 2026-04-23 USER: SCALP_V3 scanner picks outliers from full L2 book.
-            # V3 symbols may not yet be in tradeable_keys (ez_rankings is slower than
-            # the live orderbook signal). Auto-add + bypass.
-            _v3_hard_bypass = "SCALP_V3_OPEN" in str(reason or "").upper()
-            if _v3_hard_bypass and position_key not in self.tradeable_keys:
-                logger.warning(
-                    f"⚠️ [NON_TRADEABLE_HARD_BLOCK_V3_BYPASS] {position_key}: SCALP_V3 outlier open — auto-adding to tradeable_keys"
-                )
-                try:
-                    self.tradeable_keys.add(position_key)
-                    # Persist across tradeable_keys.json reloads
-                    if hasattr(self, "tracker_manager") and self.tracker_manager:
-                        if not hasattr(self.tracker_manager, "_v3_dynamic_keys"):
-                            self.tracker_manager._v3_dynamic_keys = set()
-                        self.tracker_manager._v3_dynamic_keys.add(position_key)
-                        if isinstance(self.tracker_manager.tradeable_keys, set):
-                            self.tracker_manager.tradeable_keys.add(position_key)
-                except Exception:
-                    pass
-            _intervention_bypass = ("INTERVENTION" in str(reason or "").upper()) or (
-                "MANUAL" in str(reason or "").upper()
-            )
-            if _intervention_bypass and position_key not in self.tradeable_keys:
-                logger.critical(
-                    f"⚠️ [NON_TRADEABLE_HARD_BLOCK_INTERVENTION_BYPASS] {position_key}: INTERVENTION/MANUAL — auto-adding to tradeable_keys"
-                )
-                try:
-                    self.tradeable_keys.add(position_key)
-                    if (
-                        hasattr(self, "tracker_manager")
-                        and self.tracker_manager
-                        and isinstance(
-                            getattr(self.tracker_manager, "tradeable_keys", None), set
-                        )
-                    ):
-                        self.tracker_manager.tradeable_keys.add(position_key)
-                except Exception:
-                    pass
+            # 2026-09-26 USER ABSOLUTE: tradeable_keys is SACRED — NO auto-add bypass.
+            # SCALP_V3 outlier auto-add KILLED per user "IF IT IS NOT A TRADEABLE KEY HOW THE FUCK DID ANG TRADE XLM THAT IS ABSOLUTELY FORBIDDEN".
+            # Previously V3 + INTERVENTION silently added any key to tradeable_keys, violating the sacred list.
+            # Now: V3/INTERVENTION entries that are not tradeable are HARD BLOCKED like any other — no auto-add.
+            # Remove this block entirely to enforce sacred list; if a V3 outlier proves edge, add it to tradeable_keys.json explicitly.
             if position_key not in self.tradeable_keys:
                 logger.critical(
                     f"🚫🚫🚫 [NON_TRADEABLE_HARD_BLOCK] {position_key}: NOT in tradeable_keys — entry/augment/hedge BLOCKED. action={action} reason={reason} is_hedge={is_hedge}"
@@ -31582,7 +31636,7 @@ class MultiAccountTradeManager:
             "QUICK_HEDGE_OPEN",
             "QUICK_HEDGE_AUGMENT",
         ]
-        is_tradeable = position_key in self.tradeable_keys or account_key == "flz"
+        is_tradeable = position_key in self.tradeable_keys
         if not is_tradeable and not is_reduce:
             logger.critical(
                 f"🚫 [NON_TRADEABLE_BLOCK] {position_key}: NOT in tradeable_keys — entry/augment/hedge BLOCKED (no auto-add). action={action} reason={reason} is_hedge={is_hedge}"
@@ -41294,6 +41348,12 @@ async def process_single_reentry_evaluation(
     trade_manager, position_key, reentry_data, config
 ):
     """Process a single position for reentry evaluation - extracted for parallel processing"""
+    _psym_tok_re = None
+    try:
+        ak_re, sym_re, side_re = parse_position_key(position_key)
+        _psym_tok_re = _psym_ctx_set(sym_re, side_re)
+    except Exception:
+        pass
     try:
         account_key, symbol, position_side = parse_position_key(position_key)
         if account_key not in trade_manager.positions_by_account:
@@ -41302,6 +41362,17 @@ async def process_single_reentry_evaluation(
                     f"[proces s_single_reentry_evaluation] {position_key}: NOT_ALLOWED - account_key {account_key} not in positions_by_account"
                 )
             return
+        # 2026-09-26 GUARANTEED REENTRY AFTER STOP (user: do NOT hedge, keep stops, GUARANTEE REENTRY)
+        # Any reentry whose origin reason is a technical stop (MTF_ATR_TRAIL, R1/R2/R3, DC breach, WT cross etc.)
+        # must bypass LOSING_POSITION_HARD_BLOCK / NON_TRADEABLE pre-flight when tradeable.
+        # Keep tradeable check but bypass losing-position block for guaranteed stops — the whole point is to buy the bounce after selling the bottom.
+        _guaranteed_reentry = False
+        try:
+            _rd_reason_up = str((reentry_data.get("reason") if isinstance(reentry_data, dict) else "") or "").upper()
+            _guaranteed_tags = ("MTF_ATR_TRAIL","MTF_DC_REJECT","MTF_BB_REJECT","MTF_GR","R1_DC_LOW4","R2_WT_VEL","R3_HTF","DC_HOPELESS","FROZEN_ACT_STOP","NEWBORN_LOSS_KILL","HEDGE_FAILED","DAEMON_REENTRY_STALE","WT15M_AGAINST","ALL_TF_AGAINST","HTF_AGAINST","RIDICULOUS","UNDERWATER","DC_BB_D_BREAK","GR_HTF_DIRECT_EXIT")
+            _guaranteed_reentry = any(t in _rd_reason_up for t in _guaranteed_tags)
+        except Exception:
+            _guaranteed_reentry = False
         # 2026-04-28: pre-flight eligibility gate — skip if execute_now would BLOCK
         # this REENTRY (LOSING_POSITION_HARD_BLOCK / NON_TRADEABLE). Saves the
         # position-recovery + indicator + queue_trade_action traversal cost on
@@ -41314,7 +41385,11 @@ async def process_single_reentry_evaluation(
                 trade_manager, position_key, account_key, symbol, config
             )
             if not _ok:
-                return
+                # Guaranteed reentry bypasses LOSING gate but still respects NON_TRADEABLE (sacred)
+                if _guaranteed_reentry and "NON_TRADEABLE" not in str(_gate_why).upper():
+                    logger.info(f"[GUARANTEED_REENTRY_BYPASS] {position_key}: bypassing {_gate_why} — guaranteed after stop (keep stops, no hedge, must re-buy bounce)")
+                else:
+                    return
         except Exception:
             pass
         position = await trade_manager.get_position(position_key)
@@ -42571,6 +42646,11 @@ async def process_single_reentry_evaluation(
         logger.debug(
             f"[evaluate_reentry_2] Error processing {position_key}: {e}", exc_info=True
         )
+    finally:
+        try:
+            _psym_ctx_clear(_psym_tok_re)  # type: ignore
+        except Exception:
+            pass
 
 
 @timed_function("evaluate_reentry_2")
@@ -45469,6 +45549,13 @@ async def process_position(
         pass
     logger.debug(f"[[PP] 🚨 {position_key}] entering")
     current_account.set(account_key)
+    # PER-SYM CTX — wrap all downstream config reads for this sym_side
+    _psym_tok = None
+    try:
+        ak_tmp, sym_tmp, side_tmp = parse_position_key(position_key)
+        _psym_tok = _psym_ctx_set(sym_tmp, side_tmp)
+    except Exception:
+        pass
     config = getattr(trade_manager, "config", None)
     allowed_accounts = set(getattr(config, "ACCOUNT_KEYS", [])) if config else set()
     trade_manager_accounts = (
@@ -52158,6 +52245,10 @@ async def process_position(
         trade_manager.position_last_processed[position_key] = time.time()
         if position_key in trade_manager.processing_keys:
             trade_manager.processing_keys.remove(position_key)
+        try:
+            _psym_ctx_clear(_psym_tok)  # type: ignore  # clear per-sym proxy ctx even on error
+        except Exception:
+            pass
 
 
 async def get_ladder_data(symbol, account_key, position, trade_manager):

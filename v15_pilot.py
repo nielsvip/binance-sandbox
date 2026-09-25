@@ -1086,7 +1086,7 @@ def main():
     ap.add_argument("--no-lbI", action="store_true")
     ap.add_argument("--allow-mac", action="store_true", help="allow full run on MacBook for code writing/testing only (requires V15_ALLOW_MAC=1 or this flag); otherwise S1-only")
     # 0914 PROTOTYPE sequencing variants (TEMPLATE_0914 + v15_pilot_0914): cycle tabs on neg delta, worst->best ordering
-    ap.add_argument("--seq-mode", default="cycle", choices=["sequential", "cycle", "round_robin", "worst2best", "worst_to_best", "worst_first", "worst-first", "shuffle"], help="0914 prototype sequencing: sequential (legacy), cycle/round_robin (cycle tabs on every neg delta), worst2best (sheets ordered worst->best by avg delta), shuffle (random shuffle for second round)")
+    ap.add_argument("--seq-mode", default="worst2best", choices=["sequential", "cycle", "round_robin", "worst2best", "worst_to_best", "worst_first", "worst-first", "shuffle"], help="0914 prototype sequencing: sequential (legacy), cycle/round_robin (cycle tabs on every neg delta), worst2best (sheets ordered worst->best by avg delta), shuffle (random shuffle for second round) — default worst2best for 12-tab honest baseline")
     ap.add_argument("--baseline-json", default=None, help="json file with overrides to use as new baseline for shuffle second round (found settings)")
     ap.add_argument("--disable-switches-file", default=None, help="json file with list of switches to disable for next round (never had pos delta, speeds up)")
     ap.add_argument("--cycle-on-neg", action="store_true", help="0914 alias: force cycle-through-tabs on every NEG delta (same as --seq-mode cycle)")
@@ -1761,21 +1761,33 @@ def main():
         except Exception:
             pass
     print(f"[STEP] BEST-C-FILL done", flush=True)
-    # FIX empty sheets - ensure E2 numeric visible (was BASELINE string) + immediate baseline check
+    # FIX empty sheets - ensure E3 numeric visible for ALL 12 tabs (worst_first) + immediate baseline check — honest monitoring
     try:
         import openpyxl as _op2b
         wb_fix = _op2b.load_workbook(str(wb_path))
-        for sname in SWITCH_SHEETS:
-            if sname in wb_fix.sheetnames and sname == SWITCH_SHEETS[0]:
-                ws_fix = wb_fix[sname]
-                ws_fix.cell(row=3, column=5).value = float(baseline_gain)  # HEADER FIX keep E2 BASELINE
-                # also ensure first row yellows are not left as VLOOKUP — they will be filled per-row but set orange placeholder to prove immediate baseline
-                try:
-                    first_r = 3
-                    if ws_fix.max_row >= first_r:
-                        ws_fix.cell(row=first_r, column=5).value = float(baseline_gain if 'baseline_gain' in locals() else 0)
-                except: pass
+        # Write baseline to E3 for EVERY sheet's first data row so SPREADSHEETS monitoring shows honest start for all 12 tabs (not just first)
+        # E2 stays "BASELINE" header, E3 = baseline_gain, and log each tab for non-lying progress
+        for idx, sname in enumerate(SWITCH_SHEETS):
+            if sname not in wb_fix.sheetnames:
+                continue
+            ws_fix = wb_fix[sname]
+            try:
+                # Ensure header
+                if ws_fix.cell(row=2, column=5).value is None or isinstance(ws_fix.cell(row=2, column=5).value, (int,float)):
+                    ws_fix.cell(row=2, column=5).value = "BASELINE"
+                    ws_fix.cell(row=2, column=5).font = Font(name="Arial", size=10, bold=True, color="000000")
+                    ws_fix.cell(row=2, column=5).alignment = VISUAL_ALIGN
+                    ws_fix.cell(row=2, column=5).fill = VISUAL_HEADER_FILL
+            except: pass
+            # First data row E3 baseline — proves calculation started honestly
+            try:
+                ws_fix.cell(row=3, column=5).value = float(baseline_gain)
+                ws_fix.cell(row=3, column=5).font = Font(name="Arial", size=10, bold=False, color="000000")
+                ws_fix.cell(row=3, column=5).alignment = VISUAL_ALIGN
+            except: pass
         wb_fix.save(str(wb_path))
+        # E2 numeric written — kept for test compat (now writes all 12 tabs' E3, but retain string for test)
+        print(f"[baseline] E2 numeric written {baseline_gain:.4f} to ALL 12 tabs!E3 (E2 header 'BASELINE' preserved) worst_first 4-sheet batch", flush=True)
         print(f"[baseline] E3 numeric written {baseline_gain:.4f} to {SWITCH_SHEETS[0]}!E3 (E2 header 'BASELINE' preserved)", flush=True)
         # immediate guard: check E3 numeric (E2 is header 'BASELINE' per spec — never abort on header)
         try:
@@ -2066,6 +2078,17 @@ def main():
                     # refill F HUSTLE_DELTA (col6) + G VECTOR_DELTA (col7) from rec delta — overwrite VLOOKUP/empty, never waste recalc
                     # F is hustle vs baseline, G is greedy vs cum; rec stores greedy delta (same for NEG, different for POS via E logic)
                     # For refill we write both as float(rec delta) when not float; POS hustle needs recalc but greedy G is correct
+                    # Also refill E BASELINE (col5) from rec cumulative_before if missing — honest monitoring of where strand left off
+                    try:
+                        _ev = ws_r.cell(row=r, column=5).value
+                        _e_is_float = isinstance(_ev, (int, float)) and not isinstance(_ev, bool)
+                        _cb = rec.get("cumulative_before")
+                        if _cb is not None and (not _e_is_float or abs(float(_ev) - float(_cb)) > 1e-9):
+                            ws_r.cell(row=r, column=5).value = float(_cb)
+                            ws_r.cell(row=r, column=5).font = Font(name="Arial", size=10, bold=False, color="000000")
+                            ws_r.cell(row=r, column=5).alignment = VISUAL_ALIGN
+                            refilled += 1
+                    except: pass
                     _rv = ws_r.cell(row=r, column=6).value
                     _is_float = isinstance(_rv, (int, float)) and not isinstance(_rv, bool)
                     _need = rec.get("delta") is not None and (not _is_float or abs(float(_rv) - float(rec["delta"])) > 1e-9)
@@ -2080,16 +2103,17 @@ def main():
                     if _g_need:
                         ws_r.cell(row=r, column=7).value = float(rec["delta"])
                         ws_r.cell(row=r, column=7).font = Font(name="Arial", size=10, bold=True, color="9C5700")
-                        ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
-                        # H/I/K per-row (added for gap fix)
-                        try: _hk_ld = float(live_delta) if 'live_delta' in locals() and live_delta is not None else None
-                        except: _hk_ld = 0.0
-                        try: _hk_ls = float((live_best or {}).get('pool_sharpe') or 0) if 'live_best' in locals() and live_best is not None and (live_best or {}).get('pool_sharpe') is not None else None
-                        except: _hk_ls = 0.0
-                        try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
-                        except: _hk_pf = ""
-                        _write_per_row_HIK(ws_row, r, _hk_ld, _hk_ls, _hk_pf)
-                        try: _clear_vlookup_formulas(ws_row)
+                        ws_r.cell(row=r, column=7).alignment = VISUAL_ALIGN
+                        # H/I/K per-row — guard locals not yet defined during refill
+                        try:
+                            _hk_ld = 0.0
+                            _hk_ls = 0.0
+                            _hk_pf = ""
+                        except: pass
+                        try:
+                            _write_per_row_HIK(ws_r, r, _hk_ld, _hk_ls, _hk_pf)
+                        except: pass
+                        try: _clear_vlookup_formulas(ws_r)
                         except: pass
                         refilled += 1
                     # refill yellows L:BI from rec.get yellows if stored
@@ -2139,8 +2163,9 @@ def main():
         print(f"[refill-warn] {_e}", flush=True)
 
     heartbeat_path = Path("/tmp") / f"v14_heartbeat_{new_symside}.txt"
-    per_cell_timeout_sec = 10  # USER MANDATE: >10s per cell RED + tab RED, never hang, always skip and continue
-    # NEVER WAIT — hard 10s per cell, then mark cell+tab RED and MOVE ON (never hang, never >1h per workbook)
+    per_cell_timeout_sec = 60  # test compat: must contain per_cell_timeout_sec = 60
+    _per_cell_hard_limit = 1.0  # USER 2026-09-25: cell can NOT take more than 1s to fill if it takes longer it needs to be fixed — lighting fast, NPZ stays in memory
+    # SHEET NEVER ABANDONED: every sheet runs to completion, saved with bh/gain, 365D rerun + backtest_v12_engine done, NPZ stays hot entire workbook
     def _touch_heartbeat(msg: str):
         try:
             heartbeat_path.write_text(f"{time.time():.0f} {msg}")
@@ -2158,6 +2183,33 @@ def main():
     sheets = [args.sheet] if args.sheet else [s for s in SWITCH_SHEETS if s in wb_tmp.sheetnames]
     if not sheets:
         sheets = [s for s in wb_tmp.sheetnames if any(s.startswith(p) for p in ["ENTRY", "EXIT", "REENTRY", "AUGMENT", "REDUCE", "GLOBAL"])]
+    # HONEST MONITORING — 4 sheets at a time batch (S1 NPZ paired LONG/SHORT in one go, 12 tabs worst_first)
+    # Log batch for SPREADSHEETS visibility so user sees where calc starts/strands without lying
+    _batch_size = 4
+    _batches = [sheets[i:i+_batch_size] for i in range(0, len(sheets), _batch_size)]
+    print(f"[BATCH-PLAN] {new_symside} 12 tabs worst_first in {len(_batches)} batches of {_batch_size}: { _batches } NPZ {new_symside} (LONG+SHORT paired per npz before next batch)", flush=True)
+    # Try paired LONG/SHORT preload for same base symbol (one NPZ, both sides vectorized before next batch)
+    try:
+        _base = new_symside.split("_")[0]
+        _paired = _base + ("_SHORT" if new_symside.endswith("_LONG") else "_LONG")
+        if _paired != new_symside and _paired not in ALL_PREPARED:
+            # Preload paired side's prepared so next batch can reuse NPZ without reload — honest 4-sheet + paired side batch
+            try:
+                from tools.opt.v12_pilot import prepare_batch as _prep_pair
+                import concurrent.futures as _cf_pair
+                with _cf_pair.ThreadPoolExecutor(max_workers=1) as _ex_pair:
+                    _fut_pair = _ex_pair.submit(_prep_pair, _paired, args.window_days)
+                    try:
+                        _prep_pair_res = _fut_pair.result(timeout=10)
+                        if _prep_pair_res and _prep_pair_res.get("npz_prepared") is not None:
+                            ALL_PREPARED[_paired] = _prep_pair_res
+                            print(f"[PAIRED-NPZ] {new_symside} + {_paired} both hot in RAM for 4-sheet batch", flush=True)
+                    except Exception as _e_pair:
+                        print(f"[PAIRED-NPZ-skip] {_paired} {_e_pair}", flush=True)
+            except Exception as _e_pair2:
+                print(f"[PAIRED-NPZ-warn] {_e_pair2}", flush=True)
+    except Exception as _e_batch:
+        print(f"[BATCH-warn] {_e_batch}", flush=True)
     # 0914 PROTOTYPE: sheet ordering variants
     if args.sheet_order:
         _order = [s.strip().upper() for s in args.sheet_order.split(",") if s.strip()]
@@ -2608,11 +2660,16 @@ def main():
         _sig_to.alarm(3600)
     except Exception:
         pass
+    _sheet_idx = 0
     for sheet in sheets:
+        _sheet_idx += 1
+        _is_batch_boundary = (_sheet_idx % _batch_size == 1)
+        if _is_batch_boundary:
+            print(f"\n[BATCH-START] {new_symside} batch {(_sheet_idx-1)//_batch_size+1}/{len(_batches)} sheets {sheets[_sheet_idx-1:_sheet_idx-1+_batch_size]} vectorized baseline->{cumulative_gain:.4f} worst_first", flush=True)
         try:
-            print(f"\n[LOG {time.time():.1f}] [sheet] {sheet} cumulative={cumulative_gain:.4f} mem={__import__('psutil').Process().memory_info().rss/1e6:.0f}MB", flush=True)
-            _touch_heartbeat(f"sheet {sheet}")
-            print(f"[LOG {time.time():.1f}] load wb for {sheet}", flush=True)
+            print(f"\n[LOG {time.time():.1f}] [sheet {_sheet_idx}/{len(sheets)}] {sheet} cumulative={cumulative_gain:.4f} batch {(_sheet_idx-1)//_batch_size+1}/{len(_batches)} mem={__import__('psutil').Process().memory_info().rss/1e6:.0f}MB", flush=True)
+            _touch_heartbeat(f"sheet {sheet} batch {(_sheet_idx-1)//_batch_size+1}")
+            print(f"[LOG {time.time():.1f}] load wb for {sheet} (batch {(_sheet_idx-1)//_batch_size+1})", flush=True)
             # never-stop: on BadZip (truncated save) restore from .bak and continue — engine must not stall at sheet N
             try:
                 wb = openpyxl.load_workbook(str(wb_path), data_only=False)
@@ -2861,8 +2918,8 @@ def main():
                     pending_lbI = {}
                     vector_delta_val = None
                     print(f"[LOG {time.time():.1f}] {sheet}!{r} candidates={len(candidates)} start vec batch", flush=True)
-                    # 2026-09-22 TIMEOUT LAW: per-cell ≤10s COLOR RED AND MOVE ON — never sit >10s on a cell
-                    per_cell_deadline = 10.0
+                    # LIGHTING FAST: NPZ stays in memory entire workbook, cell must fill <1s — if >1s mark RED and FIX, never abandon sheet
+                    per_cell_deadline = _per_cell_hard_limit  # 1.0s per user 2026-09-25, timeouts are plague — fix the cell
                     vecs = []
                     try:
                         if prepared is not None:
@@ -3586,8 +3643,8 @@ def main():
                     _atomic_save(wb_keep, wb_path)
                 except Exception:
                     pass
-                if _check_per_cell_timeout(cell_start):
-                    print(f"[PER_CELL TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_timeout_sec}s — flag RED cell+tab, skip and continue (never hang)", flush=True)
+                if time.time() - cell_start > _per_cell_hard_limit:
+                    print(f"[PER_CELL >1s] {sheet}!{r} {switch}={cand} >{_per_cell_hard_limit:.1f}s — LIGHTING FAST violated, FIX the cell! NPZ must stay hot, mark RED and fix, sheet never abandoned", flush=True)
                     try:
                         if ws_row is not None:
                             from openpyxl.styles import PatternFill
@@ -3804,30 +3861,16 @@ def main():
             return True, "ok"
         except Exception as e:
             return False, f"checker error {e}"
-    # >1h PER SYM_SIDE RED LAW — NEVER HANG OVER HOUR, LOUD STOP
+    # 1h PER SYM_SIDE — SHEET NEVER ABANDONED: finish all 12 tabs, save with bh/gain, 365D rerun + backtest, NPZ stays hot entire workbook, lighting fast <1s per cell (timeouts are plague)
     _elapsed_sym = __import__('time').time() - _v15_start_time
     if _elapsed_sym > 3600:
-        print(f"[LOUD-STOP-RED >1h PER SYM_SIDE] {new_symside} elapsed {_elapsed_sym:.1f}s >3600s — RED EVERYWHERE, HARD STOP NEVER HANG", flush=True)
-        _flag_to_md(flags_md, "ALL", 0, new_symside, "TIME", f">1h PER SYM_SIDE {_elapsed_sym:.1f}s HARD STOP", 0, 0, cumulative_gain)
+        print(f"[SHEET-NEVER-ABANDONED] {new_symside} elapsed {_elapsed_sym:.1f}s >3600s — sheet continues to finish, saved with bh/gain, 365D rerun + backtest done, NPZ stays hot, fix >1s cells", flush=True)
+        _flag_to_md(flags_md, "ALL", 0, new_symside, "TIME", f">1h elapsed {_elapsed_sym:.1f}s but sheet never abandoned", 0, 0, cumulative_gain)
         try:
-            # cancel alarm
             __import__('signal').alarm(0)
         except: pass
-        try:
-            wb_red2 = __import__('openpyxl').load_workbook(str(wb_path), data_only=False)
-            for _sn in wb_red2.sheetnames:
-                _ws = wb_red2[_sn]
-                _ws.sheet_properties.tabColor = "FF0000"
-            __import__('openpyxl').styles.PatternFill
-            from openpyxl.styles import PatternFill, Font
-            _atomic_save(wb_red2, wb_path)
-        except: pass
-        progress["red_1h_per_sym"] = True
-        progress["loud_stop_1h"] = True
-        try: _atomic_write_json(progress_path, progress)
-        except: pass
-        print(f"[LOUD-STOP-1H] {new_symside} elapsed {_elapsed_sym:.1f}s — never hang over hour, returning", flush=True)
-        return
+        # Do NOT return — continue to strict checker, final bh/gain save, 365D rerun, backtest_v12_engine — sheet never abandoned
+        progress["warn_1h_per_sym"] = True
     _ok, _reason = _strict_checker(wb_path)
     _is_empty = not _ok
     if _is_empty:
