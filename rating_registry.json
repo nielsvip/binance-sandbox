@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-09-26T22:39:04.394486+00:00",
+  "timestamp": "2026-09-26T23:04:58.356686+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 106
+    "total_ranked": 108
   },
   "unified_ranking": [
     {
@@ -164,6 +164,12 @@
     },
     {
       "symbol": "AVGOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "MELANIAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -488,6 +494,12 @@
     },
     {
       "symbol": "SKLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "STXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0

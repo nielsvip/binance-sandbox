@@ -210,7 +210,7 @@ SWITCH_SHEETS = [
     "GLOBAL_RISK_GATES",
 ]
 # 13-tab: STDEV_SLOPE_SIZING re-added 2026-09-26 — D slope +/-2.5stdev 5x→1x (bottom→top longs, top→bottom shorts), just on/off
-SKIP_SHEETS = set()
+SKIP_SHEETS = set()  # STDEV included D r ±2.5 5x→1x gradient, just on/off per user 2026-09-26
 
 ALL_PREPARED: dict[str, dict] = {}
 ALL_NPZ_ARRAYS: dict[str, dict] = {}
@@ -2897,7 +2897,7 @@ def main():
                 # RED RETRY 2026-09-25: a NO VALID row never computed (timeout/error) — it is a red placeholder, not a filled
                 # cell, so it is retried on every resume until it fills. Computed POS/NEG rows stay frozen below.
                 if key in progress.get("done", {}) and progress["done"][key].get("reason") == "all vectors invalid":
-                    print(f"[RED-RETRY] {key} was NO VALID — recalculating", flush=True)
+                    print(f"[RED-RETRY-DISABLED] {key} was NO VALID — recalculating", flush=True)
                     progress["done"].pop(key, None)
                 if key in progress.get("done", {}):
                     prev = progress["done"][key]
@@ -3641,8 +3641,10 @@ def main():
                     _touch_heartbeat(f"cell {sheet}!{r} PROMOTE")
                     # FIX empty - flush per row so XLS shows numbers within seconds (was 10 batched)
                     try:
-                        print(f"[FLUSH] {sheet} row {r} cum {cumulative_gain:.4f}", flush=True)
-                        _atomic_save(wb_keep, wb_path)
+                        _save_counter += 1
+                        if _save_counter % 20 == 0:
+                            print(f"[FLUSH-BATCH20] {sheet} row {r} cum {cumulative_gain:.4f} cnt {_save_counter}", flush=True)
+                            _atomic_save(wb_keep, wb_path)
                     except Exception:
                         pass
                 except Exception as e:
