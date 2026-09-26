@@ -5944,7 +5944,7 @@ class QuickConfig:
     EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED: bool = False  # live parity: config_tradier True (added batch 2)
     DAEMON_PRICE_CROSS_REENTRY_LIVE_ENABLED: bool = False  # 2026-09-03 default OFF, same switch as live daemon (user: fix vector from same switch)
     DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED: bool = False  # 2026-09-03 default OFF, tested in TEMPLATE_30d_matrix.xlsx
-    BREAKOUT_LEASH_ENABLED: bool = True  # live parity: config_tradier True (added batch 2)
+    BREAKOUT_LEASH_ENABLED: bool = False  # 2026-09-26 DISABLED per parity — live-only 545 closes NOT in per_sym 7D ledger, NON_VECTORIZABLE/USELESS paper P3/P7 ON
     ADAPTIVE_REGIME_ENABLED: bool = True  # live parity: config_tradier True (added batch 2)
     ADAPTIVE_REGIME_PAPER: bool = True  # live parity: config_tradier True (added batch 2)
     ADX_REGIME_FILTER_ENABLED: bool = True  # live parity: config_tradier True (added batch 2)
@@ -7047,7 +7047,7 @@ class QuickConfig:
     LOG_FILE_TRADIER_PRICES: Path = Path("data")
     LOG_INTERVAL_SECONDS: int = 10
     LOG_MAX_BYTES: int = 1024 * 1024 * 20
-    LONG_STRUCT_EXIT_TF: str = 'D'
+    LONG_STRUCT_EXIT_TF: str = 'None'  # 2026-09-26 DISABLED HYBRID 449 closes NOT in per_sym — NON_VECTORIZABLE paper ON set D
     LONG_WAIT_DIRECT_BOUNCE_DISTANCE: float = 0.015
     LONG_WAIT_DIRECT_BOUNCE_TIMEFRAME: str = '15m'
     LONG_WAIT_DIRECT_CONFIRMATION: str = 'stoch5'
@@ -7245,7 +7245,7 @@ class QuickConfig:
     OBLIGATORY_REENTRY_SHORT_SMA_BOUNCE_SIZE_MULT: float = 1.5
     OBLIGATORY_REENTRY_SMA_BOUNCE_SIZE_MULT: float = 1.5
     OBLIGATORY_SMA200_PCT: float = 1.0
-    OBLIGATORY_SMA200_WT3M_ENABLED: bool = True
+    OBLIGATORY_SMA200_WT3M_ENABLED: bool = False  # 2026-09-26 DISABLED live-only OBLIGATORY_OPEN NOT in per_sym — NON_VECTORIZABLE paper ON
     OB_ENTRY_GATE_ACCOUNTS: list = field(default_factory=lambda: [])
     OB_ENTRY_MIN_LONG_SCORE: float = 0.0
     OB_ENTRY_MIN_SHORT_SCORE: float = 0.0
@@ -7832,7 +7832,7 @@ class QuickConfig:
     SHORT_ABOVE_EMA20_IS_PENALTY: bool = True
     SHORT_ABOVE_SMA20_BONUS: int = 15
     SHORT_RSI_MIN_1H: float = 40.0
-    SHORT_STRUCT_EXIT_TF: str = '15m'
+    SHORT_STRUCT_EXIT_TF: str = 'None'  # 2026-09-26 DISABLED HYBRID — see LONG_STRUCT
     SIGNALS_FILE: Path = Path("data")
     SIGNALS_LOOP_INTERVAL_SECONDS: int = 300
     SIZING_MODE_TRADIER: str = 'DEFAULT'
@@ -7955,8 +7955,8 @@ class QuickConfig:
     TOP_OF_RANGE_BLOCK_TF_LIST: str = '1h,4h,D'
     TOP_OF_RANGE_BLOCK_THRESHOLD: float = 0.95
     TRADEABLE_KEYS: Path = Path("data")
-    TRADEABLE_KEYS_MANDATORY_ENABLED: bool = True
-    TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED: bool = True
+    TRADEABLE_KEYS_MANDATORY_ENABLED: bool = False  # 2026-09-26 DISABLED NOT in per_sym — NON_VECTORIZABLE paper ON
+    TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED: bool = False  # 2026-09-26 DISABLED — see above
     TRADEABLE_KEYS_MANDATORY_SIZE_USD: float = 9.0
     TRADES_PER_SYM_PER_DAY_MAX: int = 8
     TRADIER_ACCOUNT_ID: str = os.getenv('TRADIER_ACCOUNT_ID_TRC', '')
@@ -8139,7 +8139,7 @@ class QuickConfig:
     WINNER_PROTECT_ENABLED: bool = False
     WORKER_INSTANCE_ID: int = int(os.getenv('WORKER_INSTANCE_ID', '0'))
     WORKER_TOTAL_INSTANCES: int = int(os.getenv('WORKER_TOTAL_INSTANCES', '1'))
-    WRONG_SIDE_ABS_KILL_ENABLED: bool = True
+    WRONG_SIDE_ABS_KILL_ENABLED: bool = False  # 2026-09-26 DISABLED 76 closes NOT in per_sym — NON_VECTORIZABLE paper ON
     WRONG_SIDE_DIV_LOOKBACK_BARS: int = 20
     WRONG_SIDE_DIV_TFS_REQUIRED: int = 2
     WRONG_SIDE_K_TFS_REQUIRED: int = 3

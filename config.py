@@ -892,7 +892,7 @@ class Config:
     QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED: bool = False
     REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT: float = 0.002
     UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED: bool = True
-    BREAKOUT_LEASH_ENABLED: bool = True  # 2026-09-10 RE-ENABLED per user breakout improvement: enter always, exit easily on LH/LL or dropped back BEFORE loss, reenter +25% at better price. Was False due to 10/min churn — now gated by MAX_PER_MIN 3 + gain gate.
+    BREAKOUT_LEASH_ENABLED: bool = False  # 2026-09-26 DISABLED per parity 7D audit — 545 closes (318 DROPPED_BACK +227 LH_LL) NOT in v12_quick_engine 30D vec paths (v12 has only generic TECHNICAL_EXIT). Churn cap 3/min insufficient; re-enable only via paper harness P3 proves +delta. NON_VECTORIZABLE/USELESS — parity master forces OFF.
     BREAKOUT_LEASH_MAX_PER_MIN: int = 3  # 2026-09-10: 10→3 (churn cap 3/min vs 10, matches previous anti-churn)
     BREAKOUT_LEASH_QTY_MULT: float = 0.25
     BREAKOUT_LEASH_REENTRY_MULT: float = 1.50
@@ -1172,7 +1172,7 @@ class Config:
     ULTIMATE_DC_4H_STOP_ENABLED: bool = True       # ABSOLUTE — LONG close <= dc_low_4h, SHORT close >= dc_high_4h
     FROZEN_ACTIVATION_STOP_ENABLED: bool = True
     FROZEN_ACTIVATION_TF: str = "4h"               # which TF's dc_low/high we freeze at entry (D / 4h)
-    BB_FROZEN_STOP_ENABLED: bool = True
+    BB_FROZEN_STOP_ENABLED: bool = False  # 2026-09-26 DISABLED per live-vs-vector parity — 62 BB_FROZEN_STOP_BREACH closes NOT in vec 7D 2-trade ledger (vec TECHNICAL_EXIT only). Live-only 1h frozen stop; NON_VECTORIZABLE/USELESS — paper P3/P7 ON proves.
     BB_FROZEN_STOP_TF: str = "1h"
     BB_FROZEN_STOP_FIELD: str = "lower"
     LIVE_VEC_STALE_MARK_PRICE_ENABLED: bool = False
@@ -1419,7 +1419,7 @@ class Config:
     # === 2026-04-18/19 LIVE CHANGES — UNTESTED, PENDING SWEEP COVERAGE (see V8_SWEEP_PRIORITY_MATRIX.md) ===
     # Kill switches — flip any to False to disable the corresponding live behavior.
     HEDGE_EXIT_DELTA_CHECK_ENABLED: bool = False  # Legacy delta-decel hedge close. Default OFF per user rule "wt only at exit".
-    WRONG_SIDE_ABS_KILL_ENABLED: bool = True  # Kill non-hedge positions when ALL WT+K TFs against side.
+    WRONG_SIDE_ABS_KILL_ENABLED: bool = False  # 2026-09-26 DISABLED per parity 7D audit — 76 WRONG_SIDE_ABS_KILL closes NOT in vec 30D paths (vec TECHNICAL_EXIT only). Churn killer; NON_VECTORIZABLE/USELESS — parity OFF, paper ON proves +delta.
     WRONG_SIDE_MIN_AGE_MIN: float = 30.0  # Grace period — won't fire on newborn positions.
     WRONG_SIDE_WT_TFS_REQUIRED: int = 4  # Of 5 WT TFs (3m/15m/1h/4h/D), how many must be against. 2026-04-26: 5→4. 7-day inf forensic: 5/5 fired ZERO times (data/v3_loss_pattern_analysis_20260426_1835.md). Mega-loser tail (-135% on 5 trades: APE/INX/BB) walked free. 4/5 + K already 0 = WT-only gate, still technical, still bypasses STRICT_NO_LOSS by design. Sweep evidence on this knob unreliable (12-sym chained, fails ≥48 floor).
     WRONG_SIDE_K_TFS_REQUIRED: int = 3  # Of 3 stoch K TFs (3m/15m/1h), how many must be against.
@@ -2695,7 +2695,7 @@ class Config:
     # If M TFs show divergence (price HH + WT LH for LONG, mirror for SHORT, over DIV_LOOKBACK_BARS),
     # reduce WT requirement from TFS_REQUIRED to TFS_REDUCED. Sweep N=[3,4,5], REDUCED=[2,3,4], age=[15,30,60,120], div_lookback=[10,20,40].
     # 2026-04-25 rapid-grid: already True in crypto baseline; disabling costs −0.007 Sharpe. Confirmed correct.
-    WRONG_SIDE_ABS_KILL_ENABLED: bool = True
+    WRONG_SIDE_ABS_KILL_ENABLED: bool = False  # 2026-09-26 DISABLED duplicate — see 1422 churn parity
     WRONG_SIDE_MIN_AGE_MIN: float = 30.0
     WRONG_SIDE_WT_TFS_REQUIRED: int = 4              # 2026-04-26: 5→4. See line ~466 for full reasoning.
     WRONG_SIDE_WT_TFS_REDUCED: int = 3              # when divergence confirms, this threshold applies
@@ -3105,7 +3105,7 @@ class Config:
     # OLD SHORT: _wt1_4h > _wt2_4h (any bullish cross → exit short — no velocity threshold, too aggressive)
     # NEW SHORT: wt_velocity_4h > WT_4H_VEL_EXIT_SHORT_VEL_MIN (symmetric with LONG side)
     # Real baseline showed this caused 409 closes at 14% WR (-4.69% total) with BTCUSDC
-    WT_4H_VEL_EXIT_ENABLED: bool = True   # 2026-09-04 CORRECTED per user: WT_4H_VEL_EXIT is a LONG EXIT switch NOT a SHORT ENTRY switch (message scrambled). Re-enabled as exit-only. DAEMON reentry is the SHORT-entry culprit (already OFF via EZ_REENTRY_DAEMON_ENABLED=False).
+    WT_4H_VEL_EXIT_ENABLED: bool = False  # 2026-09-26 DISABLED per parity — 18 WT_4H_VEL_EXIT closes NOT in vec 7D ledger (vec 2 trades). Live-only 4h vel; NON_VECTORIZABLE/USELESS — paper ON.
     WT_4H_VEL_EXIT_LONG_VEL_MIN: float = -2.0    # LONG exits when vel_4h < this (downward momentum)
     WT_4H_VEL_EXIT_SHORT_VEL_MIN: float = 2.0    # SHORT exits when vel_4h > this (upward momentum)
     # 2026-04-28 USER RULE: WT_4H_VEL_EXIT must require profit AND extreme stoch K
@@ -3181,7 +3181,7 @@ class Config:
     # LONG: entry_price > dc_high_4h → bought above channel ceiling, channel moved below us
     # SHORT: entry_price < dc_low_4h → sold below channel floor, channel moved above us
     # Exits at market structure break, not at %. Technical exit, not stop-loss.
-    DC_HOPELESS_EXIT_ENABLED: bool = True
+    DC_HOPELESS_EXIT_ENABLED: bool = False  # 2026-09-26 DISABLED per parity 7D audit — 145 DC_HOPELESS closes NOT in vec 30D valid paths (vec bh0 gain2% 2 trades BTCUSDC_LONG vs live 539). Live-only DC 4h hopeles; parity OFF until vec proves +delta via paper.
     DC_HOPELESS_EXIT_MIN_AGE_S: int = 900         # only fire after 15min (avoid newborn noise)
     # ═══════════════════════════════════════════════════════════════════════
     # 2026-04-19 FULL INDICATOR WIRE-IN — 51 fields confirmed in NPZ + live
@@ -3200,7 +3200,7 @@ class Config:
     # applies at 75/55: lower thresholds bracket overbought earlier (exit sooner on
     # tops) which IS the "out at the top" mandate.
     # ROLLBACK: ENABLED=False, OB_D=90, OB_4H=75.
-    WT_PERCENTILE_EXIT_ENABLED: bool = True
+    WT_PERCENTILE_EXIT_ENABLED: bool = False  # 2026-09-26 DISABLED per parity — 3 WT_PERCENTILE closes NOT in vec 7D 2-trade ledger. Live-only D/4h percentile; NON_VECTORIZABLE/USELESS — paper ON.
     WT_PERCENTILE_EXIT_OB_D: float = 75.0          # was 90 — sell sooner on D overbought (vec arm 11)
     WT_PERCENTILE_EXIT_OB_4H: float = 55.0         # was 75 — 4h confirmation tighter (vec arm 11)
     WT_PERCENTILE_EXIT_OS_D: float = 10.0          # D percentile < this → exit SHORT
@@ -4731,7 +4731,7 @@ class Config:
     LOG_FILE_TRADIER_POSITIONS: Path = LOG_DIR / "tradier_positions.log"  # PORTED from TradierConfig 2026-08-17
     LOG_FILE_TRADIER_PRICES: Path = LOG_DIR / "tradier_prices.log"  # PORTED from TradierConfig 2026-08-17
     LOG_MAX_BYTES: int = 1024 * 1024 * 20  # PORTED from TradierConfig 2026-08-17
-    LONG_STRUCT_EXIT_TF: str = "D"  # PORTED from TradierConfig 2026-08-17
+    LONG_STRUCT_EXIT_TF: str = "None"  # 2026-09-26 DISABLED per parity 7D audit — HYBRID_STRUCT_EXIT 449 closes NOT in v12 vec (generic TECHNICAL_EXIT only). Live-only structure breakdown; NON_VECTORIZABLE/USELESS — parity OFF, set D to re-enable via paper.
     LONG_WAIT_DIRECT_BOUNCE_DISTANCE: float = 0.015  # PORTED from TradierConfig 2026-08-17
     LONG_WAIT_DIRECT_BOUNCE_TIMEFRAME: str = "15m"  # PORTED from TradierConfig 2026-08-17
     LONG_WAIT_DIRECT_CONFIRMATION: str = "stoch5"  # PORTED from TradierConfig 2026-08-17
@@ -5232,7 +5232,7 @@ class Config:
     SENTIMENT_REBAL_COOLDOWN_MIN: float = 240.0          # was 30min — sentiment doesn't move that fast  # PORTED from TradierConfig 2026-08-17
     SENTIMENT_REBAL_REDUCE_DEVIATION_THR: float = 0.50   # was 0.20 — require qty 50% over ideal before any FADE reduce  # PORTED from TradierConfig 2026-08-17
     SERVICE_STOP: bool = True  # PORTED from TradierConfig 2026-08-17
-    SHORT_STRUCT_EXIT_TF: str = "15m"  # PORTED from TradierConfig 2026-08-17
+    SHORT_STRUCT_EXIT_TF: str = "None"  # 2026-09-26 DISABLED per parity 7D audit — HYBRID_STRUCT_EXIT 449 closes; NON_VECTORIZABLE/USELESS — see LONG_STRUCT_EXIT_TF.
     SIZING_MODE_TRADIER: str = "DEFAULT"                    # DEFAULT (current MFI-momentum sizing) | ATR_PARITY  # PORTED from TradierConfig 2026-08-17
     SMA200_DIST_LONG_THRESHOLD_4H: float = -10.0  # BACKTEST_CHANGE_T3 only long when price within -10% of SMA200 on 4h  # PORTED from TradierConfig 2026-08-17
     SMA_FILTER_PERIOD_TRADIER: int = 100  # BACKTEST_CHANGE_T57: was 200. SMA100 filter = best OOS. Only LONG above SMA, SHORT below  # PORTED from TradierConfig 2026-08-17

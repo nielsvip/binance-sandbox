@@ -2413,7 +2413,7 @@ class TradierConfig:
     EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK: int = 20
     REENTRY_MAX_PRICE_DIVERGENCE_PCT: float = 20.0
     REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT: float = 0.002
-    BREAKOUT_LEASH_ENABLED: bool = True  # 2026-09-10 KEEP True for breakout improvement (easy exit before loss +25% reentry) — crypto re-enabled with gain gate
+    BREAKOUT_LEASH_ENABLED: bool = False  # 2026-09-26 DISABLED per parity 7D audit — mirror config.py 545 churn closes NOT in vec 30D; NON_VECTORIZABLE/USELESS parity OFF.
     BREAKOUT_LEASH_MAX_PER_MIN: int = 3  # 2026-09-10 stocks: 3/min anti-churn (was missing, default 10)
     BREAKOUT_LEASH_QTY_MULT: float = 0.25
     BREAKOUT_LEASH_REENTRY_MULT: float = 1.50
