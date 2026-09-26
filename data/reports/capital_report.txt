@@ -1,23 +1,21 @@
-CAPITAL ALLOCATION REPORT — 2026-09-26 09:04 UTC
+CAPITAL ALLOCATION REPORT — 2026-09-26 09:14 UTC
 ================================================================================
-Total capital deployed: $150.05 across 4 positions
+Total capital deployed: $65.60 across 3 positions
 
 TIER DISTRIBUTION:
   Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $     88.69 ( 59.1%) — 3 positions
-  Tier C: $     61.35 ( 40.9%) — 1 positions
+  Tier B: $     65.59 (100.0%) — 3 positions
+  Tier C: $      0.00 (  0.0%) — 0 positions
 
   ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
-  ** C-tier OVERWEIGHT: 41% vs target <20% — reduce poor performers **
 
 WINNERS — augment these (A-tier, in gain) [0]:
   (none)
 
-LOSERS — reduce allocation (C-tier or losing) [4]:
-                     fin:ADAUSDC_LONG  $   41.45  gain=-1.25%  tier=B  mult=2.21
-                     fin:XLMUSDT_LONG  $   24.10  gain=-1.24%  tier=B  mult=0.69
-                     fin:SNXUSDT_LONG  $   61.35  gain=-1.08%  tier=C  mult=0.44
-                    fin:ALGOUSDT_LONG  $   23.14  gain=-0.59%  tier=B  mult=1.92
+LOSERS — reduce allocation (C-tier or losing) [3]:
+                     men:XLMUSDT_LONG  $   31.36  gain=-1.75%  tier=B  mult=0.67
+                     men:ADAUSDC_LONG  $    2.43  gain=-1.32%  tier=B  mult=2.27
+                    men:ALGOUSDT_LONG  $   31.80  gain=-0.68%  tier=B  mult=1.97
 
 MEDIOCRE — capital sitting idle [0]:
   (none)
