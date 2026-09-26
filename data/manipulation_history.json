@@ -1849,5 +1849,23 @@
     ],
     "timestamp": "2026-09-26T13:12:40.926819+00:00",
     "price": 0.63715833
+  },
+  {
+    "symbol": "BEATUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.0x (from rankings)"
+    ],
+    "timestamp": "2026-09-26T15:35:05.674154+00:00",
+    "price": 0.09499018
+  },
+  {
+    "symbol": "FILUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.6x (from rankings)"
+    ],
+    "timestamp": "2026-09-26T15:37:39.130998+00:00",
+    "price": 0.991
   }
 ]
