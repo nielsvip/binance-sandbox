@@ -1,7 +1,8 @@
-OUTLIER REPORT — 2026-09-26 20:50 UTC
+OUTLIER REPORT — 2026-09-26 21:49 UTC
 ================================================================================
-Scanned: 2 open positions | Alerts: 2
+Scanned: 3 open positions | Alerts: 3
 
---- STALE_ACTIVITY (2) ---
-  [WARN]                    men:ADAUSDC_LONG  idle_h=32.7
-  [WARN]                    men:XLMUSDT_LONG  idle_h=21.8
+--- STALE_ACTIVITY (3) ---
+  [WARN]                    fin:ADAUSDC_LONG  idle_h=22.8
+  [WARN]                    fin:SNXUSDT_LONG  idle_h=22.8
+  [WARN]                    fin:XLMUSDT_LONG  idle_h=22.8

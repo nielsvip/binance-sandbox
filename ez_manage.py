@@ -40603,6 +40603,16 @@ async def calculate_final_order_quantity(
 ) -> float:
     if not any(s in action.upper() for s in ["OPEN", "AUGMENT", "REENTRY"]):
         return base_quantity
+    # 2026-09-27 FIXED QUANTITY second parallel forward test: when FIXED_QUANTITY_ENABLED True, bypass all sizing mults → fixed notional = START_POSITION_SIZE
+    _tm_cfg = getattr(trade_manager, "config", None) if trade_manager else None
+    if _tm_cfg and bool(getattr(_tm_cfg, "FIXED_QUANTITY_ENABLED", False)):
+        return base_quantity
+    try:
+        import config as _cfg_mod
+        if bool(getattr(_cfg_mod.Config(), "FIXED_QUANTITY_ENABLED", False)):
+            return base_quantity
+    except Exception:
+        pass
     i = await ii(trade_manager, symbol)
     now, config = datetime.now(timezone.utc), trade_manager.config
     current_price = (
@@ -42819,9 +42829,20 @@ async def evaluate_reentry_2(trade_manager):
       - STOCH_CROSSOVER_REENTRY: gated by REENTRY2_STOCH_CROSS_ENABLED"""
     global _evaluate_reentry_2_counter
     _evaluate_reentry_2_counter += 1
+    # 2026-09-26 parity master — entire REENTRY_2 is non-vector (MANDATORY_PRICE_CROSS etc) — force OFF when parity master True
+    # Direct check of global config + env + trade_manager config; if any parity master True, block all REENTRY_2
+    try:
+        import os as _os_tmp
+        if bool(getattr(config, "PARITY_DISABLE_NON_VECTORIZABLE", False)) or bool(getattr(config, "V12_PARITY_DISABLE_NON_VECTORIZABLE", False)) or bool(getattr(config, "STRICT_VEC_PARITY_MODE", False)):
+            return
+        _cfg2 = getattr(trade_manager, "config", None)
+        if _cfg2 and (bool(getattr(_cfg2, "PARITY_DISABLE_NON_VECTORIZABLE", False)) or bool(getattr(_cfg2, "V12_PARITY_DISABLE_NON_VECTORIZABLE", False)) or bool(getattr(_cfg2, "STRICT_VEC_PARITY_MODE", False))):
+            return
+        if _os_tmp.environ.get("V12_PARITY_DISABLE_NON_VECTORIZABLE") == "1" or _os_tmp.environ.get("STRICT_VEC_PARITY_MODE") == "1":
+            return
+    except Exception:
+        pass
     config = getattr(trade_manager, "config", None)
-    if config and (bool(getattr(config, "PARITY_DISABLE_NON_VECTORIZABLE", False)) or bool(getattr(config, "V12_PARITY_DISABLE_NON_VECTORIZABLE", False))):
-        return
     if config and not getattr(config, "REENTRY_2_ENABLED", True):
         return
 

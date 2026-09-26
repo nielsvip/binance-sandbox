@@ -209,8 +209,8 @@ SWITCH_SHEETS = [
     "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER",
     "GLOBAL_RISK_GATES",
 ]
-# 12-tab: STDEV_SLOPE_SIZING skipped — 3803 rows (was 4801 with STDEV). Sheet stays in TEMPLATE but never calculated.
-SKIP_SHEETS = {"STDEV_SLOPE_SIZING"}
+# 13-tab: STDEV_SLOPE_SIZING re-added 2026-09-26 — D slope +/-2.5stdev 5x→1x (bottom→top longs, top→bottom shorts), just on/off
+SKIP_SHEETS = set()
 
 ALL_PREPARED: dict[str, dict] = {}
 ALL_NPZ_ARRAYS: dict[str, dict] = {}
@@ -1205,7 +1205,9 @@ def main():
             else:
                 print("[TEMPLATE-VERIFY] 24h expired or no stamp — re-verifying bold defaults vs config source of truth (ONLY backtests, not per sym)", flush=True)
                 try:
-                    _sp.run([sys.executable, "tools/verify_template_defaults.py"], check=False, timeout=8)
+                    import pathlib as _pathlib_verify
+                    _verify_path = _pathlib_verify.Path(__file__).resolve().parent / "tools" / "verify_template_defaults.py"
+                    _sp.run([sys.executable, str(_verify_path)], check=False, timeout=8, cwd=str(_pathlib_verify.Path(__file__).resolve().parent))
                 except Exception as _e_v:
                     print(f"[TEMPLATE-VERIFY-TIMEOUT] skip verify >8s {_e_v} — never hang", flush=True)
         else:

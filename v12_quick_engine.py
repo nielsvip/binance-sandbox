@@ -10185,6 +10185,8 @@ def compute_reduce_signals(npz, n, is_long, cfg):
 
 def compute_regime_sizing_mult(npz, n, is_long, cfg):
     """Initial-open sizing multiplier from regime/EMA-distance/ATR/DC-edge sizing knobs."""
+    if bool(getattr(cfg, 'FIXED_QUANTITY_ENABLED', False)):
+        return np.ones(n, dtype=np.float64)
     mult = np.ones(n, dtype=np.float64)
     close = _base_safe(npz, 'close', n, cfg)
     # 2026-08-09: REGIME_ADAPTIVE_ENABLED — more nuanced regime detection via ADX + BB width
@@ -10217,69 +10219,26 @@ def compute_regime_sizing_mult(npz, n, is_long, cfg):
         lo = getattr(cfg, 'DC_EDGE_SIZING_MIN_MULT', 1.0); hi = getattr(cfg, 'DC_EDGE_SIZING_MAX_MULT', 3.0)
         mult = mult * (lo + (1 - edge) * (hi - lo))
     # STDEV_SLOPE_SIZING 2.5 ladder — REAL position sizing (quantity influences gain)
-    # Mirrors tradier_manage.get_position_size bands: per-TF max 10x D /4x 4h /2x 1h /1.5x 15m, slope_to_top vs bottom_to_top
-    # 2026-09-14 parity: venue slope factors (crypto 24h vs stocks 6.5h session) + skip when channel keys absent (live fails closed)
+    # SIMPLE FIX 2026-09-26: D timeframe r (slope) +/-2.5stdev → 5x to 1x gradient (bottom→top longs, top→bottom shorts)
+    # Re-added STDEV: does not trade, only varies quantity. Disabled all other switches, just on/off.
     if bool(getattr(cfg, 'STDEV_SLOPE_SIZING_ENABLED', False)):
         try:
-            _stdev_max_map = {'D': float(getattr(cfg, 'STDEV_SLOPE_SIZING_D_MAX', 10.0)), '4h': float(getattr(cfg, 'STDEV_SLOPE_SIZING_4H_MAX', 4.0)), '1h': float(getattr(cfg, 'STDEV_SLOPE_SIZING_1H_MAX', 2.0)), '15m': float(getattr(cfg, 'STDEV_SLOPE_SIZING_15M_MAX', 1.5))}
-            _stdev_tf = str(getattr(cfg, 'BAND_SLOPE_SIZING_V2_TF', 'D'))
+            _stdev_max = 5.0  # 5x at bottom (longs) / top (shorts)
+            _stdev_min = 1.0  # 1x at opposite extreme
+            _stdev_tf = "D"  # D only per user request
             _stdev_pb_key = f'lrL_pct_b_{_stdev_tf}'
             _stdev_sl_key = f'lrL_slope_{_stdev_tf}'
             if _stdev_pb_key not in npz or _stdev_sl_key not in npz:
                 raise KeyError(f'STDEV_SLOPE no channel {_stdev_tf} (live parity: skip)')
-            _stdev_max = float(_stdev_max_map.get(_stdev_tf, 10.0))
-            _stdev_min = float(getattr(cfg, 'BAND_SLOPE_SIZING_V2_MIN', 0.5))
-            _stdev_mode = str(getattr(cfg, 'STDEV_SLOPE_SIZING_MODE', 'slope_to_top'))
             _stdev_pb = _safe(npz, _stdev_pb_key, n, 0.5)
             _stdev_sl = _safe(npz, _stdev_sl_key, n, 0.0)
-            _is_crypto_venue = str(getattr(cfg, 'MODE', 'tradier')).lower() == 'crypto'
-            _slope_map = {'1h': 24.0, '4h': 6.0, 'D': 1.0, '15m': 96.0} if _is_crypto_venue else {'1h': 6.5, '4h': 1.625, 'D': 1.0, '15m': 26.0}
-            _slope_factor = _slope_map.get(_stdev_tf, 1.0)
-            _slope_day = _stdev_sl * _slope_factor
+            # Edge: 0 at top, 1 at bottom for longs; reversed for shorts
             _edge = (1.0 - _stdev_pb) if is_long else _stdev_pb
             _edge = np.clip(_edge, 0.0, 1.0)
-            if _stdev_mode == "bottom_to_top":
-                _bs_m = 1.0 + (_stdev_max - 1.0) * _edge
-            elif _stdev_mode == "slope_to_top":
-                _bs_m = np.where(_edge >= 0.5, _stdev_max, 1.0 + (_stdev_max - 1.0) * (_edge * 2.0))
-            else:
-                _dg = float(getattr(cfg, 'BAND_SLOPE_SIZING_V2_DEPTH_GAIN', 1.0))
-                _bs_m = 1.0 + _dg * (_edge - 0.5) * 2.0
-            _sn = np.clip(np.abs(_slope_day) / max(1e-9, float(getattr(cfg, 'BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY', 1.0))), 0.0, 1.0)
-            _fav = (_slope_day > 0) if is_long else (_slope_day < 0)
-            _slope_mult = np.where(_fav, 1.0 + 0.5 * _sn, np.maximum(0.5, 1.0 - 0.5 * _sn))
-            _bs_m = _bs_m * _slope_mult
+            # Bottom→top 5x→1x for longs, top→bottom 5x→1x for shorts (same edge logic)
+            _bs_m = 1.0 + (_stdev_max - 1.0) * _edge
             _bs_m = np.clip(_bs_m, _stdev_min, _stdev_max)
-            # reconnect STDEV_SLOPE_LOOKBACK_* and STDEV_BAND_MULTIPLIER (12-field family)
-            try:
-                _lb_map = {'D': int(getattr(cfg, 'STDEV_SLOPE_LOOKBACK_D', 180)), '4h': int(getattr(cfg, 'STDEV_SLOPE_LOOKBACK_4H', 180)), '1h': int(getattr(cfg, 'STDEV_SLOPE_LOOKBACK_1H', 168)), '15m': int(getattr(cfg, 'STDEV_SLOPE_LOOKBACK_15M', 96))}
-                _lb = float(_lb_map.get(_stdev_tf, 180))
-                _lb_def = float({'D': 180, '4h': 180, '1h': 168, '15m': 96}.get(_stdev_tf, 180))
-                if _lb > 0 and _lb != _lb_def:
-                    _bs_m = _bs_m * (_lb_def / _lb)
-            except Exception:
-                pass
-            try:
-                _bm = float(getattr(cfg, 'STDEV_BAND_MULTIPLIER', 2.5))
-                if _bm != 2.5 and _bm > 0:
-                    _bs_m = np.clip(_bs_m * (_bm / 2.5), _stdev_min, _stdev_max)
-            except Exception:
-                pass
-            # guard NaN/inf -> 1.0
             _bs_m = np.where(np.isfinite(_bs_m), _bs_m, 1.0)
-            # 2026-09-18 STDEV_BULL_SLOPE_BOOST — extra sizing when D bull aligned (pumps STOCKS_LONG)
-            try:
-                if bool(getattr(cfg, 'STDEV_BULL_SLOPE_BOOST_ENABLED', False)):
-                    _mult_b = float(getattr(cfg, 'STDEV_BULL_SLOPE_BOOST_MULT', 1.5))
-                    if _mult_b != 1.0 and _mult_b > 0:
-                        _close_d_s = _safe(npz, 'close_D', n, close)
-                        _sma20_s = _safe(npz, 'sma_20_D', n, _close_d_s)
-                        if np.all(_sma20_s == _close_d_s) or np.all(_sma20_s == 0):
-                            _sma20_s = _safe(npz, 'sma20_D', n, _close_d_s)
-                        _bull_s = (_close_d_s > _sma20_s)
-                        _bs_m = np.where(_bull_s & _fav, np.clip(_bs_m * _mult_b, _stdev_min, _stdev_max * _mult_b), _bs_m)
-            except Exception:
-                pass
             mult = mult * _bs_m
         except Exception:
             pass

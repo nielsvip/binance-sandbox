@@ -102,6 +102,7 @@ class Config:
     MAX_ORDER_VALUE_FIN: float = 300.0  # STDEV_SLOPE fix 2026-09-14: was 60 →200 for 10x ladder parity.
     EMERGENCY_OVERSIZE_GUARD_ENABLED: bool = False  # 2026-09-03 KILLED per user: MAKER_PROFIT_EXIT_FORCE_REDUCE_OVERSIZE_81 firing on FLZ (maker wrapper at 81>$20). Finandy TP ladder bug guard causes commission churn, default OFF.
     START_POSITION_SIZE: float = 28.0  # parity 2026-09-26: crypto 28 vs tradier 500 — bold in TEMPLATE_CRYPTO_LONG, vec QuickConfig 28.0. Was 34.0 misaligned.
+    FIXED_QUANTITY_ENABLED: bool = False  # 2026-09-27 parity audit: when True, live uses fixed notional = START_POSITION_SIZE for all opens (bypass all sizing mults). For second parallel forward test: 1/3m OFF + non-vector OFF + fixed qty → isolates signal vs sizing. Vector BEST backtest also uses fixed sizing path when this True.
 
     # PnL Deterioration Settings
     PNL_DECAY_START_HOURS: int = 1  # HOURS
