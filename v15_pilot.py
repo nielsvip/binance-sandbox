@@ -842,6 +842,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             pass
     _touch("spec-start")
     print(f"[spec-fill] {new_symside} tabs={tabs} total_rows={total_rows} baseline={baseline_gain:.4f} hustle={is_hustle} cumulative={cumulative_gain:.4f}", flush=True)
+    # OPT 2026-09-26: Track sheets with at least one POS delta to skip orange testing on abandoned sheets
+    sheets_with_pos_deltas = set()
     # Main loop — sequential with POS-stay / NEG-advance
     loop_guard = 0
     # FIX 2026-09-26: max_loops must account for tab cycling on NEG deltas — worst case is cycling through all tabs per row
@@ -988,6 +990,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _atomic_write_json(progress_path, progress)
             _touch(f"cell {sname}!{rr} no-yellow delta={delta_for_row:.4f}")
             print(f"[spec-row] {sname}!{rr} {switch}={cand} no-yellow delta={delta_for_row:.4f} vs cum {cumulative_before:.4f} -> {'POS' if delta_for_row>0 else 'NEG'} (no-yellow -> next TAB)", flush=True)
+            # OPT 2026-09-26: Track sheet as having positive delta (even for no-yellow case)
+            if delta_for_row > 1e-9:
+                sheets_with_pos_deltas.add(sname)
             # Always move to next TAB when no yellows (even if POS, spec says continue to next TAB not next ROW)
             current_idx = (current_idx + 1) % len(tabs)
             # Periodic save
@@ -1121,6 +1126,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _touch(f"cell {sname}!{rr} delta={delta_for_row:.4f}")
         print(f"[spec-row] {sname}!{rr} {switch}={cand} yellows {len(relevant_hdrs)} sum_pos={sum_pos:.4f} delta={delta_for_row:.4f} vs cum {cumulative_before:.4f} -> {'POS' if delta_for_row>1e-9 else 'NEG'}", flush=True)
         if delta_for_row > 1e-9:
+            # OPT 2026-09-26: Track sheet as having positive delta (for orange skip)
+            sheets_with_pos_deltas.add(sname)
             # POS: recompute true joint baseline with all overrides (USER 04:25 — don't blindly add delta, use entire baseline calc to avoid negative surprises)
             cumulative_overrides[switch] = cand_parsed
             for hdr in pos_hdrs:
@@ -4589,6 +4596,10 @@ def main():
                         print(f"[sheet-zero-ok] {sheet} {len(_sd)-_allzero}/{len(_sd)} rows carry real numbers", flush=True)
             except Exception as _sze:
                 print(f"[sheet-zero-warn] {sheet} {_sze}", flush=True)
+            # OPT 2026-09-26: Skip orange testing for sheets with zero POS deltas (abandoned via NEG tab-hops)
+            if sheet not in sheets_with_pos_deltas:
+                print(f"[GLOBAL skip] {sheet} had zero POS deltas — skipping orange filter testing", flush=True)
+                continue
             # GLOBAL per-sheet: thorough revision — orange = entire sheet, prune to only important for sheet (0/neg stall workbook)
             # GENERAL 65 distinct -> 26 kept important (not the 39 that only produce 0/neg); use S1 ledger: SNDK all pos 4/neg 1613, GLOBAL pos 0/neg 62
             # Prune list derived from workflow: 39 distinct that stall (only 0/neg) — keep the other 26
