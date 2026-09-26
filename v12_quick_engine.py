@@ -22004,6 +22004,20 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     if _dd_tgt_dc is not None and np.all(_dd_tgt_dc == 0):
         _dd_tgt_tf = 'OFF'; _dd_tgt_dc = None
     _ = getattr(cfg, 'DAYTRADE_DC_STOP_TF', 'OFF'); _ = getattr(cfg, 'DAYTRADE_DC_TARGET_TF', 'OFF')
+    # 2026-09-26 TECHNICAL DC-channel exits — mirror daytrade with specific exit_reason
+    _tech_stop_tf = str(getattr(cfg, 'TECHNICAL_DC_STOP_TF', 'OFF') or 'OFF').strip()
+    _tech_stop_buf = float(getattr(cfg, 'TECHNICAL_DC_STOP_BUFFER_PCT', 0.25) or 0.25) / 100.0
+    _tech_tgt_tf = str(getattr(cfg, 'TECHNICAL_DC_TARGET_TF', 'OFF') or 'OFF').strip()
+    _tech_tgt_buf = float(getattr(cfg, 'TECHNICAL_DC_TARGET_BUFFER_PCT', 0.10) or 0.10) / 100.0
+    _tech_stop_tf_norm = {"5m": "3m"}.get(_tech_stop_tf, _tech_stop_tf)
+    _tech_tgt_tf_norm = {"5m": "3m"}.get(_tech_tgt_tf, _tech_tgt_tf)
+    _tech_stop_dc = _safe(npz, f"dc_low_{_tech_stop_tf_norm}" if is_long else f"dc_high_{_tech_stop_tf_norm}", n, 0) if _tech_stop_tf.upper() != 'OFF' else None
+    _tech_tgt_dc = _safe(npz, f"dc_high_{_tech_tgt_tf_norm}" if is_long else f"dc_low_{_tech_tgt_tf_norm}", n, 0) if _tech_tgt_tf.upper() != 'OFF' else None
+    if _tech_stop_dc is not None and np.all(_tech_stop_dc == 0):
+        _tech_stop_tf = 'OFF'; _tech_stop_dc = None
+    if _tech_tgt_dc is not None and np.all(_tech_tgt_dc == 0):
+        _tech_tgt_tf = 'OFF'; _tech_tgt_dc = None
+    _ = getattr(cfg, 'TECHNICAL_DC_STOP_TF', 'OFF'); _ = getattr(cfg, 'TECHNICAL_DC_TARGET_TF', 'OFF')
     trail_erosion = getattr(cfg, 'WIN_TRAIL_EROSION_PCT', 0.0)
     satoshit_partial = getattr(cfg, 'SATOSHIT_EXIT_PARTIAL_PCT', 0.0) if getattr(cfg, 'SATOSHIT_EXIT_ENABLED', False) else 0.0
 
@@ -22177,9 +22191,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _lvl = float(_dd_stop_dc[i]) if i < len(_dd_stop_dc) else 0.0
                 if _lvl > 0:
                     if is_long and px <= _lvl * (1 - _dd_stop_buf):
-                        closed, reason = True, f'DAYTRADE_DC_STOP_{_dd_stop_tf}'
+                        closed, reason = True, f'DAYTRADE_STOP dc_{_dd_stop_tf_norm}_low'
                     elif (not is_long) and px >= _lvl * (1 + _dd_stop_buf):
-                        closed, reason = True, f'DAYTRADE_DC_STOP_{_dd_stop_tf}'
+                        closed, reason = True, f'DAYTRADE_STOP dc_{_dd_stop_tf_norm}_high'
             except Exception:
                 pass
             # fallback to fixed % if DC check did not fire and pct is non-zero
@@ -22192,9 +22206,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _lvl2 = float(_dd_tgt_dc[i]) if i < len(_dd_tgt_dc) else 0.0
                 if _lvl2 > 0:
                     if is_long and px >= _lvl2 * (1 - _dd_tgt_buf):
-                        closed, reason = True, f'DAYTRADE_DC_TARGET_{_dd_tgt_tf}'
+                        closed, reason = True, f'DAYTRADE_TARGET dc_{_dd_tgt_tf_norm}_high'
                     elif (not is_long) and px <= _lvl2 * (1 + _dd_tgt_buf):
-                        closed, reason = True, f'DAYTRADE_DC_TARGET_{_dd_tgt_tf}'
+                        closed, reason = True, f'DAYTRADE_TARGET dc_{_dd_tgt_tf_norm}_low'
             except Exception:
                 pass
             if not closed and live_pnl_pct >= daytrade_target:
@@ -22255,12 +22269,30 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         continue
                 else:
                     continue
+            _tech_reason = 'TECHNICAL_EXIT'
+            try:
+                if _tech_stop_dc is not None:
+                    _lvl = float(_tech_stop_dc[i]) if i < len(_tech_stop_dc) else 0.0
+                    if _lvl > 0:
+                        if is_long and px <= _lvl * (1 - _tech_stop_buf):
+                            _tech_reason = f'TECHNICAL_EXIT dc_{_tech_stop_tf_norm}_low'
+                        elif (not is_long) and px >= _lvl * (1 + _tech_stop_buf):
+                            _tech_reason = f'TECHNICAL_EXIT dc_{_tech_stop_tf_norm}_high'
+                if _tech_reason == 'TECHNICAL_EXIT' and _tech_tgt_dc is not None:
+                    _lvl2 = float(_tech_tgt_dc[i]) if i < len(_tech_tgt_dc) else 0.0
+                    if _lvl2 > 0:
+                        if is_long and px >= _lvl2 * (1 - _tech_tgt_buf):
+                            _tech_reason = f'TECHNICAL_EXIT dc_{_tech_tgt_tf_norm}_high'
+                        elif (not is_long) and px <= _lvl2 * (1 + _tech_tgt_buf):
+                            _tech_reason = f'TECHNICAL_EXIT dc_{_tech_tgt_tf_norm}_low'
+            except Exception:
+                pass
             pos['fees'] += abs(pos['qty'] * px) * half_fee
             pnl_dollars = pnl_preview - pos['fees']
             pnl_pct = pnl_dollars / pos['deployed'] * 100 if pos['deployed'] else 0.0
             _ts_exit3 = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
-            trades.append({'pnl_dollars': pnl_dollars, 'pnl_pct': float(pnl_pct), 'deployed': pos['deployed'], 'reason': 'TECHNICAL_EXIT', 'type': 'CLOSE', 'ts': _ts_exit3, 'price': float(px),
-                           'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': 'TECHNICAL_EXIT', 'bars_held': int(i - pos['entry_bar'])})
+            trades.append({'pnl_dollars': pnl_dollars, 'pnl_pct': float(pnl_pct), 'deployed': pos['deployed'], 'reason': _tech_reason, 'type': 'CLOSE', 'ts': _ts_exit3, 'price': float(px),
+                           'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _tech_reason, 'bars_held': int(i - pos['entry_bar'])})
             pos = None; cd = cooldown_bars; has_closed_before = True
 
     if pos is not None:

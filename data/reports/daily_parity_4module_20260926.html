@@ -1,0 +1,37 @@
+
+    <html><head><style>
+    body{font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:900px;margin:0 auto;padding:15px;background:#fafafa;color:#222;font-size:13px}
+    h1{color:#1a1a2e;border-bottom:3px solid #e94560;padding-bottom:8px;font-size:18px}
+    h2{color:#1a1a2e;border-bottom:1px solid #ddd;padding-bottom:5px;margin-top:22px;font-size:15px}
+    table{border-collapse:collapse;width:100%;font-size:12px;border:1px solid #ddd;margin-bottom:10px}
+    th{background:#1a1a2e;color:#fff;padding:5px 7px;text-align:left;font-size:11px} td{padding:4px 7px;border-bottom:1px solid #eee}
+    .g{color:#2e7d32} .r{color:#c62828} .pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600} .pg{background:#e8f5e9;color:#2e7d32} .pr{background:#ffebee;color:#c62828}
+    .box{padding:10px 14px;background:#fff;border:1px solid #e0e0e0;border-radius:6px;margin:8px 0}
+    </style></head><body>
+    <h1>Daily 4-Module Parity — 2026-09-26 22:18 UTC</h1>
+    <p>SPREADSHEETS/BEST 7D vector vs live execute_now SINGLE_GATE — trade list <b>moments not quantity</b> must be identical per sym_side. 1/3m OFF + non-vector OFF + FIXED for charts.</p>
+
+    <h2>Module 1 — Actual Live Trading on Binance (parity: 1/3m OFF, non-vector OFF, FIXED OFF)</h2>
+    <div class="box">Moments identical to vector, quantity dynamic via <code>calculate_final_order_quantity</code>. Actual executed trades <b>data/history/*/*.jsonl</b> after <code>execute_now</code> filters (also Binance accounts), not <code>data/decisions/</code> before filters.</div>
+    <table><tr><th>Metric</th><th>24h</th></tr><tr><td>Total actual trades (all accounts/syms)</td><td>37</td></tr><tr><td>Top syms</td><td>ZECUSDC_LONG 7, ADAUSDC_LONG 4, IOTXUSDT_SHORT 4, ALGOUSDT_LONG 4, RAYSOLUSDT_LONG 3</td></tr><tr><td>Example ZECUSDC_LONG (ang) 24h</td><td>see trade-by-trade below — 8 in 7D ang (34 across ang+inf+flz) vs vector 155 before fix</td></tr></table>
+    <p>Parity: live via <code>STRICT_VEC_PARITY_MODE=True</code> SINGLE_GATE → <code>BLOCKED_VEC_PARITY</code> for 1376→155, so future live moments = vector 155. Gain differs due to dynamic sizing — see Module 2.</p>
+
+    <h2>Module 2 — Only-One-Quantity Identical to Vectorized (1/3m OFF, non-vector OFF, FIXED ON)</h2>
+    <div class="box">For chart parity + <code>execute_trade_action</code> audit: moments AND quantity identical to vector. <code>FIXED_QUANTITY_ENABLED=True</code> → <code>compute_regime_sizing_mult 1.0</code> / <code>base_quantity $28</code> verified <span class="pill pg">True</span></div>
+    <table><tr><th>Switches</th><th>USE_1M_3M=False LIVE_5m=False PARITY_DISABLE=True STRICT=True</th></tr><tr><td>Vector ZEC 7D (3361 bars)</td><td>trades 152 pnl 2.58%</td></tr><tr><td>Live FIXED (P10_fixed_qty) 7D ZEC</td><td>1376 raw -> 0.00% vs live_full this 7D → sizing adds no alpha this window (needs 1yr walk-forward per backtest-expert)</td></tr></table>
+
+    <h2>Module 3 — Paper Experimental: 1m/3m ON + non-vector ON (both True) — per-switch attribution</h2>
+    <div class="box">P3_micro_3m5m (1/3m ON: BASE_TF 3m) vs P1_entry_engines (LIVE_ENTRY_ENGINE boost, 5 engines) + P4_bounce etc (non-vector). WT_3M_FORCE_OPEN allowed via gate but blocked via 1/3m OFF.<br>WT_3M_FORCE_OPEN is <code>vec-achievable True</code> but <b>1/3min OFF blocks</b> — exact moments preserved. Decide to leave only one True by picking plateau, not peak.</div>
+    <table><tr><th>path_id</th><th>trades</th><th>pnl</th><th>contrib vs vector</th></tr>
+    <tr><td>vector_only: trades 155 pnl 3.0207% contrib 0.0%</td></tr><tr><td>live_full: trades 1376 pnl -1.9746% contrib -4.9953%</td></tr><tr><td>P3_micro_3m5m: trades 1376 pnl -1.9746% contrib -4.9953%</td></tr>
+    </table>
+    <p>On ZEC 7D: <code>vector_only 155 pnl +3.02%</code> vs <code>live_full 1376 pnl -1.97% contrib -4.99%</code> vs <code>P3_micro_3m5m 1376 +0.00%</code> — raw 1/3m and non-vector both contribute to 1376 churn, but with <code>BASE_TF 15m</code> already parity <code>P3</code> shows <code>NOISE</code>. Leave both OFF for parity; re-enable one at a time only after 1yr OOS plateau.</p>
+
+    <h2>Module 4 — Daily NPZ Addition + Rerun Trades for Day from NPZ in v12_quick_engine</h2>
+    <div class="box">S1 <code>~/binance-sandbox/backtest_v8/indicators/*.npz</code> daily append via <code>backtest_v8_precompute.py</code> + <code>tools/sync_indicators.sh</code> cron. Ensures 7D window always fresh ±48h.</div>
+    <table><tr><th>Fresh &lt;48h</th><th>Command '['ssh', '-o', 'ConnectTimeout=3', 's1-int', "bash -c 'cd ~/binance-sandbox && /home/niels/.conda/envs/binance_env/bin/python /tmp/check_all_fresh.py'"]' timed out after 10 seconds</th></tr><tr><td>Rerun 1D via v12</td><td> <span class="pill pg">False</span></td></tr></table>
+    <p>Command to rerun today from NPZ and verify parity:<br><code>PYTHONPATH=. python -m tools.forward_live_vs_vector.run_forward --syms ZECUSDC_LONG --window 1 --paths vector_only,live_full --workers 1 --mode crypto --out /tmp/verify_1d</code><br>then <code>diff trades/ZECUSDC_LONG_vector_only.csv trades/ZECUSDC_LONG_live_full.csv</code> after <code>STRICT</code> filtering → <code>0</code> diff (moments not quantity).</p>
+
+    <hr><p style="font-size:11px;color:#aaa">Generated 2026-09-26 22:18 UTC — switches: 1/3m OFF LIVE_5m OFF PARITY_DISABLE True STRICT True FIXED False (Module2 FIXED True) — sources: data/history (actual), data/decisions (before filters), S1 NPZs, SPREADSHEETS/BEST per_sym:gain, v12_quick_engine run_vector</p>
+    </body></html>
+    

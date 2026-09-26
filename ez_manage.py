@@ -42829,19 +42829,21 @@ async def evaluate_reentry_2(trade_manager):
       - STOCH_CROSSOVER_REENTRY: gated by REENTRY2_STOCH_CROSS_ENABLED"""
     global _evaluate_reentry_2_counter
     _evaluate_reentry_2_counter += 1
-    # 2026-09-26 parity master — entire REENTRY_2 is non-vector (MANDATORY_PRICE_CROSS etc) — force OFF when parity master True
-    # Direct check of global config + env + trade_manager config; if any parity master True, block all REENTRY_2
+    # 2026-09-26 parity master — check trade_manager + global + env + STRICT SINGLE_GATE (only PARITY_DISABLE, not STRICT alone, to preserve vector reentries)
+    import os as _os_e2
+    _par = False
     try:
-        import os as _os_tmp
-        if bool(getattr(config, "PARITY_DISABLE_NON_VECTORIZABLE", False)) or bool(getattr(config, "V12_PARITY_DISABLE_NON_VECTORIZABLE", False)) or bool(getattr(config, "STRICT_VEC_PARITY_MODE", False)):
-            return
-        _cfg2 = getattr(trade_manager, "config", None)
-        if _cfg2 and (bool(getattr(_cfg2, "PARITY_DISABLE_NON_VECTORIZABLE", False)) or bool(getattr(_cfg2, "V12_PARITY_DISABLE_NON_VECTORIZABLE", False)) or bool(getattr(_cfg2, "STRICT_VEC_PARITY_MODE", False))):
-            return
-        if _os_tmp.environ.get("V12_PARITY_DISABLE_NON_VECTORIZABLE") == "1" or _os_tmp.environ.get("STRICT_VEC_PARITY_MODE") == "1":
-            return
+        _cfg_tm = getattr(trade_manager, "config", None)
+        if _cfg_tm and (bool(getattr(_cfg_tm, "PARITY_DISABLE_NON_VECTORIZABLE", False)) or bool(getattr(_cfg_tm, "V12_PARITY_DISABLE_NON_VECTORIZABLE", False))):
+            _par = True
+        if not _par and (bool(getattr(config, "PARITY_DISABLE_NON_VECTORIZABLE", False)) or bool(getattr(config, "V12_PARITY_DISABLE_NON_VECTORIZABLE", False))):
+            _par = True
+        if not _par and _os_e2.environ.get("V12_PARITY_DISABLE_NON_VECTORIZABLE") == "1":
+            _par = True
     except Exception:
         pass
+    if _par:
+        return
     config = getattr(trade_manager, "config", None)
     if config and not getattr(config, "REENTRY_2_ENABLED", True):
         return
