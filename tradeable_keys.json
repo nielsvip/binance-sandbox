@@ -18,7 +18,6 @@
   "ang:BCHUSDC_SHORT",
   "ang:BEATUSDT_LONG",
   "ang:BTCDOMUSDT_SHORT",
-  "ang:BTCUSDC_SHORT",
   "ang:CELRUSDT_SHORT",
   "ang:CHRUSDT_LONG",
   "ang:COSTUSDT_SHORT",
@@ -73,7 +72,6 @@
   "ang:XTZUSDT_LONG",
   "ang:YFIUSDT_LONG",
   "ang:ZECUSDC_LONG",
-  "ang:ZENUSDT_LONG",
   "ang:ZKUSDT_SHORT",
   "fin:ADAUSDC_LONG",
   "fin:ALGOUSDT_LONG",
@@ -99,7 +97,7 @@
   "fin:XLMUSDT_LONG",
   "fin:XRPUSDC_SHORT",
   "fin:XTZUSDT_LONG",
-  "fin:ZENUSDT_SHORT",
+  "fin:ZENUSDT_LONG",
   "flz:100PEPEUSDC_LONG",
   "flz:100PEPEUSDC_SHORT",
   "flz:BNBUSDC_LONG",
@@ -110,6 +108,7 @@
   "flz:BTCUSDC_SHORT",
   "flz:BTCUSDT_LONG",
   "flz:DASHUSDT_LONG",
+  "flz:DASHUSDT_SHORT",
   "flz:DOGEUSDC_LONG",
   "flz:DOGEUSDC_SHORT",
   "flz:ETHUSDC_LONG",
@@ -124,6 +123,7 @@
   "flz:XRPUSDC_LONG",
   "flz:XRPUSDC_SHORT",
   "flz:ZECUSDC_LONG",
+  "flz:ZECUSDC_SHORT",
   "inf:1000BONKUSDC_LONG",
   "inf:AAVEUSDC_LONG",
   "inf:ACEUSDT_SHORT",
@@ -171,5 +171,5 @@
   "men:XLMUSDT_LONG",
   "men:XRPUSDC_SHORT",
   "men:XTZUSDT_LONG",
-  "men:ZENUSDT_SHORT"
+  "men:ZENUSDT_LONG"
 ]
