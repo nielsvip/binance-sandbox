@@ -1370,9 +1370,18 @@ def main():
     # FIX: BEST must WIN — overwrite recipes/defaults, not behind `if k not in overrides` guard
     try:
         import json as _js_prev_prog
-        _prev_prog_path = PROGRESS_DIR / f"{new_symside}_v14_progress.json"
-        if _prev_prog_path.exists():
-            _pd = _js_prev_prog.loads(_prev_prog_path.read_text())
+        # Load BEST from both 7d and v14 progress for 7D window — 7D best is 4.04 not 8.46
+        _prev_candidates = [PROGRESS_DIR / f"{new_symside}_7d_progress.json", PROGRESS_DIR / f"{new_symside}_v14_progress.json", PROGRESS_DIR / f"{new_symside}_v14_progress.json"]
+        # deduplicate
+        _seen = set()
+        _prev_paths = []
+        for _p in _prev_candidates:
+            if str(_p) not in _seen:
+                _seen.add(str(_p))
+                _prev_paths.append(_p)
+        for _prev_prog_path in _prev_paths:
+            if _prev_prog_path.exists():
+                _pd = _js_prev_prog.loads(_prev_prog_path.read_text())
             _co = _pd.get("cumulative_overrides") or _pd.get("overrides") or {}
             _added = 0
             for k, v in _co.items():
@@ -2606,9 +2615,100 @@ def main():
                 except: pass
             else:
                 delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
+            # FIX 1: default value already being calculated — if cand == default, delta must be 0
+            try:
+                _def_val = defaults.get(switch)
+                if _def_val is not None and str(cand).strip().lower() == str(_def_val).strip().lower():
+                    if delta_best > 1e-9:
+                        print(f"[BROKEN_DEFAULT] {switch} cand {cand} == default {_def_val} delta {delta_best:.2f} >0 — forcing 0, system broken BADLY FIX", flush=True)
+                        delta_best = 0
+            except: pass
+            # FIX 3: 30+% suspicious
+            try:
+                if abs(delta_best) >= 30:
+                    print(f"[SUSPICIOUS_30PCT] {switch}={cand} delta {delta_best:.2f} >=30% — investigating vector vs baseline {cumulative_before:.2f} vec {vec_best.get('gain_pct',0):.2f}", flush=True)
+            except: pass
             key = f"{sheet}!{r}:{switch}={cand}"
             progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "yellows": {h: float(pending_lbI.get(h, 0.0)) for h in relevant_hdrs}, "yellows_delta": {h: float(ws_h.cell(row=r, column=htc.get(h)).value) if ws_h is not None and htc.get(h) else 0.0 for h in relevant_hdrs}, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before + delta_best) if delta_best > 0 else float(cumulative_before), "best_filter": filt_best, "best_fval": fval_best}
+            # FIX 2: POS AVG_DELTAS -> DEFAULT both in sheet and config
             if delta_best > 1e-9:
+                try:
+                    # Update sheet B column for this switch to make cand the new default (bold True at bottom)
+                    if ws_h is not None:
+                        # Find all rows for this switch in this sheet
+                        _rows_for_switch = []
+                        for _rr in range(3, ws_h.max_row+1):
+                            if ws_h.cell(row=_rr, column=1).value and str(ws_h.cell(row=_rr, column=1).value).strip() == switch:
+                                _rows_for_switch.append(_rr)
+                        for _rr in _rows_for_switch:
+                            _b_val = ws_h.cell(row=_rr, column=2).value
+                            is_cand = str(_b_val).strip().lower() == str(cand).strip().lower()
+                            ws_h.cell(row=_rr, column=1).font = Font(bold=is_cand, name="Arial", size=10, color="000000" if is_cand else "000000")
+                            ws_h.cell(row=_rr, column=2).font = Font(bold=is_cand, name="Arial", size=10, color="000000" if is_cand else "000000")
+                            if is_cand:
+                                ws_h.cell(row=_rr, column=1).fill = PatternFill(start_color="FFFCE4EC", end_color="FFFCE4EC", fill_type="solid")
+                                ws_h.cell(row=_rr, column=2).fill = PatternFill(start_color="FFFCE4EC", end_color="FFFCE4EC", fill_type="solid")
+                            else:
+                                ws_h.cell(row=_rr, column=1).fill = PatternFill(fill_type=None)
+                                ws_h.cell(row=_rr, column=2).fill = PatternFill(fill_type=None)
+                            ws_h.cell(row=_rr, column=1).alignment = Alignment(horizontal="left", vertical="center")
+                            ws_h.cell(row=_rr, column=2).alignment = Alignment(horizontal="left", vertical="center")
+                        # Ensure WHITE above ORANGE ordering after POS update: move bold to bottom
+                        try:
+                            # Reorder this switch's rows so white (False) above orange (True)
+                            _rows = _rows_for_switch
+                            _vals = [(ws_h.cell(row=r, column=1).value, ws_h.cell(row=r, column=2).value, ws_h.cell(row=r, column=1).font.bold) for r in _rows]
+                            # Find bold index
+                            _bolds = [b for _,_,b in _vals]
+                            try: _def_idx = _bolds.index(True)
+                            except: _def_idx = -1
+                            if _def_idx != -1 and _def_idx != len(_rows)-1:
+                                # Reorder: non-bold first, bold last
+                                _bold_item = _vals[_def_idx]
+                                _non_bold = [v for i,v in enumerate(_vals) if i != _def_idx]
+                                _new_order = _non_bold + [_bold_item]
+                                for _idx, _r in enumerate(_rows):
+                                    ws_h.cell(row=_r, column=1).value = _new_order[_idx][0]
+                                    ws_h.cell(row=_r, column=2).value = _new_order[_idx][1]
+                                    ws_h.cell(row=_r, column=1).font = Font(bold=_new_order[_idx][2], name="Arial", size=10)
+                                    ws_h.cell(row=_r, column=2).font = Font(bold=_new_order[_idx][2], name="Arial", size=10)
+                                    ws_h.cell(row=_r, column=1).alignment = Alignment(horizontal="left", vertical="center")
+                                    ws_h.cell(row=_r, column=2).alignment = Alignment(horizontal="left", vertical="center")
+                                    if _new_order[_idx][2]:
+                                        ws_h.cell(row=_r, column=1).fill = PatternFill(start_color="FFFCE4EC", end_color="FFFCE4EC", fill_type="solid")
+                                        ws_h.cell(row=_r, column=2).fill = PatternFill(start_color="FFFCE4EC", end_color="FFFCE4EC", fill_type="solid")
+                                    else:
+                                        ws_h.cell(row=_r, column=1).fill = PatternFill(fill_type=None)
+                                        ws_h.cell(row=_r, column=2).fill = PatternFill(fill_type=None)
+                        except: pass
+                        # Also update config.py / config_tradier.py for this switch if pos
+                        try:
+                            import pathlib as _pl
+                            _cfg_path = _pl.Path("config.py") if "STOCKS" not in switch else _pl.Path("config_tradier.py")
+                            # Actually check which file has this switch
+                            for _cf in [pathlib.Path("config.py"), pathlib.Path("config_tradier.py")]:
+                                if _cf.exists():
+                                    _txt = _cf.read_text()
+                                    if switch in _txt:
+                                        # Update default value to cand
+                                        import re
+                                        # Find line like '    SWITCH: type = old_value'
+                                        _pattern = rf"(\s+{re.escape(switch)}\s*:\s*\w+\s*=\s*)(.+)"
+                                        def _repl(m):
+                                            old = m.group(2)
+                                            # Preserve comment
+                                            if "#" in old:
+                                                val_part, comment = old.split("#",1)
+                                                return m.group(1) + repr(cand) + "  #" + comment
+                                            else:
+                                                return m.group(1) + repr(cand)
+                                        _new_txt, n = re.subn(_pattern, _repl, _txt)
+                                        if n>0:
+                                            _cf.write_text(_new_txt)
+                                            print(f"[CONFIG_UPDATE] {switch} -> {cand} in {_cf.name} (pos delta {delta_best:.2f})", flush=True)
+                                            break
+                        except: pass
+                except: pass
                 cumulative_gain = float(cumulative_before + delta_best)
                 cumulative_overrides[switch] = cand
                 if filt_best: cumulative_overrides[filt_best] = fval_best
