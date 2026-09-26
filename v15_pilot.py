@@ -202,7 +202,7 @@ OUT_DIR = ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
 PROGRESS_DIR = ROOT / "data" / "reports" / "lifecycle_pilot"
 FLAGS_DIR = ROOT / "data" / "reports" / "v15_flags"
 SWITCH_SHEETS = [
-    "ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES",
+    "STDEV_SLOPE_SIZING", "ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES",
     "EXIT_STRUCTURAL", "EXIT_VELOCITY",
     "REENTRY_WINDOWED", "REENTRY_ADAPTIVE",
     "AUGMENT_TREND", "AUGMENT_RISK_SIZING",
@@ -210,7 +210,7 @@ SWITCH_SHEETS = [
     "GLOBAL_RISK_GATES",
 ]
 # 13-tab: STDEV_SLOPE_SIZING re-added 2026-09-26 — D slope +/-2.5stdev 5x→1x (bottom→top longs, top→bottom shorts), just on/off
-SKIP_SHEETS = set()  # STDEV included D r ±2.5 5x→1x gradient, just on/off per user 2026-09-26
+SKIP_SHEETS = {'REDUCE_SIGNAL_RATER'}  # REDUCE 0 pos stuck skipped for 4/hour, STDEV D r ±2.5 5x→1x included ±2.5 5x→1x gradient, just on/off per user 2026-09-26
 
 ALL_PREPARED: dict[str, dict] = {}
 ALL_NPZ_ARRAYS: dict[str, dict] = {}
