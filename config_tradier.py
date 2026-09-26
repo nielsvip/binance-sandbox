@@ -696,7 +696,7 @@ class TradierConfig:
     # ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
     # 2026-09-09 PORT from crypto config.py — reentry easier/better (green candle HTF bypass + bar-turn)
     REENTRY_CONFIRMATION_GATES_ENABLED: bool = True
-    LIVE_5m_trading_ENABLED: bool = True  # MASTER 1 — 1m/3m/5m TF availability (stocks 5m, crypto 3m) — OFF for parity test
+    LIVE_5m_trading_ENABLED: bool = False  # MASTER 1 — 1m/3m/5m TF availability — OFF for parity (7D forward). Was True, now False per user parity fix.
     REENTRY_BAR_TURN_ENABLED: bool = True  # also open if WT not flipped but 3m/5m bar turning (HH/HL long)
     REENTRY_BAR_TURN_TF: str = "5m"  # stocks 5m (crypto 3m)
     REENTRY_BAR_TURN_REQUIRE_BOTH: bool = False
@@ -2578,4 +2578,4 @@ class TradierConfig:
 
     SCALP_V3_ENABLED: bool = False  # added
 
-    STRICT_VEC_PARITY_MODE: bool = False  # added
+    STRICT_VEC_PARITY_MODE: bool = True  # 2026-09-26 PARITY LOCK — live trades ONLY vec-achievable routes. Was False, now True per user 20% churn fix.

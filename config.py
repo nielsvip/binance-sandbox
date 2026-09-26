@@ -4381,7 +4381,7 @@ class Config:
     #   send_webhook) emit a diagnostic log if they fire >N seconds after the last
     #   execute_now() entry — a future-bypass tripwire. Log-only, never blocks.
     # ═══════════════════════════════════════════════════════════════════════════
-    STRICT_VEC_PARITY_MODE: bool = False
+    STRICT_VEC_PARITY_MODE: bool = True  # 2026-09-26 PARITY LOCK — live trades ONLY vec-achievable routes (SPREADSHEETS/BEST/ 7D forward). Default True = parity-only (no overtrade). Set False only for paper 1/3m test arm. Was False, now True per user 20% churn fix.
     STRICT_VEC_PARITY_SHADOW: bool = False
     STRICT_VEC_PARITY_GATE_ENTRIES: bool = True
     STRICT_VEC_PARITY_GATE_EXITS: bool = True
@@ -4410,7 +4410,7 @@ class Config:
     # ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
     PARITY_MIN_DECISION_TF: str = "15m"  # TF remap for Master 1 — live "5m"/"3m", parity "15m"
     V12_PARITY_MIN_TF: str = "15m"  # alias
-    LIVE_5m_trading_ENABLED: bool = True  # MASTER 1 — 1m/3m/5m TF availability — OFF for parity test
+    LIVE_5m_trading_ENABLED: bool = False  # MASTER 1 — 1m/3m/5m TF availability — OFF for parity (7D forward). Default False = 15m parity-only (no 1/3/5m). Set True only for paper 1/3m test arm. Was True, now False per user 20% churn fix.
     PARITY_DISABLE_NON_VECTORIZABLE: bool = True  # MASTER 2 — non-vectorizable/NPZ-unavailable — True = force defaults off
     V12_PARITY_DISABLE_NON_VECTORIZABLE: bool = True  # alias for Master 2
     EXECUTE_NOW_SINGLE_GATE_ENFORCE: bool = True

@@ -405,8 +405,9 @@ def check_entry_alignment(
             if _htf_wt1_D < _htf_wt2_D: _htf_agree += 1
         if _htf_agree < 2:  # need 2/3 HTF agree for WT cross
             return False, f"WT_CROSS_HTF_AGAINST_{_htf_agree}/3"
-    if not bool(getattr(config, "USE_1M_3M_SIGNALS_ENABLED", False)):
+    if not bool(getattr(config, "USE_1M_3M_SIGNALS_ENABLED", False)) or not bool(getattr(config, "LIVE_5m_trading_ENABLED", False)):
         # Neutralize 1m/3m so LTF 2/3 becomes 1/1 (only 15m matters) — effectively disable 3m/1m
+        # MASTER 1: LIVE_5m_trading_ENABLED=False forces 15m parity (covers both switches per user 2026-09-26)
         k_1m, d_1m = 50, 50
         k_3m, d_3m = 50, 50
     else:
@@ -6914,6 +6915,31 @@ def _psym_ctx_clear(tok):
     except Exception:
         _psym_ctx_var.set(None)
 # placeholder; PerSym proxy defined after _psym_get block wraps this base
+# 2026-09-26 PARITY MASTER 2 — force all NON_VECTORIZABLE knobs OFF when parity switch True (covers entire script, not just backtest_v12_engine).
+_NON_VEC_KNOBS_EZ = frozenset([
+    "BREAKOUT_LEASH_ENABLED", "BB_FROZEN_STOP_ENABLED", "WRONG_SIDE_ABS_KILL_ENABLED",
+    "LONG_STRUCT_EXIT_TF", "SHORT_STRUCT_EXIT_TF", "OBLIGATORY_SMA200_WT3M_ENABLED",
+    "TRADEABLE_KEYS_MANDATORY_ENABLED", "TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED",
+    "DAEMON_PRICE_CROSS_REENTRY_LIVE_ENABLED", "QUICK_OPEN_STRONG_VEC_ENABLED",
+    "WT_3M_FORCE_OPEN_ENABLED", "WT_3M_FORCE_OPEN_BYPASS_GATES", "GOLDEN_PULLBACK_ENABLED",
+    "EXPLODING_LEDGER_ENABLED", "LIVE_ENTRY_ENGINE_ENABLED", "LIVE_ENTRY_ENGINE_WT_ENABLED",
+    "LIVE_ENTRY_ENGINE_STOCH_ENABLED", "LIVE_ENTRY_ENGINE_DC_ENABLED", "LIVE_ENTRY_ENGINE_HTF_ENABLED",
+    "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED", "SCALP_V3_ENABLED", "SCALP_V3_BOOST_ENABLED",
+    "STDEV_SLOPE_SIZING_ENABLED", "MOMENTUM_WATCHDOG_ENABLED", "HEDGE_ACCOUNTS", "SCALP_ACCOUNTS",
+    "STRICT_NO_LOSS_ACCOUNTS", "EMA50_15M_ENTRY_FILTER_ENABLED", "REENTRY_GOLDEN_BLOCK_ENABLED",
+])
+if bool(getattr(_ezm_base_config, "PARITY_DISABLE_NON_VECTORIZABLE", False)) or bool(getattr(_ezm_base_config, "V12_PARITY_DISABLE_NON_VECTORIZABLE", False)):
+    for _k in _NON_VEC_KNOBS_EZ:
+        try:
+            _v = getattr(_ezm_base_config, _k, None)
+            if _v is None:
+                continue
+            if isinstance(_v, bool) and _v is True:
+                setattr(_ezm_base_config, _k, False)
+            elif isinstance(_v, str) and _k.endswith("_TF") and _v not in ("None", "NONE", ""):
+                setattr(_ezm_base_config, _k, "None")
+        except Exception:
+            pass
 config = _ezm_base_config
 current_env = get_current_environment()
 
@@ -7052,6 +7078,13 @@ def _psym_get(symbol: str, side: str, knob: str, default):
     crypto performers. Stocks file is for tradier_manage only (see _load_global_per_sym_cfgs).
     The earlier dual-read that merged stocks into crypto via USDT suffix is
     reverted until stock equivalents are enabled."""
+    # 2026-09-26 PARITY MASTER 2: when parity switch True, all NON_VECTORIZABLE knobs forced OFF (entire script)
+    if (bool(getattr(config, "PARITY_DISABLE_NON_VECTORIZABLE", False)) or bool(getattr(config, "V12_PARITY_DISABLE_NON_VECTORIZABLE", False))) and knob in _NON_VEC_KNOBS_EZ:
+        if isinstance(default, bool):
+            return False
+        if isinstance(default, str) and knob.endswith("_TF"):
+            return "None"
+        return default
     if os.environ.get("V8_DISABLE_PER_SYM") == "1":
         return getattr(config, knob, default)
     if not bool(getattr(config, "PER_SYM_CONFIG_ENABLED", True)):
@@ -42787,6 +42820,8 @@ async def evaluate_reentry_2(trade_manager):
     global _evaluate_reentry_2_counter
     _evaluate_reentry_2_counter += 1
     config = getattr(trade_manager, "config", None)
+    if config and (bool(getattr(config, "PARITY_DISABLE_NON_VECTORIZABLE", False)) or bool(getattr(config, "V12_PARITY_DISABLE_NON_VECTORIZABLE", False))):
+        return
     if config and not getattr(config, "REENTRY_2_ENABLED", True):
         return
 

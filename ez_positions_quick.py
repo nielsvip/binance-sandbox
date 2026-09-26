@@ -211,6 +211,28 @@ try:
 except ImportError:
     pass
 config = Config()
+# 2026-09-26 PARITY MASTER 2 — force all NON_VECTORIZABLE knobs OFF when parity switch True (entire ez_positions_quick script, not just backtest_v12_engine).
+_NON_VEC_KNOBS_QUICK = frozenset([
+    "BREAKOUT_LEASH_ENABLED", "BB_FROZEN_STOP_ENABLED", "WRONG_SIDE_ABS_KILL_ENABLED",
+    "LONG_STRUCT_EXIT_TF", "SHORT_STRUCT_EXIT_TF", "OBLIGATORY_SMA200_WT3M_ENABLED",
+    "TRADEABLE_KEYS_MANDATORY_ENABLED", "TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED",
+    "DAEMON_PRICE_CROSS_REENTRY_LIVE_ENABLED", "QUICK_OPEN_STRONG_VEC_ENABLED",
+    "WT_3M_FORCE_OPEN_ENABLED", "GOLDEN_PULLBACK_ENABLED", "EXPLODING_LEDGER_ENABLED",
+    "LIVE_ENTRY_ENGINE_ENABLED", "SCALP_V3_ENABLED", "STDEV_SLOPE_SIZING_ENABLED",
+    "MOMENTUM_WATCHDOG_ENABLED",
+])
+if bool(getattr(config, "PARITY_DISABLE_NON_VECTORIZABLE", False)) or bool(getattr(config, "V12_PARITY_DISABLE_NON_VECTORIZABLE", False)):
+    for _k in _NON_VEC_KNOBS_QUICK:
+        try:
+            _v = getattr(config, _k, None)
+            if _v is None:
+                continue
+            if isinstance(_v, bool) and _v is True:
+                setattr(config, _k, False)
+            elif isinstance(_v, str) and _k.endswith("_TF") and _v not in ("None", "NONE", ""):
+                setattr(config, _k, "None")
+        except Exception:
+            pass
 base_path = getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')
 current_env = get_current_environment()
 current_account = ContextVar("current_account", default="unknown")
