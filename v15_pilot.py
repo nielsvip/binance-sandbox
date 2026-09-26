@@ -2949,7 +2949,7 @@ def main():
                         return int(str(v))
                     except:
                         return v
-                # BOLD IS DEFAULT SO IT IS ALREADY IN BASELINE — delta at bold row is synthetic fabrication, STOP and FIX
+                # BOLD row: naked delta should be 0 (already in baseline) but yellows still evaluated per spec — first row IS bold default and yellows must be tested
                 try:
                     _is_bold_default = False
                     try:
@@ -2957,19 +2957,8 @@ def main():
                         _is_bold_default = bool(_b_font.bold)
                     except: pass
                     if _is_bold_default:
-                        print(f"[BOLD-DEFAULT-NO-DELTA] {sheet}!{r} {switch}={cand} B is bold default already in baseline {cumulative_before:.4f} — delta at bold is synthetic, skipping delta calc for this row", flush=True)
-                        # Do not fabricate delta for bold default row — its value is baseline, not delta
-                        # Ensure F/G for bold row stays 0/None, not fabricated
-                        try:
-                            if ws_keep is not None and sheet in wb_keep.sheetnames:
-                                _wsk_bold = wb_keep[sheet]
-                                _wsk_bold.cell(row=r, column=6).value = 0.0
-                                _wsk_bold.cell(row=r, column=6).font = Font(name="Arial", size=10, bold=False, color="000000")
-                                _wsk_bold.cell(row=r, column=7).value = 0.0
-                                _wsk_bold.cell(row=r, column=7).font = Font(name="Arial", size=10, bold=False, color="000000")
-                        except: pass
-                        # Skip to next row, do not add to progress done with fabricated delta
-                        continue
+                        print(f"[BOLD-DEFAULT-YELLOWS-ONLY] {sheet}!{r} {switch}={cand} bold default already in baseline {cumulative_before:.4f} — naked delta forced 0, yellows still evaluated", flush=True)
+                        # do NOT continue — fall through to normal yellow evaluation; naked synthetic pos will be zeroed downstream (BROKEN_DEFAULT guard)
                 except: pass
                 def norm2(a, b):
                     if isinstance(a, str) and a.lower() in ("true", "false"):
@@ -3290,6 +3279,22 @@ def main():
                         continue
 
                     delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
+                    # FIX: default value already in baseline — naked delta must be 0, yellows still count
+                    try:
+                        _def_val = defaults.get(switch)
+                        if _def_val is not None and str(cand).strip().lower() == str(_def_val).strip().lower():
+                            if filt_best is None and delta_best > 1e-9:
+                                _any_y_pos = any(float(v or 0) > 1e-9 for v in (pending_lbI or {}).values())
+                                if not _any_y_pos:
+                                    print(f"[BROKEN_DEFAULT] {switch} cand {cand} == default {_def_val} delta {delta_best:.2f} >0 — forcing 0, naked already in baseline", flush=True)
+                                    delta_best = 0
+                                    best = (delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best)
+                    except: pass
+                    # SUSPICIOUS 30% guard
+                    try:
+                        if abs(delta_best) >= 30:
+                            print(f"[SUSPICIOUS_30PCT] {switch}={cand} delta {delta_best:.2f} >=30% vs cum {cumulative_before:.2f} vec {vec_best.get('gain_pct',0):.2f}", flush=True)
+                    except: pass
                     try:
                         if pending_lbI and ws_row is not None:
                             for hdr, d in pending_lbI.items():

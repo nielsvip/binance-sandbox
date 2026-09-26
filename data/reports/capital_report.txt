@@ -1,10 +1,10 @@
-CAPITAL ALLOCATION REPORT — 2026-09-26 01:39 UTC
+CAPITAL ALLOCATION REPORT — 2026-09-26 02:14 UTC
 ================================================================================
-Total capital deployed: $109.84 across 1 positions
+Total capital deployed: $227.04 across 2 positions
 
 TIER DISTRIBUTION:
   Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $    109.84 (100.0%) — 1 positions
+  Tier B: $    227.04 (100.0%) — 2 positions
   Tier C: $      0.00 (  0.0%) — 0 positions
 
   ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
@@ -12,8 +12,9 @@ TIER DISTRIBUTION:
 WINNERS — augment these (A-tier, in gain) [0]:
   (none)
 
-LOSERS — reduce allocation (C-tier or losing) [1]:
-                     inf:ZECUSDC_LONG  $  109.84  gain=-0.54%  tier=B  mult=2.69
+LOSERS — reduce allocation (C-tier or losing) [2]:
+                     flz:BTCUSDT_LONG  $  167.91  gain=-3.33%  tier=B  mult=1.00
+                    flz:DASHUSDT_LONG  $   59.13  gain=-1.02%  tier=B  mult=5.68
 
 MEDIOCRE — capital sitting idle [0]:
   (none)

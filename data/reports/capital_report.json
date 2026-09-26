@@ -1,32 +1,44 @@
 {
- "generated_at": "2026-09-26 01:39 UTC",
- "total_capital_usd": 109.84,
+ "generated_at": "2026-09-26 02:14 UTC",
+ "total_capital_usd": 227.04,
  "tier_capital": {
   "A": 0.0,
-  "B": 109.84,
+  "B": 227.04,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 2,
   "C": 0
  },
  "winners": [],
  "losers": [
-  "inf:ZECUSDC_LONG"
+  "flz:BTCUSDT_LONG",
+  "flz:DASHUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:ZECUSDC_LONG",
-   "symbol": "ZECUSDC",
-   "account": "inf",
-   "value_usd": 109.84,
-   "gain_pct": -0.539,
+   "pk": "flz:BTCUSDT_LONG",
+   "symbol": "BTCUSDT",
+   "account": "flz",
+   "value_usd": 167.91,
+   "gain_pct": -3.333,
    "tier": "B",
-   "perf_mult": 2.69,
-   "amt": 0.071,
-   "mark": 1547.04565332
+   "perf_mult": 1.0,
+   "amt": 0.002,
+   "mark": 83955.62594453
+  },
+  {
+   "pk": "flz:DASHUSDT_LONG",
+   "symbol": "DASHUSDT",
+   "account": "flz",
+   "value_usd": 59.13,
+   "gain_pct": -1.024,
+   "tier": "B",
+   "perf_mult": 5.68,
+   "amt": 0.94,
+   "mark": 62.9
   }
  ]
 }
