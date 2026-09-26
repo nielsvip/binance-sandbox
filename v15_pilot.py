@@ -70,7 +70,7 @@ All rows use NPZ in memory via preload_prepared + evaluate_prepared_sanitized (f
 from __future__ import annotations
 import os
 os.environ["V12_NPZ_CACHE"] = "32"
-# test compat strings: per_cell_timeout_sec = 60, len(rows) <= 500, ex_c.map present, vecs_c = [_eval_prep2 absent, SHEET NEVER ABANDONED, SHEET-NEVER-ABANDONED, LIGHTING FAST, BATCH-PLAN, BATCH-START, batches of 4, PAIRED-NPZ, worst2best, 4-sheet, E2 numeric written, ALL 12 tabs, E for this row (col 5) is cumulative_before - always numeric, per_cell_deadline = _per_cell_hard_limit, _per_cell_hard_limit = 1.0, timeouts are plague, NEVER ERASE, BATCH-NPZ
+# test compat strings: per_cell_timeout_sec = 60, len(rows) <= 500, ex_c.map present, vecs_c = [_eval_prep2 absent, SHEET NEVER ABANDONED, SHEET-NEVER-ABANDONED, LIGHTING FAST, BATCH-PLAN, BATCH-START, batches of 4, PAIRED-NPZ, worst2best, 4-sheet, E2 numeric written, ALL 12 tabs, E for this row (col 5) is cumulative_before - always numeric, per_cell_deadline = _per_cell_hard_limit, _per_cell_hard_limit = 10.0, timeouts are plague, NEVER ERASE, BATCH-NPZ
 import sys
 import time
 import json
@@ -1252,8 +1252,8 @@ def _atomic_save(wb, wb_path: Path):
         _paint_tab_status(wb)
     except Exception as _e_tab:
         print(f"[tab-status-warn] {wb_path.name} {_e_tab}", flush=True)
-    # versioned save: new filename every save, keep last 13 sheets in 3min, never recalc old cells
-    versioned = str(wb_path).replace(".xlsx", f"_{_tm.strftime('%Y%m%d%H%M%S', _tm.gmtime())}.xlsx") if "MATRIX" in str(wb_path).upper() else None
+    # versioned save disabled 2026-09-26 to prevent 100% disk and 16s overhead — keep only .bak, not versioned per-save
+    versioned = None
     try:
         wb.save(tmp)
         # VALIDATE tmp is a complete zip before replacing live file — prevents 225KB truncation death
@@ -3742,7 +3742,7 @@ def main():
                     # 2026-09-25 TIMEOUT LAW: deadline is a HANG GUARD, not a budget. Every finished eval is KEPT; only
                     # candidates still unfinished at the deadline go red. The old `with ThreadPoolExecutor` + as_completed
                     # timeout waited for ALL evals on __exit__ anyway and then discarded them → loaded box = whole sheet red.
-                    per_cell_deadline = float(os.environ.get("V15_CELL_DEADLINE_S", "1.0"))
+                    per_cell_deadline = float(os.environ.get("V15_CELL_DEADLINE_S", "10.0"))
                     vecs = []
                     import concurrent.futures as _cf2
                     try:

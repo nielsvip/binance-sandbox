@@ -8551,6 +8551,100 @@ async def monitor_system_state(trade_manager):
 master_stop_enter_count = {}
 process_position_enter_count = {}
 trade_manager_global = None
+# USER 2026-09-26 VECTOR EXIT STRICT — crypto can NOT exit if vector has no exit signal (fixes over-trading immediate exits)
+async def _crypto_vector_exit_permitted(trade_manager, symbol, position_side, gain_val):
+    try:
+        cfg = getattr(trade_manager, "config", None) or config
+        if not bool(getattr(cfg, "CRYPTO_VECTOR_EXIT_STRICT_ENABLED", False)):
+            return True
+        is_long = position_side == "LONG"
+        ind = {}
+        try:
+            ind = await ii(trade_manager, symbol) or {}
+        except Exception:
+            ind = {}
+        if not ind:
+            return False
+        wt1_3m = safe_fetch_float(ind.get("wt1_3m", 0), 0.0)
+        wt2_3m = safe_fetch_float(ind.get("wt2_3m", 0), 0.0)
+        wt1_15m = safe_fetch_float(ind.get("wt1_15m", 0), 0.0)
+        wt2_15m = safe_fetch_float(ind.get("wt2_15m", 0), 0.0)
+        wt1_1h = safe_fetch_float(ind.get("wt1_1h", 0), 0.0)
+        wt2_1h = safe_fetch_float(ind.get("wt2_1h", 0), 0.0)
+        wt1_4h = safe_fetch_float(ind.get("wt1_4h", 0), 0.0)
+        wt2_4h = safe_fetch_float(ind.get("wt2_4h", 0), 0.0)
+        wt_vel_4h = safe_fetch_float(ind.get("wt_velocity_4h", 0), 0.0)
+        wt_vel_1h = safe_fetch_float(ind.get("wt_velocity_1h", 0), 0.0)
+        k_3m = safe_fetch_float(ind.get("k_3m", 50), 50.0)
+        d_3m = safe_fetch_float(ind.get("d_3m", 50), 50.0)
+        k_1h = safe_fetch_float(ind.get("k_1h", 50), 50.0)
+        d_1h = safe_fetch_float(ind.get("d_1h", 50), 50.0)
+        k_15m = safe_fetch_float(ind.get("k_15m", 50), 50.0)
+        d_15m = safe_fetch_float(ind.get("d_15m", 50), 50.0)
+        if is_long:
+            wt_against = int(wt1_3m < wt2_3m) + int(wt1_15m < wt2_15m) + int(wt1_1h < wt2_1h)
+        else:
+            wt_against = int(wt1_3m > wt2_3m) + int(wt1_15m > wt2_15m) + int(wt1_1h > wt2_1h)
+        wt_exit_min_tfs = int(getattr(cfg, "WT_EXIT_MIN_TFS", 2) or 2)
+        if bool(getattr(cfg, "DELTA_EXIT_ENABLED", True)) and wt_against >= wt_exit_min_tfs:
+            return True
+        if bool(getattr(cfg, "VEL_EXIT_ENABLED", False)):
+            if is_long and wt_vel_4h < -2.0:
+                return True
+            if not is_long and wt_vel_4h > 2.0:
+                return True
+        if bool(getattr(cfg, "WT_VEL_DECAY_EXIT_ENABLED", False)):
+            thr = float(getattr(cfg, "WT_VEL_DECAY_THRESHOLD", 1.0) or 1.0)
+            if is_long and wt_vel_1h < thr:
+                return True
+            if not is_long and wt_vel_1h > -thr:
+                return True
+        if bool(getattr(cfg, "STOCH_CROSS_1H_EXIT_ENABLED", False)):
+            if is_long and k_1h < d_1h:
+                return True
+            if not is_long and k_1h > d_1h:
+                return True
+        if bool(getattr(cfg, "WT_CROSSUNDER_FINAL_ENABLED", False)):
+            if is_long and wt1_3m < wt2_3m and k_3m >= 70:
+                return True
+            if not is_long and wt1_3m > wt2_3m and k_3m <= 30:
+                return True
+        try:
+            if bool(getattr(cfg, "STRUCTURAL_EXIT_GATE_ENABLED", True)):
+                hi = safe_fetch_float(ind.get("high_1h", 0), 0.0)
+                hip = safe_fetch_float(ind.get("high_1h_prev", 0), 0.0)
+                lo = safe_fetch_float(ind.get("low_1h", 0), 0.0)
+                lop = safe_fetch_float(ind.get("low_1h_prev", 0), 0.0)
+                hi4 = safe_fetch_float(ind.get("high_4h", 0), 0.0)
+                hip4 = safe_fetch_float(ind.get("high_4h_prev", 0), 0.0)
+                lo4 = safe_fetch_float(ind.get("low_4h", 0), 0.0)
+                lop4 = safe_fetch_float(ind.get("low_4h_prev", 0), 0.0)
+                has = hip > 0 or hip4 > 0
+                if has:
+                    if is_long:
+                        ltf_collapse = False
+                        htf_lhll = (hi < hip and lo < lop) or (hi4 < hip4 and lo4 < lop4)
+                    else:
+                        htf_lhll = (hi > hip and lo > lop) or (hi4 > hip4 and lo4 > lop4)
+                    if htf_lhll:
+                        return True
+        except Exception:
+            pass
+        try:
+            ok = False
+            try:
+                import vec_decisions.process_position_crypto__all_tf_against as _m1
+                if hasattr(_m1, "check"):
+                    ok = bool(_m1.check(ind, is_long, cfg))
+            except Exception:
+                pass
+            if ok:
+                return True
+        except Exception:
+            pass
+        return False
+    except Exception:
+        return True
 _HEDGE_SYMBOL_COOLDOWN_TS: dict = {}  # in-memory fallback cooldown tracker
 _global_file_write_semaphore = asyncio.Semaphore(
     40 if current_env.get("env") == "macbook" else 400
@@ -46204,6 +46298,19 @@ async def process_position(
     # FAVORABLE_MOVE pathway (ez_manage:28881+) now uninhibited by REENTRY_MIN_GAP_MINUTES=0.
     # ═══════════════════════════════════════════════════════════════════════════
     # ═══════════════════════════════════════════════════════════════════════════
+    # USER 2026-09-26 VECTOR EXIT STRICT — crypto can NOT exit if vector has no exit signal (fixes over-trading)
+    _vector_strict_block = False
+    _vector_strict_checked = False
+    if position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0 and bool(getattr(config, "CRYPTO_VECTOR_EXIT_STRICT_ENABLED", False)):
+        try:
+            _v_gain_probe = safe_fetch_float(getattr(position, "gain", 0), 0)
+            _vector_strict_checked = True
+            _permitted = await _crypto_vector_exit_permitted(trade_manager, symbol, position_side, _v_gain_probe)
+            if not _permitted:
+                _vector_strict_block = True
+                logger.info(f"[VECTOR_EXIT_STRICT_BLOCK] {position_key}: gain={_v_gain_probe:.2f}% vector=False → BLOCK all timed exits (HTF/R1/R2/etc) until gain/vector. Ultimate DC still allowed. Config MIN_GAIN={getattr(config,'MIN_GAIN',3.0)}")
+        except Exception as _vs_e:
+            logger.debug(f"[VECTOR_EXIT_STRICT] {position_key} check err: {_vs_e}")
     # 🚨 HTF_AGAINST_FORCE_CLOSE (USER 2026-05-30 ABSOLUTE): NOTHING stays open on a sharp move the other way.
     # ANY position — winner OR loser — is CLOSED the instant wt1_1h is against its side (LONG: wt1_1h<wt2_1h;
     # SHORT: wt1_1h>wt2_1h). Gain-AGNOSTIC, NO newborn window, NO entry-type restriction. The universal
@@ -46214,7 +46321,9 @@ async def process_position(
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
         and bool(getattr(config, "HTF_AGAINST_FORCE_CLOSE_ENABLED", True))
+        and not _vector_strict_block
         and (_min_hold_ok_for_exit or await _dc_15m_hold_override())
+        and not _vector_strict_block
     ):
         try:
             if _pp_shared_ind is None:
@@ -46266,7 +46375,9 @@ async def process_position(
     if (
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
+        and not _vector_strict_block
         and (_min_hold_ok_for_exit or await _dc_15m_hold_override())
+        and not _vector_strict_block
         and (
             bool(_psym_get(symbol, position_side, "R1_DC_LOW4_3M_EMERGENCY_ENABLED", True))
             or any(
@@ -46479,7 +46590,7 @@ async def process_position(
     # ═══════════════════════════════════════════════════════════════════════════
     # HYBRID EXIT — Timeframe Exit Combinations for Lower-HL exits (Structure-Breakdown)
     # ═══════════════════════════════════════════════════════════════════════════
-    if position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0:
+    if position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0 and not _vector_strict_block:
         try:
             _se_tf = _psym_get(symbol, position_side, "EXIT_STRUCT_TF", "None")
             if _se_tf == "None" or not _se_tf: _se_tf = _psym_get(symbol, position_side, "LONG_STRUCT_EXIT_TF" if position_side == "LONG" else "SHORT_STRUCT_EXIT_TF", "None")
@@ -46523,6 +46634,7 @@ async def process_position(
     if (
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
+        and not _vector_strict_block
         and bool(getattr(config, "DAEMON_REENTRY_STALE_EXIT_ENABLED", True))
     ):
         try:
@@ -46578,6 +46690,7 @@ async def process_position(
     if (
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
+        and not _vector_strict_block
         and bool(getattr(config, "FROZEN_ACTIVATION_STOP_ENABLED", True))
     ):
         try:
@@ -46651,6 +46764,7 @@ async def process_position(
     if (
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
+        and not _vector_strict_block
         and bool(getattr(config, "BB_FROZEN_STOP_ENABLED", False))
     ):
         try:
@@ -47243,6 +47357,7 @@ async def process_position(
     if (
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
+        and not _vector_strict_block
         and (_min_hold_ok_for_exit or await _dc_15m_hold_override())
         and bool(_psym_get(symbol, position_side, "MTF_EXIT_USE_COMPOUND", False))
         and _mtfce_pos_open_ts_gate >= _mtfce_min_ts_gate
@@ -47398,6 +47513,7 @@ async def process_position(
     if (
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
+        and not _vector_strict_block
         and (_min_hold_ok_for_exit or await _dc_15m_hold_override())
         and bool(getattr(config, "GR_HTF_DIRECT_EXIT_ENABLED", True))
     ):
