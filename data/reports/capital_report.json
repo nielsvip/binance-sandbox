@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-26 07:14 UTC",
- "total_capital_usd": 65.85,
+ "generated_at": "2026-09-26 08:14 UTC",
+ "total_capital_usd": 65.67,
  "tier_capital": {
   "A": 0.0,
-  "B": 65.85,
+  "B": 65.67,
   "C": 0.0
  },
  "tier_count": {
@@ -23,34 +23,34 @@
    "pk": "men:ALGOUSDT_LONG",
    "symbol": "ALGOUSDT",
    "account": "men",
-   "value_usd": 31.83,
-   "gain_pct": -0.526,
+   "value_usd": 31.74,
+   "gain_pct": -0.853,
    "tier": "B",
    "perf_mult": 1.97,
    "amt": 275.7,
-   "mark": 0.11545325
+   "mark": 0.11511
   },
   {
    "pk": "men:XLMUSDT_LONG",
    "symbol": "XLMUSDT",
    "account": "men",
-   "value_usd": 31.57,
-   "gain_pct": -0.995,
+   "value_usd": 31.49,
+   "gain_pct": -1.314,
    "tier": "B",
    "perf_mult": 0.67,
    "amt": 145.0,
-   "mark": 0.21775393
+   "mark": 0.21718
   },
   {
    "pk": "men:ADAUSDC_LONG",
    "symbol": "ADAUSDC",
    "account": "men",
-   "value_usd": 2.45,
-   "gain_pct": -0.582,
+   "value_usd": 2.44,
+   "gain_pct": -0.932,
    "tier": "B",
    "perf_mult": 2.27,
    "amt": 9.6,
-   "mark": 0.2551
+   "mark": 0.25431111
   }
  ]
 }

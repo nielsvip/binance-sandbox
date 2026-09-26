@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-09-26T07:34:18.782126+00:00",
+  "timestamp": "2026-09-26T08:21:59.048410+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 148
+    "total_ranked": 149
   },
   "unified_ranking": [
     {
@@ -836,6 +836,12 @@
     },
     {
       "symbol": "HBARUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "VETUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
