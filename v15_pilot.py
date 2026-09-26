@@ -846,6 +846,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     sheets_with_pos_deltas = set()
     # Main loop — sequential with POS-stay / NEG-advance
     loop_guard = 0
+    current_idx = 0
     # FIX 2026-09-26: max_loops must account for tab cycling on NEG deltas — worst case is cycling through all tabs per row
     max_loops = total_rows * len(tabs) + 200  # worst case: cycle through all tabs for each pending row + margin
     while _any_pending() and loop_guard < max_loops:
@@ -1898,7 +1899,8 @@ def main():
             else:
                 print("[TEMPLATE-VERIFY] 24h expired or no stamp — re-verifying bold defaults vs config source of truth (ONLY backtests, not per sym)", flush=True)
                 try:
-                    _sp.run([sys.executable, "tools/verify_template_defaults.py"], check=False, timeout=8)
+                    _verify_path = pathlib.Path(__file__).resolve().parent / "tools" / "verify_template_defaults.py"
+                    _sp.run([sys.executable, str(_verify_path)], check=False, timeout=8, cwd=str(pathlib.Path(__file__).resolve().parent))
                 except Exception as _e_v:
                     print(f"[TEMPLATE-VERIFY-TIMEOUT] skip verify >8s {_e_v} — never hang", flush=True)
         else:
