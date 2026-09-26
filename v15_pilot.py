@@ -1111,14 +1111,28 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _touch(f"cell {sname}!{rr} delta={delta_for_row:.4f}")
         print(f"[spec-row] {sname}!{rr} {switch}={cand} yellows {len(relevant_hdrs)} sum_pos={sum_pos:.4f} delta={delta_for_row:.4f} vs cum {cumulative_before:.4f} -> {'POS' if delta_for_row>1e-9 else 'NEG'}", flush=True)
         if delta_for_row > 1e-9:
-            # POS: add delta to baseline for next row on SAME TAB, stay
-            cumulative_gain = float(cumulative_before + delta_for_row)
+            # POS: recompute true joint baseline with all overrides (USER 04:25 — don't blindly add delta, use entire baseline calc to avoid negative surprises)
             cumulative_overrides[switch] = cand_parsed
             for hdr in pos_hdrs:
                 filt = hdr_to_filter[hdr]["filter"]
                 opt_raw = hdr_to_filter[hdr]["opt"]
                 opt_parsed = _parse_opt(opt_raw, defaults.get(filt))
                 cumulative_overrides[filt] = opt_parsed
+            cumulative_overrides, _ = sanitize_overrides(cumulative_overrides, defaults)
+            try:
+                joint_vec = _eval_with_timeout(dict(cumulative_overrides), timeout_sec=YELLOW_TIMEOUT)
+                if joint_vec and joint_vec.get("valid"):
+                    joint_gain = float(joint_vec.get("gain_pct") or 0)
+                    # Use true joint gain as new baseline (even if lower than blind sum, it's real; if you prefer never-revert, keep max)
+                    cumulative_gain = float(joint_gain)
+                    vec_gain_row = float(joint_gain)
+                    print(f"[spec-joint] {sname}!{rr} joint {joint_gain:.4f} vs blind {cumulative_before + delta_for_row:.4f} (delta {delta_for_row:.4f})", flush=True)
+                else:
+                    # fallback to blind sum if joint invalid
+                    cumulative_gain = float(cumulative_before + delta_for_row)
+            except Exception as _je:
+                cumulative_gain = float(cumulative_before + delta_for_row)
+                print(f"[spec-joint-warn] {sname}!{rr} joint eval failed {_je} fallback blind", flush=True)
             progress["cumulative_gain"] = float(cumulative_gain)
             progress["cumulative_overrides"] = dict(cumulative_overrides)
             _atomic_write_json(progress_path, progress)
@@ -1484,9 +1498,14 @@ def ensure_lbI_headers(wb_path: Path):
     _t0_hdr = _t_hdr.time()
     try:
         wb = openpyxl.load_workbook(str(wb_path))
-    except FileNotFoundError:
-        # Clone was deleted as empty vomit before headers — recreate from template
+    except (FileNotFoundError, zipfile.BadZipFile, OSError) as _bad:
+        # Clone was deleted as empty vomit or BadZip before headers — recreate from template
         try:
+            # remove BadZip if exists
+            try:
+                if Path(wb_path).exists():
+                    Path(wb_path).unlink()
+            except: pass
             tmpl = next((p for p in [Path("SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx"), Path("SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx"), Path("SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx"), Path("SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx"), Path("SPREADSHEETS/TEMPLATE.xlsx")] if p.exists()), None)
             if tmpl and tmpl.exists():
                 import shutil
@@ -1495,7 +1514,7 @@ def ensure_lbI_headers(wb_path: Path):
             else:
                 raise
         except Exception as e:
-            print(f"[ensure_lbI_headers] missing {wb_path} and no template {e}", flush=True)
+            print(f"[ensure_lbI_headers] missing/BadZip {wb_path} and no template {e}", flush=True)
             return
     fd_rows = _load_filter_dictionary()
     for sheet in SWITCH_SHEETS:
