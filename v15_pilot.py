@@ -1493,9 +1493,9 @@ def ensure_lbI_headers(wb_path: Path):
         except Exception:
             pass
         existing = set()
-        scan_max = max(ws.max_column, 12)
+        scan_max = max(ws.max_column, 15)
         stale = []
-        for c in range(12, scan_max + 1):
+        for c in range(15, scan_max + 1):
             try:
                 hv = ws.cell(row=2, column=c).value
             except Exception:
@@ -1554,7 +1554,7 @@ def ensure_lbI_headers(wb_path: Path):
             headers.append(hdr)
             if len(headers) >= 220:
                 break
-        col = 12
+        col = 15
         for hdr in headers:
             if hdr in existing:
                 continue
@@ -2472,7 +2472,7 @@ def main():
                         for e in get_opportune_filters(sw, sheet):
                             if not _is_general(e["rec"]):
                                 union.add(f"{e['filter']}={e['opt']}")
-                    col = 12
+                    col = 15
                     for hdr in sorted(union)[:12]:
                         if hdr not in existing:
                             ws.cell(row=2, column=col).value = hdr
