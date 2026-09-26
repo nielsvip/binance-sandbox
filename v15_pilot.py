@@ -1899,8 +1899,9 @@ def main():
             else:
                 print("[TEMPLATE-VERIFY] 24h expired or no stamp — re-verifying bold defaults vs config source of truth (ONLY backtests, not per sym)", flush=True)
                 try:
-                    _verify_path = pathlib.Path(__file__).resolve().parent / "tools" / "verify_template_defaults.py"
-                    _sp.run([sys.executable, str(_verify_path)], check=False, timeout=8, cwd=str(pathlib.Path(__file__).resolve().parent))
+                    import pathlib as _pathlib_verify2
+                    _verify_path = _pathlib_verify2.Path(__file__).resolve().parent / "tools" / "verify_template_defaults.py"
+                    _sp.run([sys.executable, str(_verify_path)], check=False, timeout=8, cwd=str(_pathlib_verify2.Path(__file__).resolve().parent))
                 except Exception as _e_v:
                     print(f"[TEMPLATE-VERIFY-TIMEOUT] skip verify >8s {_e_v} — never hang", flush=True)
         else:

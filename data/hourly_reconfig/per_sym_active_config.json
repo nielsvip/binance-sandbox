@@ -3,7 +3,9 @@
     "purpose": "CRYPTO-ONLY per-symbol overrides (USDT/USDC keys). Stock keys are FORBIDDEN here.",
     "last_BEST_sync_utc": "2026-09-26T01:32:04.365469+00:00",
     "n_crypto_keys": 248,
-    "source": "pilot_v14 39 BEST synced, was stale 2026-09-06"
+    "source": "pilot_v14 39 BEST synced, was stale 2026-09-06",
+    "last_4x16_utc": "2026-09-26T18:20:10Z",
+    "n_promoted": 93
   },
   "BTCUSDC_LONG": {
     "overrides": {
@@ -110,7 +112,7 @@
     "provenance": "BEST 95 keys final_gain 10.96%"
   },
   "BTCUSDC_SHORT": {
-    "winning_tag": "fotest_baseline_BTCUSDC_SHORT_2026-07-08",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.5328764302939217,
     "trades": 260,
     "total_trades_combined": 17172,
@@ -145,7 +147,11 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 0,
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
@@ -173,7 +179,8 @@
     "reopt_changed_params": {},
     "reopt_vec_baseline_sharpe": -0.1474,
     "reopt_ts": 1783595878.9519467,
-    "reopt_date": "2026-07-09T11:17:58Z"
+    "reopt_date": "2026-07-09T11:17:58Z",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ETHUSDC_LONG": {
     "overrides": {
@@ -185,16 +192,22 @@
       "BB_BOUNCE_ENTRY_TF": "D",
       "WT_MOMENTUM_EXIT_THRESHOLD": 0,
       "FH_MOMENTUM_FILTER_TF": "D",
-      "DC_MOMENT_STRONG_THRESHOLD": 50.0
+      "DC_MOMENT_STRONG_THRESHOLD": 50.0,
+      "DAYTRADE_DC_STOP_TF": "3m",
+      "TECHNICAL_DC_STOP_TF": "3m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "gain_pct": 21.307802850424668,
     "baseline_gain": 12.801970886353898,
     "bh": 29.817385481566244,
     "source": "pilot_v14:ETHUSDC_LONG_v14_progress.json",
-    "provenance": "BEST 9 keys final_gain 21.31%"
+    "provenance": "BEST 9 keys final_gain 21.31%",
+    "winning_tag": "4x16_STOP_3m_buf0.25",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ETHUSDC_SHORT": {
-    "winning_tag": "fotest_baseline_ETHUSDC_SHORT_2026-07-08",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.2358020811413141,
     "trades": 243,
     "total_trades_combined": 18113,
@@ -229,7 +242,11 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 0,
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
@@ -257,15 +274,22 @@
     "reopt_changed_params": {},
     "reopt_vec_baseline_sharpe": -0.0179,
     "reopt_ts": 1783633673.2926886,
-    "reopt_date": "2026-07-09T21:47:53Z"
+    "reopt_date": "2026-07-09T21:47:53Z",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "SOLUSDC_LONG": {
-    "overrides": {},
-    "winning_tag": "v15_finished_pos_SOLUSDC_LONG_1789459391",
+    "overrides": {
+      "DAYTRADE_DC_STOP_TF": "1h",
+      "TECHNICAL_DC_STOP_TF": "1h",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
+    },
+    "winning_tag": "4x16_STOP_1h_buf0.25",
     "wsharpe": 0.5,
     "trades": 50,
     "source": "BEST_v15_30d_finished_pos",
-    "bh_gain": 5.38
+    "bh_gain": 5.38,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "SOLUSDC_SHORT": {
     "overrides": {
@@ -334,13 +358,19 @@
       "BANDAID_OFF_LOSER_RECOVER_PCT": 2.0,
       "FG_GREED_THRESHOLD": 37.5,
       "WT_CROSS_EXIT_REQUIRE_15M_CONFIRM": 2.0,
-      "MOVER_THRESHOLD": 5.0
+      "MOVER_THRESHOLD": 5.0,
+      "DAYTRADE_DC_TARGET_TF": "3m",
+      "TECHNICAL_DC_TARGET_TF": "3m",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
     },
     "gain_pct": 5.147684081611326,
     "baseline_gain": 4.812679766337459,
     "bh": -29.87148982582351,
     "source": "pilot_v14:SOLUSDC_SHORT_v14_progress.json",
-    "provenance": "BEST 66 keys final_gain 5.15%"
+    "provenance": "BEST 66 keys final_gain 5.15%",
+    "winning_tag": "4x16_TARGET_3m_buf0.1",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "BNBUSDC_LONG": {
     "overrides": {
@@ -358,7 +388,7 @@
     "provenance": "BEST 6 keys final_gain 9.52%"
   },
   "BNBUSDC_SHORT": {
-    "winning_tag": "fotest_baseline_BNBUSDC_SHORT_2026-07-08",
+    "winning_tag": "4x16_STOP_1h_buf0.25",
     "wsharpe": 0.46504465172185455,
     "trades": 318,
     "total_trades_combined": 17585,
@@ -393,7 +423,11 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "1h",
+      "TECHNICAL_DC_STOP_TF": "1h",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 0,
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
@@ -421,7 +455,8 @@
     "reopt_changed_params": {},
     "reopt_vec_baseline_sharpe": -0.217,
     "reopt_ts": 1783589416.20653,
-    "reopt_date": "2026-07-09T09:30:16Z"
+    "reopt_date": "2026-07-09T09:30:16Z",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "XRPUSDC_LONG": {
     "overrides": {
@@ -527,7 +562,7 @@
     "campaign_ts": 1783497434.5675046
   },
   "DOGEUSDC_LONG": {
-    "winning_tag": "flz8_DOGEUSDC_2026-05-03",
+    "winning_tag": "4x16_COMBO_STOP_15m+TARGET_1h",
     "wsharpe": 0.35260360703750354,
     "trades": 30281,
     "total_trades_combined": 60458,
@@ -562,13 +597,22 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25,
+      "DAYTRADE_DC_TARGET_TF": "1h",
+      "TECHNICAL_DC_TARGET_TF": "1h",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
     },
     "_delta_params": 0,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "DOGEUSDC_SHORT": {
-    "winning_tag": "fotest_baseline_DOGEUSDC_SHORT_2026-07-08",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.024726983398389267,
     "trades": 315,
     "total_trades_combined": 60458,
@@ -603,7 +647,11 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 0,
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
@@ -621,7 +669,8 @@
     "acc_gain_pct": 13.93096283116973,
     "gain_vs_bh": 1.066629745206864,
     "bh_pct": 12.864333085962866,
-    "campaign_ts": 1783504897.8017294
+    "campaign_ts": 1783504897.8017294,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ZECUSDC_LONG": {
     "winning_tag": "fotest_baseline_ZECUSDC_LONG_2026-07-08",
@@ -737,7 +786,7 @@
     "campaign_ts": 1783505053.5433424
   },
   "BTCDOMUSDT_LONG": {
-    "winning_tag": "flz8_BTCDOMUSDT_2026-05-03",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.522795924381359,
     "trades": 0,
     "total_trades_combined": 39273,
@@ -772,7 +821,11 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 0,
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
@@ -785,7 +838,8 @@
     "vec_baseline_date": "2026-07-08",
     "LONG_ENABLED": false,
     "_vec_gate": "[DIAGNOSTIC vec-screen sharpe=-1.555 <0 -> not traded; Tier-2 confirms]",
-    "campaign_ts": 1783468375.3616848
+    "campaign_ts": 1783468375.3616848,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "BTCDOMUSDT_SHORT": {
     "overrides": {
@@ -793,13 +847,19 @@
       "NOLOSS_BYPASS_WT5OF5_FILTER_TF": "4h",
       "EMA_BLANKET_FILTER_MIN_TFS": 2.0,
       "EMA_BLANKET_FILTER_FILTER_TF": "D",
-      "STDEV_SLOPE_SIZING_4H_MAX": 1
+      "STDEV_SLOPE_SIZING_4H_MAX": 1,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "gain_pct": 1.8113473448638617,
     "baseline_gain": 0.2878837228466989,
     "bh": 3.485234710174428,
     "source": "pilot_v14:BTCDOMUSDT_SHORT_v14_progress.json",
-    "provenance": "BEST 5 keys final_gain 1.81%"
+    "provenance": "BEST 5 keys final_gain 1.81%",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "1INCHUSDT_LONG": {
     "overrides": {
@@ -815,13 +875,19 @@
       "EMA_9_21_FILTER_MIN_TFS": 2.0,
       "EMA_9_21_FILTER_FILTER_TF": "D",
       "EMA_BLANKET_FILTER_ENABLED": false,
-      "ADX_RANGING_THRESHOLD": "\u00b125%"
+      "ADX_RANGING_THRESHOLD": "\u00b125%",
+      "DAYTRADE_DC_TARGET_TF": "3m",
+      "TECHNICAL_DC_TARGET_TF": "3m",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
     },
     "gain_pct": 3.740119674112119,
     "baseline_gain": 0.9030292223612291,
     "bh": 6.1420365217873165,
     "source": "pilot_v14:1INCHUSDT_LONG_v14_progress.json",
-    "provenance": "BEST 13 keys final_gain 3.74%"
+    "provenance": "BEST 13 keys final_gain 3.74%",
+    "winning_tag": "4x16_TARGET_3m_buf0.1",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "1INCHUSDT_SHORT": {
     "winning_tag": "vectorized_opt_1INCHUSDT_1779681479",
@@ -888,13 +954,19 @@
       "PEAK_GIVEBACK_BE_EROSION_FILTER_TF": "4h",
       "BREAKEVEN_GAIN_EROSION_FILTER_TF": "OFF",
       "LIVE_VEC_EMERGENCY_BRAKE_ENABLED": true,
-      "LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF": "D"
+      "LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF": "D",
+      "DAYTRADE_DC_STOP_TF": "1h",
+      "TECHNICAL_DC_STOP_TF": "1h",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "gain_pct": 16.379904253623685,
     "baseline_gain": 5.16790744046627,
     "bh": 18.355332790536373,
     "source": "pilot_v14:AVAXUSDC_LONG_v14_progress.json",
-    "provenance": "BEST 14 keys final_gain 16.38%"
+    "provenance": "BEST 14 keys final_gain 16.38%",
+    "winning_tag": "4x16_STOP_1h_buf0.25",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "AVAXUSDC_SHORT": {
     "winning_tag": "crypto_all_AVAXUSDC_2026-05-03",
@@ -1005,13 +1077,23 @@
       "BTC_DIVERGENCE_LB_D": 12,
       "LONG_ENABLED": false,
       "RECENT_REDUCTION_GUARD_WINDOW_S": 900.0,
-      "TRADES_PER_SYM_PER_DAY_MAX": 10
+      "TRADES_PER_SYM_PER_DAY_MAX": 10,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25,
+      "DAYTRADE_DC_TARGET_TF": "1h",
+      "TECHNICAL_DC_TARGET_TF": "1h",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
     },
     "gain_pct": 6.798662720280191,
     "baseline_gain": 4.586488409279626,
     "bh": 11.094893408771823,
     "source": "pilot_v14:CHRUSDT_LONG_v14_progress.json",
-    "provenance": "BEST 65 keys final_gain 6.80%"
+    "provenance": "BEST 65 keys final_gain 6.80%",
+    "winning_tag": "4x16_COMBO_STOP_15m+TARGET_1h",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "CHRUSDT_SHORT": {
     "winning_tag": "crypto_all_CHRUSDT_2026-05-03",
@@ -1108,32 +1190,50 @@
       "HTF_TREND_VETO_BYPASS_ENABLED": true,
       "GR_FILTER_VEC_MIN_TFS": 0.0,
       "GR_FILTER_VEC_FILTER_TF": "OFF",
-      "STDEV_SLOPE_SIZING_4H_MAX": 1
+      "STDEV_SLOPE_SIZING_4H_MAX": 1,
+      "DAYTRADE_DC_STOP_TF": "3m",
+      "TECHNICAL_DC_STOP_TF": "3m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "gain_pct": 3.2545678380275977,
     "baseline_gain": 2.5954432806936807,
     "bh": 1.8532606788678692,
     "source": "pilot_v14:AXSUSDT_SHORT_v14_progress.json",
-    "provenance": "BEST 6 keys final_gain 3.25%"
+    "provenance": "BEST 6 keys final_gain 3.25%",
+    "winning_tag": "4x16_STOP_3m_buf0.25",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ADAUSDC_LONG": {
-    "overrides": {},
-    "winning_tag": "v15_finished_pos_ADAUSDC_LONG_1789482964",
+    "overrides": {
+      "DAYTRADE_DC_TARGET_TF": "1h",
+      "TECHNICAL_DC_TARGET_TF": "1h",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
+    },
+    "winning_tag": "4x16_TARGET_1h_buf0.1",
     "wsharpe": 0.5,
     "trades": 50,
     "source": "BEST_v15_30d_finished_pos",
-    "bh_gain": 5.27
+    "bh_gain": 5.27,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ADAUSDC_SHORT": {
     "overrides": {
       "WT_4H_VEL_EXIT_REQUIRE_PROFIT": 1.0,
-      "PARTIAL_PROFIT_LOCK_V2_FILTER_TF": "1h"
+      "PARTIAL_PROFIT_LOCK_V2_FILTER_TF": "1h",
+      "DAYTRADE_DC_TARGET_TF": "15m",
+      "TECHNICAL_DC_TARGET_TF": "15m",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
     },
     "gain_pct": 0.7244633394064429,
     "baseline_gain": 0.0,
     "bh": -9.754795675772023,
     "source": "pilot_v14:ADAUSDC_SHORT_v14_progress.json",
-    "provenance": "BEST 2 keys final_gain 0.72%"
+    "provenance": "BEST 2 keys final_gain 0.72%",
+    "winning_tag": "4x16_TARGET_15m_buf0.1",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ATOMUSDT_LONG": {
     "overrides": {
@@ -1142,13 +1242,23 @@
       "MOVER_THRESHOLD": 2.5,
       "MIN_HOLD_BARS_BEFORE_EXIT": 40,
       "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF": "1h",
-      "COOLDOWN_LOCKS_FILTER_TF": "OFF"
+      "COOLDOWN_LOCKS_FILTER_TF": "OFF",
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25,
+      "DAYTRADE_DC_TARGET_TF": "1h",
+      "TECHNICAL_DC_TARGET_TF": "1h",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
     },
     "gain_pct": 10.869424945437094,
     "baseline_gain": 8.063635851959324,
     "bh": 22.58513171052406,
     "source": "pilot_v14:ATOMUSDT_LONG_v14_progress.json",
-    "provenance": "BEST 6 keys final_gain 10.87%"
+    "provenance": "BEST 6 keys final_gain 10.87%",
+    "winning_tag": "4x16_COMBO_STOP_15m+TARGET_1h",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ATOMUSDT_SHORT": {
     "winning_tag": "vectorized_opt_ATOMUSDT_1779685106",
@@ -1163,7 +1273,7 @@
     "pool_winner_tag_crypto": "vectorized_baseline_opt"
   },
   "BATUSDT_LONG": {
-    "winning_tag": "crypto_all_BATUSDT_2026-05-03",
+    "winning_tag": "4x16_STOP_1h_buf0.25",
     "wsharpe": 0.3013934666904594,
     "trades": 64,
     "total_trades_combined": 128,
@@ -1198,13 +1308,18 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "1h",
+      "TECHNICAL_DC_STOP_TF": "1h",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 1,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "BATUSDT_SHORT": {
-    "winning_tag": "fotest_baseline_BATUSDT_SHORT_2026-07-08",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": -0.264470049733423,
     "trades": 265,
     "total_trades_combined": 128,
@@ -1239,7 +1354,11 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 1,
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
@@ -1248,7 +1367,8 @@
     "acc_gain_pct": -165.98583078092744,
     "gain_vs_bh": -172.2178752927555,
     "bh_pct": 6.232044511828061,
-    "campaign_ts": 1783499867.418532
+    "campaign_ts": 1783499867.418532,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "C98USDT_LONG": {
     "winning_tag": "crypto_all_C98USDT_2026-05-03",
@@ -1347,13 +1467,19 @@
       "HLR_TOP_MIN_TFS": 1.0,
       "BB_SQUEEZE_EXIT_ENABLED": true,
       "EXIT_TO_REDUCE_ADAPTER_FILTER_TF": "4h",
-      "STDEV_SLOPE_SIZING_4H_MAX": 1
+      "STDEV_SLOPE_SIZING_4H_MAX": 1,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "gain_pct": 56.95715911176077,
     "baseline_gain": 15.966310277219076,
     "bh": 80.71436522601415,
     "source": "pilot_v14:COTIUSDT_LONG_v14_progress.json",
-    "provenance": "BEST 14 keys final_gain 56.96%"
+    "provenance": "BEST 14 keys final_gain 56.96%",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "COTIUSDT_SHORT": {
     "winning_tag": "crypto_all_COTIUSDT_2026-05-03",
@@ -1438,7 +1564,7 @@
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
   },
   "DOTUSDT_SHORT": {
-    "winning_tag": "fotest_baseline_DOTUSDT_SHORT_2026-07-08",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.09775618297277164,
     "trades": 273,
     "total_trades_combined": 671,
@@ -1473,7 +1599,11 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 0,
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
@@ -1489,10 +1619,11 @@
     "acc_gain_pct": 20.184712119185875,
     "gain_vs_bh": 6.246565762135635,
     "bh_pct": 13.93814635705024,
-    "campaign_ts": 1783505128.6937273
+    "campaign_ts": 1783505128.6937273,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ENJUSDT_LONG": {
-    "winning_tag": "crypto_all_ENJUSDT_2026-05-03",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.10234569148060725,
     "trades": 73,
     "total_trades_combined": 146,
@@ -1529,13 +1660,18 @@
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
       "BTC_DIVERGENCE_LB_D": 12,
       "STDEV_BREAKOUT_ENABLED": true,
-      "STDEV_BOUNCE_ENABLED": true
+      "STDEV_BOUNCE_ENABLED": true,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 2,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ENJUSDT_SHORT": {
-    "winning_tag": "crypto_all_ENJUSDT_2026-05-03",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.10234569148060725,
     "trades": 73,
     "total_trades_combined": 146,
@@ -1572,13 +1708,18 @@
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
       "BTC_DIVERGENCE_LB_D": 12,
       "STDEV_BREAKOUT_ENABLED": true,
-      "STDEV_BOUNCE_ENABLED": true
+      "STDEV_BOUNCE_ENABLED": true,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 2,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "GRTUSDT_LONG": {
-    "winning_tag": "crypto_all_GRTUSDT_2026-05-03",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.39509863774268894,
     "trades": 82,
     "total_trades_combined": 165,
@@ -1615,13 +1756,18 @@
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
       "BTC_DIVERGENCE_LB_D": 12,
       "STDEV_BREAKOUT_ENABLED": true,
-      "STDEV_BOUNCE_ENABLED": false
+      "STDEV_BOUNCE_ENABLED": false,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 2,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "GRTUSDT_SHORT": {
-    "winning_tag": "fotest_baseline_GRTUSDT_SHORT_2026-07-08",
+    "winning_tag": "4x16_COMBO_STOP_15m+TARGET_1h",
     "wsharpe": -0.10622598846485387,
     "trades": 307,
     "total_trades_combined": 165,
@@ -1658,7 +1804,15 @@
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
       "BTC_DIVERGENCE_LB_D": 12,
       "STDEV_BREAKOUT_ENABLED": true,
-      "STDEV_BOUNCE_ENABLED": false
+      "STDEV_BOUNCE_ENABLED": false,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25,
+      "DAYTRADE_DC_TARGET_TF": "1h",
+      "TECHNICAL_DC_TARGET_TF": "1h",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
     },
     "_delta_params": 2,
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
@@ -1667,10 +1821,11 @@
     "acc_gain_pct": -21.33759371194005,
     "gain_vs_bh": -31.747850372018682,
     "bh_pct": 10.410256660078632,
-    "campaign_ts": 1783502405.3298998
+    "campaign_ts": 1783502405.3298998,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "HOTUSDT_LONG": {
-    "winning_tag": "crypto_all_HOTUSDT_2026-05-03",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.2889141305115729,
     "trades": 88,
     "total_trades_combined": 176,
@@ -1707,13 +1862,18 @@
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
       "BTC_DIVERGENCE_LB_D": 12,
       "STDEV_BREAKOUT_ENABLED": true,
-      "STDEV_BOUNCE_ENABLED": false
+      "STDEV_BOUNCE_ENABLED": false,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 2,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "HOTUSDT_SHORT": {
-    "winning_tag": "fotest_baseline_HOTUSDT_SHORT_2026-07-08",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": -0.11144950529725169,
     "trades": 328,
     "total_trades_combined": 176,
@@ -1750,7 +1910,11 @@
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
       "BTC_DIVERGENCE_LB_D": 12,
       "STDEV_BREAKOUT_ENABLED": true,
-      "STDEV_BOUNCE_ENABLED": false
+      "STDEV_BOUNCE_ENABLED": false,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 2,
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
@@ -1759,7 +1923,8 @@
     "acc_gain_pct": -38.197538900043185,
     "gain_vs_bh": -28.64411758258028,
     "bh_pct": -9.553421317462906,
-    "campaign_ts": 1783502355.1254234
+    "campaign_ts": 1783502355.1254234,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "EGLDUSDT_LONG": {
     "overrides": {
@@ -1767,13 +1932,19 @@
       "LH_HL_FILTER_MODE": "STRICT_2BAR",
       "HA_WICK_QUALITY_SCORE": 15.0,
       "STDEV_SLOPE_SIZING_4H_MAX": 1,
-      "ADX_RANGING_THRESHOLD": "\u00b125%"
+      "ADX_RANGING_THRESHOLD": "\u00b125%",
+      "DAYTRADE_DC_TARGET_TF": "1h",
+      "TECHNICAL_DC_TARGET_TF": "1h",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
     },
     "gain_pct": 45.274794558975564,
     "baseline_gain": 24.134124129428685,
     "bh": 79.17595140650589,
     "source": "pilot_v14:EGLDUSDT_LONG_v14_progress.json",
-    "provenance": "BEST 5 keys final_gain 45.27%"
+    "provenance": "BEST 5 keys final_gain 45.27%",
+    "winning_tag": "4x16_TARGET_1h_buf0.1",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "EGLDUSDT_SHORT": {
     "winning_tag": "fotest_baseline_EGLDUSDT_SHORT_2026-07-08",
@@ -1913,16 +2084,26 @@
       "EMA_BLANKET_FILTER_MIN_TFS": 1.0,
       "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF": "15m",
       "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": 8,
-      "HTF_DIRECTION_GATE_ENABLED": true
+      "HTF_DIRECTION_GATE_ENABLED": true,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25,
+      "DAYTRADE_DC_TARGET_TF": "1h",
+      "TECHNICAL_DC_TARGET_TF": "1h",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
     },
     "gain_pct": 13.735409229499767,
     "baseline_gain": 2.549217706039831,
     "bh": 17.358044681783593,
     "source": "pilot_v14:IOTAUSDT_LONG_v14_progress.json",
-    "provenance": "BEST 71 keys final_gain 13.74%"
+    "provenance": "BEST 71 keys final_gain 13.74%",
+    "winning_tag": "4x16_COMBO_STOP_15m+TARGET_1h",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "IOTAUSDT_SHORT": {
-    "winning_tag": "fotest_baseline_IOTAUSDT_SHORT_2026-07-08",
+    "winning_tag": "4x16_TARGET_15m_buf0.1",
     "wsharpe": -0.03080361811319724,
     "trades": 308,
     "total_trades_combined": 145,
@@ -1959,7 +2140,11 @@
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
       "BTC_DIVERGENCE_LB_D": 12,
       "STDEV_BREAKOUT_ENABLED": true,
-      "STDEV_BOUNCE_ENABLED": false
+      "STDEV_BOUNCE_ENABLED": false,
+      "DAYTRADE_DC_TARGET_TF": "15m",
+      "TECHNICAL_DC_TARGET_TF": "15m",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
     },
     "_delta_params": 2,
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
@@ -1977,10 +2162,11 @@
     "acc_gain_pct": -24.50225620429915,
     "gain_vs_bh": -45.85893034328427,
     "bh_pct": 21.35667413898512,
-    "campaign_ts": 1783503747.0827153
+    "campaign_ts": 1783503747.0827153,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "KAVAUSDT_LONG": {
-    "winning_tag": "crypto_all_KAVAUSDT_2026-05-03",
+    "winning_tag": "4x16_STOP_3m_buf0.25",
     "wsharpe": 0.3625769425245005,
     "trades": 123,
     "total_trades_combined": 246,
@@ -2017,13 +2203,18 @@
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
       "BTC_DIVERGENCE_LB_D": 12,
       "STDEV_BREAKOUT_ENABLED": true,
-      "STDEV_BOUNCE_ENABLED": false
+      "STDEV_BOUNCE_ENABLED": false,
+      "DAYTRADE_DC_STOP_TF": "3m",
+      "TECHNICAL_DC_STOP_TF": "3m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 2,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "KAVAUSDT_SHORT": {
-    "winning_tag": "crypto_all_KAVAUSDT_2026-05-03",
+    "winning_tag": "4x16_STOP_1h_buf0.25",
     "wsharpe": 0.3625769425245005,
     "trades": 123,
     "total_trades_combined": 246,
@@ -2060,10 +2251,15 @@
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
       "BTC_DIVERGENCE_LB_D": 12,
       "STDEV_BREAKOUT_ENABLED": true,
-      "STDEV_BOUNCE_ENABLED": false
+      "STDEV_BOUNCE_ENABLED": false,
+      "DAYTRADE_DC_STOP_TF": "1h",
+      "TECHNICAL_DC_STOP_TF": "1h",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 2,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "KSMUSDT_LONG": {
     "overrides": {
@@ -2250,7 +2446,7 @@
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
   },
   "IOTXUSDT_LONG": {
-    "winning_tag": "crypto_all_IOTXUSDT_2026-05-02",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.22965964368231911,
     "trades": 140,
     "total_trades_combined": 281,
@@ -2285,13 +2481,18 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 0,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "IOTXUSDT_SHORT": {
-    "winning_tag": "fotest_baseline_IOTXUSDT_SHORT_2026-07-08",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.23332330654288777,
     "trades": 290,
     "total_trades_combined": 281,
@@ -2326,7 +2527,11 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 0,
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
@@ -2335,7 +2540,8 @@
     "acc_gain_pct": 78.2608684724109,
     "gain_vs_bh": 60.65982088632125,
     "bh_pct": 17.601047586089656,
-    "campaign_ts": 1783496233.314135
+    "campaign_ts": 1783496233.314135,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "MANAUSDT_LONG": {
     "overrides": {
@@ -2351,7 +2557,7 @@
     "provenance": "BEST 4 keys final_gain 8.47%"
   },
   "MANAUSDT_SHORT": {
-    "winning_tag": "fotest_baseline_MANAUSDT_SHORT_2026-07-08",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": -0.079699265107038,
     "trades": 294,
     "total_trades_combined": 302,
@@ -2386,7 +2592,11 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 0,
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
@@ -2402,7 +2612,8 @@
     "acc_gain_pct": -41.437647666034934,
     "gain_vs_bh": -40.540782634249126,
     "bh_pct": -0.8968650317858096,
-    "campaign_ts": 1783502430.6967237
+    "campaign_ts": 1783502430.6967237,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "NKNUSDT_LONG": {
     "winning_tag": "crypto_all_NKNUSDT_2026-05-03",
@@ -2629,16 +2840,26 @@
       "SHORT_ENABLED": true,
       "WT_15M_BOUNCE_OPEN_ENABLED": true,
       "WT_15M_BOUNCE_BB_MIN": 0.1,
-      "STDEV_SLOPE_SIZING_MODE": "bottom_to_top"
+      "STDEV_SLOPE_SIZING_MODE": "bottom_to_top",
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25,
+      "DAYTRADE_DC_TARGET_TF": "1h",
+      "TECHNICAL_DC_TARGET_TF": "1h",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
     },
     "gain_pct": 5.531648268454801,
     "baseline_gain": 1.5423244919763066,
     "bh": -3.466080407808296,
     "source": "pilot_v14:RLCUSDT_SHORT_v14_progress.json",
-    "provenance": "BEST 66 keys final_gain 5.53%"
+    "provenance": "BEST 66 keys final_gain 5.53%",
+    "winning_tag": "4x16_COMBO_STOP_15m+TARGET_1h",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "RVNUSDT_LONG": {
-    "winning_tag": "crypto_all_RVNUSDT_2026-05-03",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.2975658191821433,
     "trades": 326,
     "total_trades_combined": 653,
@@ -2673,13 +2894,18 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 0,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "RVNUSDT_SHORT": {
-    "winning_tag": "crypto_all_RVNUSDT_2026-05-03",
+    "winning_tag": "4x16_STOP_3m_buf0.25",
     "wsharpe": 0.2975658191821433,
     "trades": 326,
     "total_trades_combined": 653,
@@ -2714,13 +2940,18 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "3m",
+      "TECHNICAL_DC_STOP_TF": "3m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 0,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "SKLUSDT_LONG": {
-    "winning_tag": "crypto_all_SKLUSDT_2026-05-03",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.3031075788603003,
     "trades": 193,
     "total_trades_combined": 386,
@@ -2755,13 +2986,18 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 0,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "SKLUSDT_SHORT": {
-    "winning_tag": "fotest_baseline_SKLUSDT_SHORT_2026-07-08",
+    "winning_tag": "4x16_COMBO_STOP_15m+TARGET_1h",
     "wsharpe": -0.04063889017104422,
     "trades": 178,
     "total_trades_combined": 386,
@@ -2796,7 +3032,15 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25,
+      "DAYTRADE_DC_TARGET_TF": "1h",
+      "TECHNICAL_DC_TARGET_TF": "1h",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
     },
     "_delta_params": 0,
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
@@ -2805,7 +3049,8 @@
     "acc_gain_pct": -7.06105947060413,
     "gain_vs_bh": -21.59449264986513,
     "bh_pct": 14.533433179261001,
-    "campaign_ts": 1783503726.7826786
+    "campaign_ts": 1783503726.7826786,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "SNXUSDT_LONG": {
     "overrides": {
@@ -2824,7 +3069,7 @@
     "provenance": "BEST 7 keys final_gain 4.74%"
   },
   "SNXUSDT_SHORT": {
-    "winning_tag": "fotest_baseline_SNXUSDT_SHORT_2026-07-08",
+    "winning_tag": "4x16_STOP_1h_buf0.25",
     "wsharpe": -0.09084105857185856,
     "trades": 306,
     "total_trades_combined": 173,
@@ -2859,7 +3104,11 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "1h",
+      "TECHNICAL_DC_STOP_TF": "1h",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 1,
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
@@ -2868,10 +3117,11 @@
     "acc_gain_pct": -65.26476328484364,
     "gain_vs_bh": -77.59252517533875,
     "bh_pct": 12.327761890495115,
-    "campaign_ts": 1783502445.8992538
+    "campaign_ts": 1783502445.8992538,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "SUSHIUSDT_LONG": {
-    "winning_tag": "crypto_all_SUSHIUSDT_2026-05-03",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.3467045127130338,
     "trades": 78,
     "total_trades_combined": 156,
@@ -2908,13 +3158,18 @@
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
       "BTC_DIVERGENCE_LB_D": 12,
       "STDEV_BREAKOUT_ENABLED": true,
-      "STDEV_BOUNCE_ENABLED": false
+      "STDEV_BOUNCE_ENABLED": false,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 2,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "SUSHIUSDT_SHORT": {
-    "winning_tag": "fotest_baseline_SUSHIUSDT_SHORT_2026-07-08",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": -0.23868628049633422,
     "trades": 289,
     "total_trades_combined": 156,
@@ -2951,7 +3206,11 @@
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
       "BTC_DIVERGENCE_LB_D": 12,
       "STDEV_BREAKOUT_ENABLED": true,
-      "STDEV_BOUNCE_ENABLED": false
+      "STDEV_BOUNCE_ENABLED": false,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 2,
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
@@ -2960,10 +3219,11 @@
     "acc_gain_pct": -97.22348540855423,
     "gain_vs_bh": -109.73043797208813,
     "bh_pct": 12.506952563533902,
-    "campaign_ts": 1783499912.966545
+    "campaign_ts": 1783499912.966545,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "THETAUSDT_LONG": {
-    "winning_tag": "crypto_all_THETAUSDT_2026-05-03",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.41102831353902,
     "trades": 119,
     "total_trades_combined": 238,
@@ -2998,10 +3258,15 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 1,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "THETAUSDT_SHORT": {
     "winning_tag": "fotest_baseline_THETAUSDT_SHORT_2026-07-08",
@@ -3520,7 +3785,7 @@
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
   },
   "BANDUSDT_LONG": {
-    "winning_tag": "crypto_all_BANDUSDT_2026-05-02",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.24550960218538842,
     "trades": 255,
     "total_trades_combined": 511,
@@ -3555,13 +3820,18 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 0,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "BANDUSDT_SHORT": {
-    "winning_tag": "fotest_baseline_BANDUSDT_SHORT_2026-07-08",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": -0.5609607724964079,
     "trades": 236,
     "total_trades_combined": 511,
@@ -3596,7 +3866,11 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 0,
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
@@ -3605,10 +3879,11 @@
     "acc_gain_pct": -452.81148441576005,
     "gain_vs_bh": -450.8239861177521,
     "bh_pct": -1.9874982980079503,
-    "campaign_ts": 1783499933.1064513
+    "campaign_ts": 1783499933.1064513,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "BELUSDT_LONG": {
-    "winning_tag": "crypto_all_BELUSDT_2026-05-02",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.1761771000457619,
     "trades": 313,
     "total_trades_combined": 626,
@@ -3643,13 +3918,18 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 0,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "BELUSDT_SHORT": {
-    "winning_tag": "crypto_all_BELUSDT_2026-05-02",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.1761771000457619,
     "trades": 313,
     "total_trades_combined": 626,
@@ -3684,13 +3964,18 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 0,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "CELRUSDT_LONG": {
-    "winning_tag": "crypto_all_CELRUSDT_2026-05-02",
+    "winning_tag": "4x16_COMBO_STOP_15m+TARGET_1h",
     "wsharpe": 0.31972140146081635,
     "trades": 80,
     "total_trades_combined": 161,
@@ -3727,13 +4012,22 @@
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
       "BTC_DIVERGENCE_LB_D": 12,
       "STDEV_BREAKOUT_ENABLED": true,
-      "STDEV_BOUNCE_ENABLED": false
+      "STDEV_BOUNCE_ENABLED": false,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25,
+      "DAYTRADE_DC_TARGET_TF": "1h",
+      "TECHNICAL_DC_TARGET_TF": "1h",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
     },
     "_delta_params": 2,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "CELRUSDT_SHORT": {
-    "winning_tag": "crypto_all_CELRUSDT_2026-05-02",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.31972140146081635,
     "trades": 80,
     "total_trades_combined": 161,
@@ -3770,10 +4064,15 @@
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
       "BTC_DIVERGENCE_LB_D": 12,
       "STDEV_BREAKOUT_ENABLED": true,
-      "STDEV_BOUNCE_ENABLED": false
+      "STDEV_BOUNCE_ENABLED": false,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 2,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "COMPUSDT_LONG": {
     "overrides": {
@@ -3789,16 +4088,22 @@
       "FUNDING_GATE_FILTER_TF": "OFF",
       "EMA_BLANKET_FILTER_MIN_TFS": 2.0,
       "EMA_BLANKET_FILTER_FILTER_TF": "4h",
-      "STDEV_SLOPE_SIZING_4H_MAX": 1
+      "STDEV_SLOPE_SIZING_4H_MAX": 1,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "gain_pct": 17.707947975270127,
     "baseline_gain": 3.1903098389948212,
     "bh": 22.52914648670851,
     "source": "pilot_v14:COMPUSDT_LONG_v14_progress.json",
-    "provenance": "BEST 13 keys final_gain 17.71%"
+    "provenance": "BEST 13 keys final_gain 17.71%",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "COMPUSDT_SHORT": {
-    "winning_tag": "fotest_baseline_COMPUSDT_SHORT_2026-07-08",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": -0.07825584250540314,
     "trades": 275,
     "total_trades_combined": 526,
@@ -3833,7 +4138,11 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 0,
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
@@ -3861,7 +4170,8 @@
     "reopt_changed_params": {},
     "reopt_vec_baseline_sharpe": -0.1182,
     "reopt_ts": 1783612529.2412174,
-    "reopt_date": "2026-07-09T15:55:29Z"
+    "reopt_date": "2026-07-09T15:55:29Z",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "QTUMUSDT_LONG": {
     "overrides": {
@@ -3924,7 +4234,7 @@
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
   },
   "SANDUSDT_LONG": {
-    "winning_tag": "crypto_all_SANDUSDT_2026-05-03",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.3513249797619566,
     "trades": 91,
     "total_trades_combined": 183,
@@ -3959,10 +4269,15 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 1,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "SANDUSDT_SHORT": {
     "overrides": {
@@ -3970,16 +4285,22 @@
       "FG_GREED_THRESHOLD": 56.25,
       "OI_CONFIRM_MIN_CHANGE_PCT": 1.0,
       "BANDAID_OFF_LOSER_RECOVER_PCT": 2.0,
-      "ADX_RANGING_THRESHOLD": 15.0
+      "ADX_RANGING_THRESHOLD": 15.0,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "gain_pct": 14.014704558701235,
     "baseline_gain": 13.193129644179805,
     "bh": 12.680260240519267,
     "source": "pilot_v14:SANDUSDT_SHORT_v14_progress.json",
-    "provenance": "BEST 5 keys final_gain 14.01%"
+    "provenance": "BEST 5 keys final_gain 14.01%",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ANKRUSDT_LONG": {
-    "winning_tag": "crypto_all_ANKRUSDT_2026-05-03",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.30199287616100806,
     "trades": 52,
     "total_trades_combined": 105,
@@ -4014,13 +4335,18 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 0,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ANKRUSDT_SHORT": {
-    "winning_tag": "crypto_all_ANKRUSDT_2026-05-03",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.30199287616100806,
     "trades": 52,
     "total_trades_combined": 105,
@@ -4055,23 +4381,38 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "_delta_params": 0,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ETCUSDT_LONG": {
     "overrides": {
       "UNIVERSAL_NOLOSS_GATE": true,
       "MTS_BOTTOM_STRONG_THRESHOLD": 40.0,
       "MOVER_THRESHOLD": 5.0,
-      "STDEV_SLOPE_SIZING_4H_MAX": 1
+      "STDEV_SLOPE_SIZING_4H_MAX": 1,
+      "DAYTRADE_DC_STOP_TF": "1h",
+      "TECHNICAL_DC_STOP_TF": "1h",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25,
+      "DAYTRADE_DC_TARGET_TF": "1h",
+      "TECHNICAL_DC_TARGET_TF": "1h",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
     },
     "gain_pct": 18.349735284195873,
     "baseline_gain": -1.122827802063312,
     "bh": 18.388819067256204,
     "source": "pilot_v14:ETCUSDT_LONG_v14_progress.json",
-    "provenance": "BEST 4 keys final_gain 18.35%"
+    "provenance": "BEST 4 keys final_gain 18.35%",
+    "winning_tag": "4x16_COMBO_STOP_1h+TARGET_1h",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ETCUSDT_SHORT": {
     "winning_tag": "crypto_all_ETCUSDT_2026-05-03",
@@ -4158,7 +4499,7 @@
     "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
   },
   "GTCUSDT_SHORT": {
-    "winning_tag": "crypto_all_GTCUSDT_2026-05-03",
+    "winning_tag": "4x16_COMBO_STOP_15m+TARGET_1h",
     "wsharpe": 0.18314662661664102,
     "trades": 369,
     "total_trades_combined": 738,
@@ -4193,26 +4534,40 @@
       "OI_CONFIRM_MIN_CHANGE_PCT": 0.25,
       "BTC_FIB_LOOKBACK_Y": 10,
       "BTC_FIB_RECOMPUTE_ON_NEW_HL": false,
-      "BTC_DIVERGENCE_LB_D": 12
+      "BTC_DIVERGENCE_LB_D": 12,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25,
+      "DAYTRADE_DC_TARGET_TF": "1h",
+      "TECHNICAL_DC_TARGET_TF": "1h",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
     },
     "_delta_params": 0,
-    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508"
+    "pool_winner_tag_crypto": "iter14_w24328_crypto_20260508",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "1000BONKUSDC_LONG": {
-    "winning_tag": "vectorized_opt_1000BONKUSDC_1779680209",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.28201958537101746,
     "trades": 161,
     "total_trades_combined": 161,
     "side": "LONG",
     "overrides": {
       "REVERSE_ON_EXIT_ENABLED": true,
-      "FOLLOW_THROUGH_REENTRY_ENABLED": false
+      "FOLLOW_THROUGH_REENTRY_ENABLED": false,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "pool_winner_tag_crypto": "vectorized_baseline_opt",
     "vec_baseline_trades": 0,
     "vec_baseline_tag": "NO_TRADES",
     "vec_baseline_ts": 1783505601.4033835,
-    "vec_baseline_date": "2026-07-08"
+    "vec_baseline_date": "2026-07-08",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "1000BONKUSDC_SHORT": {
     "winning_tag": "fotest_baseline_1000BONKUSDC_SHORT_2026-07-08",
@@ -4246,14 +4601,18 @@
     "pool_winner_tag_crypto": "vectorized_baseline_opt"
   },
   "1000FLOKIUSDT_SHORT": {
-    "winning_tag": "vectorized_opt_1000FLOKIUSDT_1779680216",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.24431747198104858,
     "trades": 0,
     "total_trades_combined": 195,
     "side": "SHORT",
     "overrides": {
       "REVERSE_ON_EXIT_ENABLED": false,
-      "FOLLOW_THROUGH_REENTRY_ENABLED": true
+      "FOLLOW_THROUGH_REENTRY_ENABLED": true,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "pool_winner_tag_crypto": "vectorized_baseline_opt",
     "sample_tag": "NO_TRADES",
@@ -4264,17 +4623,22 @@
     "vec_baseline_acc_gain_pct": 11.3962,
     "vec_baseline_gain_vs_bh": -15.5029,
     "vec_baseline_ts": 1783506084.6549168,
-    "vec_baseline_date": "2026-07-08"
+    "vec_baseline_date": "2026-07-08",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "1000LUNCUSDT_LONG": {
-    "winning_tag": "fotest_baseline_1000LUNCUSDT_LONG_2026-07-08",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.4110438674718596,
     "trades": 21,
     "total_trades_combined": 235,
     "side": "LONG",
     "overrides": {
       "REVERSE_ON_EXIT_ENABLED": false,
-      "FOLLOW_THROUGH_REENTRY_ENABLED": true
+      "FOLLOW_THROUGH_REENTRY_ENABLED": true,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "pool_winner_tag_crypto": "vectorized_baseline_opt",
     "sample_tag": "FOTEST_PERSYM_BASELINE_DIAGNOSTIC",
@@ -4287,31 +4651,42 @@
     "baseline_pool": 0.4110438674718596,
     "acc_gain_pct": 4.386742955114867,
     "gain_vs_bh": 17.53227975095603,
-    "bh_pct": -13.145536795841162
+    "bh_pct": -13.145536795841162,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "1000LUNCUSDT_SHORT": {
-    "winning_tag": "vectorized_opt_1000LUNCUSDT_1779680228",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.2385532557964325,
     "trades": 235,
     "total_trades_combined": 235,
     "side": "SHORT",
     "overrides": {
       "REVERSE_ON_EXIT_ENABLED": false,
-      "FOLLOW_THROUGH_REENTRY_ENABLED": true
+      "FOLLOW_THROUGH_REENTRY_ENABLED": true,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
-    "pool_winner_tag_crypto": "vectorized_baseline_opt"
+    "pool_winner_tag_crypto": "vectorized_baseline_opt",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "1000PEPEUSDC_LONG": {
-    "winning_tag": "vectorized_opt_1000PEPEUSDC_1779680240",
+    "winning_tag": "4x16_STOP_1h_buf0.25",
     "wsharpe": 0.2912224531173706,
     "trades": 156,
     "total_trades_combined": 156,
     "side": "LONG",
     "overrides": {
       "REVERSE_ON_EXIT_ENABLED": true,
-      "FOLLOW_THROUGH_REENTRY_ENABLED": false
+      "FOLLOW_THROUGH_REENTRY_ENABLED": false,
+      "DAYTRADE_DC_STOP_TF": "1h",
+      "TECHNICAL_DC_STOP_TF": "1h",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
-    "pool_winner_tag_crypto": "vectorized_baseline_opt"
+    "pool_winner_tag_crypto": "vectorized_baseline_opt",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "1000PEPEUSDC_SHORT": {
     "winning_tag": "fotest_baseline_1000PEPEUSDC_SHORT_2026-07-08",
@@ -4333,52 +4708,75 @@
     "bh_pct": 6.140738976423843
   },
   "ACEUSDT_LONG": {
-    "winning_tag": "vectorized_opt_ACEUSDT_1779681486",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.15443123877048492,
     "trades": 151,
     "total_trades_combined": 151,
     "side": "LONG",
     "overrides": {
       "REVERSE_ON_EXIT_ENABLED": true,
-      "FOLLOW_THROUGH_REENTRY_ENABLED": false
+      "FOLLOW_THROUGH_REENTRY_ENABLED": false,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
-    "pool_winner_tag_crypto": "vectorized_baseline_opt"
+    "pool_winner_tag_crypto": "vectorized_baseline_opt",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ACEUSDT_SHORT": {
-    "winning_tag": "vectorized_opt_ACEUSDT_1779681486",
+    "winning_tag": "4x16_COMBO_STOP_15m+TARGET_3m",
     "wsharpe": 0.15443123877048492,
     "trades": 0,
     "total_trades_combined": 151,
     "side": "SHORT",
     "overrides": {
       "REVERSE_ON_EXIT_ENABLED": true,
-      "FOLLOW_THROUGH_REENTRY_ENABLED": false
+      "FOLLOW_THROUGH_REENTRY_ENABLED": false,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25,
+      "DAYTRADE_DC_TARGET_TF": "3m",
+      "TECHNICAL_DC_TARGET_TF": "3m",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
     },
     "pool_winner_tag_crypto": "vectorized_baseline_opt",
     "sample_tag": "NO_TRADES",
-    "campaign_ts": 1783459255.229502
+    "campaign_ts": 1783459255.229502,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ARPAUSDT_LONG": {
-    "winning_tag": "vectorized_opt_ARPAUSDT_1779684000",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": 0.3207906484603882,
     "trades": 153,
     "total_trades_combined": 153,
     "side": "LONG",
     "overrides": {
       "REVERSE_ON_EXIT_ENABLED": false,
-      "FOLLOW_THROUGH_REENTRY_ENABLED": true
+      "FOLLOW_THROUGH_REENTRY_ENABLED": true,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
-    "pool_winner_tag_crypto": "vectorized_baseline_opt"
+    "pool_winner_tag_crypto": "vectorized_baseline_opt",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ARPAUSDT_SHORT": {
-    "winning_tag": "fotest_baseline_ARPAUSDT_SHORT_2026-07-08",
+    "winning_tag": "4x16_STOP_1h_buf0.25",
     "wsharpe": -0.1040461549218151,
     "trades": 244,
     "total_trades_combined": 153,
     "side": "SHORT",
     "overrides": {
       "REVERSE_ON_EXIT_ENABLED": false,
-      "FOLLOW_THROUGH_REENTRY_ENABLED": true
+      "FOLLOW_THROUGH_REENTRY_ENABLED": true,
+      "DAYTRADE_DC_STOP_TF": "1h",
+      "TECHNICAL_DC_STOP_TF": "1h",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "pool_winner_tag_crypto": "vectorized_baseline_opt",
     "vec_baseline_trades": 12,
@@ -4394,7 +4792,8 @@
     "acc_gain_pct": -19.875246650305954,
     "gain_vs_bh": -14.17499157774402,
     "bh_pct": -5.700255072561933,
-    "campaign_ts": 1783502471.1029873
+    "campaign_ts": 1783502471.1029873,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ARUSDT_LONG": {
     "overrides": {
@@ -4439,23 +4838,37 @@
       "EXIT_TO_REDUCE_ADAPTER_FILTER_TF": "D",
       "EXIT_R1_R2_FILTER_TF": "4h",
       "BREAKEVEN_GAIN_EROSION_MIN_GAIN": 25.0,
-      "BREAKEVEN_GAIN_EROSION_FILTER_TF": "D"
+      "BREAKEVEN_GAIN_EROSION_FILTER_TF": "D",
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25,
+      "DAYTRADE_DC_TARGET_TF": "1h",
+      "TECHNICAL_DC_TARGET_TF": "1h",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
     },
     "gain_pct": 31.940047145479124,
     "baseline_gain": 16.32499275627424,
     "bh": 44.223324796480945,
     "source": "pilot_v14:ARUSDT_LONG_v14_progress.json",
-    "provenance": "BEST 42 keys final_gain 31.94%"
+    "provenance": "BEST 42 keys final_gain 31.94%",
+    "winning_tag": "4x16_COMBO_STOP_15m+TARGET_1h",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ARUSDT_SHORT": {
-    "winning_tag": "fotest_baseline_ARUSDT_SHORT_2026-07-08",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "wsharpe": -0.04338929008836583,
     "trades": 180,
     "total_trades_combined": 162,
     "side": "SHORT",
     "overrides": {
       "REVERSE_ON_EXIT_ENABLED": true,
-      "FOLLOW_THROUGH_REENTRY_ENABLED": false
+      "FOLLOW_THROUGH_REENTRY_ENABLED": false,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "pool_winner_tag_crypto": "vectorized_baseline_opt",
     "sample_tag": "FOTEST_PERSYM_BASELINE",
@@ -4464,7 +4877,8 @@
     "acc_gain_pct": -10.12705063232091,
     "gain_vs_bh": -14.871324928196394,
     "bh_pct": 4.744274295875483,
-    "campaign_ts": 1783503721.6859298
+    "campaign_ts": 1783503721.6859298,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "SKYUSDT_LONG": {
     "side": "LONG",
@@ -4479,14 +4893,26 @@
     "wsharpe": 0.0
   },
   "1MBABYDOGEUSDT_SHORT": {
-    "overrides": {},
+    "overrides": {
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
+    },
     "side": "SHORT",
     "trades": 0,
     "sample_tag": "NO_TRADES",
-    "campaign_ts": 1783476222.7189813
+    "campaign_ts": 1783476222.7189813,
+    "winning_tag": "4x16_STOP_15m_buf0.25",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ACTUSDT_SHORT": {
-    "overrides": {},
+    "overrides": {
+      "DAYTRADE_DC_STOP_TF": "3m",
+      "TECHNICAL_DC_STOP_TF": "3m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
+    },
     "side": "SHORT",
     "vec_baseline_trades": 26,
     "vec_baseline_tag": "VEC_BASELINE_DIAGNOSTIC",
@@ -4500,11 +4926,12 @@
     "wsharpe": -0.2214156474944674,
     "pool_sharpe": -0.2214156474944674,
     "baseline_pool": -0.2214156474944674,
-    "winning_tag": "fotest_baseline_ACTUSDT_SHORT_2026-07-08",
+    "winning_tag": "4x16_STOP_3m_buf0.25",
     "acc_gain_pct": -598.6654295224025,
     "gain_vs_bh": -606.2395253829957,
     "bh_pct": 7.574095860593177,
-    "campaign_ts": 1783499913.004659
+    "campaign_ts": 1783499913.004659,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ARBUSDC_SHORT": {
     "overrides": {},
@@ -4521,7 +4948,12 @@
     "campaign_ts": 1783470196.6757603
   },
   "ALTUSDT_SHORT": {
-    "overrides": {},
+    "overrides": {
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
+    },
     "side": "SHORT",
     "vec_baseline_trades": 17,
     "vec_baseline_tag": "VEC_BASELINE_DIAGNOSTIC",
@@ -4532,10 +4964,17 @@
     "vec_baseline_date": "2026-07-08",
     "trades": 0,
     "sample_tag": "NO_TRADES",
-    "campaign_ts": 1783470186.6038227
+    "campaign_ts": 1783470186.6038227,
+    "winning_tag": "4x16_STOP_15m_buf0.25",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "API3USDT_SHORT": {
-    "overrides": {},
+    "overrides": {
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
+    },
     "side": "SHORT",
     "vec_baseline_trades": 25,
     "vec_baseline_tag": "VEC_BASELINE_DIAGNOSTIC",
@@ -4549,11 +4988,12 @@
     "wsharpe": 0.03283108258670481,
     "pool_sharpe": 0.03283108258670481,
     "baseline_pool": 0.03283108258670481,
-    "winning_tag": "fotest_baseline_API3USDT_SHORT_2026-07-08",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "acc_gain_pct": 6.359325971163242,
     "gain_vs_bh": -8.47645918165494,
     "bh_pct": 14.835785152818183,
-    "campaign_ts": 1783504983.152937
+    "campaign_ts": 1783504983.152937,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "AAVEUSDC_LONG": {
     "overrides": {
@@ -4570,16 +5010,27 @@
       "SCALP_V3_K_OB_EXIT_K15M_LO": 0.0,
       "EXIT_R1_R2_FILTER_TF": "D",
       "BREAKEVEN_GAIN_EROSION_MIN_GAIN": 25.0,
-      "WT_PERCENTILE_EXIT_OS_D": 0.5
+      "WT_PERCENTILE_EXIT_OS_D": 0.5,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "gain_pct": 25.995497960622377,
     "baseline_gain": 0.0,
     "bh": 35.084197308892044,
     "source": "pilot_v14:AAVEUSDC_LONG_v14_progress.json",
-    "provenance": "BEST 14 keys final_gain 26.00%"
+    "provenance": "BEST 14 keys final_gain 26.00%",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ARKMUSDT_SHORT": {
-    "overrides": {},
+    "overrides": {
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
+    },
     "side": "SHORT",
     "vec_baseline_trades": 15,
     "vec_baseline_tag": "VEC_BASELINE_DIAGNOSTIC",
@@ -4590,10 +5041,17 @@
     "vec_baseline_date": "2026-07-08",
     "trades": 0,
     "sample_tag": "NO_TRADES",
-    "campaign_ts": 1783470201.7073421
+    "campaign_ts": 1783470201.7073421,
+    "winning_tag": "4x16_STOP_15m_buf0.25",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "APEUSDT_LONG": {
-    "overrides": {},
+    "overrides": {
+      "DAYTRADE_DC_STOP_TF": "3m",
+      "TECHNICAL_DC_STOP_TF": "3m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
+    },
     "side": "LONG",
     "vec_baseline_trades": 2,
     "vec_baseline_tag": "VEC_BASELINE_DIAGNOSTIC",
@@ -4601,18 +5059,26 @@
     "vec_baseline_acc_gain_pct": 6.9101,
     "vec_baseline_gain_vs_bh": -35.5112,
     "vec_baseline_ts": 1783506104.3590858,
-    "vec_baseline_date": "2026-07-08"
+    "vec_baseline_date": "2026-07-08",
+    "winning_tag": "4x16_STOP_3m_buf0.25",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ASTERUSDT_LONG": {
     "overrides": {
       "LONG_ENABLED": true,
-      "RECENT_REDUCTION_GUARD_WINDOW_S": 1350.0
+      "RECENT_REDUCTION_GUARD_WINDOW_S": 1350.0,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "gain_pct": 1.9233357170996306,
     "baseline_gain": 1.0314790197945052,
     "bh": 15.1854839454676,
     "source": "pilot_v14:ASTERUSDT_LONG_v14_progress.json",
-    "provenance": "BEST 2 keys final_gain 1.92%"
+    "provenance": "BEST 2 keys final_gain 1.92%",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "BEATUSDT_LONG": {
     "overrides": {},
@@ -4657,7 +5123,12 @@
     "campaign_ts": 1783499867.2748828
   },
   "BLURUSDT_SHORT": {
-    "overrides": {},
+    "overrides": {
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
+    },
     "side": "SHORT",
     "vec_baseline_trades": 20,
     "vec_baseline_tag": "VEC_BASELINE_DIAGNOSTIC",
@@ -4665,10 +5136,17 @@
     "vec_baseline_acc_gain_pct": 15.7257,
     "vec_baseline_gain_vs_bh": -12.067,
     "vec_baseline_ts": 1783506045.80972,
-    "vec_baseline_date": "2026-07-08"
+    "vec_baseline_date": "2026-07-08",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "BIOUSDC_SHORT": {
-    "overrides": {},
+    "overrides": {
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
+    },
     "side": "SHORT",
     "vec_baseline_trades": 5,
     "vec_baseline_tag": "VEC_BASELINE_DIAGNOSTIC",
@@ -4691,7 +5169,9 @@
     "reopt_changed_params": {},
     "reopt_vec_baseline_sharpe": -0.4124,
     "reopt_ts": 1783661394.8371196,
-    "reopt_date": "2026-07-10T05:29:54Z"
+    "reopt_date": "2026-07-10T05:29:54Z",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "BSVUSDT_LONG": {
     "overrides": {},
@@ -4952,13 +5432,19 @@
       "NOLOSS_BYPASS_WT5OF5_FILTER_TF": "OFF",
       "FG_GREED_THRESHOLD": 93.75,
       "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO": 0.9,
-      "MANDATORY_REENTRY_WT_FILTER_TF_MODE": "15m_only"
+      "MANDATORY_REENTRY_WT_FILTER_TF_MODE": "15m_only",
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "gain_pct": 8.676248231515997,
     "baseline_gain": 7.947201761726939,
     "bh": 44.32342421321346,
     "source": "pilot_v14:HYPEUSDT_LONG_v14_progress.json",
-    "provenance": "BEST 5 keys final_gain 8.68%"
+    "provenance": "BEST 5 keys final_gain 8.68%",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "IDUSDT_LONG": {
     "overrides": {},
@@ -5606,18 +6092,24 @@
     "campaign_ts": 1783499862.1737344
   },
   "AGLDUSDT_SHORT": {
-    "overrides": {},
+    "overrides": {
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
+    },
     "side": "SHORT",
     "trades": 466,
     "sample_tag": "FOTEST_PERSYM_BASELINE",
     "wsharpe": -0.18160571860231323,
     "pool_sharpe": -0.18160571860231323,
     "baseline_pool": -0.18160571860231323,
-    "winning_tag": "fotest_baseline_AGLDUSDT_SHORT_2026-07-08",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "acc_gain_pct": -624.9972373217863,
     "gain_vs_bh": -615.5447429573138,
     "bh_pct": -9.452494364472486,
-    "campaign_ts": 1783501098.5382574
+    "campaign_ts": 1783501098.5382574,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "BEAMXUSDT_SHORT": {
     "overrides": {},
@@ -5648,18 +6140,24 @@
     "campaign_ts": 1783468645.9331794
   },
   "BLURUSDT_LONG": {
-    "overrides": {},
+    "overrides": {
+      "DAYTRADE_DC_STOP_TF": "1h",
+      "TECHNICAL_DC_STOP_TF": "1h",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
+    },
     "side": "LONG",
     "trades": 124,
     "sample_tag": "FOTEST_PERSYM_BASELINE",
     "wsharpe": 0.19004755313154473,
     "pool_sharpe": 0.19004755313154473,
     "baseline_pool": 0.19004755313154473,
-    "winning_tag": "fotest_baseline_BLURUSDT_LONG_2026-07-08",
+    "winning_tag": "4x16_STOP_1h_buf0.25",
     "acc_gain_pct": 80.7403580754946,
     "gain_vs_bh": 57.13548855474339,
     "bh_pct": 23.604869520751205,
-    "campaign_ts": 1783497334.1275887
+    "campaign_ts": 1783497334.1275887,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "AIAUSDT_LONG": {
     "overrides": {
@@ -5674,20 +6172,33 @@
       "EMA_BLANKET_FILTER_FILTER_TF": "1h",
       "EMA_BLANKET_FILTER_ENABLED": false,
       "GR_FILTER_VEC_MIN_TFS": 2.0,
-      "GR_FILTER_VEC_FILTER_TF": "D"
+      "GR_FILTER_VEC_FILTER_TF": "D",
+      "DAYTRADE_DC_STOP_TF": "1h",
+      "TECHNICAL_DC_STOP_TF": "1h",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "gain_pct": 11.846718788897025,
     "baseline_gain": 4.6513595987948895,
     "bh": 5.243656708495234,
     "source": "pilot_v14:AIAUSDT_LONG_v14_progress.json",
-    "provenance": "BEST 12 keys final_gain 11.85%"
+    "provenance": "BEST 12 keys final_gain 11.85%",
+    "winning_tag": "4x16_STOP_1h_buf0.25",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "APEUSDT_SHORT": {
-    "overrides": {},
+    "overrides": {
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
+    },
     "side": "SHORT",
     "trades": 0,
     "sample_tag": "NO_TRADES",
-    "campaign_ts": 1783470191.6485252
+    "campaign_ts": 1783470191.6485252,
+    "winning_tag": "4x16_STOP_15m_buf0.25",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "GASUSDT_SHORT": {
     "overrides": {},
@@ -5704,11 +6215,22 @@
     "campaign_ts": 1783470206.751413
   },
   "AWEUSDT_LONG": {
-    "overrides": {},
+    "overrides": {
+      "DAYTRADE_DC_STOP_TF": "1h",
+      "TECHNICAL_DC_STOP_TF": "1h",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25,
+      "DAYTRADE_DC_TARGET_TF": "1h",
+      "TECHNICAL_DC_TARGET_TF": "1h",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
+    },
     "side": "LONG",
     "trades": 0,
     "sample_tag": "NO_TRADES",
-    "campaign_ts": 1783470216.7830918
+    "campaign_ts": 1783470216.7830918,
+    "winning_tag": "4x16_COMBO_STOP_1h+TARGET_1h",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "ETHFIUSDC_LONG": {
     "overrides": {},
@@ -5739,18 +6261,24 @@
     "campaign_ts": 1783504993.2409778
   },
   "FARTCOINUSDT_SHORT": {
-    "overrides": {},
+    "overrides": {
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
+    },
     "side": "SHORT",
     "trades": 321,
     "sample_tag": "FOTEST_PERSYM_BASELINE",
     "wsharpe": -0.29318377419445085,
     "pool_sharpe": -0.29318377419445085,
     "baseline_pool": -0.29318377419445085,
-    "winning_tag": "fotest_baseline_FARTCOINUSDT_SHORT_2026-07-08",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
     "acc_gain_pct": -233.82807413949854,
     "gain_vs_bh": -214.93739613964408,
     "bh_pct": -18.890677999854468,
-    "campaign_ts": 1783499892.5966861
+    "campaign_ts": 1783499892.5966861,
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "CRVUSDC_SHORT": {
     "overrides": {},
@@ -6324,13 +6852,19 @@
       "NOLOSS_BYPASS_WT5OF5_FILTER_TF": "4h",
       "BB_EXIT_AT_LOSS_TF": "OFF",
       "EXIT_R1_R2_FILTER_TF": "4h",
-      "BREAKEVEN_GAIN_EROSION_FILTER_TF": "1h"
+      "BREAKEVEN_GAIN_EROSION_FILTER_TF": "1h",
+      "DAYTRADE_DC_STOP_TF": "1h",
+      "TECHNICAL_DC_STOP_TF": "1h",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "gain_pct": 1.7002632731842553,
     "baseline_gain": 0.30589278306421724,
     "bh": 1.7572270721050336,
     "source": "pilot_v14:TRXUSDT_LONG_v14_progress.json",
-    "provenance": "BEST 25 keys final_gain 1.70%"
+    "provenance": "BEST 25 keys final_gain 1.70%",
+    "winning_tag": "4x16_STOP_1h_buf0.25",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "XMRUSDT_SHORT": {
     "overrides": {},
@@ -6347,11 +6881,22 @@
     "campaign_ts": 1783477703.3264515
   },
   "1000SHIBUSDC_SHORT": {
-    "overrides": {},
+    "overrides": {
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25,
+      "DAYTRADE_DC_TARGET_TF": "1h",
+      "TECHNICAL_DC_TARGET_TF": "1h",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
+    },
     "side": "SHORT",
     "trades": 0,
     "sample_tag": "NO_TRADES",
-    "campaign_ts": 1783478618.5512795
+    "campaign_ts": 1783478618.5512795,
+    "winning_tag": "4x16_COMBO_STOP_15m+TARGET_1h",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "LINKUSDC_LONG": {
     "overrides": {
@@ -6395,22 +6940,72 @@
   },
   "1000000MOGUSDT_SHORT": {
     "overrides": {
-      "STDEV_SLOPE_SIZING_D_MAX": 1
+      "STDEV_SLOPE_SIZING_D_MAX": 1,
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
     },
     "gain_pct": 2.3482900596359864,
     "baseline_gain": 0.819504887934615,
     "bh": 0.597017603089715,
     "source": "pilot_v14:1000000MOGUSDT_SHORT_v14_progress.json",
-    "provenance": "BEST 1 keys final_gain 2.35%"
+    "provenance": "BEST 1 keys final_gain 2.35%",
+    "winning_tag": "4x16_STOP_15m_buf0.25",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   },
   "1000SATSUSDT_SHORT": {
     "overrides": {
-      "DC_BREACH_REDUCE_FILTER_TF": "D"
+      "DC_BREACH_REDUCE_FILTER_TF": "D",
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25,
+      "DAYTRADE_DC_TARGET_TF": "1h",
+      "TECHNICAL_DC_TARGET_TF": "1h",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
     },
     "gain_pct": 1.398562600593477,
     "baseline_gain": 1.2251006511874285,
     "bh": 1.3487508160699473,
     "source": "pilot_v14:1000SATSUSDT_SHORT_v14_progress.json",
-    "provenance": "BEST 1 keys final_gain 1.40%"
+    "provenance": "BEST 1 keys final_gain 1.40%",
+    "winning_tag": "4x16_COMBO_STOP_15m+TARGET_1h",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
+  },
+  "ARMUSDT_SHORT": {
+    "overrides": {
+      "DAYTRADE_DC_TARGET_TF": "3m",
+      "TECHNICAL_DC_TARGET_TF": "3m",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
+    },
+    "winning_tag": "4x16_TARGET_3m_buf0.1",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
+  },
+  "HYPEUSDT_SHORT": {
+    "overrides": {
+      "DAYTRADE_DC_STOP_TF": "15m",
+      "TECHNICAL_DC_STOP_TF": "15m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25
+    },
+    "winning_tag": "4x16_STOP_15m_buf0.25",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
+  },
+  "LTCUSDC_LONG": {
+    "overrides": {
+      "DAYTRADE_DC_STOP_TF": "3m",
+      "TECHNICAL_DC_STOP_TF": "3m",
+      "DAYTRADE_DC_STOP_BUFFER_PCT": 0.25,
+      "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25,
+      "DAYTRADE_DC_TARGET_TF": "15m",
+      "TECHNICAL_DC_TARGET_TF": "15m",
+      "DAYTRADE_DC_TARGET_BUFFER_PCT": 0.1,
+      "TECHNICAL_DC_TARGET_BUFFER_PCT": 0.1
+    },
+    "winning_tag": "4x16_COMBO_STOP_3m+TARGET_15m",
+    "dc_promoted_at": "2026-09-26T18:20:10Z"
   }
 }
