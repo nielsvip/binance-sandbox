@@ -1,32 +1,56 @@
 {
- "generated_at": "2026-09-26 06:39 UTC",
- "total_capital_usd": 108.77,
+ "generated_at": "2026-09-26 07:14 UTC",
+ "total_capital_usd": 65.85,
  "tier_capital": {
   "A": 0.0,
-  "B": 108.77,
+  "B": 65.85,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 3,
   "C": 0
  },
  "winners": [],
  "losers": [
-  "inf:ZECUSDC_LONG"
+  "men:XLMUSDT_LONG",
+  "men:ADAUSDC_LONG",
+  "men:ALGOUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:ZECUSDC_LONG",
-   "symbol": "ZECUSDC",
-   "account": "inf",
-   "value_usd": 108.77,
-   "gain_pct": -1.483,
+   "pk": "men:ALGOUSDT_LONG",
+   "symbol": "ALGOUSDT",
+   "account": "men",
+   "value_usd": 31.83,
+   "gain_pct": -0.526,
    "tier": "B",
-   "perf_mult": 2.05,
-   "amt": 0.071,
-   "mark": 1531.93288912
+   "perf_mult": 1.97,
+   "amt": 275.7,
+   "mark": 0.11545325
+  },
+  {
+   "pk": "men:XLMUSDT_LONG",
+   "symbol": "XLMUSDT",
+   "account": "men",
+   "value_usd": 31.57,
+   "gain_pct": -0.995,
+   "tier": "B",
+   "perf_mult": 0.67,
+   "amt": 145.0,
+   "mark": 0.21775393
+  },
+  {
+   "pk": "men:ADAUSDC_LONG",
+   "symbol": "ADAUSDC",
+   "account": "men",
+   "value_usd": 2.45,
+   "gain_pct": -0.582,
+   "tier": "B",
+   "perf_mult": 2.27,
+   "amt": 9.6,
+   "mark": 0.2551
   }
  ]
 }
