@@ -694,11 +694,11 @@ def _spec_clear_live_formulas(wb):
 
 def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progress_path: Path, flags_md: Path, cumulative_gain: float, cumulative_overrides: dict, defaults: dict, baseline_gain: float, bh: float, prepared, args, baseline_vec: dict, baseline_live: dict):
     """Spec-compliant filler: 12 tabs (STDEV skipped), every row gets delta pos/neg, VECTOR_DELTA = sum pos yellows.
-    Logic:
-    - Baseline E3 = baseline_gain, E2 header preserved. Other E blank until POS delta promotes: E_next = cumulative_before + sum_pos.
-    - For each row in order (or shuffled if hustle), evaluate ALL YELLOW cells (specific filters for that switch vs cumulative_before) with 10s per-yellow timeout. RED on stall.
-    - G = sum of pos yellow deltas; if G>0 stay on same tab next row and add to baseline, else move to first pending row in next tab (write baseline value in baseline column there).
-    - LIVE_DELTA/H and LIVE_SHARPE/I stay BLANK until workbook complete, then filled via backtest_v12_engine on winning set.
+    Logic (per-row tab hop — USER 04:20 — 12 tabs, entire tab is too slow, per-row hop is better, NEVER revert to worse):
+    - Baseline E3 = baseline_gain, E2 header preserved. Baseline NEVER sums NEG deltas and NEVER reverts: E_next = cumulative_before + sum_pos only if sum_pos>0 else E_next = cumulative_before (stays blank, cumulative_gain unchanged).
+    - For each row in order (or shuffled if hustle) evaluate EVERY YELLOW L:BI for that row vs cumulative_before with real evaluate_prepared_sanitized 10s timeout. RED on stall.
+    - G = sum of pos yellow deltas (if no yellows G = naked delta); if G>0 stay on same tab next row and add to baseline (cumulative_gain += G), else move to first pending row in next tab (write baseline there, cumulative unchanged). After tab complete skip to next tab with current cumulative. NEVER revert to worse result: cumulative only increases.
+    - LIVE_DELTA/H and LIVE_SHARPE/I stay BLANK until workbook DONE, then filled via backtest_v12_engine on winning set (vector_only fallback).
     Returns updated cumulative_gain, cumulative_overrides, progress.
     """
     import time as _t
@@ -766,11 +766,28 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _rnd.shuffle(rows)
         per_tab_rows[sname] = rows
     # Helper to find next pending row index for a tab
+    # FIX 2026-09-26: Handle row number mismatch after worksheet resorting
     def _next_pending(sname: str):
+        done_keys = progress.get("done", {})
         for (rr, sw, cand) in per_tab_rows.get(sname, []):
-            key = f"{sname}!{rr}:{sw}={cand}"
-            if key not in progress.get("done", {}):
-                return (rr, sw, cand)
+            # Try exact key match (same row number)
+            key_exact = f"{sname}!{rr}:{sw}={cand}"
+            if key_exact in done_keys:
+                continue
+
+            # Fallback: if row number mismatch after resorting, check by switch+cand name
+            # This handles the case where template was reordered but progress.json still has old row numbers
+            key_by_switch = f"{sw}={cand}"
+            found_by_switch = False
+            for done_key in done_keys:
+                if done_key.startswith(sname + "!") and key_by_switch in done_key:
+                    found_by_switch = True
+                    break
+            if found_by_switch:
+                continue
+
+            # This row hasn't been processed yet
+            return (rr, sw, cand)
         return None
     def _any_pending() -> bool:
         for sname in tabs:
@@ -812,8 +829,6 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if hv and isinstance(hv, str) and hv.strip().upper().startswith("WHAT SWITCH"):
                 break
         header_maps[sname] = hm
-    # Current tab pointer
-    current_idx = 0
     total_rows = sum(len(v) for v in per_tab_rows.values())
     processed = 0
     # Baseline heartbeat for spec
@@ -827,7 +842,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     print(f"[spec-fill] {new_symside} tabs={tabs} total_rows={total_rows} baseline={baseline_gain:.4f} hustle={is_hustle} cumulative={cumulative_gain:.4f}", flush=True)
     # Main loop — sequential with POS-stay / NEG-advance
     loop_guard = 0
-    max_loops = total_rows * 3 + 100  # safety
+    # FIX 2026-09-26: max_loops must account for tab cycling on NEG deltas — worst case is cycling through all tabs per row
+    max_loops = total_rows * len(tabs) + 200  # worst case: cycle through all tabs for each pending row + margin
     while _any_pending() and loop_guard < max_loops:
         loop_guard += 1
         sname = tabs[current_idx % len(tabs)]
@@ -2497,18 +2513,31 @@ def main():
                     cur_c = ws_c.cell(row=r, column=3).value
                     if cur_c is None or str(cur_c).strip().upper() != val_str.strip().upper():
                         ws_c.cell(row=r, column=3).value = val_str
-                        try:
-                            ws_c.cell(row=r, column=3).font = Font(name="Arial", size=10, bold=True, color="000000")
-                            ws_c.cell(row=r, column=3).alignment = Alignment(horizontal="left", vertical="center")
-                        except: pass
                         filled_c += 1
+                    # FIX 2026-09-26: Always apply styling for overrides (regardless of value match)
+                    # Ensures proper bold/formatting even if value was already correct
+                    try:
+                        ws_c.cell(row=r, column=3).font = Font(name="Arial", size=10, bold=True, color="000000")
+                        ws_c.cell(row=r, column=3).alignment = Alignment(horizontal="left", vertical="center")
+                    except: pass
         print(f"[BEST-C-FILL] {new_symside}: filled {filled_c} (single-load)", flush=True)
-        # baseline E2/E3 on same wb
+        # FIX 2026-09-26: baseline E2/E3 using _resolve_cols to find correct column (handle resorting)
         for sname in SWITCH_SHEETS:
             if sname in wb_single.sheetnames:
                 ws_fix = wb_single[sname]
-                ws_fix.cell(row=2, column=5).value = "BASELINE"
-                ws_fix.cell(row=3, column=5).value = float(baseline_gain)
+                cols = _resolve_cols(ws_fix)  # Get actual column mapping
+                e_col = cols.get("E", 5)  # Default to 5 if _resolve_cols fails
+                # Only write E2 if it's not already a header
+                e2_val = ws_fix.cell(row=2, column=e_col).value
+                if e2_val is None or (isinstance(e2_val, str) and e2_val.strip().upper() not in ("BASELINE", "VECTOR", "HUSTLE")):
+                    ws_fix.cell(row=2, column=e_col).value = "BASELINE"
+                # Always write E3 value
+                ws_fix.cell(row=3, column=e_col).value = float(baseline_gain)
+                try:
+                    ws_fix.cell(row=3, column=e_col).font = Font(name="Arial", size=10, bold=False)
+                    ws_fix.cell(row=3, column=e_col).alignment = VISUAL_ALIGN
+                except Exception:
+                    pass
         _tmp_single = str(wb_path) + ".tmp"
         wb_single.save(_tmp_single)
         import zipfile as _zf_s, os as _os_s
@@ -2742,6 +2771,23 @@ def main():
                     pass
     except Exception as _re2:
         print(f"[respect-warn] {_re2}", flush=True)
+    # FIX 2026-09-26: Restore cumulative_gain from last completed row to preserve progress on resume
+    # When resuming, progress["cumulative_gain"] might be stale; calculate from last completed row's cumulative_after
+    try:
+        if progress.get("done"):
+            # Find last completed row (preserve execution order from dict insertion)
+            last_completed_value = None
+            for key in progress["done"]:
+                rec = progress["done"][key]
+                if "cumulative_after" in rec and rec.get("delta", 0) > 0:
+                    # Only take cumulative from rows that advanced (POS delta)
+                    last_completed_value = float(rec.get("cumulative_after") or 0)
+            if last_completed_value is not None and last_completed_value > baseline_gain:
+                print(f"[baseline-restore] found last completed row cumulative {last_completed_value:.4f} > baseline {baseline_gain:.4f} — using", flush=True)
+                if "cumulative_gain" not in progress or progress.get("cumulative_gain") is None:
+                    progress["cumulative_gain"] = last_completed_value
+    except Exception as _e_restore:
+        print(f"[baseline-restore-warn] {_e_restore}", flush=True)
     # Enforce monotonic baseline: never underperform BEST (leave settings as is = 0 delta)
     cumulative_gain = max(float(progress.get("cumulative_gain") or baseline_gain), float(baseline_gain or 0), float(progress.get("hustler_best_gain") or 0))
     cumulative_overrides = dict(progress.get("cumulative_overrides", overrides))
