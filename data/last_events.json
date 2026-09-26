@@ -7,25 +7,25 @@
                     "timestamp": "2026-09-26T09:45:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.0036795,
-                    "timestamp": "2026-09-26T08:27:00.000000Z"
+                    "price": 0.00364348,
+                    "timestamp": "2026-09-26T09:45:00.000000Z"
                 }
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.00369354,
-                    "timestamp": "2026-09-26T08:48:00.000000Z"
+                    "price": 0.003675,
+                    "timestamp": "2026-09-26T10:42:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.00369354,
-                    "timestamp": "2026-09-26T08:48:00.000000Z"
+                    "price": 0.003681,
+                    "timestamp": "2026-09-26T10:36:00.000000Z"
                 }
             },
             "stoch_k": 100,
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -34,7 +34,7 @@
                     "timestamp": "2026-09-26T10:15:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.003664,
+                    "price": 0.003672,
                     "timestamp": "2026-09-26T10:15:00.000000Z"
                 }
             },
@@ -48,11 +48,11 @@
                     "timestamp": "2026-09-26T08:15:00.000000Z"
                 }
             },
-            "stoch_k": 39.3008998918019,
-            "stoch_d": 19.878956492555556,
-            "stoch_k_prev": 17.90573143193435,
-            "stoch_d_prev": 10.820790407616009,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z"
+            "stoch_k": 72.13146638942327,
+            "stoch_d": 66.84862922305787,
+            "stoch_k_prev": 67.06072517759259,
+            "stoch_d_prev": 55.905107057187685,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -162,16 +162,16 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
                 "latest": {
-                    "price": 0.0005646,
+                    "price": 0.00056443,
                     "timestamp": "2026-09-26T10:00:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.0005646,
+                    "price": 0.00056443,
                     "timestamp": "2026-09-26T10:00:00.000000Z"
                 }
             },
@@ -185,11 +185,11 @@
                     "timestamp": "2026-09-26T08:30:00.000000Z"
                 }
             },
-            "stoch_k": 41.71228605185318,
-            "stoch_d": 27.82194625500651,
-            "stoch_k_prev": 29.646781352018014,
-            "stoch_d_prev": 17.96897843895114,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z"
+            "stoch_k": 67.33573723807649,
+            "stoch_d": 57.291392877765155,
+            "stoch_k_prev": 55.37351243079873,
+            "stoch_d_prev": 49.06783312936653,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -281,14 +281,14 @@
                     "timestamp": "2026-09-26T09:24:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.02853316,
-                    "timestamp": "2026-09-26T08:30:00.000000Z"
+                    "price": 0.02834859,
+                    "timestamp": "2026-09-26T09:24:00.000000Z"
                 }
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.028525,
-                    "timestamp": "2026-09-26T08:51:00.000000Z"
+                    "price": 0.02873,
+                    "timestamp": "2026-09-26T10:33:00.000000Z"
                 },
                 "previous": {
                     "price": 0.028525,
@@ -299,7 +299,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -322,11 +322,11 @@
                     "timestamp": "2026-09-26T08:00:00.000000Z"
                 }
             },
-            "stoch_k": 71.85419462754699,
-            "stoch_d": 46.03633107549259,
-            "stoch_k_prev": 46.48096186478163,
-            "stoch_d_prev": 24.73829972316625,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z"
+            "stoch_k": 100,
+            "stoch_d": 97.76782851253391,
+            "stoch_k_prev": 100,
+            "stoch_d_prev": 88.77070834375327,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -424,19 +424,19 @@
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.05612,
-                    "timestamp": "2026-09-26T09:48:00.000000Z"
+                    "price": 0.0564,
+                    "timestamp": "2026-09-26T10:42:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.05612,
-                    "timestamp": "2026-09-26T09:48:00.000000Z"
+                    "price": 0.05605222,
+                    "timestamp": "2026-09-26T09:57:00.000000Z"
                 }
             },
             "stoch_k": 100,
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -459,11 +459,11 @@
                     "timestamp": "2026-09-26T09:15:00.000000Z"
                 }
             },
-            "stoch_k": 56.008808643660075,
-            "stoch_d": 47.83535071602889,
-            "stoch_k_prev": 50.35027716859634,
-            "stoch_d_prev": 44.625044529704304,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z"
+            "stoch_k": 74.00207559909332,
+            "stoch_d": 75.19188528882044,
+            "stoch_k_prev": 77.38533275657893,
+            "stoch_d_prev": 69.67581856494087,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -561,28 +561,28 @@
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.0044501,
-                    "timestamp": "2026-09-26T08:45:00.000000Z"
+                    "price": 0.0044314,
+                    "timestamp": "2026-09-26T10:45:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.0044501,
-                    "timestamp": "2026-09-26T08:45:00.000000Z"
+                    "price": 0.0043933,
+                    "timestamp": "2026-09-26T09:51:00.000000Z"
                 }
             },
             "stoch_k": 100,
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
                 "latest": {
-                    "price": 0.0044043,
+                    "price": 0.00440321,
                     "timestamp": "2026-09-26T10:00:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.0044043,
+                    "price": 0.00440321,
                     "timestamp": "2026-09-26T10:00:00.000000Z"
                 }
             },
@@ -596,11 +596,11 @@
                     "timestamp": "2026-09-26T00:15:00.000000Z"
                 }
             },
-            "stoch_k": 33.20252794578466,
-            "stoch_d": 22.810745616089445,
-            "stoch_k_prev": 21.369587668700614,
-            "stoch_d_prev": 14.592969110964807,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z"
+            "stoch_k": 82.84205913021297,
+            "stoch_d": 65.96069734073473,
+            "stoch_k_prev": 67.21311795060087,
+            "stoch_d_prev": 48.46202514405771,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -692,25 +692,25 @@
                     "timestamp": "2026-09-26T09:21:00.000000Z"
                 },
                 "previous": {
-                    "price": 1.234e-05,
-                    "timestamp": "2026-09-26T08:27:00.000000Z"
+                    "price": 1.222e-05,
+                    "timestamp": "2026-09-26T09:21:00.000000Z"
                 }
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 1.228e-05,
-                    "timestamp": "2026-09-26T09:57:00.000000Z"
+                    "price": 1.245e-05,
+                    "timestamp": "2026-09-26T10:48:00.000000Z"
                 },
                 "previous": {
-                    "price": 1.23e-05,
-                    "timestamp": "2026-09-26T07:24:00.000000Z"
+                    "price": 1.231e-05,
+                    "timestamp": "2026-09-26T10:00:00.000000Z"
                 }
             },
             "stoch_k": 100,
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -733,11 +733,11 @@
                     "timestamp": "2026-09-26T09:00:00.000000Z"
                 }
             },
-            "stoch_k": 60.51523263308951,
-            "stoch_d": 42.28095828832496,
-            "stoch_k_prev": 43.31648789948585,
-            "stoch_d_prev": 31.389539289693715,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z"
+            "stoch_k": 100,
+            "stoch_d": 90.52021562662286,
+            "stoch_k_prev": 92.29432332305659,
+            "stoch_d_prev": 77.35862650432166,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -825,18 +825,18 @@
         "3m": {
             "stoch_crossover": {
                 "latest": {
-                    "price": 0.00586682,
-                    "timestamp": "2026-09-26T09:30:00.000000Z"
+                    "price": 0.00593901,
+                    "timestamp": "2026-09-26T10:51:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.005907,
-                    "timestamp": "2026-09-26T08:30:00.000000Z"
+                    "price": 0.00586682,
+                    "timestamp": "2026-09-26T09:30:00.000000Z"
                 }
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.005908,
-                    "timestamp": "2026-09-26T08:45:00.000000Z"
+                    "price": 0.005937,
+                    "timestamp": "2026-09-26T10:39:00.000000Z"
                 },
                 "previous": {
                     "price": 0.005908,
@@ -847,12 +847,12 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
                 "latest": {
-                    "price": 0.005888,
+                    "price": 0.00589014,
                     "timestamp": "2026-09-26T10:00:00.000000Z"
                 },
                 "previous": {
@@ -870,11 +870,11 @@
                     "timestamp": "2026-09-26T08:15:00.000000Z"
                 }
             },
-            "stoch_k": 51.80939263291282,
-            "stoch_d": 29.678396354210136,
-            "stoch_k_prev": 26.292649391406865,
-            "stoch_d_prev": 17.147306566412087,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z"
+            "stoch_k": 96.07184399867488,
+            "stoch_d": 88.58479881247052,
+            "stoch_k_prev": 91.32477102091656,
+            "stoch_d_prev": 74.03312804916735,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -962,38 +962,38 @@
         "3m": {
             "stoch_crossover": {
                 "latest": {
-                    "price": 0.009124,
-                    "timestamp": "2026-09-26T08:30:00.000000Z"
+                    "price": 0.00913,
+                    "timestamp": "2026-09-26T10:39:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.0091257,
-                    "timestamp": "2026-09-26T06:54:00.000000Z"
+                    "price": 0.009099,
+                    "timestamp": "2026-09-26T09:21:00.000000Z"
                 }
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.009155,
-                    "timestamp": "2026-09-26T07:39:00.000000Z"
+                    "price": 0.009123,
+                    "timestamp": "2026-09-26T10:27:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.009155,
-                    "timestamp": "2026-09-26T07:39:00.000000Z"
+                    "price": 0.00911657,
+                    "timestamp": "2026-09-26T10:12:00.000000Z"
                 }
             },
             "stoch_k": 100,
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
                 "latest": {
-                    "price": 0.00913,
+                    "price": 0.009128,
                     "timestamp": "2026-09-26T10:00:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.00913,
+                    "price": 0.009128,
                     "timestamp": "2026-09-26T10:00:00.000000Z"
                 }
             },
@@ -1007,11 +1007,11 @@
                     "timestamp": "2026-09-26T08:15:00.000000Z"
                 }
             },
-            "stoch_k": 63.63494698995641,
-            "stoch_d": 41.13030732208397,
-            "stoch_k_prev": 41.52880997801517,
-            "stoch_d_prev": 26.266408299678403,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z"
+            "stoch_k": 66.37653539094852,
+            "stoch_d": 63.229443478934336,
+            "stoch_k_prev": 60.94470655967134,
+            "stoch_d_prev": 61.78012542224122,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -1103,25 +1103,25 @@
                     "timestamp": "2026-09-26T09:33:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.12677361,
-                    "timestamp": "2026-09-26T09:21:00.000000Z"
+                    "price": 0.12717348,
+                    "timestamp": "2026-09-26T09:33:00.000000Z"
                 }
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.12727833,
-                    "timestamp": "2026-09-26T09:54:00.000000Z"
+                    "price": 0.12815255,
+                    "timestamp": "2026-09-26T10:27:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.12765297,
-                    "timestamp": "2026-09-26T08:45:00.000000Z"
+                    "price": 0.12727833,
+                    "timestamp": "2026-09-26T09:54:00.000000Z"
                 }
             },
             "stoch_k": 100,
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -1144,11 +1144,11 @@
                     "timestamp": "2026-09-26T05:30:00.000000Z"
                 }
             },
-            "stoch_k": 41.348681279657164,
-            "stoch_d": 30.523228180153264,
-            "stoch_k_prev": 23.79440569557494,
-            "stoch_d_prev": 27.285202684512,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z"
+            "stoch_k": 17.240144639898563,
+            "stoch_d": 35.5591474315456,
+            "stoch_k_prev": 40.141605414416155,
+            "stoch_d_prev": 44.399416912132345,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -1236,38 +1236,38 @@
         "3m": {
             "stoch_crossover": {
                 "latest": {
-                    "price": 0.1032522,
-                    "timestamp": "2026-09-26T08:30:00.000000Z"
+                    "price": 0.10241,
+                    "timestamp": "2026-09-26T09:48:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.10341,
-                    "timestamp": "2026-09-26T07:30:00.000000Z"
+                    "price": 0.1032522,
+                    "timestamp": "2026-09-26T08:30:00.000000Z"
                 }
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.10342653,
-                    "timestamp": "2026-09-26T08:48:00.000000Z"
+                    "price": 0.10325,
+                    "timestamp": "2026-09-26T10:45:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.10327,
-                    "timestamp": "2026-09-26T07:12:00.000000Z"
+                    "price": 0.10342653,
+                    "timestamp": "2026-09-26T08:48:00.000000Z"
                 }
             },
             "stoch_k": 100,
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
                 "latest": {
-                    "price": 0.10293,
+                    "price": 0.10291356,
                     "timestamp": "2026-09-26T10:15:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.1028,
+                    "price": 0.10293,
                     "timestamp": "2026-09-26T10:15:00.000000Z"
                 }
             },
@@ -1281,11 +1281,11 @@
                     "timestamp": "2026-09-26T08:15:00.000000Z"
                 }
             },
-            "stoch_k": 28.855260751546137,
-            "stoch_d": 13.678845751251435,
-            "stoch_k_prev": 12.18127650220808,
-            "stoch_d_prev": 11.828482712201128,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z"
+            "stoch_k": 71.49382317001125,
+            "stoch_d": 61.27719193712269,
+            "stoch_k_prev": 62.05720291093497,
+            "stoch_d_prev": 47.26430627162865,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -1377,25 +1377,25 @@
                     "timestamp": "2026-09-26T09:36:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.0004221,
-                    "timestamp": "2026-09-26T09:33:00.000000Z"
+                    "price": 0.0004226,
+                    "timestamp": "2026-09-26T09:36:00.000000Z"
                 }
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.0004241,
-                    "timestamp": "2026-09-26T10:00:00.000000Z"
+                    "price": 0.0004246,
+                    "timestamp": "2026-09-26T10:36:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.00042493,
-                    "timestamp": "2026-09-26T08:42:00.000000Z"
+                    "price": 0.0004246,
+                    "timestamp": "2026-09-26T10:36:00.000000Z"
                 }
             },
             "stoch_k": 100,
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -1418,11 +1418,11 @@
                     "timestamp": "2026-09-26T09:15:00.000000Z"
                 }
             },
-            "stoch_k": 67.5856825486842,
-            "stoch_d": 39.8518590565587,
-            "stoch_k_prev": 37.21578572757041,
-            "stoch_d_prev": 28.025286302848002,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z"
+            "stoch_k": 99.92578442453357,
+            "stoch_d": 95.11063051266827,
+            "stoch_k_prev": 96.96234791231757,
+            "stoch_d_prev": 84.33059655405478,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -1510,18 +1510,18 @@
         "3m": {
             "stoch_crossover": {
                 "latest": {
-                    "price": 152.24,
-                    "timestamp": "2026-09-26T09:57:00.000000Z"
+                    "price": 152.40646522,
+                    "timestamp": "2026-09-26T10:00:00.000000Z"
                 },
                 "previous": {
-                    "price": 152.24,
-                    "timestamp": "2026-09-26T09:57:00.000000Z"
+                    "price": 152.40646522,
+                    "timestamp": "2026-09-26T10:00:00.000000Z"
                 }
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 154.7,
-                    "timestamp": "2026-09-26T08:33:00.000000Z"
+                    "price": 154.31,
+                    "timestamp": "2026-09-26T10:45:00.000000Z"
                 },
                 "previous": {
                     "price": 154.7,
@@ -1532,17 +1532,17 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
                 "latest": {
-                    "price": 153.8,
+                    "price": 154.12899831,
                     "timestamp": "2026-09-26T10:30:00.000000Z"
                 },
                 "previous": {
-                    "price": 154.31161825,
-                    "timestamp": "2026-09-26T06:30:00.000000Z"
+                    "price": 154.12899831,
+                    "timestamp": "2026-09-26T10:30:00.000000Z"
                 }
             },
             "stoch_crossunder": {
@@ -1555,11 +1555,11 @@
                     "timestamp": "2026-09-26T01:30:00.000000Z"
                 }
             },
-            "stoch_k": 30.64683560429565,
-            "stoch_d": 15.216272287360674,
-            "stoch_k_prev": 15.001981257786474,
-            "stoch_d_prev": 5.0006604192621245,
-            "stoch_timestamp": "2026-09-26T10:30:00.000000Z"
+            "stoch_k": 64.43428615369042,
+            "stoch_d": 51.00822430438502,
+            "stoch_k_prev": 54.853708891346464,
+            "stoch_d_prev": 34.325639828142016,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -1647,29 +1647,29 @@
         "3m": {
             "stoch_crossover": {
                 "latest": {
-                    "price": 0.21327,
-                    "timestamp": "2026-09-26T08:45:00.000000Z"
+                    "price": 0.22004,
+                    "timestamp": "2026-09-26T10:06:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.21075,
-                    "timestamp": "2026-09-26T08:42:00.000000Z"
+                    "price": 0.21327,
+                    "timestamp": "2026-09-26T08:45:00.000000Z"
                 }
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.2135,
-                    "timestamp": "2026-09-26T08:24:00.000000Z"
+                    "price": 0.22112,
+                    "timestamp": "2026-09-26T10:21:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.2135,
-                    "timestamp": "2026-09-26T08:24:00.000000Z"
+                    "price": 0.21865823,
+                    "timestamp": "2026-09-26T09:51:00.000000Z"
                 }
             },
             "stoch_k": 100,
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -1692,11 +1692,11 @@
                     "timestamp": "2026-09-26T08:30:00.000000Z"
                 }
             },
-            "stoch_k": 36.571708499794774,
-            "stoch_d": 34.0090115419081,
-            "stoch_k_prev": 34.90286231671265,
-            "stoch_d_prev": 32.39141574866553,
-            "stoch_timestamp": "2026-09-26T10:30:00.000000Z"
+            "stoch_k": 13.398654829622878,
+            "stoch_d": 22.784243238004066,
+            "stoch_k_prev": 25.019449937108167,
+            "stoch_d_prev": 29.95992251934028,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -1784,18 +1784,18 @@
         "3m": {
             "stoch_crossover": {
                 "latest": {
-                    "price": 0.006259,
-                    "timestamp": "2026-09-26T09:48:00.000000Z"
+                    "price": 0.006257,
+                    "timestamp": "2026-09-26T10:42:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.006259,
+                    "price": 0.0062601,
                     "timestamp": "2026-09-26T09:48:00.000000Z"
                 }
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.00633327,
-                    "timestamp": "2026-09-26T08:54:00.000000Z"
+                    "price": 0.00626982,
+                    "timestamp": "2026-09-26T10:27:00.000000Z"
                 },
                 "previous": {
                     "price": 0.00633327,
@@ -1806,7 +1806,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -1829,11 +1829,11 @@
                     "timestamp": "2026-09-26T09:15:00.000000Z"
                 }
             },
-            "stoch_k": 25.462018732532176,
-            "stoch_d": 29.425317430247066,
-            "stoch_k_prev": 31.09125160965401,
-            "stoch_d_prev": 36.440540825847364,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z"
+            "stoch_k": 7.680061615860406,
+            "stoch_d": 16.03375109228748,
+            "stoch_k_prev": 16.17670808891462,
+            "stoch_d_prev": 21.929895389320404,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -1925,14 +1925,14 @@
                     "timestamp": "2026-09-26T09:33:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.011218,
+                    "price": 0.01121487,
                     "timestamp": "2026-09-26T09:33:00.000000Z"
                 }
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.011327,
-                    "timestamp": "2026-09-26T08:39:00.000000Z"
+                    "price": 0.011305,
+                    "timestamp": "2026-09-26T10:36:00.000000Z"
                 },
                 "previous": {
                     "price": 0.011327,
@@ -1943,17 +1943,17 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
                 "latest": {
-                    "price": 0.01128858,
+                    "price": 0.011313,
                     "timestamp": "2026-09-26T10:30:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.01111487,
-                    "timestamp": "2026-09-26T04:15:00.000000Z"
+                    "price": 0.011313,
+                    "timestamp": "2026-09-26T10:30:00.000000Z"
                 }
             },
             "stoch_crossunder": {
@@ -1966,11 +1966,11 @@
                     "timestamp": "2026-09-26T08:00:00.000000Z"
                 }
             },
-            "stoch_k": 24.155361598259343,
-            "stoch_d": 16.55129475034561,
-            "stoch_k_prev": 16.8250376958261,
-            "stoch_d_prev": 10.340306337526036,
-            "stoch_timestamp": "2026-09-26T10:30:00.000000Z"
+            "stoch_k": 57.706584572012424,
+            "stoch_d": 39.705085417297724,
+            "stoch_k_prev": 34.682985104515886,
+            "stoch_d_prev": 26.077903125236617,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -2068,19 +2068,19 @@
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.2555,
-                    "timestamp": "2026-09-26T08:45:00.000000Z"
+                    "price": 0.2564,
+                    "timestamp": "2026-09-26T10:36:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.2555,
-                    "timestamp": "2026-09-26T08:45:00.000000Z"
+                    "price": 0.2564,
+                    "timestamp": "2026-09-26T10:36:00.000000Z"
                 }
             },
             "stoch_k": 100,
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -2103,11 +2103,11 @@
                     "timestamp": "2026-09-26T08:15:00.000000Z"
                 }
             },
-            "stoch_k": 91.62588081070044,
-            "stoch_d": 69.58642669599807,
-            "stoch_k_prev": 71.13884110455176,
-            "stoch_d_prev": 46.58132497796103,
-            "stoch_timestamp": "2026-09-26T10:30:00.000000Z"
+            "stoch_k": 97.87743276086627,
+            "stoch_d": 95.76003330674199,
+            "stoch_k_prev": 97.87743276086627,
+            "stoch_d_prev": 87.31317268200473,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -2199,14 +2199,14 @@
                     "timestamp": "2026-09-26T09:39:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.22499825,
-                    "timestamp": "2026-09-26T08:33:00.000000Z"
+                    "price": 0.2234,
+                    "timestamp": "2026-09-26T09:39:00.000000Z"
                 }
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.22503763,
-                    "timestamp": "2026-09-26T08:51:00.000000Z"
+                    "price": 0.224,
+                    "timestamp": "2026-09-26T10:12:00.000000Z"
                 },
                 "previous": {
                     "price": 0.22503763,
@@ -2217,16 +2217,16 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
                 "latest": {
-                    "price": 0.2242,
+                    "price": 0.22411814,
                     "timestamp": "2026-09-26T10:15:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.224,
+                    "price": 0.22411814,
                     "timestamp": "2026-09-26T10:15:00.000000Z"
                 }
             },
@@ -2240,11 +2240,11 @@
                     "timestamp": "2026-09-26T08:15:00.000000Z"
                 }
             },
-            "stoch_k": 26.867544926253913,
-            "stoch_d": 16.310331959858676,
-            "stoch_k_prev": 14.156584564423143,
-            "stoch_d_prev": 16.028385121248235,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z"
+            "stoch_k": 83.11702542620962,
+            "stoch_d": 63.523867087724284,
+            "stoch_k_prev": 61.287593588149086,
+            "stoch_d_prev": 43.53684997079287,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -2479,19 +2479,19 @@
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.1157,
-                    "timestamp": "2026-09-26T08:45:00.000000Z"
+                    "price": 0.11687,
+                    "timestamp": "2026-09-26T10:45:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.1157,
-                    "timestamp": "2026-09-26T08:45:00.000000Z"
+                    "price": 0.1166,
+                    "timestamp": "2026-09-26T10:30:00.000000Z"
                 }
             },
             "stoch_k": 100,
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -2515,10 +2515,10 @@
                 }
             },
             "stoch_k": 100,
-            "stoch_d": 89.29747260719152,
-            "stoch_k_prev": 90.00161360326359,
-            "stoch_d_prev": 75.56065508206385,
-            "stoch_timestamp": "2026-09-26T10:30:00.000000Z"
+            "stoch_d": 100,
+            "stoch_k_prev": 100,
+            "stoch_d_prev": 97.18438880676013,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -2616,19 +2616,19 @@
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.00798988,
-                    "timestamp": "2026-09-26T09:45:00.000000Z"
+                    "price": 0.008251,
+                    "timestamp": "2026-09-26T10:33:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.00798988,
-                    "timestamp": "2026-09-26T09:45:00.000000Z"
+                    "price": 0.008251,
+                    "timestamp": "2026-09-26T10:33:00.000000Z"
                 }
             },
             "stoch_k": 100,
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -2651,11 +2651,11 @@
                     "timestamp": "2026-09-26T08:15:00.000000Z"
                 }
             },
-            "stoch_k": 100,
-            "stoch_d": 72.92807130590288,
-            "stoch_k_prev": 71.44811975507393,
-            "stoch_d_prev": 44.49984068424692,
-            "stoch_timestamp": "2026-09-26T10:30:00.000000Z"
+            "stoch_k": 88.56168678314532,
+            "stoch_d": 94.08634200045874,
+            "stoch_k_prev": 93.69733921823098,
+            "stoch_d_prev": 88.38181965776862,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -2890,29 +2890,29 @@
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.1553,
-                    "timestamp": "2026-09-26T10:12:00.000000Z"
+                    "price": 0.1558,
+                    "timestamp": "2026-09-26T10:27:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.1549,
-                    "timestamp": "2026-09-26T09:57:00.000000Z"
+                    "price": 0.1558,
+                    "timestamp": "2026-09-26T10:27:00.000000Z"
                 }
             },
             "stoch_k": 100,
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
                 "latest": {
-                    "price": 0.1557,
-                    "timestamp": "2026-09-26T10:15:00.000000Z"
+                    "price": 0.15564071,
+                    "timestamp": "2026-09-26T10:30:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.15419887,
-                    "timestamp": "2026-09-26T06:15:00.000000Z"
+                    "price": 0.1557,
+                    "timestamp": "2026-09-26T10:15:00.000000Z"
                 }
             },
             "stoch_crossunder": {
@@ -2925,11 +2925,11 @@
                     "timestamp": "2026-09-26T09:15:00.000000Z"
                 }
             },
-            "stoch_k": 40.68670247861118,
-            "stoch_d": 24.494823304024294,
-            "stoch_k_prev": 21.3484043003095,
-            "stoch_d_prev": 15.167025690480699,
-            "stoch_timestamp": "2026-09-26T10:30:00.000000Z"
+            "stoch_k": 45.98191627055993,
+            "stoch_d": 38.95543262826697,
+            "stoch_k_prev": 38.90522660815983,
+            "stoch_d_prev": 30.20176370281617,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -3017,29 +3017,29 @@
         "3m": {
             "stoch_crossover": {
                 "latest": {
-                    "price": 0.28491375,
-                    "timestamp": "2026-09-26T09:21:00.000000Z"
+                    "price": 0.2866,
+                    "timestamp": "2026-09-26T10:39:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.285,
+                    "price": 0.28491375,
                     "timestamp": "2026-09-26T09:21:00.000000Z"
                 }
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.2878,
+                    "price": 0.28800625,
                     "timestamp": "2026-09-26T09:54:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.2839,
-                    "timestamp": "2026-09-26T09:12:00.000000Z"
+                    "price": 0.2878,
+                    "timestamp": "2026-09-26T09:54:00.000000Z"
                 }
             },
             "stoch_k": 100,
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -3054,19 +3054,19 @@
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.2859,
+                    "price": 0.28612417,
                     "timestamp": "2026-09-26T10:15:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.2862,
+                    "price": 0.28612417,
                     "timestamp": "2026-09-26T10:15:00.000000Z"
                 }
             },
-            "stoch_k": 61.04246391619139,
-            "stoch_d": 78.7761189214421,
-            "stoch_k_prev": 87.34275051274021,
-            "stoch_d_prev": 87.38472022210773,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z"
+            "stoch_k": 33.005025914045426,
+            "stoch_d": 29.948865308308644,
+            "stoch_k_prev": 25.237698299469557,
+            "stoch_d_prev": 39.05431990188931,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -3313,7 +3313,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -3450,7 +3450,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -3587,7 +3587,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -3724,7 +3724,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -3861,7 +3861,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -4135,7 +4135,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -4272,7 +4272,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -4409,7 +4409,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -4546,7 +4546,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -4820,7 +4820,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -4957,7 +4957,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -5094,7 +5094,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -5231,7 +5231,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -5368,7 +5368,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -5642,7 +5642,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -5779,7 +5779,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -5916,7 +5916,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -6053,7 +6053,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -6190,7 +6190,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -6327,7 +6327,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -6464,7 +6464,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -6601,7 +6601,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -6738,7 +6738,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -6875,7 +6875,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -7012,7 +7012,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -7149,7 +7149,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -7423,7 +7423,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -7560,7 +7560,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -7834,7 +7834,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -7971,7 +7971,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -8108,7 +8108,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -8245,7 +8245,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -8927,7 +8927,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -9064,7 +9064,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -9338,7 +9338,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -9475,7 +9475,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -9612,7 +9612,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -9749,7 +9749,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -10023,7 +10023,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -10160,7 +10160,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -10297,7 +10297,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -10434,7 +10434,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -10708,7 +10708,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -10982,7 +10982,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -11119,7 +11119,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -11393,7 +11393,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -11530,7 +11530,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -11804,7 +11804,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -11941,7 +11941,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -12078,7 +12078,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -12215,7 +12215,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -12352,7 +12352,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -12489,7 +12489,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -12626,7 +12626,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -12900,7 +12900,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -13174,7 +13174,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -13311,7 +13311,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -13579,7 +13579,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -13716,7 +13716,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -13853,7 +13853,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -13990,7 +13990,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -14127,7 +14127,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -14264,7 +14264,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -14401,7 +14401,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -14538,7 +14538,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -14675,7 +14675,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -14812,7 +14812,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -14949,7 +14949,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -15086,7 +15086,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -15497,7 +15497,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -15634,7 +15634,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -15908,7 +15908,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -16045,7 +16045,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -16319,7 +16319,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -16456,7 +16456,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -16861,7 +16861,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -16998,7 +16998,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -17135,7 +17135,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -17272,7 +17272,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -17546,7 +17546,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -17683,7 +17683,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -17820,7 +17820,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -17957,7 +17957,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -18094,7 +18094,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -18368,7 +18368,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -18505,7 +18505,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -18642,7 +18642,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -18916,7 +18916,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -19053,7 +19053,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -19190,7 +19190,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -19464,7 +19464,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -19601,7 +19601,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -19872,7 +19872,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -20009,7 +20009,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -20146,7 +20146,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -20283,7 +20283,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -20420,7 +20420,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -20831,7 +20831,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -21078,7 +21078,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -21215,7 +21215,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -21352,7 +21352,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -21626,7 +21626,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -21900,7 +21900,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -22037,7 +22037,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -22174,7 +22174,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -22311,7 +22311,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -22448,7 +22448,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -22585,7 +22585,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -22722,7 +22722,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -22859,7 +22859,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -22996,7 +22996,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -23133,7 +23133,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -23270,7 +23270,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -23407,7 +23407,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -23818,7 +23818,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -23955,7 +23955,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -24092,7 +24092,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -24229,7 +24229,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -24366,7 +24366,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -24640,7 +24640,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -24777,7 +24777,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -25188,7 +25188,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -25325,7 +25325,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -25462,7 +25462,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -25599,7 +25599,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -25736,7 +25736,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -25745,8 +25745,8 @@
                     "timestamp": "2026-09-26T10:00:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.017149,
-                    "timestamp": "2026-09-26T03:45:00.000000Z"
+                    "price": 0.017216,
+                    "timestamp": "2026-09-26T10:00:00.000000Z"
                 }
             },
             "stoch_crossunder": {
@@ -26010,7 +26010,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -26397,7 +26397,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -26671,7 +26671,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -26808,7 +26808,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -26945,7 +26945,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -27082,7 +27082,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -27478,7 +27478,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -27615,7 +27615,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -27889,7 +27889,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -28300,7 +28300,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -28437,7 +28437,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -28574,7 +28574,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -28711,7 +28711,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -28848,7 +28848,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -29122,7 +29122,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -29259,7 +29259,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -29396,7 +29396,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -29533,7 +29533,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -29670,7 +29670,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -29807,7 +29807,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -29944,7 +29944,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -30218,7 +30218,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -30492,7 +30492,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -30629,7 +30629,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -30766,7 +30766,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -30903,7 +30903,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -31040,7 +31040,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -31177,7 +31177,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -31314,7 +31314,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -31451,7 +31451,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -31588,7 +31588,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -31725,7 +31725,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -31862,7 +31862,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -31999,7 +31999,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -32136,7 +32136,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -32273,7 +32273,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -32527,7 +32527,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 91.444,
@@ -33877,7 +33877,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 0.7269,
@@ -34923,7 +34923,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -35262,7 +35262,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -35399,7 +35399,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -35863,7 +35863,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -36570,29 +36570,29 @@
         "3m": {
             "stoch_crossover": {
                 "latest": {
-                    "price": 0.07111213,
-                    "timestamp": "2026-09-26T09:21:00.000000Z"
+                    "price": 0.07142078,
+                    "timestamp": "2026-09-26T10:21:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.07113,
+                    "price": 0.07111213,
                     "timestamp": "2026-09-26T09:21:00.000000Z"
                 }
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.07114,
-                    "timestamp": "2026-09-26T09:09:00.000000Z"
+                    "price": 0.07171,
+                    "timestamp": "2026-09-26T10:39:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.07078,
-                    "timestamp": "2026-09-26T08:42:00.000000Z"
+                    "price": 0.07114,
+                    "timestamp": "2026-09-26T09:09:00.000000Z"
                 }
             },
             "stoch_k": 100,
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -36607,19 +36607,19 @@
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.06980854,
-                    "timestamp": "2026-09-26T05:45:00.000000Z"
+                    "price": 0.07172,
+                    "timestamp": "2026-09-26T10:45:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.06980854,
-                    "timestamp": "2026-09-26T05:45:00.000000Z"
+                    "price": 0.0717,
+                    "timestamp": "2026-09-26T10:45:00.000000Z"
                 }
             },
-            "stoch_k": 86.79065934302311,
-            "stoch_d": 91.45093977487232,
-            "stoch_k_prev": 99.00531855004526,
-            "stoch_d_prev": 92.34918241373994,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z"
+            "stoch_k": 79.68940221926044,
+            "stoch_d": 82.41253007482095,
+            "stoch_k_prev": 78.66416605405213,
+            "stoch_d_prev": 85.16788804275932,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -38938,7 +38938,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -39755,7 +39755,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -39872,7 +39872,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 0.03315,
@@ -40283,7 +40283,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 0.05638,
@@ -40420,7 +40420,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 0.05669,
@@ -40731,7 +40731,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -40868,7 +40868,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -41005,7 +41005,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -41142,7 +41142,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -41279,7 +41279,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -41416,7 +41416,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -41553,7 +41553,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -41690,7 +41690,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -42135,7 +42135,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z"
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z"
         },
         "15m": {
             "stoch_crossover": {
@@ -42252,15 +42252,15 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
-                    "price": 100.95,
+                    "price": 100.98,
                     "timestamp": "2026-09-26T09:54:00.000000Z"
                 },
                 "previous": {
-                    "price": 101.05,
-                    "timestamp": "2026-09-26T09:36:00.000000Z"
+                    "price": 100.95,
+                    "timestamp": "2026-09-26T09:54:00.000000Z"
                 }
             },
             "stoch_crossunder": {
@@ -42269,25 +42269,25 @@
                     "timestamp": "2026-09-26T09:12:00.000000Z"
                 },
                 "previous": {
-                    "price": 101.23,
-                    "timestamp": "2026-09-26T08:15:00.000000Z"
+                    "price": 101.12852956,
+                    "timestamp": "2026-09-26T09:12:00.000000Z"
                 }
             }
         },
         "15m": {
-            "stoch_k": 33.50868914161837,
-            "stoch_d": 18.791207354263808,
-            "stoch_k_prev": 15.202045637981202,
-            "stoch_d_prev": 13.290402503509391,
-            "stoch_timestamp": "2026-09-26T10:30:00.000000Z",
+            "stoch_k": 89.06713540375829,
+            "stoch_d": 68.69321658296458,
+            "stoch_k_prev": 72.49152555273338,
+            "stoch_d_prev": 44.07151999437364,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z",
             "stoch_crossover": {
                 "latest": {
-                    "price": 101.10192143,
+                    "price": 101.19,
                     "timestamp": "2026-09-26T10:30:00.000000Z"
                 },
                 "previous": {
-                    "price": 101.17887961,
-                    "timestamp": "2026-09-26T05:00:00.000000Z"
+                    "price": 101.19,
+                    "timestamp": "2026-09-26T10:30:00.000000Z"
                 }
             },
             "stoch_crossunder": {
@@ -42389,41 +42389,41 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 340.2019278,
                     "timestamp": "2026-09-26T08:03:00.000000Z"
                 },
                 "previous": {
-                    "price": 340.77379915,
-                    "timestamp": "2026-09-26T06:51:00.000000Z"
+                    "price": 340.2019278,
+                    "timestamp": "2026-09-26T08:03:00.000000Z"
                 }
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 340.16,
-                    "timestamp": "2026-09-26T09:00:00.000000Z"
+                    "price": 340.23,
+                    "timestamp": "2026-09-26T10:18:00.000000Z"
                 },
                 "previous": {
-                    "price": 340.17,
-                    "timestamp": "2026-09-26T08:48:00.000000Z"
+                    "price": 340.23,
+                    "timestamp": "2026-09-26T10:18:00.000000Z"
                 }
             }
         },
         "15m": {
-            "stoch_k": 55.49231230560769,
-            "stoch_d": 32.007802496155186,
-            "stoch_k_prev": 26.34529686809736,
-            "stoch_d_prev": 16.43463253251878,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z",
+            "stoch_k": 49.44864834318772,
+            "stoch_d": 64.37270920933805,
+            "stoch_k_prev": 70.801019865165,
+            "stoch_d_prev": 66.38726386347804,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 340.19641347,
                     "timestamp": "2026-09-26T10:00:00.000000Z"
                 },
                 "previous": {
-                    "price": 340.2,
+                    "price": 340.19641347,
                     "timestamp": "2026-09-26T10:00:00.000000Z"
                 }
             },
@@ -42526,7 +42526,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 186.89,
@@ -42663,7 +42663,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 194.58,
@@ -42800,7 +42800,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 97.96,
@@ -42937,34 +42937,34 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
-                    "price": 249.75,
-                    "timestamp": "2026-09-26T09:48:00.000000Z"
+                    "price": 249.78,
+                    "timestamp": "2026-09-26T09:51:00.000000Z"
                 },
                 "previous": {
-                    "price": 249.88,
-                    "timestamp": "2026-09-26T08:33:00.000000Z"
+                    "price": 249.75,
+                    "timestamp": "2026-09-26T09:48:00.000000Z"
                 }
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 249.89569113,
-                    "timestamp": "2026-09-26T09:03:00.000000Z"
+                    "price": 249.89,
+                    "timestamp": "2026-09-26T10:33:00.000000Z"
                 },
                 "previous": {
-                    "price": 249.9,
+                    "price": 249.89569113,
                     "timestamp": "2026-09-26T09:03:00.000000Z"
                 }
             }
         },
         "15m": {
-            "stoch_k": 43.311753296987376,
-            "stoch_d": 37.04239379115916,
-            "stoch_k_prev": 33.51581466510365,
-            "stoch_d_prev": 45.14945827373665,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z",
+            "stoch_k": 51.89171824407907,
+            "stoch_d": 65.1091555462388,
+            "stoch_k_prev": 75.94611281437682,
+            "stoch_d_prev": 61.995127723201136,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 249.76,
@@ -43074,7 +43074,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 300.5,
@@ -43211,7 +43211,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 92.49,
@@ -43348,7 +43348,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 21.19,
@@ -43485,7 +43485,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 79.17,
@@ -43622,7 +43622,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 8.16,
@@ -43759,7 +43759,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 27.43,
@@ -43896,7 +43896,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 6.116,
@@ -44033,7 +44033,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 119.14,
@@ -44170,7 +44170,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 210.88,
@@ -44307,7 +44307,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 357.01,
@@ -44444,7 +44444,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 353.06,
@@ -44581,7 +44581,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 109.91,
@@ -44718,7 +44718,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 28.51,
@@ -44855,7 +44855,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 921.14,
@@ -44992,7 +44992,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 211.08701268,
@@ -45129,7 +45129,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 252.8,
@@ -45266,7 +45266,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 563.99,
@@ -45403,7 +45403,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 105.6,
@@ -45540,7 +45540,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 108.0817588,
@@ -45677,7 +45677,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 115.45,
@@ -45814,7 +45814,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 8.494,
@@ -45951,7 +45951,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 953.43,
@@ -46088,7 +46088,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 153.95,
@@ -46225,15 +46225,15 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 236.50559851,
                     "timestamp": "2026-09-26T09:51:00.000000Z"
                 },
                 "previous": {
-                    "price": 236.44,
-                    "timestamp": "2026-09-26T07:51:00.000000Z"
+                    "price": 236.50559851,
+                    "timestamp": "2026-09-26T09:51:00.000000Z"
                 }
             },
             "stoch_crossunder": {
@@ -46242,17 +46242,17 @@
                     "timestamp": "2026-09-26T10:06:00.000000Z"
                 },
                 "previous": {
-                    "price": 236.47503262,
-                    "timestamp": "2026-09-26T09:18:00.000000Z"
+                    "price": 236.46,
+                    "timestamp": "2026-09-26T10:06:00.000000Z"
                 }
             }
         },
         "15m": {
-            "stoch_k": 80.1411183312035,
-            "stoch_d": 69.37733271750115,
-            "stoch_k_prev": 68.19820578504465,
-            "stoch_d_prev": 65.39570193002885,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z",
+            "stoch_k": 96.49378333670991,
+            "stoch_d": 95.98548367211725,
+            "stoch_k_prev": 96.4937833367099,
+            "stoch_d_prev": 90.53459533692882,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 236.77,
@@ -46362,15 +46362,15 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 367.53,
                     "timestamp": "2026-09-26T09:36:00.000000Z"
                 },
                 "previous": {
-                    "price": 367.6277754,
-                    "timestamp": "2026-09-26T08:36:00.000000Z"
+                    "price": 367.53,
+                    "timestamp": "2026-09-26T09:36:00.000000Z"
                 }
             },
             "stoch_crossunder": {
@@ -46379,24 +46379,24 @@
                     "timestamp": "2026-09-26T09:12:00.000000Z"
                 },
                 "previous": {
-                    "price": 367.56,
+                    "price": 367.66488858,
                     "timestamp": "2026-09-26T09:12:00.000000Z"
                 }
             }
         },
         "15m": {
-            "stoch_k": 42.99236033058613,
-            "stoch_d": 27.734351281890145,
-            "stoch_k_prev": 24.31484477189241,
-            "stoch_d_prev": 16.904708374670054,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z",
+            "stoch_k": 72.37876583957012,
+            "stoch_d": 56.03239289749431,
+            "stoch_k_prev": 58.3310165173687,
+            "stoch_d_prev": 43.35190894228152,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z",
             "stoch_crossover": {
                 "latest": {
-                    "price": 367.5,
+                    "price": 367.44213098,
                     "timestamp": "2026-09-26T10:00:00.000000Z"
                 },
                 "previous": {
-                    "price": 367.5,
+                    "price": 367.44213098,
                     "timestamp": "2026-09-26T10:00:00.000000Z"
                 }
             },
@@ -46499,34 +46499,34 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
-                    "price": 484.65,
-                    "timestamp": "2026-09-26T09:36:00.000000Z"
+                    "price": 484.76,
+                    "timestamp": "2026-09-26T10:45:00.000000Z"
                 },
                 "previous": {
-                    "price": 484.93,
-                    "timestamp": "2026-09-26T08:33:00.000000Z"
+                    "price": 484.65,
+                    "timestamp": "2026-09-26T09:36:00.000000Z"
                 }
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 485.07011098,
-                    "timestamp": "2026-09-26T09:12:00.000000Z"
+                    "price": 484.9,
+                    "timestamp": "2026-09-26T10:30:00.000000Z"
                 },
                 "previous": {
-                    "price": 485.07011098,
-                    "timestamp": "2026-09-26T09:12:00.000000Z"
+                    "price": 484.79,
+                    "timestamp": "2026-09-26T10:15:00.000000Z"
                 }
             }
         },
         "15m": {
-            "stoch_k": 53.119319851398586,
-            "stoch_d": 32.94655277086674,
-            "stoch_k_prev": 30.81414839416244,
-            "stoch_d_prev": 21.062029936644123,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z",
+            "stoch_k": 78.71298719611083,
+            "stoch_d": 75.05174094637384,
+            "stoch_k_prev": 75.60868224627298,
+            "stoch_d_prev": 66.52051849814795,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 484.77690725,
@@ -46636,11 +46636,11 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
-                    "price": 628.8,
-                    "timestamp": "2026-09-26T09:36:00.000000Z"
+                    "price": 629.91,
+                    "timestamp": "2026-09-26T10:51:00.000000Z"
                 },
                 "previous": {
                     "price": 628.8,
@@ -46649,8 +46649,8 @@
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 628.65691526,
-                    "timestamp": "2026-09-26T08:39:00.000000Z"
+                    "price": 629.83,
+                    "timestamp": "2026-09-26T10:18:00.000000Z"
                 },
                 "previous": {
                     "price": 628.65691526,
@@ -46659,11 +46659,11 @@
             }
         },
         "15m": {
-            "stoch_k": 99.43030745009112,
-            "stoch_d": 79.03058358027005,
-            "stoch_k_prev": 76.87111655959,
-            "stoch_d_prev": 62.922169638794536,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z",
+            "stoch_k": 99.05903934176335,
+            "stoch_d": 99.37269289450893,
+            "stoch_k_prev": 99.05903934176335,
+            "stoch_d_prev": 99.49644893061976,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 629.07961534,
@@ -46773,15 +46773,15 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
-                    "price": 311.42,
+                    "price": 311.41155171,
                     "timestamp": "2026-09-26T09:54:00.000000Z"
                 },
                 "previous": {
-                    "price": 311.88896885,
-                    "timestamp": "2026-09-26T07:18:00.000000Z"
+                    "price": 311.42,
+                    "timestamp": "2026-09-26T09:54:00.000000Z"
                 }
             },
             "stoch_crossunder": {
@@ -46790,25 +46790,25 @@
                     "timestamp": "2026-09-26T09:39:00.000000Z"
                 },
                 "previous": {
-                    "price": 311.3856842,
-                    "timestamp": "2026-09-26T09:27:00.000000Z"
+                    "price": 311.36061133,
+                    "timestamp": "2026-09-26T09:39:00.000000Z"
                 }
             }
         },
         "15m": {
-            "stoch_k": 3.573141474239927,
-            "stoch_d": 10.707132638993793,
-            "stoch_k_prev": 11.45048048775996,
-            "stoch_d_prev": 14.619820553534305,
-            "stoch_timestamp": "2026-09-26T10:15:00.000000Z",
+            "stoch_k": 100,
+            "stoch_d": 72.73786042505088,
+            "stoch_k_prev": 74.44931380507172,
+            "stoch_d_prev": 44.593410483622904,
+            "stoch_timestamp": "2026-09-26T11:00:00.000000Z",
             "stoch_crossover": {
                 "latest": {
-                    "price": 311.42,
-                    "timestamp": "2026-09-26T09:30:00.000000Z"
+                    "price": 311.73,
+                    "timestamp": "2026-09-26T10:30:00.000000Z"
                 },
                 "previous": {
-                    "price": 311.35,
-                    "timestamp": "2026-09-26T09:30:00.000000Z"
+                    "price": 311.73,
+                    "timestamp": "2026-09-26T10:30:00.000000Z"
                 }
             },
             "stoch_crossunder": {
@@ -46910,7 +46910,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 318.58,
@@ -47047,7 +47047,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 1744.59597924,
@@ -47184,7 +47184,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 61.6385383,
@@ -47321,7 +47321,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 289.86,
@@ -47458,7 +47458,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 11.28,
@@ -47595,7 +47595,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 505.83,
@@ -47732,7 +47732,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 32.8,
@@ -47869,7 +47869,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 818.28909506,
@@ -48006,7 +48006,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 234.68489545,
@@ -48143,7 +48143,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 87.60645114,
@@ -48280,7 +48280,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 107.50929269,
@@ -48417,7 +48417,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 62.08240912,
@@ -48554,7 +48554,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 114.69888574,
@@ -48691,7 +48691,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 36.75868358,
@@ -48828,7 +48828,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 7.87,
@@ -48965,7 +48965,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 23.39820118,
@@ -49102,7 +49102,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 934.3,
@@ -49233,7 +49233,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 293.78,
@@ -49370,7 +49370,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 29.19,
@@ -49507,7 +49507,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 119.63,
@@ -49644,7 +49644,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 64.12,
@@ -49781,7 +49781,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 226.91,
@@ -49918,7 +49918,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 123.4,
@@ -50055,7 +50055,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 33.79,
@@ -50192,7 +50192,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 44.05,
@@ -50329,7 +50329,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 282.48,
@@ -50466,7 +50466,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 341.85,
@@ -50603,7 +50603,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 187.92,
@@ -50740,7 +50740,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 21.26,
@@ -50877,7 +50877,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 23.5914655,
@@ -51014,7 +51014,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 935.08,
@@ -51151,7 +51151,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 1164.19,
@@ -51288,7 +51288,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 314.54,
@@ -51425,7 +51425,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 776.17,
@@ -51562,7 +51562,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 162.53,
@@ -51699,7 +51699,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 37.55,
@@ -51836,7 +51836,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 36.21,
@@ -51973,7 +51973,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 238.65,
@@ -52110,7 +52110,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 71.16024162,
@@ -52247,7 +52247,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 10.37507522,
@@ -52384,7 +52384,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 136.79,
@@ -52521,7 +52521,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 38.61,
@@ -52658,7 +52658,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 7.716,
@@ -52795,7 +52795,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 138.44766921,
@@ -52932,7 +52932,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 376.37,
@@ -53069,7 +53069,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 16.65,
@@ -53206,7 +53206,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 55.49218457,
@@ -53343,7 +53343,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 54.91810849,
@@ -53480,7 +53480,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 193.53,
@@ -53617,7 +53617,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 50.1,
@@ -53754,7 +53754,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 745.03,
@@ -53891,7 +53891,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 15.39,
@@ -54028,7 +54028,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 54.26245524,
@@ -54165,7 +54165,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 191.42578336,
@@ -54302,7 +54302,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 43.17,
@@ -54439,7 +54439,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 607.38,
@@ -54576,7 +54576,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 1772.46,
@@ -54713,7 +54713,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 340.69878076,
@@ -54850,7 +54850,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 17.62,
@@ -54987,7 +54987,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 16.70092427,
@@ -55124,7 +55124,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 23.49,
@@ -55261,7 +55261,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 151.8735816,
@@ -55398,7 +55398,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 33.81,
@@ -55535,7 +55535,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 148.6,
@@ -55672,7 +55672,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 771.23,
@@ -55809,7 +55809,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 33.69,
@@ -55946,7 +55946,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 98.54,
@@ -56083,7 +56083,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 916.68,
@@ -56220,7 +56220,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 41.05,
@@ -56357,7 +56357,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 398.02,
@@ -56494,7 +56494,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 27.25,
@@ -56631,7 +56631,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 79.79,
@@ -56768,7 +56768,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 451.44,
@@ -56905,7 +56905,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 201.24957949,
@@ -57042,7 +57042,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 276.55,
@@ -57179,7 +57179,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 45.46,
@@ -57316,7 +57316,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 69.37,
@@ -57453,7 +57453,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 49.23,
@@ -57590,7 +57590,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 15.31870086,
@@ -57727,7 +57727,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 16.93183358,
@@ -57864,7 +57864,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 251.00154158,
@@ -58001,7 +58001,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 367.86968007,
@@ -58138,7 +58138,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 457.76,
@@ -58275,7 +58275,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 6.587,
@@ -58412,7 +58412,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 110.53,
@@ -58549,7 +58549,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 155.13,
@@ -58686,7 +58686,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:39:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 61.8056556,
@@ -58823,7 +58823,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:57:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 90.73976771,
@@ -58960,7 +58960,7 @@
             "stoch_d": 100,
             "stoch_k_prev": 100,
             "stoch_d_prev": 100,
-            "stoch_timestamp": "2026-09-26T10:36:00.000000Z",
+            "stoch_timestamp": "2026-09-26T10:54:00.000000Z",
             "stoch_crossover": {
                 "latest": {
                     "price": 1.42417501,

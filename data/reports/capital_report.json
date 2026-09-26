@@ -1,56 +1,65 @@
 {
- "generated_at": "2026-09-26 10:37 UTC",
- "total_capital_usd": 243.96,
+ "generated_at": "2026-09-26 11:04 UTC",
+ "total_capital_usd": 151.39,
  "tier_capital": {
   "A": 0.0,
-  "B": 243.96,
-  "C": 0.0
+  "B": 89.7,
+  "C": 61.69
  },
  "tier_count": {
   "A": 0,
   "B": 3,
-  "C": 0
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "flz:BTCUSDT_LONG"
+  "fin:SNXUSDT_LONG"
  ],
- "mediocre": [
-  "flz:HYPEUSDT_SHORT"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "flz:BTCUSDT_LONG",
-   "symbol": "BTCUSDT",
-   "account": "flz",
-   "value_usd": 168.17,
-   "gain_pct": -3.181,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.002,
-   "mark": 84087.2
+   "pk": "fin:SNXUSDT_LONG",
+   "symbol": "SNXUSDT",
+   "account": "fin",
+   "value_usd": 61.69,
+   "gain_pct": -0.542,
+   "tier": "C",
+   "perf_mult": 0.44,
+   "amt": 236.8,
+   "mark": 0.2605
   },
   {
-   "pk": "flz:DASHUSDT_LONG",
-   "symbol": "DASHUSDT",
-   "account": "flz",
-   "value_usd": 61.09,
-   "gain_pct": 2.142,
+   "pk": "fin:ADAUSDC_LONG",
+   "symbol": "ADAUSDC",
+   "account": "fin",
+   "value_usd": 41.83,
+   "gain_pct": -0.311,
    "tier": "B",
-   "perf_mult": 5.68,
-   "amt": 0.94,
-   "mark": 64.9895305
+   "perf_mult": 2.21,
+   "amt": 163.0,
+   "mark": 0.25662729
   },
   {
-   "pk": "flz:HYPEUSDT_SHORT",
-   "symbol": "HYPEUSDT",
-   "account": "flz",
-   "value_usd": 14.7,
-   "gain_pct": -0.137,
+   "pk": "fin:XLMUSDT_LONG",
+   "symbol": "XLMUSDT",
+   "account": "fin",
+   "value_usd": 24.31,
+   "gain_pct": -0.432,
    "tier": "B",
-   "perf_mult": 0.98,
-   "amt": 0.16,
-   "mark": 91.872
+   "perf_mult": 0.69,
+   "amt": 111.0,
+   "mark": 0.21900553
+  },
+  {
+   "pk": "fin:ALGOUSDT_LONG",
+   "symbol": "ALGOUSDT",
+   "account": "fin",
+   "value_usd": 23.56,
+   "gain_pct": 1.302,
+   "tier": "B",
+   "perf_mult": 1.92,
+   "amt": 200.5,
+   "mark": 0.11752461
   }
  ]
 }
