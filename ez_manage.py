@@ -41963,6 +41963,33 @@ async def process_single_reentry_evaluation(
                 logger.debug(
                     f"[AGE_GATE_EXTREME] {position_key}: passed 4/4 WT, continuing to standard gates"
                 )
+        # 2026-09-27 HTF WT CHURN REENTRY — if flat after ANY exit but HTF WT still WITH direction, immediately reenter even at same price / churning (burn commissions to not miss bounce). Bypasses all other gates.
+        if _guaranteed_reentry and _is_flat_for_guarantee and reentry_level > 0 and bool(getattr(config, "HTF_WT_CHURN_REENTRY_ENABLED", True)):
+            try:
+                _churn_max_age = float(getattr(config, "HTF_WT_CHURN_REENTRY_MAX_AGE_MIN", 120.0))
+                if min_since_exit <= _churn_max_age:
+                    _ch_wt1_1h = safe_fetch_float(i.get("wt1_1h", 0), 0.0)
+                    _ch_wt2_1h = safe_fetch_float(i.get("wt2_1h", 0), 0.0)
+                    _ch_wt1_15m = safe_fetch_float(i.get("wt1_15m", 0), 0.0)
+                    _ch_wt2_15m = safe_fetch_float(i.get("wt2_15m", 0), 0.0)
+                    _ch_wt1_4h = safe_fetch_float(i.get("wt1_4h", 0), 0.0)
+                    _ch_wt2_4h = safe_fetch_float(i.get("wt2_4h", 0), 0.0)
+                    _ch_htf_with = (is_long and (_ch_wt1_1h > _ch_wt2_1h or _ch_wt1_15m > _ch_wt2_15m or _ch_wt1_4h > _ch_wt2_4h)) or ((not is_long) and (_ch_wt1_1h < _ch_wt2_1h or _ch_wt1_15m < _ch_wt2_15m or _ch_wt1_4h < _ch_wt2_4h))
+                    if _ch_htf_with:
+                        # also require not already at max size (use same check as other reentries)
+                        _ch_notional = abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0)) * current_price
+                        _ch_sps = float(getattr(config, "START_POSITION_SIZE", 28.0))
+                        if _ch_notional < _ch_sps * 3:
+                            _ch_reason = f"HTF_WT_CHURN_REENTRY_{'LONG' if is_long else 'SHORT'}_wt1h{_ch_wt1_1h:.1f}/{_ch_wt2_1h:.1f}_wt15m{_ch_wt1_15m:.1f}/{_ch_wt2_15m:.1f}_age{min_since_exit:.0f}m_exit{reentry_level:.4f}_cur{current_price:.4f}_CHURN_OK"
+                            logger.warning(f"🔥 [HTF_WT_CHURN_REENTRY] {position_key}: HTF WT still WITH position (wt1h {_ch_wt1_1h:.1f}/{_ch_wt2_1h:.1f} wt15m {_ch_wt1_15m:.1f}/{_ch_wt2_15m:.1f} wt4h {_ch_wt1_4h:.1f}/{_ch_wt2_4h:.1f}) age {min_since_exit:.0f}m <= {_churn_max_age:.0f}m exit {reentry_level:.4f} cur {current_price:.4f} → CHURN REENTRY (burn commission to not miss bounce)")
+                            _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config)
+                            _ch_reason = _ch_reason + _ee_tag
+                            result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _ch_reason, 95.0, override_qty=reentry_amount)
+                            if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
+                                logger.warning(f"[HTF_WT_CHURN_REENTRY] {position_key}: QUEUED at {current_price:.4f} exit {reentry_level:.4f} HTF WT with direction")
+                            return
+            except Exception as _ch_e:
+                logger.debug(f"[HTF_WT_CHURN_REENTRY] {position_key} probe err: {_ch_e}")
         # == STANDARD REENTRY GATES ==
         # 2026-04-26 USER RULE — NEVER force-reenter against confirmed HTF trend.
         # Triggered after C98USDT_SHORT triple-open while 1h+15m+4h all bullish (suicide setup).

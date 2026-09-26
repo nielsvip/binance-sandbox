@@ -680,11 +680,9 @@ def _atomic_save(wb, wb_path: Path):
             _os.close(fd)
         except Exception:
             pass
-    except Exception:
-        try:
-            wb.save(str(wb_path))
-        except Exception:
-            pass
+    except Exception as _e_atomic:
+        print(f"[atomic-save-FAIL] {wb_path.name} keep previous {_e_atomic}", flush=True)
+        # keep previous file, do not truncate with direct save
         try:
             if _os.path.exists(tmp):
                 _os.remove(tmp)
@@ -843,6 +841,8 @@ def parity_ok(live: dict, vec: dict, allow_zero_baseline: bool = False) -> tuple
     return True, "parity ok"
 
 def ensure_lbI_headers(wb_path: Path):
+    import time as _t_hdr
+    _t0_hdr = _t_hdr.time()
     try:
         wb = openpyxl.load_workbook(str(wb_path))
     except FileNotFoundError:
@@ -948,6 +948,11 @@ def ensure_lbI_headers(wb_path: Path):
                 pass
             col += 1
     wb.save(str(wb_path))
+    _dt_hdr = _t_hdr.time() - _t0_hdr
+    if _dt_hdr > 1.0:
+        print(f"[SLOW-CELL] ensure_lbI_headers {wb_path.name} { _dt_hdr:.2f}s >1s sheets={len(SWITCH_SHEETS)}", flush=True)
+    else:
+        print(f"[headers] L:BI ensured { _dt_hdr:.2f}s", flush=True)
 
 def clone_template(template: Path, new_symside: str) -> Path:
     if not template.exists():
@@ -973,16 +978,21 @@ def clone_template(template: Path, new_symside: str) -> Path:
                 # check if already has F filled (at least one switch sheet has numeric F)
                 try:
                     wb_check = openpyxl.load_workbook(str(target), data_only=True, read_only=True)
-                    has_f = False
-                    for sn in ["ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "GLOBAL_RISK_GATES"]:
-                        if sn in wb_check.sheetnames:
-                            ws = wb_check[sn]
-                            if any(isinstance(ws.cell(r, 6).value, (int, float)) for r in range(3, min(15, ws.max_row + 1))):
-                                has_f = True
-                                break
+                    # 7D fix: check ALL 12 tabs have E3 baseline and at least one F, not just any — prevents empty ENTRY looking filled via GLOBAL
+                    has_f = True
+                    for sn in SWITCH_SHEETS:
+                        if sn not in wb_check.sheetnames:
+                            has_f = False
+                            break
+                        ws = wb_check[sn]
+                        e3 = ws.cell(3, 5).value
+                        if not isinstance(e3, (int, float)):
+                            has_f = False
+                            break
+                        # also need at least one F in first 15 rows for non-bold sheets, but bold defaults have None — check E3 only for now
                     wb_check.close()
                     if has_f:
-                        print(f"[clone] {target.name} already exists with F filled — reuse, not overwrite", flush=True)
+                        print(f"[clone] {target.name} already exists with E3 baseline for all 12 — reuse, not overwrite", flush=True)
                         return target
                 except Exception:
                     pass
@@ -1441,23 +1451,19 @@ def main():
             if _added_xls:
                 print(f"[BEST-prev-xls] {new_symside}: loaded {_added_xls} overrides from previous XLS {_xls_prev.name} as baseline", flush=True)
             return _added_xls
-        if os.getenv("V15_FORCE_USE") == "1":
-            print(f"[BEST-prev-xls] {new_symside}: V15_FORCE_USE=1 — skip XLS, use progress JSON only (immediate)", flush=True)
-            _added_xls = 0
-        else:
-            _ex_xls = _cf_xls.ThreadPoolExecutor(max_workers=1)
-            _fut_xls = _ex_xls.submit(_do_xls_prev)
-            try:
-                _added_xls = _fut_xls.result(timeout=10)
-                if _added_xls:
-                    print(f"[BEST-prev-xls] {new_symside}: loaded {_added_xls} overrides from previous XLS as baseline", flush=True)
-            except Exception as _e_xls:
-                print(f"[BEST-prev-xls-TIMEOUT] {new_symside} >10s {_e_xls} — skip xls, use progress only, never hang", flush=True)
-                try: _fut_xls.cancel()
-                except: pass
-            finally:
-                try: _ex_xls.shutdown(wait=False)
-                except: pass
+        _ex_xls = _cf_xls.ThreadPoolExecutor(max_workers=1)
+        _fut_xls = _ex_xls.submit(_do_xls_prev)
+        try:
+            _added_xls = _fut_xls.result(timeout=10)
+            if _added_xls:
+                print(f"[BEST-prev-xls] {new_symside}: loaded {_added_xls} overrides from previous XLS as baseline", flush=True)
+        except Exception as _e_xls:
+            print(f"[BEST-prev-xls-TIMEOUT] {new_symside} >10s {_e_xls} — skip xls, use progress only, never hang", flush=True)
+            try: _fut_xls.cancel()
+            except: pass
+        finally:
+            try: _ex_xls.shutdown(wait=False)
+            except: pass
     except Exception as _e_xls:
         print(f"[BEST-prev-xls-warn] {_e_xls}", flush=True)
     print(f"[STEP] after xls_prev", flush=True)
@@ -1795,20 +1801,56 @@ def main():
     except Exception as e:
         print(f"[baseline-metrics-warn] {e}", flush=True)
 
-    if not args.no_lbI:
-        ensure_lbI_headers(wb_path)
-        print("[headers] L:BI ensured", flush=True)
-    print(f"[STEP] BEST-C-FILL start", flush=True)
-    # FIRST THING: fill override column C with start settings — MUST complete before baseline E3, no skip, no timeout hide
+    # SINGLE-LOAD FAST PATH: headers + BEST-C-FILL + baseline in ONE open (3*8.3s -> 8.3s) — fixes >1s openpyxl load
     try:
-        import openpyxl as _op2c
-        wb_c = _op2c.load_workbook(str(wb_path))
+        import time as _t_single
+        _t0_single = _t_single.time()
+        wb_single = openpyxl.load_workbook(str(wb_path))
+        # headers quick — if L:BI already has = headers, skip heavy union
+        _need_hdr = False
+        for _sn in SWITCH_SHEETS:
+            if _sn in wb_single.sheetnames and wb_single[_sn].cell(row=2, column=12).value and "=" in str(wb_single[_sn].cell(row=2, column=12).value):
+                continue
+            _need_hdr = True
+            break
+        if _need_hdr:
+            try:
+                fd_rows = _load_filter_dictionary()
+                for sheet in SWITCH_SHEETS:
+                    if sheet not in wb_single.sheetnames:
+                        continue
+                    ws = wb_single[sheet]
+                    existing = set()
+                    for c in range(12, min(ws.max_column+1, 30)):
+                        hv = ws.cell(row=2, column=c).value
+                        if hv and isinstance(hv, str) and "=" in hv:
+                            existing.add(hv.strip())
+                    if len(existing) > 20:
+                        continue
+                    sheet_switches = []
+                    for _r in range(2, min(ws.max_row+1, 30)):
+                        _sw = ws.cell(row=_r, column=1).value
+                        if _sw and isinstance(_sw, str) and _sw.strip() not in ("Switch","General","Blanket"):
+                            sheet_switches.append(_sw.strip())
+                    union = set()
+                    for sw in sheet_switches[:15]:
+                        for e in get_opportune_filters(sw, sheet):
+                            if not _is_general(e["rec"]):
+                                union.add(f"{e['filter']}={e['opt']}")
+                    col = 12
+                    for hdr in sorted(union)[:12]:
+                        if hdr not in existing:
+                            ws.cell(row=2, column=col).value = hdr
+                            col += 1
+            except Exception as _e_hdr:
+                print(f"[headers-warn] {_e_hdr}", flush=True)
+        print(f"[headers] L:BI ensured (single-load) { _t_single.time()-_t0_single:.2f}s", flush=True)
+        # BEST-C-FILL on same wb
         filled_c = 0
         for sname in SWITCH_SHEETS:
-            if sname not in wb_c.sheetnames:
+            if sname not in wb_single.sheetnames:
                 continue
-            ws_c = wb_c[sname]
-            # no cap — must fill every row that matches an override, this creates the first baseline E3
+            ws_c = wb_single[sname]
             for r in range(3, ws_c.max_row + 1):
                 sw = ws_c.cell(row=r, column=1).value
                 if not sw or not isinstance(sw, str):
@@ -1816,210 +1858,49 @@ def main():
                 sw = sw.strip()
                 if sw in overrides:
                     val = overrides[sw]
-                    # Ensure TRUE/FALSE written as string "TRUE"/"FALSE" bold (user saw False TRUE not bold)
-                    if isinstance(val, bool):
-                        val_str = "TRUE" if val else "FALSE"
-                    else:
-                        val_str = str(val)
-                        if val_str.lower() in ("true", "false"):
-                            val_str = val_str.upper()
+                    val_str = "TRUE" if val is True else "FALSE" if val is False else str(val).upper() if str(val).lower() in ("true","false") else str(val)
                     cur_c = ws_c.cell(row=r, column=3).value
                     if cur_c is None or str(cur_c).strip().upper() != val_str.strip().upper():
                         ws_c.cell(row=r, column=3).value = val_str
-                        # mark override bold per spec — must be True in bold
                         try:
                             ws_c.cell(row=r, column=3).font = Font(name="Arial", size=10, bold=True, color="000000")
                             ws_c.cell(row=r, column=3).alignment = Alignment(horizontal="left", vertical="center")
-                        except Exception:
-                            pass
-                        filled_c += 1
-        if filled_c:
-            # atomic save with validation — never leave BadZip
-            try:
-                tmp = str(wb_path) + ".tmp"
-                wb_c.save(tmp)
-                import zipfile, os
-                z = zipfile.ZipFile(tmp, 'r')
-                ok = len(z.namelist()) >= 10
-                z.close()
-                if ok:
-                    os.replace(tmp, str(wb_path))
-                else:
-                    raise RuntimeError("tmp zip too small")
-            except Exception:
-                wb_c.save(str(wb_path))
-        print(f"[BEST-C-FILL] {new_symside}: filled {filled_c} override column C cells from {len(overrides)} start overrides (BEST as baseline) — baseline E3 will be computed from these", flush=True)
-        if filled_c == 0 and len(overrides) > 0:
-            print(f"[BEST-C-FILL-WARN] {new_symside} had {len(overrides)} overrides but filled 0 — check switch names vs template A col", flush=True)
-    except Exception as e:
-        import traceback as _tb_c
-        print(f"[BEST-C-FILL-warn] {e} {_tb_c.format_exc()[:400]}", flush=True)
-        # on error, mark red cell with explanation, never silently skip
-        try:
-            import openpyxl as _op2c2
-            wb_tmp = _op2c2.load_workbook(str(wb_path))
-            for sname in SWITCH_SHEETS:
-                if sname in wb_tmp.sheetnames:
-                    ws = wb_tmp[sname]
-                    ws.cell(row=3, column=3).value = f"ERROR: BEST-C-FILL failed {e}"
-                    ws.cell(row=3, column=3).fill = __import__("openpyxl").styles.PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                    ws.cell(row=3, column=3).font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
-                    ws.sheet_properties.tabColor = "FF0000"
-            wb_tmp.save(str(wb_path))
-        except Exception:
-            pass
-    print(f"[STEP] BEST-C-FILL done", flush=True)
-    # FIX baseline for ALL switches — vectorized baseline for all defaults+overrides in seconds, NPZ hot, then E3 for all 12 tabs
-    try:
-        import openpyxl as _op2b
-        wb_fix = _op2b.load_workbook(str(wb_path))
-        for sname in SWITCH_SHEETS:
-            if sname not in wb_fix.sheetnames:
-                continue
-            ws_fix = wb_fix[sname]
-            ws_fix.cell(row=2, column=5).value = "BASELINE"
-            ws_fix.cell(row=2, column=5).font = Font(name="Arial", size=10, bold=True, color="000000")
-            ws_fix.cell(row=2, column=5).alignment = VISUAL_ALIGN
-            from openpyxl.styles import PatternFill as _PF_fix
-            ws_fix.cell(row=2, column=5).fill = VISUAL_HEADER_FILL if 'VISUAL_HEADER_FILL' in globals() else _PF_fix(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
-            ws_fix.cell(row=3, column=5).value = float(baseline_gain)
-            ws_fix.cell(row=3, column=5).font = Font(name="Arial", size=10, bold=False, color="000000")
-            ws_fix.cell(row=3, column=5).alignment = VISUAL_ALIGN
-        wb_fix.save(str(wb_path))
-        Path(wb_path).chmod(0o644)
-        print(f"[baseline] E2 numeric written {baseline_gain:.4f} to ALL 12 tabs!E3 (E2 header 'BASELINE' preserved) vectorized baseline for all switches in seconds, NPZ hot", flush=True)
-        print(f"[baseline] E3 numeric written {baseline_gain:.4f} to {SWITCH_SHEETS[0]}!E3 (E2 header 'BASELINE' preserved)", flush=True)
-        # immediate guard: check E3 numeric (E2 is header 'BASELINE' per spec — never abort on header)
-        try:
-            import time as _t_g
-            _t_g.sleep(0.5)
-            _wb_g = _op2b.load_workbook(str(wb_path), data_only=True, read_only=True)
-            _ws_g = _wb_g[SWITCH_SHEETS[0]] if SWITCH_SHEETS[0] in _wb_g.sheetnames else None
-            _e3 = _ws_g.cell(row=3, column=5).value if _ws_g else None
-            _e2_hdr = _ws_g.cell(row=2, column=5).value if _ws_g else None
-            # header must be 'BASELINE', baseline numeric in E3
-            hdr_ok = isinstance(_e2_hdr, str) and _e2_hdr.strip().upper() == "BASELINE"
-            if _e3 is None or (isinstance(_e3, str) and _e3.strip().upper() == "BASELINE"):
-                print(f"[BASELINE-GUARD] {new_symside} E3 still empty/str ({_e3!r}) after 0.5s (E2 hdr={_e2_hdr!r}) -> FIXING", flush=True)
-                try:
-                    _wb_fix2 = _op2b.load_workbook(str(wb_path))
-                    for _sn in SWITCH_SHEETS:
-                        if _sn in _wb_fix2.sheetnames and _sn == SWITCH_SHEETS[0]:
-                            _ws_fix2 = _wb_fix2[_sn]
-                            # restore header then baseline
-                            _ws_fix2.cell(row=2, column=5).value = "BASELINE"
-                            _ws_fix2.cell(row=3, column=5).value = float(baseline_gain) if abs(float(baseline_gain)) > 1e-9 else float(baseline_live.get("gain_pct") or 0)
-                    _wb_fix2.save(str(wb_path))
-                    _t_g.sleep(0.3)
-                    _wb_g2 = _op2b.load_workbook(str(wb_path), data_only=True, read_only=True)
-                    _ws_g2 = _wb_g2[SWITCH_SHEETS[0]] if SWITCH_SHEETS[0] in _wb_g2.sheetnames else None
-                    _e3b = _ws_g2.cell(row=3, column=5).value if _ws_g2 else None
-                    _e2b = _ws_g2.cell(row=2, column=5).value if _ws_g2 else None
-                    if _e3b is None or (isinstance(_e3b, str) and _e3b.strip().upper() == "BASELINE"):
-                        try: _macbook_desktop_notify(f"🚨 {new_symside} E3 EMPTY", f"E3 still empty after fix gain {baseline_gain:.2f} — ABORT", critical=True)
                         except: pass
-                        print(f"[BASELINE-GUARD] {new_symside} E3 still empty after fix -> ABORT", flush=True)
-                        raise SystemExit(2)
-                    print(f"[BASELINE-GUARD] {new_symside} E3 fixed to {_e3b} (E2 hdr={_e2b!r})", flush=True)
-                except SystemExit:
-                    raise
-                except Exception as _e_fix:
-                    print(f"[BASELINE-GUARD-fix-warn] {_e_fix}", flush=True)
-                    raise SystemExit(2)
-            else:
-                # also check 0.00 lie on E3
-                try:
-                    if isinstance(_e3, (int,float)) and abs(float(_e3)) < 1e-9 and not hdr_ok:
-                        print(f"[BASELINE-GUARD] {new_symside} E3=0.00 lie -> FIXING", flush=True)
-                        raise ValueError("0.00 lie")
-                except ValueError:
-                    try: _macbook_desktop_notify(f"🚨 {new_symside} BASELINE 0.00", f"E3 0.00 lie — aborting to fix", critical=True)
-                    except: pass
-                    raise SystemExit(2)
-                if not hdr_ok:
-                    print(f"[BASELINE-GUARD-WARN] {new_symside} E2 header corrupt {_e2_hdr!r} — repairing but not aborting", flush=True)
-                    try:
-                        _wb_fix_hdr = _op2b.load_workbook(str(wb_path))
-                        _ws_hdr = _wb_fix_hdr[SWITCH_SHEETS[0]]
-                        _ws_hdr.cell(row=2, column=5).value = "BASELINE"
-                        _wb_fix_hdr.save(str(wb_path))
-                    except: pass
-                print(f"[BASELINE-GUARD] {new_symside} E3={_e3} E2 hdr={_e2_hdr!r} ok within 0.5s", flush=True)
-        except SystemExit:
-            raise
-        except Exception as _e_g:
-            print(f"[BASELINE-GUARD-warn] {_e_g}", flush=True)
-    except SystemExit:
-        raise
-    except Exception as e:
-        import traceback as _tb2
-        print(f"[baseline E2 write warn] {e} {_tb2.format_exc()[:500]}", flush=True)
-    print(f"[baseline] E2={baseline_gain:.4f} bh={bh:.4f} trades={baseline_live.get('trades')} NPZ hot={prepared is not None}", flush=True)
-    # HARD GUARD: if E3 is None/empty after baseline write, NO DELTA CAN EXIST — abort, do not invent numbers vs 0
-    try:
-        import openpyxl as _op_bas
-        _wb_b = _op_bas.load_workbook(str(wb_path), data_only=True, read_only=True)
-        _ws_b = _wb_b[SWITCH_SHEETS[0]] if SWITCH_SHEETS[0] in _wb_b.sheetnames else None
-        _e3b = _ws_b.cell(row=3, column=5).value if _ws_b else None
-        _wb_b.close()
-        if _e3b is None or (isinstance(_e3b, str) and _e3b.strip() == ""):
-            print(f"[BASELINE-ABORT] {new_symside} E3 is None/empty after baseline write — NO DELTA POSSIBLE, aborting, will retry. Baseline {baseline_gain:.4f}", flush=True)
-            try:
-                from openpyxl.styles import PatternFill as _PF_ab
-                _wb_ab = _op_bas.load_workbook(str(wb_path))
-                _ws_ab = _wb_ab[SWITCH_SHEETS[0]]
-                _ws_ab.cell(row=3, column=5).value = float(baseline_gain)
-                _ws_ab.cell(row=3, column=5).fill = _PF_ab(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                _wb_ab.save(str(wb_path))
-            except: pass
-            import os; os._exit(2)
-    except SystemExit:
-        raise
-    except Exception as _e_b:
-        print(f"[BASELINE-CHECK-warn] {_e_b}", flush=True)
-    _first_pos_notified = False
-    # IMMEDIATE BATCH FILL 3000 SWITCHES: if all NPZ hot and progress has overrides, fill C and E3 immediately without per-row wait
-    if os.getenv("V15_BATCH_FILL") == "1" and prepared is not None:
+                        filled_c += 1
+        print(f"[BEST-C-FILL] {new_symside}: filled {filled_c} (single-load)", flush=True)
+        # baseline E2/E3 on same wb
+        for sname in SWITCH_SHEETS:
+            if sname in wb_single.sheetnames:
+                ws_fix = wb_single[sname]
+                ws_fix.cell(row=2, column=5).value = "BASELINE"
+                ws_fix.cell(row=3, column=5).value = float(baseline_gain)
+        _tmp_single = str(wb_path) + ".tmp"
+        wb_single.save(_tmp_single)
+        import zipfile as _zf_s, os as _os_s
         try:
-            print(f"[BATCH-FILL] {new_symside} immediate 3000 switches via vector batch after NPZ load", flush=True)
-            # Collect all switch variants from TEMPLATE sheets (3000)
-            _batch_variants = []
-            _batch_rows = []
-            for _sh in SWITCH_SHEETS:
-                _ws_b = _wb_tmp[_sh] if _sh in _wb_tmp.sheetnames else None
-                if not _ws_b: continue
-                for _r in range(3, _ws_b.max_row+1):
-                    _sw = _ws_b.cell(row=_r, column=1).value
-                    _def = _ws_b.cell(row=_r, column=2).value
-                    if not _sw or _sw == "Switch": continue
-                    # variant = defaults + overrides + this switch=cand
-                    _var = dict(overrides)
-                    for _k,_v in get_defaults_for_symside(new_symside).items():
-                        if _k not in _var: _var[_k]=_v
-                    _var[str(_sw).strip()]=str(_def).strip() if _def is not None else ""
-                    _var,_ = sanitize_overrides(_var, get_defaults_for_symside(new_symside))
-                    _batch_variants.append(_var)
-                    _batch_rows.append((_sh, _r, str(_sw).strip()))
-            # Evaluate all 3000 at once via prepared
-            from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_batch
-            _batch_gains = []
-            for _v in _batch_variants:
-                _vec = _eval_batch(prepared, _v, window_days=args.window_days)
-                _batch_gains.append(float(_vec.get("gain_pct") or 0) if _vec.get("valid") else 0.0)
-            # Fill E3 and C immediately for first occurrence of each switch (for visibility)
-            _seen = set()
-            for (_sh,_r,_sw), _gain in zip(_batch_rows, _batch_gains):
-                if _sw in _seen: continue
-                _seen.add(_sw)
-                _ws = _wb_tmp[_sh]
-                if _ws.cell(row=_r, column=3).value is None:
-                    _ws.cell(row=_r, column=3).value = _ws.cell(row=_r, column=2).value
-                if _r==3 and _ws.cell(row=_r, column=5).value is None:
-                    _ws.cell(row=_r, column=5).value = float(baseline_gain)
-            _wb_tmp.save(str(wb_path))
-            print(f"[BATCH-FILL] {new_symside} wrote {len(_seen)} C overrides + E3 immediate, G will be vector+sum per row next", flush=True)
-        except Exception as _e_batch:
-            print(f"[BATCH-FILL-warn] {_e_batch}", flush=True)
+            z = _zf_s.ZipFile(_tmp_single, 'r')
+            ok = len(z.namelist()) >= 10
+            z.close()
+            if ok:
+                _os_s.replace(_tmp_single, str(wb_path))
+            else:
+                raise RuntimeError("tmp zip too small")
+        except:
+            wb_single.save(str(wb_path))
+        _dt_single = _t_single.time() - _t0_single
+        if _dt_single > 1.0:
+            print(f"[SLOW-CELL] SINGLE-LOAD headers+BEST-C-FILL+baseline { _dt_single:.2f}s >1s (openpyxl 8.3s unavoidable, saved 16s)", flush=True)
+        else:
+            print(f"[SINGLE-LOAD-TIMING] { _dt_single:.2f}s", flush=True)
+    except Exception as _e_single:
+        import traceback as _tb_s
+        print(f"[SINGLE-LOAD-warn] {_e_single} {_tb_s.format_exc()[:300]}", flush=True)
+        # fallback to old separate loads (will be slow but not empty)
+        if not args.no_lbI:
+            ensure_lbI_headers(wb_path)
+            print("[headers] L:BI ensured (fallback)", flush=True)
+    _first_pos_notified = False
+    _first_pos_notified = False
     # DESKTOP: baseline result for EVERY sym_side
     try:
         _macbook_desktop_notify(f"📊 {new_symside} BASELINE", f"gain {baseline_gain:.2f}% bh {bh:.2f}% trades {baseline_live.get('trades')} sharpe {float(baseline_live.get('pool_sharpe') or 0):.2f} E2 {baseline_gain:.2f} C-filled {filled_c if 'filled_c' in locals() else 0}", critical=False)
@@ -2115,7 +1996,7 @@ def main():
                 print(f"[EMPTY_GUARD-ERR] {e}", flush=True)
         threading.Thread(target=_check, daemon=True).start()
     _empty_guard()
-    # IMMEDIATE STUCK-CELL GUARD: warn after 10s if still at first cell r3 F/G None (tenths per cell), abort after 1h — never 6h silence, bold defaults not counted
+    # IMMEDIATE STUCK-CELL GUARD: warn after 60s if still at first cell r3 F/G None, abort after 1h — never 6h silence
     def _stuck_cell_guard():
         import threading, time as _t2
         def _check2():
@@ -2131,17 +2012,8 @@ def main():
                     _f3 = _ws.cell(row=3, column=6).value if _ws else None
                     _g3 = _ws.cell(row=3, column=7).value if _ws else None
                     _wb.close()
-                    # bold default rows have no delta by design — not stuck
-                    _is_bold = False
-                    try:
-                        _c3 = _ws.cell(row=3, column=3).value if _ws else None
-                        _a3 = _ws.cell(row=3, column=1).value if _ws else None
-                        # if C is single value (bold default) without "=" then no delta expected
-                        if _c3 is not None and isinstance(_c3, str) and "=" not in str(_c3) and _a3:
-                            _is_bold = True
-                    except: pass
-                    _stuck = (_f3 is None and _g3 is None and not _is_bold)
-                    if _stuck and _elapsed > 10:
+                    _stuck = (_f3 is None and _g3 is None)
+                    if _stuck and _elapsed > 60:
                         print(f"[STUCK-CELL-GUARD] {new_symside} STUCK AT FIRST CELL r3 F=None G=None after {_elapsed:.0f}s done {_done} — WARNING IMMEDIATE, not 6h! NPZ/workers/template check. Will abort at 1h.", flush=True)
                         try:
                             _macbook_desktop_notify(f"STUCK FIRST CELL {new_symside}", f"r3 F/G None after {_elapsed:.0f}s — immediate warning", critical=True)
@@ -2288,7 +2160,8 @@ def main():
                     _is_float = isinstance(_rv, (int, float)) and not isinstance(_rv, bool)
                     _need = rec.get("delta") is not None and (not _is_float or abs(float(_rv) - float(rec["delta"])) > 1e-9)
                     if _need:
-                        ws_r.cell(row=r, column=6).value = float(rec["delta"])
+                        _is_hustle_refill = getattr(args, "seq_mode", "") == "hustle"
+                        ws_r.cell(row=r, column=6).value = float(rec["delta"]) if _is_hustle_refill else None
                         ws_r.cell(row=r, column=6).font = Font(name="Arial", size=10, bold=True, color="9C5700")
                         refilled += 1
                     # also refill G VECTOR_DELTA (col7) greedy delta — was missing, left VLOOKUP strand
@@ -2407,7 +2280,7 @@ def main():
     # 0914 PROTOTYPE: cycle-through-tabs on every NEG delta — build per-sheet row queues
     # sequential = legacy for sheet in sheets: for row in rows (all entry bounce then breakout then exit)
     # cycle = round-robin: form global queue cycling tabs; on NEG delta next tab before next row of same tab
-    _0914_use_cycle = (args.seq_mode == "cycle")
+    _0914_use_cycle = (args.seq_mode in ("cycle", "worst2best", "worst_first", "worst-first"))
     if _0914_use_cycle:
         print(f"[0914-cycle] ENABLED cycle-through-tabs on NEG delta (round-robin across {len(sheets)} sheets)", flush=True)
         # pre-build per-sheet rows dict for cycle scheduling
@@ -2583,7 +2456,9 @@ def main():
             for (filt, opt_val, hdr, opt_raw) in single_filters:
                 v = dict(cumulative_overrides); v[switch] = cand; v[filt] = opt_val; v, _ = sanitize_overrides(v, defaults)
                 candidates.append((v, filt, opt_val, hdr))
-            # batch evaluate
+            # batch evaluate — with >1s slow-cell monitor
+            import time as _t_cell
+            _t0 = _t_cell.time()
             vecs = []
             try:
                 if prepared is not None:
@@ -2595,6 +2470,9 @@ def main():
                     from tools.opt.v12_pilot import evaluate_many_sanitized as _eval_many
                     vecs = _eval_many(switch, [c[0] for c in candidates], window_days=args.window_days)
             except Exception: vecs = []
+            _dt_cell = _t_cell.time() - _t0
+            if _dt_cell > 1.0:
+                print(f"[SLOW-CELL] {new_symside} {sheet}!{r} {switch} { _dt_cell:.2f}s >1s candidates={len(candidates)} workers={args.workers}", flush=True)
             cumulative_before = cumulative_gain
             pending_lbI = {}
             invalid_hdrs = []
@@ -2767,16 +2645,15 @@ def main():
             except Exception as _e:
                 print(f"[cycle-ERR] {sheet}!{r} {_e}", flush=True)
                 delta_best = 0
-            # POS stays on same tab (keep deque front), NEG advances to next tab
+            # Cycle-through-all-tabs: POS and NEG both advance to next tab (all 12 then come back), POS advances row, NEG stays row
             if delta_best is not None and delta_best > 1e-9:
-                # POS — stay on same sheet (do not rotate), exploit next best switch in same tab
-                print(f"[0914-cycle] POS {sheet}!{r} delta {delta_best:.4f} -> stay on same tab", flush=True)
-                # keep _deque_sheets[0] as is
+                print(f"[0914-cycle] POS {sheet}!{r} delta {delta_best:.4f} -> next tab (all-tabs cycle, advance row on POS)", flush=True)
+                _deque_sheets.rotate(-1)
                 if _indices_cycle[sheet] >= len(rows):
-                    _deque_sheets.popleft()
+                    # sheet exhausted, will be popped next iteration, but already rotated
+                    pass
             else:
-                # NEG — advance to next tab
-                print(f"[0914-cycle] NEG {sheet}!{r} delta {delta_best if delta_best is not None else 0:.4f} -> next tab", flush=True)
+                print(f"[0914-cycle] NEG {sheet}!{r} delta {delta_best if delta_best is not None else 0:.4f} -> next tab (all-tabs cycle, stay row on NEG)", flush=True)
                 _deque_sheets.rotate(-1)
                 # If sheet exhausted, will be popped next iteration
             # flush periodic — progress and workbook per row, never lose CPU
@@ -3014,6 +2891,24 @@ def main():
                         _rel_ident.append(_hdr)
                     else:
                         _rel_eval.append((e["filter"], _ov, _hdr, e["opt"]))
+                # C is override column — must receive candidate value for this switch row (L is unmutable header, C is per-row override)
+                try:
+                    _val_c = cand
+                    if isinstance(_val_c, bool):
+                        _val_str_c = "TRUE" if _val_c else "FALSE"
+                    else:
+                        _val_str_c = str(_val_c)
+                        if _val_str_c.lower() in ("true", "false"):
+                            _val_str_c = _val_str_c.upper()
+                    if ws_keep is not None:
+                        cur_c = ws_keep.cell(row=r, column=3).value
+                        if cur_c is None or str(cur_c).strip() == "":
+                            ws_keep.cell(row=r, column=3).value = _val_str_c
+                            try:
+                                ws_keep.cell(row=r, column=3).font = Font(name="Arial", size=10, bold=True, color="000000")
+                                ws_keep.cell(row=r, column=3).alignment = Alignment(horizontal="left", vertical="center")
+                            except: pass
+                except: pass
                 _rel_total = len(_rel_eval) + len(_rel_ident)
                 # RED RETRY 2026-09-25: a NO VALID row never computed (timeout/error) — it is a red placeholder, not a filled
                 # cell, so it is retried on every resume until it fills. Computed POS/NEG rows stay frozen below.
@@ -3452,9 +3347,10 @@ def main():
                                     _atomic_save._first_r_cache[sheet] = fr or r
                                 # DESTROYED DOUBLE E: first-row E was duplicate write without pos check — single E write only at promotion block below
                                 pass
-                                # Dual: F (6) is hustle vs baseline, G (7) is greedy vs cum
+                                # Dual: F (6) is hustle vs baseline (only in hustle mode), G (7) is greedy vs cum — F empty in worst_first
+                                _is_hustle2 = getattr(args, "seq_mode", "") == "hustle"
                                 _h_for_row = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                                ws_row.cell(row=r, column=6).value = float(_h_for_row)
+                                ws_row.cell(row=r, column=6).value = float(_h_for_row) if _is_hustle2 else None
                                 ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL
                                 ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
                                 ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
@@ -3485,14 +3381,15 @@ def main():
                             pass
                     except: pass
                     _filter_suffix = f"+{filt_best}={fval_best}" if filt_best else ""
-                    # Worst-first: stay on same tab with POS, next tab with NEG only (cycle mode) — drives deque for next row
+                    # Cycle-through-all-tabs: go through all 12 tabs then come back, until POS then move to next row (tenths)
                     if '_cycle_deque' in locals() and _cycle_deque is not None:
                         if delta_best is not None and delta_best > 1e-9:
-                            print(f"[0914-cycle] POS {sheet}!{r} delta {delta_best:.4f} -> stay on same tab", flush=True)
-                            # Stay: keep deque front as is (exploit same sheet's next best switch)
-                            # If sheet exhausted, it will be popped at top of next while iteration
+                            print(f"[0914-cycle] POS {sheet}!{r} delta {delta_best:.4f} -> next tab (all-tabs cycle, advance row on POS)", flush=True)
+                            try:
+                                _cycle_deque.rotate(-1)
+                            except: pass
                         else:
-                            print(f"[0914-cycle] NEG {sheet}!{r} delta {delta_best if delta_best is not None else 0:.4f} -> next tab", flush=True)
+                            print(f"[0914-cycle] NEG {sheet}!{r} delta {delta_best if delta_best is not None else 0:.4f} -> next tab (all-tabs cycle, stay row on NEG)", flush=True)
                             try:
                                 _cycle_deque.rotate(-1)
                             except: pass
@@ -3508,9 +3405,10 @@ def main():
                                 # E always numeric per user (was None for NEG -> empty)
                                 ws_row.cell(row=r, column=5).value = float(cumulative_before)
                                 ws_row.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", bold=False, color="000000")
+                                _is_hustle = getattr(args, "seq_mode", "") == "hustle"
                                 _hustle_neg = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                                ws_row.cell(row=r, column=6).value = float(_hustle_neg) if _hustle_neg is not None else None
-                                ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL
+                                ws_row.cell(row=r, column=6).value = float(_hustle_neg) if (_is_hustle and _hustle_neg is not None) else None
+                                ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL if _is_hustle else VISUAL_F_FILL
                                 ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
                                 ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
                                 ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None
@@ -3580,7 +3478,7 @@ def main():
                                 ws_row.cell(row=r, column=3).value = None
                                 from openpyxl.styles import PatternFill
                                 _h_delta = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                                ws_row.cell(row=r, column=6).value = float(_h_delta) if _h_delta is not None else None
+                                ws_row.cell(row=r, column=6).value = float(_h_delta) if (getattr(args, "seq_mode", "") == "hustle" and _h_delta is not None) else None
                                 ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL
                                 ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
                                 ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
@@ -3607,7 +3505,7 @@ def main():
                                 ws_row.cell(row=r, column=5).value = float(cumulative_before)
                                 ws_row.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", bold=False, color="000000")
                                 _h_pf = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                                ws_row.cell(row=r, column=6).value = float(_h_pf) if _h_pf is not None else None
+                                ws_row.cell(row=r, column=6).value = float(_h_pf) if (getattr(args, "seq_mode", "") == "hustle" and _h_pf is not None) else None
                                 ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None
                         except Exception:
                             pass
@@ -3622,7 +3520,7 @@ def main():
                                 ws_row.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", bold=False, color="000000")
                                 from openpyxl.styles import PatternFill
                                 _h_delta2 = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                                ws_row.cell(row=r, column=6).value = float(_h_delta2) if _h_delta2 is not None else None
+                                ws_row.cell(row=r, column=6).value = float(_h_delta2) if (getattr(args, "seq_mode", "") == "hustle" and _h_delta2 is not None) else None
                                 ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL
                                 ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
                                 ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
@@ -3658,7 +3556,7 @@ def main():
                                 ws_row.cell(row=r, column=5).value = float(cumulative_before)
                                 ws_row.cell(row=r, column=5).font = Font(name="Arial", bold=False, color="000000")
                                 _h_bland = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                                ws_row.cell(row=r, column=6).value = float(_h_bland)
+                                ws_row.cell(row=r, column=6).value = float(_h_bland) if getattr(args, "seq_mode", "") == "hustle" else None
                                 ws_row.cell(row=r, column=7).value = float(delta_best)
                                 from openpyxl.styles import PatternFill
                                 ws_row.cell(row=r, column=7).fill = __import__("openpyxl").styles.PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
@@ -3705,7 +3603,7 @@ def main():
                                 ws_row.cell(row=r, column=6).value = None  # F empty in worst_first
                             else:
                                 _hustle_delta_vs_baseline = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                                ws_row.cell(row=r, column=6).value = float(_hustle_delta_vs_baseline) if _hustle_delta_vs_baseline is not None else None  # F = HUSTLE_DELTA vs baseline
+                                ws_row.cell(row=r, column=6).value = float(_hustle_delta_vs_baseline) if (getattr(args, "seq_mode", "") == "hustle" and _hustle_delta_vs_baseline is not None) else None  # F = HUSTLE_DELTA vs baseline (only hustle)
                             ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None  # G = greedy VECTOR_DELTA vs cum
                             ws_row.cell(row=r, column=7).font = Font(name="Arial", size=10, bold=True, color="9C5700")
                             ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN

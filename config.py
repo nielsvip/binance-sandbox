@@ -101,7 +101,7 @@ class Config:
     MAX_ORDER_VALUE_MEN: float = 300.0  # STDEV_SLOPE fix 2026-09-14: was 60 (4.2x START) capped ladder; now >=10x START (14*10=140) so 10x D ladder can express.
     MAX_ORDER_VALUE_FIN: float = 300.0  # STDEV_SLOPE fix 2026-09-14: was 60 →200 for 10x ladder parity.
     EMERGENCY_OVERSIZE_GUARD_ENABLED: bool = False  # 2026-09-03 KILLED per user: MAKER_PROFIT_EXIT_FORCE_REDUCE_OVERSIZE_81 firing on FLZ (maker wrapper at 81>$20). Finandy TP ladder bug guard causes commission churn, default OFF.
-    START_POSITION_SIZE: float = 34.0  # Start size per entry. Capped by MAX_POSITION_SIZE.
+    START_POSITION_SIZE: float = 28.0  # parity 2026-09-26: crypto 28 vs tradier 500 — bold in TEMPLATE_CRYPTO_LONG, vec QuickConfig 28.0. Was 34.0 misaligned.
 
     # PnL Deterioration Settings
     PNL_DECAY_START_HOURS: int = 1  # HOURS

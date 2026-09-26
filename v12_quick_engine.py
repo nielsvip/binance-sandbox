@@ -4978,6 +4978,9 @@ class QuickConfig:
     HTF4_CONF: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
     HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
     HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: exit when 1h+4h against trade
+    BOTTOM_EXIT_HTF_WT_VETO_ENABLED: bool = True  # parity 2026-09-27: config True + TEMPLATE bold — block R1/ULTIMATE_DC/NEWBORN bottom exits when HTF WT with position
+    HTF_WT_CHURN_REENTRY_ENABLED: bool = True  # parity 2026-09-27: config True + TEMPLATE bold — immediate churn reentry while HTF WT with direction
+    HTF_WT_CHURN_REENTRY_MAX_AGE_MIN: float = 120.0  # parity 2026-09-27: config 120.0 + TEMPLATE bold — churn window 2h after exit
     HTF_GATE_D_MANDATORY: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
     HTF_GATE_MIN_CONFIRMATIONS: int = 10  # FIX 2026-09-06: LIVE_ONLY auto-added
     HTF_GATE_SIGNALS_SMA200D: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool

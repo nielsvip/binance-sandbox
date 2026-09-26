@@ -729,6 +729,10 @@ class TradierConfig:
     PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED: bool = True
     PRICE_CROSSED_HTF_AGAINST_VETO_BAR_TURN_BYPASS: bool = True
     PRICE_CROSSED_HTF_AGAINST_VETO_HA_BYPASS: bool = True
+    # 2026-09-27 BOTTOM-EXIT FIX parity crypto→stocks: never exit at bottom when HTF WT with position, churn reentry while HTF WT with direction
+    BOTTOM_EXIT_HTF_WT_VETO_ENABLED: bool = True
+    HTF_WT_CHURN_REENTRY_ENABLED: bool = True
+    HTF_WT_CHURN_REENTRY_MAX_AGE_MIN: float = 120.0
     RECENT_REDUCTION_GUARD_ENABLED: bool = True
     RECENT_REDUCTION_GUARD_WINDOW_S: float = 450.0
     RECENT_REDUCTION_GUARD_USE_4BAR: bool = True
