@@ -5097,6 +5097,19 @@ class QuickConfig:
     DC_DAYTRADE_REQUIRE_1H_EXPANSION: bool = True
     DC_DAYTRADE_STOP_PCT: float = 0.015
     DC_DAYTRADE_TARGET_PCT: float = 0.01
+    # 2026-09-26 DC-channel stop/target — user mandate: replace fixed % with dc_low/high minus buffer
+    # LONG stop = price <= dc_low_TF * (1 - 0.0025), SHORT stop = price >= dc_high_TF * (1+0.0025)
+    # LONG target = price >= dc_high_TF * (1 - 0.001), SHORT target = price <= dc_low_TF * (1+0.001)
+    # TF options: OFF (fixed %), 3m (covers 3m/5m base), 15m, 1h — sweepable per sym_side
+    DAYTRADE_DC_STOP_TF: str = "OFF"
+    DAYTRADE_DC_STOP_BUFFER_PCT: float = 0.25
+    DAYTRADE_DC_TARGET_TF: str = "OFF"
+    DAYTRADE_DC_TARGET_BUFFER_PCT: float = 0.10
+    # TECHNICAL_EXIT DC variants — vector exit signal (compute_exit_signals) mirror of daytrade
+    TECHNICAL_DC_STOP_TF: str = "OFF"
+    TECHNICAL_DC_STOP_BUFFER_PCT: float = 0.25
+    TECHNICAL_DC_TARGET_TF: str = "OFF"
+    TECHNICAL_DC_TARGET_BUFFER_PCT: float = 0.10
     FH_MOMENTUM_DC_CONFIRM: bool = True
     FH_MOMENTUM_DC_MAX_LONG: float = 0.5
     FH_MOMENTUM_MFI_CONFIRM: bool = False
@@ -9896,7 +9909,40 @@ def compute_exit_signals(npz, n, is_long, cfg):
     else:
         regime_exit = (is_trending3 & (wt_vel_1h_arr3 > 1.0)) | ((~is_trending3) & (wt_vel_1h_arr3 > 0.5))
 
-    _all_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | mtf_gr_exit | gr_htf_exit | formation_exit | regime_exit
+    # 2026-09-26 TECHNICAL DC-channel exits — user mandate: dc_low/high with buffers instead of fixed %
+    # LONG stop: close <= dc_low_TF * (1 - buf), SHORT stop: close >= dc_high_TF * (1+buf)
+    # LONG target: close >= dc_high_TF * (1 - buf), SHORT target: close <= dc_low_TF * (1+buf)
+    _tech_dc_extra = np.zeros(n, dtype=bool)
+    try:
+        for _cfg_name, _is_stop in [("TECHNICAL_DC_STOP_TF", True), ("TECHNICAL_DC_TARGET_TF", False)]:
+            _tf = str(getattr(cfg, _cfg_name, "OFF") or "OFF").strip()
+            if _tf.upper() == "OFF" or _tf == "":
+                continue
+            # normalize 5m -> 3m (crypto base), 4h/D also supported via NPZ
+            _tf_norm = {"5m": "3m"}.get(_tf, _tf)
+            # guard TF exists in NPZ
+            _buf = float(getattr(cfg, _cfg_name.replace("_TF", "_BUFFER_PCT"), 0.25 if _is_stop else 0.10))
+            _buf_f = _buf / 100.0
+            if _is_stop:
+                _dc_stop = _safe(npz, f"dc_low_{_tf_norm}" if is_long else f"dc_high_{_tf_norm}", n, 0)
+                if np.all(_dc_stop == 0):
+                    continue
+                if is_long:
+                    _tech_dc_extra = _tech_dc_extra | (close <= _dc_stop * (1 - _buf_f))
+                else:
+                    _tech_dc_extra = _tech_dc_extra | (close >= _dc_stop * (1 + _buf_f))
+            else:
+                _dc_tgt = _safe(npz, f"dc_high_{_tf_norm}" if is_long else f"dc_low_{_tf_norm}", n, 0)
+                if np.all(_dc_tgt == 0):
+                    continue
+                if is_long:
+                    _tech_dc_extra = _tech_dc_extra | (close >= _dc_tgt * (1 - _buf_f))
+                else:
+                    _tech_dc_extra = _tech_dc_extra | (close <= _dc_tgt * (1 + _buf_f))
+            _ = getattr(cfg, _cfg_name, "OFF")
+    except Exception:
+        pass
+    _all_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | mtf_gr_exit | gr_htf_exit | formation_exit | regime_exit | _tech_dc_extra
     # ═══ STRUCTURAL EXIT VETO — vectorized twin of wt_dc_delta.structural_exit_permitted() ═══
     # USER MANDATE 2026-07-21: never exit while price is going up (long) / down (short).
     # Only an LTF collapse or a 1h/4h lower-high+lower-low earns an exit.
@@ -21964,10 +22010,41 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     if is_tradier and getattr(cfg, 'MIN_HOLD_MINUTES_TRADIER', 0.0) > 0:
         min_hold = max(min_hold, int(round(cfg.MIN_HOLD_MINUTES_TRADIER / max(bmin, 1))))
     max_hold_bars = getattr(cfg, 'DELTA_MAX_HOLD_BARS', 0) if getattr(cfg, 'DELTA_ENGINE_ENABLED', False) else 0
-    daytrade_on = getattr(cfg, 'TRADIER_DC_DAYTRADE_ENABLED', False) and is_tradier
-    daytrade_max_bars = int(round(getattr(cfg, 'TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES', 240) / max(bmin, 1))) if daytrade_on else 0
-    daytrade_stop = getattr(cfg, 'TRADIER_DC_DAYTRADE_STOP_PCT', 0.005) * 100
-    daytrade_target = getattr(cfg, 'TRADIER_DC_DAYTRADE_TARGET_PCT', 0.005) * 100
+    # venue-aware daytrade toggle — tradier vs crypto both respect DC_DAYTRADE_ENABLED
+    _dt_enabled_tradier = bool(getattr(cfg, 'TRADIER_DC_DAYTRADE_ENABLED', False))
+    _dt_enabled_crypto = bool(getattr(cfg, 'DC_DAYTRADE_ENABLED', False))
+    daytrade_on = (_dt_enabled_tradier if is_tradier else _dt_enabled_crypto)
+    if is_tradier:
+        daytrade_max_bars = int(round(getattr(cfg, 'TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES', 240) / max(bmin, 1))) if daytrade_on else 0
+        daytrade_stop = float(getattr(cfg, 'TRADIER_DC_DAYTRADE_STOP_PCT', 0.005)) * 100
+        daytrade_target = float(getattr(cfg, 'TRADIER_DC_DAYTRADE_TARGET_PCT', 0.005)) * 100
+    else:
+        daytrade_max_bars = int(round(getattr(cfg, 'DC_DAYTRADE_MAX_HOLD_MINUTES', 240) / max(bmin, 1))) if daytrade_on else 0
+        daytrade_stop = float(getattr(cfg, 'DC_DAYTRADE_STOP_PCT', 0.015)) * 100
+        daytrade_target = float(getattr(cfg, 'DC_DAYTRADE_TARGET_PCT', 0.01)) * 100
+    # 2026-09-26 DC-channel daytrade variants — user mandate: dc_3/5m/15m/1h with buffers instead of fixed %
+    _dd_stop_tf = str(getattr(cfg, 'DAYTRADE_DC_STOP_TF', 'OFF') or 'OFF').strip()
+    _dd_stop_buf = float(getattr(cfg, 'DAYTRADE_DC_STOP_BUFFER_PCT', 0.25) or 0.25) / 100.0
+    _dd_tgt_tf = str(getattr(cfg, 'DAYTRADE_DC_TARGET_TF', 'OFF') or 'OFF').strip()
+    _dd_tgt_buf = float(getattr(cfg, 'DAYTRADE_DC_TARGET_BUFFER_PCT', 0.10) or 0.10) / 100.0
+    # also support legacy per-DC aliases used by older sheet rows (15m-specific booleans)
+    try:
+        if _dd_stop_tf.upper() == 'OFF' and bool(getattr(cfg, 'DC_DAYTRADE_STOP_USE_DC_15M', False)):
+            _dd_stop_tf = '15m'
+        if _dd_tgt_tf.upper() == 'OFF' and bool(getattr(cfg, 'DC_DAYTRADE_TARGET_USE_DC_15M', False)):
+            _dd_tgt_tf = '15m'
+    except Exception:
+        pass
+    _dd_stop_tf_norm = {"5m": "3m"}.get(_dd_stop_tf, _dd_stop_tf)
+    _dd_tgt_tf_norm = {"5m": "3m"}.get(_dd_tgt_tf, _dd_tgt_tf)
+    _dd_stop_dc = _safe(npz, f"dc_low_{_dd_stop_tf_norm}" if is_long else f"dc_high_{_dd_stop_tf_norm}", n, 0) if _dd_stop_tf.upper() != 'OFF' else None
+    _dd_tgt_dc = _safe(npz, f"dc_high_{_dd_tgt_tf_norm}" if is_long else f"dc_low_{_dd_tgt_tf_norm}", n, 0) if _dd_tgt_tf.upper() != 'OFF' else None
+    # sanity: if requested TF missing in NPZ, fall back to OFF (avoid silent no-op confusion)
+    if _dd_stop_dc is not None and np.all(_dd_stop_dc == 0):
+        _dd_stop_tf = 'OFF'; _dd_stop_dc = None
+    if _dd_tgt_dc is not None and np.all(_dd_tgt_dc == 0):
+        _dd_tgt_tf = 'OFF'; _dd_tgt_dc = None
+    _ = getattr(cfg, 'DAYTRADE_DC_STOP_TF', 'OFF'); _ = getattr(cfg, 'DAYTRADE_DC_TARGET_TF', 'OFF')
     trail_erosion = getattr(cfg, 'WIN_TRAIL_EROSION_PCT', 0.0)
     satoshit_partial = getattr(cfg, 'SATOSHIT_EXIT_PARTIAL_PCT', 0.0) if getattr(cfg, 'SATOSHIT_EXIT_ENABLED', False) else 0.0
 
@@ -22135,8 +22212,34 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             closed, reason = True, 'PROFIT_TARGET'
         elif cfg.STOP_LOSS_ENABLED and live_pnl_pct <= -cfg.STOP_LOSS_PCT:
             closed, reason = True, 'STOP_LOSS'
+        elif daytrade_on and _dd_stop_dc is not None:
+            # DC-channel stop: LONG px <= dc_low*(1-buf), SHORT px >= dc_high*(1+buf)
+            try:
+                _lvl = float(_dd_stop_dc[i]) if i < len(_dd_stop_dc) else 0.0
+                if _lvl > 0:
+                    if is_long and px <= _lvl * (1 - _dd_stop_buf):
+                        closed, reason = True, f'DAYTRADE_DC_STOP_{_dd_stop_tf}'
+                    elif (not is_long) and px >= _lvl * (1 + _dd_stop_buf):
+                        closed, reason = True, f'DAYTRADE_DC_STOP_{_dd_stop_tf}'
+            except Exception:
+                pass
+            # fallback to fixed % if DC check did not fire and pct is non-zero
+            if not closed and live_pnl_pct <= -daytrade_stop:
+                closed, reason = True, 'DAYTRADE_STOP'
         elif daytrade_on and live_pnl_pct <= -daytrade_stop:
             closed, reason = True, 'DAYTRADE_STOP'
+        elif daytrade_on and _dd_tgt_dc is not None:
+            try:
+                _lvl2 = float(_dd_tgt_dc[i]) if i < len(_dd_tgt_dc) else 0.0
+                if _lvl2 > 0:
+                    if is_long and px >= _lvl2 * (1 - _dd_tgt_buf):
+                        closed, reason = True, f'DAYTRADE_DC_TARGET_{_dd_tgt_tf}'
+                    elif (not is_long) and px <= _lvl2 * (1 + _dd_tgt_buf):
+                        closed, reason = True, f'DAYTRADE_DC_TARGET_{_dd_tgt_tf}'
+            except Exception:
+                pass
+            if not closed and live_pnl_pct >= daytrade_target:
+                closed, reason = True, 'DAYTRADE_TARGET'
         elif daytrade_on and live_pnl_pct >= daytrade_target:
             closed, reason = True, 'DAYTRADE_TARGET'
         elif daytrade_on and daytrade_max_bars > 0 and held_bars >= daytrade_max_bars:
