@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-27 09:52 UTC
+PERFORMANCE REPORT — 2026-09-27 10:52 UTC
 ================================================================================
 Total: 146 symbols | A=3 B=103 C=40
 Window: 14 days | Min trades: 5
@@ -101,7 +101,7 @@ Window: 14 days | Min trades: 5
               TSM  WR=0%  avg=-0.70%  total=-1.4%  trades=  2  mult=1.00
               ALB  WR=33%  avg=-0.48%  total=-1.4%  trades=  3  mult=1.00
          BABAUSDT  WR=60%  avg=-0.32%  total=-1.6%  trades=  5  mult=0.96
-          PTBUSDT  WR=25%  avg=-0.48%  total=-1.9%  trades=  4  mult=1.00
+          PTBUSDT  WR=0%  avg=-0.96%  total=-1.9%  trades=  2  mult=1.00
           XLMUSDT  WR=46%  avg=-0.05%  total=-2.3%  trades= 46  mult=0.67 ** OPEN **
                AU  WR=0%  avg=-0.67%  total=-2.6%  trades=  4  mult=1.00
           ETHUSDT  WR=0%  avg=-2.92%  total=-2.9%  trades=  1  mult=1.00
@@ -157,6 +157,7 @@ Window: 14 days | Min trades: 5
 
 SUMMARY:
   Total PnL (all symbols): +643.5%
-  Avg win rate: 47%
+  Avg win rate: 46%
   A-tier avg mult: 10.00
   C-tier avg mult: 0.38
+mult: 0.38
