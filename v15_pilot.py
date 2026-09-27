@@ -1083,9 +1083,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     print(f"[spec-fill] {new_symside} tabs={tabs} total_rows={total_rows} baseline={baseline_gain:.4f} hustle={is_hustle} cumulative={cumulative_gain:.4f}", flush=True)
     # Main loop — sequential with POS-stay / NEG-advance
     loop_guard = 0
-    # FIX 2026-09-26: max_loops must account for tab cycling on NEG deltas — worst case is cycling through all tabs per row
-    max_loops = total_rows * len(tabs) + 200  # worst case: cycle through all tabs for each pending row + margin
+    # FIX 2026-09-27: NEVER stop until 3971 F cells filled — total_rows ~3000, max_loops must be huge, log every stall
+    max_loops = total_rows * len(tabs) * 3 + 5000  # 3000*12*3=108k, never hit early
+    _start_t = __import__("time").time()
     while _any_pending() and loop_guard < max_loops:
+        if loop_guard % 500 == 0:
+            print(f"[spec-loop] guard={loop_guard} max={max_loops} pending={_any_pending()} F_filled={sum(1 for _ws in wb.worksheets if _ws.title in SWITCH_SHEETS for _r in range(3, _ws.max_row+1) if _ws.cell(_r, 6).value is not None)} elapsed={__import__('time').time()-_start_t:.0f}s", flush=True)
         loop_guard += 1
         sname = tabs[current_idx % len(tabs)]
         pending = _next_pending(sname)
@@ -3229,12 +3232,19 @@ def main():
         cumulative_gain = float(_spec_cum)
         cumulative_overrides = dict(_spec_over)
 
-        # CRITICAL VALIDATION: Ensure ALL rows are filled before exit
-        # If less than 1000 rows evaluated, something went wrong — fall back to legacy to complete fill
+        # CRITICAL VALIDATION: 3971 F cells + yellows across 13 tabs must be filled — per user, NEVER stop early
         rows_filled = len(progress.get("done", {}))
-        if rows_filled < 1000:
-            print(f"[spec-fill-INCOMPLETE] Only {rows_filled} rows filled (need 3000+) — falling back to legacy loop to complete", flush=True)
-            raise ValueError(f"spec-fill incomplete: {rows_filled} rows << 3000 expected")
+        # Also count actual F column fills in workbook (3971 target) — spec_fill may exit via exception before saving, so check file
+        try:
+            _wb_check = openpyxl.load_workbook(str(wb_path), data_only=False)
+            _f_filled = sum(1 for _ws in _wb_check.worksheets if _ws.title in SWITCH_SHEETS for _r in range(3, _ws.max_row+1) if _ws.cell(_r, 6).value is not None and not isinstance(_ws.cell(_r, 6).value, str))
+            _wb_check.close()
+        except Exception:
+            _f_filled = rows_filled
+        print(f"[spec-fill-CHECK] done={rows_filled} F_filled={_f_filled} need ~3000+", flush=True)
+        if rows_filled < 1000 or _f_filled < 1000:
+            print(f"[spec-fill-INCOMPLETE] Only {rows_filled} done/{_f_filled} F filled (need 3000+) — falling back to legacy loop to complete", flush=True)
+            raise ValueError(f"spec-fill incomplete: {rows_filled} rows / {_f_filled} F << 3000 expected")
 
         # After spec fill, workbook is complete — return early, skip legacy loop (keep legacy code below as dead fallback)
         # Finalize with charts/final xlsx handling that legacy does after loop — replicate minimal final steps here then return
