@@ -672,5 +672,23 @@
     ],
     "timestamp": "2026-09-27T11:06:35.586053+00:00",
     "price": 3.292
+  },
+  {
+    "symbol": "PENGUUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.2x (from rankings)"
+    ],
+    "timestamp": "2026-09-27T12:52:29.460198+00:00",
+    "price": 0.00970066
+  },
+  {
+    "symbol": "JASMYUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.0x (from rankings)"
+    ],
+    "timestamp": "2026-09-27T13:11:51.369264+00:00",
+    "price": 0.004407
   }
 ]
