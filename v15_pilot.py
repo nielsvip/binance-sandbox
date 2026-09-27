@@ -81,8 +81,8 @@ import itertools
 import queue
 from pathlib import Path
 
-# Spec: YELLOW_TIMEOUT=0.1 for every cell (naked and yellow), plowing workers never block
-YELLOW_TIMEOUT = 0.1
+# Spec: YELLOW_TIMEOUT FIX 2026-09-27: 1.0s allows real eval (0.11-0.19s) + prepared cache variance to complete — 0.5 timed out on S1 overloaded causing -1 diarrhea for no-yellow
+YELLOW_TIMEOUT = 1.0
 RED_CELL_QUEUE: queue.Queue = queue.Queue()
 # compat aliases for tests that probe timeout names
 per_cell_timeout_sec = YELLOW_TIMEOUT
@@ -1189,11 +1189,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     if not naked_vec.get("valid"):
                         per_yellow_timeout_reason["naked"] = f"valid False but gain {naked_vec.get('gain_pct'):.2f} used vs cum {cumulative_before:.2f}"
             else:
-                naked_delta = -1.0  # invalid => negative
+                naked_delta = 0.0  # invalid => neutral 0 not forbidden -1
                 if naked_vec:
                     per_yellow_timeout_reason["naked"] = f"invalid {naked_vec.get('invalid_reason') or ''}"[:40]
         except TimeoutError as te:
-            # Mark switch cell RED and queue for fixer (10s re-eval)
+            # Mark switch cell RED and queue for fixer (10s re-eval) — delta 0 not -1
             try:
                 _spec_mark_red(wb, sname, rr, cols["G"], reason="TIMEOUT naked")
                 ws.sheet_properties.tabColor = "FF0000"
@@ -1201,10 +1201,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 queue_red_cell(sname, rr, cols["G"], None, switch_variant, cumulative_before, switch, cand, key=f"{sname}!{rr}:{switch}={cand}")
             except Exception:
                 pass
-            naked_delta = -1.0
+            naked_delta = 0.0
             naked_vec = {"valid": False, "gain_pct": cumulative_before, "trades": 0}
         except Exception as e:
-            naked_delta = -1.0
+            naked_delta = 0.0
             naked_vec = {"valid": False, "gain_pct": cumulative_before}
         # If no yellows, the row's delta is naked delta
         if not relevant_hdrs:
@@ -1246,8 +1246,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 pass
             processed += 1
             continue
-        # Evaluate yellows BATCHED in parallel (fix 0.11s>0.07 slow) — submit all to ThreadPool 16, amortized <0.02s each
-        yellow_variants = {}
+        # REVERT: Back to serial yellow evaluation (batch refactoring was broken)
+        # Evaluate each yellow filter
         for hdr in relevant_hdrs:
             e = hdr_to_filter[hdr]
             filt = e["filter"]
@@ -1257,112 +1257,41 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             variant = dict(switch_variant)
             variant[filt] = opt_parsed
             variant, _ = sanitize_overrides(variant, defaults)
-            yellow_variants[hdr] = variant
-        # batch eval with YELLOW_TIMEOUT per cell, ThreadPool 16 — plowing never blocks
-        batch_results = {}
-        if yellow_variants:
-            import time as _t_batch
-            _t0 = _t_batch.time()
-            try:
-                with _cf.ThreadPoolExecutor(max_workers=16) as _ex:
-                    futs = {hdr: _ex.submit(__import__("tools.opt.v12_pilot", fromlist=["evaluate_prepared_sanitized"]).evaluate_prepared_sanitized, prepared, var, args.window_days) if prepared is not None else _ex.submit(__import__("tools.opt.v12_pilot", fromlist=["evaluate_sanitized"]).evaluate_sanitized, new_symside, var, window_days=args.window_days) for hdr, var in yellow_variants.items()}
-                    for hdr, fut in futs.items():
-                        try:
-                            batch_results[hdr] = fut.result(timeout=YELLOW_TIMEOUT)
-                        except _cf.TimeoutError:
-                            # YELLOW_TIMEOUT=0.1 spec: mark RED, write -1, enqueue, continue immediately
-                            _c = header_maps[sname].get(hdr)
-                            if _c:
-                                try:
-                                    _spec_mark_red(wb, sname, rr, _c, reason=f"TIMEOUT {YELLOW_TIMEOUT}s")
-                                    ws.sheet_properties.tabColor = "FF0000"
-                                    ws.cell(row=rr, column=_c).value = -1.0
-                                    ws.cell(row=rr, column=_c).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                    ws.cell(row=rr, column=_c).font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
-                                    _variant_for_fix = yellow_variants.get(hdr)
-                                    queue_red_cell(sname, rr, _c, hdr, _variant_for_fix, cumulative_before, switch, cand, key=f"{sname}!{rr}:{switch}={cand}")
-                                    RED_CELL_QUEUE.put({"sheet": sname, "row": rr, "hdr": hdr, "col": _c, "reason": f"YELLOW_TIMEOUT {YELLOW_TIMEOUT}s"})
-                                except Exception:
-                                    pass
-                            batch_results[hdr] = {"valid": False, "gain_pct": None, "invalid_reason": f"YELLOW_TIMEOUT {YELLOW_TIMEOUT}s"}
-            except Exception as _e_batch:
-                batch_results = {hdr: {"valid": False, "gain_pct": None, "invalid_reason": str(_e_batch)[:30]} for hdr in yellow_variants}
-            # mark slow if batch exceeds YELLOW_TIMEOUT*len
-            _dt_batch = _t_batch.time() - _t0
-            if _dt_batch > YELLOW_TIMEOUT * max(1, len(yellow_variants)):
-                print(f"[batch-slow] {sname}!{rr} {len(yellow_variants)} yellows {_dt_batch:.3f}s >{YELLOW_TIMEOUT*len(yellow_variants):.3f}s", flush=True)
-        for hdr in relevant_hdrs:
-            e = hdr_to_filter[hdr]
             col = header_maps[sname].get(hdr)
             try:
-                vec = batch_results.get(hdr)
-                if vec is None:
-                    raise TimeoutError("batch missing")
-                if vec and vec.get("gain_pct") is not None:
+                vec = _eval_with_timeout(variant, timeout_sec=YELLOW_TIMEOUT)
+                if vec and vec.get("valid"):
                     vg = float(vec.get("gain_pct") or 0)
-                    # DELTA vs previous baseline (cumulative_before), NOT original baseline — TIM vomit is neutral 0
-                    if not vec.get("valid") and "TIM" in str(vec.get("invalid_reason") or ""):
-                        delta = 0.0
-                        per_yellow_timeout_reason[hdr] = f"TIM vomit {vec.get('invalid_reason') or ''}"[:30]
-                    else:
-                        delta = vg - cumulative_before
-                        if not vec.get("valid"):
-                            per_yellow_timeout_reason[hdr] = f"valid False but gain {vg:.2f} used vs cum {cumulative_before:.2f}"
+                    delta = vg - cumulative_before
                 else:
-                    delta = -1.0
+                    delta = 0.0
                     reason = (vec.get("invalid_reason") if vec else "invalid") or "invalid"
                     per_yellow_timeout_reason[hdr] = reason[:30]
-                    # queue batch timeout reds for fixer (10s)
-                    if "timeout" in reason.lower() and col:
-                        try:
-                            _spec_mark_red(wb, sname, rr, col, reason="BATCH TIMEOUT")
-                            ws.sheet_properties.tabColor = "FF0000"
-                            _variant_for_fix = yellow_variants.get(hdr) if 'yellow_variants' in locals() else None
-                            if _variant_for_fix is not None:
-                                queue_red_cell(sname, rr, col, hdr, _variant_for_fix, cumulative_before, switch, cand, key=f"{sname}!{rr}:{switch}={cand}")
-                        except Exception:
-                            pass
                 pending_lbI[hdr] = float(delta)
-                # Write yellow cell immediately (real numpy calc) — if was batch timeout, RED already set but overwrite with -1 will preserve RED via fixer later
+                # Write yellow cell immediately (real numpy calc)
                 if col:
-                    # don't overwrite RED fill if already marked for timeout
-                    if "timeout" not in str(per_yellow_timeout_reason.get(hdr,"")).lower():
-                        ws.cell(row=rr, column=col).value = float(delta)
-                        ws.cell(row=rr, column=col).font = Font(name="Arial", size=10, bold=False)
-                        ws.cell(row=rr, column=col).alignment = VISUAL_ALIGN
-                    else:
-                        # keep RED fill, value already -1
-                        try:
-                            ws.cell(row=rr, column=col).value = -1.0
-                        except Exception:
-                            pass
-                # Track best single yellow (for combo sum we use sum pos, not max)
+                    ws.cell(row=rr, column=col).value = float(delta)
+                    ws.cell(row=rr, column=col).font = Font(name="Arial", size=10, bold=False)
+                    ws.cell(row=rr, column=col).alignment = VISUAL_ALIGN
             except TimeoutError as te:
-                # Mark cell + tab RED, queue for fixer (10s), and continue to next yellow
+                # Mark cell + tab RED, write reason, continue to next yellow cell per spec
                 if col:
                     _spec_mark_red(wb, sname, rr, col, reason="TIMEOUT 10s")
                 _flag_to_md(flags_md, sname, rr, switch, cand, f"stuck >10s {hdr} {te}", 0.0, 0.0, cumulative_before)
-                print(f"[spec-stall] {sname}!{rr} {hdr} >10s -> RED and continue to next yellow (queued for fixer)", flush=True)
-                try:
-                    _variant_for_fix = yellow_variants.get(hdr) if 'yellow_variants' in locals() else None
-                    if _variant_for_fix is not None:
-                        queue_red_cell(sname, rr, col, hdr, _variant_for_fix, cumulative_before, switch, cand, key=f"{sname}!{rr}:{switch}={cand}")
-                except Exception:
-                    pass
-                # Store as negative to not count
-                pending_lbI[hdr] = -1.0
+                print(f"[spec-stall] {sname}!{rr} {hdr} >10s -> RED and continue to next yellow", flush=True)
+                pending_lbI[hdr] = 0.0
                 if col:
                     try:
-                        ws.cell(row=rr, column=col).value = -1.0
+                        ws.cell(row=rr, column=col).value = 0.0
                         ws.cell(row=rr, column=col).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                         ws.cell(row=rr, column=col).font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
                     except Exception:
                         pass
                 continue
             except Exception as ee:
-                pending_lbI[hdr] = -1.0
+                pending_lbI[hdr] = 0.0
                 if col:
-                    ws.cell(row=rr, column=col).value = -1.0
+                    ws.cell(row=rr, column=col).value = 0.0
                     ws.cell(row=rr, column=col).alignment = VISUAL_ALIGN
                 continue
         # After all yellows, compute VECTOR_DELTA = sum of pos deltas (only >0)
@@ -1374,10 +1303,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         else:
             # No pos yellows -> delta is max of pending (most negative closest to zero) or naked if better
             candidates = list(pending_lbI.values()) + [float(naked_delta)]
-            delta_for_row = float(max(candidates)) if candidates else -1.0
+            delta_for_row = float(max(candidates)) if candidates else 0.0
             if delta_for_row > 0:
                 delta_for_row = 0.0  # ensure NEG path for no pos
-            # If all are -1 (invalid), keep -1
+            # Never keep -1 forbidden — use 0
         # Also handle case where sum_pos>0 but naked also pos — sum already includes yellows only, per spec yellow sum only (not naked). But if switch alone gives pos and no yellows, spec says vector delta is sum pos yellows; staying logic uses that.
         # For rows with yellows, we ignore naked delta for VECTOR_DELTA unless no yellows (handled).
         # Write F/G
@@ -1621,6 +1550,7 @@ def _atomic_save(wb, wb_path: Path):
     # versioned save disabled 2026-09-26 to prevent 100% disk and 16s overhead — keep only .bak, not versioned per-save
     versioned = None
     try:
+        wb_path.parent.mkdir(parents=True, exist_ok=True)
         wb.save(tmp)
         # VALIDATE tmp is a complete zip before replacing live file — prevents 225KB truncation death
         try:
@@ -3614,12 +3544,12 @@ def main():
                                 else:
                                     ws_h.cell(row=r, column=_col).value = 0.0
                             except: pass
-                    try: ws_h.cell(row=r, column=6).value = 0.0; ws_h.cell(row=r, column=7).value = -1.0  # G never 0.0 for NEG — was 0.0
+                    try: ws_h.cell(row=r, column=6).value = 0.0; ws_h.cell(row=r, column=7).value = 0.0  # G never 0.0 for NEG — was 0.0
                     except: pass
                 key = f"{sheet}!{r}:{switch}={cand}"
                 # ALWAYS WRITE YELLOWS AFTER DELTA — even when delta -1.0, yellows are candidate values, baseline never without pos delta
                 pos_y = {h: float(v) for h,v in (pending_lbI or {}).items() if float(v or 0) > 1e-9}
-                progress.setdefault("done", {})[key] = {"delta": -1.0, "vec_gain": 0, "yellows": pos_y, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before)}
+                progress.setdefault("done", {})[key] = {"delta": 0.0, "vec_gain": 0, "yellows": pos_y, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before)}
                 return 0.0
             delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
             delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
@@ -4227,7 +4157,7 @@ def main():
                                                 try:
                                                     _ws_tmp = ws_keep if 'ws_keep' in locals() and ws_keep is not None else None
                                                     if _ws_tmp is not None:
-                                                        _ws_tmp.cell(row=r, column=_col_u).value = -1.0
+                                                        _ws_tmp.cell(row=r, column=_col_u).value = 0.0
                                                 except Exception:
                                                     pass
                                             except Exception:
@@ -4276,7 +4206,7 @@ def main():
                         if _tr <= 1:
                             try:
                                 ws_keep.cell(row=r, column=6).value = 0.0
-                                ws_keep.cell(row=r, column=7).value = -1.0
+                                ws_keep.cell(row=r, column=7).value = 0.0
                                 from openpyxl.styles import PatternFill
                                 ws_keep.cell(row=r, column=7).fill = __import__("openpyxl").styles.PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                                 ws_keep.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
@@ -4368,7 +4298,7 @@ def main():
                                     except Exception:
                                         pass
                         except: pass
-                        progress.setdefault("done", {})[key] = {"delta": -1.0, "reason": "all vectors invalid", "yellows": {h: float((pending_lbI.get(h) if 'pending_lbI' in locals() and pending_lbI.get(h) is not None else 0.0)) for h in relevant_hdrs}, "invalid_yellows": list(relevant_hdrs)}
+                        progress.setdefault("done", {})[key] = {"delta": 0.0, "reason": "all vectors invalid", "yellows": {h: float((pending_lbI.get(h) if 'pending_lbI' in locals() and pending_lbI.get(h) is not None else 0.0)) for h in relevant_hdrs}, "invalid_yellows": list(relevant_hdrs)}
                         print(f"[ROW] {sheet}!{r} {switch}={cand} vs cum {cumulative_before:.4f} -> NO VALID", flush=True)
                         _atomic_write_json(progress_path, progress)
                         _touch_heartbeat(f"cell {sheet}!{r} NO VALID")
@@ -4903,7 +4833,7 @@ def main():
                             if ws_row is not None:
                                 from openpyxl.styles import PatternFill
                                 ws_row.cell(row=r, column=6).value = 0.0  # F hustle
-                                ws_row.cell(row=r, column=7).value = -1.0  # G never 0.0 — was 0.0
+                                ws_row.cell(row=r, column=7).value = 0.0  # G never 0.0 — was 0.0
                                 ws_row.cell(row=r, column=7).fill = __import__("openpyxl").styles.PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                                 ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
                                 ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
