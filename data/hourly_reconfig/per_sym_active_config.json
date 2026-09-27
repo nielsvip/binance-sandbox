@@ -22,9 +22,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "BTCUSDC_SHORT": {
@@ -39,9 +40,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ETHUSDC_LONG": {
@@ -56,9 +58,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ETHUSDC_SHORT": {
@@ -73,9 +76,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SOLUSDC_LONG": {
@@ -90,9 +94,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SOLUSDC_SHORT": {
@@ -107,9 +112,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "BNBUSDC_LONG": {
@@ -124,9 +130,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "BNBUSDC_SHORT": {
@@ -141,9 +148,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "XRPUSDC_LONG": {
@@ -158,9 +166,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "XRPUSDC_SHORT": {
@@ -175,9 +184,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "DOGEUSDC_LONG": {
@@ -192,9 +202,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "DOGEUSDC_SHORT": {
@@ -209,9 +220,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ZECUSDC_LONG": {
@@ -226,9 +238,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ZECUSDC_SHORT": {
@@ -243,9 +256,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "BTCDOMUSDT_LONG": {
@@ -260,9 +274,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "BTCDOMUSDT_SHORT": {
@@ -277,9 +292,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "1INCHUSDT_LONG": {
@@ -294,9 +310,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "1INCHUSDT_SHORT": {
@@ -311,9 +328,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ALGOUSDT_LONG": {
@@ -328,9 +346,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ALGOUSDT_SHORT": {
@@ -345,9 +364,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "AVAXUSDC_LONG": {
@@ -362,9 +382,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "AVAXUSDC_SHORT": {
@@ -379,9 +400,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "CHRUSDT_LONG": {
@@ -396,9 +418,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "CHRUSDT_SHORT": {
@@ -413,9 +436,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "AXSUSDT_LONG": {
@@ -430,9 +454,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "AXSUSDT_SHORT": {
@@ -447,9 +472,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ADAUSDC_LONG": {
@@ -464,9 +490,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ADAUSDC_SHORT": {
@@ -481,9 +508,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ATOMUSDT_LONG": {
@@ -498,9 +526,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ATOMUSDT_SHORT": {
@@ -515,9 +544,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "BATUSDT_LONG": {
@@ -532,9 +562,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "BATUSDT_SHORT": {
@@ -549,9 +580,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "C98USDT_LONG": {
@@ -566,9 +598,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "C98USDT_SHORT": {
@@ -583,9 +616,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "COTIUSDT_LONG": {
@@ -600,9 +634,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "COTIUSDT_SHORT": {
@@ -617,9 +652,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "DOTUSDT_LONG": {
@@ -634,9 +670,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "DOTUSDT_SHORT": {
@@ -651,9 +688,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ENJUSDT_LONG": {
@@ -668,9 +706,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ENJUSDT_SHORT": {
@@ -685,9 +724,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "GRTUSDT_LONG": {
@@ -702,9 +742,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "GRTUSDT_SHORT": {
@@ -719,9 +760,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "HOTUSDT_LONG": {
@@ -736,9 +778,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "HOTUSDT_SHORT": {
@@ -753,9 +796,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "EGLDUSDT_LONG": {
@@ -770,9 +814,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "EGLDUSDT_SHORT": {
@@ -787,9 +832,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "IOTAUSDT_LONG": {
@@ -804,9 +850,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "IOTAUSDT_SHORT": {
@@ -821,9 +868,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "KAVAUSDT_LONG": {
@@ -838,9 +886,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "KAVAUSDT_SHORT": {
@@ -855,9 +904,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "KSMUSDT_LONG": {
@@ -872,9 +922,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "KSMUSDT_SHORT": {
@@ -889,9 +940,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "LRCUSDT_LONG": {
@@ -906,9 +958,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "LRCUSDT_SHORT": {
@@ -923,9 +976,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "IOTXUSDT_LONG": {
@@ -940,9 +994,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "IOTXUSDT_SHORT": {
@@ -957,9 +1012,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "MANAUSDT_LONG": {
@@ -974,9 +1030,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "MANAUSDT_SHORT": {
@@ -991,9 +1048,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "NKNUSDT_LONG": {
@@ -1008,9 +1066,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "NKNUSDT_SHORT": {
@@ -1025,9 +1084,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "RLCUSDT_LONG": {
@@ -1042,9 +1102,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "RLCUSDT_SHORT": {
@@ -1059,9 +1120,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "RVNUSDT_LONG": {
@@ -1076,9 +1138,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "RVNUSDT_SHORT": {
@@ -1093,9 +1156,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SKLUSDT_LONG": {
@@ -1110,9 +1174,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SKLUSDT_SHORT": {
@@ -1127,9 +1192,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SNXUSDT_LONG": {
@@ -1144,9 +1210,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SNXUSDT_SHORT": {
@@ -1161,9 +1228,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SUSHIUSDT_LONG": {
@@ -1178,9 +1246,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SUSHIUSDT_SHORT": {
@@ -1195,9 +1264,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "THETAUSDT_LONG": {
@@ -1212,9 +1282,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "THETAUSDT_SHORT": {
@@ -1229,9 +1300,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "UNIUSDC_LONG": {
@@ -1246,9 +1318,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "UNIUSDC_SHORT": {
@@ -1263,9 +1336,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "XLMUSDT_LONG": {
@@ -1280,9 +1354,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "XLMUSDT_SHORT": {
@@ -1297,9 +1372,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "XTZUSDT_LONG": {
@@ -1314,9 +1390,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "XTZUSDT_SHORT": {
@@ -1331,9 +1408,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ZENUSDT_LONG": {
@@ -1348,9 +1426,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ZENUSDT_SHORT": {
@@ -1365,9 +1444,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SXPUSDT_LONG": {
@@ -1382,9 +1462,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SXPUSDT_SHORT": {
@@ -1399,9 +1480,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "BANDUSDT_LONG": {
@@ -1416,9 +1498,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "BANDUSDT_SHORT": {
@@ -1433,9 +1516,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "BELUSDT_LONG": {
@@ -1450,9 +1534,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "BELUSDT_SHORT": {
@@ -1467,9 +1552,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "CELRUSDT_LONG": {
@@ -1484,9 +1570,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "CELRUSDT_SHORT": {
@@ -1501,9 +1588,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "COMPUSDT_LONG": {
@@ -1518,9 +1606,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "COMPUSDT_SHORT": {
@@ -1535,9 +1624,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "QTUMUSDT_LONG": {
@@ -1552,9 +1642,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "QTUMUSDT_SHORT": {
@@ -1569,9 +1660,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SANDUSDT_LONG": {
@@ -1586,9 +1678,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SANDUSDT_SHORT": {
@@ -1603,9 +1696,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ANKRUSDT_LONG": {
@@ -1620,9 +1714,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ANKRUSDT_SHORT": {
@@ -1637,9 +1732,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ETCUSDT_LONG": {
@@ -1654,9 +1750,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ETCUSDT_SHORT": {
@@ -1671,9 +1768,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "GTCUSDT_LONG": {
@@ -1688,9 +1786,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "GTCUSDT_SHORT": {
@@ -1705,9 +1804,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "1000BONKUSDC_LONG": {
@@ -1722,9 +1822,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "1000BONKUSDC_SHORT": {
@@ -1739,9 +1840,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "1000FLOKIUSDT_LONG": {
@@ -1756,9 +1858,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "1000FLOKIUSDT_SHORT": {
@@ -1773,9 +1876,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "1000LUNCUSDT_LONG": {
@@ -1790,9 +1894,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "1000LUNCUSDT_SHORT": {
@@ -1807,9 +1912,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "1000PEPEUSDC_LONG": {
@@ -1824,9 +1930,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "1000PEPEUSDC_SHORT": {
@@ -1841,9 +1948,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ACEUSDT_LONG": {
@@ -1858,9 +1966,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ACEUSDT_SHORT": {
@@ -1875,9 +1984,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ARPAUSDT_LONG": {
@@ -1892,9 +2002,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ARPAUSDT_SHORT": {
@@ -1909,9 +2020,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ARUSDT_LONG": {
@@ -1926,9 +2038,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ARUSDT_SHORT": {
@@ -1943,9 +2056,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SKYUSDT_LONG": {
@@ -1960,9 +2074,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SKYUSDT_SHORT": {
@@ -1977,9 +2092,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "1MBABYDOGEUSDT_SHORT": {
@@ -1994,9 +2110,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ACTUSDT_SHORT": {
@@ -2011,9 +2128,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ARBUSDC_SHORT": {
@@ -2028,9 +2146,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ALTUSDT_SHORT": {
@@ -2045,9 +2164,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "API3USDT_SHORT": {
@@ -2062,9 +2182,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "AAVEUSDC_LONG": {
@@ -2079,9 +2200,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ARKMUSDT_SHORT": {
@@ -2096,9 +2218,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "APEUSDT_LONG": {
@@ -2113,9 +2236,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ASTERUSDT_LONG": {
@@ -2130,9 +2254,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "BEATUSDT_LONG": {
@@ -2147,9 +2272,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "BCHUSDC_SHORT": {
@@ -2164,9 +2290,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "BLURUSDT_SHORT": {
@@ -2181,9 +2308,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "BIOUSDC_SHORT": {
@@ -2198,9 +2326,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "BSVUSDT_LONG": {
@@ -2215,9 +2344,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "CAKEUSDT_LONG": {
@@ -2232,9 +2362,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "CELOUSDT_SHORT": {
@@ -2249,9 +2380,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "EDUUSDT_SHORT": {
@@ -2266,9 +2398,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "DASHUSDT_SHORT": {
@@ -2283,9 +2416,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "EIGENUSDT_SHORT": {
@@ -2300,9 +2434,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ENAUSDC_SHORT": {
@@ -2317,9 +2452,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "FARTCOINUSDT_LONG": {
@@ -2334,9 +2470,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ENSUSDT_SHORT": {
@@ -2351,9 +2488,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "FIDAUSDT_LONG": {
@@ -2368,9 +2506,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "HMSTRUSDT_LONG": {
@@ -2385,9 +2524,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "GALAUSDT_SHORT": {
@@ -2402,9 +2542,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "GMTUSDT_SHORT": {
@@ -2419,9 +2560,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "HYPEUSDT_LONG": {
@@ -2436,9 +2578,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "IDUSDT_LONG": {
@@ -2453,9 +2596,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "HBARUSDC_LONG": {
@@ -2470,9 +2614,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "GRASSUSDT_LONG": {
@@ -2487,9 +2632,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "GOOGLUSDT_SHORT": {
@@ -2504,9 +2650,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "MAGICUSDT_SHORT": {
@@ -2521,9 +2668,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "IOUSDT_LONG": {
@@ -2538,9 +2686,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "IMXUSDT_SHORT": {
@@ -2555,9 +2704,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "INJUSDT_LONG": {
@@ -2572,9 +2722,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "MORPHOUSDT_LONG": {
@@ -2589,9 +2740,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ORDIUSDC_SHORT": {
@@ -2606,9 +2758,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "MUUSDT_LONG": {
@@ -2623,9 +2776,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "MRVLUSDT_SHORT": {
@@ -2640,9 +2794,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "PLTRUSDT_LONG": {
@@ -2657,9 +2812,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "NEARUSDC_LONG": {
@@ -2674,9 +2830,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "NVDAUSDT_SHORT": {
@@ -2691,9 +2848,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "NMRUSDT_LONG": {
@@ -2708,9 +2866,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "NEIROUSDT_SHORT": {
@@ -2725,9 +2884,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "RENDERUSDT_SHORT": {
@@ -2742,9 +2902,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "RAYSOLUSDT_LONG": {
@@ -2759,9 +2920,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "POLUSDT_SHORT": {
@@ -2776,9 +2938,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "PNUTUSDC_SHORT": {
@@ -2793,9 +2956,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "RIFUSDT_LONG": {
@@ -2810,9 +2974,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SKYAIUSDT_SHORT": {
@@ -2827,9 +2992,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ROSEUSDT_SHORT": {
@@ -2844,9 +3010,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SPXUSDT_LONG": {
@@ -2861,9 +3028,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "RONINUSDT_SHORT": {
@@ -2878,9 +3046,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SPCXUSDT_SHORT": {
@@ -2895,9 +3064,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "STRKUSDT_SHORT": {
@@ -2912,9 +3082,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "TNSRUSDT_SHORT": {
@@ -2929,9 +3100,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "TLMUSDT_LONG": {
@@ -2946,9 +3118,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "TAOUSDT_SHORT": {
@@ -2963,9 +3136,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "VANRYUSDT_SHORT": {
@@ -2980,9 +3154,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "WLFIUSDC_SHORT": {
@@ -2997,9 +3172,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "TSLAUSDT_SHORT": {
@@ -3014,9 +3190,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "VETUSDT_SHORT": {
@@ -3031,9 +3208,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "WLDUSDC_LONG": {
@@ -3048,9 +3226,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "WLDUSDC_SHORT": {
@@ -3065,9 +3244,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ZKUSDT_SHORT": {
@@ -3082,9 +3262,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ZROUSDT_SHORT": {
@@ -3099,9 +3280,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "AGLDUSDT_SHORT": {
@@ -3116,9 +3298,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "BEAMXUSDT_SHORT": {
@@ -3133,9 +3316,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "BOMEUSDC_SHORT": {
@@ -3150,9 +3334,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "BTCUSDT_LONG": {
@@ -3167,9 +3352,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "CHILLGUYUSDT_LONG": {
@@ -3184,9 +3370,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "BLURUSDT_LONG": {
@@ -3201,9 +3388,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "AIAUSDT_LONG": {
@@ -3218,9 +3406,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "APEUSDT_SHORT": {
@@ -3235,9 +3424,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "GASUSDT_SHORT": {
@@ -3252,9 +3442,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "GOOGLUSDT_LONG": {
@@ -3269,9 +3460,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "AWEUSDT_LONG": {
@@ -3286,9 +3478,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ETHFIUSDC_LONG": {
@@ -3303,9 +3496,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "FILUSDC_SHORT": {
@@ -3320,9 +3514,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "FARTCOINUSDT_SHORT": {
@@ -3337,9 +3532,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "CRVUSDC_SHORT": {
@@ -3354,9 +3550,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "JASMYUSDT_SHORT": {
@@ -3371,9 +3568,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "HBARUSDC_SHORT": {
@@ -3388,9 +3586,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ICPUSDT_SHORT": {
@@ -3405,9 +3604,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "LUNA2USDT_SHORT": {
@@ -3422,9 +3622,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "MOVRUSDT_SHORT": {
@@ -3439,9 +3640,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "MSFTUSDT_LONG": {
@@ -3456,9 +3658,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "NEOUSDC_SHORT": {
@@ -3473,9 +3676,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "KASUSDT_SHORT": {
@@ -3490,9 +3694,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "MASKUSDT_SHORT": {
@@ -3507,9 +3712,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "MELANIAUSDT_SHORT": {
@@ -3524,9 +3730,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "MINAUSDT_LONG": {
@@ -3541,9 +3748,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "MOVEUSDT_SHORT": {
@@ -3558,9 +3766,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "NOTUSDT_SHORT": {
@@ -3575,9 +3784,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ONDOUSDT_LONG": {
@@ -3592,9 +3802,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "PENGUUSDC_SHORT": {
@@ -3609,9 +3820,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "OPUSDT_SHORT": {
@@ -3626,9 +3838,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "POPCATUSDT_SHORT": {
@@ -3643,9 +3856,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "PTBUSDT_SHORT": {
@@ -3660,9 +3874,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "MEMEUSDT_SHORT": {
@@ -3677,9 +3892,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "PUMPUSDT_SHORT": {
@@ -3694,9 +3910,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SPCXUSDT_LONG": {
@@ -3711,9 +3928,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "RUNEUSDT_SHORT": {
@@ -3728,9 +3946,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "RSRUSDT_SHORT": {
@@ -3745,9 +3964,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SAGAUSDT_SHORT": {
@@ -3762,9 +3982,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SUNUSDT_LONG": {
@@ -3779,9 +4000,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SEIUSDT_SHORT": {
@@ -3796,9 +4018,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "PARTIUSDT_SHORT": {
@@ -3813,9 +4036,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "STORJUSDT_SHORT": {
@@ -3830,9 +4054,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "TSLAUSDT_LONG": {
@@ -3847,9 +4072,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "TWTUSDT_SHORT": {
@@ -3864,9 +4090,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "SUIUSDC_SHORT": {
@@ -3881,9 +4108,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "STXUSDT_SHORT": {
@@ -3898,9 +4126,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "TIAUSDC_LONG": {
@@ -3915,9 +4144,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "TRBUSDT_LONG": {
@@ -3932,9 +4162,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "TRUMPUSDC_SHORT": {
@@ -3949,9 +4180,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "VANRYUSDT_LONG": {
@@ -3966,9 +4198,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "YGGUSDT_SHORT": {
@@ -3983,9 +4216,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "VIRTUALUSDT_SHORT": {
@@ -4000,9 +4234,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "WIFUSDC_SHORT": {
@@ -4017,9 +4252,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "WUSDT_SHORT": {
@@ -4034,9 +4270,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "YFIUSDT_LONG": {
@@ -4051,9 +4288,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ZILUSDT_SHORT": {
@@ -4068,9 +4306,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ZRXUSDT_SHORT": {
@@ -4085,9 +4324,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "TRXUSDT_LONG": {
@@ -4102,9 +4342,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "XMRUSDT_SHORT": {
@@ -4119,9 +4360,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "XPLUSDT_LONG": {
@@ -4136,9 +4378,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "1000SHIBUSDC_SHORT": {
@@ -4153,9 +4396,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "LINKUSDC_LONG": {
@@ -4170,9 +4414,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "XMRUSDT_LONG": {
@@ -4187,9 +4432,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "1000000MOGUSDT_SHORT": {
@@ -4204,9 +4450,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "1000SATSUSDT_SHORT": {
@@ -4221,9 +4468,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "ARMUSDT_SHORT": {
@@ -4238,9 +4486,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "HYPEUSDT_SHORT": {
@@ -4255,9 +4504,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "LTCUSDC_LONG": {
@@ -4272,9 +4522,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "APPUSDT_SHORT": {
@@ -4289,9 +4540,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   },
   "PTBUSDT_LONG": {
@@ -4306,9 +4558,10 @@
       "DAYTRADE_DC_STOP_TF": "OFF",
       "DAYTRADE_DC_TARGET_TF": "OFF",
       "ENTRY_DC_TF": "4h",
-      "ENTRY_DC_BUFFER_PCT": 0.1
+      "ENTRY_DC_BUFFER_PCT": 0.1,
+      "WT_LOWER_CROSS_EXIT_TF": "OFF"
     },
-    "winning_tag": "clean_TEMPLATE_KG4h_v27",
+    "winning_tag": "clean_TEMPLATE_KG4h_WT_v28",
     "trades": 0
   }
 }

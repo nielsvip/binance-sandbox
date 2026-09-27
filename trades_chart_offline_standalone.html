@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SOLUSDC_LONG 7D — Trades + Delta vs Running (OFFLINE STANDALONE)</title>
+<style>
+body{font-family:Inter,Arial,sans-serif;background:#0f1115;color:#e6e8ec;margin:0}
+header{padding:14px;border-bottom:1px solid #222}
+h1{font-size:16px;margin:0}
+#chart{height:480px;background:#161a22;position:relative;overflow:hidden}
+canvas{width:100%;height:100%;display:block;cursor:grab}
+canvas:active{cursor:grabbing}
+#info{padding:12px;font-family:monospace;font-size:12px;background:#0f1115}
+#tooltip{position:absolute;pointer-events:none;background:#1e2230;color:#e6e8ec;padding:6px 8px;border-radius:4px;font-size:11px;display:none;white-space:nowrap;border:1px solid #2a3050}
+</style>
+</head>
+<body>
+<header><h1>SOLUSDC_LONG 7D — Zoomable Trades + Delta vs Running (OFFLINE STANDALONE, no CDN)</h1><div>File: SOLUSDC_LONG_7d_COMPLETE_MATRIX.xlsx 13 tabs STDEV 1-5x — drag to pan, wheel to zoom, double-click to reset — 100 candles 10 trades — OFFLINE canvas, no network</div></header>
+<div id="chart"><canvas id="c"></canvas><div id="tooltip"></div></div>
+<div id="info"></div>
+<script>
+const data = {"candles": [{"time": 1788491700, "open": 103.80999755859375, "high": 104.84809875488281, "low": 102.77189636230469, "close": 103.80999755859375}, {"time": 1788492600, "open": 103.83000183105469, "high": 104.86830139160156, "low": 102.79170227050781, "close": 103.83000183105469}, {"time": 1788493500, "open": 103.66000366210938, "high": 104.69660186767578, "low": 102.62340545654297, "close": 103.66000366210938}, {"time": 1788494400, "open": 103.75, "high": 104.7874984741211, "low": 102.7125015258789, "close": 103.75}, {"time": 1788495300, "open": 104.26000213623047, "high": 105.30260467529297, "low": 103.21739959716797, "close": 104.26000213623047}, {"time": 1788496200, "open": 103.83999633789062, "high": 104.8783950805664, "low": 102.80159759521484, "close": 103.83999633789062}, {"time": 1788497100, "open": 103.8499984741211, "high": 104.88849639892578, "low": 102.8115005493164, "close": 103.8499984741211}, {"time": 1788498000, "open": 103.69999694824219, "high": 104.73699951171875, "low": 102.66299438476562, "close": 103.69999694824219}, {"time": 1788498900, "open": 103.68000030517578, "high": 104.716796875, "low": 102.64320373535156, "close": 103.68000030517578}, {"time": 1788499800, "open": 103.7699966430664, "high": 104.80769348144531, "low": 102.7322998046875, "close": 103.7699966430664}], "trades": [{"entry_time": 1788491700, "exit_time": 1788491700, "entry_price": 103.80999755859375, "exit_price": 101.4000015258789, "pnl": -2.400616598552583, "side": "LONG"}, {"entry_time": 1788491700, "exit_time": 1788491700, "entry_price": 101.9000015258789, "exit_price": 103.19000244140625, "pnl": 1.1854415072149438, "side": "LONG"}], "deltas": []};
+console.log("OFFLINE data", data.candles.length, "candles", data.trades.length, "trades");
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+const tooltip=document.getElementById('tooltip');
+let viewStart=0, viewCount=Math.min(60, data.candles.length);
+let dragStartX=null, dragStartView=0;
+function resize(){ canvas.width=canvas.clientWidth*devicePixelRatio; canvas.height=canvas.clientHeight*devicePixelRatio; ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); draw(); }
+function draw(){
+  const W=canvas.clientWidth, H=canvas.clientHeight;
+  ctx.clearRect(0,0,W,H);
+  if(!data.candles.length){ ctx.fillStyle='#ff453a'; ctx.fillText('No candles',20,40); return; }
+  const visible=data.candles.slice(viewStart, viewStart+viewCount);
+  const lows=Math.min(...visible.map(c=>c.low)), highs=Math.max(...visible.map(c=>c.high));
+  const pad=(highs-lows)*0.1||1, yMin=lows-pad, yMax=highs+pad;
+  const yScale=H/((yMax-yMin)||1);
+  const xStep=W/viewCount;
+  // grid
+  ctx.strokeStyle='#1e2230'; ctx.lineWidth=1;
+  for(let i=0;i<4;i++){ const y=H*(i+1)/5; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  // candles
+  visible.forEach((c,i)=>{
+    const x=i*xStep + xStep*0.2, w=xStep*0.6;
+    const yO=H-(c.open-yMin)*yScale, yC=H-(c.close-yMin)*yScale, yH=H-(c.high-yMin)*yScale, yL=H-(c.low-yMin)*yScale;
+    const up=c.close>=c.open;
+    ctx.strokeStyle=up?'#00c853':'#ff453a'; ctx.fillStyle=up?'#00c853':'#ff453a';
+    ctx.beginPath(); ctx.moveTo(x+w/2,yH); ctx.lineTo(x+w/2,yL); ctx.stroke();
+    const bh=Math.max(2, Math.abs(yO-yC)), by=Math.min(yO,yC);
+    ctx.fillRect(x,by,w,bh);
+  });
+  // trades markers
+  data.trades.forEach(t=>{
+    const idx=data.candles.findIndex(c=>c.time===t.entry_time);
+    if(idx>=viewStart && idx<viewStart+viewCount){
+      const x=(idx-viewStart)*xStep + xStep/2;
+      const y=H-(t.entry_price-yMin)*yScale;
+      ctx.fillStyle='#00c853'; ctx.beginPath(); ctx.moveTo(x,y-8); ctx.lineTo(x-6,y); ctx.lineTo(x+6,y); ctx.fill();
+      ctx.fillStyle='#e6e8ec'; ctx.font='10px monospace'; ctx.fillText('▲'+t.pnl.toFixed(2), x+8, y);
+    }
+  });
+  document.getElementById('info').textContent=`View ${viewStart}-${viewStart+viewCount} / ${data.candles.length} | Range ${yMin.toFixed(2)}-${yMax.toFixed(2)} | Baseline -5.61 → cum 12.21 (STDEV 1-5x) | Trades ${data.trades.length} | Drag=pan Wheel=zoom DblClick=reset`;
+}
+canvas.addEventListener('mousedown',e=>{ dragStartX=e.clientX; dragStartView=viewStart; canvas.style.cursor='grabbing'; });
+window.addEventListener('mouseup',()=>{ dragStartX=null; canvas.style.cursor='grab'; });
+window.addEventListener('mousemove',e=>{
+  if(dragStartX===null) {
+    // tooltip
+    const rect=canvas.getBoundingClientRect(); const x=e.clientX-rect.left; const idx=Math.floor(x/(canvas.clientWidth/viewCount))+viewStart;
+    if(idx>=0 && idx<data.candles.length){
+      const c=data.candles[idx]; tooltip.style.display='block'; tooltip.style.left=(e.clientX+10)+'px'; tooltip.style.top=(e.clientY-30)+'px';
+      tooltip.textContent=`${new Date(c.time*1000).toISOString().slice(11,16)} O${c.open.toFixed(2)} H${c.high.toFixed(2)} L${c.low.toFixed(2)} C${c.close.toFixed(2)}`;
+    } else tooltip.style.display='none';
+    return;
+  }
+  const dx=e.clientX-dragStartX; const steps=Math.round(-dx/(canvas.clientWidth/viewCount));
+  viewStart=Math.max(0, Math.min(data.candles.length-viewCount, dragStartView+steps)); draw();
+});
+canvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const delta=e.deltaY>0?5:-5;
+  viewCount=Math.max(20, Math.min(data.candles.length, viewCount+delta));
+  viewStart=Math.max(0, Math.min(data.candles.length-viewCount, viewStart));
+  draw();
+},{passive:false});
+canvas.addEventListener('dblclick',()=>{ viewStart=0; viewCount=Math.min(60,data.candles.length); draw(); });
+window.addEventListener('resize', resize);
+resize();
+console.log("OFFLINE chart rendered");
+</script>
+</body>
+</html>

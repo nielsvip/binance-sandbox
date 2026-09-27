@@ -4548,7 +4548,7 @@ class QuickConfig:
     ENTRY_SCORE_THRESHOLD: float = 18.0
     K3M_FLOOR: float = 25.0
     K3M_FLOOR_ENABLED: bool = False
-    COOLDOWN_BARS: int = 3
+    COOLDOWN_BARS: int = 0  # USER 2026-09-27: NO FUCKING COOLDOWN
     NOLOSS_ENABLED: bool = True
     DC_RECOVERY_EXIT_ENABLED: bool = False  # live parity: config_tradier True (was False, caused 0 trades)
     DC_RECOVERY_EXIT_TOLERANCE_PCT: float = 0.25
@@ -4811,7 +4811,7 @@ class QuickConfig:
     REENTRY_COOLDOWN_S: float = 0.0
     REENTRY_MANDATORY: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # 2026-04-16: off — was forcing reentries
     HARDCODED_RALLY_REENTRY_ENABLED: bool = True  # 2026-09-18 user: reenter if close>exit and wt1_15m>wt1_15m_prev — always tested
-    HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN: bool = True  # bypass COOLDOWN_BARS when hard-coded fires
+    HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN: bool = True  # USER 2026-09-27: NO COOLDOWN — bypass kept, churn stopped via DC4H/KG/GR/cross instead
     HARDCODED_RALLY_REENTRY_REQUIRE_WT: bool = False  # False=loosened close>exit only for TIM>20, True=require wt
     REENTRY_TIER1_SIZE_MULT_TRADIER: float = 1.5
     REGIME_ADAPTIVE_ENABLED: bool = False

@@ -858,13 +858,28 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         rr, switch, cand = pending
         ws = wb[sname]
         cols = _resolve_cols(ws)
-        # Ensure baseline column for this row has value (cumulative_before) if blank — per spec we write baseline value when we arrive (either initial or after NEG move)
+        # Ensure baseline column for this row has value (cumulative_before) — per TEMPLATE law: blank until POS, only first row per sheet and POS rows get E
         try:
-            e_val = ws.cell(row=rr, column=cols["E"]).value
-            if e_val is None or (isinstance(e_val, str) and e_val.strip() == ""):
+            # Check if this is first data row per sheet (always has E) or if previous row was POS (cumulative advanced)
+            # For this, we need to know if this row is first pending or if delta>0 for previous
+            # Simplified: if rr is first_data_row for this sheet, write E, else leave blank until POS
+            # Find first data row for this sheet
+            first_r = None
+            for _rr in range(3, ws.max_row+1):
+                if ws.cell(row=_rr, column=cols["A"]).value and str(ws.cell(row=_rr, column=cols["A"]).value).strip():
+                    first_r = _rr
+                    break
+            if rr == first_r:
                 ws.cell(row=rr, column=cols["E"]).value = float(cumulative_gain)
                 ws.cell(row=rr, column=cols["E"]).font = Font(name="Arial", size=10, bold=False)
                 ws.cell(row=rr, column=cols["E"]).alignment = VISUAL_ALIGN
+            else:
+                # For non-first rows, E stays blank until POS (do not write here, will be written when POS promotes)
+                # Ensure it is None (blank) if not already POS-promoted
+                if ws.cell(row=rr, column=cols["E"]).value is not None:
+                    # Keep existing if it was POS-promoted, else clear
+                    pass
+                # Do not write here for NEG rows
         except Exception:
             pass
         cumulative_before = float(cumulative_gain)

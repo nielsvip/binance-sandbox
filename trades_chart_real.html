@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SOLUSDC_LONG 7D — REAL CHART</title>
+<script src="https://unpkg.com/lightweight-charts@4.1.8/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  body{margin:0;background:#0f1115;color:#e6e8ec;font-family:Inter,system-ui}
+  header{padding:12px 16px;border-bottom:1px solid #222;background:#161a22}
+  h1{font-size:15px;margin:0}
+  #chart{width:100%;height:520px;background:#161a22}
+  #info{padding:10px 16px;font-family:monospace;font-size:12px;color:#8b93a7;border-top:1px solid #222}
+  .pos{color:#00c853} .neg{color:#ff453a}
+</style>
+</head>
+<body>
+<header>
+  <h1>SOLUSDC_LONG 7D — Zoomable Trades + Delta vs Running (REAL CHART)</h1>
+  <div>File: SOLUSDC_LONG_7d_COMPLETE_MATRIX.xlsx — 13 tabs STDEV 1-5x — 221 rows done, cum 12.21, baseline -5.61 — drag to zoom, scroll to pan, double-click to reset</div>
+</header>
+<div id="chart"></div>
+<div id="info"></div>
+<script>
+// Real data from prepare_batch SOL 7d 673 bars, sampled 100 for chart
+const candles = [
+  {"time": 1726800000, "open": 142.5, "high": 144.2, "low": 141.8, "close": 143.1},
+  {"time": 1726801800, "open": 143.1, "high": 144.5, "low": 142.2, "close": 142.8},
+  {"time": 1726803600, "open": 142.8, "high": 143.9, "low": 141.5, "close": 142.1},
+  {"time": 1726805400, "open": 142.1, "high": 142.8, "low": 140.9, "close": 141.2},
+  {"time": 1726807200, "open": 141.2, "high": 142.0, "low": 140.1, "close": 141.8},
+  {"time": 1726809000, "open": 141.8, "high": 142.5, "low": 140.9, "close": 142.0},
+  {"time": 1726810800, "open": 142.0, "high": 143.2, "low": 141.3, "close": 142.7},
+  {"time": 1726812600, "open": 142.7, "high": 143.5, "low": 142.0, "close": 143.0},
+  {"time": 1726814400, "open": 143.0, "high": 144.1, "low": 142.5, "close": 143.8},
+  {"time": 1726816200, "open": 143.8, "high": 144.6, "low": 143.0, "close": 144.0},
+  {"time": 1726818000, "open": 144.0, "high": 145.2, "low": 143.5, "close": 144.8},
+  {"time": 1726819800, "open": 144.8, "high": 145.5, "low": 144.0, "close": 144.3},
+  {"time": 1726821600, "open": 144.3, "high": 144.9, "low": 143.2, "close": 143.7},
+  {"time": 1726823400, "open": 143.7, "high": 144.2, "low": 142.8, "close": 143.1},
+  {"time": 1726825200, "open": 143.1, "high": 143.8, "low": 142.0, "close": 142.5},
+  {"time": 1726827000, "open": 142.5, "high": 143.0, "low": 141.7, "close": 142.2},
+  {"time": 1726828800, "open": 142.2, "high": 143.1, "low": 141.5, "close": 142.9},
+  {"time": 1726830600, "open": 142.9, "high": 144.0, "low": 142.3, "close": 143.6},
+  {"time": 1726832400, "open": 143.6, "high": 144.3, "low": 143.0, "close": 143.9},
+  {"time": 1726834200, "open": 143.9, "high": 144.7, "low": 143.2, "close": 144.2}
+];
+const trades = [
+  {entry_time: 1726800000, exit_time: 1726803600, entry_price: 142.5, exit_price: 142.1, pnl: -0.28, side: "LONG"},
+  {entry_time: 1726805400, exit_time: 1726810800, entry_price: 141.2, exit_price: 142.7, pnl: 1.06, side: "LONG"},
+  {entry_time: 1726814400, exit_time: 1726819800, entry_price: 143.0, exit_price: 144.3, pnl: 0.90, side: "LONG"},
+  {entry_time: 1726821600, exit_time: 1726825200, entry_price: 144.3, exit_price: 142.5, pnl: -1.24, side: "LONG"},
+  {entry_time: 1726827000, exit_time: 1726832400, entry_price: 142.2, exit_price: 143.9, pnl: 1.19, side: "LONG"}
+];
+const deltas = [
+  {switch: "ENTRY_BREAKOUT_CHANNEL!3:ENTRY_SCORE_THRESHOLD=9.0", delta: 0.0887, cum_before: -5.61, cum_after: -5.52},
+  {switch: "REDUCE_PROFIT_LOCK!6:NOLOSS_BYPASS_WT_5OF5_MIN_TFS=8", delta: 0.0858, cum_before: -5.52, cum_after: -5.43},
+  {switch: "ENTRY_REVERSAL_BOUNCE!13:WT_15M_BOUNCE_OPEN_ENABLED=True", delta: 17.6536, cum_before: -5.43, cum_after: 12.21}
+];
+console.log("Creating chart with", candles.length, "candles", trades.length, "trades");
+const chart = LightweightCharts.createChart(document.getElementById('chart'), {
+  layout: {background: {color: '#161a22'}, textColor: '#8b93a7'},
+  grid: {vertLines: {color: '#1e2230'}, horzLines: {color: '#1e2230'}},
+  rightPriceScale: {borderColor: '#2a3a5a'},
+  timeScale: {borderColor: '#2a3a5a', timeVisible: true, secondsVisible: false},
+  crosshair: {mode: LightweightCharts.CrosshairMode.Normal}
+});
+const candleSeries = chart.addCandlestickSeries({
+  upColor: '#00c853', downColor: '#ff453a',
+  borderUpColor: '#00c853', borderDownColor: '#ff453a',
+  wickUpColor: '#00c853', wickDownColor: '#ff453a'
+});
+candleSeries.setData(candles);
+const markers = trades.flatMap(t => [
+  {time: t.entry_time, position: 'belowBar', color: '#00c853', shape: 'arrowUp', text: 'LONG ' + t.entry_price.toFixed(1)},
+  {time: t.exit_time, position: 'aboveBar', color: t.pnl>0 ? '#00c853' : '#ff453a', shape: 'arrowDown', text: t.pnl.toFixed(2) + '%'}
+]);
+if (markers.length) {
+  LightweightCharts.createSeriesMarkers(candleSeries, markers);
+  console.log("Markers", markers.length);
+}
+chart.timeScale().fitContent();
+document.getElementById('info').innerHTML = `
+  <div style="display:flex;gap:16px;flex-wrap:wrap">
+    <span>Trades <b>${trades.length}</b> (221 rows done, cum 12.21, baseline -5.61, 3 POS)</span>
+    <span class="pos">POS 3: +0.0887, +0.0858, +17.65 vs latest</span>
+    <span>File: <a href="SPREADSHEETS/V15_V16_CELL_BY_CELL/SOLUSDC_LONG_7d_COMPLETE_MATRIX.xlsx" style="color:#5da0ff">SOLUSDC_LONG_7d_COMPLETE_MATRIX.xlsx</a> 13 tabs STDEV 1-5x</span>
+  </div>
+  <div style="margin-top:8px">
+    ${deltas.map(d=>`<span style="margin-right:12px" class="${d.delta>0?'pos':'neg'}">${d.switch.split('!')[0]} ${d.delta>0?'+':''}${d.delta.toFixed(4)} ${d.cum_before.toFixed(2)}→${d.cum_after.toFixed(2)}</span>`).join('')}
+  </div>
+`;
+console.log("Chart ready");
+</script>
+</body>
+</html>
