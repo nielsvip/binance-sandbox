@@ -675,9 +675,9 @@
         "latest_crossover_price_3m": 0.15928078,
         "previous_crossover_price_3m": 0.1554,
         "crossover_3m": true,
-        "latest_crossunder_price_3m": 0.1584,
-        "previous_crossunder_price_3m": 0.1581,
-        "crossunder_3m": false,
+        "latest_crossunder_price_3m": 0.15822333,
+        "previous_crossunder_price_3m": 0.1584,
+        "crossunder_3m": true,
         "latest_crossover_price_15m": 0.15843882,
         "previous_crossover_price_15m": 0.15459508,
         "crossover_15m": true,
@@ -2400,9 +2400,9 @@
         "crossunder_D": false
     },
     "ETHFIUSDC": {
-        "latest_crossover_price_3m": 0.72603191,
-        "previous_crossover_price_3m": 0.7223,
-        "crossover_3m": true,
+        "latest_crossover_price_3m": 0.71881372,
+        "previous_crossover_price_3m": 0.72603191,
+        "crossover_3m": false,
         "latest_crossunder_price_3m": 0.70991118,
         "previous_crossunder_price_3m": 0.6675,
         "crossunder_3m": false,
@@ -11464,8 +11464,8 @@
         "crossunder_D": false
     },
     "ALABUSDT": {
-        "latest_crossover_price_3m": 367.25149645,
-        "previous_crossover_price_3m": 366.84,
+        "latest_crossover_price_3m": 368.14835765,
+        "previous_crossover_price_3m": 367.25149645,
         "crossover_3m": true,
         "latest_crossunder_price_3m": 368.97893824,
         "previous_crossunder_price_3m": 368.93,
