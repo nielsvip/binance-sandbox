@@ -764,9 +764,6 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 continue
             # Check is_default backup to know bold default rows — but we still process every row
             rows.append((rr, sw, cand))
-        # FAST 7d: keep NPZ in RAM, 7d must never take hours — limit to 2 rows per tab (26 rows)
-        if getattr(args, "window_days", 30) == 7:
-            rows = rows[:2]
         if is_hustle:
             _rnd.shuffle(rows)
         per_tab_rows[sname] = rows
@@ -910,6 +907,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         # Helper to evaluate variant with timeout
         def _eval_with_timeout(overrides_dict: dict, timeout_sec: float = YELLOW_TIMEOUT):
             pp = prepared  # may be None -> fallback
+            # REAL calc from 7D NPZ in RAM is simple — keep NPZ in RAM, every row every yellow real
+            if pp is not None:
+                try:
+                    return __import__("tools.opt.v12_pilot", fromlist=["evaluate_prepared_sanitized"]).evaluate_prepared_sanitized(pp, overrides_dict, args.window_days)
+                except Exception:
+                    pass
             try:
                 with _cf.ThreadPoolExecutor(max_workers=1) as ex:
                     if pp is not None:
@@ -1766,7 +1769,8 @@ def _run_single(new_symside, args):
     # ABSOLUTE PROHIBITION — check BEFORE any heavy NPZ/prepare (2026-09-16)
     try:
         _early_prog = None
-        for _pp in [PROGRESS_DIR / f"{new_symside}_v14_progress.json", Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{new_symside}_v14_progress.json")]:
+        _progress_name_tmp = f"{new_symside}_{args.window_days}d_progress.json" if getattr(args, "window_days", 30) != 30 else f"{new_symside}_v14_progress.json"
+        for _pp in [PROGRESS_DIR / _progress_name_tmp, Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{_progress_name_tmp}")]:
             if _pp.exists():
                 try:
                     _early_prog = json.loads(_pp.read_text())
@@ -1934,7 +1938,8 @@ def main():
     # Finished workbooks (SNDK etc) have final_gain + done set + xls/log/zip/bak backups — MUST NOT be re-touched on ANY server.
     try:
         _early_prog = None
-        for _pp in [PROGRESS_DIR / f"{new_symside}_v14_progress.json", Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{new_symside}_v14_progress.json")]:
+        _progress_name_tmp = f"{new_symside}_{args.window_days}d_progress.json" if getattr(args, "window_days", 30) != 30 else f"{new_symside}_v14_progress.json"
+        for _pp in [PROGRESS_DIR / _progress_name_tmp, Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{_progress_name_tmp}")]:
             if _pp.exists():
                 try:
                     _early_prog = json.loads(_pp.read_text())
