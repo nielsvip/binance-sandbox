@@ -958,7 +958,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 ws.cell(row=rr, column=cols["G"]).value = float(delta_for_row)
                 ws.cell(row=rr, column=cols["G"]).font = Font(name="Arial", size=10, bold=True, color="9C5700" if delta_for_row > 0 else "000000")
                 ws.cell(row=rr, column=cols["G"]).alignment = VISUAL_ALIGN
-                ws.cell(row=rr, column=cols["F"]).value = float(delta_for_row)
+                ws.cell(row=rr, column=cols["F"]).value = None  # HUSTLE blank per law
                 ws.cell(row=rr, column=cols["F"]).font = Font(name="Arial", size=10, bold=True)
                 ws.cell(row=rr, column=cols["F"]).alignment = VISUAL_ALIGN
                 # Ensure E for next row in NEXT TAB will be set on next iteration
@@ -1061,7 +1061,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 ws.cell(row=rr, column=cols["G"]).fill = PatternFill(fill_type=None)
             ws.cell(row=rr, column=cols["G"]).alignment = VISUAL_ALIGN
             # HUSTLE_DELTA F same as G (spec says every row needs delta)
-            ws.cell(row=rr, column=cols["F"]).value = float(delta_for_row)
+            ws.cell(row=rr, column=cols["F"]).value = None  # HUSTLE blank per law
             ws.cell(row=rr, column=cols["F"]).font = Font(name="Arial", size=10, bold=True)
             ws.cell(row=rr, column=cols["F"]).alignment = VISUAL_ALIGN
             # LIVE columns stay BLANK until workbook complete per spec
@@ -2309,13 +2309,9 @@ def main():
             baseline_live = baseline_vec
     baseline_gain = float(baseline_live.get("gain_pct") or baseline_vec.get("gain_pct") or 0.0)
     bh = float(baseline_live.get("bh_pct") or baseline_vec.get("bh_pct") or 0.0)
-    # baseline reversed for short: if long is 7.2 short is -7.2 (same NPZ, opposite side)
-    if new_symside.endswith("_SHORT"):
-        baseline_gain = -abs(baseline_gain) if baseline_gain != 0 else baseline_gain
-        bh = -abs(bh) if bh != 0 else bh
-    elif new_symside.endswith("_LONG"):
-        baseline_gain = abs(baseline_gain) if baseline_gain != 0 else baseline_gain
-        bh = abs(bh) if bh != 0 else bh
+    # TEMPLATE LAW 2026-09-27: baseline stays as engine returned — NO abs() flipping.
+    # LONG may be negative (loss) and SHORT may be positive; forcing sign via abs() created
+    # mirrored -28.76 bullshit deltas (vec -14.38 vs abs baseline +14.38). Keep raw.
     # FIX 2026-09-23: baseline 0.00 is a lie — must be calculated from previous test OR defaults for cat_side, never 0.00
     if abs(baseline_gain) < 1e-9:
         _fixed = False
@@ -2749,8 +2745,16 @@ def main():
                     pass
     except Exception as _re2:
         print(f"[respect-warn] {_re2}", flush=True)
-    # Enforce monotonic baseline: never underperform BEST (leave settings as is = 0 delta)
-    cumulative_gain = max(float(progress.get("cumulative_gain") or baseline_gain), float(baseline_gain or 0), float(progress.get("hustler_best_gain") or 0))
+    # Enforce monotonic baseline: never underperform BEST — keep raw, allow negative baselines to stay negative.
+    _raw_cum = float(progress.get("cumulative_gain") if progress.get("cumulative_gain") is not None else baseline_gain)
+    _raw_base = float(baseline_gain or 0)
+    _raw_hust = float(progress.get("hustler_best_gain") or 0)
+    # Don't force to 0 when baseline is negative (loss); only max if positive or if progress has real POS.
+    if _raw_cum > 0 or _raw_base > 0 or _raw_hust > 0:
+        cumulative_gain = max(_raw_cum, _raw_base, _raw_hust)
+    else:
+        # both negative/zero — keep baseline (loss) as is, not 0
+        cumulative_gain = _raw_base if progress.get("cumulative_gain") is None else _raw_cum
     # baseline-restore: restore cumulative_gain from last completed row's cumulative_after on resume
     if progress.get("done"):
         try:
@@ -2813,7 +2817,7 @@ def main():
                     _need = rec.get("delta") is not None and (not _is_float or abs(float(_rv) - float(rec["delta"])) > 1e-9)
                     if _need:
                         _is_hustle_refill = getattr(args, "seq_mode", "") == "hustle"
-                        ws_r.cell(row=r, column=6).value = float(rec["delta"]) if _is_hustle_refill else None
+                        ws_r.cell(row=r, column=6).value = None  # HUSTLE blank
                         ws_r.cell(row=r, column=6).font = Font(name="Arial", size=10, bold=True, color="9C5700")
                         refilled += 1
                     # also refill G VECTOR_DELTA (col7) greedy delta — was missing, left VLOOKUP strand
@@ -3200,7 +3204,7 @@ def main():
                                 else:
                                     ws_h.cell(row=r, column=_col).value = 0.0
                             except: pass
-                    try: ws_h.cell(row=r, column=6).value = 0.0; ws_h.cell(row=r, column=7).value = -1.0  # G never 0.0 for NEG — was 0.0
+                    try: ws_h.cell(row=r, column=6).value = None  # HUSTLE blank; ws_h.cell(row=r, column=7).value = -1.0  # G never 0.0 for NEG — was 0.0
                     except: pass
                 key = f"{sheet}!{r}:{switch}={cand}"
                 # ALWAYS WRITE YELLOWS AFTER DELTA — even when delta -1.0, yellows are candidate values, baseline never without pos delta
@@ -3817,7 +3821,7 @@ def main():
                         _tr = int(vec.get("trades") or 0)
                         if _tr <= 1:
                             try:
-                                ws_keep.cell(row=r, column=6).value = 0.0
+                                ws_keep.cell(row=r, column=6).value = None  # HUSTLE blank
                                 ws_keep.cell(row=r, column=7).value = -1.0
                                 from openpyxl.styles import PatternFill
                                 ws_keep.cell(row=r, column=7).fill = __import__("openpyxl").styles.PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
@@ -4119,7 +4123,7 @@ def main():
                                 # Dual: F (6) is hustle vs baseline (only in hustle mode), G (7) is greedy vs cum — F empty in worst_first
                                 _is_hustle2 = getattr(args, "seq_mode", "") == "hustle"
                                 _h_for_row = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                                ws_row.cell(row=r, column=6).value = float(_h_for_row) if _is_hustle2 else None
+                                ws_row.cell(row=r, column=6).value = None  # HUSTLE blank if _is_hustle2 else None
                                 ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL
                                 ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
                                 ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
@@ -4176,7 +4180,7 @@ def main():
                                 ws_row.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", bold=False, color="000000")
                                 _is_hustle = getattr(args, "seq_mode", "") == "hustle"
                                 _hustle_neg = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                                ws_row.cell(row=r, column=6).value = float(_hustle_neg) if (_is_hustle and _hustle_neg is not None) else None
+                                ws_row.cell(row=r, column=6).value = None  # HUSTLE blank if (_is_hustle and _hustle_neg is not None) else None
                                 ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL if _is_hustle else VISUAL_F_FILL
                                 ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
                                 ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
@@ -4247,7 +4251,7 @@ def main():
                                 ws_row.cell(row=r, column=3).value = None
                                 from openpyxl.styles import PatternFill
                                 _h_delta = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                                ws_row.cell(row=r, column=6).value = float(_h_delta) if (getattr(args, "seq_mode", "") == "hustle" and _h_delta is not None) else None
+                                ws_row.cell(row=r, column=6).value = None  # HUSTLE blank if (getattr(args, "seq_mode", "") == "hustle" and _h_delta is not None) else None
                                 ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL
                                 ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
                                 ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
@@ -4274,7 +4278,7 @@ def main():
                                 ws_row.cell(row=r, column=5).value = float(cumulative_before)
                                 ws_row.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", bold=False, color="000000")
                                 _h_pf = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                                ws_row.cell(row=r, column=6).value = float(_h_pf) if (getattr(args, "seq_mode", "") == "hustle" and _h_pf is not None) else None
+                                ws_row.cell(row=r, column=6).value = None  # HUSTLE blank if (getattr(args, "seq_mode", "") == "hustle" and _h_pf is not None) else None
                                 ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None
                         except Exception:
                             pass
@@ -4289,7 +4293,7 @@ def main():
                                 ws_row.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", bold=False, color="000000")
                                 from openpyxl.styles import PatternFill
                                 _h_delta2 = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                                ws_row.cell(row=r, column=6).value = float(_h_delta2) if (getattr(args, "seq_mode", "") == "hustle" and _h_delta2 is not None) else None
+                                ws_row.cell(row=r, column=6).value = None  # HUSTLE blank if (getattr(args, "seq_mode", "") == "hustle" and _h_delta2 is not None) else None
                                 ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL
                                 ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
                                 ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
@@ -4325,7 +4329,7 @@ def main():
                                 ws_row.cell(row=r, column=5).value = float(cumulative_before)
                                 ws_row.cell(row=r, column=5).font = Font(name="Arial", bold=False, color="000000")
                                 _h_bland = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                                ws_row.cell(row=r, column=6).value = float(_h_bland) if getattr(args, "seq_mode", "") == "hustle" else None
+                                ws_row.cell(row=r, column=6).value = None  # HUSTLE blank if getattr(args, "seq_mode", "") == "hustle" else None
                                 ws_row.cell(row=r, column=7).value = float(delta_best)
                                 from openpyxl.styles import PatternFill
                                 ws_row.cell(row=r, column=7).fill = __import__("openpyxl").styles.PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
@@ -4365,18 +4369,15 @@ def main():
                             overrides_str = " + ".join(all_over) if all_over else str(cand)
                             ws_row.cell(row=r, column=3).value = overrides_str
                             ws_row.cell(row=r, column=3).font = Font(name="Arial", bold=True, color="006100")
-                            # baseline for this row: E_r = cumulative_before (spec: E is previous winning cum), G is VECTOR_DELTA greedy vs cum, H/I empty until live
-                            # worst_first: hustle_delta NOT available (we are not in hustle mode) — F is HUSTLE only in hustle mode, else F is same as G or empty
-                            if args.seq_mode in ("worst_first", "worst2best", "worst-first"):
-                                _hustle_delta_vs_baseline = None  # not in hustle mode
-                                ws_row.cell(row=r, column=6).value = None  # F empty in worst_first
-                            else:
-                                _hustle_delta_vs_baseline = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                                ws_row.cell(row=r, column=6).value = float(_hustle_delta_vs_baseline) if (getattr(args, "seq_mode", "") == "hustle" and _hustle_delta_vs_baseline is not None) else None  # F = HUSTLE_DELTA vs baseline (only hustle)
-                            ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None  # G = greedy VECTOR_DELTA vs cum
+                            # TEMPLATE LAW 2026-09-27: HUSTLE (F) does NOT exist — always blank unless hustle mode.
+                            # BASELINE (E) blank until POS, VECTOR (G) = sum pos yellows, H/I blank until sheet complete.
+                            _hustle_delta_vs_baseline = None
+                            ws_row.cell(row=r, column=6).value = None  # F = HUSTLE always blank (not running)
+                            # G = VECTOR_DELTA = sum of pos yellows vs cum (may be neg/0)
+                            ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None
                             ws_row.cell(row=r, column=7).font = Font(name="Arial", size=10, bold=True, color="9C5700")
                             ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
-                            # H/I empty until live backtest — first millions of other calculations, then live
+                            # H/I empty until live backtest
                             _hk_ld = None
                             _hk_ls = None
                             try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
@@ -4384,13 +4385,22 @@ def main():
                             _write_per_row_HIK(ws_row, r, _hk_ld, _hk_ls, _hk_pf)
                             try: _clear_vlookup_formulas(ws_row)
                             except: pass
-                            ws_row.cell(row=r, column=6).value = float(_hustle_delta_vs_baseline) if _hustle_delta_vs_baseline is not None else None  # F = HUSTLE_DELTA vs baseline
+                            # keep F blank - do not rewrite hustle
+                            ws_row.cell(row=r, column=6).value = None
                             ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL
                             ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
                             ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
-                            # E for this row (col 5) is cumulative_before - always numeric per user (was None for NEG -> empty trash)
-                            ws_row.cell(row=r, column=5).value = float(cumulative_before)
-                            ws_row.cell(row=r, column=5).font = Font(name="Arial", bold=True, color="006100") if delta_best > 0 else Font(name="Arial", bold=False, color="000000")
+                            # E = BASELINE: blank until POS per law. Only first data row per sheet and POS-promoted rows get E.
+                            _first_rr = per_tab_rows.get(sheet, [(r, "", "")])[0][0] if per_tab_rows.get(sheet) else r
+                            _is_first_in_sheet = (r == _first_rr)
+                            if delta_best is not None and delta_best > 1e-9:
+                                ws_row.cell(row=r, column=5).value = float(cumulative_before)
+                                ws_row.cell(row=r, column=5).font = Font(name="Arial", bold=True, color="006100")
+                            elif _is_first_in_sheet:
+                                ws_row.cell(row=r, column=5).value = float(cumulative_before)
+                                ws_row.cell(row=r, column=5).font = Font(name="Arial", bold=False, color="000000")
+                            else:
+                                ws_row.cell(row=r, column=5).value = None
                             # next row's E will be set when that row is evaluated, not now
                             # keep old next-row blank for NEG to avoid carry-over, but not needed as E for next row will be overwritten when that row is processed
                             if r + 1 <= ws_row.max_row and delta_best <= 0:
