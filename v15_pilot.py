@@ -831,6 +831,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         header_maps[sname] = hm
     total_rows = sum(len(v) for v in per_tab_rows.values())
     processed = 0
+    current_idx = 0  # FIX 2026-09-27: init before tabs[current_idx % len] at 849 (was UnboundLocalError → 0/-1 fallback)
     # Baseline heartbeat for spec
     heartbeat_path = Path("/tmp") / f"v14_heartbeat_{new_symside}.txt"
     def _touch(msg: str):

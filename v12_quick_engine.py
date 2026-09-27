@@ -4548,7 +4548,7 @@ class QuickConfig:
     ENTRY_SCORE_THRESHOLD: float = 18.0
     K3M_FLOOR: float = 25.0
     K3M_FLOOR_ENABLED: bool = False
-    COOLDOWN_BARS: int = 0  # USER 2026-09-27: NO FUCKING COOLDOWN
+    COOLDOWN_BARS: int = 3
     NOLOSS_ENABLED: bool = True
     DC_RECOVERY_EXIT_ENABLED: bool = False  # live parity: config_tradier True (was False, caused 0 trades)
     DC_RECOVERY_EXIT_TOLERANCE_PCT: float = 0.25
@@ -4631,7 +4631,6 @@ class QuickConfig:
     DC_BREAKOUT_TF_EXPANDED: str = "1h"
     EXIT_VELOCITY_WT_TFS: str = "1h,4h,D"
     DC_HARD_STOP_TF: str = "4h"  # ULTIMATE_DC HARD_STOP TF: 4h|D — per sym_side sweepable; D wider = fewer stops
-    WT_LOWER_CROSS_EXIT_TF: str = "OFF"  # WT lower cross exit TF: OFF/15m/1h/4h — LONG wt cross down + price lower, SHORT opposite; added 2026-09-27 as option in big WT TF sweep
     # ── 2026-09-03 HARD SHORT GATES — baked (mirrors tradier_manage) ──
     ROTATION_S_FINAL_SCORE_MAX: float = 0.35
     ROTATION_S_WT_BEAR_ALIGN_MIN: int = 2
@@ -4811,7 +4810,7 @@ class QuickConfig:
     REENTRY_COOLDOWN_S: float = 0.0
     REENTRY_MANDATORY: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # 2026-04-16: off — was forcing reentries
     HARDCODED_RALLY_REENTRY_ENABLED: bool = True  # 2026-09-18 user: reenter if close>exit and wt1_15m>wt1_15m_prev — always tested
-    HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN: bool = True  # USER 2026-09-27: NO COOLDOWN — bypass kept, churn stopped via DC4H/KG/GR/cross instead
+    HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN: bool = True  # bypass COOLDOWN_BARS when hard-coded fires
     HARDCODED_RALLY_REENTRY_REQUIRE_WT: bool = False  # False=loosened close>exit only for TIM>20, True=require wt
     REENTRY_TIER1_SIZE_MULT_TRADIER: float = 1.5
     REGIME_ADAPTIVE_ENABLED: bool = False
@@ -5098,24 +5097,6 @@ class QuickConfig:
     DC_DAYTRADE_REQUIRE_1H_EXPANSION: bool = True
     DC_DAYTRADE_STOP_PCT: float = 0.015
     DC_DAYTRADE_TARGET_PCT: float = 0.01
-    # 2026-09-26 DC-channel stop/target — user mandate: replace fixed % with dc_low/high minus buffer
-    # LONG stop = price <= dc_low_TF * (1 - 0.0025), SHORT stop = price >= dc_high_TF * (1+0.0025)
-    # LONG target = price >= dc_high_TF * (1 - 0.001), SHORT target = price <= dc_low_TF * (1+0.001)
-    # TF: OFF (disabled, use fixed % fallback) or single "15m"/"1h"/"4h"/"D" or multi "15m,1h,4h" (OR across TFs — exit if ANY TF breach). Buffers fixed 0.25/0.10 per user 2026-09-26+.
-    DAYTRADE_DC_STOP_TF: str = "OFF"
-    DAYTRADE_DC_STOP_BUFFER_PCT: float = 0.25
-    DAYTRADE_DC_TARGET_TF: str = "OFF"
-    DAYTRADE_DC_TARGET_BUFFER_PCT: float = 0.10
-    # TECHNICAL_EXIT DC variants — vector exit signal (compute_exit_signals) mirror of daytrade; supports multi-TF OR
-    TECHNICAL_DC_STOP_TF: str = "OFF"
-    TECHNICAL_DC_STOP_BUFFER_PCT: float = 0.25
-    TECHNICAL_DC_TARGET_TF: str = "OFF"
-    TECHNICAL_DC_TARGET_BUFFER_PCT: float = 0.10
-    # 2026-09-26 ENTRY DC — user mandate: entries ABOVE low/high (long ABOVE, short BELOW) on 1+ TFs
-    # LONG entry: close >= dc_low_TF*(1+0.001) OR close >= dc_high_TF*(1+0.001) (bounce or breakout)
-    # SHORT entry: close <= dc_high_TF*(1-0.001) OR close <= dc_low_TF*(1-0.001)
-    ENTRY_DC_TF: str = "OFF"
-    ENTRY_DC_BUFFER_PCT: float = 0.10
     FH_MOMENTUM_DC_CONFIRM: bool = True
     FH_MOMENTUM_DC_MAX_LONG: float = 0.5
     FH_MOMENTUM_MFI_CONFIRM: bool = False
@@ -5963,7 +5944,7 @@ class QuickConfig:
     EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED: bool = False  # live parity: config_tradier True (added batch 2)
     DAEMON_PRICE_CROSS_REENTRY_LIVE_ENABLED: bool = False  # 2026-09-03 default OFF, same switch as live daemon (user: fix vector from same switch)
     DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED: bool = False  # 2026-09-03 default OFF, tested in TEMPLATE_30d_matrix.xlsx
-    BREAKOUT_LEASH_ENABLED: bool = False  # 2026-09-26 DISABLED per parity — live-only 545 closes NOT in per_sym 7D ledger, NON_VECTORIZABLE/USELESS paper P3/P7 ON
+    BREAKOUT_LEASH_ENABLED: bool = True  # live parity: config_tradier True (added batch 2)
     ADAPTIVE_REGIME_ENABLED: bool = True  # live parity: config_tradier True (added batch 2)
     ADAPTIVE_REGIME_PAPER: bool = True  # live parity: config_tradier True (added batch 2)
     ADX_REGIME_FILTER_ENABLED: bool = True  # live parity: config_tradier True (added batch 2)
@@ -7066,7 +7047,7 @@ class QuickConfig:
     LOG_FILE_TRADIER_PRICES: Path = Path("data")
     LOG_INTERVAL_SECONDS: int = 10
     LOG_MAX_BYTES: int = 1024 * 1024 * 20
-    LONG_STRUCT_EXIT_TF: str = 'None'  # 2026-09-26 DISABLED HYBRID 449 closes NOT in per_sym — NON_VECTORIZABLE paper ON set D
+    LONG_STRUCT_EXIT_TF: str = 'D'
     LONG_WAIT_DIRECT_BOUNCE_DISTANCE: float = 0.015
     LONG_WAIT_DIRECT_BOUNCE_TIMEFRAME: str = '15m'
     LONG_WAIT_DIRECT_CONFIRMATION: str = 'stoch5'
@@ -7264,7 +7245,7 @@ class QuickConfig:
     OBLIGATORY_REENTRY_SHORT_SMA_BOUNCE_SIZE_MULT: float = 1.5
     OBLIGATORY_REENTRY_SMA_BOUNCE_SIZE_MULT: float = 1.5
     OBLIGATORY_SMA200_PCT: float = 1.0
-    OBLIGATORY_SMA200_WT3M_ENABLED: bool = False  # 2026-09-26 DISABLED live-only OBLIGATORY_OPEN NOT in per_sym — NON_VECTORIZABLE paper ON
+    OBLIGATORY_SMA200_WT3M_ENABLED: bool = True
     OB_ENTRY_GATE_ACCOUNTS: list = field(default_factory=lambda: [])
     OB_ENTRY_MIN_LONG_SCORE: float = 0.0
     OB_ENTRY_MIN_SHORT_SCORE: float = 0.0
@@ -7851,7 +7832,7 @@ class QuickConfig:
     SHORT_ABOVE_EMA20_IS_PENALTY: bool = True
     SHORT_ABOVE_SMA20_BONUS: int = 15
     SHORT_RSI_MIN_1H: float = 40.0
-    SHORT_STRUCT_EXIT_TF: str = 'None'  # 2026-09-26 DISABLED HYBRID — see LONG_STRUCT
+    SHORT_STRUCT_EXIT_TF: str = '15m'
     SIGNALS_FILE: Path = Path("data")
     SIGNALS_LOOP_INTERVAL_SECONDS: int = 300
     SIZING_MODE_TRADIER: str = 'DEFAULT'
@@ -7974,8 +7955,8 @@ class QuickConfig:
     TOP_OF_RANGE_BLOCK_TF_LIST: str = '1h,4h,D'
     TOP_OF_RANGE_BLOCK_THRESHOLD: float = 0.95
     TRADEABLE_KEYS: Path = Path("data")
-    TRADEABLE_KEYS_MANDATORY_ENABLED: bool = False  # 2026-09-26 DISABLED NOT in per_sym — NON_VECTORIZABLE paper ON
-    TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED: bool = False  # 2026-09-26 DISABLED — see above
+    TRADEABLE_KEYS_MANDATORY_ENABLED: bool = True
+    TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED: bool = True
     TRADEABLE_KEYS_MANDATORY_SIZE_USD: float = 9.0
     TRADES_PER_SYM_PER_DAY_MAX: int = 8
     TRADIER_ACCOUNT_ID: str = os.getenv('TRADIER_ACCOUNT_ID_TRC', '')
@@ -8158,7 +8139,7 @@ class QuickConfig:
     WINNER_PROTECT_ENABLED: bool = False
     WORKER_INSTANCE_ID: int = int(os.getenv('WORKER_INSTANCE_ID', '0'))
     WORKER_TOTAL_INSTANCES: int = int(os.getenv('WORKER_TOTAL_INSTANCES', '1'))
-    WRONG_SIDE_ABS_KILL_ENABLED: bool = False  # 2026-09-26 DISABLED 76 closes NOT in per_sym — NON_VECTORIZABLE paper ON
+    WRONG_SIDE_ABS_KILL_ENABLED: bool = True
     WRONG_SIDE_DIV_LOOKBACK_BARS: int = 20
     WRONG_SIDE_DIV_TFS_REQUIRED: int = 2
     WRONG_SIDE_K_TFS_REQUIRED: int = 3
@@ -9157,36 +9138,6 @@ def compute_entry_signals(npz, n, is_long, cfg):
     # ===== Auto-hooked entry gates (Group B switches) =====
     # Each adds a simple filter; when flipped, impacts entry signal density.
     extra_ok = np.ones(n, dtype=bool)
-    # 2026-09-26 ENTRY DC — user mandate: entries ABOVE low/high (long ABOVE, short BELOW) on 1+ TFs OR
-    # LONG: close >= dc_low_TF*(1+buf) OR close >= dc_high_TF*(1+buf) (bounce or breakout slightly above)
-    # SHORT: close <= dc_high_TF*(1-buf) OR close <= dc_low_TF*(1-buf)
-    try:
-        _entry_tf_raw = str(getattr(cfg, 'ENTRY_DC_TF', 'OFF') or 'OFF').strip()
-        if _entry_tf_raw.upper() != 'OFF' and _entry_tf_raw != '':
-            _entry_tfs = [p.strip() for p in _entry_tf_raw.replace('+', ',').replace('|', ',').replace(' ', ',').split(',') if p.strip() and p.strip().upper() != 'OFF']
-            if _entry_tfs:
-                _entry_buf = float(getattr(cfg, 'ENTRY_DC_BUFFER_PCT', 0.10) or 0.10) / 100.0
-                _entry_ok = np.zeros(n, dtype=bool)
-                for _etf in _entry_tfs:
-                    _etf_norm = {"5m": "3m"}.get(_etf, _etf)
-                    _dc_lo_e = _safe(npz, f"dc_low_{_etf_norm}", n, 0)
-                    _dc_hi_e = _safe(npz, f"dc_high_{_etf_norm}", n, 0)
-                    if np.all(_dc_lo_e == 0) and np.all(_dc_hi_e == 0):
-                        continue
-                    if is_long:
-                        _ok_lo = (_dc_lo_e > 0) & (close >= _dc_lo_e * (1 + _entry_buf))
-                        _ok_hi = (_dc_hi_e > 0) & (close >= _dc_hi_e * (1 + _entry_buf))
-                        _entry_ok = _entry_ok | _ok_lo | _ok_hi
-                    else:
-                        _ok_hi = (_dc_hi_e > 0) & (close <= _dc_hi_e * (1 - _entry_buf))
-                        _ok_lo = (_dc_lo_e > 0) & (close <= _dc_lo_e * (1 - _entry_buf))
-                        _entry_ok = _entry_ok | _ok_hi | _ok_lo
-                # require at least one TF's ABOVE condition (OR across TFs and low/high)
-                if np.any(_entry_ok):
-                    extra_ok = extra_ok & _entry_ok
-                _ = getattr(cfg, 'ENTRY_DC_TF', 'OFF')
-    except Exception:
-        pass
     # Tradier MFI entry long gate — tradier mode only (crypto regression 2026-04-16)
     if getattr(cfg, 'TRADIER_MFI_ENTRY_LONG_ENABLED', False) and is_long and getattr(cfg, 'MODE', 'crypto') == 'tradier':
         mfi_1h_arr = _safe(npz, 'mfi_1h', n, 50)
@@ -9945,41 +9896,7 @@ def compute_exit_signals(npz, n, is_long, cfg):
     else:
         regime_exit = (is_trending3 & (wt_vel_1h_arr3 > 1.0)) | ((~is_trending3) & (wt_vel_1h_arr3 > 0.5))
 
-    # 2026-09-26 TECHNICAL DC-channel exits — user mandate: dc_low/high with buffers instead of fixed %
-    # LONG stop: close <= dc_low_TF * (1 - buf), SHORT stop: close >= dc_high_TF * (1+buf)
-    # LONG target: close >= dc_high_TF * (1 - buf), SHORT target: close <= dc_low_TF * (1+buf)
-    # Supports multi-TF OR: "15m,1h,4h" -> exit if ANY TF breaches
-    _tech_dc_extra = np.zeros(n, dtype=bool)
-    try:
-        for _cfg_name, _is_stop in [("TECHNICAL_DC_STOP_TF", True), ("TECHNICAL_DC_TARGET_TF", False)]:
-            _tf_raw = str(getattr(cfg, _cfg_name, "OFF") or "OFF").strip()
-            if _tf_raw.upper() == "OFF" or _tf_raw == "":
-                continue
-            _tfs = [p.strip() for p in _tf_raw.replace('+', ',').replace('|', ',').replace(' ', ',').split(',') if p.strip() and p.strip().upper() != 'OFF']
-            _buf = float(getattr(cfg, _cfg_name.replace("_TF", "_BUFFER_PCT"), 0.25 if _is_stop else 0.10))
-            _buf_f = _buf / 100.0
-            for _tf in _tfs:
-                _tf_norm = {"5m": "3m"}.get(_tf, _tf)
-                if _is_stop:
-                    _dc_stop = _safe(npz, f"dc_low_{_tf_norm}" if is_long else f"dc_high_{_tf_norm}", n, 0)
-                    if np.all(_dc_stop == 0):
-                        continue
-                    if is_long:
-                        _tech_dc_extra = _tech_dc_extra | (close <= _dc_stop * (1 - _buf_f))
-                    else:
-                        _tech_dc_extra = _tech_dc_extra | (close >= _dc_stop * (1 + _buf_f))
-                else:
-                    _dc_tgt = _safe(npz, f"dc_high_{_tf_norm}" if is_long else f"dc_low_{_tf_norm}", n, 0)
-                    if np.all(_dc_tgt == 0):
-                        continue
-                    if is_long:
-                        _tech_dc_extra = _tech_dc_extra | (close >= _dc_tgt * (1 - _buf_f))
-                    else:
-                        _tech_dc_extra = _tech_dc_extra | (close <= _dc_tgt * (1 + _buf_f))
-            _ = getattr(cfg, _cfg_name, "OFF")
-    except Exception:
-        pass
-    _all_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | mtf_gr_exit | gr_htf_exit | formation_exit | regime_exit | _tech_dc_extra
+    _all_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | mtf_gr_exit | gr_htf_exit | formation_exit | regime_exit
     # ═══ STRUCTURAL EXIT VETO — vectorized twin of wt_dc_delta.structural_exit_permitted() ═══
     # USER MANDATE 2026-07-21: never exit while price is going up (long) / down (short).
     # Only an LTF collapse or a 1h/4h lower-high+lower-low earns an exit.
@@ -10222,8 +10139,6 @@ def compute_reduce_signals(npz, n, is_long, cfg):
 
 def compute_regime_sizing_mult(npz, n, is_long, cfg):
     """Initial-open sizing multiplier from regime/EMA-distance/ATR/DC-edge sizing knobs."""
-    if bool(getattr(cfg, 'FIXED_QUANTITY_ENABLED', False)):
-        return np.ones(n, dtype=np.float64)
     mult = np.ones(n, dtype=np.float64)
     close = _base_safe(npz, 'close', n, cfg)
     # 2026-08-09: REGIME_ADAPTIVE_ENABLED — more nuanced regime detection via ADX + BB width
@@ -10256,26 +10171,69 @@ def compute_regime_sizing_mult(npz, n, is_long, cfg):
         lo = getattr(cfg, 'DC_EDGE_SIZING_MIN_MULT', 1.0); hi = getattr(cfg, 'DC_EDGE_SIZING_MAX_MULT', 3.0)
         mult = mult * (lo + (1 - edge) * (hi - lo))
     # STDEV_SLOPE_SIZING 2.5 ladder — REAL position sizing (quantity influences gain)
-    # SIMPLE FIX 2026-09-26: D timeframe r (slope) +/-2.5stdev → 5x to 1x gradient (bottom→top longs, top→bottom shorts)
-    # Re-added STDEV: does not trade, only varies quantity. Disabled all other switches, just on/off.
+    # Mirrors tradier_manage.get_position_size bands: per-TF max 10x D /4x 4h /2x 1h /1.5x 15m, slope_to_top vs bottom_to_top
+    # 2026-09-14 parity: venue slope factors (crypto 24h vs stocks 6.5h session) + skip when channel keys absent (live fails closed)
     if bool(getattr(cfg, 'STDEV_SLOPE_SIZING_ENABLED', False)):
         try:
-            _stdev_max = 5.0  # 5x at bottom (longs) / top (shorts)
-            _stdev_min = 1.0  # 1x at opposite extreme
-            _stdev_tf = "D"  # D only per user request
+            _stdev_max_map = {'D': float(getattr(cfg, 'STDEV_SLOPE_SIZING_D_MAX', 10.0)), '4h': float(getattr(cfg, 'STDEV_SLOPE_SIZING_4H_MAX', 4.0)), '1h': float(getattr(cfg, 'STDEV_SLOPE_SIZING_1H_MAX', 2.0)), '15m': float(getattr(cfg, 'STDEV_SLOPE_SIZING_15M_MAX', 1.5))}
+            _stdev_tf = str(getattr(cfg, 'BAND_SLOPE_SIZING_V2_TF', 'D'))
             _stdev_pb_key = f'lrL_pct_b_{_stdev_tf}'
             _stdev_sl_key = f'lrL_slope_{_stdev_tf}'
             if _stdev_pb_key not in npz or _stdev_sl_key not in npz:
                 raise KeyError(f'STDEV_SLOPE no channel {_stdev_tf} (live parity: skip)')
+            _stdev_max = float(_stdev_max_map.get(_stdev_tf, 10.0))
+            _stdev_min = float(getattr(cfg, 'BAND_SLOPE_SIZING_V2_MIN', 0.5))
+            _stdev_mode = str(getattr(cfg, 'STDEV_SLOPE_SIZING_MODE', 'slope_to_top'))
             _stdev_pb = _safe(npz, _stdev_pb_key, n, 0.5)
             _stdev_sl = _safe(npz, _stdev_sl_key, n, 0.0)
-            # Edge: 0 at top, 1 at bottom for longs; reversed for shorts
+            _is_crypto_venue = str(getattr(cfg, 'MODE', 'tradier')).lower() == 'crypto'
+            _slope_map = {'1h': 24.0, '4h': 6.0, 'D': 1.0, '15m': 96.0} if _is_crypto_venue else {'1h': 6.5, '4h': 1.625, 'D': 1.0, '15m': 26.0}
+            _slope_factor = _slope_map.get(_stdev_tf, 1.0)
+            _slope_day = _stdev_sl * _slope_factor
             _edge = (1.0 - _stdev_pb) if is_long else _stdev_pb
             _edge = np.clip(_edge, 0.0, 1.0)
-            # Bottom→top 5x→1x for longs, top→bottom 5x→1x for shorts (same edge logic)
-            _bs_m = 1.0 + (_stdev_max - 1.0) * _edge
+            if _stdev_mode == "bottom_to_top":
+                _bs_m = 1.0 + (_stdev_max - 1.0) * _edge
+            elif _stdev_mode == "slope_to_top":
+                _bs_m = np.where(_edge >= 0.5, _stdev_max, 1.0 + (_stdev_max - 1.0) * (_edge * 2.0))
+            else:
+                _dg = float(getattr(cfg, 'BAND_SLOPE_SIZING_V2_DEPTH_GAIN', 1.0))
+                _bs_m = 1.0 + _dg * (_edge - 0.5) * 2.0
+            _sn = np.clip(np.abs(_slope_day) / max(1e-9, float(getattr(cfg, 'BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY', 1.0))), 0.0, 1.0)
+            _fav = (_slope_day > 0) if is_long else (_slope_day < 0)
+            _slope_mult = np.where(_fav, 1.0 + 0.5 * _sn, np.maximum(0.5, 1.0 - 0.5 * _sn))
+            _bs_m = _bs_m * _slope_mult
             _bs_m = np.clip(_bs_m, _stdev_min, _stdev_max)
+            # reconnect STDEV_SLOPE_LOOKBACK_* and STDEV_BAND_MULTIPLIER (12-field family)
+            try:
+                _lb_map = {'D': int(getattr(cfg, 'STDEV_SLOPE_LOOKBACK_D', 180)), '4h': int(getattr(cfg, 'STDEV_SLOPE_LOOKBACK_4H', 180)), '1h': int(getattr(cfg, 'STDEV_SLOPE_LOOKBACK_1H', 168)), '15m': int(getattr(cfg, 'STDEV_SLOPE_LOOKBACK_15M', 96))}
+                _lb = float(_lb_map.get(_stdev_tf, 180))
+                _lb_def = float({'D': 180, '4h': 180, '1h': 168, '15m': 96}.get(_stdev_tf, 180))
+                if _lb > 0 and _lb != _lb_def:
+                    _bs_m = _bs_m * (_lb_def / _lb)
+            except Exception:
+                pass
+            try:
+                _bm = float(getattr(cfg, 'STDEV_BAND_MULTIPLIER', 2.5))
+                if _bm != 2.5 and _bm > 0:
+                    _bs_m = np.clip(_bs_m * (_bm / 2.5), _stdev_min, _stdev_max)
+            except Exception:
+                pass
+            # guard NaN/inf -> 1.0
             _bs_m = np.where(np.isfinite(_bs_m), _bs_m, 1.0)
+            # 2026-09-18 STDEV_BULL_SLOPE_BOOST — extra sizing when D bull aligned (pumps STOCKS_LONG)
+            try:
+                if bool(getattr(cfg, 'STDEV_BULL_SLOPE_BOOST_ENABLED', False)):
+                    _mult_b = float(getattr(cfg, 'STDEV_BULL_SLOPE_BOOST_MULT', 1.5))
+                    if _mult_b != 1.0 and _mult_b > 0:
+                        _close_d_s = _safe(npz, 'close_D', n, close)
+                        _sma20_s = _safe(npz, 'sma_20_D', n, _close_d_s)
+                        if np.all(_sma20_s == _close_d_s) or np.all(_sma20_s == 0):
+                            _sma20_s = _safe(npz, 'sma20_D', n, _close_d_s)
+                        _bull_s = (_close_d_s > _sma20_s)
+                        _bs_m = np.where(_bull_s & _fav, np.clip(_bs_m * _mult_b, _stdev_min, _stdev_max * _mult_b), _bs_m)
+            except Exception:
+                pass
             mult = mult * _bs_m
         except Exception:
             pass
@@ -22006,105 +21964,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     if is_tradier and getattr(cfg, 'MIN_HOLD_MINUTES_TRADIER', 0.0) > 0:
         min_hold = max(min_hold, int(round(cfg.MIN_HOLD_MINUTES_TRADIER / max(bmin, 1))))
     max_hold_bars = getattr(cfg, 'DELTA_MAX_HOLD_BARS', 0) if getattr(cfg, 'DELTA_ENGINE_ENABLED', False) else 0
-    # venue-aware daytrade toggle — tradier vs crypto both respect DC_DAYTRADE_ENABLED
-    _dt_enabled_tradier = bool(getattr(cfg, 'TRADIER_DC_DAYTRADE_ENABLED', False))
-    _dt_enabled_crypto = bool(getattr(cfg, 'DC_DAYTRADE_ENABLED', False))
-    daytrade_on = (_dt_enabled_tradier if is_tradier else _dt_enabled_crypto)
-    if is_tradier:
-        daytrade_max_bars = 0  # DESTROYED per user 2026-09-27 — DAYTRADE_MAX_HOLD does not exist
-        daytrade_stop = float(getattr(cfg, 'TRADIER_DC_DAYTRADE_STOP_PCT', 0.005)) * 100
-        daytrade_target = float(getattr(cfg, 'TRADIER_DC_DAYTRADE_TARGET_PCT', 0.005)) * 100
-    else:
-        daytrade_max_bars = 0  # DESTROYED per user 2026-09-27 — DAYTRADE_MAX_HOLD does not exist
-        daytrade_stop = float(getattr(cfg, 'DC_DAYTRADE_STOP_PCT', 0.015)) * 100
-        daytrade_target = float(getattr(cfg, 'DC_DAYTRADE_TARGET_PCT', 0.01)) * 100
-    # 2026-09-26 DC-channel daytrade variants — user mandate: dc_3/5m/15m/1h with buffers instead of fixed %
-    # Supports multi-TF OR: "15m,1h,4h" means exit if ANY TF breaches (dc_low-0.25% or dc_high+0.25% etc).
-    # Fixed % daytrade_stop/target are ELIMINATED when DC list is active (user mandate 2026-09-26 fix).
-    def _parse_tf_list(raw):
-        if not raw or str(raw).strip().upper() == 'OFF':
-            return []
-        parts = [p.strip() for p in str(raw).replace('+', ',').replace('|', ',').replace(' ', ',').split(',') if p.strip()]
-        out = []
-        for p in parts:
-            if p.upper() == 'OFF':
-                continue
-            pn = {"5m": "3m"}.get(p, p)
-            if pn not in out:
-                out.append(pn)
-        return out
-    _dd_stop_tf_raw = str(getattr(cfg, 'DAYTRADE_DC_STOP_TF', 'OFF') or 'OFF').strip()
-    _dd_stop_buf = float(getattr(cfg, 'DAYTRADE_DC_STOP_BUFFER_PCT', 0.25) or 0.25) / 100.0
-    _dd_tgt_tf_raw = str(getattr(cfg, 'DAYTRADE_DC_TARGET_TF', 'OFF') or 'OFF').strip()
-    _dd_tgt_buf = float(getattr(cfg, 'DAYTRADE_DC_TARGET_BUFFER_PCT', 0.10) or 0.10) / 100.0
-    # also support legacy per-DC aliases used by older sheet rows (15m-specific booleans)
-    try:
-        if _dd_stop_tf_raw.upper() == 'OFF' and bool(getattr(cfg, 'DC_DAYTRADE_STOP_USE_DC_15M', False)):
-            _dd_stop_tf_raw = '15m'
-        if _dd_tgt_tf_raw.upper() == 'OFF' and bool(getattr(cfg, 'DC_DAYTRADE_TARGET_USE_DC_15M', False)):
-            _dd_tgt_tf_raw = '15m'
-    except Exception:
-        pass
-    _dd_stop_list = _parse_tf_list(_dd_stop_tf_raw)
-    _dd_tgt_list = _parse_tf_list(_dd_tgt_tf_raw)
-    _dd_stop_tfs = _dd_stop_list  # keep for reason tagging
-    _dd_tgt_tfs = _dd_tgt_list
-    _dd_stop_tfs_norm = _dd_stop_list
-    _dd_tgt_tfs_norm = _dd_tgt_list
-    # backward compat aliases
-    _dd_stop_tf = _dd_stop_tf_raw
-    _dd_tgt_tf = _dd_tgt_tf_raw
-    _dd_stop_tf_norm = ','.join(_dd_stop_list) if _dd_stop_list else 'OFF'
-    _dd_tgt_tf_norm = ','.join(_dd_tgt_list) if _dd_tgt_list else 'OFF'
-    _dd_stop_dcs = []
-    for _tf in _dd_stop_list:
-        arr = _safe(npz, f"dc_low_{_tf}" if is_long else f"dc_high_{_tf}", n, 0)
-        if not np.all(arr == 0):
-            _dd_stop_dcs.append((_tf, arr))
-    if _dd_stop_list and not _dd_stop_dcs:
-        _dd_stop_list = []; _dd_stop_tfs = []; _dd_stop_tfs_norm = []
-    _dd_tgt_dcs = []
-    for _tf in _dd_tgt_list:
-        arr = _safe(npz, f"dc_high_{_tf}" if is_long else f"dc_low_{_tf}", n, 0)
-        if not np.all(arr == 0):
-            _dd_tgt_dcs.append((_tf, arr))
-    if _dd_tgt_list and not _dd_tgt_dcs:
-        _dd_tgt_list = []; _dd_tgt_tfs = []; _dd_tgt_tfs_norm = []
-    _dd_stop_dc = _dd_stop_dcs[0][1] if len(_dd_stop_dcs) == 1 else None  # keep legacy single for non-list path
-    _dd_tgt_dc = _dd_tgt_dcs[0][1] if len(_dd_tgt_dcs) == 1 else None
-    _ = getattr(cfg, 'DAYTRADE_DC_STOP_TF', 'OFF'); _ = getattr(cfg, 'DAYTRADE_DC_TARGET_TF', 'OFF')
-    # 2026-09-26 TECHNICAL DC-channel exits — mirror daytrade with specific exit_reason, multi-TF OR
-    _tech_stop_tf_raw = str(getattr(cfg, 'TECHNICAL_DC_STOP_TF', 'OFF') or 'OFF').strip()
-    _tech_stop_buf = float(getattr(cfg, 'TECHNICAL_DC_STOP_BUFFER_PCT', 0.25) or 0.25) / 100.0
-    _tech_tgt_tf_raw = str(getattr(cfg, 'TECHNICAL_DC_TARGET_TF', 'OFF') or 'OFF').strip()
-    _tech_tgt_buf = float(getattr(cfg, 'TECHNICAL_DC_TARGET_BUFFER_PCT', 0.10) or 0.10) / 100.0
-    _tech_stop_list = _parse_tf_list(_tech_stop_tf_raw)
-    _tech_tgt_list = _parse_tf_list(_tech_tgt_tf_raw)
-    _tech_stop_tfs = _tech_stop_list
-    _tech_tgt_tfs = _tech_tgt_list
-    _tech_stop_tfs_norm = _tech_stop_list
-    _tech_tgt_tfs_norm = _tech_tgt_list
-    _tech_stop_tf = _tech_stop_tf_raw
-    _tech_tgt_tf = _tech_tgt_tf_raw
-    _tech_stop_tf_norm = ','.join(_tech_stop_list) if _tech_stop_list else 'OFF'
-    _tech_tgt_tf_norm = ','.join(_tech_tgt_list) if _tech_tgt_list else 'OFF'
-    _tech_stop_dcs = []
-    for _tf in _tech_stop_list:
-        arr = _safe(npz, f"dc_low_{_tf}" if is_long else f"dc_high_{_tf}", n, 0)
-        if not np.all(arr == 0):
-            _tech_stop_dcs.append((_tf, arr))
-    if _tech_stop_list and not _tech_stop_dcs:
-        _tech_stop_list = []; _tech_stop_tfs = []; _tech_stop_tfs_norm = []
-    _tech_tgt_dcs = []
-    for _tf in _tech_tgt_list:
-        arr = _safe(npz, f"dc_high_{_tf}" if is_long else f"dc_low_{_tf}", n, 0)
-        if not np.all(arr == 0):
-            _tech_tgt_dcs.append((_tf, arr))
-    if _tech_tgt_list and not _tech_tgt_dcs:
-        _tech_tgt_list = []; _tech_tgt_tfs = []; _tech_tgt_tfs_norm = []
-    _tech_stop_dc = _tech_stop_dcs[0][1] if len(_tech_stop_dcs) == 1 else None
-    _tech_tgt_dc = _tech_tgt_dcs[0][1] if len(_tech_tgt_dcs) == 1 else None
-    _ = getattr(cfg, 'TECHNICAL_DC_STOP_TF', 'OFF'); _ = getattr(cfg, 'TECHNICAL_DC_TARGET_TF', 'OFF')
+    daytrade_on = getattr(cfg, 'TRADIER_DC_DAYTRADE_ENABLED', False) and is_tradier
+    daytrade_max_bars = int(round(getattr(cfg, 'TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES', 240) / max(bmin, 1))) if daytrade_on else 0
+    daytrade_stop = getattr(cfg, 'TRADIER_DC_DAYTRADE_STOP_PCT', 0.005) * 100
+    daytrade_target = getattr(cfg, 'TRADIER_DC_DAYTRADE_TARGET_PCT', 0.005) * 100
     trail_erosion = getattr(cfg, 'WIN_TRAIL_EROSION_PCT', 0.0)
     satoshit_partial = getattr(cfg, 'SATOSHIT_EXIT_PARTIAL_PCT', 0.0) if getattr(cfg, 'SATOSHIT_EXIT_ENABLED', False) else 0.0
 
@@ -22137,17 +22000,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         if px <= 0:
             continue
         # 2026-09-18 HARDCODED RALLY REENTRY bypass cooldown: if close>exit and wt rising, ignore cd
-        # 2026-09-26 TARGET-DC immediate reentry: if last exit was TARGET dc_high (long) / dc_low (short) and price keeps trending, NO cooldowns at all (user mandate)
-        if pos is None and has_closed_before and trades and cd > 0:
-            try:
-                _last_reason = str(trades[-1].get('exit_reason', '') or trades[-1].get('reason',''))
-                if 'TARGET' in _last_reason and 'dc_' in _last_reason.lower():
-                    _last_exit_px = float(trades[-1].get('exit_price', 0) or 0)
-                    if _last_exit_px > 0:
-                        if (is_long and px > _last_exit_px) or (not is_long and px < _last_exit_px):
-                            cd = 0
-            except Exception:
-                pass
         # Loosened for TIM>20: when REQUIRE_WT=False, close>exit alone suffices
         if getattr(cfg, "HARDCODED_RALLY_REENTRY_ENABLED", True) and getattr(cfg, "HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN", True) and pos is None and has_closed_before and trades and cd > 0:
             try:
@@ -22185,16 +22037,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 # skip all reentry — keep pos None
                 continue
             fire = entry_sig[i]
-            # 2026-09-26 TARGET-DC immediate reentry: if last exit was TARGET dc before high/low and price keeps rising/falling, fire immediately even if entry_sig false — no cooldowns
-            if not fire and has_closed_before and trades:
-                try:
-                    _tr = str(trades[-1].get('exit_reason','') or trades[-1].get('reason',''))
-                    if 'TARGET' in _tr and 'dc_' in _tr.lower():
-                        _le = float(trades[-1].get('exit_price',0) or 0)
-                        if _le > 0 and ((is_long and px > _le) or (not is_long and px < _le)):
-                            fire = True
-                except Exception:
-                    pass
             # 2026-09-18 HARDCODED RALLY REENTRY (user mandate): close > exit AND wt1_15m rising — loosened for TIM>20
             if not fire and getattr(cfg, "HARDCODED_RALLY_REENTRY_ENABLED", True) and has_closed_before and trades:
                 try:
@@ -22211,77 +22053,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     pass
             if not fire and has_closed_before and getattr(cfg, 'REENTRY_MANDATORY', False):
                 fire = True
-            # USER 2026-09-27: NEVER reenter when falling through 4h bottom/top, below STOP, against KG all TFs, against GR all TFs — FIX 2026-09-27: block ANY px below dc_low_4h (not just 0.25% below) to stop 1-bar ULTIMATE churn
-            if fire:
-                try:
-                    if is_long:
-                        _dc4l = float(npz.get('dc_low_4h', [0])[i]) if i < len(npz.get('dc_low_4h', [])) else 0
-                        if _dc4l > 0 and px < _dc4l:
-                            fire = False
-                        # STOP level: dc_low_15m/1h/4h 0.25% below
-                        if fire:
-                            for _tf in ['15m','1h','4h']:
-                                _a = float(npz.get(f'dc_low_{_tf}', [0])[i]) if i < len(npz.get(f'dc_low_{_tf}', [])) else 0
-                                if _a > 0 and px < _a * (1 - 0.0025):
-                                    fire = False
-                                    break
-                        # KG all TFs: close < ema_20_15m/1h/4h and sma_200 etc -> block if all against
-                        if fire:
-                            try:
-                                _kg_vals=[]
-                                for _tf in ['15m','1h','4h']:
-                                    _ema = float(npz.get(f'ema_20_{_tf}', npz.get(f'ema_200_{_tf}', [0]))[i]) if i < len(npz.get(f'ema_20_{_tf}', [])) else 0
-                                    if _ema > 0:
-                                        _kg_vals.append(px < _ema)
-                                if len(_kg_vals)>=2 and all(_kg_vals):
-                                    fire = False
-                            except Exception:
-                                pass
-                        # GR all TFs: gr_score <0 on all TFs
-                        if fire:
-                            try:
-                                _gr_vals=[]
-                                for _tf in ['15m','1h','4h']:
-                                    _gr = float(npz.get(f'gr_score_{_tf}', npz.get('gr_score', [0]))[i]) if i < len(npz.get(f'gr_score_{_tf}', [])) else 0
-                                    if _gr != 0:
-                                        _gr_vals.append(_gr < 0)
-                                if len(_gr_vals)>=2 and all(_gr_vals):
-                                    fire = False
-                            except Exception:
-                                pass
-                    else:
-                        _dc4h = float(npz.get('dc_high_4h', [0])[i]) if i < len(npz.get('dc_high_4h', [])) else 0
-                        if _dc4h > 0 and px > _dc4h:
-                            fire = False
-                        if fire:
-                            for _tf in ['15m','1h','4h']:
-                                _a = float(npz.get(f'dc_high_{_tf}', [0])[i]) if i < len(npz.get(f'dc_high_{_tf}', [])) else 0
-                                if _a > 0 and px > _a * (1 + 0.0025):
-                                    fire = False
-                                    break
-                        if fire:
-                            try:
-                                _kg_vals=[]
-                                for _tf in ['15m','1h','4h']:
-                                    _ema = float(npz.get(f'ema_20_{_tf}', [0])[i]) if i < len(npz.get(f'ema_20_{_tf}', [])) else 0
-                                    if _ema > 0:
-                                        _kg_vals.append(px > _ema)
-                                if len(_kg_vals)>=2 and all(_kg_vals):
-                                    fire = False
-                            except Exception:
-                                pass
-                            try:
-                                _gr_vals=[]
-                                for _tf in ['15m','1h','4h']:
-                                    _gr = float(npz.get(f'gr_score_{_tf}', [0])[i]) if i < len(npz.get(f'gr_score_{_tf}', [])) else 0
-                                    if _gr != 0:
-                                        _gr_vals.append(_gr > 0)
-                                if len(_gr_vals)>=2 and all(_gr_vals):
-                                    fire = False
-                            except Exception:
-                                pass
-                except Exception:
-                    pass
             if fire:
                 mult = getattr(cfg, 'REENTRY_TIER1_SIZE_MULT_TRADIER', 1.0) if (has_closed_before and is_tradier) else 1.0
                 _dollar = float(cfg.START_POSITION_SIZE) * float(regime_mult[i]) * float(mult)
@@ -22338,42 +22109,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
                 _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
                 _tsu = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
-                _hs_reason = f"ULTIMATE_DC_{_hs_tf_v12}_HARD_STOP at dc_{_hs_tf_v12}_{'low' if is_long else 'high'} 0% breach"
+                _hs_reason = f"ULTIMATE_DC_{_hs_tf_v12}_HARD_STOP"
                 trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _hs_reason, 'type': 'CLOSE', 'ts': _tsu, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _hs_reason, 'bars_held': int(i - pos['entry_bar'])})
                 pos = None; cd = cooldown_bars; has_closed_before = True
                 continue
-        except Exception:
-            pass
-        # WT LOWER CROSS EXIT — LONG wt cross down + price lower, SHORT opposite; TF sweep OFF/15m/1h/4h
-        try:
-            _wt_tf = str(getattr(cfg, 'WT_LOWER_CROSS_EXIT_TF', 'OFF') or 'OFF').strip()
-            if _wt_tf.upper() != 'OFF' and i > 0:
-                _wt_key = f"wt1_{_wt_tf}" if _wt_tf != "4h" else "wt1_4h"
-                _wt2_key = f"wt2_{_wt_tf}" if _wt_tf != "4h" else "wt2_4h"
-                # fallback to 15m if TF not in npz
-                if _wt_key not in npz and _wt_tf == "15m":
-                    _wt_key, _wt2_key = "wt1_15m", "wt2_15m"
-                w1 = float(npz.get(_wt_key, [0])[i]) if i < len(npz.get(_wt_key, [])) else 0
-                w2 = float(npz.get(_wt2_key, [0])[i]) if i < len(npz.get(_wt2_key, [])) else 0
-                w1p = float(npz.get(_wt_key, [0])[i-1]) if i-1 >=0 and i-1 < len(npz.get(_wt_key, [])) else w1
-                w2p = float(npz.get(_wt2_key, [0])[i-1]) if i-1 >=0 and i-1 < len(npz.get(_wt2_key, [])) else w2
-                pxp = float(close[i-1]) if i-1 >=0 and i-1 < len(close) else px
-                _wt_fire=False
-                if is_long:
-                    if w1 !=0 and w2 !=0 and w1p !=0 and w2p !=0 and w1 < w2 and w1p >= w2p and px < pxp:
-                        _wt_fire=True
-                else:
-                    if w1 !=0 and w2 !=0 and w1p !=0 and w2p !=0 and w1 > w2 and w1p <= w2p and px > pxp:
-                        _wt_fire=True
-                if _wt_fire:
-                    pos['fees'] += abs(pos['qty'] * px) * half_fee
-                    _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
-                    _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
-                    _tsw = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
-                    _wt_reason = f"WT_LOWER_CROSS_EXIT wt_{_wt_tf} {'lower wt+price' if is_long else 'higher wt+price'}"
-                    trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _wt_reason, 'type': 'CLOSE', 'ts': _tsw, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _wt_reason, 'bars_held': int(i - pos['entry_bar'])})
-                    pos = None; cd = cooldown_bars; has_closed_before = True
-                    continue
         except Exception:
             pass
 
@@ -22396,37 +22135,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             closed, reason = True, 'PROFIT_TARGET'
         elif cfg.STOP_LOSS_ENABLED and live_pnl_pct <= -cfg.STOP_LOSS_PCT:
             closed, reason = True, 'STOP_LOSS'
-        elif daytrade_on and (_dd_stop_dcs or _dd_tgt_dcs):
-            # DC-channel daytrade: OR across TFs, fixed % ELIMINATED when ANY DC TF active (user mandate)
-            # STOP: LONG px <= dc_low_TF*(1-buf) for ANY TF in _dd_stop_dcs, SHORT px >= dc_high_TF*(1+buf)
-            # TARGET: LONG px >= dc_high_TF*(1-buf) for ANY TF in _dd_tgt_dcs, SHORT px <= dc_low_TF*(1+buf)
-            try:
-                for _tf_s, _arr_s in _dd_stop_dcs:
-                    _lvl = float(_arr_s[i]) if i < len(_arr_s) else 0.0
-                    if _lvl > 0:
-                        if is_long and px <= _lvl * (1 - _dd_stop_buf):
-                            closed, reason = True, f'DAYTRADE_STOP dc_{_tf_s}_low -0.25% STOP_BUF'
-                            break
-                        elif (not is_long) and px >= _lvl * (1 + _dd_stop_buf):
-                            closed, reason = True, f'DAYTRADE_STOP dc_{_tf_s}_high +0.25% STOP_BUF'
-                            break
-                if not closed:
-                    for _tf_t, _arr_t in _dd_tgt_dcs:
-                        _lvl2 = float(_arr_t[i]) if i < len(_arr_t) else 0.0
-                        if _lvl2 > 0:
-                            if is_long and px >= _lvl2 * (1 - _dd_tgt_buf):
-                                closed, reason = True, f'DAYTRADE_TARGET dc_{_tf_t}_high -0.10% TARGET_BUF'
-                                break
-                            elif (not is_long) and px <= _lvl2 * (1 + _dd_tgt_buf):
-                                closed, reason = True, f'DAYTRADE_TARGET dc_{_tf_t}_low +0.10% TARGET_BUF'
-                                break
-                # NO fallback to fixed % when DC active — fixed % eliminated per user 2026-09-26
-            except Exception:
-                pass
         elif daytrade_on and live_pnl_pct <= -daytrade_stop:
-            closed, reason = True, f'DAYTRADE_STOP fixed -{daytrade_stop:.2f}%'
+            closed, reason = True, 'DAYTRADE_STOP'
         elif daytrade_on and live_pnl_pct >= daytrade_target:
-            closed, reason = True, f'DAYTRADE_TARGET fixed +{daytrade_target:.2f}%'
+            closed, reason = True, 'DAYTRADE_TARGET'
+        elif daytrade_on and daytrade_max_bars > 0 and held_bars >= daytrade_max_bars:
+            closed, reason = True, 'DAYTRADE_MAX_HOLD'
         elif max_hold_bars > 0 and held_bars >= max_hold_bars:
             closed, reason = True, 'DELTA_MAX_HOLD'
         elif trail_erosion > 0 and pos['peak_pnl_pct'] > 0 and (pos['peak_pnl_pct'] - live_pnl_pct) >= pos['peak_pnl_pct'] * trail_erosion:
@@ -22439,13 +22153,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _ts_exit = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
             trades.append({'pnl_dollars': pnl_dollars, 'pnl_pct': float(pnl_pct), 'deployed': pos['deployed'], 'reason': reason, 'type': 'CLOSE', 'ts': _ts_exit, 'price': float(px),
                            'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': reason, 'bars_held': int(i - pos['entry_bar'])})
-            # 2026-09-26 user mandate: if exit was TARGET just before dc_high (long) / dc_low (short) and price keeps rising/falling, reentry immediate — no cooldowns
-            # Fixed % already eliminated when DC active, but cooldown must also be bypassed for this specific target exit
-            _is_target_dc = 'TARGET' in str(reason) and 'dc_' in str(reason).lower()
-            if _is_target_dc:
-                pos = None; cd = 0; has_closed_before = True
-            else:
-                pos = None; cd = cooldown_bars; has_closed_before = True
+            pos = None; cd = cooldown_bars; has_closed_before = True
             continue
 
         if reduce_sig[i] and pos['qty'] > 0 and reduce_frac[i] > 0:
@@ -22485,70 +22193,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         continue
                 else:
                     continue
-            _tech_reason = 'TECHNICAL_EXIT'
-            try:
-                # CROSSING ONLY: exit only when CROSSING 0.10% BELOW high / 0.25% BELOW low (LONG) else NEVER; SHORT v versa 0.10% ABOVE low / 0.25% ABOVE high
-                _px_prev = float(close[i-1]) if i > 0 and i-1 < len(close) else None
-                if is_long:
-                    if _tech_stop_dcs and _px_prev is not None:
-                        for _tf_s, _arr_s in _tech_stop_dcs:
-                            _lvl = float(_arr_s[i]) if i < len(_arr_s) else 0.0
-                            _lvl_prev = float(_arr_s[i-1]) if i-1 >= 0 and i-1 < len(_arr_s) else _lvl
-                            if _lvl > 0 and _lvl_prev > 0 and _px_prev > _lvl_prev * (1 - _tech_stop_buf) and px <= _lvl * (1 - _tech_stop_buf):
-                                _tech_reason = f'TECHNICAL_EXIT dc_{_tf_s}_low'
-                                break
-                    if _tech_reason == 'TECHNICAL_EXIT' and _tech_tgt_dcs and _px_prev is not None:
-                        for _tf_t, _arr_t in _tech_tgt_dcs:
-                            _lvl2 = float(_arr_t[i]) if i < len(_arr_t) else 0.0
-                            _lvl2_prev = float(_arr_t[i-1]) if i-1 >= 0 and i-1 < len(_arr_t) else _lvl2
-                            if _lvl2 > 0 and _lvl2_prev > 0 and _px_prev < _lvl2_prev * (1 - _tech_tgt_buf) and px >= _lvl2 * (1 - _tech_tgt_buf):
-                                _tech_reason = f'TECHNICAL_EXIT dc_{_tf_t}_high'
-                                break
-                    if _tech_reason == 'TECHNICAL_EXIT' and _tech_stop_dc is not None and _px_prev is not None:
-                        _lvl = float(_tech_stop_dc[i]) if i < len(_tech_stop_dc) else 0.0
-                        _lvl_prev = float(_tech_stop_dc[i-1]) if i-1 >= 0 and i-1 < len(_tech_stop_dc) else _lvl
-                        if _lvl > 0 and _lvl_prev > 0 and _px_prev > _lvl_prev * (1 - _tech_stop_buf) and px <= _lvl * (1 - _tech_stop_buf):
-                            _tech_reason = f'TECHNICAL_EXIT dc_{_tech_stop_tf_norm}_low'
-                    if _tech_reason == 'TECHNICAL_EXIT' and _tech_tgt_dc is not None and _px_prev is not None:
-                        _lvl2 = float(_tech_tgt_dc[i]) if i < len(_tech_tgt_dc) else 0.0
-                        _lvl2_prev = float(_tech_tgt_dc[i-1]) if i-1 >= 0 and i-1 < len(_tech_tgt_dc) else _lvl2
-                        if _lvl2 > 0 and _lvl2_prev > 0 and _px_prev < _lvl2_prev * (1 - _tech_tgt_buf) and px >= _lvl2 * (1 - _tech_tgt_buf):
-                            _tech_reason = f'TECHNICAL_EXIT dc_{_tech_tgt_tf_norm}_high'
-                else:
-                    if _tech_stop_dcs and _px_prev is not None:
-                        for _tf_s, _arr_s in _tech_stop_dcs:
-                            _lvl = float(_arr_s[i]) if i < len(_arr_s) else 0.0
-                            _lvl_prev = float(_arr_s[i-1]) if i-1 >= 0 and i-1 < len(_arr_s) else _lvl
-                            if _lvl > 0 and _lvl_prev > 0 and _px_prev < _lvl_prev * (1 + _tech_stop_buf) and px >= _lvl * (1 + _tech_stop_buf):
-                                _tech_reason = f'TECHNICAL_EXIT dc_{_tf_s}_high'
-                                break
-                    if _tech_reason == 'TECHNICAL_EXIT' and _tech_tgt_dcs and _px_prev is not None:
-                        for _tf_t, _arr_t in _tech_tgt_dcs:
-                            _lvl2 = float(_arr_t[i]) if i < len(_arr_t) else 0.0
-                            _lvl2_prev = float(_arr_t[i-1]) if i-1 >= 0 and i-1 < len(_arr_t) else _lvl2
-                            if _lvl2 > 0 and _lvl2_prev > 0 and _px_prev > _lvl2_prev * (1 + _tech_tgt_buf) and px <= _lvl2 * (1 + _tech_tgt_buf):
-                                _tech_reason = f'TECHNICAL_EXIT dc_{_tf_t}_low'
-                                break
-                    if _tech_reason == 'TECHNICAL_EXIT' and _tech_stop_dc is not None and _px_prev is not None:
-                        _lvl = float(_tech_stop_dc[i]) if i < len(_tech_stop_dc) else 0.0
-                        _lvl_prev = float(_tech_stop_dc[i-1]) if i-1 >= 0 and i-1 < len(_tech_stop_dc) else _lvl
-                        if _lvl > 0 and _lvl_prev > 0 and _px_prev < _lvl_prev * (1 + _tech_stop_buf) and px >= _lvl * (1 + _tech_stop_buf):
-                            _tech_reason = f'TECHNICAL_EXIT dc_{_tech_stop_tf_norm}_high'
-                    if _tech_reason == 'TECHNICAL_EXIT' and _tech_tgt_dc is not None and _px_prev is not None:
-                        _lvl2 = float(_tech_tgt_dc[i]) if i < len(_tech_tgt_dc) else 0.0
-                        _lvl2_prev = float(_tech_tgt_dc[i-1]) if i-1 >= 0 and i-1 < len(_tech_tgt_dc) else _lvl2
-                        if _lvl2 > 0 and _lvl2_prev > 0 and _px_prev > _lvl2_prev * (1 + _tech_tgt_buf) and px <= _lvl2 * (1 + _tech_tgt_buf):
-                            _tech_reason = f'TECHNICAL_EXIT dc_{_tech_tgt_tf_norm}_low'
-            except Exception:
-                pass
-            if _tech_reason == 'TECHNICAL_EXIT':
-                continue
             pos['fees'] += abs(pos['qty'] * px) * half_fee
             pnl_dollars = pnl_preview - pos['fees']
             pnl_pct = pnl_dollars / pos['deployed'] * 100 if pos['deployed'] else 0.0
             _ts_exit3 = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
-            trades.append({'pnl_dollars': pnl_dollars, 'pnl_pct': float(pnl_pct), 'deployed': pos['deployed'], 'reason': _tech_reason, 'type': 'CLOSE', 'ts': _ts_exit3, 'price': float(px),
-                           'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _tech_reason, 'bars_held': int(i - pos['entry_bar'])})
+            trades.append({'pnl_dollars': pnl_dollars, 'pnl_pct': float(pnl_pct), 'deployed': pos['deployed'], 'reason': 'TECHNICAL_EXIT', 'type': 'CLOSE', 'ts': _ts_exit3, 'price': float(px),
+                           'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': 'TECHNICAL_EXIT', 'bars_held': int(i - pos['entry_bar'])})
             pos = None; cd = cooldown_bars; has_closed_before = True
 
     if pos is not None:
