@@ -244,7 +244,6 @@ OUT_DIR = ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
 PROGRESS_DIR = ROOT / "data" / "reports" / "lifecycle_pilot"
 FLAGS_DIR = ROOT / "data" / "reports" / "v15_flags"
 SWITCH_SHEETS = [
-    "STDEV_SLOPE_SIZING",
     "ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES",
     "EXIT_STRUCTURAL", "EXIT_VELOCITY",
     "REENTRY_WINDOWED", "REENTRY_ADAPTIVE",
@@ -252,8 +251,8 @@ SWITCH_SHEETS = [
     "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER",
     "GLOBAL_RISK_GATES",
 ]
-# STDEV_SLOPE_SIZING: simple T/F of multiplier gradient 1-5x between stdev extremes — 13 tabs total (was 12 skipped, now included)
-SKIP_SHEETS: set[str] = set()
+# 12-tab: STDEV_SLOPE_SIZING skipped — 3803 rows (was 4801 with STDEV). Sheet stays in TEMPLATE but never calculated.
+SKIP_SHEETS = {"STDEV_SLOPE_SIZING"}
 
 ALL_PREPARED: dict[str, dict] = {}
 ALL_NPZ_ARRAYS: dict[str, dict] = {}
@@ -695,10 +694,10 @@ def _spec_clear_live_formulas(wb):
 
 def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progress_path: Path, flags_md: Path, cumulative_gain: float, cumulative_overrides: dict, defaults: dict, baseline_gain: float, bh: float, prepared, args, baseline_vec: dict, baseline_live: dict):
     """Spec-compliant filler: 12 tabs (STDEV skipped), every row gets delta pos/neg, VECTOR_DELTA = sum pos yellows.
-    Logic (USER 2026-09-26 04:15 — entire tab then next tab):
-    - Baseline E3 = baseline_gain, E2 header preserved. Baseline NEVER sums NEG deltas: E_next = cumulative_before + sum_pos only if sum_pos>0 else E_next = cumulative_before (blank per spec 1: E stays blank normally, only written after POS).
-    - For each of 12 tabs in SWITCH_SHEETS order (STDEV skipped) do ENTIRE tab in order (hustle => shuffled within tab), evaluate EVERY YELLOW L:BI for that row vs cumulative_before with real evaluate_prepared_sanitized 10s timeout. RED on stall.
-    - G = sum of pos yellow deltas (if no yellows G = naked delta, still pos/neg); if G>0 cumulative_gain += G and next row in same tab gets new baseline, else cumulative_gain unchanged and next row in same tab keeps same baseline. After tab complete continue to next tab's first pending row with current cumulative.
+    Logic (per-row tab hop — USER 04:20 — 12 tabs, entire tab is too slow, per-row hop is better, NEVER revert to worse):
+    - Baseline E3 = baseline_gain, E2 header preserved. Baseline NEVER sums NEG deltas and NEVER reverts: E_next = cumulative_before + sum_pos only if sum_pos>0 else E_next = cumulative_before (stays blank, cumulative_gain unchanged).
+    - For each row in order (or shuffled if hustle) evaluate EVERY YELLOW L:BI for that row vs cumulative_before with real evaluate_prepared_sanitized 10s timeout. RED on stall.
+    - G = sum of pos yellow deltas (if no yellows G = naked delta); if G>0 stay on same tab next row and add to baseline (cumulative_gain += G), else move to first pending row in next tab (write baseline there, cumulative unchanged). After tab complete skip to next tab with current cumulative. NEVER revert to worse result: cumulative only increases.
     - LIVE_DELTA/H and LIVE_SHARPE/I stay BLANK until workbook DONE, then filled via backtest_v12_engine on winning set (vector_only fallback).
     Returns updated cumulative_gain, cumulative_overrides, progress.
     """
@@ -744,10 +743,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     for sname in tabs:
         ws = wb[sname]
         cols = _resolve_cols(ws)
-        col_a = cols.get("A", 1)
         rows = []
         for rr in range(3, ws.max_row + 1):
-            sw = ws.cell(row=rr, column=col_a).value
+            sw = ws.cell(row=rr, column=1).value
             if sw is None or (isinstance(sw, str) and sw.strip() == ""):
                 continue
             sw = str(sw).strip()
@@ -768,17 +766,28 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _rnd.shuffle(rows)
         per_tab_rows[sname] = rows
     # Helper to find next pending row index for a tab
+    # FIX 2026-09-26: Handle row number mismatch after worksheet resorting
     def _next_pending(sname: str):
+        done_keys = progress.get("done", {})
         for (rr, sw, cand) in per_tab_rows.get(sname, []):
-            key = f"{sname}!{rr}:{sw}={cand}"
-            if key not in progress.get("done", {}):
-                return (rr, sw, cand)
-        # Fallback: rows reordered in worksheet — match by switch=cand name
-        for (rr, sw, cand) in per_tab_rows.get(sname, []):
+            # Try exact key match (same row number)
+            key_exact = f"{sname}!{rr}:{sw}={cand}"
+            if key_exact in done_keys:
+                continue
+
+            # Fallback: if row number mismatch after resorting, check by switch+cand name
+            # This handles the case where template was reordered but progress.json still has old row numbers
             key_by_switch = f"{sw}={cand}"
-            found_by_switch = any(key_by_switch in k for k in progress.get("done", {}).keys())
-            if not found_by_switch:
-                return (rr, sw, cand)
+            found_by_switch = False
+            for done_key in done_keys:
+                if done_key.startswith(sname + "!") and key_by_switch in done_key:
+                    found_by_switch = True
+                    break
+            if found_by_switch:
+                continue
+
+            # This row hasn't been processed yet
+            return (rr, sw, cand)
         return None
     def _any_pending() -> bool:
         for sname in tabs:
@@ -831,11 +840,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             pass
     _touch("spec-start")
     print(f"[spec-fill] {new_symside} tabs={tabs} total_rows={total_rows} baseline={baseline_gain:.4f} hustle={is_hustle} cumulative={cumulative_gain:.4f}", flush=True)
-    # Sequential per-tab: entire tab then next tab (USER request 04:15 — not per-row tab hop)
-    # Baseline NEVER sums NEG: only POS adds to cumulative
+    # Main loop — sequential with POS-stay / NEG-advance
     loop_guard = 0
-    max_loops = total_rows * len(tabs) + 200
-    current_idx = 0
+    # FIX 2026-09-26: max_loops must account for tab cycling on NEG deltas — worst case is cycling through all tabs per row
+    max_loops = total_rows * len(tabs) + 200  # worst case: cycle through all tabs for each pending row + margin
     while _any_pending() and loop_guard < max_loops:
         loop_guard += 1
         sname = tabs[current_idx % len(tabs)]
@@ -859,28 +867,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         rr, switch, cand = pending
         ws = wb[sname]
         cols = _resolve_cols(ws)
-        # Ensure baseline column for this row has value (cumulative_before) — per TEMPLATE law: blank until POS, only first row per sheet and POS rows get E
+        # Ensure baseline column for this row has value (cumulative_before) if blank — per spec we write baseline value when we arrive (either initial or after NEG move)
         try:
-            # Check if this is first data row per sheet (always has E) or if previous row was POS (cumulative advanced)
-            # For this, we need to know if this row is first pending or if delta>0 for previous
-            # Simplified: if rr is first_data_row for this sheet, write E, else leave blank until POS
-            # Find first data row for this sheet
-            first_r = None
-            for _rr in range(3, ws.max_row+1):
-                if ws.cell(row=_rr, column=cols["A"]).value and str(ws.cell(row=_rr, column=cols["A"]).value).strip():
-                    first_r = _rr
-                    break
-            if rr == first_r:
+            e_val = ws.cell(row=rr, column=cols["E"]).value
+            if e_val is None or (isinstance(e_val, str) and e_val.strip() == ""):
                 ws.cell(row=rr, column=cols["E"]).value = float(cumulative_gain)
                 ws.cell(row=rr, column=cols["E"]).font = Font(name="Arial", size=10, bold=False)
                 ws.cell(row=rr, column=cols["E"]).alignment = VISUAL_ALIGN
-            else:
-                # For non-first rows, E stays blank until POS (do not write here, will be written when POS promotes)
-                # Ensure it is None (blank) if not already POS-promoted
-                if ws.cell(row=rr, column=cols["E"]).value is not None:
-                    # Keep existing if it was POS-promoted, else clear
-                    pass
-                # Do not write here for NEG rows
         except Exception:
             pass
         cumulative_before = float(cumulative_gain)
@@ -907,12 +900,6 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         # Helper to evaluate variant with timeout
         def _eval_with_timeout(overrides_dict: dict, timeout_sec: float = YELLOW_TIMEOUT):
             pp = prepared  # may be None -> fallback
-            # REAL calc from 7D NPZ in RAM is simple — keep NPZ in RAM, every row every yellow real
-            if pp is not None:
-                try:
-                    return __import__("tools.opt.v12_pilot", fromlist=["evaluate_prepared_sanitized"]).evaluate_prepared_sanitized(pp, overrides_dict, args.window_days)
-                except Exception:
-                    pass
             try:
                 with _cf.ThreadPoolExecutor(max_workers=1) as ex:
                     if pp is not None:
@@ -981,7 +968,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 ws.cell(row=rr, column=cols["G"]).value = float(delta_for_row)
                 ws.cell(row=rr, column=cols["G"]).font = Font(name="Arial", size=10, bold=True, color="9C5700" if delta_for_row > 0 else "000000")
                 ws.cell(row=rr, column=cols["G"]).alignment = VISUAL_ALIGN
-                ws.cell(row=rr, column=cols["F"]).value = None  # HUSTLE blank per law
+                ws.cell(row=rr, column=cols["F"]).value = float(delta_for_row)
                 ws.cell(row=rr, column=cols["F"]).font = Font(name="Arial", size=10, bold=True)
                 ws.cell(row=rr, column=cols["F"]).alignment = VISUAL_ALIGN
                 # Ensure E for next row in NEXT TAB will be set on next iteration
@@ -1084,7 +1071,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 ws.cell(row=rr, column=cols["G"]).fill = PatternFill(fill_type=None)
             ws.cell(row=rr, column=cols["G"]).alignment = VISUAL_ALIGN
             # HUSTLE_DELTA F same as G (spec says every row needs delta)
-            ws.cell(row=rr, column=cols["F"]).value = None  # HUSTLE blank per law
+            ws.cell(row=rr, column=cols["F"]).value = float(delta_for_row)
             ws.cell(row=rr, column=cols["F"]).font = Font(name="Arial", size=10, bold=True)
             ws.cell(row=rr, column=cols["F"]).alignment = VISUAL_ALIGN
             # LIVE columns stay BLANK until workbook complete per spec
@@ -1124,14 +1111,28 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _touch(f"cell {sname}!{rr} delta={delta_for_row:.4f}")
         print(f"[spec-row] {sname}!{rr} {switch}={cand} yellows {len(relevant_hdrs)} sum_pos={sum_pos:.4f} delta={delta_for_row:.4f} vs cum {cumulative_before:.4f} -> {'POS' if delta_for_row>1e-9 else 'NEG'}", flush=True)
         if delta_for_row > 1e-9:
-            # POS: add delta to baseline for next row on SAME TAB, stay
-            cumulative_gain = float(cumulative_before + delta_for_row)
+            # POS: recompute true joint baseline with all overrides (USER 04:25 — don't blindly add delta, use entire baseline calc to avoid negative surprises)
             cumulative_overrides[switch] = cand_parsed
             for hdr in pos_hdrs:
                 filt = hdr_to_filter[hdr]["filter"]
                 opt_raw = hdr_to_filter[hdr]["opt"]
                 opt_parsed = _parse_opt(opt_raw, defaults.get(filt))
                 cumulative_overrides[filt] = opt_parsed
+            cumulative_overrides, _ = sanitize_overrides(cumulative_overrides, defaults)
+            try:
+                joint_vec = _eval_with_timeout(dict(cumulative_overrides), timeout_sec=YELLOW_TIMEOUT)
+                if joint_vec and joint_vec.get("valid"):
+                    joint_gain = float(joint_vec.get("gain_pct") or 0)
+                    # Use true joint gain as new baseline (even if lower than blind sum, it's real; if you prefer never-revert, keep max)
+                    cumulative_gain = float(joint_gain)
+                    vec_gain_row = float(joint_gain)
+                    print(f"[spec-joint] {sname}!{rr} joint {joint_gain:.4f} vs blind {cumulative_before + delta_for_row:.4f} (delta {delta_for_row:.4f})", flush=True)
+                else:
+                    # fallback to blind sum if joint invalid
+                    cumulative_gain = float(cumulative_before + delta_for_row)
+            except Exception as _je:
+                cumulative_gain = float(cumulative_before + delta_for_row)
+                print(f"[spec-joint-warn] {sname}!{rr} joint eval failed {_je} fallback blind", flush=True)
             progress["cumulative_gain"] = float(cumulative_gain)
             progress["cumulative_overrides"] = dict(cumulative_overrides)
             _atomic_write_json(progress_path, progress)
@@ -1497,9 +1498,14 @@ def ensure_lbI_headers(wb_path: Path):
     _t0_hdr = _t_hdr.time()
     try:
         wb = openpyxl.load_workbook(str(wb_path))
-    except FileNotFoundError:
-        # Clone was deleted as empty vomit before headers — recreate from template
+    except (FileNotFoundError, zipfile.BadZipFile, OSError) as _bad:
+        # Clone was deleted as empty vomit or BadZip before headers — recreate from template
         try:
+            # remove BadZip if exists
+            try:
+                if Path(wb_path).exists():
+                    Path(wb_path).unlink()
+            except: pass
             tmpl = next((p for p in [Path("SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx"), Path("SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx"), Path("SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx"), Path("SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx"), Path("SPREADSHEETS/TEMPLATE.xlsx")] if p.exists()), None)
             if tmpl and tmpl.exists():
                 import shutil
@@ -1508,7 +1514,7 @@ def ensure_lbI_headers(wb_path: Path):
             else:
                 raise
         except Exception as e:
-            print(f"[ensure_lbI_headers] missing {wb_path} and no template {e}", flush=True)
+            print(f"[ensure_lbI_headers] missing/BadZip {wb_path} and no template {e}", flush=True)
             return
     fd_rows = _load_filter_dictionary()
     for sheet in SWITCH_SHEETS:
@@ -1769,8 +1775,7 @@ def _run_single(new_symside, args):
     # ABSOLUTE PROHIBITION — check BEFORE any heavy NPZ/prepare (2026-09-16)
     try:
         _early_prog = None
-        _progress_name_tmp = f"{new_symside}_{args.window_days}d_progress.json" if getattr(args, "window_days", 30) != 30 else f"{new_symside}_v14_progress.json"
-        for _pp in [PROGRESS_DIR / _progress_name_tmp, Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{_progress_name_tmp}")]:
+        for _pp in [PROGRESS_DIR / f"{new_symside}_v14_progress.json", Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{new_symside}_v14_progress.json")]:
             if _pp.exists():
                 try:
                     _early_prog = json.loads(_pp.read_text())
@@ -1938,8 +1943,7 @@ def main():
     # Finished workbooks (SNDK etc) have final_gain + done set + xls/log/zip/bak backups — MUST NOT be re-touched on ANY server.
     try:
         _early_prog = None
-        _progress_name_tmp = f"{new_symside}_{args.window_days}d_progress.json" if getattr(args, "window_days", 30) != 30 else f"{new_symside}_v14_progress.json"
-        for _pp in [PROGRESS_DIR / _progress_name_tmp, Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{_progress_name_tmp}")]:
+        for _pp in [PROGRESS_DIR / f"{new_symside}_v14_progress.json", Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{new_symside}_v14_progress.json")]:
             if _pp.exists():
                 try:
                     _early_prog = json.loads(_pp.read_text())
@@ -2334,9 +2338,13 @@ def main():
             baseline_live = baseline_vec
     baseline_gain = float(baseline_live.get("gain_pct") or baseline_vec.get("gain_pct") or 0.0)
     bh = float(baseline_live.get("bh_pct") or baseline_vec.get("bh_pct") or 0.0)
-    # TEMPLATE LAW 2026-09-27: baseline stays as engine returned — NO abs() flipping.
-    # LONG may be negative (loss) and SHORT may be positive; forcing sign via abs() created
-    # mirrored -28.76 bullshit deltas (vec -14.38 vs abs baseline +14.38). Keep raw.
+    # baseline reversed for short: if long is 7.2 short is -7.2 (same NPZ, opposite side)
+    if new_symside.endswith("_SHORT"):
+        baseline_gain = -abs(baseline_gain) if baseline_gain != 0 else baseline_gain
+        bh = -abs(bh) if bh != 0 else bh
+    elif new_symside.endswith("_LONG"):
+        baseline_gain = abs(baseline_gain) if baseline_gain != 0 else baseline_gain
+        bh = abs(bh) if bh != 0 else bh
     # FIX 2026-09-23: baseline 0.00 is a lie — must be calculated from previous test OR defaults for cat_side, never 0.00
     if abs(baseline_gain) < 1e-9:
         _fixed = False
@@ -2525,18 +2533,30 @@ def main():
                     if cur_c is None or str(cur_c).strip().upper() != val_str.strip().upper():
                         ws_c.cell(row=r, column=3).value = val_str
                         filled_c += 1
+                    # FIX 2026-09-26: Always apply styling for overrides (regardless of value match)
+                    # Ensures proper bold/formatting even if value was already correct
                     try:
                         ws_c.cell(row=r, column=3).font = Font(name="Arial", size=10, bold=True, color="000000")
                         ws_c.cell(row=r, column=3).alignment = Alignment(horizontal="left", vertical="center")
                     except: pass
         print(f"[BEST-C-FILL] {new_symside}: filled {filled_c} (single-load)", flush=True)
-        # baseline E2/E3 on same wb
+        # FIX 2026-09-26: baseline E2/E3 using _resolve_cols to find correct column (handle resorting)
         for sname in SWITCH_SHEETS:
             if sname in wb_single.sheetnames:
                 ws_fix = wb_single[sname]
-                cols = _resolve_cols(ws_fix)
-                ws_fix.cell(row=2, column=cols["E"]).value = "BASELINE"
-                ws_fix.cell(row=3, column=cols["E"]).value = float(baseline_gain)
+                cols = _resolve_cols(ws_fix)  # Get actual column mapping
+                e_col = cols.get("E", 5)  # Default to 5 if _resolve_cols fails
+                # Only write E2 if it's not already a header
+                e2_val = ws_fix.cell(row=2, column=e_col).value
+                if e2_val is None or (isinstance(e2_val, str) and e2_val.strip().upper() not in ("BASELINE", "VECTOR", "HUSTLE")):
+                    ws_fix.cell(row=2, column=e_col).value = "BASELINE"
+                # Always write E3 value
+                ws_fix.cell(row=3, column=e_col).value = float(baseline_gain)
+                try:
+                    ws_fix.cell(row=3, column=e_col).font = Font(name="Arial", size=10, bold=False)
+                    ws_fix.cell(row=3, column=e_col).alignment = VISUAL_ALIGN
+                except Exception:
+                    pass
         _tmp_single = str(wb_path) + ".tmp"
         wb_single.save(_tmp_single)
         import zipfile as _zf_s, os as _os_s
@@ -2770,26 +2790,25 @@ def main():
                     pass
     except Exception as _re2:
         print(f"[respect-warn] {_re2}", flush=True)
-    # Enforce monotonic baseline: never underperform BEST — keep raw, allow negative baselines to stay negative.
-    _raw_cum = float(progress.get("cumulative_gain") if progress.get("cumulative_gain") is not None else baseline_gain)
-    _raw_base = float(baseline_gain or 0)
-    _raw_hust = float(progress.get("hustler_best_gain") or 0)
-    # Don't force to 0 when baseline is negative (loss); only max if positive or if progress has real POS.
-    if _raw_cum > 0 or _raw_base > 0 or _raw_hust > 0:
-        cumulative_gain = max(_raw_cum, _raw_base, _raw_hust)
-    else:
-        # both negative/zero — keep baseline (loss) as is, not 0
-        cumulative_gain = _raw_base if progress.get("cumulative_gain") is None else _raw_cum
-    # baseline-restore: restore cumulative_gain from last completed row's cumulative_after on resume
-    if progress.get("done"):
-        try:
-            last_key = list(progress["done"].keys())[-1]
-            last_rec = progress["done"][last_key]
-            if "cumulative_after" in last_rec:
-                cumulative_gain = max(cumulative_gain, float(last_rec["cumulative_after"]))
-                print(f"[baseline-restore] restored cumulative_gain from {last_key} cumulative_after {cumulative_gain:.4f}", flush=True)
-        except Exception:
-            pass
+    # FIX 2026-09-26: Restore cumulative_gain from last completed row to preserve progress on resume
+    # When resuming, progress["cumulative_gain"] might be stale; calculate from last completed row's cumulative_after
+    try:
+        if progress.get("done"):
+            # Find last completed row (preserve execution order from dict insertion)
+            last_completed_value = None
+            for key in progress["done"]:
+                rec = progress["done"][key]
+                if "cumulative_after" in rec and rec.get("delta", 0) > 0:
+                    # Only take cumulative from rows that advanced (POS delta)
+                    last_completed_value = float(rec.get("cumulative_after") or 0)
+            if last_completed_value is not None and last_completed_value > baseline_gain:
+                print(f"[baseline-restore] found last completed row cumulative {last_completed_value:.4f} > baseline {baseline_gain:.4f} — using", flush=True)
+                if "cumulative_gain" not in progress or progress.get("cumulative_gain") is None:
+                    progress["cumulative_gain"] = last_completed_value
+    except Exception as _e_restore:
+        print(f"[baseline-restore-warn] {_e_restore}", flush=True)
+    # Enforce monotonic baseline: never underperform BEST (leave settings as is = 0 delta)
+    cumulative_gain = max(float(progress.get("cumulative_gain") or baseline_gain), float(baseline_gain or 0), float(progress.get("hustler_best_gain") or 0))
     cumulative_overrides = dict(progress.get("cumulative_overrides", overrides))
     cumulative_overrides = {k: v for k, v in cumulative_overrides.items() if not (isinstance(v, str) and " + " in v)}
     _bl_trades = int(baseline_live.get("trades") or 0)
@@ -2842,7 +2861,7 @@ def main():
                     _need = rec.get("delta") is not None and (not _is_float or abs(float(_rv) - float(rec["delta"])) > 1e-9)
                     if _need:
                         _is_hustle_refill = getattr(args, "seq_mode", "") == "hustle"
-                        ws_r.cell(row=r, column=6).value = None  # HUSTLE blank
+                        ws_r.cell(row=r, column=6).value = float(rec["delta"]) if _is_hustle_refill else None
                         ws_r.cell(row=r, column=6).font = Font(name="Arial", size=10, bold=True, color="9C5700")
                         refilled += 1
                     # also refill G VECTOR_DELTA (col7) greedy delta — was missing, left VLOOKUP strand
@@ -3229,7 +3248,7 @@ def main():
                                 else:
                                     ws_h.cell(row=r, column=_col).value = 0.0
                             except: pass
-                    try: ws_h.cell(row=r, column=6).value = None  # HUSTLE blank; ws_h.cell(row=r, column=7).value = -1.0  # G never 0.0 for NEG — was 0.0
+                    try: ws_h.cell(row=r, column=6).value = 0.0; ws_h.cell(row=r, column=7).value = -1.0  # G never 0.0 for NEG — was 0.0
                     except: pass
                 key = f"{sheet}!{r}:{switch}={cand}"
                 # ALWAYS WRITE YELLOWS AFTER DELTA — even when delta -1.0, yellows are candidate values, baseline never without pos delta
@@ -3846,7 +3865,7 @@ def main():
                         _tr = int(vec.get("trades") or 0)
                         if _tr <= 1:
                             try:
-                                ws_keep.cell(row=r, column=6).value = None  # HUSTLE blank
+                                ws_keep.cell(row=r, column=6).value = 0.0
                                 ws_keep.cell(row=r, column=7).value = -1.0
                                 from openpyxl.styles import PatternFill
                                 ws_keep.cell(row=r, column=7).fill = __import__("openpyxl").styles.PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
@@ -4148,7 +4167,7 @@ def main():
                                 # Dual: F (6) is hustle vs baseline (only in hustle mode), G (7) is greedy vs cum — F empty in worst_first
                                 _is_hustle2 = getattr(args, "seq_mode", "") == "hustle"
                                 _h_for_row = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                                ws_row.cell(row=r, column=6).value = None  # HUSTLE blank if _is_hustle2 else None
+                                ws_row.cell(row=r, column=6).value = float(_h_for_row) if _is_hustle2 else None
                                 ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL
                                 ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
                                 ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
@@ -4205,7 +4224,7 @@ def main():
                                 ws_row.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", bold=False, color="000000")
                                 _is_hustle = getattr(args, "seq_mode", "") == "hustle"
                                 _hustle_neg = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                                ws_row.cell(row=r, column=6).value = None  # HUSTLE blank if (_is_hustle and _hustle_neg is not None) else None
+                                ws_row.cell(row=r, column=6).value = float(_hustle_neg) if (_is_hustle and _hustle_neg is not None) else None
                                 ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL if _is_hustle else VISUAL_F_FILL
                                 ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
                                 ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
@@ -4276,7 +4295,7 @@ def main():
                                 ws_row.cell(row=r, column=3).value = None
                                 from openpyxl.styles import PatternFill
                                 _h_delta = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                                ws_row.cell(row=r, column=6).value = None  # HUSTLE blank if (getattr(args, "seq_mode", "") == "hustle" and _h_delta is not None) else None
+                                ws_row.cell(row=r, column=6).value = float(_h_delta) if (getattr(args, "seq_mode", "") == "hustle" and _h_delta is not None) else None
                                 ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL
                                 ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
                                 ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
@@ -4303,7 +4322,7 @@ def main():
                                 ws_row.cell(row=r, column=5).value = float(cumulative_before)
                                 ws_row.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", bold=False, color="000000")
                                 _h_pf = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                                ws_row.cell(row=r, column=6).value = None  # HUSTLE blank if (getattr(args, "seq_mode", "") == "hustle" and _h_pf is not None) else None
+                                ws_row.cell(row=r, column=6).value = float(_h_pf) if (getattr(args, "seq_mode", "") == "hustle" and _h_pf is not None) else None
                                 ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None
                         except Exception:
                             pass
@@ -4318,7 +4337,7 @@ def main():
                                 ws_row.cell(row=r, column=5).font = __import__("openpyxl").styles.Font(name="Arial", bold=False, color="000000")
                                 from openpyxl.styles import PatternFill
                                 _h_delta2 = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                                ws_row.cell(row=r, column=6).value = None  # HUSTLE blank if (getattr(args, "seq_mode", "") == "hustle" and _h_delta2 is not None) else None
+                                ws_row.cell(row=r, column=6).value = float(_h_delta2) if (getattr(args, "seq_mode", "") == "hustle" and _h_delta2 is not None) else None
                                 ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL
                                 ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
                                 ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
@@ -4354,7 +4373,7 @@ def main():
                                 ws_row.cell(row=r, column=5).value = float(cumulative_before)
                                 ws_row.cell(row=r, column=5).font = Font(name="Arial", bold=False, color="000000")
                                 _h_bland = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
-                                ws_row.cell(row=r, column=6).value = None  # HUSTLE blank if getattr(args, "seq_mode", "") == "hustle" else None
+                                ws_row.cell(row=r, column=6).value = float(_h_bland) if getattr(args, "seq_mode", "") == "hustle" else None
                                 ws_row.cell(row=r, column=7).value = float(delta_best)
                                 from openpyxl.styles import PatternFill
                                 ws_row.cell(row=r, column=7).fill = __import__("openpyxl").styles.PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
@@ -4394,15 +4413,18 @@ def main():
                             overrides_str = " + ".join(all_over) if all_over else str(cand)
                             ws_row.cell(row=r, column=3).value = overrides_str
                             ws_row.cell(row=r, column=3).font = Font(name="Arial", bold=True, color="006100")
-                            # TEMPLATE LAW 2026-09-27: HUSTLE (F) does NOT exist — always blank unless hustle mode.
-                            # BASELINE (E) blank until POS, VECTOR (G) = sum pos yellows, H/I blank until sheet complete.
-                            _hustle_delta_vs_baseline = None
-                            ws_row.cell(row=r, column=6).value = None  # F = HUSTLE always blank (not running)
-                            # G = VECTOR_DELTA = sum of pos yellows vs cum (may be neg/0)
-                            ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None
+                            # baseline for this row: E_r = cumulative_before (spec: E is previous winning cum), G is VECTOR_DELTA greedy vs cum, H/I empty until live
+                            # worst_first: hustle_delta NOT available (we are not in hustle mode) — F is HUSTLE only in hustle mode, else F is same as G or empty
+                            if args.seq_mode in ("worst_first", "worst2best", "worst-first"):
+                                _hustle_delta_vs_baseline = None  # not in hustle mode
+                                ws_row.cell(row=r, column=6).value = None  # F empty in worst_first
+                            else:
+                                _hustle_delta_vs_baseline = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
+                                ws_row.cell(row=r, column=6).value = float(_hustle_delta_vs_baseline) if (getattr(args, "seq_mode", "") == "hustle" and _hustle_delta_vs_baseline is not None) else None  # F = HUSTLE_DELTA vs baseline (only hustle)
+                            ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None  # G = greedy VECTOR_DELTA vs cum
                             ws_row.cell(row=r, column=7).font = Font(name="Arial", size=10, bold=True, color="9C5700")
                             ws_row.cell(row=r, column=7).alignment = VISUAL_ALIGN
-                            # H/I empty until live backtest
+                            # H/I empty until live backtest — first millions of other calculations, then live
                             _hk_ld = None
                             _hk_ls = None
                             try: _hk_pf = ", ".join(f"{k}={v}" for k,v in (pos_yellows.items() if 'pos_yellows' in locals() and isinstance(pos_yellows, dict) else {}))
@@ -4410,22 +4432,13 @@ def main():
                             _write_per_row_HIK(ws_row, r, _hk_ld, _hk_ls, _hk_pf)
                             try: _clear_vlookup_formulas(ws_row)
                             except: pass
-                            # keep F blank - do not rewrite hustle
-                            ws_row.cell(row=r, column=6).value = None
+                            ws_row.cell(row=r, column=6).value = float(_hustle_delta_vs_baseline) if _hustle_delta_vs_baseline is not None else None  # F = HUSTLE_DELTA vs baseline
                             ws_row.cell(row=r, column=6).fill = VISUAL_F_FILL
                             ws_row.cell(row=r, column=6).font = VISUAL_F_FONT
                             ws_row.cell(row=r, column=6).alignment = VISUAL_ALIGN
-                            # E = BASELINE: blank until POS per law. Only first data row per sheet and POS-promoted rows get E.
-                            _first_rr = per_tab_rows.get(sheet, [(r, "", "")])[0][0] if per_tab_rows.get(sheet) else r
-                            _is_first_in_sheet = (r == _first_rr)
-                            if delta_best is not None and delta_best > 1e-9:
-                                ws_row.cell(row=r, column=5).value = float(cumulative_before)
-                                ws_row.cell(row=r, column=5).font = Font(name="Arial", bold=True, color="006100")
-                            elif _is_first_in_sheet:
-                                ws_row.cell(row=r, column=5).value = float(cumulative_before)
-                                ws_row.cell(row=r, column=5).font = Font(name="Arial", bold=False, color="000000")
-                            else:
-                                ws_row.cell(row=r, column=5).value = None
+                            # E for this row (col 5) is cumulative_before - always numeric per user (was None for NEG -> empty trash)
+                            ws_row.cell(row=r, column=5).value = float(cumulative_before)
+                            ws_row.cell(row=r, column=5).font = Font(name="Arial", bold=True, color="006100") if delta_best > 0 else Font(name="Arial", bold=False, color="000000")
                             # next row's E will be set when that row is evaluated, not now
                             # keep old next-row blank for NEG to avoid carry-over, but not needed as E for next row will be overwritten when that row is processed
                             if r + 1 <= ws_row.max_row and delta_best <= 0:
