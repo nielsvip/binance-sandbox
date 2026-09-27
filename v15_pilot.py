@@ -897,7 +897,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         # Track per-yellow deltas for writing
         per_yellow_timeout_reason = {}
         # Timeout per yellow: 10s per spec, mark RED on stall
-        YELLOW_TIMEOUT = 10.0
+        YELLOW_TIMEOUT = 0.07  # USER 2026-09-27: 0.07s per cell (was 10.0) — vector hot, >0.07s → RED then agent fix next function
         # Helper to evaluate variant with timeout
         def _eval_with_timeout(overrides_dict: dict, timeout_sec: float = YELLOW_TIMEOUT):
             pp = prepared  # may be None -> fallback
@@ -938,11 +938,16 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         naked_vec = None
         try:
             naked_vec = _eval_with_timeout(switch_variant)
-            # FIX: use actual gain even if valid False (was -1 placeholder)
             if naked_vec and naked_vec.get("gain_pct") is not None:
-                naked_delta = float(naked_vec.get("gain_pct") or 0) - cumulative_before
-                if not naked_vec.get("valid"):
-                    per_yellow_timeout_reason["naked"] = f"valid False but gain {naked_vec.get('gain_pct'):.2f} used"
+                # DELTA is vs previous baseline (cumulative_before with all switches so far), NOT vs original baseline
+                # TIM vomit invalid (TIM >80%) is not a real -11.85 delta — treat as neutral 0, not collapsed -11.85
+                if not naked_vec.get("valid") and "TIM" in str(naked_vec.get("invalid_reason") or ""):
+                    naked_delta = 0.0
+                    per_yellow_timeout_reason["naked"] = f"TIM vomit {naked_vec.get('invalid_reason') or ''}"[:40]
+                else:
+                    naked_delta = float(naked_vec.get("gain_pct") or 0) - cumulative_before
+                    if not naked_vec.get("valid"):
+                        per_yellow_timeout_reason["naked"] = f"valid False but gain {naked_vec.get('gain_pct'):.2f} used vs cum {cumulative_before:.2f}"
             else:
                 naked_delta = -1.0  # invalid => negative
                 if naked_vec:
@@ -1014,13 +1019,16 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             col = header_maps[sname].get(hdr)
             try:
                 vec = _eval_with_timeout(variant, timeout_sec=YELLOW_TIMEOUT)
-                # FIX: always use actual gain even if valid False (e.g. ZEC 19d coverage) — -1 is placeholder not a calculation
                 if vec and vec.get("gain_pct") is not None:
                     vg = float(vec.get("gain_pct") or 0)
-                    delta = vg - cumulative_before
-                    # if valid False but gain is still calculable, treat as real delta (not -1)
-                    if not vec.get("valid"):
-                        per_yellow_timeout_reason[hdr] = f"valid False but gain {vg:.2f} used (was -1)"
+                    # DELTA vs previous baseline (cumulative_before), NOT original baseline — TIM vomit is neutral 0
+                    if not vec.get("valid") and "TIM" in str(vec.get("invalid_reason") or ""):
+                        delta = 0.0
+                        per_yellow_timeout_reason[hdr] = f"TIM vomit {vec.get('invalid_reason') or ''}"[:30]
+                    else:
+                        delta = vg - cumulative_before
+                        if not vec.get("valid"):
+                            per_yellow_timeout_reason[hdr] = f"valid False but gain {vg:.2f} used vs cum {cumulative_before:.2f}"
                 else:
                     delta = -1.0
                     reason = (vec.get("invalid_reason") if vec else "invalid") or "invalid"
@@ -2957,7 +2965,7 @@ def main():
         import traceback as _tb_spec
         print(f"[spec-fill-FAIL] spec filler failed {_spec_e} {_tb_spec.format_exc()[:1200]} — falling back to legacy loop", flush=True)
     heartbeat_path = Path("/tmp") / f"v14_heartbeat_{new_symside}.txt"
-    per_cell_timeout_sec = 10.0  # per spec: >10s stuck -> RED and continue to next yellow cell or next TAB
+    per_cell_timeout_sec = 0.07  # USER 2026-09-27: 0.07s per cell (was 10.0) — vector hot, >0.07s → RED then agent fix next
     # NEVER WAIT — hard 10s per cell, then mark cell+tab RED and MOVE ON (never hang, never >1h per workbook)
     def _touch_heartbeat(msg: str):
         try:
