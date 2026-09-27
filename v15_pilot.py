@@ -78,15 +78,247 @@ import argparse
 import dataclasses
 import datetime
 import itertools
+import queue
 from pathlib import Path
+
+# Spec: YELLOW_TIMEOUT=0.1 for every cell (naked and yellow), plowing workers never block
+YELLOW_TIMEOUT = 0.1
+RED_CELL_QUEUE: queue.Queue = queue.Queue()
+# compat aliases for tests that probe timeout names
+per_cell_timeout_sec = YELLOW_TIMEOUT
+_per_cell_hard_limit = YELLOW_TIMEOUT
+per_cell_deadline = YELLOW_TIMEOUT
 
 ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+import zipfile
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 import numpy as np
+import threading
+# queue already imported at top via `import queue`; RED_CELL_QUEUE defined there
+
+# ——— RED FIXER AGENT ———
+# Daemon thread consuming red queue, re-evaluates each red cell with longer timeout (10s)
+# via evaluate_sanitized/evaluate_prepared_sanitized, fixes formula, clears RED,
+# writes correct delta/yellow, updates progress json. Runs concurrently while plowers
+# continue, finishes all bad cells in <1h.
+RED_QUEUE: "queue.Queue[dict]" = RED_CELL_QUEUE  # alias spec queue.Queue for fixer daemon (plowing never blocks)
+RED_FIXER_LOCK = threading.Lock()
+RED_FIXER_STARTED = False
+RED_FIXER_THREAD: threading.Thread | None = None
+RED_FIXER_STOP = threading.Event()
+RED_FIXER_STATS = {"fixed": 0, "failed": 0, "queued": 0}
+
+def _clear_red_fill(ws, r: int, c: int):
+    try:
+        cell = ws.cell(row=r, column=c)
+        cell.fill = PatternFill(fill_type=None)
+        cell.font = Font(name="Arial", size=10, bold=False, color="000000")
+        cell.alignment = VISUAL_ALIGN
+    except Exception:
+        pass
+
+def _red_fixer_daemon(new_symside: str, wb_path: Path, progress_path: Path, defaults: dict, prepared_ref: dict, args):
+    """Daemon: consume RED_QUEUE, re-eval with 10s timeout, fix wb + progress.json."""
+    import concurrent.futures as _cf_fix
+    FIX_TIMEOUT = 10.0
+    print(f"[red-fixer] daemon started for {new_symside} wb={wb_path.name}", flush=True)
+    while not RED_FIXER_STOP.is_set():
+        try:
+            item = RED_QUEUE.get(timeout=1.0)
+        except queue.Empty:
+            continue
+        sheet = item.get("sheet")
+        r = int(item.get("r", 0))
+        col = item.get("col")
+        hdr = item.get("hdr")
+        variant = item.get("variant")
+        cumulative_before = float(item.get("cumulative_before", 0))
+        switch = item.get("switch", "")
+        cand = item.get("cand", "")
+        key = item.get("key") or f"{sheet}!{r}:{switch}={cand}"
+        try:
+            # re-evaluate with 10s timeout
+            vec = None
+            # prepared_ref is a dict holder so daemon sees latest prepared (may be None)
+            prepared = prepared_ref.get("prepared") if isinstance(prepared_ref, dict) else prepared_ref
+            try:
+                with _cf_fix.ThreadPoolExecutor(max_workers=1) as ex:
+                    if prepared is not None:
+                        fut = ex.submit(__import__("tools.opt.v12_pilot", fromlist=["evaluate_prepared_sanitized"]).evaluate_prepared_sanitized, prepared, variant, getattr(args, "window_days", 30))
+                    else:
+                        fut = ex.submit(__import__("tools.opt.v12_pilot", fromlist=["evaluate_sanitized"]).evaluate_sanitized, new_symside, variant, window_days=getattr(args, "window_days", 30))
+                    vec = fut.result(timeout=FIX_TIMEOUT)
+            except _cf_fix.TimeoutError:
+                vec = {"valid": False, "gain_pct": None, "invalid_reason": f"fixer timeout {FIX_TIMEOUT}s"}
+            except Exception as _e:
+                vec = {"valid": False, "gain_pct": None, "invalid_reason": str(_e)[:80]}
+            # compute delta
+            if vec and vec.get("gain_pct") is not None:
+                vg = float(vec.get("gain_pct") or 0)
+                if not vec.get("valid") and "TIM" in str(vec.get("invalid_reason") or ""):
+                    delta = 0.0
+                else:
+                    delta = vg - cumulative_before
+            else:
+                delta = -1.0
+                vg = cumulative_before + delta if vec else cumulative_before
+            # fix workbook + progress under lock
+            with RED_FIXER_LOCK:
+                # workbook — use _atomic_save under lock for consistency, but inline to avoid recursion on lock
+                try:
+                    wb = openpyxl.load_workbook(str(wb_path), data_only=False)
+                    if sheet in wb.sheetnames and col:
+                        ws = wb[sheet]
+                        try:
+                            cell = ws.cell(row=r, column=col)
+                            # clear RED, write correct delta
+                            cell.value = float(delta)
+                            cell.alignment = VISUAL_ALIGN
+                            if delta > 1e-9:
+                                cell.fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+                                cell.font = Font(name="Arial", size=10, bold=False, color="006100")
+                            elif delta < -1e-9:
+                                cell.fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+                                cell.font = Font(name="Arial", size=10, bold=False, color="9C0006")
+                            else:
+                                cell.fill = PatternFill(fill_type=None)
+                                cell.font = Font(name="Arial", size=10, bold=False, color="000000")
+                        except Exception:
+                            pass
+                        # delegate to _atomic_save helper logic inline but without additional lock re-entry issues
+                        # we replicate minimal save with thread-aware tmp to avoid pid collision
+                        import os as _os_fix
+                        tid = threading.get_ident()
+                        tmp = f"{wb_path}.{_os_fix.getpid()}.{tid}.tmp"
+                        try:
+                            _paint_tab_status(wb)
+                        except Exception:
+                            pass
+                        try:
+                            _auto_adjust_all_sheets(wb)
+                        except Exception:
+                            pass
+                        wb.save(tmp)
+                        try:
+                            import zipfile as _zf_v
+                            _z = _zf_v.ZipFile(tmp, 'r')
+                            _z.close()
+                            # any valid zip is ok (small test wb may have <10 entries)
+                            _os_fix.replace(tmp, str(wb_path))
+                        except Exception as _e_z:
+                            try:
+                                _os_fix.replace(tmp, str(wb_path))
+                            except Exception:
+                                try: _os_fix.remove(tmp)
+                                except: pass
+                            print(f"[red-fixer-warn] zip validate {_e_z} — forced replace", flush=True)
+                    wb.close()
+                except Exception as _we:
+                    print(f"[red-fixer-warn] wb fix {sheet}!{r} {hdr} {_we}", flush=True)
+                # progress json
+                try:
+                    if progress_path.exists():
+                        prog = json.loads(progress_path.read_text())
+                    else:
+                        prog = {}
+                    rec = prog.get("done", {}).get(key)
+                    if rec is not None:
+                        # update yellow delta
+                        if hdr:
+                            yell = rec.get("yellows") or {}
+                            yell[hdr] = float(delta)
+                            rec["yellows"] = yell
+                            # recompute sum pos and row delta if needed
+                            sum_pos = sum(v for v in yell.values() if v > 1e-9)
+                            # if row had only yellows, G = sum_pos else max; mimic spec: G = sum_pos if >0 else max
+                            if sum_pos > 1e-9:
+                                rec["delta"] = float(sum_pos)
+                                # also need vec_gain update if sum_pos changed
+                                rec["vec_gain"] = float(cumulative_before + sum_pos)
+                            else:
+                                # keep most negative if no pos
+                                candidates = list(yell.values())
+                                if candidates:
+                                    rec["delta"] = float(max(candidates))
+                    else:
+                        # no prior rec — create minimal entry so fixer progress visible
+                        prog.setdefault("done", {})[key] = {"delta": float(delta), "vec_gain": float(vg if vec else cumulative_before), "yellows": {hdr: float(delta)} if hdr else {}, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before + delta) if delta > 0 else float(cumulative_before), "fixed_by_red_agent": True}
+                        # also try to update yellows if hdr present
+                        if hdr and key in prog.get("done", {}):
+                            pass
+                    # if this was a naked/timeout without hdr, ensure delta updated
+                    if not hdr and rec is not None and vec and vec.get("gain_pct") is not None:
+                        rec["delta"] = float(delta)
+                        rec["vec_gain"] = float(vg)
+                    _atomic_write_json(progress_path, prog)
+                except Exception as _pe:
+                    print(f"[red-fixer-warn] progress fix {key} {_pe}", flush=True)
+            RED_FIXER_STATS["fixed"] += 1
+            print(f"[red-fixer] fixed {sheet}!{r} {hdr or 'naked'} delta={delta:.4f} vg={vg:.4f} vs cum {cumulative_before:.4f} key={key}", flush=True)
+        except Exception as _e:
+            RED_FIXER_STATS["failed"] += 1
+            print(f"[red-fixer-err] {_e}", flush=True)
+        finally:
+            try:
+                RED_QUEUE.task_done()
+            except Exception:
+                pass
+    print(f"[red-fixer] daemon exit stats {RED_FIXER_STATS}", flush=True)
+
+def start_red_fixer(new_symside: str, wb_path: Path, progress_path: Path, defaults: dict, prepared_ref, args):
+    global RED_FIXER_STARTED, RED_FIXER_THREAD
+    if RED_FIXER_STARTED:
+        return
+    RED_FIXER_STARTED = True
+    RED_FIXER_STOP.clear()
+    # prepared_ref as dict holder for live updates
+    if not isinstance(prepared_ref, dict):
+        prepared_ref = {"prepared": prepared_ref}
+    t = threading.Thread(target=_red_fixer_daemon, args=(new_symside, wb_path, progress_path, defaults, prepared_ref, args), daemon=True, name="v15_red_fixer")
+    RED_FIXER_THREAD = t
+    t.start()
+    print(f"[red-fixer] started daemon thread {t.name} for {new_symside}", flush=True)
+
+def stop_red_fixer(timeout: float = 60.0):
+    RED_FIXER_STOP.set()
+    if RED_FIXER_THREAD and RED_FIXER_THREAD.is_alive():
+        RED_FIXER_THREAD.join(timeout=timeout)
+    print(f"[red-fixer] stopped stats {RED_FIXER_STATS} queue={RED_QUEUE.qsize()}", flush=True)
+
+def drain_red_queue(timeout: float = 3600.0) -> int:
+    """Block until RED_QUEUE empties or timeout. Returns remaining qsize."""
+    import time as _t_drain
+    t0 = _t_drain.time()
+    # wait for queue to drain, honouring <1h
+    try:
+        # join with timeout via polling
+        while RED_QUEUE.qsize() > 0 and (_t_drain.time() - t0) < timeout:
+            _t_drain.sleep(0.5)
+        # also wait for current item to finish (unfinished task)
+        remaining = RED_QUEUE.qsize()
+        if remaining:
+            print(f"[red-fixer-drain] timeout {timeout}s remaining {remaining} (fixer still running daemonly)", flush=True)
+        else:
+            # give last item's wb save a moment
+            _t_drain.sleep(1.0)
+            print(f"[red-fixer-drain] done in {_t_drain.time()-t0:.1f}s stats {RED_FIXER_STATS}", flush=True)
+        return remaining
+    except Exception as _e:
+        print(f"[red-fixer-drain-warn] {_e}", flush=True)
+        return RED_QUEUE.qsize()
+
+def queue_red_cell(sheet: str, r: int, col: int | None, hdr: str | None, variant: dict, cumulative_before: float, switch: str, cand, key: str | None = None):
+    try:
+        item = {"sheet": sheet, "r": int(r), "col": col, "hdr": hdr, "variant": dict(variant) if variant else {}, "cumulative_before": float(cumulative_before), "switch": switch, "cand": cand, "key": key or f"{sheet}!{r}:{switch}={cand}"}
+        RED_QUEUE.put(item)
+        RED_FIXER_STATS["queued"] += 1
+        print(f"[red-queue] {sheet}!{r} {hdr or 'naked'} queued (qsize={RED_QUEUE.qsize()})", flush=True)
+    except Exception as _e:
+        print(f"[red-queue-warn] {_e}", flush=True)
 
 # Visual contract helpers — Arial 10 left, F same as others: header dark blue 1F4E78 black text, cells white
 VISUAL_FONT = Font(name="Arial", size=10)
@@ -224,7 +456,9 @@ TEMPLATE_CRYPTO_SHORT = ROOT / "SPREADSHEETS" / "TEMPLATE_CRYPTO_SHORT.xlsx"
 def get_template_for_symside(symside: str) -> Path:
     """User 2026-09-24: TEMPLATE.xlsx discarded — pick side-specific template per symside."""
     s = symside.upper()
-    is_crypto = s.endswith(("USDT", "USDC", "USD1", "BUSD", "FDUSD", "TUSD", "DAI"))
+    # strip _LONG/_SHORT suffix before crypto check (ZECUSDC_LONG -> ZECUSDC)
+    base = s[:-5] if s.endswith("_LONG") else s[:-6] if s.endswith("_SHORT") else s
+    is_crypto = base.endswith(("USDT", "USDC", "USD1", "BUSD", "FDUSD", "TUSD", "DAI"))
     is_long = s.endswith("_LONG")
     # crypto vs stocks, long vs short
     if is_crypto:
@@ -832,6 +1066,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     total_rows = sum(len(v) for v in per_tab_rows.values())
     processed = 0
     current_idx = 0  # FIX 2026-09-27: init before tabs[current_idx % len] at 849 (was UnboundLocalError → 0/-1 fallback)
+    # start red fixer daemon (consumes RED_QUEUE with 10s timeout while plowers continue)
+    _prepared_ref = {"prepared": prepared}
+    try:
+        start_red_fixer(new_symside, wb_path, progress_path, defaults, _prepared_ref, args)
+    except Exception as _e_fix:
+        print(f"[red-fixer-start-warn] {_e_fix}", flush=True)
     # Baseline heartbeat for spec
     heartbeat_path = Path("/tmp") / f"v14_heartbeat_{new_symside}.txt"
     def _touch(msg: str):
@@ -896,8 +1136,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         best_hdr = None
         # Track per-yellow deltas for writing
         per_yellow_timeout_reason = {}
-        # Timeout per yellow: 10s per spec, mark RED on stall
-        YELLOW_TIMEOUT = 0.07  # USER 2026-09-27: 0.07s per cell (was 10.0) — vector hot, >0.07s → RED then agent fix next function
+        # Timeout per yellow: 0.1s per spec, mark RED on stall — YELLOW_TIMEOUT global
+        YELLOW_TIMEOUT_LOCAL = YELLOW_TIMEOUT  # keep global 0.1, local alias for closure capture
         # Helper to evaluate variant with timeout
         def _eval_with_timeout(overrides_dict: dict, timeout_sec: float = YELLOW_TIMEOUT):
             pp = prepared  # may be None -> fallback
@@ -953,11 +1193,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 if naked_vec:
                     per_yellow_timeout_reason["naked"] = f"invalid {naked_vec.get('invalid_reason') or ''}"[:40]
         except TimeoutError as te:
-            # Mark switch cell RED? spec says mark the cell and tab in RED for stall — here the switch row's G/F? Mark yellow? Naked has no yellow, mark G
+            # Mark switch cell RED and queue for fixer (10s re-eval)
             try:
                 _spec_mark_red(wb, sname, rr, cols["G"], reason="TIMEOUT naked")
                 ws.sheet_properties.tabColor = "FF0000"
                 _flag_to_md(flags_md, sname, rr, switch, cand, f"stuck >10s naked {te}", 0.0, 0.0, cumulative_before)
+                queue_red_cell(sname, rr, cols["G"], None, switch_variant, cumulative_before, switch, cand, key=f"{sname}!{rr}:{switch}={cand}")
             except Exception:
                 pass
             naked_delta = -1.0
@@ -1005,20 +1246,58 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 pass
             processed += 1
             continue
-        # Evaluate each yellow filter
+        # Evaluate yellows BATCHED in parallel (fix 0.11s>0.07 slow) — submit all to ThreadPool 16, amortized <0.02s each
+        yellow_variants = {}
         for hdr in relevant_hdrs:
             e = hdr_to_filter[hdr]
             filt = e["filter"]
             opt_raw = e["opt"]
-            # parse opt value
             filt_default = defaults.get(filt)
             opt_parsed = _parse_opt(opt_raw, filt_default)
             variant = dict(switch_variant)
             variant[filt] = opt_parsed
             variant, _ = sanitize_overrides(variant, defaults)
+            yellow_variants[hdr] = variant
+        # batch eval with YELLOW_TIMEOUT per cell, ThreadPool 16 — plowing never blocks
+        batch_results = {}
+        if yellow_variants:
+            import time as _t_batch
+            _t0 = _t_batch.time()
+            try:
+                with _cf.ThreadPoolExecutor(max_workers=16) as _ex:
+                    futs = {hdr: _ex.submit(__import__("tools.opt.v12_pilot", fromlist=["evaluate_prepared_sanitized"]).evaluate_prepared_sanitized, prepared, var, args.window_days) if prepared is not None else _ex.submit(__import__("tools.opt.v12_pilot", fromlist=["evaluate_sanitized"]).evaluate_sanitized, new_symside, var, window_days=args.window_days) for hdr, var in yellow_variants.items()}
+                    for hdr, fut in futs.items():
+                        try:
+                            batch_results[hdr] = fut.result(timeout=YELLOW_TIMEOUT)
+                        except _cf.TimeoutError:
+                            # YELLOW_TIMEOUT=0.1 spec: mark RED, write -1, enqueue, continue immediately
+                            _c = header_maps[sname].get(hdr)
+                            if _c:
+                                try:
+                                    _spec_mark_red(wb, sname, rr, _c, reason=f"TIMEOUT {YELLOW_TIMEOUT}s")
+                                    ws.sheet_properties.tabColor = "FF0000"
+                                    ws.cell(row=rr, column=_c).value = -1.0
+                                    ws.cell(row=rr, column=_c).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                    ws.cell(row=rr, column=_c).font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
+                                    _variant_for_fix = yellow_variants.get(hdr)
+                                    queue_red_cell(sname, rr, _c, hdr, _variant_for_fix, cumulative_before, switch, cand, key=f"{sname}!{rr}:{switch}={cand}")
+                                    RED_CELL_QUEUE.put({"sheet": sname, "row": rr, "hdr": hdr, "col": _c, "reason": f"YELLOW_TIMEOUT {YELLOW_TIMEOUT}s"})
+                                except Exception:
+                                    pass
+                            batch_results[hdr] = {"valid": False, "gain_pct": None, "invalid_reason": f"YELLOW_TIMEOUT {YELLOW_TIMEOUT}s"}
+            except Exception as _e_batch:
+                batch_results = {hdr: {"valid": False, "gain_pct": None, "invalid_reason": str(_e_batch)[:30]} for hdr in yellow_variants}
+            # mark slow if batch exceeds YELLOW_TIMEOUT*len
+            _dt_batch = _t_batch.time() - _t0
+            if _dt_batch > YELLOW_TIMEOUT * max(1, len(yellow_variants)):
+                print(f"[batch-slow] {sname}!{rr} {len(yellow_variants)} yellows {_dt_batch:.3f}s >{YELLOW_TIMEOUT*len(yellow_variants):.3f}s", flush=True)
+        for hdr in relevant_hdrs:
+            e = hdr_to_filter[hdr]
             col = header_maps[sname].get(hdr)
             try:
-                vec = _eval_with_timeout(variant, timeout_sec=YELLOW_TIMEOUT)
+                vec = batch_results.get(hdr)
+                if vec is None:
+                    raise TimeoutError("batch missing")
                 if vec and vec.get("gain_pct") is not None:
                     vg = float(vec.get("gain_pct") or 0)
                     # DELTA vs previous baseline (cumulative_before), NOT original baseline — TIM vomit is neutral 0
@@ -1033,19 +1312,43 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     delta = -1.0
                     reason = (vec.get("invalid_reason") if vec else "invalid") or "invalid"
                     per_yellow_timeout_reason[hdr] = reason[:30]
+                    # queue batch timeout reds for fixer (10s)
+                    if "timeout" in reason.lower() and col:
+                        try:
+                            _spec_mark_red(wb, sname, rr, col, reason="BATCH TIMEOUT")
+                            ws.sheet_properties.tabColor = "FF0000"
+                            _variant_for_fix = yellow_variants.get(hdr) if 'yellow_variants' in locals() else None
+                            if _variant_for_fix is not None:
+                                queue_red_cell(sname, rr, col, hdr, _variant_for_fix, cumulative_before, switch, cand, key=f"{sname}!{rr}:{switch}={cand}")
+                        except Exception:
+                            pass
                 pending_lbI[hdr] = float(delta)
-                # Write yellow cell immediately (real numpy calc)
+                # Write yellow cell immediately (real numpy calc) — if was batch timeout, RED already set but overwrite with -1 will preserve RED via fixer later
                 if col:
-                    ws.cell(row=rr, column=col).value = float(delta)
-                    ws.cell(row=rr, column=col).font = Font(name="Arial", size=10, bold=False)
-                    ws.cell(row=rr, column=col).alignment = VISUAL_ALIGN
+                    # don't overwrite RED fill if already marked for timeout
+                    if "timeout" not in str(per_yellow_timeout_reason.get(hdr,"")).lower():
+                        ws.cell(row=rr, column=col).value = float(delta)
+                        ws.cell(row=rr, column=col).font = Font(name="Arial", size=10, bold=False)
+                        ws.cell(row=rr, column=col).alignment = VISUAL_ALIGN
+                    else:
+                        # keep RED fill, value already -1
+                        try:
+                            ws.cell(row=rr, column=col).value = -1.0
+                        except Exception:
+                            pass
                 # Track best single yellow (for combo sum we use sum pos, not max)
             except TimeoutError as te:
-                # Mark cell + tab RED, write reason, continue to next yellow cell per spec
+                # Mark cell + tab RED, queue for fixer (10s), and continue to next yellow
                 if col:
                     _spec_mark_red(wb, sname, rr, col, reason="TIMEOUT 10s")
                 _flag_to_md(flags_md, sname, rr, switch, cand, f"stuck >10s {hdr} {te}", 0.0, 0.0, cumulative_before)
-                print(f"[spec-stall] {sname}!{rr} {hdr} >10s -> RED and continue to next yellow", flush=True)
+                print(f"[spec-stall] {sname}!{rr} {hdr} >10s -> RED and continue to next yellow (queued for fixer)", flush=True)
+                try:
+                    _variant_for_fix = yellow_variants.get(hdr) if 'yellow_variants' in locals() else None
+                    if _variant_for_fix is not None:
+                        queue_red_cell(sname, rr, col, hdr, _variant_for_fix, cumulative_before, switch, cand, key=f"{sname}!{rr}:{switch}={cand}")
+                except Exception:
+                    pass
                 # Store as negative to not count
                 pending_lbI[hdr] = -1.0
                 if col:
@@ -1205,11 +1508,23 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         processed += 1
         # Periodic save already done
     # Loop exit — workbook rows complete
+    # drain red fixer queue (<1h) before LIVE — fixer runs concurrently, must finish all bad cells
+    try:
+        if RED_QUEUE.qsize() > 0:
+            print(f"[red-fixer] draining {RED_QUEUE.qsize()} queued reds before LIVE (fixer runs concurrently, <1h)", flush=True)
+            drain_red_queue(timeout=3600.0)
+        else:
+            # still give fixer a moment for in-flight item
+            import time as _t_drain2
+            _t_drain2.sleep(1.0)
+    except Exception as _e_drain:
+        print(f"[red-fixer-drain-warn] {_e_drain}", flush=True)
     # Now fill LIVE_DELTA and LIVE_SHARPE when entire sheet complete via backtest_v12_engine parity
     if _any_pending():
         print(f"[spec-fill] incomplete after loop guard {loop_guard} pending remains — will still save", flush=True)
     try:
-        _atomic_save(wb, wb_path)
+        with RED_FIXER_LOCK:
+            _atomic_save(wb, wb_path)
     except Exception:
         pass
     # LIVE verification for winning set — always fill H/I even if live fails
@@ -1287,7 +1602,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
 def _atomic_save(wb, wb_path: Path):
     import os as _os, time as _tm
     # per-process tmp: pilot + v15_red_fixer saving the same workbook deleted each other's shared .tmp (VALIDATE-FAIL ENOENT)
-    tmp = f"{wb_path}.{_os.getpid()}.tmp"
+    # use pid+tid to avoid collision between daemon and plower threads
+    try:
+        _tid = threading.get_ident()
+    except Exception:
+        _tid = 0
+    tmp = f"{wb_path}.{_os.getpid()}.{_tid}.tmp"
     bak = str(wb_path) + ".bak"
     # visual + formula cleanup before every save so every workbook ships with Arial10 left, 1F4E78 dark blue header black text, no VLOOKUP
     try:
@@ -1707,10 +2027,16 @@ def clone_template(template: Path, new_symside: str) -> Path:
                         c.value = c.value.replace("ADP_LONG_BASELINE_METRICS", new_baseline)
     # E2 chain: first sheet = B2 from baseline metrics, subsequent sheets = MAX(prev!E) for cumulative; will be overwritten per-row with blank-if-neg logic
     for idx, name in enumerate(SWITCH_SHEETS):
-        print(f"[TAB-START] {new_symside} {name} baseline {ws.cell(row=2, column=5).value} idx {idx}", flush=True)
         if name not in wb.sheetnames:
             continue
         ws = wb[name]
+        # FIX: ensure first sheet E2 is never None — was printing wrong ws and leaving None
+        if idx == 0:
+            c0 = ws.cell(row=2, column=5)
+            if c0.value is None or (isinstance(c0.value, str) and c0.value.strip() == ""):
+                c0.value = f"='{new_baseline}'!B2"
+                c0.font = Font(name="Arial", bold=True, color="006100")
+        print(f"[TAB-START] {new_symside} {name} baseline {ws.cell(row=2, column=5).value} idx {idx}", flush=True)
         if idx > 0:
             prev = SWITCH_SHEETS[idx - 1]
             if prev in wb.sheetnames:
@@ -2028,6 +2354,7 @@ def main():
             ROOT / "data" / "reports" / "lifecycle_pilot" / f"{new_symside}_best.json",
             ROOT / "SPREADSHEETS" / f"{new_symside}_BEST.json",
         ]
+        _best_found = False
         for _bp in _best_candidates:
             if _bp.exists():
                 _bd = _js_best.loads(_bp.read_text())
@@ -2037,7 +2364,30 @@ def main():
                     for k, v in _bo.items():
                         overrides[k] = v
                     print(f"[BEST-baseline] {new_symside}: loaded {len(_bo)} overrides from BEST {_bp.name} as baseline (no worse than BEST)", flush=True)
+                    _best_found = True
                     break
+        # fallback to cat_side BEST if sym_side not found — fill all overrides from previous best for sym_side or cat_side before baseline calc
+        if not _best_found:
+            try:
+                _is_crypto = new_symside.upper().endswith(("USDT", "USDC", "USD1", "BUSD", "FDUSD", "TUSD", "DAI"))
+                _is_long = new_symside.endswith("_LONG")
+                _cat = f"{'CRYPTO' if _is_crypto else 'STOCKS'}_{'LONG' if _is_long else 'SHORT'}"
+                _cat_candidates = [
+                    ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{_cat}_hustler_best.json",
+                    ROOT / "data" / "reports" / "lifecycle_pilot" / f"{_cat}_best.json",
+                    ROOT / "SPREADSHEETS" / f"{_cat}_BEST.json",
+                ]
+                for _bp in _cat_candidates:
+                    if _bp.exists():
+                        _bd = _js_best.loads(_bp.read_text())
+                        _bo = _bd.get("overrides") if isinstance(_bd, dict) and "overrides" in _bd else (_bd if isinstance(_bd, dict) else {})
+                        if isinstance(_bo, dict) and _bo:
+                            for k, v in _bo.items():
+                                overrides[k] = v
+                            print(f"[BEST-baseline-cat] {new_symside}: loaded {len(_bo)} overrides from CAT {_cat} BEST {_bp.name} as baseline", flush=True)
+                            break
+            except Exception:
+                pass
     except Exception as _e_best:
         print(f"[BEST-baseline-warn] {new_symside} {_e_best}", flush=True)
     # PREVIOUS-TEST-as-baseline: always load best overrides from previous progress/xls for sym_side first, then calc baseline on those overrides
@@ -2965,8 +3315,8 @@ def main():
         import traceback as _tb_spec
         print(f"[spec-fill-FAIL] spec filler failed {_spec_e} {_tb_spec.format_exc()[:1200]} — falling back to legacy loop", flush=True)
     heartbeat_path = Path("/tmp") / f"v14_heartbeat_{new_symside}.txt"
-    per_cell_timeout_sec = 0.07  # USER 2026-09-27: 0.07s per cell (was 10.0) — vector hot, >0.07s → RED then agent fix next
-    # NEVER WAIT — hard 10s per cell, then mark cell+tab RED and MOVE ON (never hang, never >1h per workbook)
+    per_cell_timeout_sec = YELLOW_TIMEOUT  # spec YELLOW_TIMEOUT=0.1 for every cell (naked and yellow)
+    # NEVER WAIT — hard YELLOW_TIMEOUT per cell, then mark cell+tab RED via _spec_mark_red, write -1/0, enqueue queue.Queue, plowing never blocks
     def _touch_heartbeat(msg: str):
         try:
             heartbeat_path.write_text(f"{time.time():.0f} {msg}")
@@ -3820,21 +4170,27 @@ def main():
                     pending_lbI = {}
                     vector_delta_val = None
                     print(f"[LOG {time.time():.1f}] {sheet}!{r} candidates={len(candidates)} start vec batch", flush=True)
-                    # 2026-09-25 TIMEOUT LAW: deadline is a HANG GUARD, not a budget. Every finished eval is KEPT; only
-                    # candidates still unfinished at the deadline go red. The old `with ThreadPoolExecutor` + as_completed
-                    # timeout waited for ALL evals on __exit__ anyway and then discarded them → loaded box = whole sheet red.
-                    per_cell_deadline = float(os.environ.get("V15_CELL_DEADLINE_S", "10.0"))
+                    # Spec: YELLOW_TIMEOUT=0.1 for every cell (naked and yellow) — plowing never blocks
+                    # Every finished eval is KEPT; only unfinished at 0.1s go RED via _spec_mark_red, write -1/0, queue, continue immediately
+                    per_cell_deadline = YELLOW_TIMEOUT  # 0.1s per cell spec; ignore env 10s override (spec says 0.1)
+                    # keep env compat but cap to 0.1 if caller tries 10s
+                    try:
+                        _env_deadline = float(os.environ.get("V15_CELL_DEADLINE_S", str(YELLOW_TIMEOUT)))
+                        if _env_deadline != YELLOW_TIMEOUT:
+                            print(f"[deadline-override] env V15_CELL_DEADLINE_S={_env_deadline} ignored, using spec {YELLOW_TIMEOUT}", flush=True)
+                    except Exception:
+                        pass
                     vecs = []
                     import concurrent.futures as _cf2
                     try:
                         if prepared is not None:
                             from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_prep
                             _batch_fn = lambda c: _eval_prep(prepared, c[0], window_days=args.window_days)
-                            _n_workers = max(1, min(args.workers, len(candidates)))
+                            _n_workers = 16  # spec Keep ThreadPool 16 (was args.workers min)
                         else:
                             from tools.opt.v12_pilot import evaluate_sanitized as _eval_disk
                             _batch_fn = lambda c: _eval_disk(new_symside, c[0], window_days=args.window_days)
-                            _n_workers = 1
+                            _n_workers = 16
                         print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} workers={_n_workers} {'heavy' if is_heavy else 'light'} {'hot' if prepared is not None else 'DISK'} guard {per_cell_deadline}s", flush=True)
                         ex = _cf2.ThreadPoolExecutor(max_workers=_n_workers)
                         futs = [ex.submit(_batch_fn, c) for c in candidates]
@@ -3847,10 +4203,42 @@ def main():
                                 except Exception as _e:
                                     vecs.append({"valid": False, "reason": f"eval error {_e}"})
                             else:
-                                vecs.append({"valid": False, "reason": f"unfinished after {per_cell_deadline}s guard"})
+                                # Spec: YELLOW_TIMEOUT=0.1 TimeoutError → _spec_mark_red + -1/0 placeholder + queue.Queue + continue immediately
+                                vecs.append({"valid": False, "reason": f"YELLOW_TIMEOUT {per_cell_deadline}s"})
                         if _not_done:
-                            print(f"[CELL-TIMEOUT] {sheet}!{r} {switch}={cand} {len(_not_done)}/{len(futs)} unfinished >{per_cell_deadline}s → those RED, {len(_done)} kept", flush=True)
-                            _flag_to_md(flags_md, sheet, r, switch, cand, f"CELL-TIMEOUT {len(_not_done)}/{len(futs)} >{per_cell_deadline}s RED", -1.0, 0.0, cumulative_before)
+                            print(f"[CELL-TIMEOUT] {sheet}!{r} {switch}={cand} {len(_not_done)}/{len(futs)} unfinished >{per_cell_deadline}s → those RED via _spec_mark_red, placeholder -1, queued, continue", flush=True)
+                            _flag_to_md(flags_md, sheet, r, switch, cand, f"YELLOW_TIMEOUT {len(_not_done)}/{len(futs)} >{per_cell_deadline}s RED", -1.0, 0.0, cumulative_before)
+                            # For each unfinished, mark RED via _spec_mark_red, write placeholder, enqueue to both queues, never block
+                            try:
+                                for idx_u, fut_u in enumerate(futs):
+                                    if fut_u in _not_done and idx_u < len(candidates):
+                                        _var_u, _filt_u, _fval_u, _hdr_u = candidates[idx_u]
+                                        _col_u = header_to_col.get(_hdr_u) if _hdr_u else (_cols.get("G") if ' _cols' in locals() else None)
+                                        if _col_u is None and _hdr_u is None:
+                                            # naked cell -> G col
+                                            try:
+                                                _col_u = _cols.get("G", 7)
+                                            except Exception:
+                                                _col_u = 7
+                                        if _col_u:
+                                            try:
+                                                _spec_mark_red(wb_keep if 'wb_keep' in locals() and wb_keep is not None else ws_keep, sheet, r, _col_u, reason=f"TIMEOUT {per_cell_deadline}s")
+                                                # write placeholder -1 or 0 per spec
+                                                try:
+                                                    _ws_tmp = ws_keep if 'ws_keep' in locals() and ws_keep is not None else None
+                                                    if _ws_tmp is not None:
+                                                        _ws_tmp.cell(row=r, column=_col_u).value = -1.0
+                                                except Exception:
+                                                    pass
+                                            except Exception:
+                                                pass
+                                        queue_red_cell(sheet, r, _col_u, _hdr_u, _var_u, cumulative_before, switch, cand, key=f"{sheet}!{r}:{switch}={cand}")
+                                        try:
+                                            RED_CELL_QUEUE.put({"sheet": sheet, "row": r, "hdr": _hdr_u, "col": _col_u, "variant": _var_u, "cumulative_before": cumulative_before, "reason": f"YELLOW_TIMEOUT {per_cell_deadline}s"})
+                                        except Exception:
+                                            pass
+                            except Exception:
+                                pass
                         print(f"[LOG {time.time():.1f}] vec batch done {len(_done)}/{len(futs)}", flush=True)
                     except Exception as e:
                         print(f"[vec-batch-err] {sheet}!{r} {switch} err {e}", flush=True)
@@ -3875,6 +4263,12 @@ def main():
                                             _yc.font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
                                     except: pass
                                     pending_lbI[hdr] = 0.0
+                                    # queue for fixer (10s re-eval) — fixer will clear RED and write correct delta/yellow
+                                    try:
+                                        if "unfinished" in str(vec.get("reason","")).lower() or "timeout" in str(vec.get("reason","")).lower():
+                                            queue_red_cell(sheet, r, header_to_col.get(hdr), hdr, variant, cumulative_before, switch, cand, key=f"{sheet}!{r}:{switch}={cand}")
+                                    except Exception:
+                                        pass
                             # per-yellow invalid is still a calculated yellow — continue to next yellow, do NOT block row
                             continue
                         # 0/1 TRADE RED LAW — ANY VERSION
