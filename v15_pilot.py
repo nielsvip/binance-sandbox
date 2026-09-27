@@ -3228,6 +3228,14 @@ def main():
         progress = _spec_prog
         cumulative_gain = float(_spec_cum)
         cumulative_overrides = dict(_spec_over)
+
+        # CRITICAL VALIDATION: Ensure ALL rows are filled before exit
+        # If less than 1000 rows evaluated, something went wrong — fall back to legacy to complete fill
+        rows_filled = len(progress.get("done", {}))
+        if rows_filled < 1000:
+            print(f"[spec-fill-INCOMPLETE] Only {rows_filled} rows filled (need 3000+) — falling back to legacy loop to complete", flush=True)
+            raise ValueError(f"spec-fill incomplete: {rows_filled} rows << 3000 expected")
+
         # After spec fill, workbook is complete — return early, skip legacy loop (keep legacy code below as dead fallback)
         # Finalize with charts/final xlsx handling that legacy does after loop — replicate minimal final steps here then return
         try:
@@ -3239,11 +3247,11 @@ def main():
                 _atomic_write_json(progress_path, progress)
         except Exception:
             pass
-        print(f"[spec-fill] workbook complete, returning early (legacy loop skipped) cum={cumulative_gain:.4f}", flush=True)
+        print(f"[spec-fill] workbook complete, {rows_filled} rows filled, returning early cum={cumulative_gain:.4f}", flush=True)
         return
     except Exception as _spec_e:
         import traceback as _tb_spec
-        print(f"[spec-fill-FAIL] spec filler failed {_spec_e} {_tb_spec.format_exc()[:1200]} — falling back to legacy loop", flush=True)
+        print(f"[spec-fill-INCOMPLETE] spec filler incomplete ({_spec_e}) — falling back to legacy loop to complete all rows", flush=True)
     heartbeat_path = Path("/tmp") / f"v14_heartbeat_{new_symside}.txt"
     per_cell_timeout_sec = YELLOW_TIMEOUT  # spec YELLOW_TIMEOUT=0.1 for every cell (naked and yellow)
     # NEVER WAIT — hard YELLOW_TIMEOUT per cell, then mark cell+tab RED via _spec_mark_red, write -1/0, enqueue queue.Queue, plowing never blocks
