@@ -51,7 +51,7 @@
   "ang:SNXUSDT_SHORT",
   "ang:SOLUSDC_LONG",
   "ang:SUSHIUSDT_SHORT",
-  "ang:THETAUSDT_SHORT",
+  "ang:THETAUSDT_LONG",
   "ang:TNSRUSDT_SHORT",
   "ang:TRBUSDT_LONG",
   "ang:UNIUSDC_LONG",
@@ -70,6 +70,7 @@
   "fin:ALGOUSDT_LONG",
   "fin:AVAXUSDC_LONG",
   "fin:CHRUSDT_LONG",
+  "fin:COMPUSDT_SHORT",
   "fin:COTIUSDT_LONG",
   "fin:DASHUSDT_LONG",
   "fin:EGLDUSDT_SHORT",
@@ -81,7 +82,7 @@
   "fin:UNIUSDC_LONG",
   "fin:XLMUSDT_LONG",
   "fin:XTZUSDT_LONG",
-  "fin:ZENUSDT_LONG",
+  "fin:ZENUSDT_SHORT",
   "flz:100PEPEUSDC_LONG",
   "flz:100PEPEUSDC_SHORT",
   "flz:BNBUSDC_LONG",
@@ -99,7 +100,6 @@
   "flz:GRAMUSDT_LONG",
   "flz:GRAMUSDT_SHORT",
   "flz:HYPEUSDT_LONG",
-  "flz:HYPEUSDT_SHORT",
   "flz:SOLUSDC_LONG",
   "flz:SOLUSDC_SHORT",
   "flz:WLDUSDC_LONG",
@@ -134,6 +134,7 @@
   "men:ADAUSDC_LONG",
   "men:ALGOUSDT_LONG",
   "men:AVAXUSDC_LONG",
+  "men:COMPUSDT_SHORT",
   "men:COTIUSDT_LONG",
   "men:DASHUSDT_LONG",
   "men:EGLDUSDT_SHORT",
@@ -144,5 +145,5 @@
   "men:UNIUSDC_LONG",
   "men:XLMUSDT_LONG",
   "men:XTZUSDT_LONG",
-  "men:ZENUSDT_LONG"
+  "men:ZENUSDT_SHORT"
 ]

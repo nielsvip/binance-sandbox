@@ -17,7 +17,7 @@
 9. **`F` HUSTLE:** Always `None` (HUSTLE not running). Only `seq_mode=hustle` may write `F`.
 10. **`E` BASELINE:** Blank until POS per law — only `first_data_row` per sheet (`row2` header `BASELINE` preserved, `E3` numeric) and POS rows get `E`. `NEG` non-first stays `E=None`.
 11. **`H/I` LIVE:** Blank until workbook complete. After `12` tabs done, verify winning `cumulative_overrides` via `backtest_v12_engine.run_one(sym, overrides, window_days)` (30s, not per row) and fill `H=live_delta`, `I=live_sharpe` (vector_only fallback).
-12. **`STDEV_SLOPE_SIZING` skip** — 12 tabs, not 13, until rewritten. `GLOBAL_RISK_GATES` last.
+12. **`STDEV_SLOPE_SIZING` simple T/F** — multiplier `1-5x` gradient between stdev extremes — 13 tabs total (was 12 skipped, now included). `GLOBAL_RISK_GATES` last.
 13. **Keep NPZ hot until workbook finished** — `ALL_PREPARED` never erase, `ALL_NPZ_ARRAYS` never `pop`, `V12_NPZ_CACHE=32` (30d) / `64` (365d).
 14. **30D gate for 365D:** Only symbols where `30d POS>0` and `pool_sharpe>0.2` and `TIM 20-80` and `DD≤30` go to `365d`. Never run `365d` for all `354` syms.
 15. **7D midget:** Cheap agents must complete `7d 4000` cells in `10min` (`0.15s/cell`). `7d 3361` bars `0.07s` naked → `3930*0.07/16=17s` parallel + `10s` save = `<2min`. Proves `v12_quick` wiring, not 30d P&L.

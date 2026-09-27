@@ -18,7 +18,7 @@
 10. **`E` BASELINE:** **Blank until POS** per law — only `first_data_row` per sheet and `POS`-promoted rows get `E = cumulative_before`. `NEG` non-first rows stay `E=None`. Never pre-fill `E` for all rows.
 11. **`H` LIVE_DELTA / `I` LIVE_SHARPE:** **Blank until workbook complete** — contain formulas that screw up fill. Only after all 12 tabs done, verify winning `cumulative_overrides` via `backtest_v12_engine` (slow parity) and fill `H/I`.
 12. **`K` PER_ROW_FILTERS:** `", ".join(pos_yellows)` per row, never overwrite.
-13. **`STDEV_SLOPE_SIZING` skip** — 12 tabs to fill, not 13, until rewritten.
+13. **`STDEV_SLOPE_SIZING` simple T/F** — multiplier gradient `1-5x` between stdev extremes — 13 tabs total (was 12 skipped, now included).
 14. **Order:** Fill tabs **sequentially** (STDEV → ENTRY_REVERSAL_BOUNCE → … → GLOBAL), rows `3..max_row` in order, yellows per row before next row. `hustle` mode random only if enabled. If tab complete, skip in remaining rounds.
 15. **Stall:** If cell >10s, mark **RED** fill `FF0000`, write reason, continue to next yellow or next TAB (never next ROW in same tab for NEG).
 16. **Keep NPZ in RAM until workbook finished** — `ALL_PREPARED` + `ALL_NPZ_ARRAYS` never erase, `V12_NPZ_CACHE=32`, `ThreadPool 16` batch `0.07s` each.

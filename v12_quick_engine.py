@@ -4631,6 +4631,7 @@ class QuickConfig:
     DC_BREAKOUT_TF_EXPANDED: str = "1h"
     EXIT_VELOCITY_WT_TFS: str = "1h,4h,D"
     DC_HARD_STOP_TF: str = "4h"  # ULTIMATE_DC HARD_STOP TF: 4h|D — per sym_side sweepable; D wider = fewer stops
+    WT_LOWER_CROSS_EXIT_TF: str = "OFF"  # WT lower cross exit TF: OFF/15m/1h/4h — LONG wt cross down + price lower, SHORT opposite; added 2026-09-27 as option in big WT TF sweep
     # ── 2026-09-03 HARD SHORT GATES — baked (mirrors tradier_manage) ──
     ROTATION_S_FINAL_SCORE_MAX: float = 0.35
     ROTATION_S_WT_BEAR_ALIGN_MIN: int = 2
@@ -22341,6 +22342,38 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _hs_reason, 'type': 'CLOSE', 'ts': _tsu, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _hs_reason, 'bars_held': int(i - pos['entry_bar'])})
                 pos = None; cd = cooldown_bars; has_closed_before = True
                 continue
+        except Exception:
+            pass
+        # WT LOWER CROSS EXIT — LONG wt cross down + price lower, SHORT opposite; TF sweep OFF/15m/1h/4h
+        try:
+            _wt_tf = str(getattr(cfg, 'WT_LOWER_CROSS_EXIT_TF', 'OFF') or 'OFF').strip()
+            if _wt_tf.upper() != 'OFF' and i > 0:
+                _wt_key = f"wt1_{_wt_tf}" if _wt_tf != "4h" else "wt1_4h"
+                _wt2_key = f"wt2_{_wt_tf}" if _wt_tf != "4h" else "wt2_4h"
+                # fallback to 15m if TF not in npz
+                if _wt_key not in npz and _wt_tf == "15m":
+                    _wt_key, _wt2_key = "wt1_15m", "wt2_15m"
+                w1 = float(npz.get(_wt_key, [0])[i]) if i < len(npz.get(_wt_key, [])) else 0
+                w2 = float(npz.get(_wt2_key, [0])[i]) if i < len(npz.get(_wt2_key, [])) else 0
+                w1p = float(npz.get(_wt_key, [0])[i-1]) if i-1 >=0 and i-1 < len(npz.get(_wt_key, [])) else w1
+                w2p = float(npz.get(_wt2_key, [0])[i-1]) if i-1 >=0 and i-1 < len(npz.get(_wt2_key, [])) else w2
+                pxp = float(close[i-1]) if i-1 >=0 and i-1 < len(close) else px
+                _wt_fire=False
+                if is_long:
+                    if w1 !=0 and w2 !=0 and w1p !=0 and w2p !=0 and w1 < w2 and w1p >= w2p and px < pxp:
+                        _wt_fire=True
+                else:
+                    if w1 !=0 and w2 !=0 and w1p !=0 and w2p !=0 and w1 > w2 and w1p <= w2p and px > pxp:
+                        _wt_fire=True
+                if _wt_fire:
+                    pos['fees'] += abs(pos['qty'] * px) * half_fee
+                    _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
+                    _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
+                    _tsw = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                    _wt_reason = f"WT_LOWER_CROSS_EXIT wt_{_wt_tf} {'lower wt+price' if is_long else 'higher wt+price'}"
+                    trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _wt_reason, 'type': 'CLOSE', 'ts': _tsw, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _wt_reason, 'bars_held': int(i - pos['entry_bar'])})
+                    pos = None; cd = cooldown_bars; has_closed_before = True
+                    continue
         except Exception:
             pass
 

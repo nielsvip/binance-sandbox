@@ -244,6 +244,7 @@ OUT_DIR = ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
 PROGRESS_DIR = ROOT / "data" / "reports" / "lifecycle_pilot"
 FLAGS_DIR = ROOT / "data" / "reports" / "v15_flags"
 SWITCH_SHEETS = [
+    "STDEV_SLOPE_SIZING",
     "ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES",
     "EXIT_STRUCTURAL", "EXIT_VELOCITY",
     "REENTRY_WINDOWED", "REENTRY_ADAPTIVE",
@@ -251,8 +252,8 @@ SWITCH_SHEETS = [
     "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER",
     "GLOBAL_RISK_GATES",
 ]
-# 12-tab: STDEV_SLOPE_SIZING skipped — 3803 rows (was 4801 with STDEV). Sheet stays in TEMPLATE but never calculated.
-SKIP_SHEETS = {"STDEV_SLOPE_SIZING"}
+# STDEV_SLOPE_SIZING: simple T/F of multiplier gradient 1-5x between stdev extremes — 13 tabs total (was 12 skipped, now included)
+SKIP_SHEETS: set[str] = set()
 
 ALL_PREPARED: dict[str, dict] = {}
 ALL_NPZ_ARRAYS: dict[str, dict] = {}
