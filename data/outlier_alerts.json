@@ -1,34 +1,27 @@
 {
  "active": [
   {
-   "position_key": "fin:SNXUSDT_LONG",
-   "symbol": "SNXUSDT",
-   "type": "STALE_ACTIVITY",
-   "severity": "WARNING",
-   "idle_h": 41.6
-  },
-  {
-   "position_key": "fin:ADAUSDC_LONG",
-   "symbol": "ADAUSDC",
-   "type": "STALE_ACTIVITY",
-   "severity": "WARNING",
-   "idle_h": 41.6
-  },
-  {
-   "position_key": "fin:XLMUSDT_LONG",
+   "position_key": "men:XLMUSDT_LONG",
    "symbol": "XLMUSDT",
    "type": "STALE_ACTIVITY",
    "severity": "WARNING",
-   "idle_h": 41.6
+   "idle_h": 42.4
+  },
+  {
+   "position_key": "men:ADAUSDC_LONG",
+   "symbol": "ADAUSDC",
+   "type": "STALE_ACTIVITY",
+   "severity": "WARNING",
+   "idle_h": 53.3
   }
  ],
- "last_scan": "2026-09-27T16:36:09.340328+00:00",
+ "last_scan": "2026-09-27T17:26:07.835534+00:00",
  "summary": {
   "stuck": 0,
   "runaway_loss": 0,
-  "stale_activity": 3,
-  "total": 3,
+  "stale_activity": 2,
+  "total": 2,
   "critical": 0,
-  "positions_scanned": 3
+  "positions_scanned": 2
  }
 }

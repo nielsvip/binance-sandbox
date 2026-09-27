@@ -938,8 +938,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         naked_vec = None
         try:
             naked_vec = _eval_with_timeout(switch_variant)
-            if naked_vec and naked_vec.get("valid"):
+            # FIX: use actual gain even if valid False (was -1 placeholder)
+            if naked_vec and naked_vec.get("gain_pct") is not None:
                 naked_delta = float(naked_vec.get("gain_pct") or 0) - cumulative_before
+                if not naked_vec.get("valid"):
+                    per_yellow_timeout_reason["naked"] = f"valid False but gain {naked_vec.get('gain_pct'):.2f} used"
             else:
                 naked_delta = -1.0  # invalid => negative
                 if naked_vec:
@@ -1011,9 +1014,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             col = header_maps[sname].get(hdr)
             try:
                 vec = _eval_with_timeout(variant, timeout_sec=YELLOW_TIMEOUT)
-                if vec and vec.get("valid"):
+                # FIX: always use actual gain even if valid False (e.g. ZEC 19d coverage) — -1 is placeholder not a calculation
+                if vec and vec.get("gain_pct") is not None:
                     vg = float(vec.get("gain_pct") or 0)
                     delta = vg - cumulative_before
+                    # if valid False but gain is still calculable, treat as real delta (not -1)
+                    if not vec.get("valid"):
+                        per_yellow_timeout_reason[hdr] = f"valid False but gain {vg:.2f} used (was -1)"
                 else:
                     delta = -1.0
                     reason = (vec.get("invalid_reason") if vec else "invalid") or "invalid"
