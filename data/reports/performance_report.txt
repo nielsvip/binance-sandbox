@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-27 00:51 UTC
+PERFORMANCE REPORT — 2026-09-27 01:51 UTC
 ================================================================================
 Total: 149 symbols | A=3 B=106 C=40
 Window: 14 days | Min trades: 5
@@ -44,12 +44,12 @@ Window: 14 days | Min trades: 5
          ALGOUSDT  WR=54%  avg=+0.04%  total=+1.1%  trades= 26  mult=1.97
           ARBUSDC  WR=55%  avg=+0.09%  total=+1.0%  trades= 11  mult=1.79
           RLCUSDT  WR=40%  avg=+0.19%  total=+1.0%  trades=  5  mult=0.95
-         QTUMUSDT  WR=57%  avg=+0.04%  total=+0.9%  trades= 23  mult=2.44
      1000LUNCUSDT  WR=100%  avg=+0.89%  total=+0.9%  trades=  1  mult=1.00
          AMATUSDT  WR=45%  avg=+0.08%  total=+0.9%  trades= 11  mult=0.94
          IOTAUSDT  WR=33%  avg=+0.09%  total=+0.8%  trades=  9  mult=0.68
           UNIUSDC  WR=75%  avg=+0.20%  total=+0.8%  trades=  4  mult=1.00
          CRWDUSDT  WR=82%  avg=+0.06%  total=+0.7%  trades= 11  mult=4.39
+         QTUMUSDT  WR=47%  avg=+0.03%  total=+0.7%  trades= 19  mult=0.91
          ATOMUSDT  WR=57%  avg=+0.09%  total=+0.7%  trades=  7  mult=1.67
           WLDUSDC  WR=47%  avg=+0.02%  total=+0.6%  trades= 30  mult=0.83
           WIFUSDC  WR=83%  avg=+0.09%  total=+0.5%  trades=  6  mult=2.98
@@ -74,6 +74,7 @@ Window: 14 days | Min trades: 5
          API3USDT  WR=100%  avg=+0.01%  total=+0.0%  trades=  1  mult=1.00
          BLURUSDT  WR=100%  avg=+0.01%  total=+0.0%  trades=  2  mult=1.00
           AMDUSDT  WR=100%  avg=+0.01%  total=+0.0%  trades=  1  mult=1.00
+      VIRTUALUSDT  WR=100%  avg=+0.01%  total=+0.0%  trades=  1  mult=1.00
          METAUSDT  WR=0%  avg=-0.00%  total=-0.0%  trades=  1  mult=1.00
           LTCUSDC  WR=0%  avg=-0.00%  total=-0.0%  trades=  1  mult=1.00
          NFLXUSDT  WR=0%  avg=-0.00%  total=-0.0%  trades=  1  mult=1.00
@@ -81,7 +82,6 @@ Window: 14 days | Min trades: 5
        MORPHOUSDT  WR=100%  avg=+0.00%  total=+0.0%  trades=  1  mult=1.00
      FARTCOINUSDT  WR=50%  avg=+0.00%  total=+0.0%  trades=  8  mult=1.00
           CRVUSDC  WR=33%  avg=+0.00%  total=+0.0%  trades=  3  mult=1.00
-      VIRTUALUSDT  WR=50%  avg=-0.00%  total=-0.0%  trades=  2  mult=1.00
         PENGUUSDC  WR=0%  avg=-0.00%  total=-0.0%  trades=  2  mult=1.00
           CHRUSDT  WR=0%  avg=-0.05%  total=-0.1%  trades=  1  mult=1.00
           ETHUSDC  WR=51%  avg=-0.00%  total=-0.1%  trades= 51  mult=1.17
@@ -159,7 +159,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=30%  avg=-2.31%  total=-67.3%  trades= 47  mult=0.15
 
 SUMMARY:
-  Total PnL (all symbols): +645.4%
+  Total PnL (all symbols): +645.2%
   Avg win rate: 48%
   A-tier avg mult: 10.00
   C-tier avg mult: 0.38
