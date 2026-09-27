@@ -13,9 +13,9 @@
   },
   {
     "symbol": "WUSDT",
-    "returns_15m": -16.266666666666666,
-    "returns_3m": -16.342842289947367,
-    "gain_score": -16.267
+    "returns_15m": -16.662351113412736,
+    "returns_3m": -17.341894060995187,
+    "gain_score": -16.662
   },
   {
     "symbol": "PUMPUSDT",
@@ -37,9 +37,9 @@
   },
   {
     "symbol": "XVGUSDT",
-    "returns_15m": -11.319065556325064,
-    "returns_3m": -11.21758737316798,
-    "gain_score": -11.319
+    "returns_15m": -11.541701769165963,
+    "returns_3m": -11.764705882352937,
+    "gain_score": -11.542
   },
   {
     "symbol": "GRASSUSDT",
@@ -49,33 +49,45 @@
   },
   {
     "symbol": "SUIUSDC",
-    "returns_15m": -7.9073100812231205,
-    "returns_3m": -8.024494989661205,
-    "gain_score": -7.907
+    "returns_15m": -8.221569716689144,
+    "returns_3m": -8.06836248012718,
+    "gain_score": -8.222
   },
   {
     "symbol": "CHRUSDT",
-    "returns_15m": -7.084933845497218,
-    "returns_3m": -7.715133531157265,
-    "gain_score": -7.085
+    "returns_15m": -7.091833555681304,
+    "returns_3m": -8.220910623946038,
+    "gain_score": -7.092
   },
   {
     "symbol": "IMXUSDT",
-    "returns_15m": -6.415079109867391,
-    "returns_3m": -7.713806595863614,
-    "gain_score": -6.415
+    "returns_15m": -6.77583286278939,
+    "returns_3m": -7.9196876742888955,
+    "gain_score": -6.776
+  },
+  {
+    "symbol": "APEUSDT",
+    "returns_15m": -5.992736077481852,
+    "returns_3m": -5.362583790371726,
+    "gain_score": -5.993
+  },
+  {
+    "symbol": "BIGTIMEUSDT",
+    "returns_15m": -5.8866583019656975,
+    "returns_3m": -6.014409522815079,
+    "gain_score": -5.887
   },
   {
     "symbol": "RAYSOLUSDT",
     "returns_15m": -5.846323770520697,
-    "returns_3m": -5.568951126773619,
+    "returns_3m": -5.520760844351648,
     "gain_score": -5.846
   },
   {
-    "symbol": "BIGTIMEUSDT",
-    "returns_15m": -5.335338598908327,
-    "returns_3m": -6.073254721903362,
-    "gain_score": -5.335
+    "symbol": "XAIUSDT",
+    "returns_15m": -5.511730355496366,
+    "returns_3m": -5.414829248282217,
+    "gain_score": -5.512
   },
   {
     "symbol": "MOVRUSDT",
@@ -84,34 +96,16 @@
     "gain_score": -5.277
   },
   {
-    "symbol": "APEUSDT",
-    "returns_15m": -5.015290519877683,
-    "returns_3m": -5.015290519877683,
-    "gain_score": -5.015
-  },
-  {
-    "symbol": "XAIUSDT",
-    "returns_15m": -4.592945070859625,
-    "returns_3m": -5.074104569781807,
-    "gain_score": -4.593
-  },
-  {
-    "symbol": "SKYUSDT",
-    "returns_15m": -4.208566108007437,
-    "returns_3m": -4.811250925240547,
-    "gain_score": -4.209
+    "symbol": "USUALUSDT",
+    "returns_15m": -4.600705790092797,
+    "returns_3m": -3.9857932123125535,
+    "gain_score": -4.601
   },
   {
     "symbol": "SEIUSDT",
-    "returns_15m": -4.085680285600964,
+    "returns_15m": -4.577742699289675,
     "returns_3m": -5.902192242833068,
-    "gain_score": -4.086
-  },
-  {
-    "symbol": "USUALUSDT",
-    "returns_15m": -4.080425783560024,
-    "returns_3m": -3.8593256059009464,
-    "gain_score": -4.08
+    "gain_score": -4.578
   },
   {
     "symbol": "GRAMUSDT",
@@ -128,7 +122,7 @@
   {
     "symbol": "ONDOUSDT",
     "returns_15m": -3.577849694354554,
-    "returns_3m": -3.9577363896848157,
+    "returns_3m": -3.9749328558639205,
     "gain_score": -3.578
   },
   {
@@ -138,45 +132,51 @@
     "gain_score": -3.567
   },
   {
-    "symbol": "WLDUSDC",
-    "returns_15m": -3.027185108721386,
-    "returns_3m": -2.4291497975708483,
-    "gain_score": -3.027
-  },
-  {
-    "symbol": "CAKEUSDT",
-    "returns_15m": -2.945659511616831,
-    "returns_3m": -3.2004809562542,
-    "gain_score": -2.946
-  },
-  {
-    "symbol": "POLUSDT",
-    "returns_15m": -2.892595940504568,
-    "returns_3m": -3.329515706806286,
-    "gain_score": -2.893
+    "symbol": "SKYUSDT",
+    "returns_15m": -3.537942242780346,
+    "returns_3m": -4.398463635237266,
+    "gain_score": -3.538
   },
   {
     "symbol": "BRETTUSDT",
-    "returns_15m": -2.692939244663384,
-    "returns_3m": -2.836530578783414,
-    "gain_score": -2.693
+    "returns_15m": -3.442252731675054,
+    "returns_3m": -2.8524590163934516,
+    "gain_score": -3.442
+  },
+  {
+    "symbol": "INTWUSDT",
+    "returns_15m": -3.364540667056754,
+    "returns_3m": -1.2556053811659242,
+    "gain_score": -3.365
+  },
+  {
+    "symbol": "WLDUSDC",
+    "returns_15m": -3.1775018261504693,
+    "returns_3m": -3.000365898280273,
+    "gain_score": -3.178
+  },
+  {
+    "symbol": "POLUSDT",
+    "returns_15m": -3.0121470781352646,
+    "returns_3m": -3.2028178243774548,
+    "gain_score": -3.012
+  },
+  {
+    "symbol": "CAKEUSDT",
+    "returns_15m": -2.9224003404738195,
+    "returns_3m": -3.211804459754787,
+    "gain_score": -2.922
   },
   {
     "symbol": "NOTUSDT",
-    "returns_15m": -2.44183810805615,
-    "returns_3m": -2.1973785659213685,
-    "gain_score": -2.442
+    "returns_15m": -2.4605920799692402,
+    "returns_3m": -2.0274184205445036,
+    "gain_score": -2.461
   },
   {
     "symbol": "LPTUSDT",
     "returns_15m": -2.403577417551701,
     "returns_3m": -2.5669642857142883,
     "gain_score": -2.404
-  },
-  {
-    "symbol": "MINAUSDT",
-    "returns_15m": -2.3246245628471347,
-    "returns_3m": -2.4650780608052534,
-    "gain_score": -2.325
   }
 ]

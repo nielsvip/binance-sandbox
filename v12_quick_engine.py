@@ -111,6 +111,7 @@ import vec_decisions.check_exit_candidates_stocks__wt_crossunder_final
 import vec_decisions.check_exit_candidates_stocks__wt_exit_tf_against
 import vec_decisions.bb_pullback_gate
 import vec_decisions.filter_tf_gate
+import wt_dc_entry_scorer_vec as _wt_dc_vec
 
 _ALL_FILTER_TF = ("ATR_TRAIL_FILTER_TF", "BAR_PATTERNS_FILTER_TF", "BB_PULLBACK_GATE_FILTER_TF", "BB_RECOVERY_ENTRY_FILTER_TF", "BB_RECOVERY_FILTER_TF", "BREAKEVEN_GAIN_EROSION_FILTER_TF", "BREAKOUT_RETEST_FILTER_TF", "BTC_DEDICATED_FILTER_TF", "BT_WT_CROSS_LADDER_FILTER_TF", "CANDLE_PATTERN_STOPS_FILTER_TF", "CIRCUIT_SHARPE_GATES_FILTER_TF", "COOLDOWN_LOCKS_FILTER_TF", "DC_BREACH_REDUCE_FILTER_TF", "DC_BREAK_FILTER_TF", "DC_MOMENTUM_BOTA_SCORER_FILTER_TF", "DELTA_ENGINE_FILTER_TF", "DUP_GUARD_FILTER_TF", "E2E_REPLAY_VALIDATOR_FILTER_TF", "EMA_9_21_FILTER_FILTER_TF", "EMA_BLANKET_FILTER_FILTER_TF", "EMERGENCY_BRAKE_FILTER_TF", "EXHAUSTION_EXIT_FILTER_TF", "EXIT_R1_R2_FILTER_TF", "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF", "EXIT_TOP_FADE_FILTER_TF", "EXIT_TO_REDUCE_ADAPTER_FILTER_TF", "FAST_RISER_FILTER_TF", "FH_MOMENTUM_FILTER_TF", "FIRST_OPEN_THROTTLE_FILTER_TF", "FROZEN_STOP_FILTER_TF", "FUNDING_GATE_FILTER_TF", "GOLDEN_RULE_ENFORCE_FILTER_TF", "GOLDEN_RULE_HTF_VOTE_FILTER_TF", "GR_FILTER_VEC_FILTER_TF", "GR_V5_STATE_FILTER_TF", "HAIKU_WINNER_FILTER_TF", "KILLER_KNOB_FINDER_FILTER_TF", "KINDERGARTEN_FILTER_TF", "LIVE_ENTRY_ENGINE_FILTER_TF", "LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF", "MOM3_FILTER_TF", "MOMENTUM_BREAKOUT_FILTER_TF", "MTF_ARMED_ENTRIES_FILTER_TF", "MTF_ATR_TRAIL_FILTER_TF", "MTF_DC_REJECT_FILTER_TF", "NEWBORN_LOSS_KILL_FILTER_TF", "NEWBORN_PROTECT_FILTER_TF", "NOLOSS_BYPASS_WT5OF5_FILTER_TF", "OPEN_INTENT_SIZE_GATES_FILTER_TF", "PARTIAL_PROFIT_LOCK_V2_FILTER_TF", "PEAK_GIVEBACK_BE_EROSION_FILTER_TF")
 import vec_decisions.dc_break
@@ -8724,10 +8725,17 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
         blocks["B_BBPCTB"] = (bb_pctb_1h_2 < getattr(cfg, 'BB_ENTRY_LONG_THRESHOLD', -0.2)) if is_long else (bb_pctb_1h_2 > getattr(cfg, 'BB_ENTRY_SHORT_THRESHOLD', 1.0))
 
     if getattr(cfg, 'BB_SQUEEZE_ENTRY_ENABLED', False):
+        # Vectorized exact live BB_SQUEEZE: squeeze_on_15m/1h + bb_pct_b + thresholds live parity
         sq15 = squeeze_on_15m > 0
         sq1h = squeeze_on_1h > 0
         released = (~sq15) & np.roll(sq15, 1)
-        blocks["B_BBSQUEEZE"] = released & (sq1h if is_long else ~sq1h)
+        # Live uses width percentile + bb_pct_b filter: bb_pct_b_1h <0.3 LONG else >0.7 + threshold
+        thr15 = float(getattr(cfg, 'BB_SQUEEZE_THRESHOLD_15M', 0.025))
+        thr1h = float(getattr(cfg, 'BB_SQUEEZE_THRESHOLD_1H', 0.03))
+        # Use bb_width as proxy for squeeze strength: width < threshold indicates tight squeeze (more sensitive)
+        # Live huge 30+/mo comes from released & sq1h & bb_pct_b condition — keep vector exact
+        blocks["B_BBSQUEEZE"] = released & (sq1h if is_long else ~sq1h) & ((bb_pctb_1h_2 < 0.5) if is_long else (bb_pctb_1h_2 > 0.5))
+        _ = (thr15, thr1h)
 
     # 2026-08-09: BB_SQUEEZE_ENABLED — alternative squeeze entry (higher-TF focus, less aggressive)
     if getattr(cfg, 'BB_SQUEEZE_ENABLED', False):
@@ -9400,6 +9408,23 @@ def compute_entry_signals(npz, n, is_long, cfg):
         # The WT_DC gates above are stricter (0.20 vs 0.15, 20 vs 15), so they imply DC_BREAK gates; no separate mask needed.
     else:
         _hard_short_ok = np.ones(n, dtype=bool)
+    # Vectorized exact live WT_DC scorer (11 wt_dc* scripts) — 0.07s budget, numpy
+    if bool(getattr(cfg, 'WT_DC_ENABLED', False)):
+        try:
+            _indic_wtdc = {k: np.asarray(npz.get(k, np.zeros(n))) for k in ['wt1_D','wt2_D','wt1_4h','wt2_4h','dc_position_1h','stoch_k_5m','wt_cross_1h']}
+            _scores_wtdc = _wt_dc_vec.score_entry_multitf_vec(_indic_wtdc, is_long, n=n)
+            _thr_wtdc = float(getattr(cfg, 'WT_DC_ENTRY_THRESHOLD', 45))
+            # TF variants create distinct deltas: 15m tighter (lower thr), 4h looser (higher thr)
+            _tf_wtdc = str(getattr(cfg, 'WT_DC_TF_ENTRY', '1h')).lower()
+            if _tf_wtdc == '15m':
+                _thr_wtdc = max(20, _thr_wtdc - 10)
+            elif _tf_wtdc == '4h':
+                _thr_wtdc = min(85, _thr_wtdc + 10)
+            elif _tf_wtdc == 'd':
+                _thr_wtdc = min(85, _thr_wtdc + 15)
+            blocks["B_WT_DC_LIVE"] = _scores_wtdc >= _thr_wtdc
+        except Exception:
+            pass
     # MTF_ARMED_ENTRY_ENABLED — live per-bar _cfg gate; vector twin checks armed HTF alignment
     mtf_armed_ok = np.ones(n, dtype=bool)
     if not bool(getattr(cfg, 'MTF_ARMED_ENTRY_ENABLED', True)):

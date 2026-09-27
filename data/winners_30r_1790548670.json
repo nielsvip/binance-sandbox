@@ -7,21 +7,21 @@
   },
   {
     "symbol": "BEATUSDT",
-    "returns_15m": 10.744680851063828,
-    "returns_3m": 10.50955414012738,
-    "gain_score": 42.038
+    "returns_15m": 10.158730158730156,
+    "returns_3m": 9.926082365364298,
+    "gain_score": 39.704
   },
   {
     "symbol": "ACEUSDT",
-    "returns_15m": 7.268780334084131,
-    "returns_3m": 7.177423462890322,
-    "gain_score": 28.71
+    "returns_15m": 7.057446700249321,
+    "returns_3m": 7.193804768697776,
+    "gain_score": 28.775
   },
   {
     "symbol": "XPLUSDT",
-    "returns_15m": 6.966824644549773,
-    "returns_3m": 6.693769499858185,
-    "gain_score": 26.775
+    "returns_15m": 6.653808353738695,
+    "returns_3m": 6.53261587841028,
+    "gain_score": 26.13
   },
   {
     "symbol": "DASHUSDT",
@@ -44,8 +44,8 @@
   {
     "symbol": "C98USDT",
     "returns_15m": 4.221954161640526,
-    "returns_3m": 4.474002418379692,
-    "gain_score": 17.896
+    "returns_3m": 4.323257203919371,
+    "gain_score": 17.293
   },
   {
     "symbol": "TRBUSDT",
@@ -78,16 +78,16 @@
     "gain_score": 12.313
   },
   {
-    "symbol": "XTZUSDT",
-    "returns_15m": 3.0303030303030263,
-    "returns_3m": 3.0624999999999925,
-    "gain_score": 12.25
-  },
-  {
     "symbol": "KASUSDT",
     "returns_15m": 2.212454187998308,
     "returns_3m": 2.89855072463768,
     "gain_score": 11.594
+  },
+  {
+    "symbol": "XTZUSDT",
+    "returns_15m": 2.7654212243375076,
+    "returns_3m": 2.8054862842892794,
+    "gain_score": 11.222
   },
   {
     "symbol": "TLMUSDT",
@@ -114,12 +114,6 @@
     "gain_score": 9.909
   },
   {
-    "symbol": "BBUSDT",
-    "returns_15m": 2.605901782287083,
-    "returns_3m": 2.392887543743495,
-    "gain_score": 9.572
-  },
-  {
     "symbol": "IOSTUSDT",
     "returns_15m": 2.850697292863005,
     "returns_3m": 2.367830169422322,
@@ -132,10 +126,10 @@
     "gain_score": 9.409
   },
   {
-    "symbol": "ICPUSDT",
-    "returns_15m": 1.9163206643244988,
-    "returns_3m": 2.236455627212418,
-    "gain_score": 8.946
+    "symbol": "BBUSDT",
+    "returns_15m": 2.7427161431147487,
+    "returns_3m": 2.3185655364305533,
+    "gain_score": 9.274
   },
   {
     "symbol": "ASTERUSDT",
@@ -178,5 +172,11 @@
     "returns_15m": 2.181276249830642,
     "returns_3m": 1.6990291262135957,
     "gain_score": 6.796
+  },
+  {
+    "symbol": "1000FLOKIUSDT",
+    "returns_15m": 1.5242872228088606,
+    "returns_3m": 1.6674303842086684,
+    "gain_score": 6.67
   }
 ]
