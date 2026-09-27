@@ -120,7 +120,7 @@ def _hdr_col_map(ws) -> dict:
                 # also map without spaces for robustness
                 m[hv.replace(" ", "_").lower()] = c
         # fallback defaults if header missing (old template compat)
-        for k, fallback in [("BASELINE",5),("HUSTLE_DELTA",6),("VECTOR_DELTA",7),("LIVE_DELTA",8),("LIVE_SHARPE",9),("PER_ROW_FILTERS",11),("override",3),("is_default",12)]:
+        for k, fallback in [("Switch",1),("BASELINE",5),("HUSTLE_DELTA",6),("VECTOR_DELTA",7),("LIVE_DELTA",8),("LIVE_SHARPE",9),("PER_ROW_FILTERS",11),("override",3),("is_default",12)]:
             if k not in m and k.lower() not in m:
                 m[k] = fallback
                 m[k.lower()] = fallback
@@ -129,7 +129,7 @@ def _hdr_col_map(ws) -> dict:
     return m
 
 def _resolve_cols(ws) -> dict:
-    """Resolve E/F/G/H/I/K/C/L columns via header names, fallback to hardcoded."""
+    """Resolve E/F/G/H/I/K/C/L columns via header names, fallback to hardcoded. Switch read by header not coords per law."""
     hm = _hdr_col_map(ws)
     # common header variants observed in TEMPLATEs
     def pick(*names, fallback):
@@ -138,6 +138,7 @@ def _resolve_cols(ws) -> dict:
             if n.lower() in hm: return hm[n.lower()]
         return fallback
     return {
+        "A": pick("Switch", "switch", fallback=1),
         "C": pick("override", fallback=3),
         "E": pick("BASELINE", fallback=5),
         "F": pick("HUSTLE_DELTA", "HUSTLE", fallback=6),
@@ -744,9 +745,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     for sname in tabs:
         ws = wb[sname]
         cols = _resolve_cols(ws)
+        col_a = cols.get("A", 1)
         rows = []
         for rr in range(3, ws.max_row + 1):
-            sw = ws.cell(row=rr, column=1).value
+            sw = ws.cell(row=rr, column=col_a).value
             if sw is None or (isinstance(sw, str) and sw.strip() == ""):
                 continue
             sw = str(sw).strip()
@@ -858,28 +860,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         rr, switch, cand = pending
         ws = wb[sname]
         cols = _resolve_cols(ws)
-        # Ensure baseline column for this row has value (cumulative_before) — per TEMPLATE law: blank until POS, only first row per sheet and POS rows get E
+        # FIX 2026-09-27 TEMPLATE LAW: baseline E for pending row ALWAYS = cumulative_before (float) — required before every eval.
+        # Spec: baseline only gets anything written after POS stays BLANK normally refers to future non-pending rows, but pending row
+        # must have E = cumulative_before before yellow calc, and after POS the next pending's E is new cumulative (written here next iteration).
+        # Previous code only wrote for first_r, leaving stale after cross-tab moves — now always overwrite pending row.
         try:
-            # Check if this is first data row per sheet (always has E) or if previous row was POS (cumulative advanced)
-            # For this, we need to know if this row is first pending or if delta>0 for previous
-            # Simplified: if rr is first_data_row for this sheet, write E, else leave blank until POS
-            # Find first data row for this sheet
-            first_r = None
-            for _rr in range(3, ws.max_row+1):
-                if ws.cell(row=_rr, column=cols["A"]).value and str(ws.cell(row=_rr, column=cols["A"]).value).strip():
-                    first_r = _rr
-                    break
-            if rr == first_r:
-                ws.cell(row=rr, column=cols["E"]).value = float(cumulative_gain)
-                ws.cell(row=rr, column=cols["E"]).font = Font(name="Arial", size=10, bold=False)
-                ws.cell(row=rr, column=cols["E"]).alignment = VISUAL_ALIGN
-            else:
-                # For non-first rows, E stays blank until POS (do not write here, will be written when POS promotes)
-                # Ensure it is None (blank) if not already POS-promoted
-                if ws.cell(row=rr, column=cols["E"]).value is not None:
-                    # Keep existing if it was POS-promoted, else clear
-                    pass
-                # Do not write here for NEG rows
+            ws.cell(row=rr, column=cols["E"]).value = float(cumulative_gain)
+            ws.cell(row=rr, column=cols["E"]).font = Font(name="Arial", size=10, bold=False)
+            ws.cell(row=rr, column=cols["E"]).alignment = VISUAL_ALIGN
         except Exception:
             pass
         cumulative_before = float(cumulative_gain)
@@ -1759,33 +1747,44 @@ def _run_single(new_symside, args):
     """Single symside core — called for each of 4 NPZ batch, keeps all 4 hot in same process."""
     import time as _t
     _v15_start_time = _t.time()
-    # ABSOLUTE PROHIBITION — check BEFORE any heavy NPZ/prepare (2026-09-16)
+    # ABSOLUTE PROHIBITION — check BEFORE any heavy NPZ/prepare (2026-09-16) — FIX 2026-09-27: respect window_days and --out isolation
     try:
-        _early_prog = None
-        for _pp in [PROGRESS_DIR / f"{new_symside}_v14_progress.json", Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{new_symside}_v14_progress.json")]:
-            if _pp.exists():
-                try:
-                    _early_prog = json.loads(_pp.read_text())
-                    break
-                except Exception:
-                    continue
-        if os.getenv("FORCE_DC_RERUN") == "1":
-            print(f"[FORCE-DC-RERUN] {new_symside} hard-stop rerun forced", flush=True)
-        elif _early_prog and _early_prog.get("final_gain") is not None and len(_early_prog.get("done", {})) >= 50:
-            _done_cnt = len(_early_prog.get("done", {}))
-            _has_final = any((ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}*.xlsx").parent.glob(f"{new_symside}_30d_matrix.xlsx")) or any((ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}_bh*.xlsx").parent.glob(f"{new_symside}_bh*.xlsx"))
-            if not _has_final:
-                import pathlib as _pl2
-                _has_final = any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_30d_matrix.xlsx")) or any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_bh*.xlsx"))
-            if _done_cnt < 2800 and not _has_final:
-                print(f"[RESUME-ALLOW] {new_symside} incomplete final_gain {_early_prog.get('final_gain'):.2f} done {_done_cnt} no FINAL xlsx — resuming", flush=True)
-            elif args.baseline_json and args.seq_mode in ("shuffle", "worst2best", "worst_first"):
-                print(f"[{args.seq_mode.upper()}-ALLOW] {new_symside} already finished final_gain {_early_prog.get('final_gain'):.2f} but {args.seq_mode}+baseline-json allowed", flush=True)
-            elif args.seq_mode == "shuffle" and args.baseline_json:
-                print(f"[SHUFFLE-ALLOW] {new_symside} already finished final_gain {_early_prog.get('final_gain'):.2f} but shuffle+baseline-json allowed", flush=True)
-            else:
-                print(f"[PROHIBITED] {new_symside} ALREADY FINISHED early final_gain {_early_prog.get('final_gain'):.2f} done {len(_early_prog.get('done',{}))} — MUST NOT RETOUCH.", flush=True)
-                return
+        # If --out is isolated, never block on existing 30d final (testing 7d with custom out must not be prohibited by 30d done)
+        if getattr(args, "out", None):
+            print(f"[PROHIBITED-SKIP] {new_symside} --out {args.out} isolated — skip early finished check", flush=True)
+        else:
+            # Choose window-specific progress file: 7d uses _7d_progress.json, 30d uses _v14_progress.json legacy
+            _progress_name = f"{new_symside}_{args.window_days}d_progress.json" if getattr(args, "window_days", 30) != 30 else f"{new_symside}_v14_progress.json"
+            _early_prog = None
+            for _pp in [PROGRESS_DIR / _progress_name, Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{_progress_name}")]:
+                if _pp.exists():
+                    try:
+                        _early_prog = json.loads(_pp.read_text())
+                        break
+                    except Exception:
+                        continue
+            # Fallback to legacy v14 for 30d if not found, for 7d also check legacy if 7d not exists? No — 7d must be independent, don't block 7d by 30d.
+            if os.getenv("FORCE_DC_RERUN") == "1":
+                print(f"[FORCE-DC-RERUN] {new_symside} hard-stop rerun forced", flush=True)
+            elif _early_prog and _early_prog.get("final_gain") is not None and len(_early_prog.get("done", {})) >= 50:
+                _done_cnt = len(_early_prog.get("done", {}))
+                # For 7d window, check for window-specific final xlsx via --out? If no --out, target is still _30d_matrix.xlsx so we check that but allow 7d to run even if 30d exists? No block for 7d.
+                if getattr(args, "window_days", 30) != 30:
+                    print(f"[RESUME-ALLOW] {new_symside} window {args.window_days}d has progress done {_done_cnt} — window-specific, not blocked by 30d final", flush=True)
+                else:
+                    _has_final = any((ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}*.xlsx").parent.glob(f"{new_symside}_30d_matrix.xlsx")) or any((ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}_bh*.xlsx").parent.glob(f"{new_symside}_bh*.xlsx"))
+                    if not _has_final:
+                        import pathlib as _pl2
+                        _has_final = any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_30d_matrix.xlsx")) or any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_bh*.xlsx"))
+                    if _done_cnt < 2800 and not _has_final:
+                        print(f"[RESUME-ALLOW] {new_symside} incomplete final_gain {_early_prog.get('final_gain'):.2f} done {_done_cnt} no FINAL xlsx — resuming", flush=True)
+                    elif args.baseline_json and args.seq_mode in ("shuffle", "worst2best", "worst_first"):
+                        print(f"[{args.seq_mode.upper()}-ALLOW] {new_symside} already finished final_gain {_early_prog.get('final_gain'):.2f} but {args.seq_mode}+baseline-json allowed", flush=True)
+                    elif args.seq_mode == "shuffle" and args.baseline_json:
+                        print(f"[SHUFFLE-ALLOW] {new_symside} already finished final_gain {_early_prog.get('final_gain'):.2f} but shuffle+baseline-json allowed", flush=True)
+                    else:
+                        print(f"[PROHIBITED] {new_symside} ALREADY FINISHED early final_gain {_early_prog.get('final_gain'):.2f} done {len(_early_prog.get('done',{}))} — MUST NOT RETOUCH.", flush=True)
+                        return
     except Exception as _e:
         print(f"[EARLY-PROHIBIT-WARN] {_e}", flush=True)
     # Now run the original single core (from defaults onward) — keep 4 NPZs hot
@@ -1926,36 +1925,41 @@ def main():
         except Exception:
             new_symside = "AAPL_LONG"
 
-    # ABSOLUTE PROHIBITION — check BEFORE any heavy NPZ/prepare (2026-09-16)
-    # Finished workbooks (SNDK etc) have final_gain + done set + xls/log/zip/bak backups — MUST NOT be re-touched on ANY server.
+    # ABSOLUTE PROHIBITION — check BEFORE any heavy NPZ/prepare (2026-09-16) — FIX 2026-09-27 window-aware
+    # Finished workbooks have final_gain + done set + xls/log/zip/bak backups — MUST NOT be re-touched on ANY server. 7d/30d are independent.
     try:
-        _early_prog = None
-        for _pp in [PROGRESS_DIR / f"{new_symside}_v14_progress.json", Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{new_symside}_v14_progress.json")]:
-            if _pp.exists():
-                try:
-                    _early_prog = json.loads(_pp.read_text())
-                    break
-                except Exception:
-                    continue
-        if os.getenv("FORCE_DC_RERUN") == "1":
-            print(f"[FORCE-DC-RERUN] {new_symside} hard-stop rerun forced (dc_low_4h LONG / dc_high_4h SHORT can never be broken)", flush=True)
-        elif _early_prog and _early_prog.get("final_gain") is not None and len(_early_prog.get("done", {})) >= 50:
-            # FIX 2026-09-21: allow resume of incomplete sheets (done < 2800 or no FINAL xlsx) — herd was idle on HAO/VT etc with 2238 done but no FINAL
-            _done_cnt = len(_early_prog.get("done", {}))
-            _has_final = any((ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}*.xlsx").parent.glob(f"{new_symside}_30d_matrix.xlsx")) or any((ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}_bh*.xlsx").parent.glob(f"{new_symside}_bh*.xlsx"))
-            # check both local ROOT and sandbox path
-            if not _has_final:
-                import pathlib as _pl2
-                _has_final = any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_30d_matrix.xlsx")) or any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_bh*.xlsx"))
-            if _done_cnt < 2800 and not _has_final:
-                print(f"[RESUME-ALLOW] {new_symside} incomplete final_gain {_early_prog.get('final_gain'):.2f} done {_done_cnt} no FINAL xlsx — resuming", flush=True)
-            elif args.baseline_json and args.seq_mode in ("shuffle", "worst2best", "worst_first"):
-                print(f"[{args.seq_mode.upper()}-ALLOW] {new_symside} already finished final_gain {_early_prog.get('final_gain'):.2f} but {args.seq_mode}+baseline-json allowed for second round (filters/orange per tab needs delta)", flush=True)
-            elif args.seq_mode == "shuffle" and args.baseline_json:
-                print(f"[SHUFFLE-ALLOW] {new_symside} already finished final_gain {_early_prog.get('final_gain'):.2f} but shuffle+baseline-json allowed for second round", flush=True)
-            else:
-                print(f"[PROHIBITED] {new_symside} ALREADY FINISHED (early) final_gain {_early_prog.get('final_gain'):.2f} done {len(_early_prog.get('done',{}))} — MUST NOT RETOUCH. Backups in xls/log/zip/bak exist. Skipping BEFORE NPZ.", flush=True)
-                return
+        if getattr(args, "out", None):
+            print(f"[PROHIBITED-SKIP] {new_symside} --out isolated — skip early finished check", flush=True)
+        else:
+            _progress_name_main = f"{new_symside}_{args.window_days}d_progress.json" if getattr(args, "window_days", 30) != 30 else f"{new_symside}_v14_progress.json"
+            _early_prog = None
+            for _pp in [PROGRESS_DIR / _progress_name_main, Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{_progress_name_main}")]:
+                if _pp.exists():
+                    try:
+                        _early_prog = json.loads(_pp.read_text())
+                        break
+                    except Exception:
+                        continue
+            if os.getenv("FORCE_DC_RERUN") == "1":
+                print(f"[FORCE-DC-RERUN] {new_symside} hard-stop rerun forced (dc_low_4h LONG / dc_high_4h SHORT can never be broken)", flush=True)
+            elif _early_prog and _early_prog.get("final_gain") is not None and len(_early_prog.get("done", {})) >= 50:
+                _done_cnt = len(_early_prog.get("done", {}))
+                if getattr(args, "window_days", 30) != 30:
+                    print(f"[RESUME-ALLOW] {new_symside} window {args.window_days}d progress done {_done_cnt} — window-specific, not blocked by 30d final", flush=True)
+                else:
+                    _has_final = any((ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}*.xlsx").parent.glob(f"{new_symside}_30d_matrix.xlsx")) or any((ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}_bh*.xlsx").parent.glob(f"{new_symside}_bh*.xlsx"))
+                    if not _has_final:
+                        import pathlib as _pl2
+                        _has_final = any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_30d_matrix.xlsx")) or any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_bh*.xlsx"))
+                    if _done_cnt < 2800 and not _has_final:
+                        print(f"[RESUME-ALLOW] {new_symside} incomplete final_gain {_early_prog.get('final_gain'):.2f} done {_done_cnt} no FINAL xlsx — resuming", flush=True)
+                    elif args.baseline_json and args.seq_mode in ("shuffle", "worst2best", "worst_first"):
+                        print(f"[{args.seq_mode.upper()}-ALLOW] {new_symside} already finished final_gain {_early_prog.get('final_gain'):.2f} but {args.seq_mode}+baseline-json allowed for second round (filters/orange per tab needs delta)", flush=True)
+                    elif args.seq_mode == "shuffle" and args.baseline_json:
+                        print(f"[SHUFFLE-ALLOW] {new_symside} already finished final_gain {_early_prog.get('final_gain'):.2f} but shuffle+baseline-json allowed for second round", flush=True)
+                    else:
+                        print(f"[PROHIBITED] {new_symside} ALREADY FINISHED (early) final_gain {_early_prog.get('final_gain'):.2f} done {len(_early_prog.get('done',{}))} — MUST NOT RETOUCH. Backups in xls/log/zip/bak exist. Skipping BEFORE NPZ.", flush=True)
+                        return
         # also S1 peer check before NPZ fetch
         if os.getenv("FORCE_DC_RERUN") == "1":
             print(f"[FORCE-DC-RERUN] {new_symside} S1 peer check bypassed for hard-stop rerun", flush=True)
@@ -2498,29 +2502,38 @@ def main():
             except Exception as _e_hdr:
                 print(f"[headers-warn] {_e_hdr}", flush=True)
         print(f"[headers] L:BI ensured (single-load) { _t_single.time()-_t0_single:.2f}s", flush=True)
-        # BEST-C-FILL on same wb
+        # BEST-C-FILL on same wb — FIX 2026-09-27: use header map for Switch/A, never fill ORANGE GENERAL rows (ORANGE can NEVER be above white)
         filled_c = 0
         for sname in SWITCH_SHEETS:
             if sname not in wb_single.sheetnames:
                 continue
             ws_c = wb_single[sname]
+            cols_c = _resolve_cols(ws_c)
+            col_a = cols_c.get("A", 1)
+            col_c = cols_c.get("C", 3)
             for r in range(3, ws_c.max_row + 1):
-                sw = ws_c.cell(row=r, column=1).value
+                sw = ws_c.cell(row=r, column=col_a).value
                 if not sw or not isinstance(sw, str):
                     continue
                 sw = sw.strip()
+                if not sw or sw.lower() in ("switch", "general", "blanket", "filter", "option value") or sw.startswith("—"):
+                    continue
+                # Skip ORANGE GENERAL rows — never fill them as switch overrides (keep at bottom)
+                fam = str(ws_c.cell(row=r, column=4).value or "").strip()
+                if fam.upper() == "GENERAL" or sw.upper() == "GENERAL":
+                    continue
                 if sw in overrides:
                     val = overrides[sw]
                     val_str = "TRUE" if val is True else "FALSE" if val is False else str(val).upper() if str(val).lower() in ("true","false") else str(val)
-                    cur_c = ws_c.cell(row=r, column=3).value
+                    cur_c = ws_c.cell(row=r, column=col_c).value
                     if cur_c is None or str(cur_c).strip().upper() != val_str.strip().upper():
-                        ws_c.cell(row=r, column=3).value = val_str
+                        ws_c.cell(row=r, column=col_c).value = val_str
                         filled_c += 1
                     try:
-                        ws_c.cell(row=r, column=3).font = Font(name="Arial", size=10, bold=True, color="000000")
-                        ws_c.cell(row=r, column=3).alignment = Alignment(horizontal="left", vertical="center")
+                        ws_c.cell(row=r, column=col_c).font = Font(name="Arial", size=10, bold=True, color="000000")
+                        ws_c.cell(row=r, column=col_c).alignment = Alignment(horizontal="left", vertical="center")
                     except: pass
-        print(f"[BEST-C-FILL] {new_symside}: filled {filled_c} (single-load)", flush=True)
+        print(f"[BEST-C-FILL] {new_symside}: filled {filled_c} (single-load, header-aware, orange-skip)", flush=True)
         # baseline E2/E3 on same wb
         for sname in SWITCH_SHEETS:
             if sname in wb_single.sheetnames:
