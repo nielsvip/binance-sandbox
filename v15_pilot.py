@@ -968,6 +968,26 @@ COMPOSITE_SWITCHES = {
     "WT_DC_DETAILED_TF": lambda tf: {"WT_DC_ENABLED": False} if str(tf).upper() == "OFF" else {"WT_DC_ENABLED": True, "WT_DC_DETAILED_SCORER_ENABLED": True, "WT_DC_TF_ENTRY": str(tf), "WT_DC_DC_TF": str(tf)},
 }
 
+def _parse_opt_value(val, default):
+    # module-level twin of the per-row _parse_opt in _spec_fill_workbook (same rules)
+    if isinstance(default, bool):
+        if isinstance(val, str) and val.lower() in ("true", "false"):
+            return val.lower() == "true"
+        return bool(val)
+    if isinstance(default, int) and not isinstance(default, bool):
+        try:
+            return int(float(str(val)))
+        except Exception:
+            return val
+    if isinstance(default, float):
+        try:
+            return float(str(val))
+        except Exception:
+            return val
+    if isinstance(val, str) and val.lower() in ("true", "false"):
+        return val.lower() == "true"
+    return val
+
 def _switch_overrides(switch: str, cand_parsed) -> dict:
     return COMPOSITE_SWITCHES[switch](cand_parsed) if switch in COMPOSITE_SWITCHES else {switch: cand_parsed}
 
@@ -1029,6 +1049,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     tabs = [s for s in SWITCH_SHEETS if s in wb.sheetnames and s not in SKIP_SHEETS]
     # Keep defined order as in SWITCH_SHEETS (already 12, STDEV skipped)
     per_tab_rows: dict[str, list] = {}
+    orange_rows: set = set()  # GENERAL blanket rows (orange col A) — evaluated as ONE block per tab vs the cumulative
     for sname in tabs:
         ws = wb[sname]
         cols = _resolve_cols(ws)
@@ -1053,6 +1074,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             # Check is_default backup to know bold default rows — but we still process every row
             if fast_switches is not None and sw not in fast_switches:
                 continue  # --fast-switches: left pending for a later full pass on the same sheet
+            if str(ws.cell(row=rr, column=1).fill.fgColor.rgb or "").upper().endswith("FFE699"):
+                orange_rows.add((sname, rr))
             rows.append((rr, sw, cand))
         if is_hustle:
             _rnd.shuffle(rows)
@@ -1161,6 +1184,82 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _last_json["t"] = _t.time()
     def _row_done(sname: str, rr: int, switch: str, cand, n_evals: int, delta, promoted: bool):
         _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": nav_mode, "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "label": "ROW_DONE", "row_secs": round(_t.time() - _row_t0, 4), "n_evals": n_evals, "delta": delta, "promoted": promoted, "cum_after": cumulative_gain})
+    def _orange_block(sname: str, ws, cols: dict, from_idx: int) -> int:
+        # Orange (GENERAL) section of a tab arrives: evaluate ALL its pending rows at once against the current
+        # cumulative (pool + cache: an identical filter=opt on an unchanged cumulative is never recomputed), write every
+        # delta, promote only the single best positive, then leave the tab. No per-row tab-jumping through orange rows.
+        nonlocal cumulative_gain, cumulative_overrides
+        _next_pending(sname)
+        block = [(r2, sw2, c2) for (r2, sw2, c2) in per_tab_rows[sname] if (sname, r2) in orange_rows and (sname, f"{sw2}={c2}") not in _done_ids_cache["ids"]]
+        cum0 = float(cumulative_gain)
+        t0 = _t.time()
+        variants = []
+        for r2, sw2, c2 in block:
+            v = dict(cumulative_overrides)
+            v.update(_switch_overrides(sw2, _parse_opt_value(c2, defaults.get(sw2))))
+            variants.append((r2, sw2, c2, sanitize_overrides(v, defaults)[0]))
+        results = {}
+        futs = {}
+        for r2, sw2, c2, v in variants:
+            ck = (tuple(sorted((k, str(x)) for k, x in v.items())), args.window_days, id(prepared))
+            if ck in _EVAL_CACHE:
+                results[r2] = (_EVAL_CACHE[ck], "", True, 0.0)
+            elif _pool is not None:
+                futs[r2] = (_pool.submit(_pool_eval, v, args.window_days), ck)
+            else:
+                t1 = _t.time()
+                try:
+                    from tools.opt.v12_pilot import evaluate_prepared_sanitized
+                    res = evaluate_prepared_sanitized(prepared, v, args.window_days)
+                    _EVAL_CACHE[ck] = res
+                    results[r2] = (res, "", False, _t.time() - t1)
+                except Exception as e:
+                    results[r2] = (None, f"ERR {e}"[:120], False, _t.time() - t1)
+        deadline = t0 + YELLOW_TIMEOUT * max(1, -(-len(futs) // max(1, _n_proc)))
+        for r2, (fut, ck) in futs.items():
+            try:
+                res, secs = fut.result(timeout=max(0.01, deadline - _t.time()))
+                _EVAL_CACHE[ck] = res
+                results[r2] = (res, "", False, secs)
+            except _cf.TimeoutError:
+                fut.cancel()
+                results[r2] = (None, f"TIMEOUT {YELLOW_TIMEOUT:.0f}s", False, None)
+            except Exception as e:
+                results[r2] = (None, f"ERR {e}"[:120], False, None)
+        best = None
+        for r2, sw2, c2, v in variants:
+            res, err, cached, secs = results.get(r2, (None, "missing", False, None))
+            g = (res or {}).get("gain_pct")
+            d = (float(g) - cum0) if g is not None else None
+            ok = d is not None and bool((res or {}).get("valid"))
+            _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": nav_mode, "sheet": sname, "row": r2, "switch": sw2, "cand": str(c2), "label": "ORANGE", "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cum0, "delta": d, "secs": round(secs, 4) if secs is not None else None, "cached": cached, "err": err})
+            cell = ws.cell(row=r2, column=cols["G"])
+            if d is None:
+                _spec_mark_red(wb, sname, r2, cols["G"], reason=err or "no result")
+            else:
+                cell.value = float(d)
+                cell.font = Font(name="Arial", size=10, bold=True, color="006100" if (ok and d > 1e-9) else "9C0006")
+                cell.fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid") if d < 0 else PatternFill(fill_type=None)
+                cell.alignment = VISUAL_ALIGN
+                _write_div(sname, r2, [g])
+            progress.setdefault("done", {})[f"{sname}!{r2}:{sw2}={c2}"] = {"delta": d, "promoted": False, "orange_block": True, "vec_gain": g, "trades": (res or {}).get("trades"), "reason": err or (res or {}).get("invalid_reason") or "", "yellows": {}, "cumulative_before": cum0, "cumulative_after": cum0}
+            if ok and d > 1e-9 and (best is None or d > best[0]):
+                best = (d, r2, sw2, c2, g)
+        if best is not None:
+            d, r2, sw2, c2, g = best
+            cumulative_gain = float(g)
+            cumulative_overrides.update(_switch_overrides(sw2, _parse_opt_value(c2, defaults.get(sw2))))
+            cumulative_overrides, _ = sanitize_overrides(cumulative_overrides, defaults)
+            rec = progress["done"][f"{sname}!{r2}:{sw2}={c2}"]
+            rec.update({"promoted": True, "cumulative_after": cumulative_gain})
+            _add_override(ws, r2, _resolve_cols(ws), [f"{sw2}={c2}"])
+            ws.cell(row=r2, column=cols["G"]).font = Font(name="Arial", size=10, bold=True, color="006100")
+        progress["cumulative_gain"] = float(cumulative_gain)
+        progress["cumulative_overrides"] = dict(cumulative_overrides)
+        _maybe_write_json(force=True)
+        _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": nav_mode, "sheet": sname, "row": block[0][0] if block else None, "switch": "ORANGE_BLOCK", "cand": str(len(block)), "label": "ROW_DONE", "row_secs": round(_t.time() - t0, 4), "n_evals": len(block), "delta": best[0] if best else None, "promoted": best is not None, "cum_after": cumulative_gain})
+        print(f"[spec-orange] {sname} block {len(block)} rows vs cum {cum0:.4f} computed={len(futs)} cached={len(block)-len(futs)} best={'%s=%s %+.4f' % (best[2], best[3], best[0]) if best else 'none'} -> cum {cumulative_gain:.4f} ({_t.time()-t0:.1f}s)", flush=True)
+        return _land_on_next_tab(from_idx)
     def _land_on_next_tab(from_idx: int):
         # NEG / no-yellow / tab finished: go to first pending row of the next tab with pending rows and write E there
         for offset in range(1, len(tabs) + 1):
@@ -1243,6 +1342,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _row_t0 = _t.time()
         ws = wb[sname]
         cols = _resolve_cols(ws)
+        if (sname, rr) in orange_rows:
+            current_idx = _orange_block(sname, ws, cols, current_idx)
+            _maybe_save()
+            processed += 1
+            continue
         cumulative_before = float(cumulative_gain)
         # Yellow cells are read from THIS row's fills in the workbook (cloned from the final TEMPLATE): the sheet the user
         # sees and what is computed are the same by construction, and row re-sorting cannot desync them (the old
