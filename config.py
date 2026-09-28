@@ -5001,18 +5001,18 @@ class Config:
     REVERSE_ON_EXIT_ENABLED: bool = False
     ATR_TRAIL_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     BAR_PATTERNS_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
-    BB_PULLBACK_GATE_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
-    BB_RECOVERY_ENTRY_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
-    BB_RECOVERY_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
-    BREAKEVEN_GAIN_EROSION_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    BB_PULLBACK_GATE_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
+    BB_RECOVERY_ENTRY_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
+    BB_RECOVERY_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
+    BREAKEVEN_GAIN_EROSION_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
     BREAKOUT_RETEST_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     BTC_DEDICATED_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
-    BT_WT_CROSS_LADDER_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    BT_WT_CROSS_LADDER_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
     CANDLE_PATTERN_STOPS_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     CIRCUIT_SHARPE_GATES_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     COOLDOWN_LOCKS_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
-    DC_BREACH_REDUCE_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
-    DC_BREAK_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    DC_BREACH_REDUCE_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
+    DC_BREAK_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
     DC_MOMENTUM_BOTA_SCORER_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     DELTA_ENGINE_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     DUP_GUARD_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
@@ -5025,7 +5025,7 @@ class Config:
     EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     EXIT_TOP_FADE_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     EXIT_TO_REDUCE_ADAPTER_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
-    FAST_RISER_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    FAST_RISER_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
     FH_MOMENTUM_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     FIRST_OPEN_THROTTLE_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     FROZEN_STOP_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
@@ -5038,8 +5038,8 @@ class Config:
     KILLER_KNOB_FINDER_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     LIVE_ENTRY_ENGINE_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
-    MOM3_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
-    MOMENTUM_BREAKOUT_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    MOM3_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
+    MOMENTUM_BREAKOUT_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
     MTF_ARMED_ENTRIES_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     MTF_ATR_TRAIL_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     MTF_DC_REJECT_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity

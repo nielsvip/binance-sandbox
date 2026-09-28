@@ -13186,6 +13186,64 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             _mi_ok = (_wt_peak_4h_vf == 'LH') or (_wt_mom_4h_vf == 'EXHAUST_UP') or (_wt_div_4h_vf == 'BEAR')
                         if not _mi_ok:
                             _veto = f"MI_ENTRY_GATE(no_4h_confluence)"
+                    # 2026-09-28 USER parity order ("apply all vec only into live scripts"):
+                    # FILTER_TF entry vetoes — live twins of vec generic_filter_tf entry gates.
+                    # All default OFF (bit-neutral until swept). Reads _entry_ind first with i
+                    # fallback (the 2026-04-14 sentinel bug class: keys missing from one dict
+                    # must not silently disable a gate). Fails OPEN when data missing.
+                    if _veto is None:
+                        try:
+                            def _ftf_get(_k):
+                                _v = _entry_ind.get(_k)
+                                return _v if _v is not None else i.get(_k)
+                            def _ftf_tf(_n):
+                                _t = str(_cfg_auto(_n, "OFF") or "OFF").strip()
+                                return None if _t.upper() == "OFF" else _t
+                            _ftf = _ftf_tf('MOM3_FILTER_TF')
+                            if _veto is None and _ftf and current_price > 0:
+                                _c3 = float(_ftf_get(f'close_3bar_{_ftf}') or 0)
+                                if _c3 > 0:
+                                    _m3 = (current_price - _c3) / _c3 * 100
+                                    _m3ok = (_m3 < float(_cfg_auto('MOM3_LONG_THRESHOLD', -1.0) or -1.0)) if is_long else (_m3 > float(_cfg_auto('MOM3_SHORT_THRESHOLD', 1.0) or 1.0))
+                                    if not _m3ok:
+                                        _veto = f"MOM3_FILTER_TF_{_ftf}_BLOCK({_m3:.2f}%)"
+                            _ftf = _ftf_tf('MOMENTUM_BREAKOUT_FILTER_TF')
+                            if _veto is None and _ftf and current_price > 0:
+                                _c3 = float(_ftf_get(f'close_3bar_{_ftf}') or 0)
+                                if _c3 > 0:
+                                    _mbv = (current_price - _c3) / _c3 * 100
+                                    if not ((_mbv > 0) if is_long else (_mbv < 0)):
+                                        _veto = f"MOMENTUM_BREAKOUT_TF_{_ftf}_BLOCK({_mbv:.2f}%)"
+                            _ftf = _ftf_tf('BB_PULLBACK_GATE_FILTER_TF')
+                            if _veto is None and _ftf:
+                                _bpb = _ftf_get(f'bb_pct_b_{_ftf}')
+                                if _bpb is not None:
+                                    _bv = float(_bpb)
+                                    if (is_long and _bv > 0.20) or ((not is_long) and _bv < 0.80):
+                                        _veto = f"BB_PULLBACK_TF_{_ftf}_BLOCK(pctB={_bv:.2f})"
+                            for _ftf_name in ('BB_RECOVERY_ENTRY_FILTER_TF', 'BB_RECOVERY_FILTER_TF'):
+                                _ftf = _ftf_tf(_ftf_name)
+                                if _veto is None and _ftf:
+                                    _bpb = _ftf_get(f'bb_pct_b_{_ftf}')
+                                    if _bpb is not None:
+                                        _bv = float(_bpb)
+                                        if not ((_bv > 0.5) if is_long else (_bv < 0.5)):
+                                            _veto = f"{_ftf_name}_{_ftf}_BLOCK(pctB={_bv:.2f})"
+                            _ftf = _ftf_tf('DC_BREAK_FILTER_TF')
+                            if _veto is None and _ftf and current_price > 0:
+                                _lvl = _ftf_get(f'dc_high_{_ftf}_prev' if is_long else f'dc_low_{_ftf}_prev')
+                                if _lvl:
+                                    _lv = float(_lvl)
+                                    if not ((current_price > _lv) if is_long else (current_price < _lv)):
+                                        _veto = f"DC_BREAK_TF_{_ftf}_BLOCK(px{current_price:.4f}_vs_{_lv:.4f})"
+                            _ftf = _ftf_tf('BT_WT_CROSS_LADDER_FILTER_TF')
+                            if _veto is None and _ftf:
+                                _w1, _w2 = _ftf_get(f'wt1_{_ftf}'), _ftf_get(f'wt2_{_ftf}')
+                                if _w1 is not None and _w2 is not None:
+                                    if not ((float(_w1) > float(_w2)) if is_long else (float(_w1) < float(_w2))):
+                                        _veto = f"BT_WT_CROSS_TF_{_ftf}_BLOCK(wt1={float(_w1):.1f}_wt2={float(_w2):.1f})"
+                        except Exception:
+                            pass
                     # WT_COMPOSITE_SCORING_ENABLED: when sweep VETO knob is on AND composite scoring is on,
                     # require wt alignment >=2 on favourable side. Gated by WT_COMPOSITE_VETO_ENABLED_TRADIER
                     # so flipping the scoring switch alone in live code doesn't change entries.

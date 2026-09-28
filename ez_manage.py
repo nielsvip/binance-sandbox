@@ -281,6 +281,66 @@ def compute_applied_ratio(
 # ═══════════════════════════════════════════════════════════════════════════════
 # 2. ENTRY ALIGNMENT — 2-of-3 LTF + 2-of-3 HTF required for new entries
 # ═══════════════════════════════════════════════════════════════════════════════
+# 2026-09-28 USER parity order ("apply all vec only into live scripts for parity"):
+# live twins of the vec generic FILTER_TF entry gates (vec_decisions/generic_filter_tf.py
+# + filter_tf_gates.py). Every switch defaults OFF -> bit-neutral until a sweep promotes
+# a TF; every gate fails OPEN when its TF data is missing (same as vec).
+def _parity_filter_tf_gates(indicators: Dict[str, Any], is_long: bool, current_price: float = 0) -> Tuple[bool, str]:
+    try:
+        def _tf(name):
+            v = str(getattr(config, name, "OFF") or "OFF").strip()
+            return None if v.upper() == "OFF" else v
+        i = indicators
+        price = float(current_price or 0)
+        tf = _tf("MOM3_FILTER_TF")
+        if tf and price > 0:
+            c3 = float(i.get(f"close_3bar_{tf}", 0) or 0)
+            if c3 > 0:
+                m3 = (price - c3) / c3 * 100
+                ok = (m3 < config.MOM3_LONG_THRESHOLD) if is_long else (m3 > config.MOM3_SHORT_THRESHOLD)
+                if not ok:
+                    return False, f"MOM3_FILTER_TF_{tf}_BLOCK({m3:.2f}%)"
+        tf = _tf("MOMENTUM_BREAKOUT_FILTER_TF")
+        if tf and price > 0:
+            c3 = float(i.get(f"close_3bar_{tf}", 0) or 0)
+            if c3 > 0:
+                mv = (price - c3) / c3 * 100
+                if not ((mv > 0) if is_long else (mv < 0)):
+                    return False, f"MOMENTUM_BREAKOUT_TF_{tf}_BLOCK({mv:.2f}%)"
+        tf = _tf("BB_PULLBACK_GATE_FILTER_TF")
+        if tf:
+            b = i.get(f"bb_pct_b_{tf}")
+            if b is not None:
+                bv = float(b)
+                if (is_long and bv > 0.20) or ((not is_long) and bv < 0.80):
+                    return False, f"BB_PULLBACK_TF_{tf}_BLOCK(pctB={bv:.2f})"
+        for _name in ("BB_RECOVERY_ENTRY_FILTER_TF", "BB_RECOVERY_FILTER_TF"):
+            tf = _tf(_name)
+            if tf:
+                b = i.get(f"bb_pct_b_{tf}")
+                if b is not None:
+                    bv = float(b)
+                    if not ((bv > 0.5) if is_long else (bv < 0.5)):
+                        return False, f"{_name}_{tf}_BLOCK(pctB={bv:.2f})"
+        tf = _tf("DC_BREAK_FILTER_TF")
+        if tf and price > 0:
+            lvl = i.get(f"dc_high_{tf}_prev" if is_long else f"dc_low_{tf}_prev")
+            if lvl:
+                lv = float(lvl)
+                if not ((price > lv) if is_long else (price < lv)):
+                    return False, f"DC_BREAK_TF_{tf}_BLOCK(px{price:.6f}_vs_{lv:.6f})"
+        tf = _tf("BT_WT_CROSS_LADDER_FILTER_TF")
+        if tf:
+            w1, w2 = i.get(f"wt1_{tf}"), i.get(f"wt2_{tf}")
+            if w1 is not None and w2 is not None:
+                if not ((float(w1) > float(w2)) if is_long else (float(w1) < float(w2))):
+                    return False, f"BT_WT_CROSS_TF_{tf}_BLOCK(wt1={float(w1):.1f}_wt2={float(w2):.1f})"
+    except Exception:
+        return True, "FTF_ERR_OPEN"
+    return True, "FTF_OK"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 def _kindergarten_ema_gate(indicators: Dict[str, Any], is_long: bool, current_price: float = 0) -> Tuple[bool, str]:
     """KINDERGARTEN 2026-09-10 — any-or-all of 200SMA/EMA, 9/21 cross, 50 EMA/SMA cross are they still in all scripts and tested on every run? YES — now tests all 3. Wired in live via check_entry_alignment. Disabled when KINDERGARTEN_EMA_GATE_ENABLED=False."""
     try:
@@ -435,6 +495,10 @@ def check_entry_alignment(
     _kg_ok, _kg_reason = _kindergarten_ema_gate(indicators, is_long, float(indicators.get("close") or 0))
     if not _kg_ok and _is_crypto_live:
         return False, _kg_reason
+    # 2026-09-28 USER parity order: FILTER_TF entry gates (all OFF by default = bit-neutral)
+    _ftf_ok, _ftf_reason = _parity_filter_tf_gates(indicators, is_long, float(indicators.get("close") or 0))
+    if not _ftf_ok:
+        return False, _ftf_reason
     # stocks: soft — do not block, _kg_ok adds +5 to later scoring via _kg_reason tag
     # MFI cross-TF quality (RSI unreliable — MFI is volume-weighted, proven more consistent)
     mfi_1h_a = _sf(indicators.get("mfi_1h"), 50.0)
@@ -52391,35 +52455,46 @@ async def process_position(
             and ((is_long and k_3m > k_3m_prev) or (not is_long and k_3m < k_3m_prev))
         )
         # BACKTEST_CHANGE_115: FAST_RISER_DOUBLE disabled — net negative PnL in ablation test
+        # 2026-09-28 USER parity order: FAST_RISER_FILTER_TF selects the quick-jump TF
+        # (OFF = today's 3m values stay sole source; identical to vec filter_tf_gates).
+        # Locals only — never clobber the shared *_3m variables other logic reads.
+        _frtf = str(getattr(config, "FAST_RISER_FILTER_TF", "OFF") or "OFF").strip()
+        if _frtf.upper() != "OFF":
+            _fr_close_prev = safe_fetch_float(i.get(f"close_{_frtf}_prev", 0.0), 0.0) or safe_fetch_float(i.get(f"ha_close_{_frtf}_prev", 0.0), 0.0)
+            _fr_low = safe_fetch_float(i.get(f"low_{_frtf}", 0.0), 0.0)
+            _fr_low_prev = safe_fetch_float(i.get(f"low_{_frtf}_prev", 0.0), 0.0)
+            _fr_ha = i.get(f"ha_{_frtf}")
+        else:
+            _fr_close_prev, _fr_low, _fr_low_prev, _fr_ha = close_3m_prev, low_3m, low_3m_prev, ha_3m
         if (
             config.ENABLE_FAST_RISER_REDUCE
             and getattr(config, "FAST_RISER_DOUBLE_ENABLED", False)
             and not getattr(config, "ABLATION_DISABLE_FAST_RISER", False)
-            and close_3m_prev > 0
+            and _fr_close_prev > 0
             and position.positionAmt > 2 * pos_min_qty
             and current_gain > 0.8
-            and low_3m > 0
-            and low_3m_prev > 0
+            and _fr_low > 0
+            and _fr_low_prev > 0
         ):
-            current_low_below_prev_long = is_long and low_3m < low_3m_prev
-            current_low_above_prev_short = not is_long and low_3m > low_3m_prev
+            current_low_below_prev_long = is_long and _fr_low < _fr_low_prev
+            current_low_above_prev_short = not is_long and _fr_low > _fr_low_prev
             price_jump_pct = (
-                (current_price - close_3m_prev) / close_3m_prev
-                if close_3m_prev > 0
+                (current_price - _fr_close_prev) / _fr_close_prev
+                if _fr_close_prev > 0
                 else 0.0
             )
             quick_jump_long = (
                 is_long
-                and current_price > close_3m_prev
+                and current_price > _fr_close_prev
                 and abs(price_jump_pct) >= 0.002
-                and ha_3m == "green"
+                and _fr_ha == "green"
                 and current_low_below_prev_long
             )
             quick_jump_short = (
                 not is_long
-                and current_price < close_3m_prev
+                and current_price < _fr_close_prev
                 and abs(price_jump_pct) >= 0.002
-                and ha_3m == "red"
+                and _fr_ha == "red"
                 and current_low_above_prev_short
             )
             if quick_jump_long or quick_jump_short:
@@ -52465,7 +52540,7 @@ async def process_position(
                             position_key, side, "FAST_RISER_DOUBLE"
                         )
                         logger.warning(
-                            f"[FAST_RISER_DOUBLE] {position_key}: Quick jump detected (price={current_price:.6f} vs prev_close={close_3m_prev:.6f} k_3m={k_3m:.1f} gain={current_gain:.2%}) - DOUBLING position"
+                            f"[FAST_RISER_DOUBLE] {position_key}: Quick jump detected (price={current_price:.6f} vs prev_close={close_3m_prev:.6f} k_3m={k_3m:.1f} gain={current_gain:.2f}%) - DOUBLING position"
                         )
                         result = await trade_manager.execute_now(
                             position_key,
@@ -52546,7 +52621,7 @@ async def process_position(
                                 )
                                 target_price = close_3m_prev
                                 logger.warning(
-                                    f"[FAST_RISER_REDUCE] {position_key}: Fast riser very overbought (price={current_price:.6f} vs prev_close={close_3m_prev:.6f} k_3m={k_3m:.1f} mark_price={mark_price:.6f} < current_price={current_price_from_i:.6f} gain={current_gain:.2%}) - Reducing 50% at prev close price {target_price:.6f}"
+                                    f"[FAST_RISER_REDUCE] {position_key}: Fast riser very overbought (price={current_price:.6f} vs prev_close={close_3m_prev:.6f} k_3m={k_3m:.1f} mark_price={mark_price:.6f} < current_price={current_price_from_i:.6f} gain={current_gain:.2f}%) - Reducing 50% at prev close price {target_price:.6f}"
                                 )
                                 logger.info(
                                     f"[execute_trade_action][{account_key}] ❌ 'REDUCE' {position_key} {current_price:.6f} PROCESS_POSITION_3 REDUCE"

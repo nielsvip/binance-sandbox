@@ -819,17 +819,17 @@ class TradierConfig:
     GR_FILTER_VEC_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
     GOLDEN_RULE_ENFORCE_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
     NOLOSS_BYPASS_WT5OF5_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
-    BT_WT_CROSS_LADDER_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
+    BT_WT_CROSS_LADDER_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
     GOLDEN_RULE_HTF_VOTE_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
     MTF_ARMED_ENTRIES_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
-    DC_BREACH_REDUCE_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
+    DC_BREACH_REDUCE_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
     HAIKU_WINNER_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
     NEWBORN_PROTECT_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
     NEWBORN_LOSS_KILL_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
-    BB_PULLBACK_GATE_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
+    BB_PULLBACK_GATE_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
     LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
-    BB_RECOVERY_ENTRY_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
-    BB_RECOVERY_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
+    BB_RECOVERY_ENTRY_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
+    BB_RECOVERY_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
     PARTIAL_PROFIT_LOCK_V2_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
     # === 2026-09-19 BIG FIX: Every TEMPLATE yellow FILTER_TF must have a specific path in config_tradier (if stock) ===
     # 31 bases present in config.py but missing in tradier were yellow in STOCKS_* parity scan — adding so each yellow cell maps 1:1 to a field and per-switch via get_filter_tf_for_switch().
@@ -837,13 +837,13 @@ class TradierConfig:
     HTF_BULL_ENTRY_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     ATR_TRAIL_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     BAR_PATTERNS_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
-    BREAKEVEN_GAIN_EROSION_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    BREAKEVEN_GAIN_EROSION_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
     BREAKOUT_RETEST_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     BTC_DEDICATED_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     CANDLE_PATTERN_STOPS_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     CIRCUIT_SHARPE_GATES_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     COOLDOWN_LOCKS_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
-    DC_BREAK_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    DC_BREAK_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
     DC_MOMENTUM_BOTA_SCORER_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     DELTA_ENGINE_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     DUP_GUARD_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
@@ -854,14 +854,16 @@ class TradierConfig:
     EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     EXIT_TOP_FADE_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     EXIT_TO_REDUCE_ADAPTER_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
-    FAST_RISER_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    FAST_RISER_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
     FH_MOMENTUM_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     FIRST_OPEN_THROTTLE_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     FROZEN_STOP_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     FUNDING_GATE_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     KILLER_KNOB_FINDER_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     LIVE_ENTRY_ENGINE_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
-    MOMENTUM_BREAKOUT_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    MOM3_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: TF-selectable hard MOM3 gate, OFF = today's behavior
+    EMA_9_21_FILTER_MIN_TFS: int = 3  # 2026-09-28 USER parity order: mirrors config.py/vec kindergarten min-TF count
+    MOMENTUM_BREAKOUT_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
     MTF_ATR_TRAIL_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     MTF_DC_REJECT_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     OPEN_INTENT_SIZE_GATES_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19

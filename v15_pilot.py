@@ -3136,10 +3136,14 @@ def main():
                 if _sheet not in _wb_prev.sheetnames:
                     continue
                 _ws_prev = _wb_prev[_sheet]
-                for _r in range(3, min(_ws_prev.max_row, 500) + 1):
-                    _a = _ws_prev.cell(row=_r, column=1).value
-                    _c = _ws_prev.cell(row=_r, column=3).value
-                    _f = _ws_prev.cell(row=_r, column=6).value
+                # 2026-09-29 STALL FIX: read-only ws.cell() re-parses the sheet from the
+                # START on EVERY access — 500 rows x 3 cells x 13 tabs went quadratic and
+                # hung pilots for hours at "[STEP] xls_prev start" (herd then killed them:
+                # "relaunch added no rows"). iter_rows streams the same cells in one pass.
+                for _row_cells in _ws_prev.iter_rows(min_row=3, max_row=500, max_col=6):
+                    _vals = [getattr(_cell, "value", None) for _cell in _row_cells]
+                    _vals += [None] * (6 - len(_vals))
+                    _a, _c, _f = _vals[0], _vals[2], _vals[5]
                     if _a and _c and str(_c).strip() not in ("", "None", "none"):
                         # Promoted rows: C = "K=V + K=V ..." (F>0), baseline rows: C = single value (no "=")
                         # Handle both: if "=" in C, parse history string; else treat C as value for switch _a
