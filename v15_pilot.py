@@ -511,11 +511,13 @@ def _auto_adjust_sheet(ws):
     except Exception:
         pass
 
-TEMPLATE = ROOT / "SPREADSHEETS" / "TEMPLATE.xlsx"
 TEMPLATE_STOCKS_LONG = ROOT / "SPREADSHEETS" / "TEMPLATE_STOCKS_LONG.xlsx"
 TEMPLATE_STOCKS_SHORT = ROOT / "SPREADSHEETS" / "TEMPLATE_STOCKS_SHORT.xlsx"
 TEMPLATE_CRYPTO_LONG = ROOT / "SPREADSHEETS" / "TEMPLATE_CRYPTO_LONG.xlsx"
 TEMPLATE_CRYPTO_SHORT = ROOT / "SPREADSHEETS" / "TEMPLATE_CRYPTO_SHORT.xlsx"
+# USER 2026-09-28: TEMPLATE.xlsx is LEGACY (replaced long ago by the 4 cat_side templates).
+# Alias kept only so old --template defaults keep working; remapped per symside at runtime.
+TEMPLATE = TEMPLATE_STOCKS_LONG
 
 
 def get_template_for_symside(symside: str) -> Path:
@@ -533,10 +535,10 @@ def get_template_for_symside(symside: str) -> Path:
     if cand.exists():
         return cand
     # fallback chain
-    for p in [TEMPLATE_STOCKS_LONG, TEMPLATE_STOCKS_SHORT, TEMPLATE_CRYPTO_LONG, TEMPLATE_CRYPTO_SHORT, TEMPLATE]:
+    for p in [TEMPLATE_STOCKS_LONG, TEMPLATE_STOCKS_SHORT, TEMPLATE_CRYPTO_LONG, TEMPLATE_CRYPTO_SHORT]:
         if p.exists():
             return p
-    return TEMPLATE
+    return TEMPLATE_STOCKS_LONG
 
 
 OUT_DIR = ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
@@ -1499,7 +1501,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     for _sn_e2 in SWITCH_SHEETS:
         if _sn_e2 in wb.sheetnames:
             _ws_e2 = wb[_sn_e2]
-            _ws_e2.cell(row=2, column=_resolve_cols(_ws_e2)["E"]).value = float(baseline_gain)
+            _e2c = _resolve_cols(_ws_e2)["E"]
+            # USER 2026-09-28: row 2 is the HEADER row — never write the baseline number there.
+            # Self-heal sheets whose E2 header was clobbered by a number; value lives in E3 (chain start).
+            _e2v = _ws_e2.cell(row=2, column=_e2c).value
+            if _e2v is None or not isinstance(_e2v, str):
+                _ws_e2.cell(row=2, column=_e2c).value = "BASELINE"
+            _ws_e2.cell(row=3, column=_e2c).value = float(baseline_gain)
     # Main loop — sequential with POS-stay / NEG-advance
     loop_guard = 0
     # FIX 2026-09-27: NEVER stop until 3971 F cells filled — total_rows ~3000, max_loops must be huge, log every stall
@@ -1849,7 +1857,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _kcell.font = Font(name="Arial", size=10, bold=False, color="006100" if _k_sum > 1e-9 else "9C0006")
                 _kcell.alignment = VISUAL_ALIGN
             if promote:
-                _add_override(ws, rr, cols, [f"{switch}={cand}"] + pos_hdrs)
+                # USER 2026-09-28: C states the switch=setting AND every pos-delta yellow filter as
+                # name=setting (bare header names carry no setting).
+                _pos_filters = [f"{hdr_to_filter[h]['filter']}={hdr_to_filter[h]['opt']}" for h in pos_hdrs if h in hdr_to_filter]
+                _add_override(ws, rr, cols, [f"{switch}={cand}"] + _pos_filters)
         except Exception as ee:
             print(f"[spec-write-warn] {sname}!{rr} {ee}", flush=True)
         if promote:
@@ -2290,7 +2301,7 @@ def ensure_lbI_headers(wb_path: Path):
                 if Path(wb_path).exists():
                     Path(wb_path).unlink()
             except: pass
-            tmpl = next((p for p in [Path("SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx"), Path("SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx"), Path("SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx"), Path("SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx"), Path("SPREADSHEETS/TEMPLATE.xlsx")] if p.exists()), None)
+            tmpl = next((p for p in [Path("SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx"), Path("SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx"), Path("SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx"), Path("SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx")] if p.exists()), None)
             if tmpl and tmpl.exists():
                 import shutil
                 shutil.copy(str(tmpl), str(wb_path))

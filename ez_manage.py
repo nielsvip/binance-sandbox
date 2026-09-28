@@ -47747,8 +47747,13 @@ async def process_position(
                     _mtfce_now_s = int(time.time())
                     if _mtfce_tag_now:
                         _mtfce_tag_bars.append(_mtfce_now_s)
-                    # Trim older than lookback (60s × lookback bars approximation)
-                    _mtfce_cutoff_s = _mtfce_now_s - _mtfce_bb_lb * 60
+                    # 2026-09-28 USER FIX ("needs to be fixed first"): window was LOOKBACK×60
+                    # SECONDS while the band/high data updates once per TF bar — on the default 1h
+                    # TF a fail-after-tag could never occur inside 5 minutes, so this exit was
+                    # structurally DEAD (0 live fires ever). Now LOOKBACK bars of the exit TF,
+                    # identical to the stocks path (mtf_exit_timing.event_within_lookback).
+                    from mtf_exit_timing import timeframe_seconds as _mtfce_tf_secs
+                    _mtfce_cutoff_s = _mtfce_now_s - _mtfce_bb_lb * _mtfce_tf_secs(_mtfce_bb_tf)
                     _mtfce_tag_bars = [b for b in _mtfce_tag_bars if b >= _mtfce_cutoff_s]
                     _mtfce_state["bb_tag_bars"] = _mtfce_tag_bars
                     if _mtfce_fail_now and len(_mtfce_tag_bars) > 0:

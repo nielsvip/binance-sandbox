@@ -287,3 +287,34 @@ grep -nE "MTF_ATR_TRAIL|arange\(n\) %|_atr > 1\.0" v12_quick_engine.py
     compound exits — frequent restarts ⇒ most live positions ride legacy exits) + pre-fix
     stale-trail closing positions first. Scalar sim sets startup=sim start, so scalar-vs-vec
     stays the right parity metric; live-vs-backtest frequency gap is orchestration, documented.
+- **MTF_BB_REJECT dead-window FIXED (USER: "needs to be fixed first")**: window LOOKBACK×60s flat →
+  LOOKBACK×timeframe_seconds(TF) (stocks-identical), in ez_manage live branch + vec twin + v12 call.
+  Synthetic proof green. ⚠️ ACTIVATES this exit on live crypto (ON default @1h/lb5) at the
+  post-rsync restart; expected fire-rate estimate comes from the post-cut A/B re-run — check it
+  before/right after restart. Stocks path unchanged (already TF-scaled).
+- Co-editor integrity audit (user request): all markers intact across v12/ez/tradier/config
+  (binance-5d qr_cond+3-tuple, binance-6e NEGBOOK, WT_DC scorer, vigilance, 365D gate, my blocks);
+  all five files compile. Nothing overwritten.
+- **Manager-rsync verification plan CHANGED (binance-6e, 18:4xZ)**: pinned md5s go stale in minutes
+  with 4+ concurrent Mac editors — do NOT trust any md5 written in this doc for ez_manage.py /
+  tradier_manage.py. At the moment the user runs the manual rsync, verify worker_md5 ==
+  Mac_md5_at_that_instant PLUS marker greps ON THE WORKER: ez_manage.py → NEGBOOK_WT_TURN,
+  opened_ts, mtf_exit_timing (BB fix), MTF_DC_REJECT_USE_DC4, `_dc4`; tradier_manage.py →
+  NEGBOOK_WT_TURN, opened_ts, WT_DC_DETAILED_SCORER_ENABLED. MTF_BB_REJECT is NOLOSS-bypassed BY
+  DESIGN (config.py:1538 sanctioned loss-exit replacements) — its loss-closes after activation are
+  intended; staging option = MTF_BB_REJECT_EXIT_ENABLED=False before restart.
+- **CRYPTO CUT LINE FINAL (binance-99, binding): 18:29:48Z 2026-09-28** — all crypto pilots+driver
+  restarted on the coherent s1 trio: engine 261a3dfa + vec_decisions/mtf_compound_exits 38f7d131 +
+  tools/opt/evaluate_v12 dbf512b4 (trade-count split: trades == CLOSE rows; AUGMENT/REDUCE
+  ledger-visible, excluded from trade metrics; gain_pct formula unchanged — independently
+  reproduced by binance-99, -9.1759 both ways on ADAUSDC_LONG). STOCKS line stays 17:53:56Z /
+  4a1bc3fd on s2. binance-5d's full re-cut still owed (must snapshot at push time, both boxes).
+- **A/B v3 on the FINAL trio (18:29:48Z cut, 110 sym_sides, 0 errors)**, Mac+s1
+  `data/reports/exit_vec_ab_all_symsides.json`: MTF_BB_REJECT now ALIVE — fires on 88/110
+  (887 closes/30d, median 10 per sym_side, max 26), delta ON-OFF median 0.00 / mean +0.09,
+  positive on 50/110 (best LINKUSDC_LONG +3.6, worst THETAUSDT_SHORT −7.7) → live activation
+  expectation ≈1 close/3d/sym_side, aggregate ~neutral; per-sym tuning via the new EXIT_VELOCITY
+  rows. VIGILANCE_DC4 88/110 (2558, mean −0.50); MTF_ATR_TRAIL 90/110 (2315, mean −0.02);
+  MTF_GR_WT_EXIT 89/110 (2624, mean −0.05); MTF_DC_REJECT still 0/110 in vec (dc-target
+  interplay — scalar harness will measure); USE_DC4 mode moves results on 25/110.
+  These are 30d single-sym diagnostics (below sample floor — settings come from the sweeps).

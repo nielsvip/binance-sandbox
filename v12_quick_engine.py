@@ -22267,6 +22267,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _mtfbb_tf = str(getattr(cfg, 'MTF_BB_REJECT_EXIT_TF', '1h') or 'OFF').strip()
     _mtfbb_lb = int(getattr(cfg, 'MTF_BB_REJECT_EXIT_LOOKBACK', 5))
     _mtfbb_on = _mtfcmp_on and (not is_tradier) and bool(getattr(cfg, 'MTF_BB_REJECT_EXIT_ENABLED', True)) and _mtfbb_tf.upper() != 'OFF'
+    try:
+        from mtf_exit_timing import timeframe_seconds as _mtfbb_tf_secs_fn
+        _mtfbb_tfsec = int(_mtfbb_tf_secs_fn(_mtfbb_tf))
+    except Exception:
+        _mtfbb_tfsec = 3600
     if _mtfbb_on:
         _mtfbb_u = _safe(npz, f'bb_upper_{_mtfbb_tf}', n, 0)
         _mtfbb_l = _safe(npz, f'bb_lower_{_mtfbb_tf}', n, 0)
@@ -22768,7 +22773,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     pos.get('_bb_tags', []), _cmp_now, _cmp_h, _cmp_lo,
                     float(_mtfbb_u[i]) if i < len(_mtfbb_u) else 0.0,
                     float(_mtfbb_l[i]) if i < len(_mtfbb_l) else 0.0,
-                    _mtfbb_lb, is_long)
+                    _mtfbb_lb, is_long, tf_secs=_mtfbb_tfsec)
                 if _cmp_bbf:
                     _cmp_reason = f"MTF_BB_REJECT_{_mtfbb_tf}"
             if (not _cmp_reason) and _mtfwt_w1 is not None:

@@ -99,6 +99,16 @@
       "blocked_at": "2026-09-28T15:49:44.787182+00:00",
       "reason": "DC4_15m_BREACH_g-2.04pct_px1040.4000_lvl1071.4050",
       "exit_price": 1040.4
+    },
+    "MSFT_LONG": {
+      "blocked_at": "2026-09-28T18:29:55.095822+00:00",
+      "reason": "DC4_15m_BREACH_g-1.51pct_px511.1900_lvl511.4450",
+      "exit_price": 511.19
+    },
+    "APO_SHORT": {
+      "blocked_at": "2026-09-28T18:36:45.467927+00:00",
+      "reason": "DC4_15m_BREACH_g-0.87pct_px120.0000_lvl119.8750",
+      "exit_price": 120.0
     }
   },
   "streaks": {
@@ -273,12 +283,17 @@
       ]
     },
     "MSFT_LONG": {
-      "consec_losses": 1,
+      "consec_losses": 0,
       "last": [
         {
           "ts": "2026-09-28T14:15:00.316952+00:00",
           "gain_pct": -1.2522,
           "reason": "WT_CROSSUNDER_FINAL_5m_15m_1hTrue_4hTrue_DFalse_g-1.33%_hold4095m_MANDATORY_REENTRY_qty_999999"
+        },
+        {
+          "ts": "2026-09-28T18:37:55.404013+00:00",
+          "gain_pct": 0.0186,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-1.57_lvl511.1400_qty_999999"
         }
       ]
     },
