@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-28 00:00 UTC
+PERFORMANCE REPORT — 2026-09-28 01:00 UTC
 ================================================================================
 Total: 146 symbols | A=3 B=103 C=40
 Window: 14 days | Min trades: 5
@@ -62,7 +62,6 @@ Window: 14 days | Min trades: 5
          MSTRUSDT  WR=67%  avg=+0.06%  total=+0.2%  trades=  3  mult=1.00
           TRBUSDT  WR=75%  avg=+0.05%  total=+0.2%  trades=  4  mult=1.00
              WDAY  WR=25%  avg=+0.04%  total=+0.2%  trades=  4  mult=1.00
-          WIFUSDC  WR=67%  avg=+0.04%  total=+0.1%  trades=  3  mult=1.00
          COMPUSDT  WR=100%  avg=+0.10%  total=+0.1%  trades=  1  mult=1.00
          ALGOUSDT  WR=48%  avg=+0.00%  total=+0.1%  trades= 23  mult=0.86
               HON  WR=29%  avg=+0.01%  total=+0.1%  trades=  7  mult=0.63
@@ -80,6 +79,7 @@ Window: 14 days | Min trades: 5
      FARTCOINUSDT  WR=50%  avg=+0.00%  total=+0.0%  trades=  8  mult=1.00
           CRVUSDC  WR=33%  avg=+0.00%  total=+0.0%  trades=  3  mult=1.00
         PENGUUSDC  WR=0%  avg=-0.00%  total=-0.0%  trades=  2  mult=1.00
+          WIFUSDC  WR=50%  avg=-0.01%  total=-0.0%  trades=  2  mult=1.00
           CHRUSDT  WR=0%  avg=-0.05%  total=-0.1%  trades=  1  mult=1.00
           ETHUSDC  WR=51%  avg=-0.00%  total=-0.1%  trades= 51  mult=1.17
          QCOMUSDT  WR=33%  avg=-0.03%  total=-0.1%  trades=  3  mult=1.00
@@ -156,7 +156,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=30%  avg=-2.31%  total=-67.3%  trades= 47  mult=0.15
 
 SUMMARY:
-  Total PnL (all symbols): +643.6%
+  Total PnL (all symbols): +643.5%
   Avg win rate: 46%
   A-tier avg mult: 10.00
   C-tier avg mult: 0.38

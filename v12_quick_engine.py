@@ -165,6 +165,12 @@ except Exception:
 
 # BATCH 1 — first 60 TEMPLATE switches (ADX_RANGING_THRESHOLD .. DELTA_REENTRY_FILTER_ENABLED) — BOTH_WIRED REAL 2026-09-07
 def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
+    # 2026-09-28 NO-LIES purge (user "purge fakes, run honest"): this batch mapped
+    # formerly-dead template switches to trivially-true `_cond` (_c>0/_atr>0) and
+    # `arange(n)%N==0` synthetic patterns — fabricated distinctness, not real signal.
+    # Disabled (passthrough); body preserved below for audit. Real switch effects live
+    # in compute_entry_signals + simulate_one's genuine exit computation.
+    return entry_mask, exit_mask
     import numpy as _np
     # Use _safe/_base_safe helpers already defined.
     try:
@@ -632,10 +638,17 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
 # --- 07_EXIT_STOPS_TRAILS_RISK 44 vectorizable wiring (mirrors ez_manage/tradier_manage) 2026-09-08 ---
 # Uses same numpy mask pattern as WT_15M_BOUNCE (entry/exit masks, _safe/_base_safe, is_long side-aware)
 def _wire_07_exit_stops_tranche(npz, n, is_long, cfg, entry_mask, exit_mask):
-    """Wire 44 EXIT_STOPS_TRAILS_RISK switches with real numpy logic mirroring live.
+    """DISABLED 2026-09-28 NO-LIES purge (user "purge fakes, run honest"): the 44
+    "wired" switches here overwhelmingly OR a trivially-true `_cond` (_c>0/_atr>0/_dc>0)
+    or `arange(n)%N==0` into exit_mask — fabricated exit density, not live-faithful logic.
+    Passthrough now; body preserved for audit. Genuine DC/WT/target exits are computed in
+    simulate_one's real path (proven: WT_LOWER_CROSS_EXIT_TF/TECHNICAL_DC_STOP_TF change
+    trades without this function).
+    Wire 44 EXIT_STOPS_TRAILS_RISK switches with real numpy logic mirroring live.
     Each switch is read via getattr(cfg, NAME) and when active modifies entry/exit masks
     using its required NPZ arrays (as listed in V12_MISSING_FIELD_DEFINITION_MAP.json).
     Pattern matches WT_15M_BOUNCE: side-aware, TF-aware, threshold-aware, causal next-bar."""
+    return entry_mask, exit_mask
     import numpy as _np
     try:
         # ASYMMETRIC_STOPS_ENABLED — asymmetric stop levels (live: ez_manage asymmetric stops)
@@ -1017,7 +1030,10 @@ BASE_PATH = Path(__file__).resolve().parent
 # DISABLED 2026-09-04 per user — NEVER use synthetic hash, every switch must have unique vectorized path identical to live
 def _apply_auto_wired_params(cfg, entry_mask, exit_mask, n):
     """Apply generic effects for all 2629 catalog unwired params.
-    RECONNECTED 2026-09-09 per user — all inert/dead must be wired to BOTH config and config_tradier where applicable, identical to live."""
+    DISABLED 2026-09-28 NO-LIES purge (user "purge fakes, run honest"): these "generic
+    effects" hash the param value and flip mask bits at arange-seeded indices — fabricated
+    distinctness so every param shows a delta. Passthrough now; body preserved for audit."""
+    return entry_mask, exit_mask
     # Dual-config check: either cfg or config_tradier can enable
     try:
         import config_tradier as _cfg_tr
@@ -1116,6 +1132,10 @@ def _apply_auto_wired_params(cfg, entry_mask, exit_mask, n):
 def _apply_universal_distinctness_fallback(npz, n, is_long, cfg, entry_mask, exit_mask):
     """Universal fallback hash flip ensuring every switch produces distinct ledger.
     DISABLED 2026-09-04 per user — NEVER synthetic, every switch must be real wiring identical to live."""
+    # 2026-09-28 NO-LIES purge: the docstring claimed DISABLED but the body still ran and
+    # flipped entry/exit bits at `(arange(n)*9973+h)%13==0` seeded by a config hash. Now a
+    # true passthrough (user "purge fakes, run honest"). Body preserved below for audit.
+    return entry_mask, exit_mask
     if getattr(cfg, '_G0_PURE_BH', False):
         return entry_mask, exit_mask
     # Fallback body continues DISABLED
@@ -8725,23 +8745,19 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
         blocks["B_BBPCTB"] = (bb_pctb_1h_2 < getattr(cfg, 'BB_ENTRY_LONG_THRESHOLD', -0.2)) if is_long else (bb_pctb_1h_2 > getattr(cfg, 'BB_ENTRY_SHORT_THRESHOLD', 1.0))
 
     if getattr(cfg, 'BB_SQUEEZE_ENTRY_ENABLED', False):
-        # Vectorized exact live BB_SQUEEZE: squeeze_on_15m/1h + bb_pct_b + thresholds live parity
-        sq15 = squeeze_on_15m > 0
-        sq1h = squeeze_on_1h > 0
-        released = (~sq15) & np.roll(sq15, 1)
-        # Vector exact live BB_SQUEEZE: guaranteed 30+/mo huge for any NPZ (every 2bars) + live squeeze
-        thr15 = float(getattr(cfg, 'BB_SQUEEZE_THRESHOLD_15M', 0.025))
-        thr1h = float(getattr(cfg, 'BB_SQUEEZE_THRESHOLD_1H', 0.03))
-        _bb_guaranteed = (np.arange(n) % 2 == 0)  # ~1440 trades /30D 2881 bars, 400 for 855 bars
-        blocks["B_BBSQUEEZE"] = released | _bb_guaranteed
-        # Tight exit when BB enabled to guarantee huge (VECTOR 0.07s)
-        if bool(getattr(cfg, 'BB_SQUEEZE_ENTRY_ENABLED', False)):
-            try:
-                setattr(cfg, 'TECHNICAL_DC_TARGET_TF', '15m')
-                setattr(cfg, 'TECHNICAL_DC_TARGET_BUFFER_PCT', 0.10)
-            except:
-                pass
-        _ = (thr15, thr1h)
+        # 2026-09-28 NO-LIES fix (user "identical to live"): the prior block OR'd a
+        # synthetic `arange%2` injection (~1440 fabricated trades/30D) with a
+        # squeeze_on approximation, and force-mutated the DC exit config. Replaced with
+        # the FAITHFUL vectorized port of the live detector+gate
+        # (ez_positions_quick.detect_bb_squeeze_breakout 11812 + gate 16146-16155),
+        # extracted into the shared vec_decisions module. See that function's docstring:
+        # live's confirmation gate reads a bare `alignment` key that is never populated
+        # anywhere in the codebase, so live BB squeeze breakout is itself effectively a
+        # dead gate; the faithful vector therefore yields ~0 until `alignment` is wired.
+        try:
+            blocks["B_BBSQUEEZE"] = vec_decisions.check_entry_candidates_crypto__bb_squeeze_gate.bb_squeeze_entry_mask_vec(npz, n, cfg, is_long)
+        except Exception:
+            pass
 
     # 2026-08-09: BB_SQUEEZE_ENABLED — alternative squeeze entry (higher-TF focus, less aggressive)
     if getattr(cfg, 'BB_SQUEEZE_ENABLED', False):
@@ -9427,14 +9443,12 @@ def compute_entry_signals(npz, n, is_long, cfg):
                 _thr_wtdc = min(85, _thr_wtdc + 10)
             elif _tf_wtdc == 'd':
                 _thr_wtdc = min(85, _thr_wtdc + 15)
-            _wtdc_guaranteed = (np.arange(n) % 4 == 0)  # ~720 trades/30D
-            blocks["B_WT_DC_LIVE"] = (_scores_wtdc >= _thr_wtdc) | _wtdc_guaranteed
-            # Tight exit when WT_DC enabled
-            try:
-                setattr(cfg, 'TECHNICAL_DC_TARGET_TF', '15m')
-                setattr(cfg, 'TECHNICAL_DC_TARGET_BUFFER_PCT', 0.10)
-            except:
-                pass
+            # 2026-09-28 NO-LIES fix (user "identical to live"): removed synthetic `arange%4`
+            # trade injection (fabricated ~720 trades/30D) and the exit-config mutation that
+            # force-tightened DC target only when WT_DC was enabled (not live-faithful). The
+            # entry mask is now exactly the real live multi-TF scorer threshold — parity proven
+            # by test_wt_dc_entry_scorer_vec.py (scorer == live scalar wt_dc_entry_scorer).
+            blocks["B_WT_DC_LIVE"] = (_scores_wtdc >= _thr_wtdc)
         except Exception:
             pass
     # MTF_ARMED_ENTRY_ENABLED — live per-bar _cfg gate; vector twin checks armed HTF alignment
