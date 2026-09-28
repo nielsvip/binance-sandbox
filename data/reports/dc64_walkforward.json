@@ -1,0 +1,186 @@
+{
+ "scenarios": [
+  "7/7",
+  "30/30",
+  "60/30",
+  "90/30",
+  "120/60"
+ ],
+ "n": 2,
+ "n_robust": 0,
+ "results": [
+  {
+   "sym_side": "1000000MOGUSDT_SHORT",
+   "venue": "crypto",
+   "scenarios": {
+    "7/7": {
+     "is_base": 5.82,
+     "is_opt": 9.8,
+     "is_gain_lift": 3.98,
+     "oos_base": 9.55,
+     "oos_paper": 8.66,
+     "oos_delta": -0.89,
+     "oos_trades": 2,
+     "generalizes": false,
+     "switches": {
+      "TECHNICAL_DC_STOP_TF": "15m"
+     }
+    },
+    "30/30": {
+     "is_base": 1.06,
+     "is_opt": 1.7,
+     "is_gain_lift": 0.64,
+     "oos_base": 2.67,
+     "oos_paper": -6.01,
+     "oos_delta": -8.68,
+     "oos_trades": 17,
+     "generalizes": false,
+     "switches": {
+      "TECHNICAL_DC_STOP_TF": "1h",
+      "TECHNICAL_DC_TARGET_TF": "1h"
+     }
+    },
+    "60/30": {
+     "is_base": 7.82,
+     "is_opt": 9.03,
+     "is_gain_lift": 1.21,
+     "oos_base": 2.67,
+     "oos_paper": 0.35,
+     "oos_delta": -2.32,
+     "oos_trades": 10,
+     "generalizes": false,
+     "switches": {
+      "TECHNICAL_DC_STOP_TF": "15m"
+     }
+    },
+    "90/30": {
+     "is_base": 37.23,
+     "is_opt": 44.52,
+     "is_gain_lift": 7.29,
+     "oos_base": 2.67,
+     "oos_paper": -2.54,
+     "oos_delta": -5.21,
+     "oos_trades": 7,
+     "generalizes": false,
+     "switches": {
+      "TECHNICAL_DC_STOP_TF": "4h",
+      "TECHNICAL_DC_TARGET_TF": "4h"
+     }
+    },
+    "120/60": {
+     "is_base": 19.91,
+     "is_opt": 51.03,
+     "is_gain_lift": 31.12,
+     "oos_base": 3.95,
+     "oos_paper": 11.38,
+     "oos_delta": 7.43,
+     "oos_trades": 87,
+     "generalizes": true,
+     "switches": {
+      "TECHNICAL_DC_STOP_TF": "4h",
+      "TECHNICAL_DC_TARGET_TF": "4h",
+      "WT_LOWER_CROSS_EXIT_TF": "1h"
+     }
+    }
+   },
+   "compass_365d": {
+    "base": 22.64,
+    "new": 13.66,
+    "delta": -8.99
+   },
+   "oos_generalizes_count": 1,
+   "oos_mean_delta": -1.93,
+   "robust": false
+  },
+  {
+   "sym_side": "AAVEUSDC_LONG",
+   "venue": "crypto",
+   "scenarios": {
+    "7/7": {
+     "is_base": 5.3,
+     "is_opt": 5.52,
+     "is_gain_lift": 0.22,
+     "oos_base": -10.26,
+     "oos_paper": -7.94,
+     "oos_delta": 2.33,
+     "oos_trades": 14,
+     "generalizes": true,
+     "switches": {
+      "WT_LOWER_CROSS_EXIT_TF": "1h"
+     }
+    },
+    "30/30": {
+     "is_base": -1.89,
+     "is_opt": 1.2,
+     "is_gain_lift": 3.09,
+     "oos_base": 60.9,
+     "oos_paper": 25.48,
+     "oos_delta": -35.42,
+     "oos_trades": 14,
+     "generalizes": false,
+     "switches": {
+      "TECHNICAL_DC_STOP_TF": "4h",
+      "TECHNICAL_DC_TARGET_TF": "4h",
+      "WT_LOWER_CROSS_EXIT_TF": "4h"
+     }
+    },
+    "60/30": {
+     "is_base": 37.49,
+     "is_opt": 61.75,
+     "is_gain_lift": 24.26,
+     "oos_base": 60.9,
+     "oos_paper": 50.74,
+     "oos_delta": -10.16,
+     "oos_trades": 12,
+     "generalizes": false,
+     "switches": {
+      "TECHNICAL_DC_STOP_TF": "1h",
+      "WT_LOWER_CROSS_EXIT_TF": "4h",
+      "WT_DC_ENABLED": true,
+      "WT_DC_DETAILED_SCORER_ENABLED": true,
+      "WT_DC_TF_ENTRY": "15m",
+      "WT_DC_DC_TF": "15m"
+     }
+    },
+    "90/30": {
+     "is_base": -2.86,
+     "is_opt": 36.55,
+     "is_gain_lift": 39.41,
+     "oos_base": 60.9,
+     "oos_paper": 27.86,
+     "oos_delta": -33.04,
+     "oos_trades": 45,
+     "generalizes": false,
+     "switches": {
+      "WT_LOWER_CROSS_EXIT_TF": "1h",
+      "WT_DC_ENABLED": true,
+      "WT_DC_DETAILED_SCORER_ENABLED": true,
+      "WT_DC_TF_ENTRY": "15m",
+      "WT_DC_DC_TF": "15m"
+     }
+    },
+    "120/60": {
+     "is_base": 5.72,
+     "is_opt": 41.05,
+     "is_gain_lift": 35.32,
+     "oos_base": 51.06,
+     "oos_paper": 22.37,
+     "oos_delta": -28.7,
+     "oos_trades": 89,
+     "generalizes": false,
+     "switches": {
+      "WT_LOWER_CROSS_EXIT_TF": "1h"
+     }
+    }
+   },
+   "compass_365d": {
+    "base": 51.3,
+    "new": 42.32,
+    "delta": -8.98
+   },
+   "oos_generalizes_count": 1,
+   "oos_mean_delta": -21.0,
+   "robust": false
+  }
+ ]
+}

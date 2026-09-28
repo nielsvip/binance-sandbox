@@ -6944,6 +6944,35 @@ config = _ezm_base_config
 current_env = get_current_environment()
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# 2026-09-28 EXIT-ENGINE PARITY MAP — reason-prefix -> gate knob. Used by the
+# execute_now instrumentation to classify every attempted trade and flag a
+# "leak" (a gate-disabled family that still fired = illegal trade under parity).
+# Pure measurement; does not change any trade decision. STRUCT_EXIT_TF is a
+# side-aware sentinel resolved in the hook. Order matters: longest/most-specific
+# prefixes first so e.g. WT_3M_FORCE_OPEN wins over a bare WT_ family.
+# ─────────────────────────────────────────────────────────────────────────
+_EXIT_REASON_FAMILY_GATE = (
+    ("BREAKOUT_LEASH", "BREAKOUT_LEASH_ENABLED"),
+    ("MOMENTUM_WATCHDOG", "MOMENTUM_WATCHDOG_ENABLED"),
+    ("WT_3M_FORCE_OPEN", "WT_3M_FORCE_OPEN_ENABLED"),
+    ("OBLIGATORY_OPEN", "OBLIGATORY_SMA200_WT3M_ENABLED"),
+    ("OBLIGATORY", "OBLIGATORY_SMA200_WT3M_ENABLED"),
+    ("QUICK_OPEN_STRONG", "QUICK_OPEN_STRONG_VEC_ENABLED"),
+    ("BB_FROZEN_STOP", "BB_FROZEN_STOP_ENABLED"),
+    ("HYBRID_STRUCT_EXIT", "STRUCT_EXIT_TF"),
+    ("WT_PERCENTILE", "WT_PERCENTILE_EXIT_ENABLED"),
+    ("WT_4H_VEL", "WT_4H_VEL_EXIT_ENABLED"),
+    ("WRONG_SIDE_ABS_KILL", "WRONG_SIDE_ABS_KILL_ENABLED"),
+    ("SCALP_V3", "SCALP_V3_ENABLED"),
+    ("GOLDEN_PULLBACK", "GOLDEN_PULLBACK_ENABLED"),
+    ("STDEV_SLOPE", "STDEV_SLOPE_SIZING_ENABLED"),
+    ("EMA50_15M", "EMA50_15M_ENTRY_FILTER_ENABLED"),
+    ("ALL_TF_AGAINST", "ALL_TF_AGAINST_CLOSE_ENABLED"),
+    ("GOLDEN_RULE", "GOLDEN_RULE_ENABLED"),
+)
+
+
 def is_storm(indicators, position_side, account_key=None):
     k15 = float(indicators.get("k_15m", 50) or 50)
     k1h = float(indicators.get("k_1h", 50) or 50)
@@ -29336,6 +29365,32 @@ class MultiAccountTradeManager:
         hedge_for: Optional[str] = None,
         url_variant: str = "",
     ) -> str:
+        # ─── EXIT-ENGINE PARITY INSTRUMENTATION (2026-09-28) ────────────────────
+        # Log EVERY attempted trade (reason/family/gate) BEFORE any downstream gate
+        # (broker-sync, emergency_brake, quarantine) so exit-trigger parity is
+        # measured even when the order is later blocked. leak=True → a gate-disabled
+        # family still fired = illegal trade under parity. Pure logging, fail-open.
+        if bool(getattr(config, "EXIT_ENGINE_PARITY_LOG_ENABLED", True)):
+            try:
+                _xr = (reason or "").strip()
+                if _xr:
+                    _fam = "OTHER"; _knob = None
+                    for _pfx, _kn in _EXIT_REASON_FAMILY_GATE:
+                        if _pfx in _xr:
+                            _fam = _pfx
+                            _knob = ("SHORT_STRUCT_EXIT_TF" if str(position_side).upper() == "SHORT" else "LONG_STRUCT_EXIT_TF") if _kn == "STRUCT_EXIT_TF" else _kn
+                            break
+                    _gval = getattr(config, _knob, None) if _knob else None
+                    _gdis = (_gval is False) or (isinstance(_gval, str) and _gval in ("None", "NONE", "", "OFF"))
+                    _leak = bool(_knob) and _gdis
+                    _xe = {"timestamp": datetime.now(timezone.utc).isoformat(), "position_key": position_key, "action": action, "module": "exit_engine", "live_result": "FIRED", "vec_result": "GATE_DISABLED" if _leak else ("GATE_ON" if _knob else "UNMAPPED"), "divergent": _leak, "leak": _leak, "family": _fam, "gate_knob": _knob, "gate_value": _gval, "position_side": position_side, "is_hedge": bool(is_hedge), "live_reason": _xr[:100]}
+                    _cf_path = Path(getattr(config, "BASE_PATH", "/users/niels/documents/binance")) / "data" / "live_vs_vec_compare.jsonl"
+                    with open(str(_cf_path), "a") as _cf:
+                        _cf.write(json.dumps(_xe) + "\n")
+                    if _leak:
+                        logger.warning(f"⚠️ [EXIT_ENGINE_LEAK] {position_key} action={action} fired family='{_fam}' but gate {_knob}={_gval} is DISABLED — illegal trade under parity (reason={_xr[:60]})")
+            except Exception as _xe_err:
+                logger.debug(f"[EXIT_ENGINE_PARITY] {position_key}: instrumentation skipped ({_xe_err})")
         # BROKER_SYNC LOGICAL DEMAND — 2026-09-08: 80× same order sent because it thought not received without checking broker.
         # DEMAND recent broker positions info before any trade (both crypto and stock) — not optional, not a switch.
         try:

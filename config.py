@@ -4414,6 +4414,7 @@ class Config:
     LIVE_5m_trading_ENABLED: bool = False  # MASTER 1 — 1m/3m/5m TF availability — OFF for parity (7D forward). Default False = 15m parity-only (no 1/3/5m). Set True only for paper 1/3m test arm. Was True, now False per user 20% churn fix.
     PARITY_DISABLE_NON_VECTORIZABLE: bool = True  # MASTER 2 — non-vectorizable/NPZ-unavailable — True = force defaults off
     V12_PARITY_DISABLE_NON_VECTORIZABLE: bool = True  # alias for Master 2
+    EXIT_ENGINE_PARITY_LOG_ENABLED: bool = True  # 2026-09-28 — log EVERY execute_now attempt (reason/family/gate) to data/live_vs_vec_compare.jsonl module=exit_engine so exit-trigger parity is MEASURED (previously only 3 gate modules instrumented → exit engines invisible). leak=True means a gate-disabled family still fired (true illegal trade). Pure logging, no trade-decision change. Turn OFF after 48h parity monitor.
     EXECUTE_NOW_SINGLE_GATE_ENFORCE: bool = True
     EXECUTE_NOW_WIRE_TRIPWIRE_SHADOW: bool = True
     EXECUTE_NOW_WIRE_TRIPWIRE_MAX_LAG_S: float = 5.0
