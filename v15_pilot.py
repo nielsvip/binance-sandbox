@@ -963,6 +963,14 @@ def _spec_clear_live_formulas(wb):
 
 _POOL_PREPARED = None
 
+# Template rows that need several engine keys at once (a sheet row sets one switch). Proven in DC64_GREEDY 2026-09-28.
+COMPOSITE_SWITCHES = {
+    "WT_DC_DETAILED_TF": lambda tf: {"WT_DC_ENABLED": False} if str(tf).upper() == "OFF" else {"WT_DC_ENABLED": True, "WT_DC_DETAILED_SCORER_ENABLED": True, "WT_DC_TF_ENTRY": str(tf), "WT_DC_DC_TF": str(tf)},
+}
+
+def _switch_overrides(switch: str, cand_parsed) -> dict:
+    return COMPOSITE_SWITCHES[switch](cand_parsed) if switch in COMPOSITE_SWITCHES else {switch: cand_parsed}
+
 def _pool_eval(overrides: dict, window_days: int):
     # forked worker: prepared NPZ slice inherited copy-on-write from the parent (stays in RAM, no reload)
     import time as _tp
@@ -1236,24 +1244,20 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         ws = wb[sname]
         cols = _resolve_cols(ws)
         cumulative_before = float(cumulative_gain)
-        # Opportune yellow filters come from the code-grounded map data/opportune_filter_map.json
-        # (per category/sheet/switch set of filter BASES: family + co-read + lifecycle group).
-        # Every option column of an opportune base is a yellow cell. This replaces the old
-        # switch-prefix substring heuristic + all_hdrs[:10] fallback, which tested wrong/arbitrary
-        # filters — a NO-LIES violation. Empty opp_bases -> naked candidate only (never wrong filters).
-        opp_bases = opportune_filter_bases(new_symside, sname, switch)
+        # Yellow cells are read from THIS row's fills in the workbook (cloned from the final TEMPLATE): the sheet the user
+        # sees and what is computed are the same by construction, and row re-sorting cannot desync them (the old
+        # map/prefix selectors could). Only the column the pilot evaluates per header (header_maps) is considered.
         relevant_hdrs = []
         hdr_to_filter = {}
-        all_hdrs = list(header_maps[sname].keys())
-        for hdr in all_hdrs:
+        for hdr, col in header_maps[sname].items():
             if "=" not in hdr:
                 continue
+            fill = ws.cell(row=rr, column=col).fill
+            if not (fill is not None and fill.fill_type == "solid" and str(fill.fgColor.rgb or "").upper().endswith("FFFF00")):
+                continue
             filt, opt = hdr.split("=", 1)
-            filt = filt.strip()
-            opt = opt.strip()
-            if filt in opp_bases:
-                relevant_hdrs.append(hdr)
-                hdr_to_filter[hdr] = {"filter": filt, "opt": opt}
+            relevant_hdrs.append(hdr)
+            hdr_to_filter[hdr] = {"filter": filt.strip(), "opt": opt.strip()}
         # Evaluate naked + each yellow filter vs cumulative_before
         pending_lbI: dict[str, float] = {}
         best_delta = None
@@ -1327,7 +1331,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 return val.lower() == "true"
             return val
         cand_parsed = _parse_opt(cand, defaults.get(switch))
-        switch_variant[switch] = cand_parsed
+        switch_variant.update(_switch_overrides(switch, cand_parsed))
         switch_variant, _ = sanitize_overrides(switch_variant, defaults)
         _prefetched = {}
         if _pool is not None:
@@ -1406,7 +1410,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             progress.setdefault("done", {})[key] = {"delta": delta_for_row, "promoted": promote, "reason": naked_reason, "vec_gain": (naked_vec or {}).get("gain_pct"), "trades": (naked_vec or {}).get("trades"), "yellows": {}, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before + delta_for_row) if promote else float(cumulative_before)}
             if promote:
                 cumulative_gain = float(naked_vec.get("gain_pct"))
-                cumulative_overrides[switch] = cand_parsed
+                cumulative_overrides.update(_switch_overrides(switch, cand_parsed))
                 progress["cumulative_overrides"] = dict(cumulative_overrides)
             progress["cumulative_gain"] = float(cumulative_gain)
             _touch(f"cell {sname}!{rr} no-yellow delta={delta_for_row}")
@@ -1466,7 +1470,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if promote:
             # POS: recompute true joint gain with all overrides (USER 04:25 — don't blindly add delta). Promote only if the
             # joint set really beats cumulative_before — cumulative never goes down, and E always equals a real gain.
-            cumulative_overrides[switch] = cand_parsed
+            cumulative_overrides.update(_switch_overrides(switch, cand_parsed))
             for hdr in pos_hdrs:
                 filt = hdr_to_filter[hdr]["filter"]
                 cumulative_overrides[filt] = _parse_opt(hdr_to_filter[hdr]["opt"], defaults.get(filt))
