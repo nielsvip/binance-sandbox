@@ -1633,12 +1633,12 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     # wt1_W/wt2_W/wt1_M/wt2_M and the missing fields were silently zero-filled,
     # producing lying backtest results.
     if mode == "tradier":
-        base_tf = "15m"  # 15m has 2yr history, 5m only 3mo — use 15m, fabricate 5m
-        tfs = ["5m", "15m", "1h", "4h", "D", "W", "M"]
+        base_tf = "15m"
+        tfs = ["15m", "1h", "4h", "D", "W", "M"]
         klines_dir = TRADIER_KLINES
     else:
-        base_tf = "15m"  # 15m is the source of truth — full history back to 2020
-        tfs = ["3m", "15m", "1h", "4h", "D", "W", "M"]
+        base_tf = "15m"
+        tfs = ["15m", "1h", "4h", "D", "W", "M"]
         klines_dir = CRYPTO_KLINES
     # Klines source: STRICTLY klines_cache_backtest on servers (4yr × 48 crypto / 128+ stocks).
     # User directive 2026-04-28: NEVER fall back to klines_cache (live, ~1200 bars only).
@@ -1693,29 +1693,7 @@ def compute_symbol(symbol: str, mode: str) -> bool:
         logger.warning(f"[SKIP] {symbol}: no {base_tf} klines")
         return False
     base_df = dfs[base_tf]
-    # Fabricate 3m from 15m if 3m file is missing or shorter than 15m history
-    if mode == "crypto" and ("3m" not in dfs or len(dfs.get("3m", [])) < len(base_df) * 3):
-        logger.info(f"  {symbol}: fabricating 3m from 15m ({len(base_df)} × 5 = {len(base_df)*5} bars)")
-        dfs["3m"] = fabricate_3m(base_df)
-    # Always merge the 15m-derived coverage with authentic 5m. Row-count-only
-    # selection is insufficient: VT had 39k real 5m rows ending Jul-01 and only
-    # 787 15m rows, but those 15m rows continued through Jul-24. The previous
-    # condition kept the longer file and silently threw away the newer tail.
-    # Real observations win every overlap; synthetic provenance remains explicit.
-    if mode == "tradier":
-        real_5m = dfs.get("5m")
-        logger.info(
-            f"  {symbol}: merge authentic 5m with 15m-derived coverage "
-            f"(15m={len(base_df)}, authentic_5m={len(real_5m) if real_5m is not None else 0})"
-        )
-        dfs["5m"] = _hybrid_tradier_5m(base_df, real_5m)
-    # Use highest resolution as base for NPZ output — every 3m/5m bar gets its own row
-    if mode == "crypto" and "3m" in dfs and len(dfs["3m"]) > len(base_df):
-        base_df = dfs["3m"]
-        base_tf = "3m"
-    if mode == "tradier" and "5m" in dfs and len(dfs["5m"]) > len(base_df):
-        base_df = dfs["5m"]
-        base_tf = "5m"
+    # 15m-only base — no 1/3/5m fabrication. Pure 15m history.
     n = len(base_df)
     _dt_unit = np.datetime_data(base_df.index.values.dtype)[0]
     _divisor = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_dt_unit, 10**9)
@@ -1728,15 +1706,8 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     # Second part of fix: standalone D/4h/1h files loaded from klines_cache (Mac fallback) are
     # STALE (short, old) vs the 15m-resampled versions.  ALWAYS prefer 15m-resampled for all HTFs
     # regardless of existing file length — 15m is the canonical backtest source.
-    if mode == "tradier":
-        _resample_src_tf, _resample_src_df = _choose_tradier_resample_source(dfs)
-        logger.info(
-            f"  {symbol}: HTF source={_resample_src_tf} "
-            f"span_days={_frame_span_seconds(_resample_src_df) / 86400.0:.1f}"
-        )
-    else:
-        _resample_src_tf = "15m"
-        _resample_src_df = dfs.get(_resample_src_tf, base_df)
+    _resample_src_tf = "15m"
+    _resample_src_df = dfs.get(_resample_src_tf, base_df)
     for tf in tfs:
         if tf == base_tf or tf == _resample_src_tf:
             continue
@@ -1765,21 +1736,6 @@ def compute_symbol(symbol: str, mode: str) -> bool:
                 continue
             dfs[tf] = resampled
     merged = {"timestamps": ts_epoch, "close": base_df["close"].values.astype(np.float32)}
-    if mode == "tradier":
-        merged["synthetic_5m"] = (
-            base_df.get("_synthetic_5m", pd.Series(0, index=base_df.index))
-            .fillna(1)
-            .values.astype(np.int8)
-        )
-        _parent_close = base_df.get(
-            "_synthetic_5m_parent_close_ts",
-            pd.Series(base_df.index, index=base_df.index),
-        )
-        merged["synthetic_5m_parent_close_ts"] = (
-            pd.to_datetime(_parent_close, utc=True)
-            .to_numpy(dtype="datetime64[s]")
-            .astype(np.int64)
-        )
     # Compute indicators per TF — ONE call, returns FULL arrays
     for tf in tfs:
         if tf not in dfs:
@@ -1802,32 +1758,6 @@ def compute_symbol(symbol: str, mode: str) -> bool:
                     f"timestamp_{tf}",
                     _availability_timestamps(tf_ts, indices, tf, mode),
                 )
-    # FIX: Fabricated 3m WT can disagree with parent 15m direction due to interpolation artifacts.
-    # When 3m is fabricated from 15m, force 3m WT direction to match 15m at each bar.
-    # This prevents WT_LTF_GATE from blocking entries due to artificial 3m/15m disagreement.
-    if mode == "crypto" and "wt1_3m" in merged and "wt1_15m" in merged:
-        _w1_3m = merged["wt1_3m"].astype(np.float32)
-        _w2_3m = merged["wt2_3m"].astype(np.float32)
-        _w1_15m = merged["wt1_15m"].astype(np.float32)
-        _w2_15m = merged["wt2_15m"].astype(np.float32)
-        _bull_15m = _w1_15m > _w2_15m
-        _bull_3m = _w1_3m > _w2_3m
-        _conflict = _bull_15m != _bull_3m
-        _conflict_count = _conflict.sum()
-        if _conflict_count > 0:
-            _score = _w1_3m - _w2_3m
-            _abs_score = np.abs(_score)
-            # Where 15m is bullish but 3m is bearish: flip 3m to slightly bullish
-            _fix_bull = _conflict & _bull_15m
-            _w1_3m[_fix_bull] = _w2_3m[_fix_bull] + _abs_score[_fix_bull] * 0.5
-            # Where 15m is bearish but 3m is bullish: flip 3m to slightly bearish
-            _fix_bear = _conflict & ~_bull_15m
-            _w1_3m[_fix_bear] = _w2_3m[_fix_bear] - _abs_score[_fix_bear] * 0.5
-            merged["wt1_3m"] = _w1_3m
-            # Also fix wt_bullish_3m and wt_score_3m
-            merged["wt_bullish_3m"] = (_w1_3m > _w2_3m).astype(np.int8)
-            merged["wt_score_3m"] = (_w1_3m - _w2_3m).astype(np.float32)
-            logger.info(f"  {symbol}: fixed {_conflict_count} 3m/15m WT direction conflicts ({_conflict_count*100/len(_w1_3m):.1f}%)")
     # WT composite (cross-TF global fields — all as full arrays)
     bull_count = np.zeros(n, dtype=np.int8)
     bear_count = np.zeros(n, dtype=np.int8)
@@ -1885,8 +1815,8 @@ def compute_symbol(symbol: str, mode: str) -> bool:
             div_v = np.asarray(div)
             any_bull_div = np.maximum(any_bull_div, (div_v > 0).astype(np.int8))
             any_bear_div = np.maximum(any_bear_div, (div_v < 0).astype(np.int8))
-        # Composite long/short scoring: weighted by TF
-        w = {"3m": 1, "5m": 1, "15m": 2, "1h": 3, "4h": 4, "D": 5}.get(tf, 1)
+        # Composite long/short scoring: weighted by TF (15m-only)
+        w = {"15m": 2, "1h": 3, "4h": 4, "D": 5, "W": 2, "M": 1}.get(tf, 1)
         score = merged.get(f"wt_score_{tf}")
         if score is not None:
             s = np.asarray(score, dtype=np.float64)
@@ -1922,10 +1852,9 @@ def compute_symbol(symbol: str, mode: str) -> bool:
             _wt_lh_count += (np.asarray(_ps) == -1).astype(np.int8)
     merged["wt_lh_count"] = _wt_lh_count
     # 2. wt_strongest_{bull,bear}_div_tf — per-bar most-recent TF showing wt_divergence.
-    # Live emits string TF names (None/"3m"/"1h"). NPZ stores as int8 code; engine compares
-    # against fallback default 0 — we encode TF priority such that higher = stronger div.
-    # codes: 0=none, 1="3m", 2="5m", 3="15m", 4="1h", 5="4h", 6="D", 7="W", 8="M"
-    _TF_DIV_CODE = {"3m": 1, "5m": 2, "15m": 3, "1h": 4, "4h": 5, "D": 6, "W": 7, "M": 8}
+    # Live emits string TF names (None/"15m"/"1h"). NPZ stores as int8 code; engine compares
+    # codes: 0=none, 1="15m", 2="1h", 3="4h", 4="D", 5="W", 6="M"  (3m/5m removed)
+    _TF_DIV_CODE = {"15m": 1, "1h": 2, "4h": 3, "D": 4, "W": 5, "M": 6}
     _bull_tf_code = np.zeros(n, dtype=np.int8)
     _bear_tf_code = np.zeros(n, dtype=np.int8)
     for t in tfs:
@@ -1940,13 +1869,11 @@ def compute_symbol(symbol: str, mode: str) -> bool:
         _bear_tf_code = np.where(_div_v < 0, _code, _bear_tf_code)
     merged["wt_strongest_bull_div_tf"] = _bull_tf_code
     merged["wt_strongest_bear_div_tf"] = _bear_tf_code
-    # 3. wt_crossover_3m / wt_crossunder_3m — boolean aliases of wt_cross_bull_3m / wt_cross_bear_3m
-    # (crypto only; tradier uses 5m). Engine reads both names with bare-string lookup.
-    _xt = "3m" if mode == "crypto" else "5m"
-    if f"wt_cross_bull_{_xt}" in merged:
-        merged[f"wt_crossover_{_xt}"] = merged[f"wt_cross_bull_{_xt}"]
-    if f"wt_cross_bear_{_xt}" in merged:
-        merged[f"wt_crossunder_{_xt}"] = merged[f"wt_cross_bear_{_xt}"]
+    # 3. wt_crossover_15m alias (15m-only, 3m/5m removed)
+    if "wt_cross_bull_15m" in merged:
+        merged["wt_crossover_15m"] = merged["wt_cross_bull_15m"]
+    if "wt_cross_bear_15m" in merged:
+        merged["wt_crossunder_15m"] = merged["wt_cross_bear_15m"]
     # 4. linreg per-TF slopes + linearity. Live `linreg_features(series, length)` with the
     # 2026-04-29 bug fix. Window length 14 (matches live default for the 4h gate). Slope
     # is normalized to %/bar by dividing by abs(y_mean).
@@ -1957,7 +1884,7 @@ def compute_symbol(symbol: str, mode: str) -> bool:
         return sl_pct.astype(np.float32), ln.astype(np.float32)
     # lr_trend_<TF> is computed on the per-TF close series. Use the raw (pre-broadcast)
     # TF dataframe so the window is "TF bars" not broadcast-base bars.
-    for t in ("3m", "5m", "15m", "1h", "4h", "D"):
+    for t in ("15m", "1h", "4h", "D"):
         if t not in dfs:
             continue
         df_t = dfs[t]
@@ -1994,11 +1921,7 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     # (~75 daily bars) can produce no 4h/D channel at all and fail the data
     # contract outright. Lengths stay ~200 bars per timeframe so the window is a
     # comparable amount of structure, not a comparable amount of wall-clock.
-    _lrL_lengths = (
-        {"1h": 200, "4h": 200, "D": 300, "15m": 200, "5m": 200}
-        if mode == "crypto"
-        else {"1h": 200, "4h": 400, "D": 200, "15m": 200, "5m": 200}
-    )
+    _lrL_lengths = {"1h": 200, "4h": 200, "D": 300, "15m": 200} if mode == "crypto" else {"1h": 200, "4h": 400, "D": 200, "15m": 200}
     def _lrL_channel(y: np.ndarray, L: int):
         n_ = len(y)
         out_pb = np.full(n_, 0.5, dtype=np.float32)
@@ -2088,23 +2011,19 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     # 8. bb_pct (no TF suffix): default to bb_pct_b_<base_tf>.
     if f"bb_pct_b_{base_tf}" in merged:
         merged["bb_pct"] = merged[f"bb_pct_b_{base_tf}"]
-    # 9. t_up_3m / t_up_15m / t_up_5m — live "trend up": ema9 > ema21. Boolean int8.
-    for t in ("3m", "5m", "15m"):
+    # 9. t_up_15m — live "trend up": ema9 > ema50 (15m-only)
+    for t in ("15m",):
         ema9_t = merged.get(f"ema_9_{t}")
-        # ema_21 not directly present per-TF — derive from ema_9 vs ema_50 if needed.
-        # Live computes ema9 > ema21 specifically. Best fidelity: use ema_9_<t> > ema_50_<t>.
         ema50_t = merged.get(f"ema_50_{t}")
         if ema9_t is not None and ema50_t is not None:
             merged[f"t_up_{t}"] = (np.asarray(ema9_t) > np.asarray(ema50_t)).astype(np.int8)
-    # 10. rel_vol_<TF> aliases of relative_volume_<TF> (engine uses both names).
-    for t in ("5m", "15m", "1h"):
+    # 10. rel_vol aliases (15m-only, 5m removed)
+    for t in ("15m", "1h"):
         rv = merged.get(f"relative_volume_{t}")
         if rv is not None:
             merged[f"rel_vol_{t}"] = rv
-    # 2026-07-04: sma_200_1m proxy = sma_70 on the base TF (NPZ has no 1m data). crypto base=3m, stock=5m.
-    _s70 = merged.get("sma_70_3m")
-    if _s70 is None:
-        _s70 = merged.get("sma_70_5m")
+    # sma_200_1m proxy now from 15m sma_70 (no 1/3/5m)
+    _s70 = merged.get("sma_70_15m")
     if _s70 is not None:
         merged["sma_200_1m"] = _s70.astype(np.float32)
         merged["sma_200_1m_prev"] = np.roll(_s70, 1).astype(np.float32)
@@ -2143,8 +2062,8 @@ def compute_symbol(symbol: str, mode: str) -> bool:
             chop = 100.0 * np.log10(np.where(hl_range > 0, atr_sum / hl_range, 1.0)) / np.log10(14.0)
         chop = np.nan_to_num(chop, nan=50.0, posinf=50.0, neginf=50.0)
         merged["choppiness_4h"] = np.clip(chop, 0.0, 100.0).astype(np.float32)
-    # 14. ema_20_std_<TF>: rolling std of (close - ema20) for TF ∈ {3m,4h}.
-    for t in ("3m", "5m", "4h"):
+    # 14. ema_20_std_4h only (15m-only, 3m/5m removed)
+    for t in ("4h",):
         cl_t = merged.get(f"close_{t}")
         ema20_t = merged.get(f"ema_20_{t}")
         if cl_t is None or ema20_t is None:
@@ -2155,9 +2074,8 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     # array. Engine can `dict(npz['bar_pattern_codes'].item())` to translate ints back to strings.
     merged["bar_pattern_codes"] = np.array(BAR_PATTERN_CODES, dtype=object)
     merged["bar_vol_regime_codes"] = np.array(BAR_VOL_REGIME_CODES, dtype=object)
-    # 16. Stoch K/D shorthand aliases. Live code reads `k_<tf>` / `d_<tf>` (see ez_copilot.py)
-    # with chain-fallback to `stoch_k_<tf>`. Adding aliases removes audit noise + matches live.
-    for t in ("3m", "5m", "15m", "1h", "4h", "D"):
+    # 16. Stoch K/D shorthand aliases (15m-only, 3m/5m removed)
+    for t in ("15m", "1h", "4h", "D"):
         if f"stoch_k_{t}" in merged:
             merged[f"k_{t}"] = merged[f"stoch_k_{t}"]
         if f"stoch_d_{t}" in merged:
@@ -2168,7 +2086,7 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     # 18. Per-TF information-availability timestamps. Higher timeframes populated
     # above retain the timestamp at which the selected closed row became knowable.
     # Base/missing timeframes use the canonical simulated-bar timestamp.
-    for t in ("3m", "5m", "15m", "1h", "4h", "D", "W", "M"):
+    for t in ("15m", "1h", "4h", "D", "W", "M"):
         merged.setdefault(f"timestamp_{t}", ts_epoch)
     # 19. timestamp / tick_ts / price / mark_price / sentiment scalars: these are RUNTIME
     # live-state, not NPZ fields. Document here so we don't try to add them later.
@@ -2396,11 +2314,11 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     # and >=300 days span; crypto requires >=30000 3m bars. Below → skip save
     # and return False so parity reports NO_DATA (MATCH) rather than divergence.
     # S1 fetch needed: tradier_klines_append.py --symbols <SYM> --days-back 400
-    _span_days = _frame_span_seconds(dfs.get(_resample_src_tf, base_df)) / 86400.0 if mode == "tradier" else n * (5 if mode == "tradier" else 3) / 1440.0
+    _span_days = _frame_span_seconds(dfs.get(_resample_src_tf, base_df)) / 86400.0 if mode == "tradier" else n * 15 / 1440.0
     if mode == "tradier" and (n < 20000 or _span_days < 300) and symbol not in ["SNDK","SNDK_LONG","SNDK_SHORT","ZCSH","ZCSH_LONG","ZCSH_SHORT"]:
         logger.warning(f"  {symbol}: SKIP save — insufficient coverage n={n} span_days={_span_days:.1f} (need 20000 bars / 300d for 1yr tradier parity)")
         return False
-    if mode == "crypto" and n < 30000:
+    if mode == "crypto" and n < 7000:
         logger.warning(f"  {symbol}: SKIP save — insufficient coverage n={n} (need 30000 bars for 1yr crypto)")
         return False
     OUT_DIR.mkdir(parents=True, exist_ok=True)
