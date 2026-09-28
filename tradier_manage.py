@@ -22807,6 +22807,16 @@ class TradierTradeManager:
         logger.error(f"   CORRECTING to: {expected_side}")
         return expected_side, False
    
+    @property
+    def indicators_cache(self) -> Dict[str, Any]:
+        # 2026-09-28 dead-wire fix (USER: gap rule "recalculate open gaps daily / close last 90m /
+        # reopen next day" not respected): gap-MOC morning rebuy, daily gap-inventory recorders and
+        # hedge-mate lookups all read `trade_manager.indicators_cache`, but no such attribute was
+        # ever assigned — their hasattr guards silently returned {} so gap inventories recorded 0
+        # symbols and every morning rebuy deferred forever ("no indicators yet" loop). The live
+        # indicator store is market_snapshot; expose it under the name those consumers use.
+        return self.market_snapshot
+
     def get_indicators(self, symbol: str, use_cache: bool = True) -> Dict[str, Any]:
         symbol = symbol.strip().upper()
         data = self.market_snapshot.get(symbol, {})

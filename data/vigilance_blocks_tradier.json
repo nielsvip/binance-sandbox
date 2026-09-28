@@ -60,11 +60,6 @@
       "reason": "DC4_15m_BREACH_g-0.04pct_px158.9850_lvl159.6850",
       "exit_price": 158.985
     },
-    "MU_LONG": {
-      "blocked_at": "2026-09-28T13:57:09.380074+00:00",
-      "reason": "DC4_15m_BREACH_g-0.19pct_px1059.7000_lvl1071.4050",
-      "exit_price": 1059.6999999999998
-    },
     "RS_SHORT": {
       "blocked_at": "2026-09-28T14:09:16.966426+00:00",
       "reason": "DC4_15m_BREACH_g-0.55pct_px389.5100_lvl389.4550",
@@ -99,6 +94,16 @@
       "blocked_at": "2026-09-28T15:13:33.991283+00:00",
       "reason": "DC4_15m_BREACH_g-0.31pct_px354.1100_lvl357.4850",
       "exit_price": 354.11
+    },
+    "TSLA_LONG": {
+      "blocked_at": "2026-09-28T15:25:49.423100+00:00",
+      "reason": "DC4_15m_BREACH_g-0.15pct_px360.2900_lvl378.8350",
+      "exit_price": 360.28999999999996
+    },
+    "MU_LONG": {
+      "blocked_at": "2026-09-28T15:49:44.787182+00:00",
+      "reason": "DC4_15m_BREACH_g-2.04pct_px1040.4000_lvl1071.4050",
+      "exit_price": 1040.4
     }
   },
   "streaks": {
@@ -263,7 +268,7 @@
       ]
     },
     "MU_LONG": {
-      "consec_losses": 1,
+      "consec_losses": 0,
       "last": [
         {
           "ts": "2026-09-28T14:14:56.239086+00:00",
@@ -313,7 +318,7 @@
       ]
     },
     "NKE_SHORT": {
-      "consec_losses": 0,
+      "consec_losses": 1,
       "last": [
         {
           "ts": "2026-09-28T14:46:09.994522+00:00",
@@ -324,6 +329,31 @@
           "ts": "2026-09-28T15:02:43.796558+00:00",
           "gain_pct": 0.0276,
           "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_SHORT_g-1.19_lvl36.1450_qty_999999"
+        },
+        {
+          "ts": "2026-09-28T15:32:20.974859+00:00",
+          "gain_pct": -0.1384,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_SHORT_g-1.33_lvl36.1450_qty_999999"
+        },
+        {
+          "ts": "2026-09-28T15:36:24.102334+00:00",
+          "gain_pct": 0.0277,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_SHORT_g-0.71_lvl36.1450_qty_999999"
+        },
+        {
+          "ts": "2026-09-28T15:38:29.674385+00:00",
+          "gain_pct": -0.0868,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_SHORT_g-1.50_lvl36.1450_qty_999999"
+        }
+      ]
+    },
+    "ZCSH_LONG": {
+      "consec_losses": 1,
+      "last": [
+        {
+          "ts": "2026-09-28T15:44:20.921070+00:00",
+          "gain_pct": -4.4735,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-1.84_lvl124.8700_qty_999999"
         }
       ]
     }

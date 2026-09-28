@@ -2604,3 +2604,25 @@ class TradierConfig:
     SCALP_V3_ENABLED: bool = False  # added
 
     STRICT_VEC_PARITY_MODE: bool = True  # 2026-09-26 PARITY LOCK — live trades ONLY vec-achievable routes. Was False, now True per user 20% churn fix.
+
+    # ═══ INDEX NEWS STRATEGY (tradier_index_news.py) — SPY/QQQ/VT news+ORB — 2026-09-28 ═══
+    # HARD SAFETY LOCK mirror of OPTIONS_LIVE_TRADING_ENABLED: real-money orders stay OFF
+    # until paper days on trc sandbox are done and the owner deliberately flips the flag.
+    INDEX_NEWS_ENABLED: bool = False  # MASTER KILL SWITCH — daemon refuses to run anything when False
+    INDEX_NEWS_LIVE_TRADING_ENABLED: bool = False  # False = trc sandbox only; True required for tra/trb real money
+    INDEX_NEWS_ACCOUNT_KEY: str = "trc"  # trc = Tradier sandbox (paper); executor refuses non-trc while live flag False
+    INDEX_NEWS_SYMBOLS: List[str] = field(default_factory=lambda: ["SPY", "QQQ", "VT"])
+    INDEX_NEWS_PREMARKET_ENABLED: bool = True  # premarket entries use limit-only duration='pre' (Tradier 4:00-9:30 ET)
+    INDEX_NEWS_PREMARKET_START_ET: str = "07:00"  # earlier premarket is too thin, esp. VT
+    INDEX_NEWS_MAX_POSITION_USD: float = 1000.0  # per symbol cap
+    INDEX_NEWS_VT_SIZE_FACTOR: float = 0.5  # VT thin book — half size, no ORB, regime/bias entries only
+    INDEX_NEWS_BIAS_LONG_MIN: float = 0.35  # news bias >= this for long entries
+    INDEX_NEWS_BIAS_SHORT_MAX: float = -0.50  # news bias <= this for ORB shorts (RTH only, no premarket shorts)
+    INDEX_NEWS_ORB_MINUTES: int = 30  # opening range window; 30m long break = 58% winners on QQQ 2yr sample
+    INDEX_NEWS_GAP_CHASE_MAX_PCT: float = 1.0  # never chase gaps beyond this (45% of 1-2% QQQ gaps fill same day)
+    INDEX_NEWS_MONDAY_GAP_FADE: bool = True  # Monday gap-ups fade historically — no premarket longs into Monday gap-up
+    INDEX_NEWS_BREAKEVEN_AT_R: float = 0.5  # stop to breakeven after +0.5R — capped-loss discipline
+    INDEX_NEWS_DAILY_MAX_LOSS_PCT: float = 0.75  # day realized loss cap (% of allocation) → no NEW entries rest of day
+    INDEX_NEWS_MAX_CONSEC_LOSSES: int = 2  # per symbol per day → symbol blocked rest of day (vigilance mirror)
+    INDEX_NEWS_EOD_FLAT: bool = True  # flatten before close — no overnight risk
+    INDEX_NEWS_SCAN_INTERVAL_SECONDS: float = 600.0  # news scan cadence premarket/RTH
