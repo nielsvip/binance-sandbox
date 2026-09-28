@@ -1789,6 +1789,23 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     live_reason = ""
     try:
         final_gain = float(cumulative_gain)
+        # 2026-09-28 NO-LIES FIX (engine-mixed chains): resume takes max(stored cum, fresh baseline)
+        # (line ~3678), so a chain resumed across an engine change can carry a cumulative the CURRENT
+        # engine cannot reproduce — publishing that number in the bh/gain filename would be a lying
+        # metric. The fresh full-set eval is authoritative: stamp the divergence, publish only fresh.
+        try:
+            _fresh_final = evaluate_prepared_sanitized(prepared, dict(cumulative_overrides), args.window_days) if prepared is not None else {}
+            _fresh_g = _fresh_final.get("gain_pct")
+            if _fresh_g is not None:
+                progress["final_gain_fresh_vec"] = float(_fresh_g)
+                if abs(float(_fresh_g) - final_gain) > 1e-6:
+                    progress["engine_mixed_chain"] = {"recorded_cum": float(final_gain), "fresh_vec": float(_fresh_g)}
+                    print(f"[final-fresh] {new_symside} recorded cum {final_gain:.4f} != fresh vec {float(_fresh_g):.4f} — engine-mixed chain, final_gain set to fresh (engine authoritative)", flush=True)
+                    final_gain = float(_fresh_g)
+                    cumulative_gain = float(_fresh_g)
+                    progress["cumulative_gain"] = float(_fresh_g)
+        except Exception as _ff_e:
+            print(f"[final-fresh-warn] {new_symside}: {_ff_e}", flush=True)
         # 2026-09-28 PARITY FIX: --vector-only keeps the SWEEP vector-only (speed), but the single
         # DONE-stage live verification (one backtest_v12_engine run on the winning set, LIVE_TIMEOUT-bound)
         # must always run — the herd hardcodes --vector-only, which left 0/358 sym_sides live-verified

@@ -54,6 +54,7 @@ class Config:
     WT_DC_HTF_GATE: str = "4h_D"  # 2026-09-10 FIX vs B&H: was none → 4h_D — ensures larger-TF WT direction (D+4h) blocks counter-trend trades. User: against trend + larger TF WT. Crypto now matches tradier.
     WT_DC_ENTRY_THRESHOLD: float = 0.0  # crypto 0 vs tradier 45
     TRA_WT_DC_ENTRY_THRESHOLD: float = 0.0  # keep for crypto parity (tradier 85)
+    WT_DC_DETAILED_SCORER_ENABLED: bool = False  # 2026-09-28 opt-in: detailed _score_long/_score_short slowdown/accel scorer (thr 43) vs simple multi-TF. Off=live unchanged. Crypto live has no WT_DC entry caller, so this affects backtest/sweep only for crypto.
     # ── WT/DC TF-EXPANDED PACK 2026-09-19 — 15m+ only (15m/1h/4h/D/W): clear TF gates so every WT/DC path is template-sweepable ──
     WT_DC_TF_ENTRY: str = "1h"  # WT cross trigger TF: 15m|1h|4h|D — default 1h (live-parity, was hard 1h)
     WT_DC_TF_HTF: str = "4h"  # primary HTF WT alignment TF: 15m|1h|4h|D|W — default 4h
@@ -1546,6 +1547,8 @@ class Config:
         # so any historical reason strings still bypass.
         'VIGILANCE_DC4',
         'VIGILANCE_MAX_LOSS',
+        # 2026-09-28 USER: neg-book sym_side open position closes at next WT turn against it.
+        'NEGBOOK_WT_TURN',
         # 2026-09-28 dead-switch implementation: the 2026-09-19 ULTIMATE_DC mandate says the stop
         # "bypasses MIN_HOLD / NOLOSS / hedge-protect" but its reason was never added here, so on
         # crypto the gain-agnostic DC hard stop degraded into an OBLIGATORY_HEDGE attempt instead
@@ -1569,6 +1572,10 @@ class Config:
     # block-exit price, or a bounce (wt1_15m rising + 3m stoch momentum with the side).
     VIGILANCE_RECOVERY_REENTRY_ENABLED: bool = True
     VIGILANCE_RECOVERY_BOUNCE_OK: bool = True
+    # USER 2026-09-28: a NEG-blocked sym_side (per_sym book acc_gain_pct<=0 / _NEG_BLOCK tag) with an
+    # OPEN position holds while WT is with the position and closes at the next WT turn against it.
+    NEGBOOK_WT_TURN_EXIT_ENABLED: bool = True
+    NEGBOOK_WT_EXIT_TF: str = "15m"
     # 2026-05-15 USER: SHORT price-cross daemon reentries require wt1_3m crossunder + k_3m>60.
     # 2026-05-16 RE-FLIPPED to False — earlier edit reverted by an external process.
     # Per agent audit: True gate silently dropped every SHORT reentry below k_3m=60

@@ -1656,6 +1656,8 @@ def wavetrend_intelligence(wt1_series: pd.Series, wt2_series: pd.Series, close_s
     result[f"wt_cross_value_{tf}"] = cross_value
     result[f"wt_cross_prev_value_{tf}"] = cross_prev_value
     result[f"wt_cross_rising_{tf}"] = cross_rising
+    result[f"wt_cross_bull_{tf}"] = 1 if (recent_cross == "BULL" and recent_cross_bars_ago == 0) else 0
+    result[f"wt_cross_bear_{tf}"] = 1 if (recent_cross == "BEAR" and recent_cross_bars_ago == 0) else 0
     # 2026-07-04: close PRICE at the wt cross (+ the cross before) — for the higher-high (LONG) /
     # lower-low (SHORT) crossover-PRICE reentry gate. Same indices as the wt-value cross above.
     _xc_price = 0.0; _xc_prev_price = 0.0

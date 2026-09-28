@@ -22,6 +22,9 @@ def load_last(symbol):
 
 def atomic_write(path, rows):
     tmp = path.with_name(f'.{path.name}.{os.getpid()}.tmp')
+    # 2026-09-28: json.dumps emits bare NaN/Infinity (invalid JSON) that orjson readers
+    # (tradier_indicators.safe_json_loads) reject; write null like tradier_klines.export_atomic.
+    rows = [{k: (None if isinstance(v, float) and (v != v or v in (float('inf'), float('-inf'))) else v) for k, v in r.items()} if isinstance(r, dict) else r for r in rows]
     tmp.write_text(json.dumps(rows, separators=(',', ':')))
     os.replace(tmp, path)
 

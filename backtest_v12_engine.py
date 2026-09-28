@@ -10413,8 +10413,10 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         v8_logger.error(f"[V8_SATOSHIT_IMPORT_FAIL] {_sat_imp_err} — SATOSHIT gate will be NO-OP")
         _v8_sat_entry = None
     _orig_wt_dc_score_entry = tm_mod.wt_dc_score_entry
-    def _v8_satoshit_wt_dc_score_entry(indicators, is_long, current_price=0.0):
-        score, reason = _orig_wt_dc_score_entry(indicators, is_long, current_price)
+    def _v8_satoshit_wt_dc_score_entry(indicators, is_long, current_price=0.0, detailed=None):
+        if detailed is None:
+            detailed = bool(getattr(tm_mod.config, 'WT_DC_DETAILED_SCORER_ENABLED', False))
+        score, reason = _orig_wt_dc_score_entry(indicators, is_long, current_price, detailed=detailed)
         if getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', True) and _v8_sat_entry:
             try:
                 _sat_ok, _sat_votes, _ = _v8_sat_entry(indicators, is_long, tm_mod.config)

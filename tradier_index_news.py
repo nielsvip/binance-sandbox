@@ -201,17 +201,19 @@ class MarketData:
         except Exception:
             return []
 
-    async def opening_range(self, symbol: str) -> Optional[Dict]:
+    async def opening_range(self, symbol: str, minutes: int = None) -> Optional[Dict]:
+        minutes = minutes or config.INDEX_NEWS_ORB_MINUTES
         try:
             start = now_et().strftime('%Y-%m-%d 09:30')
             open_dt = now_et().replace(hour=9, minute=30)
-            end_dt = open_dt + __import__('datetime').timedelta(minutes=config.INDEX_NEWS_ORB_MINUTES)
+            end_dt = open_dt + __import__('datetime').timedelta(minutes=minutes)
             bars = await self.client.get_timesales(symbol, interval='1min', start=start, end=end_dt.strftime('%Y-%m-%d %H:%M'))
             highs = [float(b['high']) for b in (bars or []) if b.get('high') is not None]
             lows = [float(b['low']) for b in (bars or []) if b.get('low') is not None]
-            if len(highs) < config.INDEX_NEWS_ORB_MINUTES * 0.6:
+            opens = [float(b['open']) for b in (bars or []) if b.get('open') is not None]
+            if len(highs) < minutes * 0.6:
                 return None
-            return {'high': max(highs), 'low': min(lows)}
+            return {'high': max(highs), 'low': min(lows), 'open': opens[0] if opens else None}
         except Exception as e:
             logger.error(f"[DATA] opening range {symbol}: {e}")
             return None
@@ -296,6 +298,11 @@ class Strategy:
         self.symbols = list(config.INDEX_NEWS_SYMBOLS)
         self.state = load_state()
 
+    def param(self, symbol: str, key: str):
+        base = {'orb': config.INDEX_NEWS_ORB_MINUTES, 'be_r': config.INDEX_NEWS_BREAKEVEN_AT_R, 'gap_max': config.INDEX_NEWS_GAP_CHASE_MAX_PCT, 'rng_cap': 1.0, 'gap_min': getattr(config, 'INDEX_NEWS_GAP_MIN_PCT', 0.0)}
+        per = getattr(config, 'INDEX_NEWS_SYMBOL_PARAMS', {}) or {}
+        return per.get(symbol, {}).get(key, base[key])
+
     def allocation_usd(self) -> float:
         return config.INDEX_NEWS_MAX_POSITION_USD * len(self.symbols)
 
@@ -343,8 +350,11 @@ class Strategy:
                 continue
             mid = (bid + ask) / 2
             gap_pct = (mid - pc) / pc * 100.0
-            if gap_pct > config.INDEX_NEWS_GAP_CHASE_MAX_PCT or gap_pct < -0.3:
+            if gap_pct > self.param(symbol, 'gap_max') or gap_pct < -0.3:
                 logger.info(f"[PRE] {symbol}: gap {gap_pct:+.2f}% outside chase band — skip")
+                continue
+            if abs(gap_pct) < self.param(symbol, 'gap_min'):
+                logger.info(f"[PRE] {symbol}: gap {gap_pct:+.2f}% below catalyst floor {self.param(symbol, 'gap_min')}% — skip (sweep-confirmed churn filter)")
                 continue
             if config.INDEX_NEWS_MONDAY_GAP_FADE and now_et().weekday() == 0 and gap_pct > 0.3:
                 logger.info(f"[PRE] {symbol}: Monday gap-up {gap_pct:+.2f}% — fade stat, skip")
@@ -355,7 +365,7 @@ class Strategy:
             fill = await self.executor.place(symbol, 'buy', qty, round(min(ask, mid + 0.01), 2), premarket=True, reason=f"PRE_NEWS_LONG bias={bias:.2f} gap={gap_pct:+.2f}%")
             if fill:
                 stop = round(fill['fill_price'] * 0.994, 2)
-                self.state['positions'][symbol] = {'side': 'LONG', 'qty': fill['qty'], 'entry': fill['fill_price'], 'stop': stop, 'risk': fill['fill_price'] - stop, 'opened_at': datetime.now(timezone.utc).isoformat(), 'breakeven': False, 'mode': fill['mode'], 'entry_reason': fill['reason']}
+                self.state['positions'][symbol] = {'side': 'LONG', 'qty': fill['qty'], 'entry': fill['fill_price'], 'stop': stop, 'risk': fill['fill_price'] - stop, 'be_r': self.param(symbol, 'be_r'), 'opened_at': datetime.now(timezone.utc).isoformat(), 'breakeven': False, 'mode': fill['mode'], 'entry_reason': fill['reason']}
                 self.state['premarket_entered'].append(symbol)
                 save_state(self.state)
                 record_trade({'event': 'OPEN', 'symbol': symbol, 'side': 'LONG', 'qty': fill['qty'], 'price': fill['fill_price'], 'mode': fill['mode'], 'reason': fill['reason']})
@@ -365,17 +375,29 @@ class Strategy:
             return
         open_dt = now_et().replace(hour=9, minute=30)
         mins_since_open = (now_et() - open_dt).total_seconds() / 60
-        if mins_since_open < config.INDEX_NEWS_ORB_MINUTES + 5 or mins_since_open > 120:
+        if mins_since_open > 120:
             return
         for symbol in self.symbols:
-            if symbol == 'VT' or symbol in self.state['orb_entered'] or symbol in self.state['positions'] or self.symbol_blocked(symbol):
+            orb_minutes = int(self.param(symbol, 'orb'))
+            if mins_since_open < orb_minutes + 5:
                 continue
-            orange = await self.data.opening_range(symbol)
+            if symbol in self.state['orb_entered'] or symbol in self.state['positions'] or self.symbol_blocked(symbol):
+                continue
+            orange = await self.data.opening_range(symbol, minutes=orb_minutes)
             if not orange:
                 continue
+            pc = self.data.prev_close(symbol)
+            if pc and orange.get('open'):
+                day_gap = (orange['open'] - pc) / pc * 100.0
+                if abs(day_gap) < self.param(symbol, 'gap_min'):
+                    logger.info(f"[ORB] {symbol}: day gap {day_gap:+.2f}% below catalyst floor — skip day (sweep-confirmed churn filter)")
+                    self.state['orb_entered'].append(symbol)
+                    save_state(self.state)
+                    continue
             rng_pct = (orange['high'] - orange['low']) / orange['low'] * 100.0
-            if rng_pct > 1.0:
-                logger.info(f"[ORB] {symbol}: range {rng_pct:.2f}% > 1% risk cap — skip")
+            rng_cap = self.param(symbol, 'rng_cap')
+            if rng_pct > rng_cap:
+                logger.info(f"[ORB] {symbol}: range {rng_pct:.2f}% > {rng_cap}% risk cap — skip")
                 continue
             closes = await self.data.five_min_closes(symbol, n=2)
             if not closes:
@@ -389,15 +411,15 @@ class Strategy:
                 qty = self.size_for(symbol, ask)
                 fill = await self.executor.place(symbol, 'buy', qty, round(ask, 2), premarket=False, reason=f"ORB_LONG bias={bias:.2f} or_high={orange['high']}") if qty >= 1 else None
                 if fill:
-                    self.state['positions'][symbol] = {'side': 'LONG', 'qty': fill['qty'], 'entry': fill['fill_price'], 'stop': orange['low'], 'risk': fill['fill_price'] - orange['low'], 'opened_at': datetime.now(timezone.utc).isoformat(), 'breakeven': False, 'mode': fill['mode'], 'entry_reason': fill['reason']}
+                    self.state['positions'][symbol] = {'side': 'LONG', 'qty': fill['qty'], 'entry': fill['fill_price'], 'stop': orange['low'], 'risk': fill['fill_price'] - orange['low'], 'be_r': self.param(symbol, 'be_r'), 'opened_at': datetime.now(timezone.utc).isoformat(), 'breakeven': False, 'mode': fill['mode'], 'entry_reason': fill['reason']}
                     self.state['orb_entered'].append(symbol)
                     save_state(self.state)
                     record_trade({'event': 'OPEN', 'symbol': symbol, 'side': 'LONG', 'qty': fill['qty'], 'price': fill['fill_price'], 'mode': fill['mode'], 'reason': fill['reason']})
-            elif bias <= config.INDEX_NEWS_BIAS_SHORT_MAX and not regime_long and last_close < orange['low'] and bid > 0:
+            elif getattr(config, 'INDEX_NEWS_SHORTS_ENABLED', False) and bias <= config.INDEX_NEWS_BIAS_SHORT_MAX and not regime_long and last_close < orange['low'] and bid > 0:
                 qty = self.size_for(symbol, bid)
                 fill = await self.executor.place(symbol, 'sell_short', qty, round(bid, 2), premarket=False, reason=f"ORB_SHORT bias={bias:.2f} or_low={orange['low']}") if qty >= 1 else None
                 if fill:
-                    self.state['positions'][symbol] = {'side': 'SHORT', 'qty': fill['qty'], 'entry': fill['fill_price'], 'stop': orange['high'], 'risk': orange['high'] - fill['fill_price'], 'opened_at': datetime.now(timezone.utc).isoformat(), 'breakeven': False, 'mode': fill['mode'], 'entry_reason': fill['reason']}
+                    self.state['positions'][symbol] = {'side': 'SHORT', 'qty': fill['qty'], 'entry': fill['fill_price'], 'stop': orange['high'], 'risk': orange['high'] - fill['fill_price'], 'be_r': self.param(symbol, 'be_r'), 'opened_at': datetime.now(timezone.utc).isoformat(), 'breakeven': False, 'mode': fill['mode'], 'entry_reason': fill['reason']}
                     self.state['orb_entered'].append(symbol)
                     save_state(self.state)
                     record_trade({'event': 'OPEN', 'symbol': symbol, 'side': 'SHORT', 'qty': fill['qty'], 'price': fill['fill_price'], 'mode': fill['mode'], 'reason': fill['reason']})
@@ -412,11 +434,12 @@ class Strategy:
                 continue
             is_long = pos['side'] == 'LONG'
             gain = (last - pos['entry']) if is_long else (pos['entry'] - last)
-            if not pos['breakeven'] and pos['risk'] > 0 and gain >= config.INDEX_NEWS_BREAKEVEN_AT_R * pos['risk']:
+            be_r = float(pos.get('be_r', config.INDEX_NEWS_BREAKEVEN_AT_R))
+            if not pos['breakeven'] and pos['risk'] > 0 and gain >= be_r * pos['risk']:
                 pos['stop'] = pos['entry']
                 pos['breakeven'] = True
                 save_state(self.state)
-                logger.info(f"[MANAGE] {symbol}: +{config.INDEX_NEWS_BREAKEVEN_AT_R}R reached — stop moved to breakeven {pos['entry']}")
+                logger.info(f"[MANAGE] {symbol}: +{be_r}R reached — stop moved to breakeven {pos['entry']}")
             stop_hit = bool(closes) and ((is_long and closes[-1] < pos['stop']) or (not is_long and closes[-1] > pos['stop']))
             if force_flat or stop_hit:
                 reason = 'EOD_FLAT' if force_flat else ('OR_STRUCTURE_BREAK' if not pos['breakeven'] else 'BREAKEVEN_STOP')
@@ -501,14 +524,16 @@ def acquire_singleton() -> Optional[object]:
     import fcntl
     lock_path = DATA_DIR / 'daemon.lock'
     fh = open(lock_path, 'w')
-    try:
-        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        fh.write(str(os.getpid()))
-        fh.flush()
-        return fh
-    except OSError:
-        logger.warning("[SINGLETON] another tradier_index_news daemon holds the lock — exiting")
-        return None
+    for attempt in range(8):
+        try:
+            fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fh.write(str(os.getpid()))
+            fh.flush()
+            return fh
+        except OSError:
+            time.sleep(5)
+    logger.warning("[SINGLETON] another tradier_index_news daemon holds the lock after 40s — exiting")
+    return None
 
 if __name__ == '__main__':
     signal.signal(signal.SIGTERM, handle_shutdown)

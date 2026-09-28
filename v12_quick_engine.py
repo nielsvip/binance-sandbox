@@ -4638,6 +4638,7 @@ class QuickConfig:
     # stack permanently OFF in every baseline. Default True: baselines enter the way live enters.
     WT_DC_ENABLED: bool = True
     WT_DC_ENTRY_THRESHOLD: float = 45.0
+    WT_DC_DETAILED_SCORER_ENABLED: bool = False
     WT_DC_ENTRY_K5M_MAX_LONG: float = 100.0
     WT_DC_ENTRY_K5M_MIN_SHORT: float = 0.0
     WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED: bool = False

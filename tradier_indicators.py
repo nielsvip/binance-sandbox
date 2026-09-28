@@ -787,6 +787,8 @@ def wavetrend_intelligence(wt1_series: pd.Series, wt2_series: pd.Series, close_s
     result[f"wt_cross_prev_value_{tf}"] = cross_prev_value
     result[f"wt_cross_rising_{tf}"] = cross_rising
     result[f"wt_cross_bars_ago_{tf}"] = bars_ago
+    result[f"wt_cross_bull_{tf}"] = 1 if (recent_cross == "BULL" and bars_ago == 0) else 0
+    result[f"wt_cross_bear_{tf}"] = 1 if (recent_cross == "BEAR" and bars_ago == 0) else 0
     lookback = min(50, n - 1)
     start = n - 1 - lookback
     result[f"wt_cross_count_bull_{tf}"] = int(np.sum(cross_above[max(0, start - 1):]))

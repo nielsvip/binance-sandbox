@@ -2893,6 +2893,30 @@ def ez_vigilance_record_close(symbol: str, position_side: str, gain_pct: float, 
     return _blocked
 
 
+_EZ_NEGBOOK_CACHE: Dict[str, Any] = {"loaded_at": 0.0, "keys": {}}
+
+def ez_negbook_is_blocked(symbol: str, position_side: str) -> bool:
+    """USER 2026-09-28: sym_side whose crypto per_sym book entry says acc_gain_pct<=0 (or _NEG_BLOCK
+    tag) must not trade; an OPEN position on it exits at the next WT turn against it."""
+    _now = time.time()
+    if _now - float(_EZ_NEGBOOK_CACHE.get("loaded_at", 0)) > 60.0:
+        _keys = {}
+        try:
+            _p = Path(getattr(config, "BASE_PATH", "/Users/niels/Documents/binance")) / "data" / "hourly_reconfig" / "per_sym_active_config.json"
+            if _p.exists():
+                for _k, _v in (json.loads(_p.read_text()) or {}).items():
+                    if not isinstance(_v, dict) or _k == "_meta":
+                        continue
+                    _g = _v.get("acc_gain_pct")
+                    if (_g is not None and float(_g) <= 0) or "_NEG_BLOCK" in str(_v.get("winning_tag", "")):
+                        _keys[_k] = True
+        except Exception as _e:
+            logger.warning(f"[NEGBOOK] load error (fail-open): {_e}")
+        _EZ_NEGBOOK_CACHE["keys"] = _keys
+        _EZ_NEGBOOK_CACHE["loaded_at"] = _now
+    return bool(_EZ_NEGBOOK_CACHE["keys"].get(ez_vigilance_sym_side(symbol, position_side)))
+
+
 def check_no_loss_exit(
     indicators: Dict[str, Any],
     current_price: float,
@@ -46387,6 +46411,28 @@ async def process_position(
     if not _min_hold_ok_for_exit and position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0:
         # don't await here — breach check is awaited at each gated exit; just log generic block now
         logger.debug(f"[MIN_HOLD_BLOCK] {position_key}: age {_pp_age_min_for_hold:.2f}m < {_min_hold_bars_for_exit}bars ({_min_hold_sec_for_exit/60:.1f}m) — all TIMED exits (HTF/R1/MTF/GR) deferred until hold satisfied unless dc_15m breach. Gain {safe_fetch_float(getattr(position,'gain',0),0):.2f}%")
+    # ═══ NEGBOOK WT-TURN EXIT (USER 2026-09-28): neg-book sym_side with an OPEN position holds
+    # while WT is with it and closes at the next WT turn against it. Reason carries NEGBOOK_WT_TURN
+    # (UNIVERSAL_NOLOSS_GATE bypass) + HARD_STOP/USER (HPO bypass).
+    if position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0 and bool(getattr(config, "NEGBOOK_WT_TURN_EXIT_ENABLED", True)):
+        try:
+            _nb_is_long = position_side == "LONG"
+            if ez_negbook_is_blocked(symbol, position_side):
+                if _pp_shared_ind is None:
+                    _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                _nb_tf = str(getattr(config, "NEGBOOK_WT_EXIT_TF", "15m") or "15m").strip()
+                _nb_w1 = safe_fetch_float(_pp_shared_ind.get(f"wt1_{_nb_tf}", 0), 0.0)
+                _nb_w2 = safe_fetch_float(_pp_shared_ind.get(f"wt2_{_nb_tf}", 0), 0.0)
+                _nb_against = (_nb_w1 != 0 or _nb_w2 != 0) and ((_nb_is_long and _nb_w1 < _nb_w2) or ((not _nb_is_long) and _nb_w1 > _nb_w2))
+                if _nb_against:
+                    _nb_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
+                    _nb_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
+                    logger.critical(f"🚨 [NEGBOOK_WT_TURN_EXIT] {position_key}: neg-book side, wt1_{_nb_tf} {_nb_w1:.1f} turned against ({_nb_w2:.1f}) g={_nb_gain:.2f}% → CLOSE (USER 2026-09-28)")
+                    await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_nb_amt, side="SELL" if _nb_is_long else "BUY", position_side=position_side, quantity=_nb_amt, old_price=current_price, unique_id=f"NEGBOOK_WT_TURN_{int(time.time())}", reason=f"NEGBOOK_WT_TURN_HARD_STOP_USER_{'LONG' if _nb_is_long else 'SHORT'}_wt{_nb_tf}_g{_nb_gain:.2f}", is_full_close=True, action="CLOSE")
+                    trade_manager.processing_keys.discard(position_key)
+                    return f"{EvalStatus.ACTION_TAKEN}:NEGBOOK_WT_TURN_CLOSED"
+        except Exception as _nb_e:
+            logger.warning(f"[NEGBOOK] probe err {position_key}: {_nb_e}")
     # ═══════════════════════════════════════════════════════════════════════════
     # VIGILANCE GUARD (USER 2026-09-28, 3rd mandate: "we do not use fix %"): STRUCTURAL stop —
     # position at a loss AND price breaches dc_low4_{TF} (LONG) / dc_high4_{TF} (SHORT), TF from

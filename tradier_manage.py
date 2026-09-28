@@ -359,6 +359,29 @@ def dc_hardstop_cooldown_record(symbol: str, position_side: str) -> None:
     except Exception as _e:
         logger.warning(f"[DC_HS_COOLDOWN] record error: {_e}")
 
+_NEGBOOK_CACHE: Dict[str, Any] = {"loaded_at": 0.0, "keys": {}}
+
+def negbook_is_blocked(symbol: str, position_side: str) -> bool:
+    """USER 2026-09-28: sym_side whose per_sym book entry says acc_gain_pct<=0 (or _NEG_BLOCK tag)
+    must not trade; an OPEN position on it exits at the next WT turn against it (see process_position)."""
+    _now = time.time()
+    if _now - float(_NEGBOOK_CACHE.get("loaded_at", 0)) > 60.0:
+        _keys = {}
+        try:
+            _p = Path(config.BASE_PATH) / "data" / "hourly_reconfig" / "per_sym_active_config_stocks.json"
+            if _p.exists():
+                for _k, _v in (json.loads(_p.read_text()) or {}).items():
+                    if not isinstance(_v, dict):
+                        continue
+                    _g = _v.get("acc_gain_pct")
+                    if (_g is not None and float(_g) <= 0) or "_NEG_BLOCK" in str(_v.get("winning_tag", "")):
+                        _keys[_k] = True
+        except Exception as _e:
+            logger.warning(f"[NEGBOOK] load error (fail-open): {_e}")
+        _NEGBOOK_CACHE["keys"] = _keys
+        _NEGBOOK_CACHE["loaded_at"] = _now
+    return bool(_NEGBOOK_CACHE["keys"].get(vigilance_sym_side(symbol, position_side)))
+
 def dc_hardstop_cooldown_active(symbol: str, position_side: str) -> tuple:
     _hours = float(_cfg_auto("DC_HARD_STOP_REENTRY_COOLDOWN_HOURS", 4.0))
     if _hours <= 0:
@@ -10546,6 +10569,21 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             except Exception as _tra_e:
                 logger.warning(f"[TRA_DC_D_HARD_STOP] {position_key} probe err: {_tra_e}")
                 return "TRA_HOLD_NO_DC_D_BREACH"
+        # ═══ NEGBOOK WT-TURN EXIT (USER 2026-09-28): neg-book sym_side with an OPEN position holds
+        # while WT is with it and closes at the next WT turn against it (wt1 vs wt2 on NEGBOOK_WT_EXIT_TF).
+        try:
+            if bool(_cfg_auto('NEGBOOK_WT_TURN_EXIT_ENABLED', True)) and has_position and position is not None and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and negbook_is_blocked(symbol, 'LONG' if is_long else 'SHORT'):
+                _nb_tf = str(_cfg_auto('NEGBOOK_WT_EXIT_TF', '15m') or '15m').strip()
+                _nb_w1 = safe_fetch_float(i.get(f'wt1_{_nb_tf}', 0), 0.0)
+                _nb_w2 = safe_fetch_float(i.get(f'wt2_{_nb_tf}', 0), 0.0)
+                _nb_against = (_nb_w1 != 0 or _nb_w2 != 0) and ((is_long and _nb_w1 < _nb_w2) or ((not is_long) and _nb_w1 > _nb_w2))
+                if _nb_against:
+                    _nb_gain = safe_fetch_float(getattr(position, 'gain', 0), 0.0)
+                    logger.critical(f"🚨 [NEGBOOK_WT_TURN_EXIT] {position_key}: neg-book side, wt1_{_nb_tf} {_nb_w1:.1f} turned against ({_nb_w2:.1f}) g={_nb_gain:.2f}% → CLOSE (USER 2026-09-28)")
+                    await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"NEGBOOK_WT_TURN_HARD_STOP_USER_{'LONG' if is_long else 'SHORT'}_wt{_nb_tf}_g{_nb_gain:.2f}", 100.0, override_qty=999999)
+                    return "NEGBOOK_WT_TURN_CLOSED"
+        except Exception as _nb_e:
+            logger.warning(f"[NEGBOOK] probe err {position_key}: {_nb_e}")
         # ═══ VIGILANCE GUARD (USER 2026-09-28, 3rd mandate: "we do not use fix %"): STRUCTURAL stop —
         # position at a loss AND price breaches dc_low4_{TF} (LONG) / dc_high4_{TF} (SHORT), TF from
         # VIGILANCE_DC4_STOP_TF (user granted 15m) → IMMEDIATE CLOSE + sym_side entry-block until recovery.
@@ -12413,7 +12451,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 )
                 if action_type != "OPEN" and _wtdc_path_enabled:
                     _entry_ind = indicators_raw if indicators_raw else i
-                    _entry_score, _entry_reason = wt_dc_score_entry(_entry_ind, is_long, current_price)
+                    _wtdc_detailed = bool(_cfg("WT_DC_DETAILED_SCORER_ENABLED", False, account_key, symbol, "LONG" if is_long else "SHORT"))
+                    _entry_score, _entry_reason = wt_dc_score_entry(_entry_ind, is_long, current_price, detailed=_wtdc_detailed)
                     if os.environ.get("V8_LRBAND_DEBUG"):
                         _lbp1 = globals().setdefault("_LRBAND_P1", {"n": 0})
                         _lbp1["n"] += 1

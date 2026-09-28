@@ -1,5 +1,17 @@
 # 📋 NEW-STRATEGY PROPOSAL — Live-wire WT_DC-detailed + BB-squeeze to unlock 12 robust configs
-**Date:** 2026-09-28 · **Status:** PROPOSAL — needs user approval + `unlock` of locked live files before ANY implementation. Nothing here is built yet.
+**Date:** 2026-09-28 · **Status:** STRATEGY A **IMPLEMENTED (default OFF)** per user "unlock and go" 2026-09-28. Wiring done + smoke-tested; NOT yet flipped live for any sym (needs backtest_v12_engine parity re-run on the 11, then per-sym flip). Strategy B (BB alignment) still deferred.
+
+### IMPLEMENTED 2026-09-28 (Strategy A — all behind `WT_DC_DETAILED_SCORER_ENABLED`, default False)
+- `config.py` + `config_tradier.py`: `WT_DC_DETAILED_SCORER_ENABLED: bool = False`. `v12_quick_engine.QuickConfig`: same field.
+- `tradier_indicators.py` + `ez_indicators.py`: emit `wt_cross_bull/bear_{tf}` (=1 iff cross on current bar, `bars_ago==0`) — parity-exact with NPZ `wt_cross_bull/bear_{tf}`. (The other ~20 scorer fields were already emitted live.)
+- `tradier_manage.py:12417`: passes `detailed=_cfg("WT_DC_DETAILED_SCORER_ENABLED", …)` (per-sym flippable via per_sym_active_config_stocks.json).
+- `backtest_v12_engine.py` verifier wrapper: honors the switch so parity stays faithful.
+- v15 pilot: switch already in `data/v15_wired_switches.json` (186) + TEMPLATE_*.xlsx (both True/False rows, added by v15 agent); I added it to `data/opportune_filter_map.json` ENTRY_CONFIRMATION_GATES for all 4 venue_sides (10–11 yellow filters). v12_quick_engine already reads the switch → **sweeps now.**
+- Smoke test passed: simple score 80 vs detailed 55 on same dict (real algorithm difference); string 'True'/'False' template values coerced to bool by pilot.
+- **Crypto-live boundary:** ez (crypto) has NO live `wt_dc_score_entry` caller, so for crypto this switch affects **backtest/sweep only** — the 4 crypto held configs can't go live on WT_DC-detailed until an ez entry caller is added (separate change). Stocks (7 configs) are fully live-wireable now.
+- Backups: `backups/before_wtdc_detailed_livewire_202609281615.*` (7 code files) + `backups/before_wtdc_detailed_template_202609281625.*` (4 templates + map).
+
+
 **Governs:** NEW STRATEGY PROHIBITION (present entry/exit/data/freq/risk first) + BACKTEST_BIBLE §13 (sweep + paper + parity + stress before live).
 
 ---

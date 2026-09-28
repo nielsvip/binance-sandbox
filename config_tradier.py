@@ -74,6 +74,10 @@ class TradierConfig:
     # block-exit price, or a bounce (wt1_15m rising + 5m stoch momentum with the side — stocks use 5m).
     VIGILANCE_RECOVERY_REENTRY_ENABLED: bool = True
     VIGILANCE_RECOVERY_BOUNCE_OK: bool = True
+    # USER 2026-09-28: a NEG-blocked sym_side (per_sym book acc_gain_pct<=0 / _NEG_BLOCK tag) with an
+    # OPEN position holds while WT is with the position and closes at the next WT turn against it.
+    NEGBOOK_WT_TURN_EXIT_ENABLED: bool = True
+    NEGBOOK_WT_EXIT_TF: str = "15m"
     # DC hard-stop reentry cooldown — CHURN_FIX_PRIORITY.md fix #2: after ULTIMATE_DC/TRA_DC
     # hard stop closes a name, same-sym_side re-open refused for this many hours (kills the
     # open→stop→open loop: SLV_LONG 606 open-attempts/7d). 0 disables.
@@ -168,6 +172,7 @@ class TradierConfig:
     TRA_MAX_BUYS_PER_DAY: int = 1                   # GFV guard: at most 1 buy per calendar day for tra (cash acct, 5 flags)
     TRA_BUY_COOLDOWN_AFTER_SELL_HOURS: float = 96.0     # 4 DAYS no buying after a sell on cash (prevent GFV 6th flag = ban)
     TRA_WT_DC_ENTRY_THRESHOLD: float = 85.0          # REVERTED 2026-08-11 per SWITCH_LAB_VECTOR_LIVE_AUDIT.md M3 — live bypass removed, vector+live parity restored; re-promote only via 1yr Tier-2
+    WT_DC_DETAILED_SCORER_ENABLED: bool = False      # 2026-09-28 opt-in: detailed _score_long/_score_short slowdown/accel scorer (thr 43) vs simple multi-TF. Off=live unchanged. Flip per-sym in per_sym_active_config_stocks.json to promote a WT_DC-detailed winner (11 walk-forward configs).
     TRA_MIN_HOLD_MINUTES: float = 5760.0             # 4 DAYS hold floor - cash GFV 5 flags, prevent 6th ban
     # 2026-04-27 — live entry-engine boost (defaults OFF for safety; user flips when ready).
     # Engines are pure-function additive triggers in entry_engine_{wt,stoch,dc,htf}.py — they
@@ -2626,3 +2631,17 @@ class TradierConfig:
     INDEX_NEWS_MAX_CONSEC_LOSSES: int = 2  # per symbol per day → symbol blocked rest of day (vigilance mirror)
     INDEX_NEWS_EOD_FLAT: bool = True  # flatten before close — no overnight risk
     INDEX_NEWS_SCAN_INTERVAL_SECONDS: float = 600.0  # news scan cadence premarket/RTH
+    # ═══ TUNED 2026-09-28 s1 NPZ backtest (tools/backtest_index_news.py, 1728-config sweep) ═══
+    # Protocol: 30D test → 365D confirmation, promoted only configs positive on BOTH windows.
+    # SPY 30D +1.86% / 365D +1.37% (100 trades, 48% win, max_dd 4.1) — CONFIRMED
+    # QQQ 30D +2.02% / 365D +1.64% (54 trades, 43% win, max_dd 6.1) — CONFIRMED
+    # VT  30D +2.08% / "365D" +4.00% (30 trades, 53% win) — [DIAGNOSTIC ONLY: VT NPZ has just 49 sessions, not a year]
+    # Results EXCLUDE the news-bias gate (not backtestable — no historical news archive); live trade count will be lower.
+    # Shorts were flat-to-negative in every confirmed config → disabled.
+    INDEX_NEWS_SHORTS_ENABLED: bool = False  # sweep: shorts never improved any confirmed config
+    INDEX_NEWS_GAP_MIN_PCT: float = 0.3  # catalyst-day filter: skip days with |open gap| below this (churn killer)
+    INDEX_NEWS_SYMBOL_PARAMS: Dict[str, Dict] = field(default_factory=lambda: {
+        "SPY": {"orb": 60, "be_r": 0.25, "gap_max": 1.0, "rng_cap": 1.0, "gap_min": 0.3},
+        "QQQ": {"orb": 60, "be_r": 0.5, "gap_max": 1.5, "rng_cap": 0.5, "gap_min": 0.5},
+        "VT": {"orb": 15, "be_r": 0.5, "gap_max": 1.0, "rng_cap": 0.5, "gap_min": 0.3},
+    })
