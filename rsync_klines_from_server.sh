@@ -1,9 +1,10 @@
 #!/bin/bash
-# Continuous rsync of klines_cache from main server to local macbook
+# Continuous rsync of klines_cache from GATEWAY to local macbook for trading
 # Runs every 120 seconds in a loop
+# NOTE: S1 is accumulation source (1+ year history), Gateway is backup for Mac trading (1200-1800 bars)
 
-LOG="/Users/niels/logs/klines_sync_from_server.log"
-SRC="s1-int:/home/niels/binance/klines_cache/"
+LOG="/Users/niels/logs/klines_sync_from_gateway.log"
+SRC="gateway-internal:/home/niels/binance/klines_cache/"
 DST="/Users/niels/Documents/binance/klines_cache/"
 
 mkdir -p "$DST"

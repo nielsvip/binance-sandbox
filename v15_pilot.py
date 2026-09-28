@@ -84,6 +84,8 @@ from pathlib import Path
 # Spec stall guard: >10s on a cell -> RED + reason, continue. 0.07 turned every eval slower than 70ms into a fake 0.0 delta.
 YELLOW_TIMEOUT = 10.0
 LIVE_TIMEOUT = 900.0
+XLSX_SAVE_EVERY_S = 120.0
+PROGRESS_JSON_EVERY_S = 15.0
 _EVAL_CACHE: dict = {}
 _EVAL_CACHE_HITS = 0
 RED_CELL_QUEUE: queue.Queue = queue.Queue()
@@ -1132,6 +1134,25 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if nav_mode == "fill_tab" and _next_pending(tabs[from_idx]) is not None:
             return from_idx
         return _land_on_next_tab(from_idx)
+    _last_save = {"t": _t.time()}
+    def _maybe_save():
+        # a full openpyxl save of the ~2.5MB workbook costs ~10s — per-row saves made rows 12s instead of ~1s.
+        # progress JSON (source of truth, written every row) + refill_from_json cover a crash between saves.
+        if _t.time() - _last_save["t"] >= XLSX_SAVE_EVERY_S:
+            try:
+                _atomic_save(wb, wb_path)
+            except Exception as _se:
+                print(f"[spec-save-warn] {_se}", flush=True)
+            _last_save["t"] = _t.time()
+    _last_json = {"t": _t.time()}
+    def _maybe_write_json(force: bool = False):
+        # full rewrite of a progress JSON that grows every row is O(rows^2); the append-only DELTA-LOG keeps every eval,
+        # so the JSON is written every PROGRESS_JSON_EVERY_S, on every promotion, and at the end.
+        if force or _t.time() - _last_json["t"] >= PROGRESS_JSON_EVERY_S:
+            _atomic_write_json(progress_path, progress)
+            _last_json["t"] = _t.time()
+    def _row_done(sname: str, rr: int, switch: str, cand, n_evals: int, delta, promoted: bool):
+        _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": nav_mode, "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "label": "ROW_DONE", "row_secs": round(_t.time() - _row_t0, 4), "n_evals": n_evals, "delta": delta, "promoted": promoted, "cum_after": cumulative_gain})
     def _land_on_next_tab(from_idx: int):
         # NEG / no-yellow / tab finished: go to first pending row of the next tab with pending rows and write E there
         for offset in range(1, len(tabs) + 1):
@@ -1211,6 +1232,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if pending is None:
                 break
         rr, switch, cand = pending
+        _row_t0 = _t.time()
         ws = wb[sname]
         cols = _resolve_cols(ws)
         cumulative_before = float(cumulative_gain)
@@ -1387,19 +1409,15 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 cumulative_overrides[switch] = cand_parsed
                 progress["cumulative_overrides"] = dict(cumulative_overrides)
             progress["cumulative_gain"] = float(cumulative_gain)
-            _atomic_write_json(progress_path, progress)
             _touch(f"cell {sname}!{rr} no-yellow delta={delta_for_row}")
             div = _write_div(sname, rr, [(naked_vec or {}).get("gain_pct")])
             progress["done"][key]["delta_vs_initial"] = div
+            _maybe_write_json(force=promote)
+            _row_done(sname, rr, switch, cand, 1, delta_for_row, promote)
             print(f"[spec-row] {sname}!{rr} {switch}={cand} no-yellow delta={delta_for_row} vs cum {cumulative_before:.4f} -> {'POS' if promote else 'NEG'} {naked_reason} nav={nav_mode}", flush=True)
             # jump: no-yellow rows always go to next TAB (spec); fill_tab: continue down this tab
             current_idx = _after_neg(current_idx) if nav_mode == "fill_tab" else _land_on_next_tab(current_idx)
-            # Periodic save
-            try:
-                if processed % 5 == 0:
-                    _atomic_save(wb, wb_path)
-            except Exception:
-                pass
+            _maybe_save()
             processed += 1
             continue
         # Evaluate each yellow filter (selection = relevant_hdrs above); ALWAYS write the real delta into the yellow cell
@@ -1489,7 +1507,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         progress.setdefault("done", {})[key] = {"delta": delta_for_row, "promoted": promote, "joint_gain": joint_gain, "reason": joint_reason, "yellows": dict(pending_lbI), "yellow_reasons": dict(per_yellow_timeout_reason), "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_gain), "delta_vs_initial": div}
         progress["cumulative_gain"] = float(cumulative_gain)
         progress["cumulative_overrides"] = dict(cumulative_overrides)
-        _atomic_write_json(progress_path, progress)
+        _maybe_write_json(force=promote)
+        _row_done(sname, rr, switch, cand, len(relevant_hdrs) + 1 + (1 if joint_gain is not None or joint_reason else 0), delta_for_row, promote)
         _touch(f"cell {sname}!{rr} delta={delta_for_row}")
         print(f"[spec-row] {sname}!{rr} {switch}={cand} yellows {len(relevant_hdrs)} sum_pos={sum_pos:.4f} delta={delta_for_row} vs cum {cumulative_before:.4f} -> {'POS' if promote else 'NEG'}", flush=True)
         if promote:
@@ -1500,10 +1519,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         else:
             # NEG/0/None: jump -> first pending row of the next tab (E written there); fill_tab -> next row, same tab
             current_idx = _after_neg(current_idx)
-        try:
-            _atomic_save(wb, wb_path)
-        except Exception:
-            pass
+        _maybe_save()
         processed += 1
         # Periodic save already done
     # Loop exit — workbook rows complete
@@ -1519,6 +1535,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     except Exception as _e_drain:
         print(f"[red-fixer-drain-warn] {_e_drain}", flush=True)
     # Now fill LIVE_DELTA and LIVE_SHARPE when entire sheet complete via backtest_v12_engine parity
+    _maybe_write_json(force=True)
     if _any_pending():
         print(f"[spec-fill] incomplete after loop guard {loop_guard} pending remains — will still save", flush=True)
     try:
