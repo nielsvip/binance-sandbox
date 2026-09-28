@@ -2157,5 +2157,41 @@
     ],
     "timestamp": "2026-09-28T14:52:16.467874+00:00",
     "price": 186.28
+  },
+  {
+    "symbol": "BMNRUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.7x (from rankings)"
+    ],
+    "timestamp": "2026-09-28T14:59:35.680100+00:00",
+    "price": 28.04
+  },
+  {
+    "symbol": "TQQQUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.1x (from rankings)"
+    ],
+    "timestamp": "2026-09-28T14:59:35.680100+00:00",
+    "price": 78.25373375
+  },
+  {
+    "symbol": "1000BONKUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.1x (from rankings)"
+    ],
+    "timestamp": "2026-09-28T15:02:02.965744+00:00",
+    "price": 0.003742
+  },
+  {
+    "symbol": "1000SHIBUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.1x (from rankings)"
+    ],
+    "timestamp": "2026-09-28T15:02:02.965744+00:00",
+    "price": 0.005788
   }
 ]
