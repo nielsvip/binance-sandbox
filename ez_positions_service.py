@@ -5541,10 +5541,16 @@ class PositionService:
 
     async def start_account_monitors(self) -> None:
         try :
-            for account_key in self.accounts.keys():
-                if not self._should_enable_account_monitors() or account_key == 'flz':
-                    logger.warning("[sta rt_account_monitors] Account monitors disabled (no accounts)")
-                    return
+            # 2026-09-28 FIX: the old per-account pre-loop `return`ed (aborting ALL monitors — REST poll
+            # loop AND the in-process user-data WS) the moment it hit `account_key == 'flz'` or a
+            # transiently-empty account list. Result: the WS manager was NEVER started on ANY account
+            # (whole-log: 280× "Account monitors disabled", 0× "Starting WebSocket manager") → permanent
+            # REST-only polling → force-fetch over-poll → the -1003 IP ban cascade. Replaced with a single
+            # global enablement check; the flz hard-abort is removed (flz needs monitoring like any account,
+            # and a per-account skip — if ever justified — belongs in the loops below, not a global return).
+            if not self._should_enable_account_monitors():
+                logger.warning("[start_account_monitors] Account monitors disabled (no accounts)")
+                return
             internal_fetcher_flag = self.base_path / ".internal_fetcher_enabled"
             if internal_fetcher_flag.exists():
                 logger.critical(f"[st art_account_monitors] 🚨 Watchdog signaled external fetcher failed - ENABLING INTERNAL FETCHER")

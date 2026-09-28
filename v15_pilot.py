@@ -1873,13 +1873,18 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         # evaluates defaults vs cumulative_overrides vs hustler_best at 365d and certifies the
         # highest-gain valid candidate (gain>0, trades>=30) into data/confirmed_365d.json — the file
         # ez_manage's fail-closed 365D gate reads. No cert -> live cannot open that sym_side.
-        try:
-            from tools.confirm_365d import confirm_symside as _c365
-            _rec365 = _c365(new_symside)
-            progress["confirmed_365d"] = _rec365 or {"certified": False}
-            _atomic_write_json(progress_path, progress)
-        except Exception as _c365e:
-            print(f"[confirm-365d-warn] {new_symside}: {_c365e}", flush=True)
+        # 2026-09-28 OOM SAFETY (binance-99): a 365d prepare per finishing pilot (6-8 staggered per
+        # server) risks the RAM/OOM the mega sweep just stabilised. DEFAULT OFF during catch-up —
+        # certification runs as a separate pass (tools/confirm_365d.py --all). Enable per-pilot with
+        # V15_CONFIRM_365D_AT_DONE=1 once the 354 backlog is cleared.
+        if os.environ.get("V15_CONFIRM_365D_AT_DONE") == "1":
+            try:
+                from tools.confirm_365d import confirm_symside as _c365
+                _rec365 = _c365(new_symside)
+                progress["confirmed_365d"] = _rec365 or {"certified": False}
+                _atomic_write_json(progress_path, progress)
+            except Exception as _c365e:
+                print(f"[confirm-365d-warn] {new_symside}: {_c365e}", flush=True)
     except Exception as e:
         print(f"[spec-live-warn] {e}", flush=True)
     try:
@@ -2256,6 +2261,46 @@ def ensure_lbI_headers(wb_path: Path):
     else:
         print(f"[headers] L:BI ensured { _dt_hdr:.2f}s", flush=True)
 
+def _load_workbook_retry(path: Path, tries: int = 5, delay_s: float = 3.0, **kw):
+    """2026-09-28 flawless-pilot fix (USAR_LONG BadZipFile crash): a template/workbook read can race
+    an in-flight rsync and hit a transient zip CRC error. Retry a few times before giving up loudly —
+    never die with a bare traceback on the first bad read."""
+    import zipfile as _zf
+    _last = None
+    for _t in range(int(tries)):
+        try:
+            return openpyxl.load_workbook(str(path), **kw)
+        except (_zf.BadZipFile, KeyError, OSError) as _e:
+            _last = _e
+            print(f"[wb-load-retry] {Path(path).name}: {_e} — retry {_t+1}/{tries} in {delay_s:.0f}s", flush=True)
+            time.sleep(delay_s)
+    raise RuntimeError(f"workbook unreadable after {tries} tries (racing sync or corrupt file): {path}: {_last}")
+
+
+def _pending_template_rows(symside: str):
+    """2026-09-28 fix (XLMUSDT_LONG/USAR_LONG requeue loop): the herd's DONE criterion is
+    v15_progress_board.symside_status — EVERY template row present in progress 'done'. After
+    _merge_new_template_rows grew the templates (+vigilance rows), sheets finished under the old
+    row count sit at done>=2800 with pending new rows; the old done<2800 resume gate PROHIBITs
+    forever while the herd requeues forever (todo grows, launched+0, 0/354 complete). Resume must
+    key on the same truth the herd uses. Returns pending row count, 0 for complete/zero-trades
+    terminal, None if the board is unavailable (caller falls back to legacy gate)."""
+    try:
+        try:
+            from tools.v15_progress_board import symside_status as _pb_status
+        except Exception:
+            import sys as _sys_pb
+            _sys_pb.path.insert(0, str(ROOT / "tools"))
+            from v15_progress_board import symside_status as _pb_status
+        _pb = _pb_status(symside)
+        if _pb.get("zero_trades"):
+            return 0
+        return max(0, int(_pb.get("rows") or 0) - int(_pb.get("filled") or 0))
+    except Exception as _pb_e:
+        print(f"[pending-rows-warn] {symside}: {_pb_e}", flush=True)
+        return None
+
+
 def _merge_new_template_rows(template: Path, target: Path) -> int:
     """USER 2026-09-28: append (Switch, value) rows that exist in the template's SWITCH_SHEETS but
     not in the reused sym_side workbook, so newly added switches (VIGILANCE_* etc.) get tested in
@@ -2270,7 +2315,7 @@ def _merge_new_template_rows(template: Path, target: Path) -> int:
             return repr(int(f)) if f == int(f) else repr(f)
         except Exception:
             return s
-    tpl = openpyxl.load_workbook(str(template), data_only=True, read_only=True)
+    tpl = _load_workbook_retry(template, data_only=True, read_only=True)
     added_total = 0
     wb = None
     try:
@@ -2287,7 +2332,7 @@ def _merge_new_template_rows(template: Path, target: Path) -> int:
             if not tpl_rows:
                 continue
             if wb is None:
-                wb = openpyxl.load_workbook(str(target))
+                wb = _load_workbook_retry(target)
             if sn not in wb.sheetnames:
                 continue
             ws = wb[sn]
@@ -2370,7 +2415,7 @@ def clone_template(template: Path, new_symside: str) -> Path:
                     pass
         except Exception:
             pass
-    wb = openpyxl.load_workbook(str(template))
+    wb = _load_workbook_retry(template)
     new_baseline = f"{new_symside}_BASELINE_METRICS"
     old_baseline = None
     for cand in ["TEMPLATE_BASELINE_METRICS", "ADP_LONG_BASELINE_METRICS"]:
@@ -2510,7 +2555,10 @@ def _run_single(new_symside, args):
             if not _has_final:
                 import pathlib as _pl2
                 _has_final = any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_30d_matrix.xlsx")) or any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_bh*.xlsx"))
-            if _done_cnt < 2800 and not _has_final:
+            _pending = _pending_template_rows(new_symside)
+            if _pending:
+                print(f"[RESUME-ALLOW] {new_symside} final_gain {_early_prog.get('final_gain'):.2f} done {_done_cnt} but {_pending} template rows pending (post-merge) — incremental resume", flush=True)
+            elif _done_cnt < 2800 and not _has_final:
                 print(f"[RESUME-ALLOW] {new_symside} incomplete final_gain {_early_prog.get('final_gain'):.2f} done {_done_cnt} no FINAL xlsx — resuming", flush=True)
             elif args.baseline_json and args.seq_mode in ("shuffle", "worst2best", "worst_first"):
                 print(f"[{args.seq_mode.upper()}-ALLOW] {new_symside} already finished final_gain {_early_prog.get('final_gain'):.2f} but {args.seq_mode}+baseline-json allowed", flush=True)
@@ -2719,7 +2767,10 @@ def main():
             if not _has_final:
                 import pathlib as _pl2
                 _has_final = any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_30d_matrix.xlsx")) or any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_bh*.xlsx"))
-            if _done_cnt < 2800 and not _has_final:
+            _pending = _pending_template_rows(new_symside)
+            if _pending:
+                print(f"[RESUME-ALLOW] {new_symside} final_gain {_early_prog.get('final_gain'):.2f} done {_done_cnt} but {_pending} template rows pending (post-merge) — incremental resume", flush=True)
+            elif _done_cnt < 2800 and not _has_final:
                 print(f"[RESUME-ALLOW] {new_symside} incomplete final_gain {_early_prog.get('final_gain'):.2f} done {_done_cnt} no FINAL xlsx — resuming", flush=True)
             elif args.baseline_json and args.seq_mode in ("shuffle", "worst2best", "worst_first"):
                 print(f"[{args.seq_mode.upper()}-ALLOW] {new_symside} already finished final_gain {_early_prog.get('final_gain'):.2f} but {args.seq_mode}+baseline-json allowed for second round (filters/orange per tab needs delta)", flush=True)
@@ -2745,8 +2796,12 @@ def main():
                             elif args.seq_mode == "shuffle" and args.baseline_json:
                                 print(f"[SHUFFILE-ALLOW] {new_symside} already finished on S1 peer ({_h} final_gain {_r.stdout.strip()}) but shuffle+baseline-json allowed", flush=True)
                             else:
-                                print(f"[PROHIBITED] {new_symside} ALREADY FINISHED on S1 peer ({_h} final_gain {_r.stdout.strip()}) — MUST NOT RETOUCH BEFORE NPZ.", flush=True)
-                                return
+                                _pending_peer = _pending_template_rows(new_symside)
+                                if _pending_peer:
+                                    print(f"[RESUME-ALLOW] {new_symside} finished on S1 peer ({_h}) but {_pending_peer} template rows pending locally — incremental resume", flush=True)
+                                else:
+                                    print(f"[PROHIBITED] {new_symside} ALREADY FINISHED on S1 peer ({_h} final_gain {_r.stdout.strip()}) — MUST NOT RETOUCH BEFORE NPZ.", flush=True)
+                                    return
                     except Exception:
                         continue
             except Exception:

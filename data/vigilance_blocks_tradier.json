@@ -70,11 +70,6 @@
       "reason": "DC4_15m_BREACH_g-1.25pct_px36.1650_lvl36.1450",
       "exit_price": 36.165
     },
-    "IBIT_LONG": {
-      "blocked_at": "2026-09-28T14:15:35.197603+00:00",
-      "reason": "DC4_15m_BREACH_g-0.02pct_px47.2050_lvl47.5650",
-      "exit_price": 47.205
-    },
     "PSX_LONG": {
       "blocked_at": "2026-09-28T14:28:14.370134+00:00",
       "reason": "DC4_15m_BREACH_g-0.40pct_px256.1600_lvl256.2800",
@@ -354,6 +349,26 @@
           "ts": "2026-09-28T15:44:20.921070+00:00",
           "gain_pct": -4.4735,
           "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-1.84_lvl124.8700_qty_999999"
+        }
+      ]
+    },
+    "NVDA_LONG": {
+      "consec_losses": 1,
+      "last": [
+        {
+          "ts": "2026-09-28T15:56:28.687752+00:00",
+          "gain_pct": -0.1304,
+          "reason": "Overbought_Take_Profit_Gain_3.6%_qty_2"
+        }
+      ]
+    },
+    "TTD_SHORT": {
+      "consec_losses": 0,
+      "last": [
+        {
+          "ts": "2026-09-28T15:58:21.164328+00:00",
+          "gain_pct": 2.3563,
+          "reason": "WT_CROSSOVER_FINAL_5m_15m_1hTrue_4hFalse_DFalse_g2.28%_hold61m_MANDATORY_REENTRY_qty_999999"
         }
       ]
     }

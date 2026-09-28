@@ -2608,7 +2608,7 @@ class TradierConfig:
     # ═══ INDEX NEWS STRATEGY (tradier_index_news.py) — SPY/QQQ/VT news+ORB — 2026-09-28 ═══
     # HARD SAFETY LOCK mirror of OPTIONS_LIVE_TRADING_ENABLED: real-money orders stay OFF
     # until paper days on trc sandbox are done and the owner deliberately flips the flag.
-    INDEX_NEWS_ENABLED: bool = False  # MASTER KILL SWITCH — daemon refuses to run anything when False
+    INDEX_NEWS_ENABLED: bool = True  # MASTER KILL SWITCH — 2026-09-28 user: ON (paper/sandbox; live lock below stays False)
     INDEX_NEWS_LIVE_TRADING_ENABLED: bool = False  # False = trc sandbox only; True required for tra/trb real money
     INDEX_NEWS_ACCOUNT_KEY: str = "trc"  # trc = Tradier sandbox (paper); executor refuses non-trc while live flag False
     INDEX_NEWS_SYMBOLS: List[str] = field(default_factory=lambda: ["SPY", "QQQ", "VT"])

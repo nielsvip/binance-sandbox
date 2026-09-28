@@ -496,6 +496,114 @@ def _earliest_shadow_data_date():
     return min(datetime.fromtimestamp(os.path.getmtime(p), tz=timezone.utc) for p in paths)
 
 
+INDEX_NEWS_DIR = Path(BASE) / "data" / "index_news"
+
+
+def _index_news_section():
+    """SPY/QQQ/VT news+ORB paper strategy (tradier_index_news.py). NO-LIES: reads the real
+    trades.jsonl/state.json/bias.json; when files are missing or empty it says so."""
+    trades_file = INDEX_NEWS_DIR / "trades.jsonl"
+    state_file = INDEX_NEWS_DIR / "state.json"
+    bias_file = INDEX_NEWS_DIR / "bias.json"
+    cfg = TradierConfig()
+    enabled = getattr(cfg, "INDEX_NEWS_ENABLED", False)
+    live_flag = getattr(cfg, "INDEX_NEWS_LIVE_TRADING_ENABLED", False)
+    header = "<h3>Index news strategy — SPY/QQQ/VT paper trades (tradier_index_news)</h3>"
+    mode_note = (f"<p style='font-size:11px;color:#666'>Kill switch INDEX_NEWS_ENABLED={enabled} · "
+                 f"live-money lock {'OFF — REAL MONEY' if live_flag else 'ON (trc sandbox / sim only, no real orders)'}.</p>")
+    if not trades_file.exists() and not state_file.exists() and not bias_file.exists():
+        return header + mode_note + "<p><i>No index-news data yet — daemon has not recorded any state, trades, or bias (data/index_news/ empty).</i></p>"
+    trades = []
+    try:
+        with open(trades_file) as f:
+            trades = [json.loads(line) for line in f if line.strip()]
+    except Exception:
+        trades = []
+    cutoff = (_utc_now() - timedelta(days=LOOKBACK_DAYS)).isoformat()
+    closes = [t for t in trades if t.get("event") == "CLOSE" and str(t.get("ts", "")) >= cutoff]
+    today_utc = _utc_now().strftime("%Y-%m-%d")
+    closes_today = [t for t in closes if str(t.get("ts", "")).startswith(today_utc)]
+    state = {}
+    try:
+        with open(state_file) as f:
+            state = json.load(f)
+    except Exception:
+        state = {}
+    bias = {}
+    try:
+        with open(bias_file) as f:
+            bias = json.load(f)
+    except Exception:
+        bias = {}
+    parts = [header, mode_note]
+    if bias:
+        b = bias.get("bias", 0)
+        b_col = "#2e7d32" if b > 0.1 else ("#c62828" if b < -0.1 else "#666")
+        parts.append(f"<p><b>News bias:</b> <span style='color:{b_col}'><b>{b:+.2f}</b></span>"
+                     f" (sentiment {bias.get('sentiment', 0):+.2f} · risk_off {bias.get('risk_off', 0):.2f}"
+                     f" · fear/greed term {bias.get('fg_term', 0):+.2f} · extreme={bias.get('extreme', False)}"
+                     f" · {bias.get('n_world_articles', 0)} world articles) — updated {bias.get('updated', '?')}"
+                     + (f"<br><small>Macro events: {', '.join(e['category'] + ' ' + str(e['score']) for e in bias.get('macro_events', [])[:5])}</small>" if bias.get("macro_events") else "")
+                     + "</p>")
+    if closes:
+        pnl_30d = sum(float(t.get("pnl_usd", 0) or 0) for t in closes)
+        wins = [t for t in closes if float(t.get("pnl_usd", 0) or 0) > 0]
+        avg_gain = sum(float(t.get("gain_pct", 0) or 0) for t in closes) / len(closes)
+        pnl_today = sum(float(t.get("pnl_usd", 0) or 0) for t in closes_today)
+        col30 = "#2e7d32" if pnl_30d >= 0 else "#c62828"
+        colday = "#2e7d32" if pnl_today >= 0 else "#c62828"
+        parts.append(
+            f"<p><b>Realized paper P&amp;L:</b> today <span style='color:{colday}'><b>${pnl_today:+,.2f}</b></span> ({len(closes_today)} closes)"
+            f" · trailing {LOOKBACK_DAYS}d <span style='color:{col30}'><b>${pnl_30d:+,.2f}</b></span> on {len(closes)} closes"
+            f" · win rate <b>{len(wins)/len(closes)*100:.1f}%</b> ({len(wins)}/{len(closes)})"
+            f" · avg_gain_trade <b>{avg_gain:+.3f}%</b>"
+            f"<br><small>Per-trade returns (source of truth, last 30): {[round(float(t.get('gain_pct', 0) or 0), 3) for t in closes[-30:]]}</small></p>"
+        )
+        rows = ""
+        for t in sorted(closes, key=lambda x: str(x.get("ts", "")), reverse=True)[:40]:
+            pnl = float(t.get("pnl_usd", 0) or 0)
+            col = "#2e7d32" if pnl >= 0 else "#c62828"
+            rows += (f"<tr><td><small>{str(t.get('ts', ''))[:16]}</small></td><td>{t.get('symbol', '')}</td><td>{t.get('side', '')}</td>"
+                     f"<td>{t.get('qty', '')}</td><td>{float(t.get('entry', 0) or 0):.2f}</td><td>{float(t.get('exit', 0) or 0):.2f}</td>"
+                     f"<td style='color:{col}'><b>{float(t.get('gain_pct', 0) or 0):+.2f}%</b></td>"
+                     f"<td style='color:{col}'><b>${pnl:+,.2f}</b></td><td>{t.get('mode', '')}</td>"
+                     f"<td><small>{t.get('entry_reason', '')}</small></td><td><small>{t.get('reason', '')}</small></td></tr>")
+        parts.append(
+            f"<table border='1' cellpadding='5' cellspacing='0' style='border-collapse:collapse'>"
+            f"<tr style='background:#eee'><th>Closed (UTC)</th><th>Sym</th><th>Side</th><th>Qty</th><th>Entry</th><th>Exit</th>"
+            f"<th>Gain</th><th>P&amp;L</th><th>Mode</th><th>Entry reason</th><th>Exit reason</th></tr>{rows}</table>"
+        )
+    else:
+        parts.append(f"<p><i>No closed index-news paper trades in trailing {LOOKBACK_DAYS}d.</i></p>")
+    open_pos = state.get("positions") or {}
+    if open_pos:
+        rows = ""
+        for symbol, p in open_pos.items():
+            rows += (f"<tr><td>{symbol}</td><td>{p.get('side', '')}</td><td>{p.get('qty', '')}</td>"
+                     f"<td>{float(p.get('entry', 0) or 0):.2f}</td><td>{float(p.get('stop', 0) or 0):.2f}</td>"
+                     f"<td>{'yes' if p.get('breakeven') else 'no'}</td><td><small>{str(p.get('opened_at', ''))[:16]}</small></td>"
+                     f"<td>{p.get('mode', '')}</td><td><small>{p.get('entry_reason', '')}</small></td></tr>")
+        parts.append(
+            f"<h4>Open index-news paper positions ({len(open_pos)}) — unrealized NOT marked here (no quote at send time; gain/loss appears on close)</h4>"
+            f"<table border='1' cellpadding='5' cellspacing='0' style='border-collapse:collapse'>"
+            f"<tr style='background:#eee'><th>Sym</th><th>Side</th><th>Qty</th><th>Entry</th><th>Stop</th><th>Breakeven</th>"
+            f"<th>Opened (UTC)</th><th>Mode</th><th>Entry reason</th></tr>{rows}</table>"
+        )
+    else:
+        parts.append("<p><i>No open index-news paper positions.</i></p>")
+    extras = []
+    if state.get("halted"):
+        extras.append("<b style='color:#c62828'>daily loss cap HIT — new entries halted</b>")
+    if state.get("blocked_symbols"):
+        extras.append(f"blocked (2-loss rule): {', '.join(state['blocked_symbols'])}")
+    if state.get("date"):
+        extras.append(f"state day {state['date']} · day realized ${float(state.get('realized_pnl_usd', 0) or 0):+,.2f}")
+    if extras:
+        parts.append(f"<p style='font-size:11px;color:#666'>{' · '.join(extras)}</p>")
+    parts.append("<p style='font-size:11px;color:#888'>Strategy: premarket news-bias longs (07:00-9:25 ET, limit duration='pre') + 30m opening-range breakout, 200-SMA regime gate, breakeven at +0.5R, EOD flat. Paper only — there is no never-lose strategy; losses are capped, not impossible.</p>")
+    return "".join(parts)
+
+
 def build_html(session):
     proposals, total_premium, newest_ts, oldest_ts, variants = _collect_proposals()
     status = _runner_status_snapshot()
@@ -682,6 +790,7 @@ def build_html(session):
       {rows}
     </table>
     {veto_html}
+    {_index_news_section()}
     <p style="color:#888;font-size:12px">Generated {_utc_now().isoformat()} by options_paper_email.py. Paper/shadow only — no real orders. Safety lock: LIVE OPTIONS DISABLED (`OPTIONS_LIVE_TRADING_ENABLED=False`).</p>
     </body></html>"""
     return title, html

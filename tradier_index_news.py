@@ -497,6 +497,19 @@ def handle_shutdown(sig, frame):
     logger.info(f"signal {sig} — shutting down")
     shutdown_event.set()
 
+def acquire_singleton() -> Optional[object]:
+    import fcntl
+    lock_path = DATA_DIR / 'daemon.lock'
+    fh = open(lock_path, 'w')
+    try:
+        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        fh.write(str(os.getpid()))
+        fh.flush()
+        return fh
+    except OSError:
+        logger.warning("[SINGLETON] another tradier_index_news daemon holds the lock — exiting")
+        return None
+
 if __name__ == '__main__':
     signal.signal(signal.SIGTERM, handle_shutdown)
     signal.signal(signal.SIGINT, handle_shutdown)
@@ -507,4 +520,6 @@ if __name__ == '__main__':
         asyncio.run(nb.scan())
         print(json.dumps(nb.detail, indent=2))
     else:
-        asyncio.run(Strategy().run())
+        _lock = acquire_singleton()
+        if _lock:
+            asyncio.run(Strategy().run())

@@ -88,6 +88,13 @@ if ! tradier_market_open_utc; then
     # and own their own market-hours sleep — do not pkill them here; LaunchD will
     # keep them alive and they already sleep outside hours. Killing them here caused
     # the fragility where the inside-window relaunch only happened on manual runs.
+    # tradier_index_news (SPY/QQQ/VT paper strategy) must run OUTSIDE the window too —
+    # premarket phase starts 07:00 ET (11:00/12:00 UTC). The tradier_ pkill above killed
+    # it, so relaunch detached here; the daemon has its own singleton lock + phase clock.
+    sleep 2
+    nohup bash -c "cd '$WORKDIR' && '$PYTHON' tradier_index_news.py" >> "$LOGDIR/tradier_index_news_startup.log" 2>&1 < /dev/null &
+    echo $! > "$LOGDIR/tradier_index_news.pid"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Relaunched tradier_index_news (paper index strategy, premarket-capable) outside market window." | tee -a "$LAUNCHER_LOG"
     exit 0
 fi
 
@@ -189,6 +196,11 @@ for entry in "${OPTIONS_PAPER_SCRIPTS[@]}"; do
     launch_background "$tab_name" "$full_cmd" "$LOGDIR/${tab_name}_startup.log"
 done
 
+# tradier_index_news: SPY/QQQ/VT news+ORB paper strategy (trc sandbox, INDEX_NEWS_* switches).
+# Background (not watchdog): watchdog's market-hours gate would block its 07:00 ET premarket
+# phase. Daemon owns its own phase clock, singleton lock, and kill switches.
+launch_background "tradier_index_news" "'$PYTHON' tradier_index_news.py" "$LOGDIR/tradier_index_news_startup.log"
+
 # Wait for scripts to initialize
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] Waiting 10s for scripts to initialize..." | tee -a "$LAUNCHER_LOG"
 sleep 10
@@ -230,6 +242,13 @@ if [ "$MARKET_SUP_COUNT" -ge 1 ]; then
     echo "  ✅ options_market_supervisor (Running)" | tee -a "$LAUNCHER_LOG"
 else
     echo "  ❌ options_market_supervisor (FAILED)" | tee -a "$LAUNCHER_LOG"
+fi
+INDEX_NEWS_COUNT=$(pgrep -f "python.*tradier_index_news.py" 2>/dev/null | wc -l | tr -d ' ')
+if [ "$INDEX_NEWS_COUNT" -ge 1 ]; then
+    echo "  ✅ tradier_index_news (Running)" | tee -a "$LAUNCHER_LOG"
+else
+    echo "  ❌ tradier_index_news (FAILED)" | tee -a "$LAUNCHER_LOG"
+    tail -n 5 "$LOGDIR/tradier_index_news_startup.log" 2>/dev/null | sed 's/^/      [IN] /' | tee -a "$LAUNCHER_LOG"
 fi
 
 TRADIER_COUNT=$(pgrep -f "python.*tradier" 2>/dev/null | wc -l | tr -d ' ')
