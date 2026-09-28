@@ -1955,6 +1955,16 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             print("[spec-fill] fork pool released before DONE stage (RAM headroom for save+live-verify)", flush=True)
     except Exception as _ps_e:
         print(f"[pool-release-warn] {_ps_e}", flush=True)
+    # 2026-09-28 DONE-stage RAM trim part 2: a parent still hit 4.5GB (OOM-killed 19:53Z) — the
+    # eval cache holds ~10^5 result dicts and is pure optimization; drop it before the save +
+    # in-process backtest_v12_engine live verify.
+    try:
+        _EVAL_CACHE.clear()
+        import gc as _gc_done
+        _gc_done.collect()
+        print("[spec-fill] eval cache dropped + gc before DONE stage", flush=True)
+    except Exception:
+        pass
     _maybe_write_json(force=True)
     if _any_pending():
         print(f"[spec-fill] incomplete after loop guard {loop_guard} pending remains — will still save", flush=True)
@@ -2754,7 +2764,14 @@ def _run_single(new_symside, args):
                 import pathlib as _pl2
                 _has_final = any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_30d_matrix.xlsx")) or any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_bh*.xlsx"))
             _pending = _pending_template_rows(new_symside)
-            if _pending:
+            # 2026-09-28 publish-only pass: a board-COMPLETE sheet whose DONE stage died (OOM'd
+            # parent) has pending==0 and done>=2800, so the legacy gate PROHIBITed every relaunch
+            # and NO complete sheet could ever publish its bh/gain final. If no final exists on
+            # disk, resume: all rows are cached, the pilot skims to DONE and publishes.
+            _bh_final_exists = any((ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL").glob(f"{new_symside}_bh*_30d_matrix*.xlsx"))
+            if _pending is not None and _pending == 0 and not _bh_final_exists:
+                print(f"[RESUME-ALLOW] {new_symside} COMPLETE but no bh/gain final on disk — publish-only pass (DONE stage rerun)", flush=True)
+            elif _pending:
                 print(f"[RESUME-ALLOW] {new_symside} final_gain {_early_prog.get('final_gain'):.2f} done {_done_cnt} but {_pending} template rows pending (post-merge) — incremental resume", flush=True)
             elif _done_cnt < 2800 and not _has_final:
                 print(f"[RESUME-ALLOW] {new_symside} incomplete final_gain {_early_prog.get('final_gain'):.2f} done {_done_cnt} no FINAL xlsx — resuming", flush=True)
@@ -2966,7 +2983,14 @@ def main():
                 import pathlib as _pl2
                 _has_final = any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_30d_matrix.xlsx")) or any(_pl2.Path.home().glob(f"binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_bh*.xlsx"))
             _pending = _pending_template_rows(new_symside)
-            if _pending:
+            # 2026-09-28 publish-only pass: a board-COMPLETE sheet whose DONE stage died (OOM'd
+            # parent) has pending==0 and done>=2800, so the legacy gate PROHIBITed every relaunch
+            # and NO complete sheet could ever publish its bh/gain final. If no final exists on
+            # disk, resume: all rows are cached, the pilot skims to DONE and publishes.
+            _bh_final_exists = any((ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL").glob(f"{new_symside}_bh*_30d_matrix*.xlsx"))
+            if _pending is not None and _pending == 0 and not _bh_final_exists:
+                print(f"[RESUME-ALLOW] {new_symside} COMPLETE but no bh/gain final on disk — publish-only pass (DONE stage rerun)", flush=True)
+            elif _pending:
                 print(f"[RESUME-ALLOW] {new_symside} final_gain {_early_prog.get('final_gain'):.2f} done {_done_cnt} but {_pending} template rows pending (post-merge) — incremental resume", flush=True)
             elif _done_cnt < 2800 and not _has_final:
                 print(f"[RESUME-ALLOW] {new_symside} incomplete final_gain {_early_prog.get('final_gain'):.2f} done {_done_cnt} no FINAL xlsx — resuming", flush=True)
