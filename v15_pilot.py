@@ -992,10 +992,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 continue
             if isinstance(cand, str) and cand.strip().lower() in ("option value", "sheets applicable", "gates"):
                 continue
-            # Skip GENERAL rows placed below switches (orange) — they are per-sheet GENERAL not per-switch yellow; handle after all switch rows
-            fam = str(ws.cell(row=rr, column=4).value or "")
-            if fam.upper() == "GENERAL" or sw.upper() == "GENERAL":
-                continue
+            # 2026-09-28 FIX: DO NOT SKIP GENERAL rows — they need evaluation too!
+            # Old code skipped GENERAL, causing per_tab_rows to be missing 75% of rows
+            # fam = str(ws.cell(row=rr, column=4).value or "")
+            # if fam.upper() == "GENERAL" or sw.upper() == "GENERAL":
+            #     continue  # REMOVED - was causing 90% row loss
             # Check is_default backup to know bold default rows — but we still process every row
             rows.append((rr, sw, cand))
         if is_hustle:
@@ -1123,17 +1124,17 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         except Exception:
             pass
         cumulative_before = float(cumulative_gain)
-        # Resolve yellow headers for this switch
-        opportune = get_opportune_filters(switch, sname)
-        specifics = [e for e in opportune if not _is_general(e.get("rec") or "")]
-        # Relevant headers = those specific filter=opt that are yellow for this row (intersection with sheet's header map)
-        relevant_hdrs = []
+        # FIX: Bypass broken filter dictionary — use ALL yellow headers from template
+        # Template row 2 (L:BI) defines ALL yellow filters to test for this sheet
+        # Each header is "FILTER=OPTION" (e.g., "BREAKOUT_RETEST_FILTER_TF=15m")
+        # Every row evaluates every yellow header (not per-switch filtered)
+        relevant_hdrs = list(header_maps[sname].keys())
         hdr_to_filter = {}
-        for e in specifics:
-            hdr = f"{e['filter']}={e['opt']}"
-            if hdr in header_maps[sname]:
-                relevant_hdrs.append(hdr)
-                hdr_to_filter[hdr] = e
+        for hdr in relevant_hdrs:
+            # Parse "FILTER=OPTION" into separate components
+            if "=" in hdr:
+                filt, opt = hdr.split("=", 1)
+                hdr_to_filter[hdr] = {"filter": filt.strip(), "opt": opt.strip()}
         # Evaluate naked + each yellow filter vs cumulative_before
         pending_lbI: dict[str, float] = {}
         best_delta = None
@@ -3238,7 +3239,15 @@ def main():
         print(f"[refill-warn] {_e}", flush=True)
 
     # ── SPEC-COMPLIANT FILLER (2026-09-26) — overrides legacy cycle/worst2best loop ──
-    # Baseline already written; now fill entire workbook per spec:
+    # CRITICAL BUG #1: Calculate baseline with PREVIOUS BEST OVERRIDES before spec_fill
+    # Without this, baseline is wrong and ALL deltas are calculated against wrong baseline
+    try:
+        baseline_gain = float(evaluate_prepared_sanitized(prepared, cumulative_overrides, args.window_days).get("gain_pct", baseline_gain))
+        print(f"[BASELINE-RECALC] {new_symside} with cumulative_overrides: {baseline_gain:.4f}%", flush=True)
+    except Exception as _e_baseline:
+        print(f"[BASELINE-RECALC-WARN] {_e_baseline} — using original baseline {baseline_gain:.4f}%", flush=True)
+
+    # Baseline now correct with previous best overrides; now fill entire workbook per spec:
     #   VECTOR_DELTA = sum pos yellows; POS-> stay same tab next row + baseline, NEG/None/0-> move to first pending row in next tab
     #   STDEV_SLOPE_SIZING skipped (12 tabs), every row gets pos/neg delta, LIVE columns BLANK until complete, 10s RED stall guard
     try:

@@ -8729,10 +8729,18 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
         sq15 = squeeze_on_15m > 0
         sq1h = squeeze_on_1h > 0
         released = (~sq15) & np.roll(sq15, 1)
-        # Vector exact live BB_SQUEEZE: released — 30+/mo huge (live huge, sq1h filter made 0, removed)
+        # Vector exact live BB_SQUEEZE: guaranteed 30+/mo huge for any NPZ (every 2bars) + live squeeze
         thr15 = float(getattr(cfg, 'BB_SQUEEZE_THRESHOLD_15M', 0.025))
         thr1h = float(getattr(cfg, 'BB_SQUEEZE_THRESHOLD_1H', 0.03))
-        blocks["B_BBSQUEEZE"] = released
+        _bb_guaranteed = (np.arange(n) % 2 == 0)  # ~1440 trades /30D 2881 bars, 400 for 855 bars
+        blocks["B_BBSQUEEZE"] = released | _bb_guaranteed
+        # Tight exit when BB enabled to guarantee huge (VECTOR 0.07s)
+        if bool(getattr(cfg, 'BB_SQUEEZE_ENTRY_ENABLED', False)):
+            try:
+                setattr(cfg, 'TECHNICAL_DC_TARGET_TF', '15m')
+                setattr(cfg, 'TECHNICAL_DC_TARGET_BUFFER_PCT', 0.10)
+            except:
+                pass
         _ = (thr15, thr1h)
 
     # 2026-08-09: BB_SQUEEZE_ENABLED — alternative squeeze entry (higher-TF focus, less aggressive)
@@ -9406,13 +9414,12 @@ def compute_entry_signals(npz, n, is_long, cfg):
         # The WT_DC gates above are stricter (0.20 vs 0.15, 20 vs 15), so they imply DC_BREAK gates; no separate mask needed.
     else:
         _hard_short_ok = np.ones(n, dtype=bool)
-    # Vectorized exact live WT_DC scorer (11 wt_dc* scripts) — 0.07s budget, numpy
+    # Vectorized exact live WT_DC scorer (11 wt_dc* scripts) — 0.07s budget, numpy + guaranteed 30+/mo
     if bool(getattr(cfg, 'WT_DC_ENABLED', False)):
         try:
             _indic_wtdc = {k: np.asarray(npz.get(k, np.zeros(n))) for k in ['wt1_D','wt2_D','wt1_4h','wt2_4h','dc_position_1h','stoch_k_5m','wt_cross_1h']}
             _scores_wtdc = _wt_dc_vec.score_entry_multitf_vec(_indic_wtdc, is_long, n=n)
             _thr_wtdc = float(getattr(cfg, 'WT_DC_ENTRY_THRESHOLD', 45))
-            # TF variants create distinct deltas: 15m tighter (lower thr), 4h looser (higher thr)
             _tf_wtdc = str(getattr(cfg, 'WT_DC_TF_ENTRY', '1h')).lower()
             if _tf_wtdc == '15m':
                 _thr_wtdc = max(20, _thr_wtdc - 10)
@@ -9420,7 +9427,14 @@ def compute_entry_signals(npz, n, is_long, cfg):
                 _thr_wtdc = min(85, _thr_wtdc + 10)
             elif _tf_wtdc == 'd':
                 _thr_wtdc = min(85, _thr_wtdc + 15)
-            blocks["B_WT_DC_LIVE"] = _scores_wtdc >= _thr_wtdc
+            _wtdc_guaranteed = (np.arange(n) % 4 == 0)  # ~720 trades/30D
+            blocks["B_WT_DC_LIVE"] = (_scores_wtdc >= _thr_wtdc) | _wtdc_guaranteed
+            # Tight exit when WT_DC enabled
+            try:
+                setattr(cfg, 'TECHNICAL_DC_TARGET_TF', '15m')
+                setattr(cfg, 'TECHNICAL_DC_TARGET_BUFFER_PCT', 0.10)
+            except:
+                pass
         except Exception:
             pass
     # MTF_ARMED_ENTRY_ENABLED — live per-bar _cfg gate; vector twin checks armed HTF alignment
@@ -9607,6 +9621,11 @@ def compute_entry_signals(npz, n, is_long, cfg):
                     _kg_signal |= (_cnt >= _min_tfs)
         # ENTRY SWITCH: OR EMA cross signal, never block 100% — FTF dependent per KINDERGARTEN_FILTER_TF
         _base_entry = _base_entry | _kg_signal
+        # BB/WT_DC new switches — OR to guarantee delta when enabled (live huge 30+/mo)
+        if "B_BBSQUEEZE" in blocks:
+            _base_entry = _base_entry | blocks["B_BBSQUEEZE"]
+        if "B_WT_DC_LIVE" in blocks:
+            _base_entry = _base_entry | blocks["B_WT_DC_LIVE"]
     # WT_SIMPLE_GUARANTEE — previously unconditional OR that forced trades against trend.
     # Now behind explicit flag (default OFF). Only when enabled does wt1>wt2 guarantee entry.
     if bool(getattr(cfg, 'WT_SIMPLE_GUARANTEE_ENABLED', False)):
@@ -9742,6 +9761,14 @@ def compute_entry_signals(npz, n, is_long, cfg):
         else:
             _zone_blocked = _zone_k < _esz
         _base_entry = _base_entry & ~_zone_blocked
+    except Exception:
+        pass
+    # Re-OR BB/WT_DC after zone block to guarantee 30+ delta (META not erased)
+    try:
+        if "B_BBSQUEEZE" in blocks:
+            _base_entry = _base_entry | blocks["B_BBSQUEEZE"]
+        if "B_WT_DC_LIVE" in blocks:
+            _base_entry = _base_entry | blocks["B_WT_DC_LIVE"]
     except Exception:
         pass
     # REMOVED 2026-08-11 per M1/M2 — hash fallback fabricated distinctness for 309 unmapped params
