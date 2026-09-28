@@ -478,7 +478,8 @@ def get_template_for_symside(symside: str) -> Path:
 
 
 OUT_DIR = ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
-PROGRESS_DIR = ROOT / "data" / "reports" / "lifecycle_pilot"
+# V15_PROGRESS_DIR isolates test runs from herd/cron progress sync (s1_pull_from_s2s3s5.sh restores stale JSON)
+PROGRESS_DIR = Path(os.environ["V15_PROGRESS_DIR"]) if os.environ.get("V15_PROGRESS_DIR") else ROOT / "data" / "reports" / "lifecycle_pilot"
 FLAGS_DIR = ROOT / "data" / "reports" / "v15_flags"
 SWITCH_SHEETS = [
     "ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES",
@@ -489,7 +490,7 @@ SWITCH_SHEETS = [
     "GLOBAL_RISK_GATES",
 ]
 # 12-tab: STDEV_SLOPE_SIZING skipped — 3803 rows (was 4801 with STDEV). Sheet stays in TEMPLATE but never calculated.
-SKIP_SHEETS = {"STDEV_SLOPE_SIZING"}
+SKIP_SHEETS: set = set()  # all 13 tabs filled (user 2026-09-28); 10s stall guard marks slow cells RED
 
 ALL_PREPARED: dict[str, dict] = {}
 ALL_NPZ_ARRAYS: dict[str, dict] = {}
@@ -958,6 +959,15 @@ def _spec_clear_live_formulas(wb):
                 except Exception:
                     pass
 
+_POOL_PREPARED = None
+
+def _pool_eval(overrides: dict, window_days: int):
+    # forked worker: prepared NPZ slice inherited copy-on-write from the parent (stays in RAM, no reload)
+    import time as _tp
+    from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps
+    t0 = _tp.time()
+    return _eps(_POOL_PREPARED, overrides, window_days), _tp.time() - t0
+
 def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progress_path: Path, flags_md: Path, cumulative_gain: float, cumulative_overrides: dict, defaults: dict, baseline_gain: float, bh: float, prepared, args, baseline_vec: dict, baseline_live: dict):
     """Spec-compliant filler: 12 tabs (STDEV skipped), every row gets delta pos/neg, VECTOR_DELTA = sum pos yellows.
     Logic (per-row tab hop — USER 04:20 — 12 tabs, entire tab is too slow, per-row hop is better, NEVER revert to worse):
@@ -1000,6 +1010,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                         pass
     except Exception:
         pass
+    fast_switches = None
+    if getattr(args, "fast_switches", None):
+        fast_switches = set(json.loads(Path(args.fast_switches).read_text()))
+        print(f"[spec-fill] FAST mode: {len(fast_switches)} switches from {args.fast_switches}", flush=True)
     # Build per-tab row queues in order (stable) — hustle => shuffled copy
     is_hustle = getattr(args, "seq_mode", "") in ("hustle", "shuffle")
     tabs = [s for s in SWITCH_SHEETS if s in wb.sheetnames and s not in SKIP_SHEETS]
@@ -1027,6 +1041,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             # if fam.upper() == "GENERAL" or sw.upper() == "GENERAL":
             #     continue  # REMOVED - was causing 90% row loss
             # Check is_default backup to know bold default rows — but we still process every row
+            if fast_switches is not None and sw not in fast_switches:
+                continue  # --fast-switches: left pending for a later full pass on the same sheet
             rows.append((rr, sw, cand))
         if is_hustle:
             _rnd.shuffle(rows)
@@ -1068,6 +1084,54 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             cell.value = sep.join(cur)
             cell.font = Font(name="Arial", size=10, bold=col == cols["C"])
             cell.alignment = VISUAL_ALIGN
+    nav_mode = getattr(args, "nav_mode", "jump")
+    # DELTA-LOG (user 2026-09-28): one JSON line per v12_quick eval — proves every delta was really computed
+    _delta_log_path = progress_path.parent / "v15_delta_log" / f"{new_symside}_{nav_mode}.jsonl"
+    _delta_log_path.parent.mkdir(parents=True, exist_ok=True)
+    _delta_log_fh = open(_delta_log_path, "a", buffering=1)
+    print(f"[delta-log] {_delta_log_path}", flush=True)
+    # Row-parallel evals: naked + every yellow of a row are independent (all vs the same cumulative_before), so they are
+    # prefetched in a forked process pool; results keyed by label, failures -> None + reason (never -1/0). Joint stays serial.
+    global _POOL_PREPARED
+    _pool = None
+    _n_proc = max(1, min(int(getattr(args, "workers", 1) or 1), (os.cpu_count() or 2) - 1))
+    if prepared is not None and _n_proc > 1:
+        import multiprocessing as _mp
+        _POOL_PREPARED = prepared
+        _pool = _cf.ProcessPoolExecutor(max_workers=_n_proc, mp_context=_mp.get_context("fork"))
+        print(f"[spec-fill] process pool {_n_proc} workers (fork, NPZ shared)", flush=True)
+    def _delta_log(rec: dict):
+        try:
+            _delta_log_fh.write(json.dumps(rec, default=str) + "\n")
+        except Exception:
+            pass
+    initial_baseline = float(progress.setdefault("initial_baseline_gain", float(baseline_gain)))
+    def _div_col(ws) -> int:
+        # DELTA_VS_INITIAL_BASELINE: best REAL measured gain of the row minus the initial baseline (no extra evals) —
+        # comparable across rows when the sheet is not filled in order (hustle). Appended after the last header.
+        hm = _hdr_col_map(ws)
+        if "DELTA_VS_INITIAL_BASELINE" in hm:
+            return hm["DELTA_VS_INITIAL_BASELINE"]
+        c = max((cc for cc in range(1, ws.max_column + 1) if ws.cell(row=2, column=cc).value not in (None, "")), default=ws.max_column) + 1
+        ws.cell(row=2, column=c).value = "DELTA_VS_INITIAL_BASELINE"
+        ws.cell(row=2, column=c).font = Font(name="Arial", size=10, bold=True)
+        return c
+    div_cols = {sname: _div_col(wb[sname]) for sname in tabs}
+    def _write_div(sname: str, rr: int, gains: list):
+        gains = [g for g in gains if g is not None]
+        if not gains:
+            return None
+        v = float(max(gains)) - initial_baseline
+        cell = wb[sname].cell(row=rr, column=div_cols[sname])
+        cell.value = v
+        cell.font = Font(name="Arial", size=10, bold=False, color="006100" if v > 1e-9 else "9C0006")
+        cell.alignment = VISUAL_ALIGN
+        return v
+    def _after_neg(from_idx: int):
+        # jump: first pending row of the NEXT tab (E written there); fill_tab: stay on this tab until it is complete
+        if nav_mode == "fill_tab" and _next_pending(tabs[from_idx]) is not None:
+            return from_idx
+        return _land_on_next_tab(from_idx)
     def _land_on_next_tab(from_idx: int):
         # NEG / no-yellow / tab finished: go to first pending row of the next tab with pending rows and write E there
         for offset in range(1, len(tabs) + 1):
@@ -1077,7 +1141,6 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _write_E(tabs[cand_idx], nxt[0], cumulative_gain)
                 return cand_idx
         return (from_idx + 1) % len(tabs)
-    # Ensure E3 baseline written for first pending of each tab if blank (spec: baseline only written after pos stays blank normally — but first row needs baseline)
     # E (BASELINE) is written only where the chain lands: first pending row of the starting tab now,
     # then next row on POS / first pending row of next tab on NEG. Pending rows carry no stale E (template 0/#NUM!/formulas).
     try:
@@ -1179,33 +1242,48 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         # Timeout per yellow: 0.1s per spec, mark RED on stall — YELLOW_TIMEOUT global
         YELLOW_TIMEOUT_LOCAL = YELLOW_TIMEOUT  # keep global 0.1, local alias for closure capture
         # Helper to evaluate variant with timeout — cached to meet 0.07s (0.11s -> 0.02s cached)
-        def _eval_with_timeout(overrides_dict: dict, timeout_sec: float = YELLOW_TIMEOUT):
-            # cache key: sorted overrides + window + prepared id — avoids 36h recompute for same filter combos across rows
+        def _eval_with_timeout(overrides_dict: dict, timeout_sec: float = YELLOW_TIMEOUT, label: str = "naked"):
+            # every eval -> one DELTA-LOG line (sym_side, sheet!row, switch=cand, label, v12 function, result, delta vs cum)
+            fn = "evaluate_prepared_sanitized" if prepared is not None else "evaluate_sanitized"
+            if label in _prefetched:
+                pres, perr = _prefetched.pop(label)
+                if perr.startswith("TIMEOUT"):
+                    raise TimeoutError(perr)
+                if perr:
+                    raise RuntimeError(perr)
+                return pres
+            t0 = _t.time()
+            res, cached, err = None, False, ""
             try:
-                _ck = (tuple(sorted((k, str(v)) for k, v in overrides_dict.items())), args.window_days, id(prepared))
-                if _ck in _EVAL_CACHE:
-                    return _EVAL_CACHE[_ck]
-            except Exception:
-                _ck = None
-            pp = prepared  # may be None -> fallback
-            # no `with`: its exit waits for the stuck eval, so the stall guard never fired
-            ex = _cf.ThreadPoolExecutor(max_workers=1)
-            try:
-                if pp is not None:
-                    fut = ex.submit(__import__("tools.opt.v12_pilot", fromlist=["evaluate_prepared_sanitized"]).evaluate_prepared_sanitized, pp, overrides_dict, args.window_days)
-                else:
-                    fut = ex.submit(__import__("tools.opt.v12_pilot", fromlist=["evaluate_sanitized"]).evaluate_sanitized, new_symside, overrides_dict, window_days=args.window_days)
-                res = fut.result(timeout=timeout_sec)
-                if _ck is not None:
-                    try:
+                try:
+                    _ck = (tuple(sorted((k, str(v)) for k, v in overrides_dict.items())), args.window_days, id(prepared))
+                    if _ck in _EVAL_CACHE:
+                        res, cached = _EVAL_CACHE[_ck], True
+                        return res
+                except Exception:
+                    _ck = None
+                # no `with`: its exit waits for the stuck eval, so the stall guard never fired
+                ex = _cf.ThreadPoolExecutor(max_workers=1)
+                try:
+                    if prepared is not None:
+                        fut = ex.submit(__import__("tools.opt.v12_pilot", fromlist=[fn]).evaluate_prepared_sanitized, prepared, overrides_dict, args.window_days)
+                    else:
+                        fut = ex.submit(__import__("tools.opt.v12_pilot", fromlist=[fn]).evaluate_sanitized, new_symside, overrides_dict, window_days=args.window_days)
+                    res = fut.result(timeout=timeout_sec)
+                    if _ck is not None:
                         _EVAL_CACHE[_ck] = res
-                    except Exception:
-                        pass
-                return res
-            except _cf.TimeoutError:
-                raise TimeoutError(f"yellow eval timeout {timeout_sec}s")
+                    return res
+                except _cf.TimeoutError:
+                    err = f"TIMEOUT {timeout_sec}s"
+                    raise TimeoutError(f"yellow eval timeout {timeout_sec}s")
+                finally:
+                    ex.shutdown(wait=False)
+            except Exception as _ee:
+                err = err or f"ERR {_ee}"[:120]
+                raise
             finally:
-                ex.shutdown(wait=False)
+                g = (res or {}).get("gain_pct")
+                _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": nav_mode, "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "label": label, "fn": f"tools.opt.v12_pilot.{fn}", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cumulative_before, "delta": (float(g) - cumulative_before) if g is not None else None, "secs": round(_t.time() - t0, 4), "cached": cached, "err": err})
         # Evaluate switch alone (naked) vs cumulative_before to get base delta if no yellows
         switch_variant = dict(cumulative_overrides)
         def _parse_opt(val, default):
@@ -1229,6 +1307,43 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         cand_parsed = _parse_opt(cand, defaults.get(switch))
         switch_variant[switch] = cand_parsed
         switch_variant, _ = sanitize_overrides(switch_variant, defaults)
+        _prefetched = {}
+        if _pool is not None:
+            _items = [("naked", switch_variant)]
+            for _h in relevant_hdrs:
+                _f = hdr_to_filter[_h]["filter"]
+                _v = dict(switch_variant)
+                _v[_f] = _parse_opt(hdr_to_filter[_h]["opt"], defaults.get(_f))
+                _items.append((_h, sanitize_overrides(_v, defaults)[0]))
+            _t0 = _t.time()
+            _futs = {}
+            for _lab, _v in _items:
+                _ck = (tuple(sorted((k, str(v)) for k, v in _v.items())), args.window_days, id(prepared))
+                if _ck in _EVAL_CACHE:
+                    _prefetched[_lab] = (_EVAL_CACHE[_ck], "")
+                    _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": nav_mode, "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "label": _lab, "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": _EVAL_CACHE[_ck].get("gain_pct"), "trades": _EVAL_CACHE[_ck].get("trades"), "valid": _EVAL_CACHE[_ck].get("valid"), "invalid_reason": _EVAL_CACHE[_ck].get("invalid_reason"), "cum_before": cumulative_before, "delta": (float(_EVAL_CACHE[_ck]["gain_pct"]) - cumulative_before) if _EVAL_CACHE[_ck].get("gain_pct") is not None else None, "secs": 0.0, "cached": True, "err": ""})
+                    continue
+                try:
+                    _futs[_lab] = (_pool.submit(_pool_eval, _v, args.window_days), _ck)
+                except Exception as _pe:
+                    print(f"[spec-pool-warn] submit failed {_pe} — serial fallback", flush=True)
+                    _pool = None
+                    break
+            # stall guard: YELLOW_TIMEOUT per wave of _n_proc evals
+            _deadline = _t0 + YELLOW_TIMEOUT * max(1, -(-len(_futs) // _n_proc))
+            for _lab, (_fut, _ck) in _futs.items():
+                _res, _secs, _err = None, None, ""
+                try:
+                    _res, _secs = _fut.result(timeout=max(0.01, _deadline - _t.time()))
+                    _EVAL_CACHE[_ck] = _res
+                except _cf.TimeoutError:
+                    _err = f"TIMEOUT {YELLOW_TIMEOUT:.0f}s"
+                    _fut.cancel()
+                except Exception as _fe:
+                    _err = f"ERR {_fe}"[:120]
+                _prefetched[_lab] = (_res, _err)
+                _g = (_res or {}).get("gain_pct")
+                _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": nav_mode, "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "label": _lab, "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": _g, "trades": (_res or {}).get("trades"), "valid": (_res or {}).get("valid"), "invalid_reason": (_res or {}).get("invalid_reason"), "cum_before": cumulative_before, "delta": (float(_g) - cumulative_before) if _g is not None else None, "secs": round(_secs, 4) if _secs is not None else None, "cached": False, "err": _err, "pool": True})
         def _delta_of(vec):
             # (delta, promotable, reason). The real gain delta is always reported; a result the engine marks invalid
             # (trades < floor etc.) keeps its real delta but is never promoted. No gain at all -> None (never a fake 0).
@@ -1274,8 +1389,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             progress["cumulative_gain"] = float(cumulative_gain)
             _atomic_write_json(progress_path, progress)
             _touch(f"cell {sname}!{rr} no-yellow delta={delta_for_row}")
-            print(f"[spec-row] {sname}!{rr} {switch}={cand} no-yellow delta={delta_for_row} vs cum {cumulative_before:.4f} -> {'POS' if promote else 'NEG'} {naked_reason} (no-yellow -> next TAB)", flush=True)
-            current_idx = _land_on_next_tab(current_idx)
+            div = _write_div(sname, rr, [(naked_vec or {}).get("gain_pct")])
+            progress["done"][key]["delta_vs_initial"] = div
+            print(f"[spec-row] {sname}!{rr} {switch}={cand} no-yellow delta={delta_for_row} vs cum {cumulative_before:.4f} -> {'POS' if promote else 'NEG'} {naked_reason} nav={nav_mode}", flush=True)
+            # jump: no-yellow rows always go to next TAB (spec); fill_tab: continue down this tab
+            current_idx = _after_neg(current_idx) if nav_mode == "fill_tab" else _land_on_next_tab(current_idx)
             # Periodic save
             try:
                 if processed % 5 == 0:
@@ -1294,7 +1412,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             variant, _ = sanitize_overrides(variant, defaults)
             col = header_maps[sname].get(hdr)
             try:
-                delta, ok, reason = _delta_of(_eval_with_timeout(variant, timeout_sec=YELLOW_TIMEOUT))
+                delta, ok, reason = _delta_of(_eval_with_timeout(variant, timeout_sec=YELLOW_TIMEOUT, label=hdr))
             except TimeoutError as te:
                 delta, ok, reason = None, False, f"TIMEOUT {YELLOW_TIMEOUT:.0f}s"
                 _flag_to_md(flags_md, sname, rr, switch, cand, f"stuck >10s {hdr} {te}", 0.0, 0.0, cumulative_before)
@@ -1336,7 +1454,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 cumulative_overrides[filt] = _parse_opt(hdr_to_filter[hdr]["opt"], defaults.get(filt))
             cumulative_overrides, _ = sanitize_overrides(cumulative_overrides, defaults)
             try:
-                jd, jok, joint_reason = _delta_of(_eval_with_timeout(dict(cumulative_overrides), timeout_sec=YELLOW_TIMEOUT))
+                jd, jok, joint_reason = _delta_of(_eval_with_timeout(dict(cumulative_overrides), timeout_sec=YELLOW_TIMEOUT, label="JOINT:" + "+".join(pos_hdrs)))
             except Exception as _je:
                 jd, jok, joint_reason = None, False, f"joint {_je}"[:40]
             if jok and jd is not None and jd > 1e-9:
@@ -1365,8 +1483,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             print(f"[spec-write-warn] {sname}!{rr} {ee}", flush=True)
         if promote:
             cumulative_gain = float(joint_gain)
+        row_gains = [joint_gain, (naked_vec or {}).get("gain_pct")] + [cumulative_before + d for d in pending_lbI.values()]
+        div = _write_div(sname, rr, row_gains)
         key = f"{sname}!{rr}:{switch}={cand}"
-        progress.setdefault("done", {})[key] = {"delta": delta_for_row, "promoted": promote, "joint_gain": joint_gain, "reason": joint_reason, "yellows": dict(pending_lbI), "yellow_reasons": dict(per_yellow_timeout_reason), "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_gain)}
+        progress.setdefault("done", {})[key] = {"delta": delta_for_row, "promoted": promote, "joint_gain": joint_gain, "reason": joint_reason, "yellows": dict(pending_lbI), "yellow_reasons": dict(per_yellow_timeout_reason), "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_gain), "delta_vs_initial": div}
         progress["cumulative_gain"] = float(cumulative_gain)
         progress["cumulative_overrides"] = dict(cumulative_overrides)
         _atomic_write_json(progress_path, progress)
@@ -1378,8 +1498,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if nxt is not None:
                 _write_E(sname, nxt[0], cumulative_gain)
         else:
-            # NEG/0/None: DO NOT move down — first pending row of the next tab, E written there
-            current_idx = _land_on_next_tab(current_idx)
+            # NEG/0/None: jump -> first pending row of the next tab (E written there); fill_tab -> next row, same tab
+            current_idx = _after_neg(current_idx)
         try:
             _atomic_save(wb, wb_path)
         except Exception:
@@ -1464,6 +1584,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         wb.close()
     except Exception:
         pass
+    if _pool is not None:
+        _pool.shutdown(wait=False, cancel_futures=True)
+    try:
+        write_zoomable_chart(new_symside, None, dict(cumulative_overrides), args.window_days, suffix=f"30D_REAL_ZOOMABLE_{nav_mode}")
+    except Exception as _ce:
+        print(f"[chart-warn] {_ce}", flush=True)
     # Final heartbeat
     _touch(f"spec-done cum={cumulative_gain:.4f} rows={processed}")
     print(f"[spec-fill] DONE {new_symside} final_gain={cumulative_gain:.4f} baseline={baseline_gain:.4f} rows={processed} pos_tabs curated", flush=True)
@@ -2043,6 +2169,8 @@ def main():
     ap.add_argument("--out", default=None)
     ap.add_argument("--window-days", type=int, default=30)
     ap.add_argument("--sheet", default=None)
+    ap.add_argument("--fast-switches", default=None, help="json list of switch names: fill only those rows (rest stay pending for a later full pass)")
+    ap.add_argument("--nav-mode", default="jump", choices=["jump", "fill_tab"], help="NEG/0 delta: jump = first pending row of NEXT tab; fill_tab = stay, fill the tab completely, then next tab")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--workers", type=int, default=16)
     ap.add_argument("--vector-only", action="store_true", help="vector-only, no live parity (fast)")
@@ -2564,6 +2692,16 @@ def main():
             _zero_trades_early = False
             if not baseline_vec.get("valid"):
                 print(f"[baseline-warn] {new_symside} valid False but trades {baseline_vec.get('trades')} — proceeding", flush=True)
+        # Previous-best that holds ~forever (1-7 trades) makes every delta meaningless: fall back to TEMPLATE defaults
+        # (which carry the trade-generating exits) when they clear the 10-trade floor. Real eval, logged, never mixed.
+        if int(baseline_vec.get("trades") or 0) < 10 and overrides:
+            _defaults_vec = evaluate_prepared_sanitized(prepared, {}, window_days=args.window_days)
+            print(f"[BASELINE-FALLBACK] {new_symside} previous-best {len(overrides)} overrides -> {baseline_vec.get('trades')} trades gain {baseline_vec.get('gain_pct')}; defaults -> {_defaults_vec.get('trades')} trades gain {_defaults_vec.get('gain_pct')}", flush=True)
+            if int(_defaults_vec.get("trades") or 0) >= 10:
+                print(f"[BASELINE-FALLBACK] {new_symside} using TEMPLATE defaults as baseline (previous-best dropped: {sorted(overrides)[:12]})", flush=True)
+                overrides = {}
+                baseline_vec = _defaults_vec
+                _zero_trades_early = False
         prepared_for_fallback = prepared
 
     if args.vector_only:
@@ -2585,9 +2723,9 @@ def main():
     baseline_gain = float(baseline_live.get("gain_pct") or baseline_vec.get("gain_pct") or 0.0)
     bh = float(baseline_live.get("bh_pct") or baseline_vec.get("bh_pct") or 0.0)
     baseline_trades = int(baseline_live.get("trades") or baseline_vec.get("trades") or 0)
-    # 30-trade floor per sym_side (the "100" in the mandate is a symbol count, not trades). Below floor the XLS is
+    # 10-trade floor per sym_side (user 2026-09-28: 30 is too extreme for a bad month) (the "100" in the mandate is a symbol count, not trades). Below floor the XLS is
     # still cloned + baseline written; only the sweep is skipped (early return before clone is FORBIDDEN).
-    min_trades = 30
+    min_trades = 10
     below_floor = baseline_trades < min_trades
     if below_floor:
         print(f"[SAMPLE-FLOOR-VIOLATION] {new_symside} ({map_key_for_symside(new_symside)}) {baseline_trades} trades < {min_trades} floor — DIAGNOSTIC ONLY, XLS written, sweep skipped", flush=True)
