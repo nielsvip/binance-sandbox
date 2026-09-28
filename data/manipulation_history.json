@@ -1779,5 +1779,41 @@
     ],
     "timestamp": "2026-09-28T09:14:50.099637+00:00",
     "price": 153.97
+  },
+  {
+    "symbol": "AVGOUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 6.2x (from rankings)"
+    ],
+    "timestamp": "2026-09-28T09:37:07.805810+00:00",
+    "price": 350.86
+  },
+  {
+    "symbol": "IOTAUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.2x (from rankings)"
+    ],
+    "timestamp": "2026-09-28T09:39:40.477687+00:00",
+    "price": 0.04775736
+  },
+  {
+    "symbol": "ALGOUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.2x (from rankings)"
+    ],
+    "timestamp": "2026-09-28T09:59:57.417581+00:00",
+    "price": 0.11303
+  },
+  {
+    "symbol": "CBRSUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.0x (from rankings)"
+    ],
+    "timestamp": "2026-09-28T10:19:33.733260+00:00",
+    "price": 205.4
   }
 ]

@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-09-28T09:34:58.711028+00:00",
+  "timestamp": "2026-09-28T10:48:47.309938+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 56
+    "total_ranked": 57
   },
   "unified_ranking": [
     {
@@ -140,6 +140,12 @@
     },
     {
       "symbol": "MINAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "MANAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0

@@ -1,4 +1,4 @@
-# Copilot Status — 2026-09-28 09:30:10 UTC
+# Copilot Status — 2026-09-28 10:46:28 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] fin — 2026-09-28T09:28:07
-- **RATIO_IMBALANCE** [crypto] flz — 2026-09-28T09:28:07
-- **RATIO_IMBALANCE** [crypto] ang — 2026-09-28T09:29:08
-- **RATIO_IMBALANCE** [crypto] fin — 2026-09-28T09:29:08
-- **RATIO_IMBALANCE** [crypto] flz — 2026-09-28T09:29:08
-- **STALE_INDICATORS** [tradier]  — 2026-09-28T09:30:09
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-28T09:30:09
-- **RATIO_IMBALANCE** [crypto] ang — 2026-09-28T09:30:09
-- **RATIO_IMBALANCE** [crypto] fin — 2026-09-28T09:30:09
-- **RATIO_IMBALANCE** [crypto] flz — 2026-09-28T09:30:09
+- **RATIO_IMBALANCE** [crypto] fin — 2026-09-28T10:44:15
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-28T10:44:15
+- **STALE_INDICATORS** [tradier]  — 2026-09-28T10:45:16
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-28T10:45:16
+- **RATIO_IMBALANCE** [crypto] ang — 2026-09-28T10:45:16
+- **RATIO_IMBALANCE** [crypto] fin — 2026-09-28T10:45:16
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-28T10:45:16
+- **RATIO_IMBALANCE** [crypto] ang — 2026-09-28T10:46:17
+- **RATIO_IMBALANCE** [crypto] fin — 2026-09-28T10:46:17
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-28T10:46:17
 
 ## Missed Trades (trader comparison)
 
@@ -29,7 +29,7 @@ _None_
 
 **Held:** 2 | **Watching for reentry:** 0 | **Reentered:** 0
 
-- HELD: **SNXUSDT** LONG (crypto) peak +3.2%, now +-6.1%
+- HELD: **SNXUSDT** LONG (crypto) peak +3.2%, now +-6.6%
 - HELD: **DELL** LONG (tradier) peak +3.2%, now +1.1%
 
 ## Supervisor
@@ -41,4 +41,4 @@ _None_
 - [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_prices.py running but log stale (335min)
+- [MEDIUM] tradier_prices.py running but log stale (411min)
