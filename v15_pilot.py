@@ -86,7 +86,20 @@ YELLOW_TIMEOUT = 10.0
 LIVE_TIMEOUT = 900.0
 XLSX_SAVE_EVERY_S = 120.0
 PROGRESS_JSON_EVERY_S = 15.0
-_EVAL_CACHE: dict = {}
+# 2026-09-28 OOM FIX: unbounded eval cache grew for the pilot's lifetime (~72k evals/sym_side of result
+# dicts) and contributed to OOM kills that truncated workbook saves (19 BadZip files quarantined
+# backups/corrupt_xlsx_20260928/). Bounded FIFO: oldest quarter evicted when the cap is hit — identical
+# semantics for the hot window (a row's naked+yellows+joint reuse each other within seconds).
+_EVAL_CACHE_MAX = 200_000
+
+class _BoundedEvalCache(dict):
+    def __setitem__(self, key, value):
+        if len(self) >= _EVAL_CACHE_MAX and key not in self:
+            for _k in list(self.keys())[: _EVAL_CACHE_MAX // 4]:
+                del self[_k]
+        super().__setitem__(key, value)
+
+_EVAL_CACHE: dict = _BoundedEvalCache()
 _EVAL_CACHE_HITS = 0
 RED_CELL_QUEUE: queue.Queue = queue.Queue()
 # compat aliases for tests that probe timeout names
@@ -494,6 +507,21 @@ SWITCH_SHEETS = [
 ]
 # 12-tab: STDEV_SLOPE_SIZING skipped — 3803 rows (was 4801 with STDEV). Sheet stays in TEMPLATE but never calculated.
 SKIP_SHEETS: set = set()  # all 13 tabs filled (user 2026-09-28); 10s stall guard marks slow cells RED
+
+# 2026-09-28 PARITY/NO-LIES promotion guards (deltas still measured + written; promotion blocked):
+# NO_LIVE_PATH: wired in v12_quick_engine but absent from ez_manage/tradier_manage/config* (grep-proven
+# 2026-09-28) — a promoted override on these changes NOTHING live, so the certified sheet gain is a lie
+# until the switch is wired live. SIZING_FALSE_ALPHA: bigger notional scales gain% AND risk — not edge.
+NO_LIVE_PATH_SWITCHES = {"WT_LOWER_CROSS_EXIT_TF", "TECHNICAL_DC_TARGET_TF", "WT_SIMPLE_GUARANTEE_ENABLED"}
+SIZING_FALSE_ALPHA_SWITCHES = {"START_POSITION_SIZE", "MIN_POSITION_SIZE"}
+
+def promotion_block_reason(switch: str) -> str:
+    s = str(switch).strip()
+    if s in NO_LIVE_PATH_SWITCHES:
+        return "NO_LIVE_PATH: not wired in live code"
+    if s in SIZING_FALSE_ALPHA_SWITCHES:
+        return "SIZING_FALSE_ALPHA: notional, not edge"
+    return ""
 
 ALL_PREPARED: dict[str, dict] = {}
 ALL_NPZ_ARRAYS: dict[str, dict] = {}
@@ -1252,7 +1280,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 cell.alignment = VISUAL_ALIGN
                 _write_div(sname, r2, [g])
             progress.setdefault("done", {})[f"{sname}!{r2}:{sw2}={c2}"] = {"delta": d, "promoted": False, "orange_block": True, "vec_gain": g, "trades": (res or {}).get("trades"), "reason": err or (res or {}).get("invalid_reason") or "", "yellows": {}, "cumulative_before": cum0, "cumulative_after": cum0}
-            if ok and d > 1e-9 and (best is None or d > best[0]):
+            if ok and d > 1e-9 and not promotion_block_reason(sw2) and (best is None or d > best[0]):
                 best = (d, r2, sw2, c2, g)
         if best is not None:
             d, r2, sw2, c2, g = best
@@ -1329,7 +1357,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             ok = d is not None and bool((res or {}).get("valid"))
             recs.append([sw2, c2, g, (res or {}).get("trades"), (res or {}).get("valid"), d, False, cum0, ", ".join(seen[(sw2, c2)][:6]), err or (res or {}).get("invalid_reason") or ""])
             _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": nav_mode, "sheet": "FINAL_FILTER_RECHECK", "row": None, "switch": sw2, "cand": str(c2), "label": "FINAL_RECHECK", "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cum0, "delta": d, "secs": None, "cached": cached, "err": err})
-            if ok and d > 1e-9 and (best is None or d > best[0]):
+            if ok and d > 1e-9 and not promotion_block_reason(sw2) and (best is None or d > best[0]):
                 best = (d, sw2, c2, g)
         if best is not None:
             d, sw2, c2, g = best
@@ -1592,6 +1620,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             # No yellow cells in row -> per spec continue to next TAB not next ROW (regardless of sign)
             delta_for_row = naked_delta
             promote = naked_ok and naked_delta is not None and naked_delta > 1e-9
+            _blk = promotion_block_reason(switch)
+            if promote and _blk:
+                promote = False
+                naked_reason = (naked_reason + " | " if naked_reason else "") + _blk
+                print(f"[promote-block] {sname}!{rr} {switch}={cand} delta={naked_delta} NOT promoted: {_blk}", flush=True)
             g = ws.cell(row=rr, column=cols["G"])
             if delta_for_row is None:
                 _spec_mark_red(wb, sname, rr, cols["G"], reason=naked_reason)
@@ -1660,6 +1693,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             real = [d for h, d in pending_lbI.items() if promotable.get(h)] or list(pending_lbI.values())
             delta_for_row = min(0.0, max(real)) if real else None
         promote = delta_for_row is not None and delta_for_row > 1e-9
+        _blk = promotion_block_reason(switch)
+        if promote and _blk:
+            promote = False
+            print(f"[promote-block] {sname}!{rr} {switch}={cand} delta={delta_for_row} NOT promoted: {_blk}", flush=True)
         joint_gain = None
         joint_reason = ""
         before_overrides = dict(cumulative_overrides)
@@ -1752,8 +1789,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     live_reason = ""
     try:
         final_gain = float(cumulative_gain)
-        if args.vector_only:
-            live_reason = "vector-only: LIVE not run"
+        # 2026-09-28 PARITY FIX: --vector-only keeps the SWEEP vector-only (speed), but the single
+        # DONE-stage live verification (one backtest_v12_engine run on the winning set, LIVE_TIMEOUT-bound)
+        # must always run — the herd hardcodes --vector-only, which left 0/358 sym_sides live-verified
+        # (every live_verified said "vector-only: LIVE not run"). Opt out only via V15_SKIP_LIVE_AT_DONE=1.
+        if os.environ.get("V15_SKIP_LIVE_AT_DONE") == "1":
+            live_reason = "V15_SKIP_LIVE_AT_DONE=1: LIVE not run"
         else:
             import concurrent.futures as _cf_live
             _ex_live = _cf_live.ThreadPoolExecutor(max_workers=1)
@@ -1799,6 +1840,34 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             print(f"[spec-live] {new_symside} H/I left BLANK: {live_reason}", flush=True)
         progress["live_verified"] = {"gain_pct": (live_res or {}).get("gain_pct"), "pool_sharpe": (live_res or {}).get("pool_sharpe"), "trades": (live_res or {}).get("trades"), "parity": list(parity) if parity else None, "reason": live_reason}
         _atomic_write_json(progress_path, progress)
+        # 2026-09-28 STALE-METRICS FIX: refresh the *_BASELINE_METRICS tab at DONE (it was written once at
+        # clone/baseline time and never again — GOOGL_LONG showed 0 trades while JSON cum was +6.97).
+        try:
+            wb3 = openpyxl.load_workbook(str(wb_path), data_only=False)
+            _mtab = next((s for s in wb3.sheetnames if "BASELINE_METRICS" in s), None)
+            if _mtab is not None:
+                ws3 = wb3[_mtab]
+                _kv = {str(ws3.cell(row=r, column=1).value): r for r in range(2, ws3.max_row + 1) if ws3.cell(row=r, column=1).value}
+                def _set_metric(k, v):
+                    r = _kv.get(k)
+                    if r is None:
+                        r = max(_kv.values(), default=1) + 1
+                        _kv[k] = r
+                        ws3.cell(row=r, column=1).value = k
+                    ws3.cell(row=r, column=2).value = v
+                _set_metric("final_cumulative_gain", float(cumulative_gain))
+                _set_metric("final_overrides_n", len(cumulative_overrides))
+                _set_metric("final_live_gain", (live_res or {}).get("gain_pct"))
+                _set_metric("final_live_trades", (live_res or {}).get("trades"))
+                _set_metric("final_live_parity", (parity[1] if parity else live_reason) or "")
+                _set_metric("final_refreshed_at", utcnow())
+                _lt = int((live_res or {}).get("trades") or 0)
+                _set_metric("final_sample_status", "[DIAGNOSTIC ONLY]" if (_lt < 30 or float(args.window_days) < 365) else "publishable-floor met")
+                with RED_FIXER_LOCK:
+                    _atomic_save(wb3, wb_path)
+            wb3.close()
+        except Exception as _mr_e:
+            print(f"[metrics-refresh-warn] {_mr_e}", flush=True)
     except Exception as e:
         print(f"[spec-live-warn] {e}", flush=True)
     try:
@@ -2950,13 +3019,12 @@ def main():
     below_floor = baseline_trades < min_trades
     if below_floor:
         print(f"[SAMPLE-FLOOR-VIOLATION] {new_symside} ({map_key_for_symside(new_symside)}) {baseline_trades} trades < {min_trades} floor — DIAGNOSTIC ONLY, XLS written, sweep skipped", flush=True)
-    # baseline reversed for short: if long is 7.2 short is -7.2 (same NPZ, opposite side)
-    if new_symside.endswith("_SHORT"):
-        baseline_gain = -abs(baseline_gain) if baseline_gain != 0 else baseline_gain
-        bh = -abs(bh) if bh != 0 else bh
-    elif new_symside.endswith("_LONG"):
-        baseline_gain = abs(baseline_gain) if baseline_gain != 0 else baseline_gain
-        bh = abs(bh) if bh != 0 else bh
+    # 2026-09-28 SIGN FIX (NO-LIES): the engine already returns SIDE-CORRECT gain_pct and bh_pct
+    # (evaluate_v12._bh negates for SHORT; simulate_one gains are side-aware). The old abs()/-abs()
+    # flip here turned every losing LONG baseline into a fake profit and every winning SHORT baseline
+    # into a fake loss (ZECUSDC_LONG -1.83 -> +1.83, PTBUSDT_LONG -30.79 -> +30.79, DIS_SHORT +2.01 -> -2.01),
+    # shifting every first-row delta by 2x|baseline| and blocking promotion on negative-baseline syms.
+    # Engine sign is authoritative — never flip baseline_gain or bh by side here.
     # FIX 2026-09-23: baseline 0.00 is a lie — must be calculated from previous test OR defaults for cat_side, never 0.00
     if abs(baseline_gain) < 1e-9:
         _fixed = False
@@ -3069,10 +3137,23 @@ def main():
             ("max_dd_pct", baseline_live.get("max_dd_pct")),
             ("gain_per_mo", baseline_live.get("gain_per_mo")),
             ("bh_per_mo", baseline_live.get("bh_per_mo")),
-            ("source", f"live backtest_v12_engine {utcnow()} via {new_symside} overrides={len(overrides)}"),
+            # 2026-09-28 NO-LIES: label the REAL source — under --vector-only (or live fallback)
+            # baseline_live IS baseline_vec, and calling vector output "live backtest_v12_engine" was a lie.
+            ("source", f"{'vector v12_quick_engine' if baseline_live is baseline_vec else 'live backtest_v12_engine'} {utcnow()} via {new_symside} overrides={len(overrides)}"),
             ("window", baseline_live.get("window")),
             ("valid", baseline_live.get("valid")),
         ]
+        # 2026-09-28 NO-LIES: route the human-facing sharpe through metrics_guard (mandated) and
+        # stamp the sample floor verdict — a single-sym 30d window is ALWAYS below the publishable
+        # floor, so the tag must be visible in the sheet, never implied.
+        try:
+            import metrics_guard as _mg
+            _tr = int(baseline_live.get("trades") or 0)
+            _yrs = float(args.window_days) / 365.0
+            rows_baseline.append(("pool_sharpe_guarded", _mg.validate_and_format_sharpe(float(baseline_live.get("pool_sharpe") or 0.0), label="pool_sharpe", n_syms=1, years=_yrs, trades=_tr, mode=("stocks" if map_key_for_symside(new_symside).startswith("stocks") else "crypto"))))
+            rows_baseline.append(("sample_status", "[DIAGNOSTIC ONLY]" if (_tr < 30 or _yrs < 1.0) else "publishable-floor met"))
+        except Exception as _mg_e:
+            rows_baseline.append(("pool_sharpe_guarded", f"REFUSED: {_mg_e}"[:120]))
         for r in range(2, max(20, ws.max_row + 1)):
             ws.cell(row=r, column=1).value = None
             ws.cell(row=r, column=2).value = None

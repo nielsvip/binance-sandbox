@@ -1,5 +1,8 @@
-OUTLIER REPORT — 2026-09-28 07:59 UTC
+OUTLIER REPORT — 2026-09-28 08:24 UTC
 ================================================================================
-Scanned: 0 open positions | Alerts: 0
+Scanned: 3 open positions | Alerts: 3
 
-  No outliers detected.
+--- STALE_ACTIVITY (3) ---
+  [WARN]                    fin:SNXUSDT_LONG  idle_h=57.4
+  [WARN]                    fin:ADAUSDC_LONG  idle_h=57.4
+  [WARN]                    fin:XLMUSDT_LONG  idle_h=57.4

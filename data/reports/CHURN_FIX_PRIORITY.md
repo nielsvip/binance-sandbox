@@ -1,0 +1,39 @@
+# CHURN FIX PRIORITY QUEUE — not a permanent blacklist — 2026-09-28
+
+These 7 stock sym_sides are **temporarily** in `config_tradier.BLACKLIST` (`config_tradier.py:183`)
+**only to stop the bleed** while each root cause is fixed. This is a **work queue**: fix → verify →
+**remove the name from `config_tradier.BLACKLIST`** → re-observe. A name must not sit blocked once
+fixed. Blocking is a stop-loss, not a verdict on the symbol.
+
+- Block behavior: `is_symbol_tradeable` refuses new entries/augments; exits/reduces bypass
+  (`tradier_manage.py:23571`) so any open position still winds down via DC/WT (never force-closed).
+- Effect on trade P&L if fixed: the top-7 losers = **≈ −$3,375 / 7d**; the stock book netted only
+  +$710, so fixing these ≈ **5× weekly net** on the same winners.
+- Shared root cause (see report §5): entries fire on a side whose per_sym profile is `trades:0`
+  (never validated) via reclaim / ladder-parity / REENTRY paths that skip `PER_SYM_LIVE_GATE`
+  (`tradier_manage.py:24578`); the position then gets DC-4h-hard-stopped at a loss and re-opened.
+
+| # | sym_side | 7d net $ | exits | win% | streak | root cause to fix | unblock criteria (remove from BLACKLIST when ALL true) |
+|--:|---|--:|--:|--:|--:|---|---|
+| 1 | **SLV_LONG** | −1424 | 22 | 0% | 21 | 606 open-attempts → `ULTIMATE_DC_4h_HARD_STOP` loop; per_sym `trades:0`, re-opens via bypass path | per_sym SLV_LONG has validated profile (trades≥30, pool_sharpe>0.2) **or** entry-leak fix lands; then 5-trade paper check net≥0 |
+| 2 | **COPX_LONG** | −498 | 19 | 0% | 19 | same open→DC-stop loop; 0% win | per_sym validated profile **or** entry-leak fix; paper 5-trade net≥0 |
+| 3 | **PYPL_SHORT** | −399 | 35 | 29% | 16 | high-freq churn, net bleed; per_sym `trades:0` | entry-leak fix + DC re-entry cooldown; paper 5-trade net≥0 |
+| 4 | **QBTS_SHORT** | −352 | 41 | 37% | 20 | 41 exits, ends 20-loss streak; per_sym `trades:0` | entry-leak fix + DC cooldown; paper 5-trade net≥0 |
+| 5 | **DINO_LONG** | −254 | 27 | 7% | 0 | 7% win — structurally wrong side/timing | confirm which side/tf per_sym validates; only re-add the validated side |
+| 6 | **RBLX_LONG** | −176 | 28 | 11% | 7 | 11% win; RBLX_SHORT untraded (not blocked-intent, collateral only) | validated per_sym profile for RBLX_LONG; re-add RBLX_SHORT alone now if wanted |
+| 7 | **MPC_LONG** | −173 | 16 | 19% | 6 | net bleed | entry-leak fix; paper 5-trade net≥0 |
+
+## The two code fixes that clear most of this queue at once (need `unlock tradier_manage.py ez_manage.py`)
+1. **Close the per_sym entry-leak** — make reclaim / ladder-parity / REENTRY branches re-check
+   `PER_SYM_LIVE_GATE`, so a `trades:0` side cannot be re-opened by any path. Fixes #1–4,7 at source.
+2. **DC-4h-hard-stop re-entry cooldown** — after `ULTIMATE_DC_4h_HARD_STOP` closes a name, gate the
+   same-side re-open for N hours / until DC regime flips. Kills the open→stop→open loop.
+
+After (1)+(2) are live and verified, remove each name from `config_tradier.BLACKLIST` and watch its
+ledger for one session; if churn recurs, re-block and re-open the queue item.
+
+## Crypto (NOT blacklisted — would strand open positions)
+`config.BLACKLIST_SYMBOLS` skips the symbol at the top of `process_position` (`ez_manage.py:45861`)
+before exits, so it strands open positions — never use it for crypto churn. Crypto churn is
+−$26/7d (noise). Track side-level via `tools/churn_loss_guard.py` (see report improvement #3) — flag
+only: `COTIUSDT_{L,S}`, `IOTXUSDT_{L,S}`, `EGLDUSDT_LONG`, `DASHUSDT_SHORT`, `SNXUSDT_SHORT`.

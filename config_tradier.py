@@ -180,7 +180,7 @@ class TradierConfig:
     # tra preferred symbols (user-specified). The actual list is in
     # symbols_tra_satoshit_long.json — these are the "core 9" the user named.
     TRA_PREFERRED_SYMBOLS: List[str] = field(default_factory=lambda: ["AAPL", "MSFT", "GOOGL", "MSTR", "PLTR", "NEM", "MU", "SNDK", "NVDA"])  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
-    BLACKLIST = [] #'BTC', 'ETHE', 'GOOGL', 'XIACF',"AAPL","MSTR",'PLTR',"ABT","JNJ"] #Tradingview
+    BLACKLIST = ['SLV', 'COPX', 'PYPL', 'QBTS', 'DINO', 'RBLX', 'MPC']  # 2026-09-28 TEMPORARY churn triage — NOT a permanent ban. These are the top-7 churn-loss FIX-QUEUE items (data/reports/CHURN_FIX_PRIORITY.md): each is blocked ONLY to stop bleed while its root cause is fixed, then REMOVED from this list per its unblock criteria. 7d net SLV -1424, COPX -498, PYPL -399, QBTS -352, DINO -254, RBLX -176, MPC -173. is_symbol_tradeable blocks new entries; exits/reduces bypass (tradier_manage.py:23571) so opens wind down via DC/WT. DO NOT leave a name here once fixed. #was:[] #'BTC','ETHE','GOOGL','XIACF','AAPL','MSTR','PLTR','ABT','JNJ' #Tradingview
     # 2026-08-01 deadline vector lane: these staged candidates are reaffirmed
     # as Tradier always-tradeable symbols.  The central side-specific discovery
     # allowlist remains authoritative for new entries; this list must not be
