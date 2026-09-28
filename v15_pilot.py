@@ -2665,6 +2665,12 @@ def main():
             baseline_live = baseline_vec
     baseline_gain = float(baseline_live.get("gain_pct") or baseline_vec.get("gain_pct") or 0.0)
     bh = float(baseline_live.get("bh_pct") or baseline_vec.get("bh_pct") or 0.0)
+    baseline_trades = int(baseline_live.get("trades") or baseline_vec.get("trades") or 0)
+    is_crypto = new_symside[:-5].upper().endswith(("USDT", "USDC", "USD1", "BUSD", "FDUSD", "TUSD"))
+    min_trades = 30 if is_crypto else 100
+    if baseline_trades < min_trades:
+        print(f"[SAMPLE-FLOOR-VIOLATION] {new_symside} {baseline_trades} trades < {min_trades} floor — DIAGNOSTIC ONLY, skipping sweep", flush=True)
+        return new_symside, f"DIAGNOSTIC_ONLY trades={baseline_trades} floor={min_trades}"
     # baseline reversed for short: if long is 7.2 short is -7.2 (same NPZ, opposite side)
     if new_symside.endswith("_SHORT"):
         baseline_gain = -abs(baseline_gain) if baseline_gain != 0 else baseline_gain

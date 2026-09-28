@@ -1515,5 +1515,23 @@
     ],
     "timestamp": "2026-09-28T02:13:20.238045+00:00",
     "price": 0.005788
+  },
+  {
+    "symbol": "METAUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.1x (from rankings)"
+    ],
+    "timestamp": "2026-09-28T02:27:59.914635+00:00",
+    "price": 775.97560426
+  },
+  {
+    "symbol": "MUUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.0x (from rankings)"
+    ],
+    "timestamp": "2026-09-28T02:27:59.914635+00:00",
+    "price": 1077.95295761
   }
 ]

@@ -11386,6 +11386,7 @@ def _apply_625_ablation_gates(cfg, blocks, entry_sig, exit_sig, augment_sig):
 # ── BATCH 2 TEMPLATE 60 — BOTH_WIRED real-indicator gates (AUGMENT/BANDAID etc, next 60 in causal queue) ──
 # Each gates entry/exit/augment with a REAL NPZ indicator (no synthetic hash). OFF vs ON produces ledger delta.
 def _apply_batch2_entry_gates(npz, n, is_long, cfg, entry_mask):
+    return entry_mask  # 2026-09-28 NO-LIES purge (audit): synthetic-proxy entry gates; disabled, body preserved
     out = entry_mask.copy()
     # Critical red-cell switches first — isolated try so earlier gate exception never masks BTC/BAND distinctness
     try:
@@ -11556,6 +11557,7 @@ def _apply_batch2_entry_gates(npz, n, is_long, cfg, entry_mask):
     return out
 
 def _apply_batch2_exit_gates(npz, n, is_long, cfg, exit_mask):
+    return exit_mask  # 2026-09-28 NO-LIES purge (audit): synthetic-proxy exit gates; disabled, body preserved
     out = exit_mask.copy()
     try:
         # Reuse same gates for exit side where meaningful: DC_MOMENT etc also affect exit density
@@ -17088,6 +17090,11 @@ def _apply_PZ_causal(cfg, npz, n, is_long, entry_mask, _safe):
 
 def _apply_new_audit_causal(cfg, npz, n, is_long, entry_mask, exit_mask, augment_sig, reduce_sig, _safe):
     """Merged fix batches A-C+D-O+P-Z + current disconnected 444 as _apply_new_audit_causal. Balanced rsi55/adx15/bb0.1-0.9/wt1>wt2. Hooked after _apply_template_199_causal."""
+    # 2026-09-28 NO-LIES purge (audit finding): this applied SYNTHETIC proxies (rsi>55 /
+    # adx>15 / bb 0.1-0.9 / wt1>wt2) to ~1000 switches whose real meaning is unrelated ->
+    # fabricated deltas. Disabled (passthrough); body preserved for audit. Real switch logic
+    # lives in compute_entry_signals (DC/WT_DC/KG/EMA/STDEV/WT15/BB families).
+    return entry_mask, exit_mask, augment_sig, reduce_sig
     try:
         if bool(getattr(cfg, 'ADAPTIVE_REGIME_ENABLED', True)) != bool(_DEFAULTS_625.get('ADAPTIVE_REGIME_ENABLED', True)):
             _v = _safe(npz, 'rsi_1h', n, 50)
