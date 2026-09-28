@@ -4630,6 +4630,13 @@ class QuickConfig:
     K_ZONE_SHORT_THRESHOLD_TRADIER: int = 65
     K_ZONE_VETO_ENABLED_TRADIER: bool = False
     K_ZONE_ENTRY_BONUS_TRADIER: int = 20
+    # 2026-09-28 LIVE ENTRY STACK (user "make sure that runs and is respected and executed"): the WT_DC
+    # entry scorer IS live's entry engine — stocks score every entry via wt_dc_entry_scorer.score_entry
+    # (tradier_manage:12412), crypto via wt_dc_contract.evaluate_wt_dc_direct (ez_manage:1082). The vector
+    # twin (B_WT_DC_LIVE, wt_dc_entry_scorer_vec, parity-proven vs the scalar scorer) was gated behind a
+    # WT_DC_ENABLED field that DID NOT EXIST in QuickConfig, so getattr(...,False) kept the live entry
+    # stack permanently OFF in every baseline. Default True: baselines enter the way live enters.
+    WT_DC_ENABLED: bool = True
     WT_DC_ENTRY_THRESHOLD: float = 45.0
     WT_DC_ENTRY_K5M_MAX_LONG: float = 100.0
     WT_DC_ENTRY_K5M_MIN_SHORT: float = 0.0
@@ -5875,9 +5882,11 @@ class QuickConfig:
     WT_15M_BOUNCE_REL_VOL_GT_1: bool = False  # alias for VOLUME_FILTER — template row WT_15M_BOUNCE_REL_VOL_GT_1
     SIMPLE_PRICE_GT0_ENABLED: bool = False  # SIMPLE price>0 test — ridiculously simple, always trades when enabled (added 2026-09-06 alongside WT15, never fails)
     # ═══ VIGILANCE GUARD (USER EXTREME VIGILANCE 2026-09-28) — live-parity defaults ═══
-    VIGILANCE_GUARD_ENABLED: bool = True     # unrealized <= MAX_LOSS → close+block; CONSEC losing closes → block
-    VIGILANCE_MAX_LOSS_PCT: float = -1.0     # immediate-close threshold (pct)
+    VIGILANCE_GUARD_ENABLED: bool = True     # structural DC4 loss stop + consec-loss block (USER: NO fixed %)
+    VIGILANCE_DC4_STOP_TF: str = "15m"       # losing position + px breach dc_low4_{TF}/dc_high4_{TF} → close+block; OFF disables
     VIGILANCE_CONSEC_LOSSES: int = 2         # losing closes in a row that block the sym_side
+    VIGILANCE_RECOVERY_REENTRY_ENABLED: bool = True  # USER 2026-09-28 2nd mandate: auto-unblock on recovery, KEEP TRADING
+    VIGILANCE_RECOVERY_BOUNCE_OK: bool = True        # bounce (wt1_15m with side + 3m stoch confirm) also unblocks
     DC_HARD_STOP_REENTRY_COOLDOWN_HOURS: float = 4.0  # tradier only — reopen cooldown after ULTIMATE_DC hard stop (CHURN_FIX #2)
     WT_3M_FORCE_OPEN_BUILD_TO_TARGET: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     WT_3M_FORCE_OPEN_BYPASS_GATES: bool = False  # auto-wired 625
@@ -22203,14 +22212,31 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     cd = 0
     has_closed_before = False
     bars_in_pos = 0
-    # ═══ VIGILANCE GUARD (USER EXTREME VIGILANCE 2026-09-28) — vectorized mirror of the live
-    # guards in ez_manage/tradier_manage: unrealized <= VIGILANCE_MAX_LOSS_PCT forces an immediate
-    # close, and that loss OR VIGILANCE_CONSEC_LOSSES consecutive losing closes blocks the
-    # sym_side for the rest of the run (live: until manual unblock). Default ON = live parity.
+    # ═══ VIGILANCE GUARD (USER 2026-09-28, 3rd mandate: "we do not use fix %") — vectorized mirror
+    # of the live guards: a LOSING position whose price breaches dc_low4_{TF} (long) / dc_high4_{TF}
+    # (short) forces an immediate close, and that stop OR VIGILANCE_CONSEC_LOSSES consecutive losing
+    # closes blocks the sym_side until recovery. Default ON = live parity. NO fixed-% stop.
     _vig_enabled = bool(getattr(cfg, 'VIGILANCE_GUARD_ENABLED', True))
-    _vig_max_loss = float(getattr(cfg, 'VIGILANCE_MAX_LOSS_PCT', -1.0))
+    _vig_dc_tf = str(getattr(cfg, 'VIGILANCE_DC4_STOP_TF', '15m') or 'OFF').strip()
     _vig_need = int(getattr(cfg, 'VIGILANCE_CONSEC_LOSSES', 2))
     _vig_blocked = False
+    if _vig_dc_tf.upper() != 'OFF':
+        _vig_dc_lvl = _safe(npz, f"dc_low4_{_vig_dc_tf}" if is_long else f"dc_high4_{_vig_dc_tf}", n, 0)
+    else:
+        _vig_dc_lvl = None
+    # USER 2026-09-28 (2nd mandate): block is a circuit breaker, not a graveyard — auto-unblock on
+    # recovery (price back past block-exit, or bounce = wt1_15m with the side + 3m stoch confirm
+    # where available) and KEEP TRADING. Streak restarts fresh after each recovery.
+    _vig_rec_enabled = bool(getattr(cfg, 'VIGILANCE_RECOVERY_REENTRY_ENABLED', True))
+    _vig_bounce_ok = bool(getattr(cfg, 'VIGILANCE_RECOVERY_BOUNCE_OK', True))
+    _vig_block_px = 0.0
+    _vig_scan_start = 0
+    try:
+        _vig_k3 = _safe(npz, 'k_3m', n)
+        _vig_d3 = _safe(npz, 'd_3m', n)
+    except Exception:
+        _vig_k3 = close * 0
+        _vig_d3 = close * 0
     # 2026-09-18 HARDCODED RALLY REENTRY: track last exit and wt1_15m for hardcoded reentry
     try:
         _hc_wt1_15m = _safe(npz, 'wt1_15m', n)
@@ -22279,13 +22305,16 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             if has_closed_before and (getattr(cfg, '_ABLATION_BLOCK_REENTRY', False) or getattr(cfg, '_ABLATION_BLOCK_REENTRY_ENFORCE', False)):
                 # skip all reentry — keep pos None
                 continue
-            # VIGILANCE (USER 2026-09-28): consecutive-loss streak blocks all further entries this run
-            if _vig_enabled and not _vig_blocked and trades:
+            # VIGILANCE (USER 2026-09-28): consecutive-loss streak (since last recovery) blocks entries
+            if _vig_enabled and not _vig_blocked and len(trades) > _vig_scan_start:
                 _vig_streak = 0
-                for _vt in reversed(trades):
+                _vig_last_close_px = 0.0
+                for _vt in reversed(trades[_vig_scan_start:]):
                     if str(_vt.get('type', '')) != 'CLOSE':
                         continue
                     if float(_vt.get('pnl_pct', 0) or 0) < 0:
+                        if _vig_streak == 0:
+                            _vig_last_close_px = float(_vt.get('exit_price', 0) or 0)
                         _vig_streak += 1
                         if _vig_streak >= _vig_need:
                             break
@@ -22293,8 +22322,27 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         break
                 if _vig_streak >= _vig_need:
                     _vig_blocked = True
+                    _vig_block_px = _vig_last_close_px
             if _vig_enabled and _vig_blocked:
-                continue
+                # Recovery auto-unblock (USER 2026-09-28 2nd mandate): price past block-exit, or bounce.
+                _vig_rec = False
+                if _vig_rec_enabled:
+                    if _vig_block_px > 0 and ((is_long and px > _vig_block_px) or ((not is_long) and px < _vig_block_px)):
+                        _vig_rec = True
+                    elif _vig_bounce_ok:
+                        _vw1 = float(_hc_wt1_15m[i] if i < len(_hc_wt1_15m) else 0)
+                        _vw1p = float(_hc_wt1_15m[i-1] if i > 0 and i-1 < len(_hc_wt1_15m) else _vw1)
+                        _vk3 = float(_vig_k3[i]) if i < len(_vig_k3) else 0.0
+                        _vd3 = float(_vig_d3[i]) if i < len(_vig_d3) else 0.0
+                        _v_stoch_ok = True if (_vk3 == 0 and _vd3 == 0) else ((_vk3 > _vd3) if is_long else (_vk3 < _vd3))
+                        if _v_stoch_ok and ((is_long and _vw1 > _vw1p) or ((not is_long) and _vw1 < _vw1p)):
+                            _vig_rec = True
+                if _vig_rec:
+                    _vig_blocked = False
+                    _vig_block_px = 0.0
+                    _vig_scan_start = len(trades)
+                else:
+                    continue
             fire = entry_sig[i]
             # 2026-09-26 TARGET-DC immediate reentry: if last exit was TARGET dc before high/low and price keeps rising/falling, fire immediately even if entry_sig false — no cooldowns
             if not fire and has_closed_before and trades:
@@ -22439,17 +22487,23 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         live_pnl_pct = ((px - pos['avg_price']) / pos['avg_price'] * 100) if is_long else ((pos['avg_price'] - px) / pos['avg_price'] * 100)
         pos['peak_pnl_pct'] = max(pos['peak_pnl_pct'], live_pnl_pct)
         held_bars = i - pos['entry_bar']
-        # VIGILANCE (USER EXTREME VIGILANCE 2026-09-28): unrealized <= VIGILANCE_MAX_LOSS_PCT →
-        # immediate close + sym_side blocked for rest of run. Runs before every other exit (live parity).
-        if _vig_enabled and live_pnl_pct <= _vig_max_loss:
+        # VIGILANCE (USER 2026-09-28, 3rd mandate): STRUCTURAL stop, NO fixed % — losing position AND
+        # px breach of dc_low4_{TF} (long) / dc_high4_{TF} (short) → immediate close + block until
+        # recovery. Runs before every other exit (live parity).
+        _vig_dc_hit = False
+        if _vig_enabled and _vig_dc_lvl is not None and live_pnl_pct < 0:
+            _vg_lvl = float(_vig_dc_lvl[i]) if i < len(_vig_dc_lvl) else 0.0
+            _vig_dc_hit = _vg_lvl > 0 and ((is_long and px <= _vg_lvl) or ((not is_long) and px >= _vg_lvl))
+        if _vig_dc_hit:
             pos['fees'] += abs(pos['qty'] * px) * half_fee
             _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
             _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
             _tsv = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
-            _vg_reason = f"VIGILANCE_MAX_LOSS g{live_pnl_pct:.2f}<={_vig_max_loss:.2f} close+block"
+            _vg_reason = f"VIGILANCE_DC4_{_vig_dc_tf}_STOP g{live_pnl_pct:.2f} px{px:.6f}<=lvl{_vg_lvl:.6f} close+block" if is_long else f"VIGILANCE_DC4_{_vig_dc_tf}_STOP g{live_pnl_pct:.2f} px{px:.6f}>=lvl{_vg_lvl:.6f} close+block"
             trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _vg_reason, 'type': 'CLOSE', 'ts': _tsv, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _vg_reason, 'bars_held': int(i - pos['entry_bar'])})
             pos = None; cd = cooldown_bars; has_closed_before = True
             _vig_blocked = True
+            _vig_block_px = float(px)
             continue
         # 2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP: DC CHANNEL BREACH TF = DC_HARD_STOP_TF (4h|D)
         # No trade may be held through dc_low_TF (LONG) / dc_high_TF (SHORT) at any loss. TF per sym_side, D wider.

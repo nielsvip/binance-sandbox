@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-28 08:01 UTC
+PERFORMANCE REPORT — 2026-09-28 09:10 UTC
 ================================================================================
 Total: 146 symbols | A=3 B=103 C=40
 Window: 14 days | Min trades: 5
@@ -41,8 +41,8 @@ Window: 14 days | Min trades: 5
          LINKUSDC  WR=67%  avg=+0.45%  total=+1.4%  trades=  3  mult=1.00
           AXSUSDT  WR=50%  avg=+0.27%  total=+1.1%  trades=  4  mult=1.00
          ONDOUSDT  WR=64%  avg=+0.10%  total=+1.1%  trades= 11  mult=2.71
+          RLCUSDT  WR=100%  avg=+0.51%  total=+1.0%  trades=  2  mult=1.00
           ARBUSDC  WR=55%  avg=+0.09%  total=+1.0%  trades= 11  mult=1.79
-          RLCUSDT  WR=50%  avg=+0.24%  total=+1.0%  trades=  4  mult=1.00
      1000LUNCUSDT  WR=100%  avg=+0.89%  total=+0.9%  trades=  1  mult=1.00
          AMATUSDT  WR=45%  avg=+0.08%  total=+0.9%  trades= 11  mult=0.94
          IOTAUSDT  WR=33%  avg=+0.09%  total=+0.8%  trades=  9  mult=0.68
@@ -110,7 +110,7 @@ Window: 14 days | Min trades: 5
              CIBR  WR=0%  avg=-1.17%  total=-3.5%  trades=  3  mult=1.00
          SANDUSDT  WR=45%  avg=-0.13%  total=-4.3%  trades= 33  mult=0.57
              AVGO  WR=0%  avg=-1.32%  total=-5.2%  trades=  4  mult=1.00
-         IOTXUSDT  WR=47%  avg=-0.14%  total=-7.0%  trades= 53  mult=0.61
+         IOTXUSDT  WR=46%  avg=-0.14%  total=-7.0%  trades= 52  mult=0.58
              AXON  WR=49%  avg=-0.76%  total=-25.0%  trades= 37  mult=0.29
 
 --- TIER C (40 symbols) ---
@@ -157,6 +157,6 @@ Window: 14 days | Min trades: 5
 
 SUMMARY:
   Total PnL (all symbols): +644.0%
-  Avg win rate: 46%
+  Avg win rate: 47%
   A-tier avg mult: 10.00
   C-tier avg mult: 0.38

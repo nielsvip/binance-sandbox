@@ -58,14 +58,22 @@ class TradierConfig:
     MIN_HOLD_BARS: int = 10  # parity 2026-08-17: vector->live (was vector-only)
     MODE: str = "tradier"
     # ═══ VIGILANCE GUARD — USER EXTREME VIGILANCE MANDATE 2026-09-28 (stocks) ═══
-    # Open position at <= VIGILANCE_MAX_LOSS_PCT → immediate CLOSE + sym_side entry-block;
+    # Losing position breaching dc_low4/high4_{TF} (VIGILANCE_DC4_STOP_TF, NO fixed %) → immediate CLOSE + sym_side entry-block;
     # VIGILANCE_CONSEC_LOSSES realized losing full-closes in a row → sym_side entry-block.
     # Blocks persist in data/vigilance_blocks_tradier.json until manually removed ("until
     # further analysis"). Exits/reduces always pass. Separate state from ez_manage's crypto
     # guard — venues never share vigilance state. ROLLBACK: VIGILANCE_GUARD_ENABLED=False.
     VIGILANCE_GUARD_ENABLED: bool = True
-    VIGILANCE_MAX_LOSS_PCT: float = -1.0
+    # USER 2026-09-28 (3rd mandate): "we do not use fix %" — NO fixed-percentage stop. The vigilance
+    # loss trigger is STRUCTURAL: position at a loss AND price breaches dc_low4_{TF} (LONG) /
+    # dc_high4_{TF} (SHORT). TF granted by user: 15m. OFF disables the structural stop.
+    VIGILANCE_DC4_STOP_TF: str = "15m"
     VIGILANCE_CONSEC_LOSSES: int = 2
+    # USER 2026-09-28 (2nd mandate): the block is a circuit breaker, NOT a graveyard. A blocked
+    # sym_side auto-unblocks and KEEPS TRADING the moment it recovers: price back past the
+    # block-exit price, or a bounce (wt1_15m rising + 5m stoch momentum with the side — stocks use 5m).
+    VIGILANCE_RECOVERY_REENTRY_ENABLED: bool = True
+    VIGILANCE_RECOVERY_BOUNCE_OK: bool = True
     # DC hard-stop reentry cooldown — CHURN_FIX_PRIORITY.md fix #2: after ULTIMATE_DC/TRA_DC
     # hard stop closes a name, same-sym_side re-open refused for this many hours (kills the
     # open→stop→open loop: SLV_LONG 606 open-attempts/7d). 0 disables.
@@ -73,7 +81,7 @@ class TradierConfig:
     # PER_SYM_LIVE_GATE flat-open enforcement — CHURN_FIX_PRIORITY.md fix #1: ANY order that
     # opens exposure from flat must pass PER_SYM_LIVE_GATE, whatever action/reason produced it
     # (closes the reclaim/ladder-parity/REENTRY_OPEN/None-action entry leak). ROLLBACK: False.
-    PER_SYM_GATE_FLAT_OPEN_ENFORCE: bool = True
+    PER_SYM_GATE_FLAT_OPEN_ENFORCE: bool = False  # 2026-09-28 USER: temp OFF to un-freeze stock opens. fix#1 + bare per_sym data (all 248 stocks trades:0/no-sharpe) blocked 248/248 flat-opens (verified). Reverts fix#1 broadening only; VIGILANCE+DC-cooldown+BLACKLIST still gate churn. Re-enable True after per_sym_active_config_stocks.json is populated with real trades/pool_sharpe/gain/bh from LATEST BEST (CHURN_FIX_PRIORITY.md lever 1).
     STOCH_ENTRY_ENABLED: bool = False  # parity 2026-08-17: SWITCH tested per_sym + 7D crypto+stocks (bypass removed)
     WT_ENTRY_ENABLED: bool = False  # parity 2026-08-17: SWITCH tested per_sym + 7D crypto+stocks (bypass removed)
     REENTRY_PULL1_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)

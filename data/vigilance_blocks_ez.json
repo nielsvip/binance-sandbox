@@ -1,0 +1,31 @@
+{
+  "blocks": {
+    "ADAUSDC_LONG": {
+      "blocked_at": "2026-09-28T08:51:19.191135+00:00",
+      "reason": "OPEN_LOSS_g-5.09pct<=max-1.00pct"
+    },
+    "SNXUSDT_LONG": {
+      "blocked_at": "2026-09-28T08:51:19.212298+00:00",
+      "reason": "OPEN_LOSS_g-6.50pct<=max-1.00pct"
+    },
+    "XLMUSDT_LONG": {
+      "blocked_at": "2026-09-28T08:51:19.216617+00:00",
+      "reason": "OPEN_LOSS_g-5.07pct<=max-1.00pct"
+    },
+    "BTCUSDT_LONG": {
+      "blocked_at": "2026-09-28T08:52:42.619308+00:00",
+      "reason": "OPEN_LOSS_g-4.53pct<=max-1.00pct"
+    },
+    "1000000MOGUSDT_LONG": {
+      "blocked_at": "2026-09-04T04:42:00+00:00",
+      "reason": "OPEN_LOSS_g-1.01pct<=max-1.00pct",
+      "exit_price": 0.11029999703168869
+    },
+    "1000000MOGUSDT_SHORT": {
+      "blocked_at": "2026-09-04T16:27:00+00:00",
+      "reason": "OPEN_LOSS_g-1.02pct<=max-1.00pct",
+      "exit_price": 0.10862000286579132
+    }
+  },
+  "streaks": {}
+}

@@ -2771,7 +2771,7 @@ def check_market_regime(
 # ═══════════════════════════════════════════════════════════════════════════════
 # ═══════════════════════════════════════════════════════════════════════════════
 # VIGILANCE GUARD — USER EXTREME VIGILANCE MANDATE 2026-09-28 (crypto implementation)
-# Two realized losing full-closes in a row OR open position <= VIGILANCE_MAX_LOSS_PCT →
+# Two realized losing full-closes in a row OR losing position breaching dc_low4/high4_{TF} →
 # immediate close + sym_side entry-block until manually cleared from
 # data/vigilance_blocks_ez.json ("until further analysis"). ENTRY-BLOCK ONLY: exits and
 # reduces always pass and open positions are NEVER stranded — this guard deliberately
@@ -2822,15 +2822,59 @@ def ez_vigilance_is_blocked(symbol: str, position_side: str) -> Tuple[bool, str]
         return True, str(_b.get("reason", "VIGILANCE_BLOCK"))
     return False, ""
 
-def ez_vigilance_block(symbol: str, position_side: str, reason: str) -> None:
+def ez_vigilance_block(symbol: str, position_side: str, reason: str, exit_price: float = 0.0) -> None:
     _ez_vigilance_load(force=True)
     _key = ez_vigilance_sym_side(symbol, position_side)
     if _key not in _EZ_VIGILANCE_STATE["blocks"]:
-        _EZ_VIGILANCE_STATE["blocks"][_key] = {"blocked_at": datetime.now(timezone.utc).isoformat(), "reason": str(reason)[:200]}
+        _EZ_VIGILANCE_STATE["blocks"][_key] = {"blocked_at": datetime.now(timezone.utc).isoformat(), "reason": str(reason)[:200], "exit_price": float(exit_price or 0.0)}
         _ez_vigilance_save()
-        logger.critical(f"🚨 [VIGILANCE_BLOCK] {_key}: sym_side BLOCKED until further analysis — {reason}")
+        logger.critical(f"🚨 [VIGILANCE_BLOCK] {_key}: sym_side blocked pending recovery (price>exit or bounce auto-resumes) — {reason}")
 
-def ez_vigilance_record_close(symbol: str, position_side: str, gain_pct: float, reason: str = "") -> bool:
+def ez_vigilance_try_recover(symbol: str, position_side: str, ind: Optional[dict]) -> Tuple[bool, str]:
+    """USER 2026-09-28 (2nd mandate): blocked sym_side auto-unblocks the moment it recovers —
+    price back past the block-exit price, or a bounce (wt1_15m rising + 3m stoch with the side)
+    when VIGILANCE_RECOVERY_BOUNCE_OK. Returns (unblocked_or_not_blocked, why)."""
+    _ez_vigilance_load(force=True)
+    _key = ez_vigilance_sym_side(symbol, position_side)
+    _b = _EZ_VIGILANCE_STATE["blocks"].get(_key)
+    if not _b:
+        return True, "NOT_BLOCKED"
+    if not bool(getattr(config, "VIGILANCE_RECOVERY_REENTRY_ENABLED", True)):
+        return False, str(_b.get("reason", "VIGILANCE_BLOCK"))
+    try:
+        _is_long = str(position_side).upper() == "LONG"
+        _ind = ind or {}
+        _px = safe_fetch_float(_ind.get("current_price", 0), 0.0) or safe_fetch_float(_ind.get("close", 0), 0.0)
+        _exit_px = safe_fetch_float(_b.get("exit_price", 0), 0.0)
+        _recovered = False
+        _why = ""
+        if _px > 0 and _exit_px > 0 and ((_is_long and _px > _exit_px) or ((not _is_long) and _px < _exit_px)):
+            _recovered = True
+            _why = f"PRICE_CROSSED_EXIT_px{_px:.6f}_vs_{_exit_px:.6f}"
+        if not _recovered and bool(getattr(config, "VIGILANCE_RECOVERY_BOUNCE_OK", True)):
+            _w1 = safe_fetch_float(_ind.get("wt1_15m", 0), 0.0)
+            _w1p = safe_fetch_float(_ind.get("wt1_15m_prev", _w1), _w1)
+            _k3 = safe_fetch_float(_ind.get("k_3m", 50), 50.0)
+            _d3 = safe_fetch_float(_ind.get("d_3m", 50), 50.0)
+            if _is_long and _w1 > _w1p and _k3 > _d3:
+                _recovered = True
+                _why = f"BOUNCE_wt15m_rising_k3m{_k3:.0f}>d{_d3:.0f}"
+            elif (not _is_long) and _w1 < _w1p and _k3 < _d3:
+                _recovered = True
+                _why = f"BOUNCE_wt15m_falling_k3m{_k3:.0f}<d{_d3:.0f}"
+        if _recovered:
+            _EZ_VIGILANCE_STATE["blocks"].pop(_key, None)
+            _st = _EZ_VIGILANCE_STATE["streaks"].get(_key)
+            if _st:
+                _st["consec_losses"] = 0
+            _ez_vigilance_save()
+            logger.critical(f"✅ [VIGILANCE_RECOVERY_UNBLOCK] {_key}: {_why} — sym_side trading resumes (USER 2026-09-28)")
+            return True, _why
+    except Exception as _e:
+        logger.warning(f"[VIGILANCE] recovery check err {_key}: {_e}")
+    return False, str(_b.get("reason", "VIGILANCE_BLOCK"))
+
+def ez_vigilance_record_close(symbol: str, position_side: str, gain_pct: float, reason: str = "", exit_price: float = 0.0) -> bool:
     # Realized full-close result feeds the loss-streak guard. Returns True when this close triggers the block.
     if not bool(getattr(config, "VIGILANCE_GUARD_ENABLED", True)):
         return False
@@ -2843,7 +2887,7 @@ def ez_vigilance_record_close(symbol: str, position_side: str, gain_pct: float, 
     _st["last"] = _st["last"][-10:]
     _blocked = False
     if _st["consec_losses"] >= int(getattr(config, "VIGILANCE_CONSEC_LOSSES", 2)):
-        ez_vigilance_block(symbol, position_side, f"{_st['consec_losses']}_CONSECUTIVE_LOSING_TRADES_last_g{_g:.2f}pct")
+        ez_vigilance_block(symbol, position_side, f"{_st['consec_losses']}_CONSECUTIVE_LOSING_TRADES_last_g{_g:.2f}pct", exit_price=exit_price)
         _blocked = True
     _ez_vigilance_save()
     return _blocked
@@ -7056,6 +7100,60 @@ _EXIT_REASON_FAMILY_GATE = (
     ("ALL_TF_AGAINST", "ALL_TF_AGAINST_CLOSE_ENABLED"),
     ("GOLDEN_RULE", "GOLDEN_RULE_ENABLED"),
 )
+
+
+# ─── 365D CONFIRMATION GATE (2026-09-28 USER MANDATE) ────────────────────────
+# "crypto baselines are confirmed by highest gain and 365D confirmations? if not they can not
+#  trade - this killed us last week 20% of net worth lost because of churn and stupid trades
+#  THIS CAN NEVER HAPPEN AGAIN"
+# FAIL-CLOSED: any position-increasing action (OPEN/AUGMENT/REENTRY/REVERSE, incl. QUICK_*)
+# is blocked unless data/confirmed_365d.json holds a fresh, valid, positive-gain 365D
+# confirmation for the exact SYM_SIDE. CLOSE/REDUCE are NEVER blocked (positions must always
+# be exitable). Certifications are written ONLY by tools/confirm_365d.py (highest-gain recipe,
+# 365d window, trades>=30) and expire after CONFIRM_365D_MAX_AGE_DAYS (default 30).
+_CONFIRM_365D_CACHE = {"mtime": None, "data": {}, "path": None}
+
+
+def _confirm_365d_allows(symbol, position_side):
+    # NOTE: no backtest exemption needed or allowed — backtest_v12_engine bypasses the real
+    # execute_now body via its _v8_execute_now helper (see backtest_v12_engine.py:687), and the
+    # certifier (tools/confirm_365d.py) uses the vector engine. This gate is live-only by
+    # construction and stays strictly fail-closed.
+    if not bool(getattr(config, "CONFIRM_365D_GATE_ENABLED", True)):
+        return True, "gate disabled via CONFIRM_365D_GATE_ENABLED=False"
+    key = f"{symbol}_{str(position_side).upper()}"
+    try:
+        path = Path(getattr(config, "BASE_PATH", "/users/niels/documents/binance")) / "data" / "confirmed_365d.json"
+        _CONFIRM_365D_CACHE["path"] = str(path)
+        if not path.exists():
+            return False, "data/confirmed_365d.json missing — nothing is 365D-confirmed (fail-closed)"
+        mtime = path.stat().st_mtime
+        if _CONFIRM_365D_CACHE["mtime"] != mtime:
+            with open(str(path)) as _fh:
+                _CONFIRM_365D_CACHE["data"] = json.load(_fh)
+            _CONFIRM_365D_CACHE["mtime"] = mtime
+        rec = _CONFIRM_365D_CACHE["data"].get(key)
+        if not isinstance(rec, dict):
+            return False, f"{key} has no 365D confirmation record"
+        if not rec.get("valid"):
+            return False, f"{key} 365D record invalid: {rec.get('invalid_reason')}"
+        gain = float(rec.get("gain_365d") or 0.0)
+        if gain <= 0:
+            return False, f"{key} 365D gain {gain:.2f}% <= 0"
+        trades = int(rec.get("trades") or 0)
+        if trades < 30:
+            return False, f"{key} 365D trades {trades} < 30 floor"
+        confirmed_at = rec.get("confirmed_at")
+        max_age_days = float(getattr(config, "CONFIRM_365D_MAX_AGE_DAYS", 30))
+        try:
+            age_days = (datetime.now(timezone.utc) - datetime.fromisoformat(str(confirmed_at))).total_seconds() / 86400.0
+        except Exception:
+            return False, f"{key} 365D confirmed_at unreadable: {confirmed_at}"
+        if age_days > max_age_days:
+            return False, f"{key} 365D confirmation stale ({age_days:.1f}d > {max_age_days:.0f}d)"
+        return True, f"{key} 365D-confirmed gain {gain:.2f}% trades {trades} age {age_days:.1f}d"
+    except Exception as e:
+        return False, f"365D gate error (fail-closed): {e}"
 
 
 def is_storm(indicators, position_side, account_key=None):
@@ -29476,6 +29574,15 @@ class MultiAccountTradeManager:
                         logger.warning(f"⚠️ [EXIT_ENGINE_LEAK] {position_key} action={action} fired family='{_fam}' but gate {_knob}={_gval} is DISABLED — illegal trade under parity (reason={_xr[:60]})")
             except Exception as _xe_err:
                 logger.debug(f"[EXIT_ENGINE_PARITY] {position_key}: instrumentation skipped ({_xe_err})")
+        # ─── 365D CONFIRMATION GATE (2026-09-28 USER MANDATE — fail-closed, no bypasses) ───
+        # Blocks EVERY position-increasing action (incl. hedge opens — guards apply to ALL callers)
+        # for sym_sides without a fresh positive 365D confirmation. CLOSE/REDUCE never blocked.
+        _act365 = str(action or "").upper()
+        if any(_t in _act365 for _t in ("OPEN", "AUGMENT", "REENTRY", "REVERSE")):
+            _ok365, _why365 = _confirm_365d_allows(symbol, position_side)
+            if not _ok365:
+                logger.warning(f"🛑 [365D_CONFIRM_BLOCK] {position_key} action={action} reason_in='{(reason or '')[:60]}' BLOCKED: {_why365}")
+                return "BLOCKED_NO_365D_CONFIRM"
         # BROKER_SYNC LOGICAL DEMAND — 2026-09-08: 80× same order sent because it thought not received without checking broker.
         # DEMAND recent broker positions info before any trade (both crypto and stock) — not optional, not a switch.
         try:
@@ -29626,8 +29733,15 @@ class MultiAccountTradeManager:
             ):
                 _vg_blk, _vg_why = ez_vigilance_is_blocked(symbol, position_side)
                 if _vg_blk:
-                    logger.critical(f"🚨 [VIGILANCE_ENTRY_BLOCK] {position_key}: {_vg_why} — action={action} reason={(reason or '')[:60]}")
-                    return "BLOCKED_VIGILANCE"
+                    # USER 2026-09-28 (2nd mandate): auto-resume the moment the sym_side recovers —
+                    # price back past the block-exit price, or a bounce. KEEP TRADING.
+                    _vg_ind = await ii(self, symbol)
+                    _vg_rec, _vg_rec_why = ez_vigilance_try_recover(symbol, position_side, _vg_ind)
+                    if _vg_rec:
+                        logger.critical(f"✅ [VIGILANCE_RECOVERED_ENTRY_ALLOWED] {position_key}: {_vg_rec_why} — {action} proceeds")
+                    else:
+                        logger.critical(f"🚨 [VIGILANCE_ENTRY_BLOCK] {position_key}: {_vg_why} — awaiting recovery (bounce or price>exit). action={action} reason={(reason or '')[:60]}")
+                        return "BLOCKED_VIGILANCE"
         except Exception as _vg_be:
             logger.warning(f"[VIGILANCE] entry check err (fail-open): {_vg_be}")
         # ═══════════════════════════════════════════════════════════════════════════
@@ -33053,7 +33167,7 @@ class MultiAccountTradeManager:
             # guard — two consecutive losing trades block the sym_side until further analysis.
             try:
                 if is_reduce and (is_full_close or (current_real_amt > 0 and float(quantity) >= float(current_real_amt) * 0.999)):
-                    ez_vigilance_record_close(symbol, position_side, safe_fetch_float(getattr(position, "gain", 0.0), 0.0), reason)
+                    ez_vigilance_record_close(symbol, position_side, safe_fetch_float(getattr(position, "gain", 0.0), 0.0), reason, exit_price=float(current_price or 0.0))
             except Exception as _vg_rce:
                 logger.warning(f"[VIGILANCE] close-record err {position_key}: {_vg_rce}")
             if is_sandbox_account(config, account_key):
@@ -46274,23 +46388,30 @@ async def process_position(
         # don't await here — breach check is awaited at each gated exit; just log generic block now
         logger.debug(f"[MIN_HOLD_BLOCK] {position_key}: age {_pp_age_min_for_hold:.2f}m < {_min_hold_bars_for_exit}bars ({_min_hold_sec_for_exit/60:.1f}m) — all TIMED exits (HTF/R1/MTF/GR) deferred until hold satisfied unless dc_15m breach. Gain {safe_fetch_float(getattr(position,'gain',0),0):.2f}%")
     # ═══════════════════════════════════════════════════════════════════════════
-    # VIGILANCE GUARD (USER EXTREME VIGILANCE 2026-09-28): open loss <= VIGILANCE_MAX_LOSS_PCT
-    # → IMMEDIATE CLOSE + sym_side entry-block until further analysis. Reason carries
-    # VIGILANCE_MAX_LOSS (UNIVERSAL_NOLOSS_GATE bypass) + HARD_STOP/USER (HPO bypass).
+    # VIGILANCE GUARD (USER 2026-09-28, 3rd mandate: "we do not use fix %"): STRUCTURAL stop —
+    # position at a loss AND price breaches dc_low4_{TF} (LONG) / dc_high4_{TF} (SHORT), TF from
+    # VIGILANCE_DC4_STOP_TF (user granted 15m) → IMMEDIATE CLOSE + sym_side entry-block until
+    # recovery. Reason carries VIGILANCE_DC4 (UNIVERSAL_NOLOSS_GATE bypass) + HARD_STOP/USER (HPO bypass).
     # ═══════════════════════════════════════════════════════════════════════════
     if position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0 and bool(getattr(config, "VIGILANCE_GUARD_ENABLED", True)):
         try:
-            _vg_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
-            _vg_max_loss = float(getattr(config, "VIGILANCE_MAX_LOSS_PCT", -1.0))
-            if _vg_gain <= _vg_max_loss:
+            _vg_tf = str(getattr(config, "VIGILANCE_DC4_STOP_TF", "15m") or "OFF").strip()
+            if _vg_tf.upper() != "OFF":
+                _vg_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
                 _vg_is_long = position_side == "LONG"
-                _vg_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
-                _vg_side = "SELL" if _vg_is_long else "BUY"
-                ez_vigilance_block(symbol, position_side, f"OPEN_LOSS_g{_vg_gain:.2f}pct<=max{_vg_max_loss:.2f}pct")
-                logger.critical(f"🚨 [VIGILANCE_MAX_LOSS] {position_key}: g={_vg_gain:.2f}% <= {_vg_max_loss:.2f}% → IMMEDIATE CLOSE + sym_side BLOCK (USER EXTREME VIGILANCE)")
-                await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_vg_amt, side=_vg_side, position_side=position_side, quantity=_vg_amt, old_price=current_price, unique_id=f"VIGILANCE_MAX_LOSS_{int(time.time())}", reason=f"VIGILANCE_MAX_LOSS_HARD_STOP_USER_{'LONG' if _vg_is_long else 'SHORT'}_g{_vg_gain:.2f}", is_full_close=True, action="CLOSE")
-                trade_manager.processing_keys.discard(position_key)
-                return f"{EvalStatus.ACTION_TAKEN}:VIGILANCE_MAX_LOSS_CLOSED"
+                if _vg_gain < 0:
+                    if _pp_shared_ind is None:
+                        _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                    _vg_lvl = safe_fetch_float(_pp_shared_ind.get(f"dc_low4_{_vg_tf}" if _vg_is_long else f"dc_high4_{_vg_tf}", 0), 0.0)
+                    _vg_breach = _vg_lvl > 0 and current_price > 0 and ((_vg_is_long and current_price <= _vg_lvl) or ((not _vg_is_long) and current_price >= _vg_lvl))
+                    if _vg_breach:
+                        _vg_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
+                        _vg_side = "SELL" if _vg_is_long else "BUY"
+                        ez_vigilance_block(symbol, position_side, f"DC4_{_vg_tf}_BREACH_g{_vg_gain:.2f}pct_px{current_price:.6f}_lvl{_vg_lvl:.6f}", exit_price=current_price)
+                        logger.critical(f"🚨 [VIGILANCE_DC4_{_vg_tf}_STOP] {position_key}: g={_vg_gain:.2f}% AND px {current_price:.6f} breached {'dc_low4' if _vg_is_long else 'dc_high4'}_{_vg_tf} {_vg_lvl:.6f} → IMMEDIATE CLOSE + sym_side BLOCK (USER EXTREME VIGILANCE, structural NO fixed %)")
+                        await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_vg_amt, side=_vg_side, position_side=position_side, quantity=_vg_amt, old_price=current_price, unique_id=f"VIGILANCE_DC4_{_vg_tf}_{int(time.time())}", reason=f"VIGILANCE_DC4_{_vg_tf}_HARD_STOP_USER_{'LONG' if _vg_is_long else 'SHORT'}_g{_vg_gain:.2f}_lvl{_vg_lvl:.6f}", is_full_close=True, action="CLOSE")
+                        trade_manager.processing_keys.discard(position_key)
+                        return f"{EvalStatus.ACTION_TAKEN}:VIGILANCE_DC4_{_vg_tf}_CLOSED"
         except Exception as _vg_e:
             logger.warning(f"[VIGILANCE] probe err {position_key}: {_vg_e}")
     # ═══════════════════════════════════════════════════════════════════════════
@@ -51738,7 +51859,12 @@ async def process_position(
                 logger.info(
                     f"[{position_key}] ${position.positionAmt * current_price} STOP_FUNCTIONS_KILL allowed: gain={current_gain:.2f}% < -0.7%"
                 )
-            elif time_since_entry >= 5.0:
+            # 2026-09-28 DELETE STOP_FUNCTIONS_KILL per user + v15_pilot: on every
+            # disabled_switches_never_pos list (crypto/stocks L&S, global, per_category), promoted in 0
+            # sym_sides. This elif was UNGATED — fired despite LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED=False
+            # (57 leaked STOP_FUNCTIONS_KILL_2 reduces/24h). Now routed through the knob so the whole
+            # switch is off; re-enable ONLY if v15_pilot ever promotes it (flip the knob True).
+            elif getattr(config, "LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED", False) and time_since_entry >= 5.0:
                 if is_long and k_3m is not None and d_3m is not None and k_3m < d_3m:
                     should_stop_kill = True
                     logger.info(

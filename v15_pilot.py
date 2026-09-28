@@ -1868,6 +1868,18 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             wb3.close()
         except Exception as _mr_e:
             print(f"[metrics-refresh-warn] {_mr_e}", flush=True)
+        # 2026-09-28 USER MANDATE ("confirmed by highest gain and 365D confirmations or they can not
+        # trade"): at DONE, attempt the 365D certification for this sym_side. tools/confirm_365d.py
+        # evaluates defaults vs cumulative_overrides vs hustler_best at 365d and certifies the
+        # highest-gain valid candidate (gain>0, trades>=30) into data/confirmed_365d.json — the file
+        # ez_manage's fail-closed 365D gate reads. No cert -> live cannot open that sym_side.
+        try:
+            from tools.confirm_365d import confirm_symside as _c365
+            _rec365 = _c365(new_symside)
+            progress["confirmed_365d"] = _rec365 or {"certified": False}
+            _atomic_write_json(progress_path, progress)
+        except Exception as _c365e:
+            print(f"[confirm-365d-warn] {new_symside}: {_c365e}", flush=True)
     except Exception as e:
         print(f"[spec-live-warn] {e}", flush=True)
     try:
@@ -2244,6 +2256,69 @@ def ensure_lbI_headers(wb_path: Path):
     else:
         print(f"[headers] L:BI ensured { _dt_hdr:.2f}s", flush=True)
 
+def _merge_new_template_rows(template: Path, target: Path) -> int:
+    """USER 2026-09-28: append (Switch, value) rows that exist in the template's SWITCH_SHEETS but
+    not in the reused sym_side workbook, so newly added switches (VIGILANCE_* etc.) get tested in
+    the next round without recloning. Only columns A/B are written — C/E/F/G stay empty so the
+    pilot's spec-fill sees them as pending rows. Atomic save; returns rows added."""
+    def _norm_val(v):
+        if v is None:
+            return ''
+        s = str(v).strip()
+        try:
+            f = float(s)
+            return repr(int(f)) if f == int(f) else repr(f)
+        except Exception:
+            return s
+    tpl = openpyxl.load_workbook(str(template), data_only=True, read_only=True)
+    added_total = 0
+    wb = None
+    try:
+        for sn in SWITCH_SHEETS:
+            if sn not in tpl.sheetnames:
+                continue
+            tws = tpl[sn]
+            tpl_rows = []
+            for row in tws.iter_rows(min_row=3, max_col=2, values_only=True):
+                a = row[0] if len(row) > 0 else None
+                b = row[1] if len(row) > 1 else None
+                if a not in (None, ''):
+                    tpl_rows.append((str(a).strip(), b))
+            if not tpl_rows:
+                continue
+            if wb is None:
+                wb = openpyxl.load_workbook(str(target))
+            if sn not in wb.sheetnames:
+                continue
+            ws = wb[sn]
+            existing = set()
+            last_row = 2
+            for r in range(3, ws.max_row + 1):
+                a = ws.cell(row=r, column=1).value
+                if a in (None, ''):
+                    continue
+                last_row = max(last_row, r)
+                b = ws.cell(row=r, column=2).value
+                existing.add((str(a).strip(), _norm_val(b)))
+            r = last_row + 1
+            for name, val in tpl_rows:
+                if (name, _norm_val(val)) in existing:
+                    continue
+                ws.cell(row=r, column=1, value=name)
+                ws.cell(row=r, column=2, value=val)
+                r += 1
+                added_total += 1
+        if wb is not None and added_total > 0:
+            _atomic_save(wb, target)
+            print(f"[template-merge] {target.name}: +{added_total} new template rows merged for next round", flush=True)
+    finally:
+        try:
+            tpl.close()
+        except Exception:
+            pass
+    return added_total
+
+
 def clone_template(template: Path, new_symside: str) -> Path:
     if not template.exists():
         raise FileNotFoundError(f"template missing {template}")
@@ -2283,6 +2358,13 @@ def clone_template(template: Path, new_symside: str) -> Path:
                     wb_check.close()
                     if has_f:
                         print(f"[clone] {target.name} already exists with E3 baseline for all 12 — reuse, not overwrite", flush=True)
+                        # USER 2026-09-28: new template switches (e.g. VIGILANCE_*) must be tested in the
+                        # next round on EXISTING sheets too — merge missing (Switch, value) rows from the
+                        # template into the reused workbook so spec-fill picks them up as pending rows.
+                        try:
+                            _merge_new_template_rows(template, target)
+                        except Exception as _mrg_e:
+                            print(f"[template-merge-warn] {target.name}: {_mrg_e}", flush=True)
                         return target
                 except Exception:
                     pass
@@ -2578,6 +2660,43 @@ def main():
             new_symside = queue[0].get("symside", "AAPL_LONG") if queue else "AAPL_LONG"
         except Exception:
             new_symside = "AAPL_LONG"
+
+    # ═══ DEDUP LOCK (USER 2026-09-28): PROHIBIT duplicate v15_pilot for the same sym_side ═══
+    # Root cause of the S1 hang: 2+ pilots for one sym_side (e.g. 15× UUUU_LONG) raced on the same
+    # SPREADSHEETS/V15_V16_CELL_BY_CELL/{SYM_SIDE}_30d_matrix.xlsx — one _atomic_save os.replace()
+    # deleted the inode the others held open (fd showed "(deleted)"), leaving them blocked in
+    # futex_wait at 0% CPU forever. Stalls kill throughput (need 4 sym LONG/SHORT × 5000 cells <1s/cell).
+    # OS advisory flock (LOCK_EX|LOCK_NB) makes duplicates impossible no matter how many launchers race;
+    # it auto-releases when the holder dies (fd closed by kernel), so a killed pilot never leaves a stale lock.
+    _dedup_lock_fh = None
+    if not args.dry_run:
+        try:
+            import fcntl as _fcntl
+            _lock_dir = ROOT / "data" / "locks"
+            _lock_dir.mkdir(parents=True, exist_ok=True)
+            # Key the lock on the RESOLVED OUTPUT FILE, not the bare sym_side — the mega sweep
+            # (v15_mega_pilot.py) writes {SYM}_30d_matrix.xlsx to a SEPARATE dir via --out
+            # (SPREADSHEETS/V15_MEGA/...), the local herd to V15_V16_CELL_BY_CELL/. Same sym_side in
+            # the two systems = DIFFERENT files = no real conflict, so they must NOT cross-block; only
+            # two pilots writing the SAME file must mutually exclude (the actual hang cause).
+            import os.path as _osp, hashlib as _hl
+            _out_target = _osp.abspath(args.out) if args.out else _osp.abspath(str(OUT_DIR / f"{new_symside}_30d_matrix.xlsx"))
+            _lock_key = _hl.md5(_out_target.encode()).hexdigest()[:16]
+            _lock_path = _lock_dir / f"v15_pilot_{new_symside}_{_lock_key}.lock"
+            _dedup_lock_fh = open(_lock_path, "w")
+            _fcntl.flock(_dedup_lock_fh.fileno(), _fcntl.LOCK_EX | _fcntl.LOCK_NB)
+            _dedup_lock_fh.write(f"{os.getpid()}\n"); _dedup_lock_fh.flush()
+            import atexit as _atexit
+            _atexit.register(lambda: _dedup_lock_fh.close())
+            print(f"[DEDUP] acquired exclusive lock for {new_symside} (pid {os.getpid()})", flush=True)
+        except (IOError, OSError, BlockingIOError):
+            print(f"[DEDUP] another v15_pilot already owns {new_symside} — exiting, NO duplicate work", flush=True)
+            try:
+                if _dedup_lock_fh is not None:
+                    _dedup_lock_fh.close()
+            except Exception:
+                pass
+            return
 
     # ABSOLUTE PROHIBITION — check BEFORE any heavy NPZ/prepare (2026-09-16)
     # Finished workbooks (SNDK etc) have final_gain + done set + xls/log/zip/bak backups — MUST NOT be re-touched on ANY server.

@@ -6505,7 +6505,13 @@ class PositionService:
         ws_last_any = max(last_ws, ws_connected_ts)
         ws_age = now - ws_last_any if ws_last_any > 0 else 9999
         ws_alive = ws_age < 90.0
-        force_fetch = not ws_alive and time_since_last > 3.0
+        # 2026-09-28 THROTTLE dead-WS REST polling: with WS dead on all 5 crypto accts, force_fetch every
+        # 3s produced ~275 position fetches/min across the fleet → -1003 IP ban cascade. Floor the WS-dead
+        # poll interval (default 15s → ~4/min/acct, ban-safe, still << the 90s BROKER_SYNC threshold). The
+        # WS-alive path keeps the fast min_interval. Deeper root cause (WS reconnect not attempting) tracked
+        # separately. Tunable via config.WS_DEAD_REST_POLL_INTERVAL_S.
+        _eff_min_interval = min_interval if ws_alive else max(min_interval, float(getattr(config, "WS_DEAD_REST_POLL_INTERVAL_S", 15.0)))
+        force_fetch = not ws_alive and time_since_last > _eff_min_interval
         # 2026-09-28 FIX: force_fetch bypassed the IP-ban gate (line ~6516 checked only
         # account.rate_limit_until, not the global -1003 tracker), so a dead-WS force-fetch
         # loop REST-hammered Binance every 3s and PERPETUATED the ~6h ban → positions never
@@ -6517,9 +6523,9 @@ class PositionService:
         if _ban_rem_ff > 0:
             _log_ban_skip_throttled(logger, account_key, f"pausing fetch_positions for {_ban_rem_ff:.0f}s (was force_fetch={force_fetch})")
             return {}
-        if not force_fetch and time_since_last < min_interval:
+        if not force_fetch and time_since_last < _eff_min_interval:
             if time_since_last > 10.0:
-                logger.warning(f"[fetch_positions][{account_key}] ⚠️ SKIPPING - rate limited but stale (last: {time_since_last:.2f}s ago, min: {min_interval}s) - positions may be outdated!")
+                logger.warning(f"[fetch_positions][{account_key}] ⚠️ SKIPPING - rate limited but stale (last: {time_since_last:.2f}s ago, min: {_eff_min_interval}s) - positions may be outdated!")
             else:
                 if time_since_last > 5.0:
                     logger.info(f"[fetch_positions][{account_key}] ⏸️ SKIPPING - rate limited (last: {time_since_last:.2f}s ago, min: {min_interval}s)")

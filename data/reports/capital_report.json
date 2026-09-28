@@ -1,10 +1,10 @@
 {
- "generated_at": "2026-09-28 08:01 UTC",
- "total_capital_usd": 120.87,
+ "generated_at": "2026-09-28 09:10 UTC",
+ "total_capital_usd": 120.09,
  "tier_capital": {
   "A": 0.0,
-  "B": 62.73,
-  "C": 58.15
+  "B": 62.57,
+  "C": 57.52
  },
  "tier_count": {
   "A": 0,
@@ -23,34 +23,34 @@
    "pk": "fin:SNXUSDT_LONG",
    "symbol": "SNXUSDT",
    "account": "fin",
-   "value_usd": 58.15,
-   "gain_pct": -6.817,
+   "value_usd": 57.52,
+   "gain_pct": -7.248,
    "tier": "C",
    "perf_mult": 0.41,
    "amt": 236.8,
-   "mark": 0.24554748
+   "mark": 0.24292545
   },
   {
    "pk": "fin:ADAUSDC_LONG",
    "symbol": "ADAUSDC",
    "account": "fin",
-   "value_usd": 39.66,
-   "gain_pct": -5.864,
+   "value_usd": 39.48,
+   "gain_pct": -5.942,
    "tier": "B",
    "perf_mult": 2.27,
    "amt": 163.0,
-   "mark": 0.2433
+   "mark": 0.24221285
   },
   {
    "pk": "fin:XLMUSDT_LONG",
    "symbol": "XLMUSDT",
    "account": "fin",
-   "value_usd": 23.07,
-   "gain_pct": -5.798,
+   "value_usd": 23.09,
+   "gain_pct": -5.415,
    "tier": "B",
    "perf_mult": 0.67,
    "amt": 111.0,
-   "mark": 0.20784979
+   "mark": 0.20799265
   }
  ]
 }

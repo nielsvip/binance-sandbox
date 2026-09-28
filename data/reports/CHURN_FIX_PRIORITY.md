@@ -27,6 +27,33 @@ strategy-infix names (`AAPL_SEQ_LONG_bh…`, `AAPL_WF_LONG_…`), and most matri
 Not edited by binance-a4 — peers are actively editing `tradier_manage.py`/`ez_manage.py`; avoiding a
 collision. Whoever owns that edit: apply (1) or (2), or ship with the kill switch at (3).
 
+## LEVER 3 done + LEVER 1 provenance/blockers (binance-a4 2026-09-28 08:5x)
+
+- **Lever 3 APPLIED:** `config_tradier.PER_SYM_GATE_FLAT_OPEN_ENFORCE = False` (`config_tradier.py:76`,
+  backup `backups/before_flatopen_killswitch_202609280848.py`, compiles). Un-freezes stock flat-opens
+  (reverts fix #1's broadening only); VIGILANCE + DC-cooldown + BLACKLIST still gate churn.
+- **METHODOLOGY (USER 2026-09-28):** the ONLY valid promotion/validation window is **30D minimum,
+  confirmed by 365D**. **7D is preliminary Mac-only (`--dry-run`/`--allow-mac`) scratch and must NEVER
+  consume S1/worker CPU.** So `*_7d_progress.json` are NOT a BEST source — ignore them, and any 7D job
+  on S1 is CPU waste to stop.
+- **Lever 1 (repopulate per_sym from LATEST 30D BEST) — source is being generated NOW:**
+  - Promoted BEST xlsx `SPREADSHEETS/BEST/STOCKS_*` are **Sep 14–19** (stale prior set).
+  - The live 30D sweep (`v15_pilot … --window-days 30 --vector-only`, herd `tools/v15_local_herd.py`,
+    supervisor `tools/v15_mega_supervisor.sh`) is writing fresh 30D matrices to
+    `SPREADSHEETS/V15_V16_CELL_BY_CELL/*_30d_matrix.xlsx` **today** (AAPL_SHORT 08:58, SPY_LONG 08:51,
+    NVDA_L/S 08:46 …). These, after 365D confirmation, are the correct BEST source.
+  - **Blocker still standing:** the promotion pipeline that writes `per_sym_active_config_stocks.json`
+    (`tools/dc64_apply_promotions.py`, `tradier_hourly_reconfig.py`) emits **only `overrides` +
+    `winning_tag`** — never `gain`/`bh`/`trades`/`pool_sharpe`. That omission is *why* every entry is
+    bare and the gate blocks all 248.
+  - **To finish lever 1 (in order):** (1) let the 30D stock sweep finish the universe + 365D confirm;
+    (2) have the promotion pipeline copy 30D `gain`/`bh` + 365D-confirmed `trades`+`pool_sharpe`
+    (`metrics_guard` on per-trade returns) into per_sym; (3) then set
+    `PER_SYM_GATE_FLAT_OPEN_ENFORCE=True`. Hand-populating metrics outside this pipeline = NO-LIES
+    violation — NOT done.
+  - **CPU-waste to clear:** ~15 duplicate hung `v15_pilot … UUUU_LONG … --window-days 30` procs on S1
+    (0% CPU, ~15min) — stragglers from the herd-init bottleneck; reap so slots free for real 30D work.
+
 ---
 
 

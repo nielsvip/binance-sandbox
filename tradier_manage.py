@@ -210,7 +210,7 @@ _GAP_PER_SYMBOL_LAST_LOAD: float = 0.0
 
 # ═══════════════════════════════════════════════════════════════════════════
 # VIGILANCE GUARD — USER EXTREME VIGILANCE MANDATE 2026-09-28 (stocks implementation)
-# Two realized losing full-closes in a row OR open position <= VIGILANCE_MAX_LOSS_PCT →
+# Two realized losing full-closes in a row OR losing position breaching dc_low4/high4_{TF} →
 # immediate close + sym_side entry-block until manually cleared from
 # data/vigilance_blocks_tradier.json ("until further analysis"). Exits/reduces always
 # pass; the block gates only exposure-opening orders. Separate implementation and state
@@ -260,28 +260,73 @@ def vigilance_is_blocked(symbol: str, position_side: str) -> tuple:
         return True, str(_b.get("reason", "VIGILANCE_BLOCK"))
     return False, ""
 
-def vigilance_block(symbol: str, position_side: str, reason: str) -> None:
+def vigilance_block(symbol: str, position_side: str, reason: str, exit_price: float = 0.0) -> None:
     _vigilance_load(force=True)
     _key = vigilance_sym_side(symbol, position_side)
     if _key not in _VIGILANCE_STATE["blocks"]:
-        _VIGILANCE_STATE["blocks"][_key] = {"blocked_at": datetime.now(timezone.utc).isoformat(), "reason": str(reason)[:200]}
+        _VIGILANCE_STATE["blocks"][_key] = {"blocked_at": datetime.now(timezone.utc).isoformat(), "reason": str(reason)[:200], "exit_price": float(exit_price or 0.0)}
         _vigilance_save()
-        logger.critical(f"🚨 [VIGILANCE_BLOCK] {_key}: sym_side BLOCKED until further analysis — {reason}")
+        logger.critical(f"🚨 [VIGILANCE_BLOCK] {_key}: sym_side blocked pending recovery (price>exit or bounce auto-resumes) — {reason}")
 
-def vigilance_record_close(symbol: str, position_side: str, gain_pct: float, reason: str = "") -> bool:
+def vigilance_try_recover(symbol: str, position_side: str, ind, current_price: float = 0.0) -> tuple:
+    """USER 2026-09-28 (2nd mandate): blocked sym_side auto-unblocks the moment it recovers —
+    price back past the block-exit price, or a bounce (wt1_15m rising + 5m stoch with the side)
+    when VIGILANCE_RECOVERY_BOUNCE_OK. Returns (unblocked_or_not_blocked, why)."""
+    _vigilance_load(force=True)
+    _key = vigilance_sym_side(symbol, position_side)
+    _b = _VIGILANCE_STATE["blocks"].get(_key)
+    if not _b:
+        return True, "NOT_BLOCKED"
+    if not bool(_cfg_auto("VIGILANCE_RECOVERY_REENTRY_ENABLED", True)):
+        return False, str(_b.get("reason", "VIGILANCE_BLOCK"))
+    try:
+        _is_long = str(position_side).upper() == "LONG"
+        _ind = ind or {}
+        _px = float(current_price or 0.0) or safe_fetch_float(_ind.get("current_price", 0), 0.0) or safe_fetch_float(_ind.get("close", 0), 0.0)
+        _exit_px = safe_fetch_float(_b.get("exit_price", 0), 0.0)
+        _recovered = False
+        _why = ""
+        if _px > 0 and _exit_px > 0 and ((_is_long and _px > _exit_px) or ((not _is_long) and _px < _exit_px)):
+            _recovered = True
+            _why = f"PRICE_CROSSED_EXIT_px{_px:.4f}_vs_{_exit_px:.4f}"
+        if not _recovered and bool(_cfg_auto("VIGILANCE_RECOVERY_BOUNCE_OK", True)):
+            _w1 = safe_fetch_float(_ind.get("wt1_15m", 0), 0.0)
+            _w1p = safe_fetch_float(_ind.get("wt1_15m_prev", _w1), _w1)
+            _k5 = safe_fetch_float(_ind.get("k_5m", 50), 50.0)
+            _d5 = safe_fetch_float(_ind.get("d_5m", 50), 50.0)
+            if _is_long and _w1 > _w1p and _k5 > _d5:
+                _recovered = True
+                _why = f"BOUNCE_wt15m_rising_k5m{_k5:.0f}>d{_d5:.0f}"
+            elif (not _is_long) and _w1 < _w1p and _k5 < _d5:
+                _recovered = True
+                _why = f"BOUNCE_wt15m_falling_k5m{_k5:.0f}<d{_d5:.0f}"
+        if _recovered:
+            _VIGILANCE_STATE["blocks"].pop(_key, None)
+            _st = _VIGILANCE_STATE["streaks"].get(_key)
+            if _st:
+                _st["consec_losses"] = 0
+            _vigilance_save()
+            logger.critical(f"✅ [VIGILANCE_RECOVERY_UNBLOCK] {_key}: {_why} — sym_side trading resumes (USER 2026-09-28)")
+            return True, _why
+    except Exception as _e:
+        logger.warning(f"[VIGILANCE] recovery check err {_key}: {_e}")
+    return False, str(_b.get("reason", "VIGILANCE_BLOCK"))
+
+def vigilance_record_close(symbol: str, position_side: str, gain_pct: float, reason: str = "", exit_price: float = 0.0) -> bool:
     # Realized full-close result feeds the loss-streak guard. Returns True when this close triggers the block.
     if not bool(_cfg_auto("VIGILANCE_GUARD_ENABLED", True)):
         return False
     _vigilance_load(force=True)
     _key = vigilance_sym_side(symbol, position_side)
     _st = _VIGILANCE_STATE["streaks"].setdefault(_key, {"consec_losses": 0, "last": []})
+    _exit_px_for_block = float(exit_price or 0.0)
     _g = float(gain_pct or 0.0)
     _st["consec_losses"] = (int(_st.get("consec_losses", 0)) + 1) if _g < 0 else 0
     _st.setdefault("last", []).append({"ts": datetime.now(timezone.utc).isoformat(), "gain_pct": round(_g, 4), "reason": str(reason)[:120]})
     _st["last"] = _st["last"][-10:]
     _blocked = False
     if _st["consec_losses"] >= int(_cfg_auto("VIGILANCE_CONSEC_LOSSES", 2)):
-        vigilance_block(symbol, position_side, f"{_st['consec_losses']}_CONSECUTIVE_LOSING_TRADES_last_g{_g:.2f}pct")
+        vigilance_block(symbol, position_side, f"{_st['consec_losses']}_CONSECUTIVE_LOSING_TRADES_last_g{_g:.2f}pct", exit_price=_exit_px_for_block)
         _blocked = True
     _vigilance_save()
     return _blocked
@@ -10501,18 +10546,22 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             except Exception as _tra_e:
                 logger.warning(f"[TRA_DC_D_HARD_STOP] {position_key} probe err: {_tra_e}")
                 return "TRA_HOLD_NO_DC_D_BREACH"
-        # ═══ VIGILANCE GUARD (USER EXTREME VIGILANCE 2026-09-28): open loss <= VIGILANCE_MAX_LOSS_PCT
-        # → IMMEDIATE CLOSE + sym_side entry-block until further analysis. Runs before every strategy path.
+        # ═══ VIGILANCE GUARD (USER 2026-09-28, 3rd mandate: "we do not use fix %"): STRUCTURAL stop —
+        # position at a loss AND price breaches dc_low4_{TF} (LONG) / dc_high4_{TF} (SHORT), TF from
+        # VIGILANCE_DC4_STOP_TF (user granted 15m) → IMMEDIATE CLOSE + sym_side entry-block until recovery.
         try:
             if bool(_cfg_auto('VIGILANCE_GUARD_ENABLED', True)) and has_position and position is not None and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0:
+                _vg_tf = str(_cfg_auto('VIGILANCE_DC4_STOP_TF', '15m') or 'OFF').strip()
                 _vg_gain = safe_fetch_float(getattr(position, 'gain', 0), 0.0)
-                _vg_max_loss = float(_cfg_auto('VIGILANCE_MAX_LOSS_PCT', -1.0))
-                if _vg_gain <= _vg_max_loss:
-                    _vg_side = 'LONG' if is_long else 'SHORT'
-                    vigilance_block(symbol, _vg_side, f"OPEN_LOSS_g{_vg_gain:.2f}pct<=max{_vg_max_loss:.2f}pct")
-                    logger.critical(f"🚨 [VIGILANCE_MAX_LOSS] {position_key}: g={_vg_gain:.2f}% <= {_vg_max_loss:.2f}% → IMMEDIATE CLOSE + sym_side BLOCK (USER EXTREME VIGILANCE)")
-                    await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"VIGILANCE_MAX_LOSS_HARD_STOP_USER_{_vg_side}_g{_vg_gain:.2f}", 100.0, override_qty=999999)
-                    return "VIGILANCE_MAX_LOSS_CLOSED"
+                if _vg_tf.upper() != 'OFF' and _vg_gain < 0:
+                    _vg_lvl = safe_fetch_float(i.get(f"dc_low4_{_vg_tf}" if is_long else f"dc_high4_{_vg_tf}", 0), 0.0)
+                    _vg_breach = _vg_lvl > 0 and current_price > 0 and ((is_long and current_price <= _vg_lvl) or ((not is_long) and current_price >= _vg_lvl))
+                    if _vg_breach:
+                        _vg_side = 'LONG' if is_long else 'SHORT'
+                        vigilance_block(symbol, _vg_side, f"DC4_{_vg_tf}_BREACH_g{_vg_gain:.2f}pct_px{current_price:.4f}_lvl{_vg_lvl:.4f}", exit_price=current_price)
+                        logger.critical(f"🚨 [VIGILANCE_DC4_{_vg_tf}_STOP] {position_key}: g={_vg_gain:.2f}% AND px {current_price:.4f} breached {'dc_low4' if is_long else 'dc_high4'}_{_vg_tf} {_vg_lvl:.4f} → IMMEDIATE CLOSE + sym_side BLOCK (USER EXTREME VIGILANCE, structural NO fixed %)")
+                        await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"VIGILANCE_DC4_{_vg_tf}_HARD_STOP_USER_{_vg_side}_g{_vg_gain:.2f}_lvl{_vg_lvl:.4f}", 100.0, override_qty=999999)
+                        return f"VIGILANCE_DC4_{_vg_tf}_CLOSED"
         except Exception as _vg_e:
             logger.warning(f"[VIGILANCE] probe err {position_key}: {_vg_e}")
         # 2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP: DC CHANNEL BREACH (ALL ACCOUNTS).
@@ -24632,10 +24681,17 @@ class TradierTradeManager:
                 if bool(_cfg_auto('VIGILANCE_GUARD_ENABLED', True)) and (not _is_exit_or_reduce) and (not is_reduce):
                     _vg_blk, _vg_why = vigilance_is_blocked(symbol, position_side)
                     if _vg_blk:
-                        logger.critical(f"🚨 [VIGILANCE_ENTRY_BLOCK] {position_key}: {_vg_why} — action={action} reason={(reason or '')[:60]}")
-                        if lock_acquired and self.redis_manager:
-                            await self.redis_manager.delete(exec_lock_key)
-                        return "BLOCKED_VIGILANCE"
+                        # USER 2026-09-28 (2nd mandate): auto-resume the moment the sym_side recovers —
+                        # price back past the block-exit price, or a bounce. KEEP TRADING.
+                        _vg_ind = self.get_indicators(symbol) if hasattr(self, 'get_indicators') else {}
+                        _vg_rec, _vg_rec_why = vigilance_try_recover(symbol, position_side, _vg_ind, float(old_price or 0.0))
+                        if _vg_rec:
+                            logger.critical(f"✅ [VIGILANCE_RECOVERED_ENTRY_ALLOWED] {position_key}: {_vg_rec_why} — {action} proceeds")
+                        else:
+                            logger.critical(f"🚨 [VIGILANCE_ENTRY_BLOCK] {position_key}: {_vg_why} — awaiting recovery (bounce or price>exit). action={action} reason={(reason or '')[:60]}")
+                            if lock_acquired and self.redis_manager:
+                                await self.redis_manager.delete(exec_lock_key)
+                            return "BLOCKED_VIGILANCE"
             except Exception as _vg_e2:
                 logger.warning(f"[VIGILANCE] entry check err (fail-open): {_vg_e2}")
             # ═══ DC HARD-STOP REENTRY COOLDOWN (CHURN_FIX #2): after ULTIMATE_DC/TRA_DC hard stop,
@@ -25696,7 +25752,7 @@ class TradierTradeManager:
                                         try:
                                             if _ep > 0 and current_price:
                                                 _vg_g = ((float(current_price) - _ep) / _ep * 100.0) if position_side == 'LONG' else ((_ep - float(current_price)) / _ep * 100.0)
-                                                vigilance_record_close(symbol, position_side, _vg_g, reason or action)
+                                                vigilance_record_close(symbol, position_side, _vg_g, reason or action, exit_price=float(current_price or 0.0))
                                         except Exception as _vg_ce:
                                             logger.warning(f"[VIGILANCE] close-record err {position_key}: {_vg_ce}")
                                     if order_id == "GHOST_CLEARED":

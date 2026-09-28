@@ -1541,7 +1541,10 @@ class Config:
         # See ZEC_SUPERVISOR_* knobs below and zec_supervisor_agent.py.
         'AGENT_AUTONOMOUS_CLOSE',
         'ZEC_SUPERVISOR_CLOSE',
-        # 2026-09-28 USER EXTREME VIGILANCE MANDATE: >1% open loss → immediate close + sym_side block.
+        # 2026-09-28 USER EXTREME VIGILANCE MANDATE: losing position breaching dc_low4/high4_15m →
+        # immediate close + sym_side block (structural, NO fixed %). Legacy MAX_LOSS token kept
+        # so any historical reason strings still bypass.
+        'VIGILANCE_DC4',
         'VIGILANCE_MAX_LOSS',
         # 2026-09-28 dead-switch implementation: the 2026-09-19 ULTIMATE_DC mandate says the stop
         # "bypasses MIN_HOLD / NOLOSS / hedge-protect" but its reason was never added here, so on
@@ -1550,14 +1553,22 @@ class Config:
         'ULTIMATE_DC',
     ])
     # ═══ VIGILANCE GUARD — USER EXTREME VIGILANCE MANDATE 2026-09-28 (crypto) ═══
-    # Open position at <= VIGILANCE_MAX_LOSS_PCT → immediate CLOSE + sym_side entry-block;
+    # Losing position breaching dc_low4/high4_{TF} (VIGILANCE_DC4_STOP_TF, NO fixed %) → immediate CLOSE + sym_side entry-block;
     # VIGILANCE_CONSEC_LOSSES realized losing full-closes in a row → sym_side entry-block.
     # Blocks persist in data/vigilance_blocks_ez.json until manually removed ("until further
     # analysis"). Entry-block only — exits/reduces always pass, open positions NEVER stranded
     # (never uses BLACKLIST_SYMBOLS which skips process_position). ROLLBACK: VIGILANCE_GUARD_ENABLED=False.
     VIGILANCE_GUARD_ENABLED: bool = True
-    VIGILANCE_MAX_LOSS_PCT: float = -1.0
+    # USER 2026-09-28 (3rd mandate): "we do not use fix %" — NO fixed-percentage stop. The vigilance
+    # loss trigger is STRUCTURAL: position at a loss AND price breaches dc_low4_{TF} (LONG) /
+    # dc_high4_{TF} (SHORT). TF granted by user: 15m. OFF disables the structural stop.
+    VIGILANCE_DC4_STOP_TF: str = "15m"
     VIGILANCE_CONSEC_LOSSES: int = 2
+    # USER 2026-09-28 (2nd mandate): the block is a circuit breaker, NOT a graveyard. A blocked
+    # sym_side auto-unblocks and KEEPS TRADING the moment it recovers: price back past the
+    # block-exit price, or a bounce (wt1_15m rising + 3m stoch momentum with the side).
+    VIGILANCE_RECOVERY_REENTRY_ENABLED: bool = True
+    VIGILANCE_RECOVERY_BOUNCE_OK: bool = True
     # 2026-05-15 USER: SHORT price-cross daemon reentries require wt1_3m crossunder + k_3m>60.
     # 2026-05-16 RE-FLIPPED to False — earlier edit reverted by an external process.
     # Per agent audit: True gate silently dropped every SHORT reentry below k_3m=60
@@ -4430,6 +4441,7 @@ class Config:
     LIVE_5m_trading_ENABLED: bool = False  # MASTER 1 — 1m/3m/5m TF availability — OFF for parity (7D forward). Default False = 15m parity-only (no 1/3/5m). Set True only for paper 1/3m test arm. Was True, now False per user 20% churn fix.
     PARITY_DISABLE_NON_VECTORIZABLE: bool = True  # MASTER 2 — non-vectorizable/NPZ-unavailable — True = force defaults off
     V12_PARITY_DISABLE_NON_VECTORIZABLE: bool = True  # alias for Master 2
+    WS_DEAD_REST_POLL_INTERVAL_S: float = 15.0  # 2026-09-28 — when the user-data WS is dead, floor REST position polling to this interval (was 3s → ~275 fetches/min across 5 accts → -1003 IP ban cascade). 15s = ~4/min/acct, ban-safe, still << the 90s BROKER_SYNC_DEMAND stale threshold. WS-alive path unaffected.
     EXIT_ENGINE_PARITY_LOG_ENABLED: bool = True  # 2026-09-28 — log EVERY execute_now attempt (reason/family/gate) to data/live_vs_vec_compare.jsonl module=exit_engine so exit-trigger parity is MEASURED (previously only 3 gate modules instrumented → exit engines invisible). leak=True means a gate-disabled family still fired (true illegal trade). Pure logging, no trade-decision change. Turn OFF after 48h parity monitor.
     EXECUTE_NOW_SINGLE_GATE_ENFORCE: bool = True
     EXECUTE_NOW_WIRE_TRIPWIRE_SHADOW: bool = True
