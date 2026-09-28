@@ -84,6 +84,16 @@
       "blocked_at": "2026-09-28T13:36:29.306348+00:00",
       "reason": "DC4_15m_BREACH_g-0.14pct_px738.3900_lvl738.7100",
       "exit_price": 738.39
+    },
+    "VT_LONG": {
+      "blocked_at": "2026-09-28T13:40:34.986951+00:00",
+      "reason": "DC4_15m_BREACH_g-0.04pct_px158.9850_lvl159.6850",
+      "exit_price": 158.985
+    },
+    "MU_LONG": {
+      "blocked_at": "2026-09-28T13:57:09.380074+00:00",
+      "reason": "DC4_15m_BREACH_g-0.19pct_px1059.7000_lvl1071.4050",
+      "exit_price": 1059.6999999999998
     }
   },
   "streaks": {
@@ -94,6 +104,126 @@
           "ts": "2026-09-28T13:36:35.970474+00:00",
           "gain_pct": -2.6084,
           "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-2.58_lvl392.4950_qty_999999"
+        }
+      ]
+    },
+    "CIBR_LONG": {
+      "consec_losses": 1,
+      "last": [
+        {
+          "ts": "2026-09-28T13:39:38.784854+00:00",
+          "gain_pct": -1.9217,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-2.06_lvl102.3600_qty_999999"
+        }
+      ]
+    },
+    "TSLA_LONG": {
+      "consec_losses": 1,
+      "last": [
+        {
+          "ts": "2026-09-28T13:39:56.495222+00:00",
+          "gain_pct": -0.6951,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-0.43_lvl378.8350_qty_999999"
+        }
+      ]
+    },
+    "AAPL_LONG": {
+      "consec_losses": 0,
+      "last": [
+        {
+          "ts": "2026-09-28T13:40:13.156059+00:00",
+          "gain_pct": 0.47,
+          "reason": "DT_TIMEOUT 4164m 0.47%"
+        }
+      ]
+    },
+    "CRWD_LONG": {
+      "consec_losses": 0,
+      "last": [
+        {
+          "ts": "2026-09-28T13:40:41.587673+00:00",
+          "gain_pct": -0.1575,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-2.30_lvl251.3000_qty_999999"
+        },
+        {
+          "ts": "2026-09-28T13:59:01.972458+00:00",
+          "gain_pct": 0.2273,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-2.12_lvl251.3000_qty_999999"
+        }
+      ]
+    },
+    "IBIT_LONG": {
+      "consec_losses": 0,
+      "last": [
+        {
+          "ts": "2026-09-28T13:41:46.860479+00:00",
+          "gain_pct": -0.1054,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-1.14_lvl47.5650_qty_999999"
+        },
+        {
+          "ts": "2026-09-28T13:43:45.222132+00:00",
+          "gain_pct": 0.0105,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-0.16_lvl47.5650_qty_999999"
+        }
+      ]
+    },
+    "GME_LONG": {
+      "consec_losses": 0,
+      "last": [
+        {
+          "ts": "2026-09-28T13:42:05.667855+00:00",
+          "gain_pct": 1.646,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-0.19_lvl24.2250_qty_999999"
+        }
+      ]
+    },
+    "SNDK_LONG": {
+      "consec_losses": 1,
+      "last": [
+        {
+          "ts": "2026-09-28T13:43:37.832415+00:00",
+          "gain_pct": -3.2106,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-2.13_lvl1826.8100_qty_999999"
+        }
+      ]
+    },
+    "META_LONG": {
+      "consec_losses": 1,
+      "last": [
+        {
+          "ts": "2026-09-28T13:44:07.281697+00:00",
+          "gain_pct": -3.9142,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-2.81_lvl739.0900_qty_999999"
+        }
+      ]
+    },
+    "AMZN_LONG": {
+      "consec_losses": 1,
+      "last": [
+        {
+          "ts": "2026-09-28T13:44:53.289242+00:00",
+          "gain_pct": -1.845,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-1.70_lvl245.6750_qty_999999"
+        }
+      ]
+    },
+    "DELL_LONG": {
+      "consec_losses": 1,
+      "last": [
+        {
+          "ts": "2026-09-28T13:45:31.383547+00:00",
+          "gain_pct": -1.8946,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-0.75_lvl553.2250_qty_999999"
+        }
+      ]
+    },
+    "QQQ_LONG": {
+      "consec_losses": 1,
+      "last": [
+        {
+          "ts": "2026-09-28T13:47:17.077921+00:00",
+          "gain_pct": -0.2069,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-0.14_lvl738.7100_qty_999999"
         }
       ]
     }
