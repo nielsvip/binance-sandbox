@@ -1,0 +1,24 @@
+
+## dc64 promotion apply 202609281306 — 22 sym_sides
+- BELUSDT_LONG [crypto] base0->NEW0 d365=66.53 live=66.53 sharpe=None :: {"TECHNICAL_DC_STOP_TF": "4h", "TECHNICAL_DC_TARGET_TF": "4h", "WT_LOWER_CROSS_EXIT_TF": "4h"}
+- ETHUSDC_LONG [crypto] base0->NEW0 d365=16.92 live=16.92 sharpe=None :: {"TECHNICAL_DC_STOP_TF": "1h", "TECHNICAL_DC_TARGET_TF": "1h"}
+- LINKUSDC_LONG [crypto] base0->NEW0 d365=29.4 live=29.4 sharpe=None :: {"WT_LOWER_CROSS_EXIT_TF": "1h"}
+- SOLUSDC_SHORT [crypto] base0->NEW0 d365=8.47 live=8.47 sharpe=None :: {"WT_LOWER_CROSS_EXIT_TF": "1h"}
+- ZECUSDC_LONG [crypto] base0->NEW0 d365=59.89 live=59.89 sharpe=None :: {"TECHNICAL_DC_STOP_TF": "1h", "TECHNICAL_DC_TARGET_TF": "1h", "WT_LOWER_CROSS_EXIT_TF": "4h"}
+- AEM_SHORT [stocks] base0->NEW0 d365=15.04 live=15.04 sharpe=None :: {"TECHNICAL_DC_STOP_TF": "15m", "TECHNICAL_DC_TARGET_TF": "15m", "WT_LOWER_CROSS_EXIT_TF": "15m"}
+- ACN_SHORT [stocks] base0->NEW0 d365=5.67 live=5.67 sharpe=None :: {"TECHNICAL_DC_STOP_TF": "15m", "TECHNICAL_DC_TARGET_TF": "15m", "WT_LOWER_CROSS_EXIT_TF": "1h"}
+- ALMU_LONG [stocks] base0->NEW0 d365=58.71 live=58.71 sharpe=None :: {"TECHNICAL_DC_STOP_TF": "1h", "TECHNICAL_DC_TARGET_TF": "1h"}
+- ASTS_LONG [stocks] base0->NEW0 d365=21.21 live=21.21 sharpe=None :: {"TECHNICAL_DC_STOP_TF": "1h", "TECHNICAL_DC_TARGET_TF": "1h", "WT_LOWER_CROSS_EXIT_TF": "4h"}
+- AR_LONG [stocks] base0->NEW0 d365=5.67 live=5.67 sharpe=None :: {"TECHNICAL_DC_STOP_TF": "15m", "TECHNICAL_DC_TARGET_TF": "15m", "WT_LOWER_CROSS_EXIT_TF": "4h"}
+- BHP_LONG [stocks] base0->NEW0 d365=7.75 live=7.75 sharpe=None :: {"TECHNICAL_DC_STOP_TF": "4h", "TECHNICAL_DC_TARGET_TF": "4h"}
+- CTRA_LONG [stocks] base0->NEW0 d365=30.85 live=30.85 sharpe=None :: {"WT_LOWER_CROSS_EXIT_TF": "1h"}
+- EOG_LONG [stocks] base0->NEW0 d365=14.17 live=14.17 sharpe=None :: {"TECHNICAL_DC_STOP_TF": "1h", "TECHNICAL_DC_TARGET_TF": "1h", "WT_LOWER_CROSS_EXIT_TF": "1h"}
+- LDOS_SHORT [stocks] base0->NEW0 d365=18.02 live=18.02 sharpe=None :: {"TECHNICAL_DC_STOP_TF": "15m", "TECHNICAL_DC_TARGET_TF": "15m"}
+- MOS_SHORT [stocks] base0->NEW0 d365=31.71 live=31.71 sharpe=None :: {"TECHNICAL_DC_STOP_TF": "4h", "TECHNICAL_DC_TARGET_TF": "4h"}
+- PAAS_LONG [stocks] base0->NEW0 d365=21.98 live=21.98 sharpe=None :: {"TECHNICAL_DC_STOP_TF": "15m", "TECHNICAL_DC_TARGET_TF": "15m", "WT_LOWER_CROSS_EXIT_TF": "4h"}
+- PR_LONG [stocks] base0->NEW0 d365=9.29 live=9.29 sharpe=None :: {"WT_LOWER_CROSS_EXIT_TF": "1h"}
+- RIO_LONG [stocks] base0->NEW0 d365=22.36 live=22.36 sharpe=None :: {"TECHNICAL_DC_STOP_TF": "15m", "TECHNICAL_DC_TARGET_TF": "15m", "WT_LOWER_CROSS_EXIT_TF": "1h"}
+- RRC_LONG [stocks] base0->NEW0 d365=63.67 live=63.67 sharpe=None :: {"TECHNICAL_DC_STOP_TF": "4h", "TECHNICAL_DC_TARGET_TF": "4h", "WT_LOWER_CROSS_EXIT_TF": "1h"}
+- ROKU_LONG [stocks] base0->NEW0 d365=19.13 live=19.13 sharpe=None :: {"TECHNICAL_DC_STOP_TF": "4h", "TECHNICAL_DC_TARGET_TF": "4h", "WT_LOWER_CROSS_EXIT_TF": "4h"}
+- SCCO_SHORT [stocks] base0->NEW0 d365=36.09 live=36.09 sharpe=None :: {"TECHNICAL_DC_STOP_TF": "15m", "TECHNICAL_DC_TARGET_TF": "15m", "WT_LOWER_CROSS_EXIT_TF": "4h"}
+- UEC_SHORT [stocks] base0->NEW0 d365=11.96 live=11.96 sharpe=None :: {"TECHNICAL_DC_STOP_TF": "1h"}

@@ -1842,5 +1842,41 @@
     ],
     "timestamp": "2026-09-28T11:34:00.101815+00:00",
     "price": 198.63923258
+  },
+  {
+    "symbol": "MSFTUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.8x (from rankings)"
+    ],
+    "timestamp": "2026-09-28T12:48:59.982893+00:00",
+    "price": 496.79084167
+  },
+  {
+    "symbol": "SPCXUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.7x (from rankings)"
+    ],
+    "timestamp": "2026-09-28T12:53:53.741102+00:00",
+    "price": 147.98377714
+  },
+  {
+    "symbol": "1000PEPEUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.2x (from rankings)"
+    ],
+    "timestamp": "2026-09-28T13:03:46.361403+00:00",
+    "price": 0.00440374
+  },
+  {
+    "symbol": "LINKUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.0x (from rankings)"
+    ],
+    "timestamp": "2026-09-28T13:08:59.050664+00:00",
+    "price": 13.203
   }
 ]

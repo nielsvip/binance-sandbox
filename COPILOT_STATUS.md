@@ -1,4 +1,4 @@
-# Copilot Status — 2026-09-28 12:43:09 UTC
+# Copilot Status — 2026-09-28 12:53:18 UTC
 
 **Market Hours:** NO | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] fin — 2026-09-28T12:40:57
-- **RATIO_IMBALANCE** [crypto] flz — 2026-09-28T12:40:57
-- **RATIO_IMBALANCE** [crypto] ang — 2026-09-28T12:41:58
-- **RATIO_IMBALANCE** [crypto] fin — 2026-09-28T12:41:58
-- **RATIO_IMBALANCE** [crypto] flz — 2026-09-28T12:41:58
-- **STALE_INDICATORS** [tradier]  — 2026-09-28T12:42:59
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-28T12:42:59
-- **RATIO_IMBALANCE** [crypto] ang — 2026-09-28T12:42:59
-- **RATIO_IMBALANCE** [crypto] fin — 2026-09-28T12:42:59
-- **RATIO_IMBALANCE** [crypto] flz — 2026-09-28T12:42:59
+- **RATIO_IMBALANCE** [crypto] fin — 2026-09-28T12:51:06
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-28T12:51:06
+- **RATIO_IMBALANCE** [crypto] ang — 2026-09-28T12:52:07
+- **RATIO_IMBALANCE** [crypto] fin — 2026-09-28T12:52:07
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-28T12:52:07
+- **STALE_INDICATORS** [tradier]  — 2026-09-28T12:53:07
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-28T12:53:07
+- **RATIO_IMBALANCE** [crypto] ang — 2026-09-28T12:53:08
+- **RATIO_IMBALANCE** [crypto] fin — 2026-09-28T12:53:08
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-28T12:53:08
 
 ## Missed Trades (trader comparison)
 
@@ -29,8 +29,8 @@ _None_
 
 **Held:** 3 | **Watching for reentry:** 0 | **Reentered:** 0
 
-- HELD: **XLMUSDT** LONG (crypto) peak +4.3%, now +3.7%
-- HELD: **SNXUSDT** LONG (crypto) peak +3.2%, now +-5.2%
+- HELD: **XLMUSDT** LONG (crypto) peak +4.9%, now +4.3%
+- HELD: **SNXUSDT** LONG (crypto) peak +3.2%, now +-5.0%
 - HELD: **DELL** LONG (tradier) peak +3.2%, now +1.1%
 
 ## Supervisor
@@ -42,4 +42,4 @@ _None_
 - [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_prices.py running but log stale (528min)
+- [MEDIUM] tradier_prices.py running but log stale (538min)
