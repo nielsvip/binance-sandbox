@@ -1,10 +1,12 @@
 {
-  "stamp_utc": "2026-09-28T03:30:00.663194Z",
+  "stamp_utc": "2026-09-28T20:30:34.077452Z",
   "audit_keys": [
     "rows",
     "source_sha256",
     "counts",
-    "fake_delta_switches"
+    "fake_delta_switches",
+    "claims",
+    "entry_score_and_mi_family"
   ],
   "audit_error": null,
   "sample_missing": [
@@ -157,9 +159,118 @@
       "AUGMENT_BULL_KILL_ENABLED",
       "vectorizable_candidate",
       "fake_delta_switches"
+    ],
+    [
+      "AUGMENT_FALLBACK_GAIN_PCT",
+      "vectorizable_candidate",
+      "fake_delta_switches"
+    ],
+    [
+      "AUGMENT_MIN_GAIN_PCT",
+      "vectorizable_candidate",
+      "fake_delta_switches"
+    ],
+    [
+      "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER",
+      "vectorizable_candidate",
+      "fake_delta_switches"
+    ],
+    [
+      "AUGMENT_WT_4H_BOUNCE_ENABLED",
+      "vectorizable_candidate",
+      "fake_delta_switches"
+    ],
+    [
+      "BAND_ARROW_ACCUMULATE",
+      "vectorizable_candidate",
+      "fake_delta_switches"
+    ],
+    [
+      "BAND_ARROW_ENABLED",
+      "vectorizable_candidate",
+      "fake_delta_switches"
+    ],
+    [
+      "BAR_PATTERNS_FILTER_TF",
+      "vectorizable_candidate",
+      "fake_delta_switches"
+    ],
+    [
+      "BASE_TF",
+      "vectorizable_candidate",
+      "fake_delta_switches"
+    ],
+    [
+      "BASIS_CONDITION",
+      "vectorizable_candidate",
+      "fake_delta_switches"
+    ],
+    [
+      "BB_BREAKOUT_TF",
+      "vectorizable_candidate",
+      "fake_delta_switches"
+    ],
+    [
+      "BB_PULLBACK_GATE_FILTER_TF",
+      "vectorizable_candidate",
+      "fake_delta_switches"
+    ],
+    [
+      "BB_RECOVERY_ENTRY_FILTER_TF",
+      "vectorizable_candidate",
+      "fake_delta_switches"
+    ],
+    [
+      "BB_RECOVERY_FILTER_TF",
+      "vectorizable_candidate",
+      "fake_delta_switches"
+    ],
+    [
+      "BB_RSI_STOCH_BB_MAX",
+      "vectorizable_candidate",
+      "fake_delta_switches"
+    ],
+    [
+      "BEAR_HOLD_EXIT_DELAY_BARS",
+      "vectorizable_candidate",
+      "fake_delta_switches"
+    ],
+    [
+      "BEAR_HOLD_WT_THR",
+      "vectorizable_candidate",
+      "fake_delta_switches"
+    ],
+    [
+      "BEAR_MARKET_MODE_TRADIER",
+      "vectorizable_candidate",
+      "fake_delta_switches"
+    ],
+    [
+      "BOTTOM_A_PROTECTIVE_TRAIL_BREAK_BUFFER_ATR",
+      "vectorizable_candidate",
+      "fake_delta_switches"
+    ],
+    [
+      "BOTTOM_A_PROTECTIVE_TRAIL_DISTANCE_MULT",
+      "vectorizable_candidate",
+      "fake_delta_switches"
+    ],
+    [
+      "BOTTOM_A_PROTECTIVE_TRAIL_ENABLED",
+      "vectorizable_candidate",
+      "fake_delta_switches"
     ]
   ],
-  "total_missing_candidates": 50,
+  "total_missing_candidates": 656,
+  "fake_delta_count": 686,
+  "strict_counts": {
+    "total": 3659,
+    "hooked_both_strict": 774,
+    "hooked_both_strict_no_ledger_delta": 0,
+    "fake_delta": 686,
+    "quick_not_causal": 2310,
+    "loose_hooked_both": 1127
+  },
   "parity_masters_ok": true,
   "notes": [],
   "forward_harness_running": true,

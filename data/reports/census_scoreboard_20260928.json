@@ -1,0 +1,474 @@
+{
+ "generated": "2026-09-28T22:20Z",
+ "engine_cut": "post-wave4",
+ "board": {
+  "BREAKOUT_RETEST_FILTER_TF": [
+   "wired-real",
+   ""
+  ],
+  "DC_BREACH_REDUCE_FILTER_TF": [
+   "wired-real",
+   ""
+  ],
+  "DC_MOMENTUM_BOTA_SCORER_FILTER_TF": [
+   "dead",
+   "BOTA scorer not vectorized"
+  ],
+  "EMERGENCY_BRAKE_FILTER_TF": [
+   "dead",
+   "ops kill-switch state"
+  ],
+  "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF": [
+   "dead",
+   "scorer not vectorized"
+  ],
+  "EXIT_TOP_FADE_FILTER_TF": [
+   "wired-real",
+   ""
+  ],
+  "EXIT_TO_REDUCE_ADAPTER_FILTER_TF": [
+   "dead",
+   "adapter state not vectorized"
+  ],
+  "FIRST_OPEN_THROTTLE_FILTER_TF": [
+   "dead",
+   "portfolio/ops state not in NPZ"
+  ],
+  "FROZEN_STOP_FILTER_TF": [
+   "dead",
+   "stale-feed detection state not in NPZ"
+  ],
+  "GOLDEN_RULE_ENFORCE_FILTER_TF": [
+   "dead",
+   "GR state machine not vectorized"
+  ],
+  "CIRCUIT_SHARPE_GATES_FILTER_TF": [
+   "dead",
+   "rolling live sharpe state not in NPZ"
+  ],
+  "DC_BREAK_FILTER_TF": [
+   "wired-real",
+   ""
+  ],
+  "DELTA_ENGINE_FILTER_TF": [
+   "dead",
+   "live order-flow engine has no vec parent"
+  ],
+  "EMA_9_21_FILTER_FILTER_TF": [
+   "wired-real",
+   ""
+  ],
+  "EMA_BLANKET_FILTER_FILTER_TF": [
+   "wired-real",
+   ""
+  ],
+  "EXIT_R1_R2_FILTER_TF": [
+   "dead",
+   "R1/R2 level engine not vectorized"
+  ],
+  "FAST_RISER_FILTER_TF": [
+   "wired-real",
+   ""
+  ],
+  "FH_MOMENTUM_FILTER_TF": [
+   "dead",
+   "FH momentum engine not vectorized"
+  ],
+  "GOLDEN_RULE_HTF_VOTE_FILTER_TF": [
+   "dead",
+   "GR state machine not vectorized"
+  ],
+  "GR_FILTER_VEC_FILTER_TF": [
+   "dead",
+   "GR state machine not vectorized"
+  ],
+  "GR_V5_STATE_FILTER_TF": [
+   "dead",
+   "GR state machine not vectorized"
+  ],
+  "HAIKU_WINNER_FILTER_TF": [
+   "dead",
+   "winner-streak state not vectorized"
+  ],
+  "LH_HL_FILTER_TF_REQ": [
+   "live-diff-proposed",
+   "VEC_ONLY \u2014 live twin proposed"
+  ],
+  "LIVE_ENTRY_ENGINE_FILTER_TF": [
+   "dead",
+   "live engine observability-only (size_mult 1.0)"
+  ],
+  "LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF": [
+   "dead",
+   "live-only signal batch"
+  ],
+  "MANDATORY_REENTRY_WT_FILTER_TF_MODE": [
+   "dead",
+   "live read is stub (ez:58622)"
+  ],
+  "MOM3_FILTER_TF": [
+   "wired-real",
+   ""
+  ],
+  "MOMENTUM_BREAKOUT_FILTER_TF": [
+   "wired-real",
+   ""
+  ],
+  "MTF_ARMED_ENTRIES_FILTER_TF": [
+   "dead",
+   "armed-entries state not vectorized"
+  ],
+  "MTF_ATR_TRAIL_FILTER_TF": [
+   "dead",
+   "redundant with real MTF_ATR_TRAIL_TF"
+  ],
+  "MTF_DC_REJECT_FILTER_TF": [
+   "dead",
+   "redundant with real MTF_DC_REJECT_EXIT_TF"
+  ],
+  "NEWBORN_LOSS_KILL_FILTER_TF": [
+   "wired-real",
+   ""
+  ],
+  "NEWBORN_PROTECT_FILTER_TF": [
+   "dead",
+   "parent close-blocker not vectorized"
+  ],
+  "NOLOSS_BYPASS_WT5OF5_FILTER_TF": [
+   "dead",
+   "live read is stub (tradier:32589)"
+  ],
+  "OPEN_INTENT_SIZE_GATES_FILTER_TF": [
+   "dead",
+   "open-intent sizing state not vectorized"
+  ],
+  "PARTIAL_PROFIT_LOCK_V2_FILTER_TF": [
+   "dead",
+   "live read is stub (tradier:32623)"
+  ],
+  "PEAK_GIVEBACK_BE_EROSION_FILTER_TF": [
+   "wired-real",
+   ""
+  ],
+  "WT_15M_BOUNCE_BB_MAX": [
+   "wired-real",
+   ""
+  ],
+  "WT_15M_BOUNCE_BB_MIN": [
+   "wired-real",
+   ""
+  ],
+  "WT_15M_BOUNCE_HIGH_1H_GT_PREV": [
+   "wired-real",
+   ""
+  ],
+  "WT_15M_BOUNCE_LOW_1H_GT_PREV": [
+   "wired-real",
+   ""
+  ],
+  "WT_15M_BOUNCE_REL_VOL_GT_1": [
+   "wired-real",
+   ""
+  ],
+  "BB_PROFIT_TAKE_TF": [
+   "live-diff-proposed",
+   "VEC_ONLY \u2014 live twin proposed"
+  ],
+  "WT_DC_STOCH_THRESHOLD_LONG": [
+   "live-diff-proposed",
+   "VEC_ONLY \u2014 live twin proposed"
+  ],
+  "WT_DC_STOCH_THRESHOLD_SHORT": [
+   "live-diff-proposed",
+   "VEC_ONLY \u2014 live twin proposed"
+  ],
+  "WT_DC_DC_POS_THRESHOLD_SHORT": [
+   "live-diff-proposed",
+   "VEC_ONLY \u2014 live twin proposed"
+  ],
+  "BANDAID_OFF_LOSER_RECOVER_PCT": [
+   "wired-real",
+   ""
+  ],
+  "ADX_RANGING_THRESHOLD": [
+   "wired-real",
+   ""
+  ],
+  "MTS_GATE_ENABLED": [
+   "dead",
+   "live read is stub/list-string only"
+  ],
+  "OI_CONFIRM_ENABLED": [
+   "wired-real",
+   ""
+  ],
+  "OI_CONFIRM_MIN_PRICE_PCT": [
+   "wired-real",
+   ""
+  ],
+  "HLR_TOP_MIN_TFS": [
+   "wired-real",
+   ""
+  ],
+  "MTS_BOTTOM_BONUS_THRESHOLD": [
+   "dead",
+   "live read is stub (ez:58710)"
+  ],
+  "OI_CONFIRM_MIN_CHANGE_PCT": [
+   "wired-real",
+   ""
+  ],
+  "MTS_BOTTOM_STRONG_THRESHOLD": [
+   "dead",
+   "live read is stub (ez:58714)"
+  ],
+  "HA_WICK_QUALITY_TF": [
+   "dead",
+   "NPZ lacks HA wick components"
+  ],
+  "COOLDOWN_LOCKS_FILTER_TF": [
+   "dead",
+   "portfolio/ops state not in NPZ"
+  ],
+  "BAND_ARROW_ENABLED": [
+   "vec-twin-pending",
+   "REAL live (ez:6574) \u2014 vec twin wave-5"
+  ],
+  "LH_HL_FILTER_ENABLED": [
+   "wired-real",
+   ""
+  ],
+  "MARKET_QUALITY_SCORE_ENABLED": [
+   "dead",
+   "live read is list-string only"
+  ],
+  "HTF_DIRECTION_GATE_ENABLED": [
+   "wired-real",
+   ""
+  ],
+  "MTF_GR_MIN_IND": [
+   "vec-twin-pending",
+   "REAL live (ez:29845) \u2014 vec twin wave-5"
+  ],
+  "HLR_SMA_BAND_PCT": [
+   "wired-real",
+   ""
+  ],
+  "DUP_GUARD_FILTER_TF": [
+   "dead",
+   "portfolio/ops state not in NPZ"
+  ],
+  "HA_WICK_QUALITY_ENABLED": [
+   "dead",
+   "NPZ lacks HA wick components"
+  ],
+  "FUNDING_GATE_FILTER_TF": [
+   "dead",
+   "live funding feed not in NPZ (per-TF variant; base gate is live-only)"
+  ],
+  "LH_HL_FILTER_MODE": [
+   "live-diff-proposed",
+   "VEC_ONLY \u2014 live twin proposed"
+  ],
+  "NEW_POSITION_MAX_LOSS_THRESHOLD": [
+   "vec-twin-pending",
+   "REAL live loss-protection gate (ez:9986) \u2014 caller-context mapping wave-5"
+  ],
+  "GR_FILTER_VEC_ENABLED": [
+   "dead",
+   "live read is stub (ez:58479)"
+  ],
+  "EMA_9_21_FILTER_MIN_TFS": [
+   "live-diff-proposed",
+   "vec-real (kindergarten block); live twin proposed"
+  ],
+  "NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT": [
+   "wired-real",
+   ""
+  ],
+  "LR_BAND_LADDER_TF_BOTTOM": [
+   "dead",
+   "live read is stub (ez:58574); lr_* NPZ data exists \u2014 wave-5 candidate"
+  ],
+  "LR_BAND_LADDER_STOCH_EXTREME": [
+   "dead",
+   "live read is stub; lr_* data exists"
+  ],
+  "LR_BAND_LADDER_TF_TOP": [
+   "dead",
+   "live read is stub (ez:58576); lr_* data exists"
+  ],
+  "GR_FILTER_VEC_MIN_TFS": [
+   "dead",
+   "live read is stub (ez:58487)"
+  ],
+  "DELTA_HTF_GATE": [
+   "wired-real",
+   ""
+  ],
+  "EMA_BLANKET_FILTER_MIN_TFS": [
+   "wired-real",
+   ""
+  ],
+  "HTF_TREND_VETO_BYPASS_ENABLED": [
+   "vec-twin-pending",
+   "REAL live (ez:25207) \u2014 vec twin wave-5"
+  ],
+  "EMA_BLANKET_FILTER_ENABLED": [
+   "wired-real",
+   ""
+  ],
+  "DELTA_REENTRY_FILTER_ENABLED": [
+   "vec-twin-pending",
+   "REAL live but live-disabled pending NPZ validation (ez:202)"
+  ],
+  "LIVE_VEC_EMERGENCY_BRAKE_ENABLED": [
+   "dead",
+   "ops kill-switch, not a per-bar trade decision"
+  ],
+  "NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST": [
+   "wired-real",
+   ""
+  ],
+  "HTF4_CONF": [
+   "wired-real",
+   ""
+  ],
+  "LEADERBOARD_FILTER": [
+   "wired-real",
+   ""
+  ],
+  "LH_HL_FILTER_REQUIRE_BOTH": [
+   "live-diff-proposed",
+   "VEC_ONLY \u2014 live twin proposed"
+  ],
+  "BTC_ACCEL_RAMP_REQUIRE_POSITIVE": [
+   "wired-real",
+   ""
+  ],
+  "BTC_HARD_BLOCK_OTHER_ACCOUNTS": [
+   "wired-real",
+   ""
+  ],
+  "BTC_ROUND_BANDS_EACH_SIDE": [
+   "wired-real",
+   ""
+  ],
+  "MI_TF_AGREE_MIN": [
+   "wired-real",
+   ""
+  ],
+  "EZ_MANAGE_THROTTLER_RATE": [
+   "wired-real",
+   ""
+  ],
+  "EXECUTE_NOW_SINGLE_GATE_ENFORCE": [
+   "wired-real",
+   ""
+  ],
+  "HTF_GATE_D_MANDATORY": [
+   "wired-real",
+   ""
+  ],
+  "HTF_GATE_BYPASS_RZ": [
+   "wired-real",
+   ""
+  ],
+  "HTF_TREND_VETO_BYPASS_REASONS": [
+   "wired-real",
+   ""
+  ],
+  "MTF_FILTER_STRONG_BUY_QUICK_BYPASS": [
+   "vec-twin-pending",
+   "REAL live (ez:30071) \u2014 vec twin wave-5"
+  ],
+  "MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY": [
+   "dead",
+   "live read is stub (ez:58614)"
+  ],
+  "GOLDEN_RULE_BASE_USD": [
+   "vec-twin-pending",
+   "REAL live sizing const (ez:17123) \u2014 vec twin wave-5"
+  ],
+  "HTF_GATE_MIN_CONFIRMATIONS": [
+   "wired-real",
+   ""
+  ],
+  "GR_FILTER_ALL_ENTRIES": [
+   "vec-twin-pending",
+   "REAL live (ez:29834) \u2014 vec twin wave-5"
+  ],
+  "FUNDING_GATE_LONG_MAX": [
+   "wired-real",
+   ""
+  ],
+  "FUNDING_GATE_MTF_REQUIRED": [
+   "wired-real",
+   ""
+  ],
+  "FUNDING_GATE_SHORT_MIN": [
+   "wired-real",
+   ""
+  ],
+  "BB_EXIT_AT_LOSS_TF": [
+   "live-diff-proposed",
+   "VEC_ONLY \u2014 live twin proposed"
+  ],
+  "BREAKEVEN_GAIN_EROSION_FILTER_TF": [
+   "wired-real",
+   ""
+  ],
+  "BB_PULLBACK_GATE_FILTER_TF": [
+   "wired-real",
+   ""
+  ],
+  "MTF_EXIT_USE_COMPOUND": [
+   "wired-real",
+   ""
+  ],
+  "DC_MOMENT_STRONG_THRESHOLD": [
+   "wired-real",
+   ""
+  ],
+  "FG_FEAR_THRESHOLD": [
+   "wired-real",
+   ""
+  ],
+  "FG_GREED_THRESHOLD": [
+   "wired-real",
+   ""
+  ],
+  "HA_WICK_QUALITY_SCORE": [
+   "dead",
+   "NPZ lacks HA wick components"
+  ],
+  "MANDATORY_REENTRY_WT_FILTER_MIN_TFS": [
+   "dead",
+   "live read is stub (ez:58610)"
+  ],
+  "MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP": [
+   "dead",
+   "live read is stub (ez:58618)"
+  ],
+  "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO": [
+   "dead",
+   "live read is stub (ez:58626)"
+  ],
+  "MOVER_THRESHOLD": [
+   "dead",
+   "live read is stub (ez:58681)"
+  ],
+  "CRYPTO_SPIKE_FADE_THRESHOLD_PCT": [
+   "wired-real",
+   ""
+  ],
+  "KINDERGARTEN_EMA_GATE_ENABLED": [
+   "wired-real",
+   ""
+  ],
+  "EMA_9_21_FILTER_ENABLED": [
+   "wired-real",
+   ""
+  ]
+ }
+}

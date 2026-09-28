@@ -108,3 +108,29 @@ def _ftf_tf(name):
 All seven fail-open when the TF array is missing/zero (same as vec). REMINDER — the Wave-1
 **FAST_RISER unit ambiguity** (ez_manage.py:52400 `current_gain > 0.8` vs `:.2%` log) is
 still unresolved and must be settled when applying these.
+
+---
+
+# WAVE 4 APPENDIX — VEC_ONLY names needing identical LIVE additions (default-neutral)
+
+These are REAL in the vector engine but absent live (census VEC_ONLY). Per USER order
+("or gets added to live identically"), add the identical read to ez_manage/tradier_manage
+at the matching decision point; all defaults already behavior-preserving:
+LH_HL_FILTER_MODE, LH_HL_FILTER_REQUIRE_BOTH, LH_HL_FILTER_TF_REQ (LH/HL structure entry
+filter family), BB_PROFIT_TAKE_TF, BB_EXIT_AT_LOSS_TF (BB-band exit TFs),
+WT_DC_STOCH_THRESHOLD_LONG/SHORT, WT_DC_DC_POS_THRESHOLD_SHORT (WT_DC entry thresholds —
+live wt_dc adapter exists, thresholds unread), EMA_9_21_FILTER_MIN_TFS (vec kindergarten
+block reads it; live EMA 9/21 filter should honor the same min-TF count).
+Find each name's vec read (grep vec_decisions/ + v12_quick_engine.py) and mirror the exact
+condition; never a stub.
+
+# WAVE 4 LIVE-PARITY DEFAULT NOTE (baseline shift, intentional per USER absolute-parity order)
+
+HTF_DIRECTION_GATE vectorized (ez_positions_quick.py:12092-12140/12658) with LIVE defaults
+(ENABLED True, MIN_CONFIRMATIONS 3, D_MANDATORY True, SMA200D True) — vec baselines now
+include the live open-gate: XLMUSDT_LONG 30d 4.4168→4.0645; AAPL_SHORT 30d loses ALL opens
+(live's gate equally blocks those shorts). Vec applies the gate to all entries; live exempts
+SCALP_V3/RZ-bypass/hedge families (vec is family-agnostic — slight over-blocking, disclosed).
+MI_EXIT sub-switch defaults aligned to live getattr defaults (True×5, MIN 3, GAIN 0.10);
+master MI_EXIT_ENABLED remains False (live). EMA_BLANKET_FILTER_ENABLED forced False —
+its True default sat on an unread field; live has no blanket gate (census NEITHER).

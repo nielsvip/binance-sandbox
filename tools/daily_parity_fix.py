@@ -44,10 +44,13 @@ def _classify_switch(name: str) -> str:
     name_l = name.lower()
     if any(tf in name_l for tf in ("_1m", "_3m", "_5m", "1m_", "3m_", "5m_")) or name_l.endswith(("_1m", "_3m", "_5m")):
         return "tf_1_3_5m_no_npz"
-    if any(k in name_l for k in ("orderbook", "funding", "portfolio", "ratio_rebalance", "hedge", "intraday_ratio")):
-        # some hedge is vectorizable, but intraday ratio rebalance is portfolio-dependent -> non-vectorizable
-        if "intraday" in name_l or "ratio_rebalance" in name_l:
+    if any(k in name_l for k in ("orderbook", "funding", "portfolio", "ratio_rebalance", "intraday_ratio")):
+        if "intraday" in name_l or "ratio_rebalance" in name_l or "portfolio" in name_l:
             return "non_vectorizable_portfolio"
+        if "hedge" in name_l:
+            return "vectorizable_candidate"
+    if any(k in name_l for k in ("funding", "orderbook")):
+        return "non_vectorizable_market"
     if "v12_parity" in name_l or "parity" in name_l:
         return "parity_master"
     return "vectorizable_candidate"
@@ -58,16 +61,32 @@ def main() -> None:
     out_json = LOGDIR / f"daily_parity_fix_{now.strftime('%Y%m%d')}.json"
     out_log = LOGDIR / f"daily_parity_fix_{now.strftime('%Y%m%d')}.log"
     audit = _run_audit()
-    # classify
+    # classify — handle both strict audit shapes (fake_delta_switches, rows, counts)
     missing = []
     if isinstance(audit, dict):
-        # audit returns dict with keys like 'missing_in_v12', 'loose', etc. - handle generically
+        # strict audit: fake_delta_switches list
+        if "fake_delta_switches" in audit and isinstance(audit["fake_delta_switches"], list):
+            for name in audit["fake_delta_switches"]:
+                if isinstance(name, str) and not name.startswith("_"):
+                    missing.append((name, _classify_switch(name), "fake_delta_switches"))
+        # also rows with QUICK_NOT_CAUSAL_FAKE_DELTA
+        if "rows" in audit and isinstance(audit["rows"], list):
+            for row in audit["rows"]:
+                if isinstance(row, dict) and row.get("status") == "QUICK_NOT_CAUSAL_FAKE_DELTA":
+                    sw = row.get("switch", "")
+                    if sw and not sw.startswith("_"):
+                        # avoid duplicate if already in fake_delta
+                        if not any(m[0] == sw for m in missing):
+                            missing.append((sw, _classify_switch(sw), "fake_delta_rows"))
+        # generic fallback for other list keys
         for k, v in audit.items():
+            if k in ("fake_delta_switches", "rows", "counts", "source_sha256"):
+                continue
             if isinstance(v, (list, set)):
                 for name in v:
                     if isinstance(name, str) and not name.startswith("_"):
                         missing.append((name, _classify_switch(name), k))
-    # ensure parity masters are ON for live (OFF means parity)
+    # ensure parity masters are ON for live (OFF means parity) — 4 masters per 4-module report
     import config as cfg_mod
     cfg = cfg_mod.Config()
     parity_ok = True
@@ -77,6 +96,15 @@ def main() -> None:
         parity_ok = False
     if not getattr(cfg, "PARITY_DISABLE_NON_VECTORIZABLE", True):
         notes.append("PARITY_DISABLE_NON_VECTORIZABLE is False expected True for max parity")
+        parity_ok = False
+    if getattr(cfg, "LIVE_5m_trading_ENABLED", False) is not False:
+        notes.append(f"LIVE_5m_trading_ENABLED is {getattr(cfg, 'LIVE_5m_trading_ENABLED', None)!r} expected False for max parity (1/3/5m OFF)")
+        parity_ok = False
+    if getattr(cfg, "USE_1M_3M_SIGNALS_ENABLED", False) is not False:
+        notes.append(f"USE_1M_3M_SIGNALS_ENABLED is {getattr(cfg, 'USE_1M_3M_SIGNALS_ENABLED', None)!r} expected False for max parity")
+        parity_ok = False
+    if not getattr(cfg, "STRICT_VEC_PARITY_MODE", True):
+        notes.append("STRICT_VEC_PARITY_MODE is False expected True for max parity (single gate)")
         parity_ok = False
     # verify forward harness (paper ON vs live OFF) is scheduled
     cron_text = ""
@@ -97,8 +125,10 @@ def main() -> None:
         "stamp_utc": now.isoformat() + "Z",
         "audit_keys": list(audit.keys()) if isinstance(audit, dict) else [],
         "audit_error": audit.get("error") if isinstance(audit, dict) else None,
-        "sample_missing": missing[:30],
+        "sample_missing": missing[:50],
         "total_missing_candidates": len(missing),
+        "fake_delta_count": audit.get("counts", {}).get("fake_delta", 0) if isinstance(audit.get("counts"), dict) else 0,
+        "strict_counts": audit.get("counts", {}) if isinstance(audit, dict) else {},
         "parity_masters_ok": parity_ok,
         "notes": notes,
         "forward_harness_running": forward_running,

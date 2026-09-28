@@ -2690,4 +2690,9 @@ class TradierConfig:
         "quick": {"tp": 25.0, "sl": 15.0, "trail": 12.0, "max_hold": 1, "eod_flat": False},
         "trail": {"tp": 0.0, "sl": 20.0, "trail": 15.0, "max_hold": 3, "eod_flat": False},
         "runner": {"tp": 50.0, "sl": 40.0, "trail": 0.0, "max_hold": 3, "eod_flat": False},
+        "hedge": {"tp": 50.0, "sl": 60.0, "trail": 0.0, "max_hold": 3, "eod_flat": False, "hedge": True, "pair_tp": 25.0, "pair_sl": 30.0},
     })
+    # hedge variant: no downturn selling — when the underlying's 5m close breaks the key level
+    # (day low at entry for calls, day high for puts), BUY the opposite-side best-priced option
+    # as a hedge leg; release the hedge if the level is reclaimed (±0.1% margin). Once hedged,
+    # the PAIR exits at pair_tp/-pair_sl on combined premium. sl=60 is the pre-hedge disaster stop.

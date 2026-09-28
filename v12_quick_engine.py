@@ -162,6 +162,7 @@ import vec_decisions.gain_ladder_augment
 import vec_decisions.reduce_profit_lock
 import vec_decisions.filter_tf_gates
 import vec_decisions.generic_filter_tf
+import vec_decisions.wave4_families
 import vec_decisions.momentum_watchdog
 import vec_decisions.shared_zone
 try:
@@ -4886,9 +4887,9 @@ class QuickConfig:
     BOTTOM_EXIT_HTF_WT_VETO_ENABLED: bool = True  # parity 2026-09-27: config True + TEMPLATE bold — block R1/ULTIMATE_DC/NEWBORN bottom exits when HTF WT with position
     HTF_WT_CHURN_REENTRY_ENABLED: bool = True  # parity 2026-09-27: config True + TEMPLATE bold — immediate churn reentry while HTF WT with direction
     HTF_WT_CHURN_REENTRY_MAX_AGE_MIN: float = 120.0  # parity 2026-09-27: config 120.0 + TEMPLATE bold — churn window 2h after exit
-    HTF_GATE_D_MANDATORY: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    HTF_GATE_MIN_CONFIRMATIONS: int = 10  # FIX 2026-09-06: LIVE_ONLY auto-added
-    HTF_GATE_SIGNALS_SMA200D: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
+    HTF_GATE_D_MANDATORY: bool = True  # 2026-09-28 WAVE4 LIVE PARITY: ez getattr default True
+    HTF_GATE_MIN_CONFIRMATIONS: int = 3  # 2026-09-28 WAVE4 LIVE PARITY: ez getattr default 3 (was 10 stub)
+    HTF_GATE_SIGNALS_SMA200D: bool = True  # 2026-09-28 WAVE4 LIVE PARITY: ez getattr default True
     HTF_TREND_VETO_BYPASS_ENABLED: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
     HTF_TREND_VETO_BYPASS_REASONS: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added (list)
     LEADERBOARD_FILTER: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
@@ -6015,8 +6016,8 @@ class QuickConfig:
     E2E_REPLAY_VALIDATOR_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     EMA_9_21_FILTER_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     EMA_9_21_FILTER_MIN_TFS: float = 3.0  # 2026-09-10 FIX: require 3 TFs EMA confirm (was 0 — filter never fired)
-    EMA_BLANKET_FILTER_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: EMA blanket — blocks counter-trend
-    EMA_BLANKET_FILTER_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
+    EMA_BLANKET_FILTER_ENABLED: bool = False  # 2026-09-28 WAVE4: field was UNREAD when its True default was set (2026-09-10 comment aspirational); live has NO blanket gate (census NEITHER) — False keeps defaults live-neutral now that the gate is real
+    EMA_BLANKET_FILTER_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE4: single-TF blanket gate (generic_filter_tf); OFF neutral
     EMA_BLANKET_FILTER_MIN_TFS: float = 3.0  # 2026-09-10 FIX: 3 TFs must confirm (was 0)
     EMERGENCY_BRAKE_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     ENTRY_PRIMARY_TF: str = "4h"  # parity fix 2026-09-04: config 4h (was 15m auto-generic)
@@ -6064,7 +6065,7 @@ class QuickConfig:
     HTF4_CONF: float = 0.0  # auto-added TEMPLATE generic
     HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: float = 1.0  # 2026-09-10 FIX: require 4h confirm (was 0)
     HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: exit when 1h+4h against trade
-    HTF_DIRECTION_GATE_ENABLED: bool = False  # auto-added TEMPLATE
+    HTF_DIRECTION_GATE_ENABLED: bool = True  # 2026-09-28 WAVE4 LIVE PARITY: ez_positions_quick.py:12658 default True — ACTIVE live gate the vec lacked (baseline shift = parity)
     HTF_EXIT_VETO_ENABLED: bool = False  # auto-added TEMPLATE
     HTF_EXIT_VETO_MAX_LOSS_PCT: float = 0.0  # auto-added TEMPLATE
     HTF_EXIT_VETO_MIN_ALIGNED: float = 0.0  # auto-added TEMPLATE generic
@@ -6114,16 +6115,16 @@ class QuickConfig:
     MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO: float = 0.0  # auto-added TEMPLATE
     MARKET_QUALITY_SCORE_ENABLED: bool = False  # auto-added TEMPLATE
     MAX_AUGMENTS_PER_POSITION: float = 0.0  # auto-added TEMPLATE generic
-    MI_DIV_EXIT_ENABLED: bool = False  # auto-added TEMPLATE
+    MI_DIV_EXIT_ENABLED: bool = True  # 2026-09-28 WAVE4 LIVE PARITY: ez_positions_quick.py:3726+ getattr default True (was auto-added False)
     MI_ENTRY_ENABLED: bool = False  # auto-added TEMPLATE
     MI_ENTRY_EXHAUST_BONUS: int = 8  # parity fix 2026-09-04: config 8
     MI_ENTRY_STRUCT_BONUS: int = 10  # auto-added TEMPLATE generic
-    MI_EXHAUST_EXIT_ENABLED: bool = False  # auto-added TEMPLATE
-    MI_MIN_GAIN_EXIT: float = 0.0  # auto-added TEMPLATE generic
-    MI_STRUCT_EXIT_ENABLED: bool = False  # auto-added TEMPLATE
-    MI_TF_AGREE_MIN: float = 0.0  # auto-added TEMPLATE
-    MI_VELOCITY_EXIT_ENABLED: bool = False  # auto-added TEMPLATE
-    MI_WAVE_EXIT_ENABLED: bool = False  # auto-added TEMPLATE
+    MI_EXHAUST_EXIT_ENABLED: bool = True  # 2026-09-28 WAVE4 LIVE PARITY: ez_positions_quick.py:3726+ getattr default True (was auto-added False)
+    MI_MIN_GAIN_EXIT: float = 0.10  # 2026-09-28 WAVE4 LIVE PARITY: ez getattr default 0.10
+    MI_STRUCT_EXIT_ENABLED: bool = True  # 2026-09-28 WAVE4 LIVE PARITY: ez_positions_quick.py:3726+ getattr default True (was auto-added False)
+    MI_TF_AGREE_MIN: float = 3.0  # 2026-09-28 WAVE4 LIVE PARITY: ez getattr default 3
+    MI_VELOCITY_EXIT_ENABLED: bool = True  # 2026-09-28 WAVE4 LIVE PARITY: ez_positions_quick.py:3726+ getattr default True (was auto-added False)
+    MI_WAVE_EXIT_ENABLED: bool = True  # 2026-09-28 WAVE4 LIVE PARITY: ez_positions_quick.py:3726+ getattr default True (was auto-added False)
     MOM3_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE1: real gate (vec_decisions/filter_tf_gates); OFF default is behavior-neutral (field was never read before)
     MOMENTUM_BREAKOUT_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE1: real gate (vec_decisions/filter_tf_gates); OFF default is behavior-neutral (field was never read before)
     MOVER_THRESHOLD: float = 0.0  # auto-added TEMPLATE
@@ -21897,6 +21898,17 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _nlk_key = f'wt_velocity_{_nlk_tf}' if _nlk_tf.upper() != 'OFF' else 'wt_velocity_15m'
         _nlk_vel = _safe(npz, _nlk_key, n, 0.0)
     try:
+        for _w4_fn in (vec_decisions.wave4_families.oi_confirm_entry_gate, vec_decisions.wave4_families.ema_blanket_entry_gate, vec_decisions.wave4_families.htf_direction_gate):
+            _w4_m = _w4_fn(npz, n, is_long, cfg, close, _safe)
+            if _w4_m is not None:
+                entry_sig = entry_sig & _w4_m
+    except Exception:
+        pass
+    try:
+        _mi_arr = vec_decisions.wave4_families.mi_exit_signal(npz, n, is_long, cfg, _safe)
+    except Exception:
+        _mi_arr = None
+    try:
         _gftf = vec_decisions.generic_filter_tf.build_masks(npz, n, is_long, cfg, close, _safe)
         if _gftf.get('entry') is not None:
             entry_sig = entry_sig & _gftf['entry']
@@ -22408,6 +22420,17 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _tsn = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
             _nlk_reason = f"NEWBORN_LOSS_KILL age{held_bars * bmin:.0f}m g{live_pnl_pct:.2f}%"
             trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _nlk_reason, 'type': 'CLOSE', 'ts': _tsn, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _nlk_reason, 'bars_held': int(i - pos['entry_bar'])})
+            pos = None; cd = cooldown_bars; has_closed_before = True
+            continue
+        # MI_EXIT momentum-interception voter (ez_positions_quick.py:3723-3760): votes >=
+        # MI_TF_AGREE_MIN with gain >= MI_MIN_GAIN_EXIT -> close
+        if _mi_arr is not None and bool(_mi_arr[i]) and live_pnl_pct >= float(getattr(cfg, 'MI_MIN_GAIN_EXIT', 0.10)):
+            pos['fees'] += abs(pos['qty'] * px) * half_fee
+            _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
+            _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
+            _tsm2 = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+            _mi_reason = f"MI_EXIT votes>=min g{live_pnl_pct:.2f}%"
+            trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _mi_reason, 'type': 'CLOSE', 'ts': _tsm2, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _mi_reason, 'bars_held': int(i - pos['entry_bar'])})
             pos = None; cd = cooldown_bars; has_closed_before = True
             continue
         _vig_dc_hit = False
