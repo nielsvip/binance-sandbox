@@ -1,0 +1,101 @@
+{
+  "blocks": {
+    "GLD_LONG": {
+      "blocked_at": "2026-09-28T13:30:45.502957+00:00",
+      "reason": "DC4_15m_BREACH_g-2.58pct_px379.7600_lvl392.4950",
+      "exit_price": 379.76
+    },
+    "CIBR_LONG": {
+      "blocked_at": "2026-09-28T13:30:46.706059+00:00",
+      "reason": "DC4_15m_BREACH_g-2.06pct_px99.8250_lvl102.3600",
+      "exit_price": 99.82499999999999
+    },
+    "AGI_LONG": {
+      "blocked_at": "2026-09-28T13:30:46.835968+00:00",
+      "reason": "DC4_15m_BREACH_g-8.62pct_px32.5000_lvl32.7250",
+      "exit_price": 32.5
+    },
+    "CRWD_LONG": {
+      "blocked_at": "2026-09-28T13:30:47.772011+00:00",
+      "reason": "DC4_15m_BREACH_g-2.30pct_px250.0700_lvl251.3000",
+      "exit_price": 250.07
+    },
+    "IBIT_LONG": {
+      "blocked_at": "2026-09-28T13:30:48.649179+00:00",
+      "reason": "DC4_15m_BREACH_g-1.14pct_px47.3650_lvl47.5650",
+      "exit_price": 47.364999999999995
+    },
+    "GME_LONG": {
+      "blocked_at": "2026-09-28T13:30:49.479681+00:00",
+      "reason": "DC4_15m_BREACH_g-0.19pct_px23.3450_lvl24.2250",
+      "exit_price": 23.345
+    },
+    "TSLA_LONG": {
+      "blocked_at": "2026-09-28T13:30:49.507150+00:00",
+      "reason": "DC4_15m_BREACH_g-2.36pct_px367.4200_lvl378.8350",
+      "exit_price": 367.41999999999996
+    },
+    "SNDK_LONG": {
+      "blocked_at": "2026-09-28T13:30:50.530087+00:00",
+      "reason": "DC4_15m_BREACH_g-2.13pct_px1736.6150_lvl1826.8100",
+      "exit_price": 1736.615
+    },
+    "AMZN_LONG": {
+      "blocked_at": "2026-09-28T13:30:51.272208+00:00",
+      "reason": "DC4_15m_BREACH_g-1.70pct_px245.6100_lvl245.6750",
+      "exit_price": 245.61
+    },
+    "COPX_LONG": {
+      "blocked_at": "2026-09-28T13:30:56.927439+00:00",
+      "reason": "DC4_15m_BREACH_g-2.46pct_px83.5650_lvl86.3700",
+      "exit_price": 83.565
+    },
+    "LSCC_SHORT": {
+      "blocked_at": "2026-09-28T13:31:05.211939+00:00",
+      "reason": "DC4_15m_BREACH_g-5.96pct_px127.0450_lvl120.9600",
+      "exit_price": 127.045
+    },
+    "DELL_LONG": {
+      "blocked_at": "2026-09-28T13:32:33.889088+00:00",
+      "reason": "DC4_15m_BREACH_g-0.75pct_px551.8800_lvl553.2250",
+      "exit_price": 551.88
+    },
+    "META_LONG": {
+      "blocked_at": "2026-09-28T13:33:53.693439+00:00",
+      "reason": "DC4_15m_BREACH_g-2.81pct_px727.8250_lvl739.0900",
+      "exit_price": 727.825
+    },
+    "AU_LONG": {
+      "blocked_at": "2026-09-28T13:34:36.293209+00:00",
+      "reason": "DC4_15m_BREACH_g-9.20pct_px92.5500_lvl98.4150",
+      "exit_price": 92.55
+    },
+    "CVX_SHORT": {
+      "blocked_at": "2026-09-28T13:34:42.402247+00:00",
+      "reason": "DC4_15m_BREACH_g-3.02pct_px206.8350_lvl206.4600",
+      "exit_price": 206.83499999999998
+    },
+    "MRVL_LONG": {
+      "blocked_at": "2026-09-28T13:35:55.948591+00:00",
+      "reason": "DC4_15m_BREACH_g-3.35pct_px256.3350_lvl256.7450",
+      "exit_price": 256.33500000000004
+    },
+    "QQQ_LONG": {
+      "blocked_at": "2026-09-28T13:36:29.306348+00:00",
+      "reason": "DC4_15m_BREACH_g-0.14pct_px738.3900_lvl738.7100",
+      "exit_price": 738.39
+    }
+  },
+  "streaks": {
+    "GLD_LONG": {
+      "consec_losses": 1,
+      "last": [
+        {
+          "ts": "2026-09-28T13:36:35.970474+00:00",
+          "gain_pct": -2.6084,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-2.58_lvl392.4950_qty_999999"
+        }
+      ]
+    }
+  }
+}
