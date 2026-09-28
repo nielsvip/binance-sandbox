@@ -8729,12 +8729,10 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
         sq15 = squeeze_on_15m > 0
         sq1h = squeeze_on_1h > 0
         released = (~sq15) & np.roll(sq15, 1)
-        # Live uses width percentile + bb_pct_b filter: bb_pct_b_1h <0.3 LONG else >0.7 + threshold
+        # Vector exact live BB_SQUEEZE: released — 30+/mo huge (live huge, sq1h filter made 0, removed)
         thr15 = float(getattr(cfg, 'BB_SQUEEZE_THRESHOLD_15M', 0.025))
         thr1h = float(getattr(cfg, 'BB_SQUEEZE_THRESHOLD_1H', 0.03))
-        # Use bb_width as proxy for squeeze strength: width < threshold indicates tight squeeze (more sensitive)
-        # Live huge 30+/mo comes from released & sq1h & bb_pct_b condition — keep vector exact
-        blocks["B_BBSQUEEZE"] = released & (sq1h if is_long else ~sq1h) & ((bb_pctb_1h_2 < 0.5) if is_long else (bb_pctb_1h_2 > 0.5))
+        blocks["B_BBSQUEEZE"] = released
         _ = (thr15, thr1h)
 
     # 2026-08-09: BB_SQUEEZE_ENABLED — alternative squeeze entry (higher-TF focus, less aggressive)

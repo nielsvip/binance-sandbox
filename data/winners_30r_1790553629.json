@@ -1,7 +1,7 @@
 [
   {
     "symbol": "SAGAUSDT",
-    "returns_15m": 19.310086239220105,
+    "returns_15m": 19.71407072987209,
     "returns_3m": 20.896656534954413,
     "gain_score": 83.587
   },
@@ -72,6 +72,12 @@
     "gain_score": 10.582
   },
   {
+    "symbol": "IOSTUSDT",
+    "returns_15m": 3.1680724130837263,
+    "returns_3m": 2.639146140542967,
+    "gain_score": 10.557
+  },
+  {
     "symbol": "TRBUSDT",
     "returns_15m": 3.0592734225621534,
     "returns_3m": 2.5188916876574408,
@@ -90,12 +96,6 @@
     "gain_score": 9.901
   },
   {
-    "symbol": "IOSTUSDT",
-    "returns_15m": 2.8960677903505405,
-    "returns_3m": 2.336496275890211,
-    "gain_score": 9.346
-  },
-  {
     "symbol": "ASTERUSDT",
     "returns_15m": 2.140375260597633,
     "returns_3m": 1.9986120749479486,
@@ -109,15 +109,21 @@
   },
   {
     "symbol": "VETUSDT",
-    "returns_15m": 2.5969756738987435,
-    "returns_3m": 1.893568396996415,
-    "gain_score": 7.574
+    "returns_15m": 2.6346511156297816,
+    "returns_3m": 1.860313315926885,
+    "gain_score": 7.441
   },
   {
     "symbol": "POPCATUSDT",
     "returns_15m": 2.462572598745865,
     "returns_3m": 1.8325547969816744,
     "gain_score": 7.33
+  },
+  {
+    "symbol": "ETHFIUSDC",
+    "returns_15m": 2.624193095705857,
+    "returns_3m": 1.809828762355548,
+    "gain_score": 7.239
   },
   {
     "symbol": "ICPUSDT",
@@ -136,12 +142,6 @@
     "returns_15m": 2.0255394099515587,
     "returns_3m": 1.6785518376302728,
     "gain_score": 6.714
-  },
-  {
-    "symbol": "ETHFIUSDC",
-    "returns_15m": 2.4373161507213856,
-    "returns_3m": 1.4989590562109534,
-    "gain_score": 5.996
   },
   {
     "symbol": "CELRUSDT",
@@ -174,9 +174,9 @@
     "gain_score": 5.316
   },
   {
-    "symbol": "GASUSDT",
-    "returns_15m": 1.4084507042253458,
-    "returns_3m": 1.1033099297893654,
-    "gain_score": 4.413
+    "symbol": "BEAMXUSDT",
+    "returns_15m": 1.5622958469435477,
+    "returns_3m": 1.1845653184565332,
+    "gain_score": 4.738
   }
 ]
