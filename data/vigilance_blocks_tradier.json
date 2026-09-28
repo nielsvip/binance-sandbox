@@ -109,6 +109,11 @@
       "blocked_at": "2026-09-28T18:36:45.467927+00:00",
       "reason": "DC4_15m_BREACH_g-0.87pct_px120.0000_lvl119.8750",
       "exit_price": 120.0
+    },
+    "CF_SHORT": {
+      "blocked_at": "2026-09-28T19:14:17.711167+00:00",
+      "reason": "DC4_15m_BREACH_g-0.28pct_px115.9150_lvl115.7650",
+      "exit_price": 115.91499999999999
     }
   },
   "streaks": {
@@ -384,6 +389,41 @@
           "ts": "2026-09-28T15:58:21.164328+00:00",
           "gain_pct": 2.3563,
           "reason": "WT_CROSSOVER_FINAL_5m_15m_1hTrue_4hFalse_DFalse_g2.28%_hold61m_MANDATORY_REENTRY_qty_999999"
+        }
+      ]
+    },
+    "AGI_LONG": {
+      "consec_losses": 0,
+      "last": [
+        {
+          "ts": "2026-09-28T19:05:10.688558+00:00",
+          "gain_pct": 0.2127,
+          "reason": "ULTIMATE_DC_4h_HARD_STOP_LONG_px32.855000_lvl34.055000_g-7.62_qty_999999"
+        }
+      ]
+    },
+    "BWXT_SHORT": {
+      "consec_losses": 0,
+      "last": [
+        {
+          "ts": "2026-09-28T19:07:05.101613+00:00",
+          "gain_pct": 0.8546,
+          "reason": "WT_CROSSOVER_FINAL_5m_15m_1hFalse_4hTrue_DFalse_g0.00%_hold306m_MANDATORY_REENTRY_qty_999999"
+        },
+        {
+          "ts": "2026-09-28T19:28:25.447648+00:00",
+          "gain_pct": 2.2788,
+          "reason": "WT_CROSSOVER_FINAL_5m_15m_1hFalse_4hTrue_DFalse_g1.83%_hold311m_MANDATORY_REENTRY_qty_999999"
+        }
+      ]
+    },
+    "AU_LONG": {
+      "consec_losses": 0,
+      "last": [
+        {
+          "ts": "2026-09-28T19:16:40.216555+00:00",
+          "gain_pct": 0.307,
+          "reason": "ULTIMATE_DC_4h_HARD_STOP_LONG_px92.770000_lvl98.485000_g-8.94_qty_999999"
         }
       ]
     }

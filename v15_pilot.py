@@ -117,7 +117,10 @@ DEAD_VEC_SWITCHES = frozenset({
     "CONNORS_RSI2_TIME_STOP_BARS_DAILY", "DC4_STOP_GR_SCORE_MIN_IND", "DC4_STOP_GR_SCORE_MIN_TFS",
     "DC_LOW_FROZEN_STOP_TF", "DD_BOUNCE_DD_STOP_ENABLED", "EMERGENCY_BRAKE_DC_STOP_FIELD",
     "EXIT_PREEMPTIVE_BREAKEVEN_ENABLED", "HEDGE_EXIT_BYPASS_NOLOSS", "NEVER_GO_RED_STOP_ENABLED",
-    "NEWBORN_DC_STOP_FIELD", "NEWBORN_DC_STOP_MAX_AGE_MIN", "NOLOSS_BYPASS_WT_5OF5_MIN_TFS",
+    "NEWBORN_DC_STOP_FIELD", "NEWBORN_DC_STOP_MAX_AGE_MIN",
+    # NOLOSS_BYPASS_WT_5OF5_MIN_TFS removed 2026-09-28: really wired now (vec_decisions/reduce_profit_lock round)
+    # FILTER_TF pair added: only live reads are `_=getattr` stubs (tradier_manage.py:32589/32623) — no semantics to mirror
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF", "NOLOSS_BYPASS_WT5OF5_FILTER_TF",
     "NOLOSS_DC4H_GATE_ENABLED", "QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED",
     "STOP_MAJOR_LOSS_ENABLED", "STOP_TIMEFRAME", "TRAILING_AUG_MAX_PER_POSITION",
     "UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS", "UNIVERSAL_NOLOSS_GATE_BYPASS_TECHNICAL",
@@ -1903,6 +1906,17 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _final_filter_recheck()
     except Exception as _fe:
         print(f"[final-recheck-warn] {_fe}", flush=True)
+    # 2026-09-28 OOM fix (ACN_SHORT class): the DONE stage (atomic save of a ~2MB workbook expanded
+    # in RAM + fresh evals + live verify) spiked parents to 3-4GB and the kernel OOM-killed them
+    # (6 kills on s2 today), leaving orphaned fork workers pinning herd slots and sheets that never
+    # publish. The fork pool is not needed past final-recheck — release its workers NOW.
+    try:
+        if _pool is not None:
+            _pool.shutdown(wait=False, cancel_futures=True)
+            _pool = None
+            print("[spec-fill] fork pool released before DONE stage (RAM headroom for save+live-verify)", flush=True)
+    except Exception as _ps_e:
+        print(f"[pool-release-warn] {_ps_e}", flush=True)
     _maybe_write_json(force=True)
     if _any_pending():
         print(f"[spec-fill] incomplete after loop guard {loop_guard} pending remains — will still save", flush=True)

@@ -318,3 +318,33 @@ grep -nE "MTF_ATR_TRAIL|arange\(n\) %|_atr > 1\.0" v12_quick_engine.py
   MTF_GR_WT_EXIT 89/110 (2624, mean −0.05); MTF_DC_REJECT still 0/110 in vec (dc-target
   interplay — scalar harness will measure); USE_DC4 mode moves results on 25/110.
   These are 30d single-sym diagnostics (below sample floor — settings come from the sweeps).
+- **Defect triage (binance-28 relay, USER-caught on GDX_LONG)**: (1) vec QUICK_REDUCE_STRONG
+  dust-decay = REAL vec infidelity (missing live cooldown/min-qty/0.30%-profit gates) — binance-5d
+  fixing, endorsed. (2) "VIGILANCE_DC4 fires below its mandate" = MISREAD: live fires at ANY
+  gain<0 + dc4 breach with NO loss floor (tradier_manage.py:10594, ez_manage.py:46450, log string
+  says "structural NO fixed %"). Vec twin is FAITHFUL; GDX 37/41 negative closes is the live
+  design's economics. Ruled: no vec-only softening (would fabricate parity). If the stop should be
+  gated, it's a LIVE+VEC change needing the user's explicit word — user rejected fixed-% floors,
+  so candidates are structural (completed-bar dc4 confirmation, WT-turn condition, min-hold).
+  OPEN QUESTION FOR USER.
+- **DEPLOYMENT VERIFIED (user "everything in place and restarted", 2026-09-28 ~19:10Z checks)**:
+  s1 managers == Mac byte-identical (ez 45aacfbf, tradier ce7add14), all markers present on worker
+  (NEGBOOK 5, opened_ts, mtf_exit_timing BB fix, USE_DC4, _dc4, WT_DC_DETAILED). Mac live: 5/5
+  ez_manage procs restarted 18:40-18:41 STARTUP COMPLETE; since restart ZERO legacy
+  VIGILANCE_MAX_LOSS reasons, ZERO stale-trail refires (last 16:48 pre-fix), zero MTF/vigilance
+  errors (filter validated against 5551 live lines). Handoff §2 row #1 now formally dead in prod.
+  → SCALAR PARITY HARNESS unblocked and launched on s1 (ADAUSDC/ZECUSDC/LINKUSDC _LONG,
+  /tmp/vig_parity_ab2.log → data/reports/vigilance_dc4_parity_ab.json) — first run where
+  backtest_v12 drives the FIXED ez_manage. Results pending.
+- **4TH VIGILANCE MANDATE landed (19:12-19:13Z Mac, cut 320e5dcd both boxes 19:16:52Z, verified)**:
+  VIGILANCE_GUARD_ENABLED is now a SWITCH, default **False** (config.py:1570), with
+  VIGILANCE_DC4_BREACH_TOLERANCE_PCT=0.25 (breach must exceed dc4 level by 0.25% — structural
+  gate, resolves the GDX tiny-loss complaint). Implemented live+vec consistently (ez_manage:46456
+  reads tolerance; v12:22232-22233 twin matches; Mac==s1 on ez dfa63a31 / config 60367867 /
+  engine 320e5dcd; tf_secs pair intact). Consequences: (a) live crypto VIGILANCE_DC4 stops firing
+  by default — it becomes a sweep-decided per-sym switch (GLOBAL_RISK_GATES rows already exist);
+  (b) ⚠️ Mac live procs (18:40 start) PREDATE this — one more user restart needed for the 4th
+  mandate to take effect live; until then live still runs guard-ON-no-tolerance semantics;
+  (c) both A/B harnesses updated: vigilance case is now ON={VIGILANCE_GUARD_ENABLED:True} vs
+  base(OFF). Scalar parity harness relaunched on 320e5dcd (/tmp/vig_parity_ab3.log).
+  Cut line: 19:17Z both boxes (binance-99); requeue scope = reduce-affected + vigilance-fired runs.

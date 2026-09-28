@@ -9170,8 +9170,29 @@ def _gap_per_symbol_load(force: bool = False):
         logger.debug(f"[GAP_PER_SYMBOL_LOAD] skip {_e}")
 
 
+_GAP30D: Dict[str, Any] = {"loaded_at": 0.0, "data": {}}
+
+def _gap30d_get(symbol: str) -> Optional[dict]:
+    """USER SPEC 2026-09-28: authoritative per-symbol gap stats live in tradier/gap_inventory_30d.json,
+    produced by tools/gap_inventory_30d.py every 24h over the last 30 sessions — tradier_manage only
+    READS it (no in-process recording dependency). 300s cache; fail-open to legacy inventories."""
+    _now = time.time()
+    if _now - float(_GAP30D.get("loaded_at", 0)) > 300.0:
+        try:
+            _p = Path(config.BASE_PATH) / "tradier" / "gap_inventory_30d.json"
+            _GAP30D["data"] = json.loads(_p.read_text()) if _p.exists() else {}
+        except Exception as _e:
+            logger.warning(f"[GAP30D] load error (fail-open to legacy): {_e}")
+            _GAP30D["data"] = {}
+        _GAP30D["loaded_at"] = _now
+    return _GAP30D["data"].get(str(symbol or "").upper().strip())
+
 def _gap_per_symbol_avg_gap(symbol: str) -> Optional[float]:
-    """Per-symbol avg gap = sum_gap_pct / days. None if unknown. Kept in data/gap_inventory_tradier_per_symbol.json (30d, counted daily)."""
+    """Per-symbol avg OPEN gap over last 30 sessions. Primary: tradier/gap_inventory_30d.json
+    (USER SPEC 2026-09-28); fallback: legacy data/gap_inventory_tradier_per_symbol.json."""
+    _e30 = _gap30d_get(symbol)
+    if _e30 is not None and _e30.get("avg_open_gap_pct") is not None:
+        return float(_e30["avg_open_gap_pct"])
     try:
         sym = str(symbol or "").upper().strip()
         if not sym:
@@ -9225,7 +9246,11 @@ def _gap_close_per_symbol_load(force: bool = False):
         logger.debug(f"[GAP_CLOSE_PER_SYMBOL_LOAD] skip {_e}")
 
 def _gap_close_per_symbol_avg_gap(symbol: str) -> Optional[float]:
-    """Per-symbol avg close-gap = (close_D - open_D)/open_D*100 avg over 30d. None if unknown."""
+    """Per-symbol avg close-gap = (close_D - open_D)/open_D*100 avg over 30d. None if unknown.
+    Primary: tradier/gap_inventory_30d.json (USER SPEC 2026-09-28); fallback: legacy file."""
+    _e30 = _gap30d_get(symbol)
+    if _e30 is not None and _e30.get("avg_close_gap_pct") is not None:
+        return float(_e30["avg_close_gap_pct"])
     try:
         sym = str(symbol or "").upper().strip()
         if not sym:
@@ -10593,7 +10618,10 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 _vg_gain = safe_fetch_float(getattr(position, 'gain', 0), 0.0)
                 if _vg_tf.upper() != 'OFF' and _vg_gain < 0:
                     _vg_lvl = safe_fetch_float(i.get(f"dc_low4_{_vg_tf}" if is_long else f"dc_high4_{_vg_tf}", 0), 0.0)
-                    _vg_breach = _vg_lvl > 0 and current_price > 0 and ((is_long and current_price <= _vg_lvl) or ((not is_long) and current_price >= _vg_lvl))
+                    # 2026-09-28 USER: dc4 needs >=0.25% breach tolerance on the CHANNEL LEVEL
+                    # (same convention as dc_low_15m - 0.25% exits) — a touch is not a breach.
+                    _vg_tol = safe_fetch_float(_cfg_auto('VIGILANCE_DC4_BREACH_TOLERANCE_PCT', 0.25), 0.25)
+                    _vg_breach = _vg_lvl > 0 and current_price > 0 and ((is_long and current_price <= _vg_lvl * (1 - _vg_tol / 100.0)) or ((not is_long) and current_price >= _vg_lvl * (1 + _vg_tol / 100.0)))
                     if _vg_breach:
                         _vg_side = 'LONG' if is_long else 'SHORT'
                         vigilance_block(symbol, _vg_side, f"DC4_{_vg_tf}_BREACH_g{_vg_gain:.2f}pct_px{current_price:.4f}_lvl{_vg_lvl:.4f}", exit_price=current_price)

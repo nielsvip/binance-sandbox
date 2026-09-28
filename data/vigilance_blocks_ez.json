@@ -47,6 +47,21 @@
           "reason": "DC_BREACH_REDUCE_UNHEDGED_LOW_15m_price_0.243200"
         }
       ]
+    },
+    "XLMUSDT_LONG": {
+      "consec_losses": 0,
+      "last": [
+        {
+          "ts": "2026-09-28T19:21:18.640134+00:00",
+          "gain_pct": 3.9654,
+          "reason": "MTF_ATR_TRAIL_15m_x2.0_lvl0.229020_g3.97%"
+        },
+        {
+          "ts": "2026-09-28T19:27:26.844124+00:00",
+          "gain_pct": 3.7871,
+          "reason": "MTF_ATR_TRAIL_15m_x2.0_lvl0.228738_g3.79%"
+        }
+      ]
     }
   }
 }

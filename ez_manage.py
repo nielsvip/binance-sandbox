@@ -46451,7 +46451,10 @@ async def process_position(
                     if _pp_shared_ind is None:
                         _pp_shared_ind = await ii(trade_manager, symbol) or {}
                     _vg_lvl = safe_fetch_float(_pp_shared_ind.get(f"dc_low4_{_vg_tf}" if _vg_is_long else f"dc_high4_{_vg_tf}", 0), 0.0)
-                    _vg_breach = _vg_lvl > 0 and current_price > 0 and ((_vg_is_long and current_price <= _vg_lvl) or ((not _vg_is_long) and current_price >= _vg_lvl))
+                    # 2026-09-28 USER: dc4 needs >=0.25% breach tolerance on the CHANNEL LEVEL
+                    # (same convention as dc_low_15m - 0.25% exits) — a touch is not a breach.
+                    _vg_tol = safe_fetch_float(getattr(config, "VIGILANCE_DC4_BREACH_TOLERANCE_PCT", 0.25), 0.25)
+                    _vg_breach = _vg_lvl > 0 and current_price > 0 and ((_vg_is_long and current_price <= _vg_lvl * (1 - _vg_tol / 100.0)) or ((not _vg_is_long) and current_price >= _vg_lvl * (1 + _vg_tol / 100.0)))
                     if _vg_breach:
                         _vg_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                         _vg_side = "SELL" if _vg_is_long else "BUY"

@@ -1,0 +1,6500 @@
+{
+ "generated": 1790623669.0845308,
+ "engine_md5_note": "320e5dcd cut",
+ "filters": {
+  "BREAKOUT_RETEST_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 7705,
+   "orange_rows": 6,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     6401,
+     "_ = config.BREAKOUT_RETEST_FILTER_TF"
+    ],
+    [
+     "ez_manage.py",
+     6402,
+     "_ = getattr(config, 'BREAKOUT_RETEST_FILTER_TF', '15m')"
+    ],
+    [
+     "ez_manage.py",
+     6674,
+     "_tf = str(getattr(config, 'BREAKOUT_RETEST_FILTER_TF', '15m'))"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "DC_BREACH_REDUCE_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 5760,
+   "orange_rows": 10,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     6441,
+     "_ = config.DC_BREACH_REDUCE_FILTER_TF"
+    ],
+    [
+     "ez_manage.py",
+     6442,
+     "_ = getattr(config, 'DC_BREACH_REDUCE_FILTER_TF', '15m')"
+    ],
+    [
+     "ez_manage.py",
+     6795,
+     "_tf = str(getattr(config, 'DC_BREACH_REDUCE_FILTER_TF', '15m'))"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "DC_MOMENTUM_BOTA_SCORER_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 7975,
+   "orange_rows": 10,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     6449,
+     "_ = config.DC_MOMENTUM_BOTA_SCORER_FILTER_TF"
+    ],
+    [
+     "ez_manage.py",
+     6450,
+     "_ = getattr(config, 'DC_MOMENTUM_BOTA_SCORER_FILTER_TF', '15m')"
+    ],
+    [
+     "ez_manage.py",
+     6820,
+     "_tf = str(getattr(config, 'DC_MOMENTUM_BOTA_SCORER_FILTER_TF', '15m'))"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "EMERGENCY_BRAKE_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 4755,
+   "orange_rows": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58387,
+     "_ = _v  # EMERGENCY_BRAKE_FILTER_TF reads close"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 5760,
+   "orange_rows": 2,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58433,
+     "_ = _v  # EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF reads close"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "EXIT_TOP_FADE_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 5760,
+   "orange_rows": 2,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58437,
+     "_ = _v  # EXIT_TOP_FADE_FILTER_TF reads close"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "EXIT_TO_REDUCE_ADAPTER_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 5760,
+   "orange_rows": 2,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58440,
+     "_v = getattr(config, \"EXIT_TO_REDUCE_ADAPTER_FILTER_TF\", None)"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "FIRST_OPEN_THROTTLE_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 7975,
+   "orange_rows": 11,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58456,
+     "_ = _v  # FIRST_OPEN_THROTTLE_FILTER_TF reads close"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "FROZEN_STOP_FILTER_TF": {
+   "class": "NEITHER",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 7975,
+   "orange_rows": 3,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58461,
+     "if bool(getattr(config, \"FROZEN_STOP_FILTER_TF\", False)):"
+    ],
+    [
+     "ez_manage.py",
+     58464,
+     "_ = _v  # FROZEN_STOP_FILTER_TF"
+    ],
+    [
+     "tradier_manage.py",
+     32401,
+     "if bool(getattr(config_tradier, \"FROZEN_STOP_FILTER_TF\", False)):"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "live_stub_only": true
+  },
+  "GOLDEN_RULE_ENFORCE_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 7975,
+   "orange_rows": 3,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58473,
+     "_ = _gr  # GOLDEN_RULE_ENFORCE_FILTER_TF reads rsi_1h"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "CIRCUIT_SHARPE_GATES_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 6848,
+   "orange_rows": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     6431,
+     "_ = config.CIRCUIT_SHARPE_GATES_FILTER_TF"
+    ],
+    [
+     "ez_manage.py",
+     6432,
+     "_ = getattr(config, 'CIRCUIT_SHARPE_GATES_FILTER_TF', '15m')"
+    ],
+    [
+     "ez_manage.py",
+     6765,
+     "_tf = str(getattr(config, 'CIRCUIT_SHARPE_GATES_FILTER_TF', '15m'))"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "DC_BREAK_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 2775,
+   "orange_rows": 6,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     5475,
+     "'REENTRY2_DC_BREAK_FILTER_TF',"
+    ],
+    [
+     "ez_manage.py",
+     6239,
+     "'REENTRY2_DC_BREAK_FILTER_TF',"
+    ],
+    [
+     "ez_manage.py",
+     6317,
+     "'REENTRY2_DC_BREAK_FILTER_TF',"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "DELTA_ENGINE_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 8055,
+   "orange_rows": 5,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     6455,
+     "_ = config.DELTA_ENGINE_FILTER_TF"
+    ],
+    [
+     "ez_manage.py",
+     6456,
+     "_ = getattr(config, 'DELTA_ENGINE_FILTER_TF', '15m')"
+    ],
+    [
+     "ez_manage.py",
+     6838,
+     "_tf = str(getattr(config, 'DELTA_ENGINE_FILTER_TF', '15m'))"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "EMA_9_21_FILTER_FILTER_TF": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 7975,
+   "orange_rows": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     6479,
+     "_ = config.EMA_9_21_FILTER_FILTER_TF"
+    ],
+    [
+     "ez_manage.py",
+     6480,
+     "_ = getattr(config, 'EMA_9_21_FILTER_FILTER_TF', '15m')"
+    ],
+    [
+     "ez_manage.py",
+     58379,
+     "if str(getattr(config, \"EMA_9_21_FILTER_FILTER_TF\", \"15m\")): _ = 1  # EMA_9_21_FILTER_FILT"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "EMA_BLANKET_FILTER_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 7975,
+   "orange_rows": 2,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     6485,
+     "_ = config.EMA_BLANKET_FILTER_FILTER_TF"
+    ],
+    [
+     "ez_manage.py",
+     6486,
+     "_ = getattr(config, 'EMA_BLANKET_FILTER_FILTER_TF', '15m')"
+    ],
+    [
+     "ez_manage.py",
+     58382,
+     "if str(getattr(config, \"EMA_BLANKET_FILTER_FILTER_TF\", \"15m\")): _ = 1  # EMA_BLANKET_FILTE"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "EXIT_R1_R2_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 5760,
+   "orange_rows": 2,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58397,
+     "_ = _v  # EXIT_R1_R2_FILTER_TF reads close"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "FAST_RISER_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 9045,
+   "orange_rows": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58448,
+     "_ = _v  # FAST_RISER_FILTER_TF reads close"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "FH_MOMENTUM_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 2855,
+   "orange_rows": 10,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58452,
+     "_ = _rsi  # FH_MOMENTUM_FILTER_TF reads rsi_15m"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "GOLDEN_RULE_HTF_VOTE_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 7975,
+   "orange_rows": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58477,
+     "_ = _gr  # GOLDEN_RULE_HTF_VOTE_FILTER_TF reads rsi_1h"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "GR_FILTER_VEC_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 7975,
+   "orange_rows": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58486,
+     "_ = _gr  # GR_FILTER_VEC_FILTER_TF reads rsi_1h"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "GR_V5_STATE_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 7975,
+   "orange_rows": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58494,
+     "_ = _gr  # GR_V5_STATE_FILTER_TF reads rsi_1h"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "HAIKU_WINNER_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 7975,
+   "orange_rows": 10,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58499,
+     "_ = _ha  # HAIKU_WINNER_FILTER_TF reads adx_15m"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "LH_HL_FILTER_TF_REQ": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "2",
+    "2_ALT"
+   ],
+   "yellow_cells": 3190,
+   "orange_rows": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     26822,
+     "_lh_tf_req = int(_cfg_auto('LH_HL_FILTER_TF_REQ', 2))"
+    ],
+    [
+     "tradier_manage.py",
+     27154,
+     "_lh_tf_req = int(_cfg_auto('LH_HL_FILTER_TF_REQ', 2))"
+    ],
+    [
+     "ez_positions_quick.py",
+     12902,
+     "_lh_tf_req = int(getattr(config, 'LH_HL_FILTER_TF_REQ', 2))"
+    ]
+   ]
+  },
+  "LIVE_ENTRY_ENGINE_FILTER_TF": {
+   "class": "NEITHER",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [],
+   "colors": [
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 9065,
+   "orange_rows": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58556,
+     "if bool(getattr(config, \"LIVE_ENTRY_ENGINE_FILTER_TF\", False)):"
+    ],
+    [
+     "ez_manage.py",
+     58557,
+     "_=getattr(config, \"LIVE_ENTRY_ENGINE_FILTER_TF\", False)  # LIVE_ENTRY_ENGINE_FILTER_TF"
+    ],
+    [
+     "tradier_manage.py",
+     32527,
+     "if bool(getattr(config_tradier, \"LIVE_ENTRY_ENGINE_FILTER_TF\", False)):"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "live_stub_only": true
+  },
+  "LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF": {
+   "class": "NEITHER",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [],
+   "colors": [
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 7975,
+   "orange_rows": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58558,
+     "if bool(getattr(config, \"LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF\", False)):"
+    ],
+    [
+     "ez_manage.py",
+     58559,
+     "_=getattr(config, \"LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF\", False)  # LIVE_ONLY_SIGNALS_BATCH5"
+    ],
+    [
+     "tradier_manage.py",
+     32529,
+     "if bool(getattr(config_tradier, \"LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF\", False)):"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "live_stub_only": true
+  },
+  "MANDATORY_REENTRY_WT_FILTER_TF_MODE": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "15m_only",
+    "15m_only_ALT"
+   ],
+   "yellow_cells": 1504,
+   "orange_rows": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     12016,
+     "tf_mode=_cfg_auto('MANDATORY_REENTRY_WT_FILTER_TF_MODE', \"5m_or_15m\"),"
+    ]
+   ]
+  },
+  "MOM3_FILTER_TF": {
+   "class": "NEITHER",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [],
+   "colors": [
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 9280,
+   "orange_rows": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     32559,
+     "if bool(getattr(config_tradier, \"MOM3_FILTER_TF\", False)):"
+    ],
+    [
+     "tradier_manage.py",
+     32560,
+     "_=getattr(config_tradier, \"MOM3_FILTER_TF\", False)  # MOM3_FILTER_TF"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "live_stub_only": true
+  },
+  "MOMENTUM_BREAKOUT_FILTER_TF": {
+   "class": "NEITHER",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 9045,
+   "orange_rows": 8,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     32561,
+     "if bool(getattr(config_tradier, \"MOMENTUM_BREAKOUT_FILTER_TF\", False)):"
+    ],
+    [
+     "tradier_manage.py",
+     32562,
+     "_=getattr(config_tradier, \"MOMENTUM_BREAKOUT_FILTER_TF\", False)  # MOMENTUM_BREAKOUT_FILTE"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "live_stub_only": true
+  },
+  "MTF_ARMED_ENTRIES_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 7975,
+   "orange_rows": 3,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58687,
+     "_mtf_tf = getattr(config, \"MTF_ARMED_ENTRIES_FILTER_TF\", None)"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "MTF_ATR_TRAIL_FILTER_TF": {
+   "class": "NEITHER",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [],
+   "colors": [
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 2390,
+   "orange_rows": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     32567,
+     "if bool(getattr(config_tradier, \"MTF_ATR_TRAIL_FILTER_TF\", False)):"
+    ],
+    [
+     "tradier_manage.py",
+     32568,
+     "_=getattr(config_tradier, \"MTF_ATR_TRAIL_FILTER_TF\", False)  # MTF_ATR_TRAIL_FILTER_TF"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "live_stub_only": true
+  },
+  "MTF_DC_REJECT_FILTER_TF": {
+   "class": "NEITHER",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [],
+   "colors": [
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 5760,
+   "orange_rows": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     32569,
+     "if bool(getattr(config_tradier, \"MTF_DC_REJECT_FILTER_TF\", False)):"
+    ],
+    [
+     "tradier_manage.py",
+     32570,
+     "_=getattr(config_tradier, \"MTF_DC_REJECT_FILTER_TF\", False)  # MTF_DC_REJECT_FILTER_TF"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "live_stub_only": true
+  },
+  "NEWBORN_LOSS_KILL_FILTER_TF": {
+   "class": "NEITHER",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [],
+   "colors": [
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 7975,
+   "orange_rows": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58730,
+     "if bool(getattr(config, \"NEWBORN_LOSS_KILL_FILTER_TF\", False)):"
+    ],
+    [
+     "ez_manage.py",
+     58731,
+     "_=getattr(config, \"NEWBORN_LOSS_KILL_FILTER_TF\", False)  # NEWBORN_LOSS_KILL_FILTER_TF"
+    ],
+    [
+     "tradier_manage.py",
+     32579,
+     "if bool(getattr(config_tradier, \"NEWBORN_LOSS_KILL_FILTER_TF\", False)):"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "live_stub_only": true
+  },
+  "NEWBORN_PROTECT_FILTER_TF": {
+   "class": "NEITHER",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [],
+   "colors": [
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 7975,
+   "orange_rows": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58734,
+     "if bool(getattr(config, \"NEWBORN_PROTECT_FILTER_TF\", False)):"
+    ],
+    [
+     "ez_manage.py",
+     58735,
+     "_=getattr(config, \"NEWBORN_PROTECT_FILTER_TF\", False)  # NEWBORN_PROTECT_FILTER_TF"
+    ],
+    [
+     "tradier_manage.py",
+     32585,
+     "if bool(getattr(config_tradier, \"NEWBORN_PROTECT_FILTER_TF\", False)):"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "live_stub_only": true
+  },
+  "NOLOSS_BYPASS_WT5OF5_FILTER_TF": {
+   "class": "NEITHER",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 7975,
+   "orange_rows": 2,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": true,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58738,
+     "if bool(getattr(config, \"NOLOSS_BYPASS_WT5OF5_FILTER_TF\", False)):"
+    ],
+    [
+     "ez_manage.py",
+     58739,
+     "_=getattr(config, \"NOLOSS_BYPASS_WT5OF5_FILTER_TF\", False)  # NOLOSS_BYPASS_WT5OF5_FILTER_"
+    ],
+    [
+     "tradier_manage.py",
+     32589,
+     "if bool(getattr(config_tradier, \"NOLOSS_BYPASS_WT5OF5_FILTER_TF\", False)):"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "live_stub_only": true
+  },
+  "OPEN_INTENT_SIZE_GATES_FILTER_TF": {
+   "class": "NEITHER",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 7975,
+   "orange_rows": 7,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58784,
+     "if bool(getattr(config, \"OPEN_INTENT_SIZE_GATES_FILTER_TF\", False)):"
+    ],
+    [
+     "ez_manage.py",
+     58785,
+     "_=getattr(config, \"OPEN_INTENT_SIZE_GATES_FILTER_TF\", False)  # OPEN_INTENT_SIZE_GATES_FIL"
+    ],
+    [
+     "tradier_manage.py",
+     32619,
+     "if bool(getattr(config_tradier, \"OPEN_INTENT_SIZE_GATES_FILTER_TF\", False)):"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "live_stub_only": true
+  },
+  "PARTIAL_PROFIT_LOCK_V2_FILTER_TF": {
+   "class": "NEITHER",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [],
+   "colors": [
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 7975,
+   "orange_rows": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": true,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58796,
+     "if bool(getattr(config, \"PARTIAL_PROFIT_LOCK_V2_FILTER_TF\", False)):"
+    ],
+    [
+     "ez_manage.py",
+     58797,
+     "_=getattr(config, \"PARTIAL_PROFIT_LOCK_V2_FILTER_TF\", False)  # PARTIAL_PROFIT_LOCK_V2_FIL"
+    ],
+    [
+     "tradier_manage.py",
+     32623,
+     "if bool(getattr(config_tradier, \"PARTIAL_PROFIT_LOCK_V2_FILTER_TF\", False)):"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "live_stub_only": true
+  },
+  "PEAK_GIVEBACK_BE_EROSION_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 7975,
+   "orange_rows": 6,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58800,
+     "_peak_tf = getattr(config, \"PEAK_GIVEBACK_BE_EROSION_FILTER_TF\", None)"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "WT_15M_BOUNCE_BB_MAX": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 3,
+   "options_sample": [
+    "0.8",
+    "0.9",
+    "0.95"
+   ],
+   "yellow_cells": 3480,
+   "orange_rows": 3,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58971,
+     "_=_bb  # WT_15M_BOUNCE_BB_MAX bb_pct_b"
+    ],
+    [
+     "ez_manage.py",
+     59253,
+     "_b15_bb_max = float(getattr(config, \"WT_15M_BOUNCE_BB_MAX\", 0.95) or 0.95)"
+    ],
+    [
+     "ez_manage.py",
+     59455,
+     "if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_BB_MAX', False): pass  # "
+    ]
+   ]
+  },
+  "WT_15M_BOUNCE_BB_MIN": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 3,
+   "options_sample": [
+    "0.05",
+    "0.1",
+    "0.2"
+   ],
+   "yellow_cells": 3435,
+   "orange_rows": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58975,
+     "_=_bb  # WT_15M_BOUNCE_BB_MIN bb_pct_b"
+    ],
+    [
+     "ez_manage.py",
+     59252,
+     "_b15_bb_min = float(getattr(config, \"WT_15M_BOUNCE_BB_MIN\", 0.05) or 0.05)"
+    ],
+    [
+     "ez_manage.py",
+     59454,
+     "if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_BB_MIN', False): pass  # "
+    ]
+   ]
+  },
+  "WT_15M_BOUNCE_HIGH_1H_GT_PREV": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py"
+   ],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "False",
+    "True"
+   ],
+   "yellow_cells": 2320,
+   "orange_rows": 2,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     59256,
+     "_b15_hh_explicit = bool(getattr(config, \"WT_15M_BOUNCE_FILTER_HH_ENABLED\", False) or getat"
+    ],
+    [
+     "ez_manage.py",
+     59466,
+     "if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_HIGH_1H_GT_PREV', False):"
+    ],
+    [
+     "tradier_manage.py",
+     1312,
+     "_hh_on = bool(_cfg(\"WT_15M_BOUNCE_FILTER_HH_ENABLED\", False, account_key, symbol, side) or"
+    ]
+   ]
+  },
+  "WT_15M_BOUNCE_LOW_1H_GT_PREV": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py"
+   ],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "False",
+    "True"
+   ],
+   "yellow_cells": 2320,
+   "orange_rows": 2,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     59255,
+     "_b15_hl_explicit = bool(getattr(config, \"WT_15M_BOUNCE_FILTER_HL_ENABLED\", False) or getat"
+    ],
+    [
+     "ez_manage.py",
+     59465,
+     "if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_LOW_1H_GT_PREV', False): "
+    ],
+    [
+     "tradier_manage.py",
+     1311,
+     "_hl_on = bool(_cfg(\"WT_15M_BOUNCE_FILTER_HL_ENABLED\", False, account_key, symbol, side) or"
+    ]
+   ]
+  },
+  "WT_15M_BOUNCE_REL_VOL_GT_1": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py"
+   ],
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "False",
+    "True"
+   ],
+   "yellow_cells": 2320,
+   "orange_rows": 2,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     59258,
+     "_b15_vol_explicit = bool(getattr(config, \"WT_15M_BOUNCE_VOLUME_FILTER_ENABLED\", False) or "
+    ],
+    [
+     "ez_manage.py",
+     59467,
+     "if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_REL_VOL_GT_1', False): pa"
+    ],
+    [
+     "tradier_manage.py",
+     1332,
+     "_vol_on = bool(_cfg(\"WT_15M_BOUNCE_VOLUME_FILTER_ENABLED\", False, account_key, symbol, sid"
+    ]
+   ]
+  },
+  "BB_PROFIT_TAKE_TF": {
+   "class": "VEC_ONLY",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 70,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false
+  },
+  "WT_DC_STOCH_THRESHOLD_LONG": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 1,
+   "options_sample": [
+    "40"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 36,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     12594,
+     "_wt_dc_stoch_thr_long = float(_cfg_auto('WT_DC_STOCH_THRESHOLD_LONG', 40.0))"
+    ]
+   ]
+  },
+  "WT_DC_STOCH_THRESHOLD_SHORT": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 1,
+   "options_sample": [
+    "60"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 36,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     12595,
+     "_wt_dc_stoch_thr_short = float(_cfg_auto('WT_DC_STOCH_THRESHOLD_SHORT', 60.0))"
+    ]
+   ]
+  },
+  "WT_DC_DC_POS_THRESHOLD_SHORT": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 1,
+   "options_sample": [
+    "0.5"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 36,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     12593,
+     "_wt_dc_dc_thr_short = float(_cfg_auto('WT_DC_DC_POS_THRESHOLD_SHORT', 0.50))"
+    ]
+   ]
+  },
+  "BANDAID_OFF_LOSER_RECOVER_PCT": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "-0.25",
+    "0",
+    "0.5",
+    "1.0",
+    "2.0"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 192,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     6568,
+     "_thr = float(getattr(config, 'BANDAID_OFF_LOSER_RECOVER_PCT', 0.0))"
+    ],
+    [
+     "ez_manage.py",
+     6572,
+     "if _c <= _thr: return False, 'BANDAID_OFF_LOSER_RECOVER_PCT_THR'"
+    ],
+    [
+     "ez_manage.py",
+     6573,
+     "_ = getattr(config, 'BANDAID_OFF_LOSER_RECOVER_PCT', 0.0)"
+    ]
+   ]
+  },
+  "ADX_RANGING_THRESHOLD": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 4,
+   "options_sample": [
+    "10",
+    "15",
+    "20",
+    "25"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 144,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     481,
+     "if _adx_1h < getattr(config, \"ADX_RANGING_THRESHOLD\", 20.0):"
+    ],
+    [
+     "ez_manage.py",
+     484,
+     "f\"ADX_RANGING({_adx_1h:.0f}<{getattr(config, 'ADX_RANGING_THRESHOLD', 20.0):.0f})\","
+    ],
+    [
+     "ez_manage.py",
+     6495,
+     "_thr = float(getattr(config, 'ADX_RANGING_THRESHOLD', 0.0))"
+    ]
+   ]
+  },
+  "MTS_GATE_ENABLED": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "False",
+    "True"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     3816,
+     "'MTS_GATE_ENABLED_TRADIER',"
+    ],
+    [
+     "ez_manage.py",
+     58720,
+     "_v = getattr(config, \"MTS_GATE_ENABLED\", None)"
+    ],
+    [
+     "tradier_manage.py",
+     2796,
+     "'MTS_GATE_ENABLED_TRADIER',"
+    ]
+   ]
+  },
+  "OI_CONFIRM_ENABLED": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "False",
+    "True"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     3833,
+     "'OI_CONFIRM_ENABLED_TRADIER',"
+    ],
+    [
+     "tradier_manage.py",
+     2813,
+     "'OI_CONFIRM_ENABLED_TRADIER',"
+    ],
+    [
+     "tradier_manage.py",
+     7963,
+     "\"OBLIGATORY_SECTOR_HEDGE_ENABLED\", \"OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS\", \"OBLIG"
+    ]
+   ]
+  },
+  "OI_CONFIRM_MIN_PRICE_PCT": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "0",
+    "0.3",
+    "0.5",
+    "1.0",
+    "2.0"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 192,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     3835,
+     "'OI_CONFIRM_MIN_PRICE_PCT_TRADIER',"
+    ],
+    [
+     "tradier_manage.py",
+     2815,
+     "'OI_CONFIRM_MIN_PRICE_PCT_TRADIER',"
+    ],
+    [
+     "tradier_manage.py",
+     7963,
+     "\"OBLIGATORY_SECTOR_HEDGE_ENABLED\", \"OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS\", \"OBLIG"
+    ]
+   ]
+  },
+  "HLR_TOP_MIN_TFS": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 3,
+   "options_sample": [
+    "0",
+    "1",
+    "2"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 144,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     32910,
+     "if int(getattr(config, \"HLR_TOP_MIN_TFS\", 0) or 0) != 0: _ = 1  # HLR_TOP_MIN_TFS \u2014 BATCH2"
+    ],
+    [
+     "ez_positions_quick.py",
+     3712,
+     "_hte_min = getattr(config, 'HLR_TOP_MIN_TFS', 2)"
+    ]
+   ]
+  },
+  "MTS_BOTTOM_BONUS_THRESHOLD": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 4,
+   "options_sample": [
+    "12.5",
+    "18.75",
+    "25",
+    "31.25"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 192,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_positions_quick.py",
+     2781,
+     "_mts_b_bonus = getattr(config, 'MTS_BOTTOM_BONUS_THRESHOLD', 25.0)"
+    ]
+   ]
+  },
+  "OI_CONFIRM_MIN_CHANGE_PCT": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 4,
+   "options_sample": [
+    "0",
+    "0.5",
+    "1.0",
+    "2.0"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 192,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_positions_quick.py",
+     12690,
+     "_oi_min_pct = float(getattr(config, 'OI_CONFIRM_MIN_CHANGE_PCT', 0.5))"
+    ]
+   ]
+  },
+  "MTS_BOTTOM_STRONG_THRESHOLD": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 4,
+   "options_sample": [
+    "20",
+    "30",
+    "40",
+    "50"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 192,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_positions_quick.py",
+     2780,
+     "_mts_b_strong = getattr(config, 'MTS_BOTTOM_STRONG_THRESHOLD', 40.0)"
+    ]
+   ]
+  },
+  "HA_WICK_QUALITY_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 240,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_positions_quick.py",
+     4474,
+     "_hw_tf = getattr(config, 'HA_WICK_QUALITY_TF', '1h')"
+    ]
+   ]
+  },
+  "COOLDOWN_LOCKS_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 240,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     6433,
+     "_ = config.COOLDOWN_LOCKS_FILTER_TF"
+    ],
+    [
+     "ez_manage.py",
+     6434,
+     "_ = getattr(config, 'COOLDOWN_LOCKS_FILTER_TF', '15m')"
+    ],
+    [
+     "ez_manage.py",
+     6772,
+     "_tf = str(getattr(config, 'COOLDOWN_LOCKS_FILTER_TF', '15m'))"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "BAND_ARROW_ENABLED": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "False",
+    "True"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     6365,
+     "_ = config.BAND_ARROW_ENABLED"
+    ],
+    [
+     "ez_manage.py",
+     6366,
+     "_ = getattr(config, 'BAND_ARROW_ENABLED', False)"
+    ],
+    [
+     "ez_manage.py",
+     6577,
+     "return False, 'BAND_ARROW_ENABLED_SMA'"
+    ]
+   ]
+  },
+  "LH_HL_FILTER_ENABLED": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "False",
+    "True"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     26804,
+     "_lh_replace = bool(_cfg_auto('LH_HL_FILTER_ENABLED', False)) and bool(_cfg_auto('LH_HL_FIL"
+    ],
+    [
+     "tradier_manage.py",
+     26816,
+     "if bool(_cfg_auto('LH_HL_FILTER_ENABLED', False)):"
+    ],
+    [
+     "tradier_manage.py",
+     27151,
+     "if bool(_cfg_auto('LH_HL_FILTER_ENABLED', False)):"
+    ]
+   ]
+  },
+  "MARKET_QUALITY_SCORE_ENABLED": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "False",
+    "True"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 92,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     3712,
+     "'MARKET_QUALITY_SCORE_ENABLED_TRADIER',"
+    ],
+    [
+     "tradier_manage.py",
+     2692,
+     "'MARKET_QUALITY_SCORE_ENABLED_TRADIER',"
+    ],
+    [
+     "tradier_manage.py",
+     7950,
+     "\"MANDATORY_REENTRY_DC4_WINDOW_MIN\", \"MARKET_QUALITY_SCORE_ENABLED_TRADIER\", \"MAX_CONCURREN"
+    ]
+   ]
+  },
+  "HTF_DIRECTION_GATE_ENABLED": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "False",
+    "True"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 92,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_positions_quick.py",
+     12658,
+     "if bool(getattr(config, 'HTF_DIRECTION_GATE_ENABLED', True)):"
+    ]
+   ]
+  },
+  "MTF_GR_MIN_IND": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 3,
+   "options_sample": [
+    "5",
+    "5_ALT",
+    "7"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     29845,
+     "_gr_min_ind_eff = int(getattr(config, \"MTF_GR_MIN_IND\", 7))"
+    ],
+    [
+     "ez_manage.py",
+     58704,
+     "_v = getattr(config, \"MTF_GR_MIN_IND\", None)"
+    ]
+   ]
+  },
+  "HLR_SMA_BAND_PCT": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "0",
+    "0.03",
+    "0.5",
+    "1.0",
+    "2.0"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 192,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     32909,
+     "if float(getattr(config, \"HLR_SMA_BAND_PCT\", 0) or 0) != 0: _ = 1  # HLR_SMA_BAND_PCT \u2014 BA"
+    ],
+    [
+     "ez_positions_quick.py",
+     3045,
+     "_hlr_band = getattr(config, 'HLR_SMA_BAND_PCT', 0.03)"
+    ],
+    [
+     "ez_positions_quick.py",
+     16287,
+     "_hlr_band_e = getattr(config, 'HLR_SMA_BAND_PCT', 0.03)"
+    ]
+   ]
+  },
+  "DUP_GUARD_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 240,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     6471,
+     "_ = config.DUP_GUARD_FILTER_TF"
+    ],
+    [
+     "ez_manage.py",
+     6472,
+     "_ = getattr(config, 'DUP_GUARD_FILTER_TF', '15m')"
+    ],
+    [
+     "ez_manage.py",
+     58376,
+     "if str(getattr(config, \"DUP_GUARD_FILTER_TF\", \"15m\")): _ = 1  # DUP_GUARD_FILTER_TF \u2014 BATC"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "HA_WICK_QUALITY_ENABLED": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "False",
+    "True"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_positions_quick.py",
+     4473,
+     "if getattr(config, 'HA_WICK_QUALITY_ENABLED', False):"
+    ]
+   ]
+  },
+  "FUNDING_GATE_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 240,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58468,
+     "_ = _fund  # FUNDING_GATE_FILTER_TF reads funding_rate"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "LH_HL_FILTER_MODE": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "STRICT_2BAR",
+    "STRICT_2BAR_ALT"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     26821,
+     "_lh_mode = str(_cfg_auto('LH_HL_FILTER_MODE', 'STRICT_2BAR'))"
+    ],
+    [
+     "tradier_manage.py",
+     27153,
+     "_lh_mode = str(_cfg_auto('LH_HL_FILTER_MODE', 'STRICT_2BAR'))"
+    ],
+    [
+     "ez_positions_quick.py",
+     12901,
+     "_lh_mode = str(getattr(config, 'LH_HL_FILTER_MODE', 'STRICT_2BAR'))"
+    ]
+   ]
+  },
+  "NEW_POSITION_MAX_LOSS_THRESHOLD": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "-0.7",
+    "0",
+    "0.5",
+    "1.0",
+    "2.0"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 192,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     9986,
+     "if position.gain < config.NEW_POSITION_MAX_LOSS_THRESHOLD:"
+    ],
+    [
+     "ez_manage.py",
+     10009,
+     "and position.gain >= config.NEW_POSITION_MAX_LOSS_THRESHOLD"
+    ],
+    [
+     "ez_manage.py",
+     21534,
+     "> config.NEW_POSITION_MAX_LOSS_THRESHOLD"
+    ]
+   ]
+  },
+  "GR_FILTER_VEC_ENABLED": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "False",
+    "True"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 92,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58482,
+     "_ = _gr  # GR_FILTER_VEC_ENABLED reads rsi_1h"
+    ]
+   ]
+  },
+  "EMA_9_21_FILTER_MIN_TFS": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 4,
+   "options_sample": [
+    "0",
+    "1",
+    "2",
+    "3"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 144,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     6481,
+     "_ = config.EMA_9_21_FILTER_MIN_TFS"
+    ],
+    [
+     "ez_manage.py",
+     6482,
+     "_ = getattr(config, 'EMA_9_21_FILTER_MIN_TFS', 0)"
+    ],
+    [
+     "ez_manage.py",
+     58380,
+     "if int(getattr(config, \"EMA_9_21_FILTER_MIN_TFS\", 0)): _ = 1  # EMA_9_21_FILTER_MIN_TFS \u2014 "
+    ]
+   ]
+  },
+  "NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 4,
+   "options_sample": [
+    "0",
+    "0.5",
+    "1.0",
+    "2.0"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 192,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     46544,
+     "_nlk_threshold = safe_fetch_float(getattr(config, \"NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT\", "
+    ],
+    [
+     "ez_manage.py",
+     58732,
+     "if getattr(config, \"NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT\", None) is not None: _ = 1  # NEW"
+    ]
+   ]
+  },
+  "LR_BAND_LADDER_TF_BOTTOM": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "0",
+    "1"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     658,
+     "bottom = _tf_val(\"LR_BAND_LADDER_TF_BOTTOM\", \"LR_BAND_LADDER_BOTTOM_MULT\", 10.0)"
+    ],
+    [
+     "tradier_manage.py",
+     1594,
+     "(getattr(view, \"LR_BAND_LADDER_TF_BOTTOM\", {}) or {}).get("
+    ]
+   ]
+  },
+  "LR_BAND_LADDER_STOCH_EXTREME": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "30.0",
+    "30.0_ALT"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     1487,
+     "getattr(cfg, \"LR_BAND_LADDER_STOCH_EXTREME\", 30.0)"
+    ]
+   ]
+  },
+  "LR_BAND_LADDER_TF_TOP": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "0",
+    "1"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     659,
+     "top = _tf_val(\"LR_BAND_LADDER_TF_TOP\", \"LR_BAND_LADDER_TOP_MULT\", 3.0)"
+    ],
+    [
+     "tradier_manage.py",
+     1600,
+     "(getattr(view, \"LR_BAND_LADDER_TF_TOP\", {}) or {}).get("
+    ]
+   ]
+  },
+  "GR_FILTER_VEC_MIN_TFS": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 3,
+   "options_sample": [
+    "0",
+    "1",
+    "2"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 144,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     58490,
+     "_ = _gr  # GR_FILTER_VEC_MIN_TFS reads rsi_1h"
+    ]
+   ]
+  },
+  "DELTA_HTF_GATE": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 3,
+   "options_sample": [
+    "4h",
+    "4h_ALT",
+    "hh_hl_4h"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     6461,
+     "_ = config.DELTA_HTF_GATE"
+    ],
+    [
+     "ez_manage.py",
+     6462,
+     "_ = getattr(config, 'DELTA_HTF_GATE', '')"
+    ],
+    [
+     "ez_manage.py",
+     6845,
+     "_tf = str(getattr(config, 'DELTA_HTF_GATE', '15m'))"
+    ]
+   ]
+  },
+  "EMA_BLANKET_FILTER_MIN_TFS": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 4,
+   "options_sample": [
+    "0",
+    "1",
+    "2",
+    "3"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 144,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     6487,
+     "_ = config.EMA_BLANKET_FILTER_MIN_TFS"
+    ],
+    [
+     "ez_manage.py",
+     6488,
+     "_ = getattr(config, 'EMA_BLANKET_FILTER_MIN_TFS', 0)"
+    ],
+    [
+     "ez_manage.py",
+     58383,
+     "if int(getattr(config, \"EMA_BLANKET_FILTER_MIN_TFS\", 0)): _ = 1  # EMA_BLANKET_FILTER_MIN_"
+    ]
+   ]
+  },
+  "HTF_TREND_VETO_BYPASS_ENABLED": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "False",
+    "True"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     25207,
+     "if bool(getattr(config, \"HTF_TREND_VETO_BYPASS_ENABLED\", True)):"
+    ],
+    [
+     "ez_manage.py",
+     58531,
+     "if getattr(config, \"HTF_TREND_VETO_BYPASS_ENABLED\", None) is not None: _ = 1  # HTF_TREND_"
+    ]
+   ]
+  },
+  "EMA_BLANKET_FILTER_ENABLED": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "False",
+    "True"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     6483,
+     "_ = config.EMA_BLANKET_FILTER_ENABLED"
+    ],
+    [
+     "ez_manage.py",
+     6484,
+     "_ = getattr(config, 'EMA_BLANKET_FILTER_ENABLED', False)"
+    ],
+    [
+     "ez_manage.py",
+     58381,
+     "if bool(getattr(config, \"EMA_BLANKET_FILTER_ENABLED\", False)): _ = 1  # EMA_BLANKET_FILTER"
+    ]
+   ]
+  },
+  "DELTA_REENTRY_FILTER_ENABLED": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "False",
+    "True"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     202,
+     "if not getattr(config, \"DELTA_REENTRY_FILTER_ENABLED\", False):"
+    ],
+    [
+     "ez_manage.py",
+     6467,
+     "_ = config.DELTA_REENTRY_FILTER_ENABLED"
+    ],
+    [
+     "ez_manage.py",
+     6468,
+     "_ = getattr(config, 'DELTA_REENTRY_FILTER_ENABLED', False)"
+    ]
+   ]
+  },
+  "LIVE_VEC_EMERGENCY_BRAKE_ENABLED": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "False",
+    "True"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     31888,
+     "if bool(getattr(config, \"LIVE_VEC_EMERGENCY_BRAKE_ENABLED\", False)):"
+    ],
+    [
+     "ez_manage.py",
+     58560,
+     "if getattr(config, \"LIVE_VEC_EMERGENCY_BRAKE_ENABLED\", None) is not None: _ = 1  # LIVE_VE"
+    ],
+    [
+     "tradier_manage.py",
+     25353,
+     "if bool(_cfg_auto('LIVE_VEC_EMERGENCY_BRAKE_ENABLED', False)):"
+    ]
+   ]
+  },
+  "NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 3,
+   "options_sample": [
+    "0.0",
+    "0.0_ALT",
+    "True"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     46551,
+     "if bool(getattr(config, \"NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST\", True)):"
+    ],
+    [
+     "ez_manage.py",
+     58733,
+     "if getattr(config, \"NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST\", None) is not None: _ = 1  # NE"
+    ]
+   ]
+  },
+  "HTF4_CONF": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 3,
+   "options_sample": [
+    "False",
+    "False_ALT",
+    "True"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 92,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     27690,
+     "if config.HTF4_CONF:"
+    ],
+    [
+     "ez_manage.py",
+     27733,
+     "f\"[exxe cute_trade_action][{account_key}] {position_key}: \u274c {action} BLOCKED - HTF4_CONF_R"
+    ],
+    [
+     "ez_manage.py",
+     27746,
+     "f\"[exe cxute_trade_action][{account_key}] {position_key}: \u274c {action} BLOCKED - HTF4_CONF_R"
+    ]
+   ]
+  },
+  "LEADERBOARD_FILTER": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 3,
+   "options_sample": [
+    "False",
+    "False_ALT",
+    "True"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     21350,
+     "LEADERBOARD_FILTER = getattr("
+    ],
+    [
+     "ez_manage.py",
+     21351,
+     "self.config, \"LEADERBOARD_FILTER\", True"
+    ],
+    [
+     "ez_manage.py",
+     21413,
+     "if LEADERBOARD_FILTER:"
+    ]
+   ]
+  },
+  "LH_HL_FILTER_REQUIRE_BOTH": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "False",
+    "False_ALT"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     26824,
+     "_lh_req_both = bool(_cfg_auto('LH_HL_FILTER_REQUIRE_BOTH', False))"
+    ],
+    [
+     "tradier_manage.py",
+     27156,
+     "_lh_req_both = bool(_cfg_auto('LH_HL_FILTER_REQUIRE_BOTH', False))"
+    ],
+    [
+     "ez_positions_quick.py",
+     12904,
+     "_lh_req_both = bool(getattr(config, 'LH_HL_FILTER_REQUIRE_BOTH', False))"
+    ]
+   ]
+  },
+  "BTC_ACCEL_RAMP_REQUIRE_POSITIVE": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 4,
+   "options_sample": [
+    "0",
+    "0.0",
+    "0.0_ALT",
+    "True"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 86,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     6403,
+     "_ = config.BTC_ACCEL_RAMP_REQUIRE_POSITIVE"
+    ],
+    [
+     "ez_manage.py",
+     6404,
+     "_ = getattr(config, 'BTC_ACCEL_RAMP_REQUIRE_POSITIVE', False)"
+    ],
+    [
+     "ez_manage.py",
+     6681,
+     "_thr = float(getattr(config, 'BTC_ACCEL_RAMP_REQUIRE_POSITIVE', 0.0))"
+    ]
+   ]
+  },
+  "BTC_HARD_BLOCK_OTHER_ACCOUNTS": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 4,
+   "options_sample": [
+    "0",
+    "0.0",
+    "0.0_ALT",
+    "False"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 86,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     6417,
+     "_ = config.BTC_HARD_BLOCK_OTHER_ACCOUNTS"
+    ],
+    [
+     "ez_manage.py",
+     6418,
+     "_ = getattr(config, 'BTC_HARD_BLOCK_OTHER_ACCOUNTS', False)"
+    ],
+    [
+     "ez_manage.py",
+     6722,
+     "_thr = float(getattr(config, 'BTC_HARD_BLOCK_OTHER_ACCOUNTS', 0.0))"
+    ]
+   ]
+  },
+  "BTC_ROUND_BANDS_EACH_SIDE": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 4,
+   "options_sample": [
+    "0",
+    "0.0",
+    "0.0_ALT",
+    "8"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 86,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     6419,
+     "_ = config.BTC_ROUND_BANDS_EACH_SIDE"
+    ],
+    [
+     "ez_manage.py",
+     6420,
+     "_ = getattr(config, 'BTC_ROUND_BANDS_EACH_SIDE', 0)"
+    ],
+    [
+     "ez_manage.py",
+     6728,
+     "_thr = float(getattr(config, 'BTC_ROUND_BANDS_EACH_SIDE', 0.0))"
+    ]
+   ]
+  },
+  "MI_TF_AGREE_MIN": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 3,
+   "options_sample": [
+    "0.0",
+    "0.0_ALT",
+    "3"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     3761,
+     "'MI_TF_AGREE_MIN_TRADIER',"
+    ],
+    [
+     "tradier_manage.py",
+     2741,
+     "'MI_TF_AGREE_MIN_TRADIER',"
+    ],
+    [
+     "tradier_manage.py",
+     19368,
+     "_vf_mi_min = int(_cfg_auto('MI_TF_AGREE_MIN_TRADIER', 3) or 3)"
+    ]
+   ]
+  },
+  "EZ_MANAGE_THROTTLER_RATE": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "0.0",
+    "0.0_ALT"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     8969,
+     "max_calls_per_second=getattr(config, \"EZ_MANAGE_THROTTLER_RATE\", {\"dev\":50,\"prod\":50}).get"
+    ],
+    [
+     "ez_manage.py",
+     13517,
+     "rate_limit=getattr(config, \"EZ_MANAGE_THROTTLER_RATE\", {\"dev\":50,\"prod\":50}).get(current_e"
+    ],
+    [
+     "ez_manage.py",
+     59331,
+     "if bool(getattr(config, \"EZ_MANAGE_THROTTLER_RATE\", False)): _ = 1  # EZ_MANAGE_THROTTLER_"
+    ]
+   ]
+  },
+  "EXECUTE_NOW_SINGLE_GATE_ENFORCE": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 3,
+   "options_sample": [
+    "0.0",
+    "0.0_ALT",
+    "True"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     59330,
+     "_ = _v  # EXECUTE_NOW_SINGLE_GATE_ENFORCE reads close"
+    ],
+    [
+     "tradier_manage.py",
+     32885,
+     "if bool(getattr(config, \"EXECUTE_NOW_SINGLE_GATE_ENFORCE\", False)): _ = 1  # EXECUTE_NOW_S"
+    ],
+    [
+     "ez_positions_quick.py",
+     8972,
+     "if bool(getattr(config, \"EXECUTE_NOW_SINGLE_GATE_ENFORCE\", True)):"
+    ]
+   ]
+  },
+  "HTF_GATE_D_MANDATORY": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 3,
+   "options_sample": [
+    "0.0",
+    "0.0_ALT",
+    "False"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 92,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     37374,
+     "getattr(config, \"HTF_GATE_D_MANDATORY\", True)"
+    ],
+    [
+     "ez_manage.py",
+     59420,
+     "if bool(getattr(config, \"HTF_GATE_D_MANDATORY\", False)): _ = 1  # HTF_GATE_D_MANDATORY \u2014 B"
+    ],
+    [
+     "tradier_manage.py",
+     32918,
+     "if bool(getattr(config, \"HTF_GATE_D_MANDATORY\", False)): _ = 1  # HTF_GATE_D_MANDATORY \u2014 B"
+    ]
+   ]
+  },
+  "HTF_GATE_BYPASS_RZ": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 3,
+   "options_sample": [
+    "0.0",
+    "0.0_ALT",
+    "True"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 92,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     32917,
+     "if bool(getattr(config, \"HTF_GATE_BYPASS_RZ\", False)): _ = 1  # HTF_GATE_BYPASS_RZ \u2014 BATCH"
+    ],
+    [
+     "ez_positions_quick.py",
+     12661,
+     "_htf_bypass_rz = bool(getattr(config, 'HTF_GATE_BYPASS_RZ', True))"
+    ]
+   ]
+  },
+  "HTF_TREND_VETO_BYPASS_REASONS": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "0.0",
+    "0.0_ALT"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     25210,
+     "getattr(config, \"HTF_TREND_VETO_BYPASS_REASONS\", []) or []"
+    ],
+    [
+     "ez_manage.py",
+     59423,
+     "if getattr(config, \"HTF_TREND_VETO_BYPASS_REASONS\", None) is not None: _ = 1  # HTF_TREND_"
+    ],
+    [
+     "tradier_manage.py",
+     32921,
+     "if getattr(config, \"HTF_TREND_VETO_BYPASS_REASONS\", None) is not None: _ = 1  # HTF_TREND_"
+    ]
+   ]
+  },
+  "MTF_FILTER_STRONG_BUY_QUICK_BYPASS": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 3,
+   "options_sample": [
+    "0.0",
+    "0.0_ALT",
+    "True"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     30071,
+     "and bool(getattr(config, \"MTF_FILTER_STRONG_BUY_QUICK_BYPASS\", True))"
+    ],
+    [
+     "ez_manage.py",
+     58701,
+     "if getattr(config, \"MTF_FILTER_STRONG_BUY_QUICK_BYPASS\", None) is not None: _ = 1  # MTF_F"
+    ]
+   ]
+  },
+  "MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "0.0",
+    "0.0_ALT"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     12020,
+     "min_velocity=float(_cfg_auto('MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY', 0.0)),"
+    ]
+   ]
+  },
+  "GOLDEN_RULE_BASE_USD": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 3,
+   "options_sample": [
+    "0.0",
+    "0.0_ALT",
+    "5"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 96,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     17123,
+     "base_usd = float(getattr(config, \"GOLDEN_RULE_BASE_USD\", 5.0))"
+    ],
+    [
+     "ez_manage.py",
+     58469,
+     "if getattr(config, \"GOLDEN_RULE_BASE_USD\", None) is not None: _ = 1  # GOLDEN_RULE_BASE_US"
+    ],
+    [
+     "ez_manage.py",
+     59221,
+     "if float(getattr(config, \"GOLDEN_RULE_BASE_USD\", 0)) > 0:"
+    ]
+   ]
+  },
+  "HTF_GATE_MIN_CONFIRMATIONS": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 3,
+   "options_sample": [
+    "0.0",
+    "0.0_ALT",
+    "2"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 92,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     37376,
+     "_c_min = _cfg_i(\"HTF_GATE_MIN_CONFIRMATIONS\", 3)"
+    ],
+    [
+     "ez_manage.py",
+     59421,
+     "if int(getattr(config, \"HTF_GATE_MIN_CONFIRMATIONS\", 0) or 0) != 0: _ = 1  # HTF_GATE_MIN_"
+    ],
+    [
+     "tradier_manage.py",
+     32919,
+     "if int(getattr(config, \"HTF_GATE_MIN_CONFIRMATIONS\", 0) or 0) != 0: _ = 1  # HTF_GATE_MIN_"
+    ]
+   ]
+  },
+  "GR_FILTER_ALL_ENTRIES": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 3,
+   "options_sample": [
+    "0.0",
+    "0.0_ALT",
+    "False"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 92,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     29834,
+     "bool(getattr(config, \"GR_FILTER_ALL_ENTRIES\", False))"
+    ],
+    [
+     "ez_manage.py",
+     29853,
+     "logger.warning(f\"\ud83d\udfe1 [GR_FILTER_ALL_ENTRIES] {position_key}: BLOCKED {action} \u2014 GR filter fa"
+    ],
+    [
+     "ez_manage.py",
+     29860,
+     "logger.warning(f\"[GR_FILTER_ALL_ENTRIES] check error (fail-open): {_gre}\")"
+    ]
+   ]
+  },
+  "FUNDING_GATE_LONG_MAX": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 3,
+   "options_sample": [
+    "0.0",
+    "0.0005",
+    "0.0_ALT"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 92,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     59339,
+     "_ = _fund  # FUNDING_GATE_LONG_MAX reads funding_rate"
+    ],
+    [
+     "tradier_manage.py",
+     32891,
+     "if float(getattr(config, \"FUNDING_GATE_LONG_MAX\", 0) or 0) != 0: _ = 1  # FUNDING_GATE_LON"
+    ],
+    [
+     "ez_positions_quick.py",
+     12728,
+     "_fr_long_th = float(getattr(config, 'FUNDING_GATE_LONG_MAX', 0.0005))"
+    ]
+   ]
+  },
+  "FUNDING_GATE_MTF_REQUIRED": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 3,
+   "options_sample": [
+    "0.0",
+    "0.0_ALT",
+    "True"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 92,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     59343,
+     "_ = _fund  # FUNDING_GATE_MTF_REQUIRED reads funding_rate"
+    ],
+    [
+     "tradier_manage.py",
+     32892,
+     "if bool(getattr(config, \"FUNDING_GATE_MTF_REQUIRED\", False)): _ = 1  # FUNDING_GATE_MTF_RE"
+    ],
+    [
+     "ez_positions_quick.py",
+     12745,
+     "_fg_mtf_req = bool(getattr(config, 'FUNDING_GATE_MTF_REQUIRED', False))"
+    ]
+   ]
+  },
+  "FUNDING_GATE_SHORT_MIN": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 3,
+   "options_sample": [
+    "-0.0005",
+    "0.0",
+    "0.0_ALT"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 92,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     59347,
+     "_ = _fund  # FUNDING_GATE_SHORT_MIN reads funding_rate"
+    ],
+    [
+     "tradier_manage.py",
+     32893,
+     "if float(getattr(config, \"FUNDING_GATE_SHORT_MIN\", 0) or 0) != 0: _ = 1  # FUNDING_GATE_SH"
+    ],
+    [
+     "ez_positions_quick.py",
+     12729,
+     "_fr_short_th = float(getattr(config, 'FUNDING_GATE_SHORT_MIN', -0.0005))"
+    ]
+   ]
+  },
+  "BB_EXIT_AT_LOSS_TF": {
+   "class": "VEC_ONLY",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 48,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false
+  },
+  "BREAKEVEN_GAIN_EROSION_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "yellow"
+   ],
+   "tabs": [
+    "REDUCE_PROFIT_LOCK"
+   ],
+   "n_options": 5,
+   "options_sample": [
+    "15m",
+    "1h",
+    "4h",
+    "D",
+    "OFF"
+   ],
+   "yellow_cells": 700,
+   "orange_rows": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG",
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     6393,
+     "_ = config.BREAKEVEN_GAIN_EROSION_FILTER_TF"
+    ],
+    [
+     "ez_manage.py",
+     6394,
+     "_ = getattr(config, 'BREAKEVEN_GAIN_EROSION_FILTER_TF', '15m')"
+    ],
+    [
+     "ez_manage.py",
+     6649,
+     "_tf = str(getattr(config, 'BREAKEVEN_GAIN_EROSION_FILTER_TF', '15m'))"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "BB_PULLBACK_GATE_FILTER_TF": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "15m",
+    "1h"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 6,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG",
+    "TEMPLATE_CRYPTO_SHORT",
+    "TEMPLATE_STOCKS_LONG"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     356,
+     "for _f in (\"ATR_TRAIL_FILTER_TF\", \"BAR_PATTERNS_FILTER_TF\", \"BB_PULLBACK_GATE_FILTER_TF\"):"
+    ],
+    [
+     "ez_manage.py",
+     6371,
+     "_ = config.BB_PULLBACK_GATE_FILTER_TF"
+    ],
+    [
+     "ez_manage.py",
+     6372,
+     "_ = getattr(config, 'BB_PULLBACK_GATE_FILTER_TF', '15m')"
+    ]
+   ],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+  },
+  "MTF_EXIT_USE_COMPOUND": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "n_options": 1,
+   "options_sample": [
+    "False"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 1,
+   "templates": [
+    "TEMPLATE_STOCKS_SHORT"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     1775,
+     "_ = getattr(config, 'MTF_EXIT_USE_COMPOUND', None)"
+    ],
+    [
+     "ez_manage.py",
+     47663,
+     "and bool(_psym_get(symbol, position_side, \"MTF_EXIT_USE_COMPOUND\", False))"
+    ],
+    [
+     "tradier_manage.py",
+     7960,
+     "\"MTF_ATR_TRAIL_MULT\", \"MTF_BB_REJECT_EXIT_ENABLED\", \"MTF_DC_REJECT_EXIT_ENABLED\", \"MTF_ENT"
+    ]
+   ]
+  },
+  "DC_MOMENT_STRONG_THRESHOLD": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 4,
+   "options_sample": [
+    "20",
+    "30",
+    "40",
+    "50"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 48,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     6451,
+     "_ = config.DC_MOMENT_STRONG_THRESHOLD"
+    ],
+    [
+     "ez_manage.py",
+     6452,
+     "_ = getattr(config, 'DC_MOMENT_STRONG_THRESHOLD', 0.0)"
+    ],
+    [
+     "ez_manage.py",
+     6827,
+     "_thr = float(getattr(config, 'DC_MOMENT_STRONG_THRESHOLD', 0.0))"
+    ]
+   ]
+  },
+  "FG_FEAR_THRESHOLD": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 4,
+   "options_sample": [
+    "12.5",
+    "18.75",
+    "25",
+    "31.25"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 48,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     41363,
+     "if _fg_val <= getattr(config, \"FG_FEAR_THRESHOLD\", 25):"
+    ],
+    [
+     "ez_manage.py",
+     59334,
+     "if float(getattr(config, \"FG_FEAR_THRESHOLD\", 0) or 0) != 0: _ = 1  # FG_FEAR_THRESHOLD \u2014 "
+    ],
+    [
+     "tradier_manage.py",
+     32889,
+     "if float(getattr(config, \"FG_FEAR_THRESHOLD\", 0) or 0) != 0: _ = 1  # FG_FEAR_THRESHOLD \u2014 "
+    ]
+   ]
+  },
+  "FG_GREED_THRESHOLD": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 4,
+   "options_sample": [
+    "37.5",
+    "56.25",
+    "75",
+    "93.75"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 48,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     41368,
+     "elif _fg_val >= getattr(config, \"FG_GREED_THRESHOLD\", 75):"
+    ],
+    [
+     "ez_manage.py",
+     59335,
+     "if float(getattr(config, \"FG_GREED_THRESHOLD\", 0) or 0) != 0: _ = 1  # FG_GREED_THRESHOLD "
+    ],
+    [
+     "tradier_manage.py",
+     32890,
+     "if float(getattr(config, \"FG_GREED_THRESHOLD\", 0) or 0) != 0: _ = 1  # FG_GREED_THRESHOLD "
+    ]
+   ]
+  },
+  "HA_WICK_QUALITY_SCORE": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "15",
+    "15_ALT"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 24,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_positions_quick.py",
+     4477,
+     "score += getattr(config, 'HA_WICK_QUALITY_SCORE', 15); reasons.append(f\"HA_STREAK_L({_hw_s"
+    ],
+    [
+     "ez_positions_quick.py",
+     4479,
+     "score += getattr(config, 'HA_WICK_QUALITY_SCORE', 15); reasons.append(f\"HA_STREAK_S({_hw_s"
+    ]
+   ]
+  },
+  "MANDATORY_REENTRY_WT_FILTER_MIN_TFS": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 3,
+   "options_sample": [
+    "1",
+    "2",
+    "3"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 36,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     12017,
+     "min_tfs=int(_cfg_auto('MANDATORY_REENTRY_WT_FILTER_MIN_TFS', 1)),"
+    ]
+   ]
+  },
+  "MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "False",
+    "False_ALT"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 24,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     12018,
+     "require_flip=bool(_cfg_auto('MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP', True)),"
+    ]
+   ]
+  },
+  "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 2,
+   "options_sample": [
+    "0.90",
+    "0.90_ALT"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 24,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     12019,
+     "velocity_ratio=float(_cfg_auto('MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO', 0.90)),"
+    ]
+   ]
+  },
+  "MOVER_THRESHOLD": {
+   "class": "LIVE_ONLY",
+   "in_quickconfig": true,
+   "vec_read": false,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py",
+    "ez_positions_quick.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 4,
+   "options_sample": [
+    "2.5",
+    "3.75",
+    "5",
+    "6.25"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 48,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_positions_quick.py",
+     4907,
+     "threshold = getattr(config, 'MOVER_THRESHOLD', 5.0)"
+    ]
+   ]
+  },
+  "CRYPTO_SPIKE_FADE_THRESHOLD_PCT": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 4,
+   "options_sample": [
+    "10",
+    "12.5",
+    "5",
+    "7.5"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 48,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     6435,
+     "_ = config.CRYPTO_SPIKE_FADE_THRESHOLD_PCT"
+    ],
+    [
+     "ez_manage.py",
+     6436,
+     "_ = getattr(config, 'CRYPTO_SPIKE_FADE_THRESHOLD_PCT', 0.0)"
+    ],
+    [
+     "ez_manage.py",
+     6779,
+     "_thr = float(getattr(config, 'CRYPTO_SPIKE_FADE_THRESHOLD_PCT', 0.0))"
+    ]
+   ]
+  },
+  "KINDERGARTEN_EMA_GATE_ENABLED": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 1,
+   "options_sample": [
+    "False"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 11,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "ez_manage.py",
+     285,
+     "\"\"\"KINDERGARTEN 2026-09-10 \u2014 any-or-all of 200SMA/EMA, 9/21 cross, 50 EMA/SMA cross are th"
+    ],
+    [
+     "ez_manage.py",
+     287,
+     "if not bool(getattr(config, \"KINDERGARTEN_EMA_GATE_ENABLED\", False)):"
+    ],
+    [
+     "tradier_manage.py",
+     7068,
+     "_ = getattr(config, \"KINDERGARTEN_EMA_GATE_ENABLED\", False)"
+    ]
+   ]
+  },
+  "EMA_9_21_FILTER_ENABLED": {
+   "class": "BOTH_WIRED",
+   "in_quickconfig": true,
+   "vec_read": true,
+   "live_read_files": [
+    "tradier_manage.py"
+   ],
+   "colors": [
+    "orange"
+   ],
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "n_options": 1,
+   "options_sample": [
+    "True"
+   ],
+   "yellow_cells": 0,
+   "orange_rows": 11,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG"
+   ],
+   "dead_vec_listed": false,
+   "in_progress": false,
+   "live_functional_hits": [
+    [
+     "tradier_manage.py",
+     7924,
+     "\"DYNAMIC_SCORE_COUNTER_EXIT_ENABLED\", \"DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD\", \"EMA20_SLOPE"
+    ],
+    [
+     "tradier_manage.py",
+     26683,
+     "if _cfg_auto('EMA_9_21_FILTER_ENABLED', False) or _cfg_auto('KINDERGARTEN_EMA_GATE_ENABLED"
+    ],
+    [
+     "tradier_manage.py",
+     27034,
+     "if _cfg_auto('EMA_9_21_FILTER_ENABLED', False) or _cfg_auto('KINDERGARTEN_EMA_GATE_ENABLED"
+    ]
+   ]
+  }
+ },
+ "methodology_note": "functional read = literal cfg/config read outside 7 dead scaffold functions, excluding bare '_ =' discards, the _b4_* write-only farm (engine:8771 '# prove vector read' fake-audit tuple), live no-op stub blocks (_=_x # NAME sentinels, '_ = config.NAME' discards) and quoted registry entries. Dynamic hash-proxy FILTER_TF dispatcher (engine:11907) is inside DESTROYED _apply_625_entry_gates and counts as dead."
+}

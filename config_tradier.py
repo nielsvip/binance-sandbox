@@ -63,11 +63,17 @@ class TradierConfig:
     # Blocks persist in data/vigilance_blocks_tradier.json until manually removed ("until
     # further analysis"). Exits/reduces always pass. Separate state from ez_manage's crypto
     # guard — venues never share vigilance state. ROLLBACK: VIGILANCE_GUARD_ENABLED=False.
-    VIGILANCE_GUARD_ENABLED: bool = True
+    # 2026-09-28 USER (4th vigilance mandate): DC4 vigilance is "one of many exit switches to be
+    # tried NOT a hardcoded exit path... it needs to be a switch not a default" — default OFF,
+    # promoted per sym_side via sweep proof like any other exit switch.
+    VIGILANCE_GUARD_ENABLED: bool = False
     # USER 2026-09-28 (3rd mandate): "we do not use fix %" — NO fixed-percentage stop. The vigilance
     # loss trigger is STRUCTURAL: position at a loss AND price breaches dc_low4_{TF} (LONG) /
     # dc_high4_{TF} (SHORT). TF granted by user: 15m. OFF disables the structural stop.
     VIGILANCE_DC4_STOP_TF: str = "15m"
+    # 2026-09-28 USER (4th mandate): a touch is not a breach — the level needs >=0.25% tolerance
+    # (same convention as dc_low_15m - 0.25% exits) to be credible.
+    VIGILANCE_DC4_BREACH_TOLERANCE_PCT: float = 0.25
     VIGILANCE_CONSEC_LOSSES: int = 2
     # USER 2026-09-28 (2nd mandate): the block is a circuit breaker, NOT a graveyard. A blocked
     # sym_side auto-unblocks and KEEPS TRADING the moment it recovers: price back past the

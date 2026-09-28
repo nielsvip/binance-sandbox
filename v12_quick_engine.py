@@ -159,6 +159,7 @@ import vec_decisions.frozen_floor_exit
 import vec_decisions.gap_risk_exit
 import vec_decisions.market_crash_blanket
 import vec_decisions.gain_ladder_augment
+import vec_decisions.reduce_profit_lock
 import vec_decisions.momentum_watchdog
 import vec_decisions.shared_zone
 try:
@@ -5884,8 +5885,14 @@ class QuickConfig:
     WT_15M_BOUNCE_HIGH_1H_GT_PREV: bool = False  # alias for FILTER_HH — template row WT_15M_BOUNCE_HIGH_1H_GT_PREV
     WT_15M_BOUNCE_REL_VOL_GT_1: bool = False  # alias for VOLUME_FILTER — template row WT_15M_BOUNCE_REL_VOL_GT_1
     SIMPLE_PRICE_GT0_ENABLED: bool = False  # SIMPLE price>0 test — ridiculously simple, always trades when enabled (added 2026-09-06 alongside WT15, never fails)
-    # ═══ VIGILANCE GUARD (USER EXTREME VIGILANCE 2026-09-28) — live-parity defaults ═══
-    VIGILANCE_GUARD_ENABLED: bool = True     # structural DC4 loss stop + consec-loss block (USER: NO fixed %)
+    # ═══ VIGILANCE GUARD (USER 2026-09-28) ═══
+    # USER DESIGN ORDER 2026-09-28 (later same day): the DC4 stop is "one of many exit switches
+    # to be tried NOT a hardcoded exit path" — VIGILANCE_GUARD_ENABLED (same name as live
+    # config.py:1567 / config_tradier.py:66) default flipped True→False in lockstep with the
+    # live twin, and the breach needs the same channel tolerance the other dc exits use
+    # (dc_low_15m - 0.25% convention, DAYTRADE/TECHNICAL_DC_STOP_BUFFER_PCT).
+    VIGILANCE_GUARD_ENABLED: bool = False    # sweepable switch; False = DC4 stop + consec-loss block + recovery all inert
+    VIGILANCE_DC4_BREACH_TOLERANCE_PCT: float = 0.25  # breach depth beyond the dc4 level, % of level
     VIGILANCE_DC4_STOP_TF: str = "15m"       # losing position + px breach dc_low4_{TF}/dc_high4_{TF} → close+block; OFF disables
     VIGILANCE_CONSEC_LOSSES: int = 2         # losing closes in a row that block the sym_side
     VIGILANCE_RECOVERY_REENTRY_ENABLED: bool = True  # USER 2026-09-28 2nd mandate: auto-unblock on recovery, KEEP TRADING
@@ -21841,6 +21848,18 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     augment_sig, augment_mult = compute_augment_signals(npz, n, is_long, cfg)
     reduce_sig, reduce_frac, qr_cond = compute_reduce_signals(npz, n, is_long, cfg)
     events = []  # AUGMENT / partial-REDUCE ledger events — merged into 'ledger' only, never into trade metrics
+    # NOLOSS_BYPASS_WT_5OF5 (tradier_manage.py:19067-19086): per-bar count of WT TFs against
+    _nlb_against = None
+    try:
+        if vec_decisions.reduce_profit_lock.noloss_bypass_params(cfg)[0]:
+            _nlb_against = np.zeros(n, dtype=np.int8)
+            for _nlb_tf in ('5m', '15m', '1h', '4h', 'D'):
+                _nlb_w1 = _safe(npz, f'wt1_{_nlb_tf}', n, 0.0)
+                _nlb_w2 = _safe(npz, f'wt2_{_nlb_tf}', n, 0.0)
+                _nlb_a = ((_nlb_w1 < _nlb_w2) if is_long else (_nlb_w1 > _nlb_w2)) & ~((_nlb_w1 == 0) & (_nlb_w2 == 0))
+                _nlb_against = _nlb_against + _nlb_a.astype(np.int8)
+    except Exception:
+        _nlb_against = None
     regime_mult = compute_regime_sizing_mult(npz, n, is_long, cfg)
     # 2026-09-10 GAP SENTINEL vector hook — per-symbol 20d gap bias → exit in last 90m at small top
     # Vectorizable: uses only npz open_D/close_D_prev/wt1_15m/wt2_15m/ha_15m. Live aggregates market-wide;
@@ -22223,7 +22242,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # of the live guards: a LOSING position whose price breaches dc_low4_{TF} (long) / dc_high4_{TF}
     # (short) forces an immediate close, and that stop OR VIGILANCE_CONSEC_LOSSES consecutive losing
     # closes blocks the sym_side until recovery. Default ON = live parity. NO fixed-% stop.
-    _vig_enabled = bool(getattr(cfg, 'VIGILANCE_GUARD_ENABLED', True))
+    _vig_enabled = bool(getattr(cfg, 'VIGILANCE_GUARD_ENABLED', False))  # USER: a switch, not a default — False = whole guard inert
+    _vig_tol = float(getattr(cfg, 'VIGILANCE_DC4_BREACH_TOLERANCE_PCT', 0.25) or 0.0) / 100.0  # dc_low_15m - 0.25% convention
     _vig_dc_tf = str(getattr(cfg, 'VIGILANCE_DC4_STOP_TF', '15m') or 'OFF').strip()
     _vig_need = int(getattr(cfg, 'VIGILANCE_CONSEC_LOSSES', 2))
     _vig_blocked = False
@@ -22311,7 +22331,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
 
     def _open(qty0, px, i, entry_reason='VECTOR_ENTRY'):
         # Store original entry price/bar for ledger — avg_price may drift after augments
-        return {'qty': qty0, 'avg_price': px, 'entry_price': px, 'deployed': abs(qty0 * px), 'realized': 0.0,
+        _ts_open = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+        # OPEN ledger event for charts/parity — no pnl/bar_exit keys, so every trade metric skips it
+        events.append({'type': 'OPEN', 'ts': _ts_open, 'price': float(px), 'qty': float(qty0), 'pos_deployed': abs(qty0 * px), 'bar': int(i), 'reason': str(entry_reason)})
+        return {'qty': qty0, 'avg_price': px, 'entry_price': px, 'entry_qty': qty0, 'deployed': abs(qty0 * px), 'realized': 0.0,
                 'entry_bar': i, 'peak_pnl_pct': 0.0, 'fees': abs(qty0 * px) * half_fee, 'entry_reason': entry_reason}
 
     for i in range(n):
@@ -22554,13 +22577,16 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _vig_dc_hit = False
         if _vig_enabled and _vig_dc_lvl is not None and live_pnl_pct < 0:
             _vg_lvl = float(_vig_dc_lvl[i]) if i < len(_vig_dc_lvl) else 0.0
-            _vig_dc_hit = _vg_lvl > 0 and ((is_long and px <= _vg_lvl) or ((not is_long) and px >= _vg_lvl))
+            # breach must clear the channel level by the tolerance (same shape as DAYTRADE/TECHNICAL
+            # dc stops: level*(1∓tol)) — tolerance on the LEVEL, never a loss floor
+            _vig_dc_hit = _vg_lvl > 0 and ((is_long and px <= _vg_lvl * (1 - _vig_tol)) or ((not is_long) and px >= _vg_lvl * (1 + _vig_tol)))
         if _vig_dc_hit:
             pos['fees'] += abs(pos['qty'] * px) * half_fee
             _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
             _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
             _tsv = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
-            _vg_reason = f"VIGILANCE_DC4_{_vig_dc_tf}_STOP g{live_pnl_pct:.2f} px{px:.6f}<=lvl{_vg_lvl:.6f} close+block" if is_long else f"VIGILANCE_DC4_{_vig_dc_tf}_STOP g{live_pnl_pct:.2f} px{px:.6f}>=lvl{_vg_lvl:.6f} close+block"
+            _vg_depth = ((_vg_lvl - px) / _vg_lvl * 100.0) if is_long else ((px - _vg_lvl) / _vg_lvl * 100.0)
+            _vg_reason = f"VIGILANCE_DC4_{_vig_dc_tf}_STOP g{live_pnl_pct:.2f} breach{_vg_depth:.2f}%>=tol{_vig_tol*100:.2f}% px{px:.6f}{'<=' if is_long else '>='}lvl{_vg_lvl:.6f} close+block"
             trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _vg_reason, 'type': 'CLOSE', 'ts': _tsv, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _vg_reason, 'bars_held': int(i - pos['entry_bar'])})
             pos = None; cd = cooldown_bars; has_closed_before = True
             _vig_blocked = True
@@ -22646,11 +22672,65 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     pos['last_aug_px'] = float(px)
                     pos['last_aug_bar'] = int(i)
                     pos['n_augments'] = int(pos.get('n_augments', 0)) + 1
+                    pos['last_aug_qty'] = float(add_qty)
+                    pos['dd_armed'] = True  # WT_D_BOUNCE_DD_STOP leg re-armed by every augment
                     live_pnl_pct = ((px - pos['avg_price']) / pos['avg_price'] * 100) if is_long else ((pos['avg_price'] - px) / pos['avg_price'] * 100)
                     _ts_aug = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
                     # event row: NO pnl_dollars/pnl_pct/bar_entry/bar_exit keys — metric
                     # consumers key on those fields and must never count position scaling
                     events.append({'type': 'AUGMENT', 'ts': _ts_aug, 'price': float(px), 'qty': float(add_qty), 'pos_deployed': float(pos['deployed']), 'bar': int(i), 'reason': _gl_reason or 'VEC_AUGMENT_SIG'})
+
+        # ═══ PARTIAL_PROFIT_LOCK v2 (2026-09-28 parity round 3) — faithful state machine of
+        # tradier_manage.py:18720-18798 / ez_positions_quick.py:18586-18640 via
+        # vec_decisions.reduce_profit_lock.ppl_step (TP -> BE stop -> arm upgrade -> SL close).
+        _ppl_action, _ppl_frac, _ppl_reason, pos['ppl'] = vec_decisions.reduce_profit_lock.ppl_step(
+            cfg, is_tradier, is_long, px, float(pos.get('entry_price', pos['avg_price'])), live_pnl_pct, pos.get('ppl') or {})
+        if _ppl_action == 'CLOSE_REMAINDER':
+            pos['fees'] += abs(pos['qty'] * px) * half_fee
+            _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
+            _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
+            _tsp = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+            trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _ppl_reason, 'type': 'CLOSE', 'ts': _tsp, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _ppl_reason, 'bars_held': int(i - pos['entry_bar'])})
+            pos = None; cd = cooldown_bars; has_closed_before = True
+            continue
+        if _ppl_action == 'REDUCE' and pos['qty'] > 0:
+            _ppl_qty = pos['qty'] * min(_ppl_frac, 1.0)
+            if pos['qty'] - _ppl_qty < 0.10 * float(pos.get('entry_qty', pos['qty'])):
+                _ppl_qty = pos['qty']  # sim flat-floor (live whole-share floor, USER 2026-07-22)
+            _realized_ppl = (px - pos['avg_price']) * _ppl_qty if is_long else (pos['avg_price'] - px) * _ppl_qty
+            pos['realized'] += _realized_ppl
+            pos['fees'] += abs(_ppl_qty * px) * half_fee
+            pos['qty'] -= _ppl_qty
+            _tsp2 = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+            if pos['qty'] <= 1e-9:
+                _pnl2 = pos['realized'] - pos['fees']
+                _pct2 = _pnl2 / pos['deployed'] * 100 if pos['deployed'] else 0.0
+                trades.append({'pnl_dollars': _pnl2, 'pnl_pct': float(_pct2), 'deployed': pos['deployed'], 'reason': _ppl_reason, 'type': 'REDUCE', 'ts': _tsp2, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': 0.0, 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _ppl_reason, 'bars_held': int(i - pos['entry_bar'])})
+                pos = None; cd = cooldown_bars; has_closed_before = True
+                continue
+            events.append({'type': 'REDUCE', 'ts': _tsp2, 'price': float(px), 'qty': float(_ppl_qty), 'pos_deployed': float(pos['deployed']), 'bar': int(i), 'reason': _ppl_reason})
+            pos['last_reduce_bar'] = int(i)
+        # ═══ WT_D_BOUNCE_DD_STOP (tradier_manage.py:11705-11716): price back through the last
+        # augment price cuts that augment leg, once per leg (re-armed by the next augment).
+        if pos is not None and vec_decisions.reduce_profit_lock.dd_bounce_stop_fires(
+                cfg, is_long, px, float(pos.get('last_aug_px', 0.0) or 0.0), float(pos.get('last_aug_qty', 0.0) or 0.0), bool(pos.get('dd_armed'))):
+            _dd_qty = min(float(pos['last_aug_qty']), pos['qty'])
+            _dd_reason = f"DD_BOUNCE_STOP px{px:.4f} aug_px{float(pos['last_aug_px']):.4f} qty{_dd_qty:.4f}"
+            _realized_dd = (px - pos['avg_price']) * _dd_qty if is_long else (pos['avg_price'] - px) * _dd_qty
+            pos['realized'] += _realized_dd
+            pos['fees'] += abs(_dd_qty * px) * half_fee
+            pos['qty'] -= _dd_qty
+            pos['dd_armed'] = False
+            pos['last_aug_qty'] = 0.0
+            _tsd = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+            if pos['qty'] <= 1e-9:
+                _pnl3 = pos['realized'] - pos['fees']
+                _pct3 = _pnl3 / pos['deployed'] * 100 if pos['deployed'] else 0.0
+                trades.append({'pnl_dollars': _pnl3, 'pnl_pct': float(_pct3), 'deployed': pos['deployed'], 'reason': _dd_reason, 'type': 'REDUCE', 'ts': _tsd, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': 0.0, 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _dd_reason, 'bars_held': int(i - pos['entry_bar'])})
+                pos = None; cd = cooldown_bars; has_closed_before = True
+                continue
+            events.append({'type': 'REDUCE', 'ts': _tsd, 'price': float(px), 'qty': float(_dd_qty), 'pos_deployed': float(pos['deployed']), 'bar': int(i), 'reason': _dd_reason})
+            pos['last_reduce_bar'] = int(i)
 
         closed = False
         reason = None
@@ -22712,9 +22792,19 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         # gain conditions (ez_positions_quick.py:3454/3488) are applied here with the REAL
         # simulated gain — the old precomputed path read nonexistent npz['gain_pct'] (zeros).
         _qr_fire = bool(qr_cond[i]) and bool(getattr(cfg, 'HLR_TOP_EXIT_ENABLED', True)) and vec_decisions.quick_reduce_strong.quick_reduce_gain_ok(cfg, live_pnl_pct)
-        if pos['qty'] > 0 and ((reduce_sig[i] and reduce_frac[i] > 0) or _qr_fire):
-            frac = min(max(float(reduce_frac[i]), 0.5 if _qr_fire else 0.0), 1.0)
+        # live pacing: the execute-path dedup map spaces orders by AUGMENTATION_COOLDOWN_SECONDS
+        # (ez_manage.py:28272/28326) — partial reduces obey it too; kills per-bar halving cascades
+        _red_cd_ok = (i - int(pos.get('last_reduce_bar', -10**9))) >= vec_decisions.gain_ladder_augment.cooldown_bars(cfg, bmin)
+        if pos['qty'] > 0 and (_qr_fire or (reduce_sig[i] and reduce_frac[i] > 0 and _red_cd_ok)):
+            # HLR_TOP_EXIT = "sell the top": live stores the FULL position qty in
+            # _hlr_top_exit_registry and reenters at prev_qty*mult (ez_positions_quick.py:3715-3718,
+            # 16312) — a one-shot full exit, never a per-bar halving
+            frac = 1.0 if _qr_fire else min(float(reduce_frac[i]), 1.0)
             reduce_qty = pos['qty'] * frac
+            # sim floor: live min-qty sizing cannot leave dust (self.min_qty order rejection) —
+            # a remainder under 10% of the entry qty goes to flat instead of decaying forever
+            if pos['qty'] - reduce_qty < 0.10 * float(pos.get('entry_qty', pos['qty'])):
+                reduce_qty = pos['qty']
             realized = (px - pos['avg_price']) * reduce_qty if is_long else (pos['avg_price'] - px) * reduce_qty
             pos['realized'] += realized
             pos['fees'] += abs(reduce_qty * px) * half_fee
@@ -22723,14 +22813,16 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 pnl_dollars = pos['realized'] - pos['fees']
                 pnl_pct = pnl_dollars / pos['deployed'] * 100 if pos['deployed'] else 0.0
                 _ts_exit2 = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
-                trades.append({'pnl_dollars': pnl_dollars, 'pnl_pct': float(pnl_pct), 'deployed': pos['deployed'], 'reason': 'REDUCE_TO_FLAT', 'type': 'REDUCE', 'ts': _ts_exit2, 'price': float(px),
-                               'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos.get('qty',0)), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': 'REDUCE_TO_FLAT', 'bars_held': int(i - pos['entry_bar'])})
+                _red_reason = f'HLR_TOP_EXIT_SELL_TOP_g={live_pnl_pct:.2f}%' if _qr_fire else 'REDUCE_TO_FLAT'
+                trades.append({'pnl_dollars': pnl_dollars, 'pnl_pct': float(pnl_pct), 'deployed': pos['deployed'], 'reason': _red_reason, 'type': 'REDUCE', 'ts': _ts_exit2, 'price': float(px),
+                               'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos.get('qty',0)), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _red_reason, 'bars_held': int(i - pos['entry_bar'])})
                 pos = None; cd = cooldown_bars; has_closed_before = True
             else:
                 _ts_red = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
                 # partial reduce event: realized pnl stays inside the position and lands in
                 # its eventual CLOSE row; no pnl/bar_entry/bar_exit keys so metrics skip it
                 events.append({'type': 'REDUCE', 'ts': _ts_red, 'price': float(px), 'qty': float(reduce_qty), 'pos_deployed': float(pos['deployed']), 'bar': int(i), 'reason': 'QUICK_REDUCE_STRONG' if _qr_fire else 'REGIME_REDUCE'})
+                pos['last_reduce_bar'] = int(i)
             continue
 
         # MTF_ATR_TRAIL faithful twin (prep block above). Placed BEFORE the exit_sig technical
@@ -22802,7 +22894,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 continue
             pnl_preview = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty'])
             pnl_pct_preview = pnl_preview / pos['deployed'] * 100 if pos['deployed'] > 0 else 0.0
-            if cfg.NOLOSS_ENABLED and pnl_pct_preview < 0:
+            # NOLOSS_BYPASS_WT_5OF5: >= MIN_TFS WT TFs against -> allow the loss exit
+            _nlb_bypass = _nlb_against is not None and vec_decisions.reduce_profit_lock.noloss_bypass_pass(cfg, int(_nlb_against[i]) if i < len(_nlb_against) else 0)
+            if cfg.NOLOSS_ENABLED and pnl_pct_preview < 0 and not _nlb_bypass:
                 if cfg.DC_RECOVERY_EXIT_ENABLED:
                     if is_long:
                         stranded = pos['avg_price'] > dc_high_4h[i] and dc_high_4h[i] > 0
