@@ -1815,5 +1815,23 @@
     ],
     "timestamp": "2026-09-28T10:19:33.733260+00:00",
     "price": 205.4
+  },
+  {
+    "symbol": "NMRUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.3x (from rankings)"
+    ],
+    "timestamp": "2026-09-28T11:01:58.771236+00:00",
+    "price": 9.52652438
+  },
+  {
+    "symbol": "NVDAUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 6.2x (from rankings)"
+    ],
+    "timestamp": "2026-09-28T11:04:23.327180+00:00",
+    "price": 224.14
   }
 ]
