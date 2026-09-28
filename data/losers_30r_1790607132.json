@@ -1,15 +1,15 @@
 [
   {
     "symbol": "HBARUSDC",
-    "returns_15m": -18.679481821980783,
-    "returns_3m": -17.17739189649302,
-    "gain_score": -18.679
+    "returns_15m": -18.72024058140506,
+    "returns_3m": -18.01482979440512,
+    "gain_score": -18.72
   },
   {
     "symbol": "NMRUSDT",
-    "returns_15m": -13.322731690078635,
-    "returns_3m": -16.84888549877108,
-    "gain_score": -13.323
+    "returns_15m": -14.575533304309966,
+    "returns_3m": -17.01767740844118,
+    "gain_score": -14.576
   },
   {
     "symbol": "ALGOUSDT",
@@ -31,21 +31,21 @@
   },
   {
     "symbol": "ZROUSDT",
-    "returns_15m": -5.90515570487144,
-    "returns_3m": -5.157593123209179,
-    "gain_score": -5.905
+    "returns_15m": -6.129552046406714,
+    "returns_3m": -4.853988371333379,
+    "gain_score": -6.13
   },
   {
     "symbol": "XLMUSDT",
-    "returns_15m": -5.257760860646403,
-    "returns_3m": -4.205360435103241,
-    "gain_score": -5.258
+    "returns_15m": -5.50329635355097,
+    "returns_3m": -4.001824480369517,
+    "gain_score": -5.503
   },
   {
     "symbol": "LINKUSDC",
-    "returns_15m": -5.037520844913839,
-    "returns_3m": -4.580046079731904,
-    "gain_score": -5.038
+    "returns_15m": -5.248197448696615,
+    "returns_3m": -4.245778743081342,
+    "gain_score": -5.248
   },
   {
     "symbol": "POLUSDT",
@@ -61,9 +61,15 @@
   },
   {
     "symbol": "NVDAUSDT",
-    "returns_15m": -3.491487339037241,
-    "returns_3m": -2.488648271044354,
-    "gain_score": -3.491
+    "returns_15m": -3.5331720801658633,
+    "returns_3m": -2.9842317883671448,
+    "gain_score": -3.533
+  },
+  {
+    "symbol": "PENGUUSDC",
+    "returns_15m": -3.277687296416932,
+    "returns_3m": -0.8713142323003877,
+    "gain_score": -3.278
   },
   {
     "symbol": "GRAMUSDT",
@@ -78,10 +84,28 @@
     "gain_score": -2.79
   },
   {
-    "symbol": "VIRTUALUSDT",
-    "returns_15m": -2.6204142750187196,
-    "returns_3m": -0.6113092205807471,
-    "gain_score": -2.445
+    "symbol": "TRBUSDT",
+    "returns_15m": -2.7124868835257057,
+    "returns_3m": -1.0248198558847086,
+    "gain_score": -2.712
+  },
+  {
+    "symbol": "XRPUSDC",
+    "returns_15m": -2.4736388354665504,
+    "returns_3m": -0.7625345839800316,
+    "gain_score": -2.474
+  },
+  {
+    "symbol": "ZECUSDC",
+    "returns_15m": -2.5396122584522023,
+    "returns_3m": -0.611502438269217,
+    "gain_score": -2.446
+  },
+  {
+    "symbol": "ETHFIUSDC",
+    "returns_15m": -2.436194895591653,
+    "returns_3m": -0.8693089730366902,
+    "gain_score": -2.436
   },
   {
     "symbol": "1000PEPEUSDC",
@@ -90,34 +114,16 @@
     "gain_score": -2.379
   },
   {
-    "symbol": "XRPUSDC",
-    "returns_15m": -2.3635639357323117,
-    "returns_3m": -1.2025529056096762,
-    "gain_score": -2.364
-  },
-  {
     "symbol": "HOODUSDT",
     "returns_15m": -2.361542986805604,
     "returns_3m": -0.7093410819588054,
     "gain_score": -2.362
   },
   {
-    "symbol": "ZECUSDC",
-    "returns_15m": -2.4297574042060144,
-    "returns_3m": -0.5845689288064694,
-    "gain_score": -2.338
-  },
-  {
     "symbol": "BMNRUSDT",
     "returns_15m": -2.300949598246892,
     "returns_3m": -1.1090573012939027,
     "gain_score": -2.301
-  },
-  {
-    "symbol": "PENGUUSDC",
-    "returns_15m": -3.188996434029554,
-    "returns_3m": -0.5519773431825541,
-    "gain_score": -2.208
   },
   {
     "symbol": "COINUSDT",
@@ -127,21 +133,15 @@
   },
   {
     "symbol": "USUALUSDT",
-    "returns_15m": -2.128781793842037,
-    "returns_3m": -0.7536822100047496,
-    "gain_score": -2.129
+    "returns_15m": -2.1484307033393555,
+    "returns_3m": -0.6862731780207848,
+    "gain_score": -2.148
   },
   {
-    "symbol": "TRBUSDT",
-    "returns_15m": -2.0960929250264098,
-    "returns_3m": -1.3670212765957523,
-    "gain_score": -2.096
-  },
-  {
-    "symbol": "ETHFIUSDC",
-    "returns_15m": -2.3654041503410377,
-    "returns_3m": -0.5028098195800161,
-    "gain_score": -2.011
+    "symbol": "VIRTUALUSDT",
+    "returns_15m": -2.5961058412381477,
+    "returns_3m": -0.49725870202728734,
+    "gain_score": -1.989
   },
   {
     "symbol": "COMPUSDT",
@@ -156,6 +156,12 @@
     "gain_score": -1.864
   },
   {
+    "symbol": "MSTRUSDT",
+    "returns_15m": -1.8013446657363972,
+    "returns_3m": -0.5332476710568664,
+    "gain_score": -1.801
+  },
+  {
     "symbol": "MORPHOUSDT",
     "returns_15m": -1.7804269908056751,
     "returns_3m": -1.1837102653549088,
@@ -168,15 +174,9 @@
     "gain_score": -1.777
   },
   {
-    "symbol": "MSTRUSDT",
-    "returns_15m": -1.813800101471343,
-    "returns_3m": -0.43089587754840564,
-    "gain_score": -1.724
-  },
-  {
-    "symbol": "1INCHUSDT",
-    "returns_15m": -1.6202531645569662,
-    "returns_3m": -0.5324050373707448,
-    "gain_score": -1.62
+    "symbol": "VETUSDT",
+    "returns_15m": -1.756373937677041,
+    "returns_3m": -0.6303724928366704,
+    "gain_score": -1.756
   }
 ]

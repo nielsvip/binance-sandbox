@@ -94,6 +94,16 @@
       "blocked_at": "2026-09-28T14:29:22.391079+00:00",
       "reason": "DC4_15m_BREACH_g-1.84pct_px124.8250_lvl124.8700",
       "exit_price": 124.825
+    },
+    "CLS_LONG": {
+      "blocked_at": "2026-09-28T14:44:39.580845+00:00",
+      "reason": "DC4_15m_BREACH_g-0.37pct_px353.8900_lvl357.4850",
+      "exit_price": 353.89
+    },
+    "SMCI_LONG": {
+      "blocked_at": "2026-09-28T14:45:59.581619+00:00",
+      "reason": "DC4_15m_BREACH_g-0.77pct_px41.1150_lvl41.2250",
+      "exit_price": 41.114999999999995
     }
   },
   "streaks": {
@@ -198,12 +208,17 @@
       ]
     },
     "AMZN_LONG": {
-      "consec_losses": 1,
+      "consec_losses": 0,
       "last": [
         {
           "ts": "2026-09-28T13:44:53.289242+00:00",
           "gain_pct": -1.845,
           "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-1.70_lvl245.6750_qty_999999"
+        },
+        {
+          "ts": "2026-09-28T14:36:03.667854+00:00",
+          "gain_pct": 0.3516,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-0.10_lvl245.6750_qty_999999"
         }
       ]
     },
@@ -274,6 +289,36 @@
           "ts": "2026-09-28T14:15:13.588939+00:00",
           "gain_pct": 0.2311,
           "reason": "WT_CROSSOVER_FINAL_5m_15m_1hTrue_4hTrue_DFalse_g0.26%_hold5431m_MANDATORY_REENTRY_qty_999999"
+        },
+        {
+          "ts": "2026-09-28T14:43:35.149610+00:00",
+          "gain_pct": 0.0667,
+          "reason": "WT_CROSSOVER_FINAL_5m_15m_1hTrue_4hTrue_DFalse_g0.09%_hold5438m_MANDATORY_REENTRY_qty_999999"
+        }
+      ]
+    },
+    "RS_SHORT": {
+      "consec_losses": 1,
+      "last": [
+        {
+          "ts": "2026-09-28T14:38:51.955997+00:00",
+          "gain_pct": 0.1488,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_SHORT_g-0.55_lvl389.4550_qty_999999"
+        },
+        {
+          "ts": "2026-09-28T14:45:58.535625+00:00",
+          "gain_pct": -0.3701,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_SHORT_g-0.46_lvl389.4550_qty_999999"
+        }
+      ]
+    },
+    "NKE_SHORT": {
+      "consec_losses": 1,
+      "last": [
+        {
+          "ts": "2026-09-28T14:46:09.994522+00:00",
+          "gain_pct": -1.6097,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_SHORT_g-1.25_lvl36.1450_qty_999999"
         }
       ]
     }
