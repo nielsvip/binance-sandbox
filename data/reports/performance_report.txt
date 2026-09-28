@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-28 11:10 UTC
+PERFORMANCE REPORT — 2026-09-28 12:10 UTC
 ================================================================================
 Total: 145 symbols | A=3 B=101 C=41
 Window: 14 days | Min trades: 5
@@ -108,7 +108,7 @@ Window: 14 days | Min trades: 5
              CIBR  WR=0%  avg=-1.17%  total=-3.5%  trades=  3  mult=1.00
          SANDUSDT  WR=45%  avg=-0.13%  total=-4.3%  trades= 33  mult=0.57
              AVGO  WR=0%  avg=-1.32%  total=-5.2%  trades=  4  mult=1.00
-         IOTXUSDT  WR=47%  avg=-0.14%  total=-7.0%  trades= 51  mult=0.60
+         IOTXUSDT  WR=48%  avg=-0.14%  total=-7.0%  trades= 50  mult=0.63
              AXON  WR=49%  avg=-0.76%  total=-25.0%  trades= 37  mult=0.29
 
 --- TIER C (41 symbols) ---
@@ -125,11 +125,11 @@ Window: 14 days | Min trades: 5
               LOW  WR=41%  avg=-0.04%  total=-1.3%  trades= 32  mult=0.54
              NFLX  WR=0%  avg=-0.37%  total=-1.8%  trades=  5  mult=0.44
           SOLUSDC  WR=40%  avg=-0.04%  total=-2.0%  trades= 50  mult=0.52
-          XLMUSDT  WR=44%  avg=-0.05%  total=-2.3%  trades= 45  mult=0.63 ** OPEN **
            ARUSDT  WR=29%  avg=-0.36%  total=-2.5%  trades=  7  mult=0.51
              QBTS  WR=36%  avg=-0.06%  total=-3.2%  trades= 44  mult=0.44
+          XLMUSDT  WR=39%  avg=-0.08%  total=-3.4%  trades= 41  mult=0.47 ** OPEN **
          EGLDUSDT  WR=7%  avg=-0.25%  total=-3.4%  trades= 14  mult=0.26
-          SNXUSDT  WR=38%  avg=-0.15%  total=-3.5%  trades= 24  mult=0.41
+          SNXUSDT  WR=38%  avg=-0.15%  total=-3.5%  trades= 24  mult=0.41 ** OPEN **
              NVDA  WR=0%  avg=-0.36%  total=-4.6%  trades= 13  mult=0.23
               NKE  WR=37%  avg=-0.15%  total=-4.6%  trades= 30  mult=0.40
        RAYSOLUSDT  WR=29%  avg=-0.91%  total=-6.3%  trades=  7  mult=0.39
@@ -155,7 +155,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=30%  avg=-2.31%  total=-67.3%  trades= 47  mult=0.15
 
 SUMMARY:
-  Total PnL (all symbols): +642.7%
+  Total PnL (all symbols): +641.7%
   Avg win rate: 47%
   A-tier avg mult: 10.00
-  C-tier avg mult: 0.39
+  C-tier avg mult: 0.38
