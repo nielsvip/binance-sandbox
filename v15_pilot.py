@@ -810,7 +810,8 @@ def get_defaults_for_symside(symside: str) -> dict:
         pass
     import v12_quick_engine as V
     import config, config_tradier
-    is_crypto = symside.upper().endswith(("USDT", "USDC", "USD1", "BUSD", "FDUSD", "TUSD", "DAI"))
+    # strip _LONG/_SHORT first — "AAVEUSDC_LONG".endswith("USDC") is False, which gave crypto the TradierConfig defaults
+    is_crypto = map_key_for_symside(symside).startswith("CRYPTO")
     defaults = {}
     for f in dataclasses.fields(V.QuickConfig):
         defaults[f.name] = f.default if f.default is not dataclasses.MISSING else None
@@ -1260,6 +1261,87 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": nav_mode, "sheet": sname, "row": block[0][0] if block else None, "switch": "ORANGE_BLOCK", "cand": str(len(block)), "label": "ROW_DONE", "row_secs": round(_t.time() - t0, 4), "n_evals": len(block), "delta": best[0] if best else None, "promoted": best is not None, "cum_after": cumulative_gain})
         print(f"[spec-orange] {sname} block {len(block)} rows vs cum {cum0:.4f} computed={len(futs)} cached={len(block)-len(futs)} best={'%s=%s %+.4f' % (best[2], best[3], best[0]) if best else 'none'} -> cum {cumulative_gain:.4f} ({_t.time()-t0:.1f}s)", flush=True)
         return _land_on_next_tab(from_idx)
+    def _final_filter_recheck():
+        # Before closing: re-run EVERY distinct orange filter=opt against the FINAL cumulative "just in case" (earlier
+        # tabs tested them vs an older cumulative). All deltas (pos/neg) -> FINAL_FILTER_RECHECK sheet + progress + log;
+        # the single best positive is promoted. This is the per-filter data for row reduction / 365D runs.
+        nonlocal cumulative_gain, cumulative_overrides
+        cum0 = float(cumulative_gain)
+        t0 = _t.time()
+        seen = {}
+        for (sn, r2) in sorted(orange_rows):
+            sw2 = wb[sn].cell(row=r2, column=1).value
+            c2 = wb[sn].cell(row=r2, column=2).value
+            if sw2 in (None, "") or c2 is None:
+                continue
+            seen.setdefault((str(sw2).strip(), str(c2)), [])
+            seen[(str(sw2).strip(), str(c2))].append(f"{sn}!{r2}")
+        items = []
+        for (sw2, c2) in seen:
+            v = dict(cumulative_overrides)
+            v.update(_switch_overrides(sw2, _parse_opt_value(c2, defaults.get(sw2))))
+            items.append((sw2, c2, sanitize_overrides(v, defaults)[0]))
+        results = {}
+        futs = {}
+        for sw2, c2, v in items:
+            ck = (tuple(sorted((k, str(x)) for k, x in v.items())), args.window_days, id(prepared))
+            if ck in _EVAL_CACHE:
+                results[(sw2, c2)] = (_EVAL_CACHE[ck], "", True)
+            elif _pool is not None:
+                futs[(sw2, c2)] = (_pool.submit(_pool_eval, v, args.window_days), ck)
+            else:
+                from tools.opt.v12_pilot import evaluate_prepared_sanitized
+                res = evaluate_prepared_sanitized(prepared, v, args.window_days)
+                _EVAL_CACHE[ck] = res
+                results[(sw2, c2)] = (res, "", False)
+        deadline = t0 + YELLOW_TIMEOUT * max(1, -(-len(futs) // max(1, _n_proc)))
+        for key, (fut, ck) in futs.items():
+            try:
+                res, _secs = fut.result(timeout=max(0.01, deadline - _t.time()))
+                _EVAL_CACHE[ck] = res
+                results[key] = (res, "", False)
+            except _cf.TimeoutError:
+                fut.cancel()
+                results[key] = (None, f"TIMEOUT {YELLOW_TIMEOUT:.0f}s", False)
+            except Exception as e:
+                results[key] = (None, f"ERR {e}"[:120], False)
+        if "FINAL_FILTER_RECHECK" in wb.sheetnames:
+            del wb["FINAL_FILTER_RECHECK"]
+        fws = wb.create_sheet("FINAL_FILTER_RECHECK")
+        hdr = ["filter", "option", "gain_pct", "trades", "valid", "delta_vs_final", "promoted", "cumulative_final_before", "rows", "reason"]
+        for i, h in enumerate(hdr, 1):
+            fws.cell(row=1, column=i, value=h).font = Font(name="Arial", size=10, bold=True)
+        recs = []
+        best = None
+        for (sw2, c2) in seen:
+            res, err, cached = results.get((sw2, c2), (None, "missing", False))
+            g = (res or {}).get("gain_pct")
+            d = (float(g) - cum0) if g is not None else None
+            ok = d is not None and bool((res or {}).get("valid"))
+            recs.append([sw2, c2, g, (res or {}).get("trades"), (res or {}).get("valid"), d, False, cum0, ", ".join(seen[(sw2, c2)][:6]), err or (res or {}).get("invalid_reason") or ""])
+            _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": nav_mode, "sheet": "FINAL_FILTER_RECHECK", "row": None, "switch": sw2, "cand": str(c2), "label": "FINAL_RECHECK", "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cum0, "delta": d, "secs": None, "cached": cached, "err": err})
+            if ok and d > 1e-9 and (best is None or d > best[0]):
+                best = (d, sw2, c2, g)
+        if best is not None:
+            d, sw2, c2, g = best
+            cumulative_gain = float(g)
+            cumulative_overrides.update(_switch_overrides(sw2, _parse_opt_value(c2, defaults.get(sw2))))
+            cumulative_overrides, _ = sanitize_overrides(cumulative_overrides, defaults)
+            for rec in recs:
+                if rec[0] == sw2 and rec[1] == c2:
+                    rec[6] = True
+        recs.sort(key=lambda x: (x[5] is None, -(x[5] or 0)))
+        for i, rec in enumerate(recs, 2):
+            for j, val in enumerate(rec, 1):
+                c = fws.cell(row=i, column=j, value=val)
+                c.font = Font(name="Arial", size=10, bold=(j == 7 and bool(rec[6])))
+            dcell = fws.cell(row=i, column=6)
+            if isinstance(rec[5], (int, float)):
+                dcell.font = Font(name="Arial", size=10, color="006100" if rec[5] > 1e-9 else "9C0006")
+        progress["final_filter_recheck"] = {"cumulative_before": cum0, "cumulative_after": float(cumulative_gain), "n": len(recs), "promoted": [best[1], best[2], best[0]] if best else None, "deltas": {f"{r[0]}={r[1]}": r[5] for r in recs}}
+        progress["cumulative_gain"] = float(cumulative_gain)
+        progress["cumulative_overrides"] = dict(cumulative_overrides)
+        print(f"[final-recheck] {len(recs)} distinct orange filters vs final cum {cum0:.4f} computed={len(futs)} cached={len(recs)-len(futs)} best={'%s=%s %+.4f' % (best[1], best[2], best[0]) if best else 'none'} -> cum {cumulative_gain:.4f} ({_t.time()-t0:.1f}s)", flush=True)
     def _land_on_next_tab(from_idx: int):
         # NEG / no-yellow / tab finished: go to first pending row of the next tab with pending rows and write E there
         for offset in range(1, len(tabs) + 1):
@@ -1643,6 +1725,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     except Exception as _e_drain:
         print(f"[red-fixer-drain-warn] {_e_drain}", flush=True)
     # Now fill LIVE_DELTA and LIVE_SHARPE when entire sheet complete via backtest_v12_engine parity
+    try:
+        _final_filter_recheck()
+    except Exception as _fe:
+        print(f"[final-recheck-warn] {_fe}", flush=True)
     _maybe_write_json(force=True)
     if _any_pending():
         print(f"[spec-fill] incomplete after loop guard {loop_guard} pending remains — will still save", flush=True)
