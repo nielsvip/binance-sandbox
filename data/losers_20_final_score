@@ -2,67 +2,72 @@
   {
     "symbol": "BEATUSDT",
     "score": -100.0,
-    "linearity": 0.7691678333973755
+    "linearity": 0.7669710272570986
   },
   {
     "symbol": "SOXSUSDT",
-    "score": -98.23499962055322,
-    "linearity": 0.7351570872076678
+    "score": -98.14113454684966,
+    "linearity": 0.7348359510307539
   },
   {
     "symbol": "SKYAIUSDT",
-    "score": -90.67336112471402,
-    "linearity": 0.6695680754114794
+    "score": -89.16467107375729,
+    "linearity": 0.6635094280582257
   },
   {
     "symbol": "SQQQUSDT",
-    "score": -86.69206764835835,
-    "linearity": 0.7190339295999246
+    "score": -86.91031142350025,
+    "linearity": 0.7192252306365694
   },
   {
     "symbol": "COTIUSDT",
-    "score": -81.8764317677839,
-    "linearity": 0.7944372324075128
+    "score": -82.03830986827485,
+    "linearity": 0.7928412479436056
   },
   {
     "symbol": "AVGOUSDT",
-    "score": -73.48524485129435,
-    "linearity": 0.64373422369714
+    "score": -73.32555938741294,
+    "linearity": 0.640565518258824
   },
   {
     "symbol": "ORCLUSDT",
-    "score": -72.24336546620158,
-    "linearity": 0.7539696998300516
+    "score": -72.23423840733479,
+    "linearity": 0.7541737820917784
   },
   {
     "symbol": "BABAUSDT",
-    "score": -71.47341563204502,
-    "linearity": 0.5722395145937538
+    "score": -71.68621362356213,
+    "linearity": 0.5703385501022831
   },
   {
     "symbol": "AAOIUSDT",
-    "score": -68.32338980868407,
-    "linearity": 0.5064714526768943
+    "score": -68.45607891690115,
+    "linearity": 0.5062300795685524
   },
   {
     "symbol": "GOOGLUSDT",
-    "score": -62.290114948623234,
-    "linearity": 0.49252075114171195
+    "score": -63.124812416858276,
+    "linearity": 0.495125622038707
   },
   {
     "symbol": "BBXUSDT",
-    "score": -59.67977523988872,
-    "linearity": 0.6540523221833202
+    "score": -60.39218236219581,
+    "linearity": 0.6510339446854922
   },
   {
     "symbol": "WDCUSDT",
-    "score": -46.012717425756044,
-    "linearity": 0.5907577043675255
+    "score": -43.81259149316944,
+    "linearity": 0.5899184673933711
   },
   {
     "symbol": "TRXUSDT",
     "score": 0.0,
-    "linearity": 0.6026355570022188
+    "linearity": 0.5996276846624646
+  },
+  {
+    "symbol": "BBUSDT",
+    "score": 0.0,
+    "linearity": 0.7814047978296884
   },
   {
     "symbol": "CELRUSDT",
@@ -70,44 +75,34 @@
     "linearity": 0.6427198453336584
   },
   {
+    "symbol": "INXUSDT",
+    "score": 0.0,
+    "linearity": 0.6491808181833867
+  },
+  {
     "symbol": "COHRUSDT",
     "score": 0.0,
-    "linearity": 0.4389402193480283
+    "linearity": 0.4398117442417725
   },
   {
     "symbol": "WLFIUSDC",
     "score": 0.0,
-    "linearity": 0.6085616630777999
-  },
-  {
-    "symbol": "INXUSDT",
-    "score": 0.0,
-    "linearity": 0.6434428204412592
-  },
-  {
-    "symbol": "BBUSDT",
-    "score": 0.0,
-    "linearity": 0.7864315464058886
+    "linearity": 0.6139470492325543
   },
   {
     "symbol": "SPYUSDT",
     "score": 0.0,
-    "linearity": 0.6995838886478595
+    "linearity": 0.7026430334171043
   },
   {
     "symbol": "RVNUSDT",
     "score": 0.0,
-    "linearity": 0.6953945582859536
+    "linearity": 0.6953114725144109
   },
   {
     "symbol": "AAPLUSDT",
     "score": 0.0,
-    "linearity": 0.6135396032969237
-  },
-  {
-    "symbol": "GLWUSDT",
-    "score": 0.0,
-    "linearity": 0.5398779015900452
+    "linearity": 0.6130732868409495
   },
   {
     "symbol": "TLMUSDT",
@@ -115,89 +110,94 @@
     "linearity": 0.4329116649039412
   },
   {
-    "symbol": "AMATUSDT",
+    "symbol": "GLWUSDT",
     "score": 0.0,
-    "linearity": 0.802072864458166
+    "linearity": 0.5411113178685237
   },
   {
-    "symbol": "QQQUSDT",
+    "symbol": "AMATUSDT",
     "score": 0.0,
-    "linearity": 0.7403818616742243
+    "linearity": 0.7954399652083931
   },
   {
     "symbol": "SPXUSDT",
     "score": 0.0,
-    "linearity": 0.6066961106765894
-  },
-  {
-    "symbol": "CRWVUSDT",
-    "score": 0.0,
-    "linearity": 0.5966219008508155
+    "linearity": 0.6061896023531681
   },
   {
     "symbol": "CBRSUSDT",
     "score": 0.0,
-    "linearity": 0.5891446513285338
+    "linearity": 0.5899386694219212
+  },
+  {
+    "symbol": "CRWVUSDT",
+    "score": 0.0,
+    "linearity": 0.5884794066675336
+  },
+  {
+    "symbol": "QQQUSDT",
+    "score": 0.0,
+    "linearity": 0.7410521470692368
   },
   {
     "symbol": "ASTERUSDT",
     "score": 0.0,
-    "linearity": 0.6682508972387466
-  },
-  {
-    "symbol": "NVDAUSDT",
-    "score": 0.0,
-    "linearity": 0.5282221715675341
-  },
-  {
-    "symbol": "EWYUSDT",
-    "score": 0.0,
-    "linearity": 0.6446929553913713
+    "linearity": 0.6674448979140398
   },
   {
     "symbol": "AWEUSDT",
     "score": 0.0,
-    "linearity": 0.5515450543813281
+    "linearity": 0.5523831256717029
+  },
+  {
+    "symbol": "EWYUSDT",
+    "score": 0.0,
+    "linearity": 0.6449035813466067
   },
   {
     "symbol": "SKLUSDT",
     "score": 0.0,
-    "linearity": 0.6346900265266571
+    "linearity": 0.6266052692551216
   },
   {
     "symbol": "SPCXUSDT",
     "score": 0.0,
-    "linearity": 0.45648786781120254
-  },
-  {
-    "symbol": "1000SHIBUSDC",
-    "score": 0.0,
-    "linearity": 0.5008643700676563
-  },
-  {
-    "symbol": "PARTIUSDT",
-    "score": 0.0,
-    "linearity": 0.577026947782938
+    "linearity": 0.45133366458554125
   },
   {
     "symbol": "1000LUNCUSDT",
     "score": 0.0,
-    "linearity": 0.7115059295642443
+    "linearity": 0.7097203029729113
+  },
+  {
+    "symbol": "PARTIUSDT",
+    "score": 0.0,
+    "linearity": 0.5729812513034627
+  },
+  {
+    "symbol": "NVDAUSDT",
+    "score": 0.0,
+    "linearity": 0.5947046692989668
   },
   {
     "symbol": "MOVEUSDT",
     "score": 0.0,
-    "linearity": 0.5076186268386556
+    "linearity": 0.4846794442181249
+  },
+  {
+    "symbol": "1000SHIBUSDC",
+    "score": 0.0,
+    "linearity": 0.4916406626419495
   },
   {
     "symbol": "PTBUSDT",
     "score": 0.0,
-    "linearity": 0.4538813023560307
+    "linearity": 0.4567871739989557
   },
   {
     "symbol": "WOOUSDT",
     "score": 0.0,
-    "linearity": 0.5103558696042082
+    "linearity": 0.5184849691994246
   },
   {
     "symbol": "URNMUSDT",
