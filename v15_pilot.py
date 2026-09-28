@@ -607,7 +607,7 @@ def _load_filter_dictionary() -> list[dict]:
     global _FILTER_DICT_CACHE
     if _FILTER_DICT_CACHE is not None:
         return _FILTER_DICT_CACHE
-    candidates = [ROOT / "SPREADSHEETS" / "TEMPLATE.xlsx", ROOT / "SPREADSHEETS" / "TEMPLATE_V2_1YR_CONNECTED.xlsx", ROOT / "SPREADSHEETS" / "TEMPLATE_STOCKS_LONG.xlsx", ROOT / "SPREADSHEETS" / "TEMPLATE_STOCKS_SHORT.xlsx", ROOT / "SPREADSHEETS" / "TEMPLATE_CRYPTO_LONG.xlsx", ROOT / "SPREADSHEETS" / "TEMPLATE_CRYPTO_SHORT.xlsx"]
+    candidates = [ROOT / "SPREADSHEETS" / "TEMPLATE_CRYPTO_LONG.xlsx", ROOT / "SPREADSHEETS" / "TEMPLATE_CRYPTO_SHORT.xlsx", ROOT / "SPREADSHEETS" / "TEMPLATE_STOCKS_LONG.xlsx", ROOT / "SPREADSHEETS" / "TEMPLATE_STOCKS_SHORT.xlsx", ROOT / "SPREADSHEETS" / "TEMPLATE.xlsx"]
     ws = None
     wb = None
     for p in candidates:
@@ -730,6 +730,35 @@ def get_opportune_filters(switch: str, sheet: str) -> list[dict]:
         if _token_overlap(e["gates"], switch):
             out.append(e)
     return out
+
+_OPPORTUNE_MAP_CACHE = None
+
+def _load_opportune_map() -> dict:
+    global _OPPORTUNE_MAP_CACHE
+    if _OPPORTUNE_MAP_CACHE is None:
+        try:
+            _OPPORTUNE_MAP_CACHE = json.loads((ROOT / "data" / "opportune_filter_map.json").read_text())
+        except Exception:
+            _OPPORTUNE_MAP_CACHE = {}
+    return _OPPORTUNE_MAP_CACHE
+
+def map_key_for_symside(symside: str) -> str:
+    s = symside.upper()
+    base = s[:-5] if s.endswith("_LONG") else s[:-6] if s.endswith("_SHORT") else s
+    is_crypto = base.endswith(("USDT", "USDC", "USD1", "BUSD", "FDUSD", "TUSD", "DAI"))
+    is_long = s.endswith("_LONG")
+    return f"{'CRYPTO' if is_crypto else 'STOCKS'}_{'LONG' if is_long else 'SHORT'}"
+
+def opportune_filter_bases(symside: str, sheet: str, switch: str) -> set:
+    m = _load_opportune_map()
+    key = map_key_for_symside(symside)
+    return set(((m.get(key) or {}).get(sheet) or {}).get(switch, []))
+
+def opportune_filter_rows(symside: str, sheet: str, switch: str) -> list[dict]:
+    bases = opportune_filter_bases(symside, sheet, switch)
+    if not bases:
+        return []
+    return [e for e in _load_filter_dictionary() if (e.get("filter") or "").strip() in bases and not _is_general(e["rec"])]
 
 def sanitize_overrides(overrides: dict, defaults: dict) -> tuple[dict, list]:
     sanitized = {}
@@ -1115,9 +1144,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         ws = wb[sname]
         cols = _resolve_cols(ws)
         cumulative_before = float(cumulative_gain)
-        # FIX: Smart yellow filtering — parse template headers and filter by switch relevance
-        # Extract first token of switch for quick filtering (e.g., "BB" from "BB_SQUEEZE_WIDTH_PERCENTILE")
-        switch_prefix = switch.split("_")[0] if "_" in switch else switch[:2]
+        # Opportune yellow filters come from the code-grounded map data/opportune_filter_map.json
+        # (per category/sheet/switch set of filter BASES: family + co-read + lifecycle group).
+        # Every option column of an opportune base is a yellow cell. This replaces the old
+        # switch-prefix substring heuristic + all_hdrs[:10] fallback, which tested wrong/arbitrary
+        # filters — a NO-LIES violation. Empty opp_bases -> naked candidate only (never wrong filters).
+        opp_bases = opportune_filter_bases(new_symside, sname, switch)
         relevant_hdrs = []
         hdr_to_filter = {}
         all_hdrs = list(header_maps[sname].keys())
@@ -1127,18 +1159,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             filt, opt = hdr.split("=", 1)
             filt = filt.strip()
             opt = opt.strip()
-            # Keep yellow if filter name contains switch prefix (e.g., "FG_*" for switch "FG_GREED_THRESHOLD")
-            # This dramatically reduces 189 → ~5-10 relevant yellows per row
-            if switch_prefix.upper() in filt.upper():
+            if filt in opp_bases:
                 relevant_hdrs.append(hdr)
                 hdr_to_filter[hdr] = {"filter": filt, "opt": opt}
-        # If no relevant filtered yellows found, use ALL (fallback to safe but slow)
-        if not relevant_hdrs and all_hdrs:
-            relevant_hdrs = all_hdrs[:10]  # Cap to first 10 to avoid extreme slowness
-            for hdr in relevant_hdrs:
-                if "=" in hdr:
-                    filt, opt = hdr.split("=", 1)
-                    hdr_to_filter[hdr] = {"filter": filt.strip(), "opt": opt.strip()}
         # Evaluate naked + each yellow filter vs cumulative_before
         pending_lbI: dict[str, float] = {}
         best_delta = None
@@ -3493,8 +3516,8 @@ def main():
             # Build header map for this sheet
             wb_h, htc = _get_wb_keep(sheet)
             ws_h = wb_h[sheet] if sheet in wb_h.sheetnames else None
-            opportune = get_opportune_filters(switch, sheet)
-            specifics = [e for e in opportune if not _is_general(e["rec"])]
+            specifics = opportune_filter_rows(new_symside, sheet, switch)
+            opportune = specifics
             def parse_opt(v, default):
                 if isinstance(default, bool):
                     return str(v).lower() == "true" if str(v).lower() in ("true", "false") else bool(v)
@@ -4000,8 +4023,8 @@ def main():
                 # to this switch = the cells that should be yellow (pos-delta-capable).
                 # Other switches' headers are non-yellow for this row: never evaluated,
                 # never written — that is the compute saving. Cheap to build (no evals).
-                opportune = get_opportune_filters(switch, sheet)
-                specifics = [e for e in opportune if not _is_general(e["rec"])]
+                specifics = opportune_filter_rows(new_symside, sheet, switch)
+                opportune = specifics
                 def parse_opt(v, default):
                     if isinstance(default, bool):
                         return str(v).lower() == "true" if str(v).lower() in ("true", "false") else bool(v)

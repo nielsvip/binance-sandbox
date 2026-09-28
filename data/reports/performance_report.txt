@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-28 02:00 UTC
+PERFORMANCE REPORT — 2026-09-28 03:00 UTC
 ================================================================================
 Total: 146 symbols | A=3 B=103 C=40
 Window: 14 days | Min trades: 5
@@ -26,8 +26,8 @@ Window: 14 days | Min trades: 5
               GME  WR=67%  avg=+1.36%  total=+8.4%  trades=  6  mult=4.60
                RS  WR=59%  avg=+0.23%  total=+7.7%  trades= 32  mult=4.27
               CLS  WR=100%  avg=+0.92%  total=+7.6%  trades=  8  mult=7.08
-          XTZUSDT  WR=57%  avg=+0.18%  total=+7.0%  trades= 37  mult=3.45
          DASHUSDT  WR=70%  avg=+0.16%  total=+6.5%  trades= 40  mult=5.68
+          XTZUSDT  WR=54%  avg=+0.17%  total=+6.2%  trades= 35  mult=2.95
           ADAUSDC  WR=53%  avg=+0.10%  total=+4.5%  trades= 45  mult=2.27 ** OPEN **
           C98USDT  WR=75%  avg=+0.81%  total=+3.3%  trades=  4  mult=1.00
              SNOW  WR=60%  avg=+0.67%  total=+3.2%  trades=  5  mult=2.59
@@ -110,7 +110,7 @@ Window: 14 days | Min trades: 5
              CIBR  WR=0%  avg=-1.17%  total=-3.5%  trades=  3  mult=1.00
          SANDUSDT  WR=45%  avg=-0.13%  total=-4.3%  trades= 33  mult=0.57
              AVGO  WR=0%  avg=-1.32%  total=-5.2%  trades=  4  mult=1.00
-         IOTXUSDT  WR=47%  avg=-0.13%  total=-7.1%  trades= 57  mult=0.63
+         IOTXUSDT  WR=47%  avg=-0.13%  total=-7.0%  trades= 55  mult=0.62
              AXON  WR=49%  avg=-0.76%  total=-25.0%  trades= 37  mult=0.29
 
 --- TIER C (40 symbols) ---
@@ -130,7 +130,7 @@ Window: 14 days | Min trades: 5
            ARUSDT  WR=29%  avg=-0.36%  total=-2.5%  trades=  7  mult=0.51
              QBTS  WR=36%  avg=-0.06%  total=-3.2%  trades= 44  mult=0.44
          EGLDUSDT  WR=7%  avg=-0.25%  total=-3.4%  trades= 14  mult=0.26
-          SNXUSDT  WR=38%  avg=-0.15%  total=-3.5%  trades= 24  mult=0.41 ** OPEN **
+          SNXUSDT  WR=38%  avg=-0.15%  total=-3.5%  trades= 24  mult=0.41
              NVDA  WR=0%  avg=-0.36%  total=-4.6%  trades= 13  mult=0.23
               NKE  WR=37%  avg=-0.15%  total=-4.6%  trades= 30  mult=0.40
        RAYSOLUSDT  WR=29%  avg=-0.91%  total=-6.3%  trades=  7  mult=0.39
@@ -156,7 +156,8 @@ Window: 14 days | Min trades: 5
               VLO  WR=30%  avg=-2.31%  total=-67.3%  trades= 47  mult=0.15
 
 SUMMARY:
-  Total PnL (all symbols): +644.1%
+  Total PnL (all symbols): +643.5%
   Avg win rate: 46%
   A-tier avg mult: 10.00
   C-tier avg mult: 0.38
+mult: 0.38
