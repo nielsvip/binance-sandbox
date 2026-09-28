@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-28 06:08 UTC
+PERFORMANCE REPORT — 2026-09-28 07:08 UTC
 ================================================================================
 Total: 146 symbols | A=3 B=103 C=40
 Window: 14 days | Min trades: 5
@@ -34,7 +34,7 @@ Window: 14 days | Min trades: 5
              BMNR  WR=86%  avg=+0.40%  total=+2.8%  trades=  7  mult=4.19
           XRPUSDC  WR=55%  avg=+0.06%  total=+2.4%  trades= 40  mult=2.31
           TIAUSDC  WR=100%  avg=+0.77%  total=+2.3%  trades=  3  mult=1.00
-          KSMUSDT  WR=100%  avg=+0.33%  total=+2.3%  trades=  7  mult=4.93
+          KSMUSDT  WR=100%  avg=+0.38%  total=+2.3%  trades=  6  mult=4.48
           HOTUSDT  WR=50%  avg=+0.19%  total=+1.6%  trades=  8  mult=1.52
           GRTUSDT  WR=71%  avg=+0.22%  total=+1.5%  trades=  7  mult=2.87
           DOTUSDT  WR=49%  avg=+0.04%  total=+1.5%  trades= 39  mult=1.02
@@ -79,10 +79,10 @@ Window: 14 days | Min trades: 5
           CRVUSDC  WR=33%  avg=+0.00%  total=+0.0%  trades=  3  mult=1.00
         PENGUUSDC  WR=0%  avg=-0.00%  total=-0.0%  trades=  2  mult=1.00
           WIFUSDC  WR=50%  avg=-0.01%  total=-0.0%  trades=  2  mult=1.00
+          VETUSDT  WR=0%  avg=-0.02%  total=-0.0%  trades=  1  mult=1.00
           CHRUSDT  WR=0%  avg=-0.05%  total=-0.1%  trades=  1  mult=1.00
           ETHUSDC  WR=51%  avg=-0.00%  total=-0.1%  trades= 51  mult=1.17
          QCOMUSDT  WR=33%  avg=-0.03%  total=-0.1%  trades=  3  mult=1.00
-          VETUSDT  WR=0%  avg=-0.03%  total=-0.1%  trades=  4  mult=1.00
              MSFT  WR=0%  avg=-0.10%  total=-0.1%  trades=  1  mult=1.00
          LRCXUSDT  WR=0%  avg=-0.14%  total=-0.1%  trades=  1  mult=1.00
      1000BONKUSDC  WR=46%  avg=-0.01%  total=-0.2%  trades= 13  mult=0.82
@@ -110,7 +110,7 @@ Window: 14 days | Min trades: 5
              CIBR  WR=0%  avg=-1.17%  total=-3.5%  trades=  3  mult=1.00
          SANDUSDT  WR=45%  avg=-0.13%  total=-4.3%  trades= 33  mult=0.57
              AVGO  WR=0%  avg=-1.32%  total=-5.2%  trades=  4  mult=1.00
-         IOTXUSDT  WR=47%  avg=-0.13%  total=-7.0%  trades= 55  mult=0.62
+         IOTXUSDT  WR=47%  avg=-0.14%  total=-7.0%  trades= 53  mult=0.61
              AXON  WR=49%  avg=-0.76%  total=-25.0%  trades= 37  mult=0.29
 
 --- TIER C (40 symbols) ---
@@ -156,7 +156,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=30%  avg=-2.31%  total=-67.3%  trades= 47  mult=0.15
 
 SUMMARY:
-  Total PnL (all symbols): +643.9%
+  Total PnL (all symbols): +644.0%
   Avg win rate: 46%
   A-tier avg mult: 10.00
   C-tier avg mult: 0.38
