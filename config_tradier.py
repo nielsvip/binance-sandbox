@@ -173,6 +173,9 @@ class TradierConfig:
     TRA_BUY_COOLDOWN_AFTER_SELL_HOURS: float = 96.0     # 4 DAYS no buying after a sell on cash (prevent GFV 6th flag = ban)
     TRA_WT_DC_ENTRY_THRESHOLD: float = 85.0          # REVERTED 2026-08-11 per SWITCH_LAB_VECTOR_LIVE_AUDIT.md M3 — live bypass removed, vector+live parity restored; re-promote only via 1yr Tier-2
     WT_DC_DETAILED_SCORER_ENABLED: bool = False      # 2026-09-28 opt-in: detailed _score_long/_score_short slowdown/accel scorer (thr 43) vs simple multi-TF. Off=live unchanged. Flip per-sym in per_sym_active_config_stocks.json to promote a WT_DC-detailed winner (11 walk-forward configs).
+    WT_DC_DETAILED_ENTRY_THRESHOLD: float = 43.0     # 2026-09-28 entry bar for the detailed scorer ONLY (scale tops ~55; the simple 55/85 bar never fires it). Live+backtest use this identically when WT_DC_DETAILED_SCORER_ENABLED; TF-adjusted 15m-10/4h+10/D+15.
+    WT_DC_DETAILED_EXIT_ENABLED: bool = False        # 2026-09-28 opt-in reversal-pressure exit: exit when the OPPOSITE-side detailed entry scorer fires. Off=live exit unchanged. Flip per-sym once swept + parity-proven.
+    WT_DC_DETAILED_EXIT_THRESHOLD: float = 43.0      # 2026-09-28 opposite-side detailed-entry score at/above which the detailed exit fires. Same scale as the entry scorer.
     TRA_MIN_HOLD_MINUTES: float = 5760.0             # 4 DAYS hold floor - cash GFV 5 flags, prevent 6th ban
     # 2026-04-27 — live entry-engine boost (defaults OFF for safety; user flips when ready).
     # Engines are pure-function additive triggers in entry_engine_{wt,stoch,dc,htf}.py — they
@@ -1074,6 +1077,17 @@ class TradierConfig:
     BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_BARS: int = 1
     BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_MODE: str = "ATR"
     BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_THRESHOLD: float = 0.25
+    # 2026-09-28 EXIT VECTORIZATION PARITY (HANDOFF_EXIT_VECTORIZATION_PARITY.md #2):
+    # MTF compound-exit ATR trail knobs — tradier_manage.py:11045-11086 reads these via _cfg
+    # but they were MISSING here, so the values were unpromotable hardcoded fallbacks.
+    # Values below EQUAL the live _cfg fallbacks → ZERO live behavior change (block stays
+    # inert: MTF_EXIT_USE_COMPOUND False). Sweepable via TEMPLATE_STOCKS_* EXIT_VELOCITY rows;
+    # v12 twin gates stocks on MTF_ATR_TRAIL_ENABLED_TRADIER (vector-side mode opt-in).
+    MTF_EXIT_USE_COMPOUND: bool = False
+    MTF_ATR_TRAIL_ENABLED: bool = False
+    MTF_ATR_TRAIL_ENABLED_TRADIER: bool = False
+    MTF_ATR_TRAIL_TF_TRADIER: str = "1h"
+    MTF_ATR_TRAIL_MULT: float = 2.5
     MTF_ATR_MULTITF_DIRECT_ENABLED: bool = False
     MTF_ATR_MULTITF_DIRECT_TIMEFRAMES: list[str] = field(default_factory=lambda: ["1h", "4h", "D"])
     MTF_ATR_MULTITF_DIRECT_MULT: float = 1.5

@@ -27,5 +27,26 @@
       "exit_price": 0.10862000286579132
     }
   },
-  "streaks": {}
+  "streaks": {
+    "ADAUSDC_LONG": {
+      "consec_losses": 1,
+      "last": [
+        {
+          "ts": "2026-09-28T16:46:24.856674+00:00",
+          "gain_pct": -5.0976,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-5.10_lvl0.246900"
+        }
+      ]
+    },
+    "SNXUSDT_LONG": {
+      "consec_losses": 1,
+      "last": [
+        {
+          "ts": "2026-09-28T16:47:36.762442+00:00",
+          "gain_pct": -7.5272,
+          "reason": "DC_BREACH_REDUCE_UNHEDGED_LOW_15m_price_0.243200"
+        }
+      ]
+    }
+  }
 }

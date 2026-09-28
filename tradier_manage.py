@@ -12526,7 +12526,16 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             pass
                     # tra uses a much higher entry bar so only the strongest HTF
                     # setups fire — long-term hold needs few, very high quality entries.
-                    if account_key == 'tra':
+                    if _wtdc_detailed:
+                        _entry_threshold = float(_cfg_auto('WT_DC_DETAILED_ENTRY_THRESHOLD', 43))
+                        _det_tf = str(_cfg_auto('WT_DC_TF_ENTRY', '1h')).lower()
+                        if _det_tf == '15m':
+                            _entry_threshold = max(20.0, _entry_threshold - 10.0)
+                        elif _det_tf == '4h':
+                            _entry_threshold = min(85.0, _entry_threshold + 10.0)
+                        elif _det_tf == 'd':
+                            _entry_threshold = min(85.0, _entry_threshold + 15.0)
+                    elif account_key == 'tra':
                         _entry_threshold = float(_cfg_auto('TRA_WT_DC_ENTRY_THRESHOLD', 85))
                     else:
                         _entry_threshold = _cfg_auto('WT_DC_ENTRY_THRESHOLD', 55)

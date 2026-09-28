@@ -111,6 +111,7 @@ import vec_decisions.check_exit_candidates_stocks__wt_crossunder_final
 import vec_decisions.check_exit_candidates_stocks__wt_exit_tf_against
 import vec_decisions.bb_pullback_gate
 import vec_decisions.filter_tf_gate
+import vec_decisions.mtf_atr_trail_exit
 import wt_dc_entry_scorer_vec as _wt_dc_vec
 
 _ALL_FILTER_TF = ("ATR_TRAIL_FILTER_TF", "BAR_PATTERNS_FILTER_TF", "BB_PULLBACK_GATE_FILTER_TF", "BB_RECOVERY_ENTRY_FILTER_TF", "BB_RECOVERY_FILTER_TF", "BREAKEVEN_GAIN_EROSION_FILTER_TF", "BREAKOUT_RETEST_FILTER_TF", "BTC_DEDICATED_FILTER_TF", "BT_WT_CROSS_LADDER_FILTER_TF", "CANDLE_PATTERN_STOPS_FILTER_TF", "CIRCUIT_SHARPE_GATES_FILTER_TF", "COOLDOWN_LOCKS_FILTER_TF", "DC_BREACH_REDUCE_FILTER_TF", "DC_BREAK_FILTER_TF", "DC_MOMENTUM_BOTA_SCORER_FILTER_TF", "DELTA_ENGINE_FILTER_TF", "DUP_GUARD_FILTER_TF", "E2E_REPLAY_VALIDATOR_FILTER_TF", "EMA_9_21_FILTER_FILTER_TF", "EMA_BLANKET_FILTER_FILTER_TF", "EMERGENCY_BRAKE_FILTER_TF", "EXHAUSTION_EXIT_FILTER_TF", "EXIT_R1_R2_FILTER_TF", "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF", "EXIT_TOP_FADE_FILTER_TF", "EXIT_TO_REDUCE_ADAPTER_FILTER_TF", "FAST_RISER_FILTER_TF", "FH_MOMENTUM_FILTER_TF", "FIRST_OPEN_THROTTLE_FILTER_TF", "FROZEN_STOP_FILTER_TF", "FUNDING_GATE_FILTER_TF", "GOLDEN_RULE_ENFORCE_FILTER_TF", "GOLDEN_RULE_HTF_VOTE_FILTER_TF", "GR_FILTER_VEC_FILTER_TF", "GR_V5_STATE_FILTER_TF", "HAIKU_WINNER_FILTER_TF", "KILLER_KNOB_FINDER_FILTER_TF", "KINDERGARTEN_FILTER_TF", "LIVE_ENTRY_ENGINE_FILTER_TF", "LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF", "MOM3_FILTER_TF", "MOMENTUM_BREAKOUT_FILTER_TF", "MTF_ARMED_ENTRIES_FILTER_TF", "MTF_ATR_TRAIL_FILTER_TF", "MTF_DC_REJECT_FILTER_TF", "NEWBORN_LOSS_KILL_FILTER_TF", "NEWBORN_PROTECT_FILTER_TF", "NOLOSS_BYPASS_WT5OF5_FILTER_TF", "OPEN_INTENT_SIZE_GATES_FILTER_TF", "PARTIAL_PROFIT_LOCK_V2_FILTER_TF", "PEAK_GIVEBACK_BE_EROSION_FILTER_TF")
@@ -790,20 +791,15 @@ def _wire_07_exit_stops_tranche(npz, n, is_long, cfg, entry_mask, exit_mask):
             exit_mask = exit_mask & _cond
             _ = getattr(cfg, 'HEDGE_EXIT_BYPASS_NOLOSS', False)
             _ = cfg.HEDGE_EXIT_BYPASS_NOLOSS
-        _tf = str(getattr(cfg, 'MTF_ATR_TRAIL_TF', '15m'))
+        # MTF_ATR_TRAIL (2026-09-28 EXIT VECTORIZATION PARITY): fabricated scaffolding REMOVED
+        # (was: atr>1.0 OR'd into exit_mask whenever TF differed from default — synthetic
+        # distinctness, not the live decision). The FAITHFUL stateful ratcheting trail now runs
+        # inside simulate_one via vec_decisions.mtf_atr_trail_exit (live ez_manage.py:47684-47699
+        # / tradier_manage.py:11073-11086). Causal knob reads kept for the parity audit tools.
         _ = cfg.MTF_ATR_TRAIL_TF
-        _atr = _safe(npz, f'atr_{_tf}' if f'atr_{_tf}' in npz else 'atr_15m', n, 1.0)
-        _cond = _atr > 1.0
-        if _tf.upper() != "OFF" and _tf != '15m':
-            exit_mask = exit_mask | _cond
         _ = getattr(cfg, 'MTF_ATR_TRAIL_TF', '15m')
-        _tf = str(getattr(cfg, 'MTF_ATR_TRAIL_TF_TRADIER', '5m'))
         _ = cfg.MTF_ATR_TRAIL_TF_TRADIER
-        _atr = _safe(npz, f'atr_{_tf}' if f'atr_{_tf}' in npz else 'atr_15m', n, 1.0)
-        _cond = _atr > 1.0
-        if _tf.upper() != "OFF" and _tf != '5m':
-            exit_mask = exit_mask | _cond
-        _ = getattr(cfg, 'MTF_ATR_TRAIL_TF_TRADIER', '5m')
+        _ = getattr(cfg, 'MTF_ATR_TRAIL_TF_TRADIER', '1h')
         if bool(getattr(cfg, 'NEVER_GO_RED_STOP_ENABLED', False)):
             _c = _base_safe(npz, 'close', n, cfg)
             _cond = _c > 0
@@ -4639,6 +4635,9 @@ class QuickConfig:
     WT_DC_ENABLED: bool = True
     WT_DC_ENTRY_THRESHOLD: float = 45.0
     WT_DC_DETAILED_SCORER_ENABLED: bool = False
+    WT_DC_DETAILED_ENTRY_THRESHOLD: float = 43.0
+    WT_DC_DETAILED_EXIT_ENABLED: bool = False
+    WT_DC_DETAILED_EXIT_THRESHOLD: float = 43.0
     WT_DC_ENTRY_K5M_MAX_LONG: float = 100.0
     WT_DC_ENTRY_K5M_MIN_SHORT: float = 0.0
     WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED: bool = False
@@ -5593,8 +5592,9 @@ class QuickConfig:
     MTF_ARROW_SIZE_MAX: float = 2.0  # auto-wired 625
     MTF_ARROW_SLOPE_LAMBDA: float = 0.5  # auto-wired 625
     MTF_ARROW_TRAIL_EXIT_ENABLED: bool = False  # auto-wired 625
-    MTF_ATR_TRAIL_ENABLED: bool = False  # auto-wired 625
-    MTF_ATR_TRAIL_MULT: float = 1.0  # auto-wired 625
+    MTF_ATR_TRAIL_ENABLED: bool = True  # live parity: config.py True 2026-05-20 Phase I (crypto); stocks stay OFF via MTF_ATR_TRAIL_ENABLED_TRADIER
+    MTF_ATR_TRAIL_ENABLED_TRADIER: bool = False  # live parity: config_tradier has NO MTF trail knobs → tradier _cfg default False (compound block inert on stocks)
+    MTF_ATR_TRAIL_MULT: float = 2.0  # live parity: config.py 2.0 (2026-05-20 USER MANDATE 2x ATR 15m trail)
     MTF_BB_REJECT_EXIT_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     MTF_DC_REJECT_EXIT_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     MTF_ENTRY_REQUIRE_GR_FILTER: bool = False  # auto-wired 625
@@ -6410,7 +6410,7 @@ class QuickConfig:
     EXIT_PREEMPTIVE_BREAKEVEN_ENABLED: bool = True
     HEDGE_EXIT_BYPASS_NOLOSS: bool = False
     MTF_ATR_TRAIL_TF: str = '15m'
-    MTF_ATR_TRAIL_TF_TRADIER: str = '5m'
+    MTF_ATR_TRAIL_TF_TRADIER: str = '1h'  # live parity: tradier_manage.py:11058 falls back to '1h' (config_tradier has no knob); was '5m' (matched nothing live)
     NEVER_GO_RED_STOP_ENABLED: bool = False
     NEWBORN_DC_STOP_FIELD: str = 'dc_low4_5m'
     NEWBORN_DC_STOP_MAX_AGE_MIN: float = 20.0
@@ -9457,7 +9457,7 @@ def compute_entry_signals(npz, n, is_long, cfg):
             # off -> unchanged. Detailed scorer reads full npz (velocity/structure/wave/div/DCBB).
             if bool(getattr(cfg, 'WT_DC_DETAILED_SCORER_ENABLED', False)):
                 _scores_wtdc = _wt_dc_vec.score_entry_detailed_vec(npz, is_long, n=n)
-                _thr_wtdc = float(getattr(cfg, 'WT_DC_ENTRY_THRESHOLD', 43))
+                _thr_wtdc = float(getattr(cfg, 'WT_DC_DETAILED_ENTRY_THRESHOLD', 43))
             else:
                 _indic_wtdc = {k: np.asarray(npz.get(k, np.zeros(n))) for k in ['wt1_D','wt2_D','wt1_4h','wt2_4h','dc_position_1h','stoch_k_5m','wt_cross_1h']}
                 _scores_wtdc = _wt_dc_vec.score_entry_multitf_vec(_indic_wtdc, is_long, n=n)
@@ -22230,6 +22230,21 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # where available) and KEEP TRADING. Streak restarts fresh after each recovery.
     _vig_rec_enabled = bool(getattr(cfg, 'VIGILANCE_RECOVERY_REENTRY_ENABLED', True))
     _vig_bounce_ok = bool(getattr(cfg, 'VIGILANCE_RECOVERY_BOUNCE_OK', True))
+    # ═══ MTF_ATR_TRAIL (2026-09-28 EXIT VECTORIZATION PARITY) — faithful ratcheting ATR trail,
+    # vec twin of live ez_manage.py:47684-47699 (crypto, ON by default per config.py COMPOUND/
+    # ENABLED/2.0/15m) and tradier_manage.py:11073-11086 (stocks, OFF by default: config_tradier
+    # has no MTF trail knobs so live _cfg resolves False — stocks sims opt in via
+    # MTF_ATR_TRAIL_ENABLED_TRADIER). Trail state is per position (pos['_atr_trail']), reset on
+    # every open/close, mirroring live mtf_compound_exit_state pop-on-successful-close. Pure
+    # predicate lives in vec_decisions.mtf_atr_trail_exit (vec-identical hook). Replaces the
+    # DELETED fabricated scaffolding (atr>1.0 exit_mask OR). Live-only orchestration NOT
+    # vectorized: MTF_EXIT_MIN_OPEN_TS startup gate, stale-trail-on-blocked-close wart.
+    _mtfat_tf = str((getattr(cfg, 'MTF_ATR_TRAIL_TF_TRADIER', '1h') if is_tradier else getattr(cfg, 'MTF_ATR_TRAIL_TF', '15m')) or 'OFF').strip()
+    _mtfat_mult = float(getattr(cfg, 'MTF_ATR_TRAIL_MULT', 2.0))
+    _mtfat_on = bool(getattr(cfg, 'MTF_EXIT_USE_COMPOUND', True)) and bool(getattr(cfg, 'MTF_ATR_TRAIL_ENABLED', True))
+    if is_tradier:
+        _mtfat_on = _mtfat_on and bool(getattr(cfg, 'MTF_ATR_TRAIL_ENABLED_TRADIER', False))
+    _mtfat_atr = _safe(npz, f'atr_{_mtfat_tf}', n, 0) if (_mtfat_on and _mtfat_tf.upper() != 'OFF') else None
     _vig_block_px = 0.0
     _vig_scan_start = 0
     try:
@@ -22646,6 +22661,24 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 pos = None; cd = cooldown_bars; has_closed_before = True
             continue
 
+        # MTF_ATR_TRAIL faithful twin (prep block above). Placed BEFORE the exit_sig technical
+        # exit on purpose: live's trail is in the NOLOSS bypass list, so it must be reachable on
+        # bars where the technical exit is NOLOSS-suppressed (its continue would skip anything
+        # placed after). On bars where both fire, close bar/price match live; only the reason
+        # label can differ (live tick order runs R1/R2 first). Update BEFORE compare = live order.
+        if pos is not None and _mtfat_atr is not None and held_bars >= min_hold:
+            _mtfat_a = float(_mtfat_atr[i]) if i < len(_mtfat_atr) else 0.0
+            pos['_atr_trail'] = vec_decisions.mtf_atr_trail_exit.atr_trail_update(
+                pos.get('_atr_trail', 0.0), float(pos.get('entry_price', pos['avg_price'])), px, _mtfat_a, _mtfat_mult, is_long)
+            if vec_decisions.mtf_atr_trail_exit.atr_trail_fires(pos['_atr_trail'], px, is_long):
+                pos['fees'] += abs(pos['qty'] * px) * half_fee
+                _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
+                _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
+                _tsm = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                _mtfat_reason = f"MTF_ATR_TRAIL_{_mtfat_tf}_x{_mtfat_mult}_lvl{pos['_atr_trail']:.6f}"
+                trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _mtfat_reason, 'type': 'CLOSE', 'ts': _tsm, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _mtfat_reason, 'bars_held': int(i - pos['entry_bar'])})
+                pos = None; cd = cooldown_bars; has_closed_before = True
+                continue
         if exit_sig[i] and held_bars >= min_hold:
             if 0 < satoshit_partial < 1.0:
                 reduce_qty = pos['qty'] * satoshit_partial

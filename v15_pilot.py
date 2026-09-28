@@ -1168,7 +1168,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         import multiprocessing as _mp
         _POOL_PREPARED = prepared
         _pool = _cf.ProcessPoolExecutor(max_workers=_n_proc, mp_context=_mp.get_context("fork"))
-        print(f"[spec-fill] process pool {_n_proc} workers (fork, NPZ shared)", flush=True)
+        # 2026-09-28 fork-deadlock fix: ProcessPoolExecutor forks workers LAZILY at first submit,
+        # which lands after threads exist (red-fixer/eval threads) — a fork while another thread
+        # holds a lock leaves children in futex_wait forever (s2 herd froze at load 3.8, logs idle
+        # 26-52min). Force ALL workers to fork NOW, while this process is still single-threaded.
+        list(_pool.map(abs, range(_n_proc * 4)))
+        print(f"[spec-fill] process pool {_n_proc} workers (fork, NPZ shared, pre-forked single-threaded)", flush=True)
     def _delta_log(rec: dict):
         try:
             _delta_log_fh.write(json.dumps(rec, default=str) + "\n")
@@ -1425,10 +1430,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     current_idx = 0  # FIX 2026-09-27: init before tabs[current_idx % len] at 849 (was UnboundLocalError → 0/-1 fallback)
     # start red fixer daemon (consumes RED_QUEUE with 10s timeout while plowers continue)
     _prepared_ref = {"prepared": prepared}
-    try:
-        start_red_fixer(new_symside, wb_path, progress_path, defaults, _prepared_ref, args)
-    except Exception as _e_fix:
-        print(f"[red-fixer-start-warn] {_e_fix}", flush=True)
+    # 2026-09-28 fork-deadlock fix (part 2): the red-fixer THREAD must not run — a thread alive
+    # around the fork pool re-opens the fork-while-threaded window (worker respawn) and froze both
+    # sweeps today. Spec-fill handles >10s stalls inline; reds stay for tools/v15_assure refill.
+    print("[red-fixer] disabled (fork-safety) — reds handled inline/by v15_assure", flush=True)
     # Baseline heartbeat for spec
     heartbeat_path = Path("/tmp") / f"v14_heartbeat_{new_symside}.txt"
     def _touch(msg: str):
@@ -1438,6 +1443,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             pass
     _touch("spec-start")
     print(f"[spec-fill] {new_symside} tabs={tabs} total_rows={total_rows} baseline={baseline_gain:.4f} hustle={is_hustle} cumulative={cumulative_gain:.4f}", flush=True)
+    for _sn_e2 in SWITCH_SHEETS:
+        if _sn_e2 in wb.sheetnames:
+            _ws_e2 = wb[_sn_e2]
+            _ws_e2.cell(row=2, column=_resolve_cols(_ws_e2)["E"]).value = float(baseline_gain)
     # Main loop — sequential with POS-stay / NEG-advance
     loop_guard = 0
     # FIX 2026-09-27: NEVER stop until 3971 F cells filled — total_rows ~3000, max_loops must be huge, log every stall
@@ -1633,6 +1642,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 g.font = Font(name="Arial", size=10, bold=True, color="006100" if promote else "9C0006")
                 g.fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid") if delta_for_row < 0 else PatternFill(fill_type=None)
                 g.alignment = VISUAL_ALIGN
+            _vg_f = (naked_vec or {}).get("gain_pct")
+            if _vg_f is not None:
+                _fcell = ws.cell(row=rr, column=cols["F"])
+                _fcell.value = float(_vg_f) - float(baseline_gain)
+                _fcell.font = Font(name="Arial", size=10, bold=True, color="006100" if _fcell.value > 0 else "9C0006")
+                _fcell.alignment = VISUAL_ALIGN
             if promote:
                 _add_override(ws, rr, cols, [f"{switch}={cand}"])
             key = f"{sname}!{rr}:{switch}={cand}"
@@ -1732,6 +1747,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             # LIVE columns stay BLANK until workbook complete per spec
             ws.cell(row=rr, column=cols["H"]).value = None
             ws.cell(row=rr, column=cols["I"]).value = None
+            _vg_f = joint_gain if joint_gain is not None else (naked_vec or {}).get("gain_pct")
+            if _vg_f is None and pending_lbI:
+                _vg_f = cumulative_before + max(pending_lbI.values())
+            if _vg_f is not None:
+                _fcell = ws.cell(row=rr, column=cols["F"])
+                _fcell.value = float(_vg_f) - float(baseline_gain)
+                _fcell.font = Font(name="Arial", size=10, bold=True, color="006100" if _fcell.value > 0 else "9C0006")
+                _fcell.alignment = VISUAL_ALIGN
             if promote:
                 _add_override(ws, rr, cols, [f"{switch}={cand}"] + pos_hdrs, pos_hdrs)
         except Exception as ee:
@@ -4208,8 +4231,11 @@ def main():
                         ws_h.cell(row=r, column=7).value = float(delta_best)
                 except: pass
                 try:
-                    # FIX 2026-09-25: F (HUSTLE) NOT USED — leave blank, K (PER_ROW_FILTERS col11) gets sum of pos yellows, G is vector+d_all
-                    ws_h.cell(row=r, column=6).value = None
+                    # FIX 2026-09-28: F = best candidate's real vec gain minus baseline (was blanked, spec requires F every row)
+                    _vg_f = (vec_best or {}).get("gain_pct")
+                    if _vg_f is not None:
+                        ws_h.cell(row=r, column=6).value = float(_vg_f) - float(baseline_gain)
+                        ws_h.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="006100" if float(_vg_f) - float(baseline_gain) > 0 else "9C0006")
                     ws_h.cell(row=r, column=6).fill = __import__("openpyxl").styles.PatternFill(fill_type=None)
                     # K = sum of pos yellows for this row
                     try:

@@ -36,8 +36,15 @@ OPTIMAL_PARAMS = {
 }
 
 
-def score_exit(indicators: dict, is_long: bool, current_price: float = 0.0, cfg=None) -> tuple:
+def score_exit(indicators: dict, is_long: bool, current_price: float = 0.0, cfg=None, detailed: bool = False) -> tuple:
     """Multi-TF WT/DC exit — TIGHTENED 2026-04-09, CONFIGURABLE 2026-04-10.
+
+    detailed=True (2026-09-28, opt-in via WT_DC_DETAILED_EXIT_ENABLED): reversal-pressure exit —
+    scores the detailed ENTRY scorer for the OPPOSITE side (a long exits when a short entry is
+    setting up, and vice versa). Reuses the parity-proven, field-audited _score_long/_score_short
+    (vector twin: wt_dc_entry_scorer_vec.score_entry_detailed_vec with the side flipped), so it needs
+    no new indicator fields. Default off -> live exit path unchanged. Threshold lives at the caller
+    (WT_DC_DETAILED_EXIT_THRESHOLD, default 43), same scale as the detailed entry scorer.
 
     EXIT requires N-of-5 conditions (configurable via cfg.EXIT_SCORER_MIN_CONDITIONS, default 5=ALL):
       - 1h WT cross AGAINST (LTF event)
@@ -53,6 +60,10 @@ def score_exit(indicators: dict, is_long: bool, current_price: float = 0.0, cfg=
       EXIT_SCORER_PARTIAL_SCORE: 40 (default) — score for N-1 conditions met
       EXIT_SCORER_FULL_SCORE: 100 (default) — score for all N conditions met
     """
+    if detailed:
+        from wt_dc_entry_scorer import _score_long as _e_score_long, _score_short as _e_score_short
+        _sc, _rsn = (_e_score_short(indicators) if is_long else _e_score_long(indicators))
+        return _sc, f"WT_DC_DETAILED_REVERSAL_{'SHORT' if is_long else 'LONG'}_{_sc:.0f}_{_rsn[:60]}"
     _min_cond = int(getattr(cfg, 'EXIT_SCORER_MIN_CONDITIONS', 5) if cfg else 5)
     _k_extreme = float(getattr(cfg, 'EXIT_SCORER_K_EXTREME', 75) if cfg else 75)
     _dc_extreme = float(getattr(cfg, 'EXIT_SCORER_DC_EXTREME', 0.80) if cfg else 0.80)

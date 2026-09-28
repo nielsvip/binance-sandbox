@@ -1,8 +1,8 @@
 # Exit-engine parity monitor
 
-generated: 2026-09-28T15:45:01.282655+00:00 · lookback: 48.0h
+generated: 2026-09-28T16:45:01.463731+00:00 · lookback: 48.0h
 
-**exit_engine rows in window: 9585** · last: 2026-09-28T15:44:58.331928+00:00
+**exit_engine rows in window: 10174** · last: 2026-09-28T16:44:49.180180+00:00
 
 ## 🔴 LEAKS (gate-disabled families that fired = illegal trades): 1204
 - **MOMENTUM_WATCHDOG**: 1204
@@ -18,29 +18,29 @@ top leak reasons:
 
 → For each: if the path is GOOD (profitable), add its twin to v12_quick_engine + set the gate default ON in config so best cat_side stays default. If BAD, close the code gate so it honors the disabled knob.
 
-## ✅ GATE_ON (legitimately allowed live, has gate): 54
-- GOLDEN_RULE: 54
+## ✅ GATE_ON (legitimately allowed live, has gate): 66
+- GOLDEN_RULE: 66
 
-## ❔ UNMAPPED (no gate mapping — candidate good-paths to evaluate): 8327
--  6282  VIGILANCE_MAX_LOSS_HARD_STOP_USER_LONG
--   768  MTF_ATR_TRAIL_15m_x2.0
--   530  DC_BREACH_REDUCE_UNHEDGED_LOW_15m_pric
--   521  ALL_ALL_GREEN_DIRECT_CLOSE_winners_all
--   108  BREAK_EVEN_GUARD_EXIT
+## ❔ UNMAPPED (no gate mapping — candidate good-paths to evaluate): 8904
+-  6376  VIGILANCE_MAX_LOSS_HARD_STOP_USER_LONG
+-   848  MTF_ATR_TRAIL_15m_x2.0
+-   605  DC_BREACH_REDUCE_UNHEDGED_LOW_15m_pric
+-   592  ALL_ALL_GREEN_DIRECT_CLOSE_winners_all
+-   232  VIGILANCE_DC4_15m_HARD_STOP_USER_LONG
+-   123  BREAK_EVEN_GUARD_EXIT
 -    68  STOP_FUNCTIONS_KILL_2 time_since_entry
 -    10  HAIKU_WINNER_AUG_4.1pct
+-    10  HAIKU_WINNER_AUG_3.1pct
 -     5  HAIKU_WINNER_AUG_4.0pct
--     5  HAIKU_WINNER_AUG_3.1pct
+-     5  RATIO_CLOSE_LONG_L100_S0_tgt38/62_gain
 -     4  HAIKU_WINNER_AUG_3.6pct
 -     4  HAIKU_WINNER_AUG_3.8pct
+-     3  HAIKU_WINNER_AUG_3.0pct
 -     3  HAIKU_WINNER_AUG_4.4pct
+-     3  HAIKU_WINNER_AUG_3.2pct
 -     2  HAIKU_WINNER_AUG_3.9pct
--     2  HAIKU_WINNER_AUG_3.0pct
 -     2  HAIKU_WINNER_AUG_3.4pct
 -     2  HAIKU_WINNER_AUG_4.6pct
--     2  HAIKU_WINNER_AUG_3.2pct
--     2  RATIO_CLOSE_LONG_L100_S0_tgt38/62_gain
 -     1  HAIKU_WINNER_AUG_4.3pct
--     1  HAIKU_WINNER_AUG_4.8pct
 
-## actions in window: {'CLOSE': 8210, 'OPEN': 1257, 'REDUCE': 70, 'AUGMENT': 48}
+## actions in window: {'CLOSE': 8777, 'OPEN': 1268, 'REDUCE': 73, 'AUGMENT': 56}

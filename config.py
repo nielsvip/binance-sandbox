@@ -55,6 +55,9 @@ class Config:
     WT_DC_ENTRY_THRESHOLD: float = 0.0  # crypto 0 vs tradier 45
     TRA_WT_DC_ENTRY_THRESHOLD: float = 0.0  # keep for crypto parity (tradier 85)
     WT_DC_DETAILED_SCORER_ENABLED: bool = False  # 2026-09-28 opt-in: detailed _score_long/_score_short slowdown/accel scorer (thr 43) vs simple multi-TF. Off=live unchanged. Crypto live has no WT_DC entry caller, so this affects backtest/sweep only for crypto.
+    WT_DC_DETAILED_ENTRY_THRESHOLD: float = 43.0  # 2026-09-28 entry bar for the detailed scorer ONLY (its scale tops ~55, so the simple 55/85 bar would never fire). Used by live+backtest identically when WT_DC_DETAILED_SCORER_ENABLED; TF-adjusted 15m-10/4h+10/D+15 exactly like v12.
+    WT_DC_DETAILED_EXIT_ENABLED: bool = False  # 2026-09-28 opt-in reversal-pressure exit: exit when the OPPOSITE-side detailed entry scorer fires. Off=live exit unchanged. Backtest/sweep-only for crypto (no ez WT_DC caller).
+    WT_DC_DETAILED_EXIT_THRESHOLD: float = 43.0  # 2026-09-28 opposite-side detailed-entry score at/above which the detailed exit fires. Same scale as the entry scorer.
     # ── WT/DC TF-EXPANDED PACK 2026-09-19 — 15m+ only (15m/1h/4h/D/W): clear TF gates so every WT/DC path is template-sweepable ──
     WT_DC_TF_ENTRY: str = "1h"  # WT cross trigger TF: 15m|1h|4h|D — default 1h (live-parity, was hard 1h)
     WT_DC_TF_HTF: str = "4h"  # primary HTF WT alignment TF: 15m|1h|4h|D|W — default 4h
@@ -4419,7 +4422,7 @@ class Config:
     STRICT_VEC_PARITY_MODE: bool = True  # 2026-09-26 PARITY LOCK — live trades ONLY vec-achievable routes (SPREADSHEETS/BEST/ 7D forward). Default True = parity-only (no overtrade). Set False only for paper 1/3m test arm. Was False, now True per user 20% churn fix.
     STRICT_VEC_PARITY_SHADOW: bool = False
     STRICT_VEC_PARITY_GATE_ENTRIES: bool = True
-    STRICT_VEC_PARITY_GATE_EXITS: bool = True
+    STRICT_VEC_PARITY_GATE_EXITS: bool = False  # 2026-09-28 SAFETY — was True and STRANDED LOSERS: the vec allowlist (vec_paths/vec_parity_gate.py) omits every live stop-loss reason, so STRICT_VEC_PARITY blocked VIGILANCE_MAX_LOSS_HARD_STOP_USER (6376×/day), MTF_ATR_TRAIL (735×), DC_BREACH_REDUCE (593×), VIGILANCE_DC4 (230×), BREAK_EVEN_GUARD (123×) — losers could not be closed (ADAUSDC bled -3.97%→-4.66% with stops blocked). Sacred rule: WT/DC technical exits MUST close losers. Parity gate stays on ENTRIES (the real churn source); NEVER block an exit. Re-enable only after the allowlist covers every live loss-exit token AND paper proves vec exits actually fire in time.
     # ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
     # ┃  PARITY MASTERS — TWO INDEPENDENT KILL-SWITCHES — READ THIS BLOCK FIRST  ┃
     # ┃  ┌─────────────────────────────────────────────────────────────────────┐  ┃
