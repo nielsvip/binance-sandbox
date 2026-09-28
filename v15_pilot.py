@@ -484,6 +484,7 @@ OUT_DIR = ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
 PROGRESS_DIR = Path(os.environ["V15_PROGRESS_DIR"]) if os.environ.get("V15_PROGRESS_DIR") else ROOT / "data" / "reports" / "lifecycle_pilot"
 FLAGS_DIR = ROOT / "data" / "reports" / "v15_flags"
 SWITCH_SHEETS = [
+    "STDEV_SLOPE_SIZING",  # 13 tabs: STDEV is a single T/F switch tab (user 2026-09-28), filled like the rest
     "ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES",
     "EXIT_STRUCTURAL", "EXIT_VELOCITY",
     "REENTRY_WINDOWED", "REENTRY_ADAPTIVE",
@@ -989,7 +990,11 @@ def _parse_opt_value(val, default):
         return val.lower() == "true"
     return val
 
+DEFAULT_MARKER = "__CONFIG_DEFAULT__"
+
 def _switch_overrides(switch: str, cand_parsed) -> dict:
+    if cand_parsed == DEFAULT_MARKER:
+        return {}
     return COMPOSITE_SWITCHES[switch](cand_parsed) if switch in COMPOSITE_SWITCHES else {switch: cand_parsed}
 
 def _pool_eval(overrides: dict, window_days: int):
@@ -1064,7 +1069,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 continue
             cand = ws.cell(row=rr, column=2).value
             if cand is None:
-                continue
+                # template row without a default value: test it AT its real config default (never skip the row)
+                cand = defaults.get(sw)
+                cand = DEFAULT_MARKER if cand is None else cand
             if isinstance(cand, str) and cand.strip().lower() in ("option value", "sheets applicable", "gates"):
                 continue
             # 2026-09-28 FIX: DO NOT SKIP GENERAL rows — they need evaluation too!
@@ -1232,6 +1239,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             res, err, cached, secs = results.get(r2, (None, "missing", False, None))
             g = (res or {}).get("gain_pct")
             d = (float(g) - cum0) if g is not None else None
+            d = 0.0 if d is not None and abs(d) < 1e-9 else d
             ok = d is not None and bool((res or {}).get("valid"))
             _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": nav_mode, "sheet": sname, "row": r2, "switch": sw2, "cand": str(c2), "label": "ORANGE", "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cum0, "delta": d, "secs": round(secs, 4) if secs is not None else None, "cached": cached, "err": err})
             cell = ws.cell(row=r2, column=cols["G"])
@@ -1317,6 +1325,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             res, err, cached = results.get((sw2, c2), (None, "missing", False))
             g = (res or {}).get("gain_pct")
             d = (float(g) - cum0) if g is not None else None
+            d = 0.0 if d is not None and abs(d) < 1e-9 else d
             ok = d is not None and bool((res or {}).get("valid"))
             recs.append([sw2, c2, g, (res or {}).get("trades"), (res or {}).get("valid"), d, False, cum0, ", ".join(seen[(sw2, c2)][:6]), err or (res or {}).get("invalid_reason") or ""])
             _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": nav_mode, "sheet": "FINAL_FILTER_RECHECK", "row": None, "switch": sw2, "cand": str(c2), "label": "FINAL_RECHECK", "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cum0, "delta": d, "secs": None, "cached": cached, "err": err})
@@ -1562,6 +1571,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if not vec or vec.get("gain_pct") is None:
                 return None, False, str((vec or {}).get("invalid_reason") or "no result")[:40]
             d = float(vec.get("gain_pct")) - cumulative_before
+            d = 0.0 if abs(d) < 1e-9 else d  # float noise (e.g. -4.4e-16) is an exact 0
             if not vec.get("valid"):
                 return d, False, str(vec.get("invalid_reason") or "invalid")[:40]
             return d, True, ""
