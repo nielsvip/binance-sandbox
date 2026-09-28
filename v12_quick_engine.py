@@ -9433,9 +9433,17 @@ def compute_entry_signals(npz, n, is_long, cfg):
     # Vectorized exact live WT_DC scorer (11 wt_dc* scripts) — 0.07s budget, numpy + guaranteed 30+/mo
     if bool(getattr(cfg, 'WT_DC_ENABLED', False)):
         try:
-            _indic_wtdc = {k: np.asarray(npz.get(k, np.zeros(n))) for k in ['wt1_D','wt2_D','wt1_4h','wt2_4h','dc_position_1h','stoch_k_5m','wt_cross_1h']}
-            _scores_wtdc = _wt_dc_vec.score_entry_multitf_vec(_indic_wtdc, is_long, n=n)
-            _thr_wtdc = float(getattr(cfg, 'WT_DC_ENTRY_THRESHOLD', 45))
+            # 2026-09-28 user-requested WT_DC rewrite: WT_DC_DETAILED_SCORER_ENABLED switch
+            # selects the richer slowdown/accel scorer (_score_long/_score_short, threshold 43,
+            # parity-proven 0.000000 vs scalar) instead of the simple multi-TF scorer. Default
+            # off -> unchanged. Detailed scorer reads full npz (velocity/structure/wave/div/DCBB).
+            if bool(getattr(cfg, 'WT_DC_DETAILED_SCORER_ENABLED', False)):
+                _scores_wtdc = _wt_dc_vec.score_entry_detailed_vec(npz, is_long, n=n)
+                _thr_wtdc = float(getattr(cfg, 'WT_DC_ENTRY_THRESHOLD', 43))
+            else:
+                _indic_wtdc = {k: np.asarray(npz.get(k, np.zeros(n))) for k in ['wt1_D','wt2_D','wt1_4h','wt2_4h','dc_position_1h','stoch_k_5m','wt_cross_1h']}
+                _scores_wtdc = _wt_dc_vec.score_entry_multitf_vec(_indic_wtdc, is_long, n=n)
+                _thr_wtdc = float(getattr(cfg, 'WT_DC_ENTRY_THRESHOLD', 45))
             _tf_wtdc = str(getattr(cfg, 'WT_DC_TF_ENTRY', '1h')).lower()
             if _tf_wtdc == '15m':
                 _thr_wtdc = max(20, _thr_wtdc - 10)

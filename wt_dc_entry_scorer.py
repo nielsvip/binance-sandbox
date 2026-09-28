@@ -162,14 +162,22 @@ def score_exit_multitf(indicators: dict, is_long: bool, max_gain: float, current
     return False, ""
 
 
-def score_entry(indicators: dict, is_long: bool, current_price: float = 0.0) -> Tuple[float, str]:
+def score_entry(indicators: dict, is_long: bool, current_price: float = 0.0,
+                detailed: bool = False) -> Tuple[float, str]:
     """
     Score entry quality 0-100 from ALL WT+DC indicators across ALL timeframes.
     Returns (score, reason_string). Higher = stronger entry signal.
 
-    Uses score_entry_multitf (validated Sharpe 27.4 over 121 stocks 2.9yr).
-    Old per-TF scoring kept as fallback in _score_long / _score_short.
+    Default (detailed=False): score_entry_multitf (validated Sharpe 27.4 over 121 stocks
+    2.9yr) — this is what LIVE uses; unchanged for safety.
+    detailed=True (2026-09-28, user-requested WT_DC rewrite): the richer slowdown/accel
+    per-TF scorer _score_long / _score_short (velocity/structure/wave/divergence/DCBB
+    weighted, threshold 43). Opt-in via the WT_DC_DETAILED_SCORER_ENABLED switch so live
+    behaviour does not change until swept + paper-proven. Vector twin:
+    wt_dc_entry_scorer_vec.score_entry_detailed_vec (parity: test_wt_dc_detailed_scorer_vec).
     """
+    if detailed:
+        return _score_long(indicators) if is_long else _score_short(indicators)
     return score_entry_multitf(indicators, is_long, current_price)
 
 

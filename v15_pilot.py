@@ -1574,14 +1574,23 @@ def _atomic_save(wb, wb_path: Path):
     try:
         wb_path.parent.mkdir(parents=True, exist_ok=True)
         wb.save(tmp)
-        # VALIDATE tmp is a complete zip before replacing live file — prevents 225KB truncation death
+        # VALIDATE tmp is a complete zip before replacing live file — prevents 225KB truncation death + CRC-32 corruption
         try:
             import zipfile as _zf_v
             _z = _zf_v.ZipFile(tmp, 'r')
-            _ok = len(_z.namelist()) >= 10
+            _namelist = _z.namelist()
+            _ok = len(_namelist) >= 10
+            if _ok:
+                # Validate CRC-32 by testing read of each entry
+                for _entry in _namelist:
+                    try:
+                        _z.getinfo(_entry)
+                        _z.read(_entry)
+                    except Exception as _e_crc:
+                        raise RuntimeError(f"CRC-32 fail on {_entry}: {_e_crc}")
             _z.close()
             if not _ok:
-                raise RuntimeError(f"tmp zip has only {len(_z.namelist())} entries, expected >=10")
+                raise RuntimeError(f"tmp zip has only {len(_namelist)} entries, expected >=10")
         except Exception as _e_v:
             print(f"[atomic-save-VALIDATE-FAIL] {wb_path.name} tmp invalid {_e_v} — keep previous file, do not replace", flush=True)
             try:
