@@ -1114,15 +1114,6 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         rr, switch, cand = pending
         ws = wb[sname]
         cols = _resolve_cols(ws)
-        # Ensure baseline column for this row has value (cumulative_before) if blank — per spec we write baseline value when we arrive (either initial or after NEG move)
-        try:
-            e_val = ws.cell(row=rr, column=cols["E"]).value
-            if e_val is None or (isinstance(e_val, str) and e_val.strip() == ""):
-                ws.cell(row=rr, column=cols["E"]).value = float(cumulative_gain)
-                ws.cell(row=rr, column=cols["E"]).font = Font(name="Arial", size=10, bold=False)
-                ws.cell(row=rr, column=cols["E"]).alignment = VISUAL_ALIGN
-        except Exception:
-            pass
         cumulative_before = float(cumulative_gain)
         # FIX: Smart yellow filtering — parse template headers and filter by switch relevance
         # Extract first token of switch for quick filtering (e.g., "BB" from "BB_SQUEEZE_WIDTH_PERCENTILE")
@@ -1184,7 +1175,6 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 raise TimeoutError(f"yellow eval timeout {timeout_sec}s")
         # Evaluate switch alone (naked) vs cumulative_before to get base delta if no yellows
         switch_variant = dict(cumulative_overrides)
-        # parse cand to correct type using defaults
         def _parse_opt(val, default):
             if isinstance(default, bool):
                 if isinstance(val, str) and val.lower() in ("true", "false"):
