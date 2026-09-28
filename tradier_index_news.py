@@ -373,18 +373,18 @@ class OptionsPaper:
             logger.info(f"[OPT] {symbol}: no {opt_type} passed best-price filters (spread/OI/delta/premium) for {trigger}")
             return
         fill = round(contract['mid'] + 0.25 * (contract['ask'] - contract['mid']), 4)
-        rec = {'symbol': symbol, 'occ': contract['occ'], 'type': opt_type, 'strike': contract['strike'], 'expiry': contract['expiry'], 'entry_mid': fill, 'entry_premium_usd': round(fill * 100, 2), 'delta': contract['delta'], 'oi': contract['oi'], 'spread_pct': contract['spread_pct'], 'trigger': trigger, 'bias': round(bias, 3), 'opened_at': datetime.now(timezone.utc).isoformat(), 'opened_date': now_et().strftime('%Y-%m-%d'), 'mark': fill, 'mark_ts': datetime.now(timezone.utc).isoformat(), 'mode': 'paper_mid'}
-        self.state['options'][contract['occ']] = rec
+        variants = getattr(config, 'INDEX_NEWS_OPTIONS_VARIANTS', {}) or {'runner': {'tp': config.INDEX_NEWS_OPTIONS_TP_PCT, 'sl': config.INDEX_NEWS_OPTIONS_SL_PCT, 'trail': 0.0, 'max_hold': config.INDEX_NEWS_OPTIONS_MAX_HOLD_SESSIONS, 'eod_flat': False}}
+        for vname in variants:
+            rec = {'symbol': symbol, 'occ': contract['occ'], 'variant': vname, 'type': opt_type, 'strike': contract['strike'], 'expiry': contract['expiry'], 'entry_mid': fill, 'entry_premium_usd': round(fill * 100, 2), 'delta': contract['delta'], 'oi': contract['oi'], 'spread_pct': contract['spread_pct'], 'trigger': trigger, 'bias': round(bias, 3), 'opened_at': datetime.now(timezone.utc).isoformat(), 'opened_date': now_et().strftime('%Y-%m-%d'), 'mark': fill, 'peak': fill, 'mark_ts': datetime.now(timezone.utc).isoformat(), 'mode': 'paper_mid'}
+            self.state['options'][f"{contract['occ']}|{vname}"] = rec
+            record_trade({'event': 'OPTION_OPEN', **{k: rec[k] for k in ('symbol', 'occ', 'variant', 'type', 'strike', 'expiry', 'entry_mid', 'entry_premium_usd', 'delta', 'spread_pct', 'trigger', 'bias', 'mode')}})
         save_state(self.state)
-        record_trade({'event': 'OPTION_OPEN', **{k: rec[k] for k in ('symbol', 'occ', 'type', 'strike', 'expiry', 'entry_mid', 'entry_premium_usd', 'delta', 'spread_pct', 'trigger', 'bias', 'mode')}})
-        logger.warning(f"[OPT] PAPER OPEN {symbol} {opt_type} {contract['strike']} {contract['expiry']} @ {fill} (${fill * 100:.0f}) trigger={trigger} bias={bias:+.2f} spread={contract['spread_pct']}% oi={contract['oi']}")
+        logger.warning(f"[OPT] PAPER OPEN x{len(variants)} variants {symbol} {opt_type} {contract['strike']} {contract['expiry']} @ {fill} (${fill * 100:.0f}) trigger={trigger} bias={bias:+.2f} spread={contract['spread_pct']}% oi={contract['oi']}")
 
     async def scan_triggers(self, symbols: List[str], bias_fn):
         if not config.INDEX_NEWS_OPTIONS_ENABLED:
             return
         for symbol in symbols:
-            if any(o['symbol'] == symbol for o in self.state['options'].values()):
-                continue
             bias = bias_fn(symbol)
             fired = None
             if bias >= config.INDEX_NEWS_OPTIONS_BIAS_MIN:
@@ -399,6 +399,8 @@ class OptionsPaper:
                     fired = ('call', 'tech_bottom')
             if not fired:
                 continue
+            if any(o['symbol'] == symbol and o['type'] == fired[0] for o in self.state['options'].values()):
+                continue
             key = f"{now_et().strftime('%Y-%m-%d')}_{symbol}_{fired[1]}"
             if key in self.state['opt_triggered']:
                 continue
@@ -406,39 +408,55 @@ class OptionsPaper:
             save_state(self.state)
             await self.open_option(symbol, fired[0], fired[1], bias)
 
-    async def manage(self):
-        for occ in list(self.state['options'].keys()):
-            pos = self.state['options'][occ]
-            try:
-                q = await self.client.get_quote(occ)
-            except Exception:
-                q = {}
+    async def manage(self, force_eod: bool = False):
+        quotes_cache = {}
+        for key in list(self.state['options'].keys()):
+            pos = self.state['options'][key]
+            occ = pos['occ']
+            if occ not in quotes_cache:
+                try:
+                    quotes_cache[occ] = await self.client.get_quote(occ) or {}
+                except Exception:
+                    quotes_cache[occ] = {}
+            q = quotes_cache[occ]
             bid, ask = float(q.get('bid') or 0), float(q.get('ask') or 0)
             if bid <= 0 or ask <= 0:
                 continue
             mid = (bid + ask) / 2
             pos['mark'] = round(mid, 4)
+            pos['peak'] = round(max(float(pos.get('peak', mid)), mid), 4)
             pos['mark_ts'] = datetime.now(timezone.utc).isoformat()
+            v = (getattr(config, 'INDEX_NEWS_OPTIONS_VARIANTS', {}) or {}).get(pos.get('variant', 'runner'), {})
+            tp = float(v.get('tp', config.INDEX_NEWS_OPTIONS_TP_PCT))
+            sl = float(v.get('sl', config.INDEX_NEWS_OPTIONS_SL_PCT))
+            trail = float(v.get('trail', 0.0))
+            max_hold = int(v.get('max_hold', config.INDEX_NEWS_OPTIONS_MAX_HOLD_SESSIONS))
+            eod_flat = bool(v.get('eod_flat', False))
             gain_pct = (mid / pos['entry_mid'] - 1) * 100.0
+            drawdown_from_peak = (1 - mid / float(pos['peak'])) * 100.0 if float(pos['peak']) > 0 else 0.0
             held_days = (now_et().date() - datetime.strptime(pos['opened_date'], '%Y-%m-%d').date()).days
             dte_left = (datetime.strptime(pos['expiry'], '%Y-%m-%d').date() - now_et().date()).days
             reason = None
-            if gain_pct >= config.INDEX_NEWS_OPTIONS_TP_PCT:
+            if tp > 0 and gain_pct >= tp:
                 reason = 'TP'
-            elif gain_pct <= -config.INDEX_NEWS_OPTIONS_SL_PCT:
+            elif gain_pct <= -sl:
                 reason = 'SL'
-            elif held_days >= config.INDEX_NEWS_OPTIONS_MAX_HOLD_SESSIONS + 2:
+            elif trail > 0 and drawdown_from_peak >= trail:
+                reason = 'PEAK_TRAIL'
+            elif held_days >= max_hold + 2:
                 reason = 'MAX_HOLD'
             elif dte_left <= 3:
                 reason = 'DTE_EXIT'
+            elif force_eod and eod_flat:
+                reason = 'EOD_FLAT'
             if reason:
                 exit_px = round(mid - 0.25 * (mid - bid), 4)
                 exit_gain = (exit_px / pos['entry_mid'] - 1) * 100.0
                 pnl = round((exit_px - pos['entry_mid']) * 100, 2)
                 self.state['realized_pnl_usd'] = self.state.get('realized_pnl_usd', 0.0) + pnl
-                record_trade({'event': 'OPTION_CLOSE', 'symbol': pos['symbol'], 'occ': occ, 'type': pos['type'], 'strike': pos['strike'], 'expiry': pos['expiry'], 'entry_mid': pos['entry_mid'], 'exit_mid': exit_px, 'gain_pct': round(exit_gain, 2), 'pnl_usd': pnl, 'trigger': pos['trigger'], 'reason': reason, 'mode': 'paper_mid'})
-                logger.warning(f"[OPT] PAPER CLOSE {pos['symbol']} {pos['type']} {pos['strike']} @ {exit_px} {exit_gain:+.1f}% (${pnl:+.2f}) reason={reason}")
-                del self.state['options'][occ]
+                record_trade({'event': 'OPTION_CLOSE', 'symbol': pos['symbol'], 'occ': occ, 'variant': pos.get('variant', 'runner'), 'type': pos['type'], 'strike': pos['strike'], 'expiry': pos['expiry'], 'entry_mid': pos['entry_mid'], 'exit_mid': exit_px, 'peak_mid': pos['peak'], 'gain_pct': round(exit_gain, 2), 'pnl_usd': pnl, 'trigger': pos['trigger'], 'reason': reason, 'mode': 'paper_mid'})
+                logger.warning(f"[OPT] PAPER CLOSE [{pos.get('variant', 'runner')}] {pos['symbol']} {pos['type']} {pos['strike']} @ {exit_px} {exit_gain:+.1f}% (${pnl:+.2f}) reason={reason} peak={pos['peak']}")
+                del self.state['options'][key]
             save_state(self.state)
 
 class Strategy:
@@ -653,8 +671,10 @@ class Strategy:
                     if et_time() >= dt_time(10, 0):
                         await self.options.scan_triggers(self.symbols, self.news.symbol_bias)
                     await self.options.manage()
-                elif ph == 'EOD_FLAT' and config.INDEX_NEWS_EOD_FLAT:
-                    await self.manage_pass(force_flat=True)
+                elif ph == 'EOD_FLAT':
+                    if config.INDEX_NEWS_EOD_FLAT:
+                        await self.manage_pass(force_flat=True)
+                    await self.options.manage(force_eod=True)
                 await asyncio.sleep(30 if ph in ('PREMARKET', 'RTH', 'EOD_FLAT') else 300)
             except Exception as e:
                 logger.error(f"[LOOP] {e}", exc_info=True)

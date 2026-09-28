@@ -114,6 +114,21 @@
       "blocked_at": "2026-09-28T19:14:17.711167+00:00",
       "reason": "DC4_15m_BREACH_g-0.28pct_px115.9150_lvl115.7650",
       "exit_price": 115.91499999999999
+    },
+    "ABT_SHORT": {
+      "blocked_at": "2026-09-28T19:46:37.914524+00:00",
+      "reason": "DC4_15m_BREACH_g-0.65pct_px101.0250_lvl101.0150",
+      "exit_price": 101.025
+    },
+    "MPC_LONG": {
+      "blocked_at": "2026-09-28T19:55:03.921645+00:00",
+      "reason": "DC4_15m_BREACH_g-0.27pct_px387.3850_lvl388.2450",
+      "exit_price": 387.385
+    },
+    "SNOW_LONG": {
+      "blocked_at": "2026-09-28T19:56:51.871058+00:00",
+      "reason": "DC4_15m_BREACH_g-1.58pct_px327.6850_lvl328.8050",
+      "exit_price": 327.685
     }
   },
   "streaks": {
@@ -144,6 +159,11 @@
           "ts": "2026-09-28T13:39:56.495222+00:00",
           "gain_pct": -0.6951,
           "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-0.43_lvl378.8350_qty_999999"
+        },
+        {
+          "ts": "2026-09-28T19:45:28.222374+00:00",
+          "gain_pct": 0.0126,
+          "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-0.54_lvl359.0250_qty_999999"
         }
       ]
     },
@@ -303,7 +323,7 @@
       ]
     },
     "APO_SHORT": {
-      "consec_losses": 0,
+      "consec_losses": 1,
       "last": [
         {
           "ts": "2026-09-28T14:15:13.588939+00:00",
@@ -314,6 +334,11 @@
           "ts": "2026-09-28T14:43:35.149610+00:00",
           "gain_pct": 0.0667,
           "reason": "WT_CROSSOVER_FINAL_5m_15m_1hTrue_4hTrue_DFalse_g0.09%_hold5438m_MANDATORY_REENTRY_qty_999999"
+        },
+        {
+          "ts": "2026-09-28T19:48:49.739344+00:00",
+          "gain_pct": -0.1087,
+          "reason": "GAP_MOC_EXIT_OPEN_trb:APO_SHORT_avg+0.11_thr0.10_topTrue_vvTrue_m77_qty_999999"
         }
       ]
     },
@@ -414,6 +439,11 @@
           "ts": "2026-09-28T19:28:25.447648+00:00",
           "gain_pct": 2.2788,
           "reason": "WT_CROSSOVER_FINAL_5m_15m_1hFalse_4hTrue_DFalse_g1.83%_hold311m_MANDATORY_REENTRY_qty_999999"
+        },
+        {
+          "ts": "2026-09-28T19:46:58.109009+00:00",
+          "gain_pct": 1.2337,
+          "reason": "GAP_MOC_EXIT_OPEN_trb:BWXT_SHORT_avg+1.02_thr0.10_topTrue_vvTrue_m77_qty_999999"
         }
       ]
     },
@@ -424,6 +454,56 @@
           "ts": "2026-09-28T19:16:40.216555+00:00",
           "gain_pct": 0.307,
           "reason": "ULTIMATE_DC_4h_HARD_STOP_LONG_px92.770000_lvl98.485000_g-8.94_qty_999999"
+        }
+      ]
+    },
+    "ALB_SHORT": {
+      "consec_losses": 0,
+      "last": [
+        {
+          "ts": "2026-09-28T19:33:41.190837+00:00",
+          "gain_pct": 2.4386,
+          "reason": "WT_CROSSOVER_FINAL_5m_15m_1hTrue_4hTrue_DFalse_g2.48%_hold311m_MANDATORY_REENTRY_qty_999999"
+        }
+      ]
+    },
+    "PSX_LONG": {
+      "consec_losses": 1,
+      "last": [
+        {
+          "ts": "2026-09-28T19:37:26.811133+00:00",
+          "gain_pct": -0.1066,
+          "reason": "ULTIMATE_DC_4h_HARD_STOP_LONG_px254.040000_lvl254.990000_g-1.39_qty_999999"
+        }
+      ]
+    },
+    "GOOGL_SHORT": {
+      "consec_losses": 1,
+      "last": [
+        {
+          "ts": "2026-09-28T19:45:39.075342+00:00",
+          "gain_pct": -0.0088,
+          "reason": "GAP_MOC_EXIT_INTRADAY_trb:GOOGL_SHORT_avg-3.01_thr0.30_topTrue_vvFalse_m77_qty_999999"
+        }
+      ]
+    },
+    "LOW_SHORT": {
+      "consec_losses": 1,
+      "last": [
+        {
+          "ts": "2026-09-28T19:57:11.938741+00:00",
+          "gain_pct": -0.0586,
+          "reason": "GAP_MOC_EXIT_INTRADAY_trb:LOW_SHORT_avg-3.68_thr0.30_topTrue_vvTrue_m77_qty_999999"
+        }
+      ]
+    },
+    "BA_SHORT": {
+      "consec_losses": 0,
+      "last": [
+        {
+          "ts": "2026-09-28T19:59:12.744465+00:00",
+          "gain_pct": 6.7016,
+          "reason": "STRUCT_BREAK_DC_1h_HIGH_(0.00)_gain:6.24%_qty_999999"
         }
       ]
     }

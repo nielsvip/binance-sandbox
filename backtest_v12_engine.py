@@ -4212,15 +4212,15 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     # are always tradeable regardless of live symbols_trb_long/short.json stale state, so sandbox never
     # gives 0 trades due to allowlist mismatch. This does NOT affect live (live never sets V8_SWEEP_MODE).
     if os.environ.get("V8_SWEEP_MODE", "0") == "1" and stores:
-        if _long_allow is not None:
-            _long_allow = set(_long_allow) | set(stores.keys())
-        else:
-            _long_allow = set(stores.keys())
-        if _short_allow is not None:
-            _short_allow = set(_short_allow) | set(stores.keys())
-        else:
-            _short_allow = set(stores.keys())
-        v8_logger.info(f"V8_SWEEP_MODE=1 sandbox allowlist union: long={len(_long_allow)} short={len(_short_allow)} — sandbox never 0 trades")
+        # 2026-09-28 SINGLE-SIDE PARITY FIX: respect V8_LADDER_ONLY_SIDE. The union below used to add
+        # requested symbols to BOTH sides unconditionally, silently UNDOING the side isolation above
+        # (a NVDA_SHORT run then opened 297 NVDA longs, polluting the trade count vs the short-only
+        # vector result). Only union into the side(s) NOT isolated away.
+        if _ladder_only_side_c != "SHORT":
+            _long_allow = (set(_long_allow) if _long_allow is not None else set()) | set(stores.keys())
+        if _ladder_only_side_c != "LONG":
+            _short_allow = (set(_short_allow) if _short_allow is not None else set()) | set(stores.keys())
+        v8_logger.info(f"V8_SWEEP_MODE=1 sandbox allowlist union (side_iso={_ladder_only_side_c or 'none'}): long={len(_long_allow or [])} short={len(_short_allow or [])} — sandbox never 0 trades")
     _ladder_initial_seeded = False
     for sym in stores.keys():
         _long_ok = (_long_allow is None) or (sym in _long_allow)
@@ -17339,6 +17339,12 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
         # run the real engine with sweep bypass to ensure symbol trades
         _prev_sweep = __import__("os").environ.get("V8_SWEEP_MODE")
         __import__("os").environ["V8_SWEEP_MODE"] = "1"
+        # 2026-09-28 SINGLE-SIDE PARITY FIX: run_one verifies ONE sym_side (e.g. NVDA_SHORT), but the
+        # account sim trades both sides — a NVDA_SHORT run opened 297 NVDA LONGS (0 shorts), making the
+        # trade count incomparable to the short-only vector result. Isolate to the tested side via
+        # V8_LADDER_ONLY_SIDE so only that side can open (mirrors v12_quick_engine's single is_long).
+        _prev_side = __import__("os").environ.get("V8_LADDER_ONLY_SIDE")
+        __import__("os").environ["V8_LADDER_ONLY_SIDE"] = side
         try:
             if mode == "crypto":
                 # run_simulation is async; it returns executed_trades list
@@ -17350,6 +17356,10 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
                 __import__("os").environ.pop("V8_SWEEP_MODE", None)
             else:
                 __import__("os").environ["V8_SWEEP_MODE"] = _prev_sweep
+            if _prev_side is None:
+                __import__("os").environ.pop("V8_LADDER_ONLY_SIDE", None)
+            else:
+                __import__("os").environ["V8_LADDER_ONLY_SIDE"] = _prev_side
     except Exception as _e:
         import traceback as _tb
         return {"symside": symside, "valid": False, "invalid_reason": f"run_one {type(_e).__name__}: {_e}", "gain_per_mo": 0.0, "trades": 0, "gain_pct": 0.0, "pool_sharpe": 0.0, "max_dd_pct": 0.0, "tim_pct": 0.0, "score": float("-inf"), "trace": _tb.format_exc()[:800]}

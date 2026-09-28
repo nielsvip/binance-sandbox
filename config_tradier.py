@@ -2681,3 +2681,13 @@ class TradierConfig:
     INDEX_NEWS_OPTIONS_SL_PCT: float = 40.0  # stop loss on mid vs entry
     INDEX_NEWS_OPTIONS_MAX_HOLD_SESSIONS: int = 3
     INDEX_NEWS_OPTIONS_REVERSAL_PCT: float = 0.25  # pullback from day extreme that arms top/bottom trigger
+    # ═══ OPTIONS EXIT VARIANTS 2026-09-28 — A/B in paper: every trigger opens the SAME contract under
+    # each variant so a week+ of closes shows which exit style wins (newsletter has the scoreboard).
+    # trail = exit when mark falls this % from its peak ("dump on every downturn"); 0 disables.
+    # tp/sl in % of entry mid; max_hold in sessions; eod_flat closes at 15:50 ET same day.
+    INDEX_NEWS_OPTIONS_VARIANTS: Dict[str, Dict] = field(default_factory=lambda: {
+        "scalp": {"tp": 10.0, "sl": 8.0, "trail": 6.0, "max_hold": 1, "eod_flat": True},
+        "quick": {"tp": 25.0, "sl": 15.0, "trail": 12.0, "max_hold": 1, "eod_flat": False},
+        "trail": {"tp": 0.0, "sl": 20.0, "trail": 15.0, "max_hold": 3, "eod_flat": False},
+        "runner": {"tp": 50.0, "sl": 40.0, "trail": 0.0, "max_hold": 3, "eod_flat": False},
+    })

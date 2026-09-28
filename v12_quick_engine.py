@@ -160,6 +160,8 @@ import vec_decisions.gap_risk_exit
 import vec_decisions.market_crash_blanket
 import vec_decisions.gain_ladder_augment
 import vec_decisions.reduce_profit_lock
+import vec_decisions.filter_tf_gates
+import vec_decisions.generic_filter_tf
 import vec_decisions.momentum_watchdog
 import vec_decisions.shared_zone
 try:
@@ -896,137 +898,8 @@ def _wire_07_exit_stops_tranche(npz, n, is_long, cfg, entry_mask, exit_mask):
     return entry_mask, exit_mask
 
 
-def _batch3_template_wiring(cfg):
-    _ = getattr(cfg, 'BAND_ARROW_ENABLED', False)
-    _ = cfg.BAND_ARROW_ENABLED
-    _ = getattr(cfg, 'BAND_ARROW_SLOPE_DEADBAND', 0.0)
-    _ = cfg.BAND_ARROW_SLOPE_DEADBAND
-    _ = getattr(cfg, 'BAR_PATTERNS_FILTER_TF', '15m')
-    _ = cfg.BAR_PATTERNS_FILTER_TF
-    _ = getattr(cfg, 'BB_PULLBACK_GATE_FILTER_TF', '15m')
-    _ = cfg.BB_PULLBACK_GATE_FILTER_TF
-    _ = getattr(cfg, 'BB_PULLBACK_GATE_TF', '15m')
-    _ = cfg.BB_PULLBACK_GATE_TF
-    _ = getattr(cfg, 'BB_RECOVERY_ENTRY_FILTER_TF', '15m')
-    _ = cfg.BB_RECOVERY_ENTRY_FILTER_TF
-    _ = getattr(cfg, 'BB_RECOVERY_FILTER_TF', '15m')
-    _ = cfg.BB_RECOVERY_FILTER_TF
-    _ = getattr(cfg, 'BB_SQUEEZE_ENTRY_ENABLED', False)
-    _ = cfg.BB_SQUEEZE_ENTRY_ENABLED
-    _ = getattr(cfg, 'BB_SQUEEZE_EXIT_ENABLED', False)
-    _ = cfg.BB_SQUEEZE_EXIT_ENABLED
-    _ = getattr(cfg, 'BOUNCE_REENTRY_ENABLED', False)
-    _ = cfg.BOUNCE_REENTRY_ENABLED
-    _ = getattr(cfg, 'BOUNCE_REENTRY_K_RESET_LONG', 0)
-    _ = cfg.BOUNCE_REENTRY_K_RESET_LONG
-    _ = getattr(cfg, 'BOUNCE_REENTRY_K_RESET_SHORT', 0)
-    _ = cfg.BOUNCE_REENTRY_K_RESET_SHORT
-    _ = getattr(cfg, 'BREAKEVEN_DC_FIELD_MODE', '')
-    _ = cfg.BREAKEVEN_DC_FIELD_MODE
-    _ = getattr(cfg, 'BREAKEVEN_GAIN_EROSION_ENABLED', False)
-    _ = cfg.BREAKEVEN_GAIN_EROSION_ENABLED
-    _ = getattr(cfg, 'BREAKEVEN_GAIN_EROSION_FILTER_TF', '15m')
-    _ = cfg.BREAKEVEN_GAIN_EROSION_FILTER_TF
-    _ = getattr(cfg, 'BREAKEVEN_GAIN_EROSION_MIN_GAIN', 0.0)
-    _ = cfg.BREAKEVEN_GAIN_EROSION_MIN_GAIN
-    _ = getattr(cfg, 'BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT', False)
-    _ = cfg.BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT
-    _ = getattr(cfg, 'BREAKOUT_LEASH_REENTRY_MULT', 0.0)
-    _ = cfg.BREAKOUT_LEASH_REENTRY_MULT
-    _ = getattr(cfg, 'BREAKOUT_RETEST_FILTER_TF', '15m')
-    _ = cfg.BREAKOUT_RETEST_FILTER_TF
-    _ = getattr(cfg, 'BTC_ACCEL_RAMP_REQUIRE_POSITIVE', False)
-    _ = cfg.BTC_ACCEL_RAMP_REQUIRE_POSITIVE
-    _ = getattr(cfg, 'BTC_BREAKOUT_ENTRY_ENABLED', False)
-    _ = cfg.BTC_BREAKOUT_ENTRY_ENABLED
-    _ = getattr(cfg, 'BTC_DEDICATED_FILTER_TF', '15m')
-    _ = cfg.BTC_DEDICATED_FILTER_TF
-    _ = getattr(cfg, 'BTC_DIVERGENCE_EXIT_AGAINST', False)
-    _ = cfg.BTC_DIVERGENCE_EXIT_AGAINST
-    _ = getattr(cfg, 'BTC_GUARANTEED_REENTRY_ENABLED', False)
-    _ = cfg.BTC_GUARANTEED_REENTRY_ENABLED
-    _ = getattr(cfg, 'BTC_GUARANTEED_REENTRY_MAX_AGE_BARS', 0)
-    _ = cfg.BTC_GUARANTEED_REENTRY_MAX_AGE_BARS
-    _ = getattr(cfg, 'BTC_GUARANTEED_REENTRY_MIN_GAP_BARS', 0)
-    _ = cfg.BTC_GUARANTEED_REENTRY_MIN_GAP_BARS
-    _ = getattr(cfg, 'BTC_HARD_BLOCK_OTHER_ACCOUNTS', False)
-    _ = cfg.BTC_HARD_BLOCK_OTHER_ACCOUNTS
-    _ = getattr(cfg, 'BTC_ROUND_BANDS_EACH_SIDE', 0)
-    _ = cfg.BTC_ROUND_BANDS_EACH_SIDE
-    _ = getattr(cfg, 'BTC_RZ_WT_DC_MULTIFACTOR', False)
-    _ = cfg.BTC_RZ_WT_DC_MULTIFACTOR
-    _ = getattr(cfg, 'BTC_TECH_EXIT_WT_MIN_TFS', 0)
-    _ = cfg.BTC_TECH_EXIT_WT_MIN_TFS
-    _ = getattr(cfg, 'BT_WT_CROSS_LADDER_FILTER_TF', '15m')
-    _ = cfg.BT_WT_CROSS_LADDER_FILTER_TF
-    _ = getattr(cfg, 'CANDLE_PATTERN_STOPS_FILTER_TF', '15m')
-    _ = cfg.CANDLE_PATTERN_STOPS_FILTER_TF
-    _ = getattr(cfg, 'CHANNEL_REENTRY_STOP_ENABLED', False)
-    _ = cfg.CHANNEL_REENTRY_STOP_ENABLED
-    _ = getattr(cfg, 'CIRCUIT_SHARPE_GATES_FILTER_TF', '15m')
-    _ = cfg.CIRCUIT_SHARPE_GATES_FILTER_TF
-    _ = getattr(cfg, 'COOLDOWN_LOCKS_FILTER_TF', '15m')
-    _ = cfg.COOLDOWN_LOCKS_FILTER_TF
-    _ = getattr(cfg, 'CRYPTO_SPIKE_FADE_THRESHOLD_PCT', 0.0)
-    _ = cfg.CRYPTO_SPIKE_FADE_THRESHOLD_PCT
-    _ = getattr(cfg, 'DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED', False)
-    _ = cfg.DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED
-    _ = getattr(cfg, 'DAEMON_REENTRY_STALE_EXIT_ENABLED', False)
-    _ = cfg.DAEMON_REENTRY_STALE_EXIT_ENABLED
-    _ = getattr(cfg, 'DC_BREACH_REDUCE_FILTER_TF', '15m')
-    _ = cfg.DC_BREACH_REDUCE_FILTER_TF
-    _ = getattr(cfg, 'DC_BREAK_FILTER_TF', '15m')
-    _ = cfg.DC_BREAK_FILTER_TF
-    _ = getattr(cfg, 'DC_HOPELESS_EXIT_ENABLED', False)
-    _ = cfg.DC_HOPELESS_EXIT_ENABLED
-    _ = getattr(cfg, 'DC_HOPELESS_EXIT_MIN_AGE_S', 0)
-    _ = cfg.DC_HOPELESS_EXIT_MIN_AGE_S
-    _ = getattr(cfg, 'DC_MOMENTUM_BOTA_SCORER_FILTER_TF', '15m')
-    _ = cfg.DC_MOMENTUM_BOTA_SCORER_FILTER_TF
-    _ = getattr(cfg, 'DC_MOMENT_STRONG_THRESHOLD', 0.0)
-    _ = cfg.DC_MOMENT_STRONG_THRESHOLD
-    _ = getattr(cfg, 'DD_BOUNCE_ENABLED', False)
-    _ = cfg.DD_BOUNCE_ENABLED
-    _ = getattr(cfg, 'DELTA_ENGINE_FILTER_TF', '15m')
-    _ = cfg.DELTA_ENGINE_FILTER_TF
-    _ = getattr(cfg, 'DELTA_EXIT_DC_FLOOR', 0.0)
-    _ = cfg.DELTA_EXIT_DC_FLOOR
-    _ = getattr(cfg, 'DELTA_GATE_BB_SQUEEZE', False)
-    _ = cfg.DELTA_GATE_BB_SQUEEZE
-    _ = getattr(cfg, 'DELTA_HTF_GATE', '')
-    _ = cfg.DELTA_HTF_GATE
-    _ = getattr(cfg, 'DELTA_PYRAMID_MAX', 0)
-    _ = cfg.DELTA_PYRAMID_MAX
-    _ = getattr(cfg, 'DELTA_PYRAMID_PRICE_TOL', 0.0)
-    _ = cfg.DELTA_PYRAMID_PRICE_TOL
-    _ = getattr(cfg, 'DELTA_REENTRY_FILTER_ENABLED', False)
-    _ = cfg.DELTA_REENTRY_FILTER_ENABLED
-    _ = getattr(cfg, 'DIRECTION_FAVORABLE_REENTRY_ENABLED', False)
-    _ = cfg.DIRECTION_FAVORABLE_REENTRY_ENABLED
-    _ = getattr(cfg, 'DUP_GUARD_FILTER_TF', '15m')
-    _ = cfg.DUP_GUARD_FILTER_TF
-    _ = getattr(cfg, 'DYNAMIC_SCORE_AUGMENT_ENABLED', False)
-    _ = cfg.DYNAMIC_SCORE_AUGMENT_ENABLED
-    _ = getattr(cfg, 'DYN_STRUCT_TRAIL_ENABLED', False)
-    _ = cfg.DYN_STRUCT_TRAIL_ENABLED
-    _ = getattr(cfg, 'E2E_REPLAY_VALIDATOR_FILTER_TF', '15m')
-    _ = cfg.E2E_REPLAY_VALIDATOR_FILTER_TF
-    _ = getattr(cfg, 'EMA_9_21_FILTER_FILTER_TF', '15m')
-    _ = cfg.EMA_9_21_FILTER_FILTER_TF
-    _ = getattr(cfg, 'EMA_9_21_FILTER_MIN_TFS', 0)
-    _ = cfg.EMA_9_21_FILTER_MIN_TFS
-    _ = getattr(cfg, 'EMA_BLANKET_FILTER_ENABLED', False)
-    _ = cfg.EMA_BLANKET_FILTER_ENABLED
-    _ = getattr(cfg, 'EMA_BLANKET_FILTER_FILTER_TF', '15m')
-    _ = cfg.EMA_BLANKET_FILTER_FILTER_TF
-    _ = getattr(cfg, 'EMA_BLANKET_FILTER_MIN_TFS', 0)
-    _ = cfg.EMA_BLANKET_FILTER_MIN_TFS
-    return False
-
+# 2026-09-28 WAVE1: _batch3_template_wiring DELETED — pure `_ = cfg.X` fake-audit farm (census)
 BASE_PATH = Path(__file__).resolve().parent
-
-# --- AUTO-WIRED 2629 generic param effects (ballpark, ensures every knob flips results) ---
-# DISABLED 2026-09-04 per user — NEVER use synthetic hash, every switch must have unique vectorized path identical to live
 def _apply_auto_wired_params(cfg, entry_mask, exit_mask, n):
     """Apply generic effects for all 2629 catalog unwired params.
     DISABLED 2026-09-28 NO-LIES purge (user "purge fakes, run honest"): these "generic
@@ -6089,21 +5962,21 @@ class QuickConfig:
     BANDAID_OFF_LOSER_RECOVER_PCT: float = 0.0  # auto-added TEMPLATE
     BAND_ARROW_ENABLED: bool = False  # auto-added TEMPLATE
     BAND_ARROW_SLOPE_DEADBAND: float = 0.0  # auto-added TEMPLATE generic
-    BAR_PATTERNS_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    BB_PULLBACK_GATE_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
+    BAR_PATTERNS_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE3: real wiring; OFF default behavior-neutral
+    BB_PULLBACK_GATE_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE2: generic_filter_tf real gate; OFF default behavior-neutral (only dead-farm reads before)
     BB_PULLBACK_GATE_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    BB_RECOVERY_ENTRY_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    BB_RECOVERY_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
+    BB_RECOVERY_ENTRY_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE2: generic_filter_tf real gate; OFF default behavior-neutral (only dead-farm reads before)
+    BB_RECOVERY_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE2: generic_filter_tf real gate; OFF default behavior-neutral (only dead-farm reads before)
     BOUNCE_REENTRY_ENABLED: bool = False  # auto-added TEMPLATE
     BOUNCE_REENTRY_K_RESET_LONG: float = 0.0  # auto-added TEMPLATE generic
     BOUNCE_REENTRY_K_RESET_SHORT: float = 0.0  # auto-added TEMPLATE generic
     BREAKEVEN_DC_FIELD_MODE: str = 'DC4'  # auto-added TEMPLATE generic
     BREAKEVEN_GAIN_EROSION_ENABLED: bool = False  # auto-added TEMPLATE
-    BREAKEVEN_GAIN_EROSION_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
+    BREAKEVEN_GAIN_EROSION_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE2: generic_filter_tf real gate; OFF default behavior-neutral (only dead-farm reads before)
     BREAKEVEN_GAIN_EROSION_MIN_GAIN: float = 50.0  # auto-added TEMPLATE generic
     BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT: bool = True  # auto-added TEMPLATE generic
     BREAKOUT_LEASH_REENTRY_MULT: float = 0.0  # auto-added TEMPLATE
-    BREAKOUT_RETEST_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
+    BREAKOUT_RETEST_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE3: real wiring; OFF default behavior-neutral
     BTC_ACCEL_RAMP_REQUIRE_POSITIVE: float = 0.0  # auto-added TEMPLATE generic
     BTC_BREAKOUT_ENTRY_ENABLED: bool = False  # auto-added TEMPLATE
     BTC_DEDICATED_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
@@ -6115,16 +5988,16 @@ class QuickConfig:
     BTC_ROUND_BANDS_EACH_SIDE: float = 0.0  # auto-added TEMPLATE generic
     BTC_RZ_WT_DC_MULTIFACTOR: float = 0.0  # auto-added TEMPLATE
     BTC_TECH_EXIT_WT_MIN_TFS: float = 0.0  # auto-added TEMPLATE generic
-    BT_WT_CROSS_LADDER_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    CANDLE_PATTERN_STOPS_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
+    BT_WT_CROSS_LADDER_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE2: generic_filter_tf real gate; OFF default behavior-neutral (only dead-farm reads before)
+    CANDLE_PATTERN_STOPS_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE3: real wiring; OFF default behavior-neutral
     CHANNEL_REENTRY_STOP_ENABLED: bool = False  # auto-added TEMPLATE
     CIRCUIT_SHARPE_GATES_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     COOLDOWN_LOCKS_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     CRYPTO_SPIKE_FADE_THRESHOLD_PCT: float = 0.0  # auto-added TEMPLATE
     DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED: bool = False  # auto-added TEMPLATE
     DAEMON_REENTRY_STALE_EXIT_ENABLED: bool = False  # auto-added TEMPLATE
-    DC_BREACH_REDUCE_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    DC_BREAK_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
+    DC_BREACH_REDUCE_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE2: generic_filter_tf real gate; OFF default behavior-neutral (only dead-farm reads before)
+    DC_BREAK_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE2: generic_filter_tf real gate; OFF default behavior-neutral (only dead-farm reads before)
     DC_HOPELESS_EXIT_ENABLED: bool = False  # auto-added TEMPLATE
     DC_HOPELESS_EXIT_MIN_AGE_S: float = 0.0  # auto-added TEMPLATE generic
     DC_MOMENTUM_BOTA_SCORER_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
@@ -6151,13 +6024,13 @@ class QuickConfig:
     EXHAUSTION_EXIT_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     EXIT_R1_R2_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    EXIT_TOP_FADE_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
+    EXIT_TOP_FADE_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE3: real wiring; OFF default behavior-neutral
     EXIT_TO_REDUCE_ADAPTER_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     EZ_MANAGE_THROTTLER_RATE: float = 0.0  # auto-added TEMPLATE generic
     E_1_EXIT_DELTA_THR: float = 0.0  # auto-added TEMPLATE generic
     E_1_WT_EXIT_USE_DELTA_ENABLED: bool = False  # auto-added TEMPLATE
     E_3_USE_WT_STRUCTURE_EXIT_MODE: float = 0.0  # auto-added TEMPLATE generic
-    FAST_RISER_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
+    FAST_RISER_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE1: real gate (vec_decisions/filter_tf_gates); OFF default is behavior-neutral (field was never read before)
     FG_FEAR_THRESHOLD: float = 0.0  # auto-added TEMPLATE
     FG_GREED_THRESHOLD: float = 0.0  # auto-added TEMPLATE
     FH_MOMENTUM_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
@@ -6251,8 +6124,8 @@ class QuickConfig:
     MI_TF_AGREE_MIN: float = 0.0  # auto-added TEMPLATE
     MI_VELOCITY_EXIT_ENABLED: bool = False  # auto-added TEMPLATE
     MI_WAVE_EXIT_ENABLED: bool = False  # auto-added TEMPLATE
-    MOM3_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    MOMENTUM_BREAKOUT_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
+    MOM3_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE1: real gate (vec_decisions/filter_tf_gates); OFF default is behavior-neutral (field was never read before)
+    MOMENTUM_BREAKOUT_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE1: real gate (vec_decisions/filter_tf_gates); OFF default is behavior-neutral (field was never read before)
     MOVER_THRESHOLD: float = 0.0  # auto-added TEMPLATE
     MTF_ARMED_ENTRIES_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     MTF_ATR_TRAIL_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
@@ -6264,9 +6137,11 @@ class QuickConfig:
     MTS_GATE_ENABLED: bool = False  # auto-added TEMPLATE
     MU_CORRECTION_EXIT_ENABLED: bool = False  # auto-added TEMPLATE
     MU_CORRECTION_REENTRY_ENABLED: bool = False  # auto-added TEMPLATE
-    NEWBORN_LOSS_KILL_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT: float = 0.0  # auto-added TEMPLATE
-    NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST: float = 0.0  # auto-added TEMPLATE generic
+    NEWBORN_LOSS_KILL_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE3: real wiring; OFF default behavior-neutral
+    NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT: float = -0.5  # 2026-09-28 WAVE3 LIVE PARITY: ez_manage.py:46537 default -0.5 (was 0.0 stub)
+    NEWBORN_LOSS_KILL_ENABLED: bool = False  # 2026-09-28 WAVE3: live config.py:1148 = False (V1 disabled after A/B; V2 vel-confirm awaits verdict)
+    NEWBORN_LOSS_KILL_WINDOW_MIN: float = 30.0  # 2026-09-28 WAVE3 LIVE PARITY: ez_manage.py:46536 default 30.0
+    NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST: bool = True  # 2026-09-28 WAVE3 LIVE PARITY: ez_manage.py:46541 default True (was float 0.0 stub)
     NEWBORN_PROTECT_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     NEW_POSITION_MAX_LOSS_THRESHOLD: float = 0.0  # auto-added TEMPLATE
     NOLOSS_BYPASS_WT5OF5_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
@@ -6291,7 +6166,7 @@ class QuickConfig:
     PARTIAL_EXIT_FRAC: float = 0.0  # auto-added TEMPLATE generic
     PARTIAL_PROFIT_LOCK_FRAC: float = 0.0  # auto-added TEMPLATE generic
     PARTIAL_PROFIT_LOCK_V2_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    PEAK_GIVEBACK_BE_EROSION_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
+    PEAK_GIVEBACK_BE_EROSION_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE3: real wiring; OFF default behavior-neutral
     PEAK_GIVEBACK_DROP_TRIGGER_ENABLED: bool = False  # auto-added TEMPLATE
     QUICK_REDUCE_TECHNICAL_ONLY: float = 0.0  # auto-added TEMPLATE generic
     QUICK_REENTRY_60MIN_MIN_PCT: float = 0.0  # auto-added TEMPLATE
@@ -8711,64 +8586,7 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
     _ = (_gr_strict, _gr_delta, _gr_k_high, _gr_k_low, _gr_fav_low, _gr_fav_high, _gr_tight_en, _gr_tight_pct, _gr_tight_min, _gr_tight_max, _gr_hedge, _hlr_1h, _hlr_4h, _hlr_d, _hlr_w, _delta_mand)
     # ===== BATCH 4: BOUNCE/BREAKEVEN/BREAKOUT 60 — TEMPLATE BOTH_WIRED 2026-09-07 =====
     # Covers 56 QUICK_NOT_CAUSAL from not_both[28:87] starting BOUNCE_REENTRY — functional switches mirror live, FILTER_TF vestigial but wired
-    _b4_bounce_reentry_enabled = bool(getattr(cfg, 'BOUNCE_REENTRY_ENABLED', True))
-    _b4_bounce_reentry_k_reset_long = int(float(getattr(cfg, 'BOUNCE_REENTRY_K_RESET_LONG', 35)))
-    _b4_bounce_reentry_k_reset_short = int(float(getattr(cfg, 'BOUNCE_REENTRY_K_RESET_SHORT', 65)))
-    _b4_breakeven_dc_field_mode = str(getattr(cfg, 'BREAKEVEN_DC_FIELD_MODE', 'DC4'))
-    _b4_breakeven_gain_erosion_enabled = bool(getattr(cfg, 'BREAKEVEN_GAIN_EROSION_ENABLED', False))
-    _b4_breakeven_gain_erosion_filter_tf = str(getattr(cfg, 'BREAKEVEN_GAIN_EROSION_FILTER_TF', "15m"))
-    _b4_breakeven_gain_erosion_min_gain = float(getattr(cfg, 'BREAKEVEN_GAIN_EROSION_MIN_GAIN', 50.0))
-    _b4_breakeven_gain_erosion_require_profit = bool(getattr(cfg, 'BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT', True))
-    _b4_breakout_leash_reentry_mult = float(getattr(cfg, 'BREAKOUT_LEASH_REENTRY_MULT', 1.50))
-    _b4_breakout_retest_filter_tf = str(getattr(cfg, 'BREAKOUT_RETEST_FILTER_TF', "15m"))
-    _b4_btc_accel_ramp_require_positive = bool(getattr(cfg, 'BTC_ACCEL_RAMP_REQUIRE_POSITIVE', True))
-    _b4_btc_breakout_entry_enabled = bool(getattr(cfg, 'BTC_BREAKOUT_ENTRY_ENABLED', True))
-    _b4_btc_dedicated_filter_tf = str(getattr(cfg, 'BTC_DEDICATED_FILTER_TF', "15m"))
-    _b4_btc_divergence_exit_against = bool(getattr(cfg, 'BTC_DIVERGENCE_EXIT_AGAINST', True))
-    _b4_btc_guaranteed_reentry_enabled = bool(getattr(cfg, 'BTC_GUARANTEED_REENTRY_ENABLED', True))
-    _b4_btc_guaranteed_reentry_max_age_bars = int(float(getattr(cfg, 'BTC_GUARANTEED_REENTRY_MAX_AGE_BARS', 480)))
-    _b4_btc_guaranteed_reentry_min_gap_bars = int(float(getattr(cfg, 'BTC_GUARANTEED_REENTRY_MIN_GAP_BARS', 5)))
-    _b4_btc_hard_block_other_accounts = bool(getattr(cfg, 'BTC_HARD_BLOCK_OTHER_ACCOUNTS', False))
-    _b4_btc_round_bands_each_side = int(float(getattr(cfg, 'BTC_ROUND_BANDS_EACH_SIDE', 8)))
-    _b4_btc_rz_wt_dc_multifactor = bool(getattr(cfg, 'BTC_RZ_WT_DC_MULTIFACTOR', True))
-    _b4_btc_tech_exit_wt_min_tfs = int(float(getattr(cfg, 'BTC_TECH_EXIT_WT_MIN_TFS', 3)))
-    _b4_bt_wt_cross_ladder_filter_tf = str(getattr(cfg, 'BT_WT_CROSS_LADDER_FILTER_TF', "15m"))
-    _b4_candle_pattern_stops_filter_tf = str(getattr(cfg, 'CANDLE_PATTERN_STOPS_FILTER_TF', "15m"))
-    _b4_channel_reentry_stop_enabled = bool(getattr(cfg, 'CHANNEL_REENTRY_STOP_ENABLED', False))
-    _b4_circuit_sharpe_gates_filter_tf = str(getattr(cfg, 'CIRCUIT_SHARPE_GATES_FILTER_TF', "15m"))
-    _b4_cooldown_locks_filter_tf = str(getattr(cfg, 'COOLDOWN_LOCKS_FILTER_TF', "15m"))
-    _b4_crypto_spike_fade_threshold_pct = float(getattr(cfg, 'CRYPTO_SPIKE_FADE_THRESHOLD_PCT', 10.0))
-    _b4_daemon_reentry_short_wt_xunder_gate_enabled = bool(getattr(cfg, 'DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED', False))
-    _b4_daemon_reentry_stale_exit_enabled = bool(getattr(cfg, 'DAEMON_REENTRY_STALE_EXIT_ENABLED', False))
-    _b4_dc_breach_reduce_filter_tf = str(getattr(cfg, 'DC_BREACH_REDUCE_FILTER_TF', "15m"))
-    _b4_dc_break_filter_tf = str(getattr(cfg, 'DC_BREAK_FILTER_TF', "15m"))
-    _b4_dc_hopeless_exit_enabled = bool(getattr(cfg, 'DC_HOPELESS_EXIT_ENABLED', True))
-    _b4_dc_hopeless_exit_min_age_s = int(float(getattr(cfg, 'DC_HOPELESS_EXIT_MIN_AGE_S', 900)))
-    _b4_dc_momentum_bota_scorer_filter_tf = str(getattr(cfg, 'DC_MOMENTUM_BOTA_SCORER_FILTER_TF', "15m"))
-    _b4_dc_moment_strong_threshold = float(getattr(cfg, 'DC_MOMENT_STRONG_THRESHOLD', 40.0))
-    _b4_dd_bounce_enabled = bool(getattr(cfg, 'DD_BOUNCE_ENABLED', False))
-    _b4_delta_engine_filter_tf = str(getattr(cfg, 'DELTA_ENGINE_FILTER_TF', "15m"))
-    _b4_delta_htf_gate = str(getattr(cfg, 'DELTA_HTF_GATE', "hh_hl_4h"))
-    _b4_delta_pyramid_max = int(float(getattr(cfg, 'DELTA_PYRAMID_MAX', 8)))
-    _b4_delta_pyramid_price_tol = float(getattr(cfg, 'DELTA_PYRAMID_PRICE_TOL', 0.02))
-    _b4_delta_reentry_filter_enabled = bool(getattr(cfg, 'DELTA_REENTRY_FILTER_ENABLED', False))
-    _b4_direction_favorable_reentry_enabled = bool(getattr(cfg, 'DIRECTION_FAVORABLE_REENTRY_ENABLED', False))
-    _b4_dup_guard_filter_tf = str(getattr(cfg, 'DUP_GUARD_FILTER_TF', "15m"))
-    _b4_dynamic_score_augment_enabled = bool(getattr(cfg, 'DYNAMIC_SCORE_AUGMENT_ENABLED', True))
-    _b4_dyn_struct_trail_enabled = bool(getattr(cfg, 'DYN_STRUCT_TRAIL_ENABLED', False))
-    _b4_e2e_replay_validator_filter_tf = str(getattr(cfg, 'E2E_REPLAY_VALIDATOR_FILTER_TF', "15m"))
-    _b4_ema_9_21_filter_filter_tf = str(getattr(cfg, 'EMA_9_21_FILTER_FILTER_TF', "15m"))
-    _b4_ema_9_21_filter_min_tfs = int(float(getattr(cfg, 'EMA_9_21_FILTER_MIN_TFS', 3)))
-    _b4_ema_blanket_filter_enabled = bool(getattr(cfg, 'EMA_BLANKET_FILTER_ENABLED', False))
-    _b4_ema_blanket_filter_filter_tf = str(getattr(cfg, 'EMA_BLANKET_FILTER_FILTER_TF', "15m"))
-    _b4_ema_blanket_filter_min_tfs = int(float(getattr(cfg, 'EMA_BLANKET_FILTER_MIN_TFS', 2)))
-    _b4_emergency_brake_filter_tf = str(getattr(cfg, 'EMERGENCY_BRAKE_FILTER_TF', "15m"))
-    _b4_entry_primary_tf = str(getattr(cfg, 'ENTRY_PRIMARY_TF', '4h'))
-    _b4_execute_now_single_gate_enforce = bool(getattr(cfg, 'EXECUTE_NOW_SINGLE_GATE_ENFORCE', True))
-    _b4_exhaustion_exit_filter_tf = str(getattr(cfg, 'EXHAUSTION_EXIT_FILTER_TF', "15m"))
-    _b4_exit_r1_r2_filter_tf = str(getattr(cfg, 'EXIT_R1_R2_FILTER_TF', "15m"))
-    _b4_all = (_b4_bounce_reentry_enabled, _b4_bounce_reentry_k_reset_long, _b4_bounce_reentry_k_reset_short, _b4_breakeven_dc_field_mode, _b4_breakeven_gain_erosion_enabled, _b4_breakeven_gain_erosion_filter_tf, _b4_breakeven_gain_erosion_min_gain, _b4_breakeven_gain_erosion_require_profit, _b4_breakout_leash_reentry_mult, _b4_breakout_retest_filter_tf, _b4_btc_accel_ramp_require_positive, _b4_btc_breakout_entry_enabled, _b4_btc_dedicated_filter_tf, _b4_btc_divergence_exit_against, _b4_btc_guaranteed_reentry_enabled, _b4_btc_guaranteed_reentry_max_age_bars, _b4_btc_guaranteed_reentry_min_gap_bars, _b4_btc_hard_block_other_accounts, _b4_btc_round_bands_each_side, _b4_btc_rz_wt_dc_multifactor, _b4_btc_tech_exit_wt_min_tfs, _b4_bt_wt_cross_ladder_filter_tf, _b4_candle_pattern_stops_filter_tf, _b4_channel_reentry_stop_enabled, _b4_circuit_sharpe_gates_filter_tf, _b4_cooldown_locks_filter_tf, _b4_crypto_spike_fade_threshold_pct, _b4_daemon_reentry_short_wt_xunder_gate_enabled, _b4_daemon_reentry_stale_exit_enabled, _b4_dc_breach_reduce_filter_tf, _b4_dc_break_filter_tf, _b4_dc_hopeless_exit_enabled, _b4_dc_hopeless_exit_min_age_s, _b4_dc_momentum_bota_scorer_filter_tf, _b4_dc_moment_strong_threshold, _b4_dd_bounce_enabled, _b4_delta_engine_filter_tf, _b4_delta_htf_gate, _b4_delta_pyramid_max, _b4_delta_pyramid_price_tol, _b4_delta_reentry_filter_enabled, _b4_direction_favorable_reentry_enabled, _b4_dup_guard_filter_tf, _b4_dynamic_score_augment_enabled, _b4_dyn_struct_trail_enabled, _b4_e2e_replay_validator_filter_tf, _b4_ema_9_21_filter_filter_tf, _b4_ema_9_21_filter_min_tfs, _b4_ema_blanket_filter_enabled, _b4_ema_blanket_filter_filter_tf, _b4_ema_blanket_filter_min_tfs, _b4_emergency_brake_filter_tf, _b4_entry_primary_tf, _b4_execute_now_single_gate_enforce, _b4_exhaustion_exit_filter_tf, _b4_exit_r1_r2_filter_tf)
-    _ = _b4_all  # prove vector read — audit counts getattr(cfg, NAME) regardless of use
+    # 2026-09-28 WAVE1: ~56-local _b4_* fake-audit tuple DELETED ("prove vector read" scaffolding, census)
 
     if getattr(cfg, 'BB_PCTB_ENTRY_ENABLED', False):
         blocks["B_BBPCTB"] = (bb_pctb_1h_2 < getattr(cfg, 'BB_ENTRY_LONG_THRESHOLD', -0.2)) if is_long else (bb_pctb_1h_2 > getattr(cfg, 'BB_ENTRY_SHORT_THRESHOLD', 1.0))
@@ -9070,7 +8888,6 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
 
 
 def compute_entry_signals(npz, n, is_long, cfg):
-    _batch3_template_wiring(cfg)
     close = _base_safe(npz, 'close', n, cfg)
     k_3m = _base_safe(npz, 'stoch_k', n, cfg, 50)
     k_15m = _safe(npz, 'stoch_k_15m', n, 50)
@@ -9835,7 +9652,6 @@ def compute_entry_signals(npz, n, is_long, cfg):
 
 
 def compute_exit_signals(npz, n, is_long, cfg):
-    _batch3_template_wiring(cfg)
     if getattr(cfg, '_G0_PURE_BH', False):
         import numpy as _np
         return _np.zeros(n, dtype=bool)
@@ -11902,25 +11718,9 @@ def _apply_625_entry_gates(npz, n, is_long, cfg, entry_mask):
             out = out & (_v > _v2)
         else:
             out = out & (_v < _v2)
-    # FILTER_TF real causal wiring 2026-09-07 -- each FILTER_TF has distinct numpy gate (was hash-only, now real)
-    _FILTER_TF_FIELDS = ['adx_1h','adx_15m','adx_4h','atr_1h','bb_pct_b_1h','close','bar_pattern_1h','bar_atr_rank_1h','wt1_15m','wt2_15m','relative_volume_1h','dc_position_15m','sma_1h','ema_1h']
-    for _fname in _ALL_FILTER_TF:
-        _tf = str(getattr(cfg, _fname, 'OFF'))
-        _def = str(_DEFAULTS_625.get(_fname, 'OFF'))
-        if _tf == _def or _tf == 'OFF':
-            continue
-        _field = _FILTER_TF_FIELDS[hash(_fname) % len(_FILTER_TF_FIELDS)]
-        _v = _safe(npz, _field, n, 0.5)
-        if _tf == 'D':
-            out = out & (_v > 0.62 if is_long else _v < 0.38)
-        elif _tf == '4h':
-            out = out & (_v > 0.57 if is_long else _v < 0.43)
-        elif _tf == '1h':
-            out = out & (_v > 0.52 if is_long else _v < 0.48)
-        elif _tf == '15m':
-            out = out & (_v > 0.47 if is_long else _v < 0.53)
-        else:
-            out = out & (_v > 0.5 if is_long else _v < 0.5)
+    # 2026-09-28 WAVE1: hash-proxy _ALL_FILTER_TF dispatcher DELETED — comment above lied ('now real'
+    # was hash(_fname)%fields arbitrary-indicator mapping); dead code (function early-returns) but
+    # audit-defeating. Real FILTER_TF wiring lands family-by-family via vec_decisions modules.
 
     # Missing live paths 2026-09-08 -- vectorizable P0/P1 added to QuickConfig, now numpy wiring
     # TRADEABLE_KEYS_MANDATORY_ENABLED (ENTRY) -- requires tradeable_keys scan, vector: check if symbol in tradeable set (use bar уск)
@@ -22078,6 +21878,30 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         entry_sig, exit_sig = _apply_universal_distinctness_fallback(npz, n, is_long, cfg, entry_sig, exit_sig)
     except Exception:
         pass
+    # ═══ WAVE1 FILTER_TF real gates (2026-09-28) — replaces the deleted hash-proxy dispatcher;
+    # per-family semantics + live refs in vec_decisions/filter_tf_gates.py. OFF (default) = inert.
+    try:
+        for _ftg_fn in (vec_decisions.filter_tf_gates.mom3_entry_gate, vec_decisions.filter_tf_gates.momentum_breakout_gate):
+            _ftg_mask = _ftg_fn(npz, n, is_long, cfg, close, _safe)
+            if _ftg_mask is not None:
+                entry_sig = entry_sig & _ftg_mask
+    except Exception:
+        pass
+    try:
+        _fr_arr = vec_decisions.filter_tf_gates.fast_riser_sig(npz, n, is_long, cfg, close, _safe)
+    except Exception:
+        _fr_arr = None
+    _nlk_vel = None
+    if bool(getattr(cfg, 'NEWBORN_LOSS_KILL_ENABLED', False)):
+        _nlk_tf = str(getattr(cfg, 'NEWBORN_LOSS_KILL_FILTER_TF', 'OFF') or 'OFF').strip()
+        _nlk_key = f'wt_velocity_{_nlk_tf}' if _nlk_tf.upper() != 'OFF' else 'wt_velocity_15m'
+        _nlk_vel = _safe(npz, _nlk_key, n, 0.0)
+    try:
+        _gftf = vec_decisions.generic_filter_tf.build_masks(npz, n, is_long, cfg, close, _safe)
+        if _gftf.get('entry') is not None:
+            entry_sig = entry_sig & _gftf['entry']
+    except Exception:
+        _gftf = {'entry': None, 'reduce_confirm': None, 'erosion_confirm': None}
     # 625 ablation wiring — distinct per param (causal, measured via ledger diff)
     # each ABLATION_DISABLE_* gates a distinct signal family mirror live decision path
     if getattr(cfg, 'ABLATION_DISABLE_AGGRESSIVE_HEDGE', False):
@@ -22574,6 +22398,18 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         # VIGILANCE (USER 2026-09-28, 3rd mandate): STRUCTURAL stop, NO fixed % — losing position AND
         # px breach of dc_low4_{TF} (long) / dc_high4_{TF} (short) → immediate close + block until
         # recovery. Runs before every other exit (live parity).
+        # NEWBORN_LOSS_KILL (live ez_manage.py:46524-46550, default OFF): young loser +
+        # velocity-against on NEWBORN_LOSS_KILL_FILTER_TF -> force close
+        if _nlk_vel is not None and vec_decisions.generic_filter_tf.newborn_loss_kill_fires(
+                cfg, is_long, held_bars * bmin, live_pnl_pct, float(_nlk_vel[i]) if i < len(_nlk_vel) else 0.0):
+            pos['fees'] += abs(pos['qty'] * px) * half_fee
+            _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
+            _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
+            _tsn = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+            _nlk_reason = f"NEWBORN_LOSS_KILL age{held_bars * bmin:.0f}m g{live_pnl_pct:.2f}%"
+            trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _nlk_reason, 'type': 'CLOSE', 'ts': _tsn, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _nlk_reason, 'bars_held': int(i - pos['entry_bar'])})
+            pos = None; cd = cooldown_bars; has_closed_before = True
+            continue
         _vig_dc_hit = False
         if _vig_enabled and _vig_dc_lvl is not None and live_pnl_pct < 0:
             _vg_lvl = float(_vig_dc_lvl[i]) if i < len(_vig_dc_lvl) else 0.0
@@ -22655,13 +22491,17 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _gl_fire, _gl_reason = vec_decisions.gain_ladder_augment.gain_ladder_fire(
             cfg, is_long, px, float(pos.get('last_aug_px', 0.0)) or float(pos.get('entry_price', pos['avg_price'])),
             live_pnl_pct, float(pos.get('peak_pnl_pct', 0.0)))
-        if (augment_sig[i] or _gl_fire) and _augment_allowed(cfg, live_pnl_pct):
+        # FAST_RISER quick-jump double (ez_manage.py:52393-52468): TF jump signal + profit floor
+        _fr_fire = _fr_arr is not None and bool(_fr_arr[i]) and live_pnl_pct > vec_decisions.filter_tf_gates.FAST_RISER_MIN_GAIN_PCT
+        if (augment_sig[i] or _gl_fire or _fr_fire) and _augment_allowed(cfg, live_pnl_pct):
             _aug_cd_bars = vec_decisions.gain_ladder_augment.cooldown_bars(cfg, bmin)
             _aug_last_bar = int(pos.get('last_aug_bar', -10**9))
             if (i - _aug_last_bar) >= _aug_cd_bars:
                 # STDEV_SLOPE_SIZING ladder applies to augment as well (user mandate: entry AND augment sizing)
                 _aug_regime = float(regime_mult[i]) if i < len(regime_mult) else 1.0
                 _aug_add_mult = float(augment_mult[i]) * _aug_regime
+                if _fr_fire:
+                    _aug_add_mult = max(_aug_add_mult, 1.0 * _aug_regime)  # FAST_RISER_DOUBLE = 100% add
                 add_qty = _size_qty(cfg, pos['qty'] * px * _aug_add_mult, px) if is_tradier else pos['qty'] * _aug_add_mult
                 if add_qty > 0:
                     new_qty = pos['qty'] + add_qty
@@ -22769,7 +22609,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         # profit exit"; DC-channel exits above (dc_low−0.25% / dc_high−0.10%, 15m/1h) are the only daytrade exits.
         elif max_hold_bars > 0 and held_bars >= max_hold_bars:
             closed, reason = True, 'DELTA_MAX_HOLD'
-        elif trail_erosion > 0 and pos['peak_pnl_pct'] > 0 and (pos['peak_pnl_pct'] - live_pnl_pct) >= pos['peak_pnl_pct'] * trail_erosion:
+        elif trail_erosion > 0 and pos['peak_pnl_pct'] > 0 and (pos['peak_pnl_pct'] - live_pnl_pct) >= pos['peak_pnl_pct'] * trail_erosion and (_gftf.get('erosion_confirm') is None or bool(_gftf['erosion_confirm'][i])):
             closed, reason = True, 'WIN_TRAIL_EROSION'
 
         if closed:
@@ -22795,7 +22635,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         # live pacing: the execute-path dedup map spaces orders by AUGMENTATION_COOLDOWN_SECONDS
         # (ez_manage.py:28272/28326) — partial reduces obey it too; kills per-bar halving cascades
         _red_cd_ok = (i - int(pos.get('last_reduce_bar', -10**9))) >= vec_decisions.gain_ladder_augment.cooldown_bars(cfg, bmin)
-        if pos['qty'] > 0 and (_qr_fire or (reduce_sig[i] and reduce_frac[i] > 0 and _red_cd_ok)):
+        _rc_ok = _gftf.get('reduce_confirm') is None or bool(_gftf['reduce_confirm'][i])
+        if pos['qty'] > 0 and _rc_ok and (_qr_fire or (reduce_sig[i] and reduce_frac[i] > 0 and _red_cd_ok)):
             # HLR_TOP_EXIT = "sell the top": live stores the FULL position qty in
             # _hlr_top_exit_registry and reenters at prev_qty*mult (ez_positions_quick.py:3715-3718,
             # 16312) — a one-shot full exit, never a per-bar halving
@@ -22884,7 +22725,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _cmp_reason, 'type': 'CLOSE', 'ts': _tsc, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _cmp_reason, 'bars_held': int(i - pos['entry_bar'])})
                 pos = None; cd = cooldown_bars; has_closed_before = True
                 continue
-        if exit_sig[i] and held_bars >= min_hold:
+        _xc_ok = _gftf.get('exit_confirm') is None or bool(_gftf['exit_confirm'][i])
+        if exit_sig[i] and held_bars >= min_hold and _xc_ok:
             if 0 < satoshit_partial < 1.0:
                 reduce_qty = pos['qty'] * satoshit_partial
                 realized = (px - pos['avg_price']) * reduce_qty if is_long else (pos['avg_price'] - px) * reduce_qty

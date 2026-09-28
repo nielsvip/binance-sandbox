@@ -7,8 +7,7 @@
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange",
@@ -48,29 +47,29 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     6401,
-     "_ = config.BREAKOUT_RETEST_FILTER_TF"
-    ],
-    [
-     "ez_manage.py",
-     6402,
-     "_ = getattr(config, 'BREAKOUT_RETEST_FILTER_TF', '15m')"
-    ],
-    [
-     "ez_manage.py",
      6674,
      "_tf = str(getattr(config, 'BREAKOUT_RETEST_FILTER_TF', '15m'))"
+    ],
+    [
+     "ez_manage.py",
+     6678,
+     "if is_long and not (_v > _v2): return False, 'BREAKOUT_RETEST_FILTER_TF_TF'"
+    ],
+    [
+     "ez_manage.py",
+     6679,
+     "if (not is_long) and not (_v < _v2): return False, 'BREAKOUT_RETEST_FILTER_TF_TF'"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "HIGH"
   },
   "DC_BREACH_REDUCE_FILTER_TF": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange",
@@ -111,29 +110,29 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     6441,
-     "_ = config.DC_BREACH_REDUCE_FILTER_TF"
-    ],
-    [
-     "ez_manage.py",
-     6442,
-     "_ = getattr(config, 'DC_BREACH_REDUCE_FILTER_TF', '15m')"
-    ],
-    [
-     "ez_manage.py",
      6795,
      "_tf = str(getattr(config, 'DC_BREACH_REDUCE_FILTER_TF', '15m'))"
+    ],
+    [
+     "ez_manage.py",
+     6799,
+     "if is_long and not (_v > _v2): return False, 'DC_BREACH_REDUCE_FILTER_TF_TF'"
+    ],
+    [
+     "ez_manage.py",
+     6800,
+     "if (not is_long) and not (_v < _v2): return False, 'DC_BREACH_REDUCE_FILTER_TF_TF'"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "HIGH"
   },
   "DC_MOMENTUM_BOTA_SCORER_FILTER_TF": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange",
@@ -174,21 +173,22 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     6449,
-     "_ = config.DC_MOMENTUM_BOTA_SCORER_FILTER_TF"
-    ],
-    [
-     "ez_manage.py",
-     6450,
-     "_ = getattr(config, 'DC_MOMENTUM_BOTA_SCORER_FILTER_TF', '15m')"
-    ],
-    [
-     "ez_manage.py",
      6820,
      "_tf = str(getattr(config, 'DC_MOMENTUM_BOTA_SCORER_FILTER_TF', '15m'))"
+    ],
+    [
+     "ez_manage.py",
+     6824,
+     "if is_long and not (_v > _v2): return False, 'DC_MOMENTUM_BOTA_SCORER_FILTER_TF_TF'"
+    ],
+    [
+     "ez_manage.py",
+     6825,
+     "if (not is_long) and not (_v < _v2): return False, 'DC_MOMENTUM_BOTA_SCORER_FILTER_TF_TF'"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "HIGH"
   },
   "EMERGENCY_BRAKE_FILTER_TF": {
    "class": "LIVE_ONLY",
@@ -236,11 +236,17 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     58387,
-     "_ = _v  # EMERGENCY_BRAKE_FILTER_TF reads close"
+     58384,
+     "if bool(getattr(config, \"EMERGENCY_BRAKE_FILTER_TF\", False)):"
+    ],
+    [
+     "tradier_manage.py",
+     32347,
+     "if bool(getattr(config_tradier, \"EMERGENCY_BRAKE_FILTER_TF\", False)):"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "MEDIUM"
   },
   "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF": {
    "class": "LIVE_ONLY",
@@ -289,11 +295,17 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     58433,
-     "_ = _v  # EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF reads close"
+     58430,
+     "if bool(getattr(config, \"EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF\", False)):"
+    ],
+    [
+     "tradier_manage.py",
+     32365,
+     "if bool(getattr(config_tradier, \"EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF\", False)):"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "MEDIUM"
   },
   "EXIT_TOP_FADE_FILTER_TF": {
    "class": "LIVE_ONLY",
@@ -342,11 +354,17 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     58437,
-     "_ = _v  # EXIT_TOP_FADE_FILTER_TF reads close"
+     58434,
+     "if bool(getattr(config, \"EXIT_TOP_FADE_FILTER_TF\", False)):"
+    ],
+    [
+     "tradier_manage.py",
+     32369,
+     "if bool(getattr(config_tradier, \"EXIT_TOP_FADE_FILTER_TF\", False)):"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "MEDIUM"
   },
   "EXIT_TO_REDUCE_ADAPTER_FILTER_TF": {
    "class": "LIVE_ONLY",
@@ -397,17 +415,22 @@
      "ez_manage.py",
      58440,
      "_v = getattr(config, \"EXIT_TO_REDUCE_ADAPTER_FILTER_TF\", None)"
+    ],
+    [
+     "tradier_manage.py",
+     32373,
+     "if bool(getattr(config_tradier, \"EXIT_TO_REDUCE_ADAPTER_FILTER_TF\", False)):"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "MEDIUM"
   },
   "FIRST_OPEN_THROTTLE_FILTER_TF": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange",
@@ -448,17 +471,21 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     58456,
-     "_ = _v  # FIRST_OPEN_THROTTLE_FILTER_TF reads close"
+     58453,
+     "if bool(getattr(config, \"FIRST_OPEN_THROTTLE_FILTER_TF\", False)):"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "MEDIUM"
   },
   "FROZEN_STOP_FILTER_TF": {
-   "class": "NEITHER",
+   "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
-   "live_read_files": [],
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
    "colors": [
     "orange",
     "yellow"
@@ -513,15 +540,15 @@
     ]
    ],
    "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
-   "live_stub_only": true
+   "live_stub_only": true,
+   "confidence": "MEDIUM"
   },
   "GOLDEN_RULE_ENFORCE_FILTER_TF": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange",
@@ -562,19 +589,19 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     58473,
-     "_ = _gr  # GOLDEN_RULE_ENFORCE_FILTER_TF reads rsi_1h"
+     58470,
+     "if bool(getattr(config, \"GOLDEN_RULE_ENFORCE_FILTER_TF\", False)):"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "MEDIUM"
   },
   "CIRCUIT_SHARPE_GATES_FILTER_TF": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "yellow"
@@ -614,29 +641,29 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     6431,
-     "_ = config.CIRCUIT_SHARPE_GATES_FILTER_TF"
-    ],
-    [
-     "ez_manage.py",
-     6432,
-     "_ = getattr(config, 'CIRCUIT_SHARPE_GATES_FILTER_TF', '15m')"
-    ],
-    [
-     "ez_manage.py",
      6765,
      "_tf = str(getattr(config, 'CIRCUIT_SHARPE_GATES_FILTER_TF', '15m'))"
+    ],
+    [
+     "ez_manage.py",
+     6769,
+     "if is_long and not (_v > _v2): return False, 'CIRCUIT_SHARPE_GATES_FILTER_TF_TF'"
+    ],
+    [
+     "ez_manage.py",
+     6770,
+     "if (not is_long) and not (_v < _v2): return False, 'CIRCUIT_SHARPE_GATES_FILTER_TF_TF'"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "HIGH"
   },
   "DC_BREAK_FILTER_TF": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange",
@@ -691,15 +718,15 @@
      "'REENTRY2_DC_BREAK_FILTER_TF',"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "MEDIUM"
   },
   "DELTA_ENGINE_FILTER_TF": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange",
@@ -740,30 +767,28 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     6455,
-     "_ = config.DELTA_ENGINE_FILTER_TF"
-    ],
-    [
-     "ez_manage.py",
-     6456,
-     "_ = getattr(config, 'DELTA_ENGINE_FILTER_TF', '15m')"
-    ],
-    [
-     "ez_manage.py",
      6838,
      "_tf = str(getattr(config, 'DELTA_ENGINE_FILTER_TF', '15m'))"
+    ],
+    [
+     "ez_manage.py",
+     6842,
+     "if is_long and not (_v > _v2): return False, 'DELTA_ENGINE_FILTER_TF_TF'"
+    ],
+    [
+     "ez_manage.py",
+     6843,
+     "if (not is_long) and not (_v < _v2): return False, 'DELTA_ENGINE_FILTER_TF_TF'"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "HIGH"
   },
   "EMA_9_21_FILTER_FILTER_TF": {
-   "class": "BOTH_WIRED",
+   "class": "VEC_ONLY",
    "in_quickconfig": true,
    "vec_read": true,
-   "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
-   ],
+   "live_read_files": [],
    "colors": [
     "yellow"
    ],
@@ -799,33 +824,15 @@
    ],
    "dead_vec_listed": false,
    "in_progress": false,
-   "live_functional_hits": [
-    [
-     "ez_manage.py",
-     6479,
-     "_ = config.EMA_9_21_FILTER_FILTER_TF"
-    ],
-    [
-     "ez_manage.py",
-     6480,
-     "_ = getattr(config, 'EMA_9_21_FILTER_FILTER_TF', '15m')"
-    ],
-    [
-     "ez_manage.py",
-     58379,
-     "if str(getattr(config, \"EMA_9_21_FILTER_FILTER_TF\", \"15m\")): _ = 1  # EMA_9_21_FILTER_FILT"
-    ]
-   ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "live_functional_hits": [],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "HIGH"
   },
   "EMA_BLANKET_FILTER_FILTER_TF": {
-   "class": "LIVE_ONLY",
+   "class": "NEITHER",
    "in_quickconfig": true,
    "vec_read": false,
-   "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
-   ],
+   "live_read_files": [],
    "colors": [
     "orange",
     "yellow"
@@ -862,24 +869,9 @@
    ],
    "dead_vec_listed": false,
    "in_progress": false,
-   "live_functional_hits": [
-    [
-     "ez_manage.py",
-     6485,
-     "_ = config.EMA_BLANKET_FILTER_FILTER_TF"
-    ],
-    [
-     "ez_manage.py",
-     6486,
-     "_ = getattr(config, 'EMA_BLANKET_FILTER_FILTER_TF', '15m')"
-    ],
-    [
-     "ez_manage.py",
-     58382,
-     "if str(getattr(config, \"EMA_BLANKET_FILTER_FILTER_TF\", \"15m\")): _ = 1  # EMA_BLANKET_FILTE"
-    ]
-   ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "live_functional_hits": [],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "HIGH"
   },
   "EXIT_R1_R2_FILTER_TF": {
    "class": "LIVE_ONLY",
@@ -928,11 +920,17 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     58397,
-     "_ = _v  # EXIT_R1_R2_FILTER_TF reads close"
+     58394,
+     "if bool(getattr(config, \"EXIT_R1_R2_FILTER_TF\", False)):"
+    ],
+    [
+     "tradier_manage.py",
+     32357,
+     "if bool(getattr(config_tradier, \"EXIT_R1_R2_FILTER_TF\", False)):"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "MEDIUM"
   },
   "FAST_RISER_FILTER_TF": {
    "class": "LIVE_ONLY",
@@ -980,11 +978,17 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     58448,
-     "_ = _v  # FAST_RISER_FILTER_TF reads close"
+     58445,
+     "if bool(getattr(config, \"FAST_RISER_FILTER_TF\", False)):"
+    ],
+    [
+     "tradier_manage.py",
+     32385,
+     "if bool(getattr(config_tradier, \"FAST_RISER_FILTER_TF\", False)):"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "MEDIUM"
   },
   "FH_MOMENTUM_FILTER_TF": {
    "class": "LIVE_ONLY",
@@ -1033,19 +1037,24 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     58452,
-     "_ = _rsi  # FH_MOMENTUM_FILTER_TF reads rsi_15m"
+     58449,
+     "if bool(getattr(config, \"FH_MOMENTUM_FILTER_TF\", False)):"
+    ],
+    [
+     "tradier_manage.py",
+     32393,
+     "if bool(getattr(config_tradier, \"FH_MOMENTUM_FILTER_TF\", False)):"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "MEDIUM"
   },
   "GOLDEN_RULE_HTF_VOTE_FILTER_TF": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "yellow"
@@ -1085,19 +1094,19 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     58477,
-     "_ = _gr  # GOLDEN_RULE_HTF_VOTE_FILTER_TF reads rsi_1h"
+     58474,
+     "if bool(getattr(config, \"GOLDEN_RULE_HTF_VOTE_FILTER_TF\", False)):"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "MEDIUM"
   },
   "GR_FILTER_VEC_FILTER_TF": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "yellow"
@@ -1137,19 +1146,19 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     58486,
-     "_ = _gr  # GR_FILTER_VEC_FILTER_TF reads rsi_1h"
+     58483,
+     "if bool(getattr(config, \"GR_FILTER_VEC_FILTER_TF\", False)):"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "MEDIUM"
   },
   "GR_V5_STATE_FILTER_TF": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "yellow"
@@ -1189,19 +1198,19 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     58494,
-     "_ = _gr  # GR_V5_STATE_FILTER_TF reads rsi_1h"
+     58491,
+     "if bool(getattr(config, \"GR_V5_STATE_FILTER_TF\", False)):"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "MEDIUM"
   },
   "HAIKU_WINNER_FILTER_TF": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange",
@@ -1242,21 +1251,18 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     58499,
-     "_ = _ha  # HAIKU_WINNER_FILTER_TF reads adx_15m"
+     58496,
+     "if bool(getattr(config, \"HAIKU_WINNER_FILTER_TF\", False)):"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "MEDIUM"
   },
   "LH_HL_FILTER_TF_REQ": {
-   "class": "BOTH_WIRED",
+   "class": "VEC_ONLY",
    "in_quickconfig": true,
    "vec_read": true,
-   "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py",
-    "ez_positions_quick.py"
-   ],
+   "live_read_files": [],
    "colors": [
     "yellow"
    ],
@@ -1289,29 +1295,17 @@
    ],
    "dead_vec_listed": false,
    "in_progress": false,
-   "live_functional_hits": [
-    [
-     "tradier_manage.py",
-     26822,
-     "_lh_tf_req = int(_cfg_auto('LH_HL_FILTER_TF_REQ', 2))"
-    ],
-    [
-     "tradier_manage.py",
-     27154,
-     "_lh_tf_req = int(_cfg_auto('LH_HL_FILTER_TF_REQ', 2))"
-    ],
-    [
-     "ez_positions_quick.py",
-     12902,
-     "_lh_tf_req = int(getattr(config, 'LH_HL_FILTER_TF_REQ', 2))"
-    ]
-   ]
+   "live_functional_hits": [],
+   "confidence": "HIGH"
   },
   "LIVE_ENTRY_ENGINE_FILTER_TF": {
-   "class": "NEITHER",
+   "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
-   "live_read_files": [],
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
    "colors": [
     "yellow"
    ],
@@ -1365,13 +1359,17 @@
     ]
    ],
    "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
-   "live_stub_only": true
+   "live_stub_only": true,
+   "confidence": "MEDIUM"
   },
   "LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF": {
-   "class": "NEITHER",
+   "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
-   "live_read_files": [],
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
    "colors": [
     "yellow"
    ],
@@ -1425,7 +1423,8 @@
     ]
    ],
    "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
-   "live_stub_only": true
+   "live_stub_only": true,
+   "confidence": "MEDIUM"
   },
   "MANDATORY_REENTRY_WT_FILTER_TF_MODE": {
    "class": "LIVE_ONLY",
@@ -1469,17 +1468,25 @@
    "in_progress": false,
    "live_functional_hits": [
     [
+     "ez_manage.py",
+     58622,
+     "if bool(getattr(config, \"MANDATORY_REENTRY_WT_FILTER_TF_MODE\", False)):"
+    ],
+    [
      "tradier_manage.py",
      12016,
      "tf_mode=_cfg_auto('MANDATORY_REENTRY_WT_FILTER_TF_MODE', \"5m_or_15m\"),"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "MOM3_FILTER_TF": {
-   "class": "NEITHER",
+   "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
-   "live_read_files": [],
+   "live_read_files": [
+    "tradier_manage.py"
+   ],
    "colors": [
     "yellow"
    ],
@@ -1528,13 +1535,16 @@
     ]
    ],
    "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
-   "live_stub_only": true
+   "live_stub_only": true,
+   "confidence": "MEDIUM"
   },
   "MOMENTUM_BREAKOUT_FILTER_TF": {
-   "class": "NEITHER",
+   "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
-   "live_read_files": [],
+   "live_read_files": [
+    "tradier_manage.py"
+   ],
    "colors": [
     "orange",
     "yellow"
@@ -1584,15 +1594,15 @@
     ]
    ],
    "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
-   "live_stub_only": true
+   "live_stub_only": true,
+   "confidence": "MEDIUM"
   },
   "MTF_ARMED_ENTRIES_FILTER_TF": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange",
@@ -1637,13 +1647,16 @@
      "_mtf_tf = getattr(config, \"MTF_ARMED_ENTRIES_FILTER_TF\", None)"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "HIGH"
   },
   "MTF_ATR_TRAIL_FILTER_TF": {
-   "class": "NEITHER",
+   "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
-   "live_read_files": [],
+   "live_read_files": [
+    "tradier_manage.py"
+   ],
    "colors": [
     "yellow"
    ],
@@ -1692,13 +1705,16 @@
     ]
    ],
    "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
-   "live_stub_only": true
+   "live_stub_only": true,
+   "confidence": "MEDIUM"
   },
   "MTF_DC_REJECT_FILTER_TF": {
-   "class": "NEITHER",
+   "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
-   "live_read_files": [],
+   "live_read_files": [
+    "tradier_manage.py"
+   ],
    "colors": [
     "yellow"
    ],
@@ -1747,13 +1763,17 @@
     ]
    ],
    "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
-   "live_stub_only": true
+   "live_stub_only": true,
+   "confidence": "MEDIUM"
   },
   "NEWBORN_LOSS_KILL_FILTER_TF": {
-   "class": "NEITHER",
+   "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
-   "live_read_files": [],
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
    "colors": [
     "yellow"
    ],
@@ -1807,13 +1827,17 @@
     ]
    ],
    "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
-   "live_stub_only": true
+   "live_stub_only": true,
+   "confidence": "MEDIUM"
   },
   "NEWBORN_PROTECT_FILTER_TF": {
-   "class": "NEITHER",
+   "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
-   "live_read_files": [],
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
    "colors": [
     "yellow"
    ],
@@ -1867,13 +1891,17 @@
     ]
    ],
    "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
-   "live_stub_only": true
+   "live_stub_only": true,
+   "confidence": "MEDIUM"
   },
   "NOLOSS_BYPASS_WT5OF5_FILTER_TF": {
-   "class": "NEITHER",
+   "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
-   "live_read_files": [],
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
    "colors": [
     "orange",
     "yellow"
@@ -1928,13 +1956,17 @@
     ]
    ],
    "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
-   "live_stub_only": true
+   "live_stub_only": true,
+   "confidence": "MEDIUM"
   },
   "OPEN_INTENT_SIZE_GATES_FILTER_TF": {
-   "class": "NEITHER",
+   "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
-   "live_read_files": [],
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
    "colors": [
     "orange",
     "yellow"
@@ -1989,13 +2021,17 @@
     ]
    ],
    "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
-   "live_stub_only": true
+   "live_stub_only": true,
+   "confidence": "MEDIUM"
   },
   "PARTIAL_PROFIT_LOCK_V2_FILTER_TF": {
-   "class": "NEITHER",
+   "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
-   "live_read_files": [],
+   "live_read_files": [
+    "ez_manage.py",
+    "tradier_manage.py"
+   ],
    "colors": [
     "yellow"
    ],
@@ -2049,15 +2085,15 @@
     ]
    ],
    "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
-   "live_stub_only": true
+   "live_stub_only": true,
+   "confidence": "MEDIUM"
   },
   "PEAK_GIVEBACK_BE_EROSION_FILTER_TF": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange",
@@ -2102,15 +2138,15 @@
      "_peak_tf = getattr(config, \"PEAK_GIVEBACK_BE_EROSION_FILTER_TF\", None)"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "HIGH"
   },
   "WT_15M_BOUNCE_BB_MAX": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange",
@@ -2149,28 +2185,23 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     58971,
-     "_=_bb  # WT_15M_BOUNCE_BB_MAX bb_pct_b"
-    ],
-    [
-     "ez_manage.py",
-     59253,
-     "_b15_bb_max = float(getattr(config, \"WT_15M_BOUNCE_BB_MAX\", 0.95) or 0.95)"
+     58968,
+     "if bool(getattr(config, \"WT_15M_BOUNCE_BB_MAX\", False)):"
     ],
     [
      "ez_manage.py",
      59455,
      "if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_BB_MAX', False): pass  # "
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "WT_15M_BOUNCE_BB_MIN": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "yellow"
@@ -2208,27 +2239,24 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     58975,
-     "_=_bb  # WT_15M_BOUNCE_BB_MIN bb_pct_b"
-    ],
-    [
-     "ez_manage.py",
-     59252,
-     "_b15_bb_min = float(getattr(config, \"WT_15M_BOUNCE_BB_MIN\", 0.05) or 0.05)"
+     58972,
+     "if bool(getattr(config, \"WT_15M_BOUNCE_BB_MIN\", False)):"
     ],
     [
      "ez_manage.py",
      59454,
      "if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_BB_MIN', False): pass  # "
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "WT_15M_BOUNCE_HIGH_1H_GT_PREV": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py"
+    "ez_manage.py",
+    "tradier_manage.py"
    ],
    "colors": [
     "orange",
@@ -2264,11 +2292,6 @@
    "dead_vec_listed": false,
    "in_progress": false,
    "live_functional_hits": [
-    [
-     "ez_manage.py",
-     59256,
-     "_b15_hh_explicit = bool(getattr(config, \"WT_15M_BOUNCE_FILTER_HH_ENABLED\", False) or getat"
-    ],
     [
      "ez_manage.py",
      59466,
@@ -2279,14 +2302,16 @@
      1312,
      "_hh_on = bool(_cfg(\"WT_15M_BOUNCE_FILTER_HH_ENABLED\", False, account_key, symbol, side) or"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "WT_15M_BOUNCE_LOW_1H_GT_PREV": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py"
+    "ez_manage.py",
+    "tradier_manage.py"
    ],
    "colors": [
     "orange",
@@ -2322,11 +2347,6 @@
    "dead_vec_listed": false,
    "in_progress": false,
    "live_functional_hits": [
-    [
-     "ez_manage.py",
-     59255,
-     "_b15_hl_explicit = bool(getattr(config, \"WT_15M_BOUNCE_FILTER_HL_ENABLED\", False) or getat"
-    ],
     [
      "ez_manage.py",
      59465,
@@ -2337,14 +2357,16 @@
      1311,
      "_hl_on = bool(_cfg(\"WT_15M_BOUNCE_FILTER_HL_ENABLED\", False, account_key, symbol, side) or"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "WT_15M_BOUNCE_REL_VOL_GT_1": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py"
+    "ez_manage.py",
+    "tradier_manage.py"
    ],
    "colors": [
     "orange",
@@ -2382,11 +2404,6 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     59258,
-     "_b15_vol_explicit = bool(getattr(config, \"WT_15M_BOUNCE_VOLUME_FILTER_ENABLED\", False) or "
-    ],
-    [
-     "ez_manage.py",
      59467,
      "if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_REL_VOL_GT_1', False): pa"
     ],
@@ -2395,7 +2412,8 @@
      1332,
      "_vol_on = bool(_cfg(\"WT_15M_BOUNCE_VOLUME_FILTER_ENABLED\", False, account_key, symbol, sid"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "BB_PROFIT_TAKE_TF": {
    "class": "VEC_ONLY",
@@ -2438,12 +2456,10 @@
    "in_progress": false
   },
   "WT_DC_STOCH_THRESHOLD_LONG": {
-   "class": "BOTH_WIRED",
+   "class": "VEC_ONLY",
    "in_quickconfig": true,
    "vec_read": true,
-   "live_read_files": [
-    "tradier_manage.py"
-   ],
+   "live_read_files": [],
    "colors": [
     "orange"
    ],
@@ -2474,21 +2490,14 @@
    ],
    "dead_vec_listed": false,
    "in_progress": false,
-   "live_functional_hits": [
-    [
-     "tradier_manage.py",
-     12594,
-     "_wt_dc_stoch_thr_long = float(_cfg_auto('WT_DC_STOCH_THRESHOLD_LONG', 40.0))"
-    ]
-   ]
+   "live_functional_hits": [],
+   "confidence": "HIGH"
   },
   "WT_DC_STOCH_THRESHOLD_SHORT": {
-   "class": "BOTH_WIRED",
+   "class": "VEC_ONLY",
    "in_quickconfig": true,
    "vec_read": true,
-   "live_read_files": [
-    "tradier_manage.py"
-   ],
+   "live_read_files": [],
    "colors": [
     "orange"
    ],
@@ -2519,21 +2528,14 @@
    ],
    "dead_vec_listed": false,
    "in_progress": false,
-   "live_functional_hits": [
-    [
-     "tradier_manage.py",
-     12595,
-     "_wt_dc_stoch_thr_short = float(_cfg_auto('WT_DC_STOCH_THRESHOLD_SHORT', 60.0))"
-    ]
-   ]
+   "live_functional_hits": [],
+   "confidence": "HIGH"
   },
   "WT_DC_DC_POS_THRESHOLD_SHORT": {
-   "class": "BOTH_WIRED",
+   "class": "VEC_ONLY",
    "in_quickconfig": true,
    "vec_read": true,
-   "live_read_files": [
-    "tradier_manage.py"
-   ],
+   "live_read_files": [],
    "colors": [
     "orange"
    ],
@@ -2564,21 +2566,15 @@
    ],
    "dead_vec_listed": false,
    "in_progress": false,
-   "live_functional_hits": [
-    [
-     "tradier_manage.py",
-     12593,
-     "_wt_dc_dc_thr_short = float(_cfg_auto('WT_DC_DC_POS_THRESHOLD_SHORT', 0.50))"
-    ]
-   ]
+   "live_functional_hits": [],
+   "confidence": "HIGH"
   },
   "BANDAID_OFF_LOSER_RECOVER_PCT": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -2628,19 +2624,18 @@
     ],
     [
      "ez_manage.py",
-     6573,
-     "_ = getattr(config, 'BANDAID_OFF_LOSER_RECOVER_PCT', 0.0)"
+     48916,
+     "getattr(config, \"BANDAID_OFF_LOSER_RECOVER_PCT\", -0.25)"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "ADX_RANGING_THRESHOLD": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py",
-    "ez_positions_quick.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -2692,7 +2687,8 @@
      6495,
      "_thr = float(getattr(config, 'ADX_RANGING_THRESHOLD', 0.0))"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "MTS_GATE_ENABLED": {
    "class": "LIVE_ONLY",
@@ -2700,7 +2696,7 @@
    "vec_read": false,
    "live_read_files": [
     "ez_manage.py",
-    "ez_positions_quick.py"
+    "tradier_manage.py"
    ],
    "colors": [
     "orange"
@@ -2750,7 +2746,8 @@
      2796,
      "'MTS_GATE_ENABLED_TRADIER',"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "OI_CONFIRM_ENABLED": {
    "class": "LIVE_ONLY",
@@ -2758,7 +2755,7 @@
    "vec_read": false,
    "live_read_files": [
     "ez_manage.py",
-    "ez_positions_quick.py"
+    "tradier_manage.py"
    ],
    "colors": [
     "orange"
@@ -2799,16 +2796,17 @@
      "'OI_CONFIRM_ENABLED_TRADIER',"
     ],
     [
-     "tradier_manage.py",
-     2813,
-     "'OI_CONFIRM_ENABLED_TRADIER',"
+     "ez_manage.py",
+     58776,
+     "if bool(getattr(config, \"OI_CONFIRM_ENABLED\", False)):"
     ],
     [
      "tradier_manage.py",
-     7963,
-     "\"OBLIGATORY_SECTOR_HEDGE_ENABLED\", \"OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS\", \"OBLIG"
+     2813,
+     "'OI_CONFIRM_ENABLED_TRADIER',"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "OI_CONFIRM_MIN_PRICE_PCT": {
    "class": "LIVE_ONLY",
@@ -2816,7 +2814,7 @@
    "vec_read": false,
    "live_read_files": [
     "ez_manage.py",
-    "ez_positions_quick.py"
+    "tradier_manage.py"
    ],
    "colors": [
     "orange"
@@ -2869,7 +2867,8 @@
      7963,
      "\"OBLIGATORY_SECTOR_HEDGE_ENABLED\", \"OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS\", \"OBLIG"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "HLR_TOP_MIN_TFS": {
    "class": "BOTH_WIRED",
@@ -2877,7 +2876,6 @@
    "vec_read": true,
    "live_read_files": [
     "ez_manage.py",
-    "tradier_manage.py",
     "ez_positions_quick.py"
    ],
    "colors": [
@@ -2915,16 +2913,17 @@
    "in_progress": false,
    "live_functional_hits": [
     [
-     "tradier_manage.py",
-     32910,
-     "if int(getattr(config, \"HLR_TOP_MIN_TFS\", 0) or 0) != 0: _ = 1  # HLR_TOP_MIN_TFS \u2014 BATCH2"
+     "ez_manage.py",
+     59396,
+     "if bool(getattr(config, \"HLR_TOP_MIN_TFS\", False)):"
     ],
     [
      "ez_positions_quick.py",
      3712,
      "_hte_min = getattr(config, 'HLR_TOP_MIN_TFS', 2)"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "MTS_BOTTOM_BONUS_THRESHOLD": {
    "class": "LIVE_ONLY",
@@ -2932,7 +2931,6 @@
    "vec_read": false,
    "live_read_files": [
     "ez_manage.py",
-    "tradier_manage.py",
     "ez_positions_quick.py"
    ],
    "colors": [
@@ -2971,20 +2969,24 @@
    "in_progress": false,
    "live_functional_hits": [
     [
+     "ez_manage.py",
+     58710,
+     "if bool(getattr(config, \"MTS_BOTTOM_BONUS_THRESHOLD\", False)):"
+    ],
+    [
      "ez_positions_quick.py",
      2781,
      "_mts_b_bonus = getattr(config, 'MTS_BOTTOM_BONUS_THRESHOLD', 25.0)"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "OI_CONFIRM_MIN_CHANGE_PCT": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py",
-    "ez_positions_quick.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -3022,11 +3024,12 @@
    "in_progress": false,
    "live_functional_hits": [
     [
-     "ez_positions_quick.py",
-     12690,
-     "_oi_min_pct = float(getattr(config, 'OI_CONFIRM_MIN_CHANGE_PCT', 0.5))"
+     "ez_manage.py",
+     58778,
+     "if bool(getattr(config, \"OI_CONFIRM_MIN_CHANGE_PCT\", False)):"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "MTS_BOTTOM_STRONG_THRESHOLD": {
    "class": "LIVE_ONLY",
@@ -3034,7 +3037,6 @@
    "vec_read": false,
    "live_read_files": [
     "ez_manage.py",
-    "tradier_manage.py",
     "ez_positions_quick.py"
    ],
    "colors": [
@@ -3073,11 +3075,17 @@
    "in_progress": false,
    "live_functional_hits": [
     [
+     "ez_manage.py",
+     58714,
+     "if bool(getattr(config, \"MTS_BOTTOM_STRONG_THRESHOLD\", False)):"
+    ],
+    [
      "ez_positions_quick.py",
      2780,
      "_mts_b_strong = getattr(config, 'MTS_BOTTOM_STRONG_THRESHOLD', 40.0)"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "HA_WICK_QUALITY_TF": {
    "class": "LIVE_ONLY",
@@ -3085,7 +3093,6 @@
    "vec_read": false,
    "live_read_files": [
     "ez_manage.py",
-    "tradier_manage.py",
     "ez_positions_quick.py"
    ],
    "colors": [
@@ -3125,19 +3132,24 @@
    "in_progress": false,
    "live_functional_hits": [
     [
+     "ez_manage.py",
+     58512,
+     "if bool(getattr(config, \"HA_WICK_QUALITY_TF\", False)):"
+    ],
+    [
      "ez_positions_quick.py",
      4474,
      "_hw_tf = getattr(config, 'HA_WICK_QUALITY_TF', '1h')"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "COOLDOWN_LOCKS_FILTER_TF": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -3177,21 +3189,22 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     6433,
-     "_ = config.COOLDOWN_LOCKS_FILTER_TF"
-    ],
-    [
-     "ez_manage.py",
-     6434,
-     "_ = getattr(config, 'COOLDOWN_LOCKS_FILTER_TF', '15m')"
-    ],
-    [
-     "ez_manage.py",
      6772,
      "_tf = str(getattr(config, 'COOLDOWN_LOCKS_FILTER_TF', '15m'))"
+    ],
+    [
+     "ez_manage.py",
+     6776,
+     "if is_long and not (_v > _v2): return False, 'COOLDOWN_LOCKS_FILTER_TF_TF'"
+    ],
+    [
+     "ez_manage.py",
+     6777,
+     "if (not is_long) and not (_v < _v2): return False, 'COOLDOWN_LOCKS_FILTER_TF_TF'"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "HIGH"
   },
   "BAND_ARROW_ENABLED": {
    "class": "LIVE_ONLY",
@@ -3236,29 +3249,28 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     6365,
-     "_ = config.BAND_ARROW_ENABLED"
-    ],
-    [
-     "ez_manage.py",
-     6366,
-     "_ = getattr(config, 'BAND_ARROW_ENABLED', False)"
+     6574,
+     "if bool(getattr(config, 'BAND_ARROW_ENABLED', False)):"
     ],
     [
      "ez_manage.py",
      6577,
      "return False, 'BAND_ARROW_ENABLED_SMA'"
+    ],
+    [
+     "tradier_manage.py",
+     5640,
+     "for _sw in ['AUGMENTED_POSITIONS_GUARD_FLOOR_MULT','AUGMENT_AT_LOSS_ENABLED','AUGMENT_ONLY"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "LH_HL_FILTER_ENABLED": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py",
-    "ez_positions_quick.py"
+    "tradier_manage.py"
    ],
    "colors": [
     "orange"
@@ -3308,7 +3320,8 @@
      27151,
      "if bool(_cfg_auto('LH_HL_FILTER_ENABLED', False)):"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "MARKET_QUALITY_SCORE_ENABLED": {
    "class": "LIVE_ONLY",
@@ -3316,7 +3329,7 @@
    "vec_read": false,
    "live_read_files": [
     "ez_manage.py",
-    "ez_positions_quick.py"
+    "tradier_manage.py"
    ],
    "colors": [
     "orange"
@@ -3357,16 +3370,17 @@
      "'MARKET_QUALITY_SCORE_ENABLED_TRADIER',"
     ],
     [
-     "tradier_manage.py",
-     2692,
-     "'MARKET_QUALITY_SCORE_ENABLED_TRADIER',"
+     "ez_manage.py",
+     58630,
+     "if bool(getattr(config, \"MARKET_QUALITY_SCORE_ENABLED\", False)):"
     ],
     [
      "tradier_manage.py",
-     7950,
-     "\"MANDATORY_REENTRY_DC4_WINDOW_MIN\", \"MARKET_QUALITY_SCORE_ENABLED_TRADIER\", \"MAX_CONCURREN"
+     2692,
+     "'MARKET_QUALITY_SCORE_ENABLED_TRADIER',"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "HTF_DIRECTION_GATE_ENABLED": {
    "class": "LIVE_ONLY",
@@ -3410,19 +3424,24 @@
    "in_progress": false,
    "live_functional_hits": [
     [
+     "ez_manage.py",
+     58521,
+     "if bool(getattr(config, \"HTF_DIRECTION_GATE_ENABLED\", False)):"
+    ],
+    [
      "ez_positions_quick.py",
      12658,
      "if bool(getattr(config, 'HTF_DIRECTION_GATE_ENABLED', True)):"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "MTF_GR_MIN_IND": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -3468,16 +3487,15 @@
      58704,
      "_v = getattr(config, \"MTF_GR_MIN_IND\", None)"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "HLR_SMA_BAND_PCT": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py",
-    "ez_positions_quick.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -3516,30 +3534,18 @@
    "in_progress": false,
    "live_functional_hits": [
     [
-     "tradier_manage.py",
-     32909,
-     "if float(getattr(config, \"HLR_SMA_BAND_PCT\", 0) or 0) != 0: _ = 1  # HLR_SMA_BAND_PCT \u2014 BA"
-    ],
-    [
-     "ez_positions_quick.py",
-     3045,
-     "_hlr_band = getattr(config, 'HLR_SMA_BAND_PCT', 0.03)"
-    ],
-    [
-     "ez_positions_quick.py",
-     16287,
-     "_hlr_band_e = getattr(config, 'HLR_SMA_BAND_PCT', 0.03)"
+     "ez_manage.py",
+     59392,
+     "if bool(getattr(config, \"HLR_SMA_BAND_PCT\", False)):"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "DUP_GUARD_FILTER_TF": {
-   "class": "LIVE_ONLY",
+   "class": "NEITHER",
    "in_quickconfig": true,
    "vec_read": false,
-   "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
-   ],
+   "live_read_files": [],
    "colors": [
     "orange"
    ],
@@ -3575,24 +3581,9 @@
    ],
    "dead_vec_listed": false,
    "in_progress": false,
-   "live_functional_hits": [
-    [
-     "ez_manage.py",
-     6471,
-     "_ = config.DUP_GUARD_FILTER_TF"
-    ],
-    [
-     "ez_manage.py",
-     6472,
-     "_ = getattr(config, 'DUP_GUARD_FILTER_TF', '15m')"
-    ],
-    [
-     "ez_manage.py",
-     58376,
-     "if str(getattr(config, \"DUP_GUARD_FILTER_TF\", \"15m\")): _ = 1  # DUP_GUARD_FILTER_TF \u2014 BATC"
-    ]
-   ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "live_functional_hits": [],
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "HIGH"
   },
   "HA_WICK_QUALITY_ENABLED": {
    "class": "LIVE_ONLY",
@@ -3600,7 +3591,6 @@
    "vec_read": false,
    "live_read_files": [
     "ez_manage.py",
-    "tradier_manage.py",
     "ez_positions_quick.py"
    ],
    "colors": [
@@ -3637,11 +3627,17 @@
    "in_progress": false,
    "live_functional_hits": [
     [
+     "ez_manage.py",
+     58504,
+     "if bool(getattr(config, \"HA_WICK_QUALITY_ENABLED\", False)):"
+    ],
+    [
      "ez_positions_quick.py",
      4473,
      "if getattr(config, 'HA_WICK_QUALITY_ENABLED', False):"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "FUNDING_GATE_FILTER_TF": {
    "class": "LIVE_ONLY",
@@ -3689,21 +3685,23 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     58468,
-     "_ = _fund  # FUNDING_GATE_FILTER_TF reads funding_rate"
+     58465,
+     "if bool(getattr(config, \"FUNDING_GATE_FILTER_TF\", False)):"
+    ],
+    [
+     "tradier_manage.py",
+     32403,
+     "if bool(getattr(config_tradier, \"FUNDING_GATE_FILTER_TF\", False)):"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "MEDIUM"
   },
   "LH_HL_FILTER_MODE": {
-   "class": "BOTH_WIRED",
+   "class": "VEC_ONLY",
    "in_quickconfig": true,
    "vec_read": true,
-   "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py",
-    "ez_positions_quick.py"
-   ],
+   "live_read_files": [],
    "colors": [
     "orange"
    ],
@@ -3736,31 +3734,15 @@
    ],
    "dead_vec_listed": false,
    "in_progress": false,
-   "live_functional_hits": [
-    [
-     "tradier_manage.py",
-     26821,
-     "_lh_mode = str(_cfg_auto('LH_HL_FILTER_MODE', 'STRICT_2BAR'))"
-    ],
-    [
-     "tradier_manage.py",
-     27153,
-     "_lh_mode = str(_cfg_auto('LH_HL_FILTER_MODE', 'STRICT_2BAR'))"
-    ],
-    [
-     "ez_positions_quick.py",
-     12901,
-     "_lh_mode = str(getattr(config, 'LH_HL_FILTER_MODE', 'STRICT_2BAR'))"
-    ]
-   ]
+   "live_functional_hits": [],
+   "confidence": "HIGH"
   },
   "NEW_POSITION_MAX_LOSS_THRESHOLD": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -3813,15 +3795,15 @@
      21534,
      "> config.NEW_POSITION_MAX_LOSS_THRESHOLD"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "GR_FILTER_VEC_ENABLED": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -3858,19 +3840,17 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     58482,
-     "_ = _gr  # GR_FILTER_VEC_ENABLED reads rsi_1h"
+     58479,
+     "if bool(getattr(config, \"GR_FILTER_VEC_ENABLED\", False)):"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "EMA_9_21_FILTER_MIN_TFS": {
-   "class": "BOTH_WIRED",
+   "class": "VEC_ONLY",
    "in_quickconfig": true,
    "vec_read": true,
-   "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
-   ],
+   "live_read_files": [],
    "colors": [
     "orange"
    ],
@@ -3905,31 +3885,15 @@
    ],
    "dead_vec_listed": false,
    "in_progress": false,
-   "live_functional_hits": [
-    [
-     "ez_manage.py",
-     6481,
-     "_ = config.EMA_9_21_FILTER_MIN_TFS"
-    ],
-    [
-     "ez_manage.py",
-     6482,
-     "_ = getattr(config, 'EMA_9_21_FILTER_MIN_TFS', 0)"
-    ],
-    [
-     "ez_manage.py",
-     58380,
-     "if int(getattr(config, \"EMA_9_21_FILTER_MIN_TFS\", 0)): _ = 1  # EMA_9_21_FILTER_MIN_TFS \u2014 "
-    ]
-   ]
+   "live_functional_hits": [],
+   "confidence": "HIGH"
   },
   "NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -3970,20 +3934,17 @@
      "ez_manage.py",
      46544,
      "_nlk_threshold = safe_fetch_float(getattr(config, \"NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT\", "
-    ],
-    [
-     "ez_manage.py",
-     58732,
-     "if getattr(config, \"NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT\", None) is not None: _ = 1  # NEW"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "LR_BAND_LADDER_TF_BOTTOM": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py"
+    "ez_manage.py",
+    "tradier_manage.py"
    ],
    "colors": [
     "orange"
@@ -4019,6 +3980,11 @@
    "in_progress": false,
    "live_functional_hits": [
     [
+     "ez_manage.py",
+     58574,
+     "if bool(getattr(config, \"LR_BAND_LADDER_TF_BOTTOM\", False)):"
+    ],
+    [
      "tradier_manage.py",
      658,
      "bottom = _tf_val(\"LR_BAND_LADDER_TF_BOTTOM\", \"LR_BAND_LADDER_BOTTOM_MULT\", 10.0)"
@@ -4028,14 +3994,15 @@
      1594,
      "(getattr(view, \"LR_BAND_LADDER_TF_BOTTOM\", {}) or {}).get("
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "LR_BAND_LADDER_STOCH_EXTREME": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py"
+    "tradier_manage.py"
    ],
    "colors": [
     "orange"
@@ -4075,14 +4042,16 @@
      1487,
      "getattr(cfg, \"LR_BAND_LADDER_STOCH_EXTREME\", 30.0)"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "LR_BAND_LADDER_TF_TOP": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py"
+    "ez_manage.py",
+    "tradier_manage.py"
    ],
    "colors": [
     "orange"
@@ -4118,6 +4087,11 @@
    "in_progress": false,
    "live_functional_hits": [
     [
+     "ez_manage.py",
+     58576,
+     "if bool(getattr(config, \"LR_BAND_LADDER_TF_TOP\", False)):"
+    ],
+    [
      "tradier_manage.py",
      659,
      "top = _tf_val(\"LR_BAND_LADDER_TF_TOP\", \"LR_BAND_LADDER_TOP_MULT\", 3.0)"
@@ -4127,15 +4101,15 @@
      1600,
      "(getattr(view, \"LR_BAND_LADDER_TF_TOP\", {}) or {}).get("
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "GR_FILTER_VEC_MIN_TFS": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -4173,19 +4147,18 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     58490,
-     "_ = _gr  # GR_FILTER_VEC_MIN_TFS reads rsi_1h"
+     58487,
+     "if bool(getattr(config, \"GR_FILTER_VEC_MIN_TFS\", False)):"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "DELTA_HTF_GATE": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py",
-    "ez_positions_quick.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -4223,29 +4196,27 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     6461,
-     "_ = config.DELTA_HTF_GATE"
-    ],
-    [
-     "ez_manage.py",
-     6462,
-     "_ = getattr(config, 'DELTA_HTF_GATE', '')"
-    ],
-    [
-     "ez_manage.py",
      6845,
      "_tf = str(getattr(config, 'DELTA_HTF_GATE', '15m'))"
+    ],
+    [
+     "ez_manage.py",
+     6849,
+     "if is_long and not (_v > _v2): return False, 'DELTA_HTF_GATE_TF'"
+    ],
+    [
+     "ez_manage.py",
+     6850,
+     "if (not is_long) and not (_v < _v2): return False, 'DELTA_HTF_GATE_TF'"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "EMA_BLANKET_FILTER_MIN_TFS": {
-   "class": "LIVE_ONLY",
+   "class": "NEITHER",
    "in_quickconfig": true,
    "vec_read": false,
-   "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
-   ],
+   "live_read_files": [],
    "colors": [
     "orange"
    ],
@@ -4280,31 +4251,15 @@
    ],
    "dead_vec_listed": false,
    "in_progress": false,
-   "live_functional_hits": [
-    [
-     "ez_manage.py",
-     6487,
-     "_ = config.EMA_BLANKET_FILTER_MIN_TFS"
-    ],
-    [
-     "ez_manage.py",
-     6488,
-     "_ = getattr(config, 'EMA_BLANKET_FILTER_MIN_TFS', 0)"
-    ],
-    [
-     "ez_manage.py",
-     58383,
-     "if int(getattr(config, \"EMA_BLANKET_FILTER_MIN_TFS\", 0)): _ = 1  # EMA_BLANKET_FILTER_MIN_"
-    ]
-   ]
+   "live_functional_hits": [],
+   "confidence": "HIGH"
   },
   "HTF_TREND_VETO_BYPASS_ENABLED": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -4343,22 +4298,15 @@
      "ez_manage.py",
      25207,
      "if bool(getattr(config, \"HTF_TREND_VETO_BYPASS_ENABLED\", True)):"
-    ],
-    [
-     "ez_manage.py",
-     58531,
-     "if getattr(config, \"HTF_TREND_VETO_BYPASS_ENABLED\", None) is not None: _ = 1  # HTF_TREND_"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "EMA_BLANKET_FILTER_ENABLED": {
-   "class": "LIVE_ONLY",
+   "class": "NEITHER",
    "in_quickconfig": true,
    "vec_read": false,
-   "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
-   ],
+   "live_read_files": [],
    "colors": [
     "orange"
    ],
@@ -4391,31 +4339,15 @@
    ],
    "dead_vec_listed": false,
    "in_progress": false,
-   "live_functional_hits": [
-    [
-     "ez_manage.py",
-     6483,
-     "_ = config.EMA_BLANKET_FILTER_ENABLED"
-    ],
-    [
-     "ez_manage.py",
-     6484,
-     "_ = getattr(config, 'EMA_BLANKET_FILTER_ENABLED', False)"
-    ],
-    [
-     "ez_manage.py",
-     58381,
-     "if bool(getattr(config, \"EMA_BLANKET_FILTER_ENABLED\", False)): _ = 1  # EMA_BLANKET_FILTER"
-    ]
-   ]
+   "live_functional_hits": [],
+   "confidence": "HIGH"
   },
   "DELTA_REENTRY_FILTER_ENABLED": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -4457,15 +4389,16 @@
     ],
     [
      "ez_manage.py",
-     6467,
-     "_ = config.DELTA_REENTRY_FILTER_ENABLED"
+     6864,
+     "if bool(getattr(config, 'DELTA_REENTRY_FILTER_ENABLED', False)):"
     ],
     [
      "ez_manage.py",
-     6468,
-     "_ = getattr(config, 'DELTA_REENTRY_FILTER_ENABLED', False)"
+     6866,
+     "if is_long and _vel <= 0: return False, 'DELTA_REENTRY_FILTER_ENABLED_VEL'"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "LIVE_VEC_EMERGENCY_BRAKE_ENABLED": {
    "class": "LIVE_ONLY",
@@ -4514,24 +4447,19 @@
      "if bool(getattr(config, \"LIVE_VEC_EMERGENCY_BRAKE_ENABLED\", False)):"
     ],
     [
-     "ez_manage.py",
-     58560,
-     "if getattr(config, \"LIVE_VEC_EMERGENCY_BRAKE_ENABLED\", None) is not None: _ = 1  # LIVE_VE"
-    ],
-    [
      "tradier_manage.py",
      25353,
      "if bool(_cfg_auto('LIVE_VEC_EMERGENCY_BRAKE_ENABLED', False)):"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -4571,21 +4499,16 @@
      "ez_manage.py",
      46551,
      "if bool(getattr(config, \"NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST\", True)):"
-    ],
-    [
-     "ez_manage.py",
-     58733,
-     "if getattr(config, \"NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST\", None) is not None: _ = 1  # NE"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "HTF4_CONF": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -4636,15 +4559,15 @@
      27746,
      "f\"[exe cxute_trade_action][{account_key}] {position_key}: \u274c {action} BLOCKED - HTF4_CONF_R"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "LEADERBOARD_FILTER": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -4695,17 +4618,14 @@
      21413,
      "if LEADERBOARD_FILTER:"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "LH_HL_FILTER_REQUIRE_BOTH": {
-   "class": "BOTH_WIRED",
+   "class": "VEC_ONLY",
    "in_quickconfig": true,
    "vec_read": true,
-   "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py",
-    "ez_positions_quick.py"
-   ],
+   "live_read_files": [],
    "colors": [
     "orange"
    ],
@@ -4738,31 +4658,15 @@
    ],
    "dead_vec_listed": false,
    "in_progress": false,
-   "live_functional_hits": [
-    [
-     "tradier_manage.py",
-     26824,
-     "_lh_req_both = bool(_cfg_auto('LH_HL_FILTER_REQUIRE_BOTH', False))"
-    ],
-    [
-     "tradier_manage.py",
-     27156,
-     "_lh_req_both = bool(_cfg_auto('LH_HL_FILTER_REQUIRE_BOTH', False))"
-    ],
-    [
-     "ez_positions_quick.py",
-     12904,
-     "_lh_req_both = bool(getattr(config, 'LH_HL_FILTER_REQUIRE_BOTH', False))"
-    ]
-   ]
+   "live_functional_hits": [],
+   "confidence": "HIGH"
   },
   "BTC_ACCEL_RAMP_REQUIRE_POSITIVE": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -4801,28 +4705,23 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     6403,
-     "_ = config.BTC_ACCEL_RAMP_REQUIRE_POSITIVE"
-    ],
-    [
-     "ez_manage.py",
-     6404,
-     "_ = getattr(config, 'BTC_ACCEL_RAMP_REQUIRE_POSITIVE', False)"
-    ],
-    [
-     "ez_manage.py",
      6681,
      "_thr = float(getattr(config, 'BTC_ACCEL_RAMP_REQUIRE_POSITIVE', 0.0))"
+    ],
+    [
+     "ez_manage.py",
+     6685,
+     "if _c <= _thr: return False, 'BTC_ACCEL_RAMP_REQUIRE_POSITIVE_THR'"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "BTC_HARD_BLOCK_OTHER_ACCOUNTS": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -4861,28 +4760,23 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     6417,
-     "_ = config.BTC_HARD_BLOCK_OTHER_ACCOUNTS"
-    ],
-    [
-     "ez_manage.py",
-     6418,
-     "_ = getattr(config, 'BTC_HARD_BLOCK_OTHER_ACCOUNTS', False)"
-    ],
-    [
-     "ez_manage.py",
      6722,
      "_thr = float(getattr(config, 'BTC_HARD_BLOCK_OTHER_ACCOUNTS', 0.0))"
+    ],
+    [
+     "ez_manage.py",
+     6726,
+     "if _c <= _thr: return False, 'BTC_HARD_BLOCK_OTHER_ACCOUNTS_THR'"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "BTC_ROUND_BANDS_EACH_SIDE": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -4921,20 +4815,16 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     6419,
-     "_ = config.BTC_ROUND_BANDS_EACH_SIDE"
-    ],
-    [
-     "ez_manage.py",
-     6420,
-     "_ = getattr(config, 'BTC_ROUND_BANDS_EACH_SIDE', 0)"
-    ],
-    [
-     "ez_manage.py",
      6728,
      "_thr = float(getattr(config, 'BTC_ROUND_BANDS_EACH_SIDE', 0.0))"
+    ],
+    [
+     "ez_manage.py",
+     6732,
+     "if _c <= _thr: return False, 'BTC_ROUND_BANDS_EACH_SIDE_THR'"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "MI_TF_AGREE_MIN": {
    "class": "LIVE_ONLY",
@@ -4942,7 +4832,7 @@
    "vec_read": false,
    "live_read_files": [
     "ez_manage.py",
-    "ez_positions_quick.py"
+    "tradier_manage.py"
    ],
    "colors": [
     "orange"
@@ -4984,24 +4874,24 @@
      "'MI_TF_AGREE_MIN_TRADIER',"
     ],
     [
-     "tradier_manage.py",
-     2741,
-     "'MI_TF_AGREE_MIN_TRADIER',"
+     "ez_manage.py",
+     58661,
+     "if bool(getattr(config, \"MI_TF_AGREE_MIN\", False)):"
     ],
     [
      "tradier_manage.py",
-     19368,
-     "_vf_mi_min = int(_cfg_auto('MI_TF_AGREE_MIN_TRADIER', 3) or 3)"
+     2741,
+     "'MI_TF_AGREE_MIN_TRADIER',"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "EZ_MANAGE_THROTTLER_RATE": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -5045,13 +4935,9 @@
      "ez_manage.py",
      13517,
      "rate_limit=getattr(config, \"EZ_MANAGE_THROTTLER_RATE\", {\"dev\":50,\"prod\":50}).get(current_e"
-    ],
-    [
-     "ez_manage.py",
-     59331,
-     "if bool(getattr(config, \"EZ_MANAGE_THROTTLER_RATE\", False)): _ = 1  # EZ_MANAGE_THROTTLER_"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "EXECUTE_NOW_SINGLE_GATE_ENFORCE": {
    "class": "BOTH_WIRED",
@@ -5059,8 +4945,7 @@
    "vec_read": true,
    "live_read_files": [
     "ez_manage.py",
-    "tradier_manage.py",
-    "ez_positions_quick.py"
+    "tradier_manage.py"
    ],
    "colors": [
     "orange"
@@ -5098,29 +4983,23 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     59330,
-     "_ = _v  # EXECUTE_NOW_SINGLE_GATE_ENFORCE reads close"
+     59327,
+     "if bool(getattr(config, \"EXECUTE_NOW_SINGLE_GATE_ENFORCE\", False)):"
     ],
     [
      "tradier_manage.py",
-     32885,
-     "if bool(getattr(config, \"EXECUTE_NOW_SINGLE_GATE_ENFORCE\", False)): _ = 1  # EXECUTE_NOW_S"
-    ],
-    [
-     "ez_positions_quick.py",
-     8972,
-     "if bool(getattr(config, \"EXECUTE_NOW_SINGLE_GATE_ENFORCE\", True)):"
+     32351,
+     "if bool(getattr(config_tradier, \"EXECUTE_NOW_SINGLE_GATE_ENFORCE\", False)):"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "HTF_GATE_D_MANDATORY": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py",
-    "ez_positions_quick.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -5160,27 +5039,16 @@
      "ez_manage.py",
      37374,
      "getattr(config, \"HTF_GATE_D_MANDATORY\", True)"
-    ],
-    [
-     "ez_manage.py",
-     59420,
-     "if bool(getattr(config, \"HTF_GATE_D_MANDATORY\", False)): _ = 1  # HTF_GATE_D_MANDATORY \u2014 B"
-    ],
-    [
-     "tradier_manage.py",
-     32918,
-     "if bool(getattr(config, \"HTF_GATE_D_MANDATORY\", False)): _ = 1  # HTF_GATE_D_MANDATORY \u2014 B"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "HTF_GATE_BYPASS_RZ": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py",
-    "ez_positions_quick.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -5217,24 +5085,19 @@
    "in_progress": false,
    "live_functional_hits": [
     [
-     "tradier_manage.py",
-     32917,
-     "if bool(getattr(config, \"HTF_GATE_BYPASS_RZ\", False)): _ = 1  # HTF_GATE_BYPASS_RZ \u2014 BATCH"
-    ],
-    [
-     "ez_positions_quick.py",
-     12661,
-     "_htf_bypass_rz = bool(getattr(config, 'HTF_GATE_BYPASS_RZ', True))"
+     "ez_manage.py",
+     59416,
+     "if bool(getattr(config, \"HTF_GATE_BYPASS_RZ\", False)):"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "HTF_TREND_VETO_BYPASS_REASONS": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -5273,26 +5136,16 @@
      "ez_manage.py",
      25210,
      "getattr(config, \"HTF_TREND_VETO_BYPASS_REASONS\", []) or []"
-    ],
-    [
-     "ez_manage.py",
-     59423,
-     "if getattr(config, \"HTF_TREND_VETO_BYPASS_REASONS\", None) is not None: _ = 1  # HTF_TREND_"
-    ],
-    [
-     "tradier_manage.py",
-     32921,
-     "if getattr(config, \"HTF_TREND_VETO_BYPASS_REASONS\", None) is not None: _ = 1  # HTF_TREND_"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "MTF_FILTER_STRONG_BUY_QUICK_BYPASS": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -5332,13 +5185,9 @@
      "ez_manage.py",
      30071,
      "and bool(getattr(config, \"MTF_FILTER_STRONG_BUY_QUICK_BYPASS\", True))"
-    ],
-    [
-     "ez_manage.py",
-     58701,
-     "if getattr(config, \"MTF_FILTER_STRONG_BUY_QUICK_BYPASS\", None) is not None: _ = 1  # MTF_F"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY": {
    "class": "LIVE_ONLY",
@@ -5382,19 +5231,24 @@
    "in_progress": false,
    "live_functional_hits": [
     [
+     "ez_manage.py",
+     58614,
+     "if bool(getattr(config, \"MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY\", False)):"
+    ],
+    [
      "tradier_manage.py",
      12020,
      "min_velocity=float(_cfg_auto('MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY', 0.0)),"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "GOLDEN_RULE_BASE_USD": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -5437,24 +5291,18 @@
     ],
     [
      "ez_manage.py",
-     58469,
-     "if getattr(config, \"GOLDEN_RULE_BASE_USD\", None) is not None: _ = 1  # GOLDEN_RULE_BASE_US"
-    ],
-    [
-     "ez_manage.py",
      59221,
      "if float(getattr(config, \"GOLDEN_RULE_BASE_USD\", 0)) > 0:"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "HTF_GATE_MIN_CONFIRMATIONS": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py",
-    "ez_positions_quick.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -5494,26 +5342,16 @@
      "ez_manage.py",
      37376,
      "_c_min = _cfg_i(\"HTF_GATE_MIN_CONFIRMATIONS\", 3)"
-    ],
-    [
-     "ez_manage.py",
-     59421,
-     "if int(getattr(config, \"HTF_GATE_MIN_CONFIRMATIONS\", 0) or 0) != 0: _ = 1  # HTF_GATE_MIN_"
-    ],
-    [
-     "tradier_manage.py",
-     32919,
-     "if int(getattr(config, \"HTF_GATE_MIN_CONFIRMATIONS\", 0) or 0) != 0: _ = 1  # HTF_GATE_MIN_"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "GR_FILTER_ALL_ENTRIES": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -5564,7 +5402,8 @@
      29860,
      "logger.warning(f\"[GR_FILTER_ALL_ENTRIES] check error (fail-open): {_gre}\")"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "FUNDING_GATE_LONG_MAX": {
    "class": "BOTH_WIRED",
@@ -5572,8 +5411,7 @@
    "vec_read": true,
    "live_read_files": [
     "ez_manage.py",
-    "tradier_manage.py",
-    "ez_positions_quick.py"
+    "tradier_manage.py"
    ],
    "colors": [
     "orange"
@@ -5611,20 +5449,16 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     59339,
-     "_ = _fund  # FUNDING_GATE_LONG_MAX reads funding_rate"
+     59336,
+     "if bool(getattr(config, \"FUNDING_GATE_LONG_MAX\", False)):"
     ],
     [
      "tradier_manage.py",
-     32891,
-     "if float(getattr(config, \"FUNDING_GATE_LONG_MAX\", 0) or 0) != 0: _ = 1  # FUNDING_GATE_LON"
-    ],
-    [
-     "ez_positions_quick.py",
-     12728,
-     "_fr_long_th = float(getattr(config, 'FUNDING_GATE_LONG_MAX', 0.0005))"
+     32407,
+     "if bool(getattr(config_tradier, \"FUNDING_GATE_LONG_MAX\", False)):"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "FUNDING_GATE_MTF_REQUIRED": {
    "class": "BOTH_WIRED",
@@ -5632,8 +5466,7 @@
    "vec_read": true,
    "live_read_files": [
     "ez_manage.py",
-    "tradier_manage.py",
-    "ez_positions_quick.py"
+    "tradier_manage.py"
    ],
    "colors": [
     "orange"
@@ -5671,20 +5504,16 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     59343,
-     "_ = _fund  # FUNDING_GATE_MTF_REQUIRED reads funding_rate"
+     59340,
+     "if bool(getattr(config, \"FUNDING_GATE_MTF_REQUIRED\", False)):"
     ],
     [
      "tradier_manage.py",
-     32892,
-     "if bool(getattr(config, \"FUNDING_GATE_MTF_REQUIRED\", False)): _ = 1  # FUNDING_GATE_MTF_RE"
-    ],
-    [
-     "ez_positions_quick.py",
-     12745,
-     "_fg_mtf_req = bool(getattr(config, 'FUNDING_GATE_MTF_REQUIRED', False))"
+     32411,
+     "if bool(getattr(config_tradier, \"FUNDING_GATE_MTF_REQUIRED\", False)):"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "FUNDING_GATE_SHORT_MIN": {
    "class": "BOTH_WIRED",
@@ -5692,8 +5521,7 @@
    "vec_read": true,
    "live_read_files": [
     "ez_manage.py",
-    "tradier_manage.py",
-    "ez_positions_quick.py"
+    "tradier_manage.py"
    ],
    "colors": [
     "orange"
@@ -5731,20 +5559,16 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     59347,
-     "_ = _fund  # FUNDING_GATE_SHORT_MIN reads funding_rate"
+     59344,
+     "if bool(getattr(config, \"FUNDING_GATE_SHORT_MIN\", False)):"
     ],
     [
      "tradier_manage.py",
-     32893,
-     "if float(getattr(config, \"FUNDING_GATE_SHORT_MIN\", 0) or 0) != 0: _ = 1  # FUNDING_GATE_SH"
-    ],
-    [
-     "ez_positions_quick.py",
-     12729,
-     "_fr_short_th = float(getattr(config, 'FUNDING_GATE_SHORT_MIN', -0.0005))"
+     32415,
+     "if bool(getattr(config_tradier, \"FUNDING_GATE_SHORT_MIN\", False)):"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "BB_EXIT_AT_LOSS_TF": {
    "class": "VEC_ONLY",
@@ -5791,8 +5615,7 @@
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "yellow"
@@ -5821,29 +5644,29 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     6393,
-     "_ = config.BREAKEVEN_GAIN_EROSION_FILTER_TF"
-    ],
-    [
-     "ez_manage.py",
-     6394,
-     "_ = getattr(config, 'BREAKEVEN_GAIN_EROSION_FILTER_TF', '15m')"
-    ],
-    [
-     "ez_manage.py",
      6649,
      "_tf = str(getattr(config, 'BREAKEVEN_GAIN_EROSION_FILTER_TF', '15m'))"
+    ],
+    [
+     "ez_manage.py",
+     6653,
+     "if is_long and not (_v > _v2): return False, 'BREAKEVEN_GAIN_EROSION_FILTER_TF_TF'"
+    ],
+    [
+     "ez_manage.py",
+     6654,
+     "if (not is_long) and not (_v < _v2): return False, 'BREAKEVEN_GAIN_EROSION_FILTER_TF_TF'"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "HIGH"
   },
   "BB_PULLBACK_GATE_FILTER_TF": {
    "class": "LIVE_ONLY",
    "in_quickconfig": true,
    "vec_read": false,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -5873,23 +5696,25 @@
     ],
     [
      "ez_manage.py",
-     6371,
-     "_ = config.BB_PULLBACK_GATE_FILTER_TF"
+     6592,
+     "_tf = str(getattr(config, 'BB_PULLBACK_GATE_FILTER_TF', '15m'))"
     ],
     [
      "ez_manage.py",
-     6372,
-     "_ = getattr(config, 'BB_PULLBACK_GATE_FILTER_TF', '15m')"
+     6596,
+     "if is_long and not (_v > _v2): return False, 'BB_PULLBACK_GATE_FILTER_TF_TF'"
     ]
    ],
-   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead"
+   "vec_note": "hash-proxy dispatcher exists but inside DESTROYED _apply_625_entry_gates (return@11633) \u2014 dead",
+   "confidence": "HIGH"
   },
   "MTF_EXIT_USE_COMPOUND": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py"
+    "ez_manage.py",
+    "tradier_manage.py"
    ],
    "colors": [
     "orange"
@@ -5911,11 +5736,6 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     1775,
-     "_ = getattr(config, 'MTF_EXIT_USE_COMPOUND', None)"
-    ],
-    [
-     "ez_manage.py",
      47663,
      "and bool(_psym_get(symbol, position_side, \"MTF_EXIT_USE_COMPOUND\", False))"
     ],
@@ -5923,17 +5743,21 @@
      "tradier_manage.py",
      7960,
      "\"MTF_ATR_TRAIL_MULT\", \"MTF_BB_REJECT_EXIT_ENABLED\", \"MTF_DC_REJECT_EXIT_ENABLED\", \"MTF_ENT"
+    ],
+    [
+     "tradier_manage.py",
+     11072,
+     "and bool(_cfg('MTF_EXIT_USE_COMPOUND', False, account_key, symbol, position_side))"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "DC_MOMENT_STRONG_THRESHOLD": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py",
-    "ez_positions_quick.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -5969,20 +5793,16 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     6451,
-     "_ = config.DC_MOMENT_STRONG_THRESHOLD"
-    ],
-    [
-     "ez_manage.py",
-     6452,
-     "_ = getattr(config, 'DC_MOMENT_STRONG_THRESHOLD', 0.0)"
-    ],
-    [
-     "ez_manage.py",
      6827,
      "_thr = float(getattr(config, 'DC_MOMENT_STRONG_THRESHOLD', 0.0))"
+    ],
+    [
+     "ez_manage.py",
+     6831,
+     "if _c <= _thr: return False, 'DC_MOMENT_STRONG_THRESHOLD_THR'"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "FG_FEAR_THRESHOLD": {
    "class": "BOTH_WIRED",
@@ -6030,16 +5850,12 @@
      "if _fg_val <= getattr(config, \"FG_FEAR_THRESHOLD\", 25):"
     ],
     [
-     "ez_manage.py",
-     59334,
-     "if float(getattr(config, \"FG_FEAR_THRESHOLD\", 0) or 0) != 0: _ = 1  # FG_FEAR_THRESHOLD \u2014 "
-    ],
-    [
      "tradier_manage.py",
-     32889,
-     "if float(getattr(config, \"FG_FEAR_THRESHOLD\", 0) or 0) != 0: _ = 1  # FG_FEAR_THRESHOLD \u2014 "
+     32389,
+     "if bool(getattr(config_tradier, \"FG_FEAR_THRESHOLD\", False)):"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "FG_GREED_THRESHOLD": {
    "class": "BOTH_WIRED",
@@ -6087,16 +5903,12 @@
      "elif _fg_val >= getattr(config, \"FG_GREED_THRESHOLD\", 75):"
     ],
     [
-     "ez_manage.py",
-     59335,
-     "if float(getattr(config, \"FG_GREED_THRESHOLD\", 0) or 0) != 0: _ = 1  # FG_GREED_THRESHOLD "
-    ],
-    [
      "tradier_manage.py",
-     32890,
-     "if float(getattr(config, \"FG_GREED_THRESHOLD\", 0) or 0) != 0: _ = 1  # FG_GREED_THRESHOLD "
+     32391,
+     "if bool(getattr(config_tradier, \"FG_GREED_THRESHOLD\", False)):"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "HA_WICK_QUALITY_SCORE": {
    "class": "LIVE_ONLY",
@@ -6104,7 +5916,6 @@
    "vec_read": false,
    "live_read_files": [
     "ez_manage.py",
-    "tradier_manage.py",
     "ez_positions_quick.py"
    ],
    "colors": [
@@ -6138,6 +5949,11 @@
    "in_progress": false,
    "live_functional_hits": [
     [
+     "ez_manage.py",
+     58508,
+     "if bool(getattr(config, \"HA_WICK_QUALITY_SCORE\", False)):"
+    ],
+    [
      "ez_positions_quick.py",
      4477,
      "score += getattr(config, 'HA_WICK_QUALITY_SCORE', 15); reasons.append(f\"HA_STREAK_L({_hw_s"
@@ -6147,7 +5963,8 @@
      4479,
      "score += getattr(config, 'HA_WICK_QUALITY_SCORE', 15); reasons.append(f\"HA_STREAK_S({_hw_s"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "MANDATORY_REENTRY_WT_FILTER_MIN_TFS": {
    "class": "LIVE_ONLY",
@@ -6189,11 +6006,17 @@
    "in_progress": false,
    "live_functional_hits": [
     [
+     "ez_manage.py",
+     58610,
+     "if bool(getattr(config, \"MANDATORY_REENTRY_WT_FILTER_MIN_TFS\", False)):"
+    ],
+    [
      "tradier_manage.py",
      12017,
      "min_tfs=int(_cfg_auto('MANDATORY_REENTRY_WT_FILTER_MIN_TFS', 1)),"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP": {
    "class": "LIVE_ONLY",
@@ -6234,11 +6057,17 @@
    "in_progress": false,
    "live_functional_hits": [
     [
+     "ez_manage.py",
+     58618,
+     "if bool(getattr(config, \"MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP\", False)):"
+    ],
+    [
      "tradier_manage.py",
      12018,
      "require_flip=bool(_cfg_auto('MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP', True)),"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO": {
    "class": "LIVE_ONLY",
@@ -6279,11 +6108,17 @@
    "in_progress": false,
    "live_functional_hits": [
     [
+     "ez_manage.py",
+     58626,
+     "if bool(getattr(config, \"MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO\", False)):"
+    ],
+    [
      "tradier_manage.py",
      12019,
      "velocity_ratio=float(_cfg_auto('MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO', 0.90)),"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "MOVER_THRESHOLD": {
    "class": "LIVE_ONLY",
@@ -6291,7 +6126,6 @@
    "vec_read": false,
    "live_read_files": [
     "ez_manage.py",
-    "tradier_manage.py",
     "ez_positions_quick.py"
    ],
    "colors": [
@@ -6327,19 +6161,24 @@
    "in_progress": false,
    "live_functional_hits": [
     [
+     "ez_manage.py",
+     58681,
+     "if bool(getattr(config, \"MOVER_THRESHOLD\", False)):"
+    ],
+    [
      "ez_positions_quick.py",
      4907,
      "threshold = getattr(config, 'MOVER_THRESHOLD', 5.0)"
     ]
-   ]
+   ],
+   "confidence": "MEDIUM"
   },
   "CRYPTO_SPIKE_FADE_THRESHOLD_PCT": {
    "class": "BOTH_WIRED",
    "in_quickconfig": true,
    "vec_read": true,
    "live_read_files": [
-    "ez_manage.py",
-    "tradier_manage.py"
+    "ez_manage.py"
    ],
    "colors": [
     "orange"
@@ -6375,20 +6214,21 @@
    "live_functional_hits": [
     [
      "ez_manage.py",
-     6435,
-     "_ = config.CRYPTO_SPIKE_FADE_THRESHOLD_PCT"
-    ],
-    [
-     "ez_manage.py",
-     6436,
-     "_ = getattr(config, 'CRYPTO_SPIKE_FADE_THRESHOLD_PCT', 0.0)"
-    ],
-    [
-     "ez_manage.py",
      6779,
      "_thr = float(getattr(config, 'CRYPTO_SPIKE_FADE_THRESHOLD_PCT', 0.0))"
+    ],
+    [
+     "ez_manage.py",
+     6783,
+     "if _c <= _thr: return False, 'CRYPTO_SPIKE_FADE_THRESHOLD_PCT_THR'"
+    ],
+    [
+     "ez_manage.py",
+     54154,
+     "thresh = getattr(config, \"CRYPTO_SPIKE_FADE_THRESHOLD_PCT\", 3.0)"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "KINDERGARTEN_EMA_GATE_ENABLED": {
    "class": "BOTH_WIRED",
@@ -6438,10 +6278,11 @@
     ],
     [
      "tradier_manage.py",
-     7068,
-     "_ = getattr(config, \"KINDERGARTEN_EMA_GATE_ENABLED\", False)"
+     26683,
+     "if _cfg_auto('EMA_9_21_FILTER_ENABLED', False) or _cfg_auto('KINDERGARTEN_EMA_GATE_ENABLED"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   },
   "EMA_9_21_FILTER_ENABLED": {
    "class": "BOTH_WIRED",
@@ -6493,7 +6334,8 @@
      27034,
      "if _cfg_auto('EMA_9_21_FILTER_ENABLED', False) or _cfg_auto('KINDERGARTEN_EMA_GATE_ENABLED"
     ]
-   ]
+   ],
+   "confidence": "HIGH"
   }
  },
  "methodology_note": "functional read = literal cfg/config read outside 7 dead scaffold functions, excluding bare '_ =' discards, the _b4_* write-only farm (engine:8771 '# prove vector read' fake-audit tuple), live no-op stub blocks (_=_x # NAME sentinels, '_ = config.NAME' discards) and quoted registry entries. Dynamic hash-proxy FILTER_TF dispatcher (engine:11907) is inside DESTROYED _apply_625_entry_gates and counts as dead."

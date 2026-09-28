@@ -121,6 +121,13 @@ DEAD_VEC_SWITCHES = frozenset({
     # NOLOSS_BYPASS_WT_5OF5_MIN_TFS removed 2026-09-28: really wired now (vec_decisions/reduce_profit_lock round)
     # FILTER_TF pair added: only live reads are `_=getattr` stubs (tradier_manage.py:32589/32623) — no semantics to mirror
     "PARTIAL_PROFIT_LOCK_V2_FILTER_TF", "NOLOSS_BYPASS_WT5OF5_FILTER_TF",
+    # Wave-1 verdicts 2026-09-28: live engine observability-only (size_mult always 1.0) / NPZ lacks HA wick components
+    "LIVE_ENTRY_ENGINE_FILTER_TF", "HA_WICK_QUALITY_TF", "HA_WICK_QUALITY_ENABLED", "HA_WICK_QUALITY_SCORE",
+    # Wave-3 census verdicts 2026-09-28: ops/portfolio state or no vec parent (reasons in filter_wiring_census.json)
+    "COOLDOWN_LOCKS_FILTER_TF", "DC_MOMENTUM_BOTA_SCORER_FILTER_TF", "DELTA_ENGINE_FILTER_TF",
+    "DUP_GUARD_FILTER_TF", "FH_MOMENTUM_FILTER_TF", "FIRST_OPEN_THROTTLE_FILTER_TF",
+    "FUNDING_GATE_FILTER_TF", "GOLDEN_RULE_ENFORCE_FILTER_TF", "GR_FILTER_VEC_FILTER_TF",
+    "HAIKU_WINNER_FILTER_TF", "MTF_ARMED_ENTRIES_FILTER_TF",
     "NOLOSS_DC4H_GATE_ENABLED", "QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED",
     "STOP_MAJOR_LOSS_ENABLED", "STOP_TIMEFRAME", "TRAILING_AUG_MAX_PER_POSITION",
     "UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS", "UNIVERSAL_NOLOSS_GATE_BYPASS_TECHNICAL",
@@ -158,6 +165,19 @@ _per_cell_hard_limit = YELLOW_TIMEOUT
 per_cell_deadline = YELLOW_TIMEOUT
 
 ROOT = Path(__file__).resolve().parent
+# USER 2026-09-28 "no double compute before mega sweep": only yellows on this allowlist get
+# evaluated; the rest are PENDING_WIRING grey until their family's real vector path lands
+# (see FILTER_WIRING_CENSUS_20260928.md). Missing/unreadable file -> None -> evaluate all
+# (fail-open so a lost file can never silently grey out the whole yellow map).
+def _load_wired_filters():
+    try:
+        _wf = json.loads((ROOT / "data" / "wired_filters.json").read_text())
+        names = _wf.get("wired_filters") or []
+        return frozenset(str(n).strip() for n in names) if names else None
+    except Exception as _wf_e:
+        print(f"[wired-filters] load failed ({_wf_e}) — fail-open, evaluating ALL yellows", flush=True)
+        return None
+WIRED_FILTERS = _load_wired_filters()
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -1569,6 +1589,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         # map/prefix selectors could). Only the column the pilot evaluates per header (header_maps) is considered.
         relevant_hdrs = []
         hdr_to_filter = {}
+        # USER 2026-09-28 "no double compute before mega sweep": yellows whose filter is not
+        # yet REALLY wired (data/wired_filters.json allowlist, from filter_wiring_census)
+        # are skipped as PENDING_WIRING (grey) instead of burning evals on guaranteed echo.
+        # The engine agent appends families to the allowlist as wiring waves land.
+        pending_wiring_hdrs = []
         for hdr, col in header_maps[sname].items():
             if "=" not in hdr:
                 continue
@@ -1576,8 +1601,18 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if not (fill is not None and fill.fill_type == "solid" and str(fill.fgColor.rgb or "").upper().endswith("FFFF00")):
                 continue
             filt, opt = hdr.split("=", 1)
+            if WIRED_FILTERS is not None and filt.strip() not in WIRED_FILTERS:
+                pending_wiring_hdrs.append((hdr, col))
+                continue
             relevant_hdrs.append(hdr)
             hdr_to_filter[hdr] = {"filter": filt.strip(), "opt": opt.strip()}
+        for _pw_hdr, _pw_col in pending_wiring_hdrs:
+            try:
+                _pw_cell = ws.cell(row=rr, column=_pw_col)
+                if not isinstance(_pw_cell.value, (int, float)):
+                    _pw_cell.font = Font(name="Arial", size=10, italic=True, color="808080")
+            except Exception:
+                pass
         # Evaluate naked + each yellow filter vs cumulative_before
         pending_lbI: dict[str, float] = {}
         best_delta = None
