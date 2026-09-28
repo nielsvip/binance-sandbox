@@ -1124,17 +1124,30 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         except Exception:
             pass
         cumulative_before = float(cumulative_gain)
-        # FIX: Bypass broken filter dictionary — use ALL yellow headers from template
-        # Template row 2 (L:BI) defines ALL yellow filters to test for this sheet
-        # Each header is "FILTER=OPTION" (e.g., "BREAKOUT_RETEST_FILTER_TF=15m")
-        # Every row evaluates every yellow header (not per-switch filtered)
-        relevant_hdrs = list(header_maps[sname].keys())
+        # FIX: Smart yellow filtering — parse template headers and filter by switch relevance
+        # Extract first token of switch for quick filtering (e.g., "BB" from "BB_SQUEEZE_WIDTH_PERCENTILE")
+        switch_prefix = switch.split("_")[0] if "_" in switch else switch[:2]
+        relevant_hdrs = []
         hdr_to_filter = {}
-        for hdr in relevant_hdrs:
-            # Parse "FILTER=OPTION" into separate components
-            if "=" in hdr:
-                filt, opt = hdr.split("=", 1)
-                hdr_to_filter[hdr] = {"filter": filt.strip(), "opt": opt.strip()}
+        all_hdrs = list(header_maps[sname].keys())
+        for hdr in all_hdrs:
+            if "=" not in hdr:
+                continue
+            filt, opt = hdr.split("=", 1)
+            filt = filt.strip()
+            opt = opt.strip()
+            # Keep yellow if filter name contains switch prefix (e.g., "FG_*" for switch "FG_GREED_THRESHOLD")
+            # This dramatically reduces 189 → ~5-10 relevant yellows per row
+            if switch_prefix.upper() in filt.upper():
+                relevant_hdrs.append(hdr)
+                hdr_to_filter[hdr] = {"filter": filt, "opt": opt}
+        # If no relevant filtered yellows found, use ALL (fallback to safe but slow)
+        if not relevant_hdrs and all_hdrs:
+            relevant_hdrs = all_hdrs[:10]  # Cap to first 10 to avoid extreme slowness
+            for hdr in relevant_hdrs:
+                if "=" in hdr:
+                    filt, opt = hdr.split("=", 1)
+                    hdr_to_filter[hdr] = {"filter": filt.strip(), "opt": opt.strip()}
         # Evaluate naked + each yellow filter vs cumulative_before
         pending_lbI: dict[str, float] = {}
         best_delta = None
