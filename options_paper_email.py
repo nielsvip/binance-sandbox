@@ -591,6 +591,50 @@ def _index_news_section():
         )
     else:
         parts.append("<p><i>No open index-news paper positions.</i></p>")
+    opt_closes = [t for t in trades if t.get("event") == "OPTION_CLOSE" and str(t.get("ts", "")) >= cutoff]
+    open_opts = state.get("options") or {}
+    parts.append("<h4>Index-news OPTIONS paper trades (calls/puts at news + tech top/bottom triggers — hypothetical mid-fills, no real orders)</h4>")
+    if opt_closes:
+        opt_pnl = sum(float(t.get("pnl_usd", 0) or 0) for t in opt_closes)
+        opt_wins = [t for t in opt_closes if float(t.get("pnl_usd", 0) or 0) > 0]
+        col = "#2e7d32" if opt_pnl >= 0 else "#c62828"
+        parts.append(f"<p><b>Options realized (trailing {LOOKBACK_DAYS}d):</b> <span style='color:{col}'><b>${opt_pnl:+,.2f}</b></span> on {len(opt_closes)} closes · win rate <b>{len(opt_wins)/len(opt_closes)*100:.0f}%</b> ({len(opt_wins)}/{len(opt_closes)})</p>")
+        rows = ""
+        for t in sorted(opt_closes, key=lambda x: str(x.get("ts", "")), reverse=True)[:30]:
+            pnl = float(t.get("pnl_usd", 0) or 0)
+            col = "#2e7d32" if pnl >= 0 else "#c62828"
+            rows += (f"<tr><td><small>{str(t.get('ts', ''))[:16]}</small></td><td>{t.get('symbol', '')}</td><td>{t.get('type', '')}</td>"
+                     f"<td>{t.get('strike', '')}</td><td>{t.get('expiry', '')}</td>"
+                     f"<td>{float(t.get('entry_mid', 0) or 0):.2f}</td><td>{float(t.get('exit_mid', 0) or 0):.2f}</td>"
+                     f"<td style='color:{col}'><b>{float(t.get('gain_pct', 0) or 0):+.1f}%</b></td>"
+                     f"<td style='color:{col}'><b>${pnl:+,.2f}</b></td><td>{t.get('trigger', '')}</td><td>{t.get('reason', '')}</td></tr>")
+        parts.append(
+            f"<table border='1' cellpadding='5' cellspacing='0' style='border-collapse:collapse'>"
+            f"<tr style='background:#eee'><th>Closed (UTC)</th><th>Sym</th><th>Type</th><th>Strike</th><th>Expiry</th>"
+            f"<th>Entry mid</th><th>Exit mid</th><th>Gain</th><th>P&amp;L</th><th>Trigger</th><th>Exit</th></tr>{rows}</table>"
+        )
+    else:
+        parts.append(f"<p><i>No closed option paper trades in trailing {LOOKBACK_DAYS}d.</i></p>")
+    if open_opts:
+        rows = ""
+        for occ, p in open_opts.items():
+            mark = float(p.get("mark", 0) or 0)
+            entry = float(p.get("entry_mid", 0) or 0)
+            unreal = (mark - entry) * 100
+            col = "#2e7d32" if unreal >= 0 else "#c62828"
+            rows += (f"<tr><td>{p.get('symbol', '')}</td><td>{p.get('type', '')}</td><td>{p.get('strike', '')}</td><td>{p.get('expiry', '')}</td>"
+                     f"<td>{entry:.2f} (${float(p.get('entry_premium_usd', 0) or 0):,.0f})</td><td>{mark:.2f}</td>"
+                     f"<td style='color:{col}'><b>${unreal:+,.2f} ({(mark/entry-1)*100 if entry else 0:+.1f}%)</b></td>"
+                     f"<td>{p.get('trigger', '')}</td><td><small>Δ{p.get('delta', '')} spr {p.get('spread_pct', '')}% oi {p.get('oi', '')}</small></td>"
+                     f"<td><small>{str(p.get('mark_ts', ''))[:16]}</small></td></tr>")
+        parts.append(
+            f"<table border='1' cellpadding='5' cellspacing='0' style='border-collapse:collapse'>"
+            f"<tr style='background:#eee'><th>Sym</th><th>Type</th><th>Strike</th><th>Expiry</th><th>Entry mid (prem)</th>"
+            f"<th>Last mark</th><th>Unrealized</th><th>Trigger</th><th>Contract quality</th><th>Marked (UTC)</th></tr>{rows}</table>"
+            f"<p style='font-size:11px;color:#888'>Marks are the daemon's last mid quote at the shown timestamp, not send-time. Exits: TP +{int(TradierConfig().INDEX_NEWS_OPTIONS_TP_PCT)}% / SL -{int(TradierConfig().INDEX_NEWS_OPTIONS_SL_PCT)}% / max hold / DTE&le;3.</p>"
+        )
+    else:
+        parts.append("<p><i>No open option paper positions.</i></p>")
     extras = []
     if state.get("halted"):
         extras.append("<b style='color:#c62828'>daily loss cap HIT — new entries halted</b>")

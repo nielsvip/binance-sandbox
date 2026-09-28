@@ -22,7 +22,7 @@ import os
 import signal
 import sys
 import time
-from datetime import datetime, time as dt_time, timezone
+from datetime import datetime, time as dt_time, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 try:
@@ -82,7 +82,10 @@ def load_state() -> Dict:
         st = {}
     today = now_et().strftime('%Y-%m-%d')
     if st.get('date') != today:
-        st = {'date': today, 'positions': {}, 'realized_pnl_usd': 0.0, 'consec_losses': {}, 'blocked_symbols': [], 'premarket_entered': [], 'orb_entered': [], 'halted': False}
+        carry_options = st.get('options', {})
+        st = {'date': today, 'positions': {}, 'realized_pnl_usd': 0.0, 'consec_losses': {}, 'blocked_symbols': [], 'premarket_entered': [], 'orb_entered': [], 'halted': False, 'options': carry_options, 'opt_triggered': []}
+    st.setdefault('options', {})
+    st.setdefault('opt_triggered', [])
     return st
 
 def save_state(st: Dict):
@@ -201,6 +204,15 @@ class MarketData:
         except Exception:
             return []
 
+    async def day_bars(self, symbol: str) -> List[Dict]:
+        try:
+            start = now_et().strftime('%Y-%m-%d 09:30')
+            end = now_et().strftime('%Y-%m-%d %H:%M')
+            bars = await self.client.get_timesales(symbol, interval='5min', start=start, end=end)
+            return [b for b in (bars or []) if b.get('close') is not None]
+        except Exception:
+            return []
+
     async def opening_range(self, symbol: str, minutes: int = None) -> Optional[Dict]:
         minutes = minutes or config.INDEX_NEWS_ORB_MINUTES
         try:
@@ -285,6 +297,150 @@ class Executor:
         logger.info(f"[SIM] simulated fill {side} {qty} {symbol} @ {price} ({reason})")
         return {'symbol': symbol, 'side': side, 'qty': qty, 'fill_price': price, 'order_id': f"sim_{int(time.time())}", 'mode': 'sim', 'reason': reason}
 
+class OptionsPaper:
+    """PAPER-ONLY directional options layer. Honors the repo-wide OPTIONS_LIVE_TRADING_ENABLED
+    hard lock by never calling place_option_order — fills are hypothetical at mid + 25% half-spread,
+    marked to live mid each cycle. Triggers: news bias threshold, technical top/bottom rejection."""
+
+    def __init__(self, client: TradierAPIClient, data: MarketData, state: Dict):
+        self.client = client
+        self.data = data
+        self.state = state
+
+    async def pick_contract(self, symbol: str, opt_type: str) -> Optional[Dict]:
+        try:
+            exps = await self.client.get_option_expirations(symbol)
+        except Exception as e:
+            logger.error(f"[OPT] expirations {symbol}: {e}")
+            return None
+        today = now_et().date()
+        scored_exps = []
+        for e in exps or []:
+            try:
+                dte = (datetime.strptime(e, '%Y-%m-%d').date() - today).days
+            except Exception:
+                continue
+            if config.INDEX_NEWS_OPTIONS_DTE_MIN <= dte <= config.INDEX_NEWS_OPTIONS_DTE_MAX:
+                scored_exps.append((abs(dte - 14), e, dte))
+        scored_exps.sort()
+        best = None
+        for _, exp, dte in scored_exps[:4]:
+            try:
+                chain = await self.client.get_option_chain(symbol, exp, greeks=True)
+            except Exception as e:
+                logger.error(f"[OPT] chain {symbol} {exp}: {e}")
+                continue
+            min_oi = config.INDEX_NEWS_OPTIONS_MIN_OI // 4 if symbol == 'VT' else config.INDEX_NEWS_OPTIONS_MIN_OI
+            for c in chain or []:
+                if str(c.get('option_type', '')).lower() != opt_type:
+                    continue
+                bid, ask = float(c.get('bid') or 0), float(c.get('ask') or 0)
+                if bid <= 0 or ask <= bid:
+                    continue
+                mid = (bid + ask) / 2
+                spread_pct = (ask - bid) / mid * 100.0
+                oi = int(c.get('open_interest') or 0)
+                delta = abs(float((c.get('greeks') or {}).get('delta') or 0))
+                if spread_pct > config.INDEX_NEWS_OPTIONS_MAX_SPREAD_PCT or oi < min_oi:
+                    continue
+                if not 0.30 <= delta <= 0.60 or mid * 100 > config.INDEX_NEWS_OPTIONS_MAX_PREMIUM_USD:
+                    continue
+                score = spread_pct * 2.0 + abs(delta - config.INDEX_NEWS_OPTIONS_TARGET_DELTA) * 20.0
+                cand = {'occ': c.get('symbol'), 'type': opt_type, 'strike': float(c.get('strike') or 0), 'expiry': exp, 'dte': dte, 'bid': bid, 'ask': ask, 'mid': round(mid, 4), 'delta': round(delta, 3), 'oi': oi, 'spread_pct': round(spread_pct, 2), 'score': round(score, 3)}
+                if best is None or cand['score'] < best['score']:
+                    best = cand
+        return best
+
+    async def detect_tech_extreme(self, symbol: str) -> Optional[str]:
+        bars = await self.data.day_bars(symbol)
+        if len(bars) < 12:
+            return None
+        highs = [float(b['high']) for b in bars]
+        lows = [float(b['low']) for b in bars]
+        last_close = float(bars[-1]['close'])
+        day_high, day_low = max(highs), min(lows)
+        hi_idx, lo_idx = highs.index(day_high), lows.index(day_low)
+        rev = config.INDEX_NEWS_OPTIONS_REVERSAL_PCT
+        if hi_idx < len(bars) - 1 and len(bars) - 1 - hi_idx <= 12 and (day_high - last_close) / day_high * 100 >= rev:
+            return 'top'
+        if lo_idx < len(bars) - 1 and len(bars) - 1 - lo_idx <= 12 and (last_close - day_low) / day_low * 100 >= rev:
+            return 'bottom'
+        return None
+
+    async def open_option(self, symbol: str, opt_type: str, trigger: str, bias: float):
+        contract = await self.pick_contract(symbol, opt_type)
+        if not contract:
+            logger.info(f"[OPT] {symbol}: no {opt_type} passed best-price filters (spread/OI/delta/premium) for {trigger}")
+            return
+        fill = round(contract['mid'] + 0.25 * (contract['ask'] - contract['mid']), 4)
+        rec = {'symbol': symbol, 'occ': contract['occ'], 'type': opt_type, 'strike': contract['strike'], 'expiry': contract['expiry'], 'entry_mid': fill, 'entry_premium_usd': round(fill * 100, 2), 'delta': contract['delta'], 'oi': contract['oi'], 'spread_pct': contract['spread_pct'], 'trigger': trigger, 'bias': round(bias, 3), 'opened_at': datetime.now(timezone.utc).isoformat(), 'opened_date': now_et().strftime('%Y-%m-%d'), 'mark': fill, 'mark_ts': datetime.now(timezone.utc).isoformat(), 'mode': 'paper_mid'}
+        self.state['options'][contract['occ']] = rec
+        save_state(self.state)
+        record_trade({'event': 'OPTION_OPEN', **{k: rec[k] for k in ('symbol', 'occ', 'type', 'strike', 'expiry', 'entry_mid', 'entry_premium_usd', 'delta', 'spread_pct', 'trigger', 'bias', 'mode')}})
+        logger.warning(f"[OPT] PAPER OPEN {symbol} {opt_type} {contract['strike']} {contract['expiry']} @ {fill} (${fill * 100:.0f}) trigger={trigger} bias={bias:+.2f} spread={contract['spread_pct']}% oi={contract['oi']}")
+
+    async def scan_triggers(self, symbols: List[str], bias_fn):
+        if not config.INDEX_NEWS_OPTIONS_ENABLED:
+            return
+        for symbol in symbols:
+            if any(o['symbol'] == symbol for o in self.state['options'].values()):
+                continue
+            bias = bias_fn(symbol)
+            fired = None
+            if bias >= config.INDEX_NEWS_OPTIONS_BIAS_MIN:
+                fired = ('call', 'news_bullish')
+            elif bias <= -config.INDEX_NEWS_OPTIONS_BIAS_MIN:
+                fired = ('put', 'news_bearish')
+            else:
+                extreme = await self.detect_tech_extreme(symbol)
+                if extreme == 'top' and bias <= 0.1:
+                    fired = ('put', 'tech_top')
+                elif extreme == 'bottom' and bias >= -0.1:
+                    fired = ('call', 'tech_bottom')
+            if not fired:
+                continue
+            key = f"{now_et().strftime('%Y-%m-%d')}_{symbol}_{fired[1]}"
+            if key in self.state['opt_triggered']:
+                continue
+            self.state['opt_triggered'].append(key)
+            save_state(self.state)
+            await self.open_option(symbol, fired[0], fired[1], bias)
+
+    async def manage(self):
+        for occ in list(self.state['options'].keys()):
+            pos = self.state['options'][occ]
+            try:
+                q = await self.client.get_quote(occ)
+            except Exception:
+                q = {}
+            bid, ask = float(q.get('bid') or 0), float(q.get('ask') or 0)
+            if bid <= 0 or ask <= 0:
+                continue
+            mid = (bid + ask) / 2
+            pos['mark'] = round(mid, 4)
+            pos['mark_ts'] = datetime.now(timezone.utc).isoformat()
+            gain_pct = (mid / pos['entry_mid'] - 1) * 100.0
+            held_days = (now_et().date() - datetime.strptime(pos['opened_date'], '%Y-%m-%d').date()).days
+            dte_left = (datetime.strptime(pos['expiry'], '%Y-%m-%d').date() - now_et().date()).days
+            reason = None
+            if gain_pct >= config.INDEX_NEWS_OPTIONS_TP_PCT:
+                reason = 'TP'
+            elif gain_pct <= -config.INDEX_NEWS_OPTIONS_SL_PCT:
+                reason = 'SL'
+            elif held_days >= config.INDEX_NEWS_OPTIONS_MAX_HOLD_SESSIONS + 2:
+                reason = 'MAX_HOLD'
+            elif dte_left <= 3:
+                reason = 'DTE_EXIT'
+            if reason:
+                exit_px = round(mid - 0.25 * (mid - bid), 4)
+                exit_gain = (exit_px / pos['entry_mid'] - 1) * 100.0
+                pnl = round((exit_px - pos['entry_mid']) * 100, 2)
+                self.state['realized_pnl_usd'] = self.state.get('realized_pnl_usd', 0.0) + pnl
+                record_trade({'event': 'OPTION_CLOSE', 'symbol': pos['symbol'], 'occ': occ, 'type': pos['type'], 'strike': pos['strike'], 'expiry': pos['expiry'], 'entry_mid': pos['entry_mid'], 'exit_mid': exit_px, 'gain_pct': round(exit_gain, 2), 'pnl_usd': pnl, 'trigger': pos['trigger'], 'reason': reason, 'mode': 'paper_mid'})
+                logger.warning(f"[OPT] PAPER CLOSE {pos['symbol']} {pos['type']} {pos['strike']} @ {exit_px} {exit_gain:+.1f}% (${pnl:+.2f}) reason={reason}")
+                del self.state['options'][occ]
+            save_state(self.state)
+
 class Strategy:
     def __init__(self):
         self.account_key = config.INDEX_NEWS_ACCOUNT_KEY
@@ -297,6 +453,7 @@ class Strategy:
             logger.warning("[START] no trc sandbox credentials — pure-simulation fills (mode='sim' in records)")
         self.symbols = list(config.INDEX_NEWS_SYMBOLS)
         self.state = load_state()
+        self.options = OptionsPaper(self.client, self.data, self.state)
 
     def param(self, symbol: str, key: str):
         base = {'orb': config.INDEX_NEWS_ORB_MINUTES, 'be_r': config.INDEX_NEWS_BREAKEVEN_AT_R, 'gap_max': config.INDEX_NEWS_GAP_CHASE_MAX_PCT, 'rng_cap': 1.0, 'gap_min': getattr(config, 'INDEX_NEWS_GAP_MIN_PCT', 0.0)}
@@ -477,6 +634,11 @@ class Strategy:
                     logger.critical("[KILL] KILL file present — daemon halting (positions untouched)")
                     break
                 ph = phase()
+                if self.state.get('date') != now_et().strftime('%Y-%m-%d'):
+                    self.state = load_state()
+                    self.options.state = self.state
+                    save_state(self.state)
+                    logger.info(f"[ROLLOVER] new session {self.state['date']} — day counters reset, {len(self.state['options'])} option position(s) carried")
                 if ph in ('PREMARKET', 'PRE_FREEZE', 'RTH') and time.time() - last_scan > config.INDEX_NEWS_SCAN_INTERVAL_SECONDS:
                     await self.news.scan()
                     last_scan = time.time()
@@ -488,6 +650,9 @@ class Strategy:
                 elif ph == 'RTH':
                     await self.orb_pass()
                     await self.manage_pass()
+                    if et_time() >= dt_time(10, 0):
+                        await self.options.scan_triggers(self.symbols, self.news.symbol_bias)
+                    await self.options.manage()
                 elif ph == 'EOD_FLAT' and config.INDEX_NEWS_EOD_FLAT:
                     await self.manage_pass(force_flat=True)
                 await asyncio.sleep(30 if ph in ('PREMARKET', 'RTH', 'EOD_FLAT') else 300)

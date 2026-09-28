@@ -1,4 +1,4 @@
-# Copilot Status — 2026-09-28 17:25:20 UTC
+# Copilot Status — 2026-09-28 18:15:46 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:AU_LONG — 2026-09-28T17:22:32
-- **RATIO_IMBALANCE** [crypto] flz — 2026-09-28T17:22:54
-- **STALE_INDICATORS** [tradier]  — 2026-09-28T17:23:05
-- **BIG_LOSER** [tradier] trc:AU_LONG — 2026-09-28T17:23:05
-- **BIG_LOSER** [tradier] trc:AU_LONG — 2026-09-28T17:23:35
-- **RATIO_IMBALANCE** [crypto] flz — 2026-09-28T17:23:56
-- **STALE_INDICATORS** [tradier]  — 2026-09-28T17:24:08
-- **BIG_LOSER** [tradier] trc:AU_LONG — 2026-09-28T17:24:08
-- **BIG_LOSER** [tradier] trc:AU_LONG — 2026-09-28T17:24:38
-- **RATIO_IMBALANCE** [crypto] flz — 2026-09-28T17:24:59
+- **STALE_INDICATORS** [tradier]  — 2026-09-28T18:12:36
+- **BIG_LOSER** [tradier] trc:AU_LONG — 2026-09-28T18:12:36
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-28T18:12:59
+- **BIG_LOSER** [tradier] trc:AU_LONG — 2026-09-28T18:13:10
+- **BIG_LOSER** [tradier] trc:AU_LONG — 2026-09-28T18:13:40
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-28T18:14:02
+- **BIG_LOSER** [tradier] trc:AU_LONG — 2026-09-28T18:14:23
+- **BIG_LOSER** [tradier] trc:AU_LONG — 2026-09-28T18:14:54
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-28T18:15:04
+- **BIG_LOSER** [tradier] trc:AU_LONG — 2026-09-28T18:15:26
 
 ## Missed Trades (trader comparison)
 
@@ -29,14 +29,14 @@ _None_
 
 **Held:** 9 | **Watching for reentry:** 2 | **Reentered:** 0
 
-- HELD: **ADBE** SHORT (tradier) peak +6.0%, now +3.6%
-- HELD: **BA** SHORT (tradier) peak +5.4%, now +4.8%
-- HELD: **ALB** SHORT (tradier) peak +5.0%, now +2.8%
-- HELD: **XLMUSDT** LONG (crypto) peak +4.9%, now +2.4%
-- HELD: **NVDA** LONG (tradier) peak +4.4%, now +2.7%
-- HELD: **UUUU** SHORT (tradier) peak +4.2%, now +2.8%
-- HELD: **SMCI** LONG (tradier) peak +3.9%, now +1.9%
-- HELD: **CLX** SHORT (tradier) peak +3.4%, now +2.2%
+- HELD: **ADBE** SHORT (tradier) peak +6.0%, now +3.8%
+- HELD: **BA** SHORT (tradier) peak +5.4%, now +4.7%
+- HELD: **ALB** SHORT (tradier) peak +5.0%, now +2.4%
+- HELD: **XLMUSDT** LONG (crypto) peak +4.9%, now +4.7%
+- HELD: **NVDA** LONG (tradier) peak +4.4%, now +2.6%
+- HELD: **UUUU** SHORT (tradier) peak +4.2%, now +2.9%
+- HELD: **SMCI** LONG (tradier) peak +3.9%, now +1.7%
+- HELD: **CLX** SHORT (tradier) peak +3.4%, now +3.2%
 - HELD: **PYPL** SHORT (tradier) peak +3.3%, now +1.0%
 
 - WATCHING: **WDAY** SHORT (tradier) peaked +4.3%, exited 2m ago
@@ -46,9 +46,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 44
-- [HIGH] ez_indicators.py is NOT running
+**Issues (last 1h):** 32
+- [CRITICAL] tradier_manage.py for trc is NOT running (MARKET OPEN!)
 - [CRITICAL] tradier_manage.py for trb is NOT running (MARKET OPEN!)
 - [CRITICAL] tradier_manage.py for trc is NOT running (MARKET OPEN!)
 - [HIGH] ez_indicators.py is NOT running
-- [HIGH] ez_market_data.py is NOT running
+- [HIGH] ez_indicators.py is NOT running

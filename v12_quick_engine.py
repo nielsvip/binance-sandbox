@@ -112,6 +112,7 @@ import vec_decisions.check_exit_candidates_stocks__wt_exit_tf_against
 import vec_decisions.bb_pullback_gate
 import vec_decisions.filter_tf_gate
 import vec_decisions.mtf_atr_trail_exit
+import vec_decisions.mtf_compound_exits
 import wt_dc_entry_scorer_vec as _wt_dc_vec
 
 _ALL_FILTER_TF = ("ATR_TRAIL_FILTER_TF", "BAR_PATTERNS_FILTER_TF", "BB_PULLBACK_GATE_FILTER_TF", "BB_RECOVERY_ENTRY_FILTER_TF", "BB_RECOVERY_FILTER_TF", "BREAKEVEN_GAIN_EROSION_FILTER_TF", "BREAKOUT_RETEST_FILTER_TF", "BTC_DEDICATED_FILTER_TF", "BT_WT_CROSS_LADDER_FILTER_TF", "CANDLE_PATTERN_STOPS_FILTER_TF", "CIRCUIT_SHARPE_GATES_FILTER_TF", "COOLDOWN_LOCKS_FILTER_TF", "DC_BREACH_REDUCE_FILTER_TF", "DC_BREAK_FILTER_TF", "DC_MOMENTUM_BOTA_SCORER_FILTER_TF", "DELTA_ENGINE_FILTER_TF", "DUP_GUARD_FILTER_TF", "E2E_REPLAY_VALIDATOR_FILTER_TF", "EMA_9_21_FILTER_FILTER_TF", "EMA_BLANKET_FILTER_FILTER_TF", "EMERGENCY_BRAKE_FILTER_TF", "EXHAUSTION_EXIT_FILTER_TF", "EXIT_R1_R2_FILTER_TF", "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF", "EXIT_TOP_FADE_FILTER_TF", "EXIT_TO_REDUCE_ADAPTER_FILTER_TF", "FAST_RISER_FILTER_TF", "FH_MOMENTUM_FILTER_TF", "FIRST_OPEN_THROTTLE_FILTER_TF", "FROZEN_STOP_FILTER_TF", "FUNDING_GATE_FILTER_TF", "GOLDEN_RULE_ENFORCE_FILTER_TF", "GOLDEN_RULE_HTF_VOTE_FILTER_TF", "GR_FILTER_VEC_FILTER_TF", "GR_V5_STATE_FILTER_TF", "HAIKU_WINNER_FILTER_TF", "KILLER_KNOB_FINDER_FILTER_TF", "KINDERGARTEN_FILTER_TF", "LIVE_ENTRY_ENGINE_FILTER_TF", "LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF", "MOM3_FILTER_TF", "MOMENTUM_BREAKOUT_FILTER_TF", "MTF_ARMED_ENTRIES_FILTER_TF", "MTF_ATR_TRAIL_FILTER_TF", "MTF_DC_REJECT_FILTER_TF", "NEWBORN_LOSS_KILL_FILTER_TF", "NEWBORN_PROTECT_FILTER_TF", "NOLOSS_BYPASS_WT5OF5_FILTER_TF", "OPEN_INTENT_SIZE_GATES_FILTER_TF", "PARTIAL_PROFIT_LOCK_V2_FILTER_TF", "PEAK_GIVEBACK_BE_EROSION_FILTER_TF")
@@ -157,6 +158,7 @@ import vec_decisions.wt_4h_vel_exit
 import vec_decisions.frozen_floor_exit
 import vec_decisions.gap_risk_exit
 import vec_decisions.market_crash_blanket
+import vec_decisions.gain_ladder_augment
 import vec_decisions.momentum_watchdog
 import vec_decisions.shared_zone
 try:
@@ -4972,7 +4974,7 @@ class QuickConfig:
     AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER: bool = True
     AUGMENT_BOUNCE_MIN_GAIN_PCT: float = 0.5  # FIX 2026-09-06: was LIVE_ONLY (live had, v12 missing) — augment bounce min gain
     AUGMENT_BREAKOUT_MIN_GAIN_PCT: float = 0.5  # FIX 2026-09-06: LIVE_ONLY — breakout min gain
-    AUGMENT_MIN_GAIN_PCT: float = 0.5  # FIX 2026-09-06: LIVE_ONLY — general augment min gain
+    AUGMENT_MIN_GAIN_PCT: float = 3.0  # 2026-09-28 LIVE PARITY: config.py:135 / config_tradier.py:1559 = 3.0 (was 0.5 LIVE_ONLY stub)
     ADX_RANGING_THRESHOLD: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
     ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
     ALL_TF_AGAINST_CLOSE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: all TFs against → close primary
@@ -5080,7 +5082,7 @@ class QuickConfig:
     STDEV_BREAKOUT_PCTB_LONG: float = 1.125  # FIX 2026-09-13: was 0.5 generic — align to config 1.125 (was causing -0.125 drift mask always-fire)
     STDEV_BREAKOUT_PCTB_SHORT: float = -0.125  # FIX 2026-09-13: was 0.5 generic — align to config -0.125
     STDEV_REJECT_EXIT_TF: str = "OFF"  # FIX 2026-09-06: LIVE_ONLY auto-added
-    UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
+    UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED: bool = True  # 2026-09-28 LIVE PARITY: config.py:899 = True; drives the vec gain-ladder augment
     WRONG_SIDE_WT_TFS_REQUIRED: int = 10  # FIX 2026-09-06: LIVE_ONLY auto-added
     WT_4H_VEL_EXIT_ENABLED: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
     WT_4H_VEL_EXIT_K_EXTREME_HIGH: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
@@ -5303,7 +5305,7 @@ class QuickConfig:
     ATR_PARITY_QTY_CAP_MULT: float = 2.5  # auto-wired 625
     ATR_PARITY_USE_DAILY: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     ATR_TRAIL_2X_EXIT_ENABLED: bool = False  # auto-wired 625
-    AUGMENTATION_COOLDOWN_SECONDS: float = 150.0  # auto-wired 625
+    AUGMENTATION_COOLDOWN_SECONDS: float = 300.0  # 2026-09-28 LIVE PARITY: config.py:4481 / config_tradier.py:53 = 300.0
     BAND_SLOPE_SIZING_V2_DEPTH_GAIN: float = 1.0  # TEMPLATE 1.0 (was 0.5)
     BAND_SLOPE_SIZING_V2_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     BAND_SLOPE_SIZING_V2_MAX: float = 2.5  # TEMPLATE 2.5 (was 1.25) — STDEV ladder D 6mo 10x
@@ -6177,8 +6179,8 @@ class QuickConfig:
     HIGH_GAIN_AUGMENTATION_MIN_SIZE: float = 0.0  # auto-added TEMPLATE generic
     HLR_REENTRY_MAX_AGE_S: float = 0.0  # auto-added TEMPLATE generic
     HLR_SMA_BAND_PCT: float = 0.0  # auto-added TEMPLATE
-    HLR_TOP_EXIT_ENABLED: bool = False  # auto-added TEMPLATE
-    HLR_TOP_MIN_TFS: float = 0.0  # auto-added TEMPLATE generic
+    HLR_TOP_EXIT_ENABLED: bool = True  # 2026-09-28 LIVE PARITY: config.py:2576 = True
+    HLR_TOP_MIN_TFS: float = 2.0  # 2026-09-28 LIVE PARITY: config.py:2578 = 2 (min TFs confirming top, >=1 must be 4h+)
     HTF4_CONF: float = 0.0  # auto-added TEMPLATE generic
     HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: float = 1.0  # 2026-09-10 FIX: require 4h confirm (was 0)
     HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: exit when 1h+4h against trade
@@ -6348,7 +6350,7 @@ class QuickConfig:
     STDEV_SUPPRESS_EARLY_EXIT: float = 0.0  # auto-added TEMPLATE generic
     TREND_EXIT_SCORE_FLIP: float = 0.0  # auto-added TEMPLATE
     TREND_MIN_GAIN_EXIT: float = 0.0  # auto-added TEMPLATE generic
-    UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED: bool = False  # auto-added TEMPLATE
+    UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED: bool = True  # 2026-09-28 LIVE PARITY: config.py:899 = True (later field wins — keep in sync with line ~5085)
     V8_ENTRY_ENGINE_DC_ENABLED: bool = True  # parity: config_tradier True 2026-09-04 fix (was False auto-added)
     V8_ENTRY_ENGINE_WT_ENABLED: bool = True  # parity: config_tradier True 2026-09-04 fix (was False auto-added)
     VEC_REENTRY_DC4_EXITPRICE_ENABLED: bool = False  # auto-added TEMPLATE
@@ -6415,7 +6417,7 @@ class QuickConfig:
     NEWBORN_DC_STOP_FIELD: str = 'dc_low4_5m'
     NEWBORN_DC_STOP_MAX_AGE_MIN: float = 20.0
     NOLOSS_DC4H_GATE_ENABLED: bool = True
-    NOLOSS_MIN_PROFIT_PCT: float = 0.0
+    NOLOSS_MIN_PROFIT_PCT: float = 0.30  # 2026-09-28 LIVE PARITY: live FIX 2026-04-07 clamps the floor to 0.3
     QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED: bool = False
     STOP_MAJOR_LOSS_ENABLED: bool = False
     STOP_TIMEFRAME: str = '15m'
@@ -7251,6 +7253,8 @@ class QuickConfig:
     MTF_EXIT_MIN_OPEN_TS: float = 1779235200.0
     MTF_GR_EXIT_MIN_IND: int = 5
     MTF_GR_EXIT_MIN_TFS: int = 3
+    MTF_WT_CROSS_EXIT_TF: str = '15m'  # live parity: config.py '15m' (2026-09-28 exit-vectorization; 'either' is inert live+vec)
+    MTF_DC_REJECT_USE_DC4: bool = False  # NEW 2026-09-28 (user): band field dc_high4/dc_low4_{TF} instead of dc_high/dc_low_{TF}; wired live ez_manage same session
     MTF_GR_MIN_TFS: int = 3
     MTF_WT_CROSS_EXIT_DIRECT_ENABLED: bool = False
     MTF_WT_CROSS_EXIT_TF: str = '15m'
@@ -9996,6 +10000,11 @@ def compute_exit_signals(npz, n, is_long, cfg):
     if getattr(cfg, 'GR_HTF_DIRECT_EXIT_ENABLED', False):
         thr2 = float(getattr(cfg, 'GR_HTF_DIRECT_EXIT_SCORE', 12.0))
         rsi_1h_arr2 = _safe(npz, 'rsi_1h', n, 50); rsi_4h_arr2 = _safe(npz, 'rsi_4h', n, 50); rsi_D_arr2 = _safe(npz, 'rsi_D', n, 50)
+        # 2026-09-28 FIX: these were only defined inside the MTF_GR_EXIT_GATE_ENABLED block above —
+        # UnboundLocalError whenever a sweep sets that False while this exit stays True.
+        wt1_1h_arr2 = _safe(npz, 'wt1_1h', n); wt2_1h_arr2 = _safe(npz, 'wt2_1h', n)
+        wt1_4h_arr2 = _safe(npz, 'wt1_4h', n); wt2_4h_arr2 = _safe(npz, 'wt2_4h', n)
+        wt1_D_arr2 = _safe(npz, 'wt1_D', n); wt2_D_arr2 = _safe(npz, 'wt2_D', n)
         if is_long:
             s1_2 = (wt1_1h_arr2 < wt2_1h_arr2).astype(int) + (rsi_1h_arr2 < 50).astype(int)
             s4_2 = (wt1_4h_arr2 < wt2_4h_arr2).astype(int) + (rsi_4h_arr2 < 50).astype(int)
@@ -10261,12 +10270,14 @@ def _augment_allowed(cfg, live_pnl_pct):
 
 
 def compute_reduce_signals(npz, n, is_long, cfg):
-    """Returns (reduce_sig: bool[n], reduce_frac: float[n]) — partial size-down."""
+    """Returns (reduce_sig: bool[n], reduce_frac: float[n], qr_cond: bool[n]).
+    qr_cond is the INDICATOR-ONLY QUICK_REDUCE_STRONG mask; the position loop applies the
+    live gain gates (vec_decisions.quick_reduce_strong.quick_reduce_gain_ok) with the
+    simulated position's real gain — npz['gain_pct'] does not exist in indicator NPZs,
+    so the old array was zeros and the mask could never fire (fixed 2026-09-28)."""
     # 2026-09-08 VEC_IDENTICAL: QUICK_REDUCE_STRONG — vec_decisions/quick_reduce_strong.py
-    # Proves wiring; mask is OR'd into reduce path when HLR_TOP_EXIT_ENABLED so vec results mirror live.
     try:
-        _qr_gain = _safe(npz, 'gain_pct', n, 0.0)
-        # Quick-reduce uses gain array; if not in npz, fall back to zeros (no fire, fail-closed for vec)
+        _qr_gain = np.full(n, 1e18)
         _qr_vec = vec_decisions.quick_reduce_strong.check_quick_reduce_strong_vec(
             cfg, _qr_gain, is_long,
             _safe(npz, 'wt_velocity_1h', n, 0.0),
@@ -10285,11 +10296,8 @@ def compute_reduce_signals(npz, n, is_long, cfg):
     reduce_sig = np.zeros(n, dtype=bool)
     reduce_frac = np.zeros(n, dtype=np.float64)
     if not getattr(cfg, 'REGIME_GATE_ENABLED', False):
-        # still return quick-reduce mask when regime gate disabled (OR semantics)
-        if bool(getattr(cfg, 'HLR_TOP_EXIT_ENABLED', True)):
-            reduce_sig = _qr_vec
-            reduce_frac = np.where(_qr_vec, 0.5, 0.0)
-        return reduce_sig, reduce_frac
+        # qr fires via the loop's gain-gated path (qr_cond), not the raw reduce mask
+        return reduce_sig, reduce_frac, _qr_vec
     adx_1h = _safe(npz, 'adx_1h', n, 20)
     wt_vel_1h = _safe(npz, 'wt_velocity_1h', n)
     trending = adx_1h >= getattr(cfg, 'ADX_TRENDING_THRESHOLD', 25.0)
@@ -10301,13 +10309,10 @@ def compute_reduce_signals(npz, n, is_long, cfg):
         ranging_reduce = wt_vel_1h > -getattr(cfg, 'REGIME_RANGING_WT_EXIT_VEL', -3.0)
     reduce_sig = np.where(trending, trending_reduce, ranging_reduce)
     reduce_frac = np.where(trending, getattr(cfg, 'REGIME_TRENDING_WT_REDUCE_FRAC_LOW', 0.1), getattr(cfg, 'REGIME_RANGING_WT_REDUCE_FRAC_LOW', 0.4))
-    # OR in QUICK_REDUCE_STRONG (HLR_TOP_EXIT) — live strong-reduce bypasses regime gate
-    if bool(getattr(cfg, 'HLR_TOP_EXIT_ENABLED', True)):
-        reduce_sig = reduce_sig | _qr_vec
-        reduce_frac = np.where(_qr_vec, np.maximum(reduce_frac, 0.5), reduce_frac)
+    # QUICK_REDUCE_STRONG (HLR_TOP_EXIT) fires via the loop's gain-gated qr_cond path
     # 2026-08-09: HOLD_BARS_* configuration via regime (controls min bars before reduce fires)
     # Note: these are regime-dependent holding periods, used to customize regime-based exits
-    return reduce_sig, reduce_frac
+    return reduce_sig, reduce_frac, _qr_vec
 
 
 def compute_regime_sizing_mult(npz, n, is_long, cfg):
@@ -21834,7 +21839,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     entry_sig = compute_entry_signals(npz, n, is_long, cfg)
     exit_sig = compute_exit_signals(npz, n, is_long, cfg)
     augment_sig, augment_mult = compute_augment_signals(npz, n, is_long, cfg)
-    reduce_sig, reduce_frac = compute_reduce_signals(npz, n, is_long, cfg)
+    reduce_sig, reduce_frac, qr_cond = compute_reduce_signals(npz, n, is_long, cfg)
+    events = []  # AUGMENT / partial-REDUCE ledger events — merged into 'ledger' only, never into trade metrics
     regime_mult = compute_regime_sizing_mult(npz, n, is_long, cfg)
     # 2026-09-10 GAP SENTINEL vector hook — per-symbol 20d gap bias → exit in last 90m at small top
     # Vectorizable: uses only npz open_D/close_D_prev/wt1_15m/wt2_15m/ha_15m. Live aggregates market-wide;
@@ -22239,12 +22245,46 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # predicate lives in vec_decisions.mtf_atr_trail_exit (vec-identical hook). Replaces the
     # DELETED fabricated scaffolding (atr>1.0 exit_mask OR). Live-only orchestration NOT
     # vectorized: MTF_EXIT_MIN_OPEN_TS startup gate, stale-trail-on-blocked-close wart.
+    _mtfcmp_on = bool(getattr(cfg, 'MTF_EXIT_USE_COMPOUND', True))
     _mtfat_tf = str((getattr(cfg, 'MTF_ATR_TRAIL_TF_TRADIER', '1h') if is_tradier else getattr(cfg, 'MTF_ATR_TRAIL_TF', '15m')) or 'OFF').strip()
     _mtfat_mult = float(getattr(cfg, 'MTF_ATR_TRAIL_MULT', 2.0))
-    _mtfat_on = bool(getattr(cfg, 'MTF_EXIT_USE_COMPOUND', True)) and bool(getattr(cfg, 'MTF_ATR_TRAIL_ENABLED', True))
+    _mtfat_on = _mtfcmp_on and bool(getattr(cfg, 'MTF_ATR_TRAIL_ENABLED', True))
     if is_tradier:
         _mtfat_on = _mtfat_on and bool(getattr(cfg, 'MTF_ATR_TRAIL_ENABLED_TRADIER', False))
     _mtfat_atr = _safe(npz, f'atr_{_mtfat_tf}', n, 0) if (_mtfat_on and _mtfat_tf.upper() != 'OFF') else None
+    # ═══ MTF compound-exit branches 2-4 (2026-09-28, user: test dc bands + WT crosses as exit
+    # signals, not only the ATR trail). Faithful crypto twins via vec_decisions.mtf_compound_exits;
+    # tradier mode stays UNWIRED (stocks live defaults OFF; time-based dc step + structural veto
+    # not modeled — wiring without the veto would overfire). Live order: trail → dc → bb → wt.
+    _mtfdc_tf = str(getattr(cfg, 'MTF_DC_REJECT_EXIT_TF', '1h') or 'OFF').strip()
+    _mtfdc_use4 = bool(getattr(cfg, 'MTF_DC_REJECT_USE_DC4', False))
+    _mtfdc_on = _mtfcmp_on and (not is_tradier) and bool(getattr(cfg, 'MTF_DC_REJECT_EXIT_ENABLED', True)) and _mtfdc_tf.upper() != 'OFF'
+    if _mtfdc_on:
+        _mtfdc_field = (('dc_high4_' if _mtfdc_use4 else 'dc_high_') if is_long else ('dc_low4_' if _mtfdc_use4 else 'dc_low_')) + _mtfdc_tf
+        _mtfdc_band = _safe(npz, _mtfdc_field, n, 0)
+    else:
+        _mtfdc_band = None
+    _mtfbb_tf = str(getattr(cfg, 'MTF_BB_REJECT_EXIT_TF', '1h') or 'OFF').strip()
+    _mtfbb_lb = int(getattr(cfg, 'MTF_BB_REJECT_EXIT_LOOKBACK', 5))
+    _mtfbb_on = _mtfcmp_on and (not is_tradier) and bool(getattr(cfg, 'MTF_BB_REJECT_EXIT_ENABLED', True)) and _mtfbb_tf.upper() != 'OFF'
+    if _mtfbb_on:
+        _mtfbb_u = _safe(npz, f'bb_upper_{_mtfbb_tf}', n, 0)
+        _mtfbb_l = _safe(npz, f'bb_lower_{_mtfbb_tf}', n, 0)
+        _mtfbb_h = _safe(npz, f'high_{_mtfbb_tf}', n, 0)
+        _mtfbb_lo = _safe(npz, f'low_{_mtfbb_tf}', n, 0)
+    else:
+        _mtfbb_u = None
+    _mtfwt_tf = str(getattr(cfg, 'MTF_WT_CROSS_EXIT_TF', '15m') or 'OFF').strip()
+    _mtfwt_on = (_mtfcmp_on and (not is_tradier) and bool(getattr(cfg, 'MTF_GR_EXIT_GATE_ENABLED', True))
+                 and bool(getattr(cfg, 'MTF_WT_CROSS_EXIT_ENABLED', True))
+                 and _mtfwt_tf.upper() != 'OFF' and _mtfwt_tf.lower() != 'either')
+    if _mtfwt_on:
+        _mtfwt_w1 = _safe(npz, f'wt1_{_mtfwt_tf}', n, 0)
+        _mtfwt_w2 = _safe(npz, f'wt2_{_mtfwt_tf}', n, 0)
+        _mtfwt_lad = [(_safe(npz, f'wt1_{_t}', n, 0), _safe(npz, f'wt2_{_t}', n, 0)) for _t in ('15m', '1h', '4h', 'D')]
+    else:
+        _mtfwt_w1 = None
+    _mtfwt_min = int(getattr(cfg, 'MTF_GR_EXIT_MIN_TFS', 3))
     _vig_block_px = 0.0
     _vig_scan_start = 0
     try:
@@ -22576,18 +22616,36 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         except Exception:
             pass
 
-        if augment_sig[i] and _augment_allowed(cfg, live_pnl_pct):
-            # STDEV_SLOPE_SIZING ladder applies to augment as well (user mandate: entry AND augment sizing)
-            _aug_regime = float(regime_mult[i]) if i < len(regime_mult) else 1.0
-            _aug_add_mult = float(augment_mult[i]) * _aug_regime
-            add_qty = _size_qty(cfg, pos['qty'] * px * _aug_add_mult, px) if is_tradier else pos['qty'] * _aug_add_mult
-            if add_qty > 0:
-                new_qty = pos['qty'] + add_qty
-                pos['avg_price'] = (pos['avg_price'] * pos['qty'] + px * add_qty) / new_qty
-                pos['deployed'] += abs(add_qty * px)
-                pos['fees'] += abs(add_qty * px) * half_fee
-                pos['qty'] = new_qty
-                live_pnl_pct = ((px - pos['avg_price']) / pos['avg_price'] * 100) if is_long else ((pos['avg_price'] - px) / pos['avg_price'] * 100)
+        # 2026-09-28 LIVE-PARITY AUGMENT (user mandate "absolute parity"): the gain-ladder
+        # (UAG obligatory tier + pullback dip, ez_manage.py:31461-31525/30943-30990) initiates
+        # augments alongside the legacy bounce/pyramid signals. AUGMENTATION_COOLDOWN_SECONDS
+        # applies to ALL augment sources at this choke point (live cooldown map,
+        # ez_manage.py:31736) — also kills the per-bar pyramid compounding bug.
+        _gl_fire, _gl_reason = vec_decisions.gain_ladder_augment.gain_ladder_fire(
+            cfg, is_long, px, float(pos.get('last_aug_px', 0.0)) or float(pos.get('entry_price', pos['avg_price'])),
+            live_pnl_pct, float(pos.get('peak_pnl_pct', 0.0)))
+        if (augment_sig[i] or _gl_fire) and _augment_allowed(cfg, live_pnl_pct):
+            _aug_cd_bars = vec_decisions.gain_ladder_augment.cooldown_bars(cfg, bmin)
+            _aug_last_bar = int(pos.get('last_aug_bar', -10**9))
+            if (i - _aug_last_bar) >= _aug_cd_bars:
+                # STDEV_SLOPE_SIZING ladder applies to augment as well (user mandate: entry AND augment sizing)
+                _aug_regime = float(regime_mult[i]) if i < len(regime_mult) else 1.0
+                _aug_add_mult = float(augment_mult[i]) * _aug_regime
+                add_qty = _size_qty(cfg, pos['qty'] * px * _aug_add_mult, px) if is_tradier else pos['qty'] * _aug_add_mult
+                if add_qty > 0:
+                    new_qty = pos['qty'] + add_qty
+                    pos['avg_price'] = (pos['avg_price'] * pos['qty'] + px * add_qty) / new_qty
+                    pos['deployed'] += abs(add_qty * px)
+                    pos['fees'] += abs(add_qty * px) * half_fee
+                    pos['qty'] = new_qty
+                    pos['last_aug_px'] = float(px)
+                    pos['last_aug_bar'] = int(i)
+                    pos['n_augments'] = int(pos.get('n_augments', 0)) + 1
+                    live_pnl_pct = ((px - pos['avg_price']) / pos['avg_price'] * 100) if is_long else ((pos['avg_price'] - px) / pos['avg_price'] * 100)
+                    _ts_aug = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                    # event row: NO pnl_dollars/pnl_pct/bar_entry/bar_exit keys — metric
+                    # consumers key on those fields and must never count position scaling
+                    events.append({'type': 'AUGMENT', 'ts': _ts_aug, 'price': float(px), 'qty': float(add_qty), 'pos_deployed': float(pos['deployed']), 'bar': int(i), 'reason': _gl_reason or 'VEC_AUGMENT_SIG'})
 
         closed = False
         reason = None
@@ -22645,8 +22703,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 pos = None; cd = cooldown_bars; has_closed_before = True
             continue
 
-        if reduce_sig[i] and pos['qty'] > 0 and reduce_frac[i] > 0:
-            frac = min(float(reduce_frac[i]), 1.0)
+        # 2026-09-28 QUICK_REDUCE_STRONG gain gate fix: qr_cond is indicator-only; the live
+        # gain conditions (ez_positions_quick.py:3454/3488) are applied here with the REAL
+        # simulated gain — the old precomputed path read nonexistent npz['gain_pct'] (zeros).
+        _qr_fire = bool(qr_cond[i]) and bool(getattr(cfg, 'HLR_TOP_EXIT_ENABLED', True)) and vec_decisions.quick_reduce_strong.quick_reduce_gain_ok(cfg, live_pnl_pct)
+        if pos['qty'] > 0 and ((reduce_sig[i] and reduce_frac[i] > 0) or _qr_fire):
+            frac = min(max(float(reduce_frac[i]), 0.5 if _qr_fire else 0.0), 1.0)
             reduce_qty = pos['qty'] * frac
             realized = (px - pos['avg_price']) * reduce_qty if is_long else (pos['avg_price'] - px) * reduce_qty
             pos['realized'] += realized
@@ -22659,6 +22721,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 trades.append({'pnl_dollars': pnl_dollars, 'pnl_pct': float(pnl_pct), 'deployed': pos['deployed'], 'reason': 'REDUCE_TO_FLAT', 'type': 'REDUCE', 'ts': _ts_exit2, 'price': float(px),
                                'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos.get('qty',0)), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': 'REDUCE_TO_FLAT', 'bars_held': int(i - pos['entry_bar'])})
                 pos = None; cd = cooldown_bars; has_closed_before = True
+            else:
+                _ts_red = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                # partial reduce event: realized pnl stays inside the position and lands in
+                # its eventual CLOSE row; no pnl/bar_entry/bar_exit keys so metrics skip it
+                events.append({'type': 'REDUCE', 'ts': _ts_red, 'price': float(px), 'qty': float(reduce_qty), 'pos_deployed': float(pos['deployed']), 'bar': int(i), 'reason': 'QUICK_REDUCE_STRONG' if _qr_fire else 'REGIME_REDUCE'})
             continue
 
         # MTF_ATR_TRAIL faithful twin (prep block above). Placed BEFORE the exit_sig technical
@@ -22677,6 +22744,47 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _tsm = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
                 _mtfat_reason = f"MTF_ATR_TRAIL_{_mtfat_tf}_x{_mtfat_mult}_lvl{pos['_atr_trail']:.6f}"
                 trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _mtfat_reason, 'type': 'CLOSE', 'ts': _tsm, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _mtfat_reason, 'bars_held': int(i - pos['entry_bar'])})
+                pos = None; cd = cooldown_bars; has_closed_before = True
+                continue
+        # MTF compound branches 2-4 (live ez_manage tick order: trail → dc_reject → bb_reject →
+        # gr_wt; all NOLOSS-bypassed live, hence placed with the trail before exit_sig). State is
+        # per position: pos['_dc_outside'] / pos['_bb_tags'] die with the position, matching the
+        # lifecycle-fixed live mtf_compound_exit_state.
+        if pos is not None and held_bars >= min_hold and (_mtfdc_band is not None or _mtfbb_u is not None or _mtfwt_w1 is not None):
+            _cmp_reason = ''
+            if _mtfdc_band is not None:
+                _cmp_b = float(_mtfdc_band[i]) if i < len(_mtfdc_band) else 0.0
+                pos['_dc_outside'], _cmp_dcf = vec_decisions.mtf_compound_exits.dc_reject_step(bool(pos.get('_dc_outside', False)), px, _cmp_b, is_long)
+                if _cmp_dcf:
+                    _cmp_reason = f"MTF_DC_REJECT_{_mtfdc_tf}_px{px:.6f}" + ("_dc4" if _mtfdc_use4 else "")
+            if (not _cmp_reason) and _mtfbb_u is not None:
+                _cmp_now = float(ts[i]) if i < len(ts) else 0.0
+                _cmp_h = float(_mtfbb_h[i]) if i < len(_mtfbb_h) else 0.0
+                _cmp_lo = float(_mtfbb_lo[i]) if i < len(_mtfbb_lo) else 0.0
+                # live falls back to current price when high/low_{TF} is missing
+                _cmp_h = _cmp_h if _cmp_h > 0 else px
+                _cmp_lo = _cmp_lo if _cmp_lo > 0 else px
+                pos['_bb_tags'], _cmp_bbf = vec_decisions.mtf_compound_exits.bb_reject_step(
+                    pos.get('_bb_tags', []), _cmp_now, _cmp_h, _cmp_lo,
+                    float(_mtfbb_u[i]) if i < len(_mtfbb_u) else 0.0,
+                    float(_mtfbb_l[i]) if i < len(_mtfbb_l) else 0.0,
+                    _mtfbb_lb, is_long)
+                if _cmp_bbf:
+                    _cmp_reason = f"MTF_BB_REJECT_{_mtfbb_tf}"
+            if (not _cmp_reason) and _mtfwt_w1 is not None:
+                _cmp_wtf, _cmp_cnt = vec_decisions.mtf_compound_exits.gr_wt_exit_fires(
+                    float(_mtfwt_w1[i]) if i < len(_mtfwt_w1) else 0.0,
+                    float(_mtfwt_w2[i]) if i < len(_mtfwt_w2) else 0.0,
+                    [(float(_l1[i]) if i < len(_l1) else 0.0, float(_l2[i]) if i < len(_l2) else 0.0) for _l1, _l2 in _mtfwt_lad],
+                    _mtfwt_min, is_long)
+                if _cmp_wtf:
+                    _cmp_reason = f"MTF_GR_WT_EXIT_{_mtfwt_tf}_grTFs={_cmp_cnt}"
+            if _cmp_reason:
+                pos['fees'] += abs(pos['qty'] * px) * half_fee
+                _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
+                _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
+                _tsc = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _cmp_reason, 'type': 'CLOSE', 'ts': _tsc, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _cmp_reason, 'bars_held': int(i - pos['entry_bar'])})
                 pos = None; cd = cooldown_bars; has_closed_before = True
                 continue
         if exit_sig[i] and held_bars >= min_hold:
@@ -22798,7 +22906,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         'sharpe_per_trade': round(float(pnl_pct_norm.mean() / s) if s > 0 else 0.0, 4),
         'wr': round(wins / len(trades) * 100, 1),
         'mean_deployed': round(mean_deployed, 2), 'max_dd_pct': round(dd_pct, 2), 'bars': n,
-        'ledger': trades,
+        # ledger = realised trades + AUGMENT/partial-REDUCE events (ts order); metrics above
+        # come from `trades` only — event rows carry no pnl_dollars/bar_exit so ledger
+        # consumers that aggregate realised pnl skip them
+        'ledger': sorted(trades + events, key=lambda t: (float(t.get('ts') or 0.0), 0 if t.get('type') in ('AUGMENT', 'REDUCE') else 1)),
     }
 
 

@@ -1785,6 +1785,10 @@ class Config:
     MTF_EXIT_MIN_OPEN_TS: float = 1779235200.0
     MTF_ATR_TRAIL_TF: str = '15m'                        # Phase I winner
     MTF_DC_REJECT_EXIT_ENABLED: bool = True              # 2026-05-20 ON (Phase I)
+    # 2026-09-28 USER (exit-vectorization): band field option — False = dc_high/dc_low_{TF}
+    # (Phase I behavior), True = dc_high4/dc_low4_{TF} (4-bar channel, same family as the
+    # VIGILANCE_DC4 stop). Sweepable via TEMPLATE_CRYPTO_* EXIT_VELOCITY; v12 twin reads it.
+    MTF_DC_REJECT_USE_DC4: bool = False
     MTF_DC_REJECT_EXIT_LOOKBACK: int = 5
     MTF_DC_REJECT_EXIT_TF: str = '1h'                    # Phase I winner (REJ_1h)
     MTF_BB_REJECT_EXIT_ENABLED: bool = True              # 2026-05-20 ON (Phase I)

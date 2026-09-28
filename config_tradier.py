@@ -2659,3 +2659,19 @@ class TradierConfig:
         "QQQ": {"orb": 60, "be_r": 0.5, "gap_max": 1.5, "rng_cap": 0.5, "gap_min": 0.5},
         "VT": {"orb": 15, "be_r": 0.5, "gap_max": 1.0, "rng_cap": 0.5, "gap_min": 0.3},
     })
+    # ═══ INDEX NEWS OPTIONS layer 2026-09-28 — PAPER ONLY, honors OPTIONS_LIVE_TRADING_ENABLED lock ═══
+    # Directional single-leg calls/puts at key points: news trigger (|bias| >= OPTIONS_BIAS_MIN) and
+    # technical top/bottom rejection (day extreme + reversal). Best-priced pick = tightest relative
+    # spread with delta near target, real OI, 7-30 DTE. Fills are hypothetical (mid + 25% half-spread).
+    INDEX_NEWS_OPTIONS_ENABLED: bool = True  # paper layer switch (no real option orders ever from this module)
+    INDEX_NEWS_OPTIONS_BIAS_MIN: float = 0.5  # |news bias| to trigger directional option
+    INDEX_NEWS_OPTIONS_MAX_PREMIUM_USD: float = 1000.0  # per contract premium cap (QQQ ~$610 underlying needs headroom; paper capital)
+    INDEX_NEWS_OPTIONS_TARGET_DELTA: float = 0.45  # |delta| target for contract selection
+    INDEX_NEWS_OPTIONS_DTE_MIN: int = 7
+    INDEX_NEWS_OPTIONS_DTE_MAX: int = 30
+    INDEX_NEWS_OPTIONS_MAX_SPREAD_PCT: float = 8.0  # (ask-bid)/mid cap; VT rarely qualifies — that is the filter working
+    INDEX_NEWS_OPTIONS_MIN_OI: int = 100  # open-interest floor (VT gets floor/4)
+    INDEX_NEWS_OPTIONS_TP_PCT: float = 50.0  # take profit on mid vs entry
+    INDEX_NEWS_OPTIONS_SL_PCT: float = 40.0  # stop loss on mid vs entry
+    INDEX_NEWS_OPTIONS_MAX_HOLD_SESSIONS: int = 3
+    INDEX_NEWS_OPTIONS_REVERSAL_PCT: float = 0.25  # pullback from day extreme that arms top/bottom trigger

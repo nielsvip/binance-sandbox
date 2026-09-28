@@ -11046,10 +11046,13 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             try:
                 if not hasattr(trade_manager, 'mtf_compound_exit_state'):
                     trade_manager.mtf_compound_exit_state = {}
-                _mtfce_state = trade_manager.mtf_compound_exit_state.get(
-                    position_key,
-                    {'trail': 0.0, 'dc_outside_ts': 0.0, 'bb_tag_bars': []},
-                )
+                _mtfce_state = trade_manager.mtf_compound_exit_state.get(position_key)
+                # 2026-09-28 STALE-TRAIL LIFECYCLE FIX (mirror of ez_manage): pop-on-fire only
+                # clears state when THIS block closes; other exits leaked the old trail into the
+                # next position on the same key → instant MTF_ATR_TRAIL close of a fresh open.
+                # State is per position LIFECYCLE: reset whenever opened_at changed.
+                if _mtfce_state is None or abs(float(_mtfce_state.get('opened_ts', -1.0)) - float(_mtfce_pos_open_ts_gate)) > 1e-6:
+                    _mtfce_state = {'trail': 0.0, 'dc_outside_ts': 0.0, 'bb_tag_bars': [], 'opened_ts': float(_mtfce_pos_open_ts_gate)}
                 _mtfce_entry = safe_fetch_float(getattr(position, 'entry_price', 0), 0)
                 _mtfce_fire = False
                 _mtfce_reason = ""
@@ -21743,7 +21746,9 @@ class TradierTradeManager:
         # self.position_manager: Optional[TradierPositionManager] = None
         # Indicators cache (from ez_indicators)
         self.redis_manager = None
-        self.indicators_cache: Dict[str, Dict] = {}
+        # 2026-09-28 CRASH-LOOP FIX: `indicators_cache` became a read-only @property
+        # (~line 22862, returns market_snapshot); this assignment raised
+        # AttributeError at construction — 167 manager crash-loops since 15:59Z.
         self.last_indicators_update = 0.0
         self.redis_indicators_full_cache: Dict[str, Any] = {}
         self.redis_indicators_cache_time = 0.0
@@ -23380,8 +23385,14 @@ class TradierTradeManager:
             return {}
         client = TradierAPIClient(config, account_key=account_key)
         try:
-            # 2. TRADEABILITY & HOURS CHECK
-            if not self.is_symbol_tradeable(symbol, account_key, position_side):
+            # 2. TRADEABILITY & HOURS CHECK — entries only. Exits/reduces must NOT be
+            # re-gated here: is_symbol_tradeable's own contract (~line 23747) says exit
+            # callers bypass it, but this unconditional check re-gated them, so a symbol
+            # dropping out of the trb universe could NEVER be closed (AGI/AU/CVX/LSCC
+            # hard stops failed 2026-09-28 with positions at -3..-7.9%). Exits clamp to
+            # true API holdings later in this function, so bypassing is safe.
+            _exit_like = str(action or "").upper() in {"CLOSE", "REDUCE", "SELL", "PROFIT_TAKE", "HEDGE_CLOSE", "QUICK_CLOSE"}
+            if not _exit_like and not self.is_symbol_tradeable(symbol, account_key, position_side):
                 return {}
             
             if not is_regular_trading_hours(): 
@@ -28246,12 +28257,10 @@ class TradierTradeManager:
                         self.processing_keys.discard(key)
                     if stale_keys:
                         logger.warning(f"[CLEANUP] Removed {len(stale_keys)} stale processing_keys (stuck >30s): {stale_keys[:5]}")
-                if self.indicators_cache:
-                    old_keys = [k for k, v in self.indicators_cache.items() if time.time() - self.last_indicators_update > 3600]
-                    for key in old_keys:
-                        self.indicators_cache.pop(key, None)
-                    if old_keys:
-                        logger.debug(f"[CLEANUP] Removed {len(old_keys)} stale indicator entries")
+                # 2026-09-28 CRASH-LOOP FIX companion: indicators_cache is now a
+                # @property view of market_snapshot; this cleanup (whole-cache wipe
+                # when last_indicators_update is stale — condition is per-loop
+                # constant) would delete live market data. Disabled.
             except asyncio.CancelledError:
                 logger.info("[update_all_positions_prices] Task cancelled")
                 break

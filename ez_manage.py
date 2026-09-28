@@ -1767,6 +1767,7 @@ def check_entry_vetting(
         _ = getattr(config, 'MTF_BB_REJECT_EXIT_LOOKBACK', None)
         _ = getattr(config, 'MTF_BB_REJECT_EXIT_TF', None)
         _ = getattr(config, 'MTF_DC_REJECT_EXIT_ENABLED', None)
+        _ = getattr(config, 'MTF_DC_REJECT_USE_DC4', None)
         _ = getattr(config, 'MTF_DC_REJECT_EXIT_LOOKBACK', None)
         _ = getattr(config, 'MTF_DC_REJECT_EXIT_TF', None)
         _ = getattr(config, 'MTF_ENTRY_REQUIRE_GR_FILTER', None)
@@ -5235,6 +5236,7 @@ _FULL_COVERAGE_PARAMS_EZ = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
     'MTF_BB_REJECT_EXIT_LOOKBACK',
     'MTF_BB_REJECT_EXIT_TF',
     'MTF_DC_REJECT_EXIT_ENABLED',
+    'MTF_DC_REJECT_USE_DC4',
     'MTF_DC_REJECT_EXIT_LOOKBACK',
     'MTF_DC_REJECT_EXIT_TF',
     'MTF_ENTRY_REQUIRE_GR_FILTER',
@@ -47661,7 +47663,15 @@ async def process_position(
         try:
             if not hasattr(trade_manager, "mtf_compound_exit_state"):
                 trade_manager.mtf_compound_exit_state = {}
-            _mtfce_state = trade_manager.mtf_compound_exit_state.get(position_key, {"trail": 0.0, "ever_outside_dc": False, "bb_tag_bars": []})
+            _mtfce_state = trade_manager.mtf_compound_exit_state.get(position_key)
+            # 2026-09-28 STALE-TRAIL LIFECYCLE FIX (exit-vectorization parity project): the pop at
+            # the fire site only runs when THIS block closes the position, so any other exit left
+            # the old trail behind and the NEXT position on the same key inherited it → instant
+            # MTF_ATR_TRAIL close of a fresh position (live-proven: XLMUSDT_LONG lvl0.222954 fired
+            # 09-25 12:17 AND 09-28 16:48 on a new position). State is per position LIFECYCLE:
+            # reset whenever opened_at changed. Vec twin (v12 pos['_atr_trail']) matches this.
+            if _mtfce_state is None or abs(float(_mtfce_state.get("opened_ts", -1.0)) - float(_mtfce_pos_open_ts_gate)) > 1e-6:
+                _mtfce_state = {"trail": 0.0, "ever_outside_dc": False, "bb_tag_bars": [], "opened_ts": float(_mtfce_pos_open_ts_gate)}
             if _pp_shared_ind is None:
                 _pp_shared_ind = await ii(trade_manager, symbol) or {}
             _mtfce_ind = _pp_shared_ind if _pp_shared_ind else None
@@ -47697,22 +47707,27 @@ async def process_position(
                                 _mtfce_reason = f"MTF_ATR_TRAIL_{_mtfce_atr_tf}_x{_mtfce_atr_mult}_lvl{_mtfce_state['trail']:.6f}"
                 # ─── 2. MTF_DC_REJECT ────────────────────────────────────────────
                 if (not _mtfce_fire) and bool(_psym_get(symbol, position_side, "MTF_DC_REJECT_EXIT_ENABLED", False)):
+                    # 2026-09-28 USER (exit-vectorization): optional 4-bar channel band
+                    # (dc_high4/dc_low4_{TF}) via MTF_DC_REJECT_USE_DC4; v12 twin reads the same
+                    # knob and the reason carries _dc4 so ledgers distinguish the modes.
+                    _mtfce_use4 = bool(_psym_get(symbol, position_side, "MTF_DC_REJECT_USE_DC4", False))
+                    _mtfce_dc4sfx = "_dc4" if _mtfce_use4 else ""
                     if _mtfce_is_long:
-                        _mtfce_band = safe_fetch_float(_mtfce_ind.get(f"dc_high_{_mtfce_dc_tf}"), 0)
+                        _mtfce_band = safe_fetch_float(_mtfce_ind.get(f"dc_high4_{_mtfce_dc_tf}" if _mtfce_use4 else f"dc_high_{_mtfce_dc_tf}"), 0)
                         if _mtfce_band > 0:
                             if current_price > _mtfce_band:
                                 _mtfce_state["ever_outside_dc"] = True
                             elif _mtfce_state.get("ever_outside_dc", False) and current_price < _mtfce_band:
                                 _mtfce_fire = True
-                                _mtfce_reason = f"MTF_DC_REJECT_{_mtfce_dc_tf}_px{current_price:.6f}"
+                                _mtfce_reason = f"MTF_DC_REJECT_{_mtfce_dc_tf}_px{current_price:.6f}{_mtfce_dc4sfx}"
                     else:
-                        _mtfce_band = safe_fetch_float(_mtfce_ind.get(f"dc_low_{_mtfce_dc_tf}"), 0)
+                        _mtfce_band = safe_fetch_float(_mtfce_ind.get(f"dc_low4_{_mtfce_dc_tf}" if _mtfce_use4 else f"dc_low_{_mtfce_dc_tf}"), 0)
                         if _mtfce_band > 0:
                             if current_price < _mtfce_band:
                                 _mtfce_state["ever_outside_dc"] = True
                             elif _mtfce_state.get("ever_outside_dc", False) and current_price > _mtfce_band:
                                 _mtfce_fire = True
-                                _mtfce_reason = f"MTF_DC_REJECT_{_mtfce_dc_tf}_px{current_price:.6f}"
+                                _mtfce_reason = f"MTF_DC_REJECT_{_mtfce_dc_tf}_px{current_price:.6f}{_mtfce_dc4sfx}"
                 # ─── 3. MTF_BB_REJECT ────────────────────────────────────────────
                 if (not _mtfce_fire) and bool(_psym_get(symbol, position_side, "MTF_BB_REJECT_EXIT_ENABLED", False)):
                     _mtfce_bbu = safe_fetch_float(_mtfce_ind.get(f"bb_upper_{_mtfce_bb_tf}"), 0)

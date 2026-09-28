@@ -85,6 +85,53 @@ from pathlib import Path
 YELLOW_TIMEOUT = 10.0
 LIVE_TIMEOUT = 900.0
 XLSX_SAVE_EVERY_S = 120.0
+# F (HUSTLE_DELTA) stays blank by default — worst_first system does not use it (USER 2026-09-28)
+WRITE_HUSTLE = os.environ.get("V15_WRITE_HUSTLE", "0") == "1"
+# These tabs' switches reach the vector engine only via _apply_new_audit_causal, purged to a
+# passthrough (v12_quick_engine.py:17111) — vec delta structurally 0. Remove a tab once wired.
+# 2026-09-28 REVIVED (user "unlock all needed — absolute parity"): the 4 AUGMENT/REDUCE tabs
+# are REAL again — v12_quick_engine now runs the live-parity gain-ladder augment (UAG +
+# pullback, vec_decisions/gain_ladder_augment.py), gain-gated QUICK_REDUCE_STRONG and regime
+# reduce with AUGMENT/REDUCE ledger events. Only individually-dead switches stay skipped below.
+DEAD_VEC_TABS = set()
+# Switches whose ONLY vec wiring was _wire_07_exit_stops_tranche, purged to a passthrough
+# (v12_quick_engine.py:652 early return) — vec delta structurally 0 on any tab. Verified
+# 2026-09-28: no cfg.<NAME> reads elsewhere in the engine, no vec_decisions module reads them,
+# and AUTO_WIRED_PARAMS membership is inert (_apply_auto_wired_params also purged, line ~1033).
+# Remove a name once it gets a real vectorized path.
+DEAD_VEC_SWITCHES = frozenset({
+    # 2026-09-28 augment/reduce revival: these tab rows are STILL not vectorizable — no
+    # functional live read (AUGMENT_FALLBACK/BOUNCE/BREAKOUT MIN_GAIN: tradier_manage.py:32293
+    # is a `_=_aug` stub) or live logic needs data absent from NPZs (stale-price, HTF force-close
+    # confirm, ALL_TF close rater, band-arrow scorer, DD bounce) — do not fake:
+    "AUGMENT_FALLBACK_GAIN_PCT", "AUGMENT_BOUNCE_MIN_GAIN_PCT", "AUGMENT_BREAKOUT_MIN_GAIN_PCT",
+    "DD_BOUNCE_ENABLED", "LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED",
+    "HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H", "ALL_TF_AGAINST_CLOSE_MIN_TFS",
+    "ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC", "BAND_ARROW_SLOPE_DEADBAND",
+    "ASYMMETRIC_STOPS_ENABLED", "BB_FROZEN_STOP_FIELD", "BB_FROZEN_STOP_TF",
+    "BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME", "BOTTOM_A_PROTECTIVE_TRAIL_BREAK_BUFFER_ATR",
+    "BOTTOM_A_PROTECTIVE_TRAIL_DISTANCE_MULT", "BOTTOM_A_PROTECTIVE_TRAIL_ENABLED",
+    "BOTTOM_A_PROTECTIVE_TRAIL_LOOKBACK", "BOTTOM_A_PROTECTIVE_TRAIL_MODE",
+    "BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME", "BREAKEVEN_EXIT_AFTER_BARS",
+    "BREAKEVEN_EXIT_AFTER_BARS_BUFFER_PCT", "BREAKEVEN_EXIT_AFTER_BARS_TF",
+    "CONNORS_RSI2_TIME_STOP_BARS_DAILY", "DC4_STOP_GR_SCORE_MIN_IND", "DC4_STOP_GR_SCORE_MIN_TFS",
+    "DC_LOW_FROZEN_STOP_TF", "DD_BOUNCE_DD_STOP_ENABLED", "EMERGENCY_BRAKE_DC_STOP_FIELD",
+    "EXIT_PREEMPTIVE_BREAKEVEN_ENABLED", "HEDGE_EXIT_BYPASS_NOLOSS", "NEVER_GO_RED_STOP_ENABLED",
+    "NEWBORN_DC_STOP_FIELD", "NEWBORN_DC_STOP_MAX_AGE_MIN", "NOLOSS_BYPASS_WT_5OF5_MIN_TFS",
+    "NOLOSS_DC4H_GATE_ENABLED", "QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED",
+    "STOP_MAJOR_LOSS_ENABLED", "STOP_TIMEFRAME", "TRAILING_AUG_MAX_PER_POSITION",
+    "UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS", "UNIVERSAL_NOLOSS_GATE_BYPASS_TECHNICAL",
+})
+# Portfolio-level live reduce paths (intraday L/S ratio trims, EOD slim, sentiment rebalance):
+# single-symbol NPZ evals cannot see portfolio state, so these are live-only by construction,
+# not purged — template rows exist so the switches are visible, but sheets must not eval them.
+LIVE_ONLY_SWITCHES = frozenset({
+    "INTRADAY_RATIO_REBALANCE_ENABLED", "INTRADAY_RATIO_DEVIATION_THR",
+    "INTRADAY_RATIO_CHECK_INTERVAL_MIN", "INTRADAY_RATIO_TRIM_FRAC",
+    "INTRADAY_RATIO_REQUIRE_TOP", "INTRADAY_RATIO_COOLDOWN_MIN",
+    "INTRADAY_RATIO_MAX_TRIMS_PER_DAY", "EOD_SLIM_RATIO_ENABLED",
+    "SENTIMENT_REBAL_REDUCE_DEVIATION_THR", "SENTIMENT_REBAL_COOLDOWN_MIN",
+})
 PROGRESS_JSON_EVERY_S = 15.0
 # 2026-09-28 OOM FIX: unbounded eval cache grew for the pilot's lifetime (~72k evals/sym_side of result
 # dicts) and contributed to OOM kills that truncated workbook saves (19 BadZip files quarantined
@@ -515,8 +562,14 @@ SKIP_SHEETS: set = set()  # all 13 tabs filled (user 2026-09-28); 10s stall guar
 NO_LIVE_PATH_SWITCHES = {"WT_LOWER_CROSS_EXIT_TF", "TECHNICAL_DC_TARGET_TF", "WT_SIMPLE_GUARANTEE_ENABLED"}
 SIZING_FALSE_ALPHA_SWITCHES = {"START_POSITION_SIZE", "MIN_POSITION_SIZE"}
 
-def promotion_block_reason(switch: str) -> str:
+def promotion_block_reason(switch: str, sheet: str | None = None) -> str:
     s = str(switch).strip()
+    if sheet is not None and sheet in DEAD_VEC_TABS:
+        return "DEAD_VEC_PATH: _apply_new_audit_causal purged — no real vector wiring"
+    if s in DEAD_VEC_SWITCHES:
+        return "DEAD_VEC_PATH: wire07 purged — no real vector wiring"
+    if s in LIVE_ONLY_SWITCHES:
+        return "LIVE_ONLY: portfolio-level state, not single-symbol vectorizable"
     if s in NO_LIVE_PATH_SWITCHES:
         return "NO_LIVE_PATH: not wired in live code"
     if s in SIZING_FALSE_ALPHA_SWITCHES:
@@ -1476,6 +1529,30 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             processed += 1
             continue
         cumulative_before = float(cumulative_gain)
+        if sname in DEAD_VEC_TABS or str(switch).strip() in DEAD_VEC_SWITCHES or str(switch).strip() in LIVE_ONLY_SWITCHES:
+            # no real vector wiring (see DEAD_VEC_TABS / DEAD_VEC_SWITCHES / LIVE_ONLY_SWITCHES) — true delta is 0.0, never spend evals or yellows here
+            if sname in DEAD_VEC_TABS and str(switch).strip() not in LIVE_ONLY_SWITCHES:
+                _dead_reason = "DEAD_VEC_PATH: _apply_new_audit_causal purged — no real vector wiring"
+            elif str(switch).strip() in LIVE_ONLY_SWITCHES:
+                _dead_reason = "LIVE_ONLY: portfolio-level state, not single-symbol vectorizable"
+            else:
+                _dead_reason = "DEAD_VEC_PATH: wire07 purged — no real vector wiring"
+            g = ws.cell(row=rr, column=cols["G"])
+            g.value = 0.0
+            g.font = Font(name="Arial", size=10, bold=False, color="808080")
+            g.alignment = VISUAL_ALIGN
+            _write_E(sname, rr, cumulative_before)
+            key = f"{sname}!{rr}:{switch}={cand}"
+            progress.setdefault("done", {})[key] = {"delta": 0.0, "promoted": False, "reason": _dead_reason, "vec_gain": None, "trades": None, "yellows": {}, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before)}
+            progress["cumulative_gain"] = float(cumulative_gain)
+            _flag_to_md(flags_md, sname, rr, switch, cand, _dead_reason, 0.0, 0.0, cumulative_before)
+            _maybe_write_json()
+            _row_done(sname, rr, switch, cand, 0, 0.0, False)
+            _touch(f"cell {sname}!{rr} dead-vec skip")
+            current_idx = _after_neg(current_idx) if nav_mode == "fill_tab" else _land_on_next_tab(current_idx)
+            _maybe_save()
+            processed += 1
+            continue
         # Yellow cells are read from THIS row's fills in the workbook (cloned from the final TEMPLATE): the sheet the user
         # sees and what is computed are the same by construction, and row re-sorting cannot desync them (the old
         # map/prefix selectors could). Only the column the pilot evaluates per header (header_maps) is considered.
@@ -1629,29 +1706,33 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             # No yellow cells in row -> per spec continue to next TAB not next ROW (regardless of sign)
             delta_for_row = naked_delta
             promote = naked_ok and naked_delta is not None and naked_delta > 1e-9
-            _blk = promotion_block_reason(switch)
+            _blk = promotion_block_reason(switch, sname)
             if promote and _blk:
                 promote = False
                 naked_reason = (naked_reason + " | " if naked_reason else "") + _blk
                 print(f"[promote-block] {sname}!{rr} {switch}={cand} delta={naked_delta} NOT promoted: {_blk}", flush=True)
+            # USER 2026-09-28 column semantics: F = this row's delta vs the COMBINATION of all
+            # settings so far (greedy marginal, drives promotion/E), G = this calc's delta vs the
+            # INITIAL baseline (comparable across rows regardless of fill order).
             g = ws.cell(row=rr, column=cols["G"])
+            _vg_row = (naked_vec or {}).get("gain_pct")
             if delta_for_row is None:
                 _spec_mark_red(wb, sname, rr, cols["G"], reason=naked_reason)
             else:
-                g.value = float(delta_for_row)
-                g.font = Font(name="Arial", size=10, bold=True, color="006100" if promote else "9C0006")
-                g.fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid") if delta_for_row < 0 else PatternFill(fill_type=None)
-                g.alignment = VISUAL_ALIGN
-            _vg_f = (naked_vec or {}).get("gain_pct")
-            if _vg_f is not None:
                 _fcell = ws.cell(row=rr, column=cols["F"])
-                _fcell.value = float(_vg_f) - float(baseline_gain)
-                _fcell.font = Font(name="Arial", size=10, bold=True, color="006100" if _fcell.value > 0 else "9C0006")
+                _fcell.value = float(delta_for_row)
+                _fcell.font = Font(name="Arial", size=10, bold=True, color="006100" if promote else "9C0006")
+                _fcell.fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid") if delta_for_row < 0 else PatternFill(fill_type=None)
                 _fcell.alignment = VISUAL_ALIGN
+                if _vg_row is not None:
+                    g.value = float(_vg_row) - initial_baseline
+                    g.font = Font(name="Arial", size=10, bold=True, color="006100" if g.value > 1e-9 else "9C0006")
+                    g.fill = PatternFill(fill_type=None)
+                    g.alignment = VISUAL_ALIGN
             if promote:
                 _add_override(ws, rr, cols, [f"{switch}={cand}"])
             key = f"{sname}!{rr}:{switch}={cand}"
-            progress.setdefault("done", {})[key] = {"delta": delta_for_row, "promoted": promote, "reason": naked_reason, "vec_gain": (naked_vec or {}).get("gain_pct"), "trades": (naked_vec or {}).get("trades"), "yellows": {}, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before + delta_for_row) if promote else float(cumulative_before)}
+            progress.setdefault("done", {})[key] = {"delta": delta_for_row, "delta_vs_cumulative": delta_for_row, "promoted": promote, "reason": naked_reason, "vec_gain": (naked_vec or {}).get("gain_pct"), "trades": (naked_vec or {}).get("trades"), "yellows": {}, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before + delta_for_row) if promote else float(cumulative_before)}
             if promote:
                 cumulative_gain = float(naked_vec.get("gain_pct"))
                 cumulative_overrides.update(_switch_overrides(switch, cand_parsed))
@@ -1708,7 +1789,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             real = [d for h, d in pending_lbI.items() if promotable.get(h)] or list(pending_lbI.values())
             delta_for_row = min(0.0, max(real)) if real else None
         promote = delta_for_row is not None and delta_for_row > 1e-9
-        _blk = promotion_block_reason(switch)
+        _blk = promotion_block_reason(switch, sname)
         if promote and _blk:
             promote = False
             print(f"[promote-block] {sname}!{rr} {switch}={cand} delta={delta_for_row} NOT promoted: {_blk}", flush=True)
@@ -1735,28 +1816,40 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 cumulative_overrides = before_overrides
                 joint_reason = joint_reason or f"joint delta {jd} <= 0"
                 print(f"[spec-joint-reject] {sname}!{rr} sum_pos {delta_for_row:.4f} but joint {jd} {joint_reason} -> not promoted", flush=True)
+        _k_sum = None
         try:
+            # USER 2026-09-28 column semantics: F = delta vs the COMBINATION of all settings so far
+            # (joint-verified sum of pos yellows, drives promotion/E), G = best real gain of this
+            # calc minus the INITIAL baseline, K = numeric sum of pos yellow deltas (names stay in C).
             g = ws.cell(row=rr, column=cols["G"])
-            if delta_for_row is None:
-                _spec_mark_red(wb, sname, rr, cols["G"], reason=next(iter(per_yellow_timeout_reason.values()), "no result"))
-            else:
-                g.value = float(delta_for_row)
-                g.font = Font(name="Arial", size=10, bold=True, color="006100" if promote else "9C0006")
-                g.fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid") if delta_for_row < 0 else PatternFill(fill_type=None)
-                g.alignment = VISUAL_ALIGN
-            # LIVE columns stay BLANK until workbook complete per spec
-            ws.cell(row=rr, column=cols["H"]).value = None
-            ws.cell(row=rr, column=cols["I"]).value = None
             _vg_f = joint_gain if joint_gain is not None else (naked_vec or {}).get("gain_pct")
             if _vg_f is None and pending_lbI:
                 _vg_f = cumulative_before + max(pending_lbI.values())
-            if _vg_f is not None:
+            if delta_for_row is None:
+                _spec_mark_red(wb, sname, rr, cols["G"], reason=next(iter(per_yellow_timeout_reason.values()), "no result"))
+            else:
                 _fcell = ws.cell(row=rr, column=cols["F"])
-                _fcell.value = float(_vg_f) - float(baseline_gain)
-                _fcell.font = Font(name="Arial", size=10, bold=True, color="006100" if _fcell.value > 0 else "9C0006")
+                _fcell.value = float(delta_for_row)
+                _fcell.font = Font(name="Arial", size=10, bold=True, color="006100" if promote else "9C0006")
+                _fcell.fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid") if delta_for_row < 0 else PatternFill(fill_type=None)
                 _fcell.alignment = VISUAL_ALIGN
+                if _vg_f is not None:
+                    g.value = float(_vg_f) - initial_baseline
+                    g.font = Font(name="Arial", size=10, bold=True, color="006100" if g.value > 1e-9 else "9C0006")
+                    g.fill = PatternFill(fill_type=None)
+                    g.alignment = VISUAL_ALIGN
+            # LIVE columns stay BLANK until workbook complete per spec
+            ws.cell(row=rr, column=cols["H"]).value = None
+            ws.cell(row=rr, column=cols["I"]).value = None
+            _k_sum = None
+            if pending_lbI:
+                _k_sum = float(sum(d for d in pending_lbI.values() if isinstance(d, (int, float)) and d > 1e-9))
+                _kcell = ws.cell(row=rr, column=cols["K"])
+                _kcell.value = _k_sum
+                _kcell.font = Font(name="Arial", size=10, bold=False, color="006100" if _k_sum > 1e-9 else "9C0006")
+                _kcell.alignment = VISUAL_ALIGN
             if promote:
-                _add_override(ws, rr, cols, [f"{switch}={cand}"] + pos_hdrs, pos_hdrs)
+                _add_override(ws, rr, cols, [f"{switch}={cand}"] + pos_hdrs)
         except Exception as ee:
             print(f"[spec-write-warn] {sname}!{rr} {ee}", flush=True)
         if promote:
@@ -1764,7 +1857,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         row_gains = [joint_gain, (naked_vec or {}).get("gain_pct")] + [cumulative_before + d for d in pending_lbI.values()]
         div = _write_div(sname, rr, row_gains)
         key = f"{sname}!{rr}:{switch}={cand}"
-        progress.setdefault("done", {})[key] = {"delta": delta_for_row, "promoted": promote, "joint_gain": joint_gain, "reason": joint_reason, "yellows": dict(pending_lbI), "yellow_reasons": dict(per_yellow_timeout_reason), "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_gain), "delta_vs_initial": div}
+        progress.setdefault("done", {})[key] = {"delta": delta_for_row, "delta_vs_cumulative": delta_for_row, "k_sum_pos_yellows": _k_sum, "promoted": promote, "joint_gain": joint_gain, "reason": joint_reason, "yellows": dict(pending_lbI), "yellow_reasons": dict(per_yellow_timeout_reason), "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_gain), "delta_vs_initial": div}
         progress["cumulative_gain"] = float(cumulative_gain)
         progress["cumulative_overrides"] = dict(cumulative_overrides)
         _maybe_write_json(force=promote)
@@ -1817,7 +1910,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         # engine cannot reproduce — publishing that number in the bh/gain filename would be a lying
         # metric. The fresh full-set eval is authoritative: stamp the divergence, publish only fresh.
         try:
-            _fresh_final = evaluate_prepared_sanitized(prepared, dict(cumulative_overrides), args.window_days) if prepared is not None else {}
+            from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps_ff
+            _fresh_final = _eps_ff(prepared, dict(cumulative_overrides), args.window_days) if prepared is not None else {}
             _fresh_g = _fresh_final.get("gain_pct")
             if _fresh_g is not None:
                 progress["final_gain_fresh_vec"] = float(_fresh_g)
@@ -1851,7 +1945,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 live_res = None
         parity = None
         if live_res is not None:
-            final_vec = evaluate_prepared_sanitized(prepared, dict(cumulative_overrides), args.window_days) if prepared is not None else {}
+            from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps_pf
+            final_vec = _eps_pf(prepared, dict(cumulative_overrides), args.window_days) if prepared is not None else {}
             parity = parity_ok(live_res, final_vec, allow_zero_baseline=False)
             print(f"[spec-live] {new_symside} live gain={live_res.get('gain_pct')} trades={live_res.get('trades')} vs vec final {final_gain:.4f} trades={final_vec.get('trades')} parity={parity}", flush=True)
             wb2 = openpyxl.load_workbook(str(wb_path), data_only=False)
@@ -4231,9 +4326,9 @@ def main():
                         ws_h.cell(row=r, column=7).value = float(delta_best)
                 except: pass
                 try:
-                    # FIX 2026-09-28: F = best candidate's real vec gain minus baseline (was blanked, spec requires F every row)
+                    # FIX 2026-09-28: F = best candidate's real vec gain minus baseline (gated: worst_first does not use F)
                     _vg_f = (vec_best or {}).get("gain_pct")
-                    if _vg_f is not None:
+                    if WRITE_HUSTLE and _vg_f is not None:
                         ws_h.cell(row=r, column=6).value = float(_vg_f) - float(baseline_gain)
                         ws_h.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="006100" if float(_vg_f) - float(baseline_gain) > 0 else "9C0006")
                     ws_h.cell(row=r, column=6).fill = __import__("openpyxl").styles.PatternFill(fill_type=None)

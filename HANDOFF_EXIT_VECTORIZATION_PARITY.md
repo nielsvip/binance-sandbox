@@ -187,3 +187,103 @@ grep -nE "VIGILANCE_MAX_LOSS_HARD_STOP|ALL_ALL_GREEN_DIRECT_CLOSE" ez_manage.py 
 grep -nE "MTF_ATR_TRAIL|arange\(n\) %|_atr > 1\.0" v12_quick_engine.py
 # S1 (verification): rsync per CLAUDE.md INFRASTRUCTURE §, then run v15_pilot + parity harness there
 ```
+
+---
+
+## 8. SESSION PROGRESS 2026-09-28 (user: "unlock where needed make sure switches and options are added correctly and tested for all sym_sides")
+
+### Inventory corrections (Section 2 is stale)
+- **#1 `VIGILANCE_MAX_LOSS_HARD_STOP_USER` — NO LONGER EXISTS in current code.** The fixed-% stop was
+  replaced by the user's 3rd mandate ("we do not use fix %") with the structural DC4 stop (#6). Log
+  hits are from not-yet-restarted procs only. Nothing to vectorize; after live restart this reason
+  never fires again. Do NOT implement a fixed-% vec twin (would fabricate an exit live doesn't do).
+- **#6 `VIGILANCE_DC4`** — vec twin was wired 2026-09-28 (after this handoff was written) at
+  v12_quick_engine simulate_one (~22492): losing pos + dc_low4/high4_{TF} breach → close + block,
+  with consec-loss streak + recovery-unblock logic. Code-inspected FAITHFUL (no arange/hash).
+  Templates: GLOBAL_RISK_GATES rows exist (TF OFF/15m/1h/4h etc.).
+
+### Done this session
+- **#2 `MTF_ATR_TRAIL` faithful vec twin (P0)**: fabricated scaffolding (atr>1.0 exit_mask OR at
+  ~793-806) DELETED; stateful ratcheting trail added in simulate_one via NEW
+  `vec_decisions/mtf_atr_trail_exit.py` (pure core; update-then-fire order matches live).
+  QuickConfig live-parity defaults: ENABLED True (config.py), MULT 2.0, TF 15m, TF_TRADIER '1h',
+  NEW `MTF_ATR_TRAIL_ENABLED_TRADIER=False` (stocks live inert). Synthetic smoke: long fires at
+  peak−2·ATR, short at bottom+2·ATR; ON/OFF + COMPOUND gates verified; fires on real NPZ fleet-wide.
+- **config_tradier.py**: NEW MTF_EXIT_USE_COMPOUND/MTF_ATR_TRAIL_ENABLED(+_TRADIER)/TF_TRADIER/MULT
+  knobs == live _cfg fallbacks (zero live change, now promotable).
+- **Templates**: EXIT_VELOCITY rows added to all 4 TEMPLATE_* (crypto 12, stocks 14 rows; first
+  row = live default). Synced S1+s2, md5-verified.
+- **🔥 STALE-TRAIL LIVE BUG FOUND + FIXED (root cause of the 4279 MTF_ATR_TRAIL blocks/day)**:
+  `mtf_compound_exit_state[position_key]` is popped ONLY when the MTF block itself closes
+  (ez_manage:47791). Any other exit leaves the trail behind; the NEXT position on the same key
+  inherits it → instant MTF_ATR_TRAIL close of fresh opens. LIVE-PROVEN: XLMUSDT_LONG lvl0.222954
+  fired 09-25 12:17 AND 09-28 16:48 on a NEW position (grep ez_manage logs, 812 hits). Fixed in
+  ez_manage.py + tradier_manage.py: state resets when position opened_at changes (per-lifecycle,
+  matching the vec twin and the code's own "per-position" spec). Backups
+  `backups/before_mtf_trail_state_lifecycle_fix_202609281735_*`. Compiled. **NOT yet synced to S1
+  (production-deploy gate) — user must approve/rsync ez_manage.py + tradier_manage.py to S1 and
+  restart live procs (restart already pending per vigilance memory).**
+- **Harness**: `tools/vigilance_dc4_parity_ab.py` (VIGILANCE ON/OFF × vec/live-scalar per symside,
+  vigilance-blocks file isolated) + `tools/exit_vec_ab_all_symsides.py` (3-case A/B, all 110
+  live-book sym_sides, per-family fire counts) — results
+  `data/reports/exit_vec_ab_all_symsides.json` on S1.
+
+### Parity state / what blocks certification
+- Vec side: VIGILANCE_DC4 + MTF_ATR_TRAIL both fire broadly across the book (fire counts per
+  sym_side in the JSON). Scalar side: the live-engine backtest is POISONED by the stale-trail bug
+  (positions die instantly to inherited trails → VIGILANCE_DC4 fired 0× live-side while vec fired
+  61× on ADAUSDC_LONG). **Scalar parity re-run requires the fixed ez_manage.py on S1 first.**
+- **Allowlist tokens (`vec_parity_gate.py` VEC_EXIT_TOKENS) NOT added** — per pipeline step 4,
+  only after S1 scalar parity passes. GATE_EXITS stays False.
+
+### Next steps (in order)
+1. USER: approve rsync of fixed ez_manage.py + tradier_manage.py Mac→S1 sandbox; restart live procs.
+2. Re-run `tools/vigilance_dc4_parity_ab.py` on S1 → scalar deltas should now match vec deltas for
+   VIGILANCE_DC4 and MTF_ATR_TRAIL (fires>0 both engines, same bars ideally).
+3. Sweep the new EXIT_VELOCITY rows via v15 (settings: TF, MULT candidates in sheets).
+4. Then add VIGILANCE_DC4 + MTF_ATR_TRAIL tokens to VEC_EXIT_TOKENS; shadow-validate; only after
+   ALL remaining exits (#3 DC_BREACH_REDUCE, #4 ALL_ALL_GREEN, #5 BREAK_EVEN_GUARD, #7 ALL_ALL_RED)
+   have faithful twins consider GATE_EXITS=True.
+
+## 9. SESSION PROGRESS 2026-09-28 PM-2 (user: "unlock and fix also make sure MTF_ATR_TRAIL does not
+## only test fixed % but also dc_low4/high4_15m and mtf wt crosses as the exit signal")
+
+- **MTF compound-exit branches 2-4 vectorized (crypto)** via NEW `vec_decisions/mtf_compound_exits.py`:
+  MTF_DC_REJECT (outside-band arm → re-cross fire; NEW `MTF_DC_REJECT_USE_DC4` knob switches the band
+  to dc_high4/dc_low4_{TF}, reason suffix `_dc4`, wired live in ez_manage branch 2 + config.py + v12),
+  MTF_BB_REJECT (tag→fail, live's 60s×lookback approximation kept), MTF_GR_WT_EXIT (WT cross against
+  + ≥MIN_TFS of 15m/1h/4h/D ladder). Live order preserved: trail → dc → bb → wt, before exit_sig
+  (NOLOSS-bypass placement). Tradier mode deliberately UNWIRED (stocks live OFF; structural veto +
+  time-based dc step unmodeled — wiring without them would overfire). QuickConfig += MTF_WT_CROSS_
+  EXIT_TF='15m', MTF_DC_REJECT_USE_DC4=False. Latent UnboundLocalError in GR_HTF_DIRECT fixed
+  (MTF_GR_EXIT_GATE_ENABLED=False sweep rows would have crashed compute_exit_signals).
+- **Templates**: TEMPLATE_CRYPTO_{LONG,SHORT} EXIT_VELOCITY +21 rows each (DC reject on/off/TF/dc4,
+  BB on/off/lookback, GR gate + WT cross on/off/TF, MIN_TFS 2/3/4).
+- **Multi-session coordination now ACTIVE** (binance-28 protocol): engine cuts must be announced to
+  binance-28 + binance-99 (sweep owner) with freeze window; push = ONE atomic batch (whole
+  vec_decisions/ + engine), md5 + import-test both boxes. Cut history today: …17:53:56Z=4a1bc3fd
+  (s1=s2), 18:01:30Z=5c3296bb (s1 only, **PROVISIONAL/SUSPECT** — binance-5d's subagent was mid-edit
+  on quick_reduce/augment parity at push time; s2 HELD on 4a1bc3fd). binance-5d's coherent cut
+  (~within the hour) equalizes both boxes and supersedes; re-run all vec diagnostics after it.
+- **Managers**: binance-6e verified Mac ez_manage.py (72b1937c) + tradier_manage.py (6be14d2f)
+  contain BOTH the stale-trail lifecycle fix AND their NEGBOOK build; user's manual rsync of current
+  Mac files to s1/s2 loses nothing; live restart still pending.
+- All-symsides A/B v2 (7 cases: base/vig_off/trail_off/dc_off/bb_off/wt_off/dc4_on) launched on s1
+  @18:05Z against 5c3296bb — output data/reports/exit_vec_ab_all_symsides.json, PROVISIONAL.
+- **7-case A/B across all 110 live-book sym_sides (s1, engine 5c3296bb, PROVISIONAL)**,
+  `data/reports/exit_vec_ab_all_symsides.json` (Mac+s1): VIGILANCE_DC4 fires on 89/110 (2479
+  closes, delta median −0.19), MTF_ATR_TRAIL 90/110 (2672, median 0.00/mean +0.51),
+  MTF_GR_WT_EXIT 89/110 (2850, median +0.04/mean +0.95), MTF_DC_REJECT 0/110, MTF_BB_REJECT
+  0/110. DC4-band mode moves results on 28/110 (better on 10). Fire-analysis vs live logs:
+  · MTF_BB_REJECT = **structurally dead by design** — tag window is LOOKBACK×60 SECONDS (5 min)
+    but high_1h/bb_upper_1h update hourly, so fail-after-tag can never happen inside the window.
+    0 live fires ever in current logs → vec 0 is FAITHFUL parity of a dead exit. Candidate for
+    a real fix (TF-scaled lookback) — needs user decision, would change live behavior.
+  · MTF_DC_REJECT: live fires rarely (16 in ~4d logs + history ledgers); vec 0/110 because the
+    baseline DAYTRADE dc-target exits close AT the band before price can get outside to arm the
+    reject. Scalar harness post-cut will measure the true gap.
+  · MTF_GR_WT_EXIT: vec fires ≫ live (~4 in 4d). Main suspected suppressor live:
+    MTF_EXIT_MIN_OPEN_TS startup gate (positions opened before manager startup never get
+    compound exits — frequent restarts ⇒ most live positions ride legacy exits) + pre-fix
+    stale-trail closing positions first. Scalar sim sets startup=sim start, so scalar-vs-vec
+    stays the right parity metric; live-vs-backtest frequency gap is orchestration, documented.
