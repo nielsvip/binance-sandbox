@@ -26,3 +26,24 @@ rsync -avz --progress -e "ssh -o BatchMode=yes" "$SRC_SPREADSHEET_TABS" "$DST" 2
 echo "[$(date)] Sync S1 -> Mac charts_1M..."
 rsync -avz --progress -e "ssh -o BatchMode=yes" "$SRC_CHARTS" "$DST_CHARTS" 2>&1 | tail -n 20
 echo "[$(date)] Mac sync done: $(ls -lh "$DST"*.xlsx 2>&1 | wc -l) xlsx, $(ls -lh "$DST"*.html 2>&1 | wc -l) html in SPREADSHEETS, $(ls -lh "$DST_CHARTS"*.html 2>&1 | wc -l) charts in charts_1M"
+
+# BADZIP FIX 2026-09-29: xlsx sources are atomic-writers only (see tools/xlsx_atomic.py).
+# Belt-and-braces: quarantine any invalid xlsx that still arrives, never leave it in place.
+python3 - <<'PYEOF'
+import zipfile, os, pathlib
+dst = pathlib.Path("/Users/niels/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL")
+q = pathlib.Path("/Users/niels/Documents/binance/backups/corrupt_xlsx_quarantine")
+n = 0
+for p in dst.glob("*.xlsx"):
+    try:
+        with zipfile.ZipFile(p) as z:
+            if len(z.namelist()) >= 10 and z.testzip() is None:
+                continue
+    except Exception:
+        pass
+    q.mkdir(parents=True, exist_ok=True)
+    os.replace(p, q / p.name)
+    n += 1
+if n:
+    print(f"[badzip-quarantine] moved {n} invalid xlsx arrivals to {q}")
+PYEOF

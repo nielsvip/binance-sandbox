@@ -301,12 +301,11 @@ def _red_fixer_daemon(new_symside: str, wb_path: Path, progress_path: Path, defa
                             # any valid zip is ok (small test wb may have <10 entries)
                             _os_fix.replace(tmp, str(wb_path))
                         except Exception as _e_z:
-                            try:
-                                _os_fix.replace(tmp, str(wb_path))
-                            except Exception:
-                                try: _os_fix.remove(tmp)
-                                except: pass
-                            print(f"[red-fixer-warn] zip validate {_e_z} — forced replace", flush=True)
+                            # BADZIP FIX 2026-09-29: never install an invalid zip — the old
+                            # "forced replace" wrote known-bad files over good ones.
+                            try: _os_fix.remove(tmp)
+                            except: pass
+                            print(f"[red-fixer-warn] zip validate {_e_z} — tmp DISCARDED, good file kept", flush=True)
                     wb.close()
                 except Exception as _we:
                     print(f"[red-fixer-warn] wb fix {sheet}!{r} {hdr} {_we}", flush=True)
@@ -1563,6 +1562,24 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             processed += 1
             continue
         cumulative_before = float(cumulative_gain)
+        # 2026-09-29 COMPLETION FIX: template rows with an EMPTY candidate cell (B=None)
+        # can never evaluate ("could not convert string to float: 'None'") and left sheets
+        # eternally "N rows pending" (INTC_LONG 8 pending; connect-proof SUSPECT->ERROR class).
+        # Honest structural skip: record done with NO_CANDIDATE, grey G, advance.
+        if cand is None or str(cand).strip() in ("", "None", "none"):
+            g = ws.cell(row=rr, column=cols["G"])
+            g.font = Font(name="Arial", size=10, bold=False, italic=True, color="808080")
+            g.alignment = VISUAL_ALIGN
+            _write_E(sname, rr, cumulative_before)
+            key = f"{sname}!{rr}:{switch}={cand}"
+            progress.setdefault("done", {})[key] = {"delta": None, "promoted": False, "reason": "NO_CANDIDATE: empty B cell in template row — nothing to test", "vec_gain": None, "trades": None, "yellows": {}, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before)}
+            _maybe_write_json()
+            _row_done(sname, rr, switch, cand, 0, 0.0, False)
+            _touch(f"cell {sname}!{rr} no-candidate skip")
+            current_idx = _after_neg(current_idx) if nav_mode == "fill_tab" else _land_on_next_tab(current_idx)
+            _maybe_save()
+            processed += 1
+            continue
         if sname in DEAD_VEC_TABS or str(switch).strip() in DEAD_VEC_SWITCHES or str(switch).strip() in LIVE_ONLY_SWITCHES:
             # no real vector wiring (see DEAD_VEC_TABS / DEAD_VEC_SWITCHES / LIVE_ONLY_SWITCHES) — true delta is 0.0, never spend evals or yellows here
             if sname in DEAD_VEC_TABS and str(switch).strip() not in LIVE_ONLY_SWITCHES:
@@ -1968,11 +1985,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _maybe_write_json(force=True)
     if _any_pending():
         print(f"[spec-fill] incomplete after loop guard {loop_guard} pending remains — will still save", flush=True)
+    print("[DONE-STEP] atomic save start", flush=True)
     try:
         with RED_FIXER_LOCK:
             _atomic_save(wb, wb_path)
-    except Exception:
-        pass
+    except Exception as _as_e:
+        print(f"[DONE-STEP] atomic save error {_as_e}", flush=True)
+    print("[DONE-STEP] atomic save done", flush=True)
     # LIVE verification for winning set — H/I only from a REAL backtest_v12_engine run; vector-only/timeout/failure -> BLANK + reason
     live_res = None
     live_reason = ""
@@ -1996,6 +2015,29 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     progress["cumulative_gain"] = float(_fresh_g)
         except Exception as _ff_e:
             print(f"[final-fresh-warn] {new_symside}: {_ff_e}", flush=True)
+        # 2026-09-28 USER ORDER (impeccable sheets): PUBLISH THE bh/gain FINAL **BEFORE** the live
+        # verification — the publish block in main() is unreachable (spec-fill returns early) and
+        # DONE-stage tails have been dying, so the file must exist the moment final_gain is honest
+        # (fresh-vec verified above). Live verify afterwards only ADDs H/I.
+        try:
+            def _fmt_bg(v):
+                return f"{v:.2f}".replace("-", "m").replace(".", "p")
+            _bh_raw = float(bh or 0)
+            _final_name = f"{new_symside}_bh{_fmt_bg(_bh_raw)}_gain{_fmt_bg(float(final_gain))}_30d_matrix.xlsx"
+            _final_path = OUT_DIR / _final_name
+            import shutil as _sh_pub
+            for _old in OUT_DIR.glob(f"{new_symside}_bh*_30d_matrix.xlsx"):
+                if _old.name != _final_name:
+                    _old.rename(OUT_DIR / (_old.name + ".superseded"))
+            _sh_pub.copy2(wb_path, _final_path)
+            progress["final_gain"] = float(final_gain)
+            progress["bh"] = _bh_raw
+            progress["final_path"] = str(_final_path)
+            _maybe_write_json(force=True)
+            print(f"[PUBLISH] {new_symside} -> {_final_name} (fresh-verified vec; live H/I follow if verify succeeds)", flush=True)
+        except Exception as _pub_e:
+            print(f"[publish-warn] {new_symside}: {_pub_e}", flush=True)
+        print("[DONE-STEP] published, entering live verify", flush=True)
         # 2026-09-28 PARITY FIX: --vector-only keeps the SWEEP vector-only (speed), but the single
         # DONE-stage live verification (one backtest_v12_engine run on the winning set, LIVE_TIMEOUT-bound)
         # must always run — the herd hardcodes --vector-only, which left 0/358 sym_sides live-verified
@@ -2462,7 +2504,7 @@ def ensure_lbI_headers(wb_path: Path):
             except Exception:
                 pass
             col += 1
-    wb.save(str(wb_path))
+    _atomic_save(wb, Path(wb_path))  # BADZIP FIX 2026-09-29: was in-place wb.save
     _dt_hdr = _t_hdr.time() - _t0_hdr
     if _dt_hdr > 1.0:
         print(f"[SLOW-CELL] ensure_lbI_headers {wb_path.name} { _dt_hdr:.2f}s >1s sheets={len(SWITCH_SHEETS)}", flush=True)
@@ -2737,7 +2779,7 @@ def clone_template(template: Path, new_symside: str) -> Path:
         ws2.append(["key","default","override","is_non_default","delta_gain_vs_bh","delta_sharpe","delta_trades","variant_gain","REAL_COMPLETE_DELTA","variant_sharpe","trades","tim","dd","filter_or_override","symside","window","bh_pct","gain_pct","tim_pct","max_dd","win_rate","bars","peak","source"])
         for ci in range(1, 25):
             ws2.cell(1, ci).font = Font(bold=True)
-    wb.save(str(target))
+    _atomic_save(wb, Path(target))  # BADZIP FIX 2026-09-29
     Path(target).chmod(0o644)
     return target
 
@@ -3560,7 +3602,7 @@ def main():
         for i, (k, v) in enumerate(rows_baseline, start=2):
             ws.cell(row=i, column=1).value = k
             ws.cell(row=i, column=2).value = json.dumps(v) if isinstance(v, dict) else v
-        wb.save(str(wb_path))
+        _atomic_save(wb, Path(wb_path))  # BADZIP FIX 2026-09-29
     except Exception as e:
         print(f"[baseline-metrics-warn] {e}", flush=True)
 
@@ -3650,19 +3692,11 @@ def main():
                     ws_fix.cell(row=3, column=e_col).alignment = VISUAL_ALIGN
                 except Exception:
                     pass
-        _tmp_single = str(wb_path) + ".tmp"
-        wb_single.save(_tmp_single)
-        import zipfile as _zf_s, os as _os_s
-        try:
-            z = _zf_s.ZipFile(_tmp_single, 'r')
-            ok = len(z.namelist()) >= 10
-            z.close()
-            if ok:
-                _os_s.replace(_tmp_single, str(wb_path))
-            else:
-                raise RuntimeError("tmp zip too small")
-        except:
-            wb_single.save(str(wb_path))
+        # BADZIP FIX 2026-09-29: the old fallback saved IN PLACE after a FAILED zip
+        # validation — writing a known-bad workbook over the live file, plus the bare
+        # ".tmp" name collided with sweeper cleanups. _atomic_save validates and either
+        # replaces atomically or raises; on failure the previous good file stays.
+        _atomic_save(wb_single, Path(wb_path))
         _dt_single = _t_single.time() - _t0_single
         if _dt_single > 1.0:
             print(f"[SLOW-CELL] SINGLE-LOAD headers+BEST-C-FILL+baseline { _dt_single:.2f}s >1s (openpyxl 8.3s unavoidable, saved 16s)", flush=True)
@@ -3714,7 +3748,7 @@ def main():
                                 # restore header if overwritten by prior buggy runs
                                 if isinstance(_ws_f.cell(row=2, column=5).value, (int,float)) or _ws_f.cell(row=2, column=5).value is None:
                                     _ws_f.cell(row=2, column=5).value = "BASELINE"
-                                _wb_f.save(str(wb_path))
+                                _atomic_save(_wb_f, Path(wb_path))  # BADZIP FIX 2026-09-29
                         except: pass
                         if _fails >= 3:
                             print(f"[SELF-MONITOR] {new_symside} E3 still empty/0 after 3 fixes -> ABORT", flush=True)
@@ -4599,16 +4633,17 @@ def main():
                 try:
                     _atomic_write_json(progress_path, progress)
                 except: pass
-                # per-row wb save for current sheet — ensure F/G not lost if killed (simple save, no zip race that creates BadZip)
+                # BADZIP FIX 2026-09-29: the "simple save" comment was exactly backwards —
+                # in-place saves ARE the torn-copy source (rsync mid-write + kill mid-save).
                 try:
                     wb_cur, _ = _get_wb_keep(sheet)
-                    wb_cur.save(str(wb_path))
+                    _atomic_save(wb_cur, Path(wb_path))
                 except Exception:
                     pass
         # After dynamic cycle completes, flush all wb_keep caches and progress — never skip, every row must have F/G or red error
         for _wb in _wb_keep_cache.values():
             try:
-                _wb.save(str(wb_path))
+                _atomic_save(_wb, Path(wb_path))  # BADZIP FIX 2026-09-29
                 _wb.close()
             except: pass
         try:
@@ -6452,7 +6487,7 @@ def main():
                         _rws.cell(row=_found, column=2).value = str(float(_365_base_gain))
                         _rws.cell(row=_found, column=3).value = f"{len(cumulative_overrides)} overrides 365D"
                         break
-                _wb365.save(str(_365_target))
+                _atomic_save(_wb365, Path(_365_target))  # BADZIP FIX 2026-09-29
                 _wb365.close()
                 _365_xlsx = _365_target
                 print(f"[365D-XLSX] -> {_365_xlsx.name} delta {_365_delta:.2f} gain {_365_gain:.2f}", flush=True)
