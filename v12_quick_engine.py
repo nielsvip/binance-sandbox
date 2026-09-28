@@ -4806,7 +4806,7 @@ class QuickConfig:
     HOLD_BARS_OPEN: int = 200
     LUNCH_DEADZONE_SIZE_MULT: float = 0.5
     MIN_EXIT_TF_AGAINST_TRADIER: int = 2
-    MIN_HOLD_BARS_BEFORE_EXIT: int = 32
+    MIN_HOLD_BARS_BEFORE_EXIT: int = 10  # 2026-09-28 live parity: config.py=10 (was 32; vec bars are 15m vs live 3m — TF semantics flagged in 06_V12_PARITY_MATRIX)
     MIN_HOLD_MINUTES_TRADIER: float = 30.0
     MIN_PERC_FROM_SMA_1: float = 0.01
     MIN_PERC_FROM_SMA_15: float = 0.03
@@ -5123,9 +5123,12 @@ class QuickConfig:
     # LONG stop = price <= dc_low_TF * (1 - 0.0025), SHORT stop = price >= dc_high_TF * (1+0.0025)
     # LONG target = price >= dc_high_TF * (1 - 0.001), SHORT target = price <= dc_low_TF * (1+0.001)
     # TF: OFF (disabled, use fixed % fallback) or single "15m"/"1h"/"4h"/"D" or multi "15m,1h,4h" (OR across TFs — exit if ANY TF breach). Buffers fixed 0.25/0.10 per user 2026-09-26+.
-    DAYTRADE_DC_STOP_TF: str = "OFF"
+    # 2026-09-28 USER SPEC ("fixed % was eliminated everywhere"): baseline daytrade exits are the DC-channel
+    # exits — stop at close < dc_low_15m/1h − 0.25% (long; mirrored short), profit at dc_high_15m/1h − 0.10%.
+    # NEVER a fixed % loss or profit exit; the legacy fixed branch is deleted from simulate_one.
+    DAYTRADE_DC_STOP_TF: str = "15m,1h"
     DAYTRADE_DC_STOP_BUFFER_PCT: float = 0.25
-    DAYTRADE_DC_TARGET_TF: str = "OFF"
+    DAYTRADE_DC_TARGET_TF: str = "15m,1h"
     DAYTRADE_DC_TARGET_BUFFER_PCT: float = 0.10
     # TECHNICAL_EXIT DC variants — vector exit signal (compute_exit_signals) mirror of daytrade; supports multi-TF OR
     TECHNICAL_DC_STOP_TF: str = "OFF"
@@ -5312,8 +5315,8 @@ class QuickConfig:
     STDEV_SLOPE_SIZING_MODE: str = "slope_to_top"
     BB_FROZEN_STOP_ENABLED: bool = False  # auto-wired 625
     BB_PULLBACK_GATE_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
-    BB_PULLBACK_GATE_LONG_MAX: float = 0.15  # auto-wired 625
-    BB_PULLBACK_GATE_SHORT_MIN: float = 0.35  # auto-wired 625
+    BB_PULLBACK_GATE_LONG_MAX: float = 0.30  # 2026-09-28 live parity: config*=0.30 (was 0.15)
+    BB_PULLBACK_GATE_SHORT_MIN: float = 0.70  # 2026-09-28 live parity: config*=0.70 (was 0.35)
     BB_RSI_STOCH_BB_MAX: float = 0.15  # auto-wired 625
     BB_RSI_STOCH_K_MAX: float = 15.0  # auto-wired 625
     BB_RSI_STOCH_RSI_MAX: float = 20.0  # auto-wired 625
@@ -5423,7 +5426,7 @@ class QuickConfig:
     ENTRY_ATR_PCT_MIN: float = 0.75  # auto-wired 625
     ENTRY_SYMGATE_ENABLED: bool = False  # auto-wired 625
     ENTRY_VOL_MIN_RATIO: float = 0.65  # auto-wired 625
-    ENTRY_ZONE_LONG: float = 20.0  # auto-wired 625
+    ENTRY_ZONE_LONG: float = 80.0  # 2026-09-28 live parity: config.py/config_tradier=80 (vec 20 blocked longs whenever stoch_k>20)
     ENTRY_ZONE_SHORT: float = 20.0  # auto-wired 625
     EOD_RATIO_ENFORCE_TRADIER: bool = False  # auto-wired 625
     EOD_SLIM_RATIO_ENABLED: bool = False  # auto-wired 625
@@ -5871,6 +5874,11 @@ class QuickConfig:
     WT_15M_BOUNCE_HIGH_1H_GT_PREV: bool = False  # alias for FILTER_HH — template row WT_15M_BOUNCE_HIGH_1H_GT_PREV
     WT_15M_BOUNCE_REL_VOL_GT_1: bool = False  # alias for VOLUME_FILTER — template row WT_15M_BOUNCE_REL_VOL_GT_1
     SIMPLE_PRICE_GT0_ENABLED: bool = False  # SIMPLE price>0 test — ridiculously simple, always trades when enabled (added 2026-09-06 alongside WT15, never fails)
+    # ═══ VIGILANCE GUARD (USER EXTREME VIGILANCE 2026-09-28) — live-parity defaults ═══
+    VIGILANCE_GUARD_ENABLED: bool = True     # unrealized <= MAX_LOSS → close+block; CONSEC losing closes → block
+    VIGILANCE_MAX_LOSS_PCT: float = -1.0     # immediate-close threshold (pct)
+    VIGILANCE_CONSEC_LOSSES: int = 2         # losing closes in a row that block the sym_side
+    DC_HARD_STOP_REENTRY_COOLDOWN_HOURS: float = 4.0  # tradier only — reopen cooldown after ULTIMATE_DC hard stop (CHURN_FIX #2)
     WT_3M_FORCE_OPEN_BUILD_TO_TARGET: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     WT_3M_FORCE_OPEN_BYPASS_GATES: bool = False  # auto-wired 625
     WT_3M_FORCE_OPEN_DIST_PCT: float = 0.0  # auto-wired 625
@@ -7026,14 +7034,14 @@ class QuickConfig:
     IN_GAIN_TREND_REDUCE_FRAC: float = 0.5
     K3M_CAP: int = 80
     K3M_CAP_BREAKOUT_BYPASS: bool = True
-    KINDERGARTEN_EMA_GATE_ENABLED: bool = True  # 2026-09-22 FIX: rewritten as ENTRY SWITCH at 15m (EMA 9x21 cross) — was filter blocked 100% badly written, now correctly adds entry via _kg_signal OR, not block
+    KINDERGARTEN_EMA_GATE_ENABLED: bool = False  # 2026-09-28 live parity: config.py (crypto)=False; config_tradier=True (stocks divergence flagged in 06_V12_PARITY_MATRIX — engine base is crypto)
     KINDERGARTEN_CUMULATIVE_MODE: bool = True  # 2026-09-14 FIX: cumulate all kindergarten filters (not OR single-pick)
     KINDERGARTEN_CUMULATIVE_MIN_TFS: int = 1
     KINDERGARTEN_STRICT_TFS: str = ""
     KINDERGARTEN_ALWAYS_TEST: bool = True
     KINDERGARTEN_FILTER_TF: str = "15m"  # 2026-09-22 FIX: FTF dependent — must be tested on every TF via _ALL_FILTER_TF
     EMA_9_21_FILTER_TFS: str = "1h"
-    WT_SIMPLE_GUARANTEE_ENABLED: bool = True  # 2026-09-19 FIX REVERTED 2026-09-22: EVERYTHING has trades — unconditional OR required, was OFF 2026-09-19 broke 30d 0 trades
+    WT_SIMPLE_GUARANTEE_ENABLED: bool = False  # 2026-09-28 NO-LIES/parity: switch exists NOWHERE in live code — a vector-only entry crutch guaranteeing trades live would not take. OFF: 0-trade baselines are honest evidence of missing real entry wiring, not a bug to paper over
     FORCE_MIN_ONE_TRADE: bool = False  # 2026-09-22: NOT forced trade — script trades ALWAYS via WT_SIMPLE + gates, forced is artificial
     EMA_50_200_FILTER_ENABLED: bool = False
     EMA_50_200_TIMEFRAME: str = "D"
@@ -22195,6 +22203,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     cd = 0
     has_closed_before = False
     bars_in_pos = 0
+    # ═══ VIGILANCE GUARD (USER EXTREME VIGILANCE 2026-09-28) — vectorized mirror of the live
+    # guards in ez_manage/tradier_manage: unrealized <= VIGILANCE_MAX_LOSS_PCT forces an immediate
+    # close, and that loss OR VIGILANCE_CONSEC_LOSSES consecutive losing closes blocks the
+    # sym_side for the rest of the run (live: until manual unblock). Default ON = live parity.
+    _vig_enabled = bool(getattr(cfg, 'VIGILANCE_GUARD_ENABLED', True))
+    _vig_max_loss = float(getattr(cfg, 'VIGILANCE_MAX_LOSS_PCT', -1.0))
+    _vig_need = int(getattr(cfg, 'VIGILANCE_CONSEC_LOSSES', 2))
+    _vig_blocked = False
     # 2026-09-18 HARDCODED RALLY REENTRY: track last exit and wt1_15m for hardcoded reentry
     try:
         _hc_wt1_15m = _safe(npz, 'wt1_15m', n)
@@ -22262,6 +22278,22 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             # ABLATION reentry block: if flagged, no reentry after first close
             if has_closed_before and (getattr(cfg, '_ABLATION_BLOCK_REENTRY', False) or getattr(cfg, '_ABLATION_BLOCK_REENTRY_ENFORCE', False)):
                 # skip all reentry — keep pos None
+                continue
+            # VIGILANCE (USER 2026-09-28): consecutive-loss streak blocks all further entries this run
+            if _vig_enabled and not _vig_blocked and trades:
+                _vig_streak = 0
+                for _vt in reversed(trades):
+                    if str(_vt.get('type', '')) != 'CLOSE':
+                        continue
+                    if float(_vt.get('pnl_pct', 0) or 0) < 0:
+                        _vig_streak += 1
+                        if _vig_streak >= _vig_need:
+                            break
+                    else:
+                        break
+                if _vig_streak >= _vig_need:
+                    _vig_blocked = True
+            if _vig_enabled and _vig_blocked:
                 continue
             fire = entry_sig[i]
             # 2026-09-26 TARGET-DC immediate reentry: if last exit was TARGET dc before high/low and price keeps rising/falling, fire immediately even if entry_sig false — no cooldowns
@@ -22407,6 +22439,18 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         live_pnl_pct = ((px - pos['avg_price']) / pos['avg_price'] * 100) if is_long else ((pos['avg_price'] - px) / pos['avg_price'] * 100)
         pos['peak_pnl_pct'] = max(pos['peak_pnl_pct'], live_pnl_pct)
         held_bars = i - pos['entry_bar']
+        # VIGILANCE (USER EXTREME VIGILANCE 2026-09-28): unrealized <= VIGILANCE_MAX_LOSS_PCT →
+        # immediate close + sym_side blocked for rest of run. Runs before every other exit (live parity).
+        if _vig_enabled and live_pnl_pct <= _vig_max_loss:
+            pos['fees'] += abs(pos['qty'] * px) * half_fee
+            _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
+            _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
+            _tsv = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+            _vg_reason = f"VIGILANCE_MAX_LOSS g{live_pnl_pct:.2f}<={_vig_max_loss:.2f} close+block"
+            trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _vg_reason, 'type': 'CLOSE', 'ts': _tsv, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _vg_reason, 'bars_held': int(i - pos['entry_bar'])})
+            pos = None; cd = cooldown_bars; has_closed_before = True
+            _vig_blocked = True
+            continue
         # 2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP: DC CHANNEL BREACH TF = DC_HARD_STOP_TF (4h|D)
         # No trade may be held through dc_low_TF (LONG) / dc_high_TF (SHORT) at any loss. TF per sym_side, D wider.
         try:
@@ -22420,6 +22464,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _hs_reason = f"ULTIMATE_DC_{_hs_tf_v12}_HARD_STOP at dc_{_hs_tf_v12}_{'low' if is_long else 'high'} 0% breach"
                 trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _hs_reason, 'type': 'CLOSE', 'ts': _tsu, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _hs_reason, 'bars_held': int(i - pos['entry_bar'])})
                 pos = None; cd = cooldown_bars; has_closed_before = True
+                # CHURN_FIX #2 (USER 2026-09-28, tradier): DC hard-stop reopen cooldown — vectorized
+                # mirror of live dc_hardstop_cooldown_active (kills open→stop→reopen loops in sweeps too)
+                if is_tradier:
+                    _dc_cd_h = float(getattr(cfg, 'DC_HARD_STOP_REENTRY_COOLDOWN_HOURS', 4.0) or 0.0)
+                    if _dc_cd_h > 0:
+                        cd = max(cd, int(round(_dc_cd_h * 60.0 / max(bmin, 1))))
                 continue
         except Exception:
             pass
@@ -22502,10 +22552,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 # NO fallback to fixed % when DC active — fixed % eliminated per user 2026-09-26
             except Exception:
                 pass
-        elif daytrade_on and live_pnl_pct <= -daytrade_stop:
-            closed, reason = True, f'DAYTRADE_STOP fixed -{daytrade_stop:.2f}%'
-        elif daytrade_on and live_pnl_pct >= daytrade_target:
-            closed, reason = True, f'DAYTRADE_TARGET fixed +{daytrade_target:.2f}%'
+        # 2026-09-28 USER SPEC: fixed-% DAYTRADE_STOP/TARGET branches DELETED — "NEVER a fix % loss or
+        # profit exit"; DC-channel exits above (dc_low−0.25% / dc_high−0.10%, 15m/1h) are the only daytrade exits.
         elif max_hold_bars > 0 and held_bars >= max_hold_bars:
             closed, reason = True, 'DELTA_MAX_HOLD'
         elif trail_erosion > 0 and pos['peak_pnl_pct'] > 0 and (pos['peak_pnl_pct'] - live_pnl_pct) >= pos['peak_pnl_pct'] * trail_erosion:

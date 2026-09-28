@@ -1541,7 +1541,23 @@ class Config:
         # See ZEC_SUPERVISOR_* knobs below and zec_supervisor_agent.py.
         'AGENT_AUTONOMOUS_CLOSE',
         'ZEC_SUPERVISOR_CLOSE',
+        # 2026-09-28 USER EXTREME VIGILANCE MANDATE: >1% open loss → immediate close + sym_side block.
+        'VIGILANCE_MAX_LOSS',
+        # 2026-09-28 dead-switch implementation: the 2026-09-19 ULTIMATE_DC mandate says the stop
+        # "bypasses MIN_HOLD / NOLOSS / hedge-protect" but its reason was never added here, so on
+        # crypto the gain-agnostic DC hard stop degraded into an OBLIGATORY_HEDGE attempt instead
+        # of closing. Implementing the documented behavior.
+        'ULTIMATE_DC',
     ])
+    # ═══ VIGILANCE GUARD — USER EXTREME VIGILANCE MANDATE 2026-09-28 (crypto) ═══
+    # Open position at <= VIGILANCE_MAX_LOSS_PCT → immediate CLOSE + sym_side entry-block;
+    # VIGILANCE_CONSEC_LOSSES realized losing full-closes in a row → sym_side entry-block.
+    # Blocks persist in data/vigilance_blocks_ez.json until manually removed ("until further
+    # analysis"). Entry-block only — exits/reduces always pass, open positions NEVER stranded
+    # (never uses BLACKLIST_SYMBOLS which skips process_position). ROLLBACK: VIGILANCE_GUARD_ENABLED=False.
+    VIGILANCE_GUARD_ENABLED: bool = True
+    VIGILANCE_MAX_LOSS_PCT: float = -1.0
+    VIGILANCE_CONSEC_LOSSES: int = 2
     # 2026-05-15 USER: SHORT price-cross daemon reentries require wt1_3m crossunder + k_3m>60.
     # 2026-05-16 RE-FLIPPED to False — earlier edit reverted by an external process.
     # Per agent audit: True gate silently dropped every SHORT reentry below k_3m=60

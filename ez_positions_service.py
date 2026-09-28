@@ -6506,6 +6506,17 @@ class PositionService:
         ws_age = now - ws_last_any if ws_last_any > 0 else 9999
         ws_alive = ws_age < 90.0
         force_fetch = not ws_alive and time_since_last > 3.0
+        # 2026-09-28 FIX: force_fetch bypassed the IP-ban gate (line ~6516 checked only
+        # account.rate_limit_until, not the global -1003 tracker), so a dead-WS force-fetch
+        # loop REST-hammered Binance every 3s and PERPETUATED the ~6h ban → positions never
+        # synced → BROKER_SYNC_DEMAND blocked ALL trading. Honor the global ban here for EVERY
+        # caller of fetch_positions (design intent lines 61-63: stop all REST until ban expires).
+        # Trading stays correctly blocked by BROKER_SYNC_DEMAND while banned — safe; sync resumes
+        # automatically once the ban timer (which now actually counts down) expires.
+        _ban_rem_ff = _ban_remaining_seconds()
+        if _ban_rem_ff > 0:
+            _log_ban_skip_throttled(logger, account_key, f"pausing fetch_positions for {_ban_rem_ff:.0f}s (was force_fetch={force_fetch})")
+            return {}
         if not force_fetch and time_since_last < min_interval:
             if time_since_last > 10.0:
                 logger.warning(f"[fetch_positions][{account_key}] ⚠️ SKIPPING - rate limited but stale (last: {time_since_last:.2f}s ago, min: {min_interval}s) - positions may be outdated!")

@@ -1,5 +1,35 @@
 # CHURN FIX PRIORITY QUEUE — not a permanent blacklist — 2026-09-28
 
+## ⚠️ VERIFICATION 2026-09-28 08:4x (binance-a4) — fixes #1/#2 applied by a peer session; fix #1 has a WHOLE-BOOK-FREEZE regression
+
+A peer session implemented fixes #1 (per_sym `_opens_exposure` gate), #2 (DC hard-stop cooldown,
+`config_tradier.py:72`), plus a new per-side `VIGILANCE_GUARD` (`data/vigilance_blocks_tradier.json`,
+auto-blocks a sym_side after `VIGILANCE_CONSEC_LOSSES=2` losing closes). Both files **compile OK**.
+VIGILANCE is the right durable loss-circuit-breaker and largely supersedes the manual BLACKLIST below.
+
+**BUT fix #1 + current per_sym data = new-entry freeze.** Verified empirically: every one of the
+**248/248** stock per_sym entries is bare `{overrides, winning_tag:'clean_ONLY_CROSSES_v33', trades:0}`
+— no `wsharpe`/`pool_sharpe`/gain. `PER_SYM_LIVE_GATE`'s block condition `(trades==0 and w is None)`
+is therefore TRUE for **all 248**, so gating flat-opens (fix #1's `_opens_exposure`) blocks **every
+fresh stock open Monday**. The BEST-matrix fallback does NOT save it: it only runs when the per_sym
+entry is missing (all are present, just bare), the filename matcher `"{base}_{side}_bh"` won't match
+strategy-infix names (`AAPL_SEQ_LONG_bh…`, `AAPL_WF_LONG_…`), and most matrices show gain<bh
+(MSFT gain4.13<bh6.14, NVDA/AMZN negative) so "beat buy-hold" blocks them anyway.
+
+**Decision needed (strategy, not a mechanical patch):**
+1. Populate `per_sym_active_config_stocks.json` with real `trades`/`pool_sharpe`/`acc_gain_pct`/`bh_pct`
+   from BEST/pilot so the gate can discriminate good vs bad — the proper fix; OR
+2. Make `PER_SYM_LIVE_GATE` treat a *bare/unjudgeable* per_sym entry as "no entry" → fall through to
+   the BEST-matrix check, AND fix the BEST matcher to handle strategy infixes (`_SEQ_`/`_WF_`); OR
+3. Short-term un-freeze: `PER_SYM_GATE_FLAT_OPEN_ENFORCE=False` (`config_tradier.py:76`) reverts fix
+   #1's broadening, and rely on VIGILANCE + DC-cooldown + BLACKLIST for churn control until (1)/(2).
+
+Not edited by binance-a4 — peers are actively editing `tradier_manage.py`/`ez_manage.py`; avoiding a
+collision. Whoever owns that edit: apply (1) or (2), or ship with the kill switch at (3).
+
+---
+
+
 These 7 stock sym_sides are **temporarily** in `config_tradier.BLACKLIST` (`config_tradier.py:183`)
 **only to stop the bleed** while each root cause is fixed. This is a **work queue**: fix → verify →
 **remove the name from `config_tradier.BLACKLIST`** → re-observe. A name must not sit blocked once

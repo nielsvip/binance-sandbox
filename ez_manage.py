@@ -2769,6 +2769,86 @@ def check_market_regime(
 # ═══════════════════════════════════════════════════════════════════════════════
 # 8. NO-LOSS EXIT — Exit BEFORE a loss materializes
 # ═══════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
+# VIGILANCE GUARD — USER EXTREME VIGILANCE MANDATE 2026-09-28 (crypto implementation)
+# Two realized losing full-closes in a row OR open position <= VIGILANCE_MAX_LOSS_PCT →
+# immediate close + sym_side entry-block until manually cleared from
+# data/vigilance_blocks_ez.json ("until further analysis"). ENTRY-BLOCK ONLY: exits and
+# reduces always pass and open positions are NEVER stranded — this guard deliberately
+# does NOT use BLACKLIST_SYMBOLS (which skips process_position and strands positions).
+# Keys use the FULL crypto symbol (ADAUSDC_LONG ≠ ADAUSDT_LONG — different markets).
+# Separate implementation and state from tradier_manage's stocks guard.
+# ROLLBACK: VIGILANCE_GUARD_ENABLED=False in config.py.
+# ═══════════════════════════════════════════════════════════════════════════════
+_EZ_VIGILANCE_STATE: Dict[str, Any] = {"loaded_at": 0.0, "blocks": {}, "streaks": {}}
+
+def _ez_vigilance_file() -> Path:
+    return Path(getattr(config, "BASE_PATH", "/Users/niels/Documents/binance")) / "data" / "vigilance_blocks_ez.json"
+
+def _ez_vigilance_load(force: bool = False) -> None:
+    _now = time.time()
+    if not force and _now - float(_EZ_VIGILANCE_STATE.get("loaded_at", 0)) < 30.0:
+        return
+    try:
+        _p = _ez_vigilance_file()
+        if _p.exists() and _p.stat().st_size > 2:
+            _j = json.loads(_p.read_text())
+            if isinstance(_j, dict):
+                _EZ_VIGILANCE_STATE["blocks"] = _j.get("blocks", {}) or {}
+                _EZ_VIGILANCE_STATE["streaks"] = _j.get("streaks", {}) or {}
+    except Exception as _e:
+        logger.warning(f"[VIGILANCE] load error (fail-open): {_e}")
+    _EZ_VIGILANCE_STATE["loaded_at"] = _now
+
+def _ez_vigilance_save() -> None:
+    try:
+        _p = _ez_vigilance_file()
+        _p.parent.mkdir(parents=True, exist_ok=True)
+        _tmp = _p.with_suffix(".tmp")
+        _tmp.write_text(json.dumps({"blocks": _EZ_VIGILANCE_STATE["blocks"], "streaks": _EZ_VIGILANCE_STATE["streaks"]}, indent=2, default=str))
+        os.replace(_tmp, _p)
+    except Exception as _e:
+        logger.warning(f"[VIGILANCE] save error: {_e}")
+
+def ez_vigilance_sym_side(symbol: str, position_side: str) -> str:
+    return f"{str(symbol).upper()}_{str(position_side).upper()}"
+
+def ez_vigilance_is_blocked(symbol: str, position_side: str) -> Tuple[bool, str]:
+    if not bool(getattr(config, "VIGILANCE_GUARD_ENABLED", True)):
+        return False, ""
+    _ez_vigilance_load()
+    _b = _EZ_VIGILANCE_STATE["blocks"].get(ez_vigilance_sym_side(symbol, position_side))
+    if _b:
+        return True, str(_b.get("reason", "VIGILANCE_BLOCK"))
+    return False, ""
+
+def ez_vigilance_block(symbol: str, position_side: str, reason: str) -> None:
+    _ez_vigilance_load(force=True)
+    _key = ez_vigilance_sym_side(symbol, position_side)
+    if _key not in _EZ_VIGILANCE_STATE["blocks"]:
+        _EZ_VIGILANCE_STATE["blocks"][_key] = {"blocked_at": datetime.now(timezone.utc).isoformat(), "reason": str(reason)[:200]}
+        _ez_vigilance_save()
+        logger.critical(f"🚨 [VIGILANCE_BLOCK] {_key}: sym_side BLOCKED until further analysis — {reason}")
+
+def ez_vigilance_record_close(symbol: str, position_side: str, gain_pct: float, reason: str = "") -> bool:
+    # Realized full-close result feeds the loss-streak guard. Returns True when this close triggers the block.
+    if not bool(getattr(config, "VIGILANCE_GUARD_ENABLED", True)):
+        return False
+    _ez_vigilance_load(force=True)
+    _key = ez_vigilance_sym_side(symbol, position_side)
+    _st = _EZ_VIGILANCE_STATE["streaks"].setdefault(_key, {"consec_losses": 0, "last": []})
+    _g = float(gain_pct or 0.0)
+    _st["consec_losses"] = (int(_st.get("consec_losses", 0)) + 1) if _g < 0 else 0
+    _st.setdefault("last", []).append({"ts": datetime.now(timezone.utc).isoformat(), "gain_pct": round(_g, 4), "reason": str(reason)[:120]})
+    _st["last"] = _st["last"][-10:]
+    _blocked = False
+    if _st["consec_losses"] >= int(getattr(config, "VIGILANCE_CONSEC_LOSSES", 2)):
+        ez_vigilance_block(symbol, position_side, f"{_st['consec_losses']}_CONSECUTIVE_LOSING_TRADES_last_g{_g:.2f}pct")
+        _blocked = True
+    _ez_vigilance_save()
+    return _blocked
+
+
 def check_no_loss_exit(
     indicators: Dict[str, Any],
     current_price: float,
@@ -6927,6 +7007,11 @@ _NON_VEC_KNOBS_EZ = frozenset([
     "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED", "SCALP_V3_ENABLED", "SCALP_V3_BOOST_ENABLED",
     "STDEV_SLOPE_SIZING_ENABLED", "MOMENTUM_WATCHDOG_ENABLED", "HEDGE_ACCOUNTS", "SCALP_ACCOUNTS",
     "STRICT_NO_LOSS_ACCOUNTS", "EMA50_15M_ENTRY_FILTER_ENABLED", "REENTRY_GOLDEN_BLOCK_ENABLED",
+    # 2026-09-28 close the MOMENTUM_WATCHDOG open leak: the masked MOMENTUM_WATCHDOG_ENABLED is DEAD
+    # (only a no-op read at ~58943); the force-open at ez_manage.py:35875/35999/36039 actually fires
+    # through these two, which were NOT masked → 837 illegal DC-breakout opens/24h under parity.
+    # Adding them here routes the watchdog force-open through the parity mask (forced False). Reversible.
+    "MOMENTUM_SMA_WATCHDOG_ENABLED", "WATCHDOG_DC_FORCE_OPEN_ENABLED",
 ])
 if bool(getattr(_ezm_base_config, "PARITY_DISABLE_NON_VECTORIZABLE", False)) or bool(getattr(_ezm_base_config, "V12_PARITY_DISABLE_NON_VECTORIZABLE", False)):
     for _k in _NON_VEC_KNOBS_EZ:
@@ -29527,6 +29612,25 @@ class MultiAccountTradeManager:
         except Exception as _bf_e:
             logger.warning(f"[BALANCE_FLOOR_HALT] check error (fail-open): {_bf_e}")
         # ═══════════════════════════════════════════════════════════════════════════
+        # 🚨 VIGILANCE GUARD ENTRY BLOCK (USER EXTREME VIGILANCE 2026-09-28)
+        # Blocked sym_sides refuse ALL new exposure (OPEN/ENTRY/REENTRY/AUGMENT/BUY);
+        # CLOSE/REDUCE always pass so positions are never stranded. Single chokepoint —
+        # covers every entry path that reaches execute_now. ROLLBACK: VIGILANCE_GUARD_ENABLED=False.
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            if (
+                bool(getattr(config, "VIGILANCE_GUARD_ENABLED", True))
+                and symbol
+                and ("OPEN" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act or "AUGMENT" in _kill_act or _kill_act == "BUY")
+                and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act
+            ):
+                _vg_blk, _vg_why = ez_vigilance_is_blocked(symbol, position_side)
+                if _vg_blk:
+                    logger.critical(f"🚨 [VIGILANCE_ENTRY_BLOCK] {position_key}: {_vg_why} — action={action} reason={(reason or '')[:60]}")
+                    return "BLOCKED_VIGILANCE"
+        except Exception as _vg_be:
+            logger.warning(f"[VIGILANCE] entry check err (fail-open): {_vg_be}")
+        # ═══════════════════════════════════════════════════════════════════════════
         # 🚫 COUNTER_TREND_ADD_BLOCK (USER 2026-05-30 ABSOLUTE): NO open/augment/reentry against wt1_1h.
         # Reads LIVE wt1_1h (NOT averaged gain — a martingaled-to-breakeven loser can't dodge it). This single
         # chokepoint DESTROYS martingale: a counter-1h add/open is refused from EVERY path (FIN_AGENT force-open,
@@ -32945,6 +33049,13 @@ class MultiAccountTradeManager:
                     )
             except Exception:
                 pass
+            # VIGILANCE (USER 2026-09-28): realized full-close result feeds the crypto loss-streak
+            # guard — two consecutive losing trades block the sym_side until further analysis.
+            try:
+                if is_reduce and (is_full_close or (current_real_amt > 0 and float(quantity) >= float(current_real_amt) * 0.999)):
+                    ez_vigilance_record_close(symbol, position_side, safe_fetch_float(getattr(position, "gain", 0.0), 0.0), reason)
+            except Exception as _vg_rce:
+                logger.warning(f"[VIGILANCE] close-record err {position_key}: {_vg_rce}")
             if is_sandbox_account(config, account_key):
                 sandbox_fill_price = current_price
                 # 2026-05-23 USER MANDATE: execute_trade_action MUST NOT touch positionAmt.
@@ -46162,6 +46273,26 @@ async def process_position(
     if not _min_hold_ok_for_exit and position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0:
         # don't await here — breach check is awaited at each gated exit; just log generic block now
         logger.debug(f"[MIN_HOLD_BLOCK] {position_key}: age {_pp_age_min_for_hold:.2f}m < {_min_hold_bars_for_exit}bars ({_min_hold_sec_for_exit/60:.1f}m) — all TIMED exits (HTF/R1/MTF/GR) deferred until hold satisfied unless dc_15m breach. Gain {safe_fetch_float(getattr(position,'gain',0),0):.2f}%")
+    # ═══════════════════════════════════════════════════════════════════════════
+    # VIGILANCE GUARD (USER EXTREME VIGILANCE 2026-09-28): open loss <= VIGILANCE_MAX_LOSS_PCT
+    # → IMMEDIATE CLOSE + sym_side entry-block until further analysis. Reason carries
+    # VIGILANCE_MAX_LOSS (UNIVERSAL_NOLOSS_GATE bypass) + HARD_STOP/USER (HPO bypass).
+    # ═══════════════════════════════════════════════════════════════════════════
+    if position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0 and bool(getattr(config, "VIGILANCE_GUARD_ENABLED", True)):
+        try:
+            _vg_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
+            _vg_max_loss = float(getattr(config, "VIGILANCE_MAX_LOSS_PCT", -1.0))
+            if _vg_gain <= _vg_max_loss:
+                _vg_is_long = position_side == "LONG"
+                _vg_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
+                _vg_side = "SELL" if _vg_is_long else "BUY"
+                ez_vigilance_block(symbol, position_side, f"OPEN_LOSS_g{_vg_gain:.2f}pct<=max{_vg_max_loss:.2f}pct")
+                logger.critical(f"🚨 [VIGILANCE_MAX_LOSS] {position_key}: g={_vg_gain:.2f}% <= {_vg_max_loss:.2f}% → IMMEDIATE CLOSE + sym_side BLOCK (USER EXTREME VIGILANCE)")
+                await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_vg_amt, side=_vg_side, position_side=position_side, quantity=_vg_amt, old_price=current_price, unique_id=f"VIGILANCE_MAX_LOSS_{int(time.time())}", reason=f"VIGILANCE_MAX_LOSS_HARD_STOP_USER_{'LONG' if _vg_is_long else 'SHORT'}_g{_vg_gain:.2f}", is_full_close=True, action="CLOSE")
+                trade_manager.processing_keys.discard(position_key)
+                return f"{EvalStatus.ACTION_TAKEN}:VIGILANCE_MAX_LOSS_CLOSED"
+        except Exception as _vg_e:
+            logger.warning(f"[VIGILANCE] probe err {position_key}: {_vg_e}")
     # ═══════════════════════════════════════════════════════════════════════════
     # 2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP: DC CHANNEL BREACH.
     # No position may be held through dc_low_TF (LONG) / dc_high_TF (SHORT) where TF = DC_HARD_STOP_TF (4h|D) per sym_side.

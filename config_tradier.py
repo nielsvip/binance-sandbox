@@ -57,6 +57,23 @@ class TradierConfig:
     ENTRY_SCORE_THRESHOLD: float = 18.0  # parity 2026-08-17: vector->live (was vector-only)
     MIN_HOLD_BARS: int = 10  # parity 2026-08-17: vector->live (was vector-only)
     MODE: str = "tradier"
+    # ═══ VIGILANCE GUARD — USER EXTREME VIGILANCE MANDATE 2026-09-28 (stocks) ═══
+    # Open position at <= VIGILANCE_MAX_LOSS_PCT → immediate CLOSE + sym_side entry-block;
+    # VIGILANCE_CONSEC_LOSSES realized losing full-closes in a row → sym_side entry-block.
+    # Blocks persist in data/vigilance_blocks_tradier.json until manually removed ("until
+    # further analysis"). Exits/reduces always pass. Separate state from ez_manage's crypto
+    # guard — venues never share vigilance state. ROLLBACK: VIGILANCE_GUARD_ENABLED=False.
+    VIGILANCE_GUARD_ENABLED: bool = True
+    VIGILANCE_MAX_LOSS_PCT: float = -1.0
+    VIGILANCE_CONSEC_LOSSES: int = 2
+    # DC hard-stop reentry cooldown — CHURN_FIX_PRIORITY.md fix #2: after ULTIMATE_DC/TRA_DC
+    # hard stop closes a name, same-sym_side re-open refused for this many hours (kills the
+    # open→stop→open loop: SLV_LONG 606 open-attempts/7d). 0 disables.
+    DC_HARD_STOP_REENTRY_COOLDOWN_HOURS: float = 4.0
+    # PER_SYM_LIVE_GATE flat-open enforcement — CHURN_FIX_PRIORITY.md fix #1: ANY order that
+    # opens exposure from flat must pass PER_SYM_LIVE_GATE, whatever action/reason produced it
+    # (closes the reclaim/ladder-parity/REENTRY_OPEN/None-action entry leak). ROLLBACK: False.
+    PER_SYM_GATE_FLAT_OPEN_ENFORCE: bool = True
     STOCH_ENTRY_ENABLED: bool = False  # parity 2026-08-17: SWITCH tested per_sym + 7D crypto+stocks (bypass removed)
     WT_ENTRY_ENABLED: bool = False  # parity 2026-08-17: SWITCH tested per_sym + 7D crypto+stocks (bypass removed)
     REENTRY_PULL1_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
