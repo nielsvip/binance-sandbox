@@ -822,7 +822,7 @@ class TradierConfig:
     BT_WT_CROSS_LADDER_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
     GOLDEN_RULE_HTF_VOTE_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
     MTF_ARMED_ENTRIES_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
-    DC_BREACH_REDUCE_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
+    DC_BREACH_REDUCE_FILTER_TF: str = "15m"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
     HAIKU_WINNER_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
     NEWBORN_PROTECT_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
     NEWBORN_LOSS_KILL_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
