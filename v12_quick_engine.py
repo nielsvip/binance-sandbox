@@ -6199,7 +6199,7 @@ class QuickConfig:
     E2E_REPLAY_VALIDATOR_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     EMA_9_21_FILTER_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     EMA_9_21_FILTER_MIN_TFS: float = 3.0  # 2026-09-10 FIX: require 3 TFs EMA confirm (was 0 — filter never fired)
-    EMA_BLANKET_FILTER_ENABLED: bool = True  # 2026-09-28 WAVE4: field was UNREAD when its True default was set (2026-09-10 comment aspirational); live has NO blanket gate (census NEITHER) — False keeps defaults live-neutral now that the gate is real
+    EMA_BLANKET_FILTER_ENABLED: bool = False  # 2026-09-29 PARITY: default OFF = live-neutral (live/tradier has NO blanket gate; census NEITHER). Was True but the vec gate is real and vetoed EVERY stock-short entry → 0-trade baselines (CRM_SHORT 652 signals→0; False→113). Kept as swept switch. Was True 2026-09-28 WAVE4.
     EMA_BLANKET_FILTER_FILTER_TF: str = "15m"  # 2026-09-28 WAVE4: single-TF blanket gate (generic_filter_tf); OFF neutral
     EMA_BLANKET_FILTER_MIN_TFS: float = 3.0  # 2026-09-10 FIX: 3 TFs must confirm (was 0)
     EMERGENCY_BRAKE_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF

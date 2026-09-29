@@ -29883,6 +29883,27 @@ class MultiAccountTradeManager:
                         return f"BLOCKED_COUNTER_TREND_1H_AGAINST_{position_side}"
         except Exception as _ctbe:
             logger.warning(f"[COUNTER_TREND_ADD_BLOCK] check error (fail-open): {_ctbe}")
+        # ═══ EMA_BLANKET_FILTER (2026-09-29 USER "any value found in vector must be applied in live") ═══
+        # Live twin of v12_quick wave4 ema_blanket_entry_gate: fresh OPEN requires ema_9_above_21 to agree with the side
+        # on >= EMA_BLANKET_FILTER_MIN_TFS of 15m/1h/4h/D. Default OFF (config.py) = unchanged live; per-sym via _psym_get.
+        try:
+            if (
+                symbol
+                and ("OPEN" in _kill_act or "ENTRY" in _kill_act or _kill_act == "BUY")
+                and "AUGMENT" not in _kill_act and "REENTRY" not in _kill_act and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
+                and "HEDGE" not in (reason or "").upper() and "OBLIGATORY" not in (reason or "").upper() and "REENTRY" not in (reason or "").upper()
+            ):
+                _eb_on = _psym_get(symbol, position_side, "EMA_BLANKET_FILTER_ENABLED", getattr(config, "EMA_BLANKET_FILTER_ENABLED", False))
+                if bool(_eb_on):
+                    from types import SimpleNamespace as _EbNS
+                    from vec_decisions.wave4_families import ema_blanket_live_pass as _eb_pass
+                    _eb_cfg = _EbNS(EMA_BLANKET_FILTER_ENABLED=True, EMA_BLANKET_FILTER_MIN_TFS=_psym_get(symbol, position_side, "EMA_BLANKET_FILTER_MIN_TFS", getattr(config, "EMA_BLANKET_FILTER_MIN_TFS", 3)))
+                    _eb_ok, _eb_agree, _eb_found = _eb_pass(await ii(self, symbol) or {}, position_side == "LONG", _eb_cfg)
+                    if not _eb_ok:
+                        logger.warning(f"🚫 [EMA_BLANKET_FILTER] {position_key}: BLOCKED {action} — ema9>21 agrees on {_eb_agree}/{_eb_found} TFs < {_eb_cfg.EMA_BLANKET_FILTER_MIN_TFS}. reason={(reason or '')[:50]}")
+                        return f"BLOCKED_EMA_BLANKET_FILTER_{position_side}"
+        except Exception as _ebe:
+            logger.warning(f"[EMA_BLANKET_FILTER] check error (fail-open): {_ebe}")
         # ═══════════════════════════════════════════════════════════════════════════
         # 🟡 GR_FILTER_ALL_ENTRIES (USER 2026-06-03 "GR is the prime entrypoint"): EVERY fresh entry
         # (DELTA / GOLDEN_RULE / force-open / etc.) must pass the GR filter — same breakout-mode min7

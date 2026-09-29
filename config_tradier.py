@@ -849,6 +849,8 @@ class TradierConfig:
     DUP_GUARD_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     EMA_9_21_FILTER_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19 (STOCKS_LONG yellow)
     EMA_BLANKET_FILTER_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
+    EMA_BLANKET_FILTER_ENABLED: bool = False  # 2026-09-29 USER: wired live (tradier_manage.queue_trade_action OPEN gate = v12 wave4 twin); False = live-neutral, swept per sym_side
+    EMA_BLANKET_FILTER_MIN_TFS: float = 3.0  # 2026-09-29 = QuickConfig; ema9>21 must agree on >= N of 15m/1h/4h/D
     EMERGENCY_BRAKE_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     EXHAUSTION_EXIT_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19

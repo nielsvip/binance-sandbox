@@ -13937,6 +13937,23 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                         return False
         except Exception as _ctbe:
             logger.warning(f"[COUNTER_TREND_ADD_BLOCK] check error (fail-open): {_ctbe}")
+        # ═══ EMA_BLANKET_FILTER (2026-09-29 USER "any value found in vector must be applied in live") ═══
+        # Live twin of v12_quick wave4 ema_blanket_entry_gate: fresh OPEN requires ema_9_above_21 to agree with the side
+        # on >= EMA_BLANKET_FILTER_MIN_TFS of 15m/1h/4h/D. Default OFF (config_tradier) = unchanged live; swept per sym_side.
+        try:
+            _eb_act = (action or '').upper()
+            if ('OPEN' in _eb_act or _eb_act == 'BUY') and 'AUGMENT' not in _eb_act and 'REENTER' not in _eb_act and 'HEDGE' not in (reason or '').upper() and not _mandatory_reentry_qta:
+                _eb_acct, _eb_sym, _eb_side = parse_position_key(position_key)
+                _eb_cfg = SimpleNamespace(EMA_BLANKET_FILTER_ENABLED=bool(_cfg('EMA_BLANKET_FILTER_ENABLED', False, _eb_acct, _eb_sym, _eb_side)), EMA_BLANKET_FILTER_MIN_TFS=_cfg('EMA_BLANKET_FILTER_MIN_TFS', 3, _eb_acct, _eb_sym, _eb_side))
+                if _eb_cfg.EMA_BLANKET_FILTER_ENABLED:
+                    from vec_decisions.wave4_families import ema_blanket_live_pass as _eb_pass
+                    _eb_ok, _eb_agree, _eb_found = _eb_pass(trade_manager.get_indicators(_eb_sym) if _eb_sym else {}, _eb_side == "LONG", _eb_cfg)
+                    if not _eb_ok:
+                        logger.warning(f"🚫 [EMA_BLANKET_FILTER] {position_key}: BLOCKED {action} — ema9>21 agrees on {_eb_agree}/{_eb_found} TFs < {_eb_cfg.EMA_BLANKET_FILTER_MIN_TFS}. reason={(reason or '')[:50]}")
+                        _direct_queue_gate_note(trade_manager, position_key, reason, "EMA_BLANKET_FILTER")
+                        return False
+        except Exception as _ebe:
+            logger.warning(f"[EMA_BLANKET_FILTER] check error (fail-open): {_ebe}")
         if not is_regular_trading_hours():
             logger.debug(f"[queue_trade_action] not in trading hours")
             return

@@ -5003,7 +5003,7 @@ class Config:
     WT_AGAINST_FILTER_ENABLED: bool = False  # RECONNECT 2026-09-04 TEMPLATE parity: vector had it, config missing
     AUGMENT_WT_4H_BOUNCE_ENABLED: bool = False  # 2026-09-04 full parity
     EMA_9_21_FILTER_MIN_TFS: int = 3
-    EMA_BLANKET_FILTER_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: EMA blanket blocks counter-trend. User: EMA filters have not been applied at all.
+    EMA_BLANKET_FILTER_ENABLED: bool = False  # 2026-09-29 USER: now WIRED live (ez_manage.execute_now OPEN gate = v12 wave4 twin). Was True but UNREAD by live (census NEITHER) -> False keeps live behaviour identical + = QuickConfig; swept per sym_side. (2026-09-10: EMA blanket blocks counter-trend.)
     EMA_BLANKET_FILTER_MIN_TFS: int = 3  # was 2 → 3 TFs must confirm
     FOLLOW_THROUGH_REENTRY_ENABLED: bool = False
     GR_FILTER_VEC_ENABLED: bool = False

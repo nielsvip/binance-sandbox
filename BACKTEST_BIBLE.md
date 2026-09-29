@@ -1102,4 +1102,26 @@ This is the operator's own statement of how `TEMPLATE_*.xlsx` must be filled. **
 
 ---
 
-*End of bible — if a procedure above conflicts with older text, this wins. §14–§56 are the 2026-09-29 operator-corrected additions; §56 is the operator's verbatim fill spec and is the highest authority on how `TEMPLATE_*.xlsx` is filled.*
+## 57. DAILY SELF-OPTIMIZATION LOOP (2026-09-29) — see DAILY_OPTIMIZATION_PLAN.md
+
+The operator's daily self-optimization upgrade is captured in full in `DAILY_OPTIMIZATION_PLAN.md`
+(repo root). Summary so it survives here: each day at market open, rebuild a simplified v15_avg_delta
+(4 cat_side tabs; per switch+filter: pos_sym = count of positive-delta calcs, plus avg & mean delta) from
+the latest round's real deltas → inject {avg,mean,pos_sym} into each TEMPLATE_{cat_side} → rearrange white
+switch rows worst_first by avg delta (whole row + its yellow cells move together; orange rows below, same
+order) → **promote** positive-avg-delta rows to bold defaults (the ONLY place defaults ever change), syncing
+the same switch's default per-cat_side across config.py/config_tradier.py/QuickConfig (these must hold FOUR
+defaults per switch, one per cat_side — a new architecture) → run the full 30D sweep on the new defaults
+(each sym_side baselined on its previous best, using the template's worst_first order) → verify 365D, then
+backtest_v12_engine if time → apply pos-30D-gain AND pos-365D winners to live per_sym before open →
+recompute avg_delta (ADD pos_sym, REPLACE avg) and roll to the next day. Selective test frequency by pos_sym
+(0→1/10, 1→1/5, 2→1/3, 3→½, >3→every) via a v15_pilot change, NOT row deletion (nothing is ever deleted).
+JIT NPZ regen per symbol (N+1 while computing N); daily symbol-universe scan (add new, drop untraded).
+Compute priority everywhere: pending 30D first, then 365D, then live-faithful rerun. s5 is a temporary
+hybrid (all NPZ). INVARIANTS: NO-LIES real deltas only; defaults change only via promotion; rows move whole;
+per-cat_side default sync across all 3 configs + template. See the plan doc for the OPEN QUESTIONS that must
+be resolved before implementation — do not build past Stage 0 until they are answered.
+
+---
+
+*End of bible — if a procedure above conflicts with older text, this wins. §14–§57 are the 2026-09-29 operator-corrected additions; §56 is the operator's verbatim fill spec and is the highest authority on how `TEMPLATE_*.xlsx` is filled; §57 + DAILY_OPTIMIZATION_PLAN.md define the daily self-optimization loop.*

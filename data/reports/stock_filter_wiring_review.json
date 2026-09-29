@@ -1,0 +1,764 @@
+{
+ "generated": "2026-09-29T17:19:02Z",
+ "basis": "census data/reports/filter_wiring_census.json (320e5dcd cut) x unexercised_stock_filters.json (5 bases/side @180d)",
+ "summary": {
+  "unexercised_stock_filters": 107,
+  "already_stock_wired": 42,
+  "port_candidates_crypto_wired_stock_unwired": 52,
+  "vec_only_neither_live": 5,
+  "no_census": 7,
+  "verdicts": {
+   "APPLICABLE": 41,
+   "NOT_APPLICABLE": 6,
+   "NEEDS_DATA": 5
+  }
+ },
+ "NOTE": "Verdicts are census-wiring + name-semantic (NOT per-filter code trace). Each APPLICABLE filter's exact crypto application site (ez_manage) must be read before wiring. NO filter dropped. tradier_manage.py is LOCKED \u2014 no edits made; wiring is a staged plan pending unlock. Wiring must add all 3 (config_tradier field default-OFF + QuickConfig/apply_tradier_defaults + tradier_manage read+apply) together to avoid stub-farm no-ops.",
+ "port_candidates": [
+  {
+   "filter": "ADX_RANGING_THRESHOLD",
+   "census_class": "BOTH_WIRED",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": true,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "BANDAID_OFF_LOSER_RECOVER_PCT",
+   "census_class": "BOTH_WIRED",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": true,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "BREAKEVEN_GAIN_EROSION_FILTER_TF",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "yellow"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "BTC_ACCEL_RAMP_REQUIRE_POSITIVE",
+   "census_class": "BOTH_WIRED",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": true,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "NOT_APPLICABLE",
+   "reason": "crypto/futures-specific (BTC lead, open-interest, funding, or perp) \u2014 no stock analogue"
+  },
+  {
+   "filter": "BTC_HARD_BLOCK_OTHER_ACCOUNTS",
+   "census_class": "BOTH_WIRED",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": true,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "NOT_APPLICABLE",
+   "reason": "crypto/futures-specific (BTC lead, open-interest, funding, or perp) \u2014 no stock analogue"
+  },
+  {
+   "filter": "BTC_ROUND_BANDS_EACH_SIDE",
+   "census_class": "BOTH_WIRED",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": true,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "NOT_APPLICABLE",
+   "reason": "crypto/futures-specific (BTC lead, open-interest, funding, or perp) \u2014 no stock analogue"
+  },
+  {
+   "filter": "CIRCUIT_SHARPE_GATES_FILTER_TF",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "yellow"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "COOLDOWN_LOCKS_FILTER_TF",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "CRYPTO_SPIKE_FADE_THRESHOLD_PCT",
+   "census_class": "BOTH_WIRED",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": true,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "NOT_APPLICABLE",
+   "reason": "crypto/futures-specific (BTC lead, open-interest, funding, or perp) \u2014 no stock analogue"
+  },
+  {
+   "filter": "DC_BREACH_REDUCE_FILTER_TF",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "DC_MOMENT_STRONG_THRESHOLD",
+   "census_class": "BOTH_WIRED",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": true,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "DELTA_ENGINE_FILTER_TF",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "NEEDS_DATA",
+   "reason": "order-flow/price 'delta' input \u2014 verify the stock indicator source before wiring"
+  },
+  {
+   "filter": "DELTA_HTF_GATE",
+   "census_class": "BOTH_WIRED",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": true,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "NEEDS_DATA",
+   "reason": "order-flow/price 'delta' input \u2014 verify the stock indicator source before wiring"
+  },
+  {
+   "filter": "DELTA_REENTRY_FILTER_ENABLED",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "NEEDS_DATA",
+   "reason": "order-flow/price 'delta' input \u2014 verify the stock indicator source before wiring"
+  },
+  {
+   "filter": "EZ_MANAGE_THROTTLER_RATE",
+   "census_class": "BOTH_WIRED",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": true,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "NOT_APPLICABLE",
+   "reason": "ez_manage infra knob (crypto engine internal), not a strategy filter for stocks"
+  },
+  {
+   "filter": "FIRST_OPEN_THROTTLE_FILTER_TF",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "GOLDEN_RULE_BASE_USD",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "GOLDEN_RULE_ENFORCE_FILTER_TF",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "GOLDEN_RULE_HTF_VOTE_FILTER_TF",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "yellow"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "GR_FILTER_ALL_ENTRIES",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "GR_FILTER_VEC_ENABLED",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "GR_FILTER_VEC_FILTER_TF",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "yellow"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "GR_FILTER_VEC_MIN_TFS",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "GR_V5_STATE_FILTER_TF",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "yellow"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "HAIKU_WINNER_FILTER_TF",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "HA_WICK_QUALITY_ENABLED",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "HA_WICK_QUALITY_SCORE",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "HA_WICK_QUALITY_TF",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "HLR_SMA_BAND_PCT",
+   "census_class": "BOTH_WIRED",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": true,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "HLR_TOP_MIN_TFS",
+   "census_class": "BOTH_WIRED",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": true,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "HTF4_CONF",
+   "census_class": "BOTH_WIRED",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": true,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "HTF_DIRECTION_GATE_ENABLED",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "HTF_GATE_BYPASS_RZ",
+   "census_class": "BOTH_WIRED",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": true,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "HTF_GATE_D_MANDATORY",
+   "census_class": "BOTH_WIRED",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": true,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "HTF_GATE_MIN_CONFIRMATIONS",
+   "census_class": "BOTH_WIRED",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": true,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "HTF_TREND_VETO_BYPASS_ENABLED",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "HTF_TREND_VETO_BYPASS_REASONS",
+   "census_class": "BOTH_WIRED",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": true,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "LEADERBOARD_FILTER",
+   "census_class": "BOTH_WIRED",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": true,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "NEEDS_DATA",
+   "reason": "cross-symbol universe ranking \u2014 needs a stock-universe leaderboard/mover feed to exist"
+  },
+  {
+   "filter": "MOVER_THRESHOLD",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "NEEDS_DATA",
+   "reason": "cross-symbol universe ranking \u2014 needs a stock-universe leaderboard/mover feed to exist"
+  },
+  {
+   "filter": "MTF_ARMED_ENTRIES_FILTER_TF",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "MTF_FILTER_STRONG_BUY_QUICK_BYPASS",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "MTF_GR_MIN_IND",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "MTS_BOTTOM_BONUS_THRESHOLD",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "MTS_BOTTOM_STRONG_THRESHOLD",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "NEW_POSITION_MAX_LOSS_THRESHOLD",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "OI_CONFIRM_MIN_CHANGE_PCT",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "NOT_APPLICABLE",
+   "reason": "crypto/futures-specific (BTC lead, open-interest, funding, or perp) \u2014 no stock analogue"
+  },
+  {
+   "filter": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF",
+   "census_class": "LIVE_ONLY",
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "in_quickconfig": true,
+   "vec_read": false,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "WT_15M_BOUNCE_BB_MAX",
+   "census_class": "BOTH_WIRED",
+   "colors": [
+    "orange",
+    "yellow"
+   ],
+   "in_quickconfig": true,
+   "vec_read": true,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  },
+  {
+   "filter": "WT_15M_BOUNCE_BB_MIN",
+   "census_class": "BOTH_WIRED",
+   "colors": [
+    "yellow"
+   ],
+   "in_quickconfig": true,
+   "vec_read": true,
+   "crypto_live": true,
+   "stock_live": false,
+   "verdict": "APPLICABLE",
+   "reason": "venue-agnostic (price/indicator/position-management logic maps to stocks)"
+  }
+ ],
+ "vec_only_neither_live": [
+  "EMA_9_21_FILTER_FILTER_TF",
+  "EMA_9_21_FILTER_MIN_TFS",
+  "LH_HL_FILTER_MODE",
+  "LH_HL_FILTER_REQUIRE_BOTH",
+  "LH_HL_FILTER_TF_REQ"
+ ],
+ "no_census": [
+  "ATR_TRAIL_FILTER_TF",
+  "BTC_DEDICATED_FILTER_TF",
+  "CANDLE_PATTERN_STOPS_FILTER_TF",
+  "E2E_REPLAY_VALIDATOR_FILTER_TF",
+  "EXHAUSTION_EXIT_FILTER_TF",
+  "KILLER_KNOB_FINDER_FILTER_TF",
+  "STDEV_SLOPE_SIZING"
+ ],
+ "already_stock_wired": [
+  "BAND_ARROW_ENABLED",
+  "EMERGENCY_BRAKE_FILTER_TF",
+  "EXECUTE_NOW_SINGLE_GATE_ENFORCE",
+  "EXIT_R1_R2_FILTER_TF",
+  "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF",
+  "EXIT_TOP_FADE_FILTER_TF",
+  "EXIT_TO_REDUCE_ADAPTER_FILTER_TF",
+  "FG_FEAR_THRESHOLD",
+  "FG_GREED_THRESHOLD",
+  "FH_MOMENTUM_FILTER_TF",
+  "FROZEN_STOP_FILTER_TF",
+  "FUNDING_GATE_FILTER_TF",
+  "FUNDING_GATE_LONG_MAX",
+  "FUNDING_GATE_MTF_REQUIRED",
+  "FUNDING_GATE_SHORT_MIN",
+  "LH_HL_FILTER_ENABLED",
+  "LIVE_ENTRY_ENGINE_FILTER_TF",
+  "LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF",
+  "LIVE_VEC_EMERGENCY_BRAKE_ENABLED",
+  "LR_BAND_LADDER_STOCH_EXTREME",
+  "LR_BAND_LADDER_TF_BOTTOM",
+  "LR_BAND_LADDER_TF_TOP",
+  "MANDATORY_REENTRY_WT_FILTER_MIN_TFS",
+  "MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY",
+  "MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP",
+  "MANDATORY_REENTRY_WT_FILTER_TF_MODE",
+  "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO",
+  "MARKET_QUALITY_SCORE_ENABLED",
+  "MI_TF_AGREE_MIN",
+  "MTF_ATR_TRAIL_FILTER_TF",
+  "MTF_DC_REJECT_FILTER_TF",
+  "MTS_GATE_ENABLED",
+  "NEWBORN_LOSS_KILL_FILTER_TF",
+  "NEWBORN_PROTECT_FILTER_TF",
+  "NOLOSS_BYPASS_WT5OF5_FILTER_TF",
+  "OI_CONFIRM_ENABLED",
+  "OI_CONFIRM_MIN_PRICE_PCT",
+  "OPEN_INTENT_SIZE_GATES_FILTER_TF",
+  "PARTIAL_PROFIT_LOCK_V2_FILTER_TF",
+  "WT_15M_BOUNCE_HIGH_1H_GT_PREV",
+  "WT_15M_BOUNCE_LOW_1H_GT_PREV",
+  "WT_15M_BOUNCE_REL_VOL_GT_1"
+ ]
+}

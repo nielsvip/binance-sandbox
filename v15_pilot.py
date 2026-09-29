@@ -2038,6 +2038,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps_ff
             _fresh_final = _eps_ff(prepared, dict(cumulative_overrides), args.window_days) if prepared is not None else {}
             _fresh_g = _fresh_final.get("gain_pct")
+            if progress.get("baseline_below_floor"):
+                # sub-floor baseline swept anyway: finished only if the FINAL set is valid with >= floor trades
+                if _fresh_final.get("valid") and int(_fresh_final.get("trades") or 0) >= 10:
+                    progress.pop("diagnostic_only", None)
+                    print(f"[FLOOR-LIFTED] {new_symside} final set valid with {_fresh_final.get('trades')} trades", flush=True)
+                else:
+                    progress["diagnostic_only"] = f"trades={int(_fresh_final.get('trades') or 0)} floor=10 (final)"
             if _fresh_g is not None:
                 progress["final_gain_fresh_vec"] = float(_fresh_g)
                 if abs(float(_fresh_g) - final_gain) > 1e-6:
@@ -3581,6 +3588,12 @@ def main():
                     print(f"[baseline-fix] ABORT-RESCUE pure defaults {baseline_gain:.4f} bh {bh:.4f} — retrying instead of lying", flush=True)
                     # don't abort, continue with rescued value
                     _fixed = True
+                elif prepared is not None and int(baseline_vec.get("trades") or 0) == 0 and os.environ.get("V15_SKIP_BELOW_FLOOR", "0") != "1":
+                    # USER 2026-09-29: NPZ loaded fine and the engine returned 0 trades -> a real entry veto, not a lie;
+                    # 0.00 IS the true baseline — the below-floor path names the vetoing gate and sweeps for a way out
+                    print(f"[baseline-fix] {new_symside} genuine 0-trade baseline (NPZ ok, entries vetoed) — 0.00 kept, blocker scan + sweep follow", flush=True)
+                    _genuine_zero_baseline = True
+                    _fixed = True
                 else:
                     print(f"[baseline-fix] ABORT {new_symside} baseline still 0.00 — exiting to let herd retry with fresh NPZ", flush=True)
                     raise SystemExit(2)
@@ -3775,6 +3788,7 @@ def main():
     # SELF-MONITOR thread: continuously watch E3 baseline (E2 is header 'BASELINE' preserved per spec), abort & fix if empty/0
     try:
         import threading as _th_mon, time as _t_mon
+        _genuine_zero_baseline = bool(locals().get("_genuine_zero_baseline", False))
         def _baseline_self_monitor():
             _fails = 0
             while True:
@@ -3786,7 +3800,7 @@ def main():
                     _e3m = _ws_m.cell(row=3, column=5).value if _ws_m else None
                     _e2m_hdr = _ws_m.cell(row=2, column=5).value if _ws_m else None
                     _is_empty = _e3m is None or (isinstance(_e3m, str) and _e3m.strip() == "")
-                    _is_zero = isinstance(_e3m, (int,float)) and abs(float(_e3m)) < 1e-9
+                    _is_zero = isinstance(_e3m, (int,float)) and abs(float(_e3m)) < 1e-9 and not _genuine_zero_baseline  # a genuine 0-trade baseline IS 0.00
                     _hdr_corrupt = isinstance(_e2m_hdr, (int,float))
                     if _is_empty or _is_zero or _hdr_corrupt:
                         _fails += 1
@@ -3821,6 +3835,10 @@ def main():
         _th_mon.Thread(target=_baseline_self_monitor, daemon=True).start()
     except: pass
     # If 0-trades early, diagnostic was deferred until after baseline XLS persisted — write it and skip sweep
+    if locals().get("_zero_trades_early") and prepared is not None and os.environ.get("V15_SKIP_BELOW_FLOOR", "0") != "1":
+        # USER 2026-09-29 "0 trades is impossible": NPZ loaded fine -> an entry gate vetoes everything; the below-floor path names it ([FLOOR-BLOCKERS]) and sweeps
+        print(f"[0-TRADES] {new_symside} NPZ loaded but 0 trades — not a data error; blocker scan + sweep follow", flush=True)
+        _zero_trades_early = False
     if locals().get("_zero_trades_early"):
         try:
             diag_path = PROGRESS_DIR / f"{new_symside}_{args.window_days}d_progress.json"
@@ -3936,7 +3954,9 @@ def main():
     try:
         import socket as _sock
         _host = _sock.gethostname().lower()
-        if any(x in _host for x in ["s3", "s5", "htz-v15-s3", "htz-v15-s5"]) or "10.0.0.5" in str(progress_path) or "10.0.0.6" in str(progress_path):
+        # 2026-09-29: FRESH/isolated runs must never adopt the host's herd/mega progress (35 s5 iso runs inherited mega chains -> E2 != chain start)
+        _isolated = os.environ.get("V15_FRESH_RUN", "0") == "1" or bool(os.environ.get("V15_PROGRESS_DIR"))
+        if not _isolated and (any(x in _host for x in ["s3", "s5", "htz-v15-s3", "htz-v15-s5"]) or "10.0.0.5" in str(progress_path) or "10.0.0.6" in str(progress_path)):
             # try to fetch S1's progress as source of truth for shuffles/stdev
             _s1_progress = Path("/home/niels/binance-sandbox/data/reports/lifecycle_pilot") / progress_path.name
             if _s1_progress.exists() and _s1_progress != progress_path:
@@ -4129,10 +4149,31 @@ def main():
         print(f"[BASELINE-RECALC-WARN] {_e_baseline} — using original baseline {baseline_gain:.4f}%", flush=True)
 
     if below_floor:
-        progress["diagnostic_only"] = f"trades={baseline_trades} floor={min_trades}"
+        progress["baseline_below_floor"] = f"trades={baseline_trades} floor={min_trades}"
+        # USER 2026-09-29: "0 trades is impossible" — name the gates that veto every entry, then SWEEP anyway
+        # (promotion still requires a valid >=floor-trade candidate, so a sweep can only lift the side out of the floor)
+        _blockers = []
+        for _bk, _bv in defaults.items():
+            if not isinstance(_bv, bool) or _bk == "SIMPLE_PRICE_GT0_ENABLED":  # SIMPLE_PRICE_GT0 = always-trade test switch, not a real unblock
+                continue
+            _cur = cumulative_overrides.get(_bk, _bv)
+            if not isinstance(_cur, bool):
+                continue
+            try:
+                _br = evaluate_prepared_sanitized(prepared, {**cumulative_overrides, _bk: not _cur}, args.window_days) or {}
+            except Exception:
+                continue
+            if int(_br.get("trades") or 0) >= min_trades:
+                _blockers.append({"switch": _bk, "flip_to": not _cur, "trades": _br.get("trades"), "gain_pct": _br.get("gain_pct"), "valid": _br.get("valid")})
+        progress["floor_blockers"] = _blockers
         _atomic_write_json(progress_path, progress)
-        print(f"[SAMPLE-FLOOR-VIOLATION] {new_symside} XLS {wb_path.name} written, sweep skipped", flush=True)
-        return
+        print(f"[FLOOR-BLOCKERS] {new_symside} baseline {baseline_trades} trades; single flips that restore >={min_trades} trades: {[(b['switch'], b['flip_to'], b['trades']) for b in _blockers][:12]}", flush=True)
+        if os.environ.get("V15_SKIP_BELOW_FLOOR", "0") == "1":
+            progress["diagnostic_only"] = progress["baseline_below_floor"]
+            _atomic_write_json(progress_path, progress)
+            print(f"[SAMPLE-FLOOR-VIOLATION] {new_symside} XLS {wb_path.name} written, sweep skipped (V15_SKIP_BELOW_FLOOR=1)", flush=True)
+            return
+        print(f"[SAMPLE-FLOOR-VIOLATION] {new_symside} below floor — sweeping anyway, only valid >={min_trades}-trade candidates can promote", flush=True)
     # Baseline now correct with previous best overrides; now fill entire workbook per spec:
     #   VECTOR_DELTA = sum pos yellows; POS-> stay same tab next row + baseline, NEG/None/0-> move to first pending row in next tab
     #   STDEV_SLOPE_SIZING skipped (12 tabs), every row gets pos/neg delta, LIVE columns BLANK until complete, 10s RED stall guard

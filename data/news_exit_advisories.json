@@ -1,94 +1,102 @@
 {
-  "generated_at": "2026-09-29T16:33:14.712866+00:00",
-  "count": 11,
+  "generated_at": "2026-09-29T17:50:49.405675+00:00",
+  "count": 12,
   "advisories": [
     {
-      "symbol": "ABBV",
+      "symbol": "DAR",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.61 threshold=0.45",
-      "score": 0.612,
-      "ts": "2026-09-29T16:33:14.712784+00:00"
+      "reason": "bullish_news_score=0.97 threshold=0.45",
+      "score": 0.965,
+      "ts": "2026-09-29T17:50:49.405548+00:00"
     },
     {
-      "symbol": "APA",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.76 threshold=0.45",
-      "score": 0.761,
-      "ts": "2026-09-29T16:33:14.712795+00:00"
-    },
-    {
-      "symbol": "AXTI",
+      "symbol": "DE",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.50 threshold=0.45",
-      "score": 0.503,
-      "ts": "2026-09-29T16:33:14.712797+00:00"
+      "score": 0.496,
+      "ts": "2026-09-29T17:50:49.405563+00:00"
     },
     {
-      "symbol": "BG",
+      "symbol": "DINO",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.50 threshold=0.45",
-      "score": 0.502,
-      "ts": "2026-09-29T16:33:14.712799+00:00"
+      "score": 0.497,
+      "ts": "2026-09-29T17:50:49.405568+00:00"
     },
     {
-      "symbol": "BKR",
+      "symbol": "DUOL",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.77 threshold=0.45",
+      "score": 0.767,
+      "ts": "2026-09-29T17:50:49.405572+00:00"
+    },
+    {
+      "symbol": "EQT",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.49 threshold=0.45",
-      "score": 0.488,
-      "ts": "2026-09-29T16:33:14.712801+00:00"
+      "score": 0.49,
+      "ts": "2026-09-29T17:50:49.405576+00:00"
     },
     {
-      "symbol": "CIEN",
+      "symbol": "FIX",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.57 threshold=0.45",
-      "score": 0.573,
-      "ts": "2026-09-29T16:33:14.712803+00:00"
+      "reason": "bullish_news_score=0.62 threshold=0.45",
+      "score": 0.616,
+      "ts": "2026-09-29T17:50:49.405580+00:00"
     },
     {
-      "symbol": "CLS",
+      "symbol": "GE",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.51 threshold=0.45",
-      "score": 0.51,
-      "ts": "2026-09-29T16:33:14.712805+00:00"
+      "reason": "bullish_news_score=0.53 threshold=0.45",
+      "score": 0.526,
+      "ts": "2026-09-29T17:50:49.405584+00:00"
     },
     {
-      "symbol": "COP",
+      "symbol": "GILD",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.70 threshold=0.45",
-      "score": 0.695,
-      "ts": "2026-09-29T16:33:14.712811+00:00"
+      "reason": "bullish_news_score=0.56 threshold=0.45",
+      "score": 0.559,
+      "ts": "2026-09-29T17:50:49.405587+00:00"
     },
     {
-      "symbol": "COST",
+      "symbol": "INOD",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.60 threshold=0.45",
-      "score": 0.596,
-      "ts": "2026-09-29T16:33:14.712813+00:00"
+      "reason": "bullish_news_score=0.56 threshold=0.45",
+      "score": 0.561,
+      "ts": "2026-09-29T17:50:49.405593+00:00"
     },
     {
-      "symbol": "CRK",
+      "symbol": "LMT",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.48 threshold=0.45",
-      "score": 0.476,
-      "ts": "2026-09-29T16:33:14.712814+00:00"
+      "reason": "bullish_news_score=0.52 threshold=0.45",
+      "score": 0.524,
+      "ts": "2026-09-29T17:50:49.405598+00:00"
     },
     {
-      "symbol": "CRWD",
+      "symbol": "LNG",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.57 threshold=0.45",
-      "score": 0.565,
-      "ts": "2026-09-29T16:33:14.712816+00:00"
+      "reason": "bullish_news_score=0.52 threshold=0.45",
+      "score": 0.523,
+      "ts": "2026-09-29T17:50:49.405601+00:00"
+    },
+    {
+      "symbol": "MA",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.54 threshold=0.45",
+      "score": 0.536,
+      "ts": "2026-09-29T17:50:49.405605+00:00"
     }
   ]
 }
