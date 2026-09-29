@@ -131,6 +131,11 @@ def _choose_tradier_resample_source(
     """
     d15 = dfs.get("15m")
     d5 = dfs.get("5m")
+    # 2026-09-29 USER: 5m calcs are eliminated from the NPZ (15m-base standard, 5m re-added later).
+    # FORCE_TRADIER_15M_BASE=1 forces native-15m base whenever 15m is present, so a longer legacy 5m
+    # history can no longer flip the NPZ to 5m-base. Opt-in (default keeps prior behavior for other agents).
+    if d15 is not None and os.environ.get("FORCE_TRADIER_15M_BASE") == "1":
+        return "15m", d15
     if d15 is None:
         if d5 is None:
             raise ValueError("Tradier resampling requires 15m or 5m data")

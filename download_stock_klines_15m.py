@@ -33,7 +33,12 @@ def _token():
 BASE_URL = "https://api.massive.com"
 HEADERS = {"Authorization": f"Bearer {_token()}"}
 INTERVAL = "15"
-if platform.system() == "Darwin":
+# STOCK_KLINES_DIR overrides the output dir — use klines_cache_macbook/tradier (a full-history stage dir
+# precompute UNIONS, longest-file-wins) so 365d+ history is added WITHOUT polluting the symlinked rolling
+# klines_cache_backtest (which on servers is a symlink to the ~6-week live cache).
+if os.environ.get("STOCK_KLINES_DIR"):
+    CACHE_DIR = Path(os.environ["STOCK_KLINES_DIR"])
+elif platform.system() == "Darwin":
     CACHE_DIR = Path("/Users/niels/Documents/binance/klines_cache_backtest/tradier")
 else:
     CACHE_DIR = Path("/home/niels/binance-sandbox/klines_cache_backtest/tradier")
