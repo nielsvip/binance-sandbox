@@ -3621,7 +3621,11 @@ def main():
         # Previous-best that holds ~forever (1-7 trades) makes every delta meaningless: fall back to TEMPLATE defaults
         # (which carry the trade-generating exits) when they clear the 10-trade floor. Real eval, logged, never mixed.
         _adapt_report = None
-        if prepared is not None and os.environ.get("V15_ADAPT_BASELINE", "1") == "1" and (int(baseline_vec.get("trades") or 0) < ADAPT_FLOOR_TRADES or not baseline_vec.get("valid") or float(baseline_vec.get("gain_pct") or 0) < ADAPT_ULTRA_NEG_PCT):
+        # USER 2026-09-29: a sheet must start from the BEST previous settings — in FRESH mode always compare live recipe /
+        # previous best / template defaults on the CURRENT engine and start from the best credible one (not only when the
+        # recipe fails). A V15_START_OVERRIDES (365D-repaired) run keeps its set unless it is not credible.
+        _always_best_base = os.environ.get("V15_FRESH_RUN", "0") == "1" and not os.environ.get("V15_START_OVERRIDES")
+        if prepared is not None and os.environ.get("V15_ADAPT_BASELINE", "1") == "1" and (_always_best_base or int(baseline_vec.get("trades") or 0) < ADAPT_FLOOR_TRADES or not baseline_vec.get("valid") or float(baseline_vec.get("gain_pct") or 0) < ADAPT_ULTRA_NEG_PCT):
             # USER 2026-09-29: never sweep from a 0-trade / sub-floor / ultra-negative baseline — adapt to a credible one first
             _bases = [("live_recipe", dict(_recipe_only_overrides)), ("template_defaults", {}), ("current", dict(overrides))]
             if _ingested_overrides and _ingested_overrides != _recipe_only_overrides:

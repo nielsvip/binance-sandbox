@@ -23990,6 +23990,28 @@ class TradierTradeManager:
             max_pos = self.limit_exception_total_pos if is_exception else self.limit_total_pos
             try:
                 _hard_cap_q = float(_cfg_auto('HARD_MAX_SYMBOL_VALUE_TRADIER', 2500.0) or 2500.0)
+                # 2026-09-30 EXCEPTION REENTRY: allow 10k for REENTRY only, capped to previous size never higher
+                _is_exc_reentry_q = (
+                    str(symbol).upper() in getattr(config, 'EXCEPTIONS', [])
+                    and (
+                        str(action or '').upper() in ('REENTRY', 'REENTER')
+                        or 'REENTRY' in str(reason or '').upper()
+                        or 'REENTER' in str(reason or '').upper()
+                    )
+                )
+                if _is_exc_reentry_q:
+                    try:
+                        _prev_qty_q = 0.0
+                        _pos_q = self.trade_manager.position_manager.positions.get(f"{account_key}:{symbol.upper()}_{position_side}") if self.trade_manager and self.trade_manager.position_manager else None
+                        if _pos_q is not None:
+                            _prev_qty_q = float(getattr(_pos_q, 'max_quantity', 0) or 0)
+                            if _prev_qty_q <= 0:
+                                _prev_qty_q = float(getattr(_pos_q, 'last_reduction_amount', 0) or 0)
+                        if _prev_qty_q > 0:
+                            _exc_max_q = float(getattr(config, 'EXCEPTION_REENTRY_MAX_USD', 10000.0) or 10000.0)
+                            _hard_cap_q = min(_exc_max_q, float(_prev_qty_q) * float(last or 1))
+                    except Exception:
+                        pass
                 if _hard_cap_q > 0:
                     max_order = min(float(max_order), _hard_cap_q)
                     max_pos = min(float(max_pos), _hard_cap_q)
@@ -24645,6 +24667,34 @@ class TradierTradeManager:
             ) or 0.0)
             _hard_global_cap = float(_cfg_auto('HARD_MAX_SYMBOL_VALUE_TRADIER', 2500.0) or 0.0)
             _hard_cap = max(0.0, min(_hard_account_cap, _hard_global_cap))
+            # 2026-09-30 EXCEPTION REENTRY: EXCEPTIONS may reenter up to $10k but ONLY as reentry same size never higher than previous
+            try:
+                _is_exception_reentry = (
+                    str(symbol).upper() in getattr(config, 'EXCEPTIONS', [])
+                    and (
+                        str(action or '').upper() in ('REENTRY', 'REENTER')
+                        or 'REENTRY' in str(reason or '').upper()
+                        or 'REENTER' in str(reason or '').upper()
+                    )
+                )
+                if _is_exception_reentry:
+                    _prev_qty = 0.0
+                    _hard_pos_for_prev = self.position_manager.positions.get(position_key) if self.position_manager else None
+                    if _hard_pos_for_prev is not None:
+                        _prev_qty = float(getattr(_hard_pos_for_prev, 'max_quantity', 0) or 0)
+                        if _prev_qty <= 0:
+                            _prev_qty = float(getattr(_hard_pos_for_prev, 'last_reduction_amount', 0) or 0)
+                        if _prev_qty <= 0:
+                            _prev_qty = float(getattr(_hard_pos_for_prev, 'max_positionSize', 0) or 0) / max(1.0, float(current_price or 1))
+                    if _prev_qty > 0:
+                        _exc_max = float(getattr(config, 'EXCEPTION_REENTRY_MAX_USD', 10000.0) or 10000.0)
+                        _prev_notional = float(_prev_qty) * float(current_price or 0)
+                        _exc_cap = min(_exc_max, _prev_notional)
+                        if _exc_cap > _hard_cap:
+                            logger.warning(f"[EXCEPTION_REENTRY_CAP] {position_key}: REENTRY {symbol} prev_qty={_prev_qty:.2f} prev_notional=${_prev_notional:.0f} cap ${ _hard_cap:.0f}→${_exc_cap:.0f} (max 10k, same size never higher)")
+                            _hard_cap = _exc_cap
+            except Exception as _exc_e:
+                logger.debug(f"[EXCEPTION_REENTRY_CAP] skip: {_exc_e}")
             _hard_pos = self.position_manager.positions.get(position_key) if self.position_manager else None
             _hard_existing_qty = abs(float(getattr(_hard_pos, "positionAmt", 0) or 0))
             _hard_broker_qty = 0.0
@@ -24692,14 +24742,65 @@ class TradierTradeManager:
         # FAIL-CLOSED: if broker has not yet confirmed a recent order, assume it
         # WAS executed. Otherwise a second OPEN would bypass the AUGMENT gain
         # and hard-cap checks (MSFT $17k: 4× OPENs where 2-4 must have been
-        # AUGMENTs). Pending dedup => treat as if position exists.
+        # AUGMENTs). Pending dedup => treat as if position exists, BUT an OPEN
+        # after an unconfirmed order must be ignored until broker confirms the
+        # previous order's neg status and deletion from its books (user 2026-09-30).
+        # So we check broker open orders: if still open/pending → block; if deleted
+        # and position still flat → previous was neg, allow next OPEN.
         try:
             if not has_local_pos and position_key in getattr(self, 'order_deduplication', {}):
                 _dd = self.order_deduplication.get(position_key)
                 _t = float(_dd.get('time', 0) if isinstance(_dd, dict) else float(_dd or 0))
                 if _t > 0 and (time.time() - _t) < 300:
-                    has_local_pos = True
-                    logger.critical(f"[FAIL_CLOSED_PENDING_OPEN] {position_key}: has_local_pos False but pending order {(time.time() - _t):.0f}s ago — assuming WAS executed, treating as AUGMENT (MSFT fix)")
+                    _pending_has_open = True  # fail-closed default until broker confirms deletion
+                    _pending_broker_qty = 0.0
+                    try:
+                        # Check broker open orders for this symbol/side (exchange books)
+                        _tmp_client = None
+                        try:
+                            _tmp_client = TradierAPIClient(config, account_key=account_key)
+                            await _tmp_client.connect()
+                            _tmp_orders = await _tmp_client.get_orders(account_key)
+                            _has_open_for_sym = False
+                            for _o in (_tmp_orders or []):
+                                if str(_o.get('symbol', '')).upper() == symbol.upper() and str(_o.get('side', '')).lower() == side.lower() and str(_o.get('status', '')).lower() in ('open', 'pending', 'open-pending', 'pending submission', 'open - pending', 'submitted', 'pending', 'open'):
+                                    _has_open_for_sym = True
+                                    break
+                            _pending_has_open = _has_open_for_sym
+                            await _tmp_client.close()
+                        except Exception:
+                            try:
+                                if _tmp_client:
+                                    await _tmp_client.close()
+                            except Exception:
+                                pass
+                            _pending_has_open = True
+                        # Also check broker positions (books) — if position now exists, previous filled
+                        try:
+                            _snap_p = (getattr(self, "_broker_preflight_cache", {}) or {}).get(account_key, {})
+                            for _bp in (_snap_p.get("positions") or []):
+                                if str(_bp.get("symbol", "")).upper() == symbol.upper():
+                                    _bq = float(_bp.get("quantity", 0) or 0)
+                                    if (position_side == "LONG" and _bq > 0) or (position_side == "SHORT" and _bq < 0):
+                                        _pending_broker_qty = abs(_bq)
+                                        break
+                        except Exception:
+                            pass
+                    except Exception:
+                        _pending_has_open = True
+                    _pos_amt = abs(float(getattr(position, 'positionAmt', 0) or 0)) if position else 0.0
+                    if _pending_has_open:
+                        has_local_pos = True
+                        logger.critical(f"[FAIL_CLOSED_PENDING_OPEN] {position_key}: pending {(time.time() - _t):.0f}s ago and broker still has open/pending order (or check failed) — assuming WAS executed, duplicate OPEN will be blocked (fail-closed, awaiting broker deletion)")
+                    elif _pending_broker_qty > 0 or _pos_amt > 0:
+                        has_local_pos = True
+                        logger.critical(f"[FAIL_CLOSED_PENDING_OPEN] {position_key}: pending {(time.time() - _t):.0f}s ago, no broker open order but position exists qty={_pos_amt:.4f} broker_qty={_pending_broker_qty:.4f} — assuming WAS executed (filled), duplicate OPEN blocked")
+                    else:
+                        logger.info(f"[PENDING_NEG_CONFIRMED] {position_key}: pending {(time.time() - _t):.0f}s ago but broker has no open order and position still flat (broker_qty={_pending_broker_qty:.4f}) — previous order neg & deleted confirmed, allowing next OPEN")
+                        try:
+                            self.order_deduplication.pop(position_key, None)
+                        except Exception:
+                            pass
         except Exception:
             pass
 
@@ -24721,20 +24822,12 @@ class TradierTradeManager:
             logger.info(f"[{position_key}] Switching AUGMENT to OPEN (No local position found)")
             action = "OPEN"
             is_entry_action = True
-        # REVERSE: second OPEN while pending must become AUGMENT, never a new OPEN
-        # (MSFT bug: 4× OPENs). If has_local_pos is True but original_position_amt
-        # is still 0 due to stale sync, force the second OPEN into AUGMENT path so
-        # gain/hard-cap gates apply.
-        if action == "OPEN" and has_local_pos and abs(float(original_position_amt or 0)) < 0.0001:
-            try:
-                _dd2 = getattr(self, 'order_deduplication', {}).get(position_key) if hasattr(self, 'order_deduplication') else None
-                _t2 = float(_dd2.get('time', 0) if isinstance(_dd2, dict) else 0) if _dd2 else 0
-                if _t2 > 0 and (time.time() - _t2) < 300:
-                    logger.critical(f"[FAIL_CLOSED_OPEN_TO_AUGMENT] {position_key}: OPEN while pending {(time.time() - _t2):.0f}s ago — forcing AUGMENT (MSFT fix)")
-                    action = "AUGMENT"
-                    is_entry_action = False
-            except Exception:
-                pass
+        # 2026-09-30 USER FIX: OPEN must NEVER become AUGMENT. An OPEN on >0 position is simply ignored.
+        # Second OPEN while pending/flat-stale previously became AUGMENT (MSFT fix), but per user mandate an OPEN on existing must be blocked, not renamed.
+        if action == "OPEN" and has_local_pos:
+            _pos_amt = abs(float(getattr(position, 'positionAmt', 0))) if position else 0.0
+            logger.critical(f"[BLOCKED_OPEN_ON_EXISTING] {position_key}: OPEN refused — position already exists amt={_pos_amt:.6f} (original_amt={float(original_position_amt or 0):.6f}) — ignoring duplicate OPEN, will not become AUGMENT. reason={(reason or '')[:80]}")
+            return "BLOCKED_OPEN_ON_EXISTING_POSITION"
 
         is_valid, validation_reason, actual_qty = await self.validate_position_before_trade(position_key, action, quantity)
         if not is_valid: return f"VALIDATION_FAILED:{validation_reason}"

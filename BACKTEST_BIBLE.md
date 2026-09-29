@@ -1143,6 +1143,12 @@ be resolved before implementation — do not build past Stage 0 until they are a
 
 **Proof (2026-09-29, engine fd93da9a):** SOLUSDC_LONG start 30D +7.93 (11 tr) / 365D −37.81 (7 tr, TIM 96.4, invalid) → 5 steps, all exit/reentry rows: `MTF_EXIT_USE_COMPOUND=True`, `OI_CONFIRM_MIN_CHANGE_PCT=0`, `REENTRY_ENTRY_FILTER_ENABLED=True`, `REENTRY_FILTER_MIN_PASS=2`, `MIN_HOLD_BARS_BEFORE_EXIT=32` → **30D +9.36 (37 tr, TIM 40.4) / 365D +10.45 (714 tr, TIM 69.4), both valid**. The 30D sheet is being re-run from that set.
 
+**Trade floors (USER 2026-09-29, hard):** every live sym_side must trade **≥ 10 trades per 30D AND ≥ 80 trades per 365D**. Too few trades (incl. 0) is repaired immediately — soften filters (bool FILTER/GATE/BLOCK/REQUIRE/CONFIRM/VETO/GUARD switches → False) and open entry + reentry paths (ENTRY_*/REENTRY_* rows, `*_ENABLED` entry switches → True) — never accepted. **Target ≥ 30 trades per 30D:** below that, `v15_365_repair.py` runs a BOOST phase (same candidates); a softer set is kept only if both windows stay valid + positive + floored and the worst-window gain does not drop. If no softer set keeps the results, go live with ≥ 10 trades per 30D. A 365D verdict is only real if the 365D slice covers ≥ 330 days of NPZ history — shorter = `UNVERIFIABLE` (wait for full-history NPZ), never a pass.
+
+**Book replacement (USER 2026-09-29):** a verified both-positive set REPLACES the current live per-sym book unless the book itself passes both windows on the current engine + NPZ (valid, positive, floors met) AND is ≥ the new set on 365D. Old book gains measured on a different NPZ timespan are not evidence; a book with a big 365D but a negative/invalid 30D does not reproduce and is replaced.
+
+**Start from the best previous settings (USER 2026-09-29):** a FRESH sheet always compares live recipe / previous best / template defaults on the current engine and starts from the best credible one (`v15_pilot` 77542378 `[ADAPT-BASE]`); a sheet that did not start from the best previous settings is re-run.
+
 **Do not:** discard a sym_side for a negative 365D; promote a set that is only 30D-positive; loosen the TIM/DD/floor gates to make a window "valid"; count a window as fixed while it is invalid.
 
 ---

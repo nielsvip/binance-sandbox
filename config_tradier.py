@@ -232,6 +232,7 @@ class TradierConfig:
     TRADIER_MANDATORY_SHORT_TRB = ["MSTR", "MU", "NVDA", "WDAY", "HAO", "PLTR", "TSLA", "AMZN", "AAPL", "RBLX","BMNR","COIN","HOOD","ZCSH","CRWD"]  # PLTR both sides per USER 2026-08-15 (was long only, now also short); CRWD added USER 2026-09-28 (both sides)
     NON_SHORTABLE = {"LEC", "JOBY", "COE", "FIX", "AXTI", "FCN", "ASML", "HAO", "ETHE", "TCEHY", "ALMU", "XIACF", "BITO", "GBTC", "MARA", "CLSK", "HIVE", "CAN", "BTBT", "CUBT", "ETH", "BTC", "QUBT", "GLD", "ETHD", "AGCO", "SBIT", "INOD", "BTCL", "DIME", "UCO", "PDBC", "COPX", "BLOK", "USO", "UNG", "BOIL", "WEAT", "CORN", "DBA", "GDXJ", "XME", "XOP", "OIH", "URA", "URNM", "ITA", "PPA", "MOO", "REMX", "IPI", "LSB", "UAN", "ASC", "EGLE", "GNK", "NAT", "TNK", "NNE", "DNN", "PLL", "SGML", "MAG", "BTG", "ICL", "SQM", "GOGL", "SBLK", "DAC", "FRO", "ZIM", "GOLD", "UNG"}
     EXCEPTIONS = ['GOOGL', 'MSFT', 'NVDA', 'CVX', 'XOM', 'IBIT', 'GLD', 'ETH', 'XLE', 'GDX', 'USO', 'SLV'] #4* max order size and max pos size
+    EXCEPTION_REENTRY_MAX_USD: float = 10000.0  # 2026-09-30: exceptions may reenter up to $10k but ONLY as reentry of previous position same size never higher than previous (MSFT 4×). Fresh OPEN still $2.5k.
     # === 2026-04-27 STOCKS OPTIONS-OI INJECTION (READ-ONLY) ===
     # Source: tradier_options_oi_fetcher.py → data/stocks_oi_cache/{sym}.json (P/C ratio + max-OI strikes).
     # Mirror of crypto FUNDING_OI_INJECT in ez_rankings.py:~4567. Inject extreme-P/C symbols into trb/trc winners/losers
