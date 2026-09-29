@@ -4606,6 +4606,14 @@ class Config:
     DC_DAYTRADE_TARGET_USE_DC_15M: bool = False  # 2026-09-24: use near dc_high/low_15m as target for breakout re-entry (vectorizable, get out and back in immediately if breakout)
     DC_DAYTRADE_TARGET_USE_DC4_15M: bool = False  # 2026-09-24: use near dc_high4/low4_15m as target — tighter 4-bar for breakout re-entry
     DC_DAYTRADE_TARGET_DC_BUFFER_PCT: float = 0.002  # 0.2% buffer near dc for target (when USE_DC_* True, exit when close within 0.2% of dc)
+    # 2026-09-29 GREY-SWITCH REWIRE: live twins of v12_quick_engine exits (shared predicate vec_decisions/dc_channel_exits.py,
+    # hook in ez_manage.process_position after ULTIMATE_DC). Live defaults inert = live behaviour unchanged; per_sym overlays already 'OFF'.
+    # NOTE: QuickConfig sweep baseline keeps DAYTRADE_DC_*_TF='15m,1h' (BIBLE §15) — promoting that to live is an operator decision.
+    DAYTRADE_DC_STOP_TF: str = "OFF"  # OFF | 15m | 1h | 4h | '15m,1h' (OR) — LONG px<=dc_low_TF*(1-buf), SHORT px>=dc_high_TF*(1+buf)
+    DAYTRADE_DC_STOP_BUFFER_PCT: float = 0.25
+    DAYTRADE_DC_TARGET_TF: str = "OFF"  # OFF | 15m | 1h | 4h | '15m,1h' — LONG px>=dc_high_TF*(1-buf), SHORT px<=dc_low_TF*(1+buf)
+    DAYTRADE_DC_TARGET_BUFFER_PCT: float = 0.10
+    WT_LOWER_CROSS_EXIT_TF: str = "OFF"  # OFF | 15m | 1h | 4h — LONG wt1 crosses below wt2 AND px < close_15m_prev (SHORT mirrored)
     DC_ENTRY_VETO_ENABLED_TRADIER: bool = False  # SENTINEL_FIX 2026-04-14: when True, DC_POSITION_ENTRY_THRESHOLD gates entries (require dc_pos in zone). Default False = live unchanged.  # PORTED from TradierConfig 2026-08-17
     DC_LOW_FROZEN_STOP_ENABLED: bool = False       # master switch; sweep variants set True + TF  # PORTED from TradierConfig 2026-08-17
     DC_LOW_FROZEN_STOP_FLOOR_PCT: float = -999.0  # abs loss floor; -999 = off  # PORTED from TradierConfig 2026-08-17

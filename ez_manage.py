@@ -3145,6 +3145,11 @@ except ImportError:
     _bb_pullback_gate = None
     _filter_tf_gate = None
     _tradier_matrix_gates = None
+try:
+    import vec_decisions.dc_channel_exits as _dc_channel_exits  # 2026-09-29 grey-switch rewire (shared with v12_quick_engine)
+except ImportError:
+    _dc_channel_exits = None
+from vec_decisions.process_position_stocks__alt_entries import _rz_breakout_fires  # 2026-09-29 grey rewire RZ_BREAKOUT shared predicate
 # --- FULL COVERAGE 2026-08-17: ez_ mirror of tradier_ coverage — identical params/hash so crypto vs stocks tradier_ parity is 100% identical is read at least once so switch_lab Tab 3 + vector parity can flip it ---
 # This does NOT change live trade logic (reads are dead-code gated); it makes grep-wiring and vector hash distinctness pass.
 _FULL_COVERAGE_PARAMS_EZ = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
@@ -40582,9 +40587,8 @@ async def evaluate_technical_indicator_signals(ctx: dict) -> Optional[Signal]:
         _rz_top = float(getattr(trade_manager.config, "RZ_TOP_BB_THRESHOLD", 0.85))
         _rz_bot = float(getattr(trade_manager.config, "RZ_BOT_BB_THRESHOLD", 0.15))
         _rz_band = float(getattr(trade_manager.config, "RZ_BREAKOUT_BAND", 0.05))
-        _rz_break_fire = (is_long and _rz_bot <= _rz_bb <= _rz_bot + _rz_band) or (
-            not is_long and _rz_top - _rz_band <= _rz_bb <= _rz_top
-        )
+        # 2026-09-29 grey rewire: same pure predicate as v12_quick_engine compute_entry_signals RZ twin
+        _rz_break_fire = _rz_breakout_fires(_rz_bb, is_long, _rz_top, _rz_bot, _rz_band)
         if _rz_break_fire:
             _rz_sym = ctx.get("symbol")
             _rz_min_qty = (
@@ -46577,6 +46581,40 @@ async def process_position(
                 return f"{EvalStatus.ACTION_TAKEN}:ULTIMATE_DC_{_hs_tf_ez}_HARD_STOP_CLOSED"
         except Exception as _ult_e:
             logger.warning(f"[ULTIMATE_DC_HARD_STOP] {position_key} probe err: {_ult_e}")
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 2026-09-29 GREY-SWITCH REWIRE — live twins of v12_quick_engine.simulate_one exits that
+    # previously existed only in the vector engine. ONE predicate set shared with the engine:
+    # vec_decisions.dc_channel_exits. All live defaults inert (config.py 'OFF'/False; per_sym
+    # overlays already carry 'OFF') -> zero behaviour change until a value is promoted.
+    #   WT_LOWER_CROSS_EXIT_TF  : wt1 crosses against wt2 on TF AND price beyond prev 15m close.
+    #   DAYTRADE_DC_STOP/TARGET_TF (+ DC_DAYTRADE_*_USE_DC(4)_15M aliases), gated by
+    #   DC_DAYTRADE_ENABLED exactly like the engine's crypto daytrade_on.
+    # NOTE: closes route through execute_now; UNIVERSAL_NOLOSS_GATE still applies to the
+    # at-a-loss side (the vector engine does not model that gate on this path) — operator decision.
+    # ═══════════════════════════════════════════════════════════════════════════
+    if position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0 and _dc_channel_exits is not None:
+        try:
+            _gx_is_long = position_side == "LONG"
+            _gx_tf = _dc_channel_exits.wt_lower_cross_tf(_psym_get(symbol, position_side, "WT_LOWER_CROSS_EXIT_TF", "OFF"))
+            _gx_fire, _gx_reason = False, ""
+            if _gx_tf or bool(getattr(config, "DC_DAYTRADE_ENABLED", False)):
+                if _pp_shared_ind is None:
+                    _pp_shared_ind = await ii(trade_manager, symbol) or {}
+            if _gx_tf and _dc_channel_exits.wt_lower_cross_live(_pp_shared_ind, _gx_tf, current_price, _gx_is_long):
+                _gx_fire, _gx_reason = True, f"WT_LOWER_CROSS_EXIT_wt_{_gx_tf}_{'lower' if _gx_is_long else 'higher'}_wt+price"
+            if not _gx_fire and bool(getattr(config, "DC_DAYTRADE_ENABLED", False)):
+                _gx_stop, _gx_tgt = _dc_channel_exits.resolve_daytrade_dc(lambda _k, _d: _psym_get(symbol, position_side, _k, _d))
+                if _gx_stop or _gx_tgt:
+                    _gx_fire, _gx_reason = _dc_channel_exits.daytrade_dc_exit(current_price, _gx_is_long, _gx_stop, _gx_tgt, lambda _f: safe_fetch_float(_pp_shared_ind.get(_f, 0), 0.0))
+            if _gx_fire:
+                _gx_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
+                _gx_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
+                logger.warning(f"[GREY_REWIRE_EXIT] {position_key}: {_gx_reason} px={current_price:.6f} g={_gx_gain:.2f}% -> CLOSE")
+                await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_gx_amt, side="SELL" if _gx_is_long else "BUY", position_side=position_side, quantity=_gx_amt, old_price=current_price, unique_id=f"GREY_REWIRE_EXIT_{int(time.time())}", reason=f"{_gx_reason.replace(' ', '_')}_g{_gx_gain:.2f}", is_full_close=True, action="CLOSE")
+                trade_manager.processing_keys.discard(position_key)
+                return f"{EvalStatus.ACTION_TAKEN}:{_gx_reason.split(' ')[0]}_CLOSED"
+        except Exception as _gx_e:
+            logger.warning(f"[GREY_REWIRE_EXIT] {position_key} probe err: {_gx_e}")
     # ═══════════════════════════════════════════════════════════════════════════
     # NEWBORN_LOSS_KILL — USER MANDATE 2026-05-21 22:47 (post-ORDIUSDC incident).
     # Force-close any position younger than NEWBORN_LOSS_KILL_WINDOW_MIN whose gain has

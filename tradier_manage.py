@@ -28,6 +28,8 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from zoneinfo import ZoneInfo
 
 import vec_decisions.shared_zone
+import vec_decisions.dc_channel_exits as _dc_channel_exits  # 2026-09-29 grey-switch rewire (shared with v12_quick_engine)
+from vec_decisions.process_position_stocks__alt_entries import _rz_breakout_fires  # 2026-09-29 grey rewire RZ_BREAKOUT shared predicate
 import aiofiles
 import numpy as np
 import pandas as pd
@@ -10650,6 +10652,29 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     return f"ULTIMATE_DC_{_hs_tf}_HARD_STOP_CLOSED"
         except Exception as _ult_e:
             logger.warning(f"[ULTIMATE_DC_HARD_STOP] {position_key} probe err: {_ult_e}")
+        # ═══ 2026-09-29 GREY-SWITCH REWIRE — live twins of v12_quick_engine.simulate_one exits that were
+        # vector-only: WT_LOWER_CROSS_EXIT_TF and DAYTRADE_DC_{STOP,TARGET}_TF (+ DC_DAYTRADE_*_USE_DC(4)_15M
+        # aliases), gated by TRADIER_DC_DAYTRADE_ENABLED exactly like the engine's tradier daytrade_on. ONE
+        # predicate set shared with the engine (vec_decisions.dc_channel_exits). Inert defaults
+        # (config_tradier 'OFF'/False; per_sym_active_config_stocks.json already 'OFF') -> zero behaviour change.
+        try:
+            if has_position and position is not None and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0:
+                _gx_c = lambda _k, _d: _cfg(_k, _d, account_key, symbol, position_side)
+                _gx_tf = _dc_channel_exits.wt_lower_cross_tf(_gx_c('WT_LOWER_CROSS_EXIT_TF', 'OFF'))
+                _gx_fire, _gx_reason = False, ""
+                if _gx_tf and _dc_channel_exits.wt_lower_cross_live(i, _gx_tf, current_price, is_long):
+                    _gx_fire, _gx_reason = True, f"WT_LOWER_CROSS_EXIT_wt_{_gx_tf}_{'lower' if is_long else 'higher'}_wt+price"
+                if not _gx_fire and bool(_gx_c('TRADIER_DC_DAYTRADE_ENABLED', False)):
+                    _gx_stop, _gx_tgt = _dc_channel_exits.resolve_daytrade_dc(_gx_c)
+                    if _gx_stop or _gx_tgt:
+                        _gx_fire, _gx_reason = _dc_channel_exits.daytrade_dc_exit(current_price, is_long, _gx_stop, _gx_tgt, lambda _f: safe_fetch_float(i.get(_f, 0), 0.0))
+                if _gx_fire:
+                    _gx_gain = safe_fetch_float(getattr(position, 'gain', 0), 0.0)
+                    logger.warning(f"[GREY_REWIRE_EXIT] {position_key}: {_gx_reason} px={current_price:.4f} g={_gx_gain:.2f}% -> CLOSE")
+                    await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"{_gx_reason.replace(' ', '_')}_g{_gx_gain:.2f}", 100.0, override_qty=999999)
+                    return f"{_gx_reason.split(' ')[0]}_CLOSED"
+        except Exception as _gx_e:
+            logger.warning(f"[GREY_REWIRE_EXIT] {position_key} probe err: {_gx_e}")
 
         # Hard exit safety runs before any strategy path and before an advisory
         # HOLD can return.  This is deliberately the 4h channel, not the
@@ -12479,7 +12504,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         symbol,
                         "LONG" if is_long else "SHORT",
                     )
-                )
+                ) and bool(_cfg("WT_DC_ENABLED", True, account_key, symbol, "LONG" if is_long else "SHORT"))  # 2026-09-29 grey rewire: master switch = v12_quick_engine WT_DC_ENABLED (B_WT_DC_LIVE twin); default True -> unchanged
                 if action_type != "OPEN" and _wtdc_path_enabled:
                     _entry_ind = indicators_raw if indicators_raw else i
                     _wtdc_detailed = bool(_cfg("WT_DC_DETAILED_SCORER_ENABLED", False, account_key, symbol, "LONG" if is_long else "SHORT"))
@@ -12812,7 +12837,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _rz_top_b = float(_cfg_auto('RZ_TOP_BB_THRESHOLD', 0.85))
                     _rz_bot_b = float(_cfg_auto('RZ_BOT_BB_THRESHOLD', 0.15))
                     _rz_band_b = float(_cfg_auto('RZ_BREAKOUT_BAND', 0.05))
-                    _rz_fire = (is_long and _rz_bot_b <= _rz_bb_1h <= _rz_bot_b + _rz_band_b) or (not is_long and _rz_top_b - _rz_band_b <= _rz_bb_1h <= _rz_top_b)
+                    # 2026-09-29 grey rewire: same pure predicate as v12_quick_engine compute_entry_signals RZ twin
+                    _rz_fire = _rz_breakout_fires(_rz_bb_1h, is_long, _rz_top_b, _rz_bot_b, _rz_band_b)
                     if _rz_fire:
                         _base_qty = float(_cfg_auto('START_POSITION_SIZE', 600)) / current_price if current_price is not None and current_price > 0 else 1
                         action_type = "OPEN"

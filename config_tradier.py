@@ -1750,6 +1750,18 @@ class TradierConfig:
     DC_DAYTRADE_STOP_PCT: float = 0.015  # 1.5% hard stop for daytrades — LEGACY hard % (never hard % stops per user 2026-09-24, keep but prefer dc levels below)
     DC_DAYTRADE_STOP_USE_DC_15M: bool = False  # 2026-09-24: use dc_low/high_15m as stop (vectorizable, npz has 15m) instead of hard %
     DC_DAYTRADE_STOP_USE_DC4_15M: bool = False  # 2026-09-24: use dc_low4/high4_15m (4-bar tight) as stop — was 3/5m hard stop replacement (3/5m not in npz)
+    # 2026-09-29 GREY-SWITCH REWIRE: fields tradier_manage already read via _cfg_auto(name, default) — value = that fallback (zero behaviour change)
+    DC_DAYTRADE_TARGET_USE_DC_15M: bool = False
+    DC_DAYTRADE_TARGET_USE_DC4_15M: bool = False
+    DC_DAYTRADE_TARGET_DC_BUFFER_PCT: float = 0.002  # alias of TRADIER_DC_DAYTRADE_TARGET_DC_BUFFER_PCT (whichever is overridden away from 0.002 wins)
+    # live twins of v12_quick_engine exits (shared predicate vec_decisions/dc_channel_exits.py, hook in tradier_manage.process_position
+    # after ULTIMATE_DC). Inert defaults; per_sym_active_config_stocks.json already carries 'OFF'. QuickConfig sweep baseline keeps
+    # DAYTRADE_DC_*_TF='15m,1h' (BIBLE §15) — promoting that to live is an operator decision.
+    DAYTRADE_DC_STOP_TF: str = "OFF"
+    DAYTRADE_DC_STOP_BUFFER_PCT: float = 0.25
+    DAYTRADE_DC_TARGET_TF: str = "OFF"
+    DAYTRADE_DC_TARGET_BUFFER_PCT: float = 0.10
+    WT_LOWER_CROSS_EXIT_TF: str = "OFF"
     DC_DAYTRADE_TARGET_PCT: float = 0.01  # 1% profit target
     DC_DAYTRADE_MAX_HOLD_MINUTES: float = 240.0  # 4h max hold (flatten before close regardless)
     DC_DAYTRADE_PRE_CLOSE_MINUTES: int = 120  # Start flattening 2h before market close (14:00 ET)
@@ -1926,6 +1938,7 @@ class TradierConfig:
     WT_DC_ENTRY_THRESHOLD: float = 45  # 2026-06-24 ROLLED BACK: bt_wtdc_threshold (291 stocks) — LONG ps 0.092→0.123 (+33%), SHORT ps 0.082→0.113 (+38%) at 45 vs 20. Gain/mo essentially unchanged (+3.82%/+3.20% vs +3.89%/+3.14%). Prior test (2026-06-03) optimized gain/mo not pool_sharpe — lower pool_sharpe = lower live quality.
     # Path-scoped side switches. Per-symbol profiles already emitted these names,
     # but the live/exact WT_DC branch did not consume them.
+    WT_DC_ENABLED: bool = True  # 2026-09-29 GREY-SWITCH REWIRE: master of the WT_DC entry path (AND with WT_DC_LONG/SHORT_ENABLED) = v12_quick_engine WT_DC_ENABLED; True = unchanged live
     WT_DC_LONG_ENABLED: bool = True
     WT_DC_SHORT_ENABLED: bool = True
     # 🚩 NEW BASELINE 2026-05-12 — 3 additional gates for tradier WT_DC_ENTRY path.
@@ -2060,6 +2073,9 @@ class TradierConfig:
     STRUCTURAL_EXIT_GATE_ENABLED: bool = False  # USER MANDATE 2026-07-21 (MU_LONG trb: 20 closes in 88min while price rallied +3.15%, every close ~0.00% gain). NEVER exit while price is going up (long) / down (short); an exit needs an LTF collapse (lower high AND lower low AND close below prev low) OR a lower-high+lower-low on 1h or 4h. Enforced in wt_dc_delta.structural_exit_permitted() (live crypto + live stocks + Tier-2) and vectorized in v8_quick_engine.compute_exit_signals (Tier-1). Kills the k_1h>80 / dc_pos>0.7 top-zone churn. Loss exits R1/R2/HEDGE_FAILED are NOT affected. ROLLBACK: False.
     RZ_TOP_BB_THRESHOLD: float = 0.85
     RZ_BOT_BB_THRESHOLD: float = 0.375
+    # 2026-09-29 GREY-SWITCH REWIRE: tradier_manage RZ_BREAKOUT third entry path read these via _cfg_auto fallback — same values (zero behaviour change)
+    RZ_BREAKOUT_ENTRY_ENABLED: bool = False
+    RZ_BREAKOUT_BAND: float = 0.05
     RZ_LEGS_MIN: float = 20.0
     RZ_REQUIRE_STRUCT: bool = False
     RZ_K_EXIT: float = 80.0  # Stocks: exit long when k_1h > 80

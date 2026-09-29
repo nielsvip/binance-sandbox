@@ -113,6 +113,7 @@ import vec_decisions.bb_pullback_gate
 import vec_decisions.filter_tf_gate
 import vec_decisions.mtf_atr_trail_exit
 import vec_decisions.mtf_compound_exits
+import vec_decisions.dc_channel_exits
 import wt_dc_entry_scorer_vec as _wt_dc_vec
 
 _ALL_FILTER_TF = ("ATR_TRAIL_FILTER_TF", "BAR_PATTERNS_FILTER_TF", "BB_PULLBACK_GATE_FILTER_TF", "BB_RECOVERY_ENTRY_FILTER_TF", "BB_RECOVERY_FILTER_TF", "BREAKEVEN_GAIN_EROSION_FILTER_TF", "BREAKOUT_RETEST_FILTER_TF", "BTC_DEDICATED_FILTER_TF", "BT_WT_CROSS_LADDER_FILTER_TF", "CANDLE_PATTERN_STOPS_FILTER_TF", "CIRCUIT_SHARPE_GATES_FILTER_TF", "COOLDOWN_LOCKS_FILTER_TF", "DC_BREACH_REDUCE_FILTER_TF", "DC_BREAK_FILTER_TF", "DC_MOMENTUM_BOTA_SCORER_FILTER_TF", "DELTA_ENGINE_FILTER_TF", "DUP_GUARD_FILTER_TF", "E2E_REPLAY_VALIDATOR_FILTER_TF", "EMA_9_21_FILTER_FILTER_TF", "EMA_BLANKET_FILTER_FILTER_TF", "EMERGENCY_BRAKE_FILTER_TF", "EXHAUSTION_EXIT_FILTER_TF", "EXIT_R1_R2_FILTER_TF", "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF", "EXIT_TOP_FADE_FILTER_TF", "EXIT_TO_REDUCE_ADAPTER_FILTER_TF", "FAST_RISER_FILTER_TF", "FH_MOMENTUM_FILTER_TF", "FIRST_OPEN_THROTTLE_FILTER_TF", "FROZEN_STOP_FILTER_TF", "FUNDING_GATE_FILTER_TF", "GOLDEN_RULE_ENFORCE_FILTER_TF", "GOLDEN_RULE_HTF_VOTE_FILTER_TF", "GR_FILTER_VEC_FILTER_TF", "GR_V5_STATE_FILTER_TF", "HAIKU_WINNER_FILTER_TF", "KILLER_KNOB_FINDER_FILTER_TF", "KINDERGARTEN_FILTER_TF", "LIVE_ENTRY_ENGINE_FILTER_TF", "LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF", "MOM3_FILTER_TF", "MOMENTUM_BREAKOUT_FILTER_TF", "MTF_ARMED_ENTRIES_FILTER_TF", "MTF_ATR_TRAIL_FILTER_TF", "MTF_DC_REJECT_FILTER_TF", "NEWBORN_LOSS_KILL_FILTER_TF", "NEWBORN_PROTECT_FILTER_TF", "NOLOSS_BYPASS_WT5OF5_FILTER_TF", "OPEN_INTENT_SIZE_GATES_FILTER_TF", "PARTIAL_PROFIT_LOCK_V2_FILTER_TF", "PEAK_GIVEBACK_BE_EROSION_FILTER_TF")
@@ -5013,6 +5014,19 @@ class QuickConfig:
     DAYTRADE_DC_STOP_BUFFER_PCT: float = 0.25
     DAYTRADE_DC_TARGET_TF: str = "15m,1h"
     DAYTRADE_DC_TARGET_BUFFER_PCT: float = 0.10
+    # 2026-09-29 grey-switch rewire: legacy daytrade DC aliases (tradier live _manage_daytrade_positions
+    # 2026-09-24 semantics) — resolved by vec_decisions.dc_channel_exits.resolve_daytrade_dc in BOTH engines;
+    # only apply when the matching DAYTRADE_DC_*_TF list is OFF. Defaults = live defaults (inert).
+    DC_DAYTRADE_STOP_USE_DC_15M: bool = False
+    DC_DAYTRADE_STOP_USE_DC4_15M: bool = False
+    DC_DAYTRADE_TARGET_USE_DC_15M: bool = False
+    DC_DAYTRADE_TARGET_USE_DC4_15M: bool = False
+    DC_DAYTRADE_TARGET_DC_BUFFER_PCT: float = 0.002
+    TRADIER_DC_DAYTRADE_STOP_USE_DC_15M: bool = False
+    TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M: bool = False
+    TRADIER_DC_DAYTRADE_TARGET_USE_DC_15M: bool = False
+    TRADIER_DC_DAYTRADE_TARGET_USE_DC4_15M: bool = False
+    TRADIER_DC_DAYTRADE_TARGET_DC_BUFFER_PCT: float = 0.002
     # TECHNICAL_EXIT DC variants — vector exit signal (compute_exit_signals) mirror of daytrade; supports multi-TF OR
     TECHNICAL_DC_STOP_TF: str = "OFF"
     TECHNICAL_DC_STOP_BUFFER_PCT: float = 0.25
@@ -5159,6 +5173,13 @@ class QuickConfig:
         self.ENTRY_SCORE_THRESHOLD = 24.0
         self.K3M_FLOOR = 30.0
         self.K3M_FLOOR_ENABLED = False
+        # 2026-09-29 grey rewire: RZ_BREAKOUT twin — tradier live RZ_BOT_BB_THRESHOLD (config_tradier.py:2072)
+        self.RZ_BOT_BB_THRESHOLD = 0.375
+        # 2026-09-29 grey rewire (BIBLE §17.5 entry/exit-gate parity): crypto-live features the stock baseline
+        # applied although tradier_manage never reads them (only _wire_weak_/_FULL_COVERAGE stubs) -> stock
+        # live default = absent. Measured: HTF_DIRECTION_GATE binds AMD_SHORT/AAPL/ABBV, HLR_TOP_EXIT binds AMD_SHORT.
+        self.HTF_DIRECTION_GATE_ENABLED = False
+        self.HLR_TOP_EXIT_ENABLED = False
         # 2026-09-29 USER: stocks sized at crypto $28 -> whole-share floor 0 -> 47% of entries vanished and
         # STDEV off = 0 trades. Live parity config_tradier.py:120/152.
         self.START_POSITION_SIZE = 500.0
@@ -9802,6 +9823,15 @@ def compute_entry_signals(npz, n, is_long, cfg):
             _base_entry = _base_entry | blocks["B_BBSQUEEZE"]
         if "B_WT_DC_LIVE" in blocks:
             _base_entry = _base_entry | blocks["B_WT_DC_LIVE"]
+    except Exception:
+        pass
+    # 2026-09-29 GREY-SWITCH REWIRE: RZ_BREAKOUT third entry path (tradier_manage process_position +
+    # ez_manage early path) — bb_pct_b_1h inside [rz_bot, rz_bot+band] (LONG) / [rz_top-band, rz_top]
+    # (SHORT) opens WITHOUT alignment gates -> ORed after the gate stack. Same pure predicate as live
+    # (vec_decisions.process_position_stocks__alt_entries). Default RZ_BREAKOUT_ENTRY_ENABLED=False -> inert.
+    try:
+        if bool(getattr(cfg, 'RZ_BREAKOUT_ENTRY_ENABLED', False)):
+            _base_entry = _base_entry | vec_decisions.process_position_stocks__alt_entries.check_rz_breakout_vec(cfg, _safe(npz, 'bb_pct_b_1h', n, 0.5), is_long)
     except Exception:
         pass
     # REMOVED 2026-08-11 per M1/M2 — hash fallback fabricated distinctness for 309 unmapped params
@@ -22180,46 +22210,22 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             if pn not in out:
                 out.append(pn)
         return out
-    _dd_stop_tf_raw = str(getattr(cfg, 'DAYTRADE_DC_STOP_TF', 'OFF') or 'OFF').strip()
-    _dd_stop_buf = float(getattr(cfg, 'DAYTRADE_DC_STOP_BUFFER_PCT', 0.25) or 0.25) / 100.0
-    _dd_tgt_tf_raw = str(getattr(cfg, 'DAYTRADE_DC_TARGET_TF', 'OFF') or 'OFF').strip()
-    _dd_tgt_buf = float(getattr(cfg, 'DAYTRADE_DC_TARGET_BUFFER_PCT', 0.10) or 0.10) / 100.0
-    # also support legacy per-DC aliases used by older sheet rows (15m-specific booleans)
-    try:
-        if _dd_stop_tf_raw.upper() == 'OFF' and bool(getattr(cfg, 'DC_DAYTRADE_STOP_USE_DC_15M', False)):
-            _dd_stop_tf_raw = '15m'
-        if _dd_tgt_tf_raw.upper() == 'OFF' and bool(getattr(cfg, 'DC_DAYTRADE_TARGET_USE_DC_15M', False)):
-            _dd_tgt_tf_raw = '15m'
-    except Exception:
-        pass
-    _dd_stop_list = _parse_tf_list(_dd_stop_tf_raw)
-    _dd_tgt_list = _parse_tf_list(_dd_tgt_tf_raw)
-    _dd_stop_tfs = _dd_stop_list  # keep for reason tagging
-    _dd_tgt_tfs = _dd_tgt_list
-    _dd_stop_tfs_norm = _dd_stop_list
-    _dd_tgt_tfs_norm = _dd_tgt_list
-    # backward compat aliases
-    _dd_stop_tf = _dd_stop_tf_raw
-    _dd_tgt_tf = _dd_tgt_tf_raw
-    _dd_stop_tf_norm = ','.join(_dd_stop_list) if _dd_stop_list else 'OFF'
-    _dd_tgt_tf_norm = ','.join(_dd_tgt_list) if _dd_tgt_list else 'OFF'
+    # 2026-09-29 grey-switch rewire: config -> exit spec resolution and the per-bar fire
+    # predicates are shared with live (ez_manage/tradier_manage process_position hooks) via
+    # vec_decisions.dc_channel_exits. List path (DAYTRADE_DC_{STOP,TARGET}_TF) semantics are
+    # unchanged; legacy DC_DAYTRADE_*_USE_DC(4)_15M (+TRADIER_ twins) aliases now follow the
+    # tradier live daytrade semantics (DC4 support added, both default False -> inert).
+    _dd_stop_specs, _dd_tgt_specs = vec_decisions.dc_channel_exits.resolve_daytrade_dc(lambda _k, _d: getattr(cfg, _k, _d))
     _dd_stop_dcs = []
-    for _tf in _dd_stop_list:
-        arr = _safe(npz, f"dc_low_{_tf}" if is_long else f"dc_high_{_tf}", n, 0)
+    for _sp in _dd_stop_specs:
+        arr = _safe(npz, _sp['field_long'] if is_long else _sp['field_short'], n, 0)
         if not np.all(arr == 0):
-            _dd_stop_dcs.append((_tf, arr))
-    if _dd_stop_list and not _dd_stop_dcs:
-        _dd_stop_list = []; _dd_stop_tfs = []; _dd_stop_tfs_norm = []
+            _dd_stop_dcs.append((_sp, arr))
     _dd_tgt_dcs = []
-    for _tf in _dd_tgt_list:
-        arr = _safe(npz, f"dc_high_{_tf}" if is_long else f"dc_low_{_tf}", n, 0)
+    for _sp in _dd_tgt_specs:
+        arr = _safe(npz, _sp['field_long'] if is_long else _sp['field_short'], n, 0)
         if not np.all(arr == 0):
-            _dd_tgt_dcs.append((_tf, arr))
-    if _dd_tgt_list and not _dd_tgt_dcs:
-        _dd_tgt_list = []; _dd_tgt_tfs = []; _dd_tgt_tfs_norm = []
-    _dd_stop_dc = _dd_stop_dcs[0][1] if len(_dd_stop_dcs) == 1 else None  # keep legacy single for non-list path
-    _dd_tgt_dc = _dd_tgt_dcs[0][1] if len(_dd_tgt_dcs) == 1 else None
-    _ = getattr(cfg, 'DAYTRADE_DC_STOP_TF', 'OFF'); _ = getattr(cfg, 'DAYTRADE_DC_TARGET_TF', 'OFF')
+            _dd_tgt_dcs.append((_sp, arr))
     # 2026-09-26 TECHNICAL DC-channel exits — mirror daytrade with specific exit_reason, multi-TF OR
     _tech_stop_tf_raw = str(getattr(cfg, 'TECHNICAL_DC_STOP_TF', 'OFF') or 'OFF').strip()
     _tech_stop_buf = float(getattr(cfg, 'TECHNICAL_DC_STOP_BUFFER_PCT', 0.25) or 0.25) / 100.0
@@ -22681,13 +22687,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 w1p = float(npz.get(_wt_key, [0])[i-1]) if i-1 >=0 and i-1 < len(npz.get(_wt_key, [])) else w1
                 w2p = float(npz.get(_wt2_key, [0])[i-1]) if i-1 >=0 and i-1 < len(npz.get(_wt2_key, [])) else w2
                 pxp = float(close[i-1]) if i-1 >=0 and i-1 < len(close) else px
-                _wt_fire=False
-                if is_long:
-                    if w1 !=0 and w2 !=0 and w1p !=0 and w2p !=0 and w1 < w2 and w1p >= w2p and px < pxp:
-                        _wt_fire=True
-                else:
-                    if w1 !=0 and w2 !=0 and w1p !=0 and w2p !=0 and w1 > w2 and w1p <= w2p and px > pxp:
-                        _wt_fire=True
+                # shared predicate with live ez_manage/tradier_manage process_position (2026-09-29)
+                _wt_fire = vec_decisions.dc_channel_exits.wt_lower_cross_fires(w1, w2, w1p, w2p, float(px), pxp, is_long)
                 if _wt_fire:
                     pos['fees'] += abs(pos['qty'] * px) * half_fee
                     _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
@@ -22800,25 +22801,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             # STOP: LONG px <= dc_low_TF*(1-buf) for ANY TF in _dd_stop_dcs, SHORT px >= dc_high_TF*(1+buf)
             # TARGET: LONG px >= dc_high_TF*(1-buf) for ANY TF in _dd_tgt_dcs, SHORT px <= dc_low_TF*(1+buf)
             try:
-                for _tf_s, _arr_s in _dd_stop_dcs:
-                    _lvl = float(_arr_s[i]) if i < len(_arr_s) else 0.0
-                    if _lvl > 0:
-                        if is_long and px <= _lvl * (1 - _dd_stop_buf):
-                            closed, reason = True, f'DAYTRADE_STOP dc_{_tf_s}_low -0.25% STOP_BUF'
-                            break
-                        elif (not is_long) and px >= _lvl * (1 + _dd_stop_buf):
-                            closed, reason = True, f'DAYTRADE_STOP dc_{_tf_s}_high +0.25% STOP_BUF'
-                            break
-                if not closed:
-                    for _tf_t, _arr_t in _dd_tgt_dcs:
-                        _lvl2 = float(_arr_t[i]) if i < len(_arr_t) else 0.0
-                        if _lvl2 > 0:
-                            if is_long and px >= _lvl2 * (1 - _dd_tgt_buf):
-                                closed, reason = True, f'DAYTRADE_TARGET dc_{_tf_t}_high -0.10% TARGET_BUF'
-                                break
-                            elif (not is_long) and px <= _lvl2 * (1 + _dd_tgt_buf):
-                                closed, reason = True, f'DAYTRADE_TARGET dc_{_tf_t}_low +0.10% TARGET_BUF'
-                                break
+                _dd_lv = {(_sp['field_long'] if is_long else _sp['field_short']): (float(_arr[i]) if i < len(_arr) else 0.0) for _sp, _arr in _dd_stop_dcs + _dd_tgt_dcs}
+                closed, _dd_reason = vec_decisions.dc_channel_exits.daytrade_dc_exit(
+                    float(px), is_long, [_sp for _sp, _ in _dd_stop_dcs], [_sp for _sp, _ in _dd_tgt_dcs], lambda _fld: _dd_lv.get(_fld, 0.0))
+                if closed:
+                    reason = _dd_reason
                 # NO fallback to fixed % when DC active — fixed % eliminated per user 2026-09-26
             except Exception:
                 pass
