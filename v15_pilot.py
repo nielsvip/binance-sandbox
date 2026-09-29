@@ -1756,6 +1756,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 return d, False, str(vec.get("invalid_reason") or "invalid")[:40]
             return d, True, ""
         naked_delta, naked_ok, naked_reason = None, False, ""
+        _write_hustle = getattr(args, "seq_mode", "") == "hustle" or os.environ.get("V15_WRITE_HUSTLE", "0") == "1"
         naked_vec = None
         try:
             naked_vec = _eval_with_timeout(switch_variant)
@@ -1786,9 +1787,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _spec_mark_red(wb, sname, rr, cols["G"], reason=naked_reason)
             else:
                 _fcell = ws.cell(row=rr, column=cols["F"])
-                _fcell.value = float(delta_for_row)
+                # USER 2026-09-29: HUSTLE_DELTA stays blank under worst_first (hustle too slow for big sheets)
+                _fcell.value = float(delta_for_row) if _write_hustle else None
                 _fcell.font = Font(name="Arial", size=10, bold=True, color="006100" if promote else "9C0006")
-                _fcell.fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid") if delta_for_row < 0 else PatternFill(fill_type=None)
+                _fcell.fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid") if _write_hustle and delta_for_row < 0 else PatternFill(fill_type=None)
                 _fcell.alignment = VISUAL_ALIGN
                 if _vg_row is not None:
                     g.value = float(_vg_row) - initial_baseline
@@ -1817,6 +1819,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             continue
         # Evaluate each yellow filter (selection = relevant_hdrs above); ALWAYS write the real delta into the yellow cell
         promotable = {}
+        noop_yellows = []
         for hdr in relevant_hdrs:
             e = hdr_to_filter[hdr]
             filt = e["filter"]
@@ -1839,20 +1842,30 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _spec_mark_red(wb, sname, rr, col, reason=reason)
                 continue
             pending_lbI[hdr] = float(delta)
-            promotable[hdr] = ok
+            # BIBLE §19: a yellow whose result equals the naked switch changed nothing — filter no-op, reads 0 and is
+            # never summed (AUGMENT_MIN_GAIN_PCT: 18 non-binding yellows x +0.5465 summed to a fake 9.84)
+            noop = ok and naked_ok and naked_delta is not None and abs(float(delta) - float(naked_delta)) < 1e-9
+            if noop:
+                noop_yellows.append(hdr)
+            promotable[hdr] = ok and not noop
             if col:
                 ycell = ws.cell(row=rr, column=col)
-                ycell.value = float(delta)
-                # invalid (e.g. trades < floor): real delta shown grey/italic, never summed or promoted
-                ycell.font = Font(name="Arial", size=10, bold=False, italic=not ok, color=None if ok else "808080")
+                # invalid (e.g. trades 0 < floor): a 0-trade run vs a negative baseline reads as a fake +|baseline|
+                # identical in every yellow of the row — show the reason, never a number (real delta stays in JSON)
+                ycell.value = (0.0 if noop else float(delta)) if ok else f"INVALID {reason}"[:40]
+                ycell.font = Font(name="Arial", size=10, bold=False, italic=not ok or noop, color=None if ok and not noop else "808080")
                 ycell.alignment = VISUAL_ALIGN
-        # VECTOR_DELTA = sum of POSITIVE promotable yellow deltas; with none, the row's best real (<=0) delta
+        # VECTOR_DELTA = sum of POSITIVE promotable yellow deltas; with none, the naked switch alone when it is a real
+        # positive (counted once), else the row's best real (<=0) delta
         pos_hdrs = [h for h, d in pending_lbI.items() if d > 1e-9 and promotable.get(h)]
         sum_pos = sum(pending_lbI[h] for h in pos_hdrs)
         if sum_pos > 1e-9:
             delta_for_row = float(sum_pos)
+        elif naked_ok and naked_delta is not None and naked_delta > 1e-9:
+            delta_for_row = float(naked_delta)
         else:
-            real = [d for h, d in pending_lbI.items() if promotable.get(h)] or list(pending_lbI.values())
+            real = [d for h, d in pending_lbI.items() if promotable.get(h)] + ([float(naked_delta)] if naked_ok and naked_delta is not None else [])
+            real = real or list(pending_lbI.values())
             delta_for_row = min(0.0, max(real)) if real else None
         promote = delta_for_row is not None and delta_for_row > 1e-9
         _blk = promotion_block_reason(switch, sname)
@@ -1895,9 +1908,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _spec_mark_red(wb, sname, rr, cols["G"], reason=next(iter(per_yellow_timeout_reason.values()), "no result"))
             else:
                 _fcell = ws.cell(row=rr, column=cols["F"])
-                _fcell.value = float(delta_for_row)
+                # USER 2026-09-29: HUSTLE_DELTA stays blank under worst_first (hustle too slow for big sheets)
+                _fcell.value = float(delta_for_row) if _write_hustle else None
                 _fcell.font = Font(name="Arial", size=10, bold=True, color="006100" if promote else "9C0006")
-                _fcell.fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid") if delta_for_row < 0 else PatternFill(fill_type=None)
+                _fcell.fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid") if _write_hustle and delta_for_row < 0 else PatternFill(fill_type=None)
                 _fcell.alignment = VISUAL_ALIGN
                 if _vg_f is not None:
                     g.value = float(_vg_f) - initial_baseline
@@ -1909,7 +1923,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             ws.cell(row=rr, column=cols["I"]).value = None
             _k_sum = None
             if pending_lbI:
-                _k_sum = float(sum(d for d in pending_lbI.values() if isinstance(d, (int, float)) and d > 1e-9))
+                _k_sum = float(sum(d for h, d in pending_lbI.items() if isinstance(d, (int, float)) and d > 1e-9 and promotable.get(h)))
                 _kcell = ws.cell(row=rr, column=cols["K"])
                 _kcell.value = _k_sum
                 _kcell.font = Font(name="Arial", size=10, bold=False, color="006100" if _k_sum > 1e-9 else "9C0006")
@@ -1926,7 +1940,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         row_gains = [joint_gain, (naked_vec or {}).get("gain_pct")] + [cumulative_before + d for d in pending_lbI.values()]
         div = _write_div(sname, rr, row_gains)
         key = f"{sname}!{rr}:{switch}={cand}"
-        progress.setdefault("done", {})[key] = {"delta": delta_for_row, "delta_vs_cumulative": delta_for_row, "k_sum_pos_yellows": _k_sum, "promoted": promote, "joint_gain": joint_gain, "reason": joint_reason, "yellows": dict(pending_lbI), "yellow_reasons": dict(per_yellow_timeout_reason), "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_gain), "delta_vs_initial": div}
+        progress.setdefault("done", {})[key] = {"delta": delta_for_row, "delta_vs_cumulative": delta_for_row, "k_sum_pos_yellows": _k_sum, "promoted": promote, "joint_gain": joint_gain, "reason": joint_reason, "yellows": dict(pending_lbI), "yellow_reasons": dict(per_yellow_timeout_reason), "noop_yellows": list(noop_yellows), "naked_delta": naked_delta, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_gain), "delta_vs_initial": div}
         progress["cumulative_gain"] = float(cumulative_gain)
         progress["cumulative_overrides"] = dict(cumulative_overrides)
         _maybe_write_json(force=promote)
@@ -3822,7 +3836,10 @@ def main():
                     _f3 = _ws.cell(row=3, column=6).value if _ws else None
                     _g3 = _ws.cell(row=3, column=7).value if _ws else None
                     _wb.close()
-                    _stuck = (_f3 is None and _g3 is None)
+                    # 2026-09-29 FIX: r3 can be an honest structural-skip row (NO_CANDIDATE/
+                    # dead-vec) whose F/G stay blank forever — with rows completing, the pilot
+                    # is NOT stuck; the old test aborted healthy runs at 1h (XRP demo, 483 done).
+                    _stuck = (_f3 is None and _g3 is None) and _done < 5
                     if _stuck and _elapsed > 60:
                         print(f"[STUCK-CELL-GUARD] {new_symside} STUCK AT FIRST CELL r3 F=None G=None after {_elapsed:.0f}s done {_done} — WARNING IMMEDIATE, not 6h! NPZ/workers/template check. Will abort at 1h.", flush=True)
                         try:
@@ -4013,10 +4030,16 @@ def main():
                             hv = ws_r.cell(row=2, column=c).value
                             if hv and isinstance(hv, str) and "=" in hv and not hv.upper().startswith("WHAT SWITCH"):
                                 _htc[hv.strip()] = c
+                        _y_bad = rec.get("yellow_reasons") or {}
                         for hdr, d in _y.items():
                             col = _htc.get(hdr)
                             _cv = ws_r.cell(row=r, column=col).value if col else None
                             _c_is_float = isinstance(_cv, (int, float)) and not isinstance(_cv, bool)
+                            if col and hdr in _y_bad:
+                                ws_r.cell(row=r, column=col).value = f"INVALID {_y_bad[hdr]}"[:40]
+                                ws_r.cell(row=r, column=col).font = Font(name="Arial", size=10, italic=True, color="808080")
+                                refilled += 1
+                                continue
                             if col and (not _c_is_float or abs(float(_cv) - float(d)) > 1e-9):
                                 try:
                                     ws_r.cell(row=r, column=col).value = float(d)

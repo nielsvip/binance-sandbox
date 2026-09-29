@@ -1,0 +1,21 @@
+{
+ "infra_regex": "(_PATH|_FILE|_DIR|_CACHE|_TOKEN|_KEY|_URL|_HOST|_PORT)$|^BASE_PATH$|^BASE_TF$|^ATR_PARITY_EQUITY_BASE_USD$|^START_POSITION_SIZE$|^MAX_ORDER_VALUE$",
+ "prefix": [
+  "ABLATION_DISABLE_"
+ ],
+ "ftf_regex": "_FILTER_TF$|_TF_REQ$|^HA_WICK_QUALITY_TF$",
+ "names": {
+  "LIVE_ENTRY_ENGINE_ENABLED": "\u00a717.3 live-only entry engine",
+  "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED": "\u00a717.3 live-only entry engine",
+  "LIVE_5m_trading_ENABLED": "\u00a717.3 live-only",
+  "MTF_ARMED_ENTRY_ENABLED": "\u00a717.3 live-only",
+  "REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED": "\u00a717.3 live monitor",
+  "CRYPTO_ROUND_TRIP_COMMISSION_PCT": "sim fee modeling (live pays real fees)",
+  "PARTIAL_PROFIT_LOCK_SLIPPAGE_PCT": "sim slippage modeling",
+  "MODE": "venue selector set at prepare",
+  "MAX_ORDER_VALUE": "live per-order money cap zeroes sim sizing (AAPL 1 share > $180 cap) \u2014 verified 2026-09-29 bisection",
+  "TRADIER_ACCOUNT_ID": "account credential string \u2014 infra, never synced",
+  "USE_SANDBOX": "ops flag: sim/backtest must stay sandboxed; copying live False would point tooling at live account \u2014 SAFETY exclusion"
+ },
+ "ftf_reason": "stub-read FILTER_TF class: config carries template-promoted '15m' but LIVE READS ARE STUBS (census); copying activates real vec gates with zero live effect \u2014 anti-parity. Vec keeps OFF defaults until live twins land."
+}

@@ -21898,7 +21898,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _nlk_key = f'wt_velocity_{_nlk_tf}' if _nlk_tf.upper() != 'OFF' else 'wt_velocity_15m'
         _nlk_vel = _safe(npz, _nlk_key, n, 0.0)
     try:
-        for _w4_fn in (vec_decisions.wave4_families.oi_confirm_entry_gate, vec_decisions.wave4_families.ema_blanket_entry_gate, vec_decisions.wave4_families.htf_direction_gate):
+        _sqx = vec_decisions.wave4_families.bb_squeeze_exit_mask(npz, n, is_long, cfg, _safe)
+        if _sqx is not None:
+            exit_sig = exit_sig | _sqx
+    except Exception:
+        pass
+    try:
+        for _w4_fn in (vec_decisions.wave4_families.oi_confirm_entry_gate, vec_decisions.wave4_families.ema_blanket_entry_gate, vec_decisions.wave4_families.htf_direction_gate, vec_decisions.wave4_families.bb_squeeze_entry_gate):
             _w4_m = _w4_fn(npz, n, is_long, cfg, close, _safe)
             if _w4_m is not None:
                 entry_sig = entry_sig & _w4_m

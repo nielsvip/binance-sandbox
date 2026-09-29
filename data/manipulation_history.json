@@ -344,5 +344,23 @@
     ],
     "timestamp": "2026-09-29T01:12:13.329976+00:00",
     "price": 0.005788
+  },
+  {
+    "symbol": "AAVEUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.2x (from rankings)"
+    ],
+    "timestamp": "2026-09-29T01:19:44.395678+00:00",
+    "price": 145.90179355
+  },
+  {
+    "symbol": "1000BONKUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.4x (from rankings)"
+    ],
+    "timestamp": "2026-09-29T01:42:19.208857+00:00",
+    "price": 0.003742
   }
 ]
