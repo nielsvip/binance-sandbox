@@ -6298,6 +6298,8 @@ class QuickConfig:
     EXIT_PREEMPTIVE_BREAKEVEN_ENABLED: bool = True
     HEDGE_EXIT_BYPASS_NOLOSS: bool = False
     MTF_ATR_TRAIL_TF: str = '15m'
+    REENTRY_ENTRY_FILTER_ENABLED: bool = False  # 2026-09-29 USER: reentries must pass >= REENTRY_FILTER_MIN_PASS active entry filters (new entries = all)
+    REENTRY_FILTER_MIN_PASS: int = 1
     MTF_ATR_TRAIL_TF_TRADIER: str = '1h'  # live parity: tradier_manage.py:11058 falls back to '1h' (config_tradier has no knob); was '5m' (matched nothing live)
     NEVER_GO_RED_STOP_ENABLED: bool = False
     NEWBORN_DC_STOP_FIELD: str = 'dc_low4_5m'
@@ -21883,6 +21885,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         entry_sig, exit_sig = _apply_universal_distinctness_fallback(npz, n, is_long, cfg, entry_sig, exit_sig)
     except Exception:
         pass
+    # every active ENTRY filter mask, kept so reentries can be filtered leniently (REENTRY_ENTRY_FILTER_*)
+    _entry_filter_masks = []
     # ═══ WAVE1 FILTER_TF real gates (2026-09-28) — replaces the deleted hash-proxy dispatcher;
     # per-family semantics + live refs in vec_decisions/filter_tf_gates.py. OFF (default) = inert.
     try:
@@ -21890,6 +21894,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _ftg_mask = _ftg_fn(npz, n, is_long, cfg, close, _safe)
             if _ftg_mask is not None:
                 entry_sig = entry_sig & _ftg_mask
+                _entry_filter_masks.append(_ftg_mask)
     except Exception:
         pass
     try:
@@ -21912,6 +21917,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _w4_m = _w4_fn(npz, n, is_long, cfg, close, _safe)
             if _w4_m is not None:
                 entry_sig = entry_sig & _w4_m
+                _entry_filter_masks.append(_w4_m)
     except Exception:
         pass
     try:
@@ -21922,8 +21928,28 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _gftf = vec_decisions.generic_filter_tf.build_masks(npz, n, is_long, cfg, close, _safe)
         if _gftf.get('entry') is not None:
             entry_sig = entry_sig & _gftf['entry']
+            for _gname, (_gtarget, _gkind) in vec_decisions.generic_filter_tf.FILTER_TF_MAP.items():
+                _gtf = str(getattr(cfg, _gname, 'OFF') or 'OFF').strip()
+                if _gtarget == 'entry' and _gtf.upper() != 'OFF':
+                    _gm = vec_decisions.generic_filter_tf._cond(_gkind, npz, n, _gtf, is_long, close, _safe)
+                    if _gm is not None:
+                        _entry_filter_masks.append(_gm)
     except Exception:
         _gftf = {'entry': None, 'reduce_confirm': None, 'erosion_confirm': None}
+    # 2026-09-29 USER: BB_PULLBACK_GATE gated only _base_entry (before the OR'd entry sources) -> the switch and its
+    # FILTER_TF read 0 on every symbol. Live applies it in entry vetting (ez_manage.check_entry_alignment /
+    # tradier_manage entry scoring) -> apply to the final entry signal like the other entry filters.
+    # Default (FILTER_TF=OFF) keeps the gate on the base entries only: applying it to every entry zeroed the DC
+    # baseline (breakout entries sit high in the band). An explicit FILTER_TF makes it a real filter at that TF.
+    try:
+        if str(getattr(cfg, 'BB_PULLBACK_GATE_FILTER_TF', 'OFF') or 'OFF').strip().upper() != 'OFF':
+            _bbp_block = vec_decisions.bb_pullback_gate.bb_pullback_gate_vec(npz, n, cfg, is_long)
+            entry_sig = entry_sig & ~_bbp_block
+            _entry_filter_masks.append(~_bbp_block)
+    except Exception:
+        pass
+    _reentry_filter_on = bool(getattr(cfg, 'REENTRY_ENTRY_FILTER_ENABLED', False)) and bool(_entry_filter_masks)
+    _reentry_filter_need = min(max(1, int(getattr(cfg, 'REENTRY_FILTER_MIN_PASS', 1) or 1)), len(_entry_filter_masks)) if _entry_filter_masks else 0
     # 625 ablation wiring — distinct per param (causal, measured via ledger diff)
     # each ABLATION_DISABLE_* gates a distinct signal family mirror live decision path
     if getattr(cfg, 'ABLATION_DISABLE_AGGRESSIVE_HEDGE', False):
@@ -22300,6 +22326,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     pass
             if not fire and has_closed_before and getattr(cfg, 'REENTRY_MANDATORY', False):
                 fire = True
+            # 2026-09-29 USER: reentries bypassed every entry filter (reckless). Lenient gate: a reentry must pass at
+            # least REENTRY_FILTER_MIN_PASS of the active entry filters; new entries (entry_sig) must pass ALL of them.
+            if fire and _reentry_filter_on and has_closed_before and not entry_sig[i]:
+                if sum(1 for _rm in _entry_filter_masks if bool(_rm[i])) < _reentry_filter_need:
+                    fire = False
             # USER 2026-09-27: NEVER reenter when falling through 4h bottom/top, below STOP, against KG all TFs, against GR all TFs — FIX 2026-09-27: block ANY px below dc_low_4h (not just 0.25% below) to stop 1-bar ULTIMATE churn
             if fire:
                 try:

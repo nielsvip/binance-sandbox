@@ -1789,6 +1789,8 @@ class Config:
     # feature launched -- without being reset by restarts. Do not revert to
     # 0.0 / time.time().
     MTF_EXIT_MIN_OPEN_TS: float = 1779235200.0
+    REENTRY_ENTRY_FILTER_ENABLED: bool = False  # 2026-09-29: reentry must pass >= REENTRY_FILTER_MIN_PASS active entry filters (vec wired; live twin pending)
+    REENTRY_FILTER_MIN_PASS: int = 1
     MTF_ATR_TRAIL_TF: str = '15m'                        # Phase I winner
     MTF_DC_REJECT_EXIT_ENABLED: bool = True              # 2026-05-20 ON (Phase I)
     # 2026-09-28 USER (exit-vectorization): band field option — False = dc_high/dc_low_{TF}

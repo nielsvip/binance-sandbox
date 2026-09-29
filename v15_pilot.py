@@ -3114,6 +3114,7 @@ def main():
         recipes = {}
     overrides = dict(recipes.get(new_symside, {}).get("overrides") or {}) if new_symside in recipes else {}
     overrides = {k: v for k, v in overrides.items() if not (isinstance(v, str) and " + " in v)}
+    _recipe_only_overrides = dict(overrides)
     # BEST-as-baseline: every backtest must start from BEST for that sym_side — no exceptions, next round can never be worse (only pos deltas added)
     try:
         import json as _js_best, pathlib as _pl_best
@@ -3448,6 +3449,19 @@ def main():
     else:
         from tools.opt.v12_pilot import evaluate_prepared_sanitized
         baseline_vec = evaluate_prepared_sanitized(prepared, overrides, window_days=args.window_days)
+        # USER 2026-09-29: an ingested BEST / previous-XLS set built on the broken engine/NPZ can zero the baseline
+        # (BTCUSDC_LONG: 84 hustler_best overrides -> 0 trades vs recipe 286). A prior best that cannot trade is not a
+        # baseline: fall back to the live recipe when it trades and the ingested set does not.
+        if int(baseline_vec.get("trades") or 0) < 10:
+            try:
+                _rec_ov, _ = sanitize_overrides(dict(_recipe_only_overrides), defaults)
+                if _rec_ov != overrides:
+                    _rec_vec = evaluate_prepared_sanitized(prepared, _rec_ov, window_days=args.window_days)
+                    if int(_rec_vec.get("trades") or 0) >= 10:
+                        print(f"[BEST-REJECT] {new_symside}: ingested set {len(overrides)} overrides -> {baseline_vec.get('trades')} trades; live recipe {len(_rec_ov)} -> {_rec_vec.get('trades')} trades — using recipe", flush=True)
+                        overrides, baseline_vec = _rec_ov, _rec_vec
+            except Exception as _e_rej:
+                print(f"[BEST-REJECT-warn] {new_symside} {_e_rej}", flush=True)
         print(f"[baseline] vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')} sharpe={baseline_vec.get('pool_sharpe')} hot", flush=True)
         _is_zero = int(baseline_vec.get("trades") or 0) == 0
         if _is_zero:

@@ -1094,6 +1094,8 @@ class TradierConfig:
     MTF_EXIT_USE_COMPOUND: bool = False
     MTF_ATR_TRAIL_ENABLED: bool = False
     MTF_ATR_TRAIL_ENABLED_TRADIER: bool = False
+    REENTRY_ENTRY_FILTER_ENABLED: bool = False  # 2026-09-29: reentry must pass >= REENTRY_FILTER_MIN_PASS active entry filters (vec wired; live twin pending)
+    REENTRY_FILTER_MIN_PASS: int = 1
     MTF_ATR_TRAIL_TF_TRADIER: str = "1h"
     MTF_ATR_TRAIL_MULT: float = 2.5
     MTF_ATR_MULTITF_DIRECT_ENABLED: bool = False
