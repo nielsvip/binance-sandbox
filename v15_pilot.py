@@ -2823,7 +2823,7 @@ def _run_single(new_symside, args):
     # ABSOLUTE PROHIBITION — check BEFORE any heavy NPZ/prepare (2026-09-16)
     try:
         _early_prog = None
-        for _pp in [PROGRESS_DIR / f"{new_symside}_v14_progress.json", Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{new_symside}_v14_progress.json")]:
+        for _pp in ([PROGRESS_DIR / f"{new_symside}_v14_progress.json"] if os.environ.get("V15_FRESH_RUN", "0") == "1" else [PROGRESS_DIR / f"{new_symside}_v14_progress.json", Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{new_symside}_v14_progress.json")]):  # V15_FRESH_RUN: isolated dir only
             if _pp.exists():
                 try:
                     _early_prog = json.loads(_pp.read_text())
@@ -3040,7 +3040,7 @@ def main():
     # Finished workbooks (SNDK etc) have final_gain + done set + xls/log/zip/bak backups — MUST NOT be re-touched on ANY server.
     try:
         _early_prog = None
-        for _pp in [PROGRESS_DIR / f"{new_symside}_v14_progress.json", Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{new_symside}_v14_progress.json")]:
+        for _pp in ([PROGRESS_DIR / f"{new_symside}_v14_progress.json"] if os.environ.get("V15_FRESH_RUN", "0") == "1" else [PROGRESS_DIR / f"{new_symside}_v14_progress.json", Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{new_symside}_v14_progress.json")]):  # V15_FRESH_RUN: isolated dir only
             if _pp.exists():
                 try:
                     _early_prog = json.loads(_pp.read_text())
@@ -3077,8 +3077,8 @@ def main():
                 print(f"[PROHIBITED] {new_symside} ALREADY FINISHED (early) final_gain {_early_prog.get('final_gain'):.2f} done {len(_early_prog.get('done',{}))} — MUST NOT RETOUCH. Backups in xls/log/zip/bak exist. Skipping BEFORE NPZ.", flush=True)
                 return
         # also S1 peer check before NPZ fetch
-        if os.getenv("FORCE_DC_RERUN") == "1":
-            print(f"[FORCE-DC-RERUN] {new_symside} S1 peer check bypassed for hard-stop rerun", flush=True)
+        if os.getenv("FORCE_DC_RERUN") == "1" or os.getenv("V15_FRESH_RUN") == "1":
+            print(f"[FORCE-DC-RERUN] {new_symside} S1 peer check bypassed (hard-stop rerun / V15_FRESH_RUN)", flush=True)
         else:
             try:
                 import subprocess as _sp_early
@@ -3365,6 +3365,10 @@ def main():
     print(f"[STEP] get_defaults start {new_symside}", flush=True)
     defaults = get_defaults_for_symside(new_symside)
     print(f"[STEP] get_defaults done {len(defaults)}", flush=True)
+    if os.environ.get("V15_FRESH_RUN", "0") == "1":
+        # USER 2026-09-29: engine/sizing change invalidates prior bests -> start from the live recipe only
+        print(f"[FRESH-RUN] {new_symside}: prior-best/previous-sheet ingest ignored ({len(overrides)} -> live recipe {len(_recipe_only_overrides)} overrides)", flush=True)
+        overrides = dict(_recipe_only_overrides)
     overrides, warns = sanitize_overrides(overrides, defaults)
     if warns:
         print(f"[sanitize] {warns}", flush=True)
