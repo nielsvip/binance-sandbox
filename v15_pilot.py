@@ -3369,6 +3369,11 @@ def main():
         # USER 2026-09-29: engine/sizing change invalidates prior bests -> start from the live recipe only
         print(f"[FRESH-RUN] {new_symside}: prior-best/previous-sheet ingest ignored ({len(overrides)} -> live recipe {len(_recipe_only_overrides)} overrides)", flush=True)
         overrides = dict(_recipe_only_overrides)
+    if os.environ.get("V15_TEMPLATE_DEFAULTS", "0") == "1":
+        # USER 2026-09-29: live recipe makes 0 trades (impossible) -> start from the TEMPLATE_{CAT}_{SIDE} bold defaults (= live config defaults)
+        print(f"[TEMPLATE-DEFAULTS] {new_symside}: live recipe/best dropped ({len(overrides)} overrides) -> template defaults only", flush=True)
+        overrides = {}
+        _recipe_only_overrides = {}
     overrides, warns = sanitize_overrides(overrides, defaults)
     if warns:
         print(f"[sanitize] {warns}", flush=True)
