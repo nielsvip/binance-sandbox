@@ -3452,7 +3452,8 @@ def main():
         # USER 2026-09-29: an ingested BEST / previous-XLS set built on the broken engine/NPZ can zero the baseline
         # (BTCUSDC_LONG: 84 hustler_best overrides -> 0 trades vs recipe 286). A prior best that cannot trade is not a
         # baseline: fall back to the live recipe when it trades and the ingested set does not.
-        if int(baseline_vec.get("trades") or 0) < 10:
+        _bt = baseline_vec.get("trades")
+        if isinstance(_bt, (int, float)) and _bt < 10:
             try:
                 _rec_ov, _ = sanitize_overrides(dict(_recipe_only_overrides), defaults)
                 if _rec_ov != overrides:
