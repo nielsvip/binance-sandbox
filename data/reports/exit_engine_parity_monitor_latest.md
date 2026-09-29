@@ -1,8 +1,8 @@
 # Exit-engine parity monitor
 
-generated: 2026-09-29T22:38:31.662950+00:00 · lookback: 48.0h
+generated: 2026-09-29T23:38:31.902194+00:00 · lookback: 48.0h
 
-**exit_engine rows in window: 12353** · last: 2026-09-29T22:35:19.158502+00:00
+**exit_engine rows in window: 12441** · last: 2026-09-29T23:34:41.436573+00:00
 
 ## 🔴 LEAKS (gate-disabled families that fired = illegal trades): 1204
 - **MOMENTUM_WATCHDOG**: 1204
@@ -18,15 +18,15 @@ top leak reasons:
 
 → For each: if the path is GOOD (profitable), add its twin to v12_quick_engine + set the gate default ON in config so best cat_side stays default. If BAD, close the code gate so it honors the disabled knob.
 
-## ✅ GATE_ON (legitimately allowed live, has gate): 180
-- GOLDEN_RULE: 180
+## ✅ GATE_ON (legitimately allowed live, has gate): 189
+- GOLDEN_RULE: 189
 
-## ❔ UNMAPPED (no gate mapping — candidate good-paths to evaluate): 10969
+## ❔ UNMAPPED (no gate mapping — candidate good-paths to evaluate): 11048
 -  6376  VIGILANCE_MAX_LOSS_HARD_STOP_USER_LONG
--  2144  ALL_ALL_GREEN_DIRECT_CLOSE_winners_all
+-  2192  ALL_ALL_GREEN_DIRECT_CLOSE_winners_all
 -   850  MTF_ATR_TRAIL_15m_x2.0
 -   606  DC_BREACH_REDUCE_UNHEDGED_LOW_15m_pric
--   412  ALL_ALL_RED_DIRECT_CLOSE_losers_all_re
+-   443  ALL_ALL_RED_DIRECT_CLOSE_losers_all_re
 -   237  VIGILANCE_DC4_15m_HARD_STOP_USER_LONG
 -   123  BREAK_EVEN_GUARD_EXIT
 -    68  STOP_FUNCTIONS_KILL_2 time_since_entry
@@ -43,4 +43,4 @@ top leak reasons:
 -     5  HAIKU_WINNER_AUG_4.9pct
 -     5  HAIKU_WINNER_AUG_4.5pct
 
-## actions in window: {'CLOSE': 10748, 'OPEN': 1382, 'REDUCE': 87, 'AUGMENT': 136}
+## actions in window: {'CLOSE': 10827, 'OPEN': 1391, 'REDUCE': 87, 'AUGMENT': 136}

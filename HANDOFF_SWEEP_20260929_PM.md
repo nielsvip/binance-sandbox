@@ -32,6 +32,12 @@ reboots, and resumes where it left off. Servers must never drop <85% CPU.
 **Mac harvest loop** — `tools/v15_mac_harvest_loop.sh` (pid was 10110) pulls finished
 `{SYM}_{SIDE}_bh…gain…_30d_matrix.xlsx` + charts into `SPREADSHEETS/V15_MAC_DONE/`.
 
+**Counting drivers correctly:** use `ps -eo args | grep -c "[v]15_full_sweep_driver.py --order"` (exactly
+1 per host). Do NOT use `pgrep -fc v15_full_sweep_driver` — it also matches the wrapper's `setsid nohup …`
+launch line and reports phantom 2s. The driver holds a singleton flock (`/tmp/v15_full_sweep_driver.lock`)
+and the wrapper is flock-guarded (`/tmp/v15_sweep_cron.wrapper.lock`); duplicates only ever appeared from
+manually launching concurrently with the `*/5` cron — let the cron manage it, don't hand-launch.
+
 ## 2. THE PIPELINE (order is law)
 
 1. **30D run #1, ALL sym_sides** (running now; disabled first). One pass = driver prints `PASS COMPLETE`.
@@ -39,8 +45,7 @@ reboots, and resumes where it left off. Servers must never drop <85% CPU.
 3. **Rebuild templates** — `tools/v15_template_restructure.py --cat-side ALL` → preview → verify yellow
    multiset preserved (streaming `iter_rows`, NOT `ws.cell()` in read_only — that is O(n²) and hangs) →
    backup + swap live + rsync s1/s2/s5 + md5 verify (see `scratchpad/swap_templates.sh` pattern).
-4. **30D run #2, ALL sym_sides** — bump the driver's `--progress-dir` to `~/v15_run2_.../progress` (fresh
-   dir per pass, else the guard skips) and relaunch via the wrapper.
+4. **30D run #2, ALL sym_sides** — the advance is: when all 3 shard markers `~/v15_run1_20260929/PASS_COMPLETE_shard{i}of{n}` exist → recalc avg_delta → rebuild+swap+rsync templates → on each server `echo ~/v15_run2_20260929/progress > ~/v15_current_progress_dir.txt && mkdir -p ~/v15_run2_20260929/progress && rm ~/v15_run1_20260929/PASS_COMPLETE_shard*`; the wrapper then launches run #2 with the fresh dir (guard silent ⇒ every side reruns). **This advance is NOT yet auto-wired to a controller — it is triggered by the operator/monitoring session when run #1 completes** (run #1 takes hours; markers are the signal).
 5. **365D verification + adjustments** — ONLY after run #2. Not before.
 
 ## 3. MONITORING RUNBOOK (what to watch every cell fill; fix 0/repeated delta immediately)
