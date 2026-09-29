@@ -156,6 +156,9 @@ For full list, **see [`ABSOLUTE_PROHIBITIONS.md`](ABSOLUTE_PROHIBITIONS.md).**
 
 ## BACKTESTS — HERDS + v15_pilot / v12_quick_engine / backtest_v12_engine
 
+### 🔴 MANDATORY — READ BEFORE ANY BACKTEST/SWEEP WORK
+**Any agent (any brand) that touches `v15_pilot.py`, `v12_quick_engine.py`, `backtest_v12_engine.py`, `tools/dc_simple_8_sweep.py`, any `tools/v15_*`, any `SPREADSHEETS/TEMPLATE_*.xlsx` or `V15_V16_CELL_BY_CELL/*.xlsx`, or that fills/audits sheets or runs a sweep, MUST FIRST read [`BACKTEST_BIBLE.md`](BACKTEST_BIBLE.md) — in particular §14 (greedy delta/baseline: bold=default=live; a default flip = delta 0; negatives not summed; never fabricate deltas), §15 (daytrade-ON DC-channel exits), §17 (QuickConfig↔config parity — never blind full-sync), §18–§21 (zero-delta investigation, NO-LIES, delta-log audit, integrity), and §56 (the operator's VERBATIM fill spec, the highest authority on filling `TEMPLATE_*.xlsx`).** No exceptions. If you have not read it this session, read it before your first edit or sweep launch. The bible's §56 rules are LAW; do not re-derive or contradict them.
+
 **Herds** (`tools/v15_local_herd.py`, `tools/v15_overnight_herd.py`, `tools/v15_cpu80_watchdog.py`) run on **S1/S4/S5 only** (never Mac except `--dry-run`/`--allow-mac`). Each herd launches `v15_pilot.py` per `sym_side` `worst2best` `workers 56` on the worker's local `backtest_v8/indicators/*.npz` (`S1 473×31G local`, `Mac 134×10G` so Mac returns `0 trades DATA_ERROR`). S1 is NPZ source (`28 GB 1091` files), `tools/sync_indicators.sh` rsyncs to `10.0.0.4/5` every 60s. If `ZECUSDC` missing `stdev_edge_15m`, run `backtest_v8_precompute.py --symbol ZECUSDC --mode crypto` on S1.
 
 **Engines — two, not interchangeable:**

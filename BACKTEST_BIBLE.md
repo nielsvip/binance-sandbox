@@ -301,4 +301,805 @@ No strategy is enabled on real money without: full sweep proof + paper days + pe
 
 ---
 
-*End of bible — if a procedure above conflicts with older text, this wins.*
+## 14. GREEDY DELTA + BASELINE SEMANTICS — THE LAW OF THE SHEET (2026-09-29)
+
+This is the single most misunderstood part of the system. Read it before touching `v15_pilot.py` delta/baseline logic or the templates.
+
+### 14.1 Bold = default = LIVE = the baseline
+
+- Every switch (col A) and every yellow filter (`L:BI` headers) has a **default** value. In the template that default is the **bold** cell (col B for switches; the bold option inside each yellow group).
+- **The bold/default values ARE what is running live right now.** The baseline of the sheet is the strategy evaluated with all switches/filters at their bold/default values (plus any promoted best-overrides from a previous run for that exact `SYM_SIDE`).
+- Therefore: **setting a switch/filter to its own default value MUST produce a delta of exactly 0.** You are just reproducing the baseline. This is an integrity invariant, not a bug.
+- **If a bold/default flip produces a non-zero delta, the system is broken** — it means the baseline computation and the override-application path disagree (a determinism/idempotency fault). Treat any such case as a P0 (see §21).
+
+### 14.2 What the sweep actually tests
+
+- The sweep tests **flipping a switch/filter to a NON-default value** to discover whether that change improves the strategy.
+- A non-default flip is *expected* to change the trade ledger and therefore produce a **non-zero** delta (positive or negative).
+- **Negative deltas are normal and fine.** A negative delta simply means "that change is worse" — it is **NOT summed into the baseline**, and the next row's `E` (BASELINE) stays blank. The candidate is not promoted; `C` is not filled with it.
+- **Positive deltas are promoted greedily:** `E_next = E + G`, `C` gets the switch (+ its positive yellow headers), and `cumulative_overrides` advances.
+- Consequence of the greedy rule: **a finished sheet's gain can only climb from the baseline.** `final_gain = baseline + Σ(positive promoted deltas)`. A finished sheet whose headline gain is *below* its baseline is impossible if the accumulation is correct — if you ever see that, the accumulation (not the baseline sign) is the bug.
+
+### 14.3 When a NON-default flip legitimately reads 0 — investigate, do not assume "unwired"
+
+A non-default flip that returns exactly 0 is a signal to **investigate**, in this order (never jump to "the function is unwired"):
+
+1. **Candidate == effective baseline value.** If the running baseline (prior-best overrides for this `SYM_SIDE`) already holds that switch at that value, re-stating it is a no-op → honest 0. Check `cumulative_overrides` for the current value before concluding anything.
+2. **An upstream gate/filter is suppressing the trades the switch would touch.** If a filter in the baseline blocks the entries/exits that this switch governs, flipping the switch changes nothing because those trades never exist. This is the **entry-blocker class** and is the FIRST thing to check (see §17 — a QuickConfig↔config parity gap can silently enable an entry-gate in the sweep baseline that live does not run).
+3. **The switch does not bind on THIS symbol's price path in THIS 30-day window.** e.g. an HTF direction gate whose mask happens to already include every entry bar for this symbol → no change → honest 0 for this symbol, real delta on another symbol/window.
+4. **Candidate equals default** (the bold-variant row) — expected 0 by design; that row draws its value from its **yellow filters**, not from the naked switch (see §5.4 no-yellow / yellow rules).
+
+Only after 1–4 are excluded is "the engine path for this switch needs work" a valid conclusion — and the fix is genuine signal logic in `vec_decisions/` + one call site in `v12_quick_engine`, never a `getattr` no-op (see §19).
+
+### 14.4 The units — "cells" vs "switches"
+
+- A **switch** is one name in col A (e.g. `WT_LOWER_CROSS_EXIT_TF`). There are on the order of ~200 switch names across the 12 active tabs.
+- A **cell** is one evaluated quantity: each switch row spawns `1 naked + K yellow` candidate evaluations, and there are multiple candidate *values* per switch. Across 12 tabs × rows × candidate values × all `L:BI` yellows this is **>5000 cells**.
+- When the operator says "5000+ cell fills," that is the cell count (F/G/E + every `L:BI` yellow across all rows of all sheets), not the switch-name count. Always answer in the operator's unit.
+
+---
+
+## 15. THE CORRECT BASELINE STRATEGY — DC-CHANNEL EXITS (2026-09-29)
+
+The intended baseline strategy (what bold/default should encode) as stated by the operator:
+
+- **Daytrade flag stays ON.** It was **not** turned off. What changed (days ago) is the daytrade *rules*: fixed-% exits were **deleted** and replaced with DC-channel rules. Do not "fix" this by disabling daytrade.
+- **The only baseline exits are:**
+  1. **LOSS exit** — price breaches `dc_low_{TF} − 0.25%` (long) / `dc_high_{TF} + 0.25%` (short). This is the worst-case stop.
+  2. **GAIN exit** — price reaches `0.1% below dc_high_{TF}` (long) / `0.1% above dc_low_{TF}` (short). Take-profit near the channel edge.
+  3. **`wt1_15m` lower cross** — WT turning against the position on 15m (long: wt crosses/closes lower than previous; short: vv).
+  - `{TF}` is one of `15m / 1h / 4h` (which TF, and combinations, is exactly what the sweep tests).
+- **No fixed-% stop/target.** Fixed `DC_DAYTRADE_STOP_PCT` / `DC_DAYTRADE_TARGET_PCT` are eliminated when a DC-channel TF list is active. Do not sweep the fixed-% params as if they matter under the DC-channel baseline — they are overridden.
+- **Any other exit** (MTF trails, gap MOC, breakeven erosion, spike-fade, etc.) is **OFF in the baseline** and is only ever adopted if the sweep proves a large positive delta for it. The operator's expectation is that most will not beat the DC-channel baseline.
+- The engine implements the DC-channel daytrade path via `DAYTRADE_DC_TARGET_TF` / `DAYTRADE_DC_STOP_TF` (+ `DAYTRADE_DC_TARGET_BUFFER_PCT` 0.10 / `DAYTRADE_DC_STOP_BUFFER_PCT` 0.25) and the technical channel exit via `TECHNICAL_DC_TARGET_TF` / `TECHNICAL_DC_STOP_TF`; the WT-cross exit via `WT_LOWER_CROSS_EXIT_TF`. These are the switches that genuinely move a DC-baseline symbol.
+
+---
+
+## 16. THE SIMPLE SYSTEM vs THE BIG SYSTEM — SAME ENGINE
+
+There are two sweep systems running in parallel; they share **one engine** and must not be confused.
+
+- **Big system** = `v15_pilot.py` + `TEMPLATE_{STOCKS,CRYPTO}_{LONG,SHORT}.xlsx` — the full 12-tab, >5000-cell workbook per `SYM_SIDE`. This is the one this bible mostly describes.
+- **Simple system** = `tools/dc_simple_8_sweep.py` — a small, curated sweep of only the switches that dominate a DC-channel strategy: `TECHNICAL_DC_STOP_TF`/`TECHNICAL_DC_TARGET_TF` (the technical channel EXIT), `ENTRY_DC_TF`/`ENTRY_DC_BUFFER_PCT` (the daytrade ENTRY channel), `WT_LOWER_CROSS_EXIT_TF`, and `EMA_9_21_FILTER`. It sweeps ~64 EXIT×ENTRY combos + WT + EMA. `STOP_BUF=0.25`, `TARGET_BUF=0.10`.
+- **Both call the identical engine:** `dc_simple_8_sweep.eval_gain()` builds a `v12_quick_engine.QuickConfig` (with `apply_tradier_defaults()` for stocks), applies overrides, sets `cfg.MODE`, and calls `V.simulate_one(sliced, sym, is_long, cfg)`. `v15_pilot` funnels through `evaluate_prepared_sanitized → simulate_one`. **Same rules, same math.**
+- **Implication:** any rule proven in the simple system is *already in the engine* the big system uses. Divergence between the two is almost always **which switches the template selects to sweep** and **whether the big-system baseline is in config-parity** (§17), not a separate rule codebase.
+- **Coordination:** the simple system is owned by a separate operator/agent and produces the missing `SYM_SIDE` results before market open. Do not touch its files or its queue. The big system (this bible) is a separate lane. `ENTRY_DC_TF`/`ENTRY_DC_BUFFER_PCT` exist and are wired in the engine (`v12_quick_engine` ~L5025, ~L9041-9064) — if the big template does not sweep them, that is a template-coverage gap to add, not an engine gap.
+
+---
+
+## 17. QUICKCONFIG ↔ CONFIG / CONFIG_TRADIER PARITY — MANDATORY, BUT CURATED
+
+The sweep baseline is only trustworthy if `QuickConfig` reproduces the live configuration. This is a hard requirement and a recurring failure mode.
+
+### 17.1 The three configs
+
+| Config | Class | Fields | Used for |
+|---|---|---|---|
+| `config.py` | `Config` | ~3269 | LIVE crypto (`ez_manage`) |
+| `config_tradier.py` | `TradierConfig` | ~1611 | LIVE stocks (`tradier_manage`) |
+| `v12_quick_engine.py` | `QuickConfig` (+`apply_tradier_defaults()`) | ~3420 | BACKTEST both venues |
+
+- Crypto sweep baseline = `QuickConfig()` should match `Config()` on shared strategy fields.
+- Stock sweep baseline = `QuickConfig()` + `apply_tradier_defaults()` should match `TradierConfig()` on shared strategy fields.
+
+### 17.2 How to audit parity (read-only, safe)
+
+```python
+import dataclasses as dc, v12_quick_engine as V, config as C, config_tradier as CT
+qf={f.name:getattr(V.QuickConfig(),f.name) for f in dc.fields(V.QuickConfig())}
+qt=V.QuickConfig(); qt.apply_tradier_defaults(); qtf={f.name:getattr(qt,f.name) for f in dc.fields(qt)}
+cf={f.name:getattr(C.Config(),f.name) for f in dc.fields(C.Config())}
+ct={f.name:getattr(CT.TradierConfig(),f.name) for f in dc.fields(CT.TradierConfig())}
+# compare shared keys; round floats to 9 dp; report mismatches
+```
+
+As of 2026-09-29 this showed **~652 crypto and ~365 tradier strategy-field mismatches** (after excluding ~73/23 infra/path fields). This is the parity gap that must be closed for the sweep baseline to equal live.
+
+### 17.3 CRITICAL — a blind full-sync BREAKS the backtest
+
+**Do NOT copy every live value into QuickConfig.** Verified 2026-09-29: setting all 365 tradier strategy fields to their `TradierConfig` values produced **0 trades / gain 0** on GDX_LONG. Reason: live config enables **live-only, non-vectorizable entry engines** that cannot run in the vector backtest and therefore block all entries when forced on. Known live-only fields to **exclude** from any sync (grow this list as found):
+
+- `LIVE_ENTRY_ENGINE_ENABLED`, `LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED`, `LIVE_5m_trading_ENABLED`, `MTF_ARMED_ENTRY_ENABLED`, `REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED` (live monitors / live entry engines)
+- All `ABLATION_DISABLE_*` (research toggles — `Config` may hold them True; they are NOT the live strategy and must not be copied into the backtest baseline)
+- Infra: any `*_PATH/FILE/DIR/CACHE/TOKEN/KEY/URL/HOST/PORT`, and `BASE_PATH`, `BASE_TF`, capital-normalization bases (`ATR_PARITY_EQUITY_BASE_USD`, `START_POSITION_SIZE`) that legitimately differ for backtest normalization.
+
+### 17.4 Curated sync procedure (the ONLY safe way)
+
+1. Snapshot the mismatch set (§17.2) to JSON.
+2. Partition into: **strategy params** (thresholds, TFs, sizing multipliers, gate enables that are vectorizable) vs **exclusions** (§17.3).
+3. Sync strategy params only, **live value → QuickConfig** (live is truth). For fields where `Config` and `TradierConfig` differ, the raw `QuickConfig` default matches `Config` (crypto) and `apply_tradier_defaults()` sets the `TradierConfig` value (tradier overlay).
+4. **Verify after every batch:** (a) `python -c "import py_compile; py_compile.compile('v12_quick_engine.py', doraise=True)"`, (b) re-run the mismatch audit → strategy mismatch count drops toward 0, (c) run `evaluate_sanitized("GDX_LONG",{},30)` and `AXTI_LONG`/`AXTI_SHORT` — **baseline trades must stay sane (not collapse to 0)**. If any field zeroes the backtest, move it to the exclusion list.
+5. Deploying the synced engine to S1/S2 is an **engine cut** — see §25 (coordinate, archive pre-cut chains, never mid-sweep silently).
+
+### 17.5 The entry-blocker class (operator's theory, confirmed real as a category)
+
+Config-parity gaps can leave **entry-gating filters ON in the sweep baseline that live runs OFF** (e.g. `ADX_REGIME_FILTER_ENABLED`, `TOP_OF_RANGE_BLOCK_ENABLED`, `COUNTER_TREND_ADD_BLOCK_ENABLED`, `OPEN_RATE_BREAKER_ENABLED`, `GOLDEN_RULE_HTF_VETO_ENABLED`, the `TR_*4H_GATE_ENABLED` trio, `WT_DC_LONG/SHORT_ENABLED`). When such a gate suppresses entries in the baseline, **every downstream switch that acts on those entries reads 0 delta** — not because it is unwired, but because the trades it would touch never open. Whenever a broad swath of switches reads 0, **audit config parity for spurious entry gates FIRST** (§17.2). (Note: turning a gate ON in QuickConfig only bites if the gate's mask actually binds on the symbol; verify empirically — a mismatch in a flag that does not bind is a parity cleanup, not the cause of a specific 0.)
+
+---
+
+## 18. INVESTIGATING A ROW OF ZEROS — PROTOCOL (NEVER GUESS "UNWIRED")
+
+When a `SYM_SIDE` sheet shows many 0-delta cells:
+
+1. **Read the delta-log** for that `SYM_SIDE` (§20) — get the exact per-cell gain_pct and delta, and the baseline (`cum_before`).
+2. **Confirm the baseline is right:** determinism + idempotency (§21). If a default flip is non-zero → P0 baseline bug, stop.
+3. **Config parity (§17):** are entry gates ON in the sweep baseline that live has OFF? Fix parity (curated), re-run.
+4. **Candidate vs effective baseline:** for each 0-delta non-default flip, is the candidate equal to the value already in `cumulative_overrides`? If yes, it is a no-op (honest 0) — the template should not sweep the current value.
+5. **Binding on this symbol:** does the switch's mask/predicate actually change any real trade on this symbol's 30-day window? Test on 2–3 other symbols; if it binds elsewhere, the 0 is symbol-specific and honest.
+6. Only if 2–5 are clean and the switch changes nothing on any symbol is genuine wiring work indicated — and it is done in `vec_decisions/` + one engine call site, proven by a **changed trade ledger** (§19), never by re-adding read-only scaffolding.
+
+Do not report "N switches are dead/unwired" as a conclusion — it conflates no-op candidates, parity-suppressed entries, symbol-non-binding, and genuine gaps, and it has been wrong. Report per-cause counts from the delta-log instead.
+
+---
+
+## 19. NO FABRICATED DELTAS — THE NO-LIES RULE FOR THE SWEEP
+
+- **A non-zero delta is credible ONLY when the trade ledger changed.** Identical yellows across a row, or a delta with no corresponding change in opens/closes/reduces, is a filter no-op and must read 0 — honestly.
+- **FORBIDDEN:** any construct whose purpose is to make a switch *appear* to do something without changing trades. Specifically:
+  - `_ = getattr(cfg, "X"); _ = cfg.X` read-only "wiring" (audit-defeating; a `_batchN_template_wiring`-style function of pure attribute reads was removed 2026-09-28 precisely because it faked "used" status while changing no trades — do not reintroduce it).
+  - `entry_mask[0] ^= True # guarantee ledger distinct`, `np.arange(n)%k`, hash-of-param bit-flips, or any synthetic perturbation added to force a non-zero/distinct delta. These fabricate deltas and are the exact class of lie that the NO-LIES mandate exists to prevent.
+- An **honest 0** (no-op candidate, non-binding switch, parity-suppressed entries) is correct and must be preserved. Making the sheet "show no zeros" by fabrication is a NO-LIES violation, not a fix.
+- To make a switch genuinely produce deltas, implement its **real signal logic** (a `vec_decisions/` predicate returning a real NumPy mask that gates entries/exits/augments/reduces), call it once in `v12_quick_engine`, and prove the delta corresponds to a changed ledger (opens/closes differ).
+
+---
+
+## 20. THE DELTA LOG — GROUND TRUTH FOR EVERY EVAL
+
+`v15_pilot` writes one JSON line per evaluation to `{PROGRESS_DIR}/v15_delta_log/{SYM}_{SIDE}_jump.jsonl` (default `PROGRESS_DIR = data/reports/lifecycle_pilot/`; override with `V15_PROGRESS_DIR` for isolated proofs). Each record:
+
+```json
+{"ts":"...Z","sym_side":"GDX_LONG","sheet":"EXIT_STRUCTURAL","row":27,"switch":"...","cand":"...",
+ "label":"naked|<yellow header>","fn":"tools.opt.v12_pilot.evaluate_prepared_sanitized",
+ "gain_pct":..., "trades":..., "valid":true, "cum_before":..., "delta": gain_pct-cum_before,
+ "secs":0.07, "cached":false, "err":""}
+```
+
+This is the **audit source of truth**. Standard audits:
+
+- **Fill count / zero rate:** count records; `delta==0` (`abs<1e-9`) vs non-zero; % non-zero per `label=="naked"` and overall.
+- **Distinct outcomes:** `len(set(round(gain_pct,6)))` — how many distinct strategy states the sweep reached.
+- **Duplicate deltas:** `collections.Counter(round(delta,6))` — a delta value repeated across unrelated switches often indicates a shared fallback path; investigate.
+- **Timing:** `secs` distribution; count `>0.1s` (cached target ~0.07s) and `max` (see §22).
+- **Which switches move the ledger:** `Counter(switch for r in records if label=='naked' and abs(delta)>=1e-9)`.
+
+**Verified baseline (2026-09-29, GDX_LONG):** the 16:05 real run and a 00:15 isolated re-run were statistically identical — ~1117 naked flips, ~2% non-zero, the same ~11 switches producing deltas, ~17 distinct gains. This is the steady-state profile for this symbol under the current baseline; it is not a regression. "Cells filled" means every cell was *written* (E/F/G/K + all `L:BI`), which the pilot still does — the delta *content* being mostly 0 for a given symbol is a baseline/coverage property, audited via this log.
+
+---
+
+## 21. INTEGRITY CHECKS — RUN BEFORE TRUSTING ANY SWEEP
+
+Two invariants must hold; both are quick and read-only. If either fails, stop and fix before sweeping.
+
+1. **Determinism:** the same overrides evaluated twice must give byte-identical `gain_pct`.
+   ```python
+   from tools.opt.v12_pilot import evaluate_sanitized as ES
+   assert ES("GDX_LONG",{},30)["gain_pct"] == ES("GDX_LONG",{},30)["gain_pct"]
+   ```
+2. **Idempotency (baseline reproduction):** setting any switch to its own default value must give delta 0 vs the no-override baseline.
+   ```python
+   b=ES("GDX_LONG",{},30)["gain_pct"]
+   for sw,dv in {"WT_15M_BOUNCE_OPEN_ENABLED":False,"STDEV_SLOPE_SIZING_ENABLED":True}.items():
+       assert abs(ES("GDX_LONG",{sw:dv},30)["gain_pct"]-b) < 1e-9  # else P0 (§14.1)
+   ```
+
+Verified 2026-09-29: both PASS on the current engine (determinism exact; default re-application = exactly 0). When comparing a running sheet's deltas against "cand==default," compare `cand` to the **effective baseline** (`cumulative_overrides` for that `SYM_SIDE`), NOT to a fresh `QuickConfig` default — a `SYM_SIDE` that was tested before starts from prior-best overrides, so a value that differs from the fresh default may equal the effective baseline (honest 0), and a fresh-default comparison will produce false "integrity violation" reports.
+
+---
+
+## 22. TIMING — 0.07s CACHED, 0.1s TARGET, 10s HARD GUARD
+
+- With NPZ in RAM (`ALL_PREPARED`, `V12_NPZ_CACHE=32`, `evaluate_prepared_sanitized`), a single cached eval is **~0.07s**; a cold/first eval ~0.11s.
+- **Target: every cell fills in ≤0.1s.** A cell that takes materially longer is almost always doing a **per-row disk reload** or a per-bar Python loop — fix it (§7). Verified 2026-09-29 GDX_LONG: 26k evals, mean well under 0.1s, only ~1.7% exceeded 0.1s with a max of 0.23s (acceptable tail under CPU contention; investigate if the tail grows).
+- Two distinct guards exist and serve different purposes: the **10s per-yellow hard stall guard** (`YELLOW_TIMEOUT`, marks the cell + tab RED and moves on — never hang; §5.7) and the **0.1s performance target** (a cell routinely over this is a perf regression to fix, not a stall to RED). Do not confuse them.
+- The filler must **never get stuck on a cell**: on stall, RED the cell, log to `data/reports/v15_flags/{SYM}_{SIDE}_flags.md`, continue. Monitors sweep the flags every ~10 min so other agents can pick up RED cells for repair.
+
+---
+
+## 23. PROOF PROTOCOL — DEMONSTRATE ONE CLEAN SHEET PER SERVER
+
+To prove the pipeline end-to-end without disturbing the running herd:
+
+1. **Isolate:** launch with `V15_PROGRESS_DIR=/tmp/proof_{sym}` so the proof's progress JSON + delta-log do not collide with the herd/cron sync. Add `V15_SKIP_LIVE_AT_DONE=1` to defer the (slow, sometimes parent-killing) live-verify at DONE.
+2. **One symbol, max workers:** `v15_pilot.py --sym-side {SYM}_{SIDE} --template SPREADSHEETS/TEMPLATE_{cat}_{side}.xlsx --seq-mode worst2best --window-days 30 --vector-only --workers 14` (16-core box → 14–15 workers). `_n_proc = min(workers, cpu_count-1)`.
+3. **Server placement:** s1 = crypto, s2 = stocks by convention; but s1 has the stock NPZs too and (2026-09-29) far more free RAM than s2 (s2 was ~1 GB free vs s1 ~22 GB). If s2 is RAM-starved, run a stock proof on s1 rather than risk OOM-killing s2's in-flight pilots — never add load that could kill a running filler.
+4. **Verify the fill (from the delta-log + xlsx):** every row wrote F/G + all `L:BI`; no None; timing ≤0.1s median; baseline correct (determinism + idempotency); greedy `E` chain monotonic; and the finished workbook is named with `bh` and `gain` and has a zoomable chart on the Mac (`tools/generate_zoomable_charts_mac.py`, output `SPREADSHEETS/charts/{stem}_zoom.html`).
+5. **"Good gains":** the headline `gain` is the finisher's fresh re-anchored full-set evaluation under the pilot's own engine — never a chained/mixed-engine number.
+
+---
+
+## 24. FILE & EDIT DISCIPLINE — NEVER REVERT, EDIT ON MAC, DEPLOY IS A CUT
+
+- **RULE 0 (repeat): never revert.** Fix forward. A backup copy in `backups/` is a safety net, not a rollback target — never overwrite a newer engine/pilot with an older one. If a past version was better, diff it and patch the *current* file forward.
+- **Backup before every edit:** `cp <file> backups/before_<desc>_$(date +%Y%m%d%H%M).<ext>`.
+- **Edit only on Mac** (`/Users/niels/Documents/binance`). S1/S2 copies are deployed via `rsync`, never edited in place.
+- **Deploying `v12_quick_engine.py` to a box running the herd is an ENGINE CUT.** In-flight pilots keep their loaded engine; new launches take the new one → a chain that resumes across the cut mixes engine arithmetic (`engine_mixed_chain`). Never resume a chain across a cut — archive the pre-cut progress JSONs and let chains re-baseline on the new engine. Announce engine batches to peer sessions before pushing; push modules/config/templates first, engine last; `md5sum` + `import v12_quick_engine` on every box before pilots launch.
+- **`vec_decisions/` is largely untracked by git** (only a handful of files tracked). Do not rely on git history for it — check file mtimes and the census scoreboard.
+- **Do not run `tools/sync_backtest_bible.sh` while another agent is editing on the servers** — it rsyncs to S1 and can collide. Sync the bible only when the server side is quiescent.
+
+---
+
+## 25. ENGINE ANATOMY — WHERE THINGS LIVE (v12_quick_engine.py)
+
+For future wiring/parity work, the load-bearing structures (line numbers drift — grep, do not trust exact lines):
+
+- `class QuickConfig` — the dataclass of all backtest config fields; `apply_tradier_defaults(self)` overlays stock-venue values (sets `MODE="tradier"`, `BASE_TF="5m"`, enables the stock entry stack, `DC_DAYTRADE_ENABLED=True`, etc.).
+- `simulate_one(npz, sym, is_long, cfg, force_initial_seed=False)` — the vector ledger loop. Builds `entry_sig / exit_sig / augment_sig / reduce_sig` from `compute_*_signals`, then walks bars: `_open()` appends an `OPEN` event; augments append `AUGMENT` events; reduces append `REDUCE` (to both `events` and, as zero-qty rows, `trades`); closes append `CLOSE` to `trades`. **OPEN/AUGMENT live in `events`; CLOSE/REDUCE live in `trades`.** Trade metrics use CLOSE rows only.
+  - Note on charts: OPEN (events) and CLOSE/REDUCE (trades) are separate lists; when merged for a chart they must be sorted by `(bar, then OPEN<AUGMENT<REDUCE<CLOSE)` or a same-bar reduce can render *before* its buy ("reduce before buy" is a chart-merge ordering artifact, not a sim bug — the sim only reduces an existing position).
+- Gate families are applied in `simulate_one` via `vec_decisions.*` calls, each wrapped in `try/except: pass` (a broken import in a family silently no-ops the whole family — check by calling the functions directly with exceptions exposed; verified 2026-09-29 that `filter_tf_gates`, `wave4_families`, `generic_filter_tf` execute and return real masks, so there is no swallowed-exception cascade at present).
+- `DAYTRADE_DC_*` / `TECHNICAL_DC_*` / `ENTRY_DC_*` / `WT_LOWER_CROSS_EXIT_TF` are the DC-baseline levers (§15). Fixed-% daytrade params are inert when a DC-channel TF list is active.
+
+---
+
+## 26. SESSION LEARNINGS LEDGER — 2026-09-29 (operator-corrected)
+
+Facts established this session, kept so they are not re-derived:
+
+1. Baseline delta+baseline accumulation math is **correct**; integrity (determinism + idempotency) **passes**. The greedy rule is as in §14.
+2. The correct baseline is **daytrade-on with DC-channel exits** (§15); daytrade was **not** to be turned off.
+3. Simple and big systems share **one engine** (§16); `ENTRY_DC_TF`/`ENTRY_DC_BUFFER_PCT` are wired in the engine and are a candidate template-coverage add for the big system.
+4. `QuickConfig` was **out of parity** with live config (~652 crypto / ~365 tradier strategy-field mismatches); a **blind full-sync zeroes the backtest** (live-only entry engines) — sync must be curated (§17). (QuickConfig parity remediation was assigned to a separate agent on 2026-09-29; do not double-edit.)
+5. The GDX_LONG delta profile at 16:05 == the profile at 00:15 (§20) — **no regression** across the handoff window; "cells filled" = cells written, delta content mostly 0 for that symbol under the current baseline.
+6. Read-only `getattr` "wiring" scaffolding (`_batchN_template_wiring`) was removed as fake-audit; it must **not** be reintroduced (§19).
+7. Timing is within budget (~0.07s cached; ~1.7% of evals >0.1s, max 0.23s) — no per-cell perf regression at present (§22).
+8. When many cells read 0, the investigation order is parity → candidate==effective-baseline → symbol-binding → genuine gap — reported per-cause from the delta-log, never as a blanket "unwired" count (§18).
+
+---
+
+## 27. WORKED EXAMPLE — ONE ROW, END TO END
+
+Concrete walkthrough of a single switch row so the contract is unambiguous. Assume `AXTI_SHORT`, tab `EXIT_VELOCITY`, current `cumulative_before = 6.20` (baseline + everything promoted so far), and the row under test is `switch = WT_LOWER_CROSS_EXIT_TF`, default (bold) `OFF`.
+
+Rows in the template for this switch (candidate values):
+
+- `WT_LOWER_CROSS_EXIT_TF = OFF` (the bold/default variant)
+- `WT_LOWER_CROSS_EXIT_TF = 15m`
+- `WT_LOWER_CROSS_EXIT_TF = 1h`
+- `WT_LOWER_CROSS_EXIT_TF = 4h`
+
+Yellow headers eligible for this switch (from `FILTER_DICTIONARY_V2`, `SPECIFIC`, overlapping token `WT`/`EXIT`), e.g. `WT_CROSS_EXIT_APPLIES_TO_WINNERS=0.5`, `EMA_9_21_FILTER_FILTER_TF=4h`, etc.
+
+Processing:
+
+1. **Default-variant row (`=OFF`):** naked flip to `OFF` = the current value → naked delta `0` (integrity; §14.1). The row's value comes from its yellows: evaluate `{...cum..., WT_LOWER_CROSS_EXIT_TF:OFF, <each yellow>}` vs `6.20`. Suppose two yellows are positive (+0.30, +0.12) and the rest ≤0. `G = sum_pos = 0.42`. Since `G>0`: write `C = "WT_LOWER_CROSS_EXIT_TF=OFF + WT_CROSS_EXIT_APPLIES_TO_WINNERS=0.5 + EMA_9_21_FILTER_FILTER_TF=4h"`, `F/G = 0.42`, `K = those two headers`, each `L:BI` yellow cell = its own delta (pos green, neg red). Move **down one row on this tab**; next row `E = 6.20 + 0.42 = 6.62`; `cumulative_overrides` gains those two filters.
+2. **`=1h` row:** naked flip to `1h` vs `6.62` — suppose `+1.20` (real ledger change: fewer late exits). Then its yellows on top. Suppose `G = 1.20 + (pos yellows 0.05) = 1.25 > 0`. Promote: `C = "WT_LOWER_CROSS_EXIT_TF=1h + <pos yellow>"`, `E_next = 6.62 + 1.25 = 7.87`, overrides gain `WT_LOWER_CROSS_EXIT_TF=1h`.
+3. **`=4h` row:** naked flip to `4h` vs `7.87` — suppose `-0.30` and no positive yellows → `G = 0` (or the negative naked if no yellows). Not promoted: `C` stays blank, `F/G` written (red), `E_next` **stays blank** (baseline does not advance), `cumulative` unchanged. Because this row had yellows evaluated and none positive, we still **move to the next tab** only when the tab's rows are exhausted; within a tab we continue down its remaining rows.
+4. When `EXIT_VELOCITY`'s rows are exhausted, move to `REENTRY_WINDOWED` with the current `cumulative` (7.87) written to its first pending row's `E`.
+
+Key invariants exercised: every row wrote `F/G` (pos or neg) and every eligible `L:BI`; `C` only for promoted rows; `E` only advanced on positive `G`; the default-variant row's value came from yellows, not from the (zero) naked flip.
+
+---
+
+## 28. THE 12 ACTIVE TABS — WHAT EACH SWEEPS
+
+Order is fixed (`STDEV_SLOPE_SIZING` present but in `SKIP_SHEETS`). Lifecycle tag drives yellow eligibility (`Sheets applicable`).
+
+1. **ENTRY_REVERSAL_BOUNCE** (`ENTRY`) — bounce/reversal openers: `BB_SQUEEZE_ENTRY_ENABLED`, `BB_PULLBACK_GATE_TF`, `WT_15M_BOUNCE_OPEN_ENABLED`, BB recovery entries. Yellows: BB/WT confirmation filters.
+2. **ENTRY_BREAKOUT_CHANNEL** (`ENTRY`) — breakout/channel openers: `WT_DC_DETAILED_TF`, `DC_BREAKOUT_TF`, `DC_BREAKOUT_SCORE`, breakout retest. Largest tab (~54 base switches → ~210 rows).
+3. **ENTRY_CONFIRMATION_GATES** (`ENTRY`) — HTF/alignment gates on entries: `WT_DC_HTF_GATE`, alignment gates, HTF direction confirmation.
+4. **EXIT_STRUCTURAL** (`EXIT`) — structural channel exits: `TECHNICAL_DC_STOP_TF`, `TECHNICAL_DC_TARGET_TF`, DC-hard-stop TF, hopeless-exit. **This is where the DC-channel LOSS/GAIN exits (§15) are swept.**
+5. **EXIT_VELOCITY** (`EXIT`) — velocity/WT exits: `WT_LOWER_CROSS_EXIT_TF`, WT-4h velocity exit, exhaustion exit, top-fade.
+6. **REENTRY_WINDOWED** (`REENTRY`) — windowed reentry after exit: mandatory-reentry gates, K-not-extreme, DC-break reentry.
+7. **REENTRY_ADAPTIVE** (`REENTRY`) — adaptive reentry: HLR reentry mult, breakout-leash reentry, bounce reentry.
+8. **AUGMENT_TREND** (`AUGMENT`) — trend-following adds: HTF-gate-apply-to-augment, WT-4h-bounce augment, bounce-augment min-loss.
+9. **AUGMENT_RISK_SIZING** (`AUGMENT`) — add sizing: partial-recovery size mult, pyramid, augment gain gate.
+10. **REDUCE_PROFIT_LOCK** (`REDUCE`) — profit locks: partial-profit-lock v2, breakeven-gain-erosion, HTF-gate-apply-to-open.
+11. **REDUCE_SIGNAL_RATER** (`REDUCE`) — signal-rated reduces: MI entry-struct bonus, quick-reduce-technical, signal rater.
+12. **GLOBAL_RISK_GATES** (`GLOBAL_CHECK`) — portfolio/rate gates: `OPEN_RATE_MAX`, blacklist, circuit gates, bear-market mode. (`GLOBAL_RISK_GATES` has a documented VLOOKUP waiver — see §4.2.)
+
+`STDEV_SLOPE_SIZING` (`SPECIFIC`, sizing) — skipped until `compute_regime_sizing_mult` is fully wired and `stdev_edge_*`/`stdev_slope_*` exist on all hosts.
+
+**Yellow eligibility recap (per §5.3):** a filter is a yellow for a switch iff `Recommendation=SPECIFIC` AND (`Sheets applicable` contains the tab's lifecycle OR `ALL`) AND `Switches exactly (gates)` token-overlaps the switch AND the `FILTER=OPT` header exists in that tab's `O:BI`. Never evaluate a filter that is not yellow for the row.
+
+---
+
+## 29. DC-CHANNEL EXIT MATH — HOW THE ENGINE COMPUTES IT
+
+For a DC-channel baseline (`DAYTRADE_DC_*` / `TECHNICAL_DC_*` TF lists active), per bar `i`, long side:
+
+- **Stop level:** `stop = dc_low_{TF}[i] * (1 - STOP_BUF/100)` with `STOP_BUF = DAYTRADE_DC_STOP_BUFFER_PCT` (default `0.25`). Exit if `close[i] <= stop`.
+- **Target level:** `tgt = dc_high_{TF}[i] * (1 - TARGET_BUF/100)` with `TARGET_BUF = DAYTRADE_DC_TARGET_BUFFER_PCT` (default `0.10`) — i.e. 0.1% *below* the channel high. Exit if `close[i] >= tgt`.
+- **WT cross exit:** if `WT_LOWER_CROSS_EXIT_TF={TF}`, exit if `wt1_{TF}[i]` crosses below `wt2_{TF}[i]` (long) — turning against the position.
+
+Short side mirrors: stop `= dc_high_{TF}*(1+STOP_BUF/100)`, target `= dc_low_{TF}*(1+TARGET_BUF/100)`, WT upper cross.
+
+- **Multi-TF lists** (`"15m,1h,4h"`): the exit fires if **ANY** listed TF's condition is met (OR across TFs). The TF alias `5m→3m` is applied by `_parse_tf_list`. `OFF` disables that family.
+- **Fixed-% elimination:** when a DC TF list is active, the legacy fixed `daytrade_stop/target` (`*_PCT`) are **not used** — do not sweep them expecting a delta under a DC baseline.
+- **`TECHNICAL_DC_*`** is the same channel machinery tagged as a technical (structural) exit with its own TF list and buffers; `DAYTRADE_DC_*` is the intraday-entry channel. The sweep tests both TF lists to find the best channel for the symbol.
+
+This is why `DAYTRADE_DC_TARGET_TF`, `DAYTRADE_DC_*_BUFFER_PCT`, `TECHNICAL_DC_*_TF`, and `WT_LOWER_CROSS_EXIT_TF` are the switches that reliably move a DC-baseline symbol, while fixed-% and unrelated exit families read 0 against that baseline.
+
+---
+
+## 30. RUNNABLE AUDIT — ZERO/DUP/TIMING FROM THE DELTA LOG
+
+Drop-in audit for any `SYM_SIDE` (read-only; run on S1):
+
+```python
+import json, collections
+f="data/reports/lifecycle_pilot/v15_delta_log/GDX_LONG_jump.jsonl"   # or /tmp/proof_*/v15_delta_log/...
+recs=[json.loads(l) for l in open(f) if l.strip()]
+naked=[r for r in recs if r.get("label")=="naked" and r.get("delta") is not None]
+alld=[r for r in recs if r.get("delta") is not None]
+nz=lambda xs:[r for r in xs if abs(r["delta"])>=1e-9]
+print("records",len(recs),"naked",len(naked),"naked_nonzero",len(nz(naked)),
+      "all_nonzero_pct",round(100*len(nz(alld))/max(1,len(alld)),1))
+print("distinct gains",len(set(round(r["gain_pct"],6) for r in recs if r.get("gain_pct") is not None)))
+print("dup deltas",collections.Counter(round(r["delta"],6) for r in alld).most_common(6))
+secs=[r["secs"] for r in recs if r.get("secs") is not None]
+print("timing >0.1s",sum(1 for s in secs if s>0.1),"max",max(secs) if secs else None)
+print("switches that move ledger",collections.Counter(r["switch"] for r in nz(naked)).most_common(20))
+```
+
+Interpretation guide:
+
+- **High zero-rate** → run the §18 protocol (parity → cand==effective-baseline → binding → gap). Do NOT report "unwired."
+- **Few distinct gains** relative to eval count → the baseline collapses variety (e.g. an entry gate suppressing most entries) — check §17 parity.
+- **A single delta value repeated across unrelated switches** → shared fallback path; verify the ledger actually changed (§19).
+- **Timing tail growing** → per-row disk reload crept in (§22); confirm `ALL_PREPARED`/`V12_NPZ_CACHE` still hot.
+
+---
+
+## 31. CURATED CONFIG-PARITY — FIELD CLASSIFICATION RULES
+
+When closing the QuickConfig↔live gap (§17), classify each mismatched field:
+
+**SYNC (live → QuickConfig):**
+- Strategy thresholds (`*_THRESHOLD`, `*_MIN`, `*_MAX`, `*_PCT` that are not live-only), TF strings (`*_TF`), sizing multipliers (`*_MULT`, `*_SIZE`), lookbacks (`*_BARS`, `*_DAYS`), and gate enables that are vectorizable and bind on NPZ arrays.
+- Direction: crypto raw `QuickConfig` default ← `Config`; tradier overlay in `apply_tradier_defaults()` ← `TradierConfig`.
+
+**EXCLUDE (keep QuickConfig's own value):**
+- Live-only entry engines / monitors: `LIVE_ENTRY_ENGINE_*`, `LIVE_5m_trading_ENABLED`, `MTF_ARMED_ENTRY_ENABLED`, `*_LIVE_MONITOR_*` (forcing these on → 0 trades in backtest).
+- All `ABLATION_DISABLE_*` (research toggles, not the live strategy).
+- Infra/paths: `*_PATH/FILE/DIR/CACHE/TOKEN/KEY/SECRET/URL/HOST/PORT/WEBHOOK/CHANNEL/EMAIL`, `BASE_PATH`.
+- Backtest structural/normalization: `BASE_TF`, `MODE`, capital bases used for per-trade normalization (`ATR_PARITY_EQUITY_BASE_USD`, `START_POSITION_SIZE`, `MAX_ORDER_VALUE`) unless the operator says otherwise.
+
+**VERIFY each batch:** compile-check; re-audit mismatch count (should drop); and re-run `evaluate_sanitized` on `GDX_LONG`, `AXTI_LONG`, `AXTI_SHORT` — **baseline trades must not collapse to 0**. Any field that zeroes the backtest moves to EXCLUDE. Only deploy via a coordinated engine cut (§24).
+
+(As of 2026-09-29 this remediation is owned by a separate agent; this section documents the method, not an action to duplicate.)
+
+---
+
+## 32. THE FINISHER / RE-ANCHOR / PUBLISH PIPELINE
+
+After a workbook's 12 tabs are filled, the finisher (`tools/v15_finisher.py --watch`) publishes it:
+
+- **Re-anchor:** the headline `gain` is recomputed as a **fresh full-set evaluation** of the final `cumulative_overrides` under the pilot's own engine — never the chained running total (which could carry mixed-engine arithmetic across a cut). If the fresh eval and the chained total diverge beyond tolerance, the sheet is stamped `engine_mixed_chain`/`CONTAMINATED` and **held, not published**.
+- **Name:** the published file carries `bh` and `gain` in the filename, e.g. `AXTI_SHORT_bhm1p03_gain11p29_30d_matrix.xlsx` (`m` = minus, `p` = decimal point).
+- **Chart:** `tools/generate_zoomable_charts_mac.py` runs on the Mac over `V15_V16_CELL_BY_CELL(_FINAL)`, output `SPREADSHEETS/charts/{stem}_zoom.html` (offline `file://`, Chart.js zoom/pan, `bh`/`gain` in title). No auto-trigger — run it manually.
+- **Publish-before-live:** publish happens inside the DONE stage *before* the optional live-verify, so a slow/failing live-verify never loses the published sheet. `V15_SKIP_LIVE_AT_DONE=1` defers live-verify entirely for showcase/proof runs.
+- **Board `is_complete` = complete AND published** — drives herd requeue of unpublished-but-complete sheets.
+
+---
+
+## 33. CHARTS — WHAT MUST BE TRUE
+
+- Single-file offline `file://` HTML, zoomable/pannable, height ~62vh per sheet (not 165vw).
+- `bh` and `gain` in both the filename and the chart title.
+- OPEN/AUGMENT/REDUCE/CLOSE markers must be sorted by `(bar, OPEN<AUGMENT<REDUCE<CLOSE)` before plotting so a same-bar reduce never renders before its buy (§25) — a reduce cannot precede its open in the sim; if the chart shows that, fix the marker sort, not the sim.
+- Charts land on the Mac (pulled from S1 `V15_V16_CELL_BY_CELL_FINAL`); Mac-side files not in `_FINAL` may be pruned by the 60s `--delete` pull, so a sheet must satisfy publish criteria to persist on the Mac.
+
+---
+
+## 34. HERD / SENTINEL / WATCHDOG / FINISHER — THE DAEMONS
+
+Per box (S1 crypto, S2 stocks), all `setsid` daemons:
+
+- **herd** `tools/v15_local_herd.py` — queue of `SYM_SIDE`, launches **one pilot per sym_side** (twin-pair `2×8` workers to avoid oversubscribing 16 cores), `push_to_s1()` rsyncs `SPREADSHEETS/` + `data/reports/lifecycle_pilot/` back. Log `/tmp/v15_local_herd.log`. Reaps orphaned pilots (ppid==1) only when >30min old AND >15min idle.
+- **sentinel** `tools/v15_cell_sentinel.py` — kills+relaunches pilots idle >12min. Log `/tmp/v15_sentinel.log`.
+- **finisher** `tools/v15_finisher.py --watch` — re-anchor → bh/gain name → chart → state (§32). Log `/tmp/v15_finisher.log`.
+- **assure** `tools/v15_assure.py watch` — refills JSON-ahead sheets from `*_v14_progress.json` truth (audit/refill/complete/bench/watch). Log `/tmp/v15_assure_watch*.log`.
+- **redflag** `tools/v15_redflag.py` — echo/zero/stall/coverage detectors, run per monitor cycle.
+
+**Never kill an in-flight pilot to make room** — it loses that sheet's compute. Add load only where there is headroom; a RAM-starved box (S2 was ~1 GB free 2026-09-29) must not get another max-worker pilot.
+
+---
+
+## 35. FAILURE SIGNATURES → FIXES (PLAYBOOK)
+
+| Signature | Likely cause | Fix |
+|---|---|---|
+| Many cells `0` delta across a `SYM_SIDE` | config-parity entry gate ON in sweep baseline (§17.5); or cand==effective baseline; or symbol non-binding | §18 protocol; audit parity first; fix curated sync; do NOT re-stub |
+| A **default/bold** flip shows non-zero | baseline↔override path disagree (idempotency fault) | P0 — stop; §21; trace override application |
+| Finished sheet gain **below** baseline | greedy accumulation applying negatives, or chained/mixed-engine total | §14.2; re-anchor fresh eval (§32); check `E_next=E+G` only on `G>0` |
+| `E2 = "BASELINE"` string vs numeric confusion | `H/I` live formulas left in rows corrupt header detection | clear live formulas at open (§5.5); resolve cols by row-2 header |
+| Cell fill >0.1s routinely | per-row disk reload / per-bar Python loop | §22; confirm `ALL_PREPARED`+`V12_NPZ_CACHE`; vectorize the wiring |
+| Sheet hangs on a cell | stalled eval | 10s guard RED the cell+tab, log flags, continue (§5.7) — never hang |
+| `225 KB` BadZip workbook | truncated `_atomic_save` (OOM/pkill) | zip-validate (`ZipFile≥10`) before `os.replace`; refill from JSON (§32/assure) |
+| "reduce before buy" on chart | marker merge ordering | sort `(bar, OPEN<AUGMENT<REDUCE<CLOSE)` (§33) — not a sim bug |
+| New switch shows fabricated distinct delta | synthetic scaffolding (`entry_mask[0]^=True`, getattr no-op) | forbidden (§19); implement real `vec_decisions` mask |
+| Backtest → 0 trades after a config change | live-only entry engine forced on | exclude from sync (§17.3/§31); revert that field only (not the file) |
+
+---
+
+## 36. GLOSSARY
+
+- **Baseline** — strategy gain with all switches/filters at bold/default (+ promoted best-overrides for that `SYM_SIDE`). What is live.
+- **Naked delta** — delta of flipping the switch alone (no yellow) vs `cumulative_before`.
+- **Yellow (cell/filter)** — a `FILTER=OPT` candidate eligible for a specific switch's row (`L:BI`); its cell holds the delta of `switch + that one filter`.
+- **`G` / VECTOR_DELTA** — sum of positive yellow deltas for the row (or the naked delta if the row has no yellows).
+- **`F` / HUSTLE_DELTA** — the row's vector delta vs the baseline/all-settings-so-far (see column contract §4.2 and memory `v15_column_semantics_2026_09_28`).
+- **`E` / BASELINE** — cumulative gain before the row; only advances (`E+G`) when `G>0`, else blank.
+- **`K` / PER_ROW_FILTERS** — comma-joined positive yellow header names promoted on the row.
+- **Promote** — write `C`, advance `E`, add to `cumulative_overrides` (only on `G>0`).
+- **Effective baseline** — `cumulative_overrides` for the `SYM_SIDE` (prior-best + promotions so far); compare candidates against THIS, not fresh defaults.
+- **Engine cut** — deploying a new `v12_quick_engine` to a box; chains must not resume across it.
+- **DC-channel exit** — LOSS `dc_low−0.25%` / GAIN `dc_high−0.1%` (long; mirror for short) + `wt1_15m` cross; the baseline exits (§15).
+- **Honest 0** — a true zero delta (no-op candidate / non-binding switch / parity-suppressed entries); correct, must be preserved.
+- **Fabricated delta** — a non-zero produced without a changed ledger; forbidden (§19).
+
+---
+
+## 37. THE GREEDY STATE MACHINE — PSEUDOCODE
+
+The exact control flow `v15_pilot` must implement per tab (STDEV skipped). This is normative — code that deviates is wrong.
+
+```
+cumulative_gain      = baseline_gain          # from *_BASELINE_METRICS!B2
+cumulative_overrides = ingest_best(SYM_SIDE)  # prior-best wins over defaults (no "if k not in" guard)
+write E3 = baseline_gain ; keep E2 = "BASELINE" (header string)
+
+for tab in TABS_IN_ORDER:                      # ENTRY_REVERSAL_BOUNCE ... GLOBAL_RISK_GATES
+    write E(first_pending_row(tab)) = cumulative_gain
+    for row in rows(tab):                       # switch=cand rows, in order (or shuffled in hustle)
+        switch, cand = row.A, row.candidate
+        yellows = opportune_yellows(switch, tab) # SPECIFIC + lifecycle/ALL + token-overlap + header exists
+        cum_before = cumulative_gain
+
+        naked = eval(cumulative_overrides + {switch:cand}) - cum_before      # ~0.07s, RAM
+        per_yellow = { hdr: eval(cumulative_overrides + {switch:cand} + {filter(hdr)}) - cum_before
+                       for hdr in yellows }                                   # each written to L:BI now
+        write F,G for the row ; write every L:BI cell (pos green / neg red)
+
+        if yellows:
+            G = sum(d for d in per_yellow.values() if d > 1e-9)   # positive yellows only
+            if G > 1e-9:
+                write C = "switch=cand + " + join(pos_yellow_headers)     # bold if non-default
+                write K = pos_yellow_headers
+                cumulative_gain      += G
+                cumulative_overrides += {switch:cand} + {each pos yellow filter}
+                # stay on THIS tab, next row's E = cumulative_gain
+            else:
+                leave C blank ; E of next row stays BLANK ; do not advance cumulative
+                # continue down remaining rows of this tab
+        else:   # no yellows for this row
+            write F=G=naked
+            # per spec, a no-yellow row cannot be exploited further -> move to NEXT TAB
+            break
+
+# after all tabs: run winning set through backtest_v12_engine -> fill H/I once; finisher re-anchors & publishes
+```
+
+Notes:
+- **`E` never decreases and never sums a negative.** The only writes to `E` are `E3=baseline`, each promoted `E+=G`, and the first-pending-row inherit at tab entry.
+- **`C` is only written on promotion**; it is additive (append headers), never overwritten.
+- **Every row writes `F/G` and all its `L:BI`** before the next row — no batching to the end.
+- **Live `H/I` stay blank** until the whole workbook is done; template formulas in `H/I` are cleared at open.
+
+---
+
+## 38. vec_decisions/ — PREDICATE MAP (WHERE REAL WIRING LIVES)
+
+Genuine switch logic lives in `vec_decisions/` as pure NumPy predicates returning masks, called once from `v12_quick_engine.simulate_one` (never re-implemented inline in both engines). Representative modules (grep `import vec_decisions` in the engine for the current full list):
+
+- `filter_tf_gates` — `mom3_entry_gate`, `momentum_breakout_gate`, `fast_riser_sig` (entry-family FILTER_TF gates).
+- `wave4_families` — `oi_confirm_entry_gate`, `ema_blanket_entry_gate`, `htf_direction_gate`, `mi_exit_signal`.
+- `generic_filter_tf` — `build_masks(...)` returns `{entry, reduce_confirm, erosion_confirm}` for generic FILTER_TF families.
+- `gain_ladder_augment` — `gain_ladder_fire`, `cooldown_bars` (augment ladder).
+- `reduce_profit_lock` — `ppl_step` (TP→BE→arm→SL), `dd_bounce_stop_fires`, `noloss_bypass_params`.
+- `quick_reduce_strong` — `quick_reduce_gain_ok`.
+- `mtf_atr_trail_exit`, `mtf_compound_exits` — MTF trail / dc / bb / wt compound exits.
+- `process_position_crypto__*` / `process_position_stocks__*` — per-venue faithful exit twins.
+
+Each is wrapped in `try/except: pass` at the call site — a broken import silently no-ops the **whole family** (verify by calling functions directly with exceptions exposed; §25). Returning `None` = inert (e.g. OI/EMA-blanket return None on stocks lacking that data) — that is an honest non-binding, not a bug.
+
+---
+
+## 39. HOW TO GENUINELY WIRE A SWITCH (RECIPE)
+
+When §18 concludes a switch truly needs engine logic (rare), wire it honestly:
+
+1. **Backup** the engine (`cp ... backups/before_wire_<SWITCH>_<ts>.py`).
+2. **Write a predicate** in `vec_decisions/<family>.py`:
+   ```python
+   def my_gate(npz, n, is_long, cfg, close, _safe):
+       if str(getattr(cfg, "MY_SWITCH_TF", "OFF")).upper() == "OFF":
+           return None                      # inert when default -> honest 0 (integrity)
+       arr = _safe(npz, f"wt1_{tf}", n, 0.0) # real NPZ array
+       mask = (arr < _safe(npz, f"wt2_{tf}", n, 0.0)) if is_long else (...)
+       return mask                          # real gating mask, changes which bars fire
+   ```
+3. **Call it once** in `simulate_one` (entry: `entry_sig &= mask`; exit: `exit_sig |= mask`; etc.), inside the family's try/except.
+4. **Prove it** — the switch flip must produce a delta **with a changed trade ledger**: compare `include_ledger=True` results (opens/closes differ), not just gain. If gain moves but the ledger is identical, the delta is spurious — do not ship.
+5. **Integrity** — setting the switch to its default (`OFF`) must give exactly 0 (predicate returns `None`).
+6. **Parity** — add a faithful scalar twin path in `backtest_v12_engine` (or confirm the live `process_position` already does it) before promoting on vector numbers alone (§44).
+7. **Never** satisfy an audit with `_ = getattr(cfg, "X")` reads (§19).
+
+---
+
+## 40. NPZ ARRAY INVENTORY (WHAT PREDICATES CAN READ)
+
+Per-symbol `backtest_v8/indicators/{SYM}.npz` holds per-bar arrays keyed by TF suffix. Confirmed families (load with `allow_pickle=True`):
+
+- **OHLCV:** `open/high/low/close/volume` (base), plus `*_D` daily (`open_D`, `close_D`, `close_D_prev`).
+- **Donchian:** `dc_high_{tf}`, `dc_low_{tf}`, `dc_basis_{tf}`, `dc_width_{tf}`, `dc_position_{tf}`, and `dc_high4_{tf}`/`dc_low4_{tf}` (the "4" channel variant), plus `_prev`/`_ant` shifts. TFs: `15m,1h,4h,D` (and `3m/5m` where present).
+- **WaveTrend:** `wt1_{tf}`, `wt2_{tf}`, `wt_velocity_{tf}`.
+- **Momentum/vol:** `atr_{tf}`, `adx_1h`, `sma_200_1h`, `ema_*`, `bb_upper_{tf}`/`bb_lower_{tf}`, `k_3m`/`d_3m` (stoch), `stdev_edge_{tf}`, `stdev_slope_{tf}`.
+- **Time:** `timestamps` (unix; used for the exact 30d/365d slice).
+
+`_safe(npz, key, n, default)` returns the array iff present and length `n`, else a constant-`default` array of length `n` — so a missing key yields an inert predicate (honest non-binding), never a crash. `_exact_30d_slice(npz, is_crypto, 30)` produces the frozen window (crypto: `timestamps[-1]-30d`; stocks: ~20 RTH sessions). NPZ is 15m-based; ≥365D history (`~9490` bars stocks, `~35040` crypto); 30D uses a slice.
+
+---
+
+## 41. TYPE COERCION — sanitize_overrides / _parse_opt
+
+Override values arrive as strings from the sheet and must be coerced to the field's type before the engine reads them:
+
+- `_parse_opt(val, default)`: if `default` is `bool` → `"true"/"false"` (case-insensitive) → bool; if `int` (non-bool) → `int(float(val))`; if `float` → `float(val)`; else if val looks boolean → bool; else raw. Unknown types pass through.
+- `sanitize_overrides(overrides, defaults)` normalizes the dict against `QuickConfig` field types and drops/《coerces》 malformed values; the pilot applies it before every eval so a sheet string like `"15m"`, `"False"`, `"0.10"`, `"38"` becomes the correct typed value.
+- **Consequence for zero-deltas:** a candidate written as `"0.01"` when the field default float is `0.01` coerces to the identical value → honest 0. Confirm coercion when auditing (a `"1"` vs `1.0` mismatch is not a real change).
+
+---
+
+## 42. BASELINE_METRICS SHEET CONTRACT
+
+`{SYM}_{SIDE}_BASELINE_METRICS` (renamed from `TEMPLATE_BASELINE_METRICS` on clone):
+
+- `B2` = `baseline_gain` (the numeric baseline the sheets read into `E3`).
+- Rows carry `bh`, `trades`, `pool_sharpe`, `gain_per_yr`, `avg_gain_trade`, `max_dd_pct`, `n_syms`, `years` (§NO-LIES CSV contract).
+- Greedy cum formula fixed on clone: `=IF(G4="",E3,IF(G4>0,E3+G4,E3))`; `G` VLOOKUP key `&"_"&`→`&"="&`; clear `#NUM!/#NAME?/0` trash in `E`.
+- Zero-trades still writes this sheet (baseline metrics + `E`) then skips the sweep — never `DIAGNOSTIC ONLY` with no XLS.
+
+---
+
+## 43. PARITY — v12_quick_engine vs backtest_v12_engine
+
+- **Vector** (`v12_quick_engine`): fast masks, what fills every cell.
+- **Scalar** (`backtest_v12_engine`): bar-by-bar, calls the real `ez_manage.process_position` / `tradier_manage.process_position`, guarded by `_assert_live_path` — the live-faithful truth.
+- **Parity gate:** on the same frozen 30d NPZ, trade-count ratio `0.80–1.25` AND gain mismatch `<0.5 pp` AND `<15%`. Per-row parity fail → flag + red, never abort the sheet.
+- **Rule:** never promote a switch on vector numbers alone if it lacks a faithful scalar twin — vector-only gains that live cannot reproduce are not real (see the WT_DC-detailed live≠vec history: vector counted trades that live gating blocked).
+- Final winning set is verified through the scalar engine at DONE (`H`/`I`), publish-before-live so a slow scalar pass never loses the sheet.
+
+---
+
+## 44. 365D ROBUSTNESS
+
+- After the 30D greedy+hustle, prepare 365D via `prepare_batch(sym, 365)` and evaluate the winning set vs baseline (`evaluate_prepared_sanitized`) + scalar parity.
+- Overfit guards: `365D delta < 50% of 30D delta` → warn; `trades < 30` → diagnostic-only; DD/sharpe gates.
+- Live crypto opens are additionally gated by `data/confirmed_365d.json` (365D, gain>0, ≥30 trades, ≤30d fresh) via `tools/confirm_365d.py` — never weaken this certifier.
+- 365D artifacts: `*_365d_matrix.xlsx` with `bh/gain` in filename + `_BASELINE_METRICS` 365D rows + `365D_REAL_ZOOMABLE` chart. No promotion without positive 365D gain unless 30D positive or beats B&H.
+
+---
+
+## 45. SESSION COMMAND CHEATSHEET (READ-ONLY DIAGNOSTICS)
+
+Exact commands proven this session; all read-only unless noted.
+
+```bash
+# which engine is running (Mac == S1?)
+md5 -q v12_quick_engine.py ; ssh s1-int 'cd ~/binance-sandbox && md5sum v12_quick_engine.py'
+
+# baseline + ledger for a sym_side (see honest trades)
+ssh s1-int 'cd ~/binance-sandbox && .venv/bin/python -c "
+from tools.opt.v12_pilot import prepare_batch, evaluate_prepared_sanitized as E
+r=E(prepare_batch(\"GDX_LONG\",30),{},30,include_ledger=True)
+print(r[\"gain_pct\"],r[\"trades\"]); led=r.get(\"ledger\") or []
+print(sum(t[\"type\"]==\"OPEN\" for t in led),\"opens\",sum(t[\"type\"]==\"CLOSE\" for t in led),\"closes\")"'
+
+# switch delta + timing (does a flip move the ledger? is it <0.1s?)
+# ES=evaluate_sanitized applies MODE/tradier like the pilot
+ssh s1-int 'cd ~/binance-sandbox && .venv/bin/python -c "
+from tools.opt.v12_pilot import evaluate_sanitized as ES
+b=ES(\"GDX_LONG\",{},30); print(\"base\",b[\"gain_pct\"],b[\"trades\"])
+print(ES(\"GDX_LONG\",{\"WT_LOWER_CROSS_EXIT_TF\":\"1h\"},30)[\"gain_pct\"]-b[\"gain_pct\"])"'
+
+# config parity audit (QuickConfig vs Config / TradierConfig) — see §17.2
+# delta-log audit (zeros/dups/timing) — see §30
+
+# isolated single-symbol max-worker PROOF (does not touch the herd)
+ssh s1-int 'cd ~/binance-sandbox && V15_PROGRESS_DIR=/tmp/proof_gdx V15_SKIP_LIVE_AT_DONE=1 \
+  setsid nohup .venv/bin/python -u v15_pilot.py --sym-side GDX_LONG \
+  --template SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx --seq-mode worst2best \
+  --window-days 30 --vector-only --workers 14 >> /tmp/proof_gdx.log 2>&1 < /dev/null &'
+```
+
+Connection: `ssh -fNT s1-sftp` first (else `Connection refused 127.0.0.1:2201`); try `s1-int` then `s1-pub`.
+
+---
+
+## 46. HARD DO / DON'T
+
+**DO**
+- Treat bold/default as live; a default flip = delta 0 (§14.1).
+- Expect negative deltas; just don't sum them (§14.2).
+- Audit config parity FIRST when many cells read 0 (§17).
+- Prove every non-zero delta with a changed trade ledger (§19).
+- Keep NPZ in RAM; every cell ≤0.1s (§22).
+- Back up before any edit; edit on Mac only; deploy is a coordinated cut (§24).
+- Report zero-delta causes per-category from the delta-log (§18/§30).
+
+**DON'T**
+- Don't revert to an older file (§24 / RULE 0).
+- Don't full-sync live config into QuickConfig (zeroes the backtest, §17.3).
+- Don't turn daytrade off — it stays on with DC-channel rules (§15).
+- Don't reintroduce `getattr` no-op wiring or synthetic delta perturbations (§19).
+- Don't report "N switches unwired" as a conclusion (§18).
+- Don't kill an in-flight pilot to make room (§34).
+- Don't confuse cells (>5000) with switch names (~200) (§14.4).
+
+---
+
+## 47. OPEN QUESTIONS FOR THE OPERATOR (KEEP CURRENT)
+
+- Exact TF set the DC-channel LOSS/GAIN exits should default to (15m only, or 15m+1h+4h combined?) — the sweep tests combos; the *default* baseline TF should be confirmed.
+- Whether `ENTRY_DC_TF`/`ENTRY_DC_BUFFER_PCT` (simple-system entry channel) should be added to the big template's swept switches (they are wired in the engine).
+- Which fields, beyond the known live-only set (§17.3), must be excluded from the curated QuickConfig↔live sync.
+
+---
+
+## 48. BEST-OVERRIDE INGEST — HOW A SYM_SIDE STARTS
+
+Whether a `SYM_SIDE` starts from defaults or from prior-best determines its baseline (§14):
+
+- **Tested before** → start from the **best promoted overrides** of the last run for that exact `SYM_SIDE`. Sources searched, best wins over defaults (never `if k not in overrides`):
+  - `data/reports/lifecycle_pilot/{SYM}_{SIDE}_v14_progress.json` → `cumulative_overrides` / `hustler_overrides`.
+  - `SPREADSHEETS/V15_V16_CELL_BY_CELL/{SYM}_{SIDE}_*_30d_matrix.xlsx` → parse promoted `C` cells (both `"K=V + F1=v + F2=v"` multi and single-value `C="False"` forms — the parser MUST handle both).
+  - `hustler_best.json` / `SPREADSHEETS/` prior artifacts.
+- **Never tested** → start from the **cat_side template defaults** (bold col B), which should equal live config for that venue/side (§17).
+- Every ingested non-default is written **bold in col C** *before* baseline is computed, so row 3 computes the baseline while the full override set is already in the sheet (`BEST-C-FILL`).
+- **Corollary for audits (§21):** compare a row's candidate to the **effective baseline** (`cumulative_overrides` = ingested best + promotions so far), not to a fresh `QuickConfig` default — a "cand differs from fresh default" can still equal the effective baseline and be an honest 0.
+
+---
+
+## 49. COLUMN-C OVERRIDE STRING FORMATS
+
+`C` is the promoted-override record for a row. Both forms must be produced and parsed:
+
+- **Single value:** `WT_15M_BOUNCE_OPEN_ENABLED=False` (a lone switch flip promoted with no positive yellows because it had none, or a bold baseline override).
+- **Switch + positive yellows:** `WT_LOWER_CROSS_EXIT_TF=1h + WT_CROSS_EXIT_APPLIES_TO_WINNERS=0.5 + EMA_9_21_FILTER_FILTER_TF=4h` (the switch plus each positive yellow header, ` + `-joined).
+- **Bold** iff the value is non-default. Additive: appending yellow headers, never overwriting a prior `C`.
+- Booleans render `True`/`False` (never `TRUE`/`FALSE`); ints bare (`10`), TFs quoted strings (`15m`). `_auto_adjust_all_sheets` sets `Arial 10 left`, width `len+2 cap 30`, height 15 before each `_atomic_save`.
+- The prev-XLS parser (ingest, §48) must read both forms or the best-override set is silently incomplete → wrong baseline → the classic "C empty / E2 string" failure.
+
+---
+
+## 50. THE 10-MINUTE REPAIR LOOP (RED CELLS → OTHER AGENTS)
+
+The filler must never block on a cell; instead it marks and moves, and a monitor reaps:
+
+- On stall (>10s) or eval error: RED the single cell (`FF0000` fill, white bold), RED the tab (`tabColor="FF0000"`), write the reason into the cell, append `data/reports/v15_flags/{SYM}_{SIDE}_flags.md`, and continue to the next yellow (or next tab if no yellows).
+- `tools/v15_redflag.py` + the sentinel/finisher sweep flags on a ~10-minute cycle; a repair agent picks up RED cells, roots the cause (usually a slow/broken predicate or a missing NPZ key), fixes forward, and the assure/refill path recomputes just those cells from JSON truth.
+- **Never** leave a cell blank/None on stall, never erase a computed value to hide a stall, never let one cell push a workbook past ~20 min (hard target) / 60 min (absolute).
+- BadZip protection: every write via `_atomic_save` (tmp+fsync+rename, `ZipFile≥10` validate, keep `.bak`); the JSON progress file is the source of truth so a corrupted xlsx is rebuilt, not lost.
+
+---
+
+## 51. WHAT "GOOD GAINS" MEANS — PROMOTION GATES
+
+A sheet with "good gains, all deltas applied correctly" means:
+
+- Headline `gain` = finisher's **fresh re-anchored full-set eval** (§32), not a chained total — reproducible to the last decimal by an independent `evaluate_sanitized` re-run.
+- `gain > baseline` (greedy only climbs) and `gain` beats or reasonably trails B&H (`bh` in the name for context; a strategy can be worth keeping below B&H if it has far lower DD/exposure).
+- Metric gates (interim → real): `pool_sharpe > 0.2` interim (`>0.5`/`>1.0` for promotion), `TIM 20–80`, `max_dd_pct ≤ 30`, trade count above the sample floor (`≥30/sym`, `≥48 crypto`/`≥100 stocks` universe) else `[DIAGNOSTIC ONLY]`.
+- Every promoted delta traces to a real changed trade ledger (§19) and, for live promotion, passes scalar parity (§43) and 365D robustness (§44).
+- Negative-winner reporting is forbidden (`RELATIVE_BEST_NEGATIVE_DELTA` kept for research only).
+
+---
+
+## 52. KNOWN-GOOD REFERENCE SHEETS
+
+Use these as the "this is what a correct fill looks like" reference:
+
+- `SPREADSHEETS/V15_V16_CELL_BY_CELL/UNIUSDC_LONG_bh57p81_gain32p89_30d_matrix.xlsx` — historical good fill: `BEST→C` copied, baseline via `v12_quick_engine`, per-row `F/G` + `L:BI` yellows correct, `E2` header preserved, `E3` numeric, ~231 yellows per applicable row, `C` populated on promotions.
+- 2026-09-29 audited-clean examples (publish-before-live, re-anchored): `ADAUSDC_LONG_bh9p75_gain21p86` (24 trades), `SCCO_SHORT_bhm1p03_gain11p29` (171), `UNIUSDC_LONG_bh111p80_gain74p04` (106). Each: every row filled, `E2` header intact, `F/G/K` numeric per column semantics, `C` seeded+promotions, 0 error cells, no constant-delta echo, `final_gain == fresh_vec == independent re-run`.
+- Audit any candidate sheet against these before showing it: header row intact, no None/blank `F/G`, no `#NUM!/#NAME?`, greedy `E` monotonic, promoted `C` matches the positive yellows in `L:BI`, and the finisher re-anchor log line agrees with the filename gain.
+
+---
+
+## 53. LEDGER EVENT / TRADE SCHEMA (simulate_one)
+
+`simulate_one` builds two lists; `include_ledger=True` on `evaluate_prepared_sanitized` returns them merged as `ledger`.
+
+- **`events`** (chart/parity only, never in trade metrics):
+  - `OPEN`  → `{type:"OPEN", ts, price, qty, pos_deployed, bar, reason}` (reason e.g. `B12`, `B_SRS_ENTRY`, `HARDCODED_RALLY_REENTRY`, `SEED_BH`).
+  - `AUGMENT` → `{type:"AUGMENT", ts, price, qty:add_qty, pos_deployed, bar, reason}` (e.g. `UAG_LADDER gain_since_add +6.18% >= 3.0%`).
+  - `REDUCE` (partial) → `{type:"REDUCE", ts, price, qty:reduced_qty, pos_deployed, bar, reason}`.
+- **`trades`** (metric source):
+  - `CLOSE` → `{type:"CLOSE", pnl_dollars, pnl_pct, deployed, reason, exit_reason, ts, price, entry_price, exit_price, qty, bar_entry, bar_exit, bars_held, entry_reason}`.
+  - `REDUCE` rows may also be appended to `trades` with `qty:0.0` (chart marker; not a metric close).
+- **Metrics** use CLOSE rows only: `gain_pct = Σpnl_$ / mean_deployed *100` (avg-trade-deployed convention), `pool_sharpe = mean(per_trade_ret)/stdev`, win rate = `#(pnl_pct>0)/#CLOSE`.
+- **Ordering invariant:** a position must `OPEN` before any `AUGMENT/REDUCE/CLOSE`; the sim enforces this (reduce/augment only run when `pos is not None`). Any "reduce before buy" seen downstream is a **merge/chart sort** artifact — sort by `(bar, OPEN<AUGMENT<REDUCE<CLOSE)` (§33/§25).
+- **"Empty trades" clarification:** zero-qty `REDUCE` marker rows and zero-pnl `OPEN`/`AUGMENT` events are normal ledger entries for charting, not metric trades — do not mistake them for a defect; they are excluded from gain/sharpe.
+
+Exit reasons you will see and what they mean:
+- `DAYTRADE_TARGET dc_{tf}_high -0.10% TARGET` — DC-channel GAIN exit (§15/§29).
+- `... dc_{tf}_low +0.10% TARGET` (short) — mirror.
+- `TECHNICAL_DC ...` — structural channel exit (`TECHNICAL_DC_*_TF`).
+- WT cross / velocity exits — `WT_LOWER_CROSS_EXIT_TF`, `WT_4H_VEL_EXIT_*`.
+- `VIGILANCE_DC4_{tf}_STOP ... close+block` — vigilance DC4 breach (switchable, default off).
+- `HLR_TOP_EXIT_SELL_TOP_g=...` / `REDUCE_TO_FLAT` — quick-reduce / reduce-to-flat.
+- `PARTIAL_PROFIT_LOCK ...`, `DD_BOUNCE_STOP ...` — PPL / dd-bounce reduce legs.
+
+---
+
+## 54. CROSS-CHECK THE BIG SYSTEM AGAINST THE SIMPLE SYSTEM
+
+Because both use one engine (§16), the simple system is a free oracle for the big system:
+
+1. Run the simple sweep for a `SYM_SIDE`: `tools/dc_simple_8_sweep.py --sym {SYM} ...` — it reports `base_gain`, best `EXIT`/`ENTRY` TF combo, `WT`/`EMA` keeps.
+2. The big-system baseline for that `SYM_SIDE` (DC-channel switches at their bold defaults) should reproduce the simple system's `base_gain` to the decimal — if not, the big template's DC-channel defaults are out of sync with the simple system's `TEMPLATE_DEFAULTS`/config (§17/§48).
+3. The big system's promoted `TECHNICAL_DC_*` / `WT_LOWER_CROSS_EXIT_TF` picks should agree with the simple system's `keep_exit_tf` / `keep_wt_tf` (same engine, same data) — divergence means a big-template coverage or ordering issue, not an engine bug.
+4. If the simple system finds positive deltas on switches the big system reads 0 for, the difference is baseline/parity (§17) or missing template coverage (e.g. `ENTRY_DC_TF` not swept, §16) — not an unwired engine function.
+
+This turns "why is the big sheet full of zeros?" into a concrete, decidable comparison instead of speculation.
+
+---
+
+## 55. SESSION TIMELINE — WHAT WAS ACTUALLY ESTABLISHED (2026-09-29)
+
+Kept so the next agent does not re-run the same 30 diagnostics:
+
+- Mac and S1 ran identical engine `bd804da7` (Sep 28 20:14). Determinism + idempotency PASS (§21).
+- GDX_LONG (tradier baseline): gain +5.28, 210 trades, ~71% win; AXTI_SHORT +1.62; the DC-channel daytrade path closes frequently on this data (short holds), which is the strategy, not a bug.
+- Delta-log audit (§20/§30): GDX_LONG 16:05 real run and 00:15 isolated re-run were statistically identical (~2% naked non-zero, same ~11 mover switches, ~17 distinct gains). **No handoff-window regression.**
+- The 20:04 engine autosave removed `_batch3_template_wiring` (pure `getattr` no-op scaffolding) + some `_b4_*` unused locals — correct fake-audit cleanup (§19); it changed no trade behavior (the reads were inert), only the appearance of "used" switches.
+- Config parity gap measured (§17): ~652 crypto / ~365 tradier strategy mismatches; blind full-sync → 0 trades (live-only entry engines). Curated sync required; remediation assigned to a separate agent.
+- vec_decisions gate families (`filter_tf_gates`, `wave4_families`, `generic_filter_tf`) execute and return real masks — no swallowed-exception cascade (§25).
+- Timing within budget (~0.07s cached; ~1.7% >0.1s, max 0.23s) (§22).
+- No engine/config file was edited by this session (one safety backup made; all diagnostics read-only; one isolated `/tmp/proof_gdx` proof run that did not touch the herd).
+
+---
+
+## 56. OPERATOR FILL SPEC — VERBATIM & AUTHORITATIVE (2026-09-29)
+
+This is the operator's own statement of how `TEMPLATE_*.xlsx` must be filled. **It is LAW and supersedes any conflicting phrasing above.** Every rule here is mandatory; the right-hand notes say where it is enforced.
+
+### 56.1 Reading & columns
+- **R1 — Read by row-2 headers, never by coordinates.** Columns may be added, so resolve every column by its row-2 header name matched to the switch/filter name — never by fixed column index. (§4.2)
+- **R2 — `Switch` column defaults are BOLD.** The bold value in each switch row is the default used for the initial baseline. (§4.2, §14.1)
+- **R3 — Prior results → BOLD in `override`.** The FIRST action for a `sym_side` is to FIND its best default+override settings from previous tests in `/SPREADSHEETS/` and write every non-default setting **bold in the `override` column** — **NEVER** changing the bold/regular state of the `default` column. (§5.2, §48)
+- **R4 — `default` column bold changes ONLY via maintenance.** Only `V15_AVG_DELTAS.xls` may change `default` bold, and only when it recalculates the `AVG_DELTA` column and reorders rows `worst_first` — keeping each row's entire content together (a row's yellow cells always travel with the same switch name when row order changes). (§12)
+- **R5 — ORANGE (FILTER) rows never above WHITE (SWITCH) rows.** Orange GENERAL/filter rows (below a switch, same column) can never be positioned above white switch rows. (§4.2)
+- **R6 — `is_default` backup.** If the default bold font is lost, the `is_default` column holds a written backup of what must be re-bolded. Defaults change only when `V15_AVG_DELTAS` recalculates `AVG_DELTA`/`POS_SYM`. (§4.2, §12)
+
+### 56.2 First calculations
+- **R7 — Ingest best FIRST, then baseline in E3.** Find best default+override settings from `/SPREADSHEETS/`, put them bold in `override`, then calculate the combination of ALL these switches → the initial baseline in **E3**. (This is repeatedly reported as *still not happening correctly* — verify it explicitly every run.) (§5.2, §48, §14)
+- **R8 — First value = first switch (always a bold default).** The first computed value is the first switch row (always a bold default): the `v12_quick_engine` result for all defaults **plus** the previous-best overrides for that `sym_side`. (§5.2, §37)
+- **R9 — Keep NPZ in RAM.** This must be SUPER FAST — never wait; the sym's NPZ stays in RAM until all values are calculated (no per-row disk reload). (§5.6, §22)
+
+### 56.3 Yellow-cell calculation (per row)
+- **R10 — Yellow cells hold filter names in the `O:IO` header columns.** The first row (and every row) has yellow cells in the `O..IO` columns whose header is a filter name. (§4.2, §5.3)
+- **R11 — A yellow filter is tested for THAT SWITCH AND ONLY THAT SWITCH.** Never apply the yellow filter to any other override or default setting. (§5.3)
+- **R12 — The delta of that calculation is ALWAYS written into the yellow cell.** Positive or negative, every yellow cell gets its delta. (§5.3, §8)
+- **R13 — Positive yellow → add header name (append, never overwrite) to `override` AND `PER_ROW_FILTERS`, and add its delta to `VECTOR_DELTA` (sum if a value already exists).** (§5.3, §37)
+- **R14 — Row complete when all its yellow values are calculated and summed into the delta.** (§5.3)
+
+### 56.4 Baseline chaining & tab navigation
+- **R15 — `VECTOR_DELTA` = sum of the row's POSITIVE yellow deltas.** (§5.4, §14.2, item 4)
+- **R16 — POSITIVE `VECTOR_DELTA` → move DOWN one row (next switch) on the SAME tab; add the delta to the previous baseline and write it in the baseline column of the next row; repeat.** (§5.4, item 6)
+- **R17 — None / zero / negative `VECTOR_DELTA` → do NOT move down; go to the FIRST pending row in the NEXT tab, write the baseline value there, and repeat.** In the next tab: positive → stay and go down next row adding delta; none/0/neg → move to next tab again. (§5.4, item 5)
+- **R18 — BASELINE column stays BLANK by default; a baseline value is written ONLY after a positive delta.** (§5.4, §14.1, item 1)
+- **R19 — Continue until the COMPLETE workbook is finished.** (§37, item 6)
+
+### 56.5 Tabs, order, completeness
+- **R20 — STDEV_SLOPE_SIZING is ONE switch: True/False (use / do not use the 1–5× multiplier).** It is a tab to fill like the others. **⚠️ SUPERSEDES earlier text:** the operator states **13 tabs to fill** with STDEV as a single T/F switch — do NOT skip STDEV as a blanket rule; fill its one T/F switch row (and its yellows if any). Where §4.3/§8 say "STDEV skipped / 12 active," that was a temporary workaround and is overridden here unless STDEV genuinely cannot evaluate (missing `stdev_edge_*`/`stdev_slope_*` NPZ), in which case its single row is marked and the reason logged — not silently dropped.
+- **R21 — Every row in every tab needs a delta value (pos or neg).** All rows filled in order; a completed tab may be skipped in remaining rounds. (§5.4, §8)
+- **R22 — Hustle mode is the ONLY exception to in-order filling** (rows may be filled in random order). (§5.4)
+
+### 56.6 Live verification & stalls
+- **R23 — `LIVE_DELTA` and `LIVE_SHARPE` are filled ONLY when the entire sheet is complete**, by testing the winning default+override set through `backtest_v12_engine` in the actual trading script (slow but necessary to prove parity). Their template formulas screw up the fill and must be cleared at open. (§5.5, §43, item 2)
+- **R24 — Stall >10s on a cell → mark the CELL and the TAB RED, write the stall reason in the red cell, then continue to the next yellow cell; if the row has no yellow cells, continue to the next TAB (not the next ROW).** (§5.7, §50)
+
+### 56.7 Compliance checklist (run against any produced sheet)
+- [ ] All columns resolved by header name (R1); `E3` = combined baseline of defaults+prior-best (R7/R8).
+- [ ] Prior-best written bold in `override`; `default` bold untouched (R3/R4); `is_default` backup intact (R6); orange never above white (R5).
+- [ ] Every yellow cell in `O:IO` has its own delta (R12); each yellow tested for its switch only (R11).
+- [ ] Positive yellows appended to `override`+`PER_ROW_FILTERS`; `VECTOR_DELTA` = Σ positive yellows (R13/R15).
+- [ ] Baseline blank unless promoted; `E_next = E + VECTOR_DELTA` only on positive (R16/R18); neg/0/None → first pending row of next tab (R17).
+- [ ] All 13 tabs addressed incl. STDEV single T/F (R20); every row has a pos/neg delta (R21).
+- [ ] `LIVE_DELTA`/`LIVE_SHARPE` blank until complete, then filled via `backtest_v12_engine` (R23).
+- [ ] No cell stalled the workbook; any >10s cell RED with reason, flow continued correctly (R24).
+- [ ] NPZ stayed in RAM; per-cell ≤0.1s median (R9).
+
+---
+
+*End of bible — if a procedure above conflicts with older text, this wins. §14–§56 are the 2026-09-29 operator-corrected additions; §56 is the operator's verbatim fill spec and is the highest authority on how `TEMPLATE_*.xlsx` is filled.*
