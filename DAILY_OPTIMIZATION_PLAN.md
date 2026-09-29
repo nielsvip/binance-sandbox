@@ -96,6 +96,57 @@ NPZ for symbol N+1 is updated. (Feasibility/cost + 400D target — see Q9.)
 Symbol lists are dynamically generated. Each day, **scan** and **add new** symbols, **remove** delisted/no-
 longer-traded ones, so no compute is wasted on symbols we are not currently trading. (Source of truth — Q10.)
 
+## LIVE PERFORMANCE SIZING + DAILY SEEDING (operator 2026-09-29) — "get it on the road"
+DAILY SEEDING: each day starts from the previous day's WINNING settings as default; it can only improve
+from there. If an NPZ/data change makes the same setting score WORSE this round (no positive delta to beat
+it), ACCEPT the newest lower-gain settings — never revert to yesterday's higher number (NEVER-REVERT /
+engine-authoritative). Trade the round's winners at open.
+
+PERFORMANCE SIZING (the live multiplier layer; separate from the size-normalized backtest gain%):
+- Multiplier from the sym_side's gain: **negative gain → 0.1x–1x** (more negative → toward 0.1x),
+  **positive gain → 1x–5x** (more positive → toward 5x). So we DO trade the neg 30D/365D gainers, just tiny.
+  (This supersedes the earlier "fail → cannot trade that day" for the neg case — neg now trades small, scaled
+  by how negative; open-position hold-to-local-top / wt15m-against-close still applies to true non-traders.)
+- **Crypto:** fractional qty = mult x reference_size / price. No rounding, no skip (any size tradeable).
+- **Stocks (integer shares):** shares = mult x reference_size / price, then:
+  - gain > 0 → **min 1 share**, conservative FLOOR rounding (0.5→1 via min, 1.5→1, 2→2);
+  - gain <= 0 → FLOOR; if that is < 1 share (scaled size below 1 share's cost) → **SKIP the trade**.
+- Curve caps (gain% that maps to the 5x / 0.1x extremes) are TUNABLE params — default pos_cap/neg_cap = 10%.
+  Module: tools/v15_perf_sizing.py (pure, unit-tested). Go-live still gated by pos 30D AND pos 365D for the
+  POSITIVE (>1x) book; negatives trade only in the 0.1-1x reduced band.
+
+## ONE-BOLD-PER-SWITCH TIEBREAK (operator 2026-09-29)
+Templates currently violate one-bold-per-switch on 74–209 switches/cat_side (many 2+ bold rows).
+RESOLUTION: **avg_delta decides** — the value that WON the previous round (best gated winsorized
+avg_delta) stays the single bold default for today's cat_side, in the template AND the configs. This is
+the promotion step itself: for each switch it sets exactly one bold (the avg_delta winner), de-bolds the
+rest → one-bold invariant restored every round. Retention rules: a switch with NO positive avg_delta
+winner keeps its prior default; a multi-bold with NO deltas at all falls back to **(b) the most-recent
+promotion** — which requires the loop to keep a PROMOTION LOG (switch→value→date→cat_side per round) so
+"most-recent promotion" is deterministic. Bootstrap ambiguities (multi-bold with neither a delta nor a
+log entry yet) are FLAGGED for one-time resolution (seed from the `overrides` col C / live config), then
+the log keeps it clean henceforth. Enforced by the restructure/promoter (dry-run first). NOTE: a trustworthy promotion needs a CLEAN single-baseline round — the current
+avg_delta is baseline-mixed (illustrative); the first real apply runs after a clean fd93da9a 30D round.
+
+## SIZING & GAIN-NORMALIZATION (operator + verified 2026-09-29)
+Operator: apply performance-based sizing live (winners big, losers tiny — even let losers trade at tiny
+size) BUT "a 5% gain at 5x or 0.2x order quantity must remain a 5% gain." VERIFIED empirically:
+- CRYPTO gain% is size-INVARIANT (ADAUSDC_LONG = −8.196% at size 150/500/30; fractional qty). ✅
+- STOCK gain% is size-DEPENDENT (AAPL_LONG 3.37→4.38→4.77% at 150/500/2000, same 325 trades) due to
+  INTEGER-SHARE granularity (min 1 whole share; small orders round to 0–1 shares = heavy drag). Real for
+  live stocks, not a pure artifact. => `START_POSITION_SIZE=500` "promoting" was the rounding effect, not edge.
+DESIGN (satisfies "5% stays 5%"):
+1. Backtest gain% is measured at a FIXED REFERENCE size for every candidate (crypto naturally invariant;
+   stocks PINNED to the reference so candidates are apples-to-apples). Sizing params (START_POSITION_SIZE,
+   MAX_*, ORDER_VALUE, NOTIONAL, *_SIZE_USD, BREAKOUT_SIZE) are the normalization reference and are NEVER
+   swept/promoted — EXCEPT STDEV_SLOPE_SIZING (sanctioned dynamic-sizing strategy). Enforced in
+   tools/v15_promote_dryrun.is_sizing_excluded().
+2. Live sizing = a SEPARATE performance-multiplier layer (per-sym: winners scale up, losers to tiny) applied
+   on top of the strategy; it scales real P&L but does NOT feed back into the ranked strategy gain%. That is
+   the "flexible default" — multiplier flexible per performance, strategy metric stays size-normalized.
+OPEN: (i) confirm/standardize the fixed reference size per venue for backtests; (ii) design the live
+performance→multiplier curve (winner/loser bands) as its own mechanism (not a swept switch).
+
 ## RESOLVED DECISIONS (operator, 2026-09-29) — these OVERRIDE the draft above
 - **Q1 pos_sym = ROLLING WINDOW** (last N rounds), NOT cumulative-forever — so a filter that stops helping
   decays back to throttled and a resurrected one re-earns frequency. (N still to pick — proposing 20; confirm.)
