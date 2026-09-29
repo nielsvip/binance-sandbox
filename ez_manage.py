@@ -6553,6 +6553,9 @@ def _batch3_template_live_wiring():
     return False
 
 # BATCH 1 — first 60 TEMPLATE switches — live REAL logic (mirrors v12)
+_B1_REAL_TFS = ('1h', '4h', 'D', 'W')
+
+
 def _batch1_template_live_gate(indicators, is_long):
     # Returns (allowed, reason) — False blocks entry; True allows
     # 2026-09-11 FIX: was checking `close` (always 0→always blocked) — now correctly checks adx_1h vs ADX threshold (10 per user).
@@ -6596,7 +6599,7 @@ def _batch1_template_live_gate(indicators, is_long):
         if _c <= _thr: return False, 'ATR_LONG_WINDOW_THR'
     _ = getattr(config, 'ATR_LONG_WINDOW', 0.0)
     _tf = str(getattr(config, 'ATR_TRAIL_FILTER_TF', '15m'))
-    if _tf != '15m':
+    if _tf in _B1_REAL_TFS:  # 2026-09-29 USER: 'OFF'/DC4/hh_hl_4h fell back to wt1_15m = phantom 15m WT veto on live entries
         _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
         _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
         if is_long and not (_v > _v2): return False, 'ATR_TRAIL_FILTER_TF_TF'
@@ -6647,35 +6650,30 @@ def _batch1_template_live_gate(indicators, is_long):
         if _c <= _thr: return False, 'BAND_ARROW_SLOPE_DEADBAND_THR'
     _ = getattr(config, 'BAND_ARROW_SLOPE_DEADBAND', 0.0)
     _tf = str(getattr(config, 'BAR_PATTERNS_FILTER_TF', '15m'))
-    if _tf != '15m':
+    if _tf in _B1_REAL_TFS:  # 2026-09-29 USER: 'OFF'/DC4/hh_hl_4h fell back to wt1_15m = phantom 15m WT veto on live entries
         _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
         _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
         if is_long and not (_v > _v2): return False, 'BAR_PATTERNS_FILTER_TF_TF'
         if (not is_long) and not (_v < _v2): return False, 'BAR_PATTERNS_FILTER_TF_TF'
     _ = getattr(config, 'BAR_PATTERNS_FILTER_TF', '15m')
-    _tf = str(getattr(config, 'BB_PULLBACK_GATE_FILTER_TF', '15m'))
-    if _tf != '15m':
-        _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
-        _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
-        if is_long and not (_v > _v2): return False, 'BB_PULLBACK_GATE_FILTER_TF_TF'
-        if (not is_long) and not (_v < _v2): return False, 'BB_PULLBACK_GATE_FILTER_TF_TF'
+    # BB_PULLBACK_GATE_FILTER_TF: removed from the WT-proxy entry veto 2026-09-29 (BB pullback = real gate TF selector; DC breach = reduce confirm)
     _ = getattr(config, 'BB_PULLBACK_GATE_FILTER_TF', '15m')
     _tf = str(getattr(config, 'BB_PULLBACK_GATE_TF', '15m'))
-    if _tf != '15m':
+    if _tf in _B1_REAL_TFS:  # 2026-09-29 USER: 'OFF'/DC4/hh_hl_4h fell back to wt1_15m = phantom 15m WT veto on live entries
         _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
         _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
         if is_long and not (_v > _v2): return False, 'BB_PULLBACK_GATE_TF_TF'
         if (not is_long) and not (_v < _v2): return False, 'BB_PULLBACK_GATE_TF_TF'
     _ = getattr(config, 'BB_PULLBACK_GATE_TF', '15m')
     _tf = str(getattr(config, 'BB_RECOVERY_ENTRY_FILTER_TF', '15m'))
-    if _tf != '15m':
+    if _tf in _B1_REAL_TFS:  # 2026-09-29 USER: 'OFF'/DC4/hh_hl_4h fell back to wt1_15m = phantom 15m WT veto on live entries
         _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
         _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
         if is_long and not (_v > _v2): return False, 'BB_RECOVERY_ENTRY_FILTER_TF_TF'
         if (not is_long) and not (_v < _v2): return False, 'BB_RECOVERY_ENTRY_FILTER_TF_TF'
     _ = getattr(config, 'BB_RECOVERY_ENTRY_FILTER_TF', '15m')
     _tf = str(getattr(config, 'BB_RECOVERY_FILTER_TF', '15m'))
-    if _tf != '15m':
+    if _tf in _B1_REAL_TFS:  # 2026-09-29 USER: 'OFF'/DC4/hh_hl_4h fell back to wt1_15m = phantom 15m WT veto on live entries
         _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
         _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
         if is_long and not (_v > _v2): return False, 'BB_RECOVERY_FILTER_TF_TF'
@@ -6699,7 +6697,7 @@ def _batch1_template_live_gate(indicators, is_long):
         if _c <= _thr: return False, 'BOUNCE_REENTRY_K_RESET_SHORT_THR'
     _ = getattr(config, 'BOUNCE_REENTRY_K_RESET_SHORT', 0.0)
     _tf = str(getattr(config, 'BREAKEVEN_DC_FIELD_MODE', '15m'))
-    if _tf != '15m':
+    if _tf in _B1_REAL_TFS:  # 2026-09-29 USER: 'OFF'/DC4/hh_hl_4h fell back to wt1_15m = phantom 15m WT veto on live entries
         _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
         _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
         if is_long and not (_v > _v2): return False, 'BREAKEVEN_DC_FIELD_MODE_TF'
@@ -6711,7 +6709,7 @@ def _batch1_template_live_gate(indicators, is_long):
             return False, 'BREAKEVEN_GAIN_EROSION_ENABLED_SMA'
         _ = getattr(config, 'BREAKEVEN_GAIN_EROSION_ENABLED', False)
     _tf = str(getattr(config, 'BREAKEVEN_GAIN_EROSION_FILTER_TF', '15m'))
-    if _tf != '15m':
+    if _tf in _B1_REAL_TFS:  # 2026-09-29 USER: 'OFF'/DC4/hh_hl_4h fell back to wt1_15m = phantom 15m WT veto on live entries
         _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
         _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
         if is_long and not (_v > _v2): return False, 'BREAKEVEN_GAIN_EROSION_FILTER_TF_TF'
@@ -6736,7 +6734,7 @@ def _batch1_template_live_gate(indicators, is_long):
         if _c <= _thr: return False, 'BREAKOUT_LEASH_REENTRY_MULT_THR'
     _ = getattr(config, 'BREAKOUT_LEASH_REENTRY_MULT', 0.0)
     _tf = str(getattr(config, 'BREAKOUT_RETEST_FILTER_TF', '15m'))
-    if _tf != '15m':
+    if _tf in _B1_REAL_TFS:  # 2026-09-29 USER: 'OFF'/DC4/hh_hl_4h fell back to wt1_15m = phantom 15m WT veto on live entries
         _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
         _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
         if is_long and not (_v > _v2): return False, 'BREAKOUT_RETEST_FILTER_TF_TF'
@@ -6754,7 +6752,7 @@ def _batch1_template_live_gate(indicators, is_long):
         if (not is_long) and _dc <= 0.6: return False, 'BTC_BREAKOUT_ENTRY_ENABLED_DC'
         _ = getattr(config, 'BTC_BREAKOUT_ENTRY_ENABLED', False)
     _tf = str(getattr(config, 'BTC_DEDICATED_FILTER_TF', '15m'))
-    if _tf != '15m':
+    if _tf in _B1_REAL_TFS:  # 2026-09-29 USER: 'OFF'/DC4/hh_hl_4h fell back to wt1_15m = phantom 15m WT veto on live entries
         _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
         _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
         if is_long and not (_v > _v2): return False, 'BTC_DEDICATED_FILTER_TF_TF'
@@ -6808,14 +6806,14 @@ def _batch1_template_live_gate(indicators, is_long):
         if _c <= _thr: return False, 'BTC_TECH_EXIT_WT_MIN_TFS_THR'
     _ = getattr(config, 'BTC_TECH_EXIT_WT_MIN_TFS', 0.0)
     _tf = str(getattr(config, 'BT_WT_CROSS_LADDER_FILTER_TF', '15m'))
-    if _tf != '15m':
+    if _tf in _B1_REAL_TFS:  # 2026-09-29 USER: 'OFF'/DC4/hh_hl_4h fell back to wt1_15m = phantom 15m WT veto on live entries
         _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
         _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
         if is_long and not (_v > _v2): return False, 'BT_WT_CROSS_LADDER_FILTER_TF_TF'
         if (not is_long) and not (_v < _v2): return False, 'BT_WT_CROSS_LADDER_FILTER_TF_TF'
     _ = getattr(config, 'BT_WT_CROSS_LADDER_FILTER_TF', '15m')
     _tf = str(getattr(config, 'CANDLE_PATTERN_STOPS_FILTER_TF', '15m'))
-    if _tf != '15m':
+    if _tf in _B1_REAL_TFS:  # 2026-09-29 USER: 'OFF'/DC4/hh_hl_4h fell back to wt1_15m = phantom 15m WT veto on live entries
         _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
         _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
         if is_long and not (_v > _v2): return False, 'CANDLE_PATTERN_STOPS_FILTER_TF_TF'
@@ -6827,14 +6825,14 @@ def _batch1_template_live_gate(indicators, is_long):
         if (not is_long) and _dc <= 0.6: return False, 'CHANNEL_REENTRY_STOP_ENABLED_DC'
         _ = getattr(config, 'CHANNEL_REENTRY_STOP_ENABLED', False)
     _tf = str(getattr(config, 'CIRCUIT_SHARPE_GATES_FILTER_TF', '15m'))
-    if _tf != '15m':
+    if _tf in _B1_REAL_TFS:  # 2026-09-29 USER: 'OFF'/DC4/hh_hl_4h fell back to wt1_15m = phantom 15m WT veto on live entries
         _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
         _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
         if is_long and not (_v > _v2): return False, 'CIRCUIT_SHARPE_GATES_FILTER_TF_TF'
         if (not is_long) and not (_v < _v2): return False, 'CIRCUIT_SHARPE_GATES_FILTER_TF_TF'
     _ = getattr(config, 'CIRCUIT_SHARPE_GATES_FILTER_TF', '15m')
     _tf = str(getattr(config, 'COOLDOWN_LOCKS_FILTER_TF', '15m'))
-    if _tf != '15m':
+    if _tf in _B1_REAL_TFS:  # 2026-09-29 USER: 'OFF'/DC4/hh_hl_4h fell back to wt1_15m = phantom 15m WT veto on live entries
         _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
         _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
         if is_long and not (_v > _v2): return False, 'COOLDOWN_LOCKS_FILTER_TF_TF'
@@ -6856,15 +6854,10 @@ def _batch1_template_live_gate(indicators, is_long):
         if is_long and not (_w1 > _w2): return False, 'DAEMON_REENTRY_STALE_EXIT_ENABLED_WT'
         if (not is_long) and not (_w1 < _w2): return False, 'DAEMON_REENTRY_STALE_EXIT_ENABLED_WT'
         _ = getattr(config, 'DAEMON_REENTRY_STALE_EXIT_ENABLED', False)
-    _tf = str(getattr(config, 'DC_BREACH_REDUCE_FILTER_TF', '15m'))
-    if _tf != '15m':
-        _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
-        _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
-        if is_long and not (_v > _v2): return False, 'DC_BREACH_REDUCE_FILTER_TF_TF'
-        if (not is_long) and not (_v < _v2): return False, 'DC_BREACH_REDUCE_FILTER_TF_TF'
+    # DC_BREACH_REDUCE_FILTER_TF: removed from the WT-proxy entry veto 2026-09-29 (BB pullback = real gate TF selector; DC breach = reduce confirm)
     _ = getattr(config, 'DC_BREACH_REDUCE_FILTER_TF', '15m')
     _tf = str(getattr(config, 'DC_BREAK_FILTER_TF', '15m'))
-    if _tf != '15m':
+    if _tf in _B1_REAL_TFS:  # 2026-09-29 USER: 'OFF'/DC4/hh_hl_4h fell back to wt1_15m = phantom 15m WT veto on live entries
         _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
         _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
         if is_long and not (_v > _v2): return False, 'DC_BREAK_FILTER_TF_TF'
@@ -6882,7 +6875,7 @@ def _batch1_template_live_gate(indicators, is_long):
         if _c <= _thr: return False, 'DC_HOPELESS_EXIT_MIN_AGE_S_THR'
     _ = getattr(config, 'DC_HOPELESS_EXIT_MIN_AGE_S', 0.0)
     _tf = str(getattr(config, 'DC_MOMENTUM_BOTA_SCORER_FILTER_TF', '15m'))
-    if _tf != '15m':
+    if _tf in _B1_REAL_TFS:  # 2026-09-29 USER: 'OFF'/DC4/hh_hl_4h fell back to wt1_15m = phantom 15m WT veto on live entries
         _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
         _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
         if is_long and not (_v > _v2): return False, 'DC_MOMENTUM_BOTA_SCORER_FILTER_TF_TF'
@@ -6900,14 +6893,14 @@ def _batch1_template_live_gate(indicators, is_long):
         if (not is_long) and _k <= 60: return False, 'DD_BOUNCE_ENABLED_K'
         _ = getattr(config, 'DD_BOUNCE_ENABLED', False)
     _tf = str(getattr(config, 'DELTA_ENGINE_FILTER_TF', '15m'))
-    if _tf != '15m':
+    if _tf in _B1_REAL_TFS:  # 2026-09-29 USER: 'OFF'/DC4/hh_hl_4h fell back to wt1_15m = phantom 15m WT veto on live entries
         _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
         _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
         if is_long and not (_v > _v2): return False, 'DELTA_ENGINE_FILTER_TF_TF'
         if (not is_long) and not (_v < _v2): return False, 'DELTA_ENGINE_FILTER_TF_TF'
     _ = getattr(config, 'DELTA_ENGINE_FILTER_TF', '15m')
     _tf = str(getattr(config, 'DELTA_HTF_GATE', '15m'))
-    if _tf != '15m':
+    if _tf in _B1_REAL_TFS:  # 2026-09-29 USER: 'OFF'/DC4/hh_hl_4h fell back to wt1_15m = phantom 15m WT veto on live entries
         _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
         _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
         if is_long and not (_v > _v2): return False, 'DELTA_HTF_GATE_TF'

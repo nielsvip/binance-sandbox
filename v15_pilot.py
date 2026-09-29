@@ -82,6 +82,7 @@ import queue
 from pathlib import Path
 
 # Spec stall guard: >10s on a cell -> RED + reason, continue. 0.07 turned every eval slower than 70ms into a fake 0.0 delta.
+GREY_SKIP_RGB = {"FFBFBFBF", "00BFBFBF"}  # template switch-name font = skip row (tools/v15_template_fix.py sets it)
 YELLOW_TIMEOUT = 10.0
 LIVE_TIMEOUT = 900.0
 XLSX_SAVE_EVERY_S = 120.0
@@ -1576,6 +1577,18 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _maybe_write_json()
             _row_done(sname, rr, switch, cand, 0, 0.0, False)
             _touch(f"cell {sname}!{rr} no-candidate skip")
+            current_idx = _after_neg(current_idx) if nav_mode == "fill_tab" else _land_on_next_tab(current_idx)
+            _maybe_save()
+            processed += 1
+            continue
+        _a_font = ws.cell(row=rr, column=1).font
+        if _a_font is not None and _a_font.color is not None and str(getattr(_a_font.color, "rgb", "") or "").upper() in GREY_SKIP_RGB:
+            # USER 2026-09-29: light-grey switch name = live path disconnected (agent re-wiring) -> skip, keep the test moving
+            key = f"{sname}!{rr}:{switch}={cand}"
+            progress.setdefault("done", {})[key] = {"delta": None, "promoted": False, "reason": "SKIPPED_GREY: switch not in live config / live path disconnected", "vec_gain": None, "trades": None, "yellows": {}, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before)}
+            _maybe_write_json()
+            _row_done(sname, rr, switch, cand, 0, 0.0, False)
+            _touch(f"cell {sname}!{rr} grey skip")
             current_idx = _after_neg(current_idx) if nav_mode == "fill_tab" else _land_on_next_tab(current_idx)
             _maybe_save()
             processed += 1

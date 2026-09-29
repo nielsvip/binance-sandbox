@@ -4858,7 +4858,6 @@ class QuickConfig:
     BANDAID_OFF_LOSER_RECOVER_PCT: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
     BAND_ARROW_ENABLED: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
     BAND_ARROW_SLOPE_DEADBAND: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    BB_PULLBACK_GATE_TF: str = "OFF"  # FIX 2026-09-06: LIVE_ONLY auto-added
     CRYPTO_SPIKE_FADE_THRESHOLD_PCT: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
     DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
     DAEMON_REENTRY_STALE_EXIT_ENABLED: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
@@ -5160,6 +5159,10 @@ class QuickConfig:
         self.ENTRY_SCORE_THRESHOLD = 24.0
         self.K3M_FLOOR = 30.0
         self.K3M_FLOOR_ENABLED = False
+        # 2026-09-29 USER: stocks sized at crypto $28 -> whole-share floor 0 -> 47% of entries vanished and
+        # STDEV off = 0 trades. Live parity config_tradier.py:120/152.
+        self.START_POSITION_SIZE = 500.0
+        self.MAX_ORDER_VALUE = 7000.0
 
 
     ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = False  # auto-wired 625
@@ -10215,7 +10218,8 @@ def _size_qty(cfg, dollar_size, px):
     is honest — no synthetic fractional fill), while crypto futures contracts
     are realistically fractional and keep continuous sizing."""
     if getattr(cfg, 'MODE', 'crypto') == 'tradier':
-        return float(int(dollar_size / px)) if px > 0 else 0.0
+        # USER 2026-09-29: 1 share is the minimum trade qty (live tradier_manage.py:1885) — sizing scales 1-2-3-4-5, never 0
+        return float(max(1, int(dollar_size / px))) if px > 0 and dollar_size > 0 else 0.0
     return dollar_size / px if px > 0 else 0.0
 
 

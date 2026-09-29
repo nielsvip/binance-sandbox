@@ -1,0 +1,6217 @@
+{
+ "TEMPLATE_STOCKS_LONG": {
+  "ABSOLUTE_OPEN_LOCK_SEC": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "ALL_TF_AGAINST_CLOSE_ENABLED": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "ALL_TF_AGAINST_CLOSE_MIN_TFS": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "ATR_LONG_WINDOW": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "ATR_TRAIL_SWEEP_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "AUGMENTED_POSITIONS_GUARD_FLOOR_MULT": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "AUGMENT_AT_LOSS_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "AUGMENT_BULL_KILL_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "AUGMENT_ONLY_WHEN_PROFITABLE": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "AUGMENT_WT_4H_BOUNCE_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BALANCE_FLOOR_USD": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "BANDAID_OFF_LOSER_RECOVER_PCT": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BEAR_HOLD_EXIT_DELAY_BARS": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BEAR_MARKET_MODE": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BLACKLIST_SYMBOLS": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "BOUNCE_REENTRY_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BOUNCE_REENTRY_K_RESET_LONG": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BOUNCE_REENTRY_K_RESET_SHORT": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BREAKEVEN_DC_FIELD_MODE": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BREAKEVEN_GAIN_EROSION_ENABLED": {
+   "tabs": [
+    "REDUCE_PROFIT_LOCK"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BREAKEVEN_GAIN_EROSION_MIN_GAIN": {
+   "tabs": [
+    "REDUCE_PROFIT_LOCK"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT": {
+   "tabs": [
+    "REDUCE_PROFIT_LOCK"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BTC_ACCEL_RAMP_REQUIRE_POSITIVE": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BTC_BREAKOUT_ENTRY_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BTC_DIVERGENCE_EXIT_AGAINST": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BTC_GUARANTEED_REENTRY_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BTC_GUARANTEED_REENTRY_MAX_AGE_BARS": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BTC_GUARANTEED_REENTRY_MIN_GAP_BARS": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BTC_HARD_BLOCK_OTHER_ACCOUNTS": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BTC_ROUND_BANDS_EACH_SIDE": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BTC_RZ_WT_DC_MULTIFACTOR": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BTC_TECH_EXIT_WT_MIN_TFS": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BULL_HOLD_EXIT_DELAY_BARS": {
+   "tabs": [
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "CHANNEL_REENTRY_STOP_ENABLED": {
+   "tabs": [
+    "REENTRY_ADAPTIVE"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "CIRCUIT_BREAKER_THRESHOLD_PCT": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED": {
+   "tabs": [
+    "REENTRY_ADAPTIVE"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DAEMON_REENTRY_STALE_EXIT_ENABLED": {
+   "tabs": [
+    "REENTRY_ADAPTIVE"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DAYTRADE_DC_STOP_TF": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "DAYTRADE_DC_TARGET_TF": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "DC_BREAKOUT_SCORE": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DC_BREAKOUT_TF": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DC_DAYTRADE_STOP_USE_DC4_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "DC_DAYTRADE_STOP_USE_DC_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "DC_DAYTRADE_TARGET_DC_BUFFER_PCT": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DC_DAYTRADE_TARGET_USE_DC4_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DC_DAYTRADE_TARGET_USE_DC_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DC_HOPELESS_EXIT_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DC_HOPELESS_EXIT_MIN_AGE_S": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DELTA_EXIT_DC_FLOOR": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DELTA_EXIT_MANDATORY_REENTRY_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DELTA_GATE_BB_SQUEEZE": {
+   "tabs": [
+    "ENTRY_REVERSAL_BOUNCE"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DELTA_REENTRY_FILTER_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DELTA_REENTRY_Z_THRESHOLD": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DIRECTION_FAVORABLE_REENTRY_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DYNAMIC_SCORE_AUGMENT_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DYN_STRUCT_TRAIL_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "EMA50_15M_ENTRY_FILTER_ENABLED": {
+   "tabs": [
+    "ENTRY_CONFIRMATION_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "EMA50_15M_ENTRY_FILTER_PCT": {
+   "tabs": [
+    "ENTRY_CONFIRMATION_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "EMA_BLANKET_FILTER_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "EMA_BLANKET_FILTER_MIN_TFS": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "EXECUTE_NOW_MAX_MARK_AGE_S": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "EXECUTE_NOW_SINGLE_GATE_ENFORCE": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "EZ_MANAGE_THROTTLER_RATE": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "E_1_EXIT_DELTA_THR": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "E_1_WT_EXIT_USE_DELTA_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "E_3_USE_WT_STRUCTURE_EXIT_MODE": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "FOLLOW_THROUGH_REENTRY_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "FORCE_MIN_ONE_TRADE": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "FUNDING_GATE_LONG_MAX": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "FUNDING_GATE_MTF_REQUIRED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "FUNDING_GATE_SHORT_MIN": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GOLDEN_RULE_BASE_USD": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GR_FILTER_ALL_ENTRIES": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GR_FILTER_VEC_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GR_FILTER_VEC_MIN_TFS": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GUARANTEED_REENTRY_DELTA_GATE_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GUARANTEED_REENTRY_K_FAVORABLE_HIGH": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GUARANTEED_REENTRY_K_FAVORABLE_LOW": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GUARANTEED_REENTRY_K_HIGH_BLOCK": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GUARANTEED_REENTRY_K_LOW_BLOCK": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GUARANTEED_REENTRY_STRICT_CONFIRMATION": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GUARANTEED_REENTRY_TIGHT_STOP_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GUARANTEED_REENTRY_TIGHT_STOP_MAX_AGE_S": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GUARANTEED_REENTRY_TIGHT_STOP_MIN_AGE_S": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GUARANTEED_REENTRY_TIGHT_STOP_PCT": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HAIKU_ENTRY_GATE_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HARD_AUGMENT_LOCK_SEC": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "HARD_BREAKEVEN_FLOOR_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HARD_BREAKEVEN_MIN_PEAK_PCT": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HARD_REDUCE_LOCK_SEC": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "HA_WICK_QUALITY_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HA_WICK_QUALITY_TF": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HLR_REENTRY_MAX_AGE_S": {
+   "tabs": [
+    "REENTRY_ADAPTIVE"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HLR_REENTRY_MULT_1H": {
+   "tabs": [
+    "REENTRY_ADAPTIVE"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HLR_REENTRY_MULT_4H": {
+   "tabs": [
+    "REENTRY_ADAPTIVE"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HLR_REENTRY_MULT_D": {
+   "tabs": [
+    "REENTRY_ADAPTIVE"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HLR_REENTRY_MULT_W": {
+   "tabs": [
+    "REENTRY_ADAPTIVE"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HLR_SMA_BAND_PCT": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HLR_TOP_EXIT_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HLR_TOP_MIN_TFS": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_AGAINST_FORCE_CLOSE_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_BULL_ENTRY_FILTER_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_REVERSAL_BOUNCE"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_BULL_ENTRY_FILTER_TF": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_REVERSAL_BOUNCE"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "HTF_DIRECTION_GATE_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_EXIT_VETO_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_EXIT_VETO_MAX_LOSS_PCT": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_EXIT_VETO_MIN_ALIGNED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_GATE_APPLY_TO_AUGMENT": {
+   "tabs": [
+    "AUGMENT_TREND"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_GATE_APPLY_TO_OPEN": {
+   "tabs": [
+    "REDUCE_PROFIT_LOCK"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_GATE_BYPASS_RZ": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_GATE_D_MANDATORY": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_GATE_MIN_CONFIRMATIONS": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_GATE_SIGNALS_SMA200D": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_TREND_VETO_BYPASS_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_TREND_VETO_BYPASS_REASONS": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "INTRADAY_SESSION_FORCE_EXIT_UTC": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "LEGACY_PROC_SINGLE_REENTRY": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "LEGACY_REENTRY_PSR_DC_BOUNCE": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "LEGACY_REENTRY_PSR_FULL_DC": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "LEGACY_REENTRY_PSR_K_DC_CROSSOVER": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "LEGACY_REENTRY_PSR_QUICK_RECOVERY": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "LOSS_TECHNICAL_EXIT_NO_STALE_BLOCK": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "LR_BAND_LADDER_TF_BOTTOM": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "LR_BAND_LADDER_TF_TOP": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "MACD_EXIT_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MACD_EXIT_MIN_GAIN": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MACD_EXIT_TF": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MACD_ZERO_CROSS_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MACD_ZERO_CROSS_SCORE": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MACD_ZERO_CROSS_TF": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MANDATORY_REENTRY_ALLOW_WT0_STRONG_CROSS": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MANDATORY_REENTRY_K_HIGH_BLOCK": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MANDATORY_REENTRY_K_LOW_BLOCK": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MANDATORY_REENTRY_REQUIRE_K_NOT_EXTREME": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MANDATORY_REENTRY_WT_FILTER_TF_MODE": {
+   "tabs": [
+    "ENTRY_REVERSAL_BOUNCE"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MARKET_QUALITY_SCORE_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MIN_HOLD_BARS_BEFORE_EXIT": {
+   "tabs": [
+    "REDUCE_PROFIT_LOCK"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MI_DIV_EXIT_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MI_ENTRY_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MI_ENTRY_EXHAUST_BONUS": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MI_ENTRY_STRUCT_BONUS": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MI_EXHAUST_EXIT_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MI_MIN_GAIN_EXIT": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MI_STRUCT_EXIT_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MI_TF_AGREE_MIN": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MI_VELOCITY_EXIT_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MI_WAVE_EXIT_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MTF_FILTER_STRONG_BUY_QUICK_BYPASS": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MTF_GR_MIN_IND": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MTS_BOTTOM_BONUS_THRESHOLD": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MTS_BOTTOM_STRONG_THRESHOLD": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MTS_GATE_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "NEW_POSITION_MAX_LOSS_THRESHOLD": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_DEFAULT_SIZE_MULT": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_K15_HIGH_BLOCK": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_K15_HIGH_SIZE_FRAC": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_SCORE_TIER1": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_SCORE_TIER2": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_SCORE_TIER3": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_SHORT_K15_LOW_BLOCK": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_SHORT_K15_LOW_SIZE_FRAC": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_SMA_FIELD": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_SMA_TF": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_TIER1_HTF_REQUIRED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OI_CONFIRM_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OI_CONFIRM_MIN_CHANGE_PCT": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OI_CONFIRM_MIN_PRICE_PCT": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OPEN_RATE_BREAKER_ENABLED": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OPEN_RATE_MAX": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "PARTIAL_EXIT_FRAC": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "PARTIAL_PROFIT_LOCK_FRAC": {
+   "tabs": [
+    "REDUCE_PROFIT_LOCK"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED": {
+   "tabs": [
+    "REDUCE_PROFIT_LOCK"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "PER_SYM_GATE_FLAT_OPEN_ENFORCE": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": true,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "PYRAMID_MIN_WT_VEL_1H": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "QUICK_REENTRY_60MIN_MIN_PCT": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY2_DC_BREAK_ALLOW_15M": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY2_DC_BREAK_FILTER_TF": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY2_DC_BREAK_REQUIRE_K_FILTER": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY2_DC_BREAK_REQUIRE_WT_FILTER": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY2_DIR_FAV_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY2_STOCH_CROSS_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_B16_SIZE_MULT_STRONG": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_B16_SIZE_MULT_WEAK": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_B16_SMA200_PROX_PCT": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_B16_SMA200_PULLBACK_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_CROSS_FRESHNESS_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_EXHAUSTED_PARTIAL_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_EXIT_RECLAIM_BUFFER_PCT": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_EXIT_RECLAIM_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_K15M_PARTIAL_MULT": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_POST_CONSOL_ATR_THRESHOLD": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_POST_CONSOL_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_POST_CONSOL_MULT": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_POST_CONSOL_TFS_REQUIRED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_TIER1_SIZE_MULT": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_TIER2_MAX_MINUTES": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_WT15M_SIZE_MULT": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REGIME_RANGING_EXIT_GAIN_MIN": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REGIME_RANGING_WT_REDUCE_FRAC_LOW": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REGIME_TRENDING_EXIT_GAIN_MIN": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REVERSE_ON_EXIT_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "RULE_B_3M_EXIT_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "RZ_BREAKOUT_BAND": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "RZ_BREAKOUT_ENTRY_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SCALP_V3_AUG_BE_STOP_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SCALP_V3_AUG_BE_STOP_PCT": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SCALP_V3_K_OB_EXIT_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SCALP_V3_K_OB_EXIT_K15M_HI": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SCALP_V3_K_OB_EXIT_K15M_LO": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SCALP_V3_K_OB_EXIT_K3M_HI": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SCALP_V3_K_OB_EXIT_K3M_LO": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SCALP_V3_K_OB_EXIT_WALL_PCT": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SCALP_V3_OB_WALL_TOO_CLOSE_PCT": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SCALP_V3_PROTECTIVE_EXIT_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SHORT_DC_LOW_BREAK_ENABLED": {
+   "tabs": [
+    "AUGMENT_TREND"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SHORT_DC_LOW_BREAK_SIZE_MULT": {
+   "tabs": [
+    "AUGMENT_TREND"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SHORT_PARTIAL_RECOVERY_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SHORT_PARTIAL_RECOVERY_SIZE_MULT": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SHORT_PARTIAL_RECOVERY_THRESHOLD_PCT": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SIMPLE_TP_EXIT_ENABLED": {
+   "tabs": [
+    "REDUCE_PROFIT_LOCK"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SIMPLE_TP_PCT": {
+   "tabs": [
+    "REDUCE_PROFIT_LOCK"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "STALE_HOLD_ENABLED": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "TECHNICAL_DC_STOP_TF": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "TECHNICAL_DC_TARGET_TF": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "TRADIER_DC_DAYTRADE_STOP_USE_DC_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "TRADIER_DC_DAYTRADE_TARGET_DC_BUFFER_PCT": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "TRADIER_DC_DAYTRADE_TARGET_USE_DC4_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "TRADIER_DC_DAYTRADE_TARGET_USE_DC_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "TREND_EXIT_SCORE_FLIP": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "TREND_MIN_GAIN_EXIT": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "ULTIMATE_DC_4H_STOP_ENABLED": {
+   "tabs": [
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "UNIVERSAL_NOLOSS_BYPASS_REASONS": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "V8_ENTRY_ENGINE_DC_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "V8_ENTRY_ENGINE_WT_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "VEC_REENTRY_DC4_EXITPRICE_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_15M_CROSS_ENTRY_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_4H_VEL_EXIT_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_4H_VEL_EXIT_K_EXTREME_HIGH": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_4H_VEL_EXIT_K_EXTREME_LOW": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_4H_VEL_EXIT_REQUIRE_K_EXTREME": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_4H_VEL_EXIT_REQUIRE_PROFIT": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_AGAINST_FILTER_ENABLED": {
+   "tabs": [
+    "ENTRY_CONFIRMATION_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_COMPOSITE_ENTRY_BLOCK": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_COMPOSITE_ENTRY_GOOD": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_COMPOSITE_ENTRY_OK": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_COMPOSITE_ENTRY_STRONG": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_CROSS_EXIT_APPLIES_TO_WINNERS": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_CROSS_EXIT_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_CROSS_EXIT_MIN_AGE_MINUTES": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_CROSS_EXIT_REQUIRE_15M_CONFIRM": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_DC_DETAILED_TF": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "WT_DC_ENABLED": {
+   "tabs": [
+    "ENTRY_CONFIRMATION_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "WT_DIV_ENTRY_GATE_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_EXHAUST_ENTRY_GATE_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_EXHAUST_EXIT_MIN_GAIN_PCT": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_EXHAUST_EXIT_REQUIRE_GAIN": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_LOWER_CROSS_EXIT_TF": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "WT_PERCENTILE_ENTRY_GATE_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_PERCENTILE_ENTRY_OB_D": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_PERCENTILE_ENTRY_OS_D": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_PERCENTILE_EXIT_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_PERCENTILE_EXIT_OB_4H": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_PERCENTILE_EXIT_OB_D": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_PERCENTILE_EXIT_OS_4H": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_PERCENTILE_EXIT_OS_D": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_REDUCE_FRAC_HIGH": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_REDUCE_FRAC_LOW": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_REDUCE_FRAC_MED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_SIMPLE_GUARANTEE_ENABLED": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  }
+ },
+ "TEMPLATE_STOCKS_SHORT": {
+  "ABSOLUTE_OPEN_LOCK_SEC": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "ALL_TF_AGAINST_CLOSE_ENABLED": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "ALL_TF_AGAINST_CLOSE_MIN_TFS": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "ATR_LONG_WINDOW": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "ATR_TRAIL_SWEEP_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "AUGMENTED_POSITIONS_GUARD_FLOOR_MULT": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "AUGMENT_AT_LOSS_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "AUGMENT_ONLY_WHEN_PROFITABLE": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "AUGMENT_WT_4H_BOUNCE_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BALANCE_FLOOR_USD": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "BANDAID_OFF_LOSER_RECOVER_PCT": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BLACKLIST_SYMBOLS": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "BOUNCE_REENTRY_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BOUNCE_REENTRY_K_RESET_LONG": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BOUNCE_REENTRY_K_RESET_SHORT": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BREAKEVEN_DC_FIELD_MODE": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BREAKEVEN_GAIN_EROSION_ENABLED": {
+   "tabs": [
+    "REDUCE_PROFIT_LOCK"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BREAKEVEN_GAIN_EROSION_MIN_GAIN": {
+   "tabs": [
+    "REDUCE_PROFIT_LOCK"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT": {
+   "tabs": [
+    "REDUCE_PROFIT_LOCK"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BTC_ACCEL_RAMP_REQUIRE_POSITIVE": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BTC_BREAKOUT_ENTRY_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BTC_DIVERGENCE_EXIT_AGAINST": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BTC_GUARANTEED_REENTRY_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BTC_GUARANTEED_REENTRY_MAX_AGE_BARS": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BTC_GUARANTEED_REENTRY_MIN_GAP_BARS": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BTC_HARD_BLOCK_OTHER_ACCOUNTS": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BTC_ROUND_BANDS_EACH_SIDE": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BTC_RZ_WT_DC_MULTIFACTOR": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BTC_TECH_EXIT_WT_MIN_TFS": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "CHANNEL_REENTRY_STOP_ENABLED": {
+   "tabs": [
+    "REENTRY_ADAPTIVE"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "CIRCUIT_BREAKER_THRESHOLD_PCT": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED": {
+   "tabs": [
+    "REENTRY_ADAPTIVE"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DAEMON_REENTRY_STALE_EXIT_ENABLED": {
+   "tabs": [
+    "REENTRY_ADAPTIVE"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DAYTRADE_DC_STOP_TF": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "DAYTRADE_DC_TARGET_TF": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "DC_BREAKOUT_SCORE": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DC_BREAKOUT_TF": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DC_DAYTRADE_STOP_USE_DC4_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "DC_DAYTRADE_STOP_USE_DC_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "DC_DAYTRADE_TARGET_DC_BUFFER_PCT": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DC_DAYTRADE_TARGET_USE_DC4_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DC_DAYTRADE_TARGET_USE_DC_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DC_HOPELESS_EXIT_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DC_HOPELESS_EXIT_MIN_AGE_S": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DELTA_EXIT_DC_FLOOR": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DELTA_EXIT_MANDATORY_REENTRY_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DELTA_GATE_BB_SQUEEZE": {
+   "tabs": [
+    "ENTRY_REVERSAL_BOUNCE"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DELTA_REENTRY_FILTER_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DELTA_REENTRY_Z_THRESHOLD": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DIRECTION_FAVORABLE_REENTRY_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DYNAMIC_SCORE_AUGMENT_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DYN_STRUCT_TRAIL_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "EMA_BLANKET_FILTER_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "EMA_BLANKET_FILTER_MIN_TFS": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "EXECUTE_NOW_MAX_MARK_AGE_S": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "EXECUTE_NOW_SINGLE_GATE_ENFORCE": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "EZ_MANAGE_THROTTLER_RATE": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "E_1_EXIT_DELTA_THR": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "E_1_WT_EXIT_USE_DELTA_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "E_3_USE_WT_STRUCTURE_EXIT_MODE": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "FOLLOW_THROUGH_REENTRY_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "FUNDING_GATE_LONG_MAX": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "FUNDING_GATE_MTF_REQUIRED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "FUNDING_GATE_SHORT_MIN": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GOLDEN_RULE_BASE_USD": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GR_FILTER_ALL_ENTRIES": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GR_FILTER_VEC_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GR_FILTER_VEC_MIN_TFS": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GUARANTEED_REENTRY_DELTA_GATE_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GUARANTEED_REENTRY_K_FAVORABLE_HIGH": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GUARANTEED_REENTRY_K_FAVORABLE_LOW": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GUARANTEED_REENTRY_K_HIGH_BLOCK": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GUARANTEED_REENTRY_K_LOW_BLOCK": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GUARANTEED_REENTRY_STRICT_CONFIRMATION": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GUARANTEED_REENTRY_TIGHT_STOP_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GUARANTEED_REENTRY_TIGHT_STOP_MAX_AGE_S": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GUARANTEED_REENTRY_TIGHT_STOP_MIN_AGE_S": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "GUARANTEED_REENTRY_TIGHT_STOP_PCT": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HAIKU_ENTRY_GATE_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HARD_AUGMENT_LOCK_SEC": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "HARD_BREAKEVEN_FLOOR_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HARD_BREAKEVEN_MIN_PEAK_PCT": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HARD_REDUCE_LOCK_SEC": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "HA_WICK_QUALITY_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HA_WICK_QUALITY_TF": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HLR_REENTRY_MAX_AGE_S": {
+   "tabs": [
+    "REENTRY_ADAPTIVE"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HLR_REENTRY_MULT_1H": {
+   "tabs": [
+    "REENTRY_ADAPTIVE"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HLR_REENTRY_MULT_4H": {
+   "tabs": [
+    "REENTRY_ADAPTIVE"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HLR_REENTRY_MULT_D": {
+   "tabs": [
+    "REENTRY_ADAPTIVE"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HLR_REENTRY_MULT_W": {
+   "tabs": [
+    "REENTRY_ADAPTIVE"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HLR_SMA_BAND_PCT": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HLR_TOP_EXIT_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HLR_TOP_MIN_TFS": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_AGAINST_FORCE_CLOSE_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_DIRECTION_GATE_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_EXIT_VETO_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_EXIT_VETO_MAX_LOSS_PCT": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_EXIT_VETO_MIN_ALIGNED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_GATE_APPLY_TO_AUGMENT": {
+   "tabs": [
+    "AUGMENT_TREND"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_GATE_APPLY_TO_OPEN": {
+   "tabs": [
+    "REDUCE_PROFIT_LOCK"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_GATE_BYPASS_RZ": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_GATE_D_MANDATORY": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_GATE_MIN_CONFIRMATIONS": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_GATE_SIGNALS_SMA200D": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_TREND_VETO_BYPASS_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_TREND_VETO_BYPASS_REASONS": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "INTRADAY_SESSION_FORCE_EXIT_UTC": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "LEGACY_PROC_SINGLE_REENTRY": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "LEGACY_REENTRY_PSR_DC_BOUNCE": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "LEGACY_REENTRY_PSR_FULL_DC": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "LEGACY_REENTRY_PSR_K_DC_CROSSOVER": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "LEGACY_REENTRY_PSR_QUICK_RECOVERY": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "LOSS_TECHNICAL_EXIT_NO_STALE_BLOCK": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "LR_BAND_LADDER_TF_BOTTOM": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "LR_BAND_LADDER_TF_TOP": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "MACD_EXIT_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MACD_EXIT_MIN_GAIN": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MACD_EXIT_TF": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MACD_ZERO_CROSS_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MACD_ZERO_CROSS_SCORE": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MACD_ZERO_CROSS_TF": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MANDATORY_REENTRY_ALLOW_WT0_STRONG_CROSS": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MANDATORY_REENTRY_K_HIGH_BLOCK": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MANDATORY_REENTRY_K_LOW_BLOCK": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MANDATORY_REENTRY_REQUIRE_K_NOT_EXTREME": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MANDATORY_REENTRY_WT_FILTER_TF_MODE": {
+   "tabs": [
+    "ENTRY_REVERSAL_BOUNCE"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MARKET_QUALITY_SCORE_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MIN_HOLD_BARS_BEFORE_EXIT": {
+   "tabs": [
+    "REDUCE_PROFIT_LOCK"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MI_DIV_EXIT_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MI_ENTRY_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MI_ENTRY_EXHAUST_BONUS": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MI_ENTRY_STRUCT_BONUS": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MI_EXHAUST_EXIT_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MI_MIN_GAIN_EXIT": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MI_STRUCT_EXIT_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MI_TF_AGREE_MIN": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MI_VELOCITY_EXIT_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MI_WAVE_EXIT_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MTF_FILTER_STRONG_BUY_QUICK_BYPASS": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MTF_GR_MIN_IND": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MTS_BOTTOM_BONUS_THRESHOLD": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MTS_BOTTOM_STRONG_THRESHOLD": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "MTS_GATE_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "NEW_POSITION_MAX_LOSS_THRESHOLD": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_DEFAULT_SIZE_MULT": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_K15_HIGH_BLOCK": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_K15_HIGH_SIZE_FRAC": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_SCORE_TIER1": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_SCORE_TIER2": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_SCORE_TIER3": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_SHORT_K15_LOW_BLOCK": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_SHORT_K15_LOW_SIZE_FRAC": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_SMA_FIELD": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_SMA_TF": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_TIER1_HTF_REQUIRED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OI_CONFIRM_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OI_CONFIRM_MIN_CHANGE_PCT": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OI_CONFIRM_MIN_PRICE_PCT": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OPEN_RATE_BREAKER_ENABLED": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "OPEN_RATE_MAX": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "PARTIAL_EXIT_FRAC": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "PARTIAL_PROFIT_LOCK_FRAC": {
+   "tabs": [
+    "REDUCE_PROFIT_LOCK"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED": {
+   "tabs": [
+    "REDUCE_PROFIT_LOCK"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "PER_SYM_GATE_FLAT_OPEN_ENFORCE": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": true,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "PYRAMID_MIN_WT_VEL_1H": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "QUICK_REENTRY_60MIN_MIN_PCT": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY2_DC_BREAK_ALLOW_15M": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY2_DC_BREAK_FILTER_TF": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY2_DC_BREAK_REQUIRE_K_FILTER": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY2_DC_BREAK_REQUIRE_WT_FILTER": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY2_DIR_FAV_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY2_STOCH_CROSS_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_B16_SIZE_MULT_STRONG": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_B16_SIZE_MULT_WEAK": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_B16_SMA200_PROX_PCT": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_B16_SMA200_PULLBACK_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_CROSS_FRESHNESS_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_EXHAUSTED_PARTIAL_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_EXIT_RECLAIM_BUFFER_PCT": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_EXIT_RECLAIM_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_K15M_PARTIAL_MULT": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_POST_CONSOL_ATR_THRESHOLD": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_POST_CONSOL_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_POST_CONSOL_MULT": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_POST_CONSOL_TFS_REQUIRED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_TIER1_SIZE_MULT": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_TIER2_MAX_MINUTES": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REENTRY_WT15M_SIZE_MULT": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REGIME_RANGING_EXIT_GAIN_MIN": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REGIME_RANGING_WT_REDUCE_FRAC_LOW": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REGIME_TRENDING_EXIT_GAIN_MIN": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "REVERSE_ON_EXIT_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "RULE_B_3M_EXIT_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "RZ_BREAKOUT_BAND": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "RZ_BREAKOUT_ENTRY_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SCALP_V3_AUG_BE_STOP_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SCALP_V3_AUG_BE_STOP_PCT": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SCALP_V3_K_OB_EXIT_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SCALP_V3_K_OB_EXIT_K15M_HI": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SCALP_V3_K_OB_EXIT_K15M_LO": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SCALP_V3_K_OB_EXIT_K3M_HI": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SCALP_V3_K_OB_EXIT_K3M_LO": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SCALP_V3_K_OB_EXIT_WALL_PCT": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SCALP_V3_OB_WALL_TOO_CLOSE_PCT": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SCALP_V3_PROTECTIVE_EXIT_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SIMPLE_TP_EXIT_ENABLED": {
+   "tabs": [
+    "REDUCE_PROFIT_LOCK"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SIMPLE_TP_PCT": {
+   "tabs": [
+    "REDUCE_PROFIT_LOCK"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "STALE_HOLD_ENABLED": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "TECHNICAL_DC_STOP_TF": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "TECHNICAL_DC_TARGET_TF": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "TRADIER_DC_DAYTRADE_STOP_USE_DC_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "TRADIER_DC_DAYTRADE_TARGET_DC_BUFFER_PCT": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "TRADIER_DC_DAYTRADE_TARGET_USE_DC4_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "TRADIER_DC_DAYTRADE_TARGET_USE_DC_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "TREND_EXIT_SCORE_FLIP": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "TREND_MIN_GAIN_EXIT": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "UNIVERSAL_NOLOSS_BYPASS_REASONS": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "V8_ENTRY_ENGINE_DC_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "V8_ENTRY_ENGINE_WT_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "VEC_REENTRY_DC4_EXITPRICE_ENABLED": {
+   "tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_15M_CROSS_ENTRY_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_4H_VEL_EXIT_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_4H_VEL_EXIT_K_EXTREME_HIGH": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_4H_VEL_EXIT_K_EXTREME_LOW": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_4H_VEL_EXIT_REQUIRE_K_EXTREME": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_4H_VEL_EXIT_REQUIRE_PROFIT": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_AGAINST_FILTER_ENABLED": {
+   "tabs": [
+    "ENTRY_CONFIRMATION_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_COMPOSITE_ENTRY_BLOCK": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_COMPOSITE_ENTRY_GOOD": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_COMPOSITE_ENTRY_OK": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_COMPOSITE_ENTRY_STRONG": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_CROSS_EXIT_APPLIES_TO_WINNERS": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_CROSS_EXIT_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_CROSS_EXIT_MIN_AGE_MINUTES": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_CROSS_EXIT_REQUIRE_15M_CONFIRM": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_DC_DETAILED_TF": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "WT_DC_ENABLED": {
+   "tabs": [
+    "ENTRY_CONFIRMATION_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "WT_DIV_ENTRY_GATE_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_EXHAUST_ENTRY_GATE_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_EXHAUST_EXIT_MIN_GAIN_PCT": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_EXHAUST_EXIT_REQUIRE_GAIN": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_LOWER_CROSS_EXIT_TF": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "WT_PERCENTILE_ENTRY_GATE_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_PERCENTILE_ENTRY_OB_D": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_PERCENTILE_ENTRY_OS_D": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_PERCENTILE_EXIT_ENABLED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_PERCENTILE_EXIT_OB_4H": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_PERCENTILE_EXIT_OB_D": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_PERCENTILE_EXIT_OS_4H": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_PERCENTILE_EXIT_OS_D": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_REDUCE_FRAC_HIGH": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_REDUCE_FRAC_LOW": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_REDUCE_FRAC_MED": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "WT_SIMPLE_GUARANTEE_ENABLED": {
+   "tabs": [
+    "ENTRY_CONFIRMATION_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  }
+ },
+ "TEMPLATE_CRYPTO_LONG": {
+  "ABSOLUTE_OPEN_LOCK_SEC": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "ATR_LONG_WINDOW": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "AUGMENT_BULL_KILL_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BALANCE_FLOOR_USD": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "BB_SQUEEZE_EXIT_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "BEAR_HOLD_EXIT_DELAY_BARS": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BEAR_MARKET_MODE_TRADIER": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "BLACKLIST_SYMBOLS": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "BULL_HOLD_EXIT_DELAY_BARS": {
+   "tabs": [
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "CIRCUIT_BREAKER_THRESHOLD_PCT": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "DAYTRADE_DC_STOP_TF": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "DAYTRADE_DC_TARGET_TF": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "DC_DAYTRADE_STOP_USE_DC4_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "DC_DAYTRADE_STOP_USE_DC_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "DC_DAYTRADE_TARGET_DC_BUFFER_PCT": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DC_DAYTRADE_TARGET_USE_DC4_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DC_DAYTRADE_TARGET_USE_DC_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "EMA50_15M_ENTRY_FILTER_ENABLED": {
+   "tabs": [
+    "ENTRY_CONFIRMATION_GATES"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "EMA50_15M_ENTRY_FILTER_PCT": {
+   "tabs": [
+    "ENTRY_CONFIRMATION_GATES"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "EMA_9_21_FILTER_TFS": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "EZ_MANAGE_THROTTLER_RATE": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "FORCE_MIN_ONE_TRADE": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "GAP_PER_SYMBOL_AVG_THRESH_PCT": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "HARD_AUGMENT_LOCK_SEC": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "HARD_REDUCE_LOCK_SEC": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "HTF_BULL_ENTRY_FILTER_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_REVERSAL_BOUNCE"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_BULL_ENTRY_FILTER_TF": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_REVERSAL_BOUNCE"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "HTF_TREND_VETO_BYPASS_REASONS": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "KINDERGARTEN_CUMULATIVE_MIN_TFS": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "KINDERGARTEN_STRICT_TFS": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "LR_BAND_LADDER_TF_BOTTOM": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "LR_BAND_LADDER_TF_TOP": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "SHORT_DC_LOW_BREAK_ENABLED": {
+   "tabs": [
+    "AUGMENT_TREND"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SHORT_DC_LOW_BREAK_SIZE_MULT": {
+   "tabs": [
+    "AUGMENT_TREND"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SHORT_PARTIAL_RECOVERY_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SHORT_PARTIAL_RECOVERY_SIZE_MULT": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SHORT_PARTIAL_RECOVERY_THRESHOLD_PCT": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "STALE_HOLD_ENABLED": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "TECHNICAL_DC_STOP_TF": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "TECHNICAL_DC_TARGET_TF": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "TRADIER_DC_DAYTRADE_STOP_USE_DC_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "TRADIER_DC_DAYTRADE_TARGET_DC_BUFFER_PCT": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "TRADIER_DC_DAYTRADE_TARGET_USE_DC4_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "TRADIER_DC_DAYTRADE_TARGET_USE_DC_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "ULTIMATE_DC_4H_STOP_ENABLED": {
+   "tabs": [
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "UNIVERSAL_NOLOSS_BYPASS_REASONS": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "WT_DC_DETAILED_TF": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "WT_DC_ENABLED": {
+   "tabs": [
+    "ENTRY_CONFIRMATION_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "WT_LOWER_CROSS_EXIT_TF": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "WT_SIMPLE_GUARANTEE_ENABLED": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  }
+ },
+ "TEMPLATE_CRYPTO_SHORT": {
+  "ABSOLUTE_OPEN_LOCK_SEC": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "ATR_LONG_WINDOW": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "AUGMENT_BULL_KILL_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BALANCE_FLOOR_USD": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "BB_SQUEEZE_EXIT_ENABLED": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "BEAR_HOLD_EXIT_DELAY_BARS": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "BEAR_MARKET_MODE_TRADIER": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "BLACKLIST_SYMBOLS": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "BULL_HOLD_EXIT_DELAY_BARS": {
+   "tabs": [
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "CIRCUIT_BREAKER_THRESHOLD_PCT": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "DAYTRADE_DC_STOP_TF": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "DAYTRADE_DC_TARGET_TF": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "DC_DAYTRADE_STOP_USE_DC4_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "DC_DAYTRADE_STOP_USE_DC_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "DC_DAYTRADE_TARGET_DC_BUFFER_PCT": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DC_DAYTRADE_TARGET_USE_DC4_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "DC_DAYTRADE_TARGET_USE_DC_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "EMA50_15M_ENTRY_FILTER_ENABLED": {
+   "tabs": [
+    "ENTRY_CONFIRMATION_GATES"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "EMA50_15M_ENTRY_FILTER_PCT": {
+   "tabs": [
+    "ENTRY_CONFIRMATION_GATES"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "EMA_9_21_FILTER_TFS": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "EZ_MANAGE_THROTTLER_RATE": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "FORCE_MIN_ONE_TRADE": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "GAP_PER_SYMBOL_AVG_THRESH_PCT": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "HARD_AUGMENT_LOCK_SEC": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "HARD_REDUCE_LOCK_SEC": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "HTF_BULL_ENTRY_FILTER_ENABLED": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_REVERSAL_BOUNCE"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "HTF_BULL_ENTRY_FILTER_TF": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_REVERSAL_BOUNCE"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "HTF_TREND_VETO_BYPASS_REASONS": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "KINDERGARTEN_CUMULATIVE_MIN_TFS": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "KINDERGARTEN_STRICT_TFS": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "LR_BAND_LADDER_TF_BOTTOM": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "LR_BAND_LADDER_TF_TOP": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "ENTRY_REVERSAL_BOUNCE",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "REENTRY_ADAPTIVE",
+    "REENTRY_WINDOWED"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER": {
+   "tabs": [
+    "REDUCE_SIGNAL_RATER"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "SHORT_DC_LOW_BREAK_ENABLED": {
+   "tabs": [
+    "AUGMENT_TREND"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SHORT_DC_LOW_BREAK_SIZE_MULT": {
+   "tabs": [
+    "AUGMENT_TREND"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SHORT_PARTIAL_RECOVERY_ENABLED": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SHORT_PARTIAL_RECOVERY_SIZE_MULT": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "SHORT_PARTIAL_RECOVERY_THRESHOLD_PCT": {
+   "tabs": [
+    "AUGMENT_RISK_SIZING"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": false
+  },
+  "STALE_HOLD_ENABLED": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "TECHNICAL_DC_STOP_TF": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "TECHNICAL_DC_TARGET_TF": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "TRADIER_DC_DAYTRADE_STOP_USE_DC_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "TRADIER_DC_DAYTRADE_TARGET_DC_BUFFER_PCT": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "TRADIER_DC_DAYTRADE_TARGET_USE_DC4_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "TRADIER_DC_DAYTRADE_TARGET_USE_DC_15M": {
+   "tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": true
+  },
+  "ULTIMATE_DC_4H_STOP_ENABLED": {
+   "tabs": [
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": true,
+   "in_config_py": true,
+   "in_config_tradier": true
+  },
+  "UNIVERSAL_NOLOSS_BYPASS_REASONS": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "WT_DC_DETAILED_TF": {
+   "tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "WT_DC_ENABLED": {
+   "tabs": [
+    "ENTRY_CONFIRMATION_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "WT_LOWER_CROSS_EXIT_TF": {
+   "tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  },
+  "WT_SIMPLE_GUARANTEE_ENABLED": {
+   "tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "in_live_config": false,
+   "in_config_py": false,
+   "in_config_tradier": false
+  }
+ }
+}

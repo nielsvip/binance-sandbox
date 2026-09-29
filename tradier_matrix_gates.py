@@ -44,7 +44,10 @@ def bb_pullback_gate_blocks(
     """
     if not bool(getattr(cfg, "BB_PULLBACK_GATE_ENABLED", False)):
         return False
-    tf = str(getattr(cfg, "BB_PULLBACK_GATE_TF", "15m") or "15m")
+    # BB_PULLBACK_GATE_FILTER_TF selects the TF of THIS gate (OFF = BB_PULLBACK_GATE_TF); it is not a second,
+    # stricter 0.20/0.80 gate stacked on top (that double gate zeroed 61% of stock sym_sides at 1h)
+    _ftf = str(getattr(cfg, "BB_PULLBACK_GATE_FILTER_TF", "OFF") or "OFF").strip()
+    tf = _ftf if _ftf.upper() != "OFF" else str(getattr(cfg, "BB_PULLBACK_GATE_TF", "15m") or "15m")
     pct_b = _number(indicators, f"bb_pct_b_{tf}")
     if pct_b is None:
         return False

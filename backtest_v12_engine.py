@@ -5854,7 +5854,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # TF: crypto=MTF_ATR_TRAIL_TF(15m), stocks=MTF_ATR_TRAIL_TF_TRADIER(5m). mult=2.0.
         # Reason MTF_ATR_TRAIL already in UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS / LOSS_EXIT_TECHNICAL_BYPASS.
         # ═══════════════════════════════════════════════════════════════════════════
-        if bool(getattr(config, 'MTF_EXIT_USE_COMPOUND', False)) and bool(getattr(config, 'MTF_ATR_TRAIL_ENABLED', False)):
+        # 2026-09-29 USER: crypto only — in tradier mode this read the crypto config (no _TRADIER knob -> 15m hardcoded)
+        # and double-fired with the tradier DISC block below (MTF_ATR_TRAIL_TF_TRADIER) = churn
+        if mode != "tradier" and bool(getattr(config, 'MTF_EXIT_USE_COMPOUND', False)) and bool(getattr(config, 'MTF_ATR_TRAIL_ENABLED', False)):
             try:
                 from vec_paths.mtf_atr_trail import update_and_check as _mtfat_check, mtf_atr_trail_tf as _mtfat_tf
                 if not hasattr(trade_manager, 'mtf_compound_exit_state'):
@@ -8497,6 +8499,25 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 return "BLOCKED_WT_XU_FINAL_DISABLED"
         is_reduce = action.upper() in ('CLOSE', 'REDUCE', 'QUICK_CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'STOP_MAJOR_LOSS_REDUCE', 'STOP_FUNCTIONS_KILL', 'HEDGE_CLOSE') or 'CLOSE' in reason.upper() or 'REDUCE' in reason.upper()
         act = action or ("CLOSE" if is_reduce else "OPEN")
+        # 2026-09-29 SIM CHURN FIX (backtest-only, faithful — no live change): GAP_RISK_EXIT re-fires
+        # every bar on a gap day because daily high_D is cumulative, so once it crosses prev_close the
+        # gap re-detects + re-retraces each bar. It then flattens freshly re-opened positions that were
+        # NOT held through the gap, producing open→exit→reopen churn (CRWD_LONG 501 vs real 14 held).
+        # Gap risk only applies to a position HELD THROUGH the gap (opened before today's session), so
+        # suppress GAP_RISK_EXIT for positions opened the same simulated day. Guarded by
+        # V8_SIM_GAP_EXIT_HELD_THROUGH (default on for the sim); reductions on older positions unaffected.
+        if is_reduce and "GAP_RISK_EXIT" in reason and os.environ.get("V8_SIM_GAP_EXIT_HELD_THROUGH", "1") == "1":
+            try:
+                _pos_o = trade_manager.positions.get(position_key) if hasattr(trade_manager, "positions") else None
+                _oat = getattr(_pos_o, "opened_at", None) if _pos_o is not None else None
+                if _oat is not None:
+                    import datetime as _dtc
+                    _oat_dt = _oat if hasattr(_oat, "date") else _dtc.datetime.fromtimestamp(float(_oat), _dtc.timezone.utc)
+                    _now_dt = _sim_datetime_now(_dtc.timezone.utc)
+                    if _oat_dt.date() >= _now_dt.date():
+                        return "BLOCKED_SIM_GAP_EXIT_INTRADAY_ENTRY"
+            except Exception:
+                pass
         # Exact Quick→scalar parity uses the causal vector entry schedule as
         # the final admission authority for position-increasing actions.  Live
         # managers have several reentry/open producers that otherwise bypass
