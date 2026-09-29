@@ -1,0 +1,523 @@
+{
+  "CRYPTO_LONG": [
+    {
+      "kind": "switch",
+      "name": "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED",
+      "promote_value": "False",
+      "avg": 54.715375,
+      "median": 0.0,
+      "pos_sym": 23,
+      "n": 52
+    },
+    {
+      "kind": "switch",
+      "name": "MACD_ZERO_CROSS_SCORE",
+      "promote_value": "0.5",
+      "avg": 2.907921,
+      "median": 0.0,
+      "pos_sym": 4,
+      "n": 49
+    },
+    {
+      "kind": "switch",
+      "name": "MIN_HOLD_BARS_BEFORE_EXIT",
+      "promote_value": "10",
+      "avg": 2.62371,
+      "median": 0.0,
+      "pos_sym": 3,
+      "n": 49
+    },
+    {
+      "kind": "switch",
+      "name": "WT_15M_BOUNCE_OPEN_ENABLED",
+      "promote_value": "False",
+      "avg": 2.264207,
+      "median": 0.0,
+      "pos_sym": 24,
+      "n": 54
+    },
+    {
+      "kind": "switch",
+      "name": "STDEV_SLOPE_SIZING_4H_MAX",
+      "promote_value": "1",
+      "avg": 2.097831,
+      "median": 0.0,
+      "pos_sym": 2,
+      "n": 8
+    },
+    {
+      "kind": "switch",
+      "name": "BB_SQUEEZE_WIDTH_PERCENTILE",
+      "promote_value": "0.25",
+      "avg": 1.196691,
+      "median": 0.0,
+      "pos_sym": 3,
+      "n": 58
+    },
+    {
+      "kind": "switch",
+      "name": "WT_DC_ENTRY_THRESHOLD",
+      "promote_value": "45",
+      "avg": 0.768488,
+      "median": 0.0,
+      "pos_sym": 11,
+      "n": 57
+    },
+    {
+      "kind": "switch",
+      "name": "WT_PERCENTILE_EXIT_OS_D",
+      "promote_value": "2.0",
+      "avg": 0.517653,
+      "median": 0.0,
+      "pos_sym": 3,
+      "n": 53
+    },
+    {
+      "kind": "switch",
+      "name": "HIGH_GAIN_AUGMENTATION_MIN_SIZE",
+      "promote_value": "50",
+      "avg": 0.492435,
+      "median": 0.0,
+      "pos_sym": 4,
+      "n": 49
+    },
+    {
+      "kind": "switch",
+      "name": "HLR_REENTRY_MULT_D",
+      "promote_value": "2.5",
+      "avg": 0.352722,
+      "median": 0.0,
+      "pos_sym": 3,
+      "n": 51
+    },
+    {
+      "kind": "switch",
+      "name": "WT_4H_VEL_EXIT_REQUIRE_PROFIT",
+      "promote_value": "2.0",
+      "avg": 0.274673,
+      "median": 0.0,
+      "pos_sym": 3,
+      "n": 50
+    },
+    {
+      "kind": "switch",
+      "name": "WT_LOWER_CROSS_EXIT_TF",
+      "promote_value": "1h",
+      "avg": 0.25787,
+      "median": 0.056585,
+      "pos_sym": 27,
+      "n": 49
+    },
+    {
+      "kind": "switch",
+      "name": "WT_MOMENTUM_EXIT_THRESHOLD",
+      "promote_value": "1",
+      "avg": 0.252394,
+      "median": 0.0,
+      "pos_sym": 5,
+      "n": 54
+    },
+    {
+      "kind": "switch",
+      "name": "STDEV_SLOPE_SIZING_ENABLED",
+      "promote_value": "False",
+      "avg": 0.221899,
+      "median": 0.0,
+      "pos_sym": 12,
+      "n": 49
+    },
+    {
+      "kind": "switch",
+      "name": "COOLDOWN_BARS",
+      "promote_value": "0",
+      "avg": 0.156401,
+      "median": 0.0,
+      "pos_sym": 4,
+      "n": 49
+    },
+    {
+      "kind": "switch",
+      "name": "WT_COMPOSITE_ENTRY_OK",
+      "promote_value": "-20",
+      "avg": 0.135091,
+      "median": 0.0,
+      "pos_sym": 3,
+      "n": 49
+    },
+    {
+      "kind": "switch",
+      "name": "MTF_WT_CROSS_EXIT_TF",
+      "promote_value": "1h",
+      "avg": 0.117357,
+      "median": 0.0,
+      "pos_sym": 15,
+      "n": 49
+    },
+    {
+      "kind": "switch",
+      "name": "WT_DC_STOCH_THRESHOLD_LONG",
+      "promote_value": "20",
+      "avg": 0.043733,
+      "median": 0.0,
+      "pos_sym": 3,
+      "n": 49
+    },
+    {
+      "kind": "switch",
+      "name": "MTF_DC_REJECT_EXIT_TF",
+      "promote_value": "4h",
+      "avg": 0.006939,
+      "median": 0.0,
+      "pos_sym": 3,
+      "n": 49
+    }
+  ],
+  "CRYPTO_SHORT": [
+    {
+      "kind": "switch",
+      "name": "AUGMENT_MIN_GAIN_PCT",
+      "promote_value": "0.75",
+      "avg": 10.952544,
+      "median": 0.0,
+      "pos_sym": 17,
+      "n": 61
+    },
+    {
+      "kind": "switch",
+      "name": "BB_SQUEEZE_ENTRY_ENABLED",
+      "promote_value": "True",
+      "avg": 5.802066,
+      "median": 0.0114,
+      "pos_sym": 37,
+      "n": 72
+    },
+    {
+      "kind": "switch",
+      "name": "BTC_GUARANTEED_REENTRY_ENABLED",
+      "promote_value": "True",
+      "avg": 3.444388,
+      "median": 0.0,
+      "pos_sym": 17,
+      "n": 61
+    },
+    {
+      "kind": "switch",
+      "name": "EMA50_15M_ENTRY_FILTER_PCT",
+      "promote_value": "0",
+      "avg": 3.102652,
+      "median": 0.0,
+      "pos_sym": 14,
+      "n": 66
+    },
+    {
+      "kind": "switch",
+      "name": "DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED",
+      "promote_value": "False",
+      "avg": 2.811105,
+      "median": 0.0,
+      "pos_sym": 13,
+      "n": 60
+    },
+    {
+      "kind": "switch",
+      "name": "STDEV_SLOPE_SIZING_ENABLED",
+      "promote_value": "True",
+      "avg": 2.70559,
+      "median": 0.0,
+      "pos_sym": 29,
+      "n": 62
+    },
+    {
+      "kind": "switch",
+      "name": "REENTRY_ENTRY_FILTER_ENABLED",
+      "promote_value": "True",
+      "avg": 1.645552,
+      "median": 0.0,
+      "pos_sym": 15,
+      "n": 58
+    },
+    {
+      "kind": "switch",
+      "name": "EMA50_15M_ENTRY_FILTER_ENABLED",
+      "promote_value": "True",
+      "avg": 0.936054,
+      "median": 0.0,
+      "pos_sym": 4,
+      "n": 66
+    },
+    {
+      "kind": "switch",
+      "name": "COOLDOWN_BARS",
+      "promote_value": "3",
+      "avg": 0.414935,
+      "median": 0.0,
+      "pos_sym": 10,
+      "n": 34
+    },
+    {
+      "kind": "switch",
+      "name": "BB_PULLBACK_GATE_TF",
+      "promote_value": "15m",
+      "avg": 0.334427,
+      "median": 0.0,
+      "pos_sym": 14,
+      "n": 67
+    },
+    {
+      "kind": "switch",
+      "name": "SCALP_V3_AUG_BE_STOP_PCT",
+      "promote_value": "0.1",
+      "avg": 0.298846,
+      "median": 0.0,
+      "pos_sym": 6,
+      "n": 60
+    },
+    {
+      "kind": "switch",
+      "name": "SHORT_DC_LOW_BREAK_ENABLED",
+      "promote_value": "False",
+      "avg": 0.134591,
+      "median": 0.0,
+      "pos_sym": 11,
+      "n": 62
+    },
+    {
+      "kind": "filter",
+      "name": "MOM3_FILTER_TF=15m",
+      "promote_value": "MOM3_FILTER_TF=15m",
+      "avg": 0.117324,
+      "median": 0.0,
+      "pos_sym": 14649,
+      "n": 31639
+    },
+    {
+      "kind": "switch",
+      "name": "WT_DIV_EXIT_ENABLED",
+      "promote_value": "False",
+      "avg": 0.104031,
+      "median": 0.0,
+      "pos_sym": 6,
+      "n": 62
+    },
+    {
+      "kind": "switch",
+      "name": "VIGILANCE_RECOVERY_REENTRY_ENABLED",
+      "promote_value": "False",
+      "avg": 0.012765,
+      "median": 0.0,
+      "pos_sym": 12,
+      "n": 60
+    },
+    {
+      "kind": "switch",
+      "name": "TECHNICAL_DC_TARGET_TF",
+      "promote_value": "4h",
+      "avg": 0.007022,
+      "median": 0.0,
+      "pos_sym": 6,
+      "n": 60
+    },
+    {
+      "kind": "switch",
+      "name": "VIGILANCE_GUARD_ENABLED",
+      "promote_value": "True",
+      "avg": 0.004602,
+      "median": 0.0,
+      "pos_sym": 28,
+      "n": 60
+    }
+  ],
+  "STOCKS_LONG": [
+    {
+      "kind": "switch",
+      "name": "START_POSITION_SIZE",
+      "promote_value": "500.0",
+      "avg": 5.150078,
+      "median": 0.0,
+      "pos_sym": 17,
+      "n": 101
+    },
+    {
+      "kind": "switch",
+      "name": "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED",
+      "promote_value": "False",
+      "avg": 4.569232,
+      "median": 0.0,
+      "pos_sym": 17,
+      "n": 101
+    },
+    {
+      "kind": "switch",
+      "name": "WT_15M_BOUNCE_OPEN_ENABLED",
+      "promote_value": "True",
+      "avg": 1.8146,
+      "median": 0.0,
+      "pos_sym": 20,
+      "n": 112
+    },
+    {
+      "kind": "switch",
+      "name": "BB_SQUEEZE_ENTRY_ENABLED",
+      "promote_value": "True",
+      "avg": 0.907337,
+      "median": 0.0,
+      "pos_sym": 50,
+      "n": 108
+    },
+    {
+      "kind": "switch",
+      "name": "NOLOSS_BYPASS_WT_5OF5_MIN_TFS",
+      "promote_value": "3",
+      "avg": 0.56429,
+      "median": 0.0,
+      "pos_sym": 22,
+      "n": 101
+    },
+    {
+      "kind": "switch",
+      "name": "DAYTRADE_DC_STOP_TF",
+      "promote_value": "15m",
+      "avg": 0.478582,
+      "median": 0.0,
+      "pos_sym": 35,
+      "n": 101
+    },
+    {
+      "kind": "switch",
+      "name": "REENTRY_SIZE_BREAKOUT_MULT",
+      "promote_value": "0",
+      "avg": 0.306781,
+      "median": 0.0,
+      "pos_sym": 6,
+      "n": 101
+    },
+    {
+      "kind": "switch",
+      "name": "GAP_PER_SYMBOL_AVG_THRESH_PCT",
+      "promote_value": "0.30",
+      "avg": 0.182167,
+      "median": 0.0,
+      "pos_sym": 6,
+      "n": 103
+    },
+    {
+      "kind": "switch",
+      "name": "WT_DC_TF_ENTRY",
+      "promote_value": "15m",
+      "avg": 0.058093,
+      "median": 0.0,
+      "pos_sym": 6,
+      "n": 106
+    },
+    {
+      "kind": "switch",
+      "name": "LEGACY_REENTRY_PSR_DC_BOUNCE",
+      "promote_value": "2.0",
+      "avg": 0.054198,
+      "median": 0.0,
+      "pos_sym": 6,
+      "n": 102
+    },
+    {
+      "kind": "switch",
+      "name": "PARTIAL_PROFIT_LOCK_FRAC_TRADIER",
+      "promote_value": "0.625",
+      "avg": 0.037578,
+      "median": 0.0,
+      "pos_sym": 22,
+      "n": 101
+    },
+    {
+      "kind": "switch",
+      "name": "WT_DC_HTF_GATE",
+      "promote_value": "4h_D",
+      "avg": 0.035727,
+      "median": 0.0,
+      "pos_sym": 18,
+      "n": 105
+    }
+  ],
+  "STOCKS_SHORT": [
+    {
+      "kind": "switch",
+      "name": "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED",
+      "promote_value": "False",
+      "avg": 9.211326,
+      "median": 0.0,
+      "pos_sym": 17,
+      "n": 84
+    },
+    {
+      "kind": "switch",
+      "name": "START_POSITION_SIZE",
+      "promote_value": "500.0",
+      "avg": 6.17223,
+      "median": 0.0,
+      "pos_sym": 16,
+      "n": 84
+    },
+    {
+      "kind": "switch",
+      "name": "BB_SQUEEZE_ENTRY_ENABLED",
+      "promote_value": "False",
+      "avg": 0.903976,
+      "median": 0.0,
+      "pos_sym": 12,
+      "n": 92
+    },
+    {
+      "kind": "switch",
+      "name": "WT_DIV_EXIT_ENABLED",
+      "promote_value": "False",
+      "avg": 0.307214,
+      "median": 0.0,
+      "pos_sym": 15,
+      "n": 84
+    },
+    {
+      "kind": "switch",
+      "name": "WT_15M_BOUNCE_OPEN_ENABLED",
+      "promote_value": "True",
+      "avg": 0.114457,
+      "median": 0.0,
+      "pos_sym": 18,
+      "n": 93
+    },
+    {
+      "kind": "switch",
+      "name": "DAYTRADE_DC_STOP_TF",
+      "promote_value": "15m",
+      "avg": 0.11102,
+      "median": 0.0,
+      "pos_sym": 30,
+      "n": 84
+    },
+    {
+      "kind": "switch",
+      "name": "PARTIAL_PROFIT_LOCK_FRAC_TRADIER",
+      "promote_value": "0.625",
+      "avg": 0.057563,
+      "median": 0.0,
+      "pos_sym": 15,
+      "n": 84
+    },
+    {
+      "kind": "switch",
+      "name": "WT_D_BOUNCE_DD_STOP_ENABLED",
+      "promote_value": "False",
+      "avg": 0.054558,
+      "median": 0.0,
+      "pos_sym": 19,
+      "n": 84
+    },
+    {
+      "kind": "switch",
+      "name": "STDEV_SLOPE_SIZING_ENABLED",
+      "promote_value": "True",
+      "avg": 0.043912,
+      "median": 0.0,
+      "pos_sym": 16,
+      "n": 85
+    }
+  ]
+}

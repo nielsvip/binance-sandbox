@@ -1113,6 +1113,127 @@ def _pool_eval(overrides: dict, window_days: int):
     t0 = _tp.time()
     return _eps(_POOL_PREPARED, overrides, window_days), _tp.time() - t0
 
+ADAPT_FLOOR_TRADES = 10
+ADAPT_ULTRA_NEG_PCT = float(os.environ.get("V15_ULTRA_NEG_PCT", "-5.0"))
+ADAPT_MAX_STEPS = int(os.environ.get("V15_ADAPT_MAX_STEPS", "5"))
+_ADAPT_SOFTEN_TOKENS = ("FILTER", "GATE", "BLOCK", "REQUIRE", "CONFIRM", "VETO", "GUARD")
+_ADAPT_ENTRY_TOKENS = ("ENTRY", "REENTRY", "BOUNCE", "BREAKOUT", "OPEN")
+
+
+def _adapt_template_rows(template_path, tabs):
+    """(tab, switch, cand) rows the adaptive stage may use: live-wired (not grey), vector-wired, promotable, de-duplicated."""
+    import openpyxl as _opx
+    wb = _opx.load_workbook(str(template_path))
+    seen, rows = set(), []
+    for tab in tabs:
+        if tab not in wb.sheetnames or tab in DEAD_VEC_TABS:
+            continue
+        ws = wb[tab]
+        for r in range(3, ws.max_row + 1):
+            sw, cand = ws.cell(r, 1).value, ws.cell(r, 2).value
+            if not sw or cand is None or str(cand).strip() in ("", "None", "none"):
+                continue
+            sw = str(sw).strip()
+            f = ws.cell(r, 1).font
+            if f is not None and f.color is not None and str(getattr(f.color, "rgb", "") or "").upper() in GREY_SKIP_RGB:
+                continue
+            if sw in DEAD_VEC_SWITCHES or sw in LIVE_ONLY_SWITCHES or promotion_block_reason(sw, tab):
+                continue
+            if (sw, str(cand)) in seen:
+                continue
+            seen.add((sw, str(cand)))
+            rows.append((tab, sw, cand))
+    return rows
+
+
+def _credible_baseline(new_symside, prepared, base_sets, defaults, template_path, window_days, workers=2):
+    """USER 2026-09-29 adaptive sample-floor mandate (HANDOVER_SWEEP_20260929): a sheet is only filled from a CREDIBLE
+    baseline (valid, >= ADAPT_FLOOR_TRADES trades, gain >= ADAPT_ULTRA_NEG_PCT). Otherwise: (A) try alternative base sets
+    (live recipe / template defaults / previous best), (B) too few trades -> enable entry/reentry paths + soften filters,
+    maximising trades up to the floor, (C) ultra-negative -> greedy best row over all tabs until above the threshold.
+    Returns (overrides, vec_result, report). report['credible'] False = do NOT sweep (no 0-trade / ultra-neg sheets)."""
+    from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps
+    floor, uneg = ADAPT_FLOOR_TRADES, ADAPT_ULTRA_NEG_PCT
+
+    def ev(ov):
+        ov, _ = sanitize_overrides(dict(ov), defaults)
+        try:
+            return ov, (_eps(prepared, ov, window_days) or {})
+        except Exception as e:
+            return ov, {"gain_pct": None, "trades": 0, "valid": False, "invalid_reason": f"ERR {e}"[:60]}
+
+    def trades(v):
+        return int(v.get("trades") or 0)
+
+    def gain(v):
+        g = v.get("gain_pct")
+        return float(g) if g is not None else -1e9
+
+    def credible(v):
+        return bool(v.get("valid")) and trades(v) >= floor and gain(v) >= uneg
+
+    def score(v):
+        return (credible(v), min(trades(v), floor), bool(v.get("valid")), gain(v))
+
+    report = {"floor": floor, "ultra_neg": uneg, "bases": [], "steps": []}
+    best = None
+    for label, ov in base_sets:
+        if ov is None:
+            continue
+        sov, v = ev(ov)
+        report["bases"].append({"label": label, "n_overrides": len(sov), "gain": v.get("gain_pct"), "trades": trades(v), "valid": v.get("valid"), "reason": v.get("invalid_reason")})
+        if best is None or score(v) > score(best[2]):
+            best = (label, sov, v)
+    label, cur_ov, cur_v = best
+    report["base_chosen"] = label
+    print(f"[ADAPT-BASE] {new_symside} bases {[(b['label'], b['trades'], round(b['gain'], 2) if b['gain'] is not None else None, b['valid']) for b in report['bases']]} -> {label}", flush=True)
+    if credible(cur_v):
+        report["credible"] = True
+        return cur_ov, cur_v, report
+    rows_entry = _adapt_template_rows(template_path, [t for t in SWITCH_SHEETS if t.startswith(("ENTRY_", "REENTRY_"))])
+    rows_all = None
+    for step in range(ADAPT_MAX_STEPS):
+        phase = "TRADES" if trades(cur_v) < floor else "GAIN"
+        cands = []
+        if phase == "TRADES":
+            for tab, sw, cand in rows_entry:
+                cands.append((f"{tab}:{sw}={cand}", _switch_overrides(sw, _parse_opt_value(cand, defaults.get(sw)))))
+            for k, dv in defaults.items():
+                cur = cur_ov.get(k, dv)
+                if not isinstance(dv, bool) or not isinstance(cur, bool) or k == "SIMPLE_PRICE_GT0_ENABLED" or k in DEAD_VEC_SWITCHES or k in LIVE_ONLY_SWITCHES:
+                    continue
+                if cur and any(t in k for t in _ADAPT_SOFTEN_TOKENS):
+                    cands.append((f"SOFTEN:{k}=False", {k: False}))
+                elif not cur and k.endswith("_ENABLED") and any(t in k for t in _ADAPT_ENTRY_TOKENS) and not any(t in k for t in _ADAPT_SOFTEN_TOKENS):
+                    cands.append((f"ENTRY_PATH:{k}=True", {k: True}))
+        else:
+            if rows_all is None:
+                rows_all = _adapt_template_rows(template_path, [t for t in SWITCH_SHEETS if t != "STDEV_SLOPE_SIZING"])
+            for tab, sw, cand in rows_all:
+                cands.append((f"{tab}:{sw}={cand}", _switch_overrides(sw, _parse_opt_value(cand, defaults.get(sw)))))
+        cands = [(lab, ch) for lab, ch in cands if ch and any(cur_ov.get(k, defaults.get(k)) != v for k, v in ch.items())]
+        best_step = None
+        for lab, ch in cands:
+            sov, v = ev({**cur_ov, **ch})
+            if phase == "GAIN" and trades(v) < floor:
+                continue
+            if score(v) > score(cur_v) and (best_step is None or score(v) > score(best_step[2])):
+                best_step = (lab, sov, v)
+        if best_step is None:
+            report["steps"].append({"step": step, "phase": phase, "n_cands": len(cands), "result": "no improving candidate"})
+            print(f"[ADAPT-STEP] {new_symside} {step} {phase}: {len(cands)} candidates, none improves ({trades(cur_v)} trades, gain {gain(cur_v):+.2f})", flush=True)
+            break
+        lab, cur_ov, cur_v = best_step
+        report["steps"].append({"step": step, "phase": phase, "n_cands": len(cands), "applied": lab, "gain": cur_v.get("gain_pct"), "trades": trades(cur_v), "valid": cur_v.get("valid")})
+        print(f"[ADAPT-STEP] {new_symside} {step} {phase}: applied {lab} -> {trades(cur_v)} trades, gain {gain(cur_v):+.2f}, valid {cur_v.get('valid')}", flush=True)
+        if credible(cur_v):
+            break
+    report["credible"] = credible(cur_v)
+    report["final"] = {"gain": cur_v.get("gain_pct"), "trades": trades(cur_v), "valid": cur_v.get("valid"), "reason": cur_v.get("invalid_reason"), "n_overrides": len(cur_ov)}
+    print(f"[ADAPT-RESULT] {new_symside} credible={report['credible']} {trades(cur_v)} trades gain {gain(cur_v):+.2f} valid {cur_v.get('valid')} after {len([s for s in report['steps'] if s.get('applied')])} steps", flush=True)
+    return cur_ov, cur_v, report
+
+
 def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progress_path: Path, flags_md: Path, cumulative_gain: float, cumulative_overrides: dict, defaults: dict, baseline_gain: float, bh: float, prepared, args, baseline_vec: dict, baseline_live: dict):
     """Spec-compliant filler: 12 tabs (STDEV skipped), every row gets delta pos/neg, VECTOR_DELTA = sum pos yellows.
     Logic (per-row tab hop — USER 04:20 — 12 tabs, entire tab is too slow, per-row hop is better, NEVER revert to worse):
@@ -3372,6 +3493,7 @@ def main():
     print(f"[STEP] get_defaults start {new_symside}", flush=True)
     defaults = get_defaults_for_symside(new_symside)
     print(f"[STEP] get_defaults done {len(defaults)}", flush=True)
+    _ingested_overrides = dict(overrides)  # previous best / prev-sheet set — candidate base for the credible-baseline stage
     if os.environ.get("V15_FRESH_RUN", "0") == "1":
         # USER 2026-09-29: engine/sizing change invalidates prior bests -> start from the live recipe only
         print(f"[FRESH-RUN] {new_symside}: prior-best/previous-sheet ingest ignored ({len(overrides)} -> live recipe {len(_recipe_only_overrides)} overrides)", flush=True)
@@ -3490,7 +3612,15 @@ def main():
                 print(f"[baseline-warn] {new_symside} valid False but trades {baseline_vec.get('trades')} — proceeding", flush=True)
         # Previous-best that holds ~forever (1-7 trades) makes every delta meaningless: fall back to TEMPLATE defaults
         # (which carry the trade-generating exits) when they clear the 10-trade floor. Real eval, logged, never mixed.
-        if int(baseline_vec.get("trades") or 0) < 10 and overrides:
+        _adapt_report = None
+        if prepared is not None and os.environ.get("V15_ADAPT_BASELINE", "1") == "1" and (int(baseline_vec.get("trades") or 0) < ADAPT_FLOOR_TRADES or not baseline_vec.get("valid") or float(baseline_vec.get("gain_pct") or 0) < ADAPT_ULTRA_NEG_PCT):
+            # USER 2026-09-29: never sweep from a 0-trade / sub-floor / ultra-negative baseline — adapt to a credible one first
+            _bases = [("live_recipe", dict(_recipe_only_overrides)), ("template_defaults", {}), ("current", dict(overrides))]
+            if _ingested_overrides and _ingested_overrides != _recipe_only_overrides:
+                _bases.append(("previous_best", dict(_ingested_overrides)))
+            overrides, baseline_vec, _adapt_report = _credible_baseline(new_symside, prepared, _bases, defaults, args.template, args.window_days)
+            _zero_trades_early = int(baseline_vec.get("trades") or 0) == 0
+        if int(baseline_vec.get("trades") or 0) < 10 and overrides and _adapt_report is None:
             _defaults_vec = evaluate_prepared_sanitized(prepared, {}, window_days=args.window_days)
             print(f"[BASELINE-FALLBACK] {new_symside} previous-best {len(overrides)} overrides -> {baseline_vec.get('trades')} trades gain {baseline_vec.get('gain_pct')}; defaults -> {_defaults_vec.get('trades')} trades gain {_defaults_vec.get('gain_pct')}", flush=True)
             if int(_defaults_vec.get("trades") or 0) >= 10:
@@ -4148,6 +4278,16 @@ def main():
     except Exception as _e_baseline:
         print(f"[BASELINE-RECALC-WARN] {_e_baseline} — using original baseline {baseline_gain:.4f}%", flush=True)
 
+    if locals().get("_adapt_report") is not None:
+        progress["adaptive_baseline"] = _adapt_report
+        _atomic_write_json(progress_path, progress)
+    if below_floor and locals().get("_adapt_report") is not None and not _adapt_report.get("credible"):
+        # USER 2026-09-29: a 0-trade / sub-floor baseline is NOT accepted — adaptive stage (bases + entry paths + softened
+        # filters) failed to reach the floor -> no sheet sweep; flagged for the operator
+        progress["diagnostic_only"] = f"trades={baseline_trades} floor={min_trades} NO_CREDIBLE_BASELINE after adaptive"
+        _atomic_write_json(progress_path, progress)
+        print(f"[NO-CREDIBLE-BASELINE] {new_symside} {baseline_trades} trades after adaptive stage — sweep skipped (not swept from a non-credible baseline)", flush=True)
+        return
     if below_floor:
         progress["baseline_below_floor"] = f"trades={baseline_trades} floor={min_trades}"
         # USER 2026-09-29: "0 trades is impossible" — name the gates that veto every entry, then SWEEP anyway

@@ -23030,30 +23030,78 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
 
     tim_pct = round(bars_in_pos / n * 100, 2)
     if not trades:
-        return {'sym': sym, 'is_long': is_long, 'trades': 0, 'tim_pct': tim_pct, 'gain_pct_2000norm': 0.0,
-                'gain_dollars_2000norm': 0.0, 'sharpe_per_trade': 0.0, 'wr': 0.0, 'mean_deployed': 0.0,
-                'max_dd_pct': 0.0, 'bars': n, 'ledger': []}
+        return {'sym': sym, 'is_long': is_long, 'trades': 0, 'tim_pct': tim_pct,
+                'gain_pct': 0.0, 'gain_dollars': 0.0,
+                'gain_pct_2000norm': 0.0, 'gain_dollars_2000norm': 0.0,
+                'sharpe_per_trade': 0.0, 'wr': 0.0, 'mean_deployed': 0.0,
+                'peak_capital': 0.0, 'max_dd_pct': 0.0, 'bars': n, 'ledger': []}
     deployed_arr = np.array([t['deployed'] for t in trades])
     pnl_arr = np.array([t['pnl_dollars'] for t in trades])
-    mean_deployed = float(deployed_arr.mean()) if deployed_arr.mean() > 0 else cfg.START_POSITION_SIZE
-    pnl_pct_norm = pnl_arr / mean_deployed * 100
+    pnl_pct_arr = np.array([float(t.get('pnl_pct', 0.0) or 0.0) for t in trades])
+    mean_deployed = float(deployed_arr.mean()) if deployed_arr.mean() > 0 else float(getattr(cfg, 'START_POSITION_SIZE', 2000.0))
+    # Faithful capital model — peak concurrent notional, per tools/opt/metrics.py:25.
+    # Single-position engine never overlaps, so peak = max(deployed) across realised
+    # trades (each trade's deployed already sums its OPEN+AUGMENT fills). Sweep-line
+    # via bar_entry/bar_exit is kept as canonical so future overlapping support is
+    # automatically faithful; fallback is max(deployed).
+    _peak_via_bars = 0.0
+    try:
+        _ev = []
+        for _t in trades:
+            _d = float(_t.get('deployed') or 0.0)
+            _be, _bx = _t.get('bar_entry'), _t.get('bar_exit')
+            if _d > 0 and _be is not None and _bx is not None:
+                _ev.append((int(_be), _d))
+                _ev.append((int(_bx), -_d))
+        if _ev:
+            _ev.sort(key=lambda _x: (_x[0], -_x[1]))
+            _cur = _peak_via_bars = 0.0
+            for _, _delta in _ev:
+                _cur += _delta
+                if _cur > _peak_via_bars:
+                    _peak_via_bars = _cur
+    except Exception:
+        _peak_via_bars = 0.0
+    peak_capital = float(_peak_via_bars) if _peak_via_bars > 0 else float(np.max(deployed_arr)) if len(deployed_arr) else mean_deployed
+    if peak_capital <= 0:
+        peak_capital = mean_deployed if mean_deployed > 0 else float(getattr(cfg, 'START_POSITION_SIZE', 2000.0))
+    total_pnl = float(pnl_arr.sum())
+    gain_pct = total_pnl / peak_capital * 100.0 if peak_capital > 0 else 0.0
+    gain_dollars = total_pnl
     wins = int((pnl_arr > 0).sum())
-    s = float(pnl_pct_norm.std())
-    # trade-level equity-curve DD (not full intrabar DD — a scoping simplification;
-    # bar-level DD would need per-bar MTM of the whole run, deferred to a later pass)
-    equity = 2000.0 + np.cumsum(pnl_pct_norm) / 100.0 * 2000.0
-    running_peak = np.maximum.accumulate(np.concatenate(([2000.0], equity)))[1:]
-    dd_pct = float(np.max((running_peak - equity) / running_peak * 100)) if len(equity) else 0.0
+    # Sharpe on raw per-trade returns (source of truth), not mean_deployed-normalized.
+    s_raw = float(pnl_pct_arr.std()) if len(pnl_pct_arr) > 1 else 0.0
+    sharpe_raw = float(pnl_pct_arr.mean() / s_raw) if s_raw > 0 else 0.0
+    # Honest DD — same capital base as gain (peak_concurrent equity curve).
+    _rows_sorted = sorted(trades, key=lambda _t: (int(_t.get('bar_exit') or 0), int(_t.get('bar_entry') or 0)))
+    equity = float(peak_capital)
+    peak = float(peak_capital)
+    worst = 0.0
+    for _t in _rows_sorted:
+        equity += float(_t.get('pnl_dollars') or 0.0)
+        if equity > peak:
+            peak = equity
+        if peak > 0:
+            dd = (peak - equity) / peak * 100.0
+            if dd > worst:
+                worst = dd
+    dd_pct = min(100.0, worst)
+    # Legacy 2000-norm kept as diagnostic alias (never for decisions).
+    pnl_pct_norm_legacy = pnl_arr / mean_deployed * 100 if mean_deployed > 0 else pnl_pct_arr
+    legacy_gain_pct = float(pnl_pct_norm_legacy.sum())
     return {
         'sym': sym, 'is_long': is_long, 'trades': len(trades), 'tim_pct': tim_pct,
-        'gain_pct_2000norm': round(float(pnl_pct_norm.sum()), 4),
-        'gain_dollars_2000norm': round(float(pnl_pct_norm.sum()) / 100 * 2000, 2),
-        'sharpe_per_trade': round(float(pnl_pct_norm.mean() / s) if s > 0 else 0.0, 4),
+        'gain_pct': round(float(gain_pct), 4),
+        'gain_dollars': round(float(gain_dollars), 2),
+        'gain_pct_2000norm': round(float(gain_pct), 4),
+        'gain_dollars_2000norm': round(float(gain_dollars), 2),
+        'gain_pct_legacy_2000norm': round(float(legacy_gain_pct), 4),
+        'gain_dollars_legacy_2000norm': round(float(legacy_gain_pct) / 100 * 2000, 2),
+        'sharpe_per_trade': round(float(sharpe_raw), 4),
+        'sharpe_legacy_2000norm': round(float(pnl_pct_norm_legacy.mean() / float(pnl_pct_norm_legacy.std())) if float(pnl_pct_norm_legacy.std()) > 0 else 0.0, 4),
         'wr': round(wins / len(trades) * 100, 1),
-        'mean_deployed': round(mean_deployed, 2), 'max_dd_pct': round(dd_pct, 2), 'bars': n,
-        # ledger = realised trades + AUGMENT/partial-REDUCE events (ts order); metrics above
-        # come from `trades` only — event rows carry no pnl_dollars/bar_exit so ledger
-        # consumers that aggregate realised pnl skip them
+        'mean_deployed': round(mean_deployed, 2), 'peak_capital': round(float(peak_capital), 2),
+        'max_dd_pct': round(float(dd_pct), 2), 'bars': n,
         'ledger': sorted(trades + events, key=lambda t: (float(t.get('ts') or 0.0), 0 if t.get('type') in ('AUGMENT', 'REDUCE') else 1)),
     }
 
@@ -23129,7 +23177,7 @@ def simulate(stores, cfg, capital=10000.0):
     all_trades = sum(r['trades'] for r in per_symbol)
     if all_trades < 2:
         return {"sharpe": 0, "pnl": 0, "trades": all_trades, "wins": 0, "losses": 0, "avg_pnl_pct": 0, "wr": 0, "tim_pct": 0}
-    total_gain_dollars = sum(r['gain_dollars_2000norm'] for r in per_symbol)
+    total_gain_dollars = sum(float(r.get('gain_dollars', r.get('gain_dollars_2000norm', 0.0)) or 0.0) for r in per_symbol)
     wins_total = sum(int(round(r['wr'] / 100 * r['trades'])) for r in per_symbol)
     total_bars = sum(r['bars'] for r in per_symbol)
     tim_avg = sum(r['tim_pct'] * r['bars'] for r in per_symbol) / total_bars if total_bars else 0
