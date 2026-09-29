@@ -1151,6 +1151,22 @@ be resolved before implementation — do not build past Stage 0 until they are a
 
 **Do not:** discard a sym_side for a negative 365D; promote a set that is only 30D-positive; loosen the TIM/DD/floor gates to make a window "valid"; count a window as fixed while it is invalid.
 
+## 59. FLEET RUN REGIME + CRON INDEPENDENCE (USER 2026-09-29 PM, AUTHORITATIVE) — see HANDOFF_SWEEP_20260929_PM.md
+
+**Everything runs on cron, survives reboots, resumes where it left off. Servers never <85% CPU; they run ONLY 30D backtests. Parity forward-tests run on the Mac, never servers.**
+
+**Pipeline (order is law):** 30D run #1 ALL sym_sides (disabled/now-switched-off sides FIRST) → recalc `v15_avg_delta` → rebuild templates → 30D run #2 ALL sym_sides → 365D verification + adjustments (§58). No 365D run until run #2 completes.
+
+**Main sweep = `tools/v15_sweep_cron.sh` (cron `*/5` + `@reboot`) → `tools/v15_full_sweep_driver.py`.** Per host: s1 crypto shard 0/2, s5 crypto shard 1/2, s2 stocks 0/1. Order = **worst-first by SYMBOL, disabled symbols first** (`data/reports/per_sym_recheck_20260929/run_order_{crypto,stocks}.txt`, disabled-set `priority_negzero_{crypto,stocks}.txt`). Each symbol runs **LONG+SHORT together** (one NPZ load, shared via OS page cache — never load a symbol twice). Disabled (neg/zero) side = `V15_TEMPLATE_DEFAULTS=1` (reset toward cat_side defaults; `[ADAPT-BASE]` still picks best credible of {defaults, recipe, prev_best}); positive side = FRESH best-base.
+
+**Guard-bypass law:** the pilot's `ALREADY FINISHED (early) — MUST NOT RETOUCH` skip only fires when it finds a prior progress JSON in `V15_PROGRESS_DIR`. Every fresh pass MUST point `--progress-dir` at a NEW empty iso dir (`~/v15_runN_YYYYMMDD/progress`) — that is what re-runs a finished side on the new template. Sheets still land in `SPREADSHEETS/V15_V16_CELL_BY_CELL/`.
+
+**Old rig is dead + stays dead:** `tools/reset_fleet_20260929.sh` killed all spawners (cycle_follower/iso_dispatch/mega_supervisor/herd/finisher) and disabled their crons; `v15_sweep_cron.sh` holds the herd singleton lock (`flock_hold_herd` on `/tmp/v15_local_herd.lock`) so any respawned `v15_local_herd` self-exits. Never re-enable those crons during the run.
+
+**Monitoring (NO-LIES, every cell fill):** `tools/v15_delta_health_monitor.py` (Mac cron `*/10`) flags **0-delta sides** (dead NPZ/no-op stub — fix NPZ or mark stub) and **repeated-identical-delta** (fabricated `v12_quick_engine` distinctness — never promote, re-run + trace). Offenders → `data/reports/delta_health_{date}.md`. Fix immediately (§18–§21).
+
+**Yellow agent (all switch × all filter × 5 TF × 4 cat_side, on an OLD template, applied to the latest template when done):** a long-running (days) background job that MUST run on cron, survive reboots, and resume. As of this handoff it is NOT running and its exact tool/state store is unconfirmed — resume it as a cron guard only once identified; it must not starve the 30D sweep.
+
 ---
 
-*End of bible — if a procedure above conflicts with older text, this wins. §58 (negative 365D = faulty 30D sheet → repair loop, never a disqualification) is operator-authoritative. §14–§57 are the 2026-09-29 operator-corrected additions; §56 is the operator's verbatim fill spec and is the highest authority on how `TEMPLATE_*.xlsx` is filled; §57 + DAILY_OPTIMIZATION_PLAN.md define the daily self-optimization loop.*
+*End of bible — if a procedure above conflicts with older text, this wins. §59 (fleet run regime + cron independence) and §58 (negative 365D = faulty 30D sheet → repair loop, never a disqualification) are operator-authoritative. §14–§57 are the 2026-09-29 operator-corrected additions; §56 is the operator's verbatim fill spec and is the highest authority on how `TEMPLATE_*.xlsx` is filled; §57 + DAILY_OPTIMIZATION_PLAN.md define the daily self-optimization loop; run regime + monitoring live in HANDOFF_SWEEP_20260929_PM.md.*
