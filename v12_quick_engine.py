@@ -4883,7 +4883,7 @@ class QuickConfig:
     HIGH_GAIN_AUGMENTATION_MIN_SIZE: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
     HTF4_CONF: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
     HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: exit when 1h+4h against trade
+    HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = False  # 2026-09-29 USER: default OFF (frequent-exit churn) — swept switch; sane baseline WT/DC. Was True 2026-09-10.
     BOTTOM_EXIT_HTF_WT_VETO_ENABLED: bool = True  # parity 2026-09-27: config True + TEMPLATE bold — block R1/ULTIMATE_DC/NEWBORN bottom exits when HTF WT with position
     HTF_WT_CHURN_REENTRY_ENABLED: bool = True  # parity 2026-09-27: config True + TEMPLATE bold — immediate churn reentry while HTF WT with direction
     HTF_WT_CHURN_REENTRY_MAX_AGE_MIN: float = 120.0  # parity 2026-09-27: config 120.0 + TEMPLATE bold — churn window 2h after exit
@@ -5652,7 +5652,7 @@ class QuickConfig:
     MTF_ARROW_SIZE_MAX: float = 4.0  # auto-wired 625
     MTF_ARROW_SLOPE_LAMBDA: float = 1.0  # auto-wired 625
     MTF_ARROW_TRAIL_EXIT_ENABLED: bool = False  # auto-wired 625
-    MTF_ATR_TRAIL_ENABLED: bool = True  # live parity: config.py True 2026-05-20 Phase I (crypto); stocks stay OFF via MTF_ATR_TRAIL_ENABLED_TRADIER
+    MTF_ATR_TRAIL_ENABLED: bool = False  # 2026-09-29 USER: trailing stops eliminated — default OFF, swept switch. Was True (config.py Phase I); stocks already OFF via MTF_ATR_TRAIL_ENABLED_TRADIER
     MTF_ATR_TRAIL_ENABLED_TRADIER: bool = False  # live parity: config_tradier has NO MTF trail knobs → tradier _cfg default False (compound block inert on stocks)
     MTF_ATR_TRAIL_MULT: float = 2.0  # live parity: config.py 2.0 (2026-05-20 USER MANDATE 2x ATR 15m trail)
     MTF_BB_REJECT_EXIT_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
@@ -6247,7 +6247,7 @@ class QuickConfig:
     HLR_TOP_MIN_TFS: float = 2.0  # 2026-09-28 LIVE PARITY: config.py:2578 = 2 (min TFs confirming top, >=1 must be 4h+)
     HTF4_CONF: float = True  # auto-added TEMPLATE generic
     HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: float = 1.0  # 2026-09-10 FIX: require 4h confirm (was 0)
-    HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: exit when 1h+4h against trade
+    HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = False  # 2026-09-29 USER: default OFF (frequent-exit churn) — swept switch; sane baseline WT/DC. Was True 2026-09-10.
     HTF_DIRECTION_GATE_ENABLED: bool = False  # 2026-09-28 WAVE4 LIVE PARITY: ez_positions_quick.py:12658 default True — ACTIVE live gate the vec lacked (baseline shift = parity)
     HTF_EXIT_VETO_ENABLED: bool = True  # auto-added TEMPLATE
     HTF_EXIT_VETO_MAX_LOSS_PCT: float = 2.0  # auto-added TEMPLATE
@@ -6950,7 +6950,7 @@ class QuickConfig:
     INTRADAY_RATIO_TRIM_FRAC: float = 0.30
     GAP_RISK_EXIT_COND_A_ENABLED: bool = True
     GAP_RISK_EXIT_COND_B_ENABLED: bool = True
-    GAP_RISK_EXIT_ENABLED: bool = True
+    GAP_RISK_EXIT_ENABLED: bool = False  # 2026-09-29 USER: default OFF (frequent-exit churn, stock-only) — swept switch; sane baseline WT/DC. Was True.
     GAP_RISK_EXIT_LONG_ENABLED: bool = True
     GAP_RISK_EXIT_OPEN_RECLAIM_ENABLED: bool = True
     GAP_RISK_EXIT_SHORT_ENABLED: bool = True

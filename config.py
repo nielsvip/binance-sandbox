@@ -1773,7 +1773,7 @@ class Config:
     # Phase J sample-floor: 293 stocks × 2.13y → pool_S +0.28, avg DD 6.5%, +113%/sym/yr.
     # ROLLBACK: set MTF_EXIT_USE_COMPOUND=False (one-line kill switch).
     MTF_EXIT_USE_COMPOUND: bool = True                   # master switch — compound exit replaces hedge protection
-    MTF_ATR_TRAIL_ENABLED: bool = True                   # 2026-05-20 ON (Phase I)
+    MTF_ATR_TRAIL_ENABLED: bool = False                  # 2026-09-29 USER: trailing stops eliminated — default OFF, kept as swept switch. Was True 2026-05-20 Phase I.
     MTF_ATR_TRAIL_MULT: float = 2.0                      # 2026-05-20 USER MANDATE: 2x ATR 15m trail from current price. Was 3.0 (loose), now tightened to spec. Phase I tested {1.5,2,3,4} all tied on Sharpe/DD.
     # 2026-05-20 USER MANDATE: MTF compound exit ONLY applies to positions opened
     # AFTER this timestamp.
@@ -2187,7 +2187,7 @@ class Config:
     WATCHDOG_WT3M_ESCALATE_LADDER: list = field(default_factory=lambda: [1.00, 2.00, 3.00, 5.00])  # 2026-06-03 USER MANDATE: re-enter/add at 100-500% of position on each fresh favorable continuation so price can never recover/continue without us holding MORE than before. Was [0.20,0.50,1.00,1.50]. Per-add still bounded by WATCHDOG_WT3M_ESCALATE_MAX_USD (account-size rail). Exact rungs to be refined by the 4yr A/B ("unless backtest chose other multipliers"). ROLLBACK: restore [0.20,0.50,1.00,1.50].
     WATCHDOG_WT3M_ESCALATE_MAX_USD: float = 600.0    # cap per escalation add
     # USER 2026-05-30 ABSOLUTE: NOTHING stays open on a sharp move the other way; martingale destroyed everywhere.
-    HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: exit when multiple TFs against trade. User: does not exit when multiple TFs are against the trade. Hardened default.
+    HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = False  # 2026-09-29 USER: default OFF (frequent-exit churn) — kept as swept switch; sane baseline = WT/DC exits. Was True 2026-09-10.
     HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: bool = True  # also require wt1_4h against (sharper); now 1h+4h must agree
     # 2026-09-27 BOTTOM-EXIT FIX: never exit LONG at bottom (dc low break) when HTF WT still bullish — exit at top not bottom. If DC low did break, immediate churn reentry while HTF WT with direction.
     BOTTOM_EXIT_HTF_WT_VETO_ENABLED: bool = True  # block R1/ULTIMATE_DC/NEWBORN bottom exits when HTF WT with position (LONG bullish / SHORT bearish) — prevents stupid bottom exit
@@ -2471,7 +2471,7 @@ class Config:
     SYMBOL_PERF_REFRESH_SECONDS: float = 3600.0
     SYMBOL_PERF_DECAY_HOURS: float = 12.0
     # === OUTLIER DETECTION ===
-    OUTLIER_DETECTOR_ENABLED: bool = True
+    OUTLIER_DETECTOR_ENABLED: bool = False  # 2026-09-29 USER: outlier reports are noise — report-only loop, no trading effect
     OUTLIER_SCAN_INTERVAL: float = 60.0
     OUTLIER_STUCK_HOURS: float = 2.0
     OUTLIER_STUCK_ATR_FACTOR: float = 0.5

@@ -1336,7 +1336,7 @@ class TradierConfig:
     # re-breaks open in gap direction OR makes higher-high (short) / lower-low (long)
     # after retrace. Intraday structure-risk exit, NOT take-profit. Fully switchable.
     # Live uses open_D / close_D_prev + stateful retrigger; vector is vec_decisions.
-    GAP_RISK_EXIT_ENABLED: bool = True  # ENABLED by default — prevents losers like QBTS gap continuation
+    GAP_RISK_EXIT_ENABLED: bool = False  # 2026-09-29 USER: default OFF (frequent-exit churn, stock-only) — kept as swept switch; sane baseline = WT/DC exits. Was True.
     GAP_RISK_EXIT_SHORT_ENABLED: bool = True  # ENABLED — short gap-up
     GAP_RISK_EXIT_LONG_ENABLED: bool = True  # ENABLED — long gap-down
     GAP_RISK_EXIT_OPEN_RECLAIM_ENABLED: bool = True  # COND_A alias — open reclaim — ENABLED
