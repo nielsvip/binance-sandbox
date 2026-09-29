@@ -1527,5 +1527,32 @@
     ],
     "timestamp": "2026-09-29T15:33:09.785254+00:00",
     "price": 205.4
+  },
+  {
+    "symbol": "ETHFIUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.0x (from rankings)"
+    ],
+    "timestamp": "2026-09-29T15:35:43.994849+00:00",
+    "price": 0.67790989
+  },
+  {
+    "symbol": "CRVUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.2x (from rankings)"
+    ],
+    "timestamp": "2026-09-29T15:51:34.542488+00:00",
+    "price": 0.3464
+  },
+  {
+    "symbol": "COHRUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.1x (from rankings)"
+    ],
+    "timestamp": "2026-09-29T15:54:13.406962+00:00",
+    "price": 292.46
   }
 ]
