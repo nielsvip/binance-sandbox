@@ -1,6 +1,6 @@
-PERFORMANCE REPORT — 2026-09-29 18:40 UTC
+PERFORMANCE REPORT — 2026-09-29 19:40 UTC
 ================================================================================
-Total: 143 symbols | A=4 B=99 C=40
+Total: 142 symbols | A=4 B=99 C=39
 Window: 14 days | Min trades: 5
 
 --- TIER A (4 symbols) ---
@@ -13,9 +13,9 @@ Window: 14 days | Min trades: 5
              MSTR  WR=58%  avg=+2.86%  total=+61.2%  trades= 19  mult=10.00
              CRWD  WR=54%  avg=+1.34%  total=+44.0%  trades= 28  mult=10.00
              HOOD  WR=78%  avg=+3.19%  total=+31.8%  trades=  9  mult=7.30
+             LSCC  WR=100%  avg=+6.38%  total=+27.9%  trades=  4  mult=1.00
              SMCI  WR=100%  avg=+3.56%  total=+23.2%  trades=  6  mult=6.40
              AXTI  WR=55%  avg=+1.95%  total=+22.4%  trades= 11  mult=6.40
-             LSCC  WR=100%  avg=+9.03%  total=+18.9%  trades=  2  mult=1.00
               CMC  WR=56%  avg=+0.46%  total=+16.6%  trades= 34  mult=5.14
              INTC  WR=33%  avg=+0.80%  total=+15.1%  trades= 18  mult=3.17
              PYPL  WR=59%  avg=+0.35%  total=+14.0%  trades= 39  mult=4.95
@@ -110,14 +110,13 @@ Window: 14 days | Min trades: 5
               VLO  WR=51%  avg=-0.73%  total=-23.6%  trades= 35  mult=0.32
              AXON  WR=45%  avg=-1.05%  total=-34.7%  trades= 40  mult=0.22
 
---- TIER C (40 symbols) ---
+--- TIER C (39 symbols) ---
          ROSEUSDT  WR=40%  avg=-0.00%  total=-0.0%  trades=  5  mult=0.83
           APEUSDT  WR=33%  avg=-0.01%  total=-0.1%  trades=  9  mult=0.62
        BTCDOMUSDT  WR=43%  avg=-0.02%  total=-0.2%  trades= 14  mult=0.70
               NKE  WR=41%  avg=-0.01%  total=-0.4%  trades= 37  mult=0.56
         1INCHUSDT  WR=38%  avg=-0.06%  total=-0.5%  trades=  8  mult=0.68
           ACEUSDT  WR=43%  avg=-0.02%  total=-0.6%  trades= 35  mult=0.62
-             MSFT  WR=33%  avg=-0.12%  total=-0.7%  trades=  6  mult=0.67
           ZECUSDC  WR=44%  avg=-0.04%  total=-0.8%  trades= 16  mult=0.67
               QQQ  WR=0%  avg=-0.19%  total=-0.9%  trades=  5  mult=0.47
          MINAUSDT  WR=22%  avg=-0.06%  total=-1.1%  trades= 18  mult=0.32
@@ -153,7 +152,7 @@ Window: 14 days | Min trades: 5
              DINO  WR=24%  avg=-3.17%  total=-61.2%  trades= 29  mult=0.14
 
 SUMMARY:
-  Total PnL (all symbols): +975.5%
+  Total PnL (all symbols): +985.2%
   Avg win rate: 45%
   A-tier avg mult: 8.70
-  C-tier avg mult: 0.37
+  C-tier avg mult: 0.36

@@ -3498,6 +3498,14 @@ def main():
         # USER 2026-09-29: engine/sizing change invalidates prior bests -> start from the live recipe only
         print(f"[FRESH-RUN] {new_symside}: prior-best/previous-sheet ingest ignored ({len(overrides)} -> live recipe {len(_recipe_only_overrides)} overrides)", flush=True)
         overrides = dict(_recipe_only_overrides)
+    if os.environ.get("V15_START_OVERRIDES"):
+        # USER 2026-09-29 (BIBLE §58): re-run the 30D sheet from the 365D-repaired set (tools/v15_365_repair.py output
+        # or a plain {switch: value} json) — it becomes the sheet's live-recipe baseline
+        _so = json.load(open(os.environ["V15_START_OVERRIDES"]))
+        _so = (_so.get("final") or {}).get("overrides", _so) if isinstance(_so, dict) else {}
+        print(f"[START-OVERRIDES] {new_symside}: {len(_so)} overrides from {os.environ['V15_START_OVERRIDES']} (365D-repaired set)", flush=True)
+        overrides = dict(_so)
+        _recipe_only_overrides = dict(_so)
     if os.environ.get("V15_TEMPLATE_DEFAULTS", "0") == "1":
         # USER 2026-09-29: live recipe makes 0 trades (impossible) -> start from the TEMPLATE_{CAT}_{SIDE} bold defaults (= live config defaults)
         print(f"[TEMPLATE-DEFAULTS] {new_symside}: live recipe/best dropped ({len(overrides)} overrides) -> template defaults only", flush=True)

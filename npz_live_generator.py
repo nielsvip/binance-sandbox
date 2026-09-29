@@ -470,54 +470,37 @@ def _append_row_to_npz(npz_path: Path, row: Dict[str, Any]) -> bool:
         if new_ts <= last_ts:
             logger.debug(f"NPZ {npz_path.name} already up to {new_ts} <= {last_ts}")
             return False
-        # For each existing key, append; for new keys in row not in data, extend data with zeros for prior rows
+        # 2026-09-29 ALIGNMENT FIX: the old per-key loop `continue`d on any append error (object/str arrays such as
+        # wt_cross_15m, timestamp_15m) -> those keys ended 1 row short -> evaluate_v12._compact_to_15m "NPZ lacks
+        # aligned timestamp_15m" (95 stock NPZs on s1 19:17-19:34Z), and it back-filled 576 brand-new keys with zeros
+        # for the whole history (fake data). Now: all-or-nothing append of per-bar arrays only; keys missing from the
+        # row carry the last value forward (timestamp_{base} = new bar ts); new keys are NOT invented; lengths verified.
         n_old = len(data["timestamps"])
-        # First, ensure all keys in data get appended (fill missing row keys with 0)
+        out = {}
         for k in list(data.keys()):
             arr = data[k]
-            # Determine new value
+            if getattr(arr, "ndim", 0) != 1 or len(arr) != n_old:
+                out[k] = arr  # not a per-bar series (scalars/metadata) — keep as is
+                continue
             if k in row:
                 v = row[k]
+            elif k.startswith("timestamp_") and k[len("timestamp_"):] in ("15m", "5m", "3m", "1m"):
+                v = new_ts  # base-TF availability timestamp = the new bar itself
             else:
-                # Fill with 0/neutral for missing (like precompute does for warmup)
-                # Use dtype-appropriate zero
-                if arr.dtype.kind in "biufc":
-                    v = 0
-                elif arr.dtype.kind in "USV":
-                    v = ""
-                else:
-                    v = 0
-            # Append
+                v = arr[-1] if n_old else 0  # carry forward (HTF values/availability, object labels)
             try:
-                # Handle object arrays
-                if arr.dtype == object:
-                    new_arr = np.append(arr, np.array([v], dtype=object))
-                else:
-                    # Cast to arr dtype
-                    v_arr = np.array([v], dtype=arr.dtype)
-                    new_arr = np.concatenate([arr, v_arr])
-                data[k] = new_arr
+                out[k] = np.append(arr, np.array([v], dtype=object)) if arr.dtype == object else np.concatenate([arr, np.array([v], dtype=arr.dtype)])
             except Exception as e:
-                logger.warning(f"append failed for {k}: {e}")
-                # Fallback: create new array with required length
-                continue
-        # For keys in row but not in data (new indicator added), create array with zeros for old rows + new value
-        for k, v in row.items():
-            if k not in data:
-                # Create array of length n_old+1, fill old with 0, last with v
-                if isinstance(v, (int, float, np.integer, np.floating)):
-                    dtype = np.float32 if isinstance(v, float) else np.int64
-                    if k == "timestamps":
-                        dtype = np.int64
-                    arr = np.zeros(n_old + 1, dtype=dtype)
-                    if n_old > 0:
-                        arr[:-1] = 0
-                    arr[-1] = v
-                elif isinstance(v, str):
-                    arr = np.array([""] * n_old + [v], dtype=object)
-                else:
-                    arr = np.array([0] * n_old + [v], dtype=object)
-                data[k] = arr
+                logger.error(f"NPZ append ABORTED {npz_path.name}: key {k} ({arr.dtype}) value {v!r}: {e} — file left untouched")
+                return False
+        _new_keys = [k for k in row if k not in data]
+        if _new_keys:
+            logger.warning(f"NPZ {npz_path.name}: {len(_new_keys)} row keys not in NPZ schema skipped (no zero-backfilled history): {_new_keys[:8]}")
+        _bad = [k for k, a in out.items() if getattr(a, "ndim", 0) == 1 and len(data[k]) == n_old and len(a) != n_old + 1]
+        if _bad:
+            logger.error(f"NPZ append ABORTED {npz_path.name}: misaligned after append {_bad[:8]} — file left untouched")
+            return False
+        data = out
         _save_npz_atomic(npz_path, data)
         logger.info(f"NPZ appended {npz_path.name} ts={new_ts} ({datetime.fromtimestamp(new_ts, tz=timezone.utc).isoformat()})")
         return True

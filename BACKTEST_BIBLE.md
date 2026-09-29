@@ -867,6 +867,7 @@ Override values arrive as strings from the sheet and must be coerced to the fiel
 - Overfit guards: `365D delta < 50% of 30D delta` → warn; `trades < 30` → diagnostic-only; DD/sharpe gates.
 - Live crypto opens are additionally gated by `data/confirmed_365d.json` (365D, gain>0, ≥30 trades, ≤30d fresh) via `tools/confirm_365d.py` — never weaken this certifier.
 - 365D artifacts: `*_365d_matrix.xlsx` with `bh/gain` in filename + `_BASELINE_METRICS` 365D rows + `365D_REAL_ZOOMABLE` chart. No promotion without positive 365D gain unless 30D positive or beats B&H.
+- **A negative or invalid 365D result is NOT a disqualification — it is a diagnosis that the 30D sheet is faulty (usually: no exits kept). It triggers the §58 repair loop; the sym_side is only promoted once BOTH 30D and 365D are valid and positive.**
 
 ---
 
@@ -1124,4 +1125,26 @@ be resolved before implementation — do not build past Stage 0 until they are a
 
 ---
 
-*End of bible — if a procedure above conflicts with older text, this wins. §14–§57 are the 2026-09-29 operator-corrected additions; §56 is the operator's verbatim fill spec and is the highest authority on how `TEMPLATE_*.xlsx` is filled; §57 + DAILY_OPTIMIZATION_PLAN.md define the daily self-optimization loop.*
+## 58. NEGATIVE 365D = FAULTY 30D SHEET → EXIT/TRADE REPAIR LOOP (USER 2026-09-29, AUTHORITATIVE)
+
+**Rule (operator, verbatim intent):** "−37.81%, in a position 96% of the time means it never tested any exits … few trades → add exits … if a sym_side is going up for 30D, exits will not give a pos delta but 365D will punish that — that is why we need it. Find best possible settings with more exits and more trades and rerun that on 365D — repeat until both are positive." A negative/invalid 365D is **never** a reason to discard a sym_side; it explains why its 30D sheet is wrong right now.
+
+**Why it happens.** The greedy 30D sheet only keeps rows with a positive delta vs the current cumulative. On a 30D window that trends in the side's favour, every exit row cuts a winner short → negative 30D delta → never promoted. The winning set then holds one position (SOLUSDC_LONG: 30D +15%, 365D **−37.81% with 7 trades, TIM 96.4%**). 365D exposes it. The adaptive mandate (HANDOVER_SWEEP_20260929) says the same thing from the other side: *too few trades → add entries; too many trades / low win rate → add filters; TIM too high → add exits.*
+
+**Hard gates in BOTH evaluators (fixed 2026-09-29).** `tools/opt/v12_pilot.evaluate_prepared_sanitized` (what every sheet row uses) now applies the same vomit gates as `lifecycle_pilot.evaluate_month` (the 365D verifier): **TIM > 80% or DD > 30% ⇒ `valid=False`** (`"TIM x% >80% (vomit)"`), plus the window floor (≥10 trades 30D, ≥30 trades 365D). Before this, sheets could promote hold-forever sets that only the 365D check rejected. A baseline that fails these gates is not credible → the pilot's credible-baseline stage (`_credible_baseline`, §56-adjacent; `[ADAPT-*]` log lines) adapts it before the sheet is filled.
+
+**The loop — `tools/v15_365_repair.py --progress <SS>_v14_progress.json --template TEMPLATE_{CAT}_{SIDE}.xlsx`:**
+1. Start from the sheet's 30D winning set (`cumulative_overrides`); prepare the 30D **and** the 365D NPZ slice once (forked workers share them).
+2. Each step: evaluate every live-wired (non-grey, vector-wired, promotable, de-duplicated) row of `EXIT_STRUCTURAL, EXIT_VELOCITY, REDUCE_PROFIT_LOCK, REDUCE_SIGNAL_RATER, REENTRY_WINDOWED, REENTRY_ADAPTIVE` (+ `ENTRY_*` while trades < 30) on BOTH windows; apply the single row with the best joint score = (windows valid AND positive, windows valid, worst-window gain, 365D gain).
+3. Stop when **30D and 365D are both valid (TIM ≤ 80, DD ≤ 30, trades ≥ floor) and positive**, or no row improves, or `--max-steps` (8).
+4. Output `{SS}_365_repair.json` (start, every applied step with both windows' metrics, final set).
+5. **Re-run the 30D sheet from the repaired set:** `V15_START_OVERRIDES=<SS>_365_repair.json V15_FRESH_RUN=1 v15_pilot.py --sym-side <SS> …` (the repaired set becomes the sheet baseline; the sheet can only climb from it).
+6. Re-verify the new sheet's final set on 365D. If 365D is negative/invalid again → back to step 1 with the new sheet. **Repeat until both are positive.** Only then is the sym_side promotable (§51); until then it stays switched off in live (acc_gain_pct ≤ 0 / `_NEG_BLOCK`).
+
+**Proof (2026-09-29, engine fd93da9a):** SOLUSDC_LONG start 30D +7.93 (11 tr) / 365D −37.81 (7 tr, TIM 96.4, invalid) → 5 steps, all exit/reentry rows: `MTF_EXIT_USE_COMPOUND=True`, `OI_CONFIRM_MIN_CHANGE_PCT=0`, `REENTRY_ENTRY_FILTER_ENABLED=True`, `REENTRY_FILTER_MIN_PASS=2`, `MIN_HOLD_BARS_BEFORE_EXIT=32` → **30D +9.36 (37 tr, TIM 40.4) / 365D +10.45 (714 tr, TIM 69.4), both valid**. The 30D sheet is being re-run from that set.
+
+**Do not:** discard a sym_side for a negative 365D; promote a set that is only 30D-positive; loosen the TIM/DD/floor gates to make a window "valid"; count a window as fixed while it is invalid.
+
+---
+
+*End of bible — if a procedure above conflicts with older text, this wins. §58 (negative 365D = faulty 30D sheet → repair loop, never a disqualification) is operator-authoritative. §14–§57 are the 2026-09-29 operator-corrected additions; §56 is the operator's verbatim fill spec and is the highest authority on how `TEMPLATE_*.xlsx` is filled; §57 + DAILY_OPTIMIZATION_PLAN.md define the daily self-optimization loop.*
