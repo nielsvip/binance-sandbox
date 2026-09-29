@@ -1812,8 +1812,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _maybe_write_json(force=promote)
             _row_done(sname, rr, switch, cand, 1, delta_for_row, promote)
             print(f"[spec-row] {sname}!{rr} {switch}={cand} no-yellow delta={delta_for_row} vs cum {cumulative_before:.4f} -> {'POS' if promote else 'NEG'} {naked_reason} nav={nav_mode}", flush=True)
-            # jump: no-yellow rows always go to next TAB (spec); fill_tab: continue down this tab
-            current_idx = _after_neg(current_idx) if nav_mode == "fill_tab" else _land_on_next_tab(current_idx)
+            if promote:
+                # R16 (USER 2026-09-29): POS -> stay on this tab, the next row's BASELINE = the new higher baseline
+                nxt = _next_pending(sname)
+                if nxt is not None:
+                    _write_E(sname, nxt[0], cumulative_gain)
+            else:
+                # jump: NEG/0/None -> next TAB; fill_tab: continue down this tab
+                current_idx = _after_neg(current_idx) if nav_mode == "fill_tab" else _land_on_next_tab(current_idx)
             _maybe_save()
             processed += 1
             continue

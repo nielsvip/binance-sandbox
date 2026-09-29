@@ -31,7 +31,7 @@ import requests
 
 IS_SERVER = platform.system() == "Linux"
 BASE = Path("/home/niels/binance-sandbox") if IS_SERVER else Path("/Users/niels/Documents/binance")
-TRADIER_DIR = BASE / "klines_cache_backtest" / "tradier"
+TRADIER_DIR = Path(os.environ["TRADIER_KLINES_DIR"]) if os.environ.get("TRADIER_KLINES_DIR") else BASE / "klines_cache_backtest" / "tradier"
 TRADIER_DIR.mkdir(parents=True, exist_ok=True)
 
 LIVE_URL = "https://api.tradier.com/v1"
