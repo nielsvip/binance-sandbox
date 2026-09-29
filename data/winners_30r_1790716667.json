@@ -1,9 +1,9 @@
 [
   {
     "symbol": "HBARUSDC",
-    "returns_15m": 10.23946919400464,
-    "returns_3m": 9.886188271604949,
-    "gain_score": 39.545
+    "returns_15m": 10.5365285728146,
+    "returns_3m": 10.16244440146974,
+    "gain_score": 40.65
   },
   {
     "symbol": "CBRSUSDT",
@@ -13,15 +13,9 @@
   },
   {
     "symbol": "CELOUSDT",
-    "returns_15m": 6.5678382093068794,
-    "returns_3m": 6.55737704918032,
-    "gain_score": 26.23
-  },
-  {
-    "symbol": "CRVUSDC",
-    "returns_15m": 5.504115226337457,
-    "returns_3m": 6.214396685655107,
-    "gain_score": 24.858
+    "returns_15m": 6.140608193996278,
+    "returns_3m": 6.5678382093068794,
+    "gain_score": 26.271
   },
   {
     "symbol": "BIOUSDC",
@@ -30,16 +24,22 @@
     "gain_score": 24.387
   },
   {
+    "symbol": "CRVUSDC",
+    "returns_15m": 5.449871465295629,
+    "returns_3m": 5.748904356792984,
+    "gain_score": 22.996
+  },
+  {
+    "symbol": "ZROUSDT",
+    "returns_15m": 6.461771003904761,
+    "returns_3m": 5.709461572134321,
+    "gain_score": 22.838
+  },
+  {
     "symbol": "USUALUSDT",
     "returns_15m": 5.400658616904494,
     "returns_3m": 5.269697412658964,
     "gain_score": 21.079
-  },
-  {
-    "symbol": "ZROUSDT",
-    "returns_15m": 6.214263273641219,
-    "returns_3m": 5.1767048282727695,
-    "gain_score": 20.707
   },
   {
     "symbol": "KASUSDT",
@@ -55,15 +55,21 @@
   },
   {
     "symbol": "SSVUSDT",
-    "returns_15m": 5.032335275101529,
-    "returns_3m": 4.926891290527662,
-    "gain_score": 19.708
+    "returns_15m": 5.227924768887477,
+    "returns_3m": 4.986542735263602,
+    "gain_score": 19.946
   },
   {
     "symbol": "TIAUSDC",
     "returns_15m": 4.4886109870477915,
     "returns_3m": 4.722470904207701,
     "gain_score": 18.89
+  },
+  {
+    "symbol": "AAVEUSDC",
+    "returns_15m": 4.389979525472716,
+    "returns_3m": 4.717892956385166,
+    "gain_score": 18.872
   },
   {
     "symbol": "IMXUSDT",
@@ -73,9 +79,9 @@
   },
   {
     "symbol": "ALGOUSDT",
-    "returns_15m": 4.467462639361104,
-    "returns_3m": 4.5832343861315525,
-    "gain_score": 18.333
+    "returns_15m": 4.5832343861315525,
+    "returns_3m": 4.591513616212793,
+    "gain_score": 18.366
   },
   {
     "symbol": "THETAUSDT",
@@ -96,22 +102,22 @@
     "gain_score": 17.71
   },
   {
-    "symbol": "AAVEUSDC",
-    "returns_15m": 4.635721615259255,
-    "returns_3m": 4.39626618488406,
-    "gain_score": 17.585
-  },
-  {
     "symbol": "MASKUSDT",
-    "returns_15m": 3.7455673758865307,
-    "returns_3m": 4.022222222222224,
-    "gain_score": 16.089
+    "returns_15m": 3.8606611936986965,
+    "returns_3m": 4.045343409646587,
+    "gain_score": 16.181
   },
   {
     "symbol": "IOTAUSDT",
     "returns_15m": 3.184950642577754,
     "returns_3m": 4.0180247840781,
     "gain_score": 16.072
+  },
+  {
+    "symbol": "XPLUSDT",
+    "returns_15m": 3.9946186484528643,
+    "returns_3m": 3.983857615894032,
+    "gain_score": 15.935
   },
   {
     "symbol": "EIGENUSDT",
@@ -121,7 +127,7 @@
   },
   {
     "symbol": "BRETTUSDT",
-    "returns_15m": 3.8678912045213627,
+    "returns_15m": 4.014856738592143,
     "returns_3m": 3.7762484559731737,
     "gain_score": 15.105
   },
@@ -130,12 +136,6 @@
     "returns_15m": 3.8427167113494254,
     "returns_3m": 3.7500000000000138,
     "gain_score": 15.0
-  },
-  {
-    "symbol": "XPLUSDT",
-    "returns_15m": 3.844166580551825,
-    "returns_3m": 3.74767705967375,
-    "gain_score": 14.991
   },
   {
     "symbol": "AXLUSDT",
@@ -156,6 +156,12 @@
     "gain_score": 14.34
   },
   {
+    "symbol": "STRKUSDT",
+    "returns_15m": 3.216650898770104,
+    "returns_3m": 3.5595633602278154,
+    "gain_score": 14.238
+  },
+  {
     "symbol": "BATUSDT",
     "returns_15m": 3.772958619163528,
     "returns_3m": 3.5095464076812743,
@@ -172,11 +178,5 @@
     "returns_15m": 4.294720252167063,
     "returns_3m": 3.4792806880375373,
     "gain_score": 13.917
-  },
-  {
-    "symbol": "ADAUSDC",
-    "returns_15m": 3.4327748263179365,
-    "returns_3m": 3.475061324611602,
-    "gain_score": 13.9
   }
 ]
