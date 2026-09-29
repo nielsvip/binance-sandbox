@@ -1,15 +1,16 @@
-PERFORMANCE REPORT — 2026-09-29 05:41 UTC
+PERFORMANCE REPORT — 2026-09-29 13:31 UTC
 ================================================================================
-Total: 143 symbols | A=4 B=103 C=36
+Total: 143 symbols | A=5 B=102 C=36
 Window: 14 days | Min trades: 5
 
---- TIER A (4 symbols) ---
+--- TIER A (5 symbols) ---
              COIN  WR=94%  avg=+15.91%  total=+1075.1%  trades= 17  mult=10.00
              SNDK  WR=100%  avg=+14.67%  total=+350.5%  trades= 11  mult=10.00
              MRVL  WR=67%  avg=+4.57%  total=+149.9%  trades= 21  mult=10.00
+                A  WR=90%  avg=+1.42%  total=+15.1%  trades= 10  mult=9.10
                RS  WR=68%  avg=+0.35%  total=+9.1%  trades= 25  mult=6.59
 
---- TIER B (103 symbols) ---
+--- TIER B (102 symbols) ---
              MSTR  WR=58%  avg=+2.86%  total=+61.2%  trades= 19  mult=10.00
              CRWD  WR=50%  avg=+1.32%  total=+39.4%  trades= 26  mult=9.91
              HOOD  WR=78%  avg=+3.19%  total=+31.8%  trades=  9  mult=7.30
@@ -19,7 +20,6 @@ Window: 14 days | Min trades: 5
               CMC  WR=56%  avg=+0.46%  total=+16.6%  trades= 34  mult=5.14
              INTC  WR=33%  avg=+0.80%  total=+15.1%  trades= 18  mult=3.17
              NVDA  WR=32%  avg=+0.73%  total=+14.6%  trades= 19  mult=2.54
-                A  WR=89%  avg=+1.49%  total=+14.2%  trades=  9  mult=8.20
              PYPL  WR=59%  avg=+0.35%  total=+14.0%  trades= 39  mult=4.95
               GME  WR=75%  avg=+1.50%  total=+12.6%  trades=  8  mult=6.40
              META  WR=46%  avg=+0.46%  total=+12.0%  trades= 26  mult=3.42
@@ -135,7 +135,7 @@ Window: 14 days | Min trades: 5
               ALB  WR=17%  avg=-1.01%  total=-6.0%  trades=  6  mult=0.37
        RAYSOLUSDT  WR=29%  avg=-0.91%  total=-6.3%  trades=  7  mult=0.39
              BWXT  WR=11%  avg=-0.90%  total=-7.8%  trades=  9  mult=0.28
-         COTIUSDT  WR=42%  avg=-0.11%  total=-8.3%  trades= 77  mult=0.50
+         COTIUSDT  WR=41%  avg=-0.11%  total=-8.3%  trades= 75  mult=0.49
              TSLA  WR=15%  avg=-0.47%  total=-12.1%  trades= 27  mult=0.19
               SLV  WR=30%  avg=-0.70%  total=-13.3%  trades= 20  mult=0.21
              QBTS  WR=15%  avg=-0.37%  total=-13.7%  trades= 39  mult=0.20
@@ -153,7 +153,7 @@ Window: 14 days | Min trades: 5
              DINO  WR=24%  avg=-3.17%  total=-61.2%  trades= 29  mult=0.14
 
 SUMMARY:
-  Total PnL (all symbols): +1361.7%
+  Total PnL (all symbols): +1362.5%
   Avg win rate: 45%
-  A-tier avg mult: 9.15
+  A-tier avg mult: 9.14
   C-tier avg mult: 0.37
