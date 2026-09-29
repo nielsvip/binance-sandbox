@@ -1338,7 +1338,7 @@ class TradierConfig:
     # re-breaks open in gap direction OR makes higher-high (short) / lower-low (long)
     # after retrace. Intraday structure-risk exit, NOT take-profit. Fully switchable.
     # Live uses open_D / close_D_prev + stateful retrigger; vector is vec_decisions.
-    GAP_RISK_EXIT_ENABLED: bool = False  # 2026-09-29 USER: default OFF (frequent-exit churn, stock-only) — kept as swept switch; sane baseline = WT/DC exits. Was True.
+    GAP_RISK_EXIT_ENABLED: bool = True  # 2026-09-30 FIX: re-enabled — gap-down longs must close (37k imbalance: longs gap down not protected when master False). Was False 2026-09-29 churn guard; vector WT/DC not enough for overnight gap continuation trap (QBTS). Sub-switches LONG/SHORT still gate side.
     GAP_RISK_EXIT_SHORT_ENABLED: bool = True  # ENABLED — short gap-up
     GAP_RISK_EXIT_LONG_ENABLED: bool = True  # ENABLED — long gap-down
     GAP_RISK_EXIT_OPEN_RECLAIM_ENABLED: bool = True  # COND_A alias — open reclaim — ENABLED
@@ -1691,8 +1691,8 @@ class TradierConfig:
     # === L/S RATIO ENFORCEMENT (backtest) — NON-VECTORIZABLE PORTFOLIO GATE (2026-08-18) ===
     # ⚠️ NON-VECTORIZABLE: tradier L/S ratio is cross-symbol portfolio state. Vector single-symbol engine cannot model it. Keep LIVE-ON after per_sym decent set. See BACKTEST_REPLICA_SWITCHES.md §16.
     LS_RATIO_ENFORCE_TRADIER: bool = True  # LIVE-ONLY portfolio gate — stays True; vector unaware by design. 2026-07-28 RE-ENABLED (USER unlocked to stop HAO_SHORT stacking). Precondition (shorts enter) met.
-    LS_RATIO_MIN_TRADIER: float = 0.20  # EOD 2026-09-01 emergency: loosen min to 0.20 to allow shorts (orig 0.50)
-    LS_RATIO_MAX_TRADIER: float = 5.00  # EOD 2026-09-01 emergency: TRB tech_big 4.00>2.0 blocked all longs, $500 loss 24min left - raise to 5.00 to allow trading (orig 2.00)
+    LS_RATIO_MIN_TRADIER: float = 0.33  # 2026-09-30 FIX: tighten from 0.20/5.00 emergency (37k long imbalance gap-down). Orig 0.50/2.00; 0.33/3.00 prevents >3:1 skew while allowing tech_big 4.0 without $500 block. Balances gap risk vs throughput.
+    LS_RATIO_MAX_TRADIER: float = 3.00  # 2026-09-30 FIX: tighten from 5.00 emergency — see above. 3.00 allows longs but caps >3:1 skew that caused 37k long-heavy gap-down loss.
     # === DAILY LOSS LIMIT (backtest) ===
     MAX_DAILY_LOSS_PCT: float = 3.0  # BACKTEST_CHANGE_T37 halt trading at 3% daily loss
     # === THROUGHPUT SAFETY KNOBS (added 2026-04-26 — pre-50-500/day push) ===

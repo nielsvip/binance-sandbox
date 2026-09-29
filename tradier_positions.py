@@ -1816,9 +1816,14 @@ class TradierPositionManager:
     async def _handle_missing_positions(self, account_key: str, updated_keys_in_api: set, account_positions: dict, now: datetime):
         """Handle positions absent from Tradier API response.
 
-        2-strike rule: absent once → warn and hold. Absent twice → zero positionAmt
-        and update reduction price/time/amount. The position object is kept intact.
-        These are real closes from tradier_manage — not ghosts.
+        FAIL-CLOSED: assume order WAS executed until proven otherwise.
+        Absent from API does NOT mean not executed — Tradier can drop a
+        symbol for one sync or report stale. Only zero after 5 consecutive
+        absences AND no recent augmentation (<10m) AND no pending order.
+        This prevents a second OPEN where the second must be AUGMENT (MSFT
+        $17k 4-tranches bug: positions assumed not executed when broker had
+        not yet confirmed, allowing repeat OPENs that should have been
+        AUGMENTs blocked by gain/hard-cap).
         """
         if not hasattr(self, '_api_absence_count'):
             self._api_absence_count = {}
@@ -1832,10 +1837,27 @@ class TradierPositionManager:
             if pk in updated_keys_in_api:
                 self._api_absence_count.pop(pk, None)
                 continue
+            try:
+                _last_aug = getattr(pos, 'last_augmentation_time', None)
+                if _last_aug:
+                    _dt = isoparse(str(_last_aug)) if isinstance(_last_aug, str) else _last_aug
+                    if _dt and getattr(_dt, 'tzinfo', None) is None:
+                        _dt = _dt.replace(tzinfo=timezone.utc)
+                    if _dt and (now - _dt).total_seconds() < 600:
+                        logger.warning(f"[ABSENT_HOLD_RECENT_AUG] {pk}: absent but aug {(now - _dt).total_seconds():.0f}s ago — holding (amt={amt:.4f})")
+                        continue
+                _last_upd = getattr(pos, 'last_updated', None)
+                if _last_upd and isinstance(_last_upd, datetime):
+                    _lu = _last_upd if _last_upd.tzinfo else _last_upd.replace(tzinfo=timezone.utc)
+                    if (now - _lu).total_seconds() < 300:
+                        logger.warning(f"[ABSENT_HOLD_RECENT_UPDATE] {pk}: absent but updated {(now - _lu).total_seconds():.0f}s ago — holding (amt={amt:.4f})")
+                        continue
+            except Exception:
+                pass
             self._api_absence_count[pk] = self._api_absence_count.get(pk, 0) + 1
             count = self._api_absence_count[pk]
-            if count == 1:
-                logger.warning(f"[ABSENT_ONCE] {pk}: absent from Tradier API — holding state, will zero next cycle if still absent (amt={amt:.4f})")
+            if count < 5:
+                logger.warning(f"[ABSENT_HOLD_{count}/5] {pk}: absent from Tradier API — holding state, will zero after 5 consecutive absences (amt={amt:.4f})")
                 continue
             current_price = float(getattr(pos, 'mark_price', 0) or getattr(pos, 'entry_price', 0) or 0)
             entry_price = float(getattr(pos, 'entry_price', 0) or 0)

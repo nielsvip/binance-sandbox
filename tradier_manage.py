@@ -14144,7 +14144,8 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
             ))
             ls_ratio_scale = 1.0
             ls_ratio_reason = ""
-            if _cfg_auto('LS_RATIO_ENFORCE_TRADIER', False) and trade_manager.position_manager and not _mandatory_reentry_qta and not _ordinary_parity_qta and not (('WT_3M_FORCE_OPEN' in (reason or '').upper()) and _wf_bypass_order):
+            # 2026-09-30 FIX: LS ratio must NOT be bypassed by WT_3M_FORCE_OPEN — 37k long imbalance built via WT_3M longs gap-down while LS ratio was bypassed (LS_RATIO_ENFORCE True but WF bypass skipped scaling). WT_3M now scales like any entry; only mandatory reentry / ladder parity skip.
+            if _cfg_auto('LS_RATIO_ENFORCE_TRADIER', False) and trade_manager.position_manager and not _mandatory_reentry_qta and not _ordinary_parity_qta:
                 _lv2 = 0.0; _sv2 = 0.0
                 for _pk, _p in trade_manager.position_manager.positions.items():
                     _amt = abs(float(getattr(_p, 'positionAmt', 0) or getattr(_p, 'quantity', 0)))
@@ -18103,11 +18104,10 @@ class StockStrategy:
             log_parts.append("⚖️EOD_CONSERVATIVE")
         positionAmt = abs(float(getattr(position, 'positionAmt', 0)))
         current_val = positionAmt * current_price
-        # 2026-09-08 FIX: HARD_MAX is absolute ceiling even for WF — no 50k target (CRWV 70k)
         _hard_cap_final = float(_cfg_auto('HARD_MAX_SYMBOL_VALUE_TRADIER', 2500.0) or 2500.0)
         _trb_cap = float(getattr(self.config, 'TRB_MAX_SYMBOL_VALUE', 2500.0) or 2500.0)
         _wf_target_cap = min(float(_cfg_auto('WT_3M_FORCE_OPEN_TARGET_USD', 2500.0) or 2500.0), _hard_cap_final, _trb_cap)
-        max_Total = self.limit_total_pos  # ALWAYS cap total position — REENTER can boost single order but never exceed per-position max
+        max_Total = min(float(self.limit_total_pos), _hard_cap_final, _trb_cap)
         if _wf_force:
             max_Total = min(max(max_Total, _wf_target_cap), _hard_cap_final, _trb_cap)
         room_usd = max_Total - current_val
@@ -22221,10 +22221,20 @@ class TradierTradeManager:
         self.always_tradeable_trb = config.ALWAYS_TRADEABLE
         self.exceptions = config.EXCEPTIONS
         self.blacklist = _cfg_auto('BLACKLIST', set())
-        self.limit_normal_order = _cfg_auto('MAX_ORDER_VALUE', 2000.0) 
-        self.limit_exception_order = self.limit_normal_order * 4.0  
+        self.limit_normal_order = _cfg_auto('MAX_ORDER_VALUE', 2000.0)
+        self.limit_exception_order = self.limit_normal_order * 4.0
         self.limit_total_pos = _cfg_auto('MAX_POSITION_SIZE', 5000.0)
-        self.limit_exception_total_pos =  _cfg_auto('MAX_POSITION_SIZE', 5000.0) * 4.0  
+        self.limit_exception_total_pos = _cfg_auto('MAX_POSITION_SIZE', 5000.0) * 4.0
+        try:
+            _hard_cap_init = float(_cfg_auto('HARD_MAX_SYMBOL_VALUE_TRADIER', 2500.0) or 2500.0)
+            _hard_cap_init = max(0.0, _hard_cap_init)
+            if _hard_cap_init > 0:
+                self.limit_normal_order = min(float(self.limit_normal_order), _hard_cap_init)
+                self.limit_exception_order = min(float(self.limit_exception_order), _hard_cap_init)
+                self.limit_total_pos = min(float(self.limit_total_pos), _hard_cap_init)
+                self.limit_exception_total_pos = min(float(self.limit_exception_total_pos), _hard_cap_init)
+        except Exception:
+            pass
         self.strategy = StockStrategy(config, trade_manager=self)
         # Delta Engine — WHALE_LTF: Sharpe 63.44, 85.9% WR
         # Stock-specific RZ overrides: 5m base TF (not 3m), looser baseline tolerance,
@@ -23978,6 +23988,13 @@ class TradierTradeManager:
             is_exception = symbol.upper() in self.exceptions
             max_order = self.limit_exception_order if is_exception else self.limit_normal_order
             max_pos = self.limit_exception_total_pos if is_exception else self.limit_total_pos
+            try:
+                _hard_cap_q = float(_cfg_auto('HARD_MAX_SYMBOL_VALUE_TRADIER', 2500.0) or 2500.0)
+                if _hard_cap_q > 0:
+                    max_order = min(float(max_order), _hard_cap_q)
+                    max_pos = min(float(max_pos), _hard_cap_q)
+            except Exception:
+                pass
             _ladder_parity = is_ordinary_ladder_target_reason(reason)
             _mandatory_reclaim = is_mandatory_reclaim_reason(reason)
             _absolute_target = _ladder_parity or _mandatory_reclaim
@@ -23991,6 +24008,12 @@ class TradierTradeManager:
                         position_side,
                     )
                 )
+                try:
+                    _hard_cap_l = float(_cfg_auto('HARD_MAX_SYMBOL_VALUE_TRADIER', 2500.0) or 2500.0)
+                    if _hard_cap_l > 0:
+                        _ladder_capacity = min(_ladder_capacity, _hard_cap_l)
+                except Exception:
+                    pass
                 max_order = _ladder_capacity
                 max_pos = _ladder_capacity
 
@@ -24666,6 +24689,19 @@ class TradierTradeManager:
 
         position = self.get_position(position_key)
         has_local_pos = position and abs(float(getattr(position, 'positionAmt', 0))) > 0.00001
+        # FAIL-CLOSED: if broker has not yet confirmed a recent order, assume it
+        # WAS executed. Otherwise a second OPEN would bypass the AUGMENT gain
+        # and hard-cap checks (MSFT $17k: 4× OPENs where 2-4 must have been
+        # AUGMENTs). Pending dedup => treat as if position exists.
+        try:
+            if not has_local_pos and position_key in getattr(self, 'order_deduplication', {}):
+                _dd = self.order_deduplication.get(position_key)
+                _t = float(_dd.get('time', 0) if isinstance(_dd, dict) else float(_dd or 0))
+                if _t > 0 and (time.time() - _t) < 300:
+                    has_local_pos = True
+                    logger.critical(f"[FAIL_CLOSED_PENDING_OPEN] {position_key}: has_local_pos False but pending order {(time.time() - _t):.0f}s ago — assuming WAS executed, treating as AUGMENT (MSFT fix)")
+        except Exception:
+            pass
 
         # ═══ REENTRY = positionAmt==0 ONLY (user 2026-05-06) — REFUSE if non-flat ═══
         # REENTRY is NOT an augment. AUGMENT is its own path. Empty positions have no
@@ -24678,11 +24714,27 @@ class TradierTradeManager:
             action = "OPEN"
             is_entry_action = True
 
-        # Auto-switch AUGMENT to OPEN if no position exists
+        # Auto-switch AUGMENT to OPEN if no position exists — FAIL-CLOSED:
+        # if we just marked has_local_pos True due to pending order, do NOT
+        # auto-switch. Only switch if truly no pending execution.
         if action == "AUGMENT" and not has_local_pos:
             logger.info(f"[{position_key}] Switching AUGMENT to OPEN (No local position found)")
             action = "OPEN"
             is_entry_action = True
+        # REVERSE: second OPEN while pending must become AUGMENT, never a new OPEN
+        # (MSFT bug: 4× OPENs). If has_local_pos is True but original_position_amt
+        # is still 0 due to stale sync, force the second OPEN into AUGMENT path so
+        # gain/hard-cap gates apply.
+        if action == "OPEN" and has_local_pos and abs(float(original_position_amt or 0)) < 0.0001:
+            try:
+                _dd2 = getattr(self, 'order_deduplication', {}).get(position_key) if hasattr(self, 'order_deduplication') else None
+                _t2 = float(_dd2.get('time', 0) if isinstance(_dd2, dict) else 0) if _dd2 else 0
+                if _t2 > 0 and (time.time() - _t2) < 300:
+                    logger.critical(f"[FAIL_CLOSED_OPEN_TO_AUGMENT] {position_key}: OPEN while pending {(time.time() - _t2):.0f}s ago — forcing AUGMENT (MSFT fix)")
+                    action = "AUGMENT"
+                    is_entry_action = False
+            except Exception:
+                pass
 
         is_valid, validation_reason, actual_qty = await self.validate_position_before_trade(position_key, action, quantity)
         if not is_valid: return f"VALIDATION_FAILED:{validation_reason}"
@@ -26371,16 +26423,26 @@ class TradierTradeManager:
                             elif is_augment:
                                 if float(getattr(local_pos, 'positionAmt', 0.0) or 0) == 0.0: local_pos.opened_at = now_utc; local_pos.max_gain = 0.0; local_pos.cycle_peak_gain = 0.0; local_pos.gain = 0.0; local_pos.was_reduced = False; local_pos.was_reentered = False
                                 new_qty = float(local_pos.positionAmt) + float(quantity)
-                                # 2026-04-08 FIX: Do NOT update positionAmt locally.
-                                # Let tradier_positions API sync (every 5s) be the ONLY source of truth.
-                                # Local optimistic updates caused drift: 125 real → 175 local from double-counting.
-                                # local_pos.positionAmt = float(local_pos.positionAmt) + float(quantity)  # DISABLED
+                                # FAIL-CLOSED 2026-09-29 MSFT fix: assume WAS executed until proven
+                                # otherwise. The 2026-04-08 disabled optimistic update caused the
+                                # MSFT bug — second OPEN was allowed where second must be AUGMENT,
+                                # bypassing gain/hard-cap. Re-enable with dedup guard so sync diff=0
+                                # does not double-count. Broker sync (tradier_positions) is reconciliation,
+                                # not source of truth for pending orders. Drift prevention: _api_absence_count
+                                # now requires 5 misses + no recent aug before zeroing.
+                                try:
+                                    local_pos.positionAmt = float(local_pos.positionAmt) + float(quantity)
+                                except Exception:
+                                    local_pos.positionAmt = float(quantity)
                                 local_pos.last_augmentation_time = now_utc
                                 local_pos.augment_reason = reason or action
                                 old_cost = (new_qty - quantity) * local_pos.entry_price
                                 new_cost = quantity * current_price
                                 if new_qty > 0:
-                                    local_pos.entry_price = (old_cost + new_cost) / new_qty
+                                    try:
+                                        local_pos.entry_price = (old_cost + new_cost) / new_qty
+                                    except Exception:
+                                        local_pos.entry_price = float(current_price)
 
                     # Exit state is acknowledgement-driven. In the backtest, a successful
                     # API result is an immediate fill; live keeps the obligation latched
@@ -28032,6 +28094,12 @@ class TradierTradeManager:
                         logger.info(f"[BAND_SLOPE_SIZING_V2] {symbol} {side}: lrL_pct_b_{_bs_tf}={_bs_pb:.3f} slope_day={_bs_slope_day:+.3f}%/d mult={_bs_m:.2f} (max {_bs_max:.1f}) → ${max_value:.0f}")
                 except Exception as _bs_e:
                     logger.warning(f"[BAND_SLOPE_SIZING_V2] {symbol} sizing check failed: {_bs_e}")
+            try:
+                _hard_cap_cps = float(_cfg_auto('HARD_MAX_SYMBOL_VALUE_TRADIER', 2500.0) or 2500.0)
+                if _hard_cap_cps > 0 and max_value > _hard_cap_cps:
+                    max_value = _hard_cap_cps
+            except Exception:
+                pass
             shares = max_value / price
             shares_int = int(shares)
             return float(shares_int)
