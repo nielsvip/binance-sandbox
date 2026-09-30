@@ -1521,6 +1521,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         except Exception:
             pass
     initial_baseline = float(progress.setdefault("initial_baseline_gain", float(baseline_gain)))
+    # HUSTLE_DELTA (F) = the row measured on its own against the ORIGINAL set (independent eval), never the chain position
+    initial_overrides = dict(progress.setdefault("initial_overrides", dict(cumulative_overrides)))
     def _div_col(ws) -> int:
         # DELTA_VS_INITIAL_BASELINE: best REAL measured gain of the row minus the initial baseline (no extra evals) —
         # comparable across rows when the sheet is not filled in order (hustle). Appended after the last header.
@@ -1798,6 +1800,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         sv.update(sw_ov)
         sv, _ = sanitize_overrides(sv, defaults)
         items = [] if is_running else [("naked", sv)]
+        hv = dict(initial_overrides)
+        hv.update(sw_ov)
+        hv, _ = sanitize_overrides(hv, defaults)
+        if not is_running and any(not _same_val(initial_overrides.get(k2, defaults.get(k2)), v2) for k2, v2 in sw_ov.items()):
+            items.append(("hustle", hv))
         for hdr in st["hdrs"]:
             f = st["h2f"][hdr]
             v = dict(sv)
@@ -1973,8 +1980,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _clear_red_fill(ws, rr, col)
             ycell.fill = PatternFill(start_color="FFFFFF00", end_color="FFFFFF00", fill_type="solid")  # a yellow cell stays yellow
             ycell.value = (0.0 if noop else float(d)) if ok else f"INVALID {why}"[:40]
-            ycell.font = Font(name="Arial", size=10, bold=False, italic=not ok or noop, color=None if ok and not noop else "808080")
+            ycell.font = Font(name="Arial", size=10, bold=False, italic=noop, color="808080" if noop else None)
             ycell.alignment = VISUAL_ALIGN
+            if not ok:
+                # USER 2026-09-30: an engine-invalid evaluation (trades < floor, TIM > 80, DD > 30) is a RED cell + logged
+                _spec_mark_red(wb, sname, rr, col, reason=f"INVALID {why}")
+                _flag_to_md(flags_md, sname, rr, switch, cand, f"INVALID {hdr}: {why}", d, 0.0, cumulative_before)
         pos_hdrs = [h for h, d in yellows.items() if d > 1e-9 and promotable.get(h)]
         h2f = st["h2f"]
         choice = None  # (delta, filters, override set, how)
@@ -2014,11 +2025,24 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         row_gain = (cumulative_before + row_delta) if row_delta is not None else None
         g = ws.cell(row=rr, column=cols["G"])
         f = ws.cell(row=rr, column=cols["F"])
+        hustle_delta = None
+        if "hustle" in results:
+            _hd, _hok, _hwhy = _delta_vs(results["hustle"][0], initial_baseline)
+            hustle_delta = _hd if _hok else None
+        elif not is_running:
+            hustle_delta = 0.0  # this setting equals the ORIGINAL set's value: on its own it changes nothing
         if row_delta is not None:
             if _is_red_cell(ws.cell(row=rr, column=cols["G"])):
                 _clear_red_fill(ws, rr, cols["G"])
             _num_cell(ws, rr, cols["G"], row_delta, promote)
-            _num_cell(ws, rr, cols["F"], row_gain - initial_baseline, row_gain - initial_baseline > 1e-9)
+            if choice is None and not is_running and not naked_ok:
+                # USER 2026-09-30: engine-invalid naked result -> RED cell with its reason, logged; never promotable
+                _spec_mark_red(wb, sname, rr, cols["G"], reason=reasons.get("naked", "invalid"))
+                _flag_to_md(flags_md, sname, rr, switch, cand, f"INVALID naked: {reasons.get('naked', '')}", row_delta, 0.0, cumulative_before)
+            if hustle_delta is not None:
+                _num_cell(ws, rr, cols["F"], hustle_delta, hustle_delta > 1e-9)
+            else:
+                f.value = None
         elif is_running:
             g.value = None
             f.value = None
@@ -2041,7 +2065,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             progress["cumulative_overrides"] = dict(cumulative_overrides)
         progress["cumulative_gain"] = float(cumulative_gain)
         div = _write_div(sname, rr, [row_gain])
-        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "is_running": is_running, "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", ""), "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain)}
+        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "is_running": is_running, "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", ""), "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain)}
         _maybe_write_json(force=promote)
         _row_done(sname, rr, switch, cand, n_items + (1 if pos_hdrs else 0), row_delta, promote)
         _touch(f"cell {sname}!{rr} delta={row_delta}")
@@ -3861,13 +3885,10 @@ def main():
         import time as _t_single
         _t0_single = _t_single.time()
         wb_single = openpyxl.load_workbook(str(wb_path))
-        # headers quick — if L:BI already has = headers, skip heavy union
+        # USER 2026-09-30: headers are NEVER written by the pilot — the TEMPLATE carries every header (L is_default, M AVG_DELTA,
+        # N POS_SYM, yellows from O). This block used to test "L has a FILTER=opt header" and, after the layout fix, rewrote
+        # O..Z with other filter names in every new sheet (yellow cells under the wrong headers).
         _need_hdr = False
-        for _sn in SWITCH_SHEETS:
-            if _sn in wb_single.sheetnames and wb_single[_sn].cell(row=2, column=12).value and "=" in str(wb_single[_sn].cell(row=2, column=12).value):
-                continue
-            _need_hdr = True
-            break
         if _need_hdr:
             try:
                 fd_rows = _load_filter_dictionary()
@@ -3964,10 +3985,7 @@ def main():
     except Exception as _e_single:
         import traceback as _tb_s
         print(f"[SINGLE-LOAD-warn] {_e_single} {_tb_s.format_exc()[:300]}", flush=True)
-        # fallback to old separate loads (will be slow but not empty)
-        if not args.no_lbI:
-            ensure_lbI_headers(wb_path)
-            print("[headers] L:BI ensured (fallback)", flush=True)
+        # (no header fallback — the pilot never writes headers, USER 2026-09-30)
     _first_pos_notified = False
     _first_pos_notified = False
     # DESKTOP: baseline result for EVERY sym_side

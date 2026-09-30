@@ -84,6 +84,49 @@ def test_entry_gates():
             assert bool(GE.wt_percentile_entry_gate(z, 1, L, cfg2, None, safe)[0]) == GE.wt_percentile_entry_live_pass(g({"wt_percentile_D": p}), c({"WT_PERCENTILE_ENTRY_GATE_ENABLED": True}), 1.0, L)[0]
 
 
+def test_hlr_live_matches_vec_core():
+    ind = {"wt_velocity_1h": -2.0, "wt_velocity_4h": -1.0, "wt_velocity_D": 0.5, "wt_velocity_W": 0.1,
+           "wt_acceleration_4h": -1.0, "wt_acceleration_D": 0.2, "wt_acceleration_W": 0.0}
+    on = {"HLR_TOP_EXIT_ENABLED": True, "HLR_TOP_MIN_TFS": 2}
+    c = lambda k, d: on.get(k, d)
+    g = lambda k, d=None: ind.get(k, d)
+    assert GW.active_live_only_exits(lambda k, d: d) == []
+    assert GW.hlr_top_exit(c, g, {"gain": 2.0}, True)[0]
+    assert not GW.hlr_top_exit(c, g, {"gain": 1.0}, True)[0]  # below HLR_TOP_MIN_GAIN_PCT 1.5
+
+
+def test_hlr_scalar_equals_vec_random():
+    import numpy as np
+    import vec_decisions.quick_reduce_strong as Q
+    rng = np.random.default_rng(7)
+    n = 400
+    a = {k: rng.normal(0, 2, n) for k in ("v1", "v4", "vD", "vW", "a4", "aD", "aW")}
+    div4, divD, pk4 = rng.integers(-1, 2, n), rng.integers(-1, 2, n), rng.integers(-1, 2, n)
+    gain = rng.uniform(0, 4, n)
+    on = {"HLR_TOP_EXIT_ENABLED": True, "HLR_TOP_MIN_TFS": 2}
+    cfg = type("C", (), on)()
+    for L in (True, False):
+        m = Q.check_quick_reduce_strong_vec(cfg, gain, L, a["v1"], a["v4"], a["vD"], a["vW"], a["a4"], a["aD"], a["aW"], div4, divD, pk4)
+        for i in range(n):
+            ind = {"wt_velocity_1h": a["v1"][i], "wt_velocity_4h": a["v4"][i], "wt_velocity_D": a["vD"][i], "wt_velocity_W": a["vW"][i],
+                   "wt_acceleration_4h": a["a4"][i], "wt_acceleration_D": a["aD"][i], "wt_acceleration_W": a["aW"][i],
+                   "wt_divergence_4h": int(div4[i]), "wt_divergence_D": int(divD[i]), "wt_peak_structure_4h": int(pk4[i])}
+            live = GW.hlr_top_exit(lambda k, d: on.get(k, d), lambda k, d=None: ind.get(k, d), {"gain": gain[i]}, L)[0]
+            assert live == bool(m[i]), (L, i)
+
+
+def test_breakeven_gain_erosion():
+    on = {"BREAKEVEN_GAIN_EROSION_ENABLED": True, "BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT": False}
+    c = lambda k, d: on.get(k, d)
+    against = {"wt1_1h": 1, "wt2_1h": 2, "wt1_4h": 1, "wt2_4h": 2, "wt1_D": 1, "wt2_D": 2}
+    st = {"gain": -0.5, "age_s": 3600, "max_gain": 1.0}
+    assert GW.breakeven_gain_erosion(c, lambda k, d=None: against.get(k, d), st, True)[0]
+    assert not GW.breakeven_gain_erosion(c, lambda k, d=None: against.get(k, d), {**st, "max_gain": 0.2}, True)[0]  # HARD_BREAKEVEN peak gate
+    withpos = {k: (2 if k.startswith("wt1") else 1) for k in against}
+    assert not GW.breakeven_gain_erosion(c, lambda k, d=None: withpos.get(k, d), st, True)[0]  # trend veto
+    assert not GW.breakeven_gain_erosion(lambda k, d: {"BREAKEVEN_GAIN_EROSION_ENABLED": True}.get(k, d), lambda k, d=None: against.get(k, d), st, True)[0]  # default window [50,50.5)
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

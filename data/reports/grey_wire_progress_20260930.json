@@ -105,6 +105,82 @@
   "ts": "2026-09-30T02:33:50.855740Z",
   "venues": []
  },
+ "ATR_TRAIL_SWEEP_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec) | STOCKS_SHORT: BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.366776Z",
+  "venues": []
+ },
+ "AUGMENTED_POSITIONS_GUARD_FLOOR_MULT": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY: crypto execute_trade_action re-augment guard (gain >= mult x MIN_GAIN); stock live has no such guard and every mult value (incl. 0) blocks some augments -> no live-neutral stock value equals the bold 0.5; vec only an uncalled synthetic proxy",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY: crypto execute_trade_action re-augment guard (gain >= mult x MIN_GAIN); stock live has no such guard and every mult value (incl. 0) blocks some augments -> no live-neutral stock value equals the bold 0.5; vec only an uncalled synthetic proxy",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY: crypto execute_trade_action re-augment guard (gain >= mult x MIN_GAIN); stock live has no such guard and every mult value (incl. 0) blocks some augments -> no live-neutral stock value equals the bold 0.5; vec only an uncalled synthetic proxy | STOCKS_SHORT: KEPT GREY: crypto execute_trade_action re-augment guard (gain >= mult x MIN_GAIN); stock live has no such guard and every mult value (incl. 0) blocks some augments -> no live-neutral stock value equals the bold 0.5; vec only an uncalled synthetic proxy",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.625840Z",
+  "venues": []
+ },
+ "AUGMENT_AT_LOSS_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec) | STOCKS_SHORT: BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.374050Z",
+  "venues": []
+ },
+ "AUGMENT_BULL_KILL_ENABLED": {
+  "files": [],
+  "per_template": {
+   "CRYPTO_LONG": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): vec-only augment family (compute_augment_signals) with no live implementation in either venue",
+    "status": "blocked"
+   },
+   "CRYPTO_SHORT": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): vec-only augment family (compute_augment_signals) with no live implementation in either venue",
+    "status": "blocked"
+   },
+   "STOCKS_LONG": {
+    "reason": "no venue config/QuickConfig field for this template's venue (bold 'True')",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "CRYPTO_LONG: BLOCKED (NEW STRATEGY PROHIBITION): vec-only augment family (compute_augment_signals) with no live implementation in either venue | CRYPTO_SHORT: BLOCKED (NEW STRATEGY PROHIBITION): vec-only augment family (compute_augment_signals) with no live implementation in either venue | STOCKS_LONG: no venue config/QuickConfig field for this template's venue (bold 'True')",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.398251Z",
+  "venues": []
+ },
  "AUGMENT_ONLY_WHEN_PROFITABLE": {
   "files": [],
   "per_template": {
@@ -121,6 +197,24 @@
   "reason": "STOCKS_LONG: default not among options: live default 'True' (QuickConfig) not in ['0.5', '2.0', '0', '1.0'] | STOCKS_SHORT: default not among options: live default 'True' (QuickConfig) not in ['1.0', '2.0', '0', '0.5']",
   "status": "kept_grey",
   "ts": "2026-09-30T02:33:50.856135Z",
+  "venues": []
+ },
+ "AUGMENT_WT_4H_BOUNCE_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec) | STOCKS_SHORT: BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.377379Z",
   "venues": []
  },
  "BALANCE_FLOOR_USD": {
@@ -165,6 +259,46 @@
   "reason": "STOCKS_LONG: class c (verified): crypto hedge-account band-aid (ez_positions_quick monitor_hedge_health_loop); no hedge model in the single-position vec engine, no stock live. | STOCKS_SHORT: class c (verified): crypto hedge-account band-aid (ez_positions_quick monitor_hedge_health_loop); no hedge model in the single-position vec engine, no stock live.",
   "status": "kept_grey",
   "ts": "2026-09-30T02:33:50.856874Z",
+  "venues": []
+ },
+ "BB_SQUEEZE_EXIT_ENABLED": {
+  "files": [],
+  "per_template": {
+   "CRYPTO_LONG": {
+    "reason": "BLOCKED: no live implementation in either venue (config.py has no field); vec effect only via compute_exit_signals exit_sig (F3, needs a TECHNICAL_DC confirm) -> no live source to port",
+    "status": "blocked"
+   },
+   "CRYPTO_SHORT": {
+    "reason": "BLOCKED: no live implementation in either venue (config.py has no field); vec effect only via compute_exit_signals exit_sig (F3, needs a TECHNICAL_DC confirm) -> no live source to port",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "CRYPTO_LONG: BLOCKED: no live implementation in either venue (config.py has no field); vec effect only via compute_exit_signals exit_sig (F3, needs a TECHNICAL_DC confirm) -> no live source to port | CRYPTO_SHORT: BLOCKED: no live implementation in either venue (config.py has no field); vec effect only via compute_exit_signals exit_sig (F3, needs a TECHNICAL_DC confirm) -> no live source to port",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.420786Z",
+  "venues": []
+ },
+ "BEAR_HOLD_EXIT_DELAY_BARS": {
+  "files": [],
+  "per_template": {
+   "CRYPTO_LONG": {
+    "reason": "BLOCKED: no live read in any venue; vec effect only inside compute_exit_signals exit_sig (F3) -> no live source to port",
+    "status": "blocked"
+   },
+   "CRYPTO_SHORT": {
+    "reason": "BLOCKED: no live read in any venue; vec effect only inside compute_exit_signals exit_sig (F3) -> no live source to port",
+    "status": "blocked"
+   },
+   "STOCKS_LONG": {
+    "reason": "no venue config/QuickConfig field for this template's venue (bold '1')",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "CRYPTO_LONG: BLOCKED: no live read in any venue; vec effect only inside compute_exit_signals exit_sig (F3) -> no live source to port | CRYPTO_SHORT: BLOCKED: no live read in any venue; vec effect only inside compute_exit_signals exit_sig (F3) -> no live source to port | STOCKS_LONG: no venue config/QuickConfig field for this template's venue (bold '1')",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.424128Z",
   "venues": []
  },
  "BEAR_MARKET_MODE": {
@@ -278,6 +412,102 @@
   "status": "kept_grey",
   "ts": "2026-09-30T02:33:50.859512Z",
   "venues": []
+ },
+ "BREAKEVEN_DC_FIELD_MODE": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY: selects dc_low4_3m vs dc_low_3m (3m Donchian) for the crypto BREAKEVEN_DC_LOW4 stop; stock data has no 3m and tradier's own DC_LOW4_5M structural stop has no mode knob -> no stock object",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY: selects dc_low4_3m vs dc_low_3m (3m Donchian) for the crypto BREAKEVEN_DC_LOW4 stop; stock data has no 3m and tradier's own DC_LOW4_5M structural stop has no mode knob -> no stock object",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY: selects dc_low4_3m vs dc_low_3m (3m Donchian) for the crypto BREAKEVEN_DC_LOW4 stop; stock data has no 3m and tradier's own DC_LOW4_5M structural stop has no mode knob -> no stock object | STOCKS_SHORT: KEPT GREY: selects dc_low4_3m vs dc_low_3m (3m Donchian) for the crypto BREAKEVEN_DC_LOW4 stop; stock data has no 3m and tradier's own DC_LOW4_5M structural stop has no mode knob -> no stock object",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.634344Z",
+  "venues": []
+ },
+ "BREAKEVEN_GAIN_EROSION_ENABLED": {
+  "files": [
+   "vec_decisions/grey_wire_exits.py (hlr_top_exit/LIVE_ONLY_EXITS, breakeven_gain_erosion)",
+   "tradier_manage.py (GREY_REWIRE_EXIT block)",
+   "config_tradier.py",
+   "v12_quick_engine.py (st max_gain/reentered/augmented)",
+   "test_grey_wire_exits.py"
+  ],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "stock live port + vec via shared core; TradierConfig default = today's live (OFF); un-greyed",
+    "status": "wired"
+   },
+   "STOCKS_SHORT": {
+    "reason": "stock live port + vec via shared core; TradierConfig default = today's live (OFF); un-greyed",
+    "status": "wired"
+   }
+  },
+  "proof": "s1 30d (s2 removed): default 0/identical 8/8 (6 stock+2 crypto); True alone non-binding by construction at the live default MIN_GAIN=50 (window [50%,50.5%)); with REQUIRE_PROFIT=False it changed NVDA_LONG -4.21, MU_SHORT +6.47, GDX_LONG +0.55, RIO_LONG -0.30; baselines 12/12 identical",
+  "reason": "STOCKS_LONG: stock live port + vec via shared core; TradierConfig default = today's live (OFF); un-greyed | STOCKS_SHORT: stock live port + vec via shared core; TradierConfig default = today's live (OFF); un-greyed",
+  "status": "wired",
+  "ts": "2026-09-30T03:25:12.354063Z",
+  "venues": [
+   "STOCKS"
+  ]
+ },
+ "BREAKEVEN_GAIN_EROSION_MIN_GAIN": {
+  "files": [
+   "vec_decisions/grey_wire_exits.py (hlr_top_exit/LIVE_ONLY_EXITS, breakeven_gain_erosion)",
+   "tradier_manage.py (GREY_REWIRE_EXIT block)",
+   "config_tradier.py",
+   "v12_quick_engine.py (st max_gain/reentered/augmented)",
+   "test_grey_wire_exits.py"
+  ],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "stock live port + vec via shared core; TradierConfig default = today's live (OFF); un-greyed",
+    "status": "wired"
+   },
+   "STOCKS_SHORT": {
+    "reason": "stock live port + vec via shared core; TradierConfig default = today's live (OFF); un-greyed",
+    "status": "wired"
+   }
+  },
+  "proof": "ctx ENABLED=True: default 0/identical; 0.1 changed AAPL_LONG/NVDA_LONG/MU_SHORT/GDX_LONG(+0.09)/RIO_LONG(+1.21) ledgers",
+  "reason": "STOCKS_LONG: stock live port + vec via shared core; TradierConfig default = today's live (OFF); un-greyed | STOCKS_SHORT: stock live port + vec via shared core; TradierConfig default = today's live (OFF); un-greyed",
+  "status": "wired",
+  "ts": "2026-09-30T03:25:12.357777Z",
+  "venues": [
+   "STOCKS"
+  ]
+ },
+ "BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT": {
+  "files": [
+   "vec_decisions/grey_wire_exits.py (hlr_top_exit/LIVE_ONLY_EXITS, breakeven_gain_erosion)",
+   "tradier_manage.py (GREY_REWIRE_EXIT block)",
+   "config_tradier.py",
+   "v12_quick_engine.py (st max_gain/reentered/augmented)",
+   "test_grey_wire_exits.py"
+  ],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "stock live port + vec via shared core; TradierConfig default = today's live (OFF); un-greyed",
+    "status": "wired"
+   },
+   "STOCKS_SHORT": {
+    "reason": "stock live port + vec via shared core; TradierConfig default = today's live (OFF); un-greyed",
+    "status": "wired"
+   }
+  },
+  "proof": "ctx ENABLED=True: default 0/identical; False changed 4/5 stock ledgers (NVDA_LONG, MU_SHORT, GDX_LONG, RIO_LONG)",
+  "reason": "STOCKS_LONG: stock live port + vec via shared core; TradierConfig default = today's live (OFF); un-greyed | STOCKS_SHORT: stock live port + vec via shared core; TradierConfig default = today's live (OFF); un-greyed",
+  "status": "wired",
+  "ts": "2026-09-30T03:25:12.362123Z",
+  "venues": [
+   "STOCKS"
+  ]
  },
  "BTC_ACCEL_RAMP_REQUIRE_POSITIVE": {
   "files": [],
@@ -459,6 +689,46 @@
   "ts": "2026-09-30T02:33:50.864686Z",
   "venues": []
  },
+ "BULL_HOLD_EXIT_DELAY_BARS": {
+  "files": [],
+  "per_template": {
+   "CRYPTO_LONG": {
+    "reason": "BLOCKED: no live read in any venue; vec effect only inside compute_exit_signals exit_sig (F3) -> no live source to port",
+    "status": "blocked"
+   },
+   "CRYPTO_SHORT": {
+    "reason": "BLOCKED: no live read in any venue; vec effect only inside compute_exit_signals exit_sig (F3) -> no live source to port",
+    "status": "blocked"
+   },
+   "STOCKS_LONG": {
+    "reason": "no venue config/QuickConfig field for this template's venue (bold '0')",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "CRYPTO_LONG: BLOCKED: no live read in any venue; vec effect only inside compute_exit_signals exit_sig (F3) -> no live source to port | CRYPTO_SHORT: BLOCKED: no live read in any venue; vec effect only inside compute_exit_signals exit_sig (F3) -> no live source to port | STOCKS_LONG: no venue config/QuickConfig field for this template's venue (bold '0')",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.427459Z",
+  "venues": []
+ },
+ "CHANNEL_REENTRY_STOP_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec) | STOCKS_SHORT: BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.370890Z",
+  "venues": []
+ },
  "CIRCUIT_BREAKER_THRESHOLD_PCT": {
   "files": [],
   "per_template": {
@@ -483,6 +753,42 @@
   "reason": "CRYPTO_LONG: class c (verified): account/portfolio circuit breaker; no live reader under this name, not per-symbol vectorizable. | CRYPTO_SHORT: class c (verified): account/portfolio circuit breaker; no live reader under this name, not per-symbol vectorizable. | STOCKS_LONG: class c (verified): account/portfolio circuit breaker; no live reader under this name, not per-symbol vectorizable. | STOCKS_SHORT: class c (verified): account/portfolio circuit breaker; no live reader under this name, not per-symbol vectorizable.",
   "status": "kept_grey",
   "ts": "2026-09-30T02:33:50.865091Z",
+  "venues": []
+ },
+ "DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY: gate inside the crypto reentry-queue daemon (ez_manage ~55732); no daemon queue in stock live or simulate_one",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY: gate inside the crypto reentry-queue daemon (ez_manage ~55732); no daemon queue in stock live or simulate_one",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY: gate inside the crypto reentry-queue daemon (ez_manage ~55732); no daemon queue in stock live or simulate_one | STOCKS_SHORT: KEPT GREY: gate inside the crypto reentry-queue daemon (ez_manage ~55732); no daemon queue in stock live or simulate_one",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.595639Z",
+  "venues": []
+ },
+ "DAEMON_REENTRY_STALE_EXIT_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY: acts only on DAEMON_PRICE_CROSS_REENTRY positions (crypto reentry daemon) \u2014 no such positions exist in stock live or in simulate_one",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY: acts only on DAEMON_PRICE_CROSS_REENTRY positions (crypto reentry daemon) \u2014 no such positions exist in stock live or in simulate_one",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY: acts only on DAEMON_PRICE_CROSS_REENTRY positions (crypto reentry daemon) \u2014 no such positions exist in stock live or in simulate_one | STOCKS_SHORT: KEPT GREY: acts only on DAEMON_PRICE_CROSS_REENTRY positions (crypto reentry daemon) \u2014 no such positions exist in stock live or in simulate_one",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.592058Z",
   "venues": []
  },
  "DAYTRADE_DC_STOP_TF": {
@@ -512,10 +818,10 @@
     "status": "wired"
    }
   },
-  "proof": "data/reports/grey_switch_rewire_report_20260929.md per-switch FIXED table (default d=0, alt ledger changed); re-verified 2026-09-30 on s1/s2",
+  "proof": "s1 re-verify 2026-09-30 (sweep default now 'OFF' = live via cat_side layer): default 0/identical 6/6; 1h changed AAPL_LONG -0.68, MU_SHORT +0.23, GDX_LONG -1.95; 15m/4h non-binding in tested windows (NPZ dc_low/high_15m includes the current bar)",
   "reason": "CRYPTO_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | CRYPTO_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30",
   "status": "wired",
-  "ts": "2026-09-30T02:33:50.865523Z",
+  "ts": "2026-09-30T03:27:14.570880Z",
   "venues": [
    "CRYPTO",
    "STOCKS"
@@ -548,14 +854,50 @@
     "status": "wired"
    }
   },
-  "proof": "data/reports/grey_switch_rewire_report_20260929.md per-switch FIXED table (default d=0, alt ledger changed); re-verified 2026-09-30 on s1/s2",
+  "proof": "s1 re-verify: default 0/identical 6/6; 4h changed 6/6 ledgers (AAPL_LONG +1.90, MU_SHORT +13.74, SOLUSDC_LONG +0.17, LINKUSDC_SHORT -0.41)",
   "reason": "CRYPTO_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | CRYPTO_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30",
   "status": "wired",
-  "ts": "2026-09-30T02:33:50.866015Z",
+  "ts": "2026-09-30T03:27:14.575697Z",
   "venues": [
    "CRYPTO",
    "STOCKS"
   ]
+ },
+ "DC_BREAKOUT_SCORE": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (DC_BREAKOUT_ENTRY score +15)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (DC_BREAKOUT_ENTRY score +15)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (DC_BREAKOUT_ENTRY score +15) | STOCKS_SHORT: BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (DC_BREAKOUT_ENTRY score +15)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.453285Z",
+  "venues": []
+ },
+ "DC_BREAKOUT_TF": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (DC_BREAKOUT_ENTRY score TF)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (DC_BREAKOUT_ENTRY score TF)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (DC_BREAKOUT_ENTRY score TF) | STOCKS_SHORT: BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (DC_BREAKOUT_ENTRY score TF)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.457221Z",
+  "venues": []
  },
  "DC_DAYTRADE_STOP_USE_DC4_15M": {
   "files": [
@@ -584,10 +926,10 @@
     "status": "wired"
    }
   },
-  "proof": "data/reports/grey_switch_rewire_report_20260929.md per-switch FIXED table (default d=0, alt ledger changed); re-verified 2026-09-30 on s1/s2",
+  "proof": "s1 re-verify: default 0/identical 3/3; True non-binding (same structural reason as DC_DAYTRADE_STOP_USE_DC_15M)",
   "reason": "CRYPTO_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | CRYPTO_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30",
   "status": "wired",
-  "ts": "2026-09-30T02:33:50.866580Z",
+  "ts": "2026-09-30T03:27:14.623742Z",
   "venues": [
    "CRYPTO",
    "STOCKS"
@@ -620,10 +962,10 @@
     "status": "wired"
    }
   },
-  "proof": "data/reports/grey_switch_rewire_report_20260929.md per-switch FIXED table (default d=0, alt ledger changed); re-verified 2026-09-30 on s1/s2",
+  "proof": "s1 re-verify (ctx STOP_TF=OFF): default 0/identical 3/3; True non-binding (structural: NPZ dc_low_15m includes the current bar so close never prints below it; live snapshot DC may exclude the forming bar)",
   "reason": "CRYPTO_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | CRYPTO_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30",
   "status": "wired",
-  "ts": "2026-09-30T02:33:50.867279Z",
+  "ts": "2026-09-30T03:27:14.619515Z",
   "venues": [
    "CRYPTO",
    "STOCKS"
@@ -656,10 +998,10 @@
     "status": "wired"
    }
   },
-  "proof": "data/reports/grey_switch_rewire_report_20260929.md per-switch FIXED table (default d=0, alt ledger changed); re-verified 2026-09-30 on s1/s2",
+  "proof": "s1 re-verify (ctx TARGET_TF=OFF, USE_DC_15M=True): default 0/identical; 0.0005 changed AAPL_LONG -1.09, GDX_LONG +2.74",
   "reason": "CRYPTO_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | CRYPTO_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30",
   "status": "wired",
-  "ts": "2026-09-30T02:33:50.867900Z",
+  "ts": "2026-09-30T03:27:14.610260Z",
   "venues": [
    "CRYPTO",
    "STOCKS"
@@ -692,10 +1034,10 @@
     "status": "wired"
    }
   },
-  "proof": "data/reports/grey_switch_rewire_report_20260929.md per-switch FIXED table (default d=0, alt ledger changed); re-verified 2026-09-30 on s1/s2",
+  "proof": "s1 re-verify (ctx TARGET_TF=OFF): default 0/identical 3/3; True changed 3/3",
   "reason": "CRYPTO_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | CRYPTO_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30",
   "status": "wired",
-  "ts": "2026-09-30T02:33:50.868583Z",
+  "ts": "2026-09-30T03:27:14.597189Z",
   "venues": [
    "CRYPTO",
    "STOCKS"
@@ -728,12 +1070,39 @@
     "status": "wired"
    }
   },
-  "proof": "data/reports/grey_switch_rewire_report_20260929.md per-switch FIXED table (default d=0, alt ledger changed); re-verified 2026-09-30 on s1/s2",
+  "proof": "s1 re-verify (ctx DAYTRADE_DC_TARGET_TF=OFF): default 0/identical 3/3; True changed 3/3 ledgers",
   "reason": "CRYPTO_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | CRYPTO_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30",
   "status": "wired",
-  "ts": "2026-09-30T02:33:50.869300Z",
+  "ts": "2026-09-30T03:27:14.592426Z",
   "venues": [
    "CRYPTO",
+   "STOCKS"
+  ]
+ },
+ "DC_HOPELESS_EXIT_ENABLED": {
+  "files": [
+   "vec_decisions/grey_wire_exits.py",
+   "v12_quick_engine.py (simulate_one GREY-WIRE exit hook)",
+   "tradier_manage.py (process_position GREY_REWIRE_EXIT block)",
+   "config_tradier.py",
+   "test_grey_wire_exits.py",
+   "tools/grey_wire_proof.py"
+  ],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   },
+   "STOCKS_SHORT": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   }
+  },
+  "proof": "s2 30d vec (tools/grey_wire_proof.py): default delta 0.000000000 + identical ledger on 8/8 stock sym_sides; 12/12 stock + 8/8 crypto {} baselines bit-identical pre/post engine; alt=True changed the ledger on 7/8 (A_LONG non-binding) (reason histogram shows the new exit)",
+  "reason": "STOCKS_LONG: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed | STOCKS_SHORT: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+  "status": "wired",
+  "ts": "2026-09-30T03:14:21.408256Z",
+  "venues": [
    "STOCKS"
   ]
  },
@@ -759,18 +1128,36 @@
   "files": [],
   "per_template": {
    "STOCKS_LONG": {
-    "reason": "sub-option of the crypto DELTA exit engine (ez_manage wt_dc_delta exit path) that tradier_manage never runs with this knob; bold True. bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
+    "reason": "KEPT GREY: tradier_manage READS it in the DELTA exit path (_cfg fallback False, no TradierConfig field) -> today's stock live value is False != template bold True; un-greying would switch the DC-floor confirmation ON live via the cat_side layer (operator/v15_avg_delta_apply decision). No vec twin (QuickConfig True is unused)",
     "status": "kept_grey"
    },
    "STOCKS_SHORT": {
-    "reason": "sub-option of the crypto DELTA exit engine (ez_manage wt_dc_delta exit path) that tradier_manage never runs with this knob; bold True. bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
+    "reason": "KEPT GREY: tradier_manage READS it in the DELTA exit path (_cfg fallback False, no TradierConfig field) -> today's stock live value is False != template bold True; un-greying would switch the DC-floor confirmation ON live via the cat_side layer (operator/v15_avg_delta_apply decision). No vec twin (QuickConfig True is unused)",
     "status": "kept_grey"
    }
   },
   "proof": "",
-  "reason": "STOCKS_LONG: sub-option of the crypto DELTA exit engine (ez_manage wt_dc_delta exit path) that tradier_manage never runs with this knob; bold True. bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator | STOCKS_SHORT: sub-option of the crypto DELTA exit engine (ez_manage wt_dc_delta exit path) that tradier_manage never runs with this knob; bold True. bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
+  "reason": "STOCKS_LONG: KEPT GREY: tradier_manage READS it in the DELTA exit path (_cfg fallback False, no TradierConfig field) -> today's stock live value is False != template bold True; un-greying would switch the DC-floor confirmation ON live via the cat_side layer (operator/v15_avg_delta_apply decision). No vec twin (QuickConfig True is unused) | STOCKS_SHORT: KEPT GREY: tradier_manage READS it in the DELTA exit path (_cfg fallback False, no TradierConfig field) -> today's stock live value is False != template bold True; un-greying would switch the DC-floor confirmation ON live via the cat_side layer (operator/v15_avg_delta_apply decision). No vec twin (QuickConfig True is unused)",
   "status": "kept_grey",
-  "ts": "2026-09-30T02:35:20.451128Z",
+  "ts": "2026-09-30T03:25:31.301067Z",
+  "venues": []
+ },
+ "DELTA_EXIT_MANDATORY_REENTRY_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream) \u2014 the vec 'genuine path' claimed 2026-09-29 is a read-only `_ = (...)` tuple (v12 ~8790), no effect",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream) \u2014 the vec 'genuine path' claimed 2026-09-29 is a read-only `_ = (...)` tuple (v12 ~8790), no effect",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream) \u2014 the vec 'genuine path' claimed 2026-09-29 is a read-only `_ = (...)` tuple (v12 ~8790), no effect | STOCKS_SHORT: BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream) \u2014 the vec 'genuine path' claimed 2026-09-29 is a read-only `_ = (...)` tuple (v12 ~8790), no effect",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.549611Z",
   "venues": []
  },
  "DELTA_GATE_BB_SQUEEZE": {
@@ -791,6 +1178,60 @@
   "ts": "2026-09-30T02:35:20.455268Z",
   "venues": []
  },
+ "DELTA_REENTRY_FILTER_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream). NOTE trb/trc books carry True for 10 stock sym_sides (inert today)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream). NOTE trb/trc books carry True for 10 stock sym_sides (inert today)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream). NOTE trb/trc books carry True for 10 stock sym_sides (inert today) | STOCKS_SHORT: BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream). NOTE trb/trc books carry True for 10 stock sym_sides (inert today)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.518466Z",
+  "venues": []
+ },
+ "DELTA_REENTRY_Z_THRESHOLD": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream) | STOCKS_SHORT: BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.521844Z",
+  "venues": []
+ },
+ "DIRECTION_FAVORABLE_REENTRY_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream) | STOCKS_SHORT: BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.524944Z",
+  "venues": []
+ },
  "DYNAMIC_SCORE_AUGMENT_ENABLED": {
   "files": [],
   "per_template": {
@@ -807,6 +1248,68 @@
   "reason": "STOCKS_LONG: bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator | STOCKS_SHORT: bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
   "status": "kept_grey",
   "ts": "2026-09-30T02:35:20.343701Z",
+  "venues": []
+ },
+ "DYN_STRUCT_TRAIL_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY + PARITY FINDING: tradier_manage.process_position RUNS DYN_STRUCT_TRAIL live (_cfg fallback True, no TradierConfig field) while the stock template bold is False and simulate_one has no twin -> the stock sweep baseline lacks a live exit; un-greying at bold False would be a live change (operator/engine cut)",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY + PARITY FINDING: tradier_manage.process_position RUNS DYN_STRUCT_TRAIL live (_cfg fallback True, no TradierConfig field) while the stock template bold is False and simulate_one has no twin -> the stock sweep baseline lacks a live exit; un-greying at bold False would be a live change (operator/engine cut)",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY + PARITY FINDING: tradier_manage.process_position RUNS DYN_STRUCT_TRAIL live (_cfg fallback True, no TradierConfig field) while the stock template bold is False and simulate_one has no twin -> the stock sweep baseline lacks a live exit; un-greying at bold False would be a live change (operator/engine cut) | STOCKS_SHORT: KEPT GREY + PARITY FINDING: tradier_manage.process_position RUNS DYN_STRUCT_TRAIL live (_cfg fallback True, no TradierConfig field) while the stock template bold is False and simulate_one has no twin -> the stock sweep baseline lacks a live exit; un-greying at bold False would be a live change (operator/engine cut)",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.599331Z",
+  "venues": []
+ },
+ "EMA50_15M_ENTRY_FILTER_ENABLED": {
+  "files": [],
+  "per_template": {
+   "CRYPTO_LONG": {
+    "reason": "KEPT GREY + PARITY FINDING: crypto live runs the EMA50_15M entry filter ON (config True, ez_manage ~36213) but simulate_one has no twin (QuickConfig has no field) -> the crypto sweep baseline over-enters vs live; adding the twin at the bold True default shifts every crypto baseline (engine cut, operator)",
+    "status": "kept_grey"
+   },
+   "CRYPTO_SHORT": {
+    "reason": "KEPT GREY + PARITY FINDING: crypto live runs the EMA50_15M entry filter ON (config True, ez_manage ~36213) but simulate_one has no twin (QuickConfig has no field) -> the crypto sweep baseline over-enters vs live; adding the twin at the bold True default shifts every crypto baseline (engine cut, operator)",
+    "status": "kept_grey"
+   },
+   "STOCKS_LONG": {
+    "reason": "no venue config/QuickConfig field for this template's venue (bold 'True')",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "CRYPTO_LONG: KEPT GREY + PARITY FINDING: crypto live runs the EMA50_15M entry filter ON (config True, ez_manage ~36213) but simulate_one has no twin (QuickConfig has no field) -> the crypto sweep baseline over-enters vs live; adding the twin at the bold True default shifts every crypto baseline (engine cut, operator) | CRYPTO_SHORT: KEPT GREY + PARITY FINDING: crypto live runs the EMA50_15M entry filter ON (config True, ez_manage ~36213) but simulate_one has no twin (QuickConfig has no field) -> the crypto sweep baseline over-enters vs live; adding the twin at the bold True default shifts every crypto baseline (engine cut, operator) | STOCKS_LONG: no venue config/QuickConfig field for this template's venue (bold 'True')",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.648126Z",
+  "venues": []
+ },
+ "EMA50_15M_ENTRY_FILTER_PCT": {
+  "files": [],
+  "per_template": {
+   "CRYPTO_LONG": {
+    "reason": "KEPT GREY: param of EMA50_15M_ENTRY_FILTER (see parity finding on the ENABLED row)",
+    "status": "kept_grey"
+   },
+   "CRYPTO_SHORT": {
+    "reason": "KEPT GREY: param of EMA50_15M_ENTRY_FILTER (see parity finding on the ENABLED row)",
+    "status": "kept_grey"
+   },
+   "STOCKS_LONG": {
+    "reason": "no venue config/QuickConfig field for this template's venue (bold '0')",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "CRYPTO_LONG: KEPT GREY: param of EMA50_15M_ENTRY_FILTER (see parity finding on the ENABLED row) | CRYPTO_SHORT: KEPT GREY: param of EMA50_15M_ENTRY_FILTER (see parity finding on the ENABLED row) | STOCKS_LONG: no venue config/QuickConfig field for this template's venue (bold '0')",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.652210Z",
   "venues": []
  },
  "EMA_9_21_FILTER_TFS": {
@@ -826,6 +1329,70 @@
   "status": "kept_grey",
   "ts": "2026-09-30T02:33:50.871212Z",
   "venues": []
+ },
+ "EMA_BLANKET_FILTER_ENABLED": {
+  "files": [
+   "(pre-existing 2026-09-29) vec_decisions/wave4_families.py ema_blanket_entry_gate + ema_blanket_live_pass",
+   "tradier_manage.queue_trade_action",
+   "ez_manage execute path"
+  ],
+  "per_template": {
+   "CRYPTO_LONG": {
+    "reason": "wired (pre-existing ez_manage + wave4); CRYPTO rows un-greyed by concurrent agent ~03:05",
+    "status": "wired"
+   },
+   "CRYPTO_SHORT": {
+    "reason": "wired (pre-existing ez_manage + wave4); CRYPTO rows un-greyed by concurrent agent ~03:05",
+    "status": "wired"
+   },
+   "STOCKS_LONG": {
+    "reason": "wired (pre-existing); template row un-greyed by concurrent agent",
+    "status": "wired"
+   },
+   "STOCKS_SHORT": {
+    "reason": "wired (pre-existing); template row un-greyed by concurrent agent",
+    "status": "wired"
+   }
+  },
+  "proof": "already wired live (tradier+ez) and vec before this job; verified: default 0/identical 7/7 stock + 4/4 crypto; True changed AAPL_SHORT/AMD_LONG/NVDA_LONG/MU_SHORT (stock) + LINKUSDC_SHORT (crypto) ledgers. Template rows were un-greyed by a concurrent agent at ~03:05 (not by this job)",
+  "reason": "CRYPTO_LONG: wired (pre-existing ez_manage + wave4); CRYPTO rows un-greyed by concurrent agent ~03:05 | CRYPTO_SHORT: wired (pre-existing ez_manage + wave4); CRYPTO rows un-greyed by concurrent agent ~03:05 | STOCKS_LONG: wired (pre-existing); template row un-greyed by concurrent agent | STOCKS_SHORT: wired (pre-existing); template row un-greyed by concurrent agent",
+  "status": "wired",
+  "ts": "2026-09-30T03:14:21.437109Z",
+  "venues": [
+   "CRYPTO",
+   "STOCKS"
+  ]
+ },
+ "EMA_BLANKET_FILTER_MIN_TFS": {
+  "files": [
+   "(pre-existing) vec_decisions/wave4_families.py"
+  ],
+  "per_template": {
+   "CRYPTO_LONG": {
+    "reason": "wired live (tradier queue_trade_action + ez execute path via wave4.ema_blanket_live_pass) and vec (wave4.ema_blanket_entry_gate) before this job; rows un-greyed by a concurrent agent ~03:05",
+    "status": "wired"
+   },
+   "CRYPTO_SHORT": {
+    "reason": "wired live (tradier queue_trade_action + ez execute path via wave4.ema_blanket_live_pass) and vec (wave4.ema_blanket_entry_gate) before this job; rows un-greyed by a concurrent agent ~03:05",
+    "status": "wired"
+   },
+   "STOCKS_LONG": {
+    "reason": "wired live (tradier queue_trade_action + ez execute path via wave4.ema_blanket_live_pass) and vec (wave4.ema_blanket_entry_gate) before this job; placeholder bold 0 (real default 3); rows un-greyed by a concurrent agent",
+    "status": "wired"
+   },
+   "STOCKS_SHORT": {
+    "reason": "wired live (tradier queue_trade_action + ez execute path via wave4.ema_blanket_live_pass) and vec (wave4.ema_blanket_entry_gate) before this job; placeholder bold 0 (real default 3); rows un-greyed by a concurrent agent",
+    "status": "wired"
+   }
+  },
+  "proof": "s1 30d ctx EMA_BLANKET_FILTER_ENABLED=True: default 0/identical 3/3; 1 changed AAPL_SHORT (+1.87) and NVDA_LONG (+6.46) ledgers",
+  "reason": "CRYPTO_LONG: wired live (tradier queue_trade_action + ez execute path via wave4.ema_blanket_live_pass) and vec (wave4.ema_blanket_entry_gate) before this job; rows un-greyed by a concurrent agent ~03:05 | CRYPTO_SHORT: wired live (tradier queue_trade_action + ez execute path via wave4.ema_blanket_live_pass) and vec (wave4.ema_blanket_entry_gate) before this job; rows un-greyed by a concurrent agent ~03:05 | STOCKS_LONG: wired live (tradier queue_trade_action + ez execute path via wave4.ema_blanket_live_pass) and vec (wave4.ema_blanket_entry_gate) before this job; placeholder bold 0 (real default 3); rows un-greyed by a concurrent agent | STOCKS_SHORT: wired live (tradier queue_trade_action + ez execute path via wave4.ema_blanket_live_pass) and vec (wave4.ema_blanket_entry_gate) before this job; placeholder bold 0 (real default 3); rows un-greyed by a concurrent agent",
+  "status": "wired",
+  "ts": "2026-09-30T03:28:53.129941Z",
+  "venues": [
+   "CRYPTO",
+   "STOCKS"
+  ]
  },
  "EXECUTE_NOW_MAX_MARK_AGE_S": {
   "files": [],
@@ -905,6 +1472,78 @@
   "reason": "STOCKS_LONG: default not among options: live default '50.0' (QuickConfig) not in ['1.0', '2.0', '0', '0.5'] | STOCKS_SHORT: default not among options: live default '50.0' (QuickConfig) not in ['1.0', '2.0', '0', '0.5']",
   "status": "kept_grey",
   "ts": "2026-09-30T02:33:50.874511Z",
+  "venues": []
+ },
+ "E_1_WT_EXIT_USE_DELTA_ENABLED": {
+  "files": [
+   "vec_decisions/grey_wire_exits.py",
+   "v12_quick_engine.py (simulate_one GREY-WIRE exit hook)",
+   "tradier_manage.py (process_position GREY_REWIRE_EXIT block)",
+   "config_tradier.py",
+   "test_grey_wire_exits.py",
+   "tools/grey_wire_proof.py"
+  ],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   },
+   "STOCKS_SHORT": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   }
+  },
+  "proof": "s2 30d vec (tools/grey_wire_proof.py): default delta 0.000000000 + identical ledger on 8/8 stock sym_sides; 12/12 stock + 8/8 crypto {} baselines bit-identical pre/post engine; alt=True changed the ledger on 8/8 (reason histogram shows the new exit)",
+  "reason": "STOCKS_LONG: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed | STOCKS_SHORT: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+  "status": "wired",
+  "ts": "2026-09-30T03:14:21.414212Z",
+  "venues": [
+   "STOCKS"
+  ]
+ },
+ "E_3_USE_WT_STRUCTURE_EXIT_MODE": {
+  "files": [
+   "vec_decisions/grey_wire_exits.py",
+   "v12_quick_engine.py (simulate_one GREY-WIRE exit hook)",
+   "tradier_manage.py (process_position GREY_REWIRE_EXIT block)",
+   "config_tradier.py",
+   "test_grey_wire_exits.py",
+   "tools/grey_wire_proof.py"
+  ],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   },
+   "STOCKS_SHORT": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   }
+  },
+  "proof": "s2 30d vec (tools/grey_wire_proof.py): default delta 0.000000000 + identical ledger on 8/8 stock sym_sides; 12/12 stock + 8/8 crypto {} baselines bit-identical pre/post engine; alt=2 changed the ledger on 7/8 (A_LONG non-binding); mode 1 = shadow/log-only never trades (live semantics) (reason histogram shows the new exit)",
+  "reason": "STOCKS_LONG: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed | STOCKS_SHORT: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+  "status": "wired",
+  "ts": "2026-09-30T03:14:21.417171Z",
+  "venues": [
+   "STOCKS"
+  ]
+ },
+ "FOLLOW_THROUGH_REENTRY_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream) | STOCKS_SHORT: BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.528295Z",
   "venues": []
  },
  "FORCE_MIN_ONE_TRADE": {
@@ -1017,6 +1656,78 @@
   "reason": "STOCKS_LONG: default not among options: live default '5.0' (QuickConfig) not in ['0.0_ALT', '0.0'] | STOCKS_SHORT: default not among options: live default '5.0' (QuickConfig) not in ['0.0_ALT', '0.0']",
   "status": "kept_grey",
   "ts": "2026-09-30T02:33:50.879550Z",
+  "venues": []
+ },
+ "GR_FILTER_ALL_ENTRIES": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: crypto live gate uses mtf_live_evaluator.gr_filter_pass (12 indicators x 6 TFs incl. macd_hist_* and ha_color_*); the stock live snapshot lacks macd_* and ha_color_* (NPZ has them) -> stock live != vec; no vec GR_FILTER twin exists (only purged NEW_AUDIT proxies)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: crypto live gate uses mtf_live_evaluator.gr_filter_pass (12 indicators x 6 TFs incl. macd_hist_* and ha_color_*); the stock live snapshot lacks macd_* and ha_color_* (NPZ has them) -> stock live != vec; no vec GR_FILTER twin exists (only purged NEW_AUDIT proxies)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: crypto live gate uses mtf_live_evaluator.gr_filter_pass (12 indicators x 6 TFs incl. macd_hist_* and ha_color_*); the stock live snapshot lacks macd_* and ha_color_* (NPZ has them) -> stock live != vec; no vec GR_FILTER twin exists (only purged NEW_AUDIT proxies) | STOCKS_SHORT: BLOCKED: crypto live gate uses mtf_live_evaluator.gr_filter_pass (12 indicators x 6 TFs incl. macd_hist_* and ha_color_*); the stock live snapshot lacks macd_* and ha_color_* (NPZ has them) -> stock live != vec; no vec GR_FILTER twin exists (only purged NEW_AUDIT proxies)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.501717Z",
+  "venues": []
+ },
+ "GR_FILTER_VEC_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: 'vec GR filter' knob with no live read in any venue (crypto only _ensure_ez_all stub) and no active vec code (purged proxies only)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: 'vec GR filter' knob with no live read in any venue (crypto only _ensure_ez_all stub) and no active vec code (purged proxies only)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: 'vec GR filter' knob with no live read in any venue (crypto only _ensure_ez_all stub) and no active vec code (purged proxies only) | STOCKS_SHORT: BLOCKED: 'vec GR filter' knob with no live read in any venue (crypto only _ensure_ez_all stub) and no active vec code (purged proxies only)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.504979Z",
+  "venues": []
+ },
+ "GR_FILTER_VEC_MIN_TFS": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: param of GR_FILTER_VEC (no live read, no active vec code)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: param of GR_FILTER_VEC (no live read, no active vec code)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: param of GR_FILTER_VEC (no live read, no active vec code) | STOCKS_SHORT: BLOCKED: param of GR_FILTER_VEC (no live read, no active vec code)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.508417Z",
+  "venues": []
+ },
+ "GUARANTEED_REENTRY_DELTA_GATE_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY: gate on the crypto GUARANTEED_REENTRY path, which tradier_manage does not run and simulate_one only reads into a no-op `_ = (...)` tuple \u2014 the gate has no object on stocks",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY: gate on the crypto GUARANTEED_REENTRY path, which tradier_manage does not run and simulate_one only reads into a no-op `_ = (...)` tuple \u2014 the gate has no object on stocks",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY: gate on the crypto GUARANTEED_REENTRY path, which tradier_manage does not run and simulate_one only reads into a no-op `_ = (...)` tuple \u2014 the gate has no object on stocks | STOCKS_SHORT: KEPT GREY: gate on the crypto GUARANTEED_REENTRY path, which tradier_manage does not run and simulate_one only reads into a no-op `_ = (...)` tuple \u2014 the gate has no object on stocks",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.553244Z",
   "venues": []
  },
  "GUARANTEED_REENTRY_K_FAVORABLE_HIGH": {
@@ -1287,6 +1998,42 @@
   "ts": "2026-09-30T02:33:50.883157Z",
   "venues": []
  },
+ "HA_WICK_QUALITY_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) | STOCKS_SHORT: BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.442348Z",
+  "venues": []
+ },
+ "HA_WICK_QUALITY_TF": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) | STOCKS_SHORT: BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.445878Z",
+  "venues": []
+ },
  "HLR_REENTRY_MAX_AGE_S": {
   "files": [],
   "per_template": {
@@ -1303,6 +2050,78 @@
   "reason": "STOCKS_LONG: default not among options: live default '14400.0' (QuickConfig) not in ['1.0', '2.0', '0', '0.5'] | STOCKS_SHORT: default not among options: live default '14400.0' (QuickConfig) not in ['0.5', '1.0', '0', '2.0']",
   "status": "kept_grey",
   "ts": "2026-09-30T02:33:50.884339Z",
+  "venues": []
+ },
+ "HLR_REENTRY_MULT_1H": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: HLR reentry size multiplier \u2014 simulate_one only reads it into a no-op tuple (no HLR reentry sizing model) and tradier has no HLR reentry registry; HLR_TOP_EXIT itself is now wired",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: HLR reentry size multiplier \u2014 simulate_one only reads it into a no-op tuple (no HLR reentry sizing model) and tradier has no HLR reentry registry; HLR_TOP_EXIT itself is now wired",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: HLR reentry size multiplier \u2014 simulate_one only reads it into a no-op tuple (no HLR reentry sizing model) and tradier has no HLR reentry registry; HLR_TOP_EXIT itself is now wired | STOCKS_SHORT: BLOCKED: HLR reentry size multiplier \u2014 simulate_one only reads it into a no-op tuple (no HLR reentry sizing model) and tradier has no HLR reentry registry; HLR_TOP_EXIT itself is now wired",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.556678Z",
+  "venues": []
+ },
+ "HLR_REENTRY_MULT_4H": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: HLR reentry size multiplier (no vec reentry-sizing model, no tradier HLR registry)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: HLR reentry size multiplier (no vec reentry-sizing model, no tradier HLR registry)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: HLR reentry size multiplier (no vec reentry-sizing model, no tradier HLR registry) | STOCKS_SHORT: BLOCKED: HLR reentry size multiplier (no vec reentry-sizing model, no tradier HLR registry)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.560284Z",
+  "venues": []
+ },
+ "HLR_REENTRY_MULT_D": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: HLR reentry size multiplier (no vec reentry-sizing model, no tradier HLR registry)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: HLR reentry size multiplier (no vec reentry-sizing model, no tradier HLR registry)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: HLR reentry size multiplier (no vec reentry-sizing model, no tradier HLR registry) | STOCKS_SHORT: BLOCKED: HLR reentry size multiplier (no vec reentry-sizing model, no tradier HLR registry)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.564184Z",
+  "venues": []
+ },
+ "HLR_REENTRY_MULT_W": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: HLR reentry size multiplier (no vec reentry-sizing model, no tradier HLR registry)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: HLR reentry size multiplier (no vec reentry-sizing model, no tradier HLR registry)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: HLR reentry size multiplier (no vec reentry-sizing model, no tradier HLR registry) | STOCKS_SHORT: BLOCKED: HLR reentry size multiplier (no vec reentry-sizing model, no tradier HLR registry)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.568633Z",
   "venues": []
  },
  "HLR_SMA_BAND_PCT": {
@@ -1322,6 +2141,182 @@
   "status": "kept_grey",
   "ts": "2026-09-30T02:33:50.885352Z",
   "venues": []
+ },
+ "HLR_TOP_EXIT_ENABLED": {
+  "files": [
+   "vec_decisions/grey_wire_exits.py (hlr_top_exit/LIVE_ONLY_EXITS, breakeven_gain_erosion)",
+   "tradier_manage.py (GREY_REWIRE_EXIT block)",
+   "config_tradier.py",
+   "v12_quick_engine.py (st max_gain/reentered/augmented)",
+   "test_grey_wire_exits.py"
+  ],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "stock live port + vec via shared core; TradierConfig default = today's live (OFF); un-greyed",
+    "status": "wired"
+   },
+   "STOCKS_SHORT": {
+    "reason": "stock live port + vec via shared core; TradierConfig default = today's live (OFF); un-greyed",
+    "status": "wired"
+   }
+  },
+  "proof": "vec path pre-existed (simulate_one qr_cond -> vec_decisions.quick_reduce_strong); NEW stock live port calls the same core (check_quick_reduce_strong); randomized unit test 800 bars scalar==vec. s2 30d: default 0/identical 7/7; True changed AAPL_LONG(+0.22)/GDX_LONG(+0.75)/RIO_LONG(+0.35) with HLR_TOP_EXIT_SELL_TOP closes",
+  "reason": "STOCKS_LONG: stock live port + vec via shared core; TradierConfig default = today's live (OFF); un-greyed | STOCKS_SHORT: stock live port + vec via shared core; TradierConfig default = today's live (OFF); un-greyed",
+  "status": "wired",
+  "ts": "2026-09-30T03:25:12.342895Z",
+  "venues": [
+   "STOCKS"
+  ]
+ },
+ "HLR_TOP_MIN_TFS": {
+  "files": [
+   "vec_decisions/grey_wire_exits.py (hlr_top_exit/LIVE_ONLY_EXITS, breakeven_gain_erosion)",
+   "tradier_manage.py (GREY_REWIRE_EXIT block)",
+   "config_tradier.py",
+   "v12_quick_engine.py (st max_gain/reentered/augmented)",
+   "test_grey_wire_exits.py"
+  ],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "stock live port + vec via shared core; TradierConfig default = today's live (OFF); un-greyed (rows were already un-greyed by a concurrent agent)",
+    "status": "wired"
+   },
+   "STOCKS_SHORT": {
+    "reason": "stock live port + vec via shared core; TradierConfig default = today's live (OFF); un-greyed (rows were already un-greyed by a concurrent agent)",
+    "status": "wired"
+   }
+  },
+  "proof": "param now read by the stock live port (TradierConfig 2 == QuickConfig 2.0); ctx HLR_TOP_EXIT_ENABLED=True: default 0/identical 4/4; 1 non-binding in the 4 tested windows (fires already need >=2 TFs incl. an HTF in these windows). Rows were un-greyed earlier by a concurrent agent (placeholder policy)",
+  "reason": "STOCKS_LONG: stock live port + vec via shared core; TradierConfig default = today's live (OFF); un-greyed (rows were already un-greyed by a concurrent agent) | STOCKS_SHORT: stock live port + vec via shared core; TradierConfig default = today's live (OFF); un-greyed (rows were already un-greyed by a concurrent agent)",
+  "status": "wired",
+  "ts": "2026-09-30T03:25:12.347804Z",
+  "venues": [
+   "STOCKS"
+  ]
+ },
+ "HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H": {
+  "files": [
+   "vec_decisions/grey_wire_exits.py",
+   "v12_quick_engine.py (simulate_one GREY-WIRE exit hook)",
+   "tradier_manage.py (process_position GREY_REWIRE_EXIT block)",
+   "config_tradier.py",
+   "test_grey_wire_exits.py",
+   "tools/grey_wire_proof.py"
+  ],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   },
+   "STOCKS_SHORT": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   }
+  },
+  "proof": "s2 30d vec (tools/grey_wire_proof.py): default delta 0.000000000 + identical ledger on 8/8 stock sym_sides; 12/12 stock + 8/8 crypto {} baselines bit-identical pre/post engine; alt=0 (ctx ENABLED=True) changed the ledger on 4/4 (AAPL_LONG 37->64 trades, GDX_LONG +1.03) (reason histogram shows the new exit)",
+  "reason": "STOCKS_LONG: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed | STOCKS_SHORT: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+  "status": "wired",
+  "ts": "2026-09-30T03:14:21.403058Z",
+  "venues": [
+   "STOCKS"
+  ]
+ },
+ "HTF_AGAINST_FORCE_CLOSE_ENABLED": {
+  "files": [
+   "vec_decisions/grey_wire_exits.py",
+   "v12_quick_engine.py (simulate_one GREY-WIRE exit hook)",
+   "tradier_manage.py (process_position GREY_REWIRE_EXIT block)",
+   "config_tradier.py",
+   "test_grey_wire_exits.py",
+   "tools/grey_wire_proof.py"
+  ],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   },
+   "STOCKS_SHORT": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   }
+  },
+  "proof": "s2 30d vec (tools/grey_wire_proof.py): default delta 0.000000000 + identical ledger on 8/8 stock sym_sides; 12/12 stock + 8/8 crypto {} baselines bit-identical pre/post engine; alt=True changed the ledger on 8/8 (AAPL_LONG -1.78, MU_SHORT +0.17, RIO_LONG +1.38 ...) (reason histogram shows the new exit)",
+  "reason": "STOCKS_LONG: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed | STOCKS_SHORT: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+  "status": "wired",
+  "ts": "2026-09-30T03:14:21.399853Z",
+  "venues": [
+   "STOCKS"
+  ]
+ },
+ "HTF_BULL_ENTRY_FILTER_ENABLED": {
+  "files": [],
+  "per_template": {
+   "CRYPTO_LONG": {
+    "reason": "BLOCKED: no live read in any venue (crypto/tradier only stubs) and no active vec code -> no live source to port (NEW STRATEGY)",
+    "status": "blocked"
+   },
+   "CRYPTO_SHORT": {
+    "reason": "BLOCKED: no live read in any venue (crypto/tradier only stubs) and no active vec code -> no live source to port (NEW STRATEGY)",
+    "status": "blocked"
+   },
+   "STOCKS_LONG": {
+    "reason": "no venue config/QuickConfig field for this template's venue (bold 'True')",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "CRYPTO_LONG: BLOCKED: no live read in any venue (crypto/tradier only stubs) and no active vec code -> no live source to port (NEW STRATEGY) | CRYPTO_SHORT: BLOCKED: no live read in any venue (crypto/tradier only stubs) and no active vec code -> no live source to port (NEW STRATEGY) | STOCKS_LONG: no venue config/QuickConfig field for this template's venue (bold 'True')",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.657213Z",
+  "venues": []
+ },
+ "HTF_BULL_ENTRY_FILTER_TF": {
+  "files": [],
+  "per_template": {
+   "CRYPTO_LONG": {
+    "reason": "BLOCKED: param of HTF_BULL_ENTRY_FILTER (no live read anywhere, no active vec code)",
+    "status": "blocked"
+   },
+   "CRYPTO_SHORT": {
+    "reason": "BLOCKED: param of HTF_BULL_ENTRY_FILTER (no live read anywhere, no active vec code)",
+    "status": "blocked"
+   },
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: param of HTF_BULL_ENTRY_FILTER (no live read anywhere, no active vec code)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "CRYPTO_LONG: BLOCKED: param of HTF_BULL_ENTRY_FILTER (no live read anywhere, no active vec code) | CRYPTO_SHORT: BLOCKED: param of HTF_BULL_ENTRY_FILTER (no live read anywhere, no active vec code) | STOCKS_LONG: BLOCKED: param of HTF_BULL_ENTRY_FILTER (no live read anywhere, no active vec code)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.661511Z",
+  "venues": []
+ },
+ "HTF_DIRECTION_GATE_ENABLED": {
+  "files": [
+   "vec_decisions/grey_wire_entries.py",
+   "v12_quick_engine.py (entry filter stack)",
+   "tradier_manage.py (queue_trade_action GREY_WIRE_OPEN_GATE)",
+   "config_tradier.py",
+   "test_grey_wire_exits.py"
+  ],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   },
+   "STOCKS_SHORT": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   }
+  },
+  "proof": "vec gate pre-existed (wave4_families.htf_direction_gate); NEW stock live port (grey_wire_entries.htf_direction_live_pass, unit-tested == vec). default 0/identical 16/16; alt True changed AMD_SHORT(+0.36)/NVDA_SHORT ledgers; non-binding on 14 trend-aligned windows (mask allows ~98% bars, e.g. AAPL_LONG 1880/1920)",
+  "reason": "STOCKS_LONG: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed | STOCKS_SHORT: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+  "status": "wired",
+  "ts": "2026-09-30T03:14:21.428775Z",
+  "venues": [
+   "STOCKS"
+  ]
  },
  "HTF_EXIT_VETO_ENABLED": {
   "files": [],
@@ -1431,23 +2426,81 @@
   "ts": "2026-09-30T02:33:50.888272Z",
   "venues": []
  },
- "HTF_GATE_MIN_CONFIRMATIONS": {
-  "files": [],
+ "HTF_GATE_D_MANDATORY": {
+  "files": [
+   "vec_decisions/grey_wire_entries.py",
+   "v12_quick_engine.py (entry filter stack)",
+   "tradier_manage.py (queue_trade_action GREY_WIRE_OPEN_GATE)",
+   "config_tradier.py",
+   "test_grey_wire_exits.py"
+  ],
   "per_template": {
    "STOCKS_LONG": {
-    "reason": "default not among options: live default '2' (QuickConfig) not in ['0.0', '0.0_ALT']",
-    "status": "kept_grey"
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
    },
    "STOCKS_SHORT": {
-    "reason": "default not among options: live default '2' (QuickConfig) not in ['0.0_ALT', '0.0']",
-    "status": "kept_grey"
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
    }
   },
-  "proof": "",
-  "reason": "STOCKS_LONG: default not among options: live default '2' (QuickConfig) not in ['0.0', '0.0_ALT'] | STOCKS_SHORT: default not among options: live default '2' (QuickConfig) not in ['0.0_ALT', '0.0']",
-  "status": "kept_grey",
-  "ts": "2026-09-30T02:33:50.890176Z",
-  "venues": []
+  "proof": "ctx GATE=True: default 0/identical; 1.0 changed AMD_SHORT -1.41, NVDA_SHORT -1.31, GDX_SHORT +8.20, MU_LONG -3.33",
+  "reason": "STOCKS_LONG: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed | STOCKS_SHORT: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+  "status": "wired",
+  "ts": "2026-09-30T03:14:21.431585Z",
+  "venues": [
+   "STOCKS"
+  ]
+ },
+ "HTF_GATE_MIN_CONFIRMATIONS": {
+  "files": [
+   "vec_decisions/grey_wire_entries.py",
+   "config_tradier.py",
+   "tradier_manage.py"
+  ],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "param of HTF_DIRECTION_GATE, now read by the stock live port (TradierConfig 2 == QuickConfig 2 == crypto config 2). Template bold 0.0 is a placeholder (default not among options); the rows were un-greyed by a concurrent agent under the 2026-09-30 placeholder policy (pilot keeps the real default 2)",
+    "status": "wired"
+   },
+   "STOCKS_SHORT": {
+    "reason": "param of HTF_DIRECTION_GATE, now read by the stock live port (TradierConfig 2 == QuickConfig 2 == crypto config 2). Template bold 0.0 is a placeholder (default not among options); the rows were un-greyed by a concurrent agent under the 2026-09-30 placeholder policy (pilot keeps the real default 2)",
+    "status": "wired"
+   }
+  },
+  "proof": "s1 30d, ctx HTF_DIRECTION_GATE_ENABLED=True: default 0/identical 5/5; 3 changed AAPL_SHORT (-2.27, 37->18 trades) and MU_SHORT (24->0) ledgers",
+  "reason": "STOCKS_LONG: param of HTF_DIRECTION_GATE, now read by the stock live port (TradierConfig 2 == QuickConfig 2 == crypto config 2). Template bold 0.0 is a placeholder (default not among options); the rows were un-greyed by a concurrent agent under the 2026-09-30 placeholder policy (pilot keeps the real default 2) | STOCKS_SHORT: param of HTF_DIRECTION_GATE, now read by the stock live port (TradierConfig 2 == QuickConfig 2 == crypto config 2). Template bold 0.0 is a placeholder (default not among options); the rows were un-greyed by a concurrent agent under the 2026-09-30 placeholder policy (pilot keeps the real default 2)",
+  "status": "wired",
+  "ts": "2026-09-30T03:28:53.124977Z",
+  "venues": [
+   "STOCKS"
+  ]
+ },
+ "HTF_GATE_SIGNALS_SMA200D": {
+  "files": [
+   "vec_decisions/grey_wire_entries.py",
+   "v12_quick_engine.py (entry filter stack)",
+   "tradier_manage.py (queue_trade_action GREY_WIRE_OPEN_GATE)",
+   "config_tradier.py",
+   "test_grey_wire_exits.py"
+  ],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   },
+   "STOCKS_SHORT": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   }
+  },
+  "proof": "ctx GATE=True: default 0/identical 12/12; False non-binding in all 12 tested 30d windows (min_conf=2 met by the wt signals on every entry bar); unit test proves live==vec per bar",
+  "reason": "STOCKS_LONG: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed | STOCKS_SHORT: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+  "status": "wired",
+  "ts": "2026-09-30T03:14:21.434216Z",
+  "venues": [
+   "STOCKS"
+  ]
  },
  "HTF_TREND_VETO_BYPASS_ENABLED": {
   "files": [],
@@ -1551,6 +2604,24 @@
   "ts": "2026-09-30T02:33:50.895149Z",
   "venues": []
  },
+ "LEGACY_PROC_SINGLE_REENTRY": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream) | STOCKS_SHORT: BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.531550Z",
+  "venues": []
+ },
  "LEGACY_REENTRY_PSR_DC_BOUNCE": {
   "files": [],
   "per_template": {
@@ -1587,6 +2658,24 @@
   "ts": "2026-09-30T02:33:50.899127Z",
   "venues": []
  },
+ "LEGACY_REENTRY_PSR_K_DC_CROSSOVER": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream) | STOCKS_SHORT: BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.535148Z",
+  "venues": []
+ },
  "LEGACY_REENTRY_PSR_QUICK_RECOVERY": {
   "files": [],
   "per_template": {
@@ -1621,6 +2710,24 @@
   "reason": "STOCKS_LONG: class c (verified): stale-price handling for loss exits; NPZ replay never stale. | STOCKS_SHORT: class c (verified): stale-price handling for loss exits; NPZ replay never stale.",
   "status": "kept_grey",
   "ts": "2026-09-30T02:33:50.903356Z",
+  "venues": []
+ },
+ "LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY: fixed-% exit \u2014 USER 2026-09-28 mandate 'NEVER a fix % loss or profit exit' (DC-channel exits replace them); wiring would reintroduce a banned exit class (gain < -5% size-kill inside the crypto hedge-orchestration stop functions; no stock analog)",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY: fixed-% exit \u2014 USER 2026-09-28 mandate 'NEVER a fix % loss or profit exit' (DC-channel exits replace them); wiring would reintroduce a banned exit class (gain < -5% size-kill inside the crypto hedge-orchestration stop functions; no stock analog)",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY: fixed-% exit \u2014 USER 2026-09-28 mandate 'NEVER a fix % loss or profit exit' (DC-channel exits replace them); wiring would reintroduce a banned exit class (gain < -5% size-kill inside the crypto hedge-orchestration stop functions; no stock analog) | STOCKS_SHORT: KEPT GREY: fixed-% exit \u2014 USER 2026-09-28 mandate 'NEVER a fix % loss or profit exit' (DC-channel exits replace them); wiring would reintroduce a banned exit class (gain < -5% size-kill inside the crypto hedge-orchestration stop functions; no stock analog)",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.572231Z",
   "venues": []
  },
  "LOSS_TECHNICAL_EXIT_NO_STALE_BLOCK": {
@@ -1693,6 +2800,24 @@
   "ts": "2026-09-30T02:33:50.908614Z",
   "venues": []
  },
+ "MACD_EXIT_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: the stock live indicator snapshot (tradier_indicators) has NO macd_* fields (the NPZ has them) -> a stock live port cannot equal the vector; needs the stock snapshot extended first",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: the stock live indicator snapshot (tradier_indicators) has NO macd_* fields (the NPZ has them) -> a stock live port cannot equal the vector; needs the stock snapshot extended first",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: the stock live indicator snapshot (tradier_indicators) has NO macd_* fields (the NPZ has them) -> a stock live port cannot equal the vector; needs the stock snapshot extended first | STOCKS_SHORT: BLOCKED: the stock live indicator snapshot (tradier_indicators) has NO macd_* fields (the NPZ has them) -> a stock live port cannot equal the vector; needs the stock snapshot extended first",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.475942Z",
+  "venues": []
+ },
  "MACD_EXIT_MIN_GAIN": {
   "files": [],
   "per_template": {
@@ -1709,6 +2834,96 @@
   "reason": "STOCKS_LONG: default not among options: live default '0.3' (QuickConfig) not in ['1.0', '0.5', '0', '2.0'] | STOCKS_SHORT: default not among options: live default '0.3' (QuickConfig) not in ['1.0', '0.5', '0', '2.0']",
   "status": "kept_grey",
   "ts": "2026-09-30T02:33:50.910358Z",
+  "venues": []
+ },
+ "MACD_EXIT_TF": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: the stock live indicator snapshot (tradier_indicators) has NO macd_* fields (the NPZ has them) -> a stock live port cannot equal the vector; needs the stock snapshot extended first",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: the stock live indicator snapshot (tradier_indicators) has NO macd_* fields (the NPZ has them) -> a stock live port cannot equal the vector; needs the stock snapshot extended first",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: the stock live indicator snapshot (tradier_indicators) has NO macd_* fields (the NPZ has them) -> a stock live port cannot equal the vector; needs the stock snapshot extended first | STOCKS_SHORT: BLOCKED: the stock live indicator snapshot (tradier_indicators) has NO macd_* fields (the NPZ has them) -> a stock live port cannot equal the vector; needs the stock snapshot extended first",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.480481Z",
+  "venues": []
+ },
+ "MACD_ZERO_CROSS_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: the stock live indicator snapshot (tradier_indicators) has NO macd_* fields (the NPZ has them) -> a stock live port cannot equal the vector; needs the stock snapshot extended first",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: the stock live indicator snapshot (tradier_indicators) has NO macd_* fields (the NPZ has them) -> a stock live port cannot equal the vector; needs the stock snapshot extended first",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: the stock live indicator snapshot (tradier_indicators) has NO macd_* fields (the NPZ has them) -> a stock live port cannot equal the vector; needs the stock snapshot extended first | STOCKS_SHORT: BLOCKED: the stock live indicator snapshot (tradier_indicators) has NO macd_* fields (the NPZ has them) -> a stock live port cannot equal the vector; needs the stock snapshot extended first",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.488716Z",
+  "venues": []
+ },
+ "MACD_ZERO_CROSS_SCORE": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: the stock live indicator snapshot (tradier_indicators) has NO macd_* fields (the NPZ has them) -> a stock live port cannot equal the vector; needs the stock snapshot extended first",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: the stock live indicator snapshot (tradier_indicators) has NO macd_* fields (the NPZ has them) -> a stock live port cannot equal the vector; needs the stock snapshot extended first",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: the stock live indicator snapshot (tradier_indicators) has NO macd_* fields (the NPZ has them) -> a stock live port cannot equal the vector; needs the stock snapshot extended first | STOCKS_SHORT: BLOCKED: the stock live indicator snapshot (tradier_indicators) has NO macd_* fields (the NPZ has them) -> a stock live port cannot equal the vector; needs the stock snapshot extended first",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.495015Z",
+  "venues": []
+ },
+ "MACD_ZERO_CROSS_TF": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: the stock live indicator snapshot (tradier_indicators) has NO macd_* fields (the NPZ has them) -> a stock live port cannot equal the vector; needs the stock snapshot extended first",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: the stock live indicator snapshot (tradier_indicators) has NO macd_* fields (the NPZ has them) -> a stock live port cannot equal the vector; needs the stock snapshot extended first",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: the stock live indicator snapshot (tradier_indicators) has NO macd_* fields (the NPZ has them) -> a stock live port cannot equal the vector; needs the stock snapshot extended first | STOCKS_SHORT: BLOCKED: the stock live indicator snapshot (tradier_indicators) has NO macd_* fields (the NPZ has them) -> a stock live port cannot equal the vector; needs the stock snapshot extended first",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.498425Z",
+  "venues": []
+ },
+ "MANDATORY_REENTRY_ALLOW_WT0_STRONG_CROSS": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: param of the crypto mandatory-reentry WT filter; neither tradier's _mandatory_reentry_wt_gate nor simulate_one reads it (no reentry-path model in vec)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: param of the crypto mandatory-reentry WT filter; neither tradier's _mandatory_reentry_wt_gate nor simulate_one reads it (no reentry-path model in vec)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: param of the crypto mandatory-reentry WT filter; neither tradier's _mandatory_reentry_wt_gate nor simulate_one reads it (no reentry-path model in vec) | STOCKS_SHORT: BLOCKED: param of the crypto mandatory-reentry WT filter; neither tradier's _mandatory_reentry_wt_gate nor simulate_one reads it (no reentry-path model in vec)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.515082Z",
   "venues": []
  },
  "MANDATORY_REENTRY_K_HIGH_BLOCK": {
@@ -1765,6 +2980,24 @@
   "ts": "2026-09-30T02:33:50.914238Z",
   "venues": []
  },
+ "MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: read live by tradier's MANDATORY_REENTRY_PRICE_CROSS WT gate (_mandatory_reentry_wt_gate) but simulate_one has no model of that reentry path -> no vec twin possible without porting the mandatory-reentry state machine",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: read live by tradier's MANDATORY_REENTRY_PRICE_CROSS WT gate (_mandatory_reentry_wt_gate) but simulate_one has no model of that reentry path -> no vec twin possible without porting the mandatory-reentry state machine",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: read live by tradier's MANDATORY_REENTRY_PRICE_CROSS WT gate (_mandatory_reentry_wt_gate) but simulate_one has no model of that reentry path -> no vec twin possible without porting the mandatory-reentry state machine | STOCKS_SHORT: BLOCKED: read live by tradier's MANDATORY_REENTRY_PRICE_CROSS WT gate (_mandatory_reentry_wt_gate) but simulate_one has no model of that reentry path -> no vec twin possible without porting the mandatory-reentry state machine",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.511880Z",
+  "venues": []
+ },
  "MANDATORY_REENTRY_WT_FILTER_TF_MODE": {
   "files": [],
   "per_template": {
@@ -1781,6 +3014,24 @@
   "reason": "STOCKS_LONG: default not among options: live default '15m_only' (QuickConfig) not in ['0'] | STOCKS_SHORT: default not among options: live default '15m_only' (QuickConfig) not in ['0']",
   "status": "kept_grey",
   "ts": "2026-09-30T02:33:50.917293Z",
+  "venues": []
+ },
+ "MARKET_QUALITY_SCORE_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) | STOCKS_SHORT: BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.449298Z",
   "venues": []
  },
  "MIN_HOLD_BARS_BEFORE_EXIT": {
@@ -1805,36 +3056,90 @@
   "files": [],
   "per_template": {
    "STOCKS_LONG": {
-    "reason": "bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
+    "reason": "KEPT GREY (naming + default): crypto-name MI exit voter; the stock live family is MI_EXIT_ENABLED_TRADIER / MI_DIV_EXIT_ENABLED_TRADIER (config_tradier, default False) while the template bold is True -> un-greying this crypto name would put True into the STOCKS cat_side layer for a knob tradier never reads",
     "status": "kept_grey"
    },
    "STOCKS_SHORT": {
-    "reason": "bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
+    "reason": "KEPT GREY (naming + default): crypto-name MI exit voter; the stock live family is MI_EXIT_ENABLED_TRADIER / MI_DIV_EXIT_ENABLED_TRADIER (config_tradier, default False) while the template bold is True -> un-greying this crypto name would put True into the STOCKS cat_side layer for a knob tradier never reads",
     "status": "kept_grey"
    }
   },
   "proof": "",
-  "reason": "STOCKS_LONG: bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator | STOCKS_SHORT: bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
+  "reason": "STOCKS_LONG: KEPT GREY (naming + default): crypto-name MI exit voter; the stock live family is MI_EXIT_ENABLED_TRADIER / MI_DIV_EXIT_ENABLED_TRADIER (config_tradier, default False) while the template bold is True -> un-greying this crypto name would put True into the STOCKS cat_side layer for a knob tradier never reads | STOCKS_SHORT: KEPT GREY (naming + default): crypto-name MI exit voter; the stock live family is MI_EXIT_ENABLED_TRADIER / MI_DIV_EXIT_ENABLED_TRADIER (config_tradier, default False) while the template bold is True -> un-greying this crypto name would put True into the STOCKS cat_side layer for a knob tradier never reads",
   "status": "kept_grey",
-  "ts": "2026-09-30T02:35:20.363941Z",
+  "ts": "2026-09-30T03:25:31.309365Z",
+  "venues": []
+ },
+ "MI_ENTRY_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY (naming, class c): crypto rate() MI entry bonus; the stock live equivalents are MI_ENTRY_ENABLED_TRADIER / MI_ENTRY_*_BONUS_TRADIER (config_tradier)",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY (naming, class c): crypto rate() MI entry bonus; the stock live equivalents are MI_ENTRY_ENABLED_TRADIER / MI_ENTRY_*_BONUS_TRADIER (config_tradier)",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY (naming, class c): crypto rate() MI entry bonus; the stock live equivalents are MI_ENTRY_ENABLED_TRADIER / MI_ENTRY_*_BONUS_TRADIER (config_tradier) | STOCKS_SHORT: KEPT GREY (naming, class c): crypto rate() MI entry bonus; the stock live equivalents are MI_ENTRY_ENABLED_TRADIER / MI_ENTRY_*_BONUS_TRADIER (config_tradier)",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.666018Z",
+  "venues": []
+ },
+ "MI_ENTRY_EXHAUST_BONUS": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY (naming): stock equivalent MI_ENTRY_EXHAUST_BONUS_TRADIER",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY (naming): stock equivalent MI_ENTRY_EXHAUST_BONUS_TRADIER",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY (naming): stock equivalent MI_ENTRY_EXHAUST_BONUS_TRADIER | STOCKS_SHORT: KEPT GREY (naming): stock equivalent MI_ENTRY_EXHAUST_BONUS_TRADIER",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.673137Z",
+  "venues": []
+ },
+ "MI_ENTRY_STRUCT_BONUS": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY (naming): stock equivalent MI_ENTRY_STRUCT_BONUS_TRADIER",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY (naming): stock equivalent MI_ENTRY_STRUCT_BONUS_TRADIER",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY (naming): stock equivalent MI_ENTRY_STRUCT_BONUS_TRADIER | STOCKS_SHORT: KEPT GREY (naming): stock equivalent MI_ENTRY_STRUCT_BONUS_TRADIER",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.677302Z",
   "venues": []
  },
  "MI_EXHAUST_EXIT_ENABLED": {
   "files": [],
   "per_template": {
    "STOCKS_LONG": {
-    "reason": "bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
+    "reason": "KEPT GREY (naming + default): crypto-name MI exit voter; the stock live family is MI_EXIT_ENABLED_TRADIER / MI_EXHAUST_EXIT_ENABLED_TRADIER (config_tradier, default False) while the template bold is True -> un-greying this crypto name would put True into the STOCKS cat_side layer for a knob tradier never reads",
     "status": "kept_grey"
    },
    "STOCKS_SHORT": {
-    "reason": "bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
+    "reason": "KEPT GREY (naming + default): crypto-name MI exit voter; the stock live family is MI_EXIT_ENABLED_TRADIER / MI_EXHAUST_EXIT_ENABLED_TRADIER (config_tradier, default False) while the template bold is True -> un-greying this crypto name would put True into the STOCKS cat_side layer for a knob tradier never reads",
     "status": "kept_grey"
    }
   },
   "proof": "",
-  "reason": "STOCKS_LONG: bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator | STOCKS_SHORT: bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
+  "reason": "STOCKS_LONG: KEPT GREY (naming + default): crypto-name MI exit voter; the stock live family is MI_EXIT_ENABLED_TRADIER / MI_EXHAUST_EXIT_ENABLED_TRADIER (config_tradier, default False) while the template bold is True -> un-greying this crypto name would put True into the STOCKS cat_side layer for a knob tradier never reads | STOCKS_SHORT: KEPT GREY (naming + default): crypto-name MI exit voter; the stock live family is MI_EXIT_ENABLED_TRADIER / MI_EXHAUST_EXIT_ENABLED_TRADIER (config_tradier, default False) while the template bold is True -> un-greying this crypto name would put True into the STOCKS cat_side layer for a knob tradier never reads",
   "status": "kept_grey",
-  "ts": "2026-09-30T02:35:20.371219Z",
+  "ts": "2026-09-30T03:25:31.313652Z",
   "venues": []
  },
  "MI_MIN_GAIN_EXIT": {
@@ -1859,18 +3164,18 @@
   "files": [],
   "per_template": {
    "STOCKS_LONG": {
-    "reason": "bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
+    "reason": "KEPT GREY (naming + default): crypto-name MI exit voter; the stock live family is MI_EXIT_ENABLED_TRADIER / MI_STRUCT_EXIT_ENABLED_TRADIER (config_tradier, default False) while the template bold is True -> un-greying this crypto name would put True into the STOCKS cat_side layer for a knob tradier never reads",
     "status": "kept_grey"
    },
    "STOCKS_SHORT": {
-    "reason": "bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
+    "reason": "KEPT GREY (naming + default): crypto-name MI exit voter; the stock live family is MI_EXIT_ENABLED_TRADIER / MI_STRUCT_EXIT_ENABLED_TRADIER (config_tradier, default False) while the template bold is True -> un-greying this crypto name would put True into the STOCKS cat_side layer for a knob tradier never reads",
     "status": "kept_grey"
    }
   },
   "proof": "",
-  "reason": "STOCKS_LONG: bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator | STOCKS_SHORT: bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
+  "reason": "STOCKS_LONG: KEPT GREY (naming + default): crypto-name MI exit voter; the stock live family is MI_EXIT_ENABLED_TRADIER / MI_STRUCT_EXIT_ENABLED_TRADIER (config_tradier, default False) while the template bold is True -> un-greying this crypto name would put True into the STOCKS cat_side layer for a knob tradier never reads | STOCKS_SHORT: KEPT GREY (naming + default): crypto-name MI exit voter; the stock live family is MI_EXIT_ENABLED_TRADIER / MI_STRUCT_EXIT_ENABLED_TRADIER (config_tradier, default False) while the template bold is True -> un-greying this crypto name would put True into the STOCKS cat_side layer for a knob tradier never reads",
   "status": "kept_grey",
-  "ts": "2026-09-30T02:35:20.377728Z",
+  "ts": "2026-09-30T03:25:31.318503Z",
   "venues": []
  },
  "MI_TF_AGREE_MIN": {
@@ -1895,36 +3200,36 @@
   "files": [],
   "per_template": {
    "STOCKS_LONG": {
-    "reason": "bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
+    "reason": "KEPT GREY (naming + default): crypto-name MI exit voter; the stock live family is MI_EXIT_ENABLED_TRADIER / MI_VELOCITY_EXIT_ENABLED_TRADIER (config_tradier, default False) while the template bold is True -> un-greying this crypto name would put True into the STOCKS cat_side layer for a knob tradier never reads",
     "status": "kept_grey"
    },
    "STOCKS_SHORT": {
-    "reason": "bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
+    "reason": "KEPT GREY (naming + default): crypto-name MI exit voter; the stock live family is MI_EXIT_ENABLED_TRADIER / MI_VELOCITY_EXIT_ENABLED_TRADIER (config_tradier, default False) while the template bold is True -> un-greying this crypto name would put True into the STOCKS cat_side layer for a knob tradier never reads",
     "status": "kept_grey"
    }
   },
   "proof": "",
-  "reason": "STOCKS_LONG: bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator | STOCKS_SHORT: bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
+  "reason": "STOCKS_LONG: KEPT GREY (naming + default): crypto-name MI exit voter; the stock live family is MI_EXIT_ENABLED_TRADIER / MI_VELOCITY_EXIT_ENABLED_TRADIER (config_tradier, default False) while the template bold is True -> un-greying this crypto name would put True into the STOCKS cat_side layer for a knob tradier never reads | STOCKS_SHORT: KEPT GREY (naming + default): crypto-name MI exit voter; the stock live family is MI_EXIT_ENABLED_TRADIER / MI_VELOCITY_EXIT_ENABLED_TRADIER (config_tradier, default False) while the template bold is True -> un-greying this crypto name would put True into the STOCKS cat_side layer for a knob tradier never reads",
   "status": "kept_grey",
-  "ts": "2026-09-30T02:35:20.381026Z",
+  "ts": "2026-09-30T03:25:31.323200Z",
   "venues": []
  },
  "MI_WAVE_EXIT_ENABLED": {
   "files": [],
   "per_template": {
    "STOCKS_LONG": {
-    "reason": "bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
+    "reason": "KEPT GREY (naming + default): crypto-name MI exit voter; the stock live family is MI_EXIT_ENABLED_TRADIER / MI_WAVE_EXIT_ENABLED_TRADIER (config_tradier, default False) while the template bold is True -> un-greying this crypto name would put True into the STOCKS cat_side layer for a knob tradier never reads",
     "status": "kept_grey"
    },
    "STOCKS_SHORT": {
-    "reason": "bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
+    "reason": "KEPT GREY (naming + default): crypto-name MI exit voter; the stock live family is MI_EXIT_ENABLED_TRADIER / MI_WAVE_EXIT_ENABLED_TRADIER (config_tradier, default False) while the template bold is True -> un-greying this crypto name would put True into the STOCKS cat_side layer for a knob tradier never reads",
     "status": "kept_grey"
    }
   },
   "proof": "",
-  "reason": "STOCKS_LONG: bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator | STOCKS_SHORT: bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
+  "reason": "STOCKS_LONG: KEPT GREY (naming + default): crypto-name MI exit voter; the stock live family is MI_EXIT_ENABLED_TRADIER / MI_WAVE_EXIT_ENABLED_TRADIER (config_tradier, default False) while the template bold is True -> un-greying this crypto name would put True into the STOCKS cat_side layer for a knob tradier never reads | STOCKS_SHORT: KEPT GREY (naming + default): crypto-name MI exit voter; the stock live family is MI_EXIT_ENABLED_TRADIER / MI_WAVE_EXIT_ENABLED_TRADIER (config_tradier, default False) while the template bold is True -> un-greying this crypto name would put True into the STOCKS cat_side layer for a knob tradier never reads",
   "status": "kept_grey",
-  "ts": "2026-09-30T02:35:20.384044Z",
+  "ts": "2026-09-30T03:25:31.328389Z",
   "venues": []
  },
  "MTF_FILTER_STRONG_BUY_QUICK_BYPASS": {
@@ -2015,6 +3320,24 @@
   "reason": "STOCKS_LONG: bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator | STOCKS_SHORT: bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
   "status": "kept_grey",
   "ts": "2026-09-30T02:35:20.388434Z",
+  "venues": []
+ },
+ "NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY (not wired by this job): parent NEWBORN_LOSS_KILL_ENABLED is not a template switch and is OFF in every config -> this param can never bind in the sweep; crypto live NLK also has a BOTTOM_EXIT_HTF_WT_VETO the vec predicate lacks. Rows were un-greyed by a concurrent agent (placeholder policy)",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY (not wired by this job): parent NEWBORN_LOSS_KILL_ENABLED is not a template switch and is OFF in every config -> this param can never bind in the sweep; crypto live NLK also has a BOTTOM_EXIT_HTF_WT_VETO the vec predicate lacks. Rows were un-greyed by a concurrent agent (placeholder policy)",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY (not wired by this job): parent NEWBORN_LOSS_KILL_ENABLED is not a template switch and is OFF in every config -> this param can never bind in the sweep; crypto live NLK also has a BOTTOM_EXIT_HTF_WT_VETO the vec predicate lacks. Rows were un-greyed by a concurrent agent (placeholder policy) | STOCKS_SHORT: KEPT GREY (not wired by this job): parent NEWBORN_LOSS_KILL_ENABLED is not a template switch and is OFF in every config -> this param can never bind in the sweep; crypto live NLK also has a BOTTOM_EXIT_HTF_WT_VETO the vec predicate lacks. Rows were un-greyed by a concurrent agent (placeholder policy)",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.643087Z",
   "venues": []
  },
  "NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST": {
@@ -2395,6 +3718,42 @@
   "ts": "2026-09-30T02:33:50.954492Z",
   "venues": []
  },
+ "PARTIAL_PROFIT_LOCK_FRAC": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY: crypto-name PPL fraction; the shared PPL state machine (vec_decisions.reduce_profit_lock.ppl_step, used by tradier live + vec) does not read this name for stocks -> the template row has no stock object",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY: crypto-name PPL fraction; the shared PPL state machine (vec_decisions.reduce_profit_lock.ppl_step, used by tradier live + vec) does not read this name for stocks -> the template row has no stock object",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY: crypto-name PPL fraction; the shared PPL state machine (vec_decisions.reduce_profit_lock.ppl_step, used by tradier live + vec) does not read this name for stocks -> the template row has no stock object | STOCKS_SHORT: KEPT GREY: crypto-name PPL fraction; the shared PPL state machine (vec_decisions.reduce_profit_lock.ppl_step, used by tradier live + vec) does not read this name for stocks -> the template row has no stock object",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.630286Z",
+  "venues": []
+ },
+ "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY: tradier's own PEAK_GIVEBACK drop branch is unconditional (always ON inside the require-negative gate) -> the live-neutral stock value is True != template bold False; also a fixed-% giveback trigger (USER 2026-09-28 no fixed-% exits)",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY: tradier's own PEAK_GIVEBACK drop branch is unconditional (always ON inside the require-negative gate) -> the live-neutral stock value is True != template bold False; also a fixed-% giveback trigger (USER 2026-09-28 no fixed-% exits)",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY: tradier's own PEAK_GIVEBACK drop branch is unconditional (always ON inside the require-negative gate) -> the live-neutral stock value is True != template bold False; also a fixed-% giveback trigger (USER 2026-09-28 no fixed-% exits) | STOCKS_SHORT: KEPT GREY: tradier's own PEAK_GIVEBACK drop branch is unconditional (always ON inside the require-negative gate) -> the live-neutral stock value is True != template bold False; also a fixed-% giveback trigger (USER 2026-09-28 no fixed-% exits)",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.584879Z",
+  "venues": []
+ },
  "PER_SYM_GATE_FLAT_OPEN_ENFORCE": {
   "files": [],
   "per_template": {
@@ -2411,6 +3770,24 @@
   "reason": "STOCKS_LONG: class c (verified): tradier execute_now per-sym gate enforcement (genuine read, TradierConfig False, live fallback True); execution-layer governance, no vec meaning. | STOCKS_SHORT: class c (verified): tradier execute_now per-sym gate enforcement (genuine read, TradierConfig False, live fallback True); execution-layer governance, no vec meaning.",
   "status": "kept_grey",
   "ts": "2026-09-30T02:33:50.957264Z",
+  "venues": []
+ },
+ "PYRAMID_MIN_WT_VEL_1H": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY: vec pyramid-augment threshold (compute_augment_signals) with no stock live pyramid path (tradier only dead research read); bold 2.0 is an active value -> a live port = new stock augment strategy",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY: vec pyramid-augment threshold (compute_augment_signals) with no stock live pyramid path (tradier only dead research read); bold 2.0 is an active value -> a live port = new stock augment strategy",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY: vec pyramid-augment threshold (compute_augment_signals) with no stock live pyramid path (tradier only dead research read); bold 2.0 is an active value -> a live port = new stock augment strategy | STOCKS_SHORT: KEPT GREY: vec pyramid-augment threshold (compute_augment_signals) with no stock live pyramid path (tradier only dead research read); bold 2.0 is an active value -> a live port = new stock augment strategy",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.621889Z",
   "venues": []
  },
  "QUICK_REENTRY_60MIN_MIN_PCT": {
@@ -2485,6 +3862,24 @@
   "ts": "2026-09-30T02:33:50.965141Z",
   "venues": []
  },
+ "REENTRY2_DC_BREAK_REQUIRE_WT_FILTER": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream) | STOCKS_SHORT: BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.539050Z",
+  "venues": []
+ },
  "REENTRY2_DIR_FAV_ENABLED": {
   "files": [],
   "per_template": {
@@ -2501,6 +3896,24 @@
   "reason": "STOCKS_LONG: bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator | STOCKS_SHORT: bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
   "status": "kept_grey",
   "ts": "2026-09-30T02:35:20.395877Z",
+  "venues": []
+ },
+ "REENTRY2_STOCH_CROSS_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream) (vec REENTRY_2 block exists but is an ENTRY block under REENTRY_2_ENABLED=False, not the live reentry evaluation)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream) (vec REENTRY_2 block exists but is an ENTRY block under REENTRY_2_ENABLED=False, not the live reentry evaluation)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream) (vec REENTRY_2 block exists but is an ENTRY block under REENTRY_2_ENABLED=False, not the live reentry evaluation) | STOCKS_SHORT: BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream) (vec REENTRY_2 block exists but is an ENTRY block under REENTRY_2_ENABLED=False, not the live reentry evaluation)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.542734Z",
   "venues": []
  },
  "REENTRY_B16_SIZE_MULT_STRONG": {
@@ -2573,6 +3986,24 @@
   "reason": "STOCKS_LONG: bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator | STOCKS_SHORT: bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
   "status": "kept_grey",
   "ts": "2026-09-30T02:35:20.399629Z",
+  "venues": []
+ },
+ "REENTRY_CROSS_FRESHNESS_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream) | STOCKS_SHORT: BLOCKED: gates/params of a crypto live REENTRY path (ez_manage process_single_reentry_evaluation / evaluate_reentry_2 / reentry daemon) that neither tradier_manage nor simulate_one models (vec reentries = generic HARDCODED_RALLY/TARGET-DC/REENTRY_MANDATORY); wiring = porting that reentry state machine into both engines (reentry-parity workstream)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.546148Z",
   "venues": []
  },
  "REENTRY_EXHAUSTED_PARTIAL_ENABLED": {
@@ -2773,6 +4204,78 @@
   "ts": "2026-09-30T02:33:50.989811Z",
   "venues": []
  },
+ "REGIME_RANGING_EXIT_GAIN_MIN": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec) | STOCKS_SHORT: BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.391102Z",
+  "venues": []
+ },
+ "REGIME_RANGING_WT_REDUCE_FRAC_LOW": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY: vec regime-reduce fraction (compute_reduce_signals) with no stock live regime-reduce path (tradier only a dead `and False` research read); bold 0.4 is an active vec value, a live port would add a stock reduce",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY: vec regime-reduce fraction (compute_reduce_signals) with no stock live regime-reduce path (tradier only a dead `and False` research read); bold 0.4 is an active vec value, a live port would add a stock reduce",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY: vec regime-reduce fraction (compute_reduce_signals) with no stock live regime-reduce path (tradier only a dead `and False` research read); bold 0.4 is an active vec value, a live port would add a stock reduce | STOCKS_SHORT: KEPT GREY: vec regime-reduce fraction (compute_reduce_signals) with no stock live regime-reduce path (tradier only a dead `and False` research read); bold 0.4 is an active vec value, a live port would add a stock reduce",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.618116Z",
+  "venues": []
+ },
+ "REGIME_TRENDING_EXIT_GAIN_MIN": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec) | STOCKS_SHORT: BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.394386Z",
+  "venues": []
+ },
+ "REVERSE_ON_EXIT_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec). NOTE trb/trc books carry REVERSE_ON_EXIT_ENABLED=True for 6 sym_sides (inert today)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec). NOTE trb/trc books carry REVERSE_ON_EXIT_ENABLED=True for 6 sym_sides (inert today)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec). NOTE trb/trc books carry REVERSE_ON_EXIT_ENABLED=True for 6 sym_sides (inert today) | STOCKS_SHORT: BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec). NOTE trb/trc books carry REVERSE_ON_EXIT_ENABLED=True for 6 sym_sides (inert today)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.380723Z",
+  "venues": []
+ },
  "RULE_B_3M_EXIT_ENABLED": {
   "files": [],
   "per_template": {
@@ -2802,18 +4305,18 @@
   ],
   "per_template": {
    "STOCKS_LONG": {
-    "reason": "FIXED (a)",
+    "reason": "KEPT GREY: wired live+vec on 2026-09-29 (TradierConfig/QuickConfig 0.05) but the live default 0.05 is NOT among the template options [2.0, 1.0, 0, 0.5] -> rule: default not among options stays grey (only v15_avg_delta_apply may change rows/defaults)",
     "status": "kept_grey"
    },
    "STOCKS_SHORT": {
-    "reason": "FIXED (a)",
+    "reason": "KEPT GREY: wired live+vec on 2026-09-29 (TradierConfig/QuickConfig 0.05) but the live default 0.05 is NOT among the template options [2.0, 1.0, 0, 0.5] -> rule: default not among options stays grey (only v15_avg_delta_apply may change rows/defaults)",
     "status": "kept_grey"
    }
   },
   "proof": "data/reports/grey_switch_rewire_report_20260929.md per-switch FIXED table (default d=0, alt ledger changed); re-verified 2026-09-30 on s1/s2",
-  "reason": "STOCKS_LONG: FIXED (a) | STOCKS_SHORT: FIXED (a)",
+  "reason": "STOCKS_LONG: KEPT GREY: wired live+vec on 2026-09-29 (TradierConfig/QuickConfig 0.05) but the live default 0.05 is NOT among the template options [2.0, 1.0, 0, 0.5] -> rule: default not among options stays grey (only v15_avg_delta_apply may change rows/defaults) | STOCKS_SHORT: KEPT GREY: wired live+vec on 2026-09-29 (TradierConfig/QuickConfig 0.05) but the live default 0.05 is NOT among the template options [2.0, 1.0, 0, 0.5] -> rule: default not among options stays grey (only v15_avg_delta_apply may change rows/defaults)",
   "status": "kept_grey",
-  "ts": "2026-09-30T02:33:50.991993Z",
+  "ts": "2026-09-30T03:28:53.134426Z",
   "venues": []
  },
  "RZ_BREAKOUT_ENTRY_ENABLED": {
@@ -2835,10 +4338,10 @@
     "status": "wired"
    }
   },
-  "proof": "data/reports/grey_switch_rewire_report_20260929.md per-switch FIXED table (default d=0, alt ledger changed); re-verified 2026-09-30 on s1/s2",
+  "proof": "s1 re-verify: default 0/identical 6/6; True non-binding in all 6 30d windows (same as 2026-09-29: reentry machinery dominates; scalar tradier replay showed 5 RZ_BREAKOUT_L entries)",
   "reason": "STOCKS_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30",
   "status": "wired",
-  "ts": "2026-09-30T02:33:50.993923Z",
+  "ts": "2026-09-30T03:27:14.584263Z",
   "venues": [
    "STOCKS"
   ]
@@ -3041,6 +4544,152 @@
   "ts": "2026-09-30T02:33:51.018470Z",
   "venues": []
  },
+ "SHORT_DC_LOW_BREAK_ENABLED": {
+  "files": [],
+  "per_template": {
+   "CRYPTO_LONG": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): vec-only augment family, no live implementation in either venue",
+    "status": "blocked"
+   },
+   "CRYPTO_SHORT": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): vec-only augment family, no live implementation in either venue",
+    "status": "blocked"
+   },
+   "STOCKS_LONG": {
+    "reason": "no venue config/QuickConfig field for this template's venue (bold 'True')",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "CRYPTO_LONG: BLOCKED (NEW STRATEGY PROHIBITION): vec-only augment family, no live implementation in either venue | CRYPTO_SHORT: BLOCKED (NEW STRATEGY PROHIBITION): vec-only augment family, no live implementation in either venue | STOCKS_LONG: no venue config/QuickConfig field for this template's venue (bold 'True')",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.402764Z",
+  "venues": []
+ },
+ "SHORT_DC_LOW_BREAK_SIZE_MULT": {
+  "files": [],
+  "per_template": {
+   "CRYPTO_LONG": {
+    "reason": "BLOCKED: param of vec-only SHORT_DC_LOW_BREAK augment (no live implementation)",
+    "status": "blocked"
+   },
+   "CRYPTO_SHORT": {
+    "reason": "BLOCKED: param of vec-only SHORT_DC_LOW_BREAK augment (no live implementation)",
+    "status": "blocked"
+   },
+   "STOCKS_LONG": {
+    "reason": "no venue config/QuickConfig field for this template's venue (bold '1')",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "CRYPTO_LONG: BLOCKED: param of vec-only SHORT_DC_LOW_BREAK augment (no live implementation) | CRYPTO_SHORT: BLOCKED: param of vec-only SHORT_DC_LOW_BREAK augment (no live implementation) | STOCKS_LONG: no venue config/QuickConfig field for this template's venue (bold '1')",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.405886Z",
+  "venues": []
+ },
+ "SHORT_PARTIAL_RECOVERY_ENABLED": {
+  "files": [],
+  "per_template": {
+   "CRYPTO_LONG": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): vec-only augment family, no live implementation in either venue",
+    "status": "blocked"
+   },
+   "CRYPTO_SHORT": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): vec-only augment family, no live implementation in either venue",
+    "status": "blocked"
+   },
+   "STOCKS_LONG": {
+    "reason": "no venue config/QuickConfig field for this template's venue (bold 'True')",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "CRYPTO_LONG: BLOCKED (NEW STRATEGY PROHIBITION): vec-only augment family, no live implementation in either venue | CRYPTO_SHORT: BLOCKED (NEW STRATEGY PROHIBITION): vec-only augment family, no live implementation in either venue | STOCKS_LONG: no venue config/QuickConfig field for this template's venue (bold 'True')",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.409807Z",
+  "venues": []
+ },
+ "SHORT_PARTIAL_RECOVERY_SIZE_MULT": {
+  "files": [],
+  "per_template": {
+   "CRYPTO_LONG": {
+    "reason": "BLOCKED: param of vec-only SHORT_PARTIAL_RECOVERY augment",
+    "status": "blocked"
+   },
+   "CRYPTO_SHORT": {
+    "reason": "BLOCKED: param of vec-only SHORT_PARTIAL_RECOVERY augment",
+    "status": "blocked"
+   },
+   "STOCKS_LONG": {
+    "reason": "no venue config/QuickConfig field for this template's venue (bold '1')",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "CRYPTO_LONG: BLOCKED: param of vec-only SHORT_PARTIAL_RECOVERY augment | CRYPTO_SHORT: BLOCKED: param of vec-only SHORT_PARTIAL_RECOVERY augment | STOCKS_LONG: no venue config/QuickConfig field for this template's venue (bold '1')",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.413817Z",
+  "venues": []
+ },
+ "SHORT_PARTIAL_RECOVERY_THRESHOLD_PCT": {
+  "files": [],
+  "per_template": {
+   "CRYPTO_LONG": {
+    "reason": "BLOCKED: param of vec-only SHORT_PARTIAL_RECOVERY augment",
+    "status": "blocked"
+   },
+   "CRYPTO_SHORT": {
+    "reason": "BLOCKED: param of vec-only SHORT_PARTIAL_RECOVERY augment",
+    "status": "blocked"
+   },
+   "STOCKS_LONG": {
+    "reason": "no venue config/QuickConfig field for this template's venue (bold '-0.5')",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "CRYPTO_LONG: BLOCKED: param of vec-only SHORT_PARTIAL_RECOVERY augment | CRYPTO_SHORT: BLOCKED: param of vec-only SHORT_PARTIAL_RECOVERY augment | STOCKS_LONG: no venue config/QuickConfig field for this template's venue (bold '-0.5')",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.417310Z",
+  "venues": []
+ },
+ "SIMPLE_TP_EXIT_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY: fixed-% exit \u2014 USER 2026-09-28 mandate 'NEVER a fix % loss or profit exit' (DC-channel exits replace them); wiring would reintroduce a banned exit class",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY: fixed-% exit \u2014 USER 2026-09-28 mandate 'NEVER a fix % loss or profit exit' (DC-channel exits replace them); wiring would reintroduce a banned exit class",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY: fixed-% exit \u2014 USER 2026-09-28 mandate 'NEVER a fix % loss or profit exit' (DC-channel exits replace them); wiring would reintroduce a banned exit class | STOCKS_SHORT: KEPT GREY: fixed-% exit \u2014 USER 2026-09-28 mandate 'NEVER a fix % loss or profit exit' (DC-channel exits replace them); wiring would reintroduce a banned exit class",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.577355Z",
+  "venues": []
+ },
+ "SIMPLE_TP_PCT": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY: fixed-% exit \u2014 USER 2026-09-28 mandate 'NEVER a fix % loss or profit exit' (DC-channel exits replace them); wiring would reintroduce a banned exit class",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY: fixed-% exit \u2014 USER 2026-09-28 mandate 'NEVER a fix % loss or profit exit' (DC-channel exits replace them); wiring would reintroduce a banned exit class",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY: fixed-% exit \u2014 USER 2026-09-28 mandate 'NEVER a fix % loss or profit exit' (DC-channel exits replace them); wiring would reintroduce a banned exit class | STOCKS_SHORT: KEPT GREY: fixed-% exit \u2014 USER 2026-09-28 mandate 'NEVER a fix % loss or profit exit' (DC-channel exits replace them); wiring would reintroduce a banned exit class",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.581127Z",
+  "venues": []
+ },
  "STALE_HOLD_ENABLED": {
   "files": [],
   "per_template": {
@@ -3065,6 +4714,58 @@
   "reason": "CRYPTO_LONG: class c (verified): stale-indicator handling (tradier STALE_HOLD path); NPZ replay is never stale -> not vectorizable. | CRYPTO_SHORT: class c (verified): stale-indicator handling (tradier STALE_HOLD path); NPZ replay is never stale -> not vectorizable. | STOCKS_LONG: class c (verified): stale-indicator handling (tradier STALE_HOLD path); NPZ replay is never stale -> not vectorizable. | STOCKS_SHORT: class c (verified): stale-indicator handling (tradier STALE_HOLD path); NPZ replay is never stale -> not vectorizable.",
   "status": "kept_grey",
   "ts": "2026-09-30T02:33:51.021134Z",
+  "venues": []
+ },
+ "TECHNICAL_DC_STOP_TF": {
+  "files": [],
+  "per_template": {
+   "CRYPTO_LONG": {
+    "reason": "BLOCKED: vec-only construct \u2014 it only CONFIRMS a compute_exit_signals exit_sig bar with a DC crossing; live has no exit_sig composite in either venue, so there is no faithful live twin (a pure DC-cross exit already exists live as DAYTRADE_DC_*_TF). Per-sym books carry 'OFF' only",
+    "status": "blocked"
+   },
+   "CRYPTO_SHORT": {
+    "reason": "BLOCKED: vec-only construct \u2014 it only CONFIRMS a compute_exit_signals exit_sig bar with a DC crossing; live has no exit_sig composite in either venue, so there is no faithful live twin (a pure DC-cross exit already exists live as DAYTRADE_DC_*_TF). Per-sym books carry 'OFF' only",
+    "status": "blocked"
+   },
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: vec-only construct \u2014 it only CONFIRMS a compute_exit_signals exit_sig bar with a DC crossing; live has no exit_sig composite in either venue, so there is no faithful live twin (a pure DC-cross exit already exists live as DAYTRADE_DC_*_TF). Per-sym books carry 'OFF' only",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: vec-only construct \u2014 it only CONFIRMS a compute_exit_signals exit_sig bar with a DC crossing; live has no exit_sig composite in either venue, so there is no faithful live twin (a pure DC-cross exit already exists live as DAYTRADE_DC_*_TF). Per-sym books carry 'OFF' only",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "CRYPTO_LONG: BLOCKED: vec-only construct \u2014 it only CONFIRMS a compute_exit_signals exit_sig bar with a DC crossing; live has no exit_sig composite in either venue, so there is no faithful live twin (a pure DC-cross exit already exists live as DAYTRADE_DC_*_TF). Per-sym books carry 'OFF' only | CRYPTO_SHORT: BLOCKED: vec-only construct \u2014 it only CONFIRMS a compute_exit_signals exit_sig bar with a DC crossing; live has no exit_sig composite in either venue, so there is no faithful live twin (a pure DC-cross exit already exists live as DAYTRADE_DC_*_TF). Per-sym books carry 'OFF' only | STOCKS_LONG: BLOCKED: vec-only construct \u2014 it only CONFIRMS a compute_exit_signals exit_sig bar with a DC crossing; live has no exit_sig composite in either venue, so there is no faithful live twin (a pure DC-cross exit already exists live as DAYTRADE_DC_*_TF). Per-sym books carry 'OFF' only | STOCKS_SHORT: BLOCKED: vec-only construct \u2014 it only CONFIRMS a compute_exit_signals exit_sig bar with a DC crossing; live has no exit_sig composite in either venue, so there is no faithful live twin (a pure DC-cross exit already exists live as DAYTRADE_DC_*_TF). Per-sym books carry 'OFF' only",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.435250Z",
+  "venues": []
+ },
+ "TECHNICAL_DC_TARGET_TF": {
+  "files": [],
+  "per_template": {
+   "CRYPTO_LONG": {
+    "reason": "BLOCKED: vec-only construct (confirms compute_exit_signals exit_sig with a DC crossing); no live exit_sig composite in either venue; the live DC-cross exits are DAYTRADE_DC_*_TF",
+    "status": "blocked"
+   },
+   "CRYPTO_SHORT": {
+    "reason": "BLOCKED: vec-only construct (confirms compute_exit_signals exit_sig with a DC crossing); no live exit_sig composite in either venue; the live DC-cross exits are DAYTRADE_DC_*_TF",
+    "status": "blocked"
+   },
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: vec-only construct (confirms compute_exit_signals exit_sig with a DC crossing); no live exit_sig composite in either venue; the live DC-cross exits are DAYTRADE_DC_*_TF",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: vec-only construct (confirms compute_exit_signals exit_sig with a DC crossing); no live exit_sig composite in either venue; the live DC-cross exits are DAYTRADE_DC_*_TF",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "CRYPTO_LONG: BLOCKED: vec-only construct (confirms compute_exit_signals exit_sig with a DC crossing); no live exit_sig composite in either venue; the live DC-cross exits are DAYTRADE_DC_*_TF | CRYPTO_SHORT: BLOCKED: vec-only construct (confirms compute_exit_signals exit_sig with a DC crossing); no live exit_sig composite in either venue; the live DC-cross exits are DAYTRADE_DC_*_TF | STOCKS_LONG: BLOCKED: vec-only construct (confirms compute_exit_signals exit_sig with a DC crossing); no live exit_sig composite in either venue; the live DC-cross exits are DAYTRADE_DC_*_TF | STOCKS_SHORT: BLOCKED: vec-only construct (confirms compute_exit_signals exit_sig with a DC crossing); no live exit_sig composite in either venue; the live DC-cross exits are DAYTRADE_DC_*_TF",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.439188Z",
   "venues": []
  },
  "TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M": {
@@ -3094,10 +4795,10 @@
     "status": "wired"
    }
   },
-  "proof": "data/reports/grey_switch_rewire_report_20260929.md per-switch FIXED table (default d=0, alt ledger changed); re-verified 2026-09-30 on s1/s2",
+  "proof": "s1 re-verify: default 0/identical; non-binding (same structural reason)",
   "reason": "CRYPTO_LONG: FIXED on stocks only; STOCKS only; crypto rows stay grey: stock-named alias of DC_DAYTRADE_* (resolved in both engines; would duplicate rows) | CRYPTO_SHORT: FIXED on stocks only; STOCKS only; crypto rows stay grey: stock-named alias of DC_DAYTRADE_* (resolved in both engines; would duplicate rows) | STOCKS_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30",
   "status": "wired",
-  "ts": "2026-09-30T02:33:51.023158Z",
+  "ts": "2026-09-30T03:27:14.633043Z",
   "venues": [
    "STOCKS"
   ]
@@ -3129,10 +4830,10 @@
     "status": "wired"
    }
   },
-  "proof": "data/reports/grey_switch_rewire_report_20260929.md per-switch FIXED table (default d=0, alt ledger changed); re-verified 2026-09-30 on s1/s2",
+  "proof": "s1 re-verify: default 0/identical; non-binding (same structural reason)",
   "reason": "CRYPTO_LONG: FIXED on stocks only; STOCKS only; crypto rows stay grey: stock-named alias of DC_DAYTRADE_* (resolved in both engines; would duplicate rows) | CRYPTO_SHORT: FIXED on stocks only; STOCKS only; crypto rows stay grey: stock-named alias of DC_DAYTRADE_* (resolved in both engines; would duplicate rows) | STOCKS_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30",
   "status": "wired",
-  "ts": "2026-09-30T02:33:51.026312Z",
+  "ts": "2026-09-30T03:27:14.628731Z",
   "venues": [
    "STOCKS"
   ]
@@ -3164,10 +4865,10 @@
     "status": "wired"
    }
   },
-  "proof": "data/reports/grey_switch_rewire_report_20260929.md per-switch FIXED table (default d=0, alt ledger changed); re-verified 2026-09-30 on s1/s2",
+  "proof": "s1 re-verify: same as DC_ alias (2/2 changed, default 0)",
   "reason": "CRYPTO_LONG: FIXED on stocks only; STOCKS only; crypto rows stay grey: stock-named alias of DC_DAYTRADE_* (resolved in both engines; would duplicate rows) | CRYPTO_SHORT: FIXED on stocks only; STOCKS only; crypto rows stay grey: stock-named alias of DC_DAYTRADE_* (resolved in both engines; would duplicate rows) | STOCKS_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30",
   "status": "wired",
-  "ts": "2026-09-30T02:33:51.029085Z",
+  "ts": "2026-09-30T03:27:14.614829Z",
   "venues": [
    "STOCKS"
   ]
@@ -3199,10 +4900,10 @@
     "status": "wired"
    }
   },
-  "proof": "data/reports/grey_switch_rewire_report_20260929.md per-switch FIXED table (default d=0, alt ledger changed); re-verified 2026-09-30 on s1/s2",
+  "proof": "s1 re-verify: identical to the DC_ alias (3/3 changed, default 0)",
   "reason": "CRYPTO_LONG: FIXED on stocks only; STOCKS only; crypto rows stay grey: stock-named alias of DC_DAYTRADE_* (resolved in both engines; would duplicate rows) | CRYPTO_SHORT: FIXED on stocks only; STOCKS only; crypto rows stay grey: stock-named alias of DC_DAYTRADE_* (resolved in both engines; would duplicate rows) | STOCKS_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30",
   "status": "wired",
-  "ts": "2026-09-30T02:33:51.031105Z",
+  "ts": "2026-09-30T03:27:14.606124Z",
   "venues": [
    "STOCKS"
   ]
@@ -3234,13 +4935,31 @@
     "status": "wired"
    }
   },
-  "proof": "data/reports/grey_switch_rewire_report_20260929.md per-switch FIXED table (default d=0, alt ledger changed); re-verified 2026-09-30 on s1/s2",
+  "proof": "s1 re-verify: identical to the DC_ alias (3/3 changed, default 0)",
   "reason": "CRYPTO_LONG: FIXED on stocks only; STOCKS only; crypto rows stay grey: stock-named alias of DC_DAYTRADE_* (resolved in both engines; would duplicate rows) | CRYPTO_SHORT: FIXED on stocks only; STOCKS only; crypto rows stay grey: stock-named alias of DC_DAYTRADE_* (resolved in both engines; would duplicate rows) | STOCKS_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30",
   "status": "wired",
-  "ts": "2026-09-30T02:33:51.033409Z",
+  "ts": "2026-09-30T03:27:14.601368Z",
   "venues": [
    "STOCKS"
   ]
+ },
+ "TREND_EXIT_SCORE_FLIP": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY: threshold of TREND_REVERSAL_EXIT which runs only for crypto TREND_ACCOUNTS (account-membership gate, no switch); bold 0 is an ACTIVE threshold, so a stock port would add a live exit",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY: threshold of TREND_REVERSAL_EXIT which runs only for crypto TREND_ACCOUNTS (account-membership gate, no switch); bold 0 is an ACTIVE threshold, so a stock port would add a live exit",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY: threshold of TREND_REVERSAL_EXIT which runs only for crypto TREND_ACCOUNTS (account-membership gate, no switch); bold 0 is an ACTIVE threshold, so a stock port would add a live exit | STOCKS_SHORT: KEPT GREY: threshold of TREND_REVERSAL_EXIT which runs only for crypto TREND_ACCOUNTS (account-membership gate, no switch); bold 0 is an ACTIVE threshold, so a stock port would add a live exit",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.588591Z",
+  "venues": []
  },
  "TREND_MIN_GAIN_EXIT": {
   "files": [],
@@ -3380,6 +5099,51 @@
   "ts": "2026-09-30T02:35:20.436785Z",
   "venues": []
  },
+ "WT_15M_CROSS_ENTRY_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec) | STOCKS_SHORT: BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.384160Z",
+  "venues": []
+ },
+ "WT_4H_VEL_EXIT_ENABLED": {
+  "files": [
+   "vec_decisions/grey_wire_exits.py",
+   "v12_quick_engine.py (simulate_one GREY-WIRE exit hook)",
+   "tradier_manage.py (process_position GREY_REWIRE_EXIT block)",
+   "config_tradier.py",
+   "test_grey_wire_exits.py",
+   "tools/grey_wire_proof.py"
+  ],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   },
+   "STOCKS_SHORT": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   }
+  },
+  "proof": "s2 30d vec (tools/grey_wire_proof.py): default delta 0.000000000 + identical ledger on 8/8 stock sym_sides; 12/12 stock + 8/8 crypto {} baselines bit-identical pre/post engine; alt=True changed the ledger on 7/8 (A_LONG non-binding) (reason histogram shows the new exit)",
+  "reason": "STOCKS_LONG: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed | STOCKS_SHORT: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+  "status": "wired",
+  "ts": "2026-09-30T03:14:21.405750Z",
+  "venues": [
+   "STOCKS"
+  ]
+ },
  "WT_4H_VEL_EXIT_K_EXTREME_HIGH": {
   "files": [],
   "per_template": {
@@ -3450,6 +5214,96 @@
   "reason": "STOCKS_LONG: default not among options: live default 'True' (QuickConfig) not in ['1.0', '2.0', '0', '0.5'] | STOCKS_SHORT: default not among options: live default 'True' (QuickConfig) not in ['1.0', '2.0', '0', '0.5']",
   "status": "kept_grey",
   "ts": "2026-09-30T02:33:51.052850Z",
+  "venues": []
+ },
+ "WT_AGAINST_FILTER_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec) (tradier _v12_b11_reentry_allowed resolver is never called)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec) (tradier _v12_b11_reentry_allowed resolver is never called)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec) (tradier _v12_b11_reentry_allowed resolver is never called) | STOCKS_SHORT: BLOCKED (NEW STRATEGY PROHIBITION): no live source of truth in ANY venue \u2014 crypto has only synthetic `_batch1_template_live_gate`/`_ensure_ez_all` stub reads, the vec side only purged NEW_AUDIT/`_batch1_template_wiring` scaffolding; wiring it would invent a strategy (needs an operator spec) (tradier _v12_b11_reentry_allowed resolver is never called)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.387554Z",
+  "venues": []
+ },
+ "WT_COMPOSITE_ENTRY_BLOCK": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (wt_composite entry tiers)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (wt_composite entry tiers)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (wt_composite entry tiers) | STOCKS_SHORT: BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (wt_composite entry tiers)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.460723Z",
+  "venues": []
+ },
+ "WT_COMPOSITE_ENTRY_GOOD": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (wt_composite entry tiers)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (wt_composite entry tiers)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (wt_composite entry tiers) | STOCKS_SHORT: BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (wt_composite entry tiers)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.464903Z",
+  "venues": []
+ },
+ "WT_COMPOSITE_ENTRY_OK": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (wt_composite entry tiers)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (wt_composite entry tiers)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (wt_composite entry tiers) | STOCKS_SHORT: BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (wt_composite entry tiers)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.468564Z",
+  "venues": []
+ },
+ "WT_COMPOSITE_ENTRY_STRONG": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (wt_composite entry tiers)",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (wt_composite entry tiers)",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (wt_composite entry tiers) | STOCKS_SHORT: BLOCKED: a score bonus/threshold inside crypto ez_positions_quick.rate() (entry score); the vec engine has no model of rate()'s total-score threshold and tradier_manage.calculate_signal_score is a different scorer \u2014 a faithful live==vec port is a scorer redesign (operator) (wt_composite entry tiers)",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.471945Z",
   "venues": []
  },
  "WT_CROSS_EXIT_APPLIES_TO_WINNERS": {
@@ -3577,10 +5431,10 @@
     "status": "wired"
    }
   },
-  "proof": "data/reports/grey_switch_rewire_report_20260929.md per-switch FIXED table (default d=0, alt ledger changed); re-verified 2026-09-30 on s1/s2",
+  "proof": "s1 re-verify (stocks): default 0/identical; False changed NVDA_LONG (41->17 trades) and MU_SHORT ledgers",
   "reason": "CRYPTO_LONG: FIXED on stocks only; STOCKS only; crypto rows stay grey: crypto live has no WT_DC-scorer entry path (finding F6) | CRYPTO_SHORT: FIXED on stocks only; STOCKS only; crypto rows stay grey: crypto live has no WT_DC-scorer entry path (finding F6) | STOCKS_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30",
   "status": "wired",
-  "ts": "2026-09-30T02:33:51.062219Z",
+  "ts": "2026-09-30T03:27:14.588328Z",
   "venues": [
    "STOCKS"
   ]
@@ -3601,6 +5455,60 @@
   "reason": "STOCKS_LONG: bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator | STOCKS_SHORT: bold default is the ON value of a crypto feature that tradier_manage has no decision path for (only _FULL_COVERAGE list / `if getattr(...): _=` stub / `_wire_weak_` / uncalled `_batch1_template_live_gate_tradier`). Un-greying adds the bold value to the STOCKS cat_side defaults and a live port AT that default would START a new live stock behaviour on operator restart (violates 'zero live behaviour change at the default' + NEW STRATEGY PROHIBITION) -> kept grey; parity gap recorded for the operator",
   "status": "kept_grey",
   "ts": "2026-09-30T02:35:20.445630Z",
+  "venues": []
+ },
+ "WT_EXHAUST_ENTRY_GATE_ENABLED": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY: the crypto gate (rate() R-G5) needs wt_momentum_state_3m AND _15m both EXHAUST; stock data (5m base) has no 3m -> can never bind on stocks",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY: the crypto gate (rate() R-G5) needs wt_momentum_state_3m AND _15m both EXHAUST; stock data (5m base) has no 3m -> can never bind on stocks",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY: the crypto gate (rate() R-G5) needs wt_momentum_state_3m AND _15m both EXHAUST; stock data (5m base) has no 3m -> can never bind on stocks | STOCKS_SHORT: KEPT GREY: the crypto gate (rate() R-G5) needs wt_momentum_state_3m AND _15m both EXHAUST; stock data (5m base) has no 3m -> can never bind on stocks",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.609993Z",
+  "venues": []
+ },
+ "WT_EXHAUST_EXIT_MIN_GAIN_PCT": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY: parent WT_EXHAUST_EXIT_ENABLED is no template switch, is ON in crypto live/QuickConfig and absent from stock live; a vec twin gated by it shifts every crypto sweep baseline, and at the live-neutral stock parent (OFF) this param can never bind",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY: parent WT_EXHAUST_EXIT_ENABLED is no template switch, is ON in crypto live/QuickConfig and absent from stock live; a vec twin gated by it shifts every crypto sweep baseline, and at the live-neutral stock parent (OFF) this param can never bind",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY: parent WT_EXHAUST_EXIT_ENABLED is no template switch, is ON in crypto live/QuickConfig and absent from stock live; a vec twin gated by it shifts every crypto sweep baseline, and at the live-neutral stock parent (OFF) this param can never bind | STOCKS_SHORT: KEPT GREY: parent WT_EXHAUST_EXIT_ENABLED is no template switch, is ON in crypto live/QuickConfig and absent from stock live; a vec twin gated by it shifts every crypto sweep baseline, and at the live-neutral stock parent (OFF) this param can never bind",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.602985Z",
+  "venues": []
+ },
+ "WT_EXHAUST_EXIT_REQUIRE_GAIN": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY: param of WT_EXHAUST_EXIT (parent not a template switch, ON in crypto, absent on stocks) \u2014 same reason as WT_EXHAUST_EXIT_MIN_GAIN_PCT",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY: param of WT_EXHAUST_EXIT (parent not a template switch, ON in crypto, absent on stocks) \u2014 same reason as WT_EXHAUST_EXIT_MIN_GAIN_PCT",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY: param of WT_EXHAUST_EXIT (parent not a template switch, ON in crypto, absent on stocks) \u2014 same reason as WT_EXHAUST_EXIT_MIN_GAIN_PCT | STOCKS_SHORT: KEPT GREY: param of WT_EXHAUST_EXIT (parent not a template switch, ON in crypto, absent on stocks) \u2014 same reason as WT_EXHAUST_EXIT_MIN_GAIN_PCT",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.606414Z",
   "venues": []
  },
  "WT_LOWER_CROSS_EXIT_TF": {
@@ -3630,12 +5538,117 @@
     "status": "wired"
    }
   },
-  "proof": "data/reports/grey_switch_rewire_report_20260929.md per-switch FIXED table (default d=0, alt ledger changed); re-verified 2026-09-30 on s1/s2",
+  "proof": "s1 re-verify: default 0/identical 6/6; 1h changed 6/6 ledgers (NVDA_LONG -4.31, MU_SHORT +5.86, SOLUSDC_LONG +1.42)",
   "reason": "CRYPTO_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | CRYPTO_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_LONG: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30 | STOCKS_SHORT: un-greyed by the 2026-09-29 rewire (FIXED); verified non-grey in template 2026-09-30",
   "status": "wired",
-  "ts": "2026-09-30T02:33:51.064794Z",
+  "ts": "2026-09-30T03:27:14.580164Z",
   "venues": [
    "CRYPTO",
+   "STOCKS"
+  ]
+ },
+ "WT_PERCENTILE_ENTRY_GATE_ENABLED": {
+  "files": [
+   "vec_decisions/grey_wire_entries.py",
+   "v12_quick_engine.py (entry filter stack)",
+   "tradier_manage.py (queue_trade_action GREY_WIRE_OPEN_GATE)",
+   "config_tradier.py",
+   "test_grey_wire_exits.py"
+  ],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   },
+   "STOCKS_SHORT": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   }
+  },
+  "proof": "s2 30d vec: default 0 + identical ledger 7/7; alt True changed MU_SHORT/GDX_LONG/RIO_LONG ledgers; unit test scalar(live)==vec per bar; baselines 12/12 stock + 8/8 crypto identical",
+  "reason": "STOCKS_LONG: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed | STOCKS_SHORT: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+  "status": "wired",
+  "ts": "2026-09-30T03:14:21.420446Z",
+  "venues": [
+   "STOCKS"
+  ]
+ },
+ "WT_PERCENTILE_ENTRY_OB_D": {
+  "files": [
+   "vec_decisions/grey_wire_entries.py",
+   "v12_quick_engine.py (entry filter stack)",
+   "tradier_manage.py (queue_trade_action GREY_WIRE_OPEN_GATE)",
+   "config_tradier.py",
+   "test_grey_wire_exits.py"
+  ],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   },
+   "STOCKS_SHORT": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   }
+  },
+  "proof": "ctx GATE=True: default 0/identical 7/7; 60 changed GDX_LONG (-1.63), NVDA_LONG, RIO_LONG ledgers",
+  "reason": "STOCKS_LONG: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed | STOCKS_SHORT: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+  "status": "wired",
+  "ts": "2026-09-30T03:14:21.423221Z",
+  "venues": [
+   "STOCKS"
+  ]
+ },
+ "WT_PERCENTILE_ENTRY_OS_D": {
+  "files": [
+   "vec_decisions/grey_wire_entries.py",
+   "v12_quick_engine.py (entry filter stack)",
+   "tradier_manage.py (queue_trade_action GREY_WIRE_OPEN_GATE)",
+   "config_tradier.py",
+   "test_grey_wire_exits.py"
+  ],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   },
+   "STOCKS_SHORT": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   }
+  },
+  "proof": "ctx GATE=True: default 0/identical 7/7; 40 changed MU_SHORT (+9.04, 17->1 trades)",
+  "reason": "STOCKS_LONG: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed | STOCKS_SHORT: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+  "status": "wired",
+  "ts": "2026-09-30T03:14:21.426161Z",
+  "venues": [
+   "STOCKS"
+  ]
+ },
+ "WT_PERCENTILE_EXIT_ENABLED": {
+  "files": [
+   "vec_decisions/grey_wire_exits.py",
+   "v12_quick_engine.py (simulate_one GREY-WIRE exit hook)",
+   "tradier_manage.py (process_position GREY_REWIRE_EXIT block)",
+   "config_tradier.py",
+   "test_grey_wire_exits.py",
+   "tools/grey_wire_proof.py"
+  ],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   },
+   "STOCKS_SHORT": {
+    "reason": "live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+    "status": "wired"
+   }
+  },
+  "proof": "s2 30d vec (tools/grey_wire_proof.py): default delta 0.000000000 + identical ledger on 8/8 stock sym_sides; 12/12 stock + 8/8 crypto {} baselines bit-identical pre/post engine; alt=True changed the ledger on 5/8 (AAPL L/S non-binding: D/4h percentile never both extreme) (reason histogram shows the new exit)",
+  "reason": "STOCKS_LONG: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed | STOCKS_SHORT: live tradier + vec simulate_one via shared predicate; TradierConfig default = today's live behaviour; un-greyed",
+  "status": "wired",
+  "ts": "2026-09-30T03:14:21.411626Z",
+  "venues": [
    "STOCKS"
   ]
  },
@@ -3711,6 +5724,24 @@
   "ts": "2026-09-30T02:33:51.075344Z",
   "venues": []
  },
+ "WT_REDUCE_FRAC_HIGH": {
+  "files": [],
+  "per_template": {
+   "STOCKS_LONG": {
+    "reason": "KEPT GREY: crypto ez_positions_quick WT reduce fraction (active crypto value 0.5, reduce at 1-3% gain); tradier has no WT-reduce path and simulate_one no twin -> bold 0.5 is not live-neutral for stocks",
+    "status": "kept_grey"
+   },
+   "STOCKS_SHORT": {
+    "reason": "KEPT GREY: crypto ez_positions_quick WT reduce fraction (active crypto value 0.5, reduce at 1-3% gain); tradier has no WT-reduce path and simulate_one no twin -> bold 0.5 is not live-neutral for stocks",
+    "status": "kept_grey"
+   }
+  },
+  "proof": "",
+  "reason": "STOCKS_LONG: KEPT GREY: crypto ez_positions_quick WT reduce fraction (active crypto value 0.5, reduce at 1-3% gain); tradier has no WT-reduce path and simulate_one no twin -> bold 0.5 is not live-neutral for stocks | STOCKS_SHORT: KEPT GREY: crypto ez_positions_quick WT reduce fraction (active crypto value 0.5, reduce at 1-3% gain); tradier has no WT-reduce path and simulate_one no twin -> bold 0.5 is not live-neutral for stocks",
+  "status": "kept_grey",
+  "ts": "2026-09-30T03:25:12.613786Z",
+  "venues": []
+ },
  "WT_REDUCE_FRAC_LOW": {
   "files": [],
   "per_template": {
@@ -3745,6 +5776,32 @@
   "reason": "STOCKS_LONG: default not among options: live default '0.25' (QuickConfig) not in ['1.0', '2.0', '0', '0.5'] | STOCKS_SHORT: default not among options: live default '0.25' (QuickConfig) not in ['0.5', '2.0', '0', '1.0']",
   "status": "kept_grey",
   "ts": "2026-09-30T02:33:51.082727Z",
+  "venues": []
+ },
+ "WT_SIMPLE_GUARANTEE_ENABLED": {
+  "files": [],
+  "per_template": {
+   "CRYPTO_LONG": {
+    "reason": "BLOCKED: no field in config.py/config_tradier.py and no live read anywhere; vec effect only via exit_sig (F3) -> no live source",
+    "status": "blocked"
+   },
+   "CRYPTO_SHORT": {
+    "reason": "BLOCKED: no field in config.py/config_tradier.py and no live read anywhere; vec effect only via exit_sig (F3) -> no live source",
+    "status": "blocked"
+   },
+   "STOCKS_LONG": {
+    "reason": "BLOCKED: no field in config.py/config_tradier.py and no live read anywhere; vec effect only via exit_sig (F3) -> no live source",
+    "status": "blocked"
+   },
+   "STOCKS_SHORT": {
+    "reason": "BLOCKED: no field in config.py/config_tradier.py and no live read anywhere; vec effect only via exit_sig (F3) -> no live source",
+    "status": "blocked"
+   }
+  },
+  "proof": "",
+  "reason": "CRYPTO_LONG: BLOCKED: no field in config.py/config_tradier.py and no live read anywhere; vec effect only via exit_sig (F3) -> no live source | CRYPTO_SHORT: BLOCKED: no field in config.py/config_tradier.py and no live read anywhere; vec effect only via exit_sig (F3) -> no live source | STOCKS_LONG: BLOCKED: no field in config.py/config_tradier.py and no live read anywhere; vec effect only via exit_sig (F3) -> no live source | STOCKS_SHORT: BLOCKED: no field in config.py/config_tradier.py and no live read anywhere; vec effect only via exit_sig (F3) -> no live source",
+  "status": "blocked",
+  "ts": "2026-09-30T03:25:12.431119Z",
   "venues": []
  }
 }

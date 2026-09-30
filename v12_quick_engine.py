@@ -22730,7 +22730,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         if _gw_exits:
             _gw_bar.i = i
             _gw_fire, _gw_reason = vec_decisions.grey_wire_exits.first_fire(
-                _gw_exits, _gw_c, _gw_bar, {'gain': float(live_pnl_pct), 'age_s': float(held_bars * bmin * 60.0), 'entry_px': float(pos['avg_price']), 'px': float(px)}, is_long)
+                _gw_exits, _gw_c, _gw_bar, {'gain': float(live_pnl_pct), 'age_s': float(held_bars * bmin * 60.0), 'entry_px': float(pos['avg_price']), 'px': float(px), 'max_gain': float(pos.get('peak_pnl_pct', 0.0)), 'reentered': 'REENTRY' in str(pos.get('entry_reason', '')), 'augmented': int(pos.get('n_augments', 0)) > 0}, is_long)
             if _gw_fire:
                 pos['fees'] += abs(pos['qty'] * px) * half_fee
                 _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']

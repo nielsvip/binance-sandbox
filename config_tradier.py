@@ -1803,6 +1803,18 @@ class TradierConfig:
     HTF_GATE_SIGNALS_SMA200D: bool = True
     HTF_GATE_D_MANDATORY: float = 0.0  # falsy (template/QuickConfig encode this bool as 0.0)
     HTF_GATE_MIN_CONFIRMATIONS: int = 2
+    # 2026-09-30 GREY-SWITCH WIRING batch 3: HLR_TOP_EXIT ("sell the top") stock live port (tradier GREY_REWIRE_EXIT block ->
+    # vec_decisions.quick_reduce_strong.check_quick_reduce_strong, the same core as the engine's qr_cond path). OFF = today's stock live.
+    HLR_TOP_EXIT_ENABLED: bool = False
+    HLR_TOP_MIN_TFS: int = 2
+    HLR_TOP_MIN_GAIN_PCT: float = 1.5
+    HLR_TOP_VEL_1H_THRESH: float = -1.0
+    HLR_TOP_VEL_4H_THRESH: float = 0.0
+    HLR_TOP_VEL_D_THRESH: float = 0.0
+    # batch 3: BREAKEVEN_GAIN_EROSION stock live port (grey_wire_exits.breakeven_gain_erosion). OFF = today's stock live.
+    BREAKEVEN_GAIN_EROSION_ENABLED: bool = False
+    BREAKEVEN_GAIN_EROSION_MIN_GAIN: float = 50.0
+    BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT: bool = True
     DC_DAYTRADE_TARGET_PCT: float = 0.01  # 1% profit target
     DC_DAYTRADE_MAX_HOLD_MINUTES: float = 240.0  # 4h max hold (flatten before close regardless)
     DC_DAYTRADE_PRE_CLOSE_MINUTES: int = 120  # Start flattening 2h before market close (14:00 ET)
