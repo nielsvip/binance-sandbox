@@ -1037,7 +1037,7 @@ class MarkPriceStreamer:
         
     async def fetch_klines(self, symbol: str, limit: int, end_dt: datetime = None) -> pd.DataFrame:
         """Fetch klines with improved rate limiting and error handling"""
-        api_symbol = symbol.replace("USDC", "USDT") if symbol.endswith("USDC") else symbol
+        api_symbol = symbol
         actual_limit = min(limit, 1500)
         params = {"symbol": api_symbol, "interval": "3m", "limit": actual_limit}
         if end_dt: params['endTime'] = int(end_dt.timestamp() * 1000)
@@ -1127,7 +1127,7 @@ class MarkPriceStreamer:
         self.symbols_to_run = sorted(force_usdc_in_list(initial_symbols, live_usdc_pairs))
         
         for original_symbol in self.symbols_to_run:
-            api_symbol = original_symbol.replace("USDC", "USDT") if original_symbol.endswith("USDC") else original_symbol
+            api_symbol = original_symbol
             self.api_symbol_to_original_map[api_symbol] = original_symbol
         
         # Start websocket listener IMMEDIATELY

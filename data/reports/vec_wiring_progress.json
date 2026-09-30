@@ -91,5 +91,24 @@
   "vec_decisions_audit": "data/reports/wiring/vec_decisions_audit.md \u2014 wired twins faithful (0 discrepancies), no fabrication in vec_decisions, 80/107 imported-but-dead files flagged",
   "OPEN_divergence": "config.py Mac!=fleet(de3fc620) + config_tradier + tradier_manage s2-diverged; deployed Mac-as-source-of-truth, baseline verified intact; tradier_manage 3 ports on Mac live-authoritative, s2 scalar-verifier NOT clobbered",
   "OPEN_data_tasks": "backfill historical funding + Fear&Greed caches to activate those wired gates"
+ },
+ "BB_WTDC_FIX_2026_09_30": {
+  "engine_md5": "52df25676fc221bf1fb6302218ff8694",
+  "deployed": [
+   "s1",
+   "s2",
+   "s5"
+  ],
+  "baseline_verified": "RVN 121/-14.52, COMP 160/+4.71 unchanged",
+  "H1_BB_exits_fixed": "BB_EXIT_AT_LOSS/BB_PROFIT_TAKE removed from compute_reentry_blocks, routed to exit_sig in compute_exit_signals (proven exit_sig 841->1345 with BB on); band-touch per-TF; testable as EXIT path",
+  "H2_WT_DC_stoch_fixed": "WT_DC_STOCH_TF 5m/3m -> 15m (was phantom no-op)",
+  "WT_DC_exit_wired": "ported_stateful_exit.py: wt_score_1h AGAINST + |>=WT_DC_EXIT_THRESHOLD| + gain>0.2 gate (faithful wt_dc_delta.py:1039-1054); default ON=live parity; rarely fires (wt_score bounded ~+/-28 vs thr 25-30) = honest",
+  "M1_VIGILANCE_fixed": "k_3m/d_3m -> stoch_k_15m/stoch_d_15m (phantom always-True leg fixed)",
+  "audit_report": "data/reports/wiring/all_tabs_audit.md \u2014 fabrication CLEAN, faithfulness PASS",
+  "OPEN_from_audit": {
+   "H5": "~40 imported check_(entry|exit)_candidates_* modules NEVER CALLED (only bb_squeeze_gate is) -> dead switches: WT_CROSS_EXIT_ENABLED, WT_ACCEL_EXIT_ENABLED, WT_MOMENTUM_EXIT_THRESHOLD, WT_DIV_EXIT_ENABLED, SCALP_V3_K_OB_EXIT_ENABLED. Wire (call the module) or mark VEC_UNSUPPORTED.",
+   "M2": "exit switches under ENTRY_BREAKOUT_CHANNEL tab (E_1_EXIT_DELTA_THR, MI_MIN_GAIN_EXIT, TRADIER_RSI2_EXIT_THRESHOLD_*) -> template tab misattribution",
+   "M3": "~39/52 *_FILTER_TF names unmapped/inert in generic_filter_tf (only ~13 mapped)"
+  }
  }
 }

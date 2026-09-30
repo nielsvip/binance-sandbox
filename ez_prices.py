@@ -1472,7 +1472,7 @@ class ResamplingAndGapFillEngine:
         async with self.api_semaphore:
             async with self.fapi_semaphore:
                 try:
-                    api_symbol = symbol.replace("USDC", "USDT") if symbol.endswith("USDC") else symbol
+                    api_symbol = symbol
                     api_interval = "1d" if interval.lower() == "d" else interval.lower()
                     url = f"{config.FAPI_BASE_URL}/klines"
                     params = {"symbol": api_symbol, "interval": api_interval, "limit": min(limit, 1500)}
@@ -1997,8 +1997,7 @@ class ResamplingAndGapFillEngine:
         while remaining_bars > 0:
             fetch_size = min(remaining_bars, MAX_BARS_PER_API_FETCH)
             async with self.api_semaphore:
-                # Use USDT for API calls as per Binance convention, even for USDC pairs
-                api_symbol = symbol.replace("USDC", "USDT")
+                api_symbol = symbol
                 api_interval = "1d" if interval == "D" else interval
                 params = {"symbol": api_symbol, "interval": api_interval, "limit": fetch_size}
                 if current_end_time:
@@ -4809,12 +4808,27 @@ class ResamplingAndGapFillEngine:
                     if json_file.is_file() and not json_file.name.startswith('.tmp'):
                         original_size = json_file.stat().st_size
                         df = await self._read_file_unlocked(json_file)
-                        # Server: keep ALL bars for backtesting — never clip
-                        # MacBook: clip >1800 → 1200 to save disk
+                        # Server: keep ALL bars for backtesting — 400D of 15m always on S1 and ext drive
+                        # MacBook: clip to 90D (8640 bars) to save disk
+                        _stem = json_file.stem
+                        _tf = _stem.rsplit('_', 1)[1] if '_' in _stem else ''
                         if env == 'server':
+                            # S1 and ext drive keep 400D of 15m (38400 bars) + buffer
+                            _trim = {'1m': (14000, 18000), '3m': (5000, 7000), '15m': (38400, 40000),
+                                     '1h': (9600, 10000), '4h': (2400, 3000), 'D': (400, 500),
+                                     'W': (300, 500), 'M': (60, 100)}
+                            _keep, _cap = _trim.get(_tf, (1200, 1800))
+                            if not df.empty and len(df) > _cap:
+                                before_bars = len(df)
+                                df_clipped = df.tail(_keep).copy()
+                                await self._write_file_unlocked(df_clipped, json_file)
+                                new_size = json_file.stat().st_size
+                                freed_space += (original_size - new_size)
+                                clipped_files += 1
+                                self.logger.debug(f"Clipped {json_file.name}: {before_bars} → {_keep} bars (400D), saved {(original_size - new_size) / 1024:.1f}KB")
                             continue
-                        _trim = {'1m': (14000, 18000), '3m': (5000, 7000), '15m': (1500, 2000),
-                                 '1h': (1700, 2500), '4h': (1700, 2500), 'D': (2000, 3000),
+                        _trim = {'1m': (14000, 18000), '3m': (5000, 7000), '15m': (8640, 10000),
+                                 '1h': (2160, 2500), '4h': (540, 700), 'D': (400, 500),
                                  'W': (300, 500), 'M': (60, 100)}
                         _stem = json_file.stem
                         _tf = _stem.rsplit('_', 1)[1] if '_' in _stem else ''

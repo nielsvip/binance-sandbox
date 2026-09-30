@@ -1,17 +1,17 @@
-PERFORMANCE REPORT — 2026-09-30 18:32 UTC
+PERFORMANCE REPORT — 2026-09-30 19:32 UTC
 ================================================================================
-Total: 146 symbols | A=6 B=100 C=40
+Total: 144 symbols | A=6 B=99 C=39
 Window: 14 days | Min trades: 5
 
 --- TIER A (6 symbols) ---
              MRVL  WR=67%  avg=+4.57%  total=+149.9%  trades= 21  mult=10.00
              CRWD  WR=64%  avg=+1.31%  total=+58.4%  trades= 36  mult=10.00
-             MSFT  WR=95%  avg=+0.70%  total=+16.6%  trades= 22  mult=10.00
-                A  WR=67%  avg=+0.79%  total=+15.1%  trades= 18  mult=8.50
-             PYPL  WR=62%  avg=+0.37%  total=+14.4%  trades= 37  mult=5.71
-             NVDA  WR=92%  avg=+0.68%  total=+8.4%  trades= 12  mult=8.24
+             MSFT  WR=96%  avg=+0.73%  total=+18.1%  trades= 23  mult=10.00
+                A  WR=63%  avg=+0.74%  total=+15.0%  trades= 19  mult=8.02
+             PYPL  WR=63%  avg=+0.39%  total=+14.2%  trades= 35  mult=5.96
+             NVDA  WR=92%  avg=+0.72%  total=+9.7%  trades= 13  mult=9.09
 
---- TIER B (100 symbols) ---
+--- TIER B (99 symbols) ---
              COIN  WR=100%  avg=+12.44%  total=+79.7%  trades=  5  mult=5.50
              MSTR  WR=58%  avg=+2.86%  total=+61.2%  trades= 19  mult=10.00
              LSCC  WR=100%  avg=+5.08%  total=+41.1%  trades=  7  mult=7.30
@@ -22,12 +22,12 @@ Window: 14 days | Min trades: 5
              HOOD  WR=58%  avg=+1.04%  total=+11.5%  trades= 12  mult=6.10
              META  WR=42%  avg=+0.46%  total=+11.0%  trades= 24  mult=2.63
              AMAT  WR=100%  avg=+2.44%  total=+10.1%  trades=  4  mult=1.00
-              CMC  WR=53%  avg=+0.26%  total=+9.4%  trades= 36  mult=3.24
           XLMUSDT  WR=45%  avg=+0.25%  total=+8.1%  trades= 33  mult=1.84
-               RS  WR=59%  avg=+0.25%  total=+7.5%  trades= 29  mult=4.24
+               RS  WR=55%  avg=+0.22%  total=+7.4%  trades= 33  mult=3.29
          DASHUSDT  WR=70%  avg=+0.16%  total=+6.5%  trades= 40  mult=5.68
              LRCX  WR=67%  avg=+2.12%  total=+6.5%  trades=  3  mult=1.00
           XTZUSDT  WR=59%  avg=+0.19%  total=+6.3%  trades= 32  mult=3.99
+              CMC  WR=49%  avg=+0.13%  total=+4.8%  trades= 39  mult=1.64
              BWXT  WR=62%  avg=+0.27%  total=+4.3%  trades= 16  mult=4.28
              AMZN  WR=83%  avg=+0.20%  total=+3.6%  trades= 18  mult=7.60
              WDAY  WR=100%  avg=+1.15%  total=+3.5%  trades=  3  mult=1.00
@@ -50,13 +50,11 @@ Window: 14 days | Min trades: 5
          IOTAUSDT  WR=33%  avg=+0.09%  total=+0.8%  trades=  9  mult=0.68
           UNIUSDC  WR=75%  avg=+0.20%  total=+0.8%  trades=  4  mult=1.00
          CRWDUSDT  WR=82%  avg=+0.06%  total=+0.7%  trades= 11  mult=4.39
-             SNDK  WR=100%  avg=+0.66%  total=+0.7%  trades=  1  mult=1.00
          ATOMUSDT  WR=57%  avg=+0.09%  total=+0.7%  trades=  7  mult=1.67
          QTUMUSDT  WR=50%  avg=+0.04%  total=+0.7%  trades= 16  mult=1.22
              AAPL  WR=100%  avg=+0.33%  total=+0.7%  trades=  2  mult=1.00
           WLDUSDC  WR=47%  avg=+0.02%  total=+0.6%  trades= 30  mult=0.83
         TRUMPUSDC  WR=50%  avg=+0.26%  total=+0.5%  trades=  2  mult=1.00
-             BABA  WR=100%  avg=+0.50%  total=+0.5%  trades=  1  mult=1.00
             GOOGL  WR=57%  avg=+0.07%  total=+0.5%  trades=  7  mult=1.61
          AVGOUSDT  WR=29%  avg=+0.06%  total=+0.4%  trades=  7  mult=0.65
          AGLDUSDT  WR=67%  avg=+0.06%  total=+0.3%  trades=  6  mult=2.01
@@ -100,7 +98,7 @@ Window: 14 days | Min trades: 5
          NEARUSDC  WR=67%  avg=-0.39%  total=-1.3%  trades=  3  mult=1.00
          BABAUSDT  WR=60%  avg=-0.32%  total=-1.6%  trades=  5  mult=0.96
           PTBUSDT  WR=0%  avg=-0.96%  total=-1.9%  trades=  2  mult=1.00
-              TSM  WR=0%  avg=-0.64%  total=-1.9%  trades=  3  mult=1.00
+              TSM  WR=0%  avg=-0.62%  total=-2.4%  trades=  4  mult=1.00
           ETHUSDT  WR=0%  avg=-2.92%  total=-2.9%  trades=  1  mult=1.00
          HYPEUSDT  WR=52%  avg=-0.06%  total=-3.0%  trades= 48  mult=0.98
                HD  WR=0%  avg=-1.54%  total=-3.1%  trades=  2  mult=1.00
@@ -110,10 +108,11 @@ Window: 14 days | Min trades: 5
              CIBR  WR=0%  avg=-1.72%  total=-6.7%  trades=  4  mult=1.00
               GLD  WR=0%  avg=-3.52%  total=-6.9%  trades=  2  mult=1.00
          IOTXUSDT  WR=48%  avg=-0.14%  total=-7.0%  trades= 50  mult=0.63
-              VLO  WR=59%  avg=-0.38%  total=-15.5%  trades= 41  mult=0.69
+         COTIUSDT  WR=46%  avg=-0.14%  total=-7.6%  trades= 57  mult=0.57
+              VLO  WR=60%  avg=-0.36%  total=-15.0%  trades= 42  mult=0.76
               AGI  WR=0%  avg=-8.70%  total=-16.6%  trades=  2  mult=1.00
 
---- TIER C (40 symbols) ---
+--- TIER C (39 symbols) ---
          ROSEUSDT  WR=40%  avg=-0.00%  total=-0.0%  trades=  5  mult=0.83
           APEUSDT  WR=33%  avg=-0.01%  total=-0.1%  trades=  9  mult=0.62
        BTCDOMUSDT  WR=43%  avg=-0.02%  total=-0.2%  trades= 14  mult=0.70
@@ -121,42 +120,41 @@ Window: 14 days | Min trades: 5
           ACEUSDT  WR=43%  avg=-0.02%  total=-0.6%  trades= 35  mult=0.62
           ZECUSDC  WR=44%  avg=-0.04%  total=-0.8%  trades= 16  mult=0.67
          MINAUSDT  WR=22%  avg=-0.06%  total=-1.1%  trades= 18  mult=0.32
-              QQQ  WR=0%  avg=-0.16%  total=-1.1%  trades=  7  mult=0.39
-             COPX  WR=29%  avg=-0.11%  total=-1.6%  trades= 14  mult=0.41
+              QQQ  WR=0%  avg=-0.15%  total=-1.2%  trades=  8  mult=0.36
              NFLX  WR=0%  avg=-0.37%  total=-1.8%  trades=  5  mult=0.44
-               VT  WR=27%  avg=-0.17%  total=-1.9%  trades= 11  mult=0.44
           SOLUSDC  WR=40%  avg=-0.04%  total=-2.0%  trades= 48  mult=0.51
            ARUSDT  WR=29%  avg=-0.36%  total=-2.5%  trades=  7  mult=0.51
+               VT  WR=9%  avg=-0.28%  total=-3.0%  trades= 11  mult=0.31
          EGLDUSDT  WR=7%  avg=-0.25%  total=-3.4%  trades= 14  mult=0.26
           SNXUSDT  WR=38%  avg=-0.15%  total=-3.5%  trades= 24  mult=0.41
               CLS  WR=38%  avg=-0.46%  total=-3.7%  trades=  8  mult=0.51
        RAYSOLUSDT  WR=29%  avg=-0.91%  total=-6.3%  trades=  7  mult=0.39
+             COPX  WR=14%  avg=-0.48%  total=-6.5%  trades= 14  mult=0.25
               NKE  WR=31%  avg=-0.12%  total=-6.9%  trades= 59  mult=0.34
-              CLX  WR=33%  avg=-1.22%  total=-7.1%  trades=  6  mult=0.40
-         COTIUSDT  WR=42%  avg=-0.13%  total=-7.6%  trades= 62  mult=0.49
+              CLX  WR=29%  avg=-1.10%  total=-7.5%  trades=  7  mult=0.36
              TSLA  WR=26%  avg=-0.40%  total=-11.8%  trades= 31  mult=0.24
               ALB  WR=11%  avg=-0.71%  total=-12.1%  trades= 18  mult=0.17
               SLV  WR=30%  avg=-0.70%  total=-13.3%  trades= 20  mult=0.21
                BA  WR=10%  avg=-1.43%  total=-13.8%  trades= 10  mult=0.22
               MPC  WR=30%  avg=-0.81%  total=-15.2%  trades= 20  mult=0.20
+              PSX  WR=45%  avg=-0.59%  total=-16.0%  trades= 29  mult=0.31
               LOW  WR=25%  avg=-0.30%  total=-16.0%  trades= 57  mult=0.25
-              PSX  WR=41%  avg=-0.70%  total=-17.5%  trades= 27  mult=0.26
                AU  WR=0%  avg=-3.36%  total=-18.9%  trades=  6  mult=0.29
-             UUUU  WR=28%  avg=-0.90%  total=-20.5%  trades= 25  mult=0.18
              QBTS  WR=15%  avg=-0.58%  total=-21.1%  trades= 40  mult=0.18
               EQT  WR=25%  avg=-0.99%  total=-21.4%  trades= 24  mult=0.17
-               MU  WR=30%  avg=-0.63%  total=-25.9%  trades= 46  mult=0.22
-             DELL  WR=21%  avg=-0.87%  total=-26.1%  trades= 34  mult=0.17
+             UUUU  WR=24%  avg=-1.00%  total=-25.6%  trades= 29  mult=0.17
+             DELL  WR=20%  avg=-0.85%  total=-26.2%  trades= 35  mult=0.17
+               MU  WR=30%  avg=-0.66%  total=-27.3%  trades= 47  mult=0.22
              ADBE  WR=13%  avg=-0.80%  total=-30.4%  trades= 45  mult=0.16
              RBLX  WR=11%  avg=-1.41%  total=-32.9%  trades= 28  mult=0.12
-              TTD  WR=19%  avg=-3.50%  total=-43.7%  trades= 16  mult=0.16
+              TTD  WR=17%  avg=-3.15%  total=-44.1%  trades= 18  mult=0.14
              ZCSH  WR=25%  avg=-1.97%  total=-51.6%  trades= 36  mult=0.14
-             DINO  WR=24%  avg=-3.12%  total=-60.6%  trades= 29  mult=0.14
-              APO  WR=8%  avg=-2.67%  total=-63.5%  trades= 37  mult=0.12
+             DINO  WR=27%  avg=-2.90%  total=-59.3%  trades= 30  mult=0.15
+              APO  WR=7%  avg=-2.96%  total=-72.8%  trades= 43  mult=0.12
              AXON  WR=18%  avg=-2.89%  total=-95.0%  trades=101  mult=0.13
 
 SUMMARY:
-  Total PnL (all symbols): -114.6%
-  Avg win rate: 46%
-  A-tier avg mult: 8.74
-  C-tier avg mult: 0.34
+  Total PnL (all symbols): -137.7%
+  Avg win rate: 45%
+  A-tier avg mult: 8.84
+  C-tier avg mult: 0.33

@@ -46,7 +46,7 @@ class KlineWSFeed:
         with open(config.SYMBOLS_FILE) as f:
             self.symbols = sorted(set(json.load(f)))
         for s in self.symbols:
-            api_sym = s.replace("USDC", "USDT") if s.endswith("USDC") else s
+            api_sym = s
             self.api_to_original[api_sym] = s
         host = "127.0.0.1" if config.REDIS_HOST in ["localhost", "127.0.0.1"] else config.REDIS_HOST
         self.redis_client = redis.Redis(host=host, port=config.REDIS_PORT, db=config.REDIS_DB, decode_responses=True, socket_connect_timeout=30, socket_timeout=60, health_check_interval=30, max_connections=3000, retry_on_timeout=True, retry_on_error=[redis_exceptions.TimeoutError, redis_exceptions.ConnectionError])
@@ -158,7 +158,7 @@ class KlineWSFeed:
         ssl_ctx = ssl.create_default_context()
         ssl_ctx.check_hostname = False
         ssl_ctx.verify_mode = ssl.CERT_NONE
-        streams = "/".join(f"{(s.replace('USDC', 'USDT') if s.endswith('USDC') else s).lower()}@kline_3m" for s in chunk)
+        streams = "/".join(f"{s.lower()}@kline_3m" for s in chunk)
         url = f"wss://fstream.binance.com/stream?streams={streams}"
         delay = 5
         while not self._shutdown.is_set():
