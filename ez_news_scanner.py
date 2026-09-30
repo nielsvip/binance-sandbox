@@ -218,7 +218,7 @@ NEWS_EXTREME_MIN_SOURCES = 2
 # Cooldown: don't flip mode more than once per N seconds
 NEWS_EXTREME_COOLDOWN_SECONDS = 600
 _last_extreme_trigger_time = 0.0
-MARKET_MODE_FILE = 'data/market_mode.json'
+MARKET_MODE_FILE = '/tmp/binance-monitoring/market_mode.json'
 
 try:
     from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
@@ -843,7 +843,7 @@ async def trigger_extreme_mode_from_news(macro_events: List[dict], redis_mgr) ->
     reason_parts = [f"{e['category']}({e['score']:.2f}, {e['n_sources']}src)" for e in qualifying[:3]]
     reason = f"NEWS_EXTREME: {', '.join(reason_parts)}"
     mode_data = {'market_index': 80.0, 'mode': 'EXTREME_MODE', 'timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), 'thresholds': {'extreme': 65, 'light': 35}, 'mode_changed': True, 'news_trigger': True, 'news_reason': reason, 'news_events': [{'category': e['category'], 'score': e['score'], 'n_sources': e['n_sources'], 'best_title': e['best_title']} for e in qualifying[:5]]}
-    mode_file = BASE_PATH / MARKET_MODE_FILE
+    mode_file = Path(MARKET_MODE_FILE)
     mode_file.parent.mkdir(parents=True, exist_ok=True)
     try:
         async with aiofiles.open(mode_file, 'w') as f:
@@ -867,7 +867,7 @@ async def trigger_extreme_mode_from_news(macro_events: List[dict], redis_mgr) ->
 
 async def check_extreme_mode_expiry(redis_mgr):
     """If EXTREME_MODE was triggered by news and no new triggers in 30 min, revert to NORMAL_MODE."""
-    mode_file = BASE_PATH / MARKET_MODE_FILE
+    mode_file = Path(MARKET_MODE_FILE)
     try:
         if not mode_file.exists():
             return
@@ -1273,12 +1273,12 @@ async def boost_sentiment_redis(crypto_long: List[dict], crypto_short: List[dict
 async def save_fallback(crypto_scores: Dict[str, float], stock_scores: Dict[str, float]):
     try:
         combined = {**crypto_scores, **stock_scores}
-        with open(DATA_DIR / 'news_sentiment.json', 'w') as f:
+        with open(Path('/tmp/binance-monitoring/news_sentiment.json'), 'w') as f:
             json.dump(combined, f)
-        with open(DATA_DIR / 'news_sentiment_crypto.json', 'w') as f:
+        with open(Path('/tmp/binance-monitoring/news_sentiment_crypto.json'), 'w') as f:
             json.dump(crypto_scores, f)
         if stock_scores:
-            with open(DATA_DIR / 'news_sentiment_stocks.json', 'w') as f:
+            with open(Path('/tmp/binance-monitoring/news_sentiment_stocks.json'), 'w') as f:
                 json.dump(stock_scores, f)
     except Exception as e:
         logger.error(f"[FALLBACK] Save error: {e}")

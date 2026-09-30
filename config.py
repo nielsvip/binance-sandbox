@@ -3609,12 +3609,12 @@ class Config:
             f"dc_basis_{tf}",
         )
 
-    MARKET_MODE_FILE: str = "data/market_mode.json"
+    MARKET_MODE_FILE: Path = Path("/tmp/binance-monitoring/market_mode.json")
 
     async def save_market_mode(self):
         import json as _json
 
-        path = self.BASE_PATH / self.MARKET_MODE_FILE
+        path = self.MARKET_MODE_FILE
         path.parent.mkdir(parents=True, exist_ok=True)
         async with aiofiles.open(path, "w") as f:
             await f.write(
@@ -3629,7 +3629,7 @@ class Config:
     async def load_market_mode(self):
         import json as _json
 
-        path = self.BASE_PATH / self.MARKET_MODE_FILE
+        path = self.MARKET_MODE_FILE
         try:
             async with aiofiles.open(path, "r") as f:
                 data = _json.loads(await f.read())
@@ -3893,14 +3893,14 @@ class Config:
     LOSERS_20_FILE: Path = DATA_DIR / "losers_20_final_score"
     WINNERS_15M_FILE: Path = DATA_DIR / "winners_30r"
     LOSERS_15M_FILE: Path = DATA_DIR / "losers_30r"
-    CROSSES_FILE: Path = DATA_DIR / "last_events.json"
+    CROSSES_FILE: Path = Path("/tmp/binance-monitoring/last_events.json")
     SIGNALS_FILE: Path = BASE_PATH / "signals.json"
     BAND_FILE: Path = DATA_DIR / "band_score.json"
     FINAL_SCORE_FILE: Path = DATA_DIR / "final_score_norm.json"
     PROX_FILE: Path = DATA_DIR / "prox_score.json"
     SCORE_RANGES_FILE: Path = DATA_DIR / "score_ranges.json"
     RANKING_POINTS_FILE: Path = DATA_DIR / "ranking_points.json"
-    LAST_EVENTS_FILE: Path = DATA_DIR / "last_events.json"
+    LAST_EVENTS_FILE: Path = Path("/tmp/binance-monitoring/last_events.json")
     indicators_filepath: Path = DATA_DIR / "latest_market_data.json"
     LATEST_MARKET_DATA_FILE: Path = DATA_DIR / "latest_market_data.json"
     GRACEFUL_EXIT_FILE_TEMPLATE: Path = BASE_PATH / "graceful_exit_{account_key}.json"

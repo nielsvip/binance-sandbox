@@ -2667,10 +2667,7 @@ def clone_template(template: Path, new_symside: str) -> Path:
                         # USER 2026-09-28: new template switches (e.g. VIGILANCE_*) must be tested in the
                         # next round on EXISTING sheets too — merge missing (Switch, value) rows from the
                         # template into the reused workbook so spec-fill picks them up as pending rows.
-                        try:
-                            _merge_new_template_rows(template, target)
-                        except Exception as _mrg_e:
-                            print(f"[template-merge-warn] {target.name}: {_mrg_e}", flush=True)
+                        # USER 2026-09-30: no script adds or removes sheet rows — template-row merge into existing sheets disabled
                         return target
                 except Exception:
                     pass

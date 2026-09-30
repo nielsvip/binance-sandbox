@@ -1050,9 +1050,70 @@ Kept so the next agent does not re-run the same 30 diagnostics:
 
 ---
 
-## 56. OPERATOR FILL SPEC — VERBATIM & AUTHORITATIVE (2026-09-29)
+## 56. OPERATOR FILL SPEC — VERBATIM & AUTHORITATIVE (2026-09-29, REVISED 2026-09-30 — see §56.0 FIRST)
 
 This is the operator's own statement of how `TEMPLATE_*.xlsx` must be filled. **It is LAW and supersedes any conflicting phrasing above.** Every rule here is mandatory; the right-hand notes say where it is enforced.
+
+### 56.0 REVISION 2026-09-30 — SEQUENTIAL FILL (SUPERSEDES R3, R7, R13, R15–R18 and the no-yellow "next TAB" part of R24)
+
+Implemented in `v15_pilot.py` `_spec_fill_workbook` (md5 `820cb5ca`, deployed s1/s2/s5 2026-09-30) and verified on a live
+fleet sheet (MSTR_LONG: 3165 rows vs its progress JSON, 0 violations) plus the isolated XRPUSDC_LONG proof.
+
+**Template layout (every SWITCH_SHEETS tab, resolved by header):** `A Switch | B default | C override | D Family | E BASELINE |
+F HUSTLE_DELTA | G VECTOR_DELTA | H LIVE_DELTA | I LIVE_SHARPE | J REAL_COMPLETE | K PER_ROW_FILTERS | L is_default |
+M AVG_DELTA | N POS_SYM | O.. yellow "FILTER=opt" columns`. White switch rows always above orange filter rows.
+
+**Defaults (bold) are LAW and the pilot relies on them:**
+- Every (tab, switch) group and every yellow filter has EXACTLY ONE default: bold B cell + `is_default=YES` in L (every other
+  row `NO`); a filter's default = the one bold `FILTER=opt` header carrying a `DEFAULT` note. 0 or 2 defaults = broken.
+- Source of a default = the venue's live config (`config.Config` crypto, `config_tradier.TradierConfig` stocks), else
+  QuickConfig (`apply_tradier_defaults()` for stocks), overlaid with `data/cat_side_promotions.json` (avg-delta promotions).
+  **The configs carry NO per-cat_side default sets and no per-side values (DAILY_OPTIMIZATION_PLAN Stage 5 is NOT built);**
+  per-sym_side overrides live in `data/hourly_reconfig/{trb,inf}/active_config.json` + `per_sym_active_config.json`.
+- Groups whose default is not among their options, with no config field, a dict value or no options are GREY (col-A font
+  `FFBFBFBF`) and never calculated; they still keep exactly one is_default row.
+- The pilot refuses to run (`[DEFAULTS-GATE]`) unless every non-grey group has exactly one YES = the bold row, and passes
+  every bold default to the engine EXPLICITLY (`template_bold_defaults()`): the running default is the bold set, never
+  QuickConfig's own values. Audit: `tools/v15_template_defaults_fix.py --audit` (report-only).
+
+**Fill order:** tabs in `SWITCH_SHEETS` order (STDEV first), rows in order, white rows before orange rows, NO row skipped,
+NO tab jumping (R16/R17 jump is gone). Hustle shuffle stays the only exception. Grey / dead-vector / empty-candidate rows are
+recorded with their reason and never evaluated.
+
+**Step 1 — running default + prior best:** running set = bold defaults + previous-best overrides for that sym_side (best JSON,
+previous progress `cumulative_overrides`, previous sheet C). Every NON-default previous-best setting is written ONCE, bold,
+as `SWITCH=value` into C of the row whose B equals that value (else the switch's first row).
+**Step 2 — initial baseline:** the real `v12_quick_engine` gain of that complete set → **E3** of the first tab (chain start).
+The bold row needs no calculation: it IS the baseline.
+
+**Per row** (every eval = running set + this switch=cand [+ one filter], delta vs the LATEST baseline):
+- Every yellow cell gets its own delta (pos or neg; `INVALID <reason>` if the engine marks it invalid; a yellow equal to the
+  naked switch = non-binding, shows 0.0 grey, never counted as positive).
+- **PER_ROW_FILTERS (K)** = every positive yellow as `FILTER=opt`.
+- **VECTOR_DELTA (G)** = the row's COMPLETE delta vs the LATEST baseline: the switch + ALL positive filters evaluated together
+  (a real joint eval — never an arithmetic sum of deltas that each already contain the switch's own effect). If the positive
+  filters do not stack (joint ≤ 0), the best single REAL positive (filter or naked switch) is used. With no positive
+  filter, G = the naked switch delta. G is BLANK only on the running-default (bold) row when none of its yellows is positive.
+- **HUSTLE_DELTA (F)** = the same row result vs the ORIGINAL (initial) baseline (temporary column).
+- **BASELINE (E)**: G > 0 → promoted: running set advances, the NEXT row's E = latest baseline + G (the value itself may be
+  negative — "positive" refers to the delta vs the previous baseline). G ≤ 0 / blank → the next row's E stays EMPTY.
+  E values only go up (`[E-MONOTONIC-FAIL]` refuses a lower one).
+- **override (C)** on promotion: `SWITCH=cand` (unless it was already running) + every promoted `FILTER=opt`. A key lives in
+  exactly ONE C cell: when a later promotion sets the same switch/filter to another value, the old part is ERASED from its
+  cell (`[C-SUPERSEDE]` log) and the new setting is written in the promoting row's C.
+- **Slow cell** (> `YELLOW_TIMEOUT` 10 s): logged, cell RED with the reason, fill CONTINUES with the next cell/row; every red
+  cell is retried at the end of the workbook (`V15_RED_RETRY_S`, default 120 s) and gets its real delta vs the baseline it was
+  measured against (never promoted after the fact — the chain has passed it). Still failing → stays RED for `v15_assure`.
+- LIVE_DELTA / LIVE_SHARPE stay blank until the workbook is complete (R23 unchanged).
+
+**Templates are changed by ONE script only:** `tools/v15_avg_delta_apply.py` (after `tools/v15_avg_delta_rebuild.py`, stats
+per `SWITCH=value` / `FILTER=opt`) writes AVG_DELTA/POS_SYM by header, promotes the highest POSITIVE avg-delta row/header of a
+group to bold + `is_default=YES` (previous default regular + `NO`, ledger `data/cat_side_promotions.json`), and re-orders
+groups worst_first (whole rows incl. every yellow cell move together; white above orange). It verifies before saving.
+NO script adds or removes rows: `v15_add_orange_rows`, `v15_add_switches`, `v15_prune_orange` refuse; the pilot no longer
+merges template rows into existing sheets; `v15_template_fix`, `v15_template_defaults_fix`, `verify_template_defaults` are
+report-only. Yellow cells (interim, until the yellow-map agent's rebuild): `tools/v15_yellow_by_tokens.py` — a cell is yellow
+iff the row's switch name and the column's filter name share ≥ 2 `_`-tokens.
 
 ### 56.1 Reading & columns
 - **R1 — Read by row-2 headers, never by coordinates.** Columns may be added, so resolve every column by its row-2 header name matched to the switch/filter name — never by fixed column index. (§4.2)
@@ -1071,13 +1132,13 @@ This is the operator's own statement of how `TEMPLATE_*.xlsx` must be filled. **
 - **R10 — Yellow cells hold filter names in the `O:IO` header columns.** The first row (and every row) has yellow cells in the `O..IO` columns whose header is a filter name. (§4.2, §5.3)
 - **R11 — A yellow filter is tested for THAT SWITCH AND ONLY THAT SWITCH.** Never apply the yellow filter to any other override or default setting. (§5.3)
 - **R12 — The delta of that calculation is ALWAYS written into the yellow cell.** Positive or negative, every yellow cell gets its delta. (§5.3, §8)
-- **R13 — Positive yellow → add header name (append, never overwrite) to `override` AND `PER_ROW_FILTERS`, and add its delta to `VECTOR_DELTA` (sum if a value already exists).** (§5.3, §37)
+- **R13 [SUPERSEDED by §56.0: C/K/G rules]** — Positive yellow → add header name (append, never overwrite) to `override` AND `PER_ROW_FILTERS`, and add its delta to `VECTOR_DELTA` (sum if a value already exists).** (§5.3, §37)
 - **R14 — Row complete when all its yellow values are calculated and summed into the delta.** (§5.3)
 
 ### 56.4 Baseline chaining & tab navigation
-- **R15 — `VECTOR_DELTA` = sum of the row's POSITIVE yellow deltas.** (§5.4, §14.2, item 4)
-- **R16 — POSITIVE `VECTOR_DELTA` → move DOWN one row (next switch) on the SAME tab; add the delta to the previous baseline and write it in the baseline column of the next row; repeat.** (§5.4, item 6)
-- **R17 — None / zero / negative `VECTOR_DELTA` → do NOT move down; go to the FIRST pending row in the NEXT tab, write the baseline value there, and repeat.** In the next tab: positive → stay and go down next row adding delta; none/0/neg → move to next tab again. (§5.4, item 5)
+- **R15 [SUPERSEDED by §56.0: G = real joint delta vs LATEST baseline]** — `VECTOR_DELTA` = sum of the row's POSITIVE yellow deltas. (§5.4, §14.2, item 4)
+- **R16 [SUPERSEDED by §56.0: always the next row, E only after a positive row]** — POSITIVE `VECTOR_DELTA` → move DOWN one row (next switch) on the SAME tab; add the delta to the previous baseline and write it in the baseline column of the next row; repeat.** (§5.4, item 6)
+- **R17 [SUPERSEDED by §56.0: NO tab jumping — rows filled in order]** — None / zero / negative `VECTOR_DELTA` → do NOT move down; go to the FIRST pending row in the NEXT tab, write the baseline value there, and repeat.** In the next tab: positive → stay and go down next row adding delta; none/0/neg → move to next tab again. (§5.4, item 5)
 - **R18 — BASELINE column stays BLANK by default; a baseline value is written ONLY after a positive delta.** (§5.4, §14.1, item 1)
 - **R19 — Continue until the COMPLETE workbook is finished.** (§37, item 6)
 
