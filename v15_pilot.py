@@ -183,6 +183,18 @@ def _load_wired_filters():
         print(f"[wired-filters] load failed ({_wf_e}) — fail-open, evaluating ALL yellows", flush=True)
         return None
 WIRED_FILTERS = _load_wired_filters()
+def _load_unwired():
+    # data/vec_unwired.json (tools/v15_zero_audit.py): keys with NO reachable vectorized read AND no ledger movement in finished sheets.
+    # They are NOT calculated (row/cell stays None, reason NOT_WIRED_VEC) — a silently ignored override would give a fake exact 0.0.
+    if os.environ.get("V15_UNWIRED_SKIP", "1") == "0":
+        return frozenset(), frozenset()
+    try:
+        _d = json.loads((ROOT / "data" / "vec_unwired.json").read_text())
+        return frozenset(str(x).strip() for x in (list(_d.get("switches") or []) + list(_d.get("switches_manual") or []))), frozenset(str(x).strip() for x in (list(_d.get("filters") or []) + list(_d.get("filters_manual") or [])))
+    except Exception as _ue:
+        print(f"[unwired] load failed ({_ue}) — evaluating everything", flush=True)
+        return frozenset(), frozenset()
+UNWIRED_SWITCHES, UNWIRED_FILTERS = _load_unwired()
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -591,6 +603,10 @@ SKIP_SHEETS: set = set()  # all 13 tabs filled (user 2026-09-28); 10s stall guar
 # until the switch is wired live. SIZING_FALSE_ALPHA: bigger notional scales gain% AND risk — not edge.
 NO_LIVE_PATH_SWITCHES = {"WT_LOWER_CROSS_EXIT_TF", "TECHNICAL_DC_TARGET_TF", "WT_SIMPLE_GUARANTEE_ENABLED"}
 SIZING_FALSE_ALPHA_SWITCHES = {"START_POSITION_SIZE", "MIN_POSITION_SIZE"}
+# 2026-10-01 ZERO-AUDIT (vec_decisions/mtf_exit_scorer.py KEY REMAPS): the vector twin reads an NPZ key that EXISTS (wt_peak_{tf}, ha_{tf}, structure int8)
+# where live ez_manage reads an indicator key NOBODY produces (wt_peak_value_{tf}, ha_green_{tf}, str 'LH') and so can never fire. The vector delta is
+# real engine output, but a promoted override would change nothing in live -> promotion blocked until live produces those keys (user-gated live change).
+LIVE_DEAD_KEY_SWITCHES = {"WT_DIV_EXIT_ENABLED", "WT_15M_LH_WAIT_EXIT_ENABLED"}
 
 def promotion_block_reason(switch: str, sheet: str | None = None) -> str:
     s = str(switch).strip()
@@ -602,6 +618,8 @@ def promotion_block_reason(switch: str, sheet: str | None = None) -> str:
         return "LIVE_ONLY: portfolio-level state, not single-symbol vectorizable"
     if s in NO_LIVE_PATH_SWITCHES and os.environ.get("V15_BLOCK_NO_LIVE_PATH") == "1":
         return "NO_LIVE_PATH: not wired in live code"
+    if s in LIVE_DEAD_KEY_SWITCHES:
+        return "LIVE_DEAD_KEY: live reads an indicator key nobody produces (wt_peak_value_*/ha_green_*) — vec remap fires where live cannot"
     if s in SIZING_FALSE_ALPHA_SWITCHES:
         return "SIZING_FALSE_ALPHA: notional, not edge"
     return ""
@@ -1815,6 +1833,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _a_font = ws.cell(row=rr, column=1).font
         if cand is None or str(cand).strip() in ("", "None", "none"):
             info.update(kind="skip", reason="NO_CANDIDATE: empty B cell in template row — nothing to test", g=None)
+        elif str(switch).strip() in UNWIRED_SWITCHES or str(switch).strip() in UNWIRED_FILTERS:
+            info.update(kind="skip", reason="NOT_WIRED_VEC: no reachable vectorized read and the ledger never moved (v15_zero_audit) — not calculated, never a fake 0", g=None)
         elif str(cand).strip().upper().endswith("_ALT"):
             info.update(kind="skip", reason="INVENTED_ALT: *_ALT option value exists in no config — grey, not calculated", g=None)
             ws.cell(row=rr, column=2).font = Font(name="Arial", size=10, color="FFBFBFBF")
@@ -1848,6 +1868,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 filt, opt = hdr.split("=", 1)
                 if filt.strip() not in known_config_fields():
                     continue
+                if filt.strip() in UNWIRED_FILTERS or filt.strip() in UNWIRED_SWITCHES:
+                    continue  # not wired in the vectorized engine: no calculation, no fake 0
                 info["hdrs"].append(hdr)
                 info["h2f"][hdr] = {"filter": filt.strip(), "opt": opt.strip()}
         _static_info[k] = info
@@ -1938,7 +1960,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             finally:
                 ex.shutdown(wait=False)
         g = (res or {}).get("gain_pct")
-        _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": "sequential", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "label": label, "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cum_before, "delta": (float(g) - cum_before) if g is not None else None, "secs": round(_t.time() - t0, 4), "cached": cached, "err": err})
+        _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": "sequential", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "label": label, "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "fp": ((res or {}).get("behavior_fingerprint") or "")[:16], "tim": (res or {}).get("tim_pct"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cum_before, "delta": (float(g) - cum_before) if g is not None else None, "secs": round(_t.time() - t0, 4), "cached": cached, "err": err})
         return res, err
     def _delta_vs(res, cum_before: float):
         # (delta, promotable, reason): real gain delta always reported; engine-invalid results keep their delta but never promote
@@ -2009,6 +2031,17 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _prec = _done0.get(f"{_ps}!{_pr}:{_psw}={_pc}") or {}
             if _prec.get("promoted") and isinstance(_prec.get("cumulative_after"), (int, float)):
                 e_next = float(_prec["cumulative_after"])
+    _ref_cache: dict = {}
+    _standalone_seen: dict = {}
+    def _fp_of(_r):
+        return ((_r or {}).get("behavior_fingerprint") or None)
+    def _peek(_sname, _rr, _switch, _cand, _label, _ov, _cum):
+        # cached evaluation (no log spam on hits): ledger fingerprint of an override set
+        _ckk = _ck(_ov)
+        if _ckk in _EVAL_CACHE:
+            return _EVAL_CACHE[_ckk]
+        _r, _e = _get(_sname, _rr, _switch, _cand, _label, _ov, _t.time() + YELLOW_TIMEOUT * 2, _cum)
+        return _r
     _start_t = _t.time()
     for qi, (sname, rr, switch, cand) in enumerate(pending_queue):
         loop_guard += 1
@@ -2068,6 +2101,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _red_retry.append({"sheet": sname, "row": rr, "col": cols["G"], "label": "naked", "ov": switch_variant, "cum_before": cumulative_before, "key": key})
                 _zr_log({"kind": "RED", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": "F/G", "reason": nerr, "cum_before": cumulative_before})
         yellows, promotable, noop_yellows = {}, {}, []
+        yellow_dups: dict = {}
+        _run_ov = sanitize_overrides(dict(cumulative_overrides), defaults)[0]
+        _ref_ck = _ck(_run_ov)
+        if _ref_ck not in _ref_cache:
+            _ref_cache[_ref_ck] = _peek(sname, rr, switch, cand, "REF_BASELINE", _run_ov, cumulative_before)
+        ref_fp = _fp_of(_ref_cache[_ref_ck])
+        naked_fp = ref_fp if is_running else _fp_of(results["naked"][0])
+        naked_binding = None if (ref_fp is None or naked_fp is None) else bool(naked_fp != ref_fp)
         for hdr in st["hdrs"]:
             res, err = results[hdr]
             col = header_maps[sname][hdr]
@@ -2086,10 +2127,35 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _flag_to_md(flags_md, sname, rr, switch, cand, f"slow/failed {hdr}: {err}", 0.0, 0.0, cumulative_before)
                     _red_retry.append({"sheet": sname, "row": rr, "col": col, "label": hdr, "ov": dict(plan["items"][[l for l, _ in plan["items"]].index(hdr)][1]), "cum_before": cumulative_before, "key": key})
                 continue
+            # FINGERPRINT RULES (USER 2026-09-30: no synthetic copies, no fake numbers):
+            #   noop = the filter left the ledger identical to the row's own base (naked switch / running set) -> not a filter delta
+            #   dup  = the row's switch is non-binding, so this cell is just the filter's STANDALONE effect copied onto an unrelated
+            #          switch: recorded ONCE per baseline epoch (first occurrence), every later copy is blanked and kept out of AVG
+            _fp_y = _fp_of(res)
+            _fp_noop = _fp_y is not None and naked_fp is not None and _fp_y == naked_fp
+            _is_dup = False
+            if not _fp_noop and _fp_y is not None and ok and (is_running or naked_binding is False):
+                _skey = (_ref_ck, hdr)
+                _same_as_standalone = True
+                if not is_running:
+                    _f = st["h2f"][hdr]
+                    _sov = dict(_run_ov)
+                    _sov[_f["filter"]] = _parse_opt_value(_f["opt"], defaults.get(_f["filter"]))
+                    _sov = sanitize_overrides(_sov, defaults)[0]
+                    _same_as_standalone = _fp_of(_peek(sname, rr, switch, cand, "STANDALONE:" + hdr, _sov, cumulative_before)) == _fp_y
+                if _same_as_standalone:
+                    if _skey in _standalone_seen and _standalone_seen[_skey] != key:
+                        _is_dup = True
+                    else:
+                        _standalone_seen[_skey] = key
+            if _is_dup:
+                yellow_dups[hdr] = float(d)
+                ws.cell(row=rr, column=col).value = None
+                continue
             yellows[hdr] = float(d)
             if abs(float(d)) < 1e-12:
                 _zr_log({"kind": "ZERO", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": hdr, "cum_before": cumulative_before})
-            noop = ok and naked_ok and naked_delta is not None and abs(float(d) - float(naked_delta)) < 1e-9
+            noop = _fp_noop or (ok and naked_ok and naked_delta is not None and abs(float(d) - float(naked_delta)) < 1e-9)
             if noop:
                 noop_yellows.append(hdr)
             promotable[hdr] = ok and not noop
@@ -2107,6 +2173,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _flag_to_md(flags_md, sname, rr, switch, cand, f"INVALID {hdr}: {why}", d, 0.0, cumulative_before)
         pos_hdrs = [h for h, d in yellows.items() if d > 1e-9 and promotable.get(h)]
         h2f = st["h2f"]
+        _best_opt: dict = {}
+        for _h in pos_hdrs:
+            _fk = h2f[_h]["filter"]
+            if _fk not in _best_opt or yellows[_h] > yellows[_best_opt[_fk]]:
+                _best_opt[_fk] = _h
+        pos_hdrs = [_h for _h in pos_hdrs if _best_opt[h2f[_h]["filter"]] == _h]  # never two options of ONE filter key in a joint set
         choice = None  # (delta, filters, override set, how)
         joint_delta, joint_reason = None, ""
         if pos_hdrs:
@@ -2190,7 +2262,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             progress["cumulative_overrides"] = dict(cumulative_overrides)
         progress["cumulative_gain"] = float(cumulative_gain)
         div = _write_div(sname, rr, [row_gain])
-        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", ""), "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain)}
+        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", ""), "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain)}
         _maybe_write_json(force=promote)
         _row_done(sname, rr, switch, cand, n_items + (1 if pos_hdrs else 0), row_delta, promote)
         _touch(f"cell {sname}!{rr} delta={row_delta}")
