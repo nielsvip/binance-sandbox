@@ -261,5 +261,23 @@
     ],
     "timestamp": "2026-09-30T20:14:42.993655+00:00",
     "price": 313.03
+  },
+  {
+    "symbol": "MUUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.0x (from rankings)"
+    ],
+    "timestamp": "2026-09-30T20:34:45.778934+00:00",
+    "price": 1077.95295761
+  },
+  {
+    "symbol": "MUUUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.7x (from rankings)"
+    ],
+    "timestamp": "2026-09-30T20:44:52.190128+00:00",
+    "price": 37.56860803
   }
 ]
