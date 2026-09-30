@@ -22179,6 +22179,35 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _entry_filter_masks.append(~_ema_block)
     except Exception:
         pass
+    # 2026-09-30 PORTED-SWITCH DISPATCHER — collision-free wiring hook (SWITCH_WIRING_GUIDE.md).
+    # Each vec_decisions/ported_<lifecycle>.py owns its switches as faithful numpy twins of ez_manage/
+    # tradier_manage (15m floor, NO proxies/fabrication). apply() returns the (possibly modified) signal.
+    # Empty modules are pure passthrough → inert until a switch is genuinely wired.
+    try:
+        import vec_decisions.ported_entry as _pe
+        entry_sig = _pe.apply(npz, n, is_long, cfg, entry_sig, _safe, close, _entry_filter_masks)
+    except Exception:
+        pass
+    try:
+        import vec_decisions.ported_exit as _px
+        exit_sig = _px.apply(npz, n, is_long, cfg, exit_sig, _safe, close)
+    except Exception:
+        pass
+    try:
+        import vec_decisions.ported_augment as _pa
+        augment_sig = _pa.apply(npz, n, is_long, cfg, augment_sig, _safe, close)
+    except Exception:
+        pass
+    try:
+        import vec_decisions.ported_reduce as _pr
+        reduce_sig = _pr.apply(npz, n, is_long, cfg, reduce_sig, _safe, close)
+    except Exception:
+        pass
+    try:
+        import vec_decisions.ported_reentry as _prz
+        entry_sig = _prz.apply(npz, n, is_long, cfg, entry_sig, _safe, close, _entry_filter_masks)
+    except Exception:
+        pass
     _reentry_filter_on = bool(getattr(cfg, 'REENTRY_ENTRY_FILTER_ENABLED', False)) and bool(_entry_filter_masks)
     _reentry_filter_need = min(max(1, int(getattr(cfg, 'REENTRY_FILTER_MIN_PASS', 1) or 1)), len(_entry_filter_masks)) if _entry_filter_masks else 0
     # 625 ablation wiring — distinct per param (causal, measured via ledger diff)

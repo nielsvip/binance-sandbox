@@ -2328,6 +2328,24 @@ def compute_symbol(symbol: str, mode: str) -> bool:
         return False
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUT_DIR / f"{symbol}.npz"
+    # NEVER overwrite 917d NPZ with truncated 77d — guard (tools/npz_guard.py)
+    try:
+        from tools.npz_guard import should_allow_overwrite
+        _candidate_dt = 900 if mode == "tradier" else 900
+        # estimate candidate dt from merged timestamps
+        try:
+            _cs = float(np.median(np.diff(merged["timestamps"].astype(np.int64).astype(float)))) if "timestamps" in merged else 900
+            if _cs > 1e5:
+                _cs = 900
+        except:
+            _cs = 900
+        _ckeys = len(merged)
+        allowed, _reason = should_allow_overwrite(out_path, _span_days, _cs, _ckeys)
+        if not allowed:
+            logger.warning(f"  {symbol}: BLOCKED overwrite — {_reason} (existing 917d preserved)")
+            return False
+    except Exception as _e:
+        logger.warning(f"  {symbol}: guard check failed {_e} — proceeding to save")
     tmp_path = OUT_DIR / f".{symbol}.{os.getpid()}.tmp.npz"
     np.savez_compressed(str(tmp_path), **merged)
     os.replace(str(tmp_path), str(out_path))
