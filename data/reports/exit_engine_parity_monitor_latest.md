@@ -1,20 +1,20 @@
 # Exit-engine parity monitor
 
-generated: 2026-09-30T09:49:47.330500+00:00 · lookback: 48.0h
+generated: 2026-09-30T10:49:47.425997+00:00 · lookback: 48.0h
 
-**exit_engine rows in window: 9593** · last: 2026-09-30T09:46:33.104667+00:00
+**exit_engine rows in window: 8365** · last: 2026-09-30T10:47:18.673391+00:00
 
 ## 🔴 LEAKS (gate-disabled families that fired = illegal trades): 0
 - none — no gate-disabled family fired. ✅ parity holds for mapped exits.
 
-## ✅ GATE_ON (legitimately allowed live, has gate): 272
-- GOLDEN_RULE: 272
+## ✅ GATE_ON (legitimately allowed live, has gate): 264
+- GOLDEN_RULE: 264
 
-## ❔ UNMAPPED (no gate mapping — candidate good-paths to evaluate): 9321
--  5342  VIGILANCE_MAX_LOSS_HARD_STOP_USER_LONG
--  2445  ALL_ALL_GREEN_DIRECT_CLOSE_winners_all
+## ❔ UNMAPPED (no gate mapping — candidate good-paths to evaluate): 8101
+-  4247  VIGILANCE_MAX_LOSS_HARD_STOP_USER_LONG
+-  2398  ALL_ALL_GREEN_DIRECT_CLOSE_winners_all
 -   560  ALL_ALL_RED_DIRECT_CLOSE_losers_all_re
--   369  DC_BREACH_REDUCE_UNHEDGED_LOW_15m_pric
+-   291  DC_BREACH_REDUCE_UNHEDGED_LOW_15m_pric
 -   237  VIGILANCE_DC4_15m_HARD_STOP_USER_LONG
 -   123  BREAK_EVEN_GUARD_EXIT
 -    92  MTF_ATR_TRAIL_15m_x2.0
@@ -32,4 +32,4 @@ generated: 2026-09-30T09:49:47.330500+00:00 · lookback: 48.0h
 -     5  HAIKU_WINNER_AUG_4.5pct
 -     4  HAIKU_WINNER_AUG_3.9pct
 
-## actions in window: {'CLOSE': 9168, 'OPEN': 270, 'AUGMENT': 136, 'REDUCE': 19}
+## actions in window: {'CLOSE': 7948, 'OPEN': 262, 'AUGMENT': 136, 'REDUCE': 19}
