@@ -42,7 +42,7 @@ RISK_FREE_RATE = 0.045
 
 
 def _atomic_write_json(path: Path, payload: dict) -> None:
-    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp = path.with_suffix(path.suffix + f".{os.getpid()}.tmp")
     tmp.write_text(json.dumps(payload, indent=2, default=str))
     tmp.replace(path)
 

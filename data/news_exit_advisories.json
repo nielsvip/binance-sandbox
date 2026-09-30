@@ -1,14 +1,22 @@
 {
-  "generated_at": "2026-09-30T13:04:30.639503+00:00",
-  "count": 1,
+  "generated_at": "2026-09-30T13:45:13.340246+00:00",
+  "count": 2,
   "advisories": [
     {
-      "symbol": "COPX",
-      "side": "LONG",
+      "symbol": "AAPL",
+      "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bearish_news_score=-0.74 threshold=-0.45",
-      "score": -0.743,
-      "ts": "2026-09-30T13:04:30.639466+00:00"
+      "reason": "bullish_news_score=0.54 threshold=0.45",
+      "score": 0.542,
+      "ts": "2026-09-30T13:45:13.340212+00:00"
+    },
+    {
+      "symbol": "MRK",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.50 threshold=0.45",
+      "score": 0.502,
+      "ts": "2026-09-30T13:45:13.340226+00:00"
     }
   ]
 }
