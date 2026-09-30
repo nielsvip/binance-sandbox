@@ -11727,6 +11727,16 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _sa_cap = _c if _sa_cap is None else min(_sa_cap, _c)
     except Exception:
         _sa_cap = None
+    # 2026-09-30 MULTI_TF_EXIT scorer (faithful vec twin of ez_manage.evaluate_multi_tf_exit 40370-40572, a MAJOR
+    # live exit vec was missing). Gain-independent base+late score arrays precomputed once; gain multipliers +
+    # threshold(35/45/55) + min_exit_gain applied per-bar in the walk. Makes WT_DIV/ACCEL/MOMENTUM/EXHAUST/15M_LH/etc testable.
+    _mtf_base = _mtf_late = _mtf_override = None
+    _mtf_min_gain = 0.0
+    try:
+        import vec_decisions.mtf_exit_scorer as _mtfs
+        _mtf_base, _mtf_late, _mtf_min_gain, _mtf_override = _mtfs.score_array_parts(npz, n, is_long, cfg, _safe, close)
+    except Exception:
+        _mtf_base = None
     def _stategate_ok(_g, _gain, _age_min, _age_bars, _peak):
         try:
             if 'gain_op' in _g:
@@ -12009,6 +12019,24 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _tssx = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
                 _sx_reason = f"STATEFUL_PORTED_EXIT g{live_pnl_pct:.2f}% age{held_bars * bmin:.0f}m"
                 trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _sx_reason, 'type': 'CLOSE', 'ts': _tssx, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _sx_reason, 'bars_held': int(i - pos['entry_bar'])})
+                pos = None; cd = cooldown_bars; has_closed_before = True
+                continue
+        # 2026-09-30 MULTI_TF_EXIT scorer (ez_manage.evaluate_multi_tf_exit 40370-40572) — gain-dependent threshold
+        if _mtf_base is not None:
+            _mb = float(_mtf_base[i])
+            if live_pnl_pct > 3.0 and _mb >= 20.0: _mb *= 1.3
+            elif live_pnl_pct > 1.0 and _mb >= 25.0: _mb *= 1.2
+            _msc = _mb + float(_mtf_late[i])
+            if _mtf_min_gain > 0 and live_pnl_pct < _mtf_min_gain: _msc = 0.0
+            _msc = _msc if _msc < 100.0 else 100.0
+            _mthr = 35.0 if live_pnl_pct > 1.0 else 45.0 if live_pnl_pct > 0.3 else 55.0
+            if _msc >= _mthr or bool(_mtf_override[i]):
+                pos['fees'] += abs(pos['qty'] * px) * half_fee
+                _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
+                _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
+                _tsmt = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                _mtf_reason = f"MULTI_TF_EXIT s{_msc:.0f}/{_mthr:.0f} g{live_pnl_pct:.2f}%"
+                trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _mtf_reason, 'type': 'CLOSE', 'ts': _tsmt, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _mtf_reason, 'bars_held': int(i - pos['entry_bar'])})
                 pos = None; cd = cooldown_bars; has_closed_before = True
                 continue
         # MI_EXIT momentum-interception voter (ez_positions_quick.py:3723-3760): votes >=

@@ -243,5 +243,23 @@
     ],
     "timestamp": "2026-09-30T18:44:52.483077+00:00",
     "price": 0.314
+  },
+  {
+    "symbol": "GOOGLUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.2x (from rankings)"
+    ],
+    "timestamp": "2026-09-30T20:12:12.569368+00:00",
+    "price": 341.89
+  },
+  {
+    "symbol": "APPUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.1x (from rankings)"
+    ],
+    "timestamp": "2026-09-30T20:14:42.993655+00:00",
+    "price": 313.03
   }
 ]
