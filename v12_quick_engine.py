@@ -22452,6 +22452,40 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         return {'qty': qty0, 'avg_price': px, 'entry_price': px, 'entry_qty': qty0, 'deployed': abs(qty0 * px), 'realized': 0.0,
                 'entry_bar': i, 'peak_pnl_pct': 0.0, 'fees': abs(qty0 * px) * half_fee, 'entry_reason': entry_reason}
 
+    # 2026-09-30 STATEFUL PORTED SWITCHES — masks precomputed ONCE (vectorized), gate applied per-bar below
+    # where live_pnl_pct/held_bars/peak_pnl_pct/n_augments exist (faithful twins of ez_manage.process_position
+    # gain/age/count-gated exits & augment cap). vec_decisions/ported_stateful_{exit,augment}.py. NO fabrication.
+    _sx_active = []
+    _sa_cap = None
+    try:
+        import vec_decisions.ported_stateful_exit as _pse
+        for _sw, _mg in (_pse.masks(npz, n, is_long, cfg, _safe, close) or {}).items():
+            _sx_active.append(_mg)
+    except Exception:
+        _sx_active = []
+    try:
+        import vec_decisions.ported_stateful_augment as _psa
+        for _sw, (_m, _g) in (_psa.masks(npz, n, is_long, cfg, _safe, close) or {}).items():
+            if 'augment_count_max' in _g:
+                _c = int(_g['augment_count_max'])
+                _sa_cap = _c if _sa_cap is None else min(_sa_cap, _c)
+    except Exception:
+        _sa_cap = None
+    def _stategate_ok(_g, _gain, _age_min, _age_bars, _peak):
+        try:
+            if 'gain_op' in _g:
+                _t = float(_g.get('gain_thr', 0.0)); _op = _g['gain_op']
+                if _op == '>=' and not (_gain >= _t): return False
+                if _op == '>' and not (_gain > _t): return False
+                if _op == '<' and not (_gain < _t): return False
+                if _op == '<=' and not (_gain <= _t): return False
+            if 'age_min_minutes' in _g and not (_age_min > float(_g['age_min_minutes'])): return False
+            if 'age_min_bars' in _g and not (_age_bars >= int(_g['age_min_bars'])): return False
+            if 'peak_giveback_pct' in _g and not ((_peak - _gain) >= float(_g['peak_giveback_pct'])): return False
+        except Exception:
+            return False
+        return True
+
     for i in range(n):
         px = close[i]
         if px <= 0:
@@ -22706,6 +22740,21 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _nlk_reason, 'type': 'CLOSE', 'ts': _tsn, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _nlk_reason, 'bars_held': int(i - pos['entry_bar'])})
             pos = None; cd = cooldown_bars; has_closed_before = True
             continue
+        # 2026-09-30 STATEFUL PORTED EXITS (WT_4H_VEL_EXIT / WT_EXHAUST_EXIT — gain/age-gated; ported_stateful_exit.py)
+        if _sx_active:
+            _sx_fire = False
+            for _sm, _sg in _sx_active:
+                if bool(_sm[i]) and _stategate_ok(_sg, live_pnl_pct, held_bars * bmin, held_bars, pos.get('peak_pnl_pct', 0.0)):
+                    _sx_fire = True; break
+            if _sx_fire:
+                pos['fees'] += abs(pos['qty'] * px) * half_fee
+                _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
+                _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
+                _tssx = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                _sx_reason = f"STATEFUL_PORTED_EXIT g{live_pnl_pct:.2f}% age{held_bars * bmin:.0f}m"
+                trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _sx_reason, 'type': 'CLOSE', 'ts': _tssx, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _sx_reason, 'bars_held': int(i - pos['entry_bar'])})
+                pos = None; cd = cooldown_bars; has_closed_before = True
+                continue
         # MI_EXIT momentum-interception voter (ez_positions_quick.py:3723-3760): votes >=
         # MI_TF_AGREE_MIN with gain >= MI_MIN_GAIN_EXIT -> close
         if _mi_arr is not None and bool(_mi_arr[i]) and live_pnl_pct >= float(getattr(cfg, 'MI_MIN_GAIN_EXIT', 0.10)):
@@ -22808,7 +22857,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             live_pnl_pct, float(pos.get('peak_pnl_pct', 0.0)))
         # FAST_RISER quick-jump double (ez_manage.py:52393-52468): TF jump signal + profit floor
         _fr_fire = _fr_arr is not None and bool(_fr_arr[i]) and live_pnl_pct > vec_decisions.filter_tf_gates.FAST_RISER_MIN_GAIN_PCT
-        if (augment_sig[i] or _gl_fire or _fr_fire) and _augment_allowed(cfg, live_pnl_pct):
+        if (augment_sig[i] or _gl_fire or _fr_fire) and _augment_allowed(cfg, live_pnl_pct) and (_sa_cap is None or int(pos.get('n_augments', 0)) < _sa_cap):
             _aug_cd_bars = vec_decisions.gain_ladder_augment.cooldown_bars(cfg, bmin)
             _aug_last_bar = int(pos.get('last_aug_bar', -10**9))
             if (i - _aug_last_bar) >= _aug_cd_bars:

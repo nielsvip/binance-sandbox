@@ -57,5 +57,22 @@
   "EXIT": 41,
   "REENTRY": 5,
   "reason": "dead fabrication farm (_batch1/_batch3/BATCH5) / already-wired in simulate_one / absent both venues / wrong-lifecycle"
+ },
+ "STATEFUL_PASS_2026_09_30": {
+  "engine_md5": "fde3bfdbf76dc7a96d4c581439a3da2b",
+  "deployed": [
+   "s1",
+   "s2",
+   "s5"
+  ],
+  "mechanism": "masks precomputed once + per-bar gain/age/count gate in simulate_one bar-walk (ported_stateful_{exit,augment}); timing baseline 62ms / active 65ms (target<100ms, baseline-neutral)",
+  "CONFIRMED_WIRED": {
+   "WT_4H_VEL_EXIT_ENABLED (+6 knobs)": "RVN_L 121->130 (velocity mask + age>6min + optional-profit gate)"
+  },
+  "WIRED_nonbinding_on_sample": {
+   "WT_EXHAUST_EXIT_MIN_GAIN_PCT/REQUIRE_GAIN": "exhaust momentum-state rare on sample",
+   "MAX_AUGMENTS_PER_POSITION": "vec rarely augments >1x on sample (augment_count_max gate; n_augments tracked)"
+  },
+  "VEC_UNSUPPORTED": "16 exit (dead stubs/entry-price-coupled/veto-of-a-stop) + 20 augment/reduce (dead proxy farms, sub-position state: gain-since-last-add, last-add-price, reduce fractions, per-day counters)"
  }
 }
