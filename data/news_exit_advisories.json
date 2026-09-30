@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-30T18:41:16.494012+00:00",
-  "count": 2,
+  "generated_at": "2026-09-30T19:08:33.126560+00:00",
+  "count": 1,
   "advisories": [
     {
       "symbol": "AAPL",
@@ -8,15 +8,7 @@
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.54 threshold=0.45",
       "score": 0.542,
-      "ts": "2026-09-30T18:41:16.493966+00:00"
-    },
-    {
-      "symbol": "A",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.52 threshold=0.45",
-      "score": 0.516,
-      "ts": "2026-09-30T18:41:16.493983+00:00"
+      "ts": "2026-09-30T19:08:33.126158+00:00"
     }
   ]
 }
