@@ -1,35 +1,31 @@
 # Exit-engine parity monitor
 
-generated: 2026-09-30T07:49:46.915975+00:00 · lookback: 48.0h
+generated: 2026-09-30T08:49:47.173871+00:00 · lookback: 48.0h
 
-**exit_engine rows in window: 12892** · last: 2026-09-30T07:47:19.424071+00:00
+**exit_engine rows in window: 10809** · last: 2026-09-30T08:48:10.616637+00:00
 
-## 🔴 LEAKS (gate-disabled families that fired = illegal trades): 1204
-- **MOMENTUM_WATCHDOG**: 1204
+## 🔴 LEAKS (gate-disabled families that fired = illegal trades): 54
+- **MOMENTUM_WATCHDOG**: 54
 
 top leak reasons:
-  -   633  MOMENTUM_WATCHDOG_DC_15m_BREAKOUT_SHOR
-  -   184  MOMENTUM_WATCHDOG_DC_D_BREAKOUT_SHORT
-  -   169  MOMENTUM_WATCHDOG_DC_1h_BREAKOUT_SHORT
-  -   158  MOMENTUM_WATCHDOG_DC_4h_BREAKOUT_SHORT
-  -    45  MOMENTUM_WATCHDOG_SMA15M_WT3M_SHORT
-  -    11  MOMENTUM_WATCHDOG_SMA15M_WT3M_LONG
-  -     4  MOMENTUM_WATCHDOG_DC_D_BREAKOUT_LONG
+  -    29  MOMENTUM_WATCHDOG_DC_15m_BREAKOUT_SHOR
+  -    10  MOMENTUM_WATCHDOG_DC_1h_BREAKOUT_SHORT
+  -     8  MOMENTUM_WATCHDOG_DC_D_BREAKOUT_SHORT
+  -     7  MOMENTUM_WATCHDOG_DC_4h_BREAKOUT_SHORT
 
 → For each: if the path is GOOD (profitable), add its twin to v12_quick_engine + set the gate default ON in config so best cat_side stays default. If BAD, close the code gate so it honors the disabled knob.
 
-## ✅ GATE_ON (legitimately allowed live, has gate): 268
-- GOLDEN_RULE: 268
+## ✅ GATE_ON (legitimately allowed live, has gate): 276
+- GOLDEN_RULE: 276
 
-## ❔ UNMAPPED (no gate mapping — candidate good-paths to evaluate): 11420
+## ❔ UNMAPPED (no gate mapping — candidate good-paths to evaluate): 10479
 -  6376  VIGILANCE_MAX_LOSS_HARD_STOP_USER_LONG
--  2462  ALL_ALL_GREEN_DIRECT_CLOSE_winners_all
--   850  MTF_ATR_TRAIL_15m_x2.0
--   606  DC_BREACH_REDUCE_UNHEDGED_LOW_15m_pric
--   545  ALL_ALL_RED_DIRECT_CLOSE_losers_all_re
+-  2457  ALL_ALL_GREEN_DIRECT_CLOSE_winners_all
+-   558  ALL_ALL_RED_DIRECT_CLOSE_losers_all_re
+-   462  DC_BREACH_REDUCE_UNHEDGED_LOW_15m_pric
 -   237  VIGILANCE_DC4_15m_HARD_STOP_USER_LONG
 -   123  BREAK_EVEN_GUARD_EXIT
--    68  STOP_FUNCTIONS_KILL_2 time_since_entry
+-   113  MTF_ATR_TRAIL_15m_x2.0
 -    17  RATIO_CLOSE_LONG_L100_S0_tgt38/62_gain
 -    12  HAIKU_WINNER_AUG_3.1pct
 -    11  HAIKU_WINNER_AUG_4.1pct
@@ -42,5 +38,6 @@ top leak reasons:
 -     5  HAIKU_WINNER_AUG_3.6pct
 -     5  HAIKU_WINNER_AUG_4.9pct
 -     5  HAIKU_WINNER_AUG_4.5pct
+-     4  HAIKU_WINNER_AUG_3.9pct
 
-## actions in window: {'CLOSE': 11199, 'OPEN': 1470, 'REDUCE': 87, 'AUGMENT': 136}
+## actions in window: {'OPEN': 328, 'CLOSE': 10326, 'AUGMENT': 136, 'REDUCE': 19}
