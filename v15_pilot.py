@@ -1158,9 +1158,13 @@ def _pool_eval(overrides: dict, window_days: int):
 
 ADAPT_FLOOR_TRADES = 10
 ADAPT_ULTRA_NEG_PCT = float(os.environ.get("V15_ULTRA_NEG_PCT", "-5.0"))
-ADAPT_MAX_STEPS = int(os.environ.get("V15_ADAPT_MAX_STEPS", "5"))
+ADAPT_MAX_STEPS = int(os.environ.get("V15_ADAPT_MAX_STEPS", "12"))
 _ADAPT_SOFTEN_TOKENS = ("FILTER", "GATE", "BLOCK", "REQUIRE", "CONFIRM", "VETO", "GUARD")
 _ADAPT_ENTRY_TOKENS = ("ENTRY", "REENTRY", "BOUNCE", "BREAKOUT", "OPEN")
+# BIBLE §58 / adaptive mandate: TIM or DD too high -> add exits, loosen exit blockers, add reentry filters
+_ADAPT_EXIT_TABS = ("EXIT_STRUCTURAL", "EXIT_VELOCITY", "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER", "REENTRY_WINDOWED", "REENTRY_ADAPTIVE")
+_ADAPT_EXIT_BLOCK_TOKENS = ("BLOCK", "VETO", "GATE", "FILTER", "REQUIRE", "GUARD", "NOLOSS", "NO_LOSS")
+ADAPT_TIM_MAX, ADAPT_DD_MAX = 80.0, 30.0
 
 
 def _adapt_template_rows(template_path, tabs):
@@ -1190,11 +1194,13 @@ def _adapt_template_rows(template_path, tabs):
 
 
 def _credible_baseline(new_symside, prepared, base_sets, defaults, template_path, window_days, workers=2):
-    """USER 2026-09-29 adaptive sample-floor mandate (HANDOVER_SWEEP_20260929): a sheet is only filled from a CREDIBLE
-    baseline (valid, >= ADAPT_FLOOR_TRADES trades, gain >= ADAPT_ULTRA_NEG_PCT). Otherwise: (A) try alternative base sets
-    (live recipe / template defaults / previous best), (B) too few trades -> enable entry/reentry paths + soften filters,
-    maximising trades up to the floor, (C) ultra-negative -> greedy best row over all tabs until above the threshold.
-    Returns (overrides, vec_result, report). report['credible'] False = do NOT sweep (no 0-trade / ultra-neg sheets)."""
+    """USER 2026-09-29/30 (BIBLE §58, adaptive mandate): a sheet is only filled from a CREDIBLE baseline = valid (TIM <= 80,
+    DD <= 30 — the vomit gates of evaluate_prepared_sanitized, never loosened), >= ADAPT_FLOOR_TRADES trades, gain >=
+    ADAPT_ULTRA_NEG_PCT. An invalid baseline is REPAIRED, never disqualified: (A) best of the alternative bases (live recipe /
+    template defaults / previous best); then per step, by what fails: too few trades -> soften filters + open entry/reentry
+    paths; TIM/DD too high -> exit / reduce / reentry rows, loosened exit blockers, reentry filters on; ultra-negative ->
+    greedy best row over all tabs (validity kept). Up to ADAPT_MAX_STEPS; a step stops at the first credible candidate.
+    Returns (overrides, vec_result, report)."""
     from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps
     floor, uneg = ADAPT_FLOOR_TRADES, ADAPT_ULTRA_NEG_PCT
 
@@ -1212,35 +1218,51 @@ def _credible_baseline(new_symside, prepared, base_sets, defaults, template_path
         g = v.get("gain_pct")
         return float(g) if g is not None else -1e9
 
+    def excess(v):
+        # how far over the vomit gates (TIM > 80 %, DD > 30 %): 0 = within
+        return max(0.0, float(v.get("tim_pct") or 0.0) - ADAPT_TIM_MAX) + max(0.0, float(v.get("max_dd_pct") or 0.0) - ADAPT_DD_MAX)
+
     def credible(v):
         return bool(v.get("valid")) and trades(v) >= floor and gain(v) >= uneg
 
     def score(v):
-        return (credible(v), min(trades(v), floor), bool(v.get("valid")), gain(v))
+        return (credible(v), bool(v.get("valid")), -excess(v), min(trades(v), floor), gain(v))
 
-    report = {"floor": floor, "ultra_neg": uneg, "bases": [], "steps": []}
+    report = {"floor": floor, "ultra_neg": uneg, "tim_max": ADAPT_TIM_MAX, "dd_max": ADAPT_DD_MAX, "bases": [], "steps": []}
     best = None
     for label, ov in base_sets:
         if ov is None:
             continue
         sov, v = ev(ov)
-        report["bases"].append({"label": label, "n_overrides": len(sov), "gain": v.get("gain_pct"), "trades": trades(v), "valid": v.get("valid"), "reason": v.get("invalid_reason")})
+        report["bases"].append({"label": label, "n_overrides": len(sov), "gain": v.get("gain_pct"), "trades": trades(v), "tim": v.get("tim_pct"), "dd": v.get("max_dd_pct"), "valid": v.get("valid"), "reason": v.get("invalid_reason")})
         if best is None or score(v) > score(best[2]):
             best = (label, sov, v)
     label, cur_ov, cur_v = best
     report["base_chosen"] = label
-    print(f"[ADAPT-BASE] {new_symside} bases {[(b['label'], b['trades'], round(b['gain'], 2) if b['gain'] is not None else None, b['valid']) for b in report['bases']]} -> {label}", flush=True)
+    print(f"[ADAPT-BASE] {new_symside} bases {[(b['label'], b['trades'], round(b['gain'], 2) if b['gain'] is not None else None, b['tim'], b['valid']) for b in report['bases']]} -> {label}", flush=True)
     if credible(cur_v):
         report["credible"] = True
         return cur_ov, cur_v, report
-    rows_entry = _adapt_template_rows(template_path, [t for t in SWITCH_SHEETS if t.startswith(("ENTRY_", "REENTRY_"))])
-    rows_all = None
+    rows = {}
+
+    def tab_rows(key, tabs):
+        if key not in rows:
+            rows[key] = _adapt_template_rows(template_path, list(tabs))
+        return rows[key]
+
+    def row_cands(key, tabs):
+        return [(f"{tab}:{sw}={cand}", _switch_overrides(sw, _parse_opt_value(cand, defaults.get(sw)))) for tab, sw, cand in tab_rows(key, tabs)]
+
     for step in range(ADAPT_MAX_STEPS):
-        phase = "TRADES" if trades(cur_v) < floor else "GAIN"
+        if trades(cur_v) < floor:
+            phase = "TRADES"
+        elif excess(cur_v) > 0 or not cur_v.get("valid"):
+            phase = "EXITS"
+        else:
+            phase = "GAIN"
         cands = []
         if phase == "TRADES":
-            for tab, sw, cand in rows_entry:
-                cands.append((f"{tab}:{sw}={cand}", _switch_overrides(sw, _parse_opt_value(cand, defaults.get(sw)))))
+            cands += row_cands("entry", [t for t in SWITCH_SHEETS if t.startswith(("ENTRY_", "REENTRY_"))])
             for k, dv in defaults.items():
                 cur = cur_ov.get(k, dv)
                 if not isinstance(dv, bool) or not isinstance(cur, bool) or k == "SIMPLE_PRICE_GT0_ENABLED" or k in DEAD_VEC_SWITCHES or k in LIVE_ONLY_SWITCHES:
@@ -1249,31 +1271,40 @@ def _credible_baseline(new_symside, prepared, base_sets, defaults, template_path
                     cands.append((f"SOFTEN:{k}=False", {k: False}))
                 elif not cur and k.endswith("_ENABLED") and any(t in k for t in _ADAPT_ENTRY_TOKENS) and not any(t in k for t in _ADAPT_SOFTEN_TOKENS):
                     cands.append((f"ENTRY_PATH:{k}=True", {k: True}))
+        elif phase == "EXITS":
+            cands += row_cands("exit", [t for t in SWITCH_SHEETS if t in _ADAPT_EXIT_TABS])
+            for k, dv in defaults.items():
+                cur = cur_ov.get(k, dv)
+                if not isinstance(dv, bool) or not isinstance(cur, bool) or k in DEAD_VEC_SWITCHES or k in LIVE_ONLY_SWITCHES:
+                    continue
+                if cur and "EXIT" in k and any(t in k for t in _ADAPT_EXIT_BLOCK_TOKENS):
+                    cands.append((f"EXIT_LOOSEN:{k}=False", {k: False}))
+                elif not cur and "REENTRY" in k and "FILTER" in k:
+                    cands.append((f"REENTRY_FILTER:{k}=True", {k: True}))
         else:
-            if rows_all is None:
-                rows_all = _adapt_template_rows(template_path, [t for t in SWITCH_SHEETS if t != "STDEV_SLOPE_SIZING"])
-            for tab, sw, cand in rows_all:
-                cands.append((f"{tab}:{sw}={cand}", _switch_overrides(sw, _parse_opt_value(cand, defaults.get(sw)))))
+            cands += row_cands("all", [t for t in SWITCH_SHEETS if t != "STDEV_SLOPE_SIZING"])
         cands = [(lab, ch) for lab, ch in cands if ch and any(cur_ov.get(k, defaults.get(k)) != v for k, v in ch.items())]
         best_step = None
         for lab, ch in cands:
             sov, v = ev({**cur_ov, **ch})
-            if phase == "GAIN" and trades(v) < floor:
-                continue
+            if phase == "GAIN" and not v.get("valid"):
+                continue  # gain repair never trades validity away
             if score(v) > score(cur_v) and (best_step is None or score(v) > score(best_step[2])):
                 best_step = (lab, sov, v)
+                if credible(v):
+                    break
         if best_step is None:
             report["steps"].append({"step": step, "phase": phase, "n_cands": len(cands), "result": "no improving candidate"})
-            print(f"[ADAPT-STEP] {new_symside} {step} {phase}: {len(cands)} candidates, none improves ({trades(cur_v)} trades, gain {gain(cur_v):+.2f})", flush=True)
+            print(f"[ADAPT-STEP] {new_symside} {step} {phase}: {len(cands)} candidates, none improves ({trades(cur_v)} trades, TIM {cur_v.get('tim_pct')}, gain {gain(cur_v):+.2f})", flush=True)
             break
         lab, cur_ov, cur_v = best_step
-        report["steps"].append({"step": step, "phase": phase, "n_cands": len(cands), "applied": lab, "gain": cur_v.get("gain_pct"), "trades": trades(cur_v), "valid": cur_v.get("valid")})
-        print(f"[ADAPT-STEP] {new_symside} {step} {phase}: applied {lab} -> {trades(cur_v)} trades, gain {gain(cur_v):+.2f}, valid {cur_v.get('valid')}", flush=True)
+        report["steps"].append({"step": step, "phase": phase, "n_cands": len(cands), "applied": lab, "gain": cur_v.get("gain_pct"), "trades": trades(cur_v), "tim": cur_v.get("tim_pct"), "dd": cur_v.get("max_dd_pct"), "valid": cur_v.get("valid")})
+        print(f"[ADAPT-STEP] {new_symside} {step} {phase}: applied {lab} -> {trades(cur_v)} trades, TIM {cur_v.get('tim_pct')}, DD {cur_v.get('max_dd_pct')}, gain {gain(cur_v):+.2f}, valid {cur_v.get('valid')}", flush=True)
         if credible(cur_v):
             break
     report["credible"] = credible(cur_v)
-    report["final"] = {"gain": cur_v.get("gain_pct"), "trades": trades(cur_v), "valid": cur_v.get("valid"), "reason": cur_v.get("invalid_reason"), "n_overrides": len(cur_ov)}
-    print(f"[ADAPT-RESULT] {new_symside} credible={report['credible']} {trades(cur_v)} trades gain {gain(cur_v):+.2f} valid {cur_v.get('valid')} after {len([s for s in report['steps'] if s.get('applied')])} steps", flush=True)
+    report["final"] = {"gain": cur_v.get("gain_pct"), "trades": trades(cur_v), "tim": cur_v.get("tim_pct"), "dd": cur_v.get("max_dd_pct"), "valid": cur_v.get("valid"), "reason": cur_v.get("invalid_reason"), "n_overrides": len(cur_ov)}
+    print(f"[ADAPT-RESULT] {new_symside} credible={report['credible']} {trades(cur_v)} trades TIM {cur_v.get('tim_pct')} gain {gain(cur_v):+.2f} valid {cur_v.get('valid')} after {len([s for s in report['steps'] if s.get('applied')])} steps", flush=True)
     return cur_ov, cur_v, report
 
 
@@ -2034,11 +2065,53 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     progress["cumulative_gain"] = float(_fresh_g)
         except Exception as _ff_e:
             print(f"[final-fresh-warn] {new_symside}: {_ff_e}", flush=True)
+            _fresh_final = {}
+        # USER 2026-09-30: a sheet is FINISHED only when its final set complies with the standards (valid = TIM <= 80, DD <= 30,
+        # trades >= floor; a negative gain is NOT a disqualifier). Non-compliant -> BIBLE §58 repair of the final set (exits /
+        # entries / reentry filters, never loosened gates); still non-compliant -> NOT published (no bh/gain filename).
+        def _complies(v):
+            return bool((v or {}).get("valid")) and int((v or {}).get("trades") or 0) >= ADAPT_FLOOR_TRADES
+        _compliant = _complies(_fresh_final)
+        if not _compliant and prepared is not None:
+            print(f"[COMPLIANCE] {new_symside} final set not compliant ({(_fresh_final or {}).get('invalid_reason') or 'trades ' + str((_fresh_final or {}).get('trades'))}) — repairing before publish", flush=True)
+            try:
+                _rov, _rv, _rrep = _credible_baseline(new_symside, prepared, [("final_set", dict(cumulative_overrides))], defaults, args.template, args.window_days)
+                progress["compliance_repair"] = _rrep
+                if _complies(_rv):
+                    cumulative_overrides = dict(_rov)
+                    _fresh_final = _rv
+                    final_gain = cumulative_gain = float(_rv.get("gain_pct"))
+                    progress["cumulative_overrides"] = dict(cumulative_overrides)
+                    progress["cumulative_gain"] = float(final_gain)
+                    _compliant = True
+                    try:
+                        if "COMPLIANCE_REPAIR" in wb.sheetnames:
+                            del wb["COMPLIANCE_REPAIR"]
+                        _cws = wb.create_sheet("COMPLIANCE_REPAIR")
+                        _cws.append(["step", "phase", "applied", "gain_pct", "trades", "tim_pct", "max_dd_pct", "valid"])
+                        for _st in _rrep.get("steps", []):
+                            _cws.append([_st.get("step"), _st.get("phase"), _st.get("applied") or _st.get("result"), _st.get("gain"), _st.get("trades"), _st.get("tim"), _st.get("dd"), _st.get("valid")])
+                        with RED_FIXER_LOCK:
+                            _atomic_save(wb, wb_path)
+                    except Exception as _cw_e:
+                        print(f"[compliance-sheet-warn] {_cw_e}", flush=True)
+                    print(f"[COMPLIANCE] {new_symside} repaired: {_rv.get('trades')} trades TIM {_rv.get('tim_pct')} DD {_rv.get('max_dd_pct')} gain {final_gain:+.4f}", flush=True)
+            except Exception as _cr_e:
+                print(f"[compliance-repair-warn] {new_symside}: {_cr_e}", flush=True)
+        if not _compliant:
+            progress["not_compliant"] = str((_fresh_final or {}).get("invalid_reason") or f"trades {(_fresh_final or {}).get('trades')} < {ADAPT_FLOOR_TRADES}")
+            progress.pop("final_path", None)
+            _maybe_write_json(force=True)
+            print(f"[NOT-FINISHED] {new_symside} final set does not comply ({progress['not_compliant']}) — NOT published with bh/gain", flush=True)
+        else:
+            progress.pop("not_compliant", None)
         # 2026-09-28 USER ORDER (impeccable sheets): PUBLISH THE bh/gain FINAL **BEFORE** the live
         # verification — the publish block in main() is unreachable (spec-fill returns early) and
         # DONE-stage tails have been dying, so the file must exist the moment final_gain is honest
         # (fresh-vec verified above). Live verify afterwards only ADDs H/I.
         try:
+            if not _compliant:
+                raise RuntimeError("not compliant — the sheet is not finished, no bh/gain publish")
             def _fmt_bg(v):
                 return f"{v:.2f}".replace("-", "m").replace(".", "p")
             _bh_raw = float(bh or 0)
@@ -4138,19 +4211,22 @@ def main():
         # Deltas are measured vs the REAL gain of the current override set. The max(..., 0, hustler_best) above
         # clamped negative baselines to 0.0, so every row delta was gain-0 (always NEG, never promoted).
         cumulative_gain = baseline_gain
+        print(f"[BASELINE-CHAIN-START] cumulative_gain set to baseline_gain {cumulative_gain:.4f}% — this will seed E3 and greedy chain", flush=True)
     except Exception as _e_baseline:
         print(f"[BASELINE-RECALC-WARN] {_e_baseline} — using original baseline {baseline_gain:.4f}%", flush=True)
+        # CRITICAL FIX: Even on exception, cumulative_gain must equal baseline_gain for E3 to be filled
+        cumulative_gain = baseline_gain
+        print(f"[BASELINE-CHAIN-START-FALLBACK] cumulative_gain set to baseline_gain {cumulative_gain:.4f}% after exception", flush=True)
 
     if locals().get("_adapt_report") is not None:
         progress["adaptive_baseline"] = _adapt_report
         _atomic_write_json(progress_path, progress)
     if below_floor and locals().get("_adapt_report") is not None and not _adapt_report.get("credible"):
-        # USER 2026-09-29: a 0-trade / sub-floor baseline is NOT accepted — adaptive stage (bases + entry paths + softened
-        # filters) failed to reach the floor -> no sheet sweep; flagged for the operator
-        progress["diagnostic_only"] = f"trades={baseline_trades} floor={min_trades} NO_CREDIBLE_BASELINE after adaptive"
+        # USER 2026-09-30: NO 30D sheet is ever disqualified — the repair stage ran out of steps; the sheet is filled anyway
+        # (only VALID rows can promote, so the fill keeps repairing it) and the gap is flagged for the operator
+        progress["baseline_not_credible"] = f"trades={baseline_trades} floor={min_trades} after adaptive repair — sheet filled, only valid rows promote"
         _atomic_write_json(progress_path, progress)
-        print(f"[NO-CREDIBLE-BASELINE] {new_symside} {baseline_trades} trades after adaptive stage — sweep skipped (not swept from a non-credible baseline)", flush=True)
-        return
+        print(f"[NO-CREDIBLE-BASELINE] {new_symside} {baseline_trades} trades after adaptive repair — FILLING ANYWAY (never disqualified), valid-only promotion", flush=True)
     if below_floor:
         progress["baseline_below_floor"] = f"trades={baseline_trades} floor={min_trades}"
         # USER 2026-09-29: "0 trades is impossible" — name the gates that veto every entry, then SWEEP anyway

@@ -114,6 +114,7 @@ import vec_decisions.filter_tf_gate
 import vec_decisions.mtf_atr_trail_exit
 import vec_decisions.mtf_compound_exits
 import vec_decisions.dc_channel_exits
+import vec_decisions.grey_wire_exits  # 2026-09-30 grey-switch wiring (shared with tradier_manage live)
 import wt_dc_entry_scorer_vec as _wt_dc_vec
 
 _ALL_FILTER_TF = ("ATR_TRAIL_FILTER_TF", "BAR_PATTERNS_FILTER_TF", "BB_PULLBACK_GATE_FILTER_TF", "BB_RECOVERY_ENTRY_FILTER_TF", "BB_RECOVERY_FILTER_TF", "BREAKEVEN_GAIN_EROSION_FILTER_TF", "BREAKOUT_RETEST_FILTER_TF", "BTC_DEDICATED_FILTER_TF", "BT_WT_CROSS_LADDER_FILTER_TF", "CANDLE_PATTERN_STOPS_FILTER_TF", "CIRCUIT_SHARPE_GATES_FILTER_TF", "COOLDOWN_LOCKS_FILTER_TF", "DC_BREACH_REDUCE_FILTER_TF", "DC_BREAK_FILTER_TF", "DC_MOMENTUM_BOTA_SCORER_FILTER_TF", "DELTA_ENGINE_FILTER_TF", "DUP_GUARD_FILTER_TF", "E2E_REPLAY_VALIDATOR_FILTER_TF", "EMA_9_21_FILTER_FILTER_TF", "EMA_BLANKET_FILTER_FILTER_TF", "EMERGENCY_BRAKE_FILTER_TF", "EXHAUSTION_EXIT_FILTER_TF", "EXIT_R1_R2_FILTER_TF", "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF", "EXIT_TOP_FADE_FILTER_TF", "EXIT_TO_REDUCE_ADAPTER_FILTER_TF", "FAST_RISER_FILTER_TF", "FH_MOMENTUM_FILTER_TF", "FIRST_OPEN_THROTTLE_FILTER_TF", "FROZEN_STOP_FILTER_TF", "FUNDING_GATE_FILTER_TF", "GOLDEN_RULE_ENFORCE_FILTER_TF", "GOLDEN_RULE_HTF_VOTE_FILTER_TF", "GR_FILTER_VEC_FILTER_TF", "GR_V5_STATE_FILTER_TF", "HAIKU_WINNER_FILTER_TF", "KILLER_KNOB_FINDER_FILTER_TF", "KINDERGARTEN_FILTER_TF", "LIVE_ENTRY_ENGINE_FILTER_TF", "LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF", "MOM3_FILTER_TF", "MOMENTUM_BREAKOUT_FILTER_TF", "MTF_ARMED_ENTRIES_FILTER_TF", "MTF_ATR_TRAIL_FILTER_TF", "MTF_DC_REJECT_FILTER_TF", "NEWBORN_LOSS_KILL_FILTER_TF", "NEWBORN_PROTECT_FILTER_TF", "NOLOSS_BYPASS_WT5OF5_FILTER_TF", "OPEN_INTENT_SIZE_GATES_FILTER_TF", "PARTIAL_PROFIT_LOCK_V2_FILTER_TF", "PEAK_GIVEBACK_BE_EROSION_FILTER_TF")
@@ -22377,6 +22378,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     except Exception:
         _entry_blocks_cache = {}
 
+    # 2026-09-30 GREY-SWITCH WIRING — exits shared with live stocks (tradier_manage GREY_WIRE hook) via
+    # vec_decisions.grey_wire_exits (crypto live source of truth: ez_manage.process_position). Every enable
+    # defaults OFF -> empty list -> the loop hook below never runs at the defaults.
+    _gw_c = lambda _k, _d: getattr(cfg, _k, _d)
+    _gw_exits = vec_decisions.grey_wire_exits.active_exits(_gw_c)
+    _gw_bar = vec_decisions.grey_wire_exits.NpzBar(npz, n) if _gw_exits else None
+
     def _open(qty0, px, i, entry_reason='VECTOR_ENTRY'):
         # Store original entry price/bar for ledger — avg_price may drift after augments
         _ts_open = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
@@ -22717,6 +22725,19 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     continue
         except Exception:
             pass
+        # 2026-09-30 GREY-SWITCH WIRING exits (vec_decisions.grey_wire_exits; OFF by default)
+        if _gw_exits:
+            _gw_bar.i = i
+            _gw_fire, _gw_reason = vec_decisions.grey_wire_exits.first_fire(
+                _gw_exits, _gw_c, _gw_bar, {'gain': float(live_pnl_pct), 'age_s': float(held_bars * bmin * 60.0), 'entry_px': float(pos['avg_price']), 'px': float(px)}, is_long)
+            if _gw_fire:
+                pos['fees'] += abs(pos['qty'] * px) * half_fee
+                _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
+                _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
+                _tsg = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _gw_reason, 'type': 'CLOSE', 'ts': _tsg, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _gw_reason, 'bars_held': int(i - pos['entry_bar'])})
+                pos = None; cd = cooldown_bars; has_closed_before = True
+                continue
 
         # 2026-09-28 LIVE-PARITY AUGMENT (user mandate "absolute parity"): the gain-ladder
         # (UAG obligatory tier + pullback dip, ez_manage.py:31461-31525/30943-30990) initiates

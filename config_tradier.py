@@ -1769,6 +1769,31 @@ class TradierConfig:
     DAYTRADE_DC_TARGET_TF: str = "OFF"
     DAYTRADE_DC_TARGET_BUFFER_PCT: float = 0.10
     WT_LOWER_CROSS_EXIT_TF: str = "OFF"
+    # 2026-09-30 GREY-SWITCH WIRING batch 1 (exits): stock live port of crypto ez_manage.process_position exits, ONE
+    # predicate set vec_decisions/grey_wire_exits.py shared with v12_quick_engine.simulate_one; hook = tradier_manage
+    # GREY_WIRE exit block after ULTIMATE_DC. All OFF = today's stock live behaviour (tradier never ran these).
+    HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = False
+    HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: float = 1.0  # truthy = require wt1_4h against too (QuickConfig/template carry 1.0)
+    WT_4H_VEL_EXIT_ENABLED: bool = False
+    DC_HOPELESS_EXIT_ENABLED: bool = False
+    WT_PERCENTILE_EXIT_ENABLED: bool = False
+    E_1_WT_EXIT_USE_DELTA_ENABLED: bool = False
+    E_3_USE_WT_STRUCTURE_EXIT_MODE: int = 0  # 0 off, 1 shadow (log only), 2 live exit
+    # their parameters = the QuickConfig(apply_tradier_defaults) values the stock sweep uses (live == vec when enabled)
+    DC_HOPELESS_EXIT_MIN_AGE_S: int = 900
+    WT_4H_VEL_EXIT_LONG_VEL_MIN: float = -2.0
+    WT_4H_VEL_EXIT_SHORT_VEL_MIN: float = 2.0
+    WT_4H_VEL_EXIT_REQUIRE_PROFIT: bool = True
+    WT_4H_VEL_EXIT_REQUIRE_K_EXTREME: bool = True
+    WT_4H_VEL_EXIT_K_EXTREME_HIGH: float = 80.0
+    WT_4H_VEL_EXIT_K_EXTREME_LOW: float = 20.0
+    WT_PERCENTILE_EXIT_OB_D: float = 75.0
+    WT_PERCENTILE_EXIT_OB_4H: float = 55.0
+    WT_PERCENTILE_EXIT_OS_D: float = 10.0
+    WT_PERCENTILE_EXIT_OS_4H: float = 25.0
+    E_1_EXIT_DELTA_THR: float = 50.0
+    WT_CROSS_EXIT_REQUIRE_15M_CONFIRM: bool = True
+    MIN_HOLD_BARS_BEFORE_EXIT: int = 10  # read live ONLY by the GREY_WIRE HTF_AGAINST_FORCE_CLOSE min-hold (x 3m) — other tradier reads are dead code
     DC_DAYTRADE_TARGET_PCT: float = 0.01  # 1% profit target
     DC_DAYTRADE_MAX_HOLD_MINUTES: float = 240.0  # 4h max hold (flatten before close regardless)
     DC_DAYTRADE_PRE_CLOSE_MINUTES: int = 120  # Start flattening 2h before market close (14:00 ET)

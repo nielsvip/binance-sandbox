@@ -29,6 +29,7 @@ from zoneinfo import ZoneInfo
 
 import vec_decisions.shared_zone
 import vec_decisions.dc_channel_exits as _dc_channel_exits  # 2026-09-29 grey-switch rewire (shared with v12_quick_engine)
+import vec_decisions.grey_wire_exits as _grey_wire_exits  # 2026-09-30 grey-switch wiring (shared with v12_quick_engine)
 from vec_decisions.process_position_stocks__alt_entries import _rz_breakout_fires  # 2026-09-29 grey rewire RZ_BREAKOUT shared predicate
 import aiofiles
 import numpy as np
@@ -10678,6 +10679,14 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _gx_stop, _gx_tgt = _dc_channel_exits.resolve_daytrade_dc(_gx_c)
                     if _gx_stop or _gx_tgt:
                         _gx_fire, _gx_reason = _dc_channel_exits.daytrade_dc_exit(current_price, is_long, _gx_stop, _gx_tgt, lambda _f: safe_fetch_float(i.get(_f, 0), 0.0))
+                # 2026-09-30 GREY-SWITCH WIRING exits (vec_decisions/grey_wire_exits.py, the SAME predicates
+                # v12_quick_engine.simulate_one calls). All enables OFF in config_tradier -> list empty -> inert.
+                _gw_fns = _grey_wire_exits.active_exits(_gx_c) if not _gx_fire else []
+                if _gw_fns:
+                    _gw_opened = parse_position_timestamp(getattr(position, 'opened_at', None))
+                    _gw_age_s = max(0.0, (datetime.now(timezone.utc) - _gw_opened).total_seconds()) if isinstance(_gw_opened, datetime) else 0.0
+                    _gw_st = {'gain': safe_fetch_float(getattr(position, 'gain', 0), 0.0), 'age_s': _gw_age_s, 'entry_px': safe_fetch_float(getattr(position, 'entry_price', 0), 0.0), 'px': current_price}
+                    _gx_fire, _gx_reason = _grey_wire_exits.first_fire(_gw_fns, _gx_c, lambda _k, _d=None: i.get(_k, _d), _gw_st, is_long)
                 if _gx_fire:
                     _gx_gain = safe_fetch_float(getattr(position, 'gain', 0), 0.0)
                     logger.warning(f"[GREY_REWIRE_EXIT] {position_key}: {_gx_reason} px={current_price:.4f} g={_gx_gain:.2f}% -> CLOSE")

@@ -1085,6 +1085,20 @@ M AVG_DELTA | N POS_SYM | O.. yellow "FILTER=opt" columns`. White switch rows al
   every bold default to the engine EXPLICITLY (`template_bold_defaults()`): the running default is the bold set, never
   QuickConfig's own values. Audit: `tools/v15_template_defaults_fix.py --audit` (report-only).
 
+**No 30D sheet is ever disqualified — invalid baselines are REPAIRED (USER 2026-09-30, §58 rules, gates never loosened):**
+`_credible_baseline` (up to `V15_ADAPT_MAX_STEPS` = 12 steps, each step stops at the first credible set) picks the fix by
+what fails: **trades < floor** → soften bool FILTER/GATE/BLOCK/REQUIRE/CONFIRM/VETO/GUARD switches + open ENTRY_/REENTRY_
+paths; **TIM > 80 or DD > 30** → rows of EXIT_STRUCTURAL / EXIT_VELOCITY / REDUCE_PROFIT_LOCK / REDUCE_SIGNAL_RATER /
+REENTRY_WINDOWED / REENTRY_ADAPTIVE, exit blockers loosened (EXIT…BLOCK/VETO/GATE/FILTER/REQUIRE/GUARD/NOLOSS → False),
+reentry filters on (REENTRY…FILTER → True); **ultra-negative** → greedy best row keeping validity. Rank = (credible, valid,
+least TIM/DD excess, trades, gain). Proof 2026-09-30 (s2): AAPL_LONG TIM 90 → DAYTRADE_DC_TARGET_TF + STOP_TF = 15m,1h →
+165 tr, TIM 77, +6.52, valid; MSTR_LONG TIM 81 → one exit → TIM 79, +7.65, valid. Still not credible after all steps → the
+sheet is filled anyway (`baseline_not_credible` flag), only VALID rows promote.
+**A sheet is FINISHED only when its final set complies** (valid: TIM ≤ 80, DD ≤ 30, trades ≥ floor — a NEGATIVE gain is NOT
+a disqualifier). At DONE a non-compliant final set is repaired the same way (steps in the `COMPLIANCE_REPAIR` tab +
+`compliance_repair` in the progress JSON); still non-compliant → `not_compliant` flag and **no bh/gain filename** (the pilot,
+`v15_harvest_done.py` and `v15_finisher.py` all refuse). `v15_assure watch` is stopped on s1/s2 (old column semantics).
+
 **Fill order:** tabs in `SWITCH_SHEETS` order (STDEV first), rows in order, white rows before orange rows, NO row skipped,
 NO tab jumping (R16/R17 jump is gone). Hustle shuffle stays the only exception. Grey / dead-vector / empty-candidate rows are
 recorded with their reason and never evaluated.
