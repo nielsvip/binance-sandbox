@@ -8650,8 +8650,7 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
     for _bb_tf, _bb_key, _blk in [
         (getattr(cfg, 'BB_BOUNCE_ENTRY_TF', 'OFF'), "BB_BOUNCE_ENTRY", "BB_BOUNCE_ENTRY"),
         (getattr(cfg, 'BB_BREAKOUT_ENTRY_TF', 'OFF'), "BB_BREAKOUT_ENTRY", "BB_BREAKOUT_ENTRY"),
-        (getattr(cfg, 'BB_EXIT_AT_LOSS_TF', 'OFF'), "BB_EXIT_AT_LOSS", "BB_EXIT_AT_LOSS"),
-        (getattr(cfg, 'BB_PROFIT_TAKE_TF', 'OFF'), "BB_PROFIT_TAKE", "BB_PROFIT_TAKE"),
+        # 2026-09-30: BB_EXIT_AT_LOSS / BB_PROFIT_TAKE moved OUT of reentry blocks -> compute_exit_signals (exit_sig). They are EXITS, not reentries.
     ]:
         _bb_tf = str(_bb_tf)
         if _bb_tf == "OFF" or _bb_tf not in ("15m","1h","4h","D"):
@@ -8975,6 +8974,7 @@ def compute_entry_signals(npz, n, is_long, cfg):
     _wtdc_tf_htf2 = str(getattr(cfg, 'WT_DC_TF_HTF2', 'D')).lower()
     _wtdc_dc_tf = str(getattr(cfg, 'WT_DC_DC_TF', '1h')).lower()
     _wtdc_stoch_tf = str(getattr(cfg, 'WT_DC_STOCH_TF', '5m')).lower()
+    if _wtdc_stoch_tf in ('5m', '3m'): _wtdc_stoch_tf = '15m'  # 2026-09-30 15m-floor: NPZ has no 3m/5m, phantom no-op fixed
     _wtdc_dc_thr_long = float(getattr(cfg, 'WT_DC_DC_POS_THRESHOLD_LONG', 0.50))
     _wtdc_dc_thr_short = float(getattr(cfg, 'WT_DC_DC_POS_THRESHOLD_SHORT', 0.50))
     _wtdc_stoch_thr_long = float(getattr(cfg, 'WT_DC_STOCH_THRESHOLD_LONG', 40.0))
@@ -9796,6 +9796,20 @@ def compute_exit_signals(npz, n, is_long, cfg):
                 _all_exit = _all_exit & (~_bear_mask)
     except Exception:
         pass
+    # 2026-09-30 BB_EXIT_AT_LOSS / BB_PROFIT_TAKE — per-TF Bollinger band-touch EXITS (were misrouted into
+    # compute_reentry_blocks; now correctly on exit_sig). LOSS = price at OPPOSITE band; TAKE = FAVORABLE band.
+    for _bbx_tf_raw, _bbx_kind in ((str(getattr(cfg, 'BB_EXIT_AT_LOSS_TF', 'OFF')), 'LOSS'),
+                                   (str(getattr(cfg, 'BB_PROFIT_TAKE_TF', 'OFF')), 'TAKE')):
+        _bbx_tf = '15m' if _bbx_tf_raw in ('3m', '5m') else _bbx_tf_raw
+        if _bbx_tf not in ('15m', '1h', '4h', 'D'):
+            continue
+        _bx_pct = _safe(npz, f'bb_pct_b_{_bbx_tf}', n, 0.5)
+        _bx_lo = _safe(npz, f'bb_lower_{_bbx_tf}', n, 0)
+        _bx_up = _safe(npz, f'bb_upper_{_bbx_tf}', n, 0)
+        if _bbx_kind == 'LOSS':
+            _all_exit = _all_exit | (((_bx_pct < 0.05) & (_bx_lo > 0)) if is_long else ((_bx_pct > 0.95) & (_bx_up > 0)))
+        else:
+            _all_exit = _all_exit | (((_bx_pct > 0.95) & (_bx_up > 0)) if is_long else ((_bx_pct < 0.05) & (_bx_lo > 0)))
     # REMOVED 2026-08-11 — hash fallback deleted per M1 (see entry gate above)
     return _all_exit
 
@@ -11662,8 +11676,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _vig_block_px = 0.0
     _vig_scan_start = 0
     try:
-        _vig_k3 = _safe(npz, 'k_3m', n)
-        _vig_d3 = _safe(npz, 'd_3m', n)
+        # 2026-09-30 15m-floor: NPZ has no 3m; VIGILANCE recovery stoch-confirm read k_3m/d_3m (phantom, always 0 -> leg always-True). Use 15m.
+        _vig_k3 = _safe(npz, 'stoch_k_15m', n, 50)
+        _vig_d3 = _safe(npz, 'stoch_d_15m', n, 50)
     except Exception:
         _vig_k3 = close * 0
         _vig_d3 = close * 0
