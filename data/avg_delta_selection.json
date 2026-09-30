@@ -1,57 +1,45 @@
 {
- "1000BONKUSDC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/1000BONKUSDC_LONG_v14_progress.json",
-  "real": 3626,
-  "mtime": 1790775857.1210904
- },
- "1000BONKUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/1000BONKUSDC_SHORT_v14_progress.json",
-  "real": 3501,
-  "mtime": 1790775857.1710913
- },
  "1000FLOKIUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/1000FLOKIUSDT_LONG_v14_progress.json",
-  "real": 3639,
-  "mtime": 1790778958.2474391
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/1000FLOKIUSDT_LONG_v14_progress.json",
+  "real": 3117,
+  "mtime": 1790736376.496773
  },
  "1000FLOKIUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/1000FLOKIUSDT_SHORT_v14_progress.json",
-  "real": 3482,
-  "mtime": 1790778923.6358273
+  "host": "s5",
+  "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/1000FLOKIUSDT_SHORT_v14_progress.json",
+  "real": 3851,
+  "mtime": 1790737497.9483767
  },
  "1000PEPEUSDC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/1000PEPEUSDC_LONG_v14_progress.json",
-  "real": 3653,
-  "mtime": 1790775683.8201609
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/1000PEPEUSDC_LONG_v14_progress.json",
+  "real": 3329,
+  "mtime": 1790733119.1941688
  },
  "1000PEPEUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/1000PEPEUSDC_SHORT_v14_progress.json",
-  "real": 3482,
-  "mtime": 1790775676.90904
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/1000PEPEUSDC_SHORT_v14_progress.json",
+  "real": 3156,
+  "mtime": 1790733090.7326171
  },
  "1000SHIBUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/1000SHIBUSDC_SHORT_v14_progress.json",
-  "real": 3086,
-  "mtime": 1790778415.4476023
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/1000SHIBUSDC_SHORT_v14_progress.json",
+  "real": 2804,
+  "mtime": 1790735734.7185233
  },
  "1INCHUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/1INCHUSDT_LONG_v14_progress.json",
-  "real": 3652,
-  "mtime": 1790775134.1479647
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/1INCHUSDT_LONG_v14_progress.json",
+  "real": 3329,
+  "mtime": 1790732399.2203033
  },
  "1INCHUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/1INCHUSDT_SHORT_v14_progress.json",
-  "real": 3475,
-  "mtime": 1790775063.9761903
+  "host": "s5",
+  "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/1INCHUSDT_SHORT_v14_progress.json",
+  "real": 4297,
+  "mtime": 1790737156.4561245
  },
  "AAPL_LONG": {
   "host": "s2",
@@ -66,10 +54,10 @@
   "mtime": 1790750266.9637365
  },
  "AAVEUSDC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/AAVEUSDC_LONG_v14_progress.json",
-  "real": 3660,
-  "mtime": 1790779413.4124627
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/AAVEUSDC_LONG_v14_progress.json",
+  "real": 3136,
+  "mtime": 1790736849.2641435
  },
  "ABBV_LONG": {
   "host": "s2",
@@ -90,10 +78,10 @@
   "mtime": 1790783068.7405717
  },
  "ACEUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ACEUSDT_LONG_v14_progress.json",
-  "real": 3617,
-  "mtime": 1790777562.8762717
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/ACEUSDT_LONG_v14_progress.json",
+  "real": 3117,
+  "mtime": 1790734734.137328
  },
  "ACN_LONG": {
   "host": "s5",
@@ -108,16 +96,16 @@
   "mtime": 1790757796.3268504
  },
  "ADAUSDC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ADAUSDC_LONG_v14_progress.json",
-  "real": 3642,
-  "mtime": 1790777393.8685615
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/ADAUSDC_LONG_v14_progress.json",
+  "real": 3309,
+  "mtime": 1790734475.760191
  },
  "ADAUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ADAUSDC_SHORT_v14_progress.json",
-  "real": 3423,
-  "mtime": 1790777386.0863292
+  "host": "s5",
+  "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/ADAUSDC_SHORT_v14_progress.json",
+  "real": 4048,
+  "mtime": 1790737233.0890908
  },
  "ADBE_SHORT": {
   "host": "s2",
@@ -138,8 +126,8 @@
   "mtime": 1790753502.4559927
  },
  "AEM_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run16_20260930/progress/AEM_LONG_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/AEM_LONG_v14_progress.json",
   "real": 3114,
   "mtime": 1790748024.4061983
  },
@@ -162,28 +150,28 @@
   "mtime": 1790752967.675621
  },
  "AIAUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/AIAUSDT_LONG_v14_progress.json",
-  "real": 3648,
-  "mtime": 1790779162.3910067
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/AIAUSDT_LONG_v14_progress.json",
+  "real": 3310,
+  "mtime": 1790736464.6365113
  },
  "ALB_SHORT": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/ALB_SHORT_v14_progress.json",
   "real": 2759,
   "mtime": 1790655529.3409414
  },
  "ALGOUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ALGOUSDT_LONG_v14_progress.json",
-  "real": 3645,
-  "mtime": 1790776413.2046492
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/ALGOUSDT_LONG_v14_progress.json",
+  "real": 3136,
+  "mtime": 1790733774.0213206
  },
  "ALGOUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ALGOUSDT_SHORT_v14_progress.json",
-  "real": 3058,
-  "mtime": 1790776375.8470995
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/ALGOUSDT_SHORT_v14_progress.json",
+  "real": 2635,
+  "mtime": 1790733676.7521493
  },
  "ALMU_LONG": {
   "host": "s2",
@@ -222,8 +210,8 @@
   "mtime": 1790755330.253372
  },
  "AMZN_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run3_20260930/progress/AMZN_SHORT_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run3_20260930/progress/AMZN_SHORT_v14_progress.json",
   "real": 2495,
   "mtime": 1790735635.096726
  },
@@ -234,37 +222,25 @@
   "mtime": 1790759317.3728993
  },
  "APO_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run3_20260930/progress/APO_SHORT_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run3_20260930/progress/APO_SHORT_v14_progress.json",
   "real": 2482,
   "mtime": 1790737118.1000443
  },
- "APPUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/APPUSDT_SHORT_v14_progress.json",
-  "real": 3081,
-  "mtime": 1790774289.1170707
- },
  "ARBUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ARBUSDC_SHORT_v14_progress.json",
-  "real": 3520,
-  "mtime": 1790775987.684193
- },
- "ARMUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ARMUSDT_SHORT_v14_progress.json",
-  "real": 3056,
-  "mtime": 1790780756.9819064
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/ARBUSDC_SHORT_v14_progress.json",
+  "real": 3179,
+  "mtime": 1790733529.6063738
  },
  "ARM_LONG": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/ARM_LONG_v14_progress.json",
   "real": 3045,
   "mtime": 1790655723.5727475
  },
  "ARM_SHORT": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/ARM_SHORT_v14_progress.json",
   "real": 2763,
   "mtime": 1790661756.7608232
@@ -276,40 +252,40 @@
   "mtime": 1790757704.998966
  },
  "ASML_LONG": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/ASML_LONG_v14_progress.json",
   "real": 3045,
   "mtime": 1790655923.9685533
  },
  "ASML_SHORT": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/ASML_SHORT_v14_progress.json",
   "real": 2759,
   "mtime": 1790661014.3453135
  },
  "ASTS_LONG": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/ASTS_LONG_v14_progress.json",
   "real": 3098,
   "mtime": 1790655931.3205462
  },
  "ASTS_SHORT": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/ASTS_SHORT_v14_progress.json",
   "real": 3059,
   "mtime": 1790655984.8884952
  },
  "ATOMUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ATOMUSDT_LONG_v14_progress.json",
-  "real": 3646,
-  "mtime": 1790780263.6194737
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/ATOMUSDT_LONG_v14_progress.json",
+  "real": 3329,
+  "mtime": 1790737541.9049156
  },
  "ATOMUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ATOMUSDT_SHORT_v14_progress.json",
-  "real": 3082,
-  "mtime": 1790780196.220154
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/ATOMUSDT_SHORT_v14_progress.json",
+  "real": 2613,
+  "mtime": 1790737314.194105
  },
  "AU_LONG": {
   "host": "s2",
@@ -324,16 +300,10 @@
   "mtime": 1790756608.442308
  },
  "AVAXUSDC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/AVAXUSDC_LONG_v14_progress.json",
-  "real": 3639,
-  "mtime": 1790779994.4941337
- },
- "AVAXUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/AVAXUSDC_SHORT_v14_progress.json",
-  "real": 3095,
-  "mtime": 1790779924.667711
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/AVAXUSDC_LONG_v14_progress.json",
+  "real": 3310,
+  "mtime": 1790737383.7429686
  },
  "AVGO_SHORT": {
   "host": "s2",
@@ -342,22 +312,22 @@
   "mtime": 1790756866.0264528
  },
  "AXON_SHORT": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/AXON_SHORT_v14_progress.json",
   "real": 2759,
   "mtime": 1790661776.1808097
  },
  "AXSUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/AXSUSDT_LONG_v14_progress.json",
-  "real": 3643,
-  "mtime": 1790778740.5495632
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/AXSUSDT_LONG_v14_progress.json",
+  "real": 3310,
+  "mtime": 1790735936.1750875
  },
  "AXSUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/AXSUSDT_SHORT_v14_progress.json",
-  "real": 3068,
-  "mtime": 1790778745.4996521
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/AXSUSDT_SHORT_v14_progress.json",
+  "real": 2804,
+  "mtime": 1790735764.0256913
  },
  "AXTI_LONG": {
   "host": "s2",
@@ -384,16 +354,16 @@
   "mtime": 1790753964.9562795
  },
  "BABA_SHORT": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/BABA_SHORT_v14_progress.json",
   "real": 2759,
   "mtime": 1790661924.1687057
  },
  "BCHUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/BCHUSDC_SHORT_v14_progress.json",
-  "real": 3495,
-  "mtime": 1790774949.4334807
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/BCHUSDC_SHORT_v14_progress.json",
+  "real": 3101,
+  "mtime": 1790732413.6056056
  },
  "BG_LONG": {
   "host": "s2",
@@ -408,34 +378,28 @@
   "mtime": 1790756771.1464007
  },
  "BIOUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/BIOUSDC_SHORT_v14_progress.json",
-  "real": 3117,
-  "mtime": 1790780178.8668127
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/BIOUSDC_SHORT_v14_progress.json",
+  "real": 2613,
+  "mtime": 1790737559.3551009
  },
  "BMNR_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run16_20260930/progress/BMNR_LONG_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/BMNR_LONG_v14_progress.json",
   "real": 3126,
   "mtime": 1790746357.3293016
  },
  "BMNR_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run16_20260930/progress/BMNR_SHORT_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/BMNR_SHORT_v14_progress.json",
   "real": 2793,
   "mtime": 1790746329.761303
  },
- "BNBUSDC_LONG": {
-  "host": "s5",
-  "path": "/home/niels/v15_allcells_20260930/progress/BNBUSDC_LONG_v14_progress.json",
-  "real": 1816,
-  "mtime": 1790783558.0519714
- },
  "BNBUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/BNBUSDC_SHORT_v14_progress.json",
-  "real": 3485,
-  "mtime": 1790774528.5569253
+  "host": "s5",
+  "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/BNBUSDC_SHORT_v14_progress.json",
+  "real": 3794,
+  "mtime": 1790737650.9862475
  },
  "BNO_LONG": {
   "host": "s2",
@@ -444,28 +408,16 @@
   "mtime": 1790759179.708678
  },
  "BTCDOMUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/BTCDOMUSDT_LONG_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run16_20260930/progress/BTCDOMUSDT_LONG_v14_progress.json",
   "real": 3630,
-  "mtime": 1790773826.9703941
+  "mtime": 1790748698.6009173
  },
  "BTCDOMUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/BTCDOMUSDT_SHORT_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run16_20260930/progress/BTCDOMUSDT_SHORT_v14_progress.json",
   "real": 3104,
-  "mtime": 1790773790.1570134
- },
- "BTCUSDC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/BTCUSDC_LONG_v14_progress.json",
-  "real": 3640,
-  "mtime": 1790775489.5056143
- },
- "BTCUSDC_SHORT": {
-  "host": "s5",
-  "path": "/home/niels/v15_allcells_20260930/progress/BTCUSDC_SHORT_v14_progress.json",
-  "real": 1950,
-  "mtime": 1790804161.4335651
+  "mtime": 1790748783.8215175
  },
  "BWXT_LONG": {
   "host": "s2",
@@ -480,8 +432,8 @@
   "mtime": 1790752097.191071
  },
  "CAT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run1_20260929/progress/CAT_LONG_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run1_20260929/progress/CAT_LONG_v14_progress.json",
   "real": 2282,
   "mtime": 1790725064.723932
  },
@@ -504,25 +456,25 @@
   "mtime": 1790750039.8755314
  },
  "CHRUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/CHRUSDT_LONG_v14_progress.json",
-  "real": 3643,
-  "mtime": 1790777093.1412354
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/CHRUSDT_LONG_v14_progress.json",
+  "real": 3310,
+  "mtime": 1790734472.8431327
  },
  "CHRUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/CHRUSDT_SHORT_v14_progress.json",
-  "real": 3481,
-  "mtime": 1790777068.1472237
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/CHRUSDT_SHORT_v14_progress.json",
+  "real": 3157,
+  "mtime": 1790734347.6526346
  },
  "CIBR_LONG": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/CIBR_LONG_v14_progress.json",
   "real": 3064,
   "mtime": 1790661911.3527148
  },
  "CIEN_SHORT": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/CIEN_SHORT_v14_progress.json",
   "real": 2012,
   "mtime": 1790657053.148968
@@ -540,8 +492,8 @@
   "mtime": 1790751042.3590739
  },
  "CLS_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run16_20260930/progress/CLS_LONG_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/CLS_LONG_v14_progress.json",
   "real": 3097,
   "mtime": 1790748035.2142136
  },
@@ -594,16 +546,16 @@
   "mtime": 1790794276.7333097
  },
  "COMPUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/COMPUSDT_LONG_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run16_20260930/progress/COMPUSDT_LONG_v14_progress.json",
   "real": 3638,
-  "mtime": 1790773171.3842363
+  "mtime": 1790746907.1054509
  },
  "COMPUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/COMPUSDT_SHORT_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run16_20260930/progress/COMPUSDT_SHORT_v14_progress.json",
   "real": 3111,
-  "mtime": 1790773142.6851714
+  "mtime": 1790747867.5998216
  },
  "COPX_LONG": {
   "host": "s2",
@@ -611,29 +563,23 @@
   "real": 3074,
   "mtime": 1790754033.9763212
  },
- "COP_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run16_20260930/progress/COP_LONG_v14_progress.json",
-  "real": 3101,
-  "mtime": 1790747234.3647833
- },
  "COP_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run16_20260930/progress/COP_SHORT_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/COP_SHORT_v14_progress.json",
   "real": 2732,
   "mtime": 1790747284.0328996
  },
  "COTIUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/COTIUSDT_LONG_v14_progress.json",
-  "real": 3651,
-  "mtime": 1790780062.8105087
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/COTIUSDT_LONG_v14_progress.json",
+  "real": 3329,
+  "mtime": 1790737408.6192763
  },
  "COTIUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/COTIUSDT_SHORT_v14_progress.json",
-  "real": 3516,
-  "mtime": 1790780034.9689503
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/COTIUSDT_SHORT_v14_progress.json",
+  "real": 3156,
+  "mtime": 1790737340.8744369
  },
  "CRK_LONG": {
   "host": "s5",
@@ -642,8 +588,8 @@
   "mtime": 1790780912.0647078
  },
  "CRM_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run16_20260930/progress/CRM_LONG_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/CRM_LONG_v14_progress.json",
   "real": 3109,
   "mtime": 1790747243.4328048
  },
@@ -659,14 +605,8 @@
   "real": 3122,
   "mtime": 1790750673.8315506
  },
- "CRWD_SHORT": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/CRWD_SHORT_v14_progress.json",
-  "real": 2804,
-  "mtime": 1790750732.7594397
- },
  "CRWV_SHORT": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/CRWV_SHORT_v14_progress.json",
   "real": 2759,
   "mtime": 1790657824.5009296
@@ -684,14 +624,14 @@
   "mtime": 1790749623.0351768
  },
  "DASHUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/DASHUSDT_SHORT_v14_progress.json",
-  "real": 3504,
-  "mtime": 1790775746.284238
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/DASHUSDT_SHORT_v14_progress.json",
+  "real": 3161,
+  "mtime": 1790733083.2969441
  },
  "DELL_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run3_20260930/progress/DELL_LONG_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run3_20260930/progress/DELL_LONG_v14_progress.json",
   "real": 2797,
   "mtime": 1790732636.6745615
  },
@@ -702,8 +642,8 @@
   "mtime": 1790749868.8433816
  },
  "DE_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run3_20260930/progress/DE_LONG_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run3_20260930/progress/DE_LONG_v14_progress.json",
   "real": 2790,
   "mtime": 1790736392.680611
  },
@@ -713,65 +653,47 @@
   "real": 2773,
   "mtime": 1790756253.22206
  },
- "DOGEUSDC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/DOGEUSDC_LONG_v14_progress.json",
-  "real": 3619,
-  "mtime": 1790774252.3143787
- },
- "DOGEUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/DOGEUSDC_SHORT_v14_progress.json",
-  "real": 3505,
-  "mtime": 1790774207.1984768
- },
  "DOTUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/DOTUSDT_LONG_v14_progress.json",
-  "real": 3632,
-  "mtime": 1790776893.881557
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/DOTUSDT_LONG_v14_progress.json",
+  "real": 3118,
+  "mtime": 1790734220.4466798
  },
  "DOTUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/DOTUSDT_SHORT_v14_progress.json",
-  "real": 3493,
-  "mtime": 1790776892.9935446
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/DOTUSDT_SHORT_v14_progress.json",
+  "real": 3160,
+  "mtime": 1790734173.2501142
  },
  "EGLDUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/EGLDUSDT_LONG_v14_progress.json",
-  "real": 3635,
-  "mtime": 1790779986.6799753
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/EGLDUSDT_LONG_v14_progress.json",
+  "real": 3310,
+  "mtime": 1790737646.6058214
  },
  "EGLDUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/EGLDUSDT_SHORT_v14_progress.json",
-  "real": 3487,
-  "mtime": 1790780008.748422
- },
- "ENAUSDC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ENAUSDC_LONG_v14_progress.json",
-  "real": 3623,
-  "mtime": 1790773816.4142864
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/EGLDUSDT_SHORT_v14_progress.json",
+  "real": 3101,
+  "mtime": 1790737606.9090385
  },
  "ENAUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ENAUSDC_SHORT_v14_progress.json",
-  "real": 3022,
-  "mtime": 1790773782.5449328
+  "host": "s5",
+  "path": "/home/niels/v15_allcells_20260930/progress/ENAUSDC_SHORT_v14_progress.json",
+  "real": 1919,
+  "mtime": 1790765686.9677286
  },
  "ENJUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ENJUSDT_LONG_v14_progress.json",
-  "real": 3645,
-  "mtime": 1790777791.6018562
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/ENJUSDT_LONG_v14_progress.json",
+  "real": 3329,
+  "mtime": 1790734784.2323656
  },
  "ENJUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ENJUSDT_SHORT_v14_progress.json",
-  "real": 3456,
-  "mtime": 1790777764.9522421
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/ENJUSDT_SHORT_v14_progress.json",
+  "real": 3156,
+  "mtime": 1790734759.8921306
  },
  "EOG_LONG": {
   "host": "s2",
@@ -798,28 +720,28 @@
   "mtime": 1790800010.064444
  },
  "ETCUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ETCUSDT_LONG_v14_progress.json",
-  "real": 3639,
-  "mtime": 1790775131.8439083
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/ETCUSDT_LONG_v14_progress.json",
+  "real": 3245,
+  "mtime": 1790732504.2173285
  },
  "ETCUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ETCUSDT_SHORT_v14_progress.json",
-  "real": 3094,
-  "mtime": 1790775128.8358343
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/ETCUSDT_SHORT_v14_progress.json",
+  "real": 2721,
+  "mtime": 1790732627.2486796
  },
  "ETHUSDC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ETHUSDC_LONG_v14_progress.json",
-  "real": 3618,
-  "mtime": 1790774039.0843837
+  "host": "s5",
+  "path": "/home/niels/v15_allcells_20260930/progress/ETHUSDC_LONG_v14_progress.json",
+  "real": 1836,
+  "mtime": 1790772009.9451027
  },
  "ETHUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ETHUSDC_SHORT_v14_progress.json",
-  "real": 3114,
-  "mtime": 1790774003.4863126
+  "host": "s5",
+  "path": "/home/niels/v15_allcells_20260930/progress/ETHUSDC_SHORT_v14_progress.json",
+  "real": 3121,
+  "mtime": 1790773388.6777897
  },
  "ETN_SHORT": {
   "host": "s2",
@@ -846,16 +768,16 @@
   "mtime": 1790755546.6295435
  },
  "FARTCOINUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/FARTCOINUSDT_LONG_v14_progress.json",
-  "real": 3637,
-  "mtime": 1790774787.5994337
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/FARTCOINUSDT_LONG_v14_progress.json",
+  "real": 3311,
+  "mtime": 1790731990.9195154
  },
  "FARTCOINUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/FARTCOINUSDT_SHORT_v14_progress.json",
-  "real": 3122,
-  "mtime": 1790774745.6268897
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/FARTCOINUSDT_SHORT_v14_progress.json",
+  "real": 2805,
+  "mtime": 1790732031.075984
  },
  "FCN_SHORT": {
   "host": "s2",
@@ -864,16 +786,16 @@
   "mtime": 1790755438.093459
  },
  "FIX_SHORT": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/FIX_SHORT_v14_progress.json",
   "real": 2759,
   "mtime": 1790662317.6764255
  },
  "GALAUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/GALAUSDT_SHORT_v14_progress.json",
-  "real": 3089,
-  "mtime": 1790778820.7419991
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/GALAUSDT_SHORT_v14_progress.json",
+  "real": 2804,
+  "mtime": 1790736116.50684
  },
  "GDX_LONG": {
   "host": "s2",
@@ -900,7 +822,7 @@
   "mtime": 1790784405.6738112
  },
  "GME_SHORT": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/GME_SHORT_v14_progress.json",
   "real": 2759,
   "mtime": 1790659468.6544983
@@ -910,12 +832,6 @@
   "path": "/home/niels/v15_run16_20260930/progress/GM_LONG_v14_progress.json",
   "real": 3113,
   "mtime": 1790751979.6830306
- },
- "GOOGLUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/GOOGLUSDT_SHORT_v14_progress.json",
-  "real": 3012,
-  "mtime": 1790782410.85921
  },
  "GOOGL_LONG": {
   "host": "s2",
@@ -928,18 +844,6 @@
   "path": "/home/niels/v15_run16_20260930/progress/GOOGL_SHORT_v14_progress.json",
   "real": 2807,
   "mtime": 1790756069.1619294
- },
- "GRTUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/GRTUSDT_LONG_v14_progress.json",
-  "real": 3613,
-  "mtime": 1790774132.4098213
- },
- "GRTUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/GRTUSDT_SHORT_v14_progress.json",
-  "real": 3104,
-  "mtime": 1790774096.1879315
  },
  "HAO_LONG": {
   "host": "s2",
@@ -966,7 +870,7 @@
   "mtime": 1790757488.6508281
  },
  "HOOD_LONG": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/HOOD_LONG_v14_progress.json",
   "real": 3062,
   "mtime": 1790698999.016621
@@ -978,22 +882,22 @@
   "mtime": 1790757437.938796
  },
  "HYPEUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/HYPEUSDT_LONG_v14_progress.json",
-  "real": 3627,
-  "mtime": 1790774030.2991278
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/HYPEUSDT_LONG_v14_progress.json",
+  "real": 3311,
+  "mtime": 1790731553.2178903
  },
  "HYPEUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/HYPEUSDT_SHORT_v14_progress.json",
-  "real": 3018,
-  "mtime": 1790773999.3281815
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/HYPEUSDT_SHORT_v14_progress.json",
+  "real": 3160,
+  "mtime": 1790731548.8918042
  },
  "IBIT_LONG": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/IBIT_LONG_v14_progress.json",
-  "real": 3126,
-  "mtime": 1790749605.2831628
+  "host": "s5",
+  "path": "/home/niels/v15_allcells_20260930/progress/IBIT_LONG_v14_progress.json",
+  "real": 2421,
+  "mtime": 1790805047.344444
  },
  "IBIT_SHORT": {
   "host": "s2",
@@ -1014,10 +918,10 @@
   "mtime": 1790750037.4715292
  },
  "ICPUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ICPUSDT_SHORT_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run16_20260930/progress/ICPUSDT_SHORT_v14_progress.json",
   "real": 3106,
-  "mtime": 1790773484.2853303
+  "mtime": 1790748481.5848951
  },
  "INTC_LONG": {
   "host": "s2",
@@ -1032,16 +936,16 @@
   "mtime": 1790751269.162965
  },
  "IOTXUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/IOTXUSDT_LONG_v14_progress.json",
-  "real": 3631,
-  "mtime": 1790778044.8233414
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/IOTXUSDT_LONG_v14_progress.json",
+  "real": 3331,
+  "mtime": 1790735333.358077
  },
  "IOTXUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/IOTXUSDT_SHORT_v14_progress.json",
-  "real": 3498,
-  "mtime": 1790778011.241645
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/IOTXUSDT_SHORT_v14_progress.json",
+  "real": 3156,
+  "mtime": 1790735224.8129027
  },
  "JOBY_SHORT": {
   "host": "s2",
@@ -1055,23 +959,17 @@
   "real": 2794,
   "mtime": 1790749663.0512092
  },
- "KASUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/KASUSDT_SHORT_v14_progress.json",
-  "real": 3093,
-  "mtime": 1790775501.9348514
- },
  "KSMUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/KSMUSDT_LONG_v14_progress.json",
-  "real": 3643,
-  "mtime": 1790778607.2261496
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/KSMUSDT_LONG_v14_progress.json",
+  "real": 3309,
+  "mtime": 1790735883.5740497
  },
  "KSMUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/KSMUSDT_SHORT_v14_progress.json",
-  "real": 3088,
-  "mtime": 1790778614.0752745
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/KSMUSDT_SHORT_v14_progress.json",
+  "real": 2804,
+  "mtime": 1790735676.6129663
  },
  "LAC_LONG": {
   "host": "s2",
@@ -1091,18 +989,6 @@
   "real": 2801,
   "mtime": 1790758096.2792196
  },
- "LINKUSDC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/LINKUSDC_LONG_v14_progress.json",
-  "real": 3424,
-  "mtime": 1790781231.2907107
- },
- "LINKUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/LINKUSDC_SHORT_v14_progress.json",
-  "real": 2851,
-  "mtime": 1790781104.2644107
- },
  "LLY_LONG": {
   "host": "s5",
   "path": "/home/niels/v15_allcells_20260930/progress/LLY_LONG_v14_progress.json",
@@ -1110,8 +996,8 @@
   "mtime": 1790766313.1928957
  },
  "LLY_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run16_20260930/progress/LLY_SHORT_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/LLY_SHORT_v14_progress.json",
   "real": 2807,
   "mtime": 1790747344.7450345
  },
@@ -1146,22 +1032,16 @@
   "mtime": 1790753425.7359428
  },
  "MANAUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/MANAUSDT_LONG_v14_progress.json",
-  "real": 3584,
-  "mtime": 1790778965.3075638
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/MANAUSDT_LONG_v14_progress.json",
+  "real": 3117,
+  "mtime": 1790736340.5693934
  },
  "MANAUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/MANAUSDT_SHORT_v14_progress.json",
-  "real": 3091,
-  "mtime": 1790778954.0663655
- },
- "MASKUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/MASKUSDT_SHORT_v14_progress.json",
-  "real": 3109,
-  "mtime": 1790779699.4809725
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/MANAUSDT_SHORT_v14_progress.json",
+  "real": 2804,
+  "mtime": 1790736210.1799061
  },
  "MA_LONG": {
   "host": "s2",
@@ -1181,12 +1061,6 @@
   "real": 3127,
   "mtime": 1790755798.6777334
  },
- "MINAUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/MINAUSDT_LONG_v14_progress.json",
-  "real": 3626,
-  "mtime": 1790784185.911139
- },
  "MOS_SHORT": {
   "host": "s2",
   "path": "/home/niels/v15_iso7_20260929/progress/MOS_SHORT_v14_progress.json",
@@ -1194,7 +1068,7 @@
   "mtime": 1790697362.364568
  },
  "MPC_LONG": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/MPC_LONG_v14_progress.json",
   "real": 3056,
   "mtime": 1790663367.9277134
@@ -1212,8 +1086,8 @@
   "mtime": 1790751118.8670256
  },
  "MSFT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run3_20260930/progress/MSFT_LONG_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run3_20260930/progress/MSFT_LONG_v14_progress.json",
   "real": 2797,
   "mtime": 1790736217.6969755
  },
@@ -1248,10 +1122,10 @@
   "mtime": 1790752915.6155806
  },
  "NEARUSDC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/NEARUSDC_LONG_v14_progress.json",
-  "real": 3626,
-  "mtime": 1790783621.8566499
+  "host": "s5",
+  "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/NEARUSDC_LONG_v14_progress.json",
+  "real": 3512,
+  "mtime": 1790705623.3645318
  },
  "NEM_LONG": {
   "host": "s2",
@@ -1260,8 +1134,8 @@
   "mtime": 1790758588.2235425
  },
  "NKE_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run3_20260930/progress/NKE_SHORT_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run3_20260930/progress/NKE_SHORT_v14_progress.json",
   "real": 2502,
   "mtime": 1790735215.5364099
  },
@@ -1272,16 +1146,10 @@
   "mtime": 1790755288.8133378
  },
  "NOC_SHORT": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/NOC_SHORT_v14_progress.json",
   "real": 2766,
   "mtime": 1790718723.3746798
- },
- "NOTUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/NOTUSDT_SHORT_v14_progress.json",
-  "real": 3039,
-  "mtime": 1790778294.3623009
  },
  "NUKZ_LONG": {
   "host": "s5",
@@ -1308,8 +1176,8 @@
   "mtime": 1790761438.3945286
  },
  "OLED_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run16_20260930/progress/OLED_LONG_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/OLED_LONG_v14_progress.json",
   "real": 3102,
   "mtime": 1790748873.4587326
  },
@@ -1320,8 +1188,8 @@
   "mtime": 1790791097.4196393
  },
  "OXY_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run3_20260930/progress/OXY_LONG_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run3_20260930/progress/OXY_LONG_v14_progress.json",
   "real": 2781,
   "mtime": 1790737743.7520442
  },
@@ -1338,8 +1206,8 @@
   "mtime": 1790755677.0966914
  },
  "PBF_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run16_20260930/progress/PBF_SHORT_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/PBF_SHORT_v14_progress.json",
   "real": 2793,
   "mtime": 1790746309.3053038
  },
@@ -1373,21 +1241,15 @@
   "real": 3126,
   "mtime": 1790759469.4531176
  },
- "PTBUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/PTBUSDT_LONG_v14_progress.json",
-  "real": 3636,
-  "mtime": 1790778183.478139
- },
  "PTBUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/PTBUSDT_SHORT_v14_progress.json",
-  "real": 3501,
-  "mtime": 1790778208.4236305
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/PTBUSDT_SHORT_v14_progress.json",
+  "real": 3156,
+  "mtime": 1790735389.6362998
  },
  "PYPL_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run16_20260930/progress/PYPL_SHORT_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/PYPL_SHORT_v14_progress.json",
   "real": 2790,
   "mtime": 1790747771.3658185
  },
@@ -1398,8 +1260,8 @@
   "mtime": 1790751601.554944
  },
  "QBTS_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run3_20260930/progress/QBTS_SHORT_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run3_20260930/progress/QBTS_SHORT_v14_progress.json",
   "real": 2778,
   "mtime": 1790733720.2789614
  },
@@ -1410,16 +1272,16 @@
   "mtime": 1790754452.360569
  },
  "QTUMUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/QTUMUSDT_LONG_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run16_20260930/progress/QTUMUSDT_LONG_v14_progress.json",
   "real": 3640,
-  "mtime": 1790773697.709974
+  "mtime": 1790748201.2208624
  },
  "QTUMUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/QTUMUSDT_SHORT_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run16_20260930/progress/QTUMUSDT_SHORT_v14_progress.json",
   "real": 3119,
-  "mtime": 1790773663.0885377
+  "mtime": 1790748230.5833778
  },
  "RBLX_LONG": {
   "host": "s2",
@@ -1434,8 +1296,8 @@
   "mtime": 1790797765.9929774
  },
  "RDDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run3_20260930/progress/RDDT_SHORT_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run3_20260930/progress/RDDT_SHORT_v14_progress.json",
   "real": 2501,
   "mtime": 1790735057.59628
  },
@@ -1452,16 +1314,16 @@
   "mtime": 1790751993.311035
  },
  "RLCUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/RLCUSDT_LONG_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run16_20260930/progress/RLCUSDT_LONG_v14_progress.json",
   "real": 3581,
-  "mtime": 1790773607.7697558
+  "mtime": 1790748150.167974
  },
  "RLCUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/RLCUSDT_SHORT_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run16_20260930/progress/RLCUSDT_SHORT_v14_progress.json",
   "real": 3480,
-  "mtime": 1790773598.848617
+  "mtime": 1790748062.381473
  },
  "ROBO_LONG": {
   "host": "s2",
@@ -1470,8 +1332,8 @@
   "mtime": 1790704337.2111712
  },
  "ROKU_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run3_20260930/progress/ROKU_LONG_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run3_20260930/progress/ROKU_LONG_v14_progress.json",
   "real": 2797,
   "mtime": 1790732316.8545482
  },
@@ -1488,50 +1350,38 @@
   "mtime": 1790751884.0470016
  },
  "RSRUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/RSRUSDT_SHORT_v14_progress.json",
-  "real": 3434,
-  "mtime": 1790778152.2255182
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/RSRUSDT_SHORT_v14_progress.json",
+  "real": 2674,
+  "mtime": 1790735324.3939795
  },
  "RS_LONG": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/RS_LONG_v14_progress.json",
   "real": 3056,
   "mtime": 1790667454.366195
  },
  "RS_SHORT": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/RS_SHORT_v14_progress.json",
   "real": 2759,
   "mtime": 1790667426.1582243
  },
- "RVNUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/RVNUSDT_LONG_v14_progress.json",
-  "real": 3639,
-  "mtime": 1790773393.9267285
- },
- "RVNUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/RVNUSDT_SHORT_v14_progress.json",
-  "real": 3106,
-  "mtime": 1790773359.4464579
- },
  "SANDUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/SANDUSDT_LONG_v14_progress.json",
-  "real": 3648,
-  "mtime": 1790778298.160374
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/SANDUSDT_LONG_v14_progress.json",
+  "real": 3331,
+  "mtime": 1790735440.0632453
  },
  "SANDUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/SANDUSDT_SHORT_v14_progress.json",
-  "real": 3514,
-  "mtime": 1790778276.473956
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/SANDUSDT_SHORT_v14_progress.json",
+  "real": 3101,
+  "mtime": 1790735388.8146827
  },
  "SAP_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run16_20260930/progress/SAP_SHORT_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/SAP_SHORT_v14_progress.json",
   "real": 2777,
   "mtime": 1790747992.8981533
  },
@@ -1560,34 +1410,22 @@
   "mtime": 1790765109.5127316
  },
  "SMG_SHORT": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/SMG_SHORT_v14_progress.json",
   "real": 2759,
   "mtime": 1790667919.7737927
  },
  "SNXUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/SNXUSDT_LONG_v14_progress.json",
-  "real": 3614,
-  "mtime": 1790778989.861997
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/SNXUSDT_LONG_v14_progress.json",
+  "real": 3117,
+  "mtime": 1790736355.8893664
  },
  "SNXUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/SNXUSDT_SHORT_v14_progress.json",
-  "real": 3081,
-  "mtime": 1790778977.2797751
- },
- "SOLUSDC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/SOLUSDC_LONG_v14_progress.json",
-  "real": 3593,
-  "mtime": 1790773608.8017716
- },
- "SOLUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/SOLUSDC_SHORT_v14_progress.json",
-  "real": 3113,
-  "mtime": 1790773604.011698
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/SNXUSDT_SHORT_v14_progress.json",
+  "real": 2804,
+  "mtime": 1790736230.788899
  },
  "SPY_LONG": {
   "host": "s2",
@@ -1596,10 +1434,10 @@
   "mtime": 1790751485.5509377
  },
  "STORJUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/STORJUSDT_SHORT_v14_progress.json",
-  "real": 3111,
-  "mtime": 1790776432.768936
+  "host": "s5",
+  "path": "/home/niels/v15_iso7_20260929/progress/STORJUSDT_SHORT_v14_progress.json",
+  "real": 3062,
+  "mtime": 1790697821.4705746
  },
  "STZ_LONG": {
   "host": "s2",
@@ -1614,22 +1452,16 @@
   "mtime": 1790751594.2709434
  },
  "THETAUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/THETAUSDT_LONG_v14_progress.json",
-  "real": 3635,
-  "mtime": 1790777344.229053
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/THETAUSDT_LONG_v14_progress.json",
+  "real": 3309,
+  "mtime": 1790734769.0122185
  },
  "THETAUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/THETAUSDT_SHORT_v14_progress.json",
-  "real": 2970,
-  "mtime": 1790777278.8009605
- },
- "TRBUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/TRBUSDT_LONG_v14_progress.json",
-  "real": 3622,
-  "mtime": 1790774946.0964391
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/THETAUSDT_SHORT_v14_progress.json",
+  "real": 2613,
+  "mtime": 1790734649.5870938
  },
  "TRGP_LONG": {
   "host": "s2",
@@ -1638,14 +1470,14 @@
   "mtime": 1790756398.4981618
  },
  "TRXUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/TRXUSDT_LONG_v14_progress.json",
-  "real": 3643,
-  "mtime": 1790778543.4169805
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/TRXUSDT_LONG_v14_progress.json",
+  "real": 3309,
+  "mtime": 1790735818.808772
  },
  "TSLA_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run3_20260930/progress/TSLA_LONG_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run3_20260930/progress/TSLA_LONG_v14_progress.json",
   "real": 2775,
   "mtime": 1790735530.49665
  },
@@ -1662,8 +1494,8 @@
   "mtime": 1790758176.9912724
  },
  "TTD_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run3_20260930/progress/TTD_SHORT_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run3_20260930/progress/TTD_SHORT_v14_progress.json",
   "real": 2502,
   "mtime": 1790734171.3592417
  },
@@ -1680,8 +1512,8 @@
   "mtime": 1790750102.2115872
  },
  "UEC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run16_20260930/progress/UEC_LONG_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/UEC_LONG_v14_progress.json",
   "real": 3079,
   "mtime": 1790746587.0744157
  },
@@ -1692,22 +1524,22 @@
   "mtime": 1790751605.2691681
  },
  "ULTA_SHORT": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/ULTA_SHORT_v14_progress.json",
   "real": 2765,
   "mtime": 1790699839.829484
  },
  "UNIUSDC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/UNIUSDC_LONG_v14_progress.json",
-  "real": 3637,
-  "mtime": 1790776635.7368789
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/UNIUSDC_LONG_v14_progress.json",
+  "real": 3244,
+  "mtime": 1790733981.5772738
  },
  "UNIUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/UNIUSDC_SHORT_v14_progress.json",
-  "real": 3089,
-  "mtime": 1790776603.9264212
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/UNIUSDC_SHORT_v14_progress.json",
+  "real": 2744,
+  "mtime": 1790733806.4817076
  },
  "UUUU_LONG": {
   "host": "s2",
@@ -1728,13 +1560,13 @@
   "mtime": 1790763503.6426475
  },
  "VETUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/VETUSDT_SHORT_v14_progress.json",
-  "real": 3105,
-  "mtime": 1790779559.552874
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/VETUSDT_SHORT_v14_progress.json",
+  "real": 2804,
+  "mtime": 1790736819.3335068
  },
  "VICR_SHORT": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/VICR_SHORT_v14_progress.json",
   "real": 2759,
   "mtime": 1790669220.0009778
@@ -1764,10 +1596,10 @@
   "mtime": 1790752080.347065
  },
  "WIFUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/WIFUSDC_SHORT_v14_progress.json",
-  "real": 3085,
-  "mtime": 1790777764.5122318
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/WIFUSDC_SHORT_v14_progress.json",
+  "real": 2804,
+  "mtime": 1790734925.998131
  },
  "WLDUSDC_LONG": {
   "host": "s5",
@@ -1775,101 +1607,107 @@
   "real": 2698,
   "mtime": 1790779809.4503467
  },
- "WLDUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/WLDUSDC_SHORT_v14_progress.json",
-  "real": 3096,
-  "mtime": 1790774391.3338299
- },
  "XLE_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run3_20260930/progress/XLE_LONG_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run3_20260930/progress/XLE_LONG_v14_progress.json",
   "real": 2797,
   "mtime": 1790733464.6468446
  },
  "XLMUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/XLMUSDT_LONG_v14_progress.json",
-  "real": 3615,
-  "mtime": 1790779216.0794663
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/XLMUSDT_LONG_v14_progress.json",
+  "real": 3314,
+  "mtime": 1790736312.1610692
  },
  "XLMUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/XLMUSDT_SHORT_v14_progress.json",
-  "real": 3099,
-  "mtime": 1790779166.273114
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/XLMUSDT_SHORT_v14_progress.json",
+  "real": 2804,
+  "mtime": 1790736247.3323295
  },
  "XMRUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/XMRUSDT_LONG_v14_progress.json",
-  "real": 3584,
-  "mtime": 1790777991.5812335
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/XMRUSDT_LONG_v14_progress.json",
+  "real": 3244,
+  "mtime": 1790735244.4654312
  },
  "XMRUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/XMRUSDT_SHORT_v14_progress.json",
-  "real": 3500,
-  "mtime": 1790777982.1130342
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/XMRUSDT_SHORT_v14_progress.json",
+  "real": 3101,
+  "mtime": 1790735193.0664153
  },
  "XOM_LONG": {
-  "host": "s1",
+  "host": "s2",
   "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/XOM_LONG_v14_progress.json",
   "real": 2688,
   "mtime": 1790654229.1987312
  },
  "XOP_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run16_20260930/progress/XOP_LONG_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/XOP_LONG_v14_progress.json",
   "real": 3014,
   "mtime": 1790748884.7467356
  },
  "XRPUSDC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/XRPUSDC_LONG_v14_progress.json",
-  "real": 3625,
-  "mtime": 1790774732.7377212
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/XRPUSDC_LONG_v14_progress.json",
+  "real": 3310,
+  "mtime": 1790732065.1643817
  },
  "XRPUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/XRPUSDC_SHORT_v14_progress.json",
-  "real": 3061,
-  "mtime": 1790774658.9507415
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/XRPUSDC_SHORT_v14_progress.json",
+  "real": 2558,
+  "mtime": 1790731952.2790647
  },
  "XTZUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/XTZUSDT_LONG_v14_progress.json",
-  "real": 3649,
-  "mtime": 1790776826.7856064
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/XTZUSDT_LONG_v14_progress.json",
+  "real": 3311,
+  "mtime": 1790734013.8042016
  },
  "XTZUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/XTZUSDT_SHORT_v14_progress.json",
-  "real": 3464,
-  "mtime": 1790776794.3511457
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/XTZUSDT_SHORT_v14_progress.json",
+  "real": 3160,
+  "mtime": 1790733973.8517222
  },
  "ZECUSDC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ZECUSDC_LONG_v14_progress.json",
-  "real": 3641,
-  "mtime": 1790774542.2101219
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/ZECUSDC_LONG_v14_progress.json",
+  "real": 3062,
+  "mtime": 1790731856.0259423
  },
  "ZECUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ZECUSDC_SHORT_v14_progress.json",
-  "real": 3102,
-  "mtime": 1790774526.4908955
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/ZECUSDC_SHORT_v14_progress.json",
+  "real": 2614,
+  "mtime": 1790731689.5960045
  },
  "ZENUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ZENUSDT_LONG_v14_progress.json",
-  "real": 3642,
-  "mtime": 1790773220.4214742
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run16_20260930/progress/ZENUSDT_LONG_v14_progress.json",
+  "real": 3473,
+  "mtime": 1790747304.6765428
  },
  "ZENUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ZENUSDT_SHORT_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run16_20260930/progress/ZENUSDT_SHORT_v14_progress.json",
   "real": 3094,
-  "mtime": 1790773142.1881702
+  "mtime": 1790746828.7108324
+ },
+ "CTRA_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/CTRA_LONG_v14_progress.json",
+  "real": 3092,
+  "mtime": 1790749237.9789
+ },
+ "USAR_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_iso11_20260929/progress/USAR_LONG_v14_progress.json",
+  "real": 2281,
+  "mtime": 1790705802.9917274
  },
  "NKE_LONG": {
   "host": "s2",
@@ -1878,640 +1716,70 @@
   "mtime": 1790754290.3564737
  },
  "1000000MOGUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/1000000MOGUSDT_SHORT_v14_progress.json",
-  "real": 3115,
-  "mtime": 1790774690.9001691
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/1000000MOGUSDT_SHORT_v14_progress.json",
+  "real": 2558,
+  "mtime": 1790732005.2029808
+ },
+ "1000BONKUSDC_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/1000BONKUSDC_SHORT_v14_progress.json",
+  "real": 3157,
+  "mtime": 1790733214.0940096
  },
  "1000LUNCUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/1000LUNCUSDT_LONG_v14_progress.json",
-  "real": 3590,
-  "mtime": 1790776831.543674
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/1000LUNCUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790733930.1702306
  },
  "1000LUNCUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/1000LUNCUSDT_SHORT_v14_progress.json",
-  "real": 3046,
-  "mtime": 1790776801.1832428
- },
- "1MBABYDOGEUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/1MBABYDOGEUSDT_SHORT_v14_progress.json",
-  "real": 3127,
-  "mtime": 1790776166.0119581
- },
- "AGLDUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/AGLDUSDT_SHORT_v14_progress.json",
-  "real": 3096,
-  "mtime": 1790775297.7207224
- },
- "ANKRUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ANKRUSDT_SHORT_v14_progress.json",
-  "real": 3027,
-  "mtime": 1790778512.2894063
- },
- "APEUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/APEUSDT_SHORT_v14_progress.json",
-  "real": 3119,
-  "mtime": 1790779579.961335
- },
- "API3USDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/API3USDT_SHORT_v14_progress.json",
-  "real": 3488,
-  "mtime": 1790776645.771023
- },
- "ARKMUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ARKMUSDT_SHORT_v14_progress.json",
-  "real": 3093,
-  "mtime": 1790776981.3197913
- },
- "ARPAUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ARPAUSDT_LONG_v14_progress.json",
-  "real": 3641,
-  "mtime": 1790773177.8322494
- },
- "ARUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ARUSDT_SHORT_v14_progress.json",
-  "real": 3093,
-  "mtime": 1790777918.0266666
- },
- "BATUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s5_v15_run3_20260930/progress/BATUSDT_SHORT_v14_progress.json",
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/1000LUNCUSDT_SHORT_v14_progress.json",
   "real": 2575,
-  "mtime": 1790736375.1817887
- },
- "BELUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/BELUSDT_LONG_v14_progress.json",
-  "real": 3641,
-  "mtime": 1790777228.7052693
- },
- "BLURUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/BLURUSDT_SHORT_v14_progress.json",
-  "real": 3119,
-  "mtime": 1790776220.4727833
- },
- "CTRA_LONG": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/CTRA_LONG_v14_progress.json",
-  "real": 3092,
-  "mtime": 1790749237.9789
- },
- "GTCUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/GTCUSDT_SHORT_v14_progress.json",
-  "real": 3081,
-  "mtime": 1790778712.9630668
- },
- "HOTUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/HOTUSDT_SHORT_v14_progress.json",
-  "real": 3100,
-  "mtime": 1790774864.8864198
- },
- "JASMYUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/JASMYUSDT_SHORT_v14_progress.json",
-  "real": 3117,
-  "mtime": 1790779524.8770826
- },
- "MOVEUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/MOVEUSDT_SHORT_v14_progress.json",
-  "real": 3120,
-  "mtime": 1790773352.166396
- },
- "MRVLUSDT_SHORT": {
-  "host": "s5",
-  "path": "/home/niels/v15_allcells_20260930/progress/MRVLUSDT_SHORT_v14_progress.json",
-  "real": 1758,
-  "mtime": 1790803058.6455576
- },
- "PLTRUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/PLTRUSDT_LONG_v14_progress.json",
-  "real": 3629,
-  "mtime": 1790779401.0361638
- },
- "SKLUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/SKLUSDT_SHORT_v14_progress.json",
-  "real": 3050,
-  "mtime": 1790773876.833891
- },
- "APA_SHORT": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/APA_SHORT_v14_progress.json",
-  "real": 2780,
-  "mtime": 1790759211.0287306
+  "mtime": 1790733872.3830545
  },
  "1000SATSUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/1000SATSUSDT_SHORT_v14_progress.json",
-  "real": 3077,
-  "mtime": 1790779331.1784434
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/1000SATSUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790736628.3037393
+ },
+ "1MBABYDOGEUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/1MBABYDOGEUSDT_SHORT_v14_progress.json",
+  "real": 2558,
+  "mtime": 1790733338.8400629
  },
  "ACEUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ACEUSDT_SHORT_v14_progress.json",
-  "real": 3474,
-  "mtime": 1790777559.0071704
- },
- "ARPAUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ARPAUSDT_SHORT_v14_progress.json",
-  "real": 3078,
-  "mtime": 1790773141.6141686
- },
- "BELUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/BELUSDT_SHORT_v14_progress.json",
-  "real": 3080,
-  "mtime": 1790777601.6432736
- },
- "CELRUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/CELRUSDT_SHORT_v14_progress.json",
-  "real": 3120,
-  "mtime": 1790777516.993051
- },
- "IOTAUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/IOTAUSDT_SHORT_v14_progress.json",
-  "real": 3013,
-  "mtime": 1790775660.7867568
- },
- "KAVAUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/KAVAUSDT_SHORT_v14_progress.json",
-  "real": 3104,
-  "mtime": 1790779769.8534818
- },
- "LRCUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run3_20260930/progress/LRCUSDT_LONG_v14_progress.json",
-  "real": 3005,
-  "mtime": 1790737870.9760308
- },
- "NKNUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s5_v15_run3_20260930/progress/NKNUSDT_LONG_v14_progress.json",
-  "real": 3079,
-  "mtime": 1790737756.5675297
- },
- "YFIUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/YFIUSDT_LONG_v14_progress.json",
-  "real": 3614,
-  "mtime": 1790781759.586377
- },
- "1000000MOGUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/1000000MOGUSDT_LONG_v14_progress.json",
-  "real": 3616,
-  "mtime": 1790774701.456309
- },
- "1000SATSUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/1000SATSUSDT_LONG_v14_progress.json",
-  "real": 3643,
-  "mtime": 1790779354.7620308
- },
- "1000SHIBUSDC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/1000SHIBUSDC_LONG_v14_progress.json",
-  "real": 3637,
-  "mtime": 1790778411.6275303
- },
- "1MBABYDOGEUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/1MBABYDOGEUSDT_LONG_v14_progress.json",
-  "real": 3589,
-  "mtime": 1790776193.4153743
- },
- "AAVEUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/AAVEUSDC_SHORT_v14_progress.json",
-  "real": 3121,
-  "mtime": 1790779361.7112026
- },
- "ACTUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ACTUSDT_LONG_v14_progress.json",
-  "real": 3644,
-  "mtime": 1790777209.3075917
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/ACEUSDT_SHORT_v14_progress.json",
+  "real": 2674,
+  "mtime": 1790734749.4096308
  },
  "ACTUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ACTUSDT_SHORT_v14_progress.json",
-  "real": 3054,
-  "mtime": 1790777196.723145
- },
- "AGLDUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/AGLDUSDT_LONG_v14_progress.json",
-  "real": 3640,
-  "mtime": 1790775324.6922991
- },
- "AIAUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/AIAUSDT_SHORT_v14_progress.json",
-  "real": 3078,
-  "mtime": 1790779133.4731994
- },
- "ALTUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ALTUSDT_LONG_v14_progress.json",
-  "real": 3632,
-  "mtime": 1790777030.1246278
- },
- "ALTUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ALTUSDT_SHORT_v14_progress.json",
-  "real": 3117,
-  "mtime": 1790777000.1200562
- },
- "ANKRUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ANKRUSDT_LONG_v14_progress.json",
-  "real": 3639,
-  "mtime": 1790778544.4970005
- },
- "APEUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s5_v15_run3_20260930/progress/APEUSDT_LONG_v14_progress.json",
-  "real": 3079,
-  "mtime": 1790736762.7909806
- },
- "API3USDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/API3USDT_LONG_v14_progress.json",
-  "real": 3646,
-  "mtime": 1790776668.4773488
- },
- "APPUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/APPUSDT_LONG_v14_progress.json",
-  "real": 3612,
-  "mtime": 1790774349.247131
- },
- "ARBUSDC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ARBUSDC_LONG_v14_progress.json",
-  "real": 3650,
-  "mtime": 1790775956.5456982
- },
- "ARKMUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ARKMUSDT_LONG_v14_progress.json",
-  "real": 3623,
-  "mtime": 1790777026.4444697
- },
- "ARMUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ARMUSDT_LONG_v14_progress.json",
-  "real": 3646,
-  "mtime": 1790780764.7360525
- },
- "ARUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ARUSDT_LONG_v14_progress.json",
-  "real": 3630,
-  "mtime": 1790777943.0782053
- },
- "ASTERUSDT_LONG": {
-  "host": "s5",
-  "path": "/home/niels/v15_allcells_20260930/progress/ASTERUSDT_LONG_v14_progress.json",
-  "real": 2030,
-  "mtime": 1790777614.338459
- },
- "ASTERUSDT_SHORT": {
-  "host": "s5",
-  "path": "/home/niels/v15_allcells_20260930/progress/ASTERUSDT_SHORT_v14_progress.json",
-  "real": 1563,
-  "mtime": 1790776314.0689685
- },
- "AWEUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/AWEUSDT_LONG_v14_progress.json",
-  "real": 3632,
-  "mtime": 1790782509.0062242
- },
- "AWEUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/AWEUSDT_SHORT_v14_progress.json",
-  "real": 3054,
-  "mtime": 1790782591.875917
- },
- "BANDUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/BANDUSDT_LONG_v14_progress.json",
-  "real": 3625,
-  "mtime": 1790777799.1550288
- },
- "BANDUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/BANDUSDT_SHORT_v14_progress.json",
-  "real": 3092,
-  "mtime": 1790777767.6363044
- },
- "BATUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/BATUSDT_LONG_v14_progress.json",
-  "real": 3634,
-  "mtime": 1790779189.9617624
- },
- "BCHUSDC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/BCHUSDC_LONG_v14_progress.json",
-  "real": 3597,
-  "mtime": 1790775493.1186833
- },
- "BIOUSDC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/BIOUSDC_LONG_v14_progress.json",
-  "real": 3631,
-  "mtime": 1790780192.4440799
- },
- "BLURUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/BLURUSDT_LONG_v14_progress.json",
-  "real": 3637,
-  "mtime": 1790776246.9391818
- },
- "CELRUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/CELRUSDT_LONG_v14_progress.json",
-  "real": 3638,
-  "mtime": 1790777541.0426958
- },
- "DASHUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/DASHUSDT_LONG_v14_progress.json",
-  "real": 3623,
-  "mtime": 1790775719.3277764
- },
- "GALAUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/GALAUSDT_LONG_v14_progress.json",
-  "real": 3645,
-  "mtime": 1790778817.8569477
- },
- "GOOGLUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/GOOGLUSDT_LONG_v14_progress.json",
-  "real": 3625,
-  "mtime": 1790782677.6526628
- },
- "GTCUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/GTCUSDT_LONG_v14_progress.json",
-  "real": 3630,
-  "mtime": 1790778746.765675
- },
- "HOTUSDT_LONG": {
-  "host": "s5",
-  "path": "/home/niels/v15_allcells_20260930/progress/HOTUSDT_LONG_v14_progress.json",
-  "real": 1863,
-  "mtime": 1790791667.039628
- },
- "ICPUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ICPUSDT_LONG_v14_progress.json",
-  "real": 3629,
-  "mtime": 1790773439.961053
- },
- "IOTAUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/IOTAUSDT_LONG_v14_progress.json",
-  "real": 3628,
-  "mtime": 1790776569.5009246
- },
- "JASMYUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/JASMYUSDT_LONG_v14_progress.json",
-  "real": 3618,
-  "mtime": 1790779556.0937955
- },
- "KASUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/KASUSDT_LONG_v14_progress.json",
-  "real": 3630,
-  "mtime": 1790775518.9931746
- },
- "KAVAUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/KAVAUSDT_LONG_v14_progress.json",
-  "real": 3613,
-  "mtime": 1790779798.017078
- },
- "LRCUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/LRCUSDT_SHORT_v14_progress.json",
-  "real": 1314,
-  "mtime": 1790780498.7080088
- },
- "LTCUSDC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/LTCUSDC_LONG_v14_progress.json",
-  "real": 3627,
-  "mtime": 1790783264.016663
- },
- "LTCUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/LTCUSDC_SHORT_v14_progress.json",
-  "real": 3107,
-  "mtime": 1790783251.1445098
- },
- "MASKUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/MASKUSDT_LONG_v14_progress.json",
-  "real": 3648,
-  "mtime": 1790779734.7947335
- },
- "MINAUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/MINAUSDT_SHORT_v14_progress.json",
-  "real": 3045,
-  "mtime": 1790784000.0408812
- },
- "MOVEUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/MOVEUSDT_LONG_v14_progress.json",
-  "real": 3608,
-  "mtime": 1790773386.1726704
- },
- "MRVLUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/MRVLUSDT_LONG_v14_progress.json",
-  "real": 3627,
-  "mtime": 1790775321.7152362
- },
- "MSFTUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/MSFTUSDT_LONG_v14_progress.json",
-  "real": 3615,
-  "mtime": 1790776045.490101
- },
- "MSFTUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/MSFTUSDT_SHORT_v14_progress.json",
-  "real": 3090,
-  "mtime": 1790776020.0127022
- },
- "MUUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/MUUSDT_LONG_v14_progress.json",
-  "real": 3579,
-  "mtime": 1790782394.4178715
- },
- "MUUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/MUUSDT_SHORT_v14_progress.json",
-  "real": 3107,
-  "mtime": 1790782278.3994718
- },
- "NEARUSDC_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/NEARUSDC_SHORT_v14_progress.json",
-  "real": 3106,
-  "mtime": 1790783403.7864606
- },
- "NKNUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/NKNUSDT_SHORT_v14_progress.json",
-  "real": 1314,
-  "mtime": 1790781145.6433992
- },
- "NOTUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/NOTUSDT_LONG_v14_progress.json",
-  "real": 3598,
-  "mtime": 1790778347.6773212
- },
- "NVDAUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/NVDAUSDT_LONG_v14_progress.json",
-  "real": 3625,
-  "mtime": 1790780385.9888458
- },
- "NVDAUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/NVDAUSDT_SHORT_v14_progress.json",
-  "real": 3123,
-  "mtime": 1790780355.0612488
- },
- "ONDOUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ONDOUSDT_LONG_v14_progress.json",
-  "real": 3628,
-  "mtime": 1790779806.4352553
- },
- "ONDOUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/ONDOUSDT_SHORT_v14_progress.json",
-  "real": 3107,
-  "mtime": 1790779776.2826183
- },
- "PLTRUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/PLTRUSDT_SHORT_v14_progress.json",
-  "real": 3089,
-  "mtime": 1790779376.8045738
- },
- "RAYSOLUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/RAYSOLUSDT_LONG_v14_progress.json",
-  "real": 3592,
-  "mtime": 1790783914.4894166
- },
- "RAYSOLUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/RAYSOLUSDT_SHORT_v14_progress.json",
-  "real": 3097,
-  "mtime": 1790783473.1124306
- },
- "RSRUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/RSRUSDT_LONG_v14_progress.json",
-  "real": 3632,
-  "mtime": 1790778142.0773156
- },
- "SKLUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/SKLUSDT_LONG_v14_progress.json",
-  "real": 3642,
-  "mtime": 1790773914.281254
- },
- "STORJUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/STORJUSDT_LONG_v14_progress.json",
-  "real": 3613,
-  "mtime": 1790776448.5951676
- },
- "SUSHIUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/SUSHIUSDT_LONG_v14_progress.json",
-  "real": 3642,
-  "mtime": 1790780239.9870121
- },
- "SUSHIUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/SUSHIUSDT_SHORT_v14_progress.json",
-  "real": 3093,
-  "mtime": 1790780229.250802
- },
- "TRBUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/TRBUSDT_SHORT_v14_progress.json",
-  "real": 3117,
-  "mtime": 1790774897.1568267
- },
- "TRXUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/TRXUSDT_SHORT_v14_progress.json",
-  "real": 3079,
-  "mtime": 1790778463.6835043
- },
- "TSLAUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/TSLAUSDT_LONG_v14_progress.json",
-  "real": 2963,
-  "mtime": 1790780572.166409
- },
- "VETUSDT_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/VETUSDT_LONG_v14_progress.json",
-  "real": 3628,
-  "mtime": 1790779600.2357898
- },
- "WIFUSDC_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/WIFUSDC_LONG_v14_progress.json",
-  "real": 3631,
-  "mtime": 1790777763.1221995
- },
- "YFIUSDT_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run16_20260930/progress/YFIUSDT_SHORT_v14_progress.json",
-  "real": 3075,
-  "mtime": 1790781765.7395136
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/ACTUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790734267.44503
+ },
+ "AGLDUSDT_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/AGLDUSDT_SHORT_v14_progress.json",
+  "real": 2558,
+  "mtime": 1790732676.4966238
  },
  "CLX_SHORT": {
   "host": "s5",
   "path": "/home/niels/v15_allcells_20260930/progress/CLX_SHORT_v14_progress.json",
   "real": 2802,
   "mtime": 1790770962.0160365
+ },
+ "COP_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/COP_LONG_v14_progress.json",
+  "real": 3101,
+  "mtime": 1790747234.3647833
  },
  "OKE_SHORT": {
   "host": "s5",
@@ -2525,72 +1793,6 @@
   "real": 2789,
   "mtime": 1790763848.9220722
  },
- "CAT_SHORT": {
-  "host": "s5",
-  "path": "/home/niels/v15_allcells_20260930/progress/CAT_SHORT_v14_progress.json",
-  "real": 2726,
-  "mtime": 1790796854.0786204
- },
- "CLS_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run16_20260930/progress/CLS_SHORT_v14_progress.json",
-  "real": 2792,
-  "mtime": 1790748006.2981725
- },
- "CRK_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run1_20260929/progress/CRK_SHORT_v14_progress.json",
-  "real": 2018,
-  "mtime": 1790724379.639787
- },
- "CTRA_SHORT": {
-  "host": "s5",
-  "path": "/home/niels/v15_allcells_20260930/progress/CTRA_SHORT_v14_progress.json",
-  "real": 2782,
-  "mtime": 1790794860.8886838
- },
- "DAR_SHORT": {
-  "host": "s5",
-  "path": "/home/niels/v15_allcells_20260930/progress/DAR_SHORT_v14_progress.json",
-  "real": 2795,
-  "mtime": 1790802227.155303
- },
- "LMT_LONG": {
-  "host": "s5",
-  "path": "/home/niels/v15_allcells_20260930/progress/LMT_LONG_v14_progress.json",
-  "real": 1657,
-  "mtime": 1790787479.180081
- },
- "NUKZ_SHORT": {
-  "host": "s5",
-  "path": "/home/niels/v15_allcells_20260930/progress/NUKZ_SHORT_v14_progress.json",
-  "real": 2161,
-  "mtime": 1790789095.2041395
- },
- "PYPL_LONG": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run16_20260930/progress/PYPL_LONG_v14_progress.json",
-  "real": 3118,
-  "mtime": 1790747930.430062
- },
- "ROBO_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run16_20260930/progress/ROBO_SHORT_v14_progress.json",
-  "real": 2280,
-  "mtime": 1790748434.1307476
- },
- "SAP_LONG": {
-  "host": "s5",
-  "path": "/home/niels/v15_allcells_20260930/progress/SAP_LONG_v14_progress.json",
-  "real": 3128,
-  "mtime": 1790778178.0234082
- },
- "XOP_SHORT": {
-  "host": "s1",
-  "path": "/home/niels/v15_run_import_s2_v15_run16_20260930/progress/XOP_SHORT_v14_progress.json",
-  "real": 2747,
-  "mtime": 1790748199.6704407
- },
  "ABBV_SHORT": {
   "host": "s2",
   "path": "/home/niels/v15_run16_20260930/progress/ABBV_SHORT_v14_progress.json",
@@ -2603,78 +1805,6 @@
   "real": 3062,
   "mtime": 1790753679.7641048
  },
- "GM_SHORT": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/GM_SHORT_v14_progress.json",
-  "real": 2771,
-  "mtime": 1790751797.3549788
- },
- "JPM_LONG": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/JPM_LONG_v14_progress.json",
-  "real": 3111,
-  "mtime": 1790749720.291256
- },
- "LOW_LONG": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/LOW_LONG_v14_progress.json",
-  "real": 3068,
-  "mtime": 1790750703.5194926
- },
- "MDT_LONG": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/MDT_LONG_v14_progress.json",
-  "real": 3115,
-  "mtime": 1790753005.77965
- },
- "PAAS_SHORT": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/PAAS_SHORT_v14_progress.json",
-  "real": 2785,
-  "mtime": 1790753313.2878683
- },
- "RIO_SHORT": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/RIO_SHORT_v14_progress.json",
-  "real": 2768,
-  "mtime": 1790751963.3390253
- },
- "ROKU_SHORT": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/ROKU_SHORT_v14_progress.json",
-  "real": 2790,
-  "mtime": 1790749662.6632087
- },
- "SPY_SHORT": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/SPY_SHORT_v14_progress.json",
-  "real": 2668,
-  "mtime": 1790751441.4189386
- },
- "TECK_SHORT": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/TECK_SHORT_v14_progress.json",
-  "real": 2790,
-  "mtime": 1790751181.7469952
- },
- "TTD_LONG": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/TTD_LONG_v14_progress.json",
-  "real": 3096,
-  "mtime": 1790752483.8032303
- },
- "VT_SHORT": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/VT_SHORT_v14_progress.json",
-  "real": 2765,
-  "mtime": 1790750650.8275986
- },
- "XLE_SHORT": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/XLE_SHORT_v14_progress.json",
-  "real": 2794,
-  "mtime": 1790750681.4395354
- },
  "AGCO_LONG": {
   "host": "s2",
   "path": "/home/niels/v15_run16_20260930/progress/AGCO_LONG_v14_progress.json",
@@ -2686,6 +1816,12 @@
   "path": "/home/niels/v15_run16_20260930/progress/AGCO_SHORT_v14_progress.json",
   "real": 2795,
   "mtime": 1790758135.5152452
+ },
+ "APA_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/APA_SHORT_v14_progress.json",
+  "real": 2780,
+  "mtime": 1790759211.0287306
  },
  "APO_LONG": {
   "host": "s2",
@@ -2729,6 +1865,18 @@
   "real": 2759,
   "mtime": 1790757931.299112
  },
+ "BNO_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/BNO_SHORT_v14_progress.json",
+  "real": 2765,
+  "mtime": 1790759108.4845526
+ },
+ "CAT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_allcells_20260930/progress/CAT_SHORT_v14_progress.json",
+  "real": 2726,
+  "mtime": 1790796854.0786204
+ },
  "CDE_LONG": {
   "host": "s2",
   "path": "/home/niels/v15_run16_20260930/progress/CDE_LONG_v14_progress.json",
@@ -2753,6 +1901,18 @@
   "real": 2794,
   "mtime": 1790754925.0850108
  },
+ "CIEN_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/CIEN_LONG_v14_progress.json",
+  "real": 3100,
+  "mtime": 1790758886.7600982
+ },
+ "CLS_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/CLS_SHORT_v14_progress.json",
+  "real": 2792,
+  "mtime": 1790748006.2981725
+ },
  "COE_LONG": {
   "host": "s2",
   "path": "/home/niels/v15_run16_20260930/progress/COE_LONG_v14_progress.json",
@@ -2765,11 +1925,35 @@
   "real": 2792,
   "mtime": 1790754037.092323
  },
+ "CRK_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run1_20260929/progress/CRK_SHORT_v14_progress.json",
+  "real": 2018,
+  "mtime": 1790724379.639787
+ },
+ "CRWD_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/CRWD_SHORT_v14_progress.json",
+  "real": 2804,
+  "mtime": 1790750732.7594397
+ },
+ "CTRA_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_allcells_20260930/progress/CTRA_SHORT_v14_progress.json",
+  "real": 2782,
+  "mtime": 1790794860.8886838
+ },
  "CVX_SHORT": {
   "host": "s2",
   "path": "/home/niels/v15_run16_20260930/progress/CVX_SHORT_v14_progress.json",
   "real": 2795,
   "mtime": 1790758254.1353228
+ },
+ "DAR_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_allcells_20260930/progress/DAR_SHORT_v14_progress.json",
+  "real": 2795,
+  "mtime": 1790802227.155303
  },
  "DE_SHORT": {
   "host": "s2",
@@ -2813,6 +1997,12 @@
   "real": 3086,
   "mtime": 1790755478.7054908
  },
+ "GM_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/GM_SHORT_v14_progress.json",
+  "real": 2771,
+  "mtime": 1790751797.3549788
+ },
  "HII_LONG": {
   "host": "s2",
   "path": "/home/niels/v15_run16_20260930/progress/HII_LONG_v14_progress.json",
@@ -2831,11 +2021,23 @@
   "real": 3130,
   "mtime": 1790757149.8306184
  },
+ "JPM_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/JPM_LONG_v14_progress.json",
+  "real": 3111,
+  "mtime": 1790749720.291256
+ },
  "LDOS_LONG": {
   "host": "s2",
   "path": "/home/niels/v15_run16_20260930/progress/LDOS_LONG_v14_progress.json",
   "real": 3126,
   "mtime": 1790758127.6472402
+ },
+ "LMT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_allcells_20260930/progress/LMT_LONG_v14_progress.json",
+  "real": 1657,
+  "mtime": 1790787479.180081
  },
  "LNG_SHORT": {
   "host": "s2",
@@ -2843,11 +2045,29 @@
   "real": 2792,
   "mtime": 1790757284.0507002
  },
+ "LOW_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/LOW_LONG_v14_progress.json",
+  "real": 3068,
+  "mtime": 1790750703.5194926
+ },
+ "MDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/MDT_LONG_v14_progress.json",
+  "real": 3115,
+  "mtime": 1790753005.77965
+ },
  "META_SHORT": {
   "host": "s2",
   "path": "/home/niels/v15_run16_20260930/progress/META_SHORT_v14_progress.json",
   "real": 2803,
   "mtime": 1790755767.9777107
+ },
+ "MPC_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/MPC_SHORT_v14_progress.json",
+  "real": 2754,
+  "mtime": 1790759366.268972
  },
  "NEM_SHORT": {
   "host": "s2",
@@ -2861,83 +2081,41 @@
   "real": 1292,
   "mtime": 1790755415.3494406
  },
+ "NUKZ_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_allcells_20260930/progress/NUKZ_SHORT_v14_progress.json",
+  "real": 2161,
+  "mtime": 1790789095.2041395
+ },
  "OXY_SHORT": {
   "host": "s2",
   "path": "/home/niels/v15_run16_20260930/progress/OXY_SHORT_v14_progress.json",
   "real": 814,
   "mtime": 1790758356.7713902
  },
- "QQQ_SHORT": {
+ "PAAS_SHORT": {
   "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/QQQ_SHORT_v14_progress.json",
-  "real": 2790,
-  "mtime": 1790754166.8364005
- },
- "RDDT_LONG": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/RDDT_LONG_v14_progress.json",
-  "real": 3088,
-  "mtime": 1790753894.700237
- },
- "RGLD_SHORT": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/RGLD_SHORT_v14_progress.json",
-  "real": 2781,
-  "mtime": 1790756084.9859407
- },
- "STZ_SHORT": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/STZ_SHORT_v14_progress.json",
-  "real": 2795,
-  "mtime": 1790753460.0639653
- },
- "TRGP_SHORT": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/TRGP_SHORT_v14_progress.json",
-  "real": 2774,
-  "mtime": 1790756503.7462351
- },
- "TSM_SHORT": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/TSM_SHORT_v14_progress.json",
-  "real": 2795,
-  "mtime": 1790757929.2831109
- },
- "XOM_SHORT": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/XOM_SHORT_v14_progress.json",
-  "real": 2164,
-  "mtime": 1790756978.1145167
- },
- "USAR_LONG": {
-  "host": "s2",
-  "path": "/home/niels/v15_iso11_20260929/progress/USAR_LONG_v14_progress.json",
-  "real": 2281,
-  "mtime": 1790705802.9917274
- },
- "BNO_SHORT": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/BNO_SHORT_v14_progress.json",
-  "real": 2765,
-  "mtime": 1790759108.4845526
- },
- "CIEN_LONG": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/CIEN_LONG_v14_progress.json",
-  "real": 3100,
-  "mtime": 1790758886.7600982
- },
- "MPC_SHORT": {
-  "host": "s2",
-  "path": "/home/niels/v15_run16_20260930/progress/MPC_SHORT_v14_progress.json",
-  "real": 2754,
-  "mtime": 1790759366.268972
+  "path": "/home/niels/v15_run16_20260930/progress/PAAS_SHORT_v14_progress.json",
+  "real": 2785,
+  "mtime": 1790753313.2878683
  },
  "PSX_SHORT": {
   "host": "s2",
   "path": "/home/niels/v15_run16_20260930/progress/PSX_SHORT_v14_progress.json",
   "real": 2785,
   "mtime": 1790759206.276723
+ },
+ "PYPL_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/PYPL_LONG_v14_progress.json",
+  "real": 3118,
+  "mtime": 1790747930.430062
+ },
+ "QQQ_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/QQQ_SHORT_v14_progress.json",
+  "real": 2790,
+  "mtime": 1790754166.8364005
  },
  "QRVO_LONG": {
   "host": "s2",
@@ -2951,16 +2129,760 @@
   "real": 2793,
   "mtime": 1790758885.856096
  },
+ "RDDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/RDDT_LONG_v14_progress.json",
+  "real": 3088,
+  "mtime": 1790753894.700237
+ },
+ "RGLD_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/RGLD_SHORT_v14_progress.json",
+  "real": 2781,
+  "mtime": 1790756084.9859407
+ },
+ "RIO_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/RIO_SHORT_v14_progress.json",
+  "real": 2768,
+  "mtime": 1790751963.3390253
+ },
+ "ROBO_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/ROBO_SHORT_v14_progress.json",
+  "real": 2280,
+  "mtime": 1790748434.1307476
+ },
+ "ROKU_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/ROKU_SHORT_v14_progress.json",
+  "real": 2790,
+  "mtime": 1790749662.6632087
+ },
+ "SAP_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_allcells_20260930/progress/SAP_LONG_v14_progress.json",
+  "real": 3128,
+  "mtime": 1790778178.0234082
+ },
  "SMG_LONG": {
   "host": "s2",
   "path": "/home/niels/v15_run16_20260930/progress/SMG_LONG_v14_progress.json",
   "real": 3091,
   "mtime": 1790758690.9716103
  },
+ "SPY_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/SPY_SHORT_v14_progress.json",
+  "real": 2668,
+  "mtime": 1790751441.4189386
+ },
+ "STZ_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/STZ_SHORT_v14_progress.json",
+  "real": 2795,
+  "mtime": 1790753460.0639653
+ },
+ "TECK_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/TECK_SHORT_v14_progress.json",
+  "real": 2790,
+  "mtime": 1790751181.7469952
+ },
+ "TRGP_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/TRGP_SHORT_v14_progress.json",
+  "real": 2774,
+  "mtime": 1790756503.7462351
+ },
+ "TSM_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/TSM_SHORT_v14_progress.json",
+  "real": 2795,
+  "mtime": 1790757929.2831109
+ },
+ "TTD_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/TTD_LONG_v14_progress.json",
+  "real": 3096,
+  "mtime": 1790752483.8032303
+ },
  "VLO_SHORT": {
   "host": "s2",
   "path": "/home/niels/v15_run16_20260930/progress/VLO_SHORT_v14_progress.json",
   "real": 2677,
   "mtime": 1790759421.381051
+ },
+ "VT_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/VT_SHORT_v14_progress.json",
+  "real": 2765,
+  "mtime": 1790750650.8275986
+ },
+ "XLE_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/XLE_SHORT_v14_progress.json",
+  "real": 2794,
+  "mtime": 1790750681.4395354
+ },
+ "XOM_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/XOM_SHORT_v14_progress.json",
+  "real": 2164,
+  "mtime": 1790756978.1145167
+ },
+ "XOP_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run16_20260930/progress/XOP_SHORT_v14_progress.json",
+  "real": 2747,
+  "mtime": 1790748199.6704407
+ },
+ "RVNUSDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run16_20260930/progress/RVNUSDT_LONG_v14_progress.json",
+  "real": 3639,
+  "mtime": 1790747896.0313885
+ },
+ "RVNUSDT_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run16_20260930/progress/RVNUSDT_SHORT_v14_progress.json",
+  "real": 3106,
+  "mtime": 1790747851.4474995
+ },
+ "ENAUSDC_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_allcells_20260930/progress/ENAUSDC_LONG_v14_progress.json",
+  "real": 2340,
+  "mtime": 1790766882.4373055
+ },
+ "ARPAUSDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run16_20260930/progress/ARPAUSDT_LONG_v14_progress.json",
+  "real": 3641,
+  "mtime": 1790747927.3040118
+ },
+ "ARPAUSDT_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run16_20260930/progress/ARPAUSDT_SHORT_v14_progress.json",
+  "real": 3078,
+  "mtime": 1790747659.437665
+ },
+ "ICPUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_allcells_20260930/progress/ICPUSDT_LONG_v14_progress.json",
+  "real": 3116,
+  "mtime": 1790760816.6646981
+ },
+ "MOVEUSDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run16_20260930/progress/MOVEUSDT_LONG_v14_progress.json",
+  "real": 3608,
+  "mtime": 1790747692.1833198
+ },
+ "MOVEUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_allcells_20260930/progress/MOVEUSDT_SHORT_v14_progress.json",
+  "real": 1566,
+  "mtime": 1790754483.654903
+ },
+ "SKLUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run15_20260930/progress/SKLUSDT_LONG_v14_progress.json",
+  "real": 3609,
+  "mtime": 1790745849.181134
+ },
+ "SKLUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_run15_20260930/progress/SKLUSDT_SHORT_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790745802.753227
+ },
+ "SOLUSDC_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run16_20260930/progress/SOLUSDC_LONG_v14_progress.json",
+  "real": 3593,
+  "mtime": 1790748629.2146223
+ },
+ "SOLUSDC_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run16_20260930/progress/SOLUSDC_SHORT_v14_progress.json",
+  "real": 3113,
+  "mtime": 1790748424.963861
+ },
+ "1000000MOGUSDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/1000000MOGUSDT_LONG_v14_progress.json",
+  "real": 3062,
+  "mtime": 1790732115.0950036
+ },
+ "BNBUSDC_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_allcells_20260930/progress/BNBUSDC_LONG_v14_progress.json",
+  "real": 1816,
+  "mtime": 1790783558.0519714
+ },
+ "DOGEUSDC_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/DOGEUSDC_LONG_v14_progress.json",
+  "real": 3118,
+  "mtime": 1790731568.923203
+ },
+ "DOGEUSDC_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/DOGEUSDC_SHORT_v14_progress.json",
+  "real": 3160,
+  "mtime": 1790731595.2757275
+ },
+ "GRTUSDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/GRTUSDT_LONG_v14_progress.json",
+  "real": 3062,
+  "mtime": 1790731463.2740993
+ },
+ "GRTUSDT_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/GRTUSDT_SHORT_v14_progress.json",
+  "real": 2558,
+  "mtime": 1790731509.648023
+ },
+ "HOTUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_allcells_20260930/progress/HOTUSDT_LONG_v14_progress.json",
+  "real": 1863,
+  "mtime": 1790791667.039628
+ },
+ "HOTUSDT_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/HOTUSDT_SHORT_v14_progress.json",
+  "real": 2558,
+  "mtime": 1790732373.401844
+ },
+ "WLDUSDC_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/WLDUSDC_SHORT_v14_progress.json",
+  "real": 2613,
+  "mtime": 1790731827.1447687
+ },
+ "1000BONKUSDC_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/1000BONKUSDC_LONG_v14_progress.json",
+  "real": 3117,
+  "mtime": 1790733298.0136392
+ },
+ "1000SATSUSDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/1000SATSUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790736689.0809379
+ },
+ "ACTUSDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/ACTUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790734328.6392546
+ },
+ "AGLDUSDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/AGLDUSDT_LONG_v14_progress.json",
+  "real": 3062,
+  "mtime": 1790732760.2862341
+ },
+ "AIAUSDT_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/AIAUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790736222.6637387
+ },
+ "ARKMUSDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/ARKMUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790733996.6875799
+ },
+ "ARKMUSDT_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/ARKMUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790733930.5522385
+ },
+ "ARUSDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/ARUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790734824.6621232
+ },
+ "ARUSDT_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/ARUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790734743.973523
+ },
+ "BCHUSDC_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/BCHUSDC_LONG_v14_progress.json",
+  "real": 3062,
+  "mtime": 1790732404.4344318
+ },
+ "BIOUSDC_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/BIOUSDC_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790737454.4850328
+ },
+ "BLURUSDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/BLURUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790733451.8846304
+ },
+ "BLURUSDT_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/BLURUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790733400.6336336
+ },
+ "BTCUSDC_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/BTCUSDC_LONG_v14_progress.json",
+  "real": 3136,
+  "mtime": 1790732930.5635178
+ },
+ "BTCUSDC_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_allcells_20260930/progress/BTCUSDC_SHORT_v14_progress.json",
+  "real": 1950,
+  "mtime": 1790804161.4335651
+ },
+ "LRCUSDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/LRCUSDT_LONG_v14_progress.json",
+  "real": 3005,
+  "mtime": 1790737870.9760308
+ },
+ "LRCUSDT_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/LRCUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790737819.1650958
+ },
+ "MASKUSDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/MASKUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790737059.440242
+ },
+ "MASKUSDT_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/MASKUSDT_SHORT_v14_progress.json",
+  "real": 2613,
+  "mtime": 1790737016.6303978
+ },
+ "MSFTUSDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/MSFTUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790733593.9793959
+ },
+ "MSFTUSDT_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/MSFTUSDT_SHORT_v14_progress.json",
+  "real": 2558,
+  "mtime": 1790733383.6083026
+ },
+ "NOTUSDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/NOTUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790735268.8479133
+ },
+ "NOTUSDT_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/NOTUSDT_SHORT_v14_progress.json",
+  "real": 2613,
+  "mtime": 1790735276.9050725
+ },
+ "ONDOUSDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/ONDOUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790737162.5662758
+ },
+ "ONDOUSDT_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/ONDOUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790737089.0358257
+ },
+ "PLTRUSDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/PLTRUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790737066.383379
+ },
+ "PLTRUSDT_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/PLTRUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790736862.1193507
+ },
+ "PTBUSDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/PTBUSDT_LONG_v14_progress.json",
+  "real": 3310,
+  "mtime": 1790735327.694076
+ },
+ "STORJUSDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/STORJUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790733660.5587008
+ },
+ "SUSHIUSDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/SUSHIUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790737514.4232147
+ },
+ "SUSHIUSDT_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/SUSHIUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790737452.8430004
+ },
+ "TRXUSDT_SHORT": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/TRXUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790735508.488647
+ },
+ "VETUSDT_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/VETUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790736815.9164393
+ },
+ "WIFUSDC_LONG": {
+  "host": "s2",
+  "path": "/home/niels/v15_run_import_s1_v15_run3_20260930/progress/WIFUSDC_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790734813.1228945
+ },
+ "APPUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/APPUSDT_SHORT_v14_progress.json",
+  "real": 2614,
+  "mtime": 1790731492.8257189
+ },
+ "ARMUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/ARMUSDT_SHORT_v14_progress.json",
+  "real": 2613,
+  "mtime": 1790737696.8908057
+ },
+ "AVAXUSDC_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/AVAXUSDC_SHORT_v14_progress.json",
+  "real": 3101,
+  "mtime": 1790737188.2765267
+ },
+ "GOOGLUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/GOOGLUSDT_SHORT_v14_progress.json",
+  "real": 2964,
+  "mtime": 1790708304.7789109
+ },
+ "KASUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/KASUSDT_SHORT_v14_progress.json",
+  "real": 2614,
+  "mtime": 1790732554.302322
+ },
+ "LINKUSDC_LONG": {
+  "host": "s5",
+  "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/LINKUSDC_LONG_v14_progress.json",
+  "real": 3514,
+  "mtime": 1790698539.3937702
+ },
+ "LINKUSDC_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/LINKUSDC_SHORT_v14_progress.json",
+  "real": 2960,
+  "mtime": 1790654092.3534613
+ },
+ "MINAUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/MINAUSDT_LONG_v14_progress.json",
+  "real": 3424,
+  "mtime": 1790726975.125033
+ },
+ "TRBUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/TRBUSDT_LONG_v14_progress.json",
+  "real": 3118,
+  "mtime": 1790732281.5749094
+ },
+ "ASTERUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_allcells_20260930/progress/ASTERUSDT_LONG_v14_progress.json",
+  "real": 2030,
+  "mtime": 1790777614.338459
+ },
+ "ASTERUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_allcells_20260930/progress/ASTERUSDT_SHORT_v14_progress.json",
+  "real": 1563,
+  "mtime": 1790776314.0689685
+ },
+ "IOTAUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/IOTAUSDT_LONG_v14_progress.json",
+  "real": 3062,
+  "mtime": 1790732939.1511676
+ },
+ "IOTAUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/IOTAUSDT_SHORT_v14_progress.json",
+  "real": 2558,
+  "mtime": 1790732749.2567997
+ },
+ "KASUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/KASUSDT_LONG_v14_progress.json",
+  "real": 3062,
+  "mtime": 1790732758.1609116
+ },
+ "MRVLUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/MRVLUSDT_LONG_v14_progress.json",
+  "real": 3062,
+  "mtime": 1790732917.790903
+ },
+ "MRVLUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_allcells_20260930/progress/MRVLUSDT_SHORT_v14_progress.json",
+  "real": 1758,
+  "mtime": 1790803058.6455576
+ },
+ "TRBUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/TRBUSDT_SHORT_v14_progress.json",
+  "real": 2558,
+  "mtime": 1790732200.561963
+ },
+ "ALTUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/ALTUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790734240.5269203
+ },
+ "APEUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/APEUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790736762.7909806
+ },
+ "BANDUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/BANDUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790734885.9333696
+ },
+ "BELUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/BELUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790734270.3072772
+ },
+ "CELRUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/CELRUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790734585.222514
+ },
+ "NKNUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/NKNUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790737756.5675297
+ },
+ "NVDAUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/NVDAUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790737757.8635454
+ },
+ "BELUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/BELUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790734337.8680866
+ },
+ "CELRUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/CELRUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790734622.4788473
+ },
+ "GOOGLUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_iso7_20260929/progress/GOOGLUSDT_LONG_v14_progress.json",
+  "real": 3408,
+  "mtime": 1790697842.9947634
+ },
+ "JASMYUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/JASMYUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790736598.7087014
+ },
+ "MUUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_iso7_20260929/progress/MUUSDT_LONG_v14_progress.json",
+  "real": 3408,
+  "mtime": 1790699676.4308534
+ },
+ "APPUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/APPUSDT_LONG_v14_progress.json",
+  "real": 3062,
+  "mtime": 1790731569.0306032
+ },
+ "1MBABYDOGEUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/1MBABYDOGEUSDT_LONG_v14_progress.json",
+  "real": 3062,
+  "mtime": 1790733484.729831
+ },
+ "API3USDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/API3USDT_LONG_v14_progress.json",
+  "real": 3311,
+  "mtime": 1790733975.6117432
+ },
+ "API3USDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/API3USDT_SHORT_v14_progress.json",
+  "real": 3161,
+  "mtime": 1790733969.8796744
+ },
+ "ARBUSDC_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/ARBUSDC_LONG_v14_progress.json",
+  "real": 3062,
+  "mtime": 1790733429.3131602
+ },
+ "DASHUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/DASHUSDT_LONG_v14_progress.json",
+  "real": 3062,
+  "mtime": 1790733291.8074913
+ },
+ "1000SHIBUSDC_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/1000SHIBUSDC_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790735647.4935465
+ },
+ "AAVEUSDC_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/AAVEUSDC_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790736602.5687563
+ },
+ "ALTUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/ALTUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790734296.8475952
+ },
+ "ANKRUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/ANKRUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790735651.9055958
+ },
+ "ANKRUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/ANKRUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790735592.564934
+ },
+ "APEUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/APEUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790736700.954134
+ },
+ "ARMUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/ARMUSDT_LONG_v14_progress.json",
+  "real": 3005,
+  "mtime": 1790737848.1166372
+ },
+ "BANDUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/BANDUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790734980.082326
+ },
+ "BATUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/BATUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790736438.8585165
+ },
+ "BATUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/BATUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790736375.1817887
+ },
+ "GALAUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/GALAUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790736019.5937393
+ },
+ "GTCUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/GTCUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790735754.8227491
+ },
+ "GTCUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/GTCUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790735693.0100558
+ },
+ "JASMYUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/JASMYUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790736659.1735537
+ },
+ "KAVAUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/KAVAUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790736984.369919
+ },
+ "KAVAUSDT_SHORT": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/KAVAUSDT_SHORT_v14_progress.json",
+  "real": 2575,
+  "mtime": 1790736912.5009801
+ },
+ "NVDAUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/NVDAUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790737827.056383
+ },
+ "RSRUSDT_LONG": {
+  "host": "s5",
+  "path": "/home/niels/v15_run3_20260930/progress/RSRUSDT_LONG_v14_progress.json",
+  "real": 3079,
+  "mtime": 1790735123.755825
  }
 }

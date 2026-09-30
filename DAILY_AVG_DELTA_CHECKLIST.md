@@ -61,3 +61,4 @@ through the sanctioned per_sym path; Mac edit -> rsync -> md5 verify.
 - User 21:40Z: v15_avg_delta.xlsx must count each sym_side ONCE (latest result) + ever-nonzero filter cells yellow -> fork ae814737 working.
 - Held until that fork finishes: pipeline stage 5 (restart on new progress dir) and scheduler go-live, so sweeps start on the final templates.
 - Known gaps: s1-int tunnel down (use s1-pub); promote_365cycle_winners reads a stale 09-29 evidence file; market holidays not modelled.
+- 22:57Z monitor: run17 progress s1=9 s2=9 s5=4 files, 0 final. s1 was over-launched (7 jobs, avail 3.6GB) -> killed MOVEUSDT_LONG + ZENUSDT_SHORT (newest, ~8 min old), avail now 9.5GB. Fleet cron intentionally OFF while orchestrator agent reworks scheduler (pairs, caps, universe).

@@ -117,3 +117,21 @@
     - `PLTR_LONG` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-5.907/F=+0.177
     - `BNO_SHORT` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-0.001/F=+0.003
 - **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-09-30T22:44Z · window 48.0h · 493 sym_sides (local+remote)
+- ⚠️ **4 sym_sides / 14 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EMA_BLANKET_FILTER_ENABLED`×3, `ALL_TF_AGAINST_CLOSE_ENABLED`×1, `AUGMENT_WT_4H_BOUNCE_ENABLED`×1, `BB_SQUEEZE_ENTRY_ENABLED`×1, `BB_SQUEEZE_EXIT_ENABLED`×1, `COUNTER_TREND_ADD_BLOCK_ENABLED`×1, `DAEMON_REENTRY_STALE_EXIT_ENABLED`×1, `GR_FILTER_VEC_ENABLED`×1, `GUARANTEED_REENTRY_TIGHT_STOP_ENABLED`×1, `HTF_DIRECTION_GATE_ENABLED`×1, `MARKET_QUALITY_SCORE_ENABLED`×1, `WT_AGAINST_FILTER_ENABLED`×1
+    - `ASTS_SHORT` [mac] 11 cases — WT_AGAINST_FILTER_ENABLED T=-14.055/F=-14.055; ALL_TF_AGAINST_CLOSE_ENABLED T=-14.055/F=-14.055; COUNTER_TREND_ADD_BLOCK_ENABLED T=-14.055/F=-14.055
+    - `WDAY_LONG` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=+0.355/F=-0.047
+    - `PLTR_LONG` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-5.907/F=+0.177
+    - `BNO_SHORT` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-0.001/F=+0.003
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-09-30T22:46Z · window 48.0h · 493 sym_sides (local+remote)
+- ⚠️ **4 sym_sides / 14 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EMA_BLANKET_FILTER_ENABLED`×3, `ALL_TF_AGAINST_CLOSE_ENABLED`×1, `AUGMENT_WT_4H_BOUNCE_ENABLED`×1, `BB_SQUEEZE_ENTRY_ENABLED`×1, `BB_SQUEEZE_EXIT_ENABLED`×1, `COUNTER_TREND_ADD_BLOCK_ENABLED`×1, `DAEMON_REENTRY_STALE_EXIT_ENABLED`×1, `GR_FILTER_VEC_ENABLED`×1, `GUARANTEED_REENTRY_TIGHT_STOP_ENABLED`×1, `HTF_DIRECTION_GATE_ENABLED`×1, `MARKET_QUALITY_SCORE_ENABLED`×1, `WT_AGAINST_FILTER_ENABLED`×1
+    - `ASTS_SHORT` [mac] 11 cases — WT_AGAINST_FILTER_ENABLED T=-14.055/F=-14.055; ALL_TF_AGAINST_CLOSE_ENABLED T=-14.055/F=-14.055; COUNTER_TREND_ADD_BLOCK_ENABLED T=-14.055/F=-14.055
+    - `WDAY_LONG` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=+0.355/F=-0.047
+    - `PLTR_LONG` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-5.907/F=+0.177
+    - `BNO_SHORT` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-0.001/F=+0.003
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
