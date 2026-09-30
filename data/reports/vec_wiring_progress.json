@@ -1,0 +1,61 @@
+{
+ "_meta": {
+  "built": "2026-09-30T07:06:24.799000Z",
+  "by": "ported-switch wiring pass 2026-09-30",
+  "engine_md5": "56794ae52a9b76c9ae5805aecfb3e1a4",
+  "deployed": [
+   "s1",
+   "s2",
+   "s5"
+  ],
+  "dispatcher": "v12_quick_engine.simulate_one -> vec_decisions.ported_{entry,exit,augment,reduce,reentry}.apply",
+  "note": "wired switches all default OFF -> deploy is baseline-neutral; enables sweep to test them"
+ },
+ "CONFIRMED_WIRED_ledger_changes": {
+  "WT_PERCENTILE_EXIT_ENABLED": {
+   "family": [
+    "OB_D",
+    "OB_4H",
+    "OS_D",
+    "OS_4H"
+   ],
+   "proof": "RVN_L 121->190; GDX_L gain 7.18->7.43"
+  },
+  "E_1_WT_EXIT_USE_DELTA_ENABLED": {
+   "family": [
+    "E_1_EXIT_DELTA_THR"
+   ],
+   "proof": "RVN_L 121->162 (+2.80%); AAPL_L 32->89"
+  },
+  "E_3_USE_WT_STRUCTURE_EXIT_MODE": {
+   "proof": "RVN_L 121->349; AAPL_L 32->368 (mode2 only; mode1 shadow no-op)"
+  },
+  "HTF_AGAINST_FORCE_CLOSE_ENABLED": {
+   "family": [
+    "CONFIRM_4H",
+    "WT_CROSS_EXIT_REQUIRE_15M_CONFIRM"
+   ],
+   "proof": "RVN_L 121->123; AAPL_L 32->37"
+  }
+ },
+ "WIRED_honest_nonbinding_on_sample": {
+  "GR_FILTER_ALL_ENTRIES": "mask blocks 1207/1920 entry-cells AAPL_L, 0 on SHORT (LONG-only correct); no overlap w/ actual entries on sample -> \u00a714.3 non-binding; reuses vec_paths.gr_filter_vec",
+  "LH_HL_FILTER_ENABLED": "stocks; blocks 522-658 entry-cells; reuses check_entry_candidates_stocks__lh_hl_filter",
+  "EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED": "exit veto; changes 316-384 exit-cells; non-binding on sample trades",
+  "COUNTER_TREND_ADD_BLOCK_ENABLED": "augment block; changes 770-821 augment-cells; augments rare on sample"
+ },
+ "VEC_UNSUPPORTED_counts": {
+  "REENTRY": 67,
+  "AUGMENT": 15,
+  "REDUCE": 5,
+  "EXIT": 24,
+  "ENTRY": 8,
+  "reason": "stateful (position gain/age/count, reentry timing, cooldowns) OR non-NPZ (funding/F&G/orderbook/leaderboard/execute_now/session)"
+ },
+ "SKIPPED_counts": {
+  "ENTRY": 30,
+  "EXIT": 41,
+  "REENTRY": 5,
+  "reason": "dead fabrication farm (_batch1/_batch3/BATCH5) / already-wired in simulate_one / absent both venues / wrong-lifecycle"
+ }
+}
