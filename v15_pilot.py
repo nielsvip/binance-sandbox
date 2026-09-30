@@ -871,6 +871,8 @@ _EVER_YELLOW_CACHE: dict = {}
 def ever_yellow_cells(cat_side: str) -> set:
     """USER 2026-09-30: filter cells (tab, SWITCH=cand, FILTER=opt header) that ANY sym_side of this cat_side ever produced a
     non-zero delta for (tools/v15_yellow_from_deltas.py -> data/yellow_ever_nonzero.json) stay yellow + calculated."""
+    if os.environ.get("V15_EVER_YELLOW", "1") == "0":
+        return set()
     if cat_side not in _EVER_YELLOW_CACHE:
         try:
             _EVER_YELLOW_CACHE[cat_side] = set(json.loads((ROOT / "data" / "yellow_ever_nonzero.json").read_text()).get("cells", {}).get(cat_side, []))
