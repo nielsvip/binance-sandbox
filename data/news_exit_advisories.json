@@ -1,14 +1,78 @@
 {
-  "generated_at": "2026-09-30T16:54:22.433842+00:00",
-  "count": 1,
+  "generated_at": "2026-09-30T17:22:54.645129+00:00",
+  "count": 9,
   "advisories": [
     {
-      "symbol": "AAPL",
+      "symbol": "CRWD",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.48 threshold=0.45",
+      "score": 0.483,
+      "ts": "2026-09-30T17:22:54.645066+00:00"
+    },
+    {
+      "symbol": "ADBE",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.54 threshold=0.45",
-      "score": 0.542,
-      "ts": "2026-09-30T16:54:22.433789+00:00"
+      "score": 0.543,
+      "ts": "2026-09-30T17:22:54.645074+00:00"
+    },
+    {
+      "symbol": "APA",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.76 threshold=0.45",
+      "score": 0.761,
+      "ts": "2026-09-30T17:22:54.645077+00:00"
+    },
+    {
+      "symbol": "AR",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.64 threshold=0.45",
+      "score": 0.637,
+      "ts": "2026-09-30T17:22:54.645079+00:00"
+    },
+    {
+      "symbol": "BA",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.70 threshold=0.45",
+      "score": 0.7,
+      "ts": "2026-09-30T17:22:54.645082+00:00"
+    },
+    {
+      "symbol": "CIBR",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.71 threshold=0.45",
+      "score": 0.71,
+      "ts": "2026-09-30T17:22:54.645084+00:00"
+    },
+    {
+      "symbol": "COIN",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.52 threshold=0.45",
+      "score": 0.524,
+      "ts": "2026-09-30T17:22:54.645087+00:00"
+    },
+    {
+      "symbol": "COST",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.52 threshold=0.45",
+      "score": 0.523,
+      "ts": "2026-09-30T17:22:54.645089+00:00"
+    },
+    {
+      "symbol": "CRK",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.51 threshold=0.45",
+      "score": 0.512,
+      "ts": "2026-09-30T17:22:54.645090+00:00"
     }
   ]
 }
