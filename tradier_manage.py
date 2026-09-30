@@ -27291,6 +27291,17 @@ class TradierTradeManager:
                 if _sg_blocked:
                     if config.VERBOSE: logger.info(f"[SYMGATE] LONG {symbol} BLOCKED: {_sg_reason}")
                     return False
+            # ═══ 2026-09-30 USER port: EMA50 15m ENTRY FILTER (live twin of ez_manage.py:36213-36220 + v12_quick vec) ═══
+            # LONG requires px > ema_50_15m*(1+pct). Applies only when ema_50_15m>0 and px>0 (live guard).
+            # config_tradier default False = ZERO live-stocks change until swept/promoted. Wired both sides + vector.
+            if _cfg_auto('EMA50_15M_ENTRY_FILTER_ENABLED', False):
+                _ema50_15m = float(indicators.get('ema_50_15m', 0) or 0)
+                _px_ema = float(indicators.get('current_price', 0) or 0)
+                if _ema50_15m > 0 and _px_ema > 0:
+                    _ema_pct = float(_cfg_auto('EMA50_15M_ENTRY_FILTER_PCT', 0.0) or 0.0) / 100.0
+                    if _px_ema <= _ema50_15m * (1.0 + _ema_pct):
+                        if config.VERBOSE: logger.info(f"[EMA50_FILTER] LONG {symbol} BLOCKED: px {_px_ema:.6f} <= ema50_15m {_ema50_15m:.6f}")
+                        return False
             # ═══ 2026-04-30 HTF PORT — F1. HTF_W_M_ALIGN_GATE (default OFF) ═══
             # Block LONG entries unless N of 2 (W, M) WaveTrend agree with side.
             if _cfg_auto('HTF_W_M_ALIGN_GATE_TRADIER_ENABLED', False):
@@ -27650,6 +27661,17 @@ class TradierTradeManager:
                 if _sg_blocked:
                     if config.VERBOSE: logger.info(f"[SYMGATE] SHORT {symbol} BLOCKED: {_sg_reason}")
                     return False
+            # ═══ 2026-09-30 USER port: EMA50 15m ENTRY FILTER (live twin of ez_manage.py:36213-36220 + v12_quick vec) ═══
+            # SHORT requires px < ema_50_15m*(1-pct). Applies only when ema_50_15m>0 and px>0 (live guard).
+            # config_tradier default False = ZERO live-stocks change until swept/promoted. Wired both sides + vector.
+            if _cfg_auto('EMA50_15M_ENTRY_FILTER_ENABLED', False):
+                _ema50_15m = float(indicators.get('ema_50_15m', 0) or 0)
+                _px_ema = float(indicators.get('current_price', 0) or 0)
+                if _ema50_15m > 0 and _px_ema > 0:
+                    _ema_pct = float(_cfg_auto('EMA50_15M_ENTRY_FILTER_PCT', 0.0) or 0.0) / 100.0
+                    if _px_ema >= _ema50_15m * (1.0 - _ema_pct):
+                        if config.VERBOSE: logger.info(f"[EMA50_FILTER] SHORT {symbol} BLOCKED: px {_px_ema:.6f} >= ema50_15m {_ema50_15m:.6f}")
+                        return False
             # ═══ 2026-04-30 HTF PORT — F1. HTF_W_M_ALIGN_GATE SHORT (default OFF) ═══
             if _cfg_auto('HTF_W_M_ALIGN_GATE_TRADIER_ENABLED', False):
                 try:

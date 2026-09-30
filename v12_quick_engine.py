@@ -5509,6 +5509,8 @@ class QuickConfig:
     DYNAMIC_SCORE_COUNTER_EXIT_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD: float = 55.0  # auto-wired 625
     EMA_9_21_FILTER_ENABLED: bool = True  # 2026-09-22 FIX REVERT: True but correctly written — was blocking 100% instead of 40%, fixed kindergarten to 40% not 100%
+    EMA50_15M_ENTRY_FILTER_ENABLED: bool = False  # 2026-09-30 port: EMA50 15m entry filter (crypto config.py True, stocks config_tradier False). Fallback False; real value per mode.
+    EMA50_15M_ENTRY_FILTER_PCT: float = 0.0  # 2026-09-30 port: buffer % beyond ema_50_15m (0 = strict)
     ENTRY_ATR_PCT_MIN: float = 1.5  # auto-wired 625
     ENTRY_SYMGATE_ENABLED: bool = False  # auto-wired 625
     ENTRY_VOL_MIN_RATIO: float = 1.3  # auto-wired 625
@@ -11633,6 +11635,11 @@ def _apply_batch2_exit_gates(npz, n, is_long, cfg, exit_mask):
     return out
 
 def _apply_batch2_augment_gates(npz, n, is_long, cfg, aug_sig):
+    # 2026-09-30 NO-LIES purge (user "disable all fabricated dangerous replacements"): this
+    # applied SYNTHETIC proxies (rsi/adx/relvol/wt) to AUGMENT switches whose real meaning is
+    # unrelated -> fabricated distinctness. Passthrough now (function is also uncalled). Real
+    # augment logic lives in the augment_sig path of compute_*_signals / vec_decisions.
+    return aug_sig
     out = aug_sig.copy()
     try:
         if bool(getattr(cfg, 'AUGMENT_ONLY_WHEN_PROFITABLE', False)) != bool(_DEFAULTS_625.get('AUGMENT_ONLY_WHEN_PROFITABLE', False)):
@@ -16099,6 +16106,11 @@ VEC_UNSUPPORTED: dict = {}
 
 # P-Z CAUSAL BLOCKS (fix_PZ.py)
 def _apply_PZ_causal(cfg, npz, n, is_long, entry_mask, _safe):
+    # 2026-09-30 NO-LIES purge (user "disable all fabricated dangerous replacements"): the body
+    # below applied SYNTHETIC proxies (wt1>wt2, rsi_1h balanced) to PARABOLIC/PARTIAL_PROFIT_LOCK
+    # switches whose real meaning is unrelated -> fabricated deltas. Passthrough now (function is
+    # also uncalled). Real logic lives in compute_*_signals / vec_decisions.
+    return entry_mask
     # CAUSAL: PARABOLIC_PROTECTION_ENABLED mirrors live stub (wt1>wt2 50% true)
     if bool(getattr(cfg, "PARABOLIC_PROTECTION_ENABLED", True)):
         _w1 = _safe(npz, 'wt1_15m', n)
@@ -22148,6 +22160,23 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _bbp_block = vec_decisions.bb_pullback_gate.bb_pullback_gate_vec(npz, n, cfg, is_long)
             entry_sig = entry_sig & ~_bbp_block
             _entry_filter_masks.append(~_bbp_block)
+    except Exception:
+        pass
+    # 2026-09-30 USER port: EMA50 15m ENTRY FILTER — faithful vec twin of ez_manage.py:36213-36220
+    # (LONG requires px > ema_50_15m*(1+pct); SHORT requires px < ema_50_15m*(1-pct)). Applies only
+    # where ema_50_15m>0 and px>0 (live guard). Crypto config.py default True (fixes a live>vec parity
+    # gap); config_tradier default False (stocks inert until swept). No arbitrary proxy — real EMA50.
+    try:
+        if bool(getattr(cfg, 'EMA50_15M_ENTRY_FILTER_ENABLED', False)):
+            _ema50_15m = _safe(npz, 'ema_50_15m', n, 0.0)
+            _ema_filter_pct = float(getattr(cfg, 'EMA50_15M_ENTRY_FILTER_PCT', 0.0) or 0.0) / 100.0
+            _ema_valid = (_ema50_15m > 0) & (close > 0)
+            if is_long:
+                _ema_block = _ema_valid & (close <= _ema50_15m * (1.0 + _ema_filter_pct))
+            else:
+                _ema_block = _ema_valid & (close >= _ema50_15m * (1.0 - _ema_filter_pct))
+            entry_sig = entry_sig & ~_ema_block
+            _entry_filter_masks.append(~_ema_block)
     except Exception:
         pass
     _reentry_filter_on = bool(getattr(cfg, 'REENTRY_ENTRY_FILTER_ENABLED', False)) and bool(_entry_filter_masks)

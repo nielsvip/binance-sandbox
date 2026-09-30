@@ -1874,6 +1874,8 @@ class TradierConfig:
     RVOL_SCORE_BOOST_PCT: float = 0.20  # DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     # --- 9/21 EMA — PROVEN, on trb+trc ---
     EMA_9_21_FILTER_ENABLED: bool = True  # 9/21 1h kindergarten — no entries if 9 on wrong side of 21 — True both platforms 2026-09-10 (exits always allowed)
+    EMA50_15M_ENTRY_FILTER_ENABLED: bool = False  # 2026-09-30 USER port from config.py (crypto True): LONG requires px>ema_50_15m, SHORT px<ema_50_15m. INERT (False) for stocks = ZERO live change until swept/promoted. ROLLBACK: keep False.
+    EMA50_15M_ENTRY_FILTER_PCT: float = 0.0  # 2026-09-30 buffer % beyond ema_50_15m (0 = strict)
     EMA_9_21_TIMEFRAME: str = "1h"
     KINDERGARTEN_EMA_GATE_ENABLED: bool = True  # 2026-09-22 FIX: rewritten as ENTRY SWITCH at 15m (EMA 9x21 cross) — was filter blocked 100% badly written, now correctly adds entry via _kg_signal OR. Must exist on all TFs via KINDERGARTEN_FILTER_TF.
     EMA_9_21_SCORE_BONUS: int = 5  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
