@@ -600,7 +600,7 @@ def promotion_block_reason(switch: str, sheet: str | None = None) -> str:
         return "DEAD_VEC_PATH: wire07 purged — no real vector wiring"
     if s in LIVE_ONLY_SWITCHES:
         return "LIVE_ONLY: portfolio-level state, not single-symbol vectorizable"
-    if s in NO_LIVE_PATH_SWITCHES:
+    if s in NO_LIVE_PATH_SWITCHES and os.environ.get("V15_BLOCK_NO_LIVE_PATH") == "1":
         return "NO_LIVE_PATH: not wired in live code"
     if s in SIZING_FALSE_ALPHA_SWITCHES:
         return "SIZING_FALSE_ALPHA: notional, not edge"
@@ -942,6 +942,21 @@ def get_defaults_for_symside(symside: str) -> dict:
             except Exception:
                 pass
     return defaults
+
+_KNOWN_FIELDS: set = set()
+
+
+def known_config_fields() -> set:
+    # USER 2026-09-30: a switch/filter that exists in none of config / config_tradier / QuickConfig (e.g. *_ALT) is an
+    # invented row with no setting to calculate -> grey, never evaluated
+    if not _KNOWN_FIELDS:
+        import v12_quick_engine as V
+        import config, config_tradier
+        _KNOWN_FIELDS.update(f.name for f in dataclasses.fields(V.QuickConfig))
+        for cls in (config.Config, config_tradier.TradierConfig):
+            _KNOWN_FIELDS.update(k for k in dir(cls) if not k.startswith("_"))
+    return _KNOWN_FIELDS
+
 
 UNTRUSTED_BOLD: list = []  # last template_bold_defaults() call: bold values NOT used as defaults (placeholder options)
 
@@ -1430,7 +1445,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         print(f"[spec-fill] FAST mode: {len(fast_switches)} switches from {args.fast_switches}", flush=True)
     # Build per-tab row queues in order (stable) — hustle => shuffled copy
     is_hustle = getattr(args, "seq_mode", "") in ("hustle", "shuffle")
-    tabs = [s for s in SWITCH_SHEETS if s in wb.sheetnames and s not in SKIP_SHEETS]
+    # USER 2026-09-30: ONE chain in WORKBOOK tab order — ENTRY_REVERSAL_BOUNCE E3 = start, every next tab continues from
+    # the previous tab's final baseline
+    tabs = [s for s in wb.sheetnames if s in SWITCH_SHEETS and s not in SKIP_SHEETS]
     # Keep defined order as in SWITCH_SHEETS (already 12, STDEV skipped)
     per_tab_rows: dict[str, list] = {}
     orange_rows: set = set()  # GENERAL blanket rows (orange col A) — evaluated as ONE block per tab vs the cumulative
@@ -1515,6 +1532,15 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         # 26-52min). Force ALL workers to fork NOW, while this process is still single-threaded.
         list(_pool.map(abs, range(_n_proc * 4)))
         print(f"[spec-fill] process pool {_n_proc} workers (fork, NPZ shared, pre-forked single-threaded)", flush=True)
+    # USER 2026-09-30: every RED (stuck/slow) cell and every 0 delta is logged for the fixing agent
+    _zr_path = progress_path.parent / "v15_zero_red" / f"{new_symside}.jsonl"
+    _zr_path.parent.mkdir(parents=True, exist_ok=True)
+    _zr_fh = open(_zr_path, "a", buffering=1)
+    def _zr_log(rec: dict):
+        try:
+            _zr_fh.write(json.dumps({"ts": utcnow(), "sym_side": new_symside, **rec}, default=str) + "\n")
+        except Exception:
+            pass
     def _delta_log(rec: dict):
         try:
             _delta_log_fh.write(json.dumps(rec, default=str) + "\n")
@@ -1748,26 +1774,24 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if k in _static_info:
             return _static_info[k]
         ws = wb[sname]
-        info = {"kind": "eval", "reason": "", "hdrs": [], "h2f": {}, "pending_wiring": []}
+        info = {"kind": "eval", "reason": "", "hdrs": [], "h2f": {}, "pending_wiring": [], "yellow": set()}
         _a_font = ws.cell(row=rr, column=1).font
         if cand is None or str(cand).strip() in ("", "None", "none"):
             info.update(kind="skip", reason="NO_CANDIDATE: empty B cell in template row — nothing to test", g=None)
-        elif _a_font is not None and _a_font.color is not None and str(getattr(_a_font.color, "rgb", "") or "").upper() in GREY_SKIP_RGB:
-            info.update(kind="skip", reason="SKIPPED_GREY: switch not in live config / live path disconnected", g=None)
-        elif sname in DEAD_VEC_TABS or str(switch).strip() in DEAD_VEC_SWITCHES or str(switch).strip() in LIVE_ONLY_SWITCHES:
-            if str(switch).strip() in LIVE_ONLY_SWITCHES:
-                _r = "LIVE_ONLY: portfolio-level state, not single-symbol vectorizable"
-            elif sname in DEAD_VEC_TABS:
-                _r = "DEAD_VEC_PATH: _apply_new_audit_causal purged — no real vector wiring"
-            else:
-                _r = "DEAD_VEC_PATH: wire07 purged — no real vector wiring"
-            info.update(kind="skip", reason=_r, g=0.0)
+        elif str(cand).strip().upper().endswith("_ALT"):
+            info.update(kind="skip", reason="INVENTED_ALT: *_ALT option value exists in no config — grey, not calculated", g=None)
+            ws.cell(row=rr, column=2).font = Font(name="Arial", size=10, color="FFBFBFBF")
+        elif not all(k in known_config_fields() for k in (_switch_overrides(str(switch).strip(), _parse_opt_value(cand, defaults.get(switch))) or {str(switch).strip(): None})):
+            info.update(kind="skip", reason="NOT_IN_CONFIG: no config/config_tradier/QuickConfig field — grey, not calculated", g=None)
+            ws.cell(row=rr, column=1).font = Font(name="Arial", size=10, color="FFBFBFBF")
         else:
+            # USER 2026-09-30: grey / DEAD_VEC / LIVE_ONLY rows are calculated like every other row (real engine deltas);
+            # DEAD_VEC / LIVE_ONLY promotion stays blocked by promotion_block_reason
             # USER 2026-09-30: a cell is YELLOW iff the row's switch name and the column's filter name share >= 2 "_"-tokens
             # (interim rule until the yellow-map rebuild) — decided from the NAMES, never from a cloned fill, and the row is
             # repainted to match (sheets cloned from older templates carried misaligned yellows)
             _sw_tok = {t for t in str(switch).upper().split("_") if t}
-            _row_bg = PatternFill(start_color="FFFFE699", end_color="FFFFE699", fill_type="solid") if str(ws.cell(row=rr, column=1).fill.fgColor.rgb or "").upper().endswith("FFE699") else PatternFill(fill_type=None)
+            _row_bg = PatternFill(fill_type=None)  # USER 2026-09-30: ONLY column A carries the orange row colour
             for hdr, col in header_maps[sname].items():
                 _c = ws.cell(row=rr, column=col)
                 _is_y = _c.fill is not None and _c.fill.fill_type == "solid" and str(_c.fill.fgColor.rgb or "").upper().endswith("FFFF00")
@@ -1778,11 +1802,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _c.fill = _row_bg
                     if isinstance(_c.value, (int, float)):
                         _c.value = None  # a delta written under an old, wrong yellow assignment
-                if not _want:
-                    continue
+                # USER 2026-09-30: EVERY filter column after AVG_DELTA/POS_SYM is calculated for this row (running set +
+                # switch=cand + that one filter); yellow stays the visual name-match marker only
+                if _want:
+                    info["yellow"].add(hdr)
+                elif os.environ.get("V15_ALL_FILTER_COLS", "0") != "1":
+                    continue  # USER 2026-09-30: yellow cells only now; the all-column test runs after every sym_side is complete
                 filt, opt = hdr.split("=", 1)
-                if WIRED_FILTERS is not None and filt.strip() not in WIRED_FILTERS:
-                    info["pending_wiring"].append(col)
+                if filt.strip() not in known_config_fields():
                     continue
                 info["hdrs"].append(hdr)
                 info["h2f"][hdr] = {"filter": filt.strip(), "opt": opt.strip()}
@@ -1880,6 +1907,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         # (delta, promotable, reason): real gain delta always reported; engine-invalid results keep their delta but never promote
         if not res or res.get("gain_pct") is None:
             return None, False, str((res or {}).get("invalid_reason") or "no result")[:40]
+        if int(res.get("trades") or 0) == 0:
+            return None, False, "ZERO_TRADES"  # USER 2026-09-30: nothing traded = no delta, never a synthetic 0-gain value
         d = float(res.get("gain_pct")) - cum_before
         d = 0.0 if abs(d) < 1e-9 else d
         if not res.get("valid"):
@@ -1889,8 +1918,35 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         cell = ws.cell(row=rr, column=col)
         cell.value = float(value)
         cell.font = Font(name="Arial", size=10, bold=bold, color="006100" if good else "9C0006")
-        cell.fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid") if value < 0 else PatternFill(fill_type=None)
+        cell.fill = PatternFill(fill_type=None)  # USER 2026-09-30: red paint ONLY for stuck/slow cells, never for a negative value
         cell.alignment = VISUAL_ALIGN
+    # USER 2026-09-30: the FIRST row is the DEFAULT row. If the override set changes that switch, E3 = the baseline WITHOUT
+    # that override (switch at its bold default); the overridden value is re-earned by its own row's delta further down.
+    if not progress.get("done") and pending_queue:
+        _s0, _r0, _sw0, _c0 = pending_queue[0]
+        _ov0 = _switch_overrides(_sw0, _parse_opt_value(_c0, defaults.get(_sw0)))
+        if _ov0 and not all(_same_val(cumulative_overrides.get(_k, defaults.get(_k)), _v) for _k, _v in _ov0.items()):
+            _base0 = dict(cumulative_overrides)
+            _base0.update(_ov0)
+            _base0 = sanitize_overrides(_base0, defaults)[0]
+            _res0, _err0 = _get(_s0, _r0, _sw0, _c0, "E3_DEFAULT_BASE", _base0, _t.time() + YELLOW_TIMEOUT * 6, float(cumulative_gain))
+            if _res0 and _res0.get("gain_pct") is not None:
+                for _k in _ov0:
+                    if _k in _c_where:
+                        _c_drop(*_c_where.pop(_k), _k)
+                print(f"[E3-DEFAULT-BASE] {_s0}!{_r0} {_sw0}: override {cumulative_overrides.get(_sw0)} removed for the chain start -> E3 {float(_res0['gain_pct']):.4f} (with override {float(cumulative_gain):.4f})", flush=True)
+                progress["e3_default_base"] = {"switch": _sw0, "override_value": cumulative_overrides.get(_sw0), "gain_with_override": float(cumulative_gain), "gain_default": float(_res0["gain_pct"])}
+                cumulative_overrides = dict(_base0)
+                cumulative_gain = float(_res0["gain_pct"])
+                initial_baseline = cumulative_gain
+                initial_overrides = dict(_base0)
+                progress["initial_baseline_gain"] = cumulative_gain
+                progress["initial_overrides"] = dict(_base0)
+                progress["cumulative_gain"] = cumulative_gain
+                progress["cumulative_overrides"] = dict(_base0)
+                _spec_state["ver"] += 1
+            else:
+                print(f"[E3-DEFAULT-BASE] {_s0}!{_r0} {_sw0}: default-base eval failed ({_err0}) — keeping override base", flush=True)
     _red_retry: list = []
     last_E = {"v": None}
     def _chain_E(sname: str, rr: int, value: float):
@@ -1900,7 +1956,22 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             return
         _write_E(sname, rr, value)
         last_E["v"] = float(value)
-    e_next = float(cumulative_gain)  # chain start: E3 of the first tab on a fresh sheet (or the resume row)
+    # USER 2026-09-30: E3 of EVERY tab = the running baseline when that tab starts; any later E only after a POSITIVE row
+    # (E_next = E + G). Resumed sheets: each tab's first row gets the baseline it was measured against.
+    _done0 = progress.get("done", {})
+    _tab_first = {s: per_tab_rows[s][0] for s in tabs if per_tab_rows.get(s)}
+    for _s, (_r0, _sw0, _c0) in _tab_first.items():
+        _rec0 = _done0.get(f"{_s}!{_r0}:{_sw0}={_c0}")
+        if _rec0 and isinstance(_rec0.get("cumulative_before"), (int, float)):
+            _write_E(_s, _r0, _rec0["cumulative_before"])
+    e_next = None
+    if pending_queue:
+        _qi0 = queue.index(pending_queue[0])
+        if _qi0 > 0:
+            _ps, _pr, _psw, _pc = queue[_qi0 - 1]
+            _prec = _done0.get(f"{_ps}!{_pr}:{_psw}={_pc}") or {}
+            if _prec.get("promoted") and isinstance(_prec.get("cumulative_after"), (int, float)):
+                e_next = float(_prec["cumulative_after"])
     _start_t = _t.time()
     for qi, (sname, rr, switch, cand) in enumerate(pending_queue):
         loop_guard += 1
@@ -1910,6 +1981,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         ws = wb[sname]
         cols = _resolve_cols(ws)
         cumulative_before = float(cumulative_gain)
+        if e_next is None and _tab_first.get(sname, (None,))[0] == rr:
+            e_next = cumulative_before
         if e_next is not None:
             _chain_E(sname, rr, e_next)
         else:
@@ -1956,6 +2029,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if nerr:
                 _flag_to_md(flags_md, sname, rr, switch, cand, f"slow/failed naked: {nerr}", 0.0, 0.0, cumulative_before)
                 _red_retry.append({"sheet": sname, "row": rr, "col": cols["G"], "label": "naked", "ov": switch_variant, "cum_before": cumulative_before, "key": key})
+                _zr_log({"kind": "RED", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": "F/G", "reason": nerr, "cum_before": cumulative_before})
         yellows, promotable, noop_yellows = {}, {}, []
         for hdr in st["hdrs"]:
             res, err = results[hdr]
@@ -1963,14 +2037,21 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             d, ok, why = _delta_vs(res, cumulative_before)
             if err or why:
                 reasons[hdr] = err or why
+            if d is None and why == "ZERO_TRADES" and not err:
+                ws.cell(row=rr, column=col).value = None
+                _zr_log({"kind": "ZERO_TRADES", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": hdr, "cum_before": cumulative_before})
+                continue
             if d is None:
                 _spec_mark_red(wb, sname, rr, col, reason=err or why)
                 print(f"[spec-stall] {sname}!{rr} {hdr} {err or why} -> RED, fill continues", flush=True)
+                _zr_log({"kind": "RED", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": hdr, "reason": err or why, "cum_before": cumulative_before})
                 if err:
                     _flag_to_md(flags_md, sname, rr, switch, cand, f"slow/failed {hdr}: {err}", 0.0, 0.0, cumulative_before)
                     _red_retry.append({"sheet": sname, "row": rr, "col": col, "label": hdr, "ov": dict(plan["items"][[l for l, _ in plan["items"]].index(hdr)][1]), "cum_before": cumulative_before, "key": key})
                 continue
             yellows[hdr] = float(d)
+            if abs(float(d)) < 1e-12:
+                _zr_log({"kind": "ZERO", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": hdr, "cum_before": cumulative_before})
             noop = ok and naked_ok and naked_delta is not None and abs(float(d) - float(naked_delta)) < 1e-9
             if noop:
                 noop_yellows.append(hdr)
@@ -1978,13 +2059,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             ycell = ws.cell(row=rr, column=col)
             if _is_red_cell(ycell):
                 _clear_red_fill(ws, rr, col)
-            ycell.fill = PatternFill(start_color="FFFFFF00", end_color="FFFFFF00", fill_type="solid")  # a yellow cell stays yellow
-            ycell.value = (0.0 if noop else float(d)) if ok else f"INVALID {why}"[:40]
-            ycell.font = Font(name="Arial", size=10, bold=False, italic=noop, color="808080" if noop else None)
+                if hdr in st["yellow"]:
+                    ycell.fill = PatternFill(start_color="FFFFFF00", end_color="FFFFFF00", fill_type="solid")
+            # USER 2026-09-30: ALWAYS the real delta; engine-invalid (trades < floor, TIM > 80, DD > 30) = value in grey font
+            # (never promoted, left out of AVG_DELTA); a non-binding filter keeps its real value, italic, never promoted
+            ycell.value = float(d)
+            ycell.font = Font(name="Arial", size=10, bold=False, italic=noop, color=None if ok else "808080")
             ycell.alignment = VISUAL_ALIGN
             if not ok:
-                # USER 2026-09-30: an engine-invalid evaluation (trades < floor, TIM > 80, DD > 30) is a RED cell + logged
-                _spec_mark_red(wb, sname, rr, col, reason=f"INVALID {why}")
                 _flag_to_md(flags_md, sname, rr, switch, cand, f"INVALID {hdr}: {why}", d, 0.0, cumulative_before)
         pos_hdrs = [h for h, d in yellows.items() if d > 1e-9 and promotable.get(h)]
         h2f = st["h2f"]
@@ -2029,23 +2111,29 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if "hustle" in results:
             _hd, _hok, _hwhy = _delta_vs(results["hustle"][0], initial_baseline)
             hustle_delta = _hd if _hok else None
-        elif not is_running:
-            hustle_delta = 0.0  # this setting equals the ORIGINAL set's value: on its own it changes nothing
         if row_delta is not None:
             if _is_red_cell(ws.cell(row=rr, column=cols["G"])):
                 _clear_red_fill(ws, rr, cols["G"])
             _num_cell(ws, rr, cols["G"], row_delta, promote)
             if choice is None and not is_running and not naked_ok:
-                # USER 2026-09-30: engine-invalid naked result -> RED cell with its reason, logged; never promotable
-                _spec_mark_red(wb, sname, rr, cols["G"], reason=reasons.get("naked", "invalid"))
+                # USER 2026-09-30: engine-invalid naked result -> its real value in GREY font, logged; never promotable
+                g.fill = PatternFill(fill_type=None)
+                g.font = Font(name="Arial", size=10, bold=True, color="808080")
                 _flag_to_md(flags_md, sname, rr, switch, cand, f"INVALID naked: {reasons.get('naked', '')}", row_delta, 0.0, cumulative_before)
+            # F = HUSTLE_DELTA: the row's setting vs the ORIGINAL baseline (G is the delta vs the LATEST baseline)
             if hustle_delta is not None:
                 _num_cell(ws, rr, cols["F"], hustle_delta, hustle_delta > 1e-9)
             else:
                 f.value = None
+            if abs(float(row_delta)) < 1e-12 and not is_running:
+                _zr_log({"kind": "ZERO", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": "G", "cum_before": cumulative_before})
         elif is_running:
             g.value = None
             f.value = None
+        elif reasons.get("naked") == "ZERO_TRADES":
+            g.value = None
+            f.value = None
+            _zr_log({"kind": "ZERO_TRADES", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": "F/G", "cum_before": cumulative_before})
         else:
             _spec_mark_red(wb, sname, rr, cols["G"], reason=reasons.get("naked", "no result"))
             f.value = None
@@ -2065,7 +2153,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             progress["cumulative_overrides"] = dict(cumulative_overrides)
         progress["cumulative_gain"] = float(cumulative_gain)
         div = _write_div(sname, rr, [row_gain])
-        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "is_running": is_running, "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", ""), "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain)}
+        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", ""), "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain)}
         _maybe_write_json(force=promote)
         _row_done(sname, rr, switch, cand, n_items + (1 if pos_hdrs else 0), row_delta, promote)
         _touch(f"cell {sname}!{rr} delta={row_delta}")
@@ -2087,8 +2175,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         cell = ws.cell(row=rc["row"], column=rc["col"])
         if rc["label"] != "naked":
             cell.fill = PatternFill(start_color="FFFFFF00", end_color="FFFFFF00", fill_type="solid")
-        cell.value = float(d) if ok else f"INVALID {why}"[:40]
-        cell.font = Font(name="Arial", size=10, bold=rc["label"] == "naked", italic=not ok, color=("9C0006" if d <= 1e-9 else "9C5700") if ok else "808080")
+        cell.value = float(d)
+        cell.font = Font(name="Arial", size=10, bold=rc["label"] == "naked", color=("9C0006" if d <= 1e-9 else "9C5700") if ok else "808080")
+        if not ok and rc["label"] != "naked":
+            rec.setdefault("yellow_reasons", {})[rc["label"]] = why
         rec.setdefault("red_fixed", {})[rc["label"]] = d
         if rc["label"] != "naked":
             rec.setdefault("yellows", {})[rc["label"]] = float(d)
@@ -3556,8 +3646,9 @@ def main():
     overrides = {**_tpl_defaults, **overrides}
     _recipe_only_overrides = {**_tpl_defaults, **_recipe_only_overrides}
     _ingested_overrides = dict(overrides)  # previous best / prev-sheet set — candidate base for the credible-baseline stage
-    if os.environ.get("V15_FRESH_RUN", "0") == "1":
+    if os.environ.get("V15_FRESH_RUN", "0") == "1" and os.environ.get("V15_INGEST_BEST", "0") != "1":
         # USER 2026-09-29: engine/sizing change invalidates prior bests -> start from the live recipe only
+        # (USER 2026-09-30: V15_INGEST_BEST=1 keeps the prior-best overrides FIRST, then the baseline)
         print(f"[FRESH-RUN] {new_symside}: prior-best/previous-sheet ingest ignored ({len(overrides)} -> live recipe {len(_recipe_only_overrides)} overrides)", flush=True)
         overrides = dict(_recipe_only_overrides)
     if os.environ.get("V15_START_OVERRIDES"):
@@ -4303,9 +4394,9 @@ def main():
                             col = _htc.get(hdr)
                             _cv = ws_r.cell(row=r, column=col).value if col else None
                             _c_is_float = isinstance(_cv, (int, float)) and not isinstance(_cv, bool)
-                            if col and hdr in _y_bad:
-                                ws_r.cell(row=r, column=col).value = f"INVALID {_y_bad[hdr]}"[:40]
-                                ws_r.cell(row=r, column=col).font = Font(name="Arial", size=10, italic=True, color="808080")
+                            if col and hdr in _y_bad and isinstance(d, (int, float)):
+                                ws_r.cell(row=r, column=col).value = float(d)
+                                ws_r.cell(row=r, column=col).font = Font(name="Arial", size=10, color="808080")
                                 refilled += 1
                                 continue
                             if col and (not _c_is_float or abs(float(_cv) - float(d)) > 1e-9):
