@@ -865,6 +865,20 @@ def map_key_for_symside(symside: str) -> str:
     is_long = s.endswith("_LONG")
     return f"{'CRYPTO' if is_crypto else 'STOCKS'}_{'LONG' if is_long else 'SHORT'}"
 
+_EVER_YELLOW_CACHE: dict = {}
+
+
+def ever_yellow_cells(cat_side: str) -> set:
+    """USER 2026-09-30: filter cells (tab, SWITCH=cand, FILTER=opt header) that ANY sym_side of this cat_side ever produced a
+    non-zero delta for (tools/v15_yellow_from_deltas.py -> data/yellow_ever_nonzero.json) stay yellow + calculated."""
+    if cat_side not in _EVER_YELLOW_CACHE:
+        try:
+            _EVER_YELLOW_CACHE[cat_side] = set(json.loads((ROOT / "data" / "yellow_ever_nonzero.json").read_text()).get("cells", {}).get(cat_side, []))
+        except Exception:
+            _EVER_YELLOW_CACHE[cat_side] = set()
+    return _EVER_YELLOW_CACHE[cat_side]
+
+
 def opportune_filter_bases(symside: str, sheet: str, switch: str) -> set:
     m = _load_opportune_map()
     key = map_key_for_symside(symside)
@@ -1816,7 +1830,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             for hdr, col in header_maps[sname].items():
                 _c = ws.cell(row=rr, column=col)
                 _is_y = _c.fill is not None and _c.fill.fill_type == "solid" and str(_c.fill.fgColor.rgb or "").upper().endswith("FFFF00")
-                _want = len(_sw_tok & {t for t in hdr.split("=", 1)[0].upper().split("_") if t}) >= YELLOW_MIN_SHARED_TOKENS
+                _want = len(_sw_tok & {t for t in hdr.split("=", 1)[0].upper().split("_") if t}) >= YELLOW_MIN_SHARED_TOKENS or f"{sname}\t{str(switch).strip()}={str(cand).strip()}\t{hdr}" in ever_yellow_cells(map_key_for_symside(new_symside))
                 if _want and not _is_y:
                     _c.fill = PatternFill(start_color="FFFFFF00", end_color="FFFFFF00", fill_type="solid")
                 elif _is_y and not _want:

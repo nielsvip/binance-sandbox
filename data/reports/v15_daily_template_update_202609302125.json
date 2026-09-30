@@ -1,0 +1,250 @@
+{
+ "round_id": "c3b67598bed00d1b881798a6ba561027",
+ "agg": "/Users/niels/Documents/binance/SPREADSHEETS/v15_vector_delta_latest.xlsx",
+ "CRYPTO_LONG": {
+  "rows_with_stats": 3646,
+  "cleared": {},
+  "promoted_switch": [],
+  "promoted_filter": [],
+  "violations": []
+ },
+ "CRYPTO_SHORT": {
+  "rows_with_stats": 3123,
+  "cleared": {},
+  "promoted_switch": [],
+  "promoted_filter": [
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=15m"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.063
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=D"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.063
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=D"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.063
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=D"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.063
+   ],
+   [
+    "EXIT_VELOCITY",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=D"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.063
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=D"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.063
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=D"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.063
+   ],
+   [
+    "AUGMENT_TREND",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=D"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.063
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=D"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.063
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=D"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.063
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=D"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.063
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=D"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.063
+   ]
+  ],
+  "violations": []
+ },
+ "STOCKS_LONG": {
+  "rows_with_stats": 3127,
+  "cleared": {},
+  "promoted_switch": [],
+  "promoted_filter": [],
+  "violations": []
+ },
+ "STOCKS_SHORT": {
+  "rows_with_stats": 2800,
+  "cleared": {},
+  "promoted_switch": [],
+  "promoted_filter": [
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=15m"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.2449
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=OFF"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.2449
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=OFF"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.2449
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=OFF"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.2449
+   ],
+   [
+    "EXIT_VELOCITY",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=OFF"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.2449
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=OFF"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.2449
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=OFF"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.2449
+   ],
+   [
+    "AUGMENT_TREND",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=OFF"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.2449
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=OFF"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.2449
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=15m"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.2449
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=OFF"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.2449
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    [
+     "CIRCUIT_SHARPE_GATES_FILTER_TF=OFF"
+    ],
+    "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+    0.2449
+   ]
+  ],
+  "violations": []
+ }
+}

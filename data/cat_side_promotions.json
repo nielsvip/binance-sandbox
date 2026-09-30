@@ -4,121 +4,205 @@
    "value": "False",
    "avg_delta": 0.410883,
    "tab": "STDEV_SLOPE_SIZING",
-   "at": "2026-09-30T21:10:07.878889Z"
+   "at": "2026-09-30T21:29:34.372742Z"
   },
   "DC_MOMENTUM_BOTA_SCORER_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.322916,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:10:54.813179Z"
+   "at": "2026-09-30T21:30:19.629626Z"
   },
   "EMA_9_21_FILTER_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.284345,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:10:54.813274Z"
+   "at": "2026-09-30T21:30:19.629635Z"
   },
   "EXIT_R1_R2_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 1.335002,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:10:54.813364Z"
+   "at": "2026-09-30T21:30:19.629645Z"
   },
   "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF": {
    "value": "4h",
    "avg_delta": 1.335002,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:10:54.813455Z"
+   "at": "2026-09-30T21:30:19.629654Z"
   },
   "EXIT_TOP_FADE_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 1.280512,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:10:54.813544Z"
+   "at": "2026-09-30T21:30:19.629664Z"
   },
   "EXIT_TO_REDUCE_ADAPTER_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 1.335002,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:10:54.813634Z"
+   "at": "2026-09-30T21:30:19.629672Z"
   },
   "MANDATORY_REENTRY_WT_FILTER_TF_MODE": {
    "value": "5m_or_15m",
    "avg_delta": 1.426025,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:10:54.813741Z"
+   "at": "2026-09-30T21:30:19.629696Z"
   },
   "MTF_ATR_TRAIL_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.191286,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:10:54.813857Z"
+   "at": "2026-09-30T21:30:19.629723Z"
   },
   "MTF_DC_REJECT_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.308876,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:10:54.813969Z"
+   "at": "2026-09-30T21:30:19.629741Z"
   },
   "NEWBORN_LOSS_KILL_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.284345,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:10:54.814061Z"
+   "at": "2026-09-30T21:30:19.629751Z"
   },
   "NOLOSS_BYPASS_WT5OF5_FILTER_TF": {
    "value": "1h",
    "avg_delta": 0.022256,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:10:54.814152Z"
+   "at": "2026-09-30T21:30:19.629760Z"
   },
   "PARTIAL_PROFIT_LOCK_V2_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.076975,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:10:54.814241Z"
+   "at": "2026-09-30T21:30:19.629770Z"
   },
   "PEAK_GIVEBACK_BE_EROSION_FILTER_TF": {
    "value": "1h",
    "avg_delta": 0.290269,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:10:54.814328Z"
+   "at": "2026-09-30T21:30:19.629779Z"
   },
   "WT_15M_BOUNCE_REL_VOL_GT_1": {
    "value": "True",
    "avg_delta": 0.435906,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:10:54.814368Z"
+   "at": "2026-09-30T21:30:19.629784Z"
   },
   "DAYTRADE_DC_TARGET_TF": {
    "value": "1h",
    "avg_delta": 0.185551,
    "tab": "EXIT_STRUCTURAL",
-   "at": "2026-09-30T21:10:22.349754Z"
+   "at": "2026-09-30T21:29:47.406032Z"
   },
   "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED": {
    "value": "False",
    "avg_delta": 6.750516,
    "tab": "AUGMENT_RISK_SIZING",
-   "at": "2026-09-30T21:10:42.921895Z"
+   "at": "2026-09-30T21:30:06.745017Z"
   },
   "BREAKEVEN_GAIN_EROSION_FILTER_TF": {
    "value": "15m",
    "avg_delta": 0.172429,
    "tab": "REDUCE_PROFIT_LOCK",
-   "at": "2026-09-30T21:10:47.122692Z"
+   "at": "2026-09-30T21:30:10.509185Z"
   },
   "EXECUTE_NOW_MAX_MARK_AGE_S": {
    "value": "90.0",
    "avg_delta": 0.013814,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:10:54.810637Z"
+   "at": "2026-09-30T21:30:19.627555Z"
   },
   "UNIVERSAL_NOLOSS_GATE": {
    "value": "True",
    "avg_delta": 0.021348,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:10:54.810793Z"
+   "at": "2026-09-30T21:30:19.627559Z"
+  },
+  "HTF_GATE_MIN_CONFIRMATIONS": {
+   "value": "2",
+   "avg_delta": 0.359206,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:30:19.627539Z"
+  },
+  "HTF_BULL_ENTRY_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.674127,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-09-30T21:29:37.738566Z"
+  },
+  "EMA_BLANKET_FILTER_ENABLED": {
+   "value": "False",
+   "avg_delta": 0.017848,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:30:19.627563Z"
+  },
+  "DC_BREACH_REDUCE_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.051121,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:30:19.629606Z"
+  },
+  "DC_BREAK_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.247578,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:30:19.629617Z"
+  },
+  "FAST_RISER_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.076818,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:30:19.629681Z"
+  },
+  "LIVE_ENTRY_ENGINE_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.361837,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:30:19.629691Z"
+  },
+  "MOMENTUM_BREAKOUT_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.015281,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:30:19.629705Z"
+  },
+  "MTF_ARMED_ENTRIES_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.152812,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:30:19.629714Z"
+  },
+  "DC_BREAKOUT_TF": {
+   "value": "1h",
+   "avg_delta": 0.063742,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-09-30T21:29:37.738562Z"
+  },
+  "TECHNICAL_DC_TARGET_TF": {
+   "value": "OFF",
+   "avg_delta": 0.037668,
+   "tab": "EXIT_STRUCTURAL",
+   "at": "2026-09-30T21:29:47.406045Z"
+  },
+  "MTF_DC_REJECT_EXIT_TF": {
+   "value": "1h",
+   "avg_delta": 0.019009,
+   "tab": "EXIT_VELOCITY",
+   "at": "2026-09-30T21:29:50.082309Z"
+  },
+  "DC_HARD_STOP_TF": {
+   "value": "4h",
+   "avg_delta": 0.025288,
+   "tab": "EXIT_VELOCITY",
+   "at": "2026-09-30T21:29:50.082315Z"
+  },
+  "REENTRY2_DC_BREAK_FILTER_TF": {
+   "value": "3m",
+   "avg_delta": 0.012355,
+   "tab": "REENTRY_WINDOWED",
+   "at": "2026-09-30T21:29:54.138275Z"
   }
  },
  "CRYPTO_SHORT": {
@@ -126,157 +210,217 @@
    "value": "1h",
    "avg_delta": 0.012629,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:11:52.486025Z"
+   "at": "2026-09-30T21:31:19.244453Z"
   },
   "DC_BREAK_FILTER_TF": {
    "value": "1h",
    "avg_delta": 0.091809,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:11:52.486212Z"
+   "at": "2026-09-30T21:31:19.244479Z"
   },
   "EXIT_R1_R2_FILTER_TF": {
    "value": "1h",
    "avg_delta": 0.823011,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:11:52.486330Z"
+   "at": "2026-09-30T21:31:19.244515Z"
   },
   "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.419172,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:11:52.486425Z"
+   "at": "2026-09-30T21:31:19.244524Z"
   },
   "EXIT_TOP_FADE_FILTER_TF": {
    "value": "D",
    "avg_delta": 0.749528,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:11:52.486527Z"
+   "at": "2026-09-30T21:31:19.244533Z"
   },
   "EXIT_TO_REDUCE_ADAPTER_FILTER_TF": {
    "value": "1h",
    "avg_delta": 0.823011,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:11:52.486618Z"
+   "at": "2026-09-30T21:31:19.244542Z"
   },
   "GR_V5_STATE_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.063042,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:11:52.486716Z"
+   "at": "2026-09-30T21:31:19.244552Z"
   },
   "LH_HL_FILTER_TF_REQ": {
    "value": "1",
    "avg_delta": 0.067245,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:11:52.486759Z"
+   "at": "2026-09-30T21:31:19.244556Z"
   },
   "LIVE_ENTRY_ENGINE_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.091944,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:11:52.486860Z"
+   "at": "2026-09-30T21:31:19.244566Z"
   },
   "MANDATORY_REENTRY_WT_FILTER_TF_MODE": {
    "value": "5m_or_15m",
    "avg_delta": 0.970348,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:11:52.486898Z"
+   "at": "2026-09-30T21:31:19.244571Z"
   },
   "MOM3_FILTER_TF": {
    "value": "4h",
    "avg_delta": 1.298998,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:11:52.486993Z"
+   "at": "2026-09-30T21:31:19.244580Z"
   },
   "MTF_ATR_TRAIL_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.112426,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:11:52.487090Z"
+   "at": "2026-09-30T21:31:19.244589Z"
   },
   "MTF_DC_REJECT_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.350972,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:11:52.487184Z"
+   "at": "2026-09-30T21:31:19.244598Z"
   },
   "OPEN_INTENT_SIZE_GATES_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.061756,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:11:52.487284Z"
+   "at": "2026-09-30T21:31:19.244607Z"
   },
   "PARTIAL_PROFIT_LOCK_V2_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.063042,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:11:52.487375Z"
+   "at": "2026-09-30T21:31:19.244615Z"
   },
   "PEAK_GIVEBACK_BE_EROSION_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.275154,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:11:52.487467Z"
+   "at": "2026-09-30T21:31:19.244624Z"
   },
   "WT_15M_BOUNCE_BB_MIN": {
    "value": "0.1",
    "avg_delta": 0.082455,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:11:52.487532Z"
+   "at": "2026-09-30T21:31:19.244635Z"
   },
   "WT_15M_BOUNCE_REL_VOL_GT_1": {
    "value": "True",
    "avg_delta": 0.191621,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:11:52.487575Z"
+   "at": "2026-09-30T21:31:19.244640Z"
   },
   "BB_BREAKOUT_ENTRY_TF": {
    "value": 20,
    "avg_delta": 0.042298,
    "tab": "ENTRY_BREAKOUT_CHANNEL",
-   "at": "2026-09-30T21:11:13.922765Z"
+   "at": "2026-09-30T21:30:40.638406Z"
   },
   "CIRCUIT_SHARPE_GATES_FILTER_TF": {
-   "value": "D",
+   "value": "4h",
    "avg_delta": 0.063042,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:11:52.486121Z"
+   "at": "2026-09-30T21:31:19.244468Z"
   },
   "REENTRY2_DC_BREAK_FILTER_TF": {
    "value": "4h",
    "avg_delta": 0.02233,
    "tab": "REENTRY_WINDOWED",
-   "at": "2026-09-30T21:11:31.240501Z"
+   "at": "2026-09-30T21:30:55.924584Z"
   },
   "REENTRY_FILTER_MIN_PASS": {
    "value": 2,
    "avg_delta": 0.04846,
    "tab": "REENTRY_WINDOWED",
-   "at": "2026-09-30T21:11:31.240586Z"
+   "at": "2026-09-30T21:30:55.924594Z"
   },
   "REENTRY_ENTRY_FILTER_ENABLED": {
    "value": true,
    "avg_delta": 0.553878,
    "tab": "REENTRY_WINDOWED",
-   "at": "2026-09-30T21:11:31.240640Z"
+   "at": "2026-09-30T21:30:55.924598Z"
   },
   "HLR_REENTRY_MAX_AGE_S": {
    "value": "1.0",
    "avg_delta": 0.88824,
    "tab": "REENTRY_ADAPTIVE",
-   "at": "2026-09-30T21:11:36.978438Z"
+   "at": "2026-09-30T21:31:01.744411Z"
   },
   "AUGMENT_MIN_GAIN_PCT": {
    "value": "0.75",
    "avg_delta": 3.860945,
    "tab": "AUGMENT_TREND",
-   "at": "2026-09-30T21:11:39.815977Z"
+   "at": "2026-09-30T21:31:04.460907Z"
   },
   "BB_PULLBACK_GATE_FILTER_TF": {
    "value": "1h",
    "avg_delta": 0.724446,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:11:52.484528Z"
+   "at": "2026-09-30T21:31:19.242656Z"
+  },
+  "HTF_BULL_ENTRY_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.031365,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-09-30T21:30:40.638417Z"
+  },
+  "EMA_9_21_FILTER_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.357933,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:31:19.244498Z"
+  },
+  "BB_SQUEEZE_ENTRY_ENABLED": {
+   "value": "True",
+   "avg_delta": 0.946376,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-09-30T21:30:38.074646Z"
+  },
+  "EMA_BLANKET_FILTER_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.764318,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:31:19.244506Z"
+  },
+  "DC_MOMENTUM_BOTA_SCORER_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.282349,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:31:19.244488Z"
+  },
+  "WT_15M_BOUNCE_BB_MAX": {
+   "value": "0.95",
+   "avg_delta": 0.082455,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:31:19.244630Z"
+  },
+  "EMA50_15M_ENTRY_FILTER_ENABLED": {
+   "value": true,
+   "avg_delta": 0.779711,
+   "tab": "ENTRY_CONFIRMATION_GATES",
+   "at": "2026-09-30T21:30:47.130638Z"
+  },
+  "TECHNICAL_DC_TARGET_TF": {
+   "value": "OFF",
+   "avg_delta": 0.009491,
+   "tab": "EXIT_STRUCTURAL",
+   "at": "2026-09-30T21:30:49.569971Z"
+  },
+  "MTF_DC_REJECT_EXIT_TF": {
+   "value": "1h",
+   "avg_delta": 0.007577,
+   "tab": "EXIT_VELOCITY",
+   "at": "2026-09-30T21:30:52.275153Z"
+  },
+  "BTC_GUARANTEED_REENTRY_ENABLED": {
+   "value": "True",
+   "avg_delta": 0.88575,
+   "tab": "REENTRY_WINDOWED",
+   "at": "2026-09-30T21:30:55.924600Z"
   }
  },
  "STOCKS_LONG": {
@@ -284,181 +428,439 @@
    "value": "0",
    "avg_delta": 0.145538,
    "tab": "ENTRY_REVERSAL_BOUNCE",
-   "at": "2026-09-30T21:12:06.854681Z"
+   "at": "2026-09-30T21:31:38.776540Z"
   },
   "WT_ACCEL_EXIT_ENABLED": {
    "value": "True",
    "avg_delta": 0.145538,
    "tab": "ENTRY_REVERSAL_BOUNCE",
-   "at": "2026-09-30T21:12:06.854744Z"
+   "at": "2026-09-30T21:31:38.776551Z"
   },
   "CIRCUIT_SHARPE_GATES_FILTER_TF": {
    "value": "4h",
    "avg_delta": 0.13856,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:12:45.715285Z"
+   "at": "2026-09-30T21:32:20.605457Z"
   },
   "DC_BREACH_REDUCE_FILTER_TF": {
    "value": "4h",
    "avg_delta": 0.274562,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:12:45.715391Z"
+   "at": "2026-09-30T21:32:20.605467Z"
   },
   "DC_MOMENTUM_BOTA_SCORER_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.417096,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:12:45.715491Z"
+   "at": "2026-09-30T21:32:20.605485Z"
   },
   "EMA_9_21_FILTER_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.161829,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:12:45.715667Z"
+   "at": "2026-09-30T21:32:20.605501Z"
   },
   "FIRST_OPEN_THROTTLE_FILTER_TF": {
    "value": "1h",
    "avg_delta": 0.135948,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:12:45.716086Z"
+   "at": "2026-09-30T21:32:20.605569Z"
   },
   "GR_V5_STATE_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.13856,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:12:45.716223Z"
+   "at": "2026-09-30T21:32:20.605611Z"
   },
   "HAIKU_WINNER_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.13856,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:12:45.716313Z"
+   "at": "2026-09-30T21:32:20.605619Z"
   },
   "MTF_ATR_TRAIL_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.13856,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:12:45.716453Z"
+   "at": "2026-09-30T21:32:20.605669Z"
   },
   "MTF_DC_REJECT_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.401455,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:12:45.716541Z"
+   "at": "2026-09-30T21:32:20.605677Z"
   },
   "NEWBORN_LOSS_KILL_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.161829,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:12:45.716630Z"
+   "at": "2026-09-30T21:32:20.605685Z"
   },
   "OPEN_INTENT_SIZE_GATES_FILTER_TF": {
    "value": "D",
    "avg_delta": 0.123468,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:12:45.716768Z"
+   "at": "2026-09-30T21:32:20.605714Z"
   },
   "PEAK_GIVEBACK_BE_EROSION_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.166462,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:12:45.716877Z"
+   "at": "2026-09-30T21:32:20.605731Z"
   },
   "WT_15M_BOUNCE_BB_MIN": {
    "value": "0.1",
    "avg_delta": 0.97434,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:12:45.716939Z"
+   "at": "2026-09-30T21:32:20.605743Z"
   },
   "WRONG_SIDE_WT_TFS_REQUIRED": {
    "value": "6",
    "avg_delta": 0.205722,
    "tab": "ENTRY_BREAKOUT_CHANNEL",
-   "at": "2026-09-30T21:12:09.091185Z"
+   "at": "2026-09-30T21:31:41.432061Z"
   },
   "ENTRY_SCORE_THRESHOLD": {
    "value": "22.5",
    "avg_delta": 0.206694,
    "tab": "ENTRY_BREAKOUT_CHANNEL",
-   "at": "2026-09-30T21:12:09.091312Z"
+   "at": "2026-09-30T21:31:41.432069Z"
   },
   "REENTRY_RALLY_K15M_MAX": {
    "value": "50.0",
    "avg_delta": 0.207377,
    "tab": "ENTRY_BREAKOUT_CHANNEL",
-   "at": "2026-09-30T21:12:09.091433Z"
+   "at": "2026-09-30T21:31:41.432075Z"
   },
   "INTRADAY_SESSION_FORCE_EXIT_UTC": {
    "value": "0",
    "avg_delta": 0.222404,
    "tab": "ENTRY_BREAKOUT_CHANNEL",
-   "at": "2026-09-30T21:12:09.091560Z"
+   "at": "2026-09-30T21:31:41.432081Z"
   },
   "SCALP_V3_OB_WALL_TOO_CLOSE_PCT": {
    "value": "2.0",
    "avg_delta": 0.212513,
    "tab": "ENTRY_BREAKOUT_CHANNEL",
-   "at": "2026-09-30T21:12:09.091673Z"
+   "at": "2026-09-30T21:31:41.432087Z"
   },
   "MACD_ZERO_CROSS_TF": {
    "value": "OFF",
    "avg_delta": 0.412279,
    "tab": "ENTRY_BREAKOUT_CHANNEL",
-   "at": "2026-09-30T21:12:09.091813Z"
+   "at": "2026-09-30T21:31:41.432094Z"
   },
   "WT_AGAINST_FILTER_ENABLED": {
    "value": "True",
    "avg_delta": 0.078848,
    "tab": "ENTRY_CONFIRMATION_GATES",
-   "at": "2026-09-30T21:12:15.004273Z"
+   "at": "2026-09-30T21:31:49.032458Z"
   },
   "STDEV_REJECT_EXIT_TF": {
    "value": "OFF",
    "avg_delta": 0.003891,
    "tab": "EXIT_VELOCITY",
-   "at": "2026-09-30T21:12:19.930745Z"
+   "at": "2026-09-30T21:31:54.288595Z"
   },
   "DC_HARD_STOP_REENTRY_COOLDOWN_HOURS": {
    "value": 8,
    "avg_delta": 0.030564,
    "tab": "REENTRY_WINDOWED",
-   "at": "2026-09-30T21:12:23.390208Z"
+   "at": "2026-09-30T21:31:58.495469Z"
   },
   "LEGACY_PROC_SINGLE_REENTRY": {
    "value": "0.5",
    "avg_delta": 0.199517,
    "tab": "REENTRY_WINDOWED",
-   "at": "2026-09-30T21:12:23.390347Z"
+   "at": "2026-09-30T21:31:58.495487Z"
   },
   "LEGACY_REENTRY_PSR_K_DC_CROSSOVER": {
    "value": "1.0",
    "avg_delta": 0.21045,
    "tab": "REENTRY_WINDOWED",
-   "at": "2026-09-30T21:12:23.390481Z"
+   "at": "2026-09-30T21:31:58.495511Z"
   },
   "REENTRY_SIZE_BREAKOUT_MULT": {
    "value": "0",
    "avg_delta": 0.218127,
    "tab": "REENTRY_ADAPTIVE",
-   "at": "2026-09-30T21:12:29.856242Z"
+   "at": "2026-09-30T21:32:04.308222Z"
   },
   "BREAKOUT_LEASH_REENTRY_MULT": {
    "value": "1.0",
    "avg_delta": 0.208836,
    "tab": "REENTRY_ADAPTIVE",
-   "at": "2026-09-30T21:12:29.856349Z"
+   "at": "2026-09-30T21:32:04.308226Z"
   },
   "HIGH_GAIN_AUGMENTATION_MIN_SIZE": {
    "value": "1.0",
    "avg_delta": 0.058097,
    "tab": "AUGMENT_RISK_SIZING",
-   "at": "2026-09-30T21:12:35.186592Z"
+   "at": "2026-09-30T21:32:09.862881Z"
   },
   "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED": {
    "value": "False",
    "avg_delta": 2.448475,
    "tab": "AUGMENT_RISK_SIZING",
-   "at": "2026-09-30T21:12:35.186662Z"
+   "at": "2026-09-30T21:32:09.862886Z"
+  },
+  "BB_BOUNCE_ENTRY_TF": {
+   "value": "OFF",
+   "avg_delta": 0.101445,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.604141Z"
+  },
+  "WT_15M_BOUNCE_OPEN_ENABLED": {
+   "value": "True",
+   "avg_delta": 0.335115,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-09-30T21:31:38.776537Z"
+  },
+  "BB_SQUEEZE_ENTRY_ENABLED": {
+   "value": "True",
+   "avg_delta": 0.081278,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-09-30T21:31:38.776544Z"
+  },
+  "WT_DIV_EXIT_ENABLED": {
+   "value": "False",
+   "avg_delta": 0.069902,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-09-30T21:31:38.776548Z"
+  },
+  "HTF_BULL_ENTRY_FILTER_ENABLED": {
+   "value": true,
+   "avg_delta": 0.146965,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-09-30T21:31:41.432035Z"
+  },
+  "MANDATORY_REENTRY_WT_FILTER_TF_MODE": {
+   "value": "15m_only",
+   "avg_delta": 0.799968,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605644Z"
+  },
+  "EMA_BLANKET_FILTER_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.371122,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605510Z"
+  },
+  "HTF_BULL_ENTRY_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.498618,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-09-30T21:31:41.432051Z"
+  },
+  "DC_BREAK_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.387523,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605476Z"
+  },
+  "DELTA_ENGINE_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.133364,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605493Z"
+  },
+  "EMERGENCY_BRAKE_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.133364,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605519Z"
+  },
+  "EXIT_R1_R2_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.308843,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605527Z"
+  },
+  "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.308843,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605535Z"
+  },
+  "EXIT_TOP_FADE_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.251433,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605544Z"
+  },
+  "EXIT_TO_REDUCE_ADAPTER_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.308843,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605552Z"
+  },
+  "FAST_RISER_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.111019,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605561Z"
+  },
+  "FROZEN_STOP_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.151605,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605577Z"
+  },
+  "GOLDEN_RULE_ENFORCE_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.133364,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605586Z"
+  },
+  "GOLDEN_RULE_HTF_VOTE_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.133364,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605594Z"
+  },
+  "GR_FILTER_VEC_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.133364,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605603Z"
+  },
+  "LH_HL_FILTER_TF_REQ": {
+   "value": "2",
+   "avg_delta": 0.173384,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605623Z"
+  },
+  "LIVE_ENTRY_ENGINE_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 1.043314,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605632Z"
+  },
+  "LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.133364,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605640Z"
+  },
+  "MOM3_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.346558,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605652Z"
+  },
+  "MTF_ARMED_ENTRIES_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.133364,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605661Z"
+  },
+  "NEWBORN_PROTECT_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.133364,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605694Z"
+  },
+  "NOLOSS_BYPASS_WT5OF5_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.131718,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605704Z"
+  },
+  "PARTIAL_PROFIT_LOCK_V2_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.159482,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605723Z"
+  },
+  "WT_15M_BOUNCE_BB_MAX": {
+   "value": "0.95",
+   "avg_delta": 0.934595,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605737Z"
+  },
+  "WT_15M_BOUNCE_HIGH_1H_GT_PREV": {
+   "value": "False",
+   "avg_delta": 0.272699,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605747Z"
+  },
+  "WT_15M_BOUNCE_LOW_1H_GT_PREV": {
+   "value": "False",
+   "avg_delta": 0.272699,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605751Z"
+  },
+  "WT_15M_BOUNCE_REL_VOL_GT_1": {
+   "value": "False",
+   "avg_delta": 0.272699,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.605755Z"
+  },
+  "DC_BREAKOUT_TF_EXPANDED": {
+   "value": "1h",
+   "avg_delta": 0.043202,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-09-30T21:31:41.432027Z"
+  },
+  "ENTRY_PRIMARY_TF": {
+   "value": "4h",
+   "avg_delta": 0.18963,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-09-30T21:31:41.432043Z"
+  },
+  "HAIKU_ENTRY_GATE_ENABLED": {
+   "value": "False",
+   "avg_delta": 0.191453,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-09-30T21:31:41.432055Z"
+  },
+  "TECHNICAL_DC_TARGET_TF": {
+   "value": "OFF",
+   "avg_delta": 0.019979,
+   "tab": "EXIT_STRUCTURAL",
+   "at": "2026-09-30T21:31:51.649924Z"
+  },
+  "REENTRY2_DC_BREAK_REQUIRE_K_FILTER": {
+   "value": "1.0",
+   "avg_delta": 0.007776,
+   "tab": "REENTRY_WINDOWED",
+   "at": "2026-09-30T21:31:58.495457Z"
+  },
+  "REENTRY2_DC_BREAK_FILTER_TF": {
+   "value": "1h",
+   "avg_delta": 0.068588,
+   "tab": "REENTRY_WINDOWED",
+   "at": "2026-09-30T21:31:58.495479Z"
+  },
+  "LEGACY_REENTRY_PSR_DC_BOUNCE": {
+   "value": "1.0",
+   "avg_delta": 0.191453,
+   "tab": "REENTRY_WINDOWED",
+   "at": "2026-09-30T21:31:58.495495Z"
+  },
+  "LEGACY_REENTRY_PSR_FULL_DC": {
+   "value": "1.0",
+   "avg_delta": 0.208426,
+   "tab": "REENTRY_WINDOWED",
+   "at": "2026-09-30T21:31:58.495503Z"
+  },
+  "BOUNCE_AUGMENT_MIN_LOSS_PCT": {
+   "value": "-0.5",
+   "avg_delta": 0.23875,
+   "tab": "AUGMENT_TREND",
+   "at": "2026-09-30T21:32:07.233098Z"
+  },
+  "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": {
+   "value": 3,
+   "avg_delta": 0.311488,
+   "tab": "REDUCE_PROFIT_LOCK",
+   "at": "2026-09-30T21:32:12.717011Z"
+  },
+  "START_POSITION_SIZE": {
+   "value": "500.0",
+   "avg_delta": 2.280545,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:32:20.604152Z"
   }
  },
  "STOCKS_SHORT": {
@@ -466,217 +868,289 @@
    "value": "False",
    "avg_delta": 0.321959,
    "tab": "ENTRY_REVERSAL_BOUNCE",
-   "at": "2026-09-30T21:13:01.071780Z"
+   "at": "2026-09-30T21:32:38.210694Z"
   },
   "DC_BREAK_FILTER_TF": {
    "value": "15m",
    "avg_delta": 0.359682,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.175325Z"
+   "at": "2026-09-30T21:33:28.637372Z"
   },
   "DC_MOMENTUM_BOTA_SCORER_FILTER_TF": {
    "value": "4h",
    "avg_delta": 0.415374,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.175415Z"
+   "at": "2026-09-30T21:33:28.637382Z"
   },
   "DELTA_ENGINE_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.193707,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.175503Z"
+   "at": "2026-09-30T21:33:28.637392Z"
   },
   "EMA_9_21_FILTER_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.187297,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.175830Z"
+   "at": "2026-09-30T21:33:28.637401Z"
   },
   "EMERGENCY_BRAKE_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.237268,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.176005Z"
+   "at": "2026-09-30T21:33:28.637420Z"
   },
   "EXIT_R1_R2_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.392714,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.176149Z"
+   "at": "2026-09-30T21:33:28.637429Z"
   },
   "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.392714,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.176242Z"
+   "at": "2026-09-30T21:33:28.637439Z"
   },
   "EXIT_TOP_FADE_FILTER_TF": {
    "value": "4h",
    "avg_delta": 0.290389,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.176331Z"
+   "at": "2026-09-30T21:33:28.637448Z"
   },
   "EXIT_TO_REDUCE_ADAPTER_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.392714,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.176420Z"
+   "at": "2026-09-30T21:33:28.637458Z"
   },
   "FH_MOMENTUM_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.241034,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.176523Z"
+   "at": "2026-09-30T21:33:28.637477Z"
   },
   "FIRST_OPEN_THROTTLE_FILTER_TF": {
    "value": "D",
    "avg_delta": 0.726332,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.176612Z"
+   "at": "2026-09-30T21:33:28.637486Z"
   },
   "GOLDEN_RULE_ENFORCE_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.244922,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.176712Z"
+   "at": "2026-09-30T21:33:28.637505Z"
   },
   "GOLDEN_RULE_HTF_VOTE_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.244922,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.176801Z"
+   "at": "2026-09-30T21:33:28.637515Z"
   },
   "GR_V5_STATE_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.244922,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.176899Z"
+   "at": "2026-09-30T21:33:28.637534Z"
   },
   "HAIKU_WINNER_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.031329,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.176989Z"
+   "at": "2026-09-30T21:33:28.637543Z"
   },
   "LIVE_ENTRY_ENGINE_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.237268,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.177083Z"
+   "at": "2026-09-30T21:33:28.637558Z"
   },
   "LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF": {
    "value": "1h",
    "avg_delta": 0.184624,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.177170Z"
+   "at": "2026-09-30T21:33:28.637567Z"
   },
   "MANDATORY_REENTRY_WT_FILTER_TF_MODE": {
    "value": "5m_or_15m",
    "avg_delta": 0.566621,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.177206Z"
+   "at": "2026-09-30T21:33:28.637572Z"
   },
   "MOM3_FILTER_TF": {
    "value": "15m",
    "avg_delta": 1.304784,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.177294Z"
+   "at": "2026-09-30T21:33:28.637582Z"
   },
   "MTF_ARMED_ENTRIES_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.244922,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.177390Z"
+   "at": "2026-09-30T21:33:28.637600Z"
   },
   "MTF_ATR_TRAIL_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.248937,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.177477Z"
+   "at": "2026-09-30T21:33:28.637609Z"
   },
   "MTF_DC_REJECT_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.505278,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.177566Z"
+   "at": "2026-09-30T21:33:28.637618Z"
   },
   "NEWBORN_LOSS_KILL_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.187297,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.177653Z"
+   "at": "2026-09-30T21:33:28.637627Z"
   },
   "NEWBORN_PROTECT_FILTER_TF": {
    "value": "4h",
    "avg_delta": 0.186876,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.177739Z"
+   "at": "2026-09-30T21:33:28.637636Z"
   },
   "NOLOSS_BYPASS_WT5OF5_FILTER_TF": {
    "value": "D",
    "avg_delta": 0.237268,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.177827Z"
+   "at": "2026-09-30T21:33:28.637646Z"
   },
   "PARTIAL_PROFIT_LOCK_V2_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.244922,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.177923Z"
+   "at": "2026-09-30T21:33:28.637665Z"
   },
   "PEAK_GIVEBACK_BE_EROSION_FILTER_TF": {
    "value": "OFF",
    "avg_delta": 0.187297,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.178009Z"
+   "at": "2026-09-30T21:33:28.637674Z"
   },
   "WT_15M_BOUNCE_BB_MAX": {
    "value": "0.9",
    "avg_delta": 0.846877,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.178063Z"
+   "at": "2026-09-30T21:33:28.637680Z"
   },
   "WT_15M_BOUNCE_BB_MIN": {
    "value": "0.2",
    "avg_delta": 0.843953,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.178117Z"
+   "at": "2026-09-30T21:33:28.637698Z"
   },
   "WT_15M_BOUNCE_HIGH_1H_GT_PREV": {
    "value": "True",
    "avg_delta": 0.852968,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.178154Z"
+   "at": "2026-09-30T21:33:28.637703Z"
   },
   "WT_15M_BOUNCE_LOW_1H_GT_PREV": {
    "value": "True",
    "avg_delta": 0.867745,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.178191Z"
+   "at": "2026-09-30T21:33:28.637707Z"
   },
   "CIRCUIT_SHARPE_GATES_FILTER_TF": {
-   "value": "OFF",
+   "value": "4h",
    "avg_delta": 0.244922,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-09-30T21:13:39.175221Z"
+   "at": "2026-09-30T21:33:28.637348Z"
   },
   "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED": {
    "value": "False",
    "avg_delta": 5.277121,
    "tab": "AUGMENT_RISK_SIZING",
-   "at": "2026-09-30T21:13:28.663963Z"
+   "at": "2026-09-30T21:33:13.442612Z"
   },
   "PARTIAL_PROFIT_LOCK_FRAC_TRADIER": {
    "value": "0.75",
    "avg_delta": 0.018513,
    "tab": "REDUCE_PROFIT_LOCK",
-   "at": "2026-09-30T21:13:31.751813Z"
+   "at": "2026-09-30T21:33:17.577202Z"
   },
   "WT_D_BOUNCE_DD_STOP_ENABLED": {
    "value": "False",
    "avg_delta": 0.040313,
    "tab": "REDUCE_PROFIT_LOCK",
-   "at": "2026-09-30T21:13:31.751884Z"
+   "at": "2026-09-30T21:33:17.577211Z"
+  },
+  "BB_PULLBACK_GATE_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.481358,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:33:28.635287Z"
+  },
+  "DC_BREACH_REDUCE_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.333893,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:33:28.637363Z"
+  },
+  "EMA_BLANKET_FILTER_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.033067,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:33:28.637410Z"
+  },
+  "FAST_RISER_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.258921,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:33:28.637467Z"
+  },
+  "FROZEN_STOP_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.241034,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:33:28.637495Z"
+  },
+  "GR_FILTER_VEC_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.19383,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:33:28.637524Z"
+  },
+  "LH_HL_FILTER_TF_REQ": {
+   "value": "2",
+   "avg_delta": 0.244922,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:33:28.637548Z"
+  },
+  "MOMENTUM_BREAKOUT_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.18128,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:33:28.637591Z"
+  },
+  "OPEN_INTENT_SIZE_GATES_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.726332,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:33:28.637655Z"
+  },
+  "WT_15M_BOUNCE_REL_VOL_GT_1": {
+   "value": "False",
+   "avg_delta": 0.843953,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:33:28.637712Z"
+  },
+  "BREAKEVEN_GAIN_EROSION_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.040726,
+   "tab": "REDUCE_PROFIT_LOCK",
+   "at": "2026-09-30T21:33:17.579310Z"
+  },
+  "START_POSITION_SIZE": {
+   "value": "500.0",
+   "avg_delta": 2.385443,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-09-30T21:33:28.635297Z"
   }
  }
 }
