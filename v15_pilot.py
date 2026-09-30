@@ -1393,17 +1393,6 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         cell.value = float(value)
         cell.font = Font(name="Arial", size=10, bold=False)
         cell.alignment = VISUAL_ALIGN
-    def _add_override(ws, rr: int, cols: dict, parts: list, k_parts: list = ()):
-        # ADD to override (C, bold) and PER_ROW_FILTERS (K) — never overwrite existing content (BEST-C-FILL etc.)
-        for col, new, sep in ((cols["C"], parts, " + "), (cols["K"], k_parts, ", ")):
-            if not new:
-                continue
-            cell = ws.cell(row=rr, column=col)
-            cur = [p.strip() for p in str(cell.value).split(sep.strip())] if cell.value not in (None, "") else []
-            cur += [p for p in new if p not in cur]
-            cell.value = sep.join(cur)
-            cell.font = Font(name="Arial", size=10, bold=col == cols["C"])
-            cell.alignment = VISUAL_ALIGN
     nav_mode = getattr(args, "nav_mode", "jump")
     # DELTA-LOG (user 2026-09-28): one JSON line per v12_quick eval — proves every delta was really computed
     _delta_log_path = progress_path.parent / "v15_delta_log" / f"{new_symside}_{nav_mode}.jsonl"
@@ -1588,6 +1577,42 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if hv and isinstance(hv, str) and hv.strip().upper().startswith("WHAT SWITCH"):
                 break
         header_maps[sname] = hm
+    # override column C (USER 2026-09-30): previous-best settings (BEST-C-FILL) + every promotion's switch=cand and positive
+    # filter=opt. A key lives in exactly ONE C cell: when a later promotion sets it to another value, the old part is erased
+    # from its cell and the new setting is written in the promoting row's C. _c_where: key -> (sheet, row), in fill order.
+    _c_where: dict = {}
+    def _c_parts(cell):
+        return [p.strip() for p in str(cell.value).split(" + ") if p.strip()] if cell.value not in (None, "") else []
+    def _c_drop(sname: str, rr: int, key: str):
+        ws_ = wb[sname]
+        cell = ws_.cell(row=rr, column=_resolve_cols(ws_)["C"])
+        keep = [p for p in _c_parts(cell) if p.split("=", 1)[0].strip() != key]
+        cell.value = " + ".join(keep) if keep else None
+    for sname in tabs:
+        ws_ = wb[sname]
+        c_col = _resolve_cols(ws_)["C"]
+        for rr in range(3, ws_.max_row + 1):
+            for p in _c_parts(ws_.cell(row=rr, column=c_col)):
+                if "=" not in p:
+                    continue
+                k = p.split("=", 1)[0].strip()
+                if k in _c_where and _c_where[k] != (sname, rr):
+                    _c_drop(*_c_where[k], k)  # a duplicate from an older fill: the later entry supersedes it
+                _c_where[k] = (sname, rr)
+    def _set_override(ws_, sname: str, rr: int, cols_: dict, parts: list):
+        cell = ws_.cell(row=rr, column=cols_["C"])
+        cur = _c_parts(cell)
+        for part in parts:
+            k = part.split("=", 1)[0].strip()
+            if k in _c_where and _c_where[k] != (sname, rr):
+                old = _c_where[k]
+                _c_drop(*old, k)
+                print(f"[C-SUPERSEDE] {k}: erased from {old[0]}!{old[1]} -> {part} at {sname}!{rr}", flush=True)
+            cur = [p for p in cur if p.split("=", 1)[0].strip() != k] + [part]
+            _c_where[k] = (sname, rr)
+        cell.value = " + ".join(cur) if cur else None
+        cell.font = Font(name="Arial", size=10, bold=True)
+        cell.alignment = VISUAL_ALIGN
     if tabs:
         _next_pending(tabs[0])
     queue = [(sname, rr, sw, cand) for sname in tabs for (rr, sw, cand) in per_tab_rows[sname]]
@@ -1892,7 +1917,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         ws.cell(row=rr, column=cols["I"]).value = None
         if promote:
             parts = ([] if is_running else [f"{switch}={cand}"]) + [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]]
-            _add_override(ws, rr, cols, parts)
+            _set_override(ws, sname, rr, cols, parts)
             cumulative_overrides = dict(choice[2])
             cumulative_gain = cumulative_before + float(row_delta)
             e_next = cumulative_gain
@@ -2633,17 +2658,9 @@ def clone_template(template: Path, new_symside: str) -> Path:
                 try:
                     wb_check = openpyxl.load_workbook(str(target), data_only=True, read_only=True)
                     # 7D fix: check ALL 12 tabs have E3 baseline and at least one F, not just any — prevents empty ENTRY looking filled via GLOBAL
-                    has_f = True
-                    for sn in SWITCH_SHEETS:
-                        if sn not in wb_check.sheetnames:
-                            has_f = False
-                            break
-                        ws = wb_check[sn]
-                        e3 = ws.cell(3, 5).value
-                        if not isinstance(e3, (int, float)):
-                            has_f = False
-                            break
-                        # also need at least one F in first 15 rows for non-bold sheets, but bold defaults have None — check E3 only for now
+                    # sequential fill (2026-09-30): E3 exists only where the chain starts (first tab) — all 13 tabs present +
+                    # a numeric chain start = a started sheet that must be resumed, never overwritten by a fresh template
+                    has_f = all(sn in wb_check.sheetnames for sn in SWITCH_SHEETS) and isinstance(wb_check[SWITCH_SHEETS[0]].cell(3, 5).value, (int, float))
                     wb_check.close()
                     if has_f:
                         print(f"[clone] {target.name} already exists with E3 baseline for all 12 — reuse, not overwrite", flush=True)
@@ -2743,8 +2760,8 @@ def clone_template(template: Path, new_symside: str) -> Path:
             continue
         wsc = wb[name]
         for r in range(2, wsc.max_row + 1):
-            cv = wsc.cell(row=r, column=3).value
-            if isinstance(cv, str) and " + " in cv:
+            # a fresh clone carries no overrides: C is filled only by BEST-C-FILL and promotions
+            if r >= 3 and wsc.cell(row=r, column=3).value not in (None, ""):
                 wsc.cell(row=r, column=3).value = None
     for cand in ["Results_Deltas", "Results_30d_Deltas", "Results_30d", "results"]:
         if cand in wb.sheetnames:
@@ -3194,13 +3211,12 @@ def main():
                     _a, _c, _g = _vals[0], _vals[_ci], _vals[_gi]
                     if not _a or _c is None or str(_c).strip() in ("", "None", "none"):
                         continue
+                    # only "SWITCH=value" parts (the one format the pilot writes); bare values are template leftovers
                     _parts = []
                     for _part in str(_c).split(" + "):
                         if "=" in _part:
                             _k, _v = _part.split("=", 1)
                             _parts.append((_k.strip(), _pv(_v)))
-                        elif _part.strip():
-                            _parts.append((str(_a).strip(), _pv(_part)))
                     (_promo_parts if isinstance(_g, (int, float)) and _g > 1e-9 else _best_parts).extend(_parts)
             for _k, _v in _best_parts + _promo_parts:
                 if "_" in _k and len(_k) > 5 and overrides.get(_k) != _v:
