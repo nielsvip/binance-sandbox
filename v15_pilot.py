@@ -1231,6 +1231,27 @@ def _adapt_template_rows(template_path, tabs):
     return rows
 
 
+def _prior_final_sets(symside: str) -> list:
+    """Final override sets of earlier FINISHED runs for this sym_side (every ~/v15_run*/progress dir + lifecycle_pilot),
+    highest recorded final gain first. Only the SETTINGS are used — the caller re-measures them on the current engine."""
+    import glob as _g
+    out = []
+    here = str(PROGRESS_DIR.resolve()) if PROGRESS_DIR.exists() else str(PROGRESS_DIR)
+    paths = _g.glob(os.path.expanduser(f"~/v15_run*/progress/{symside}_v14_progress.json")) + [str(ROOT / "data" / "reports" / "lifecycle_pilot" / f"{symside}_v14_progress.json")]
+    for pth in paths:
+        try:
+            if str(Path(pth).parent.resolve()) == here or not Path(pth).exists():
+                continue
+            pj = json.loads(Path(pth).read_text())
+        except Exception:
+            continue
+        ov = {k: v for k, v in (pj.get("cumulative_overrides") or {}).items() if not (isinstance(v, str) and " + " in v)}
+        if pj.get("final_gain") is None or not ov:
+            continue
+        out.append((float(pj["final_gain"]), f"{Path(pth).parent.parent.name}", ov))
+    out.sort(key=lambda t: -t[0])
+    return [(src, ov) for _g2, src, ov in out]
+
 def _credible_baseline(new_symside, prepared, base_sets, defaults, template_path, window_days, workers=2):
     """USER 2026-09-29/30 (BIBLE §58, adaptive mandate): a sheet is only filled from a CREDIBLE baseline = valid (TIM <= 80,
     DD <= 30 — the vomit gates of evaluate_prepared_sanitized, never loosened), >= ADAPT_FLOOR_TRADES trades, gain >=
@@ -3783,6 +3804,19 @@ def main():
             _bases = [("live_recipe", dict(_recipe_only_overrides)), ("template_defaults", dict(_tpl_defaults)), ("current", dict(overrides))]
             if _ingested_overrides and _ingested_overrides != _recipe_only_overrides:
                 _bases.append(("previous_best", dict(_ingested_overrides)))
+            # USER 2026-09-30: previous best = the FINAL settings of earlier finished runs for this sym_side, each re-measured
+            # on the CURRENT engine (no recorded number is reused); the best valid one is the previous_best base
+            _scored = []
+            for _src, _pov in _prior_final_sets(new_symside)[:8]:
+                _pov = sanitize_overrides(dict(_pov), defaults)[0]
+                _pv = evaluate_prepared_sanitized(prepared, _pov, window_days=args.window_days)
+                print(f"[PRIOR-FINAL] {new_symside} {_src}: now gain={_pv.get('gain_pct')} trades={_pv.get('trades')} valid={_pv.get('valid')}", flush=True)
+                if _pv.get("valid") and int(_pv.get("trades") or 0) >= ADAPT_FLOOR_TRADES and _pv.get("gain_pct") is not None:
+                    _scored.append((float(_pv["gain_pct"]), _src, _pov))
+            if _scored:
+                _pg, _psrc, _pov = max(_scored, key=lambda t: t[0])
+                print(f"[PRIOR-FINAL] {new_symside} previous_best = {_psrc} ({_pg:.4f}% now)", flush=True)
+                _bases = [b for b in _bases if b[0] != "previous_best"] + [("previous_best", dict(_pov))]
             overrides, baseline_vec, _adapt_report = _credible_baseline(new_symside, prepared, _bases, defaults, args.template, args.window_days)
             _zero_trades_early = int(baseline_vec.get("trades") or 0) == 0
         if int(baseline_vec.get("trades") or 0) < 10 and overrides and _adapt_report is None:
