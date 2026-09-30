@@ -85,6 +85,17 @@ data/*.jsonl
 data/market_data_*.json
 data/hourly_reconfig/*.json
 
+# Live-monitoring outputs updated every second — exclude from diff view
+data/last_events.json
+data/market_mode.json
+data/outlier_alerts.json
+data/outlier_report.json
+data/outlier_report.txt
+data/news_sentiment.json
+data/news_sentiment_crypto.json
+data/manipulation_flags.json
+data/mac_live_heartbeat.json
+
 # Stray top-level backup/variant copies of live scripts (redundant with the
 # backups/ directory convention in CLAUDE.md, already excluded via `*/`).
 *.bak

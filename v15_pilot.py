@@ -942,6 +942,47 @@ def get_defaults_for_symside(symside: str) -> dict:
                 pass
     return defaults
 
+def template_bold_defaults(template_path, defaults: dict) -> tuple[dict, list]:
+    """USER 2026-09-29: the BOLD / is_default=YES row of every (tab, switch) group IS the running default. Returns
+    (engine overrides for all bold defaults, violations). A violation = a non-grey group without exactly one is_default
+    YES, or whose YES row is not the bold row, or a switch whose default differs between tabs. Fail-closed at the caller."""
+    import openpyxl as _opx
+    wb = _opx.load_workbook(str(template_path))
+    vals, where, bad = {}, {}, []
+    for tab in SWITCH_SHEETS:
+        if tab not in wb.sheetnames:
+            continue
+        ws = wb[tab]
+        idc = next((c for c in range(1, ws.max_column + 1) if str(ws.cell(row=2, column=c).value or "").strip().lower().startswith("is_default")), None)
+        if idc is None:
+            bad.append(f"{tab}: no is_default column")
+            continue
+        groups = {}
+        for r in range(3, ws.max_row + 1):
+            a = ws.cell(row=r, column=1).value
+            if a in (None, "") or str(a).strip().lower() in ("switch", "general", "blanket", "filter", "option value", "sheets applicable", "gates"):
+                continue
+            groups.setdefault(str(a).strip(), []).append(r)
+        for sw, rows in groups.items():
+            f = ws.cell(row=rows[0], column=1).font
+            if f is not None and f.color is not None and str(getattr(f.color, "rgb", "") or "").upper() in GREY_SKIP_RGB:
+                continue
+            yes = [r for r in rows if str(ws.cell(row=r, column=idc).value or "").strip().upper() == "YES"]
+            bold = [r for r in rows if ws.cell(row=r, column=2).font is not None and ws.cell(row=r, column=2).font.b]
+            if len(yes) != 1 or bold != yes:
+                bad.append(f"{tab}!{sw}: is_default YES rows {yes}, bold rows {bold}")
+                continue
+            v = _parse_opt_value(ws.cell(row=yes[0], column=2).value, defaults.get(sw))
+            if sw in vals and str(vals[sw]) != str(v):
+                bad.append(f"{sw}: default {vals[sw]!r} ({where[sw]}) != {v!r} ({tab})")
+                continue
+            vals[sw], where[sw] = v, tab
+    wb.close()
+    ov = {}
+    for sw, v in vals.items():
+        ov.update(_switch_overrides(sw, v))
+    return ov, bad
+
 def _macbook_desktop_notify(title: str, msg: str, critical: bool = False):
     """Send to MacBook desktop: local osascript + ssh to macbook + persistent jsonl for warn-daemon."""
     # persistent log for Mac polling / warn daemon
@@ -3272,6 +3313,17 @@ def main():
     print(f"[STEP] get_defaults start {new_symside}", flush=True)
     defaults = get_defaults_for_symside(new_symside)
     print(f"[STEP] get_defaults done {len(defaults)}", flush=True)
+    # USER 2026-09-29: BOLD / is_default=YES in the template IS the running default — every run starts from it, the
+    # engine gets it explicitly (not QuickConfig's own values), prior-best overrides go on top. Fail-closed if any group
+    # lacks exactly one default.
+    _tpl_defaults, _tpl_bad = template_bold_defaults(args.template, defaults)
+    if _tpl_bad:
+        print(f"[DEFAULTS-GATE] {new_symside}: template {args.template} has {len(_tpl_bad)} default violations — NOT running. First: {_tpl_bad[:5]} (fix: tools/v15_template_defaults_fix.py --apply)", flush=True)
+        return
+    defaults.update(_tpl_defaults)
+    print(f"[DEFAULTS-GATE] {new_symside}: {len(_tpl_defaults)} bold defaults from {Path(args.template).name} = running default", flush=True)
+    overrides = {**_tpl_defaults, **overrides}
+    _recipe_only_overrides = {**_tpl_defaults, **_recipe_only_overrides}
     _ingested_overrides = dict(overrides)  # previous best / prev-sheet set — candidate base for the credible-baseline stage
     if os.environ.get("V15_FRESH_RUN", "0") == "1":
         # USER 2026-09-29: engine/sizing change invalidates prior bests -> start from the live recipe only
@@ -3283,13 +3335,13 @@ def main():
         _so = json.load(open(os.environ["V15_START_OVERRIDES"]))
         _so = (_so.get("final") or {}).get("overrides", _so) if isinstance(_so, dict) else {}
         print(f"[START-OVERRIDES] {new_symside}: {len(_so)} overrides from {os.environ['V15_START_OVERRIDES']} (365D-repaired set)", flush=True)
-        overrides = dict(_so)
-        _recipe_only_overrides = dict(_so)
+        overrides = {**_tpl_defaults, **_so}
+        _recipe_only_overrides = dict(overrides)
     if os.environ.get("V15_TEMPLATE_DEFAULTS", "0") == "1":
         # USER 2026-09-29: live recipe makes 0 trades (impossible) -> start from the TEMPLATE_{CAT}_{SIDE} bold defaults (= live config defaults)
         print(f"[TEMPLATE-DEFAULTS] {new_symside}: live recipe/best dropped ({len(overrides)} overrides) -> template defaults only", flush=True)
-        overrides = {}
-        _recipe_only_overrides = {}
+        overrides = dict(_tpl_defaults)
+        _recipe_only_overrides = dict(_tpl_defaults)
     overrides, warns = sanitize_overrides(overrides, defaults)
     if warns:
         print(f"[sanitize] {warns}", flush=True)
@@ -3406,17 +3458,17 @@ def main():
         _always_best_base = os.environ.get("V15_FRESH_RUN", "0") == "1" and not os.environ.get("V15_START_OVERRIDES")
         if prepared is not None and os.environ.get("V15_ADAPT_BASELINE", "1") == "1" and (_always_best_base or int(baseline_vec.get("trades") or 0) < ADAPT_FLOOR_TRADES or not baseline_vec.get("valid") or float(baseline_vec.get("gain_pct") or 0) < ADAPT_ULTRA_NEG_PCT):
             # USER 2026-09-29: never sweep from a 0-trade / sub-floor / ultra-negative baseline — adapt to a credible one first
-            _bases = [("live_recipe", dict(_recipe_only_overrides)), ("template_defaults", {}), ("current", dict(overrides))]
+            _bases = [("live_recipe", dict(_recipe_only_overrides)), ("template_defaults", dict(_tpl_defaults)), ("current", dict(overrides))]
             if _ingested_overrides and _ingested_overrides != _recipe_only_overrides:
                 _bases.append(("previous_best", dict(_ingested_overrides)))
             overrides, baseline_vec, _adapt_report = _credible_baseline(new_symside, prepared, _bases, defaults, args.template, args.window_days)
             _zero_trades_early = int(baseline_vec.get("trades") or 0) == 0
         if int(baseline_vec.get("trades") or 0) < 10 and overrides and _adapt_report is None:
-            _defaults_vec = evaluate_prepared_sanitized(prepared, {}, window_days=args.window_days)
+            _defaults_vec = evaluate_prepared_sanitized(prepared, dict(_tpl_defaults), window_days=args.window_days)
             print(f"[BASELINE-FALLBACK] {new_symside} previous-best {len(overrides)} overrides -> {baseline_vec.get('trades')} trades gain {baseline_vec.get('gain_pct')}; defaults -> {_defaults_vec.get('trades')} trades gain {_defaults_vec.get('gain_pct')}", flush=True)
             if int(_defaults_vec.get("trades") or 0) >= 10:
                 print(f"[BASELINE-FALLBACK] {new_symside} using TEMPLATE defaults as baseline (previous-best dropped: {sorted(overrides)[:12]})", flush=True)
-                overrides = {}
+                overrides = dict(_tpl_defaults)
                 baseline_vec = _defaults_vec
                 _zero_trades_early = False
         prepared_for_fallback = prepared
