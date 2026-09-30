@@ -175,6 +175,7 @@ except Exception:
 # ────────────────────────────────────────────────────────────────────────────────
 _TR_TREND_V1_STATE: Dict[str, Dict[str, Any]] = {}  # key = f"{account}:{symbol}_{side}"
 _TR_TREND_V1_LAST_D_CLOSE: Dict[str, float] = {}    # detect D-bar boundary on live by close_D change
+_RECENT_OPEN_ATTEMPTS: deque = deque()  # timestamps of fresh OPENs that passed entry gates — OPEN_RATE_BREAKER flood breaker (carbon-copy of ez_manage._RECENT_OPEN_ATTEMPTS)
 
 # GAP_RISK_EXIT state — per-position retrigger (persists after retrace so COND_A/B can fire on any later bar)
 _GAP_RISK_STATE: Dict[str, Dict[str, Any]] = {}  # key = position_key, val = {gap_dir, gap_open, prev_close, retraced, ext_high, ext_low}
@@ -10655,6 +10656,22 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 _ult_dc_low = safe_fetch_float(i.get(_hs_keys[0], 0) or i.get('dc_low_4h', 0) or 0, 0.0)
                 _ult_dc_high = safe_fetch_float(i.get(_hs_keys[1], 0) or i.get('dc_high_4h', 0) or 0, 0.0)
                 _ult_breach = (is_long and _ult_dc_low > 0 and current_price <= _ult_dc_low) or ((not is_long) and _ult_dc_high > 0 and current_price >= _ult_dc_high)
+                # 2026-09-27 BOTTOM-EXIT FIX (carbon-copy of ez_manage.py:46605-46618): don't exit at
+                # bottom when HTF WT still WITH position — hold for the top exit, not the bottom.
+                if _ult_breach and bool(getattr(config, "BOTTOM_EXIT_HTF_WT_VETO_ENABLED", True)):
+                    try:
+                        _v_wt1_1h = safe_fetch_float(i.get("wt1_1h", 0), 0.0)
+                        _v_wt2_1h = safe_fetch_float(i.get("wt2_1h", 0), 0.0)
+                        _v_wt1_15m = safe_fetch_float(i.get("wt1_15m", 0), 0.0)
+                        _v_wt2_15m = safe_fetch_float(i.get("wt2_15m", 0), 0.0)
+                        _v_wt1_4h = safe_fetch_float(i.get("wt1_4h", 0), 0.0)
+                        _v_wt2_4h = safe_fetch_float(i.get("wt2_4h", 0), 0.0)
+                        _v_htf_with = (is_long and (_v_wt1_1h > _v_wt2_1h or _v_wt1_15m > _v_wt2_15m or _v_wt1_4h > _v_wt2_4h)) or ((not is_long) and (_v_wt1_1h < _v_wt2_1h or _v_wt1_15m < _v_wt2_15m or _v_wt1_4h < _v_wt2_4h))
+                        if _v_htf_with:
+                            logger.warning(f"🛡️ [BOTTOM_EXIT_HTF_WT_VETO_ULTIMATE_DC] {position_key}: DC_{_hs_tf} breached {current_price:.6f} <= {_ult_dc_low if is_long else _ult_dc_high:.6f} BUT HTF WT still WITH position (wt1_1h {_v_wt1_1h:.1f}/{_v_wt2_1h:.1f} wt15m {_v_wt1_15m:.1f}/{_v_wt2_15m:.1f} wt4h {_v_wt1_4h:.1f}/{_v_wt2_4h:.1f}) → VETO bottom exit, hold for top exit")
+                            _ult_breach = False
+                    except Exception:
+                        pass
                 if _ult_breach:
                     _ult_gain = safe_fetch_float(getattr(position, 'gain', 0), 0.0)
                     _ult_lvl = _ult_dc_low if is_long else _ult_dc_high
@@ -25555,6 +25572,32 @@ class TradierTradeManager:
                     logger.warning(f"[MTF_FILTER_BYPASS_PRICE_CROSS_BACK] {position_key}: MTF FILTER bypassed for PRICE_CROSS_BACK reentry — band/age/direction gated upstream (USER 2026-05-21 SNDK)")
             except Exception as _mtf_e:
                 logger.warning(f"[MTF_FILTER] {position_key}: check error (fail-open): {_mtf_e}")
+            # ═══════════════════════════════════════════════════════════════════════════
+            # 🚨 OPEN-RATE CIRCUIT BREAKER — carbon-copy of ez_manage.py:30288-30315.
+            # Caps fresh OPEN/ENTRY/REENTRY events to OPEN_RATE_MAX per OPEN_RATE_WINDOW_SEC across
+            # ALL symbols in this process. Counts only opens that SURVIVED the MTF gate above.
+            # Augments-to-existing winners are gain-gated elsewhere and excluded. Exits/reduces/
+            # closes/hedges never counted or blocked. Knobs: OPEN_RATE_BREAKER_ENABLED (default True),
+            # OPEN_RATE_MAX (15), OPEN_RATE_WINDOW_SEC (60).
+            # ═══════════════════════════════════════════════════════════════════════════
+            try:
+                _orb_act = (action or "").upper()
+                _orb_is_open = (("OPEN" in _orb_act or "ENTRY" in _orb_act or "REENTRY" in _orb_act)
+                                and "REDUCE" not in _orb_act and "CLOSE" not in _orb_act and "HEDGE" not in _orb_act)
+                if _orb_is_open and bool(getattr(config, "OPEN_RATE_BREAKER_ENABLED", True)):
+                    _orb_win = float(getattr(config, "OPEN_RATE_WINDOW_SEC", 60.0))
+                    _orb_max = int(getattr(config, "OPEN_RATE_MAX", 15))
+                    _orb_now = time.time()
+                    while _RECENT_OPEN_ATTEMPTS and (_orb_now - _RECENT_OPEN_ATTEMPTS[0]) > _orb_win:
+                        _RECENT_OPEN_ATTEMPTS.popleft()
+                    if len(_RECENT_OPEN_ATTEMPTS) >= _orb_max:
+                        logger.critical(f"🚨 [OPEN_RATE_BREAKER] {position_key}: BLOCKED — {len(_RECENT_OPEN_ATTEMPTS)} fresh opens in last {_orb_win:.0f}s >= max {_orb_max}. Flood circuit-breaker tripped. act={_orb_act} reason={(reason or '')[:40]}")
+                        if lock_acquired and self.redis_manager:
+                            await self.redis_manager.delete(exec_lock_key)
+                        return f"BLOCKED_OPEN_RATE_BREAKER_{len(_RECENT_OPEN_ATTEMPTS)}_in_{int(_orb_win)}s"
+                    _RECENT_OPEN_ATTEMPTS.append(_orb_now)
+            except Exception as _orb_e:
+                logger.warning(f"[OPEN_RATE_BREAKER] {position_key}: check error (fail-open): {_orb_e}")
             # ═══ SAFETY SWITCH 1: TRADEABLE_KEY GATE (2026-04-16) ═══
             # trb/trc/tra use symbols_trb_long/short (not tradeable_keys.json which is crypto-only)
             if is_augment and _cfg_auto('TRADIER_REQUIRE_TRADEABLE_KEY', True):

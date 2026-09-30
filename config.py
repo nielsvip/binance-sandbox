@@ -3159,7 +3159,7 @@ class Config:
     # OLD SHORT: _wt1_4h > _wt2_4h (any bullish cross → exit short — no velocity threshold, too aggressive)
     # NEW SHORT: wt_velocity_4h > WT_4H_VEL_EXIT_SHORT_VEL_MIN (symmetric with LONG side)
     # Real baseline showed this caused 409 closes at 14% WR (-4.69% total) with BTCUSDC
-    WT_4H_VEL_EXIT_ENABLED: bool = False  # 2026-09-26 DISABLED per parity — 18 WT_4H_VEL_EXIT closes NOT in vec 7D ledger (vec 2 trades). Live-only 4h vel; NON_VECTORIZABLE/USELESS — paper ON.
+    WT_4H_VEL_EXIT_ENABLED: bool = False  # 2026-09-30 NOW VECTORIZED (ported_stateful_exit.py, ledger-proven RVN 121->130); NON_VECTORIZABLE tag REMOVED. Default False = swept, promote only on proven +delta.
     WT_4H_VEL_EXIT_LONG_VEL_MIN: float = -2.0    # LONG exits when vel_4h < this (downward momentum)
     WT_4H_VEL_EXIT_SHORT_VEL_MIN: float = 2.0    # SHORT exits when vel_4h > this (upward momentum)
     # 2026-04-28 USER RULE: WT_4H_VEL_EXIT must require profit AND extreme stoch K
@@ -3254,7 +3254,7 @@ class Config:
     # applies at 75/55: lower thresholds bracket overbought earlier (exit sooner on
     # tops) which IS the "out at the top" mandate.
     # ROLLBACK: ENABLED=False, OB_D=90, OB_4H=75.
-    WT_PERCENTILE_EXIT_ENABLED: bool = False  # 2026-09-26 DISABLED per parity — 3 WT_PERCENTILE closes NOT in vec 7D 2-trade ledger. Live-only D/4h percentile; NON_VECTORIZABLE/USELESS — paper ON.
+    WT_PERCENTILE_EXIT_ENABLED: bool = False  # 2026-09-30 NOW VECTORIZED (ported_exit.py, ledger-proven RVN 121->190); NON_VECTORIZABLE tag REMOVED. Default False = swept, promote only on proven +delta.
     WT_PERCENTILE_EXIT_OB_D: float = 75.0          # was 90 — sell sooner on D overbought (vec arm 11)
     WT_PERCENTILE_EXIT_OB_4H: float = 55.0         # was 75 — 4h confirmation tighter (vec arm 11)
     WT_PERCENTILE_EXIT_OS_D: float = 10.0          # D percentile < this → exit SHORT

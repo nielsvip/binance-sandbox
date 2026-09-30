@@ -74,5 +74,22 @@
    "MAX_AUGMENTS_PER_POSITION": "vec rarely augments >1x on sample (augment_count_max gate; n_augments tracked)"
   },
   "VEC_UNSUPPORTED": "16 exit (dead stubs/entry-price-coupled/veto-of-a-stop) + 20 augment/reduce (dead proxy farms, sub-position state: gain-since-last-add, last-add-price, reduce fractions, per-day counters)"
+ },
+ "FINAL_PASS_2026_09_30": {
+  "engine_md5": "3932eb1e434bee5e5dd091e1d6ec715a",
+  "deployed": [
+   "s1",
+   "s2",
+   "s5"
+  ],
+  "erase": "removed 10771 dead fabrication-farm lines from v12_quick_engine (12 gutted funcs); VERIFIED byte-identical (RVN baseline 121/-14.52 unchanged, wired switches still fire); backups/before_erase_fabrication_farms_*",
+  "funding": "wired via shared vec_paths.funding_gate (faithful); NPZ funding_rate flat 0.00005 default -> inert until historical funding backfilled to data/funding_cache/",
+  "fear_greed": "_inject_fear_greed scaffold added to backtest_v8_precompute.py; no historical cache on disk -> zeros until a history fetcher (alternative.me fng ?limit=0) populates data/fear_greed_cache/fng.json",
+  "tradier_completion": "3 real ports (OPEN_RATE_BREAKER/MAX inert, BOTTOM_EXIT_HTF_WT_VETO default True = live-stocks parity change on restart); 23 gap-switches don't exist in ez (vector-only names); 4 stateful-skipped",
+  "templates_greyed": "CRYPTO_L 811 / CRYPTO_S 702 / STOCKS_L 900 / STOCKS_S 815 rows greyed (non-vectorizable + venue-inert + side-inert) with comments; values/defaults untouched; deployed md5 5ec2dc30",
+  "nonvec_tags_removed": "WT_4H_VEL_EXIT_ENABLED + WT_PERCENTILE_EXIT_ENABLED (config.py) now-vectorized; tag updated",
+  "vec_decisions_audit": "data/reports/wiring/vec_decisions_audit.md \u2014 wired twins faithful (0 discrepancies), no fabrication in vec_decisions, 80/107 imported-but-dead files flagged",
+  "OPEN_divergence": "config.py Mac!=fleet(de3fc620) + config_tradier + tradier_manage s2-diverged; deployed Mac-as-source-of-truth, baseline verified intact; tradier_manage 3 ports on Mac live-authoritative, s2 scalar-verifier NOT clobbered",
+  "OPEN_data_tasks": "backfill historical funding + Fear&Greed caches to activate those wired gates"
  }
 }

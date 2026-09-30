@@ -1628,6 +1628,47 @@ def _inject_funding_oi(merged: dict, symbol: str, ts_epoch_sec: np.ndarray, base
         merged["close_1h_prev"] = c1h_prev.astype(np.float32)
 
 
+def _inject_fear_greed(merged: dict, ts_epoch_sec: np.ndarray, base_tf: str) -> None:
+    # Crypto Fear & Greed index (0-100), MARKET-WIDE (not per-symbol), forward-filled onto the base_tf
+    # bar grid — same asof-fill pattern as _inject_funding_oi so a vec/live sentiment gate reads the
+    # exact value live saw. Missing cache -> zeros (caller detects "no F&G" via (fear_greed==0).all()).
+    #
+    # LIVE SOURCE: https://api.alternative.me/fng/ — fetched by ez_news_scanner.poll_fear_greed()
+    #   (returns {'value':0-100,...}) and published to Redis 'news_sentiment_meta'['fear_greed']['value'];
+    #   consumed live at ez_manage.py:41468 (FG_SIZING / FG_FEAR_THRESHOLD / FG_GREED_THRESHOLD).
+    #
+    # FETCHER GAP (2026-09-30): the live fetcher only stores the CURRENT snapshot (FEAR_GREED_URL uses
+    #   limit=1) in Redis with a 4h TTL — there is NO historical, timestamp-aligned F&G cache on disk to
+    #   backfill years of bars. This scaffold reads
+    #       data/fear_greed_cache/fng.json  == JSON list of {"timestamp": <unix_sec>, "value": <0-100>}
+    #       (or the raw alternative.me payload {"data":[...]} — both accepted)
+    #   which MUST be populated by a fetcher hitting https://api.alternative.me/fng/?limit=0&format=json
+    #   (daily history back to 2018). Recommended: add a `poll_fear_greed(limit=0)` history dump to
+    #   ez_news_scanner.py (or a small fear_greed_history_fetcher.py) writing that file. Until it exists,
+    #   fear_greed stays all-zeros — NO values are fabricated (NO-LIES).
+    n = len(ts_epoch_sec)
+    fg_arr = np.zeros(n, dtype=np.float32)
+    fg_path = BASE_PATH / "data" / "fear_greed_cache" / "fng.json"
+    if fg_path.exists():
+        try:
+            recs = json.loads(fg_path.read_text())
+            if isinstance(recs, dict):
+                recs = recs.get("data", [])
+            if recs:
+                ts_fg = np.array([int(r["timestamp"]) for r in recs], dtype=np.int64)
+                vals = np.array([float(r["value"]) for r in recs], dtype=np.float32)
+                order = np.argsort(ts_fg)
+                ts_fg = ts_fg[order]; vals = vals[order]
+                idx = np.searchsorted(ts_fg, ts_epoch_sec, side="right") - 1
+                idx = np.clip(idx, 0, len(ts_fg) - 1)
+                fg_arr = vals[idx]
+                fg_arr[ts_epoch_sec < ts_fg[0]] = 0.0
+        except Exception:
+            pass
+    merged[f"fear_greed_{base_tf}"] = fg_arr
+    merged["fear_greed"] = fg_arr
+
+
 def compute_symbol(symbol: str, mode: str) -> bool:
     t0 = time.time()
     # Re-assert module-level MODE so worker processes (Pool) and direct callers
@@ -2101,6 +2142,10 @@ def compute_symbol(symbol: str, mode: str) -> bool:
             _inject_funding_oi(merged, symbol, ts_epoch, base_tf)
         except Exception as _e:
             logger.warning(f"[FUNDING_OI_INJECT] {symbol}: {_e}")
+        try:
+            _inject_fear_greed(merged, ts_epoch, base_tf)
+        except Exception as _e:
+            logger.warning(f"[FEAR_GREED_INJECT] {symbol}: {_e}")
     else:
         # 2026-04-28: Tradier — zero-fill funding/OI fields (stocks have no perp funding/OI;
         # v8_quick_engine reads them and would otherwise zero-fill silently with a warning).
@@ -2109,6 +2154,10 @@ def compute_symbol(symbol: str, mode: str) -> bool:
         merged[f"oi_value_{base_tf}"] = np.zeros(n, dtype=np.float32)
         merged[f"oi_change_15m_{base_tf}"] = np.zeros(n, dtype=np.float32)
         merged[f"oi_change_1h_{base_tf}"] = np.zeros(n, dtype=np.float32)
+        # Stocks have no crypto Fear&Greed index; zero-fill the key so the engine never silently
+        # zero-fills with a warning (mirrors the funding/OI zero-fill above).
+        merged[f"fear_greed_{base_tf}"] = np.zeros(n, dtype=np.float32)
+        merged["fear_greed"] = np.zeros(n, dtype=np.float32)
     # === MISSING FIELDS PASS (2026-04-28) ===
     # v8_quick_engine reads these — silently zero-filled before this pass.
     # 1. timestamp_{base_tf}: alias to canonical timestamps array.
