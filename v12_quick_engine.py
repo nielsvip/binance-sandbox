@@ -115,6 +115,7 @@ import vec_decisions.mtf_atr_trail_exit
 import vec_decisions.mtf_compound_exits
 import vec_decisions.dc_channel_exits
 import vec_decisions.grey_wire_exits  # 2026-09-30 grey-switch wiring (shared with tradier_manage live)
+import vec_decisions.grey_wire_entries  # 2026-09-30 grey-switch wiring OPEN gates (shared with tradier_manage live)
 import wt_dc_entry_scorer_vec as _wt_dc_vec
 
 _ALL_FILTER_TF = ("ATR_TRAIL_FILTER_TF", "BAR_PATTERNS_FILTER_TF", "BB_PULLBACK_GATE_FILTER_TF", "BB_RECOVERY_ENTRY_FILTER_TF", "BB_RECOVERY_FILTER_TF", "BREAKEVEN_GAIN_EROSION_FILTER_TF", "BREAKOUT_RETEST_FILTER_TF", "BTC_DEDICATED_FILTER_TF", "BT_WT_CROSS_LADDER_FILTER_TF", "CANDLE_PATTERN_STOPS_FILTER_TF", "CIRCUIT_SHARPE_GATES_FILTER_TF", "COOLDOWN_LOCKS_FILTER_TF", "DC_BREACH_REDUCE_FILTER_TF", "DC_BREAK_FILTER_TF", "DC_MOMENTUM_BOTA_SCORER_FILTER_TF", "DELTA_ENGINE_FILTER_TF", "DUP_GUARD_FILTER_TF", "E2E_REPLAY_VALIDATOR_FILTER_TF", "EMA_9_21_FILTER_FILTER_TF", "EMA_BLANKET_FILTER_FILTER_TF", "EMERGENCY_BRAKE_FILTER_TF", "EXHAUSTION_EXIT_FILTER_TF", "EXIT_R1_R2_FILTER_TF", "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF", "EXIT_TOP_FADE_FILTER_TF", "EXIT_TO_REDUCE_ADAPTER_FILTER_TF", "FAST_RISER_FILTER_TF", "FH_MOMENTUM_FILTER_TF", "FIRST_OPEN_THROTTLE_FILTER_TF", "FROZEN_STOP_FILTER_TF", "FUNDING_GATE_FILTER_TF", "GOLDEN_RULE_ENFORCE_FILTER_TF", "GOLDEN_RULE_HTF_VOTE_FILTER_TF", "GR_FILTER_VEC_FILTER_TF", "GR_V5_STATE_FILTER_TF", "HAIKU_WINNER_FILTER_TF", "KILLER_KNOB_FINDER_FILTER_TF", "KINDERGARTEN_FILTER_TF", "LIVE_ENTRY_ENGINE_FILTER_TF", "LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF", "MOM3_FILTER_TF", "MOMENTUM_BREAKOUT_FILTER_TF", "MTF_ARMED_ENTRIES_FILTER_TF", "MTF_ATR_TRAIL_FILTER_TF", "MTF_DC_REJECT_FILTER_TF", "NEWBORN_LOSS_KILL_FILTER_TF", "NEWBORN_PROTECT_FILTER_TF", "NOLOSS_BYPASS_WT5OF5_FILTER_TF", "OPEN_INTENT_SIZE_GATES_FILTER_TF", "PARTIAL_PROFIT_LOCK_V2_FILTER_TF", "PEAK_GIVEBACK_BE_EROSION_FILTER_TF")
@@ -22114,7 +22115,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _nlk_key = f'wt_velocity_{_nlk_tf}' if _nlk_tf.upper() != 'OFF' else 'wt_velocity_15m'
         _nlk_vel = _safe(npz, _nlk_key, n, 0.0)
     try:
-        for _w4_fn in (vec_decisions.wave4_families.oi_confirm_entry_gate, vec_decisions.wave4_families.ema_blanket_entry_gate, vec_decisions.wave4_families.htf_direction_gate):
+        for _w4_fn in (vec_decisions.wave4_families.oi_confirm_entry_gate, vec_decisions.wave4_families.ema_blanket_entry_gate, vec_decisions.wave4_families.htf_direction_gate, vec_decisions.grey_wire_entries.wt_percentile_entry_gate):
             _w4_m = _w4_fn(npz, n, is_long, cfg, close, _safe)
             if _w4_m is not None:
                 entry_sig = entry_sig & _w4_m

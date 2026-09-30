@@ -30,6 +30,7 @@ from zoneinfo import ZoneInfo
 import vec_decisions.shared_zone
 import vec_decisions.dc_channel_exits as _dc_channel_exits  # 2026-09-29 grey-switch rewire (shared with v12_quick_engine)
 import vec_decisions.grey_wire_exits as _grey_wire_exits  # 2026-09-30 grey-switch wiring (shared with v12_quick_engine)
+import vec_decisions.grey_wire_entries as _grey_wire_entries  # 2026-09-30 grey-switch wiring (shared with v12_quick_engine)
 from vec_decisions.process_position_stocks__alt_entries import _rz_breakout_fires  # 2026-09-29 grey rewire RZ_BREAKOUT shared predicate
 import aiofiles
 import numpy as np
@@ -13973,6 +13974,24 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                         return False
         except Exception as _ebe:
             logger.warning(f"[EMA_BLANKET_FILTER] check error (fail-open): {_ebe}")
+        # ═══ 2026-09-30 GREY-SWITCH WIRING OPEN gates (vec_decisions/grey_wire_entries.py — the SAME predicates the
+        # v12_quick_engine.simulate_one entry stack applies): WT_PERCENTILE_ENTRY_GATE_ENABLED, HTF_DIRECTION_GATE_ENABLED
+        # (+HTF_GATE_*). Fresh OPEN only (not augment/reenter/hedge/mandatory reclaim), like EMA_BLANKET. OFF by default.
+        try:
+            _gwe_act = (action or '').upper()
+            if ('OPEN' in _gwe_act or _gwe_act == 'BUY') and 'AUGMENT' not in _gwe_act and 'REENTER' not in _gwe_act and 'HEDGE' not in (reason or '').upper() and not _mandatory_reentry_qta:
+                _gwe_acct, _gwe_sym, _gwe_side = parse_position_key(position_key)
+                _gwe_c = lambda _k, _d: _cfg(_k, _d, _gwe_acct, _gwe_sym, _gwe_side)
+                if bool(_gwe_c('WT_PERCENTILE_ENTRY_GATE_ENABLED', False)) or bool(_gwe_c('HTF_DIRECTION_GATE_ENABLED', False)):
+                    _gwe_ind = (trade_manager.get_indicators(_gwe_sym) if _gwe_sym else {}) or {}
+                    _gwe_px = safe_fetch_float(_gwe_ind.get('current_price', _gwe_ind.get('price', _gwe_ind.get('mark_price', 0))), 0.0)
+                    _gwe_ok, _gwe_detail = _grey_wire_entries.live_open_pass(lambda _k, _d=None: _gwe_ind.get(_k, _d), _gwe_c, _gwe_px, _gwe_side == "LONG")
+                    if not _gwe_ok:
+                        logger.warning(f"🚫 [GREY_WIRE_OPEN_GATE] {position_key}: BLOCKED {action} — {_gwe_detail}. reason={(reason or '')[:50]}")
+                        _direct_queue_gate_note(trade_manager, position_key, reason, "GREY_WIRE_OPEN_GATE")
+                        return False
+        except Exception as _gwee:
+            logger.warning(f"[GREY_WIRE_OPEN_GATE] check error (fail-open): {_gwee}")
         if not is_regular_trading_hours():
             logger.debug(f"[queue_trade_action] not in trading hours")
             return

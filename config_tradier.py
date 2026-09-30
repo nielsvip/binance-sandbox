@@ -1794,6 +1794,15 @@ class TradierConfig:
     E_1_EXIT_DELTA_THR: float = 50.0
     WT_CROSS_EXIT_REQUIRE_15M_CONFIRM: bool = True
     MIN_HOLD_BARS_BEFORE_EXIT: int = 10  # read live ONLY by the GREY_WIRE HTF_AGAINST_FORCE_CLOSE min-hold (x 3m) — other tradier reads are dead code
+    # 2026-09-30 GREY-SWITCH WIRING batch 2 (fresh-OPEN gates, vec_decisions/grey_wire_entries.py; tradier_manage.queue_trade_action
+    # next to EMA_BLANKET_FILTER). OFF = today's stock live. Params = QuickConfig(apply_tradier_defaults) values (live == vec).
+    WT_PERCENTILE_ENTRY_GATE_ENABLED: bool = False
+    WT_PERCENTILE_ENTRY_OB_D: float = 90.0
+    WT_PERCENTILE_ENTRY_OS_D: float = 10.0
+    HTF_DIRECTION_GATE_ENABLED: bool = False
+    HTF_GATE_SIGNALS_SMA200D: bool = True
+    HTF_GATE_D_MANDATORY: float = 0.0  # falsy (template/QuickConfig encode this bool as 0.0)
+    HTF_GATE_MIN_CONFIRMATIONS: int = 2
     DC_DAYTRADE_TARGET_PCT: float = 0.01  # 1% profit target
     DC_DAYTRADE_MAX_HOLD_MINUTES: float = 240.0  # 4h max hold (flatten before close regardless)
     DC_DAYTRADE_PRE_CLOSE_MINUTES: int = 120  # Start flattening 2h before market close (14:00 ET)

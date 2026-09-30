@@ -59,6 +59,31 @@ def test_htf_against():
     assert GW.htf_against_force_close(_c(), _g({**d, "dc_low_15m": 101.0}), {**st, "age_s": 60}, True)[0]  # dc_15m override
 
 
+def test_entry_gates():
+    import numpy as np
+    import vec_decisions.grey_wire_entries as GE
+    c = lambda over: (lambda k, d: over.get(k, d))
+    g = lambda d: (lambda k, default=None: d.get(k, default))
+    assert GE.live_open_pass(g({}), c({}), 100.0, True) == (True, "")
+    assert not GE.wt_percentile_entry_live_pass(g({"wt_percentile_D": 95}), c({"WT_PERCENTILE_ENTRY_GATE_ENABLED": True}), 1.0, True)[0]
+    assert GE.wt_percentile_entry_live_pass(g({"wt_percentile_D": 95}), c({"WT_PERCENTILE_ENTRY_GATE_ENABLED": True}), 1.0, False)[0]
+    ind = {"wt1_D": 2, "wt2_D": 1, "wt1_4h": 2, "wt2_4h": 1, "wt1_1h": 1, "wt2_1h": 2, "sma_200_D": 90.0}
+    on = {"HTF_DIRECTION_GATE_ENABLED": True, "HTF_GATE_MIN_CONFIRMATIONS": 2, "HTF_GATE_D_MANDATORY": 0.0}
+    assert GE.htf_direction_live_pass(g(ind), c(on), 100.0, True)[0]
+    assert not GE.htf_direction_live_pass(g(ind), c(on), 100.0, False)[0]
+    # scalar == vec on the same bar
+    npz = {k: np.array([float(v)]) for k, v in ind.items()}
+    safe = lambda z, k, n, d=0.0: z.get(k, np.full(n, d))
+    cfg = type("C", (), on)()
+    for L in (True, False):
+        assert bool(GE.htf_direction_gate(npz, 1, L, cfg, np.array([100.0]), safe)[0]) == GE.htf_direction_live_pass(g(ind), c(on), 100.0, L)[0]
+    cfg2 = type("C", (), {"WT_PERCENTILE_ENTRY_GATE_ENABLED": True})()
+    for p in (5.0, 50.0, 95.0):
+        z = {"wt_percentile_D": np.array([p])}
+        for L in (True, False):
+            assert bool(GE.wt_percentile_entry_gate(z, 1, L, cfg2, None, safe)[0]) == GE.wt_percentile_entry_live_pass(g({"wt_percentile_D": p}), c({"WT_PERCENTILE_ENTRY_GATE_ENABLED": True}), 1.0, L)[0]
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

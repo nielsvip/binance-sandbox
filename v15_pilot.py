@@ -84,6 +84,7 @@ from pathlib import Path
 # Spec stall guard: >10s on a cell -> RED + reason, continue. 0.07 turned every eval slower than 70ms into a fake 0.0 delta.
 GREY_SKIP_RGB = {"FFBFBFBF", "00BFBFBF"}  # template switch-name font = skip row (tools/v15_template_fix.py sets it)
 YELLOW_TIMEOUT = 10.0
+YELLOW_MIN_SHARED_TOKENS = int(os.environ.get("V15_YELLOW_MIN_SHARED", "2"))  # USER 2026-09-30 yellow = >=2 shared name tokens
 LIVE_TIMEOUT = 900.0
 XLSX_SAVE_EVERY_S = 120.0
 # F (HUSTLE_DELTA) stays blank by default — worst_first system does not use it (USER 2026-09-28)
@@ -942,13 +943,26 @@ def get_defaults_for_symside(symside: str) -> dict:
                 pass
     return defaults
 
-def template_bold_defaults(template_path, defaults: dict) -> tuple[dict, list]:
+UNTRUSTED_BOLD: list = []  # last template_bold_defaults() call: bold values NOT used as defaults (placeholder options)
+
+
+def _same_default(a, b) -> bool:
+    if isinstance(a, bool) or isinstance(b, bool) or str(a).strip().lower() in ("true", "false") or str(b).strip().lower() in ("true", "false"):
+        return str(a).strip().lower() == str(b).strip().lower()
+    try:
+        return abs(float(a) - float(b)) < 1e-12
+    except Exception:
+        return str(a).strip() == str(b).strip()
+
+
+def template_bold_defaults(template_path, defaults: dict, truth: dict | None = None, promoted: set | None = None) -> tuple[dict, list]:
     """USER 2026-09-29: the BOLD / is_default=YES row of every (tab, switch) group IS the running default. Returns
     (engine overrides for all bold defaults, violations). A violation = a non-grey group without exactly one is_default
     YES, or whose YES row is not the bold row, or a switch whose default differs between tabs. Fail-closed at the caller."""
     import openpyxl as _opx
     wb = _opx.load_workbook(str(template_path))
     vals, where, bad = {}, {}, []
+    UNTRUSTED_BOLD.clear()
     for tab in SWITCH_SHEETS:
         if tab not in wb.sheetnames:
             continue
@@ -973,6 +987,11 @@ def template_bold_defaults(template_path, defaults: dict) -> tuple[dict, list]:
                 bad.append(f"{tab}!{sw}: is_default YES rows {yes}, bold rows {bold}")
                 continue
             v = _parse_opt_value(ws.cell(row=yes[0], column=2).value, defaults.get(sw))
+            if truth is not None and sw in truth and sw not in (promoted or set()) and (isinstance(truth[sw], (dict, list, tuple, set)) or not _same_default(v, truth[sw])):
+                # USER 2026-09-30: a placeholder bold (group options do not contain the real default) is never pushed as
+                # the default into the engine / the 4-set layer — the real live value stays the default
+                UNTRUSTED_BOLD.append((tab, sw, v, truth[sw]))
+                continue
             if sw in vals and str(vals[sw]) != str(v):
                 bad.append(f"{sw}: default {vals[sw]!r} ({where[sw]}) != {v!r} ({tab})")
                 continue
@@ -1165,6 +1184,10 @@ _ADAPT_ENTRY_TOKENS = ("ENTRY", "REENTRY", "BOUNCE", "BREAKOUT", "OPEN")
 _ADAPT_EXIT_TABS = ("EXIT_STRUCTURAL", "EXIT_VELOCITY", "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER", "REENTRY_WINDOWED", "REENTRY_ADAPTIVE")
 _ADAPT_EXIT_BLOCK_TOKENS = ("BLOCK", "VETO", "GATE", "FILTER", "REQUIRE", "GUARD", "NOLOSS", "NO_LOSS")
 ADAPT_TIM_MAX, ADAPT_DD_MAX = 80.0, 30.0
+# USER 2026-09-30: previous best < -5 % -> cat_side defaults; still < -5 % -> add TREND filters until gain > -3 %
+ADAPT_TREND_TARGET_PCT = float(os.environ.get("V15_TREND_TARGET_PCT", "-3.0"))
+_ADAPT_TREND_TOKENS = ("TREND", "HTF", "EMA", "ADX", "REGIME", "SMA200", "DIRECTION")
+_ADAPT_TREND_KIND = ("FILTER", "GATE", "VETO")
 
 
 def _adapt_template_rows(template_path, tabs):
@@ -1199,7 +1222,9 @@ def _credible_baseline(new_symside, prepared, base_sets, defaults, template_path
     ADAPT_ULTRA_NEG_PCT. An invalid baseline is REPAIRED, never disqualified: (A) best of the alternative bases (live recipe /
     template defaults / previous best); then per step, by what fails: too few trades -> soften filters + open entry/reentry
     paths; TIM/DD too high -> exit / reduce / reentry rows, loosened exit blockers, reentry filters on; ultra-negative ->
-    greedy best row over all tabs (validity kept). Up to ADAPT_MAX_STEPS; a step stops at the first credible candidate.
+    TREND filters (HTF/TREND/EMA/ADX/REGIME/SMA200/DIRECTION filter/gate/veto rows and bool switches) one at a time until
+    gain > ADAPT_TREND_TARGET_PCT (-3 %), validity kept. Base order: previous best if credible, else cat_side (template)
+    defaults if credible, else the best-scoring base. Up to ADAPT_MAX_STEPS; a step stops at the first credible candidate.
     Returns (overrides, vec_result, report)."""
     from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps
     floor, uneg = ADAPT_FLOOR_TRADES, ADAPT_ULTRA_NEG_PCT
@@ -1222,21 +1247,32 @@ def _credible_baseline(new_symside, prepared, base_sets, defaults, template_path
         # how far over the vomit gates (TIM > 80 %, DD > 30 %): 0 = within
         return max(0.0, float(v.get("tim_pct") or 0.0) - ADAPT_TIM_MAX) + max(0.0, float(v.get("max_dd_pct") or 0.0) - ADAPT_DD_MAX)
 
+    target = {"gain": uneg}
+
     def credible(v):
-        return bool(v.get("valid")) and trades(v) >= floor and gain(v) >= uneg
+        return bool(v.get("valid")) and trades(v) >= floor and gain(v) >= target["gain"]
 
     def score(v):
         return (credible(v), bool(v.get("valid")), -excess(v), min(trades(v), floor), gain(v))
 
     report = {"floor": floor, "ultra_neg": uneg, "tim_max": ADAPT_TIM_MAX, "dd_max": ADAPT_DD_MAX, "bases": [], "steps": []}
     best = None
+    _evald = []
     for label, ov in base_sets:
         if ov is None:
             continue
         sov, v = ev(ov)
+        _evald.append((label, sov, v))
         report["bases"].append({"label": label, "n_overrides": len(sov), "gain": v.get("gain_pct"), "trades": trades(v), "tim": v.get("tim_pct"), "dd": v.get("max_dd_pct"), "valid": v.get("valid"), "reason": v.get("invalid_reason")})
         if best is None or score(v) > score(best[2]):
             best = (label, sov, v)
+    # USER 2026-09-30: the previous best settings are kept while credible (>= -5 %, valid, floored); else the cat_side
+    # (template) defaults; else the best-scoring base, which the steps below repair
+    _by = {b[0]: b for b in _evald}
+    for _pref in ("previous_best", "current", "template_defaults"):
+        if _pref in _by and credible(_by[_pref][2]):
+            best = _by[_pref]
+            break
     label, cur_ov, cur_v = best
     report["base_chosen"] = label
     print(f"[ADAPT-BASE] {new_symside} bases {[(b['label'], b['trades'], round(b['gain'], 2) if b['gain'] is not None else None, b['tim'], b['valid']) for b in report['bases']]} -> {label}", flush=True)
@@ -1259,7 +1295,7 @@ def _credible_baseline(new_symside, prepared, base_sets, defaults, template_path
         elif excess(cur_v) > 0 or not cur_v.get("valid"):
             phase = "EXITS"
         else:
-            phase = "GAIN"
+            phase = "GAIN"  # valid + floored but gain below target -> trend filters
         cands = []
         if phase == "TRADES":
             cands += row_cands("entry", [t for t in SWITCH_SHEETS if t.startswith(("ENTRY_", "REENTRY_"))])
@@ -1282,7 +1318,31 @@ def _credible_baseline(new_symside, prepared, base_sets, defaults, template_path
                 elif not cur and "REENTRY" in k and "FILTER" in k:
                     cands.append((f"REENTRY_FILTER:{k}=True", {k: True}))
         else:
-            cands += row_cands("all", [t for t in SWITCH_SHEETS if t != "STDEV_SLOPE_SIZING"])
+            # ultra-negative (USER 2026-09-30): add TREND filters one at a time until gain > ADAPT_TREND_TARGET_PCT (-3 %)
+            target["gain"] = max(target["gain"], ADAPT_TREND_TARGET_PCT)
+            for tab, sw, cand in tab_rows("all", [t for t in SWITCH_SHEETS if t != "STDEV_SLOPE_SIZING"]):
+                if any(t in sw for t in _ADAPT_TREND_TOKENS) and any(t in sw for t in _ADAPT_TREND_KIND):
+                    cands.append((f"TREND:{tab}:{sw}={cand}", _switch_overrides(sw, _parse_opt_value(cand, defaults.get(sw)))))
+            for k, dv in defaults.items():
+                cur = cur_ov.get(k, dv)
+                if isinstance(dv, bool) and isinstance(cur, bool) and not cur and any(t in k for t in _ADAPT_TREND_TOKENS) and any(t in k for t in _ADAPT_TREND_KIND) and k not in DEAD_VEC_SWITCHES and k not in LIVE_ONLY_SWITCHES:
+                    cands.append((f"TREND:{k}=True", {k: True}))
+            # most trend filters live as yellow "FILTER=opt" headers, not rows
+            if "hdrs" not in rows:
+                import openpyxl as _opx_t
+                _wb_t = _opx_t.load_workbook(str(template_path), read_only=True)
+                _h = set()
+                for _tab in SWITCH_SHEETS:
+                    if _tab in _wb_t.sheetnames:
+                        for _v in next(_wb_t[_tab].iter_rows(min_row=2, max_row=2, values_only=True), ()):
+                            if isinstance(_v, str) and "=" in _v:
+                                _h.add(_v.strip())
+                _wb_t.close()
+                rows["hdrs"] = sorted(_h)
+            for _hdr in rows["hdrs"]:
+                _f, _o = _hdr.split("=", 1)
+                if any(t in _f for t in _ADAPT_TREND_TOKENS) and (WIRED_FILTERS is None or _f in WIRED_FILTERS):
+                    cands.append((f"TREND:{_hdr}", {_f: _parse_opt_value(_o, defaults.get(_f))}))
         cands = [(lab, ch) for lab, ch in cands if ch and any(cur_ov.get(k, defaults.get(k)) != v for k, v in ch.items())]
         best_step = None
         for lab, ch in cands:
@@ -1293,6 +1353,16 @@ def _credible_baseline(new_symside, prepared, base_sets, defaults, template_path
                 best_step = (lab, sov, v)
                 if credible(v):
                     break
+        if best_step is None and phase == "GAIN":
+            # no trend filter lifts the gain: fall back to the best single row of all tabs that keeps the set valid
+            for lab, ch in row_cands("all", [t for t in SWITCH_SHEETS if t != "STDEV_SLOPE_SIZING"]):
+                if not ch or not any(cur_ov.get(k, defaults.get(k)) != v for k, v in ch.items()):
+                    continue
+                sov, v = ev({**cur_ov, **ch})
+                if v.get("valid") and score(v) > score(cur_v) and (best_step is None or score(v) > score(best_step[2])):
+                    best_step = ("ROW:" + lab, sov, v)
+                    if credible(v):
+                        break
         if best_step is None:
             report["steps"].append({"step": step, "phase": phase, "n_cands": len(cands), "result": "no improving candidate"})
             print(f"[ADAPT-STEP] {new_symside} {step} {phase}: {len(cands)} candidates, none improves ({trades(cur_v)} trades, TIM {cur_v.get('tim_pct')}, gain {gain(cur_v):+.2f})", flush=True)
@@ -1691,10 +1761,22 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _r = "DEAD_VEC_PATH: wire07 purged — no real vector wiring"
             info.update(kind="skip", reason=_r, g=0.0)
         else:
-            # yellow cells are read from THIS row's fills (cloned from the TEMPLATE): what the user sees is what is computed
+            # USER 2026-09-30: a cell is YELLOW iff the row's switch name and the column's filter name share >= 2 "_"-tokens
+            # (interim rule until the yellow-map rebuild) — decided from the NAMES, never from a cloned fill, and the row is
+            # repainted to match (sheets cloned from older templates carried misaligned yellows)
+            _sw_tok = {t for t in str(switch).upper().split("_") if t}
+            _row_bg = PatternFill(start_color="FFFFE699", end_color="FFFFE699", fill_type="solid") if str(ws.cell(row=rr, column=1).fill.fgColor.rgb or "").upper().endswith("FFE699") else PatternFill(fill_type=None)
             for hdr, col in header_maps[sname].items():
-                fill = ws.cell(row=rr, column=col).fill
-                if not (fill is not None and fill.fill_type == "solid" and str(fill.fgColor.rgb or "").upper().endswith("FFFF00")):
+                _c = ws.cell(row=rr, column=col)
+                _is_y = _c.fill is not None and _c.fill.fill_type == "solid" and str(_c.fill.fgColor.rgb or "").upper().endswith("FFFF00")
+                _want = len(_sw_tok & {t for t in hdr.split("=", 1)[0].upper().split("_") if t}) >= YELLOW_MIN_SHARED_TOKENS
+                if _want and not _is_y:
+                    _c.fill = PatternFill(start_color="FFFFFF00", end_color="FFFFFF00", fill_type="solid")
+                elif _is_y and not _want:
+                    _c.fill = _row_bg
+                    if isinstance(_c.value, (int, float)):
+                        _c.value = None  # a delta written under an old, wrong yellow assignment
+                if not _want:
                     continue
                 filt, opt = hdr.split("=", 1)
                 if WIRED_FILTERS is not None and filt.strip() not in WIRED_FILTERS:
@@ -1887,7 +1969,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 noop_yellows.append(hdr)
             promotable[hdr] = ok and not noop
             ycell = ws.cell(row=rr, column=col)
-            _clear_red_fill(ws, rr, col)
+            if _is_red_cell(ycell):
+                _clear_red_fill(ws, rr, col)
+            ycell.fill = PatternFill(start_color="FFFFFF00", end_color="FFFFFF00", fill_type="solid")  # a yellow cell stays yellow
             ycell.value = (0.0 if noop else float(d)) if ok else f"INVALID {why}"[:40]
             ycell.font = Font(name="Arial", size=10, bold=False, italic=not ok or noop, color=None if ok and not noop else "808080")
             ycell.alignment = VISUAL_ALIGN
@@ -1931,7 +2015,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         g = ws.cell(row=rr, column=cols["G"])
         f = ws.cell(row=rr, column=cols["F"])
         if row_delta is not None:
-            _clear_red_fill(ws, rr, cols["G"])
+            if _is_red_cell(ws.cell(row=rr, column=cols["G"])):
+                _clear_red_fill(ws, rr, cols["G"])
             _num_cell(ws, rr, cols["G"], row_delta, promote)
             _num_cell(ws, rr, cols["F"], row_gain - initial_baseline, row_gain - initial_baseline > 1e-9)
         elif is_running:
@@ -1976,6 +2061,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             continue
         _clear_red_fill(ws, rc["row"], rc["col"])
         cell = ws.cell(row=rc["row"], column=rc["col"])
+        if rc["label"] != "naked":
+            cell.fill = PatternFill(start_color="FFFFFF00", end_color="FFFFFF00", fill_type="solid")
         cell.value = float(d) if ok else f"INVALID {why}"[:40]
         cell.font = Font(name="Arial", size=10, bold=rc["label"] == "naked", italic=not ok, color=("9C0006" if d <= 1e-9 else "9C5700") if ok else "808080")
         rec.setdefault("red_fixed", {})[rc["label"]] = d
@@ -2719,6 +2806,20 @@ def clone_template(template: Path, new_symside: str) -> Path:
         except Exception:
             pass
     target = OUT_DIR / f"{new_symside}_30d_matrix.xlsx"
+    # USER 2026-09-30: an existing workbook is reused ONLY to resume THIS run (its progress JSON in PROGRESS_DIR has done rows).
+    # Otherwise it is an old-round sheet (old layout / old yellows / old C and E-G values): moved aside, never filled over,
+    # and the current template is cloned fresh. (Round 3 filled new values into old sheets — "all sheets broken".)
+    if target.exists():
+        _resume = False
+        try:
+            _pj = PROGRESS_DIR / f"{new_symside}_v14_progress.json"
+            _resume = _pj.exists() and bool(json.loads(_pj.read_text()).get("done"))
+        except Exception:
+            _resume = False
+        if not _resume:
+            _stale = target.with_name(target.name + f".stale_{datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')}")
+            target.rename(_stale)
+            print(f"[clone] {target.name}: no resumable progress in {PROGRESS_DIR} — old sheet moved to {_stale.name}, fresh clone from {template.name}", flush=True)
     # FIX 2026-09-24: never overwrite a valid filled workbook with empty template — reuse if exists and has F filled and is valid zip
     if target.exists():
         try:
@@ -2910,6 +3011,15 @@ def _run_single(new_symside, args):
     # Now run the original single core (from defaults onward) — keep 4 NPZs hot
     _run_single_core(new_symside, args, _v15_start_time)
 
+def _require_progress_dir():
+    # USER 2026-09-30: an unknown launcher started pilots with the DEFAULT progress dir, resuming old-round progress into
+    # old sheets. Every legitimate launcher (v15_full_sweep_driver, proofs) sets V15_PROGRESS_DIR explicitly.
+    if not os.environ.get("V15_PROGRESS_DIR") and os.environ.get("V15_ALLOW_DEFAULT_PROGRESS", "0") != "1":
+        print("[REFUSED] v15_pilot needs an explicit V15_PROGRESS_DIR (set by tools/v15_full_sweep_driver.py); "
+              "V15_ALLOW_DEFAULT_PROGRESS=1 overrides deliberately", flush=True)
+        sys.exit(3)
+
+
 def _run_single_core(new_symside, args, _v15_start_time):
     # Original single core body (defaults, NPZ, baseline, sheets, final) — extracted for batch
     import json as _j3
@@ -2942,6 +3052,8 @@ def main():
     ap.add_argument("--sheet-order", default=None, help="0914 override sheet order comma-separated (e.g. GLOBAL_RISK_GATES,EXIT_VELOCITY,...)")
     ap.add_argument("--batch-syms", default=None, help="4 NPZ batch: comma-separated sym_sides (e.g. AAPL_LONG,AAPL_SHORT,MSFT_LONG,MSFT_SHORT) — loads 4 NPZs LONG+SHORT together, keeps all hot in RAM until all 12 tabs finished, never erase")
     args = ap.parse_args()
+    if not getattr(args, "dry_run", False):
+        _require_progress_dir()
     # normalize seq-mode aliases
     if args.cycle_on_neg and args.seq_mode == "sequential":
         args.seq_mode = "cycle"
@@ -3402,7 +3514,16 @@ def main():
     # USER 2026-09-29: BOLD / is_default=YES in the template IS the running default — every run starts from it, the
     # engine gets it explicitly (not QuickConfig's own values), prior-best overrides go on top. Fail-closed if any group
     # lacks exactly one default.
-    _tpl_defaults, _tpl_bad = template_bold_defaults(args.template, defaults)
+    try:
+        from tools.build_cat_side_defaults_4 import venue_values as _venue_values
+        _truth = _venue_values(map_key_for_symside(new_symside).startswith("STOCKS"))[0]
+        _promoted = set((json.loads((ROOT / "data" / "cat_side_promotions.json").read_text()).get(map_key_for_symside(new_symside)) or {}).keys()) if (ROOT / "data" / "cat_side_promotions.json").exists() else set()
+    except Exception as _tr_e:
+        print(f"[DEFAULTS-GATE] truth load warn {_tr_e} — all bold values trusted", flush=True)
+        _truth, _promoted = None, set()
+    _tpl_defaults, _tpl_bad = template_bold_defaults(args.template, defaults, _truth, _promoted)
+    if UNTRUSTED_BOLD:
+        print(f"[DEFAULTS-GATE] {new_symside}: {len(UNTRUSTED_BOLD)} placeholder bold values NOT used as defaults (real value kept): {[x[1] for x in UNTRUSTED_BOLD[:8]]}", flush=True)
     if _tpl_bad:
         print(f"[DEFAULTS-GATE] {new_symside}: template {args.template} has {len(_tpl_bad)} default violations — NOT running. First: {_tpl_bad[:5]} (fix: tools/v15_template_defaults_fix.py --apply)", flush=True)
         return
