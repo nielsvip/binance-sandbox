@@ -26,6 +26,10 @@ import certifi
 
 @dataclass(eq=False)
 class Config:
+    # USER 2026-09-30: every switch has FOUR defaults (CRYPTO_LONG/CRYPTO_SHORT/STOCKS_LONG/STOCKS_SHORT) in
+    # data/cat_side_defaults_4.json (built from the TEMPLATE bold defaults). Lookup order everywhere: per-sym override >
+    # cat_side default (cat_side_defaults.get_for) > the single value in this class. False = old single-default behaviour.
+    CAT_SIDE_DEFAULTS_ENABLED: bool = True
     _INSTANCES: ClassVar[WeakSet] = WeakSet()
     _CURRENT_MARKET_MODE: ClassVar[str] = "NORMAL_MODE"
     _REGIME_OVERRIDES: ClassVar[Dict[str, Dict[str, object]]] = {}

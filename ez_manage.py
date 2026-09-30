@@ -7368,6 +7368,26 @@ def _ezm_load_inf_7d() -> dict:
         return {}
 
 
+_EZM_CSD_MISSING = object()
+
+
+def _ezm_cat_side_default(symbol: str, side: str, knob: str):
+    """USER 2026-09-30: the cat_side default of knob (cat_side_defaults.py, FOUR defaults per switch), or _EZM_CSD_MISSING."""
+    if not bool(getattr(config, "CAT_SIDE_DEFAULTS_ENABLED", True)):
+        return _EZM_CSD_MISSING
+    try:
+        import cat_side_defaults as _csd
+        return _csd.get_for(knob, symbol, side, _EZM_CSD_MISSING, venue="crypto")
+    except Exception:
+        return _EZM_CSD_MISSING
+
+
+def _ezm_default(symbol: str, side: str, knob: str, default):
+    """no per-sym override: cat_side default first, then the single global config value."""
+    v = _ezm_cat_side_default(symbol, side, knob)
+    return getattr(config, knob, default) if v is _EZM_CSD_MISSING else v
+
+
 def _psym_get(symbol: str, side: str, knob: str, default):
     """Per-sym knob lookup. Returns per-sym override if present for
     (symbol, side) AND override dict contains knob; else falls back to
@@ -7386,9 +7406,9 @@ def _psym_get(symbol: str, side: str, knob: str, default):
             return "None"
         return default
     if os.environ.get("V8_DISABLE_PER_SYM") == "1":
-        return getattr(config, knob, default)
+        return _ezm_default(symbol, side, knob, default)
     if not bool(getattr(config, "PER_SYM_CONFIG_ENABLED", True)):
-        return getattr(config, knob, default)
+        return _ezm_default(symbol, side, knob, default)
     global _ezm_per_sym_cfgs, _ezm_per_sym_cfgs_mtime, _ezm_per_sym_raw, _ezm_per_sym_raw_mtime
     try:
         mtime = _ezm_per_sym_cfgs_path.stat().st_mtime
@@ -7407,6 +7427,11 @@ def _psym_get(symbol: str, side: str, knob: str, default):
     ov = _ezm_apply_final_book(key, _ezm_per_sym_cfgs.get(key, {}))
     if knob in ov:
         return ov[knob]
+    # USER 2026-09-30: FOUR-default layer — no per-sym override -> this sym_side's cat_side default (supersedes the
+    # runtime TEMPLATE xlsx fallback below, which it was built from)
+    _csd_v = _ezm_cat_side_default(symbol, side, knob)
+    if _csd_v is not _EZM_CSD_MISSING:
+        return _csd_v
     # Template fallback: never-calculated sym_side in tradeable_keys must trade TEMPLATE per category until calculated
     # STOCK vs CRYPTO determined by suffix: crypto has USDT/USDC/USDS, stocks are bare (AAPL, NVDA etc)
     if ov == {}:
@@ -7449,7 +7474,7 @@ def _psym_get(symbol: str, side: str, knob: str, default):
                     if knob in tpl_vals and tpl_vals[knob] is not None:
                         return tpl_vals[knob]
                     # For knobs not in TEMPLATE (e.g. MIN_POSITION_SIZE), TEMPLATE baseline equals config default — allowed as template-derived, not old defaults
-                    return getattr(config, knob, default)
+                    return _ezm_default(symbol, side, knob, default)
         except Exception as _e:
             logger.warning(f"[TEMPLATE_ERROR] {symbol}_{side} {knob} template load failed {_e} — falling back to config for never-calculated")
             # Fallback to config for never-calculated is template-equivalent for non-template knobs
@@ -7459,12 +7484,12 @@ def _psym_get(symbol: str, side: str, knob: str, default):
                     _tk_r = json.loads(_tk_f.read_text())
                     _tk_s = set(str(k).split(":",1)[1] if ":" in str(k) else str(k) for k in _tk_r if isinstance(k, str))
                     if f"{symbol}_{side}" in _tk_s:
-                        return getattr(config, knob, default)
+                        return _ezm_default(symbol, side, knob, default)
             except Exception:
                 pass
             pass
     # For never-calculated, template fallback already handled above — if still here, template had it or we already returned config-equivalent
-    return getattr(config, knob, default)
+    return _ezm_default(symbol, side, knob, default)
 
 
 def _ezm_is_live_side_enabled(symbol: str, side: str, account_key: str | None = None) -> tuple[bool, str]:

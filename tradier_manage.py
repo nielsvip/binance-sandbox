@@ -6586,7 +6586,17 @@ def _cfg(param, default=None, account_key=None, symbol=None, side=None):
                     return v
         except Exception:
             pass
-    # 4. Basic baseline
+    # 4. USER 2026-09-30: FOUR-default layer — no per-sym value -> this sym_side's cat_side default (STOCKS_LONG/SHORT)
+    if symbol and side and bool(getattr(config, "CAT_SIDE_DEFAULTS_ENABLED", True)):
+        try:
+            import cat_side_defaults as _csd
+            _csd_miss = object()
+            _csd_v = _csd.get_for(param, symbol, side, _csd_miss, venue="tradier")
+            if _csd_v is not _csd_miss:
+                return _csd_v
+        except Exception:
+            pass
+    # 5. Basic baseline
     return getattr(config, param, default)
 
 def _cfg_auto(param, default=None):

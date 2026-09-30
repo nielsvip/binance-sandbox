@@ -25,6 +25,10 @@ except Exception:
 
 @dataclass
 class TradierConfig:
+    # USER 2026-09-30: every switch has FOUR defaults (CRYPTO_LONG/CRYPTO_SHORT/STOCKS_LONG/STOCKS_SHORT) in
+    # data/cat_side_defaults_4.json (built from the TEMPLATE bold defaults). Lookup order everywhere: per-sym override >
+    # cat_side default (cat_side_defaults.get_for) > the single value in this class. False = old single-default behaviour.
+    CAT_SIDE_DEFAULTS_ENABLED: bool = True
     # HARD SAFETY LOCK: the options stack may research, score, and report, but
     # it must not submit/cancel live orders until the paper system is explicitly
     # fine-tuned and this flag is deliberately changed by the owner.

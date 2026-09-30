@@ -1068,8 +1068,17 @@ M AVG_DELTA | N POS_SYM | O.. yellow "FILTER=opt" columns`. White switch rows al
   row `NO`); a filter's default = the one bold `FILTER=opt` header carrying a `DEFAULT` note. 0 or 2 defaults = broken.
 - Source of a default = the venue's live config (`config.Config` crypto, `config_tradier.TradierConfig` stocks), else
   QuickConfig (`apply_tradier_defaults()` for stocks), overlaid with `data/cat_side_promotions.json` (avg-delta promotions).
-  **The configs carry NO per-cat_side default sets and no per-side values (DAILY_OPTIMIZATION_PLAN Stage 5 is NOT built);**
   per-sym_side overrides live in `data/hourly_reconfig/{trb,inf}/active_config.json` + `per_sym_active_config.json`.
+- **FOUR defaults per switch (built 2026-09-30, USER-unlocked; Stage 5):** `data/cat_side_defaults_4.json` = one default set per
+  CRYPTO_LONG / CRYPTO_SHORT / STOCKS_LONG / STOCKS_SHORT, built by `tools/build_cat_side_defaults_4.py` from the template
+  bold/is_default rows (refuses on any 0/2-default violation; re-run automatically by `v15_avg_delta_apply.py --apply`).
+  Single accessor `cat_side_defaults.py` (`get`, `get_for`, `cat_side_of`, `defaults`). Precedence EVERYWHERE:
+  **per-sym override > cat_side default > the single global value** — live crypto `ez_manage._psym_get` (all no-override
+  fallbacks via `_ezm_default`), live stocks `tradier_manage._cfg` (step 4 before the global value), sweep engine
+  `evaluate_v12.prepare/build_cfg_npz` (stocks: full `apply_tradier_defaults()` then `QuickConfig.apply_cat_side_defaults`),
+  pilot (bold passed explicitly). Kill switch `CAT_SIDE_DEFAULTS_ENABLED` in config.py / config_tradier.py / QuickConfig
+  or env `CAT_SIDE_DEFAULTS_DISABLED=1`. At deploy the 4 sets equalled the live config (0 differences → no live change);
+  sweep baselines moved to live parity (QuickConfig's own values had been running for many switches).
 - Groups whose default is not among their options, with no config field, a dict value or no options are GREY (col-A font
   `FFBFBFBF`) and never calculated; they still keep exactly one is_default row.
 - The pilot refuses to run (`[DEFAULTS-GATE]`) unless every non-grey group has exactly one YES = the bold row, and passes

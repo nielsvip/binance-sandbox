@@ -4438,6 +4438,10 @@ def _base_ha(npz: dict, field: str, n: int, cfg) -> np.ndarray:
 
 @dataclass
 class QuickConfig:
+    # USER 2026-09-30: every switch has FOUR defaults (CRYPTO_LONG/CRYPTO_SHORT/STOCKS_LONG/STOCKS_SHORT) in
+    # data/cat_side_defaults_4.json (built from the TEMPLATE bold defaults). Lookup order everywhere: per-sym override >
+    # cat_side default (cat_side_defaults.get_for) > the single value in this class. False = old single-default behaviour.
+    CAT_SIDE_DEFAULTS_ENABLED: bool = True
     MODE: str = "crypto"  # Fixed: was tradier, caused BTCUSDC 7d 0 vs 15m 1081 (int truncation) — crypto must be fractional
     BASE_TF: str = "3m"
     ENTRY_SCORE_THRESHOLD: float = 18.0
@@ -5156,6 +5160,19 @@ class QuickConfig:
                 # Fallback: if no exact symbol, try flat (should not happen)
                 pass
         return cfg
+
+    def apply_cat_side_defaults(self, cat_side: str) -> int:
+        """USER 2026-09-30: set this config to the FOUR-default layer of its cat_side (cat_side_defaults.py). Call AFTER
+        apply_tradier_defaults() for stocks and BEFORE per-sym overrides. Returns the number of fields set."""
+        if not getattr(self, "CAT_SIDE_DEFAULTS_ENABLED", True):
+            return 0
+        import cat_side_defaults as _csd
+        n = 0
+        for _k, _v in _csd.defaults(cat_side).items():
+            if hasattr(self, _k):
+                setattr(self, _k, _v)
+                n += 1
+        return n
 
     def apply_tradier_defaults(self):
         self.MODE = "tradier"
