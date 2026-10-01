@@ -2343,7 +2343,7 @@ class Config:
     HTF_DIRECTION_GATE_ENABLED: bool = False
     HTF_GATE_MIN_CONFIRMATIONS: int = 2  # 2026-04-16: lowered 3→2 per user directive "HTF confirmations should not be exaggerated". D still mandatory via HTF_GATE_D_MANDATORY.
     HTF_GATE_D_MANDATORY: bool = False  # 2026-04-27 owner: loosened from True. With min_conf=2, requiring D=aligned in addition was too strict — V3 blocks at 03:31 had D=✗ but 4h+1h+SMA all aligned. Now D can dissent if 2+ of (4h,1h,SMA) align.
-    HTF_GATE_SIGNALS_SMA200D: bool = True  # include price vs sma_200_D as the 4th signal
+    HTF_GATE_SIGNALS_SMA200D: bool = False  # PROMO run20: was True | include price vs sma_200_D as the 4th signal
     HTF_GATE_APPLY_TO_OPEN: bool = True  # gate applies to OPEN actions
     HTF_GATE_APPLY_TO_AUGMENT: bool = True  # 2026-04-16 flipped True: enforce 4h/D veto on augments too. Existing 3m+15m gate still runs in addition.
     # TF→size multipliers for RZ/breakout entries. Size = START_POSITION_SIZE × mult_for_tf_of_signal.
@@ -2671,7 +2671,7 @@ class Config:
     OPTIMAL_HOLD_BARS_3M: int = 999  # ABLATION_V3_REVERT: was 21 (BC_15). Confirmed on BOTH v2 (4-day) and v3 (3-year, 215 sym): +1.04 Sharpe, 85% improved. Forced exit kills winners.
     OPTIMAL_HOLD_BARS_15M: int = 999  # BACKTEST_CHANGE_16: REVERTED (was 13). Ablation: -6.983 Sharpe, WORST of 52 tested. 0% symbols improved. Hold period too short kills winners.
     # Sizing: ema_dist proportional sizing
-    EMA_DIST_SIZING_ENABLED: bool = True  # BACKTEST_CHANGE_24: scale size by ema_dist strength
+    EMA_DIST_SIZING_ENABLED: bool = False  # PROMO run20: was True | BACKTEST_CHANGE_24: scale size by ema_dist strength
     EMA_DIST_SIZING_MULT: float = 2.0  # Max 2x size when ema_dist is extreme
     # Per-symbol sizing multipliers for top backtest performers
     SYMBOL_SIZE_MULTIPLIERS: Dict[str, float] = field(default_factory=lambda: {"CELOUSDT": 2.0, "DYDXUSDT": 1.5, "GTCUSDT": 1.5, "1000SATSUSDT": 1.5})  # BACKTEST_CHANGE_27
@@ -2680,7 +2680,7 @@ class Config:
     DC_WIDTH_MAX_MULT: float = 5.0  # BACKTEST_CHANGE_23: was 8.0. DC is 7th best indicator, don't over-weight
     DC_WIDTH_CAP_MULT: float = 10.0
     # === DYNAMIC SIZING: DC EDGE (2026-03-22 — 45 configs, sideways vs trend) ===
-    DC_EDGE_SIZING_ENABLED: bool = True  # BACKTEST_CHANGE_122: Scale position size by DC channel position. Edge=trending=3x, center=sideways=1x. +68% PnL vs flat.
+    DC_EDGE_SIZING_ENABLED: bool = False  # PROMO run20: was True | BACKTEST_CHANGE_122: Scale position size by DC channel position. Edge=trending=3x, center=sideways=1x. +68% PnL vs flat.
     DC_EDGE_SIZING_MAX_MULT: float = 3.0  # BACKTEST_CHANGE_122: Max 3x at DC edges (trending). 1x at DC center (sideways).
     DC_EDGE_SIZING_MIN_MULT: float = 1.0  # BACKTEST_CHANGE_122: Min 1x at DC center. Set to 0.5 to reduce in sideways.
     DC_EDGE_SIZING_PERIOD: int = 20  # DC lookback period for edge detection

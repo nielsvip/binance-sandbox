@@ -4526,7 +4526,7 @@ class TradierConfig:
     BASIS_CONDITION: bool = False  # BACKTEST: OFF is +0.67 delta Sharpe (dc_basis_15m/1h both SKIP in sweep)  # No opening on wrong side of dc_basis_15m + 1h + 4h
     BB_BREAKOUT_ENABLED: bool = False  # 2026-05-23: SWEEP VERDICT — trigger HARMFUL (ΔSharpe -0.0025). Use GATE instead.
     BB_BREAKOUT_SCORE: int = 20
-    BB_BREAKOUT_TF: str = '15m'  # 2026-05-23: 1h→15m per vec_top_combos bb15_lt30 winner
+    BB_BREAKOUT_TF: str = "OFF"  # PROMO run20: was '15m' | 2026-05-23: 1h→15m per vec_top_combos bb15_lt30 winner
     # 4h BB breakout ladder: 25% at breakout, 50% at dc_basis_4h, 25% at next WT1h cross.
     BB4H_BREAKOUT_LADDER_ENABLED: bool = True
     BB4H_BREAKOUT_LADDER_TARGET_USD: float = 2000.0
