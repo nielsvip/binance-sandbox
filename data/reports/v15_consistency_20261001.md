@@ -855,3 +855,35 @@
     - `NVDA_SHORT` [s2] 1 cases — NEWBORN_LOSS_KILL_ENABLED T=+0.216/F=-2.013
     - `BNO_SHORT` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-0.001/F=+0.003
 - **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-01T13:31Z · window 48.0h · 524 sym_sides (local+remote)
+- ⚠️ **11 sym_sides / 12 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `HTF_GATE_D_MANDATORY`×5, `NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST`×2, `EMA_BLANKET_FILTER_ENABLED`×2, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `LH_HL_FILTER_REQUIRE_BOTH`×1, `NEWBORN_LOSS_KILL_ENABLED`×1
+    - `XMRUSDT_LONG` [s1] 2 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+5.164/F=-9.436; WT_15M_LH_WAIT_EXIT_ENABLED T=-1.720/F=+0.300
+    - `UNIUSDC_LONG` [s2] 1 cases — HTF_GATE_D_MANDATORY T=-1.922/F=-2.156
+    - `ZENUSDT_LONG` [s1] 1 cases — LH_HL_FILTER_REQUIRE_BOTH T=-1.311/F=-0.429
+    - `ZECUSDC_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-11.138/F=-1.664
+    - `HYPEUSDT_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-4.847/F=+0.737
+    - `MANAUSDT_LONG` [s2] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+0.634/F=-17.051
+    - `XLMUSDT_SHORT` [s5] 1 cases — HTF_GATE_D_MANDATORY T=-0.063/F=-0.060
+    - `GRTUSDT_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-2.673/F=-1.108
+    - `PLTR_LONG` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-5.907/F=+0.177
+    - `NVDA_SHORT` [s2] 1 cases — NEWBORN_LOSS_KILL_ENABLED T=+0.216/F=-2.013
+    - `BNO_SHORT` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-0.001/F=+0.003
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-01T13:47Z · window 48.0h · 516 sym_sides (local+remote)
+- ⚠️ **11 sym_sides / 46 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EMA_BLANKET_FILTER_ENABLED`×4, `HTF_DIRECTION_GATE_ENABLED`×3, `BAND_ARROW_ENABLED`×2, `DELTA_REENTRY_FILTER_ENABLED`×2, `GR_FILTER_VEC_ENABLED`×2, `HA_WICK_QUALITY_ENABLED`×2, `HTF_TREND_VETO_BYPASS_ENABLED`×2, `LH_HL_FILTER_ENABLED`×2, `LIVE_VEC_EMERGENCY_BRAKE_ENABLED`×2, `HTF_GATE_D_MANDATORY`×2, `HTF4_CONF`×1, `MTS_GATE_ENABLED`×1, `OI_CONFIRM_ENABLED`×1, `VIGILANCE_GUARD_ENABLED`×1, `BB_SQUEEZE_ENTRY_ENABLED`×1, `BB_SQUEEZE_EXIT_ENABLED`×1, `DELTA_GATE_BB_SQUEEZE`×1, `NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST`×1, `NEWBORN_LOSS_KILL_ENABLED`×1, `UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED`×1
+    - `GOOGLUSDT_SHORT` [mac] 20 cases — LH_HL_FILTER_ENABLED T=-15.386/F=-15.386; MTS_GATE_ENABLED T=-15.386/F=-15.386; OI_CONFIRM_ENABLED T=-15.386/F=-15.386
+    - `BNBUSDC_SHORT` [mac] 17 cases — OI_CONFIRM_ENABLED T=-5.970/F=-5.970; BAND_ARROW_ENABLED T=-5.970/F=-5.970; MARKET_QUALITY_SCORE_ENABLED T=-5.970/F=-5.970
+    - `UNIUSDC_LONG` [s2] 1 cases — HTF_GATE_D_MANDATORY T=-1.922/F=-2.156
+    - `ZENUSDT_LONG` [s5] 1 cases — VIGILANCE_GUARD_ENABLED T=-6.265/F=+2.119
+    - `ZECUSDC_LONG` [s5] 1 cases — HTF_DIRECTION_GATE_ENABLED T=-28.898/F=+0.457
+    - `MANAUSDT_LONG` [s2] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+0.634/F=-17.051
+    - `XLMUSDT_SHORT` [s5] 1 cases — HTF_GATE_D_MANDATORY T=-0.063/F=-0.060
+    - `BNO_SHORT` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-0.001/F=+0.003
+    - `PLTR_LONG` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-5.907/F=+0.177
+    - `NVDA_SHORT` [s2] 1 cases — NEWBORN_LOSS_KILL_ENABLED T=+0.216/F=-2.013
+    - `1000000MOGUSDT_SHORT` [s2] 1 cases — UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED T=+0.004/F=-0.099
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
