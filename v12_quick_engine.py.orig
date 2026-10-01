@@ -4315,11 +4315,6 @@ class QuickConfig:
     HARDCODED_RALLY_REENTRY_ENABLED: bool = True  # 2026-09-18 user: reenter if close>exit and wt1_15m>wt1_15m_prev — always tested
     HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN: bool = True  # USER 2026-09-27: NO COOLDOWN — bypass kept, churn stopped via DC4H/KG/GR/cross instead
     HARDCODED_RALLY_REENTRY_REQUIRE_WT: bool = False  # False=loosened close>exit only for TIM>20, True=require wt
-    HARDCODED_RALLY_MIN_MOVE_PCT: float = 0.0  # RE/001 filter: close >= this % beyond last exit (0=OFF)
-    HARDCODED_RALLY_MIN_AGE_MIN: float = 0.0  # RE/001 filter: minutes since last exit (0=OFF)
-    HARDCODED_RALLY_HTF_TREND_TF: str = "OFF"  # RE/001 filter: OFF | 1h | 4h | 1h,4h — wt1_<tf> sides with trade
-    HARDCODED_RALLY_DC_POS_MAX: float = 0.0  # RE/001 filter: 0=OFF; no chase at 15m DC edge
-    HARDCODED_RALLY_SMA200_SIDE_ENABLED: bool = False  # RE/001 filter: close on trade side of sma_200_15m
     REENTRY_TIER1_SIZE_MULT_TRADIER: float = 1.5
     REGIME_ADAPTIVE_ENABLED: bool = False
     REGIME_ATR_RATIO_MIN: float = 0.25
@@ -5333,7 +5328,7 @@ class QuickConfig:
     PARTIAL_PROFIT_LOCK_ENABLED: bool = True  # auto-wired 625
     PARTIAL_PROFIT_LOCK_FRAC_TRADIER: float = 0.3125  # auto-wired 625
     PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER: float = 0.75  # auto-wired 625
-    PARTIAL_PROFIT_LOCK_SLIPPAGE_PCT: float = 0.05  # N5 007: aligned to live 0.05 (was 0.025)
+    PARTIAL_PROFIT_LOCK_SLIPPAGE_PCT: float = 0.025  # auto-wired 625
     PARTIAL_PROFIT_LOCK_SWEEP_ARM_PCT: float = 0.5  # auto-wired 625
     PARTIAL_PROFIT_LOCK_SWEEP_ENABLED: bool = False  # auto-wired 625
     PARTIAL_PROFIT_LOCK_SWEEP_GAIN_PCT: float = 0.3  # auto-wired 625
@@ -11617,13 +11612,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _strict_open_block = _sv_b if _strict_open_block is None else (_strict_open_block | _sv_b)
     except Exception:
         _strict_open_block = None
-    try:  # F2/001 FUNDING veto joins the strict open block: live gates every non-augment open (ez_positions_quick.py:12744)
-        if bool(getattr(cfg, 'FUNDING_GATE_ENABLED', True)):
-            import vec_paths.funding_gate as _fgx
-            _fb = np.asarray(_fgx.funding_block_mask(npz, n, is_long, cfg), dtype=bool)
-            _strict_open_block = _fb if _strict_open_block is None else (_strict_open_block | _fb)
-    except Exception:
-        pass
     # b7: HTF_GATE_APPLY_TO_AUGMENT (live execute_trade_wrapper 12676-12690: winner/pullback AUGMENT is gated when HTF_DIRECTION_GATE_ENABLED and APPLY_TO_AUGMENT)
     _htf_aug_ok = None
     try:
@@ -12071,21 +12059,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _hc_wt1_15m = _safe(npz, 'wt1_15m', n)
     except Exception:
         _hc_wt1_15m = close * 0
-    # RE/001 HARDCODED_RALLY optional filters (all default OFF = neutral); same predicate as live staged RE/001
-    try:
-        import vec_decisions.hardcoded_rally_filters as _hrfm
-        _hrf = _hrfm.RallyFilters(npz, n, cfg, is_long)
-    except Exception:
-        _hrf = None
-    def _hrf_ok(_i, _px, _last, _trades):
-        if _hrf is None or not _hrf.active:
-            return True
-        try:
-            _be = int(_trades[-1].get('bar_exit', _i))
-            _age = (float(ts[_i]) - float(ts[min(_be, len(ts) - 1)])) / 60.0
-        except Exception:
-            _age = 0.0
-        return _hrf.ok(_i, _px, _last, _age)
     # [C2 b3] live reentry PATHWAY F (favorable move + HTF alignment) — the only pathway vectorizable on 15m+ arrays (ez_manage.py:36594-36624)
     try:
         import vec_decisions.reentry_pathways as _rpw
@@ -12249,7 +12222,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     _hc_req_wt = bool(getattr(cfg, "HARDCODED_RALLY_REENTRY_REQUIRE_WT", False))
                     _hc_wt_ok_long = (not _hc_req_wt) or (_hc_wt1_cd > _hc_wt1_prev_cd)
                     _hc_wt_ok_short = (not _hc_req_wt) or (_hc_wt1_cd < _hc_wt1_prev_cd)
-                    if ((is_long and px > _hc_last_exit_cd and _hc_wt_ok_long) or (not is_long and px < _hc_last_exit_cd and _hc_wt_ok_short)) and _hrf_ok(i, px, _hc_last_exit_cd, trades):
+                    if (is_long and px > _hc_last_exit_cd and _hc_wt_ok_long) or (not is_long and px < _hc_last_exit_cd and _hc_wt_ok_short):
                         cd = 0
             except Exception:
                 pass
@@ -12332,9 +12305,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         _hc_wt1 = float(_hc_wt1_15m[i] if i < len(_hc_wt1_15m) else 0)
                         _hc_wt1_prev = float(_hc_wt1_15m[i-1] if i > 0 and i-1 < len(_hc_wt1_15m) else _hc_wt1)
                         _hc_req_wt = bool(getattr(cfg, "HARDCODED_RALLY_REENTRY_REQUIRE_WT", False))
-                        if is_long and px > _hc_last_exit and (not _hc_req_wt or _hc_wt1 > _hc_wt1_prev) and _hrf_ok(i, px, _hc_last_exit, trades):
+                        if is_long and px > _hc_last_exit and (not _hc_req_wt or _hc_wt1 > _hc_wt1_prev):
                             fire = True
-                        elif not is_long and px < _hc_last_exit and (not _hc_req_wt or _hc_wt1 < _hc_wt1_prev) and _hrf_ok(i, px, _hc_last_exit, trades):
+                        elif not is_long and px < _hc_last_exit and (not _hc_req_wt or _hc_wt1 < _hc_wt1_prev):
                             fire = True
                 except Exception:
                     pass
@@ -12531,7 +12504,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                     _hwt1 = float(_hc_wt1_15m[i] if i < len(_hc_wt1_15m) else 0)
                                     _hwt1p = float(_hc_wt1_15m[i-1] if i > 0 and i-1 < len(_hc_wt1_15m) else _hwt1)
                                     _hc_req_wt2 = bool(getattr(cfg, "HARDCODED_RALLY_REENTRY_REQUIRE_WT", False))
-                                    if ((is_long and px > _hc_last and (not _hc_req_wt2 or _hwt1 > _hwt1p)) or (not is_long and px < _hc_last and (not _hc_req_wt2 or _hwt1 < _hwt1p))) and _hrf_ok(i, px, _hc_last, trades):
+                                    if (is_long and px > _hc_last and (not _hc_req_wt2 or _hwt1 > _hwt1p)) or (not is_long and px < _hc_last and (not _hc_req_wt2 or _hwt1 < _hwt1p)):
                                         entry_reason = 'HARDCODED_RALLY_REENTRY'
                                         _hardcoded_fired = True
                             except Exception:

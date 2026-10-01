@@ -900,6 +900,23 @@ def ever_yellow_cells(cat_side: str) -> set:
     return _EVER_YELLOW_CACHE[cat_side]
 
 
+_TAB_LEVEL_CACHE: dict = {}
+
+
+def tab_level_filters(cat_side: str, sheet: str) -> set:
+    """USER 2026-10-01: filters yellow on >20% of a tab's switch rows live as orange rows at the bottom of that tab (tools/v15_tab_level_filters.py +
+    v15_daily_template_update.py --tab-level) and are tested ONCE there: the per-row evaluation of their columns is skipped (the cell keeps its status).
+    V15_TAB_LEVEL_FILTERS=0 restores the per-row test."""
+    if os.environ.get("V15_TAB_LEVEL_FILTERS", "1") == "0":
+        return set()
+    if "spec" not in _TAB_LEVEL_CACHE:
+        try:
+            _TAB_LEVEL_CACHE["spec"] = json.loads((ROOT / "data" / "wiring" / "tab_filters" / "tab_level_filters.json").read_text()).get("cats", {})
+        except Exception:
+            _TAB_LEVEL_CACHE["spec"] = {}
+    return set(((_TAB_LEVEL_CACHE["spec"].get(cat_side) or {}).get(sheet) or {}).keys())
+
+
 def opportune_filter_bases(symside: str, sheet: str, switch: str) -> set:
     m = _load_opportune_map()
     key = map_key_for_symside(symside)
@@ -1850,6 +1867,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             # repainted to match (sheets cloned from older templates carried misaligned yellows)
             _sw_tok = {t for t in str(switch).upper().split("_") if t}
             _row_bg = PatternFill(fill_type=None)  # USER 2026-09-30: ONLY column A carries the orange row colour
+            _tab_level = tab_level_filters(map_key_for_symside(new_symside), sname)
             for hdr, col in header_maps[sname].items():
                 _c = ws.cell(row=rr, column=col)
                 _is_y = _c.fill is not None and _c.fill.fill_type == "solid" and str(_c.fill.fgColor.rgb or "").upper().endswith("FFFF00")
@@ -1862,6 +1880,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                         _c.value = None  # a delta written under an old, wrong yellow assignment
                 # USER 2026-09-30: EVERY filter column after AVG_DELTA/POS_SYM is calculated for this row (running set +
                 # switch=cand + that one filter); yellow stays the visual name-match marker only
+                if hdr.split("=", 1)[0].strip() in _tab_level:
+                    continue  # tab-level filter: tested once as an orange row of this tab, never per switch row (cell keeps its status)
                 if _want:
                     info["yellow"].add(hdr)
                 elif os.environ.get("V15_ALL_FILTER_COLS", "0") != "1":
