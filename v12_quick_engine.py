@@ -4430,6 +4430,8 @@ class QuickConfig:
     TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER: bool = True
     TRB_NOLOSS_MIN_PROFIT_PCT: float = 0.0
     UNIVERSAL_NOLOSS_GATE: bool = False
+    STOCKS_NOLOSS_HOLD_ENABLED: bool = False  # [PAR/002] vector twin of live tradier_manage.py:19670-19715 NOLOSS_HOLD (stocks); default OFF = neutral, ON = live (sweep switch)
+    NOLOSS_MIN_PROFIT_PCT_TRADIER_LIVE: float = 0.01  # [PAR/002] live config_tradier NOLOSS_MIN_PROFIT_PCT_TRADIER
     VOLUME_CONFIRMATION_ENABLED: bool = False
     VOLUME_CONFIRMATION_MULT: float = 1.2
     VWAP_BOUNCE_DIST_PCT: float = 0.3
