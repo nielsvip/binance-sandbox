@@ -60,12 +60,17 @@
     "BAND_SLOPE_SIZING_V2_MIN",
     "BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY",
     "BAND_SLOPE_SIZING_V2_TF",
+    "BAR_PATTERNS_FILTER_TF",
     "BASELINE",
+    "BB4H_BREAKOUT_LADDER_ENABLED",
     "BB_BOUNCE_ENTRY_TF",
     "BB_BREAKOUT_SCORE",
     "BB_EXIT_AT_LOSS_TF",
     "BB_PROFIT_TAKE_TF",
     "BB_PULLBACK_GATE_FILTER_TF",
+    "BB_PULLBACK_GATE_LONG_MAX",
+    "BB_PULLBACK_GATE_SHORT_MIN",
+    "BB_PULLBACK_GATE_TF",
     "BB_RSI_STOCH_SCALP_",
     "BB_SQUEEZE_EXIT",
     "BEFORE",
@@ -83,6 +88,7 @@
     "BOUNCE_REENTRY_K_RESET_SHORT",
     "BREAKEVEN_GAIN_EROSION_ENABLED",
     "BREAKOUT_LEASH_REENTRY_MULT",
+    "BREAKOUT_RETEST_FILTER_TF",
     "BTC_GUARANTEED_REENTRY_ENABLED",
     "BTC_GUARANTEED_REENTRY_MAX_AGE_BARS",
     "BTC_GUARANTEED_REENTRY_MIN_GAP_BARS",
@@ -92,6 +98,7 @@
     "COMPLETE",
     "COND_A",
     "COND_B",
+    "CONNORS",
     "COOLDOWN_SEC",
     "COUNTER_TREND",
     "CRITICAL_DEPENDENCY",
@@ -138,6 +145,8 @@
     "EMA_9_21_FILTER_MIN_TFS",
     "EMA_9_21_TIMEFRAME",
     "EMA_BLANKET",
+    "EMA_BLANKET_FILTER_ENABLED",
+    "EMA_BLANKET_FILTER_FILTER_TF",
     "EMA_DIST_SIZING_ENABLED",
     "EMA_DIST_SIZING_MULT",
     "ENABLED",
@@ -148,6 +157,7 @@
     "ENTRY_ISOLATE_FAMILY",
     "ENTRY_LEADERBOARD",
     "ENTRY_REVERSAL_BOUNCE",
+    "ENTRY_SCORE",
     "ENTRY_SCORE_THRESHOLD",
     "ENTRY_VET",
     "ENTRY_ZERO_DIAGNOSIS",
@@ -159,6 +169,8 @@
     "EZ_MANAGE_THROTTLER_RATE",
     "EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED",
     "EZ_REENTRY_PRICE_CROSS_PCT",
+    "FILTER_TF",
+    "FINAL_SCORE_MAX",
     "FINDINGS_",
     "FLAG_PENNANT",
     "FOLLOW_THROUGH_REENTRY_ENABLED",
@@ -211,12 +223,16 @@
     "HOLD_PENDING_USER_DECISION",
     "HONEST",
     "HTF_AGAINST_FORCE_CLOSE_ENABLED",
+    "HTF_ALIGN_REQUIRED_TRADIER",
     "HTF_GATE",
+    "HTF_GATE_MODE",
     "HTF_TREND_VETO_BYPASS_REASONS",
     "INERT_NEEDS_3M",
     "INERT_WITH_REASON",
     "INVERT_DC_BB",
     "KNOWN_PARITY_GAPS",
+    "K_ZONE",
+    "K_ZONE_VETO",
     "L28254",
     "LEGACY_PROC_SINGLE_REENTRY",
     "LEGACY_PSR_",
@@ -230,6 +246,7 @@
     "LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED",
     "LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED",
     "LR_BAND_LADDER_TF_",
+    "LR_PCTB_D",
     "MACD_ZERO_CROSS_",
     "MACD_ZERO_CROSS_ENABLED",
     "MACD_ZERO_CROSS_SCORE",
@@ -251,6 +268,7 @@
     "MIN_IND",
     "MIN_TFS",
     "MI_DIV_EXIT_ENABLED",
+    "MI_ENTRY",
     "MI_EXHAUST_EXIT_ENABLED",
     "MI_EXIT",
     "MI_EXIT_ENABLED",
@@ -425,6 +443,7 @@
     "REQUIRE_WT",
     "RSI2_MEAN_REVERSION_",
     "RUNTIME",
+    "SATOSHIT",
     "SATOSHIT_EXIT",
     "SCALP_GUARD",
     "SHARED",
@@ -449,10 +468,13 @@
     "STDEV_SLOPE_SIZING_MODE",
     "STDEV_SLOPE_VEC_LIVE_FAITHFUL",
     "STOCH_CROSS",
+    "STOCH_CROSS_ENTRY_TRADIER",
     "STOCKS",
+    "STOCKS_LIVE_ENTRY_STACK_ENABLED",
     "STOCKS_LONG",
     "STOCKS_OK__CRYPTO_ROW_WRONG_VENUE_OR_NEEDS_CRYPTO_LIVE",
     "STOCKS_REENTRY_LIVE_SOURCES_ENABLED",
+    "STOCK_MAX_NOTIONAL_USD",
     "STOP_LOSS_ENABLED",
     "STOP_LOSS_PCT",
     "STRONG",
@@ -495,11 +517,16 @@
     "WT_COMPOSITE_ENTRY_STRONG",
     "WT_COMPOSITE_HTF_GATE",
     "WT_COMP_BLOCK",
+    "WT_DC_DC_POS_MIN",
     "WT_DC_DETAILED_SCORER_ENABLED",
     "WT_DC_DETAILED_TF",
     "WT_DC_ENABLED",
     "WT_DC_ENTRY_THRESHOLD",
     "WT_DC_EXIT",
+    "WT_DC_HTF_GATE",
+    "WT_DC_HTF_GATE_MODE",
+    "WT_DC_TF_HTF",
+    "WT_ENTRY",
     "WT_HTF_ALIGN",
     "WT_PERCENTILE_ENTRY_OB_D",
     "WT_PERCENTILE_ENTRY_OS_D",
@@ -696,6 +723,7 @@
    "vec_decisions/reentry_bounce_after_correction.py": "79780a7072aaf1ed4b7f709c8920a071",
    "vec_decisions/reentry_breakout.py": "71835dcc49a83225c6e8df46f67d9867",
    "vec_decisions/reentry_pathways.py": "8ccc5e98dad802b7ef0cc762d089c5c2",
+   "vec_decisions/reentry_tiers.py": "aaae47bb3b598097c1d7f4c792817377",
    "vec_decisions/sba_bounce.py": "8672960155e598fed255f642987eee21",
    "vec_decisions/shared_zone.py": "4aea6a963558df838f2c9c8949e2e9c6",
    "vec_decisions/short_elevator.py": "c0da155e4a165f2be51eabd78a670090",
@@ -785,12 +813,12 @@
    "vec_decisions/reentry_breakout.py:1",
    "vec_decisions/reentry_breakout.py:159"
   ],
-  "generated": "2026-10-01T05:59:26.949795Z",
+  "generated": "2026-10-01T06:00:01.405102Z",
   "inputs": {
    "live_gaps": 21,
    "parity_proven": 0,
    "switches_vec_only_no_live_mention": 53,
-   "vec_unwired": 233,
+   "vec_unwired": 231,
    "wired_proven": 32
   },
   "live_closure": {
@@ -1330,6 +1358,7 @@
    "vec_decisions/reentry_bounce_after_correction.py",
    "vec_decisions/reentry_breakout.py",
    "vec_decisions/reentry_pathways.py",
+   "vec_decisions/reentry_tiers.py",
    "vec_decisions/sba_bounce.py",
    "vec_decisions/shared_zone.py",
    "vec_decisions/short_elevator.py",
@@ -1470,6 +1499,7 @@
    "vec_decisions/quick_breakeven_gain_erosion.py",
    "vec_decisions/quick_open_strong.py",
    "vec_decisions/reentry_breakout.py",
+   "vec_decisions/reentry_tiers.py",
    "vec_decisions/shared_zone.py",
    "vec_decisions/short_elevator.py",
    "vec_decisions/struct_break_dc_1h.py",
@@ -1535,7 +1565,7 @@
    "vec_decisions/test_wt_4h_vel_exit.py",
    "vec_decisions/wt_4h_vel_exit.py"
   ],
-  "vec_modules_total": 179
+  "vec_modules_total": 180
  },
  "switches": {
   "ABLATION_DISABLE_AGGRESSIVE_HEDGE": {
@@ -4783,7 +4813,7 @@
    "agent_c_registry": null,
    "conflict_quick_vs_live": {},
    "defaults": {
-    "QuickConfig": "{'tra': {'id': '6YB69627', 'key': 'M7o5eDTG7IiPknfo2dpCwtIfCkeb', 'env': 'live'}",
+    "QuickConfig": "{'tra': {'id': None, 'key': None, 'env': 'live'}, 'trb': {'id': None, 'key': Non",
     "QuickConfig_apply_tradier_defaults": "<n/a>",
     "cat_side_defaults_4": {
      "CRYPTO_LONG": "<absent>",
@@ -4792,7 +4822,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "<absent>",
-    "config_tradier.py": "{'tra': {'id': '6YB69627', 'key': 'M7o5eDTG7IiPknfo2dpCwtIfCkeb', 'env': 'live'}",
+    "config_tradier.py": "{'tra': {'id': None, 'key': None, 'env': 'live'}, 'trb': {'id': None, 'key': Non",
     "template_bold": {}
    },
    "filter_tf": false,
@@ -15946,8 +15976,8 @@
     "SHORT"
    ],
    "status": {
-    "crypto": "DEAD",
-    "stocks": "DEAD"
+    "crypto": "DEAD+STAGED_VEC",
+    "stocks": "DEAD+STAGED_VEC"
    },
    "template": {
     "CRYPTO_LONG": {
@@ -16619,8 +16649,8 @@
    "recently_added": null,
    "sides": [],
    "status": {
-    "crypto": "LIVE_ONLY",
-    "stocks": "LIVE_ONLY"
+    "crypto": "LIVE_ONLY+STAGED_VEC",
+    "stocks": "LIVE_ONLY+STAGED_VEC"
    },
    "template": {},
    "type": "bool",
@@ -24258,7 +24288,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "<absent>",
-    "config_tradier.py": "{'UNG', 'AG', 'BTG', 'SLV', 'GDX', 'OIH', 'AU', 'RGLD', 'NEM', 'HL', 'AGI', 'UCO",
+    "config_tradier.py": "{'AU', 'XLE', 'AGI', 'KGC', 'GLD', 'OIH', 'SLV', 'UVXY', 'VXX', 'GDX', 'CDE', 'X",
     "template_bold": {}
    },
    "filter_tf": false,
@@ -32237,8 +32267,8 @@
     "SHORT"
    ],
    "status": {
-    "crypto": "DEAD",
-    "stocks": "DEAD"
+    "crypto": "DEAD+STAGED_VEC",
+    "stocks": "DEAD+STAGED_VEC"
    },
    "template": {
     "CRYPTO_LONG": {
@@ -80591,8 +80621,8 @@
     "SHORT"
    ],
    "status": {
-    "crypto": "DEAD",
-    "stocks": "DEAD"
+    "crypto": "DEAD+STAGED_VEC",
+    "stocks": "DEAD+STAGED_VEC"
    },
    "template": {
     "CRYPTO_LONG": {
@@ -194183,7 +194213,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "<absent>",
-    "config_tradier.py": "{'UNG', 'SBLK', 'ASC', 'BTC', 'NAT', 'ITA', 'BITO', 'CUBT', 'ETHE', 'TNK', 'ALMU",
+    "config_tradier.py": "{'SGML', 'DAC', 'URA', 'WEAT', 'FRO', 'ICL', 'PPA', 'ASML', 'PLL', 'TNK', 'LEC',",
     "template_bold": {}
    },
    "filter_tf": false,
@@ -242319,9 +242349,11 @@
    "type": "float",
    "vec_read_count": {
     "reachable": 0,
-    "total": 0
+    "total": 1
    },
-   "vec_reads": [],
+   "vec_reads": [
+    "vec_decisions/reentry_tiers.py:21(tier_fire) [UNREACHABLE]"
+   ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
   },
@@ -247337,10 +247369,12 @@
    "type": "float",
    "vec_read_count": {
     "reachable": 0,
-    "total": 0
+    "total": 1
    },
-   "vec_reads": [],
-   "vec_unwired_listed": true,
+   "vec_reads": [
+    "vec_decisions/reentry_tiers.py:35(size_mult) [UNREACHABLE]"
+   ],
+   "vec_unwired_listed": false,
    "venues_in_templates": [
     "CRYPTO",
     "STOCKS"
@@ -247740,10 +247774,12 @@
    "type": "float",
    "vec_read_count": {
     "reachable": 0,
-    "total": 0
+    "total": 1
    },
-   "vec_reads": [],
-   "vec_unwired_listed": true,
+   "vec_reads": [
+    "vec_decisions/reentry_tiers.py:27(tier_fire) [UNREACHABLE]"
+   ],
+   "vec_unwired_listed": false,
    "venues_in_templates": [
     "CRYPTO",
     "STOCKS"
@@ -309625,7 +309661,7 @@
    "agent_c_registry": null,
    "conflict_quick_vs_live": {},
    "defaults": {
-    "QuickConfig": "VA11623260",
+    "QuickConfig": "",
     "QuickConfig_apply_tradier_defaults": "VA11623260",
     "cat_side_defaults_4": {
      "CRYPTO_LONG": "<absent>",
@@ -309634,7 +309670,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "",
-    "config_tradier.py": "VA11623260",
+    "config_tradier.py": "",
     "template_bold": {}
    },
    "filter_tf": false,
@@ -309757,8 +309793,8 @@
    "agent_c_registry": null,
    "conflict_quick_vs_live": {},
    "defaults": {
-    "QuickConfig": "gDrr1UwivxxQPo6jUCyntP1hv7uk",
-    "QuickConfig_apply_tradier_defaults": "gDrr1UwivxxQPo6jUCyntP1hv7uk",
+    "QuickConfig": "",
+    "QuickConfig_apply_tradier_defaults": "",
     "cat_side_defaults_4": {
      "CRYPTO_LONG": "<absent>",
      "CRYPTO_SHORT": "<absent>",
@@ -309766,7 +309802,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "",
-    "config_tradier.py": "gDrr1UwivxxQPo6jUCyntP1hv7uk",
+    "config_tradier.py": "",
     "template_bold": {}
    },
    "filter_tf": false,
@@ -328240,7 +328276,7 @@
    "agent_c_registry": null,
    "conflict_quick_vs_live": {},
    "defaults": {
-    "QuickConfig": true,
+    "QuickConfig": false,
     "QuickConfig_apply_tradier_defaults": true,
     "cat_side_defaults_4": {
      "CRYPTO_LONG": false,
@@ -328249,7 +328285,7 @@
      "STOCKS_SHORT": true
     },
     "config.py": "<absent>",
-    "config_tradier.py": true,
+    "config_tradier.py": false,
     "template_bold": {}
    },
    "filter_tf": false,

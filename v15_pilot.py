@@ -6187,7 +6187,7 @@ def main():
                                 _hustle_delta_vs_baseline = None  # not in hustle mode
                                 ws_row.cell(row=r, column=6).value = None  # F empty in worst_first
                             else:
-                                _hustle_delta_vs_baseline = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
+                                _hustle_delta_vs_baseline = (float(vec_best.get("gain_pct")) - float(baseline_gain)) if (vec_best.get("gain_pct") is not None and baseline_gain is not None) else None  # NO-LIES: never 0 for None
                                 ws_row.cell(row=r, column=6).value = float(_hustle_delta_vs_baseline) if (getattr(args, "seq_mode", "") == "hustle" and _hustle_delta_vs_baseline is not None) else None  # F = HUSTLE_DELTA vs baseline (only hustle)
                             ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None  # G = greedy VECTOR_DELTA vs cum
                             ws_row.cell(row=r, column=7).font = Font(name="Arial", size=10, bold=True, color="9C5700")

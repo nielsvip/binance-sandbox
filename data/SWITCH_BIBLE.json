@@ -10,7 +10,7 @@
   "defaults_source": "runtime",
   "engine_deploy": {
    "files": {},
-   "md5": "d1e7c41f1775e83f76d8009637c7e9d2",
+   "md5": "18cfe0e5a861b7ef71de0b38e1aada0b",
    "source": "data/engine_deploy/CURRENT.json",
    "staged_names": [
     "AAPL_LONG",
@@ -30,6 +30,9 @@
     "ABLATION_DISABLE_REENTRY_ENFORCE",
     "ABLATION_DISABLE_SCALP_GUARD",
     "ABLATION_DISABLE_SPIKE_FADE_EXIT",
+    "ADX_RANGING_THRESHOLD",
+    "ADX_REGIME_FILTER_ENABLED",
+    "ADX_TF",
     "AGGRESSIVE_HEDGE",
     "ALL_TF_AGAINST",
     "ALL_TF_AGAINST_",
@@ -42,6 +45,8 @@
     "AMD_SHORT",
     "ANALYSIS_HANDOFF",
     "ATR_ADAPTIVE_SIZING_ENABLED",
+    "ATR_TRAIL_ENABLED",
+    "ATR_TRAIL_ENABLED_TRADIER",
     "AUGMENT",
     "AUGMENTATION",
     "AUGMENT_AT_LOSS_ENABLED",
@@ -50,6 +55,7 @@
     "AUGMENT_FALLBACK_REDUCE_ENABLED",
     "AUGMENT_FALLBACK_REDUCE_PCT",
     "AUGMENT_MIN_GAIN_PCT",
+    "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER",
     "AUGMENT_TREND",
     "AUGMENT_WT_4H_BOUNCE_ENABLED",
     "AUTO_WIRED",
@@ -71,6 +77,7 @@
     "BB_PULLBACK_GATE_LONG_MAX",
     "BB_PULLBACK_GATE_SHORT_MIN",
     "BB_PULLBACK_GATE_TF",
+    "BB_RECOVERY_EXIT",
     "BB_RSI_STOCH_SCALP_",
     "BB_SQUEEZE_EXIT",
     "BEFORE",
@@ -89,31 +96,53 @@
     "BREAKEVEN_GAIN_EROSION_ENABLED",
     "BREAKOUT_LEASH_REENTRY_MULT",
     "BREAKOUT_RETEST_FILTER_TF",
+    "BTC_GUARANTEED_REENTRY_",
     "BTC_GUARANTEED_REENTRY_ENABLED",
     "BTC_GUARANTEED_REENTRY_MAX_AGE_BARS",
     "BTC_GUARANTEED_REENTRY_MIN_GAP_BARS",
     "B_WT_DC_LIVE",
+    "CANDLE_PATTERN_STOPS_FILTER_TF",
     "CHANNEL_REENTRY_STOP_ENABLED",
+    "CHOP_RANGING_THRESHOLD",
+    "CHOP_TRENDING_THRESHOLD",
     "CLAUDE",
+    "CLENOW",
+    "CLENOW_ENABLED",
+    "CLENOW_GATE_ENABLED",
+    "CLENOW_GATE_MIN_SCORE",
     "COMPLETE",
     "COND_A",
     "COND_B",
+    "CONFLUENCE_MODE",
     "CONNORS",
     "COOLDOWN_SEC",
     "COUNTER_TREND",
     "CRITICAL_DEPENDENCY",
     "CRM_LONG",
     "CRM_SHORT",
+    "CRWD_LONG",
+    "CRYPTO_LONG",
     "CRYPTO_OK__STOCKS_ROW_WRONG_VENUE_OR_NEEDS_STOCK_LIVE",
+    "CRYPTO_SHORT",
+    "CT_15M_MOMENTUM",
+    "CT_15M_MOMENTUM_GATE_ENABLED",
+    "CT_CHOP_4H",
+    "CT_CHOP_4H_GATE_ENABLED",
+    "CT_REL_VOL_MIN",
+    "CT_VOLUME_SURGE",
+    "CT_VOLUME_SURGE_GATE_ENABLED",
     "CUP_HANDLE",
     "CURRENT",
     "CYCLE_TP_TIERED_ENABLED",
+    "DAEMON_",
     "DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED",
     "DAEMON_REENTRY_STALE_EXIT_ENABLED",
     "DATA_ONLY",
+    "DATA_SAWTOOTH",
     "DAYTRADE_DC_",
     "DAYTRADE_DC_STOP_TF",
     "DAYTRADE_DC_TARGET_TF",
+    "DC_BOUNCE",
     "DC_BREACH_REDUCE",
     "DC_DAYTRADE_ENABLED",
     "DC_EDGE_SIZING_ENABLED",
@@ -124,20 +153,32 @@
     "DC_HOPELESS_EXIT_MIN_AGE_S",
     "DC_MOMENT",
     "DC_MOMENT_",
+    "DC_TIER",
+    "DC_TIER4",
+    "DC_TIER4_DC4H_AUG",
+    "DC_TIER_AUG_ENABLED",
     "DD_BOUNCE_ENABLED",
     "DECISION",
     "DEFAULT_MISMATCH",
+    "DELTA_EXIT",
     "DELTA_EXIT_DC_FLOOR",
     "DELTA_EXIT_MANDATORY_REENTRY_ENABLED",
     "DELTA_GATE_REENTRY",
+    "DELTA_REENTRY",
     "DELTA_REENTRY_FILTER_ENABLED",
     "DELTA_REENTRY_MIN_TF",
     "DELTA_REENTRY_Z_THRESHOLD",
+    "DIRECTION_FAVORABLE",
     "DIRECTION_FAVORABLE_REENTRY_ENABLED",
     "DISCONNECTED",
     "DOUBLE_TOP_BOTTOM",
     "DYNAMIC",
     "DYNAMIC_SCORE_AUGMENT_ENABLED",
+    "DYN_STRUCT_TRAIL",
+    "DYN_STRUCT_TRAIL_ENABLED",
+    "DYN_STRUCT_TRAIL_MIN_GAIN_PCT",
+    "DYN_STRUCT_TRAIL_TF",
+    "D_TREND_REQUIRED",
     "EMA200_1H_BOUNCE",
     "EMA200_STOCHRSI",
     "EMA_9_21",
@@ -150,6 +191,8 @@
     "EMA_DIST_SIZING_ENABLED",
     "EMA_DIST_SIZING_MULT",
     "ENABLED",
+    "ENGINE",
+    "ENGINE_FIX",
     "ENGINE_HOOK",
     "ENGINE_PROPOSAL",
     "ENTRY_BREAKOUT_CHANNEL",
@@ -164,15 +207,20 @@
     "ETHUSDC_LONG",
     "ETH_LONG",
     "EXIT_ENABLED",
+    "EXIT_RECLAIM",
     "EXIT_STRUCTURAL",
+    "EXIT_TOP_FADE_FILTER_TF",
     "EXIT_VELOCITY",
     "EZ_MANAGE_THROTTLER_RATE",
+    "EZ_REENTRY",
+    "EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED",
     "EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED",
     "EZ_REENTRY_PRICE_CROSS_PCT",
     "FILTER_TF",
     "FINAL_SCORE_MAX",
     "FINDINGS_",
     "FLAG_PENNANT",
+    "FOLLOW_THROUGH",
     "FOLLOW_THROUGH_REENTRY_ENABLED",
     "FORCE_CLOSE_",
     "FORCE_OPEN_REQUIRE_MTF_GR",
@@ -180,9 +228,19 @@
     "FORMATION_EXIT_MIN_GAIN_PCT",
     "FORMATION_MIN_SCORE",
     "FORMATION_TFS",
+    "FULL_DC",
+    "GAIN_STEP_PCT",
+    "GAP_CLOSE_MOC",
+    "GAP_CLOSE_MOC_",
+    "GAP_MOC",
+    "GAP_MOC_",
+    "GAP_MOC_EXIT",
+    "GAP_MOC_EXIT_ENABLED",
+    "GAP_RISK",
     "GAP_RISK_EXIT",
     "GAP_RISK_EXIT_",
     "GAP_RISK_EXIT_ENABLED",
+    "GAP_RISK_REENTRY",
     "GAP_RISK_REENTRY_ENABLED",
     "GAP_RISK_REENTRY_MAX_DAYS",
     "GAP_RISK_REENTRY_ON_FILL",
@@ -192,6 +250,7 @@
     "GRANTS",
     "GREY_WIRE",
     "GUARANTEED_",
+    "GUARANTEED_REENTRY_",
     "GUARANTEED_REENTRY_DELTA_GATE_ENABLED",
     "GUARANTEED_REENTRY_K_FAVORABLE_HIGH",
     "GUARANTEED_REENTRY_K_FAVORABLE_LOW",
@@ -203,8 +262,10 @@
     "GUARANTEED_REENTRY_TIGHT_STOP_MAX_AGE_S",
     "GUARANTEED_REENTRY_TIGHT_STOP_MIN_AGE_S",
     "GUARANTEED_REENTRY_TIGHT_STOP_PCT",
+    "HAO_SHORT",
     "HARDCODED",
     "HARDCODED_RALLY",
+    "HARDCODED_RALLY_",
     "HARDCODED_RALLY_REENTRY_ENABLED",
     "HARDCODED_RALLY_REENTRY_REQUIRE_WT",
     "HARD_MAX_SYMBOL_VALUE",
@@ -214,6 +275,7 @@
     "HA_WICK_QUALITY_TF",
     "HEAD_SHOULDERS",
     "HIGH_GAIN_AUGMENT",
+    "HLR_REENTRY",
     "HLR_REENTRY_MAX_AGE_S",
     "HLR_REENTRY_MULT_1H",
     "HLR_REENTRY_MULT_4H",
@@ -223,28 +285,43 @@
     "HOLD_PENDING_USER_DECISION",
     "HONEST",
     "HTF_AGAINST_FORCE_CLOSE_ENABLED",
+    "HTF_ALIGNMENT",
+    "HTF_ALIGNMENT_ENABLED",
     "HTF_ALIGN_REQUIRED_TRADIER",
     "HTF_GATE",
     "HTF_GATE_MODE",
+    "HTF_MIN_ALIGNED",
     "HTF_TREND_VETO_BYPASS_REASONS",
+    "IBIT_LONG",
     "INERT_NEEDS_3M",
     "INERT_WITH_REASON",
     "INVERT_DC_BB",
     "KNOWN_PARITY_GAPS",
     "K_ZONE",
     "K_ZONE_VETO",
+    "L15097",
+    "L20778",
+    "L20794",
     "L28254",
+    "LEGACY_",
+    "LEGACY_DC_BREAKOUT_REENTRY",
     "LEGACY_PROC_SINGLE_REENTRY",
     "LEGACY_PSR_",
+    "LEGACY_REENTRY_PSR_",
     "LEGACY_REENTRY_PSR_DC_BOUNCE",
     "LEGACY_REENTRY_PSR_FULL_DC",
     "LEGACY_REENTRY_PSR_K_DC_CROSSOVER",
     "LEGACY_REENTRY_PSR_QUICK_RECOVERY",
+    "LEXX_LONG",
     "LIVE_ENTRY_ENGINE_ENABLED",
     "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED",
     "LIVE_ONLY_NEEDS_VECTOR_TWIN",
+    "LIVE_SAFETY",
+    "LOCKED",
     "LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED",
     "LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED",
+    "LR_BAND_LADDER",
+    "LR_BAND_LADDER_ORDINARY_PARITY",
     "LR_BAND_LADDER_TF_",
     "LR_PCTB_D",
     "MACD_ZERO_CROSS_",
@@ -252,6 +329,9 @@
     "MACD_ZERO_CROSS_SCORE",
     "MACD_ZERO_CROSS_TF",
     "MANDATORY",
+    "MANDATORY_PRICE_CROSS_EPQ_ENABLED",
+    "MANDATORY_REENTRY",
+    "MANDATORY_REENTRY_",
     "MANDATORY_REENTRY_ALLOW_WT0_STRONG_CROSS",
     "MANDATORY_REENTRY_K_HIGH_BLOCK",
     "MANDATORY_REENTRY_K_LOW_BLOCK",
@@ -261,12 +341,17 @@
     "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO",
     "MARKET_QUALITY",
     "MARKET_QUALITY_SCORE_ENABLED",
+    "MASKED",
+    "MAX_AGE_BARS",
     "MAX_ORDER_VALUE",
+    "MAX_PER_POSITION",
     "MFI_FLIP",
     "MIN_GAIN",
+    "MIN_GAIN_PCT",
     "MIN_GAIN_TO_BUY_AGGRESSIVELY",
     "MIN_IND",
     "MIN_TFS",
+    "MISSING",
     "MI_DIV_EXIT_ENABLED",
     "MI_ENTRY",
     "MI_EXHAUST_EXIT_ENABLED",
@@ -279,17 +364,24 @@
     "MOMENTUM_WATCHDOG_ENABLED",
     "MTF_ARMED",
     "MTF_ARMED_ENTRY_ENABLED",
+    "MTF_ATR_TRAIL_ENABLED",
+    "MTF_ATR_TRAIL_ENABLED_TRADIER",
+    "MTF_ATR_TRAIL_MULT",
+    "MTF_ATR_TRAIL_TF_TRADIER",
+    "MTF_EXIT_USE_COMPOUND",
     "MTF_GR_FILTER_ENABLED",
     "MTF_GR_INVERT_DC_BB",
     "MTF_GR_MIN_IND",
     "MTF_GR_MIN_TFS",
     "MTF_NO_ARMED_STATE",
     "MTF_REQUIRE_ARMED_ANY",
+    "MULTI_TF_EXIT",
     "MU_CORRECTION",
     "MU_CORRECTION_REENTRY_ENABLED",
     "M_AGAINST",
     "NEEDED",
     "NOLOSS_BYPASS_WT_5OF5_ENABLED",
+    "NOT_WIRED",
     "NO_HOOK_YET",
     "OBLIGATORY_",
     "OBLIGATORY_ENABLED",
@@ -311,14 +403,18 @@
     "OBLIGATORY_REENTRY_SMA_TF",
     "OBLIGATORY_REENTRY_TIER1_HTF_REQUIRED",
     "OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED",
+    "OLED_LONG",
     "OPEN_RECLAIM",
     "ORANGE_SWITCH_CHECK",
     "OUTLIER",
     "OUTLIER_DETECTOR_ENABLED",
+    "PARITY_DISABLE_NON_VECTORIZABLE",
+    "PARTIAL_PROFIT_LOCK_",
     "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT",
     "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER",
     "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT",
     "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER",
+    "PARTIAL_PROFIT_LOCK_ENABLED",
     "PARTIAL_PROFIT_LOCK_FRAC",
     "PARTIAL_PROFIT_LOCK_FRAC_TRADIER",
     "PARTIAL_PROFIT_LOCK_GAIN_PCT",
@@ -327,26 +423,36 @@
     "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED",
     "PERIODIC_REENTRY",
     "POST_CLOSE_COOLDOWN",
+    "POST_CONSOL",
+    "PREVIOUS",
+    "PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED",
     "PRICE_CROSS_BACK",
     "PRICE_CROSS_BACK_BAND_PCT",
     "PRICE_CROSS_BACK_MAX_AGE_MIN",
     "PRICE_CROSS_BACK_REENTRY_ENABLED",
     "PROBE_RESULTS",
+    "PULLBACK",
+    "PYPL_LONG",
     "PYRAMID_ENABLED",
     "QUICK_ENTRY",
     "QUICK_ENTRY_ABLATION_SUPPRESS_VEC",
     "QUICK_EXIT",
+    "QUICK_RECOVERY",
     "RATIO_REBALANCE",
+    "RBLX_LONG",
     "RECOVERY_AUGMENT",
+    "REDUCE",
     "REENTER",
     "REENTRY",
     "REENTRY2_",
+    "REENTRY2_DC_BREAK_",
     "REENTRY2_DC_BREAK_ALLOW_15M",
     "REENTRY2_DC_BREAK_ENABLED",
     "REENTRY2_DC_BREAK_FILTER_TF",
     "REENTRY2_DC_BREAK_REQUIRE_K_FILTER",
     "REENTRY2_DC_BREAK_REQUIRE_WT_FILTER",
     "REENTRY2_DIR_FAV_ENABLED",
+    "REENTRY2_QUICK_RECOVERY",
     "REENTRY2_QUICK_RECOVERY_ENABLED",
     "REENTRY_",
     "REENTRY_15M_",
@@ -368,6 +474,7 @@
     "REENTRY_B12_WT_MOM_ENABLED",
     "REENTRY_B14_HA_TREND_ENABLED",
     "REENTRY_B15_STRONG_TREND_ENABLED",
+    "REENTRY_B16_",
     "REENTRY_B16_SIZE_MULT_STRONG",
     "REENTRY_B16_SIZE_MULT_WEAK",
     "REENTRY_B16_SMA200_PROX_PCT",
@@ -392,6 +499,7 @@
     "REENTRY_DC_MID_PULLBACK_WIDTH_MAX",
     "REENTRY_ENFORCE",
     "REENTRY_ENTRY_FILTER_ENABLED",
+    "REENTRY_EPQ_MODEL_ENABLED",
     "REENTRY_EXHAUSTED_PARTIAL_ENABLED",
     "REENTRY_EXIT_RECLAIM_BUFFER_PCT",
     "REENTRY_EXIT_RECLAIM_ENABLED",
@@ -406,6 +514,7 @@
     "REENTRY_MAX_PRICE_DIVERGENCE_PCT",
     "REENTRY_MIN_GAP_MINUTES",
     "REENTRY_OBLIGATORY_MODEL_ENABLED",
+    "REENTRY_PATHWAY_MODEL_ENABLED",
     "REENTRY_POST_CONSOL_ATR_THRESHOLD",
     "REENTRY_POST_CONSOL_ENABLED",
     "REENTRY_POST_CONSOL_MULT",
@@ -418,6 +527,8 @@
     "REENTRY_PULLBACK_GR_SCORE_",
     "REENTRY_PULLBACK_GR_SCORE_ENABLED",
     "REENTRY_PULLBACK_GR_SCORE_MIN",
+    "REENTRY_RALLY_K15M_MAX",
+    "REENTRY_SIZE_",
     "REENTRY_SIZE_BREAKOUT_MULT",
     "REENTRY_SIZE_DIP_MULT",
     "REENTRY_SIZE_EXTENDED_K1H",
@@ -438,11 +549,14 @@
     "REENTRY_WT15M_SIZE_MULT",
     "REFUSES",
     "RELEASED",
+    "REMOVED",
     "REPORT",
     "REQUIRE_NOT_EXITING",
     "REQUIRE_WT",
     "RSI2_MEAN_REVERSION_",
     "RUNTIME",
+    "RVOL_MIN",
+    "RZ_EXIT",
     "SATOSHIT",
     "SATOSHIT_EXIT",
     "SCALP_GUARD",
@@ -453,12 +567,25 @@
     "SHORT_PARTIAL_RECOVERY_SIZE_MULT",
     "SMA15M_WT3M",
     "SMA_BOUNCE_MULT",
+    "SMCI_LONG",
+    "SMCI_SHORT",
     "SOLUSDC_LONG",
     "SOLUSDC_SHORT",
     "SOL_SHORT",
     "SPIKE_FADE_EXIT",
     "SPREADSHEETS",
+    "STDEV_BREAKOUT_ENABLED",
+    "STDEV_BREAKOUT_EXIT_PCTB_FAIL",
+    "STDEV_BREAKOUT_MAX_AGE_BARS",
+    "STDEV_BREAKOUT_PCTB_LONG",
+    "STDEV_BREAKOUT_PCTB_SHORT",
+    "STDEV_BREAKOUT_RVOL_MIN",
     "STDEV_MACRO",
+    "STDEV_REJECT",
+    "STDEV_REJECT_EXIT_ENABLED",
+    "STDEV_REJECT_EXIT_RETURN",
+    "STDEV_REJECT_EXIT_TF",
+    "STDEV_REJECT_EXIT_ZONE",
     "STDEV_SLOPE_SIZING",
     "STDEV_SLOPE_SIZING_15M_MAX",
     "STDEV_SLOPE_SIZING_1H_MAX",
@@ -468,15 +595,21 @@
     "STDEV_SLOPE_SIZING_MODE",
     "STDEV_SLOPE_VEC_LIVE_FAITHFUL",
     "STOCH_CROSS",
+    "STOCH_CROSS_",
     "STOCH_CROSS_ENTRY_TRADIER",
     "STOCKS",
     "STOCKS_LIVE_ENTRY_STACK_ENABLED",
     "STOCKS_LONG",
     "STOCKS_OK__CRYPTO_ROW_WRONG_VENUE_OR_NEEDS_CRYPTO_LIVE",
+    "STOCKS_OPEN_GATES_ON_FINAL",
     "STOCKS_REENTRY_LIVE_SOURCES_ENABLED",
+    "STOCK_LIVE_AUGMENT_ENABLED",
     "STOCK_MAX_NOTIONAL_USD",
     "STOP_LOSS_ENABLED",
     "STOP_LOSS_PCT",
+    "STRENGTH_FILTER",
+    "STRENGTH_FILTER_ENABLED",
+    "STRENGTH_MIN_SCORE",
     "STRONG",
     "STRUCTURE_BREAK",
     "SWITCH_BIBLE",
@@ -484,23 +617,42 @@
     "T2_30D_",
     "TARGET_TF",
     "TECHNICAL_EXIT",
+    "TEMPLATE",
     "TEMPLATE_",
+    "TF_HTF1",
+    "TF_HTF3",
+    "TF_TRADIER",
     "TIER2_CHASE",
     "TIER2_FORCED",
     "TIER2_MAX",
     "TRADIER_REENTRY_HARDCOOL_MIN",
+    "TRAILING_AUG",
+    "TRAILING_AUG_ENABLED_TRADIER",
     "TREND_STRUCTURE",
     "TRIANGLE",
     "TRIPLE_CONF_",
+    "UAG_LADDER",
     "UEC_LONG",
     "UEC_SHORT",
     "UEC_SHORT_ZENUSDT_LONG",
+    "UNCONDITIONAL",
+    "UNIVERSAL_AUGMENT_GAIN_GATE",
+    "UNREACHABLE",
+    "UNSPECIFIED__",
     "VEC_EXIT_SIG_IS_TRIGGER",
     "VEC_ONLY_NO_LIVE_ANYWHERE",
     "VEC_REENTRY_DC4_EXITPRICE_ENABLED",
     "VEC_REGIME_EXIT",
+    "VEC_REGIME_EXIT_ENABLED_TRADIER",
+    "VEC_VEL_EXIT_AS_TRIGGER",
     "VEL_EXIT",
     "VEL_EXIT_ENABLED",
+    "VIGILANCE_",
+    "VIGILANCE_CONSEC_LOSSES",
+    "VIGILANCE_DC4_BREACH_TOLERANCE_PCT",
+    "VIGILANCE_DC4_STOP_TF",
+    "VIGILANCE_GUARD_ENABLED",
+    "VIGILANCE_RECOVERY_BOUNCE_OK",
     "VIRTUAL",
     "WARNING",
     "WATCHDOG_DC_FORCE_OPEN_ENABLED",
@@ -517,6 +669,8 @@
     "WT_COMPOSITE_ENTRY_STRONG",
     "WT_COMPOSITE_HTF_GATE",
     "WT_COMP_BLOCK",
+    "WT_CROSSUNDER_FINAL",
+    "WT_CROSSUNDER_FINAL_ENABLED",
     "WT_DC_DC_POS_MIN",
     "WT_DC_DETAILED_SCORER_ENABLED",
     "WT_DC_DETAILED_TF",
@@ -525,7 +679,12 @@
     "WT_DC_EXIT",
     "WT_DC_HTF_GATE",
     "WT_DC_HTF_GATE_MODE",
+    "WT_DC_TF_COMBO",
     "WT_DC_TF_HTF",
+    "WT_D_BOUNCE_AUG",
+    "WT_D_EXHAUST",
+    "WT_D_EXHAUST_GATE_ENABLED",
+    "WT_D_EXHAUST_THRESHOLD",
     "WT_ENTRY",
     "WT_HTF_ALIGN",
     "WT_PERCENTILE_ENTRY_OB_D",
@@ -613,7 +772,7 @@
    "trc_advisory_consumer.py": "4e76610ad982ab506f5a09060ff43ef9",
    "utils.py": "47aed6d412d0ae3a02582f2a56549180",
    "uve_engine.py": "8d6d80b7139001558c4f0a768e558a76",
-   "v12_quick_engine.py": "dfa0b60abe9a4cbcfc94dcafbf5a1fb1",
+   "v12_quick_engine.py": "384ce280cb055e0afde31c24564e7fda",
    "vec_decisions/bb_pullback_gate.py": "d923cbc0260f1c34c68a3b0102fad3be",
    "vec_decisions/breakout_opener.py": "f4da53ef8d8a8eb6c7cff1d0a5641dd7",
    "vec_decisions/check_entry_candidates_crypto__bb_squeeze_gate.py": "c01894a684fade3730de85b0768a5f6a",
@@ -684,6 +843,7 @@
    "vec_decisions/mtf_atr_trail_exit.py": "c713f53f2ff4df7145fec7df5cc0f337",
    "vec_decisions/mtf_compound_exits.py": "38f7d1312589ab85f4d81d29dc8c59fc",
    "vec_decisions/mtf_exit_scorer.py": "07a4713ede71c600c538ac30e78a0fd3",
+   "vec_decisions/mtf_gr_filter.py": "e596bbf0d459b70624441d3338531e94",
    "vec_decisions/noloss_gate.py": "5f4a582a22823c2705eaceb358ef145f",
    "vec_decisions/overtrade_guard.py": "e9dc60e4155f7acd8bfd088204b9b9f5",
    "vec_decisions/ported_augment.py": "68e5152c82b825b800ee942efe79cdfb",
@@ -813,7 +973,7 @@
    "vec_decisions/reentry_breakout.py:1",
    "vec_decisions/reentry_breakout.py:159"
   ],
-  "generated": "2026-10-01T06:00:01.405102Z",
+  "generated": "2026-10-01T06:11:31.072569Z",
   "inputs": {
    "live_gaps": 21,
    "parity_proven": 0,
@@ -950,7 +1110,7 @@
     "wt_dc_exit_scorer.py"
    ]
   },
-  "n_switches": 3463,
+  "n_switches": 3466,
   "shared_vec_live_modules": {
    "crypto": [
     "vec_decisions/bb_pullback_gate.py",
@@ -1319,6 +1479,7 @@
    "vec_decisions/mtf_atr_trail_exit.py",
    "vec_decisions/mtf_compound_exits.py",
    "vec_decisions/mtf_exit_scorer.py",
+   "vec_decisions/mtf_gr_filter.py",
    "vec_decisions/noloss_gate.py",
    "vec_decisions/overtrade_guard.py",
    "vec_decisions/ported_augment.py",
@@ -1499,7 +1660,6 @@
    "vec_decisions/quick_breakeven_gain_erosion.py",
    "vec_decisions/quick_open_strong.py",
    "vec_decisions/reentry_breakout.py",
-   "vec_decisions/reentry_tiers.py",
    "vec_decisions/shared_zone.py",
    "vec_decisions/short_elevator.py",
    "vec_decisions/struct_break_dc_1h.py",
@@ -1565,7 +1725,7 @@
    "vec_decisions/test_wt_4h_vel_exit.py",
    "vec_decisions/wt_4h_vel_exit.py"
   ],
-  "vec_modules_total": 180
+  "vec_modules_total": 181
  },
  "switches": {
   "ABLATION_DISABLE_AGGRESSIVE_HEDGE": {
@@ -1740,8 +1900,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:11078(_apply_625_ablation_gates) [UNREACHABLE]",
-    "v12_quick_engine.py:11650(simulate_one)"
+    "v12_quick_engine.py:11086(_apply_625_ablation_gates) [UNREACHABLE]",
+    "v12_quick_engine.py:11683(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -1922,8 +2082,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:11080(_apply_625_ablation_gates) [UNREACHABLE]",
-    "v12_quick_engine.py:11652(simulate_one)"
+    "v12_quick_engine.py:11088(_apply_625_ablation_gates) [UNREACHABLE]",
+    "v12_quick_engine.py:11685(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -2101,8 +2261,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:11082(_apply_625_ablation_gates) [UNREACHABLE]",
-    "v12_quick_engine.py:11654(simulate_one)"
+    "v12_quick_engine.py:11090(_apply_625_ablation_gates) [UNREACHABLE]",
+    "v12_quick_engine.py:11687(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -2281,8 +2441,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:11084(_apply_625_ablation_gates) [UNREACHABLE]",
-    "v12_quick_engine.py:11656(simulate_one)"
+    "v12_quick_engine.py:11092(_apply_625_ablation_gates) [UNREACHABLE]",
+    "v12_quick_engine.py:11689(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -2455,7 +2615,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11086(_apply_625_ablation_gates) [UNREACHABLE]"
+    "v12_quick_engine.py:11094(_apply_625_ablation_gates) [UNREACHABLE]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -2624,7 +2784,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11089(_apply_625_ablation_gates) [UNREACHABLE]"
+    "v12_quick_engine.py:11097(_apply_625_ablation_gates) [UNREACHABLE]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -2791,7 +2951,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11092(_apply_625_ablation_gates) [UNREACHABLE]"
+    "v12_quick_engine.py:11100(_apply_625_ablation_gates) [UNREACHABLE]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -2958,7 +3118,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11095(_apply_625_ablation_gates) [UNREACHABLE]"
+    "v12_quick_engine.py:11103(_apply_625_ablation_gates) [UNREACHABLE]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -3052,7 +3212,7 @@
     "CRYPTO_SHORT": true
    },
    "defaults": {
-    "QuickConfig": false,
+    "QuickConfig": true,
     "QuickConfig_apply_tradier_defaults": false,
     "cat_side_defaults_4": {
      "CRYPTO_LONG": "<absent>",
@@ -3207,8 +3367,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:11098(_apply_625_ablation_gates) [UNREACHABLE]",
-    "v12_quick_engine.py:11658(simulate_one)"
+    "v12_quick_engine.py:11106(_apply_625_ablation_gates) [UNREACHABLE]",
+    "v12_quick_engine.py:11691(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -3385,8 +3545,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:11101(_apply_625_ablation_gates) [UNREACHABLE]",
-    "v12_quick_engine.py:11660(simulate_one)"
+    "v12_quick_engine.py:11109(_apply_625_ablation_gates) [UNREACHABLE]",
+    "v12_quick_engine.py:11693(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -3511,7 +3671,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11103(_apply_625_ablation_gates) [UNREACHABLE]"
+    "v12_quick_engine.py:11111(_apply_625_ablation_gates) [UNREACHABLE]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -3536,7 +3696,7 @@
     "CRYPTO_SHORT": true
    },
    "defaults": {
-    "QuickConfig": false,
+    "QuickConfig": true,
     "QuickConfig_apply_tradier_defaults": false,
     "cat_side_defaults_4": {
      "CRYPTO_LONG": "<absent>",
@@ -3691,12 +3851,13 @@
    },
    "type": "bool",
    "vec_read_count": {
-    "reachable": 1,
-    "total": 2
+    "reachable": 2,
+    "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:8963(compute_entry_signals)",
-    "v12_quick_engine.py:11105(_apply_625_ablation_gates) [UNREACHABLE]"
+    "v12_quick_engine.py:8971(compute_entry_signals)",
+    "v12_quick_engine.py:11113(_apply_625_ablation_gates) [UNREACHABLE]",
+    "v12_quick_engine.py:11522(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -3722,7 +3883,7 @@
     "CRYPTO_SHORT": true
    },
    "defaults": {
-    "QuickConfig": false,
+    "QuickConfig": true,
     "QuickConfig_apply_tradier_defaults": false,
     "cat_side_defaults_4": {
      "CRYPTO_LONG": "<absent>",
@@ -3877,8 +4038,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9671(compute_exit_signals)",
-    "v12_quick_engine.py:11108(_apply_625_ablation_gates) [UNREACHABLE]"
+    "v12_quick_engine.py:9679(compute_exit_signals)",
+    "v12_quick_engine.py:11116(_apply_625_ablation_gates) [UNREACHABLE]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -4055,8 +4216,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:11110(_apply_625_ablation_gates) [UNREACHABLE]",
-    "v12_quick_engine.py:11662(simulate_one)"
+    "v12_quick_engine.py:11118(_apply_625_ablation_gates) [UNREACHABLE]",
+    "v12_quick_engine.py:11695(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -4236,9 +4397,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:8968(compute_entry_signals)",
-    "v12_quick_engine.py:11113(_apply_625_ablation_gates) [UNREACHABLE]",
-    "v12_quick_engine.py:11664(simulate_one)"
+    "v12_quick_engine.py:8976(compute_entry_signals)",
+    "v12_quick_engine.py:11121(_apply_625_ablation_gates) [UNREACHABLE]",
+    "v12_quick_engine.py:11697(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -4426,8 +4587,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:11116(_apply_625_ablation_gates) [UNREACHABLE]",
-    "v12_quick_engine.py:11671(simulate_one)"
+    "v12_quick_engine.py:11124(_apply_625_ablation_gates) [UNREACHABLE]",
+    "v12_quick_engine.py:11704(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -4673,8 +4834,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:11118(_apply_625_ablation_gates) [UNREACHABLE]",
-    "v12_quick_engine.py:11673(simulate_one)"
+    "v12_quick_engine.py:11126(_apply_625_ablation_gates) [UNREACHABLE]",
+    "v12_quick_engine.py:11706(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -6085,9 +6246,9 @@
     "total": 4
    },
    "vec_reads": [
-    "v12_quick_engine.py:190(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:191(_batch1_template_wiring) [DEAD]",
     "v12_quick_engine.py:192(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:193(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:194(_batch1_template_wiring) [DEAD]",
     "vec_decisions/entry_hard_gates.py:44(crypto_block)"
    ],
    "vec_unwired_listed": false,
@@ -6502,8 +6663,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:10016(compute_reduce_signals)",
-    "v12_quick_engine.py:10050(compute_regime_sizing_mult)"
+    "v12_quick_engine.py:10024(compute_reduce_signals)",
+    "v12_quick_engine.py:10058(compute_regime_sizing_mult)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -7468,9 +7629,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:197(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:198(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:199(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:199(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:200(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:201(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -7655,9 +7816,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:203(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:220(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:221(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:205(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:222(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:223(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -7909,10 +8070,10 @@
     "total": 5
    },
    "vec_reads": [
-    "v12_quick_engine.py:210(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:222(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:223(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:212(_batch1_template_wiring) [DEAD]",
     "v12_quick_engine.py:224(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:225(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:226(_batch1_template_wiring) [DEAD]",
     "vec_decisions/process_position_crypto__all_tf_against.py:39(_min_tfs)"
    ],
    "vec_unwired_listed": false,
@@ -8490,7 +8651,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:10056(compute_regime_sizing_mult)"
+    "v12_quick_engine.py:10064(compute_regime_sizing_mult)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -8749,7 +8910,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:10059(compute_regime_sizing_mult)"
+    "v12_quick_engine.py:10067(compute_regime_sizing_mult)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -9432,9 +9593,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:228(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:229(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:230(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:230(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:231(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:232(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -9820,8 +9981,8 @@
    "recently_added": null,
    "sides": [],
    "status": {
-    "crypto": "DEAD",
-    "stocks": "DEAD"
+    "crypto": "DEAD+STAGED_VEC",
+    "stocks": "DEAD+STAGED_VEC"
    },
    "template": {},
    "type": "bool",
@@ -10085,9 +10246,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:235(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:236(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:243(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:237(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:238(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:245(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -10259,9 +10420,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:244(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:248(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:249(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:246(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:250(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:251(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -10818,9 +10979,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:250(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:251(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:252(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:252(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:253(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:254(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -10992,9 +11153,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:257(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:262(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:263(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:259(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:264(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:265(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -11752,7 +11913,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9961(compute_augment_signals)"
+    "v12_quick_engine.py:9969(compute_augment_signals)"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -13052,9 +13213,9 @@
     "total": 4
    },
    "vec_reads": [
-    "v12_quick_engine.py:264(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:265(_batch1_template_wiring) [DEAD]",
     "v12_quick_engine.py:266(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:267(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:268(_batch1_template_wiring) [DEAD]",
     "vec_decisions/gain_ladder_augment.py:55(profit_gate_ok)"
    ],
    "vec_unwired_listed": false,
@@ -13185,7 +13346,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9980(_augment_allowed)",
+    "v12_quick_engine.py:9988(_augment_allowed)",
     "vec_decisions/gain_ladder_augment.py:55(profit_gate_ok)"
    ],
    "vec_unwired_listed": false,
@@ -13554,9 +13715,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:271(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:276(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:277(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:273(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:278(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:279(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -13884,7 +14045,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8945(compute_entry_signals)",
+    "v12_quick_engine.py:8953(compute_entry_signals)",
     "vec_decisions/entry_hard_gates.py:78(tradier_block)"
    ],
    "vec_unwired_listed": false,
@@ -14325,9 +14486,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:278(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:279(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:280(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:280(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:281(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:282(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -14567,9 +14728,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:285(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:292(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:293(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:287(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:294(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:295(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -15004,10 +15165,10 @@
     "total": 4
    },
    "vec_reads": [
-    "v12_quick_engine.py:294(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:295(_batch1_template_wiring) [DEAD]",
     "v12_quick_engine.py:296(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:299(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:297(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:298(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:301(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -16167,9 +16328,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:302(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:303(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:310(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:304(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:305(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:312(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -16266,7 +16427,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:7987(load_npz)"
+    "v12_quick_engine.py:7995(load_npz)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -16351,10 +16512,10 @@
     "total": 5
    },
    "vec_reads": [
-    "v12_quick_engine.py:4000(_base_tf)",
-    "v12_quick_engine.py:10113(_bar_minutes)",
-    "v12_quick_engine.py:11311(simulate_one)",
-    "v12_quick_engine.py:11313(simulate_one)",
+    "v12_quick_engine.py:4002(_base_tf)",
+    "v12_quick_engine.py:10121(_bar_minutes)",
+    "v12_quick_engine.py:11319(simulate_one)",
+    "v12_quick_engine.py:11321(simulate_one)",
     "vec_decisions/ported_stateful_exit.py:228(masks)"
    ],
    "vec_unwired_listed": false,
@@ -17201,7 +17362,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8684(compute_reentry_blocks)"
+    "v12_quick_engine.py:8692(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -17802,7 +17963,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8685(compute_reentry_blocks)"
+    "v12_quick_engine.py:8693(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -18556,7 +18717,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8415(compute_reentry_blocks)"
+    "v12_quick_engine.py:8423(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -18725,7 +18886,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8415(compute_reentry_blocks)"
+    "v12_quick_engine.py:8423(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -18993,7 +19154,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9878(compute_exit_signals)"
+    "v12_quick_engine.py:9886(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -19170,7 +19331,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11677(simulate_one)"
+    "v12_quick_engine.py:11710(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -19481,7 +19642,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8414(compute_reentry_blocks)"
+    "v12_quick_engine.py:8422(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -19750,7 +19911,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9879(compute_exit_signals)"
+    "v12_quick_engine.py:9887(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -19935,7 +20096,7 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:11586(simulate_one)",
+    "v12_quick_engine.py:11619(simulate_one)",
     "vec_decisions/bb_pullback_gate.py:49(bb_pullback_gate_blocks)",
     "vec_decisions/bb_pullback_gate.py:80(bb_pullback_gate_vec)"
    ],
@@ -20125,10 +20286,10 @@
     "total": 6
    },
    "vec_reads": [
-    "v12_quick_engine.py:311(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:312(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:319(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:11528(simulate_one)",
+    "v12_quick_engine.py:313(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:314(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:321(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:11561(simulate_one)",
     "vec_decisions/bb_pullback_gate.py:53(bb_pullback_gate_blocks)",
     "vec_decisions/bb_pullback_gate.py:84(bb_pullback_gate_vec)"
    ],
@@ -20384,7 +20545,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11586(simulate_one)"
+    "v12_quick_engine.py:11619(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -20868,9 +21029,9 @@
     "total": 5
    },
    "vec_reads": [
-    "v12_quick_engine.py:320(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:321(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:328(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:322(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:323(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:330(_batch1_template_wiring) [DEAD]",
     "vec_decisions/bb_pullback_gate.py:54(bb_pullback_gate_blocks)",
     "vec_decisions/bb_pullback_gate.py:85(bb_pullback_gate_vec)"
    ],
@@ -21404,9 +21565,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:329(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:330(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:337(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:331(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:332(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:339(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -21539,7 +21700,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9651(compute_exit_signals)"
+    "v12_quick_engine.py:9659(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -21938,9 +22099,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:338(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:339(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:346(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:340(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:341(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:348(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -22721,7 +22882,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8433(compute_reentry_blocks)"
+    "v12_quick_engine.py:8441(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -22907,7 +23068,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8417(compute_reentry_blocks)",
+    "v12_quick_engine.py:8425(compute_reentry_blocks)",
     "vec_decisions/wave4_families.py:177(bb_squeeze_entry_gate)"
    ],
    "vec_unwired_listed": false,
@@ -23903,7 +24064,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9863(compute_exit_signals)"
+    "v12_quick_engine.py:9871(compute_exit_signals)"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -23963,7 +24124,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9870(compute_exit_signals)"
+    "v12_quick_engine.py:9878(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -24288,7 +24449,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "<absent>",
-    "config_tradier.py": "{'AU', 'XLE', 'AGI', 'KGC', 'GLD', 'OIH', 'SLV', 'UVXY', 'VXX', 'GDX', 'CDE', 'X",
+    "config_tradier.py": "{'AU', 'RGLD', 'GLD', 'UCO', 'FNV', 'GDX', 'SLV', 'CDE', 'MAG', 'EGO', 'KGC', 'H",
     "template_bold": {}
    },
    "filter_tf": false,
@@ -26106,7 +26267,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9913(compute_augment_signals)"
+    "v12_quick_engine.py:9921(compute_augment_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -26284,7 +26445,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9911(compute_augment_signals)"
+    "v12_quick_engine.py:9919(compute_augment_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -26470,7 +26631,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9911(compute_augment_signals)"
+    "v12_quick_engine.py:9919(compute_augment_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -26714,7 +26875,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9912(compute_augment_signals)"
+    "v12_quick_engine.py:9920(compute_augment_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -27000,7 +27161,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9982(_augment_allowed)"
+    "v12_quick_engine.py:9990(_augment_allowed)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -27245,9 +27406,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:347(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:351(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:352(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:349(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:353(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:354(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -27554,9 +27715,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:353(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:354(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:355(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:355(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:356(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:357(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -27863,9 +28024,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:359(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:360(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:361(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:361(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:362(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:363(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -28483,9 +28644,9 @@
     "total": 5
    },
    "vec_reads": [
-    "v12_quick_engine.py:365(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:366(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:372(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:367(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:368(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:374(_batch1_template_wiring) [DEAD]",
     "vec_decisions/check_exit_candidates_crypto__breakeven_dc_struct.py:44(_breakeven_dc_struct_fields) [UNREACHABLE]",
     "vec_decisions/live_exit_chain.py:152(step)"
    ],
@@ -29072,9 +29233,9 @@
     "total": 6
    },
    "vec_reads": [
-    "v12_quick_engine.py:373(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:378(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:379(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:375(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:380(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:381(_batch1_template_wiring) [DEAD]",
     "vec_decisions/live_exit_chain.py:135(step)",
     "vec_decisions/quick_breakeven_gain_erosion.py:93(check_quick_breakeven_gain_erosion) [UNREACHABLE]",
     "vec_decisions/quick_breakeven_gain_erosion.py:119(check_quick_breakeven_gain_erosion_vec) [UNREACHABLE]"
@@ -29376,9 +29537,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:380(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:381(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:388(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:382(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:383(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:390(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -29664,9 +29825,9 @@
     "total": 5
    },
    "vec_reads": [
-    "v12_quick_engine.py:389(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:390(_batch1_template_wiring) [DEAD]",
     "v12_quick_engine.py:391(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:392(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:393(_batch1_template_wiring) [DEAD]",
     "vec_decisions/live_exit_chain.py:138(step)",
     "vec_decisions/quick_breakeven_gain_erosion.py:73(_be_erosion_thresholds) [UNREACHABLE]"
    ],
@@ -29846,9 +30007,9 @@
     "total": 5
    },
    "vec_reads": [
-    "v12_quick_engine.py:396(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:397(_batch1_template_wiring) [DEAD]",
     "v12_quick_engine.py:398(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:399(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:400(_batch1_template_wiring) [DEAD]",
     "vec_decisions/live_exit_chain.py:136(step)",
     "vec_decisions/quick_breakeven_gain_erosion.py:72(_be_erosion_thresholds) [UNREACHABLE]"
    ],
@@ -30934,9 +31095,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:403(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:404(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:405(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:405(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:406(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:407(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -32641,9 +32802,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:409(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:410(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:417(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:411(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:412(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:419(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -34924,9 +35085,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:418(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:419(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:420(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:420(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:421(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:422(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -35382,9 +35543,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:425(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:429(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:430(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:427(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:431(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:432(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -36330,9 +36491,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:431(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:432(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:439(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:433(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:434(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:441(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -36936,9 +37097,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:440(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:441(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:442(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:442(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:443(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:444(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -38455,9 +38616,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:447(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:452(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:453(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:449(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:454(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:455(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -38697,9 +38858,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:454(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:455(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:456(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:456(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:457(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:458(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -38971,9 +39132,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:461(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:462(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:463(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:463(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:464(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:465(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -39289,9 +39450,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:468(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:469(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:470(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:470(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:471(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:472(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -41405,9 +41566,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:475(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:476(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:477(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:477(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:478(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:479(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -42199,9 +42360,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:482(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:483(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:484(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:484(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:485(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:486(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -42597,9 +42758,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:489(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:490(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:491(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:491(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:492(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:493(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -42997,9 +43158,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:496(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:497(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:504(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:498(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:499(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:506(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -43150,7 +43311,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9843(compute_exit_signals)"
+    "v12_quick_engine.py:9851(compute_exit_signals)"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -43210,8 +43371,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9850(compute_exit_signals)",
-    "v12_quick_engine.py:9967(compute_augment_signals)"
+    "v12_quick_engine.py:9858(compute_exit_signals)",
+    "v12_quick_engine.py:9975(compute_augment_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -43277,8 +43438,8 @@
     "SHORT"
    ],
    "status": {
-    "crypto": "DEAD",
-    "stocks": "DEAD"
+    "crypto": "DEAD+STAGED_VEC",
+    "stocks": "DEAD+STAGED_VEC"
    },
    "template": {
     "CRYPTO_LONG": {
@@ -43468,9 +43629,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:505(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:506(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:513(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:507(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:508(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:515(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -43691,7 +43852,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:4759(QuickConfig.apply_cat_side_defaults)"
+    "v12_quick_engine.py:4762(QuickConfig.apply_cat_side_defaults)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -43860,9 +44021,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:514(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:518(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:519(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:516(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:520(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:521(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -44160,7 +44321,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8776(compute_entry_signals)"
+    "v12_quick_engine.py:8784(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -44399,7 +44560,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8775(compute_entry_signals)"
+    "v12_quick_engine.py:8783(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -45480,9 +45641,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:520(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:521(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:528(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:522(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:523(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:530(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -45667,7 +45828,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9176(compute_entry_signals)"
+    "v12_quick_engine.py:9184(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -45839,8 +46000,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9184(compute_entry_signals)",
-    "v12_quick_engine.py:9194(compute_entry_signals)"
+    "v12_quick_engine.py:9192(compute_entry_signals)",
+    "v12_quick_engine.py:9202(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -46079,7 +46240,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9187(compute_entry_signals)"
+    "v12_quick_engine.py:9195(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -46834,7 +46995,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8924(compute_entry_signals)",
+    "v12_quick_engine.py:8932(compute_entry_signals)",
     "vec_decisions/process_position_stocks__wtdc_entry_gates.py:96(_wtdc_entry_gate_params) [UNREACHABLE]"
    ],
    "vec_unwired_listed": false,
@@ -47246,7 +47407,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8826(compute_entry_signals)"
+    "v12_quick_engine.py:8834(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -47426,7 +47587,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8823(compute_entry_signals)"
+    "v12_quick_engine.py:8831(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -48061,7 +48222,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8272(compute_reentry_blocks)"
+    "v12_quick_engine.py:8280(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -48303,7 +48464,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8274(compute_reentry_blocks)"
+    "v12_quick_engine.py:8282(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -49016,8 +49177,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:11682(simulate_one)",
-    "v12_quick_engine.py:11682(simulate_one)"
+    "v12_quick_engine.py:11715(simulate_one)",
+    "v12_quick_engine.py:11715(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -49179,7 +49340,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11682(simulate_one)"
+    "v12_quick_engine.py:11715(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -49446,9 +49607,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:529(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:530(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:537(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:531(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:532(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:539(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -49635,8 +49796,8 @@
     "total": 5
    },
    "vec_reads": [
-    "v12_quick_engine.py:11582(simulate_one)",
-    "v12_quick_engine.py:11896(simulate_one)",
+    "v12_quick_engine.py:11615(simulate_one)",
+    "v12_quick_engine.py:11929(simulate_one)",
     "vec_decisions/counter_trend.py:87(counter_trend_blocks)",
     "vec_decisions/counter_trend.py:113(counter_trend_vec)",
     "vec_decisions/ported_augment.py:44(apply)"
@@ -50584,8 +50745,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:11776(simulate_one)",
-    "v12_quick_engine.py:12893(true_bh_reference) [UNREACHABLE]"
+    "v12_quick_engine.py:11809(simulate_one)",
+    "v12_quick_engine.py:12943(true_bh_reference) [UNREACHABLE]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -51145,9 +51306,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:538(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:539(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:540(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:540(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:541(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:542(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -51323,7 +51484,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8765(compute_entry_signals)"
+    "v12_quick_engine.py:8773(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -51499,8 +51660,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8771(compute_entry_signals)",
-    "v12_quick_engine.py:8771(compute_entry_signals)"
+    "v12_quick_engine.py:8779(compute_entry_signals)",
+    "v12_quick_engine.py:8779(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -51746,7 +51907,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8759(compute_entry_signals)"
+    "v12_quick_engine.py:8767(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -52127,7 +52288,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8785(compute_entry_signals)"
+    "v12_quick_engine.py:8793(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -52441,7 +52602,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8783(compute_entry_signals)"
+    "v12_quick_engine.py:8791(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -52685,7 +52846,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8756(compute_entry_signals)",
+    "v12_quick_engine.py:8764(compute_entry_signals)",
     "vec_decisions/entry_hard_gates.py:89(tradier_block)"
    ],
    "vec_unwired_listed": false,
@@ -52864,7 +53025,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8755(compute_entry_signals)",
+    "v12_quick_engine.py:8763(compute_entry_signals)",
     "vec_decisions/entry_hard_gates.py:88(tradier_block)"
    ],
    "vec_unwired_listed": false,
@@ -53173,7 +53334,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9674(compute_exit_signals)"
+    "v12_quick_engine.py:9682(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -53732,9 +53893,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:545(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:549(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:550(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:547(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:551(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:552(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -53908,9 +54069,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:551(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:555(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:556(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:553(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:557(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:558(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -55809,9 +55970,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:557(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:558(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:564(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:559(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:560(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:566(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -57486,9 +57647,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:565(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:566(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:572(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:567(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:568(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:574(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -58042,7 +58203,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9099(compute_entry_signals)"
+    "v12_quick_engine.py:9107(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -58786,8 +58947,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8452(compute_reentry_blocks)",
-    "v12_quick_engine.py:11700(simulate_one)"
+    "v12_quick_engine.py:8460(compute_reentry_blocks)",
+    "v12_quick_engine.py:11733(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -59755,7 +59916,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11708(simulate_one)"
+    "v12_quick_engine.py:11741(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -60330,7 +60491,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11709(simulate_one)"
+    "v12_quick_engine.py:11742(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -60796,7 +60957,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:10061(compute_regime_sizing_mult)"
+    "v12_quick_engine.py:10069(compute_regime_sizing_mult)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -61042,7 +61203,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:10064(compute_regime_sizing_mult)"
+    "v12_quick_engine.py:10072(compute_regime_sizing_mult)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -61286,7 +61447,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:10064(compute_regime_sizing_mult)"
+    "v12_quick_engine.py:10072(compute_regime_sizing_mult)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -61582,7 +61743,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:12416(simulate_one)"
+    "v12_quick_engine.py:12466(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -61746,7 +61907,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11213(simulate_one)"
+    "v12_quick_engine.py:11221(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -61905,9 +62066,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:573(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:577(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:578(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:575(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:579(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:580(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -62146,9 +62307,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:579(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:580(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:581(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:581(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:582(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:583(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -63142,9 +63303,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:585(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:586(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:592(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:587(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:588(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:594(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -63585,9 +63746,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:593(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:594(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:595(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:595(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:596(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:597(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -63829,7 +63990,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8454(compute_reentry_blocks)"
+    "v12_quick_engine.py:8462(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -63897,10 +64058,10 @@
     "total": 4
    },
    "vec_reads": [
-    "v12_quick_engine.py:9763(compute_exit_signals)",
-    "v12_quick_engine.py:12383(simulate_one)",
-    "v12_quick_engine.py:12402(simulate_one)",
-    "v12_quick_engine.py:12571(simulate_one)"
+    "v12_quick_engine.py:9771(compute_exit_signals)",
+    "v12_quick_engine.py:12433(simulate_one)",
+    "v12_quick_engine.py:12452(simulate_one)",
+    "v12_quick_engine.py:12621(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -64144,7 +64305,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:12719(simulate_one)"
+    "v12_quick_engine.py:12769(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -64453,7 +64614,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:12724(simulate_one)"
+    "v12_quick_engine.py:12774(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -64649,8 +64810,8 @@
    "recently_added": null,
    "sides": [],
    "status": {
-    "crypto": "DEAD",
-    "stocks": "LIVE_ONLY"
+    "crypto": "DEAD+STAGED_VEC",
+    "stocks": "LIVE_ONLY+STAGED_VEC"
    },
    "template": {},
    "type": "bool",
@@ -65137,9 +65298,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:599(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:603(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:604(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:601(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:605(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:606(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -65981,8 +66142,8 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:8508(compute_reentry_blocks)",
-    "v12_quick_engine.py:8524(compute_reentry_blocks)",
+    "v12_quick_engine.py:8516(compute_reentry_blocks)",
+    "v12_quick_engine.py:8532(compute_reentry_blocks)",
     "vec_decisions/process_position_stocks__delta_htf_gate.py:63(_delta_htf_params) [UNREACHABLE]"
    ],
    "vec_unwired_listed": false,
@@ -66258,8 +66419,8 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:8490(compute_reentry_blocks)",
-    "v12_quick_engine.py:11697(simulate_one)",
+    "v12_quick_engine.py:8498(compute_reentry_blocks)",
+    "v12_quick_engine.py:11730(simulate_one)",
     "vec_decisions/delta_exit_top.py:130(_delta_exit_enabled)"
    ],
    "vec_unwired_listed": false,
@@ -66862,9 +67023,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:605(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:606(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:613(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:607(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:608(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:615(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -67059,7 +67220,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8495(compute_reentry_blocks)"
+    "v12_quick_engine.py:8503(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -67248,7 +67409,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8490(compute_reentry_blocks)"
+    "v12_quick_engine.py:8498(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -67495,7 +67656,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8496(compute_reentry_blocks)"
+    "v12_quick_engine.py:8504(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -67883,7 +68044,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8494(compute_reentry_blocks)"
+    "v12_quick_engine.py:8502(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -68449,7 +68610,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9547(compute_exit_signals)",
+    "v12_quick_engine.py:9555(compute_exit_signals)",
     "vec_decisions/delta_exit_top.py:131(_delta_exit_enabled)"
    ],
    "vec_unwired_listed": false,
@@ -68633,7 +68794,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8408(compute_reentry_blocks)"
+    "v12_quick_engine.py:8416(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -69736,7 +69897,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9904(compute_augment_signals)"
+    "v12_quick_engine.py:9912(compute_augment_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -70333,7 +70494,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8981(compute_entry_signals)"
+    "v12_quick_engine.py:8989(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -70569,7 +70730,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8984(compute_entry_signals)"
+    "v12_quick_engine.py:8992(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -71005,9 +71166,9 @@
     "total": 4
    },
    "vec_reads": [
-    "v12_quick_engine.py:614(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:615(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:622(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:616(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:617(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:624(_batch1_template_wiring) [DEAD]",
     "vec_decisions/process_position_stocks__delta_htf_gate.py:62(_delta_htf_params) [UNREACHABLE]"
    ],
    "vec_unwired_listed": false,
@@ -71670,7 +71831,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11697(simulate_one)"
+    "v12_quick_engine.py:11730(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -72506,9 +72667,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:623(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:624(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:625(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:625(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:626(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:627(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -72814,9 +72975,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:629(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:630(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:631(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:631(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:632(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:633(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -73058,9 +73219,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:635(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:639(_batch1_template_wiring) [DEAD]",
-    "v12_quick_engine.py:640(_batch1_template_wiring) [DEAD]"
+    "v12_quick_engine.py:637(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:641(_batch1_template_wiring) [DEAD]",
+    "v12_quick_engine.py:642(_batch1_template_wiring) [DEAD]"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -76515,8 +76676,8 @@
     "SHORT"
    ],
    "status": {
-    "crypto": "DEAD",
-    "stocks": "LIVE_ONLY"
+    "crypto": "DEAD+STAGED_VEC",
+    "stocks": "LIVE_ONLY+STAGED_VEC"
    },
    "template": {
     "CRYPTO_LONG": {
@@ -76781,7 +76942,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8799(compute_entry_signals)"
+    "v12_quick_engine.py:8807(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -77903,7 +78064,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8378(compute_reentry_blocks)"
+    "v12_quick_engine.py:8386(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -78064,7 +78225,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8380(compute_reentry_blocks)"
+    "v12_quick_engine.py:8388(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -78230,7 +78391,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11539(simulate_one)"
+    "v12_quick_engine.py:11572(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -78381,7 +78542,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11541(simulate_one)"
+    "v12_quick_engine.py:11574(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -78509,7 +78670,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9313(compute_entry_signals)",
+    "v12_quick_engine.py:9321(compute_entry_signals)",
     "vec_decisions/live_kindergarten_stocks.py:28(pass_mask)"
    ],
    "vec_unwired_listed": false,
@@ -78694,7 +78855,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9315(compute_entry_signals)",
+    "v12_quick_engine.py:9323(compute_entry_signals)",
     "vec_decisions/live_kindergarten_stocks.py:29(pass_mask)"
    ],
    "vec_unwired_listed": false,
@@ -78879,7 +79040,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9315(compute_entry_signals)",
+    "v12_quick_engine.py:9323(compute_entry_signals)",
     "vec_decisions/live_kindergarten_stocks.py:29(pass_mask)"
    ],
    "vec_unwired_listed": false,
@@ -79063,7 +79224,7 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:9288(compute_entry_signals)",
+    "v12_quick_engine.py:9296(compute_entry_signals)",
     "vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:73(check_ema_9_21) [UNREACHABLE]",
     "vec_decisions/live_kindergarten_stocks.py:17(pass_mask)"
    ],
@@ -79552,7 +79713,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9286(compute_entry_signals)"
+    "v12_quick_engine.py:9294(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -79790,7 +79951,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9325(compute_entry_signals)"
+    "v12_quick_engine.py:9333(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -79992,7 +80153,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9291(compute_entry_signals)",
+    "v12_quick_engine.py:9299(compute_entry_signals)",
     "vec_decisions/live_kindergarten_stocks.py:23(pass_mask)"
    ],
    "vec_unwired_listed": false,
@@ -80348,7 +80509,7 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:9291(compute_entry_signals)",
+    "v12_quick_engine.py:9299(compute_entry_signals)",
     "vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:75(check_ema_9_21) [UNREACHABLE]",
     "vec_decisions/live_kindergarten_stocks.py:21(pass_mask)"
    ],
@@ -81441,7 +81602,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8383(compute_reentry_blocks)"
+    "v12_quick_engine.py:8391(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -81607,7 +81768,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8385(compute_reentry_blocks)"
+    "v12_quick_engine.py:8393(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -81773,7 +81934,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8385(compute_reentry_blocks)"
+    "v12_quick_engine.py:8393(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -81951,7 +82112,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:10052(compute_regime_sizing_mult)"
+    "v12_quick_engine.py:10060(compute_regime_sizing_mult)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -82204,7 +82365,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:10055(compute_regime_sizing_mult)"
+    "v12_quick_engine.py:10063(compute_regime_sizing_mult)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -83713,7 +83874,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8216(compute_reentry_blocks)"
+    "v12_quick_engine.py:8224(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -83991,7 +84152,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8215(compute_reentry_blocks)"
+    "v12_quick_engine.py:8223(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -84305,7 +84466,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8217(compute_reentry_blocks)"
+    "v12_quick_engine.py:8225(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -84482,7 +84643,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8214(compute_reentry_blocks)"
+    "v12_quick_engine.py:8222(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -84862,7 +85023,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8218(compute_reentry_blocks)"
+    "v12_quick_engine.py:8226(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -85174,7 +85335,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8237(compute_reentry_blocks)"
+    "v12_quick_engine.py:8245(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -85350,7 +85511,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8235(compute_reentry_blocks)"
+    "v12_quick_engine.py:8243(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -85526,7 +85687,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8238(compute_reentry_blocks)"
+    "v12_quick_engine.py:8246(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -85797,7 +85958,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8236(compute_reentry_blocks)"
+    "v12_quick_engine.py:8244(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -85857,7 +86018,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11580(simulate_one)"
+    "v12_quick_engine.py:11613(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -85985,7 +86146,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8866(compute_entry_signals)"
+    "v12_quick_engine.py:8874(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -86118,8 +86279,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8862(compute_entry_signals)",
-    "v12_quick_engine.py:8885(compute_entry_signals) [STUB]"
+    "v12_quick_engine.py:8870(compute_entry_signals)",
+    "v12_quick_engine.py:8893(compute_entry_signals) [STUB]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -86725,7 +86886,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9138(compute_entry_signals)"
+    "v12_quick_engine.py:9146(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -86900,7 +87061,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8294(compute_reentry_blocks)"
+    "v12_quick_engine.py:8302(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -87107,7 +87268,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8296(compute_reentry_blocks)"
+    "v12_quick_engine.py:8304(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -87346,7 +87507,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8297(compute_reentry_blocks)"
+    "v12_quick_engine.py:8305(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -87423,7 +87584,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8295(compute_reentry_blocks)"
+    "v12_quick_engine.py:8303(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -87595,7 +87756,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8326(compute_reentry_blocks)"
+    "v12_quick_engine.py:8334(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -87735,7 +87896,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8327(compute_reentry_blocks)"
+    "v12_quick_engine.py:8335(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -87974,7 +88135,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8328(compute_reentry_blocks)"
+    "v12_quick_engine.py:8336(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -88114,7 +88275,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8329(compute_reentry_blocks)"
+    "v12_quick_engine.py:8337(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -88651,7 +88812,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9489(compute_entry_signals)"
+    "v12_quick_engine.py:9497(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -88814,7 +88975,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9490(compute_entry_signals)"
+    "v12_quick_engine.py:9498(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -90623,7 +90784,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:11884(simulate_one)",
+    "v12_quick_engine.py:11917(simulate_one)",
     "vec_decisions/ported_exit.py:139(apply)"
    ],
    "vec_unwired_listed": false,
@@ -94065,8 +94226,8 @@
     "SHORT"
    ],
    "status": {
-    "crypto": "DEAD",
-    "stocks": "DEAD"
+    "crypto": "DEAD+STAGED_VEC",
+    "stocks": "DEAD+STAGED_VEC"
    },
    "template": {
     "CRYPTO_LONG": {
@@ -98427,8 +98588,8 @@
    "recently_added": null,
    "sides": [],
    "status": {
-    "crypto": "LIVE_ONLY",
-    "stocks": "LIVE_ONLY"
+    "crypto": "LIVE_ONLY+STAGED_VEC",
+    "stocks": "LIVE_ONLY+STAGED_VEC"
    },
    "template": {},
    "type": "bool",
@@ -101433,7 +101594,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8548(compute_reentry_blocks)"
+    "v12_quick_engine.py:8556(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -103124,7 +103285,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:10033(compute_regime_sizing_mult)"
+    "v12_quick_engine.py:10041(compute_regime_sizing_mult)"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -103478,7 +103639,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9521(compute_entry_signals)"
+    "v12_quick_engine.py:9529(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -103538,16 +103699,18 @@
    "recently_added": null,
    "sides": [],
    "status": {
-    "crypto": "LIVE_ONLY+STAGED_VEC",
-    "stocks": "DEAD+STAGED_VEC"
+    "crypto": "WIRED_BOTH_UNPROVEN",
+    "stocks": "VEC_ONLY"
    },
    "template": {},
    "type": "bool",
    "vec_read_count": {
-    "reachable": 0,
-    "total": 0
+    "reachable": 1,
+    "total": 1
    },
-   "vec_reads": [],
+   "vec_reads": [
+    "v12_quick_engine.py:11534(simulate_one)"
+   ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
   },
@@ -103857,7 +104020,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9723(compute_exit_signals)"
+    "v12_quick_engine.py:9731(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -104111,7 +104274,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9719(compute_exit_signals)"
+    "v12_quick_engine.py:9727(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -104433,7 +104596,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9722(compute_exit_signals)"
+    "v12_quick_engine.py:9730(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -104685,7 +104848,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9718(compute_exit_signals)"
+    "v12_quick_engine.py:9726(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -105147,7 +105310,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9724(compute_exit_signals)"
+    "v12_quick_engine.py:9732(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -105397,7 +105560,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9721(compute_exit_signals)"
+    "v12_quick_engine.py:9729(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -105649,7 +105812,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9720(compute_exit_signals)"
+    "v12_quick_engine.py:9728(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -109227,8 +109390,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:11372(simulate_one)",
-    "v12_quick_engine.py:11441(simulate_one) [STUB]"
+    "v12_quick_engine.py:11380(simulate_one)",
+    "v12_quick_engine.py:11449(simulate_one) [STUB]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -109413,7 +109576,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11438(simulate_one)"
+    "v12_quick_engine.py:11446(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -109537,7 +109700,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11374(simulate_one)"
+    "v12_quick_engine.py:11382(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -109664,7 +109827,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11373(simulate_one)"
+    "v12_quick_engine.py:11381(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -109947,7 +110110,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11429(simulate_one)"
+    "v12_quick_engine.py:11437(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -110013,7 +110176,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11385(simulate_one)"
+    "v12_quick_engine.py:11393(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -110085,7 +110248,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11385(simulate_one)"
+    "v12_quick_engine.py:11393(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -110241,7 +110404,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11420(simulate_one)"
+    "v12_quick_engine.py:11428(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -110930,7 +111093,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11309(simulate_one)"
+    "v12_quick_engine.py:11317(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -111094,7 +111257,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11349(simulate_one)"
+    "v12_quick_engine.py:11357(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -111279,8 +111442,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:11246(simulate_one)",
-    "v12_quick_engine.py:11369(simulate_one) [STUB]"
+    "v12_quick_engine.py:11254(simulate_one)",
+    "v12_quick_engine.py:11377(simulate_one) [STUB]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -111465,7 +111628,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11361(simulate_one)"
+    "v12_quick_engine.py:11369(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -111615,7 +111778,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11326(simulate_one)"
+    "v12_quick_engine.py:11334(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -112136,7 +112299,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11326(simulate_one)"
+    "v12_quick_engine.py:11334(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -112203,7 +112366,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11269(simulate_one)"
+    "v12_quick_engine.py:11277(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -112425,7 +112588,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11309(simulate_one)"
+    "v12_quick_engine.py:11317(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -116061,7 +116224,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9202(compute_entry_signals)"
+    "v12_quick_engine.py:9210(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -116813,7 +116976,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9203(compute_entry_signals)"
+    "v12_quick_engine.py:9211(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -119117,7 +119280,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9697(compute_exit_signals)"
+    "v12_quick_engine.py:9705(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -119366,7 +119529,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9698(compute_exit_signals)"
+    "v12_quick_engine.py:9706(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -121263,7 +121426,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8394(compute_reentry_blocks)"
+    "v12_quick_engine.py:8402(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -121615,7 +121778,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8398(compute_reentry_blocks)"
+    "v12_quick_engine.py:8406(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -121902,7 +122065,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8397(compute_reentry_blocks)"
+    "v12_quick_engine.py:8405(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -122189,7 +122352,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8395(compute_reentry_blocks)"
+    "v12_quick_engine.py:8403(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -122476,7 +122639,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8396(compute_reentry_blocks)"
+    "v12_quick_engine.py:8404(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -122648,7 +122811,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8403(compute_reentry_blocks)"
+    "v12_quick_engine.py:8411(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -122836,7 +122999,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8393(compute_reentry_blocks)"
+    "v12_quick_engine.py:8401(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -123019,7 +123182,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8399(compute_reentry_blocks)"
+    "v12_quick_engine.py:8407(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -123302,7 +123465,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8402(compute_reentry_blocks)"
+    "v12_quick_engine.py:8410(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -123585,7 +123748,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8401(compute_reentry_blocks)"
+    "v12_quick_engine.py:8409(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -123868,7 +124031,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8400(compute_reentry_blocks)"
+    "v12_quick_engine.py:8408(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -124705,7 +124868,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:12012(simulate_one)"
+    "v12_quick_engine.py:12045(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -124867,8 +125030,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:12012(simulate_one)",
-    "v12_quick_engine.py:12097(simulate_one)"
+    "v12_quick_engine.py:12045(simulate_one)",
+    "v12_quick_engine.py:12130(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -125030,9 +125193,9 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:12018(simulate_one)",
-    "v12_quick_engine.py:12103(simulate_one)",
-    "v12_quick_engine.py:12245(simulate_one)"
+    "v12_quick_engine.py:12051(simulate_one)",
+    "v12_quick_engine.py:12136(simulate_one)",
+    "v12_quick_engine.py:12292(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -132690,7 +132853,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8404(compute_reentry_blocks)"
+    "v12_quick_engine.py:8412(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -132975,7 +133138,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8405(compute_reentry_blocks)"
+    "v12_quick_engine.py:8413(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -133260,7 +133423,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8406(compute_reentry_blocks)"
+    "v12_quick_engine.py:8414(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -133545,7 +133708,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8407(compute_reentry_blocks)"
+    "v12_quick_engine.py:8415(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -134485,7 +134648,7 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:12611(simulate_one)",
+    "v12_quick_engine.py:12661(simulate_one)",
     "vec_decisions/quick_reduce_strong.py:160(check_quick_reduce_strong)",
     "vec_decisions/quick_reduce_strong.py:230(check_quick_reduce_strong_vec)"
    ],
@@ -136775,7 +136938,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8788(compute_entry_signals)"
+    "v12_quick_engine.py:8796(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -136847,7 +137010,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9147(compute_entry_signals)",
+    "v12_quick_engine.py:9155(compute_entry_signals)",
     "vec_decisions/process_position_stocks__wtdc_entry_gates.py:95(_wtdc_entry_gate_params) [UNREACHABLE]"
    ],
    "vec_unwired_listed": false,
@@ -137641,7 +137804,7 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:11502(simulate_one)",
+    "v12_quick_engine.py:11510(simulate_one)",
     "vec_decisions/wave4_families.py:34(oi_confirm_entry_gate)",
     "vec_decisions/wave4_families.py:145(htf_direction_gate)"
    ],
@@ -138570,7 +138733,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11502(simulate_one)"
+    "v12_quick_engine.py:11510(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -139839,7 +140002,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8798(compute_entry_signals)"
+    "v12_quick_engine.py:8806(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -144416,11 +144579,11 @@
     "total": 5
    },
    "vec_reads": [
-    "v12_quick_engine.py:8738(compute_entry_signals)",
-    "v12_quick_engine.py:8741(compute_entry_signals)",
-    "v12_quick_engine.py:8742(compute_entry_signals)",
-    "v12_quick_engine.py:8753(compute_entry_signals)",
-    "v12_quick_engine.py:8753(compute_entry_signals)"
+    "v12_quick_engine.py:8746(compute_entry_signals)",
+    "v12_quick_engine.py:8749(compute_entry_signals)",
+    "v12_quick_engine.py:8750(compute_entry_signals)",
+    "v12_quick_engine.py:8761(compute_entry_signals)",
+    "v12_quick_engine.py:8761(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -144549,7 +144712,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8731(compute_entry_signals)"
+    "v12_quick_engine.py:8739(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -144685,8 +144848,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9288(compute_entry_signals)",
-    "v12_quick_engine.py:11569(simulate_one)"
+    "v12_quick_engine.py:9296(compute_entry_signals)",
+    "v12_quick_engine.py:11602(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -144910,7 +145073,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9325(compute_entry_signals)",
+    "v12_quick_engine.py:9333(compute_entry_signals)",
     "vec_decisions/live_kindergarten_stocks.py:54(pass_mask)"
    ],
    "vec_unwired_listed": false,
@@ -145166,9 +145329,9 @@
     "total": 4
    },
    "vec_reads": [
-    "v12_quick_engine.py:9279(compute_entry_signals)",
-    "v12_quick_engine.py:9288(compute_entry_signals)",
-    "v12_quick_engine.py:11595(simulate_one)",
+    "v12_quick_engine.py:9287(compute_entry_signals)",
+    "v12_quick_engine.py:9296(compute_entry_signals)",
+    "v12_quick_engine.py:11628(simulate_one)",
     "vec_decisions/live_kindergarten_stocks.py:17(pass_mask)"
    ],
    "vec_unwired_listed": false,
@@ -145302,7 +145465,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9286(compute_entry_signals)"
+    "v12_quick_engine.py:9294(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -145479,7 +145642,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9326(compute_entry_signals)",
+    "v12_quick_engine.py:9334(compute_entry_signals)",
     "vec_decisions/live_kindergarten_stocks.py:46(pass_mask)"
    ],
    "vec_unwired_listed": false,
@@ -146143,7 +146306,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8207(compute_reentry_blocks)"
+    "v12_quick_engine.py:8215(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -146324,7 +146487,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8281(compute_reentry_blocks)"
+    "v12_quick_engine.py:8289(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -146489,7 +146652,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8209(compute_reentry_blocks)"
+    "v12_quick_engine.py:8217(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -146660,8 +146823,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8284(compute_reentry_blocks)",
-    "v12_quick_engine.py:8914(compute_entry_signals)"
+    "v12_quick_engine.py:8292(compute_reentry_blocks)",
+    "v12_quick_engine.py:8922(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -146826,7 +146989,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8210(compute_reentry_blocks)"
+    "v12_quick_engine.py:8218(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -146997,8 +147160,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8285(compute_reentry_blocks)",
-    "v12_quick_engine.py:8915(compute_entry_signals)"
+    "v12_quick_engine.py:8293(compute_reentry_blocks)",
+    "v12_quick_engine.py:8923(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -147128,7 +147291,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8912(compute_entry_signals)"
+    "v12_quick_engine.py:8920(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -147928,8 +148091,8 @@
    "recently_added": null,
    "sides": [],
    "status": {
-    "crypto": "LIVE_ONLY",
-    "stocks": "LIVE_ONLY"
+    "crypto": "LIVE_ONLY+STAGED_VEC",
+    "stocks": "LIVE_ONLY+STAGED_VEC"
    },
    "template": {},
    "type": "bool",
@@ -152126,7 +152289,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11638(simulate_one)"
+    "v12_quick_engine.py:11671(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -152191,7 +152354,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11963(simulate_one)"
+    "v12_quick_engine.py:11996(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -154410,7 +154573,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8901(compute_entry_signals)"
+    "v12_quick_engine.py:8909(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -162380,8 +162543,8 @@
    "recently_added": null,
    "sides": [],
    "status": {
-    "crypto": "LIVE_ONLY",
-    "stocks": "LIVE_ONLY"
+    "crypto": "LIVE_ONLY+STAGED_VEC",
+    "stocks": "LIVE_ONLY+STAGED_VEC"
    },
    "template": {},
    "type": "bool",
@@ -166744,8 +166907,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:12028(simulate_one)",
-    "v12_quick_engine.py:12226(simulate_one)"
+    "v12_quick_engine.py:12061(simulate_one)",
+    "v12_quick_engine.py:12273(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -167514,7 +167677,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8813(compute_entry_signals)"
+    "v12_quick_engine.py:8821(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -167676,7 +167839,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8814(compute_entry_signals)"
+    "v12_quick_engine.py:8822(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -167838,7 +168001,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8815(compute_entry_signals)"
+    "v12_quick_engine.py:8823(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -168015,7 +168178,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9601(compute_exit_signals)"
+    "v12_quick_engine.py:9609(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -168181,7 +168344,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9602(compute_exit_signals)"
+    "v12_quick_engine.py:9610(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -168347,7 +168510,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9603(compute_exit_signals)"
+    "v12_quick_engine.py:9611(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -170113,7 +170276,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11684(simulate_one)"
+    "v12_quick_engine.py:11717(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -170417,7 +170580,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11684(simulate_one)"
+    "v12_quick_engine.py:11717(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -170728,8 +170891,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:11695(simulate_one)",
-    "v12_quick_engine.py:11696(simulate_one)"
+    "v12_quick_engine.py:11728(simulate_one)",
+    "v12_quick_engine.py:11729(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -172618,7 +172781,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8585(compute_reentry_blocks)"
+    "v12_quick_engine.py:8593(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -173726,7 +173889,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9612(compute_exit_signals)",
+    "v12_quick_engine.py:9620(compute_exit_signals)",
     "vec_decisions/wave4_families.py:64(mi_exit_signal)"
    ],
    "vec_unwired_listed": false,
@@ -174121,7 +174284,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:12372(simulate_one)"
+    "v12_quick_engine.py:12422(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -175280,24 +175443,24 @@
    "template": {},
    "type": "str",
    "vec_read_count": {
-    "reachable": 32,
-    "total": 35
+    "reachable": 34,
+    "total": 37
    },
    "vec_reads": [
     "tools/opt/evaluate_v12.py:592(build_cfg_npz) [UNREACHABLE]",
     "tools/opt/evaluate_v12.py:599(build_cfg_npz) [UNREACHABLE]",
     "tools/opt/evaluate_v12.py:669(prepare)",
     "tools/opt/evaluate_v12.py:676(prepare)",
-    "v12_quick_engine.py:8208(compute_reentry_blocks)",
-    "v12_quick_engine.py:8453(compute_reentry_blocks)",
-    "v12_quick_engine.py:8548(compute_reentry_blocks)",
-    "v12_quick_engine.py:8570(compute_reentry_blocks)",
-    "v12_quick_engine.py:8889(compute_entry_signals)",
-    "v12_quick_engine.py:8945(compute_entry_signals)",
-    "v12_quick_engine.py:8973(compute_entry_signals)",
-    "v12_quick_engine.py:9137(compute_entry_signals)",
+    "v12_quick_engine.py:8216(compute_reentry_blocks)",
+    "v12_quick_engine.py:8461(compute_reentry_blocks)",
+    "v12_quick_engine.py:8556(compute_reentry_blocks)",
+    "v12_quick_engine.py:8578(compute_reentry_blocks)",
+    "v12_quick_engine.py:8897(compute_entry_signals)",
+    "v12_quick_engine.py:8953(compute_entry_signals)",
+    "v12_quick_engine.py:8981(compute_entry_signals)",
     "v12_quick_engine.py:9145(compute_entry_signals)",
-    "v12_quick_engine.py:9205(compute_entry_signals)"
+    "v12_quick_engine.py:9153(compute_entry_signals)",
+    "v12_quick_engine.py:9213(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -175472,7 +175635,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8371(compute_reentry_blocks)"
+    "v12_quick_engine.py:8379(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -176071,7 +176234,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8373(compute_reentry_blocks)",
+    "v12_quick_engine.py:8381(compute_reentry_blocks)",
     "vec_decisions/filter_tf_gates.py:50(mom3_entry_gate)"
    ],
    "vec_unwired_listed": false,
@@ -176242,7 +176405,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8373(compute_reentry_blocks)",
+    "v12_quick_engine.py:8381(compute_reentry_blocks)",
     "vec_decisions/filter_tf_gates.py:51(mom3_entry_gate)"
    ],
    "vec_unwired_listed": false,
@@ -176547,7 +176710,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8374(compute_reentry_blocks)"
+    "v12_quick_engine.py:8382(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -176713,7 +176876,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8376(compute_reentry_blocks)"
+    "v12_quick_engine.py:8384(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -176879,7 +177042,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8376(compute_reentry_blocks)"
+    "v12_quick_engine.py:8384(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -179077,10 +179240,11 @@
    },
    "type": "bool",
    "vec_read_count": {
-    "reachable": 4,
-    "total": 4
+    "reachable": 5,
+    "total": 5
    },
    "vec_reads": [
+    "v12_quick_engine.py:11524(simulate_one)",
     "vec_decisions/momentum_watchdog.py:81(momentum_watchdog_should_open)",
     "vec_decisions/momentum_watchdog.py:84(momentum_watchdog_should_open)",
     "vec_decisions/momentum_watchdog.py:114(momentum_watchdog_vec)",
@@ -181279,7 +181443,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9166(compute_entry_signals)"
+    "v12_quick_engine.py:9174(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -181668,7 +181832,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9168(compute_entry_signals)"
+    "v12_quick_engine.py:9176(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -182846,7 +183010,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11814(simulate_one)"
+    "v12_quick_engine.py:11847(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -182967,7 +183131,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11816(simulate_one)"
+    "v12_quick_engine.py:11849(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -183649,7 +183813,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11813(simulate_one)"
+    "v12_quick_engine.py:11846(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -183823,7 +183987,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11812(simulate_one)"
+    "v12_quick_engine.py:11845(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -183989,7 +184153,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11812(simulate_one)"
+    "v12_quick_engine.py:11845(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -184128,7 +184292,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11832(simulate_one)"
+    "v12_quick_engine.py:11865(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -184267,7 +184431,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11831(simulate_one)"
+    "v12_quick_engine.py:11864(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -184546,7 +184710,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11830(simulate_one)"
+    "v12_quick_engine.py:11863(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -184686,7 +184850,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11824(simulate_one)"
+    "v12_quick_engine.py:11857(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -184925,7 +185089,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11822(simulate_one)"
+    "v12_quick_engine.py:11855(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -185493,7 +185657,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11823(simulate_one)"
+    "v12_quick_engine.py:11856(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -185821,7 +185985,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11811(simulate_one)"
+    "v12_quick_engine.py:11844(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -186133,8 +186297,8 @@
     "total": 4
    },
    "vec_reads": [
-    "v12_quick_engine.py:9680(compute_exit_signals)",
-    "v12_quick_engine.py:11846(simulate_one)",
+    "v12_quick_engine.py:9688(compute_exit_signals)",
+    "v12_quick_engine.py:11879(simulate_one)",
     "vec_decisions/process_position_stocks__mtf_gr_wt_exit.py:61(check_mtf_gr_wt_exit) [UNREACHABLE]",
     "vec_decisions/process_position_stocks__mtf_gr_wt_exit.py:81(check_mtf_gr_wt_exit_vec) [UNREACHABLE]"
    ],
@@ -186362,8 +186526,8 @@
     "total": 4
    },
    "vec_reads": [
-    "v12_quick_engine.py:9681(compute_exit_signals)",
-    "v12_quick_engine.py:11855(simulate_one)",
+    "v12_quick_engine.py:9689(compute_exit_signals)",
+    "v12_quick_engine.py:11888(simulate_one)",
     "vec_decisions/process_position_stocks__mtf_gr_wt_exit.py:55(_mtf_gr_wt_params) [UNREACHABLE]",
     "vec_decisions/test_process_position_stocks__mtf_gr_wt_exit.py:20(run) [UNREACHABLE]"
    ],
@@ -186429,16 +186593,18 @@
    "recently_added": null,
    "sides": [],
    "status": {
-    "crypto": "LIVE_ONLY+STAGED_VEC",
-    "stocks": "LIVE_ONLY+STAGED_VEC"
+    "crypto": "WIRED_BOTH_UNPROVEN",
+    "stocks": "WIRED_BOTH_UNPROVEN"
    },
    "template": {},
    "type": "bool",
    "vec_read_count": {
-    "reachable": 0,
-    "total": 0
+    "reachable": 1,
+    "total": 1
    },
-   "vec_reads": [],
+   "vec_reads": [
+    "vec_decisions/mtf_gr_filter.py:66(gr_filter_pass_vec)"
+   ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
   },
@@ -186499,16 +186665,18 @@
    "recently_added": null,
    "sides": [],
    "status": {
-    "crypto": "LIVE_ONLY+STAGED_VEC",
-    "stocks": "LIVE_ONLY+STAGED_VEC"
+    "crypto": "WIRED_BOTH_UNPROVEN",
+    "stocks": "WIRED_BOTH_UNPROVEN"
    },
    "template": {},
    "type": "bool",
    "vec_read_count": {
-    "reachable": 0,
-    "total": 0
+    "reachable": 1,
+    "total": 1
    },
-   "vec_reads": [],
+   "vec_reads": [
+    "vec_decisions/mtf_gr_filter.py:70(gr_filter_pass_vec)"
+   ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
   },
@@ -186588,8 +186756,8 @@
     "SHORT"
    ],
    "status": {
-    "crypto": "LIVE_ONLY+STAGED_VEC",
-    "stocks": "LIVE_ONLY+STAGED_VEC"
+    "crypto": "WIRED_BOTH_UNPROVEN",
+    "stocks": "WIRED_BOTH_UNPROVEN"
    },
    "template": {
     "CRYPTO_LONG": {
@@ -186687,10 +186855,12 @@
    },
    "type": "int",
    "vec_read_count": {
-    "reachable": 0,
-    "total": 0
+    "reachable": 1,
+    "total": 1
    },
-   "vec_reads": [],
+   "vec_reads": [
+    "vec_decisions/mtf_gr_filter.py:69(gr_filter_pass_vec)"
+   ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
     "CRYPTO",
@@ -186756,16 +186926,18 @@
    "recently_added": null,
    "sides": [],
    "status": {
-    "crypto": "LIVE_ONLY+STAGED_VEC",
-    "stocks": "LIVE_ONLY+STAGED_VEC"
+    "crypto": "WIRED_BOTH_UNPROVEN",
+    "stocks": "WIRED_BOTH_UNPROVEN"
    },
    "template": {},
    "type": "int",
    "vec_read_count": {
-    "reachable": 0,
-    "total": 0
+    "reachable": 1,
+    "total": 1
    },
-   "vec_reads": [],
+   "vec_reads": [
+    "vec_decisions/mtf_gr_filter.py:68(gr_filter_pass_vec)"
+   ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
   },
@@ -187039,7 +187211,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:11847(simulate_one)",
+    "v12_quick_engine.py:11880(simulate_one)",
     "vec_decisions/process_position_stocks__mtf_gr_wt_exit.py:56(_mtf_gr_wt_params) [UNREACHABLE]"
    ],
    "vec_unwired_listed": false,
@@ -187179,7 +187351,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:11845(simulate_one)",
+    "v12_quick_engine.py:11878(simulate_one)",
     "vec_decisions/process_position_stocks__mtf_gr_wt_exit.py:54(_mtf_gr_wt_params) [UNREACHABLE]"
    ],
    "vec_unwired_listed": false,
@@ -190228,7 +190400,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:11475(simulate_one)",
+    "v12_quick_engine.py:11483(simulate_one)",
     "vec_decisions/generic_filter_tf.py:152(newborn_loss_kill_fires)"
    ],
    "vec_unwired_listed": false,
@@ -190672,7 +190844,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11476(simulate_one)"
+    "v12_quick_engine.py:11484(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -193937,7 +194109,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:12718(simulate_one)"
+    "v12_quick_engine.py:12768(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -194213,7 +194385,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "<absent>",
-    "config_tradier.py": "{'SGML', 'DAC', 'URA', 'WEAT', 'FRO', 'ICL', 'PPA', 'ASML', 'PLL', 'TNK', 'LEC',",
+    "config_tradier.py": "{'FCN', 'SQM', 'MOO', 'GNK', 'UAN', 'DBA', 'IPI', 'COE', 'BTC', 'AXTI', 'NAT', '",
     "template_bold": {}
    },
    "filter_tf": false,
@@ -209866,7 +210038,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:12263(simulate_one)"
+    "v12_quick_engine.py:12313(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -210822,7 +210994,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11247(simulate_one)"
+    "v12_quick_engine.py:11255(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -217624,8 +217796,8 @@
    "recently_added": null,
    "sides": [],
    "status": {
-    "crypto": "LIVE_ONLY",
-    "stocks": "LIVE_ONLY"
+    "crypto": "LIVE_ONLY+STAGED_VEC",
+    "stocks": "LIVE_ONLY+STAGED_VEC"
    },
    "template": {},
    "type": "bool",
@@ -218203,7 +218375,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:12562(simulate_one)"
+    "v12_quick_engine.py:12612(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -218449,7 +218621,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:12562(simulate_one)"
+    "v12_quick_engine.py:12612(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -219021,8 +219193,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9923(compute_augment_signals)",
-    "v12_quick_engine.py:9974(compute_augment_signals)"
+    "v12_quick_engine.py:9931(compute_augment_signals)",
+    "v12_quick_engine.py:9982(compute_augment_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -219186,7 +219358,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9929(compute_augment_signals)"
+    "v12_quick_engine.py:9937(compute_augment_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -219427,7 +219599,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9927(compute_augment_signals)"
+    "v12_quick_engine.py:9935(compute_augment_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -219777,8 +219949,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9927(compute_augment_signals)",
-    "v12_quick_engine.py:9929(compute_augment_signals)"
+    "v12_quick_engine.py:9935(compute_augment_signals)",
+    "v12_quick_engine.py:9937(compute_augment_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -220019,7 +220191,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9975(compute_augment_signals)"
+    "v12_quick_engine.py:9983(compute_augment_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -220339,6 +220511,63 @@
     "total": 0
    },
    "vec_reads": [],
+   "vec_unwired_listed": false,
+   "venues_in_templates": []
+  },
+  "QUICK_ENTRY_ABLATION_SUPPRESS_VEC": {
+   "agent_c_registry": null,
+   "conflict_quick_vs_live": {},
+   "defaults": {
+    "QuickConfig": true,
+    "QuickConfig_apply_tradier_defaults": true,
+    "cat_side_defaults_4": {
+     "CRYPTO_LONG": "<absent>",
+     "CRYPTO_SHORT": "<absent>",
+     "STOCKS_LONG": "<absent>",
+     "STOCKS_SHORT": "<absent>"
+    },
+    "config.py": "<absent>",
+    "config_tradier.py": "<absent>",
+    "template_bold": {}
+   },
+   "filter_tf": false,
+   "in_config": {
+    "QuickConfig": true,
+    "config.py": false,
+    "config_tradier.py": false
+   },
+   "kind": "entry",
+   "ledger_flip_proven": false,
+   "live_dead_or_stub": {
+    "crypto": 0,
+    "stocks": 0
+   },
+   "live_read_count": {
+    "crypto": 0,
+    "stocks": 0
+   },
+   "live_reads": {
+    "crypto": [],
+    "stocks": []
+   },
+   "live_weak_refs": {},
+   "name": "QUICK_ENTRY_ABLATION_SUPPRESS_VEC",
+   "parity_proven": false,
+   "recently_added": null,
+   "sides": [],
+   "status": {
+    "crypto": "VEC_ONLY",
+    "stocks": "VEC_ONLY"
+   },
+   "template": {},
+   "type": "bool",
+   "vec_read_count": {
+    "reachable": 1,
+    "total": 1
+   },
+   "vec_reads": [
+    "v12_quick_engine.py:11522(simulate_one)"
+   ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
   },
@@ -229431,8 +229660,8 @@
     "total": 4
    },
    "vec_reads": [
-    "v12_quick_engine.py:8612(compute_reentry_blocks)",
-    "v12_quick_engine.py:8618(compute_reentry_blocks)",
+    "v12_quick_engine.py:8620(compute_reentry_blocks)",
+    "v12_quick_engine.py:8626(compute_reentry_blocks)",
     "vec_decisions/guaranteed_price_cross_reentry.py:248(check_guaranteed_price_cross_reentry)",
     "vec_decisions/test_guaranteed_price_cross_reentry.py:68(_run) [UNREACHABLE]"
    ],
@@ -230568,8 +230797,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8612(compute_reentry_blocks)",
-    "v12_quick_engine.py:8628(compute_reentry_blocks)"
+    "v12_quick_engine.py:8620(compute_reentry_blocks)",
+    "v12_quick_engine.py:8636(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -230767,8 +230996,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8612(compute_reentry_blocks)",
-    "v12_quick_engine.py:8623(compute_reentry_blocks)"
+    "v12_quick_engine.py:8620(compute_reentry_blocks)",
+    "v12_quick_engine.py:8631(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -230923,7 +231152,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8667(compute_reentry_blocks)",
+    "v12_quick_engine.py:8675(compute_reentry_blocks)",
     "vec_decisions/reentry_15m_bb_htf.py:178(check_bb1h_low_bounce_htf)"
    ],
    "vec_unwired_listed": false,
@@ -231162,7 +231391,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8673(compute_reentry_blocks)",
+    "v12_quick_engine.py:8681(compute_reentry_blocks)",
     "vec_decisions/reentry_15m_bb_htf.py:180(check_bb1h_low_bounce_htf)"
    ],
    "vec_unwired_listed": false,
@@ -231562,7 +231791,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8637(compute_reentry_blocks)",
+    "v12_quick_engine.py:8645(compute_reentry_blocks)",
     "vec_decisions/reentry_15m_bb_htf.py:145(check_dc_basis_cross_htf)"
    ],
    "vec_unwired_listed": false,
@@ -231801,7 +232030,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8647(compute_reentry_blocks)",
+    "v12_quick_engine.py:8655(compute_reentry_blocks)",
     "vec_decisions/reentry_15m_bb_htf.py:147(check_dc_basis_cross_htf)"
    ],
    "vec_unwired_listed": false,
@@ -231957,7 +232186,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8655(compute_reentry_blocks)",
+    "v12_quick_engine.py:8663(compute_reentry_blocks)",
     "vec_decisions/reentry_15m_bb_htf.py:163(check_lrl_pullback_htf)"
    ],
    "vec_unwired_listed": false,
@@ -232196,7 +232425,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8659(compute_reentry_blocks)",
+    "v12_quick_engine.py:8667(compute_reentry_blocks)",
     "vec_decisions/reentry_15m_bb_htf.py:165(check_lrl_pullback_htf)"
    ],
    "vec_unwired_listed": false,
@@ -232382,7 +232611,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8610(compute_reentry_blocks)"
+    "v12_quick_engine.py:8618(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -232834,7 +233063,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8059(compute_reentry_blocks)"
+    "v12_quick_engine.py:8067(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -233019,7 +233248,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8066(compute_reentry_blocks)"
+    "v12_quick_engine.py:8074(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -233206,7 +233435,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8598(compute_reentry_blocks)"
+    "v12_quick_engine.py:8606(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -233389,7 +233618,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8077(compute_reentry_blocks)"
+    "v12_quick_engine.py:8085(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -233576,7 +233805,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8082(compute_reentry_blocks)"
+    "v12_quick_engine.py:8090(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -233763,7 +233992,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8087(compute_reentry_blocks)"
+    "v12_quick_engine.py:8095(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -233946,7 +234175,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8094(compute_reentry_blocks)"
+    "v12_quick_engine.py:8102(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -234131,7 +234360,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8099(compute_reentry_blocks)"
+    "v12_quick_engine.py:8107(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -235825,8 +236054,8 @@
    },
    "conflict_quick_vs_live": {},
    "defaults": {
-    "QuickConfig": null,
-    "QuickConfig_apply_tradier_defaults": null,
+    "QuickConfig": false,
+    "QuickConfig_apply_tradier_defaults": false,
     "cat_side_defaults_4": {
      "CRYPTO_LONG": null,
      "CRYPTO_SHORT": null,
@@ -235867,13 +236096,13 @@
     "stocks": "VEC_ONLY"
    },
    "template": {},
-   "type": "NoneType",
+   "type": "bool",
    "vec_read_count": {
     "reachable": 1,
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:12113(simulate_one)"
+    "v12_quick_engine.py:12154(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -238773,7 +239002,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11646(simulate_one)"
+    "v12_quick_engine.py:11679(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -239663,7 +239892,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:12124(simulate_one)"
+    "v12_quick_engine.py:12167(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -239927,7 +240156,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11647(simulate_one)"
+    "v12_quick_engine.py:11680(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -241971,8 +242200,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:12110(simulate_one)",
-    "v12_quick_engine.py:12256(simulate_one)"
+    "v12_quick_engine.py:12151(simulate_one)",
+    "v12_quick_engine.py:12306(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -242342,17 +242571,17 @@
    "recently_added": null,
    "sides": [],
    "status": {
-    "crypto": "LIVE_ONLY+STAGED_VEC",
-    "stocks": "LIVE_ONLY+STAGED_VEC"
+    "crypto": "WIRED_BOTH_UNPROVEN",
+    "stocks": "WIRED_BOTH_UNPROVEN"
    },
    "template": {},
    "type": "float",
    "vec_read_count": {
-    "reachable": 0,
+    "reachable": 1,
     "total": 1
    },
    "vec_reads": [
-    "vec_decisions/reentry_tiers.py:21(tier_fire) [UNREACHABLE]"
+    "vec_decisions/reentry_tiers.py:21(tier_fire)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -243901,7 +244130,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8128(compute_reentry_blocks)"
+    "v12_quick_engine.py:8136(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -244078,7 +244307,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8142(compute_reentry_blocks)"
+    "v12_quick_engine.py:8150(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -244253,7 +244482,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8155(compute_reentry_blocks)"
+    "v12_quick_engine.py:8163(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -244432,7 +244661,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8168(compute_reentry_blocks)"
+    "v12_quick_engine.py:8176(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -244970,8 +245199,8 @@
     "SHORT"
    ],
    "status": {
-    "crypto": "LIVE_ONLY",
-    "stocks": "LIVE_ONLY"
+    "crypto": "LIVE_ONLY+STAGED_VEC",
+    "stocks": "LIVE_ONLY+STAGED_VEC"
    },
    "template": {
     "CRYPTO_LONG": {
@@ -247205,8 +247434,8 @@
     "SHORT"
    ],
    "status": {
-    "crypto": "LIVE_ONLY+STAGED_VEC",
-    "stocks": "LIVE_ONLY+STAGED_VEC"
+    "crypto": "WIRED_BOTH_UNPROVEN",
+    "stocks": "WIRED_BOTH_UNPROVEN"
    },
    "template": {
     "CRYPTO_LONG": {
@@ -247368,11 +247597,11 @@
    },
    "type": "float",
    "vec_read_count": {
-    "reachable": 0,
+    "reachable": 1,
     "total": 1
    },
    "vec_reads": [
-    "vec_decisions/reentry_tiers.py:35(size_mult) [UNREACHABLE]"
+    "vec_decisions/reentry_tiers.py:35(size_mult)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -247536,7 +247765,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:12223(simulate_one)"
+    "v12_quick_engine.py:12268(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -247618,8 +247847,8 @@
     "SHORT"
    ],
    "status": {
-    "crypto": "LIVE_ONLY+STAGED_VEC",
-    "stocks": "LIVE_ONLY+STAGED_VEC"
+    "crypto": "WIRED_BOTH_UNPROVEN",
+    "stocks": "WIRED_BOTH_UNPROVEN"
    },
    "template": {
     "CRYPTO_LONG": {
@@ -247773,11 +248002,11 @@
    },
    "type": "float",
    "vec_read_count": {
-    "reachable": 0,
+    "reachable": 1,
     "total": 1
    },
    "vec_reads": [
-    "vec_decisions/reentry_tiers.py:27(tier_fire) [UNREACHABLE]"
+    "vec_decisions/reentry_tiers.py:27(tier_fire)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -248263,6 +248492,64 @@
     "total": 0
    },
    "vec_reads": [],
+   "vec_unwired_listed": false,
+   "venues_in_templates": []
+  },
+  "REENTRY_TIER_MODEL_ENABLED": {
+   "agent_c_registry": null,
+   "conflict_quick_vs_live": {},
+   "defaults": {
+    "QuickConfig": false,
+    "QuickConfig_apply_tradier_defaults": false,
+    "cat_side_defaults_4": {
+     "CRYPTO_LONG": "<absent>",
+     "CRYPTO_SHORT": "<absent>",
+     "STOCKS_LONG": "<absent>",
+     "STOCKS_SHORT": "<absent>"
+    },
+    "config.py": "<absent>",
+    "config_tradier.py": "<absent>",
+    "template_bold": {}
+   },
+   "filter_tf": false,
+   "in_config": {
+    "QuickConfig": true,
+    "config.py": false,
+    "config_tradier.py": false
+   },
+   "kind": "reentry",
+   "ledger_flip_proven": false,
+   "live_dead_or_stub": {
+    "crypto": 0,
+    "stocks": 0
+   },
+   "live_read_count": {
+    "crypto": 0,
+    "stocks": 0
+   },
+   "live_reads": {
+    "crypto": [],
+    "stocks": []
+   },
+   "live_weak_refs": {},
+   "name": "REENTRY_TIER_MODEL_ENABLED",
+   "parity_proven": false,
+   "recently_added": null,
+   "sides": [],
+   "status": {
+    "crypto": "VEC_ONLY",
+    "stocks": "VEC_ONLY"
+   },
+   "template": {},
+   "type": "bool",
+   "vec_read_count": {
+    "reachable": 2,
+    "total": 2
+   },
+   "vec_reads": [
+    "v12_quick_engine.py:12144(simulate_one)",
+    "v12_quick_engine.py:12160(simulate_one)"
+   ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
   },
@@ -248927,7 +249214,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:10038(compute_regime_sizing_mult)"
+    "v12_quick_engine.py:10046(compute_regime_sizing_mult)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -249524,7 +249811,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:10041(compute_regime_sizing_mult)"
+    "v12_quick_engine.py:10049(compute_regime_sizing_mult)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -249767,7 +250054,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:10042(compute_regime_sizing_mult)"
+    "v12_quick_engine.py:10050(compute_regime_sizing_mult)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -249942,8 +250229,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:10011(compute_reduce_signals)",
-    "v12_quick_engine.py:10048(compute_regime_sizing_mult)"
+    "v12_quick_engine.py:10019(compute_reduce_signals)",
+    "v12_quick_engine.py:10056(compute_regime_sizing_mult)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -250803,8 +251090,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:10046(compute_regime_sizing_mult)",
-    "v12_quick_engine.py:10051(compute_regime_sizing_mult)"
+    "v12_quick_engine.py:10054(compute_regime_sizing_mult)",
+    "v12_quick_engine.py:10059(compute_regime_sizing_mult)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -251314,8 +251601,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:10019(compute_reduce_signals)",
-    "v12_quick_engine.py:10022(compute_reduce_signals)"
+    "v12_quick_engine.py:10027(compute_reduce_signals)",
+    "v12_quick_engine.py:10030(compute_reduce_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -251600,7 +251887,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:10024(compute_reduce_signals)"
+    "v12_quick_engine.py:10032(compute_reduce_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -252532,8 +252819,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:10045(compute_regime_sizing_mult)",
-    "v12_quick_engine.py:10051(compute_regime_sizing_mult)"
+    "v12_quick_engine.py:10053(compute_regime_sizing_mult)",
+    "v12_quick_engine.py:10059(compute_regime_sizing_mult)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -252915,8 +253202,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:10018(compute_reduce_signals)",
-    "v12_quick_engine.py:10021(compute_reduce_signals)"
+    "v12_quick_engine.py:10026(compute_reduce_signals)",
+    "v12_quick_engine.py:10029(compute_reduce_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -253163,7 +253450,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:10024(compute_reduce_signals)"
+    "v12_quick_engine.py:10032(compute_reduce_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -256421,7 +256708,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8265(compute_reentry_blocks)"
+    "v12_quick_engine.py:8273(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -256663,7 +256950,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8267(compute_reentry_blocks)"
+    "v12_quick_engine.py:8275(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -257326,7 +257613,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8893(compute_entry_signals)"
+    "v12_quick_engine.py:8901(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -257611,7 +257898,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8896(compute_entry_signals)"
+    "v12_quick_engine.py:8904(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -257780,7 +258067,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8898(compute_entry_signals)"
+    "v12_quick_engine.py:8906(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -258130,8 +258417,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9623(compute_exit_signals)",
-    "v12_quick_engine.py:9624(compute_exit_signals)"
+    "v12_quick_engine.py:9631(compute_exit_signals)",
+    "v12_quick_engine.py:9632(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -258298,8 +258585,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9625(compute_exit_signals)",
-    "v12_quick_engine.py:9626(compute_exit_signals)"
+    "v12_quick_engine.py:9633(compute_exit_signals)",
+    "v12_quick_engine.py:9634(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -260309,7 +260596,7 @@
     "total": 3
    },
    "vec_reads": [
-    "v12_quick_engine.py:9512(compute_entry_signals)",
+    "v12_quick_engine.py:9520(compute_entry_signals)",
     "vec_decisions/process_position_stocks__alt_entries.py:53(check_rz_breakout)",
     "vec_decisions/process_position_stocks__alt_entries.py:65(check_rz_breakout_vec)"
    ],
@@ -260621,7 +260908,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8460(compute_reentry_blocks)"
+    "v12_quick_engine.py:8468(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -260805,7 +261092,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9588(compute_exit_signals)",
+    "v12_quick_engine.py:9596(compute_exit_signals)",
     "vec_decisions/delta_exit_top.py:132(_delta_exit_enabled)"
    ],
    "vec_unwired_listed": false,
@@ -261044,7 +261331,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8461(compute_reentry_blocks)"
+    "v12_quick_engine.py:8469(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -261557,7 +261844,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8462(compute_reentry_blocks)"
+    "v12_quick_engine.py:8470(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -265657,7 +265944,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9580(compute_exit_signals)"
+    "v12_quick_engine.py:9588(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -265833,7 +266120,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8473(compute_reentry_blocks)"
+    "v12_quick_engine.py:8481(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -266077,8 +266364,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9636(compute_exit_signals)",
-    "v12_quick_engine.py:11774(simulate_one)"
+    "v12_quick_engine.py:9644(compute_exit_signals)",
+    "v12_quick_engine.py:11807(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -266422,7 +266709,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9639(compute_exit_signals)"
+    "v12_quick_engine.py:9647(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -266608,7 +266895,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9640(compute_exit_signals)"
+    "v12_quick_engine.py:9648(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -266849,7 +267136,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11774(simulate_one)"
+    "v12_quick_engine.py:11807(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -267035,7 +267322,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9642(compute_exit_signals)"
+    "v12_quick_engine.py:9650(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -267220,7 +267507,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9643(compute_exit_signals)"
+    "v12_quick_engine.py:9651(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -267520,8 +267807,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8480(compute_reentry_blocks)",
-    "v12_quick_engine.py:8487(compute_reentry_blocks)"
+    "v12_quick_engine.py:8488(compute_reentry_blocks)",
+    "v12_quick_engine.py:8495(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -267758,8 +268045,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8480(compute_reentry_blocks)",
-    "v12_quick_engine.py:8487(compute_reentry_blocks)"
+    "v12_quick_engine.py:8488(compute_reentry_blocks)",
+    "v12_quick_engine.py:8495(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -267930,7 +268217,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8475(compute_reentry_blocks)"
+    "v12_quick_engine.py:8483(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -268086,7 +268373,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8476(compute_reentry_blocks)"
+    "v12_quick_engine.py:8484(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -268285,7 +268572,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8477(compute_reentry_blocks)"
+    "v12_quick_engine.py:8485(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -268483,7 +268770,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8478(compute_reentry_blocks)"
+    "v12_quick_engine.py:8486(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -268681,7 +268968,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8479(compute_reentry_blocks)"
+    "v12_quick_engine.py:8487(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -268929,7 +269216,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8488(compute_reentry_blocks)"
+    "v12_quick_engine.py:8496(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -269095,7 +269382,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9644(compute_exit_signals)"
+    "v12_quick_engine.py:9652(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -269471,7 +269758,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8482(compute_reentry_blocks)"
+    "v12_quick_engine.py:8490(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -269595,7 +269882,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8483(compute_reentry_blocks)"
+    "v12_quick_engine.py:8491(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -269794,7 +270081,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8484(compute_reentry_blocks)"
+    "v12_quick_engine.py:8492(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -269992,7 +270279,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8485(compute_reentry_blocks)"
+    "v12_quick_engine.py:8493(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -270190,7 +270477,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8486(compute_reentry_blocks)"
+    "v12_quick_engine.py:8494(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -270730,7 +271017,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9271(compute_entry_signals)"
+    "v12_quick_engine.py:9279(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -286572,7 +286859,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9935(compute_augment_signals)"
+    "v12_quick_engine.py:9943(compute_augment_signals)"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -286747,7 +287034,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9939(compute_augment_signals)"
+    "v12_quick_engine.py:9947(compute_augment_signals)"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -286906,7 +287193,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9947(compute_augment_signals)"
+    "v12_quick_engine.py:9955(compute_augment_signals)"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -287081,7 +287368,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9953(compute_augment_signals)"
+    "v12_quick_engine.py:9961(compute_augment_signals)"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -287256,7 +287543,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9950(compute_augment_signals)"
+    "v12_quick_engine.py:9958(compute_augment_signals)"
    ],
    "vec_unwired_listed": true,
    "venues_in_templates": [
@@ -287729,7 +288016,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11686(simulate_one)"
+    "v12_quick_engine.py:11719(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -288503,7 +288790,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8387(compute_reentry_blocks)"
+    "v12_quick_engine.py:8395(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -288664,7 +288951,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8389(compute_reentry_blocks)"
+    "v12_quick_engine.py:8397(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -290405,7 +290692,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8441(compute_reentry_blocks)"
+    "v12_quick_engine.py:8449(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -291614,12 +291901,12 @@
     "total": 7
    },
    "vec_reads": [
-    "v12_quick_engine.py:12026(simulate_one)",
-    "v12_quick_engine.py:12030(simulate_one)",
-    "v12_quick_engine.py:12224(simulate_one)",
-    "v12_quick_engine.py:12228(simulate_one)",
-    "v12_quick_engine.py:12816(simulate_one)",
-    "v12_quick_engine.py:12842(simulate_one)",
+    "v12_quick_engine.py:12059(simulate_one)",
+    "v12_quick_engine.py:12063(simulate_one)",
+    "v12_quick_engine.py:12271(simulate_one)",
+    "v12_quick_engine.py:12275(simulate_one)",
+    "v12_quick_engine.py:12866(simulate_one)",
+    "v12_quick_engine.py:12892(simulate_one)",
     "vec_decisions/process_position_crypto__stop_functions_kill.py:41(_stop_functions_kill_thresholds) [UNREACHABLE]"
    ],
    "vec_unwired_listed": false,
@@ -292472,8 +292759,8 @@
     "SHORT"
    ],
    "status": {
-    "crypto": "LIVE_ONLY",
-    "stocks": "LIVE_ONLY"
+    "crypto": "LIVE_ONLY+STAGED_VEC",
+    "stocks": "LIVE_ONLY+STAGED_VEC"
    },
    "template": {
     "CRYPTO_LONG": {
@@ -292664,8 +292951,8 @@
     "SHORT"
    ],
    "status": {
-    "crypto": "LIVE_ONLY",
-    "stocks": "LIVE_ONLY"
+    "crypto": "LIVE_ONLY+STAGED_VEC",
+    "stocks": "LIVE_ONLY+STAGED_VEC"
    },
    "template": {
     "CRYPTO_LONG": {
@@ -293034,8 +293321,8 @@
    "recently_added": null,
    "sides": [],
    "status": {
-    "crypto": "LIVE_ONLY",
-    "stocks": "LIVE_ONLY"
+    "crypto": "LIVE_ONLY+STAGED_VEC",
+    "stocks": "LIVE_ONLY+STAGED_VEC"
    },
    "template": {},
    "type": "int",
@@ -293193,8 +293480,8 @@
     "SHORT"
    ],
    "status": {
-    "crypto": "LIVE_ONLY",
-    "stocks": "LIVE_ONLY"
+    "crypto": "LIVE_ONLY+STAGED_VEC",
+    "stocks": "LIVE_ONLY+STAGED_VEC"
    },
    "template": {
     "CRYPTO_LONG": {
@@ -293443,8 +293730,8 @@
     "SHORT"
    ],
    "status": {
-    "crypto": "LIVE_ONLY",
-    "stocks": "LIVE_ONLY"
+    "crypto": "LIVE_ONLY+STAGED_VEC",
+    "stocks": "LIVE_ONLY+STAGED_VEC"
    },
    "template": {
     "CRYPTO_LONG": {
@@ -294151,7 +294438,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:10091(compute_regime_sizing_mult)"
+    "v12_quick_engine.py:10099(compute_regime_sizing_mult)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -294292,8 +294579,8 @@
    "recently_added": null,
    "sides": [],
    "status": {
-    "crypto": "LIVE_ONLY",
-    "stocks": "LIVE_ONLY"
+    "crypto": "LIVE_ONLY+STAGED_VEC",
+    "stocks": "LIVE_ONLY+STAGED_VEC"
    },
    "template": {},
    "type": "float",
@@ -297296,8 +297583,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:10069(compute_regime_sizing_mult)",
-    "v12_quick_engine.py:10092(compute_regime_sizing_mult)"
+    "v12_quick_engine.py:10077(compute_regime_sizing_mult)",
+    "v12_quick_engine.py:10100(compute_regime_sizing_mult)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -297913,7 +298200,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9594(compute_exit_signals)"
+    "v12_quick_engine.py:9602(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -298085,7 +298372,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9662(compute_exit_signals)"
+    "v12_quick_engine.py:9670(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -298344,8 +298631,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8578(compute_reentry_blocks)",
-    "v12_quick_engine.py:8936(compute_entry_signals)"
+    "v12_quick_engine.py:8586(compute_reentry_blocks)",
+    "v12_quick_engine.py:8944(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -298518,7 +298805,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8251(compute_reentry_blocks)"
+    "v12_quick_engine.py:8259(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -298838,7 +299125,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:12131(simulate_one)"
+    "v12_quick_engine.py:12174(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -299006,7 +299293,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:12564(simulate_one)"
+    "v12_quick_engine.py:12614(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -299243,7 +299530,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:12564(simulate_one)"
+    "v12_quick_engine.py:12614(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -299672,7 +299959,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8835(compute_entry_signals)"
+    "v12_quick_engine.py:8843(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -299911,7 +300198,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8853(compute_entry_signals)"
+    "v12_quick_engine.py:8861(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -300438,8 +300725,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9784(compute_exit_signals)",
-    "v12_quick_engine.py:9813(compute_exit_signals)"
+    "v12_quick_engine.py:9792(compute_exit_signals)",
+    "v12_quick_engine.py:9821(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -300618,8 +300905,8 @@
     "total": 8
    },
    "vec_reads": [
-    "v12_quick_engine.py:8359(compute_reentry_blocks)",
-    "v12_quick_engine.py:9567(compute_exit_signals)",
+    "v12_quick_engine.py:8367(compute_reentry_blocks)",
+    "v12_quick_engine.py:9575(compute_exit_signals)",
     "vec_decisions/check_exit_candidates_crypto__structural_range_shift.py:85(check_structural_range_shift) [UNREACHABLE]",
     "vec_decisions/check_exit_candidates_crypto__structural_range_shift.py:109(check_structural_range_shift_vec) [UNREACHABLE]",
     "vec_decisions/check_exit_candidates_stocks__structural_range_shift.py:67(check_structural_range_shift) [UNREACHABLE]",
@@ -301175,8 +301462,8 @@
     "total": 6
    },
    "vec_reads": [
-    "v12_quick_engine.py:8361(compute_reentry_blocks)",
-    "v12_quick_engine.py:9570(compute_exit_signals)",
+    "v12_quick_engine.py:8369(compute_reentry_blocks)",
+    "v12_quick_engine.py:9578(compute_exit_signals)",
     "vec_decisions/check_exit_candidates_crypto__structural_range_shift.py:74(_srs_params) [UNREACHABLE]",
     "vec_decisions/check_exit_candidates_stocks__structural_range_shift.py:56(_srs_params) [UNREACHABLE]",
     "vec_decisions/live_exit_chain.py:77(prepare)",
@@ -304749,7 +305036,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11743(simulate_one)"
+    "v12_quick_engine.py:11776(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -304984,8 +305271,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:11742(simulate_one)",
-    "v12_quick_engine.py:11772(simulate_one) [STUB]"
+    "v12_quick_engine.py:11775(simulate_one)",
+    "v12_quick_engine.py:11805(simulate_one) [STUB]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -305120,7 +305407,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11745(simulate_one)"
+    "v12_quick_engine.py:11778(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -305355,8 +305642,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:11744(simulate_one)",
-    "v12_quick_engine.py:11772(simulate_one) [STUB]"
+    "v12_quick_engine.py:11777(simulate_one)",
+    "v12_quick_engine.py:11805(simulate_one) [STUB]"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -305726,7 +306013,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8952(compute_entry_signals)"
+    "v12_quick_engine.py:8960(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -306035,7 +306322,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8534(compute_reentry_blocks)"
+    "v12_quick_engine.py:8542(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -306341,7 +306628,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8538(compute_reentry_blocks)"
+    "v12_quick_engine.py:8546(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -306611,7 +306898,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8790(compute_entry_signals)"
+    "v12_quick_engine.py:8798(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -306953,7 +307240,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8791(compute_entry_signals)"
+    "v12_quick_engine.py:8799(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -309719,7 +310006,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:6136(QuickConfig)"
+    "v12_quick_engine.py:6144(QuickConfig)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -309853,8 +310140,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:6136(QuickConfig)",
-    "v12_quick_engine.py:6136(QuickConfig)"
+    "v12_quick_engine.py:6144(QuickConfig)",
+    "v12_quick_engine.py:6144(QuickConfig)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -309979,8 +310266,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8452(compute_reentry_blocks)",
-    "v12_quick_engine.py:11699(simulate_one)"
+    "v12_quick_engine.py:8460(compute_reentry_blocks)",
+    "v12_quick_engine.py:11732(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -310171,7 +310458,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8456(compute_reentry_blocks)"
+    "v12_quick_engine.py:8464(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -310332,7 +310619,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11704(simulate_one)"
+    "v12_quick_engine.py:11737(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -310905,7 +311192,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11705(simulate_one)"
+    "v12_quick_engine.py:11738(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -311336,7 +311623,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8454(compute_reentry_blocks)"
+    "v12_quick_engine.py:8462(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -311562,7 +311849,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8972(compute_entry_signals)"
+    "v12_quick_engine.py:8980(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -311689,7 +311976,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8562(compute_reentry_blocks)"
+    "v12_quick_engine.py:8570(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -311811,7 +312098,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8563(compute_reentry_blocks)"
+    "v12_quick_engine.py:8571(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -311938,7 +312225,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8548(compute_reentry_blocks)"
+    "v12_quick_engine.py:8556(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -312065,7 +312352,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8565(compute_reentry_blocks)"
+    "v12_quick_engine.py:8573(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -312226,7 +312513,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8566(compute_reentry_blocks)"
+    "v12_quick_engine.py:8574(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -312387,7 +312674,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8559(compute_reentry_blocks)"
+    "v12_quick_engine.py:8567(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -312548,7 +312835,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8555(compute_reentry_blocks)"
+    "v12_quick_engine.py:8563(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -313003,7 +313290,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8209(compute_reentry_blocks)"
+    "v12_quick_engine.py:8217(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -313125,7 +313412,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8210(compute_reentry_blocks)"
+    "v12_quick_engine.py:8218(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -313447,7 +313734,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8889(compute_entry_signals)"
+    "v12_quick_engine.py:8897(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -313570,7 +313857,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8891(compute_entry_signals)"
+    "v12_quick_engine.py:8899(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -313834,7 +314121,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8585(compute_reentry_blocks)"
+    "v12_quick_engine.py:8593(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -314059,7 +314346,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8588(compute_reentry_blocks)"
+    "v12_quick_engine.py:8596(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -315482,7 +315769,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9628(compute_exit_signals)"
+    "v12_quick_engine.py:9636(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -315775,7 +316062,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9632(compute_exit_signals)"
+    "v12_quick_engine.py:9640(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -316068,7 +316355,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9634(compute_exit_signals)"
+    "v12_quick_engine.py:9642(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -316191,7 +316478,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8571(compute_reentry_blocks)"
+    "v12_quick_engine.py:8579(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -316313,7 +316600,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8572(compute_reentry_blocks)"
+    "v12_quick_engine.py:8580(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -317087,7 +317374,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8576(compute_reentry_blocks)"
+    "v12_quick_engine.py:8584(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -317406,7 +317693,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8579(compute_reentry_blocks)"
+    "v12_quick_engine.py:8587(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -317528,7 +317815,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8580(compute_reentry_blocks)"
+    "v12_quick_engine.py:8588(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -317650,7 +317937,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8581(compute_reentry_blocks)"
+    "v12_quick_engine.py:8589(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -317772,7 +318059,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8582(compute_reentry_blocks)"
+    "v12_quick_engine.py:8590(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -318330,8 +318617,8 @@
    "recently_added": null,
    "sides": [],
    "status": {
-    "crypto": "DEAD",
-    "stocks": "LIVE_ONLY"
+    "crypto": "DEAD+STAGED_VEC",
+    "stocks": "LIVE_ONLY+STAGED_VEC"
    },
    "template": {},
    "type": "bool",
@@ -328573,7 +328860,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11247(simulate_one)"
+    "v12_quick_engine.py:11255(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -329995,8 +330282,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:8980(compute_entry_signals)",
-    "v12_quick_engine.py:9904(compute_augment_signals)"
+    "v12_quick_engine.py:8988(compute_entry_signals)",
+    "v12_quick_engine.py:9912(compute_augment_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -331218,7 +331505,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9548(compute_exit_signals)"
+    "v12_quick_engine.py:9556(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -331848,7 +332135,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11791(simulate_one)"
+    "v12_quick_engine.py:11824(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -332064,7 +332351,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11789(simulate_one)"
+    "v12_quick_engine.py:11822(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -332313,7 +332600,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11790(simulate_one)"
+    "v12_quick_engine.py:11823(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -332508,7 +332795,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11788(simulate_one)"
+    "v12_quick_engine.py:11821(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -332691,7 +332978,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11801(simulate_one)"
+    "v12_quick_engine.py:11834(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -332874,7 +333161,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11800(simulate_one)"
+    "v12_quick_engine.py:11833(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -333515,7 +333802,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8956(compute_entry_signals)"
+    "v12_quick_engine.py:8964(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -333756,7 +334043,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8960(compute_entry_signals)"
+    "v12_quick_engine.py:8968(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -335156,7 +335443,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8469(compute_reentry_blocks)"
+    "v12_quick_engine.py:8477(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -335330,7 +335617,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8468(compute_reentry_blocks)"
+    "v12_quick_engine.py:8476(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -335506,7 +335793,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8817(compute_entry_signals)"
+    "v12_quick_engine.py:8825(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -335805,10 +336092,11 @@
    },
    "type": "bool",
    "vec_read_count": {
-    "reachable": 2,
-    "total": 2
+    "reachable": 3,
+    "total": 3
    },
    "vec_reads": [
+    "v12_quick_engine.py:11524(simulate_one)",
     "vec_decisions/momentum_watchdog.py:87(momentum_watchdog_should_open)",
     "vec_decisions/momentum_watchdog.py:124(momentum_watchdog_vec)"
    ],
@@ -336198,16 +336486,75 @@
    "recently_added": null,
    "sides": [],
    "status": {
-    "crypto": "LIVE_ONLY+STAGED_VEC",
-    "stocks": "LIVE_ONLY+STAGED_VEC"
+    "crypto": "WIRED_BOTH_UNPROVEN",
+    "stocks": "WIRED_BOTH_UNPROVEN"
    },
    "template": {},
    "type": "str",
    "vec_read_count": {
-    "reachable": 0,
-    "total": 0
+    "reachable": 1,
+    "total": 1
    },
-   "vec_reads": [],
+   "vec_reads": [
+    "v12_quick_engine.py:11528(simulate_one)"
+   ],
+   "vec_unwired_listed": false,
+   "venues_in_templates": []
+  },
+  "WATCHDOG_DC_VEC_ENABLED": {
+   "agent_c_registry": null,
+   "conflict_quick_vs_live": {},
+   "defaults": {
+    "QuickConfig": true,
+    "QuickConfig_apply_tradier_defaults": true,
+    "cat_side_defaults_4": {
+     "CRYPTO_LONG": "<absent>",
+     "CRYPTO_SHORT": "<absent>",
+     "STOCKS_LONG": "<absent>",
+     "STOCKS_SHORT": "<absent>"
+    },
+    "config.py": "<absent>",
+    "config_tradier.py": "<absent>",
+    "template_bold": {}
+   },
+   "filter_tf": false,
+   "in_config": {
+    "QuickConfig": true,
+    "config.py": false,
+    "config_tradier.py": false
+   },
+   "kind": "unclassified",
+   "ledger_flip_proven": false,
+   "live_dead_or_stub": {
+    "crypto": 0,
+    "stocks": 0
+   },
+   "live_read_count": {
+    "crypto": 0,
+    "stocks": 0
+   },
+   "live_reads": {
+    "crypto": [],
+    "stocks": []
+   },
+   "live_weak_refs": {},
+   "name": "WATCHDOG_DC_VEC_ENABLED",
+   "parity_proven": false,
+   "recently_added": null,
+   "sides": [],
+   "status": {
+    "crypto": "VEC_ONLY",
+    "stocks": "VEC_ONLY"
+   },
+   "template": {},
+   "type": "bool",
+   "vec_read_count": {
+    "reachable": 1,
+    "total": 1
+   },
+   "vec_reads": [
+    "v12_quick_engine.py:11524(simulate_one)"
+   ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
   },
@@ -336779,7 +337126,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:11773(simulate_one)"
+    "v12_quick_engine.py:11806(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -336858,7 +337205,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:7907(QuickConfig)"
+    "v12_quick_engine.py:7915(QuickConfig)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -336934,7 +337281,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:7908(QuickConfig)"
+    "v12_quick_engine.py:7916(QuickConfig)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -338483,7 +338830,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9410(compute_entry_signals)"
+    "v12_quick_engine.py:9418(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -338907,7 +339254,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9409(compute_entry_signals)"
+    "v12_quick_engine.py:9417(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -339082,8 +339429,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9369(compute_entry_signals)",
-    "v12_quick_engine.py:9432(compute_entry_signals)"
+    "v12_quick_engine.py:9377(compute_entry_signals)",
+    "v12_quick_engine.py:9440(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -339258,8 +339605,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9368(compute_entry_signals)",
-    "v12_quick_engine.py:9431(compute_entry_signals)"
+    "v12_quick_engine.py:9376(compute_entry_signals)",
+    "v12_quick_engine.py:9439(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -339402,8 +339749,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9379(compute_entry_signals)",
-    "v12_quick_engine.py:9444(compute_entry_signals)"
+    "v12_quick_engine.py:9387(compute_entry_signals)",
+    "v12_quick_engine.py:9452(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -339722,8 +340069,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9369(compute_entry_signals)",
-    "v12_quick_engine.py:9432(compute_entry_signals)"
+    "v12_quick_engine.py:9377(compute_entry_signals)",
+    "v12_quick_engine.py:9440(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -340042,8 +340389,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9368(compute_entry_signals)",
-    "v12_quick_engine.py:9431(compute_entry_signals)"
+    "v12_quick_engine.py:9376(compute_entry_signals)",
+    "v12_quick_engine.py:9439(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -340213,8 +340560,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9408(compute_entry_signals)",
-    "v12_quick_engine.py:11692(simulate_one)"
+    "v12_quick_engine.py:9416(compute_entry_signals)",
+    "v12_quick_engine.py:11725(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -340533,8 +340880,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9370(compute_entry_signals)",
-    "v12_quick_engine.py:9458(compute_entry_signals)"
+    "v12_quick_engine.py:9378(compute_entry_signals)",
+    "v12_quick_engine.py:9466(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -340712,7 +341059,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9411(compute_entry_signals)"
+    "v12_quick_engine.py:9419(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -340887,8 +341234,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9370(compute_entry_signals)",
-    "v12_quick_engine.py:9458(compute_entry_signals)"
+    "v12_quick_engine.py:9378(compute_entry_signals)",
+    "v12_quick_engine.py:9466(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -341031,8 +341378,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9387(compute_entry_signals)",
-    "v12_quick_engine.py:9461(compute_entry_signals)"
+    "v12_quick_engine.py:9395(compute_entry_signals)",
+    "v12_quick_engine.py:9469(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -341273,8 +341620,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9388(compute_entry_signals)",
-    "v12_quick_engine.py:9462(compute_entry_signals)"
+    "v12_quick_engine.py:9396(compute_entry_signals)",
+    "v12_quick_engine.py:9470(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -347512,7 +347859,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9605(compute_exit_signals)"
+    "v12_quick_engine.py:9613(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -348809,8 +349156,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9087(compute_entry_signals)",
-    "v12_quick_engine.py:9157(compute_entry_signals)"
+    "v12_quick_engine.py:9095(compute_entry_signals)",
+    "v12_quick_engine.py:9165(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -349075,7 +349422,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9013(compute_entry_signals)"
+    "v12_quick_engine.py:9021(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -349359,7 +349706,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9014(compute_entry_signals)"
+    "v12_quick_engine.py:9022(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -349627,7 +349974,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9010(compute_entry_signals)"
+    "v12_quick_engine.py:9018(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -349862,7 +350209,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9117(compute_entry_signals)"
+    "v12_quick_engine.py:9125(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -350039,7 +350386,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9115(compute_entry_signals)"
+    "v12_quick_engine.py:9123(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -351289,7 +351636,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9109(compute_entry_signals)"
+    "v12_quick_engine.py:9117(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -351996,7 +352343,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9121(compute_entry_signals)"
+    "v12_quick_engine.py:9129(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -352641,8 +352988,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9095(compute_entry_signals)",
-    "v12_quick_engine.py:9160(compute_entry_signals)"
+    "v12_quick_engine.py:9103(compute_entry_signals)",
+    "v12_quick_engine.py:9168(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -352890,7 +353237,7 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9040(compute_entry_signals)",
+    "v12_quick_engine.py:9048(compute_entry_signals)",
     "vec_decisions/process_position_stocks__wtdc_entry_gates.py:92(_wtdc_entry_gate_params) [UNREACHABLE]"
    ],
    "vec_unwired_listed": false,
@@ -353084,7 +353431,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9017(compute_entry_signals)"
+    "v12_quick_engine.py:9025(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -353209,7 +353556,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9080(compute_entry_signals)"
+    "v12_quick_engine.py:9088(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -353328,7 +353675,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9083(compute_entry_signals)"
+    "v12_quick_engine.py:9091(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -353387,7 +353734,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9145(compute_entry_signals)"
+    "v12_quick_engine.py:9153(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": []
@@ -353519,7 +353866,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8996(compute_entry_signals)"
+    "v12_quick_engine.py:9004(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -353652,7 +353999,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9001(compute_entry_signals)"
+    "v12_quick_engine.py:9009(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -353930,7 +354277,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9011(compute_entry_signals)"
+    "v12_quick_engine.py:9019(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -354164,7 +354511,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9015(compute_entry_signals)"
+    "v12_quick_engine.py:9023(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -354389,7 +354736,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9016(compute_entry_signals)"
+    "v12_quick_engine.py:9024(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -354453,8 +354800,8 @@
     "SHORT"
    ],
    "status": {
-    "crypto": "DEAD",
-    "stocks": "DEAD"
+    "crypto": "DEAD+STAGED_VEC",
+    "stocks": "DEAD+STAGED_VEC"
    },
    "template": {
     "CRYPTO_LONG": {
@@ -354887,8 +355234,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9007(compute_entry_signals)",
-    "v12_quick_engine.py:9122(compute_entry_signals)"
+    "v12_quick_engine.py:9015(compute_entry_signals)",
+    "v12_quick_engine.py:9130(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -355181,7 +355528,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9008(compute_entry_signals)"
+    "v12_quick_engine.py:9016(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -355459,7 +355806,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9009(compute_entry_signals)"
+    "v12_quick_engine.py:9017(compute_entry_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -356637,7 +356984,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:8258(compute_reentry_blocks)"
+    "v12_quick_engine.py:8266(compute_reentry_blocks)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -357629,7 +357976,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9547(compute_exit_signals)"
+    "v12_quick_engine.py:9555(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -358535,7 +358882,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:12424(simulate_one)"
+    "v12_quick_engine.py:12474(simulate_one)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -361888,8 +362235,8 @@
     "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:9364(compute_entry_signals)",
-    "v12_quick_engine.py:9836(compute_exit_signals)"
+    "v12_quick_engine.py:9372(compute_entry_signals)",
+    "v12_quick_engine.py:9844(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -362013,7 +362360,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9555(compute_exit_signals)"
+    "v12_quick_engine.py:9563(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -362251,7 +362598,7 @@
     "total": 1
    },
    "vec_reads": [
-    "v12_quick_engine.py:9556(compute_exit_signals)"
+    "v12_quick_engine.py:9564(compute_exit_signals)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
