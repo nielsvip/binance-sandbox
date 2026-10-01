@@ -26900,3 +26900,10 @@
 {"ts": 1790870373.4883258, "base": "AMD", "usdt": "AMDUSDT", "side": "LONG", "price": 612.075, "reason": "DC_BREAK_HIGH_5M"}
 {"ts": 1790870423.672414, "base": "SMCI", "usdt": "SMCIUSDT", "side": "LONG", "price": 40.825, "reason": "DC_BREAK_HIGH_5M"}
 {"ts": 1790870439.088813, "base": "AMD", "usdt": "AMDUSDT", "side": "LONG", "price": 557.255126953125, "reason": "WT_DC_ENTRY_66_D_bull | 4h_bull | k5m=30<40 +ENGINES(wt=0.80,htf=0.60)_qty_1"}
+{"ts": 1790880515.1955771, "base": "META", "usdt": "METAUSDT", "side": "LONG", "price": 727.08, "reason": "HARDCODED_RALLY_REENTRY_LONG_close728.3300>exit549.3950_wt21.2>21.2_w1.0_s0.29_qty_1.0"}
+{"ts": 1790880526.2937942, "base": "SMCI", "usdt": "SMCIUSDT", "side": "LONG", "price": 41.955, "reason": "MANDATORY_REENTRY_PRICE_CROSS_exit41.5300_cur41.6950_dist0.40%_age83m_CROSSED_BACK_GUARANTEED_qty_47.96738218011752"}
+{"ts": 1790880541.266627, "base": "META", "usdt": "METAUSDT", "side": "LONG", "price": 727.14, "reason": "HARDCODED_RALLY_REENTRY_LONG_close728.9200>exit549.3950_wt10.7>10.7_w1.0_s0.10_qty_1.0"}
+{"ts": 1790880547.355021, "base": "GOOGL", "usdt": "GOOGLUSDT", "side": "LONG", "price": 338.46000000000004, "reason": "HARDCODED_RALLY_REENTRY_LONG_close339.3300>exit338.7750_wt-63.6>-63.6_w6.0_s0.20"}
+{"ts": 1790880549.868056, "base": "AXTI", "usdt": "AXTIUSDT", "side": "LONG", "price": 81.78999999999999, "reason": "REENTRY_PRICE_CROSS_BACK_exit82.3500_cur82.1650_dist0.22%_age106m_WITHIN_BAND_0.30%_CROSSED_BACK_GUARANTEED_price_reclai"}
+{"ts": 1790880552.581664, "base": "AXTI", "usdt": "AXTIUSDT", "side": "LONG", "price": 81.78999999999999, "reason": "WT_2of3_REENTRY_2of3_favor_htf2"}
+{"ts": 1790880569.642411, "base": "AXTI", "usdt": "AXTIUSDT", "side": "LONG", "price": 81.75999999999999, "reason": "REENTRY_PRICE_CROSS_BACK_exit82.3500_cur82.2550_dist0.12%_age110m_WITHIN_BAND_0.30%_CROSSED_BACK_GUARANTEED_price_reclai"}

@@ -1,0 +1,54 @@
+{
+ "_doc": "Single source list for the avg-delta / POS_SYM evidence tooling (tools/v15_avg2_*.py, tools/avg2_sources.py). EVID 2026-10-01. Contaminated crypto results (look-ahead in 1h/4h/D arrays, fixed by AUDIT/001 engine ecacb3be) STAY in POS_SYM / n_sym; AVG_DELTA prefers clean results. NEVER drop evidence by moving a folder: use tools/v15_quarantine_keep_evidence.sh (it uses the contaminated_<label> naming convention below and registers the move).",
+ "clean_crypto_epoch": "2026-10-01T18:20:00Z",
+ "clean_rule": "STOCKS: every result is clean (stock NPZs are causal). CRYPTO: clean only if the progress file mtime >= clean_crypto_epoch (written by a pilot launched on engine ecacb3be after the AUDIT/001 deploy 18:09:49Z and after the old pilots were killed ~18:19Z) AND the file is not in a contaminated_* folder; every other crypto result (run19 and older, run20 before the fix, anything in contaminated_*) is contaminated.",
+ "progress_globs": [
+  "/home/niels/v15_run*/progress/*_v14_progress.json",
+  "/home/niels/v15_mega_progress/*_v14_progress.json",
+  "/home/niels/v15_run_import_*/progress/*_v14_progress.json"
+ ],
+ "contaminated_globs": [
+  "/home/niels/v15_run*/contaminated_*/progress/*_v14_progress.json"
+ ],
+ "excluded_globs": {
+  "/home/niels/v15_run*/quarantine_sawtooth_*/*_v14_progress.json": "stock NPZ sawtooth (interleaved 5m/15m bars): the deltas are computed on garbage bars, not evidence",
+  "/home/niels/v15_run*/progress/quarantine_e3zero_*/*_v14_progress.json": "E3-DEFAULT-BASE bug: chain start zeroed (initial_baseline_gain 0) so every row delta is biased by the real baseline: invalid; the sym_sides were rerun in run20"
+ },
+ "registry": [
+  {
+   "at": "2026-10-01T18:14Z",
+   "what": "run20 crypto progress + 365D chain moved to contaminated_crypto_lookahead_20261001 on s1/s2/s5 (50/34/36 progress files)",
+   "folder": "/home/niels/v15_run20_20261001/contaminated_crypto_lookahead_20261001",
+   "include_pos_sym": true,
+   "include_n_sym": true,
+   "avg_delta": "fallback only, flagged contaminated"
+  },
+  {
+   "at": "2026-10-01T~03:00Z",
+   "what": "run19 e3zero quarantine (58 sym_sides)",
+   "folder": "/home/niels/v15_run19_20261001/progress/quarantine_e3zero_20261001",
+   "include_pos_sym": false,
+   "reason": "baseline-zeroed chain: deltas invalid"
+  },
+  {
+   "at": "2026-10-01T~00:00Z",
+   "what": "run19 sawtooth quarantine (UEC, WDAY)",
+   "folder": "/home/niels/v15_run19_20261001/quarantine_sawtooth_20261001",
+   "include_pos_sym": false,
+   "reason": "sawtooth NPZ garbage"
+  },
+  {
+   "at": "2026-10-01T18:49Z",
+   "what": "NEWX early scan (new + newly connected rows, alone and x filters) on engine ecacb3be, 25 sym_sides per cat_side; source=newx",
+   "folder": "/home/niels/v15_run_newx_20261001/progress",
+   "include_pos_sym": true,
+   "include_n_sym": true,
+   "avg_delta": "clean for crypto (written after clean_crypto_epoch, causal engine)",
+   "mirror": "data/newx/<CAT_SIDE>/<SYM_SIDE>_newx.json",
+   "hosts": [
+    "s5 (crypto)",
+    "s2 (stocks)"
+   ]
+  }
+ ]
+}

@@ -52,6 +52,9 @@ MODE = "tradier"
 SPLIT_ADJUSTMENTS = {}
 
 
+_CRYPTO_HTF_PERIOD_S = {"1h": 3600, "4h": 14400, "D": 86400}
+
+
 def _broadcast_asof_indices(
     source_ts: np.ndarray,
     target_ts: np.ndarray,
@@ -70,6 +73,14 @@ def _broadcast_asof_indices(
     src = np.asarray(source_ts, dtype=np.int64)
     dst = np.asarray(target_ts, dtype=np.int64)
     lag = 2 if mode == "tradier" and timeframe in {"1h", "4h", "D", "W", "M"} else 1
+    # 2026-10-01 AUDIT/NPZB: crypto 1h/4h/D rows are pandas left-labelled aggregates (label = bar OPEN time). Lag 1 maps a 15m bar
+    # to the row of its OWN, still-forming HTF bar -> the complete future HTF bar (look-ahead). The causal mapping is TIME based
+    # (robust to a missing/forming last row and to gaps): a 15m bar inside HTF bucket B sees the row labelled B - period (the
+    # previous fully closed bucket), or the latest older row if that one is missing. Same convention as tradier lag 2 and as
+    # vec_decisions.htf_causal_align.align_store. Env NPZ_HTF_LEGACY_LAG1=1 reproduces the old (leaky) build for comparison only.
+    if mode == "crypto" and timeframe in _CRYPTO_HTF_PERIOD_S and os.environ.get("NPZ_HTF_LEGACY_LAG1") != "1":
+        per = _CRYPTO_HTF_PERIOD_S[timeframe]
+        return np.searchsorted(src, (dst // per) * per - per, side="right") - 1
     # Keep -1 for the warm-up interval. Clipping it to row zero would expose a
     # value before that row was observable (a smaller but real look-ahead leak).
     return np.minimum(np.searchsorted(src, dst, side="right") - lag, len(src) - 1)
@@ -104,7 +115,10 @@ def _availability_timestamps(
     idx = np.asarray(indices, dtype=np.int64)
     out = np.zeros(len(idx), dtype=np.int64)
     valid = idx >= 0
-    if mode == "tradier" and timeframe in {"1h", "4h", "D", "W", "M"}:
+    if mode == "crypto" and timeframe in _CRYPTO_HTF_PERIOD_S and os.environ.get("NPZ_HTF_LEGACY_LAG1") != "1":
+        # causal crypto mapping: the selected row (label L) became knowable when its bucket closed, at L + period
+        out[valid] = src[idx[valid]] + _CRYPTO_HTF_PERIOD_S[timeframe]
+    elif mode == "tradier" and timeframe in {"1h", "4h", "D", "W", "M"}:
         out[valid] = src[np.minimum(idx[valid] + 1, len(src) - 1)]
     else:
         out[valid] = src[idx[valid]]
@@ -2396,6 +2410,9 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     except Exception as _e:
         logger.warning(f"  {symbol}: guard check failed {_e} — proceeding to save")
     tmp_path = OUT_DIR / f".{symbol}.{os.getpid()}.tmp.npz"
+    if mode == "crypto" and os.environ.get("NPZ_HTF_LEGACY_LAG1") != "1":
+        # AUDIT/NPZB 2026-10-01: marker read by vec_decisions.htf_causal_align (skip the engine-load shift: never a double lag)
+        merged["htf_align"] = np.array(["causal_v2"])
     np.savez_compressed(str(tmp_path), **merged)
     os.replace(str(tmp_path), str(out_path))
     elapsed = time.time() - t0
