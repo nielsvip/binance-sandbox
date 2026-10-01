@@ -50,5 +50,12 @@
     "s2 (stocks)"
    ]
   }
- ]
+ ],
+ "window_tag_globs": {
+  "_doc": "R365 2026-10-01: row-level evidence on the LONG window (crypto 365D) and stocks 30D (filters on top of existing non-zero rows): same AVG2 schema, window_days tag; NOT part of the default 30D progress_globs (do not mix 365D deltas into 30D POS_SYM/AVG_DELTA); counted for per-row 365D columns / filter verdicts",
+  "globs": [
+   "/home/niels/v15_row365_20261001/progress/*_v14_progress.json",
+   "/home/niels/v15_row365_20261001/progress_stocks30/*_v14_progress.json"
+  ]
+ }
 }
