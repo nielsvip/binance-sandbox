@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import sys as _s; _s.exit("REFUSED (USER 2026-10-01): this script can move/rewrite TEMPLATE cells and once moved cells without their row. Templates are changed ONLY by tools/v15_daily_template_update.py / tools/v15_template_restructure_v2.py (whole-row moves, tools/template_row_guard.py verified).")
 """Comprehensive fix for TEMPLATE_0914_STOCKS_SHORT.xlsx
 Restores full-row values/styles/formulas and sheet order per task spec.
 """
