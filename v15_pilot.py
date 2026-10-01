@@ -2010,7 +2010,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _base0.update(_ov0)
             _base0 = sanitize_overrides(_base0, defaults)[0]
             _res0, _err0 = _get(_s0, _r0, _sw0, _c0, "E3_DEFAULT_BASE", _base0, _t.time() + YELLOW_TIMEOUT * 6, float(cumulative_gain))
-            if _res0 and _res0.get("gain_pct") is not None:
+            if _res0 and _res0.get("gain_pct") is not None and int(_res0.get("trades") or 0) > 0 and _res0.get("valid"):
                 for _k in _ov0:
                     if _k in _c_where:
                         _c_drop(*_c_where.pop(_k), _k)
