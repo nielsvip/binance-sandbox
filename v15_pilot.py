@@ -5009,7 +5009,7 @@ def main():
                                 else:
                                     ws_h.cell(row=r, column=_col).value = 0.0
                             except: pass
-                    try: ws_h.cell(row=r, column=6).value = 0.0; ws_h.cell(row=r, column=7).value = 0.0  # G never 0.0 for NEG — was 0.0
+                    try: ws_h.cell(row=r, column=6).value = None; ws_h.cell(row=r, column=7).value = 0.0  # FZ: F is never a fake 0 (blank unless a real hustle value); G never 0.0 for NEG — was 0.0
                     except: pass
                 key = f"{sheet}!{r}:{switch}={cand}"
                 # ALWAYS WRITE YELLOWS AFTER DELTA — even when delta -1.0, yellows are candidate values, baseline never without pos delta
@@ -5490,8 +5490,8 @@ def main():
                         _wsk = wb_keep[sheet] if sheet in wb_keep.sheetnames else None
                         if _wsk is not None:
                             _pd = float(prev.get("delta") or 0)
-                            if not isinstance(_wsk.cell(row=r, column=6).value, float):
-                                _wsk.cell(row=r, column=6).value = _pd
+                            if not isinstance(_wsk.cell(row=r, column=6).value, float) and prev.get("delta_vs_initial") is not None:  # FZ: F only from a real recorded value, never float(None or 0)
+                                _wsk.cell(row=r, column=6).value = float(prev.get("delta_vs_initial"))
                             if not isinstance(_wsk.cell(row=r, column=7).value, float):
                                 _wsk.cell(row=r, column=7).value = _pd
                             for _yh, _yd in ((prev.get("yellows") or prev.get("pending_lbI") or {}).items()):
@@ -5674,7 +5674,7 @@ def main():
                         _tr = int(vec.get("trades") or 0)
                         if _tr <= 1:
                             try:
-                                ws_keep.cell(row=r, column=6).value = 0.0
+                                ws_keep.cell(row=r, column=6).value = None  # FZ: F never a fake 0
                                 ws_keep.cell(row=r, column=7).value = 0.0
                                 from openpyxl.styles import PatternFill
                                 ws_keep.cell(row=r, column=7).fill = __import__("openpyxl").styles.PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")

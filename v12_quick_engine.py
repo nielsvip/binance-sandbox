@@ -5787,7 +5787,7 @@ class QuickConfig:
     ALL_TF_AGAINST_FORCE_CLOSE_ENABLED: bool = True
     ALL_TF_AGAINST_FORCE_CLOSE_MIN_TFS: float = 4
     ALL_TF_AGAINST_FORCE_CLOSE_COOLDOWN_SEC: float = 30.0
-    ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED: bool = True
+    ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED: bool = False  # [JSN2] user: ALL_TF_AGAINST entry veto False until tested (live config False)
     ALL_TF_AGAINST_BLOCK_ENTRY_MIN_TFS: float = 4
     QUICK_ENTRY_ABLATION_SUPPRESS_VEC: bool = True  # C/003: honour ABLATION_DISABLE_QUICK_ENTRY (live kills the candidate loop; crypto)
     WATCHDOG_DC_VEC_ENABLED: bool = True  # C/003: vec twin of the flat-key MOMENTUM_WATCHDOG DC force-open (live switches: MOMENTUM_SMA_WATCHDOG_ENABLED + WATCHDOG_DC_FORCE_OPEN_ENABLED)
@@ -5818,7 +5818,7 @@ class QuickConfig:
     BANDAID_OFF_LOSER_RECOVER_PCT: float = -0.25  # auto-added TEMPLATE
     BAND_ARROW_ENABLED: bool = False  # auto-added TEMPLATE
     BAND_ARROW_SLOPE_DEADBAND: float = 0.0  # auto-added TEMPLATE generic
-    BAR_PATTERNS_FILTER_TF: str = "15m"  # 2026-09-28 WAVE3: real wiring; OFF default behavior-neutral
+    BAR_PATTERNS_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE3: real wiring; OFF default behavior-neutral
     BB_PULLBACK_GATE_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE2: generic_filter_tf real gate; OFF default behavior-neutral (only dead-farm reads before)
     BB_PULLBACK_GATE_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     BB_RECOVERY_ENTRY_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE2: generic_filter_tf real gate; OFF default behavior-neutral (only dead-farm reads before)
@@ -5832,7 +5832,7 @@ class QuickConfig:
     BREAKEVEN_GAIN_EROSION_MIN_GAIN: float = 50.0  # auto-added TEMPLATE generic
     BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT: bool = True  # auto-added TEMPLATE generic
     BREAKOUT_LEASH_REENTRY_MULT: float = 1.5  # auto-added TEMPLATE
-    BREAKOUT_RETEST_FILTER_TF: str = "15m"  # 2026-09-28 WAVE3: real wiring; OFF default behavior-neutral
+    BREAKOUT_RETEST_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE3: real wiring; OFF default behavior-neutral
     BTC_ACCEL_RAMP_REQUIRE_POSITIVE: float = True  # auto-added TEMPLATE generic
     BTC_BREAKOUT_ENTRY_ENABLED: bool = True  # auto-added TEMPLATE
     BTC_DEDICATED_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
@@ -5845,7 +5845,7 @@ class QuickConfig:
     BTC_RZ_WT_DC_MULTIFACTOR: float = True  # auto-added TEMPLATE
     BTC_TECH_EXIT_WT_MIN_TFS: float = 3  # auto-added TEMPLATE generic
     BT_WT_CROSS_LADDER_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE2: generic_filter_tf real gate; OFF default behavior-neutral (only dead-farm reads before)
-    CANDLE_PATTERN_STOPS_FILTER_TF: str = "15m"  # 2026-09-28 WAVE3: real wiring; OFF default behavior-neutral
+    CANDLE_PATTERN_STOPS_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE3: real wiring; OFF default behavior-neutral
     CHANNEL_REENTRY_STOP_ENABLED: bool = False  # auto-added TEMPLATE
     CIRCUIT_SHARPE_GATES_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     COOLDOWN_LOCKS_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
@@ -5873,7 +5873,7 @@ class QuickConfig:
     EMA_9_21_FILTER_MIN_TFS: float = 3.0  # 2026-09-10 FIX: require 3 TFs EMA confirm (was 0 — filter never fired)
     EMA_BLANKET_FILTER_ENABLED: bool = False  # 2026-09-29 PARITY: default OFF = live-neutral (live/tradier has NO blanket gate; census NEITHER). Was True but the vec gate is real and vetoed EVERY stock-short entry → 0-trade baselines (CRM_SHORT 652 signals→0; False→113). Kept as swept switch. Was True 2026-09-28 WAVE4.
     WD_OPEN_CHOKE_GATES: bool = True  # [FLT q001] execute_now OPEN chokepoint gates (EMA_BLANKET, COUNTER_TREND_ADD_BLOCK) also gate MOMENTUM_WATCHDOG opens (live parity); vec-only housekeeping
-    EMA_BLANKET_FILTER_FILTER_TF: str = "15m"  # 2026-09-28 WAVE4: single-TF blanket gate (generic_filter_tf); OFF neutral
+    EMA_BLANKET_FILTER_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE4: single-TF blanket gate (generic_filter_tf); OFF neutral
     EMA_BLANKET_FILTER_MIN_TFS: float = 3.0  # 2026-09-10 FIX: 3 TFs must confirm (was 0)
     EMERGENCY_BRAKE_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     ENTRY_PRIMARY_TF: str = "4h"  # parity fix 2026-09-04: config 4h (was 15m auto-generic)
@@ -5881,7 +5881,7 @@ class QuickConfig:
     EXHAUSTION_EXIT_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     EXIT_R1_R2_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    EXIT_TOP_FADE_FILTER_TF: str = "15m"  # 2026-09-28 WAVE3: real wiring; OFF default behavior-neutral
+    EXIT_TOP_FADE_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE3: real wiring; OFF default behavior-neutral
     EXIT_TO_REDUCE_ADAPTER_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     EZ_MANAGE_THROTTLER_RATE: float = 0.0  # auto-added TEMPLATE generic
     E_1_EXIT_DELTA_THR: float = 50.0  # auto-added TEMPLATE generic
@@ -6023,7 +6023,7 @@ class QuickConfig:
     PARTIAL_EXIT_FRAC: float = 0.75  # auto-added TEMPLATE generic
     PARTIAL_PROFIT_LOCK_FRAC: float = 0.5  # auto-added TEMPLATE generic
     PARTIAL_PROFIT_LOCK_V2_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    PEAK_GIVEBACK_BE_EROSION_FILTER_TF: str = "15m"  # 2026-09-28 WAVE3: real wiring; OFF default behavior-neutral
+    PEAK_GIVEBACK_BE_EROSION_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE3: real wiring; OFF default behavior-neutral
     PEAK_GIVEBACK_DROP_TRIGGER_ENABLED: bool = False  # auto-added TEMPLATE
     QUICK_REDUCE_TECHNICAL_ONLY: float = True  # auto-added TEMPLATE generic
     QUICK_REENTRY_60MIN_MIN_PCT: float = 0.6  # auto-added TEMPLATE
@@ -11725,11 +11725,18 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 setattr(_gcfg, _nm, 'OFF')
             if not bool(getattr(cfg, 'EMA_BLANKET_FILTER_ENABLED', False)):
                 setattr(_gcfg, 'EMA_BLANKET_FILTER_FILTER_TF', 'OFF')
+        # [JSN2] a FILTER_TF whose master switch is off must do nothing (master-gated names: the filter is the master's TF selector)
+        for _fnm, _fms in (('EMA_BLANKET_FILTER_FILTER_TF', 'EMA_BLANKET_FILTER_ENABLED'), ('BREAKOUT_RETEST_FILTER_TF', 'BREAKOUT_RETEST_ARMED_ENABLED'), ('PEAK_GIVEBACK_BE_EROSION_FILTER_TF', 'PEAK_GIVEBACK_PROTECTION_ENABLED')):
+            if not bool(getattr(cfg, _fms, False)) and str(getattr(_gcfg, _fnm, 'OFF') or 'OFF').strip().upper() != 'OFF':
+                if _gcfg is cfg:
+                    import copy as _cp2
+                    _gcfg = _cp2.copy(cfg)
+                setattr(_gcfg, _fnm, 'OFF')
         _gftf = vec_decisions.generic_filter_tf.build_masks(npz, n, is_long, _gcfg, close, _safe)
         if _gftf.get('entry') is not None:
             entry_sig = entry_sig & _gftf['entry']
             for _gname, (_gtarget, _gkind) in vec_decisions.generic_filter_tf.FILTER_TF_MAP.items():
-                _gtf = str(getattr(cfg, _gname, 'OFF') or 'OFF').strip()
+                _gtf = str(getattr(_gcfg, _gname, 'OFF') or 'OFF').strip()
                 if _gtarget == 'entry' and _gtf.upper() != 'OFF':
                     _gm = vec_decisions.generic_filter_tf._cond(_gkind, npz, n, _gtf, is_long, close, _safe)
                     if _gm is not None:
