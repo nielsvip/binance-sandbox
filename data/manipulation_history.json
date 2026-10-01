@@ -6427,5 +6427,14 @@
     ],
     "timestamp": "2026-10-01T22:08:05.888777+00:00",
     "price": 0.03009
+  },
+  {
+    "symbol": "TMFUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-01T22:26:25.142794+00:00",
+    "price": 25.88
   }
 ]

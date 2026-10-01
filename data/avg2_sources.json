@@ -12,7 +12,8 @@
  ],
  "excluded_globs": {
   "/home/niels/v15_run*/quarantine_sawtooth_*/*_v14_progress.json": "stock NPZ sawtooth (interleaved 5m/15m bars): the deltas are computed on garbage bars, not evidence",
-  "/home/niels/v15_run*/progress/quarantine_e3zero_*/*_v14_progress.json": "E3-DEFAULT-BASE bug: chain start zeroed (initial_baseline_gain 0) so every row delta is biased by the real baseline: invalid; the sym_sides were rerun in run20"
+  "/home/niels/v15_run*/progress/quarantine_e3zero_*/*_v14_progress.json": "E3-DEFAULT-BASE bug: chain start zeroed (initial_baseline_gain 0) so every row delta is biased by the real baseline: invalid; the sym_sides were rerun in run20",
+  "/home/niels/v15_run*/quarantine_trunc_npz_*/*/*_v14_progress.json": "stock NPZ truncated to ~80d by the 2026-10-01 21:41-21:44Z tradier-mode precompute run on s1: results computed on truncated bars: invalid evidence, to be rerun"
  },
  "registry": [
   {

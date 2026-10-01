@@ -2526,7 +2526,14 @@ def compute_symbol(symbol: str, mode: str) -> bool:
         except:
             _cs = 900
         _ckeys = len(merged)
-        allowed, _reason = should_allow_overwrite(out_path, _span_days, _cs, _ckeys)
+        _cand_n = int(len(merged["timestamps"])) if "timestamps" in merged else None
+        try:
+            _tsc = merged["timestamps"].astype(np.int64)
+            _tsc = _tsc // 1000 if _tsc[-1] > 1e11 else _tsc
+            _cand_ts_span = (float(_tsc[-1]) - float(_tsc[0])) / 86400
+        except Exception:
+            _cand_ts_span = None
+        allowed, _reason = should_allow_overwrite(out_path, _span_days, _cs, _ckeys, _cand_n, _cand_ts_span)
         if not allowed:
             logger.warning(f"  {symbol}: BLOCKED overwrite — {_reason} (existing 917d preserved)")
             return False
