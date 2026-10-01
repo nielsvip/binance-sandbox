@@ -8083,6 +8083,11 @@ def load_npz(mode, symbols, start_date, npz_dir=""):
         except Exception as e:
             print(f"[WARN] {sym}: {e}")
             continue
+        try:
+            from vec_decisions.htf_causal_align import align_store as _htf_align
+        except ImportError as _e:
+            raise RuntimeError(f"htf_causal_align missing ({_e}): refusing to load crypto NPZ whose HTF arrays hold look-ahead values")
+        sliced = _htf_align(sliced, sym, mode)  # AUDIT/001: causal HTF alignment (auto-detects leaky crypto NPZs; V12_HTF_LEAK_LEGACY=1 = old behaviour)
         stores[sym] = sliced
     print(f"Loaded {len(stores)} symbols from {d}")
     return stores
