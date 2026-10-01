@@ -53,6 +53,23 @@ SPLIT_ADJUSTMENTS = {}
 
 
 _CRYPTO_HTF_PERIOD_S = {"1h": 3600, "4h": 14400, "D": 86400}
+_CRYPTO_WM_TFS = ("W", "M")  # 2026-10-01 NPZW: weekly (Monday 00:00 UTC) / monthly (1st 00:00 UTC) left-labelled buckets
+
+
+def _wm_bucket_start(dst: np.ndarray, timeframe: str) -> np.ndarray:
+    """Start (epoch s) of the W (Monday-anchored) or M (calendar month) bucket containing each timestamp."""
+    d = np.asarray(dst, dtype=np.int64)
+    if timeframe == "W":
+        return ((d - 345600) // 604800) * 604800 + 345600  # 1970-01-05 was a Monday
+    return d.astype("datetime64[s]").astype("datetime64[M]").astype("datetime64[s]").astype(np.int64)
+
+
+def _wm_next_bucket(label: np.ndarray, timeframe: str) -> np.ndarray:
+    """Epoch s at which the bucket labelled `label` closes (= start of the next bucket)."""
+    l = np.asarray(label, dtype=np.int64)
+    if timeframe == "W":
+        return l + 604800
+    return (l.astype("datetime64[s]").astype("datetime64[M]") + 1).astype("datetime64[s]").astype(np.int64)
 
 
 def _broadcast_asof_indices(
@@ -81,6 +98,10 @@ def _broadcast_asof_indices(
     if mode == "crypto" and timeframe in _CRYPTO_HTF_PERIOD_S and os.environ.get("NPZ_HTF_LEGACY_LAG1") != "1":
         per = _CRYPTO_HTF_PERIOD_S[timeframe]
         return np.searchsorted(src, (dst // per) * per - per, side="right") - 1
+    if mode == "crypto" and timeframe in _CRYPTO_WM_TFS and os.environ.get("NPZ_WM_LEGACY") != "1" and os.environ.get("NPZ_HTF_LEGACY_LAG1") != "1":
+        # NPZW: W/M rows are LEFT-labelled (bucket open). A 15m bar sees the last row whose label is strictly before its own bucket start,
+        # i.e. the previous fully closed week/month (same convention as 1h/4h/D above).
+        return np.searchsorted(src, _wm_bucket_start(dst, timeframe), side="left") - 1
     # Keep -1 for the warm-up interval. Clipping it to row zero would expose a
     # value before that row was observable (a smaller but real look-ahead leak).
     return np.minimum(np.searchsorted(src, dst, side="right") - lag, len(src) - 1)
@@ -118,11 +139,58 @@ def _availability_timestamps(
     if mode == "crypto" and timeframe in _CRYPTO_HTF_PERIOD_S and os.environ.get("NPZ_HTF_LEGACY_LAG1") != "1":
         # causal crypto mapping: the selected row (label L) became knowable when its bucket closed, at L + period
         out[valid] = src[idx[valid]] + _CRYPTO_HTF_PERIOD_S[timeframe]
+    elif mode == "crypto" and timeframe in _CRYPTO_WM_TFS and os.environ.get("NPZ_WM_LEGACY") != "1" and os.environ.get("NPZ_HTF_LEGACY_LAG1") != "1":
+        out[valid] = _wm_next_bucket(src[idx[valid]], timeframe)
     elif mode == "tradier" and timeframe in {"1h", "4h", "D", "W", "M"}:
         out[valid] = src[np.minimum(idx[valid] + 1, len(src) - 1)]
     else:
         out[valid] = src[idx[valid]]
     return out
+
+
+def _crypto_wm_frame(df15: pd.DataFrame, authentic: Optional[pd.DataFrame], tf: str) -> Optional[pd.DataFrame]:
+    """NPZW 2026-10-01: crypto W/M frame = authentic OLDER history + buckets resampled from the 15m base (fresh, complete buckets only).
+
+    The old 'append-only contract' kept the stale authentic *_W.json/*_M.json files (last written 2026-08-26) over the 15m resample
+    (and never resampled M: < 20 rows), so W/M arrays froze. Buckets are left-labelled (W: Monday 00:00 UTC, M: 1st 00:00 UTC) like the
+    authentic files. Partial first bucket and still-forming last bucket are dropped; resampled rows win on overlap."""
+    try:
+        rule = "W-MON" if tf == "W" else "MS"
+        r = df15.resample(rule, label="left", closed="left").agg(
+            {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
+        ).dropna()
+        if len(r) == 0:
+            return authentic
+        step = pd.Timedelta(days=7) if tf == "W" else None
+        first_ts, last_ts = df15.index[0], df15.index[-1]
+        if first_ts > r.index[0]:
+            r = r.iloc[1:]
+        if len(r) and last_ts + pd.Timedelta(minutes=15) < (r.index[-1] + step if step is not None else r.index[-1] + pd.DateOffset(months=1)):
+            r = r.iloc[:-1]
+        if len(r) == 0:
+            return authentic
+        if authentic is not None and len(authentic):
+            a = authentic
+            if getattr(a.index, "tz", None) is not None and getattr(r.index, "tz", None) is None:
+                a = a.copy()
+                a.index = a.index.tz_convert("UTC").tz_localize(None)
+            a = a[["open", "high", "low", "close", "volume"]]
+            # Prefer the AUTHENTIC exchange W/M rows wherever they exist (the 15m-derived buckets differ by a few % where the 15m history has holes);
+            # the authentic file's LAST row is dropped (it was written mid-bucket on 2026-08-26 => partial) and the fresh 15m-derived complete buckets
+            # take over from that bucket on. If the 15m history does not reach back to the dropped bucket, keep the authentic rows instead (no gap).
+            a_keep = a.iloc[:-1] if len(a) > 1 else a
+            last_keep = a_keep.index[-1]
+            r_use = r[r.index > last_keep]
+            if len(r_use) and r_use.index[0] <= last_keep + (step if step is not None else pd.DateOffset(months=1)) + pd.Timedelta(minutes=1):
+                out = pd.concat([a_keep, r_use])
+            else:
+                out = pd.concat([a, r[r.index > a.index[-1]]]) if len(r[r.index > a.index[-1]]) else a
+        else:
+            out = r
+        out = out[~out.index.duplicated(keep="last")].sort_index()
+        return out
+    except Exception:
+        return authentic
 
 
 def _frame_span_seconds(df: Optional[pd.DataFrame]) -> float:
@@ -1771,6 +1839,12 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     for tf in tfs:
         if tf == base_tf or tf == _resample_src_tf:
             continue
+        if mode == "crypto" and tf in _CRYPTO_WM_TFS and os.environ.get("NPZ_WM_LEGACY") != "1" and os.environ.get("NPZ_HTF_LEGACY_LAG1") != "1":
+            _wmf = _crypto_wm_frame(_resample_src_df, dfs.get(tf), tf)
+            if _wmf is not None and len(_wmf) >= 10:
+                dfs[tf] = _wmf
+                logger.info(f"  {symbol}: {tf} frame = authentic history + 15m-resampled fresh buckets ({len(_wmf)} rows, last {_wmf.index[-1]})")
+            continue
         resampled = resample_tf(_resample_src_df, tf)
         if resampled is not None and len(resampled) >= 20:
             if mode == "tradier" and tf == "15m":
@@ -2412,7 +2486,7 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     tmp_path = OUT_DIR / f".{symbol}.{os.getpid()}.tmp.npz"
     if mode == "crypto" and os.environ.get("NPZ_HTF_LEGACY_LAG1") != "1":
         # AUDIT/NPZB 2026-10-01: marker read by vec_decisions.htf_causal_align (skip the engine-load shift: never a double lag)
-        merged["htf_align"] = np.array(["causal_v2"])
+        merged["htf_align"] = np.array(["causal_v3" if os.environ.get("NPZ_WM_LEGACY") != "1" else "causal_v2"])
     np.savez_compressed(str(tmp_path), **merged)
     os.replace(str(tmp_path), str(out_path))
     elapsed = time.time() - t0

@@ -6067,5 +6067,41 @@
     ],
     "timestamp": "2026-10-01T18:55:38.277883+00:00",
     "price": 0.00875051
+  },
+  {
+    "symbol": "AGLDUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-01T19:10:49.920865+00:00",
+    "price": 0.20685
+  },
+  {
+    "symbol": "ETHFIUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 10.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-01T19:10:49.920865+00:00",
+    "price": 0.73403772
+  },
+  {
+    "symbol": "RIVNUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 12.4x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-01T19:10:49.920865+00:00",
+    "price": 14.85584927
+  },
+  {
+    "symbol": "SKYUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 23.1x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-01T19:34:07.743655+00:00",
+    "price": 0.08332713
   }
 ]
