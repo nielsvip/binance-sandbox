@@ -89,7 +89,7 @@ Each template has:
 (`v12_quick_engine.simulate_one`/`compute_exit_signals`, `vec_decisions/*` reachable from simulate_one), template rows per tab/side, and a wiring status
 (WIRED_BOTH_PARITY_PROVEN / WIRED_BOTH_UNPROVEN / VEC_ONLY / LIVE_ONLY / DEAD / NOT_IN_CONFIG). Stubs (`_ = getattr(...)`), `and False` guards, `_batch*_template_*` farms and dead functions never count as consumers.
 Rebuild: `python tools/build_switch_bible.py`. Guard (exit 1 on broken links): `python tools/verify_switch_bible.py` (`--since-md5` = what changed since the accepted baseline `data/SWITCH_BIBLE_baseline.json`).
-The rules for adding/moving/renaming a switch (touch list of surfaces) are the first section of `SWITCH_BIBLE.md`. Mac cron runs build+verify daily 14:05 UTC.
+The rules for adding/moving/renaming a switch (touch list of surfaces) are the first section of `SWITCH_BIBLE.md`. Mac cron (`tools/switch_bible_cycle.sh`, every 10 min, mkdir-lock) rebuilds + verifies after template / engine-deploy changes and logs one line to `data/wiring/LOG.md`; orange-filter placement evidence: `python tools/orange_placement_check.py` -> `data/wiring/orange_placement.csv`.
 
 ### 4.2 Column contract — read by row-2 headers, never by coordinates
 

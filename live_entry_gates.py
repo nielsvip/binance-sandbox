@@ -45,6 +45,19 @@ def effective_min_gain(get: Callable[[str, Any], Any]) -> float:
     return max(MIN_GAIN_FLOOR, a if a > 0 else m)
 
 
+def effective_kg_min_tfs(get: Callable[[str, Any], Any]) -> int:
+    """LG-15: KINDERGARTEN_CUMULATIVE_MIN_TFS (explicit, >0) else EMA_9_21_FILTER_MIN_TFS else 1 — the SAME chain v12_quick_engine (~9318) uses
+    (`getattr(cfg,'KINDERGARTEN_CUMULATIVE_MIN_TFS', getattr(cfg,'EMA_9_21_FILTER_MIN_TFS',1)) or 1`). Today stocks config has KC=1 so the swept EMA_9_21_FILTER_MIN_TFS (default 3)
+    is shadowed/inert in BOTH engines; making EMA_9_21_FILTER_MIN_TFS effective needs KC default -> 0 (+ EMA row default 1 to stay neutral) = user/template decision."""
+    try:
+        kc = get("KINDERGARTEN_CUMULATIVE_MIN_TFS", _MISSING)
+        if kc is not _MISSING and int(float(kc or 0)) > 0:
+            return int(float(kc))
+        return max(1, int(float(get("EMA_9_21_FILTER_MIN_TFS", 1) or 1)))
+    except (TypeError, ValueError):
+        return 1
+
+
 def check_entry_gates(get: Callable[[str, Any], Any], indicators: dict, is_long: bool, action: str) -> Tuple[bool, str]:
     """(blocked, tag). Fail-open on any error (caller also wraps). Disabled unless LIVE_ENTRY_GATES_ENABLED."""
     if not bool(get("LIVE_ENTRY_GATES_ENABLED", False)) or not indicators:

@@ -1,0 +1,8 @@
+{
+ "_doc": "sweep-only default overrides (evaluate_v12._apply_sweep_cat_overrides, after cat_side defaults). NOT read by live.",
+ "overrides": {
+  "AUGMENT_MIN_GAIN_PCT": 0.0
+ },
+ "at": "2026-10-01T05:50:43.334527Z",
+ "why": "queue C/001 LG-19: MIN_GAIN_TO_BUY_AGGRESSIVELY is shadowed while AUGMENT_MIN_GAIN_PCT=3.0; live cat_side file must keep 3.0 until Agent D's live helper+config are applied"
+}

@@ -122,6 +122,7 @@ _ALL_FILTER_TF = ("ATR_TRAIL_FILTER_TF", "BAR_PATTERNS_FILTER_TF", "BB_PULLBACK_
 import vec_decisions.dc_break
 import vec_decisions.delta_exit_top
 import vec_decisions.guaranteed_price_cross_reentry
+import vec_decisions.reentry_tiers  # [N3 q2]
 import vec_decisions.higher_wt_cross
 import vec_decisions.htf_regime_decision
 import vec_decisions.htf_regime_scale
@@ -4427,6 +4428,7 @@ class QuickConfig:
     ABLATION_DISABLE_QUICK_EXIT: bool = False
     BASIS_CONDITION: bool = False
     BACKTEST_VALIDATED_GATES_TRADIER: bool = True
+    REENTRY_TIER_MODEL_ENABLED: bool = False  # [N3 q2] live crypto TIER1/TIER2_FORCED reentry twin (replaces the blanket fire when True)
     REENTRY_BLANKET_FIRE_ENABLED: object = None  # [C2 b3] None = auto (stocks False = live-faithful, crypto True = legacy upper bound); True/False force
     OVERTRADE_GUARD_ENABLED: bool = False  # [C2 b5b] live guard is always on (cap 6 crypto / 8 stocks); default OFF here = baseline unchanged until parity-checked, see NOTES
     VEC_HONOR_DEAD_LIVE_DELTA_GATES: bool = False  # [C2 b4] True = legacy vec behaviour for DELTA_GATE_OPEN/REENTRY/AUGMENT (live ignores them)
@@ -4446,7 +4448,7 @@ class QuickConfig:
     AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER: bool = True
     AUGMENT_BOUNCE_MIN_GAIN_PCT: float = 0.5  # FIX 2026-09-06: was LIVE_ONLY (live had, v12 missing) — augment bounce min gain
     AUGMENT_BREAKOUT_MIN_GAIN_PCT: float = 2.0  # FIX 2026-09-06: LIVE_ONLY — breakout min gain
-    AUGMENT_MIN_GAIN_PCT: float = 3.0  # 2026-09-28 LIVE PARITY: config.py:135 / config_tradier.py:1559 = 3.0 (was 0.5 LIVE_ONLY stub)
+    AUGMENT_MIN_GAIN_PCT: float = 0.0  # 2026-10-01 LG-19: 0 = defer to MIN_GAIN_TO_BUY_AGGRESSIVELY (effective 3.0, neutral); >0 = explicit override (floor 2.5)
     ADX_RANGING_THRESHOLD: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
     ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
     ALL_TF_AGAINST_CLOSE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: all TFs against → close primary
@@ -4606,9 +4608,9 @@ class QuickConfig:
     # 2026-09-28 USER SPEC ("fixed % was eliminated everywhere"): baseline daytrade exits are the DC-channel
     # exits — stop at close < dc_low_15m/1h − 0.25% (long; mirrored short), profit at dc_high_15m/1h − 0.10%.
     # NEVER a fixed % loss or profit exit; the legacy fixed branch is deleted from simulate_one.
-    DAYTRADE_DC_STOP_TF: str = "15m,1h"
+    DAYTRADE_DC_STOP_TF: str = "OFF"
     DAYTRADE_DC_STOP_BUFFER_PCT: float = 0.25
-    DAYTRADE_DC_TARGET_TF: str = "15m,1h"
+    DAYTRADE_DC_TARGET_TF: str = "OFF"
     DAYTRADE_DC_TARGET_BUFFER_PCT: float = 0.10
     # 2026-09-29 grey-switch rewire: legacy daytrade DC aliases (tradier live _manage_daytrade_positions
     # 2026-09-24 semantics) — resolved by vec_decisions.dc_channel_exits.resolve_daytrade_dc in BOTH engines;
@@ -4990,6 +4992,7 @@ class QuickConfig:
     STDEV_SLOPE_LOOKBACK_15M: int = 96
     STDEV_SLOPE_SIZING_MODE: str = "slope_to_top"
     BB_FROZEN_STOP_ENABLED: bool = False  # auto-wired 625
+    STOCKS_REENTRY_LIVE_SOURCES_ENABLED: bool = True  # [C2 q002] stocks live reentry ladder pathways on 15m+ data (PRICE_CROSS_BACK band, TIER2_FORCED, EMA200_1H_BOUNCE)
     WT_DC_LIVE_GATES_ENABLED: bool = False  # [C2 b7b] stocks WT_DC entry final-condition gates (tradier_manage.py:12825) — OFF: vec lacks the ~8 other live fresh-entry sources, ON empties 3/4 probes (0 trades); True = live-gated B_WT_DC_LIVE
     BB_PULLBACK_GATE_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     BB_PULLBACK_GATE_LONG_MAX: float = 0.30  # 2026-09-28 live parity: config*=0.30 (was 0.15)
@@ -9131,6 +9134,12 @@ def compute_entry_signals(npz, n, is_long, cfg):
             # entry mask is now exactly the real live multi-TF scorer threshold — parity proven
             # by test_wt_dc_entry_scorer_vec.py (scorer == live scalar wt_dc_entry_scorer).
             blocks["B_WT_DC_LIVE"] = (_scores_wtdc >= _thr_wtdc)
+            # [C2 q001] stocks live veto ENTRY_SCORE_THRESHOLD (tradier_manage.py:13223-13226): a fresh OPEN whose _entry_score < knob is vetoed AFTER the WT_DC
+            # scorer fired (score >= WT_DC_ENTRY_THRESHOLD). Neutral at the template options 9..27 (< 45) and at the default 18; binds for options > threshold.
+            if str(getattr(cfg, 'MODE', 'crypto')) == 'tradier':
+                _es_min = float(getattr(cfg, 'ENTRY_SCORE_THRESHOLD', 0) or 0)
+                if _es_min > 0:
+                    blocks["B_WT_DC_LIVE"] = blocks["B_WT_DC_LIVE"] & (_scores_wtdc >= _es_min)
             # [C2 b7b] STOCKS live WT_DC entry final condition (tradier_manage.py:12825): score>=thr AND NOT (htf_block[WT_DC_HTF_GATE/MODE/TF_HTF*],
             # htf_align_block[HTF_ALIGN_REQUIRED_TRADIER], bb_pullback_block, wt_dc_pos_block[short], lt_block[short], side switch WT_DC_LONG/SHORT_ENABLED).
             # The vec ORed B_WT_DC_LIVE AFTER those gates (ungated). k5m/stoch-gate need 5m (inert). WT_DC_STOCH_*/DC_POS_THRESHOLD/TF_ENTRY are assigned-only
@@ -11883,6 +11892,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _qta_eb_block = ~_eb_pass
     except Exception:
         _qta_eb_block = None
+    _sr_ema = None; _sr_emap = None  # [C2 q002]
     _qta_ct_block = None
     try:
         if str(getattr(cfg, 'MODE', 'crypto')) == 'tradier' and bool(getattr(cfg, 'COUNTER_TREND_ADD_BLOCK_ENABLED', False)):
@@ -12099,6 +12109,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             fire = True
                 except Exception:
                     pass
+            _n3_tier = None
+            if has_closed_before and trades and getattr(cfg, 'REENTRY_TIER_MODEL_ENABLED', False) and str(getattr(cfg, 'MODE', 'crypto')) != 'tradier':
+                try:
+                    _n3_tier = vec_decisions.reentry_tiers.tier_fire(is_long, px, float(trades[-1].get('exit_price', 0) or 0), (float(ts[i]) - float(ts[min(int(trades[-1].get('bar_exit', i)), len(ts) - 1)])) / 60.0, cfg)
+                    if _n3_tier and not fire:
+                        fire = True
+                except Exception:
+                    _n3_tier = None
             if not fire and has_closed_before and getattr(cfg, 'REENTRY_MANDATORY', False):
                 # [C2 b3] live REENTRY_MANDATORY only enables the reentry loop; a pathway must fire (never 'every bar'). Blanket fire kept as default
                 # (baseline unchanged); False = live-like: only HARDCODED_RALLY (above) + pathway F favorable-move+HTF (3m/1m pathways are UNWIRABLE_NO_3M).
@@ -12108,6 +12126,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     # favour (guaranteed) or within PRICE_CROSS_BACK_BAND_PCT with a 5m DC break (REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED, default off ->
                     # never) => no blanket fire. Crypto keeps the blanket (upper bound) until 3m/1m reentry pathways can be vectorized.
                     _blanket = str(getattr(cfg, 'MODE', 'crypto')) != 'tradier'
+                if getattr(cfg, 'REENTRY_TIER_MODEL_ENABLED', False):
+                    _blanket = False  # [N3 q2] tier model replaces the blanket (live: a pathway must fire)
                 if _blanket:
                     fire = True
                 elif _rf_htf is not None and trades:
@@ -12117,6 +12137,19 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             fire = True
                     except Exception:
                         pass
+            # [C2 q002] STOCKS live reentry ladder pathways computable on 15m+ data (tradier_manage.py evaluate_reentry): PRICE_CROSS_BACK (incl. 0.3% below-exit band),
+            # TIER2_FORCED (120 min..20 h after the exit, regardless of price), EMA200_1H_BOUNCE. Switch STOCKS_REENTRY_LIVE_SOURCES_ENABLED (default True for MODE=tradier).
+            if (not fire and has_closed_before and trades and str(getattr(cfg, 'MODE', 'crypto')) == 'tradier'
+                    and bool(getattr(cfg, 'STOCKS_REENTRY_LIVE_SOURCES_ENABLED', True))):
+                try:
+                    import vec_decisions.stocks_reentry_sources as _srs
+                    _sr_age = (i - int(trades[-1].get('bar_exit', i))) * bmin
+                    if _sr_ema is None:
+                        _sr_ema = _safe(npz, 'ema_200_1h', n, 0.0); _sr_emap = _safe(npz, 'ema_200_1h_prev', n, 0.0)
+                    if _srs.fires(cfg, is_long, px, i, float(trades[-1].get('exit_price', 0) or 0), _sr_age, _sr_ema, _sr_emap):
+                        fire = True
+                except Exception:
+                    pass
             # 2026-09-29 USER: reentries bypassed every entry filter (reckless). Lenient gate: a reentry must pass at
             # least REENTRY_FILTER_MIN_PASS of the active entry filters; new entries (entry_sig) must pass ALL of them.
             if fire and _reentry_filter_on and has_closed_before and not entry_sig[i]:
@@ -12200,6 +12233,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     pass
             if fire:
                 mult = getattr(cfg, 'REENTRY_TIER1_SIZE_MULT_TRADIER', 1.0) if (has_closed_before and is_tradier) else 1.0
+                if _n3_tier:
+                    mult = vec_decisions.reentry_tiers.size_mult(_n3_tier, cfg, mult)  # [N3 q2] live TIER1 size floor
                 _dollar = float(cfg.START_POSITION_SIZE) * float(regime_mult[i]) * float(mult)
                 try:
                     _cap = float(getattr(cfg, "MAX_ORDER_VALUE", 2500.0) or 2500.0)
