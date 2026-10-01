@@ -1,0 +1,32 @@
+{
+ "round_id": "pipeB",
+ "agg": "/tmp/agg_pipe.xlsx",
+ "CRYPTO_LONG": {
+  "rows_with_stats": 905,
+  "cleared": {},
+  "promoted_switch": [],
+  "promoted_filter": [],
+  "violations": []
+ },
+ "CRYPTO_SHORT": {
+  "rows_with_stats": 739,
+  "cleared": {},
+  "promoted_switch": [],
+  "promoted_filter": [],
+  "violations": []
+ },
+ "STOCKS_LONG": {
+  "rows_with_stats": 1075,
+  "cleared": {},
+  "promoted_switch": [],
+  "promoted_filter": [],
+  "violations": []
+ },
+ "STOCKS_SHORT": {
+  "rows_with_stats": 936,
+  "cleared": {},
+  "promoted_switch": [],
+  "promoted_filter": [],
+  "violations": []
+ }
+}
