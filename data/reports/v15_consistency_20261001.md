@@ -1334,3 +1334,29 @@
     - `NVDA_SHORT` [s2] 1 cases — NEWBORN_LOSS_KILL_ENABLED T=+0.216/F=-2.013
     - `BNO_SHORT` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-0.001/F=+0.003
 - **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-01T20:16Z · window 48.0h · 533 sym_sides (local+remote)
+- ⚠️ **8 sym_sides / 10 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `HTF_GATE_D_MANDATORY`×4, `NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST`×3, `EMA_BLANKET_FILTER_ENABLED`×2, `NEWBORN_LOSS_KILL_ENABLED`×1
+    - `ZENUSDT_LONG` [s2] 2 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+5.679/F=-11.882; HTF_GATE_D_MANDATORY T=-11.310/F=-3.201
+    - `WLDUSDC_LONG` [s2] 2 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+2.472/F=-14.776; HTF_GATE_D_MANDATORY T=-5.512/F=-2.065
+    - `AXSUSDT_SHORT` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-0.687/F=-0.687
+    - `DASHUSDT_LONG` [s5] 1 cases — HTF_GATE_D_MANDATORY T=-16.781/F=-14.833
+    - `ZECUSDC_LONG` [s2] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+0.045/F=-0.676
+    - `PLTR_LONG` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-5.907/F=+0.177
+    - `NVDA_SHORT` [s2] 1 cases — NEWBORN_LOSS_KILL_ENABLED T=+0.216/F=-2.013
+    - `BNO_SHORT` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-0.001/F=+0.003
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-01T20:31Z · window 48.0h · 533 sym_sides (local+remote)
+- ⚠️ **8 sym_sides / 10 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `HTF_GATE_D_MANDATORY`×4, `NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST`×3, `EMA_BLANKET_FILTER_ENABLED`×2, `NEWBORN_LOSS_KILL_ENABLED`×1
+    - `ZENUSDT_LONG` [s2] 2 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+5.679/F=-11.882; HTF_GATE_D_MANDATORY T=-11.310/F=-3.201
+    - `WLDUSDC_LONG` [s2] 2 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+2.472/F=-14.776; HTF_GATE_D_MANDATORY T=-5.512/F=-2.065
+    - `AXSUSDT_SHORT` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-0.687/F=-0.687
+    - `DASHUSDT_LONG` [s5] 1 cases — HTF_GATE_D_MANDATORY T=-16.781/F=-14.833
+    - `ZECUSDC_LONG` [s2] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+0.045/F=-0.676
+    - `PLTR_LONG` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-5.907/F=+0.177
+    - `NVDA_SHORT` [s2] 1 cases — NEWBORN_LOSS_KILL_ENABLED T=+0.216/F=-2.013
+    - `BNO_SHORT` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-0.001/F=+0.003
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
