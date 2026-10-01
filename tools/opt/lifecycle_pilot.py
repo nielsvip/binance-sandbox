@@ -279,7 +279,9 @@ def evaluate_month(symside: str, overrides: Mapping[str, Any], include_ledger: b
     side = "LONG" if is_long else "SHORT"
     gain = E._honest_gain_pct(result)
     bh = E._bh(npz, side)
-    trades = len(ledger)
+    trades_rows = len(ledger)
+    # PAR/001 2026-10-01: trades = REALISED closes (rows with pnl_dollars) — same unit as evaluate_v12 and backtest_v12_engine; the old all-rows count is kept as trades_rows
+    trades = sum(1 for t in ledger if isinstance(t, dict) and "pnl_dollars" in t)
     out.update({
         "valid": True,
         "invalid_reason": "",
@@ -296,8 +298,9 @@ def evaluate_month(symside: str, overrides: Mapping[str, Any], include_ledger: b
         "tim_pct": float(result.get("tim_pct") or 0.0),
         "pool_sharpe": E._pool_sharpe_from_ledger(ledger),
         "trades": trades,
+        "trades_rows": trades_rows,
         "closes_per_month": trades / (float(window_days) / 30.44),
-        "wr_pct": (100.0 * sum(float(t.get("pnl_dollars") or 0) > 0 for t in ledger) / trades) if trades else 0.0,
+        "wr_pct": (100.0 * sum(float(t.get("pnl_dollars") or 0) > 0 for t in ledger if isinstance(t, dict) and "pnl_dollars" in t) / trades) if trades else 0.0,
         "gain_dollars": sum(float(t.get("pnl_dollars") or 0) for t in ledger if isinstance(t, dict)),
         "peak_capital": E._peak_concurrent(ledger),
         "spike_trades_dropped": spikes,
@@ -310,7 +313,7 @@ def evaluate_month(symside: str, overrides: Mapping[str, Any], include_ledger: b
     # lifecycle previously used 2 → 30D ETH 16 trades valid in vector but invalid in v12 → DIFF
     wd = int(window_days)
     min_trades = 10 if wd <= 30 else 30
-    if trades < min_trades:
+    if trades_rows < min_trades:  # PAR/001: floor stays on the old all-rows count (trades_rows) until parity is closed
         out.update(valid=False, invalid_reason=f"fewer than {min_trades} completed trades (wd={wd})")
     elif bh is None:
         out.update(valid=False, invalid_reason="B&H unavailable")

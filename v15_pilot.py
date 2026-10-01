@@ -3243,7 +3243,10 @@ def clone_template(template: Path, new_symside: str) -> Path:
     _atomic_save(wb, Path(target))  # BADZIP FIX 2026-09-29
     if not Path(target).exists():
         raise RuntimeError(f"[clone] {target} not created after 3 atomic-save attempts")  # FLT2: explicit, instead of a chmod FileNotFoundError
-    Path(target).chmod(0o644)
+    try:
+        Path(target).chmod(0o644)
+    except OSError as _e_chmod:
+        print(f"[clone-chmod-warn] {target} {_e_chmod}", flush=True)
     return target
 
 def _run_single(new_symside, args):
@@ -3918,13 +3921,13 @@ def main():
         # USER 2026-09-29: an ingested BEST / previous-XLS set built on the broken engine/NPZ can zero the baseline
         # (BTCUSDC_LONG: 84 hustler_best overrides -> 0 trades vs recipe 286). A prior best that cannot trade is not a
         # baseline: fall back to the live recipe when it trades and the ingested set does not.
-        _bt = baseline_vec.get("trades")
+        _bt = baseline_vec.get("trades_rows", baseline_vec.get("trades"))  # PAR/001: floor on all-rows count
         if isinstance(_bt, (int, float)) and _bt < 10:
             try:
                 _rec_ov, _ = sanitize_overrides(dict(_recipe_only_overrides), defaults)
                 if _rec_ov != overrides:
                     _rec_vec = evaluate_prepared_sanitized(prepared, _rec_ov, window_days=args.window_days)
-                    if int(_rec_vec.get("trades") or 0) >= 10:
+                    if int(_rec_vec.get("trades_rows", _rec_vec.get("trades")) or 0) >= 10:
                         print(f"[BEST-REJECT] {new_symside}: ingested set {len(overrides)} overrides -> {baseline_vec.get('trades')} trades; live recipe {len(_rec_ov)} -> {_rec_vec.get('trades')} trades — using recipe", flush=True)
                         overrides, baseline_vec = _rec_ov, _rec_vec
             except Exception as _e_rej:
@@ -4098,7 +4101,10 @@ def main():
         else:
             import shutil
             shutil.copy2(template, target)
-            Path(target).chmod(0o644)
+            try:
+                Path(target).chmod(0o644)
+            except OSError as _e_chmod:
+                print(f"[clone-chmod-warn] {target} {_e_chmod}", flush=True)
             wb_path = target
             print(f"[clone] -> {wb_path}", flush=True)
     else:
