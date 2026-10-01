@@ -175,6 +175,105 @@
       "_is_stock": true,
       "was_new": false,
       "direct_write": true
+    },
+    {
+      "symbol": "STXUSDT",
+      "account": "ang",
+      "side": "LONG",
+      "file": "symbols_ang_long.json",
+      "injected_at": "2026-10-01T13:05:39.511691+00:00",
+      "conviction": 0.667,
+      "reason": "24h +14.4% (mcap #97)",
+      "was_new": true
+    },
+    {
+      "symbol": "JASMYUSDT",
+      "account": "ang",
+      "side": "LONG",
+      "file": "symbols_ang_long.json",
+      "injected_at": "2026-10-01T13:05:39.511691+00:00",
+      "conviction": 0.418,
+      "reason": "24h +10.4% (mcap #158)",
+      "was_new": true
+    },
+    {
+      "symbol": "STXUSDT",
+      "account": "inf",
+      "side": "LONG",
+      "file": "symbols_inf_long.json",
+      "injected_at": "2026-10-01T13:05:39.511691+00:00",
+      "conviction": 0.667,
+      "reason": "24h +14.4% (mcap #97)",
+      "was_new": true
+    },
+    {
+      "symbol": "JASMYUSDT",
+      "account": "inf",
+      "side": "LONG",
+      "file": "symbols_inf_long.json",
+      "injected_at": "2026-10-01T13:05:39.511691+00:00",
+      "conviction": 0.418,
+      "reason": "24h +10.4% (mcap #158)",
+      "was_new": true
+    },
+    {
+      "symbol": "STXUSDT",
+      "account": "men",
+      "side": "LONG",
+      "file": "symbols_men.json",
+      "injected_at": "2026-10-01T13:05:39.511691+00:00",
+      "conviction": 0.667,
+      "reason": "24h +14.4% (mcap #97)",
+      "was_new": true
+    },
+    {
+      "symbol": "JASMYUSDT",
+      "account": "men",
+      "side": "LONG",
+      "file": "symbols_men.json",
+      "injected_at": "2026-10-01T13:05:39.511691+00:00",
+      "conviction": 0.418,
+      "reason": "24h +10.4% (mcap #158)",
+      "was_new": true
+    },
+    {
+      "symbol": "ELD",
+      "account": "trb",
+      "side": "LONG",
+      "file": "symbols_trb_long.json",
+      "injected_at": "2026-10-01T13:05:39.511691+00:00",
+      "last_relevant_at": "2026-10-01T13:05:39.511691+00:00",
+      "conviction": 0.758,
+      "reason": "Africa's Long-Term Growth Story",
+      "_is_stock": true,
+      "was_new": true,
+      "direct_write": true
+    },
+    {
+      "symbol": "LNG",
+      "account": "trb",
+      "side": "LONG",
+      "file": "symbols_trb_long.json",
+      "injected_at": "2026-10-01T13:05:39.511691+00:00",
+      "last_relevant_at": "2026-10-01T13:05:39.511691+00:00",
+      "conviction": 0.712,
+      "reason": "Cheniere Energy's Petrobras LNG Deal Supports Long-Term Growth",
+      "_is_stock": true,
+      "was_new": true,
+      "direct_write": true
+    },
+    {
+      "symbol": "INOD",
+      "account": "trb",
+      "side": "LONG",
+      "file": "symbols_trb_long.json",
+      "injected_at": "2026-10-01T13:05:39.511691+00:00",
+      "last_relevant_at": "2026-10-01T13:05:39.511691+00:00",
+      "conviction": 0.643,
+      "reason": "Innodata Opens Motion-Capture AI Lab to Help Humanoids Move Like Humans",
+      "_is_stock": true,
+      "was_new": false,
+      "direct_write": true
     }
   ],
   "history": [
