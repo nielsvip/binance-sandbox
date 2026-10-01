@@ -11806,6 +11806,15 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _rf_htf = _rpw.favorable_move_mask(npz, n, is_long, cfg, _safe)
     except Exception:
         _rf_htf = None
+    # [C2 b7] STOCKS queue_trade_action choke point (tradier_manage.py:13930-13975): COUNTER_TREND_ADD_BLOCK blocks EVERY OPEN/AUGMENT/ENTRY/REENTRY order
+    # (action 'REENTRY' contains 'ENTRY'; only mandatory price-cross reclaim / ordinary-ladder reasons bypass) — incl. HARDCODED_RALLY reentries.
+    # The vec applied it only inside _base_entry (the permissive OR), so reentry opens (85-95% of stock opens) and augments were never gated.
+    _qta_ct_block = None
+    try:
+        if str(getattr(cfg, 'MODE', 'crypto')) == 'tradier' and bool(getattr(cfg, 'COUNTER_TREND_ADD_BLOCK_ENABLED', False)):
+            _qta_ct_block = vec_decisions.counter_trend.counter_trend_vec(npz, n, cfg, is_long)
+    except Exception:
+        _qta_ct_block = None
     # Cache entry blocks once for per-trade reason tagging (avoid recompute per entry)
     try:
         _entry_blocks_cache = compute_reentry_blocks(npz, n, is_long, cfg)
@@ -12162,6 +12171,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 continue
                         except Exception:
                             pass
+                    if _qta_ct_block is not None and bool(_qta_ct_block[i]) and 'RECLAIM' not in str(entry_reason).upper():
+                        continue  # [C2 b7] live queue_trade_action COUNTER_TREND_ADD_BLOCK (fresh + reentry opens)
                     pos = _open(qty0, px, i, entry_reason)
             continue
         bars_in_pos += 1
@@ -12368,7 +12379,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         # augment_sig (bounce/pyramid) and FAST_RISER sources need gain-since-last-add >= AUGMENT_MIN_GAIN_PCT or the pullback exception (ez_manage.py:31577-31630)
         _uag_src_ok = _gl_fire or ((augment_sig[i] or _fr_fire) and vec_decisions.uagain_gate.uagain_gate_pass(
             cfg, is_long, px, float(pos.get('last_aug_px', 0.0)) or float(pos.get('entry_price', pos['avg_price'])), live_pnl_pct, float(pos.get('peak_pnl_pct', 0.0))))
-        if _uag_src_ok and _augment_allowed(cfg, live_pnl_pct) and (_sa_cap is None or int(pos.get('n_augments', 0)) < _sa_cap):
+        if _uag_src_ok and not (_qta_ct_block is not None and bool(_qta_ct_block[i])) and _augment_allowed(cfg, live_pnl_pct) and (_sa_cap is None or int(pos.get('n_augments', 0)) < _sa_cap):
             _aug_cd_bars = vec_decisions.gain_ladder_augment.cooldown_bars(cfg, bmin)
             _aug_last_bar = int(pos.get('last_aug_bar', -10**9))
             if (i - _aug_last_bar) >= _aug_cd_bars:

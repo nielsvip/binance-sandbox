@@ -2182,12 +2182,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         pos_hdrs = [_h for _h in pos_hdrs if _best_opt[h2f[_h]["filter"]] == _h]  # never two options of ONE filter key in a joint set
         choice = None  # (delta, filters, override set, how)
         joint_delta, joint_reason = None, ""
+        _joint_res = None
         if pos_hdrs:
             joint_ov = dict(switch_variant)
             for h in pos_hdrs:
                 joint_ov[h2f[h]["filter"]] = _parse_opt_value(h2f[h]["opt"], defaults.get(h2f[h]["filter"]))
             joint_ov, _ = sanitize_overrides(joint_ov, defaults)
             jres, jerr = _get(sname, rr, switch, cand, "JOINT:" + "+".join(pos_hdrs), joint_ov, _t.time() + YELLOW_TIMEOUT * 3, cumulative_before)
+            _joint_res = jres
             joint_delta, jok, joint_reason = _delta_vs(jres, cumulative_before)
             joint_reason = jerr or joint_reason
             if jok and joint_delta is not None and joint_delta > 1e-9:
@@ -2203,6 +2205,23 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 print(f"[spec-joint-reject] {sname}!{rr} joint {joint_delta} ({joint_reason}) -> {choice[3]} {choice[0]:+.4f}", flush=True)
         elif not is_running and naked_ok and naked_delta is not None and naked_delta > 1e-9:
             choice = (float(naked_delta), [], switch_variant, "naked")
+        # DEP-FORCED (Agent M, data/switch_dependencies.json): the evaluated result forced master switches ON (peers OFF) for a sub-knob test. The delta
+        # is already measured WITH them (vs the running set); when the row is promoted they must be written into the override set / column C /
+        # progress, otherwise live would receive the sub-knob without its master. dep_forced of every eval of this row is recorded.
+        _dep_row: dict = {}
+        for _lab_, (_r_, _e_) in results.items():
+            for _k_, _v_ in ((_r_ or {}).get("dep_forced") or {}).items():
+                _dep_row.setdefault(_lab_ if _lab_ in ("naked",) else "yellow", {})[_k_] = _v_
+        _dep_choice: dict = {}
+        if choice is not None:
+            _src_ = None
+            if choice[3] == "joint":
+                _src_ = _joint_res
+            elif choice[3] == "best_single" and choice[1]:
+                _src_ = (results.get(choice[1][0]) or (None,))[0]
+            elif choice[3] == "naked":
+                _src_ = (results.get("naked") or (None,))[0]
+            _dep_choice = dict((_src_ or {}).get("dep_forced") or {})
         if choice is not None:
             row_delta = choice[0]
         elif is_running:
@@ -2255,15 +2274,18 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         ws.cell(row=rr, column=cols["I"]).value = None
         if promote:
             parts = ([] if is_running else [f"{switch}={cand}"]) + [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]]
+            parts += [f"{_dk}={_dv}" for _dk, _dv in _dep_choice.items() if not any(p0.split("=", 1)[0].strip() == _dk for p0 in parts)]
             _set_override(ws, sname, rr, cols, parts)
             cumulative_overrides = dict(choice[2])
+            for _dk, _dv in _dep_choice.items():
+                cumulative_overrides[_dk] = _dv
             cumulative_gain = cumulative_before + float(row_delta)
             e_next = cumulative_gain
             _spec_state["ver"] += 1
             progress["cumulative_overrides"] = dict(cumulative_overrides)
         progress["cumulative_gain"] = float(cumulative_gain)
         div = _write_div(sname, rr, [row_gain])
-        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", ""), "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain)}
+        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", ""), "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain)}
         _maybe_write_json(force=promote)
         _row_done(sname, rr, switch, cand, n_items + (1 if pos_hdrs else 0), row_delta, promote)
         _touch(f"cell {sname}!{rr} delta={row_delta}")
