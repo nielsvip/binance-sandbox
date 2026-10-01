@@ -6563,6 +6563,9 @@ _B1_REAL_TFS = ('1h', '4h', 'D', 'W')
 
 def _batch1_template_live_gate(indicators, is_long):
     # Returns (allowed, reason) — False blocks entry; True allows
+    # USER 2026-10-01 (unlock+fix): this generated 'BATCH 1' gate invented entry vetoes (e.g. config thresholds compared with price, WT/SMA pseudo-rules) that exist neither in the vector engine nor in the user's design;
+    # it blocked 100% of ENTRY_VET entries on inf/ang/fin/men since 2026-09-28. Live and vector must be IDENTICAL: the synthetic gate is disabled (allow). Original body kept below unreachable for audit.
+    return True, ''
     # 2026-09-11 FIX: was checking `close` (always 0→always blocked) — now correctly checks adx_1h vs ADX threshold (10 per user).
     _thr = float(getattr(config, 'ADX_RANGING_THRESHOLD', 0.0))
     _def = 0.0 # simplified default check

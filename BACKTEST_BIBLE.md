@@ -82,6 +82,15 @@ Each template has:
 - **`FILTER_DICTIONARY_V2`** — every filter's `Filter | Option Value | Sheets applicable | Switches exactly (gates) | Recommendation (SPECIFIC/GENERAL)` — the source of yellow-cell eligibility.
 - **`LEGEND_FILTERS` / `FILTERS_EXPLAINED` / `INSTRUCTIONS_V2`** — human docs.
 
+### 4.1b SWITCH BIBLE — every switch's wiring index (2026-10-01)
+
+`SWITCH_BIBLE.md` (repo root, generated) + `data/SWITCH_BIBLE.json` list for EVERY template/vector-read switch and filter: defaults in `config.py` / `config_tradier.py` / `QuickConfig` /
+`data/cat_side_defaults_4.json` / template bold, the exact live read sites (`ez_manage.py` crypto, `tradier_manage.py` stocks + imported modules, file:line) and vectorized read sites
+(`v12_quick_engine.simulate_one`/`compute_exit_signals`, `vec_decisions/*` reachable from simulate_one), template rows per tab/side, and a wiring status
+(WIRED_BOTH_PARITY_PROVEN / WIRED_BOTH_UNPROVEN / VEC_ONLY / LIVE_ONLY / DEAD / NOT_IN_CONFIG). Stubs (`_ = getattr(...)`), `and False` guards, `_batch*_template_*` farms and dead functions never count as consumers.
+Rebuild: `python tools/build_switch_bible.py`. Guard (exit 1 on broken links): `python tools/verify_switch_bible.py` (`--since-md5` = what changed since the accepted baseline `data/SWITCH_BIBLE_baseline.json`).
+The rules for adding/moving/renaming a switch (touch list of surfaces) are the first section of `SWITCH_BIBLE.md`. Mac cron runs build+verify daily 14:05 UTC.
+
 ### 4.2 Column contract — read by row-2 headers, never by coordinates
 
 Columns may be added, so `v15_pilot` resolves every column via `_hdr_col_map()` / `_resolve_cols()` on **row 2 header names**:

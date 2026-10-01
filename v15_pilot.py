@@ -893,7 +893,8 @@ def ever_yellow_cells(cat_side: str) -> set:
         return set()
     if cat_side not in _EVER_YELLOW_CACHE:
         try:
-            _EVER_YELLOW_CACHE[cat_side] = set(json.loads((ROOT / "data" / "yellow_ever_nonzero.json").read_text()).get("cells", {}).get(cat_side, []))
+            _yj = json.loads((ROOT / "data" / "yellow_ever_nonzero.json").read_text())
+            _EVER_YELLOW_CACHE[cat_side] = set(_yj.get("cells", {}).get(cat_side, [])) | set(_yj.get("light_yellow_untested", {}).get(cat_side, []))  # bright (ever non-zero) + light (never calculated: test until we know)
         except Exception:
             _EVER_YELLOW_CACHE[cat_side] = set()
     return _EVER_YELLOW_CACHE[cat_side]

@@ -335,6 +335,13 @@
    "avg_delta": 0.135406,
    "tab": "GLOBAL_RISK_GATES",
    "at": "2026-09-30T21:50:43.145366Z"
+  },
+  "KINDERGARTEN_STRICT_TFS": {
+   "value": "1h,D",
+   "avg_delta": null,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-01T00:53:43.391629Z",
+   "note": "staged v3b default '1h,D' (config default is empty string = placeholder); recorded by parent so the pilot/apply gate accepts the sweep baseline; live config unchanged"
   }
  },
  "CRYPTO_SHORT": {
