@@ -533,3 +533,37 @@
     - `NVDA_SHORT` [s2] 1 cases — NEWBORN_LOSS_KILL_ENABLED T=+0.216/F=-2.013
     - `BNO_SHORT` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-0.001/F=+0.003
 - **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-01T08:46Z · window 48.0h · 517 sym_sides (local+remote)
+- ⚠️ **12 sym_sides / 12 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `HTF_GATE_D_MANDATORY`×5, `NEWBORN_LOSS_KILL_ENABLED`×2, `EMA_BLANKET_FILTER_ENABLED`×2, `MTF_BB_REJECT_EXIT_ENABLED`×1, `WT_4H_VEL_EXIT_ENABLED`×1, `E_1_WT_EXIT_USE_DELTA_ENABLED`×1
+    - `1000FLOKIUSDT_LONG` [s1] 1 cases — MTF_BB_REJECT_EXIT_ENABLED T=+0.839/F=-4.045
+    - `QTUMUSDT_SHORT` [s1] 1 cases — NEWBORN_LOSS_KILL_ENABLED T=+0.375/F=-0.199
+    - `SOLUSDC_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-0.341/F=+2.204
+    - `ZECUSDC_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-11.138/F=-1.664
+    - `BTCUSDC_SHORT` [s1] 1 cases — WT_4H_VEL_EXIT_ENABLED T=-0.114/F=+0.039
+    - `XMRUSDT_SHORT` [s1] 1 cases — E_1_WT_EXIT_USE_DELTA_ENABLED T=-6.142/F=+0.334
+    - `HYPEUSDT_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-4.847/F=+0.737
+    - `QTUMUSDT_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-4.042/F=+0.335
+    - `GRTUSDT_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-2.673/F=-1.108
+    - `PLTR_LONG` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-5.907/F=+0.177
+    - `NVDA_SHORT` [s2] 1 cases — NEWBORN_LOSS_KILL_ENABLED T=+0.216/F=-2.013
+    - `BNO_SHORT` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-0.001/F=+0.003
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-01T09:01Z · window 48.0h · 521 sym_sides (local+remote)
+- ⚠️ **12 sym_sides / 12 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `HTF_GATE_D_MANDATORY`×5, `NEWBORN_LOSS_KILL_ENABLED`×2, `EMA_BLANKET_FILTER_ENABLED`×2, `MTF_BB_REJECT_EXIT_ENABLED`×1, `WT_4H_VEL_EXIT_ENABLED`×1, `E_1_WT_EXIT_USE_DELTA_ENABLED`×1
+    - `1000FLOKIUSDT_LONG` [s1] 1 cases — MTF_BB_REJECT_EXIT_ENABLED T=+0.839/F=-4.045
+    - `QTUMUSDT_SHORT` [s1] 1 cases — NEWBORN_LOSS_KILL_ENABLED T=+0.375/F=-0.199
+    - `SOLUSDC_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-0.341/F=+2.204
+    - `ZECUSDC_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-11.138/F=-1.664
+    - `BTCUSDC_SHORT` [s1] 1 cases — WT_4H_VEL_EXIT_ENABLED T=-0.114/F=+0.039
+    - `XMRUSDT_SHORT` [s1] 1 cases — E_1_WT_EXIT_USE_DELTA_ENABLED T=-6.142/F=+0.334
+    - `HYPEUSDT_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-4.847/F=+0.737
+    - `QTUMUSDT_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-4.042/F=+0.335
+    - `GRTUSDT_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-2.673/F=-1.108
+    - `PLTR_LONG` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-5.907/F=+0.177
+    - `NVDA_SHORT` [s2] 1 cases — NEWBORN_LOSS_KILL_ENABLED T=+0.216/F=-2.013
+    - `BNO_SHORT` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-0.001/F=+0.003
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
