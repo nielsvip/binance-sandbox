@@ -162,6 +162,9 @@ import vec_decisions.frozen_floor_exit
 import vec_decisions.gap_risk_exit
 import vec_decisions.market_crash_blanket
 import vec_decisions.gain_ladder_augment
+import vec_decisions.noloss_gate  # [C2 b5b] live UNIVERSAL_NOLOSS_GATE
+import vec_decisions.overtrade_guard  # [C2 b5b] live OVERTRADE_GUARD (per-sym per-UTC-day fill cap)
+import vec_decisions.uagain_gate  # [C2 b5] execute_now UNIVERSAL_AUGMENT_GAIN_GATE choke point for non-ladder augment sources
 import vec_decisions.reduce_profit_lock
 import vec_decisions.filter_tf_gates
 import vec_decisions.generic_filter_tf
@@ -4424,6 +4427,10 @@ class QuickConfig:
     ABLATION_DISABLE_QUICK_EXIT: bool = False
     BASIS_CONDITION: bool = False
     BACKTEST_VALIDATED_GATES_TRADIER: bool = True
+    REENTRY_BLANKET_FIRE_ENABLED: object = None  # [C2 b3] None = auto (stocks False = live-faithful, crypto True = legacy upper bound); True/False force
+    OVERTRADE_GUARD_ENABLED: bool = False  # [C2 b5b] live guard is always on (cap 6 crypto / 8 stocks); default OFF here = baseline unchanged until parity-checked, see NOTES
+    VEC_HONOR_DEAD_LIVE_DELTA_GATES: bool = False  # [C2 b4] True = legacy vec behaviour for DELTA_GATE_OPEN/REENTRY/AUGMENT (live ignores them)
+    LIVE_ENTRY_HARD_GATES_ENABLED: bool = False  # [C2 b2] master (OFF: live defaults would zero 11/12 probed sym_sides; see MANIFEST) for vec_decisions/entry_hard_gates (live scorer hard gates)
     BB_SQUEEZE_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # 2026-04-16: off until sweep-proven
     BB_SQUEEZE_COOLDOWN: float = 300.0
     BB_SQUEEZE_MIN_ALIGNMENT: int = 10
@@ -5092,7 +5099,7 @@ class QuickConfig:
     DYNAMIC_SCORE_COUNTER_EXIT_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD: float = 55.0  # auto-wired 625
     EMA_9_21_FILTER_ENABLED: bool = True  # 2026-09-22 FIX REVERT: True but correctly written — was blocking 100% instead of 40%, fixed kindergarten to 40% not 100%
-    EMA50_15M_ENTRY_FILTER_ENABLED: bool = False  # 2026-09-30 port: EMA50 15m entry filter (crypto config.py True, stocks config_tradier False). Fallback False; real value per mode.
+    EMA50_15M_ENTRY_FILTER_ENABLED: bool = True  # [M deploy] live config.py:2132 + config_tradier.py:3797 = True (both venues) — was False; 2026-09-30 port: EMA50 15m entry filter (crypto config.py True, stocks config_tradier False). Fallback False; real value per mode.
     EMA50_15M_ENTRY_FILTER_PCT: float = 0.0  # 2026-09-30 port: buffer % beyond ema_50_15m (0 = strict)
     ENTRY_ATR_PCT_MIN: float = 1.5  # auto-wired 625
     ENTRY_SYMGATE_ENABLED: bool = False  # auto-wired 625
@@ -5322,7 +5329,7 @@ class QuickConfig:
     PRICE_CROSS_BACK_REENTRY_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     PROXIMITY_TOP_GATE_ENABLED: bool = False  # auto-wired 625
     PROXIMITY_TOP_MAX_DROP_PCT: float = 5.0  # auto-wired 625
-    R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = False  # auto-wired 625
+    R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = False  # USER 2026-10-01: must NOT run live nor vectorized (not implemented in vec)  # auto-wired 625
     R1_NEWBORN_WINDOW_MIN: float = 15.0  # auto-wired 625
     R1_USE_DC_4BAR: bool = False  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     R2_PEAK_MIN_PCT: float = 0.5  # auto-wired 625
@@ -5741,6 +5748,28 @@ class QuickConfig:
     ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC: float = 30.0  # auto-added TEMPLATE
     ALL_TF_AGAINST_CLOSE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: all TFs (3m/15m/1h/4h/D) against → close primary
     ALL_TF_AGAINST_CLOSE_MIN_TFS: float = 4  # 2026-09-10 FIX: 3 TFs against → exit (was 0 — never fired)
+    # 2026-10-01 WIRING b1 — ALL_TF_AGAINST split into two precisely named switches (old ALL_TF_AGAINST_CLOSE_* kept as DEPRECATED aliases until deploy):
+    #   FORCE_CLOSE = CAUSES a full close of the position when >= MIN_TFS of the 5 WT TFs (3m/15m/1h/4h/D) are against it (ez_manage.process_position 48045)
+    #   BLOCK_ENTRY = PREVENTS an open/reentry when >= MIN_TFS are against the side (ez_manage._batch1_template_live_gate 6579, crypto only)
+    ALL_TF_AGAINST_FORCE_CLOSE_ENABLED: bool = True
+    ALL_TF_AGAINST_FORCE_CLOSE_MIN_TFS: float = 4
+    ALL_TF_AGAINST_FORCE_CLOSE_COOLDOWN_SEC: float = 30.0
+    ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED: bool = True
+    ALL_TF_AGAINST_BLOCK_ENTRY_MIN_TFS: float = 4
+    # 2026-10-01 b2c — live crypto exit chain (ez_positions_quick.process_single_exit) master + knobs live reads through getattr-with-default (absent in config.py)
+    R1_RESTRICT_TO_OVERBOUGHT_BREAKOUT: bool = True  # live getattr default True (ez_manage 46840)
+    MOMENTUM_TP_ENABLED: bool = True              # vec-only toggle: live MOMENTUM_TP (ez_manage 52282) has NO switch (always on, gain>0.5)
+    DC_BASIS_3M_REDUCE_ENABLED: bool = True       # vec-only toggle: live DC_BASIS_3M_REDUCE has NO switch (always on unless HEDGE_MODE)
+    DC_PRIOR_BAR_CHANNEL: bool = True             # b6: DC-channel STOP/breach exits compare close with the PREVIOUS bar's channel (NPZ dc_* include the current bar -> same-bar `close<=dc_low*(1-buf)` is impossible); targets stay same-bar
+    KG_STOCKS_LIVE_GATE: bool = True              # b6 vec-only: stocks KINDERGARTEN/EMA_9_21 = live HARD VETO on the final entry signal (False = legacy additive signal)
+    LIVE_EXIT_CHAIN_ENABLED: bool = True          # vec master for vec_decisions/live_exit_chain.py (crypto only); False = pre-b2c baseline
+    WT_CROSS_EXIT_3M_VETO_MAX_AGE: float = 30.0   # live getattr default 30.0 (ez_positions_quick 14625); no 3m array -> veto inactive in vec
+    TREND_REGIME_VETO_ENABLED: bool = True        # live getattr default True (14125)
+    K1M_EXTREME_REVERSE_ENABLED: bool = False     # live getattr default False; needs k_1m (no array) -> NOT modeled
+    REENTRY_GRACE_MINUTES: float = 30.0           # live getattr default 30.0 (14081)
+    PARABOLIC_EXIT_ENABLED: bool = True           # vec-only toggle: live PARABOLIC_EXIT has NO switch (always on) -> live_gaps LG-10
+    KEY_LEVEL_CRASH_ENABLED: bool = True          # vec-only toggle: live key-level crash close has NO switch (always on)
+    AUGMENTED_DC_BREAK_ENABLED: bool = True       # vec-only toggle: live AUGMENTED_DC_BREAK_REDUCE_TO_MIN has NO switch (always on)
     ATR_TRAIL_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     ATR_TRAIL_SWEEP_ENABLED: bool = False  # auto-added TEMPLATE
     AUGMENTED_POSITIONS_GUARD_FLOOR_MULT: float = 0.5  # auto-added TEMPLATE
@@ -8943,10 +8972,12 @@ def compute_entry_signals(npz, n, is_long, cfg):
         else: extra_ok = extra_ok & (mfi_D_arr <= 60)
     # 2026-08-09: DELTA_GATE_* controls — disable entire entry types when False
     delta_open_gate = np.ones(n, dtype=bool)
-    if not getattr(cfg, 'DELTA_GATE_OPEN', True):
+    # [C2 b4] DELTA_GATE_OPEN/REENTRY/AUGMENT have NO live consumer (tradier_manage.py:15412-15426 are `... and False ...` dead stubs; ez_manage only lists them) -> vec must be inert
+    _honor_dead_dg = bool(getattr(cfg, 'VEC_HONOR_DEAD_LIVE_DELTA_GATES', False))
+    if _honor_dead_dg and not getattr(cfg, 'DELTA_GATE_OPEN', True):
         delta_open_gate = np.zeros(n, dtype=bool)  # Disable all opens if gate is False
     delta_reentry_gate = np.ones(n, dtype=bool)
-    if not getattr(cfg, 'DELTA_GATE_REENTRY', True):
+    if _honor_dead_dg and not getattr(cfg, 'DELTA_GATE_REENTRY', True):
         # Disable reentry blocks (B02, B04, B10, B11, B12, B14, B15, etc.)
         for block_key in list(blocks.keys()):
             if block_key.startswith('B'):
@@ -9207,10 +9238,19 @@ def compute_entry_signals(npz, n, is_long, cfg):
     # KINDERGARTEN EMA CROSS — REWRITTEN 2026-09-22: was filter (AND _kg_ok) blocked 100% badly written — now ENTRY SWITCH at 15m (EMA 9x21 cross)
     # User: then rewrite it correctly and put it back — its an ema cross. Now correctly: EMA 9 crosses 21 on KINDERGARTEN_FILTER_TF (15m default) adds entry, NOT blocks.
     # FTF dependent: KINDERGARTEN_FILTER_TF in _ALL_FILTER_TF, sweepable per TF (15m/1h/4h/D/W). When enabled, ORs EMA cross signal, never blocks 100%.
+    # 2026-10-01 WIRING b1 (P0 KINDERGARTEN): live CRYPTO KG = HARD BLOCK on technical entries (ez_manage._kindergarten_ema_gate via check_entry_alignment 495),
+    # NOT the additive entry signal below (that is the live STOCKS behaviour, tradier_manage._v12_kindergarten_entry_allowed). No EMA_9_21 reader outside the gate in crypto live.
+    _kg_is_crypto = str(getattr(cfg, 'MODE', 'crypto')) != 'tradier'
+    if _kg_is_crypto and bool(getattr(cfg, 'KINDERGARTEN_EMA_GATE_ENABLED', False)):
+        try:
+            import vec_decisions.live_kindergarten_gate as _lkg
+            _base_entry = _base_entry & ~_lkg.kg_block_mask(npz, n, is_long, close, _safe)
+        except Exception:
+            pass
     _kg_signal = np.zeros(n, dtype=bool)
     _kg_filter_tf = str(getattr(cfg, 'KINDERGARTEN_FILTER_TF', getattr(cfg, 'EMA_9_21_FILTER_FILTER_TF', '15m')) or '15m')
     _kg_filter_tfs = [t.strip() for t in _kg_filter_tf.split(',') if t.strip()] if _kg_filter_tf not in ('OFF', 'off', '') else []
-    if (bool(getattr(cfg, 'KINDERGARTEN_EMA_GATE_ENABLED', False)) or bool(getattr(cfg, 'EMA_9_21_FILTER_ENABLED', False))) and _kg_filter_tfs:
+    if (not _kg_is_crypto) and (not bool(getattr(cfg, 'KG_STOCKS_LIVE_GATE', True))) and (bool(getattr(cfg, 'KINDERGARTEN_EMA_GATE_ENABLED', False)) or bool(getattr(cfg, 'EMA_9_21_FILTER_ENABLED', False))) and _kg_filter_tfs:
         _kg_checks = []
         try:
             _tfs_raw = str(getattr(cfg, 'EMA_9_21_FILTER_TFS', getattr(cfg, 'EMA_9_21_TIMEFRAME', '1h')) or '1h')
@@ -9685,6 +9725,8 @@ def compute_exit_signals(npz, n, is_long, cfg):
                     _dc_stop = _safe(npz, f"dc_low_{_tf_norm}" if is_long else f"dc_high_{_tf_norm}", n, 0)
                     if np.all(_dc_stop == 0):
                         continue
+                    if bool(getattr(cfg, 'DC_PRIOR_BAR_CHANNEL', True)):
+                        _dc_stop = np.concatenate(([_dc_stop[0]], _dc_stop[:-1]))
                     if is_long:
                         _tech_dc_extra = _tech_dc_extra | (close <= _dc_stop * (1 - _buf_f))
                     else:
@@ -9824,7 +9866,7 @@ def compute_augment_signals(npz, n, is_long, cfg):
     """Returns (augment_sig: bool[n], augment_mult: float[n]) — mult is the
     fraction of current qty added to the position when augment_sig fires."""
     augment_sig = np.zeros(n, dtype=bool)
-    if not getattr(cfg, 'DELTA_GATE_AUGMENT', True):
+    if bool(getattr(cfg, 'VEC_HONOR_DEAD_LIVE_DELTA_GATES', False)) and not getattr(cfg, 'DELTA_GATE_AUGMENT', True):  # [C2 b4] dead in live
         return augment_sig, np.zeros(n, dtype=np.float64)
     close = _base_safe(npz, 'close', n, cfg)
     k = _base_safe(npz, 'stoch_k', n, cfg, 50); d = _base_safe(npz, 'stoch_d', n, cfg, 50)
@@ -11100,6 +11142,24 @@ def _apply_new_audit_causal(cfg, npz, n, is_long, entry_mask, exit_mask, augment
     # lives in compute_entry_signals (DC/WT_DC/KG/EMA/STDEV/WT15/BB families).
     return entry_mask, exit_mask, augment_sig, reduce_sig
     # [dead fabrication-farm body erased 2026-09-30 per NO-LIES — was passthrough-gutted; see backups/before_erase_*]
+_QC_DEFAULT_CACHE = {}
+
+
+def _qc_alias(cfg, new, old):
+    """2026-10-01 WIRING b1 rename migration: effective value of a renamed switch. The NEW name wins when overridden; else the deprecated OLD name
+    when it was overridden (old sheets / progress keys / cat_side maps); else the default. Keeps old names working until the batch is deployed."""
+    if not _QC_DEFAULT_CACHE:
+        import dataclasses as _dcl
+        _QC_DEFAULT_CACHE.update({f.name: f.default for f in _dcl.fields(QuickConfig)})
+    dn, do = _QC_DEFAULT_CACHE.get(new), _QC_DEFAULT_CACHE.get(old)
+    vn, vo = getattr(cfg, new, dn), getattr(cfg, old, do)
+    if vn != dn:
+        return vn
+    if vo != do:
+        return vo
+    return vn
+
+
 def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     """Simulate a single symbol/side. Returns a per-trade-normalized result
     dict, or None if insufficient data. Deployed capital is tracked per
@@ -11389,6 +11449,18 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _entry_filter_masks.append(_w4_m)
     except Exception:
         pass
+    # 2026-10-01 WIRING b1 (P0 KG/orange filters): live applies HTF_DIRECTION_GATE + OI_CONFIRM in execute_trade_wrapper (ez_positions_quick 12658-12700) to EVERY
+    # non-augment open — fresh entries AND reentries — while the vec reentry-fire paths (HARDCODED_RALLY / TARGET-DC / MANDATORY) bypassed them => exactly-0 deltas.
+    # Strict veto: the fire path below refuses to open on a bar these gates block.
+    _strict_open_block = None
+    try:
+        for _sv_fn in (vec_decisions.wave4_families.htf_direction_gate, vec_decisions.wave4_families.oi_confirm_entry_gate):
+            _sv_m = _sv_fn(npz, n, is_long, cfg, close, _safe)
+            if _sv_m is not None:
+                _sv_b = ~np.asarray(_sv_m, dtype=bool)
+                _strict_open_block = _sv_b if _strict_open_block is None else (_strict_open_block | _sv_b)
+    except Exception:
+        _strict_open_block = None
     try:
         _mi_arr = vec_decisions.wave4_families.mi_exit_signal(npz, n, is_long, cfg, _safe)
     except Exception:
@@ -11434,6 +11506,33 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _entry_filter_masks.append(~_ema_block)
     except Exception:
         pass
+    _atf_entry_block = None
+    # 2026-10-01 WIRING b1: ALL_TF_AGAINST_CLOSE ENTRY VETO (crypto live ez_manage._batch1_template_live_gate 6579-6592, called from
+    # check_entry_vetting 2747 on every entry): BLOCK the entry when >= ALL_TF_AGAINST_CLOSE_MIN_TFS of the 5 WT TFs (3m/15m/1h/4h/D)
+    # are against the side (LONG: wt1<wt2). Crypto only: tradier_manage defines _batch1_template_live_gate_tradier but never calls it.
+    # 3m has no NPZ array -> 15m decision floor (BIBLE §40). Same count predicate as the exit twin.
+    try:
+        if (getattr(cfg, 'MODE', 'crypto') != 'tradier') and bool(_qc_alias(cfg, 'ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED', 'ALL_TF_AGAINST_CLOSE_ENABLED')):
+            _atv1, _atv2 = {}, {}
+            for _tf in ('15m', '1h', '4h', 'D'):   # USER 2026-10-01: NO 3m data in vec -> the 3m WT term is IGNORED (not approximated by 15m)
+                _src = _tf
+                _atv1[_tf] = _safe(npz, f'wt1_{_src}', n, 0.0)
+                _atv2[_tf] = _safe(npz, f'wt2_{_src}', n, 0.0)
+            _atv_block = vec_decisions.process_position_crypto__all_tf_against.check_all_tf_against_vec(cfg, _atv1, _atv2, is_long, min_tfs=int(_qc_alias(cfg, 'ALL_TF_AGAINST_BLOCK_ENTRY_MIN_TFS', 'ALL_TF_AGAINST_CLOSE_MIN_TFS')))
+            entry_sig = entry_sig & ~_atv_block
+            _atf_entry_block = _atv_block
+    except Exception:
+        _atf_entry_block = None
+    # b6: STOCKS live KINDERGARTEN/EMA_9_21 hard veto (tradier_manage.should_enter_long/short) applied on the FINAL entry signal (after every OR'd family) — see vec_decisions/live_kindergarten_stocks.py
+    if str(getattr(cfg, 'MODE', 'crypto')) == 'tradier' and bool(getattr(cfg, 'KG_STOCKS_LIVE_GATE', True)):
+        try:
+            import vec_decisions.live_kindergarten_stocks as _lks
+            _lks_ok = _lks.pass_mask(npz, n, is_long, cfg, close, _safe)
+            if _lks_ok is not None:
+                entry_sig = entry_sig & _lks_ok
+                _entry_filter_masks.append(_lks_ok)
+        except Exception:
+            pass
     # 2026-09-30 PORTED-SWITCH DISPATCHER — collision-free wiring hook (SWITCH_WIRING_GUIDE.md).
     # Each vec_decisions/ported_<lifecycle>.py owns its switches as faithful numpy twins of ez_manage/
     # tradier_manage (15m floor, NO proxies/fabrication). apply() returns the (possibly modified) signal.
@@ -11461,6 +11560,20 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     try:
         import vec_decisions.ported_reentry as _prz
         entry_sig = _prz.apply(npz, n, is_long, cfg, entry_sig, _safe, close, _entry_filter_masks)
+    except Exception:
+        pass
+    # [C2 b2] live scorer HARD gates (crypto rate() / stocks calculate_signal_score) the vector never had: SHORT_RSI_MIN_1H, ENTRY_ATR_PCT_MIN,
+    # BACKTEST_VALIDATED_GATES_TRADIER (ATR band, MFI/WT/K4h extremes, DC squeeze/top, WT velocity), ENTRY_VOL_MIN_RATIO, ADX regime, SMA200D extreme,
+    # WT_COMPOSITE_DELTA gate, BASIS_CONDITION. The vector entry_sig is a permissive OR of sources (66% of bars true), so the gate must sit on the FINAL
+    # fresh-entry signal (not inside _base_entry/extra_ok where it is inert — measured). Reentry-fire path (live reentry loop bypasses rate()) is untouched.
+    # Master default OFF: at LIVE defaults 11 of 12 probed sym_sides become untradable (live overlays ENTRY_ATR_PCT_MIN etc. per symbol via get_symbol_setting).
+    try:
+        if bool(getattr(cfg, 'LIVE_ENTRY_HARD_GATES_ENABLED', False)):
+            import vec_decisions.entry_hard_gates as _ehg
+            if str(getattr(cfg, 'MODE', 'crypto')) == 'tradier':
+                entry_sig = entry_sig & ~_ehg.tradier_block(npz, n, is_long, cfg, close, _safe)
+            else:
+                entry_sig = entry_sig & ~_ehg.crypto_block(npz, n, is_long, cfg, close, _safe, _base_safe(npz, 'stoch_k', n, cfg, 50))
     except Exception:
         pass
     _reentry_filter_on = bool(getattr(cfg, 'REENTRY_ENTRY_FILTER_ENABLED', False)) and bool(_entry_filter_masks)
@@ -11687,6 +11800,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _hc_wt1_15m = _safe(npz, 'wt1_15m', n)
     except Exception:
         _hc_wt1_15m = close * 0
+    # [C2 b3] live reentry PATHWAY F (favorable move + HTF alignment) — the only pathway vectorizable on 15m+ arrays (ez_manage.py:36594-36624)
+    try:
+        import vec_decisions.reentry_pathways as _rpw
+        _rf_htf = _rpw.favorable_move_mask(npz, n, is_long, cfg, _safe)
+    except Exception:
+        _rf_htf = None
     # Cache entry blocks once for per-trade reason tagging (avoid recompute per entry)
     try:
         _entry_blocks_cache = compute_reentry_blocks(npz, n, is_long, cfg)
@@ -11700,11 +11819,16 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _gw_exits = vec_decisions.grey_wire_exits.active_exits(_gw_c)
     _gw_bar = vec_decisions.grey_wire_exits.NpzBar(npz, n) if _gw_exits else None
 
+    _ot_cnt = {}  # [C2 b5b] executed OPEN/AUGMENT fills per UTC day
     def _open(qty0, px, i, entry_reason='VECTOR_ENTRY'):
         # Store original entry price/bar for ledger — avg_price may drift after augments
         _ts_open = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
         # OPEN ledger event for charts/parity — no pnl/bar_exit keys, so every trade metric skips it
         events.append({'type': 'OPEN', 'ts': _ts_open, 'price': float(px), 'qty': float(qty0), 'pos_deployed': abs(qty0 * px), 'bar': int(i), 'reason': str(entry_reason)})
+        try:
+            _ot_d = vec_decisions.overtrade_guard.day_of(_ts_open); _ot_cnt[_ot_d] = _ot_cnt.get(_ot_d, 0) + 1  # [C2 b5b] executed fill today
+        except Exception:
+            pass
         return {'qty': qty0, 'avg_price': px, 'entry_price': px, 'entry_qty': qty0, 'deployed': abs(qty0 * px), 'realized': 0.0,
                 'entry_bar': i, 'peak_pnl_pct': 0.0, 'fees': abs(qty0 * px) * half_fee, 'entry_reason': entry_reason}
 
@@ -11727,6 +11851,31 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _sa_cap = _c if _sa_cap is None else min(_sa_cap, _c)
     except Exception:
         _sa_cap = None
+    # 2026-10-01 ZERO-AUDIT WIRING: ALL_TF_AGAINST_CLOSE (crypto live ez_manage.process_position 48045-48098: close the WHOLE position
+    # when >= ALL_TF_AGAINST_CLOSE_MIN_TFS of the 5 WT TFs (3m/15m/1h/4h/D) are against; no gain/loss gate). The shared twin
+    # vec_decisions.process_position_crypto__all_tf_against was imported but NEVER called -> vec baseline lacked a default-ON live exit.
+    # Crypto only: tradier_manage has no real decision site (stub reads only) -> stocks stay inert. 3m uses the 15m array (15m decision floor).
+    _atf_mask = None
+    try:
+        if (not is_tradier) and bool(_qc_alias(cfg, 'ALL_TF_AGAINST_FORCE_CLOSE_ENABLED', 'ALL_TF_AGAINST_CLOSE_ENABLED')):
+            _atf_w1 = {}; _atf_w2 = {}
+            for _tf in ('15m', '1h', '4h', 'D'):   # USER 2026-10-01: NO 3m data in vec -> the 3m WT term is IGNORED (not approximated by 15m)
+                _src = _tf
+                _atf_w1[_tf] = _safe(npz, f'wt1_{_src}', n, 0.0)
+                _atf_w2[_tf] = _safe(npz, f'wt2_{_src}', n, 0.0)
+            _atf_mask = vec_decisions.process_position_crypto__all_tf_against.check_all_tf_against_vec(cfg, _atf_w1, _atf_w2, is_long, min_tfs=int(_qc_alias(cfg, 'ALL_TF_AGAINST_FORCE_CLOSE_MIN_TFS', 'ALL_TF_AGAINST_CLOSE_MIN_TFS')))
+    except Exception:
+        _atf_mask = None
+    # 2026-10-01 b2c: LIVE CRYPTO EXIT CHAIN (ez_positions_quick.process_single_exit 14109-14830) — see vec_decisions/live_exit_chain.py
+    _lec_P = None
+    _lec = None
+    if str(getattr(cfg, 'MODE', 'crypto')) != 'tradier' and bool(getattr(cfg, 'LIVE_EXIT_CHAIN_ENABLED', False)):
+        try:
+            import vec_decisions.live_exit_chain as _lec
+            _lec_P = _lec.prepare(npz, n, is_long, cfg, close, _safe)
+            _lec_P = _lec.prepare_pp(npz, n, is_long, cfg, close, _safe, _lec_P)
+        except Exception:
+            _lec_P = None
     # 2026-09-30 MULTI_TF_EXIT scorer (faithful vec twin of ez_manage.evaluate_multi_tf_exit 40370-40572, a MAJOR
     # live exit vec was missing). Gain-independent base+late score arrays precomputed once; gain multipliers +
     # threshold(35/45/55) + min_exit_gain applied per-bar in the walk. Makes WT_DIV/ACCEL/MOMENTUM/EXHAUST/15M_LH/etc testable.
@@ -11868,12 +12017,33 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 except Exception:
                     pass
             if not fire and has_closed_before and getattr(cfg, 'REENTRY_MANDATORY', False):
-                fire = True
+                # [C2 b3] live REENTRY_MANDATORY only enables the reentry loop; a pathway must fire (never 'every bar'). Blanket fire kept as default
+                # (baseline unchanged); False = live-like: only HARDCODED_RALLY (above) + pathway F favorable-move+HTF (3m/1m pathways are UNWIRABLE_NO_3M).
+                _blanket = getattr(cfg, 'REENTRY_BLANKET_FIRE_ENABLED', None)
+                if _blanket is None:
+                    # stocks: live tradier_manage.py:11993-12081 (MANDATORY_REENTRY) reenters ONLY when price crossed back through the exit price in our
+                    # favour (guaranteed) or within PRICE_CROSS_BACK_BAND_PCT with a 5m DC break (REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED, default off ->
+                    # never) => no blanket fire. Crypto keeps the blanket (upper bound) until 3m/1m reentry pathways can be vectorized.
+                    _blanket = str(getattr(cfg, 'MODE', 'crypto')) != 'tradier'
+                if _blanket:
+                    fire = True
+                elif _rf_htf is not None and trades:
+                    try:
+                        if bool(_rf_htf[i]) and vec_decisions.reentry_pathways.favorable_price_ok(
+                                is_long, px, float(trades[-1].get('exit_price', 0) or 0), float(getattr(cfg, 'REENTRY_FAVORABLE_MOVE_PCT', 1.0) or 1.0)):
+                            fire = True
+                    except Exception:
+                        pass
             # 2026-09-29 USER: reentries bypassed every entry filter (reckless). Lenient gate: a reentry must pass at
             # least REENTRY_FILTER_MIN_PASS of the active entry filters; new entries (entry_sig) must pass ALL of them.
             if fire and _reentry_filter_on and has_closed_before and not entry_sig[i]:
                 if sum(1 for _rm in _entry_filter_masks if bool(_rm[i])) < _reentry_filter_need:
                     fire = False
+            if fire and _strict_open_block is not None and bool(_strict_open_block[i]):
+                fire = False
+            # 2026-10-01 WIRING b1: live ENTRY_VET (ez_manage 25616 'REENTRY respects ENTRY_VET') blocks ANY entry/reentry while >= MIN_TFS WT TFs are against
+            if fire and _atf_entry_block is not None and bool(_atf_entry_block[i]):
+                fire = False
             # USER 2026-09-27: NEVER reenter when falling through 4h bottom/top, below STOP, against KG all TFs, against GR all TFs — FIX 2026-09-27: block ANY px below dc_low_4h (not just 0.25% below) to stop 1-bar ULTIMATE churn
             if fire:
                 try:
@@ -11985,6 +12155,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 entry_reason = 'ENTRY_SIGNAL'
                     except Exception:
                         pass
+                    # [C2 b5b] live OVERTRADE_GUARD: fresh (non-reentry) entries blocked once TRADES_PER_SYM_PER_DAY_MAX fills happened today (ez_manage.py:30405, tradier_manage.py:13843)
+                    if getattr(cfg, 'OVERTRADE_GUARD_ENABLED', False):
+                        try:
+                            if vec_decisions.overtrade_guard.blocked(cfg, _ot_cnt, vec_decisions.overtrade_guard.day_of(ts[i] if i < len(ts) else ts[-1]), entry_reason):
+                                continue
+                        except Exception:
+                            pass
                     pos = _open(qty0, px, i, entry_reason)
             continue
         bars_in_pos += 1
@@ -12006,6 +12183,51 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _nlk_reason, 'type': 'CLOSE', 'ts': _tsn, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _nlk_reason, 'bars_held': int(i - pos['entry_bar'])})
             pos = None; cd = cooldown_bars; has_closed_before = True
             continue
+        # 2026-10-01 ALL_TF_AGAINST_CLOSE (ez_manage.py:48045) — no gain gate, full close
+        if _atf_mask is not None and i < len(_atf_mask) and bool(_atf_mask[i]):
+            pos['fees'] += abs(pos['qty'] * px) * half_fee
+            _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
+            _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
+            _tsa = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+            trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': "ALL_TF_AGAINST_CLOSE g%.2f%%" % live_pnl_pct, 'type': 'CLOSE', 'ts': _tsa, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': 'ALL_TF_AGAINST_CLOSE', 'bars_held': int(i - pos['entry_bar'])})
+            pos = None; cd = cooldown_bars; has_closed_before = True
+            continue
+        # 2026-10-01 b2c LIVE CRYPTO EXIT CHAIN hook (live_exit_chain.step): hit -> full close (STOP/CLOSE/KILL reasons) or partial REDUCE by live gain bands
+        if _lec_P is not None:
+            _lec_hit = _lec.step(_lec_P, cfg, i, px, {'gain': live_pnl_pct, 'peak': pos.get('peak_pnl_pct', 0.0), 'age_min': held_bars * bmin,
+                                                      'entry_price': pos.get('entry_price', pos['avg_price']), 'reentered': 'REENTRY' in str(pos.get('entry_reason', '')).upper(),
+                                                      'was_augmented': int(pos.get('n_augments', 0)) > 0})
+            if _lec_hit:
+                _lec_reason, _lec_full = _lec_hit
+                _lec_frac = None if _lec_full else _lec.reduce_fraction(cfg, live_pnl_pct)
+                _lec_qty = pos['qty'] if (_lec_full or _lec_frac is None) else pos['qty'] * _lec_frac
+                if pos['qty'] - _lec_qty < 0.10 * float(pos.get('entry_qty', pos['qty'])):
+                    _lec_qty = pos['qty']
+                _lec_ts = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                if _lec_qty >= pos['qty'] - 1e-12:
+                    pos['fees'] += abs(pos['qty'] * px) * half_fee
+                    _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
+                    _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
+                    trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _lec_reason, 'type': 'CLOSE', 'ts': _lec_ts, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason', 'VECTOR_ENTRY'), 'exit_reason': _lec_reason, 'bars_held': int(i - pos['entry_bar'])})
+                    pos = None; cd = cooldown_bars; has_closed_before = True
+                else:
+                    pos['realized'] += (px - pos['avg_price']) * _lec_qty if is_long else (pos['avg_price'] - px) * _lec_qty
+                    pos['fees'] += abs(_lec_qty * px) * half_fee
+                    pos['qty'] -= _lec_qty
+                    events.append({'type': 'REDUCE', 'ts': _lec_ts, 'price': float(px), 'qty': float(_lec_qty), 'pos_deployed': float(pos['deployed']), 'bar': int(i), 'reason': _lec_reason})
+                    pos['last_reduce_bar'] = int(i)
+                continue
+            # b2c: ez_manage.process_position exits (R1 / R2 / MOMENTUM_TP / DC_BASIS_3M_REDUCE) — full closes
+            _pp_hit = _lec.step_pp(_lec_P, cfg, i, px, {'gain': live_pnl_pct, 'peak': pos.get('peak_pnl_pct', 0.0), 'age_min': held_bars * bmin, 'held_bars': held_bars,
+                                                         'min_hold': min_hold, 'entry_reason': pos.get('entry_reason', '')}, pos)
+            if _pp_hit:
+                pos['fees'] += abs(pos['qty'] * px) * half_fee
+                _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
+                _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
+                _pp_ts = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _pp_hit[0], 'type': 'CLOSE', 'ts': _pp_ts, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason', 'VECTOR_ENTRY'), 'exit_reason': _pp_hit[0], 'bars_held': int(i - pos['entry_bar'])})
+                pos = None; cd = cooldown_bars; has_closed_before = True
+                continue
         # 2026-09-30 STATEFUL PORTED EXITS (WT_4H_VEL_EXIT / WT_EXHAUST_EXIT — gain/age-gated; ported_stateful_exit.py)
         if _sx_active:
             _sx_fire = False
@@ -12030,7 +12252,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             if _mtf_min_gain > 0 and live_pnl_pct < _mtf_min_gain: _msc = 0.0
             _msc = _msc if _msc < 100.0 else 100.0
             _mthr = 35.0 if live_pnl_pct > 1.0 else 45.0 if live_pnl_pct > 0.3 else 55.0
-            if _msc >= _mthr or bool(_mtf_override[i]):
+            if (_msc >= _mthr or bool(_mtf_override[i])) and not vec_decisions.noloss_gate.noloss_blocks(cfg, 'MULTI_TF_EXIT', live_pnl_pct):  # [C2 b5b] live UNIVERSAL_NOLOSS_GATE
                 pos['fees'] += abs(pos['qty'] * px) * half_fee
                 _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
                 _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
@@ -12052,7 +12274,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             continue
         _vig_dc_hit = False
         if _vig_enabled and _vig_dc_lvl is not None and live_pnl_pct < 0:
-            _vg_lvl = float(_vig_dc_lvl[i]) if i < len(_vig_dc_lvl) else 0.0
+            _vg_lvl = float(_vig_dc_lvl[(i - 1) if (i > 0 and bool(getattr(cfg, 'DC_PRIOR_BAR_CHANNEL', True))) else i]) if i < len(_vig_dc_lvl) else 0.0
             # breach must clear the channel level by the tolerance (same shape as DAYTRADE/TECHNICAL
             # dc stops: level*(1∓tol)) — tolerance on the LEVEL, never a loss floor
             _vig_dc_hit = _vg_lvl > 0 and ((is_long and px <= _vg_lvl * (1 - _vig_tol)) or ((not is_long) and px >= _vg_lvl * (1 + _vig_tol)))
@@ -12071,7 +12293,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         # 2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP: DC CHANNEL BREACH TF = DC_HARD_STOP_TF (4h|D)
         # No trade may be held through dc_low_TF (LONG) / dc_high_TF (SHORT) at any loss. TF per sym_side, D wider.
         try:
-            _ult_lvl = float(dc_low_4h[i]) if is_long else float(dc_high_4h[i])
+            _ult_j = (i - 1) if (i > 0 and bool(getattr(cfg, 'DC_PRIOR_BAR_CHANNEL', True))) else i
+            _ult_lvl = float(dc_low_4h[_ult_j]) if is_long else float(dc_high_4h[_ult_j])
             _ult_breach = (_ult_lvl > 0) and ((is_long and px <= _ult_lvl) or ((not is_long) and px >= _ult_lvl))
             if _ult_breach:
                 pos['fees'] += abs(pos['qty'] * px) * half_fee
@@ -12141,7 +12364,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             live_pnl_pct, float(pos.get('peak_pnl_pct', 0.0)))
         # FAST_RISER quick-jump double (ez_manage.py:52393-52468): TF jump signal + profit floor
         _fr_fire = _fr_arr is not None and bool(_fr_arr[i]) and live_pnl_pct > vec_decisions.filter_tf_gates.FAST_RISER_MIN_GAIN_PCT
-        if (augment_sig[i] or _gl_fire or _fr_fire) and _augment_allowed(cfg, live_pnl_pct) and (_sa_cap is None or int(pos.get('n_augments', 0)) < _sa_cap):
+        # [C2 b5] live execute_now UNIVERSAL_AUGMENT_GAIN_GATE blocks EVERY non-reduce order on an existing position (not only the ladder-initiated one):
+        # augment_sig (bounce/pyramid) and FAST_RISER sources need gain-since-last-add >= AUGMENT_MIN_GAIN_PCT or the pullback exception (ez_manage.py:31577-31630)
+        _uag_src_ok = _gl_fire or ((augment_sig[i] or _fr_fire) and vec_decisions.uagain_gate.uagain_gate_pass(
+            cfg, is_long, px, float(pos.get('last_aug_px', 0.0)) or float(pos.get('entry_price', pos['avg_price'])), live_pnl_pct, float(pos.get('peak_pnl_pct', 0.0))))
+        if _uag_src_ok and _augment_allowed(cfg, live_pnl_pct) and (_sa_cap is None or int(pos.get('n_augments', 0)) < _sa_cap):
             _aug_cd_bars = vec_decisions.gain_ladder_augment.cooldown_bars(cfg, bmin)
             _aug_last_bar = int(pos.get('last_aug_bar', -10**9))
             if (i - _aug_last_bar) >= _aug_cd_bars:
@@ -12167,6 +12394,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     # event row: NO pnl_dollars/pnl_pct/bar_entry/bar_exit keys — metric
                     # consumers key on those fields and must never count position scaling
                     events.append({'type': 'AUGMENT', 'ts': _ts_aug, 'price': float(px), 'qty': float(add_qty), 'pos_deployed': float(pos['deployed']), 'bar': int(i), 'reason': _gl_reason or 'VEC_AUGMENT_SIG'})
+                    try:
+                        _ot_d = vec_decisions.overtrade_guard.day_of(_ts_aug); _ot_cnt[_ot_d] = _ot_cnt.get(_ot_d, 0) + 1
+                    except Exception:
+                        pass
 
         # ═══ PARTIAL_PROFIT_LOCK v2 (2026-09-28 parity round 3) — faithful state machine of
         # tradier_manage.py:18720-18798 / ez_positions_quick.py:18586-18640 via
@@ -12231,7 +12462,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             # STOP: LONG px <= dc_low_TF*(1-buf) for ANY TF in _dd_stop_dcs, SHORT px >= dc_high_TF*(1+buf)
             # TARGET: LONG px >= dc_high_TF*(1-buf) for ANY TF in _dd_tgt_dcs, SHORT px <= dc_low_TF*(1+buf)
             try:
-                _dd_lv = {(_sp['field_long'] if is_long else _sp['field_short']): (float(_arr[i]) if i < len(_arr) else 0.0) for _sp, _arr in _dd_stop_dcs + _dd_tgt_dcs}
+                _dcpb = bool(getattr(cfg, 'DC_PRIOR_BAR_CHANNEL', True)) and i > 0
+                _dd_lv = {(_sp['field_long'] if is_long else _sp['field_short']): (float(_arr[i - 1 if _dcpb else i]) if i < len(_arr) else 0.0) for _sp, _arr in _dd_stop_dcs}
+                _dd_lv.update({(_sp['field_long'] if is_long else _sp['field_short']): (float(_arr[i]) if i < len(_arr) else 0.0) for _sp, _arr in _dd_tgt_dcs})
                 closed, _dd_reason = vec_decisions.dc_channel_exits.daytrade_dc_exit(
                     float(px), is_long, [_sp for _sp, _ in _dd_stop_dcs], [_sp for _sp, _ in _dd_tgt_dcs], lambda _fld: _dd_lv.get(_fld, 0.0))
                 if closed:
@@ -12246,6 +12479,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         elif trail_erosion > 0 and pos['peak_pnl_pct'] > 0 and (pos['peak_pnl_pct'] - live_pnl_pct) >= pos['peak_pnl_pct'] * trail_erosion and (_gftf.get('erosion_confirm') is None or bool(_gftf['erosion_confirm'][i])):
             closed, reason = True, 'WIN_TRAIL_EROSION'
 
+        if closed and vec_decisions.noloss_gate.noloss_blocks(cfg, reason, live_pnl_pct):
+            closed = False  # [C2 b5b] live UNIVERSAL_NOLOSS_GATE (default OFF) blocks a technical close at a real loss
         if closed:
             pos['fees'] += abs(pos['qty'] * px) * half_fee
             pnl_dollars = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
@@ -12441,6 +12676,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 pass
             if _tech_reason == 'TECHNICAL_EXIT':
                 continue
+            if vec_decisions.noloss_gate.noloss_blocks(cfg, _tech_reason, live_pnl_pct):
+                continue  # [C2 b5b] live UNIVERSAL_NOLOSS_GATE
             pos['fees'] += abs(pos['qty'] * px) * half_fee
             pnl_dollars = pnl_preview - pos['fees']
             pnl_pct = pnl_dollars / pos['deployed'] * 100 if pos['deployed'] else 0.0

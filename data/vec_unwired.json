@@ -1,9 +1,7 @@
 {
- "_doc": "v15_zero_audit: keys with NO reachable vectorized read and no ledger movement in finished sheets. v15_pilot skips them (row/cell = None, reason NOT_WIRED_VEC) instead of writing a fake exact 0. Remove a key here when it is really wired.",
+ "_doc": "v15_zero_audit: keys with NO reachable vectorized read and no ledger movement in finished sheets. v15_pilot skips them (row/cell = None, reason NOT_WIRED_VEC) instead of writing a fake exact 0. Remove a key here when it is really wired. [b1 staged: ALL_TF_AGAINST_* and WRONG_SIDE_* removed \u2014 wired T2]",
  "generated": "2026-09-30T23:58:44.719444Z",
  "switches": [
-  "ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC",
-  "ALL_TF_AGAINST_CLOSE_ENABLED",
   "ATR_ADAPTIVE_STOP_MULT",
   "ATR_LONG_WINDOW",
   "ATR_TRAIL_SWEEP_ENABLED",
@@ -186,7 +184,6 @@
   "V8_ENTRY_ENGINE_DC_ENABLED",
   "V8_ENTRY_ENGINE_WT_ENABLED",
   "VEC_REENTRY_DC4_EXITPRICE_ENABLED",
-  "WRONG_SIDE_WT_TFS_REQUIRED",
   "WT_15M_CROSS_ENTRY_ENABLED",
   "WT_AGAINST_FILTER_ENABLED",
   "WT_COMPOSITE_ENTRY_BLOCK",

@@ -1415,6 +1415,45 @@ from backtest_v8_harness import (
 _sim_ts = [0.0]  # Mutable ref — updated per bar
 
 
+_F1_LIFECYCLE_ZERO = {
+    # lifecycle-scoped Position fields (ez_positions_service.Position): live builds a BRAND-NEW Position object on every open, the harness
+    # re-uses the shell of the previous lifecycle. Position.__setattr__ silently DROPS zeroing of protected fields (max_gain, last_*...),
+    # so stale max_gain=6.5% survived into the next lifecycle and fired BREAK_EVEN_GUARD_EXIT (peak>3 & gain<=1) on the very bar of the open
+    # (63 of 133 closes on ZENUSDT_LONG 3d), and stale gain/last_augmentation_time/last_reduction_* fed the other exit chains.
+    "gain": 0.0, "prev_gain": 0.0, "max_gain": 0.0, "last_augmentation_amount": 0.0, "last_augmentation_price": 0.0,
+    "last_augmentation_time": None, "last_reduction_amount": 0.0, "last_reduction_price": 0.0, "last_reduction_time": None,
+    "was_reduced": False, "is_reduced": False, "reduced_at": None, "was_reentered": False, "augment_reason": "", "reduction_reason": "",
+    "sba_add_count": 0, "last_sba_time": 0.0, "sba_total_added_usd": 0.0, "entry_price_before_sba": 0.0, "r1_stop_price": 0.0,
+    "prev_gain_last_updated": None, "augmented_count": 0, "last_reentry_time": None,
+}
+
+
+def _f1_new_lifecycle(pos, px=None, qty=None):
+    """Reset every lifecycle-scoped field of a re-used position shell on a 0->positive transition (== live's fresh Position)."""
+    if pos is None or os.environ.get("V12_F1_FRESH_LIFECYCLE", "1") != "1":
+        return
+    for _k, _v in _F1_LIFECYCLE_ZERO.items():
+        if hasattr(pos, _k):
+            try:
+                object.__setattr__(pos, _k, _v)
+            except Exception:
+                pass
+    if qty is not None:
+        for _k in ("max_quantity", "initial_quantity"):
+            if hasattr(pos, _k):
+                try:
+                    object.__setattr__(pos, _k, abs(float(qty)))
+                except Exception:
+                    pass
+    if px is not None:
+        for _k in ("mark_price", "entry_price"):
+            if hasattr(pos, _k):
+                try:
+                    object.__setattr__(pos, _k, float(px))
+                except Exception:
+                    pass
+
+
 class _SimTime:
     """Drop-in for time module — returns simulation time."""
     def time(self):
@@ -1753,6 +1792,11 @@ def apply_patches(stores: Dict[str, IndicatorStore], mode: str):
     # --- Patch time in ALL trading modules ---
     sim_time = _SimTime()
     ez_manage.time = sim_time
+    # F1 (2026-10-01): ez_manage.ii() falls back to the newest REAL market_data_*.json in DATA_DIR whenever the sim snapshot lacks
+    # HTF keys or k_3m/d_3m == 0 (always true on crypto NPZ without 3m stoch) -> real Aug-2026 indicator values leaked into the sim
+    # (non-causal) AND 54ms orjson.loads of an 11MB file per call (59% of the 30D runtime). The sim must read ONLY frozen-NPZ data.
+    if os.environ.get("V12_SIM_ALLOW_LIVE_MARKET_FILE", "0") != "1":
+        ez_manage._get_latest_market_data_file = lambda: None
     ez_positions_quick.time = sim_time
     ez_positions_service.time = sim_time
 
@@ -2921,6 +2965,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 else:
                     _old_amt = abs(pos.positionAmt)
                     if _old_amt < 0.0001:
+                        _f1_new_lifecycle(pos, px, qty)
                         pos.entry_price = px
                         pos.opened_at = datetime.utcfromtimestamp(_sim_ts[0]).replace(tzinfo=timezone.utc)
                         pos.initial_quantity = abs(qty)
@@ -2971,6 +3016,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             else:
                 _wh_old_amt = abs(pos.positionAmt)
                 if _wh_old_amt < 0.0001:
+                    _f1_new_lifecycle(pos, price, quantity)
                     pos.entry_price = price
                     pos.opened_at = _sim_datetime_now(timezone.utc)
                     pos.initial_quantity = abs(quantity)
@@ -3020,6 +3066,20 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         )
         is_aug_action = (not is_red) and (not is_hedge)
         requested_qty = qty
+        # F1 (2026-10-01): live execute_trade_action runs trading_policy.check_entry_vetting (ENTRY_VET) on every non-hedge/non-quick open
+        # (ez_manage.py ~25619; bypass only for the force-open reasons while WT_3M_FORCE_OPEN_BYPASS_GATES). The harness replaces
+        # execute_trade_action by this seam, so native/vector-scheduled entries skipped the live entry veto. Apply the SAME live function here.
+        if (not is_red) and (not is_hedge) and os.environ.get("V12_F1_ENTRY_VET", "1") == "1" and str(act).upper() in ("OPEN", "REENTRY"):
+            try:
+                _f1_ru = str(reason or "").upper()
+                _f1_force = any(_k in _f1_ru for _k in ("WT_3M_FORCE_OPEN", "TRADEABLE_KEYS_MANDATORY", "FORCE_HA_4H_ABOVE_BASIS", "MOMENTUM_WATCHDOG")) and bool(getattr(config, "WT_3M_FORCE_OPEN_BYPASS_GATES", True))
+                _f1_ind = indicator_cache.get(sym.upper(), {}) if isinstance(indicator_cache, dict) else {}
+                if _f1_ind and not _f1_force and "QUICK" not in str(act).upper():
+                    _f1_ok, _f1_why = ez_manage.check_entry_vetting(_f1_ind, float(px), (pk.endswith("_LONG")))
+                    if not _f1_ok:
+                        return f"{pk}_BLOCKED_ENTRY_VET_{_f1_why}"
+            except Exception:
+                pass
         _shadow_side_contract = os.environ.get("V8_LADDER_ONLY_SIDE", "").upper()
         # position_key is the ledger identity.  Some upstream crypto callers
         # pass a stale/mislabelled ``position_side`` while already composing a
@@ -3334,6 +3394,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     # Without this opened_at sticks at the original-open value → age 999999m sentinel
                     # → BREAKEVEN_GAIN_EROSION_STOP fires immediately on tiny gains → orphan churn.
                     if _old_amt < 0.0001:
+                        _f1_new_lifecycle(_do_pos, px, qty)
                         _do_pos.entry_price = px
                         try: _do_pos.opened_at = _sim_datetime_now(timezone.utc)
                         except Exception: pass
@@ -3868,6 +3929,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 pos.positionAmt = new_amt; pos.quantity = new_amt
                 # 2026-05-21 USER FIX: any 0→positive transition is a NEW position lifecycle.
                 if old_amt < 0.0001:
+                    _f1_new_lifecycle(pos, px, qty)
                     pos.entry_price = px
                     try: pos.opened_at = _sim_datetime_now(timezone.utc)
                     except Exception: pass
@@ -7200,7 +7262,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     _mtm_wins = 0
     _mtm_losses = 0
     _mtm_sum_pct = 0.0
-    _mtm_final_ts = int(_sim_ts[0]) if '_sim_ts' in dir() and _sim_ts else 0
+    # F1 (2026-10-01): '_sim_ts' in dir() is ALWAYS False inside a function (_sim_ts is a module global) -> every final MTM close carried
+    # timestamp 0, which corrupted tim_pct (>100% => run_one valid=False on crypto sym_sides) and any time-ordered metric/chart.
+    _mtm_final_ts = int(_sim_ts[0]) if _sim_ts and _sim_ts[0] else 0
     for _pk, _pos in list(trade_manager.positions.items()):
         _amt = float(getattr(_pos, 'positionAmt', 0) or 0)
         if abs(_amt) < 0.0001:
@@ -8914,6 +8978,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 pos.quantity = new_amt
                 # 2026-05-21 USER FIX: any 0→positive transition is a NEW position lifecycle.
                 if old_amt < 0.0001:
+                    _f1_new_lifecycle(pos, px, qty)
                     pos.entry_price = px
                     try: pos.opened_at = _sim_now_t(timezone.utc)
                     except Exception: pass
@@ -10070,7 +10135,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     # Seed positions from live decision files if they exist for the start date
     _seed_dir = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "decisions"
     _seed_file = _seed_dir / f"decisions_{account_key}_{start_date.replace('-','')}.jsonl"
-    if _seed_file.exists() and manager.position_manager:
+    # F1 (2026-10-01): seeding the LIVE book of that day (23 other symbols) into a single-sym_side replay made the final MTM close those
+    # foreign positions (UEC_SHORT: 23 'trades', gain -105%, 0 real entries). Seed only when explicitly asked (V12_F1_SEED_FROM_DECISIONS=1).
+    if _seed_file.exists() and manager.position_manager and os.environ.get("V12_F1_SEED_FROM_DECISIONS", "0") == "1":
         _seeded = 0
         _seen = set()
         for _line in open(_seed_file):
@@ -17270,6 +17337,10 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
     import datetime as _dt
     from pathlib import Path as _Path
     overrides = dict(overrides or {})
+    # F1: LS_RATIO_ENFORCE_TRADIER is a PORTFOLIO gate (long$/max(short$,1)): a single-sym_side replay has no opposite book, so every short is
+    # BLOCKED_LS_RATIO_SHORT_0.00lt0.2 (v15_verify_365_parity forced it False harness-side; run_one never did). Keep live default unless asked.
+    if os.environ.get("V12_F1_SINGLE_SIDE_PORTFOLIO_GATES_OFF", "1") == "1" and str(symside).upper().endswith(('_SHORT', '_LONG')) and not str(symside).split('_')[0].upper().endswith(('USDT','USDC','USD1','BUSD','FDUSD','TUSD','DAI')):
+        overrides.setdefault('LS_RATIO_ENFORCE_TRADIER', False)
     # split symside
     if symside.endswith("_LONG"):
         sym = symside[:-5]; side = "LONG"
