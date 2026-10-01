@@ -4990,6 +4990,7 @@ class QuickConfig:
     STDEV_SLOPE_LOOKBACK_15M: int = 96
     STDEV_SLOPE_SIZING_MODE: str = "slope_to_top"
     BB_FROZEN_STOP_ENABLED: bool = False  # auto-wired 625
+    WT_DC_LIVE_GATES_ENABLED: bool = False  # [C2 b7b] stocks WT_DC entry final-condition gates (tradier_manage.py:12825) — OFF: vec lacks the ~8 other live fresh-entry sources, ON empties 3/4 probes (0 trades); True = live-gated B_WT_DC_LIVE
     BB_PULLBACK_GATE_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     BB_PULLBACK_GATE_LONG_MAX: float = 0.30  # 2026-09-28 live parity: config*=0.30 (was 0.15)
     BB_PULLBACK_GATE_SHORT_MIN: float = 0.70  # 2026-09-28 live parity: config*=0.70 (was 0.35)
@@ -9097,6 +9098,10 @@ def compute_entry_signals(npz, n, is_long, cfg):
         # The WT_DC gates above are stricter (0.20 vs 0.15, 20 vs 15), so they imply DC_BREAK gates; no separate mask needed.
     else:
         _hard_short_ok = np.ones(n, dtype=bool)
+    try:
+        _bb_pullback_vec_w = vec_decisions.bb_pullback_gate.bb_pullback_gate_vec(npz, n, cfg, is_long)
+    except Exception:
+        _bb_pullback_vec_w = np.zeros(n, dtype=bool)
     # Vectorized exact live WT_DC scorer (11 wt_dc* scripts) — 0.07s budget, numpy + guaranteed 30+/mo
     if bool(getattr(cfg, 'WT_DC_ENABLED', False)):
         try:
@@ -9124,6 +9129,27 @@ def compute_entry_signals(npz, n, is_long, cfg):
             # entry mask is now exactly the real live multi-TF scorer threshold — parity proven
             # by test_wt_dc_entry_scorer_vec.py (scorer == live scalar wt_dc_entry_scorer).
             blocks["B_WT_DC_LIVE"] = (_scores_wtdc >= _thr_wtdc)
+            # [C2 b7b] STOCKS live WT_DC entry final condition (tradier_manage.py:12825): score>=thr AND NOT (htf_block[WT_DC_HTF_GATE/MODE/TF_HTF*],
+            # htf_align_block[HTF_ALIGN_REQUIRED_TRADIER], bb_pullback_block, wt_dc_pos_block[short], lt_block[short], side switch WT_DC_LONG/SHORT_ENABLED).
+            # The vec ORed B_WT_DC_LIVE AFTER those gates (ungated). k5m/stoch-gate need 5m (inert). WT_DC_STOCH_*/DC_POS_THRESHOLD/TF_ENTRY are assigned-only
+            # in live (tradier_manage.py:12653-12660 never used) -> deliberately NOT applied here.
+            if str(getattr(cfg, 'MODE', 'crypto')) == 'tradier' and bool(getattr(cfg, 'WT_DC_LIVE_GATES_ENABLED', False)):
+                _wl_ok = _wtdc_htf_ok & _wt_dc_mask & (~_bb_pullback_vec_w)
+                _wl_req = int(float(getattr(cfg, 'HTF_ALIGN_REQUIRED_TRADIER', 0) or 0))
+                if _wl_req > 0:
+                    if is_long:
+                        _wl_cnt = (wt1_1h > wt2_1h).astype(int) + (wt1_4h > wt2_4h).astype(int) + (wt1_D > wt2_D).astype(int)
+                    else:
+                        _wl_cnt = (wt1_1h < wt2_1h).astype(int) + (wt1_4h < wt2_4h).astype(int) + (wt1_D < wt2_D).astype(int)
+                    _wl_ok = _wl_ok & (_wl_cnt >= _wl_req)
+                if not is_long:
+                    _wl_h, _wl_l = _safe(npz, 'dc_high_15m', n), _safe(npz, 'dc_low_15m', n)
+                    _wl_pos = np.where((_wl_h > 0) & (_wl_l > 0) & (_wl_h > _wl_l), (close - _wl_l) / np.maximum(_wl_h - _wl_l, 1e-9), 0.5)
+                    _wl_ok = _wl_ok & (_wl_pos >= float(getattr(cfg, 'WT_DC_DC_POS_MIN', 0.20)))
+                    if 'final_score_norm_lt' in npz or 'trend_val_norm_lt' in npz:
+                        _wl_fin = _safe(npz, 'final_score_norm_lt', n, 0.5) if 'final_score_norm_lt' in npz else _safe(npz, 'trend_val_norm_lt', n, 0.5)
+                        _wl_ok = _wl_ok & (_wl_fin < float(getattr(cfg, 'WT_DC_FINAL_SCORE_MAX', 0.40)))
+                blocks["B_WT_DC_LIVE"] = blocks["B_WT_DC_LIVE"] & _wl_ok
         except Exception:
             pass
     # MTF_ARMED_ENTRY_ENABLED — live per-bar _cfg gate; vector twin checks armed HTF alignment
@@ -11809,6 +11835,20 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # [C2 b7] STOCKS queue_trade_action choke point (tradier_manage.py:13930-13975): COUNTER_TREND_ADD_BLOCK blocks EVERY OPEN/AUGMENT/ENTRY/REENTRY order
     # (action 'REENTRY' contains 'ENTRY'; only mandatory price-cross reclaim / ordinary-ladder reasons bypass) — incl. HARDCODED_RALLY reentries.
     # The vec applied it only inside _base_entry (the permissive OR), so reentry opens (85-95% of stock opens) and augments were never gated.
+    # [C2 b7c] STOCKS execute_now EXIT_BLOCKER_REQUIRE_LH_LL (tradier_manage.py:25826-25852): blocks EVERY non-hedge REDUCE/CLOSE unless 15m structure
+    # shows LH closed / LL forming (long) or (LH|HL)/LL forming (short). The vec applied it only to exit_sig (ported_exit), but stock closes are
+    # dominated by MI_EXIT / MULTI_TF_EXIT / PROFIT_TARGET sites. Same predicate as vec_decisions/ported_exit.py (data: wt_*_structure_15m, low/high_15m(_prev)).
+    _qta_eb_block = None
+    try:
+        if str(getattr(cfg, 'MODE', 'crypto')) == 'tradier' and bool(getattr(cfg, 'EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED', False)):
+            _eb_pk = _safe(npz, 'wt_peak_structure_15m', n, 0.0); _eb_tr = _safe(npz, 'wt_trough_structure_15m', n, 0.0)
+            _eb_lo, _eb_lop = _safe(npz, 'low_15m', n, 0.0), _safe(npz, 'low_15m_prev', n, 0.0)
+            _eb_hi, _eb_hip = _safe(npz, 'high_15m', n, 0.0), _safe(npz, 'high_15m_prev', n, 0.0)
+            _eb_fll = (((_eb_lo > 0) & (_eb_lop > 0) & (_eb_lo < _eb_lop)) | ((_eb_hi > 0) & (_eb_hip > 0) & (_eb_hi < _eb_hip)))
+            _eb_pass = ((_eb_pk == -1) | _eb_fll) if is_long else (((_eb_pk == -1) | (_eb_tr == 1)) | _eb_fll)
+            _qta_eb_block = ~_eb_pass
+    except Exception:
+        _qta_eb_block = None
     _qta_ct_block = None
     try:
         if str(getattr(cfg, 'MODE', 'crypto')) == 'tradier' and bool(getattr(cfg, 'COUNTER_TREND_ADD_BLOCK_ENABLED', False)):
@@ -12263,7 +12303,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             if _mtf_min_gain > 0 and live_pnl_pct < _mtf_min_gain: _msc = 0.0
             _msc = _msc if _msc < 100.0 else 100.0
             _mthr = 35.0 if live_pnl_pct > 1.0 else 45.0 if live_pnl_pct > 0.3 else 55.0
-            if (_msc >= _mthr or bool(_mtf_override[i])) and not vec_decisions.noloss_gate.noloss_blocks(cfg, 'MULTI_TF_EXIT', live_pnl_pct):  # [C2 b5b] live UNIVERSAL_NOLOSS_GATE
+            if (_msc >= _mthr or bool(_mtf_override[i])) and not vec_decisions.noloss_gate.noloss_blocks(cfg, 'MULTI_TF_EXIT', live_pnl_pct) and not (_qta_eb_block is not None and bool(_qta_eb_block[i])):  # [C2 b5b] live UNIVERSAL_NOLOSS_GATE
                 pos['fees'] += abs(pos['qty'] * px) * half_fee
                 _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
                 _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
@@ -12274,7 +12314,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 continue
         # MI_EXIT momentum-interception voter (ez_positions_quick.py:3723-3760): votes >=
         # MI_TF_AGREE_MIN with gain >= MI_MIN_GAIN_EXIT -> close
-        if _mi_arr is not None and bool(_mi_arr[i]) and live_pnl_pct >= float(getattr(cfg, 'MI_MIN_GAIN_EXIT', 0.10)):
+        if _mi_arr is not None and bool(_mi_arr[i]) and live_pnl_pct >= float(getattr(cfg, 'MI_MIN_GAIN_EXIT', 0.10)) and not (_qta_eb_block is not None and bool(_qta_eb_block[i])):
             pos['fees'] += abs(pos['qty'] * px) * half_fee
             _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
             _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
@@ -12492,6 +12532,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
 
         if closed and vec_decisions.noloss_gate.noloss_blocks(cfg, reason, live_pnl_pct):
             closed = False  # [C2 b5b] live UNIVERSAL_NOLOSS_GATE (default OFF) blocks a technical close at a real loss
+        if closed and _qta_eb_block is not None and bool(_qta_eb_block[i]):
+            closed = False  # [C2 b7c] live EXIT_BLOCKER_REQUIRE_LH_LL
         if closed:
             pos['fees'] += abs(pos['qty'] * px) * half_fee
             pnl_dollars = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
