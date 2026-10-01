@@ -1938,6 +1938,26 @@ def _psym_get(symbol: str, side: str, knob: str, default):
     return getattr(config, knob, default)
 
 
+def _sw_get(symbol: str, side: str, knob: str, default):
+    """batch4 (LG-10/LG-11): per-sym override > cat_side default (cat_side_defaults.py) > config field > `default`. Same precedence as ez_manage._psym_get."""
+    try:
+        ov = _get_per_sym_overrides(symbol, side)
+        if knob in ov:
+            return ov[knob]
+    except Exception:
+        pass
+    try:
+        if bool(getattr(config, "CAT_SIDE_DEFAULTS_ENABLED", True)):
+            import cat_side_defaults as _csd
+            _m = object()
+            _v = _csd.get_for(knob, symbol, side, _m, venue="crypto")
+            if _v is not _m:
+                return _v
+    except Exception:
+        pass
+    return getattr(config, knob, default)
+
+
 class _PerSymOverlay:
     """General per-sym config overlay. Forwards attr reads to per-sym overrides
     dict first; falls back to base config. Same pattern as _BtcConfigOverlay but
@@ -14089,7 +14109,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 else:
                     _was_augmented = False
                 _is_reentered = getattr(position, 'was_reentered', False) or "REENTRY" in getattr(position, 'augment_reason', "") or "REENTRY" in getattr(position, 'last_signal', "")
-                _grace_time = float(getattr(config, 'REENTRY_GRACE_MINUTES', 30.0)) if _is_reentered else 3.0
+                _grace_time = float(_sw_get(symbol, position_side, 'REENTRY_GRACE_MINUTES', 30.0)) if _is_reentered else 3.0
                 _in_grace_period = (_pos_age_min < _grace_time) and not _was_augmented
                 async with tracker_manager._hedges_lock:
                     for h in tracker_manager.active_hedges:
@@ -14108,7 +14128,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
 
                 hard_exit_reason = ""
                 _trend_veto_active = False
-                if bool(getattr(config, "TREND_REGIME_VETO_ENABLED", True)):
+                if bool(_sw_get(symbol, position_side, 'TREND_REGIME_VETO_ENABLED', True)):
                     _v_w1_1h = safe_fetch_float(indicators.get('wt1_1h'), 0.0); _v_w2_1h = safe_fetch_float(indicators.get('wt2_1h'), 0.0)
                     _v_w1_4h = safe_fetch_float(indicators.get('wt1_4h'), 0.0); _v_w2_4h = safe_fetch_float(indicators.get('wt2_4h'), 0.0)
                     _v_w1_D = safe_fetch_float(indicators.get('wt1_D'), 0.0); _v_w2_D = safe_fetch_float(indicators.get('wt2_D'), 0.0)
@@ -14124,9 +14144,9 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 # At loss the same-symbol hedge engine handles the position; this gate skips silently.
                 # Uses live Redis fields k_1m + k_1m_prev (both published by ez_market_data).
                 # Skips hedges (they're managed by hedge engine's own gates).
-                if _trend_veto_active and not hard_exit_reason and not is_hedge and current_gain >= 0 and bool(getattr(config, "K1M_EXTREME_REVERSE_ENABLED", False)):
+                if _trend_veto_active and not hard_exit_reason and not is_hedge and current_gain >= 0 and bool(_sw_get(symbol, position_side, 'K1M_EXTREME_REVERSE_ENABLED', False)):
                     logger.info(f"🛡️ [TREND_REGIME_VETO_K1M] {position_key}: Strong 1h trend detected — vetoing K1M stochastic reverse exit")
-                if not hard_exit_reason and not is_hedge and not _in_grace_period and current_gain >= 0 and bool(getattr(config, "K1M_EXTREME_REVERSE_ENABLED", False)) and not _trend_veto_active:
+                if not hard_exit_reason and not is_hedge and not _in_grace_period and current_gain >= 0 and bool(_sw_get(symbol, position_side, 'K1M_EXTREME_REVERSE_ENABLED', False)) and not _trend_veto_active:
                     _k1m_now = safe_fetch_float(indicators.get('k_1m', 50), 50)
                     _k1m_prev_v = safe_fetch_float(indicators.get('k_1m_prev', _k1m_now), _k1m_now)
                     if is_long and _k1m_now > 90 and _k1m_now < _k1m_prev_v:
@@ -14138,7 +14158,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 # ═══ PARABOLIC EXHAUSTION EXIT (USER RULE 2026-04-10): k_15m extreme + DC breakout + 3m structure crack ═══
                 # Even when delta says hold and the move looks unstoppable, if the LTF (3m) makes a wrong-way structure
                 # break (lower-low for LONG / higher-high for SHORT), get out NOW. Catches parabolic tops/bottoms.
-                if not hard_exit_reason and not is_hedge and not _in_grace_period:
+                if not hard_exit_reason and not is_hedge and not _in_grace_period and bool(_sw_get(symbol, position_side, 'PARABOLIC_EXIT_ENABLED', True)):
                     _pe_k15m = safe_fetch_float(indicators.get('k_15m', 50), 50)
                     _pe_dc_high_3m = safe_fetch_float(indicators.get('dc_high_3m', 0), 0)
                     _pe_dc_low_3m = safe_fetch_float(indicators.get('dc_low_3m', 0), 0)
@@ -14275,7 +14295,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 _is_no_loss = account_key in getattr(config, 'STRICT_NO_LOSS_ACCOUNTS', [])
                 _kl_dc_lows_broken = []
                 _kl_dc_highs_broken = []
-                if is_long:
+                if is_long and bool(_sw_get(symbol, position_side, 'KEY_LEVEL_CRASH_ENABLED', True)):
                     if dc_low_15m > 0 and current_price < dc_low_15m: _kl_dc_lows_broken.append("15m")
                     if dc_low_1h > 0 and current_price < dc_low_1h: _kl_dc_lows_broken.append("1h")
                     if dc_low_4h > 0 and current_price < dc_low_4h: _kl_dc_lows_broken.append("4h")
@@ -14291,7 +14311,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                             if not is_original_being_hedged and hedge_engine and abs(position.positionAmt) > 0:
                                 logger.warning(f"🔴[KEY_LEVEL_HEDGE] {position_key}: LONG below dc_low on {_kl_tfs} — HEDGING")
                                 asyncio.create_task(hedge_engine._manage_hedge_for_position(account_key, position_key, position, abs(position.positionAmt), current_price, current_gain, None))
-                elif not is_long:
+                elif (not is_long) and bool(_sw_get(symbol, position_side, 'KEY_LEVEL_CRASH_ENABLED', True)):
                     if dc_high_15m > 0 and current_price > dc_high_15m: _kl_dc_highs_broken.append("15m")
                     if dc_high_1h > 0 and current_price > dc_high_1h: _kl_dc_highs_broken.append("1h")
                     if dc_high_4h > 0 and current_price > dc_high_4h: _kl_dc_highs_broken.append("4h")
@@ -14624,7 +14644,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                                 _wtx_w1_3m = safe_fetch_float(indicators.get('wt1_3m'), 0)
                                 _wtx_w2_3m = safe_fetch_float(indicators.get('wt2_3m'), 0)
                                 _wtx_have_3m = (_wtx_w1_3m != 0 or _wtx_w2_3m != 0)
-                                _wtx_3m_veto_age = float(getattr(config, 'WT_CROSS_EXIT_3M_VETO_MAX_AGE', 30.0))
+                                _wtx_3m_veto_age = float(_sw_get(symbol, position_side, 'WT_CROSS_EXIT_3M_VETO_MAX_AGE', 30.0))
                                 _wtx_3m_with_pos = _wtx_have_3m and ((is_long and _wtx_w1_3m > _wtx_w2_3m) or (not is_long and _wtx_w1_3m < _wtx_w2_3m))
                                 if _wtx_3m_with_pos and _pos_age_min < _wtx_3m_veto_age:
                                     logger.info(f"🛡️[WT_CROSS_EXIT_3M_VETO] {position_key}: 1h+15m against BUT 3m WT still with {'LONG' if is_long else 'SHORT'} (wt1_3m={_wtx_w1_3m:.1f}>wt2={_wtx_w2_3m:.1f}) age={_pos_age_min:.0f}m<{_wtx_3m_veto_age:.0f}m — HOLDING, price flying on 3m")
@@ -14693,7 +14713,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                             if hedge.get('losing_position_key') == position_key:
                                 already_hedged = True
                                 break
-                if not hard_exit_reason and not _in_grace_period and is_augmented and dc_broken and current_gain > 0.1 and not already_hedged:
+                if not hard_exit_reason and not _in_grace_period and bool(_sw_get(symbol, position_side, 'AUGMENTED_DC_BREAK_ENABLED', True)) and is_augmented and dc_broken and current_gain > 0.1 and not already_hedged:
                     hard_exit_reason = f"AUGMENTED_DC_BREAK_REDUCE_TO_MIN_{current_gain:.2f}%"
                 min_hedge_val = safe_fetch_float(getattr(config, 'START_POSITION_SIZE', 50.0), 50.0)
                 if hard_augment:

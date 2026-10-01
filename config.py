@@ -1137,6 +1137,17 @@ class Config:
     # R1 — DC4_3M EMERGENCY CLOSE within newborn window (USER 2026-05-09)
     # Fires while position is fresh and price breaks 4-bar 3m channel low/high.
     # Bypasses NO_LOSS, hedge, MTF. Desktop alert + JSONL log naming entry signal.
+    # batch4 (Agent D 2026-10-01, USER-ordered): real switches for live exits that had NO config field + getattr-only keys. Defaults == TODAY's effective live behaviour (zero change).
+    PARABOLIC_EXIT_ENABLED: bool = True            # ez_positions_quick parabolic exhaustion exit (was unswitchable)
+    KEY_LEVEL_CRASH_ENABLED: bool = True           # ez_positions_quick multi-TF DC key-level crash/breakout override (close/hedge)
+    AUGMENTED_DC_BREAK_ENABLED: bool = True        # ez_positions_quick augmented position reduce-to-min on 3m DC break
+    MOMENTUM_TP_ENABLED: bool = True               # ez_manage mandatory profit take on momentum exhaustion (k_15m)
+    DC_BASIS_3M_REDUCE_ENABLED: bool = True        # ez_manage reduce when price crosses 3m DC level
+    WT_CROSS_EXIT_3M_VETO_MAX_AGE: float = 30.0    # was getattr-only default
+    TREND_REGIME_VETO_ENABLED: bool = True         # was getattr-only default (True)
+    K1M_EXTREME_REVERSE_ENABLED: bool = False      # was getattr-only default (False)
+    REENTRY_GRACE_MINUTES: float = 30.0            # was getattr-only default
+    R1_RESTRICT_TO_OVERBOUGHT_BREAKOUT: bool = True  # was getattr-only default (True)
     R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = False  # 2026-09-03 DISABLED per user: MAKER_PROFIT_EXIT_R1_DC_LOW4_3M_EMERGENCY always losing (R1 culprit — 10/min churn)   # 2026-05-21 22:47 USER MANDATE: RE-ENABLED after ORDIUSDC top-of-range incident — emergency close on dc4_3m breach is back ON. Previous 2026-05-20 OFF was based on assumption that MTF compound exit would replace it; MTF did not fire on ORDI 6%+ drawdown so R1 is restored.
     R1_NEWBORN_WINDOW_MIN: float = 15.0            # kept for legacy; fixed-stop now active
     # ═══════════════════════════════════════════════════════════════════════════

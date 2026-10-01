@@ -46828,7 +46828,7 @@ async def process_position(
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
         and (_min_hold_ok_for_exit or await _dc_15m_hold_override())
         and (
-            bool(_psym_get(symbol, position_side, "R1_DC_LOW4_3M_EMERGENCY_ENABLED", True))
+            bool(_psym_get(symbol, position_side, "R1_DC_LOW4_3M_EMERGENCY_ENABLED", False))
             or any(
                 "OBLIGATORY_OPEN" in str(getattr(position, _field, "") or "").upper()
                 for _field in ("last_signal", "open_reason", "augment_reason")
@@ -46837,7 +46837,7 @@ async def process_position(
     ):
         try:
             # 2026-05-23 USER MANDATE: check entry context. Skip R1 unless overbought-breakout.
-            _r1_restrict = bool(getattr(config, "R1_RESTRICT_TO_OVERBOUGHT_BREAKOUT", True))
+            _r1_restrict = bool(_psym_get(symbol, position_side, "R1_RESTRICT_TO_OVERBOUGHT_BREAKOUT", True))
             # The watchdog's OBLIGATORY_OPEN reason is stored in augment_reason on
             # some fill/update paths while last_signal is only "OPEN".  Inspect all
             # entry-context fields or the last-resort entry can silently bypass R1.
@@ -51832,7 +51832,7 @@ async def process_position(
             not is_long and dc_high_3m > 0 and current_price > dc_high_3m
         )
         if (
-            (price_below_dc_low_3m_long or price_above_dc_high_3m_short)
+            (price_below_dc_low_3m_long or price_above_dc_high_3m_short) and bool(_psym_get(symbol, position_side, 'DC_BASIS_3M_REDUCE_ENABLED', True))
             and position.positionAmt > pos_min_qty
             and not config.HEDGE_MODE
             and not _recently_reduced
@@ -52283,7 +52283,7 @@ async def process_position(
                 )
                 return f"{EvalStatus.NO_ACTION}:STOP_PROTECTION_ACTIVE"
         # --- MANDATORY PROFIT TAKE (MOMENTUM EXHAUSTION) ---
-        if current_gain > 0.5 and not _recently_reduced:
+        if current_gain > 0.5 and not _recently_reduced and bool(_psym_get(symbol, position_side, 'MOMENTUM_TP_ENABLED', True)):
             tp_reason = ""
             tp_price = current_price
             if is_long and k_15m > 95 and k_15m < k_15m_prev:

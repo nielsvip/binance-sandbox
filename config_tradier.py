@@ -911,6 +911,9 @@ class TradierConfig:
     # 2026-08-03 containment: OFF.  The tight 5m DC_LOW4 route produced
     # close/re-entry churn and must remain research-only until a fresh, strict
     # full-V8 qualification explicitly promotes it.
+    # batch4 (Agent D): tradier_manage already reads these through _cfg(..., False); declare them so templates/per-sym/cat_side can sweep them. Default == today's effective value.
+    K1M_EXTREME_REVERSE_ENABLED: bool = False
+    TREND_REGIME_VETO_ENABLED: bool = False
     R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = False
     R1_REQUIRE_WT15_ADVERSE: bool = True
     TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED: bool = True
