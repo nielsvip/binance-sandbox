@@ -2863,6 +2863,11 @@ def _atomic_save_once(wb, wb_path: Path):
 def _atomic_write_json(path: Path, data: dict):
     tmp = str(path) + ".tmp"
     import os as _os, json as _json
+    try:  # PIPE 2026-10-01: every progress JSON carries the defaults round id (env V15_DEFAULTS_ROUND) so rounds with different defaults are never averaged together
+        if isinstance(data, dict) and _os.environ.get("V15_DEFAULTS_ROUND") and ("done" in data or "initial_baseline_gain" in data):
+            data.setdefault("defaults_round", _os.environ["V15_DEFAULTS_ROUND"])
+    except Exception:
+        pass
     try:
         Path(tmp).write_text(_json.dumps(data, indent=2))
         try:
