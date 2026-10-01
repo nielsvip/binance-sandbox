@@ -6400,5 +6400,32 @@
     ],
     "timestamp": "2026-10-01T21:38:52.515565+00:00",
     "price": 0.005653
+  },
+  {
+    "symbol": "TWTUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-01T22:04:40.334692+00:00",
+    "price": 0.59191875
+  },
+  {
+    "symbol": "AXSUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 12.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-01T22:08:05.888777+00:00",
+    "price": 1.1478
+  },
+  {
+    "symbol": "BIOUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 12.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-01T22:08:05.888777+00:00",
+    "price": 0.03009
   }
 ]
