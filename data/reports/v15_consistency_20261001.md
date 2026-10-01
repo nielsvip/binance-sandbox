@@ -805,3 +805,37 @@
     - `NVDA_SHORT` [s2] 1 cases — NEWBORN_LOSS_KILL_ENABLED T=+0.216/F=-2.013
     - `BNO_SHORT` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-0.001/F=+0.003
 - **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-01T12:46Z · window 48.0h · 524 sym_sides (local+remote)
+- ⚠️ **13 sym_sides / 14 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `HTF_GATE_D_MANDATORY`×7, `NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST`×2, `NEWBORN_LOSS_KILL_ENABLED`×2, `EMA_BLANKET_FILTER_ENABLED`×2, `WT_15M_LH_WAIT_EXIT_ENABLED`×1
+    - `XMRUSDT_LONG` [s1] 2 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+5.164/F=-9.436; WT_15M_LH_WAIT_EXIT_ENABLED T=-1.720/F=+0.300
+    - `UNIUSDC_LONG` [s2] 1 cases — HTF_GATE_D_MANDATORY T=-1.922/F=-2.156
+    - `QTUMUSDT_SHORT` [s1] 1 cases — NEWBORN_LOSS_KILL_ENABLED T=+0.375/F=-0.199
+    - `SOLUSDC_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-0.341/F=+2.204
+    - `ZECUSDC_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-11.138/F=-1.664
+    - `HYPEUSDT_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-4.847/F=+0.737
+    - `QTUMUSDT_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-4.042/F=+0.335
+    - `MANAUSDT_LONG` [s2] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+0.634/F=-17.051
+    - `XLMUSDT_SHORT` [s5] 1 cases — HTF_GATE_D_MANDATORY T=-0.063/F=-0.060
+    - `GRTUSDT_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-2.673/F=-1.108
+    - `PLTR_LONG` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-5.907/F=+0.177
+    - `NVDA_SHORT` [s2] 1 cases — NEWBORN_LOSS_KILL_ENABLED T=+0.216/F=-2.013
+    - `BNO_SHORT` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-0.001/F=+0.003
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-01T13:01Z · window 48.0h · 524 sym_sides (local+remote)
+- ⚠️ **11 sym_sides / 12 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `HTF_GATE_D_MANDATORY`×5, `NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST`×2, `EMA_BLANKET_FILTER_ENABLED`×2, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `LH_HL_FILTER_REQUIRE_BOTH`×1, `NEWBORN_LOSS_KILL_ENABLED`×1
+    - `XMRUSDT_LONG` [s1] 2 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+5.164/F=-9.436; WT_15M_LH_WAIT_EXIT_ENABLED T=-1.720/F=+0.300
+    - `UNIUSDC_LONG` [s2] 1 cases — HTF_GATE_D_MANDATORY T=-1.922/F=-2.156
+    - `ZENUSDT_LONG` [s1] 1 cases — LH_HL_FILTER_REQUIRE_BOTH T=-1.311/F=-0.429
+    - `ZECUSDC_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-11.138/F=-1.664
+    - `HYPEUSDT_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-4.847/F=+0.737
+    - `MANAUSDT_LONG` [s2] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+0.634/F=-17.051
+    - `XLMUSDT_SHORT` [s5] 1 cases — HTF_GATE_D_MANDATORY T=-0.063/F=-0.060
+    - `GRTUSDT_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-2.673/F=-1.108
+    - `PLTR_LONG` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-5.907/F=+0.177
+    - `NVDA_SHORT` [s2] 1 cases — NEWBORN_LOSS_KILL_ENABLED T=+0.216/F=-2.013
+    - `BNO_SHORT` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-0.001/F=+0.003
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
