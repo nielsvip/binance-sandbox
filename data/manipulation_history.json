@@ -1845,5 +1845,86 @@
     ],
     "timestamp": "2026-10-01T03:50:10.448206+00:00",
     "price": 0.20384111
+  },
+  {
+    "symbol": "XBIUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 17.5x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-01T04:09:23.390252+00:00",
+    "price": 158.33871835
+  },
+  {
+    "symbol": "ATOMUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-01T04:10:55.145155+00:00",
+    "price": 1.776
+  },
+  {
+    "symbol": "AVAXUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.2x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-01T04:18:36.803363+00:00",
+    "price": 11.08474673
+  },
+  {
+    "symbol": "HYPEUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 81.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-01T04:19:37.909255+00:00",
+    "price": 89.03461806
+  },
+  {
+    "symbol": "TXNUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.1x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-01T04:19:37.909255+00:00",
+    "price": 282.35916417
+  },
+  {
+    "symbol": "AGLDUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 14.7x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-01T04:20:41.044212+00:00",
+    "price": 0.20635995
+  },
+  {
+    "symbol": "AXTIUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 21.1x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-01T04:20:41.044212+00:00",
+    "price": 79.64866684
+  },
+  {
+    "symbol": "DELLUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 14.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-01T04:22:44.217356+00:00",
+    "price": 546.96
+  },
+  {
+    "symbol": "KMNOUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.2x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-01T04:22:44.217356+00:00",
+    "price": 0.04431181
   }
 ]

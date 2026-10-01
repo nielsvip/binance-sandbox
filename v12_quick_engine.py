@@ -5763,6 +5763,8 @@ class QuickConfig:
     DC_BASIS_3M_REDUCE_ENABLED: bool = True       # vec-only toggle: live DC_BASIS_3M_REDUCE has NO switch (always on unless HEDGE_MODE)
     DC_PRIOR_BAR_CHANNEL: bool = True             # b6: DC-channel STOP/breach exits compare close with the PREVIOUS bar's channel (NPZ dc_* include the current bar -> same-bar `close<=dc_low*(1-buf)` is impossible); targets stay same-bar
     KG_STOCKS_LIVE_GATE: bool = True              # b6 vec-only: stocks KINDERGARTEN/EMA_9_21 = live HARD VETO on the final entry signal (False = legacy additive signal)
+    ENTRY_CHOKE_GATES_ON_FINAL: bool = True      # b7: COUNTER_TREND_ADD_BLOCK / BB_PULLBACK_GATE (crypto) re-applied on the FINAL entry signal (they sat inside the AND part of compute_entry_signals and were undone by the later OR'd families)
+    BB_PULLBACK_GATE_ON_FINAL: bool = False      # b7: True = apply on the final signal; MEASURED: kills ALL entries (entry_sig is only ~13 of 2881 bars/30D, 0 trades) -> default False; vec cannot separate the technical family the live gate applies to
     LIVE_EXIT_CHAIN_ENABLED: bool = True          # vec master for vec_decisions/live_exit_chain.py (crypto only); False = pre-b2c baseline
     WT_CROSS_EXIT_3M_VETO_MAX_AGE: float = 30.0   # live getattr default 30.0 (ez_positions_quick 14625); no 3m array -> veto inactive in vec
     TREND_REGIME_VETO_ENABLED: bool = True        # live getattr default True (14125)
@@ -11487,6 +11489,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _strict_open_block = _sv_b if _strict_open_block is None else (_strict_open_block | _sv_b)
     except Exception:
         _strict_open_block = None
+    # b7: HTF_GATE_APPLY_TO_AUGMENT (live execute_trade_wrapper 12676-12690: winner/pullback AUGMENT is gated when HTF_DIRECTION_GATE_ENABLED and APPLY_TO_AUGMENT)
+    _htf_aug_ok = None
+    try:
+        if str(getattr(cfg, 'MODE', 'crypto')) != 'tradier' and bool(getattr(cfg, 'HTF_DIRECTION_GATE_ENABLED', False)) and bool(getattr(cfg, 'HTF_GATE_APPLY_TO_AUGMENT', False)):
+            _htf_aug_ok = np.asarray(vec_decisions.wave4_families.htf_direction_pass_raw(npz, n, is_long, cfg, close, _safe), dtype=bool)
+    except Exception:
+        _htf_aug_ok = None
     try:
         _mi_arr = vec_decisions.wave4_families.mi_exit_signal(npz, n, is_long, cfg, _safe)
     except Exception:
@@ -11557,6 +11566,31 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             if _lks_ok is not None:
                 entry_sig = entry_sig & _lks_ok
                 _entry_filter_masks.append(_lks_ok)
+        except Exception:
+            pass
+    # b7 (crypto): AND-inside-OR fix for live chokepoint gates. COUNTER_TREND_ADD_BLOCK = ez_manage.execute_now 29868 (OPEN/ENTRY/BUY, reentries exempt by reason);
+    # BB_PULLBACK_GATE = ez_manage.check_entry_alignment 411 (tradier_matrix_gates.bb_pullback_gate_blocks, config.py ENABLED True) on the entry decision.
+    if str(getattr(cfg, 'MODE', 'crypto')) != 'tradier' and bool(getattr(cfg, 'ENTRY_CHOKE_GATES_ON_FINAL', True)):
+        try:
+            if bool(getattr(cfg, 'COUNTER_TREND_ADD_BLOCK_ENABLED', False)):
+                _ctb_blk = vec_decisions.counter_trend.counter_trend_vec(npz, n, cfg, is_long)
+                entry_sig = entry_sig & ~_ctb_blk
+                _entry_filter_masks.append(~_ctb_blk)
+            if bool(getattr(cfg, 'BB_PULLBACK_GATE_ON_FINAL', True)) and bool(getattr(cfg, 'BB_PULLBACK_GATE_ENABLED', False)):
+                _bbp_blk = vec_decisions.bb_pullback_gate.bb_pullback_gate_vec(npz, n, cfg, is_long)
+                entry_sig = entry_sig & ~_bbp_blk
+                _entry_filter_masks.append(~_bbp_blk)
+        except Exception:
+            pass
+    # b7 (crypto): live crypto KINDERGARTEN hard block (ez_manage._kindergarten_ema_gate via check_entry_alignment) must sit on the FINAL entry signal — the copy inside
+    # compute_entry_signals was undone by the later `_base_entry | ...` ORs (AND-inside-OR). Applied to entry_sig AND to the reentry/fire path (live: check_entry_alignment
+    # is part of every technical-indicator entry; reentries via evaluate_reentry do not use it -> fire path NOT gated, matching live).
+    if str(getattr(cfg, 'MODE', 'crypto')) != 'tradier' and bool(getattr(cfg, 'KINDERGARTEN_EMA_GATE_ENABLED', False)):
+        try:
+            import vec_decisions.live_kindergarten_gate as _lkg2
+            _kg2_ok = ~_lkg2.kg_block_mask(npz, n, is_long, close, _safe)
+            entry_sig = entry_sig & _kg2_ok
+            _entry_filter_masks.append(_kg2_ok)
         except Exception:
             pass
     # 2026-09-30 PORTED-SWITCH DISPATCHER — collision-free wiring hook (SWITCH_WIRING_GUIDE.md).
@@ -12419,7 +12453,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         # augment_sig (bounce/pyramid) and FAST_RISER sources need gain-since-last-add >= AUGMENT_MIN_GAIN_PCT or the pullback exception (ez_manage.py:31577-31630)
         _uag_src_ok = _gl_fire or ((augment_sig[i] or _fr_fire) and vec_decisions.uagain_gate.uagain_gate_pass(
             cfg, is_long, px, float(pos.get('last_aug_px', 0.0)) or float(pos.get('entry_price', pos['avg_price'])), live_pnl_pct, float(pos.get('peak_pnl_pct', 0.0))))
-        if _uag_src_ok and not (_qta_ct_block is not None and bool(_qta_ct_block[i])) and _augment_allowed(cfg, live_pnl_pct) and (_sa_cap is None or int(pos.get('n_augments', 0)) < _sa_cap):
+        if _uag_src_ok and (_htf_aug_ok is None or bool(_htf_aug_ok[i])) and not (_qta_ct_block is not None and bool(_qta_ct_block[i])) and _augment_allowed(cfg, live_pnl_pct) and (_sa_cap is None or int(pos.get('n_augments', 0)) < _sa_cap):
             _aug_cd_bars = vec_decisions.gain_ladder_augment.cooldown_bars(cfg, bmin)
             _aug_last_bar = int(pos.get('last_aug_bar', -10**9))
             if (i - _aug_last_bar) >= _aug_cd_bars:

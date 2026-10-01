@@ -197,6 +197,7 @@
   "STDEV_SLOPE_SIZING_D_MAX",
   "STDEV_SLOPE_SIZING_MODE",
   "STDEV_SUPPRESS_EARLY_EXIT",
+  "TRADES_PER_SYM_PER_DAY_MAX",
   "ULTIMATE_DC_4H_STOP_ENABLED",
   "UNIVERSAL_NOLOSS_GATE",
   "V8_ENTRY_ENGINE_DC_ENABLED",
@@ -246,12 +247,15 @@
   "OPEN_INTENT_SIZE_GATES_FILTER_TF",
   "PARTIAL_PROFIT_LOCK_V2_FILTER_TF"
  ],
- "switches_manual": [],
+ "switches_manual": [
+  "TRADES_PER_SYM_PER_DAY_MAX"
+ ],
  "filters_manual": [],
  "sym_sides_seen": {
   "STOCKS_LONG": 85,
   "STOCKS_SHORT": 84,
   "CRYPTO_LONG": 8,
   "CRYPTO_SHORT": 6
- }
+ },
+ "_c2_note": "TRADES_PER_SYM_PER_DAY_MAX = live OVERTRADE_GUARD safety cap (USER 2026-10-01: a cap must not be a modelled filter) -> excluded from the sweep (NOT_WIRED_VEC); vec OVERTRADE_GUARD_ENABLED stays False"
 }
