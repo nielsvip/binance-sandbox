@@ -280,9 +280,7 @@ class TradierConfig:
     LH_HL_FILTER_ENABLED: bool = False
     # batch5 live_entry_gates (Agent D): MASTER default False = today's live behaviour; each gate below only applies when the master is on.
     LIVE_ENTRY_GATES_ENABLED: bool = False
-    STOCKS_FRESH_ENTRY_TREND_GATES_ENABLED: bool = False  # D8: revive _apply_research_only_live_gates(is_entry) at the open choke point (swept, default OFF)
-    WT_D_EXHAUST_GATE_ENABLED: bool = False  # n5/006 live twin: block fresh opens when wt1_D and wt1_4h are both beyond +-WT_D_EXHAUST_THRESHOLD (default OFF, swept; only under STOCKS_FRESH_ENTRY_TREND_GATES_ENABLED)
-    WT_D_EXHAUST_THRESHOLD: float = 60.0
+    LIVE_RESEARCH_OPEN_GATES_ENABLED: bool = False  # D8: revive _apply_research_only_live_gates(is_entry) at the open choke point (swept, default OFF)
     LIVE_ENTRY_GATES_INCLUDE_REENTRY: bool = False  # False = REENTRY/HARDCODED_RALLY opens keep bypassing the gates (today)
     LIVE_ENTRY_GATE_EMA_9_21: bool = True
     LIVE_ENTRY_GATE_ALIGNMENT: bool = True
@@ -2291,7 +2289,7 @@ class TradierConfig:
     POSITION_STALE_THRESHOLD_SECONDS: float = 60.0
     PPL_FIRE_COOLDOWN_S: float = 0.0
     PRICE_CACHE_PULL_MAX_AGE_SEC: float = 1800.0
-    PROFIT_TARGET_ENABLED: bool = False  # DEF2 2026-10-01 vintage pnl-pct exit default OFF (swept switch; live twin added); was True
+    PROFIT_TARGET_ENABLED: bool = True
     PROFIT_TARGET_PCT: float = 1.6
     PROGRESSIVE_LOCK_ENABLED: bool = False
     PROGRESSIVE_LOCK_FRACTION: float = 0.25
@@ -3696,7 +3694,7 @@ class TradierConfig:
     # DAYTRADE_DC_*_TF='15m,1h' (BIBLE §15) — promoting that to live is an operator decision.
     DAYTRADE_DC_STOP_TF: str = "OFF"
     DAYTRADE_DC_STOP_BUFFER_PCT: float = 0.25
-    DAYTRADE_DC_TARGET_TF: str = "15m"  # DEF2 2026-10-01 user: PROFIT_TARGET = dc_high_15m-0.1% default 15m (was OFF)
+    DAYTRADE_DC_TARGET_TF: str = "OFF"
     DAYTRADE_DC_TARGET_BUFFER_PCT: float = 0.10
     WT_LOWER_CROSS_EXIT_TF: str = "OFF"
     # 2026-09-30 GREY-SWITCH WIRING batch 1 (exits): stock live port of crypto ez_manage.process_position exits, ONE
@@ -3814,7 +3812,7 @@ class TradierConfig:
     # all enabled kindergarten filters are evaluated and their signals cumulate (score) rather than a single
     # TF excluding others. TEMPLATE must test each pair × each TF independently and sum positive deltas.
     KINDERGARTEN_CUMULATIVE_MODE: bool = True  # True = cumulate all enabled kindergarten filters (not OR single-pick)
-    KINDERGARTEN_CUMULATIVE_MIN_TFS: int = 0  # USER 2026-10-01: 0 ok (defers to EMA_9_21_FILTER_MIN_TFS). min TFs agreeing to pass when cumulating (1 = any single passes, 2 = need 2)
+    KINDERGARTEN_CUMULATIVE_MIN_TFS: int = 1  # min TFs agreeing to pass when cumulating (1 = any single passes, 2 = need 2)
     EMA_9_21_FILTER_TFS: str = "1h"  # comma-list of TFs for 9/21 (e.g. "1h,D,4h") — each TF is independent setup, cumulates
     EMA_50_200_FILTER_ENABLED: bool = False  # 50/200 EMA — OFF baseline, tested as independent kindergarten setup (cumulate, not exclude 9/21)
     EMA_50_200_TIMEFRAME: str = "D"  # TF for 50/200
@@ -4154,12 +4152,6 @@ class TradierConfig:
     HARDCODED_RALLY_REENTRY_ENABLED: bool = True  # 2026-09-18 user: reenter if close>exit and wt1_15m>wt1_15m_prev — always tested
     HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN: bool = True
     HARDCODED_RALLY_REENTRY_REQUIRE_WT: bool = False  # loosened for TIM>20
-    REENTRY_APPLY_ENTRY_GATES_ENABLED: bool = False  # N1/004 twin: reentry paths (REENTRY/OBLIGATORY/PRICE_CROSS/HARDCODED_RALLY) must pass the same entry gates; default OFF = today
-    HARDCODED_RALLY_MIN_MOVE_PCT: float = 0.0  # RE/001 optional rally filters (vector twin vec_decisions/hardcoded_rally_filters.py): all OFF = unchanged
-    HARDCODED_RALLY_MIN_AGE_MIN: float = 0.0
-    HARDCODED_RALLY_HTF_TREND_TF: str = "OFF"  # OFF | 1h | 4h | 1h,4h
-    HARDCODED_RALLY_DC_POS_MAX: float = 0.0
-    HARDCODED_RALLY_SMA200_SIDE_ENABLED: bool = False
     # === YOUTUBE STRATEGIES (2026-03-27) — DISABLED on trb 2026-03-30 ===
     # These were implemented from YouTube research with FAKE backtests (reimplemented logic, not real functions).
     # "Sharpe 5.17" etc were fabricated numbers. Connors RSI augmented MRVL at -6.74% on real money.

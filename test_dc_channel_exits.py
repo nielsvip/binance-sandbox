@@ -19,7 +19,7 @@ def test_defaults_inert():
     c, t = config.Config(), config_tradier.TradierConfig()
     for cfg in (c, t):
         s, g = X.resolve_daytrade_dc(lambda k, d: getattr(cfg, k, d))
-        assert s == [] and g == [], (s, g)
+        assert s == [] and [x["tf"] for x in g] == ["15m"], (s, g)  # DEF2 2026-10-01: user PROFIT_TARGET = dc_high_15m-0.1% default ON (stop stays OFF)
         assert X.wt_lower_cross_tf(getattr(cfg, "WT_LOWER_CROSS_EXIT_TF")) is None
 
 

@@ -1,6 +1,7 @@
 # pyright: basic
 import argparse
 import asyncio
+from live_rally_filters import rally_ok as _rally_ok, age_minutes as _rally_age
 import fnmatch
 import functools
 import glob
@@ -341,13 +342,15 @@ def _parity_filter_tf_gates(indicators: Dict[str, Any], is_long: bool, current_p
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-def _kindergarten_ema_gate(indicators: Dict[str, Any], is_long: bool, current_price: float = 0) -> Tuple[bool, str]:
+def _kindergarten_ema_gate(indicators: Dict[str, Any], is_long: bool, current_price: float = 0, enabled=None, scan_tf=None) -> Tuple[bool, str]:
     """KINDERGARTEN 2026-09-10 — any-or-all of 200SMA/EMA, 9/21 cross, 50 EMA/SMA cross are they still in all scripts and tested on every run? YES — now tests all 3. Wired in live via check_entry_alignment. Disabled when KINDERGARTEN_EMA_GATE_ENABLED=False."""
     try:
-        if not bool(getattr(config, "KINDERGARTEN_EMA_GATE_ENABLED", False)):
+        if not bool(getattr(config, "KINDERGARTEN_EMA_GATE_ENABLED", False) if enabled is None else enabled):
             return True, "KG_OFF"
         price = float(current_price) if current_price else float(indicators.get("close") or indicators.get("close_3m") or 0)
-        for tf in ["D", "4h", "1h", "15m"]:
+        # 2026-10-01 FLT2: KINDERGARTEN_FILTER_TF in D/4h/1h/15m restricts the scan to that TF (twin: vec_decisions/live_kindergarten_gate.kg_block_mask); anything else = legacy D,4h,1h,15m scan
+        _kg_tf1 = str((getattr(config, "KINDERGARTEN_FILTER_TF", "OFF") if scan_tf is None else scan_tf) or "OFF").strip()
+        for tf in ([_kg_tf1] if _kg_tf1 in ("D", "4h", "1h", "15m") else ["D", "4h", "1h", "15m"]):
             ema = indicators.get(f"ema_200_{tf}")
             sma = indicators.get(f"sma_200_{tf}")
             ab = indicators.get(f"ema_9_above_21_{tf}")
@@ -2749,6 +2752,22 @@ def check_entry_vetting(
             return False, _b1_reason
     except Exception:
         pass
+    # batch6 (Agent D, queue/D/003): REAL ALL_TF_AGAINST entry veto — live twin of the vec ALL_TF_AGAINST_BLOCK_ENTRY mask (v12 ~11545): block the entry when
+    # >= ALL_TF_AGAINST_BLOCK_ENTRY_MIN_TFS of the WT TFs (3m/15m/1h/4h/D) are against the side (LONG: wt1<wt2). Default OFF = today's live (the synthetic
+    # _batch1 gate is disabled). NOTE vec has no 3m array (15m floor); live counts the real 3m.
+    try:
+        if bool(getattr(config, "ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED", False)):
+            _atf_cnt = 0
+            for _atf_tf in ("3m", "15m", "1h", "4h", "D"):
+                _atf_w1 = _sf(indicators.get(f"wt1_{_atf_tf}"), 0.0)
+                _atf_w2 = _sf(indicators.get(f"wt2_{_atf_tf}"), 0.0)
+                if _atf_w1 == 0.0 and _atf_w2 == 0.0:
+                    continue
+                _atf_cnt += int((_atf_w1 < _atf_w2) if is_long else (_atf_w1 > _atf_w2))
+            if _atf_cnt >= int(float(getattr(config, "ALL_TF_AGAINST_BLOCK_ENTRY_MIN_TFS", 4) or 4)):
+                return False, f"ALL_TF_AGAINST_BLOCK_ENTRY_{_atf_cnt}tf"
+    except Exception:
+        pass
     return True, f"VETTED_dc={dc_breakout}_struct={structure_ok}_mode={_ev_mode}"
 
 
@@ -3059,9 +3078,9 @@ def check_reentry_eligible(
             _wt_rising = _wt1 > _wt1_prev
             _wt_falling = _wt1 < _wt1_prev
             _req_wt = bool(getattr(config, "HARDCODED_RALLY_REENTRY_REQUIRE_WT", False))
-            if is_long and current_price > last_exit_price and (not _req_wt or _wt_rising):
+            if is_long and current_price > last_exit_price and (not _req_wt or _wt_rising) and _rally_ok(config, indicators, True, current_price, last_exit_price, time_since_exit_min):
                 return True, f"REENTRY_HARDCODED_RALLY_LONG_close{current_price:.4f}>exit{last_exit_price:.4f}_wt{_wt1:.1f}>{_wt1_prev:.1f}"
-            if not is_long and current_price < last_exit_price and (not _req_wt or _wt_falling):
+            if not is_long and current_price < last_exit_price and (not _req_wt or _wt_falling) and _rally_ok(config, indicators, False, current_price, last_exit_price, time_since_exit_min):
                 return True, f"REENTRY_HARDCODED_RALLY_SHORT_close{current_price:.4f}<exit{last_exit_price:.4f}_wt{_wt1:.1f}<{_wt1_prev:.1f}"
         except Exception:
             pass
@@ -29866,6 +29885,7 @@ class MultiAccountTradeManager:
         # chokepoint DESTROYS martingale: a counter-1h add/open is refused from EVERY path (FIN_AGENT force-open,
         # STRONG_SELL/BUY, reentry, DELTA_PYRAMID, watchdog, etc). CLOSE/REDUCE/HEDGE pass. ROLLBACK: =False.
         # ═══════════════════════════════════════════════════════════════════════════
+        _re_g = bool(getattr(config, "REENTRY_APPLY_ENTRY_GATES_ENABLED", False))  # N1/004 live twin: reentry paths must pass the same entry gates (default OFF = today)
         try:
             if (
                 bool(getattr(config, "COUNTER_TREND_ADD_BLOCK_ENABLED", True))
@@ -29873,9 +29893,9 @@ class MultiAccountTradeManager:
                 and ("OPEN" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act or _kill_act == "BUY")
                 and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
                 and "HEDGE" not in (reason or "").upper()
-                and "OBLIGATORY" not in (reason or "").upper()
-                and "REENTRY" not in (reason or "").upper()
-                and "PRICE_CROSS" not in (reason or "").upper()
+                and (_re_g or "OBLIGATORY" not in (reason or "").upper())
+                and (_re_g or "REENTRY" not in (reason or "").upper())
+                and (_re_g or "PRICE_CROSS" not in (reason or "").upper())
             ):
                 _ctb_ind = await ii(self, symbol)
                 if _ctb_ind:
@@ -29918,8 +29938,8 @@ class MultiAccountTradeManager:
             if (
                 symbol
                 and ("OPEN" in _kill_act or "ENTRY" in _kill_act or _kill_act == "BUY")
-                and "AUGMENT" not in _kill_act and "REENTRY" not in _kill_act and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
-                and "HEDGE" not in (reason or "").upper() and "OBLIGATORY" not in (reason or "").upper() and "REENTRY" not in (reason or "").upper()
+                and "AUGMENT" not in _kill_act and (_re_g or "REENTRY" not in _kill_act) and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
+                and "HEDGE" not in (reason or "").upper() and (_re_g or ("OBLIGATORY" not in (reason or "").upper() and "REENTRY" not in (reason or "").upper()))
             ):
                 _eb_on = _psym_get(symbol, position_side, "EMA_BLANKET_FILTER_ENABLED", getattr(config, "EMA_BLANKET_FILTER_ENABLED", False))
                 if bool(_eb_on):
@@ -29932,6 +29952,34 @@ class MultiAccountTradeManager:
                         return f"BLOCKED_EMA_BLANKET_FILTER_{position_side}"
         except Exception as _ebe:
             logger.warning(f"[EMA_BLANKET_FILTER] check error (fail-open): {_ebe}")
+        # ═══ KINDERGARTEN + EMA_9_21 crypto fresh-OPEN gates (FLT2 2026-10-01 USER "any value found in vector must be applied in live") ═══
+        # Live twins of v12_quick_engine (_wd_open + final entry_sig): ez_manage._kindergarten_ema_gate (KINDERGARTEN_EMA_GATE_ENABLED, KINDERGARTEN_FILTER_TF) and
+        # vec_decisions.kg_entry_gate.ema921_pass (EMA_9_21_FILTER_ENABLED/_TFS/_MIN_TFS, KINDERGARTEN_STRICT_TFS, KINDERGARTEN_CUMULATIVE_MIN_TFS). Fresh OPEN only (same exemptions as EMA_BLANKET).
+        try:
+            if (
+                symbol
+                and ("OPEN" in _kill_act or "ENTRY" in _kill_act or _kill_act == "BUY")
+                and "AUGMENT" not in _kill_act and "REENTRY" not in _kill_act and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
+                and "HEDGE" not in (reason or "").upper() and "OBLIGATORY" not in (reason or "").upper() and "REENTRY" not in (reason or "").upper()
+            ):
+                _kgx_get = lambda _k, _d=None: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))
+                _kgx_on = bool(_kgx_get("KINDERGARTEN_EMA_GATE_ENABLED", False))
+                _e921_on = bool(_kgx_get("EMA_9_21_FILTER_ENABLED", False))
+                if _kgx_on or _e921_on:
+                    _kgx_ind = await ii(self, symbol) or {}
+                    if _kgx_on:
+                        _kgx_ok, _kgx_why = _kindergarten_ema_gate(_kgx_ind, position_side == "LONG", float(_kgx_ind.get("close") or 0), enabled=True, scan_tf=_kgx_get("KINDERGARTEN_FILTER_TF", "OFF"))
+                        if not _kgx_ok:
+                            logger.warning(f"🚫 [KINDERGARTEN_EMA_GATE] {position_key}: BLOCKED {action} — {_kgx_why}. reason={(reason or '')[:50]}")
+                            return f"BLOCKED_KINDERGARTEN_EMA_GATE_{position_side}"
+                    if _e921_on:
+                        from vec_decisions.kg_entry_gate import ema921_pass as _e921_pass
+                        _e921_ok, _e921_n, _e921_c = _e921_pass(_kgx_get, _kgx_ind, position_side == "LONG")
+                        if not _e921_ok:
+                            logger.warning(f"🚫 [EMA_9_21_FILTER] {position_key}: BLOCKED {action} — 9/21 agrees on {_e921_n}/{_e921_c} TFs. reason={(reason or '')[:50]}")
+                            return f"BLOCKED_EMA_9_21_FILTER_{position_side}"
+        except Exception as _kgxe:
+            logger.warning(f"[KG/EMA_9_21 chokepoint] check error (fail-open): {_kgxe}")
         # ═══════════════════════════════════════════════════════════════════════════
         # 🟡 GR_FILTER_ALL_ENTRIES (USER 2026-06-03 "GR is the prime entrypoint"): EVERY fresh entry
         # (DELTA / GOLDEN_RULE / force-open / etc.) must pass the GR filter — same breakout-mode min7
@@ -31594,7 +31642,8 @@ class MultiAccountTradeManager:
                 _uag_min_qty = float(self.min_qty.get(symbol, 0.0001))
                 if _uag_amt > _uag_min_qty:
                     # 2026-09-06 AUGMENT SCOPE EXPANSION — use AUGMENT_MIN_GAIN_PCT if set (sweepable), else legacy
-                    _uag_min_gain = float(getattr(config, "AUGMENT_MIN_GAIN_PCT", getattr(config, "MIN_GAIN_TO_BUY_AGGRESSIVELY", 3.0)))
+                    import live_entry_gates as _leg_mg  # batch5
+                    _uag_min_gain = _leg_mg.effective_min_gain(lambda _k, _d: getattr(config, _k, _d))  # MIN_GAIN_TO_BUY_AGGRESSIVELY swept switch (floor 2.5); AUGMENT_MIN_GAIN_PCT>0 = override
                     _uag_last_px = safe_fetch_float(getattr(_uag_position, "last_augmentation_price", 0.0), 0.0)
                     if _uag_last_px <= 0:
                         _uag_last_px = safe_fetch_float(getattr(_uag_position, "entry_price", 0.0), 0.0)
@@ -36361,7 +36410,7 @@ class MultiAccountTradeManager:
                                     _hc_wt1 = safe_fetch_float(_hc_indicators.get("wt1_15m", 0), 0.0)
                                     _hc_wt1_prev = safe_fetch_float(_hc_indicators.get("wt1_15m_prev", _hc_wt1), _hc_wt1)
                                     _hc_req_wt = bool(getattr(config, "HARDCODED_RALLY_REENTRY_REQUIRE_WT", False))
-                                    if (is_long and _hc_current_price > _hc_exit_price and (not _hc_req_wt or _hc_wt1 > _hc_wt1_prev)) or (not is_long and _hc_current_price < _hc_exit_price and (not _hc_req_wt or _hc_wt1 < _hc_wt1_prev)):
+                                    if _rally_ok(config, _hc_indicators, is_long, _hc_current_price, _hc_exit_price, _rally_age(data.get("exit_time"))) and ((is_long and _hc_current_price > _hc_exit_price and (not _hc_req_wt or _hc_wt1 > _hc_wt1_prev)) or (not is_long and _hc_current_price < _hc_exit_price and (not _hc_req_wt or _hc_wt1 < _hc_wt1_prev))):
                                         _hc_bypass = True
                                         _qty_mult_hc = 1.0
                                         _reason_hc = f"HARDCODED_RALLY_close{_hc_current_price:.4f}>{_hc_exit_price:.4f}_wt{_hc_wt1:.1f}>{_hc_wt1_prev:.1f}" if is_long else f"HARDCODED_RALLY_close{_hc_current_price:.4f}<{_hc_exit_price:.4f}_wt{_hc_wt1:.1f}<{_hc_wt1_prev:.1f}"
@@ -36425,8 +36474,8 @@ class MultiAccountTradeManager:
                             _hc_wt1 = safe_fetch_float(indicators.get("wt1_15m", 0), 0.0)
                             _hc_wt1_prev = safe_fetch_float(indicators.get("wt1_15m_prev", _hc_wt1), _hc_wt1)
                             _hc_req_wt2 = bool(getattr(config, "HARDCODED_RALLY_REENTRY_REQUIRE_WT", False))
-                            _hc_is_long_rally = is_long and current_price > exit_price and (not _hc_req_wt2 or _hc_wt1 > _hc_wt1_prev)
-                            _hc_is_short_rally = (not is_long) and current_price < exit_price and (not _hc_req_wt2 or _hc_wt1 < _hc_wt1_prev)
+                            _hc_is_long_rally = is_long and current_price > exit_price and (not _hc_req_wt2 or _hc_wt1 > _hc_wt1_prev) and _rally_ok(config, indicators, True, current_price, exit_price, _rally_age(data.get("exit_time")))
+                            _hc_is_short_rally = (not is_long) and current_price < exit_price and (not _hc_req_wt2 or _hc_wt1 < _hc_wt1_prev) and _rally_ok(config, indicators, False, current_price, exit_price, _rally_age(data.get("exit_time")))
                             if _hc_is_long_rally or _hc_is_short_rally:
                                 _qty_mult_hc = 1.0
                                 _reason_hc = f"HARDCODED_RALLY_close{current_price:.4f}>{exit_price:.4f}_wt{_hc_wt1:.1f}>{_hc_wt1_prev:.1f}" if is_long else f"HARDCODED_RALLY_close{current_price:.4f}<{exit_price:.4f}_wt{_hc_wt1:.1f}<{_hc_wt1_prev:.1f}"
@@ -38655,8 +38704,8 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
                 _hc_wt1 = float(i.get("wt1_15m", 0) or 0)
                 _hc_wt1_prev = float(i.get("wt1_15m_prev", _hc_wt1) or _hc_wt1)
                 _hc_req_wt3 = bool(getattr(config, "HARDCODED_RALLY_REENTRY_REQUIRE_WT", False))
-                _hc_is_long_rally = is_long and current_price > _hc_exit_px and (not _hc_req_wt3 or _hc_wt1 > _hc_wt1_prev)
-                _hc_is_short_rally = (not is_long) and current_price < _hc_exit_px and (not _hc_req_wt3 or _hc_wt1 < _hc_wt1_prev)
+                _hc_is_long_rally = is_long and current_price > _hc_exit_px and (not _hc_req_wt3 or _hc_wt1 > _hc_wt1_prev) and _rally_ok(config, i, True, current_price, _hc_exit_px, _rally_age(getattr(position, "last_reduction_time", None)))
+                _hc_is_short_rally = (not is_long) and current_price < _hc_exit_px and (not _hc_req_wt3 or _hc_wt1 < _hc_wt1_prev) and _rally_ok(config, i, False, current_price, _hc_exit_px, _rally_age(getattr(position, "last_reduction_time", None)))
                 if _hc_is_long_rally or _hc_is_short_rally:
                     re_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
                     _side = "LONG" if is_long else "SHORT"
@@ -46655,6 +46704,12 @@ async def process_position(
                 _gx_stop, _gx_tgt = _dc_channel_exits.resolve_daytrade_dc(lambda _k, _d: _psym_get(symbol, position_side, _k, _d))
                 if _gx_stop or _gx_tgt:
                     _gx_fire, _gx_reason = _dc_channel_exits.daytrade_dc_exit(current_price, _gx_is_long, _gx_stop, _gx_tgt, lambda _f: safe_fetch_float(_pp_shared_ind.get(_f, 0), 0.0))
+            # DEF2 2026-10-01 live twin of v12_quick_engine PROFIT_TARGET (pnl-pct exit, vintage, default OFF = inert): same predicate gain >= PROFIT_TARGET_PCT
+            if not _gx_fire and bool(_psym_get(symbol, position_side, "PROFIT_TARGET_ENABLED", False)):
+                _pt_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
+                _pt_pct = safe_fetch_float(_psym_get(symbol, position_side, "PROFIT_TARGET_PCT", 1.6), 1.6)
+                if _pt_gain >= _pt_pct:
+                    _gx_fire, _gx_reason = True, f"PROFIT_TARGET_g{_pt_gain:.2f}"
             if _gx_fire:
                 _gx_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                 _gx_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)

@@ -995,6 +995,9 @@ class Config:
     WT15M_AGAINST_FORCE_HEDGE_COOLDOWN_SEC: float = 30.0
     # USER 2026-05-06: ALL TFs (3m/15m/1h/4h/D) against → close primary, hedge becomes main.
     # Strongest single signal — no other gate considered.
+    # batch6 (Agent D): real entry-veto switches (vec twin ALL_TF_AGAINST_BLOCK_ENTRY_*; default OFF = today's live)
+    ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED: bool = False
+    ALL_TF_AGAINST_BLOCK_ENTRY_MIN_TFS: float = 4
     ALL_TF_AGAINST_CLOSE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: strongest signal — all TFs (3m/15m/1h/4h/D) against → close primary. User: does not exit when multiple TFs against trade. Hardened default.
     ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC: float = 30.0
     # 2026-05-08 USER MANDATE — WT_15M_VEL_SLOW exit branch (loss-bypass companion
@@ -2052,6 +2055,12 @@ class Config:
     HARDCODED_RALLY_REENTRY_ENABLED: bool = True  # 2026-09-18 user: reenter if close>exit and wt1_15m>wt1_15m_prev (bypass cooldown) — always tested
     HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN: bool = True  # bypass COOLDOWN_BARS/REENTRY_COOLDOWN when hard-coded fires
     HARDCODED_RALLY_REENTRY_REQUIRE_WT: bool = False  # False=loosened for TIM>20 (close>exit only), True=strict wt1_15m>prev — sweep both
+    REENTRY_APPLY_ENTRY_GATES_ENABLED: bool = False  # N1/004 twin: reentry paths (REENTRY/OBLIGATORY/PRICE_CROSS/HARDCODED_RALLY) must pass the same entry gates; default OFF = today
+    HARDCODED_RALLY_MIN_MOVE_PCT: float = 0.0  # RE/001 optional rally filters (vector twin vec_decisions/hardcoded_rally_filters.py): all OFF = unchanged
+    HARDCODED_RALLY_MIN_AGE_MIN: float = 0.0
+    HARDCODED_RALLY_HTF_TREND_TF: str = "OFF"  # OFF | 1h | 4h | 1h,4h
+    HARDCODED_RALLY_DC_POS_MAX: float = 0.0
+    HARDCODED_RALLY_SMA200_SIDE_ENABLED: bool = False
     # Aggressive tier window (2026-04-17 reentry sweep: crypto peak at 8-12 bars = 24-36min on 3m).
     # Within this window, a fresh dc_x3m or stoch_x3m with 1h still trending bypasses safety gates.
     REENTRY_AGGRESSIVE_WINDOW_MIN: float = 30.0  # 30 min on crypto (3m base = 10 bars — matches Sharpe peak)
@@ -4626,7 +4635,7 @@ class Config:
     # NOTE: QuickConfig sweep baseline keeps DAYTRADE_DC_*_TF='15m,1h' (BIBLE §15) — promoting that to live is an operator decision.
     DAYTRADE_DC_STOP_TF: str = "OFF"  # OFF | 15m | 1h | 4h | '15m,1h' (OR) — LONG px<=dc_low_TF*(1-buf), SHORT px>=dc_high_TF*(1+buf)
     DAYTRADE_DC_STOP_BUFFER_PCT: float = 0.25
-    DAYTRADE_DC_TARGET_TF: str = "OFF"  # OFF | 15m | 1h | 4h | '15m,1h' — LONG px>=dc_high_TF*(1-buf), SHORT px<=dc_low_TF*(1+buf)
+    DAYTRADE_DC_TARGET_TF: str = "15m"  # DEF2 2026-10-01 user: PROFIT_TARGET = dc_high_15m-0.1% (short dc_low+0.1%) default 15m; test OFF/15m/1h/4h/combos. was OFF | 15m | 1h | 4h | '15m,1h' — LONG px>=dc_high_TF*(1-buf), SHORT px<=dc_low_TF*(1+buf)
     DAYTRADE_DC_TARGET_BUFFER_PCT: float = 0.10
     WT_LOWER_CROSS_EXIT_TF: str = "OFF"  # OFF | 15m | 1h | 4h — LONG wt1 crosses below wt2 AND px < close_15m_prev (SHORT mirrored)
     DC_ENTRY_VETO_ENABLED_TRADIER: bool = False  # SENTINEL_FIX 2026-04-14: when True, DC_POSITION_ENTRY_THRESHOLD gates entries (require dc_pos in zone). Default False = live unchanged.  # PORTED from TradierConfig 2026-08-17
@@ -4686,7 +4695,11 @@ class Config:
     EARNINGS_PEAD_BOOST_ENABLED: bool = False  # post-earnings-drift overlay (start OFF)  # PORTED from TradierConfig 2026-08-17
     EARNINGS_PEAD_BOOST_MULT: float = 1.5  # PORTED from TradierConfig 2026-08-17
     EARNINGS_PEAD_MIN_SURPRISE_PCT: float = 4.0  # PORTED from TradierConfig 2026-08-17
-    EMA_9_21_FILTER_ENABLED: bool = True  # KINDERGARTEN 2026-08-19 — 9/21 1h (no entries if 9 on wrong side) defaults True both platforms 2026-09-10
+    EMA_9_21_FILTER_ENABLED: bool = False  # FLT2 2026-10-01: crypto live had NO consumer (never filtered); consumer now at ez_manage.execute_now (vec_decisions/kg_entry_gate.ema921_pass) -> default OFF keeps live unchanged until a sym_side's sweep proves it (stocks stay True in config_tradier)
+    EMA_9_21_FILTER_TFS: str = "1h"  # FLT2: twin of QuickConfig/cat_side default (comma list, each TF an independent 9/21 check)
+    KINDERGARTEN_CUMULATIVE_MIN_TFS: int = 1  # FLT2: twin of QuickConfig/cat_side default (0 defers to EMA_9_21_FILTER_MIN_TFS)
+    KINDERGARTEN_STRICT_TFS: str = ""  # FLT2: twin of QuickConfig default
+    KINDERGARTEN_FILTER_TF: str = "15m"  # FLT2: D/4h/1h/15m restricts the KINDERGARTEN_EMA_GATE TF scan (OFF = legacy D,4h,1h,15m scan); twin of QuickConfig/cat_side default
     EMA_9_21_SCORE_BONUS: int = 5  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
     EMA_9_21_TIMEFRAME: str = "1h"
     KINDERGARTEN_EMA_GATE_ENABLED: bool = False  # USER FIX 2026-09-22: 0 trades lie from True 100% block — False + 15m in _ALL_FILTER_TF, exists but not block
@@ -5142,7 +5155,7 @@ class Config:
     PRICE_CROSS_BACK_REENTRY_ENABLED: bool = True  # USER: HAS TO BE ON everywhere (proven MU 0.84 / NVDA 0.71 vec). exit_price-cross reentry.  # PORTED from TradierConfig 2026-08-17
     PRICE_REFRESH_INTERVAL: float = 3.0  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
     PRICE_UPDATE_INTERVAL: float = 1.0  # PORTED from TradierConfig 2026-08-17
-    PROFIT_TARGET_ENABLED: bool = True  # vector 1186: pnl >= PROFIT_TARGET_PCT exit  # PORTED from TradierConfig 2026-08-17
+    PROFIT_TARGET_ENABLED: bool = False  # DEF2 2026-10-01 vintage pnl-pct exit: default OFF (swept switch; live twin added); was True. vector 1186: pnl >= PROFIT_TARGET_PCT exit  # PORTED from TradierConfig 2026-08-17
     PROFIT_TARGET_PCT: float = 1.6  # vector 1187: v3 peak 1.6%  # PORTED from TradierConfig 2026-08-17
     PROXIMITY_TOP_GATE_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
     PROXIMITY_TOP_MAX_DROP_PCT: float = 5.0        # don't long when within X% of 52w high  # PORTED from TradierConfig 2026-08-17

@@ -4793,7 +4793,8 @@ class QuickConfig:
         self.STOCH_CROSS_1H_EXIT_ENABLED = True
         self.MFI_FLIP_EXIT_ENABLED = True
         self.WT_CROSSUNDER_FINAL_ENABLED = True
-        self.MI_EXIT_ENABLED = True
+        self.MI_EXIT_ENABLED = True  # N2/007 DEF2: legacy default kept (live False = sweep option)
+        self.GAP_RISK_EXIT_ENABLED = True  # N2/007: live config_tradier True (2026-09-30)
         self.ENTRY_SCORE_THRESHOLD = 24.0
         self.K3M_FLOOR = 30.0
         self.K3M_FLOOR_ENABLED = False
@@ -5006,6 +5007,7 @@ class QuickConfig:
     STDEV_SLOPE_SIZING_MODE: str = "slope_to_top"
     BB_FROZEN_STOP_ENABLED: bool = False  # auto-wired 625
     STOCKS_REENTRY_LIVE_SOURCES_ENABLED: bool = True  # [C2 q002] stocks live reentry ladder pathways on 15m+ data (PRICE_CROSS_BACK band, TIER2_FORCED, EMA200_1H_BOUNCE)
+    STOCKS_LIVE_TWINS_ENABLED: bool = False  # [C2 q007 -> DEF2/001 default OFF/neutral] stocks DELTA_EXIT_DC_FLOOR hold + STDEV_BREAKOUT size twin (vec_decisions/stocks_live_twins.py); True = live-faithful
     STOCKS_LIVE_ENTRY_STACK_ENABLED: bool = False  # [C2 q003] stocks fresh-OPEN signal built from the live per-source stack (vec_decisions/live_stocks_entry.py); ON also activates the WT_DC live gates
     STOCKS_FRESH_ENTRY_TREND_GATES_ENABLED: bool = False  # N5 006 MASTER (default OFF = neutral): stock fresh-open trend gates (HTF/D_TREND/STRENGTH/WT_D_EXHAUST/CT_*/CLENOW) applied on final entry signal; each gate also needs its own switch
     WT_D_EXHAUST_GATE_ENABLED: bool = False      # N5 006 swept switch (live: dead evaluate_open hardcoded +-60): stock fresh-open veto when wt1_D AND wt1_4h are both beyond +-THRESHOLD (extended wave)
@@ -6611,6 +6613,12 @@ class QuickConfig:
     INTRADAY_RATIO_TRIM_FRAC: float = 0.30
     GAP_RISK_EXIT_COND_A_ENABLED: bool = True
     GAP_RISK_EXIT_COND_B_ENABLED: bool = True
+    VEC_VEL_EXIT_AS_TRIGGER: bool = True  # N2/007 DEF2 neutral default (legacy: vel_exit active); False = live-faithful
+    VEC_GENERIC_EXIT_MIN_GAIN_PCT: float = 0.0  # N2/011 DEF2 neutral default 0.0 (live gain floor 0.3 = sweep option)
+    VEC_SAT_EXIT_TRIGGER: bool = True  # N2/011 DEF2 neutral default (legacy); False = live-faithful
+    VEC_REGIME_EXIT_ENABLED_TRADIER: bool = True  # N2/007 DEF2 neutral default; False = live-faithful
+    VEC_REGIME_EXIT_ENABLED_CRYPTO: bool = True  # N2/007
+    VEC_EXIT_SIG_IS_TRIGGER: bool = False  # N2/007 DEF2 neutral default (legacy: exit_sig does not close alone); True = live-faithful
     GAP_RISK_EXIT_ENABLED: bool = False  # 2026-09-29 USER: default OFF (frequent-exit churn, stock-only) — swept switch; sane baseline WT/DC. Was True.
     GAP_RISK_EXIT_LONG_ENABLED: bool = True
     GAP_RISK_EXIT_OPEN_RECLAIM_ENABLED: bool = True
@@ -9357,7 +9365,7 @@ def compute_entry_signals(npz, n, is_long, cfg):
     if _kg_is_crypto and bool(getattr(cfg, 'KINDERGARTEN_EMA_GATE_ENABLED', False)):
         try:
             import vec_decisions.live_kindergarten_gate as _lkg
-            _base_entry = _base_entry & ~_lkg.kg_block_mask(npz, n, is_long, close, _safe)
+            _base_entry = _base_entry & ~_lkg.kg_block_mask(npz, n, is_long, close, _safe, cfg)
         except Exception:
             pass
     _kg_signal = np.zeros(n, dtype=bool)
@@ -9638,7 +9646,14 @@ def compute_exit_signals(npz, n, is_long, cfg):
     else:
         wt_against = (wt1_3m > wt2_3m).astype(int) + (wt1_15m > wt2_15m).astype(int) + (wt1_1h > wt2_1h).astype(int)
     delta_exit = (wt_against >= cfg.WT_EXIT_MIN_TFS) if getattr(cfg, 'DELTA_EXIT_ENABLED', True) else np.zeros(n, dtype=bool)
-    vel_exit = ((wt_vel_4h < -2.0) if is_long else (wt_vel_4h > 2.0)) if getattr(cfg, 'VEL_EXIT_ENABLED', True) else np.zeros(n, dtype=bool)
+    # [C2 q007 -> DEF2/001] stocks live DELTA_EXIT_DC_FLOOR (tradier_manage.py:19690): a valid Delta exit is HELD until price breaks the 15m Donchian boundary; gated by STOCKS_LIVE_TWINS_ENABLED (default OFF)
+    if str(getattr(cfg, 'MODE', 'crypto')) == 'tradier' and bool(getattr(cfg, 'DELTA_EXIT_DC_FLOOR', False)) and bool(getattr(cfg, 'STOCKS_LIVE_TWINS_ENABLED', False)):
+        try:
+            import vec_decisions.stocks_live_twins as _slt
+            delta_exit = delta_exit & _slt.dc_floor_confirms(npz, n, is_long, close)
+        except Exception:
+            pass
+    vel_exit = ((wt_vel_4h < -2.0) if is_long else (wt_vel_4h > 2.0)) if (getattr(cfg, 'VEL_EXIT_ENABLED', True) and bool(getattr(cfg, 'VEC_VEL_EXIT_AS_TRIGGER', True))) else np.zeros(n, dtype=bool)
 
     # WT-VELOCITY-DECAY exit (user priority: "sell when wt delta slows down")
     # Exit when 1h velocity magnitude drops below threshold after being strong
@@ -9670,7 +9685,7 @@ def compute_exit_signals(npz, n, is_long, cfg):
             prox = (lo > 0) & (np.abs(close - lo) / np.maximum(lo, 1e-9) <= 0.01)
             srs_exit = prox & (k_1h <= 25) & (k_1h > k_1h_prev)
     sat_exit = np.zeros(n, dtype=bool)
-    if cfg.SATOSHIT_ENABLED:
+    if cfg.SATOSHIT_ENABLED and bool(getattr(cfg, 'VEC_SAT_EXIT_TRIGGER', True)):
         k_3m_prev = np.roll(k_3m, 1); k_3m_prev[0] = k_3m[0]
         mfi_3m_prev = np.roll(mfi_3m, 1); mfi_3m_prev[0] = mfi_3m[0]
         if is_long:
@@ -9838,6 +9853,8 @@ def compute_exit_signals(npz, n, is_long, cfg):
         regime_exit = (is_trending3 & (wt_vel_1h_arr3 < -1.0)) | ((~is_trending3) & (wt_vel_1h_arr3 < -0.5))
     else:
         regime_exit = (is_trending3 & (wt_vel_1h_arr3 > 1.0)) | ((~is_trending3) & (wt_vel_1h_arr3 > 0.5))
+    if not bool(getattr(cfg, 'VEC_REGIME_EXIT_ENABLED_TRADIER' if getattr(cfg, 'MODE', 'crypto') == 'tradier' else 'VEC_REGIME_EXIT_ENABLED_CRYPTO', True)):
+        regime_exit = np.zeros(n, dtype=bool)
 
     # 2026-09-26 TECHNICAL DC-channel exits — user mandate: dc_low/high with buffers instead of fixed %
     # LONG stop: close <= dc_low_TF * (1 - buf), SHORT stop: close >= dc_high_TF * (1+buf)
@@ -11768,9 +11785,19 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     if str(getattr(cfg, 'MODE', 'crypto')) != 'tradier' and bool(getattr(cfg, 'KINDERGARTEN_EMA_GATE_ENABLED', False)):
         try:
             import vec_decisions.live_kindergarten_gate as _lkg2
-            _kg2_ok = ~_lkg2.kg_block_mask(npz, n, is_long, close, _safe)
+            _kg2_ok = ~_lkg2.kg_block_mask(npz, n, is_long, close, _safe, cfg)
             entry_sig = entry_sig & _kg2_ok
             _entry_filter_masks.append(_kg2_ok)
+        except Exception:
+            pass
+    # [FLT2 q001] crypto EMA_9_21 cumulative entry gate (live: ez_manage.execute_now fresh-OPEN chokepoint, vec_decisions.kg_entry_gate.ema921_pass) on the FINAL entry signal.
+    if str(getattr(cfg, 'MODE', 'crypto')) != 'tradier':
+        try:
+            import vec_decisions.kg_entry_gate as _keg
+            _e921_ok = _keg.ema921_pass_vec(npz, n, is_long, cfg, _safe)
+            if _e921_ok is not None:
+                entry_sig = entry_sig & np.asarray(_e921_ok, dtype=bool)
+                _entry_filter_masks.append(np.asarray(_e921_ok, dtype=bool))
         except Exception:
             pass
     # [FLT q001] live execute_now (ez_manage 29868 COUNTER_TREND_ADD_BLOCK, 29914 EMA_BLANKET_FILTER) gates EVERY fresh OPEN incl. MOMENTUM_WATCHDOG; the vector only masked
@@ -11782,6 +11809,15 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _wd_open = _wd_open & np.asarray(_wdc_eb, dtype=bool)
             if bool(getattr(cfg, 'COUNTER_TREND_ADD_BLOCK_ENABLED', False)):
                 _wd_open = _wd_open & ~np.asarray(vec_decisions.counter_trend.counter_trend_vec(npz, n, cfg, is_long), dtype=bool)
+            # [FLT2 q001] live execute_now fresh-OPEN chokepoint also applies the crypto KINDERGARTEN gate (ez_manage._kindergarten_ema_gate) and the EMA_9_21 cumulative gate
+            # (vec_decisions.kg_entry_gate.ema921_pass): same predicates on the watchdog open array (live opens come from MOMENTUM_WATCHDOG, not check_entry_alignment).
+            if bool(getattr(cfg, 'KINDERGARTEN_EMA_GATE_ENABLED', False)):
+                import vec_decisions.live_kindergarten_gate as _lkg3
+                _wd_open = _wd_open & ~np.asarray(_lkg3.kg_block_mask(npz, n, is_long, close, _safe, cfg), dtype=bool)
+            import vec_decisions.kg_entry_gate as _keg_wd
+            _e921_wd = _keg_wd.ema921_pass_vec(npz, n, is_long, cfg, _safe)
+            if _e921_wd is not None:
+                _wd_open = _wd_open & np.asarray(_e921_wd, dtype=bool)
         except Exception:
             pass
     # 2026-09-30 PORTED-SWITCH DISPATCHER — collision-free wiring hook (SWITCH_WIRING_GUIDE.md).
@@ -12154,6 +12190,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         return {'qty': qty0, 'avg_price': px, 'entry_price': px, 'entry_qty': qty0, 'deployed': abs(qty0 * px), 'realized': 0.0,
                 'entry_bar': i, 'peak_pnl_pct': 0.0, 'fees': abs(qty0 * px) * half_fee, 'entry_reason': entry_reason}
 
+    # [C2 q007] stocks STDEV_BREAKOUT size boost twin (tradier_manage.py:13515): inert unless STDEV_BREAKOUT_ENABLED (default False, live default False)
+    _sb_sizer = None
+    if str(getattr(cfg, 'MODE', 'crypto')) == 'tradier' and bool(getattr(cfg, 'STDEV_BREAKOUT_ENABLED', False)) and bool(getattr(cfg, 'STOCKS_LIVE_TWINS_ENABLED', False)):
+        try:
+            import vec_decisions.stocks_live_twins as _slt2
+            _sb_sizer = _slt2.StdevSizer(npz, n, is_long, cfg)
+        except Exception:
+            _sb_sizer = None
     # 2026-09-30 STATEFUL PORTED SWITCHES — masks precomputed ONCE (vectorized), gate applied per-bar below
     # where live_pnl_pct/held_bars/peak_pnl_pct/n_augments exist (faithful twins of ez_manage.process_position
     # gain/age/count-gated exits & augment cap). vec_decisions/ported_stateful_{exit,augment}.py. NO fabrication.
@@ -12518,6 +12562,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 except Exception:
                     pass
                 qty0 = _size_qty(cfg, _dollar, px)
+                if _sb_sizer is not None and qty0 > 0 and bool(entry_sig[i]):
+                    _sbm = _sb_sizer.mult(i)  # [C2 q007] live: qty = int(qty * RETEST_SIZE_MULT) on a retest-phase fresh entry
+                    if _sbm > 1.0:
+                        qty0 = int(qty0 * _sbm)
                 if qty0 > 0:
                     # Derive real entry reason from the block that fired at this bar
                     entry_reason = 'VECTOR_ENTRY'
@@ -12649,7 +12697,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             if _mtf_min_gain > 0 and live_pnl_pct < _mtf_min_gain: _msc = 0.0
             _msc = _msc if _msc < 100.0 else 100.0
             _mthr = 35.0 if live_pnl_pct > 1.0 else 45.0 if live_pnl_pct > 0.3 else 55.0
-            if (_msc >= _mthr or bool(_mtf_override[i])) and not vec_decisions.noloss_gate.noloss_blocks(cfg, 'MULTI_TF_EXIT', live_pnl_pct) and not (_qta_eb_block is not None and bool(_qta_eb_block[i])):  # [C2 b5b] live UNIVERSAL_NOLOSS_GATE
+            if (_msc >= _mthr or bool(_mtf_override[i])) and (float(getattr(cfg, 'VEC_GENERIC_EXIT_MIN_GAIN_PCT', 0.0) or 0.0) <= 0 or live_pnl_pct >= float(getattr(cfg, 'VEC_GENERIC_EXIT_MIN_GAIN_PCT', 0.0) or 0.0)) and not vec_decisions.noloss_gate.noloss_blocks(cfg, 'MULTI_TF_EXIT', live_pnl_pct) and not (_qta_eb_block is not None and bool(_qta_eb_block[i])):  # [C2 b5b] live UNIVERSAL_NOLOSS_GATE
                 pos['fees'] += abs(pos['qty'] * px) * half_fee
                 _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
                 _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
@@ -13073,8 +13121,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             _tech_reason = f'TECHNICAL_EXIT dc_{_tech_tgt_tf_norm}_low'
             except Exception:
                 pass
-            if _tech_reason == 'TECHNICAL_EXIT':
+            if _tech_reason == 'TECHNICAL_EXIT' and not bool(getattr(cfg, 'VEC_EXIT_SIG_IS_TRIGGER', False)):
                 continue
+            if _tech_reason == 'TECHNICAL_EXIT' and pnl_pct_preview <= float(getattr(cfg, 'VEC_GENERIC_EXIT_MIN_GAIN_PCT', 0.0) or 0.0) and float(getattr(cfg, 'VEC_GENERIC_EXIT_MIN_GAIN_PCT', 0.0) or 0.0) > 0:
+                continue  # N2/011 live gain floor
             if vec_decisions.noloss_gate.noloss_blocks(cfg, _tech_reason, live_pnl_pct):
                 continue  # [C2 b5b] live UNIVERSAL_NOLOSS_GATE
             pos['fees'] += abs(pos['qty'] * px) * half_fee

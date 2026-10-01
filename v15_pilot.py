@@ -923,7 +923,7 @@ def opportune_filter_bases(symside: str, sheet: str, switch: str) -> set:
     return set(((m.get(key) or {}).get(sheet) or {}).get(switch, []))
 
 def opportune_filter_rows(symside: str, sheet: str, switch: str) -> list[dict]:
-    bases = opportune_filter_bases(symside, sheet, switch)
+    bases = opportune_filter_bases(symside, sheet, switch) - tab_level_filters(map_key_for_symside(symside), sheet)  # tab-level filters are tested once as orange rows, not per switch row
     if not bases:
         return []
     return [e for e in _load_filter_dictionary() if (e.get("filter") or "").strip() in bases and not _is_general(e["rec"])]
@@ -2598,6 +2598,18 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     return cumulative_gain, cumulative_overrides, progress
 
 def _atomic_save(wb, wb_path: Path):
+    # FLT2 2026-10-01: a foreign cleaner/syncer can delete our *.tmp between save and replace (ENOENT) — that crashed fresh pilots in clone_template (chmod on a never-created xlsx). Retry the whole save up to 3x.
+    for _att in range(3):
+        _atomic_save._ok = True
+        _atomic_save_once(wb, wb_path)
+        if _atomic_save._ok:
+            return
+        import time as _t_r
+        _t_r.sleep(1.0 + _att)
+    return
+
+
+def _atomic_save_once(wb, wb_path: Path):
     import os as _os, time as _tm
     # per-process tmp: pilot + v15_red_fixer saving the same workbook deleted each other's shared .tmp (VALIDATE-FAIL ENOENT)
     # use pid+tid to avoid collision between daemon and plower threads
@@ -2678,6 +2690,7 @@ def _atomic_save(wb, wb_path: Path):
         except Exception:
             pass
     except Exception as _e_atomic:
+        _atomic_save._ok = False
         print(f"[atomic-save-FAIL] {wb_path.name} keep previous {_e_atomic}", flush=True)
         # keep previous file, do not truncate with direct save
         try:
@@ -3228,6 +3241,8 @@ def clone_template(template: Path, new_symside: str) -> Path:
         for ci in range(1, 25):
             ws2.cell(1, ci).font = Font(bold=True)
     _atomic_save(wb, Path(target))  # BADZIP FIX 2026-09-29
+    if not Path(target).exists():
+        raise RuntimeError(f"[clone] {target} not created after 3 atomic-save attempts")  # FLT2: explicit, instead of a chmod FileNotFoundError
     Path(target).chmod(0o644)
     return target
 

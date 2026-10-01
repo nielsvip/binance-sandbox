@@ -35,6 +35,10 @@ except ImportError:
     _npz_gen = None
 
 from config import Config
+try:
+    import live_parity_keys as _lpk  # Agent D 2026-10-01: live producers for keys the vector engine has (wt_peak_value_*, ha_green_*, close_3bar_*, ...)
+except Exception:  # never break the live indicator cycle
+    _lpk = None
 from classic_formations import formation_fields_from_ohlcv, latest_formation_fields
 
 # wt_composite logic inlined into _inject_wt_composite() — no external dependency
@@ -214,6 +218,8 @@ def normalize_indicator_aliases(indicators: Dict[str, Any]) -> Dict[str, Any]:
                     indicators[k_key] = sv
                 elif sv is None and kv is not None:
                     indicators[s_key] = kv
+    if _lpk is not None:
+        _lpk.derive_alias_keys(indicators)
     return indicators
 
 
@@ -1753,6 +1759,7 @@ def wavetrend_intelligence(wt1_series: pd.Series, wt2_series: pd.Series, close_s
     velocity_prev = wt1_arr[-1 - lag] - wt1_arr[-1 - 2 * lag] if n > 2 * lag else 0.0
     acceleration = velocity - velocity_prev
     result[f"wt_velocity_{tf}"] = round(velocity, 4)
+    result[f"wt_velocity_{tf}_prev"] = round(velocity_prev, 4)  # Agent D: tradier_manage R2 zero-gain guard reads wt_velocity_{tf}_prev
     result[f"wt_acceleration_{tf}"] = round(acceleration, 4)
     wt_rising = velocity > 0
     if wt_rising and acceleration > 0:
@@ -2547,6 +2554,8 @@ class IndicatorCalculator:
             result["timestamp_D"] = result.get(f"timestamp_{timeframe}", result.get("timestamp", ""))
         if mid_run:
             result[f"timestamp_{timeframe}_mid"] = isoformat(utc_now())
+        if _lpk is not None:
+            _lpk.derive_bar_keys(adjusted_df, timeframe, result)
         return result
 
 class IndicatorOrchestrator:

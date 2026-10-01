@@ -1,6 +1,7 @@
 # pylint: disable=W,C,R,I
 #!/usr/bin/env python3
 import asyncio
+from live_rally_filters import rally_ok as _rally_ok
 import datetime as dt
 import hashlib
 import json
@@ -30,6 +31,7 @@ from zoneinfo import ZoneInfo
 import vec_decisions.shared_zone
 import vec_decisions.dc_channel_exits as _dc_channel_exits  # 2026-09-29 grey-switch rewire (shared with v12_quick_engine)
 import vec_decisions.grey_wire_exits as _grey_wire_exits  # 2026-09-30 grey-switch wiring (shared with v12_quick_engine)
+import live_entry_gates as _live_entry_gates  # batch5 (Agent D): live twin of the vec stock entry gates + effective_min_gain
 import vec_decisions.grey_wire_entries as _grey_wire_entries  # 2026-09-30 grey-switch wiring (shared with v12_quick_engine)
 from vec_decisions.process_position_stocks__alt_entries import _rz_breakout_fires  # 2026-09-29 grey rewire RZ_BREAKOUT shared predicate
 import aiofiles
@@ -10697,6 +10699,12 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _gx_stop, _gx_tgt = _dc_channel_exits.resolve_daytrade_dc(_gx_c)
                     if _gx_stop or _gx_tgt:
                         _gx_fire, _gx_reason = _dc_channel_exits.daytrade_dc_exit(current_price, is_long, _gx_stop, _gx_tgt, lambda _f: safe_fetch_float(i.get(_f, 0), 0.0))
+                # DEF2 2026-10-01 live twin of v12_quick_engine PROFIT_TARGET (pnl-pct exit, vintage, default OFF = inert): same predicate gain >= PROFIT_TARGET_PCT
+                if not _gx_fire and bool(_gx_c('PROFIT_TARGET_ENABLED', False)):
+                    _pt_gain = safe_fetch_float(getattr(position, 'gain', 0), 0.0)
+                    _pt_pct = safe_fetch_float(_gx_c('PROFIT_TARGET_PCT', 1.6), 1.6)
+                    if _pt_gain >= _pt_pct:
+                        _gx_fire, _gx_reason = True, f"PROFIT_TARGET_g{_pt_gain:.2f}"
                 # 2026-09-30 GREY-SWITCH WIRING exits (vec_decisions/grey_wire_exits.py, the SAME predicates
                 # v12_quick_engine.simulate_one calls). All enables OFF in config_tradier -> list empty -> inert.
                 _gw_fns = (_grey_wire_exits.active_exits(_gx_c) + _grey_wire_exits.active_live_only_exits(_gx_c)) if not _gx_fire else []
@@ -12675,15 +12683,15 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _exp_htf2_against = False
                         for _lbl in (_wt_dc_htf,):
                             if _lbl in ('none','off',''): continue
-                            _k = f'wt1_{_lbl.upper()}' if _lbl.upper()!='D' else 'wt1_D'
-                            _k2 = f'wt2_{_lbl.upper()}' if _lbl.upper()!='D' else 'wt2_D'
+                            _k = f'wt1_{_lbl}' if _lbl.upper()!='D' else 'wt1_D'  # batch5 LG-20: lower-case TF label = real key
+                            _k2 = f'wt2_{_lbl}' if _lbl.upper()!='D' else 'wt2_D'
                             _a1 = float((_entry_ind or {}).get(_k, 0) or 0); _a2 = float((_entry_ind or {}).get(_k2, 0) or 0)
                             if is_long and _a1 < _a2: _exp_htf1_against = True
                             elif (not is_long) and _a1 > _a2: _exp_htf1_against = True
                         for _lbl in (_wt_dc_htf2,):
                             if _lbl in ('none','off',''): continue
-                            _k = f'wt1_{_lbl.upper()}' if _lbl.upper()!='D' else 'wt1_D'
-                            _k2 = f'wt2_{_lbl.upper()}' if _lbl.upper()!='D' else 'wt2_D'
+                            _k = f'wt1_{_lbl}' if _lbl.upper()!='D' else 'wt1_D'  # batch5 LG-20: lower-case TF label = real key
+                            _k2 = f'wt2_{_lbl}' if _lbl.upper()!='D' else 'wt2_D'
                             _a1 = float((_entry_ind or {}).get(_k, 0) or 0); _a2 = float((_entry_ind or {}).get(_k2, 0) or 0)
                             if is_long and _a1 < _a2: _exp_htf2_against = True
                             elif (not is_long) and _a1 > _a2: _exp_htf2_against = True
@@ -14012,6 +14020,34 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                         return False
         except Exception as _gwee:
             logger.warning(f"[GREY_WIRE_OPEN_GATE] check error (fail-open): {_gwee}")
+        # ═══ batch5 LIVE_ENTRY_GATES (Agent D 2026-10-01, USER priority "trade reduction must come from filters functioning in BOTH vector and live") ═══
+        # Live twin of the vec stock entry gates (live_entry_gates.check_entry_gates -> vec_decisions LH_HL / EMA_9_21 / ALIGNMENT / TREND / HTF_CONF predicates).
+        # MASTER SWITCH LIVE_ENTRY_GATES_ENABLED default False => unchanged live. Reentries (REENTRY / HARDCODED_RALLY / mandatory reclaim) bypass unless
+        # LIVE_ENTRY_GATES_INCLUDE_REENTRY=True (today they bypass ALL gates). Fail-open.
+        try:
+            _leg_act = (action or '').upper()
+            _leg_rsn = (reason or '').upper()
+            if ('OPEN' in _leg_act or 'AUGMENT' in _leg_act or _leg_act == 'BUY') and 'HEDGE' not in _leg_rsn and 'CLOSE' not in _leg_act and 'REDUCE' not in _leg_act and not _mandatory_reentry_qta:
+                _leg_acct, _leg_sym, _leg_side = parse_position_key(position_key)
+                _leg_c = lambda _k, _d: _cfg(_k, _d, _leg_acct, _leg_sym, _leg_side)
+                _leg_is_re = ('REENTER' in _leg_act) or ('REENTRY' in _leg_rsn) or ('HARDCODED_RALLY' in _leg_rsn)
+                if (bool(_leg_c('LIVE_ENTRY_GATES_ENABLED', False)) or bool(_leg_c('STOCKS_FRESH_ENTRY_TREND_GATES_ENABLED', False))) and (not _leg_is_re or bool(_leg_c('LIVE_ENTRY_GATES_INCLUDE_REENTRY', False)) or bool(_leg_c('REENTRY_APPLY_ENTRY_GATES_ENABLED', False))):
+                    _leg_ind = (trade_manager.get_indicators(_leg_sym) if _leg_sym else {}) or {}
+                    _leg_blk, _leg_why = _live_entry_gates.check_entry_gates(_leg_c, _leg_ind, _leg_side == "LONG", _leg_act)
+                    if _leg_blk:
+                        logger.warning(f"🚫 [LIVE_ENTRY_GATES] {position_key}: BLOCKED {action} — {_leg_why}. reason={(reason or '')[:60]}")
+                        _direct_queue_gate_note(trade_manager, position_key, reason, "LIVE_ENTRY_GATES")
+                        return False
+                    # D8 (N5): evaluate_open has no live caller, so _apply_research_only_live_gates(is_entry=True) (HTF_ALIGNMENT/D_TREND_REQUIRED/STRENGTH_FILTER/CT_*/CLENOW)
+                    # gated nothing. Revived as an OPTIONAL swept gate: SAME function, per-sym _cfg resolution; own master STOCKS_FRESH_ENTRY_TREND_GATES_ENABLED default False.
+                    if (not _leg_blk) and 'OPEN' in _leg_act and bool(_leg_c('STOCKS_FRESH_ENTRY_TREND_GATES_ENABLED', False)):
+                        _ro_blk, _ro_why = _apply_research_only_live_gates(_leg_acct, _leg_sym, _leg_side, _leg_ind, True)
+                        if _ro_blk:
+                            logger.warning(f"🚫 [LIVE_RESEARCH_OPEN_GATES] {position_key}: BLOCKED {action} — {_ro_why}. reason={(reason or '')[:60]}")
+                            _direct_queue_gate_note(trade_manager, position_key, reason, "LIVE_RESEARCH_OPEN_GATES")
+                            return False
+        except Exception as _lege:
+            logger.warning(f"[LIVE_ENTRY_GATES] check error (fail-open): {_lege}")
         if not is_regular_trading_hours():
             logger.debug(f"[queue_trade_action] not in trading hours")
             return
@@ -15093,6 +15129,14 @@ def _apply_research_only_live_gates(account_key, symbol, side, indicators, is_en
     # ═══ V8Q PARITY — vector-identical causal gates (2026-08-11): every ENTRY/EXIT knob wired identically ═══
     # PROFIT_TARGET / STOP_LOSS / NOLOSS / VEL_EXIT are EXIT-only; CONFLUENCE / STRENGTH / HTF are ENTRY-only
     # They are evaluated here with same indicator keys and thresholds as v8_quick_engine.py
+    # WT_D_EXHAUST — vector twin vec_decisions/stocks_trend_gates.py (n5/006): long blocked when wt1_D>T and wt1_4h>T, short when wt1_D<-T and wt1_4h<-T. Default OFF.
+    if is_entry and _cfg('WT_D_EXHAUST_GATE_ENABLED', False, account_key, symbol, side):
+        try:
+            _wde_t = float(_cfg('WT_D_EXHAUST_THRESHOLD', 60.0, account_key, symbol, side))
+            _wde_d = float(indicators.get('wt1_D', 0) or 0); _wde_4 = float(indicators.get('wt1_4h', 0) or 0)
+            if (is_long and _wde_d > _wde_t and _wde_4 > _wde_t) or ((not is_long) and _wde_d < -_wde_t and _wde_4 < -_wde_t):
+                return True, f"WT_D_EXHAUST_BLOCK(wt1_D={_wde_d:.1f},wt1_4h={_wde_4:.1f},T={_wde_t:.0f})"
+        except Exception: pass
     # HTF_ALIGNMENT — vector 2715: htf_cnt >= HTF_MIN_ALIGNED (1h + TF_HTF1 + TF_HTF3, longs wt1>wt2)
     if is_entry and _cfg('HTF_ALIGNMENT_ENABLED', True, account_key, symbol, side):
         try:
@@ -21299,7 +21343,7 @@ class StockStrategy:
             except Exception:
                 _eff_gain_val = gain
             # Use AUGMENT_MIN_GAIN_PCT if set, otherwise MIN_GAIN_TO_BUY_AGGRESSIVELY
-            _aug_min_gain = float(_cfg_auto('AUGMENT_MIN_GAIN_PCT', _cfg_auto('MIN_GAIN_TO_BUY_AGGRESSIVELY', 3.0)) or 3.0)
+            _aug_min_gain = _live_entry_gates.effective_min_gain(lambda _k, _d: _cfg_auto(_k, _d))  # batch5: MIN_GAIN_TO_BUY_AGGRESSIVELY is the swept switch (floor 2.5); AUGMENT_MIN_GAIN_PCT>0 = explicit override
             if _eff_gain_val < _aug_min_gain:
                 return False, "", 0.0, 0.0
 
@@ -21599,7 +21643,7 @@ class StockStrategy:
                                 _hc_age_min = (datetime.now(timezone.utc) - _hc_lt).total_seconds() / 60.0
                             except Exception:
                                 pass
-                        if _hc_age_min >= 0.0:
+                        if _hc_age_min >= 0.0 and _rally_ok(config, i, is_long, current_price, _hc_last_px, _hc_age_min if _hc_last_t else None):
                             _hc_weekly = _weekly_max_shares_tradier(position, current_price, symbol, current_account.get('') or 'trb')
                             _hc_scale, _hc_b, _hc_s = _reentry_stdev_bounce_combined_scale(i or {}, is_long, _hc_age_min / 60.0)
                             _hc_qty = max(1.0, _hc_weekly * _hc_scale)
@@ -22975,7 +23019,7 @@ class TradierTradeManager:
                             _last_aug_px = float(getattr(pos, 'last_augmentation_price', 0) or 0)
                             if _last_aug_px <= 0:
                                 _last_aug_px = float(getattr(pos, 'entry_price', 0) or 0)
-                            _min_gain_aug = float(_cfg_auto('MIN_GAIN_TO_BUY_AGGRESSIVELY', 3.0))
+                            _min_gain_aug = max(2.5, float(_cfg_auto('MIN_GAIN_TO_BUY_AGGRESSIVELY', 3.0)))  # batch5: floor 2.5 (CLAUDE.md)
                             _gain_since = ((current_price - _last_aug_px) / _last_aug_px * 100) if (_last_aug_px > 0 and side == 'LONG') else (((_last_aug_px - current_price) / _last_aug_px * 100) if _last_aug_px > 0 else 0.0)
                             if _last_aug_px > 0 and _gain_since < _min_gain_aug:
                                 logger.info(f"[REBAL_UAG_BLOCK] {symbol} {side}: gain_since_last_add={_gain_since:+.2f}% < MIN_GAIN_TO_BUY_AGGRESSIVELY={_min_gain_aug:.1f}% — HOLDING")
@@ -27482,7 +27526,7 @@ class TradierTradeManager:
                 # Evaluate cumulation: need at least MIN_TFS agreeing
                 if _kg_checks:
                     if _cum_mode:
-                        _min_tfs = int(_cfg_auto('KINDERGARTEN_CUMULATIVE_MIN_TFS', 1) or 1)
+                        _min_tfs = _live_entry_gates.effective_kg_min_tfs(lambda _k, _d: _cfg_auto(_k, _d))  # batch5 LG-15
                         # strict TFs override: if KINDERGARTEN_STRICT_TFS set, all listed TFs must agree
                         _strict_raw = str(_cfg_auto('KINDERGARTEN_STRICT_TFS', '') or '').strip()
                         if _strict_raw:
@@ -27494,7 +27538,7 @@ class TradierTradeManager:
                                 return False
                         # count passing checks
                         _passing = sum(1 for _, ok in _kg_checks if ok)
-                        if _passing < _min_tfs:
+                        if _passing < min(_min_tfs, len(_kg_checks)):  # FLT2 2026-10-01: need capped at #checks available (twin: vec_decisions/live_kindergarten_stocks); neutral while KC>=1
                             if config.VERBOSE: logger.info(f"[KINDERGARTEN_CUM] LONG {symbol} BLOCKED: only {_passing}/{len(_kg_checks)} kindergarten checks pass (need {_min_tfs}) checks={_kg_checks}")
                             return False
                         # log pass — each check cumulates, none excludes another
@@ -27838,7 +27882,7 @@ class TradierTradeManager:
                         _kg_checks_s.append(('SMA200_'+_tf_sma200, _px2 < float(_sma200)))
                 if _kg_checks_s:
                     if _cum_mode_s:
-                        _min_tfs_s = int(_cfg_auto('KINDERGARTEN_CUMULATIVE_MIN_TFS', 1) or 1)
+                        _min_tfs_s = _live_entry_gates.effective_kg_min_tfs(lambda _k, _d: _cfg_auto(_k, _d))  # batch5 LG-15
                         _strict_raw_s = str(_cfg_auto('KINDERGARTEN_STRICT_TFS', '') or '').strip()
                         if _strict_raw_s:
                             _strict_tfs_s = [t.strip() for t in _strict_raw_s.split(',') if t.strip()]
@@ -27847,7 +27891,7 @@ class TradierTradeManager:
                                 if config.VERBOSE: logger.info(f"[KINDERGARTEN_CUM] SHORT {symbol} BLOCKED: strict TFs {_strict_tfs_s} not all aligned checks={_kg_checks_s}")
                                 return False
                         _passing_s = sum(1 for _, ok in _kg_checks_s if ok)
-                        if _passing_s < _min_tfs_s:
+                        if _passing_s < min(_min_tfs_s, len(_kg_checks_s)):  # FLT2 2026-10-01 cap, same as LONG
                             if config.VERBOSE: logger.info(f"[KINDERGARTEN_CUM] SHORT {symbol} BLOCKED: only {_passing_s}/{len(_kg_checks_s)} checks pass (need {_min_tfs_s}) checks={_kg_checks_s}")
                             return False
                     else:
