@@ -137,6 +137,7 @@ class Config:
     AUGMENT_AT_LOSS_ENABLED: bool = False  # 2026-08-18 DEBATE GATE — base rule OFF. Augmenting at loss may be revisited MUCH LATER only with Tier-2 proof (≥48 sym × >1yr × ≥30 trades/sym) + USER explicit unlock. Never flip True casually — it was the core bleed. See BACKTEST_REPLICA_SWITCHES.md §0.
     # === 2026-09-06 AUGMENT SCOPE EXPANSION — bounce vs breakout + fallback reduce ===
     AUGMENT_MIN_GAIN_PCT: float = 3.0
+    AUGMENT_TYPED_MIN_GAIN_ENABLED: bool = False  # UNW-L 2026-10-01: True => AUGMENT_BOUNCE_MIN_GAIN_PCT / AUGMENT_BREAKOUT_MIN_GAIN_PCT REPLACE the generic MIN_GAIN_TO_BUY_AGGRESSIVELY/AUGMENT_MIN_GAIN_PCT tier per augment type (live: ez_manage UAG choke point + tradier evaluate_augment DC_TIER; vector twin must match). False = today's behaviour.
     AUGMENT_BOUNCE_MIN_GAIN_PCT: float = 0.5
     AUGMENT_BREAKOUT_MIN_GAIN_PCT: float = 2.0
     AUGMENT_FALLBACK_REDUCE_ENABLED: bool = False

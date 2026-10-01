@@ -2188,6 +2188,13 @@ class AdvancedSignalRater:
         _wt_dc_stoch_tf = str(getattr(config, 'WT_DC_STOCH_TF', '5m'))
         _wt_dc_htf = str(getattr(config, 'WT_DC_TF_HTF', '4h'))
         _wt_dc_htf2 = str(getattr(config, 'WT_DC_TF_HTF2', 'D'))
+        try:  # UNW-L 2026-10-01: WT_DC_TF_COMBO shorthand (same resolution as v12_quick_engine._wtdc_combo_resolve; default 1h_4h_D = no change)
+            from vec_decisions.live_unw_gates import wtdc_combo_tfs as _unw_combo
+            _unw_c = _unw_combo(lambda k, d=None: getattr(config, k, d))
+            if _unw_c is not None:
+                _wt_dc_tf_entry, _wt_dc_htf, _wt_dc_htf2 = str(_unw_c[0]), str(_unw_c[1]), str(_unw_c[2])
+        except Exception:
+            pass
         # DC_BREAKOUT_TF_EXPANDED and EXIT_VELOCITY_WT_TFS are handled at their respective gates below (4500, exit velocity)
         if not is_exit and not skip_boycott:
             if is_long and not bool(getattr(config, 'WT_DC_LONG_ENABLED', True)):

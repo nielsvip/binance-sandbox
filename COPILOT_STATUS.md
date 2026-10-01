@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-01 17:24:42 UTC
+# Copilot Status — 2026-10-01 17:55:21 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-01T17:11:58
-- **STALE_INDICATORS** [tradier]  — 2026-10-01T17:12:59
-- **STALE_INDICATORS** [tradier]  — 2026-10-01T17:16:02
-- **STALE_INDICATORS** [tradier]  — 2026-10-01T17:18:05
-- **STALE_INDICATORS** [tradier]  — 2026-10-01T17:18:35
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-01T17:21:08
-- **STALE_INDICATORS** [tradier]  — 2026-10-01T17:21:38
-- **STALE_INDICATORS** [tradier]  — 2026-10-01T17:22:09
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-01T17:22:39
-- **STALE_INDICATORS** [tradier]  — 2026-10-01T17:23:40
+- **STALE_INDICATORS** [tradier]  — 2026-10-01T17:52:15
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-01T17:52:15
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-01T17:52:15
+- **STALE_INDICATORS** [tradier]  — 2026-10-01T17:52:46
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-01T17:53:17
+- **STALE_INDICATORS** [tradier]  — 2026-10-01T17:53:48
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-01T17:54:18
+- **STALE_INDICATORS** [tradier]  — 2026-10-01T17:54:49
+- **STALE_INDICATORS** [tradier]  — 2026-10-01T17:55:19
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-01T17:55:20
 
 ## Missed Trades (trader comparison)
 
@@ -29,11 +29,11 @@ _None_
 
 **Held:** 5 | **Watching for reentry:** 0 | **Reentered:** 0
 
-- HELD: **CLS** LONG (tradier) peak +5.8%, now +5.8%
-- HELD: **SNDK** LONG (tradier) peak +4.4%, now +4.4%
-- HELD: **MU** LONG (tradier) peak +4.2%, now +4.1%
-- HELD: **PYPL** SHORT (tradier) peak +3.8%, now +2.8%
-- HELD: **SNOW** LONG (tradier) peak +3.4%, now +2.6%
+- HELD: **CLS** LONG (tradier) peak +6.6%, now +5.7%
+- HELD: **MU** LONG (tradier) peak +6.4%, now +6.1%
+- HELD: **SNDK** LONG (tradier) peak +5.1%, now +4.8%
+- HELD: **PYPL** SHORT (tradier) peak +3.8%, now +2.7%
+- HELD: **SNOW** LONG (tradier) peak +3.4%, now +2.1%
 
 ## Supervisor
 

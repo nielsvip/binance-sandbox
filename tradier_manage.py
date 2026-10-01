@@ -12632,7 +12632,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     # setups fire — long-term hold needs few, very high quality entries.
                     if _wtdc_detailed:
                         _entry_threshold = float(_cfg_auto('WT_DC_DETAILED_ENTRY_THRESHOLD', 43))
-                        _det_tf = str(_cfg_auto('WT_DC_TF_ENTRY', '1h')).lower()
+                        _det_tf = str(_unw_wtdc_tf(_cfg_auto, 'WT_DC_TF_ENTRY', '1h')).lower()
                         if _det_tf == '15m':
                             _entry_threshold = max(20.0, _entry_threshold - 10.0)
                         elif _det_tf == '4h':
@@ -12658,7 +12658,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         # SHORT K5M block disabled when hard switch OFF
                     # Hard HTF gate — always 4h_D for shorts (cannot be turned off via 'none')
                     # 2026-09-19 TF-expanded: WT_DC_TF_HTF/HTF2 + HTF_GATE_MODE + STOCH/DC_TF + thresholds (15m+ only, vector parity)
-                    _wt_dc_tf_entry = str(_cfg_auto('WT_DC_TF_ENTRY', '1h'))
+                    _wt_dc_tf_entry = str(_unw_wtdc_tf(_cfg_auto, 'WT_DC_TF_ENTRY', '1h'))
                     _wt_dc_dc_tf = str(_cfg_auto('WT_DC_DC_TF', '1h'))
                     _wt_dc_stoch_tf = str(_cfg_auto('WT_DC_STOCH_TF', '5m'))
                     _wt_dc_htf_mode = str(_cfg_auto('WT_DC_HTF_GATE_MODE', 'AND')).upper()
@@ -12676,8 +12676,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     # 2026-09-23 FIX: init _htf_block else UnboundLocalError at line 12046 when default 4h/D gate takes no branch (seen 50+ crashes in trb log .3)
                     _htf_block = False
                     # TF-HTF2 expanded gate (vector parity): when WT_DC_TF_HTF/HTF2 differ from legacy 4h/D, use them with AND/OR mode
-                    _wt_dc_htf = str(_cfg_auto('WT_DC_TF_HTF', '4h')).lower()
-                    _wt_dc_htf2 = str(_cfg_auto('WT_DC_TF_HTF2', 'D')).lower()
+                    _wt_dc_htf = str(_unw_wtdc_tf(_cfg_auto, 'WT_DC_TF_HTF', '4h')).lower()
+                    _wt_dc_htf2 = str(_unw_wtdc_tf(_cfg_auto, 'WT_DC_TF_HTF2', 'D')).lower()
                     if _wt_dc_htf != '4h' or _wt_dc_htf2.lower() != 'd':
                         _exp_htf1_against = False
                         _exp_htf2_against = False
@@ -14048,6 +14048,45 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                             return False
         except Exception as _lege:
             logger.warning(f"[LIVE_ENTRY_GATES] check error (fail-open): {_lege}")
+        # ═══ UNW-L 2026-10-01 live twins of vector-only regime switches (vec_decisions/live_unw_gates.py; all default OFF = neutral) ═══
+        # AUGMENT_BULL_KILL_ENABLED (block AUGMENT on D-bull) / BULL_HOLD_EXIT_DELAY_BARS / BEAR_HOLD_EXIT_DELAY_BARS (hold technical CLOSE/REDUCE). Same predicates as v12_quick_engine.
+        try:
+            _unw_act = (action or '').upper()
+            if position_key and ('AUGMENT' in _unw_act or 'CLOSE' in _unw_act or 'REDUCE' in _unw_act) and 'HEDGE' not in _unw_act and 'HEDGE' not in (reason or '').upper():
+                _unw_acct, _unw_sym, _unw_side = parse_position_key(position_key)
+                _unw_c = lambda _k, _d=None: _cfg(_k, _d, _unw_acct, _unw_sym, _unw_side)
+                _unw_aug = ('AUGMENT' in _unw_act) and bool(_unw_c('AUGMENT_BULL_KILL_ENABLED', False))
+                _unw_exit = (('CLOSE' in _unw_act or 'REDUCE' in _unw_act)
+                             and (int(float(_unw_c('BULL_HOLD_EXIT_DELAY_BARS', 0) or 0)) > 0 or int(float(_unw_c('BEAR_HOLD_EXIT_DELAY_BARS', 0) or 0)) > 0))
+                if _unw_aug or _unw_exit:
+                    from vec_decisions import live_unw_gates as _unw
+                    _unw_ind = (trade_manager.get_indicators(_unw_sym) if _unw_sym else {}) or {}
+                    if _unw_aug and _unw.augment_bull_kill_blocked(_unw_c, _unw_ind):
+                        logger.warning(f"🚫 [AUGMENT_BULL_KILL] {position_key}: BLOCKED {action} — D bull (close_D>sma_20_D & wt1_4h>thr). reason={(reason or '')[:60]}")
+                        _direct_queue_gate_note(trade_manager, position_key, reason, "AUGMENT_BULL_KILL")
+                        return False
+                    if _unw_exit and _unw.exit_hold_blocked(_unw_c, _unw_ind, _unw_side == "LONG", reason):
+                        logger.warning(f"🚫 [BULL/BEAR_HOLD] {position_key}: HELD {action} — regime hold (technical exit suppressed). reason={(reason or '')[:60]}")
+                        _direct_queue_gate_note(trade_manager, position_key, reason, "REGIME_HOLD")
+                        return False
+        except Exception as _unwe:
+            logger.warning(f"[UNW-L regime gates] check error (fail-open): {_unwe}")
+        # UNW-L 2026-10-01: WT_COMPOSITE_HTF_GATE + WT_COMPOSITE_ENTRY_BLOCK hard block on fresh OPEN / AUGMENT (vec_decisions/wt_composite_gate twin); master default False = neutral.
+        try:
+            _wtc_act = (action or '').upper()
+            if position_key and ('AUGMENT' in _wtc_act or (('OPEN' in _wtc_act or 'ENTRY' in _wtc_act or _wtc_act == 'BUY') and 'REENTER' not in _wtc_act and 'CLOSE' not in _wtc_act and 'REDUCE' not in _wtc_act
+                                 and 'REENTRY' not in (reason or '').upper() and 'OBLIGATORY' not in (reason or '').upper())) and 'HEDGE' not in _wtc_act and 'HEDGE' not in (reason or '').upper():
+                _wtc_acct, _wtc_sym, _wtc_side = parse_position_key(position_key)
+                _wtc_c = lambda _k, _d=None: _cfg(_k, _d, _wtc_acct, _wtc_sym, _wtc_side)
+                if bool(_wtc_c('WT_COMPOSITE_HTF_GATE', False)):
+                    from vec_decisions import live_unw_gates as _unw2
+                    _wtc_ind = (trade_manager.get_indicators(_wtc_sym) if _wtc_sym else {}) or {}
+                    if _unw2.wt_composite_block(_wtc_c, _wtc_ind, _wtc_side == "LONG"):
+                        logger.warning(f"🚫 [WT_COMPOSITE_HTF_GATE] {position_key}: BLOCKED {action} — alignment<3 or composite<{_wtc_c('WT_COMPOSITE_ENTRY_BLOCK', -20.0)}. reason={(reason or '')[:60]}")
+                        _direct_queue_gate_note(trade_manager, position_key, reason, "WT_COMPOSITE_HTF_GATE")
+                        return False
+        except Exception as _unwe2:
+            logger.warning(f"[UNW-L WT_COMPOSITE gate] check error (fail-open): {_unwe2}")
         if not is_regular_trading_hours():
             logger.debug(f"[queue_trade_action] not in trading hours")
             return
@@ -15114,6 +15153,18 @@ class CorrelationMatrix:
 
 # --- AUTO-WIRED LIVE for remaining 308 RESEARCH ONLY (explicit literals for scanner) ---
 # ═══ AUTO-GENERATED RESEARCH-ONLY LIVE GATES — explicit literals for scanner + causal per-bar gating ═══
+def _unw_wtdc_tf(cfg_get, key, default):
+    """UNW-L 2026-10-01: WT_DC_TF_COMBO ('A_B_C' shorthand) -> WT_DC_TF_ENTRY/HTF/HTF2, same resolution as v12_quick_engine._wtdc_combo_resolve. Default combo '1h_4h_D' = no change."""
+    try:
+        from vec_decisions.live_unw_gates import wtdc_combo_tfs
+        _c = wtdc_combo_tfs(lambda k, d=None: cfg_get(k, d))
+        if _c is not None and key in ('WT_DC_TF_ENTRY', 'WT_DC_TF_HTF', 'WT_DC_TF_HTF2'):
+            return {'WT_DC_TF_ENTRY': _c[0], 'WT_DC_TF_HTF': _c[1], 'WT_DC_TF_HTF2': _c[2]}[key]
+    except Exception:
+        pass
+    return cfg_get(key, default)
+
+
 def _apply_research_only_live_gates(account_key, symbol, side, indicators, is_entry: bool) -> tuple:
 
     # 2026-09-28 RANDOM-VETO PURGE (user "random entry vetoes pls fix this"): every research gate of the
@@ -21344,6 +21395,11 @@ class StockStrategy:
                 _eff_gain_val = gain
             # Use AUGMENT_MIN_GAIN_PCT if set, otherwise MIN_GAIN_TO_BUY_AGGRESSIVELY
             _aug_min_gain = _live_entry_gates.effective_min_gain(lambda _k, _d: _cfg_auto(_k, _d))  # batch5: MIN_GAIN_TO_BUY_AGGRESSIVELY is the swept switch (floor 2.5); AUGMENT_MIN_GAIN_PCT>0 = explicit override
+            try:  # UNW-L 2026-10-01: DC_TIER augments are the BREAKOUT type -> AUGMENT_BREAKOUT_MIN_GAIN_PCT replaces the generic tier when AUGMENT_TYPED_MIN_GAIN_ENABLED (default False = unchanged)
+                from vec_decisions.live_unw_gates import augment_tier_min_gain as _unw_tier
+                _aug_min_gain = _unw_tier(lambda _k, _d=None: _cfg_auto(_k, _d), 'DC_TIER_AUG', _aug_min_gain)
+            except Exception:
+                pass
             if _eff_gain_val < _aug_min_gain:
                 return False, "", 0.0, 0.0
 
@@ -22163,6 +22219,7 @@ class DailyHistoryManager:
 
         # Calculate Indicators
         stats['sma_200_D'] = calc_sma(200)
+        stats['sma_20_D'] = calc_sma(20)  # UNW-L 2026-10-01: vector regime key (BULL_HOLD/BEAR_HOLD/AUGMENT_BULL_KILL)
         stats['ema_20_D'] = calc_ema(20)
         stats['ema_50_D'] = calc_ema(50)
         stats['atr_D'] = calc_atr(14)

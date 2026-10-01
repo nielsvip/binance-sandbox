@@ -3504,6 +3504,7 @@ class TradierConfig:
     AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER: bool = True  # BASE RULE — NEVER augment losing positions. OPEN at loss impossible (flat has no gain). See AUGMENT_AT_LOSS_ENABLED_TRADIER debate gate.
     # === 2026-09-06 AUGMENT SCOPE EXPANSION — bounce vs breakout separation + fallback reduce ===
     AUGMENT_MIN_GAIN_PCT: float = 3.0  # generic augment MIN_GAIN (sweep 0.5,1.0,1.5,2.0,3.0,5.0)
+    AUGMENT_TYPED_MIN_GAIN_ENABLED: bool = False  # UNW-L 2026-10-01: True => AUGMENT_BOUNCE_MIN_GAIN_PCT / AUGMENT_BREAKOUT_MIN_GAIN_PCT REPLACE the generic MIN_GAIN_TO_BUY_AGGRESSIVELY/AUGMENT_MIN_GAIN_PCT tier per augment type (live: ez_manage UAG choke point + tradier evaluate_augment DC_TIER; vector twin must match). False = today's behaviour.
     AUGMENT_BOUNCE_MIN_GAIN_PCT: float = 0.5  # bounce adds at lower gain (sweep 0.0,0.5,1.0,1.5)
     AUGMENT_BREAKOUT_MIN_GAIN_PCT: float = 2.0  # breakout adds at higher gain (sweep 1.0,1.5,2.0,3.0,5.0)
     BOUNCE_AUGMENT_MIN_LOSS_PCT: float = -0.5

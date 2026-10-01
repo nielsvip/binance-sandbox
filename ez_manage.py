@@ -29980,6 +29980,41 @@ class MultiAccountTradeManager:
                             return f"BLOCKED_EMA_9_21_FILTER_{position_side}"
         except Exception as _kgxe:
             logger.warning(f"[KG/EMA_9_21 chokepoint] check error (fail-open): {_kgxe}")
+        # ═══ UNW-L 2026-10-01 live twins of vector-only regime switches (vec_decisions/live_unw_gates.py; all default OFF = neutral) ═══
+        #   AUGMENT_BULL_KILL_ENABLED: block AUGMENT when D-bull (close_D>sma_20_D & wt1_4h>BULL_HOLD_WT_THR)   [v12_quick_engine ~10088]
+        #   BULL_HOLD_EXIT_DELAY_BARS / BEAR_HOLD_EXIT_DELAY_BARS: hold technical (non-protective) CLOSE/REDUCE in D-bull (any side) / D-bear (shorts) [~9970/~9990]
+        try:
+            if symbol and position_side in ("LONG", "SHORT"):
+                _unw_get = lambda _k, _d=None: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))
+                _unw_aug = "AUGMENT" in _kill_act and bool(_unw_get("AUGMENT_BULL_KILL_ENABLED", False))
+                _unw_exit = (("CLOSE" in _kill_act or "REDUCE" in _kill_act) and "HEDGE" not in _kill_act
+                             and (int(float(_unw_get("BULL_HOLD_EXIT_DELAY_BARS", 0) or 0)) > 0 or int(float(_unw_get("BEAR_HOLD_EXIT_DELAY_BARS", 0) or 0)) > 0))
+                if _unw_aug or _unw_exit:
+                    from vec_decisions import live_unw_gates as _unw
+                    _unw_ind = await ii(self, symbol) or {}
+                    if _unw_aug and _unw.augment_bull_kill_blocked(_unw_get, _unw_ind):
+                        logger.warning(f"🚫 [AUGMENT_BULL_KILL] {position_key}: BLOCKED {action} — D bull (close_D>sma_20_D & wt1_4h>thr). reason={(reason or '')[:50]}")
+                        return f"BLOCKED_AUGMENT_BULL_KILL_{position_side}"
+                    if _unw_exit and _unw.exit_hold_blocked(_unw_get, _unw_ind, position_side == "LONG", reason):
+                        logger.warning(f"🚫 [BULL/BEAR_HOLD] {position_key}: HELD {action} — regime hold (technical exit suppressed). reason={(reason or '')[:50]}")
+                        return f"BLOCKED_REGIME_HOLD_{position_side}"
+        except Exception as _unwe:
+            logger.warning(f"[UNW-L regime gates] check error (fail-open): {_unwe}")
+        # UNW-L 2026-10-01: WT_COMPOSITE_HTF_GATE + WT_COMPOSITE_ENTRY_BLOCK hard block (vec_decisions/wt_composite_gate twin): fresh OPEN and AUGMENT; master default False = neutral.
+        try:
+            if symbol and position_side in ("LONG", "SHORT") and (
+                ("AUGMENT" in _kill_act)
+                or (("OPEN" in _kill_act or "ENTRY" in _kill_act or _kill_act == "BUY") and "REENTRY" not in _kill_act and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
+                    and "REENTRY" not in (reason or "").upper() and "OBLIGATORY" not in (reason or "").upper())
+            ) and "HEDGE" not in (reason or "").upper():
+                _wtc_get = lambda _k, _d=None: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))
+                if bool(_wtc_get("WT_COMPOSITE_HTF_GATE", False)):
+                    from vec_decisions import live_unw_gates as _unw2
+                    if _unw2.wt_composite_block(_wtc_get, await ii(self, symbol) or {}, position_side == "LONG"):
+                        logger.warning(f"🚫 [WT_COMPOSITE_HTF_GATE] {position_key}: BLOCKED {action} — alignment<3 or composite<{_wtc_get('WT_COMPOSITE_ENTRY_BLOCK', -20.0)}. reason={(reason or '')[:50]}")
+                        return f"BLOCKED_WT_COMPOSITE_HTF_GATE_{position_side}"
+        except Exception as _unwe2:
+            logger.warning(f"[UNW-L WT_COMPOSITE gate] check error (fail-open): {_unwe2}")
         # ═══════════════════════════════════════════════════════════════════════════
         # 🟡 GR_FILTER_ALL_ENTRIES (USER 2026-06-03 "GR is the prime entrypoint"): EVERY fresh entry
         # (DELTA / GOLDEN_RULE / force-open / etc.) must pass the GR filter — same breakout-mode min7
@@ -31644,6 +31679,11 @@ class MultiAccountTradeManager:
                     # 2026-09-06 AUGMENT SCOPE EXPANSION — use AUGMENT_MIN_GAIN_PCT if set (sweepable), else legacy
                     import live_entry_gates as _leg_mg  # batch5
                     _uag_min_gain = _leg_mg.effective_min_gain(lambda _k, _d: getattr(config, _k, _d))  # MIN_GAIN_TO_BUY_AGGRESSIVELY swept switch (floor 2.5); AUGMENT_MIN_GAIN_PCT>0 = override
+                    try:  # UNW-L 2026-10-01: AUGMENT_BOUNCE/BREAKOUT_MIN_GAIN_PCT replace the generic tier when AUGMENT_TYPED_MIN_GAIN_ENABLED (default False = unchanged)
+                        from vec_decisions.live_unw_gates import augment_tier_min_gain as _unw_tier
+                        _uag_min_gain = _unw_tier(lambda _k, _d=None: _psym_get(symbol, position_side, _k, getattr(config, _k, _d)), reason, _uag_min_gain)
+                    except Exception as _unw_tier_e:
+                        logger.debug(f"[UNW-L typed augment tier] fail-open: {_unw_tier_e}")
                     _uag_last_px = safe_fetch_float(getattr(_uag_position, "last_augmentation_price", 0.0), 0.0)
                     if _uag_last_px <= 0:
                         _uag_last_px = safe_fetch_float(getattr(_uag_position, "entry_price", 0.0), 0.0)
@@ -46846,7 +46886,7 @@ async def process_position(
                 _hac_w1_15 = safe_fetch_float(_pp_shared_ind.get("wt1_15m", 0), 0.0)
                 _hac_w2_15 = safe_fetch_float(_pp_shared_ind.get("wt2_15m", 0), 0.0)
                 _hac_confirm_ok = (_hac_is_long and _hac_w1_15 < _hac_w2_15) or ((not _hac_is_long) and _hac_w1_15 > _hac_w2_15)
-            if _hac_1h_against and _hac_confirm_ok and bool(getattr(config, "HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H", False)):
+            if _hac_1h_against and _hac_confirm_ok and bool(_psym_get(symbol, position_side, "HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H", getattr(config, "HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H", False))):  # UNW-L 2026-10-01: per-sym/cat_side resolver (same default from config.py)
                 _hac_w1_4h = safe_fetch_float(_pp_shared_ind.get("wt1_4h", 0), 0.0)
                 _hac_w2_4h = safe_fetch_float(_pp_shared_ind.get("wt2_4h", 0), 0.0)
                 _hac_confirm_ok = (_hac_is_long and _hac_w1_4h < _hac_w2_4h) or ((not _hac_is_long) and _hac_w1_4h > _hac_w2_4h)
@@ -48148,7 +48188,7 @@ async def process_position(
                         + int(_at_w1_4h > _at_w2_4h)
                         + int(_at_w1_D > _at_w2_D)
                     )
-                _at_min_tfs = int(getattr(config, "ALL_TF_AGAINST_CLOSE_MIN_TFS", 5))
+                _at_min_tfs = int(float(_psym_get(symbol, position_side, "ALL_TF_AGAINST_CLOSE_MIN_TFS", getattr(config, "ALL_TF_AGAINST_CLOSE_MIN_TFS", 5)) or 5))  # UNW-L 2026-10-01: per-sym/cat_side resolver (same default 4 from config.py), so a sweep winner can reach live
                 _at_against = _at_count >= _at_min_tfs
                 if _at_against:
                     _at_pos_amt = abs(safe_float(getattr(position, "positionAmt", 0)))

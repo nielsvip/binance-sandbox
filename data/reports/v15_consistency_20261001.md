@@ -1150,3 +1150,49 @@
     - `NVDA_SHORT` [s2] 1 cases — NEWBORN_LOSS_KILL_ENABLED T=+0.216/F=-2.013
     - `BNO_SHORT` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-0.001/F=+0.003
 - **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-01T17:31Z · window 48.0h · 537 sym_sides (local+remote)
+- ⚠️ **18 sym_sides / 19 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST`×11, `NEWBORN_LOSS_KILL_ENABLED`×2, `HTF_GATE_D_MANDATORY`×2, `EMA_BLANKET_FILTER_ENABLED`×2, `LH_HL_FILTER_REQUIRE_BOTH`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1
+    - `XMRUSDT_LONG` [s1] 2 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+5.164/F=-9.436; WT_15M_LH_WAIT_EXIT_ENABLED T=-1.720/F=+0.300
+    - `ZENUSDT_LONG` [s1] 1 cases — LH_HL_FILTER_REQUIRE_BOTH T=-1.311/F=-0.429
+    - `1000PEPEUSDC_LONG` [s5] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+2.403/F=-0.396
+    - `TRBUSDT_LONG` [s1] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+5.373/F=-4.717
+    - `COTIUSDT_LONG` [s2] 1 cases — NEWBORN_LOSS_KILL_ENABLED T=+0.560/F=-20.551
+    - `SNXUSDT_LONG` [s2] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+0.944/F=-23.332
+    - `XTZUSDT_LONG` [s5] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+10.311/F=-20.860
+    - `TRBUSDT_SHORT` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-1.228/F=-1.228
+    - `UNIUSDC_LONG` [s5] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+12.187/F=-7.316
+    - `LINKUSDC_LONG` [s5] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+0.434/F=-10.548
+    - `AVAXUSDC_LONG` [s2] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+2.480/F=-1.038
+    - `XLMUSDT_SHORT` [s5] 1 cases — HTF_GATE_D_MANDATORY T=-0.063/F=-0.060
+    - `EGLDUSDT_LONG` [s2] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+10.478/F=-13.938
+    - `MANAUSDT_LONG` [s2] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+0.634/F=-17.051
+    - `KSMUSDT_LONG` [s5] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+0.316/F=-19.262
+    - `PLTR_LONG` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-5.907/F=+0.177
+    - `NVDA_SHORT` [s2] 1 cases — NEWBORN_LOSS_KILL_ENABLED T=+0.216/F=-2.013
+    - `BNO_SHORT` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-0.001/F=+0.003
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-01T17:46Z · window 48.0h · 547 sym_sides (local+remote)
+- ⚠️ **18 sym_sides / 19 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST`×11, `NEWBORN_LOSS_KILL_ENABLED`×2, `HTF_GATE_D_MANDATORY`×2, `EMA_BLANKET_FILTER_ENABLED`×2, `LH_HL_FILTER_REQUIRE_BOTH`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1
+    - `XMRUSDT_LONG` [s1] 2 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+5.164/F=-9.436; WT_15M_LH_WAIT_EXIT_ENABLED T=-1.720/F=+0.300
+    - `ZENUSDT_LONG` [s1] 1 cases — LH_HL_FILTER_REQUIRE_BOTH T=-1.311/F=-0.429
+    - `1000PEPEUSDC_LONG` [s5] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+2.403/F=-0.396
+    - `COTIUSDT_LONG` [s2] 1 cases — NEWBORN_LOSS_KILL_ENABLED T=+0.560/F=-20.551
+    - `SNXUSDT_LONG` [s2] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+0.944/F=-23.332
+    - `XTZUSDT_LONG` [s5] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+10.311/F=-20.860
+    - `TRBUSDT_SHORT` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-1.228/F=-1.228
+    - `UNIUSDC_LONG` [s5] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+12.187/F=-7.316
+    - `LINKUSDC_LONG` [s5] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+0.434/F=-10.548
+    - `AVAXUSDC_LONG` [s2] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+2.480/F=-1.038
+    - `XLMUSDT_SHORT` [s5] 1 cases — HTF_GATE_D_MANDATORY T=-0.063/F=-0.060
+    - `EGLDUSDT_LONG` [s2] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+10.478/F=-13.938
+    - `MANAUSDT_LONG` [s2] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+0.634/F=-17.051
+    - `KSMUSDT_LONG` [s5] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+0.316/F=-19.262
+    - `TRBUSDT_LONG` [s1] 1 cases — NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST T=+5.373/F=-4.717
+    - `PLTR_LONG` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-5.907/F=+0.177
+    - `NVDA_SHORT` [s2] 1 cases — NEWBORN_LOSS_KILL_ENABLED T=+0.216/F=-2.013
+    - `BNO_SHORT` [s2] 1 cases — EMA_BLANKET_FILTER_ENABLED T=-0.001/F=+0.003
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.

@@ -2432,6 +2432,12 @@ class IndicatorCalculator:
                 suffix = field_name.split("_")[-1]
                 result[f"sma_crossover_{suffix}"] = cross_over
                 result[f"sma_crossunder_{suffix}"] = cross_under
+        if timeframe == "D":
+            # UNW-L 2026-10-01: sma_20_D live twin of the NPZ key the vector reads (BULL_HOLD/BEAR_HOLD/AUGMENT_BULL_KILL regime = close_D vs sma_20_D). Separate from the sma list: its crossover suffix would clobber sma_200_D flags.
+            _sma20d, _ = sma_pair(close_series, 20)
+            if _sma20d is not None:
+                result["sma_20_D"] = _sma20d
+                result["close_D"] = float(close_series.iloc[-1]) if hasattr(close_series, "iloc") else float(close_series[-1])
         slope, linearity = linreg_features(close_series, LINREG_LENGTH)
         if slope is not None:
             result[f"lr_trend_{timeframe}"] = slope

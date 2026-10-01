@@ -4464,6 +4464,12 @@ class QuickConfig:
     AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER: bool = True
     AUGMENT_BOUNCE_MIN_GAIN_PCT: float = 0.5  # FIX 2026-09-06: was LIVE_ONLY (live had, v12 missing) — augment bounce min gain
     AUGMENT_BREAKOUT_MIN_GAIN_PCT: float = 2.0  # FIX 2026-09-06: LIVE_ONLY — breakout min gain
+    AUGMENT_TYPED_MIN_GAIN_ENABLED: bool = False  # [UNWV/002] live typed augment tier (UNW-L master; False = generic effective_min_gain, neutral): bounce/breakout thresholds replace the generic tier for typed augments
+    BULL_HOLD_EXIT_DELAY_BARS: int = 0  # [UNWV/002] was only a getattr default (field missing => sweep overrides were ignored); live: config.py 0
+    BEAR_HOLD_EXIT_DELAY_BARS: int = 0
+    BULL_HOLD_WT_THR: float = -53.0
+    BEAR_HOLD_WT_THR: float = 53.0
+    AUGMENT_BULL_KILL_ENABLED: bool = False
     AUGMENT_MIN_GAIN_PCT: float = 0.0  # 2026-10-01 LG-19: 0 = defer to MIN_GAIN_TO_BUY_AGGRESSIVELY (effective 3.0, neutral); >0 = explicit override (floor 2.5)
     ADX_RANGING_THRESHOLD: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
     ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
@@ -5017,6 +5023,7 @@ class QuickConfig:
     STDEV_SLOPE_LOOKBACK_1H: int = 168
     STDEV_SLOPE_LOOKBACK_15M: int = 96
     STDEV_SLOPE_SIZING_MODE: str = "slope_to_top"
+    SLOPE_SIZING_LIVE_TWIN_ENABLED: bool = False  # [UNWV/001] live-faithful band/stdev slope sizing (vec_decisions/slope_sizing_live.py); OFF = legacy simplified stdev block (baseline unchanged)
     BB_FROZEN_STOP_ENABLED: bool = False  # auto-wired 625
     STOCKS_REENTRY_LIVE_SOURCES_ENABLED: bool = True  # [C2 q002] stocks live reentry ladder pathways on 15m+ data (PRICE_CROSS_BACK band, TIER2_FORCED, EMA200_1H_BOUNCE)
     STOCKS_LIVE_TWINS_ENABLED: bool = False  # [C2 q007 -> DEF2/001 default OFF/neutral] stocks DELTA_EXIT_DC_FLOOR hold + STDEV_BREAKOUT size twin (vec_decisions/stocks_live_twins.py); True = live-faithful
@@ -9973,6 +9980,9 @@ def compute_exit_signals(npz, n, is_long, cfg):
             _sma20_d = _safe(npz, 'sma_20_D', n, _close_d)
             if np.all(_sma20_d == _close_d) or np.all(_sma20_d == 0):
                 _sma20_d = _safe(npz, 'sma20_D', n, _close_d)
+            if np.all(_sma20_d == _close_d):  # [UNWV/002] NPZ has no sma_20_D: derive it from close_D (live = SMA20 of daily closes)
+                import vec_decisions.sma20_d as _s20
+                _sma20_d = _s20.sma20_d(npz, n, _close_d)
             _wt_4h_bull = _safe(npz, 'wt1_4h', n, 0.0) if _safe(npz, 'wt1_4h', n, 0.0).sum() != 0 else _safe(npz, 'wt_4h', n, 0.0)
             _wt_thr = float(getattr(cfg, 'BULL_HOLD_WT_THR', -53.0))
             _bull_mask = (_close_d > _sma20_d) & (_wt_4h_bull > _wt_thr)
@@ -9993,6 +10003,9 @@ def compute_exit_signals(npz, n, is_long, cfg):
             _sma20_b = _safe(npz, 'sma_20_D', n, _close_d_b)
             if np.all(_sma20_b == _close_d_b) or np.all(_sma20_b == 0):
                 _sma20_b = _safe(npz, 'sma20_D', n, _close_d_b)
+            if np.all(_sma20_b == _close_d_b):  # [UNWV/002] NPZ has no sma_20_D: derive it from close_D (live = SMA20 of daily closes)
+                import vec_decisions.sma20_d as _s20
+                _sma20_b = _s20.sma20_d(npz, n, _close_d_b)
             _wt_4h_bear = _safe(npz, 'wt1_4h', n, 0.0) if _safe(npz, 'wt1_4h', n, 0.0).sum() != 0 else _safe(npz, 'wt_4h', n, 0.0)
             _wt_thr_b = float(getattr(cfg, 'BEAR_HOLD_WT_THR', 53.0))
             _bear_mask = (_close_d_b < _sma20_b) & (_wt_4h_bear < _wt_thr_b)
@@ -10027,9 +10040,15 @@ def compute_exit_signals(npz, n, is_long, cfg):
 def compute_augment_signals(npz, n, is_long, cfg):
     """Returns (augment_sig: bool[n], augment_mult: float[n]) — mult is the
     fraction of current qty added to the position when augment_sig fires."""
+    _r = compute_augment_signals_ex(npz, n, is_long, cfg)
+    return _r[0], _r[1]
+
+
+def compute_augment_signals_ex(npz, n, is_long, cfg):
+    """[UNWV/002] same as compute_augment_signals but also returns (bounce_sig, pyramid_sig) so the typed augment tier can tell the sources apart."""
     augment_sig = np.zeros(n, dtype=bool)
     if bool(getattr(cfg, 'VEC_HONOR_DEAD_LIVE_DELTA_GATES', False)) and not getattr(cfg, 'DELTA_GATE_AUGMENT', True):  # [C2 b4] dead in live
-        return augment_sig, np.zeros(n, dtype=np.float64)
+        return augment_sig, np.zeros(n, dtype=np.float64), np.zeros(n, dtype=bool), np.zeros(n, dtype=bool)
     close = _base_safe(npz, 'close', n, cfg)
     k = _base_safe(npz, 'stoch_k', n, cfg, 50); d = _base_safe(npz, 'stoch_d', n, cfg, 50)
     k_prev = np.roll(k, 1); k_prev[0] = k[0]
@@ -10090,6 +10109,9 @@ def compute_augment_signals(npz, n, is_long, cfg):
             _sma20_a = _safe(npz, 'sma_20_D', n, _close_d_a)
             if np.all(_sma20_a == _close_d_a) or np.all(_sma20_a == 0):
                 _sma20_a = _safe(npz, 'sma20_D', n, _close_d_a)
+            if np.all(_sma20_a == _close_d_a):  # [UNWV/002] NPZ has no sma_20_D: derive it from close_D (live = SMA20 of daily closes)
+                import vec_decisions.sma20_d as _s20
+                _sma20_a = _s20.sma20_d(npz, n, _close_d_a)
             _wt4_a = _safe(npz, 'wt1_4h', n, 0.0)
             _thr_a = float(getattr(cfg, 'BULL_HOLD_WT_THR', -53.0))
             _bull_a = (_close_d_a > _sma20_a) & (_wt4_a > _thr_a)
@@ -10100,7 +10122,7 @@ def compute_augment_signals(npz, n, is_long, cfg):
     mult = np.full(n, 0.5, dtype=np.float64)
     if getattr(cfg, 'PYRAMID_ENABLED', False):
         mult = np.where(pyramid_sig, getattr(cfg, 'PYRAMID_SIZE_MULT', 0.5), mult)
-    return augment_sig, mult
+    return augment_sig, mult, bounce_sig, pyramid_sig
 
 
 def _augment_allowed(cfg, live_pnl_pct):
@@ -10193,7 +10215,13 @@ def compute_regime_sizing_mult(npz, n, is_long, cfg):
     # STDEV_SLOPE_SIZING 2.5 ladder — REAL position sizing (quantity influences gain)
     # SIMPLE FIX 2026-09-26: D timeframe r (slope) +/-2.5stdev → 5x to 1x gradient (bottom→top longs, top→bottom shorts)
     # Re-added STDEV: does not trade, only varies quantity. Disabled all other switches, just on/off.
-    if bool(getattr(cfg, 'STDEV_SLOPE_SIZING_ENABLED', False)):
+    if bool(getattr(cfg, 'SLOPE_SIZING_LIVE_TWIN_ENABLED', False)):
+        try:
+            import vec_decisions.slope_sizing_live as _ssl
+            mult = mult * _ssl.mult(npz, n, is_long, cfg)  # [UNWV/001] live band/stdev slope sizing twin (replaces the simplified block below)
+        except Exception:
+            pass
+    elif bool(getattr(cfg, 'STDEV_SLOPE_SIZING_ENABLED', False)):
         try:
             _stdev_max = 5.0  # 5x at bottom (longs) / top (shorts)
             _stdev_min = 1.0  # 1x at opposite extreme
@@ -11351,7 +11379,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _iso_force_masters(cfg)  # [N1/004] isolated-family test mode forces the family master(s) ON (no-op when ENTRY_ISOLATE_FAMILY is empty)
     entry_sig = compute_entry_signals(npz, n, is_long, cfg)
     exit_sig = compute_exit_signals(npz, n, is_long, cfg)
-    augment_sig, augment_mult = compute_augment_signals(npz, n, is_long, cfg)
+    augment_sig, augment_mult, _aug_bounce_sig, _aug_pyramid_sig = compute_augment_signals_ex(npz, n, is_long, cfg)  # [UNWV/002] typed sources
     reduce_sig, reduce_frac, qr_cond = compute_reduce_signals(npz, n, is_long, cfg)
     events = []  # AUGMENT / partial-REDUCE ledger events — merged into 'ledger' only, never into trade metrics
     # NOLOSS_BYPASS_WT_5OF5 (tradier_manage.py:19067-19086): per-bar count of WT TFs against
@@ -11631,6 +11659,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _n4_qr_macd = (np.asarray(_safe(npz, 'macd_crossunder_' + _mtf, n), dtype=np.float64) > 0.5, np.asarray(_safe(npz, 'macd_crossover_' + _mtf, n), dtype=np.float64) > 0.5)
     # [N4 queue/2b] parity master: stocks augment ONLY from live's sources (DC_TIER / TRAILING_AUG / WT_D_BOUNCE_AUG / LR band ladder parity); the vector's gain-ladder/pullback/pyramid augments are not live stock sources
     _n4_live_only = getattr(cfg, 'MODE', 'crypto') == 'tradier' and bool(getattr(cfg, 'STOCK_LIVE_AUGMENT_ONLY', False))
+    _typed_aug_on = bool(getattr(cfg, 'AUGMENT_TYPED_MIN_GAIN_ENABLED', False))  # [UNWV/002]
+    _typed_aug_fn = None
+    if _typed_aug_on:
+        try:
+            import vec_decisions.live_unw_gates as _lug_t
+            _typed_aug_fn = _lug_t.augment_tier_min_gain
+        except Exception:
+            _typed_aug_on = False
     _n4_lr = None
     if getattr(cfg, 'MODE', 'crypto') == 'tradier' and bool(getattr(cfg, 'LR_BAND_LADDER_ENABLED', False)) and bool(getattr(cfg, 'LR_BAND_LADDER_ORDINARY_PARITY_ENABLED', False)):
         _n4_lr = vec_decisions.lr_band_ladder_aug.precompute(npz, n, _safe)
@@ -11915,6 +11951,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         if _wcg_blk is not None:
             entry_sig = entry_sig & ~_wcg_blk
             augment_sig = augment_sig & ~_wcg_blk  # live rate() WAIT also kills winner-augments (15028-15060: 'WAIT' in augment_reason -> return)
+            if str(getattr(cfg, 'MODE', 'crypto')) != 'tradier' and _wd_open is not None and bool(getattr(cfg, 'WD_OPEN_CHOKE_GATES', True)):
+                _wd_open = _wd_open & ~np.asarray(_wcg_blk, dtype=bool)  # [UNWV/002] live UNW-L twin at the execute_now fresh-OPEN chokepoint also gates MOMENTUM_WATCHDOG opens (crypto)
     except Exception:
         pass
     try:  # [N1/004] crypto rate() ADX REGIME hard block (ez_positions_quick.py 2705-2712): adx_{ADX_TF} < ADX_RANGING_THRESHOLD -> WAIT. Master ADX_REGIME_FILTER_ENABLED (crypto default False => inert).
@@ -12894,8 +12932,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 if _wq >= 0.5:
                     _n4_fire, _n4_val, _n4_reason, _n4_bypass_profit, _n4_tr_new = True, float(_wq) * px, _wd_reason, True, None
                     pos['n4_wtd_pending'] = _wd_state
+        _uag_typed_min = None
+        if _typed_aug_on and augment_sig[i] and not _fr_fire:
+            try:  # [UNWV/002] live typed tier (live_unw_gates.augment_tier_min_gain): pyramid source = breakout type, bounce source = bounce type
+                _uag_typed_min = _typed_aug_fn(lambda k, d=None: getattr(cfg, k, d), 'PYRAMID_AUG' if bool(_aug_pyramid_sig[i]) else ('BOUNCE_AUG' if bool(_aug_bounce_sig[i]) else 'UNTYPED_AUG'), vec_decisions.uagain_gate.effective_min_gain(cfg))
+            except Exception:
+                _uag_typed_min = None
         _uag_src_ok = _n4_fire or (not _n4_live_only and (_gl_fire or ((augment_sig[i] or _fr_fire) and vec_decisions.uagain_gate.uagain_gate_pass(
-            cfg, is_long, px, float(pos.get('last_aug_px', 0.0)) or float(pos.get('entry_price', pos['avg_price'])), live_pnl_pct, float(pos.get('peak_pnl_pct', 0.0))))))
+            cfg, is_long, px, float(pos.get('last_aug_px', 0.0)) or float(pos.get('entry_price', pos['avg_price'])), live_pnl_pct, float(pos.get('peak_pnl_pct', 0.0)), _uag_typed_min))))
         if _uag_src_ok and (_htf_aug_ok is None or bool(_htf_aug_ok[i])) and not (_qta_ct_block is not None and bool(_qta_ct_block[i])) and (_augment_allowed(cfg, live_pnl_pct) or _n4_bypass_profit) and (_sa_cap is None or int(pos.get('n_augments', 0)) < _sa_cap):
             _aug_cd_bars = vec_decisions.gain_ladder_augment.cooldown_bars(cfg, bmin)
             _aug_last_bar = int(pos.get('last_aug_bar', -10**9))
