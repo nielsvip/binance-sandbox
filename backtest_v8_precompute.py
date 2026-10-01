@@ -1836,9 +1836,51 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     # regardless of existing file length — 15m is the canonical backtest source.
     _resample_src_tf = "15m"
     _resample_src_df = dfs.get(_resample_src_tf, base_df)
+    # 2026-10-01 FIX: For tradier W/M, synthesize from D when D has deeper history than 15m.
+    # Tradier D cache has ~2500 ET days (2016-2026) while 15m cache is truncated to ~80d on many hosts,
+    # so W/M resampled from 15m gives only ~15 weekly / ~3 monthly bars — far below the 200-bar
+    # SMA requirement. D-derived W/M gives 500+ weekly and 120+ monthly (or max available),
+    # satisfying "200 or max". Prepend authentic W/M history (back to 1980) when available.
+    if mode == "tradier" and "D" in dfs and len(dfs["D"]) >= 100:
+        for _wm_tf in ("W", "M"):
+            if _wm_tf not in tfs:
+                continue
+            try:
+                _rule = "W-MON" if _wm_tf == "W" else "MS"
+                _d_wm = dfs["D"].resample(_rule, label="left", closed="left").agg(
+                    {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
+                ).dropna()
+                if _d_wm is not None and len(_d_wm) >= 20:
+                    # Keep older authentic W/M bars (e.g. 1980-2016 for AAPL) strictly before first D-derived bar
+                    _d_wm = _prepend_authentic_history(_d_wm, dfs.get(_wm_tf))
+                    _existing = dfs.get(_wm_tf)
+                    # Use D-derived if it is longer than existing or longer than 15m-derived would be
+                    _use_d = False
+                    if _existing is None or len(_d_wm) > len(_existing):
+                        _use_d = True
+                    else:
+                        # Also compare to what 15m would produce
+                        _probe = resample_tf(_resample_src_df, _wm_tf)
+                        if _probe is None or len(_d_wm) > len(_probe):
+                            _use_d = True
+                    if _use_d:
+                        dfs[_wm_tf] = _d_wm
+                        logger.info(f"  {symbol}: {_wm_tf} from D ({len(_d_wm)} bars, {str(_d_wm.index[0].date())}→{str(_d_wm.index[-1].date())}) — D-derived exceeds 15m/authentic")
+            except Exception as _e:
+                logger.warning(f"  {symbol}: D→{_wm_tf} synthesis failed: {_e}")
     for tf in tfs:
         if tf == base_tf or tf == _resample_src_tf:
             continue
+        # Skip W/M already handled via D→W/M synthesis above
+        if mode == "tradier" and tf in ("W", "M") and "D" in dfs and len(dfs["D"]) >= 100:
+            # If D-derived W/M already populated and longer than 15m-derived, keep it
+            _existing_wm = dfs.get(tf)
+            _probe = resample_tf(_resample_src_df, tf)
+            if _existing_wm is not None and _probe is not None and len(_existing_wm) >= len(_probe):
+                logger.info(f"  {symbol}: KEEP D-derived {tf} ({len(_existing_wm)} bars) over 15m-derived ({len(_probe)})")
+                continue
+            if _existing_wm is not None and len(_existing_wm) >= 200:
+                continue
         if mode == "crypto" and tf in _CRYPTO_WM_TFS and os.environ.get("NPZ_WM_LEGACY") != "1" and os.environ.get("NPZ_HTF_LEGACY_LAG1") != "1":
             _wmf = _crypto_wm_frame(_resample_src_df, dfs.get(tf), tf)
             if _wmf is not None and len(_wmf) >= 10:
@@ -2456,8 +2498,15 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     # and >=300 days span; crypto requires >=30000 3m bars. Below → skip save
     # and return False so parity reports NO_DATA (MATCH) rather than divergence.
     # S1 fetch needed: tradier_klines_append.py --symbols <SYM> --days-back 400
-    _span_days = _frame_span_seconds(dfs.get(_resample_src_tf, base_df)) / 86400.0 if mode == "tradier" else n * 15 / 1440.0
-    if mode == "tradier" and (n < 20000 or _span_days < 300) and symbol not in ["SNDK","SNDK_LONG","SNDK_SHORT","ZCSH","ZCSH_LONG","ZCSH_SHORT"]:
+    # 2026-10-01 FIX: For W/M SMA depth, D span can satisfy coverage when 15m is truncated (~80d).
+    # Tradier D has ~2500 days (2016-2026) even when 15m is only ~80d; allow save if either 15m or D covers 300d.
+    _span_15m = _frame_span_seconds(dfs.get(_resample_src_tf, base_df)) / 86400.0
+    _span_d = _frame_span_seconds(dfs.get("D")) / 86400.0 if mode == "tradier" and dfs.get("D") is not None else 0.0
+    _span_days = max(_span_15m, _span_d) if mode == "tradier" else n * 15 / 1440.0
+    # Also allow n to be satisfied by D-derived coverage: if D has >=200 bars, 15m n check is waived for W/M fix
+    # AU has 1016 ET days (4yr) -> still enough for 200W; BG has 1377 raw -> 688 ET days etc.
+    _has_long_d = mode == "tradier" and dfs.get("D") is not None and len(dfs["D"]) >= 200 and _span_d >= 300
+    if mode == "tradier" and (n < 20000 or _span_days < 300) and not _has_long_d and symbol not in ["SNDK","SNDK_LONG","SNDK_SHORT","ZCSH","ZCSH_LONG","ZCSH_SHORT"]:
         logger.warning(f"  {symbol}: SKIP save — insufficient coverage n={n} span_days={_span_days:.1f} (need 20000 bars / 300d for 1yr tradier parity)")
         return False
     if mode == "crypto" and n < 7000:
