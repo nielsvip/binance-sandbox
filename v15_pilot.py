@@ -1466,6 +1466,73 @@ def _credible_baseline(new_symside, prepared, base_sets, defaults, template_path
     return cur_ov, cur_v, report
 
 
+
+# ── POS_SYM SAMPLING (USER 2026-10-01 16:50Z): rows/filters with few positive sym_sides are re-tested only now and then ──
+# POS_SYM 0 -> 1 of 20 sym_sides, 1 -> 1 of 10, 2 -> 1 of 6, 3 -> 1 of 3, >=4 always. Deterministic hash(sym_side|tab|switch=cand|round).
+# A sampled-out row/cell is NEVER a 0: G/F/H stay blank, reason SKIPPED_SAMPLING(pos_sym=k) in the progress JSON, E/greedy chain untouched.
+# Never sampled: bold default rows, rows without evidence (n_sym < 8 or unknown n_sym), rows never evaluated (no POS_SYM).
+# Switch: env V15_POSSYM_SAMPLING=1|0 (wins), else flag file <base>/data/possym_sampling.flag ("1"/"0"), else ON from round run21 on.
+_POSSYM_P = {0: 1.0 / 20, 1: 1.0 / 10, 2: 1.0 / 6, 3: 1.0 / 3}
+_POSSYM_MIN_N = 8
+
+
+def _possym_round_id(progress_path) -> str:
+    try:
+        pp = Path(progress_path)
+        d = pp.parent if pp.suffix == ".json" else pp
+        return d.parent.name if d.name == "progress" else d.name
+    except Exception:
+        return "unknown"
+
+
+def _possym_enabled(round_id: str) -> bool:
+    env = os.environ.get("V15_POSSYM_SAMPLING")
+    if env in ("0", "1"):
+        return env == "1"
+    try:
+        flag = Path(__file__).resolve().parent / "data" / "possym_sampling.flag"
+        if flag.exists():
+            return flag.read_text().strip() == "1"
+    except Exception:
+        pass
+    import re as _re
+    m = _re.search(r"run(\d+)", str(round_id))
+    return bool(m and int(m.group(1)) >= 21)
+
+
+def _possym_load_nsym(cat_side: str) -> dict:
+    """data/avg_delta_pos_sym.json (written by the avg-delta tool): {"cat_sides": {CAT: {"TAB!SWITCH=cand": {"pos_sym": k, "n_sym": n}}}}."""
+    try:
+        f = Path(os.environ.get("V15_POSSYM_JSON") or (Path(__file__).resolve().parent / "data" / "avg_delta_pos_sym.json"))
+        if not f.exists():
+            return {}
+        j = json.loads(f.read_text())
+        d = (j.get("cat_sides") or j).get(cat_side) or {}
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
+def _possym_draw(sym_side: str, tab: str, rkey: str, round_id: str) -> float:
+    import hashlib as _hl
+    return int(_hl.sha1(f"{sym_side}|{tab}|{rkey}|{round_id}".encode()).hexdigest()[:8], 16) / float(1 << 32)
+
+
+def _possym_decide(sym_side: str, tab: str, rkey: str, round_id: str, pos, n):
+    """-> (compute: bool, bucket: str, p: float|None, u: float|None). Compute always when the evidence is missing."""
+    try:
+        pos = int(pos)
+    except Exception:
+        return True, "no_pos_sym", None, None
+    if pos >= 4 or pos < 0:
+        return True, "pos>=4", None, None
+    if n is None or int(n) < _POSSYM_MIN_N:
+        return True, "n<8_or_unknown", None, None
+    p = _POSSYM_P[pos]
+    u = _possym_draw(sym_side, tab, rkey, round_id)
+    return (u < p), f"pos={pos}", p, u
+
+
 def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progress_path: Path, flags_md: Path, cumulative_gain: float, cumulative_overrides: dict, defaults: dict, baseline_gain: float, bh: float, prepared, args, baseline_vec: dict, baseline_live: dict):
     """Sequential spec filler (USER 2026-09-29 late, BACKTEST_BIBLE §56 rev b): 13 tabs in order, every row in order
     (white switch rows, then orange filter rows), no row skipped, no tab jumping.
@@ -1840,6 +1907,58 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             return str(a).strip() == str(b).strip()
     def _ck(ov: dict):
         return (tuple(sorted((k, str(v)) for k, v in ov.items())), args.window_days, id(prepared))
+    # POS_SYM sampling context (see _possym_* above): read once per workbook
+    _ps_round = _possym_round_id(progress_path)
+    _ps_on = _possym_enabled(_ps_round)
+    _ps_cat = map_key_for_symside(new_symside)
+    _ps_json = _possym_load_nsym(_ps_cat) if _ps_on else {}
+    _ps_counts: dict = {}
+    _ps_filt: dict = {}
+    _ps_hdr: dict = {}
+    def _ps_cols(_ws):
+        k = _ws.title
+        if k not in _ps_hdr:
+            hm = _hdr_col_map(_ws)
+            _ps_hdr[k] = {"pos": hm.get("POS_SYM") or hm.get("pos_sym"), "n": hm.get("N_SYM") or hm.get("n_sym"), "isd": hm.get("is_default"), "avg": hm.get("AVG_DELTA") or hm.get("avg_delta")}
+        return _ps_hdr[k]
+    def _ps_row_ev(_ws, _rr, _tab, _sw, _cd):
+        """(pos_sym, n_sym, is_default) of one template row: the avg-delta json wins, else the template columns."""
+        c = _ps_cols(_ws)
+        pos = n = None
+        jr = _ps_json.get(f"{_tab}!{str(_sw).strip()}={str(_cd).strip()}")
+        if isinstance(jr, dict):
+            pos, n = jr.get("pos_sym"), jr.get("n_sym")
+        if pos is None and c["pos"]:
+            _v = _ws.cell(row=_rr, column=c["pos"]).value
+            pos = _v if isinstance(_v, (int, float)) else None
+        if n is None and c["n"]:
+            _v = _ws.cell(row=_rr, column=c["n"]).value
+            n = _v if isinstance(_v, (int, float)) else None
+        isd = bool(c["isd"] and str(_ws.cell(row=_rr, column=c["isd"]).value or "").strip().upper() == "YES")
+        return pos, n, isd
+    def _ps_filter_ev(_tab, _filt, _opt, _row_pos, _row_n):
+        """POS_SYM of a filter = its orange row (same tab first, then any tab) — else the row's own."""
+        if not _ps_filt:
+            for _sn in SWITCH_SHEETS:
+                if _sn not in wb.sheetnames:
+                    continue
+                _w = wb[_sn]
+                for _r in range(3, _w.max_row + 1):
+                    _a, _b = _w.cell(row=_r, column=1).value, _w.cell(row=_r, column=2).value
+                    if _a in (None, "") or _b in (None, ""):
+                        continue
+                    _pp, _nn, _ = _ps_row_ev(_w, _r, _sn, _a, _b)
+                    if _pp is not None:
+                        _ps_filt.setdefault((_sn, str(_a).strip(), str(_b).strip()), (_pp, _nn))
+                        _ps_filt.setdefault((None, str(_a).strip(), str(_b).strip()), (_pp, _nn))
+        return _ps_filt.get((_tab, _filt, _opt)) or _ps_filt.get((None, _filt, _opt)) or (_row_pos, _row_n)
+    def _ps_count(_tab, _bucket, _computed, _what="row"):
+        e = _ps_counts.setdefault(f"{_tab}|{_what}|{_bucket}", [0, 0])
+        e[0 if _computed else 1] += 1
+    if _ps_on and not _ps_json:
+        print(f"[POSSYM] sampling ON for round {_ps_round} but no n_sym source (data/avg_delta_pos_sym.json for {_ps_cat}) — rows without a template N_SYM column are always calculated", flush=True)
+    elif _ps_on:
+        print(f"[POSSYM] sampling ON round={_ps_round} cat={_ps_cat} json_rows={len(_ps_json)}", flush=True)
     _static_info: dict = {}
     def _row_static(sname: str, rr: int, switch, cand) -> dict:
         # structural class + this row's yellow cells (read once; the running set is applied at eval time)
@@ -1893,6 +2012,32 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     continue  # not wired in the vectorized engine: no calculation, no fake 0
                 info["hdrs"].append(hdr)
                 info["h2f"][hdr] = {"filter": filt.strip(), "opt": opt.strip()}
+        if _ps_on and info["kind"] == "eval":
+            try:
+                _pp, _nn, _isd = _ps_row_ev(ws, rr, sname, switch, cand)
+                if _isd:
+                    _ps_count(sname, "default", True)
+                else:
+                    _go, _bk, _pr, _uu = _possym_decide(new_symside, sname, f"{str(switch).strip()}={str(cand).strip()}", _ps_round, _pp, _nn)
+                    _ps_count(sname, _bk, _go)
+                    if _pr is not None:
+                        info["possym"] = {"pos": int(_pp), "n": int(_nn), "p": round(_pr, 4), "u": round(_uu, 4)}
+                    if not _go:
+                        info.update(kind="skip", reason=f"SKIPPED_SAMPLING(pos_sym={int(_pp)})", g=None)
+                    else:
+                        _kept = []
+                        for _h in info["hdrs"]:
+                            _f, _o = _h.split("=", 1)
+                            _fp, _fn = _ps_filter_ev(sname, _f.strip(), _o.strip(), _pp, _nn)
+                            _fgo, _fbk, _, _ = _possym_decide(new_symside, sname, f"{str(switch).strip()}={str(cand).strip()}@{_h}", _ps_round, _fp, _fn)
+                            _ps_count(sname, _fbk, _fgo, "cell")
+                            if _fgo:
+                                _kept.append(_h)
+                            else:
+                                info.setdefault("sampled_filters", []).append(_h)
+                        info["hdrs"] = _kept
+            except Exception as _pe:
+                print(f"[POSSYM-WARN] {sname}!{rr} {_pe} — row calculated", flush=True)
         _static_info[k] = info
         return info
     def _row_plan(sname: str, rr: int, switch, cand) -> dict:
@@ -2305,7 +2450,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             progress["cumulative_overrides"] = dict(cumulative_overrides)
         progress["cumulative_gain"] = float(cumulative_gain)
         div = _write_div(sname, rr, [row_gain])
-        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", ""), "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain)}
+        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", ""), "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain)}
         _maybe_write_json(force=promote)
         _row_done(sname, rr, switch, cand, n_items + (1 if pos_hdrs else 0), row_delta, promote)
         _touch(f"cell {sname}!{rr} delta={row_delta}")
@@ -2595,6 +2740,16 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     # Final heartbeat
     _touch(f"spec-done cum={cumulative_gain:.4f} rows={processed}")
     print(f"[spec-fill] DONE {new_symside} final_gain={cumulative_gain:.4f} baseline={baseline_gain:.4f} rows={processed} pos_tabs curated", flush=True)
+    if _ps_on:
+        try:
+            progress["possym_sampling"] = {"round": _ps_round, "cat": _ps_cat, "counts": {k: {"computed": v[0], "skipped": v[1]} for k, v in _ps_counts.items()}}
+            _tot = {}
+            for _k, _v in _ps_counts.items():
+                _t2 = _tot.setdefault(_k.split("|", 1)[1], [0, 0]); _t2[0] += _v[0]; _t2[1] += _v[1]
+            print(f"[POSSYM-SUMMARY] {new_symside} round={_ps_round} computed/skipped by kind|bucket: {_tot}", flush=True)
+            _atomic_write_json(progress_path, progress)
+        except Exception as _se:
+            print(f"[POSSYM-WARN] summary {_se}", flush=True)
     return cumulative_gain, cumulative_overrides, progress
 
 def _atomic_save(wb, wb_path: Path):
