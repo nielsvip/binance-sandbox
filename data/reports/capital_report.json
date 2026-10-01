@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-01 18:49 UTC",
- "total_capital_usd": 99.99,
+ "generated_at": "2026-10-01 19:49 UTC",
+ "total_capital_usd": 99.71,
  "tier_capital": {
   "A": 0.0,
-  "B": 99.99,
+  "B": 99.71,
   "C": 0.0
  },
  "tier_count": {
@@ -13,18 +13,20 @@
  },
  "winners": [],
  "losers": [],
- "mediocre": [],
+ "mediocre": [
+  "men:XRPUSDT_LONG"
+ ],
  "positions": [
   {
    "pk": "men:XRPUSDT_LONG",
    "symbol": "XRPUSDT",
    "account": "men",
-   "value_usd": 99.99,
-   "gain_pct": 0.488,
+   "value_usd": 99.71,
+   "gain_pct": 0.034,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 66.6,
-   "mark": 1.50137647
+   "mark": 1.4971
   }
  ]
 }

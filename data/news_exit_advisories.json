@@ -1,22 +1,14 @@
 {
-  "generated_at": "2026-10-01T19:36:26.866291+00:00",
-  "count": 2,
+  "generated_at": "2026-10-01T19:57:54.524020+00:00",
+  "count": 1,
   "advisories": [
-    {
-      "symbol": "AAPL",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.57 threshold=0.45",
-      "score": 0.572,
-      "ts": "2026-10-01T19:36:26.866224+00:00"
-    },
     {
       "symbol": "IBM",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.87 threshold=0.45",
       "score": 0.872,
-      "ts": "2026-10-01T19:36:26.866242+00:00"
+      "ts": "2026-10-01T19:57:54.523969+00:00"
     }
   ]
 }

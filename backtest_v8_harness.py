@@ -274,6 +274,16 @@ class IndicatorStore:
             data = np.load(path, allow_pickle=True)
             self.arrays = {k: data[k] for k in data.files}
             data.close()
+        # NPZW/002 (2026-10-01): same causal HTF alignment as the vector engine (v12_quick_engine.load_npz): crypto NPZ 1h/4h/D(/W/M) arrays built with the
+        # old lag-1 broadcast hold the complete current HTF bar (look-ahead). align_store auto-detects leaky stores (stocks and rebuilt causal NPZs are
+        # untouched; V12_HTF_LEAK_LEGACY=1 keeps the old behaviour). Without this the scalar engine and the vector engine disagree on crypto.
+        try:
+            from vec_decisions.htf_causal_align import align_store as _htf_align_sc, MARK as _htf_mark
+        except ImportError as _htf_e:
+            raise RuntimeError(f"htf_causal_align missing ({_htf_e}): refusing to load crypto NPZ whose HTF arrays may hold look-ahead values")
+        _aligned = _htf_align_sc(self.arrays)
+        self.htf_align_receipt = _aligned.pop(_htf_mark, None) if isinstance(_aligned, dict) else None
+        self.arrays = _aligned
         self.timestamps = self.arrays.get("timestamps", np.array([]))
         self.n_bars = len(self.timestamps)
         self.ts_to_idx = {int(t): i for i, t in enumerate(self.timestamps)}
