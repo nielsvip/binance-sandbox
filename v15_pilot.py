@@ -1473,7 +1473,7 @@ def _credible_baseline(new_symside, prepared, base_sets, defaults, template_path
 # Never sampled: bold default rows, rows without evidence (n_sym < 8 or unknown n_sym), rows never evaluated (no POS_SYM).
 # Switch: env V15_POSSYM_SAMPLING=1|0 (wins), else flag file <base>/data/possym_sampling.flag ("1"/"0"), else ON from round run21 on.
 _POSSYM_P = {0: 1.0 / 20, 1: 1.0 / 10, 2: 1.0 / 6, 3: 1.0 / 3}
-_POSSYM_MIN_N = 8
+_POSSYM_MIN_N = int(os.environ.get("V15_POSSYM_MIN_N", "20"))  # USER 2026-10-01: >= 20 evaluated sym_sides in the cat_side before a row may be sampled
 
 
 def _possym_round_id(progress_path) -> str:
@@ -1518,16 +1518,18 @@ def _possym_draw(sym_side: str, tab: str, rkey: str, round_id: str) -> float:
     return int(_hl.sha1(f"{sym_side}|{tab}|{rkey}|{round_id}".encode()).hexdigest()[:8], 16) / float(1 << 32)
 
 
-def _possym_decide(sym_side: str, tab: str, rkey: str, round_id: str, pos, n):
+def _possym_decide(sym_side: str, tab: str, rkey: str, round_id: str, pos, n, new=False):
     """-> (compute: bool, bucket: str, p: float|None, u: float|None). Compute always when the evidence is missing."""
     try:
         pos = int(pos)
     except Exception:
         return True, "no_pos_sym", None, None
+    if new:
+        return True, "new_row", None, None
     if pos >= 4 or pos < 0:
         return True, "pos>=4", None, None
     if n is None or int(n) < _POSSYM_MIN_N:
-        return True, "n<8_or_unknown", None, None
+        return True, "n<min_or_unknown", None, None
     p = _POSSYM_P[pos]
     u = _possym_draw(sym_side, tab, rkey, round_id)
     return (u < p), f"pos={pos}", p, u
@@ -1913,6 +1915,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _ps_cat = map_key_for_symside(new_symside)
     _ps_json = _possym_load_nsym(_ps_cat) if _ps_on else {}
     _ps_counts: dict = {}
+    _ps_new: set = set()
     _ps_filt: dict = {}
     _ps_hdr: dict = {}
     def _ps_cols(_ws):
@@ -1928,6 +1931,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         jr = _ps_json.get(f"{_tab}!{str(_sw).strip()}={str(_cd).strip()}")
         if isinstance(jr, dict):
             pos, n = jr.get("pos_sym"), jr.get("n_sym")
+            if jr.get("new"):
+                _ps_new.add((_tab, str(_sw).strip(), str(_cd).strip()))
         if pos is None and c["pos"]:
             _v = _ws.cell(row=_rr, column=c["pos"]).value
             pos = _v if isinstance(_v, (int, float)) else None
@@ -2018,7 +2023,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 if _isd:
                     _ps_count(sname, "default", True)
                 else:
-                    _go, _bk, _pr, _uu = _possym_decide(new_symside, sname, f"{str(switch).strip()}={str(cand).strip()}", _ps_round, _pp, _nn)
+                    _go, _bk, _pr, _uu = _possym_decide(new_symside, sname, f"{str(switch).strip()}={str(cand).strip()}", _ps_round, _pp, _nn, (sname, str(switch).strip(), str(cand).strip()) in _ps_new)
                     _ps_count(sname, _bk, _go)
                     if _pr is not None:
                         info["possym"] = {"pos": int(_pp), "n": int(_nn), "p": round(_pr, 4), "u": round(_uu, 4)}
@@ -2029,7 +2034,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                         for _h in info["hdrs"]:
                             _f, _o = _h.split("=", 1)
                             _fp, _fn = _ps_filter_ev(sname, _f.strip(), _o.strip(), _pp, _nn)
-                            _fgo, _fbk, _, _ = _possym_decide(new_symside, sname, f"{str(switch).strip()}={str(cand).strip()}@{_h}", _ps_round, _fp, _fn)
+                            _fgo, _fbk, _, _ = _possym_decide(new_symside, sname, f"{str(switch).strip()}={str(cand).strip()}@{_h}", _ps_round, _fp, _fn, (sname, _f.strip(), _o.strip()) in _ps_new or (sname, str(switch).strip(), str(cand).strip()) in _ps_new)
                             _ps_count(sname, _fbk, _fgo, "cell")
                             if _fgo:
                                 _kept.append(_h)
@@ -2502,6 +2507,16 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _final_filter_recheck()
     except Exception as _fe:
         print(f"[final-recheck-warn] {_fe}", flush=True)
+    if _ps_on and _ps_counts:
+        try:
+            progress["possym_sampling"] = {"round": _ps_round, "cat": _ps_cat, "counts": {k: {"computed": v[0], "skipped": v[1]} for k, v in _ps_counts.items()}}
+            _tot = {}
+            for _k, _v in _ps_counts.items():
+                _t2 = _tot.setdefault(_k.split("|", 1)[1], [0, 0]); _t2[0] += _v[0]; _t2[1] += _v[1]
+            print(f"[POSSYM-SUMMARY] {new_symside} round={_ps_round} computed/skipped by kind|bucket: {_tot}", flush=True)
+            _atomic_write_json(progress_path, progress)
+        except Exception as _se:
+            print(f"[POSSYM-WARN] summary {_se}", flush=True)
     # 2026-09-28 OOM fix (ACN_SHORT class): the DONE stage (atomic save of a ~2MB workbook expanded
     # in RAM + fresh evals + live verify) spiked parents to 3-4GB and the kernel OOM-killed them
     # (6 kills on s2 today), leaving orphaned fork workers pinning herd slots and sheets that never
@@ -2740,16 +2755,6 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     # Final heartbeat
     _touch(f"spec-done cum={cumulative_gain:.4f} rows={processed}")
     print(f"[spec-fill] DONE {new_symside} final_gain={cumulative_gain:.4f} baseline={baseline_gain:.4f} rows={processed} pos_tabs curated", flush=True)
-    if _ps_on:
-        try:
-            progress["possym_sampling"] = {"round": _ps_round, "cat": _ps_cat, "counts": {k: {"computed": v[0], "skipped": v[1]} for k, v in _ps_counts.items()}}
-            _tot = {}
-            for _k, _v in _ps_counts.items():
-                _t2 = _tot.setdefault(_k.split("|", 1)[1], [0, 0]); _t2[0] += _v[0]; _t2[1] += _v[1]
-            print(f"[POSSYM-SUMMARY] {new_symside} round={_ps_round} computed/skipped by kind|bucket: {_tot}", flush=True)
-            _atomic_write_json(progress_path, progress)
-        except Exception as _se:
-            print(f"[POSSYM-WARN] summary {_se}", flush=True)
     return cumulative_gain, cumulative_overrides, progress
 
 def _atomic_save(wb, wb_path: Path):
