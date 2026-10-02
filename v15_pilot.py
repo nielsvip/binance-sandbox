@@ -4125,57 +4125,84 @@ def main():
                 # For cat_side we evaluate the template bold as baseline (empty delta vs current defaults is equivalent,
                 # but we keep _tpl_defaults explicit so the engine sees the same 4-default layer).
                 _cat_ov_san, _ = sanitize_overrides(dict(_cat_ov), defaults)
-                _cat_vec = evaluate_prepared_sanitized(prepared, _cat_ov_san, window_days=args.window_days)
-                print(f"[BASELINE-CAT] {new_symside} cat_side gain={_cat_vec.get('gain_pct')} trades={_cat_vec.get('trades')} valid={_cat_vec.get('valid')} ov={len(_cat_ov_san)}", flush=True)
-                # per_sym last-best full snapshot (defaults_snapshot + overrides, ~5000 keys) via per_sym_store
+                # — rerun BOTH cat_side defaults and per_sym last-best IN PARALLEL on the new NPZ; winner on gain/wr/dd —
                 _persym_full = None
                 _persym_label = None
                 _persym_vec = None
-                _persym_ov_for_eval = None
+                _persym_entry = None
+                _persym_ov_san = None
+                _cat_vec = None
+                # prepare per_sym overrides deterministically before parallel submit
+                _persym_ov_raw = None
                 try:
                     import per_sym_store as _pss_bl
                     _persym_entry = _pss_bl.get(new_symside)
                     if _persym_entry and (_persym_entry.get("full_config") or _persym_entry.get("overrides")):
-                        # full snapshot is the truth; for evaluation we use the stored overrides as delta on current defaults
-                        # (re-differentiated below after winner pick, so evaluation with overrides suffices)
                         _persym_full = _persym_entry.get("full_config") or {}
                         if not _persym_full:
-                            # legacy: reconstruct from overrides + its snapshot
                             _snap = _persym_entry.get("defaults_snapshot") or {}
                             _persym_full = dict(_snap); _persym_full.update(_persym_entry.get("overrides") or {})
-                        _persym_ov = dict(_persym_entry.get("overrides") or {})
-                        _persym_ov_san, _ = sanitize_overrides(dict(_persym_ov), defaults)
-                        _persym_vec = evaluate_prepared_sanitized(prepared, _persym_ov_san, window_days=args.window_days)
+                        _persym_ov_raw = dict(_persym_entry.get("overrides") or {})
+                        _persym_ov_san, _ = sanitize_overrides(dict(_persym_ov_raw), defaults)
                         _persym_label = "per_sym_last_best"
-                        print(f"[BASELINE-PERSYM] {new_symside} per_sym gain={_persym_vec.get('gain_pct')} trades={_persym_vec.get('trades')} valid={_persym_vec.get('valid')} ov={len(_persym_ov_san)} full={len(_persym_full)}", flush=True)
                     else:
-                        # fallback: prior ingested overrides or recipe
-                        _persym_ov = dict(_ingested_overrides) if '_ingested_overrides' in locals() and _ingested_overrides else {}
-                        if _persym_ov:
-                            _persym_ov_san, _ = sanitize_overrides(dict(_persym_ov), defaults)
-                            _persym_vec = evaluate_prepared_sanitized(prepared, _persym_ov_san, window_days=args.window_days)
+                        _persym_ov_raw = dict(_ingested_overrides) if '_ingested_overrides' in locals() and _ingested_overrides else {}
+                        if _persym_ov_raw:
+                            _persym_ov_san, _ = sanitize_overrides(dict(_persym_ov_raw), defaults)
                             _persym_label = "per_sym_ingested"
-                            # for diff we treat ingested as full = defaults at that time + ov; approximate with current defaults + ov
                             _persym_full = dict(defaults); _persym_full.update(_persym_ov_san)
-                            print(f"[BASELINE-PERSYM] {new_symside} ingested gain={_persym_vec.get('gain_pct')} trades={_persym_vec.get('trades')} valid={_persym_vec.get('valid')}", flush=True)
+                        else:
+                            _persym_ov_san = None
                 except Exception as _e_ps:
                     print(f"[BASELINE-PERSYM-warn] {new_symside} {_e_ps}", flush=True)
-                # pick winner: credible first, then higher gain; cat first if tie (bias to defaults per backtest-expert plateau)
+                    _persym_ov_san = None
+                # parallel re-evaluation on the new prepared NPZ slice (no look-ahead, 0.07s each, hot ALL_PREPARED)
+                import concurrent.futures as _cf_bl
+                _fut_cat = _fut_per = None
+                with _cf_bl.ThreadPoolExecutor(max_workers=2) as _ex_bl:
+                    _fut_cat = _ex_bl.submit(evaluate_prepared_sanitized, prepared, _cat_ov_san, window_days=args.window_days)
+                    if _persym_ov_san is not None:
+                        _fut_per = _ex_bl.submit(evaluate_prepared_sanitized, prepared, _persym_ov_san, window_days=args.window_days)
+                    try:
+                        _cat_vec = _fut_cat.result(timeout=60)
+                    except Exception as _e_cat:
+                        print(f"[BASELINE-CAT-warn] {new_symside} {_e_cat}", flush=True)
+                        _cat_vec = {"gain_pct": -1e9, "trades": 0, "valid": False, "invalid_reason": f"cat eval {type(_e_cat).__name__}"}
+                    if _fut_per is not None:
+                        try:
+                            _persym_vec = _fut_per.result(timeout=60)
+                        except Exception as _e_per:
+                            print(f"[BASELINE-PERSYM-warn] {new_symside} {_e_per}", flush=True)
+                            _persym_vec = {"gain_pct": -1e9, "trades": 0, "valid": False, "invalid_reason": f"per eval {type(_e_per).__name__}"}
+                print(f"[BASELINE-CAT] {new_symside} cat_side gain={_cat_vec.get('gain_pct')} trades={_cat_vec.get('trades')} valid={_cat_vec.get('valid')} dd={_cat_vec.get('max_dd_pct')} sharpe={_cat_vec.get('pool_sharpe')} ov={len(_cat_ov_san)}", flush=True)
+                if _persym_vec is not None:
+                    print(f"[BASELINE-PERSYM] {new_symside} {_persym_label} gain={_persym_vec.get('gain_pct')} trades={_persym_vec.get('trades')} valid={_persym_vec.get('valid')} dd={_persym_vec.get('max_dd_pct')} sharpe={_persym_vec.get('pool_sharpe')} ov={len(_persym_ov_san) if _persym_ov_san else 0} full={len(_persym_full) if _persym_full else 0}", flush=True)
+                # pick winner on gain/wr/dd — credible first, then higher gain, then higher win-rate/sharpe, then lower dd
                 if _persym_vec is not None:
                     def _is_credible(v):
                         return bool(v.get("valid")) and int(v.get("trades") or 0) >= ADAPT_FLOOR_TRADES and float(v.get("gain_pct") or -1e9) >= ADAPT_ULTRA_NEG_PCT
+                    def _wr(v):
+                        # win-rate: prefer explicit win_rate/winrate/wr, else pool_sharpe as wr proxy, else 0
+                        for _k in ("win_rate", "winrate", "wr", "WR"):
+                            if _k in v and v[_k] is not None:
+                                try: return float(v[_k])
+                                except: pass
+                        # pool_sharpe correlates with wr; use it as tie-breaker when wr absent
+                        try: return float(v.get("pool_sharpe") or 0) * 0.1 + 0.5
+                        except: return 0.5
+                    def _score(v):
+                        return (1 if _is_credible(v) else 0, float(v.get("gain_pct") or -1e9), _wr(v), -float(v.get("max_dd_pct") or 1e9), float(v.get("pool_sharpe") or -1e9))
                     cat_cred = _is_credible(_cat_vec)
                     per_cred = _is_credible(_persym_vec)
-                    # best = higher gain among credible, else higher gain among valid, else cat
-                    if cat_cred and per_cred:
-                        _winner_is_persym = float(_persym_vec.get("gain_pct") or -1e9) > float(_cat_vec.get("gain_pct") or -1e9)
-                    elif per_cred and not cat_cred:
+                    cat_score = _score(_cat_vec)
+                    per_score = _score(_persym_vec)
+                    # credible outranks non-credible; otherwise lexicographic gain→wr→-dd
+                    if per_score > cat_score:
                         _winner_is_persym = True
-                    elif cat_cred and not per_cred:
+                    elif per_score < cat_score:
                         _winner_is_persym = False
                     else:
-                        # neither credible: pick higher gain, cat wins ties
-                        _winner_is_persym = float(_persym_vec.get("gain_pct") or -1e9) > float(_cat_vec.get("gain_pct") or -1e9) + 1e-9
+                        _winner_is_persym = False  # tie → cat (plateau bias per backtest-expert)
                     if _winner_is_persym:
                         # per_sym wins: E3 = per_sym gain, overrides = diff of its full vs latest bold template
                         _win_vec = _persym_vec
