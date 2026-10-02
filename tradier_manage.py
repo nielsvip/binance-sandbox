@@ -5601,6 +5601,13 @@ def _batch3_template_live_wiring_tradier():
 # BATCH 1 — first 60 TEMPLATE switches — tradier REAL logic (mirrors v12 batch1, via _cfg)
 def _batch1_template_live_gate_tradier(indicators, is_long, account_key='trb', symbol='AAPL', side='LONG'):
     try:
+        import vec_decisions.bottom_top_signals as _bts
+        _bt_veto, _bt_pre = _bts.entry_veto_live(indicators, is_long, lambda _k, _d: _cfg(_k, _d, account_key, symbol, side))
+        if _bt_veto:
+            return False, f'BT_ENTRY_VETO_{_bt_pre}'
+    except Exception:
+        pass
+    try:
         # ADX_RANGING_THRESHOLD
         _thr = float(_cfg('ADX_RANGING_THRESHOLD', 20.0, account_key, symbol, side))
         _def = 20.0
@@ -10687,6 +10694,16 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     return "NEGBOOK_WT_TURN_CLOSED"
         except Exception as _nb_e:
             logger.warning(f"[NEGBOOK] probe err {position_key}: {_nb_e}")
+        try:
+            import vec_decisions.bottom_top_signals as _bts
+            _bt_fire, _bt_pre = _bts.exit_fire_live(i, is_long, lambda _k, _d: _cfg_auto(_k, _d))
+            if _bt_fire:
+                _bt_g = safe_fetch_float(getattr(position, 'gain', 0), 0.0)
+                logger.critical(f"[BT_EXIT] {position_key}: {_bt_pre} g={_bt_g:.2f}% -> CLOSE")
+                await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"BT_{_bt_pre}_g{_bt_g:.2f}", 100.0, override_qty=999999)
+                return f"BT_EXIT_{_bt_pre}_CLOSED"
+        except Exception as _bt_e:
+            logger.warning(f"[BT_EXIT] probe err {position_key}: {_bt_e}")
         # ═══ VIGILANCE GUARD (USER 2026-09-28, 3rd mandate: "we do not use fix %"): STRUCTURAL stop —
         # position at a loss AND price breaches dc_low4_{TF} (LONG) / dc_high4_{TF} (SHORT), TF from
         # VIGILANCE_DC4_STOP_TF (user granted 15m) → IMMEDIATE CLOSE + sym_side entry-block until recovery.

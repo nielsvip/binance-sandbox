@@ -4092,6 +4092,52 @@ class QuickConfig:
     ENTRY_BOUNCE_DONCHIAN_DIRECT_CONFIRMATION: str = "none"
     # A2 STOCH/K-ZONE entry family — parity 2026-08-18: STOCH HHHL direct route + K-ZONE veto/twin controls
     ENTRY_STOCH_HHHL_DIRECT_ENABLED: bool = False
+    # BOTTOM/TOP families 2026-10-02 (staged: DIV/SMFI need indicator unlock for live; no template rows yet)
+    DIV_ENTRY_ENABLED: bool = False
+    DIV_ENTRY_TF: str = "1h"
+    DIV_ENTRY_HIDDEN: bool = True
+    STOCH_XTREME_ENTRY_ENABLED: bool = False
+    STOCH_XTREME_ENTRY_TF: str = "1h"
+    RSI2_XTREME_ENTRY_ENABLED: bool = False
+    RSI2_XTREME_ENTRY_TF: str = "1h"
+    BBKC_ENTRY_ENABLED: bool = False
+    BBKC_ENTRY_TF: str = "1h"
+    SMFI_DIV_ENTRY_ENABLED: bool = False
+    SMFI_DIV_ENTRY_TF: str = "1h"
+    WICK_REJECT_ENTRY_ENABLED: bool = False
+    WICK_REJECT_ENTRY_TF: str = "1h"
+    VWAP_STRETCH_ENTRY_ENABLED: bool = False
+    VWAP_STRETCH_ENTRY_PCT: float = 1.0
+    FUNDING_CROWD_ENTRY_ENABLED: bool = False
+    FUNDING_CROWD_ENTRY_Z: float = 2.0
+    OI_SURGE_ENTRY_ENABLED: bool = False
+    OI_SURGE_ENTRY_PCT: float = 3.0
+    FORMATION_ENTRY_ENABLED: bool = False
+    FORMATION_ENTRY_TF: str = "1h"
+    FORMATION_ENTRY_MIN_SCORE: float = 0.6
+    ORB_BREAK_ENTRY_ENABLED: bool = False
+    DIV_EXIT_ENABLED: bool = False
+    DIV_EXIT_TF: str = "1h"
+    DIV_EXIT_HIDDEN: bool = True
+    STOCH_XTREME_EXIT_ENABLED: bool = False
+    STOCH_XTREME_EXIT_TF: str = "1h"
+    RSI2_XTREME_EXIT_ENABLED: bool = False
+    RSI2_XTREME_EXIT_TF: str = "1h"
+    BBKC_EXIT_ENABLED: bool = False
+    BBKC_EXIT_TF: str = "1h"
+    SMFI_DIV_EXIT_ENABLED: bool = False
+    SMFI_DIV_EXIT_TF: str = "1h"
+    WICK_REJECT_EXIT_ENABLED: bool = False
+    WICK_REJECT_EXIT_TF: str = "1h"
+    VWAP_STRETCH_EXIT_ENABLED: bool = False
+    VWAP_STRETCH_EXIT_PCT: float = 1.0
+    FUNDING_CROWD_EXIT_ENABLED: bool = False
+    FUNDING_CROWD_EXIT_Z: float = 2.0
+    OI_SURGE_EXIT_ENABLED: bool = False
+    OI_SURGE_EXIT_PCT: float = 3.0
+    FORMATION_EXIT_ENABLED: bool = False
+    FORMATION_EXIT_TF: str = "1h"
+    FORMATION_EXIT_MIN_SCORE: float = 0.6
     ENTRY_STOCH_HHHL_DIRECT_TFS: tuple = ("1h",)
     ENTRY_STOCH_HHHL_DIRECT_MIN_CONFIRMING_TFS: int = 1
     ENTRY_STOCH_HHHL_DIRECT_STOCH_THRESHOLD: float = 20.0
@@ -11664,6 +11710,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             exit_sig = exit_sig | _n2sr.stdev_reject_exit_mask(npz, n, cfg, is_long)
     except Exception:
         pass
+    # BOTTOM/TOP exit families (all EXIT_FAMS ORed; live twin exit_fire_live in process_position)
+    try:
+        import vec_decisions.bottom_top_signals as _bts
+        _bt_ex = _bts.exit_fire_masks(npz, n, is_long, cfg)
+        for _m in _bt_ex.values():
+            exit_sig = exit_sig | np.asarray(_m, dtype=bool)
+    except Exception:
+        pass
     # AUTO_WIRED parity: apply generic hash fallback so every catalog knob flips ledger even before causal per-param block
     try:
         entry_sig, exit_sig = _wire_07_exit_stops_tranche(npz, n, is_long, cfg, entry_sig, exit_sig)
@@ -12351,6 +12405,17 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _sa_cap = _c if _sa_cap is None else min(_sa_cap, _c)
     except Exception:
         _sa_cap = None
+    _bt_veto = None
+    try:
+        import vec_decisions.bottom_top_signals as _bts
+        _masks = _bts.entry_veto_masks(npz, n, is_long, cfg)
+        if _masks:
+            _v = None
+            for _m in _masks.values():
+                _v = _m if _v is None else (_v | _m)
+            _bt_veto = _v
+    except Exception:
+        _bt_veto = None
     # 2026-10-01 ZERO-AUDIT WIRING: ALL_TF_AGAINST_CLOSE (crypto live ez_manage.process_position 48045-48098: close the WHOLE position
     # when >= ALL_TF_AGAINST_CLOSE_MIN_TFS of the 5 WT TFs (3m/15m/1h/4h/D) are against; no gain/loss gate). The shared twin
     # vec_decisions.process_position_crypto__all_tf_against was imported but NEVER called -> vec baseline lacked a default-ON live exit.
@@ -12741,6 +12806,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             pass
                     if _qta_ct_block is not None and bool(_qta_ct_block[i]) and 'RECLAIM' not in str(entry_reason).upper():
                         continue  # [C2 b7] live queue_trade_action COUNTER_TREND_ADD_BLOCK (fresh + reentry opens)
+                    if _bt_veto is not None and bool(_bt_veto[i]):
+                        continue  # BOTTOM/TOP entry REQUIRE gates (all families ORed)
                     pos = _open(qty0, px, i, entry_reason)
             continue
         bars_in_pos += 1

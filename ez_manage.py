@@ -6683,6 +6683,13 @@ def _batch1_template_live_gate(indicators, is_long):
         if is_long and not (_v > _v2): return False, 'BAR_PATTERNS_FILTER_TF_TF'
         if (not is_long) and not (_v < _v2): return False, 'BAR_PATTERNS_FILTER_TF_TF'
     _ = getattr(config, 'BAR_PATTERNS_FILTER_TF', '15m')
+    try:
+        import vec_decisions.bottom_top_signals as _bts
+        _bt_veto, _bt_pre = _bts.entry_veto_live(indicators, is_long, config)
+        if _bt_veto:
+            return False, f'BT_ENTRY_VETO_{_bt_pre}'
+    except Exception:
+        pass
     # BB_PULLBACK_GATE_FILTER_TF: removed from the WT-proxy entry veto 2026-09-29 (BB pullback = real gate TF selector; DC breach = reduce confirm)
     _ = getattr(config, 'BB_PULLBACK_GATE_FILTER_TF', '15m')
     _tf = str(getattr(config, 'BB_PULLBACK_GATE_TF', '15m'))
@@ -50125,6 +50132,18 @@ async def process_position(
                 if result:
                     trade_manager.processing_keys.discard(position_key)
                     return f"{EvalStatus.ACTION_TAKEN}:WT_PERCENTILE_EXIT"
+        try:
+            import vec_decisions.bottom_top_signals as _bts
+            _bt_fire, _bt_pre = _bts.exit_fire_live(i, is_long, config)
+        except Exception:
+            _bt_fire, _bt_pre = False, None
+        if _bt_fire:
+            _bt_g = safe_fetch_float(getattr(position, "gain", 0), 0)
+            logger.warning(f"[BT_EXIT] {position_key}: {_bt_pre} g={_bt_g:.2f}%")
+            result = await queue_trade_action(order_queue, trade_manager, position_key, "QUICK_CLOSE", f"BT_{_bt_pre}_g={_bt_g:.2f}%", 0.95)
+            if result:
+                trade_manager.processing_keys.discard(position_key)
+                return f"{EvalStatus.ACTION_TAKEN}:BT_EXIT_{_bt_pre}"
         # E-1 WT_EXIT_USE_DELTA (2026-04-19 default OFF) — exit when wt_composite_delta crosses threshold against position.
         # Fires alongside existing exits. LONG exits when delta < -THR, SHORT when delta > +THR.
         if (
