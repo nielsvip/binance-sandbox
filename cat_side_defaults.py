@@ -29,10 +29,37 @@ def cat_side_of(symbol: str, side: str, venue: str = None) -> str:
 
 
 def _load() -> dict:
+    # SQL-primary (kv_json) → JSON fallback keeps herds alive if file vanishes.
+    # Never fall back to {} silently when SQL has 172 promotions — that would sweep on globals.
+    if os.environ.get("CAT_SIDE_DEFAULTS_SQLITE_DISABLED") != "1":
+        try:
+            import per_sym_store as _pss
+            raw_sql = _pss.kv_get(_pss.KV_CAT_SIDE_DEFAULTS_4)
+            if isinstance(raw_sql, dict) and any(raw_sql.get(cs) for cs in CAT_SIDES):
+                # cache SQL result by epoch so we don't hit DB every call
+                try:
+                    # use kv epoch as mtime-equivalent
+                    import sqlite3
+                    con = _pss._connect()
+                    try:
+                        row = con.execute("SELECT epoch FROM kv_json WHERE key=?", (_pss.KV_CAT_SIDE_DEFAULTS_4,)).fetchone()
+                        m_sql = float(row["epoch"]) if row and row["epoch"] is not None else -1
+                    finally:
+                        con.close()
+                except Exception:
+                    m_sql = -1
+                if m_sql != _cache.get("mtime_sql"):
+                    _cache["data"] = {cs: dict(raw_sql.get(cs) or {}) for cs in CAT_SIDES}
+                    _cache["mtime_sql"] = m_sql
+                    _cache["mtime"] = _cache.get("mtime")  # keep file mtime untouched
+                return _cache["data"]
+        except Exception:
+            pass
     try:
         m = PATH.stat().st_mtime
     except FileNotFoundError:
-        return {}
+        # file missing but SQL disabled or empty → fail-soft {} is intentional caller fallback to global config
+        return _cache["data"] if _cache["data"] else {}
     if m != _cache["mtime"]:
         try:
             raw = json.loads(PATH.read_text())

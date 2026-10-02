@@ -3966,7 +3966,12 @@ def main():
     try:
         from tools.build_cat_side_defaults_4 import venue_values as _venue_values
         _truth = _venue_values(map_key_for_symside(new_symside).startswith("STOCKS"))[0]
-        _promoted = set((json.loads((ROOT / "data" / "cat_side_promotions.json").read_text()).get(map_key_for_symside(new_symside)) or {}).keys()) if (ROOT / "data" / "cat_side_promotions.json").exists() else set()
+        try:
+            import per_sym_store as _pss_prom
+            _promos = _pss_prom.get_cat_side_promotions()
+            _promoted = set((_promos.get(map_key_for_symside(new_symside)) or {}).keys()) if _promos else set()
+        except Exception:
+            _promoted = set((json.loads((ROOT / "data" / "cat_side_promotions.json").read_text()).get(map_key_for_symside(new_symside)) or {}).keys()) if (ROOT / "data" / "cat_side_promotions.json").exists() else set()
     except Exception as _tr_e:
         print(f"[DEFAULTS-GATE] truth load warn {_tr_e} — all bold values trusted", flush=True)
         _truth, _promoted = None, set()
