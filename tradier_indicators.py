@@ -1827,7 +1827,54 @@ class IndicatorCalculator:
                 pass
         else:
             result[f"wt_signal_{timeframe}"] = "NEUTRAL"
-            
+        try:
+            if len(close_series) >= 30:
+                from ez_indicators import detect_divergence as _bt_div
+                _bt_cl = close_series.values.astype(np.float64)
+                if wt1 is not None and not getattr(wt1, "empty", True) and len(wt1) == len(_bt_cl):
+                    _bt_rb, _bt_be, _bt_hb, _bt_hbe = _bt_div(_bt_cl, wt1.values.astype(np.float64), lookback=5, decay=10)
+                    result[f"div_reg_bull_wt_{timeframe}"] = int(_bt_rb[-1])
+                    result[f"div_reg_bear_wt_{timeframe}"] = int(_bt_be[-1])
+                    result[f"div_hid_bull_wt_{timeframe}"] = int(_bt_hb[-1])
+                    result[f"div_hid_bear_wt_{timeframe}"] = int(_bt_hbe[-1])
+                _bt_hi = _ensure_float_series(adjusted_df["high"])
+                _bt_lo = _ensure_float_series(adjusted_df["low"])
+                _bt_vo = _ensure_float_series(adjusted_df["volume"])
+                _bt_tp = (_bt_hi + _bt_lo + close_series) / 3.0
+                _bt_rmf = _bt_tp * _bt_vo
+                _bt_pm = _bt_rmf.where(_bt_tp.diff() > 0, 0).rolling(14, min_periods=1).sum()
+                _bt_nm = _bt_rmf.where(_bt_tp.diff() < 0, 0).rolling(14, min_periods=1).sum()
+                _bt_mfi = 100.0 - (100.0 / (1.0 + _bt_pm / _bt_nm.replace(0, 1e-10)))
+                _bt_rb, _bt_be, _bt_hb, _bt_hbe = _bt_div(_bt_cl, _bt_mfi.values.astype(np.float64), lookback=5, decay=10)
+                result[f"div_reg_bull_mfi_{timeframe}"] = int(_bt_rb[-1])
+                result[f"div_reg_bear_mfi_{timeframe}"] = int(_bt_be[-1])
+                result[f"div_hid_bull_mfi_{timeframe}"] = int(_bt_hb[-1])
+                result[f"div_hid_bear_mfi_{timeframe}"] = int(_bt_hbe[-1])
+                if timeframe not in ("5m", "1h"):
+                    _bt_kcmid = close_series.ewm(span=20, adjust=False).mean()
+                    _bt_tr = pd.concat([(_bt_hi - _bt_lo), (_bt_hi - close_series.shift(1)).abs(), (_bt_lo - close_series.shift(1)).abs()], axis=1).max(axis=1).fillna(0)
+                    _bt_atr = _bt_tr.ewm(span=20, adjust=False, min_periods=20).mean()
+                    if pd.notna(_bt_atr.iloc[-1]) and pd.notna(_bt_kcmid.iloc[-1]):
+                        result[f"kc_upper_{timeframe}"] = round(float(_bt_kcmid.iloc[-1] + 1.5 * _bt_atr.iloc[-1]), 6)
+                        result[f"kc_middle_{timeframe}"] = round(float(_bt_kcmid.iloc[-1]), 6)
+                        result[f"kc_lower_{timeframe}"] = round(float(_bt_kcmid.iloc[-1] - 1.5 * _bt_atr.iloc[-1]), 6)
+                _bt_op = _ensure_float_series(adjusted_df["open"])
+                _bt_sm = compute_smfi(_bt_op.tolist(), _bt_hi.tolist(), _bt_lo.tolist(), close_series.tolist(), 20)
+                if _bt_sm:
+                    result[f"smfi_{timeframe}"] = _bt_sm["smfi"]
+                    result[f"smfi_sma_{timeframe}"] = _bt_sm["smfi_sma"]
+                    result[f"smfi_bull_div_{timeframe}"] = 1 if _bt_sm["smfi_bull_divergence"] else 0
+                    result[f"smfi_bear_div_{timeframe}"] = 1 if _bt_sm["smfi_bear_divergence"] else 0
+                _bt_dd = np.diff(_bt_cl, prepend=_bt_cl[0])
+                _bt_gg = np.where(_bt_dd > 0, _bt_dd, 0.0)
+                _bt_ll = np.where(_bt_dd < 0, -_bt_dd, 0.0)
+                _bt_ag = pd.Series(_bt_gg).ewm(alpha=1.0 / 2, adjust=False).mean().values
+                _bt_al = pd.Series(_bt_ll).ewm(alpha=1.0 / 2, adjust=False).mean().values
+                _bt_rs = _bt_ag / np.where(_bt_al > 0, _bt_al, 1e-10)
+                result[f"rsi_2_npz_{timeframe}"] = round(float(100.0 - 100.0 / (1.0 + _bt_rs[-1])), 4)
+        except Exception:
+            pass
+
         ha_color, ha_prev = heikin_ashi(adjusted_df)
         result[f"ha_{timeframe}"] = ha_color
         if ha_prev is not None:
@@ -4108,6 +4155,32 @@ def compute_extra_indicators(symbol: str, klines_cache_dir: Path) -> Dict[str, A
         ema_data_15m = compute_ema_9_21(closes_15m)
         if ema_data_15m:
             result.update({f"{k}_15m": v for k, v in ema_data_15m.items()})
+        try:
+            import datetime as _dtm
+            _et = _dtm.timezone(_dtm.timedelta(hours=-4))
+            _today = _dtm.datetime.now(_dtm.timezone.utc).astimezone(_et).date()
+            _sess = []
+            for _b in bars_15m:
+                _ts = _b.get('timestamp') or _b.get('time') or _b.get('open_time') or _b.get('t') or 0
+                try:
+                    if isinstance(_ts, str):
+                        from dateutil.parser import isoparse as _iso
+                        _d = _iso(_ts)
+                        _d = _d if _d.tzinfo else _d.replace(tzinfo=_dtm.timezone.utc)
+                    else:
+                        _ts = float(_ts)
+                        _ts = _ts / 1000.0 if _ts > 1e11 else _ts
+                        _d = _dtm.datetime.fromtimestamp(_ts, _dtm.timezone.utc)
+                    if _d.astimezone(_et).date() == _today:
+                        _sess.append(_b)
+                except Exception:
+                    continue
+            _npz_vw = compute_vwap_from_bars(_sess)
+            if _npz_vw and "vwap_distance_pct" in _npz_vw:
+                result["vwap_npz_distance_pct"] = _npz_vw["vwap_distance_pct"]
+                result["vwap_npz"] = _npz_vw["vwap"]
+        except Exception:
+            pass
     bars_1h = _consensus_load_klines(klines_cache_dir, symbol, "1h")
     if bars_1h and len(bars_1h) >= 20:
         closes_1h = [float(b.get('close') or b.get('c') or 0) for b in bars_1h if float(b.get('close') or b.get('c') or 0) > 0]

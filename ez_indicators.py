@@ -2369,8 +2369,13 @@ class IndicatorCalculator:
         try:
             if len(close_series) >= 30:
                 _bt_cl = close_series.values.astype(np.float64)
-                if wt1 is not None and not getattr(wt1, "empty", True) and len(wt1) == len(_bt_cl):
-                    _bt_rb, _bt_be, _bt_hb, _bt_hbe = detect_divergence(_bt_cl, wt1.values.astype(np.float64), lookback=5, decay=10)
+                try:
+                    from tradier_indicators import wavetrend as _bt_tradier_wt
+                    _bt_twt1, _ = _bt_tradier_wt(adjusted_df, timeframe=timeframe)
+                except Exception:
+                    _bt_twt1 = None
+                if _bt_twt1 is not None and not getattr(_bt_twt1, "empty", True) and len(_bt_twt1) == len(_bt_cl):
+                    _bt_rb, _bt_be, _bt_hb, _bt_hbe = detect_divergence(_bt_cl, _bt_twt1.values.astype(np.float64), lookback=5, decay=10)
                     result[f"div_reg_bull_wt_{timeframe}"] = int(_bt_rb[-1])
                     result[f"div_reg_bear_wt_{timeframe}"] = int(_bt_be[-1])
                     result[f"div_hid_bull_wt_{timeframe}"] = int(_bt_hb[-1])
@@ -2388,7 +2393,7 @@ class IndicatorCalculator:
                 _bt_kcmid = close_series.ewm(span=20, adjust=False).mean()
                 _bt_tr = pd.concat([(high_series - low_series), (high_series - close_series.shift(1)).abs(), (low_series - close_series.shift(1)).abs()], axis=1).max(axis=1).fillna(0)
                 _bt_atr = _bt_tr.ewm(span=20, adjust=False, min_periods=20).mean()
-                if pd.notna(_bt_atr.iloc[-1]) and pd.notna(_bt_kcmid.iloc[-1]):
+                if timeframe not in ("15m", "1h") and pd.notna(_bt_atr.iloc[-1]) and pd.notna(_bt_kcmid.iloc[-1]):
                     result[f"kc_upper_{timeframe}"] = round(float(_bt_kcmid.iloc[-1] + 1.5 * _bt_atr.iloc[-1]), 6)
                     result[f"kc_middle_{timeframe}"] = round(float(_bt_kcmid.iloc[-1]), 6)
                     result[f"kc_lower_{timeframe}"] = round(float(_bt_kcmid.iloc[-1] - 1.5 * _bt_atr.iloc[-1]), 6)
@@ -2398,6 +2403,13 @@ class IndicatorCalculator:
                     result[f"smfi_sma_{timeframe}"] = _bt_sm["smfi_sma"]
                     result[f"smfi_bull_div_{timeframe}"] = 1 if _bt_sm["smfi_bull_divergence"] else 0
                     result[f"smfi_bear_div_{timeframe}"] = 1 if _bt_sm["smfi_bear_divergence"] else 0
+                _bt_dd = np.diff(_bt_cl, prepend=_bt_cl[0])
+                _bt_gg = np.where(_bt_dd > 0, _bt_dd, 0.0)
+                _bt_ll = np.where(_bt_dd < 0, -_bt_dd, 0.0)
+                _bt_ag = pd.Series(_bt_gg).ewm(alpha=1.0 / 2, adjust=False).mean().values
+                _bt_al = pd.Series(_bt_ll).ewm(alpha=1.0 / 2, adjust=False).mean().values
+                _bt_rs = _bt_ag / np.where(_bt_al > 0, _bt_al, 1e-10)
+                result[f"rsi_2_npz_{timeframe}"] = round(float(100.0 - 100.0 / (1.0 + _bt_rs[-1])), 4)
         except Exception:
             pass
         if timeframe == "15m":
@@ -5483,6 +5495,25 @@ def compute_extra_indicators_crypto(symbol: str, klines_cache_dir: Path, funding
         kc_15m = compute_keltner_channels(closes_15m, highs_15m, lows_15m)
         if kc_15m:
             result.update({f"{k}_15m": v for k, v in kc_15m.items()})
+        try:
+            import datetime as _dtm
+            _today = _dtm.datetime.now(_dtm.timezone.utc).date()
+            _sess = []
+            for _b in bars_15m:
+                _ts = _b.get('timestamp') or _b.get('time') or _b.get('open_time') or _b.get('t') or 0
+                try:
+                    _ts = float(_ts)
+                    _ts = _ts / 1000.0 if _ts > 1e11 else _ts
+                    if _dtm.datetime.fromtimestamp(_ts, _dtm.timezone.utc).date() == _today:
+                        _sess.append(_b)
+                except Exception:
+                    continue
+            _npz_vw = compute_vwap_from_bars(_sess, session_hours=24)
+            if _npz_vw and "vwap_distance_pct" in _npz_vw:
+                result["vwap_npz_distance_pct"] = _npz_vw["vwap_distance_pct"]
+                result["vwap_npz"] = _npz_vw["vwap"]
+        except Exception:
+            pass
     bars_1h = _consensus_load_klines(klines_cache_dir, symbol, "1h")
     if bars_1h and len(bars_1h) >= 20:
         closes_1h = [float(b.get('close') or b.get('c') or 0) for b in bars_1h if float(b.get('close') or b.get('c') or 0) > 0]
