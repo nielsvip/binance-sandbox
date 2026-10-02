@@ -4109,6 +4109,110 @@ def main():
         # Previous-best that holds ~forever (1-7 trades) makes every delta meaningless: fall back to TEMPLATE defaults
         # (which carry the trade-generating exits) when they clear the 10-trade floor. Real eval, logged, never mixed.
         _adapt_report = None
+        # ── USER 2026-10-02: every new test starts with cat_side defaults vs per_sym last-best, best as E3 baseline, C adjusted ──
+        # Bias-free baseline (backtest-expert: 80% breaking, no look-ahead): evaluate cat_side defaults first, then per_sym
+        # full snapshot from last promotion, pick best credible as E3. Winning baseline's full set is diffed against
+        # latest bold template defaults — every non-current default becomes an override in column C.
+        if prepared is not None and not os.environ.get("V15_START_OVERRIDES") and os.environ.get("V15_SKIP_CAT_PERSYM_BASELINE", "0") != "1":
+            try:
+                _cat_label, _cat_ov = "cat_side_defaults", dict(_tpl_defaults)
+                # _tpl_defaults is the current bold for this template; defaults dict is the 3314 full current cat_side layer
+                # For cat_side we evaluate the template bold as baseline (empty delta vs current defaults is equivalent,
+                # but we keep _tpl_defaults explicit so the engine sees the same 4-default layer).
+                _cat_ov_san, _ = sanitize_overrides(dict(_cat_ov), defaults)
+                _cat_vec = evaluate_prepared_sanitized(prepared, _cat_ov_san, window_days=args.window_days)
+                print(f"[BASELINE-CAT] {new_symside} cat_side gain={_cat_vec.get('gain_pct')} trades={_cat_vec.get('trades')} valid={_cat_vec.get('valid')} ov={len(_cat_ov_san)}", flush=True)
+                # per_sym last-best full snapshot (defaults_snapshot + overrides, ~5000 keys) via per_sym_store
+                _persym_full = None
+                _persym_label = None
+                _persym_vec = None
+                _persym_ov_for_eval = None
+                try:
+                    import per_sym_store as _pss_bl
+                    _persym_entry = _pss_bl.get(new_symside)
+                    if _persym_entry and (_persym_entry.get("full_config") or _persym_entry.get("overrides")):
+                        # full snapshot is the truth; for evaluation we use the stored overrides as delta on current defaults
+                        # (re-differentiated below after winner pick, so evaluation with overrides suffices)
+                        _persym_full = _persym_entry.get("full_config") or {}
+                        if not _persym_full:
+                            # legacy: reconstruct from overrides + its snapshot
+                            _snap = _persym_entry.get("defaults_snapshot") or {}
+                            _persym_full = dict(_snap); _persym_full.update(_persym_entry.get("overrides") or {})
+                        _persym_ov = dict(_persym_entry.get("overrides") or {})
+                        _persym_ov_san, _ = sanitize_overrides(dict(_persym_ov), defaults)
+                        _persym_vec = evaluate_prepared_sanitized(prepared, _persym_ov_san, window_days=args.window_days)
+                        _persym_label = "per_sym_last_best"
+                        print(f"[BASELINE-PERSYM] {new_symside} per_sym gain={_persym_vec.get('gain_pct')} trades={_persym_vec.get('trades')} valid={_persym_vec.get('valid')} ov={len(_persym_ov_san)} full={len(_persym_full)}", flush=True)
+                    else:
+                        # fallback: prior ingested overrides or recipe
+                        _persym_ov = dict(_ingested_overrides) if '_ingested_overrides' in locals() and _ingested_overrides else {}
+                        if _persym_ov:
+                            _persym_ov_san, _ = sanitize_overrides(dict(_persym_ov), defaults)
+                            _persym_vec = evaluate_prepared_sanitized(prepared, _persym_ov_san, window_days=args.window_days)
+                            _persym_label = "per_sym_ingested"
+                            # for diff we treat ingested as full = defaults at that time + ov; approximate with current defaults + ov
+                            _persym_full = dict(defaults); _persym_full.update(_persym_ov_san)
+                            print(f"[BASELINE-PERSYM] {new_symside} ingested gain={_persym_vec.get('gain_pct')} trades={_persym_vec.get('trades')} valid={_persym_vec.get('valid')}", flush=True)
+                except Exception as _e_ps:
+                    print(f"[BASELINE-PERSYM-warn] {new_symside} {_e_ps}", flush=True)
+                # pick winner: credible first, then higher gain; cat first if tie (bias to defaults per backtest-expert plateau)
+                if _persym_vec is not None:
+                    def _is_credible(v):
+                        return bool(v.get("valid")) and int(v.get("trades") or 0) >= ADAPT_FLOOR_TRADES and float(v.get("gain_pct") or -1e9) >= ADAPT_ULTRA_NEG_PCT
+                    cat_cred = _is_credible(_cat_vec)
+                    per_cred = _is_credible(_persym_vec)
+                    # best = higher gain among credible, else higher gain among valid, else cat
+                    if cat_cred and per_cred:
+                        _winner_is_persym = float(_persym_vec.get("gain_pct") or -1e9) > float(_cat_vec.get("gain_pct") or -1e9)
+                    elif per_cred and not cat_cred:
+                        _winner_is_persym = True
+                    elif cat_cred and not per_cred:
+                        _winner_is_persym = False
+                    else:
+                        # neither credible: pick higher gain, cat wins ties
+                        _winner_is_persym = float(_persym_vec.get("gain_pct") or -1e9) > float(_cat_vec.get("gain_pct") or -1e9) + 1e-9
+                    if _winner_is_persym:
+                        # per_sym wins: E3 = per_sym gain, overrides = diff of its full vs latest bold template
+                        _win_vec = _persym_vec
+                        _win_full = _persym_full or {}
+                        # current bold for diff is the latest template bold layer (_tpl_defaults) + rest of defaults
+                        # For fidelity we diff against the full current defaults (3314) — every non-current default becomes override
+                        _cur_bold = dict(defaults)  # current 4-default layer (3314) is the bold truth for this cat_side
+                        _diff = {}
+                        for _k, _v in _win_full.items():
+                            _cur = _cur_bold.get(_k)
+                            if not _same_default(_v, _cur):
+                                _diff[_k] = _v
+                        # Also include any override key that is not in current bold (new switch)
+                        for _k, _v in (_persym_entry.get("overrides") or {}).items() if '_persym_entry' in locals() and _persym_entry else []:
+                            if _k not in _diff and not _same_default(_v, _cur_bold.get(_k)):
+                                _diff[_k] = _v
+                        _diff_san, _ = sanitize_overrides(_diff, defaults)
+                        print(f"[BASELINE-WINNER] {new_symside} per_sym wins cat {float(_cat_vec.get('gain_pct') or 0):.2f} vs per_sym {float(_persym_vec.get('gain_pct') or 0):.2f} -> E3 per_sym, C diff {len(_diff_san)} overrides (full {len(_win_full)} vs bold {len(_cur_bold)})", flush=True)
+                        overrides = _diff_san
+                        baseline_vec = _win_vec
+                        _zero_trades_early = int(baseline_vec.get("trades") or 0) == 0
+                        _adapt_report = {"baseline_winner": "per_sym", "cat_gain": _cat_vec.get("gain_pct"), "persym_gain": _persym_vec.get("gain_pct"), "diff_overrides": len(_diff_san)}
+                    else:
+                        print(f"[BASELINE-WINNER] {new_symside} cat_side wins cat {float(_cat_vec.get('gain_pct') or 0):.2f} vs per_sym {float(_persym_vec.get('gain_pct') or 0):.2f} -> E3 cat_side", flush=True)
+                        # cat wins: keep cat baseline as E3, overrides = cat (template bold)
+                        overrides = dict(_cat_ov_san)
+                        baseline_vec = _cat_vec
+                        _zero_trades_early = int(baseline_vec.get("trades") or 0) == 0
+                        _adapt_report = {"baseline_winner": "cat_side", "cat_gain": _cat_vec.get("gain_pct"), "persym_gain": float(_persym_vec.get("gain_pct") or 0) if _persym_vec else None}
+                    _cat_vs_persym_done = True
+                else:
+                    # no per_sym yet (first run): cat is baseline, no C adjustment needed
+                    print(f"[BASELINE-WINNER] {new_symside} cat_side only (no per_sym) cat {float(_cat_vec.get('gain_pct') or 0):.2f} -> E3 cat_side", flush=True)
+                    overrides = dict(_cat_ov_san)
+                    baseline_vec = _cat_vec
+                    _zero_trades_early = int(baseline_vec.get("trades") or 0) == 0
+                    _cat_vs_persym_done = True
+                    _adapt_report = {"baseline_winner": "cat_side_first_run"}
+            except Exception as _e_bl:
+                import traceback as _tb_bl
+                print(f"[BASELINE-CAT-PERSYM-warn] {new_symside} {_e_bl} {_tb_bl.format_exc()[:500]}", flush=True)
+                _cat_vs_persym_done = False
         # USER 2026-09-29: a sheet must start from the BEST previous settings — in FRESH mode always compare live recipe /
         # previous best / template defaults on the CURRENT engine and start from the best credible one (not only when the
         # recipe fails). A V15_START_OVERRIDES (365D-repaired) run keeps its set unless it is not credible.
