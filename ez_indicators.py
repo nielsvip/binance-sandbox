@@ -2366,6 +2366,50 @@ class IndicatorCalculator:
             result.update(wt_intel)
         else:
             result[f"wt_signal_{timeframe}"] = "NEUTRAL"
+        try:
+            if len(close_series) >= 30:
+                _bt_cl = close_series.values.astype(np.float64)
+                if wt1 is not None and not getattr(wt1, "empty", True) and len(wt1) == len(_bt_cl):
+                    _bt_rb, _bt_be, _bt_hb, _bt_hbe = detect_divergence(_bt_cl, wt1.values.astype(np.float64), lookback=5, decay=10)
+                    result[f"div_reg_bull_wt_{timeframe}"] = int(_bt_rb[-1])
+                    result[f"div_reg_bear_wt_{timeframe}"] = int(_bt_be[-1])
+                    result[f"div_hid_bull_wt_{timeframe}"] = int(_bt_hb[-1])
+                    result[f"div_hid_bear_wt_{timeframe}"] = int(_bt_hbe[-1])
+                _bt_tp = (high_series + low_series + close_series) / 3.0
+                _bt_rmf = _bt_tp * volume_series
+                _bt_pm = _bt_rmf.where(_bt_tp.diff() > 0, 0).rolling(14, min_periods=1).sum()
+                _bt_nm = _bt_rmf.where(_bt_tp.diff() < 0, 0).rolling(14, min_periods=1).sum()
+                _bt_mfi = 100.0 - (100.0 / (1.0 + _bt_pm / _bt_nm.replace(0, 1e-10)))
+                _bt_rb, _bt_be, _bt_hb, _bt_hbe = detect_divergence(_bt_cl, _bt_mfi.values.astype(np.float64), lookback=5, decay=10)
+                result[f"div_reg_bull_mfi_{timeframe}"] = int(_bt_rb[-1])
+                result[f"div_reg_bear_mfi_{timeframe}"] = int(_bt_be[-1])
+                result[f"div_hid_bull_mfi_{timeframe}"] = int(_bt_hb[-1])
+                result[f"div_hid_bear_mfi_{timeframe}"] = int(_bt_hbe[-1])
+                _bt_kcmid = close_series.ewm(span=20, adjust=False).mean()
+                _bt_tr = pd.concat([(high_series - low_series), (high_series - close_series.shift(1)).abs(), (low_series - close_series.shift(1)).abs()], axis=1).max(axis=1).fillna(0)
+                _bt_atr = _bt_tr.ewm(span=20, adjust=False, min_periods=20).mean()
+                if pd.notna(_bt_atr.iloc[-1]) and pd.notna(_bt_kcmid.iloc[-1]):
+                    result[f"kc_upper_{timeframe}"] = round(float(_bt_kcmid.iloc[-1] + 1.5 * _bt_atr.iloc[-1]), 6)
+                    result[f"kc_middle_{timeframe}"] = round(float(_bt_kcmid.iloc[-1]), 6)
+                    result[f"kc_lower_{timeframe}"] = round(float(_bt_kcmid.iloc[-1] - 1.5 * _bt_atr.iloc[-1]), 6)
+                _bt_sm = compute_smfi(open_series.tolist(), high_series.tolist(), low_series.tolist(), close_series.tolist(), 20)
+                if _bt_sm:
+                    result[f"smfi_{timeframe}"] = _bt_sm["smfi"]
+                    result[f"smfi_sma_{timeframe}"] = _bt_sm["smfi_sma"]
+                    result[f"smfi_bull_div_{timeframe}"] = 1 if _bt_sm["smfi_bull_divergence"] else 0
+                    result[f"smfi_bear_div_{timeframe}"] = 1 if _bt_sm["smfi_bear_divergence"] else 0
+        except Exception:
+            pass
+        if timeframe == "15m":
+            try:
+                _bt_day = pd.to_datetime(adjusted_df["timestamp_dt"], utc=True).dt.date
+                _bt_first = adjusted_df[_bt_day == _bt_day.iloc[-1]].iloc[0]
+                _bt_oh, _bt_ol = float(_bt_first["high"]), float(_bt_first["low"])
+                if _bt_oh > 0 and _bt_ol > 0 and _bt_oh > _bt_ol:
+                    result["orb_high"] = round(_bt_oh, 6)
+                    result["orb_low"] = round(_bt_ol, 6)
+            except Exception:
+                pass
         ha_color, ha_prev = heikin_ashi(adjusted_df)
         result[f"ha_{timeframe}"] = ha_color
         if ha_prev is not None:
