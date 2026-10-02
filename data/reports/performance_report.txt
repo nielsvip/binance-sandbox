@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-10-02 14:18 UTC
+PERFORMANCE REPORT — 2026-10-02 14:45 UTC
 ================================================================================
 Total: 142 symbols | A=5 B=93 C=44
 Window: 14 days | Min trades: 5
@@ -14,7 +14,7 @@ Window: 14 days | Min trades: 5
              AXTI  WR=58%  avg=+1.98%  total=+43.0%  trades= 19  mult=10.00
              LSCC  WR=100%  avg=+5.08%  total=+41.1%  trades=  7  mult=7.30
              INTC  WR=33%  avg=+0.80%  total=+15.1%  trades= 18  mult=3.17
-             META  WR=56%  avg=+0.78%  total=+14.3%  trades= 18  mult=6.64
+             META  WR=59%  avg=+0.86%  total=+15.0%  trades= 17  mult=7.29
              SMCI  WR=50%  avg=+1.52%  total=+12.6%  trades=  8  mult=4.60
               GME  WR=100%  avg=+2.72%  total=+11.3%  trades=  4  mult=1.00
                 A  WR=57%  avg=+0.45%  total=+10.6%  trades= 23  mult=5.19
@@ -100,10 +100,10 @@ Window: 14 days | Min trades: 5
               GLD  WR=0%  avg=-3.52%  total=-6.9%  trades=  2  mult=1.00
          IOTXUSDT  WR=48%  avg=-0.14%  total=-7.0%  trades= 50  mult=0.63
          COTIUSDT  WR=47%  avg=-0.18%  total=-7.5%  trades= 43  mult=0.55
-              VLO  WR=61%  avg=-0.15%  total=-7.9%  trades= 46  mult=1.94
+              VLO  WR=60%  avg=-0.18%  total=-9.7%  trades= 48  mult=1.65
              MSTR  WR=47%  avg=-1.04%  total=-14.7%  trades= 15  mult=0.28
               AGI  WR=0%  avg=-8.70%  total=-16.6%  trades=  2  mult=1.00
-               AU  WR=0%  avg=-4.60%  total=-17.5%  trades=  4  mult=1.00
+               AU  WR=0%  avg=-5.84%  total=-16.8%  trades=  3  mult=1.00
 
 --- TIER C (44 symbols) ---
          ROSEUSDT  WR=40%  avg=-0.00%  total=-0.0%  trades=  5  mult=0.83
@@ -149,10 +149,10 @@ Window: 14 days | Min trades: 5
                MU  WR=31%  avg=-1.27%  total=-53.4%  trades= 59  mult=0.16
              DINO  WR=19%  avg=-3.34%  total=-60.5%  trades= 27  mult=0.13
               APO  WR=5%  avg=-4.01%  total=-92.8%  trades= 64  mult=0.12
-             AXON  WR=15%  avg=-3.16%  total=-96.5%  trades=103  mult=0.13
+             AXON  WR=14%  avg=-3.16%  total=-96.7%  trades=105  mult=0.13
 
 SUMMARY:
-  Total PnL (all symbols): -434.4%
+  Total PnL (all symbols): -434.9%
   Avg win rate: 43%
   A-tier avg mult: 9.87
   C-tier avg mult: 0.32
