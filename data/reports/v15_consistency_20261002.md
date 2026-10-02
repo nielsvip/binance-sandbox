@@ -692,3 +692,27 @@
     - `MANAUSDT_LONG` [s5] 1 cases — HTF_GATE_D_MANDATORY T=-3.644/F=-1.928
     - `MSFT_SHORT` [s5] 1 cases — MTF_ATR_TRAIL_ENABLED_TRADIER T=+0.010/F=-0.015
 - **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-02T11:15Z · window 48.0h · 441 sym_sides (local+remote)
+- ⚠️ **7 sym_sides / 8 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `HTF_GATE_D_MANDATORY`×5, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `MTF_BB_REJECT_EXIT_ENABLED`×1, `MTF_ATR_TRAIL_ENABLED_TRADIER`×1
+    - `DOGEUSDC_LONG` [s5] 2 cases — HTF_GATE_D_MANDATORY T=-3.599/F=-1.406; WT_15M_LH_WAIT_EXIT_ENABLED T=-0.138/F=+0.035
+    - `BNBUSDC_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-1.240/F=+0.887
+    - `AVAXUSDC_SHORT` [s1] 1 cases — MTF_BB_REJECT_EXIT_ENABLED T=+0.098/F=-0.488
+    - `XLMUSDT_LONG` [s2] 1 cases — HTF_GATE_D_MANDATORY T=-7.698/F=-1.141
+    - `KASUSDT_LONG` [s5] 1 cases — HTF_GATE_D_MANDATORY T=-19.396/F=-6.293
+    - `MANAUSDT_LONG` [s5] 1 cases — HTF_GATE_D_MANDATORY T=-3.644/F=-1.928
+    - `MSFT_SHORT` [s5] 1 cases — MTF_ATR_TRAIL_ENABLED_TRADIER T=+0.010/F=-0.015
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-02T11:30Z · window 48.0h · 441 sym_sides (local+remote)
+- ⚠️ **7 sym_sides / 8 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `HTF_GATE_D_MANDATORY`×5, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `MTF_BB_REJECT_EXIT_ENABLED`×1, `MTF_ATR_TRAIL_ENABLED_TRADIER`×1
+    - `DOGEUSDC_LONG` [s5] 2 cases — HTF_GATE_D_MANDATORY T=-3.599/F=-1.406; WT_15M_LH_WAIT_EXIT_ENABLED T=-0.138/F=+0.035
+    - `BNBUSDC_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-1.240/F=+0.887
+    - `AVAXUSDC_SHORT` [s1] 1 cases — MTF_BB_REJECT_EXIT_ENABLED T=+0.098/F=-0.488
+    - `XLMUSDT_LONG` [s2] 1 cases — HTF_GATE_D_MANDATORY T=-7.698/F=-1.141
+    - `KASUSDT_LONG` [s5] 1 cases — HTF_GATE_D_MANDATORY T=-19.396/F=-6.293
+    - `MANAUSDT_LONG` [s5] 1 cases — HTF_GATE_D_MANDATORY T=-3.644/F=-1.928
+    - `MSFT_SHORT` [s5] 1 cases — MTF_ATR_TRAIL_ENABLED_TRADIER T=+0.010/F=-0.015
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
