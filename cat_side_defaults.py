@@ -10,7 +10,7 @@ import json
 import os
 from pathlib import Path
 
-PATH = Path(__file__).resolve().parent / "data" / "cat_side_defaults_4.json"
+PATH = Path(os.environ.get("CAT_SIDE_DEFAULTS_PATH") or (Path(__file__).resolve().parent / "data" / "cat_side_defaults_4.json"))  # sweep-only override (autopilot); unset in live = unchanged
 CAT_SIDES = ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")
 CRYPTO_SUFFIXES = ("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")
 _MISSING = object()
