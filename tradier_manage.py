@@ -6483,17 +6483,67 @@ class _PerKeyCfgView:
 
 
 def _load_global_per_sym_cfgs() -> dict:
-    """Load per-symbol custom overrides from data/hourly_reconfig/*.
+    """Load per-symbol custom overrides. SQLite primary (per_sym_store.db full
+    config  ~5000 keys, defaults snapshot + overrides) with JSON fallback.
 
-    PARITY 2026-09-24: now merges BOTH per_sym_active_config.json (crypto) AND
+    PARITY 2026-09-24: merges BOTH per_sym_active_config.json (crypto) AND
     per_sym_active_config_stocks.json (stocks 216 keys). Previously only crypto
     was read, so stocks fallback was always empty — trb/active_config.json is
     the primary but when a stocks side is missing there, global stocks overrides
     must still flow. Both files are _inject_neg_sharpe_no_trade'd.
-    V8_DISABLE_PER_SYM=1 forces config defaults (live-vs-sandbox parity audit)."""
+    V8_DISABLE_PER_SYM=1 forces config defaults (live-vs-sandbox parity audit).
+    PER_SYM_STORE_SQLITE_DISABLED=1 forces JSON-only for audit."""
+    global _global_per_sym_cfgs, _global_per_sym_cfgs_mtime
     if os.environ.get("V8_DISABLE_PER_SYM") == "1":
         return {}
-    global _global_per_sym_cfgs, _global_per_sym_cfgs_mtime
+    # SQLite primary: try per_sym_store bulk (all syms) — ~5000 keys each
+    if os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1":
+        try:
+            import per_sym_store as _pss
+            # if DB has any rows, prefer it; else fall through to JSON
+            if _pss.DB_PATH.exists() and _pss.count() > 0:
+                db_mtime = _pss.DB_PATH.stat().st_mtime
+                if db_mtime != _global_per_sym_cfgs_mtime:
+                    import sqlite3 as _sq
+                    con = _sq.connect(str(_pss.DB_PATH), timeout=5.0)
+                    con.row_factory = _sq.Row
+                    try:
+                        merged = {}
+                        for row in con.execute("SELECT sym_side, overrides_json, defaults_snapshot_json, full_config_json, meta_json FROM per_sym_active"):
+                            sym = row["sym_side"]
+                            try:
+                                ov = json.loads(row["overrides_json"]) if row["overrides_json"] else {}
+                            except Exception:
+                                ov = {}
+                            try:
+                                meta = json.loads(row["meta_json"]) if row["meta_json"] else {}
+                            except Exception:
+                                meta = {}
+                            # reconstruct legacy entry shape: overrides + meta
+                            entry = dict(meta)
+                            entry["overrides"] = ov
+                            # keep full_config for _cfg fast path (already sqlite-primary), but loader returns overrides dict
+                            # _cfg will re-check sqlite for full_config knob directly via _cfg fast path
+                            merged[sym] = _inject_neg_sharpe_no_trade(sym, entry)
+                    finally:
+                        con.close()
+                    # also merge any JSON-only syms not yet in DB (gradual migration)
+                    try:
+                        stocks_path2 = Path(config.BASE_PATH) / "data" / "hourly_reconfig" / "per_sym_active_config_stocks.json"
+                        for p in (_global_per_sym_cfgs_path, stocks_path2):
+                            if p.exists():
+                                with p.open() as _f:
+                                    raw2 = json.load(_f)
+                                for k, v in raw2.items():
+                                    if isinstance(v, dict) and k != "_meta" and k not in merged:
+                                        merged[k] = _inject_neg_sharpe_no_trade(k, v)
+                    except Exception:
+                        pass
+                    _global_per_sym_cfgs = merged
+                    _global_per_sym_cfgs_mtime = db_mtime
+                return _global_per_sym_cfgs
+        except Exception:
+            pass
     try:
         stocks_path = Path(config.BASE_PATH) / "data" / "hourly_reconfig" / "per_sym_active_config_stocks.json"
         mtime_main = _global_per_sym_cfgs_path.stat().st_mtime if _global_per_sym_cfgs_path.exists() else 0
@@ -6534,6 +6584,17 @@ def _cfg(param, default=None, account_key=None, symbol=None, side=None):
 
     2026-05-31 FINAL per_sym BOOK is AUTHORITATIVE for LONG_ENABLED/SHORT_ENABLED/
     BREAKOUT_SIZE_MAX_MULT/MOMENTUM_SMA_WATCHDOG_PCT — checked FIRST when enabled."""
+    # SQLite primary: full resolved per_sym config (~5000 keys, defaults snapshot + overrides)
+    # Every per_sym entry includes defaults of that moment so TEMPLATE changes cannot drift live.
+    # PER_SYM_STORE_SQLITE_DISABLED=1 forces JSON-only parity audit.
+    if symbol and side and os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1":
+        try:
+            import per_sym_store as _pss
+            _fc = _pss.get_full_config(f"{symbol}_{side}")
+            if _fc is not None and param in _fc:
+                return _fc[param]
+        except Exception:
+            pass
     _test_found, _test_value = _v8_sweep_override(param)
     if _test_found:
         return _test_value

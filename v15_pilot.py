@@ -7378,6 +7378,48 @@ def main():
                         _tmp.write_text(json.dumps(_all, indent=2, default=str))
                         _tmp.replace(_live_cfg_path)
                         print(f"[LIVE-PUT] {new_symside} -> {_live_cfg_path.name} gain365 {_365_gain:.2f} delta {_365_delta:.2f} LIVE NOW", flush=True)
+                        # --- per_sym_store: snapshot full defaults+overrides (~5000 keys) to SQLite primary + JSON backup ---
+                        try:
+                            import per_sym_store as _pss
+                            # defaults snapshot at promotion moment: every per_sym setting
+                            # must include defaults of that moment AND overrides
+                            try:
+                                _defaults_snap = dict(defaults) if 'defaults' in locals() and isinstance(defaults, dict) and defaults else {}
+                            except Exception:
+                                _defaults_snap = {}
+                            if not _defaults_snap:
+                                try:
+                                    import cat_side_defaults as _csd_p
+                                    _cat_p = f"{'CRYPTO' if _is_crypto else 'STOCKS'}_{new_symside.rsplit('_', 1)[-1]}"
+                                    _defaults_snap = _csd_p.defaults(_cat_p)
+                                except Exception:
+                                    _defaults_snap = {}
+                            # full resolved config for live (all defaults + promoted overrides)
+                            _full_cfg = dict(_defaults_snap)
+                            _full_cfg.update(dict(cumulative_overrides))
+                            # template md5 + defaults round for audit
+                            _tpl_md5 = ""
+                            try:
+                                import hashlib as _hl
+                                _tpl_p = Path(args.template) if 'args' in locals() and getattr(args, 'template', None) else (ROOT / f"SPREADSHEETS/TEMPLATE_{'CRYPTO' if _is_crypto else 'STOCKS'}_{new_symside.rsplit('_',1)[-1]}.xlsx")
+                                if _tpl_p.exists():
+                                    _tpl_md5 = _hl.md5(_tpl_p.read_bytes()).hexdigest()
+                            except Exception:
+                                pass
+                            _pss.upsert(
+                                new_symside,
+                                dict(cumulative_overrides),
+                                dict(_defaults_snap),
+                                dict(_full_cfg),
+                                dict(_new_entry),
+                                template_md5=_tpl_md5,
+                                defaults_round=os.environ.get("V15_DEFAULTS_ROUND", ""),
+                                json_path=_live_cfg_path,
+                            )
+                            print(f"[PER_SYM_STORE] {new_symside} SQLite+JSON full_config {len(_full_cfg)} keys (defaults {len(_defaults_snap)} + overrides {len(cumulative_overrides)}) -> {DB_PATH if False else _pss.DB_PATH}", flush=True)
+                        except Exception as _pss_e:
+                            import traceback as _tb
+                            print(f"[PER_SYM_STORE-warn] {new_symside} sqlite upsert failed {_pss_e} {_tb.format_exc()[:400]}", flush=True)
                         # Also sync to tradier_manage in-memory cache clear hint
                         try:
                             Path("/tmp/per_sym_live_promoted.flag").write_text(f"{new_symside} {utcnow()} {json.dumps(_new_entry)[:300]}")

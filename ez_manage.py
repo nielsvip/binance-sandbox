@@ -7411,15 +7411,13 @@ def _ezm_default(symbol: str, side: str, knob: str, default):
 
 
 def _psym_get(symbol: str, side: str, knob: str, default):
-    """Per-sym knob lookup. Returns per-sym override if present for
-    (symbol, side) AND override dict contains knob; else falls back to
-    getattr(config, knob, default).
+    """Per-sym knob lookup. SQLite primary (per_sym_store.db full_config  ~5000 keys)
+    with JSON backup, then cat_side defaults, then global config.
 
-    2026-09-24: crypto-only — per_sym_active_config.json only. Stock equivalents
-    (AAPLUSDT etc) are NOT traded via ez_manage yet; inf is dedicated to best
-    crypto performers. Stocks file is for tradier_manage only (see _load_global_per_sym_cfgs).
-    The earlier dual-read that merged stocks into crypto via USDT suffix is
-    reverted until stock equivalents are enabled."""
+    Every per_sym entry now carries the full resolved config (defaults snapshot
+    at promotion + overrides) so TEMPLATE changes cannot drift live.  About
+    5000 keys per sym_side.  Parallel run: SQLite by default, JSON always kept.
+    """
     # 2026-09-26 PARITY MASTER 2: when parity switch True, all NON_VECTORIZABLE knobs forced OFF (entire script)
     if (bool(getattr(config, "PARITY_DISABLE_NON_VECTORIZABLE", False)) or bool(getattr(config, "V12_PARITY_DISABLE_NON_VECTORIZABLE", False))) and knob in _NON_VEC_KNOBS_EZ:
         if isinstance(default, bool):
@@ -7427,6 +7425,20 @@ def _psym_get(symbol: str, side: str, knob: str, default):
         if isinstance(default, str) and knob.endswith("_TF"):
             return "None"
         return default
+    # SQLite primary: full resolved config (defaults snapshot + overrides, ~5000 keys)
+    # PER_SYM_STORE_SQLITE_DISABLED=1 forces JSON-only path for parity audit
+    if os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1":
+        try:
+            import per_sym_store as _pss
+            _full = _pss.get_full_config(f"{symbol}_{side}")
+            if _full is not None and knob in _full:
+                return _full[knob]
+            # also try overrides layer (legacy rows without full_config)
+            _ov_pss = _pss.get_overrides(f"{symbol}_{side}")
+            if _ov_pss is not None and knob in _ov_pss:
+                return _ov_pss[knob]
+        except Exception:
+            pass
     if os.environ.get("V8_DISABLE_PER_SYM") == "1":
         return _ezm_default(symbol, side, knob, default)
     if not bool(getattr(config, "PER_SYM_CONFIG_ENABLED", True)):
@@ -7446,8 +7458,11 @@ def _psym_get(symbol: str, side: str, knob: str, default):
     except Exception:
         pass
     key = f"{symbol}_{side}"
+    # If SQLite full_config was missing for this knob, try JSON backup before cat_side
+    _json_hit = False
     ov = _ezm_apply_final_book(key, _ezm_per_sym_cfgs.get(key, {}))
     if knob in ov:
+        _json_hit = True
         return ov[knob]
     # USER 2026-09-30: FOUR-default layer — no per-sym override -> this sym_side's cat_side default (supersedes the
     # runtime TEMPLATE xlsx fallback below, which it was built from)
@@ -7521,38 +7536,53 @@ def _ezm_is_live_side_enabled(symbol: str, side: str, account_key: str | None = 
     PARITY 2026-09-24: restored — live trades exactly what per_sym recommends.
     2026-09-24 account fix: tradeable_keys are per-account (ang:..., inf:... etc.) so TEMPLATE fallback checks per-account, not global.
     Returns (enabled, reason)."""
+    global _ezm_per_sym_raw, _ezm_per_sym_raw_mtime, _ezm_per_sym_cfgs, _ezm_per_sym_cfgs_mtime, _ezm_per_sym_stocks_raw, _ezm_per_sym_stocks_mtime
     if os.environ.get("V8_DISABLE_PER_SYM") == "1":
         return True, "V8_DISABLE_PER_SYM"
     if not bool(getattr(config, "PER_SYM_CONFIG_ENABLED", True)):
         return True, "PER_SYM_CONFIG_ENABLED=False"
-    global _ezm_per_sym_raw, _ezm_per_sym_raw_mtime, _ezm_per_sym_cfgs, _ezm_per_sym_cfgs_mtime, _ezm_per_sym_stocks_raw, _ezm_per_sym_stocks_mtime
-    try:
-        mtime = _ezm_per_sym_cfgs_path.stat().st_mtime
-        if mtime != _ezm_per_sym_raw_mtime:
-            with _ezm_per_sym_cfgs_path.open() as _f:
-                raw = json.load(_f)
-            _ezm_per_sym_raw = {k: v for k, v in raw.items() if isinstance(v, dict)}
-            _ezm_per_sym_cfgs = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict)}
-            _ezm_per_sym_raw_mtime = mtime
-            _ezm_per_sym_cfgs_mtime = mtime
-    except FileNotFoundError:
-        pass
-    except Exception as e:
-        return True, f"load error fail-open {e}"
-    # Try stocks per_sym as well (for stock symbols traded via ez_manage with USDT suffix e.g. SNDKUSDT)
-    try:
-        mtime_s = _ezm_per_sym_stocks_path.stat().st_mtime
-        if mtime_s != _ezm_per_sym_stocks_mtime:
-            with _ezm_per_sym_stocks_path.open() as _f:
-                raw_s = json.load(_f)
-            _ezm_per_sym_stocks_raw = {k: v for k, v in raw_s.items() if isinstance(v, dict)}
-            _ezm_per_sym_stocks_mtime = mtime_s
-    except FileNotFoundError:
-        _ezm_per_sym_stocks_raw = {}
-    except Exception:
-        pass
-    key = f"{symbol}_{side}"
-    raw_entry = _ezm_per_sym_raw.get(key)
+    # SQLite primary: try per_sym_store (full snapshot) for live gate — keeps gate correct when TEMPLATE drifts
+    _gate_via_sqlite = False
+    if os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1":
+        try:
+            import per_sym_store as _pss_gate
+            _gate_entry = _pss_gate.get(f"{symbol}_{side}")
+            if _gate_entry is not None:
+                raw_entry = _gate_entry
+                _pss_is_stock = symbol.replace("USDT","").replace("USDC","") != symbol and _gate_entry.get("cat_side","").startswith("STOCKS")
+                key = f"{symbol}_{side}"
+                is_stock = _pss_is_stock or (raw_entry.get("cat_side","").startswith("STOCKS"))
+                _gate_via_sqlite = True
+        except Exception:
+            _gate_via_sqlite = False
+    if not _gate_via_sqlite:
+        try:
+            mtime = _ezm_per_sym_cfgs_path.stat().st_mtime
+            if mtime != _ezm_per_sym_raw_mtime:
+                with _ezm_per_sym_cfgs_path.open() as _f:
+                    raw = json.load(_f)
+                _ezm_per_sym_raw = {k: v for k, v in raw.items() if isinstance(v, dict)}
+                _ezm_per_sym_cfgs = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict)}
+                _ezm_per_sym_raw_mtime = mtime
+                _ezm_per_sym_cfgs_mtime = mtime
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            return True, f"load error fail-open {e}"
+        # Try stocks per_sym as well (for stock symbols traded via ez_manage with USDT suffix e.g. SNDKUSDT)
+        try:
+            mtime_s = _ezm_per_sym_stocks_path.stat().st_mtime
+            if mtime_s != _ezm_per_sym_stocks_mtime:
+                with _ezm_per_sym_stocks_path.open() as _f:
+                    raw_s = json.load(_f)
+                _ezm_per_sym_stocks_raw = {k: v for k, v in raw_s.items() if isinstance(v, dict)}
+                _ezm_per_sym_stocks_mtime = mtime_s
+        except FileNotFoundError:
+            _ezm_per_sym_stocks_raw = {}
+        except Exception:
+            pass
+        key = f"{symbol}_{side}"
+        raw_entry = _ezm_per_sym_raw.get(key)
     is_stock = False
     if raw_entry is None:
         base = symbol.replace("USDT", "").replace("USDC", "")
