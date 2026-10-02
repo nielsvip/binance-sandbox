@@ -8820,5 +8820,50 @@
     ],
     "timestamp": "2026-10-02T02:00:44.124384+00:00",
     "price": 0.04458
+  },
+  {
+    "symbol": "MINAUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 12.4x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-02T02:04:08.286534+00:00",
+    "price": 0.15231
+  },
+  {
+    "symbol": "ONDOUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-02T02:04:08.286534+00:00",
+    "price": 0.49240785
+  },
+  {
+    "symbol": "SAGAUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-02T02:04:08.286534+00:00",
+    "price": 0.02526
+  },
+  {
+    "symbol": "ACTUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 10.3x normal"
+    ],
+    "timestamp": "2026-10-02T02:07:53.609589+00:00",
+    "price": 0.01149493
+  },
+  {
+    "symbol": "DOGEUSDC",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 9.9x normal"
+    ],
+    "timestamp": "2026-10-02T02:25:00.945803+00:00",
+    "price": 0.09375219
   }
 ]
