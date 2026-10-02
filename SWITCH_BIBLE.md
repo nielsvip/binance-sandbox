@@ -16,7 +16,7 @@
 6. **PARITY_PROVEN** is reserved for scalar-vs-vec parity evidence (list in `data/wiring/parity_proven.json`). `ledger_flip_proven` = a real NPZ ledger flip (data/wiring/wired_proven.json) only.
 
 
-_Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reached from simulate_one: 133/201_
+_Generated 2026-10-02T07:13:31.569866Z · 3499 names · vec modules never reached from simulate_one: 133/201_
 
 ## Status counts (all names)
 
@@ -45,7 +45,7 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 - `ez_alert.py` `f79b41005f`
 - `ez_crosses.py` `180543010d`
 - `ez_indicators.py` `99f251cb6a`
-- `ez_manage.py` `59049b45b4`
+- `ez_manage.py` `62a5b548fd`
 - `ez_positions.py` `23e0d117a5`
 - `ez_positions_quick.py` `a9081679d6`
 - `ez_positions_service.py` `74014d1adb`
@@ -88,7 +88,7 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 - `tradier_exit_indicator_contract_c5.py` `de29d1547b`
 - `tradier_gr_htf_trace_c5.py` `add998db64`
 - `tradier_indicators.py` `ee0894b39d`
-- `tradier_manage.py` `541c92758c`
+- `tradier_manage.py` `80457562d0`
 - `tradier_matrix_gates.py` `875894d25d`
 - `tradier_positions.py` `0b6be133c9`
 - `tradier_reentry_wt_contract.py` `446c9e9ed3`
@@ -98,7 +98,7 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 - `trc_advisory_consumer.py` `4e76610ad9`
 - `utils.py` `47aed6d412`
 - `uve_engine.py` `8d6d80b713`
-- `v12_quick_engine.py` `ecacb3be0f`
+- `v12_quick_engine.py` `4c3f72a4ce`
 - `vec_decisions/bb_pullback_gate.py` `d923cbc026`
 - `vec_decisions/breakout_opener.py` `f4da53ef8d`
 - `vec_decisions/check_entry_candidates_crypto__bb_squeeze_gate.py` `c01894a684`
@@ -310,14 +310,14 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 
 | switch | kind | defaults cfg / tradier / quick | templates | crypto | stocks | live reads (ez · tradier) | vec reads |
 |---|---|---|---|---|---|---|---|
-| `ABLATION_DISABLE_FAST_RISER` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:52647(process_position) · tradier_manage.py:5800(<module>) | — |
+| `ABLATION_DISABLE_FAST_RISER` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:52687(process_position) · tradier_manage.py:5800(<module>) | — |
 | `ABLATION_DISABLE_SCALP_GUARD` | unclassified | True / False / False | — | DEAD+STAGED_VEC | LIVE_ONLY+STAGED_VEC | — · tradier_manage.py:5806(<module>) | — |
-| `ACCOUNTS` | unclassified | <absent> / {'tra': {'id': None, 'key': None, 'env': 'live'}, 'trb': {' | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32925(main)<br>(+2) | — |
-| `ACCOUNT_KEYS` | unclassified | ['ang', 'inf', 'men', 'flz', 'fin'] / ['tra', 'trb', 'trc'] / ['ang',  | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:8164(check_server_heartbeat)<br>(+11) · ez_positions_quick.py:533(check_server_heartbeat)<br>(+11) | — |
+| `ACCOUNTS` | unclassified | <absent> / {'tra': {'id': None, 'key': None, 'env': 'live'}, 'trb': {' | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32986(main)<br>(+2) | — |
+| `ACCOUNT_KEYS` | unclassified | ['ang', 'inf', 'men', 'flz', 'fin'] / ['tra', 'trb', 'trc'] / ['ang',  | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:8204(check_server_heartbeat)<br>(+11) · ez_positions_quick.py:533(check_server_heartbeat)<br>(+11) | — |
 | `ACCOUNT_OVERRIDES` | unclassified | {'ang': {'NOLOSS_MIN_PROFIT_PCT': 0.0, 'HTF_STRICT': False, 'K3M_CAP': | — | DEAD | DEAD | — · — | — |
 | `ACCOUNT_SIDE_MAPPING` | unclassified | {'tra': ['LONG']} / {'tra': ['LONG']} / {'tra': ['LONG']} | — | DEAD | DEAD | — · — | — |
 | `ACCOUNT_TP_PCT` | unclassified | {} / <absent> / {} | — | DEAD | DEAD | — · — | — |
-| `ACCOUNT_TYPE_TRA` | unclassified | <absent> / cash / cash | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19938(StockStrategy.evaluate_stop) | — |
+| `ACCOUNT_TYPE_TRA` | unclassified | <absent> / cash / cash | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19999(StockStrategy.evaluate_stop) | — |
 | `ADAPTIVE_REGIME_DC_BREAKDOWN_THRESHOLD` | unclassified | 0.1 / 0.1 / 0.1 | — | DEAD | DEAD | — · — | — |
 | `ADAPTIVE_REGIME_DC_BREAKOUT_THRESHOLD` | unclassified | 0.9 / 0.9 / 0.9 | — | DEAD | DEAD | — · — | — |
 | `ADAPTIVE_REGIME_DECAY_HALFLIFE_H` | unclassified | 24.0 / 24.0 / 24.0 | — | DEAD | DEAD | — · — | — |
@@ -328,8 +328,8 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `ADAPTIVE_REGIME_NPZ_CACHE_HOURS` | unclassified | 4.0 / 4.0 / 4.0 | — | DEAD | DEAD | — · — | — |
 | `ADAPTIVE_REGIME_PAPER` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `ADAPTIVE_REGIME_SHARPE_FLOOR` | unclassified | 0.0 / 0.0 / 0.0 | — | DEAD | DEAD | — · — | — |
-| `ADX_REGIME_FILTER_ENABLED` | entry | False / True / False | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:546(check_entry_alignment)<br>(+2) · ez_positions_quick.py:2712(AdvancedSignalRater.rate) | v12_quick_engine.py:11965(simulate_one)<br>vec_decisions/entry_hard_gates.py:42(crypto_block) |
-| `ADX_TF` | entry | 1h / 1h / 1h | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:547(check_entry_alignment)<br>(+2) · ez_positions_quick.py:2713(AdvancedSignalRater.rate) | v12_quick_engine.py:11966(simulate_one)<br>vec_decisions/entry_hard_gates.py:43(crypto_block) |
+| `ADX_REGIME_FILTER_ENABLED` | entry | False / True / False | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:546(check_entry_alignment)<br>(+2) · ez_positions_quick.py:2712(AdvancedSignalRater.rate) | v12_quick_engine.py:12010(simulate_one)<br>vec_decisions/entry_hard_gates.py:42(crypto_block) |
+| `ADX_TF` | entry | 1h / 1h / 1h | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:547(check_entry_alignment)<br>(+2) · ez_positions_quick.py:2713(AdvancedSignalRater.rate) | v12_quick_engine.py:12011(simulate_one)<br>vec_decisions/entry_hard_gates.py:43(crypto_block) |
 | `AGGRESSIVE_LOSS_CUT_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `AI_PREMARKET_DECISIONS_DIR` | unclassified | data/ai_premarket / data/ai_premarket / data/ai_premarket | — | DEAD | DEAD | — · — | — |
 | `AI_PREMARKET_ENABLED_TRB` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
@@ -339,18 +339,18 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `AI_PREMARKET_MIN_CONVICTION` | unclassified | 0.55 / 0.55 / 0.55 | — | DEAD | DEAD | — · — | — |
 | `AI_PREMARKET_SIZE_MULT_MAX` | sizing | 1.5 / 1.5 / 1.5 | — | DEAD | DEAD | — · — | — |
 | `AI_PREMARKET_TRADINGVIEW_ENABLED` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
-| `ALIGNMENT_GATE_MIN` | unclassified | 4 / 4 / 4 | — | LIVE_ONLY | LIVE_ONLY | vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:68(_alignment_min)<br>(+1) · tradier_manage.py:27717(TradierTradeManager.should_enter_long)<br>(+7) | vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:68(_alignment_min) [UNREACHABLE]<br>vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:83(check_alignment_gate) [UNREACHABLE] |
-| `ALIGNMENT_GATE_TOTAL` | unclassified | 36 / 36 / 36 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27723(TradierTradeManager.should_enter_long)<br>(+1) | — |
+| `ALIGNMENT_GATE_MIN` | unclassified | 4 / 4 / 4 | — | LIVE_ONLY | LIVE_ONLY | vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:68(_alignment_min)<br>(+1) · tradier_manage.py:27778(TradierTradeManager.should_enter_long)<br>(+7) | vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:68(_alignment_min) [UNREACHABLE]<br>vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:83(check_alignment_gate) [UNREACHABLE] |
+| `ALIGNMENT_GATE_TOTAL` | unclassified | 36 / 36 / 36 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27784(TradierTradeManager.should_enter_long)<br>(+1) | — |
 | `ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED` | entry | False / <absent> / False | — | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:2759(check_entry_vetting) · — | — |
 | `ALL_TF_AGAINST_BLOCK_ENTRY_MIN_TFS` | entry | 4 / <absent> / 4 | — | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:2767(check_entry_vetting) · — | — |
-| `ALWAYS_TRADEABLE` | unclassified | <absent> / ['NVDA', 'GOOG', 'META', 'MSFT', 'GLD', 'XOP', 'GDX', 'USO' | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22380(TradierTradeManager.__init__)<br>(+2) | — |
+| `ALWAYS_TRADEABLE` | unclassified | <absent> / ['NVDA', 'GOOG', 'META', 'MSFT', 'GLD', 'XOP', 'GDX', 'USO' | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22441(TradierTradeManager.__init__)<br>(+2) | — |
 | `API_RATE_LIMIT_PER_MINUTE` | unclassified | <absent> / 300 / 300 | — | DEAD | DEAD | — · — | — |
 | `API_RATE_LIMIT_PER_SECOND` | unclassified | <absent> / 10 / 10 | — | DEAD | LIVE_ONLY | — · tradier_api.py:101(TradierAPIClient.__init__)<br>(+1) | — |
 | `ASYMMETRIC_LOSER_MIN_AGE_SECONDS` | unclassified | 540 / 540 / 540 | — | LIVE_ONLY | DEAD | strategy_enhancements.py:50(check_asymmetric_stop) · — | — |
 | `ASYMMETRIC_STOPS_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | strategy_enhancements.py:47(check_asymmetric_stop) · — | — |
 | `ASYMMETRIC_WINNER_GAIN_PCT` | unclassified | 1.5 / 1.5 / 1.5 | — | LIVE_ONLY | DEAD | strategy_enhancements.py:51(check_asymmetric_stop) · — | — |
-| `ATR_ADAPTIVE_STOP_ENABLED` | unclassified | False / True / False | — | LIVE_ONLY | DEAD | ez_manage.py:41629(calculate_final_order_quantity) · — | — |
-| `ATR_ADAPTIVE_STOP_TF` | unclassified | 1h / 1h / 1h | — | LIVE_ONLY | DEAD | ez_manage.py:41613(calculate_final_order_quantity)<br>(+1) · — | — |
+| `ATR_ADAPTIVE_STOP_ENABLED` | unclassified | False / True / False | — | LIVE_ONLY | DEAD | ez_manage.py:41669(calculate_final_order_quantity) · — | — |
+| `ATR_ADAPTIVE_STOP_TF` | unclassified | 1h / 1h / 1h | — | LIVE_ONLY | DEAD | ez_manage.py:41653(calculate_final_order_quantity)<br>(+1) · — | — |
 | `ATR_PARITY_EQUITY_BASE_USD` | unclassified | 35000.0 / 35000.0 / 17500.0 | — | DEAD | DEAD | — · — | — |
 | `ATR_PARITY_QTY_CAP_MULT` | unclassified | 5.0 / 5.0 / 5.0 | — | DEAD | DEAD | — · — | — |
 | `ATR_PARITY_TARGET_RISK_PCT` | unclassified | 0.2 / 0.2 / 0.2 | — | DEAD | DEAD | — · — | — |
@@ -358,42 +358,42 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `ATR_TRAIL_2X_EXIT_ENABLED` | exit | False / False / False | — | DEAD | DEAD | — · — | — |
 | `ATR_TRAIL_ENABLED_TRADIER` | unclassified | False / False / False | — | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | — |
 | `AUGMENTED_DC_BREAK_ENABLED` | augment | True / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | vec_decisions/live_exit_chain.py:187(step) |
-| `AUGMENT_BLOWPAST_ENABLED` | augment | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:38960(evaluate_augmentation) · — | — |
-| `AUGMENT_HTF_TREND_ENABLED` | augment | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:38997(evaluate_augmentation) · — | — |
+| `AUGMENT_BLOWPAST_ENABLED` | augment | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:39000(evaluate_augmentation) · — | — |
+| `AUGMENT_HTF_TREND_ENABLED` | augment | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:39037(evaluate_augmentation) · — | — |
 | `AUGMENT_PYRAMID_ENABLED` | augment | True / True / True | — | DEAD | DEAD | — · — | — |
 | `AUGMENT_PYRAMID_TRADIER` | augment | False / False / False | — | DEAD | DEAD | — · — | — |
-| `AUGMENT_TYPED_MIN_GAIN_ENABLED` | augment | False / False / False | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/live_unw_gates.py:110(augment_tier_min_gain) · vec_decisions/live_unw_gates.py:110(augment_tier_min_gain) | v12_quick_engine.py:11667(simulate_one)<br>vec_decisions/live_unw_gates.py:110(augment_tier_min_gain)<br>(+1) |
-| `AUGMENT_WT_3TF_ENABLED` | augment | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:38981(evaluate_augmentation) · — | — |
-| `AUGMENT_WT_CROSS_ENABLED` | augment | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:38970(evaluate_augmentation) · — | — |
+| `AUGMENT_TYPED_MIN_GAIN_ENABLED` | augment | False / False / False | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/live_unw_gates.py:110(augment_tier_min_gain) · vec_decisions/live_unw_gates.py:110(augment_tier_min_gain) | v12_quick_engine.py:11712(simulate_one)<br>vec_decisions/live_unw_gates.py:110(augment_tier_min_gain)<br>(+1) |
+| `AUGMENT_WT_3TF_ENABLED` | augment | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:39021(evaluate_augmentation) · — | — |
+| `AUGMENT_WT_CROSS_ENABLED` | augment | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:39010(evaluate_augmentation) · — | — |
 | `AUG_COOLDOWN_S` | unclassified | 0.0 / 0.0 / 0.0 | — | DEAD | DEAD | — · — | — |
 | `AVAILABLE_IPS` | unclassified | <absent> / ['5.75.211.216', '49.13.32.80', '157.180.125.52'] / ['5.75. | — | DEAD | LIVE_ONLY | — · tradier_api.py:106(TradierAPIClient.__init__) | — |
 | `BACKUP_KLINES_CACHE` | unclassified | <expr> HD_ROOT / 'backup/klines_cache' / <absent> / <expr> Path('data' | — | DEAD | DEAD | — · — | — |
 | `BAND_ARROW_ACCUMULATE` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
-| `BAND_ARROW_ENTRY_TFS` | entry | D,4h,1h / D,4h,1h / D,4h,1h | — | DEAD | LIVE_ONLY | — · tradier_manage.py:10078(band_arrow_score) | — |
+| `BAND_ARROW_ENTRY_TFS` | entry | D,4h,1h / D,4h,1h / D,4h,1h | — | DEAD | LIVE_ONLY | — · tradier_manage.py:10139(band_arrow_score) | — |
 | `BAND_ARROW_EXIT_TFS` | exit | D,4h / D,4h / D,4h | — | DEAD | DEAD | — · — | — |
-| `BAND_ARROW_MAX_POS_MULT` | unclassified | 30.0 / 30.0 / 30.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12447(process_position) | — |
+| `BAND_ARROW_MAX_POS_MULT` | unclassified | 30.0 / 30.0 / 30.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12508(process_position) | — |
 | `BAND_FILE` | unclassified | <expr> DATA_DIR / 'band_score.json' / <absent> / <expr> Path('data') | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:138(<module>)<br>(+1) · ez_rankings.py:138(<module>)<br>(+1) | — |
-| `BASE_PATH` | unclassified | <expr> _resolve_base_path() / <expr> _resolve_base_path() / <expr> Pat | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_crosses.py:38(<module>)<br>(+11) · ez_crosses.py:38(<module>)<br>(+11) | v12_quick_engine.py:8038(load_npz) |
-| `BASE_TF` | global | 15m / 15m / 3m | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:4008(_base_tf)<br>v12_quick_engine.py:10273(_bar_minutes)<br>(+3) |
+| `BASE_PATH` | unclassified | <expr> _resolve_base_path() / <expr> _resolve_base_path() / <expr> Pat | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_crosses.py:38(<module>)<br>(+11) · ez_crosses.py:38(<module>)<br>(+11) | v12_quick_engine.py:8083(load_npz) |
+| `BASE_TF` | global | 15m / 15m / 3m | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:4008(_base_tf)<br>v12_quick_engine.py:10318(_bar_minutes)<br>(+3) |
 | `BASIS_CONDITION` | entry | False / False / False | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2211(AdvancedSignalRater.rate)<br>(+2) · ez_positions_quick.py:2211(AdvancedSignalRater.rate)<br>(+2) | vec_decisions/entry_hard_gates.py:58(crypto_block) |
-| `BB4H_BREAKOUT_LADDER_BASIS_PCT` | unclassified | 0.5 / 0.5 / 0.5 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:9599(evaluate_bb4h_breakout_ladder) · tradier_manage.py:11746(process_position)<br>(+1) | — |
-| `BB4H_BREAKOUT_LADDER_BREAKOUT_PCT` | unclassified | 0.25 / 0.25 / 0.25 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:9598(evaluate_bb4h_breakout_ladder) · tradier_manage.py:11745(process_position)<br>(+1) | — |
-| `BB4H_BREAKOUT_LADDER_ENABLED` | unclassified | True / True / True | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:9583(evaluate_bb4h_breakout_ladder)<br>(+1) · tradier_manage.py:11734(process_position)<br>(+1) | vec_decisions/live_stocks_entry.py:33(bb4h_stage0) |
-| `BB4H_BREAKOUT_LADDER_MAX_STOCK_SHARES` | unclassified | 1 / 1 / 1 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11751(process_position)<br>(+1) | — |
-| `BB4H_BREAKOUT_LADDER_STOCK_MAX_NOTIONAL_USD` | unclassified | 2000.0 / 2000.0 / 2000.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:11750(process_position)<br>(+1) | vec_decisions/live_stocks_entry.py:42(bb4h_stage0) |
-| `BB4H_BREAKOUT_LADDER_TARGET_USD` | unclassified | 2000.0 / 2000.0 / 2000.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:9601(evaluate_bb4h_breakout_ladder) · tradier_manage.py:11748(process_position)<br>(+1) | — |
-| `BB4H_BREAKOUT_LADDER_WT_CROSS_PCT` | unclassified | 0.25 / 0.25 / 0.25 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:9600(evaluate_bb4h_breakout_ladder) · tradier_manage.py:11747(process_position)<br>(+1) | — |
-| `BB_BREAKOUT_CONT_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:48554(process_position) · — | — |
-| `BB_BREAKOUT_CONT_HOURS` | unclassified | 72.0 / 72.0 / 72.0 | — | LIVE_ONLY | DEAD | ez_manage.py:48553(process_position) · — | — |
-| `BB_FROZEN_STOP_FIELD` | unclassified | lower / lower / lower | — | LIVE_ONLY | DEAD | ez_manage.py:47313(process_position) · — | — |
-| `BB_FROZEN_STOP_TF` | unclassified | 1h / 1h / 1h | — | LIVE_ONLY | DEAD | ez_manage.py:47312(process_position) · — | — |
-| `BB_PULLBACK_GATE_ON_FINAL` | unclassified | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11863(simulate_one) |
+| `BB4H_BREAKOUT_LADDER_BASIS_PCT` | unclassified | 0.5 / 0.5 / 0.5 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:9639(evaluate_bb4h_breakout_ladder) · tradier_manage.py:11807(process_position)<br>(+1) | — |
+| `BB4H_BREAKOUT_LADDER_BREAKOUT_PCT` | unclassified | 0.25 / 0.25 / 0.25 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:9638(evaluate_bb4h_breakout_ladder) · tradier_manage.py:11806(process_position)<br>(+1) | — |
+| `BB4H_BREAKOUT_LADDER_ENABLED` | unclassified | True / True / True | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:9623(evaluate_bb4h_breakout_ladder)<br>(+1) · tradier_manage.py:11795(process_position)<br>(+1) | vec_decisions/live_stocks_entry.py:33(bb4h_stage0) |
+| `BB4H_BREAKOUT_LADDER_MAX_STOCK_SHARES` | unclassified | 1 / 1 / 1 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11812(process_position)<br>(+1) | — |
+| `BB4H_BREAKOUT_LADDER_STOCK_MAX_NOTIONAL_USD` | unclassified | 2000.0 / 2000.0 / 2000.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:11811(process_position)<br>(+1) | vec_decisions/live_stocks_entry.py:42(bb4h_stage0) |
+| `BB4H_BREAKOUT_LADDER_TARGET_USD` | unclassified | 2000.0 / 2000.0 / 2000.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:9641(evaluate_bb4h_breakout_ladder) · tradier_manage.py:11809(process_position)<br>(+1) | — |
+| `BB4H_BREAKOUT_LADDER_WT_CROSS_PCT` | unclassified | 0.25 / 0.25 / 0.25 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:9640(evaluate_bb4h_breakout_ladder) · tradier_manage.py:11808(process_position)<br>(+1) | — |
+| `BB_BREAKOUT_CONT_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:48594(process_position) · — | — |
+| `BB_BREAKOUT_CONT_HOURS` | unclassified | 72.0 / 72.0 / 72.0 | — | LIVE_ONLY | DEAD | ez_manage.py:48593(process_position) · — | — |
+| `BB_FROZEN_STOP_FIELD` | unclassified | lower / lower / lower | — | LIVE_ONLY | DEAD | ez_manage.py:47353(process_position) · — | — |
+| `BB_FROZEN_STOP_TF` | unclassified | 1h / 1h / 1h | — | LIVE_ONLY | DEAD | ez_manage.py:47352(process_position) · — | — |
+| `BB_PULLBACK_GATE_ON_FINAL` | unclassified | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11908(simulate_one) |
 | `BB_RECOVERY_DIRECT_BARS` | unclassified | 1 / 1 / 1 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:1157(_shared_direct_entry_claim) | — |
 | `BB_RECOVERY_DIRECT_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:1145(_shared_direct_entry_claim) | — |
 | `BB_RECOVERY_DIRECT_MIN_EXCURSION_ATR` | unclassified | 0.5 / 0.5 / 0.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:1160(_shared_direct_entry_claim) | — |
 | `BB_RECOVERY_DIRECT_TIMEFRAME` | unclassified | 1h / 1h / 1h | — | DEAD | LIVE_ONLY | — · tradier_manage.py:1151(_shared_direct_entry_claim) | — |
-| `BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER` | exit | 0.0 / 0.0 / 0.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26042(TradierTradeManager.execute_now) | — |
-| `BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER` | exit | 0.3 / 0.3 / 0.3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26041(TradierTradeManager.execute_now) | — |
+| `BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER` | exit | 0.0 / 0.0 / 0.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26103(TradierTradeManager.execute_now) | — |
+| `BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER` | exit | 0.3 / 0.3 / 0.3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26102(TradierTradeManager.execute_now) | — |
 | `BB_RSI_STOCH_BB_MAX` | unclassified | 0.3 / 0.3 / 0.3 | — | DEAD | DEAD | — · — | — |
 | `BB_RSI_STOCH_K_MAX` | unclassified | 30.0 / 30.0 / 30.0 | — | DEAD | DEAD | — · — | — |
 | `BB_RSI_STOCH_RSI_MAX` | unclassified | 40.0 / 40.0 / 40.0 | — | DEAD | DEAD | — · — | — |
@@ -402,14 +402,14 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `BB_SQUEEZE_COOLDOWN` | unclassified | 300.0 / 300.0 / 300.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:16170(check_entry_candidates_for_account.worker) · ez_positions_quick.py:16170(check_entry_candidates_for_account.worker) | — |
 | `BB_SQUEEZE_THRESHOLD_15M` | unclassified | 0.025 / 0.025 / 0.025 | — | DEAD | DEAD | — · — | — |
 | `BB_SQUEEZE_THRESHOLD_1H` | unclassified | 0.03 / 0.03 / 0.03 | — | DEAD | DEAD | — · — | — |
-| `BEAR_HOLD_WT_THR` | unclassified | 53.0 / 53.0 / 53.0 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/live_unw_gates.py:88(exit_hold_blocked) · vec_decisions/live_unw_gates.py:88(exit_hold_blocked) | v12_quick_engine.py:10015(compute_exit_signals)<br>vec_decisions/live_unw_gates.py:88(exit_hold_blocked) |
-| `BEAR_SCENARIO_SYMBOLS` | unclassified | <absent> / {'AG', 'GLD', 'UVXY', 'UNG', 'AGI', 'PAAS', 'MAG', 'GDX', ' | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26289(TradierTradeManager.execute_now) | — |
+| `BEAR_HOLD_WT_THR` | unclassified | 53.0 / 53.0 / 53.0 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/live_unw_gates.py:88(exit_hold_blocked) · vec_decisions/live_unw_gates.py:88(exit_hold_blocked) | v12_quick_engine.py:10060(compute_exit_signals)<br>vec_decisions/live_unw_gates.py:88(exit_hold_blocked) |
+| `BEAR_SCENARIO_SYMBOLS` | unclassified | <absent> / {'HL', 'FNV', 'CDE', 'BTG', 'RGLD', 'AG', 'UCO', 'USO', 'PA | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26350(TradierTradeManager.execute_now) | — |
 | `BINANCE_API_BASE` | unclassified | https://fapi.binance.com / <absent> / https://fapi.binance.com | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:95(<module>) · ez_rankings.py:95(<module>) | — |
-| `BLACKLIST` | unclassified | <absent> / ['SLV', 'COPX', 'PYPL', 'QBTS', 'DINO', 'RBLX', 'MPC'] / <a | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22382(TradierTradeManager.__init__) | — |
+| `BLACKLIST` | unclassified | <absent> / ['SLV', 'COPX', 'PYPL', 'QBTS', 'DINO', 'RBLX', 'MPC'] / <a | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22443(TradierTradeManager.__init__) | — |
 | `BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME` | unclassified | 4h / 4h / 4h | — | DEAD | LIVE_ONLY | — · tradier_manage.py:1680(_ordinary_bottom_a_params) | — |
 | `BOTTOM_A_PROTECTIVE_TRAIL_BREAK_BUFFER_ATR` | unclassified | 0.5 / 0.5 / 0.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:1692(_ordinary_bottom_a_params) | — |
 | `BOTTOM_A_PROTECTIVE_TRAIL_DISTANCE_MULT` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:1696(_ordinary_bottom_a_params) | — |
-| `BOTTOM_A_PROTECTIVE_TRAIL_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:10497(process_position)<br>(+1) | — |
+| `BOTTOM_A_PROTECTIVE_TRAIL_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:10558(process_position)<br>(+1) | — |
 | `BOTTOM_A_PROTECTIVE_TRAIL_LOOKBACK` | unclassified | 6 / 6 / 6 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:1700(_ordinary_bottom_a_params) | — |
 | `BOTTOM_A_PROTECTIVE_TRAIL_MODE` | unclassified | STDEV / STDEV / STDEV | — | DEAD | LIVE_ONLY | — · tradier_manage.py:1688(_ordinary_bottom_a_params) | — |
 | `BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME` | unclassified | 5m / 5m / 5m | — | DEAD | LIVE_ONLY | — · tradier_manage.py:1684(_ordinary_bottom_a_params) | — |
@@ -424,31 +424,31 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `BOTTOM_B_DELAYED_LOWER_TOP_PREBREAK_LOOKBACK` | unclassified | 20 / 20 / 20 | — | DEAD | DEAD | — · — | — |
 | `BOTTOM_B_DELAYED_LOWER_TOP_REBOUND_ATR` | unclassified | 0.5 / 0.5 / 0.5 | — | DEAD | DEAD | — · — | — |
 | `BOUNCE_AUGMENT_PAPER` | augment | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:14271(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14271(check_exit_candidates_for_account.process_single_exit) | — |
-| `BOUNCE_REENTRY_ENABLED_TRADIER` | reentry | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21918(StockStrategy.evaluate_reentry)<br>(+1) | — |
-| `BOUNCE_REENTRY_K_RESET_LONG_TRADIER` | reentry | <absent> / 35 / 35 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21919(StockStrategy.evaluate_reentry)<br>(+1) | — |
-| `BOUNCE_REENTRY_K_RESET_SHORT_TRADIER` | reentry | <absent> / 65 / 65 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21920(StockStrategy.evaluate_reentry)<br>(+1) | — |
+| `BOUNCE_REENTRY_ENABLED_TRADIER` | reentry | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21979(StockStrategy.evaluate_reentry)<br>(+1) | — |
+| `BOUNCE_REENTRY_K_RESET_LONG_TRADIER` | reentry | <absent> / 35 / 35 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21980(StockStrategy.evaluate_reentry)<br>(+1) | — |
+| `BOUNCE_REENTRY_K_RESET_SHORT_TRADIER` | reentry | <absent> / 65 / 65 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21981(StockStrategy.evaluate_reentry)<br>(+1) | — |
 | `BOUNCE_TOP_EXIT_ENABLED` | exit | False / False / False | — | DEAD | DEAD | — · — | — |
-| `BOUNCE_TOP_MAX_LOSS_PCT` | unclassified | -50.0 / -50.0 / -50.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20391(StockStrategy.evaluate_stop) | — |
-| `BOUNCE_TOP_MIN_HOLD_MINUTES` | unclassified | 2880.0 / 1440.0 / 2880.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20389(StockStrategy.evaluate_stop) | — |
-| `BOUNCE_TOP_MIN_LOSS_PCT` | unclassified | -3.0 / -3.0 / -3.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20390(StockStrategy.evaluate_stop) | — |
-| `BOUNCE_TOP_REENTRY_MULT` | reentry | 1.5 / 1.5 / 1.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22011(StockStrategy.evaluate_reentry)<br>(+1) | — |
-| `BOUNCE_TOP_RISING_CROSS_MULT` | unclassified | 2.0 / 2.0 / 2.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22017(StockStrategy.evaluate_reentry)<br>(+1) | — |
+| `BOUNCE_TOP_MAX_LOSS_PCT` | unclassified | -50.0 / -50.0 / -50.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20452(StockStrategy.evaluate_stop) | — |
+| `BOUNCE_TOP_MIN_HOLD_MINUTES` | unclassified | 2880.0 / 1440.0 / 2880.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20450(StockStrategy.evaluate_stop) | — |
+| `BOUNCE_TOP_MIN_LOSS_PCT` | unclassified | -3.0 / -3.0 / -3.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20451(StockStrategy.evaluate_stop) | — |
+| `BOUNCE_TOP_REENTRY_MULT` | reentry | 1.5 / 1.5 / 1.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22072(StockStrategy.evaluate_reentry)<br>(+1) | — |
+| `BOUNCE_TOP_RISING_CROSS_MULT` | unclassified | 2.0 / 2.0 / 2.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22078(StockStrategy.evaluate_reentry)<br>(+1) | — |
 | `BREAKEVEN_DC_LOW4_ENABLED` | unclassified | True / True / True | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14598(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14598(check_exit_candidates_for_account.process_single_exit)<br>(+1) | vec_decisions/check_exit_candidates_crypto__breakeven_dc_struct.py:54(check_breakeven_dc_struct) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_crypto__breakeven_dc_struct.py:76(check_breakeven_dc_struct_vec) [UNREACHABLE]<br>(+1) |
-| `BREAKEVEN_EXIT_AFTER_BARS` | exit | 8 / 8 / 8 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20305(StockStrategy.evaluate_stop) | — |
-| `BREAKEVEN_EXIT_AFTER_BARS_BUFFER_PCT` | exit | 0.05 / 0.05 / 0.05 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20308(StockStrategy.evaluate_stop) | — |
-| `BREAKEVEN_EXIT_AFTER_BARS_ENABLED` | exit | True / False / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20303(StockStrategy.evaluate_stop) | — |
-| `BREAKEVEN_EXIT_AFTER_BARS_TF` | exit | 15m / 15m / 15m | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20306(StockStrategy.evaluate_stop) | — |
-| `BREAKEVEN_EXIT_REQUIRE_WT15M_STRUCTURE` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20322(StockStrategy.evaluate_stop) | — |
-| `BREAKOUT_DC1H_BYPASS_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:30289(MultiAccountTradeManager.execute_now) · — | — |
+| `BREAKEVEN_EXIT_AFTER_BARS` | exit | 8 / 8 / 8 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20366(StockStrategy.evaluate_stop) | — |
+| `BREAKEVEN_EXIT_AFTER_BARS_BUFFER_PCT` | exit | 0.05 / 0.05 / 0.05 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20369(StockStrategy.evaluate_stop) | — |
+| `BREAKEVEN_EXIT_AFTER_BARS_ENABLED` | exit | True / False / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20364(StockStrategy.evaluate_stop) | — |
+| `BREAKEVEN_EXIT_AFTER_BARS_TF` | exit | 15m / 15m / 15m | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20367(StockStrategy.evaluate_stop) | — |
+| `BREAKEVEN_EXIT_REQUIRE_WT15M_STRUCTURE` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20383(StockStrategy.evaluate_stop) | — |
+| `BREAKOUT_DC1H_BYPASS_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:30329(MultiAccountTradeManager.execute_now) · — | — |
 | `BREAKOUT_GUARD_LOSS_THRESHOLD` | unclassified | -999.0 / -999.0 / -999.0 | — | DEAD | DEAD | — · — | — |
 | `BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `BREAKOUT_INJECT_LIVE` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:4760(initial_fetch_and_ranking)<br>(+1) · ez_rankings.py:4760(initial_fetch_and_ranking)<br>(+1) | — |
 | `BREAKOUT_INJECT_SHADOW_LOG` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:4760(initial_fetch_and_ranking) · ez_rankings.py:4760(initial_fetch_and_ranking) | — |
-| `BREAKOUT_LEASH_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:47813(process_position) · — | — |
-| `BREAKOUT_LEASH_MAX_LOSS_PCT` | unclassified | -0.5 / -0.5 / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:42135(process_single_reentry_evaluation)<br>(+1) · — | — |
-| `BREAKOUT_LEASH_MAX_PER_MIN` | unclassified | 3 / 3 / 3 | — | LIVE_ONLY | DEAD | ez_manage.py:47818(process_position) · — | — |
+| `BREAKOUT_LEASH_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:47853(process_position) · — | — |
+| `BREAKOUT_LEASH_MAX_LOSS_PCT` | unclassified | -0.5 / -0.5 / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:42175(process_single_reentry_evaluation)<br>(+1) · — | — |
+| `BREAKOUT_LEASH_MAX_PER_MIN` | unclassified | 3 / 3 / 3 | — | LIVE_ONLY | DEAD | ez_manage.py:47858(process_position) · — | — |
 | `BREAKOUT_LEASH_QTY_MULT` | unclassified | 0.25 / 0.25 / 0.25 | — | DEAD | DEAD | — · — | — |
-| `BREAKOUT_LEASH_TF` | unclassified | 3m / 5m / 3m | — | LIVE_ONLY | DEAD | ez_manage.py:47832(process_position) · — | — |
+| `BREAKOUT_LEASH_TF` | unclassified | 3m / 5m / 3m | — | LIVE_ONLY | DEAD | ez_manage.py:47872(process_position) · — | — |
 | `BREAKOUT_MAD_MULTIPLIER` | unclassified | 2.0 / 2.0 / 2.0 | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:4761(initial_fetch_and_ranking) · ez_rankings.py:4761(initial_fetch_and_ranking) | — |
 | `BREAKOUT_MAX_DD_RATIO` | unclassified | 0.5 / 0.5 / 0.5 | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:4763(initial_fetch_and_ranking) · ez_rankings.py:4763(initial_fetch_and_ranking) | — |
 | `BREAKOUT_MIN_RET_PCT` | unclassified | 5.0 / 5.0 / 5.0 | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:4762(initial_fetch_and_ranking) · ez_rankings.py:4762(initial_fetch_and_ranking) | — |
@@ -459,39 +459,39 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `BREAKOUT_MULTI_LUNG_MODE` | unclassified | AUGMENT / AUGMENT / AUGMENT | — | DEAD | DEAD | — · — | — |
 | `BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE` | unclassified | 0.15 / 0.15 / 0.15 | — | DEAD | DEAD | — · — | — |
 | `BREAKOUT_MULTI_LUNG_TIER` | unclassified | CRYPTO / STOCK / CRYPTO | — | DEAD | DEAD | — · — | — |
-| `BREAKOUT_REENTRY_BETTER_PRICE_MULT` | reentry | 1.25 / 1.25 / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:42125(process_single_reentry_evaluation) · — | — |
-| `BREAKOUT_RETEST_ARMED_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:44285(_process_single_override_check) · tradier_manage.py:11488(process_position) | vec_decisions/process_position_stocks__rule_a_retest.py:67(check_rule_a_retest) [UNREACHABLE]<br>vec_decisions/process_position_stocks__rule_a_retest.py:98(check_rule_a_retest_vec) [UNREACHABLE] |
+| `BREAKOUT_REENTRY_BETTER_PRICE_MULT` | reentry | 1.25 / 1.25 / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:42165(process_single_reentry_evaluation) · — | — |
+| `BREAKOUT_RETEST_ARMED_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:44325(_process_single_override_check) · tradier_manage.py:11549(process_position) | vec_decisions/process_position_stocks__rule_a_retest.py:67(check_rule_a_retest) [UNREACHABLE]<br>vec_decisions/process_position_stocks__rule_a_retest.py:98(check_rule_a_retest_vec) [UNREACHABLE] |
 | `BREAKOUT_RETEST_ARMED_HTF_STACK_MIN` | unclassified | 2 / 2 / 2 | — | DEAD | DEAD | — · — | — |
 | `BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX` | unclassified | 30 / 30 / 30 | — | DEAD | DEAD | — · — | — |
 | `BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
-| `BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT` | unclassified | 0.3 / 0.3 / 0.3 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44302(_process_single_override_check) · tradier_manage.py:11507(process_position) | vec_decisions/process_position_stocks__rule_a_retest.py:61(_rule_a_retest_mult) [UNREACHABLE] |
+| `BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT` | unclassified | 0.3 / 0.3 / 0.3 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44342(_process_single_override_check) · tradier_manage.py:11568(process_position) | vec_decisions/process_position_stocks__rule_a_retest.py:61(_rule_a_retest_mult) [UNREACHABLE] |
 | `BREAKOUT_RETEST_ARMED_VOLUME_MULT` | unclassified | 1.25 / 1.25 / 1.25 | — | DEAD | DEAD | — · — | — |
 | `BREAKOUT_RETEST_ARMED_WINDOW_DAYS` | unclassified | 7 / 7 / 7 | — | DEAD | DEAD | — · — | — |
-| `BREAKOUT_SIZE_EMA200_T1_MULT` | sizing | 1.5 / 1.5 / 1.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14423(queue_trade_action) | — |
-| `BREAKOUT_SIZE_EMA200_T1_PCT` | sizing | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14422(queue_trade_action) | — |
-| `BREAKOUT_SIZE_EMA200_T2_MULT` | sizing | 2.0 / 2.0 / 2.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14421(queue_trade_action) | — |
-| `BREAKOUT_SIZE_EMA200_T2_PCT` | sizing | 1.5 / 1.5 / 1.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14420(queue_trade_action) | — |
-| `BREAKOUT_SIZE_EMA200_T3_MULT` | sizing | 3.0 / 3.0 / 3.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14419(queue_trade_action) | — |
-| `BREAKOUT_SIZE_EMA200_T3_PCT` | sizing | 2.5 / 2.5 / 2.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14418(queue_trade_action) | — |
-| `BREAKOUT_SIZE_LADDER_ENABLED` | sizing | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:30430(MultiAccountTradeManager.execute_now) · tradier_manage.py:14408(queue_trade_action) | — |
-| `BREAKOUT_SIZE_MAX_MULT` | sizing | 3.0 / 3.0 / 3.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:30450(MultiAccountTradeManager.execute_now)<br>(+1) · tradier_manage.py:14425(queue_trade_action) | — |
-| `BREAKOUT_SIZE_SMA200_T1_MULT` | sizing | 1.5 / 1.5 / 1.5 | — | LIVE_ONLY | DEAD | ez_manage.py:30448(MultiAccountTradeManager.execute_now) · — | — |
-| `BREAKOUT_SIZE_SMA200_T1_PCT` | sizing | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | DEAD | ez_manage.py:30447(MultiAccountTradeManager.execute_now) · — | — |
-| `BREAKOUT_SIZE_SMA200_T2_MULT` | sizing | 2.0 / 2.0 / 2.0 | — | LIVE_ONLY | DEAD | ez_manage.py:30446(MultiAccountTradeManager.execute_now) · — | — |
-| `BREAKOUT_SIZE_SMA200_T2_PCT` | sizing | 1.5 / 1.5 / 1.5 | — | LIVE_ONLY | DEAD | ez_manage.py:30445(MultiAccountTradeManager.execute_now) · — | — |
-| `BREAKOUT_SIZE_SMA200_T3_MULT` | sizing | 3.0 / 3.0 / 3.0 | — | LIVE_ONLY | DEAD | ez_manage.py:30444(MultiAccountTradeManager.execute_now) · — | — |
-| `BREAKOUT_SIZE_SMA200_T3_PCT` | sizing | 2.5 / 2.5 / 2.5 | — | LIVE_ONLY | DEAD | ez_manage.py:30443(MultiAccountTradeManager.execute_now) · — | — |
-| `BREAKOUT_TF_SIZE_CAP_MULT` | sizing | 5.0 / 5.0 / 5.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:53210(_breakout_tf_size_mult) · tradier_manage.py:22356(_breakout_tf_size_mult_tradier) | — |
-| `BREAKOUT_TF_SIZE_ENABLED` | sizing | True / False / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:53195(_breakout_tf_size_mult) · tradier_manage.py:22346(_breakout_tf_size_mult_tradier) | — |
-| `BREAKOUT_TF_SIZE_MULT_15M` | sizing | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | DEAD | ez_manage.py:53205(_breakout_tf_size_mult) · — | — |
-| `BREAKOUT_TF_SIZE_MULT_1H` | sizing | 2.0 / 2.0 / 2.0 | — | LIVE_ONLY | DEAD | ez_manage.py:53204(_breakout_tf_size_mult) · — | — |
-| `BREAKOUT_TF_SIZE_MULT_3M` | sizing | 0.5 / 0.5 / 0.5 | — | LIVE_ONLY | DEAD | ez_manage.py:53206(_breakout_tf_size_mult) · — | — |
-| `BREAKOUT_TF_SIZE_MULT_4H` | sizing | 3.0 / 3.0 / 3.0 | — | LIVE_ONLY | DEAD | ez_manage.py:53203(_breakout_tf_size_mult) · — | — |
+| `BREAKOUT_SIZE_EMA200_T1_MULT` | sizing | 1.5 / 1.5 / 1.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14484(queue_trade_action) | — |
+| `BREAKOUT_SIZE_EMA200_T1_PCT` | sizing | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14483(queue_trade_action) | — |
+| `BREAKOUT_SIZE_EMA200_T2_MULT` | sizing | 2.0 / 2.0 / 2.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14482(queue_trade_action) | — |
+| `BREAKOUT_SIZE_EMA200_T2_PCT` | sizing | 1.5 / 1.5 / 1.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14481(queue_trade_action) | — |
+| `BREAKOUT_SIZE_EMA200_T3_MULT` | sizing | 3.0 / 3.0 / 3.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14480(queue_trade_action) | — |
+| `BREAKOUT_SIZE_EMA200_T3_PCT` | sizing | 2.5 / 2.5 / 2.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14479(queue_trade_action) | — |
+| `BREAKOUT_SIZE_LADDER_ENABLED` | sizing | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:30470(MultiAccountTradeManager.execute_now) · tradier_manage.py:14469(queue_trade_action) | — |
+| `BREAKOUT_SIZE_MAX_MULT` | sizing | 3.0 / 3.0 / 3.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:30490(MultiAccountTradeManager.execute_now)<br>(+1) · tradier_manage.py:14486(queue_trade_action) | — |
+| `BREAKOUT_SIZE_SMA200_T1_MULT` | sizing | 1.5 / 1.5 / 1.5 | — | LIVE_ONLY | DEAD | ez_manage.py:30488(MultiAccountTradeManager.execute_now) · — | — |
+| `BREAKOUT_SIZE_SMA200_T1_PCT` | sizing | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | DEAD | ez_manage.py:30487(MultiAccountTradeManager.execute_now) · — | — |
+| `BREAKOUT_SIZE_SMA200_T2_MULT` | sizing | 2.0 / 2.0 / 2.0 | — | LIVE_ONLY | DEAD | ez_manage.py:30486(MultiAccountTradeManager.execute_now) · — | — |
+| `BREAKOUT_SIZE_SMA200_T2_PCT` | sizing | 1.5 / 1.5 / 1.5 | — | LIVE_ONLY | DEAD | ez_manage.py:30485(MultiAccountTradeManager.execute_now) · — | — |
+| `BREAKOUT_SIZE_SMA200_T3_MULT` | sizing | 3.0 / 3.0 / 3.0 | — | LIVE_ONLY | DEAD | ez_manage.py:30484(MultiAccountTradeManager.execute_now) · — | — |
+| `BREAKOUT_SIZE_SMA200_T3_PCT` | sizing | 2.5 / 2.5 / 2.5 | — | LIVE_ONLY | DEAD | ez_manage.py:30483(MultiAccountTradeManager.execute_now) · — | — |
+| `BREAKOUT_TF_SIZE_CAP_MULT` | sizing | 5.0 / 5.0 / 5.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:53250(_breakout_tf_size_mult) · tradier_manage.py:22417(_breakout_tf_size_mult_tradier) | — |
+| `BREAKOUT_TF_SIZE_ENABLED` | sizing | True / False / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:53235(_breakout_tf_size_mult) · tradier_manage.py:22407(_breakout_tf_size_mult_tradier) | — |
+| `BREAKOUT_TF_SIZE_MULT_15M` | sizing | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | DEAD | ez_manage.py:53245(_breakout_tf_size_mult) · — | — |
+| `BREAKOUT_TF_SIZE_MULT_1H` | sizing | 2.0 / 2.0 / 2.0 | — | LIVE_ONLY | DEAD | ez_manage.py:53244(_breakout_tf_size_mult) · — | — |
+| `BREAKOUT_TF_SIZE_MULT_3M` | sizing | 0.5 / 0.5 / 0.5 | — | LIVE_ONLY | DEAD | ez_manage.py:53246(_breakout_tf_size_mult) · — | — |
+| `BREAKOUT_TF_SIZE_MULT_4H` | sizing | 3.0 / 3.0 / 3.0 | — | LIVE_ONLY | DEAD | ez_manage.py:53243(_breakout_tf_size_mult) · — | — |
 | `BREAKOUT_TF_SIZE_MULT_5M` | sizing | 0.5 / 0.5 / 0.5 | — | DEAD | DEAD | — · — | — |
-| `BREAKOUT_TF_SIZE_MULT_D` | sizing | 4.0 / 4.0 / 4.0 | — | LIVE_ONLY | DEAD | ez_manage.py:53202(_breakout_tf_size_mult) · — | — |
-| `BROKER_PREFLIGHT_CACHE_S` | unclassified | 3.0 / 3.0 / 3.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25207(TradierTradeManager._broker_preflight_check) | — |
-| `BROKER_PREFLIGHT_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25854(TradierTradeManager.execute_now) | — |
-| `BROKER_PREFLIGHT_MAX_SAME_SIDE_QTY` | unclassified | 50.0 / 50.0 / 50.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25251(TradierTradeManager._broker_preflight_check) | — |
+| `BREAKOUT_TF_SIZE_MULT_D` | sizing | 4.0 / 4.0 / 4.0 | — | LIVE_ONLY | DEAD | ez_manage.py:53242(_breakout_tf_size_mult) · — | — |
+| `BROKER_PREFLIGHT_CACHE_S` | unclassified | 3.0 / 3.0 / 3.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25268(TradierTradeManager._broker_preflight_check) | — |
+| `BROKER_PREFLIGHT_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25915(TradierTradeManager.execute_now) | — |
+| `BROKER_PREFLIGHT_MAX_SAME_SIDE_QTY` | unclassified | 50.0 / 50.0 / 50.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25312(TradierTradeManager._broker_preflight_check) | — |
 | `BROKER_SYNC_MAX_ADOPT_VALUE_USD` | unclassified | <absent> / 2000.0 / 2000.0 | — | DEAD | LIVE_ONLY | — · tradier_positions.py:1525(TradierPositionManager.process_account_update) | — |
 | `BROKER_SYNC_MAX_AUGMENT_VALUE_USD` | augment | <absent> / 2000.0 / 2000.0 | — | DEAD | LIVE_ONLY | — · tradier_positions.py:1638(TradierPositionManager.process_account_update) | — |
 | `BROKER_SYNC_MAX_TOTAL_VALUE_USD` | unclassified | <absent> / 2500.0 / 2500.0 | — | DEAD | LIVE_ONLY | — · tradier_positions.py:1588(TradierPositionManager.process_account_update)<br>(+1) | — |
@@ -583,58 +583,58 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `BTC_TECH_EXIT_DC_BREACH_TF` | exit | 15m / 15m / 15m | — | DEAD | DEAD | — · — | — |
 | `BTC_TOTAL_NOTIONAL_USD_MAX` | unclassified | 980.0 / 980.0 / 980.0 | — | LIVE_ONLY | LIVE_ONLY | btc_loop.py:700(risk_gate_pre_entry) · btc_loop.py:700(risk_gate_pre_entry) | — |
 | `BTC_WEEKLY_LOSS_PCT_FLOOR` | unclassified | -2.5 / -2.5 / -2.5 | — | LIVE_ONLY | LIVE_ONLY | btc_loop.py:697(risk_gate_pre_entry) · btc_loop.py:697(risk_gate_pre_entry) | — |
-| `BULL_HOLD_WT_THR` | unclassified | -53.0 / -53.0 / -53.0 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/live_unw_gates.py:72(augment_bull_kill_blocked)<br>(+1) · vec_decisions/live_unw_gates.py:72(augment_bull_kill_blocked)<br>(+1) | v12_quick_engine.py:9992(compute_exit_signals)<br>v12_quick_engine.py:10121(compute_augment_signals_ex)<br>(+2) |
-| `CATALYST_VOLUME_GATE_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:13554(process_position) | — |
-| `CATALYST_VOLUME_RATIO` | unclassified | 1.5 / 1.5 / 1.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:13555(process_position) | — |
-| `CAT_SIDE_DEFAULTS_ENABLED` | global | True / True / True | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:7398(_ezm_cat_side_default)<br>(+1) · ez_positions_quick.py:1950(_sw_get)<br>(+1) | v12_quick_engine.py:4789(QuickConfig.apply_cat_side_defaults) |
+| `BULL_HOLD_WT_THR` | unclassified | -53.0 / -53.0 / -53.0 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/live_unw_gates.py:72(augment_bull_kill_blocked)<br>(+1) · vec_decisions/live_unw_gates.py:72(augment_bull_kill_blocked)<br>(+1) | v12_quick_engine.py:10037(compute_exit_signals)<br>v12_quick_engine.py:10166(compute_augment_signals_ex)<br>(+2) |
+| `CATALYST_VOLUME_GATE_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:13615(process_position) | — |
+| `CATALYST_VOLUME_RATIO` | unclassified | 1.5 / 1.5 / 1.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:13616(process_position) | — |
+| `CAT_SIDE_DEFAULTS_ENABLED` | global | True / True / True | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:7398(_ezm_cat_side_default)<br>(+1) · ez_positions_quick.py:1950(_sw_get)<br>(+1) | v12_quick_engine.py:4809(QuickConfig.apply_cat_side_defaults) |
 | `CHECK_INTERVAL` | unclassified | 3.0 / <absent> / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:5751(HedgeEngine.monitor_hedge_health_loop) · ez_positions_quick.py:5751(HedgeEngine.monitor_hedge_health_loop) | — |
 | `CIRCUIT_BREAKER_ACCOUNT_HALT_MIN` | unclassified | 60 / 60 / 60 | — | LIVE_ONLY | DEAD | strategy_enhancements.py:214(check_circuit_breaker) · — | — |
 | `CIRCUIT_BREAKER_ACCOUNT_LOSSES` | unclassified | 5 / 5 / 5 | — | LIVE_ONLY | DEAD | strategy_enhancements.py:213(check_circuit_breaker) · — | — |
-| `CIRCUIT_BREAKER_COOLDOWN` | unclassified | 60 / 60 / 60 | — | LIVE_ONLY | DEAD | ez_manage.py:19051(MultiAccountTradeManager.get_cached_open_orders) · — | — |
+| `CIRCUIT_BREAKER_COOLDOWN` | unclassified | 60 / 60 / 60 | — | LIVE_ONLY | DEAD | ez_manage.py:19091(MultiAccountTradeManager.get_cached_open_orders) · — | — |
 | `CIRCUIT_BREAKER_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | strategy_enhancements.py:196(check_circuit_breaker) · — | — |
 | `CIRCUIT_BREAKER_SYMBOL_HALT_MIN` | unclassified | 30 / 30 / 30 | — | LIVE_ONLY | DEAD | strategy_enhancements.py:207(check_circuit_breaker) · — | — |
 | `CIRCUIT_BREAKER_SYMBOL_LOSSES` | unclassified | 3 / 3 / 3 | — | LIVE_ONLY | DEAD | strategy_enhancements.py:206(check_circuit_breaker) · — | — |
 | `CLENOW_LOOKBACK` | unclassified | 90 / 90 / 90 | — | DEAD | DEAD | — · — | — |
-| `CLENOW_MIN_SCORE` | unclassified | 5.0 / 5.0 / 5.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30447(TradierTradeManager.evaluate_clenow_entry) | — |
-| `CLENOW_POSITION_SIZE` | sizing | 800.0 / 800.0 / 800.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30455(TradierTradeManager.evaluate_clenow_entry) | — |
-| `CLENOW_REBALANCE_DAYS` | unclassified | 21 / 21 / 21 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30456(TradierTradeManager.evaluate_clenow_entry) | — |
-| `CLENOW_REGIME_FILTER` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30428(TradierTradeManager.evaluate_clenow_entry) | — |
-| `CLENOW_TOP_N` | unclassified | 20 / 20 / 20 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30452(TradierTradeManager.evaluate_clenow_entry) | — |
+| `CLENOW_MIN_SCORE` | unclassified | 5.0 / 5.0 / 5.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30508(TradierTradeManager.evaluate_clenow_entry) | — |
+| `CLENOW_POSITION_SIZE` | sizing | 800.0 / 800.0 / 800.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30516(TradierTradeManager.evaluate_clenow_entry) | — |
+| `CLENOW_REBALANCE_DAYS` | unclassified | 21 / 21 / 21 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30517(TradierTradeManager.evaluate_clenow_entry) | — |
+| `CLENOW_REGIME_FILTER` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30489(TradierTradeManager.evaluate_clenow_entry) | — |
+| `CLENOW_TOP_N` | unclassified | 20 / 20 / 20 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30513(TradierTradeManager.evaluate_clenow_entry) | — |
 | `CLOSE_FOOTHOLD_ENABLED` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
-| `CLOSE_ZONE_SIZE_MULT` | sizing | 1.5 / 1.5 / 1.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:28336(TradierTradeManager.calculate_position_size) | — |
-| `COLD_START_OPEN_BYPASS_SUPPRESS_SEC` | unclassified | 30.0 / 30.0 / 30.0 | — | LIVE_ONLY | DEAD | ez_manage.py:30326(MultiAccountTradeManager.execute_now) · — | — |
-| `COMMISSION_BUFFER_PCT` | exit | 0.08 / 0.08 / 0.08 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:28797(MultiAccountTradeManager.place_maker_order)<br>(+11) · ez_positions_quick.py:6032(HedgeEngine.monitor_hedge_health_loop)<br>(+3) | vec_decisions/live_exit_chain.py:137(step)<br>vec_decisions/noloss_gate.py:36(noloss_blocks)<br>(+3) |
+| `CLOSE_ZONE_SIZE_MULT` | sizing | 1.5 / 1.5 / 1.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:28397(TradierTradeManager.calculate_position_size) | — |
+| `COLD_START_OPEN_BYPASS_SUPPRESS_SEC` | unclassified | 30.0 / 30.0 / 30.0 | — | LIVE_ONLY | DEAD | ez_manage.py:30366(MultiAccountTradeManager.execute_now) · — | — |
+| `COMMISSION_BUFFER_PCT` | exit | 0.08 / 0.08 / 0.08 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:28837(MultiAccountTradeManager.place_maker_order)<br>(+11) · ez_positions_quick.py:6032(HedgeEngine.monitor_hedge_health_loop)<br>(+3) | vec_decisions/live_exit_chain.py:137(step)<br>vec_decisions/noloss_gate.py:36(noloss_blocks)<br>(+3) |
 | `COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_indicators.py:1180(completed_snapshot_demanded)<br>(+3) | — |
-| `CONGRESS_CONVICTION_MIN_SOURCES` | unclassified | 2 / 2 / 2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:8198(_get_congress_conviction_boost) | — |
-| `CONGRESS_CONVICTION_SIZING_BOOST` | unclassified | 1.3 / 1.3 / 1.3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:8200(_get_congress_conviction_boost) | — |
+| `CONGRESS_CONVICTION_MIN_SOURCES` | unclassified | 2 / 2 / 2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:8259(_get_congress_conviction_boost) | — |
+| `CONGRESS_CONVICTION_SIZING_BOOST` | unclassified | 1.3 / 1.3 / 1.3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:8261(_get_congress_conviction_boost) | — |
 | `CONNORS_RSI2_EXIT_SMA_BARS_DAILY` | exit | 5 / 5 / 5 | — | DEAD | DEAD | — · — | — |
 | `CONNORS_RSI2_PRIORITY_OVERRIDE_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `CONNORS_RSI2_REQUIRE_ABOVE_200SMA` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `CONNORS_RSI2_THRESHOLD` | unclassified | 10.0 / 10.0 / 10.0 | — | DEAD | DEAD | — · — | — |
 | `CONNORS_RSI2_TIME_STOP_BARS_DAILY` | unclassified | 10 / 10 / 10 | — | DEAD | DEAD | — · — | — |
-| `CONNORS_RSI_EXIT_THRESHOLD` | exit | 70.0 / 70.0 / 70.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30633(TradierTradeManager.evaluate_connors_rsi_entry) | — |
-| `CONNORS_RSI_MAX_HOLD_DAYS` | unclassified | 20 / 20 / 20 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30660(TradierTradeManager.evaluate_connors_rsi_entry) | — |
-| `CONNORS_RSI_POSITION_SIZE` | sizing | 600.0 / 600.0 / 600.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30631(TradierTradeManager.evaluate_connors_rsi_entry) | — |
+| `CONNORS_RSI_EXIT_THRESHOLD` | exit | 70.0 / 70.0 / 70.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30694(TradierTradeManager.evaluate_connors_rsi_entry) | — |
+| `CONNORS_RSI_MAX_HOLD_DAYS` | unclassified | 20 / 20 / 20 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30721(TradierTradeManager.evaluate_connors_rsi_entry) | — |
+| `CONNORS_RSI_POSITION_SIZE` | sizing | 600.0 / 600.0 / 600.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30692(TradierTradeManager.evaluate_connors_rsi_entry) | — |
 | `CONSOLIDATED_KLINES_CACHE` | unclassified | <expr> HD_ROOT / 'backup/klines_cache_consolidated' / <absent> / <expr | — | DEAD | DEAD | — · — | — |
-| `CONVICTION_SHORT_THRESHOLD` | unclassified | 20 / 20 / 20 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:28052(TradierTradeManager.should_enter_short)<br>(+2) | — |
-| `CONVICTION_SIZING_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7745(_ezm_conviction_mult) · tradier_manage.py:28324(TradierTradeManager.calculate_position_size) | — |
-| `CONVICTION_SIZING_MAX` | unclassified | 8.0 / 8.0 / 8.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7754(_ezm_conviction_mult) · tradier_manage.py:28329(TradierTradeManager.calculate_position_size) | — |
-| `COUNTER_TREND_CRYPTO` | unclassified | ['XAUUSDT', 'PAXGUSDT', 'XAGUSDT', 'BTCDOMUSDT', 'SKYUSDT'] / ['XAUUSD | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:24268(MultiAccountTradeManager.execute_trade_action)<br>(+4) · ez_positions_quick.py:1312(calculate_dynamic_quantity)<br>(+1) | — |
+| `CONVICTION_SHORT_THRESHOLD` | unclassified | 20 / 20 / 20 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:28113(TradierTradeManager.should_enter_short)<br>(+2) | — |
+| `CONVICTION_SIZING_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7785(_ezm_conviction_mult) · tradier_manage.py:28385(TradierTradeManager.calculate_position_size) | — |
+| `CONVICTION_SIZING_MAX` | unclassified | 8.0 / 8.0 / 8.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7794(_ezm_conviction_mult) · tradier_manage.py:28390(TradierTradeManager.calculate_position_size) | — |
+| `COUNTER_TREND_CRYPTO` | unclassified | ['XAUUSDT', 'PAXGUSDT', 'XAGUSDT', 'BTCDOMUSDT', 'SKYUSDT'] / ['XAUUSD | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:24308(MultiAccountTradeManager.execute_trade_action)<br>(+4) · ez_positions_quick.py:1312(calculate_dynamic_quantity)<br>(+1) | — |
 | `CRASH_MULT_GRADIENT_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:1256(calculate_dynamic_quantity) · ez_positions_quick.py:1256(calculate_dynamic_quantity) | — |
 | `CRASH_MULT_GRADIENT_MAX` | unclassified | 2.5 / 2.5 / 2.5 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:1257(calculate_dynamic_quantity) · ez_positions_quick.py:1257(calculate_dynamic_quantity) | — |
 | `CROSSES_FILE` | unclassified | <expr> Path('/tmp/binance-monitoring/last_events.json') / <absent> / < | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:137(<module>)<br>(+1) · ez_rankings.py:137(<module>)<br>(+1) | — |
-| `CRYPTO_FH_MOMENTUM_DC_CONFIRM` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:54268(crypto_fh_momentum_loop) · — | — |
-| `CRYPTO_FH_MOMENTUM_DC_MAX_LONG` | unclassified | 0.5 / 0.5 / 0.5 | — | LIVE_ONLY | DEAD | ez_manage.py:54269(crypto_fh_momentum_loop) · — | — |
-| `CRYPTO_FH_MOMENTUM_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:54252(crypto_fh_momentum_loop) · — | — |
-| `CRYPTO_FH_MOMENTUM_MAX_POSITIONS` | unclassified | 4 / 4 / 4 | — | LIVE_ONLY | DEAD | ez_manage.py:54267(crypto_fh_momentum_loop) · — | — |
-| `CRYPTO_FH_MOMENTUM_MIN_MOVE_PCT` | unclassified | 0.5 / 0.5 / 0.5 | — | LIVE_ONLY | DEAD | ez_manage.py:54265(crypto_fh_momentum_loop) · — | — |
-| `CRYPTO_FH_MOMENTUM_POSITION_SIZE_MULT` | sizing | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | DEAD | ez_manage.py:54266(crypto_fh_momentum_loop) · — | — |
-| `CRYPTO_ROUND_TRIP_COMMISSION_PCT` | global | 0.0 / 0.0 / 0.08 | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12105(simulate_one)<br>v12_quick_engine.py:13396(true_bh_reference) [UNREACHABLE] |
-| `CRYPTO_SPIKE_FADE_COOLDOWN_SEC` | unclassified | 540.0 / 540.0 / 540.0 | — | LIVE_ONLY | DEAD | ez_manage.py:54408(crypto_spike_fade_loop) · — | — |
-| `CRYPTO_SPIKE_FADE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:54401(crypto_spike_fade_loop) · — | — |
-| `CRYPTO_SPIKE_FADE_K_EXHAUSTION` | unclassified | 80.0 / 80.0 / 80.0 | — | LIVE_ONLY | DEAD | ez_manage.py:54405(crypto_spike_fade_loop) · — | — |
+| `CRYPTO_FH_MOMENTUM_DC_CONFIRM` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:54308(crypto_fh_momentum_loop) · — | — |
+| `CRYPTO_FH_MOMENTUM_DC_MAX_LONG` | unclassified | 0.5 / 0.5 / 0.5 | — | LIVE_ONLY | DEAD | ez_manage.py:54309(crypto_fh_momentum_loop) · — | — |
+| `CRYPTO_FH_MOMENTUM_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:54292(crypto_fh_momentum_loop) · — | — |
+| `CRYPTO_FH_MOMENTUM_MAX_POSITIONS` | unclassified | 4 / 4 / 4 | — | LIVE_ONLY | DEAD | ez_manage.py:54307(crypto_fh_momentum_loop) · — | — |
+| `CRYPTO_FH_MOMENTUM_MIN_MOVE_PCT` | unclassified | 0.5 / 0.5 / 0.5 | — | LIVE_ONLY | DEAD | ez_manage.py:54305(crypto_fh_momentum_loop) · — | — |
+| `CRYPTO_FH_MOMENTUM_POSITION_SIZE_MULT` | sizing | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | DEAD | ez_manage.py:54306(crypto_fh_momentum_loop) · — | — |
+| `CRYPTO_ROUND_TRIP_COMMISSION_PCT` | global | 0.0 / 0.0 / 0.08 | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12150(simulate_one)<br>v12_quick_engine.py:13441(true_bh_reference) [UNREACHABLE] |
+| `CRYPTO_SPIKE_FADE_COOLDOWN_SEC` | unclassified | 540.0 / 540.0 / 540.0 | — | LIVE_ONLY | DEAD | ez_manage.py:54448(crypto_spike_fade_loop) · — | — |
+| `CRYPTO_SPIKE_FADE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:54441(crypto_spike_fade_loop) · — | — |
+| `CRYPTO_SPIKE_FADE_K_EXHAUSTION` | unclassified | 80.0 / 80.0 / 80.0 | — | LIVE_ONLY | DEAD | ez_manage.py:54445(crypto_spike_fade_loop) · — | — |
 | `CRYPTO_SPIKE_FADE_LOOKBACK_BARS` | unclassified | 3 / 3 / 3 | — | DEAD | DEAD | — · — | — |
-| `CRYPTO_SPIKE_FADE_MAX_POSITIONS` | unclassified | 6 / 6 / 6 | — | LIVE_ONLY | DEAD | ez_manage.py:54407(crypto_spike_fade_loop) · — | — |
+| `CRYPTO_SPIKE_FADE_MAX_POSITIONS` | unclassified | 6 / 6 / 6 | — | LIVE_ONLY | DEAD | ez_manage.py:54447(crypto_spike_fade_loop) · — | — |
 | `CT_CHOP_4H_MAX` | unclassified | 50.0 / 50.0 / 50.0 | — | LIVE_ONLY | DEAD | ez_manage.py:599(check_entry_alignment)<br>(+1) · — | — |
 | `CT_MFI_15M_LONG_MIN` | unclassified | 45.0 / 45.0 / 45.0 | — | LIVE_ONLY | DEAD | ez_manage.py:571(check_entry_alignment)<br>(+1) · — | — |
 | `CT_MFI_15M_SHORT_MAX` | unclassified | 55.0 / 55.0 / 55.0 | — | LIVE_ONLY | DEAD | ez_manage.py:582(check_entry_alignment)<br>(+1) · — | — |
@@ -642,8 +642,8 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `CT_STOCH_K_15M_SHORT_MAX` | unclassified | 55.0 / 55.0 / 55.0 | — | LIVE_ONLY | DEAD | ez_manage.py:577(check_entry_alignment)<br>(+1) · — | — |
 | `CYCLE_TP_CONDITIONAL_EXIT` | exit | 0.003 / 0.003 / 0.003 | — | DEAD | DEAD | — · — | — |
 | `CYCLE_TP_PCT` | unclassified | 0.6 / 0.6 / 0.6 | — | DEAD | DEAD | — · — | — |
-| `CYCLE_TP_TIERED_FRAC` | unclassified | 0.25 / 0.25 / 0.25 | — | LIVE_ONLY | DEAD | ez_manage.py:51390(process_position) · — | — |
-| `CYCLE_TP_TIERED_LEVELS` | unclassified | [0.0015, 0.003, 0.005, 0.007, 0.01, 0.015, 0.02, 0.03] / [0.0015, 0.00 | — | LIVE_ONLY | DEAD | ez_manage.py:51387(process_position) · — | — |
+| `CYCLE_TP_TIERED_FRAC` | unclassified | 0.25 / 0.25 / 0.25 | — | LIVE_ONLY | DEAD | ez_manage.py:51430(process_position) · — | — |
+| `CYCLE_TP_TIERED_LEVELS` | unclassified | [0.0015, 0.003, 0.005, 0.007, 0.01, 0.015, 0.02, 0.03] / [0.0015, 0.00 | — | LIVE_ONLY | DEAD | ez_manage.py:51427(process_position) · — | — |
 | `DAEMON_PRICE_CROSS_PCT` | unclassified | 0.0 / 0.0 / 0.0 | — | DEAD | DEAD | — · — | — |
 | `DAEMON_PRICE_CROSS_REENTRY_LIVE_ENABLED` | reentry | False / False / False | — | DEAD | DEAD | — · — | — |
 | `DAEMON_PRICE_CROSS_REENTRY_MAX_AGE_HOURS` | reentry | 48.0 / 48.0 / 48.0 | — | DEAD | DEAD | — · — | — |
@@ -657,36 +657,36 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `DC4_STOP_GR_SCORE_MIN_IND` | unclassified | 5 / 5 / 5 | — | DEAD | DEAD | — · — | — |
 | `DC4_STOP_GR_SCORE_MIN_TFS` | unclassified | 3 / 3 / 3 | — | DEAD | DEAD | — · — | — |
-| `DC_BASIS_3M_REDUCE_ENABLED` | reduce | True / <absent> / True | — | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:51930(process_position) · — | vec_decisions/live_exit_chain.py:255(step_pp) |
-| `DC_BB_CROSSBACK_HYSTERESIS_PCT` | unclassified | 2.0 / 2.0 / 2.0 | — | LIVE_ONLY | DEAD | ez_manage.py:48550(process_position) · — | — |
-| `DC_BB_D_BREAK_REVERSE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:48478(process_position) · — | — |
+| `DC_BASIS_3M_REDUCE_ENABLED` | reduce | True / <absent> / True | — | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:51970(process_position) · — | vec_decisions/live_exit_chain.py:255(step_pp) |
+| `DC_BB_CROSSBACK_HYSTERESIS_PCT` | unclassified | 2.0 / 2.0 / 2.0 | — | LIVE_ONLY | DEAD | ez_manage.py:48590(process_position) · — | — |
+| `DC_BB_D_BREAK_REVERSE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:48518(process_position) · — | — |
 | `DC_BREAKOUT_ALLOW_15M` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:15856(check_entry_candidates_for_account.worker) · ez_positions_quick.py:15856(check_entry_candidates_for_account.worker) | vec_decisions/check_entry_candidates_crypto__dc_breakout_tiered.py:107(_allow_flags) [UNREACHABLE] |
 | `DC_BREAKOUT_ALLOW_3M` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:15857(check_entry_candidates_for_account.worker) · ez_positions_quick.py:15857(check_entry_candidates_for_account.worker) | vec_decisions/check_entry_candidates_crypto__dc_breakout_tiered.py:108(_allow_flags) [UNREACHABLE] |
-| `DC_BREAK_GR_MULT_BREAKOUT` | unclassified | 0.1 / 0.1 / 0.1 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32600(StockDaytradeWing._check_dc_break)<br>(+1) | — |
-| `DC_BREAK_GR_MULT_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32599(StockDaytradeWing._check_dc_break)<br>(+3) | — |
-| `DC_BREAK_GR_MULT_RETEST` | unclassified | 3.0 / 3.0 / 3.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32832(StockDaytradeWing._manage_daytrade_positions) | — |
-| `DC_BREAK_GR_RETEST_TOLERANCE_PCT` | unclassified | 0.3 / 0.3 / 0.3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32824(StockDaytradeWing._manage_daytrade_positions) | — |
-| `DC_BREAK_LOW_DC_POS_MIN` | unclassified | <absent> / 0.15 / 0.15 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32624(StockDaytradeWing._check_dc_break) | — |
-| `DC_BREAK_LOW_FINAL_SCORE_MAX` | unclassified | <absent> / 0.45 / 0.45 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32646(StockDaytradeWing._check_dc_break) | — |
-| `DC_BREAK_LOW_K5M_MIN` | unclassified | <absent> / 15.0 / 15.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32630(StockDaytradeWing._check_dc_break) | — |
+| `DC_BREAK_GR_MULT_BREAKOUT` | unclassified | 0.1 / 0.1 / 0.1 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32661(StockDaytradeWing._check_dc_break)<br>(+1) | — |
+| `DC_BREAK_GR_MULT_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32660(StockDaytradeWing._check_dc_break)<br>(+3) | — |
+| `DC_BREAK_GR_MULT_RETEST` | unclassified | 3.0 / 3.0 / 3.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32893(StockDaytradeWing._manage_daytrade_positions) | — |
+| `DC_BREAK_GR_RETEST_TOLERANCE_PCT` | unclassified | 0.3 / 0.3 / 0.3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32885(StockDaytradeWing._manage_daytrade_positions) | — |
+| `DC_BREAK_LOW_DC_POS_MIN` | unclassified | <absent> / 0.15 / 0.15 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32685(StockDaytradeWing._check_dc_break) | — |
+| `DC_BREAK_LOW_FINAL_SCORE_MAX` | unclassified | <absent> / 0.45 / 0.45 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32707(StockDaytradeWing._check_dc_break) | — |
+| `DC_BREAK_LOW_K5M_MIN` | unclassified | <absent> / 15.0 / 15.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32691(StockDaytradeWing._check_dc_break) | — |
 | `DC_BREAK_LOW_REQUIRE_HTF_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `DC_BREAK_LOW_REQUIRE_HTF_MIN_TFS` | unclassified | 2 / 2 / 2 | — | DEAD | DEAD | — · — | — |
-| `DC_BREAK_LOW_RSI_MIN` | unclassified | <absent> / 25.0 / 25.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32635(StockDaytradeWing._check_dc_break) | — |
-| `DC_DAYTRADE_ACCOUNT` | unclassified | trb / trb / trb | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32534(StockDaytradeWing.__init__) | — |
-| `DC_DAYTRADE_BUFFER` | unclassified | 0.001 / 0.001 / 0.001 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32574(StockDaytradeWing._check_dc_break) | — |
-| `DC_DAYTRADE_K_EXHAUSTED_LONG` | unclassified | 85.0 / 85.0 / 85.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32580(StockDaytradeWing._check_dc_break) | — |
-| `DC_DAYTRADE_K_EXHAUSTED_SHORT` | unclassified | 15.0 / 15.0 / 15.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32581(StockDaytradeWing._check_dc_break) | — |
-| `DC_DAYTRADE_LONG_BUDGET` | unclassified | 3000.0 / 3000.0 / 3000.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32678(StockDaytradeWing._scan_dc_entries) | — |
-| `DC_DAYTRADE_MAX_HOLD_MINUTES` | unclassified | 240.0 / 240.0 / 240.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32747(StockDaytradeWing._manage_daytrade_positions) | — |
-| `DC_DAYTRADE_MAX_PER_SIDE` | unclassified | 5 / 5 / 5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32680(StockDaytradeWing._scan_dc_entries) | — |
-| `DC_DAYTRADE_MAX_POSITION_SIZE` | sizing | 1000.0 / 1000.0 / 1000.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32708(StockDaytradeWing._scan_dc_entries)<br>(+1) | — |
-| `DC_DAYTRADE_PRE_CLOSE_MINUTES` | unclassified | 120 / 120 / 120 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32568(StockDaytradeWing._is_pre_close) | — |
-| `DC_DAYTRADE_REQUIRE_1H_EXPANSION` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32577(StockDaytradeWing._check_dc_break) | — |
-| `DC_DAYTRADE_SHORT_BUDGET` | unclassified | 3000.0 / 3000.0 / 3000.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32679(StockDaytradeWing._scan_dc_entries) | — |
-| `DC_DAYTRADE_START_SIZE` | sizing | 600.0 / 600.0 / 600.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32707(StockDaytradeWing._scan_dc_entries)<br>(+1) | — |
-| `DC_DAYTRADE_STOCH_FILTER` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32578(StockDaytradeWing._check_dc_break) | — |
+| `DC_BREAK_LOW_RSI_MIN` | unclassified | <absent> / 25.0 / 25.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32696(StockDaytradeWing._check_dc_break) | — |
+| `DC_DAYTRADE_ACCOUNT` | unclassified | trb / trb / trb | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32595(StockDaytradeWing.__init__) | — |
+| `DC_DAYTRADE_BUFFER` | unclassified | 0.001 / 0.001 / 0.001 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32635(StockDaytradeWing._check_dc_break) | — |
+| `DC_DAYTRADE_K_EXHAUSTED_LONG` | unclassified | 85.0 / 85.0 / 85.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32641(StockDaytradeWing._check_dc_break) | — |
+| `DC_DAYTRADE_K_EXHAUSTED_SHORT` | unclassified | 15.0 / 15.0 / 15.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32642(StockDaytradeWing._check_dc_break) | — |
+| `DC_DAYTRADE_LONG_BUDGET` | unclassified | 3000.0 / 3000.0 / 3000.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32739(StockDaytradeWing._scan_dc_entries) | — |
+| `DC_DAYTRADE_MAX_HOLD_MINUTES` | unclassified | 240.0 / 240.0 / 240.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32808(StockDaytradeWing._manage_daytrade_positions) | — |
+| `DC_DAYTRADE_MAX_PER_SIDE` | unclassified | 5 / 5 / 5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32741(StockDaytradeWing._scan_dc_entries) | — |
+| `DC_DAYTRADE_MAX_POSITION_SIZE` | sizing | 1000.0 / 1000.0 / 1000.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32769(StockDaytradeWing._scan_dc_entries)<br>(+1) | — |
+| `DC_DAYTRADE_PRE_CLOSE_MINUTES` | unclassified | 120 / 120 / 120 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32629(StockDaytradeWing._is_pre_close) | — |
+| `DC_DAYTRADE_REQUIRE_1H_EXPANSION` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32638(StockDaytradeWing._check_dc_break) | — |
+| `DC_DAYTRADE_SHORT_BUDGET` | unclassified | 3000.0 / 3000.0 / 3000.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32740(StockDaytradeWing._scan_dc_entries) | — |
+| `DC_DAYTRADE_START_SIZE` | sizing | 600.0 / 600.0 / 600.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32768(StockDaytradeWing._scan_dc_entries)<br>(+1) | — |
+| `DC_DAYTRADE_STOCH_FILTER` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32639(StockDaytradeWing._check_dc_break) | — |
 | `DC_EDGE_SIZING_PERIOD` | unclassified | 20 / 20 / 20 | — | DEAD | DEAD | — · — | — |
-| `DC_ENTRY_VETO_ENABLED_TRADIER` | entry | False / False / False | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13336(process_position) | vec_decisions/live_stocks_entry.py:83(live_veto) |
+| `DC_ENTRY_VETO_ENABLED_TRADIER` | entry | False / False / False | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13397(process_position) | vec_decisions/live_stocks_entry.py:83(live_veto) |
 | `DC_LOW4_STOP_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `DC_LOW_FROZEN_STOP_ENABLED` | unclassified | False / True / False | — | DEAD | DEAD | — · — | — |
 | `DC_LOW_FROZEN_STOP_FLOOR_PCT` | unclassified | -999.0 / -999.0 / -999.0 | — | DEAD | DEAD | — · — | — |
@@ -696,45 +696,45 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `DC_MOMENT_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2566(AdvancedSignalRater.rate) · ez_positions_quick.py:2566(AdvancedSignalRater.rate) | — |
 | `DC_MOMENT_OPPOSITE_PENALTY` | unclassified | -15.0 / -15.0 / -15.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2570(AdvancedSignalRater.rate) · ez_positions_quick.py:2570(AdvancedSignalRater.rate) | — |
 | `DC_MOMENT_STRONG_BONUS` | unclassified | 10.0 / 10.0 / 10.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2569(AdvancedSignalRater.rate) · ez_positions_quick.py:2569(AdvancedSignalRater.rate) | — |
-| `DC_PRIOR_BAR_CHANNEL` | global | <absent> / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9902(compute_exit_signals)<br>v12_quick_engine.py:12811(simulate_one)<br>(+2) |
-| `DC_RECOVERY_EXIT_DISABLED_ACCOUNTS` | exit | ['inf'] / <absent> / ['inf'] | — | LIVE_ONLY | DEAD | ez_manage.py:32419(MultiAccountTradeManager.execute_now) · — | — |
-| `DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT` | exit | 0.0 / 0.0 / 0.0 | — | LIVE_ONLY | DEAD | ez_manage.py:32457(MultiAccountTradeManager.execute_now) · — | — |
-| `DC_TIER4_BAR_MATURITY_BLOCK` | unclassified | 0.7 / 0.7 / 0.7 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21467(StockStrategy.evaluate_augment) | — |
-| `DC_TIER4_BAR_MATURITY_BLOCK_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21466(StockStrategy.evaluate_augment) | — |
+| `DC_PRIOR_BAR_CHANNEL` | global | <absent> / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9947(compute_exit_signals)<br>v12_quick_engine.py:12856(simulate_one)<br>(+2) |
+| `DC_RECOVERY_EXIT_DISABLED_ACCOUNTS` | exit | ['inf'] / <absent> / ['inf'] | — | LIVE_ONLY | DEAD | ez_manage.py:32459(MultiAccountTradeManager.execute_now) · — | — |
+| `DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT` | exit | 0.0 / 0.0 / 0.0 | — | LIVE_ONLY | DEAD | ez_manage.py:32497(MultiAccountTradeManager.execute_now) · — | — |
+| `DC_TIER4_BAR_MATURITY_BLOCK` | unclassified | 0.7 / 0.7 / 0.7 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21528(StockStrategy.evaluate_augment) | — |
+| `DC_TIER4_BAR_MATURITY_BLOCK_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21527(StockStrategy.evaluate_augment) | — |
 | `DC_TIER_AUG_ENABLED` | unclassified | True / True / True | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_augment_gates.py:9(dc_tier_aug_enabled) | vec_decisions/stock_augment_sources.py:48(dc_tier_fire) |
 | `DC_WIDTH_CAP_MULT` | unclassified | 10.0 / 10.0 / 10.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:1178(calculate_dynamic_quantity) · ez_positions_quick.py:1178(calculate_dynamic_quantity) | — |
 | `DC_WIDTH_MAX_MULT` | unclassified | 5.0 / 5.0 / 5.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:1092(compute_dc_width_sizing) · ez_positions_quick.py:1092(compute_dc_width_sizing) | — |
 | `DC_WIDTH_SIZING_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:1081(compute_dc_width_sizing)<br>(+1) · ez_positions_quick.py:1081(compute_dc_width_sizing)<br>(+1) | — |
-| `DD_BOUNCE_COOLDOWN_HOURS` | unclassified | 4.0 / 4.0 / 4.0 | — | LIVE_ONLY | DEAD | ez_manage.py:38860(evaluate_augmentation) · — | — |
-| `DD_BOUNCE_DD_STOP_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:52848(process_position) · — | — |
-| `DD_BOUNCE_REQUIRE_HIGHER_PRICE` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:38864(evaluate_augmentation) · — | — |
-| `DD_BOUNCE_REQUIRE_HIGHER_WT` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:38863(evaluate_augmentation) · — | — |
-| `DD_BOUNCE_WT_4H_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:38885(evaluate_augmentation) · — | — |
-| `DD_BOUNCE_WT_D_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:38869(evaluate_augmentation) · — | — |
+| `DD_BOUNCE_COOLDOWN_HOURS` | unclassified | 4.0 / 4.0 / 4.0 | — | LIVE_ONLY | DEAD | ez_manage.py:38900(evaluate_augmentation) · — | — |
+| `DD_BOUNCE_DD_STOP_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:52888(process_position) · — | — |
+| `DD_BOUNCE_REQUIRE_HIGHER_PRICE` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:38904(evaluate_augmentation) · — | — |
+| `DD_BOUNCE_REQUIRE_HIGHER_WT` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:38903(evaluate_augmentation) · — | — |
+| `DD_BOUNCE_WT_4H_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:38925(evaluate_augmentation) · — | — |
+| `DD_BOUNCE_WT_D_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:38909(evaluate_augmentation) · — | — |
 | `DD_KELLY_ENABLED` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `DD_KELLY_TIER1_PCT` | unclassified | 10.0 / 10.0 / 10.0 | — | DEAD | DEAD | — · — | — |
 | `DD_KELLY_TIER2_PCT` | unclassified | 15.0 / 15.0 / 15.0 | — | DEAD | DEAD | — · — | — |
 | `DD_KELLY_TIER3_PCT` | unclassified | 20.0 / 20.0 / 20.0 | — | DEAD | DEAD | — · — | — |
-| `DEBUG` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7903(<module>)<br>(+8) · ez_positions.py:65(<module>)<br>(+8) | — |
-| `DELTA_ACCEL_LOOKBACK` | unclassified | 5 / 5 / 5 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13350(MultiAccountTradeManager.__init__) · tradier_manage.py:22407(TradierTradeManager.__init__) | — |
+| `DEBUG` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7943(<module>)<br>(+8) · ez_positions.py:65(<module>)<br>(+8) | — |
+| `DELTA_ACCEL_LOOKBACK` | unclassified | 5 / 5 / 5 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13390(MultiAccountTradeManager.__init__) · tradier_manage.py:22468(TradierTradeManager.__init__) | — |
 | `DELTA_COOLDOWN_BARS` | unclassified | 120 / 60 / 120 | — | DEAD | DEAD | — · — | — |
 | `DELTA_ENTRY_SCORE_BONUS` | entry | 15 / 15 / 15 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2495(AdvancedSignalRater.rate) · ez_positions_quick.py:2495(AdvancedSignalRater.rate)<br>(+1) | — |
 | `DELTA_ENTRY_SCORE_PENALTY` | entry | -25 / -25 / -25 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2496(AdvancedSignalRater.rate) · ez_positions_quick.py:2496(AdvancedSignalRater.rate)<br>(+1) | — |
-| `DELTA_EXIT_ACCEL_THRESHOLD` | exit | -0.1 / -0.1 / -0.1 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13369(MultiAccountTradeManager.__init__) · tradier_manage.py:22411(TradierTradeManager.__init__) | — |
-| `DELTA_EXIT_DECAY_RATIO` | exit | 0.9 / 0.3 / 0.9 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13365(MultiAccountTradeManager.__init__) · tradier_manage.py:22410(TradierTradeManager.__init__) | — |
-| `DELTA_EXIT_DOM_TF_ENABLED` | exit | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13378(MultiAccountTradeManager.__init__)<br>(+1) · ez_positions_quick.py:8179(FastDataManager.__init__) | — |
-| `DELTA_EXIT_MIN_HOLD` | exit | 4 / 4 / 4 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13375(MultiAccountTradeManager.__init__)<br>(+1) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+1) | — |
-| `DELTA_EXIT_MIN_TF_LOST` | exit | 1 / 2 / 1 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13374(MultiAccountTradeManager.__init__)<br>(+1) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+1) | — |
-| `DELTA_EXIT_OPPOSING_RATIO` | exit | 1.5 / 1.5 / 1.5 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13372(MultiAccountTradeManager.__init__) · tradier_manage.py:22411(TradierTradeManager.__init__) | — |
+| `DELTA_EXIT_ACCEL_THRESHOLD` | exit | -0.1 / -0.1 / -0.1 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13409(MultiAccountTradeManager.__init__) · tradier_manage.py:22472(TradierTradeManager.__init__) | — |
+| `DELTA_EXIT_DECAY_RATIO` | exit | 0.9 / 0.3 / 0.9 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13405(MultiAccountTradeManager.__init__) · tradier_manage.py:22471(TradierTradeManager.__init__) | — |
+| `DELTA_EXIT_DOM_TF_ENABLED` | exit | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13418(MultiAccountTradeManager.__init__)<br>(+1) · ez_positions_quick.py:8179(FastDataManager.__init__) | — |
+| `DELTA_EXIT_MIN_HOLD` | exit | 4 / 4 / 4 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13415(MultiAccountTradeManager.__init__)<br>(+1) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+1) | — |
+| `DELTA_EXIT_MIN_TF_LOST` | exit | 1 / 2 / 1 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13414(MultiAccountTradeManager.__init__)<br>(+1) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+1) | — |
+| `DELTA_EXIT_OPPOSING_RATIO` | exit | 1.5 / 1.5 / 1.5 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13412(MultiAccountTradeManager.__init__) · tradier_manage.py:22472(TradierTradeManager.__init__) | — |
 | `DELTA_EXIT_OVERRIDE_NOLOSS` | exit | True / True / True | — | DEAD | DEAD | — · — | — |
-| `DELTA_EXIT_REENTRY_COOLDOWN_MIN` | reentry | 45.0 / 45.0 / 45.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19775(StockStrategy.evaluate_stop) | — |
-| `DELTA_EXIT_REQUIRE_NONZERO_SCORE` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19768(StockStrategy.evaluate_stop) | — |
+| `DELTA_EXIT_REENTRY_COOLDOWN_MIN` | reentry | 45.0 / 45.0 / 45.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19836(StockStrategy.evaluate_stop) | — |
+| `DELTA_EXIT_REQUIRE_NONZERO_SCORE` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19829(StockStrategy.evaluate_stop) | — |
 | `DELTA_EXIT_SCORE_BONUS` | exit | 20 / 20 / 20 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2497(AdvancedSignalRater.rate) · ez_positions_quick.py:2497(AdvancedSignalRater.rate) | — |
 | `DELTA_EXIT_SPEED_DECAY` | exit | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:3608(AdvancedSignalRater.rate) · ez_positions_quick.py:3608(AdvancedSignalRater.rate) | — |
 | `DELTA_EXIT_SPEED_DECAY_MIN_GAIN` | exit | 0.5 / 0.5 / 0.5 | — | DEAD | DEAD | — · — | — |
 | `DELTA_EXIT_SPEED_DECAY_MIN_TFS` | exit | 2 / 2 / 2 | — | DEAD | DEAD | — · — | — |
 | `DELTA_EXIT_SPEED_DECAY_VEC_ENABLED` | exit | False / False / False | — | DEAD | DEAD | — · — | — |
-| `DELTA_EXIT_TF` | exit | 3m / 15m / 3m | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13377(MultiAccountTradeManager.__init__)<br>(+1) · ez_positions_quick.py:8179(FastDataManager.__init__) | — |
+| `DELTA_EXIT_TF` | exit | 3m / 15m / 3m | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13417(MultiAccountTradeManager.__init__)<br>(+1) · ez_positions_quick.py:8179(FastDataManager.__init__) | — |
 | `DELTA_EXIT_TYPE` | exit | speed_decay / speed_decay / speed_decay | — | DEAD | DEAD | — · — | — |
 | `DELTA_EXIT_WT_CROSS` | exit | True / True / True | — | DEAD | DEAD | — · — | — |
 | `DELTA_GATE_DC_BREAKOUT` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
@@ -744,7 +744,7 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `DELTA_GATE_RATIO_REBALANCE` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `DELTA_GATE_SBA` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `DELTA_GATE_STDEV_BREAKOUT` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
-| `DELTA_GATE_STRONG_BUY_QUICK_BYPASS` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:25670(MultiAccountTradeManager.execute_trade_action) · — | — |
+| `DELTA_GATE_STRONG_BUY_QUICK_BYPASS` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:25710(MultiAccountTradeManager.execute_trade_action) · — | — |
 | `DELTA_GATE_VOL_SPIKE` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `DELTA_LT_COOLDOWN_BARS` | unclassified | 120 / 120 / 120 | — | DEAD | DEAD | — · — | — |
 | `DELTA_LT_ENTRY_ACCEL_THRESHOLD` | entry | 0.0 / 0.0 / 0.0 | — | DEAD | DEAD | — · — | — |
@@ -761,9 +761,9 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `DELTA_OPTIONS_GIVEBACK_PCT` | unclassified | 30.0 / 30.0 / 30.0 | — | DEAD | DEAD | — · — | — |
 | `DELTA_OPTIONS_HTF_GATE` | unclassified | 4h_D / 4h_D / 4h_D | — | DEAD | DEAD | — · — | — |
 | `DELTA_OPTIONS_MAX_HOLD` | unclassified | 240 / 240 / 240 | — | DEAD | DEAD | — · — | — |
-| `DELTA_PYRAMID_ACCEL_THRESHOLD` | unclassified | 0.2 / 0.2 / 0.2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22413(TradierTradeManager.__init__) | — |
+| `DELTA_PYRAMID_ACCEL_THRESHOLD` | unclassified | 0.2 / 0.2 / 0.2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22474(TradierTradeManager.__init__) | — |
 | `DELTA_PYRAMID_ENABLED` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
-| `DELTA_PYRAMID_MIN_BARS` | unclassified | 8 / 8 / 8 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22413(TradierTradeManager.__init__) | — |
+| `DELTA_PYRAMID_MIN_BARS` | unclassified | 8 / 8 / 8 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22474(TradierTradeManager.__init__) | — |
 | `DELTA_PYRAMID_QTY_MULT` | unclassified | 1.5 / 1.5 / 1.5 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:8179(FastDataManager.__init__) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+1) | — |
 | `DELTA_REENTRY_HTF_GATE` | reentry | 4h / 4h / 4h | — | LIVE_ONLY | DEAD | ez_manage.py:210(check_reentry_delta_tolerant) · — | — |
 | `DELTA_REENTRY_REQUIRE_NOT_EXITING` | reentry | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:211(check_reentry_delta_tolerant) · — | — |
@@ -771,38 +771,38 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `DELTA_SERVICE_BLEED_STOP` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:13289(check_position_reductions) · ez_positions_service.py:13289(check_position_reductions) | — |
 | `DELTA_SERVICE_REDUCE_GATE` | reduce | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:12723(_check_immediate_reduction_triggers)<br>(+1) · ez_positions_service.py:12723(_check_immediate_reduction_triggers)<br>(+1) | — |
 | `DELTA_SERVICE_TRAILING_STOP` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:12947(_check_trailing_stops) · ez_positions_service.py:12947(_check_trailing_stops) | — |
-| `DELTA_SPEED_SMOOTH` | unclassified | 5 / 5 / 5 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13349(MultiAccountTradeManager.__init__)<br>(+1) · tradier_manage.py:22407(TradierTradeManager.__init__) | — |
-| `DELTA_TF_WEIGHTS` | unclassified | {'3m': 3.0, '15m': 2.0, '1h': 1.0, '4h': 1.0, 'D': 0.5} / None / None | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13353(MultiAccountTradeManager.__init__)<br>(+1) · ez_positions_quick.py:8179(FastDataManager.__init__) | — |
-| `DELTA_TF_WEIGHTS_STOCK` | unclassified | None / None / None | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22405(TradierTradeManager.__init__) | — |
-| `DELTA_TF_Z_THRESHOLD` | unclassified | 1.5 / 1.5 / 1.5 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13356(MultiAccountTradeManager.__init__)<br>(+1) · tradier_manage.py:22408(TradierTradeManager.__init__) | — |
-| `DELTA_Z_WINDOW` | unclassified | 200 / 200 / 200 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22415(TradierTradeManager.__init__) | — |
-| `DG_BROKER_MEMORY_SYNC_BLOCK` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25371(TradierTradeManager._disaster_guard_for_entry) | — |
-| `DG_DAILY_GAIN_BLOCK_SHORT_PCT` | unclassified | 2.5 / 2.5 / 2.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25302(TradierTradeManager._disaster_guard_for_entry) | — |
-| `DG_DAILY_LOSS_BLOCK_LONG_PCT` | unclassified | 2.5 / 2.5 / 2.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25303(TradierTradeManager._disaster_guard_for_entry) | — |
-| `DG_HIGH_VOLATILITY_ATR_PCT` | unclassified | 4.0 / 4.0 / 4.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25424(TradierTradeManager._disaster_guard_for_entry) | — |
-| `DG_HTF_ALIGN_REQUIRE_1H` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25342(TradierTradeManager._disaster_guard_for_entry) | — |
-| `DG_HTF_ALIGN_REQUIRE_4H` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25335(TradierTradeManager._disaster_guard_for_entry) | — |
-| `DG_HTF_ALIGN_REQUIRE_D` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25324(TradierTradeManager._disaster_guard_for_entry) | — |
-| `DG_MAX_FORCE_OPEN_NOTIONAL_USD` | unclassified | 4000.0 / 2000.0 / 4000.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11410(process_position)<br>(+3) | — |
-| `DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG` | unclassified | 35.0 / 35.0 / 35.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25354(TradierTradeManager._disaster_guard_for_entry) | — |
-| `DG_MOMENTUM_BLOCK_RSI15M_FOR_SHORT` | unclassified | 65.0 / 65.0 / 65.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25348(TradierTradeManager._disaster_guard_for_entry) | — |
-| `DG_MOMENTUM_BLOCK_RSI1H_FOR_LONG` | unclassified | 35.0 / 35.0 / 35.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25357(TradierTradeManager._disaster_guard_for_entry) | — |
-| `DG_MOMENTUM_BLOCK_RSI1H_FOR_SHORT` | unclassified | 65.0 / 65.0 / 65.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25351(TradierTradeManager._disaster_guard_for_entry) | — |
-| `DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25392(TradierTradeManager._disaster_guard_for_entry) | — |
-| `DG_REPEAT_OPEN_PER_DAY_MAX` | unclassified | 60 / 60 / 60 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25406(TradierTradeManager._disaster_guard_for_entry) | — |
-| `DG_SMA200_SHORT_BYPASS` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25297(TradierTradeManager._disaster_guard_for_entry) | — |
-| `DG_WT_3M_REQUIRE_HTF_CONFIRM` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25433(TradierTradeManager._disaster_guard_for_entry) | — |
+| `DELTA_SPEED_SMOOTH` | unclassified | 5 / 5 / 5 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13389(MultiAccountTradeManager.__init__)<br>(+1) · tradier_manage.py:22468(TradierTradeManager.__init__) | — |
+| `DELTA_TF_WEIGHTS` | unclassified | {'3m': 3.0, '15m': 2.0, '1h': 1.0, '4h': 1.0, 'D': 0.5} / None / None | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13393(MultiAccountTradeManager.__init__)<br>(+1) · ez_positions_quick.py:8179(FastDataManager.__init__) | — |
+| `DELTA_TF_WEIGHTS_STOCK` | unclassified | None / None / None | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22466(TradierTradeManager.__init__) | — |
+| `DELTA_TF_Z_THRESHOLD` | unclassified | 1.5 / 1.5 / 1.5 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13396(MultiAccountTradeManager.__init__)<br>(+1) · tradier_manage.py:22469(TradierTradeManager.__init__) | — |
+| `DELTA_Z_WINDOW` | unclassified | 200 / 200 / 200 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22476(TradierTradeManager.__init__) | — |
+| `DG_BROKER_MEMORY_SYNC_BLOCK` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25432(TradierTradeManager._disaster_guard_for_entry) | — |
+| `DG_DAILY_GAIN_BLOCK_SHORT_PCT` | unclassified | 2.5 / 2.5 / 2.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25363(TradierTradeManager._disaster_guard_for_entry) | — |
+| `DG_DAILY_LOSS_BLOCK_LONG_PCT` | unclassified | 2.5 / 2.5 / 2.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25364(TradierTradeManager._disaster_guard_for_entry) | — |
+| `DG_HIGH_VOLATILITY_ATR_PCT` | unclassified | 4.0 / 4.0 / 4.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25485(TradierTradeManager._disaster_guard_for_entry) | — |
+| `DG_HTF_ALIGN_REQUIRE_1H` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25403(TradierTradeManager._disaster_guard_for_entry) | — |
+| `DG_HTF_ALIGN_REQUIRE_4H` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25396(TradierTradeManager._disaster_guard_for_entry) | — |
+| `DG_HTF_ALIGN_REQUIRE_D` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25385(TradierTradeManager._disaster_guard_for_entry) | — |
+| `DG_MAX_FORCE_OPEN_NOTIONAL_USD` | unclassified | 4000.0 / 2000.0 / 4000.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11471(process_position)<br>(+3) | — |
+| `DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG` | unclassified | 35.0 / 35.0 / 35.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25415(TradierTradeManager._disaster_guard_for_entry) | — |
+| `DG_MOMENTUM_BLOCK_RSI15M_FOR_SHORT` | unclassified | 65.0 / 65.0 / 65.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25409(TradierTradeManager._disaster_guard_for_entry) | — |
+| `DG_MOMENTUM_BLOCK_RSI1H_FOR_LONG` | unclassified | 35.0 / 35.0 / 35.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25418(TradierTradeManager._disaster_guard_for_entry) | — |
+| `DG_MOMENTUM_BLOCK_RSI1H_FOR_SHORT` | unclassified | 65.0 / 65.0 / 65.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25412(TradierTradeManager._disaster_guard_for_entry) | — |
+| `DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25453(TradierTradeManager._disaster_guard_for_entry) | — |
+| `DG_REPEAT_OPEN_PER_DAY_MAX` | unclassified | 60 / 60 / 60 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25467(TradierTradeManager._disaster_guard_for_entry) | — |
+| `DG_SMA200_SHORT_BYPASS` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25358(TradierTradeManager._disaster_guard_for_entry) | — |
+| `DG_WT_3M_REQUIRE_HTF_CONFIRM` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25494(TradierTradeManager._disaster_guard_for_entry) | — |
 | `DIRECTION_FAVORABLE_MAX_MINUTES` | unclassified | 30.0 / 30.0 / 30.0 | — | DEAD | DEAD | — · — | — |
 | `DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED` | reentry | False / False / False | — | DEAD | DEAD | — · — | — |
-| `DIRECT_HIGH_GAIN_COOLDOWN_SECONDS` | unclassified | 15 / <absent> / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:43626(direct_high_gain_augmentation) · — | — |
-| `DISASTER_GUARD_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25264(TradierTradeManager._disaster_guard_for_entry) | — |
-| `DT_TARGET_ATR_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32773(StockDaytradeWing._manage_daytrade_positions) | — |
-| `DUP_GUARD_GAIN_MULTIPLIER` | unclassified | 0.5 / 0.5 / 0.5 | — | LIVE_ONLY | DEAD | ez_manage.py:24056(MultiAccountTradeManager.execute_trade_action)<br>(+2) · — | — |
-| `DUP_GUARD_USE_GAIN_GATE` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:24054(MultiAccountTradeManager.execute_trade_action)<br>(+2) · — | — |
-| `DYNAMIC_SCORE_COUNTER_EXIT_ENABLED` | exit | True / False / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19327(StockStrategy.evaluate_stop) | — |
-| `DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD` | exit | 55.0 / 55.0 / 55.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19328(StockStrategy.evaluate_stop) | — |
-| `DYN_STRUCT_TRAIL_MIN_GAIN_PCT` | unclassified | <absent> / <absent> / 0.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:10794(process_position) | vec_decisions/dyn_struct_trail.py:14(step) |
-| `DYN_STRUCT_TRAIL_TF` | unclassified | <absent> / <absent> / 4h | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:10793(process_position) | v12_quick_engine.py:11656(simulate_one)<br>vec_decisions/dyn_struct_trail.py:13(step) |
+| `DIRECT_HIGH_GAIN_COOLDOWN_SECONDS` | unclassified | 15 / <absent> / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:43666(direct_high_gain_augmentation) · — | — |
+| `DISASTER_GUARD_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25325(TradierTradeManager._disaster_guard_for_entry) | — |
+| `DT_TARGET_ATR_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32834(StockDaytradeWing._manage_daytrade_positions) | — |
+| `DUP_GUARD_GAIN_MULTIPLIER` | unclassified | 0.5 / 0.5 / 0.5 | — | LIVE_ONLY | DEAD | ez_manage.py:24096(MultiAccountTradeManager.execute_trade_action)<br>(+2) · — | — |
+| `DUP_GUARD_USE_GAIN_GATE` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:24094(MultiAccountTradeManager.execute_trade_action)<br>(+2) · — | — |
+| `DYNAMIC_SCORE_COUNTER_EXIT_ENABLED` | exit | True / False / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19388(StockStrategy.evaluate_stop) | — |
+| `DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD` | exit | 55.0 / 55.0 / 55.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19389(StockStrategy.evaluate_stop) | — |
+| `DYN_STRUCT_TRAIL_MIN_GAIN_PCT` | unclassified | <absent> / <absent> / 0.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:10855(process_position) | vec_decisions/dyn_struct_trail.py:14(step) |
+| `DYN_STRUCT_TRAIL_TF` | unclassified | <absent> / <absent> / 4h | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:10854(process_position) | v12_quick_engine.py:11701(simulate_one)<br>vec_decisions/dyn_struct_trail.py:13(step) |
 | `E2E_REPLAY_VALIDATOR_FILTER_TF` | filter | 15m / 15m / 15m | — | DEAD | DEAD | — · — | — |
 | `EARNINGS_AVOIDANCE_ENABLED` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `EARNINGS_BLACKOUT_DAYS_AFTER` | unclassified | 1 / 1 / 1 | — | DEAD | DEAD | — · — | — |
@@ -821,53 +821,53 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `EMA_PULLBACK_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:4461(AdvancedSignalRater.rate) · ez_positions_quick.py:4461(AdvancedSignalRater.rate) | — |
 | `EMA_PULLBACK_SCORE_BONUS` | unclassified | 35 / 35 / 35 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:4469(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:4469(AdvancedSignalRater.rate)<br>(+1) | — |
 | `EMA_PULLBACK_TF` | unclassified | 15m / 15m / 15m | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:4462(AdvancedSignalRater.rate) · ez_positions_quick.py:4462(AdvancedSignalRater.rate) | — |
-| `EMERGENCY_BRAKE_DC_STOP_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20276(StockStrategy.evaluate_stop) | — |
-| `EMERGENCY_BRAKE_DC_STOP_FIELD` | unclassified | dc_low_15m / dc_low_15m / dc_low_15m | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20279(StockStrategy.evaluate_stop) | — |
-| `EMERGENCY_BRAKE_MAX_TRADES_PER_MIN` | unclassified | 10 / 10 / 10 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32062(MultiAccountTradeManager.execute_now)<br>(+2) · ez_positions_quick.py:12262(execute_trade_wrapper) | — |
-| `EMERGENCY_OVERSIZE_GUARD_ENABLED` | sizing | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:53787(periodic_tasks) · — | — |
-| `ENABLE_FAST_RISER_REDUCE` | reduce | True / False / True | — | LIVE_ONLY | DEAD | ez_manage.py:52645(process_position) · — | — |
+| `EMERGENCY_BRAKE_DC_STOP_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20337(StockStrategy.evaluate_stop) | — |
+| `EMERGENCY_BRAKE_DC_STOP_FIELD` | unclassified | dc_low_15m / dc_low_15m / dc_low_15m | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20340(StockStrategy.evaluate_stop) | — |
+| `EMERGENCY_BRAKE_MAX_TRADES_PER_MIN` | unclassified | 10 / 10 / 10 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32102(MultiAccountTradeManager.execute_now)<br>(+2) · ez_positions_quick.py:12262(execute_trade_wrapper) | — |
+| `EMERGENCY_OVERSIZE_GUARD_ENABLED` | sizing | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:53827(periodic_tasks) · — | — |
+| `ENABLE_FAST_RISER_REDUCE` | reduce | True / False / True | — | LIVE_ONLY | DEAD | ez_manage.py:52685(process_position) · — | — |
 | `ENABLE_IP_ROTATION` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
-| `ENABLE_LOSS_PROTECTION` | unclassified | True / True / True | — | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:10097(_check_loss_protection) · — | vec_decisions/live_exit_chain.py:259(step_pp) |
+| `ENABLE_LOSS_PROTECTION` | unclassified | True / True / True | — | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:10137(_check_loss_protection) · — | vec_decisions/live_exit_chain.py:259(step_pp) |
 | `ENABLE_MULTI_INSTANCE_ON_MACBOOK` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_indicators.py:524(load_symbols)<br>(+1) · ez_indicators.py:524(load_symbols)<br>(+1) | — |
-| `ENTRY_ATR_PCT_MIN` | entry | 1.5 / 1.5 / 1.5 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:41371(calculate_final_order_quantity)<br>(+1) · ez_positions_quick.py:2870(AdvancedSignalRater.rate)<br>(+1) | vec_decisions/entry_hard_gates.py:51(crypto_block)<br>vec_decisions/entry_hard_gates.py:91(tradier_block) |
-| `ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_CONFIRMATION_MIN` | entry | 2 / 2 / 2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:13029(process_position) | — |
-| `ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SIDE` | entry | SHORT / SHORT / SHORT | — | DEAD | LIVE_ONLY | — · tradier_manage.py:13021(process_position) | — |
-| `ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SYMBOLS` | entry | ('WDAY',) / ('WDAY',) / () | — | DEAD | LIVE_ONLY | — · tradier_manage.py:13020(process_position) | — |
+| `ENTRY_ATR_PCT_MIN` | entry | 1.5 / 1.5 / 1.5 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:41411(calculate_final_order_quantity)<br>(+1) · ez_positions_quick.py:2870(AdvancedSignalRater.rate)<br>(+1) | vec_decisions/entry_hard_gates.py:51(crypto_block)<br>vec_decisions/entry_hard_gates.py:91(tradier_block) |
+| `ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_CONFIRMATION_MIN` | entry | 2 / 2 / 2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:13090(process_position) | — |
+| `ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SIDE` | entry | SHORT / SHORT / SHORT | — | DEAD | LIVE_ONLY | — · tradier_manage.py:13082(process_position) | — |
+| `ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SYMBOLS` | entry | ('WDAY',) / ('WDAY',) / () | — | DEAD | LIVE_ONLY | — · tradier_manage.py:13081(process_position) | — |
 | `ENTRY_BOUNCE_DONCHIAN_DIRECT_CONFIRMATION` | entry | none / none / none | — | DEAD | LIVE_ONLY | — · tradier_manage.py:978(_shared_direct_entry_claim)<br>(+1) | — |
-| `ENTRY_CHOKE_GATES_ON_FINAL` | entry | <absent> / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11857(simulate_one) |
-| `ENTRY_ISOLATE_FAMILY` | entry | <absent> / <absent> /  | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8810(_iso_force_masters)<br>v12_quick_engine.py:9638(compute_entry_signals)<br>(+1) |
-| `ENTRY_MIN_ALIGNMENT` | entry | 5 / 5 / 5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:24744(TradierTradeManager.execute_trade_action) | — |
-| `ENTRY_STOCH_HHHL_DIRECT_TFS` | entry | ['1h'] / ['1h'] / ('1h',) | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:928(_shared_direct_entry_claim) | v12_quick_engine.py:8351(compute_reentry_blocks) |
+| `ENTRY_CHOKE_GATES_ON_FINAL` | entry | <absent> / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11902(simulate_one) |
+| `ENTRY_ISOLATE_FAMILY` | entry | <absent> / <absent> /  | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8855(_iso_force_masters)<br>v12_quick_engine.py:9683(compute_entry_signals)<br>(+1) |
+| `ENTRY_MIN_ALIGNMENT` | entry | 5 / 5 / 5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:24805(TradierTradeManager.execute_trade_action) | — |
+| `ENTRY_STOCH_HHHL_DIRECT_TFS` | entry | ['1h'] / ['1h'] / ('1h',) | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:928(_shared_direct_entry_claim) | v12_quick_engine.py:8396(compute_reentry_blocks) |
 | `ENTRY_SYMGATE_ENABLED` | entry | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:15830(check_entry_candidates_for_account.worker) · ez_positions_quick.py:15830(check_entry_candidates_for_account.worker)<br>(+2) | — |
-| `ENTRY_TRIGGER_TF` | entry | 15m / 15m / 15m | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17222(StockStrategy.calculate_signal_score) | — |
+| `ENTRY_TRIGGER_TF` | entry | 15m / 15m / 15m | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17283(StockStrategy.calculate_signal_score) | — |
 | `ENTRY_VET_NO_STRUCT_OR_BREAKOUT_REQUIRED` | entry | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:1115(check_entry_vetting) · — | — |
 | `ENTRY_VET_RELAX_MODE` | entry | 3 / 3 / 3 | — | LIVE_ONLY | DEAD | ez_manage.py:1116(check_entry_vetting) · — | — |
-| `ENTRY_VOL_MIN_RATIO` | entry | 1.3 / 1.3 / 1.3 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:41231(calculate_final_order_quantity)<br>(+1) · ez_positions_quick.py:2425(AdvancedSignalRater.rate)<br>(+1) | vec_decisions/entry_hard_gates.py:94(tradier_block) |
-| `EOD_RATIO_ENFORCE_TRADIER` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17594(StockStrategy.calculate_signal_score) | — |
-| `EPISODIC_PIVOT_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30369(TradierTradeManager.evaluate_episodic_pivot) | — |
+| `ENTRY_VOL_MIN_RATIO` | entry | 1.3 / 1.3 / 1.3 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:41271(calculate_final_order_quantity)<br>(+1) · ez_positions_quick.py:2425(AdvancedSignalRater.rate)<br>(+1) | vec_decisions/entry_hard_gates.py:94(tradier_block) |
+| `EOD_RATIO_ENFORCE_TRADIER` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17655(StockStrategy.calculate_signal_score) | — |
+| `EPISODIC_PIVOT_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30430(TradierTradeManager.evaluate_episodic_pivot) | — |
 | `EP_MAX_CONSOLIDATION_DAYS` | unclassified | 8 / 8 / 8 | — | DEAD | DEAD | — · — | — |
 | `EP_MAX_RETRACE_PCT` | unclassified | 25.0 / 25.0 / 25.0 | — | DEAD | DEAD | — · — | — |
 | `EP_MIN_GAP_PCT` | unclassified | 5.0 / 5.0 / 5.0 | — | DEAD | DEAD | — · — | — |
 | `EP_MIN_VOL_MULT` | unclassified | 3.0 / 3.0 / 3.0 | — | DEAD | DEAD | — · — | — |
-| `EP_POSITION_SIZE` | sizing | 800.0 / 800.0 / 800.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30374(TradierTradeManager.evaluate_episodic_pivot) | — |
+| `EP_POSITION_SIZE` | sizing | 800.0 / 800.0 / 800.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30435(TradierTradeManager.evaluate_episodic_pivot) | — |
 | `ERROR_RECOVERY_SLEEP_SECONDS` | unclassified | 60 / 60 / 60 | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:7595(ranking_loop) · ez_rankings.py:7595(ranking_loop) | — |
-| `EVAL_REENTRY_ENABLED` | reentry | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:48915(process_position) · — | — |
-| `EXCEPTIONS` | unclassified | <absent> / ['GOOGL', 'MSFT', 'NVDA', 'CVX', 'XOM', 'IBIT', 'GLD', 'ETH | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22381(TradierTradeManager.__init__)<br>(+3) | — |
-| `EXCEPTION_REENTRY_MAX_USD` | reentry | <absent> / 10000.0 / <absent> | — | DEAD | LIVE_ONLY | — · tradier_manage.py:24170(TradierTradeManager.place_order)<br>(+1) | — |
+| `EVAL_REENTRY_ENABLED` | reentry | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:48955(process_position) · — | — |
+| `EXCEPTIONS` | unclassified | <absent> / ['GOOGL', 'MSFT', 'NVDA', 'CVX', 'XOM', 'IBIT', 'GLD', 'ETH | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22442(TradierTradeManager.__init__)<br>(+3) | — |
+| `EXCEPTION_REENTRY_MAX_USD` | reentry | <absent> / 10000.0 / <absent> | — | DEAD | LIVE_ONLY | — · tradier_manage.py:24231(TradierTradeManager.place_order)<br>(+1) | — |
 | `EXECUTE_NOW_WIRE_TRIPWIRE_MAX_LAG_S` | unclassified | 5.0 / 5.0 / 5.0 | — | LIVE_ONLY | DEAD | ez_manage.py:717(_exec_now_wire_tripwire) · — | — |
 | `EXECUTE_NOW_WIRE_TRIPWIRE_SHADOW` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:715(_exec_now_wire_tripwire) · — | — |
 | `EXHAUSTION_EXIT_FILTER_TF` | filter | 15m / 15m / 15m | — | DEAD | DEAD | — · — | — |
 | `EXIT_ALGO_SCORE_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:5808(<module>) | — |
-| `EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED` | exit | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:45614(_process_single_monitor_direct_high_gain) · tradier_manage.py:5809(<module>) | — |
+| `EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED` | exit | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:45654(_process_single_monitor_direct_high_gain) · tradier_manage.py:5809(<module>) | — |
 | `EXIT_BOUNCE_TOP_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:5810(<module>)<br>(+1) | — |
 | `EXIT_CONV_FAIL_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:5811(<module>) | — |
 | `EXIT_DC_BREACH_REDUCE_ENABLED` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:5812(<module>) | — |
 | `EXIT_DEAD_CODE_ENABLED` | exit | False / False / False | — | DEAD | DEAD | — · — | — |
 | `EXIT_DELTA_SPEED_ENABLED` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:5813(<module>) | — |
-| `EXIT_EMERGENCY_DC1H_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:10737(process_position) | — |
-| `EXIT_ENGINE_PARITY_LOG_ENABLED` | exit | True / True / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:29691(MultiAccountTradeManager.execute_now) · — | — |
+| `EXIT_EMERGENCY_DC1H_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:10798(process_position) | — |
+| `EXIT_ENGINE_PARITY_LOG_ENABLED` | exit | True / True / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:29731(MultiAccountTradeManager.execute_now) · — | — |
 | `EXIT_GAIN_EROSION_ENABLED` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:5814(<module>)<br>(+1) | — |
-| `EXIT_GAIN_THRESHOLD_MIN` | exit | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20533(StockStrategy.evaluate_stop) | — |
+| `EXIT_GAIN_THRESHOLD_MIN` | exit | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20594(StockStrategy.evaluate_stop) | — |
 | `EXIT_HARD_DROP_5M_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:5815(<module>) | — |
 | `EXIT_HARD_MAX_LOSS_CAP_ENABLED` | exit | False / False / False | — | DEAD | DEAD | — · — | — |
 | `EXIT_HEDGE_LOSS_KILL_ENABLED` | exit | True / True / True | — | DEAD | DEAD | — · — | — |
@@ -876,13 +876,13 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `EXIT_IBS_EXHAUSTION_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:5819(<module>)<br>(+1) | — |
 | `EXIT_K5M_BOUNCE_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:5820(<module>)<br>(+2) | — |
 | `EXIT_KEY_LEVEL_CRASH_ENABLED` | exit | True / True / True | — | DEAD | DEAD | — · — | — |
-| `EXIT_MARKET_SPIKE_REDUCE_ENABLED` | exit | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:8550(handle_market_index_spike)<br>(+1) · — | — |
-| `EXIT_MAX_HOLD_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20145(StockStrategy.evaluate_stop) | — |
-| `EXIT_MAX_HOLD_MINUTES` | exit | 99999 / 99999 / 99999 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20145(StockStrategy.evaluate_stop) | — |
+| `EXIT_MARKET_SPIKE_REDUCE_ENABLED` | exit | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:8590(handle_market_index_spike)<br>(+1) · — | — |
+| `EXIT_MAX_HOLD_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20206(StockStrategy.evaluate_stop) | — |
+| `EXIT_MAX_HOLD_MINUTES` | exit | 99999 / 99999 / 99999 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20206(StockStrategy.evaluate_stop) | — |
 | `EXIT_MI_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:5821(<module>) | — |
-| `EXIT_ON_ALL` | exit | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:21453(MultiAccountTradeManager._handle_signal_message) · — | — |
-| `EXIT_ON_ALL_ENABLED` | exit | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:21454(MultiAccountTradeManager._handle_signal_message) · — | — |
-| `EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED` | exit | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44727(_process_single_override_check) · tradier_manage.py:5822(<module>) | — |
+| `EXIT_ON_ALL` | exit | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:21493(MultiAccountTradeManager._handle_signal_message) · — | — |
+| `EXIT_ON_ALL_ENABLED` | exit | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:21494(MultiAccountTradeManager._handle_signal_message) · — | — |
+| `EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED` | exit | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44767(_process_single_override_check) · tradier_manage.py:5822(<module>) | — |
 | `EXIT_PREEMPTIVE_BREAKEVEN_ENABLED` | exit | True / True / True | — | DEAD | DEAD | — · — | — |
 | `EXIT_SCORER_FULL_SCORE` | exit | 100.0 / 100.0 / 100.0 | — | DEAD | DEAD | — · — | — |
 | `EXIT_SCORER_K_EXTREME` | exit | 75.0 / 85.0 / 75.0 | — | DEAD | DEAD | — · — | — |
@@ -892,28 +892,28 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `EXIT_STRUCT_BREAK_5M_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:5832(<module>)<br>(+1) | — |
 | `EXIT_STRUCT_DC_BREAK_ENABLED` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:5833(<module>)<br>(+1) | — |
 | `EXIT_TREND_REVERSAL_ENABLED` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:5834(<module>)<br>(+1) | — |
-| `EXPLODING_LEDGER_ENABLED` | unclassified | True / True / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7673(_exploding_ledger_is_legendary) · tradier_manage.py:9698(_trd_is_legendary) | — |
-| `EXPLODING_LEDGER_MIN_MOVE_PCT` | unclassified | 8.0 / 8.0 / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7677(_exploding_ledger_is_legendary) · tradier_manage.py:9702(_trd_is_legendary) | — |
-| `EXTREME_MODE` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:9697(monitor_market_mode)<br>(+3) · ez_positions_quick.py:17588(monitor_market_mode)<br>(+1) | — |
-| `EXTREME_OB_BB_PCT_B_4H_MIN` | unclassified | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:33022(MultiAccountTradeManager.execute_now) · tradier_manage.py:1725(_parabolic_state) | — |
-| `EXTREME_OB_OS_OVERRIDE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:33010(MultiAccountTradeManager.execute_now) · tradier_manage.py:1721(_parabolic_state) | — |
-| `EXTREME_OB_RSI_4H_MIN` | unclassified | 80.0 / 80.0 / 80.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:33017(MultiAccountTradeManager.execute_now) · tradier_manage.py:1723(_parabolic_state) | — |
-| `EXTREME_OB_RSI_D_MIN` | unclassified | 75.0 / 75.0 / 75.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:33019(MultiAccountTradeManager.execute_now) · tradier_manage.py:1724(_parabolic_state) | — |
+| `EXPLODING_LEDGER_ENABLED` | unclassified | True / True / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7713(_exploding_ledger_is_legendary) · tradier_manage.py:9759(_trd_is_legendary) | — |
+| `EXPLODING_LEDGER_MIN_MOVE_PCT` | unclassified | 8.0 / 8.0 / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7717(_exploding_ledger_is_legendary) · tradier_manage.py:9763(_trd_is_legendary) | — |
+| `EXTREME_MODE` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:9737(monitor_market_mode)<br>(+3) · ez_positions_quick.py:17588(monitor_market_mode)<br>(+1) | — |
+| `EXTREME_OB_BB_PCT_B_4H_MIN` | unclassified | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:33062(MultiAccountTradeManager.execute_now) · tradier_manage.py:1725(_parabolic_state) | — |
+| `EXTREME_OB_OS_OVERRIDE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:33050(MultiAccountTradeManager.execute_now) · tradier_manage.py:1721(_parabolic_state) | — |
+| `EXTREME_OB_RSI_4H_MIN` | unclassified | 80.0 / 80.0 / 80.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:33057(MultiAccountTradeManager.execute_now) · tradier_manage.py:1723(_parabolic_state) | — |
+| `EXTREME_OB_RSI_D_MIN` | unclassified | 75.0 / 75.0 / 75.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:33059(MultiAccountTradeManager.execute_now) · tradier_manage.py:1724(_parabolic_state) | — |
 | `EXTREME_OS_BB_PCT_B_4H_MAX` | unclassified | 0.0 / 0.0 / 0.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:1729(_parabolic_state) | — |
 | `EXTREME_OS_RSI_4H_MAX` | unclassified | 20.0 / 20.0 / 20.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:1727(_parabolic_state) | — |
 | `EXTREME_OS_RSI_D_MAX` | unclassified | 25.0 / 25.0 / 25.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:1728(_parabolic_state) | — |
-| `EZ_INDICATORS_CMD_TIMEOUT` | unclassified | 10.0 / 10.0 / 10.0 | — | LIVE_ONLY | DEAD | ez_manage.py:9290(request_ez_indicators_restart)<br>(+2) · — | — |
-| `EZ_INDICATORS_RESTART_COOLDOWN` | unclassified | 60.0 / 60.0 / 60.0 | — | LIVE_ONLY | DEAD | ez_manage.py:9289(request_ez_indicators_restart) · — | — |
-| `EZ_INDICATORS_SHUTDOWN_CMD` | unclassified | None / None / None | — | LIVE_ONLY | DEAD | ez_manage.py:56174(shutdown)<br>(+1) · — | — |
-| `EZ_INDICATORS_START_CMD` | unclassified | None / None / None | — | LIVE_ONLY | DEAD | ez_manage.py:9286(request_ez_indicators_restart) · — | — |
+| `EZ_INDICATORS_CMD_TIMEOUT` | unclassified | 10.0 / 10.0 / 10.0 | — | LIVE_ONLY | DEAD | ez_manage.py:9330(request_ez_indicators_restart)<br>(+2) · — | — |
+| `EZ_INDICATORS_RESTART_COOLDOWN` | unclassified | 60.0 / 60.0 / 60.0 | — | LIVE_ONLY | DEAD | ez_manage.py:9329(request_ez_indicators_restart) · — | — |
+| `EZ_INDICATORS_SHUTDOWN_CMD` | unclassified | None / None / None | — | LIVE_ONLY | DEAD | ez_manage.py:56214(shutdown)<br>(+1) · — | — |
+| `EZ_INDICATORS_START_CMD` | unclassified | None / None / None | — | LIVE_ONLY | DEAD | ez_manage.py:9326(request_ez_indicators_restart) · — | — |
 | `EZ_KLINES_API_MAX_PER_MINUTE` | unclassified | {'gateway': 200, 'server': 200, 'macbook': 300} / {'gateway': 200, 'se | — | DEAD | DEAD | — · — | — |
 | `EZ_KLINES_API_MAX_PER_SECOND` | unclassified | {'gateway': 22, 'server': 20, 'macbook': 22} / {'gateway': 22, 'server | — | DEAD | DEAD | — · — | — |
 | `EZ_KLINES_MAX_CONCURRENT` | unclassified | {'gateway': 10, 'server': 10, 'macbook': 15} / {'gateway': 10, 'server | — | DEAD | DEAD | — · — | — |
 | `EZ_KLINES_SEMAPHORE` | unclassified | {'gateway': 10, 'server': 10, 'macbook': 15} / {'gateway': 10, 'server | — | DEAD | DEAD | — · — | — |
 | `EZ_MANAGE_CONCURRENCY_LIMIT` | unclassified | {'gateway': 190, 'macbook': 180} / {'gateway': 190, 'macbook': 180} /  | — | DEAD | DEAD | — · — | — |
-| `EZ_MANAGE_MAKER_SEMAPHORE` | unclassified | {'gateway': 45, 'macbook': 65} / {'gateway': 45, 'macbook': 65} / {'ga | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13623(MultiAccountTradeManager.__init__)<br>(+1) · ez_positions_service.py:4079(PositionService.__init__) | — |
+| `EZ_MANAGE_MAKER_SEMAPHORE` | unclassified | {'gateway': 45, 'macbook': 65} / {'gateway': 45, 'macbook': 65} / {'ga | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13663(MultiAccountTradeManager.__init__)<br>(+1) · ez_positions_service.py:4079(PositionService.__init__) | — |
 | `EZ_MANAGE_RATE_LIMIT_SEMAPHORE` | unclassified | {'gateway': 35, 'macbook': 50} / {'gateway': 35, 'macbook': 50} / {'ga | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:3305(StopLevelsManager.__init__) · ez_positions_service.py:3305(StopLevelsManager.__init__) | — |
-| `EZ_MANAGE_WS_SEMAPHORE` | unclassified | {'gateway': 140, 'macbook': 140} / {'gateway': 140, 'macbook': 140} /  | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:11523(WebSocketManager.__init__)<br>(+1) · ez_positions_service.py:2381(WebSocketManager.__init__) | — |
+| `EZ_MANAGE_WS_SEMAPHORE` | unclassified | {'gateway': 140, 'macbook': 140} / {'gateway': 140, 'macbook': 140} /  | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:11563(WebSocketManager.__init__)<br>(+1) · ez_positions_service.py:2381(WebSocketManager.__init__) | — |
 | `EZ_MARK_PRICES_API_SEMAPHORE` | unclassified | {'gateway': 35, 'server': 35, 'macbook': 35} / {'gateway': 35, 'server | — | DEAD | DEAD | — · — | — |
 | `EZ_MARK_PRICES_STARTUP_SEMAPHORE` | unclassified | {'gateway': 30, 'server': 30, 'macbook': 30} / {'gateway': 30, 'server | — | DEAD | DEAD | — · — | — |
 | `EZ_PRICES_API_DELAY` | unclassified | {'gateway': 0.5, 'server': 0.5, 'macbook': 0.5} / {'gateway': 0.5, 'se | — | DEAD | DEAD | — · — | — |
@@ -928,14 +928,14 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `EZ_PRICEWS_LIMIT_PER_HOST` | unclassified | {'gateway': 3, 'server': 3, 'macbook': 3} / {'gateway': 3, 'server': 3 | — | DEAD | DEAD | — · — | — |
 | `EZ_RANKINGS_THROTTLER_RATE` | unclassified | {'gateway': 500, 'macbook': 250} / {'gateway': 500, 'macbook': 250} /  | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:151(<module>) · ez_rankings.py:151(<module>) | — |
 | `EZ_REENTRY_DAEMON_ENABLED` | reentry | True / False / True | — | LIVE_ONLY | LIVE_ONLY | ez_reentry.py:69(daemon_enabled) · ez_reentry.py:69(daemon_enabled) | — |
-| `EZ_REENTRY_INLINE_ENABLED` | reentry | True / False / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:8904(monitor_system_state)<br>(+11) · ez_positions_quick.py:15667(check_entry_candidates_for_account.worker)<br>(+4) | — |
-| `EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED` | reentry | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:8906(monitor_system_state)<br>(+3) · — | — |
+| `EZ_REENTRY_INLINE_ENABLED` | reentry | True / False / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:8944(monitor_system_state)<br>(+11) · ez_positions_quick.py:15667(check_entry_candidates_for_account.worker)<br>(+4) | — |
+| `EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED` | reentry | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:8946(monitor_system_state)<br>(+3) · — | — |
 | `EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED` | reentry | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:15807(check_entry_candidates_for_account.worker) · ez_positions_quick.py:15807(check_entry_candidates_for_account.worker) | — |
-| `EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED` | reentry | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:58161(main) · — | — |
+| `EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED` | reentry | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:58201(main) · — | — |
 | `EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED` | reentry | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:19390(main) · ez_positions_quick.py:19390(main) | — |
 | `EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED` | reentry | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:19392(main) · ez_positions_quick.py:19392(main) | — |
-| `EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED` | reentry | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:58113(main) · — | — |
-| `EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED` | reentry | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:58119(main) · — | — |
+| `EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED` | reentry | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:58153(main) · — | — |
+| `EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED` | reentry | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:58159(main) · — | — |
 | `EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED` | reentry | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:15667(check_entry_candidates_for_account.worker) · ez_positions_quick.py:15667(check_entry_candidates_for_account.worker) | — |
 | `EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED` | reentry | True / True / True | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_reentry.py:455(effective_gain_pct)<br>(+2) · ez_reentry.py:455(effective_gain_pct) | vec_decisions/stock_augment_sources.py:21(effective_gain) |
 | `EZ_REENTRY_PRICE_CROSS_INTERVAL_S` | reentry | 5.0 / 5.0 / 5.0 | — | LIVE_ONLY | LIVE_ONLY | ez_reentry.py:784(price_cross_reentry_safety_loop) · ez_reentry.py:784(price_cross_reentry_safety_loop) | — |
@@ -943,51 +943,51 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK` | reentry | 3 / 20 / 3 | — | LIVE_ONLY | LIVE_ONLY | ez_reentry.py:632(enforce_price_cross_reentry) · ez_reentry.py:632(enforce_price_cross_reentry) | — |
 | `EZ_REENTRY_PRICE_CROSS_MIN_GAP_S` | reentry | 60.0 / 60.0 / 60.0 | — | LIVE_ONLY | LIVE_ONLY | ez_reentry.py:627(enforce_price_cross_reentry) · ez_reentry.py:627(enforce_price_cross_reentry) | — |
 | `EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC` | reentry | 0.5 / 0.5 / 0.5 | — | LIVE_ONLY | LIVE_ONLY | ez_reentry.py:628(enforce_price_cross_reentry) · ez_reentry.py:628(enforce_price_cross_reentry) | — |
-| `EZ_REENTRY_QUEUE_CONSUMER_ENABLED` | reentry | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:58170(main) · — | — |
-| `EZ_REENTRY_QUEUE_CONSUMER_INTERVAL_S` | reentry | 5.0 / 5.0 / 5.0 | — | LIVE_ONLY | DEAD | ez_manage.py:55741(_reentry_queue_consumer_loop) · — | — |
+| `EZ_REENTRY_QUEUE_CONSUMER_ENABLED` | reentry | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:58210(main) · — | — |
+| `EZ_REENTRY_QUEUE_CONSUMER_INTERVAL_S` | reentry | 5.0 / 5.0 / 5.0 | — | LIVE_ONLY | DEAD | ez_manage.py:55781(_reentry_queue_consumer_loop) · — | — |
 | `FAPI_BASE_URL` | unclassified | https://fapi.binance.com/fapi/v1 / <absent> / https://fapi.binance.com | — | DEAD | DEAD | — · — | — |
 | `FAST_CUT_LOSS_MIN_AGE_MINUTES` | unclassified | 15.0 / 15.0 / 15.0 | — | DEAD | DEAD | — · — | — |
 | `FAST_CUT_LOSS_THRESHOLD` | unclassified | -999.0 / -999.0 / -999.0 | — | DEAD | DEAD | — · — | — |
-| `FAST_RISER_DOUBLE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:52646(process_position) · — | — |
-| `FAVORABLE_SLOPE_HOLD_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20332(StockStrategy.evaluate_stop) | — |
-| `FG_SIZING_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:41549(calculate_final_order_quantity) · — | — |
-| `FH_MOMENTUM_DC_CONFIRM` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20783(StockStrategy.evaluate_open)<br>(+1) | — |
-| `FH_MOMENTUM_DC_MAX_LONG` | unclassified | 0.5 / 0.5 / 0.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20782(StockStrategy.evaluate_open) | — |
-| `FH_MOMENTUM_EVAL_MINUTES` | unclassified | 30 / 30 / 30 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31162(TradierTradeManager.evaluate_fh_momentum) | — |
-| `FH_MOMENTUM_MAX_POSITIONS` | unclassified | 5 / 5 / 5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31178(TradierTradeManager.evaluate_fh_momentum) | — |
-| `FH_MOMENTUM_MFI_CONFIRM` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20775(StockStrategy.evaluate_open)<br>(+1) | — |
-| `FH_MOMENTUM_MIN_MOVE_PCT` | unclassified | 0.5 / 0.5 / 0.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20770(StockStrategy.evaluate_open)<br>(+1) | — |
-| `FH_MOMENTUM_POSITION_SIZE` | sizing | 600.0 / 600.0 / 600.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20794(StockStrategy.evaluate_open)<br>(+1) | — |
+| `FAST_RISER_DOUBLE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:52686(process_position) · — | — |
+| `FAVORABLE_SLOPE_HOLD_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20393(StockStrategy.evaluate_stop) | — |
+| `FG_SIZING_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:41589(calculate_final_order_quantity) · — | — |
+| `FH_MOMENTUM_DC_CONFIRM` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20844(StockStrategy.evaluate_open)<br>(+1) | — |
+| `FH_MOMENTUM_DC_MAX_LONG` | unclassified | 0.5 / 0.5 / 0.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20843(StockStrategy.evaluate_open) | — |
+| `FH_MOMENTUM_EVAL_MINUTES` | unclassified | 30 / 30 / 30 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31223(TradierTradeManager.evaluate_fh_momentum) | — |
+| `FH_MOMENTUM_MAX_POSITIONS` | unclassified | 5 / 5 / 5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31239(TradierTradeManager.evaluate_fh_momentum) | — |
+| `FH_MOMENTUM_MFI_CONFIRM` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20836(StockStrategy.evaluate_open)<br>(+1) | — |
+| `FH_MOMENTUM_MIN_MOVE_PCT` | unclassified | 0.5 / 0.5 / 0.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20831(StockStrategy.evaluate_open)<br>(+1) | — |
+| `FH_MOMENTUM_POSITION_SIZE` | sizing | 600.0 / 600.0 / 600.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20855(StockStrategy.evaluate_open)<br>(+1) | — |
 | `FINAL_SCORE_FILE` | unclassified | <expr> DATA_DIR / 'final_score_norm.json' / <absent> / <expr> Path('da | — | LIVE_ONLY | LIVE_ONLY | ez_indicators.py:2601(IndicatorOrchestrator.__init__)<br>(+2) · ez_indicators.py:2601(IndicatorOrchestrator.__init__)<br>(+2) | — |
-| `FIN_ADVISORY_CONSUMER_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:46325(process_position) · — | — |
-| `FOOTHOLD_PILEON_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:24128(MultiAccountTradeManager.execute_trade_action) · — | — |
-| `FORCE_OPEN_REQUIRE_MTF_GR` | unclassified | True / True / True | — | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:36371(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | v12_quick_engine.py:11751(simulate_one) |
-| `FORCE_REFRESH_SECONDS` | unclassified | 10 / 10 / 10 | — | LIVE_ONLY | DEAD | ez_manage.py:13647(MultiAccountTradeManager.__init__) · — | — |
+| `FIN_ADVISORY_CONSUMER_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:46365(process_position) · — | — |
+| `FOOTHOLD_PILEON_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:24168(MultiAccountTradeManager.execute_trade_action) · — | — |
+| `FORCE_OPEN_REQUIRE_MTF_GR` | unclassified | True / True / True | — | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:36411(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | v12_quick_engine.py:11796(simulate_one) |
+| `FORCE_REFRESH_SECONDS` | unclassified | 10 / 10 / 10 | — | LIVE_ONLY | DEAD | ez_manage.py:13687(MultiAccountTradeManager.__init__) · — | — |
 | `FORMATION_CUP_HANDLE_ENTRY_ENABLED` | entry | False / False / False | — | LIVE_ONLY | LIVE_ONLY | classic_formations.py:485(select_latest_formation [dynamic key]) · classic_formations.py:485(select_latest_formation [dynamic key])<br>(+1) | — |
 | `FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED` | entry | False / False / False | — | LIVE_ONLY | LIVE_ONLY | classic_formations.py:485(select_latest_formation [dynamic key]) · classic_formations.py:485(select_latest_formation [dynamic key])<br>(+1) | — |
 | `FORMATION_EXIT_MIN_GAIN_PCT` | exit | 0.0 / 0.0 / 0.0 | — | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:3671(AdvancedSignalRater.rate) · ez_positions_quick.py:3671(AdvancedSignalRater.rate)<br>(+2) | — |
 | `FORMATION_FLAG_PENNANT_ENTRY_ENABLED` | entry | False / False / False | — | LIVE_ONLY | LIVE_ONLY | classic_formations.py:485(select_latest_formation [dynamic key]) · classic_formations.py:485(select_latest_formation [dynamic key])<br>(+1) | — |
 | `FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED` | entry | False / False / False | — | LIVE_ONLY | LIVE_ONLY | classic_formations.py:485(select_latest_formation [dynamic key]) · classic_formations.py:485(select_latest_formation [dynamic key])<br>(+1) | — |
 | `FORMATION_MIN_SCORE` | unclassified | 0.65 / 0.65 / 0.65 | — | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | classic_formations.py:482(select_latest_formation)<br>(+1) · classic_formations.py:482(select_latest_formation)<br>(+1) | — |
-| `FORMATION_POSITION_SIZE_MULT` | sizing | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20661(StockStrategy.classic_formation_open_action) | — |
+| `FORMATION_POSITION_SIZE_MULT` | sizing | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20722(StockStrategy.classic_formation_open_action) | — |
 | `FORMATION_TFS` | unclassified | 15m,1h,4h,D / 15m,1h,4h,D / 15m,1h,4h,D | — | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | classic_formations.py:453(_formation_timeframes) · classic_formations.py:453(_formation_timeframes) | — |
 | `FORMATION_TREND_STRUCTURE_ENTRY_ENABLED` | entry | False / False / False | — | LIVE_ONLY | LIVE_ONLY | classic_formations.py:485(select_latest_formation [dynamic key]) · classic_formations.py:485(select_latest_formation [dynamic key])<br>(+1) | — |
 | `FORMATION_TRIANGLE_ENTRY_ENABLED` | entry | False / False / False | — | LIVE_ONLY | LIVE_ONLY | classic_formations.py:485(select_latest_formation [dynamic key]) · classic_formations.py:485(select_latest_formation [dynamic key])<br>(+1) | — |
 | `FORMATION_WEDGE_ENTRY_ENABLED` | entry | False / False / False | — | LIVE_ONLY | LIVE_ONLY | classic_formations.py:485(select_latest_formation [dynamic key]) · classic_formations.py:485(select_latest_formation [dynamic key])<br>(+1) | — |
-| `FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER` | unclassified | -8.0 / -8.0 / -8.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:10450(process_position)<br>(+1) | vec_decisions/frozen_floor_exit.py:68(frozen_floor_exit_should_exit)<br>vec_decisions/frozen_floor_exit.py:71(frozen_floor_exit_should_exit)<br>(+3) |
-| `FROZEN_ACTIVATION_TF` | unclassified | 4h / 4h / 4h | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:47239(process_position) · tradier_manage.py:10971(process_position) | — |
+| `FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER` | unclassified | -8.0 / -8.0 / -8.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:10511(process_position)<br>(+1) | vec_decisions/frozen_floor_exit.py:68(frozen_floor_exit_should_exit)<br>vec_decisions/frozen_floor_exit.py:71(frozen_floor_exit_should_exit)<br>(+3) |
+| `FROZEN_ACTIVATION_TF` | unclassified | 4h / 4h / 4h | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:47279(process_position) · tradier_manage.py:11032(process_position) | — |
 | `FSTREAM_WS_URL_BASE` | unclassified | wss://fstream.binance.com/market/stream / wss://fstream.binance.com/ma | — | DEAD | DEAD | — · — | — |
-| `FULL_RECIPE_ONLY_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11766(process_position)<br>(+3) | — |
+| `FULL_RECIPE_ONLY_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11827(process_position)<br>(+3) | — |
 | `FUNDING_EXTREME_LONG_THRESHOLD_PCT` | unclassified | -0.03 / <absent> / -0.03 | — | DEAD | DEAD | — · — | — |
 | `FUNDING_EXTREME_SHORT_THRESHOLD_PCT` | unclassified | 0.05 / <absent> / 0.05 | — | DEAD | DEAD | — · — | — |
-| `FUNDING_GATE_ENABLED_TRADIER` | unclassified | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26344(TradierTradeManager.execute_now) | — |
+| `FUNDING_GATE_ENABLED_TRADIER` | unclassified | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26405(TradierTradeManager.execute_now) | — |
 | `FUNDING_GATE_MTF_LONG_MAX_BULL_TFS` | unclassified | 0 / <absent> / 0 | — | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | — |
 | `FUNDING_GATE_MTF_SHORT_MAX_BEAR_TFS` | unclassified | 1 / <absent> / 1 | — | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | — |
-| `FUNDING_GATE_PC_RATIO_LONG_MAX` | unclassified | 1.2 / 1.2 / 1.2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26363(TradierTradeManager.execute_now) | — |
-| `FUNDING_GATE_PC_RATIO_SHORT_MIN` | unclassified | 0.83 / 0.83 / 0.83 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26364(TradierTradeManager.execute_now) | — |
-| `FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26360(TradierTradeManager.execute_now) | — |
-| `FUNDING_GATE_TRADIER_NEAR_MONEY_PREFER` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26362(TradierTradeManager.execute_now) | — |
-| `FUNDING_GATE_TRADIER_STALE_MAX_HOURS` | unclassified | 4.0 / 4.0 / 4.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26354(TradierTradeManager.execute_now) | — |
+| `FUNDING_GATE_PC_RATIO_LONG_MAX` | unclassified | 1.2 / 1.2 / 1.2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26424(TradierTradeManager.execute_now) | — |
+| `FUNDING_GATE_PC_RATIO_SHORT_MIN` | unclassified | 0.83 / 0.83 / 0.83 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26425(TradierTradeManager.execute_now) | — |
+| `FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26421(TradierTradeManager.execute_now) | — |
+| `FUNDING_GATE_TRADIER_NEAR_MONEY_PREFER` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26423(TradierTradeManager.execute_now) | — |
+| `FUNDING_GATE_TRADIER_STALE_MAX_HOURS` | unclassified | 4.0 / 4.0 / 4.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26415(TradierTradeManager.execute_now) | — |
 | `FUNDING_HEDGE_GATE_ENABLED` | unclassified | True / <absent> / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:12752(execute_trade_wrapper) · ez_positions_quick.py:12752(execute_trade_wrapper) | — |
 | `FUNDING_INJECT_LONG_OVERCROWDED_ABOVE` | unclassified | 0.0008 / <absent> / 0.0008 | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:4608(initial_fetch_and_ranking) · ez_rankings.py:4608(initial_fetch_and_ranking) | — |
 | `FUNDING_INJECT_SHORT_OVERCROWDED_BELOW` | unclassified | -0.0008 / <absent> / -0.0008 | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:4607(initial_fetch_and_ranking) · ez_rankings.py:4607(initial_fetch_and_ranking) | — |
@@ -996,38 +996,38 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `FUNDING_OI_INJECT_MAX_EACH` | unclassified | 10 / <absent> / 10 | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:4611(initial_fetch_and_ranking) · ez_rankings.py:4611(initial_fetch_and_ranking) | — |
 | `FUNDING_OI_INJECT_OI_MIN_PCT` | unclassified | 1.0 / <absent> / 1.0 | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:4609(initial_fetch_and_ranking) · ez_rankings.py:4609(initial_fetch_and_ranking) | — |
 | `FUNDING_OI_INJECT_PRICE_MIN_PCT` | unclassified | 0.5 / <absent> / 0.5 | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:4610(initial_fetch_and_ranking) · ez_rankings.py:4610(initial_fetch_and_ranking) | — |
-| `GAIN_THRESHOLD_LOW` | unclassified | 1.0 / <absent> / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:51346(process_position) · — | — |
-| `GAP_CLOSE_INVENTORY_ENABLED` | unclassified | <absent> / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9308(_gap_close_inventory_record_from_cache)<br>(+1) | — |
-| `GAP_CLOSE_MOC_EXIT_MINUTES_BEFORE_CLOSE` | exit | <absent> / 10 / 10 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9880(gap_moc_and_morning_loop) | — |
-| `GAP_CLOSE_MOC_REQUIRE_TOP` | unclassified | <absent> / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:10039(gap_moc_and_morning_loop) | — |
-| `GAP_CLOSE_MOC_WINDOW_MINUTES` | unclassified | <absent> / 90 / 90 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9879(gap_moc_and_morning_loop) | — |
-| `GAP_CLOSE_PER_SYMBOL_HISTORY_FILE` | exit | <absent> / data/gap_close_history_1yr_tradier.json / data/gap_close_hi | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11547(simulate_one) |
-| `GAP_CLOSE_PER_SYMBOL_INVENTORY_FILE` | exit | <absent> / data/gap_close_inventory_tradier_per_symbol.json / data/gap | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9237(_gap_close_per_symbol_inventory_path) | v12_quick_engine.py:11547(simulate_one) |
-| `GAP_FILL_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31079(TradierTradeManager.evaluate_gap_fill) | — |
-| `GAP_FILL_MAX_GAP_PCT` | unclassified | 5.0 / 5.0 / 5.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31089(TradierTradeManager.evaluate_gap_fill) | — |
-| `GAP_FILL_MIN_GAP_PCT` | unclassified | 0.5 / 0.5 / 0.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31088(TradierTradeManager.evaluate_gap_fill) | — |
-| `GAP_FILL_POSITION_SIZE` | sizing | 600.0 / 600.0 / 600.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31092(TradierTradeManager.evaluate_gap_fill) | — |
-| `GAP_FILL_STOP_MULT` | unclassified | 0.3 / 0.3 / 0.3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31090(TradierTradeManager.evaluate_gap_fill) | — |
-| `GAP_FILL_TP_FILL_PCT` | unclassified | 0.7 / 0.7 / 0.7 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31091(TradierTradeManager.evaluate_gap_fill) | — |
-| `GAP_INVENTORY_ENABLED` | unclassified | <absent> / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9099(_gap_inventory_load)<br>(+4) | — |
-| `GAP_INVENTORY_FILE` | unclassified | <absent> / data/gap_inventory_tradier.json / data/gap_inventory_tradie | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9093(_gap_inventory_path) | — |
-| `GAP_MOC_DC_WT_SAFETY_ENABLED` | unclassified | <absent> / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9487(_is_near_dc4_high_with_wt_down) | — |
-| `GAP_MOC_EXIT_MINUTES_BEFORE_CLOSE` | exit | <absent> / 10 / 10 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9876(gap_moc_and_morning_loop) | — |
-| `GAP_MOC_REENTRY_SIZE_MULT` | reentry | <absent> / 1.25 / 1.25 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9853(gap_moc_and_morning_loop) | — |
-| `GAP_MOC_REQUIRE_TOP` | unclassified | <absent> / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9372(_is_small_top_for_gap_exit)<br>(+1) | — |
-| `GAP_MOC_WINDOW_MINUTES` | unclassified | <absent> / 90 / 90 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9875(gap_moc_and_morning_loop) | — |
-| `GAP_MORNING_REENTRY_ENABLED` | reentry | <absent> / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9814(gap_moc_and_morning_loop) | — |
-| `GAP_MORNING_REENTRY_MINUTES_AFTER_OPEN` | reentry | <absent> / 120 / 120 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9813(gap_moc_and_morning_loop)<br>(+1) | — |
-| `GAP_PER_SYMBOL_HISTORY_FILE` | global | <absent> / data/gap_history_1yr_tradier.json / data/gap_history_1yr_tr | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11431(simulate_one) |
-| `GAP_PER_SYMBOL_INVENTORY_FILE` | unclassified | <absent> / data/gap_inventory_tradier_per_symbol.json / data/gap_inven | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9160(_gap_per_symbol_inventory_path) | — |
-| `GAP_RISK_REENTRY_SIZE_PCT` | reentry | <absent> / 100.0 / 100.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19699(StockStrategy.evaluate_stop)<br>(+2) | — |
+| `GAIN_THRESHOLD_LOW` | unclassified | 1.0 / <absent> / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:51386(process_position) · — | — |
+| `GAP_CLOSE_INVENTORY_ENABLED` | unclassified | <absent> / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9369(_gap_close_inventory_record_from_cache)<br>(+1) | — |
+| `GAP_CLOSE_MOC_EXIT_MINUTES_BEFORE_CLOSE` | exit | <absent> / 10 / 10 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9941(gap_moc_and_morning_loop) | — |
+| `GAP_CLOSE_MOC_REQUIRE_TOP` | unclassified | <absent> / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:10100(gap_moc_and_morning_loop) | — |
+| `GAP_CLOSE_MOC_WINDOW_MINUTES` | unclassified | <absent> / 90 / 90 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9940(gap_moc_and_morning_loop) | — |
+| `GAP_CLOSE_PER_SYMBOL_HISTORY_FILE` | exit | <absent> / data/gap_close_history_1yr_tradier.json / data/gap_close_hi | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11592(simulate_one) |
+| `GAP_CLOSE_PER_SYMBOL_INVENTORY_FILE` | exit | <absent> / data/gap_close_inventory_tradier_per_symbol.json / data/gap | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9298(_gap_close_per_symbol_inventory_path) | v12_quick_engine.py:11592(simulate_one) |
+| `GAP_FILL_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31140(TradierTradeManager.evaluate_gap_fill) | — |
+| `GAP_FILL_MAX_GAP_PCT` | unclassified | 5.0 / 5.0 / 5.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31150(TradierTradeManager.evaluate_gap_fill) | — |
+| `GAP_FILL_MIN_GAP_PCT` | unclassified | 0.5 / 0.5 / 0.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31149(TradierTradeManager.evaluate_gap_fill) | — |
+| `GAP_FILL_POSITION_SIZE` | sizing | 600.0 / 600.0 / 600.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31153(TradierTradeManager.evaluate_gap_fill) | — |
+| `GAP_FILL_STOP_MULT` | unclassified | 0.3 / 0.3 / 0.3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31151(TradierTradeManager.evaluate_gap_fill) | — |
+| `GAP_FILL_TP_FILL_PCT` | unclassified | 0.7 / 0.7 / 0.7 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31152(TradierTradeManager.evaluate_gap_fill) | — |
+| `GAP_INVENTORY_ENABLED` | unclassified | <absent> / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9160(_gap_inventory_load)<br>(+4) | — |
+| `GAP_INVENTORY_FILE` | unclassified | <absent> / data/gap_inventory_tradier.json / data/gap_inventory_tradie | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9154(_gap_inventory_path) | — |
+| `GAP_MOC_DC_WT_SAFETY_ENABLED` | unclassified | <absent> / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9548(_is_near_dc4_high_with_wt_down) | — |
+| `GAP_MOC_EXIT_MINUTES_BEFORE_CLOSE` | exit | <absent> / 10 / 10 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9937(gap_moc_and_morning_loop) | — |
+| `GAP_MOC_REENTRY_SIZE_MULT` | reentry | <absent> / 1.25 / 1.25 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9914(gap_moc_and_morning_loop) | — |
+| `GAP_MOC_REQUIRE_TOP` | unclassified | <absent> / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9433(_is_small_top_for_gap_exit)<br>(+1) | — |
+| `GAP_MOC_WINDOW_MINUTES` | unclassified | <absent> / 90 / 90 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9936(gap_moc_and_morning_loop) | — |
+| `GAP_MORNING_REENTRY_ENABLED` | reentry | <absent> / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9875(gap_moc_and_morning_loop) | — |
+| `GAP_MORNING_REENTRY_MINUTES_AFTER_OPEN` | reentry | <absent> / 120 / 120 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9874(gap_moc_and_morning_loop)<br>(+1) | — |
+| `GAP_PER_SYMBOL_HISTORY_FILE` | global | <absent> / data/gap_history_1yr_tradier.json / data/gap_history_1yr_tr | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11476(simulate_one) |
+| `GAP_PER_SYMBOL_INVENTORY_FILE` | unclassified | <absent> / data/gap_inventory_tradier_per_symbol.json / data/gap_inven | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9221(_gap_per_symbol_inventory_path) | — |
+| `GAP_RISK_REENTRY_SIZE_PCT` | reentry | <absent> / 100.0 / 100.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19760(StockStrategy.evaluate_stop)<br>(+2) | — |
 | `GHOST_ABSENT_ALERT_THRESHOLD` | unclassified | 3 / 3 / 3 | — | DEAD | DEAD | — · — | — |
 | `GHOST_CLOSE_REQUIRE_CONFIRMATION` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
-| `GOLDEN_PULLBACK_DC_BASIS_TOL_PCT` | unclassified | 1.5 / 1.5 / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7684(_golden_pullback_is_golden) · tradier_manage.py:9708(_trd_golden_pullback_is_golden) | — |
-| `GOLDEN_PULLBACK_ENABLED` | unclassified | True / True / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7681(_golden_pullback_is_golden)<br>(+1) · tradier_manage.py:9705(_trd_golden_pullback_is_golden) | — |
-| `GOLDEN_PULLBACK_SIZE_CAP_MULT` | sizing | 4.0 / 4.0 / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:7799(_psym_sps) · — | — |
-| `GOLDEN_PULLBACK_SIZE_MULT` | sizing | 2.0 / 2.0 / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:7798(_psym_sps) · — | — |
-| `GOLDEN_PULLBACK_STOCH_LOW_THR` | unclassified | 35.0 / 35.0 / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7685(_golden_pullback_is_golden) · tradier_manage.py:9709(_trd_golden_pullback_is_golden) | — |
+| `GOLDEN_PULLBACK_DC_BASIS_TOL_PCT` | unclassified | 1.5 / 1.5 / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7724(_golden_pullback_is_golden) · tradier_manage.py:9769(_trd_golden_pullback_is_golden) | — |
+| `GOLDEN_PULLBACK_ENABLED` | unclassified | True / True / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7721(_golden_pullback_is_golden)<br>(+1) · tradier_manage.py:9766(_trd_golden_pullback_is_golden) | — |
+| `GOLDEN_PULLBACK_SIZE_CAP_MULT` | sizing | 4.0 / 4.0 / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:7839(_psym_sps) · — | — |
+| `GOLDEN_PULLBACK_SIZE_MULT` | sizing | 2.0 / 2.0 / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:7838(_psym_sps) · — | — |
+| `GOLDEN_PULLBACK_STOCH_LOW_THR` | unclassified | 35.0 / 35.0 / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7725(_golden_pullback_is_golden) · tradier_manage.py:9770(_trd_golden_pullback_is_golden) | — |
 | `GOLDEN_RULE_ACTIVATION_TF_LIST` | unclassified | ['D', '4h'] / ['D', '4h'] / ['D', '4h'] | — | LIVE_ONLY | LIVE_ONLY | golden_rule_htf.py:261(_run_gate) · golden_rule_htf.py:261(_run_gate) | — |
 | `GOLDEN_RULE_BB_15M_ENABLED` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `GOLDEN_RULE_BB_1H_ENABLED` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
@@ -1039,11 +1039,11 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `GOLDEN_RULE_DC_4H_ENABLED` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `GOLDEN_RULE_DC_D_ENABLED` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `GOLDEN_RULE_DC_W_ENABLED` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
-| `GOLDEN_RULE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:17224(MultiAccountTradeManager._golden_rule_loop) · tradier_manage.py:22079(StockStrategy.evaluate_reentry) | — |
+| `GOLDEN_RULE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:17264(MultiAccountTradeManager._golden_rule_loop) · tradier_manage.py:22140(StockStrategy.evaluate_reentry) | — |
 | `GOLDEN_RULE_ENTRY_TF_LIST` | entry | ['1h', '15m', '3m'] / ['1h', '15m', '3m'] / ['1h', '15m', '3m'] | — | LIVE_ONLY | LIVE_ONLY | golden_rule_htf.py:262(_run_gate) · golden_rule_htf.py:262(_run_gate) | — |
-| `GOLDEN_RULE_EXIT_MIN_IND` | exit | 2 / 2 / 2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18904(StockStrategy.evaluate_stop) | — |
-| `GOLDEN_RULE_EXIT_MIN_TFS` | exit | 0 / 0 / 0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18900(StockStrategy.evaluate_stop) | — |
-| `GOLDEN_RULE_HTF_VETO_ENABLED` | unclassified | False / True / False | — | LIVE_ONLY | DEAD | ez_manage.py:17485(MultiAccountTradeManager._golden_rule_loop) · — | — |
+| `GOLDEN_RULE_EXIT_MIN_IND` | exit | 2 / 2 / 2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18965(StockStrategy.evaluate_stop) | — |
+| `GOLDEN_RULE_EXIT_MIN_TFS` | exit | 0 / 0 / 0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18961(StockStrategy.evaluate_stop) | — |
+| `GOLDEN_RULE_HTF_VETO_ENABLED` | unclassified | False / True / False | — | LIVE_ONLY | DEAD | ez_manage.py:17525(MultiAccountTradeManager._golden_rule_loop) · — | — |
 | `GOLDEN_RULE_MULT_15M` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | DEAD | — · — | — |
 | `GOLDEN_RULE_MULT_1H` | unclassified | 1.5 / 1.5 / 1.5 | — | DEAD | DEAD | — · — | — |
 | `GOLDEN_RULE_MULT_4H` | unclassified | 2.0 / 2.0 / 2.0 | — | DEAD | DEAD | — · — | — |
@@ -1051,16 +1051,16 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `GOLDEN_RULE_MULT_W` | unclassified | 4.0 / 4.0 / 4.0 | — | DEAD | DEAD | — · — | — |
 | `GOLDEN_RULE_REQUIRE_ACTIVATION` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | golden_rule_htf.py:260(_run_gate) · golden_rule_htf.py:260(_run_gate) | — |
 | `GOLDEN_RULE_REQUIRE_HEDGE_OPEN` | unclassified | True / False / True | — | DEAD | DEAD | — · — | — |
-| `GRACEFUL_EXIT_FILE_TEMPLATE` | exit | <expr> BASE_PATH / 'graceful_exit_{account_key}.json' / <absent> / <ex | — | LIVE_ONLY | DEAD | ez_manage.py:22880(MultiAccountTradeManager.save_graceful_exit_list)<br>(+3) · — | — |
+| `GRACEFUL_EXIT_FILE_TEMPLATE` | exit | <expr> BASE_PATH / 'graceful_exit_{account_key}.json' / <absent> / <ex | — | LIVE_ONLY | DEAD | ez_manage.py:22920(MultiAccountTradeManager.save_graceful_exit_list)<br>(+3) · — | — |
 | `GR_BB_EXTENDED_LONG` | unclassified | 0.75 / 0.75 / 0.75 | — | LIVE_ONLY | LIVE_ONLY | golden_rule_htf.py:259(_run_gate) · golden_rule_htf.py:259(_run_gate) | — |
 | `GR_DC_EXTENDED_LONG` | unclassified | 0.65 / 0.65 / 0.65 | — | LIVE_ONLY | LIVE_ONLY | golden_rule_htf.py:258(_run_gate) · golden_rule_htf.py:258(_run_gate) | — |
-| `GR_HEDGE_SCORE_FLOOR` | unclassified | 15 / 15 / 15 | — | LIVE_ONLY | DEAD | ez_manage.py:32634(MultiAccountTradeManager.execute_now) · — | — |
-| `GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE` | entry | 34.0 / 34.0 / 34.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40778(evaluate_technical_indicator_signals) · tradier_manage.py:13180(process_position) | — |
-| `GR_HTF_DIRECT_ENTRY_ENABLED` | entry | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40758(evaluate_technical_indicator_signals) · tradier_manage.py:13160(process_position) | — |
-| `GR_HTF_DIRECT_ENTRY_SCORE_MIN` | entry | 23.0 / 23.0 / 23.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40775(evaluate_technical_indicator_signals) · tradier_manage.py:13179(process_position) | — |
-| `GR_HTF_GATE_ENABLED` | unclassified | False / True / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12759(process_position) | — |
-| `GR_HTF_REQUIRE_BEAR` | unclassified | 1 / 1 / 1 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12762(process_position) | — |
-| `GR_HTF_REQUIRE_BULL` | unclassified | 1 / 1 / 1 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12761(process_position) | — |
+| `GR_HEDGE_SCORE_FLOOR` | unclassified | 15 / 15 / 15 | — | LIVE_ONLY | DEAD | ez_manage.py:32674(MultiAccountTradeManager.execute_now) · — | — |
+| `GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE` | entry | 34.0 / 34.0 / 34.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40818(evaluate_technical_indicator_signals) · tradier_manage.py:13241(process_position) | — |
+| `GR_HTF_DIRECT_ENTRY_ENABLED` | entry | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40798(evaluate_technical_indicator_signals) · tradier_manage.py:13221(process_position) | — |
+| `GR_HTF_DIRECT_ENTRY_SCORE_MIN` | entry | 23.0 / 23.0 / 23.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40815(evaluate_technical_indicator_signals) · tradier_manage.py:13240(process_position) | — |
+| `GR_HTF_GATE_ENABLED` | unclassified | False / True / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12820(process_position) | — |
+| `GR_HTF_REQUIRE_BEAR` | unclassified | 1 / 1 / 1 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12823(process_position) | — |
+| `GR_HTF_REQUIRE_BULL` | unclassified | 1 / 1 / 1 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12822(process_position) | — |
 | `GR_OPEN_COOLDOWN_S` | unclassified | 0.0 / 0.0 / 0.0 | — | DEAD | DEAD | — · — | — |
 | `GR_TOTAL_VOTE_SCORE_MIN` | unclassified | 0 / 0 / 0 | — | LIVE_ONLY | LIVE_ONLY | golden_rule_htf.py:257(_run_gate) · golden_rule_htf.py:257(_run_gate) | — |
 | `GR_V5_ARM_WINDOW_BARS` | unclassified | 168 / 168 / 168 | — | DEAD | DEAD | — · — | — |
@@ -1077,7 +1077,7 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `GR_V5_LTF_TFS` | unclassified | ('3m', '15m', '1h') / ('3m', '15m', '1h') / ('3m', '15m', '1h') | — | DEAD | DEAD | — · — | — |
 | `GR_V5_RETEST_BAND_PCT` | unclassified | 0.03 / 0.03 / 0.03 | — | DEAD | DEAD | — · — | — |
 | `GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED` | reentry | False / False / False | — | DEAD | DEAD | — · — | — |
-| `GUARANTEED_REENTRY_AUGMENT_ENABLED` | reentry | True / False / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:25752(MultiAccountTradeManager.execute_trade_action)<br>(+1) · tradier_manage.py:25638(TradierTradeManager.execute_now)<br>(+1) | — |
+| `GUARANTEED_REENTRY_AUGMENT_ENABLED` | reentry | True / False / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:25792(MultiAccountTradeManager.execute_trade_action)<br>(+1) · tradier_manage.py:25699(TradierTradeManager.execute_now)<br>(+1) | — |
 | `GUARANTEED_REENTRY_HTF_VETO_ENABLED` | reentry | False / False / False | — | DEAD | DEAD | — · — | — |
 | `HARDCODED_RALLY_DC_POS_MAX` | unclassified | 0.0 / 0.0 / 0.0 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | live_rally_filters.py:32(rally_ok) · live_rally_filters.py:32(rally_ok) | vec_decisions/hardcoded_rally_filters.py:33(RallyFilters.__init__) |
 | `HARDCODED_RALLY_HTF_TREND_TF` | unclassified | OFF / OFF / OFF | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | live_rally_filters.py:30(rally_ok) · live_rally_filters.py:30(rally_ok) | vec_decisions/hardcoded_rally_filters.py:31(RallyFilters.__init__) |
@@ -1085,16 +1085,16 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `HARDCODED_RALLY_MIN_MOVE_PCT` | unclassified | 0.0 / 0.0 / 0.0 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | live_rally_filters.py:28(rally_ok) · live_rally_filters.py:28(rally_ok) | vec_decisions/hardcoded_rally_filters.py:29(RallyFilters.__init__) |
 | `HARDCODED_RALLY_SMA200_SIDE_ENABLED` | unclassified | False / False / False | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | live_rally_filters.py:33(rally_ok) · live_rally_filters.py:33(rally_ok) | vec_decisions/hardcoded_rally_filters.py:34(RallyFilters.__init__) |
 | `HARD_MAX_LOSS_PCT` | unclassified | -5.0 / -5.0 / -5.0 | — | DEAD | DEAD | — · — | — |
-| `HARD_MAX_SYMBOL_VALUE_TRADIER` | unclassified | 2500.0 / 2500.0 / 2500.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11289(process_position)<br>(+7) | — |
+| `HARD_MAX_SYMBOL_VALUE_TRADIER` | unclassified | 2500.0 / 2500.0 / 2500.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11350(process_position)<br>(+7) | — |
 | `HA_3M_ENTRY_WEIGHT` | entry | -0.5 / -0.5 / -0.5 | — | DEAD | DEAD | — · — | — |
 | `HD_ROOT` | unclassified | <expr> Path('/Volumes/SSD2T') / <absent> / <expr> Path('/Volumes/SSD2T | — | DEAD | DEAD | — · — | — |
 | `HEDGE_ACCOUNTS` | unclassified | [] / <absent> / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:5757(HedgeEngine.monitor_hedge_health_loop)<br>(+5) · ez_positions_quick.py:5757(HedgeEngine.monitor_hedge_health_loop)<br>(+5) | — |
 | `HEDGE_ALL_POSITIONS` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:5351(HedgeEngine.scan_and_hedge_losers) · ez_positions_quick.py:5351(HedgeEngine.scan_and_hedge_losers) | — |
 | `HEDGE_ALREADY_COVERED_THRESHOLD` | unclassified | 0.9 / 0.9 / 0.9 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:7768(HedgeEngine._execute_same_symbol_hedge_inner) · ez_positions_quick.py:7768(HedgeEngine._execute_same_symbol_hedge_inner) | — |
 | `HEDGE_BALANCE_COOLDOWN_SECONDS` | unclassified | 180.0 / 180.0 / 180.0 | — | DEAD | DEAD | — · — | — |
-| `HEDGE_BANDAID_OFF_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:49109(process_position)<br>(+2) · ez_positions_quick.py:5929(HedgeEngine.monitor_hedge_health_loop)<br>(+1) | — |
+| `HEDGE_BANDAID_OFF_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:49149(process_position)<br>(+2) · ez_positions_quick.py:5929(HedgeEngine.monitor_hedge_health_loop)<br>(+1) | — |
 | `HEDGE_BANDAID_OFF_FIRST_PRE_VEC_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
-| `HEDGE_BANDAID_OFF_REQUIRE_WT_3M_FLIP` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:49159(process_position)<br>(+2) · ez_positions_quick.py:5954(HedgeEngine.monitor_hedge_health_loop)<br>(+1) | — |
+| `HEDGE_BANDAID_OFF_REQUIRE_WT_3M_FLIP` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:49199(process_position)<br>(+2) · ez_positions_quick.py:5954(HedgeEngine.monitor_hedge_health_loop)<br>(+1) | — |
 | `HEDGE_CLOSE_MODE` | unclassified | wt_3m_and_1h / wt_3m_and_1h / wt_3m_and_1h | — | LIVE_ONLY | LIVE_ONLY | hedge_decisions.py:64(should_close_hedge_wt3m1h) · hedge_decisions.py:64(should_close_hedge_wt3m1h) | — |
 | `HEDGE_CLOSE_REMOVE_FROM_TRADEABLE` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `HEDGE_CLOSE_SCALP_MODE` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:5997(HedgeEngine.monitor_hedge_health_loop) · ez_positions_quick.py:5997(HedgeEngine.monitor_hedge_health_loop) | — |
@@ -1110,18 +1110,18 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `HEDGE_DETERIORATING_GAIN_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:5487(HedgeEngine.scan_and_hedge_losers) · ez_positions_quick.py:5487(HedgeEngine.scan_and_hedge_losers) | — |
 | `HEDGE_DUAL_IF_HEDGE_MODE` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:5352(HedgeEngine.scan_and_hedge_losers) · ez_positions_quick.py:5352(HedgeEngine.scan_and_hedge_losers) | — |
 | `HEDGE_ENTRY_MODE` | entry | LOSS_AND_WT / LOSS_AND_WT / LOSS_AND_WT | — | DEAD | DEAD | — · — | — |
-| `HEDGE_EXIT_BYPASS_NOLOSS` | exit | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:50354(process_position) · — | — |
+| `HEDGE_EXIT_BYPASS_NOLOSS` | exit | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:50394(process_position) · — | — |
 | `HEDGE_EXIT_DELTA_CHECK_ENABLED` | exit | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:6612(HedgeEngine._hedge_should_exit) · ez_positions_quick.py:6612(HedgeEngine._hedge_should_exit) | — |
 | `HEDGE_EXIT_WT_TF` | exit | 3m / 3m / 3m | — | DEAD | DEAD | — · — | — |
-| `HEDGE_FAILED_FALLBACK_CLOSE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32731(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:5630(HedgeEngine.scan_and_hedge_losers)<br>(+1) | — |
-| `HEDGE_HTF_VETO_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:32659(MultiAccountTradeManager.execute_now) · — | — |
+| `HEDGE_FAILED_FALLBACK_CLOSE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32771(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:5630(HedgeEngine.scan_and_hedge_losers)<br>(+1) | — |
+| `HEDGE_HTF_VETO_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:32699(MultiAccountTradeManager.execute_now) · — | — |
 | `HEDGE_MAX_ABSOLUTE_USD` | unclassified | 100000.0 / 100000.0 / 100000.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:6635(HedgeEngine.compute_hedge_size)<br>(+1) · ez_positions_quick.py:6635(HedgeEngine.compute_hedge_size)<br>(+1) | — |
 | `HEDGE_MAX_AGE_HOURS` | unclassified | 6.0 / 6.0 / 6.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:6848(HedgeEngine.monitor_and_manage_hedges) · ez_positions_quick.py:6848(HedgeEngine.monitor_and_manage_hedges) | — |
 | `HEDGE_MAX_AGE_KILL_REQUIRE_PROFIT` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:6862(HedgeEngine.monitor_and_manage_hedges) · ez_positions_quick.py:6862(HedgeEngine.monitor_and_manage_hedges) | — |
 | `HEDGE_MAX_PCT_OF_LOSER` | unclassified | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:5692(HedgeEngine._manage_hedge_for_position)<br>(+5) · ez_positions_quick.py:5692(HedgeEngine._manage_hedge_for_position)<br>(+3) | — |
 | `HEDGE_MAX_RATIO` | unclassified | 2.0 / 2.0 / 2.0 | — | DEAD | DEAD | — · — | — |
-| `HEDGE_MODE` | unclassified | False / False / False | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:33710(MultiAccountTradeManager.execute_now)<br>(+11) · ez_positions_quick.py:6700(HedgeEngine.monitor_and_manage_hedges)<br>(+10) | vec_decisions/live_exit_chain.py:255(step_pp)<br>vec_decisions/process_position_crypto__dc_basis_3m_reduce.py:46(check_dc_basis_3m_reduce) [UNREACHABLE]<br>(+1) |
-| `HEDGE_MODE_TRADIER` | unclassified | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:24594(TradierTradeManager.execute_trade_action)<br>(+1) | — |
+| `HEDGE_MODE` | unclassified | False / False / False | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:33750(MultiAccountTradeManager.execute_now)<br>(+11) · ez_positions_quick.py:6700(HedgeEngine.monitor_and_manage_hedges)<br>(+10) | vec_decisions/live_exit_chain.py:255(step_pp)<br>vec_decisions/process_position_crypto__dc_basis_3m_reduce.py:46(check_dc_basis_3m_reduce) [UNREACHABLE]<br>(+1) |
+| `HEDGE_MODE_TRADIER` | unclassified | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:24655(TradierTradeManager.execute_trade_action)<br>(+1) | — |
 | `HEDGE_MOMENTUM_GATE` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `HEDGE_NEWBORN_DC_BREACH_ALLOWED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:5515(HedgeEngine.scan_and_hedge_losers) · ez_positions_quick.py:5515(HedgeEngine.scan_and_hedge_losers) | — |
 | `HEDGE_NEWBORN_GRACE_MINUTES` | unclassified | 0.0 / 0.0 / 0.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:5498(HedgeEngine.scan_and_hedge_losers) · ez_positions_quick.py:5498(HedgeEngine.scan_and_hedge_losers) | — |
@@ -1140,13 +1140,13 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `HEDGE_SIZE_RATIO_TRADIER` | sizing | 0.25 / 0.25 / 0.25 | — | DEAD | DEAD | — · — | — |
 | `HEDGE_STRICT_WT_ALL_TFS_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:4830(RatingRegistry._quick_hedge_rank)<br>(+1) · ez_positions_quick.py:4830(RatingRegistry._quick_hedge_rank)<br>(+1) | — |
 | `HEDGE_STRICT_WT_MIN_TFS_AGAINST` | unclassified | 4 / 4 / 4 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:4831(RatingRegistry._quick_hedge_rank)<br>(+1) · ez_positions_quick.py:4831(RatingRegistry._quick_hedge_rank)<br>(+1) | — |
-| `HEDGE_TRIGGER_GR_SCORE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32635(MultiAccountTradeManager.execute_now)<br>(+1) · ez_positions_quick.py:5439(HedgeEngine.scan_and_hedge_losers) | — |
+| `HEDGE_TRIGGER_GR_SCORE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32675(MultiAccountTradeManager.execute_now)<br>(+1) · ez_positions_quick.py:5439(HedgeEngine.scan_and_hedge_losers) | — |
 | `HEDGE_TRIGGER_LOSS_PCT` | unclassified | -0.05 / -0.05 / -0.05 | — | DEAD | DEAD | — · — | — |
 | `HEDGE_TRIGGER_LOSS_PCT_ENTRY` | entry | -2.0 / -2.0 / -2.0 | — | DEAD | DEAD | — · — | — |
 | `HEDGE_TRIGGER_LOSS_TRADIER` | unclassified | -1.0 / -1.0 / -1.0 | — | DEAD | DEAD | — · — | — |
-| `HEDGE_TRIGGER_REQUIRE_WT_3M_AND_15M_OR_1H` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32611(MultiAccountTradeManager.execute_now)<br>(+4) · ez_positions_quick.py:5482(HedgeEngine.scan_and_hedge_losers)<br>(+1) | — |
-| `HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32618(MultiAccountTradeManager.execute_now)<br>(+4) · ez_positions_quick.py:5486(HedgeEngine.scan_and_hedge_losers)<br>(+1) | — |
-| `HEDGE_TRIGGER_USE_WT_3M_ALONE` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32625(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:5564(HedgeEngine.scan_and_hedge_losers) | — |
+| `HEDGE_TRIGGER_REQUIRE_WT_3M_AND_15M_OR_1H` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32651(MultiAccountTradeManager.execute_now)<br>(+4) · ez_positions_quick.py:5482(HedgeEngine.scan_and_hedge_losers)<br>(+1) | — |
+| `HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32658(MultiAccountTradeManager.execute_now)<br>(+4) · ez_positions_quick.py:5486(HedgeEngine.scan_and_hedge_losers)<br>(+1) | — |
+| `HEDGE_TRIGGER_USE_WT_3M_ALONE` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32665(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:5564(HedgeEngine.scan_and_hedge_losers) | — |
 | `HEDGE_WEBHOOK_LOCK_TTL_SEC` | unclassified | 60.0 / 60.0 / 60.0 | — | DEAD | DEAD | — · — | — |
 | `HEDGE_WT_CLOSE_REQUIRE_NONNEG_GAIN` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | hedge_decisions.py:104(should_close_hedge_wt3m1h) · hedge_decisions.py:104(should_close_hedge_wt3m1h) | — |
 | `HEDGE_WT_VEL_GATE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:4814(RatingRegistry._quick_hedge_rank)<br>(+2) · ez_positions_quick.py:4814(RatingRegistry._quick_hedge_rank)<br>(+2) | — |
@@ -1178,13 +1178,13 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `HOLD_BARS_OPEN` | unclassified | 200 / 200 / 200 | — | DEAD | DEAD | — · — | — |
 | `HOUR_OF_DAY_BLOCKED_UTC` | unclassified | [] / <absent> / [] | — | LIVE_ONLY | DEAD | strategy_enhancements.py:297(check_hour_allow_entry) · — | — |
 | `HOUR_OF_DAY_GATE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | strategy_enhancements.py:293(check_hour_allow_entry) · — | — |
-| `HTF1_CONF` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:106(check_htf_conf) · tradier_manage.py:23412(TradierTradeManager._check_htf_confirmation)<br>(+11) | vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:106(check_htf_conf) [UNREACHABLE] |
-| `HTF_ALIGN_REQUIRED_TRADIER` | unclassified | 2 / 2 / 2 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12740(process_position)<br>(+1) | v12_quick_engine.py:9257(compute_entry_signals)<br>vec_decisions/process_position_stocks__wtdc_entry_gates.py:95(_wtdc_entry_gate_params) [UNREACHABLE] |
-| `HTF_AUG_VETO_FIX_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:25294(MultiAccountTradeManager.execute_trade_action) · — | — |
-| `HTF_DC_BREAKOUT_TRADIER_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27470(TradierTradeManager.should_enter_long)<br>(+1) | vec_decisions/check_entry_candidates_stocks__htf_dc_breakout.py:48(check_htf_dc_breakout) [UNREACHABLE] |
-| `HTF_DC_BREAKOUT_TRADIER_REQUIRE_W_WT` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27474(TradierTradeManager.should_enter_long)<br>(+1) | vec_decisions/check_entry_candidates_stocks__htf_dc_breakout.py:42(_htf_dc_breakout_params) [UNREACHABLE] |
-| `HTF_DC_BREAKOUT_TRADIER_TF` | unclassified | 4h / 4h / 4h | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27472(TradierTradeManager.should_enter_long)<br>(+1) | vec_decisions/check_entry_candidates_stocks__htf_dc_breakout.py:50(check_htf_dc_breakout) [UNREACHABLE] |
-| `HTF_DC_BREAKOUT_TRADIER_THRESHOLD_PCT` | unclassified | 0.0 / 0.0 / 0.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27473(TradierTradeManager.should_enter_long)<br>(+1) | vec_decisions/check_entry_candidates_stocks__htf_dc_breakout.py:41(_htf_dc_breakout_params) [UNREACHABLE] |
+| `HTF1_CONF` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:106(check_htf_conf) · tradier_manage.py:23473(TradierTradeManager._check_htf_confirmation)<br>(+11) | vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:106(check_htf_conf) [UNREACHABLE] |
+| `HTF_ALIGN_REQUIRED_TRADIER` | unclassified | 2 / 2 / 2 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12801(process_position)<br>(+1) | v12_quick_engine.py:9302(compute_entry_signals)<br>vec_decisions/process_position_stocks__wtdc_entry_gates.py:95(_wtdc_entry_gate_params) [UNREACHABLE] |
+| `HTF_AUG_VETO_FIX_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:25334(MultiAccountTradeManager.execute_trade_action) · — | — |
+| `HTF_DC_BREAKOUT_TRADIER_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27531(TradierTradeManager.should_enter_long)<br>(+1) | vec_decisions/check_entry_candidates_stocks__htf_dc_breakout.py:48(check_htf_dc_breakout) [UNREACHABLE] |
+| `HTF_DC_BREAKOUT_TRADIER_REQUIRE_W_WT` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27535(TradierTradeManager.should_enter_long)<br>(+1) | vec_decisions/check_entry_candidates_stocks__htf_dc_breakout.py:42(_htf_dc_breakout_params) [UNREACHABLE] |
+| `HTF_DC_BREAKOUT_TRADIER_TF` | unclassified | 4h / 4h / 4h | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27533(TradierTradeManager.should_enter_long)<br>(+1) | vec_decisions/check_entry_candidates_stocks__htf_dc_breakout.py:50(check_htf_dc_breakout) [UNREACHABLE] |
+| `HTF_DC_BREAKOUT_TRADIER_THRESHOLD_PCT` | unclassified | 0.0 / 0.0 / 0.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27534(TradierTradeManager.should_enter_long)<br>(+1) | vec_decisions/check_entry_candidates_stocks__htf_dc_breakout.py:41(_htf_dc_breakout_params) [UNREACHABLE] |
 | `HTF_REGIME_ADD_MULT_PER_SMA` | unclassified | 0.75 / 0.75 / 0.75 | — | DEAD | DEAD | — · — | — |
 | `HTF_REGIME_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `HTF_REGIME_EXIT_TF` | exit | 15m / 1h / 15m | — | DEAD | DEAD | — · — | — |
@@ -1194,23 +1194,23 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `HTF_REGIME_TF` | unclassified | D / D / D | — | DEAD | DEAD | — · — | — |
 | `HTF_REGIME_VOL_TARGET` | unclassified | 0.0 / 0.0 / 0.0 | — | DEAD | DEAD | — · — | — |
 | `HTF_STRICT` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2520(AdvancedSignalRater.rate) · ez_positions_quick.py:2520(AdvancedSignalRater.rate) | — |
-| `HTF_TREND_VETO_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:25760(MultiAccountTradeManager.execute_trade_action) · tradier_manage.py:25872(TradierTradeManager.execute_now) | — |
-| `HTF_TREND_VETO_ON_REDUCE_ENABLED` | reduce | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:25785(MultiAccountTradeManager.execute_trade_action) · tradier_manage.py:25903(TradierTradeManager.execute_now) | — |
-| `HTF_TREND_VETO_SCORE_MIN_ABS` | unclassified | 5.0 / 5.0 / 5.0 | — | LIVE_ONLY | DEAD | ez_manage.py:25328(MultiAccountTradeManager.execute_trade_action) · — | — |
-| `HTF_VETO_REQUIRE_D` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:17498(MultiAccountTradeManager._golden_rule_loop) · — | — |
-| `HTF_W_M_ALIGN_GATE_TRADIER_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27451(TradierTradeManager.should_enter_long)<br>(+1) | vec_decisions/check_entry_candidates_stocks__htf_w_m_align.py:40(check_htf_w_m_align_blocks) [UNREACHABLE] |
-| `HTF_W_M_ALIGN_TRADIER_REQUIRED` | unclassified | 2 / 2 / 2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27461(TradierTradeManager.should_enter_long)<br>(+1) | vec_decisions/check_entry_candidates_stocks__htf_w_m_align.py:35(_htf_w_m_align_req) [UNREACHABLE]<br>vec_decisions/test_check_entry_candidates_stocks__htf_w_m_align.py:20(run) [UNREACHABLE] |
-| `HTF_W_REVERSAL_EXIT_TRADIER_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18910(StockStrategy.evaluate_stop) | vec_decisions/check_exit_candidates_stocks__htf_w_reversal.py:44(check_htf_w_reversal) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__htf_w_reversal.py:64(check_htf_w_reversal_vec) [UNREACHABLE] |
-| `HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18925(StockStrategy.evaluate_stop) | vec_decisions/check_exit_candidates_stocks__htf_w_reversal.py:48(check_htf_w_reversal) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__htf_w_reversal.py:66(check_htf_w_reversal_vec) [UNREACHABLE] |
-| `IMMEDIATE_WRONG_WAY_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:51848(process_position) · — | — |
+| `HTF_TREND_VETO_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:25800(MultiAccountTradeManager.execute_trade_action) · tradier_manage.py:25933(TradierTradeManager.execute_now) | — |
+| `HTF_TREND_VETO_ON_REDUCE_ENABLED` | reduce | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:25825(MultiAccountTradeManager.execute_trade_action) · tradier_manage.py:25964(TradierTradeManager.execute_now) | — |
+| `HTF_TREND_VETO_SCORE_MIN_ABS` | unclassified | 5.0 / 5.0 / 5.0 | — | LIVE_ONLY | DEAD | ez_manage.py:25368(MultiAccountTradeManager.execute_trade_action) · — | — |
+| `HTF_VETO_REQUIRE_D` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:17538(MultiAccountTradeManager._golden_rule_loop) · — | — |
+| `HTF_W_M_ALIGN_GATE_TRADIER_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27512(TradierTradeManager.should_enter_long)<br>(+1) | vec_decisions/check_entry_candidates_stocks__htf_w_m_align.py:40(check_htf_w_m_align_blocks) [UNREACHABLE] |
+| `HTF_W_M_ALIGN_TRADIER_REQUIRED` | unclassified | 2 / 2 / 2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27522(TradierTradeManager.should_enter_long)<br>(+1) | vec_decisions/check_entry_candidates_stocks__htf_w_m_align.py:35(_htf_w_m_align_req) [UNREACHABLE]<br>vec_decisions/test_check_entry_candidates_stocks__htf_w_m_align.py:20(run) [UNREACHABLE] |
+| `HTF_W_REVERSAL_EXIT_TRADIER_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18971(StockStrategy.evaluate_stop) | vec_decisions/check_exit_candidates_stocks__htf_w_reversal.py:44(check_htf_w_reversal) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__htf_w_reversal.py:64(check_htf_w_reversal_vec) [UNREACHABLE] |
+| `HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18986(StockStrategy.evaluate_stop) | vec_decisions/check_exit_candidates_stocks__htf_w_reversal.py:48(check_htf_w_reversal) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__htf_w_reversal.py:66(check_htf_w_reversal_vec) [UNREACHABLE] |
+| `IMMEDIATE_WRONG_WAY_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:51888(process_position) · — | — |
 | `INDICATORS_FILE` | unclassified | <expr> DATA_DIR / 'tradier_indicators_latest.json' / <expr> DATA_DIR / | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:379(_load_indicators_from_file)<br>(+4) · ez_rankings.py:379(_load_indicators_from_file)<br>(+4) | — |
 | `INDICATORS_SAVE_INTERVAL_SECONDS` | unclassified | 10.0 / 10.0 / 10.0 | — | LIVE_ONLY | LIVE_ONLY | ez_indicators.py:3425(IndicatorOrchestrator._save_loop) · ez_indicators.py:3425(IndicatorOrchestrator._save_loop)<br>(+1) | — |
-| `INDICATOR_MAX_AGE_SECONDS` | unclassified | 200.0 / <absent> / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7929(<module>)<br>(+1) · ez_positions_service.py:663(<module>) | — |
+| `INDICATOR_MAX_AGE_SECONDS` | unclassified | 200.0 / <absent> / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7969(<module>)<br>(+1) · ez_positions_service.py:663(<module>) | — |
 | `INDICATOR_UPDATE_INTERVAL` | unclassified | 30.0 / 30.0 / 30.0 | — | DEAD | DEAD | — · — | — |
-| `INF_7D_BEAT_MIN_DELTA` | unclassified | 0.0 / 0.0 / 0.0 | — | LIVE_ONLY | DEAD | ez_manage.py:30476(MultiAccountTradeManager.execute_now) · — | — |
-| `INF_7D_BEAT_SIZE_MULT` | sizing | 2.0 / 2.0 / 2.0 | — | LIVE_ONLY | DEAD | ez_manage.py:30477(MultiAccountTradeManager.execute_now) · — | — |
-| `INF_DEDICATED_WINNERS` | unclassified | {} / {} / {} | — | LIVE_ONLY | DEAD | ez_manage.py:30416(MultiAccountTradeManager.execute_now)<br>(+1) · — | — |
-| `INF_DEDICATED_WINNERS_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:30410(MultiAccountTradeManager.execute_now)<br>(+1) · — | — |
+| `INF_7D_BEAT_MIN_DELTA` | unclassified | 0.0 / 0.0 / 0.0 | — | LIVE_ONLY | DEAD | ez_manage.py:30516(MultiAccountTradeManager.execute_now) · — | — |
+| `INF_7D_BEAT_SIZE_MULT` | sizing | 2.0 / 2.0 / 2.0 | — | LIVE_ONLY | DEAD | ez_manage.py:30517(MultiAccountTradeManager.execute_now) · — | — |
+| `INF_DEDICATED_WINNERS` | unclassified | {} / {} / {} | — | LIVE_ONLY | DEAD | ez_manage.py:30456(MultiAccountTradeManager.execute_now)<br>(+1) · — | — |
+| `INF_DEDICATED_WINNERS_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:30450(MultiAccountTradeManager.execute_now)<br>(+1) · — | — |
 | `INF_RANKING_BYPASS_DELTA` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `INF_RANKING_BYPASS_FRESHNESS_MIN` | unclassified | 30 / 30 / 30 | — | DEAD | DEAD | — · — | — |
 | `INF_RANKING_BYPASS_HTF` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
@@ -1225,9 +1225,9 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `K3M_CAP` | unclassified | 80 / 80 / 80 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2851(AdvancedSignalRater.rate) · ez_positions_quick.py:2851(AdvancedSignalRater.rate) | — |
 | `K3M_CAP_BREAKOUT_BYPASS` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2855(AdvancedSignalRater.rate) · ez_positions_quick.py:2855(AdvancedSignalRater.rate) | — |
 | `KEY_LEVEL_CRASH_ENABLED` | unclassified | True / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | vec_decisions/live_exit_chain.py:128(step) |
-| `KG_STOCKS_LIVE_GATE` | entry | <absent> / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9398(compute_entry_signals)<br>v12_quick_engine.py:11836(simulate_one) |
+| `KG_STOCKS_LIVE_GATE` | entry | <absent> / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9443(compute_entry_signals)<br>v12_quick_engine.py:11881(simulate_one) |
 | `KILLER_KNOB_FINDER_FILTER_TF` | filter | 15m / 15m / 15m | — | DEAD | DEAD | — · — | — |
-| `KINDERGARTEN_CUMULATIVE_MODE` | global | <absent> / True / True | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:27543(TradierTradeManager.should_enter_long)<br>(+1) | vec_decisions/live_kindergarten_stocks.py:19(pass_mask) |
+| `KINDERGARTEN_CUMULATIVE_MODE` | global | <absent> / True / True | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:27604(TradierTradeManager.should_enter_long)<br>(+1) | vec_decisions/live_kindergarten_stocks.py:19(pass_mask) |
 | `KLINES_CACHE_DIR` | unclassified | <expr> BASE_PATH / 'klines_cache' / <expr> BASE_PATH / 'klines_cache'  | — | LIVE_ONLY | LIVE_ONLY | ez_crosses.py:45(<module>)<br>(+8) · ez_crosses.py:45(<module>)<br>(+11) | — |
 | `KLINE_COLUMNS` | unclassified | ['timestamp', 'open', 'high', 'low', 'close', 'volume'] / ['timestamp' | — | DEAD | DEAD | — · — | — |
 | `K_LOWER_HIGH_EXIT_ENABLED` | exit | True / False / True | — | DEAD | DEAD | — · — | — |
@@ -1239,23 +1239,23 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `LADDER_TTL_MINUTES` | unclassified | 1440 / 1440 / 1440 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:9765(PositionService._normalize_ladder_entry) · ez_positions_service.py:9765(PositionService._normalize_ladder_entry) | — |
 | `LAST_EVENTS_FILE` | unclassified | <expr> Path('/tmp/binance-monitoring/last_events.json') / <absent> / < | — | LIVE_ONLY | LIVE_ONLY | ez_crosses.py:54(<module>)<br>(+4) · ez_crosses.py:54(<module>)<br>(+4) | — |
 | `LATEST_MARKET_DATA_FILE` | unclassified | <expr> DATA_DIR / 'latest_market_data.json' / <absent> / <expr> Path(' | — | LIVE_ONLY | LIVE_ONLY | ez_indicators.py:2621(IndicatorOrchestrator.__init__)<br>(+6) · ez_indicators.py:2621(IndicatorOrchestrator.__init__)<br>(+5) | — |
-| `LEADERBOARD_ENTRY_ENABLED` | entry | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:39012(evaluate_leaderboard_entry) · tradier_manage.py:20639(StockStrategy.classic_formation_open_action [dynamic key]) | — |
+| `LEADERBOARD_ENTRY_ENABLED` | entry | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:39052(evaluate_leaderboard_entry) · tradier_manage.py:20700(StockStrategy.classic_formation_open_action [dynamic key]) | — |
 | `LEADERBOARD_LONG` | unclassified | <expr> BASE_PATH / 'symbols_long_tr.json' / <expr> BASE_PATH / 'symbol | — | DEAD | DEAD | — · — | — |
 | `LEADERBOARD_SHORT` | unclassified | <expr> BASE_PATH / 'symbols_short_tr.json' / <expr> BASE_PATH / 'symbo | — | DEAD | DEAD | — · — | — |
 | `LEGACY_AGGRESSIVE_LOSS_CUT` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
-| `LEGACY_DC_BREAKOUT_REENTRY` | reentry | True / True / True | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42407(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17235(process_single_reentry_evaluation_epq) | vec_decisions/reentry_epq_vec.py:61(dc_breakout) |
-| `LEGACY_DIRECTION_FAVORABLE` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:42302(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17179(process_single_reentry_evaluation_epq) | — |
+| `LEGACY_DC_BREAKOUT_REENTRY` | reentry | True / True / True | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42447(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17235(process_single_reentry_evaluation_epq) | vec_decisions/reentry_epq_vec.py:61(dc_breakout) |
+| `LEGACY_DIRECTION_FAVORABLE` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:42342(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17179(process_single_reentry_evaluation_epq) | — |
 | `LEGACY_FAST_CUT_LOSS` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
-| `LEGACY_GUARANTEED_REENTRY` | reentry | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:36765(MultiAccountTradeManager.reentry_enforcement_loop)<br>(+1) · ez_positions_quick.py:16745(reentry_enforcement_loop_epq) | — |
+| `LEGACY_GUARANTEED_REENTRY` | reentry | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:36805(MultiAccountTradeManager.reentry_enforcement_loop)<br>(+1) · ez_positions_quick.py:16745(reentry_enforcement_loop_epq) | — |
 | `LEGACY_REENTRY_GUARANTEED_2WT` | reentry | False / False / False | — | DEAD | DEAD | — · — | — |
 | `LEGACY_REENTRY_GUARANTEED_BOTTOM` | reentry | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_reentry_vectorized.py:130(VectorizedReentryEvaluator._precompute) · ez_reentry_vectorized.py:130(VectorizedReentryEvaluator._precompute) | — |
 | `LEGACY_REENTRY_GUARANTEED_CROSS` | reentry | False / False / False | — | DEAD | DEAD | — · — | — |
 | `LEGACY_WR_PULLBACK` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `LH_HL_FILTER_AUGMENT_GATE_ENABLED` | augment | False / True / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:12924(execute_trade_wrapper)<br>(+1) · ez_positions_quick.py:12924(execute_trade_wrapper)<br>(+1) | — |
 | `LH_HL_FILTER_HEDGE_GATE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:12922(execute_trade_wrapper) · ez_positions_quick.py:12922(execute_trade_wrapper) | — |
-| `LH_HL_FILTER_REPLACE_SMA200D` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27663(TradierTradeManager.should_enter_long) | — |
-| `LIGHT_MODE` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:9697(monitor_market_mode)<br>(+1) · ez_positions_quick.py:17588(monitor_market_mode) | — |
-| `LIVE_ENTRY_ENGINE_BOOST_SCORE` | entry | 8.0 / 8.0 / 8.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40925(evaluate_technical_indicator_signals)<br>(+1) · ez_positions_quick.py:16037(check_entry_candidates_for_account.worker)<br>(+1) | — |
+| `LH_HL_FILTER_REPLACE_SMA200D` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27724(TradierTradeManager.should_enter_long) | — |
+| `LIGHT_MODE` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:9737(monitor_market_mode)<br>(+1) · ez_positions_quick.py:17588(monitor_market_mode) | — |
+| `LIVE_ENTRY_ENGINE_BOOST_SCORE` | entry | 8.0 / 8.0 / 8.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40965(evaluate_technical_indicator_signals)<br>(+1) · ez_positions_quick.py:16037(check_entry_candidates_for_account.worker)<br>(+1) | — |
 | `LIVE_ENTRY_ENGINE_DC_ENABLED` | entry | True / True / True | — | DEAD | DEAD | — · — | — |
 | `LIVE_ENTRY_ENGINE_ENABLED` | entry | False / True / True | — | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:7012(_ee_reentry_boost)<br>(+3) · ez_positions_quick.py:73(_ee_reentry_boost)<br>(+3) | — |
 | `LIVE_ENTRY_ENGINE_HTF_ENABLED` | entry | True / True / True | — | DEAD | DEAD | — · — | — |
@@ -1266,17 +1266,17 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `LIVE_ENTRY_ENGINE_WT_ENABLED` | entry | True / True / True | — | DEAD | DEAD | — · — | — |
 | `LIVE_ENTRY_GATES_ENABLED` | entry | <absent> / False / <absent> | — | LIVE_ONLY | LIVE_ONLY | live_entry_gates.py:63(check_entry_gates) · live_entry_gates.py:63(check_entry_gates) | — |
 | `LIVE_ENTRY_GATES_INCLUDE_REENTRY` | reentry | <absent> / False / <absent> | — | DEAD | DEAD | — · — | — |
-| `LIVE_ENTRY_HARD_GATES_ENABLED` | entry | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11945(simulate_one) |
-| `LIVE_EXIT_CHAIN_ENABLED` | exit | <absent> / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12327(simulate_one) |
+| `LIVE_ENTRY_HARD_GATES_ENABLED` | entry | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11990(simulate_one) |
+| `LIVE_EXIT_CHAIN_ENABLED` | exit | <absent> / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12372(simulate_one) |
 | `LIVE_INDICATOR_MAX_BARS_PER_TF` | unclassified | 600 / 600 / 600 | — | DEAD | LIVE_ONLY | — · tradier_indicators.py:2689(TradierIndicatorOrchestrator.run_cycle.process_symbol_parallel) | — |
-| `LIVE_POSITION_FRESHNESS_MAX_SEC` | unclassified | 3.0 / 3.0 / 3.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:49037(process_position)<br>(+2) · ez_positions_quick.py:5891(HedgeEngine.monitor_hedge_health_loop) | — |
-| `LIVE_USDC_PAIRS_FILE` | unclassified | <expr> BASE_PATH / 'live_usdc_pairs.json' / <absent> / <expr> Path('da | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:16894(MultiAccountTradeManager.init_async)<br>(+4) · ez_positions_service.py:12089(PositionService._refresh_usdc_pairs)<br>(+2) | — |
-| `LIVE_VEC_QUARANTINE_STRATEGY_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32145(MultiAccountTradeManager.execute_now) · tradier_manage.py:26237(TradierTradeManager.execute_now) | — |
-| `LIVE_VEC_STALE_MARK_PRICE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:30963(MultiAccountTradeManager.execute_now) · tradier_manage.py:26109(TradierTradeManager.execute_now) | — |
-| `LOCAL_DATA_MAX_AGE` | unclassified | 200.0 / 200.0 / 200.0 | — | LIVE_ONLY | DEAD | ez_manage.py:7927(<module>)<br>(+11) · — | — |
-| `LOCAL_EXTREMES_MIN_SCORE` | unclassified | 45.0 / 45.0 / 45.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:13410(process_position) | — |
+| `LIVE_POSITION_FRESHNESS_MAX_SEC` | unclassified | 3.0 / 3.0 / 3.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:49077(process_position)<br>(+2) · ez_positions_quick.py:5891(HedgeEngine.monitor_hedge_health_loop) | — |
+| `LIVE_USDC_PAIRS_FILE` | unclassified | <expr> BASE_PATH / 'live_usdc_pairs.json' / <absent> / <expr> Path('da | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:16934(MultiAccountTradeManager.init_async)<br>(+4) · ez_positions_service.py:12089(PositionService._refresh_usdc_pairs)<br>(+2) | — |
+| `LIVE_VEC_QUARANTINE_STRATEGY_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32185(MultiAccountTradeManager.execute_now) · tradier_manage.py:26298(TradierTradeManager.execute_now) | — |
+| `LIVE_VEC_STALE_MARK_PRICE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:31003(MultiAccountTradeManager.execute_now) · tradier_manage.py:26170(TradierTradeManager.execute_now) | — |
+| `LOCAL_DATA_MAX_AGE` | unclassified | 200.0 / 200.0 / 200.0 | — | LIVE_ONLY | DEAD | ez_manage.py:7967(<module>)<br>(+11) · — | — |
+| `LOCAL_EXTREMES_MIN_SCORE` | unclassified | 45.0 / 45.0 / 45.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:13471(process_position) | — |
 | `LOG_BACKUP_COUNT` | unclassified | 30 / 30 / 30 | — | LIVE_ONLY | LIVE_ONLY | utils.py:605(setup_logger) · tradier_indicators.py:95(<module>)<br>(+2) | — |
-| `LOG_DIR` | unclassified | <expr> Path(os.environ.get('EZ_LOG_DIR') or Path.home() / 'logs') / <e | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:9175(<module>)<br>(+3) · tradier_indicators.py:93(<module>)<br>(+7) | — |
+| `LOG_DIR` | unclassified | <expr> Path(os.environ.get('EZ_LOG_DIR') or Path.home() / 'logs') / <e | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:9215(<module>)<br>(+3) · tradier_indicators.py:93(<module>)<br>(+7) | — |
 | `LOG_FILE_EZ_BACKUP` | unclassified | <expr> LOG_DIR / 'ez_backup.log' / <absent> / <expr> Path('data') | — | DEAD | DEAD | — · — | — |
 | `LOG_FILE_EZ_CROSSES` | unclassified | <expr> LOG_DIR / 'ez_crosses.log' / <absent> / <expr> Path('data') | — | DEAD | DEAD | — · — | — |
 | `LOG_FILE_EZ_INDICATORS` | unclassified | <expr> LOG_DIR / 'ez_indicators.log' / <absent> / <expr> Path('data') | — | DEAD | DEAD | — · — | — |
@@ -1300,21 +1300,21 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `LOSERS_15M_FILE` | unclassified | <expr> DATA_DIR / 'losers_30r' / <absent> / <expr> Path('data') | — | LIVE_ONLY | LIVE_ONLY | ez_crosses.py:50(<module>)<br>(+11) · ez_crosses.py:50(<module>)<br>(+10) | — |
 | `LOSERS_20_FILE` | unclassified | <expr> DATA_DIR / 'losers_20_final_score' / <absent> / <expr> Path('da | — | LIVE_ONLY | LIVE_ONLY | ez_crosses.py:48(<module>)<br>(+3) · ez_crosses.py:48(<module>)<br>(+2) | — |
 | `LOSS_CUT_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
-| `LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED` | exit | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:52229(process_position) · — | — |
+| `LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED` | exit | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:52269(process_position) · — | — |
 | `LOSS_EXIT_REQUIRES_HEDGE` | exit | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:3821(AdvancedSignalRater.rate) · ez_positions_quick.py:3821(AdvancedSignalRater.rate) | — |
 | `LOSS_EXIT_TECHNICAL_BYPASS` | exit | ('LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'PARABOLIC_EXIT', 'GAIN_EROSI | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:14782(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14782(check_exit_candidates_for_account.process_single_exit) | — |
 | `LR_BAND_BE_RATCHET` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
-| `LR_BAND_E02_EXIT_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18666(StockStrategy.evaluate_stop)<br>(+2) | — |
-| `LR_BAND_ENTRY_ENABLED` | entry | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40698(evaluate_technical_indicator_signals) · tradier_manage.py:12502(process_position)<br>(+2) | — |
-| `LR_BAND_ENTRY_LO` | entry | 0.1 / 0.3 / 0.1 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40707(evaluate_technical_indicator_signals) · tradier_manage.py:12512(process_position)<br>(+1) | — |
-| `LR_BAND_ENTRY_PRIORITY` | entry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12501(process_position) | — |
-| `LR_BAND_ENTRY_R2_MIN` | entry | 0.7 / 0.7 / 0.7 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40715(evaluate_technical_indicator_signals) · tradier_manage.py:12530(process_position)<br>(+1) | — |
-| `LR_BAND_ENTRY_SIDES` | entry | L / L / L | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40712(evaluate_technical_indicator_signals) · tradier_manage.py:13004(process_position) | — |
-| `LR_BAND_ENTRY_TF` | entry | 4h / D / 4h | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40699(evaluate_technical_indicator_signals)<br>(+1) · tradier_manage.py:12355(process_position)<br>(+4) | — |
+| `LR_BAND_E02_EXIT_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18727(StockStrategy.evaluate_stop)<br>(+2) | — |
+| `LR_BAND_ENTRY_ENABLED` | entry | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40738(evaluate_technical_indicator_signals) · tradier_manage.py:12563(process_position)<br>(+2) | — |
+| `LR_BAND_ENTRY_LO` | entry | 0.1 / 0.3 / 0.1 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40747(evaluate_technical_indicator_signals) · tradier_manage.py:12573(process_position)<br>(+1) | — |
+| `LR_BAND_ENTRY_PRIORITY` | entry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12562(process_position) | — |
+| `LR_BAND_ENTRY_R2_MIN` | entry | 0.7 / 0.7 / 0.7 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40755(evaluate_technical_indicator_signals) · tradier_manage.py:12591(process_position)<br>(+1) | — |
+| `LR_BAND_ENTRY_SIDES` | entry | L / L / L | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40752(evaluate_technical_indicator_signals) · tradier_manage.py:13065(process_position) | — |
+| `LR_BAND_ENTRY_TF` | entry | 4h / D / 4h | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40739(evaluate_technical_indicator_signals)<br>(+1) · tradier_manage.py:12416(process_position)<br>(+4) | — |
 | `LR_BAND_EXIT_EXEMPT` | exit | True / True / True | — | DEAD | DEAD | — · — | — |
-| `LR_BAND_HARVEST_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:47349(process_position) · tradier_manage.py:19036(StockStrategy.evaluate_stop) | — |
-| `LR_BAND_HARVEST_FRAC` | unclassified | 0.25 / 0.25 / 0.25 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19064(StockStrategy.evaluate_stop) | — |
-| `LR_BAND_HARVEST_HI` | unclassified | 0.7 / 0.7 / 0.7 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:47362(process_position) · tradier_manage.py:19043(StockStrategy.evaluate_stop) | — |
+| `LR_BAND_HARVEST_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:47389(process_position) · tradier_manage.py:19097(StockStrategy.evaluate_stop) | — |
+| `LR_BAND_HARVEST_FRAC` | unclassified | 0.25 / 0.25 / 0.25 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19125(StockStrategy.evaluate_stop) | — |
+| `LR_BAND_HARVEST_HI` | unclassified | 0.7 / 0.7 / 0.7 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:47402(process_position) · tradier_manage.py:19104(StockStrategy.evaluate_stop) | — |
 | `LR_BAND_LADDER_ABOVE_TOP_MULT` | unclassified | -1.0 / -1.0 / -1.0 | — | DEAD | DEAD | — · — | — |
 | `LR_BAND_LADDER_BASE_UNIT_USD` | unclassified | 2000.0 / 2000.0 / 2000.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1623(_ordinary_ladder_target)<br>(+1) | vec_decisions/lr_band_ladder_aug.py:55(target) |
 | `LR_BAND_LADDER_BASIS` | unclassified | 0.5 / 0.5 / 0.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:678(band_ladder_mult) | — |
@@ -1322,105 +1322,105 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `LR_BAND_LADDER_BOTTOM_MULT` | unclassified | 10.0 / 10.0 / 10.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1603(_ordinary_ladder_target) | vec_decisions/lr_band_ladder_aug.py:53(target) |
 | `LR_BAND_LADDER_CAPACITY_USD` | unclassified | 16000.0 / 16000.0 / 16000.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1626(_ordinary_ladder_target)<br>(+3) | vec_decisions/lr_band_ladder_aug.py:56(target) |
 | `LR_BAND_LADDER_CENTER` | unclassified | 0.5 / 0.5 / 0.5 | — | DEAD | DEAD | — · — | — |
-| `LR_BAND_LADDER_ENABLED` | unclassified | False / False / False | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:10553(process_position)<br>(+5) | v12_quick_engine.py:11676(simulate_one) |
+| `LR_BAND_LADDER_ENABLED` | unclassified | False / False / False | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:10614(process_position)<br>(+5) | v12_quick_engine.py:11721(simulate_one) |
 | `LR_BAND_LADDER_MODE` | unclassified | center_plateau / center_plateau / center_plateau | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:691(band_ladder_mult)<br>(+1) | vec_decisions/lr_band_ladder_aug.py:55(target) |
-| `LR_BAND_LADDER_ORDINARY_PARITY_ENABLED` | unclassified | False / False / False | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:10556(process_position)<br>(+3) | v12_quick_engine.py:11676(simulate_one) |
+| `LR_BAND_LADDER_ORDINARY_PARITY_ENABLED` | unclassified | False / False / False | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:10617(process_position)<br>(+3) | v12_quick_engine.py:11721(simulate_one) |
 | `LR_BAND_LADDER_TOP_MULT` | unclassified | 3.0 / 3.0 / 3.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1609(_ordinary_ladder_target) | vec_decisions/lr_band_ladder_aug.py:53(target) |
 | `LR_BAND_LADDER_TRIGGER` | unclassified | union / union / union | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1618(_ordinary_ladder_target) | vec_decisions/lr_band_ladder_aug.py:54(target) |
 | `LR_BAND_READD_LO` | unclassified | 0.3 / 0.3 / 0.3 | — | DEAD | DEAD | — · — | — |
-| `LR_BAND_REGIME_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40710(evaluate_technical_indicator_signals) · tradier_manage.py:12513(process_position)<br>(+2) | — |
-| `LR_BAND_REGIME_MAX_PB` | unclassified | 0.6 / 0.6 / 0.6 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40711(evaluate_technical_indicator_signals) · tradier_manage.py:12514(process_position)<br>(+1) | — |
-| `LR_BAND_SIZE_DEPTH_GAIN` | sizing | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12534(process_position) | — |
-| `LR_BAND_SIZE_MAX` | sizing | 3.0 / 3.0 / 3.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12536(process_position) | — |
-| `LR_BAND_SIZE_SLOPE_GAIN` | sizing | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12535(process_position) | — |
-| `LR_BAND_SLOPE_FLIP_EXIT_ENABLED` | exit | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:47366(process_position) · tradier_manage.py:19053(StockStrategy.evaluate_stop) | — |
-| `LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN` | unclassified | 240.0 / 240.0 / 240.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19057(StockStrategy.evaluate_stop) | — |
-| `LR_BAND_SLOPE_FLIP_MIN_PCT_DAY` | unclassified | 0.05 / 0.05 / 0.05 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19056(StockStrategy.evaluate_stop) | — |
-| `LR_BAND_SLOPE_NORM_PCT_DAY` | unclassified | 0.3 / 0.3 / 0.3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12535(process_position) | — |
+| `LR_BAND_REGIME_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40750(evaluate_technical_indicator_signals) · tradier_manage.py:12574(process_position)<br>(+2) | — |
+| `LR_BAND_REGIME_MAX_PB` | unclassified | 0.6 / 0.6 / 0.6 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:40751(evaluate_technical_indicator_signals) · tradier_manage.py:12575(process_position)<br>(+1) | — |
+| `LR_BAND_SIZE_DEPTH_GAIN` | sizing | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12595(process_position) | — |
+| `LR_BAND_SIZE_MAX` | sizing | 3.0 / 3.0 / 3.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12597(process_position) | — |
+| `LR_BAND_SIZE_SLOPE_GAIN` | sizing | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12596(process_position) | — |
+| `LR_BAND_SLOPE_FLIP_EXIT_ENABLED` | exit | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:47406(process_position) · tradier_manage.py:19114(StockStrategy.evaluate_stop) | — |
+| `LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN` | unclassified | 240.0 / 240.0 / 240.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19118(StockStrategy.evaluate_stop) | — |
+| `LR_BAND_SLOPE_FLIP_MIN_PCT_DAY` | unclassified | 0.05 / 0.05 / 0.05 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19117(StockStrategy.evaluate_stop) | — |
+| `LR_BAND_SLOPE_NORM_PCT_DAY` | unclassified | 0.3 / 0.3 / 0.3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12596(process_position) | — |
 | `LR_CHANNEL_LONG_LENGTHS` | unclassified | {'1h': 200, '4h': 200, 'D': 300} / {'1h': 200, '4h': 400, 'D': 200} /  | — | LIVE_ONLY | LIVE_ONLY | ez_indicators.py:2492(IndicatorCalculator.compute) · ez_indicators.py:2492(IndicatorCalculator.compute)<br>(+2) | — |
-| `LR_PCTB_D_SHORT_THRESHOLD` | unclassified | 0.1 / 0.1 / 0.1 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:28069(TradierTradeManager.should_enter_short)<br>(+2) | vec_decisions/check_entry_candidates_stocks__rvol_lrpctb_gates.py:30(_lr_pctb_short_thr) [UNREACHABLE] |
+| `LR_PCTB_D_SHORT_THRESHOLD` | unclassified | 0.1 / 0.1 / 0.1 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:28130(TradierTradeManager.should_enter_short)<br>(+2) | vec_decisions/check_entry_candidates_stocks__rvol_lrpctb_gates.py:30(_lr_pctb_short_thr) [UNREACHABLE] |
 | `LS_RATIO_CONTRARIAN_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `LS_RATIO_ENFORCE` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:13101(execute_trade_wrapper)<br>(+2) · ez_positions_quick.py:13101(execute_trade_wrapper)<br>(+2) | — |
-| `LS_RATIO_ENFORCE_TRADIER` | unclassified | <absent> / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14281(queue_trade_action) | — |
+| `LS_RATIO_ENFORCE_TRADIER` | unclassified | <absent> / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14342(queue_trade_action) | — |
 | `LS_RATIO_EXTREME_THRESHOLD` | unclassified | 70.0 / 70.0 / 70.0 | — | DEAD | DEAD | — · — | — |
-| `LS_RATIO_HARD_MAX` | unclassified | 3.5 / 3.5 / 3.5 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:24570(MultiAccountTradeManager.execute_trade_action)<br>(+2) · ez_positions_quick.py:13113(execute_trade_wrapper)<br>(+1) | — |
-| `LS_RATIO_HARD_MIN` | unclassified | 0.05 / 0.05 / 0.05 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:24567(MultiAccountTradeManager.execute_trade_action)<br>(+2) · ez_positions_quick.py:13112(execute_trade_wrapper)<br>(+1) | — |
+| `LS_RATIO_HARD_MAX` | unclassified | 3.5 / 3.5 / 3.5 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:24610(MultiAccountTradeManager.execute_trade_action)<br>(+2) · ez_positions_quick.py:13113(execute_trade_wrapper)<br>(+1) | — |
+| `LS_RATIO_HARD_MIN` | unclassified | 0.05 / 0.05 / 0.05 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:24607(MultiAccountTradeManager.execute_trade_action)<br>(+2) · ez_positions_quick.py:13112(execute_trade_wrapper)<br>(+1) | — |
 | `LS_RATIO_LOG_INTERVAL` | unclassified | 60 / 60 / 60 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:13156(execute_trade_wrapper)<br>(+1) · ez_positions_quick.py:13156(execute_trade_wrapper)<br>(+1) | — |
-| `LS_RATIO_MAX` | unclassified | 9.0 / 9.0 / 9.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:24293(MultiAccountTradeManager.execute_trade_action)<br>(+5) · ez_positions_quick.py:2737(AdvancedSignalRater.rate)<br>(+3) | — |
-| `LS_RATIO_MAX_TRADIER` | unclassified | <absent> / 3.0 / 5.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9966(gap_moc_and_morning_loop)<br>(+2) | — |
-| `LS_RATIO_MIN` | unclassified | 0.11 / 0.11 / 0.11 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:24292(MultiAccountTradeManager.execute_trade_action)<br>(+5) · ez_positions_quick.py:2736(AdvancedSignalRater.rate)<br>(+3) | — |
-| `LS_RATIO_MIN_TRADIER` | unclassified | <absent> / 0.33 / 0.2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9967(gap_moc_and_morning_loop)<br>(+2) | — |
+| `LS_RATIO_MAX` | unclassified | 9.0 / 9.0 / 9.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:24333(MultiAccountTradeManager.execute_trade_action)<br>(+5) · ez_positions_quick.py:2737(AdvancedSignalRater.rate)<br>(+3) | — |
+| `LS_RATIO_MAX_TRADIER` | unclassified | <absent> / 3.0 / 5.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:10027(gap_moc_and_morning_loop)<br>(+2) | — |
+| `LS_RATIO_MIN` | unclassified | 0.11 / 0.11 / 0.11 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:24332(MultiAccountTradeManager.execute_trade_action)<br>(+5) · ez_positions_quick.py:2736(AdvancedSignalRater.rate)<br>(+3) | — |
+| `LS_RATIO_MIN_TRADIER` | unclassified | <absent> / 0.33 / 0.2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:10028(gap_moc_and_morning_loop)<br>(+2) | — |
 | `LS_RATIO_PENALTY` | unclassified | 15 / 15 / 15 | — | DEAD | DEAD | — · — | — |
 | `LS_RATIO_REBALANCE_THRESHOLD` | unclassified | 0.6 / 0.6 / 0.6 | — | DEAD | DEAD | — · — | — |
 | `LT_SCORE_WEIGHT_HTF` | unclassified | 0.7 / 0.7 / 0.7 | — | DEAD | DEAD | — · — | — |
 | `LT_TOP_SIZE` | sizing | 100 / 100 / 100 | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:4370(initial_fetch_and_ranking) · ez_rankings.py:4370(initial_fetch_and_ranking) | — |
-| `LUNCH_DEADZONE_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27524(TradierTradeManager.should_enter_long)<br>(+1) | — |
-| `LUNCH_DEADZONE_MODE` | unclassified | BLOCK_MOMENTUM / BLOCK_MOMENTUM / BLOCK_MOMENTUM | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27525(TradierTradeManager.should_enter_long)<br>(+1) | — |
+| `LUNCH_DEADZONE_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27585(TradierTradeManager.should_enter_long)<br>(+1) | — |
+| `LUNCH_DEADZONE_MODE` | unclassified | BLOCK_MOMENTUM / BLOCK_MOMENTUM / BLOCK_MOMENTUM | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27586(TradierTradeManager.should_enter_long)<br>(+1) | — |
 | `LUNCH_DEADZONE_SIZE_MULT` | sizing | 0.5 / 0.5 / 0.5 | — | DEAD | DEAD | — · — | — |
 | `MACRO_BLACKOUT_ENABLED` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `MACRO_BLACKOUT_SIZE_MULT` | sizing | 0.5 / 0.5 / 0.5 | — | DEAD | DEAD | — · — | — |
-| `MAKER_CLOSE_COMMISSION_FLOOR_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:28768(MultiAccountTradeManager.place_maker_order) · — | — |
-| `MAKER_CLOSE_COMMISSION_FLOOR_TTL_SEC` | unclassified | 300.0 / 300.0 / 300.0 | — | LIVE_ONLY | DEAD | ez_manage.py:29019(MultiAccountTradeManager.place_maker_order)<br>(+1) · — | — |
-| `MANAGE_REDUCE` | reduce | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:24334(MultiAccountTradeManager.execute_trade_action)<br>(+11) · tradier_manage.py:5835(<module>) | — |
-| `MANDATORY_HEDGE_GAIN_THRESHOLD_PCT` | unclassified | -0.5 / -0.5 / -0.5 | — | LIVE_ONLY | DEAD | ez_manage.py:48770(process_position)<br>(+1) · — | — |
+| `MAKER_CLOSE_COMMISSION_FLOOR_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:28808(MultiAccountTradeManager.place_maker_order) · — | — |
+| `MAKER_CLOSE_COMMISSION_FLOOR_TTL_SEC` | unclassified | 300.0 / 300.0 / 300.0 | — | LIVE_ONLY | DEAD | ez_manage.py:29059(MultiAccountTradeManager.place_maker_order)<br>(+1) · — | — |
+| `MANAGE_REDUCE` | reduce | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:24374(MultiAccountTradeManager.execute_trade_action)<br>(+11) · tradier_manage.py:5835(<module>) | — |
+| `MANDATORY_HEDGE_GAIN_THRESHOLD_PCT` | unclassified | -0.5 / -0.5 / -0.5 | — | LIVE_ONLY | DEAD | ez_manage.py:48810(process_position)<br>(+1) · — | — |
 | `MANDATORY_HEDGE_HARD_THRESHOLD_PCT` | unclassified | -2.0 / -2.0 / -2.0 | — | DEAD | DEAD | — · — | — |
 | `MANDATORY_HEDGE_ON_NEGATIVE_ENABLED` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `MANDATORY_PRICE_CROSS_EPQ_ENABLED` | unclassified | False / False / False | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:17270(process_single_reentry_evaluation_epq) · ez_positions_quick.py:17270(process_single_reentry_evaluation_epq) | vec_decisions/reentry_epq_vec.py:104(mandatory_price_cross) |
-| `MANDATORY_REENTRY_DC4_WINDOW_MIN` | reentry | 30.0 / 30.0 / 30.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27158(TradierTradeManager.reentry_monitor_loop) | — |
+| `MANDATORY_REENTRY_DC4_WINDOW_MIN` | reentry | 30.0 / 30.0 / 30.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27219(TradierTradeManager.reentry_monitor_loop) | — |
 | `MANDATORY_REENTRY_MIN_WT_AGREE` | reentry | 2 / 2 / 2 | — | DEAD | DEAD | — · — | — |
-| `MANDATORY_REENTRY_WT_FILTER_ENABLED` | reentry | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12088(process_position) | — |
-| `MARKET_CLOSE_HOUR` | unclassified | 16 / 16 / 16 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32565(StockDaytradeWing._is_pre_close) | — |
-| `MARKET_CLOSE_MINUTE` | unclassified | 0 / 0 / 0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32565(StockDaytradeWing._is_pre_close) | — |
+| `MANDATORY_REENTRY_WT_FILTER_ENABLED` | reentry | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12149(process_position) | — |
+| `MARKET_CLOSE_HOUR` | unclassified | 16 / 16 / 16 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32626(StockDaytradeWing._is_pre_close) | — |
+| `MARKET_CLOSE_MINUTE` | unclassified | 0 / 0 / 0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32626(StockDaytradeWing._is_pre_close) | — |
 | `MARKET_CRASH_THRESHOLD_PCT` | unclassified | 0.0 / 0.0 / 0.0 | — | VEC_ONLY | VEC_ONLY | — · — | vec_decisions/market_crash_blanket.py:65(market_crash_blanket_blocks)<br>vec_decisions/market_crash_blanket.py:90(market_crash_blanket_vec) |
-| `MARKET_DATA_REFRESH_INTERVAL_SECONDS` | unclassified | 45.0 / 45.0 / 45.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13656(MultiAccountTradeManager.__init__)<br>(+2) · ez_positions_service.py:10129(PositionService._ensure_indicators_bridge) | — |
-| `MARKET_MODE` | unclassified | NORMAL_MODE / NORMAL_MODE / NORMAL_MODE | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:9668(monitor_market_mode)<br>(+3) · ez_positions_quick.py:17563(monitor_market_mode)<br>(+1) | — |
+| `MARKET_DATA_REFRESH_INTERVAL_SECONDS` | unclassified | 45.0 / 45.0 / 45.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13696(MultiAccountTradeManager.__init__)<br>(+2) · ez_positions_service.py:10129(PositionService._ensure_indicators_bridge) | — |
+| `MARKET_MODE` | unclassified | NORMAL_MODE / NORMAL_MODE / NORMAL_MODE | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:9708(monitor_market_mode)<br>(+3) · ez_positions_quick.py:17563(monitor_market_mode)<br>(+1) | — |
 | `MARKET_MODE_FILE` | unclassified | <expr> Path('/tmp/binance-monitoring/market_mode.json') / <absent> / d | — | DEAD | DEAD | — · — | — |
 | `MARKET_OPEN_HOUR` | unclassified | 9 / 9 / 9 | — | DEAD | DEAD | — · — | — |
 | `MARKET_OPEN_MINUTE` | unclassified | 30 / 30 / 30 | — | DEAD | DEAD | — · — | — |
-| `MARKET_QUALITY_SCORE_ENABLED_TRADIER` | unclassified | <absent> / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17542(StockStrategy.calculate_signal_score) | — |
-| `MARK_PRICE_MAX_STALENESS` | unclassified | 2 / 2 / 2 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:11549(WebSocketManager.__init__)<br>(+2) · ez_positions_service.py:2405(WebSocketManager.__init__)<br>(+1) | — |
-| `MAX_ALLOWED_DRAWDOWN_PCT` | unclassified | 50.0 / 50.0 / 50.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25157(TradierTradeManager._check_live_drawdown_ceiling) | — |
-| `MAX_CONCURRENT_ORDERS` | unclassified | 186 / 186 / 186 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:57762(main)<br>(+1) · ez_positions_quick.py:19274(main) | — |
-| `MAX_CONCURRENT_POSITIONS` | unclassified | 16 / 24 / 16 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14266(queue_trade_action) | — |
-| `MAX_DAILY_LOSS_PCT` | unclassified | 3.0 / 3.0 / 3.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26607(TradierTradeManager.execute_now) | — |
+| `MARKET_QUALITY_SCORE_ENABLED_TRADIER` | unclassified | <absent> / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17603(StockStrategy.calculate_signal_score) | — |
+| `MARK_PRICE_MAX_STALENESS` | unclassified | 2 / 2 / 2 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:11589(WebSocketManager.__init__)<br>(+2) · ez_positions_service.py:2405(WebSocketManager.__init__)<br>(+1) | — |
+| `MAX_ALLOWED_DRAWDOWN_PCT` | unclassified | 50.0 / 50.0 / 50.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25218(TradierTradeManager._check_live_drawdown_ceiling) | — |
+| `MAX_CONCURRENT_ORDERS` | unclassified | 186 / 186 / 186 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:57802(main)<br>(+1) · ez_positions_quick.py:19274(main) | — |
+| `MAX_CONCURRENT_POSITIONS` | unclassified | 16 / 24 / 16 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14327(queue_trade_action) | — |
+| `MAX_DAILY_LOSS_PCT` | unclassified | 3.0 / 3.0 / 3.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26668(TradierTradeManager.execute_now) | — |
 | `MAX_DECAY_COMPLETE_DAYS` | unclassified | 7 / <absent> / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:12390(PositionService.deteriorate_max_quantity) · ez_positions_service.py:12390(PositionService.deteriorate_max_quantity) | — |
 | `MAX_DECAY_START_HOURS` | unclassified | 1 / <absent> / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:12389(PositionService.deteriorate_max_quantity) · ez_positions_service.py:12389(PositionService.deteriorate_max_quantity) | — |
 | `MAX_FILES` | unclassified | 20 / 20 / 20 | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:146(<module>)<br>(+1) · ez_rankings.py:146(<module>)<br>(+1) | — |
 | `MAX_GAIN_DECAY_COMPLETE_DAYS` | unclassified | 7 / <absent> / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:12351(PositionService.deteriorate_max_gain) · ez_positions_service.py:12351(PositionService.deteriorate_max_gain) | — |
 | `MAX_HEDGE_BALANCE_MULTIPLIER` | unclassified | 1.8 / 1.8 / 1.8 | — | DEAD | DEAD | — · — | — |
 | `MAX_HEDGE_BALANCE_VALUE_USD` | unclassified | 500.0 / 500.0 / 500.0 | — | DEAD | DEAD | — · — | — |
-| `MAX_MARKET_DATA_FILE_AGE_SECONDS` | unclassified | 1200 / 1200 / 1200 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7934(<module>)<br>(+1) · ez_positions_service.py:10221(PositionService._force_refresh_indicators_aggressive) | — |
+| `MAX_MARKET_DATA_FILE_AGE_SECONDS` | unclassified | 1200 / 1200 / 1200 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7974(<module>)<br>(+1) · ez_positions_service.py:10221(PositionService._force_refresh_indicators_aggressive) | — |
 | `MAX_MEMORY_GB` | unclassified | 8 / 8 / 8 | — | LIVE_ONLY | LIVE_ONLY | ez_crosses.py:364(monitor_memory)<br>(+3) · ez_crosses.py:364(monitor_memory)<br>(+2) | — |
-| `MAX_ORDER_VALUE_FIN` | unclassified | 280.0 / 300.0 / 280.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:10900(get_max_order_value)<br>(+8) · ez_positions_service.py:13736(check_position_reductions)<br>(+1) | — |
-| `MAX_ORDER_VALUE_MEN` | unclassified | 280.0 / 300.0 / 280.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:10898(get_max_order_value)<br>(+8) · ez_positions_service.py:13736(check_position_reductions)<br>(+1) | — |
-| `MAX_POSITION_SIZE` | sizing | 780.0 / 5000.0 / 780.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:10893(get_max_position_size)<br>(+8) · ez_positions_quick.py:10311(TrackerManager._populate_from_position)<br>(+11) | — |
-| `MAX_POSITION_SIZE_BTC` | sizing | 2000.0 / 2000.0 / 2000.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:10892(get_max_position_size)<br>(+1) · ez_positions_service.py:633(get_max_position_size) | — |
-| `MAX_POSITION_SIZE_FIN` | sizing | 280.0 / 200.0 / 280.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:10890(get_max_position_size)<br>(+1) · ez_positions_service.py:631(get_max_position_size) | — |
-| `MAX_POSITION_SIZE_MEN` | sizing | 280.0 / 200.0 / 280.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:10888(get_max_position_size)<br>(+1) · ez_positions_service.py:629(get_max_position_size) | — |
-| `MAX_SYMBOL_VALUE_TRADIER` | unclassified | 3750.0 / 3750.0 / 3750.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21253(StockStrategy.evaluate_augment)<br>(+4) | v12_quick_engine.py:12935(simulate_one)<br>vec_decisions/stock_augment_sources.py:62(dc_tier_fire)<br>(+1) |
+| `MAX_ORDER_VALUE_FIN` | unclassified | 280.0 / 300.0 / 280.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:10940(get_max_order_value)<br>(+8) · ez_positions_service.py:13736(check_position_reductions)<br>(+1) | — |
+| `MAX_ORDER_VALUE_MEN` | unclassified | 280.0 / 300.0 / 280.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:10938(get_max_order_value)<br>(+8) · ez_positions_service.py:13736(check_position_reductions)<br>(+1) | — |
+| `MAX_POSITION_SIZE` | sizing | 780.0 / 5000.0 / 780.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:10933(get_max_position_size)<br>(+8) · ez_positions_quick.py:10311(TrackerManager._populate_from_position)<br>(+11) | — |
+| `MAX_POSITION_SIZE_BTC` | sizing | 2000.0 / 2000.0 / 2000.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:10932(get_max_position_size)<br>(+1) · ez_positions_service.py:633(get_max_position_size) | — |
+| `MAX_POSITION_SIZE_FIN` | sizing | 280.0 / 200.0 / 280.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:10930(get_max_position_size)<br>(+1) · ez_positions_service.py:631(get_max_position_size) | — |
+| `MAX_POSITION_SIZE_MEN` | sizing | 280.0 / 200.0 / 280.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:10928(get_max_position_size)<br>(+1) · ez_positions_service.py:629(get_max_position_size) | — |
+| `MAX_SYMBOL_VALUE_TRADIER` | unclassified | 3750.0 / 3750.0 / 3750.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21314(StockStrategy.evaluate_augment)<br>(+4) | v12_quick_engine.py:12980(simulate_one)<br>vec_decisions/stock_augment_sources.py:62(dc_tier_fire)<br>(+1) |
 | `MEMORY_MONITOR_SLEEP_SECONDS` | unclassified | 60 / 60 / 60 | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:234(monitor_memory) · ez_rankings.py:234(monitor_memory) | — |
-| `MFI_LONG_THRESHOLD_D` | unclassified | 80.0 / 80.0 / 80.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27713(TradierTradeManager.should_enter_long)<br>(+1) | vec_decisions/check_entry_candidates_stocks__rsi_sma_mfi_gates.py:60(_mfi_thr) [UNREACHABLE] |
-| `MICRO_SCALP_GAIN_THRESHOLD_PCT` | unclassified | 0.02 / 0.02 / 0.02 | — | LIVE_ONLY | DEAD | ez_manage.py:49434(process_position) · — | — |
-| `MICRO_SCALP_STOCKS_ACCOUNTS` | unclassified | [] / [] / [] | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11573(process_position) | — |
-| `MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT` | unclassified | 0.2 / 0.2 / 0.2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11580(process_position) | — |
-| `MICRO_SCALP_STOCKS_MAKER_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11572(process_position) | — |
-| `MICRO_SCALP_STOCKS_PEAK_FLOOR_PCT` | unclassified | 0.6 / 0.6 / 0.6 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11581(process_position) | — |
-| `MICRO_SCALP_USDC_ACCOUNTS` | unclassified | ['ang', 'inf', 'flz', 'men', 'fin'] / <absent> / ['ang', 'inf', 'flz', | — | LIVE_ONLY | DEAD | ez_manage.py:49420(process_position) · — | — |
-| `MICRO_SCALP_USDC_MAKER_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:48854(process_position)<br>(+1) · — | — |
+| `MFI_LONG_THRESHOLD_D` | unclassified | 80.0 / 80.0 / 80.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27774(TradierTradeManager.should_enter_long)<br>(+1) | vec_decisions/check_entry_candidates_stocks__rsi_sma_mfi_gates.py:60(_mfi_thr) [UNREACHABLE] |
+| `MICRO_SCALP_GAIN_THRESHOLD_PCT` | unclassified | 0.02 / 0.02 / 0.02 | — | LIVE_ONLY | DEAD | ez_manage.py:49474(process_position) · — | — |
+| `MICRO_SCALP_STOCKS_ACCOUNTS` | unclassified | [] / [] / [] | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11634(process_position) | — |
+| `MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT` | unclassified | 0.2 / 0.2 / 0.2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11641(process_position) | — |
+| `MICRO_SCALP_STOCKS_MAKER_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11633(process_position) | — |
+| `MICRO_SCALP_STOCKS_PEAK_FLOOR_PCT` | unclassified | 0.6 / 0.6 / 0.6 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11642(process_position) | — |
+| `MICRO_SCALP_USDC_ACCOUNTS` | unclassified | ['ang', 'inf', 'flz', 'men', 'fin'] / <absent> / ['ang', 'inf', 'flz', | — | LIVE_ONLY | DEAD | ez_manage.py:49460(process_position) · — | — |
+| `MICRO_SCALP_USDC_MAKER_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:48894(process_position)<br>(+1) · — | — |
 | `MID_ZONE_SHORT_EXTRA_IND` | unclassified | wt_crossunder_15m / wt_crossunder_15m / wt_crossunder_15m | — | DEAD | DEAD | — · — | — |
-| `MINERVINI_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30563(TradierTradeManager.evaluate_minervini_entry) | — |
+| `MINERVINI_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30624(TradierTradeManager.evaluate_minervini_entry) | — |
 | `MINERVINI_GATE_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
-| `MINERVINI_LONG_BUDGET` | unclassified | 4000.0 / 4000.0 / 4000.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30576(TradierTradeManager.evaluate_minervini_entry) | — |
-| `MINERVINI_MAX_HOLD_DAYS` | unclassified | 40 / 40 / 40 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30603(TradierTradeManager.evaluate_minervini_entry) | — |
+| `MINERVINI_LONG_BUDGET` | unclassified | 4000.0 / 4000.0 / 4000.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30637(TradierTradeManager.evaluate_minervini_entry) | — |
+| `MINERVINI_MAX_HOLD_DAYS` | unclassified | 40 / 40 / 40 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30664(TradierTradeManager.evaluate_minervini_entry) | — |
 | `MINERVINI_MIN_SCORE` | unclassified | 5 / 5 / 5 | — | DEAD | DEAD | — · — | — |
-| `MINERVINI_MIN_SEPA_SCORE` | unclassified | 5 / 5 / 5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30575(TradierTradeManager.evaluate_minervini_entry) | — |
-| `MINERVINI_POSITION_SIZE` | sizing | 800.0 / 800.0 / 800.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30574(TradierTradeManager.evaluate_minervini_entry) | — |
-| `MINERVINI_TARGET_PCT` | unclassified | 25.0 / 25.0 / 25.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30604(TradierTradeManager.evaluate_minervini_entry) | — |
-| `MIN_EXIT_TF_AGAINST_TRADIER` | exit | 3 / 3 / 3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20479(StockStrategy.evaluate_stop) | — |
-| `MIN_GAIN` | unclassified | 3.0 / 3.0 / 3.0 | — | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:21826(MultiAccountTradeManager._handle_signal_message)<br>(+11) · ez_positions_quick.py:4381(AdvancedSignalRater.rate)<br>(+11) | — |
-| `MIN_HOLD_BARS_TRADIER` | unclassified | 40 / 40 / 40 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:16892(StockStrategy.__init__) | — |
-| `MIN_PERC_FROM_SMA_1` | unclassified | 0.01 / 0.01 / 0.01 | — | LIVE_ONLY | DEAD | ez_manage.py:44916(_process_single_override_check)<br>(+3) · — | — |
-| `MIN_PERC_FROM_SMA_15` | unclassified | 0.03 / 0.03 / 0.03 | — | LIVE_ONLY | DEAD | ez_manage.py:26183(MultiAccountTradeManager.execute_trade_action)<br>(+6) · — | — |
+| `MINERVINI_MIN_SEPA_SCORE` | unclassified | 5 / 5 / 5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30636(TradierTradeManager.evaluate_minervini_entry) | — |
+| `MINERVINI_POSITION_SIZE` | sizing | 800.0 / 800.0 / 800.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30635(TradierTradeManager.evaluate_minervini_entry) | — |
+| `MINERVINI_TARGET_PCT` | unclassified | 25.0 / 25.0 / 25.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30665(TradierTradeManager.evaluate_minervini_entry) | — |
+| `MIN_EXIT_TF_AGAINST_TRADIER` | exit | 3 / 3 / 3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20540(StockStrategy.evaluate_stop) | — |
+| `MIN_GAIN` | unclassified | 3.0 / 3.0 / 3.0 | — | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:21866(MultiAccountTradeManager._handle_signal_message)<br>(+11) · ez_positions_quick.py:4381(AdvancedSignalRater.rate)<br>(+11) | — |
+| `MIN_HOLD_BARS_TRADIER` | unclassified | 40 / 40 / 40 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:16953(StockStrategy.__init__) | — |
+| `MIN_PERC_FROM_SMA_1` | unclassified | 0.01 / 0.01 / 0.01 | — | LIVE_ONLY | DEAD | ez_manage.py:44956(_process_single_override_check)<br>(+3) · — | — |
+| `MIN_PERC_FROM_SMA_15` | unclassified | 0.03 / 0.03 / 0.03 | — | LIVE_ONLY | DEAD | ez_manage.py:26223(MultiAccountTradeManager.execute_trade_action)<br>(+6) · — | — |
 | `MIN_QTY_FILE` | unclassified | <expr> BASE_PATH / 'min_qty.json' / <absent> / <expr> Path('data') | — | LIVE_ONLY | LIVE_ONLY | ez_crosses.py:51(<module>)<br>(+3) · ez_crosses.py:51(<module>)<br>(+2) | — |
 | `MIN_USD_DELTA_CONFIRM` | unclassified | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:8073(PositionService._confirm_nonzero_delta) · ez_positions_service.py:8073(PositionService._confirm_nonzero_delta) | — |
 | `MITIGATOR_ACCOUNT` | unclassified | [] / [] / [] | — | DEAD | DEAD | — · — | — |
@@ -1437,18 +1437,18 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `MITIGATOR_TIER2_DROP` | unclassified | 0.02 / 0.02 / 0.02 | — | DEAD | DEAD | — · — | — |
 | `MITIGATOR_TIER2_REDUCE_PCT` | reduce | 0.5 / 0.5 / 0.5 | — | DEAD | DEAD | — · — | — |
 | `MITIGATOR_TIER3_DROP` | unclassified | -0.05 / -0.05 / -0.05 | — | DEAD | DEAD | — · — | — |
-| `MI_DIV_EXIT_ENABLED_TRADIER` | exit | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20224(StockStrategy.evaluate_stop) | — |
-| `MI_ENTRY_EXHAUST_BONUS_TRADIER` | entry | <absent> / 8 / 4 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18075(StockStrategy.calculate_quantity_complex_extended) | — |
-| `MI_ENTRY_STRUCT_BONUS_TRADIER` | entry | <absent> / 10 / 5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18074(StockStrategy.calculate_quantity_complex_extended) | — |
-| `MI_EXHAUST_EXIT_ENABLED_TRADIER` | exit | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20220(StockStrategy.evaluate_stop) | — |
-| `MI_EXIT_ENABLED_TRADIER` | exit | <absent> / False / False | — | DEAD+STAGED_VEC | LIVE_ONLY+STAGED_VEC | — · tradier_manage.py:20010(StockStrategy.evaluate_stop)<br>(+1) | — |
-| `MI_EXIT_VETO_ENABLED_TRADIER` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20010(StockStrategy.evaluate_stop) | — |
-| `MI_MIN_GAIN_EXIT_TRADIER` | exit | <absent> / 0.5 / 0.25 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20011(StockStrategy.evaluate_stop)<br>(+1) | — |
-| `MI_STRUCT_EXIT_ENABLED_TRADIER` | exit | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20213(StockStrategy.evaluate_stop) | — |
-| `MI_TF_AGREE_MIN_TRADIER` | unclassified | <absent> / 3 / 3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20029(StockStrategy.evaluate_stop)<br>(+1) | — |
-| `MI_VELOCITY_EXIT_ENABLED_TRADIER` | exit | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20228(StockStrategy.evaluate_stop) | — |
-| `MI_WAVE_EXIT_ENABLED_TRADIER` | exit | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20242(StockStrategy.evaluate_stop) | — |
-| `MODE` | global | crypto / tradier / crypto | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/wave4_families.py:65(mi_exit_signal) · tradier_manage.py:9310(_gap_close_inventory_record_from_cache)<br>(+2) | tools/opt/evaluate_v12.py:551(_expand_dependencies) [UNREACHABLE]<br>tools/opt/evaluate_v12.py:618(build_cfg_npz) [UNREACHABLE]<br>(+12) |
+| `MI_DIV_EXIT_ENABLED_TRADIER` | exit | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20285(StockStrategy.evaluate_stop) | — |
+| `MI_ENTRY_EXHAUST_BONUS_TRADIER` | entry | <absent> / 8 / 4 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18136(StockStrategy.calculate_quantity_complex_extended) | — |
+| `MI_ENTRY_STRUCT_BONUS_TRADIER` | entry | <absent> / 10 / 5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18135(StockStrategy.calculate_quantity_complex_extended) | — |
+| `MI_EXHAUST_EXIT_ENABLED_TRADIER` | exit | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20281(StockStrategy.evaluate_stop) | — |
+| `MI_EXIT_ENABLED_TRADIER` | exit | <absent> / False / False | — | DEAD+STAGED_VEC | LIVE_ONLY+STAGED_VEC | — · tradier_manage.py:20071(StockStrategy.evaluate_stop)<br>(+1) | — |
+| `MI_EXIT_VETO_ENABLED_TRADIER` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20071(StockStrategy.evaluate_stop) | — |
+| `MI_MIN_GAIN_EXIT_TRADIER` | exit | <absent> / 0.5 / 0.25 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20072(StockStrategy.evaluate_stop)<br>(+1) | — |
+| `MI_STRUCT_EXIT_ENABLED_TRADIER` | exit | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20274(StockStrategy.evaluate_stop) | — |
+| `MI_TF_AGREE_MIN_TRADIER` | unclassified | <absent> / 3 / 3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20090(StockStrategy.evaluate_stop)<br>(+1) | — |
+| `MI_VELOCITY_EXIT_ENABLED_TRADIER` | exit | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20289(StockStrategy.evaluate_stop) | — |
+| `MI_WAVE_EXIT_ENABLED_TRADIER` | exit | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20303(StockStrategy.evaluate_stop) | — |
+| `MODE` | global | crypto / tradier / crypto | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/wave4_families.py:65(mi_exit_signal) · tradier_manage.py:9371(_gap_close_inventory_record_from_cache)<br>(+2) | tools/opt/evaluate_v12.py:551(_expand_dependencies) [UNREACHABLE]<br>tools/opt/evaluate_v12.py:618(build_cfg_npz) [UNREACHABLE]<br>(+12) |
 | `MOM4S_S_ACCOUNTS` | unclassified | ['men'] / <absent> / ['men'] | — | DEAD | DEAD | — · — | — |
 | `MOM4S_S_GATE_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `MOM5_TRENDER_L_ACCOUNTS` | unclassified | ['men'] / <absent> / ['men'] | — | DEAD | DEAD | — · — | — |
@@ -1464,19 +1464,19 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `MOMENTUM_FADE_VOL_MIN` | unclassified | 2.0 / 2.0 / 2.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:3024(AdvancedSignalRater.rate) · ez_positions_quick.py:3024(AdvancedSignalRater.rate) | — |
 | `MOMENTUM_FADE_VOL_MIN_TRADIER` | unclassified | 2.0 / 2.0 / 2.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:3040(AdvancedSignalRater.rate) · ez_positions_quick.py:3040(AdvancedSignalRater.rate)<br>(+1) | — |
 | `MOMENTUM_RIDER_ACCOUNT` | unclassified | men / men / men | — | DEAD | DEAD | — · — | — |
-| `MOMENTUM_RIDER_BASE_SIZE_USD` | sizing | 50.0 / 50.0 / 50.0 | — | LIVE_ONLY | DEAD | ez_manage.py:35221(MultiAccountTradeManager.momentum_rider_loop) · — | — |
-| `MOMENTUM_RIDER_COOLDOWN` | unclassified | 300.0 / 300.0 / 300.0 | — | LIVE_ONLY | DEAD | ez_manage.py:35223(MultiAccountTradeManager.momentum_rider_loop) · — | — |
-| `MOMENTUM_RIDER_DC_WIDTH_MIN` | unclassified | 8.0 / 8.0 / 8.0 | — | LIVE_ONLY | DEAD | ez_manage.py:35224(MultiAccountTradeManager.momentum_rider_loop) · — | — |
-| `MOMENTUM_RIDER_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:35215(MultiAccountTradeManager.momentum_rider_loop) · — | — |
-| `MOMENTUM_RIDER_HEDGE_RATIO` | unclassified | 1.2 / 1.2 / 1.2 | — | LIVE_ONLY | DEAD | ez_manage.py:35222(MultiAccountTradeManager.momentum_rider_loop) · — | — |
+| `MOMENTUM_RIDER_BASE_SIZE_USD` | sizing | 50.0 / 50.0 / 50.0 | — | LIVE_ONLY | DEAD | ez_manage.py:35261(MultiAccountTradeManager.momentum_rider_loop) · — | — |
+| `MOMENTUM_RIDER_COOLDOWN` | unclassified | 300.0 / 300.0 / 300.0 | — | LIVE_ONLY | DEAD | ez_manage.py:35263(MultiAccountTradeManager.momentum_rider_loop) · — | — |
+| `MOMENTUM_RIDER_DC_WIDTH_MIN` | unclassified | 8.0 / 8.0 / 8.0 | — | LIVE_ONLY | DEAD | ez_manage.py:35264(MultiAccountTradeManager.momentum_rider_loop) · — | — |
+| `MOMENTUM_RIDER_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:35255(MultiAccountTradeManager.momentum_rider_loop) · — | — |
+| `MOMENTUM_RIDER_HEDGE_RATIO` | unclassified | 1.2 / 1.2 / 1.2 | — | LIVE_ONLY | DEAD | ez_manage.py:35262(MultiAccountTradeManager.momentum_rider_loop) · — | — |
 | `MOMENTUM_RIDER_MAX_SIZE_USD` | sizing | 400.0 / 400.0 / 400.0 | — | DEAD | DEAD | — · — | — |
-| `MOMENTUM_RIDER_MAX_SYMBOLS` | unclassified | 5 / 5 / 5 | — | LIVE_ONLY | DEAD | ez_manage.py:35220(MultiAccountTradeManager.momentum_rider_loop) · — | — |
-| `MOMENTUM_RIDER_REL_VOL_MIN` | unclassified | 3.0 / 3.0 / 3.0 | — | LIVE_ONLY | DEAD | ez_manage.py:35225(MultiAccountTradeManager.momentum_rider_loop) · — | — |
-| `MOMENTUM_RIDER_SCAN_INTERVAL` | unclassified | 10.0 / 10.0 / 10.0 | — | LIVE_ONLY | DEAD | ez_manage.py:35213(MultiAccountTradeManager.momentum_rider_loop) · — | — |
-| `MOMENTUM_SMA_WATCHDOG_COOLDOWN_S` | unclassified | 60.0 / 60.0 / 60.0 | — | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:36223(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
-| `MOMENTUM_SMA_WATCHDOG_INTERVAL_S` | unclassified | 60.0 / 60.0 / 60.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36219(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
-| `MOMENTUM_SMA_WATCHDOG_WT_CAP` | unclassified | 80.0 / 80.0 / 80.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36222(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
-| `MOMENTUM_TP_ENABLED` | unclassified | True / <absent> / True | — | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:52381(process_position) · — | vec_decisions/live_exit_chain.py:237(step_pp) |
+| `MOMENTUM_RIDER_MAX_SYMBOLS` | unclassified | 5 / 5 / 5 | — | LIVE_ONLY | DEAD | ez_manage.py:35260(MultiAccountTradeManager.momentum_rider_loop) · — | — |
+| `MOMENTUM_RIDER_REL_VOL_MIN` | unclassified | 3.0 / 3.0 / 3.0 | — | LIVE_ONLY | DEAD | ez_manage.py:35265(MultiAccountTradeManager.momentum_rider_loop) · — | — |
+| `MOMENTUM_RIDER_SCAN_INTERVAL` | unclassified | 10.0 / 10.0 / 10.0 | — | LIVE_ONLY | DEAD | ez_manage.py:35253(MultiAccountTradeManager.momentum_rider_loop) · — | — |
+| `MOMENTUM_SMA_WATCHDOG_COOLDOWN_S` | unclassified | 60.0 / 60.0 / 60.0 | — | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:36263(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
+| `MOMENTUM_SMA_WATCHDOG_INTERVAL_S` | unclassified | 60.0 / 60.0 / 60.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36259(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
+| `MOMENTUM_SMA_WATCHDOG_WT_CAP` | unclassified | 80.0 / 80.0 / 80.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36262(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
+| `MOMENTUM_TP_ENABLED` | unclassified | True / <absent> / True | — | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:52421(process_position) · — | vec_decisions/live_exit_chain.py:237(step_pp) |
 | `MOMENTUM_WATCHDOG_ENABLED` | unclassified | False / True / False | — | VEC_ONLY | VEC_ONLY | — · — | vec_decisions/momentum_watchdog.py:81(momentum_watchdog_should_open)<br>vec_decisions/momentum_watchdog.py:84(momentum_watchdog_should_open)<br>(+2) |
 | `MONITOR_REDUCTION_STALE_THRESHOLD` | unclassified | 180.0 / 180.0 / 180.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:11311(PositionService._run_reduction_checks_for_account) · ez_positions_service.py:11311(PositionService._run_reduction_checks_for_account) | — |
 | `MOVER_ACCOUNT` | unclassified | inf / inf / inf | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:4937(RatingRegistry.scan_movers) · ez_positions_quick.py:4937(RatingRegistry.scan_movers) | — |
@@ -1491,33 +1491,33 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `MR5_L_ACCOUNTS` | unclassified | ['fin'] / <absent> / ['fin'] | — | DEAD | DEAD | — · — | — |
 | `MR5_L_GATE_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `MTF_ARMED_BANDTYPES` | unclassified | dc,bb,wt / dc,bb,wt / dc,bb,wt | — | LIVE_ONLY | LIVE_ONLY | mtf_live_evaluator.py:106(update_armed_state) · mtf_live_evaluator.py:106(update_armed_state) | — |
-| `MTF_ARMED_ENTRY_SKIP_SHORT` | entry | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:30337(MultiAccountTradeManager.execute_now) · tradier_manage.py:25648(TradierTradeManager.execute_now) | — |
+| `MTF_ARMED_ENTRY_SKIP_SHORT` | entry | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:30377(MultiAccountTradeManager.execute_now) · tradier_manage.py:25709(TradierTradeManager.execute_now) | — |
 | `MTF_ARMED_HTF_LIST` | unclassified | 1h,4h,D,W / 1h,4h,D,W / 1h,4h,D,W | — | LIVE_ONLY | LIVE_ONLY | mtf_live_evaluator.py:105(update_armed_state) · mtf_live_evaluator.py:105(update_armed_state) | — |
 | `MTF_ARMED_WT_DIRECTION_SUSPEND_BREAKOUT_BYPASS` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | mtf_live_evaluator.py:234(_armed_any_effective) · mtf_live_evaluator.py:234(_armed_any_effective) | — |
-| `MTF_ARROW_CONFIRM_PCT` | unclassified | 2.0 / 2.0 / 2.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:10823(process_position)<br>(+2) | — |
-| `MTF_ARROW_ENTRY_ENABLED` | entry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12322(process_position)<br>(+1) | — |
-| `MTF_ARROW_SHORT_ENTRY_ENABLED` | entry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12392(process_position) | — |
-| `MTF_ARROW_SIZE_GAIN` | sizing | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12374(process_position) | — |
-| `MTF_ARROW_SIZE_MAX` | sizing | 4.0 / 4.0 / 4.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12373(process_position) | — |
-| `MTF_ARROW_SLOPE_LAMBDA` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9667(mtf_arrow_score) | — |
+| `MTF_ARROW_CONFIRM_PCT` | unclassified | 2.0 / 2.0 / 2.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:10884(process_position)<br>(+2) | — |
+| `MTF_ARROW_ENTRY_ENABLED` | entry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12383(process_position)<br>(+1) | — |
+| `MTF_ARROW_SHORT_ENTRY_ENABLED` | entry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12453(process_position) | — |
+| `MTF_ARROW_SIZE_GAIN` | sizing | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12435(process_position) | — |
+| `MTF_ARROW_SIZE_MAX` | sizing | 4.0 / 4.0 / 4.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12434(process_position) | — |
+| `MTF_ARROW_SLOPE_LAMBDA` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9728(mtf_arrow_score) | — |
 | `MTF_ARROW_SLOPE_NORM_PCT_DAY` | unclassified | 0.3 / 0.3 / 0.3 | — | DEAD | DEAD | — · — | — |
-| `MTF_ARROW_THETA` | unclassified | 0.3 / 0.3 / 0.3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12326(process_position)<br>(+2) | — |
-| `MTF_ARROW_TRAIL_EXIT_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:10821(process_position) | — |
-| `MTF_ARROW_WEIGHTS` | unclassified | {'1h': 0.35, '4h': 0.35, 'D': 0.3} / {'1h': 0.35, '4h': 0.35, 'D': 0.3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9666(mtf_arrow_score) | — |
+| `MTF_ARROW_THETA` | unclassified | 0.3 / 0.3 / 0.3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12387(process_position)<br>(+2) | — |
+| `MTF_ARROW_TRAIL_EXIT_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:10882(process_position) | — |
+| `MTF_ARROW_WEIGHTS` | unclassified | {'1h': 0.35, '4h': 0.35, 'D': 0.3} / {'1h': 0.35, '4h': 0.35, 'D': 0.3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9727(mtf_arrow_score) | — |
 | `MTF_ATR_MULTITF_DIRECT_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `MTF_ATR_MULTITF_DIRECT_MIN_CONFIRMING_TFS` | unclassified | 1 / 1 / 1 | — | DEAD | DEAD | — · — | — |
 | `MTF_ATR_MULTITF_DIRECT_MIN_PROFIT_PCT` | unclassified | 0.5 / 0.5 / 0.5 | — | DEAD | DEAD | — · — | — |
 | `MTF_ATR_MULTITF_DIRECT_MULT` | unclassified | 1.5 / 1.5 / 1.5 | — | DEAD | DEAD | — · — | — |
 | `MTF_ATR_MULTITF_DIRECT_TIMEFRAMES` | unclassified | ['1h', '4h', 'D'] / ['1h', '4h', 'D'] / ['1h', '4h', 'D'] | — | DEAD | DEAD | — · — | — |
-| `MTF_DC_REJECT_EXIT_LOOKBACK` | exit | 5 / 5 / 5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11165(process_position) | — |
+| `MTF_DC_REJECT_EXIT_LOOKBACK` | exit | 5 / 5 / 5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11226(process_position) | — |
 | `MTF_ENTRY_REQUIRE_GR_FILTER` | entry | True / True / True | — | LIVE_ONLY | LIVE_ONLY | mtf_live_evaluator.py:366(evaluate_mtf_entry)<br>(+1) · mtf_live_evaluator.py:366(evaluate_mtf_entry)<br>(+1) | — |
-| `MTF_EXIT_MIN_OPEN_TS` | exit | 1779235200.0 / 1779235200.0 / 1779235200.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:47891(process_position) · tradier_manage.py:11125(process_position) | — |
+| `MTF_EXIT_MIN_OPEN_TS` | exit | 1779235200.0 / 1779235200.0 / 1779235200.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:47931(process_position) · tradier_manage.py:11186(process_position) | — |
 | `MTF_GR_EXIT_MIN_IND` | exit | 5 / 5 / 5 | — | LIVE_ONLY | LIVE_ONLY | mtf_live_evaluator.py:489(evaluate_mtf_exit) · mtf_live_evaluator.py:489(evaluate_mtf_exit) | — |
 | `MTF_GR_FILTER_ENABLED` | unclassified | True / True / True | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | mtf_live_evaluator.py:300(gr_filter_pass) · mtf_live_evaluator.py:300(gr_filter_pass) | vec_decisions/mtf_gr_filter.py:66(gr_filter_pass_vec) |
 | `MTF_GR_INVERT_DC_BB` | unclassified | True / True / True | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | mtf_live_evaluator.py:307(gr_filter_pass) · mtf_live_evaluator.py:307(gr_filter_pass) | vec_decisions/mtf_gr_filter.py:70(gr_filter_pass_vec) |
 | `MTF_GR_MIN_TFS` | unclassified | 3 / 3 / 3 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | mtf_live_evaluator.py:303(gr_filter_pass)<br>(+1) · mtf_live_evaluator.py:303(gr_filter_pass)<br>(+1) | vec_decisions/mtf_gr_filter.py:68(gr_filter_pass_vec) |
 | `MTF_REQUIRE_ARMED_ANY` | unclassified | True / True / True | — | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | mtf_live_evaluator.py:363(evaluate_mtf_entry)<br>(+1) · mtf_live_evaluator.py:363(evaluate_mtf_entry)<br>(+1) | — |
-| `MTF_WT_CROSS_EXIT_DIRECT_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18730(StockStrategy.evaluate_stop) | — |
+| `MTF_WT_CROSS_EXIT_DIRECT_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18791(StockStrategy.evaluate_stop) | — |
 | `MTS_BOTTOM_MIN` | unclassified | 15.0 / 15.0 / 15.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2797(AdvancedSignalRater.rate) · ez_positions_quick.py:2797(AdvancedSignalRater.rate) | — |
 | `MTS_BOTTOM_MIN_SHORT` | unclassified | 10.0 / 10.0 / 10.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2800(AdvancedSignalRater.rate) · ez_positions_quick.py:2800(AdvancedSignalRater.rate) | — |
 | `MTS_BOTTOM_MIN_TRADIER` | unclassified | 5.0 / 5.0 / 5.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2791(AdvancedSignalRater.rate) · ez_positions_quick.py:2791(AdvancedSignalRater.rate)<br>(+1) | — |
@@ -1529,86 +1529,86 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `MTS_GATE_ENABLED_TRADIER` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2784(AdvancedSignalRater.rate) · ez_positions_quick.py:2784(AdvancedSignalRater.rate)<br>(+1) | — |
 | `MTS_WEIGHT_D` | unclassified | 2.0 / 12.0 / 2.0 | — | DEAD | DEAD | — · — | — |
 | `MULT_FILE` | unclassified | <expr> BASE_PATH / 'multipliers.json' / <expr> DATA_DIR / 'multipliers | — | LIVE_ONLY | LIVE_ONLY | ez_crosses.py:52(<module>) · ez_crosses.py:52(<module>) | — |
-| `MU_CORRECTION_HTF_K_MIN` | unclassified | 80.0 / 80.0 / 80.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18845(StockStrategy.evaluate_stop) | — |
-| `MU_CORRECTION_HTF_MIN_TFS` | unclassified | 1 / 1 / 1 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18847(StockStrategy.evaluate_stop) | — |
-| `MU_CORRECTION_HTF_RSI_MIN` | unclassified | 60.0 / 60.0 / 60.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18846(StockStrategy.evaluate_stop) | — |
-| `MU_CORRECTION_HTF_TFS` | unclassified | 1h+4h / 1h+4h / 1h+4h | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18851(StockStrategy.evaluate_stop) | — |
-| `MU_CORRECTION_LTF_FALL_MIN_TFS` | unclassified | 2 / 2 / 2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18875(StockStrategy.evaluate_stop) | — |
-| `MU_CORRECTION_LTF_FALL_TFS` | unclassified | 5m+15m / 5m+15m / 5m+15m | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18876(StockStrategy.evaluate_stop) | — |
-| `MU_CORRECTION_MIN_GAIN_PCT` | unclassified | 0.0 / 0.0 / 0.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18850(StockStrategy.evaluate_stop) | — |
-| `MU_CORRECTION_REENTRY_DC_TOL_PCT` | reentry | 2.0 / 2.0 / 2.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21652(StockStrategy.evaluate_reentry) | — |
-| `MU_CORRECTION_REENTRY_STOCH_ENABLED` | reentry | True / False / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21659(StockStrategy.evaluate_reentry) | — |
-| `MU_CORRECTION_REQUIRE_CLOSE_REVERSAL` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18849(StockStrategy.evaluate_stop) | — |
-| `MU_CORRECTION_REQUIRE_HIGH_REVERSAL` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18848(StockStrategy.evaluate_stop) | — |
-| `MU_CORRECTION_SYMBOLS` | unclassified | MU / MU / MU | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18840(StockStrategy.evaluate_stop)<br>(+1) | — |
-| `NEGBOOK_WT_EXIT_TF` | exit | 15m / 15m / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:46624(process_position) · tradier_manage.py:10618(process_position) | — |
-| `NEGBOOK_WT_TURN_EXIT_ENABLED` | exit | True / True / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:46618(process_position) · tradier_manage.py:10617(process_position) | — |
-| `NEWBORN_DC_STOP_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20267(StockStrategy.evaluate_stop) | — |
-| `NEWBORN_DC_STOP_FIELD` | unclassified | dc_low4_5m / dc_low4_5m / dc_low4_5m | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20273(StockStrategy.evaluate_stop) | — |
-| `NEWBORN_DC_STOP_MAX_AGE_MIN` | unclassified | 20.0 / 20.0 / 20.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20270(StockStrategy.evaluate_stop) | — |
+| `MU_CORRECTION_HTF_K_MIN` | unclassified | 80.0 / 80.0 / 80.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18906(StockStrategy.evaluate_stop) | — |
+| `MU_CORRECTION_HTF_MIN_TFS` | unclassified | 1 / 1 / 1 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18908(StockStrategy.evaluate_stop) | — |
+| `MU_CORRECTION_HTF_RSI_MIN` | unclassified | 60.0 / 60.0 / 60.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18907(StockStrategy.evaluate_stop) | — |
+| `MU_CORRECTION_HTF_TFS` | unclassified | 1h+4h / 1h+4h / 1h+4h | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18912(StockStrategy.evaluate_stop) | — |
+| `MU_CORRECTION_LTF_FALL_MIN_TFS` | unclassified | 2 / 2 / 2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18936(StockStrategy.evaluate_stop) | — |
+| `MU_CORRECTION_LTF_FALL_TFS` | unclassified | 5m+15m / 5m+15m / 5m+15m | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18937(StockStrategy.evaluate_stop) | — |
+| `MU_CORRECTION_MIN_GAIN_PCT` | unclassified | 0.0 / 0.0 / 0.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18911(StockStrategy.evaluate_stop) | — |
+| `MU_CORRECTION_REENTRY_DC_TOL_PCT` | reentry | 2.0 / 2.0 / 2.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21713(StockStrategy.evaluate_reentry) | — |
+| `MU_CORRECTION_REENTRY_STOCH_ENABLED` | reentry | True / False / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21720(StockStrategy.evaluate_reentry) | — |
+| `MU_CORRECTION_REQUIRE_CLOSE_REVERSAL` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18910(StockStrategy.evaluate_stop) | — |
+| `MU_CORRECTION_REQUIRE_HIGH_REVERSAL` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18909(StockStrategy.evaluate_stop) | — |
+| `MU_CORRECTION_SYMBOLS` | unclassified | MU / MU / MU | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18901(StockStrategy.evaluate_stop)<br>(+1) | — |
+| `NEGBOOK_WT_EXIT_TF` | exit | 15m / 15m / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:46664(process_position) · tradier_manage.py:10679(process_position) | — |
+| `NEGBOOK_WT_TURN_EXIT_ENABLED` | exit | True / True / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:46658(process_position) · tradier_manage.py:10678(process_position) | — |
+| `NEWBORN_DC_STOP_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20328(StockStrategy.evaluate_stop) | — |
+| `NEWBORN_DC_STOP_FIELD` | unclassified | dc_low4_5m / dc_low4_5m / dc_low4_5m | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20334(StockStrategy.evaluate_stop) | — |
+| `NEWBORN_DC_STOP_MAX_AGE_MIN` | unclassified | 20.0 / 20.0 / 20.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20331(StockStrategy.evaluate_stop) | — |
 | `NEWBORN_LOSS_KILL_MIN_AGE_MIN` | unclassified | 15.0 / 15.0 / 15.0 | — | DEAD | DEAD | — · — | — |
 | `NEWBORN_LOSS_KILL_SURGICAL_ONLY` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
-| `NEWBORN_LOSS_KILL_VEL_TF` | unclassified |  /  /  | — | LIVE_ONLY | DEAD | ez_manage.py:46791(process_position) · — | — |
+| `NEWBORN_LOSS_KILL_VEL_TF` | unclassified |  /  /  | — | LIVE_ONLY | DEAD | ez_manage.py:46831(process_position) · — | — |
 | `NEWS_POLL_INTERVAL_CRYPTO` | unclassified | 300 / 300 / 300 | — | DEAD | DEAD | — · — | — |
 | `NEWS_POLL_INTERVAL_SOCIAL` | unclassified | 900 / 900 / 900 | — | DEAD | DEAD | — · — | — |
 | `NEWS_SENTIMENT_DECAY_HOURS` | unclassified | 4 / 4 / 4 | — | DEAD | DEAD | — · — | — |
 | `NEWS_SENTIMENT_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:4193(initial_fetch_and_ranking) · ez_rankings.py:4193(initial_fetch_and_ranking) | — |
 | `NEWS_SENTIMENT_MIN_ARTICLES` | unclassified | 2 / 2 / 2 | — | DEAD | DEAD | — · — | — |
 | `NEWS_SENTIMENT_WEIGHT` | unclassified | 0.1 / 0.1 / 0.1 | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:4196(initial_fetch_and_ranking) · ez_rankings.py:4196(initial_fetch_and_ranking) | — |
-| `NEW_POSITION_MIN_AGE_SECONDS` | unclassified | 180.0 / 180.0 / 180.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:10115(_check_loss_protection)<br>(+3) · ez_positions_service.py:13452(check_position_reductions)<br>(+1) | — |
-| `NOLOSS_BB1H_GATE_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19135(StockStrategy.evaluate_stop) | vec_decisions/check_exit_candidates_stocks__noloss_bb1h.py:44(check_noloss_bb1h) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__noloss_bb1h.py:65(check_noloss_bb1h_vec) [UNREACHABLE] |
+| `NEW_POSITION_MIN_AGE_SECONDS` | unclassified | 180.0 / 180.0 / 180.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:10155(_check_loss_protection)<br>(+3) · ez_positions_service.py:13452(check_position_reductions)<br>(+1) | — |
+| `NOLOSS_BB1H_GATE_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19196(StockStrategy.evaluate_stop) | vec_decisions/check_exit_candidates_stocks__noloss_bb1h.py:44(check_noloss_bb1h) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__noloss_bb1h.py:65(check_noloss_bb1h_vec) [UNREACHABLE] |
 | `NOLOSS_DC4H_GATE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:14773(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14773(check_exit_candidates_for_account.process_single_exit) | — |
-| `NOLOSS_MIN_PROFIT_PCT_TRADIER` | unclassified | <absent> / 0.01 / 0.0 | — | DEAD+STAGED_VEC | LIVE_ONLY+STAGED_VEC | — · tradier_manage.py:19725(StockStrategy.evaluate_stop)<br>(+11) | vec_decisions/check_exit_candidates_stocks__htf_quick_tp.py:39(_htf_quick_tp_min_gain) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__k5m_real_drop_dc.py:32(_k5m_min_gain) [UNREACHABLE]<br>(+8) |
+| `NOLOSS_MIN_PROFIT_PCT_TRADIER` | unclassified | <absent> / 0.01 / 0.0 | — | DEAD+STAGED_VEC | LIVE_ONLY+STAGED_VEC | — · tradier_manage.py:19786(StockStrategy.evaluate_stop)<br>(+11) | vec_decisions/check_exit_candidates_stocks__htf_quick_tp.py:39(_htf_quick_tp_min_gain) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__k5m_real_drop_dc.py:32(_k5m_min_gain) [UNREACHABLE]<br>(+8) |
 | `NOLOSS_MIN_PROFIT_PCT_TRADIER_LIVE` | unclassified | <absent> / <absent> / 0.01 | — | VEC_ONLY | VEC_ONLY | — · — | vec_decisions/noloss_gate.py:20(noloss_blocks) |
-| `NON_SHORTABLE` | unclassified | <absent> / {'QUBT', 'IPI', 'BTBT', 'ASC', 'PDBC', 'SGML', 'GNK', 'REMX | — | DEAD | LIVE_ONLY | — · tradier_manage.py:16886(StockStrategy.__init__)<br>(+6) | — |
-| `OBLIGATORY_EMA50_15M_ENABLED` | unclassified | False / False / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:36292(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
-| `OBLIGATORY_EMA50_15M_PCT` | unclassified | 1.0 / 1.0 / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:36293(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
-| `OBLIGATORY_HEDGE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32505(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:13223(execute_trade_wrapper) | — |
-| `OBLIGATORY_HEDGE_MIN_LOSS_PCT` | unclassified | -0.5 / -0.5 / -0.5 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32507(MultiAccountTradeManager.execute_now)<br>(+4) · ez_positions_quick.py:5350(HedgeEngine.scan_and_hedge_losers)<br>(+2) | — |
+| `NON_SHORTABLE` | unclassified | <absent> / {'ICL', 'SGML', 'AGCO', 'HIVE', 'NAT', 'XME', 'DAC', 'CAN', | — | DEAD | LIVE_ONLY | — · tradier_manage.py:16947(StockStrategy.__init__)<br>(+6) | — |
+| `OBLIGATORY_EMA50_15M_ENABLED` | unclassified | False / False / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:36332(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
+| `OBLIGATORY_EMA50_15M_PCT` | unclassified | 1.0 / 1.0 / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:36333(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
+| `OBLIGATORY_HEDGE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32545(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:13223(execute_trade_wrapper) | — |
+| `OBLIGATORY_HEDGE_MIN_LOSS_PCT` | unclassified | -0.5 / -0.5 / -0.5 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32547(MultiAccountTradeManager.execute_now)<br>(+4) · ez_positions_quick.py:5350(HedgeEngine.scan_and_hedge_losers)<br>(+2) | — |
 | `OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:6297(HedgeEngine.obligatory_hedge_or_close_loop)<br>(+1) · ez_positions_quick.py:6297(HedgeEngine.obligatory_hedge_or_close_loop)<br>(+1) | — |
 | `OBLIGATORY_HEDGE_OR_CLOSE_LOOP_INTERVAL_SECONDS` | unclassified | 60.0 / 60.0 / 60.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:6300(HedgeEngine.obligatory_hedge_or_close_loop)<br>(+1) · ez_positions_quick.py:6300(HedgeEngine.obligatory_hedge_or_close_loop)<br>(+1) | — |
 | `OBLIGATORY_HEDGE_PCT` | unclassified | 0.0 / 0.0 / 0.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:5349(HedgeEngine.scan_and_hedge_losers)<br>(+3) · ez_positions_quick.py:5349(HedgeEngine.scan_and_hedge_losers)<br>(+1) | — |
 | `OBLIGATORY_HEDGE_WT_TFS` | unclassified | 2 / 2 / 2 | — | DEAD | DEAD | — · — | — |
-| `OBLIGATORY_HEDGE_WT_TFS_REQUIRED` | unclassified | 0 / 0 / 0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32602(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:13226(execute_trade_wrapper) | — |
-| `OBLIGATORY_HEDGE_WT_USE_15M` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32548(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:13233(execute_trade_wrapper) | — |
-| `OBLIGATORY_HEDGE_WT_USE_1H` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32555(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:13234(execute_trade_wrapper) | — |
-| `OBLIGATORY_HEDGE_WT_USE_1M` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32534(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:13231(execute_trade_wrapper) | — |
-| `OBLIGATORY_HEDGE_WT_USE_3M` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32541(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:13232(execute_trade_wrapper) | — |
-| `OBLIGATORY_OPEN_USD` | unclassified | 14.0 / 14.0 / 14.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36299(MultiAccountTradeManager.momentum_sma_watchdog_loop)<br>(+1) · — | — |
+| `OBLIGATORY_HEDGE_WT_TFS_REQUIRED` | unclassified | 0 / 0 / 0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32642(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:13226(execute_trade_wrapper) | — |
+| `OBLIGATORY_HEDGE_WT_USE_15M` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32588(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:13233(execute_trade_wrapper) | — |
+| `OBLIGATORY_HEDGE_WT_USE_1H` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32595(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:13234(execute_trade_wrapper) | — |
+| `OBLIGATORY_HEDGE_WT_USE_1M` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32574(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:13231(execute_trade_wrapper) | — |
+| `OBLIGATORY_HEDGE_WT_USE_3M` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32581(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:13232(execute_trade_wrapper) | — |
+| `OBLIGATORY_OPEN_USD` | unclassified | 14.0 / 14.0 / 14.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36339(MultiAccountTradeManager.momentum_sma_watchdog_loop)<br>(+1) · — | — |
 | `OBLIGATORY_REENTRY_LONG_ENABLED` | reentry | True / True / True | — | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | — |
 | `OBLIGATORY_REENTRY_SHORT_ENABLED` | reentry | True / True / True | — | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | — |
 | `OBLIGATORY_REENTRY_SHORT_SMA_BOUNCE_SIZE_MULT` | reentry | 1.5 / 1.5 / 1.5 | — | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | — |
 | `OBLIGATORY_REENTRY_SMA_BOUNCE_SIZE_MULT` | reentry | 1.5 / 1.5 / 1.5 | — | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | — |
-| `OBLIGATORY_SECTOR_HEDGE_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:8922(obligatory_sector_hedge_or_close_loop) | — |
-| `OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS` | unclassified | 90.0 / 90.0 / 90.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:8925(obligatory_sector_hedge_or_close_loop) | — |
-| `OBLIGATORY_SECTOR_HEDGE_TRIGGER_REQUIRE_WT_5M_AND_1H` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:8926(obligatory_sector_hedge_or_close_loop) | — |
-| `OBLIGATORY_SMA200_PCT` | unclassified | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36315(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
-| `OBLIGATORY_SMA200_WT3M_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:36314(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
+| `OBLIGATORY_SECTOR_HEDGE_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:8983(obligatory_sector_hedge_or_close_loop) | — |
+| `OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS` | unclassified | 90.0 / 90.0 / 90.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:8986(obligatory_sector_hedge_or_close_loop) | — |
+| `OBLIGATORY_SECTOR_HEDGE_TRIGGER_REQUIRE_WT_5M_AND_1H` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:8987(obligatory_sector_hedge_or_close_loop) | — |
+| `OBLIGATORY_SMA200_PCT` | unclassified | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36355(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
+| `OBLIGATORY_SMA200_WT3M_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:36354(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
 | `OB_ENTRY_GATE_ACCOUNTS` | entry | [] / <absent> / [] | — | DEAD | DEAD | — · — | — |
 | `OB_ENTRY_MIN_LONG_SCORE` | entry | 0.0 / 0.0 / 0.0 | — | DEAD | DEAD | — · — | — |
 | `OB_ENTRY_MIN_SHORT_SCORE` | entry | 0.0 / 0.0 / 0.0 | — | DEAD | DEAD | — · — | — |
 | `OB_ENTRY_WALL_TOO_CLOSE_PCT` | entry | 0.0 / 0.0 / 0.0 | — | DEAD | DEAD | — · — | — |
-| `OB_PRICE_DEFER_ACCOUNTS` | unclassified | [] / <absent> / [] | — | LIVE_ONLY | DEAD | ez_manage.py:28819(MultiAccountTradeManager.place_maker_order) · — | — |
-| `OB_PRICE_DEFER_AT_LEVEL_TOL_PCT` | unclassified | 0.05 / 0.05 / 0.05 | — | LIVE_ONLY | DEAD | ez_manage.py:28851(MultiAccountTradeManager.place_maker_order) · — | — |
-| `OB_PRICE_DEFER_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:28817(MultiAccountTradeManager.place_maker_order) · — | — |
-| `OB_PRICE_DEFER_MAX_DISTANCE_PCT` | unclassified | 0.5 / 0.5 / 0.5 | — | LIVE_ONLY | DEAD | ez_manage.py:28846(MultiAccountTradeManager.place_maker_order) · — | — |
-| `OB_PRICE_DEFER_TTL_SEC` | unclassified | 300.0 / 300.0 / 300.0 | — | LIVE_ONLY | DEAD | ez_manage.py:28885(MultiAccountTradeManager.place_maker_order) · — | — |
-| `OI_CONFIRM_ENABLED_TRADIER` | unclassified | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26345(TradierTradeManager.execute_now) | — |
-| `OI_CONFIRM_MIN_OI_CHANGE_PCT_TRADIER` | unclassified | 0.5 / 0.5 / 0.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26390(TradierTradeManager.execute_now) | — |
-| `OI_CONFIRM_MIN_PRICE_PCT_TRADIER` | unclassified | <absent> / 0.3 / 0.15 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26391(TradierTradeManager.execute_now) | — |
-| `OI_CONFIRM_TRADIER_HEDGE_GATE_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26388(TradierTradeManager.execute_now) | — |
+| `OB_PRICE_DEFER_ACCOUNTS` | unclassified | [] / <absent> / [] | — | LIVE_ONLY | DEAD | ez_manage.py:28859(MultiAccountTradeManager.place_maker_order) · — | — |
+| `OB_PRICE_DEFER_AT_LEVEL_TOL_PCT` | unclassified | 0.05 / 0.05 / 0.05 | — | LIVE_ONLY | DEAD | ez_manage.py:28891(MultiAccountTradeManager.place_maker_order) · — | — |
+| `OB_PRICE_DEFER_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:28857(MultiAccountTradeManager.place_maker_order) · — | — |
+| `OB_PRICE_DEFER_MAX_DISTANCE_PCT` | unclassified | 0.5 / 0.5 / 0.5 | — | LIVE_ONLY | DEAD | ez_manage.py:28886(MultiAccountTradeManager.place_maker_order) · — | — |
+| `OB_PRICE_DEFER_TTL_SEC` | unclassified | 300.0 / 300.0 / 300.0 | — | LIVE_ONLY | DEAD | ez_manage.py:28925(MultiAccountTradeManager.place_maker_order) · — | — |
+| `OI_CONFIRM_ENABLED_TRADIER` | unclassified | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26406(TradierTradeManager.execute_now) | — |
+| `OI_CONFIRM_MIN_OI_CHANGE_PCT_TRADIER` | unclassified | 0.5 / 0.5 / 0.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26451(TradierTradeManager.execute_now) | — |
+| `OI_CONFIRM_MIN_PRICE_PCT_TRADIER` | unclassified | <absent> / 0.3 / 0.15 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26452(TradierTradeManager.execute_now) | — |
+| `OI_CONFIRM_TRADIER_HEDGE_GATE_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26449(TradierTradeManager.execute_now) | — |
 | `OI_DIVERGENCE_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `OI_DIVERGENCE_PENALTY` | unclassified | 10 / 10 / 10 | — | DEAD | DEAD | — · — | — |
 | `OI_HEDGE_GATE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:12715(execute_trade_wrapper) · ez_positions_quick.py:12715(execute_trade_wrapper) | — |
 | `OI_LIVE_REFRESH_HOURS` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | DEAD | — · — | — |
-| `OPENING_BUFFER_NO_CLOSE_MINUTES` | unclassified | 30.0 / 30.0 / 30.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:8694(in_opening_buffer) | — |
-| `OPEN_RATE_WINDOW_SEC` | unclassified | 30.0 / 30.0 / 30.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:30387(MultiAccountTradeManager.execute_now) · tradier_manage.py:25689(TradierTradeManager.execute_now) | — |
-| `OPPOSITE_LOSER_DEEP_LOSS_PCT` | unclassified | -5.0 / -5.0 / -5.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:51127(process_position)<br>(+1) · ez_positions_quick.py:18637(_scalp_v3_protective_exits) | — |
-| `OPPOSITE_LOSER_HEDGE_PROTECT_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:30672(MultiAccountTradeManager.execute_now)<br>(+1) · ez_positions_quick.py:12326(execute_trade_wrapper) | — |
+| `OPENING_BUFFER_NO_CLOSE_MINUTES` | unclassified | 30.0 / 30.0 / 30.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:8755(in_opening_buffer) | — |
+| `OPEN_RATE_WINDOW_SEC` | unclassified | 30.0 / 30.0 / 30.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:30427(MultiAccountTradeManager.execute_now) · tradier_manage.py:25750(TradierTradeManager.execute_now) | — |
+| `OPPOSITE_LOSER_DEEP_LOSS_PCT` | unclassified | -5.0 / -5.0 / -5.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:51167(process_position)<br>(+1) · ez_positions_quick.py:18637(_scalp_v3_protective_exits) | — |
+| `OPPOSITE_LOSER_HEDGE_PROTECT_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:30712(MultiAccountTradeManager.execute_now)<br>(+1) · ez_positions_quick.py:12326(execute_trade_wrapper) | — |
 | `OPPOSITE_LOSER_HEDGE_PROTECT_MAX_GAIN` | unclassified | 5.0 / 5.0 / 5.0 | — | DEAD | DEAD | — · — | — |
 | `OPPOSITE_LOSER_HEDGE_PROTECT_REQUIRE_WT_3M` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `OPTIMAL_HOLD_BARS_15M` | unclassified | 999 / 999 / 999 | — | DEAD | DEAD | — · — | — |
-| `OPTIMAL_HOLD_BARS_3M` | unclassified | 999 / 999 / 999 | — | LIVE_ONLY | DEAD | ez_manage.py:51349(process_position)<br>(+1) · — | — |
+| `OPTIMAL_HOLD_BARS_3M` | unclassified | 999 / 999 / 999 | — | LIVE_ONLY | DEAD | ez_manage.py:51389(process_position)<br>(+1) · — | — |
 | `OPTIONS_ALERT_ABS_LOSS_PP` | unclassified | 25.0 / 25.0 / 25.0 | — | DEAD | DEAD | — · — | — |
 | `OPTIONS_ALERT_DROP_PP` | unclassified | 5.0 / 5.0 / 5.0 | — | DEAD | DEAD | — · — | — |
 | `OPTIONS_AUGMENT_INTO_LOSS_BLOCK_ENABLED` | augment | True / True / True | — | DEAD | DEAD | — · — | — |
@@ -1702,59 +1702,59 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `OPTIONS_WT_ACCEL_GROWTH_PCT` | unclassified | 25.0 / 25.0 / 25.0 | — | DEAD | DEAD | — · — | — |
 | `OPTIONS_WT_ACCEL_MIN_ABS` | unclassified | 10.0 / 10.0 / 10.0 | — | DEAD | DEAD | — · — | — |
 | `OPTIONS_WT_SLOWDOWN_PCT` | unclassified | 25.0 / 25.0 / 25.0 | — | DEAD | DEAD | — · — | — |
-| `ORB_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30209(TradierTradeManager.evaluate_orb_entry) | — |
-| `ORB_LONG_BUDGET` | unclassified | 2000.0 / 2000.0 / 2000.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30233(TradierTradeManager.evaluate_orb_entry) | — |
-| `ORB_MAX_HOLD_MINUTES` | unclassified | 150.0 / 150.0 / 150.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30318(TradierTradeManager.monitor_orb_exits) | — |
-| `ORB_MAX_PER_DAY` | unclassified | 3 / 3 / 3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30231(TradierTradeManager.evaluate_orb_entry) | — |
-| `ORB_POSITION_SIZE` | sizing | 600.0 / 600.0 / 600.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30229(TradierTradeManager.evaluate_orb_entry) | — |
-| `ORB_RVOL_MIN` | unclassified | 1.5 / 1.5 / 1.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30232(TradierTradeManager.evaluate_orb_entry) | — |
-| `ORB_SHORT_BUDGET` | unclassified | 2000.0 / 2000.0 / 2000.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30234(TradierTradeManager.evaluate_orb_entry) | — |
-| `ORB_STOP_MIDPOINT` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30277(TradierTradeManager.evaluate_orb_entry)<br>(+1) | — |
-| `ORB_TARGET_MULT` | unclassified | 1.5 / 1.5 / 1.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30276(TradierTradeManager.evaluate_orb_entry)<br>(+1) | — |
+| `ORB_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30270(TradierTradeManager.evaluate_orb_entry) | — |
+| `ORB_LONG_BUDGET` | unclassified | 2000.0 / 2000.0 / 2000.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30294(TradierTradeManager.evaluate_orb_entry) | — |
+| `ORB_MAX_HOLD_MINUTES` | unclassified | 150.0 / 150.0 / 150.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30379(TradierTradeManager.monitor_orb_exits) | — |
+| `ORB_MAX_PER_DAY` | unclassified | 3 / 3 / 3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30292(TradierTradeManager.evaluate_orb_entry) | — |
+| `ORB_POSITION_SIZE` | sizing | 600.0 / 600.0 / 600.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30290(TradierTradeManager.evaluate_orb_entry) | — |
+| `ORB_RVOL_MIN` | unclassified | 1.5 / 1.5 / 1.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30293(TradierTradeManager.evaluate_orb_entry) | — |
+| `ORB_SHORT_BUDGET` | unclassified | 2000.0 / 2000.0 / 2000.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30295(TradierTradeManager.evaluate_orb_entry) | — |
+| `ORB_STOP_MIDPOINT` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30338(TradierTradeManager.evaluate_orb_entry)<br>(+1) | — |
+| `ORB_TARGET_MULT` | unclassified | 1.5 / 1.5 / 1.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30337(TradierTradeManager.evaluate_orb_entry)<br>(+1) | — |
 | `ORB_WINDOW_MINUTES` | unclassified | 15 / 15 / 15 | — | DEAD | DEAD | — · — | — |
-| `ORDER_CACHE_TTL` | unclassified | 60 / 10 / 60 | — | LIVE_ONLY | DEAD | ez_manage.py:19069(MultiAccountTradeManager.get_cached_open_orders) · — | — |
+| `ORDER_CACHE_TTL` | unclassified | 60 / 10 / 60 | — | LIVE_ONLY | DEAD | ez_manage.py:19109(MultiAccountTradeManager.get_cached_open_orders) · — | — |
 | `ORPHAN_HEDGE_CHECK_GAIN` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
-| `OUTLIER_DETECTOR_ENABLED` | unclassified | False / False / True | — | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:54581(outlier_scan_loop) · tradier_manage.py:31683(tradier_outlier_scan_loop) | — |
-| `OUTLIER_RUNAWAY_ATR_FACTOR` | unclassified | 2.0 / 2.0 / 2.0 | — | LIVE_ONLY | DEAD | ez_manage.py:54693(outlier_scan_loop) · — | — |
-| `OUTLIER_SCAN_INTERVAL` | unclassified | 60.0 / 300.0 / 60.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:54806(outlier_scan_loop) · tradier_manage.py:31739(tradier_outlier_scan_loop) | — |
-| `OUTLIER_STALE_HOURS` | unclassified | 6.0 / 24.0 / 6.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:54731(outlier_scan_loop) · tradier_manage.py:31718(tradier_outlier_scan_loop) | — |
-| `OUTLIER_STUCK_ATR_FACTOR` | unclassified | 0.5 / 0.5 / 0.5 | — | LIVE_ONLY | DEAD | ez_manage.py:54669(outlier_scan_loop) · — | — |
-| `OUTLIER_STUCK_HOURS` | unclassified | 2.0 / 2.0 / 2.0 | — | LIVE_ONLY | DEAD | ez_manage.py:54667(outlier_scan_loop) · — | — |
+| `OUTLIER_DETECTOR_ENABLED` | unclassified | False / False / True | — | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:54621(outlier_scan_loop) · tradier_manage.py:31744(tradier_outlier_scan_loop) | — |
+| `OUTLIER_RUNAWAY_ATR_FACTOR` | unclassified | 2.0 / 2.0 / 2.0 | — | LIVE_ONLY | DEAD | ez_manage.py:54733(outlier_scan_loop) · — | — |
+| `OUTLIER_SCAN_INTERVAL` | unclassified | 60.0 / 300.0 / 60.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:54846(outlier_scan_loop) · tradier_manage.py:31800(tradier_outlier_scan_loop) | — |
+| `OUTLIER_STALE_HOURS` | unclassified | 6.0 / 24.0 / 6.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:54771(outlier_scan_loop) · tradier_manage.py:31779(tradier_outlier_scan_loop) | — |
+| `OUTLIER_STUCK_ATR_FACTOR` | unclassified | 0.5 / 0.5 / 0.5 | — | LIVE_ONLY | DEAD | ez_manage.py:54709(outlier_scan_loop) · — | — |
+| `OUTLIER_STUCK_HOURS` | unclassified | 2.0 / 2.0 / 2.0 | — | LIVE_ONLY | DEAD | ez_manage.py:54707(outlier_scan_loop) · — | — |
 | `OVERBOUGHT_SCORE_GUT_BREAKOUT_BYPASS` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:4610(AdvancedSignalRater.rate) · ez_positions_quick.py:4610(AdvancedSignalRater.rate) | — |
-| `OVERNIGHT_GAP_HEDGE_CLOSE_MINUTES` | unclassified | 5.0 / 5.0 / 5.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9523(overnight_gap_hedge_loop) | — |
-| `OVERNIGHT_GAP_HEDGE_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9520(overnight_gap_hedge_loop) | — |
-| `OVERNIGHT_GAP_HEDGE_OPEN_MINUTES` | unclassified | 15.0 / 15.0 / 15.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9522(overnight_gap_hedge_loop) | — |
-| `OVERNIGHT_GAP_HEDGE_SENTIMENT_THRESHOLD` | unclassified | 20.0 / 20.0 / 20.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9524(overnight_gap_hedge_loop) | — |
-| `OVERNIGHT_GAP_HEDGE_SIZE_FRAC` | sizing | 0.5 / 0.5 / 0.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9525(overnight_gap_hedge_loop) | — |
-| `OVERTRADE_GUARD_ENABLED` | global | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12691(simulate_one) |
+| `OVERNIGHT_GAP_HEDGE_CLOSE_MINUTES` | unclassified | 5.0 / 5.0 / 5.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9584(overnight_gap_hedge_loop) | — |
+| `OVERNIGHT_GAP_HEDGE_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9581(overnight_gap_hedge_loop) | — |
+| `OVERNIGHT_GAP_HEDGE_OPEN_MINUTES` | unclassified | 15.0 / 15.0 / 15.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9583(overnight_gap_hedge_loop) | — |
+| `OVERNIGHT_GAP_HEDGE_SENTIMENT_THRESHOLD` | unclassified | 20.0 / 20.0 / 20.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9585(overnight_gap_hedge_loop) | — |
+| `OVERNIGHT_GAP_HEDGE_SIZE_FRAC` | sizing | 0.5 / 0.5 / 0.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:9586(overnight_gap_hedge_loop) | — |
+| `OVERTRADE_GUARD_ENABLED` | global | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12736(simulate_one) |
 | `PAPER_TRADING` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `PAPER_TRADING_QUICK` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:19223(main) · ez_positions_quick.py:19223(main) | — |
-| `PARABOLIC_BB_PCT_B_4H_MAX` | unclassified | 0.1 / 0.1 / 0.1 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:48347(process_position)<br>(+2) · ez_positions_quick.py:3293(AdvancedSignalRater.rate)<br>(+1) | — |
-| `PARABOLIC_BB_PCT_B_4H_MIN` | unclassified | 0.7 / 0.9 / 0.7 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:48331(process_position)<br>(+2) · ez_positions_quick.py:3290(AdvancedSignalRater.rate)<br>(+1) | — |
+| `PARABOLIC_BB_PCT_B_4H_MAX` | unclassified | 0.1 / 0.1 / 0.1 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:48387(process_position)<br>(+2) · ez_positions_quick.py:3293(AdvancedSignalRater.rate)<br>(+1) | — |
+| `PARABOLIC_BB_PCT_B_4H_MIN` | unclassified | 0.7 / 0.9 / 0.7 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:48371(process_position)<br>(+2) · ez_positions_quick.py:3290(AdvancedSignalRater.rate)<br>(+1) | — |
 | `PARABOLIC_EXIT_ENABLED` | exit | True / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | vec_decisions/live_exit_chain.py:104(step) |
-| `PARABOLIC_PROTECTION_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:48308(process_position)<br>(+2) · ez_positions_quick.py:3284(AdvancedSignalRater.rate)<br>(+1) | — |
-| `PARABOLIC_RSI_1H_MAX` | unclassified | 35.0 / 35.0 / 35.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:48342(process_position)<br>(+2) · ez_positions_quick.py:3292(AdvancedSignalRater.rate)<br>(+1) | — |
-| `PARABOLIC_RSI_1H_MIN` | unclassified | 65.0 / 65.0 / 65.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:48326(process_position)<br>(+2) · ez_positions_quick.py:3289(AdvancedSignalRater.rate)<br>(+1) | — |
-| `PARABOLIC_RSI_4H_MAX` | unclassified | 30.0 / 30.0 / 30.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:48338(process_position)<br>(+2) · ez_positions_quick.py:3291(AdvancedSignalRater.rate)<br>(+1) | — |
-| `PARABOLIC_RSI_4H_MIN` | unclassified | 70.0 / 70.0 / 70.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:48322(process_position)<br>(+2) · ez_positions_quick.py:3288(AdvancedSignalRater.rate)<br>(+1) | — |
-| `PARITY_COMPARISON_MODE` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31321(TradierTradeManager._rotation_rsi2_loop) | — |
-| `PARTIAL_PROFIT_LOCK_ACCOUNTS` | unclassified | ['ang', 'inf', 'flz', 'men', 'fin'] / <absent> / ['ang', 'inf', 'flz', | — | LIVE_ONLY | DEAD | ez_manage.py:46431(process_position)<br>(+1) · — | — |
-| `PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER` | unclassified | <absent> / ['trb', 'trc'] / ['trb', 'trc'] | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19387(StockStrategy.evaluate_stop) | — |
+| `PARABOLIC_PROTECTION_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:48348(process_position)<br>(+2) · ez_positions_quick.py:3284(AdvancedSignalRater.rate)<br>(+1) | — |
+| `PARABOLIC_RSI_1H_MAX` | unclassified | 35.0 / 35.0 / 35.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:48382(process_position)<br>(+2) · ez_positions_quick.py:3292(AdvancedSignalRater.rate)<br>(+1) | — |
+| `PARABOLIC_RSI_1H_MIN` | unclassified | 65.0 / 65.0 / 65.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:48366(process_position)<br>(+2) · ez_positions_quick.py:3289(AdvancedSignalRater.rate)<br>(+1) | — |
+| `PARABOLIC_RSI_4H_MAX` | unclassified | 30.0 / 30.0 / 30.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:48378(process_position)<br>(+2) · ez_positions_quick.py:3291(AdvancedSignalRater.rate)<br>(+1) | — |
+| `PARABOLIC_RSI_4H_MIN` | unclassified | 70.0 / 70.0 / 70.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:48362(process_position)<br>(+2) · ez_positions_quick.py:3288(AdvancedSignalRater.rate)<br>(+1) | — |
+| `PARITY_COMPARISON_MODE` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31382(TradierTradeManager._rotation_rsi2_loop) | — |
+| `PARTIAL_PROFIT_LOCK_ACCOUNTS` | unclassified | ['ang', 'inf', 'flz', 'men', 'fin'] / <absent> / ['ang', 'inf', 'flz', | — | LIVE_ONLY | DEAD | ez_manage.py:46471(process_position)<br>(+1) · — | — |
+| `PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER` | unclassified | <absent> / ['trb', 'trc'] / ['trb', 'trc'] | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19448(StockStrategy.evaluate_stop) | — |
 | `PARTIAL_PROFIT_LOCK_SLIPPAGE_PCT` | unclassified | 0.05 / 0.05 / 0.05 | — | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | — |
 | `PARTIAL_PROFIT_LOCK_SWEEP_ARM_PCT` | unclassified | 0.5 / 0.5 / 0.5 | — | DEAD | DEAD | — · — | — |
 | `PARTIAL_PROFIT_LOCK_SWEEP_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `PARTIAL_PROFIT_LOCK_SWEEP_GAIN_PCT` | unclassified | 0.3 / 0.3 / 0.3 | — | DEAD | DEAD | — · — | — |
-| `PARTIAL_PROFIT_LOCK_USE_MAKER` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:51151(process_position) · — | — |
+| `PARTIAL_PROFIT_LOCK_USE_MAKER` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:51191(process_position) · — | — |
 | `PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER` | unclassified | <absent> / True / True | — | DEAD | DEAD | — · — | — |
 | `PAU_TIMEOUT_SEC` | unclassified | 120.0 / 120.0 / 120.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:6652(PositionService.fetch_positions) · ez_positions_service.py:6652(PositionService.fetch_positions) | — |
 | `PEAK_GIVEBACK_DROP_PCT` | exit | 0.5 / 0.5 / 0.5 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14684(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14684(check_exit_candidates_for_account.process_single_exit)<br>(+1) | vec_decisions/check_exit_candidates_crypto__peak_giveback.py:57(_peak_giveback_thresholds) [UNREACHABLE]<br>vec_decisions/live_exit_chain.py:184(step) |
 | `PEAK_GIVEBACK_HARD_ZERO_ENABLED` | unclassified | False / False / False | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14683(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14683(check_exit_candidates_for_account.process_single_exit)<br>(+1) | vec_decisions/check_exit_candidates_crypto__peak_giveback.py:54(_peak_giveback_thresholds) [UNREACHABLE]<br>vec_decisions/live_exit_chain.py:182(step) |
 | `PEAK_GIVEBACK_MIN_PEAK_PCT` | exit | 0.5 / 0.5 / 0.5 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14681(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14681(check_exit_candidates_for_account.process_single_exit)<br>(+1) | vec_decisions/check_exit_candidates_crypto__peak_giveback.py:53(_peak_giveback_thresholds) [UNREACHABLE]<br>vec_decisions/live_exit_chain.py:181(step) |
-| `PEAK_GIVEBACK_NEGATIVE_GAIN_FLOOR_PCT` | unclassified | 0.0 / 0.0 / 0.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19104(StockStrategy.evaluate_stop) | — |
+| `PEAK_GIVEBACK_NEGATIVE_GAIN_FLOOR_PCT` | unclassified | 0.0 / 0.0 / 0.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19165(StockStrategy.evaluate_stop) | — |
 | `PEAK_GIVEBACK_PROTECTION_ENABLED` | unclassified | True / True / True | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14679(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14679(check_exit_candidates_for_account.process_single_exit)<br>(+2) | vec_decisions/check_exit_candidates_crypto__peak_giveback.py:62(check_peak_giveback) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_crypto__peak_giveback.py:75(check_peak_giveback_vec) [UNREACHABLE]<br>(+1) |
-| `PEAK_GIVEBACK_REQUIRE_NEGATIVE_GAIN` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19103(StockStrategy.evaluate_stop) | — |
-| `PENNY_STOCK_LONG_BLOCK_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25272(TradierTradeManager._disaster_guard_for_entry) | — |
-| `PENNY_STOCK_LONG_BLOCK_PRICE_USD` | unclassified | 5.0 / 5.0 / 5.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25273(TradierTradeManager._disaster_guard_for_entry) | — |
+| `PEAK_GIVEBACK_REQUIRE_NEGATIVE_GAIN` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19164(StockStrategy.evaluate_stop) | — |
+| `PENNY_STOCK_LONG_BLOCK_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25333(TradierTradeManager._disaster_guard_for_entry) | — |
+| `PENNY_STOCK_LONG_BLOCK_PRICE_USD` | unclassified | 5.0 / 5.0 / 5.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25334(TradierTradeManager._disaster_guard_for_entry) | — |
 | `PERSIST` | unclassified | 48.0 / <absent> / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:9486(PositionService.cleanup_positions)<br>(+1) · ez_positions_service.py:9486(PositionService.cleanup_positions)<br>(+1) | — |
 | `PERSIST_FIN` | unclassified | 24.0 / 24.0 / 24.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:9589(PositionService.cleanup_positions) · ez_positions_service.py:9589(PositionService.cleanup_positions) | — |
 | `PERSIST_FLZ` | unclassified | 0.0 / 0.0 / 0.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:9587(PositionService.cleanup_positions) · ez_positions_service.py:9587(PositionService.cleanup_positions) | — |
@@ -1763,7 +1763,7 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `PERSYM_FINAL_BOOK_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7327(_ezm_load_final_book)<br>(+2) · ez_positions_quick.py:1860(_load_final_book)<br>(+1) | — |
 | `PER_SYMBOL_CONFIG_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | strategy_enhancements.py:156(get_per_symbol_override) · — | — |
 | `PER_SYMBOL_CONFIG_FILE` | unclassified | data/sweep_results/per_symbol_best_crypto_20260416_0507.json / data/sw | — | LIVE_ONLY | DEAD | strategy_enhancements.py:158(get_per_symbol_override) · — | — |
-| `PER_SYM_CONFIG_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7432(_psym_get)<br>(+2) · ez_positions_quick.py:16043(check_entry_candidates_for_account.worker) | — |
+| `PER_SYM_CONFIG_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:7444(_psym_get)<br>(+2) · ez_positions_quick.py:16043(check_entry_candidates_for_account.worker) | — |
 | `PLOTS_DIR` | unclassified | <expr> BASE_PATH / 'plots' / <absent> / <expr> Path('data') | — | LIVE_ONLY | LIVE_ONLY | ez_crosses.py:43(<module>)<br>(+4) · ez_crosses.py:43(<module>)<br>(+4) | — |
 | `PLOT_LOOP_INTERVAL_SECONDS` | unclassified | 1800 / 1800 / 1800 | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:7611(plot_loop)<br>(+7) · ez_rankings.py:7611(plot_loop)<br>(+7) | — |
 | `PNL_DECAY_COMPLETE_DAYS` | unclassified | 5 / 5 / 5 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:12372(PositionService.deteriorate_realized_pnl) · ez_positions_service.py:12372(PositionService.deteriorate_realized_pnl) | — |
@@ -1772,16 +1772,16 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `POSITIONS_SERVICE_HEALTH_RETRIES` | unclassified | 3 / 3 / 3 | — | DEAD | DEAD | — · — | — |
 | `POSITIONS_SERVICE_HEALTH_TIMEOUT` | unclassified | 4.0 / 4.0 / 4.0 | — | DEAD | DEAD | — · — | — |
 | `POSITIONS_SERVICE_START_CMD` | unclassified | None / None / None | — | DEAD | DEAD | — · — | — |
-| `POSITIONS_SNAPSHOT_MAX_AGE` | unclassified | 6.0 / 6.0 / 6.0 | — | LIVE_ONLY | DEAD | ez_manage.py:7928(<module>) · — | — |
+| `POSITIONS_SNAPSHOT_MAX_AGE` | unclassified | 6.0 / 6.0 / 6.0 | — | LIVE_ONLY | DEAD | ez_manage.py:7968(<module>) · — | — |
 | `POSITION_CACHE_TTL` | unclassified | 5 / 5 / 5 | — | DEAD | DEAD | — · — | — |
 | `POSITION_REDIS_REFRESH_INTERVAL` | unclassified | 6.0 / 6.0 / 6.0 | — | DEAD | DEAD | — · — | — |
 | `POSITION_REFRESH_INTERVAL` | unclassified | 6.0 / 6.0 / 6.0 | — | DEAD | DEAD | — · — | — |
 | `POSITION_REFRESH_MIN_INTERVAL` | unclassified | 5 / 5 / 5 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:6500(PositionService.fetch_positions) · ez_positions_service.py:6500(PositionService.fetch_positions) | — |
 | `POSITION_SAVE_INTERVAL` | unclassified | 6.0 / 6.0 / 6.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:12012(PositionService._position_flush_loop) · ez_positions_service.py:12012(PositionService._position_flush_loop) | — |
-| `POSITION_STALE_THRESHOLD_SECONDS` | unclassified | 60.0 / 60.0 / 60.0 | — | LIVE_ONLY | DEAD | ez_manage.py:7943(<module>) · — | — |
+| `POSITION_STALE_THRESHOLD_SECONDS` | unclassified | 60.0 / 60.0 / 60.0 | — | LIVE_ONLY | DEAD | ez_manage.py:7983(<module>) · — | — |
 | `PPL_BE_STOP_LIVE_SIGN` | unclassified | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | vec_decisions/reduce_profit_lock.py:57(ppl_step) |
 | `PPL_FIRE_COOLDOWN_S` | unclassified | 0.0 / 0.0 / 0.0 | — | DEAD | DEAD | — · — | — |
-| `PPL_WHOLE_SHARE_RULE_ENABLED` | unclassified | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:13000(simulate_one)<br>v12_quick_engine.py:13008(simulate_one) |
+| `PPL_WHOLE_SHARE_RULE_ENABLED` | unclassified | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:13045(simulate_one)<br>v12_quick_engine.py:13053(simulate_one) |
 | `PREVIOUS_SYMBOLS_FIN` | unclassified | <expr> BASE_PATH / 'previous_symbols_fin.json' / <absent> / <expr> Pat | — | DEAD | DEAD | — · — | — |
 | `PREVIOUS_SYMBOLS_FLZ` | unclassified | <expr> BASE_PATH / 'previous_symbols_flz.json' / <absent> / <expr> Pat | — | DEAD | DEAD | — · — | — |
 | `PREVIOUS_SYMBOLS_MEN` | unclassified | <expr> BASE_PATH / 'previous_symbols_men.json' / <absent> / <expr> Pat | — | DEAD | DEAD | — · — | — |
@@ -1790,12 +1790,12 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `PRICE_CACHE_FILE_3` | unclassified | <expr> BASE_PATH / 'price_cache_3.json' / <expr> DATA_DIR / 'price_cac | — | LIVE_ONLY | LIVE_ONLY | ez_indicators.py:2598(IndicatorOrchestrator.__init__)<br>(+8) · ez_indicators.py:2598(IndicatorOrchestrator.__init__)<br>(+5) | — |
 | `PRICE_CACHE_PULL_MAX_AGE_SEC` | unclassified | 1800.0 / 1800.0 / 1800.0 | — | DEAD | DEAD | — · — | — |
 | `PRICE_CACHE_PULL_S1` | unclassified | <expr> BASE_PATH / 'data' / 'mark_prices_pull' / 'from_s1.json' / <abs | — | LIVE_ONLY | LIVE_ONLY | ez_indicators.py:2599(IndicatorOrchestrator.__init__) · ez_indicators.py:2599(IndicatorOrchestrator.__init__) | — |
-| `PRICE_CROSSED_HTF_AGAINST_VETO_BAR_TURN_BYPASS` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:42577(process_single_reentry_evaluation) · — | — |
-| `PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED` | unclassified | True / True / True | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42546(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17292(process_single_reentry_evaluation_epq) | vec_decisions/reentry_epq_vec.py:109(mandatory_price_cross) |
-| `PRICE_CROSSED_HTF_AGAINST_VETO_HA_BYPASS` | unclassified | True / True / True | — | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:42570(process_single_reentry_evaluation) · — | vec_decisions/reentry_epq_vec.py:117(mandatory_price_cross) |
-| `PRICE_CROSS_BACK_BAND_PCT` | unclassified | 0.3 / 0.3 / 0.3 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:11981(process_position)<br>(+1) | vec_decisions/stocks_reentry_sources.py:20(fires) |
-| `PRICE_CROSS_BACK_MAX_AGE_MIN` | unclassified | 525600000.0 / 525600000.0 / 525600000.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21721(StockStrategy.evaluate_reentry) | vec_decisions/stocks_reentry_sources.py:19(fires) |
-| `PRICE_CROSS_BACK_REENTRY_ENABLED` | reentry | True / True / True | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21717(StockStrategy.evaluate_reentry) | vec_decisions/stocks_reentry_sources.py:18(fires) |
+| `PRICE_CROSSED_HTF_AGAINST_VETO_BAR_TURN_BYPASS` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:42617(process_single_reentry_evaluation) · — | — |
+| `PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED` | unclassified | True / True / True | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42586(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17292(process_single_reentry_evaluation_epq) | vec_decisions/reentry_epq_vec.py:109(mandatory_price_cross) |
+| `PRICE_CROSSED_HTF_AGAINST_VETO_HA_BYPASS` | unclassified | True / True / True | — | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:42610(process_single_reentry_evaluation) · — | vec_decisions/reentry_epq_vec.py:117(mandatory_price_cross) |
+| `PRICE_CROSS_BACK_BAND_PCT` | unclassified | 0.3 / 0.3 / 0.3 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12042(process_position)<br>(+1) | vec_decisions/stocks_reentry_sources.py:20(fires) |
+| `PRICE_CROSS_BACK_MAX_AGE_MIN` | unclassified | 525600000.0 / 525600000.0 / 525600000.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21782(StockStrategy.evaluate_reentry) | vec_decisions/stocks_reentry_sources.py:19(fires) |
+| `PRICE_CROSS_BACK_REENTRY_ENABLED` | reentry | True / True / True | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21778(StockStrategy.evaluate_reentry) | vec_decisions/stocks_reentry_sources.py:18(fires) |
 | `PRICE_REFRESH_INTERVAL` | unclassified | 3.0 / 3.0 / 3.0 | — | DEAD | DEAD | — · — | — |
 | `PRICE_UPDATE_INTERVAL` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | DEAD | — · — | — |
 | `PROGRESSIVE_LOCK_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | strategy_enhancements.py:86(check_progressive_lock) · — | — |
@@ -1810,7 +1810,7 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `QUICK_CYCLE_TP_MIN_GAIN_PCT` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | DEAD | — · — | — |
 | `QUICK_CYCLE_TP_REDUCE_FRAC` | reduce | 0.5 / 0.5 / 0.5 | — | DEAD | DEAD | — · — | — |
 | `QUICK_CYCLE_TP_STOCH_AGAINST_VEC_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
-| `QUICK_ENTRY_ABLATION_SUPPRESS_VEC` | entry | <absent> / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11739(simulate_one) |
+| `QUICK_ENTRY_ABLATION_SUPPRESS_VEC` | entry | <absent> / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11784(simulate_one) |
 | `QUICK_HEDGE_SAME_SYM_LAST_RESORT_AGE_MIN` | unclassified | 240.0 / 240.0 / 240.0 | — | DEAD | DEAD | — · — | — |
 | `QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `QUICK_HEDGE_SAME_SYM_LAST_RESORT_GAIN_PCT` | unclassified | -3.0 / -3.0 / -3.0 | — | DEAD | DEAD | — · — | — |
@@ -1824,23 +1824,23 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `QUICK_OPEN_STRONG_K_SHORT_MIN` | unclassified | 75.0 / 75.0 / 75.0 | — | DEAD | DEAD | — · — | — |
 | `QUICK_OPEN_STRONG_VEC_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `QUICK_OPEN_STRONG_VEL_MIN` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | DEAD | — · — | — |
-| `QUICK_RECOVERY_WINDOW_MIN` | unclassified | 120.0 / 120.0 / 120.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:42733(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17348(process_single_reentry_evaluation_epq) | — |
+| `QUICK_RECOVERY_WINDOW_MIN` | unclassified | 120.0 / 120.0 / 120.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:42773(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17348(process_single_reentry_evaluation_epq) | — |
 | `QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED` | reduce | False / False / False | — | DEAD | DEAD | — · — | — |
 | `QUICK_SENTIMENT_CUT_GAIN_VEC_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `QUICK_SENTIMENT_CUT_MIN_GAIN` | unclassified | 0.5 / 0.5 / 0.5 | — | DEAD | DEAD | — · — | — |
 | `QUICK_SENTIMENT_CUT_REDUCE_FRAC` | reduce | 0.5 / 0.5 / 0.5 | — | DEAD | DEAD | — · — | — |
-| `R1_DC_LOW4_3M_EMERGENCY_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:46926(process_position) · tradier_manage.py:6556(_cfg)<br>(+1) | vec_decisions/process_position_stocks__r1_frozen_stops.py:50(check_r1_breach) [UNREACHABLE]<br>vec_decisions/process_position_stocks__r1_frozen_stops.py:67(check_r1_breach_vec) [UNREACHABLE] |
+| `R1_DC_LOW4_3M_EMERGENCY_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:46966(process_position) · tradier_manage.py:6617(_cfg)<br>(+1) | vec_decisions/process_position_stocks__r1_frozen_stops.py:50(check_r1_breach) [UNREACHABLE]<br>vec_decisions/process_position_stocks__r1_frozen_stops.py:67(check_r1_breach_vec) [UNREACHABLE] |
 | `R1_NEWBORN_WINDOW_MIN` | unclassified | 15.0 / 15.0 / 15.0 | — | LIVE_ONLY | LIVE_ONLY | btc_loop.py:520(should_exit_btc) · btc_loop.py:520(should_exit_btc)<br>(+1) | — |
-| `R1_REQUIRE_WT15_ADVERSE` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:10877(process_position) | — |
-| `R1_RESTRICT_TO_OVERBOUGHT_BREAKOUT` | unclassified | True / <absent> / True | — | LIVE_ONLY | DEAD | ez_manage.py:46935(process_position) · — | — |
+| `R1_REQUIRE_WT15_ADVERSE` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:10938(process_position) | — |
+| `R1_RESTRICT_TO_OVERBOUGHT_BREAKOUT` | unclassified | True / <absent> / True | — | LIVE_ONLY | DEAD | ez_manage.py:46975(process_position) · — | — |
 | `R1_TF` | unclassified | 3m / 5m / 3m | — | DEAD | DEAD | — · — | — |
-| `R1_USE_DC_4BAR` | unclassified | False / True / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44156(_process_single_override_check)<br>(+3) · tradier_manage.py:10870(process_position)<br>(+3) | — |
-| `R2_PEAK_MIN_PCT` | exit | 0.5 / 0.5 / 0.5 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47399(process_position) · tradier_manage.py:11009(process_position) | vec_decisions/live_exit_chain.py:225(step_pp)<br>vec_decisions/process_position_crypto__r2_wt_vel_slow.py:57(_r2_params) [UNREACHABLE] |
-| `R2_TF_LIST` | unclassified | ('15m',) / ('1h', '4h', 'D') / ('15m',) | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:47408(process_position) · tradier_manage.py:11016(process_position) | — |
-| `R3_GAIN_MAX_PCT` | unclassified | 0.0 / 0.0 / 0.0 | — | LIVE_ONLY | DEAD | ez_manage.py:47495(process_position) · — | — |
-| `R3_HEDGE_INVARIANT_DUMP_ENABLED` | unclassified | True / False / True | — | LIVE_ONLY | DEAD | ez_manage.py:47491(process_position) · — | — |
-| `R3_HTF_FLIP_4H_TIER_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:47769(process_position) · tradier_manage.py:11091(process_position) | vec_decisions/process_position_stocks__r3_htf_flip.py:62(_r3_htf_flip_flags) [UNREACHABLE]<br>vec_decisions/test_process_position_stocks__r3_htf_flip.py:20(_run) [UNREACHABLE] |
-| `R3_HTF_FLIP_NEWBORN_WINDOW_MIN` | unclassified | 15.0 / 15.0 / 15.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11051(process_position) | — |
+| `R1_USE_DC_4BAR` | unclassified | False / True / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44196(_process_single_override_check)<br>(+3) · tradier_manage.py:10931(process_position)<br>(+3) | — |
+| `R2_PEAK_MIN_PCT` | exit | 0.5 / 0.5 / 0.5 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47439(process_position) · tradier_manage.py:11070(process_position) | vec_decisions/live_exit_chain.py:225(step_pp)<br>vec_decisions/process_position_crypto__r2_wt_vel_slow.py:57(_r2_params) [UNREACHABLE] |
+| `R2_TF_LIST` | unclassified | ('15m',) / ('1h', '4h', 'D') / ('15m',) | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:47448(process_position) · tradier_manage.py:11077(process_position) | — |
+| `R3_GAIN_MAX_PCT` | unclassified | 0.0 / 0.0 / 0.0 | — | LIVE_ONLY | DEAD | ez_manage.py:47535(process_position) · — | — |
+| `R3_HEDGE_INVARIANT_DUMP_ENABLED` | unclassified | True / False / True | — | LIVE_ONLY | DEAD | ez_manage.py:47531(process_position) · — | — |
+| `R3_HTF_FLIP_4H_TIER_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:47809(process_position) · tradier_manage.py:11152(process_position) | vec_decisions/process_position_stocks__r3_htf_flip.py:62(_r3_htf_flip_flags) [UNREACHABLE]<br>vec_decisions/test_process_position_stocks__r3_htf_flip.py:20(_run) [UNREACHABLE] |
+| `R3_HTF_FLIP_NEWBORN_WINDOW_MIN` | unclassified | 15.0 / 15.0 / 15.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11112(process_position) | — |
 | `RANKINGS_DIR` | unclassified | <expr> BASE_PATH / 'rankings' / <absent> / <expr> Path('data') | — | LIVE_ONLY | LIVE_ONLY | ez_crosses.py:40(<module>)<br>(+1) · ez_crosses.py:40(<module>)<br>(+1) | — |
 | `RANKING_LOOP_SLEEP_SECONDS` | unclassified | 120 / 120 / 120 | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:7592(ranking_loop) · ez_rankings.py:7592(ranking_loop) | — |
 | `RANKING_MULT_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:1420(calculate_dynamic_quantity) · ez_positions_quick.py:1420(calculate_dynamic_quantity) | — |
@@ -1855,14 +1855,14 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `RATIO_CLOSE_LOSING_MIN_LOSS_PCT` | unclassified | -5.0 / -5.0 / -5.0 | — | DEAD | DEAD | — · — | — |
 | `RATIO_CLOSE_LOSING_MIN_PNL_DELTA_PCT` | unclassified | 10.0 / 10.0 / 10.0 | — | DEAD | DEAD | — · — | — |
 | `RATIO_CLOSE_LOSING_MIN_SKEW_PP` | unclassified | 40.0 / 40.0 / 40.0 | — | DEAD | DEAD | — · — | — |
-| `RATIO_CLOSE_LOSING_OVERWEIGHT` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:37692(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
-| `RATIO_EMERGENCY_EXIT_COOLDOWN` | exit | 999999.0 / 999999.0 / 999999.0 | — | LIVE_ONLY | DEAD | ez_manage.py:37784(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
+| `RATIO_CLOSE_LOSING_OVERWEIGHT` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:37732(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
+| `RATIO_EMERGENCY_EXIT_COOLDOWN` | exit | 999999.0 / 999999.0 / 999999.0 | — | LIVE_ONLY | DEAD | ez_manage.py:37824(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
 | `RATIO_EMERGENCY_EXIT_ENABLED` | exit | False / False / False | — | DEAD | DEAD | — · — | — |
-| `RATIO_EMERGENCY_EXIT_MAX_LOSS_PCT` | exit | -999.0 / -999.0 / -999.0 | — | LIVE_ONLY | DEAD | ez_manage.py:37778(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
-| `RATIO_EMERGENCY_EXIT_MAX_PER_CYCLE` | exit | 0 / 0 / 0 | — | LIVE_ONLY | DEAD | ez_manage.py:37781(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
-| `RATIO_EMERGENCY_EXIT_THRESHOLD` | exit | 999.0 / 999.0 / 999.0 | — | LIVE_ONLY | DEAD | ez_manage.py:37775(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
+| `RATIO_EMERGENCY_EXIT_MAX_LOSS_PCT` | exit | -999.0 / -999.0 / -999.0 | — | LIVE_ONLY | DEAD | ez_manage.py:37818(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
+| `RATIO_EMERGENCY_EXIT_MAX_PER_CYCLE` | exit | 0 / 0 / 0 | — | LIVE_ONLY | DEAD | ez_manage.py:37821(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
+| `RATIO_EMERGENCY_EXIT_THRESHOLD` | exit | 999.0 / 999.0 / 999.0 | — | LIVE_ONLY | DEAD | ez_manage.py:37815(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
 | `RATIO_MULTIPLIER` | unclassified | 3.0 / 3.0 / 3.0 | — | LIVE_ONLY | DEAD | ez_manage.py:275(compute_applied_ratio)<br>(+1) · — | — |
-| `RATIO_MULTIPLIER_TRADIER` | unclassified | <absent> / 3.5 / 3.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:23225(TradierTradeManager.calculate_unified_market_ratio) | — |
+| `RATIO_MULTIPLIER_TRADIER` | unclassified | <absent> / 3.5 / 3.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:23286(TradierTradeManager.calculate_unified_market_ratio) | — |
 | `RATIO_PNL_ACCELERATION` | unclassified | 2.5 / 2.5 / 2.5 | — | DEAD | DEAD | — · — | — |
 | `RATIO_PNL_DELTA_THRESHOLD` | unclassified | 3.0 / 3.0 / 3.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:13120(execute_trade_wrapper) · ez_positions_quick.py:13120(execute_trade_wrapper) | — |
 | `RATIO_PNL_DYNAMIC_GATES_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:13118(execute_trade_wrapper) · ez_positions_quick.py:13118(execute_trade_wrapper) | — |
@@ -1871,9 +1871,9 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `RATIO_PNL_TARGET_LONG_MAX` | unclassified | 90.0 / 90.0 / 90.0 | — | DEAD | DEAD | — · — | — |
 | `RATIO_PNL_TARGET_LONG_MIN` | unclassified | 10.0 / 10.0 / 10.0 | — | DEAD | DEAD | — · — | — |
 | `RATIO_PNL_WEIGHT` | unclassified | 0.5 / 0.5 / 0.5 | — | DEAD | DEAD | — · — | — |
-| `RATIO_PNL_WEIGHT_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:36993(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
-| `RATIO_REBALANCE_APPLY_HTF_GATE` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:37534(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
-| `RATIO_REBALANCE_CLOSE_OVERWEIGHT_ONLY` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:37398(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
+| `RATIO_PNL_WEIGHT_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:37033(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
+| `RATIO_REBALANCE_APPLY_HTF_GATE` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:37574(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
+| `RATIO_REBALANCE_CLOSE_OVERWEIGHT_ONLY` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:37438(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
 | `RATIO_REBALANCE_COOLDOWN_CRASH` | unclassified | 1800.0 / 1800.0 / 1800.0 | — | DEAD | DEAD | — · — | — |
 | `RATIO_REBALANCE_COOLDOWN_EXTREME` | unclassified | 3600.0 / 3600.0 / 3600.0 | — | DEAD | DEAD | — · — | — |
 | `RATIO_REBALANCE_COOLDOWN_NORMAL` | unclassified | 3600.0 / 3600.0 / 3600.0 | — | DEAD | DEAD | — · — | — |
@@ -1889,14 +1889,14 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `RATIO_TRIM_MIN_AGE_S` | unclassified | 7200.0 / 7200.0 / 7200.0 | — | DEAD | DEAD | — · — | — |
 | `RATIO_TRIM_MIN_INTERVAL_S` | unclassified | 14400.0 / 14400.0 / 14400.0 | — | DEAD | DEAD | — · — | — |
 | `REACTIVE_MODE` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_indicators.py:2573(IndicatorOrchestrator.__init__) · ez_indicators.py:2573(IndicatorOrchestrator.__init__) | — |
-| `REBAL_ATTEMPT_COOLDOWN_SEC` | unclassified | 3600.0 / 3600.0 / 3600.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22997(TradierTradeManager.periodic_sentiment_rebalancing) | — |
-| `RECENT_REDUCTION_GUARD_USE_4BAR` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:31859(MultiAccountTradeManager.execute_now) · — | — |
-| `RECOVERY_AUGMENT_BAND_PCT` | augment | 0.3 / 1.0 / 0.3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21776(StockStrategy.evaluate_reentry) | — |
-| `RECOVERY_AUGMENT_ENABLED` | augment | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21766(StockStrategy.evaluate_reentry) | — |
-| `RECOVERY_AUGMENT_MAX_AGE_MIN` | augment | 240.0 / 240.0 / 240.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21777(StockStrategy.evaluate_reentry) | — |
-| `RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE` | augment | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21774(StockStrategy.evaluate_reentry) | — |
-| `RECOVERY_AUGMENT_REQUIRE_WT_CROSS` | augment | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21789(StockStrategy.evaluate_reentry) | — |
-| `RECOVERY_AUGMENT_SIZE_PCT` | augment | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21809(StockStrategy.evaluate_reentry) | — |
+| `REBAL_ATTEMPT_COOLDOWN_SEC` | unclassified | 3600.0 / 3600.0 / 3600.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:23058(TradierTradeManager.periodic_sentiment_rebalancing) | — |
+| `RECENT_REDUCTION_GUARD_USE_4BAR` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:31899(MultiAccountTradeManager.execute_now) · — | — |
+| `RECOVERY_AUGMENT_BAND_PCT` | augment | 0.3 / 1.0 / 0.3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21837(StockStrategy.evaluate_reentry) | — |
+| `RECOVERY_AUGMENT_ENABLED` | augment | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21827(StockStrategy.evaluate_reentry) | — |
+| `RECOVERY_AUGMENT_MAX_AGE_MIN` | augment | 240.0 / 240.0 / 240.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21838(StockStrategy.evaluate_reentry) | — |
+| `RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE` | augment | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21835(StockStrategy.evaluate_reentry) | — |
+| `RECOVERY_AUGMENT_REQUIRE_WT_CROSS` | augment | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21850(StockStrategy.evaluate_reentry) | — |
+| `RECOVERY_AUGMENT_SIZE_PCT` | augment | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21870(StockStrategy.evaluate_reentry) | — |
 | `REDIS_1M_TAIL` | unclassified | 1500 / <absent> / 1500 | — | DEAD | DEAD | — · — | — |
 | `REDIS_CHANNEL_MARKET_DATA` | unclassified | tradier_indicators_channel / tradier_indicators_channel / tradier_indi | — | DEAD | DEAD | — · — | — |
 | `REDIS_CHANNEL_POSITIONS` | unclassified | tradier_positions_channel / tradier_positions_channel / tradier_positi | — | DEAD | LIVE_ONLY | — · tradier_positions.py:468(RedisPositionManager.save_positions)<br>(+1) | — |
@@ -1908,7 +1908,7 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `REDIS_KEY_MARKET_DATA` | unclassified | latest_market_data / tradier_indicators_latest / latest_market_data | — | LIVE_ONLY | LIVE_ONLY | ez_indicators.py:2753(IndicatorOrchestrator._load_existing_data)<br>(+10) · ez_indicators.py:2753(IndicatorOrchestrator._load_existing_data)<br>(+6) | — |
 | `REDIS_PORT` | unclassified | 6379 / 6379 / 6379 | — | LIVE_ONLY | LIVE_ONLY | ez_indicators.py:2577(IndicatorOrchestrator.__init__)<br>(+8) · ez_indicators.py:2577(IndicatorOrchestrator.__init__)<br>(+9) | — |
 | `REDUCE_HUGE_LOSS_THRESHOLD` | reduce | -999.0 / -999.0 / -999.0 | — | DEAD | DEAD | — · — | — |
-| `REDUCTION_COOLDOWN_SECONDS` | unclassified | 15.0 / 30.0 / 15.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:21561(MultiAccountTradeManager._handle_signal_message)<br>(+8) · tradier_manage.py:25983(TradierTradeManager.execute_now) | — |
+| `REDUCTION_COOLDOWN_SECONDS` | unclassified | 15.0 / 30.0 / 15.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:21601(MultiAccountTradeManager._handle_signal_message)<br>(+8) · tradier_manage.py:26044(TradierTradeManager.execute_now) | — |
 | `RED_ZONE_AUGMENT_GATE_ENABLED` | augment | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:12790(execute_trade_wrapper) · ez_positions_quick.py:12790(execute_trade_wrapper) | — |
 | `RED_ZONE_FALLBACK_K15_HIGH` | unclassified | 80.0 / 80.0 / 80.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:12840(execute_trade_wrapper) · ez_positions_quick.py:12840(execute_trade_wrapper) | — |
 | `RED_ZONE_FALLBACK_K15_LOW` | unclassified | 20.0 / 20.0 / 20.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:12841(execute_trade_wrapper) · ez_positions_quick.py:12841(execute_trade_wrapper) | — |
@@ -1918,75 +1918,75 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `RED_ZONE_MIN_DISTANCE_PCT` | unclassified | 0.4 / 0.4 / 0.4 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:12794(execute_trade_wrapper) · ez_positions_quick.py:12794(execute_trade_wrapper) | — |
 | `RED_ZONE_MIN_WALL_NOTIONAL_USD` | unclassified | 50000 / 50000 / 50000 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:12795(execute_trade_wrapper) · ez_positions_quick.py:12795(execute_trade_wrapper) | — |
 | `RED_ZONE_STALE_MAX_SEC` | unclassified | 30.0 / 30.0 / 30.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:12796(execute_trade_wrapper) · ez_positions_quick.py:12796(execute_trade_wrapper) | — |
-| `RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED` | augment | <absent> / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14213(queue_trade_action) | — |
-| `RED_ZONE_TRADIER_GATE_ENABLED` | unclassified | <absent> / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14211(queue_trade_action) | — |
-| `RED_ZONE_TRADIER_MIN_DISTANCE_PCT` | unclassified | <absent> / 0.5 / 0.25 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14217(queue_trade_action) | — |
-| `RED_ZONE_TRADIER_MIN_OI_AT_WALL` | unclassified | 1000 / 1000 / 1000 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14218(queue_trade_action) | — |
-| `RED_ZONE_TRADIER_STALE_MAX_HOURS` | unclassified | 4.0 / 4.0 / 4.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14219(queue_trade_action) | — |
+| `RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED` | augment | <absent> / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14274(queue_trade_action) | — |
+| `RED_ZONE_TRADIER_GATE_ENABLED` | unclassified | <absent> / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14272(queue_trade_action) | — |
+| `RED_ZONE_TRADIER_MIN_DISTANCE_PCT` | unclassified | <absent> / 0.5 / 0.25 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14278(queue_trade_action) | — |
+| `RED_ZONE_TRADIER_MIN_OI_AT_WALL` | unclassified | 1000 / 1000 / 1000 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14279(queue_trade_action) | — |
+| `RED_ZONE_TRADIER_STALE_MAX_HOURS` | unclassified | 4.0 / 4.0 / 4.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14280(queue_trade_action) | — |
 | `REENTER_ORPHAN_THRESHOLD` | unclassified | <expr> field(default_factory=lambda: timedelta(days=70)) / <absent> /  | — | DEAD | DEAD | — · — | — |
 | `REENTER_SAVE_DEBOUNCE_SECONDS` | unclassified | 30 / 30 / 30 | — | DEAD | DEAD | — · — | — |
-| `REENTRY_60MIN_MIN_PCT` | reentry | 0.05 / 0.05 / 0.05 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27213(TradierTradeManager.reentry_monitor_loop) | — |
-| `REENTRY_60MIN_UNCONDITIONAL_ENABLED` | reentry | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27211(TradierTradeManager.reentry_monitor_loop) | — |
-| `REENTRY_60MIN_WINDOW_MIN` | reentry | 1440.0 / 1440.0 / 1440.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27212(TradierTradeManager.reentry_monitor_loop) | — |
-| `REENTRY_AGGRESSIVE_WINDOW_MIN` | reentry | 30.0 / 30.0 / 30.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:36694(MultiAccountTradeManager.reentry_enforcement_loop) · tradier_manage.py:27200(TradierTradeManager.reentry_monitor_loop) | — |
-| `REENTRY_APPLY_ENTRY_GATES_ENABLED` | reentry | False / False / False | — | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:29888(MultiAccountTradeManager.execute_now) · — | v12_quick_engine.py:11635(simulate_one) |
+| `REENTRY_60MIN_MIN_PCT` | reentry | 0.05 / 0.05 / 0.05 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27274(TradierTradeManager.reentry_monitor_loop) | — |
+| `REENTRY_60MIN_UNCONDITIONAL_ENABLED` | reentry | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27272(TradierTradeManager.reentry_monitor_loop) | — |
+| `REENTRY_60MIN_WINDOW_MIN` | reentry | 1440.0 / 1440.0 / 1440.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27273(TradierTradeManager.reentry_monitor_loop) | — |
+| `REENTRY_AGGRESSIVE_WINDOW_MIN` | reentry | 30.0 / 30.0 / 30.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:36734(MultiAccountTradeManager.reentry_enforcement_loop) · tradier_manage.py:27261(TradierTradeManager.reentry_monitor_loop) | — |
+| `REENTRY_APPLY_ENTRY_GATES_ENABLED` | reentry | False / False / False | — | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:29928(MultiAccountTradeManager.execute_now) · — | v12_quick_engine.py:11680(simulate_one) |
 | `REENTRY_B16_MIDRANGE_ENABLED` | reentry | True / True / True | — | LIVE_ONLY | DEAD | position_evaluator.py:222(evaluate_reentry_core)<br>(+1) · — | — |
-| `REENTRY_BAR_STRUCTURE_ENABLED` | reentry | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:42245(process_single_reentry_evaluation) · — | — |
-| `REENTRY_BAR_STRUCTURE_TF` | reentry | 3m / 5m / 3m | — | LIVE_ONLY | DEAD | ez_manage.py:42246(process_single_reentry_evaluation) · — | — |
-| `REENTRY_BLANKET_FIRE_ENABLED` | reentry | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12520(simulate_one) |
-| `REENTRY_BREAKOUT_ENABLED` | reentry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19277(StockStrategy.evaluate_stop) | — |
-| `REENTRY_COOLDOWN_S` | reentry | 60.0 / 60.0 / 60.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:36400(MultiAccountTradeManager.reentry_enforcement_loop)<br>(+1) · ez_positions_quick.py:16575(reentry_enforcement_loop_epq) | — |
+| `REENTRY_BAR_STRUCTURE_ENABLED` | reentry | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:42285(process_single_reentry_evaluation) · — | — |
+| `REENTRY_BAR_STRUCTURE_TF` | reentry | 3m / 5m / 3m | — | LIVE_ONLY | DEAD | ez_manage.py:42286(process_single_reentry_evaluation) · — | — |
+| `REENTRY_BLANKET_FIRE_ENABLED` | reentry | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12565(simulate_one) |
+| `REENTRY_BREAKOUT_ENABLED` | reentry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19338(StockStrategy.evaluate_stop) | — |
+| `REENTRY_COOLDOWN_S` | reentry | 60.0 / 60.0 / 60.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:36440(MultiAccountTradeManager.reentry_enforcement_loop)<br>(+1) · ez_positions_quick.py:16575(reentry_enforcement_loop_epq) | — |
 | `REENTRY_CROSS_MAX_BARS_AGO` | reentry | 5 / 5 / 5 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:16922(evaluate_reentry_epq) · ez_positions_quick.py:16922(evaluate_reentry_epq) | — |
 | `REENTRY_DISPATCH_BACKOFF_S` | reentry | 0.4 / 0.4 / 0.4 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:128(_dispatch_reentry_guaranteed) · ez_positions_quick.py:128(_dispatch_reentry_guaranteed)<br>(+1) | — |
 | `REENTRY_DISPATCH_MAX_ATTEMPTS` | reentry | 3 / 3 / 3 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:127(_dispatch_reentry_guaranteed) · ez_positions_quick.py:127(_dispatch_reentry_guaranteed)<br>(+1) | — |
-| `REENTRY_EPQ_MODEL_ENABLED` | reentry | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12221(simulate_one)<br>v12_quick_engine.py:12526(simulate_one) |
+| `REENTRY_EPQ_MODEL_ENABLED` | reentry | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12266(simulate_one)<br>v12_quick_engine.py:12571(simulate_one) |
 | `REENTRY_ESCALATION_CRIT_MIN` | reentry | 60.0 / 60.0 / 60.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:15799(check_entry_candidates_for_account.worker) · ez_positions_quick.py:15799(check_entry_candidates_for_account.worker) | — |
 | `REENTRY_ESCALATION_WARN_MIN` | reentry | 30.0 / 30.0 / 30.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:15798(check_entry_candidates_for_account.worker) · ez_positions_quick.py:15798(check_entry_candidates_for_account.worker) | — |
-| `REENTRY_FAVORABLE_HTF_MIN` | reentry | 2 / 2 / 2 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36635(MultiAccountTradeManager.reentry_enforcement_loop) · tradier_manage.py:27189(TradierTradeManager.reentry_monitor_loop) | vec_decisions/reentry_pathways.py:24(favorable_move_mask) |
-| `REENTRY_FAVORABLE_MOVE_PCT` | reentry | 1.0 / 1.0 / 1.0 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36621(MultiAccountTradeManager.reentry_enforcement_loop) · tradier_manage.py:27182(TradierTradeManager.reentry_monitor_loop) | v12_quick_engine.py:12533(simulate_one) |
-| `REENTRY_FAVORABLE_QTY_MULT` | reentry | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36676(MultiAccountTradeManager.reentry_enforcement_loop) · — | — |
-| `REENTRY_GOLDEN_BLOCK_ENABLED` | reentry | <absent> / False / <absent> | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22078(StockStrategy.evaluate_reentry) | — |
+| `REENTRY_FAVORABLE_HTF_MIN` | reentry | 2 / 2 / 2 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36675(MultiAccountTradeManager.reentry_enforcement_loop) · tradier_manage.py:27250(TradierTradeManager.reentry_monitor_loop) | vec_decisions/reentry_pathways.py:24(favorable_move_mask) |
+| `REENTRY_FAVORABLE_MOVE_PCT` | reentry | 1.0 / 1.0 / 1.0 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36661(MultiAccountTradeManager.reentry_enforcement_loop) · tradier_manage.py:27243(TradierTradeManager.reentry_monitor_loop) | v12_quick_engine.py:12578(simulate_one) |
+| `REENTRY_FAVORABLE_QTY_MULT` | reentry | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36716(MultiAccountTradeManager.reentry_enforcement_loop) · — | — |
+| `REENTRY_GOLDEN_BLOCK_ENABLED` | reentry | <absent> / False / <absent> | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22139(StockStrategy.evaluate_reentry) | — |
 | `REENTRY_GRACE_MINUTES` | reentry | 30.0 / <absent> / 30.0 | — | VEC_ONLY | VEC_ONLY | — · — | vec_decisions/live_exit_chain.py:100(step) |
-| `REENTRY_GR_HLHH_MODE` | reentry | OR / OR / OR | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27282(TradierTradeManager.reentry_monitor_loop) | — |
-| `REENTRY_GR_HTF_MIN_TFS` | reentry | 0 / 0 / 0 | — | LIVE_ONLY | DEAD | ez_manage.py:38759(evaluate_reentry) · — | — |
-| `REENTRY_GR_MIN_IND` | reentry | 2 / 2 / 2 | — | LIVE_ONLY | DEAD | ez_manage.py:38764(evaluate_reentry) · — | — |
-| `REENTRY_GR_MIN_TFS` | reentry | 2 / 2 / 2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27283(TradierTradeManager.reentry_monitor_loop) | — |
-| `REENTRY_K15M_PARTIAL_ENABLED` | reentry | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:42879(process_single_reentry_evaluation) · — | — |
-| `REENTRY_K15M_PARTIAL_THRESHOLD` | reentry | 90.0 / 90.0 / 90.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:36667(MultiAccountTradeManager.reentry_enforcement_loop)<br>(+1) · tradier_manage.py:27193(TradierTradeManager.reentry_monitor_loop) | — |
-| `REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED` | reentry | False / True / True | — | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:55587(_price_level_reentry_monitor) · tradier_manage.py:12045(process_position) | — |
-| `REENTRY_LIVE_MONITOR_DC_BREAK_TF` | reentry | 3m / 5m / 3m | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:55590(_price_level_reentry_monitor) · tradier_manage.py:12046(process_position) | — |
-| `REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR` | reentry | True / False / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:55591(_price_level_reentry_monitor) · tradier_manage.py:12047(process_position) | — |
-| `REENTRY_LIVE_MONITOR_ENABLED` | reentry | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:55495(_price_level_reentry_monitor) · — | — |
-| `REENTRY_LIVE_MONITOR_INTERVAL_S` | reentry | 30 / 30 / 30 | — | LIVE_ONLY | DEAD | ez_manage.py:55680(_price_level_reentry_monitor_loop) · — | — |
-| `REENTRY_LIVE_MONITOR_PARTIAL_PCT` | reentry | 0.5 / 0.5 / 0.5 | — | LIVE_ONLY | DEAD | ez_manage.py:55498(_price_level_reentry_monitor) · — | — |
-| `REENTRY_MATERIAL_OVERSHOOT_PCT` | reentry | 0.5 / 0.5 / 0.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12024(process_position) | — |
+| `REENTRY_GR_HLHH_MODE` | reentry | OR / OR / OR | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27343(TradierTradeManager.reentry_monitor_loop) | — |
+| `REENTRY_GR_HTF_MIN_TFS` | reentry | 0 / 0 / 0 | — | LIVE_ONLY | DEAD | ez_manage.py:38799(evaluate_reentry) · — | — |
+| `REENTRY_GR_MIN_IND` | reentry | 2 / 2 / 2 | — | LIVE_ONLY | DEAD | ez_manage.py:38804(evaluate_reentry) · — | — |
+| `REENTRY_GR_MIN_TFS` | reentry | 2 / 2 / 2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27344(TradierTradeManager.reentry_monitor_loop) | — |
+| `REENTRY_K15M_PARTIAL_ENABLED` | reentry | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:42919(process_single_reentry_evaluation) · — | — |
+| `REENTRY_K15M_PARTIAL_THRESHOLD` | reentry | 90.0 / 90.0 / 90.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:36707(MultiAccountTradeManager.reentry_enforcement_loop)<br>(+1) · tradier_manage.py:27254(TradierTradeManager.reentry_monitor_loop) | — |
+| `REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED` | reentry | False / True / True | — | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:55627(_price_level_reentry_monitor) · tradier_manage.py:12106(process_position) | — |
+| `REENTRY_LIVE_MONITOR_DC_BREAK_TF` | reentry | 3m / 5m / 3m | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:55630(_price_level_reentry_monitor) · tradier_manage.py:12107(process_position) | — |
+| `REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR` | reentry | True / False / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:55631(_price_level_reentry_monitor) · tradier_manage.py:12108(process_position) | — |
+| `REENTRY_LIVE_MONITOR_ENABLED` | reentry | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:55535(_price_level_reentry_monitor) · — | — |
+| `REENTRY_LIVE_MONITOR_INTERVAL_S` | reentry | 30 / 30 / 30 | — | LIVE_ONLY | DEAD | ez_manage.py:55720(_price_level_reentry_monitor_loop) · — | — |
+| `REENTRY_LIVE_MONITOR_PARTIAL_PCT` | reentry | 0.5 / 0.5 / 0.5 | — | LIVE_ONLY | DEAD | ez_manage.py:55538(_price_level_reentry_monitor) · — | — |
+| `REENTRY_MATERIAL_OVERSHOOT_PCT` | reentry | 0.5 / 0.5 / 0.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12085(process_position) | — |
 | `REENTRY_MIN_GAP_MINUTES` | reentry | 0.0 / 0.0 / 0.0 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:15723(check_entry_candidates_for_account.worker)<br>(+1) · ez_positions_quick.py:15723(check_entry_candidates_for_account.worker)<br>(+2) | vec_decisions/reentry_tiers.py:21(tier_fire) |
-| `REENTRY_NEAR_EXIT_CHURN_OK` | reentry | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:42250(process_single_reentry_evaluation) · — | — |
+| `REENTRY_NEAR_EXIT_CHURN_OK` | reentry | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:42290(process_single_reentry_evaluation) · — | — |
 | `REENTRY_NEVER_SKIP_ENABLED` | reentry | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:125(_dispatch_reentry_guaranteed) · ez_positions_quick.py:125(_dispatch_reentry_guaranteed)<br>(+1) | — |
-| `REENTRY_OBLIGATORY_MODEL_ENABLED` | reentry | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12227(simulate_one)<br>v12_quick_engine.py:12526(simulate_one) |
-| `REENTRY_OPPOSITION_MAX_FLAT_BARS` | reentry | 12 / 12 / 12 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12031(process_position) | — |
-| `REENTRY_POSITIVE_EXIT_SIZE_MULT` | reentry | 1.25 / 1.25 / 1.25 | — | LIVE_ONLY | DEAD | ez_manage.py:42124(process_single_reentry_evaluation) · — | — |
+| `REENTRY_OBLIGATORY_MODEL_ENABLED` | reentry | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12272(simulate_one)<br>v12_quick_engine.py:12571(simulate_one) |
+| `REENTRY_OPPOSITION_MAX_FLAT_BARS` | reentry | 12 / 12 / 12 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12092(process_position) | — |
+| `REENTRY_POSITIVE_EXIT_SIZE_MULT` | reentry | 1.25 / 1.25 / 1.25 | — | LIVE_ONLY | DEAD | ez_manage.py:42164(process_single_reentry_evaluation) · — | — |
 | `REENTRY_RALLY_HTF_MIN` | reentry | 1 / 1 / 1 | — | LIVE_ONLY | LIVE_ONLY | ez_reentry_vectorized.py:112(VectorizedReentryEvaluator._precompute) · ez_reentry_vectorized.py:112(VectorizedReentryEvaluator._precompute)<br>(+2) | — |
-| `REENTRY_RECLAIM_STALE_BYPASS_ENABLED` | reentry | <absent> / True / <absent> | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27137(TradierTradeManager.reentry_monitor_loop) | — |
+| `REENTRY_RECLAIM_STALE_BYPASS_ENABLED` | reentry | <absent> / True / <absent> | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27198(TradierTradeManager.reentry_monitor_loop) | — |
 | `REENTRY_SYMGATE_ENABLED` | reentry | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:15725(check_entry_candidates_for_account.worker)<br>(+1) · ez_positions_quick.py:15725(check_entry_candidates_for_account.worker)<br>(+2) | — |
 | `REENTRY_SYMGATE_SPEED_MIN` | reentry | 0.5 / 0.5 / 0.5 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:15731(check_entry_candidates_for_account.worker)<br>(+1) · ez_positions_quick.py:15731(check_entry_candidates_for_account.worker)<br>(+2) | — |
-| `REENTRY_TIER2_MAX_MINUTES_TRADIER` | reentry | <absent> / 120.0 / 60.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21862(StockStrategy.evaluate_reentry) | vec_decisions/stocks_reentry_sources.py:28(fires) |
+| `REENTRY_TIER2_MAX_MINUTES_TRADIER` | reentry | <absent> / 120.0 / 60.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21923(StockStrategy.evaluate_reentry) | vec_decisions/stocks_reentry_sources.py:28(fires) |
 | `REENTRY_TIER2_MIN_MINUTES` | reentry | 10.0 / 10.0 / 10.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:3245(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:3245(AdvancedSignalRater.rate)<br>(+1) | — |
-| `REENTRY_TIER2_MIN_MINUTES_TRADIER` | reentry | <absent> / 10.0 / 5.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21861(StockStrategy.evaluate_reentry) | vec_decisions/stocks_reentry_sources.py:27(fires) |
+| `REENTRY_TIER2_MIN_MINUTES_TRADIER` | reentry | <absent> / 10.0 / 5.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21922(StockStrategy.evaluate_reentry) | vec_decisions/stocks_reentry_sources.py:27(fires) |
 | `REENTRY_TIER2_PRICE_PCT` | reentry | 0.003 / 0.003 / 0.003 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:3244(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:3244(AdvancedSignalRater.rate)<br>(+1) | — |
-| `REENTRY_TIER2_PRICE_PCT_TRADIER` | reentry | <absent> / 0.003 / 0.0015 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21860(StockStrategy.evaluate_reentry) | — |
+| `REENTRY_TIER2_PRICE_PCT_TRADIER` | reentry | <absent> / 0.003 / 0.0015 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21921(StockStrategy.evaluate_reentry) | — |
 | `REENTRY_TIER2_SIZE_MULT` | reentry | 0.8 / 0.8 / 0.8 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:16357(check_entry_candidates_for_account.worker) · ez_positions_quick.py:16357(check_entry_candidates_for_account.worker) | — |
-| `REENTRY_TIER2_SIZE_MULT_TRADIER` | reentry | <absent> / 0.8 / 0.4 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21863(StockStrategy.evaluate_reentry) | — |
-| `REENTRY_TIER_MODEL_ENABLED` | reentry | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12475(simulate_one)<br>v12_quick_engine.py:12526(simulate_one) |
+| `REENTRY_TIER2_SIZE_MULT_TRADIER` | reentry | <absent> / 0.8 / 0.4 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21924(StockStrategy.evaluate_reentry) | — |
+| `REENTRY_TIER_MODEL_ENABLED` | reentry | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12520(simulate_one)<br>v12_quick_engine.py:12571(simulate_one) |
 | `REENTRY_WAVETREND_CONFIRM_ENABLED` | reentry | True / True / True | — | DEAD | DEAD | — · — | — |
-| `REENTRY_WT15M_CROSS_ENABLED` | reentry | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:42819(process_single_reentry_evaluation) · — | — |
-| `REENTRY_WT15M_HTF_FAVOR_REQUIRED` | reentry | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:42837(process_single_reentry_evaluation) · — | — |
+| `REENTRY_WT15M_CROSS_ENABLED` | reentry | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:42859(process_single_reentry_evaluation) · — | — |
+| `REENTRY_WT15M_HTF_FAVOR_REQUIRED` | reentry | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:42877(process_single_reentry_evaluation) · — | — |
 | `REENTRY_WT15M_K_MAX` | reentry | 50.0 / 50.0 / 50.0 | — | DEAD | DEAD | — · — | — |
 | `REGIME_ATR_RATIO_MIN` | unclassified | 0.25 / 0.25 / 0.25 | — | LIVE_ONLY | DEAD | strategy_enhancements.py:114(check_regime_allow_entry) · — | — |
 | `REGIME_BB_WIDTH_PCT_MIN` | unclassified | 2.0 / 2.0 / 2.0 | — | LIVE_ONLY | DEAD | strategy_enhancements.py:121(check_regime_allow_entry) · — | — |
 | `REGIME_BTC_MARKET_WEIGHT` | unclassified | 0.5 / 0.5 / 0.5 | — | DEAD | DEAD | — · — | — |
 | `REGIME_DC_ATR_RATIO_MIN` | unclassified | 1.5 / 1.5 / 1.5 | — | LIVE_ONLY | DEAD | strategy_enhancements.py:128(check_regime_allow_entry) · — | — |
-| `REGIME_DETECTION_ENABLED` | entry | False / False / False | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2704(AdvancedSignalRater.rate)<br>(+2) · ez_positions_quick.py:2704(AdvancedSignalRater.rate)<br>(+2) | v12_quick_engine.py:11965(simulate_one)<br>vec_decisions/entry_hard_gates.py:42(crypto_block) |
+| `REGIME_DETECTION_ENABLED` | entry | False / False / False | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2704(AdvancedSignalRater.rate)<br>(+2) · ez_positions_quick.py:2704(AdvancedSignalRater.rate)<br>(+2) | v12_quick_engine.py:12010(simulate_one)<br>vec_decisions/entry_hard_gates.py:42(crypto_block) |
 | `REGIME_MIN_DWELL_BARS` | unclassified | 16 / 16 / 16 | — | LIVE_ONLY | LIVE_ONLY | ez_regime.py:101(classify_regime) · ez_regime.py:101(classify_regime) | — |
 | `REGIME_RANGING_DC_BREAKOUT_SCORE` | unclassified | 0 / 0 / 0 | — | LIVE_ONLY | LIVE_ONLY | ez_regime.py:166(get_regime_params) · ez_regime.py:166(get_regime_params) | — |
 | `REGIME_RANGING_K_ZONE_BONUS` | unclassified | 40 / 40 / 40 | — | LIVE_ONLY | LIVE_ONLY | ez_regime.py:165(get_regime_params) · ez_regime.py:165(get_regime_params) | — |
@@ -2005,7 +2005,7 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `REGIME_TRENDING_REENTRY_SIZE_MULT` | reentry | 2.0 / 2.0 / 2.0 | — | LIVE_ONLY | LIVE_ONLY | ez_regime.py:183(get_regime_params) · ez_regime.py:183(get_regime_params) | — |
 | `REGIME_TRENDING_SLOT_RESERVE_PCT` | unclassified | 0.4 / 0.4 / 0.4 | — | LIVE_ONLY | LIVE_ONLY | ez_regime.py:182(get_regime_params) · ez_regime.py:182(get_regime_params) | — |
 | `REGIME_TRENDING_WT_REDUCE_FRAC_MED` | reduce | 0.15 / 0.15 / 0.15 | — | LIVE_ONLY | LIVE_ONLY | ez_regime.py:177(get_regime_params) · ez_regime.py:177(get_regime_params) | — |
-| `REV_MODE` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:15330(MultiAccountTradeManager.load_reversed_positions)<br>(+11) · ez_positions_quick.py:6700(HedgeEngine.monitor_and_manage_hedges)<br>(+9) | — |
+| `REV_MODE` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:15370(MultiAccountTradeManager.load_reversed_positions)<br>(+11) · ez_positions_quick.py:6700(HedgeEngine.monitor_and_manage_hedges)<br>(+9) | — |
 | `RE_2_PCT_OB` | unclassified | 95.0 / 95.0 / 95.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:16993(evaluate_reentry_epq) · ez_positions_quick.py:16993(evaluate_reentry_epq) | — |
 | `RE_2_PCT_OS` | unclassified | 5.0 / 5.0 / 5.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:16992(evaluate_reentry_epq) · ez_positions_quick.py:16992(evaluate_reentry_epq) | — |
 | `RE_2_USE_PERCENTILE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:16991(evaluate_reentry_epq) · ez_positions_quick.py:16991(evaluate_reentry_epq) | — |
@@ -2020,25 +2020,25 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `RE_5_INSIDE_COUNT_THR` | unclassified | 3 / 3 / 3 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:16974(evaluate_reentry_epq) · ez_positions_quick.py:16974(evaluate_reentry_epq) | — |
 | `RE_6_MIN_EXPANDING_TFS` | unclassified | 2 / 2 / 2 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:16951(evaluate_reentry_epq._re6_wave_phase_ok) · ez_positions_quick.py:16951(evaluate_reentry_epq._re6_wave_phase_ok) | — |
 | `RE_6_WAVE_PHASE_GATE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:16949(evaluate_reentry_epq._re6_wave_phase_ok) · ez_positions_quick.py:16949(evaluate_reentry_epq._re6_wave_phase_ok) | — |
-| `RIDICULOUS_HOLD_GUARD_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:48397(process_position) · — | — |
-| `RIDICULOUS_HOLD_HOURS` | unclassified | 720.0 / 720.0 / 720.0 | — | LIVE_ONLY | DEAD | ez_manage.py:48401(process_position) · — | — |
-| `RIDICULOUS_HOLD_REQUIRE_GAIN_NONNEG` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:48413(process_position) · — | — |
+| `RIDICULOUS_HOLD_GUARD_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:48437(process_position) · — | — |
+| `RIDICULOUS_HOLD_HOURS` | unclassified | 720.0 / 720.0 / 720.0 | — | LIVE_ONLY | DEAD | ez_manage.py:48441(process_position) · — | — |
+| `RIDICULOUS_HOLD_REQUIRE_GAIN_NONNEG` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:48453(process_position) · — | — |
 | `RIDICULOUS_HOLD_VEC_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
-| `RIDICULOUS_LOSS_PCT` | unclassified | -15.0 / -15.0 / -15.0 | — | LIVE_ONLY | DEAD | ez_manage.py:48400(process_position) · — | — |
+| `RIDICULOUS_LOSS_PCT` | unclassified | -15.0 / -15.0 / -15.0 | — | LIVE_ONLY | DEAD | ez_manage.py:48440(process_position) · — | — |
 | `RISK_FREE_RATE` | unclassified | 0.045 / 0.045 / 0.045 | — | DEAD | DEAD | — · — | — |
-| `ROTATION_BOTTOM_N` | unclassified | 8 / 8 / 8 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30850(TradierTradeManager.evaluate_rotation_entry) | — |
-| `ROTATION_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30802(TradierTradeManager.evaluate_rotation_entry) | — |
-| `ROTATION_HOLD_DAYS` | unclassified | 7 / 7 / 7 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30857(TradierTradeManager.evaluate_rotation_entry) | — |
-| `ROTATION_LOOKBACK_DAYS` | unclassified | 10 / 10 / 10 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30818(TradierTradeManager.evaluate_rotation_entry) | — |
-| `ROTATION_POSITION_SIZE` | sizing | 1200.0 / 1200.0 / 1200.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30856(TradierTradeManager.evaluate_rotation_entry) | — |
-| `ROTATION_SMA200_FILTER` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30885(TradierTradeManager.evaluate_rotation_entry)<br>(+1) | — |
-| `ROTATION_S_DC_POS_MIN_D` | unclassified | <absent> / 0.1 / 0.1 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30958(TradierTradeManager.evaluate_rotation_entry) | — |
-| `ROTATION_S_FINAL_SCORE_MAX` | unclassified | <absent> / 0.35 / 0.35 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30927(TradierTradeManager.evaluate_rotation_entry) | — |
-| `ROTATION_S_K5M_MIN` | unclassified | <absent> / 20.0 / 20.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30951(TradierTradeManager.evaluate_rotation_entry) | — |
-| `ROTATION_S_RET_EXHAUSTED_PCT` | unclassified | <absent> / 0.25 / 0.25 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30973(TradierTradeManager.evaluate_rotation_entry) | — |
-| `ROTATION_S_RSI_MIN_D` | unclassified | <absent> / 25.0 / 25.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30968(TradierTradeManager.evaluate_rotation_entry) | — |
-| `ROTATION_S_WT_BEAR_ALIGN_MIN` | unclassified | <absent> / 2 / 2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30932(TradierTradeManager.evaluate_rotation_entry) | — |
-| `ROTATION_TOP_N` | unclassified | 3 / 3 / 3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30849(TradierTradeManager.evaluate_rotation_entry) | — |
+| `ROTATION_BOTTOM_N` | unclassified | 8 / 8 / 8 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30911(TradierTradeManager.evaluate_rotation_entry) | — |
+| `ROTATION_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30863(TradierTradeManager.evaluate_rotation_entry) | — |
+| `ROTATION_HOLD_DAYS` | unclassified | 7 / 7 / 7 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30918(TradierTradeManager.evaluate_rotation_entry) | — |
+| `ROTATION_LOOKBACK_DAYS` | unclassified | 10 / 10 / 10 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30879(TradierTradeManager.evaluate_rotation_entry) | — |
+| `ROTATION_POSITION_SIZE` | sizing | 1200.0 / 1200.0 / 1200.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30917(TradierTradeManager.evaluate_rotation_entry) | — |
+| `ROTATION_SMA200_FILTER` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30946(TradierTradeManager.evaluate_rotation_entry)<br>(+1) | — |
+| `ROTATION_S_DC_POS_MIN_D` | unclassified | <absent> / 0.1 / 0.1 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31019(TradierTradeManager.evaluate_rotation_entry) | — |
+| `ROTATION_S_FINAL_SCORE_MAX` | unclassified | <absent> / 0.35 / 0.35 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30988(TradierTradeManager.evaluate_rotation_entry) | — |
+| `ROTATION_S_K5M_MIN` | unclassified | <absent> / 20.0 / 20.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31012(TradierTradeManager.evaluate_rotation_entry) | — |
+| `ROTATION_S_RET_EXHAUSTED_PCT` | unclassified | <absent> / 0.25 / 0.25 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31034(TradierTradeManager.evaluate_rotation_entry) | — |
+| `ROTATION_S_RSI_MIN_D` | unclassified | <absent> / 25.0 / 25.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31029(TradierTradeManager.evaluate_rotation_entry) | — |
+| `ROTATION_S_WT_BEAR_ALIGN_MIN` | unclassified | <absent> / 2 / 2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30993(TradierTradeManager.evaluate_rotation_entry) | — |
+| `ROTATION_TOP_N` | unclassified | 3 / 3 / 3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30910(TradierTradeManager.evaluate_rotation_entry) | — |
 | `ROUND_TRIP_COST_PCT` | unclassified | 0.05 / 0.05 / 0.05 | — | DEAD | DEAD | — · — | tools/opt/evaluate_v12.py:967(evaluate) [UNREACHABLE] |
 | `RP_OPPOSITE_PENALTY` | unclassified | -20.0 / -20.0 / -20.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2759(AdvancedSignalRater.rate) · ez_positions_quick.py:2759(AdvancedSignalRater.rate) | — |
 | `RP_PROTECT_MIN_GAIN` | unclassified | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:14530(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14530(check_exit_candidates_for_account.process_single_exit) | vec_decisions/check_exit_candidates_crypto__winner_protect_skip.py:51(_winner_protect_thresholds) [UNREACHABLE] |
@@ -2047,41 +2047,41 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `RP_STRONG_THRESHOLD` | unclassified | 70.0 / 70.0 / 70.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2755(AdvancedSignalRater.rate) · ez_positions_quick.py:2755(AdvancedSignalRater.rate) | — |
 | `RP_WEAK_PENALTY` | unclassified | -10.0 / -10.0 / -10.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2758(AdvancedSignalRater.rate) · ez_positions_quick.py:2758(AdvancedSignalRater.rate) | — |
 | `RP_WEAK_THRESHOLD` | unclassified | 30.0 / 30.0 / 30.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2756(AdvancedSignalRater.rate) · ez_positions_quick.py:2756(AdvancedSignalRater.rate) | — |
-| `RSI2_EXIT_THRESHOLD_LONG` | exit | 70.0 / 70.0 / 70.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19567(StockStrategy.evaluate_stop)<br>(+1) | — |
-| `RSI2_EXIT_THRESHOLD_SHORT` | exit | 30.0 / 30.0 / 30.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19568(StockStrategy.evaluate_stop)<br>(+1) | — |
+| `RSI2_EXIT_THRESHOLD_LONG` | exit | 70.0 / 70.0 / 70.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19628(StockStrategy.evaluate_stop)<br>(+1) | — |
+| `RSI2_EXIT_THRESHOLD_SHORT` | exit | 30.0 / 30.0 / 30.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19629(StockStrategy.evaluate_stop)<br>(+1) | — |
 | `RSI2_MEAN_REVERSION_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:4493(AdvancedSignalRater.rate) · ez_positions_quick.py:4493(AdvancedSignalRater.rate) | — |
-| `RSI2_POSITION_SIZE` | sizing | 600.0 / 600.0 / 600.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30992(TradierTradeManager.evaluate_rsi2_entry) | — |
+| `RSI2_POSITION_SIZE` | sizing | 600.0 / 600.0 / 600.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:31053(TradierTradeManager.evaluate_rsi2_entry) | — |
 | `RSI2_SCORE_BONUS` | unclassified | 20 / 20 / 20 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:4496(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:4496(AdvancedSignalRater.rate)<br>(+1) | — |
 | `RSI2_THRESHOLD_LONG` | unclassified | 15.0 / 15.0 / 15.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:4495(AdvancedSignalRater.rate) · ez_positions_quick.py:4495(AdvancedSignalRater.rate) | — |
 | `RSI2_THRESHOLD_SHORT` | unclassified | 85.0 / 85.0 / 85.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:4497(AdvancedSignalRater.rate) · ez_positions_quick.py:4497(AdvancedSignalRater.rate) | — |
-| `RSI_ENTRY_PERIOD_TRADIER` | entry | 10 / 10 / 10 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27618(TradierTradeManager.should_enter_long)<br>(+1) | — |
+| `RSI_ENTRY_PERIOD_TRADIER` | entry | 10 / 10 / 10 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27679(TradierTradeManager.should_enter_long)<br>(+1) | — |
 | `RSI_MACD_EMA_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:4543(AdvancedSignalRater.rate) · ez_positions_quick.py:4543(AdvancedSignalRater.rate) | — |
 | `RSI_MACD_EMA_RSI_LONG` | unclassified | 35.0 / 35.0 / 35.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:4550(AdvancedSignalRater.rate) · ez_positions_quick.py:4550(AdvancedSignalRater.rate) | — |
 | `RSI_MACD_EMA_RSI_SHORT` | unclassified | 65.0 / 65.0 / 65.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:4552(AdvancedSignalRater.rate) · ez_positions_quick.py:4552(AdvancedSignalRater.rate) | — |
 | `RSI_MACD_EMA_SCORE` | unclassified | 25 / 25 / 25 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:4551(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:4551(AdvancedSignalRater.rate)<br>(+1) | — |
 | `RSI_MACD_EMA_TF` | unclassified | 1h / 1h / 1h | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:4544(AdvancedSignalRater.rate) · ez_positions_quick.py:4544(AdvancedSignalRater.rate) | — |
 | `RSI_MOMENTUM_MODE` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
-| `RULE_B_5M_EXIT_ENABLED` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20515(StockStrategy.evaluate_stop) | — |
+| `RULE_B_5M_EXIT_ENABLED` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20576(StockStrategy.evaluate_stop) | — |
 | `RULE_B_W_TREND_4H_PULLBACK_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `RULE_C_FUNDING_EXTREME_ENABLED` | unclassified | False / <absent> / False | — | DEAD | DEAD | — · — | — |
 | `RULE_NAME_TAGGING_ENABLED` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
-| `RVOL_MOMENTUM_MIN` | unclassified | 1.5 / 1.5 / 1.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27613(TradierTradeManager.should_enter_long)<br>(+1) | vec_decisions/check_entry_candidates_stocks__rvol_lrpctb_gates.py:26(_rvol_min) [UNREACHABLE] |
+| `RVOL_MOMENTUM_MIN` | unclassified | 1.5 / 1.5 / 1.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27674(TradierTradeManager.should_enter_long)<br>(+1) | vec_decisions/check_entry_candidates_stocks__rvol_lrpctb_gates.py:26(_rvol_min) [UNREACHABLE] |
 | `RVOL_SCALP_MIN` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | DEAD | — · — | — |
 | `RVOL_SCORE_BOOST_PCT` | unclassified | 0.2 / 0.2 / 0.2 | — | DEAD | DEAD | — · — | — |
 | `RVOL_SCORE_BOOST_THRESHOLD` | unclassified | 2.0 / 2.0 / 2.0 | — | DEAD | DEAD | — · — | — |
 | `RZ_BASELINE_BOUNCE_SHORT_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:8179(FastDataManager.__init__) · ez_positions_quick.py:8179(FastDataManager.__init__) | — |
-| `RZ_BASELINE_TOL` | unclassified | 0.05 / 0.05 / 0.05 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22418(TradierTradeManager.__init__) | — |
-| `RZ_DIV_BLOCK_MIN` | unclassified | 2 / 2 / 2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22430(TradierTradeManager.__init__) | — |
-| `RZ_DIV_EXIT_ENABLED` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22432(TradierTradeManager.__init__) | — |
+| `RZ_BASELINE_TOL` | unclassified | 0.05 / 0.05 / 0.05 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22479(TradierTradeManager.__init__) | — |
+| `RZ_DIV_BLOCK_MIN` | unclassified | 2 / 2 / 2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22491(TradierTradeManager.__init__) | — |
+| `RZ_DIV_EXIT_ENABLED` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22493(TradierTradeManager.__init__) | — |
 | `RZ_K_ENTRY_MAX` | entry | 50.0 / 50.0 / 50.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:8179(FastDataManager.__init__) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+1) | — |
 | `RZ_K_EXIT` | exit | 95.0 / 80.0 / 95.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:8179(FastDataManager.__init__) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+1) | — |
 | `RZ_LEGS_MIN` | unclassified | 20.0 / 20.0 / 20.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:8179(FastDataManager.__init__) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+1) | — |
 | `RZ_LTF_MICRO` | unclassified | 5m / 5m / 5m | — | DEAD | LIVE_ONLY | — · tradier_manage.py:1765(_rz_standalone_exit_gate)<br>(+1) | — |
 | `RZ_MFI_EXIT` | exit | 85.0 / 85.0 / 85.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:8179(FastDataManager.__init__) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+1) | — |
 | `RZ_REQUIRE_STRUCT` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:8179(FastDataManager.__init__) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+1) | — |
-| `RZ_TWO_PHASE_EXIT_ENABLED` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22431(TradierTradeManager.__init__) | — |
-| `RZ_ZSCORE_EXIT_ENABLED` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22433(TradierTradeManager.__init__) | — |
-| `RZ_ZSCORE_ZONE_ENABLED` | unclassified | True / True / True | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:22429(TradierTradeManager.__init__) | vec_decisions/delta_exit_top.py:138(_delta_exit_thresholds) |
+| `RZ_TWO_PHASE_EXIT_ENABLED` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22492(TradierTradeManager.__init__) | — |
+| `RZ_ZSCORE_EXIT_ENABLED` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22494(TradierTradeManager.__init__) | — |
+| `RZ_ZSCORE_ZONE_ENABLED` | unclassified | True / True / True | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:22490(TradierTradeManager.__init__) | vec_decisions/delta_exit_top.py:138(_delta_exit_thresholds) |
 | `R_G10_HTF_DIV_GATE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2325(AdvancedSignalRater.rate) · ez_positions_quick.py:2325(AdvancedSignalRater.rate) | — |
 | `R_G10_HTF_DIV_TFS` | unclassified | 4h,D / 4h,D / 4h,D | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2326(AdvancedSignalRater.rate) · ez_positions_quick.py:2326(AdvancedSignalRater.rate) | — |
 | `R_S1_WT_COMPOSITE_DELTA_THR` | unclassified | 50.0 / 50.0 / 50.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2542(AdvancedSignalRater.rate) · ez_positions_quick.py:2542(AdvancedSignalRater.rate) | — |
@@ -2128,9 +2128,9 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `R_Z5_DC_PULLBACK_SIZING_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:1451(calculate_dynamic_quantity) · ez_positions_quick.py:1451(calculate_dynamic_quantity) | — |
 | `SANDBOX_ACCOUNTS` | unclassified | ['sbx'] / <absent> / ['sbx'] | — | LIVE_ONLY | LIVE_ONLY | ez_positions.py:717(run_service)<br>(+1) · ez_positions.py:717(run_service)<br>(+1) | — |
 | `SANDBOX_MODE` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions.py:716(run_service)<br>(+1) · ez_positions.py:716(run_service)<br>(+1) | — |
-| `SATOSHIT_ACCOUNTS` | unclassified | ['ang', 'inf', 'flz', 'men', 'fin'] / <absent> / ['ang', 'inf', 'flz', | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:51273(process_position)<br>(+3) · ez_positions_quick.py:3053(AdvancedSignalRater.rate)<br>(+1) | — |
+| `SATOSHIT_ACCOUNTS` | unclassified | ['ang', 'inf', 'flz', 'men', 'fin'] / <absent> / ['ang', 'inf', 'flz', | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:51313(process_position)<br>(+3) · ez_positions_quick.py:3053(AdvancedSignalRater.rate)<br>(+1) | — |
 | `SATOSHIT_ACCOUNTS_TRADIER` | unclassified | <absent> / ['tra', 'trb', 'trc'] / ['tra', 'trb', 'trc'] | — | DEAD | DEAD | — · — | — |
-| `SATOSHIT_ENTRY_FILTER` | entry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27490(TradierTradeManager.should_enter_long)<br>(+1) | — |
+| `SATOSHIT_ENTRY_FILTER` | entry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27551(TradierTradeManager.should_enter_long)<br>(+1) | — |
 | `SATOSHIT_EXIT_LONG_RSI_MIN` | exit | 55.0 / 55.0 / 55.0 | — | DEAD | DEAD | — · — | — |
 | `SATOSHIT_EXIT_LONG_STOCH_K_MIN` | exit | 60.0 / 60.0 / 60.0 | — | DEAD | DEAD | — · — | — |
 | `SATOSHIT_EXIT_SHORT_RSI_MAX` | exit | 42.0 / 42.0 / 42.0 | — | DEAD | DEAD | — · — | — |
@@ -2141,7 +2141,7 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `SATOSHIT_LONG_MFI_MAX` | unclassified | 60.0 / 60.0 / 60.0 | — | LIVE_ONLY | LIVE_ONLY | ez_satoshit.py:97(check_reentry_ready)<br>(+1) · ez_satoshit.py:97(check_reentry_ready)<br>(+1) | — |
 | `SATOSHIT_LONG_RSI_MAX` | unclassified | 50.0 / 50.0 / 50.0 | — | LIVE_ONLY | LIVE_ONLY | ez_satoshit.py:97(check_reentry_ready)<br>(+1) · ez_satoshit.py:97(check_reentry_ready)<br>(+1) | — |
 | `SATOSHIT_LONG_STOCH_K_MAX` | unclassified | 60.0 / 60.0 / 60.0 | — | LIVE_ONLY | LIVE_ONLY | ez_satoshit.py:97(check_reentry_ready)<br>(+1) · ez_satoshit.py:97(check_reentry_ready)<br>(+1) | — |
-| `SATOSHIT_PROTECT_TRADES` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:51035(process_position) · — | — |
+| `SATOSHIT_PROTECT_TRADES` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:51075(process_position) · — | — |
 | `SATOSHIT_QTY_MULT` | unclassified | 3.0 / 3.0 / 3.0 | — | LIVE_ONLY | LIVE_ONLY | ez_satoshit.py:210(satoshit_score_bonus) · ez_satoshit.py:210(satoshit_score_bonus)<br>(+1) | — |
 | `SATOSHIT_SCORE_BONUS` | unclassified | 30 / 30 / 30 | — | LIVE_ONLY | LIVE_ONLY | ez_satoshit.py:209(satoshit_score_bonus) · ez_satoshit.py:209(satoshit_score_bonus) | — |
 | `SATOSHIT_SHORT_MFI_MIN` | unclassified | 50.0 / 50.0 / 50.0 | — | LIVE_ONLY | LIVE_ONLY | ez_satoshit.py:100(check_reentry_ready)<br>(+1) · ez_satoshit.py:100(check_reentry_ready)<br>(+1) | — |
@@ -2165,23 +2165,23 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `SBA_SIZE_FRACTION` | sizing | 0.4 / 0.4 / 0.4 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:16081(check_entry_candidates_for_account.worker) · ez_positions_quick.py:16081(check_entry_candidates_for_account.worker) | — |
 | `SBA_SIZE_FRACTION_TRADIER` | sizing | <absent> / 0.25 / 0.25 | — | DEAD | DEAD | — · — | — |
 | `SCALP_ACCOUNTS` | unclassified | [] / <absent> / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:1270(calculate_dynamic_quantity)<br>(+6) · ez_positions_quick.py:1270(calculate_dynamic_quantity)<br>(+6) | — |
-| `SCALP_LONG_BUDGET` | unclassified | 250.0 / 250.0 / 250.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32331(StockScalpStrategy._scan_entries) | — |
-| `SCALP_MAX_HOLD_MINUTES` | unclassified | 180.0 / 180.0 / 180.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32296(StockScalpStrategy._manage_scalp_positions) | — |
-| `SCALP_MAX_POSITIONS_PER_SIDE` | unclassified | 6 / 6 / 6 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32333(StockScalpStrategy._scan_entries) | — |
-| `SCALP_MAX_POSITION_SIZE` | sizing | 500.0 / 5000.0 / 500.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32375(StockScalpStrategy._open_scalp) | — |
-| `SCALP_MIN_MOVE_PCT` | unclassified | 0.003 / 0.003 / 0.003 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32276(StockScalpStrategy._refresh_movers) | — |
-| `SCALP_MIN_REL_VOL` | unclassified | 1.1 / 1.1 / 1.1 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32275(StockScalpStrategy._refresh_movers) | — |
-| `SCALP_MODE` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:30067(MultiAccountTradeManager.execute_now)<br>(+6) · ez_positions_quick.py:13759(log_stoch_snapshot)<br>(+6) | — |
-| `SCALP_REDUCE_ENABLED` | reduce | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:23953(MultiAccountTradeManager.execute_trade_action)<br>(+2) · — | — |
-| `SCALP_SHORT_BUDGET` | unclassified | 250.0 / 250.0 / 250.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32332(StockScalpStrategy._scan_entries) | — |
-| `SCALP_START_SIZE` | sizing | 150.0 / 150.0 / 150.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32374(StockScalpStrategy._open_scalp) | — |
-| `SCALP_STOP_PCT` | unclassified | 9.99 / 9.99 / 9.99 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32294(StockScalpStrategy._manage_scalp_positions) | — |
-| `SCALP_TARGET_PCT` | unclassified | 0.005 / 0.005 / 0.005 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32295(StockScalpStrategy._manage_scalp_positions) | — |
-| `SCALP_TOP_MOVERS_N` | unclassified | 14 / 14 / 14 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32274(StockScalpStrategy._refresh_movers) | — |
+| `SCALP_LONG_BUDGET` | unclassified | 250.0 / 250.0 / 250.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32392(StockScalpStrategy._scan_entries) | — |
+| `SCALP_MAX_HOLD_MINUTES` | unclassified | 180.0 / 180.0 / 180.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32357(StockScalpStrategy._manage_scalp_positions) | — |
+| `SCALP_MAX_POSITIONS_PER_SIDE` | unclassified | 6 / 6 / 6 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32394(StockScalpStrategy._scan_entries) | — |
+| `SCALP_MAX_POSITION_SIZE` | sizing | 500.0 / 5000.0 / 500.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32436(StockScalpStrategy._open_scalp) | — |
+| `SCALP_MIN_MOVE_PCT` | unclassified | 0.003 / 0.003 / 0.003 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32337(StockScalpStrategy._refresh_movers) | — |
+| `SCALP_MIN_REL_VOL` | unclassified | 1.1 / 1.1 / 1.1 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32336(StockScalpStrategy._refresh_movers) | — |
+| `SCALP_MODE` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:30107(MultiAccountTradeManager.execute_now)<br>(+6) · ez_positions_quick.py:13759(log_stoch_snapshot)<br>(+6) | — |
+| `SCALP_REDUCE_ENABLED` | reduce | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:23993(MultiAccountTradeManager.execute_trade_action)<br>(+2) · — | — |
+| `SCALP_SHORT_BUDGET` | unclassified | 250.0 / 250.0 / 250.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32393(StockScalpStrategy._scan_entries) | — |
+| `SCALP_START_SIZE` | sizing | 150.0 / 150.0 / 150.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32435(StockScalpStrategy._open_scalp) | — |
+| `SCALP_STOP_PCT` | unclassified | 9.99 / 9.99 / 9.99 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32355(StockScalpStrategy._manage_scalp_positions) | — |
+| `SCALP_TARGET_PCT` | unclassified | 0.005 / 0.005 / 0.005 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32356(StockScalpStrategy._manage_scalp_positions) | — |
+| `SCALP_TOP_MOVERS_N` | unclassified | 14 / 14 / 14 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32335(StockScalpStrategy._refresh_movers) | — |
 | `SCALP_V2_DC_HTF_LIST` | unclassified | ['15m', '1h'] / ['15m', '1h'] / ['15m', '1h'] | — | LIVE_ONLY | LIVE_ONLY | htf_breakout_scalper.py:136(check_scalp_v2_entry)<br>(+1) · htf_breakout_scalper.py:136(check_scalp_v2_entry)<br>(+1) | — |
 | `SCALP_V2_DC_HTF_REQUIRE_ALL` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | htf_breakout_scalper.py:137(check_scalp_v2_entry) · htf_breakout_scalper.py:137(check_scalp_v2_entry) | — |
 | `SCALP_V2_ENTRY_MODE` | entry | breakout / breakout / breakout | — | LIVE_ONLY | LIVE_ONLY | htf_breakout_scalper.py:131(check_scalp_v2_entry) · htf_breakout_scalper.py:131(check_scalp_v2_entry) | — |
-| `SCALP_V2_ISOLATE` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:49692(process_position)<br>(+2) · ez_positions_quick.py:13812(check_exit_candidates_for_account.process_single_exit)<br>(+1) | — |
+| `SCALP_V2_ISOLATE` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:49732(process_position)<br>(+2) · ez_positions_quick.py:13812(check_exit_candidates_for_account.process_single_exit)<br>(+1) | — |
 | `SCALP_V2_LH_LL_EXIT` | exit | True / True / True | — | LIVE_ONLY | LIVE_ONLY | htf_breakout_scalper.py:360(check_scalp_v2_exit) · htf_breakout_scalper.py:360(check_scalp_v2_exit) | — |
 | `SCALP_V2_LH_LL_TF` | unclassified | 15m / 15m / 15m | — | LIVE_ONLY | LIVE_ONLY | htf_breakout_scalper.py:361(check_scalp_v2_exit) · htf_breakout_scalper.py:361(check_scalp_v2_exit) | — |
 | `SCALP_V2_MAX_CONCURRENT` | unclassified | 5 / 5 / 5 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:15357(check_entry_candidates_for_account.worker) · ez_positions_quick.py:15357(check_entry_candidates_for_account.worker) | — |
@@ -2190,7 +2190,7 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `SCALP_V2_REDZONE_K_THRESHOLD` | unclassified | 90 / 90 / 90 | — | LIVE_ONLY | LIVE_ONLY | htf_breakout_scalper.py:359(check_scalp_v2_exit) · htf_breakout_scalper.py:359(check_scalp_v2_exit) | — |
 | `SCALP_V2_REENTRY_COOLDOWN_S` | reentry | 300 / 300 / 300 | — | DEAD | DEAD | — · — | — |
 | `SCALP_V2_VARIANT` | unclassified | V1_WT_CONFIRM / V1_WT_CONFIRM / V1_WT_CONFIRM | — | LIVE_ONLY | LIVE_ONLY | htf_breakout_scalper.py:143(check_scalp_v2_entry)<br>(+1) · htf_breakout_scalper.py:143(check_scalp_v2_entry)<br>(+1) | — |
-| `SCALP_V3_ACCOUNTS` | unclassified | [] / <absent> / [] | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:58484(main)<br>(+7) · ez_positions_quick.py:13849(check_exit_candidates_for_account.process_single_exit)<br>(+6) | — |
+| `SCALP_V3_ACCOUNTS` | unclassified | [] / <absent> / [] | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:58524(main)<br>(+7) · ez_positions_quick.py:13849(check_exit_candidates_for_account.process_single_exit)<br>(+6) | — |
 | `SCALP_V3_ATR_PCTL_GATE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | scalp_v3_live.py:124(check_scalp_v3_live_entry) · scalp_v3_live.py:124(check_scalp_v3_live_entry) | — |
 | `SCALP_V3_ATR_PCTL_MIN` | unclassified | 40.0 / 40.0 / 40.0 | — | LIVE_ONLY | LIVE_ONLY | scalp_v3_live.py:125(check_scalp_v3_live_entry) · scalp_v3_live.py:125(check_scalp_v3_live_entry) | — |
 | `SCALP_V3_ATR_SL_MULT` | unclassified | 0.0 / 0.0 / 0.0 | — | DEAD | DEAD | — · — | — |
@@ -2206,7 +2206,7 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `SCALP_V3_BOOST_WEIGHT` | unclassified | 0.2 / 0.2 / 0.2 | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:4223(initial_fetch_and_ranking) · ez_rankings.py:4223(initial_fetch_and_ranking) | — |
 | `SCALP_V3_BYPASS_HTF_DIRECTION_GATE` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:12699(execute_trade_wrapper) · ez_positions_quick.py:12699(execute_trade_wrapper) | — |
 | `SCALP_V3_DIAG_LOG` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:15310(check_entry_candidates_for_account)<br>(+3) · ez_positions_quick.py:15310(check_entry_candidates_for_account)<br>(+3) | — |
-| `SCALP_V3_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:30063(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:13849(check_exit_candidates_for_account.process_single_exit)<br>(+2) | — |
+| `SCALP_V3_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:30103(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:13849(check_exit_candidates_for_account.process_single_exit)<br>(+2) | — |
 | `SCALP_V3_ENFORCE_UNIVERSE_DIRECTION` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:15430(check_entry_candidates_for_account.worker) · ez_positions_quick.py:15430(check_entry_candidates_for_account.worker) | — |
 | `SCALP_V3_ENTRY_BAR_1M_REQUIRE` | entry | HH_AND_HL / HH_AND_HL / HH_AND_HL | — | DEAD | DEAD | — · — | — |
 | `SCALP_V3_ENTRY_BAR_3M_REQUIRE` | entry | HH / HH / HH | — | DEAD | DEAD | — · — | — |
@@ -2326,47 +2326,47 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `SECTOR_GROUPS` | unclassified | {'TECH': 'GROWTH', 'TECH_SW': 'GROWTH', 'TECH_CONS': 'GROWTH', 'ENERGY | — | DEAD | DEAD | — · — | — |
 | `SECTOR_LS_MIN_POSITIONS` | unclassified | 3 / 3 / 3 | — | DEAD | LIVE_ONLY | — · tradier_sector_ls_ratio.py:153(check_sector_ls_ratio) | — |
 | `SECTOR_LS_RATIO_BYPASS_HEDGE` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_sector_ls_ratio.py:142(check_sector_ls_ratio) | — |
-| `SECTOR_LS_RATIO_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:24609(TradierTradeManager.execute_trade_action)<br>(+1) | — |
+| `SECTOR_LS_RATIO_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:24670(TradierTradeManager.execute_trade_action)<br>(+1) | — |
 | `SECTOR_LS_RATIO_MAX` | unclassified | 2.0 / 2.0 / 2.0 | — | DEAD | LIVE_ONLY | — · tradier_sector_ls_ratio.py:158(check_sector_ls_ratio) | — |
 | `SECTOR_LS_RATIO_MIN` | unclassified | 0.5 / 0.5 / 0.5 | — | DEAD | LIVE_ONLY | — · tradier_sector_ls_ratio.py:157(check_sector_ls_ratio) | — |
-| `SECTOR_MAP` | unclassified | {'AAPL': 'TECH', 'MSFT': 'TECH', 'GOOGL': 'TECH', 'META': 'TECH', 'AMZ | — | DEAD | LIVE_ONLY | — · tradier_manage.py:8207(<module>) | — |
+| `SECTOR_MAP` | unclassified | {'AAPL': 'TECH', 'MSFT': 'TECH', 'GOOGL': 'TECH', 'META': 'TECH', 'AMZ | — | DEAD | LIVE_ONLY | — · tradier_manage.py:8268(<module>) | — |
 | `SENTIMENT_FADE_MODE` | unclassified | DISABLED / DISABLED / DISABLED | — | DEAD | DEAD | — · — | — |
-| `SENTIMENT_REBALANCER_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22949(TradierTradeManager.periodic_sentiment_rebalancing) | — |
-| `SENTIMENT_REBAL_AUGMENT_DEVIATION_THR` | augment | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:23068(TradierTradeManager.periodic_sentiment_rebalancing) | — |
+| `SENTIMENT_REBALANCER_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:23010(TradierTradeManager.periodic_sentiment_rebalancing) | — |
+| `SENTIMENT_REBAL_AUGMENT_DEVIATION_THR` | augment | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:23129(TradierTradeManager.periodic_sentiment_rebalancing) | — |
 | `SENTIMENT_TOP_N` | unclassified | 20 / 20 / 20 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2263(AdvancedSignalRater.rate) · ez_positions_quick.py:2263(AdvancedSignalRater.rate) | — |
 | `SENTIMENT_TOP_N_GATE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2260(AdvancedSignalRater.rate) · ez_positions_quick.py:2260(AdvancedSignalRater.rate) | — |
-| `SERVER_HEARTBEAT_BLOCK_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32889(MultiAccountTradeManager.execute_now)<br>(+1) · tradier_manage.py:25538(TradierTradeManager.execute_now) | — |
+| `SERVER_HEARTBEAT_BLOCK_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32929(MultiAccountTradeManager.execute_now)<br>(+1) · tradier_manage.py:25599(TradierTradeManager.execute_now) | — |
 | `SERVICE_REDUCE` | reduce | True / <absent> / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:11636(PositionService._monitor_reductions_watchdog)<br>(+2) · ez_positions_service.py:11636(PositionService._monitor_reductions_watchdog)<br>(+3) | — |
 | `SERVICE_STOP` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:3494(StopLevelsManager.manage)<br>(+2) · ez_positions_service.py:3494(StopLevelsManager.manage)<br>(+3) | — |
 | `SHORT_ABOVE_EMA20_IS_PENALTY` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2938(AdvancedSignalRater.rate) · ez_positions_quick.py:2938(AdvancedSignalRater.rate) | — |
-| `SHORT_ABOVE_SMA20_BONUS` | unclassified | 15 / 15 / 15 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:41449(calculate_final_order_quantity)<br>(+1) · ez_positions_quick.py:2937(AdvancedSignalRater.rate) | — |
+| `SHORT_ABOVE_SMA20_BONUS` | unclassified | 15 / 15 / 15 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:41489(calculate_final_order_quantity)<br>(+1) · ez_positions_quick.py:2937(AdvancedSignalRater.rate) | — |
 | `SHORT_RSI_MIN_1H` | entry | 40.0 / 40.0 / 40.0 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2862(AdvancedSignalRater.rate) · ez_positions_quick.py:2862(AdvancedSignalRater.rate) | vec_decisions/entry_hard_gates.py:47(crypto_block) |
 | `SHORT_STRUCT_EXIT_TF` | exit | None / 15m / None | — | DEAD | DEAD | — · — | — |
 | `SIGNALS_FILE` | unclassified | <expr> BASE_PATH / 'signals.json' / <absent> / <expr> Path('data') | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:136(<module>)<br>(+5) · ez_rankings.py:136(<module>)<br>(+5) | — |
 | `SIGNALS_LOOP_INTERVAL_SECONDS` | unclassified | 300 / 300 / 300 | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:7772(plot_loop)<br>(+3) · ez_rankings.py:7772(plot_loop)<br>(+3) | — |
 | `SIZING_MODE_TRADIER` | unclassified | DEFAULT / DEFAULT / DEFAULT | — | DEAD | DEAD | — · — | — |
-| `SLEEP_TIME_PER_TASKS` | unclassified | 3 / 3.0 / 3 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:53785(periodic_tasks) · tradier_manage.py:22525(TradierTradeManager.__init__) | — |
-| `SLEEP_TIME_PROC_ACCT` | unclassified | 5 / 5 / 5 | — | LIVE_ONLY | DEAD | ez_manage.py:53552(process_symbols_periodically) · — | — |
-| `SLOPE_SIZING_LIVE_TWIN_ENABLED` | unclassified | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10223(compute_regime_sizing_mult) |
-| `SMA200_DIST_LONG_THRESHOLD_4H` | unclassified | -10.0 / -10.0 / -10.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27669(TradierTradeManager.should_enter_long)<br>(+1) | vec_decisions/check_entry_candidates_stocks__rsi_sma_mfi_gates.py:56(_sma200_dist_thr) [UNREACHABLE] |
-| `SMA_200_FILTER_ENABLED` | unclassified | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27576(TradierTradeManager.should_enter_long)<br>(+1) | — |
-| `SMA_200_TIMEFRAME` | unclassified | <absent> / D / D | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27577(TradierTradeManager.should_enter_long)<br>(+1) | — |
-| `SMA_50_FILTER_ENABLED` | unclassified | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27570(TradierTradeManager.should_enter_long)<br>(+1) | — |
-| `SMA_50_TIMEFRAME` | unclassified | <absent> / D / D | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27571(TradierTradeManager.should_enter_long)<br>(+1) | — |
-| `SMA_FILTER_PERIOD_TRADIER` | unclassified | 100 / 100 / 100 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27628(TradierTradeManager.should_enter_long)<br>(+1) | — |
-| `SMFI_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30489(TradierTradeManager.evaluate_smfi_entry) | — |
-| `SMFI_LONG_BUDGET` | unclassified | 3000.0 / 3000.0 / 3000.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30496(TradierTradeManager.evaluate_smfi_entry) | — |
-| `SMFI_MAX_HOLD_DAYS` | unclassified | 10 / 10 / 10 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30513(TradierTradeManager.evaluate_smfi_entry) | — |
-| `SMFI_MAX_PER_SIDE` | unclassified | 5 / 5 / 5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30495(TradierTradeManager.evaluate_smfi_entry) | — |
-| `SMFI_POSITION_SIZE` | sizing | 600.0 / 600.0 / 600.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30494(TradierTradeManager.evaluate_smfi_entry) | — |
-| `SMFI_SHORT_BUDGET` | unclassified | 3000.0 / 3000.0 / 3000.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30497(TradierTradeManager.evaluate_smfi_entry) | — |
-| `SPIKE_FADE_COOLDOWN_BARS` | unclassified | 6 / 6 / 6 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30692(TradierTradeManager.evaluate_spike_fade) | — |
-| `SPIKE_FADE_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30685(TradierTradeManager.evaluate_spike_fade) | — |
-| `SPIKE_FADE_K_EXHAUSTION` | unclassified | 70.0 / 70.0 / 70.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30689(TradierTradeManager.evaluate_spike_fade) | — |
-| `SPIKE_FADE_LOOKBACK_BARS` | unclassified | 6 / 6 / 6 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30688(TradierTradeManager.evaluate_spike_fade) | — |
-| `SPIKE_FADE_MAX_POSITIONS` | unclassified | 10 / 10 / 10 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30691(TradierTradeManager.evaluate_spike_fade) | — |
-| `SPIKE_FADE_POSITION_SIZE` | sizing | 600.0 / 600.0 / 600.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30690(TradierTradeManager.evaluate_spike_fade) | — |
-| `SPIKE_FADE_THRESHOLD_PCT` | unclassified | 2.0 / 2.0 / 2.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30687(TradierTradeManager.evaluate_spike_fade) | — |
+| `SLEEP_TIME_PER_TASKS` | unclassified | 3 / 3.0 / 3 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:53825(periodic_tasks) · tradier_manage.py:22586(TradierTradeManager.__init__) | — |
+| `SLEEP_TIME_PROC_ACCT` | unclassified | 5 / 5 / 5 | — | LIVE_ONLY | DEAD | ez_manage.py:53592(process_symbols_periodically) · — | — |
+| `SLOPE_SIZING_LIVE_TWIN_ENABLED` | unclassified | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10268(compute_regime_sizing_mult) |
+| `SMA200_DIST_LONG_THRESHOLD_4H` | unclassified | -10.0 / -10.0 / -10.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27730(TradierTradeManager.should_enter_long)<br>(+1) | vec_decisions/check_entry_candidates_stocks__rsi_sma_mfi_gates.py:56(_sma200_dist_thr) [UNREACHABLE] |
+| `SMA_200_FILTER_ENABLED` | unclassified | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27637(TradierTradeManager.should_enter_long)<br>(+1) | — |
+| `SMA_200_TIMEFRAME` | unclassified | <absent> / D / D | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27638(TradierTradeManager.should_enter_long)<br>(+1) | — |
+| `SMA_50_FILTER_ENABLED` | unclassified | <absent> / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27631(TradierTradeManager.should_enter_long)<br>(+1) | — |
+| `SMA_50_TIMEFRAME` | unclassified | <absent> / D / D | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27632(TradierTradeManager.should_enter_long)<br>(+1) | — |
+| `SMA_FILTER_PERIOD_TRADIER` | unclassified | 100 / 100 / 100 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27689(TradierTradeManager.should_enter_long)<br>(+1) | — |
+| `SMFI_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30550(TradierTradeManager.evaluate_smfi_entry) | — |
+| `SMFI_LONG_BUDGET` | unclassified | 3000.0 / 3000.0 / 3000.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30557(TradierTradeManager.evaluate_smfi_entry) | — |
+| `SMFI_MAX_HOLD_DAYS` | unclassified | 10 / 10 / 10 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30574(TradierTradeManager.evaluate_smfi_entry) | — |
+| `SMFI_MAX_PER_SIDE` | unclassified | 5 / 5 / 5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30556(TradierTradeManager.evaluate_smfi_entry) | — |
+| `SMFI_POSITION_SIZE` | sizing | 600.0 / 600.0 / 600.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30555(TradierTradeManager.evaluate_smfi_entry) | — |
+| `SMFI_SHORT_BUDGET` | unclassified | 3000.0 / 3000.0 / 3000.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30558(TradierTradeManager.evaluate_smfi_entry) | — |
+| `SPIKE_FADE_COOLDOWN_BARS` | unclassified | 6 / 6 / 6 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30753(TradierTradeManager.evaluate_spike_fade) | — |
+| `SPIKE_FADE_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30746(TradierTradeManager.evaluate_spike_fade) | — |
+| `SPIKE_FADE_K_EXHAUSTION` | unclassified | 70.0 / 70.0 / 70.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30750(TradierTradeManager.evaluate_spike_fade) | — |
+| `SPIKE_FADE_LOOKBACK_BARS` | unclassified | 6 / 6 / 6 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30749(TradierTradeManager.evaluate_spike_fade) | — |
+| `SPIKE_FADE_MAX_POSITIONS` | unclassified | 10 / 10 / 10 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30752(TradierTradeManager.evaluate_spike_fade) | — |
+| `SPIKE_FADE_POSITION_SIZE` | sizing | 600.0 / 600.0 / 600.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30751(TradierTradeManager.evaluate_spike_fade) | — |
+| `SPIKE_FADE_THRESHOLD_PCT` | unclassified | 2.0 / 2.0 / 2.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30748(TradierTradeManager.evaluate_spike_fade) | — |
 | `SPY_REGIME_BLOCK_LONGS_BELOW` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `SPY_REGIME_BLOCK_SHORTS_ABOVE` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `SPY_REGIME_GATE_ENABLED_TRADIER` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
@@ -2374,20 +2374,20 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `SPY_REGIME_SYMBOL` | unclassified | SPY / SPY / SPY | — | DEAD | DEAD | — · — | — |
 | `SQUEEZE_FIRE_BONUS_SCORE` | unclassified | 11.25 / 11.25 / 11.25 | — | DEAD | DEAD | — · — | — |
 | `SQUEEZE_FIRE_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
-| `SQUEEZE_FIRE_ENTRY_ENABLED` | entry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20639(StockStrategy.classic_formation_open_action [dynamic key]) | — |
+| `SQUEEZE_FIRE_ENTRY_ENABLED` | entry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20700(StockStrategy.classic_formation_open_action [dynamic key]) | — |
 | `SQUEEZE_FIRE_SCORE_BONUS` | unclassified | 20 / 20 / 20 | — | DEAD | DEAD | — · — | — |
 | `SQUEEZE_FIRE_TF` | unclassified | 5m / 5m / 5m | — | DEAD | DEAD | — · — | — |
 | `SQUEEZE_FIRE_TFS` | unclassified | ['1h', '4h'] / ['1h', '4h'] / ['1h', '4h'] | — | DEAD | DEAD | — · — | — |
 | `SQUEEZE_SCORE_BONUS` | unclassified | 15 / 15 / 15 | — | DEAD | DEAD | — · — | — |
 | `SRS_K_EXIT_1H` | exit | 85.0 / 85.0 / 85.0 | — | DEAD | DEAD | — · — | — |
-| `STALE_WARNING_INTERVAL_SECONDS` | unclassified | 30.0 / 30.0 / 30.0 | — | LIVE_ONLY | DEAD | ez_manage.py:7946(<module>)<br>(+1) · — | — |
-| `STALL_AGE_MIN_MIN` | unclassified | 180.0 / 180.0 / 180.0 | — | LIVE_ONLY | DEAD | ez_manage.py:37022(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
-| `STALL_DELTA_SPEED_MAX` | unclassified | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | DEAD | ez_manage.py:37025(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
-| `STALL_GAIN_ABS_MAX` | unclassified | 0.5 / 0.5 / 0.5 | — | LIVE_ONLY | DEAD | ez_manage.py:37023(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
-| `STALL_MAX_CLOSES_PER_CYCLE` | unclassified | 2 / 2 / 2 | — | LIVE_ONLY | DEAD | ez_manage.py:37028(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
-| `STALL_SUB_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:37021(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
-| `STDEV_BB_RZ_EXIT_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20047(StockStrategy.evaluate_stop) | vec_decisions/check_exit_candidates_stocks__stdev_bb_rz_exit.py:34(check_stdev_bb_rz_exit) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__stdev_bb_rz_exit.py:50(check_stdev_bb_rz_exit_vec) [UNREACHABLE] |
-| `STDEV_BB_RZ_EXIT_TF` | exit | D / D / D | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20048(StockStrategy.evaluate_stop) | vec_decisions/check_exit_candidates_stocks__stdev_bb_rz_exit.py:36(check_stdev_bb_rz_exit) [UNREACHABLE]<br>vec_decisions/test_check_exit_candidates_stocks.py:254(t_stdev_bb_rz) [UNREACHABLE] |
+| `STALE_WARNING_INTERVAL_SECONDS` | unclassified | 30.0 / 30.0 / 30.0 | — | LIVE_ONLY | DEAD | ez_manage.py:7986(<module>)<br>(+1) · — | — |
+| `STALL_AGE_MIN_MIN` | unclassified | 180.0 / 180.0 / 180.0 | — | LIVE_ONLY | DEAD | ez_manage.py:37062(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
+| `STALL_DELTA_SPEED_MAX` | unclassified | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | DEAD | ez_manage.py:37065(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
+| `STALL_GAIN_ABS_MAX` | unclassified | 0.5 / 0.5 / 0.5 | — | LIVE_ONLY | DEAD | ez_manage.py:37063(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
+| `STALL_MAX_CLOSES_PER_CYCLE` | unclassified | 2 / 2 / 2 | — | LIVE_ONLY | DEAD | ez_manage.py:37068(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
+| `STALL_SUB_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:37061(MultiAccountTradeManager.ratio_rebalance_loop) · — | — |
+| `STDEV_BB_RZ_EXIT_ENABLED` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20108(StockStrategy.evaluate_stop) | vec_decisions/check_exit_candidates_stocks__stdev_bb_rz_exit.py:34(check_stdev_bb_rz_exit) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__stdev_bb_rz_exit.py:50(check_stdev_bb_rz_exit_vec) [UNREACHABLE] |
+| `STDEV_BB_RZ_EXIT_TF` | exit | D / D / D | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20109(StockStrategy.evaluate_stop) | vec_decisions/check_exit_candidates_stocks__stdev_bb_rz_exit.py:36(check_stdev_bb_rz_exit) [UNREACHABLE]<br>vec_decisions/test_check_exit_candidates_stocks.py:254(t_stdev_bb_rz) [UNREACHABLE] |
 | `STDEV_BB_RZ_SUPPRESS_PCTB` | unclassified | 0.85 / 0.85 / 0.85 | — | DEAD | DEAD | — · — | — |
 | `STDEV_BOUNCE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:12029(detect_stdev_bounce)<br>(+1) · ez_positions_quick.py:12029(detect_stdev_bounce)<br>(+4) | vec_decisions/check_entry_candidates_stocks__stdev_breakout_bounce.py:64(check_stdev_bounce) [UNREACHABLE] |
 | `STDEV_BOUNCE_HTF_LIST` | unclassified | ['D', '4h'] / ['D', '4h'] / ['D', '4h'] | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:12031(detect_stdev_bounce) · ez_positions_quick.py:12031(detect_stdev_bounce)<br>(+2) | vec_decisions/check_entry_candidates_stocks__stdev_breakout_bounce.py:66(check_stdev_bounce) [UNREACHABLE] |
@@ -2415,33 +2415,33 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `STDEV_MACRO_R4_REQUIRE_LTF_FLIP` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | stdev_macro.py:195(r4_exit) · stdev_macro.py:195(r4_exit) | — |
 | `STOCH_1H_EXIT_K_MIN` | exit | 85.0 / 85.0 / 85.0 | — | DEAD | DEAD | — · — | — |
 | `STOCH_CROSS_ENTRY_ENABLED` | entry | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2206(AdvancedSignalRater.rate) · ez_positions_quick.py:2206(AdvancedSignalRater.rate) | — |
-| `STOCH_ENTRY_LONG_TRADIER` | entry | 30 / 30 / 30 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17210(StockStrategy.calculate_signal_score) | — |
-| `STOCH_ENTRY_SHORT_TRADIER` | entry | 65 / 65 / 65 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17212(StockStrategy.calculate_signal_score) | — |
-| `STOCH_EXTREME_LONG_TRADIER` | unclassified | 15 / 15 / 15 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17211(StockStrategy.calculate_signal_score) | — |
-| `STOCH_EXTREME_SHORT_TRADIER` | unclassified | 85 / 85 / 85 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17213(StockStrategy.calculate_signal_score) | — |
-| `STOCKS_FRESH_ENTRY_TREND_GATES_ENABLED` | entry | <absent> / False / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11846(simulate_one) |
-| `STOCKS_LIVE_ENTRY_STACK_ENABLED` | entry | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9181(compute_entry_signals)<br>v12_quick_engine.py:9255(compute_entry_signals)<br>(+2) |
-| `STOCKS_LIVE_TWINS_ENABLED` | unclassified | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9674(compute_exit_signals)<br>v12_quick_engine.py:12284(simulate_one) |
+| `STOCH_ENTRY_LONG_TRADIER` | entry | 30 / 30 / 30 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17271(StockStrategy.calculate_signal_score) | — |
+| `STOCH_ENTRY_SHORT_TRADIER` | entry | 65 / 65 / 65 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17273(StockStrategy.calculate_signal_score) | — |
+| `STOCH_EXTREME_LONG_TRADIER` | unclassified | 15 / 15 / 15 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17272(StockStrategy.calculate_signal_score) | — |
+| `STOCH_EXTREME_SHORT_TRADIER` | unclassified | 85 / 85 / 85 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17274(StockStrategy.calculate_signal_score) | — |
+| `STOCKS_FRESH_ENTRY_TREND_GATES_ENABLED` | entry | <absent> / False / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11891(simulate_one) |
+| `STOCKS_LIVE_ENTRY_STACK_ENABLED` | entry | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9226(compute_entry_signals)<br>v12_quick_engine.py:9300(compute_entry_signals)<br>(+2) |
+| `STOCKS_LIVE_TWINS_ENABLED` | unclassified | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9719(compute_exit_signals)<br>v12_quick_engine.py:12329(simulate_one) |
 | `STOCKS_NOLOSS_HOLD_ENABLED` | unclassified | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | vec_decisions/noloss_gate.py:18(noloss_blocks) |
-| `STOCKS_REENTRY_LIVE_SOURCES_ENABLED` | reentry | <absent> / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12540(simulate_one) |
-| `STOCK_LIVE_AUGMENT_ENABLED` | augment | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11683(simulate_one) |
-| `STOCK_LIVE_AUGMENT_ONLY` | augment | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11666(simulate_one) |
-| `STOP_MAJOR_LOSS_BLOCK_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:52034(process_position) · — | — |
+| `STOCKS_REENTRY_LIVE_SOURCES_ENABLED` | reentry | <absent> / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12585(simulate_one) |
+| `STOCK_LIVE_AUGMENT_ENABLED` | augment | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11728(simulate_one) |
+| `STOCK_LIVE_AUGMENT_ONLY` | augment | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11711(simulate_one) |
+| `STOP_MAJOR_LOSS_BLOCK_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:52074(process_position) · — | — |
 | `STOP_MAJOR_LOSS_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `STOP_TIMEFRAME` | unclassified | 15m / 15m / 15m | — | DEAD | DEAD | — · — | — |
 | `STORM_REDUCE_ENABLED` | reduce | True / True / True | — | DEAD | DEAD | — · — | — |
-| `STRICT_NO_LOSS_ACCOUNTS` | unclassified | [] / <absent> / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:24679(MultiAccountTradeManager.execute_trade_action)<br>(+7) · ez_positions_quick.py:13133(execute_trade_wrapper)<br>(+5) | — |
-| `STRICT_VEC_PARITY_GATE_ENTRIES` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:30114(MultiAccountTradeManager.execute_now) · — | — |
-| `STRICT_VEC_PARITY_GATE_EXITS` | exit | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:30114(MultiAccountTradeManager.execute_now) · — | — |
-| `STRICT_VEC_PARITY_MODE` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:30109(MultiAccountTradeManager.execute_now) · — | — |
-| `STRICT_VEC_PARITY_SHADOW` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:30110(MultiAccountTradeManager.execute_now) · — | — |
+| `STRICT_NO_LOSS_ACCOUNTS` | unclassified | [] / <absent> / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:24719(MultiAccountTradeManager.execute_trade_action)<br>(+7) · ez_positions_quick.py:13133(execute_trade_wrapper)<br>(+5) | — |
+| `STRICT_VEC_PARITY_GATE_ENTRIES` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:30154(MultiAccountTradeManager.execute_now) · — | — |
+| `STRICT_VEC_PARITY_GATE_EXITS` | exit | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:30154(MultiAccountTradeManager.execute_now) · — | — |
+| `STRICT_VEC_PARITY_MODE` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:30149(MultiAccountTradeManager.execute_now) · — | — |
+| `STRICT_VEC_PARITY_SHADOW` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:30150(MultiAccountTradeManager.execute_now) · — | — |
 | `STRUCTURAL_RANGE_SHIFT_K_HIGH` | exit | 75.0 / 85.0 / 75.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:14210(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14210(check_exit_candidates_for_account.process_single_exit)<br>(+1) | vec_decisions/check_exit_candidates_crypto__structural_range_shift.py:77(_srs_params) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__structural_range_shift.py:58(_srs_params) [UNREACHABLE]<br>(+1) |
 | `STRUCTURAL_RANGE_SHIFT_K_LOW` | exit | 25.0 / 15.0 / 25.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:14211(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14211(check_exit_candidates_for_account.process_single_exit)<br>(+1) | vec_decisions/check_exit_candidates_crypto__structural_range_shift.py:78(_srs_params) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__structural_range_shift.py:59(_srs_params) [UNREACHABLE]<br>(+1) |
 | `STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS` | exit | 100.0 / 100.0 / 100.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:14212(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14212(check_exit_candidates_for_account.process_single_exit)<br>(+1) | vec_decisions/check_exit_candidates_crypto__structural_range_shift.py:79(_srs_params) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__structural_range_shift.py:57(_srs_params) [UNREACHABLE]<br>(+1) |
-| `STRUCTURE_FLIP_REENTRY_BASIS_RESTRICTION_ENABLED` | reentry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11902(process_position)<br>(+1) | — |
-| `STRUCTURE_FLIP_REENTRY_BASIS_TF` | reentry | 4h / 4h / 4h | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11903(process_position)<br>(+1) | — |
-| `STRUCTURE_FLIP_REENTRY_ENABLED` | reentry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11900(process_position)<br>(+1) | — |
-| `STRUCTURE_FLIP_REENTRY_TF` | reentry | 15m / 15m / 15m | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11901(process_position)<br>(+1) | — |
+| `STRUCTURE_FLIP_REENTRY_BASIS_RESTRICTION_ENABLED` | reentry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11963(process_position)<br>(+1) | — |
+| `STRUCTURE_FLIP_REENTRY_BASIS_TF` | reentry | 4h / 4h / 4h | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11964(process_position)<br>(+1) | — |
+| `STRUCTURE_FLIP_REENTRY_ENABLED` | reentry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11961(process_position)<br>(+1) | — |
+| `STRUCTURE_FLIP_REENTRY_TF` | reentry | 15m / 15m / 15m | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11962(process_position)<br>(+1) | — |
 | `ST_LT_SPLIT_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:4371(initial_fetch_and_ranking) · ez_rankings.py:4371(initial_fetch_and_ranking) | — |
 | `ST_SCORE_WEIGHT_LTF` | unclassified | 0.7 / 0.7 / 0.7 | — | DEAD | DEAD | — · — | — |
 | `SWEEP_DEEP_TEST_GAIN_PER_MO_MIN_PCT` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | DEAD | — · — | — |
@@ -2451,51 +2451,51 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `SWEEP_OPTIMAL_HOLD_BARS` | unclassified | 8 / 8 / 8 | — | DEAD | DEAD | — · — | — |
 | `SWING_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `SWING_EXIT_TFS` | exit | D / D / D | — | DEAD | DEAD | — · — | — |
-| `SWING_LONG_BUDGET` | unclassified | 2500.0 / 40000.0 / 2500.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:23347(TradierTradeManager.is_swing_entry_allowed) | — |
+| `SWING_LONG_BUDGET` | unclassified | 2500.0 / 40000.0 / 2500.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:23408(TradierTradeManager.is_swing_entry_allowed) | — |
 | `SWING_MAX_POSITION_SIZE` | sizing | 1100.0 / 5000.0 / 1100.0 | — | DEAD | DEAD | — · — | — |
 | `SWING_REENTER_AT_OR_BELOW_EXIT` | exit | True / True / True | — | DEAD | DEAD | — · — | — |
 | `SWING_REENTER_MULT` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | DEAD | — · — | — |
 | `SWING_REENTER_SIGNAL` | unclassified | green_or_hhll / green_or_hhll / green_or_hhll | — | DEAD | DEAD | — · — | — |
 | `SWING_REENTER_TOLERANCE_PCT` | unclassified | 0.0 / 0.0 / 0.0 | — | DEAD | DEAD | — · — | — |
 | `SWING_RUNAWAY_REENTER` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
-| `SWING_SHORT_BUDGET` | unclassified | 2500.0 / 40000.0 / 2500.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:23350(TradierTradeManager.is_swing_entry_allowed) | — |
+| `SWING_SHORT_BUDGET` | unclassified | 2500.0 / 40000.0 / 2500.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:23411(TradierTradeManager.is_swing_entry_allowed) | — |
 | `SWING_START_SIZE` | sizing | 200.0 / 200.0 / 200.0 | — | DEAD | DEAD | — · — | — |
-| `SYMBOLS` | unclassified | <expr> BASE_PATH / 'symbols.json' / <absent> / <expr> Path('data') | — | LIVE_ONLY | DEAD | ez_manage.py:23265(MultiAccountTradeManager._load_positions_for_account)<br>(+1) · — | — |
+| `SYMBOLS` | unclassified | <expr> BASE_PATH / 'symbols.json' / <absent> / <expr> Path('data') | — | LIVE_ONLY | DEAD | ez_manage.py:23305(MultiAccountTradeManager._load_positions_for_account)<br>(+1) · — | — |
 | `SYMBOLS_ACTIVE` | unclassified | <expr> BASE_PATH / 'symbols_active.json' / <absent> / <expr> Path('dat | — | LIVE_ONLY | LIVE_ONLY | ez_crosses.py:55(<module>)<br>(+4) · ez_crosses.py:55(<module>)<br>(+3) | — |
 | `SYMBOLS_ACTIVE_FILE` | unclassified | <expr> BASE_PATH / 'symbols_active.json' / <absent> / <expr> Path('dat | — | LIVE_ONLY | LIVE_ONLY | ez_crosses.py:53(<module>)<br>(+1) · ez_crosses.py:53(<module>)<br>(+1) | — |
-| `SYMBOLS_ANG_LONG` | unclassified | <expr> BASE_PATH / 'symbols_ang_long.json' / <absent> / <expr> Path('d | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:20256(MultiAccountTradeManager.load_symbols_files)<br>(+2) · ez_positions_quick.py:10979(load_symbols_quick)<br>(+1) | — |
-| `SYMBOLS_ANG_SHORT` | unclassified | <expr> BASE_PATH / 'symbols_ang_short.json' / <absent> / <expr> Path(' | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:20259(MultiAccountTradeManager.load_symbols_files)<br>(+2) · ez_positions_quick.py:10979(load_symbols_quick)<br>(+1) | — |
+| `SYMBOLS_ANG_LONG` | unclassified | <expr> BASE_PATH / 'symbols_ang_long.json' / <absent> / <expr> Path('d | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:20296(MultiAccountTradeManager.load_symbols_files)<br>(+2) · ez_positions_quick.py:10979(load_symbols_quick)<br>(+1) | — |
+| `SYMBOLS_ANG_SHORT` | unclassified | <expr> BASE_PATH / 'symbols_ang_short.json' / <absent> / <expr> Path(' | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:20299(MultiAccountTradeManager.load_symbols_files)<br>(+2) · ez_positions_quick.py:10979(load_symbols_quick)<br>(+1) | — |
 | `SYMBOLS_FILE` | unclassified | <expr> BASE_PATH / 'symbols.json' / <expr> BASE_PATH / 'symbols_tradie | — | LIVE_ONLY | LIVE_ONLY | ez_crosses.py:41(<module>)<br>(+11) · ez_crosses.py:41(<module>)<br>(+11) | — |
-| `SYMBOLS_FIN` | unclassified | <expr> BASE_PATH / 'symbols_fin.json' / <absent> / <expr> Path('data') | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:20286(MultiAccountTradeManager.load_symbols_files)<br>(+5) · ez_positions_quick.py:10978(load_symbols_quick)<br>(+3) | — |
-| `SYMBOLS_FIN_LONG` | unclassified | <expr> BASE_PATH / 'symbols_fin_long.json' / <absent> / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:20289(MultiAccountTradeManager.load_symbols_files) · — | — |
-| `SYMBOLS_FIN_SHORT` | unclassified | <expr> BASE_PATH / 'symbols_fin_short.json' / <absent> / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:20292(MultiAccountTradeManager.load_symbols_files) · — | — |
-| `SYMBOLS_FLZ` | unclassified | <expr> BASE_PATH / 'symbols_flz.json' / <absent> / <expr> Path('data') | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:20268(MultiAccountTradeManager.load_symbols_files)<br>(+2) · ez_positions_quick.py:10979(load_symbols_quick)<br>(+1) | — |
-| `SYMBOLS_FLZ_LONG` | unclassified | <expr> BASE_PATH / 'symbols_flz_long.json' / <absent> / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:20271(MultiAccountTradeManager.load_symbols_files) · — | — |
-| `SYMBOLS_FLZ_SHORT` | unclassified | <expr> BASE_PATH / 'symbols_flz_short.json' / <absent> / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:20274(MultiAccountTradeManager.load_symbols_files) · — | — |
-| `SYMBOLS_INF_LONG` | unclassified | <expr> BASE_PATH / 'symbols_inf_long.json' / <absent> / <expr> Path('d | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:20262(MultiAccountTradeManager.load_symbols_files)<br>(+2) · ez_positions_quick.py:10979(load_symbols_quick)<br>(+1) | — |
-| `SYMBOLS_INF_SHORT` | unclassified | <expr> BASE_PATH / 'symbols_inf_short.json' / <absent> / <expr> Path(' | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:20265(MultiAccountTradeManager.load_symbols_files)<br>(+2) · ez_positions_quick.py:10979(load_symbols_quick)<br>(+1) | — |
-| `SYMBOLS_MEN` | unclassified | <expr> BASE_PATH / 'symbols_men.json' / <absent> / <expr> Path('data') | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:20277(MultiAccountTradeManager.load_symbols_files)<br>(+2) · ez_positions_quick.py:10979(load_symbols_quick)<br>(+1) | — |
-| `SYMBOLS_MEN_LONG` | unclassified | <expr> BASE_PATH / 'symbols_men_long.json' / <absent> / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:20280(MultiAccountTradeManager.load_symbols_files) · — | — |
-| `SYMBOLS_MEN_SHORT` | unclassified | <expr> BASE_PATH / 'symbols_men_short.json' / <absent> / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:20283(MultiAccountTradeManager.load_symbols_files) · — | — |
-| `SYMBOL_CONFIGS_FILE` | unclassified | <expr> BASE_PATH / 'symbol_configs.json' / <expr> DATA_DIR / 'symbol_c | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:20491(MultiAccountTradeManager.load_symbol_configs)<br>(+2) · ez_positions_service.py:4477(PositionService._load_symbol_configs)<br>(+1) | — |
+| `SYMBOLS_FIN` | unclassified | <expr> BASE_PATH / 'symbols_fin.json' / <absent> / <expr> Path('data') | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:20326(MultiAccountTradeManager.load_symbols_files)<br>(+5) · ez_positions_quick.py:10978(load_symbols_quick)<br>(+3) | — |
+| `SYMBOLS_FIN_LONG` | unclassified | <expr> BASE_PATH / 'symbols_fin_long.json' / <absent> / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:20329(MultiAccountTradeManager.load_symbols_files) · — | — |
+| `SYMBOLS_FIN_SHORT` | unclassified | <expr> BASE_PATH / 'symbols_fin_short.json' / <absent> / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:20332(MultiAccountTradeManager.load_symbols_files) · — | — |
+| `SYMBOLS_FLZ` | unclassified | <expr> BASE_PATH / 'symbols_flz.json' / <absent> / <expr> Path('data') | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:20308(MultiAccountTradeManager.load_symbols_files)<br>(+2) · ez_positions_quick.py:10979(load_symbols_quick)<br>(+1) | — |
+| `SYMBOLS_FLZ_LONG` | unclassified | <expr> BASE_PATH / 'symbols_flz_long.json' / <absent> / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:20311(MultiAccountTradeManager.load_symbols_files) · — | — |
+| `SYMBOLS_FLZ_SHORT` | unclassified | <expr> BASE_PATH / 'symbols_flz_short.json' / <absent> / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:20314(MultiAccountTradeManager.load_symbols_files) · — | — |
+| `SYMBOLS_INF_LONG` | unclassified | <expr> BASE_PATH / 'symbols_inf_long.json' / <absent> / <expr> Path('d | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:20302(MultiAccountTradeManager.load_symbols_files)<br>(+2) · ez_positions_quick.py:10979(load_symbols_quick)<br>(+1) | — |
+| `SYMBOLS_INF_SHORT` | unclassified | <expr> BASE_PATH / 'symbols_inf_short.json' / <absent> / <expr> Path(' | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:20305(MultiAccountTradeManager.load_symbols_files)<br>(+2) · ez_positions_quick.py:10979(load_symbols_quick)<br>(+1) | — |
+| `SYMBOLS_MEN` | unclassified | <expr> BASE_PATH / 'symbols_men.json' / <absent> / <expr> Path('data') | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:20317(MultiAccountTradeManager.load_symbols_files)<br>(+2) · ez_positions_quick.py:10979(load_symbols_quick)<br>(+1) | — |
+| `SYMBOLS_MEN_LONG` | unclassified | <expr> BASE_PATH / 'symbols_men_long.json' / <absent> / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:20320(MultiAccountTradeManager.load_symbols_files) · — | — |
+| `SYMBOLS_MEN_SHORT` | unclassified | <expr> BASE_PATH / 'symbols_men_short.json' / <absent> / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:20323(MultiAccountTradeManager.load_symbols_files) · — | — |
+| `SYMBOL_CONFIGS_FILE` | unclassified | <expr> BASE_PATH / 'symbol_configs.json' / <expr> DATA_DIR / 'symbol_c | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:20531(MultiAccountTradeManager.load_symbol_configs)<br>(+2) · ez_positions_service.py:4477(PositionService._load_symbol_configs)<br>(+1) | — |
 | `SYMBOL_PERF_DECAY_HOURS` | unclassified | 12.0 / <absent> / 12.0 | — | LIVE_ONLY | LIVE_ONLY | utils.py:4852(_perf_apply_decay) · utils.py:4852(_perf_apply_decay) | — |
-| `SYMBOL_PERF_ENABLED` | unclassified | True / False / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:25825(MultiAccountTradeManager.execute_trade_action)<br>(+5) · ez_positions_quick.py:1402(calculate_dynamic_quantity)<br>(+5) | — |
+| `SYMBOL_PERF_ENABLED` | unclassified | True / False / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:25865(MultiAccountTradeManager.execute_trade_action)<br>(+5) · ez_positions_quick.py:1402(calculate_dynamic_quantity)<br>(+5) | — |
 | `SYMBOL_PERF_MAX_MULT` | unclassified | 10.0 / <absent> / 10.0 | — | LIVE_ONLY | LIVE_ONLY | utils.py:4733(_perf_compute_multiplier)<br>(+1) · utils.py:4733(_perf_compute_multiplier)<br>(+1) | — |
 | `SYMBOL_PERF_MIN_MULT` | unclassified | 0.1 / <absent> / 0.1 | — | LIVE_ONLY | LIVE_ONLY | utils.py:4733(_perf_compute_multiplier)<br>(+1) · utils.py:4733(_perf_compute_multiplier)<br>(+1) | — |
-| `SYMBOL_PERF_MIN_TRADES` | unclassified | 5 / <absent> / 5 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:54005(performance_report_loop)<br>(+1) · utils.py:4721(_perf_compute_multiplier) | — |
-| `SYMBOL_PERF_REFRESH_SECONDS` | unclassified | 3600.0 / 300.0 / 3600.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:54062(performance_report_loop)<br>(+2) · tradier_manage.py:31674(tradier_performance_report_loop)<br>(+2) | — |
-| `SYMBOL_PERF_WINDOW_DAYS` | unclassified | 14 / <absent> / 14 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:54005(performance_report_loop)<br>(+1) · utils.py:4746(compute_all_stats) | — |
-| `SYMBOL_SIZE_MULTIPLIERS` | sizing | {'CELOUSDT': 2.0, 'DYDXUSDT': 1.5, 'GTCUSDT': 1.5, '1000SATSUSDT': 1.5 | — | LIVE_ONLY | DEAD | ez_manage.py:41664(calculate_final_order_quantity) · — | — |
+| `SYMBOL_PERF_MIN_TRADES` | unclassified | 5 / <absent> / 5 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:54045(performance_report_loop)<br>(+1) · utils.py:4721(_perf_compute_multiplier) | — |
+| `SYMBOL_PERF_REFRESH_SECONDS` | unclassified | 3600.0 / 300.0 / 3600.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:54102(performance_report_loop)<br>(+2) · tradier_manage.py:31735(tradier_performance_report_loop)<br>(+2) | — |
+| `SYMBOL_PERF_WINDOW_DAYS` | unclassified | 14 / <absent> / 14 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:54045(performance_report_loop)<br>(+1) · utils.py:4746(compute_all_stats) | — |
+| `SYMBOL_SIZE_MULTIPLIERS` | sizing | {'CELOUSDT': 2.0, 'DYDXUSDT': 1.5, 'GTCUSDT': 1.5, '1000SATSUSDT': 1.5 | — | LIVE_ONLY | DEAD | ez_manage.py:41704(calculate_final_order_quantity) · — | — |
 | `SYNTHETIC_LOSER_MIN_AGE_MIN` | unclassified | 30.0 / 30.0 / 30.0 | — | DEAD | DEAD | — · — | — |
 | `SYNTHETIC_LOSER_THRESHOLD_PCT` | unclassified | -2.0 / -2.0 / -2.0 | — | DEAD | DEAD | — · — | — |
 | `TASK_STAGGER_SECONDS` | unclassified | 15 / 15 / 15 | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:8377(start_background_tasks) · ez_rankings.py:8377(start_background_tasks) | — |
-| `TF_ALIGNMENT_MIN_LONG` | unclassified | 2 / 2 / 2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:24746(TradierTradeManager.execute_trade_action) | — |
-| `TF_ALIGNMENT_MIN_SHORT` | unclassified | 2 / 2 / 2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:24747(TradierTradeManager.execute_trade_action) | — |
+| `TF_ALIGNMENT_MIN_LONG` | unclassified | 2 / 2 / 2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:24807(TradierTradeManager.execute_trade_action) | — |
+| `TF_ALIGNMENT_MIN_SHORT` | unclassified | 2 / 2 / 2 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:24808(TradierTradeManager.execute_trade_action) | — |
 | `TF_ALL` | unclassified | None / None / None | — | DEAD | DEAD | — · — | — |
-| `TF_FOCUS` | unclassified | 3m / 3m / 3m | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:41156(calculate_final_order_quantity)<br>(+6) · ez_positions_quick.py:2717(AdvancedSignalRater.rate) | — |
-| `TF_FOCUS_EXIT_HARD_GATE` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:24753(TradierTradeManager.execute_trade_action) | — |
+| `TF_FOCUS` | unclassified | 3m / 3m / 3m | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:41196(calculate_final_order_quantity)<br>(+6) · ez_positions_quick.py:2717(AdvancedSignalRater.rate) | — |
+| `TF_FOCUS_EXIT_HARD_GATE` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:24814(TradierTradeManager.execute_trade_action) | — |
 | `TF_HTF2` | unclassified | 1h / 4h / 1h | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:1279(calculate_dynamic_quantity)<br>(+1) · ez_positions_quick.py:1279(calculate_dynamic_quantity)<br>(+1) | — |
-| `TF_MACRO` | unclassified | D / D / D | — | DEAD | LIVE_ONLY | — · tradier_manage.py:24751(TradierTradeManager.execute_trade_action) | — |
+| `TF_MACRO` | unclassified | D / D / D | — | DEAD | LIVE_ONLY | — · tradier_manage.py:24812(TradierTradeManager.execute_trade_action) | — |
 | `TF_MICRO` | unclassified | 1m / 5m / 1m | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:1273(calculate_dynamic_quantity)<br>(+6) · ez_positions_quick.py:1273(calculate_dynamic_quantity)<br>(+6) | — |
 | `TF_SCALP` | unclassified | 3m / 15m / 3m | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:929(analyze_multi_tf_state)<br>(+5) · ez_positions_quick.py:929(analyze_multi_tf_state)<br>(+5) | — |
 | `THROUGHPUT_DAILY_LOSS_RESET_UTC_HOUR` | unclassified | 0 / 0 / 0 | — | DEAD | DEAD | — · — | — |
@@ -2522,31 +2522,31 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `TIER_C_MULTIPLIER` | unclassified | 0.7 / 0.7 / 0.7 | — | LIVE_ONLY | LIVE_ONLY | utils.py:4883(get_tier_multiplier) · utils.py:4883(get_tier_multiplier) | — |
 | `TIER_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:663(save_rankings_json)<br>(+2) · ez_rankings.py:663(save_rankings_json)<br>(+2) | — |
 | `TIMEFRAMES` | unclassified | ['1m', '5m', '15m', '1h', '4h', 'D'] / ['1m', '5m', '15m', '1h', '4h', | — | LIVE_ONLY | LIVE_ONLY | ez_crosses.py:1414(main)<br>(+11) · bounce_donchian_contract.py:80(_normalise)<br>(+11) | — |
-| `TIME_ZONE_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27647(TradierTradeManager.should_enter_long)<br>(+2) | — |
-| `TOP_OF_RANGE_BLOCK_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:30139(MultiAccountTradeManager.execute_now) · — | — |
-| `TOP_OF_RANGE_BLOCK_REQUIRE_ALL` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:30147(MultiAccountTradeManager.execute_now) · — | — |
-| `TOP_OF_RANGE_BLOCK_TF_LIST` | unclassified | 1h,4h,D / 1h,4h,D / 1h,4h,D | — | LIVE_ONLY | DEAD | ez_manage.py:30144(MultiAccountTradeManager.execute_now) · — | — |
-| `TOP_OF_RANGE_BLOCK_THRESHOLD` | unclassified | 0.95 / 0.95 / 0.95 | — | LIVE_ONLY | DEAD | ez_manage.py:30143(MultiAccountTradeManager.execute_now) · — | — |
+| `TIME_ZONE_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27708(TradierTradeManager.should_enter_long)<br>(+2) | — |
+| `TOP_OF_RANGE_BLOCK_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:30179(MultiAccountTradeManager.execute_now) · — | — |
+| `TOP_OF_RANGE_BLOCK_REQUIRE_ALL` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:30187(MultiAccountTradeManager.execute_now) · — | — |
+| `TOP_OF_RANGE_BLOCK_TF_LIST` | unclassified | 1h,4h,D / 1h,4h,D / 1h,4h,D | — | LIVE_ONLY | DEAD | ez_manage.py:30184(MultiAccountTradeManager.execute_now) · — | — |
+| `TOP_OF_RANGE_BLOCK_THRESHOLD` | unclassified | 0.95 / 0.95 / 0.95 | — | LIVE_ONLY | DEAD | ez_manage.py:30183(MultiAccountTradeManager.execute_now) · — | — |
 | `TRADEABLE_KEYS` | unclassified | <expr> BASE_PATH / 'tradeable_keys.json' / <absent> / <expr> Path('dat | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:10979(load_symbols_quick)<br>(+1) · ez_positions_quick.py:10979(load_symbols_quick)<br>(+1) | — |
 | `TRADEABLE_KEYS_MANDATORY_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
-| `TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:44099(_process_single_override_check)<br>(+1) · — | — |
-| `TRADEABLE_KEYS_MANDATORY_SIZE_USD` | sizing | 9.0 / 9.0 / 9.0 | — | LIVE_ONLY | DEAD | ez_manage.py:44147(_process_single_override_check) · — | — |
-| `TRADIER_ACCOUNT_ID` | unclassified |  /  /  | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:6181(QuickConfig) |
+| `TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:44139(_process_single_override_check)<br>(+1) · — | — |
+| `TRADEABLE_KEYS_MANDATORY_SIZE_USD` | sizing | 9.0 / 9.0 / 9.0 | — | LIVE_ONLY | DEAD | ez_manage.py:44187(_process_single_override_check) · — | — |
+| `TRADIER_ACCOUNT_ID` | unclassified |  /  /  | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:6226(QuickConfig) |
 | `TRADIER_API_BASE_URL` | unclassified | https://api.tradier.com/v1 / https://api.tradier.com/v1 / https://api. | — | DEAD | DEAD | — · — | — |
-| `TRADIER_API_KEY` | unclassified |  /  /  | — | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:9331(AccountConfig.__post_init__ [dynamic key]) · — | v12_quick_engine.py:6181(QuickConfig)<br>v12_quick_engine.py:6181(QuickConfig) |
+| `TRADIER_API_KEY` | unclassified |  /  /  | — | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:9371(AccountConfig.__post_init__ [dynamic key]) · — | v12_quick_engine.py:6226(QuickConfig)<br>v12_quick_engine.py:6226(QuickConfig) |
 | `TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES` | unclassified | 0 / 0 / 0 | — | DEAD | DEAD | — · — | — |
 | `TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `TRADIER_INDICATORS_CYCLE_CONCURRENCY` | unclassified | 24 / 24 / 24 | — | DEAD | LIVE_ONLY | — · tradier_indicators.py:2449(TradierIndicatorOrchestrator.__init__) | — |
 | `TRADIER_INDICATORS_HTTP_CONCURRENCY` | unclassified | 48 / 48 / 48 | — | DEAD | LIVE_ONLY | — · tradier_indicators.py:2453(TradierIndicatorOrchestrator.__init__) | — |
 | `TRADIER_INDICATORS_IDLE_SLEEP_SEC` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | DEAD | — · — | — |
 | `TRADIER_INDICATORS_NARROW_UNIVERSE` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_indicators.py:2463(TradierIndicatorOrchestrator._load_symbols) | — |
-| `TRADIER_K_ZONE_ENTRY_BONUS_TRADIER` | entry | 20 / 25 / 20 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17250(StockStrategy.calculate_signal_score) | — |
-| `TRADIER_LOCAL_EXTREMES_SCORING_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:13406(process_position) | — |
-| `TRADIER_LONG_ONLY_ENTRIES` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11887(process_position) | — |
-| `TRADIER_MIN_HOLD_MINUTES` | unclassified | 4320.0 / 240.0 / 4320.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11564(process_position)<br>(+5) | — |
-| `TRADIER_MIN_HOLD_MINUTES_SHORT` | unclassified | <absent> / 60.0 / <absent> | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18753(StockStrategy.evaluate_stop)<br>(+2) | — |
+| `TRADIER_K_ZONE_ENTRY_BONUS_TRADIER` | entry | 20 / 25 / 20 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17311(StockStrategy.calculate_signal_score) | — |
+| `TRADIER_LOCAL_EXTREMES_SCORING_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:13467(process_position) | — |
+| `TRADIER_LONG_ONLY_ENTRIES` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11948(process_position) | — |
+| `TRADIER_MIN_HOLD_MINUTES` | unclassified | 4320.0 / 240.0 / 4320.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11625(process_position)<br>(+5) | — |
+| `TRADIER_MIN_HOLD_MINUTES_SHORT` | unclassified | <absent> / 60.0 / <absent> | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18814(StockStrategy.evaluate_stop)<br>(+2) | — |
 | `TRADIER_MI_EXIT_ENABLED_TRADIER` | exit | False / False / False | — | DEAD | DEAD | — · — | — |
-| `TRADIER_NOLOSS_SRS_BYPASS` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26010(TradierTradeManager.execute_now) | — |
+| `TRADIER_NOLOSS_SRS_BYPASS` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26071(TradierTradeManager.execute_now) | — |
 | `TRADIER_OI_INJECT_ENABLED` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `TRADIER_OI_INJECT_MAX_EACH` | unclassified | 10 / 10 / 10 | — | DEAD | DEAD | — · — | — |
 | `TRADIER_OI_INJECT_MIN_TOTAL_OI` | unclassified | 1000 / 1000 / 1000 | — | DEAD | DEAD | — · — | — |
@@ -2554,62 +2554,62 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `TRADIER_OI_INJECT_PC_BEARISH` | unclassified | 1.4 / 1.4 / 1.4 | — | DEAD | DEAD | — · — | — |
 | `TRADIER_OI_INJECT_PC_BULLISH` | unclassified | 0.6 / 0.6 / 0.6 | — | DEAD | DEAD | — · — | — |
 | `TRADIER_OI_INJECT_STALE_MAX_HOURS` | unclassified | 4.0 / 4.0 / 4.0 | — | DEAD | DEAD | — · — | — |
-| `TRADIER_POST_CLOSE_COOLDOWN_MIN` | unclassified | 15.0 / 15.0 / 15.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14160(queue_trade_action) | — |
-| `TRADIER_QUEUE_DEDUPE_SEC` | unclassified | 60.0 / 60.0 / 60.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14119(queue_trade_action) | — |
-| `TRADIER_RATIO_BOOST_MIN_GAIN_PCT` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26319(TradierTradeManager.execute_now) | — |
-| `TRADIER_RATIO_REQUIRE_MIN_GAIN` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26318(TradierTradeManager.execute_now) | — |
-| `TRADIER_REENTRY_ANTI_CHURN_ENABLED` | reentry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21833(StockStrategy.evaluate_reentry) | — |
-| `TRADIER_REENTRY_HARDCOOL_MIN` | reentry | 30.0 / 15.0 / 30.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21650(StockStrategy.evaluate_reentry)<br>(+1) | vec_decisions/stocks_reentry_sources.py:17(fires) |
-| `TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED` | reentry | True / False / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27278(TradierTradeManager.reentry_monitor_loop) | — |
-| `TRADIER_REENTRY_RZ_BLOCK_ENABLED` | reentry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21839(StockStrategy.evaluate_reentry) | — |
-| `TRADIER_REOPEN_WAIT_S` | unclassified | 0.0 / 0.0 / 0.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11864(process_position) | — |
-| `TRADIER_REQUIRE_TRADEABLE_KEY` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25704(TradierTradeManager.execute_now) | — |
+| `TRADIER_POST_CLOSE_COOLDOWN_MIN` | unclassified | 15.0 / 15.0 / 15.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14221(queue_trade_action) | — |
+| `TRADIER_QUEUE_DEDUPE_SEC` | unclassified | 60.0 / 60.0 / 60.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14180(queue_trade_action) | — |
+| `TRADIER_RATIO_BOOST_MIN_GAIN_PCT` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26380(TradierTradeManager.execute_now) | — |
+| `TRADIER_RATIO_REQUIRE_MIN_GAIN` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26379(TradierTradeManager.execute_now) | — |
+| `TRADIER_REENTRY_ANTI_CHURN_ENABLED` | reentry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21894(StockStrategy.evaluate_reentry) | — |
+| `TRADIER_REENTRY_HARDCOOL_MIN` | reentry | 30.0 / 15.0 / 30.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21711(StockStrategy.evaluate_reentry)<br>(+1) | vec_decisions/stocks_reentry_sources.py:17(fires) |
+| `TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED` | reentry | True / False / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27339(TradierTradeManager.reentry_monitor_loop) | — |
+| `TRADIER_REENTRY_RZ_BLOCK_ENABLED` | reentry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:21900(StockStrategy.evaluate_reentry) | — |
+| `TRADIER_REOPEN_WAIT_S` | unclassified | 0.0 / 0.0 / 0.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11925(process_position) | — |
+| `TRADIER_REQUIRE_TRADEABLE_KEY` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:25765(TradierTradeManager.execute_now) | — |
 | `TRADIER_RESET_MAX_GAIN_ON_CLOSE` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `TRADIER_RSI_LONG_15M` | unclassified | 40.0 / 40.0 / 40.0 | — | DEAD | DEAD | — · — | — |
 | `TRADIER_RSI_LONG_1H` | unclassified | 22.0 / 22.0 / 22.0 | — | DEAD | DEAD | — · — | — |
 | `TRADIER_RSI_LONG_4H` | unclassified | 35.0 / 35.0 / 35.0 | — | DEAD | DEAD | — · — | — |
 | `TRADIER_RSI_LONG_5M` | unclassified | 35.0 / 35.0 / 35.0 | — | DEAD | DEAD | — · — | — |
 | `TRADIER_RSI_LONG_D` | unclassified | 40.0 / 40.0 / 40.0 | — | DEAD | DEAD | — · — | — |
-| `TRADIER_RSI_SHORT_15M` | unclassified | 65.0 / 65.0 / 65.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17582(StockStrategy.calculate_signal_score) | — |
-| `TRADIER_RSI_SHORT_1H` | unclassified | 65.0 / 65.0 / 65.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17583(StockStrategy.calculate_signal_score) | — |
+| `TRADIER_RSI_SHORT_15M` | unclassified | 65.0 / 65.0 / 65.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17643(StockStrategy.calculate_signal_score) | — |
+| `TRADIER_RSI_SHORT_1H` | unclassified | 65.0 / 65.0 / 65.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17644(StockStrategy.calculate_signal_score) | — |
 | `TRADIER_RSI_SHORT_4H` | unclassified | 60.0 / 60.0 / 60.0 | — | DEAD | DEAD | — · — | — |
 | `TRADIER_RSI_SHORT_5M` | unclassified | 65.0 / 65.0 / 65.0 | — | DEAD | DEAD | — · — | — |
 | `TRADIER_RSI_SHORT_D` | unclassified | 55.0 / 55.0 / 55.0 | — | DEAD | DEAD | — · — | — |
-| `TRADIER_RSI_SHORT_RVOL_15M` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17584(StockStrategy.calculate_signal_score) | — |
-| `TRADIER_RSI_SHORT_RVOL_1H` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17559(StockStrategy.calculate_signal_score) | — |
+| `TRADIER_RSI_SHORT_RVOL_15M` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17645(StockStrategy.calculate_signal_score) | — |
+| `TRADIER_RSI_SHORT_RVOL_1H` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:17620(StockStrategy.calculate_signal_score) | — |
 | `TRADIER_SANDBOX_URL` | unclassified | https://sandbox.tradier.com/v1 / https://sandbox.tradier.com/v1 / http | — | DEAD | DEAD | — · — | — |
 | `TRADIER_STREAMING_URL` | unclassified | https://stream.tradier.com/v1 / https://stream.tradier.com/v1 / https: | — | DEAD | DEAD | — · — | — |
 | `TRADIER_SYMBOLS_FILE` | unclassified | <expr> BASE_PATH / 'symbols_tradier.json' / <expr> BASE_PATH / 'symbol | — | DEAD | LIVE_ONLY | — · tradier_positions.py:515(TradierPositionManager.__init__) | — |
 | `TRADIER_WS_URL` | unclassified | wss://ws.tradier.com/v1 / wss://ws.tradier.com/v1 / wss://ws.tradier.c | — | DEAD | LIVE_ONLY | — · tradier_api.py:468(TradierAPIClient.stream_quotes) | — |
 | `TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
-| `TRAILING_AUG_ENABLED_TRADIER` | unclassified | False / False / False | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21357(StockStrategy.evaluate_augment) | vec_decisions/stock_augment_sources.py:76(trailing_aug_fire) |
-| `TRAILING_AUG_GAIN_STEP_PCT` | unclassified | 0.5 / 0.5 / 0.5 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21358(StockStrategy.evaluate_augment) | vec_decisions/stock_augment_sources.py:78(trailing_aug_fire) |
-| `TRAILING_AUG_MAX_PER_POSITION` | unclassified | 3 / 3 / 3 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21359(StockStrategy.evaluate_augment) | vec_decisions/stock_augment_sources.py:78(trailing_aug_fire) |
-| `TRAILING_AUG_MIN_GAIN_PCT` | unclassified | 0.5 / 0.5 / 0.5 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21360(StockStrategy.evaluate_augment) | vec_decisions/stock_augment_sources.py:78(trailing_aug_fire) |
-| `TRA_BUY_COOLDOWN_AFTER_SELL_HOURS` | unclassified | 96.0 / 96.0 / 96.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26506(TradierTradeManager.execute_now) | — |
-| `TRA_DISABLE_AUGMENT` | augment | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11774(process_position) | — |
-| `TRA_DISABLE_DELTA_ENTRY` | entry | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12265(process_position) | — |
-| `TRA_LONG_ONLY` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14574(process_symbols_periodically)<br>(+4) | — |
-| `TRA_MAX_BUYS_PER_DAY` | unclassified | 1 / 1 / 1 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26504(TradierTradeManager.execute_now)<br>(+1) | — |
-| `TRA_MIN_HOLD_MINUTES` | unclassified | 5760.0 / 5760.0 / 5760.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18979(StockStrategy.evaluate_stop) | — |
-| `TRA_NO_LOSS_EXIT` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18977(StockStrategy.evaluate_stop) | — |
+| `TRAILING_AUG_ENABLED_TRADIER` | unclassified | False / False / False | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21418(StockStrategy.evaluate_augment) | vec_decisions/stock_augment_sources.py:76(trailing_aug_fire) |
+| `TRAILING_AUG_GAIN_STEP_PCT` | unclassified | 0.5 / 0.5 / 0.5 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21419(StockStrategy.evaluate_augment) | vec_decisions/stock_augment_sources.py:78(trailing_aug_fire) |
+| `TRAILING_AUG_MAX_PER_POSITION` | unclassified | 3 / 3 / 3 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21420(StockStrategy.evaluate_augment) | vec_decisions/stock_augment_sources.py:78(trailing_aug_fire) |
+| `TRAILING_AUG_MIN_GAIN_PCT` | unclassified | 0.5 / 0.5 / 0.5 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21421(StockStrategy.evaluate_augment) | vec_decisions/stock_augment_sources.py:78(trailing_aug_fire) |
+| `TRA_BUY_COOLDOWN_AFTER_SELL_HOURS` | unclassified | 96.0 / 96.0 / 96.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26567(TradierTradeManager.execute_now) | — |
+| `TRA_DISABLE_AUGMENT` | augment | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11835(process_position) | — |
+| `TRA_DISABLE_DELTA_ENTRY` | entry | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12326(process_position) | — |
+| `TRA_LONG_ONLY` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14635(process_symbols_periodically)<br>(+4) | — |
+| `TRA_MAX_BUYS_PER_DAY` | unclassified | 1 / 1 / 1 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26565(TradierTradeManager.execute_now)<br>(+1) | — |
+| `TRA_MIN_HOLD_MINUTES` | unclassified | 5760.0 / 5760.0 / 5760.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19040(StockStrategy.evaluate_stop) | — |
+| `TRA_NO_LOSS_EXIT` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19038(StockStrategy.evaluate_stop) | — |
 | `TRA_PREFERRED_SYMBOLS` | unclassified | ['AAPL', 'MSFT', 'GOOGL', 'MSTR', 'PLTR', 'NEM', 'MU', 'SNDK', 'NVDA'] | — | DEAD | DEAD | — · — | — |
-| `TRA_SATOSHIT_ONLY` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22590(TradierTradeManager.load_account_symbols)<br>(+11) | — |
-| `TRA_STRICT_EXIT_ONLY` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18982(StockStrategy.evaluate_stop) | — |
-| `TRA_WT_DC_ENTRY_THRESHOLD` | entry | 85.0 / 85.0 / 85.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12643(process_position) | — |
+| `TRA_SATOSHIT_ONLY` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22651(TradierTradeManager.load_account_symbols)<br>(+11) | — |
+| `TRA_STRICT_EXIT_ONLY` | exit | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19043(StockStrategy.evaluate_stop) | — |
+| `TRA_WT_DC_ENTRY_THRESHOLD` | entry | 85.0 / 85.0 / 85.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12704(process_position) | — |
 | `TRB_MAX_CALL_VALUE` | unclassified | 750.0 / 750.0 / 750.0 | — | DEAD | DEAD | — · — | — |
 | `TRB_MAX_LONG_VALUE` | unclassified | 12500.0 / 12500.0 / 12500.0 | — | DEAD | DEAD | — · — | — |
 | `TRB_MAX_PUT_VALUE` | unclassified | 750.0 / 750.0 / 750.0 | — | DEAD | DEAD | — · — | — |
 | `TRB_MAX_SHORT_VALUE` | unclassified | 12500.0 / 12500.0 / 12500.0 | — | DEAD | DEAD | — · — | — |
-| `TRB_MAX_SYMBOL_VALUE` | unclassified | 2500.0 / 2500.0 / 2500.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11291(process_position)<br>(+1) | — |
+| `TRB_MAX_SYMBOL_VALUE` | unclassified | 2500.0 / 2500.0 / 2500.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11352(process_position)<br>(+1) | — |
 | `TRB_NOLOSS_MIN_PROFIT_PCT` | unclassified | 0.0 / 0.0 / 0.0 | — | DEAD | DEAD | — · — | — |
-| `TRC_5M_SWEEP_BENCHMARK` | unclassified | SPY / SPY / SPY | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14625(trc_5m_sweep_loop) | — |
+| `TRC_5M_SWEEP_BENCHMARK` | unclassified | SPY / SPY / SPY | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14686(trc_5m_sweep_loop) | — |
 | `TRC_5M_SWEEP_BUFFER_N` | unclassified | 20 / 20 / 20 | — | DEAD | DEAD | — · — | — |
-| `TRC_5M_SWEEP_DELTA_WEIGHT` | unclassified | 0.3 / 0.3 / 0.3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14624(trc_5m_sweep_loop) | — |
-| `TRC_5M_SWEEP_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14618(trc_5m_sweep_loop)<br>(+1) | — |
-| `TRC_5M_SWEEP_TOP_N` | unclassified | 8 / 8 / 8 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14622(trc_5m_sweep_loop) | — |
-| `TRC_5M_SWEEP_Z_WEIGHT` | unclassified | 0.7 / 0.7 / 0.7 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14623(trc_5m_sweep_loop) | — |
-| `TRC_BEAR_MARKET_MODE` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22249(_apply_trc_overrides)<br>(+2) | — |
+| `TRC_5M_SWEEP_DELTA_WEIGHT` | unclassified | 0.3 / 0.3 / 0.3 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14685(trc_5m_sweep_loop) | — |
+| `TRC_5M_SWEEP_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14679(trc_5m_sweep_loop)<br>(+1) | — |
+| `TRC_5M_SWEEP_TOP_N` | unclassified | 8 / 8 / 8 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14683(trc_5m_sweep_loop) | — |
+| `TRC_5M_SWEEP_Z_WEIGHT` | unclassified | 0.7 / 0.7 / 0.7 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:14684(trc_5m_sweep_loop) | — |
+| `TRC_BEAR_MARKET_MODE` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22310(_apply_trc_overrides)<br>(+2) | — |
 | `TRC_CLENOW_ENABLED` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `TRC_CLENOW_POSITION_SIZE` | sizing | 2640.0 / 2640.0 / 2640.0 | — | DEAD | DEAD | — · — | — |
 | `TRC_CONNORS_RSI_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
@@ -2663,8 +2663,8 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `TRENDER_QV_FLOOR_USD` | unclassified | 25000000 / 25000000 / 25000000 | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:4712(initial_fetch_and_ranking) · ez_rankings.py:4712(initial_fetch_and_ranking) | — |
 | `TRENDER_QV_MAX_BOOST` | unclassified | 1.5 / 1.5 / 1.5 | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:4714(initial_fetch_and_ranking) · ez_rankings.py:4714(initial_fetch_and_ranking) | — |
 | `TRENDER_RET24_MIN_PCT` | unclassified | 2.5 / 2.5 / 2.5 | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:4711(initial_fetch_and_ranking) · ez_rankings.py:4711(initial_fetch_and_ranking) | — |
-| `TREND_ACCOUNTS` | unclassified | [] / <absent> / [] | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:51763(process_position)<br>(+4) · ez_positions_quick.py:6107(HedgeEngine.monitor_hedge_health_loop)<br>(+3) | — |
-| `TREND_GATES` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:39140(evaluate_leaderboard_entry)<br>(+4) · tradier_manage.py:27743(TradierTradeManager.should_enter_long)<br>(+8) | vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:95(check_trend_gate) [UNREACHABLE] |
+| `TREND_ACCOUNTS` | unclassified | [] / <absent> / [] | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:51803(process_position)<br>(+4) · ez_positions_quick.py:6107(HedgeEngine.monitor_hedge_health_loop)<br>(+3) | — |
+| `TREND_GATES` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:39180(evaluate_leaderboard_entry)<br>(+4) · tradier_manage.py:27804(TradierTradeManager.should_enter_long)<br>(+8) | vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:95(check_trend_gate) [UNREACHABLE] |
 | `TREND_HEDGE_MAX_SEC` | unclassified | 180 / 180 / 180 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:6106(HedgeEngine.monitor_hedge_health_loop) · ez_positions_quick.py:6106(HedgeEngine.monitor_hedge_health_loop) | — |
 | `TREND_HTF_MIN_BEAR` | unclassified | 7 / 7 / 7 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:16262(check_entry_candidates_for_account.worker) · ez_positions_quick.py:16262(check_entry_candidates_for_account.worker) | vec_decisions/check_entry_candidates_crypto__trend_entry_gate.py:40(_thresholds) [UNREACHABLE] |
 | `TREND_HTF_MIN_BULL` | unclassified | 7 / 7 / 7 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:16261(check_entry_candidates_for_account.worker) · ez_positions_quick.py:16261(check_entry_candidates_for_account.worker) | vec_decisions/check_entry_candidates_crypto__trend_entry_gate.py:39(_thresholds) [UNREACHABLE] |
@@ -2677,8 +2677,8 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `TRIPLE_CONF_STOCH_SHORT` | unclassified | 80.0 / 80.0 / 80.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:4527(AdvancedSignalRater.rate) · ez_positions_quick.py:4527(AdvancedSignalRater.rate) | — |
 | `TRIPLE_CONF_TF` | unclassified | 1h / 1h / 1h | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:4520(AdvancedSignalRater.rate) · ez_positions_quick.py:4520(AdvancedSignalRater.rate) | — |
 | `TR_ADX4H_BOYCOTT_SCORE` | unclassified | -40 / -40 / -40 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2955(AdvancedSignalRater.rate) · ez_positions_quick.py:2955(AdvancedSignalRater.rate)<br>(+1) | — |
-| `TR_ADX4H_GATE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:41673(calculate_final_order_quantity)<br>(+1) · ez_positions_quick.py:2954(AdvancedSignalRater.rate)<br>(+1) | — |
-| `TR_ADX4H_MAX` | unclassified | 20.0 / 20.0 / 20.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:41674(calculate_final_order_quantity)<br>(+2) · ez_positions_quick.py:2954(AdvancedSignalRater.rate)<br>(+2) | — |
+| `TR_ADX4H_GATE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:41713(calculate_final_order_quantity)<br>(+1) · ez_positions_quick.py:2954(AdvancedSignalRater.rate)<br>(+1) | — |
+| `TR_ADX4H_MAX` | unclassified | 20.0 / 20.0 / 20.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:41714(calculate_final_order_quantity)<br>(+2) · ez_positions_quick.py:2954(AdvancedSignalRater.rate)<br>(+2) | — |
 | `TR_BBWIDTH4H_BOYCOTT_SCORE` | unclassified | -35 / -35 / -35 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2961(AdvancedSignalRater.rate) · ez_positions_quick.py:2961(AdvancedSignalRater.rate)<br>(+1) | — |
 | `TR_BBWIDTH4H_GATE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2957(AdvancedSignalRater.rate) · ez_positions_quick.py:2957(AdvancedSignalRater.rate)<br>(+1) | — |
 | `TR_BBWIDTH4H_MAX` | unclassified | 10.0 / 10.0 / 10.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2960(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:2960(AdvancedSignalRater.rate)<br>(+2) | — |
@@ -2698,7 +2698,7 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `TR_TREND_V1_RETEST_MAX_BARS_D` | unclassified | 5 / 5 / 5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:538(evaluate_tr_trend_v1_entry_live) | — |
 | `TR_TREND_V1_RETEST_TOL_PCT` | unclassified | 0.5 / 0.5 / 0.5 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:545(evaluate_tr_trend_v1_entry_live) | — |
 | `TR_TREND_V1_RETEST_VOL_MAX_MULT` | unclassified | 0.7 / 0.7 / 0.7 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:549(evaluate_tr_trend_v1_entry_live) | — |
-| `TR_TREND_V1_SHADOW_LOG_ONLY` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:10774(process_position)<br>(+1) | — |
+| `TR_TREND_V1_SHADOW_LOG_ONLY` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:10835(process_position)<br>(+1) | — |
 | `TR_TREND_V1_SHADOW_SYMBOLS` | unclassified | ('TRGP', 'SNDK', 'AVGO', 'GLD', 'PLTR', 'MU', 'CDE', 'SLV') / ('TRGP', | — | DEAD | LIVE_ONLY | — · tradier_manage.py:472(evaluate_tr_trend_v1_entry_live)<br>(+1) | — |
 | `TR_TREND_V1_TIME_STOP_BARS_D` | unclassified | 60 / 60 / 60 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:621(evaluate_tr_trend_v1_exit_live) | — |
 | `TR_TREND_V1_TIME_STOP_NO_HIGH_BARS_D` | unclassified | 30 / 30 / 30 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:622(evaluate_tr_trend_v1_exit_live) | — |
@@ -2708,11 +2708,11 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `TSMOM_LOOKBACK_BARS` | unclassified | 252 / 252 / 252 | — | DEAD | DEAD | — · — | — |
 | `TSMOM_LOW_CAP` | unclassified | 0.25 / 0.25 / 0.25 | — | DEAD | DEAD | — · — | — |
 | `TSMOM_MIN_AGREEMENT` | unclassified | 0.5 / 0.5 / 0.5 | — | DEAD | DEAD | — · — | — |
-| `UNDERWATER_HEDGE_OR_CLOSE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:48735(process_position) · — | — |
-| `UNDERWATER_HEDGE_OR_CLOSE_HTF_CLOSE_REQUIRED` | unclassified | 2 / 2 / 2 | — | LIVE_ONLY | DEAD | ez_manage.py:48847(process_position) · — | — |
-| `UNDERWATER_HOC_USDC_MAKER_BYPASS` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:48858(process_position) · — | — |
-| `UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS` | exit | ['SCALP_V3_CLOSE', 'SCALP_V3_OPEN_PROTECTIVE', 'RIDICULOUS_HOLD', 'RID | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:32377(MultiAccountTradeManager.execute_now)<br>(+2) · tradier_manage.py:26013(TradierTradeManager.execute_now) | vec_decisions/noloss_gate.py:33(noloss_blocks) |
-| `UNIVERSAL_NOLOSS_GATE_BYPASS_TECHNICAL` | exit | True / True / True | — | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:32374(MultiAccountTradeManager.execute_now)<br>(+2) · — | vec_decisions/noloss_gate.py:32(noloss_blocks) |
+| `UNDERWATER_HEDGE_OR_CLOSE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:48775(process_position) · — | — |
+| `UNDERWATER_HEDGE_OR_CLOSE_HTF_CLOSE_REQUIRED` | unclassified | 2 / 2 / 2 | — | LIVE_ONLY | DEAD | ez_manage.py:48887(process_position) · — | — |
+| `UNDERWATER_HOC_USDC_MAKER_BYPASS` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:48898(process_position) · — | — |
+| `UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS` | exit | ['SCALP_V3_CLOSE', 'SCALP_V3_OPEN_PROTECTIVE', 'RIDICULOUS_HOLD', 'RID | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:32417(MultiAccountTradeManager.execute_now)<br>(+2) · tradier_manage.py:26074(TradierTradeManager.execute_now) | vec_decisions/noloss_gate.py:33(noloss_blocks) |
+| `UNIVERSAL_NOLOSS_GATE_BYPASS_TECHNICAL` | exit | True / True / True | — | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:32414(MultiAccountTradeManager.execute_now)<br>(+2) · — | vec_decisions/noloss_gate.py:32(noloss_blocks) |
 | `USE_1M_3M_SIGNALS_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:471(check_entry_alignment) · — | — |
 | `USE_INDICATOR_SNAPSHOT` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `USE_SANDBOX` | unclassified | <absent> / False / False | — | DEAD | DEAD | — · — | — |
@@ -2729,13 +2729,13 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `V8Q_SYMBOL_TIER_TOP5` | unclassified | ('LINKUSDC', 'ETHUSDC', 'DOTUSDT', 'BTCUSDC', 'UNIUSDC') / ('LINKUSDC' | — | DEAD | DEAD | — · — | — |
 | `V8Q_SYMBOL_TIER_TOP6` | unclassified | ('LINKUSDC', 'ETHUSDC', 'DOTUSDT', 'BTCUSDC', 'UNIUSDC', 'SOLUSDC') /  | — | DEAD | DEAD | — · — | — |
 | `V8Q_WT_EXIT_MIN_TFS` | exit | 3 / 3 / 3 | — | DEAD | DEAD | — · — | — |
-| `VALIDATE_REFRESH` | unclassified | 2 / 2 / 2 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:29663(MultiAccountTradeManager._is_position_data_stale)<br>(+1) · ez_positions_service.py:10679(PositionService._is_position_data_stale) | — |
-| `VEC_EXIT_SIG_IS_TRIGGER` | exit | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:13286(simulate_one) |
+| `VALIDATE_REFRESH` | unclassified | 2 / 2 / 2 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:29703(MultiAccountTradeManager._is_position_data_stale)<br>(+1) · ez_positions_service.py:10679(PositionService._is_position_data_stale) | — |
+| `VEC_EXIT_SIG_IS_TRIGGER` | exit | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:13331(simulate_one) |
 | `VEC_FIRST_OPEN_THROTTLE_BARS` | unclassified | 0 / 0 / 0 | — | DEAD | DEAD | — · — | — |
 | `VEC_FIX_R1_REASON_STRING_FOR_DIFF` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
-| `VEC_GATES_LOG_ONLY` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:30634(MultiAccountTradeManager.execute_now) · — | — |
-| `VEC_GENERIC_EXIT_MIN_GAIN_PCT` | exit | <absent> / <absent> / 0.0 | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12789(simulate_one)<br>v12_quick_engine.py:12789(simulate_one)<br>(+2) |
-| `VEC_HONOR_DEAD_LIVE_DELTA_GATES` | entry | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9087(compute_entry_signals)<br>v12_quick_engine.py:10055(compute_augment_signals_ex) |
+| `VEC_GATES_LOG_ONLY` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:30674(MultiAccountTradeManager.execute_now) · — | — |
+| `VEC_GENERIC_EXIT_MIN_GAIN_PCT` | exit | <absent> / <absent> / 0.0 | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12834(simulate_one)<br>v12_quick_engine.py:12834(simulate_one)<br>(+2) |
+| `VEC_HONOR_DEAD_LIVE_DELTA_GATES` | entry | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9132(compute_entry_signals)<br>v12_quick_engine.py:10100(compute_augment_signals_ex) |
 | `VEC_LIVE_REDUCE_DEFAULT_FRAC` | reduce | 1.0 / 1.0 / 1.0 | — | DEAD | DEAD | — · — | — |
 | `VEC_LIVE_REDUCE_PARITY_ENABLED` | reduce | False / False / False | — | DEAD | DEAD | — · — | — |
 | `VEC_LIVE_REDUCE_PARITY_FRAC` | reduce | 0.0 / 0.0 / 0.0 | — | DEAD | DEAD | — · — | — |
@@ -2750,20 +2750,20 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `VEC_MULTI_SYM_OUTER_LOOP_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `VEC_RATIO_REDUCE_PROXY_ENABLED` | reduce | False / False / False | — | DEAD | DEAD | — · — | — |
 | `VEC_REDUCE_CASCADE_COOLDOWN_S` | reduce | 0.0 / 0.0 / 0.0 | — | DEAD | DEAD | — · — | — |
-| `VEC_SAT_EXIT_TRIGGER` | exit | <absent> / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9712(compute_exit_signals) |
-| `VEC_VEL_EXIT_AS_TRIGGER` | exit | <absent> / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9680(compute_exit_signals) |
-| `VERBOSE` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:39381(evaluate_leaderboard_entry)<br>(+11) · ez_positions_service.py:3871(StopLevelsManager.stop_levels_save)<br>(+11) | — |
-| `VERBOSE2` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:26889(MultiAccountTradeManager.execute_trade_action)<br>(+8) · — | — |
+| `VEC_SAT_EXIT_TRIGGER` | exit | <absent> / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9757(compute_exit_signals) |
+| `VEC_VEL_EXIT_AS_TRIGGER` | exit | <absent> / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9725(compute_exit_signals) |
+| `VERBOSE` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:39421(evaluate_leaderboard_entry)<br>(+11) · ez_positions_service.py:3871(StopLevelsManager.stop_levels_save)<br>(+11) | — |
+| `VERBOSE2` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:26929(MultiAccountTradeManager.execute_trade_action)<br>(+8) · — | — |
 | `VERBOSE_FETCH_LOGGING` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:2771(WebSocketManager.handle_account_update)<br>(+11) · ez_positions_service.py:2771(WebSocketManager.handle_account_update)<br>(+11) | — |
 | `VERBOSE_STOPS` | unclassified | False / True / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:3872(StopLevelsManager.stop_levels_save)<br>(+11) · ez_positions_service.py:3872(StopLevelsManager.stop_levels_save)<br>(+11) | — |
 | `VERBOSE_TIMER` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `VIX_EXTREME_THRESHOLD` | unclassified | 40.0 / 40.0 / 40.0 | — | DEAD | DEAD | — · — | — |
 | `VIX_PANIC_THRESHOLD` | unclassified | 30.0 / 30.0 / 30.0 | — | DEAD | DEAD | — · — | — |
-| `VIX_REGIME_FILTER_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30428(TradierTradeManager.evaluate_clenow_entry)<br>(+1) | — |
+| `VIX_REGIME_FILTER_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30489(TradierTradeManager.evaluate_clenow_entry)<br>(+1) | — |
 | `VIX_REGIME_SIZE_MULT_HIGH_VOL` | sizing | 0.5 / 0.5 / 0.5 | — | DEAD | LIVE_ONLY | — · tradier_vix_regime.py:207(get_vix_regime_size_mult) | — |
 | `VIX_REGIME_SIZE_MULT_PANIC` | sizing | 0.0 / 0.0 / 0.0 | — | DEAD | LIVE_ONLY | — · tradier_vix_regime.py:205(get_vix_regime_size_mult) | — |
 | `VIX_SMA_LOOKBACK_DAYS` | unclassified | 200 / 200 / 200 | — | DEAD | DEAD | — · — | — |
-| `VIX_VOLATILITY_REGIME_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:28344(TradierTradeManager.calculate_position_size)<br>(+4) | — |
+| `VIX_VOLATILITY_REGIME_ENABLED` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:28405(TradierTradeManager.calculate_position_size)<br>(+4) | — |
 | `VOL_SPIKE_BODY_RATIO` | unclassified | 0.7 / 0.7 / 0.7 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:11829(detect_volume_spike) · ez_positions_quick.py:11829(detect_volume_spike) | vec_decisions/check_entry_candidates_crypto__vol_spike_reversal.py:108(check_vol_spike_reversal) [UNREACHABLE]<br>vec_decisions/check_entry_candidates_crypto__vol_spike_reversal.py:136(check_vol_spike_reversal_vec) [UNREACHABLE]<br>(+1) |
 | `VOL_SPIKE_COOLDOWN` | unclassified | 300.0 / 300.0 / 300.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:16218(check_entry_candidates_for_account.worker) · ez_positions_quick.py:16218(check_entry_candidates_for_account.worker) | — |
 | `VOL_SPIKE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:11814(detect_volume_spike)<br>(+1) · ez_positions_quick.py:11814(detect_volume_spike)<br>(+1) | — |
@@ -2782,62 +2782,62 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `VP_GATE_MIN_DISTANCE_PCT` | unclassified | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:12881(execute_trade_wrapper) · ez_positions_quick.py:12881(execute_trade_wrapper) | — |
 | `VP_GATE_STALE_MAX_SEC` | unclassified | 7200.0 / 7200.0 / 7200.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:12883(execute_trade_wrapper) · ez_positions_quick.py:12883(execute_trade_wrapper) | — |
 | `VWAP_SCORE_BONUS` | unclassified | 10 / 10 / 10 | — | DEAD | DEAD | — · — | — |
-| `WATCHDOG_DC_BASE_USD` | unclassified | 25.0 / 25.0 / 25.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36356(MultiAccountTradeManager.momentum_sma_watchdog_loop)<br>(+1) · — | — |
-| `WATCHDOG_DC_MAX_USD` | unclassified | 600.0 / 600.0 / 600.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36356(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
-| `WATCHDOG_DC_MULT_15M` | unclassified | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36342(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
-| `WATCHDOG_DC_MULT_1H` | unclassified | 4.0 / 4.0 / 4.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36342(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
-| `WATCHDOG_DC_MULT_4H` | unclassified | 8.0 / 8.0 / 8.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36342(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
-| `WATCHDOG_DC_MULT_D` | unclassified | 16.0 / 16.0 / 16.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36342(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
-| `WATCHDOG_DC_TFS` | unclassified | ['15m', '1h', '4h', 'D'] / ['15m', '1h', '4h', 'D'] / ['15m', '1h', '4 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36345(MultiAccountTradeManager.momentum_sma_watchdog_loop) · uve_engine.py:129(evaluate_uve_signals) | v12_quick_engine.py:11745(simulate_one) |
-| `WATCHDOG_DC_VEC_ENABLED` | unclassified | <absent> / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11741(simulate_one) |
-| `WATCHDOG_WT3M_ESCALATE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:36266(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
-| `WATCHDOG_WT3M_ESCALATE_LADDER` | unclassified | [1.0, 2.0, 3.0, 5.0] / [1.0, 2.0, 3.0, 5.0] / [1.0, 2.0, 3.0, 5.0] | — | LIVE_ONLY | DEAD | ez_manage.py:36271(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
-| `WATCHDOG_WT3M_ESCALATE_MAX_USD` | unclassified | 600.0 / 600.0 / 600.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36274(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
-| `WD_OPEN_CHOKE_GATES` | unclassified | <absent> / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11892(simulate_one)<br>v12_quick_engine.py:11959(simulate_one) |
+| `WATCHDOG_DC_BASE_USD` | unclassified | 25.0 / 25.0 / 25.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36396(MultiAccountTradeManager.momentum_sma_watchdog_loop)<br>(+1) · — | — |
+| `WATCHDOG_DC_MAX_USD` | unclassified | 600.0 / 600.0 / 600.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36396(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
+| `WATCHDOG_DC_MULT_15M` | unclassified | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36382(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
+| `WATCHDOG_DC_MULT_1H` | unclassified | 4.0 / 4.0 / 4.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36382(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
+| `WATCHDOG_DC_MULT_4H` | unclassified | 8.0 / 8.0 / 8.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36382(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
+| `WATCHDOG_DC_MULT_D` | unclassified | 16.0 / 16.0 / 16.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36382(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
+| `WATCHDOG_DC_TFS` | unclassified | ['15m', '1h', '4h', 'D'] / ['15m', '1h', '4h', 'D'] / ['15m', '1h', '4 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36385(MultiAccountTradeManager.momentum_sma_watchdog_loop) · uve_engine.py:129(evaluate_uve_signals) | v12_quick_engine.py:11790(simulate_one) |
+| `WATCHDOG_DC_VEC_ENABLED` | unclassified | <absent> / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11786(simulate_one) |
+| `WATCHDOG_WT3M_ESCALATE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:36306(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
+| `WATCHDOG_WT3M_ESCALATE_LADDER` | unclassified | [1.0, 2.0, 3.0, 5.0] / [1.0, 2.0, 3.0, 5.0] / [1.0, 2.0, 3.0, 5.0] | — | LIVE_ONLY | DEAD | ez_manage.py:36311(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
+| `WATCHDOG_WT3M_ESCALATE_MAX_USD` | unclassified | 600.0 / 600.0 / 600.0 | — | LIVE_ONLY | DEAD | ez_manage.py:36314(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
+| `WD_OPEN_CHOKE_GATES` | unclassified | <absent> / <absent> / True | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11937(simulate_one)<br>v12_quick_engine.py:12004(simulate_one) |
 | `WINNERS_15M_FILE` | unclassified | <expr> DATA_DIR / 'winners_30r' / <absent> / <expr> Path('data') | — | LIVE_ONLY | LIVE_ONLY | ez_crosses.py:49(<module>)<br>(+11) · ez_crosses.py:49(<module>)<br>(+11) | — |
 | `WINNERS_20_FILE` | unclassified | <expr> DATA_DIR / 'winners_20_final_score' / <absent> / <expr> Path('d | — | LIVE_ONLY | LIVE_ONLY | ez_crosses.py:47(<module>)<br>(+3) · ez_crosses.py:47(<module>)<br>(+2) | — |
 | `WINNER_PROTECT_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:14526(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14526(check_exit_candidates_for_account.process_single_exit) | vec_decisions/check_exit_candidates_crypto__winner_protect_skip.py:58(check_winner_protect_skip) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_crypto__winner_protect_skip.py:70(check_winner_protect_skip_vec) [UNREACHABLE] |
-| `WORKER_INSTANCE_ID` | unclassified | 0 / <absent> / 0 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_indicators.py:240(<module>)<br>(+2) · ez_indicators.py:240(<module>)<br>(+2) | v12_quick_engine.py:7958(QuickConfig) |
-| `WORKER_TOTAL_INSTANCES` | unclassified | 1 / <absent> / 1 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_indicators.py:241(<module>)<br>(+2) · ez_indicators.py:241(<module>)<br>(+2) | v12_quick_engine.py:7959(QuickConfig) |
-| `WRONG_SIDE_ABS_KILL_ENABLED` | exit | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:50465(process_position) · — | — |
+| `WORKER_INSTANCE_ID` | unclassified | 0 / <absent> / 0 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_indicators.py:240(<module>)<br>(+2) · ez_indicators.py:240(<module>)<br>(+2) | v12_quick_engine.py:8003(QuickConfig) |
+| `WORKER_TOTAL_INSTANCES` | unclassified | 1 / <absent> / 1 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_indicators.py:241(<module>)<br>(+2) · ez_indicators.py:241(<module>)<br>(+2) | v12_quick_engine.py:8004(QuickConfig) |
+| `WRONG_SIDE_ABS_KILL_ENABLED` | exit | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:50505(process_position) · — | — |
 | `WRONG_SIDE_DIV_LOOKBACK_BARS` | unclassified | 20 / 20 / 20 | — | DEAD | DEAD | — · — | — |
 | `WRONG_SIDE_DIV_TFS_REQUIRED` | unclassified | 2 / 1 / 2 | — | DEAD | DEAD | — · — | — |
-| `WRONG_SIDE_K_TFS_REQUIRED` | exit | 0 / 0 / 0 | — | LIVE_ONLY | DEAD | ez_manage.py:50523(process_position) · — | — |
-| `WRONG_SIDE_MIN_AGE_MIN` | exit | 30.0 / 30.0 / 30.0 | — | LIVE_ONLY | DEAD | ez_manage.py:50502(process_position) · — | — |
+| `WRONG_SIDE_K_TFS_REQUIRED` | exit | 0 / 0 / 0 | — | LIVE_ONLY | DEAD | ez_manage.py:50563(process_position) · — | — |
+| `WRONG_SIDE_MIN_AGE_MIN` | exit | 30.0 / 30.0 / 30.0 | — | LIVE_ONLY | DEAD | ez_manage.py:50542(process_position) · — | — |
 | `WRONG_SIDE_WT_TFS_REDUCED` | reduce | 3 / 3 / 3 | — | DEAD | DEAD | — · — | — |
 | `WS_DEAD_REST_POLL_INTERVAL_S` | unclassified | 15.0 / <absent> / <absent> | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:6519(PositionService.fetch_positions) · ez_positions_service.py:6519(PositionService.fetch_positions) | — |
 | `WS_RECONNECT_DELAY` | unclassified | <absent> / 5.0 / 5.0 | — | DEAD | LIVE_ONLY | — · tradier_api.py:485(TradierAPIClient.stream_quotes) | — |
 | `WS_URL` | unclassified | wss://fstream.binance.com/ws / <absent> / wss://fstream.binance.com/ws | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:94(<module>) · ez_rankings.py:94(<module>) | — |
-| `WT15M_AGAINST_FORCE_HEDGE_COOLDOWN_SEC` | unclassified | 30.0 / 30.0 / 30.0 | — | LIVE_ONLY | DEAD | ez_manage.py:48245(process_position) · — | — |
-| `WT15M_AGAINST_FORCE_HEDGE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:48239(process_position) · — | — |
+| `WT15M_AGAINST_FORCE_HEDGE_COOLDOWN_SEC` | unclassified | 30.0 / 30.0 / 30.0 | — | LIVE_ONLY | DEAD | ez_manage.py:48285(process_position) · — | — |
+| `WT15M_AGAINST_FORCE_HEDGE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:48279(process_position) · — | — |
 | `WT15M_AGAINST_PENALTY` | unclassified | -5.0 / -5.0 / -5.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2595(AdvancedSignalRater.rate) · ez_positions_quick.py:2595(AdvancedSignalRater.rate) | — |
 | `WT15_CROSS_DC_BASIS_GATE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:428(check_entry_alignment) · — | — |
-| `WT_15M_SAME_HEDGE_COOLDOWN_SEC` | unclassified | 1800 / 1800 / 1800 | — | LIVE_ONLY | DEAD | ez_manage.py:50831(process_position) · — | — |
-| `WT_15M_SAME_HEDGE_DAILY_CAP` | unclassified | 2 / 2 / 2 | — | LIVE_ONLY | DEAD | ez_manage.py:50828(process_position) · — | — |
-| `WT_15M_SAME_HEDGE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:50685(process_position) · — | — |
-| `WT_15M_VEL_NEAR_ZERO_THRESHOLD` | exit | 0.1 / 0.1 / 0.1 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47404(process_position) · tradier_manage.py:11013(process_position) | vec_decisions/live_exit_chain.py:230(step_pp)<br>vec_decisions/process_position_crypto__r2_wt_vel_slow.py:61(_r2_params) [UNREACHABLE]<br>(+1) |
-| `WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED` | unclassified | False / True / False | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47394(process_position) · tradier_manage.py:11005(process_position) | vec_decisions/live_exit_chain.py:223(step_pp) |
-| `WT_15M_VEL_SLOW_GAIN_BAND_PCT` | exit | 0.1 / 0.1 / 0.1 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47401(process_position) · tradier_manage.py:11011(process_position) | vec_decisions/live_exit_chain.py:224(step_pp)<br>vec_decisions/process_position_crypto__r2_wt_vel_slow.py:58(_r2_params) [UNREACHABLE]<br>(+1) |
-| `WT_15M_VEL_SLOW_GAIN_FLOOR_PCT` | exit | 0.01 / 0.01 / 0.01 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47402(process_position) · tradier_manage.py:11012(process_position) | vec_decisions/live_exit_chain.py:224(step_pp)<br>vec_decisions/process_position_crypto__r2_wt_vel_slow.py:59(_r2_params) [UNREACHABLE]<br>(+1) |
-| `WT_3M_FORCE_OPEN_BUILD_TO_TARGET` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11287(process_position) | — |
-| `WT_3M_FORCE_OPEN_BYPASS_GATES` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:24051(MultiAccountTradeManager.execute_trade_action)<br>(+4) · tradier_manage.py:13947(queue_trade_action)<br>(+7) | — |
-| `WT_3M_FORCE_OPEN_COOLDOWN_SEC` | unclassified | <absent> / 900.0 / 900.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11370(process_position) | — |
-| `WT_3M_FORCE_OPEN_DIST_PCT` | unclassified | 0.0 / 0.0 / 0.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11302(process_position) | — |
-| `WT_3M_FORCE_OPEN_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44198(_process_single_override_check) · tradier_manage.py:11286(process_position) | vec_decisions/process_position_stocks__wt_3m_force_open.py:40(check_wt_3m_force_open) [UNREACHABLE]<br>vec_decisions/process_position_stocks__wt_3m_force_open.py:55(check_wt_3m_force_open_vec) [UNREACHABLE] |
-| `WT_3M_FORCE_OPEN_GR_GATE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44169(_process_single_override_check)<br>(+1) · tradier_manage.py:11348(process_position) | — |
-| `WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF` | unclassified | 5 / 5 / 5 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44168(_process_single_override_check)<br>(+1) · tradier_manage.py:11351(process_position) | — |
-| `WT_3M_FORCE_OPEN_GR_MIN_TFS` | unclassified | 4 / 4 / 4 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44167(_process_single_override_check)<br>(+1) · tradier_manage.py:11350(process_position) | — |
-| `WT_3M_FORCE_OPEN_GR_VOTE_MIN` | unclassified | 20 / 20 / 20 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44166(_process_single_override_check)<br>(+1) · tradier_manage.py:11349(process_position) | — |
-| `WT_3M_FORCE_OPEN_MAX_TRADES_PER_DAY` | unclassified | <absent> / 4 / 4 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11374(process_position) | — |
-| `WT_3M_FORCE_OPEN_REQUIRE_HH_CROSS` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44222(_process_single_override_check) · tradier_manage.py:11312(process_position) | — |
-| `WT_3M_FORCE_OPEN_SIZE_USD` | sizing | 25.0 / 1200.0 / 25.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44229(_process_single_override_check) · tradier_manage.py:11406(process_position)<br>(+1) | — |
-| `WT_3M_FORCE_OPEN_SMA_PCT` | unclassified | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44208(_process_single_override_check) · tradier_manage.py:11302(process_position)<br>(+1) | — |
-| `WT_3M_FORCE_OPEN_TARGET_USD` | unclassified | 2000.0 / 2500.0 / 2000.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11290(process_position)<br>(+1) | — |
-| `WT_3M_FORCE_OPEN_TF_LADDER` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11398(process_position) | — |
-| `WT_3M_FORCE_OPEN_TF_LADDER_MULT` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11399(process_position) | — |
+| `WT_15M_SAME_HEDGE_COOLDOWN_SEC` | unclassified | 1800 / 1800 / 1800 | — | LIVE_ONLY | DEAD | ez_manage.py:50871(process_position) · — | — |
+| `WT_15M_SAME_HEDGE_DAILY_CAP` | unclassified | 2 / 2 / 2 | — | LIVE_ONLY | DEAD | ez_manage.py:50868(process_position) · — | — |
+| `WT_15M_SAME_HEDGE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:50725(process_position) · — | — |
+| `WT_15M_VEL_NEAR_ZERO_THRESHOLD` | exit | 0.1 / 0.1 / 0.1 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47444(process_position) · tradier_manage.py:11074(process_position) | vec_decisions/live_exit_chain.py:230(step_pp)<br>vec_decisions/process_position_crypto__r2_wt_vel_slow.py:61(_r2_params) [UNREACHABLE]<br>(+1) |
+| `WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED` | unclassified | False / True / False | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47434(process_position) · tradier_manage.py:11066(process_position) | vec_decisions/live_exit_chain.py:223(step_pp) |
+| `WT_15M_VEL_SLOW_GAIN_BAND_PCT` | exit | 0.1 / 0.1 / 0.1 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47441(process_position) · tradier_manage.py:11072(process_position) | vec_decisions/live_exit_chain.py:224(step_pp)<br>vec_decisions/process_position_crypto__r2_wt_vel_slow.py:58(_r2_params) [UNREACHABLE]<br>(+1) |
+| `WT_15M_VEL_SLOW_GAIN_FLOOR_PCT` | exit | 0.01 / 0.01 / 0.01 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47442(process_position) · tradier_manage.py:11073(process_position) | vec_decisions/live_exit_chain.py:224(step_pp)<br>vec_decisions/process_position_crypto__r2_wt_vel_slow.py:59(_r2_params) [UNREACHABLE]<br>(+1) |
+| `WT_3M_FORCE_OPEN_BUILD_TO_TARGET` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11348(process_position) | — |
+| `WT_3M_FORCE_OPEN_BYPASS_GATES` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:24091(MultiAccountTradeManager.execute_trade_action)<br>(+4) · tradier_manage.py:14008(queue_trade_action)<br>(+7) | — |
+| `WT_3M_FORCE_OPEN_COOLDOWN_SEC` | unclassified | <absent> / 900.0 / 900.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11431(process_position) | — |
+| `WT_3M_FORCE_OPEN_DIST_PCT` | unclassified | 0.0 / 0.0 / 0.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11363(process_position) | — |
+| `WT_3M_FORCE_OPEN_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44238(_process_single_override_check) · tradier_manage.py:11347(process_position) | vec_decisions/process_position_stocks__wt_3m_force_open.py:40(check_wt_3m_force_open) [UNREACHABLE]<br>vec_decisions/process_position_stocks__wt_3m_force_open.py:55(check_wt_3m_force_open_vec) [UNREACHABLE] |
+| `WT_3M_FORCE_OPEN_GR_GATE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44209(_process_single_override_check)<br>(+1) · tradier_manage.py:11409(process_position) | — |
+| `WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF` | unclassified | 5 / 5 / 5 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44208(_process_single_override_check)<br>(+1) · tradier_manage.py:11412(process_position) | — |
+| `WT_3M_FORCE_OPEN_GR_MIN_TFS` | unclassified | 4 / 4 / 4 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44207(_process_single_override_check)<br>(+1) · tradier_manage.py:11411(process_position) | — |
+| `WT_3M_FORCE_OPEN_GR_VOTE_MIN` | unclassified | 20 / 20 / 20 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44206(_process_single_override_check)<br>(+1) · tradier_manage.py:11410(process_position) | — |
+| `WT_3M_FORCE_OPEN_MAX_TRADES_PER_DAY` | unclassified | <absent> / 4 / 4 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11435(process_position) | — |
+| `WT_3M_FORCE_OPEN_REQUIRE_HH_CROSS` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44262(_process_single_override_check) · tradier_manage.py:11373(process_position) | — |
+| `WT_3M_FORCE_OPEN_SIZE_USD` | sizing | 25.0 / 1200.0 / 25.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44269(_process_single_override_check) · tradier_manage.py:11467(process_position)<br>(+1) | — |
+| `WT_3M_FORCE_OPEN_SMA_PCT` | unclassified | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:44248(_process_single_override_check) · tradier_manage.py:11363(process_position)<br>(+1) | — |
+| `WT_3M_FORCE_OPEN_TARGET_USD` | unclassified | 2000.0 / 2500.0 / 2000.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11351(process_position)<br>(+1) | — |
+| `WT_3M_FORCE_OPEN_TF_LADDER` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11459(process_position) | — |
+| `WT_3M_FORCE_OPEN_TF_LADDER_MULT` | unclassified | 1.0 / 1.0 / 1.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11460(process_position) | — |
 | `WT_3M_FORCE_OPEN_USE_SMA200` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `WT_3M_OPEN_GATE_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
-| `WT_4H_VEL_MANDATORY_REENTRY_ENABLED` | reentry | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:49920(process_position) · — | — |
+| `WT_4H_VEL_MANDATORY_REENTRY_ENABLED` | reentry | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:49960(process_position) · — | — |
 | `WT_CHOP_GATE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2283(AdvancedSignalRater.rate) · ez_positions_quick.py:2283(AdvancedSignalRater.rate) | — |
 | `WT_CHOP_MAX` | unclassified | 8 / 8 / 8 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2284(AdvancedSignalRater.rate) · ez_positions_quick.py:2284(AdvancedSignalRater.rate) | — |
 | `WT_COMPOSITE_DELTA_GATE_ENABLED` | entry | True / True / True | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2294(AdvancedSignalRater.rate) · ez_positions_quick.py:2294(AdvancedSignalRater.rate) | vec_decisions/entry_hard_gates.py:55(crypto_block) |
@@ -2849,8 +2849,8 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `WT_COMPOSITE_HTF_GATE` | unclassified | False / False / False | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2501(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:2501(AdvancedSignalRater.rate)<br>(+1) | vec_decisions/live_unw_gates.py:123(wt_composite_block)<br>vec_decisions/wt_composite_gate.py:12(block_mask) |
 | `WT_COMPOSITE_SCORING_ENABLED` | unclassified | True / True / True | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2500(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:2500(AdvancedSignalRater.rate)<br>(+2) | vec_decisions/live_unw_gates.py:125(wt_composite_block)<br>vec_decisions/wt_composite_gate.py:14(block_mask) |
 | `WT_COMPOSITE_SCORING_ENABLED_TRADIER` | unclassified | True / True / True | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2500(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:2500(AdvancedSignalRater.rate)<br>(+3) | vec_decisions/live_stocks_entry.py:87(live_veto)<br>vec_decisions/live_unw_gates.py:125(wt_composite_block)<br>(+1) |
-| `WT_COMPOSITE_VETO_ENABLED_TRADIER` | unclassified | False / False / False | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13328(process_position) | vec_decisions/live_stocks_entry.py:87(live_veto) |
-| `WT_CROSSUNDER_15M_SHORT` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:28012(TradierTradeManager.should_enter_short) | — |
+| `WT_COMPOSITE_VETO_ENABLED_TRADIER` | unclassified | False / False / False | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13389(process_position) | vec_decisions/live_stocks_entry.py:87(live_veto) |
+| `WT_CROSSUNDER_15M_SHORT` | unclassified | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:28073(TradierTradeManager.should_enter_short) | — |
 | `WT_CROSSUNDER_FINAL_COOLDOWN_S` | unclassified | 0.0 / 0.0 / 0.0 | — | DEAD | DEAD | — · — | — |
 | `WT_CROSS_EXIT_3M_VETO_MAX_AGE` | exit | 30.0 / <absent> / 30.0 | — | VEC_ONLY | VEC_ONLY | — · — | vec_decisions/check_exit_candidates_crypto__wt_cross_exit.py:74(check_wt_cross_exit) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_crypto__wt_cross_exit.py:96(check_wt_cross_exit_vec) [UNREACHABLE]<br>(+1) |
 | `WT_CROSS_EXIT_APPLIES_TO_LOSERS` | exit | True / True / True | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14631(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14631(check_exit_candidates_for_account.process_single_exit) | vec_decisions/live_exit_chain.py:159(step) |
@@ -2859,33 +2859,33 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `WT_DC_DIRECT_COMPLETED_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:1075(_shared_direct_entry_claim) | — |
 | `WT_DC_DIRECT_HTF_ALIGN_REQUIRED` | unclassified | 0 / 0 / 0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:1123(_shared_direct_entry_claim) | — |
 | `WT_DC_DIRECT_HTF_GATE` | unclassified | none / none / none | — | DEAD | LIVE_ONLY | — · tradier_manage.py:1119(_shared_direct_entry_claim) | — |
-| `WT_DC_ENTRY_BAR_MATURITY_BLOCK` | entry | 0.7 / 0.7 / 0.7 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12781(process_position) | vec_decisions/process_position_stocks__wtdc_entry_gates.py:98(_wtdc_entry_gate_params) [UNREACHABLE] |
-| `WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED` | entry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12780(process_position) | vec_decisions/process_position_stocks__wtdc_entry_gates.py:97(_wtdc_entry_gate_params) [UNREACHABLE] |
+| `WT_DC_ENTRY_BAR_MATURITY_BLOCK` | entry | 0.7 / 0.7 / 0.7 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12842(process_position) | vec_decisions/process_position_stocks__wtdc_entry_gates.py:98(_wtdc_entry_gate_params) [UNREACHABLE] |
+| `WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED` | entry | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12841(process_position) | vec_decisions/process_position_stocks__wtdc_entry_gates.py:97(_wtdc_entry_gate_params) [UNREACHABLE] |
 | `WT_DC_ENTRY_ENABLED` | entry | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2204(AdvancedSignalRater.rate) · ez_positions_quick.py:2204(AdvancedSignalRater.rate) | — |
-| `WT_DC_ENTRY_K5M_MAX_LONG` | entry | 100.0 / 100.0 / 100.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12653(process_position)<br>(+1) | vec_decisions/process_position_stocks__wtdc_entry_gates.py:93(_wtdc_entry_gate_params) [UNREACHABLE] |
+| `WT_DC_ENTRY_K5M_MAX_LONG` | entry | 100.0 / 100.0 / 100.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:12714(process_position)<br>(+1) | vec_decisions/process_position_stocks__wtdc_entry_gates.py:93(_wtdc_entry_gate_params) [UNREACHABLE] |
 | `WT_DC_ENTRY_K5M_MIN_SHORT` | entry | 0.0 / 0.0 / 0.0 | — | DEAD | DEAD | — · — | vec_decisions/process_position_stocks__wtdc_entry_gates.py:94(_wtdc_entry_gate_params) [UNREACHABLE] |
-| `WT_DC_EXIT_STALE_MAX_S` | exit | 600 / 600 / 600 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19947(StockStrategy.evaluate_stop) | — |
-| `WT_DC_LIVE_GATES_ENABLED` | unclassified | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9255(compute_entry_signals) |
-| `WT_D_BOUNCE_AUG_COOLDOWN_HOURS` | unclassified | 1.0 / 1.0 / 1.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21337(StockStrategy.evaluate_augment) | vec_decisions/stock_augment_sources.py:99(wt_d_bounce_fire) |
-| `WT_D_BOUNCE_AUG_ENABLED` | unclassified | False / False / False | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21322(StockStrategy.evaluate_augment) | v12_quick_engine.py:11679(simulate_one)<br>vec_decisions/stock_augment_sources.py:90(wt_d_bounce_fire) |
-| `WT_D_BOUNCE_AUG_MULTIPLIER` | unclassified | 2.0 / 2.0 / 2.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21339(StockStrategy.evaluate_augment) | vec_decisions/stock_augment_sources.py:101(wt_d_bounce_fire) |
-| `WT_D_BOUNCE_AUG_REQUIRE_HIGHER_PRICE` | unclassified | True / True / True | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21334(StockStrategy.evaluate_augment) | vec_decisions/stock_augment_sources.py:98(wt_d_bounce_fire) |
-| `WT_D_BOUNCE_AUG_REQUIRE_HIGHER_WT` | unclassified | True / True / True | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21333(StockStrategy.evaluate_augment) | vec_decisions/stock_augment_sources.py:97(wt_d_bounce_fire) |
+| `WT_DC_EXIT_STALE_MAX_S` | exit | 600 / 600 / 600 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20008(StockStrategy.evaluate_stop) | — |
+| `WT_DC_LIVE_GATES_ENABLED` | unclassified | <absent> / <absent> / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9300(compute_entry_signals) |
+| `WT_D_BOUNCE_AUG_COOLDOWN_HOURS` | unclassified | 1.0 / 1.0 / 1.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21398(StockStrategy.evaluate_augment) | vec_decisions/stock_augment_sources.py:99(wt_d_bounce_fire) |
+| `WT_D_BOUNCE_AUG_ENABLED` | unclassified | False / False / False | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21383(StockStrategy.evaluate_augment) | v12_quick_engine.py:11724(simulate_one)<br>vec_decisions/stock_augment_sources.py:90(wt_d_bounce_fire) |
+| `WT_D_BOUNCE_AUG_MULTIPLIER` | unclassified | 2.0 / 2.0 / 2.0 | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21400(StockStrategy.evaluate_augment) | vec_decisions/stock_augment_sources.py:101(wt_d_bounce_fire) |
+| `WT_D_BOUNCE_AUG_REQUIRE_HIGHER_PRICE` | unclassified | True / True / True | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21395(StockStrategy.evaluate_augment) | vec_decisions/stock_augment_sources.py:98(wt_d_bounce_fire) |
+| `WT_D_BOUNCE_AUG_REQUIRE_HIGHER_WT` | unclassified | True / True / True | — | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:21394(StockStrategy.evaluate_augment) | vec_decisions/stock_augment_sources.py:97(wt_d_bounce_fire) |
 | `WT_D_EXHAUST_GATE_ENABLED` | unclassified | <absent> / False / False | — | VEC_ONLY | VEC_ONLY | — · — | vec_decisions/stocks_trend_gates.py:24(pass_mask) |
 | `WT_D_EXHAUST_THRESHOLD` | unclassified | <absent> / 60.0 / 60.0 | — | VEC_ONLY | VEC_ONLY | — · — | vec_decisions/stocks_trend_gates.py:25(pass_mask) |
-| `WT_EXHAUST_EXIT_ENABLED` | exit | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:50000(process_position)<br>(+2) · — | — |
+| `WT_EXHAUST_EXIT_ENABLED` | exit | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:50040(process_position)<br>(+2) · — | — |
 | `WT_EXIT_VELOCITY_TRADIER` | exit | False / False / False | — | DEAD | DEAD | — · — | — |
 | `WT_EXIT_VEL_THRESHOLD` | exit | -6.0 / -6.0 / -6.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:3632(AdvancedSignalRater.rate) · ez_positions_quick.py:3632(AdvancedSignalRater.rate) | — |
-| `WT_EXIT_VETO_ENABLED_TRADIER` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:19990(StockStrategy.evaluate_stop) | vec_decisions/check_exit_candidates_stocks__wt_exit_tf_against.py:51(check_wt_exit_tfs_varfix) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__wt_exit_tf_against.py:86(check_wt_exit_tfs_varfix_vec) [UNREACHABLE] |
-| `WT_FORCE_OPEN_FRESH_CROSS_ONLY` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11320(process_position) | — |
-| `WT_FORCE_OPEN_FRESH_MAX_BARS` | unclassified | 0 / 0 / 0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11321(process_position) | — |
+| `WT_EXIT_VETO_ENABLED_TRADIER` | exit | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20051(StockStrategy.evaluate_stop) | vec_decisions/check_exit_candidates_stocks__wt_exit_tf_against.py:51(check_wt_exit_tfs_varfix) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__wt_exit_tf_against.py:86(check_wt_exit_tfs_varfix_vec) [UNREACHABLE] |
+| `WT_FORCE_OPEN_FRESH_CROSS_ONLY` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11381(process_position) | — |
+| `WT_FORCE_OPEN_FRESH_MAX_BARS` | unclassified | 0 / 0 / 0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:11382(process_position) | — |
 | `WT_FORCE_OPEN_TRIGGER_TF` | unclassified | 5m / 5m / 5m | — | DEAD | DEAD | — · — | — |
 | `WT_MTF_VEL_GATE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2274(AdvancedSignalRater.rate) · ez_positions_quick.py:2274(AdvancedSignalRater.rate) | — |
 | `WT_MTF_VEL_MIN` | unclassified | 2 / 2 / 2 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2275(AdvancedSignalRater.rate) · ez_positions_quick.py:2275(AdvancedSignalRater.rate) | — |
-| `WT_VEL_DECEL_RATIO` | exit | 0.5 / 0.5 / 0.5 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47406(process_position) · tradier_manage.py:11014(process_position) | vec_decisions/live_exit_chain.py:229(step_pp)<br>vec_decisions/process_position_crypto__r2_wt_vel_slow.py:60(_r2_params) [UNREACHABLE]<br>(+1) |
-| `WT_VEL_USE_DECEL_RATIO_ONLY` | unclassified | True / True / True | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47407(process_position) · tradier_manage.py:11015(process_position) | vec_decisions/live_exit_chain.py:230(step_pp)<br>vec_decisions/process_position_crypto__r2_wt_vel_slow.py:62(_r2_params) [UNREACHABLE]<br>(+1) |
+| `WT_VEL_DECEL_RATIO` | exit | 0.5 / 0.5 / 0.5 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47446(process_position) · tradier_manage.py:11075(process_position) | vec_decisions/live_exit_chain.py:229(step_pp)<br>vec_decisions/process_position_crypto__r2_wt_vel_slow.py:60(_r2_params) [UNREACHABLE]<br>(+1) |
+| `WT_VEL_USE_DECEL_RATIO_ONLY` | unclassified | True / True / True | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47447(process_position) · tradier_manage.py:11076(process_position) | vec_decisions/live_exit_chain.py:230(step_pp)<br>vec_decisions/process_position_crypto__r2_wt_vel_slow.py:62(_r2_params) [UNREACHABLE]<br>(+1) |
 | `WT_W_EXIT_ENABLED` | exit | False / False / False | — | DEAD | DEAD | — · — | — |
-| `ZEC_FLZ_LONG_SIZE_MULT` | sizing | 5.0 / 5.0 / 5.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:23988(MultiAccountTradeManager.execute_trade_action)<br>(+1) · ez_positions_quick.py:1100(_zec_flz_long_size_mult) | — |
+| `ZEC_FLZ_LONG_SIZE_MULT` | sizing | 5.0 / 5.0 / 5.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:24028(MultiAccountTradeManager.execute_trade_action)<br>(+1) · ez_positions_quick.py:1100(_zec_flz_long_size_mult) | — |
 | `ZEC_SUPERVISOR_AUTONOMOUS_CLOSE_PER_HOUR_MAX` | unclassified | 1 / 1 / 1 | — | DEAD | DEAD | — · — | — |
 | `ZEC_SUPERVISOR_ENABLED` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `ZEC_SUPERVISOR_HISTORY_LOOKBACK_MIN` | unclassified | 30 / 30 / 30 | — | DEAD | DEAD | — · — | — |
@@ -2893,66 +2893,66 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `ZEC_SUPERVISOR_POLL_INTERVAL_SEC` | unclassified | 300 / 300 / 300 | — | DEAD | DEAD | — · — | — |
 | `ZERO_CONFIRMATION_THRESHOLD_API` | unclassified | 2 / 2 / 2 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:6908(PositionService._process_account_update_impl)<br>(+4) · ez_positions_service.py:6908(PositionService._process_account_update_impl)<br>(+4) | — |
 | `ZERO_CONFIRMATION_THRESHOLD_WS` | unclassified | 1 / 1 / 1 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_service.py:2733(WebSocketManager.handle_account_update)<br>(+5) · ez_positions_service.py:2733(WebSocketManager.handle_account_update)<br>(+5) | — |
-| `ZONE_CLOSE_THRESHOLD` | unclassified | 20 / 20 / 20 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27654(TradierTradeManager.should_enter_long)<br>(+1) | — |
-| `ZONE_MID_THRESHOLD` | unclassified | 30 / 30 / 30 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27652(TradierTradeManager.should_enter_long)<br>(+1) | — |
-| `ZONE_OPEN_THRESHOLD` | unclassified | 25 / 25 / 25 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27650(TradierTradeManager.should_enter_long)<br>(+1) | — |
+| `ZONE_CLOSE_THRESHOLD` | unclassified | 20 / 20 / 20 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27715(TradierTradeManager.should_enter_long)<br>(+1) | — |
+| `ZONE_MID_THRESHOLD` | unclassified | 30 / 30 / 30 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27713(TradierTradeManager.should_enter_long)<br>(+1) | — |
+| `ZONE_OPEN_THRESHOLD` | unclassified | 25 / 25 / 25 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:27711(TradierTradeManager.should_enter_long)<br>(+1) | — |
 
 ## (orange/filter only) (468)
 
 | switch | kind | defaults cfg / tradier / quick | templates | crypto | stocks | live reads (ez · tradier) | vec reads |
 |---|---|---|---|---|---|---|---|
-| `ABLATION_DISABLE_AGGRESSIVE_HEDGE` | global | True / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:5792(<module>) | v12_quick_engine.py:11238(_apply_625_ablation_gates) [UNREACHABLE]<br>v12_quick_engine.py:11979(simulate_one) |
-| `ABLATION_DISABLE_AUGMENTATION` | augment | True / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:52891(process_position) · tradier_manage.py:5793(<module>) | v12_quick_engine.py:11240(_apply_625_ablation_gates) [UNREACHABLE]<br>v12_quick_engine.py:11981(simulate_one) |
-| `ABLATION_DISABLE_CHECK_NOLOSS` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:50608(process_position) · tradier_manage.py:5794(<module>) | v12_quick_engine.py:11242(_apply_625_ablation_gates) [UNREACHABLE]<br>v12_quick_engine.py:11983(simulate_one) |
-| `ABLATION_DISABLE_DC_BREACH_REDUCE` | reduce | True / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:5795(<module>) | v12_quick_engine.py:11244(_apply_625_ablation_gates) [UNREACHABLE]<br>v12_quick_engine.py:11985(simulate_one) |
-| `ABLATION_DISABLE_ENTRY_LEADERBOARD` | entry | True / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:52880(process_position) · tradier_manage.py:5796(<module>) | v12_quick_engine.py:11246(_apply_625_ablation_gates) [UNREACHABLE] |
-| `ABLATION_DISABLE_ENTRY_RANKING` | entry | True / True / True | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:52882(process_position) · tradier_manage.py:5797(<module>) | v12_quick_engine.py:11249(_apply_625_ablation_gates) [UNREACHABLE] |
-| `ABLATION_DISABLE_ENTRY_REVERSAL` | entry | False / False / False | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:52596(process_position) · tradier_manage.py:5798(<module>) | v12_quick_engine.py:11252(_apply_625_ablation_gates) [UNREACHABLE] |
-| `ABLATION_DISABLE_ENTRY_TECHNICAL` | entry | True / True / True | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:52878(process_position) · tradier_manage.py:5799(<module>) | v12_quick_engine.py:11255(_apply_625_ablation_gates) [UNREACHABLE] |
-| `ABLATION_DISABLE_HEDGE` | global | True / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:6698(HedgeEngine.monitor_and_manage_hedges) · ez_positions_quick.py:6698(HedgeEngine.monitor_and_manage_hedges) | v12_quick_engine.py:11258(_apply_625_ablation_gates) [UNREACHABLE]<br>v12_quick_engine.py:11987(simulate_one) |
-| `ABLATION_DISABLE_HIGH_GAIN_AUGMENT` | augment | True / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:5801(<module>) | v12_quick_engine.py:11261(_apply_625_ablation_gates) [UNREACHABLE]<br>v12_quick_engine.py:11989(simulate_one) |
-| `ABLATION_DISABLE_PERIODIC_REENTRY` | reentry | True / False / False | SL,SS | DEAD+STAGED_VEC | LIVE_ONLY+STAGED_VEC | — · tradier_manage.py:5802(<module>) | v12_quick_engine.py:11263(_apply_625_ablation_gates) [UNREACHABLE] |
-| `ABLATION_DISABLE_QUICK_ENTRY` | entry | True / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:15283(check_entry_candidates_for_account) · ez_positions_quick.py:15283(check_entry_candidates_for_account) | v12_quick_engine.py:9070(compute_entry_signals)<br>v12_quick_engine.py:11265(_apply_625_ablation_gates) [UNREACHABLE]<br>(+1) |
-| `ABLATION_DISABLE_QUICK_EXIT` | exit | True / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:13793(check_exit_candidates_for_account) · ez_positions_quick.py:13793(check_exit_candidates_for_account) | v12_quick_engine.py:9803(compute_exit_signals)<br>v12_quick_engine.py:11268(_apply_625_ablation_gates) [UNREACHABLE] |
-| `ABLATION_DISABLE_RATIO_REBALANCE` | global | True / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:5803(<module>) | v12_quick_engine.py:11270(_apply_625_ablation_gates) [UNREACHABLE]<br>v12_quick_engine.py:11991(simulate_one) |
-| `ABLATION_DISABLE_REENTRY` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:52886(process_position) · tradier_manage.py:5804(<module>) | v12_quick_engine.py:9075(compute_entry_signals)<br>v12_quick_engine.py:11273(_apply_625_ablation_gates) [UNREACHABLE]<br>(+1) |
-| `ABLATION_DISABLE_REENTRY_ENFORCE` | reentry | True / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:16581(reentry_enforcement_loop_epq)<br>(+1) · ez_positions_quick.py:16581(reentry_enforcement_loop_epq)<br>(+2) | v12_quick_engine.py:11276(_apply_625_ablation_gates) [UNREACHABLE]<br>v12_quick_engine.py:12000(simulate_one) |
-| `ABLATION_DISABLE_SPIKE_FADE_EXIT` | exit | True / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:5807(<module>) | v12_quick_engine.py:11278(_apply_625_ablation_gates) [UNREACHABLE]<br>v12_quick_engine.py:12002(simulate_one) |
+| `ABLATION_DISABLE_AGGRESSIVE_HEDGE` | global | True / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:5792(<module>) | v12_quick_engine.py:11283(_apply_625_ablation_gates) [UNREACHABLE]<br>v12_quick_engine.py:12024(simulate_one) |
+| `ABLATION_DISABLE_AUGMENTATION` | augment | True / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:52931(process_position) · tradier_manage.py:5793(<module>) | v12_quick_engine.py:11285(_apply_625_ablation_gates) [UNREACHABLE]<br>v12_quick_engine.py:12026(simulate_one) |
+| `ABLATION_DISABLE_CHECK_NOLOSS` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:50648(process_position) · tradier_manage.py:5794(<module>) | v12_quick_engine.py:11287(_apply_625_ablation_gates) [UNREACHABLE]<br>v12_quick_engine.py:12028(simulate_one) |
+| `ABLATION_DISABLE_DC_BREACH_REDUCE` | reduce | True / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:5795(<module>) | v12_quick_engine.py:11289(_apply_625_ablation_gates) [UNREACHABLE]<br>v12_quick_engine.py:12030(simulate_one) |
+| `ABLATION_DISABLE_ENTRY_LEADERBOARD` | entry | True / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:52920(process_position) · tradier_manage.py:5796(<module>) | v12_quick_engine.py:11291(_apply_625_ablation_gates) [UNREACHABLE] |
+| `ABLATION_DISABLE_ENTRY_RANKING` | entry | True / True / True | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:52922(process_position) · tradier_manage.py:5797(<module>) | v12_quick_engine.py:11294(_apply_625_ablation_gates) [UNREACHABLE] |
+| `ABLATION_DISABLE_ENTRY_REVERSAL` | entry | False / False / False | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:52636(process_position) · tradier_manage.py:5798(<module>) | v12_quick_engine.py:11297(_apply_625_ablation_gates) [UNREACHABLE] |
+| `ABLATION_DISABLE_ENTRY_TECHNICAL` | entry | True / True / True | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:52918(process_position) · tradier_manage.py:5799(<module>) | v12_quick_engine.py:11300(_apply_625_ablation_gates) [UNREACHABLE] |
+| `ABLATION_DISABLE_HEDGE` | global | True / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:6698(HedgeEngine.monitor_and_manage_hedges) · ez_positions_quick.py:6698(HedgeEngine.monitor_and_manage_hedges) | v12_quick_engine.py:11303(_apply_625_ablation_gates) [UNREACHABLE]<br>v12_quick_engine.py:12032(simulate_one) |
+| `ABLATION_DISABLE_HIGH_GAIN_AUGMENT` | augment | True / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:5801(<module>) | v12_quick_engine.py:11306(_apply_625_ablation_gates) [UNREACHABLE]<br>v12_quick_engine.py:12034(simulate_one) |
+| `ABLATION_DISABLE_PERIODIC_REENTRY` | reentry | True / False / False | SL,SS | DEAD+STAGED_VEC | LIVE_ONLY+STAGED_VEC | — · tradier_manage.py:5802(<module>) | v12_quick_engine.py:11308(_apply_625_ablation_gates) [UNREACHABLE] |
+| `ABLATION_DISABLE_QUICK_ENTRY` | entry | True / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:15283(check_entry_candidates_for_account) · ez_positions_quick.py:15283(check_entry_candidates_for_account) | v12_quick_engine.py:9115(compute_entry_signals)<br>v12_quick_engine.py:11310(_apply_625_ablation_gates) [UNREACHABLE]<br>(+1) |
+| `ABLATION_DISABLE_QUICK_EXIT` | exit | True / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:13793(check_exit_candidates_for_account) · ez_positions_quick.py:13793(check_exit_candidates_for_account) | v12_quick_engine.py:9848(compute_exit_signals)<br>v12_quick_engine.py:11313(_apply_625_ablation_gates) [UNREACHABLE] |
+| `ABLATION_DISABLE_RATIO_REBALANCE` | global | True / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:5803(<module>) | v12_quick_engine.py:11315(_apply_625_ablation_gates) [UNREACHABLE]<br>v12_quick_engine.py:12036(simulate_one) |
+| `ABLATION_DISABLE_REENTRY` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:52926(process_position) · tradier_manage.py:5804(<module>) | v12_quick_engine.py:9120(compute_entry_signals)<br>v12_quick_engine.py:11318(_apply_625_ablation_gates) [UNREACHABLE]<br>(+1) |
+| `ABLATION_DISABLE_REENTRY_ENFORCE` | reentry | True / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:16581(reentry_enforcement_loop_epq)<br>(+1) · ez_positions_quick.py:16581(reentry_enforcement_loop_epq)<br>(+2) | v12_quick_engine.py:11321(_apply_625_ablation_gates) [UNREACHABLE]<br>v12_quick_engine.py:12045(simulate_one) |
+| `ABLATION_DISABLE_SPIKE_FADE_EXIT` | exit | True / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:5807(<module>) | v12_quick_engine.py:11323(_apply_625_ablation_gates) [UNREACHABLE]<br>v12_quick_engine.py:12047(simulate_one) |
 | `ADX_RANGING_THRESHOLD` | entry | 10.0 / 20.0 / 10.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:548(check_entry_alignment)<br>(+2) · ez_positions_quick.py:2715(AdvancedSignalRater.rate) | v12_quick_engine.py:198(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:199(_batch1_template_wiring) [DEAD]<br>(+3) |
-| `ADX_TRENDING_THRESHOLD` | global | 25.0 / 25.0 / 25.0 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10170(compute_reduce_signals)<br>v12_quick_engine.py:10204(compute_regime_sizing_mult) |
-| `ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC` | reduce | 30.0 / 30.0 / 30.0 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:48154(process_position) · — | v12_quick_engine.py:205(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:206(_batch1_template_wiring) [DEAD]<br>(+1) |
-| `ALL_TF_AGAINST_CLOSE_MIN_TFS` | exit | 4 / 4 / 4 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:48191(process_position)<br>(+1) · — | v12_quick_engine.py:218(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:230(_batch1_template_wiring) [DEAD]<br>(+3) |
+| `ADX_TRENDING_THRESHOLD` | global | 25.0 / 25.0 / 25.0 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10215(compute_reduce_signals)<br>v12_quick_engine.py:10249(compute_regime_sizing_mult) |
+| `ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC` | reduce | 30.0 / 30.0 / 30.0 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:48194(process_position) · — | v12_quick_engine.py:205(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:206(_batch1_template_wiring) [DEAD]<br>(+1) |
+| `ALL_TF_AGAINST_CLOSE_MIN_TFS` | exit | 4 / 4 / 4 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:48231(process_position)<br>(+1) · — | v12_quick_engine.py:218(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:230(_batch1_template_wiring) [DEAD]<br>(+3) |
 | `ATR_LONG_WINDOW` | entry | 100 / 100 / 100 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_indicators.py:261(<module>) · ez_indicators.py:261(<module>) | v12_quick_engine.py:236(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:237(_batch1_template_wiring) [DEAD]<br>(+1) |
 | `ATR_TRAIL_FILTER_TF` | exit | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | v12_quick_engine.py:243(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:244(_batch1_template_wiring) [DEAD]<br>(+1) |
-| `AUGMENTATION_COOLDOWN_SECONDS` | augment | 90.0 / 300.0 / 90.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:15202(MultiAccountTradeManager._load_augmented_positions_from_file)<br>(+7) · tradier_manage.py:25962(TradierTradeManager.execute_now) | vec_decisions/gain_ladder_augment.py:62(cooldown_bars) |
-| `AUGMENTED_POSITIONS_GUARD_FLOOR_MULT` | augment | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:27339(MultiAccountTradeManager.execute_trade_action) · — | v12_quick_engine.py:258(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:259(_batch1_template_wiring) [DEAD]<br>(+1) |
-| `AUGMENT_BOUNCE_MIN_GAIN_PCT` | augment | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/live_unw_gates.py:114(augment_tier_min_gain) · tradier_manage.py:21380(StockStrategy.evaluate_augment)<br>(+1) | vec_decisions/live_unw_gates.py:114(augment_tier_min_gain) |
-| `AUGMENT_BREAKOUT_MIN_GAIN_PCT` | augment | 2.0 / 2.0 / 2.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/live_unw_gates.py:116(augment_tier_min_gain) · tradier_manage.py:21381(StockStrategy.evaluate_augment)<br>(+1) | vec_decisions/live_unw_gates.py:116(augment_tier_min_gain) |
+| `AUGMENTATION_COOLDOWN_SECONDS` | augment | 90.0 / 300.0 / 90.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:15242(MultiAccountTradeManager._load_augmented_positions_from_file)<br>(+7) · tradier_manage.py:26023(TradierTradeManager.execute_now) | vec_decisions/gain_ladder_augment.py:62(cooldown_bars) |
+| `AUGMENTED_POSITIONS_GUARD_FLOOR_MULT` | augment | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:27379(MultiAccountTradeManager.execute_trade_action) · — | v12_quick_engine.py:258(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:259(_batch1_template_wiring) [DEAD]<br>(+1) |
+| `AUGMENT_BOUNCE_MIN_GAIN_PCT` | augment | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/live_unw_gates.py:114(augment_tier_min_gain) · tradier_manage.py:21441(StockStrategy.evaluate_augment)<br>(+1) | vec_decisions/live_unw_gates.py:114(augment_tier_min_gain) |
+| `AUGMENT_BREAKOUT_MIN_GAIN_PCT` | augment | 2.0 / 2.0 / 2.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/live_unw_gates.py:116(augment_tier_min_gain) · tradier_manage.py:21442(StockStrategy.evaluate_augment)<br>(+1) | vec_decisions/live_unw_gates.py:116(augment_tier_min_gain) |
 | `AUGMENT_MIN_GAIN_PCT` | augment | 3.0 / 3.0 / 0.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | live_entry_gates.py:38(effective_min_gain) · live_entry_gates.py:38(effective_min_gain)<br>(+1) | vec_decisions/gain_ladder_augment.py:32(effective_min_gain)<br>vec_decisions/uagain_gate.py:19(effective_min_gain) |
 | `AUGMENT_ONLY_WHEN_PROFITABLE` | augment | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:13371(execute_trade_wrapper) · ez_positions_quick.py:13371(execute_trade_wrapper) | v12_quick_engine.py:272(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:273(_batch1_template_wiring) [DEAD]<br>(+2) |
-| `AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER` | augment | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:25012(TradierTradeManager.execute_trade_action) | v12_quick_engine.py:10134(_augment_allowed)<br>vec_decisions/gain_ladder_augment.py:55(profit_gate_ok) |
-| `BACKTEST_VALIDATED_GATES_TRADIER` | entry | True / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:17028(StockStrategy.calculate_signal_score) | v12_quick_engine.py:9052(compute_entry_signals)<br>vec_decisions/entry_hard_gates.py:78(tradier_block) |
+| `AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER` | augment | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:25073(TradierTradeManager.execute_trade_action) | v12_quick_engine.py:10179(_augment_allowed)<br>vec_decisions/gain_ladder_augment.py:55(profit_gate_ok) |
+| `BACKTEST_VALIDATED_GATES_TRADIER` | entry | True / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:17089(StockStrategy.calculate_signal_score) | v12_quick_engine.py:9097(compute_entry_signals)<br>vec_decisions/entry_hard_gates.py:78(tradier_block) |
 | `BALANCE_FLOOR_USD` | global | <absent> / <absent> / 0.0 | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `BANDAID_OFF_LOSER_RECOVER_PCT` | entry | -0.25 / -0.25 / -0.25 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:49155(process_position)<br>(+2) · ez_positions_quick.py:5953(HedgeEngine.monitor_hedge_health_loop)<br>(+1) | v12_quick_engine.py:286(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:287(_batch1_template_wiring) [DEAD]<br>(+1) |
-| `BAND_ARROW_SLOPE_DEADBAND` | reduce | 0.0 / 0.0 / 0.0 | CL,CS,SL,SS | DEAD+STAGED_VEC | LIVE_ONLY+STAGED_VEC | — · tradier_manage.py:10080(band_arrow_score) | v12_quick_engine.py:302(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:303(_batch1_template_wiring) [DEAD]<br>(+2) |
-| `BAND_SLOPE_SIZING_V2_MAX` | sizing | 1.8 / 2.5 / 1.8 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:27005(MultiAccountTradeManager.execute_trade_action)<br>(+2) · ez_positions_quick.py:1373(calculate_dynamic_quantity)<br>(+3) | vec_decisions/slope_sizing_live.py:49(mult) |
-| `BAND_SLOPE_SIZING_V2_MIN` | sizing | 0.7 / 0.5 / 0.7 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:27005(MultiAccountTradeManager.execute_trade_action)<br>(+2) · ez_positions_quick.py:1374(calculate_dynamic_quantity)<br>(+3) | vec_decisions/slope_sizing_live.py:48(mult) |
+| `BANDAID_OFF_LOSER_RECOVER_PCT` | entry | -0.25 / -0.25 / -0.25 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:49195(process_position)<br>(+2) · ez_positions_quick.py:5953(HedgeEngine.monitor_hedge_health_loop)<br>(+1) | v12_quick_engine.py:286(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:287(_batch1_template_wiring) [DEAD]<br>(+1) |
+| `BAND_ARROW_SLOPE_DEADBAND` | reduce | 0.0 / 0.0 / 0.0 | CL,CS,SL,SS | DEAD+STAGED_VEC | LIVE_ONLY+STAGED_VEC | — · tradier_manage.py:10141(band_arrow_score) | v12_quick_engine.py:302(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:303(_batch1_template_wiring) [DEAD]<br>(+2) |
+| `BAND_SLOPE_SIZING_V2_MAX` | sizing | 1.8 / 2.5 / 1.8 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:27045(MultiAccountTradeManager.execute_trade_action)<br>(+2) · ez_positions_quick.py:1373(calculate_dynamic_quantity)<br>(+3) | vec_decisions/slope_sizing_live.py:49(mult) |
+| `BAND_SLOPE_SIZING_V2_MIN` | sizing | 0.7 / 0.5 / 0.7 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:27045(MultiAccountTradeManager.execute_trade_action)<br>(+2) · ez_positions_quick.py:1374(calculate_dynamic_quantity)<br>(+3) | vec_decisions/slope_sizing_live.py:48(mult) |
 | `BAR_PATTERNS_FILTER_TF` | filter | 15m / 15m / OFF | CL,CS,SL,SS | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | v12_quick_engine.py:310(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:311(_batch1_template_wiring) [DEAD]<br>(+1) |
-| `BB_ENTRY_LONG_THRESHOLD` | entry | -0.2 / 0.3 / -0.2 | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:41212(calculate_final_order_quantity)<br>(+1) · tradier_manage.py:12915(process_position) | v12_quick_engine.py:8471(compute_reentry_blocks) |
-| `BB_ENTRY_SHORT_THRESHOLD` | entry | 1.0 / 0.7 / 1.0 | CS,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:41220(calculate_final_order_quantity)<br>(+1) · tradier_manage.py:12916(process_position) | v12_quick_engine.py:8471(compute_reentry_blocks) |
-| `BB_PULLBACK_GATE_ENABLED` | entry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | tradier_matrix_gates.py:45(bb_pullback_gate_blocks)<br>(+2) · tradier_manage.py:12800(process_position)<br>(+4) | v12_quick_engine.py:11863(simulate_one)<br>vec_decisions/bb_pullback_gate.py:49(bb_pullback_gate_blocks)<br>(+1) |
+| `BB_ENTRY_LONG_THRESHOLD` | entry | -0.2 / 0.3 / -0.2 | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:41252(calculate_final_order_quantity)<br>(+1) · tradier_manage.py:12976(process_position) | v12_quick_engine.py:8516(compute_reentry_blocks) |
+| `BB_ENTRY_SHORT_THRESHOLD` | entry | 1.0 / 0.7 / 1.0 | CS,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:41260(calculate_final_order_quantity)<br>(+1) · tradier_manage.py:12977(process_position) | v12_quick_engine.py:8516(compute_reentry_blocks) |
+| `BB_PULLBACK_GATE_ENABLED` | entry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | tradier_matrix_gates.py:45(bb_pullback_gate_blocks)<br>(+2) · tradier_manage.py:12861(process_position)<br>(+4) | v12_quick_engine.py:11908(simulate_one)<br>vec_decisions/bb_pullback_gate.py:49(bb_pullback_gate_blocks)<br>(+1) |
 | `BB_PULLBACK_GATE_FILTER_TF` | entry | OFF / OFF / OFF | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | tradier_matrix_gates.py:49(bb_pullback_gate_blocks)<br>(+2) · tradier_matrix_gates.py:49(bb_pullback_gate_blocks)<br>(+2) | v12_quick_engine.py:319(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:320(_batch1_template_wiring) [DEAD]<br>(+4) |
-| `BB_PULLBACK_GATE_LONG_MAX` | entry | 0.3 / 0.3 / 0.3 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | tradier_matrix_gates.py:59(bb_pullback_gate_blocks)<br>(+2) · tradier_manage.py:12810(process_position)<br>(+4) | vec_decisions/bb_pullback_gate.py:60(bb_pullback_gate_blocks)<br>vec_decisions/bb_pullback_gate.py:101(bb_pullback_gate_vec) |
-| `BB_PULLBACK_GATE_SHORT_MIN` | entry | 0.7 / 0.7 / 0.7 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | tradier_matrix_gates.py:61(bb_pullback_gate_blocks)<br>(+2) · tradier_manage.py:12815(process_position)<br>(+4) | vec_decisions/bb_pullback_gate.py:62(bb_pullback_gate_blocks)<br>vec_decisions/bb_pullback_gate.py:103(bb_pullback_gate_vec) |
-| `BB_PULLBACK_GATE_TF` | entry | 15m / 15m / 15m | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | tradier_matrix_gates.py:50(bb_pullback_gate_blocks)<br>(+2) · tradier_manage.py:12805(process_position)<br>(+5) | v12_quick_engine.py:328(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:329(_batch1_template_wiring) [DEAD]<br>(+3) |
+| `BB_PULLBACK_GATE_LONG_MAX` | entry | 0.3 / 0.3 / 0.3 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | tradier_matrix_gates.py:59(bb_pullback_gate_blocks)<br>(+2) · tradier_manage.py:12871(process_position)<br>(+4) | vec_decisions/bb_pullback_gate.py:60(bb_pullback_gate_blocks)<br>vec_decisions/bb_pullback_gate.py:101(bb_pullback_gate_vec) |
+| `BB_PULLBACK_GATE_SHORT_MIN` | entry | 0.7 / 0.7 / 0.7 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | tradier_matrix_gates.py:61(bb_pullback_gate_blocks)<br>(+2) · tradier_manage.py:12876(process_position)<br>(+4) | vec_decisions/bb_pullback_gate.py:62(bb_pullback_gate_blocks)<br>vec_decisions/bb_pullback_gate.py:103(bb_pullback_gate_vec) |
+| `BB_PULLBACK_GATE_TF` | entry | 15m / 15m / 15m | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | tradier_matrix_gates.py:50(bb_pullback_gate_blocks)<br>(+2) · tradier_manage.py:12866(process_position)<br>(+5) | v12_quick_engine.py:328(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:329(_batch1_template_wiring) [DEAD]<br>(+3) |
 | `BB_RECOVERY_ENTRY_FILTER_TF` | entry | OFF / OFF / OFF | CL,CS,SL,SS | DEAD | DEAD | — · — | v12_quick_engine.py:337(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:338(_batch1_template_wiring) [DEAD]<br>(+1) |
 | `BB_RECOVERY_FILTER_TF` | entry | OFF / OFF / OFF | CL,CS,SL,SS | DEAD | DEAD | — · — | v12_quick_engine.py:346(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:347(_batch1_template_wiring) [DEAD]<br>(+1) |
 | `BB_SQUEEZE_MIN_ALIGNMENT` | entry | 10 / 10 / 10 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:16174(check_entry_candidates_for_account.worker) · ez_positions_quick.py:16174(check_entry_candidates_for_account.worker) | vec_decisions/check_entry_candidates_crypto__bb_squeeze_gate.py:68(check_bb_squeeze_gate)<br>vec_decisions/check_entry_candidates_crypto__bb_squeeze_gate.py:221(check_bb_squeeze_gate_vec)<br>(+1) |
 | `BB_SQUEEZE_WIDTH_PERCENTILE` | entry | 0.2 / 0.2 / 0.2 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:11855(detect_bb_squeeze_breakout) · ez_positions_quick.py:11855(detect_bb_squeeze_breakout) | vec_decisions/check_entry_candidates_crypto__bb_squeeze_gate.py:194(bb_squeeze_entry_mask_vec) |
-| `BOTTOM_EXIT_HTF_WT_VETO_ENABLED` | exit | True / True / True | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:46697(process_position)<br>(+2) · tradier_manage.py:10663(process_position) | — |
-| `BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE` | augment | 0.02 / 0.02 / 0.02 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14253(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14253(check_exit_candidates_for_account.process_single_exit) | v12_quick_engine.py:10064(compute_augment_signals_ex) |
-| `BOUNCE_AUGMENT_K_D_THRESHOLD` | augment | 20.0 / 20.0 / 20.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14252(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14252(check_exit_candidates_for_account.process_single_exit) | v12_quick_engine.py:10063(compute_augment_signals_ex) |
-| `BOUNCE_AUGMENT_MIN_LOSS_PCT` | augment | -0.5 / -0.5 / -0.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14247(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14247(check_exit_candidates_for_account.process_single_exit) | v12_quick_engine.py:10136(_augment_allowed) |
+| `BOTTOM_EXIT_HTF_WT_VETO_ENABLED` | exit | True / True / True | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:46737(process_position)<br>(+2) · tradier_manage.py:10724(process_position) | — |
+| `BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE` | augment | 0.02 / 0.02 / 0.02 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14253(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14253(check_exit_candidates_for_account.process_single_exit) | v12_quick_engine.py:10109(compute_augment_signals_ex) |
+| `BOUNCE_AUGMENT_K_D_THRESHOLD` | augment | 20.0 / 20.0 / 20.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14252(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14252(check_exit_candidates_for_account.process_single_exit) | v12_quick_engine.py:10108(compute_augment_signals_ex) |
+| `BOUNCE_AUGMENT_MIN_LOSS_PCT` | augment | -0.5 / -0.5 / -0.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14247(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14247(check_exit_candidates_for_account.process_single_exit) | v12_quick_engine.py:10181(_augment_allowed) |
 | `BREAKEVEN_DC_FIELD_MODE` | exit | DC4 / DC4 / DC4 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14602(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14602(check_exit_candidates_for_account.process_single_exit) | v12_quick_engine.py:373(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:374(_batch1_template_wiring) [DEAD]<br>(+3) |
 | `BREAKEVEN_GAIN_EROSION_FILTER_TF` | reduce | OFF / OFF / OFF | CL,CS,SL,SS | DEAD | DEAD | — · — | v12_quick_engine.py:388(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:389(_batch1_template_wiring) [DEAD]<br>(+1) |
 | `BREAKEVEN_GAIN_EROSION_MIN_GAIN` | global | 50.0 / 50.0 / 50.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14579(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14579(check_exit_candidates_for_account.process_single_exit) | v12_quick_engine.py:397(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:398(_batch1_template_wiring) [DEAD]<br>(+3) |
@@ -2968,129 +2968,129 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `BTC_TECH_EXIT_WT_MIN_TFS` | exit | 3 / 3 / 3 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2122(_btc_dedicated_exit_decision) · ez_positions_quick.py:2122(_btc_dedicated_exit_decision) | v12_quick_engine.py:497(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:498(_batch1_template_wiring) [DEAD]<br>(+1) |
 | `BT_WT_CROSS_LADDER_FILTER_TF` | filter | OFF / OFF / OFF | CL,CS,SL,SS | DEAD | DEAD | — · — | v12_quick_engine.py:504(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:505(_batch1_template_wiring) [DEAD]<br>(+1) |
 | `CANDLE_PATTERN_STOPS_FILTER_TF` | filter | 15m / 15m / OFF | CL,CS,SL,SS | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | v12_quick_engine.py:513(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:514(_batch1_template_wiring) [DEAD]<br>(+1) |
-| `CHOP_RANGING_THRESHOLD` | global | 61.8 / 61.8 / 61.8 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8883(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:44(pass_mask) |
-| `CHOP_TRENDING_THRESHOLD` | global | 38.2 / 38.2 / 38.2 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8882(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:44(pass_mask) |
+| `CHOP_RANGING_THRESHOLD` | global | 61.8 / 61.8 / 61.8 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8928(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:44(pass_mask) |
+| `CHOP_TRENDING_THRESHOLD` | global | 38.2 / 38.2 / 38.2 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8927(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:44(pass_mask) |
 | `CIRCUIT_BREAKER_THRESHOLD_PCT` | global | <absent> / <absent> / 0.0 | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
 | `CIRCUIT_SHARPE_GATES_FILTER_TF` | filter | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | v12_quick_engine.py:528(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:529(_batch1_template_wiring) [DEAD]<br>(+1) |
-| `CLENOW_GATE_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9294(compute_entry_signals)<br>v12_quick_engine.py:9304(compute_entry_signals)<br>(+1) |
-| `CLENOW_GATE_MIN_SCORE` | entry | 30.0 / 30.0 / 30.0 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9297(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:54(pass_mask) |
-| `COMBINED_STOCH_GATE_TRADIER` | entry | 60.0 / 60.0 / 60.0 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12752(process_position)<br>(+2) | v12_quick_engine.py:9031(compute_entry_signals)<br>vec_decisions/process_position_stocks__wtdc_entry_gates.py:96(_wtdc_entry_gate_params) [UNREACHABLE] |
-| `CONFLUENCE_MIN_BLOCKS` | global | 2 / 2 / 2 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8933(compute_entry_signals) |
-| `CONNORS_RSI_ENTRY_THRESHOLD` | entry | 10.0 / 10.0 / 10.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13141(process_position)<br>(+1) | v12_quick_engine.py:8330(compute_reentry_blocks) |
-| `COOLDOWN_BARS_TRADIER` | global | 8 / 8 / 8 | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12011(simulate_one) |
+| `CLENOW_GATE_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9339(compute_entry_signals)<br>v12_quick_engine.py:9349(compute_entry_signals)<br>(+1) |
+| `CLENOW_GATE_MIN_SCORE` | entry | 30.0 / 30.0 / 30.0 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9342(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:54(pass_mask) |
+| `COMBINED_STOCH_GATE_TRADIER` | entry | 60.0 / 60.0 / 60.0 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12813(process_position)<br>(+2) | v12_quick_engine.py:9076(compute_entry_signals)<br>vec_decisions/process_position_stocks__wtdc_entry_gates.py:96(_wtdc_entry_gate_params) [UNREACHABLE] |
+| `CONFLUENCE_MIN_BLOCKS` | global | 2 / 2 / 2 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8978(compute_entry_signals) |
+| `CONNORS_RSI_ENTRY_THRESHOLD` | entry | 10.0 / 10.0 / 10.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13202(process_position)<br>(+1) | v12_quick_engine.py:8375(compute_reentry_blocks) |
+| `COOLDOWN_BARS_TRADIER` | global | 8 / 8 / 8 | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12056(simulate_one) |
 | `COOLDOWN_LOCKS_FILTER_TF` | entry | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | v12_quick_engine.py:537(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:538(_batch1_template_wiring) [DEAD]<br>(+1) |
-| `COUNTER_TREND_ADD_BLOCK_ENABLED` | global | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:29891(MultiAccountTradeManager.execute_now) · tradier_manage.py:13952(queue_trade_action) | v12_quick_engine.py:11859(simulate_one)<br>v12_quick_engine.py:11897(simulate_one)<br>(+4) |
-| `CRYPTO_SPIKE_FADE_THRESHOLD_PCT` | global | 10.0 / 10.0 / 10.0 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:54404(crypto_spike_fade_loop) · — | v12_quick_engine.py:546(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:547(_batch1_template_wiring) [DEAD]<br>(+1) |
-| `CT_15M_MOMENTUM_GATE_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:562(check_entry_alignment) · — | v12_quick_engine.py:8872(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:45(pass_mask) |
-| `CT_CHOP_4H_GATE_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:597(check_entry_alignment) · — | v12_quick_engine.py:8878(compute_entry_signals)<br>v12_quick_engine.py:8878(compute_entry_signals)<br>(+1) |
-| `CT_DC_CROSSOVER_SKIP_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:588(check_entry_alignment) · — | v12_quick_engine.py:8866(compute_entry_signals) |
-| `CT_REL_VOL_MIN` | global | 1.3 / 1.3 / 1.3 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:608(check_entry_alignment) · — | v12_quick_engine.py:8892(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:49(pass_mask) |
-| `CT_VOLUME_SURGE_GATE_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:605(check_entry_alignment) · — | v12_quick_engine.py:8890(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:48(pass_mask) |
-| `CT_WT_VELOCITY_1H_MIN` | global | 9.0 / 9.0 / 9.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:556(check_entry_alignment) · tradier_manage.py:17062(StockStrategy.calculate_signal_score) | v12_quick_engine.py:8863(compute_entry_signals)<br>vec_decisions/entry_hard_gates.py:89(tradier_block) |
-| `CT_WT_VELOCITY_GATE_ENABLED` | entry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:554(check_entry_alignment) · tradier_manage.py:17061(StockStrategy.calculate_signal_score) | v12_quick_engine.py:8862(compute_entry_signals)<br>vec_decisions/entry_hard_gates.py:88(tradier_block) |
-| `DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:55830(_reentry_queue_consumer_loop) · — | v12_quick_engine.py:553(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:557(_batch1_template_wiring) [DEAD]<br>(+1) |
+| `COUNTER_TREND_ADD_BLOCK_ENABLED` | global | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:29931(MultiAccountTradeManager.execute_now) · tradier_manage.py:14013(queue_trade_action) | v12_quick_engine.py:11904(simulate_one)<br>v12_quick_engine.py:11942(simulate_one)<br>(+4) |
+| `CRYPTO_SPIKE_FADE_THRESHOLD_PCT` | global | 10.0 / 10.0 / 10.0 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:54444(crypto_spike_fade_loop) · — | v12_quick_engine.py:546(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:547(_batch1_template_wiring) [DEAD]<br>(+1) |
+| `CT_15M_MOMENTUM_GATE_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:562(check_entry_alignment) · — | v12_quick_engine.py:8917(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:45(pass_mask) |
+| `CT_CHOP_4H_GATE_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:597(check_entry_alignment) · — | v12_quick_engine.py:8923(compute_entry_signals)<br>v12_quick_engine.py:8923(compute_entry_signals)<br>(+1) |
+| `CT_DC_CROSSOVER_SKIP_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:588(check_entry_alignment) · — | v12_quick_engine.py:8911(compute_entry_signals) |
+| `CT_REL_VOL_MIN` | global | 1.3 / 1.3 / 1.3 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:608(check_entry_alignment) · — | v12_quick_engine.py:8937(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:49(pass_mask) |
+| `CT_VOLUME_SURGE_GATE_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:605(check_entry_alignment) · — | v12_quick_engine.py:8935(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:48(pass_mask) |
+| `CT_WT_VELOCITY_1H_MIN` | global | 9.0 / 9.0 / 9.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:556(check_entry_alignment) · tradier_manage.py:17123(StockStrategy.calculate_signal_score) | v12_quick_engine.py:8908(compute_entry_signals)<br>vec_decisions/entry_hard_gates.py:89(tradier_block) |
+| `CT_WT_VELOCITY_GATE_ENABLED` | entry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:554(check_entry_alignment) · tradier_manage.py:17122(StockStrategy.calculate_signal_score) | v12_quick_engine.py:8907(compute_entry_signals)<br>vec_decisions/entry_hard_gates.py:88(tradier_block) |
+| `DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:55870(_reentry_queue_consumer_loop) · — | v12_quick_engine.py:553(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:557(_batch1_template_wiring) [DEAD]<br>(+1) |
 | `DC_BREACH_REDUCE_FILTER_TF` | entry | OFF / OFF / OFF | CL,CS,SL,SS | DEAD | DEAD | — · — | v12_quick_engine.py:565(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:566(_batch1_template_wiring) [DEAD]<br>(+1) |
 | `DC_BREAK_FILTER_TF` | entry | OFF / OFF / OFF | CL,CS,SL,SS | DEAD | DEAD | — · — | v12_quick_engine.py:573(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:574(_batch1_template_wiring) [DEAD]<br>(+1) |
-| `DC_DAYTRADE_STOP_PCT` | exit | 0.015 / 0.015 / 0.015 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:32739(StockDaytradeWing._manage_daytrade_positions) | v12_quick_engine.py:12037(simulate_one) |
-| `DC_DAYTRADE_TARGET_PCT` | global | 0.01 / 0.01 / 0.01 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:32746(StockDaytradeWing._manage_daytrade_positions) | v12_quick_engine.py:12038(simulate_one) |
-| `DC_EDGE_SIZING_MAX_MULT` | sizing | 3.0 / 3.0 / 3.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:1142(calculate_dynamic_quantity) · ez_positions_quick.py:1142(calculate_dynamic_quantity) | v12_quick_engine.py:10218(compute_regime_sizing_mult) |
-| `DC_EDGE_SIZING_MIN_MULT` | sizing | 1.0 / 1.0 / 1.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:1141(calculate_dynamic_quantity) · ez_positions_quick.py:1141(calculate_dynamic_quantity) | v12_quick_engine.py:10218(compute_regime_sizing_mult) |
-| `DC_HARD_STOP_REENTRY_COOLDOWN_HOURS` | reentry | <absent> / 4.0 / 4.0 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:365(dc_hardstop_cooldown_record)<br>(+1) | v12_quick_engine.py:12844(simulate_one) |
-| `DC_HOPELESS_EXIT_MIN_AGE_S` | reduce | 900 / 900 / 900 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:49971(process_position)<br>(+1) · — | v12_quick_engine.py:587(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:588(_batch1_template_wiring) [DEAD]<br>(+1) |
+| `DC_DAYTRADE_STOP_PCT` | exit | 0.015 / 0.015 / 0.015 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:32800(StockDaytradeWing._manage_daytrade_positions) | v12_quick_engine.py:12082(simulate_one) |
+| `DC_DAYTRADE_TARGET_PCT` | global | 0.01 / 0.01 / 0.01 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:32807(StockDaytradeWing._manage_daytrade_positions) | v12_quick_engine.py:12083(simulate_one) |
+| `DC_EDGE_SIZING_MAX_MULT` | sizing | 3.0 / 3.0 / 3.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:1142(calculate_dynamic_quantity) · ez_positions_quick.py:1142(calculate_dynamic_quantity) | v12_quick_engine.py:10263(compute_regime_sizing_mult) |
+| `DC_EDGE_SIZING_MIN_MULT` | sizing | 1.0 / 1.0 / 1.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:1141(calculate_dynamic_quantity) · ez_positions_quick.py:1141(calculate_dynamic_quantity) | v12_quick_engine.py:10263(compute_regime_sizing_mult) |
+| `DC_HARD_STOP_REENTRY_COOLDOWN_HOURS` | reentry | <absent> / 4.0 / 4.0 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:365(dc_hardstop_cooldown_record)<br>(+1) | v12_quick_engine.py:12889(simulate_one) |
+| `DC_HOPELESS_EXIT_MIN_AGE_S` | reduce | 900 / 900 / 900 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:50011(process_position)<br>(+1) · — | v12_quick_engine.py:587(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:588(_batch1_template_wiring) [DEAD]<br>(+1) |
 | `DC_MOMENTUM_BOTA_SCORER_FILTER_TF` | filter | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | v12_quick_engine.py:593(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:594(_batch1_template_wiring) [DEAD]<br>(+1) |
 | `DC_MOMENT_STRONG_THRESHOLD` | global | 40.0 / 40.0 / 40.0 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2568(AdvancedSignalRater.rate) · ez_positions_quick.py:2568(AdvancedSignalRater.rate) | v12_quick_engine.py:601(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:602(_batch1_template_wiring) [DEAD]<br>(+1) |
-| `DC_POSITION_ENTRY_THRESHOLD` | entry | 0.25 / 0.25 / 0.25 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13337(process_position)<br>(+1) | v12_quick_engine.py:8510(compute_reentry_blocks)<br>vec_decisions/live_stocks_entry.py:84(live_veto) |
-| `DC_RECOVERY_EXIT_TOLERANCE_PCT` | exit | 0.1 / 0.1 / 0.1 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:32450(MultiAccountTradeManager.execute_now) · — | v12_quick_engine.py:13225(simulate_one) |
-| `DELTA_ATR_ENTRY_FILTER` | entry | False / True / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12298(process_position) | v12_quick_engine.py:8564(compute_reentry_blocks)<br>v12_quick_engine.py:8580(compute_reentry_blocks)<br>(+1) |
+| `DC_POSITION_ENTRY_THRESHOLD` | entry | 0.25 / 0.25 / 0.25 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13398(process_position)<br>(+1) | v12_quick_engine.py:8555(compute_reentry_blocks)<br>vec_decisions/live_stocks_entry.py:84(live_veto) |
+| `DC_RECOVERY_EXIT_TOLERANCE_PCT` | exit | 0.1 / 0.1 / 0.1 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:32490(MultiAccountTradeManager.execute_now) · — | v12_quick_engine.py:13270(simulate_one) |
+| `DELTA_ATR_ENTRY_FILTER` | entry | False / True / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12359(process_position) | v12_quick_engine.py:8609(compute_reentry_blocks)<br>v12_quick_engine.py:8625(compute_reentry_blocks)<br>(+1) |
 | `DELTA_ENGINE_FILTER_TF` | filter | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | v12_quick_engine.py:613(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:614(_batch1_template_wiring) [DEAD]<br>(+1) |
-| `DELTA_ENTRY_ACCEL_THRESHOLD` | entry | 0.0 / 0.3 / 0.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:13361(MultiAccountTradeManager.__init__) · tradier_manage.py:22409(TradierTradeManager.__init__) | v12_quick_engine.py:8551(compute_reentry_blocks) |
-| `DELTA_ENTRY_MIN_TF` | entry | 3 / 3 / 3 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:13363(MultiAccountTradeManager.__init__)<br>(+2) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+1) | v12_quick_engine.py:8552(compute_reentry_blocks) |
-| `DELTA_ENTRY_Z_THRESHOLD` | entry | 2.5 / 2.5 / 2.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:13358(MultiAccountTradeManager.__init__)<br>(+1) · tradier_manage.py:22409(TradierTradeManager.__init__) | v12_quick_engine.py:8550(compute_reentry_blocks) |
-| `DELTA_EXIT_MANDATORY_REENTRY_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:50588(process_position) · — | v12_quick_engine.py:8464(compute_reentry_blocks) |
-| `DELTA_GATE_AUGMENT` | augment | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10055(compute_augment_signals_ex) |
+| `DELTA_ENTRY_ACCEL_THRESHOLD` | entry | 0.0 / 0.3 / 0.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:13401(MultiAccountTradeManager.__init__) · tradier_manage.py:22470(TradierTradeManager.__init__) | v12_quick_engine.py:8596(compute_reentry_blocks) |
+| `DELTA_ENTRY_MIN_TF` | entry | 3 / 3 / 3 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:13403(MultiAccountTradeManager.__init__)<br>(+2) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+1) | v12_quick_engine.py:8597(compute_reentry_blocks) |
+| `DELTA_ENTRY_Z_THRESHOLD` | entry | 2.5 / 2.5 / 2.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:13398(MultiAccountTradeManager.__init__)<br>(+1) · tradier_manage.py:22470(TradierTradeManager.__init__) | v12_quick_engine.py:8595(compute_reentry_blocks) |
+| `DELTA_EXIT_MANDATORY_REENTRY_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:50628(process_position) · — | v12_quick_engine.py:8509(compute_reentry_blocks) |
+| `DELTA_GATE_AUGMENT` | augment | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10100(compute_augment_signals_ex) |
 | `DELTA_GATE_BB_SQUEEZE` | entry | True / True / True | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `DELTA_GATE_OPEN` | entry | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9088(compute_entry_signals) |
-| `DELTA_GATE_REENTRY` | reentry | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9091(compute_entry_signals) |
-| `DELTA_HTF_GATE` | entry | hh_hl_4h / 4h / hh_hl_4h | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13387(MultiAccountTradeManager.__init__)<br>(+2) · ez_positions_quick.py:4593(AdvancedSignalRater.rate)<br>(+1) | v12_quick_engine.py:622(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:623(_batch1_template_wiring) [DEAD]<br>(+2) |
-| `DELTA_MAX_HOLD_BARS` | global | 0 / 0 / 0 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12026(simulate_one) |
+| `DELTA_GATE_OPEN` | entry | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9133(compute_entry_signals) |
+| `DELTA_GATE_REENTRY` | reentry | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9136(compute_entry_signals) |
+| `DELTA_HTF_GATE` | entry | hh_hl_4h / 4h / hh_hl_4h | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:13427(MultiAccountTradeManager.__init__)<br>(+2) · ez_positions_quick.py:4593(AdvancedSignalRater.rate)<br>(+1) | v12_quick_engine.py:622(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:623(_batch1_template_wiring) [DEAD]<br>(+2) |
+| `DELTA_MAX_HOLD_BARS` | global | 0 / 0 / 0 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12071(simulate_one) |
 | `DELTA_PYRAMID_MAX` | augment | 8 / 8 / 8 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:8179(FastDataManager.__init__) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+1) | v12_quick_engine.py:631(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:632(_batch1_template_wiring) [DEAD]<br>(+1) |
 | `DELTA_REENTRY_FILTER_ENABLED` | entry | False / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:203(check_reentry_delta_tolerant) · — | v12_quick_engine.py:643(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:647(_batch1_template_wiring) [DEAD]<br>(+1) |
 | `DELTA_REENTRY_MIN_TF` | reentry | 2 / 2 / 2 | CL,CS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:208(check_reentry_delta_tolerant) · — | — |
 | `DELTA_REENTRY_Z_THRESHOLD` | reentry | 1.0 / 1.0 / 1.0 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:209(check_reentry_delta_tolerant) · — | — |
 | `DUP_GUARD_FILTER_TF` | entry | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `D_TREND_REQUIRED` | global | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8906(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:34(pass_mask) |
-| `EMA20_SLOPE_SHORT_THRESHOLD_1H` | global | 0.05 / 0.05 / 0.05 | CS,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8436(compute_reentry_blocks) |
-| `EMA50_15M_ENTRY_FILTER_ENABLED` | entry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36305(MultiAccountTradeManager.momentum_sma_watchdog_loop) · tradier_manage.py:27441(TradierTradeManager.should_enter_long)<br>(+1) | v12_quick_engine.py:11806(simulate_one) |
-| `EMA50_15M_ENTRY_FILTER_PCT` | entry | 0.0 / 0.0 / 0.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36306(MultiAccountTradeManager.momentum_sma_watchdog_loop) · tradier_manage.py:27445(TradierTradeManager.should_enter_long)<br>(+1) | v12_quick_engine.py:11808(simulate_one) |
-| `EMA_50_200_FILTER_ENABLED` | entry | <absent> / False / False | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:27558(TradierTradeManager.should_enter_long)<br>(+1) | v12_quick_engine.py:9423(compute_entry_signals)<br>vec_decisions/live_kindergarten_stocks.py:28(pass_mask) |
-| `EMA_9_21_FILTER_ENABLED` | entry | False / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | live_entry_gates.py:88(check_entry_gates)<br>(+3) · live_entry_gates.py:88(check_entry_gates)<br>(+3) | v12_quick_engine.py:9398(compute_entry_signals)<br>vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:73(check_ema_9_21) [UNREACHABLE]<br>(+3) |
-| `EMA_9_21_FILTER_FILTER_TF` | entry | 15m / 15m / 15m | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9396(compute_entry_signals) |
-| `EMA_9_21_FILTER_MIN_TFS` | entry | 3 / 3 / 3.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | live_entry_gates.py:56(effective_kg_min_tfs)<br>(+1) · live_entry_gates.py:56(effective_kg_min_tfs) | v12_quick_engine.py:9435(compute_entry_signals)<br>vec_decisions/kg_entry_gate.py:20(effective_min_tfs) |
-| `EMA_9_21_FILTER_TFS` | entry | 1h / 1h / 1h | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/kg_entry_gate.py:26(_filter_tfs) · tradier_manage.py:27549(TradierTradeManager.should_enter_long)<br>(+1) | v12_quick_engine.py:9401(compute_entry_signals)<br>vec_decisions/kg_entry_gate.py:26(_filter_tfs)<br>(+1) |
-| `EMA_BLANKET_FILTER_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:29944(MultiAccountTradeManager.execute_now)<br>(+3) · tradier_manage.py:13995(queue_trade_action)<br>(+3) | v12_quick_engine.py:11769(simulate_one)<br>vec_decisions/wave4_families.py:102(ema_blanket_entry_gate)<br>(+1) |
+| `D_TREND_REQUIRED` | global | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8951(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:34(pass_mask) |
+| `EMA20_SLOPE_SHORT_THRESHOLD_1H` | global | 0.05 / 0.05 / 0.05 | CS,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8481(compute_reentry_blocks) |
+| `EMA50_15M_ENTRY_FILTER_ENABLED` | entry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36345(MultiAccountTradeManager.momentum_sma_watchdog_loop) · tradier_manage.py:27502(TradierTradeManager.should_enter_long)<br>(+1) | v12_quick_engine.py:11851(simulate_one) |
+| `EMA50_15M_ENTRY_FILTER_PCT` | entry | 0.0 / 0.0 / 0.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36346(MultiAccountTradeManager.momentum_sma_watchdog_loop) · tradier_manage.py:27506(TradierTradeManager.should_enter_long)<br>(+1) | v12_quick_engine.py:11853(simulate_one) |
+| `EMA_50_200_FILTER_ENABLED` | entry | <absent> / False / False | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:27619(TradierTradeManager.should_enter_long)<br>(+1) | v12_quick_engine.py:9468(compute_entry_signals)<br>vec_decisions/live_kindergarten_stocks.py:28(pass_mask) |
+| `EMA_9_21_FILTER_ENABLED` | entry | False / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | live_entry_gates.py:88(check_entry_gates)<br>(+3) · live_entry_gates.py:88(check_entry_gates)<br>(+3) | v12_quick_engine.py:9443(compute_entry_signals)<br>vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:73(check_ema_9_21) [UNREACHABLE]<br>(+3) |
+| `EMA_9_21_FILTER_FILTER_TF` | entry | 15m / 15m / 15m | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9441(compute_entry_signals) |
+| `EMA_9_21_FILTER_MIN_TFS` | entry | 3 / 3 / 3.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | live_entry_gates.py:56(effective_kg_min_tfs)<br>(+1) · live_entry_gates.py:56(effective_kg_min_tfs) | v12_quick_engine.py:9480(compute_entry_signals)<br>vec_decisions/kg_entry_gate.py:20(effective_min_tfs) |
+| `EMA_9_21_FILTER_TFS` | entry | 1h / 1h / 1h | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/kg_entry_gate.py:26(_filter_tfs) · tradier_manage.py:27610(TradierTradeManager.should_enter_long)<br>(+1) | v12_quick_engine.py:9446(compute_entry_signals)<br>vec_decisions/kg_entry_gate.py:26(_filter_tfs)<br>(+1) |
+| `EMA_BLANKET_FILTER_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:29984(MultiAccountTradeManager.execute_now)<br>(+3) · tradier_manage.py:14056(queue_trade_action)<br>(+3) | v12_quick_engine.py:11814(simulate_one)<br>vec_decisions/wave4_families.py:102(ema_blanket_entry_gate)<br>(+1) |
 | `EMA_BLANKET_FILTER_FILTER_TF` | entry | 15m / 15m / OFF | CL,CS,SL,SS | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | — |
-| `EMA_BLANKET_FILTER_MIN_TFS` | entry | 3 / 3.0 / 3.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:29948(MultiAccountTradeManager.execute_now)<br>(+4) · tradier_manage.py:13995(queue_trade_action)<br>(+3) | vec_decisions/wave4_families.py:104(ema_blanket_entry_gate)<br>vec_decisions/wave4_families.py:125(ema_blanket_live_pass) |
-| `EMA_DIST_LONG_THRESHOLD` | global | -1.0 / -1.0 / -1.0 | CL,SL | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:41159(calculate_final_order_quantity)<br>(+1) · — | v12_quick_engine.py:8441(compute_reentry_blocks) |
-| `EMA_DIST_SHORT_THRESHOLD` | global | 1.0 / 1.0 / 1.0 | CS,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:41167(calculate_final_order_quantity)<br>(+1) · — | v12_quick_engine.py:8441(compute_reentry_blocks) |
+| `EMA_BLANKET_FILTER_MIN_TFS` | entry | 3 / 3.0 / 3.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:29988(MultiAccountTradeManager.execute_now)<br>(+4) · tradier_manage.py:14056(queue_trade_action)<br>(+3) | vec_decisions/wave4_families.py:104(ema_blanket_entry_gate)<br>vec_decisions/wave4_families.py:125(ema_blanket_live_pass) |
+| `EMA_DIST_LONG_THRESHOLD` | global | -1.0 / -1.0 / -1.0 | CL,SL | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:41199(calculate_final_order_quantity)<br>(+1) · — | v12_quick_engine.py:8486(compute_reentry_blocks) |
+| `EMA_DIST_SHORT_THRESHOLD` | global | 1.0 / 1.0 / 1.0 | CS,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:41207(calculate_final_order_quantity)<br>(+1) · — | v12_quick_engine.py:8486(compute_reentry_blocks) |
 | `EMERGENCY_BRAKE_FILTER_TF` | entry | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `ENTRY_BOUNCE_DONCHIAN_DIRECT_RECOVERY_ONLY` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1019(_shared_direct_entry_claim)<br>(+1) | v12_quick_engine.py:8294(compute_reentry_blocks) |
-| `ENTRY_PRIMARY_TF` | entry | 4h / 4h / 4h | CL,CS,SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:17221(StockStrategy.calculate_signal_score) | — |
-| `ENTRY_SCORE_THRESHOLD` | entry | 18.0 / 18.0 / 18.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13231(process_position)<br>(+2) | v12_quick_engine.py:9248(compute_entry_signals) |
-| `ENTRY_STOCH_HHHL_DIRECT_MIN_CONFIRMING_TFS` | entry | 1 / 1 / 1 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:949(_shared_direct_entry_claim) | v12_quick_engine.py:8352(compute_reentry_blocks) |
-| `ENTRY_STOCH_HHHL_DIRECT_STOCH_THRESHOLD` | entry | 20.0 / 20.0 / 20.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:953(_shared_direct_entry_claim) | v12_quick_engine.py:8353(compute_reentry_blocks) |
-| `ENTRY_STOCH_PARENT_DIRECT_THRESHOLD` | entry | 40.0 / 40.0 / 40.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1060(_shared_direct_entry_claim) | v12_quick_engine.py:8384(compute_reentry_blocks) |
-| `ENTRY_ZONE_LONG` | entry | 80.0 / 80.0 / 80.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:24725(TradierTradeManager.execute_trade_action) | v12_quick_engine.py:9599(compute_entry_signals) |
-| `ENTRY_ZONE_SHORT` | entry | 20.0 / 20.0 / 20.0 | CS,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:24725(TradierTradeManager.execute_trade_action) | v12_quick_engine.py:9600(compute_entry_signals) |
-| `EXECUTE_NOW_MAX_MARK_AGE_S` | global | 60.0 / 60.0 / 60.0 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:30778(MultiAccountTradeManager.execute_now)<br>(+1) · ez_positions_quick.py:12378(execute_trade_wrapper)<br>(+1) | — |
+| `ENTRY_BOUNCE_DONCHIAN_DIRECT_RECOVERY_ONLY` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1019(_shared_direct_entry_claim)<br>(+1) | v12_quick_engine.py:8339(compute_reentry_blocks) |
+| `ENTRY_PRIMARY_TF` | entry | 4h / 4h / 4h | CL,CS,SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:17282(StockStrategy.calculate_signal_score) | — |
+| `ENTRY_SCORE_THRESHOLD` | entry | 18.0 / 18.0 / 18.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13292(process_position)<br>(+2) | v12_quick_engine.py:9293(compute_entry_signals) |
+| `ENTRY_STOCH_HHHL_DIRECT_MIN_CONFIRMING_TFS` | entry | 1 / 1 / 1 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:949(_shared_direct_entry_claim) | v12_quick_engine.py:8397(compute_reentry_blocks) |
+| `ENTRY_STOCH_HHHL_DIRECT_STOCH_THRESHOLD` | entry | 20.0 / 20.0 / 20.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:953(_shared_direct_entry_claim) | v12_quick_engine.py:8398(compute_reentry_blocks) |
+| `ENTRY_STOCH_PARENT_DIRECT_THRESHOLD` | entry | 40.0 / 40.0 / 40.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1060(_shared_direct_entry_claim) | v12_quick_engine.py:8429(compute_reentry_blocks) |
+| `ENTRY_ZONE_LONG` | entry | 80.0 / 80.0 / 80.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:24786(TradierTradeManager.execute_trade_action) | v12_quick_engine.py:9644(compute_entry_signals) |
+| `ENTRY_ZONE_SHORT` | entry | 20.0 / 20.0 / 20.0 | CS,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:24786(TradierTradeManager.execute_trade_action) | v12_quick_engine.py:9645(compute_entry_signals) |
+| `EXECUTE_NOW_MAX_MARK_AGE_S` | global | 60.0 / 60.0 / 60.0 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:30818(MultiAccountTradeManager.execute_now)<br>(+1) · ez_positions_quick.py:12378(execute_trade_wrapper)<br>(+1) | — |
 | `EXECUTE_NOW_SINGLE_GATE_ENFORCE` | entry | True / True / True | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:8999(TrackerManager.send_webhook) · ez_positions_quick.py:8999(TrackerManager.send_webhook) | — |
-| `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:30204(MultiAccountTradeManager.execute_now) · tradier_manage.py:25928(TradierTradeManager.execute_now) | v12_quick_engine.py:12240(simulate_one)<br>vec_decisions/ported_exit.py:139(apply) |
+| `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:30244(MultiAccountTradeManager.execute_now) · tradier_manage.py:25989(TradierTradeManager.execute_now) | v12_quick_engine.py:12285(simulate_one)<br>vec_decisions/ported_exit.py:139(apply) |
 | `EXIT_R1_R2_FILTER_TF` | filter | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
 | `EXIT_SCORER_DC_EXTREME` | exit | 0.8 / 0.8 / 0.8 | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
 | `EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF` | filter | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
 | `EXIT_TOP_FADE_FILTER_TF` | entry | 15m / 15m / OFF | CL,CS,SL,SS | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | — |
 | `EXIT_TO_REDUCE_ADAPTER_FILTER_TF` | filter | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `E_1_EXIT_DELTA_THR` | exit | 50.0 / 50.0 / 50.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:50098(process_position)<br>(+2) · — | vec_decisions/ported_exit.py:67(apply)<br>vec_decisions/process_position_crypto__e1_wt_delta_exit.py:26(_e1_thr) [UNREACHABLE] |
-| `E_3_USE_WT_STRUCTURE_EXIT_MODE` | exit | 0 / 0 / 0.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:50121(process_position)<br>(+2) · — | vec_decisions/ported_exit.py:81(apply) |
-| `FAST_RISER_FILTER_TF` | entry | OFF / OFF / OFF | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:52636(process_position) · — | — |
-| `FG_FEAR_THRESHOLD` | entry | 25 / 25 / 25 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:41562(calculate_final_order_quantity) · — | — |
-| `FG_GREED_THRESHOLD` | entry | 75 / 75 / 75 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:41567(calculate_final_order_quantity) · — | — |
+| `E_1_EXIT_DELTA_THR` | exit | 50.0 / 50.0 / 50.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:50138(process_position)<br>(+2) · — | vec_decisions/ported_exit.py:67(apply)<br>vec_decisions/process_position_crypto__e1_wt_delta_exit.py:26(_e1_thr) [UNREACHABLE] |
+| `E_3_USE_WT_STRUCTURE_EXIT_MODE` | exit | 0 / 0 / 0.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:50161(process_position)<br>(+2) · — | vec_decisions/ported_exit.py:81(apply) |
+| `FAST_RISER_FILTER_TF` | entry | OFF / OFF / OFF | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:52676(process_position) · — | — |
+| `FG_FEAR_THRESHOLD` | entry | 25 / 25 / 25 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:41602(calculate_final_order_quantity) · — | — |
+| `FG_GREED_THRESHOLD` | entry | 75 / 75 / 75 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:41607(calculate_final_order_quantity) · — | — |
 | `FH_MOMENTUM_FILTER_TF` | filter | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
 | `FIRST_OPEN_THROTTLE_FILTER_TF` | filter | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `FORCE_MIN_ONE_TRADE` | global | <absent> / <absent> / False | CL,CS,SL | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9646(compute_entry_signals) |
-| `FROZEN_ABSOLUTE_FLOOR_PCT_CRYPTO` | exit | -10.0 / -10.0 / -10.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:47240(process_position) · — | vec_decisions/frozen_floor_exit.py:66(frozen_floor_exit_should_exit)<br>vec_decisions/frozen_floor_exit.py:104(frozen_floor_exit_vec) |
+| `FORCE_MIN_ONE_TRADE` | global | <absent> / <absent> / False | CL,CS,SL | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9691(compute_entry_signals) |
+| `FROZEN_ABSOLUTE_FLOOR_PCT_CRYPTO` | exit | -10.0 / -10.0 / -10.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:47280(process_position) · — | vec_decisions/frozen_floor_exit.py:66(frozen_floor_exit_should_exit)<br>vec_decisions/frozen_floor_exit.py:104(frozen_floor_exit_vec) |
 | `FROZEN_STOP_FILTER_TF` | filter | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `FUNDING_GATE_ENABLED` | entry | True / <absent> / True | CL,CS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:12751(execute_trade_wrapper) · ez_positions_quick.py:12751(execute_trade_wrapper) | v12_quick_engine.py:11718(simulate_one)<br>vec_decisions/ported_entry.py:119(apply) |
+| `FUNDING_GATE_ENABLED` | entry | True / <absent> / True | CL,CS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:12751(execute_trade_wrapper) · ez_positions_quick.py:12751(execute_trade_wrapper) | v12_quick_engine.py:11763(simulate_one)<br>vec_decisions/ported_entry.py:119(apply) |
 | `FUNDING_GATE_FILTER_TF` | entry | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
 | `FUNDING_GATE_LONG_MAX` | entry | 0.0005 / <absent> / 0.0005 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:12755(execute_trade_wrapper) · ez_positions_quick.py:12755(execute_trade_wrapper) | — |
 | `FUNDING_GATE_MTF_REQUIRED` | entry | True / True / True | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:12772(execute_trade_wrapper) · ez_positions_quick.py:12772(execute_trade_wrapper) | — |
 | `FUNDING_GATE_SHORT_MIN` | entry | -0.0005 / <absent> / -0.0005 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:12756(execute_trade_wrapper) · ez_positions_quick.py:12756(execute_trade_wrapper) | — |
-| `GAP_CLOSE_MOC_ONLY_FOR_SHORTS` | exit | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9295(_gap_close_per_symbol_should_close) | v12_quick_engine.py:11536(simulate_one) |
-| `GAP_CLOSE_MOC_ONLY_STOCKS` | exit | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9310(_gap_close_inventory_record_from_cache)<br>(+1) | v12_quick_engine.py:11535(simulate_one) |
-| `GAP_RISK_REENTRY_MAX_DAYS` | reentry | <absent> / 5 / 5 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19698(StockStrategy.evaluate_stop)<br>(+2) | vec_decisions/gap_risk_exit.py:374(gap_risk_reentry_vec) |
-| `GAP_RISK_REENTRY_REQUIRE_TREND` | reentry | <absent> / False / False | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19700(StockStrategy.evaluate_stop)<br>(+1) | vec_decisions/gap_risk_exit.py:375(gap_risk_reentry_vec) |
-| `GOLDEN_RULE_BASE_USD` | entry | 5.0 / 5.0 / 5.0 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:17232(MultiAccountTradeManager._golden_rule_loop) · — | — |
+| `GAP_CLOSE_MOC_ONLY_FOR_SHORTS` | exit | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9356(_gap_close_per_symbol_should_close) | v12_quick_engine.py:11581(simulate_one) |
+| `GAP_CLOSE_MOC_ONLY_STOCKS` | exit | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9371(_gap_close_inventory_record_from_cache)<br>(+1) | v12_quick_engine.py:11580(simulate_one) |
+| `GAP_RISK_REENTRY_MAX_DAYS` | reentry | <absent> / 5 / 5 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19759(StockStrategy.evaluate_stop)<br>(+2) | vec_decisions/gap_risk_exit.py:374(gap_risk_reentry_vec) |
+| `GAP_RISK_REENTRY_REQUIRE_TREND` | reentry | <absent> / False / False | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19761(StockStrategy.evaluate_stop)<br>(+1) | vec_decisions/gap_risk_exit.py:375(gap_risk_reentry_vec) |
+| `GOLDEN_RULE_BASE_USD` | entry | 5.0 / 5.0 / 5.0 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:17272(MultiAccountTradeManager._golden_rule_loop) · — | — |
 | `GOLDEN_RULE_ENFORCE_FILTER_TF` | filter | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `GOLDEN_RULE_HTF_MIN_TFS` | global | 1 / 1 / 1 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:17455(MultiAccountTradeManager._golden_rule_loop)<br>(+4) · ez_positions_quick.py:16362(check_entry_candidates_for_account.worker)<br>(+3) | v12_quick_engine.py:9312(compute_entry_signals) |
+| `GOLDEN_RULE_HTF_MIN_TFS` | global | 1 / 1 / 1 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:17495(MultiAccountTradeManager._golden_rule_loop)<br>(+4) · ez_positions_quick.py:16362(check_entry_candidates_for_account.worker)<br>(+3) | v12_quick_engine.py:9357(compute_entry_signals) |
 | `GOLDEN_RULE_HTF_VOTE_FILTER_TF` | entry | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `GOLDEN_RULE_MIN_IND` | global | 2 / 2 / 2 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:17463(MultiAccountTradeManager._golden_rule_loop)<br>(+4) · ez_positions_quick.py:16365(check_entry_candidates_for_account.worker)<br>(+5) | v12_quick_engine.py:9313(compute_entry_signals) |
-| `GR_FILTER_ALL_ENTRIES` | entry | False / False / 0.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:30028(MultiAccountTradeManager.execute_now) · — | vec_decisions/ported_entry.py:79(apply) |
+| `GOLDEN_RULE_MIN_IND` | global | 2 / 2 / 2 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:17503(MultiAccountTradeManager._golden_rule_loop)<br>(+4) · ez_positions_quick.py:16365(check_entry_candidates_for_account.worker)<br>(+5) | v12_quick_engine.py:9358(compute_entry_signals) |
+| `GR_FILTER_ALL_ENTRIES` | entry | False / False / 0.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:30068(MultiAccountTradeManager.execute_now) · — | vec_decisions/ported_entry.py:79(apply) |
 | `GR_FILTER_VEC_ENABLED` | entry | False / False / False | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
 | `GR_FILTER_VEC_FILTER_TF` | entry | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
 | `GR_FILTER_VEC_MIN_TFS` | entry | 2 / 2 / 2 | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
 | `GR_V5_STATE_FILTER_TF` | entry | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `GUARANTEED_REENTRY_DELTA_GATE_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:36829(MultiAccountTradeManager.reentry_enforcement_loop) · — | v12_quick_engine.py:8450(compute_reentry_blocks) |
-| `GUARANTEED_REENTRY_K_HIGH_BLOCK` | reentry | 80.0 / 80.0 / 80.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36777(MultiAccountTradeManager.reentry_enforcement_loop)<br>(+1) · ez_positions_quick.py:16769(reentry_enforcement_loop_epq) | v12_quick_engine.py:8451(compute_reentry_blocks) |
-| `GUARANTEED_REENTRY_K_LOW_BLOCK` | reentry | 20.0 / 20.0 / 20.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36780(MultiAccountTradeManager.reentry_enforcement_loop)<br>(+1) · ez_positions_quick.py:16770(reentry_enforcement_loop_epq) | v12_quick_engine.py:8452(compute_reentry_blocks) |
-| `GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN` | reentry | True / False / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8459(compute_reentry_blocks) |
-| `GUARANTEED_REENTRY_STRICT_CONFIRMATION` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36774(MultiAccountTradeManager.reentry_enforcement_loop)<br>(+1) · ez_positions_quick.py:16767(reentry_enforcement_loop_epq) | v12_quick_engine.py:8449(compute_reentry_blocks) |
-| `GUARANTEED_REENTRY_TIGHT_STOP_MAX_AGE_S` | reentry | 1800.0 / 1800.0 / 1800.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:49839(process_position) · — | v12_quick_engine.py:8458(compute_reentry_blocks) |
-| `GUARANTEED_REENTRY_TIGHT_STOP_MIN_AGE_S` | reentry | 60.0 / 60.0 / 60.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:49836(process_position) · — | v12_quick_engine.py:8457(compute_reentry_blocks) |
+| `GUARANTEED_REENTRY_DELTA_GATE_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:36869(MultiAccountTradeManager.reentry_enforcement_loop) · — | v12_quick_engine.py:8495(compute_reentry_blocks) |
+| `GUARANTEED_REENTRY_K_HIGH_BLOCK` | reentry | 80.0 / 80.0 / 80.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36817(MultiAccountTradeManager.reentry_enforcement_loop)<br>(+1) · ez_positions_quick.py:16769(reentry_enforcement_loop_epq) | v12_quick_engine.py:8496(compute_reentry_blocks) |
+| `GUARANTEED_REENTRY_K_LOW_BLOCK` | reentry | 20.0 / 20.0 / 20.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36820(MultiAccountTradeManager.reentry_enforcement_loop)<br>(+1) · ez_positions_quick.py:16770(reentry_enforcement_loop_epq) | v12_quick_engine.py:8497(compute_reentry_blocks) |
+| `GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN` | reentry | True / False / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8504(compute_reentry_blocks) |
+| `GUARANTEED_REENTRY_STRICT_CONFIRMATION` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36814(MultiAccountTradeManager.reentry_enforcement_loop)<br>(+1) · ez_positions_quick.py:16767(reentry_enforcement_loop_epq) | v12_quick_engine.py:8494(compute_reentry_blocks) |
+| `GUARANTEED_REENTRY_TIGHT_STOP_MAX_AGE_S` | reentry | 1800.0 / 1800.0 / 1800.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:49879(process_position) · — | v12_quick_engine.py:8503(compute_reentry_blocks) |
+| `GUARANTEED_REENTRY_TIGHT_STOP_MIN_AGE_S` | reentry | 60.0 / 60.0 / 60.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:49876(process_position) · — | v12_quick_engine.py:8502(compute_reentry_blocks) |
 | `HAIKU_ENTRY_GATE_ENABLED` | entry | False / False / False | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
 | `HAIKU_WINNER_FILTER_TF` | filter | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN` | reentry | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12376(simulate_one) |
-| `HARDCODED_RALLY_REENTRY_REQUIRE_WT` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:3080(check_reentry_eligible)<br>(+3) · tradier_manage.py:21688(StockStrategy.evaluate_reentry) | v12_quick_engine.py:12382(simulate_one)<br>v12_quick_engine.py:12467(simulate_one)<br>(+1) |
+| `HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN` | reentry | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12421(simulate_one) |
+| `HARDCODED_RALLY_REENTRY_REQUIRE_WT` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:3080(check_reentry_eligible)<br>(+3) · tradier_manage.py:21749(StockStrategy.evaluate_reentry) | v12_quick_engine.py:12427(simulate_one)<br>v12_quick_engine.py:12512(simulate_one)<br>(+1) |
 | `HARD_BREAKEVEN_MIN_PEAK_PCT` | global | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14584(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14584(check_exit_candidates_for_account.process_single_exit) | vec_decisions/live_exit_chain.py:143(step)<br>vec_decisions/live_exit_chain.py:146(step)<br>(+1) |
-| `HIGH_GAIN_AUGMENTATION_MIN_SIZE` | augment | 50 / 200.0 / 50 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:45372(_process_single_monitor_direct_high_gain)<br>(+2) · ez_positions_service.py:7795(PositionService.handle_reduction)<br>(+1) | — |
+| `HIGH_GAIN_AUGMENTATION_MIN_SIZE` | augment | 50 / 200.0 / 50 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:45412(_process_single_monitor_direct_high_gain)<br>(+2) · ez_positions_service.py:7795(PositionService.handle_reduction)<br>(+1) | — |
 | `HLR_REENTRY_MAX_AGE_S` | reentry | 14400.0 / 14400.0 / 14400.0 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:16341(check_entry_candidates_for_account.worker) · ez_positions_quick.py:16341(check_entry_candidates_for_account.worker) | — |
 | `HLR_SMA_BAND_PCT` | entry | 0.03 / 0.03 / 0.03 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:3072(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:3072(AdvancedSignalRater.rate)<br>(+1) | — |
 | `HLR_TOP_MIN_GAIN_PCT` | reduce | 1.5 / 1.5 / 1.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3705(AdvancedSignalRater.rate) · ez_positions_quick.py:3705(AdvancedSignalRater.rate) | vec_decisions/quick_reduce_strong.py:63(_quick_reduce_strong_thresholds) |
@@ -3098,37 +3098,37 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `HLR_TOP_VEL_1H_THRESH` | reduce | -1.0 / -1.0 / -1.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3721(AdvancedSignalRater.rate) · ez_positions_quick.py:3721(AdvancedSignalRater.rate) | vec_decisions/quick_reduce_strong.py:64(_quick_reduce_strong_thresholds) |
 | `HLR_TOP_VEL_4H_THRESH` | reduce | 0.0 / 0.0 / 0.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3722(AdvancedSignalRater.rate) · ez_positions_quick.py:3722(AdvancedSignalRater.rate) | vec_decisions/quick_reduce_strong.py:65(_quick_reduce_strong_thresholds) |
 | `HLR_TOP_VEL_D_THRESH` | reduce | 0.0 / 0.0 / 0.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3723(AdvancedSignalRater.rate) · ez_positions_quick.py:3723(AdvancedSignalRater.rate) | vec_decisions/quick_reduce_strong.py:66(_quick_reduce_strong_thresholds) |
-| `HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H` | exit | True / 1.0 / 1.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:46889(process_position)<br>(+1) · — | vec_decisions/ported_exit.py:112(apply) |
+| `HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H` | exit | True / 1.0 / 1.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:46929(process_position)<br>(+1) · — | vec_decisions/ported_exit.py:112(apply) |
 | `HTF_BULL_ENTRY_FILTER_ENABLED` | entry | False / False / <absent> | CL,CS,SL | DEAD | DEAD | — · — | — |
 | `HTF_BULL_ENTRY_FILTER_TF` | entry | OFF / 15m / <absent> | CL,CS,SL | DEAD | DEAD | — · — | — |
-| `HTF_DIRECTION_GATE_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:12685(execute_trade_wrapper)<br>(+2) · ez_positions_quick.py:12685(execute_trade_wrapper)<br>(+2) | v12_quick_engine.py:11727(simulate_one)<br>vec_decisions/wave4_families.py:34(oi_confirm_entry_gate)<br>(+1) |
+| `HTF_DIRECTION_GATE_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:12685(execute_trade_wrapper)<br>(+2) · ez_positions_quick.py:12685(execute_trade_wrapper)<br>(+2) | v12_quick_engine.py:11772(simulate_one)<br>vec_decisions/wave4_families.py:34(oi_confirm_entry_gate)<br>(+1) |
 | `HTF_EXIT_VETO_ENABLED` | reduce | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14558(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14558(check_exit_candidates_for_account.process_single_exit) | vec_decisions/check_exit_candidates_crypto__htf_wt_vetoes.py:70(check_htf_exit_veto) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_crypto__htf_wt_vetoes.py:99(check_htf_exit_veto_vec) [UNREACHABLE]<br>(+1) |
 | `HTF_EXIT_VETO_MAX_LOSS_PCT` | exit | 2.0 / 2.0 / 2.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14559(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14559(check_exit_candidates_for_account.process_single_exit) | vec_decisions/check_exit_candidates_crypto__htf_wt_vetoes.py:72(check_htf_exit_veto) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_crypto__htf_wt_vetoes.py:101(check_htf_exit_veto_vec) [UNREACHABLE]<br>(+1) |
 | `HTF_EXIT_VETO_MIN_ALIGNED` | exit | 2 / 2 / 2 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14568(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14568(check_exit_candidates_for_account.process_single_exit) | vec_decisions/check_exit_candidates_crypto__htf_wt_vetoes.py:73(check_htf_exit_veto) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_crypto__htf_wt_vetoes.py:102(check_htf_exit_veto_vec) [UNREACHABLE]<br>(+1) |
-| `HTF_GATE_APPLY_TO_AUGMENT` | augment | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:12687(execute_trade_wrapper) · ez_positions_quick.py:12687(execute_trade_wrapper) | v12_quick_engine.py:11727(simulate_one) |
+| `HTF_GATE_APPLY_TO_AUGMENT` | augment | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:12687(execute_trade_wrapper) · ez_positions_quick.py:12687(execute_trade_wrapper) | v12_quick_engine.py:11772(simulate_one) |
 | `HTF_GATE_APPLY_TO_OPEN` | reduce | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:12686(execute_trade_wrapper)<br>(+1) · ez_positions_quick.py:12686(execute_trade_wrapper)<br>(+1) | vec_decisions/wave4_families.py:149(htf_direction_gate) |
 | `HTF_GATE_BYPASS_RZ` | entry | True / True / True | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:12688(execute_trade_wrapper) · ez_positions_quick.py:12688(execute_trade_wrapper) | — |
-| `HTF_GATE_D_MANDATORY` | entry | False / 0.0 / 0.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:37574(MultiAccountTradeManager.ratio_rebalance_loop)<br>(+2) · ez_positions_quick.py:12150(check_htf_direction_gate)<br>(+1) | vec_decisions/wave4_families.py:169(htf_direction_pass_raw) |
+| `HTF_GATE_D_MANDATORY` | entry | False / 0.0 / 0.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:37614(MultiAccountTradeManager.ratio_rebalance_loop)<br>(+2) · ez_positions_quick.py:12150(check_htf_direction_gate)<br>(+1) | vec_decisions/wave4_families.py:169(htf_direction_pass_raw) |
 | `HTF_GATE_MIN_CONFIRMATIONS` | entry | 2 / 2 / 2 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:12149(check_htf_direction_gate)<br>(+1) · ez_positions_quick.py:12149(check_htf_direction_gate)<br>(+1) | vec_decisions/wave4_families.py:167(htf_direction_pass_raw) |
-| `HTF_GATE_SIGNALS_SMA200D` | entry | False / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:37571(MultiAccountTradeManager.ratio_rebalance_loop)<br>(+2) · ez_positions_quick.py:12132(check_htf_direction_gate)<br>(+1) | vec_decisions/wave4_families.py:163(htf_direction_pass_raw) |
-| `HTF_MIN_ALIGNED` | global | 1 / 1 / 1 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8905(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:30(pass_mask) |
-| `HTF_TREND_VETO_BYPASS_ENABLED` | entry | True / True / True | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:25316(MultiAccountTradeManager.execute_trade_action) · — | — |
-| `HTF_TREND_VETO_BYPASS_REASONS` | entry | ['TRADEABLE_KEYS_MANDATORY', 'RZ_', 'RED_ZONE', 'BASELINE_BOUNCE', 'BR | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:25319(MultiAccountTradeManager.execute_trade_action) · — | — |
-| `HTF_WT_CHURN_REENTRY_MAX_AGE_MIN` | reentry | 120.0 / 120.0 / 120.0 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:42517(process_single_reentry_evaluation) · — | — |
-| `INTRADAY_RATIO_COOLDOWN_MIN` | reduce | <absent> / 30 / 30 | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:23808(TradierTradeManager.intraday_ratio_rebalance_loop) | — |
-| `INTRADAY_RATIO_MAX_TRIMS_PER_DAY` | reduce | <absent> / 8 / 8 | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:23793(TradierTradeManager.intraday_ratio_rebalance_loop) | — |
-| `INTRADAY_RATIO_REQUIRE_TOP` | reduce | <absent> / False / False | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:23818(TradierTradeManager.intraday_ratio_rebalance_loop) | — |
-| `K3M_FLOOR` | exit | 30 / 30 / 30 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8845(compute_entry_signals)<br>v12_quick_engine.py:8848(compute_entry_signals)<br>(+3) |
-| `K3M_FLOOR_ENABLED` | exit | <absent> / <absent> / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8838(compute_entry_signals) |
-| `KINDERGARTEN_CUMULATIVE_MIN_TFS` | global | 1 / 0 / 1 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | live_entry_gates.py:53(effective_kg_min_tfs)<br>(+1) · live_entry_gates.py:53(effective_kg_min_tfs) | v12_quick_engine.py:9435(compute_entry_signals)<br>vec_decisions/kg_entry_gate.py:17(effective_min_tfs) |
-| `KINDERGARTEN_EMA_GATE_ENABLED` | entry | False / True / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:348(_kindergarten_ema_gate) · tradier_manage.py:27542(TradierTradeManager.should_enter_long)<br>(+1) | v12_quick_engine.py:9389(compute_entry_signals)<br>v12_quick_engine.py:9398(compute_entry_signals)<br>(+3) |
-| `KINDERGARTEN_FILTER_TF` | entry | 15m / <absent> / 15m | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:352(_kindergarten_ema_gate) · — | v12_quick_engine.py:9396(compute_entry_signals)<br>vec_decisions/live_kindergarten_gate.py:17(kg_block_mask) |
-| `K_ZONE_LONG_THRESHOLD` | entry | 35 / 35 / 35 | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2983(AdvancedSignalRater.rate) · ez_positions_quick.py:2983(AdvancedSignalRater.rate) | v12_quick_engine.py:8265(compute_reentry_blocks) |
-| `K_ZONE_LONG_THRESHOLD_TRADIER` | entry | 35 / 35 / 35 | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2998(AdvancedSignalRater.rate) · ez_positions_quick.py:2998(AdvancedSignalRater.rate)<br>(+3) | v12_quick_engine.py:8340(compute_reentry_blocks)<br>v12_quick_engine.py:9021(compute_entry_signals)<br>(+1) |
-| `K_ZONE_SHORT_THRESHOLD` | entry | 10 / 10 / 10 | CS,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2984(AdvancedSignalRater.rate) · ez_positions_quick.py:2984(AdvancedSignalRater.rate) | v12_quick_engine.py:8266(compute_reentry_blocks) |
-| `K_ZONE_SHORT_THRESHOLD_TRADIER` | entry | 65 / 65 / 65 | CS,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2999(AdvancedSignalRater.rate) · ez_positions_quick.py:2999(AdvancedSignalRater.rate)<br>(+3) | v12_quick_engine.py:8341(compute_reentry_blocks)<br>v12_quick_engine.py:9022(compute_entry_signals)<br>(+1) |
-| `K_ZONE_VETO_ENABLED_TRADIER` | entry | False / False / False | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13235(process_position) | v12_quick_engine.py:9019(compute_entry_signals)<br>vec_decisions/live_stocks_entry.py:59(live_veto) |
-| `LEADERBOARD_FILTER` | entry | True / False / True | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:21460(MultiAccountTradeManager._handle_signal_message)<br>(+7) · tradier_manage.py:27728(TradierTradeManager.should_enter_long)<br>(+7) | — |
+| `HTF_GATE_SIGNALS_SMA200D` | entry | False / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:37611(MultiAccountTradeManager.ratio_rebalance_loop)<br>(+2) · ez_positions_quick.py:12132(check_htf_direction_gate)<br>(+1) | vec_decisions/wave4_families.py:163(htf_direction_pass_raw) |
+| `HTF_MIN_ALIGNED` | global | 1 / 1 / 1 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8950(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:30(pass_mask) |
+| `HTF_TREND_VETO_BYPASS_ENABLED` | entry | True / True / True | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:25356(MultiAccountTradeManager.execute_trade_action) · — | — |
+| `HTF_TREND_VETO_BYPASS_REASONS` | entry | ['TRADEABLE_KEYS_MANDATORY', 'RZ_', 'RED_ZONE', 'BASELINE_BOUNCE', 'BR | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:25359(MultiAccountTradeManager.execute_trade_action) · — | — |
+| `HTF_WT_CHURN_REENTRY_MAX_AGE_MIN` | reentry | 120.0 / 120.0 / 120.0 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:42557(process_single_reentry_evaluation) · — | — |
+| `INTRADAY_RATIO_COOLDOWN_MIN` | reduce | <absent> / 30 / 30 | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:23869(TradierTradeManager.intraday_ratio_rebalance_loop) | — |
+| `INTRADAY_RATIO_MAX_TRIMS_PER_DAY` | reduce | <absent> / 8 / 8 | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:23854(TradierTradeManager.intraday_ratio_rebalance_loop) | — |
+| `INTRADAY_RATIO_REQUIRE_TOP` | reduce | <absent> / False / False | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:23879(TradierTradeManager.intraday_ratio_rebalance_loop) | — |
+| `K3M_FLOOR` | exit | 30 / 30 / 30 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8890(compute_entry_signals)<br>v12_quick_engine.py:8893(compute_entry_signals)<br>(+3) |
+| `K3M_FLOOR_ENABLED` | exit | <absent> / <absent> / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8883(compute_entry_signals) |
+| `KINDERGARTEN_CUMULATIVE_MIN_TFS` | global | 1 / 0 / 1 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | live_entry_gates.py:53(effective_kg_min_tfs)<br>(+1) · live_entry_gates.py:53(effective_kg_min_tfs) | v12_quick_engine.py:9480(compute_entry_signals)<br>vec_decisions/kg_entry_gate.py:17(effective_min_tfs) |
+| `KINDERGARTEN_EMA_GATE_ENABLED` | entry | False / True / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:348(_kindergarten_ema_gate) · tradier_manage.py:27603(TradierTradeManager.should_enter_long)<br>(+1) | v12_quick_engine.py:9434(compute_entry_signals)<br>v12_quick_engine.py:9443(compute_entry_signals)<br>(+3) |
+| `KINDERGARTEN_FILTER_TF` | entry | 15m / <absent> / 15m | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:352(_kindergarten_ema_gate) · — | v12_quick_engine.py:9441(compute_entry_signals)<br>vec_decisions/live_kindergarten_gate.py:17(kg_block_mask) |
+| `K_ZONE_LONG_THRESHOLD` | entry | 35 / 35 / 35 | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2983(AdvancedSignalRater.rate) · ez_positions_quick.py:2983(AdvancedSignalRater.rate) | v12_quick_engine.py:8310(compute_reentry_blocks) |
+| `K_ZONE_LONG_THRESHOLD_TRADIER` | entry | 35 / 35 / 35 | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2998(AdvancedSignalRater.rate) · ez_positions_quick.py:2998(AdvancedSignalRater.rate)<br>(+3) | v12_quick_engine.py:8385(compute_reentry_blocks)<br>v12_quick_engine.py:9066(compute_entry_signals)<br>(+1) |
+| `K_ZONE_SHORT_THRESHOLD` | entry | 10 / 10 / 10 | CS,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2984(AdvancedSignalRater.rate) · ez_positions_quick.py:2984(AdvancedSignalRater.rate) | v12_quick_engine.py:8311(compute_reentry_blocks) |
+| `K_ZONE_SHORT_THRESHOLD_TRADIER` | entry | 65 / 65 / 65 | CS,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2999(AdvancedSignalRater.rate) · ez_positions_quick.py:2999(AdvancedSignalRater.rate)<br>(+3) | v12_quick_engine.py:8386(compute_reentry_blocks)<br>v12_quick_engine.py:9067(compute_entry_signals)<br>(+1) |
+| `K_ZONE_VETO_ENABLED_TRADIER` | entry | False / False / False | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13296(process_position) | v12_quick_engine.py:9064(compute_entry_signals)<br>vec_decisions/live_stocks_entry.py:59(live_veto) |
+| `LEADERBOARD_FILTER` | entry | True / False / True | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:21500(MultiAccountTradeManager._handle_signal_message)<br>(+7) · tradier_manage.py:27789(TradierTradeManager.should_enter_long)<br>(+7) | — |
 | `LH_HL_FILTER_DC_THRESHOLD_PCT` | entry | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:12930(execute_trade_wrapper)<br>(+1) · ez_positions_quick.py:12930(execute_trade_wrapper)<br>(+3) | vec_decisions/check_entry_candidates_stocks__lh_hl_filter.py:56(_lh_hl_params) |
 | `LH_HL_FILTER_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:12920(execute_trade_wrapper)<br>(+1) · ez_positions_quick.py:12920(execute_trade_wrapper)<br>(+4) | vec_decisions/check_entry_candidates_stocks__lh_hl_filter.py:62(check_lh_hl_filter)<br>vec_decisions/ported_entry.py:93(apply) |
 | `LH_HL_FILTER_MODE` | entry | STRICT_2BAR / STRICT_2BAR / STRICT_2BAR | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:12928(execute_trade_wrapper)<br>(+1) · ez_positions_quick.py:12928(execute_trade_wrapper)<br>(+3) | vec_decisions/check_entry_candidates_stocks__lh_hl_filter.py:54(_lh_hl_params) |
@@ -3136,56 +3136,56 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `LH_HL_FILTER_TF_REQ` | entry | 2 / 2 / 2 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:12929(execute_trade_wrapper)<br>(+1) · ez_positions_quick.py:12929(execute_trade_wrapper)<br>(+3) | vec_decisions/check_entry_candidates_stocks__lh_hl_filter.py:55(_lh_hl_params) |
 | `LIVE_ENTRY_ENGINE_FILTER_TF` | entry | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
 | `LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF` | entry | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `LONG_STOCH_CHASE_BLOCK` | global | True / True / True | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2864(AdvancedSignalRater.rate) · ez_positions_quick.py:2864(AdvancedSignalRater.rate)<br>(+1) | v12_quick_engine.py:9008(compute_entry_signals)<br>vec_decisions/live_stocks_entry.py:76(live_veto) |
+| `LONG_STOCH_CHASE_BLOCK` | global | True / True / True | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2864(AdvancedSignalRater.rate) · ez_positions_quick.py:2864(AdvancedSignalRater.rate)<br>(+1) | v12_quick_engine.py:9053(compute_entry_signals)<br>vec_decisions/live_stocks_entry.py:76(live_veto) |
 | `LOSS_TECHNICAL_EXIT_NO_STALE_BLOCK` | exit | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14758(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14758(check_exit_candidates_for_account.process_single_exit) | vec_decisions/live_exit_chain.py:196(step) |
-| `LR_PCTB_D_LONG_ENTRY_THRESHOLD` | entry | 0.2 / 0.2 / 0.2 | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40691(evaluate_technical_indicator_signals)<br>(+2) · tradier_manage.py:12900(process_position)<br>(+2) | vec_decisions/process_position_stocks__alt_entries.py:89(check_lr_pctb_d_long)<br>vec_decisions/process_position_stocks__alt_entries.py:101(check_lr_pctb_d_long_vec) |
+| `LR_PCTB_D_LONG_ENTRY_THRESHOLD` | entry | 0.2 / 0.2 / 0.2 | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40731(evaluate_technical_indicator_signals)<br>(+2) · tradier_manage.py:12961(process_position)<br>(+2) | vec_decisions/process_position_stocks__alt_entries.py:89(check_lr_pctb_d_long)<br>vec_decisions/process_position_stocks__alt_entries.py:101(check_lr_pctb_d_long_vec) |
 | `MACD_EXIT_MIN_GAIN` | reduce | 0.3 / 0.3 / 0.3 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:4567(AdvancedSignalRater.rate) · ez_positions_quick.py:4567(AdvancedSignalRater.rate) | vec_decisions/quick_reduce_sources.py:30(macd_exit) |
 | `MANDATORY_REENTRY_ALLOW_WT0_STRONG_CROSS` | reentry | False / False / 0.0 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:3276(AdvancedSignalRater.rate) · ez_positions_quick.py:3276(AdvancedSignalRater.rate) | — |
 | `MANDATORY_REENTRY_K_HIGH_BLOCK` | reentry | 80.0 / 80.0 / 80.0 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:3274(AdvancedSignalRater.rate) · ez_positions_quick.py:3274(AdvancedSignalRater.rate) | — |
 | `MANDATORY_REENTRY_K_LOW_BLOCK` | reentry | 20.0 / 20.0 / 20.0 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:3275(AdvancedSignalRater.rate) · ez_positions_quick.py:3275(AdvancedSignalRater.rate) | — |
 | `MANDATORY_REENTRY_REQUIRE_K_NOT_EXTREME` | reentry | True / True / True | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:3273(AdvancedSignalRater.rate) · ez_positions_quick.py:3273(AdvancedSignalRater.rate) | — |
-| `MANDATORY_REENTRY_WT_FILTER_MIN_TFS` | entry | 1 / 1 / 1 | CL,CS,SL,SS | DEAD+STAGED_VEC | LIVE_ONLY+STAGED_VEC | — · tradier_manage.py:12090(process_position) | — |
-| `MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY` | entry | 0.0 / 0.0 / 0.0 | CL,CS,SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:12093(process_position) | — |
-| `MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP` | entry | False / False / 0.0 | CL,CS,SL,SS | DEAD+STAGED_VEC | LIVE_ONLY+STAGED_VEC | — · tradier_manage.py:12091(process_position) | — |
-| `MANDATORY_REENTRY_WT_FILTER_TF_MODE` | entry | 15m_only / 15m_only / 15m_only | CL,CS,SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:12089(process_position) | — |
-| `MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO` | entry | 0.9 / 0.9 / 0.9 | CL,CS,SL,SS | DEAD+STAGED_VEC | LIVE_ONLY+STAGED_VEC | — · tradier_manage.py:12092(process_position) | — |
-| `MAX_AUGMENTS_PER_POSITION` | augment | 999999 / 999999 / 999999 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:24174(MultiAccountTradeManager.execute_trade_action) · — | vec_decisions/ported_stateful_augment.py:50(masks) |
-| `MAX_ORDER_VALUE` | global | 180.0 / 7000.0 / 2500.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:10901(get_max_order_value)<br>(+9) · ez_positions_service.py:13736(check_position_reductions)<br>(+5) | v12_quick_engine.py:12392(simulate_one)<br>v12_quick_engine.py:12647(simulate_one) |
-| `MFI_FLIP_EXIT_LONG_THRESHOLD` | exit | 70.0 / 70.0 / 70.0 | CL,SL | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19543(StockStrategy.evaluate_stop) | v12_quick_engine.py:9734(compute_exit_signals) |
-| `MFI_FLIP_EXIT_SHORT_THRESHOLD` | exit | 30.0 / 30.0 / 30.0 | CS,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19544(StockStrategy.evaluate_stop) | v12_quick_engine.py:9735(compute_exit_signals) |
+| `MANDATORY_REENTRY_WT_FILTER_MIN_TFS` | entry | 1 / 1 / 1 | CL,CS,SL,SS | DEAD+STAGED_VEC | LIVE_ONLY+STAGED_VEC | — · tradier_manage.py:12151(process_position) | — |
+| `MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY` | entry | 0.0 / 0.0 / 0.0 | CL,CS,SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:12154(process_position) | — |
+| `MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP` | entry | False / False / 0.0 | CL,CS,SL,SS | DEAD+STAGED_VEC | LIVE_ONLY+STAGED_VEC | — · tradier_manage.py:12152(process_position) | — |
+| `MANDATORY_REENTRY_WT_FILTER_TF_MODE` | entry | 15m_only / 15m_only / 15m_only | CL,CS,SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:12150(process_position) | — |
+| `MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO` | entry | 0.9 / 0.9 / 0.9 | CL,CS,SL,SS | DEAD+STAGED_VEC | LIVE_ONLY+STAGED_VEC | — · tradier_manage.py:12153(process_position) | — |
+| `MAX_AUGMENTS_PER_POSITION` | augment | 999999 / 999999 / 999999 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:24214(MultiAccountTradeManager.execute_trade_action) · — | vec_decisions/ported_stateful_augment.py:50(masks) |
+| `MAX_ORDER_VALUE` | global | 180.0 / 7000.0 / 2500.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:10941(get_max_order_value)<br>(+9) · ez_positions_service.py:13736(check_position_reductions)<br>(+5) | v12_quick_engine.py:12437(simulate_one)<br>v12_quick_engine.py:12692(simulate_one) |
+| `MFI_FLIP_EXIT_LONG_THRESHOLD` | exit | 70.0 / 70.0 / 70.0 | CL,SL | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19604(StockStrategy.evaluate_stop) | v12_quick_engine.py:9779(compute_exit_signals) |
+| `MFI_FLIP_EXIT_SHORT_THRESHOLD` | exit | 30.0 / 30.0 / 30.0 | CS,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19605(StockStrategy.evaluate_stop) | v12_quick_engine.py:9780(compute_exit_signals) |
 | `MIN_GAIN_TO_BUY_AGGRESSIVELY` | augment | 3.0 / 3.0 / 3.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | live_entry_gates.py:42(effective_min_gain)<br>(+2) · live_entry_gates.py:42(effective_min_gain)<br>(+1) | vec_decisions/gain_ladder_augment.py:36(effective_min_gain)<br>vec_decisions/uagain_gate.py:23(effective_min_gain) |
-| `MIN_HOLD_BARS` | global | 3 / 10 / 3 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12013(simulate_one) |
-| `MIN_HOLD_BARS_BEFORE_EXIT` | exit | 10 / 10 / 10 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:46588(process_position)<br>(+2) · — | v12_quick_engine.py:12013(simulate_one) |
-| `MIN_HOLD_MINUTES_TRADIER` | global | 30.0 / 30.0 / 30.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:11564(process_position)<br>(+4) | v12_quick_engine.py:12024(simulate_one)<br>v12_quick_engine.py:12025(simulate_one) |
-| `MIN_POSITION_SIZE` | sizing | 1.0 / 100 / 1.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:8670(handle_market_index_drop)<br>(+11) · ez_positions_quick.py:9124(TrackerManager.sync_universe)<br>(+11) | tools/opt/evaluate_v12.py:640(build_cfg_npz) [UNREACHABLE]<br>tools/opt/evaluate_v12.py:712(prepare) |
-| `MI_MIN_GAIN_EXIT` | exit | 0.1 / 0.1 / 0.1 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3750(AdvancedSignalRater.rate) · ez_positions_quick.py:3750(AdvancedSignalRater.rate) | v12_quick_engine.py:12800(simulate_one) |
+| `MIN_HOLD_BARS` | global | 3 / 10 / 3 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12058(simulate_one) |
+| `MIN_HOLD_BARS_BEFORE_EXIT` | exit | 10 / 10 / 10 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:46628(process_position)<br>(+2) · — | v12_quick_engine.py:12058(simulate_one) |
+| `MIN_HOLD_MINUTES_TRADIER` | global | 30.0 / 30.0 / 30.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:11625(process_position)<br>(+4) | v12_quick_engine.py:12069(simulate_one)<br>v12_quick_engine.py:12070(simulate_one) |
+| `MIN_POSITION_SIZE` | sizing | 1.0 / 100 / 1.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:8710(handle_market_index_drop)<br>(+11) · ez_positions_quick.py:9124(TrackerManager.sync_universe)<br>(+11) | tools/opt/evaluate_v12.py:640(build_cfg_npz) [UNREACHABLE]<br>tools/opt/evaluate_v12.py:712(prepare) |
+| `MI_MIN_GAIN_EXIT` | exit | 0.1 / 0.1 / 0.1 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3750(AdvancedSignalRater.rate) · ez_positions_quick.py:3750(AdvancedSignalRater.rate) | v12_quick_engine.py:12845(simulate_one) |
 | `MI_TF_AGREE_MIN` | global | 3 / 3 / 3.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3782(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:3782(AdvancedSignalRater.rate)<br>(+1) | vec_decisions/wave4_families.py:97(mi_exit_signal) |
 | `MOM3_FILTER_TF` | entry | OFF / OFF / OFF | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `MOM3_LONG_THRESHOLD` | global | -1.0 / -1.0 / -1.0 | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:301(_parity_filter_tf_gates)<br>(+2) · tradier_manage.py:13281(process_position) | v12_quick_engine.py:8429(compute_reentry_blocks)<br>vec_decisions/filter_tf_gates.py:50(mom3_entry_gate) |
-| `MOM3_SHORT_THRESHOLD` | global | 1.0 / 1.0 / 1.0 | CS,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:301(_parity_filter_tf_gates)<br>(+2) · tradier_manage.py:13281(process_position) | v12_quick_engine.py:8429(compute_reentry_blocks)<br>vec_decisions/filter_tf_gates.py:51(mom3_entry_gate) |
-| `MOM5_LONG_THRESHOLD` | global | -1.0 / -1.0 / -1.0 | CL,SL | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:41197(calculate_final_order_quantity)<br>(+1) · — | v12_quick_engine.py:8432(compute_reentry_blocks) |
-| `MOM5_SHORT_THRESHOLD` | global | 1.0 / 1.0 / 1.0 | CS,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:41201(calculate_final_order_quantity)<br>(+1) · — | v12_quick_engine.py:8432(compute_reentry_blocks) |
+| `MOM3_LONG_THRESHOLD` | global | -1.0 / -1.0 / -1.0 | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:301(_parity_filter_tf_gates)<br>(+2) · tradier_manage.py:13342(process_position) | v12_quick_engine.py:8474(compute_reentry_blocks)<br>vec_decisions/filter_tf_gates.py:50(mom3_entry_gate) |
+| `MOM3_SHORT_THRESHOLD` | global | 1.0 / 1.0 / 1.0 | CS,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:301(_parity_filter_tf_gates)<br>(+2) · tradier_manage.py:13342(process_position) | v12_quick_engine.py:8474(compute_reentry_blocks)<br>vec_decisions/filter_tf_gates.py:51(mom3_entry_gate) |
+| `MOM5_LONG_THRESHOLD` | global | -1.0 / -1.0 / -1.0 | CL,SL | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:41237(calculate_final_order_quantity)<br>(+1) · — | v12_quick_engine.py:8477(compute_reentry_blocks) |
+| `MOM5_SHORT_THRESHOLD` | global | 1.0 / 1.0 / 1.0 | CS,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:41241(calculate_final_order_quantity)<br>(+1) · — | v12_quick_engine.py:8477(compute_reentry_blocks) |
 | `MOMENTUM_BREAKOUT_FILTER_TF` | entry | OFF / OFF / OFF | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
 | `MOVER_THRESHOLD` | entry | 5.0 / 5.0 / 5.0 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:4934(RatingRegistry.scan_movers) · ez_positions_quick.py:4934(RatingRegistry.scan_movers) | — |
 | `MTF_ARMED_ENTRIES_FILTER_TF` | filter | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
 | `MTF_ATR_TRAIL_FILTER_TF` | entry | 15m / 15m / 15m | CL,CS,SL,SS | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | — |
 | `MTF_DC_REJECT_FILTER_TF` | filter | 15m / 15m / 15m | CL,CS,SL,SS | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | — |
-| `MTF_FILTER_STRONG_BUY_QUICK_BYPASS` | entry | True / True / True | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:30265(MultiAccountTradeManager.execute_now) · — | — |
-| `MTF_GR_EXIT_GATE_ENABLED` | exit | True / True / True | CL,CS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:48010(process_position)<br>(+1) · mtf_live_evaluator.py:487(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:9812(compute_exit_signals)<br>v12_quick_engine.py:12175(simulate_one)<br>(+2) |
-| `MTF_GR_EXIT_MIN_TFS` | exit | 3 / 3 / 3 | CL,CS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:48016(process_position)<br>(+1) · mtf_live_evaluator.py:488(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:9813(compute_exit_signals)<br>v12_quick_engine.py:12184(simulate_one)<br>(+2) |
-| `MTF_GR_MIN_IND` | entry | 7 / 7 / 7 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:30039(MultiAccountTradeManager.execute_now)<br>(+2) · mtf_live_evaluator.py:305(gr_filter_pass)<br>(+1) | vec_decisions/mtf_gr_filter.py:69(gr_filter_pass_vec) |
+| `MTF_FILTER_STRONG_BUY_QUICK_BYPASS` | entry | True / True / True | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:30305(MultiAccountTradeManager.execute_now) · — | — |
+| `MTF_GR_EXIT_GATE_ENABLED` | exit | True / True / True | CL,CS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:48050(process_position)<br>(+1) · mtf_live_evaluator.py:487(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:9857(compute_exit_signals)<br>v12_quick_engine.py:12220(simulate_one)<br>(+2) |
+| `MTF_GR_EXIT_MIN_TFS` | exit | 3 / 3 / 3 | CL,CS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:48056(process_position)<br>(+1) · mtf_live_evaluator.py:488(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:9858(compute_exit_signals)<br>v12_quick_engine.py:12229(simulate_one)<br>(+2) |
+| `MTF_GR_MIN_IND` | entry | 7 / 7 / 7 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:30079(MultiAccountTradeManager.execute_now)<br>(+2) · mtf_live_evaluator.py:305(gr_filter_pass)<br>(+1) | vec_decisions/mtf_gr_filter.py:69(gr_filter_pass_vec) |
 | `MTS_BOTTOM_BONUS_THRESHOLD` | entry | 25.0 / 25.0 / 25.0 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2808(AdvancedSignalRater.rate) · ez_positions_quick.py:2808(AdvancedSignalRater.rate) | — |
 | `MTS_BOTTOM_STRONG_THRESHOLD` | entry | 40.0 / 40.0 / 40.0 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2807(AdvancedSignalRater.rate) · ez_positions_quick.py:2807(AdvancedSignalRater.rate) | — |
 | `MTS_GATE_ENABLED` | entry | True / True / True | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2785(AdvancedSignalRater.rate) · ez_positions_quick.py:2785(AdvancedSignalRater.rate) | — |
-| `NEWBORN_LOSS_KILL_FILTER_TF` | exit | 15m / 15m / 15m | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11694(simulate_one) |
-| `NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT` | exit | 0.0 / 0.0 / 0.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:46783(process_position) · — | vec_decisions/generic_filter_tf.py:155(newborn_loss_kill_fires) |
-| `NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST` | exit | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:46790(process_position) · — | vec_decisions/generic_filter_tf.py:158(newborn_loss_kill_fires) |
-| `NEWBORN_LOSS_KILL_WINDOW_MIN` | exit | 30.0 / 30.0 / 30.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:46782(process_position) · — | vec_decisions/generic_filter_tf.py:154(newborn_loss_kill_fires) |
+| `NEWBORN_LOSS_KILL_FILTER_TF` | exit | 15m / 15m / 15m | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11739(simulate_one) |
+| `NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT` | exit | 0.0 / 0.0 / 0.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:46823(process_position) · — | vec_decisions/generic_filter_tf.py:155(newborn_loss_kill_fires) |
+| `NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST` | exit | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:46830(process_position) · — | vec_decisions/generic_filter_tf.py:158(newborn_loss_kill_fires) |
+| `NEWBORN_LOSS_KILL_WINDOW_MIN` | exit | 30.0 / 30.0 / 30.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:46822(process_position) · — | vec_decisions/generic_filter_tf.py:154(newborn_loss_kill_fires) |
 | `NEWBORN_PROTECT_FILTER_TF` | entry | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `NEW_POSITION_MAX_LOSS_THRESHOLD` | exit | -0.7 / -0.7 / -0.7 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:10095(_check_loss_protection)<br>(+11) · ez_positions_service.py:13465(check_position_reductions)<br>(+2) | vec_decisions/live_exit_chain.py:258(step_pp) |
+| `NEW_POSITION_MAX_LOSS_THRESHOLD` | exit | -0.7 / -0.7 / -0.7 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:10135(_check_loss_protection)<br>(+11) · ez_positions_service.py:13465(check_position_reductions)<br>(+2) | vec_decisions/live_exit_chain.py:258(step_pp) |
 | `NOLOSS_BYPASS_WT5OF5_FILTER_TF` | filter | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `NOLOSS_BYPASS_WT_5OF5_MIN_TFS` | reduce | 5 / 3 / 5 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19735(StockStrategy.evaluate_stop) | vec_decisions/reduce_profit_lock.py:82(noloss_bypass_params) |
-| `NOLOSS_MIN_PROFIT_PCT` | reduce | 0.0 / 0.0 / 0.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:22299(MultiAccountTradeManager._handle_signal_message)<br>(+11) · ez_positions_quick.py:3630(AdvancedSignalRater.rate)<br>(+6) | vec_decisions/live_exit_chain.py:269(reduce_fraction)<br>vec_decisions/quick_reduce_strong.py:67(_quick_reduce_strong_thresholds) |
+| `NOLOSS_BYPASS_WT_5OF5_MIN_TFS` | reduce | 5 / 3 / 5 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19796(StockStrategy.evaluate_stop) | vec_decisions/reduce_profit_lock.py:82(noloss_bypass_params) |
+| `NOLOSS_MIN_PROFIT_PCT` | reduce | 0.0 / 0.0 / 0.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:22339(MultiAccountTradeManager._handle_signal_message)<br>(+11) · ez_positions_quick.py:3630(AdvancedSignalRater.rate)<br>(+6) | vec_decisions/live_exit_chain.py:269(reduce_fraction)<br>vec_decisions/quick_reduce_strong.py:67(_quick_reduce_strong_thresholds) |
 | `OBLIGATORY_REENTRY_K15_HIGH_BLOCK` | reentry | 95.0 / 95.0 / 95.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_reentry.py:366(evaluate_obligatory_reentry) · ez_reentry.py:366(evaluate_obligatory_reentry) | vec_decisions/obligatory_reentry_vec.py:91(fires) |
 | `OBLIGATORY_REENTRY_SHORT_K15_LOW_BLOCK` | reentry | 5.0 / 5.0 / 5.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_reentry.py:372(evaluate_obligatory_reentry) · ez_reentry.py:372(evaluate_obligatory_reentry) | vec_decisions/obligatory_reentry_vec.py:94(fires) |
 | `OBLIGATORY_REENTRY_TIER1_HTF_REQUIRED` | reentry | 3 / 3 / 3 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_reentry.py:305(evaluate_obligatory_reentry) · ez_reentry.py:305(evaluate_obligatory_reentry) | vec_decisions/obligatory_reentry_vec.py:66(fires) |
@@ -3194,222 +3194,222 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `OI_CONFIRM_MIN_CHANGE_PCT` | global | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:12717(execute_trade_wrapper)<br>(+1) · ez_positions_quick.py:12717(execute_trade_wrapper)<br>(+1) | vec_decisions/wave4_families.py:40(oi_confirm_entry_gate) |
 | `OI_CONFIRM_MIN_PRICE_PCT` | global | 0.3 / 0.3 / 0.3 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:12718(execute_trade_wrapper)<br>(+1) · ez_positions_quick.py:12718(execute_trade_wrapper)<br>(+1) | vec_decisions/wave4_families.py:41(oi_confirm_entry_gate) |
 | `OPEN_INTENT_SIZE_GATES_FILTER_TF` | filter | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `OPEN_RATE_MAX` | global | 30 / 30 / 30 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:30388(MultiAccountTradeManager.execute_now) · tradier_manage.py:25690(TradierTradeManager.execute_now) | — |
-| `PARITY_DISABLE_NON_VECTORIZABLE` | global | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:7170(<module>)<br>(+4) · ez_positions_quick.py:224(<module>)<br>(+1) | v12_quick_engine.py:11409(simulate_one) |
+| `OPEN_RATE_MAX` | global | 30 / 30 / 30 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:30428(MultiAccountTradeManager.execute_now) · tradier_manage.py:25751(TradierTradeManager.execute_now) | — |
+| `PARITY_DISABLE_NON_VECTORIZABLE` | global | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:7170(<module>)<br>(+4) · ez_positions_quick.py:224(<module>)<br>(+1) | v12_quick_engine.py:11454(simulate_one) |
 | `PARTIAL_PROFIT_LOCK_V2_FILTER_TF` | reduce | 15m / 15m / 15m | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
 | `PEAK_GIVEBACK_BE_EROSION_FILTER_TF` | filter | 15m / 15m / OFF | CL,CS,SL,SS | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | — |
-| `PER_SYM_GATE_FLAT_OPEN_ENFORCE` | global | <absent> / False / <absent> | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:25742(TradierTradeManager.execute_now) | — |
-| `PYRAMID_MAX_DC_POS_15M_SHORT` | augment | 0.3 / 0.3 / 0.3 | CS,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | strategy_enhancements.py:245(_pyramid_thresholds) · — | v12_quick_engine.py:10080(compute_augment_signals_ex) |
-| `PYRAMID_MIN_DC_POS_15M` | augment | 0.7 / 0.7 / 0.7 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | strategy_enhancements.py:244(_pyramid_thresholds) · — | v12_quick_engine.py:10078(compute_augment_signals_ex) |
-| `PYRAMID_MIN_WT_VEL_1H` | augment | 2.0 / 2.0 / 2.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | strategy_enhancements.py:243(_pyramid_thresholds) · — | v12_quick_engine.py:10078(compute_augment_signals_ex)<br>v12_quick_engine.py:10080(compute_augment_signals_ex) |
-| `PYRAMID_SIZE_MULT` | augment | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | strategy_enhancements.py:246(_pyramid_thresholds) · — | v12_quick_engine.py:10129(compute_augment_signals_ex) |
-| `QUICK_REDUCE_TECHNICAL_ONLY` | reduce | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14902(check_exit_candidates_for_account.process_single_exit)<br>(+1) · ez_positions_quick.py:14902(check_exit_candidates_for_account.process_single_exit)<br>(+1) | v12_quick_engine.py:11660(simulate_one)<br>vec_decisions/quick_reduce_sources.py:15(_tech_only) |
+| `PER_SYM_GATE_FLAT_OPEN_ENFORCE` | global | <absent> / False / <absent> | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:25803(TradierTradeManager.execute_now) | — |
+| `PYRAMID_MAX_DC_POS_15M_SHORT` | augment | 0.3 / 0.3 / 0.3 | CS,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | strategy_enhancements.py:245(_pyramid_thresholds) · — | v12_quick_engine.py:10125(compute_augment_signals_ex) |
+| `PYRAMID_MIN_DC_POS_15M` | augment | 0.7 / 0.7 / 0.7 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | strategy_enhancements.py:244(_pyramid_thresholds) · — | v12_quick_engine.py:10123(compute_augment_signals_ex) |
+| `PYRAMID_MIN_WT_VEL_1H` | augment | 2.0 / 2.0 / 2.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | strategy_enhancements.py:243(_pyramid_thresholds) · — | v12_quick_engine.py:10123(compute_augment_signals_ex)<br>v12_quick_engine.py:10125(compute_augment_signals_ex) |
+| `PYRAMID_SIZE_MULT` | augment | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | strategy_enhancements.py:246(_pyramid_thresholds) · — | v12_quick_engine.py:10174(compute_augment_signals_ex) |
+| `QUICK_REDUCE_TECHNICAL_ONLY` | reduce | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14902(check_exit_candidates_for_account.process_single_exit)<br>(+1) · ez_positions_quick.py:14902(check_exit_candidates_for_account.process_single_exit)<br>(+1) | v12_quick_engine.py:11705(simulate_one)<br>vec_decisions/quick_reduce_sources.py:15(_tech_only) |
 | `QUICK_REENTRY_60MIN_MIN_PCT` | entry | 0.6 / 0.6 / 0.6 | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `RECENT_REDUCTION_GUARD_ENABLED` | global | True / True / True | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:31846(MultiAccountTradeManager.execute_now) · — | — |
-| `RECENT_REDUCTION_GUARD_WINDOW_S` | global | 300.0 / 450.0 / 300.0 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:31849(MultiAccountTradeManager.execute_now) · — | — |
-| `REENTRY2_DC_BREAK_ALLOW_15M` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42352(process_single_reentry_evaluation)<br>(+2) · ez_positions_quick.py:17199(process_single_reentry_evaluation_epq)<br>(+1) | vec_decisions/guaranteed_price_cross_reentry.py:249(check_guaranteed_price_cross_reentry)<br>vec_decisions/reentry_breakout.py:88(_thresholds) [UNREACHABLE]<br>(+2) |
-| `REENTRY2_DC_BREAK_FILTER_TF` | reentry | 3m / 3m / 3m | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42355(process_single_reentry_evaluation)<br>(+2) · ez_positions_quick.py:17202(process_single_reentry_evaluation_epq)<br>(+1) | vec_decisions/guaranteed_price_cross_reentry.py:252(check_guaranteed_price_cross_reentry)<br>vec_decisions/reentry_breakout.py:91(_thresholds) [UNREACHABLE]<br>(+1) |
-| `REENTRY2_DC_BREAK_REQUIRE_K_FILTER` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42353(process_single_reentry_evaluation)<br>(+2) · ez_positions_quick.py:17200(process_single_reentry_evaluation_epq)<br>(+1) | vec_decisions/guaranteed_price_cross_reentry.py:250(check_guaranteed_price_cross_reentry)<br>vec_decisions/reentry_breakout.py:89(_thresholds) [UNREACHABLE]<br>(+2) |
-| `REENTRY2_DC_BREAK_REQUIRE_WT_FILTER` | reentry | False / False / 0.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42354(process_single_reentry_evaluation)<br>(+2) · ez_positions_quick.py:17201(process_single_reentry_evaluation_epq)<br>(+1) | vec_decisions/guaranteed_price_cross_reentry.py:251(check_guaranteed_price_cross_reentry)<br>vec_decisions/reentry_breakout.py:90(_thresholds) [UNREACHABLE]<br>(+2) |
-| `REENTRY_15M_BB1H_LOW_BOUNCE_HTF_MIN_TFS` | reentry | 2 / 2 / 2 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_15m_bb_htf.py:180(check_bb1h_low_bounce_htf) · vec_decisions/reentry_15m_bb_htf.py:180(check_bb1h_low_bounce_htf) | v12_quick_engine.py:8729(compute_reentry_blocks)<br>vec_decisions/obligatory_reentry_vec.py:85(fires)<br>(+1) |
-| `REENTRY_15M_DC_BASIS_CROSS_HTF_MIN_TFS` | reentry | 2 / 2 / 2 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_15m_bb_htf.py:147(check_dc_basis_cross_htf) · vec_decisions/reentry_15m_bb_htf.py:147(check_dc_basis_cross_htf) | v12_quick_engine.py:8703(compute_reentry_blocks)<br>vec_decisions/obligatory_reentry_vec.py:77(fires)<br>(+1) |
-| `REENTRY_15M_LRL_PULLBACK_HTF_MIN_TFS` | reentry | 2 / 2 / 2 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_15m_bb_htf.py:165(check_lrl_pullback_htf) · vec_decisions/reentry_15m_bb_htf.py:165(check_lrl_pullback_htf) | v12_quick_engine.py:8715(compute_reentry_blocks)<br>vec_decisions/obligatory_reentry_vec.py:81(fires)<br>(+1) |
+| `RECENT_REDUCTION_GUARD_ENABLED` | global | True / True / True | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:31886(MultiAccountTradeManager.execute_now) · — | — |
+| `RECENT_REDUCTION_GUARD_WINDOW_S` | global | 300.0 / 450.0 / 300.0 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:31889(MultiAccountTradeManager.execute_now) · — | — |
+| `REENTRY2_DC_BREAK_ALLOW_15M` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42392(process_single_reentry_evaluation)<br>(+2) · ez_positions_quick.py:17199(process_single_reentry_evaluation_epq)<br>(+1) | vec_decisions/guaranteed_price_cross_reentry.py:249(check_guaranteed_price_cross_reentry)<br>vec_decisions/reentry_breakout.py:88(_thresholds) [UNREACHABLE]<br>(+2) |
+| `REENTRY2_DC_BREAK_FILTER_TF` | reentry | 3m / 3m / 3m | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42395(process_single_reentry_evaluation)<br>(+2) · ez_positions_quick.py:17202(process_single_reentry_evaluation_epq)<br>(+1) | vec_decisions/guaranteed_price_cross_reentry.py:252(check_guaranteed_price_cross_reentry)<br>vec_decisions/reentry_breakout.py:91(_thresholds) [UNREACHABLE]<br>(+1) |
+| `REENTRY2_DC_BREAK_REQUIRE_K_FILTER` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42393(process_single_reentry_evaluation)<br>(+2) · ez_positions_quick.py:17200(process_single_reentry_evaluation_epq)<br>(+1) | vec_decisions/guaranteed_price_cross_reentry.py:250(check_guaranteed_price_cross_reentry)<br>vec_decisions/reentry_breakout.py:89(_thresholds) [UNREACHABLE]<br>(+2) |
+| `REENTRY2_DC_BREAK_REQUIRE_WT_FILTER` | reentry | False / False / 0.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42394(process_single_reentry_evaluation)<br>(+2) · ez_positions_quick.py:17201(process_single_reentry_evaluation_epq)<br>(+1) | vec_decisions/guaranteed_price_cross_reentry.py:251(check_guaranteed_price_cross_reentry)<br>vec_decisions/reentry_breakout.py:90(_thresholds) [UNREACHABLE]<br>(+2) |
+| `REENTRY_15M_BB1H_LOW_BOUNCE_HTF_MIN_TFS` | reentry | 2 / 2 / 2 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_15m_bb_htf.py:180(check_bb1h_low_bounce_htf) · vec_decisions/reentry_15m_bb_htf.py:180(check_bb1h_low_bounce_htf) | v12_quick_engine.py:8774(compute_reentry_blocks)<br>vec_decisions/obligatory_reentry_vec.py:85(fires)<br>(+1) |
+| `REENTRY_15M_DC_BASIS_CROSS_HTF_MIN_TFS` | reentry | 2 / 2 / 2 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_15m_bb_htf.py:147(check_dc_basis_cross_htf) · vec_decisions/reentry_15m_bb_htf.py:147(check_dc_basis_cross_htf) | v12_quick_engine.py:8748(compute_reentry_blocks)<br>vec_decisions/obligatory_reentry_vec.py:77(fires)<br>(+1) |
+| `REENTRY_15M_LRL_PULLBACK_HTF_MIN_TFS` | reentry | 2 / 2 / 2 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_15m_bb_htf.py:165(check_lrl_pullback_htf) · vec_decisions/reentry_15m_bb_htf.py:165(check_lrl_pullback_htf) | v12_quick_engine.py:8760(compute_reentry_blocks)<br>vec_decisions/obligatory_reentry_vec.py:81(fires)<br>(+1) |
 | `REENTRY_B16_SIZE_MULT_STRONG` | reentry | 3.0 / 3.0 / 3.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:17053(evaluate_reentry_epq) · ez_positions_quick.py:17053(evaluate_reentry_epq) | vec_decisions/reentry_epq_vec.py:99(b16_sma200_pullback) |
 | `REENTRY_B16_SIZE_MULT_WEAK` | reentry | 1.5 / 1.5 / 1.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:17053(evaluate_reentry_epq) · ez_positions_quick.py:17053(evaluate_reentry_epq) | vec_decisions/reentry_epq_vec.py:99(b16_sma200_pullback) |
-| `REENTRY_BAR_TURN_REQUIRE_BOTH` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42584(process_single_reentry_evaluation)<br>(+2) · vec_decisions/guaranteed_price_cross_reentry.py:438(check_guaranteed_price_cross_reentry_vec)<br>(+1) | vec_decisions/guaranteed_price_cross_reentry.py:438(check_guaranteed_price_cross_reentry_vec)<br>vec_decisions/guaranteed_price_cross_reentry.py:526(reentry_confirmation_gate) |
+| `REENTRY_BAR_TURN_REQUIRE_BOTH` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42624(process_single_reentry_evaluation)<br>(+2) · vec_decisions/guaranteed_price_cross_reentry.py:438(check_guaranteed_price_cross_reentry_vec)<br>(+1) | vec_decisions/guaranteed_price_cross_reentry.py:438(check_guaranteed_price_cross_reentry_vec)<br>vec_decisions/guaranteed_price_cross_reentry.py:526(reentry_confirmation_gate) |
 | `REENTRY_BOUNCE_BAR_GR_MIN_TFS` | reentry | 2 / 2 / 2 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_bounce_after_correction.py:148(check_bounce_bar_gr) · vec_decisions/reentry_bounce_after_correction.py:148(check_bounce_bar_gr) | vec_decisions/reentry_bounce_after_correction.py:148(check_bounce_bar_gr) |
 | `REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT` | reentry | 0.002 / 0.002 / 0.002 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/guaranteed_price_cross_reentry.py:242(check_guaranteed_price_cross_reentry)<br>(+2) · vec_decisions/guaranteed_price_cross_reentry.py:242(check_guaranteed_price_cross_reentry)<br>(+2) | vec_decisions/guaranteed_price_cross_reentry.py:242(check_guaranteed_price_cross_reentry)<br>vec_decisions/guaranteed_price_cross_reentry.py:434(check_guaranteed_price_cross_reentry_vec)<br>(+1) |
 | `REENTRY_CHURN_GUARD_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/guaranteed_price_cross_reentry.py:238(check_guaranteed_price_cross_reentry)<br>(+1) · vec_decisions/guaranteed_price_cross_reentry.py:238(check_guaranteed_price_cross_reentry)<br>(+1) | vec_decisions/guaranteed_price_cross_reentry.py:238(check_guaranteed_price_cross_reentry)<br>vec_decisions/guaranteed_price_cross_reentry.py:369(check_guaranteed_price_cross_reentry_vec) |
 | `REENTRY_CHURN_GUARD_USE_4BAR` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/guaranteed_price_cross_reentry.py:240(check_guaranteed_price_cross_reentry) · vec_decisions/guaranteed_price_cross_reentry.py:240(check_guaranteed_price_cross_reentry) | vec_decisions/guaranteed_price_cross_reentry.py:240(check_guaranteed_price_cross_reentry)<br>vec_decisions/test_guaranteed_price_cross_reentry.py:53(_run) [UNREACHABLE] |
 | `REENTRY_CHURN_GUARD_WINDOW_S` | reentry | 3600.0 / 3600.0 / 3600.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/guaranteed_price_cross_reentry.py:239(check_guaranteed_price_cross_reentry)<br>(+1) · vec_decisions/guaranteed_price_cross_reentry.py:239(check_guaranteed_price_cross_reentry)<br>(+1) | vec_decisions/guaranteed_price_cross_reentry.py:239(check_guaranteed_price_cross_reentry)<br>vec_decisions/guaranteed_price_cross_reentry.py:370(check_guaranteed_price_cross_reentry_vec) |
-| `REENTRY_CONFIRMATION_GATES_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/guaranteed_price_cross_reentry.py:200(_gpcr_thresholds)<br>(+1) · tradier_manage.py:21800(StockStrategy.evaluate_reentry)<br>(+2) | vec_decisions/guaranteed_price_cross_reentry.py:200(_gpcr_thresholds)<br>vec_decisions/guaranteed_price_cross_reentry.py:486(reentry_confirmation_gate) |
+| `REENTRY_CONFIRMATION_GATES_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/guaranteed_price_cross_reentry.py:200(_gpcr_thresholds)<br>(+1) · tradier_manage.py:21861(StockStrategy.evaluate_reentry)<br>(+2) | vec_decisions/guaranteed_price_cross_reentry.py:200(_gpcr_thresholds)<br>vec_decisions/guaranteed_price_cross_reentry.py:486(reentry_confirmation_gate) |
 | `REENTRY_DC_MID_GR_MIN_TFS` | reentry | 2 / 2 / 2 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_bounce_after_correction.py:178(check_dc_mid) · vec_decisions/reentry_bounce_after_correction.py:178(check_dc_mid) | vec_decisions/reentry_bounce_after_correction.py:178(check_dc_mid) |
-| `REENTRY_ENTRY_FILTER_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11975(simulate_one) |
-| `REENTRY_FILTER_MIN_PASS` | reentry | 1 / 1 / 1 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11976(simulate_one) |
+| `REENTRY_ENTRY_FILTER_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12020(simulate_one) |
+| `REENTRY_FILTER_MIN_PASS` | reentry | 1 / 1 / 1 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12021(simulate_one) |
 | `REENTRY_K_RESET_GR_MIN_TFS` | reentry | 2 / 2 / 2 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_bounce_after_correction.py:192(check_k_reset) · vec_decisions/reentry_bounce_after_correction.py:192(check_k_reset) | vec_decisions/reentry_bounce_after_correction.py:192(check_k_reset) |
-| `REENTRY_MANDATORY` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:33916(MultiAccountTradeManager.execute_now)<br>(+2) · ez_positions_quick.py:16583(reentry_enforcement_loop_epq) | v12_quick_engine.py:12517(simulate_one)<br>v12_quick_engine.py:12684(simulate_one) |
-| `REENTRY_MAX_PRICE_DIVERGENCE_PCT` | reentry | 20.0 / 20.0 / 20.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36757(MultiAccountTradeManager.reentry_enforcement_loop)<br>(+4) · ez_reentry.py:668(enforce_price_cross_reentry)<br>(+1) | vec_decisions/guaranteed_price_cross_reentry.py:199(_gpcr_thresholds)<br>vec_decisions/test_reentry_live_parity.py:26(<module>) [UNREACHABLE] |
-| `REENTRY_POST_CONSOL_ATR_THRESHOLD` | reentry | 0.15 / 0.15 / 0.15 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:42799(process_single_reentry_evaluation._compose_reentry_mult) · — | — |
-| `REENTRY_POST_CONSOL_TFS_REQUIRED` | reentry | 2 / 2 / 2 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:42801(process_single_reentry_evaluation._compose_reentry_mult) · — | — |
-| `REENTRY_PRICE_IMPROVE_PCT` | reentry | 0.08 / 0.08 / 0.08 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:42244(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17166(process_single_reentry_evaluation_epq) | — |
+| `REENTRY_MANDATORY` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:33956(MultiAccountTradeManager.execute_now)<br>(+2) · ez_positions_quick.py:16583(reentry_enforcement_loop_epq) | v12_quick_engine.py:12562(simulate_one)<br>v12_quick_engine.py:12729(simulate_one) |
+| `REENTRY_MAX_PRICE_DIVERGENCE_PCT` | reentry | 20.0 / 20.0 / 20.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36797(MultiAccountTradeManager.reentry_enforcement_loop)<br>(+4) · ez_reentry.py:668(enforce_price_cross_reentry)<br>(+1) | vec_decisions/guaranteed_price_cross_reentry.py:199(_gpcr_thresholds)<br>vec_decisions/test_reentry_live_parity.py:26(<module>) [UNREACHABLE] |
+| `REENTRY_POST_CONSOL_ATR_THRESHOLD` | reentry | 0.15 / 0.15 / 0.15 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:42839(process_single_reentry_evaluation._compose_reentry_mult) · — | — |
+| `REENTRY_POST_CONSOL_TFS_REQUIRED` | reentry | 2 / 2 / 2 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:42841(process_single_reentry_evaluation._compose_reentry_mult) · — | — |
+| `REENTRY_PRICE_IMPROVE_PCT` | reentry | 0.08 / 0.08 / 0.08 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:42284(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17166(process_single_reentry_evaluation_epq) | — |
 | `REENTRY_RALLY_K15M_MAX` | entry | 30.0 / 100.0 / 30.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:15744(check_entry_candidates_for_account.worker)<br>(+2) · ez_positions_quick.py:15744(check_entry_candidates_for_account.worker)<br>(+4) | vec_decisions/reentry_epq_vec.py:38(rally_k15_blocked) |
-| `REENTRY_SIZE_DIP_MULT` | reentry | 2.0 / 2.0 / 2.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42118(process_single_reentry_evaluation)<br>(+2) · ez_positions_quick.py:17126(process_single_reentry_evaluation_epq)<br>(+1) | vec_decisions/reentry_epq_vec.py:55(size_tier_mult) |
-| `REENTRY_SIZE_EXTENDED_K1H` | reentry | 90.0 / 90.0 / 90.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42115(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17123(process_single_reentry_evaluation_epq) | vec_decisions/reentry_epq_vec.py:48(size_tier_mult) |
-| `REENTRY_SIZE_EXTENDED_MULT` | reentry | 1.0 / 1.0 / 1.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42118(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17126(process_single_reentry_evaluation_epq) | vec_decisions/reentry_epq_vec.py:53(size_tier_mult) |
+| `REENTRY_SIZE_DIP_MULT` | reentry | 2.0 / 2.0 / 2.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42158(process_single_reentry_evaluation)<br>(+2) · ez_positions_quick.py:17126(process_single_reentry_evaluation_epq)<br>(+1) | vec_decisions/reentry_epq_vec.py:55(size_tier_mult) |
+| `REENTRY_SIZE_EXTENDED_K1H` | reentry | 90.0 / 90.0 / 90.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42155(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17123(process_single_reentry_evaluation_epq) | vec_decisions/reentry_epq_vec.py:48(size_tier_mult) |
+| `REENTRY_SIZE_EXTENDED_MULT` | reentry | 1.0 / 1.0 / 1.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42158(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17126(process_single_reentry_evaluation_epq) | vec_decisions/reentry_epq_vec.py:53(size_tier_mult) |
 | `REENTRY_SMA200_GR_MIN_TFS` | reentry | <absent> / 2 / 2 | SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_bounce_after_correction.py:207(check_sma200_gr) · vec_decisions/reentry_bounce_after_correction.py:207(check_sma200_gr) | vec_decisions/reentry_bounce_after_correction.py:207(check_sma200_gr) |
 | `REENTRY_STOCH_K_MAX_LONG` | reentry | 80.0 / 80.0 / 80.0 | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/guaranteed_price_cross_reentry.py:201(_gpcr_thresholds)<br>(+1) · vec_decisions/guaranteed_price_cross_reentry.py:201(_gpcr_thresholds)<br>(+1) | vec_decisions/guaranteed_price_cross_reentry.py:201(_gpcr_thresholds)<br>vec_decisions/guaranteed_price_cross_reentry.py:521(reentry_confirmation_gate) |
 | `REENTRY_STOCH_K_MIN_SHORT` | reentry | 20.0 / 20.0 / 20.0 | CS,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/guaranteed_price_cross_reentry.py:202(_gpcr_thresholds)<br>(+1) · vec_decisions/guaranteed_price_cross_reentry.py:202(_gpcr_thresholds)<br>(+1) | vec_decisions/guaranteed_price_cross_reentry.py:202(_gpcr_thresholds)<br>vec_decisions/guaranteed_price_cross_reentry.py:522(reentry_confirmation_gate) |
 | `REENTRY_TIER1_SIZE_MULT` | reentry | 1.5 / 1.5 / 1.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:16352(check_entry_candidates_for_account.worker) · ez_positions_quick.py:16352(check_entry_candidates_for_account.worker) | vec_decisions/reentry_tiers.py:35(size_mult) |
-| `REENTRY_TIER1_SIZE_MULT_TRADIER` | reentry | <absent> / 1.5 / 1.5 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:22050(StockStrategy.evaluate_reentry) | v12_quick_engine.py:12638(simulate_one) |
+| `REENTRY_TIER1_SIZE_MULT_TRADIER` | reentry | <absent> / 1.5 / 1.5 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:22111(StockStrategy.evaluate_reentry) | v12_quick_engine.py:12683(simulate_one) |
 | `REENTRY_TIER2_MAX_MINUTES` | reentry | 120.0 / 120.0 / 120.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3246(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:3246(AdvancedSignalRater.rate)<br>(+1) | vec_decisions/reentry_tiers.py:27(tier_fire) |
-| `REENTRY_WT15M_SIZE_MULT` | reentry | 1.5 / 1.5 / 1.5 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:42849(process_single_reentry_evaluation) · — | — |
-| `REGIME_ENTER_TRENDING_THRESHOLD` | global | 30.0 / 30.0 / 30.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_regime.py:99(classify_regime) · ez_regime.py:99(classify_regime) | v12_quick_engine.py:10195(compute_regime_sizing_mult) |
-| `REGIME_EXIT_TRENDING_THRESHOLD` | exit | 15.0 / 15.0 / 15.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_regime.py:100(classify_regime) · ez_regime.py:100(classify_regime) | v12_quick_engine.py:10196(compute_regime_sizing_mult) |
-| `REGIME_GATE_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | strategy_enhancements.py:107(check_regime_allow_entry) · — | v12_quick_engine.py:10165(compute_reduce_signals)<br>v12_quick_engine.py:10202(compute_regime_sizing_mult) |
+| `REENTRY_WT15M_SIZE_MULT` | reentry | 1.5 / 1.5 / 1.5 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:42889(process_single_reentry_evaluation) · — | — |
+| `REGIME_ENTER_TRENDING_THRESHOLD` | global | 30.0 / 30.0 / 30.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_regime.py:99(classify_regime) · ez_regime.py:99(classify_regime) | v12_quick_engine.py:10240(compute_regime_sizing_mult) |
+| `REGIME_EXIT_TRENDING_THRESHOLD` | exit | 15.0 / 15.0 / 15.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_regime.py:100(classify_regime) · ez_regime.py:100(classify_regime) | v12_quick_engine.py:10241(compute_regime_sizing_mult) |
+| `REGIME_GATE_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | strategy_enhancements.py:107(check_regime_allow_entry) · — | v12_quick_engine.py:10210(compute_reduce_signals)<br>v12_quick_engine.py:10247(compute_regime_sizing_mult) |
 | `REGIME_RANGING_EXIT_GAIN_MIN` | reduce | 0.15 / 0.15 / 0.15 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_regime.py:160(get_regime_params) · ez_regime.py:160(get_regime_params) | — |
-| `REGIME_RANGING_POSITION_SIZE_MULT` | sizing | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_regime.py:167(get_regime_params) · ez_regime.py:167(get_regime_params) | v12_quick_engine.py:10200(compute_regime_sizing_mult)<br>v12_quick_engine.py:10205(compute_regime_sizing_mult) |
-| `REGIME_RANGING_WT_EXIT_VEL` | exit | -3.0 / -3.0 / -3.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_regime.py:164(get_regime_params) · ez_regime.py:164(get_regime_params) | v12_quick_engine.py:10173(compute_reduce_signals)<br>v12_quick_engine.py:10176(compute_reduce_signals) |
-| `REGIME_RANGING_WT_REDUCE_FRAC_LOW` | reduce | 0.4 / 0.4 / 0.4 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_regime.py:162(get_regime_params) · ez_regime.py:162(get_regime_params) | v12_quick_engine.py:10178(compute_reduce_signals) |
+| `REGIME_RANGING_POSITION_SIZE_MULT` | sizing | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_regime.py:167(get_regime_params) · ez_regime.py:167(get_regime_params) | v12_quick_engine.py:10245(compute_regime_sizing_mult)<br>v12_quick_engine.py:10250(compute_regime_sizing_mult) |
+| `REGIME_RANGING_WT_EXIT_VEL` | exit | -3.0 / -3.0 / -3.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_regime.py:164(get_regime_params) · ez_regime.py:164(get_regime_params) | v12_quick_engine.py:10218(compute_reduce_signals)<br>v12_quick_engine.py:10221(compute_reduce_signals) |
+| `REGIME_RANGING_WT_REDUCE_FRAC_LOW` | reduce | 0.4 / 0.4 / 0.4 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_regime.py:162(get_regime_params) · ez_regime.py:162(get_regime_params) | v12_quick_engine.py:10223(compute_reduce_signals) |
 | `REGIME_TRENDING_EXIT_GAIN_MIN` | exit | 2.0 / 2.0 / 2.0 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_regime.py:174(get_regime_params) · ez_regime.py:174(get_regime_params) | — |
-| `REGIME_TRENDING_POSITION_SIZE_MULT` | sizing | 1.5 / 1.5 / 1.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_regime.py:181(get_regime_params) · ez_regime.py:181(get_regime_params) | v12_quick_engine.py:10199(compute_regime_sizing_mult)<br>v12_quick_engine.py:10205(compute_regime_sizing_mult) |
-| `REGIME_TRENDING_WT_EXIT_VEL` | exit | -12.0 / -12.0 / -12.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_regime.py:178(get_regime_params) · ez_regime.py:178(get_regime_params) | v12_quick_engine.py:10172(compute_reduce_signals)<br>v12_quick_engine.py:10175(compute_reduce_signals) |
-| `REGIME_TRENDING_WT_REDUCE_FRAC_LOW` | reduce | 0.1 / 0.1 / 0.1 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_regime.py:176(get_regime_params) · ez_regime.py:176(get_regime_params) | v12_quick_engine.py:10178(compute_reduce_signals) |
-| `RSI2_ENTRY_THRESHOLD` | entry | 3.0 / 3.0 / 3.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13129(process_position)<br>(+1) | v12_quick_engine.py:8323(compute_reentry_blocks) |
-| `RSI_ENTRY_GATE_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:16372(check_entry_candidates_for_account.worker) · ez_positions_quick.py:16372(check_entry_candidates_for_account.worker)<br>(+1) | v12_quick_engine.py:9000(compute_entry_signals)<br>vec_decisions/live_stocks_entry.py:80(live_veto) |
-| `RSI_ENTRY_MAX_LONG` | entry | 37.0 / 37.0 / 37.0 | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:16382(check_entry_candidates_for_account.worker) · ez_positions_quick.py:16382(check_entry_candidates_for_account.worker)<br>(+1) | v12_quick_engine.py:9003(compute_entry_signals)<br>vec_decisions/live_stocks_entry.py:82(live_veto) |
-| `RSI_ENTRY_MIN_SHORT` | entry | 63.0 / 63.0 / 63.0 | CS,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:16385(check_entry_candidates_for_account.worker) · ez_positions_quick.py:16385(check_entry_candidates_for_account.worker)<br>(+1) | v12_quick_engine.py:9005(compute_entry_signals)<br>vec_decisions/live_stocks_entry.py:82(live_veto) |
-| `RSI_EXIT_LONG_TRADIER` | exit | 85.0 / 85.0 / 85.0 | CL,SL | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19554(StockStrategy.evaluate_stop)<br>(+1) | v12_quick_engine.py:9755(compute_exit_signals)<br>v12_quick_engine.py:9756(compute_exit_signals) |
-| `RSI_EXIT_SHORT_TRADIER` | exit | 15.0 / 15.0 / 15.0 | CS,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19554(StockStrategy.evaluate_stop)<br>(+1) | v12_quick_engine.py:9757(compute_exit_signals)<br>v12_quick_engine.py:9758(compute_exit_signals) |
-| `RZ_BOT_BB_THRESHOLD` | global | 0.15 / 0.375 / 0.15 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40726(evaluate_technical_indicator_signals)<br>(+2) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+4) | vec_decisions/delta_exit_top.py:137(_delta_exit_thresholds)<br>vec_decisions/process_position_stocks__alt_entries.py:48(_rz_params) |
-| `RZ_TOP_BB_THRESHOLD` | global | 0.85 / 0.85 / 0.85 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40725(evaluate_technical_indicator_signals)<br>(+2) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+4) | vec_decisions/delta_exit_top.py:136(_delta_exit_thresholds)<br>vec_decisions/process_position_stocks__alt_entries.py:47(_rz_params) |
-| `SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER` | exit | <absent> / 55.0 / 55.0 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9771(compute_exit_signals) |
-| `SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER` | exit | <absent> / 60.0 / 60.0 | SL | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9772(compute_exit_signals) |
-| `SATOSHIT_EXIT_PARTIAL_PCT` | reduce | 0.7 / 0.7 / 0.7 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:51286(process_position) · — | v12_quick_engine.py:12103(simulate_one) |
-| `SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER` | exit | <absent> / 42.0 / 42.0 | SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9774(compute_exit_signals) |
-| `SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER` | exit | <absent> / 50.0 / 50.0 | SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9775(compute_exit_signals) |
-| `SATOSHIT_HTF_MFI_D_MIN_TRADIER` | global | <absent> / 30.0 / 30.0 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12484(process_position)<br>(+1) | v12_quick_engine.py:8536(compute_reentry_blocks)<br>v12_quick_engine.py:8543(compute_reentry_blocks) |
-| `SATOSHIT_HTF_RVOL_1H_MIN_TRADIER` | global | <absent> / 0.3 / 0.3 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12484(process_position)<br>(+1) | v12_quick_engine.py:8536(compute_reentry_blocks)<br>v12_quick_engine.py:8543(compute_reentry_blocks) |
-| `SATOSHIT_LONG_BB_PCTB_MAX` | global | 0.5 / 0.5 / 0.5 | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_satoshit.py:97(check_reentry_ready)<br>(+1) · ez_satoshit.py:97(check_reentry_ready)<br>(+3) | v12_quick_engine.py:8531(compute_reentry_blocks) |
-| `SATOSHIT_LONG_HA_STREAK_MAX` | global | 1 / 1 / 1 | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_satoshit.py:97(check_reentry_ready)<br>(+1) · ez_satoshit.py:97(check_reentry_ready)<br>(+3) | v12_quick_engine.py:8532(compute_reentry_blocks) |
-| `SATOSHIT_LONG_MFI_MAX_TRADIER` | global | <absent> / 120.0 / 60.0 | SL | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12475(process_position)<br>(+1) | v12_quick_engine.py:8533(compute_reentry_blocks) |
-| `SATOSHIT_LONG_RSI_MAX_TRADIER` | global | <absent> / 50.0 / 50.0 | SL | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12471(process_position)<br>(+1) | v12_quick_engine.py:8534(compute_reentry_blocks) |
-| `SATOSHIT_LONG_STOCH_K_MAX_TRADIER` | global | <absent> / 60.0 / 60.0 | SL | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12474(process_position)<br>(+1) | v12_quick_engine.py:8535(compute_reentry_blocks) |
-| `SATOSHIT_MIN_VOTES` | global | 3 / 3 / 3 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_satoshit.py:92(check_reentry_ready)<br>(+1) · ez_satoshit.py:92(check_reentry_ready)<br>(+3) | v12_quick_engine.py:8544(compute_reentry_blocks) |
-| `SATOSHIT_MIN_VOTES_TRADIER` | global | <absent> / 3 / 3 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12468(process_position)<br>(+1) | v12_quick_engine.py:9776(compute_exit_signals) |
-| `SATOSHIT_SHORT_BB_PCTB_MIN` | global | 0.55 / 0.55 / 0.55 | CS,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_satoshit.py:100(check_reentry_ready)<br>(+1) · ez_satoshit.py:100(check_reentry_ready)<br>(+3) | v12_quick_engine.py:8538(compute_reentry_blocks) |
-| `SATOSHIT_SHORT_HA_STREAK_MIN` | global | 0 / 0 / 0 | CS,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_satoshit.py:100(check_reentry_ready)<br>(+1) · ez_satoshit.py:100(check_reentry_ready)<br>(+3) | v12_quick_engine.py:8539(compute_reentry_blocks) |
-| `SATOSHIT_SHORT_MFI_MIN_TRADIER` | global | <absent> / 62.5 / 50.0 | SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12482(process_position)<br>(+1) | v12_quick_engine.py:8540(compute_reentry_blocks) |
-| `SATOSHIT_SHORT_RSI_MIN_TRADIER` | global | <absent> / 55.0 / 55.0 | SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12478(process_position)<br>(+1) | v12_quick_engine.py:8541(compute_reentry_blocks) |
-| `SATOSHIT_SHORT_STOCH_K_MIN_TRADIER` | global | <absent> / 50.0 / 50.0 | SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12481(process_position)<br>(+1) | v12_quick_engine.py:8542(compute_reentry_blocks) |
+| `REGIME_TRENDING_POSITION_SIZE_MULT` | sizing | 1.5 / 1.5 / 1.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_regime.py:181(get_regime_params) · ez_regime.py:181(get_regime_params) | v12_quick_engine.py:10244(compute_regime_sizing_mult)<br>v12_quick_engine.py:10250(compute_regime_sizing_mult) |
+| `REGIME_TRENDING_WT_EXIT_VEL` | exit | -12.0 / -12.0 / -12.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_regime.py:178(get_regime_params) · ez_regime.py:178(get_regime_params) | v12_quick_engine.py:10217(compute_reduce_signals)<br>v12_quick_engine.py:10220(compute_reduce_signals) |
+| `REGIME_TRENDING_WT_REDUCE_FRAC_LOW` | reduce | 0.1 / 0.1 / 0.1 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_regime.py:176(get_regime_params) · ez_regime.py:176(get_regime_params) | v12_quick_engine.py:10223(compute_reduce_signals) |
+| `RSI2_ENTRY_THRESHOLD` | entry | 3.0 / 3.0 / 3.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13190(process_position)<br>(+1) | v12_quick_engine.py:8368(compute_reentry_blocks) |
+| `RSI_ENTRY_GATE_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:16372(check_entry_candidates_for_account.worker) · ez_positions_quick.py:16372(check_entry_candidates_for_account.worker)<br>(+1) | v12_quick_engine.py:9045(compute_entry_signals)<br>vec_decisions/live_stocks_entry.py:80(live_veto) |
+| `RSI_ENTRY_MAX_LONG` | entry | 37.0 / 37.0 / 37.0 | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:16382(check_entry_candidates_for_account.worker) · ez_positions_quick.py:16382(check_entry_candidates_for_account.worker)<br>(+1) | v12_quick_engine.py:9048(compute_entry_signals)<br>vec_decisions/live_stocks_entry.py:82(live_veto) |
+| `RSI_ENTRY_MIN_SHORT` | entry | 63.0 / 63.0 / 63.0 | CS,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:16385(check_entry_candidates_for_account.worker) · ez_positions_quick.py:16385(check_entry_candidates_for_account.worker)<br>(+1) | v12_quick_engine.py:9050(compute_entry_signals)<br>vec_decisions/live_stocks_entry.py:82(live_veto) |
+| `RSI_EXIT_LONG_TRADIER` | exit | 85.0 / 85.0 / 85.0 | CL,SL | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19615(StockStrategy.evaluate_stop)<br>(+1) | v12_quick_engine.py:9800(compute_exit_signals)<br>v12_quick_engine.py:9801(compute_exit_signals) |
+| `RSI_EXIT_SHORT_TRADIER` | exit | 15.0 / 15.0 / 15.0 | CS,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19615(StockStrategy.evaluate_stop)<br>(+1) | v12_quick_engine.py:9802(compute_exit_signals)<br>v12_quick_engine.py:9803(compute_exit_signals) |
+| `RZ_BOT_BB_THRESHOLD` | global | 0.15 / 0.375 / 0.15 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40766(evaluate_technical_indicator_signals)<br>(+2) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+4) | vec_decisions/delta_exit_top.py:137(_delta_exit_thresholds)<br>vec_decisions/process_position_stocks__alt_entries.py:48(_rz_params) |
+| `RZ_TOP_BB_THRESHOLD` | global | 0.85 / 0.85 / 0.85 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40765(evaluate_technical_indicator_signals)<br>(+2) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+4) | vec_decisions/delta_exit_top.py:136(_delta_exit_thresholds)<br>vec_decisions/process_position_stocks__alt_entries.py:47(_rz_params) |
+| `SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER` | exit | <absent> / 55.0 / 55.0 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9816(compute_exit_signals) |
+| `SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER` | exit | <absent> / 60.0 / 60.0 | SL | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9817(compute_exit_signals) |
+| `SATOSHIT_EXIT_PARTIAL_PCT` | reduce | 0.7 / 0.7 / 0.7 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:51326(process_position) · — | v12_quick_engine.py:12148(simulate_one) |
+| `SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER` | exit | <absent> / 42.0 / 42.0 | SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9819(compute_exit_signals) |
+| `SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER` | exit | <absent> / 50.0 / 50.0 | SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9820(compute_exit_signals) |
+| `SATOSHIT_HTF_MFI_D_MIN_TRADIER` | global | <absent> / 30.0 / 30.0 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12545(process_position)<br>(+1) | v12_quick_engine.py:8581(compute_reentry_blocks)<br>v12_quick_engine.py:8588(compute_reentry_blocks) |
+| `SATOSHIT_HTF_RVOL_1H_MIN_TRADIER` | global | <absent> / 0.3 / 0.3 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12545(process_position)<br>(+1) | v12_quick_engine.py:8581(compute_reentry_blocks)<br>v12_quick_engine.py:8588(compute_reentry_blocks) |
+| `SATOSHIT_LONG_BB_PCTB_MAX` | global | 0.5 / 0.5 / 0.5 | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_satoshit.py:97(check_reentry_ready)<br>(+1) · ez_satoshit.py:97(check_reentry_ready)<br>(+3) | v12_quick_engine.py:8576(compute_reentry_blocks) |
+| `SATOSHIT_LONG_HA_STREAK_MAX` | global | 1 / 1 / 1 | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_satoshit.py:97(check_reentry_ready)<br>(+1) · ez_satoshit.py:97(check_reentry_ready)<br>(+3) | v12_quick_engine.py:8577(compute_reentry_blocks) |
+| `SATOSHIT_LONG_MFI_MAX_TRADIER` | global | <absent> / 120.0 / 60.0 | SL | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12536(process_position)<br>(+1) | v12_quick_engine.py:8578(compute_reentry_blocks) |
+| `SATOSHIT_LONG_RSI_MAX_TRADIER` | global | <absent> / 50.0 / 50.0 | SL | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12532(process_position)<br>(+1) | v12_quick_engine.py:8579(compute_reentry_blocks) |
+| `SATOSHIT_LONG_STOCH_K_MAX_TRADIER` | global | <absent> / 60.0 / 60.0 | SL | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12535(process_position)<br>(+1) | v12_quick_engine.py:8580(compute_reentry_blocks) |
+| `SATOSHIT_MIN_VOTES` | global | 3 / 3 / 3 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_satoshit.py:92(check_reentry_ready)<br>(+1) · ez_satoshit.py:92(check_reentry_ready)<br>(+3) | v12_quick_engine.py:8589(compute_reentry_blocks) |
+| `SATOSHIT_MIN_VOTES_TRADIER` | global | <absent> / 3 / 3 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12529(process_position)<br>(+1) | v12_quick_engine.py:9821(compute_exit_signals) |
+| `SATOSHIT_SHORT_BB_PCTB_MIN` | global | 0.55 / 0.55 / 0.55 | CS,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_satoshit.py:100(check_reentry_ready)<br>(+1) · ez_satoshit.py:100(check_reentry_ready)<br>(+3) | v12_quick_engine.py:8583(compute_reentry_blocks) |
+| `SATOSHIT_SHORT_HA_STREAK_MIN` | global | 0 / 0 / 0 | CS,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_satoshit.py:100(check_reentry_ready)<br>(+1) · ez_satoshit.py:100(check_reentry_ready)<br>(+3) | v12_quick_engine.py:8584(compute_reentry_blocks) |
+| `SATOSHIT_SHORT_MFI_MIN_TRADIER` | global | <absent> / 62.5 / 50.0 | SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12543(process_position)<br>(+1) | v12_quick_engine.py:8585(compute_reentry_blocks) |
+| `SATOSHIT_SHORT_RSI_MIN_TRADIER` | global | <absent> / 55.0 / 55.0 | SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12539(process_position)<br>(+1) | v12_quick_engine.py:8586(compute_reentry_blocks) |
+| `SATOSHIT_SHORT_STOCH_K_MIN_TRADIER` | global | <absent> / 50.0 / 50.0 | SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12542(process_position)<br>(+1) | v12_quick_engine.py:8587(compute_reentry_blocks) |
 | `SBA_ADX_MAX` | global | 25.0 / 25.0 / 25.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:992(_sba_bounce_score) · ez_positions_quick.py:992(_sba_bounce_score) | vec_decisions/sba_bounce.py:181(_sba_bounce_score_scalar)<br>vec_decisions/sba_bounce.py:272(sba_bounce_score_vec) |
 | `SBA_MIN_SCORE` | global | 3.5 / 3.5 / 3.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:16079(check_entry_candidates_for_account.worker) · ez_positions_quick.py:16079(check_entry_candidates_for_account.worker) | vec_decisions/check_entry_candidates_crypto__sba_gate.py:76(check_sba_gate) [UNREACHABLE]<br>vec_decisions/check_entry_candidates_crypto__sba_gate.py:107(check_sba_gate_vec) [UNREACHABLE]<br>(+2) |
-| `SENTIMENT_REBAL_COOLDOWN_MIN` | reduce | 240.0 / 240.0 / 240.0 | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:22978(TradierTradeManager.periodic_sentiment_rebalancing) | — |
-| `SENTIMENT_REBAL_REDUCE_DEVIATION_THR` | reduce | 0.5 / 0.5 / 0.5 | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:23021(TradierTradeManager.periodic_sentiment_rebalancing) | — |
-| `SHORT_PARTIAL_RECOVERY_THRESHOLD_PCT` | augment | -1.0 / -1.0 / <absent> | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10101(compute_augment_signals_ex) |
+| `SENTIMENT_REBAL_COOLDOWN_MIN` | reduce | 240.0 / 240.0 / 240.0 | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:23039(TradierTradeManager.periodic_sentiment_rebalancing) | — |
+| `SENTIMENT_REBAL_REDUCE_DEVIATION_THR` | reduce | 0.5 / 0.5 / 0.5 | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:23082(TradierTradeManager.periodic_sentiment_rebalancing) | — |
+| `SHORT_PARTIAL_RECOVERY_THRESHOLD_PCT` | augment | -1.0 / -1.0 / <absent> | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10146(compute_augment_signals_ex) |
 | `SIMPLE_TP_PCT` | reduce | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3694(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:3694(AdvancedSignalRater.rate)<br>(+1) | vec_decisions/quick_reduce_sources.py:21(simple_tp) |
-| `SMA200_DIST_LONG_THRESHOLD` | global | -3.0 / -3.0 / -3.0 | CL,SL | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8445(compute_reentry_blocks) |
-| `START_POSITION_SIZE` | sizing | 28.0 / 500.0 / 28.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:7767(_psym_sps)<br>(+11) · ez_positions_quick.py:1105(calculate_dynamic_quantity)<br>(+11) | v12_quick_engine.py:12390(simulate_one)<br>v12_quick_engine.py:12394(simulate_one)<br>(+8) |
+| `SMA200_DIST_LONG_THRESHOLD` | global | -3.0 / -3.0 / -3.0 | CL,SL | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8490(compute_reentry_blocks) |
+| `START_POSITION_SIZE` | sizing | 28.0 / 500.0 / 28.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:7807(_psym_sps)<br>(+11) · ez_positions_quick.py:1105(calculate_dynamic_quantity)<br>(+11) | v12_quick_engine.py:12435(simulate_one)<br>v12_quick_engine.py:12439(simulate_one)<br>(+8) |
 | `STDEV_SUPPRESS_EARLY_EXIT` | exit | False / False / 0.0 | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `STRENGTH_FILTER_ENABLED` | entry | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8942(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:38(pass_mask) |
-| `STRENGTH_MIN_SCORE` | global | 5.0 / 5.0 / 5.0 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8960(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:39(pass_mask) |
-| `STRUCTURAL_EXIT_GATE_ENABLED` | exit | True / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:13382(MultiAccountTradeManager.__init__)<br>(+1) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+1) | v12_quick_engine.py:9923(compute_exit_signals)<br>v12_quick_engine.py:9952(compute_exit_signals) |
-| `TF_ALIGNMENT_MIN_TOTAL` | global | 4 / 4 / 4 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9059(compute_entry_signals) |
-| `TF_FOCUS_ENTRY_HARD_GATE` | entry | True / True / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:24752(TradierTradeManager.execute_trade_action) | v12_quick_engine.py:8590(compute_reentry_blocks) |
-| `TF_FOCUS_WEIGHT` | global | 8.0 / 8.0 / 8.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:24748(TradierTradeManager.execute_trade_action) | v12_quick_engine.py:8594(compute_reentry_blocks) |
-| `TF_HTF1` | global | 15m / 1h / 15m | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:24749(TradierTradeManager.execute_trade_action) | v12_quick_engine.py:8897(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:30(pass_mask) |
-| `TF_HTF3` | global | 4h / D / 4h | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:24750(TradierTradeManager.execute_trade_action) | v12_quick_engine.py:8898(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:30(pass_mask) |
-| `TRADES_PER_SYM_PER_DAY_MAX` | global | 6 / 8 / 6 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:30495(MultiAccountTradeManager.execute_now) · tradier_manage.py:13860(queue_trade_action) | vec_decisions/overtrade_guard.py:25(blocked) |
-| `TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION` | global | True / True / True | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8512(compute_reentry_blocks) |
-| `TRADIER_DC_POSITION_ENTRY_THRESHOLD` | entry | 0.25 / 0.25 / 0.25 | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8510(compute_reentry_blocks) |
-| `TRADIER_ENTRY_SCORE_THRESHOLD` | entry | 30 / 30 / 30 | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9079(compute_entry_signals) |
-| `TRADIER_FH_MOMENTUM_DC_CONFIRM` | global | True / True / True | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8618(compute_reentry_blocks) |
-| `TRADIER_FH_MOMENTUM_DC_MAX_LONG` | global | 0.33 / 0.33 / 0.33 | SL | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8619(compute_reentry_blocks) |
-| `TRADIER_FH_MOMENTUM_MFI_CONFIRM` | global | True / True / True | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8621(compute_reentry_blocks) |
-| `TRADIER_FH_MOMENTUM_MFI_MIN` | global | 55.0 / 55.0 / 55.0 | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8622(compute_reentry_blocks) |
-| `TRADIER_FH_MOMENTUM_MIN_MOVE_PCT` | global | 0.5 / 0.5 / 0.5 | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8615(compute_reentry_blocks) |
-| `TRADIER_FH_MOMENTUM_WINDOW_MINUTES` | global | 60 / 60 / 60 | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8611(compute_reentry_blocks) |
-| `TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER` | entry | 35 / 35 / 35 | SL | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8265(compute_reentry_blocks) |
-| `TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER` | entry | 65 / 65 / 65 | SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8266(compute_reentry_blocks) |
-| `TRADIER_MI_SUBSIGNAL_MIN_COUNT` | entry | 3 / 3 / 3 | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8644(compute_reentry_blocks) |
-| `TRADIER_RSI2_EXIT_THRESHOLD_LONG` | exit | 90.0 / 90.0 / 90.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19569(StockStrategy.evaluate_stop) | v12_quick_engine.py:9764(compute_exit_signals) |
-| `TRADIER_RSI2_EXIT_THRESHOLD_SHORT` | exit | 10.0 / 10.0 / 10.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19570(StockStrategy.evaluate_stop) | v12_quick_engine.py:9766(compute_exit_signals) |
-| `TRADIER_RSI_SHORT_REL_VOLUME_MIN` | global | 2.4 / 2.4 / 2.4 | SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8632(compute_reentry_blocks) |
-| `TRADIER_STOCH_EXTREME_LONG_TRADIER` | global | 15 / 15 / 15 | SL | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8637(compute_reentry_blocks) |
-| `TRADIER_STOCH_EXTREME_SHORT_TRADIER` | global | 85 / 85 / 85 | SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8638(compute_reentry_blocks) |
-| `TRADIER_WT_EXIT_MIN_TFS_TRADIER` | exit | 5 / 5 / 5 | SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40649(evaluate_multi_tf_exit) · tradier_manage.py:18489(StockStrategy.evaluate_multi_tf_exit) | vec_decisions/mtf_exit_scorer.py:273(score_array_parts) |
-| `TRADIER_WT_EXIT_TFS_TRADIER` | exit | 5m+15m+1h+4h+D / 5m+15m+1h+4h+D / 5m+15m+1h+4h+D | SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40648(evaluate_multi_tf_exit) · tradier_manage.py:18488(StockStrategy.evaluate_multi_tf_exit) | vec_decisions/mtf_exit_scorer.py:272(score_array_parts) |
+| `STRENGTH_FILTER_ENABLED` | entry | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8987(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:38(pass_mask) |
+| `STRENGTH_MIN_SCORE` | global | 5.0 / 5.0 / 5.0 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9005(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:39(pass_mask) |
+| `STRUCTURAL_EXIT_GATE_ENABLED` | exit | True / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:13422(MultiAccountTradeManager.__init__)<br>(+1) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+1) | v12_quick_engine.py:9968(compute_exit_signals)<br>v12_quick_engine.py:9997(compute_exit_signals) |
+| `TF_ALIGNMENT_MIN_TOTAL` | global | 4 / 4 / 4 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9104(compute_entry_signals) |
+| `TF_FOCUS_ENTRY_HARD_GATE` | entry | True / True / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:24813(TradierTradeManager.execute_trade_action) | v12_quick_engine.py:8635(compute_reentry_blocks) |
+| `TF_FOCUS_WEIGHT` | global | 8.0 / 8.0 / 8.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:24809(TradierTradeManager.execute_trade_action) | v12_quick_engine.py:8639(compute_reentry_blocks) |
+| `TF_HTF1` | global | 15m / 1h / 15m | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:24810(TradierTradeManager.execute_trade_action) | v12_quick_engine.py:8942(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:30(pass_mask) |
+| `TF_HTF3` | global | 4h / D / 4h | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:24811(TradierTradeManager.execute_trade_action) | v12_quick_engine.py:8943(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:30(pass_mask) |
+| `TRADES_PER_SYM_PER_DAY_MAX` | global | 6 / 8 / 6 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:30535(MultiAccountTradeManager.execute_now) · tradier_manage.py:13921(queue_trade_action) | vec_decisions/overtrade_guard.py:25(blocked) |
+| `TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION` | global | True / True / True | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8557(compute_reentry_blocks) |
+| `TRADIER_DC_POSITION_ENTRY_THRESHOLD` | entry | 0.25 / 0.25 / 0.25 | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8555(compute_reentry_blocks) |
+| `TRADIER_ENTRY_SCORE_THRESHOLD` | entry | 30 / 30 / 30 | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9124(compute_entry_signals) |
+| `TRADIER_FH_MOMENTUM_DC_CONFIRM` | global | True / True / True | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8663(compute_reentry_blocks) |
+| `TRADIER_FH_MOMENTUM_DC_MAX_LONG` | global | 0.33 / 0.33 / 0.33 | SL | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8664(compute_reentry_blocks) |
+| `TRADIER_FH_MOMENTUM_MFI_CONFIRM` | global | True / True / True | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8666(compute_reentry_blocks) |
+| `TRADIER_FH_MOMENTUM_MFI_MIN` | global | 55.0 / 55.0 / 55.0 | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8667(compute_reentry_blocks) |
+| `TRADIER_FH_MOMENTUM_MIN_MOVE_PCT` | global | 0.5 / 0.5 / 0.5 | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8660(compute_reentry_blocks) |
+| `TRADIER_FH_MOMENTUM_WINDOW_MINUTES` | global | 60 / 60 / 60 | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8656(compute_reentry_blocks) |
+| `TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER` | entry | 35 / 35 / 35 | SL | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8310(compute_reentry_blocks) |
+| `TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER` | entry | 65 / 65 / 65 | SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8311(compute_reentry_blocks) |
+| `TRADIER_MI_SUBSIGNAL_MIN_COUNT` | entry | 3 / 3 / 3 | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8689(compute_reentry_blocks) |
+| `TRADIER_RSI2_EXIT_THRESHOLD_LONG` | exit | 90.0 / 90.0 / 90.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19630(StockStrategy.evaluate_stop) | v12_quick_engine.py:9809(compute_exit_signals) |
+| `TRADIER_RSI2_EXIT_THRESHOLD_SHORT` | exit | 10.0 / 10.0 / 10.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19631(StockStrategy.evaluate_stop) | v12_quick_engine.py:9811(compute_exit_signals) |
+| `TRADIER_RSI_SHORT_REL_VOLUME_MIN` | global | 2.4 / 2.4 / 2.4 | SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8677(compute_reentry_blocks) |
+| `TRADIER_STOCH_EXTREME_LONG_TRADIER` | global | 15 / 15 / 15 | SL | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8682(compute_reentry_blocks) |
+| `TRADIER_STOCH_EXTREME_SHORT_TRADIER` | global | 85 / 85 / 85 | SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8683(compute_reentry_blocks) |
+| `TRADIER_WT_EXIT_MIN_TFS_TRADIER` | exit | 5 / 5 / 5 | SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40689(evaluate_multi_tf_exit) · tradier_manage.py:18550(StockStrategy.evaluate_multi_tf_exit) | vec_decisions/mtf_exit_scorer.py:273(score_array_parts) |
+| `TRADIER_WT_EXIT_TFS_TRADIER` | exit | 5m+15m+1h+4h+D / 5m+15m+1h+4h+D / 5m+15m+1h+4h+D | SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40688(evaluate_multi_tf_exit) · tradier_manage.py:18549(StockStrategy.evaluate_multi_tf_exit) | vec_decisions/mtf_exit_scorer.py:272(score_array_parts) |
 | `TREND_EXIT_SCORE_FLIP` | exit | 0 / 0 / 0.0 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:14538(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14538(check_exit_candidates_for_account.process_single_exit) | vec_decisions/check_exit_candidates_crypto__trend_reversal_exit.py:55(_trend_reversal_thresholds) [UNREACHABLE] |
 | `TREND_MIN_GAIN_EXIT` | exit | 0.1 / 0.1 / 0.1 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:14537(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14537(check_exit_candidates_for_account.process_single_exit) | vec_decisions/check_exit_candidates_crypto__trend_reversal_exit.py:54(_trend_reversal_thresholds) [UNREACHABLE] |
-| `UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED` | augment | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:31668(MultiAccountTradeManager.execute_now) · — | vec_decisions/gain_ladder_augment.py:45(ladder_params)<br>vec_decisions/uagain_gate.py:31(uagain_gate_pass) |
-| `UNIVERSAL_NOLOSS_GATE` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:32306(MultiAccountTradeManager.execute_now)<br>(+2) · tradier_manage.py:26009(TradierTradeManager.execute_now) | vec_decisions/noloss_gate.py:27(noloss_blocks) |
-| `V12_PARITY_DISABLE_NON_VECTORIZABLE` | global | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:7170(<module>)<br>(+5) · ez_positions_quick.py:224(<module>) | v12_quick_engine.py:11409(simulate_one) |
-| `VIGILANCE_DC4_BREACH_TOLERANCE_PCT` | exit | 0.25 / 0.25 / 0.25 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:46655(process_position) · tradier_manage.py:10640(process_position) | v12_quick_engine.py:12118(simulate_one) |
-| `VIGILANCE_GUARD_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:2901(ez_vigilance_is_blocked)<br>(+3) · tradier_manage.py:262(vigilance_is_blocked)<br>(+3) | v12_quick_engine.py:12117(simulate_one) |
-| `VOLUME_CONFIRMATION_ENABLED` | global | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | strategy_enhancements.py:169(check_volume_confirmation) · — | v12_quick_engine.py:9063(compute_entry_signals) |
-| `VOLUME_CONFIRMATION_MULT` | global | 1.2 / 1.2 / 1.2 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | strategy_enhancements.py:175(check_volume_confirmation) · — | v12_quick_engine.py:9067(compute_entry_signals) |
-| `VWAP_FILTER_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:27532(TradierTradeManager.should_enter_long)<br>(+1) | v12_quick_engine.py:8924(compute_entry_signals) |
-| `WIN_TRAIL_EROSION_PCT` | exit | 0.0 / 0.0 / 0.0 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12102(simulate_one) |
-| `WRONG_SIDE_WT_TFS_REQUIRED` | exit | 4 / 4 / 4 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:50521(process_position) · — | — |
-| `WT_15M_BOUNCE_FILTER_HH_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1319(_shared_direct_entry_claim) | v12_quick_engine.py:9479(compute_entry_signals)<br>v12_quick_engine.py:9542(compute_entry_signals) |
-| `WT_15M_BOUNCE_FILTER_HL_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1318(_shared_direct_entry_claim) | v12_quick_engine.py:9478(compute_entry_signals)<br>v12_quick_engine.py:9541(compute_entry_signals) |
-| `WT_15M_BOUNCE_FILTER_MODE` | entry | AND / AND / AND | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1327(_shared_direct_entry_claim) | v12_quick_engine.py:9489(compute_entry_signals)<br>v12_quick_engine.py:9554(compute_entry_signals) |
-| `WT_15M_BOUNCE_REL_VOL_GT_1` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1339(_shared_direct_entry_claim) | v12_quick_engine.py:9480(compute_entry_signals)<br>v12_quick_engine.py:9568(compute_entry_signals) |
-| `WT_15M_BOUNCE_REQUIRE_BOTH_HTF` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1300(_shared_direct_entry_claim) | v12_quick_engine.py:9521(compute_entry_signals) |
-| `WT_15M_BOUNCE_VOLUME_FILTER_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1339(_shared_direct_entry_claim) | v12_quick_engine.py:9480(compute_entry_signals)<br>v12_quick_engine.py:9568(compute_entry_signals) |
-| `WT_15M_BOUNCE_VOLUME_THRESHOLD` | entry | 1.0 / 1.0 / 1.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1342(_shared_direct_entry_claim) | v12_quick_engine.py:9498(compute_entry_signals)<br>v12_quick_engine.py:9572(compute_entry_signals) |
-| `WT_4H_VEL_EXIT_LONG_VEL_MIN` | exit | -2.0 / -2.0 / -2.0 | CL | LIVE_ONLY | DEAD | ez_manage.py:49877(process_position)<br>(+2) · — | vec_decisions/process_position_crypto__wt_4h_vel_exit.py:49(_wt_4h_params) [UNREACHABLE]<br>vec_decisions/wt_4h_vel_exit.py:66(_wt_4h_vel_exit_thresholds) [UNREACHABLE] |
-| `WT_4H_VEL_EXIT_REQUIRE_K_EXTREME` | exit | True / True / True | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:49903(process_position)<br>(+2) · — | vec_decisions/process_position_crypto__wt_4h_vel_exit.py:53(_wt_4h_params) [UNREACHABLE]<br>vec_decisions/wt_4h_vel_exit.py:68(_wt_4h_vel_exit_thresholds) [UNREACHABLE] |
-| `WT_4H_VEL_EXIT_REQUIRE_PROFIT` | exit | True / True / True | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:49900(process_position)<br>(+1) · — | vec_decisions/process_position_crypto__wt_4h_vel_exit.py:51(_wt_4h_params) [UNREACHABLE]<br>vec_decisions/wt_4h_vel_exit.py:93(check_wt_4h_vel_exit) [UNREACHABLE] |
-| `WT_4H_VEL_EXIT_SHORT_VEL_MIN` | exit | 2.0 / 2.0 / 2.0 | CS | LIVE_ONLY | DEAD | ez_manage.py:49881(process_position)<br>(+2) · — | vec_decisions/process_position_crypto__wt_4h_vel_exit.py:50(_wt_4h_params) [UNREACHABLE]<br>vec_decisions/wt_4h_vel_exit.py:67(_wt_4h_vel_exit_thresholds) [UNREACHABLE] |
+| `UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED` | augment | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:31708(MultiAccountTradeManager.execute_now) · — | vec_decisions/gain_ladder_augment.py:45(ladder_params)<br>vec_decisions/uagain_gate.py:31(uagain_gate_pass) |
+| `UNIVERSAL_NOLOSS_GATE` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:32346(MultiAccountTradeManager.execute_now)<br>(+2) · tradier_manage.py:26070(TradierTradeManager.execute_now) | vec_decisions/noloss_gate.py:27(noloss_blocks) |
+| `V12_PARITY_DISABLE_NON_VECTORIZABLE` | global | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:7170(<module>)<br>(+5) · ez_positions_quick.py:224(<module>) | v12_quick_engine.py:11454(simulate_one) |
+| `VIGILANCE_DC4_BREACH_TOLERANCE_PCT` | exit | 0.25 / 0.25 / 0.25 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:46695(process_position) · tradier_manage.py:10701(process_position) | v12_quick_engine.py:12163(simulate_one) |
+| `VIGILANCE_GUARD_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:2901(ez_vigilance_is_blocked)<br>(+3) · tradier_manage.py:262(vigilance_is_blocked)<br>(+3) | v12_quick_engine.py:12162(simulate_one) |
+| `VOLUME_CONFIRMATION_ENABLED` | global | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | strategy_enhancements.py:169(check_volume_confirmation) · — | v12_quick_engine.py:9108(compute_entry_signals) |
+| `VOLUME_CONFIRMATION_MULT` | global | 1.2 / 1.2 / 1.2 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | strategy_enhancements.py:175(check_volume_confirmation) · — | v12_quick_engine.py:9112(compute_entry_signals) |
+| `VWAP_FILTER_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:27593(TradierTradeManager.should_enter_long)<br>(+1) | v12_quick_engine.py:8969(compute_entry_signals) |
+| `WIN_TRAIL_EROSION_PCT` | exit | 0.0 / 0.0 / 0.0 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12147(simulate_one) |
+| `WRONG_SIDE_WT_TFS_REQUIRED` | exit | 4 / 4 / 4 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:50561(process_position) · — | — |
+| `WT_15M_BOUNCE_FILTER_HH_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1319(_shared_direct_entry_claim) | v12_quick_engine.py:9524(compute_entry_signals)<br>v12_quick_engine.py:9587(compute_entry_signals) |
+| `WT_15M_BOUNCE_FILTER_HL_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1318(_shared_direct_entry_claim) | v12_quick_engine.py:9523(compute_entry_signals)<br>v12_quick_engine.py:9586(compute_entry_signals) |
+| `WT_15M_BOUNCE_FILTER_MODE` | entry | AND / AND / AND | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1327(_shared_direct_entry_claim) | v12_quick_engine.py:9534(compute_entry_signals)<br>v12_quick_engine.py:9599(compute_entry_signals) |
+| `WT_15M_BOUNCE_REL_VOL_GT_1` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1339(_shared_direct_entry_claim) | v12_quick_engine.py:9525(compute_entry_signals)<br>v12_quick_engine.py:9613(compute_entry_signals) |
+| `WT_15M_BOUNCE_REQUIRE_BOTH_HTF` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1300(_shared_direct_entry_claim) | v12_quick_engine.py:9566(compute_entry_signals) |
+| `WT_15M_BOUNCE_VOLUME_FILTER_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1339(_shared_direct_entry_claim) | v12_quick_engine.py:9525(compute_entry_signals)<br>v12_quick_engine.py:9613(compute_entry_signals) |
+| `WT_15M_BOUNCE_VOLUME_THRESHOLD` | entry | 1.0 / 1.0 / 1.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1342(_shared_direct_entry_claim) | v12_quick_engine.py:9543(compute_entry_signals)<br>v12_quick_engine.py:9617(compute_entry_signals) |
+| `WT_4H_VEL_EXIT_LONG_VEL_MIN` | exit | -2.0 / -2.0 / -2.0 | CL | LIVE_ONLY | DEAD | ez_manage.py:49917(process_position)<br>(+2) · — | vec_decisions/process_position_crypto__wt_4h_vel_exit.py:49(_wt_4h_params) [UNREACHABLE]<br>vec_decisions/wt_4h_vel_exit.py:66(_wt_4h_vel_exit_thresholds) [UNREACHABLE] |
+| `WT_4H_VEL_EXIT_REQUIRE_K_EXTREME` | exit | True / True / True | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:49943(process_position)<br>(+2) · — | vec_decisions/process_position_crypto__wt_4h_vel_exit.py:53(_wt_4h_params) [UNREACHABLE]<br>vec_decisions/wt_4h_vel_exit.py:68(_wt_4h_vel_exit_thresholds) [UNREACHABLE] |
+| `WT_4H_VEL_EXIT_REQUIRE_PROFIT` | exit | True / True / True | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:49940(process_position)<br>(+1) · — | vec_decisions/process_position_crypto__wt_4h_vel_exit.py:51(_wt_4h_params) [UNREACHABLE]<br>vec_decisions/wt_4h_vel_exit.py:93(check_wt_4h_vel_exit) [UNREACHABLE] |
+| `WT_4H_VEL_EXIT_SHORT_VEL_MIN` | exit | 2.0 / 2.0 / 2.0 | CS | LIVE_ONLY | DEAD | ez_manage.py:49921(process_position)<br>(+2) · — | vec_decisions/process_position_crypto__wt_4h_vel_exit.py:50(_wt_4h_params) [UNREACHABLE]<br>vec_decisions/wt_4h_vel_exit.py:67(_wt_4h_vel_exit_thresholds) [UNREACHABLE] |
 | `WT_AGAINST_FILTER_ENABLED` | entry | False / False / False | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
 | `WT_COMPOSITE_ENTRY_BLOCK` | entry | -20.0 / -20.0 / -20.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2516(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:2516(AdvancedSignalRater.rate)<br>(+1) | vec_decisions/live_unw_gates.py:129(wt_composite_block)<br>vec_decisions/wt_composite_gate.py:18(block_mask) |
 | `WT_CROSS_EXIT_MIN_AGE_MINUTES` | exit | 1.0 / 1.0 / 1.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14630(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14630(check_exit_candidates_for_account.process_single_exit) | vec_decisions/live_exit_chain.py:160(step) |
-| `WT_CROSS_EXIT_REQUIRE_15M_CONFIRM` | exit | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:46885(process_position)<br>(+1) · ez_positions_quick.py:14649(check_exit_candidates_for_account.process_single_exit) | vec_decisions/check_exit_candidates_crypto__wt_cross_exit.py:73(check_wt_cross_exit) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_crypto__wt_cross_exit.py:95(check_wt_cross_exit_vec) [UNREACHABLE]<br>(+2) |
-| `WT_DC_DC_POS_THRESHOLD_LONG` | global | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12665(process_position) | v12_quick_engine.py:9120(compute_entry_signals) |
-| `WT_DC_DC_POS_THRESHOLD_SHORT` | global | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12666(process_position) | v12_quick_engine.py:9121(compute_entry_signals) |
-| `WT_DC_DETAILED_ENTRY_THRESHOLD` | entry | 43.0 / 43.0 / 43.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12634(process_position) | v12_quick_engine.py:9227(compute_entry_signals) |
+| `WT_CROSS_EXIT_REQUIRE_15M_CONFIRM` | exit | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:46925(process_position)<br>(+1) · ez_positions_quick.py:14649(check_exit_candidates_for_account.process_single_exit) | vec_decisions/check_exit_candidates_crypto__wt_cross_exit.py:73(check_wt_cross_exit) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_crypto__wt_cross_exit.py:95(check_wt_cross_exit_vec) [UNREACHABLE]<br>(+2) |
+| `WT_DC_DC_POS_THRESHOLD_LONG` | global | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12726(process_position) | v12_quick_engine.py:9165(compute_entry_signals) |
+| `WT_DC_DC_POS_THRESHOLD_SHORT` | global | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12727(process_position) | v12_quick_engine.py:9166(compute_entry_signals) |
+| `WT_DC_DETAILED_ENTRY_THRESHOLD` | entry | 43.0 / 43.0 / 43.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12695(process_position) | v12_quick_engine.py:9272(compute_entry_signals) |
 | `WT_DC_DIRECT_THRESHOLD` | entry | 20.0 / 20.0 / 20.0 | CL,CS,SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:1115(_shared_direct_entry_claim) | — |
-| `WT_DC_ENTRY_THRESHOLD` | entry | 45 / 45 / 45.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12645(process_position) | v12_quick_engine.py:9231(compute_entry_signals) |
-| `WT_DC_EXIT_THRESHOLD` | exit | 25.0 / 30 / 25.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19934(StockStrategy.evaluate_stop)<br>(+3) | vec_decisions/ported_stateful_exit.py:194(masks) |
-| `WT_DC_HTF_GATE` | entry | 4h_D / 4h_D / 4h_D | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12669(process_position)<br>(+1) | v12_quick_engine.py:9147(compute_entry_signals)<br>vec_decisions/process_position_stocks__wtdc_entry_gates.py:92(_wtdc_entry_gate_params) [UNREACHABLE] |
-| `WT_DC_HTF_GATE_MODE` | entry | AND / AND / AND | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12664(process_position) | v12_quick_engine.py:9124(compute_entry_signals) |
-| `WT_DC_K5M_MIN_SHORT_HARD` | global | <absent> / 20.0 / 20.0 | SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12649(process_position) | v12_quick_engine.py:9193(compute_entry_signals) |
-| `WT_DC_STOCH_THRESHOLD_LONG` | global | 40.0 / 40.0 / 40.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12667(process_position) | v12_quick_engine.py:9122(compute_entry_signals) |
-| `WT_DC_STOCH_THRESHOLD_SHORT` | global | 60.0 / 60.0 / 60.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12668(process_position) | v12_quick_engine.py:9123(compute_entry_signals) |
+| `WT_DC_ENTRY_THRESHOLD` | entry | 45 / 45 / 45.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12706(process_position) | v12_quick_engine.py:9276(compute_entry_signals) |
+| `WT_DC_EXIT_THRESHOLD` | exit | 25.0 / 30 / 25.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19995(StockStrategy.evaluate_stop)<br>(+3) | vec_decisions/ported_stateful_exit.py:194(masks) |
+| `WT_DC_HTF_GATE` | entry | 4h_D / 4h_D / 4h_D | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12730(process_position)<br>(+1) | v12_quick_engine.py:9192(compute_entry_signals)<br>vec_decisions/process_position_stocks__wtdc_entry_gates.py:92(_wtdc_entry_gate_params) [UNREACHABLE] |
+| `WT_DC_HTF_GATE_MODE` | entry | AND / AND / AND | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12725(process_position) | v12_quick_engine.py:9169(compute_entry_signals) |
+| `WT_DC_K5M_MIN_SHORT_HARD` | global | <absent> / 20.0 / 20.0 | SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12710(process_position) | v12_quick_engine.py:9238(compute_entry_signals) |
+| `WT_DC_STOCH_THRESHOLD_LONG` | global | 40.0 / 40.0 / 40.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12728(process_position) | v12_quick_engine.py:9167(compute_entry_signals) |
+| `WT_DC_STOCH_THRESHOLD_SHORT` | global | 60.0 / 60.0 / 60.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12729(process_position) | v12_quick_engine.py:9168(compute_entry_signals) |
 | `WT_DIV_ENTRY_GATE_ENABLED` | entry | True / True / True | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2318(AdvancedSignalRater.rate) · ez_positions_quick.py:2318(AdvancedSignalRater.rate) | — |
 | `WT_EXHAUST_ENTRY_GATE_ENABLED` | reduce | False / False / False | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2302(AdvancedSignalRater.rate) · ez_positions_quick.py:2302(AdvancedSignalRater.rate) | — |
-| `WT_EXHAUST_EXIT_MIN_GAIN_PCT` | exit | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:50025(process_position) · — | vec_decisions/process_position_crypto__wt_exhaust_exit.py:45(_wt_exhaust_params) [UNREACHABLE] |
-| `WT_EXHAUST_EXIT_REQUIRE_GAIN` | exit | False / False / 0.0 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:50024(process_position)<br>(+1) · — | vec_decisions/process_position_crypto__wt_exhaust_exit.py:44(_wt_exhaust_params) [UNREACHABLE] |
-| `WT_EXIT_MIN_TFS` | exit | 2 / 2 / 2 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9672(compute_exit_signals) |
-| `WT_EXIT_MIN_TFS_TRADIER` | exit | 5 / 5 / 5 | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:18489(StockStrategy.evaluate_multi_tf_exit)<br>(+1) | vec_decisions/check_exit_candidates_stocks__wt_exit_tf_against.py:54(check_wt_exit_tfs_varfix) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__wt_exit_tf_against.py:89(check_wt_exit_tfs_varfix_vec) [UNREACHABLE] |
-| `WT_EXIT_TFS_TRADIER` | exit | 5m+15m+1h+4h+D / 5m+15m+1h+4h+D / 5m+15m+1h+4h+D | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:18488(StockStrategy.evaluate_multi_tf_exit)<br>(+1) | vec_decisions/check_exit_candidates_stocks__wt_exit_tf_against.py:53(check_wt_exit_tfs_varfix) [UNREACHABLE] |
-| `WT_MOMENTUM_EXIT_THRESHOLD` | exit | 1 / 1 / 1 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40584(evaluate_multi_tf_exit) · tradier_manage.py:18415(StockStrategy.evaluate_multi_tf_exit) | vec_decisions/mtf_exit_scorer.py:210(score_array_parts) |
+| `WT_EXHAUST_EXIT_MIN_GAIN_PCT` | exit | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:50065(process_position) · — | vec_decisions/process_position_crypto__wt_exhaust_exit.py:45(_wt_exhaust_params) [UNREACHABLE] |
+| `WT_EXHAUST_EXIT_REQUIRE_GAIN` | exit | False / False / 0.0 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:50064(process_position)<br>(+1) · — | vec_decisions/process_position_crypto__wt_exhaust_exit.py:44(_wt_exhaust_params) [UNREACHABLE] |
+| `WT_EXIT_MIN_TFS` | exit | 2 / 2 / 2 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9717(compute_exit_signals) |
+| `WT_EXIT_MIN_TFS_TRADIER` | exit | 5 / 5 / 5 | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:18550(StockStrategy.evaluate_multi_tf_exit)<br>(+1) | vec_decisions/check_exit_candidates_stocks__wt_exit_tf_against.py:54(check_wt_exit_tfs_varfix) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__wt_exit_tf_against.py:89(check_wt_exit_tfs_varfix_vec) [UNREACHABLE] |
+| `WT_EXIT_TFS_TRADIER` | exit | 5m+15m+1h+4h+D / 5m+15m+1h+4h+D / 5m+15m+1h+4h+D | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:18549(StockStrategy.evaluate_multi_tf_exit)<br>(+1) | vec_decisions/check_exit_candidates_stocks__wt_exit_tf_against.py:53(check_wt_exit_tfs_varfix) [UNREACHABLE] |
+| `WT_MOMENTUM_EXIT_THRESHOLD` | exit | 1 / 1 / 1 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40624(evaluate_multi_tf_exit) · tradier_manage.py:18476(StockStrategy.evaluate_multi_tf_exit) | vec_decisions/mtf_exit_scorer.py:210(score_array_parts) |
 | `WT_PERCENTILE_ENTRY_GATE_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2310(AdvancedSignalRater.rate) · ez_positions_quick.py:2310(AdvancedSignalRater.rate)<br>(+1) | vec_decisions/grey_wire_entries.py:38(wt_percentile_entry_gate) |
 | `WT_REDUCE_FRAC_HIGH` | reduce | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14816(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14816(check_exit_candidates_for_account.process_single_exit) | vec_decisions/live_exit_chain.py:273(reduce_fraction) |
 | `WT_REDUCE_FRAC_LOW` | reduce | 0.15 / 0.15 / 0.15 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14813(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14813(check_exit_candidates_for_account.process_single_exit) | vec_decisions/live_exit_chain.py:271(reduce_fraction) |
 | `WT_REDUCE_FRAC_MED` | reduce | 0.25 / 0.25 / 0.25 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14813(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14813(check_exit_candidates_for_account.process_single_exit) | vec_decisions/live_exit_chain.py:271(reduce_fraction) |
-| `WT_VEL_DECAY_THRESHOLD` | global | 1.0 / 1.0 / 1.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:20036(StockStrategy.evaluate_stop) | v12_quick_engine.py:9688(compute_exit_signals) |
+| `WT_VEL_DECAY_THRESHOLD` | global | 1.0 / 1.0 / 1.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:20097(StockStrategy.evaluate_stop) | v12_quick_engine.py:9733(compute_exit_signals) |
 
 ## AUGMENT_RISK_SIZING (17)
 
 | switch | kind | defaults cfg / tradier / quick | templates | crypto | stocks | live reads (ez · tradier) | vec reads |
 |---|---|---|---|---|---|---|---|
-| `ATR_ADAPTIVE_SIZING_ENABLED` | sizing | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:41612(calculate_final_order_quantity) · — | v12_quick_engine.py:10210(compute_regime_sizing_mult) |
+| `ATR_ADAPTIVE_SIZING_ENABLED` | sizing | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:41652(calculate_final_order_quantity) · — | v12_quick_engine.py:10255(compute_regime_sizing_mult) |
 | `AUGMENT_AT_LOSS_ENABLED` | augment | False / False / False | CL,CS,SL,SS | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | v12_quick_engine.py:265(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:270(_batch1_template_wiring) [DEAD]<br>(+1) |
 | `AUGMENT_FALLBACK_GAIN_PCT` | augment | 1.0 / 1.0 / 1.0 | CL,CS,SL,SS | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | — |
 | `AUGMENT_FALLBACK_REDUCE_ENABLED` | augment | False / False / False | CL,CS,SL,SS | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | — |
 | `AUGMENT_FALLBACK_REDUCE_PCT` | augment | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | — |
 | `AUGMENT_WT_4H_BOUNCE_ENABLED` | augment | False / False / False | CL,CS,SL,SS | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | v12_quick_engine.py:279(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:284(_batch1_template_wiring) [DEAD]<br>(+1) |
-| `DC_EDGE_SIZING_ENABLED` | sizing | False / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:1134(calculate_dynamic_quantity) · ez_positions_quick.py:1134(calculate_dynamic_quantity) | v12_quick_engine.py:10215(compute_regime_sizing_mult) |
-| `DD_BOUNCE_ENABLED` | augment | False / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:38856(evaluate_augmentation)<br>(+1) · — | v12_quick_engine.py:607(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:611(_batch1_template_wiring) [DEAD]<br>(+1) |
+| `DC_EDGE_SIZING_ENABLED` | sizing | False / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:1134(calculate_dynamic_quantity) · ez_positions_quick.py:1134(calculate_dynamic_quantity) | v12_quick_engine.py:10260(compute_regime_sizing_mult) |
+| `DD_BOUNCE_ENABLED` | augment | False / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:38896(evaluate_augmentation)<br>(+1) · — | v12_quick_engine.py:607(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:611(_batch1_template_wiring) [DEAD]<br>(+1) |
 | `DELTA_PYRAMID_PRICE_TOL` | augment | 0.02 / 0.02 / 0.02 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:8179(FastDataManager.__init__) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+1) | v12_quick_engine.py:637(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:638(_batch1_template_wiring) [DEAD]<br>(+1) |
 | `DYNAMIC_SCORE_AUGMENT_ENABLED` | augment | True / True / True | CL,CS,SL,SS | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | — |
-| `EMA_DIST_SIZING_ENABLED` | sizing | False / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:41651(calculate_final_order_quantity) · — | v12_quick_engine.py:10206(compute_regime_sizing_mult) |
-| `EMA_DIST_SIZING_MULT` | sizing | 2.0 / 2.0 / 2.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:41656(calculate_final_order_quantity) · — | v12_quick_engine.py:10209(compute_regime_sizing_mult) |
+| `EMA_DIST_SIZING_ENABLED` | sizing | False / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:41691(calculate_final_order_quantity) · — | v12_quick_engine.py:10251(compute_regime_sizing_mult) |
+| `EMA_DIST_SIZING_MULT` | sizing | 2.0 / 2.0 / 2.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:41696(calculate_final_order_quantity) · — | v12_quick_engine.py:10254(compute_regime_sizing_mult) |
 | `SCALP_V3_AUG_BE_STOP_ENABLED` | augment | True / True / True | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:18712(_scalp_v3_attempt_be_stops) · ez_positions_quick.py:18712(_scalp_v3_attempt_be_stops) | — |
 | `SCALP_V3_AUG_BE_STOP_PCT` | augment | 0.1 / 0.1 / 0.1 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:18714(_scalp_v3_attempt_be_stops) · ez_positions_quick.py:18714(_scalp_v3_attempt_be_stops) | — |
-| `SHORT_PARTIAL_RECOVERY_ENABLED` | augment | False / False / <absent> | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10098(compute_augment_signals_ex) |
-| `SHORT_PARTIAL_RECOVERY_SIZE_MULT` | augment | 2.0 / 2.0 / <absent> | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10104(compute_augment_signals_ex) |
-| `STDEV_BREAKOUT_RETEST_SIZE_MULT` | sizing | 1.5 / 1.5 / 1.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:11982(detect_stdev_breakout)<br>(+1) · ez_positions_quick.py:11982(detect_stdev_breakout)<br>(+3) | v12_quick_engine.py:10251(compute_regime_sizing_mult)<br>vec_decisions/stocks_live_twins.py:38(StdevSizer.__init__) |
+| `SHORT_PARTIAL_RECOVERY_ENABLED` | augment | False / False / <absent> | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10143(compute_augment_signals_ex) |
+| `SHORT_PARTIAL_RECOVERY_SIZE_MULT` | augment | 2.0 / 2.0 / <absent> | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10149(compute_augment_signals_ex) |
+| `STDEV_BREAKOUT_RETEST_SIZE_MULT` | sizing | 1.5 / 1.5 / 1.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:11982(detect_stdev_breakout)<br>(+1) · ez_positions_quick.py:11982(detect_stdev_breakout)<br>(+3) | v12_quick_engine.py:10296(compute_regime_sizing_mult)<br>vec_decisions/stocks_live_twins.py:38(StdevSizer.__init__) |
 
 ## AUGMENT_TREND (6)
 
 | switch | kind | defaults cfg / tradier / quick | templates | crypto | stocks | live reads (ez · tradier) | vec reads |
 |---|---|---|---|---|---|---|---|
-| `AUGMENT_BULL_KILL_ENABLED` | augment | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/live_unw_gates.py:70(augment_bull_kill_blocked) · vec_decisions/live_unw_gates.py:70(augment_bull_kill_blocked) | v12_quick_engine.py:10112(compute_augment_signals_ex)<br>vec_decisions/live_unw_gates.py:70(augment_bull_kill_blocked) |
-| `BOUNCE_AUGMENT_ENABLED` | augment | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14245(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14245(check_exit_candidates_for_account.process_single_exit) | v12_quick_engine.py:10062(compute_augment_signals_ex) |
-| `BOUNCE_AUGMENT_K_D_CROSSING_UP` | augment | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14256(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14256(check_exit_candidates_for_account.process_single_exit) | v12_quick_engine.py:10062(compute_augment_signals_ex) |
-| `PYRAMID_ENABLED` | augment | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | strategy_enhancements.py:252(check_pyramid_signal)<br>(+1) · — | v12_quick_engine.py:10074(compute_augment_signals_ex)<br>v12_quick_engine.py:10128(compute_augment_signals_ex) |
-| `SHORT_DC_LOW_BREAK_ENABLED` | augment | False / False / <absent> | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10086(compute_augment_signals_ex) |
-| `SHORT_DC_LOW_BREAK_SIZE_MULT` | augment | 2.0 / 2.0 / <absent> | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10090(compute_augment_signals_ex) |
+| `AUGMENT_BULL_KILL_ENABLED` | augment | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/live_unw_gates.py:70(augment_bull_kill_blocked) · vec_decisions/live_unw_gates.py:70(augment_bull_kill_blocked) | v12_quick_engine.py:10157(compute_augment_signals_ex)<br>vec_decisions/live_unw_gates.py:70(augment_bull_kill_blocked) |
+| `BOUNCE_AUGMENT_ENABLED` | augment | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14245(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14245(check_exit_candidates_for_account.process_single_exit) | v12_quick_engine.py:10107(compute_augment_signals_ex) |
+| `BOUNCE_AUGMENT_K_D_CROSSING_UP` | augment | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14256(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14256(check_exit_candidates_for_account.process_single_exit) | v12_quick_engine.py:10107(compute_augment_signals_ex) |
+| `PYRAMID_ENABLED` | augment | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | strategy_enhancements.py:252(check_pyramid_signal)<br>(+1) · — | v12_quick_engine.py:10119(compute_augment_signals_ex)<br>v12_quick_engine.py:10173(compute_augment_signals_ex) |
+| `SHORT_DC_LOW_BREAK_ENABLED` | augment | False / False / <absent> | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10131(compute_augment_signals_ex) |
+| `SHORT_DC_LOW_BREAK_SIZE_MULT` | augment | 2.0 / 2.0 / <absent> | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10135(compute_augment_signals_ex) |
 
 ## ENTRY_BREAKOUT_CHANNEL (37)
 
 | switch | kind | defaults cfg / tradier / quick | templates | crypto | stocks | live reads (ez · tradier) | vec reads |
 |---|---|---|---|---|---|---|---|
-| `ATR_ADAPTIVE_SIZING_TARGET_PCT` | sizing | 2.0 / 1.5 / 2.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:41617(calculate_final_order_quantity) · — | v12_quick_engine.py:10213(compute_regime_sizing_mult) |
-| `ATR_ADAPTIVE_STOP_MULT` | entry | 2.0 / 2.0 / 2.0 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:41635(calculate_final_order_quantity) · — | — |
-| `BB_BREAKOUT_ENTRY_TF` | entry | OFF / OFF / OFF | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8741(compute_reentry_blocks) |
+| `ATR_ADAPTIVE_SIZING_TARGET_PCT` | sizing | 2.0 / 1.5 / 2.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:41657(calculate_final_order_quantity) · — | v12_quick_engine.py:10258(compute_regime_sizing_mult) |
+| `ATR_ADAPTIVE_STOP_MULT` | entry | 2.0 / 2.0 / 2.0 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:41675(calculate_final_order_quantity) · — | — |
+| `BB_BREAKOUT_ENTRY_TF` | entry | OFF / OFF / OFF | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8786(compute_reentry_blocks) |
 | `BB_BREAKOUT_SCORE` | entry | 20 / 20 / 20 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:4515(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:4515(AdvancedSignalRater.rate)<br>(+2) | — |
 | `BTC_BREAKOUT_ENTRY_ENABLED` | entry | True / True / True | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | btc_loop.py:600(detect_btc_breakout) · btc_loop.py:600(detect_btc_breakout) | v12_quick_engine.py:433(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:437(_batch1_template_wiring) [DEAD]<br>(+1) |
 | `BTC_RZ_WT_DC_MULTIFACTOR` | entry | True / True / True | CL,CS,SL,SS | DEAD | DEAD | — · — | v12_quick_engine.py:490(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:491(_batch1_template_wiring) [DEAD]<br>(+1) |
@@ -3420,30 +3420,30 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `MACD_ZERO_CROSS_ENABLED` | entry | False / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:4482(AdvancedSignalRater.rate) · ez_positions_quick.py:4482(AdvancedSignalRater.rate) | — |
 | `MACD_ZERO_CROSS_SCORE` | entry | 15 / 15 / 15 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:4489(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:4489(AdvancedSignalRater.rate)<br>(+1) | — |
 | `MACD_ZERO_CROSS_TF` | entry | 1h / 1h / 1h | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:4483(AdvancedSignalRater.rate) · ez_positions_quick.py:4483(AdvancedSignalRater.rate) | — |
-| `REENTRY2_STOCH_CROSS_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42924(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17363(process_single_reentry_evaluation_epq) | v12_quick_engine.py:8668(compute_reentry_blocks)<br>v12_quick_engine.py:8679(compute_reentry_blocks) |
-| `REENTRY_K15M_PARTIAL_MULT` | entry | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:36670(MultiAccountTradeManager.reentry_enforcement_loop)<br>(+1) · tradier_manage.py:27195(TradierTradeManager.reentry_monitor_loop) | — |
-| `RZ_BREAKOUT_BAND` | entry | 0.05 / 0.05 / 0.05 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40727(evaluate_technical_indicator_signals)<br>(+1) · tradier_manage.py:12887(process_position)<br>(+1) | vec_decisions/process_position_stocks__alt_entries.py:49(_rz_params) |
-| `RZ_BREAKOUT_ENTRY_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40723(evaluate_technical_indicator_signals)<br>(+2) · tradier_manage.py:12882(process_position)<br>(+2) | v12_quick_engine.py:9622(compute_entry_signals)<br>vec_decisions/live_stocks_entry.py:110(build)<br>(+2) |
-| `STDEV_BREAKOUT_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:11918(detect_stdev_breakout)<br>(+4) · ez_positions_quick.py:11918(detect_stdev_breakout)<br>(+10) | v12_quick_engine.py:12284(simulate_one)<br>vec_decisions/check_entry_candidates_stocks__stdev_breakout_bounce.py:50(check_stdev_breakout) [UNREACHABLE]<br>(+1) |
+| `REENTRY2_STOCH_CROSS_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42964(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17363(process_single_reentry_evaluation_epq) | v12_quick_engine.py:8713(compute_reentry_blocks)<br>v12_quick_engine.py:8724(compute_reentry_blocks) |
+| `REENTRY_K15M_PARTIAL_MULT` | entry | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:36710(MultiAccountTradeManager.reentry_enforcement_loop)<br>(+1) · tradier_manage.py:27256(TradierTradeManager.reentry_monitor_loop) | — |
+| `RZ_BREAKOUT_BAND` | entry | 0.05 / 0.05 / 0.05 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40767(evaluate_technical_indicator_signals)<br>(+1) · tradier_manage.py:12948(process_position)<br>(+1) | vec_decisions/process_position_stocks__alt_entries.py:49(_rz_params) |
+| `RZ_BREAKOUT_ENTRY_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40763(evaluate_technical_indicator_signals)<br>(+2) · tradier_manage.py:12943(process_position)<br>(+2) | v12_quick_engine.py:9667(compute_entry_signals)<br>vec_decisions/live_stocks_entry.py:110(build)<br>(+2) |
+| `STDEV_BREAKOUT_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:11918(detect_stdev_breakout)<br>(+4) · ez_positions_quick.py:11918(detect_stdev_breakout)<br>(+10) | v12_quick_engine.py:12329(simulate_one)<br>vec_decisions/check_entry_candidates_stocks__stdev_breakout_bounce.py:50(check_stdev_breakout) [UNREACHABLE]<br>(+1) |
 | `STDEV_BREAKOUT_PCTB_LONG` | entry | 1.125 / 1.125 / 1.125 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:11922(detect_stdev_breakout) · ez_positions_quick.py:11922(detect_stdev_breakout)<br>(+2) | vec_decisions/check_entry_candidates_stocks__stdev_breakout_bounce.py:37(_breakout_params) [UNREACHABLE]<br>vec_decisions/stdev_breakout_crypto.py:25(fires)<br>(+1) |
 | `STDEV_BREAKOUT_PCTB_SHORT` | entry | -0.125 / -0.125 / -0.125 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:11923(detect_stdev_breakout) · ez_positions_quick.py:11923(detect_stdev_breakout)<br>(+2) | vec_decisions/check_entry_candidates_stocks__stdev_breakout_bounce.py:38(_breakout_params) [UNREACHABLE]<br>vec_decisions/stdev_breakout_crypto.py:25(fires)<br>(+1) |
-| `STOCH_CROSS_ENTRY_TRADIER` | entry | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8634(compute_reentry_blocks)<br>v12_quick_engine.py:9043(compute_entry_signals) |
-| `TRADIER_MFI_ENTRY_LONG_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8996(compute_entry_signals) |
+| `STOCH_CROSS_ENTRY_TRADIER` | entry | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8679(compute_reentry_blocks)<br>v12_quick_engine.py:9088(compute_entry_signals) |
+| `TRADIER_MFI_ENTRY_LONG_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9041(compute_entry_signals) |
 | `V8_ENTRY_ENGINE_DC_ENABLED` | entry | True / True / True | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
 | `V8_ENTRY_ENGINE_WT_ENABLED` | entry | True / True / True | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `WT_15M_CROSS_ENTRY_ENABLED` | entry | False / False / False | CL,CS,SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:20639(StockStrategy.classic_formation_open_action [dynamic key]) | — |
+| `WT_15M_CROSS_ENTRY_ENABLED` | entry | False / False / False | CL,CS,SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:20700(StockStrategy.classic_formation_open_action [dynamic key]) | — |
 | `WT_COMPOSITE_ENTRY_GOOD` | entry | 30.0 / 30.0 / 30.0 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:2527(AdvancedSignalRater.rate) · ez_positions_quick.py:2527(AdvancedSignalRater.rate) | — |
 | `WT_COMPOSITE_ENTRY_OK` | entry | 10.0 / 10.0 / 10.0 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:2528(AdvancedSignalRater.rate) · ez_positions_quick.py:2528(AdvancedSignalRater.rate) | — |
 | `WT_COMPOSITE_ENTRY_STRONG` | entry | 50.0 / 50.0 / 50.0 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:2526(AdvancedSignalRater.rate) · ez_positions_quick.py:2526(AdvancedSignalRater.rate) | — |
-| `WT_DC_DC_TF` | global | 1h / 1h / 1h | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2187(AdvancedSignalRater.rate) · ez_positions_quick.py:2187(AdvancedSignalRater.rate)<br>(+1) | v12_quick_engine.py:9117(compute_entry_signals) |
+| `WT_DC_DC_TF` | global | 1h / 1h / 1h | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2187(AdvancedSignalRater.rate) · ez_positions_quick.py:2187(AdvancedSignalRater.rate)<br>(+1) | v12_quick_engine.py:9162(compute_entry_signals) |
 | `WT_DC_DETAILED_TF` | entry | <absent> / <absent> / <absent> | CL,CS,SL,SS | NOT_IN_CONFIG+STAGED_VEC | NOT_IN_CONFIG+STAGED_VEC | — · — | — |
 | `WT_DC_DIRECT_DC_TF` | entry | 1h / 1h / 1h | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
 | `WT_DC_DIRECT_TF_ENTRY` | entry | 1h / 1h / 1h | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `WT_DC_STOCH_TF` | global | 5m / 5m / 5m | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2188(AdvancedSignalRater.rate) · ez_positions_quick.py:2188(AdvancedSignalRater.rate)<br>(+1) | v12_quick_engine.py:9118(compute_entry_signals) |
-| `WT_DC_TF_COMBO` | entry | 1h_4h_D / 1h_4h_D / 1h_4h_D | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/live_unw_gates.py:32(wtdc_combo_tfs) · vec_decisions/live_unw_gates.py:32(wtdc_combo_tfs) | v12_quick_engine.py:8799(_wtdc_combo_resolve)<br>vec_decisions/live_unw_gates.py:32(wtdc_combo_tfs) |
-| `WT_DC_TF_ENTRY` | entry | 1h / 1h / 1h | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2186(AdvancedSignalRater.rate) · ez_positions_quick.py:2186(AdvancedSignalRater.rate) | v12_quick_engine.py:9114(compute_entry_signals)<br>v12_quick_engine.py:9232(compute_entry_signals) |
-| `WT_DC_TF_HTF` | global | 4h / 4h / 4h | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2189(AdvancedSignalRater.rate) · ez_positions_quick.py:2189(AdvancedSignalRater.rate) | v12_quick_engine.py:9115(compute_entry_signals) |
-| `WT_DC_TF_HTF2` | global | D / D / D | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2190(AdvancedSignalRater.rate) · ez_positions_quick.py:2190(AdvancedSignalRater.rate) | v12_quick_engine.py:9116(compute_entry_signals) |
+| `WT_DC_STOCH_TF` | global | 5m / 5m / 5m | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2188(AdvancedSignalRater.rate) · ez_positions_quick.py:2188(AdvancedSignalRater.rate)<br>(+1) | v12_quick_engine.py:9163(compute_entry_signals) |
+| `WT_DC_TF_COMBO` | entry | 1h_4h_D / 1h_4h_D / 1h_4h_D | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/live_unw_gates.py:32(wtdc_combo_tfs) · vec_decisions/live_unw_gates.py:32(wtdc_combo_tfs) | v12_quick_engine.py:8844(_wtdc_combo_resolve)<br>vec_decisions/live_unw_gates.py:32(wtdc_combo_tfs) |
+| `WT_DC_TF_ENTRY` | entry | 1h / 1h / 1h | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2186(AdvancedSignalRater.rate) · ez_positions_quick.py:2186(AdvancedSignalRater.rate) | v12_quick_engine.py:9159(compute_entry_signals)<br>v12_quick_engine.py:9277(compute_entry_signals) |
+| `WT_DC_TF_HTF` | global | 4h / 4h / 4h | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2189(AdvancedSignalRater.rate) · ez_positions_quick.py:2189(AdvancedSignalRater.rate) | v12_quick_engine.py:9160(compute_entry_signals) |
+| `WT_DC_TF_HTF2` | global | D / D / D | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2190(AdvancedSignalRater.rate) · ez_positions_quick.py:2190(AdvancedSignalRater.rate) | v12_quick_engine.py:9161(compute_entry_signals) |
 
 ## ENTRY_CONFIRMATION_GATES (51)
 
@@ -3451,132 +3451,132 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 |---|---|---|---|---|---|---|---|
 | `BB_BREAKOUT_ENABLED` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:4508(AdvancedSignalRater.rate)<br>(+2) · ez_positions_quick.py:4508(AdvancedSignalRater.rate)<br>(+3) | vec_decisions/process_position_stocks__alt_entries.py:145(check_bb_breakout)<br>vec_decisions/process_position_stocks__alt_entries.py:158(check_bb_breakout_vec) |
 | `BB_BREAKOUT_TF` | entry | 1h / OFF / 1h | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:4509(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:4509(AdvancedSignalRater.rate)<br>(+2) | vec_decisions/process_position_stocks__alt_entries.py:147(check_bb_breakout) |
-| `BB_PCTB_ENTRY_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12912(process_position) | v12_quick_engine.py:8470(compute_reentry_blocks) |
-| `DELTA_ENTRY_ENABLED` | entry | True / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:15946(check_entry_candidates_for_account.worker)<br>(+1) · ez_positions_quick.py:15946(check_entry_candidates_for_account.worker)<br>(+3) | v12_quick_engine.py:8546(compute_reentry_blocks) |
-| `EMA20_SLOPE_ENTRY_ENABLED` | entry | True / True / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:20639(StockStrategy.classic_formation_open_action [dynamic key]) | v12_quick_engine.py:8434(compute_reentry_blocks) |
-| `EMA_DIST_ENTRY_ENABLED` | entry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:41155(calculate_final_order_quantity) · tradier_manage.py:20639(StockStrategy.classic_formation_open_action [dynamic key]) | v12_quick_engine.py:8439(compute_reentry_blocks) |
-| `ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_DISTANCE` | entry | 0.015 / 0.015 / 0.015 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13026(process_position) | v12_quick_engine.py:8272(compute_reentry_blocks) |
-| `ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_TIMEFRAME` | entry | 5m / 5m / 5m | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13025(process_position) | v12_quick_engine.py:8271(compute_reentry_blocks) |
-| `ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_DEEP_K4H` | entry | 50.0 / 50.0 / 50.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13027(process_position) | v12_quick_engine.py:8273(compute_reentry_blocks) |
-| `ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13018(process_position) | v12_quick_engine.py:8270(compute_reentry_blocks) |
-| `ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_TURN_K1H` | entry | 40.0 / 40.0 / 40.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13028(process_position) | v12_quick_engine.py:8274(compute_reentry_blocks) |
-| `ENTRY_BOUNCE_DONCHIAN_DIRECT_DISTANCE` | entry | 0.008 / 0.008 / 0.008 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1015(_shared_direct_entry_claim)<br>(+1) | v12_quick_engine.py:8293(compute_reentry_blocks) |
-| `ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:968(_shared_direct_entry_claim)<br>(+1) | v12_quick_engine.py:8291(compute_reentry_blocks) |
-| `ENTRY_BOUNCE_DONCHIAN_DIRECT_TIMEFRAME` | entry | 5m / 5m / 5m | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:974(_shared_direct_entry_claim)<br>(+1) | v12_quick_engine.py:8292(compute_reentry_blocks) |
-| `ENTRY_DC_BUFFER_PCT` | entry | <absent> / <absent> / 0.1 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8973(compute_entry_signals) |
-| `ENTRY_DC_TF` | entry | <absent> / <absent> / OFF | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8969(compute_entry_signals)<br>v12_quick_engine.py:8992(compute_entry_signals) [STUB] |
-| `ENTRY_STOCH_HHHL_DIRECT_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:922(_shared_direct_entry_claim) | v12_quick_engine.py:8350(compute_reentry_blocks) |
-| `ENTRY_STOCH_PARENT_DIRECT_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1036(_shared_direct_entry_claim) | v12_quick_engine.py:8382(compute_reentry_blocks) |
-| `ENTRY_STOCH_PARENT_DIRECT_FAMILY` | entry | ENTRY_1H_TURN_UP / ENTRY_1H_TURN_UP / ENTRY_1H_TURN_UP | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1040(_shared_direct_entry_claim) | v12_quick_engine.py:8383(compute_reentry_blocks) |
-| `ENTRY_STOCH_PARENT_DIRECT_TURN_DEFINITION` | entry | rising-vs-prior / rising-vs-prior / rising-vs-prior | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1064(_shared_direct_entry_claim) | v12_quick_engine.py:8385(compute_reentry_blocks) |
-| `K_ZONE_ENTRY_ENABLED` | entry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2980(AdvancedSignalRater.rate) · ez_positions_quick.py:2980(AdvancedSignalRater.rate) | v12_quick_engine.py:8263(compute_reentry_blocks) |
-| `K_ZONE_ENTRY_ENABLED_TRADIER` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2996(AdvancedSignalRater.rate) · ez_positions_quick.py:2996(AdvancedSignalRater.rate)<br>(+2) | v12_quick_engine.py:8337(compute_reentry_blocks) |
-| `LR_PCTB_D_LONG_ENTRY_ENABLED` | entry | False / False / False | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40689(evaluate_technical_indicator_signals)<br>(+2) · tradier_manage.py:12897(process_position)<br>(+2) | vec_decisions/live_stocks_entry.py:115(build)<br>vec_decisions/process_position_stocks__alt_entries.py:82(check_lr_pctb_d_long)<br>(+1) |
-| `MFI_ENTRY_ENABLED` | entry | True / False / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:27711(TradierTradeManager.should_enter_long) | v12_quick_engine.py:8920(compute_entry_signals) |
-| `MFI_ENTRY_LONG_MAX` | entry | 60.0 / 60.0 / 60.0 | CL,SL | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8921(compute_entry_signals) |
-| `MFI_ENTRY_SHORT_MIN` | entry | 40.0 / 40.0 / 40.0 | CS,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8922(compute_entry_signals) |
-| `MI_ENTRY_ENABLED_TRADIER` | entry | <absent> / False / False | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13252(process_position)<br>(+1) | v12_quick_engine.py:8641(compute_reentry_blocks)<br>vec_decisions/live_stocks_entry.py:65(live_veto) |
-| `MOM3_ENTRY_ENABLED` | entry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:41176(calculate_final_order_quantity) · tradier_manage.py:20639(StockStrategy.classic_formation_open_action [dynamic key]) | v12_quick_engine.py:8427(compute_reentry_blocks) |
-| `MOM5_ENTRY_ENABLED` | entry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:41193(calculate_final_order_quantity) · tradier_manage.py:20639(StockStrategy.classic_formation_open_action [dynamic key]) | v12_quick_engine.py:8430(compute_reentry_blocks) |
-| `MTF_ARMED_ENTRY_ENABLED` | entry | False / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:30337(MultiAccountTradeManager.execute_now)<br>(+3) · mtf_live_evaluator.py:102(update_armed_state)<br>(+3) | v12_quick_engine.py:9276(compute_entry_signals) |
-| `RZ_ENTRY_ENABLED` | entry | True / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:8179(FastDataManager.__init__) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+1) | v12_quick_engine.py:8516(compute_reentry_blocks) |
-| `RZ_K_ENTRY_BOTTOM` | entry | 10.0 / 10.0 / 10.0 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8517(compute_reentry_blocks) |
-| `RZ_MFI_ENTRY_BOTTOM` | entry | 15.0 / 15.0 / 15.0 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8518(compute_reentry_blocks) |
-| `SATOSHIT_ENTRY_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12458(process_position)<br>(+1) | v12_quick_engine.py:8529(compute_reentry_blocks) |
-| `SBA_BOUNCE_ENABLED` | entry | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9381(compute_entry_signals) |
-| `SMA200_DIST_ENTRY_ENABLED` | entry | True / False / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:27664(TradierTradeManager.should_enter_long) | v12_quick_engine.py:8443(compute_reentry_blocks) |
-| `STOCH_ENTRY_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13085(process_position) | v12_quick_engine.py:8307(compute_reentry_blocks) |
-| `TRADIER_MFI_ENTRY_LONG_TRADIER` | entry | 60.0 / 60.0 / 60.0 | SL | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8998(compute_entry_signals) |
-| `TRADIER_MI_ENTRY_ENABLED_TRADIER` | entry | False / False / False | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8641(compute_reentry_blocks) |
-| `TRADIER_RSI_ENTRY_LONG_TRADIER` | entry | -1.0 / -1.0 / -1.0 | SL | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8627(compute_reentry_blocks) |
-| `TRADIER_RSI_ENTRY_SHORT_TRADIER` | entry | 70.0 / 70.0 / 70.0 | SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8628(compute_reentry_blocks) |
-| `TRADIER_STOCH_ENTRY_LONG_TRADIER` | entry | 30 / 30 / 30 | SL | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8635(compute_reentry_blocks) |
-| `TRADIER_STOCH_ENTRY_SHORT_TRADIER` | entry | 52 / 52 / 52 | SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8636(compute_reentry_blocks) |
-| `VWAP_BOUNCE_DIST_PCT` | entry | 0.3 / 0.3 / 0.3 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8525(compute_reentry_blocks) |
-| `VWAP_BOUNCE_ENTRY_ENABLED` | entry | True / False / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:20639(StockStrategy.classic_formation_open_action [dynamic key]) | v12_quick_engine.py:8524(compute_reentry_blocks) |
-| `WT_15M_BOUNCE_VOLUME_MODE` | entry | relvol / relvol / relvol | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1341(_shared_direct_entry_claim) | v12_quick_engine.py:9497(compute_entry_signals)<br>v12_quick_engine.py:9571(compute_entry_signals) |
-| `WT_CROSSUNDER_FINAL_ENABLED` | entry | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9737(compute_exit_signals) |
-| `WT_DC_DETAILED_SCORER_ENABLED` | global | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12558(process_position) | v12_quick_engine.py:9225(compute_entry_signals) |
-| `WT_DC_ENABLED` | global | <absent> / True / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12555(process_position) | v12_quick_engine.py:9219(compute_entry_signals) |
-| `WT_ENTRY_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13113(process_position) | v12_quick_engine.py:8314(compute_reentry_blocks) |
-| `WT_SIMPLE_GUARANTEE_ENABLED` | global | <absent> / <absent> / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9474(compute_entry_signals)<br>v12_quick_engine.py:9975(compute_exit_signals) |
+| `BB_PCTB_ENTRY_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12973(process_position) | v12_quick_engine.py:8515(compute_reentry_blocks) |
+| `DELTA_ENTRY_ENABLED` | entry | True / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:15946(check_entry_candidates_for_account.worker)<br>(+1) · ez_positions_quick.py:15946(check_entry_candidates_for_account.worker)<br>(+3) | v12_quick_engine.py:8591(compute_reentry_blocks) |
+| `EMA20_SLOPE_ENTRY_ENABLED` | entry | True / True / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:20700(StockStrategy.classic_formation_open_action [dynamic key]) | v12_quick_engine.py:8479(compute_reentry_blocks) |
+| `EMA_DIST_ENTRY_ENABLED` | entry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:41195(calculate_final_order_quantity) · tradier_manage.py:20700(StockStrategy.classic_formation_open_action [dynamic key]) | v12_quick_engine.py:8484(compute_reentry_blocks) |
+| `ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_DISTANCE` | entry | 0.015 / 0.015 / 0.015 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13087(process_position) | v12_quick_engine.py:8317(compute_reentry_blocks) |
+| `ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_TIMEFRAME` | entry | 5m / 5m / 5m | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13086(process_position) | v12_quick_engine.py:8316(compute_reentry_blocks) |
+| `ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_DEEP_K4H` | entry | 50.0 / 50.0 / 50.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13088(process_position) | v12_quick_engine.py:8318(compute_reentry_blocks) |
+| `ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13079(process_position) | v12_quick_engine.py:8315(compute_reentry_blocks) |
+| `ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_TURN_K1H` | entry | 40.0 / 40.0 / 40.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13089(process_position) | v12_quick_engine.py:8319(compute_reentry_blocks) |
+| `ENTRY_BOUNCE_DONCHIAN_DIRECT_DISTANCE` | entry | 0.008 / 0.008 / 0.008 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1015(_shared_direct_entry_claim)<br>(+1) | v12_quick_engine.py:8338(compute_reentry_blocks) |
+| `ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:968(_shared_direct_entry_claim)<br>(+1) | v12_quick_engine.py:8336(compute_reentry_blocks) |
+| `ENTRY_BOUNCE_DONCHIAN_DIRECT_TIMEFRAME` | entry | 5m / 5m / 5m | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:974(_shared_direct_entry_claim)<br>(+1) | v12_quick_engine.py:8337(compute_reentry_blocks) |
+| `ENTRY_DC_BUFFER_PCT` | entry | <absent> / <absent> / 0.1 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9018(compute_entry_signals) |
+| `ENTRY_DC_TF` | entry | <absent> / <absent> / OFF | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9014(compute_entry_signals)<br>v12_quick_engine.py:9037(compute_entry_signals) [STUB] |
+| `ENTRY_STOCH_HHHL_DIRECT_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:922(_shared_direct_entry_claim) | v12_quick_engine.py:8395(compute_reentry_blocks) |
+| `ENTRY_STOCH_PARENT_DIRECT_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1036(_shared_direct_entry_claim) | v12_quick_engine.py:8427(compute_reentry_blocks) |
+| `ENTRY_STOCH_PARENT_DIRECT_FAMILY` | entry | ENTRY_1H_TURN_UP / ENTRY_1H_TURN_UP / ENTRY_1H_TURN_UP | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1040(_shared_direct_entry_claim) | v12_quick_engine.py:8428(compute_reentry_blocks) |
+| `ENTRY_STOCH_PARENT_DIRECT_TURN_DEFINITION` | entry | rising-vs-prior / rising-vs-prior / rising-vs-prior | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1064(_shared_direct_entry_claim) | v12_quick_engine.py:8430(compute_reentry_blocks) |
+| `K_ZONE_ENTRY_ENABLED` | entry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2980(AdvancedSignalRater.rate) · ez_positions_quick.py:2980(AdvancedSignalRater.rate) | v12_quick_engine.py:8308(compute_reentry_blocks) |
+| `K_ZONE_ENTRY_ENABLED_TRADIER` | entry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2996(AdvancedSignalRater.rate) · ez_positions_quick.py:2996(AdvancedSignalRater.rate)<br>(+2) | v12_quick_engine.py:8382(compute_reentry_blocks) |
+| `LR_PCTB_D_LONG_ENTRY_ENABLED` | entry | False / False / False | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40729(evaluate_technical_indicator_signals)<br>(+2) · tradier_manage.py:12958(process_position)<br>(+2) | vec_decisions/live_stocks_entry.py:115(build)<br>vec_decisions/process_position_stocks__alt_entries.py:82(check_lr_pctb_d_long)<br>(+1) |
+| `MFI_ENTRY_ENABLED` | entry | True / False / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:27772(TradierTradeManager.should_enter_long) | v12_quick_engine.py:8965(compute_entry_signals) |
+| `MFI_ENTRY_LONG_MAX` | entry | 60.0 / 60.0 / 60.0 | CL,SL | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8966(compute_entry_signals) |
+| `MFI_ENTRY_SHORT_MIN` | entry | 40.0 / 40.0 / 40.0 | CS,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8967(compute_entry_signals) |
+| `MI_ENTRY_ENABLED_TRADIER` | entry | <absent> / False / False | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13313(process_position)<br>(+1) | v12_quick_engine.py:8686(compute_reentry_blocks)<br>vec_decisions/live_stocks_entry.py:65(live_veto) |
+| `MOM3_ENTRY_ENABLED` | entry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:41216(calculate_final_order_quantity) · tradier_manage.py:20700(StockStrategy.classic_formation_open_action [dynamic key]) | v12_quick_engine.py:8472(compute_reentry_blocks) |
+| `MOM5_ENTRY_ENABLED` | entry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:41233(calculate_final_order_quantity) · tradier_manage.py:20700(StockStrategy.classic_formation_open_action [dynamic key]) | v12_quick_engine.py:8475(compute_reentry_blocks) |
+| `MTF_ARMED_ENTRY_ENABLED` | entry | False / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:30377(MultiAccountTradeManager.execute_now)<br>(+3) · mtf_live_evaluator.py:102(update_armed_state)<br>(+3) | v12_quick_engine.py:9321(compute_entry_signals) |
+| `RZ_ENTRY_ENABLED` | entry | True / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:8179(FastDataManager.__init__) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+1) | v12_quick_engine.py:8561(compute_reentry_blocks) |
+| `RZ_K_ENTRY_BOTTOM` | entry | 10.0 / 10.0 / 10.0 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8562(compute_reentry_blocks) |
+| `RZ_MFI_ENTRY_BOTTOM` | entry | 15.0 / 15.0 / 15.0 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8563(compute_reentry_blocks) |
+| `SATOSHIT_ENTRY_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12519(process_position)<br>(+1) | v12_quick_engine.py:8574(compute_reentry_blocks) |
+| `SBA_BOUNCE_ENABLED` | entry | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9426(compute_entry_signals) |
+| `SMA200_DIST_ENTRY_ENABLED` | entry | True / False / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:27725(TradierTradeManager.should_enter_long) | v12_quick_engine.py:8488(compute_reentry_blocks) |
+| `STOCH_ENTRY_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13146(process_position) | v12_quick_engine.py:8352(compute_reentry_blocks) |
+| `TRADIER_MFI_ENTRY_LONG_TRADIER` | entry | 60.0 / 60.0 / 60.0 | SL | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9043(compute_entry_signals) |
+| `TRADIER_MI_ENTRY_ENABLED_TRADIER` | entry | False / False / False | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8686(compute_reentry_blocks) |
+| `TRADIER_RSI_ENTRY_LONG_TRADIER` | entry | -1.0 / -1.0 / -1.0 | SL | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8672(compute_reentry_blocks) |
+| `TRADIER_RSI_ENTRY_SHORT_TRADIER` | entry | 70.0 / 70.0 / 70.0 | SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8673(compute_reentry_blocks) |
+| `TRADIER_STOCH_ENTRY_LONG_TRADIER` | entry | 30 / 30 / 30 | SL | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8680(compute_reentry_blocks) |
+| `TRADIER_STOCH_ENTRY_SHORT_TRADIER` | entry | 52 / 52 / 52 | SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8681(compute_reentry_blocks) |
+| `VWAP_BOUNCE_DIST_PCT` | entry | 0.3 / 0.3 / 0.3 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8570(compute_reentry_blocks) |
+| `VWAP_BOUNCE_ENTRY_ENABLED` | entry | True / False / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:20700(StockStrategy.classic_formation_open_action [dynamic key]) | v12_quick_engine.py:8569(compute_reentry_blocks) |
+| `WT_15M_BOUNCE_VOLUME_MODE` | entry | relvol / relvol / relvol | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1341(_shared_direct_entry_claim) | v12_quick_engine.py:9542(compute_entry_signals)<br>v12_quick_engine.py:9616(compute_entry_signals) |
+| `WT_CROSSUNDER_FINAL_ENABLED` | entry | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9782(compute_exit_signals) |
+| `WT_DC_DETAILED_SCORER_ENABLED` | global | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12619(process_position) | v12_quick_engine.py:9270(compute_entry_signals) |
+| `WT_DC_ENABLED` | global | <absent> / True / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12616(process_position) | v12_quick_engine.py:9264(compute_entry_signals) |
+| `WT_ENTRY_ENABLED` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13174(process_position) | v12_quick_engine.py:8359(compute_reentry_blocks) |
+| `WT_SIMPLE_GUARANTEE_ENABLED` | global | <absent> / <absent> / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9519(compute_entry_signals)<br>v12_quick_engine.py:10020(compute_exit_signals) |
 
 ## ENTRY_REVERSAL_BOUNCE (19)
 
 | switch | kind | defaults cfg / tradier / quick | templates | crypto | stocks | live reads (ez · tradier) | vec reads |
 |---|---|---|---|---|---|---|---|
-| `BAND_ARROW_ENABLED` | entry | False / False / False | CL,CS,SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:10076(band_arrow_score)<br>(+1) | v12_quick_engine.py:293(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:300(_batch1_template_wiring) [DEAD]<br>(+1) |
-| `BB_BOUNCE_ENTRY_TF` | entry | OFF / OFF / OFF | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8740(compute_reentry_blocks) |
-| `BB_SQUEEZE_ENTRY_ENABLED` | entry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/wave4_families.py:179(bb_squeeze_entry_gate) · vec_decisions/wave4_families.py:179(bb_squeeze_entry_gate) | v12_quick_engine.py:8473(compute_reentry_blocks)<br>vec_decisions/wave4_families.py:179(bb_squeeze_entry_gate) |
-| `EZ_MANAGE_THROTTLER_RATE` | entry | {'gateway': 200, 'macbook': 250} / {'gateway': 200, 'macbook': 250} /  | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:9078(<module>)<br>(+1) · — | — |
+| `BAND_ARROW_ENABLED` | entry | False / False / False | CL,CS,SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:10137(band_arrow_score)<br>(+1) | v12_quick_engine.py:293(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:300(_batch1_template_wiring) [DEAD]<br>(+1) |
+| `BB_BOUNCE_ENTRY_TF` | entry | OFF / OFF / OFF | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8785(compute_reentry_blocks) |
+| `BB_SQUEEZE_ENTRY_ENABLED` | entry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/wave4_families.py:179(bb_squeeze_entry_gate) · vec_decisions/wave4_families.py:179(bb_squeeze_entry_gate) | v12_quick_engine.py:8518(compute_reentry_blocks)<br>vec_decisions/wave4_families.py:179(bb_squeeze_entry_gate) |
+| `EZ_MANAGE_THROTTLER_RATE` | entry | {'gateway': 200, 'macbook': 250} / {'gateway': 200, 'macbook': 250} /  | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:9118(<module>)<br>(+1) · — | — |
 | `HA_WICK_QUALITY_ENABLED` | entry | False / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:4500(AdvancedSignalRater.rate) · ez_positions_quick.py:4500(AdvancedSignalRater.rate) | — |
 | `HA_WICK_QUALITY_SCORE` | entry | 15 / 15 / 15 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:4504(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:4504(AdvancedSignalRater.rate)<br>(+1) | — |
 | `HA_WICK_QUALITY_TF` | entry | 1h / 1h / 1h | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:4501(AdvancedSignalRater.rate) · ez_positions_quick.py:4501(AdvancedSignalRater.rate) | — |
-| `HTF4_CONF` | entry | True / False / True | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:109(check_htf_conf) · tradier_manage.py:23412(TradierTradeManager._check_htf_confirmation)<br>(+11) | vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:109(check_htf_conf) [UNREACHABLE] |
-| `LIVE_VEC_EMERGENCY_BRAKE_ENABLED` | entry | False / False / False | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32088(MultiAccountTradeManager.execute_now) · tradier_manage.py:26191(TradierTradeManager.execute_now) | — |
+| `HTF4_CONF` | entry | True / False / True | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:109(check_htf_conf) · tradier_manage.py:23473(TradierTradeManager._check_htf_confirmation)<br>(+11) | vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:109(check_htf_conf) [UNREACHABLE] |
+| `LIVE_VEC_EMERGENCY_BRAKE_ENABLED` | entry | False / False / False | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32128(MultiAccountTradeManager.execute_now) · tradier_manage.py:26252(TradierTradeManager.execute_now) | — |
 | `LR_BAND_LADDER_STOCH_EXTREME` | entry | 30.0 / 30.0 / 30.0 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1494(_ordinary_ladder_target) | vec_decisions/lr_band_ladder_aug.py:43(target) |
 | `LR_BAND_LADDER_TF_BOTTOM` | entry | {'D': 10.0, '4h': 6.0, '1h': 4.0} / {'D': 10.0, '4h': 6.0, '1h': 4.0}  | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1601(_ordinary_ladder_target) | vec_decisions/lr_band_ladder_aug.py:52(target) |
 | `LR_BAND_LADDER_TF_TOP` | entry | {'D': 6.0, '4h': 4.0, '1h': 1.0} / {'D': 6.0, '4h': 4.0, '1h': 1.0} /  | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1607(_ordinary_ladder_target) | vec_decisions/lr_band_ladder_aug.py:52(target) |
 | `MARKET_QUALITY_SCORE_ENABLED` | entry | False / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:4577(AdvancedSignalRater.rate) · ez_positions_quick.py:4577(AdvancedSignalRater.rate) | — |
-| `RSI_ENTRY_LONG_TRADIER` | entry | 40.0 / 40.0 / 40.0 | SL | DEAD | LIVE_ONLY | — · tradier_manage.py:17224(StockStrategy.calculate_signal_score)<br>(+1) | vec_decisions/check_entry_candidates_stocks__rsi_sma_mfi_gates.py:51(_rsi_params) [UNREACHABLE] |
-| `RSI_ENTRY_SHORT_TRADIER` | entry | 58.0 / 58.0 / 58.0 | SS | DEAD | LIVE_ONLY | — · tradier_manage.py:17225(StockStrategy.calculate_signal_score)<br>(+1) | vec_decisions/check_entry_candidates_stocks__rsi_sma_mfi_gates.py:52(_rsi_params) [UNREACHABLE] |
-| `WT_15M_BOUNCE_BB_MIN` | entry | 0.05 / 0.05 / 0.05 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1298(_shared_direct_entry_claim) | v12_quick_engine.py:9519(compute_entry_signals) |
-| `WT_15M_BOUNCE_OPEN_ENABLED` | entry | False / True / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1295(_shared_direct_entry_claim) | v12_quick_engine.py:9518(compute_entry_signals)<br>v12_quick_engine.py:12021(simulate_one) |
-| `WT_ACCEL_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40578(evaluate_multi_tf_exit) · tradier_manage.py:18408(StockStrategy.evaluate_multi_tf_exit) | vec_decisions/mtf_exit_scorer.py:198(score_array_parts) |
-| `WT_DIV_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40474(evaluate_multi_tf_exit) · tradier_manage.py:18293(StockStrategy.evaluate_multi_tf_exit) | vec_decisions/mtf_exit_scorer.py:79(score_array_parts) |
+| `RSI_ENTRY_LONG_TRADIER` | entry | 40.0 / 40.0 / 40.0 | SL | DEAD | LIVE_ONLY | — · tradier_manage.py:17285(StockStrategy.calculate_signal_score)<br>(+1) | vec_decisions/check_entry_candidates_stocks__rsi_sma_mfi_gates.py:51(_rsi_params) [UNREACHABLE] |
+| `RSI_ENTRY_SHORT_TRADIER` | entry | 58.0 / 58.0 / 58.0 | SS | DEAD | LIVE_ONLY | — · tradier_manage.py:17286(StockStrategy.calculate_signal_score)<br>(+1) | vec_decisions/check_entry_candidates_stocks__rsi_sma_mfi_gates.py:52(_rsi_params) [UNREACHABLE] |
+| `WT_15M_BOUNCE_BB_MIN` | entry | 0.05 / 0.05 / 0.05 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1298(_shared_direct_entry_claim) | v12_quick_engine.py:9564(compute_entry_signals) |
+| `WT_15M_BOUNCE_OPEN_ENABLED` | entry | False / True / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1295(_shared_direct_entry_claim) | v12_quick_engine.py:9563(compute_entry_signals)<br>v12_quick_engine.py:12066(simulate_one) |
+| `WT_ACCEL_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40618(evaluate_multi_tf_exit) · tradier_manage.py:18469(StockStrategy.evaluate_multi_tf_exit) | vec_decisions/mtf_exit_scorer.py:198(score_array_parts) |
+| `WT_DIV_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40514(evaluate_multi_tf_exit) · tradier_manage.py:18354(StockStrategy.evaluate_multi_tf_exit) | vec_decisions/mtf_exit_scorer.py:79(score_array_parts) |
 
 ## EXIT_STRUCTURAL (75)
 
 | switch | kind | defaults cfg / tradier / quick | templates | crypto | stocks | live reads (ez · tradier) | vec reads |
 |---|---|---|---|---|---|---|---|
-| `ALL_TF_AGAINST_CLOSE_ENABLED` | exit | True / True / True | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:48151(process_position) · — | v12_quick_engine.py:211(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:228(_batch1_template_wiring) [DEAD]<br>(+1) |
-| `BB_EXIT_AT_LOSS_TF` | exit | OFF / OFF / OFF | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10023(compute_exit_signals) |
-| `BB_FROZEN_STOP_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:47309(process_position) · — | v12_quick_engine.py:12006(simulate_one) |
-| `BB_PROFIT_TAKE_TF` | global | OFF / OFF / OFF | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10024(compute_exit_signals) |
-| `BB_RECOVERY_EXIT_ENABLED_TRADIER` | exit | True / False / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:26024(TradierTradeManager.execute_now) | v12_quick_engine.py:9783(compute_exit_signals) |
+| `ALL_TF_AGAINST_CLOSE_ENABLED` | exit | True / True / True | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:48191(process_position) · — | v12_quick_engine.py:211(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:228(_batch1_template_wiring) [DEAD]<br>(+1) |
+| `BB_EXIT_AT_LOSS_TF` | exit | OFF / OFF / OFF | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10068(compute_exit_signals) |
+| `BB_FROZEN_STOP_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:47349(process_position) · — | v12_quick_engine.py:12051(simulate_one) |
+| `BB_PROFIT_TAKE_TF` | global | OFF / OFF / OFF | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10069(compute_exit_signals) |
+| `BB_RECOVERY_EXIT_ENABLED_TRADIER` | exit | True / False / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:26085(TradierTradeManager.execute_now) | v12_quick_engine.py:9828(compute_exit_signals) |
 | `DAYTRADE_DC_STOP_TF` | exit | OFF / OFF / OFF | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/dc_channel_exits.py:66(resolve_daytrade_dc) · vec_decisions/dc_channel_exits.py:66(resolve_daytrade_dc) | vec_decisions/dc_channel_exits.py:66(resolve_daytrade_dc) |
 | `DAYTRADE_DC_TARGET_TF` | exit | 15m / 15m / 15m | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/dc_channel_exits.py:68(resolve_daytrade_dc) · vec_decisions/dc_channel_exits.py:68(resolve_daytrade_dc) | vec_decisions/dc_channel_exits.py:68(resolve_daytrade_dc) |
-| `DC_BREAK_WAIT_WT15_CLOSE_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40494(evaluate_multi_tf_exit) · tradier_manage.py:18314(StockStrategy.evaluate_multi_tf_exit) | vec_decisions/mtf_exit_scorer.py:99(score_array_parts) |
-| `DC_DAYTRADE_STOP_USE_DC4_15M` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/dc_channel_exits.py:75(resolve_daytrade_dc) · tradier_manage.py:32742(StockDaytradeWing._manage_daytrade_positions)<br>(+1) | vec_decisions/dc_channel_exits.py:75(resolve_daytrade_dc) |
-| `DC_DAYTRADE_STOP_USE_DC_15M` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/dc_channel_exits.py:77(resolve_daytrade_dc) · tradier_manage.py:32741(StockDaytradeWing._manage_daytrade_positions)<br>(+1) | vec_decisions/dc_channel_exits.py:77(resolve_daytrade_dc) |
-| `DC_DAYTRADE_TARGET_DC_BUFFER_PCT` | exit | 0.002 / 0.002 / 0.002 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/dc_channel_exits.py:82(resolve_daytrade_dc) · tradier_manage.py:32745(StockDaytradeWing._manage_daytrade_positions)<br>(+1) | vec_decisions/dc_channel_exits.py:82(resolve_daytrade_dc) |
-| `DC_DAYTRADE_TARGET_USE_DC4_15M` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/dc_channel_exits.py:86(resolve_daytrade_dc) · tradier_manage.py:32744(StockDaytradeWing._manage_daytrade_positions)<br>(+1) | vec_decisions/dc_channel_exits.py:86(resolve_daytrade_dc) |
-| `DC_DAYTRADE_TARGET_USE_DC_15M` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/dc_channel_exits.py:88(resolve_daytrade_dc) · tradier_manage.py:32743(StockDaytradeWing._manage_daytrade_positions)<br>(+1) | vec_decisions/dc_channel_exits.py:88(resolve_daytrade_dc) |
-| `DC_RECOVERY_EXIT_ENABLED` | exit | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:32425(MultiAccountTradeManager.execute_now) · — | v12_quick_engine.py:13220(simulate_one) |
-| `DELTA_EXIT_ENABLED` | exit | True / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:50557(process_position)<br>(+1) · ez_positions_quick.py:16002(check_entry_candidates_for_account.worker)<br>(+2) | v12_quick_engine.py:9672(compute_exit_signals)<br>vec_decisions/delta_exit_top.py:131(_delta_exit_enabled) |
-| `FORMATION_CUP_HANDLE_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | classic_formations.py:485(select_latest_formation [dynamic key]) · classic_formations.py:485(select_latest_formation [dynamic key]) | v12_quick_engine.py:9855(compute_exit_signals) |
-| `FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | classic_formations.py:485(select_latest_formation [dynamic key]) · classic_formations.py:485(select_latest_formation [dynamic key]) | v12_quick_engine.py:9851(compute_exit_signals) |
-| `FORMATION_FLAG_PENNANT_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | classic_formations.py:485(select_latest_formation [dynamic key]) · classic_formations.py:485(select_latest_formation [dynamic key]) | v12_quick_engine.py:9854(compute_exit_signals) |
-| `FORMATION_HEAD_SHOULDERS_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | classic_formations.py:485(select_latest_formation [dynamic key]) · classic_formations.py:485(select_latest_formation [dynamic key]) | v12_quick_engine.py:9850(compute_exit_signals) |
-| `FORMATION_TREND_STRUCTURE_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | classic_formations.py:485(select_latest_formation [dynamic key]) · classic_formations.py:485(select_latest_formation [dynamic key]) | v12_quick_engine.py:9856(compute_exit_signals) |
-| `FORMATION_TRIANGLE_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | classic_formations.py:485(select_latest_formation [dynamic key]) · classic_formations.py:485(select_latest_formation [dynamic key]) | v12_quick_engine.py:9853(compute_exit_signals) |
-| `FORMATION_WEDGE_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | classic_formations.py:485(select_latest_formation [dynamic key]) · classic_formations.py:485(select_latest_formation [dynamic key]) | v12_quick_engine.py:9852(compute_exit_signals) |
-| `FROZEN_ACTIVATION_STOP_ENABLED` | exit | True / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47236(process_position) · tradier_manage.py:10969(process_position) | vec_decisions/frozen_floor_exit.py:63(frozen_floor_exit_should_exit)<br>vec_decisions/frozen_floor_exit.py:102(frozen_floor_exit_vec)<br>(+2) |
-| `GAP_CLOSE_MOC_EXIT_ENABLED` | exit | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9894(gap_moc_and_morning_loop)<br>(+1) | v12_quick_engine.py:11534(simulate_one)<br>v12_quick_engine.py:11603(simulate_one) [STUB] |
-| `GAP_CLOSE_MOC_FORCE_MOC_AT_CLOSE` | exit | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:10043(gap_moc_and_morning_loop) | v12_quick_engine.py:11600(simulate_one) |
-| `GAP_CLOSE_PER_SYMBOL_AVG_THRESH_PCT` | exit | <absent> / 0.1 / 0.1 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9294(_gap_close_per_symbol_should_close)<br>(+1) | v12_quick_engine.py:11591(simulate_one) |
-| `GAP_CLOSE_PER_SYMBOL_LOOKBACK_DAYS` | exit | <absent> / 30 / 30 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9324(_gap_close_inventory_record_from_cache) | v12_quick_engine.py:11582(simulate_one) |
-| `GAP_MOC_EXIT_ENABLED` | exit | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9935(gap_moc_and_morning_loop) | v12_quick_engine.py:11408(simulate_one)<br>v12_quick_engine.py:11531(simulate_one) [STUB] |
-| `GAP_MOC_FORCE_MOC_AT_CLOSE` | exit | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9884(gap_moc_and_morning_loop) | v12_quick_engine.py:11523(simulate_one) |
-| `GAP_RISK_EXIT_COND_A_ENABLED` | exit | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19616(StockStrategy.evaluate_stop) | vec_decisions/gap_risk_exit.py:114(gap_risk_exit_should_exit)<br>vec_decisions/gap_risk_exit.py:118(gap_risk_exit_should_exit)<br>(+2) |
-| `GAP_RISK_EXIT_COND_B_ENABLED` | exit | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19617(StockStrategy.evaluate_stop) | vec_decisions/gap_risk_exit.py:119(gap_risk_exit_should_exit)<br>vec_decisions/gap_risk_exit.py:121(gap_risk_exit_should_exit)<br>(+2) |
-| `GAP_RISK_EXIT_LONG_ENABLED` | exit | <absent> / True / True | SL | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19613(StockStrategy.evaluate_stop) | vec_decisions/gap_risk_exit.py:107(gap_risk_exit_should_exit)<br>vec_decisions/gap_risk_exit.py:268(gap_risk_exit_vec) |
-| `GAP_RISK_EXIT_OPEN_RECLAIM_ENABLED` | exit | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19616(StockStrategy.evaluate_stop) | vec_decisions/gap_risk_exit.py:114(gap_risk_exit_should_exit)<br>vec_decisions/gap_risk_exit.py:175(gap_risk_exit_vec)<br>(+1) |
-| `GAP_RISK_EXIT_SHORT_ENABLED` | exit | <absent> / True / True | SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19613(StockStrategy.evaluate_stop) | vec_decisions/gap_risk_exit.py:110(gap_risk_exit_should_exit)<br>vec_decisions/gap_risk_exit.py:271(gap_risk_exit_vec) |
-| `GAP_RISK_EXIT_STRUCTURE_BREAK_ENABLED` | exit | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19617(StockStrategy.evaluate_stop) | vec_decisions/gap_risk_exit.py:119(gap_risk_exit_should_exit)<br>vec_decisions/gap_risk_exit.py:176(gap_risk_exit_vec)<br>(+1) |
-| `GR_HTF_DIRECT_EXIT_ENABLED` | exit | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:48075(process_position) · tradier_manage.py:19153(StockStrategy.evaluate_stop) | v12_quick_engine.py:9829(compute_exit_signals) |
-| `GR_HTF_DIRECT_EXIT_SCORE` | exit | 15.0 / 15.0 / 15.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:48101(process_position) · tradier_manage.py:19172(StockStrategy.evaluate_stop) | v12_quick_engine.py:9830(compute_exit_signals) |
+| `DC_BREAK_WAIT_WT15_CLOSE_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40534(evaluate_multi_tf_exit) · tradier_manage.py:18375(StockStrategy.evaluate_multi_tf_exit) | vec_decisions/mtf_exit_scorer.py:99(score_array_parts) |
+| `DC_DAYTRADE_STOP_USE_DC4_15M` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/dc_channel_exits.py:75(resolve_daytrade_dc) · tradier_manage.py:32803(StockDaytradeWing._manage_daytrade_positions)<br>(+1) | vec_decisions/dc_channel_exits.py:75(resolve_daytrade_dc) |
+| `DC_DAYTRADE_STOP_USE_DC_15M` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/dc_channel_exits.py:77(resolve_daytrade_dc) · tradier_manage.py:32802(StockDaytradeWing._manage_daytrade_positions)<br>(+1) | vec_decisions/dc_channel_exits.py:77(resolve_daytrade_dc) |
+| `DC_DAYTRADE_TARGET_DC_BUFFER_PCT` | exit | 0.002 / 0.002 / 0.002 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/dc_channel_exits.py:82(resolve_daytrade_dc) · tradier_manage.py:32806(StockDaytradeWing._manage_daytrade_positions)<br>(+1) | vec_decisions/dc_channel_exits.py:82(resolve_daytrade_dc) |
+| `DC_DAYTRADE_TARGET_USE_DC4_15M` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/dc_channel_exits.py:86(resolve_daytrade_dc) · tradier_manage.py:32805(StockDaytradeWing._manage_daytrade_positions)<br>(+1) | vec_decisions/dc_channel_exits.py:86(resolve_daytrade_dc) |
+| `DC_DAYTRADE_TARGET_USE_DC_15M` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/dc_channel_exits.py:88(resolve_daytrade_dc) · tradier_manage.py:32804(StockDaytradeWing._manage_daytrade_positions)<br>(+1) | vec_decisions/dc_channel_exits.py:88(resolve_daytrade_dc) |
+| `DC_RECOVERY_EXIT_ENABLED` | exit | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:32465(MultiAccountTradeManager.execute_now) · — | v12_quick_engine.py:13265(simulate_one) |
+| `DELTA_EXIT_ENABLED` | exit | True / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:50597(process_position)<br>(+1) · ez_positions_quick.py:16002(check_entry_candidates_for_account.worker)<br>(+2) | v12_quick_engine.py:9717(compute_exit_signals)<br>vec_decisions/delta_exit_top.py:131(_delta_exit_enabled) |
+| `FORMATION_CUP_HANDLE_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | classic_formations.py:485(select_latest_formation [dynamic key]) · classic_formations.py:485(select_latest_formation [dynamic key]) | v12_quick_engine.py:9900(compute_exit_signals) |
+| `FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | classic_formations.py:485(select_latest_formation [dynamic key]) · classic_formations.py:485(select_latest_formation [dynamic key]) | v12_quick_engine.py:9896(compute_exit_signals) |
+| `FORMATION_FLAG_PENNANT_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | classic_formations.py:485(select_latest_formation [dynamic key]) · classic_formations.py:485(select_latest_formation [dynamic key]) | v12_quick_engine.py:9899(compute_exit_signals) |
+| `FORMATION_HEAD_SHOULDERS_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | classic_formations.py:485(select_latest_formation [dynamic key]) · classic_formations.py:485(select_latest_formation [dynamic key]) | v12_quick_engine.py:9895(compute_exit_signals) |
+| `FORMATION_TREND_STRUCTURE_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | classic_formations.py:485(select_latest_formation [dynamic key]) · classic_formations.py:485(select_latest_formation [dynamic key]) | v12_quick_engine.py:9901(compute_exit_signals) |
+| `FORMATION_TRIANGLE_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | classic_formations.py:485(select_latest_formation [dynamic key]) · classic_formations.py:485(select_latest_formation [dynamic key]) | v12_quick_engine.py:9898(compute_exit_signals) |
+| `FORMATION_WEDGE_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | classic_formations.py:485(select_latest_formation [dynamic key]) · classic_formations.py:485(select_latest_formation [dynamic key]) | v12_quick_engine.py:9897(compute_exit_signals) |
+| `FROZEN_ACTIVATION_STOP_ENABLED` | exit | True / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47276(process_position) · tradier_manage.py:11030(process_position) | vec_decisions/frozen_floor_exit.py:63(frozen_floor_exit_should_exit)<br>vec_decisions/frozen_floor_exit.py:102(frozen_floor_exit_vec)<br>(+2) |
+| `GAP_CLOSE_MOC_EXIT_ENABLED` | exit | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9955(gap_moc_and_morning_loop)<br>(+1) | v12_quick_engine.py:11579(simulate_one)<br>v12_quick_engine.py:11648(simulate_one) [STUB] |
+| `GAP_CLOSE_MOC_FORCE_MOC_AT_CLOSE` | exit | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:10104(gap_moc_and_morning_loop) | v12_quick_engine.py:11645(simulate_one) |
+| `GAP_CLOSE_PER_SYMBOL_AVG_THRESH_PCT` | exit | <absent> / 0.1 / 0.1 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9355(_gap_close_per_symbol_should_close)<br>(+1) | v12_quick_engine.py:11636(simulate_one) |
+| `GAP_CLOSE_PER_SYMBOL_LOOKBACK_DAYS` | exit | <absent> / 30 / 30 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9385(_gap_close_inventory_record_from_cache) | v12_quick_engine.py:11627(simulate_one) |
+| `GAP_MOC_EXIT_ENABLED` | exit | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9996(gap_moc_and_morning_loop) | v12_quick_engine.py:11453(simulate_one)<br>v12_quick_engine.py:11576(simulate_one) [STUB] |
+| `GAP_MOC_FORCE_MOC_AT_CLOSE` | exit | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9945(gap_moc_and_morning_loop) | v12_quick_engine.py:11568(simulate_one) |
+| `GAP_RISK_EXIT_COND_A_ENABLED` | exit | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19677(StockStrategy.evaluate_stop) | vec_decisions/gap_risk_exit.py:114(gap_risk_exit_should_exit)<br>vec_decisions/gap_risk_exit.py:118(gap_risk_exit_should_exit)<br>(+2) |
+| `GAP_RISK_EXIT_COND_B_ENABLED` | exit | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19678(StockStrategy.evaluate_stop) | vec_decisions/gap_risk_exit.py:119(gap_risk_exit_should_exit)<br>vec_decisions/gap_risk_exit.py:121(gap_risk_exit_should_exit)<br>(+2) |
+| `GAP_RISK_EXIT_LONG_ENABLED` | exit | <absent> / True / True | SL | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19674(StockStrategy.evaluate_stop) | vec_decisions/gap_risk_exit.py:107(gap_risk_exit_should_exit)<br>vec_decisions/gap_risk_exit.py:268(gap_risk_exit_vec) |
+| `GAP_RISK_EXIT_OPEN_RECLAIM_ENABLED` | exit | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19677(StockStrategy.evaluate_stop) | vec_decisions/gap_risk_exit.py:114(gap_risk_exit_should_exit)<br>vec_decisions/gap_risk_exit.py:175(gap_risk_exit_vec)<br>(+1) |
+| `GAP_RISK_EXIT_SHORT_ENABLED` | exit | <absent> / True / True | SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19674(StockStrategy.evaluate_stop) | vec_decisions/gap_risk_exit.py:110(gap_risk_exit_should_exit)<br>vec_decisions/gap_risk_exit.py:271(gap_risk_exit_vec) |
+| `GAP_RISK_EXIT_STRUCTURE_BREAK_ENABLED` | exit | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19678(StockStrategy.evaluate_stop) | vec_decisions/gap_risk_exit.py:119(gap_risk_exit_should_exit)<br>vec_decisions/gap_risk_exit.py:176(gap_risk_exit_vec)<br>(+1) |
+| `GR_HTF_DIRECT_EXIT_ENABLED` | exit | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:48115(process_position) · tradier_manage.py:19214(StockStrategy.evaluate_stop) | v12_quick_engine.py:9874(compute_exit_signals) |
+| `GR_HTF_DIRECT_EXIT_SCORE` | exit | 15.0 / 15.0 / 15.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:48141(process_position) · tradier_manage.py:19233(StockStrategy.evaluate_stop) | v12_quick_engine.py:9875(compute_exit_signals) |
 | `INTRADAY_SESSION_FORCE_EXIT_UTC` | exit | 35100 / 35100 / 35100 | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `MFI_FLIP_EXIT_ENABLED` | exit | True / False / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19542(StockStrategy.evaluate_stop) | v12_quick_engine.py:9733(compute_exit_signals) |
-| `MI_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3750(AdvancedSignalRater.rate) · ez_positions_quick.py:3750(AdvancedSignalRater.rate) | v12_quick_engine.py:9744(compute_exit_signals) |
-| `MTF_BB_REJECT_EXIT_TF` | exit | 1h / 1h / 1h | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47930(process_position)<br>(+1) · mtf_live_evaluator.py:482(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12159(simulate_one) |
-| `NEWBORN_LOSS_KILL_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:46774(process_position) · — | v12_quick_engine.py:11693(simulate_one)<br>vec_decisions/generic_filter_tf.py:152(newborn_loss_kill_fires) |
-| `NOLOSS_ENABLED` | exit | False / False / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:13219(simulate_one) |
+| `MFI_FLIP_EXIT_ENABLED` | exit | True / False / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19603(StockStrategy.evaluate_stop) | v12_quick_engine.py:9778(compute_exit_signals) |
+| `MI_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3750(AdvancedSignalRater.rate) · ez_positions_quick.py:3750(AdvancedSignalRater.rate) | v12_quick_engine.py:9789(compute_exit_signals) |
+| `MTF_BB_REJECT_EXIT_TF` | exit | 1h / 1h / 1h | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47970(process_position)<br>(+1) · mtf_live_evaluator.py:482(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12204(simulate_one) |
+| `NEWBORN_LOSS_KILL_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:46814(process_position) · — | v12_quick_engine.py:11738(simulate_one)<br>vec_decisions/generic_filter_tf.py:152(newborn_loss_kill_fires) |
+| `NOLOSS_ENABLED` | exit | False / False / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:13264(simulate_one) |
 | `PARTIAL_EXIT_FRAC` | exit | 0.75 / 0.75 / 0.75 | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `R3_HTF_FLIP_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:47739(process_position) · tradier_manage.py:11049(process_position) | vec_decisions/process_position_stocks__r3_htf_flip.py:61(_r3_htf_flip_flags) [UNREACHABLE] |
+| `R3_HTF_FLIP_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:47779(process_position) · tradier_manage.py:11110(process_position) | vec_decisions/process_position_stocks__r3_htf_flip.py:61(_r3_htf_flip_flags) [UNREACHABLE] |
 | `REVERSE_ON_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `RZ_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:50554(process_position)<br>(+1) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+3) | v12_quick_engine.py:9720(compute_exit_signals)<br>vec_decisions/delta_exit_top.py:132(_delta_exit_enabled) |
-| `SATOSHIT_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:51271(process_position) · — | v12_quick_engine.py:9768(compute_exit_signals)<br>v12_quick_engine.py:12103(simulate_one) |
+| `RZ_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:50594(process_position)<br>(+1) · ez_positions_quick.py:8179(FastDataManager.__init__)<br>(+3) | v12_quick_engine.py:9765(compute_exit_signals)<br>vec_decisions/delta_exit_top.py:132(_delta_exit_enabled) |
+| `SATOSHIT_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:51311(process_position) · — | v12_quick_engine.py:9813(compute_exit_signals)<br>v12_quick_engine.py:12148(simulate_one) |
 | `SCALP_V3_K_OB_EXIT_K15M_HI` | exit | 80.0 / 80.0 / 80.0 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:18595(_scalp_v3_protective_exits) · ez_positions_quick.py:18595(_scalp_v3_protective_exits) | — |
 | `SCALP_V3_K_OB_EXIT_K15M_LO` | exit | 20.0 / 20.0 / 20.0 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:18596(_scalp_v3_protective_exits) · ez_positions_quick.py:18596(_scalp_v3_protective_exits) | — |
 | `SCALP_V3_K_OB_EXIT_K3M_HI` | exit | 80.0 / 80.0 / 80.0 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:18593(_scalp_v3_protective_exits) · ez_positions_quick.py:18593(_scalp_v3_protective_exits) | — |
@@ -3584,25 +3584,25 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `SCALP_V3_K_OB_EXIT_WALL_PCT` | exit | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:18597(_scalp_v3_protective_exits) · ez_positions_quick.py:18597(_scalp_v3_protective_exits) | — |
 | `SCALP_V3_OB_WALL_TOO_CLOSE_PCT` | exit | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:18564(_scalp_v3_protective_exits) · ez_positions_quick.py:18564(_scalp_v3_protective_exits) | — |
 | `STDEV_BREAKOUT_EXIT_PCTB_FAIL` | exit | 0.75 / 0.75 / 0.75 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:12004(check_stdev_breakout_exit) · ez_positions_quick.py:12004(check_stdev_breakout_exit) | — |
-| `STDEV_REJECT_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:12045(check_stdev_reject_exit) · ez_positions_quick.py:12045(check_stdev_reject_exit)<br>(+2) | v12_quick_engine.py:11617(simulate_one)<br>vec_decisions/check_exit_candidates_stocks__stdev_reject_exit.py:44(check_stdev_reject_exit) [UNREACHABLE]<br>(+3) |
+| `STDEV_REJECT_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:12045(check_stdev_reject_exit) · ez_positions_quick.py:12045(check_stdev_reject_exit)<br>(+2) | v12_quick_engine.py:11662(simulate_one)<br>vec_decisions/check_exit_candidates_stocks__stdev_reject_exit.py:44(check_stdev_reject_exit) [UNREACHABLE]<br>(+3) |
 | `STDEV_REJECT_EXIT_RETURN` | exit | 0.65 / 0.65 / 0.65 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:12049(check_stdev_reject_exit) · ez_positions_quick.py:12049(check_stdev_reject_exit)<br>(+2) | vec_decisions/check_exit_candidates_stocks__stdev_reject_exit.py:38(_stdev_reject_thresholds) [UNREACHABLE]<br>vec_decisions/live_exit_chain.py:175(step)<br>(+1) |
 | `STDEV_REJECT_EXIT_ZONE` | exit | 0.8 / 0.8 / 0.8 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:12048(check_stdev_reject_exit) · ez_positions_quick.py:12048(check_stdev_reject_exit)<br>(+2) | vec_decisions/check_exit_candidates_stocks__stdev_reject_exit.py:37(_stdev_reject_thresholds) [UNREACHABLE]<br>vec_decisions/live_exit_chain.py:175(step)<br>(+1) |
-| `STOCH_CROSS_1H_EXIT_ENABLED` | exit | True / False / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19588(StockStrategy.evaluate_stop) | v12_quick_engine.py:9726(compute_exit_signals) |
-| `STOCH_CROSS_3M_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9794(compute_exit_signals) |
-| `STOP_LOSS_ENABLED` | exit | False / False / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:13065(simulate_one) |
-| `STOP_LOSS_PCT` | exit | 2.0 / 2.0 / 2.0 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:13065(simulate_one) |
-| `STRUCTURAL_RANGE_SHIFT_EXIT` | exit | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14199(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14199(check_exit_candidates_for_account.process_single_exit)<br>(+1) | v12_quick_engine.py:8415(compute_reentry_blocks)<br>v12_quick_engine.py:9699(compute_exit_signals)<br>(+6) |
-| `TECHNICAL_DC_STOP_BUFFER_PCT` | exit | <absent> / <absent> / 0.25 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12072(simulate_one) |
-| `TECHNICAL_DC_STOP_TF` | exit | <absent> / <absent> / OFF | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12071(simulate_one)<br>v12_quick_engine.py:12101(simulate_one) [STUB] |
-| `TECHNICAL_DC_TARGET_TF` | global | <absent> / <absent> / OFF | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12073(simulate_one)<br>v12_quick_engine.py:12101(simulate_one) [STUB] |
-| `TRADIER_DC_DAYTRADE_STOP_PCT` | exit | 0.005 / 0.005 / 0.005 | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12033(simulate_one) |
-| `TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M` | exit | <absent> / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:32742(StockDaytradeWing._manage_daytrade_positions) | vec_decisions/dc_channel_exits.py:75(resolve_daytrade_dc) |
-| `TRADIER_DC_DAYTRADE_STOP_USE_DC_15M` | exit | <absent> / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:32741(StockDaytradeWing._manage_daytrade_positions) | vec_decisions/dc_channel_exits.py:77(resolve_daytrade_dc) |
-| `TRADIER_DC_DAYTRADE_TARGET_DC_BUFFER_PCT` | exit | <absent> / 0.002 / 0.002 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/dc_channel_exits.py:84(resolve_daytrade_dc) · tradier_manage.py:32745(StockDaytradeWing._manage_daytrade_positions)<br>(+1) | vec_decisions/dc_channel_exits.py:84(resolve_daytrade_dc) |
-| `TRADIER_DC_DAYTRADE_TARGET_USE_DC4_15M` | exit | <absent> / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:32744(StockDaytradeWing._manage_daytrade_positions) | vec_decisions/dc_channel_exits.py:86(resolve_daytrade_dc) |
-| `TRADIER_DC_DAYTRADE_TARGET_USE_DC_15M` | exit | <absent> / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:32743(StockDaytradeWing._manage_daytrade_positions) | vec_decisions/dc_channel_exits.py:88(resolve_daytrade_dc) |
+| `STOCH_CROSS_1H_EXIT_ENABLED` | exit | True / False / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19649(StockStrategy.evaluate_stop) | v12_quick_engine.py:9771(compute_exit_signals) |
+| `STOCH_CROSS_3M_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9839(compute_exit_signals) |
+| `STOP_LOSS_ENABLED` | exit | False / False / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:13110(simulate_one) |
+| `STOP_LOSS_PCT` | exit | 2.0 / 2.0 / 2.0 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:13110(simulate_one) |
+| `STRUCTURAL_RANGE_SHIFT_EXIT` | exit | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14199(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14199(check_exit_candidates_for_account.process_single_exit)<br>(+1) | v12_quick_engine.py:8460(compute_reentry_blocks)<br>v12_quick_engine.py:9744(compute_exit_signals)<br>(+6) |
+| `TECHNICAL_DC_STOP_BUFFER_PCT` | exit | <absent> / <absent> / 0.25 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12117(simulate_one) |
+| `TECHNICAL_DC_STOP_TF` | exit | <absent> / <absent> / OFF | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12116(simulate_one)<br>v12_quick_engine.py:12146(simulate_one) [STUB] |
+| `TECHNICAL_DC_TARGET_TF` | global | <absent> / <absent> / OFF | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12118(simulate_one)<br>v12_quick_engine.py:12146(simulate_one) [STUB] |
+| `TRADIER_DC_DAYTRADE_STOP_PCT` | exit | 0.005 / 0.005 / 0.005 | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12078(simulate_one) |
+| `TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M` | exit | <absent> / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:32803(StockDaytradeWing._manage_daytrade_positions) | vec_decisions/dc_channel_exits.py:75(resolve_daytrade_dc) |
+| `TRADIER_DC_DAYTRADE_STOP_USE_DC_15M` | exit | <absent> / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:32802(StockDaytradeWing._manage_daytrade_positions) | vec_decisions/dc_channel_exits.py:77(resolve_daytrade_dc) |
+| `TRADIER_DC_DAYTRADE_TARGET_DC_BUFFER_PCT` | exit | <absent> / 0.002 / 0.002 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/dc_channel_exits.py:84(resolve_daytrade_dc) · tradier_manage.py:32806(StockDaytradeWing._manage_daytrade_positions)<br>(+1) | vec_decisions/dc_channel_exits.py:84(resolve_daytrade_dc) |
+| `TRADIER_DC_DAYTRADE_TARGET_USE_DC4_15M` | exit | <absent> / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:32805(StockDaytradeWing._manage_daytrade_positions) | vec_decisions/dc_channel_exits.py:86(resolve_daytrade_dc) |
+| `TRADIER_DC_DAYTRADE_TARGET_USE_DC_15M` | exit | <absent> / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:32804(StockDaytradeWing._manage_daytrade_positions) | vec_decisions/dc_channel_exits.py:88(resolve_daytrade_dc) |
 | `ULTIMATE_DC_4H_STOP_ENABLED` | exit | True / True / <absent> | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `VEL_EXIT_ENABLED` | exit | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9680(compute_exit_signals) |
+| `VEL_EXIT_ENABLED` | exit | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:9725(compute_exit_signals) |
 | `WT_DC_EXIT_ENABLED` | exit | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | vec_decisions/ported_stateful_exit.py:193(masks) |
 
 ## EXIT_VELOCITY (39)
@@ -3610,44 +3610,44 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | switch | kind | defaults cfg / tradier / quick | templates | crypto | stocks | live reads (ez · tradier) | vec reads |
 |---|---|---|---|---|---|---|---|
 | `BB_SQUEEZE_EXIT_ENABLED` | exit | <absent> / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/wave4_families.py:193(bb_squeeze_exit_mask) · vec_decisions/wave4_families.py:193(bb_squeeze_exit_mask) | vec_decisions/wave4_families.py:193(bb_squeeze_exit_mask) |
-| `BEAR_HOLD_EXIT_DELAY_BARS` | exit | 0 / 0 / 0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/live_unw_gates.py:88(exit_hold_blocked) · vec_decisions/live_unw_gates.py:88(exit_hold_blocked) | v12_quick_engine.py:10005(compute_exit_signals)<br>vec_decisions/live_unw_gates.py:88(exit_hold_blocked) |
+| `BEAR_HOLD_EXIT_DELAY_BARS` | exit | 0 / 0 / 0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/live_unw_gates.py:88(exit_hold_blocked) · vec_decisions/live_unw_gates.py:88(exit_hold_blocked) | v12_quick_engine.py:10050(compute_exit_signals)<br>vec_decisions/live_unw_gates.py:88(exit_hold_blocked) |
 | `BTC_DIVERGENCE_EXIT_AGAINST` | exit | True / True / True | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | btc_loop.py:567(should_exit_btc) · btc_loop.py:567(should_exit_btc) | v12_quick_engine.py:448(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:449(_batch1_template_wiring) [DEAD]<br>(+1) |
-| `BULL_HOLD_EXIT_DELAY_BARS` | exit | 0 / 0 / 0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/live_unw_gates.py:86(exit_hold_blocked) · vec_decisions/live_unw_gates.py:86(exit_hold_blocked) | v12_quick_engine.py:9982(compute_exit_signals)<br>vec_decisions/live_unw_gates.py:86(exit_hold_blocked) |
-| `DC_HARD_STOP_TF` | exit | 4h / 4h / 4h | CL,CS,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:46680(process_position)<br>(+2) · ez_positions_quick.py:13956(check_exit_candidates_for_account.process_single_exit)<br>(+1) | v12_quick_engine.py:11373(simulate_one) |
-| `DELTA_EXIT_DC_FLOOR` | exit | True / True / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19785(StockStrategy.evaluate_stop) | v12_quick_engine.py:9674(compute_exit_signals) |
+| `BULL_HOLD_EXIT_DELAY_BARS` | exit | 0 / 0 / 0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/live_unw_gates.py:86(exit_hold_blocked) · vec_decisions/live_unw_gates.py:86(exit_hold_blocked) | v12_quick_engine.py:10027(compute_exit_signals)<br>vec_decisions/live_unw_gates.py:86(exit_hold_blocked) |
+| `DC_HARD_STOP_TF` | exit | 4h / 4h / 4h | CL,CS,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:46720(process_position)<br>(+2) · ez_positions_quick.py:13956(check_exit_candidates_for_account.process_single_exit)<br>(+1) | v12_quick_engine.py:11418(simulate_one) |
+| `DELTA_EXIT_DC_FLOOR` | exit | True / True / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19846(StockStrategy.evaluate_stop) | v12_quick_engine.py:9719(compute_exit_signals) |
 | `EXIT_VELOCITY_WT_TFS` | exit | 1h,4h,D / 1h,4h,D / 1h,4h,D | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `E_1_WT_EXIT_USE_DELTA_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:50091(process_position)<br>(+2) · — | vec_decisions/ported_exit.py:66(apply) |
+| `E_1_WT_EXIT_USE_DELTA_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:50131(process_position)<br>(+2) · — | vec_decisions/ported_exit.py:66(apply) |
 | `HARD_BREAKEVEN_FLOOR_ENABLED` | exit | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14583(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14583(check_exit_candidates_for_account.process_single_exit) | vec_decisions/live_exit_chain.py:143(step)<br>vec_decisions/live_exit_chain.py:146(step)<br>(+1) |
 | `MI_STRUCT_EXIT_ENABLED` | exit | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3753(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:3753(AdvancedSignalRater.rate)<br>(+1) | vec_decisions/wave4_families.py:69(mi_exit_signal) |
 | `MI_VELOCITY_EXIT_ENABLED` | exit | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3768(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:3768(AdvancedSignalRater.rate)<br>(+1) | vec_decisions/wave4_families.py:85(mi_exit_signal) |
 | `MI_WAVE_EXIT_ENABLED` | exit | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3780(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:3780(AdvancedSignalRater.rate)<br>(+1) | vec_decisions/wave4_families.py:94(mi_exit_signal) |
-| `MTF_ATR_TRAIL_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47935(process_position)<br>(+1) · mtf_live_evaluator.py:468(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12143(simulate_one) |
-| `MTF_ATR_TRAIL_ENABLED_TRADIER` | exit | <absent> / False / False | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12145(simulate_one) |
-| `MTF_ATR_TRAIL_MULT` | exit | 2.0 / 2.5 / 2.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47932(process_position)<br>(+1) · mtf_live_evaluator.py:470(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12142(simulate_one) |
-| `MTF_ATR_TRAIL_TF` | exit | 15m / 15m / 15m | CL,CS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47928(process_position)<br>(+1) · mtf_live_evaluator.py:469(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12141(simulate_one) |
-| `MTF_ATR_TRAIL_TF_TRADIER` | exit | <absent> / 1h / 1h | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:11160(process_position) | v12_quick_engine.py:12141(simulate_one) |
-| `MTF_BB_REJECT_EXIT_ENABLED` | exit | True / True / True | CL,CS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47974(process_position)<br>(+1) · mtf_live_evaluator.py:481(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12161(simulate_one) |
-| `MTF_BB_REJECT_EXIT_LOOKBACK` | exit | 5 / 5 / 5 | CL,CS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47933(process_position)<br>(+1) · mtf_live_evaluator.py:483(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12160(simulate_one) |
-| `MTF_DC_REJECT_EXIT_ENABLED` | exit | True / True / True | CL,CS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47951(process_position)<br>(+1) · mtf_live_evaluator.py:475(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12153(simulate_one) |
-| `MTF_DC_REJECT_EXIT_TF` | exit | 1h / 1h / 1h | CL,CS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47929(process_position)<br>(+1) · mtf_live_evaluator.py:476(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12151(simulate_one) |
-| `MTF_DC_REJECT_USE_DC4` | global | False / False / False | CL,CS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:47955(process_position) · — | v12_quick_engine.py:12152(simulate_one) |
-| `MTF_EXIT_USE_COMPOUND` | exit | True / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47902(process_position)<br>(+1) · mtf_live_evaluator.py:462(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12140(simulate_one) |
-| `MTF_WT_CROSS_EXIT_ENABLED` | exit | True / True / True | CL,CS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:48014(process_position)<br>(+1) · mtf_live_evaluator.py:494(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12176(simulate_one)<br>vec_decisions/process_position_stocks__mtf_gr_wt_exit.py:56(_mtf_gr_wt_params) [UNREACHABLE] |
-| `MTF_WT_CROSS_EXIT_TF` | exit | 15m / 15m / 15m | CL,CS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47931(process_position)<br>(+1) · mtf_live_evaluator.py:495(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12174(simulate_one)<br>vec_decisions/process_position_stocks__mtf_gr_wt_exit.py:54(_mtf_gr_wt_params) [UNREACHABLE] |
+| `MTF_ATR_TRAIL_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47975(process_position)<br>(+1) · mtf_live_evaluator.py:468(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12188(simulate_one) |
+| `MTF_ATR_TRAIL_ENABLED_TRADIER` | exit | <absent> / False / False | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12190(simulate_one) |
+| `MTF_ATR_TRAIL_MULT` | exit | 2.0 / 2.5 / 2.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47972(process_position)<br>(+1) · mtf_live_evaluator.py:470(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12187(simulate_one) |
+| `MTF_ATR_TRAIL_TF` | exit | 15m / 15m / 15m | CL,CS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47968(process_position)<br>(+1) · mtf_live_evaluator.py:469(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12186(simulate_one) |
+| `MTF_ATR_TRAIL_TF_TRADIER` | exit | <absent> / 1h / 1h | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:11221(process_position) | v12_quick_engine.py:12186(simulate_one) |
+| `MTF_BB_REJECT_EXIT_ENABLED` | exit | True / True / True | CL,CS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:48014(process_position)<br>(+1) · mtf_live_evaluator.py:481(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12206(simulate_one) |
+| `MTF_BB_REJECT_EXIT_LOOKBACK` | exit | 5 / 5 / 5 | CL,CS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47973(process_position)<br>(+1) · mtf_live_evaluator.py:483(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12205(simulate_one) |
+| `MTF_DC_REJECT_EXIT_ENABLED` | exit | True / True / True | CL,CS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47991(process_position)<br>(+1) · mtf_live_evaluator.py:475(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12198(simulate_one) |
+| `MTF_DC_REJECT_EXIT_TF` | exit | 1h / 1h / 1h | CL,CS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47969(process_position)<br>(+1) · mtf_live_evaluator.py:476(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12196(simulate_one) |
+| `MTF_DC_REJECT_USE_DC4` | global | False / False / False | CL,CS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:47995(process_position) · — | v12_quick_engine.py:12197(simulate_one) |
+| `MTF_EXIT_USE_COMPOUND` | exit | True / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47942(process_position)<br>(+1) · mtf_live_evaluator.py:462(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12185(simulate_one) |
+| `MTF_WT_CROSS_EXIT_ENABLED` | exit | True / True / True | CL,CS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:48054(process_position)<br>(+1) · mtf_live_evaluator.py:494(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12221(simulate_one)<br>vec_decisions/process_position_stocks__mtf_gr_wt_exit.py:56(_mtf_gr_wt_params) [UNREACHABLE] |
+| `MTF_WT_CROSS_EXIT_TF` | exit | 15m / 15m / 15m | CL,CS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:47971(process_position)<br>(+1) · mtf_live_evaluator.py:495(evaluate_mtf_exit)<br>(+1) | v12_quick_engine.py:12219(simulate_one)<br>vec_decisions/process_position_stocks__mtf_gr_wt_exit.py:54(_mtf_gr_wt_params) [UNREACHABLE] |
 | `MU_CORRECTION_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:5817(<module>)<br>(+1) | — |
 | `RULE_B_3M_EXIT_ENABLED` | exit | True / True / True | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:14885(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14885(check_exit_candidates_for_account.process_single_exit) | — |
 | `SCALP_V3_K_OB_EXIT_ENABLED` | exit | True / True / True | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:18592(_scalp_v3_protective_exits) · ez_positions_quick.py:18592(_scalp_v3_protective_exits) | — |
 | `SCALP_V3_PROTECTIVE_EXIT_ENABLED` | exit | True / True / True | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:18518(_scalp_v3_protective_exits) · ez_positions_quick.py:18518(_scalp_v3_protective_exits) | — |
 | `STDEV_REJECT_EXIT_TF` | exit | D / D / D | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:12047(check_stdev_reject_exit) · ez_positions_quick.py:12047(check_stdev_reject_exit)<br>(+2) | vec_decisions/check_exit_candidates_stocks__stdev_reject_exit.py:36(_stdev_reject_thresholds) [UNREACHABLE]<br>vec_decisions/live_exit_chain.py:88(prepare)<br>(+2) |
-| `WT_15M_LH_WAIT_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40593(evaluate_multi_tf_exit) · tradier_manage.py:18427(StockStrategy.evaluate_multi_tf_exit) | vec_decisions/mtf_exit_scorer.py:230(score_array_parts) |
-| `WT_4H_VEL_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:49865(process_position)<br>(+2) · — | vec_decisions/wt_4h_vel_exit.py:82(check_wt_4h_vel_exit) [UNREACHABLE]<br>vec_decisions/wt_4h_vel_exit.py:109(check_wt_4h_vel_exit_vec) [UNREACHABLE] |
-| `WT_4H_VEL_EXIT_K_EXTREME_HIGH` | exit | 80.0 / 80.0 / 80.0 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:49905(process_position)<br>(+2) · — | vec_decisions/process_position_crypto__wt_4h_vel_exit.py:54(_wt_4h_params) [UNREACHABLE]<br>vec_decisions/wt_4h_vel_exit.py:69(_wt_4h_vel_exit_thresholds) [UNREACHABLE] |
-| `WT_4H_VEL_EXIT_K_EXTREME_LOW` | exit | 20.0 / 20.0 / 20.0 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:49906(process_position)<br>(+2) · — | vec_decisions/process_position_crypto__wt_4h_vel_exit.py:55(_wt_4h_params) [UNREACHABLE]<br>vec_decisions/wt_4h_vel_exit.py:70(_wt_4h_vel_exit_thresholds) [UNREACHABLE] |
+| `WT_15M_LH_WAIT_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40633(evaluate_multi_tf_exit) · tradier_manage.py:18488(StockStrategy.evaluate_multi_tf_exit) | vec_decisions/mtf_exit_scorer.py:230(score_array_parts) |
+| `WT_4H_VEL_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:49905(process_position)<br>(+2) · — | vec_decisions/wt_4h_vel_exit.py:82(check_wt_4h_vel_exit) [UNREACHABLE]<br>vec_decisions/wt_4h_vel_exit.py:109(check_wt_4h_vel_exit_vec) [UNREACHABLE] |
+| `WT_4H_VEL_EXIT_K_EXTREME_HIGH` | exit | 80.0 / 80.0 / 80.0 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:49945(process_position)<br>(+2) · — | vec_decisions/process_position_crypto__wt_4h_vel_exit.py:54(_wt_4h_params) [UNREACHABLE]<br>vec_decisions/wt_4h_vel_exit.py:69(_wt_4h_vel_exit_thresholds) [UNREACHABLE] |
+| `WT_4H_VEL_EXIT_K_EXTREME_LOW` | exit | 20.0 / 20.0 / 20.0 | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:49946(process_position)<br>(+2) · — | vec_decisions/process_position_crypto__wt_4h_vel_exit.py:55(_wt_4h_params) [UNREACHABLE]<br>vec_decisions/wt_4h_vel_exit.py:70(_wt_4h_vel_exit_thresholds) [UNREACHABLE] |
 | `WT_CROSS_EXIT_APPLIES_TO_WINNERS` | exit | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14632(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14632(check_exit_candidates_for_account.process_single_exit) | vec_decisions/live_exit_chain.py:159(step) |
 | `WT_CROSS_EXIT_ENABLED` | exit | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14629(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14629(check_exit_candidates_for_account.process_single_exit) | vec_decisions/check_exit_candidates_crypto__wt_cross_exit.py:71(check_wt_cross_exit) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_crypto__wt_cross_exit.py:93(check_wt_cross_exit_vec) [UNREACHABLE]<br>(+1) |
-| `WT_DIVERGENCE_VV_SHORT_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40620(evaluate_multi_tf_exit) · tradier_manage.py:18456(StockStrategy.evaluate_multi_tf_exit) | vec_decisions/mtf_exit_scorer.py:250(score_array_parts) |
-| `WT_LOWER_CROSS_EXIT_TF` | exit | OFF / OFF / OFF | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:46736(process_position) · — | v12_quick_engine.py:12852(simulate_one) |
-| `WT_MOMENTUM_EXIT_ENABLED` | exit | False / False / <absent> | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40583(evaluate_multi_tf_exit) · tradier_manage.py:18414(StockStrategy.evaluate_multi_tf_exit) | vec_decisions/mtf_exit_scorer.py:209(score_array_parts) |
+| `WT_DIVERGENCE_VV_SHORT_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40660(evaluate_multi_tf_exit) · tradier_manage.py:18517(StockStrategy.evaluate_multi_tf_exit) | vec_decisions/mtf_exit_scorer.py:250(score_array_parts) |
+| `WT_LOWER_CROSS_EXIT_TF` | exit | OFF / OFF / OFF | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:46776(process_position) · — | v12_quick_engine.py:12897(simulate_one) |
+| `WT_MOMENTUM_EXIT_ENABLED` | exit | False / False / <absent> | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:40623(evaluate_multi_tf_exit) · tradier_manage.py:18475(StockStrategy.evaluate_multi_tf_exit) | vec_decisions/mtf_exit_scorer.py:209(score_array_parts) |
 
 ## GLOBAL_RISK_GATES (65)
 
@@ -3655,108 +3655,108 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 |---|---|---|---|---|---|---|---|
 | `ABSOLUTE_OPEN_LOCK_SEC` | global | <absent> / <absent> / 0 | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
 | `BB_RSI_STOCH_SCALP_ENABLED` | global | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:4473(AdvancedSignalRater.rate)<br>(+2) · ez_positions_quick.py:4473(AdvancedSignalRater.rate)<br>(+3) | vec_decisions/process_position_stocks__alt_entries.py:114(check_bb_rsi_stoch_scalp)<br>vec_decisions/process_position_stocks__alt_entries.py:127(check_bb_rsi_stoch_scalp_vec) |
-| `BB_SQUEEZE_ENABLED` | global | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:11841(detect_bb_squeeze_breakout)<br>(+1) · ez_positions_quick.py:11841(detect_bb_squeeze_breakout)<br>(+1) | v12_quick_engine.py:8489(compute_reentry_blocks) |
+| `BB_SQUEEZE_ENABLED` | global | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:11841(detect_bb_squeeze_breakout)<br>(+1) · ez_positions_quick.py:11841(detect_bb_squeeze_breakout)<br>(+1) | v12_quick_engine.py:8534(compute_reentry_blocks) |
 | `BEAR_MARKET_MODE` | global | True / True / True | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:3387(AdvancedSignalRater.rate)<br>(+2) · ez_positions_quick.py:3387(AdvancedSignalRater.rate)<br>(+2) | — |
-| `BEAR_MARKET_MODE_TRADIER` | global | <absent> / True / True | CL,CS,SL | DEAD | LIVE_ONLY | — · tradier_manage.py:13482(process_position)<br>(+1) | — |
-| `BLACKLIST_SYMBOLS` | global | [] / [] / [] | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:24181(MultiAccountTradeManager.execute_trade_action)<br>(+1) · — | — |
-| `CLENOW_ENABLED` | global | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:30424(TradierTradeManager.evaluate_clenow_entry) | v12_quick_engine.py:9286(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:50(pass_mask) |
-| `CONFLUENCE_MODE_ENABLED` | global | False / False / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8930(compute_entry_signals) |
-| `CONNORS_RSI_ENABLED` | global | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13139(process_position)<br>(+1) | v12_quick_engine.py:8328(compute_reentry_blocks) |
-| `COOLDOWN_BARS` | global | 3 / 3 / 3 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12011(simulate_one)<br>v12_quick_engine.py:12011(simulate_one) |
-| `COUNTER_TREND_SMA200_BYPASS_ENABLED` | global | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:29912(MultiAccountTradeManager.execute_now) · tradier_manage.py:13968(queue_trade_action) | vec_decisions/counter_trend.py:89(counter_trend_blocks)<br>vec_decisions/counter_trend.py:115(counter_trend_vec)<br>(+1) |
-| `DC_BREAK_LOW_HTF_ALIGN_MIN` | global | <absent> / 2 / 2 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:32656(StockDaytradeWing._check_dc_break) | v12_quick_engine.py:9209(compute_entry_signals) |
-| `DC_DAYTRADE_ENABLED` | global | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:46738(process_position)<br>(+1) · tradier_manage.py:32543(StockDaytradeWing.run_loop) | v12_quick_engine.py:8508(compute_reentry_blocks)<br>v12_quick_engine.py:12029(simulate_one) |
-| `DELTA_ENGINE_ENABLED` | global | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:206(check_reentry_delta_tolerant)<br>(+10) · ez_positions_quick.py:2474(AdvancedSignalRater.rate)<br>(+11) | v12_quick_engine.py:8546(compute_reentry_blocks)<br>v12_quick_engine.py:12026(simulate_one)<br>(+1) |
-| `EMA_50_200_TFS` | global | <absent> / D / D | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:27561(TradierTradeManager.should_enter_long)<br>(+1) | v12_quick_engine.py:9425(compute_entry_signals)<br>vec_decisions/live_kindergarten_stocks.py:29(pass_mask) |
-| `EMA_50_200_TIMEFRAME` | global | <absent> / D / D | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:27561(TradierTradeManager.should_enter_long)<br>(+3) | v12_quick_engine.py:9425(compute_entry_signals)<br>vec_decisions/live_kindergarten_stocks.py:29(pass_mask) |
-| `EMA_9_21_TIMEFRAME` | global | 1h / 1h / 1h | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | live_entry_gates.py:83(check_entry_gates)<br>(+2) · live_entry_gates.py:83(check_entry_gates)<br>(+9) | v12_quick_engine.py:9401(compute_entry_signals)<br>vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:75(check_ema_9_21) [UNREACHABLE]<br>(+2) |
+| `BEAR_MARKET_MODE_TRADIER` | global | <absent> / True / True | CL,CS,SL | DEAD | LIVE_ONLY | — · tradier_manage.py:13543(process_position)<br>(+1) | — |
+| `BLACKLIST_SYMBOLS` | global | [] / [] / [] | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:24221(MultiAccountTradeManager.execute_trade_action)<br>(+1) · — | — |
+| `CLENOW_ENABLED` | global | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:30485(TradierTradeManager.evaluate_clenow_entry) | v12_quick_engine.py:9331(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:50(pass_mask) |
+| `CONFLUENCE_MODE_ENABLED` | global | False / False / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8975(compute_entry_signals) |
+| `CONNORS_RSI_ENABLED` | global | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13200(process_position)<br>(+1) | v12_quick_engine.py:8373(compute_reentry_blocks) |
+| `COOLDOWN_BARS` | global | 3 / 3 / 3 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12056(simulate_one)<br>v12_quick_engine.py:12056(simulate_one) |
+| `COUNTER_TREND_SMA200_BYPASS_ENABLED` | global | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:29952(MultiAccountTradeManager.execute_now) · tradier_manage.py:14029(queue_trade_action) | vec_decisions/counter_trend.py:89(counter_trend_blocks)<br>vec_decisions/counter_trend.py:115(counter_trend_vec)<br>(+1) |
+| `DC_BREAK_LOW_HTF_ALIGN_MIN` | global | <absent> / 2 / 2 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:32717(StockDaytradeWing._check_dc_break) | v12_quick_engine.py:9254(compute_entry_signals) |
+| `DC_DAYTRADE_ENABLED` | global | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:46778(process_position)<br>(+1) · tradier_manage.py:32604(StockDaytradeWing.run_loop) | v12_quick_engine.py:8553(compute_reentry_blocks)<br>v12_quick_engine.py:12074(simulate_one) |
+| `DELTA_ENGINE_ENABLED` | global | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:206(check_reentry_delta_tolerant)<br>(+10) · ez_positions_quick.py:2474(AdvancedSignalRater.rate)<br>(+11) | v12_quick_engine.py:8591(compute_reentry_blocks)<br>v12_quick_engine.py:12071(simulate_one)<br>(+1) |
+| `EMA_50_200_TFS` | global | <absent> / D / D | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:27622(TradierTradeManager.should_enter_long)<br>(+1) | v12_quick_engine.py:9470(compute_entry_signals)<br>vec_decisions/live_kindergarten_stocks.py:29(pass_mask) |
+| `EMA_50_200_TIMEFRAME` | global | <absent> / D / D | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:27622(TradierTradeManager.should_enter_long)<br>(+3) | v12_quick_engine.py:9470(compute_entry_signals)<br>vec_decisions/live_kindergarten_stocks.py:29(pass_mask) |
+| `EMA_9_21_TIMEFRAME` | global | 1h / 1h / 1h | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | live_entry_gates.py:83(check_entry_gates)<br>(+2) · live_entry_gates.py:83(check_entry_gates)<br>(+9) | v12_quick_engine.py:9446(compute_entry_signals)<br>vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py:75(check_ema_9_21) [UNREACHABLE]<br>(+2) |
 | `EXIT_STDEV_BREAKOUT_FAIL_ENABLED` | exit | True / True / True | CL | DEAD | LIVE_ONLY | — · tradier_manage.py:5823(<module>) | — |
-| `FH_MOMENTUM_ENABLED` | global | True / True / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:20765(StockStrategy.evaluate_open)<br>(+1) | v12_quick_engine.py:8604(compute_reentry_blocks) |
-| `FIXED_QUANTITY_ENABLED` | global | False / False / <absent> | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:41113(calculate_final_order_quantity)<br>(+1) · — | v12_quick_engine.py:10187(compute_regime_sizing_mult) |
-| `GAP_INVENTORY_LOOKBACK_DAYS` | global | <absent> / 20 / 20 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9147(_gap_inventory_record) | v12_quick_engine.py:11471(simulate_one) |
-| `GAP_MOC_DC_PROXIMITY_PCT` | global | <absent> / 0.5 / 0.5 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9489(_is_near_dc4_high_with_wt_down) | v12_quick_engine.py:11511(simulate_one) |
-| `GAP_MOC_HOLD_POSITIVE_BIAS_PCT` | global | <absent> / 0.3 / 0.3 | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11488(simulate_one) |
-| `GAP_PER_SYMBOL_AVG_THRESH_PCT` | global | <absent> / 0.1 / 0.1 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9361(_gap_per_symbol_should_close)<br>(+1) | v12_quick_engine.py:11488(simulate_one) |
-| `GAP_PER_SYMBOL_LOOKBACK_DAYS` | global | <absent> / 20 / 20 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9444(_gap_per_symbol_inventory_record_from_cache) | v12_quick_engine.py:11471(simulate_one) |
-| `GAP_RISK_EXIT_ENABLED` | exit | <absent> / True / False | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19611(StockStrategy.evaluate_stop)<br>(+1) | v12_quick_engine.py:11610(simulate_one)<br>vec_decisions/gap_risk_exit.py:104(gap_risk_exit_should_exit)<br>(+2) |
-| `HARDCODED_RALLY_REENTRY_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:3074(check_reentry_eligible)<br>(+3) · tradier_manage.py:21682(StockStrategy.evaluate_reentry) | v12_quick_engine.py:12376(simulate_one)<br>v12_quick_engine.py:12461(simulate_one) |
+| `FH_MOMENTUM_ENABLED` | global | True / True / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:20826(StockStrategy.evaluate_open)<br>(+1) | v12_quick_engine.py:8649(compute_reentry_blocks) |
+| `FIXED_QUANTITY_ENABLED` | global | False / False / <absent> | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:41153(calculate_final_order_quantity)<br>(+1) · — | v12_quick_engine.py:10232(compute_regime_sizing_mult) |
+| `GAP_INVENTORY_LOOKBACK_DAYS` | global | <absent> / 20 / 20 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9208(_gap_inventory_record) | v12_quick_engine.py:11516(simulate_one) |
+| `GAP_MOC_DC_PROXIMITY_PCT` | global | <absent> / 0.5 / 0.5 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9550(_is_near_dc4_high_with_wt_down) | v12_quick_engine.py:11556(simulate_one) |
+| `GAP_MOC_HOLD_POSITIVE_BIAS_PCT` | global | <absent> / 0.3 / 0.3 | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:11533(simulate_one) |
+| `GAP_PER_SYMBOL_AVG_THRESH_PCT` | global | <absent> / 0.1 / 0.1 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9422(_gap_per_symbol_should_close)<br>(+1) | v12_quick_engine.py:11533(simulate_one) |
+| `GAP_PER_SYMBOL_LOOKBACK_DAYS` | global | <absent> / 20 / 20 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:9505(_gap_per_symbol_inventory_record_from_cache) | v12_quick_engine.py:11516(simulate_one) |
+| `GAP_RISK_EXIT_ENABLED` | exit | <absent> / True / False | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19672(StockStrategy.evaluate_stop)<br>(+1) | v12_quick_engine.py:11655(simulate_one)<br>vec_decisions/gap_risk_exit.py:104(gap_risk_exit_should_exit)<br>(+2) |
+| `HARDCODED_RALLY_REENTRY_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:3074(check_reentry_eligible)<br>(+3) · tradier_manage.py:21743(StockStrategy.evaluate_reentry) | v12_quick_engine.py:12421(simulate_one)<br>v12_quick_engine.py:12506(simulate_one) |
 | `HARD_AUGMENT_LOCK_SEC` | augment | <absent> / <absent> / 0 | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
 | `HARD_REDUCE_LOCK_SEC` | reduce | <absent> / <absent> / 0 | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `HTF_ALIGNMENT_ENABLED` | global | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8895(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:29(pass_mask) |
-| `HTF_WT_CHURN_REENTRY_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:42515(process_single_reentry_evaluation) · — | — |
-| `KINDERGARTEN_STRICT_TFS` | global |  /  /  | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/kg_entry_gate.py:42(ema921_pass)<br>(+1) · tradier_manage.py:27588(TradierTradeManager.should_enter_long)<br>(+1) | v12_quick_engine.py:9436(compute_entry_signals)<br>vec_decisions/kg_entry_gate.py:42(ema921_pass)<br>(+2) |
-| `MOMENTUM_SMA_WATCHDOG_ENABLED` | global | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:36220(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | v12_quick_engine.py:11741(simulate_one)<br>vec_decisions/momentum_watchdog.py:81(momentum_watchdog_should_open)<br>(+3) |
-| `MOMENTUM_SMA_WATCHDOG_PCT` | global | 1.0 / 1.0 / 1.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:36360(MultiAccountTradeManager.momentum_sma_watchdog_loop)<br>(+3) · — | vec_decisions/momentum_watchdog.py:86(momentum_watchdog_should_open)<br>vec_decisions/momentum_watchdog.py:123(momentum_watchdog_vec) |
-| `MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED` | global | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | mtf_live_evaluator.py:232(_armed_any_effective) · mtf_live_evaluator.py:232(_armed_any_effective) | v12_quick_engine.py:9278(compute_entry_signals) |
-| `OPEN_RATE_BREAKER_ENABLED` | global | False / False / False | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:30386(MultiAccountTradeManager.execute_now) · tradier_manage.py:25688(TradierTradeManager.execute_now) | — |
-| `PROFIT_TARGET_ENABLED` | global | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:46748(process_position) · — | v12_quick_engine.py:13063(simulate_one) |
-| `PROFIT_TARGET_PCT` | global | 1.6 / 1.6 / 1.6 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:46750(process_position) · — | v12_quick_engine.py:13063(simulate_one) |
-| `REGIME_ADAPTIVE_ENABLED` | global | False / False / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10192(compute_regime_sizing_mult) |
-| `RSI2_ENABLED` | global | True / True / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13127(process_position)<br>(+1) | v12_quick_engine.py:8321(compute_reentry_blocks) |
-| `SATOSHIT_ENABLED` | global | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:51036(process_position)<br>(+4) · ez_positions_quick.py:3053(AdvancedSignalRater.rate)<br>(+1) | v12_quick_engine.py:9712(compute_exit_signals) |
-| `SIMPLE_PRICE_GT0_ENABLED` | global | False / False / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12015(simulate_one) |
-| `SQUEEZE_ENABLED` | global | False / False / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8497(compute_reentry_blocks) |
+| `HTF_ALIGNMENT_ENABLED` | global | True / True / True | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8940(compute_entry_signals)<br>vec_decisions/stocks_trend_gates.py:29(pass_mask) |
+| `HTF_WT_CHURN_REENTRY_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | LIVE_ONLY | DEAD | ez_manage.py:42555(process_single_reentry_evaluation) · — | — |
+| `KINDERGARTEN_STRICT_TFS` | global |  /  /  | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/kg_entry_gate.py:42(ema921_pass)<br>(+1) · tradier_manage.py:27649(TradierTradeManager.should_enter_long)<br>(+1) | v12_quick_engine.py:9481(compute_entry_signals)<br>vec_decisions/kg_entry_gate.py:42(ema921_pass)<br>(+2) |
+| `MOMENTUM_SMA_WATCHDOG_ENABLED` | global | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:36260(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | v12_quick_engine.py:11786(simulate_one)<br>vec_decisions/momentum_watchdog.py:81(momentum_watchdog_should_open)<br>(+3) |
+| `MOMENTUM_SMA_WATCHDOG_PCT` | global | 1.0 / 1.0 / 1.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:36400(MultiAccountTradeManager.momentum_sma_watchdog_loop)<br>(+3) · — | vec_decisions/momentum_watchdog.py:86(momentum_watchdog_should_open)<br>vec_decisions/momentum_watchdog.py:123(momentum_watchdog_vec) |
+| `MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED` | global | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | mtf_live_evaluator.py:232(_armed_any_effective) · mtf_live_evaluator.py:232(_armed_any_effective) | v12_quick_engine.py:9323(compute_entry_signals) |
+| `OPEN_RATE_BREAKER_ENABLED` | global | False / False / False | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_manage.py:30426(MultiAccountTradeManager.execute_now) · tradier_manage.py:25749(TradierTradeManager.execute_now) | — |
+| `PROFIT_TARGET_ENABLED` | global | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:46788(process_position) · — | v12_quick_engine.py:13108(simulate_one) |
+| `PROFIT_TARGET_PCT` | global | 1.6 / 1.6 / 1.6 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:46790(process_position) · — | v12_quick_engine.py:13108(simulate_one) |
+| `REGIME_ADAPTIVE_ENABLED` | global | False / False / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:10237(compute_regime_sizing_mult) |
+| `RSI2_ENABLED` | global | True / True / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13188(process_position)<br>(+1) | v12_quick_engine.py:8366(compute_reentry_blocks) |
+| `SATOSHIT_ENABLED` | global | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:51076(process_position)<br>(+4) · ez_positions_quick.py:3053(AdvancedSignalRater.rate)<br>(+1) | v12_quick_engine.py:9757(compute_exit_signals) |
+| `SIMPLE_PRICE_GT0_ENABLED` | global | False / False / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12060(simulate_one) |
+| `SQUEEZE_ENABLED` | global | False / False / False | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8542(compute_reentry_blocks) |
 | `STALE_HOLD_ENABLED` | global | <absent> / <absent> / False | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `STRUCTURAL_RANGE_SHIFT_TF` | global | dc_4h / bb_1h / dc_4h | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14201(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14201(check_exit_candidates_for_account.process_single_exit)<br>(+1) | v12_quick_engine.py:8417(compute_reentry_blocks)<br>v12_quick_engine.py:9702(compute_exit_signals)<br>(+4) |
-| `TECHNICAL_DC_TARGET_BUFFER_PCT` | global | <absent> / <absent> / 0.1 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12074(simulate_one) |
-| `TRADIER_DC_DAYTRADE_ENABLED` | global | True / True / True | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8508(compute_reentry_blocks)<br>v12_quick_engine.py:12028(simulate_one) |
-| `TRADIER_DC_DAYTRADE_TARGET_PCT` | global | 0.005 / 0.005 / 0.005 | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12034(simulate_one) |
-| `TRADIER_FH_MOMENTUM_ENABLED` | global | True / True / True | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8604(compute_reentry_blocks) |
-| `TRADIER_RSI2_ENABLED` | global | True / True / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19571(StockStrategy.evaluate_stop) | v12_quick_engine.py:9760(compute_exit_signals) |
+| `STRUCTURAL_RANGE_SHIFT_TF` | global | dc_4h / bb_1h / dc_4h | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14201(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14201(check_exit_candidates_for_account.process_single_exit)<br>(+1) | v12_quick_engine.py:8462(compute_reentry_blocks)<br>v12_quick_engine.py:9747(compute_exit_signals)<br>(+4) |
+| `TECHNICAL_DC_TARGET_BUFFER_PCT` | global | <absent> / <absent> / 0.1 | CL,CS,SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12119(simulate_one) |
+| `TRADIER_DC_DAYTRADE_ENABLED` | global | True / True / True | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8553(compute_reentry_blocks)<br>v12_quick_engine.py:12073(simulate_one) |
+| `TRADIER_DC_DAYTRADE_TARGET_PCT` | global | 0.005 / 0.005 / 0.005 | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:12079(simulate_one) |
+| `TRADIER_FH_MOMENTUM_ENABLED` | global | True / True / True | SL,SS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:8649(compute_reentry_blocks) |
+| `TRADIER_RSI2_ENABLED` | global | True / True / True | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19632(StockStrategy.evaluate_stop) | v12_quick_engine.py:9805(compute_exit_signals) |
 | `UNIVERSAL_NOLOSS_BYPASS_REASONS` | global | <absent> / <absent> / () | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
-| `VIGILANCE_CONSEC_LOSSES` | exit | 2 / 2 / 2 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:2973(ez_vigilance_record_close) · tradier_manage.py:335(vigilance_record_close) | v12_quick_engine.py:12120(simulate_one) |
-| `VIGILANCE_DC4_STOP_TF` | exit | 15m / 15m / 15m | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:46645(process_position) · tradier_manage.py:10634(process_position) | v12_quick_engine.py:12119(simulate_one) |
-| `VIGILANCE_RECOVERY_BOUNCE_OK` | exit | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:2938(ez_vigilance_try_recover) · tradier_manage.py:299(vigilance_try_recover) | v12_quick_engine.py:12130(simulate_one) |
-| `VIGILANCE_RECOVERY_REENTRY_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:2926(ez_vigilance_try_recover) · tradier_manage.py:287(vigilance_try_recover) | v12_quick_engine.py:12129(simulate_one) |
-| `WATCHDOG_DC_FORCE_OPEN_ENABLED` | global | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36344(MultiAccountTradeManager.momentum_sma_watchdog_loop) · uve_engine.py:128(evaluate_uve_signals) | v12_quick_engine.py:11741(simulate_one)<br>vec_decisions/momentum_watchdog.py:87(momentum_watchdog_should_open)<br>(+1) |
-| `WT_15M_BOUNCE_BB_MAX` | entry | 0.95 / 0.95 / 0.95 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1299(_shared_direct_entry_claim) | v12_quick_engine.py:9520(compute_entry_signals) |
-| `WT_15M_BOUNCE_HIGH_1H_GT_PREV` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1319(_shared_direct_entry_claim) | v12_quick_engine.py:9479(compute_entry_signals)<br>v12_quick_engine.py:9542(compute_entry_signals) |
-| `WT_15M_BOUNCE_LOW_1H_GT_PREV` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1318(_shared_direct_entry_claim) | v12_quick_engine.py:9478(compute_entry_signals)<br>v12_quick_engine.py:9541(compute_entry_signals) |
-| `WT_DC_DC_POS_MIN` | global | <absent> / 0.2 / 0.2 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12722(process_position) | v12_quick_engine.py:9197(compute_entry_signals)<br>v12_quick_engine.py:9267(compute_entry_signals) |
-| `WT_DC_FINAL_SCORE_MAX` | global | <absent> / 0.4 / 0.4 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12725(process_position) | v12_quick_engine.py:9205(compute_entry_signals)<br>v12_quick_engine.py:9270(compute_entry_signals) |
-| `WT_DC_K5M_HARD_ENABLED` | global | <absent> / False / False | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12648(process_position) | v12_quick_engine.py:9190(compute_entry_signals) |
-| `WT_DC_LONG_ENABLED` | global | False / True / False | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2200(AdvancedSignalRater.rate) · ez_positions_quick.py:2200(AdvancedSignalRater.rate) | v12_quick_engine.py:9103(compute_entry_signals) |
-| `WT_DC_SHORT_ENABLED` | global | False / True / False | CS,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2202(AdvancedSignalRater.rate) · ez_positions_quick.py:2202(AdvancedSignalRater.rate) | v12_quick_engine.py:9108(compute_entry_signals) |
-| `WT_VEL_DECAY_EXIT_ENABLED` | exit | False / True / False | CL,CS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:20034(StockStrategy.evaluate_stop) | v12_quick_engine.py:9687(compute_exit_signals) |
+| `VIGILANCE_CONSEC_LOSSES` | exit | 2 / 2 / 2 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:2973(ez_vigilance_record_close) · tradier_manage.py:335(vigilance_record_close) | v12_quick_engine.py:12165(simulate_one) |
+| `VIGILANCE_DC4_STOP_TF` | exit | 15m / 15m / 15m | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:46685(process_position) · tradier_manage.py:10695(process_position) | v12_quick_engine.py:12164(simulate_one) |
+| `VIGILANCE_RECOVERY_BOUNCE_OK` | exit | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:2938(ez_vigilance_try_recover) · tradier_manage.py:299(vigilance_try_recover) | v12_quick_engine.py:12175(simulate_one) |
+| `VIGILANCE_RECOVERY_REENTRY_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:2926(ez_vigilance_try_recover) · tradier_manage.py:287(vigilance_try_recover) | v12_quick_engine.py:12174(simulate_one) |
+| `WATCHDOG_DC_FORCE_OPEN_ENABLED` | global | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36384(MultiAccountTradeManager.momentum_sma_watchdog_loop) · uve_engine.py:128(evaluate_uve_signals) | v12_quick_engine.py:11786(simulate_one)<br>vec_decisions/momentum_watchdog.py:87(momentum_watchdog_should_open)<br>(+1) |
+| `WT_15M_BOUNCE_BB_MAX` | entry | 0.95 / 0.95 / 0.95 | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1299(_shared_direct_entry_claim) | v12_quick_engine.py:9565(compute_entry_signals) |
+| `WT_15M_BOUNCE_HIGH_1H_GT_PREV` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1319(_shared_direct_entry_claim) | v12_quick_engine.py:9524(compute_entry_signals)<br>v12_quick_engine.py:9587(compute_entry_signals) |
+| `WT_15M_BOUNCE_LOW_1H_GT_PREV` | entry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:1318(_shared_direct_entry_claim) | v12_quick_engine.py:9523(compute_entry_signals)<br>v12_quick_engine.py:9586(compute_entry_signals) |
+| `WT_DC_DC_POS_MIN` | global | <absent> / 0.2 / 0.2 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12783(process_position) | v12_quick_engine.py:9242(compute_entry_signals)<br>v12_quick_engine.py:9312(compute_entry_signals) |
+| `WT_DC_FINAL_SCORE_MAX` | global | <absent> / 0.4 / 0.4 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12786(process_position) | v12_quick_engine.py:9250(compute_entry_signals)<br>v12_quick_engine.py:9315(compute_entry_signals) |
+| `WT_DC_K5M_HARD_ENABLED` | global | <absent> / False / False | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12709(process_position) | v12_quick_engine.py:9235(compute_entry_signals) |
+| `WT_DC_LONG_ENABLED` | global | False / True / False | CL,SL | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2200(AdvancedSignalRater.rate) · ez_positions_quick.py:2200(AdvancedSignalRater.rate) | v12_quick_engine.py:9148(compute_entry_signals) |
+| `WT_DC_SHORT_ENABLED` | global | False / True / False | CS,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2202(AdvancedSignalRater.rate) · ez_positions_quick.py:2202(AdvancedSignalRater.rate) | v12_quick_engine.py:9153(compute_entry_signals) |
+| `WT_VEL_DECAY_EXIT_ENABLED` | exit | False / True / False | CL,CS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:20095(StockStrategy.evaluate_stop) | v12_quick_engine.py:9732(compute_exit_signals) |
 
 ## REDUCE_PROFIT_LOCK (15)
 
 | switch | kind | defaults cfg / tradier / quick | templates | crypto | stocks | live reads (ez · tradier) | vec reads |
 |---|---|---|---|---|---|---|---|
 | `BREAKEVEN_GAIN_EROSION_ENABLED` | global | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14569(check_exit_candidates_for_account.process_single_exit)<br>(+1) · ez_positions_quick.py:14569(check_exit_candidates_for_account.process_single_exit)<br>(+1) | v12_quick_engine.py:381(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:386(_batch1_template_wiring) [DEAD]<br>(+4) |
-| `CYCLE_TP_TIERED_ENABLED` | reduce | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:51382(process_position) · — | v12_quick_engine.py:9806(compute_exit_signals) |
-| `NOLOSS_BYPASS_WT_5OF5_ENABLED` | reduce | False / True / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19732(StockStrategy.evaluate_stop) | vec_decisions/reduce_profit_lock.py:82(noloss_bypass_params) |
-| `PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT` | reduce | 1.75 / 1.75 / 1.75 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:51144(process_position) · — | vec_decisions/reduce_profit_lock.py:37(ppl_params) |
-| `PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER` | reduce | <absent> / 0.75 / 0.875 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19406(StockStrategy.evaluate_stop) | vec_decisions/reduce_profit_lock.py:32(ppl_params)<br>vec_decisions/reduce_profit_lock.py:37(ppl_params) |
-| `PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT` | reduce | 0.1 / 0.1 / 0.1 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:46444(process_position)<br>(+2) · ez_positions_quick.py:18652(_scalp_v3_protective_exits) | vec_decisions/reduce_profit_lock.py:38(ppl_params) |
-| `PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER` | reduce | <absent> / 0.02 / 0.01 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19407(StockStrategy.evaluate_stop) | vec_decisions/reduce_profit_lock.py:33(ppl_params)<br>vec_decisions/reduce_profit_lock.py:38(ppl_params) |
-| `PARTIAL_PROFIT_LOCK_ENABLED` | reduce | True / False / True | SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:46427(process_position)<br>(+2) · ez_positions_quick.py:18643(_scalp_v3_protective_exits)<br>(+2) | vec_decisions/reduce_profit_lock.py:29(ppl_params) |
-| `PARTIAL_PROFIT_LOCK_FRAC` | reduce | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:46443(process_position)<br>(+5) · ez_positions_quick.py:18653(_scalp_v3_protective_exits)<br>(+1) | vec_decisions/reduce_profit_lock.py:39(ppl_params) |
-| `PARTIAL_PROFIT_LOCK_FRAC_TRADIER` | reduce | <absent> / 0.625 / 0.3125 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19408(StockStrategy.evaluate_stop) | vec_decisions/reduce_profit_lock.py:34(ppl_params)<br>vec_decisions/reduce_profit_lock.py:39(ppl_params) |
-| `PARTIAL_PROFIT_LOCK_GAIN_PCT` | reduce | 1.5 / 1.5 / 1.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:46435(process_position)<br>(+2) · ez_positions_quick.py:18645(_scalp_v3_protective_exits) | vec_decisions/reduce_profit_lock.py:36(ppl_params) |
-| `PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER` | reduce | <absent> / 0.5 / 0.75 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19405(StockStrategy.evaluate_stop) | vec_decisions/reduce_profit_lock.py:31(ppl_params)<br>vec_decisions/reduce_profit_lock.py:36(ppl_params) |
+| `CYCLE_TP_TIERED_ENABLED` | reduce | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:51422(process_position) · — | v12_quick_engine.py:9851(compute_exit_signals) |
+| `NOLOSS_BYPASS_WT_5OF5_ENABLED` | reduce | False / True / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19793(StockStrategy.evaluate_stop) | vec_decisions/reduce_profit_lock.py:82(noloss_bypass_params) |
+| `PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT` | reduce | 1.75 / 1.75 / 1.75 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:51184(process_position) · — | vec_decisions/reduce_profit_lock.py:37(ppl_params) |
+| `PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER` | reduce | <absent> / 0.75 / 0.875 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19467(StockStrategy.evaluate_stop) | vec_decisions/reduce_profit_lock.py:32(ppl_params)<br>vec_decisions/reduce_profit_lock.py:37(ppl_params) |
+| `PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT` | reduce | 0.1 / 0.1 / 0.1 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:46484(process_position)<br>(+2) · ez_positions_quick.py:18652(_scalp_v3_protective_exits) | vec_decisions/reduce_profit_lock.py:38(ppl_params) |
+| `PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER` | reduce | <absent> / 0.02 / 0.01 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19468(StockStrategy.evaluate_stop) | vec_decisions/reduce_profit_lock.py:33(ppl_params)<br>vec_decisions/reduce_profit_lock.py:38(ppl_params) |
+| `PARTIAL_PROFIT_LOCK_ENABLED` | reduce | True / False / True | SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:46467(process_position)<br>(+2) · ez_positions_quick.py:18643(_scalp_v3_protective_exits)<br>(+2) | vec_decisions/reduce_profit_lock.py:29(ppl_params) |
+| `PARTIAL_PROFIT_LOCK_FRAC` | reduce | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:46483(process_position)<br>(+5) · ez_positions_quick.py:18653(_scalp_v3_protective_exits)<br>(+1) | vec_decisions/reduce_profit_lock.py:39(ppl_params) |
+| `PARTIAL_PROFIT_LOCK_FRAC_TRADIER` | reduce | <absent> / 0.625 / 0.3125 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19469(StockStrategy.evaluate_stop) | vec_decisions/reduce_profit_lock.py:34(ppl_params)<br>vec_decisions/reduce_profit_lock.py:39(ppl_params) |
+| `PARTIAL_PROFIT_LOCK_GAIN_PCT` | reduce | 1.5 / 1.5 / 1.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:46475(process_position)<br>(+2) · ez_positions_quick.py:18645(_scalp_v3_protective_exits) | vec_decisions/reduce_profit_lock.py:36(ppl_params) |
+| `PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER` | reduce | <absent> / 0.5 / 0.75 | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19466(StockStrategy.evaluate_stop) | vec_decisions/reduce_profit_lock.py:31(ppl_params)<br>vec_decisions/reduce_profit_lock.py:36(ppl_params) |
 | `PEAK_GIVEBACK_DROP_TRIGGER_ENABLED` | reduce | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14688(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14688(check_exit_candidates_for_account.process_single_exit) | vec_decisions/check_exit_candidates_crypto__peak_giveback.py:56(_peak_giveback_thresholds) [UNREACHABLE]<br>vec_decisions/live_exit_chain.py:184(step) |
-| `SIMPLE_TP_EXIT_ENABLED` | reduce | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3694(AdvancedSignalRater.rate) · ez_positions_quick.py:3694(AdvancedSignalRater.rate) | v12_quick_engine.py:11660(simulate_one)<br>vec_decisions/quick_reduce_sources.py:19(simple_tp) |
-| `WT_D_BOUNCE_DD_STOP_ENABLED` | reduce | True / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:11783(process_position) | vec_decisions/reduce_profit_lock.py:74(dd_bounce_stop_fires) |
+| `SIMPLE_TP_EXIT_ENABLED` | reduce | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3694(AdvancedSignalRater.rate) · ez_positions_quick.py:3694(AdvancedSignalRater.rate) | v12_quick_engine.py:11705(simulate_one)<br>vec_decisions/quick_reduce_sources.py:19(simple_tp) |
+| `WT_D_BOUNCE_DD_STOP_ENABLED` | reduce | True / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:11844(process_position) | vec_decisions/reduce_profit_lock.py:74(dd_bounce_stop_fires) |
 
 ## REDUCE_SIGNAL_RATER (26)
 
 | switch | kind | defaults cfg / tradier / quick | templates | crypto | stocks | live reads (ez · tradier) | vec reads |
 |---|---|---|---|---|---|---|---|
 | `ATR_TRAIL_SWEEP_ENABLED` | reduce | False / False / False | CL,CS,SL,SS | DEAD | DEAD | — · — | v12_quick_engine.py:252(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:256(_batch1_template_wiring) [DEAD]<br>(+1) |
-| `DC_HOPELESS_EXIT_ENABLED` | reduce | False / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:49948(process_position)<br>(+1) · — | v12_quick_engine.py:581(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:585(_batch1_template_wiring) [DEAD]<br>(+1) |
-| `DYN_STRUCT_TRAIL_ENABLED` | reduce | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:10791(process_position) | v12_quick_engine.py:11655(simulate_one) |
-| `EOD_SLIM_RATIO_ENABLED` | reduce | False / False / False | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:23716(TradierTradeManager.last_hour_balancing_loop) | — |
-| `HLR_TOP_EXIT_ENABLED` | exit | True / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3706(AdvancedSignalRater.rate) · ez_positions_quick.py:3706(AdvancedSignalRater.rate) | v12_quick_engine.py:13112(simulate_one)<br>vec_decisions/quick_reduce_strong.py:160(check_quick_reduce_strong)<br>(+1) |
-| `HTF_AGAINST_FORCE_CLOSE_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:46871(process_position) · — | vec_decisions/ported_exit.py:100(apply) |
-| `INTRADAY_RATIO_CHECK_INTERVAL_MIN` | reduce | <absent> / 15 / 15 | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:23783(TradierTradeManager.intraday_ratio_rebalance_loop) | — |
-| `INTRADAY_RATIO_DEVIATION_THR` | reduce | <absent> / 0.1 / 0.1 | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:23799(TradierTradeManager.intraday_ratio_rebalance_loop) | — |
-| `INTRADAY_RATIO_REBALANCE_ENABLED` | reduce | <absent> / True / True | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:23775(TradierTradeManager.intraday_ratio_rebalance_loop) | — |
-| `INTRADAY_RATIO_TRIM_FRAC` | reduce | <absent> / 0.3 / 0.3 | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:23823(TradierTradeManager.intraday_ratio_rebalance_loop) | — |
+| `DC_HOPELESS_EXIT_ENABLED` | reduce | False / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:49988(process_position)<br>(+1) · — | v12_quick_engine.py:581(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:585(_batch1_template_wiring) [DEAD]<br>(+1) |
+| `DYN_STRUCT_TRAIL_ENABLED` | reduce | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:10852(process_position) | v12_quick_engine.py:11700(simulate_one) |
+| `EOD_SLIM_RATIO_ENABLED` | reduce | False / False / False | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:23777(TradierTradeManager.last_hour_balancing_loop) | — |
+| `HLR_TOP_EXIT_ENABLED` | exit | True / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3706(AdvancedSignalRater.rate) · ez_positions_quick.py:3706(AdvancedSignalRater.rate) | v12_quick_engine.py:13157(simulate_one)<br>vec_decisions/quick_reduce_strong.py:160(check_quick_reduce_strong)<br>(+1) |
+| `HTF_AGAINST_FORCE_CLOSE_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:46911(process_position) · — | vec_decisions/ported_exit.py:100(apply) |
+| `INTRADAY_RATIO_CHECK_INTERVAL_MIN` | reduce | <absent> / 15 / 15 | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:23844(TradierTradeManager.intraday_ratio_rebalance_loop) | — |
+| `INTRADAY_RATIO_DEVIATION_THR` | reduce | <absent> / 0.1 / 0.1 | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:23860(TradierTradeManager.intraday_ratio_rebalance_loop) | — |
+| `INTRADAY_RATIO_REBALANCE_ENABLED` | reduce | <absent> / True / True | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:23836(TradierTradeManager.intraday_ratio_rebalance_loop) | — |
+| `INTRADAY_RATIO_TRIM_FRAC` | reduce | <absent> / 0.3 / 0.3 | SL,SS | DEAD | LIVE_ONLY | — · tradier_manage.py:23884(TradierTradeManager.intraday_ratio_rebalance_loop) | — |
 | `LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED` | reduce | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:14754(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14754(check_exit_candidates_for_account.process_single_exit) | vec_decisions/live_exit_chain.py:194(step) |
-| `LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED` | reduce | False / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:52161(process_position)<br>(+1) · — | vec_decisions/process_position_crypto__stop_functions_kill.py:40(_stop_functions_kill_thresholds) [UNREACHABLE] |
-| `MACD_EXIT_ENABLED` | reduce | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:4567(AdvancedSignalRater.rate) · ez_positions_quick.py:4567(AdvancedSignalRater.rate) | v12_quick_engine.py:11660(simulate_one)<br>v12_quick_engine.py:11662(simulate_one)<br>(+1) |
-| `MACD_EXIT_TF` | reduce | 15m / 15m / 15m | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:4568(AdvancedSignalRater.rate) · ez_positions_quick.py:4568(AdvancedSignalRater.rate) | v12_quick_engine.py:11663(simulate_one) |
+| `LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED` | reduce | False / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:52201(process_position)<br>(+1) · — | vec_decisions/process_position_crypto__stop_functions_kill.py:40(_stop_functions_kill_thresholds) [UNREACHABLE] |
+| `MACD_EXIT_ENABLED` | reduce | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:4567(AdvancedSignalRater.rate) · ez_positions_quick.py:4567(AdvancedSignalRater.rate) | v12_quick_engine.py:11705(simulate_one)<br>v12_quick_engine.py:11707(simulate_one)<br>(+1) |
+| `MACD_EXIT_TF` | reduce | 15m / 15m / 15m | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:4568(AdvancedSignalRater.rate) · ez_positions_quick.py:4568(AdvancedSignalRater.rate) | v12_quick_engine.py:11708(simulate_one) |
 | `MI_DIV_EXIT_ENABLED` | exit | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3764(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:3764(AdvancedSignalRater.rate)<br>(+1) | vec_decisions/wave4_families.py:80(mi_exit_signal) |
 | `MI_ENTRY_ENABLED` | reduce | False / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:2816(AdvancedSignalRater.rate) · ez_positions_quick.py:2816(AdvancedSignalRater.rate) | — |
 | `MI_ENTRY_EXHAUST_BONUS` | reduce | 8 / 8 / 8 | CL,CS,SL,SS | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:2819(AdvancedSignalRater.rate) · ez_positions_quick.py:2819(AdvancedSignalRater.rate) | — |
@@ -3764,11 +3764,11 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `MI_EXHAUST_EXIT_ENABLED` | exit | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3760(AdvancedSignalRater.rate)<br>(+1) · ez_positions_quick.py:3760(AdvancedSignalRater.rate)<br>(+1) | vec_decisions/wave4_families.py:77(mi_exit_signal) |
 | `WT_PERCENTILE_ENTRY_OB_D` | entry | 90.0 / 90.0 / 90.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2313(AdvancedSignalRater.rate) · ez_positions_quick.py:2313(AdvancedSignalRater.rate)<br>(+1) | vec_decisions/grey_wire_entries.py:42(wt_percentile_entry_gate) |
 | `WT_PERCENTILE_ENTRY_OS_D` | entry | 10.0 / 10.0 / 10.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:2315(AdvancedSignalRater.rate) · ez_positions_quick.py:2315(AdvancedSignalRater.rate)<br>(+1) | vec_decisions/grey_wire_entries.py:43(wt_percentile_entry_gate) |
-| `WT_PERCENTILE_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:50047(process_position)<br>(+2) · — | vec_decisions/ported_exit.py:45(apply) |
-| `WT_PERCENTILE_EXIT_OB_4H` | exit | 55.0 / 55.0 / 55.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:50061(process_position)<br>(+2) · — | vec_decisions/ported_exit.py:52(apply)<br>vec_decisions/process_position_crypto__wt_percentile_exit.py:26(_wt_percentile_params) [UNREACHABLE] |
-| `WT_PERCENTILE_EXIT_OB_D` | exit | 75.0 / 75.0 / 75.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:50060(process_position)<br>(+2) · — | vec_decisions/ported_exit.py:51(apply)<br>vec_decisions/process_position_crypto__wt_percentile_exit.py:25(_wt_percentile_params) [UNREACHABLE] |
-| `WT_PERCENTILE_EXIT_OS_4H` | exit | 25.0 / 25.0 / 25.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:50068(process_position)<br>(+2) · — | vec_decisions/ported_exit.py:56(apply)<br>vec_decisions/process_position_crypto__wt_percentile_exit.py:28(_wt_percentile_params) [UNREACHABLE] |
-| `WT_PERCENTILE_EXIT_OS_D` | exit | 10.0 / 10.0 / 10.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:50067(process_position)<br>(+2) · — | vec_decisions/ported_exit.py:55(apply)<br>vec_decisions/process_position_crypto__wt_percentile_exit.py:27(_wt_percentile_params) [UNREACHABLE] |
+| `WT_PERCENTILE_EXIT_ENABLED` | exit | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:50087(process_position)<br>(+2) · — | vec_decisions/ported_exit.py:45(apply) |
+| `WT_PERCENTILE_EXIT_OB_4H` | exit | 55.0 / 55.0 / 55.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:50101(process_position)<br>(+2) · — | vec_decisions/ported_exit.py:52(apply)<br>vec_decisions/process_position_crypto__wt_percentile_exit.py:26(_wt_percentile_params) [UNREACHABLE] |
+| `WT_PERCENTILE_EXIT_OB_D` | exit | 75.0 / 75.0 / 75.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:50100(process_position)<br>(+2) · — | vec_decisions/ported_exit.py:51(apply)<br>vec_decisions/process_position_crypto__wt_percentile_exit.py:25(_wt_percentile_params) [UNREACHABLE] |
+| `WT_PERCENTILE_EXIT_OS_4H` | exit | 25.0 / 25.0 / 25.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:50108(process_position)<br>(+2) · — | vec_decisions/ported_exit.py:56(apply)<br>vec_decisions/process_position_crypto__wt_percentile_exit.py:28(_wt_percentile_params) [UNREACHABLE] |
+| `WT_PERCENTILE_EXIT_OS_D` | exit | 10.0 / 10.0 / 10.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:50107(process_position)<br>(+2) · — | vec_decisions/ported_exit.py:55(apply)<br>vec_decisions/process_position_crypto__wt_percentile_exit.py:27(_wt_percentile_params) [UNREACHABLE] |
 
 ## REENTRY_ADAPTIVE (9)
 
@@ -3776,12 +3776,12 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 |---|---|---|---|---|---|---|---|
 | `BREAKOUT_LEASH_REENTRY_MULT` | reentry | 1.5 / 1.5 / 1.5 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_reentry.py:723(enforce_price_cross_reentry) · ez_reentry.py:723(enforce_price_cross_reentry) | v12_quick_engine.py:411(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:412(_batch1_template_wiring) [DEAD]<br>(+1) |
 | `CHANNEL_REENTRY_STOP_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | v12_quick_engine.py:522(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:526(_batch1_template_wiring) [DEAD]<br>(+1) |
-| `DAEMON_REENTRY_STALE_EXIT_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:47181(process_position) · — | v12_quick_engine.py:559(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:563(_batch1_template_wiring) [DEAD]<br>(+1) |
-| `HLR_REENTRY_MULT_1H` | reentry | 1.5 / 1.5 / 1.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3726(AdvancedSignalRater.rate) · ez_positions_quick.py:3726(AdvancedSignalRater.rate) | v12_quick_engine.py:8460(compute_reentry_blocks) |
-| `HLR_REENTRY_MULT_4H` | reentry | 2.0 / 2.0 / 2.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3730(AdvancedSignalRater.rate) · ez_positions_quick.py:3730(AdvancedSignalRater.rate) | v12_quick_engine.py:8461(compute_reentry_blocks) |
-| `HLR_REENTRY_MULT_D` | reentry | 2.5 / 2.5 / 2.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3734(AdvancedSignalRater.rate) · ez_positions_quick.py:3734(AdvancedSignalRater.rate) | v12_quick_engine.py:8462(compute_reentry_blocks) |
-| `HLR_REENTRY_MULT_W` | reentry | 3.0 / 3.0 / 3.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3738(AdvancedSignalRater.rate) · ez_positions_quick.py:3738(AdvancedSignalRater.rate) | v12_quick_engine.py:8463(compute_reentry_blocks) |
-| `REENTRY_SIZE_BREAKOUT_MULT` | reentry | 1.5 / 1.5 / 1.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42118(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17126(process_single_reentry_evaluation_epq) | vec_decisions/reentry_epq_vec.py:56(size_tier_mult) |
+| `DAEMON_REENTRY_STALE_EXIT_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:47221(process_position) · — | v12_quick_engine.py:559(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:563(_batch1_template_wiring) [DEAD]<br>(+1) |
+| `HLR_REENTRY_MULT_1H` | reentry | 1.5 / 1.5 / 1.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3726(AdvancedSignalRater.rate) · ez_positions_quick.py:3726(AdvancedSignalRater.rate) | v12_quick_engine.py:8505(compute_reentry_blocks) |
+| `HLR_REENTRY_MULT_4H` | reentry | 2.0 / 2.0 / 2.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3730(AdvancedSignalRater.rate) · ez_positions_quick.py:3730(AdvancedSignalRater.rate) | v12_quick_engine.py:8506(compute_reentry_blocks) |
+| `HLR_REENTRY_MULT_D` | reentry | 2.5 / 2.5 / 2.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3734(AdvancedSignalRater.rate) · ez_positions_quick.py:3734(AdvancedSignalRater.rate) | v12_quick_engine.py:8507(compute_reentry_blocks) |
+| `HLR_REENTRY_MULT_W` | reentry | 3.0 / 3.0 / 3.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:3738(AdvancedSignalRater.rate) · ez_positions_quick.py:3738(AdvancedSignalRater.rate) | v12_quick_engine.py:8508(compute_reentry_blocks) |
+| `REENTRY_SIZE_BREAKOUT_MULT` | reentry | 1.5 / 1.5 / 1.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42158(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17126(process_single_reentry_evaluation_epq) | vec_decisions/reentry_epq_vec.py:56(size_tier_mult) |
 | `REENTRY_SMA200_GR_CONTINUATION_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_bounce_after_correction.py:205(check_sma200_gr) · vec_decisions/reentry_bounce_after_correction.py:205(check_sma200_gr) | vec_decisions/reentry_bounce_after_correction.py:205(check_sma200_gr) |
 
 ## REENTRY_WINDOWED (69)
@@ -3792,21 +3792,21 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `BOUNCE_REENTRY_K_RESET_LONG` | reentry | 35 / 35 / 35 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:3250(AdvancedSignalRater.rate) · ez_positions_quick.py:3250(AdvancedSignalRater.rate) | v12_quick_engine.py:361(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:362(_batch1_template_wiring) [DEAD]<br>(+1) |
 | `BOUNCE_REENTRY_K_RESET_SHORT` | reentry | 65 / 65 / 65 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:3251(AdvancedSignalRater.rate) · ez_positions_quick.py:3251(AdvancedSignalRater.rate) | v12_quick_engine.py:367(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:368(_batch1_template_wiring) [DEAD]<br>(+1) |
 | `BTC_GUARANTEED_REENTRY_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | btc_loop.py:648(should_reenter_btc) · btc_loop.py:648(should_reenter_btc) | v12_quick_engine.py:455(_batch1_template_wiring) [DEAD]<br>v12_quick_engine.py:460(_batch1_template_wiring) [DEAD]<br>(+1) |
-| `DIRECTION_FAVORABLE_REENTRY_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:42303(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17179(process_single_reentry_evaluation_epq) | — |
+| `DIRECTION_FAVORABLE_REENTRY_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:42343(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17179(process_single_reentry_evaluation_epq) | — |
 | `EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED` | reentry | True / False / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_reentry.py:624(enforce_price_cross_reentry)<br>(+2) · ez_reentry.py:624(enforce_price_cross_reentry)<br>(+2) | vec_decisions/guaranteed_price_cross_reentry.py:235(check_guaranteed_price_cross_reentry)<br>vec_decisions/guaranteed_price_cross_reentry.py:349(check_guaranteed_price_cross_reentry_vec) |
 | `EZ_REENTRY_PRICE_CROSS_PCT` | reentry | 0.001 / 0.0 / 0.001 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_reentry.py:626(enforce_price_cross_reentry)<br>(+1) · ez_reentry.py:626(enforce_price_cross_reentry)<br>(+1) | vec_decisions/guaranteed_price_cross_reentry.py:198(_gpcr_thresholds) |
 | `FOLLOW_THROUGH_REENTRY_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | — |
-| `GAP_RISK_REENTRY_ENABLED` | reentry | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19682(StockStrategy.evaluate_stop)<br>(+2) | vec_decisions/gap_risk_exit.py:370(gap_risk_reentry_vec) |
-| `GAP_RISK_REENTRY_ON_FILL` | reentry | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19701(StockStrategy.evaluate_stop)<br>(+2) | vec_decisions/gap_risk_exit.py:372(gap_risk_reentry_vec) |
-| `GUARANTEED_REENTRY_K_FAVORABLE_HIGH` | reentry | 70.0 / 70.0 / 70.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36786(MultiAccountTradeManager.reentry_enforcement_loop)<br>(+1) · ez_positions_quick.py:16772(reentry_enforcement_loop_epq) | v12_quick_engine.py:8454(compute_reentry_blocks) |
-| `GUARANTEED_REENTRY_K_FAVORABLE_LOW` | reentry | 30.0 / 30.0 / 30.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36783(MultiAccountTradeManager.reentry_enforcement_loop)<br>(+1) · ez_positions_quick.py:16771(reentry_enforcement_loop_epq) | v12_quick_engine.py:8453(compute_reentry_blocks) |
-| `GUARANTEED_REENTRY_TIGHT_STOP_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:49802(process_position) · — | v12_quick_engine.py:8455(compute_reentry_blocks) |
-| `GUARANTEED_REENTRY_TIGHT_STOP_PCT` | reentry | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:49817(process_position) · — | v12_quick_engine.py:8456(compute_reentry_blocks) |
-| `LEGACY_PROC_SINGLE_REENTRY` | reentry | False / False / 0.0 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:43000(process_single_reentry_evaluation)<br>(+3) · ez_positions_quick.py:17383(process_single_reentry_evaluation_epq)<br>(+1) | — |
-| `LEGACY_REENTRY_PSR_DC_BOUNCE` | reentry | True / True / True | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:43261(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17443(process_single_reentry_evaluation_epq) | — |
-| `LEGACY_REENTRY_PSR_FULL_DC` | reentry | True / True / True | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:43149(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17420(process_single_reentry_evaluation_epq) | — |
-| `LEGACY_REENTRY_PSR_K_DC_CROSSOVER` | reentry | False / False / 0.0 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:43001(process_single_reentry_evaluation)<br>(+3) · ez_positions_quick.py:17383(process_single_reentry_evaluation_epq)<br>(+1) | — |
-| `LEGACY_REENTRY_PSR_QUICK_RECOVERY` | reentry | True / True / True | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:42757(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17354(process_single_reentry_evaluation_epq) | — |
+| `GAP_RISK_REENTRY_ENABLED` | reentry | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19743(StockStrategy.evaluate_stop)<br>(+2) | vec_decisions/gap_risk_exit.py:370(gap_risk_reentry_vec) |
+| `GAP_RISK_REENTRY_ON_FILL` | reentry | <absent> / True / True | SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:19762(StockStrategy.evaluate_stop)<br>(+2) | vec_decisions/gap_risk_exit.py:372(gap_risk_reentry_vec) |
+| `GUARANTEED_REENTRY_K_FAVORABLE_HIGH` | reentry | 70.0 / 70.0 / 70.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36826(MultiAccountTradeManager.reentry_enforcement_loop)<br>(+1) · ez_positions_quick.py:16772(reentry_enforcement_loop_epq) | v12_quick_engine.py:8499(compute_reentry_blocks) |
+| `GUARANTEED_REENTRY_K_FAVORABLE_LOW` | reentry | 30.0 / 30.0 / 30.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:36823(MultiAccountTradeManager.reentry_enforcement_loop)<br>(+1) · ez_positions_quick.py:16771(reentry_enforcement_loop_epq) | v12_quick_engine.py:8498(compute_reentry_blocks) |
+| `GUARANTEED_REENTRY_TIGHT_STOP_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:49842(process_position) · — | v12_quick_engine.py:8500(compute_reentry_blocks) |
+| `GUARANTEED_REENTRY_TIGHT_STOP_PCT` | reentry | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:49857(process_position) · — | v12_quick_engine.py:8501(compute_reentry_blocks) |
+| `LEGACY_PROC_SINGLE_REENTRY` | reentry | False / False / 0.0 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:43040(process_single_reentry_evaluation)<br>(+3) · ez_positions_quick.py:17383(process_single_reentry_evaluation_epq)<br>(+1) | — |
+| `LEGACY_REENTRY_PSR_DC_BOUNCE` | reentry | True / True / True | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:43301(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17443(process_single_reentry_evaluation_epq) | — |
+| `LEGACY_REENTRY_PSR_FULL_DC` | reentry | True / True / True | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:43189(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17420(process_single_reentry_evaluation_epq) | — |
+| `LEGACY_REENTRY_PSR_K_DC_CROSSOVER` | reentry | False / False / 0.0 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:43041(process_single_reentry_evaluation)<br>(+3) · ez_positions_quick.py:17383(process_single_reentry_evaluation_epq)<br>(+1) | — |
+| `LEGACY_REENTRY_PSR_QUICK_RECOVERY` | reentry | True / True / True | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:42797(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17354(process_single_reentry_evaluation_epq) | — |
 | `MU_CORRECTION_REENTRY_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | DEAD+STAGED_VEC | LIVE_ONLY+STAGED_VEC | — · tradier_manage.py:5818(<module>)<br>(+1) | — |
 | `OBLIGATORY_REENTRY_DEFAULT_SIZE_MULT` | reentry | 1.0 / 1.0 / 1.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_reentry.py:312(evaluate_obligatory_reentry) · ez_reentry.py:312(evaluate_obligatory_reentry) | vec_decisions/obligatory_reentry_vec.py:68(fires) |
 | `OBLIGATORY_REENTRY_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:16752(reentry_enforcement_loop_epq)<br>(+1) · ez_positions_quick.py:16752(reentry_enforcement_loop_epq)<br>(+1) | vec_decisions/obligatory_reentry_vec.py:55(fires) |
@@ -3817,42 +3817,42 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `OBLIGATORY_REENTRY_SHORT_K15_LOW_SIZE_FRAC` | reentry | 0.5 / 0.5 / 0.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_reentry.py:373(evaluate_obligatory_reentry) · ez_reentry.py:373(evaluate_obligatory_reentry) | vec_decisions/obligatory_reentry_vec.py:95(fires) |
 | `OBLIGATORY_REENTRY_SMA_FIELD` | reentry | ema_50 / ema_50 / ema_50 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_reentry.py:277(evaluate_obligatory_reentry) · ez_reentry.py:277(evaluate_obligatory_reentry) | vec_decisions/obligatory_reentry_vec.py:37(Prepared.__init__) |
 | `OBLIGATORY_REENTRY_SMA_TF` | reentry | 15m / 15m / 15m | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_reentry.py:276(evaluate_obligatory_reentry) · ez_reentry.py:276(evaluate_obligatory_reentry) | vec_decisions/obligatory_reentry_vec.py:37(Prepared.__init__) |
-| `REENTRY2_DC_BREAK_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/guaranteed_price_cross_reentry.py:248(check_guaranteed_price_cross_reentry) · vec_decisions/guaranteed_price_cross_reentry.py:248(check_guaranteed_price_cross_reentry) | v12_quick_engine.py:8668(compute_reentry_blocks)<br>v12_quick_engine.py:8674(compute_reentry_blocks)<br>(+2) |
-| `REENTRY2_DIR_FAV_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:42304(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17179(process_single_reentry_evaluation_epq) | — |
-| `REENTRY2_QUICK_RECOVERY_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42738(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17349(process_single_reentry_evaluation_epq) | v12_quick_engine.py:8668(compute_reentry_blocks)<br>v12_quick_engine.py:8684(compute_reentry_blocks) |
-| `REENTRY_15M_BB1H_LOW_BOUNCE_HTF_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_15m_bb_htf.py:178(check_bb1h_low_bounce_htf) · vec_decisions/reentry_15m_bb_htf.py:178(check_bb1h_low_bounce_htf) | v12_quick_engine.py:8723(compute_reentry_blocks)<br>vec_decisions/obligatory_reentry_vec.py:83(fires)<br>(+1) |
+| `REENTRY2_DC_BREAK_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/guaranteed_price_cross_reentry.py:248(check_guaranteed_price_cross_reentry) · vec_decisions/guaranteed_price_cross_reentry.py:248(check_guaranteed_price_cross_reentry) | v12_quick_engine.py:8713(compute_reentry_blocks)<br>v12_quick_engine.py:8719(compute_reentry_blocks)<br>(+2) |
+| `REENTRY2_DIR_FAV_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_manage.py:42344(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17179(process_single_reentry_evaluation_epq) | — |
+| `REENTRY2_QUICK_RECOVERY_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42778(process_single_reentry_evaluation)<br>(+1) · ez_positions_quick.py:17349(process_single_reentry_evaluation_epq) | v12_quick_engine.py:8713(compute_reentry_blocks)<br>v12_quick_engine.py:8729(compute_reentry_blocks) |
+| `REENTRY_15M_BB1H_LOW_BOUNCE_HTF_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_15m_bb_htf.py:178(check_bb1h_low_bounce_htf) · vec_decisions/reentry_15m_bb_htf.py:178(check_bb1h_low_bounce_htf) | v12_quick_engine.py:8768(compute_reentry_blocks)<br>vec_decisions/obligatory_reentry_vec.py:83(fires)<br>(+1) |
 | `REENTRY_15M_BETTER_PCT` | reentry | 0.002 / 0.002 / 0.002 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_15m_bb_htf.py:148(check_dc_basis_cross_htf)<br>(+2) · vec_decisions/reentry_15m_bb_htf.py:148(check_dc_basis_cross_htf)<br>(+2) | vec_decisions/obligatory_reentry_vec.py:74(fires)<br>vec_decisions/reentry_15m_bb_htf.py:148(check_dc_basis_cross_htf)<br>(+2) |
-| `REENTRY_15M_DC_BASIS_CROSS_HTF_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_15m_bb_htf.py:145(check_dc_basis_cross_htf) · vec_decisions/reentry_15m_bb_htf.py:145(check_dc_basis_cross_htf) | v12_quick_engine.py:8693(compute_reentry_blocks)<br>vec_decisions/obligatory_reentry_vec.py:75(fires)<br>(+1) |
-| `REENTRY_15M_LRL_PULLBACK_HTF_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_15m_bb_htf.py:163(check_lrl_pullback_htf) · vec_decisions/reentry_15m_bb_htf.py:163(check_lrl_pullback_htf) | v12_quick_engine.py:8711(compute_reentry_blocks)<br>vec_decisions/obligatory_reentry_vec.py:79(fires)<br>(+1) |
-| `REENTRY_2_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:43353(evaluate_reentry_2)<br>(+2) · ez_positions_quick.py:17464(evaluate_reentry_2_epq)<br>(+1) | v12_quick_engine.py:8666(compute_reentry_blocks) |
-| `REENTRY_B02_BC156_BOTTOM_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:16989(evaluate_reentry_epq)<br>(+2) · ez_positions_quick.py:16989(evaluate_reentry_epq) | v12_quick_engine.py:8115(compute_reentry_blocks) |
-| `REENTRY_B04_DC_RETEST_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:16967(evaluate_reentry_epq)<br>(+2) · ez_positions_quick.py:16967(evaluate_reentry_epq) | v12_quick_engine.py:8122(compute_reentry_blocks) |
-| `REENTRY_B09_SNAPBACK_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:17066(evaluate_reentry_epq)<br>(+2) · ez_positions_quick.py:17066(evaluate_reentry_epq) | v12_quick_engine.py:8654(compute_reentry_blocks) |
-| `REENTRY_B10_STOCH_REV_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:17034(evaluate_reentry_epq)<br>(+2) · ez_positions_quick.py:17034(evaluate_reentry_epq) | v12_quick_engine.py:8133(compute_reentry_blocks) |
-| `REENTRY_B11_DC_BREAK_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:16981(evaluate_reentry_epq)<br>(+2) · ez_positions_quick.py:16981(evaluate_reentry_epq) | v12_quick_engine.py:8138(compute_reentry_blocks) |
-| `REENTRY_B12_WT_MOM_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:17004(evaluate_reentry_epq)<br>(+2) · ez_positions_quick.py:17004(evaluate_reentry_epq) | v12_quick_engine.py:8143(compute_reentry_blocks) |
-| `REENTRY_B14_HA_TREND_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:17019(evaluate_reentry_epq)<br>(+2) · ez_positions_quick.py:17019(evaluate_reentry_epq) | v12_quick_engine.py:8150(compute_reentry_blocks) |
-| `REENTRY_B15_STRONG_TREND_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:16959(evaluate_reentry_epq)<br>(+2) · ez_positions_quick.py:16959(evaluate_reentry_epq) | v12_quick_engine.py:8155(compute_reentry_blocks) |
+| `REENTRY_15M_DC_BASIS_CROSS_HTF_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_15m_bb_htf.py:145(check_dc_basis_cross_htf) · vec_decisions/reentry_15m_bb_htf.py:145(check_dc_basis_cross_htf) | v12_quick_engine.py:8738(compute_reentry_blocks)<br>vec_decisions/obligatory_reentry_vec.py:75(fires)<br>(+1) |
+| `REENTRY_15M_LRL_PULLBACK_HTF_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_15m_bb_htf.py:163(check_lrl_pullback_htf) · vec_decisions/reentry_15m_bb_htf.py:163(check_lrl_pullback_htf) | v12_quick_engine.py:8756(compute_reentry_blocks)<br>vec_decisions/obligatory_reentry_vec.py:79(fires)<br>(+1) |
+| `REENTRY_2_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:43393(evaluate_reentry_2)<br>(+2) · ez_positions_quick.py:17464(evaluate_reentry_2_epq)<br>(+1) | v12_quick_engine.py:8711(compute_reentry_blocks) |
+| `REENTRY_B02_BC156_BOTTOM_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:16989(evaluate_reentry_epq)<br>(+2) · ez_positions_quick.py:16989(evaluate_reentry_epq) | v12_quick_engine.py:8160(compute_reentry_blocks) |
+| `REENTRY_B04_DC_RETEST_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:16967(evaluate_reentry_epq)<br>(+2) · ez_positions_quick.py:16967(evaluate_reentry_epq) | v12_quick_engine.py:8167(compute_reentry_blocks) |
+| `REENTRY_B09_SNAPBACK_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:17066(evaluate_reentry_epq)<br>(+2) · ez_positions_quick.py:17066(evaluate_reentry_epq) | v12_quick_engine.py:8699(compute_reentry_blocks) |
+| `REENTRY_B10_STOCH_REV_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:17034(evaluate_reentry_epq)<br>(+2) · ez_positions_quick.py:17034(evaluate_reentry_epq) | v12_quick_engine.py:8178(compute_reentry_blocks) |
+| `REENTRY_B11_DC_BREAK_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:16981(evaluate_reentry_epq)<br>(+2) · ez_positions_quick.py:16981(evaluate_reentry_epq) | v12_quick_engine.py:8183(compute_reentry_blocks) |
+| `REENTRY_B12_WT_MOM_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:17004(evaluate_reentry_epq)<br>(+2) · ez_positions_quick.py:17004(evaluate_reentry_epq) | v12_quick_engine.py:8188(compute_reentry_blocks) |
+| `REENTRY_B14_HA_TREND_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:17019(evaluate_reentry_epq)<br>(+2) · ez_positions_quick.py:17019(evaluate_reentry_epq) | v12_quick_engine.py:8195(compute_reentry_blocks) |
+| `REENTRY_B15_STRONG_TREND_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:16959(evaluate_reentry_epq)<br>(+2) · ez_positions_quick.py:16959(evaluate_reentry_epq) | v12_quick_engine.py:8200(compute_reentry_blocks) |
 | `REENTRY_B16_SMA200_PROX_PCT` | reentry | 0.005 / 0.005 / 0.005 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:17047(evaluate_reentry_epq) · ez_positions_quick.py:17047(evaluate_reentry_epq) | vec_decisions/reentry_epq_vec.py:88(b16_sma200_pullback) |
 | `REENTRY_B16_SMA200_PULLBACK_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:17042(evaluate_reentry_epq) · ez_positions_quick.py:17042(evaluate_reentry_epq) | vec_decisions/reentry_epq_vec.py:83(b16_sma200_pullback) |
 | `REENTRY_BAR_TURN_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/guaranteed_price_cross_reentry.py:437(check_guaranteed_price_cross_reentry_vec)<br>(+1) · vec_decisions/guaranteed_price_cross_reentry.py:437(check_guaranteed_price_cross_reentry_vec)<br>(+1) | vec_decisions/guaranteed_price_cross_reentry.py:437(check_guaranteed_price_cross_reentry_vec)<br>vec_decisions/guaranteed_price_cross_reentry.py:524(reentry_confirmation_gate) |
-| `REENTRY_BAR_TURN_TF` | reentry | 3m / 5m / 3m | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42578(process_single_reentry_evaluation)<br>(+1) · vec_decisions/guaranteed_price_cross_reentry.py:525(reentry_confirmation_gate) | vec_decisions/guaranteed_price_cross_reentry.py:525(reentry_confirmation_gate) |
+| `REENTRY_BAR_TURN_TF` | reentry | 3m / 5m / 3m | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:42618(process_single_reentry_evaluation)<br>(+1) · vec_decisions/guaranteed_price_cross_reentry.py:525(reentry_confirmation_gate) | vec_decisions/guaranteed_price_cross_reentry.py:525(reentry_confirmation_gate) |
 | `REENTRY_BOUNCE_BAR_GR_BETTER_PCT` | reentry | 0.002 / 0.002 / 0.002 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_bounce_after_correction.py:149(check_bounce_bar_gr)<br>(+4) · vec_decisions/reentry_bounce_after_correction.py:149(check_bounce_bar_gr)<br>(+4) | vec_decisions/reentry_bounce_after_correction.py:149(check_bounce_bar_gr)<br>vec_decisions/reentry_bounce_after_correction.py:162(check_pullback_gr)<br>(+3) |
 | `REENTRY_BOUNCE_BAR_GR_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_bounce_after_correction.py:146(check_bounce_bar_gr) · vec_decisions/reentry_bounce_after_correction.py:146(check_bounce_bar_gr) | vec_decisions/reentry_bounce_after_correction.py:146(check_bounce_bar_gr) |
 | `REENTRY_CROSS_FRESHNESS_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:16921(evaluate_reentry_epq) · ez_positions_quick.py:16921(evaluate_reentry_epq) | — |
 | `REENTRY_DC_MID_PULLBACK_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_bounce_after_correction.py:175(check_dc_mid) · vec_decisions/reentry_bounce_after_correction.py:175(check_dc_mid) | vec_decisions/reentry_bounce_after_correction.py:175(check_dc_mid) |
 | `REENTRY_DC_MID_PULLBACK_WIDTH_MAX` | reentry | 12.0 / 12.0 / 12.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_bounce_after_correction.py:177(check_dc_mid) · vec_decisions/reentry_bounce_after_correction.py:177(check_dc_mid) | vec_decisions/reentry_bounce_after_correction.py:177(check_dc_mid) |
 | `REENTRY_EXHAUSTED_PARTIAL_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | LIVE_ONLY+STAGED_VEC | ez_positions_quick.py:15770(check_entry_candidates_for_account.worker) · ez_positions_quick.py:15770(check_entry_candidates_for_account.worker) | — |
-| `REENTRY_EXIT_RECLAIM_BUFFER_PCT` | reentry | 0.2 / 0.2 / 0.2 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:38781(evaluate_reentry) · — | — |
-| `REENTRY_EXIT_RECLAIM_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:38778(evaluate_reentry) · — | — |
+| `REENTRY_EXIT_RECLAIM_BUFFER_PCT` | reentry | 0.2 / 0.2 / 0.2 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:38821(evaluate_reentry) · — | — |
+| `REENTRY_EXIT_RECLAIM_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:38818(evaluate_reentry) · — | — |
 | `REENTRY_K_RESET_GR_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_bounce_after_correction.py:190(check_k_reset) · vec_decisions/reentry_bounce_after_correction.py:190(check_k_reset) | vec_decisions/reentry_bounce_after_correction.py:190(check_k_reset) |
 | `REENTRY_K_RESET_TF` | reentry | 15m / 15m / 15m | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_bounce_after_correction.py:195(check_k_reset) · vec_decisions/reentry_bounce_after_correction.py:195(check_k_reset) | vec_decisions/reentry_bounce_after_correction.py:195(check_k_reset) |
-| `REENTRY_POST_CONSOL_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:42797(process_single_reentry_evaluation._compose_reentry_mult) · — | — |
-| `REENTRY_POST_CONSOL_MULT` | reentry | 1.5 / 1.5 / 1.5 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:42811(process_single_reentry_evaluation._compose_reentry_mult) · — | — |
-| `REENTRY_PULL1_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12922(process_position) | v12_quick_engine.py:8184(compute_reentry_blocks) |
-| `REENTRY_PULL2_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12929(process_position) | v12_quick_engine.py:8198(compute_reentry_blocks) |
-| `REENTRY_PULL3_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12934(process_position) | v12_quick_engine.py:8211(compute_reentry_blocks) |
-| `REENTRY_PULL4_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12939(process_position) | v12_quick_engine.py:8224(compute_reentry_blocks) |
+| `REENTRY_POST_CONSOL_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:42837(process_single_reentry_evaluation._compose_reentry_mult) · — | — |
+| `REENTRY_POST_CONSOL_MULT` | reentry | 1.5 / 1.5 / 1.5 | CL,CS,SL,SS | LIVE_ONLY+STAGED_VEC | DEAD+STAGED_VEC | ez_manage.py:42851(process_single_reentry_evaluation._compose_reentry_mult) · — | — |
+| `REENTRY_PULL1_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12983(process_position) | v12_quick_engine.py:8229(compute_reentry_blocks) |
+| `REENTRY_PULL2_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12990(process_position) | v12_quick_engine.py:8243(compute_reentry_blocks) |
+| `REENTRY_PULL3_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:12995(process_position) | v12_quick_engine.py:8256(compute_reentry_blocks) |
+| `REENTRY_PULL4_ENABLED` | reentry | False / False / False | CL,CS,SL,SS | VEC_ONLY | WIRED_BOTH_UNPROVEN | — · tradier_manage.py:13000(process_position) | v12_quick_engine.py:8269(compute_reentry_blocks) |
 | `REENTRY_PULLBACK_GR_SCORE_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_bounce_after_correction.py:159(check_pullback_gr) · vec_decisions/reentry_bounce_after_correction.py:159(check_pullback_gr) | vec_decisions/reentry_bounce_after_correction.py:159(check_pullback_gr) |
 | `REENTRY_PULLBACK_GR_SCORE_MIN` | reentry | 12 / 12 / 12 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/reentry_bounce_after_correction.py:161(check_pullback_gr) · vec_decisions/reentry_bounce_after_correction.py:161(check_pullback_gr) | vec_decisions/reentry_bounce_after_correction.py:161(check_pullback_gr) |
 | `REENTRY_SMA200_BACKUP_ENABLED` | reentry | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/guaranteed_price_cross_reentry.py:241(check_guaranteed_price_cross_reentry)<br>(+1) · vec_decisions/guaranteed_price_cross_reentry.py:241(check_guaranteed_price_cross_reentry)<br>(+1) | vec_decisions/guaranteed_price_cross_reentry.py:241(check_guaranteed_price_cross_reentry)<br>vec_decisions/guaranteed_price_cross_reentry.py:371(check_guaranteed_price_cross_reentry_vec) |
@@ -3862,10 +3862,10 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 
 | switch | kind | defaults cfg / tradier / quick | templates | crypto | stocks | live reads (ez · tradier) | vec reads |
 |---|---|---|---|---|---|---|---|
-| `BAND_SLOPE_SIZING_V2_DEPTH_GAIN` | sizing | 1.0 / 1.0 / 1.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:27001(MultiAccountTradeManager.execute_trade_action)<br>(+1) · ez_positions_quick.py:1395(calculate_dynamic_quantity)<br>(+1) | vec_decisions/slope_sizing_live.py:50(mult) |
-| `BAND_SLOPE_SIZING_V2_ENABLED` | sizing | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:26993(MultiAccountTradeManager.execute_trade_action)<br>(+1) · ez_positions_quick.py:1369(calculate_dynamic_quantity)<br>(+1) | vec_decisions/slope_sizing_live.py:36(mult) |
-| `BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY` | sizing | 1.0 / 1.0 / 1.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:27002(MultiAccountTradeManager.execute_trade_action)<br>(+1) · ez_positions_quick.py:1396(calculate_dynamic_quantity)<br>(+1) | vec_decisions/slope_sizing_live.py:51(mult) |
-| `BAND_SLOPE_SIZING_V2_TF` | sizing | 4h / D / 4h | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:26994(MultiAccountTradeManager.execute_trade_action)<br>(+1) · ez_positions_quick.py:1370(calculate_dynamic_quantity)<br>(+2) | vec_decisions/slope_sizing_live.py:43(mult) |
+| `BAND_SLOPE_SIZING_V2_DEPTH_GAIN` | sizing | 1.0 / 1.0 / 1.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:27041(MultiAccountTradeManager.execute_trade_action)<br>(+1) · ez_positions_quick.py:1395(calculate_dynamic_quantity)<br>(+1) | vec_decisions/slope_sizing_live.py:50(mult) |
+| `BAND_SLOPE_SIZING_V2_ENABLED` | sizing | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:27033(MultiAccountTradeManager.execute_trade_action)<br>(+1) · ez_positions_quick.py:1369(calculate_dynamic_quantity)<br>(+1) | vec_decisions/slope_sizing_live.py:36(mult) |
+| `BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY` | sizing | 1.0 / 1.0 / 1.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:27042(MultiAccountTradeManager.execute_trade_action)<br>(+1) · ez_positions_quick.py:1396(calculate_dynamic_quantity)<br>(+1) | vec_decisions/slope_sizing_live.py:51(mult) |
+| `BAND_SLOPE_SIZING_V2_TF` | sizing | 4h / D / 4h | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:27034(MultiAccountTradeManager.execute_trade_action)<br>(+1) · ez_positions_quick.py:1370(calculate_dynamic_quantity)<br>(+2) | vec_decisions/slope_sizing_live.py:43(mult) |
 | `STDEV_BAND_MULTIPLIER` | sizing | 2.5 / 2.5 / 2.5 | CL,CS,SL,SS | DEAD | DEAD | — · — | — |
 | `STDEV_BULL_SLOPE_BOOST_ENABLED` | sizing | False / False / <absent> | CL,CS,SL | DEAD | DEAD | — · — | — |
 | `STDEV_BULL_SLOPE_BOOST_MULT` | sizing | 1.5 / 1.5 / <absent> | CL,CS,SL | DEAD | DEAD | — · — | — |
@@ -3877,5 +3877,5 @@ _Generated 2026-10-02T01:02:04.474688Z · 3499 names · vec modules never reache
 | `STDEV_SLOPE_SIZING_1H_MAX` | sizing | 2.0 / 2.0 / 2.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:1372(calculate_dynamic_quantity) · ez_positions_quick.py:1372(calculate_dynamic_quantity)<br>(+1) | vec_decisions/slope_sizing_live.py:57(mult) |
 | `STDEV_SLOPE_SIZING_4H_MAX` | sizing | 4.0 / 4.0 / 4.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:1372(calculate_dynamic_quantity) · ez_positions_quick.py:1372(calculate_dynamic_quantity)<br>(+1) | vec_decisions/slope_sizing_live.py:56(mult) |
 | `STDEV_SLOPE_SIZING_D_MAX` | sizing | 10.0 / 10.0 / 10.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:1372(calculate_dynamic_quantity) · ez_positions_quick.py:1372(calculate_dynamic_quantity)<br>(+1) | vec_decisions/slope_sizing_live.py:56(mult) |
-| `STDEV_SLOPE_SIZING_ENABLED` | sizing | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:1369(calculate_dynamic_quantity)<br>(+1) · ez_positions_quick.py:1369(calculate_dynamic_quantity)<br>(+3) | v12_quick_engine.py:10229(compute_regime_sizing_mult)<br>v12_quick_engine.py:10252(compute_regime_sizing_mult)<br>(+1) |
+| `STDEV_SLOPE_SIZING_ENABLED` | sizing | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:1369(calculate_dynamic_quantity)<br>(+1) · ez_positions_quick.py:1369(calculate_dynamic_quantity)<br>(+3) | v12_quick_engine.py:10274(compute_regime_sizing_mult)<br>v12_quick_engine.py:10297(compute_regime_sizing_mult)<br>(+1) |
 | `STDEV_SLOPE_SIZING_MODE` | sizing | slope_to_top / slope_to_top / slope_to_top | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:1383(calculate_dynamic_quantity) · ez_positions_quick.py:1383(calculate_dynamic_quantity)<br>(+1) | vec_decisions/slope_sizing_live.py:59(mult) |
