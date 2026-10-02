@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-10-02 18:58 UTC
+PERFORMANCE REPORT — 2026-10-02 19:19 UTC
 ================================================================================
 Total: 143 symbols | A=4 B=96 C=43
 Window: 14 days | Min trades: 5
@@ -12,7 +12,6 @@ Window: 14 days | Min trades: 5
 --- TIER B (96 symbols) ---
              AXTI  WR=56%  avg=+1.57%  total=+30.8%  trades= 18  mult=10.00
              LSCC  WR=100%  avg=+3.50%  total=+18.7%  trades=  5  mult=5.50
-             META  WR=59%  avg=+0.92%  total=+16.2%  trades= 17  mult=7.63
              INTC  WR=33%  avg=+0.80%  total=+15.1%  trades= 18  mult=3.17
              SMCI  WR=50%  avg=+1.52%  total=+12.6%  trades=  8  mult=4.60
                 A  WR=57%  avg=+0.45%  total=+10.6%  trades= 23  mult=5.19
@@ -23,6 +22,7 @@ Window: 14 days | Min trades: 5
           XTZUSDT  WR=59%  avg=+0.19%  total=+6.3%  trades= 32  mult=3.99
               GME  WR=100%  avg=+1.93%  total=+3.9%  trades=  2  mult=1.00
              SNOW  WR=100%  avg=+1.94%  total=+3.9%  trades=  2  mult=1.00
+             META  WR=53%  avg=+0.27%  total=+3.8%  trades= 15  mult=2.80
              WDAY  WR=100%  avg=+1.15%  total=+3.5%  trades=  3  mult=1.00
           C98USDT  WR=75%  avg=+0.81%  total=+3.3%  trades=  4  mult=1.00
              BMNR  WR=86%  avg=+0.40%  total=+2.8%  trades=  7  mult=4.19
@@ -91,7 +91,7 @@ Window: 14 days | Min trades: 5
          BABAUSDT  WR=60%  avg=-0.32%  total=-1.6%  trades=  5  mult=0.96
           PTBUSDT  WR=0%  avg=-0.96%  total=-1.9%  trades=  2  mult=1.00
               TSM  WR=0%  avg=-0.62%  total=-2.4%  trades=  4  mult=1.00
-          ETHUSDT  WR=0%  avg=-2.92%  total=-2.9%  trades=  1  mult=1.00
+          ETHUSDT  WR=0%  avg=-2.92%  total=-2.9%  trades=  1  mult=1.00 ** OPEN **
          HYPEUSDT  WR=52%  avg=-0.06%  total=-3.0%  trades= 48  mult=0.98
               PSX  WR=63%  avg=-0.09%  total=-3.5%  trades= 38  mult=2.78
          SANDUSDT  WR=45%  avg=-0.13%  total=-4.3%  trades= 33  mult=0.57
@@ -153,7 +153,7 @@ Window: 14 days | Min trades: 5
               APO  WR=5%  avg=-4.01%  total=-92.8%  trades= 64  mult=0.12
 
 SUMMARY:
-  Total PnL (all symbols): -601.6%
+  Total PnL (all symbols): -614.1%
   Avg win rate: 43%
   A-tier avg mult: 10.00
   C-tier avg mult: 0.32

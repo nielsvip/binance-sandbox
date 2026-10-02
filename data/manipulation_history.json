@@ -2022,5 +2022,77 @@
     ],
     "timestamp": "2026-10-02T18:49:31.354588+00:00",
     "price": 300.71
+  },
+  {
+    "symbol": "VRTUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 16.5x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-02T19:18:28.963970+00:00",
+    "price": 252.91
+  },
+  {
+    "symbol": "WMTUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 16.3x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-02T19:18:28.963970+00:00",
+    "price": 104.27
+  },
+  {
+    "symbol": "BSVUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 9.3x normal"
+    ],
+    "timestamp": "2026-10-02T19:22:58.891355+00:00",
+    "price": 19.16
+  },
+  {
+    "symbol": "1000SATSUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 8.5x normal"
+    ],
+    "timestamp": "2026-10-02T19:32:25.660606+00:00",
+    "price": 1.244e-05
+  },
+  {
+    "symbol": "BTCDOMUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 12.2x normal"
+    ],
+    "timestamp": "2026-10-02T19:34:00.064465+00:00",
+    "price": 5222.5
+  },
+  {
+    "symbol": "EDUUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 9.4x normal"
+    ],
+    "timestamp": "2026-10-02T19:34:00.064465+00:00",
+    "price": 0.05115401
+  },
+  {
+    "symbol": "ENAUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 30.7x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-02T19:34:00.064465+00:00",
+    "price": 0.2363
+  },
+  {
+    "symbol": "HOTUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 12.0x normal"
+    ],
+    "timestamp": "2026-10-02T19:34:00.064465+00:00",
+    "price": 0.0004364
   }
 ]
