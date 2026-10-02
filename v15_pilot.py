@@ -1255,6 +1255,146 @@ ADAPT_TIM_MAX, ADAPT_DD_MAX = 80.0, 30.0
 ADAPT_TREND_TARGET_PCT = float(os.environ.get("V15_TREND_TARGET_PCT", "-3.0"))
 _ADAPT_TREND_TOKENS = ("TREND", "HTF", "EMA", "ADX", "REGIME", "SMA200", "DIRECTION")
 _ADAPT_TREND_KIND = ("FILTER", "GATE", "VETO")
+# USER 2026-10-02 (finish qualification): a sheet FINISHES only when TIM in [20, 80], gain >= 0,
+# gain >= BH (30D), valid, trades floored; 365D must be valid + gain >= 0 + >= 80 trades (BIBLE §58).
+# Failure -> revise (§58 repair, diagnosis-phased) -> REDO (re-fill from repaired set, max 2) -> IMPOSSIBLE quarantine.
+QUAL_TIM_MIN, QUAL_TIM_MAX = 20.0, 80.0
+QUAL_365D_FLOOR_TRADES = 80
+QUAL_MAX_REDOS = int(os.environ.get("V15_QUAL_MAX_REDOS", "2"))
+QUAL_365D_TIMEOUT = float(os.environ.get("V15_QUAL_365D_TIMEOUT", "600"))
+IMPOSSIBLE_DIR = ROOT / "SPREADSHEETS" / "V15_V16_IMPOSSIBLE"
+# BIBLE §58: final-set repair never loosens safety gates — these tokens are excluded from SOFTEN in final_safe mode.
+_ADAPT_FINAL_SOFTEN_EXCLUDE = ("GUARD", "BLOCK", "HARD", "STOP", "KILL", "HEDGE", "STDEV_REJECT", "RISK")
+
+
+def _qualifies_30d(v, bh):
+    """(ok, reasons) — 30D finish gate: valid, TIM 20-80, DD<=30, trades>=floor, gain>=0, gain>=BH."""
+    r = []
+    v = v or {}
+    if not v.get("valid"):
+        r.append(f"invalid:{v.get('invalid_reason') or '?'}")
+    t = int(v.get("trades") or 0)
+    if t < ADAPT_FLOOR_TRADES:
+        r.append(f"trades {t}<{ADAPT_FLOOR_TRADES}")
+    try:
+        tim = float(v.get("tim_pct") or 0.0)
+    except Exception:
+        tim = 0.0
+    if not (QUAL_TIM_MIN <= tim <= QUAL_TIM_MAX):
+        r.append(f"TIM {tim:.1f} outside [{QUAL_TIM_MIN:.0f},{QUAL_TIM_MAX:.0f}]")
+    g = v.get("gain_pct")
+    g = float(g) if g is not None else None
+    if g is None or g < 0:
+        r.append(f"gain {g}")
+    else:
+        try:
+            if g < float(bh or 0):
+                r.append(f"gain {g:.2f}<BH {float(bh or 0):.2f}")
+        except Exception:
+            pass
+    return (len(r) == 0, r)
+
+
+def _qualifies_365d(v):
+    """(ok, reasons) — 365D finish gate (BIBLE §58): valid, trades>=80, gain>=0."""
+    r = []
+    v = v or {}
+    if not v.get("valid"):
+        r.append(f"invalid:{v.get('invalid_reason') or '?'}")
+    t = int(v.get("trades") or 0)
+    if t < QUAL_365D_FLOOR_TRADES:
+        r.append(f"trades {t}<{QUAL_365D_FLOOR_TRADES}")
+    g = v.get("gain_pct")
+    g = float(g) if g is not None else None
+    if g is None or g < 0:
+        r.append(f"gain {g}")
+    return (len(r) == 0, r)
+
+
+def _quarantine_impossible(new_symside, reasons, metrics, wb, wb_path, progress, progress_path, cumulative_overrides, repairs, carry_files=()):
+    """Move an unfinishable sheet out of CELL_BY_CELL into V15_V16_IMPOSSIBLE for manual revision. Tombstones progress (verdict=IMPOSSIBLE; final_gain kept so the pilot never retouches, herd skips via full board). Returns quarantine dir path str."""
+    import shutil as _sh_q, datetime as _dt_q
+    IMPOSSIBLE_DIR.mkdir(parents=True, exist_ok=True)
+    stamp = _dt_q.datetime.now(_dt_q.timezone.utc).strftime("%Y%m%d%H%M%S")
+    qdir = IMPOSSIBLE_DIR / f"{new_symside}_{stamp}"
+    qdir.mkdir(parents=True, exist_ok=True)
+    for _cf in carry_files or ():
+        try:
+            _p = Path(_cf)
+            if _p.exists():
+                _p.rename(qdir / _p.name)
+                print(f"[quarantine] {new_symside} carried {_p.name} into quarantine", flush=True)
+        except Exception as _qe:
+            print(f"[quarantine-warn] {new_symside} carry {_qe}", flush=True)
+    try:
+        with RED_FIXER_LOCK:
+            _atomic_save(wb, qdir / f"{new_symside}_IMPOSSIBLE_{stamp}.xlsx")
+    except Exception as _qe:
+        print(f"[quarantine-warn] {new_symside} wb save {_qe}", flush=True)
+    try:
+        _qp = qdir / f"{new_symside}_IMPOSSIBLE_{stamp}.json"
+        _qp.write_text(json.dumps({"symside": new_symside, "verdict": "IMPOSSIBLE", "reasons": reasons, "metrics": metrics, "repairs": repairs, "n_overrides": len(cumulative_overrides or {}), "stamped_at": stamp}, indent=1, default=str))
+    except Exception as _qe:
+        print(f"[quarantine-warn] {new_symside} reason json {_qe}", flush=True)
+    try:
+        write_zoomable_chart(new_symside, None, dict(cumulative_overrides or {}), 30, suffix=f"IMPOSSIBLE_{stamp}")
+        for _h in list(OUT_DIR.glob(f"{new_symside}_IMPOSSIBLE_{stamp}.html")) + list((ROOT / "SPREADSHEETS").glob(f"{new_symside}_IMPOSSIBLE_{stamp}.html")):
+            try:
+                _h.rename(qdir / _h.name)
+            except Exception:
+                pass
+    except Exception as _qe:
+        print(f"[quarantine-warn] {new_symside} chart {_qe}", flush=True)
+    for _pat in (f"{new_symside}_bh*.xlsx", f"{new_symside}_30d_matrix.xlsx", f"{new_symside}_*.html"):
+        for _f in OUT_DIR.glob(_pat):
+            try:
+                _f.unlink()
+                print(f"[quarantine] {new_symside} removed CELL_BY_CELL artifact {_f.name}", flush=True)
+            except Exception:
+                pass
+    progress["verdict"] = "IMPOSSIBLE"
+    progress["impossible_reasons"] = reasons
+    progress["impossible_path"] = str(qdir)
+    progress["impossible_metrics"] = metrics
+    progress.pop("final_path", None)
+    progress.pop("needs_redo", None)
+    _atomic_write_json(progress_path, progress)
+    print(f"[IMPOSSIBLE] {new_symside} quarantined -> {qdir} ({'; '.join(reasons)})", flush=True)
+    try:
+        import socket as _sock_q, subprocess as _sp_q
+        _hq = _sock_q.gethostname().lower()
+        if _hq != "niels" and "10.0.0.3" not in _hq:
+            for _host in ("10.0.0.3", "157.180.125.52"):
+                try:
+                    _sp_q.run(["bash", "-c", f"rsync -az -e 'ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no' {qdir}/ niels@{_host}:~/binance-sandbox/SPREADSHEETS/V15_V16_IMPOSSIBLE/{qdir.name}/"], timeout=60, capture_output=True)
+                    _sp_q.run(["bash", "-c", f"rsync -az -e 'ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no' {progress_path} niels@{_host}:~/binance-sandbox/data/reports/lifecycle_pilot/"], timeout=30, capture_output=True)
+                    print(f"[quarantine-push] {new_symside} tombstone pushed to S1 via {_host}", flush=True)
+                    break
+                except Exception:
+                    continue
+    except Exception as _qe:
+        print(f"[quarantine-push-warn] {_qe}", flush=True)
+    return str(qdir)
+
+
+def _run_365_repair(new_symside, progress_path, template_path, timeout_sec=1800):
+    """Run the §58 repair tool (tools/v15_365_repair.py) on this sheet's final set. Returns (overrides|None, report_dict)."""
+    import subprocess as _sp, tempfile as _tf
+    try:
+        with _tf.TemporaryDirectory(prefix="q365_") as _td:
+            _env = dict(os.environ)
+            _env["V12_NPZ_CACHE"] = "4"
+            _cp = _sp.run([sys.executable, str(ROOT / "tools" / "v15_365_repair.py"), "--progress", str(progress_path), "--template", str(template_path), "--out", _td, "--max-steps", "8"], capture_output=True, text=True, timeout=timeout_sec, cwd=str(ROOT), env=_env)
+            print(f"[365-repair] {new_symside} rc={_cp.returncode} tail={((_cp.stdout or '')[-400:] + (_cp.stderr or '')[-200:])!r}"[:600], flush=True)
+            _outs = list(Path(_td).glob("*_365_repair.json"))
+            if _cp.returncode != 0 or not _outs:
+                return None, {"rc": _cp.returncode}
+            rep = json.loads(_outs[0].read_text())
+            ov = (rep.get("final") or {}).get("overrides") or rep.get("overrides")
+            return (dict(ov) if ov else None), rep
+    except Exception as _e:
+        print(f"[365-repair-warn] {new_symside}: {_e}", flush=True)
+        return None, {"error": str(_e)[:120]}
 
 
 def _adapt_template_rows(template_path, tabs):
@@ -1304,7 +1444,7 @@ def _prior_final_sets(symside: str) -> list:
     out.sort(key=lambda t: -t[0])
     return [(src, ov) for _g2, src, ov in out]
 
-def _credible_baseline(new_symside, prepared, base_sets, defaults, template_path, window_days, workers=2):
+def _credible_baseline(new_symside, prepared, base_sets, defaults, template_path, window_days, workers=2, tim_min=None, gain_min=None, bh_min=None, step_cap=None, final_safe=False):
     """USER 2026-09-29/30 (BIBLE §58, adaptive mandate): a sheet is only filled from a CREDIBLE baseline = valid (TIM <= 80,
     DD <= 30 — the vomit gates of evaluate_prepared_sanitized, never loosened), >= ADAPT_FLOOR_TRADES trades, gain >=
     ADAPT_ULTRA_NEG_PCT. An invalid baseline is REPAIRED, never disqualified: (A) best of the alternative bases (live recipe /
@@ -1313,7 +1453,10 @@ def _credible_baseline(new_symside, prepared, base_sets, defaults, template_path
     TREND filters (HTF/TREND/EMA/ADX/REGIME/SMA200/DIRECTION filter/gate/veto rows and bool switches) one at a time until
     gain > ADAPT_TREND_TARGET_PCT (-3 %), validity kept. Base order: previous best if credible, else cat_side (template)
     defaults if credible, else the best-scoring base. Up to ADAPT_MAX_STEPS; a step stops at the first credible candidate.
-    Returns (overrides, vec_result, report)."""
+    USER 2026-10-02 (finish qualification): optional tim_min/gain_min/bh_min extend credible() for DONE-stage final-set
+    repair (TIM floor, non-negative, beat-BH); TIM below tim_min with floored trades -> HOLDS phase (open entries + tune
+    exits for longer holds); final_safe=True excludes safety-gate tokens from SOFTEN/LOOSEN (BIBLE §58). Defaults preserve
+    the baseline-stage behavior exactly. Returns (overrides, vec_result, report)."""
     from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps
     floor, uneg = ADAPT_FLOOR_TRADES, ADAPT_ULTRA_NEG_PCT
 
@@ -1331,17 +1474,35 @@ def _credible_baseline(new_symside, prepared, base_sets, defaults, template_path
         g = v.get("gain_pct")
         return float(g) if g is not None else -1e9
 
+    def tim(v):
+        try:
+            return float(v.get("tim_pct") or 0.0)
+        except Exception:
+            return 0.0
+
     def excess(v):
         # how far over the vomit gates (TIM > 80 %, DD > 30 %): 0 = within
         return max(0.0, float(v.get("tim_pct") or 0.0) - ADAPT_TIM_MAX) + max(0.0, float(v.get("max_dd_pct") or 0.0) - ADAPT_DD_MAX)
 
+    def timgap(v):
+        # how far under the TIM floor (finish-repair only): 0 = within or unset
+        return max(0.0, (tim_min if tim_min is not None else 0.0) - tim(v))
+
     target = {"gain": uneg}
 
     def credible(v):
-        return bool(v.get("valid")) and trades(v) >= floor and gain(v) >= target["gain"]
+        if not (bool(v.get("valid")) and trades(v) >= floor and gain(v) >= target["gain"]):
+            return False
+        if tim_min is not None and tim(v) < tim_min:
+            return False
+        if gain_min is not None and gain(v) < gain_min:
+            return False
+        if bh_min is not None and gain(v) < bh_min:
+            return False
+        return True
 
     def score(v):
-        return (credible(v), bool(v.get("valid")), -excess(v), min(trades(v), floor), gain(v))
+        return (credible(v), bool(v.get("valid")), -excess(v), -timgap(v), min(trades(v), floor), gain(v))
 
     report = {"floor": floor, "ultra_neg": uneg, "tim_max": ADAPT_TIM_MAX, "dd_max": ADAPT_DD_MAX, "bases": [], "steps": []}
     best = None
@@ -1377,37 +1538,50 @@ def _credible_baseline(new_symside, prepared, base_sets, defaults, template_path
     def row_cands(key, tabs):
         return [(f"{tab}:{sw}={cand}", _switch_overrides(sw, _parse_opt_value(cand, defaults.get(sw)))) for tab, sw, cand in tab_rows(key, tabs)]
 
-    for step in range(ADAPT_MAX_STEPS):
+    for step in range(step_cap or ADAPT_MAX_STEPS):
         if trades(cur_v) < floor:
             phase = "TRADES"
+        elif tim_min is not None and tim(cur_v) < tim_min and not cur_v.get("valid"):
+            phase = "TRADES"  # invalid + under TIM floor -> open up first (validity is the binding constraint)
+        elif tim_min is not None and tim(cur_v) < tim_min:
+            phase = "HOLDS"  # floored but filtered to death -> more entries + longer holds (USER 2026-10-02)
         elif excess(cur_v) > 0 or not cur_v.get("valid"):
             phase = "EXITS"
         else:
             phase = "GAIN"  # valid + floored but gain below target -> trend filters
         cands = []
-        if phase == "TRADES":
+        if phase in ("TRADES", "HOLDS"):
             cands += row_cands("entry", [t for t in SWITCH_SHEETS if t.startswith(("ENTRY_", "REENTRY_"))])
             for k, dv in defaults.items():
                 cur = cur_ov.get(k, dv)
                 if not isinstance(dv, bool) or not isinstance(cur, bool) or k == "SIMPLE_PRICE_GT0_ENABLED" or k in DEAD_VEC_SWITCHES or k in LIVE_ONLY_SWITCHES:
                     continue
+                if final_safe and any(t in k for t in _ADAPT_FINAL_SOFTEN_EXCLUDE):
+                    continue
                 if cur and any(t in k for t in _ADAPT_SOFTEN_TOKENS):
                     cands.append((f"SOFTEN:{k}=False", {k: False}))
                 elif not cur and k.endswith("_ENABLED") and any(t in k for t in _ADAPT_ENTRY_TOKENS) and not any(t in k for t in _ADAPT_SOFTEN_TOKENS):
                     cands.append((f"ENTRY_PATH:{k}=True", {k: True}))
-        elif phase == "EXITS":
+        if phase in ("EXITS", "HOLDS"):
             cands += row_cands("exit", [t for t in SWITCH_SHEETS if t in _ADAPT_EXIT_TABS])
             for k, dv in defaults.items():
                 cur = cur_ov.get(k, dv)
                 if not isinstance(dv, bool) or not isinstance(cur, bool) or k in DEAD_VEC_SWITCHES or k in LIVE_ONLY_SWITCHES:
                     continue
+                if final_safe and any(t in k for t in _ADAPT_FINAL_SOFTEN_EXCLUDE):
+                    continue
                 if cur and "EXIT" in k and any(t in k for t in _ADAPT_EXIT_BLOCK_TOKENS):
                     cands.append((f"EXIT_LOOSEN:{k}=False", {k: False}))
                 elif not cur and "REENTRY" in k and "FILTER" in k:
                     cands.append((f"REENTRY_FILTER:{k}=True", {k: True}))
-        else:
+        if phase == "GAIN":
             # ultra-negative (USER 2026-09-30): add TREND filters one at a time until gain > ADAPT_TREND_TARGET_PCT (-3 %)
+            # USER 2026-10-02: finish repair raises the target to gain_min/bh_min (non-negative, beat-BH)
             target["gain"] = max(target["gain"], ADAPT_TREND_TARGET_PCT)
+            if gain_min is not None:
+                target["gain"] = max(target["gain"], gain_min)
+            if bh_min is not None:
+                target["gain"] = max(target["gain"], bh_min)
             for tab, sw, cand in tab_rows("all", [t for t in SWITCH_SHEETS if t != "STDEV_SLOPE_SIZING"]):
                 if any(t in sw for t in _ADAPT_TREND_TOKENS) and any(t in sw for t in _ADAPT_TREND_KIND):
                     cands.append((f"TREND:{tab}:{sw}={cand}", _switch_overrides(sw, _parse_opt_value(cand, defaults.get(sw)))))
@@ -2579,45 +2753,101 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         except Exception as _ff_e:
             print(f"[final-fresh-warn] {new_symside}: {_ff_e}", flush=True)
             _fresh_final = {}
-        # USER 2026-09-30: a sheet is FINISHED only when its final set complies with the standards (valid = TIM <= 80, DD <= 30,
-        # trades >= floor; a negative gain is NOT a disqualifier). Non-compliant -> BIBLE §58 repair of the final set (exits /
-        # entries / reentry filters, never loosened gates); still non-compliant -> NOT published (no bh/gain filename).
+        # USER 2026-10-02 (finish qualification): a sheet FINISHES only when the final set qualifies — 30D:
+        # valid, TIM in [20, 80], DD <= 30, trades >= floor, gain >= 0, gain >= BH. Failure -> revise with the
+        # §58 repair (diagnosis-phased: TRADES/HOLDS/EXITS/GAIN), cycling bases across rounds; still failing ->
+        # REDO (re-fill the sheet from the repaired set, max QUAL_MAX_REDOS) -> IMPOSSIBLE quarantine.
+        # (Supersedes 2026-09-30 "negative gain is NOT a disqualifier".)
         def _complies(v):
-            return bool((v or {}).get("valid")) and int((v or {}).get("trades") or 0) >= ADAPT_FLOOR_TRADES
-        _compliant = _complies(_fresh_final)
-        if not _compliant and prepared is not None:
-            print(f"[COMPLIANCE] {new_symside} final set not compliant ({(_fresh_final or {}).get('invalid_reason') or 'trades ' + str((_fresh_final or {}).get('trades'))}) — repairing before publish", flush=True)
+            ok, _ = _qualifies_30d(v, bh)
+            return ok
+        _qual_ok, _qual_reasons = _qualifies_30d(_fresh_final, bh)
+        _qual_repairs = []
+        _redo_base = None
+        if not _qual_ok and prepared is not None:
+            print(f"[COMPLIANCE] {new_symside} final set not qualified ({'; '.join(_qual_reasons)}) — revising before publish", flush=True)
             try:
-                _rov, _rv, _rrep = _credible_baseline(new_symside, prepared, [("final_set", dict(cumulative_overrides))], defaults, args.template, args.window_days)
-                progress["compliance_repair"] = _rrep
-                if _complies(_rv):
-                    cumulative_overrides = dict(_rov)
-                    _fresh_final = _rv
-                    final_gain = cumulative_gain = float(_rv.get("gain_pct"))
-                    progress["cumulative_overrides"] = dict(cumulative_overrides)
-                    progress["cumulative_gain"] = float(final_gain)
-                    _compliant = True
-                    try:
-                        if "COMPLIANCE_REPAIR" in wb.sheetnames:
-                            del wb["COMPLIANCE_REPAIR"]
-                        _cws = wb.create_sheet("COMPLIANCE_REPAIR")
-                        _cws.append(["step", "phase", "applied", "gain_pct", "trades", "tim_pct", "max_dd_pct", "valid"])
-                        for _st in _rrep.get("steps", []):
-                            _cws.append([_st.get("step"), _st.get("phase"), _st.get("applied") or _st.get("result"), _st.get("gain"), _st.get("trades"), _st.get("tim"), _st.get("dd"), _st.get("valid")])
-                        with RED_FIXER_LOCK:
-                            _atomic_save(wb, wb_path)
-                    except Exception as _cw_e:
-                        print(f"[compliance-sheet-warn] {_cw_e}", flush=True)
-                    print(f"[COMPLIANCE] {new_symside} repaired: {_rv.get('trades')} trades TIM {_rv.get('tim_pct')} DD {_rv.get('max_dd_pct')} gain {final_gain:+.4f}", flush=True)
+                _tpl_d = {k: defaults.get(k) for k in defaults}
+                _priors = _prior_final_sets(new_symside)[:2]
+                _bases_rounds = [[("final_set", dict(cumulative_overrides))],
+                                 [("final_set", dict(cumulative_overrides)), ("template_defaults", dict(_tpl_d))],
+                                 [("final_set", dict(cumulative_overrides)), ("template_defaults", dict(_tpl_d))] + [(f"prior_{i}", dict(ov)) for i, (src, ov) in enumerate(_priors) for _ in [0]][:2]]
+                for _qr in range(min(QUAL_MAX_REDOS + 1, len(_bases_rounds))):
+                    _rov, _rv, _rrep = _credible_baseline(new_symside, prepared, _bases_rounds[_qr], defaults, args.template, args.window_days, tim_min=QUAL_TIM_MIN, gain_min=0.0, bh_min=float(bh or 0), final_safe=True)
+                    _rrep["round"] = _qr
+                    _qual_repairs.append(_rrep)
+                    _qok, _qr2 = _qualifies_30d(_rv, bh)
+                    if _qok:
+                        if _rrep.get("base_chosen") == "final_set" or _qr == 0:
+                            cumulative_overrides = dict(_rov)
+                            _fresh_final = _rv
+                            final_gain = cumulative_gain = float(_rv.get("gain_pct"))
+                            progress["cumulative_overrides"] = dict(cumulative_overrides)
+                            progress["cumulative_gain"] = float(final_gain)
+                            _qual_ok = True
+                            try:
+                                if "COMPLIANCE_REPAIR" in wb.sheetnames:
+                                    del wb["COMPLIANCE_REPAIR"]
+                                _cws = wb.create_sheet("COMPLIANCE_REPAIR")
+                                _cws.append(["step", "phase", "applied", "gain_pct", "trades", "tim_pct", "max_dd_pct", "valid"])
+                                for _st in _rrep.get("steps", []):
+                                    _cws.append([_st.get("step"), _st.get("phase"), _st.get("applied") or _st.get("result"), _st.get("gain"), _st.get("trades"), _st.get("tim"), _st.get("dd"), _st.get("valid")])
+                                with RED_FIXER_LOCK:
+                                    _atomic_save(wb, wb_path)
+                            except Exception as _cw_e:
+                                print(f"[compliance-sheet-warn] {_cw_e}", flush=True)
+                            print(f"[COMPLIANCE] {new_symside} revised (round {_qr}): {_rv.get('trades')} trades TIM {_rv.get('tim_pct')} DD {_rv.get('max_dd_pct')} gain {final_gain:+.4f}", flush=True)
+                        else:
+                            _redo_base = (dict(_rov), dict(_rv), f"30D qualified from {_rrep.get('base_chosen')} (round {_qr}) — sheet rows stale, re-fill required")
+                            print(f"[COMPLIANCE] {new_symside} qualified from non-final base {_rrep.get('base_chosen')} — REDO required", flush=True)
+                        break
+                    _redo_base = (dict(_rov), dict(_rv), f"30D best-effort round {_qr} still failing ({'; '.join(_qr2)})")
+                progress["compliance_repair"] = _qual_repairs
+                _maybe_write_json(force=True)
             except Exception as _cr_e:
                 print(f"[compliance-repair-warn] {new_symside}: {_cr_e}", flush=True)
+        _compliant = _qual_ok
+        _impossible = False
         if not _compliant:
-            progress["not_compliant"] = str((_fresh_final or {}).get("invalid_reason") or f"trades {(_fresh_final or {}).get('trades')} < {ADAPT_FLOOR_TRADES}")
-            progress.pop("final_path", None)
-            _maybe_write_json(force=True)
-            print(f"[NOT-FINISHED] {new_symside} final set does not comply ({progress['not_compliant']}) — NOT published with bh/gain", flush=True)
+            _depth = int(progress.get("redo_depth", 0))
+            if _redo_base is not None and _depth < QUAL_MAX_REDOS:
+                progress["needs_redo"] = {"overrides": _redo_base[0], "result": {k: _redo_base[1].get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "valid")}, "depth": _depth + 1, "reason": _redo_base[2]}
+                progress.pop("final_path", None)
+                _maybe_write_json(force=True)
+                print(f"[REDO] {new_symside} scheduling re-fill from repaired set (depth {_depth + 1}): {_redo_base[2]}", flush=True)
+            else:
+                _impossible = True
+                progress["not_compliant"] = "; ".join(_qual_reasons) if _qual_reasons else "unknown"
+                _maybe_write_json(force=True)
         else:
             progress.pop("not_compliant", None)
+            progress.pop("needs_redo", None)
+        if _impossible:
+            _quarantine_impossible(new_symside, _qual_reasons, {"window": "30D", "gain_pct": (_fresh_final or {}).get("gain_pct"), "trades": (_fresh_final or {}).get("trades"), "tim_pct": (_fresh_final or {}).get("tim_pct"), "max_dd_pct": (_fresh_final or {}).get("max_dd_pct"), "valid": (_fresh_final or {}).get("valid"), "bh": float(bh or 0)}, wb, wb_path, progress, progress_path, cumulative_overrides, _qual_repairs)
+            print(f"[NOT-FINISHED] {new_symside} 30D unqualifiable after repair — quarantined, no publish", flush=True)
+            try:
+                wb.close()
+            except Exception:
+                pass
+            if _pool is not None:
+                _pool.shutdown(wait=False, cancel_futures=True)
+            return cumulative_gain, cumulative_overrides, progress
+        if not _compliant:
+            print(f"[NOT-FINISHED] {new_symside} REDO scheduled — no publish this run, herd relaunches into a fresh fill", flush=True)
+            try:
+                wb.close()
+            except Exception:
+                pass
+            for _w in (wb_path, Path(str(wb_path) + ".bak")):
+                try:
+                    if _w.exists():
+                        _w.unlink()
+                        print(f"[REDO] {new_symside} removed working sheet {_w.name} (re-fill clones pristine)", flush=True)
+                except Exception:
+                    pass
+            if _pool is not None:
+                _pool.shutdown(wait=False, cancel_futures=True)
+            return cumulative_gain, cumulative_overrides, progress
         # 2026-09-28 USER ORDER (impeccable sheets): PUBLISH THE bh/gain FINAL **BEFORE** the live
         # verification — the publish block in main() is unreachable (spec-fill returns early) and
         # DONE-stage tails have been dying, so the file must exist the moment final_gain is honest
@@ -2641,7 +2871,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _maybe_write_json(force=True)
             print(f"[PUBLISH] {new_symside} -> {_final_name} (fresh-verified vec; live H/I follow if verify succeeds)", flush=True)
         except Exception as _pub_e:
-            print(f"[publish-warn] {new_symside}: {_pub_e}", flush=True)
+            print(f"[publish-warn] {new_symside}: {_pub_e} — no xlsx, no chart; herd will retry via publish-only pass", flush=True)
+            try:
+                wb.close()
+            except Exception:
+                pass
+            if _pool is not None:
+                _pool.shutdown(wait=False, cancel_futures=True)
+            return cumulative_gain, cumulative_overrides, progress
         print("[DONE-STEP] published, entering live verify", flush=True)
         # 2026-09-28 PARITY FIX: --vector-only keeps the SWEEP vector-only (speed), but the single
         # DONE-stage live verification (one backtest_v12_engine run on the winning set, LIVE_TIMEOUT-bound)
@@ -2723,6 +2960,79 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             wb3.close()
         except Exception as _mr_e:
             print(f"[metrics-refresh-warn] {_mr_e}", flush=True)
+        # USER 2026-10-02 (finish qualification): 365D gate (BIBLE §58) — a negative/invalid 365D means the
+        # 30D sheet is faulty. Repair via tools/v15_365_repair.py, re-verify BOTH windows; repaired set differs ->
+        # REDO (re-fill from it, §58 step 5); unfixable or depth exhausted -> IMPOSSIBLE quarantine (published
+        # xlsx carried along for manual revision). V15_SKIP_365D_AT_DONE=1 restores the old skip.
+        if os.environ.get("V15_SKIP_365D_AT_DONE") != "1":
+            _q365_ok, _q365_reasons, _v365 = False, [], {}
+            try:
+                from tools.opt.v12_pilot import evaluate_sanitized_with_timeout as _es365
+                _v365 = _es365(new_symside, dict(cumulative_overrides), 365, timeout_sec=int(QUAL_365D_TIMEOUT)) or {}
+                progress["final_365d"] = {k: _v365.get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "valid", "invalid_reason")}
+                _q365_ok, _q365_reasons = _qualifies_365d(_v365)
+                print(f"[365-QUAL] {new_symside} gain={_v365.get('gain_pct')} tr={_v365.get('trades')} TIM={_v365.get('tim_pct')} valid={_v365.get('valid')} -> {'PASS' if _q365_ok else '; '.join(_q365_reasons)}", flush=True)
+            except Exception as _q365e:
+                _q365_reasons = [f"365D eval failed: {_q365e}"[:100]]
+                print(f"[365-qual-warn] {new_symside}: {_q365e}", flush=True)
+            if not _q365_ok:
+                _depth365 = int(progress.get("redo_depth", 0))
+                _fixed365 = None
+                try:
+                    _maybe_write_json(force=True)
+                    _r365ov, _r365rep = _run_365_repair(new_symside, progress_path, args.template)
+                    progress["repair_365d"] = _r365rep
+                    if _r365ov:
+                        from tools.opt.v12_pilot import evaluate_sanitized_with_timeout as _es365b
+                        from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps30
+                        _rv365 = _es365b(new_symside, dict(_r365ov), 365, timeout_sec=int(QUAL_365D_TIMEOUT)) or {}
+                        _rv30 = _eps30(prepared, dict(_r365ov), args.window_days) if prepared is not None else {}
+                        _ok30, _rr30 = _qualifies_30d(_rv30, bh)
+                        _ok365, _rr365 = _qualifies_365d(_rv365)
+                        if _ok30 and _ok365:
+                            def _fm(x):
+                                try:
+                                    return f"{float(x):+.2f}"
+                                except Exception:
+                                    return str(x)
+                            _fixed365 = (dict(_r365ov), f"365D repaired -> 30D gain {_fm(_rv30.get('gain_pct'))} TIM {_rv30.get('tim_pct')} + 365D gain {_fm(_rv365.get('gain_pct'))} tr {_rv365.get('trades')}")
+                            print(f"[365-QUAL] {new_symside} {_fixed365[1]}", flush=True)
+                        else:
+                            print(f"[365-QUAL] {new_symside} repaired set still failing (30D: {'; '.join(_rr30) or 'ok'}; 365D: {'; '.join(_rr365) or 'ok'})", flush=True)
+                except Exception as _r365e:
+                    print(f"[365-repair-warn] {new_symside}: {_r365e}", flush=True)
+                if _fixed365 is not None and _depth365 < QUAL_MAX_REDOS:
+                    for _old in OUT_DIR.glob(f"{new_symside}_bh*_30d_matrix.xlsx"):
+                        try:
+                            _old.unlink()
+                        except Exception:
+                            pass
+                    progress["needs_redo"] = {"overrides": _fixed365[0], "depth": _depth365 + 1, "reason": _fixed365[1]}
+                    progress.pop("final_path", None)
+                    _maybe_write_json(force=True)
+                    print(f"[REDO] {new_symside} 365D-driven re-fill scheduled (depth {_depth365 + 1})", flush=True)
+                    try:
+                        wb.close()
+                    except Exception:
+                        pass
+                    for _w in (wb_path, Path(str(wb_path) + ".bak")):
+                        try:
+                            if _w.exists():
+                                _w.unlink()
+                        except Exception:
+                            pass
+                    if _pool is not None:
+                        _pool.shutdown(wait=False, cancel_futures=True)
+                    return cumulative_gain, cumulative_overrides, progress
+                _carry = [progress["final_path"]] if progress.get("final_path") else []
+                _quarantine_impossible(new_symside, [f"365D: {r}" for r in _q365_reasons], {"window": "365D", "gain_pct": (_v365 or {}).get("gain_pct"), "trades": (_v365 or {}).get("trades"), "tim_pct": (_v365 or {}).get("tim_pct"), "max_dd_pct": (_v365 or {}).get("max_dd_pct"), "valid": (_v365 or {}).get("valid")}, wb, wb_path, progress, progress_path, cumulative_overrides, {"repair_365d": progress.get("repair_365d")}, carry_files=_carry)
+                try:
+                    wb.close()
+                except Exception:
+                    pass
+                if _pool is not None:
+                    _pool.shutdown(wait=False, cancel_futures=True)
+                return cumulative_gain, cumulative_overrides, progress
         # 2026-09-28 USER MANDATE ("confirmed by highest gain and 365D confirmations or they can not
         # trade"): at DONE, attempt the 365D certification for this sym_side. tools/confirm_365d.py
         # evaluates defaults vs cumulative_overrides vs hustler_best at 365d and certifies the
@@ -3428,9 +3738,15 @@ def _run_single(new_symside, args):
                     break
                 except Exception:
                     continue
+        if (_early_prog or {}).get("verdict") == "IMPOSSIBLE" and os.getenv("FORCE_DC_RERUN") != "1":
+            print(f"[IMPOSSIBLE-SKIP] {new_symside} tombstoned ({(_early_prog or {}).get('impossible_path')}) — manual revision required, MUST NOT RETOUCH.", flush=True)
+            return
+        _redo_run = bool((_early_prog or {}).get("needs_redo")) and (_early_prog or {}).get("verdict") != "IMPOSSIBLE"
+        if _redo_run:
+            print(f"[REDO-RUN] {new_symside} re-filling from repaired set (depth {((_early_prog or {}).get('needs_redo') or {}).get('depth')})", flush=True)
         if os.getenv("FORCE_DC_RERUN") == "1":
             print(f"[FORCE-DC-RERUN] {new_symside} hard-stop rerun forced", flush=True)
-        elif _early_prog and _early_prog.get("final_gain") is not None and len(_early_prog.get("done", {})) >= 50:
+        elif _early_prog and _early_prog.get("final_gain") is not None and len(_early_prog.get("done", {})) >= 50 and not _redo_run:
             _done_cnt = len(_early_prog.get("done", {}))
             _has_final = any((ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}*.xlsx").parent.glob(f"{new_symside}_30d_matrix.xlsx")) or any((ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}_bh*.xlsx").parent.glob(f"{new_symside}_bh*.xlsx"))
             if not _has_final:
@@ -3656,9 +3972,15 @@ def main():
                     break
                 except Exception:
                     continue
+        if (_early_prog or {}).get("verdict") == "IMPOSSIBLE" and os.getenv("FORCE_DC_RERUN") != "1":
+            print(f"[IMPOSSIBLE-SKIP] {new_symside} tombstoned ({(_early_prog or {}).get('impossible_path')}) — manual revision required, MUST NOT RETOUCH.", flush=True)
+            return
+        _redo_run = bool((_early_prog or {}).get("needs_redo")) and (_early_prog or {}).get("verdict") != "IMPOSSIBLE"
+        if _redo_run:
+            print(f"[REDO-RUN] {new_symside} re-filling from repaired set (depth {((_early_prog or {}).get('needs_redo') or {}).get('depth')})", flush=True)
         if os.getenv("FORCE_DC_RERUN") == "1":
             print(f"[FORCE-DC-RERUN] {new_symside} hard-stop rerun forced (dc_low_4h LONG / dc_high_4h SHORT can never be broken)", flush=True)
-        elif _early_prog and _early_prog.get("final_gain") is not None and len(_early_prog.get("done", {})) >= 50:
+        elif _early_prog and _early_prog.get("final_gain") is not None and len(_early_prog.get("done", {})) >= 50 and not _redo_run:
             # FIX 2026-09-21: allow resume of incomplete sheets (done < 2800 or no FINAL xlsx) — herd was idle on HAO/VT etc with 2238 done but no FINAL
             _done_cnt = len(_early_prog.get("done", {}))
             _has_final = any((ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}*.xlsx").parent.glob(f"{new_symside}_30d_matrix.xlsx")) or any((ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}_bh*.xlsx").parent.glob(f"{new_symside}_bh*.xlsx"))
@@ -3999,6 +4321,21 @@ def main():
         print(f"[START-OVERRIDES] {new_symside}: {len(_so)} overrides from {os.environ['V15_START_OVERRIDES']} (365D-repaired set)", flush=True)
         overrides = {**_tpl_defaults, **_so}
         _recipe_only_overrides = dict(overrides)
+    if not os.environ.get("V15_START_OVERRIDES"):
+        # USER 2026-10-02 (finish qualification REDO): a DONE stage that scheduled a re-fill left needs_redo
+        # in progress — the repaired set becomes this fill's baseline (§58 step 5), same as V15_START_OVERRIDES.
+        try:
+            _nr_pp = PROGRESS_DIR / f"{new_symside}_v14_progress.json"
+            if _nr_pp.exists():
+                _nr_pj = json.loads(_nr_pp.read_text())
+                _nr = _nr_pj.get("needs_redo") or {}
+                if _nr.get("overrides") and _nr_pj.get("verdict") != "IMPOSSIBLE":
+                    _so2 = dict(_nr["overrides"])
+                    print(f"[REDO-START] {new_symside}: {len(_so2)} overrides from needs_redo depth {_nr.get('depth')} ({(_nr.get('reason') or '')[:100]})", flush=True)
+                    overrides = {**_tpl_defaults, **_so2}
+                    _recipe_only_overrides = dict(overrides)
+        except Exception as _nr_e:
+            print(f"[redo-start-warn] {_nr_e}", flush=True)
     if os.environ.get("V15_TEMPLATE_DEFAULTS", "0") == "1":
         # USER 2026-09-29: live recipe makes 0 trades (impossible) -> start from the TEMPLATE_{CAT}_{SIDE} bold defaults (= live config defaults)
         print(f"[TEMPLATE-DEFAULTS] {new_symside}: live recipe/best dropped ({len(overrides)} overrides) -> template defaults only", flush=True)
@@ -4722,6 +5059,19 @@ def main():
         pass
     try:
         progress = json.loads(progress_path.read_text())
+        # USER 2026-10-02 (finish qualification REDO): a scheduled re-fill starts CLEAN — archive the stale board
+        # (rows were measured vs the old chain) and re-fill every row from the repaired baseline.
+        if progress.get("needs_redo") and progress.get("verdict") != "IMPOSSIBLE":
+            _nr3 = progress.pop("needs_redo")
+            try:
+                progress.setdefault("redo_history", []).append({"depth": _nr3.get("depth"), "reason": _nr3.get("reason"), "result": _nr3.get("result"), "archived_done_n": len(progress.get("done", {})), "archived_cum": progress.get("cumulative_gain")})
+            except Exception:
+                pass
+            progress["redo_depth"] = int(_nr3.get("depth", 1))
+            progress["done"] = {}
+            for _rk in ("final_gain", "final_path", "not_compliant", "cumulative_gain", "cumulative_overrides", "hustler_best_gain", "hustler_overrides", "final_365d", "repair_365d", "confirmed_365d"):
+                progress.pop(_rk, None)
+            print(f"[REDO-RESET] {new_symside} board cleared for re-fill (depth {progress['redo_depth']})", flush=True)
         # FIX 2026-09-20: NEVER deteriorate vs BEST baseline — cumulative must be max of stored, baseline, and hustler_best
         # Prevents IBM_LONG repeat where S1 recomputes lower gain than BEST (just leave settings as is = 0 delta, never negative)
         try:
@@ -4741,12 +5091,17 @@ def main():
         _host = _sock.gethostname().lower()
         # 2026-09-29: FRESH/isolated runs must never adopt the host's herd/mega progress (35 s5 iso runs inherited mega chains -> E2 != chain start)
         _isolated = os.environ.get("V15_FRESH_RUN", "0") == "1" or bool(os.environ.get("V15_PROGRESS_DIR"))
-        if not _isolated and (any(x in _host for x in ["s3", "s5", "htz-v15-s3", "htz-v15-s5"]) or "10.0.0.5" in str(progress_path) or "10.0.0.6" in str(progress_path)):
+        if not _isolated and (any(x in _host for x in ["s2", "s3", "s5", "s6", "htz-v15-s2", "htz-v15-s3", "htz-v15-s5", "htz-v15-s6"]) or "10.0.0.5" in str(progress_path) or "10.0.0.6" in str(progress_path) or "10.0.0.4" in str(progress_path)):
             # try to fetch S1's progress as source of truth for shuffles/stdev
             _s1_progress = Path("/home/niels/binance-sandbox/data/reports/lifecycle_pilot") / progress_path.name
             if _s1_progress.exists() and _s1_progress != progress_path:
                 try:
                     _s1_data = json.loads(_s1_progress.read_text())
+                    if _s1_data.get("verdict") == "IMPOSSIBLE" and progress.get("verdict") != "IMPOSSIBLE":
+                        for _tk in ("verdict", "impossible_reasons", "impossible_path", "impossible_metrics"):
+                            if _tk in _s1_data:
+                                progress[_tk] = _s1_data[_tk]
+                        print(f"[respect-s1] adopted IMPOSSIBLE verdict for {new_symside} from S1 — will skip", flush=True)
                     # respect S1's better cumulative and hustler if newer/better
                     if float(_s1_data.get("cumulative_gain", 0)) > float(progress.get("cumulative_gain", 0)):
                         print(f"[respect-s1] S1 progress {progress_path.name} cum {progress.get('cumulative_gain')} -> S1 { _s1_data.get('cumulative_gain'):.2f} — respect", flush=True)
@@ -4782,6 +5137,9 @@ def main():
                     pass
     except Exception as _re2:
         print(f"[respect-warn] {_re2}", flush=True)
+    if progress.get("verdict") == "IMPOSSIBLE":
+        print(f"[IMPOSSIBLE-SKIP] {new_symside} tombstoned ({progress.get('impossible_path')}) — manual revision required, MUST NOT RETOUCH.", flush=True)
+        return
     # FIX 2026-09-26: Restore cumulative_gain from last completed row to preserve progress on resume
     # When resuming, progress["cumulative_gain"] might be stale; calculate from last completed row's cumulative_after
     try:
