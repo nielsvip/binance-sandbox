@@ -1338,11 +1338,12 @@ def _quarantine_impossible(new_symside, reasons, metrics, wb, wb_path, progress,
         print(f"[quarantine-warn] {new_symside} reason json {_qe}", flush=True)
     try:
         write_zoomable_chart(new_symside, None, dict(cumulative_overrides or {}), 30, suffix=f"IMPOSSIBLE_{stamp}")
-        for _h in list(OUT_DIR.glob(f"{new_symside}_IMPOSSIBLE_{stamp}.html")) + list((ROOT / "SPREADSHEETS").glob(f"{new_symside}_IMPOSSIBLE_{stamp}.html")):
-            try:
-                _h.rename(qdir / _h.name)
-            except Exception:
-                pass
+        for _hd in (OUT_DIR, ROOT / "SPREADSHEETS", CHARTS_1M_DIR, Path("/tmp")):
+            for _h in _hd.glob(f"{new_symside}_IMPOSSIBLE_{stamp}.html"):
+                try:
+                    _h.rename(qdir / _h.name)
+                except Exception:
+                    pass
     except Exception as _qe:
         print(f"[quarantine-warn] {new_symside} chart {_qe}", flush=True)
     for _pat in (f"{new_symside}_bh*.xlsx", f"{new_symside}_30d_matrix.xlsx", f"{new_symside}_*.html"):
