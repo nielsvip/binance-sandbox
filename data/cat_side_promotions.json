@@ -104,15 +104,15 @@
   },
   "EMA_9_21_FILTER_FILTER_TF": {
    "value": "15m",
-   "avg_delta": 4.6911,
+   "avg_delta": 3.459306,
    "tab": "GLOBAL_RISK_GATES",
-   "kind": "promoted_filter"
+   "at": "2026-10-02T18:19:50.150953Z"
   },
   "EMA_BLANKET_FILTER_FILTER_TF": {
-   "value": "OFF",
-   "avg_delta": 2.249,
+   "value": "15m",
+   "avg_delta": 3.695917,
    "tab": "GLOBAL_RISK_GATES",
-   "kind": "promoted_filter"
+   "at": "2026-10-02T18:19:50.151043Z"
   },
   "MTF_ATR_TRAIL_FILTER_TF": {
    "value": "1h",
@@ -121,10 +121,172 @@
    "kind": "promoted_filter"
   },
   "NEWBORN_LOSS_KILL_FILTER_TF": {
-   "value": "4h",
-   "avg_delta": 1.5052,
+   "value": "15m",
+   "avg_delta": 3.269509,
    "tab": "GLOBAL_RISK_GATES",
-   "kind": "promoted_filter"
+   "at": "2026-10-02T18:19:50.151152Z"
+  },
+  "WT_15M_BOUNCE_OPEN_ENABLED": {
+   "value": "False",
+   "avg_delta": 4.528415,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-02T18:19:18.634217Z"
+  },
+  "WT_DIV_EXIT_ENABLED": {
+   "value": "False",
+   "avg_delta": 1.37726,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-02T18:19:18.634227Z"
+  },
+  "FAST_RISER_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 3.729156,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:19:50.151060Z"
+  },
+  "DC_BREACH_REDUCE_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.810121,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:19:50.150943Z"
+  },
+  "MOM3_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 1.452715,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:19:50.151069Z"
+  },
+  "EXIT_TOP_FADE_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.4459,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:19:50.151052Z"
+  },
+  "WT_MOMENTUM_EXIT_THRESHOLD": {
+   "value": "1",
+   "avg_delta": 1.70366,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-02T18:19:18.634450Z"
+  },
+  "BB_SQUEEZE_WIDTH_PERCENTILE": {
+   "value": "0.25",
+   "avg_delta": 10.072217,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-02T18:19:18.634598Z"
+  },
+  "PEAK_GIVEBACK_BE_EROSION_FILTER_TF": {
+   "value": "1h",
+   "avg_delta": 4.990875,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:19:50.151162Z"
+  },
+  "WT_COMPOSITE_ENTRY_OK": {
+   "value": -20,
+   "avg_delta": 2.206494,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-02T18:19:22.403608Z"
+  },
+  "MACD_ZERO_CROSS_SCORE": {
+   "value": 0.5,
+   "avg_delta": 35.622037,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-02T18:19:22.403759Z"
+  },
+  "DC_BREAKOUT_TF": {
+   "value": "OFF",
+   "avg_delta": 3.525462,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-02T18:19:22.403904Z"
+  },
+  "WT_DC_ENTRY_THRESHOLD": {
+   "value": 45,
+   "avg_delta": 3.486535,
+   "tab": "ENTRY_CONFIRMATION_GATES",
+   "at": "2026-10-02T18:19:26.219098Z"
+  },
+  "WT_LOWER_CROSS_EXIT_TF": {
+   "value": "1h",
+   "avg_delta": 0.280791,
+   "tab": "EXIT_VELOCITY",
+   "at": "2026-10-02T18:19:34.055507Z"
+  },
+  "WT_4H_VEL_EXIT_K_EXTREME_HIGH": {
+   "value": "2.0",
+   "avg_delta": 4.358163,
+   "tab": "EXIT_VELOCITY",
+   "at": "2026-10-02T18:19:34.055613Z"
+  },
+  "MTF_DC_REJECT_EXIT_ENABLED": {
+   "value": false,
+   "avg_delta": 0.041085,
+   "tab": "EXIT_VELOCITY",
+   "at": "2026-10-02T18:19:34.055666Z"
+  },
+  "MTF_WT_CROSS_EXIT_TF": {
+   "value": "1h",
+   "avg_delta": 0.273833,
+   "tab": "EXIT_VELOCITY",
+   "at": "2026-10-02T18:19:34.055717Z"
+  },
+  "MTF_DC_REJECT_EXIT_TF": {
+   "value": "4h",
+   "avg_delta": 0.068,
+   "tab": "EXIT_VELOCITY",
+   "at": "2026-10-02T18:19:34.055823Z"
+  },
+  "WT_4H_VEL_EXIT_REQUIRE_PROFIT": {
+   "value": "2.0",
+   "avg_delta": 2.746734,
+   "tab": "EXIT_VELOCITY",
+   "at": "2026-10-02T18:19:34.056075Z"
+  },
+  "HLR_REENTRY_MULT_D": {
+   "value": "2.5",
+   "avg_delta": 4.497204,
+   "tab": "REENTRY_ADAPTIVE",
+   "at": "2026-10-02T18:19:42.317343Z"
+  },
+  "SCALP_V3_AUG_BE_STOP_PCT": {
+   "value": "0.1",
+   "avg_delta": 1.171069,
+   "tab": "AUGMENT_RISK_SIZING",
+   "at": "2026-10-02T18:19:44.634545Z"
+  },
+  "HIGH_GAIN_AUGMENTATION_MIN_SIZE": {
+   "value": 50,
+   "avg_delta": 6.032327,
+   "tab": "AUGMENT_RISK_SIZING",
+   "at": "2026-10-02T18:19:44.634776Z"
+  },
+  "MIN_HOLD_BARS_BEFORE_EXIT": {
+   "value": "10",
+   "avg_delta": 25.712359,
+   "tab": "REDUCE_PROFIT_LOCK",
+   "at": "2026-10-02T18:19:46.281949Z"
+  },
+  "BREAKEVEN_GAIN_EROSION_FILTER_TF": {
+   "value": "1h",
+   "avg_delta": 0.717408,
+   "tab": "REDUCE_PROFIT_LOCK",
+   "at": "2026-10-02T18:19:46.282897Z"
+  },
+  "HLR_TOP_EXIT_ENABLED": {
+   "value": "True",
+   "avg_delta": 0.239538,
+   "tab": "REDUCE_SIGNAL_RATER",
+   "at": "2026-10-02T18:19:47.687610Z"
+  },
+  "WT_PERCENTILE_EXIT_OS_D": {
+   "value": "2.0",
+   "avg_delta": 6.858906,
+   "tab": "REDUCE_SIGNAL_RATER",
+   "at": "2026-10-02T18:19:47.687755Z"
+  },
+  "COOLDOWN_BARS": {
+   "value": 0,
+   "avg_delta": 1.469321,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:19:50.149294Z"
   }
  },
  "CRYPTO_SHORT": {
@@ -217,6 +379,288 @@
    "avg_delta": 0.1881,
    "tab": "GLOBAL_RISK_GATES",
    "kind": "promoted_filter"
+  },
+  "STDEV_SLOPE_SIZING_ENABLED": {
+   "value": "True",
+   "avg_delta": 4.301194,
+   "tab": "STDEV_SLOPE_SIZING",
+   "at": "2026-10-02T18:20:13.992958Z"
+  },
+  "WT_DIV_EXIT_ENABLED": {
+   "value": "True",
+   "avg_delta": 0.942407,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-02T18:20:14.147120Z"
+  },
+  "WT_ACCEL_EXIT_ENABLED": {
+   "value": "False",
+   "avg_delta": 0.496579,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-02T18:20:14.147126Z"
+  },
+  "BB_SQUEEZE_ENTRY_ENABLED": {
+   "value": "True",
+   "avg_delta": 10.834673,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-02T18:20:14.147130Z"
+  },
+  "DC_BREAK_FILTER_TF": {
+   "value": "1h",
+   "avg_delta": 1.41883,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:20:44.087796Z"
+  },
+  "BREAKOUT_RETEST_FILTER_TF": {
+   "value": "1h",
+   "avg_delta": 0.280369,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:20:44.087775Z"
+  },
+  "MOM3_FILTER_TF": {
+   "value": "4h",
+   "avg_delta": 1.499733,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:20:44.088352Z"
+  },
+  "DC_BREACH_REDUCE_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.024158,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:20:44.087787Z"
+  },
+  "NEWBORN_LOSS_KILL_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.366239,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:20:44.088458Z"
+  },
+  "EMA_BLANKET_FILTER_FILTER_TF": {
+   "value": "1h",
+   "avg_delta": 0.629558,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:20:44.087919Z"
+  },
+  "MOMENTUM_BREAKOUT_FILTER_TF": {
+   "value": "4h",
+   "avg_delta": 0.214483,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:20:44.088447Z"
+  },
+  "FAST_RISER_FILTER_TF": {
+   "value": "4h",
+   "avg_delta": 1.883343,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:20:44.088338Z"
+  },
+  "BB_SQUEEZE_WIDTH_PERCENTILE": {
+   "value": "0.3",
+   "avg_delta": 0.437695,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-02T18:20:14.148104Z"
+  },
+  "BB_PULLBACK_GATE_TF": {
+   "value": "15m",
+   "avg_delta": 1.493775,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-02T18:20:14.148110Z"
+  },
+  "WT_MOMENTUM_EXIT_THRESHOLD": {
+   "value": "1",
+   "avg_delta": 0.37393,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-02T18:20:14.148114Z"
+  },
+  "EMA_9_21_FILTER_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.484674,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:20:44.087805Z"
+  },
+  "EXIT_R1_R2_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.313399,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:20:44.088005Z"
+  },
+  "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.313399,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:20:44.088098Z"
+  },
+  "EXIT_TO_REDUCE_ADAPTER_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.313399,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:20:44.088240Z"
+  },
+  "PEAK_GIVEBACK_BE_EROSION_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 1.173637,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:20:44.088468Z"
+  },
+  "WT_15M_BOUNCE_BB_MAX": {
+   "value": "0.9",
+   "avg_delta": 0.02131,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:20:44.088522Z"
+  },
+  "WT_15M_BOUNCE_BB_MIN": {
+   "value": "0.05",
+   "avg_delta": 4.962937,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:20:44.088579Z"
+  },
+  "WT_15M_BOUNCE_HIGH_1H_GT_PREV": {
+   "value": "True",
+   "avg_delta": 0.040099,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:20:44.088621Z"
+  },
+  "WT_15M_BOUNCE_LOW_1H_GT_PREV": {
+   "value": "True",
+   "avg_delta": 0.079452,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:20:44.088658Z"
+  },
+  "WT_15M_BOUNCE_REL_VOL_GT_1": {
+   "value": "False",
+   "avg_delta": 0.015193,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:20:44.088694Z"
+  },
+  "BB_BREAKOUT_ENTRY_TF": {
+   "value": 20,
+   "avg_delta": 0.726496,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-02T18:20:17.370722Z"
+  },
+  "DC_BREAKOUT_SCORE": {
+   "value": "OFF",
+   "avg_delta": 0.168388,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-02T18:20:17.370876Z"
+  },
+  "WT_COMPOSITE_ENTRY_OK": {
+   "value": "10.0",
+   "avg_delta": 1.229271,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-02T18:20:17.370883Z"
+  },
+  "TRADIER_MFI_ENTRY_LONG_ENABLED": {
+   "value": "True",
+   "avg_delta": 2.282521,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-02T18:20:17.370943Z"
+  },
+  "STDEV_BREAKOUT_PCTB_LONG": {
+   "value": "1.0",
+   "avg_delta": 2.298171,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-02T18:20:17.371049Z"
+  },
+  "TRADIER_RSI2_EXIT_THRESHOLD_LONG": {
+   "value": "135.0",
+   "avg_delta": 3.897705,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-02T18:20:17.371941Z"
+  },
+  "EMA50_15M_ENTRY_FILTER_PCT": {
+   "value": 0,
+   "avg_delta": 12.79844,
+   "tab": "ENTRY_CONFIRMATION_GATES",
+   "at": "2026-10-02T18:20:20.910244Z"
+  },
+  "EMA50_15M_ENTRY_FILTER_ENABLED": {
+   "value": true,
+   "avg_delta": 10.296594,
+   "tab": "ENTRY_CONFIRMATION_GATES",
+   "at": "2026-10-02T18:20:20.910246Z"
+  },
+  "TECHNICAL_DC_TARGET_TF": {
+   "value": "4h",
+   "avg_delta": 0.052667,
+   "tab": "EXIT_STRUCTURAL",
+   "at": "2026-10-02T18:20:25.107294Z"
+  },
+  "BTC_GUARANTEED_REENTRY_ENABLED": {
+   "value": "True",
+   "avg_delta": 11.058298,
+   "tab": "REENTRY_WINDOWED",
+   "at": "2026-10-02T18:20:31.400844Z"
+  },
+  "BTC_GUARANTEED_REENTRY_MAX_AGE_BARS": {
+   "value": "1.0",
+   "avg_delta": 2.529412,
+   "tab": "REENTRY_WINDOWED",
+   "at": "2026-10-02T18:20:31.401889Z"
+  },
+  "REENTRY_SIZE_BREAKOUT_MULT": {
+   "value": "1.5",
+   "avg_delta": 3.08494,
+   "tab": "REENTRY_ADAPTIVE",
+   "at": "2026-10-02T18:20:36.755526Z"
+  },
+  "DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED": {
+   "value": "False",
+   "avg_delta": 12.047591,
+   "tab": "REENTRY_ADAPTIVE",
+   "at": "2026-10-02T18:20:36.756296Z"
+  },
+  "SHORT_DC_LOW_BREAK_ENABLED": {
+   "value": false,
+   "avg_delta": 0.695387,
+   "tab": "AUGMENT_TREND",
+   "at": "2026-10-02T18:20:37.624810Z"
+  },
+  "AUGMENT_MIN_GAIN_PCT": {
+   "value": "0.75",
+   "avg_delta": 15.184209,
+   "tab": "AUGMENT_TREND",
+   "at": "2026-10-02T18:20:37.625005Z"
+  },
+  "SCALP_V3_AUG_BE_STOP_PCT": {
+   "value": 0.1,
+   "avg_delta": 2.561537,
+   "tab": "AUGMENT_RISK_SIZING",
+   "at": "2026-10-02T18:20:39.211039Z"
+  },
+  "MAX_AUGMENTS_PER_POSITION": {
+   "value": 10,
+   "avg_delta": 0.014326,
+   "tab": "AUGMENT_RISK_SIZING",
+   "at": "2026-10-02T18:20:39.211438Z"
+  },
+  "SHORT_PARTIAL_RECOVERY_THRESHOLD_PCT": {
+   "value": -1,
+   "avg_delta": 0.148029,
+   "tab": "AUGMENT_RISK_SIZING",
+   "at": "2026-10-02T18:20:39.211829Z"
+  },
+  "WT_EXHAUST_ENTRY_GATE_ENABLED": {
+   "value": "False",
+   "avg_delta": 0.397943,
+   "tab": "REDUCE_SIGNAL_RATER",
+   "at": "2026-10-02T18:20:41.907876Z"
+  },
+  "VIGILANCE_RECOVERY_REENTRY_ENABLED": {
+   "value": "False",
+   "avg_delta": 0.034814,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:20:44.084857Z"
+  },
+  "COOLDOWN_BARS": {
+   "value": 3,
+   "avg_delta": 0.37661,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:20:44.084867Z"
+  },
+  "VIGILANCE_GUARD_ENABLED": {
+   "value": "True",
+   "avg_delta": 0.005311,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:20:44.085220Z"
   }
  },
  "STOCKS_LONG": {
@@ -267,6 +711,324 @@
    "avg_delta": 0.4199,
    "tab": "GLOBAL_RISK_GATES",
    "kind": "promoted_switch"
+  },
+  "WT_ACCEL_EXIT_ENABLED": {
+   "value": "False",
+   "avg_delta": 3.497609,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-02T18:21:10.019655Z"
+  },
+  "WT_15M_BOUNCE_OPEN_ENABLED": {
+   "value": "True",
+   "avg_delta": 7.585092,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-02T18:21:10.019664Z"
+  },
+  "BB_SQUEEZE_ENTRY_ENABLED": {
+   "value": "True",
+   "avg_delta": 2.028129,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-02T18:21:10.019667Z"
+  },
+  "WT_DIV_EXIT_ENABLED": {
+   "value": "False",
+   "avg_delta": 1.094889,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-02T18:21:10.019670Z"
+  },
+  "FAST_RISER_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.103508,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.985076Z"
+  },
+  "MOM3_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.017802,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.985362Z"
+  },
+  "NEWBORN_LOSS_KILL_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.3059,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.985447Z"
+  },
+  "EMA_BLANKET_FILTER_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.111895,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.985067Z"
+  },
+  "EMA_9_21_FILTER_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 5.372878,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.985058Z"
+  },
+  "WT_15M_BOUNCE_REL_VOL_GT_1": {
+   "value": "False",
+   "avg_delta": 1.249453,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.985820Z"
+  },
+  "WT_15M_BOUNCE_HIGH_1H_GT_PREV": {
+   "value": "False",
+   "avg_delta": 1.249453,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.985775Z"
+  },
+  "WT_15M_BOUNCE_BB_MAX": {
+   "value": "0.9",
+   "avg_delta": 1.288595,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.985708Z"
+  },
+  "WT_15M_BOUNCE_LOW_1H_GT_PREV": {
+   "value": "True",
+   "avg_delta": 1.386432,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.985815Z"
+  },
+  "LH_HL_FILTER_TF_REQ": {
+   "value": "2",
+   "avg_delta": 0.473542,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.985348Z"
+  },
+  "HTF_BULL_ENTRY_FILTER_ENABLED": {
+   "value": false,
+   "avg_delta": 4.996812,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-02T18:21:10.020055Z"
+  },
+  "MANDATORY_REENTRY_WT_FILTER_TF_MODE": {
+   "value": "15m_only",
+   "avg_delta": 5.440372,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.985353Z"
+  },
+  "HTF_BULL_ENTRY_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 4.996812,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-02T18:21:10.020060Z"
+  },
+  "BREAKOUT_RETEST_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.018546,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.984870Z"
+  },
+  "CIRCUIT_SHARPE_GATES_FILTER_TF": {
+   "value": "4h",
+   "avg_delta": 0.473542,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.984881Z"
+  },
+  "DC_MOMENTUM_BOTA_SCORER_FILTER_TF": {
+   "value": "1h",
+   "avg_delta": 0.284125,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.984971Z"
+  },
+  "FH_MOMENTUM_FILTER_TF": {
+   "value": "4h",
+   "avg_delta": 0.187366,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.985162Z"
+  },
+  "FIRST_OPEN_THROTTLE_FILTER_TF": {
+   "value": "4h",
+   "avg_delta": 3.90191,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.985248Z"
+  },
+  "GR_V5_STATE_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.473542,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.985258Z"
+  },
+  "HAIKU_WINNER_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 0.284125,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.985343Z"
+  },
+  "OPEN_INTENT_SIZE_GATES_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 3.707239,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.985550Z"
+  },
+  "PARTIAL_PROFIT_LOCK_V2_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.284125,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.985637Z"
+  },
+  "PEAK_GIVEBACK_BE_EROSION_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 1.005685,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.985647Z"
+  },
+  "WT_15M_BOUNCE_BB_MIN": {
+   "value": "0.05",
+   "avg_delta": 4.172296,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.985761Z"
+  },
+  "WT_DC_TF_ENTRY": {
+   "value": "15m",
+   "avg_delta": 0.473678,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-02T18:21:14.426828Z"
+  },
+  "WT_COMPOSITE_ENTRY_OK": {
+   "value": "15.0",
+   "avg_delta": 0.375504,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-02T18:21:14.427009Z"
+  },
+  "MACD_ZERO_CROSS_TF": {
+   "value": "D",
+   "avg_delta": 5.616012,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-02T18:21:14.427175Z"
+  },
+  "QUICK_REENTRY_60MIN_MIN_PCT": {
+   "value": "0.5",
+   "avg_delta": 0.080804,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-02T18:21:14.427596Z"
+  },
+  "ENTRY_PRIMARY_TF": {
+   "value": "4h",
+   "avg_delta": 6.637051,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-02T18:21:14.427603Z"
+  },
+  "HAIKU_ENTRY_GATE_ENABLED": {
+   "value": "False",
+   "avg_delta": 6.637051,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-02T18:21:14.427608Z"
+  },
+  "WRONG_SIDE_WT_TFS_REQUIRED": {
+   "value": "4",
+   "avg_delta": 4.074161,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-02T18:21:14.427744Z"
+  },
+  "ENTRY_SCORE_THRESHOLD": {
+   "value": "18.0",
+   "avg_delta": 4.074161,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-02T18:21:14.427879Z"
+  },
+  "REENTRY_RALLY_K15M_MAX": {
+   "value": "75.0",
+   "avg_delta": 3.111724,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-02T18:21:14.428002Z"
+  },
+  "WT_DC_HTF_GATE": {
+   "value": "4h_D",
+   "avg_delta": 0.163103,
+   "tab": "ENTRY_CONFIRMATION_GATES",
+   "at": "2026-10-02T18:21:18.089257Z"
+  },
+  "WT_AGAINST_FILTER_ENABLED": {
+   "value": "False",
+   "avg_delta": 1.863633,
+   "tab": "ENTRY_CONFIRMATION_GATES",
+   "at": "2026-10-02T18:21:18.089380Z"
+  },
+  "DAYTRADE_DC_STOP_TF": {
+   "value": "15m",
+   "avg_delta": 0.693241,
+   "tab": "EXIT_STRUCTURAL",
+   "at": "2026-10-02T18:21:22.807798Z"
+  },
+  "WT_4H_VEL_EXIT_K_EXTREME_LOW": {
+   "value": "0.5",
+   "avg_delta": 1.486491,
+   "tab": "EXIT_VELOCITY",
+   "at": "2026-10-02T18:21:27.293291Z"
+  },
+  "DC_HARD_STOP_TF": {
+   "value": "4h",
+   "avg_delta": 1.783978,
+   "tab": "EXIT_VELOCITY",
+   "at": "2026-10-02T18:21:27.293306Z"
+  },
+  "HARD_BREAKEVEN_MIN_PEAK_PCT": {
+   "value": "0.25",
+   "avg_delta": 1.189297,
+   "tab": "EXIT_VELOCITY",
+   "at": "2026-10-02T18:21:27.293843Z"
+  },
+  "LEGACY_PROC_SINGLE_REENTRY": {
+   "value": "0.5",
+   "avg_delta": 3.518267,
+   "tab": "REENTRY_WINDOWED",
+   "at": "2026-10-02T18:21:30.332311Z"
+  },
+  "LEGACY_REENTRY_PSR_DC_BOUNCE": {
+   "value": "2.0",
+   "avg_delta": 0.691094,
+   "tab": "REENTRY_WINDOWED",
+   "at": "2026-10-02T18:21:30.332519Z"
+  },
+  "REENTRY_SIZE_BREAKOUT_MULT": {
+   "value": "0.5",
+   "avg_delta": 3.356726,
+   "tab": "REENTRY_ADAPTIVE",
+   "at": "2026-10-02T18:21:36.496465Z"
+  },
+  "BREAKOUT_LEASH_REENTRY_MULT": {
+   "value": "2.0",
+   "avg_delta": 3.356726,
+   "tab": "REENTRY_ADAPTIVE",
+   "at": "2026-10-02T18:21:36.496587Z"
+  },
+  "BOUNCE_AUGMENT_MIN_LOSS_PCT": {
+   "value": "-0.25",
+   "avg_delta": 4.074161,
+   "tab": "AUGMENT_TREND",
+   "at": "2026-10-02T18:21:37.633863Z"
+  },
+  "PARTIAL_PROFIT_LOCK_FRAC_TRADIER": {
+   "value": "0.625",
+   "avg_delta": 0.102578,
+   "tab": "REDUCE_PROFIT_LOCK",
+   "at": "2026-10-02T18:21:41.295800Z"
+  },
+  "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": {
+   "value": "4",
+   "avg_delta": 3.642911,
+   "tab": "REDUCE_PROFIT_LOCK",
+   "at": "2026-10-02T18:21:41.296307Z"
+  },
+  "GAP_PER_SYMBOL_AVG_THRESH_PCT": {
+   "value": "0.30",
+   "avg_delta": 2.345402,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.981998Z"
+  },
+  "VIGILANCE_GUARD_ENABLED": {
+   "value": "False",
+   "avg_delta": 0.18024,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.982185Z"
+  },
+  "START_POSITION_SIZE": {
+   "value": "500.0",
+   "avg_delta": 12.686777,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:21:45.982452Z"
   }
  },
  "STOCKS_SHORT": {
@@ -343,10 +1105,160 @@
    "kind": "promoted_switch"
   },
   "EMA_BLANKET_FILTER_FILTER_TF": {
-   "value": "OFF",
-   "avg_delta": 0.4692,
+   "value": "15m",
+   "avg_delta": 0.22581,
    "tab": "GLOBAL_RISK_GATES",
-   "kind": "promoted_filter"
+   "at": "2026-10-02T18:22:49.255622Z"
+  },
+  "WT_15M_BOUNCE_OPEN_ENABLED": {
+   "value": "True",
+   "avg_delta": 0.92668,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-02T18:22:15.176462Z"
+  },
+  "WT_DIV_EXIT_ENABLED": {
+   "value": "False",
+   "avg_delta": 1.683414,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-02T18:22:15.176469Z"
+  },
+  "FAST_RISER_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.258116,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:22:49.255635Z"
+  },
+  "MOM3_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 1.035174,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:22:49.255658Z"
+  },
+  "NEWBORN_LOSS_KILL_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.682937,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:22:49.255680Z"
+  },
+  "DC_BREAK_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.700282,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:22:49.255438Z"
+  },
+  "MOMENTUM_BREAKOUT_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.56136,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:22:49.255669Z"
+  },
+  "WT_15M_BOUNCE_BB_MIN": {
+   "value": "0.1",
+   "avg_delta": 2.488249,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:22:49.255802Z"
+  },
+  "WT_15M_BOUNCE_REL_VOL_GT_1": {
+   "value": "False",
+   "avg_delta": 2.388421,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:22:49.255847Z"
+  },
+  "WT_15M_BOUNCE_HIGH_1H_GT_PREV": {
+   "value": "False",
+   "avg_delta": 2.388421,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:22:49.255838Z"
+  },
+  "WT_15M_BOUNCE_LOW_1H_GT_PREV": {
+   "value": "True",
+   "avg_delta": 2.317794,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:22:49.255842Z"
+  },
+  "EMA_9_21_FILTER_FILTER_TF": {
+   "value": "1h",
+   "avg_delta": 0.63177,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:22:49.255529Z"
+  },
+  "FIRST_OPEN_THROTTLE_FILTER_TF": {
+   "value": "D",
+   "avg_delta": 7.239015,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:22:49.255646Z"
+  },
+  "OPEN_INTENT_SIZE_GATES_FILTER_TF": {
+   "value": "15m",
+   "avg_delta": 7.223336,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:22:49.255690Z"
+  },
+  "PEAK_GIVEBACK_BE_EROSION_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.908979,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:22:49.255699Z"
+  },
+  "WT_15M_BOUNCE_BB_MAX": {
+   "value": "0.8",
+   "avg_delta": 2.407296,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:22:49.255751Z"
+  },
+  "DAYTRADE_DC_STOP_TF": {
+   "value": "15m",
+   "avg_delta": 0.160627,
+   "tab": "EXIT_STRUCTURAL",
+   "at": "2026-10-02T18:22:26.221543Z"
+  },
+  "LOSS_TECHNICAL_EXIT_NO_STALE_BLOCK": {
+   "value": "2.0",
+   "avg_delta": 0.761265,
+   "tab": "EXIT_VELOCITY",
+   "at": "2026-10-02T18:22:30.721997Z"
+  },
+  "TREND_EXIT_SCORE_FLIP": {
+   "value": "1.0",
+   "avg_delta": 1.155107,
+   "tab": "EXIT_VELOCITY",
+   "at": "2026-10-02T18:22:30.722101Z"
+  },
+  "DC_HARD_STOP_REENTRY_COOLDOWN_HOURS": {
+   "value": 0,
+   "avg_delta": 0.207454,
+   "tab": "REENTRY_WINDOWED",
+   "at": "2026-10-02T18:22:33.357111Z"
+  },
+  "HIGH_GAIN_AUGMENTATION_MIN_SIZE": {
+   "value": "1.0",
+   "avg_delta": 1.210213,
+   "tab": "AUGMENT_RISK_SIZING",
+   "at": "2026-10-02T18:22:42.074834Z"
+  },
+  "PARTIAL_PROFIT_LOCK_FRAC_TRADIER": {
+   "value": "0.625",
+   "avg_delta": 0.183868,
+   "tab": "REDUCE_PROFIT_LOCK",
+   "at": "2026-10-02T18:22:44.194720Z"
+  },
+  "VIGILANCE_GUARD_ENABLED": {
+   "value": "False",
+   "avg_delta": 0.513328,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:22:49.253006Z"
+  },
+  "EXECUTE_NOW_MAX_MARK_AGE_S": {
+   "value": "75.0",
+   "avg_delta": 1.077261,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:22:49.253191Z"
+  },
+  "START_POSITION_SIZE": {
+   "value": "500.0",
+   "avg_delta": 14.01263,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-02T18:22:49.253195Z"
   }
  }
 }
