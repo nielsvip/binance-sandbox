@@ -1262,6 +1262,7 @@ QUAL_TIM_MIN, QUAL_TIM_MAX = 20.0, 80.0
 QUAL_365D_FLOOR_TRADES = 80
 QUAL_MAX_REDOS = int(os.environ.get("V15_QUAL_MAX_REDOS", "2"))
 QUAL_365D_TIMEOUT = float(os.environ.get("V15_QUAL_365D_TIMEOUT", "600"))
+QUAL_RETRY_TIMEOUT = float(os.environ.get("V15_QUAL_RETRY_TIMEOUT", "300"))
 IMPOSSIBLE_DIR = ROOT / "SPREADSHEETS" / "V15_V16_IMPOSSIBLE"
 # BIBLE §58: final-set repair never loosens safety gates — these tokens are excluded from SOFTEN in final_safe mode.
 _ADAPT_FINAL_SOFTEN_EXCLUDE = ("GUARD", "BLOCK", "HARD", "STOP", "KILL", "HEDGE", "STDEV_REJECT", "RISK")
@@ -2793,13 +2794,45 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if not _qual_ok and prepared is not None:
             print(f"[COMPLIANCE] {new_symside} final set not qualified ({'; '.join(_qual_reasons)}) — revising before publish", flush=True)
             try:
+                import time as _t_qual
+                _qual_t0 = _t_qual.monotonic()
+                _qual_deadline = _qual_t0 + QUAL_RETRY_TIMEOUT
                 _tpl_d = {k: defaults.get(k) for k in defaults}
                 _priors = _prior_final_sets(new_symside)[:2]
                 _bases_rounds = [[("final_set", dict(cumulative_overrides))],
                                  [("final_set", dict(cumulative_overrides)), ("template_defaults", dict(_tpl_d))],
                                  [("final_set", dict(cumulative_overrides)), ("template_defaults", dict(_tpl_d))] + [(f"prior_{i}", dict(ov)) for i, (src, ov) in enumerate(_priors) for _ in [0]][:2]]
                 for _qr in range(min(QUAL_MAX_REDOS + 1, len(_bases_rounds))):
-                    _rov, _rv, _rrep = _credible_baseline(new_symside, prepared, _bases_rounds[_qr], defaults, args.template, args.window_days, tim_min=QUAL_TIM_MIN, gain_min=0.0, bh_min=float(bh or 0), final_safe=True)
+                    if _t_qual.monotonic() > _qual_deadline:
+                        _tout = {"reason": f"qual retry timeout {QUAL_RETRY_TIMEOUT:.0f}s (round {_qr}/{QUAL_MAX_REDOS})", "round": _qr, "elapsed_s": round(_t_qual.monotonic() - _qual_t0, 1)}
+                        _qual_repairs.append(_tout)
+                        print(f"[COMPLIANCE-TIMEOUT] {new_symside} {QUAL_RETRY_TIMEOUT:.0f}s exceeded — stopping repair, quarantining", flush=True)
+                        break
+                    _tail = max(0.0, _qual_deadline - _t_qual.monotonic())
+                    # run one repair round under a bounded future so gain>=0/gain>=BH never chokes the worker
+                    import concurrent.futures as _cf_qual
+                    _fut = None
+                    try:
+                        _ex = _cf_qual.ThreadPoolExecutor(max_workers=1)
+                        _fut = _ex.submit(_credible_baseline, new_symside, prepared, _bases_rounds[_qr], defaults, args.template, args.window_days, QUAL_TIM_MIN, 0.0, float(bh or 0), True)
+                        _rov, _rv, _rrep = _fut.result(timeout=_tail if _tail > 0 else 0.1)
+                    except Exception as _qe:
+                        try:
+                            if _fut is not None:
+                                _fut.cancel()
+                        except Exception:
+                            pass
+                        if "timeout" in str(type(_qe)).lower() or "TimeoutError" in str(type(_qe)) or "timed out" in str(_qe).lower():
+                            _tout2 = {"reason": f"round {_qr} timed out after {QUAL_RETRY_TIMEOUT:.0f}s", "round": _qr, "elapsed_s": round(_t_qual.monotonic() - _qual_t0, 1)}
+                            _qual_repairs.append(_tout2)
+                            print(f"[COMPLIANCE-TIMEOUT] {new_symside} round {_qr} timed out — stopping", flush=True)
+                            break
+                        raise
+                    finally:
+                        try:
+                            _ex.shutdown(wait=False, cancel_futures=True)
+                        except Exception:
+                            pass
                     _rrep["round"] = _qr
                     _qual_repairs.append(_rrep)
                     _qok, _qr2 = _qualifies_30d(_rv, bh)
@@ -5166,7 +5199,7 @@ def main():
                     pass
     except Exception as _re2:
         print(f"[respect-warn] {_re2}", flush=True)
-    if progress.get("verdict") == "IMPOSSIBLE":
+    if progress.get("verdict") == "IMPOSSIBLE" and os.getenv("FORCE_DC_RERUN") != "1":
         print(f"[IMPOSSIBLE-SKIP] {new_symside} tombstoned ({progress.get('impossible_path')}) — manual revision required, MUST NOT RETOUCH.", flush=True)
         return
     # FIX 2026-09-26: Restore cumulative_gain from last completed row to preserve progress on resume

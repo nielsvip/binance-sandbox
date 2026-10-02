@@ -14903,10 +14903,30 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     _stoch_family = str(rec_exit).upper().strip() in ("WEAK_REDUCE", "NO_PROFIT", "STRONG_REDUCE", "SCALP_REDUCE", "NOW_REDUCE", "REDUCE")
                     _rt = (str(reason_exit) + "|" + str(rec_exit)).upper()
                     _named_tech = any(_t in _rt for _t in ("RULE_B_3M", "MTF_ATR_TRAIL", "R1_DC", "R2_WT", "WT_4H_VEL", "WT_CROSS", "WT_PERCENTILE", "WT_EXHAUST", "WT_DIV", "WT_ACCEL", "WT_MOMENTUM_EXIT", "GR_EXIT", "DC_HOPELESS", "HTF_AGAINST", "ALL_TF_AGAINST", "FAST_CUT_LOSS", "WRONG_SIDE", "PARTIAL", "PPL", "BREAK_EVEN", "HEDGE_FAILED", "PANIC", "TECHNICAL_EXIT", "TECHNICAL"))
+                    # 2026-10-02 SELL_TOP sanction (MOVR §63): a per-sym sanctioned HLR_TOP_EXIT is a named technical exit (vec models it) — the trap must not suppress it.
+                    if 'HLR_TOP_EXIT' in _rt and bool(_psym_get(symbol, position_side, "HLR_TOP_EXIT_LIVE_SANCTIONED", getattr(config, "HLR_TOP_EXIT_LIVE_SANCTIONED", False))):
+                        _named_tech = True
                     if _stoch_family and not _named_tech:
                         should_close = False
                         reason_exit = str(reason_exit) + "_TRAP_SUPPRESSED"
                         logger.info(f"[QUICK_REDUCE_TRAP_SUPPRESSED] {position_key}: rate()-composite stochastic reduce (rec={rec_exit}) blocked — the vec/Tier-2 backtest does NOT model these, so they are the live↔backtest divergence + the 0%-gain commission-burn. Only clean named technical exits (RULE_B/WT_*/GR/DC_HOPELESS/MTF_ATR_TRAIL/HTF_AGAINST/R1/R2 + hard exits) may close. USER MANDATE 2026-06-02. Rollback: config.QUICK_REDUCE_TECHNICAL_ONLY=False")
+                # 2026-10-02 SELL_TOP MIN_HOLD twin (MOVR §63, vec parity): a sanctioned HLR_TOP_EXIT still honors MIN_HOLD_BARS_BEFORE_EXIT (3m bars, ez_manage.py:46660 idiom) — mirrors v12 _qr_hold_ok.
+                if should_close and 'HLR_TOP_EXIT' in str(reason_exit).upper():
+                    try:
+                        from datetime import datetime as _hdt, timezone as _htz
+                        _h_dt = getattr(position, "opened_at", None)
+                        if isinstance(_h_dt, str):
+                            from dateutil.parser import isoparse as _hip
+                            _h_dt = _hip(_h_dt)
+                        if isinstance(_h_dt, _hdt):
+                            if _h_dt.tzinfo is None: _h_dt = _h_dt.replace(tzinfo=_htz.utc)
+                            _h_age_s = (_hdt.now(_htz.utc) - _h_dt).total_seconds()
+                            _h_min_s = float(_psym_get(symbol, position_side, "MIN_HOLD_BARS_BEFORE_EXIT", getattr(config, "MIN_HOLD_BARS_BEFORE_EXIT", 10))) * 180.0
+                            if _h_age_s < _h_min_s:
+                                should_close = False
+                                reason_exit = str(reason_exit) + "_MINHOLD_SUPPRESSED"
+                                logger.info(f"[SELLTOP_MINHOLD_SUPPRESSED] {position_key}: age={_h_age_s:.0f}s < hold={_h_min_s:.0f}s — SELL_TOP blocked")
+                    except Exception: pass
                 # 2026-09-04 FIX: MAKER_PROFIT_EXIT_QUICK_REDUCE_STRONG_REDUCE_k_1m at 0.04-0.07% is commission bleed (0.04% wt=deep_tp). Need 0.08% after fees + 60m hold unless under dc
                 if should_close and hard_exit_reason is None and "STRONG_REDUCE" in str(rec_exit).upper():
                     try:
@@ -16672,6 +16692,18 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                 if exit_price <= 0: continue
                 # 2026-08-21 FLZ FIX: USER "WHEN IT GOES DOWN NOT WHEN IT GOES UP" — invert: LONG dip reentry when price <= exit (buy the dip), SHORT when price >= exit. Was inverted (LONG >= exit = chasing up, suicide).
                 _price_crossed = (is_long and current_price <= exit_price) or (not is_long and current_price >= exit_price)
+                # 2026-10-02 SELL_TOP continuation-recross (MOVR §63, sweep-gated): a premature top exit inverts T1 — LONG reenters when price recrosses ABOVE the exit (rally continues), SHORT when BELOW. Registry (written at HLR exit, same as sizing path) is the signal — pending_reentries reasons are generic and lose the HLR tag.
+                if bool(getattr(config, 'HLR_TOP_RECROSS_BYPASS_ENABLED', False)):
+                    try:
+                        _st_rec = _hlr_top_exit_registry.get(position_key)
+                        _st_win_s = float(getattr(config, 'HLR_RECROSS_BYPASS_BARS', 32) or 32) * 900.0
+                        _st_reason = str(data.get('exit_reason', ''))
+                        _st_fresh = bool(_st_rec) and (time.time() - float(_st_rec.get('ts', 0) or 0)) <= _st_win_s
+                        if 'SELL_TOP' in _st_reason or 'HLR_TOP_EXIT' in _st_reason or _st_fresh:
+                            _price_crossed = (is_long and current_price >= exit_price) or (not is_long and current_price <= exit_price)
+                            logger.warning(f"[SELLTOP_RECROSS_T1] {position_key}: premature-top exit — continuation semantics px={current_price:.6f} vs exit={exit_price:.6f} crossed={_price_crossed}")
+                    except Exception:
+                        pass
                 # Pre-check T3 (wt15m cross) — a bullish/bearish crossover is a confirmed bounce signal.
                 # When T3 fires, bypass RALLY_K15M so a mandatory post-reduction reentry is not blocked
                 # just because k_15m is elevated or stale. T1 (price_crossed) still bypasses ALL guards.

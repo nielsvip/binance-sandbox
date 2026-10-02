@@ -1558,6 +1558,7 @@ AUTO_WIRED_PARAMS = [
     'HLR_OFF_SMA_SZ_FRAC',
     'HLR_RALLY_ENABLED',
     'HLR_REDUCE_FRAC',
+    'HLR_RECROSS_BYPASS_BARS',
     'HLR_REENTRY_MAX_AGE_S',
     'HLR_REENTRY_MULT',
     'HLR_REENTRY_MULT_1H',
@@ -1566,6 +1567,8 @@ AUTO_WIRED_PARAMS = [
     'HLR_REENTRY_MULT_W',
     'HLR_SMA_BAND_PCT',
     'HLR_TOP_EXIT_ENABLED',
+    'HLR_TOP_EXIT_LIVE_SANCTIONED',
+    'HLR_TOP_RECROSS_BYPASS_ENABLED',
     'HODL_LONG_ONLY',
     'HOLD_BARS_CLOSE',
     'HOLD_BARS_MID',
@@ -6017,6 +6020,9 @@ class QuickConfig:
     HLR_REENTRY_MAX_AGE_S: float = 14400.0  # auto-added TEMPLATE generic
     HLR_SMA_BAND_PCT: float = 0.03  # auto-added TEMPLATE
     HLR_TOP_EXIT_ENABLED: bool = True  # 2026-09-28 LIVE PARITY: config.py:2576 = True
+    HLR_TOP_EXIT_LIVE_SANCTIONED: bool = False  # 2026-10-02 SELL_TOP sanction (MOVR §63): vec twin of live QUICK_REDUCE_TECHNICAL_ONLY suppression of HLR_TOP_EXIT — qr fires only when sanctioned per-sym.
+    HLR_TOP_RECROSS_BYPASS_ENABLED: bool = False  # 2026-10-02 premature-top backstop (§63): post-SELL_TOP recross reentry bypasses the KG/GR/STOP/DC4H choke within HLR_RECROSS_BYPASS_BARS.
+    HLR_RECROSS_BYPASS_BARS: int = 32  # window (15m bars) for the SELL_TOP recross bypass above.
     HLR_TOP_MIN_TFS: float = 2.0  # 2026-09-28 LIVE PARITY: config.py:2578 = 2 (min TFs confirming top, >=1 must be 4h+)
     HTF4_CONF: float = True  # auto-added TEMPLATE generic
     HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: float = 1.0  # 2026-09-10 FIX: require 4h confirm (was 0)
@@ -12558,10 +12564,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     continue
             fire = entry_sig[i]
             # 2026-09-26 TARGET-DC immediate reentry: if last exit was TARGET dc before high/low and price keeps rising/falling, fire immediately even if entry_sig false — no cooldowns
+            # 2026-10-02 SELL_TOP recross (MOVR §63): premature top exits re-fire the same way when the exit price is crossed (choke gates below still apply unless HLR_TOP_RECROSS_BYPASS_ENABLED).
             if not fire and has_closed_before and trades:
                 try:
                     _tr = str(trades[-1].get('exit_reason','') or trades[-1].get('reason',''))
-                    if 'TARGET' in _tr and 'dc_' in _tr.lower():
+                    _is_target_dc = 'TARGET' in _tr and 'dc_' in _tr.lower()
+                    _is_selltop = 'SELL_TOP' in _tr or 'HLR_TOP_EXIT' in _tr
+                    if _is_target_dc or _is_selltop:
                         _le = float(trades[-1].get('exit_price',0) or 0)
                         if _le > 0 and ((is_long and px > _le) or (not is_long and px < _le)):
                             fire = True
@@ -12659,6 +12668,21 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     pass
             if not fire and _wd_open is not None and bool(_wd_open[i]):
                 fire = True
+            # 2026-10-02 SELL_TOP recross bypass (MOVR §63, sweep-gated): after a SELL_TOP exit, a
+            # recross of the exit price within HLR_RECROSS_BYPASS_BARS skips the unconditional
+            # 09-27 hard blocks (DC4H/STOP/KG/GR) below. Sweepable gates are never bypassed.
+            _selltop_recross_bypass = False
+            if fire and has_closed_before and trades and bool(getattr(cfg, 'HLR_TOP_RECROSS_BYPASS_ENABLED', False)):
+                try:
+                    _rb_tr = str(trades[-1].get('exit_reason','') or trades[-1].get('reason',''))
+                    _rb_px = float(trades[-1].get('exit_price', 0) or 0)
+                    _rb_bar = int(trades[-1].get('bar_exit', i))
+                    _rb_n = int(getattr(cfg, 'HLR_RECROSS_BYPASS_BARS', 32) or 32)
+                    _rb_crossed = _rb_px > 0 and ((is_long and px > _rb_px) or ((not is_long) and px < _rb_px))
+                    if ('SELL_TOP' in _rb_tr or 'HLR_TOP_EXIT' in _rb_tr) and _rb_crossed and 0 <= (i - _rb_bar) <= _rb_n:
+                        _selltop_recross_bypass = True
+                except Exception:
+                    pass
             # 2026-09-29 USER: reentries bypassed every entry filter (reckless). Lenient gate: a reentry must pass at
             # least REENTRY_FILTER_MIN_PASS of the active entry filters; new entries (entry_sig) must pass ALL of them.
             if fire and _reentry_filter_on and has_closed_before and not entry_sig[i]:
@@ -12674,7 +12698,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             if fire and _atf_entry_block is not None and bool(_atf_entry_block[i]):
                 fire = False
             # USER 2026-09-27: NEVER reenter when falling through 4h bottom/top, below STOP, against KG all TFs, against GR all TFs — FIX 2026-09-27: block ANY px below dc_low_4h (not just 0.25% below) to stop 1-bar ULTIMATE churn
-            if fire:
+            # 2026-10-02: SELL_TOP recross bypass (flag above) skips these hard blocks only.
+            if fire and not _selltop_recross_bypass:
                 try:
                     if is_long:
                         _dc4l = float(npz.get('dc_low_4h', [0])[i]) if i < len(npz.get('dc_low_4h', [])) else 0
@@ -13221,7 +13246,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         # 2026-09-28 QUICK_REDUCE_STRONG gain gate fix: qr_cond is indicator-only; the live
         # gain conditions (ez_positions_quick.py:3454/3488) are applied here with the REAL
         # simulated gain — the old precomputed path read nonexistent npz['gain_pct'] (zeros).
-        _qr_fire = bool(qr_cond[i]) and bool(getattr(cfg, 'HLR_TOP_EXIT_ENABLED', True)) and vec_decisions.quick_reduce_strong.quick_reduce_gain_ok(cfg, live_pnl_pct)
+        # 2026-10-02 SELL_TOP sanction + MIN_HOLD (MOVR §63): live QUICK_REDUCE_TECHNICAL_ONLY
+        # suppresses unsanctioned HLR_TOP_EXIT, and no exit fires before MIN_HOLD_BARS_BEFORE_EXIT.
+        _qr_sanctioned = bool(getattr(cfg, 'HLR_TOP_EXIT_LIVE_SANCTIONED', False))
+        _qr_hold_ok = held_bars >= min_hold
+        _qr_fire = bool(qr_cond[i]) and bool(getattr(cfg, 'HLR_TOP_EXIT_ENABLED', True)) and _qr_sanctioned and _qr_hold_ok and vec_decisions.quick_reduce_strong.quick_reduce_gain_ok(cfg, live_pnl_pct)
         # live pacing: the execute-path dedup map spaces orders by AUGMENTATION_COOLDOWN_SECONDS
         # (ez_manage.py:28272/28326) — partial reduces obey it too; kills per-bar halving cascades
         _red_cd_ok = (i - int(pos.get('last_reduce_bar', -10**9))) >= vec_decisions.gain_ladder_augment.cooldown_bars(cfg, bmin)
@@ -13247,7 +13276,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _red_reason = f'HLR_TOP_EXIT_SELL_TOP_g={live_pnl_pct:.2f}%' if _qr_fire else 'REDUCE_TO_FLAT'
                 trades.append({'pnl_dollars': pnl_dollars, 'pnl_pct': float(pnl_pct), 'deployed': pos['deployed'], 'reason': _red_reason, 'type': 'REDUCE', 'ts': _ts_exit2, 'price': float(px),
                                'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos.get('qty',0)), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _red_reason, 'bars_held': int(i - pos['entry_bar'])})
-                pos = None; cd = cooldown_bars; has_closed_before = True
+                # 2026-10-02 SELL_TOP cd=0 (MOVR §63): a premature top exit restarts entry
+                # eligibility immediately so the recross reentry can fire on the very next bar.
+                if _qr_fire:
+                    pos = None; cd = 0; has_closed_before = True
+                else:
+                    pos = None; cd = cooldown_bars; has_closed_before = True
             else:
                 _ts_red = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
                 # partial reduce event: realized pnl stays inside the position and lands in

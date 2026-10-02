@@ -2617,6 +2617,9 @@ class Config:
     HLR_REENTRY_MULT_D: float = 2.5      # reentry qty multiplier when D fires top
     HLR_REENTRY_MULT_W: float = 3.0      # reentry qty multiplier when W fires top (max)
     HLR_REENTRY_MAX_AGE_S: float = 14400.0  # max seconds since HLR_TOP_EXIT to still use the mult (4h)
+    HLR_TOP_EXIT_LIVE_SANCTIONED: bool = False  # 2026-10-02 SELL_TOP sanction (MOVR §63): live QUICK_REDUCE_TECHNICAL_ONLY suppresses HLR_TOP_EXIT (no sanctioned token) — per-sym True re-allows it live AND in vec. Sweep-gated.
+    HLR_TOP_RECROSS_BYPASS_ENABLED: bool = False  # 2026-10-02 premature-top backstop (§63): after a SELL_TOP exit, a recross of the exit price within HLR_RECROSS_BYPASS_BARS reenters bypassing the KG/GR/STOP/DC4H choke. Sweep-gated vs 2026-09-27 anti-churn.
+    HLR_RECROSS_BYPASS_BARS: int = 32  # window (15m bars) for the SELL_TOP recross bypass above.
     # === BACKTEST SWEEP WINNERS (2026-03-16) ===
     K3M_CAP: int = 80  # BACKTEST_CHANGE_105: REVERTED to 80. Tournament (10 rounds, 3042 combos) winner uses 80. BACKTEST_CHANGE_8 (70) reversed.
     K3M_FLOOR: int = 30  # BACKTEST_CHANGE_9: NEW. Block SHORT when k_3m <= 30 (mirror of K3M_CAP)

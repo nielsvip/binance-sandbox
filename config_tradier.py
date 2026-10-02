@@ -3788,6 +3788,9 @@ class TradierConfig:
     HLR_TOP_VEL_1H_THRESH: float = -1.0
     HLR_TOP_VEL_4H_THRESH: float = 0.0
     HLR_TOP_VEL_D_THRESH: float = 0.0
+    HLR_TOP_EXIT_LIVE_SANCTIONED: bool = False  # 2026-10-02 SELL_TOP sanction mirror (stocks live HLR = stubs-only; stays False).
+    HLR_TOP_RECROSS_BYPASS_ENABLED: bool = False  # 2026-10-02 recross-bypass mirror (stocks).
+    HLR_RECROSS_BYPASS_BARS: int = 32  # window (15m bars) for the SELL_TOP recross bypass.
     # batch 3: BREAKEVEN_GAIN_EROSION stock live port (grey_wire_exits.breakeven_gain_erosion). OFF = today's stock live.
     BREAKEVEN_GAIN_EROSION_ENABLED: bool = False
     BREAKEVEN_GAIN_EROSION_MIN_GAIN: float = 50.0
