@@ -1,6 +1,6 @@
-PERFORMANCE REPORT — 2026-10-01 23:15 UTC
+PERFORMANCE REPORT — 2026-10-02 00:10 UTC
 ================================================================================
-Total: 145 symbols | A=5 B=95 C=45
+Total: 145 symbols | A=5 B=96 C=44
 Window: 14 days | Min trades: 5
 
 --- TIER A (5 symbols) ---
@@ -10,7 +10,7 @@ Window: 14 days | Min trades: 5
              PYPL  WR=68%  avg=+0.57%  total=+16.8%  trades= 28  mult=8.04
              NVDA  WR=94%  avg=+0.80%  total=+14.5%  trades= 17  mult=10.00
 
---- TIER B (95 symbols) ---
+--- TIER B (96 symbols) ---
              AXTI  WR=58%  avg=+1.98%  total=+43.0%  trades= 19  mult=10.00
              LSCC  WR=100%  avg=+5.08%  total=+41.1%  trades=  7  mult=7.30
              INTC  WR=33%  avg=+0.80%  total=+15.1%  trades= 18  mult=3.17
@@ -102,12 +102,13 @@ Window: 14 days | Min trades: 5
              CIBR  WR=0%  avg=-1.72%  total=-6.7%  trades=  4  mult=1.00
               GLD  WR=0%  avg=-3.52%  total=-6.9%  trades=  2  mult=1.00
          IOTXUSDT  WR=48%  avg=-0.14%  total=-7.0%  trades= 50  mult=0.63
+         COTIUSDT  WR=45%  avg=-0.18%  total=-7.5%  trades= 44  mult=0.53
               VLO  WR=61%  avg=-0.15%  total=-7.9%  trades= 46  mult=1.94
              MSTR  WR=47%  avg=-1.04%  total=-14.7%  trades= 15  mult=0.28
               AGI  WR=0%  avg=-8.70%  total=-16.6%  trades=  2  mult=1.00
                AU  WR=0%  avg=-4.60%  total=-17.5%  trades=  4  mult=1.00
 
---- TIER C (45 symbols) ---
+--- TIER C (44 symbols) ---
          ROSEUSDT  WR=40%  avg=-0.00%  total=-0.0%  trades=  5  mult=0.83
           APEUSDT  WR=33%  avg=-0.01%  total=-0.1%  trades=  9  mult=0.62
        BTCDOMUSDT  WR=43%  avg=-0.02%  total=-0.2%  trades= 14  mult=0.70
@@ -128,7 +129,6 @@ Window: 14 days | Min trades: 5
              COPX  WR=14%  avg=-0.48%  total=-6.5%  trades= 14  mult=0.25
              BWXT  WR=40%  avg=-0.28%  total=-7.0%  trades= 25  mult=0.38
               NKE  WR=35%  avg=-0.11%  total=-7.3%  trades= 69  mult=0.39
-         COTIUSDT  WR=44%  avg=-0.17%  total=-7.5%  trades= 45  mult=0.51
               ABT  WR=25%  avg=-0.87%  total=-10.0%  trades= 12  mult=0.27
              TSLA  WR=28%  avg=-0.39%  total=-11.0%  trades= 29  mult=0.25
             GOOGL  WR=40%  avg=-0.88%  total=-12.5%  trades= 15  mult=0.28
@@ -158,4 +158,4 @@ SUMMARY:
   Total PnL (all symbols): -430.9%
   Avg win rate: 43%
   A-tier avg mult: 9.61
-  C-tier avg mult: 0.33
+  C-tier avg mult: 0.32
