@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-02 04:25 UTC",
- "total_capital_usd": 440.96,
+ "generated_at": "2026-10-02 05:13 UTC",
+ "total_capital_usd": 85.41,
  "tier_capital": {
   "A": 0.0,
-  "B": 440.96,
+  "B": 85.41,
   "C": 0.0
  },
  "tier_count": {
@@ -13,20 +13,18 @@
  },
  "winners": [],
  "losers": [],
- "mediocre": [
-  "fin:ETHUSDT_LONG"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "fin:ETHUSDT_LONG",
-   "symbol": "ETHUSDT",
-   "account": "fin",
-   "value_usd": 440.96,
-   "gain_pct": 0.06,
+   "pk": "men:XRPUSDT_LONG",
+   "symbol": "XRPUSDT",
+   "account": "men",
+   "value_usd": 85.41,
+   "gain_pct": 1.857,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 0.161,
-   "mark": 2738.85784496
+   "amt": 56.0,
+   "mark": 1.5251
   }
  ]
 }

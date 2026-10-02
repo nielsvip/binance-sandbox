@@ -4755,8 +4755,28 @@ class QuickConfig:
                 keys_to_try.extend([f"{symbol}_LONG", f"{symbol}_SHORT"])
             applied = False
             for k in keys_to_try:
-                if k in raw and isinstance(raw[k], dict) and "overrides" in raw[k]:
-                    for pk, pv in raw[k]["overrides"].items():
+                if k in raw and isinstance(raw[k], dict):
+                    # Prefer full_config (complete defaults snapshot + overrides ~5000 keys)
+                    # with SQLite primary semantics; fall back to legacy overrides.
+                    use_full = False
+                    src = None
+                    # Try SQLite first for this sym_side (primary), JSON full_config second.
+                    try:
+                        import per_sym_store as _qpss
+                        if _qpss.get_full_config(k) is not None and not __import__("os").environ.get("PER_SYM_STORE_SQLITE_DISABLED"):
+                            # direct full dict from store is already defaults+overrides; apply via store path below
+                            use_full = True
+                            src = _qpss.get_full_config(k)
+                        elif "full_config" in raw[k] and isinstance(raw[k]["full_config"], dict) and raw[k]["full_config"]:
+                            src = raw[k]["full_config"]
+                            use_full = True
+                        elif "overrides" in raw[k]:
+                            src = raw[k]["overrides"]
+                    except Exception:
+                        src = raw[k].get("overrides") or raw[k].get("full_config")
+                    if src is None:
+                        continue
+                    for pk, pv in src.items():
                         if isinstance(pv, str) and pv in ("True", "False"):
                             pv = pv == "True"
                         if hasattr(cfg, pk):
@@ -4795,6 +4815,31 @@ class QuickConfig:
                 setattr(self, _k, _v)
                 n += 1
         return n
+
+    def apply_per_sym_store(self, symbol: str, side: str) -> int:
+        """Apply the complete per-sym snapshot (defaults+overrides ~5000 keys) from
+        per_sym_store.db (SQLite primary, JSON backup). Returns n fields set.
+        Call AFTER apply_cat_side_defaults; per-sym full_config wins over cat_side."""
+        try:
+            import per_sym_store as _pss
+            fc = _pss.get_full_config(f"{symbol}_{side}")
+            if not fc:
+                return 0
+            n = 0
+            for _k, _v in fc.items():
+                if hasattr(self, _k):
+                    setattr(self, _k, _v)
+                    n += 1
+                else:
+                    # allow unknown switches (future template knobs) — still set for fidelity
+                    try:
+                        setattr(self, _k, _v)
+                        n += 1
+                    except Exception:
+                        pass
+            return n
+        except Exception:
+            return 0
 
     def apply_tradier_defaults(self):
         self.MODE = "tradier"

@@ -1,15 +1,4 @@
 {
-  "_meta": {
-    "purpose": "CRYPTO-ONLY per-symbol overrides (USDT/USDC keys). Stock keys are FORBIDDEN here.",
-    "last_BEST_sync_utc": "2026-09-26T01:32:04.365469+00:00",
-    "n_crypto_keys": 248,
-    "source": "pilot_v14 39 BEST synced, was stale 2026-09-06",
-    "last_4x16_utc": "2026-09-26T18:20:10Z",
-    "n_promoted": 93,
-    "last_s2_retry_utc": "2026-09-26T19:34:33Z",
-    "last_all_latest_utc": "2026-09-26T21:39:36Z",
-    "n_all_promoted": 135
-  },
   "BTCUSDC_LONG": {
     "overrides": {
       "KINDERGARTEN_EMA_GATE_ENABLED": true,
@@ -7093,5 +7082,16 @@
     },
     "winning_tag": "clean_ONLY_CROSSES_v33",
     "trades": 0
+  },
+  "_meta": {
+    "purpose": "CRYPTO-ONLY per-symbol overrides (USDT/USDC keys). Stock keys are FORBIDDEN here.",
+    "last_BEST_sync_utc": "2026-09-26T01:32:04.365469+00:00",
+    "n_crypto_keys": 248,
+    "source": "pilot_v14 39 BEST synced, was stale 2026-09-06",
+    "last_4x16_utc": "2026-09-26T18:20:10Z",
+    "n_promoted": 93,
+    "last_s2_retry_utc": "2026-09-26T19:34:33Z",
+    "last_all_latest_utc": "2026-09-26T21:39:36Z",
+    "n_all_promoted": 135
   }
 }

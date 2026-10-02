@@ -7458,12 +7458,22 @@ def _psym_get(symbol: str, side: str, knob: str, default):
     except Exception:
         pass
     key = f"{symbol}_{side}"
-    # If SQLite full_config was missing for this knob, try JSON backup before cat_side
+    # If SQLite full_config was missing for this knob, try JSON backup before cat_side.
+    # When PER_SYM_STORE_SQLITE_DISABLED=1 the JSON full_config (defaults+overrides) is the truth,
+    # so check it as fallback — overrides alone would miss the snapshot semantics.
     _json_hit = False
     ov = _ezm_apply_final_book(key, _ezm_per_sym_cfgs.get(key, {}))
     if knob in ov:
         _json_hit = True
         return ov[knob]
+    # JSON full_config fallback (complete snapshot, used when sqlite disabled or for audit)
+    try:
+        _raw_full = _ezm_per_sym_raw.get(key, {})
+        _fc = _raw_full.get("full_config") if isinstance(_raw_full, dict) else None
+        if isinstance(_fc, dict) and knob in _fc:
+            return _fc[knob]
+    except Exception:
+        pass
     # USER 2026-09-30: FOUR-default layer — no per-sym override -> this sym_side's cat_side default (supersedes the
     # runtime TEMPLATE xlsx fallback below, which it was built from)
     _csd_v = _ezm_cat_side_default(symbol, side, knob)
