@@ -1295,15 +1295,40 @@ def _qualifies_30d(v, bh):
     return (len(r) == 0, r)
 
 
-def _qualifies_365d(v):
-    """(ok, reasons) — 365D finish gate (BIBLE §58): valid, trades>=80, gain>=0."""
+def _npz_span_days(symside):
+    """Available-history span in days for the symside's NPZ (timestamps peek, mmap). None if unreadable."""
+    try:
+        import numpy as _np
+        sym = symside.rsplit("_", 1)[0] if symside.rsplit("_", 1)[-1] in ("LONG", "SHORT") else symside
+        cands = [Path("/home/niels/binance-sandbox/backtest_v8/indicators") / f"{sym}.npz", Path(ROOT) / "backtest_v8" / "indicators" / f"{sym}.npz"]
+        for _p in cands:
+            if _p.exists():
+                with _np.load(str(_p), mmap_mode="r") as _d:
+                    if "timestamps" not in _d.files:
+                        return None
+                    _t = _np.asarray(_d["timestamps"], dtype=float).ravel()
+                if len(_t) < 2:
+                    return None
+                if _t[-1] > 1e11:
+                    _t = _t / 1000
+                return float((_t[-1] - _t[0]) / 86400)
+    except Exception:
+        pass
+    return None
+
+
+def _qualifies_365d(v, span_days=None):
+    """(ok, reasons) — 365D finish gate (BIBLE §58): valid, trades>=floor, gain>=0. Short-history NPZs (<330d) get a pro-rata floor max(10, round(80*span/365)) — a +26.76/73tr set on 80d of history must not die on a technicality (USER 2026-10-02: quarantine iff 365D negative). Fail-closed: unknown span -> full 80 floor."""
     r = []
     v = v or {}
     if not v.get("valid"):
         r.append(f"invalid:{v.get('invalid_reason') or '?'}")
     t = int(v.get("trades") or 0)
-    if t < QUAL_365D_FLOOR_TRADES:
-        r.append(f"trades {t}<{QUAL_365D_FLOOR_TRADES}")
+    _floor = QUAL_365D_FLOOR_TRADES
+    if span_days is not None and span_days < 330:
+        _floor = max(10, round(QUAL_365D_FLOOR_TRADES * float(span_days) / 365))
+    if t < _floor:
+        r.append(f"trades {t}<{_floor}" + (f" (pro-rata {span_days:.0f}d)" if span_days is not None and span_days < 330 else ""))
     g = v.get("gain_pct")
     g = float(g) if g is not None else None
     if g is None or g < 0:
@@ -2967,12 +2992,15 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         # xlsx carried along for manual revision). V15_SKIP_365D_AT_DONE=1 restores the old skip.
         if os.environ.get("V15_SKIP_365D_AT_DONE") != "1":
             _q365_ok, _q365_reasons, _v365 = False, [], {}
+            _span365 = None
             try:
                 from tools.opt.v12_pilot import evaluate_sanitized_with_timeout as _es365
                 _v365 = _es365(new_symside, dict(cumulative_overrides), 365, timeout_sec=int(QUAL_365D_TIMEOUT)) or {}
+                _span365 = _npz_span_days(new_symside)
                 progress["final_365d"] = {k: _v365.get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "valid", "invalid_reason")}
-                _q365_ok, _q365_reasons = _qualifies_365d(_v365)
-                print(f"[365-QUAL] {new_symside} gain={_v365.get('gain_pct')} tr={_v365.get('trades')} TIM={_v365.get('tim_pct')} valid={_v365.get('valid')} -> {'PASS' if _q365_ok else '; '.join(_q365_reasons)}", flush=True)
+                progress["final_365d"]["span_days"] = _span365
+                _q365_ok, _q365_reasons = _qualifies_365d(_v365, _span365)
+                print(f"[365-QUAL] {new_symside} gain={_v365.get('gain_pct')} tr={_v365.get('trades')} TIM={_v365.get('tim_pct')} valid={_v365.get('valid')} span={_span365} -> {'PASS' if _q365_ok else '; '.join(_q365_reasons)}", flush=True)
             except Exception as _q365e:
                 _q365_reasons = [f"365D eval failed: {_q365e}"[:100]]
                 print(f"[365-qual-warn] {new_symside}: {_q365e}", flush=True)
@@ -2989,7 +3017,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                         _rv365 = _es365b(new_symside, dict(_r365ov), 365, timeout_sec=int(QUAL_365D_TIMEOUT)) or {}
                         _rv30 = _eps30(prepared, dict(_r365ov), args.window_days) if prepared is not None else {}
                         _ok30, _rr30 = _qualifies_30d(_rv30, bh)
-                        _ok365, _rr365 = _qualifies_365d(_rv365)
+                        _ok365, _rr365 = _qualifies_365d(_rv365, _span365)
                         if _ok30 and _ok365:
                             def _fm(x):
                                 try:

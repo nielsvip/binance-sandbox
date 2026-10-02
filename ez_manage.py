@@ -7228,6 +7228,13 @@ _EXIT_REASON_FAMILY_GATE = (
 # confirmation for the exact SYM_SIDE. CLOSE/REDUCE are NEVER blocked (positions must always
 # be exitable). Certifications are written ONLY by tools/confirm_365d.py (highest-gain recipe,
 # 365d window, trades>=30) and expire after CONFIRM_365D_MAX_AGE_DAYS (default 30).
+# 2026-10-02 USER ORDER ("up to date or ignored"): gate DEFAULTS OFF until real certs exist.
+# Evidence: file never generated anywhere (Mac/S1/S5); certifier yields 1 trade/window on
+# crypto incl. UNIUSDC_LONG w/ its own 106-trade winning set (engine entry-blocked vs Sep 29);
+# 0/22 syms certifiable. 2500+ live entry signals were sacrificed to a dead-on-arrival gate.
+# Re-enable: fix engine entries, run tools/confirm_365d.py --all on S1, sync the JSON to Mac,
+# set CONFIRM_365D_GATE_ENABLED=True in config.py. Churn protection meanwhile = vec parity
+# gate on entries + per-sym/live gates (pre-Sep-28 stack that ran for years).
 _CONFIRM_365D_CACHE = {"mtime": None, "data": {}, "path": None}
 
 
@@ -7236,8 +7243,8 @@ def _confirm_365d_allows(symbol, position_side):
     # execute_now body via its _v8_execute_now helper (see backtest_v12_engine.py:687), and the
     # certifier (tools/confirm_365d.py) uses the vector engine. This gate is live-only by
     # construction and stays strictly fail-closed.
-    if not bool(getattr(config, "CONFIRM_365D_GATE_ENABLED", True)):
-        return True, "gate disabled via CONFIRM_365D_GATE_ENABLED=False"
+    if not bool(getattr(config, "CONFIRM_365D_GATE_ENABLED", False)):
+        return True, "gate IGNORED 2026-10-02 (USER order: up-to-date or ignored; up-to-date proven impossible — vector engine yields 1 trade/window on crypto incl. UNI w/ own winning set, 0/22 syms certifiable; re-enable via CONFIRM_365D_GATE_ENABLED=True + real certs after engine entry-block fix)"
     key = f"{symbol}_{str(position_side).upper()}"
     try:
         path = Path(getattr(config, "BASE_PATH", "/users/niels/documents/binance")) / "data" / "confirmed_365d.json"
@@ -7271,6 +7278,24 @@ def _confirm_365d_allows(symbol, position_side):
         return True, f"{key} 365D-confirmed gain {gain:.2f}% trades {trades} age {age_days:.1f}d"
     except Exception as e:
         return False, f"365D gate error (fail-closed): {e}"
+
+
+def _broker_sync_is_exit(action):
+    return any(_t in str(action or "").upper() for _t in ("CLOSE", "REDUCE"))
+
+
+def _broker_sync_freshest_ts(*candidates):
+    best = None
+    for cand in candidates:
+        if cand is None:
+            continue
+        try:
+            c = cand.replace(tzinfo=timezone.utc) if getattr(cand, 'tzinfo', None) is None else cand
+            if best is None or c > best:
+                best = c
+        except Exception:
+            continue
+    return best
 
 
 def is_storm(indicators, position_side, account_key=None):
@@ -29767,26 +29792,26 @@ class MultiAccountTradeManager:
                 return "BLOCKED_NO_365D_CONFIRM"
         # BROKER_SYNC LOGICAL DEMAND — 2026-09-08: 80× same order sent because it thought not received without checking broker.
         # DEMAND recent broker positions info before any trade (both crypto and stock) — not optional, not a switch.
+        # 2026-10-02 FIX (fin:ETHUSDT_LONG bled -13% ROE with every CLOSE refused 17:35→22:30 UTC on a frozen ts):
+        # (1) CLOSE/REDUCE are NEVER refused for stale sync — positions must always be exitable (sacred rule).
+        # The 90s order-dedup below still applies to exits (80× repeat prevention, self-resolving).
+        # (2) use the FRESHEST of the three sync timestamps, not first-set — the manager's own
+        # positions_last_sync can freeze (set only when _apply_positions_payload changes something)
+        # while positions_service stays fresh; first-set precedence shadowed the fresh ts forever.
+        _is_exit_bs = _broker_sync_is_exit(action)
         try:
-            _sync_ts = None
-            # Crypto positions_last_sync is in this manager or in positions_service
-            if getattr(self, 'positions_last_sync', None):
-                _sync_ts = self.positions_last_sync
-            elif hasattr(self, 'position_manager') and getattr(self.position_manager, 'last_synced_at', None):
-                _sync_ts = self.position_manager.last_synced_at
-            elif hasattr(self, 'positions_service') and getattr(self.positions_service, 'positions_last_sync', None):
-                _sync_ts = self.positions_service.positions_last_sync
+            _mgr_ts_bs = getattr(self, 'positions_last_sync', None)
+            _pm_bs = getattr(self.position_manager, 'last_synced_at', None) if hasattr(self, 'position_manager') else None
+            _svc_bs = getattr(self.positions_service, 'positions_last_sync', None) if hasattr(self, 'positions_service') else None
+            _sync_ts = _broker_sync_freshest_ts(_mgr_ts_bs, _pm_bs, _svc_bs)
             if _sync_ts is not None:
-                try:
-                    if _sync_ts.tzinfo is None:
-                        _sync_ts = _sync_ts.replace(tzinfo=timezone.utc)
-                except Exception:
-                    pass
                 from datetime import timezone as _tz
                 _age = (datetime.now(_tz.utc) - _sync_ts).total_seconds()
-                if _age > 90:
+                if _age > 90 and not _is_exit_bs:
                     logger.critical(f"🛑 [BROKER_SYNC_DEMAND] {position_key}: last crypto broker sync {_age:.0f}s ago (>90s) — REFUSING {action} {side} {quantity} until fresh broker positions (80× repeat prevention)")
                     return "BLOCKED_BROKER_SYNC_STALE"
+                if _age > 90 and _is_exit_bs:
+                    logger.warning(f"[BROKER_SYNC_DEMAND] {position_key}: sync {_age:.0f}s stale but {action} is an EXIT — allowing (exits never blocked)")
                 if position_key and position_key in getattr(self, 'order_deduplication', {}):
                     _dedupe = self.order_deduplication.get(position_key)
                     _last_order_time = 0
