@@ -1188,7 +1188,7 @@
    "vec_decisions/reentry_breakout.py:159",
    "vec_decisions/reentry_epq_vec.py:1"
   ],
-  "generated": "2026-10-02T07:13:31.569866Z",
+  "generated": "2026-10-02T13:25:13.524327Z",
   "inputs": {
    "live_gaps": 21,
    "parity_proven": 0,
@@ -25241,7 +25241,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "<absent>",
-    "config_tradier.py": "{'HL', 'FNV', 'CDE', 'BTG', 'RGLD', 'AG', 'UCO', 'USO', 'PAAS', 'GDXJ', 'MAG', '",
+    "config_tradier.py": "{'HL', 'VXX', 'UCO', 'UNG', 'AU', 'XOP', 'OIH', 'GOLD', 'BOIL', 'GDX', 'GDXJ', '",
     "template_bold": {}
    },
    "filter_tf": false,
@@ -211188,7 +211188,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "<absent>",
-    "config_tradier.py": "{'ICL', 'SGML', 'AGCO', 'HIVE', 'NAT', 'XME', 'DAC', 'CAN', 'BITO', 'SBLK', 'BLO",
+    "config_tradier.py": "{'UCO', 'UNG', 'QUBT', 'HAO', 'XOP', 'AXTI', 'ETHE', 'WEAT', 'ICL', 'XIACF', 'AL",
     "template_bold": {}
    },
    "filter_tf": false,
