@@ -2013,5 +2013,14 @@
     ],
     "timestamp": "2026-10-02T18:40:49.688163+00:00",
     "price": 0.0903
+  },
+  {
+    "symbol": "BCHUSDC",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 14.5x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-02T18:49:31.354588+00:00",
+    "price": 300.71
   }
 ]
