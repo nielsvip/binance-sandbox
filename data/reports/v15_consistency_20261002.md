@@ -761,3 +761,14 @@
     - `XLMUSDT_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-7.869/F=+0.129
     - `KASUSDT_LONG` [s5] 1 cases — HTF_GATE_D_MANDATORY T=-29.762/F=-15.745
 - **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-02T12:45Z · window 48.0h · 441 sym_sides (local+remote)
+- ⚠️ **6 sym_sides / 6 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `HTF_GATE_D_MANDATORY`×6
+    - `HYPEUSDT_LONG` [s2] 1 cases — HTF_GATE_D_MANDATORY T=-14.093/F=-11.719
+    - `GRTUSDT_SHORT` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-10.714/F=-8.402
+    - `QTUMUSDT_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-13.049/F=-5.810
+    - `XMRUSDT_LONG` [s5] 1 cases — HTF_GATE_D_MANDATORY T=-22.278/F=-15.768
+    - `XLMUSDT_LONG` [s1] 1 cases — HTF_GATE_D_MANDATORY T=-7.869/F=+0.129
+    - `KASUSDT_LONG` [s5] 1 cases — HTF_GATE_D_MANDATORY T=-29.762/F=-15.745
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
