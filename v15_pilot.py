@@ -906,9 +906,18 @@ _TAB_LEVEL_CACHE: dict = {}
 def tab_level_filters(cat_side: str, sheet: str) -> set:
     """USER 2026-10-01: filters yellow on >20% of a tab's switch rows live as orange rows at the bottom of that tab (tools/v15_tab_level_filters.py +
     v15_daily_template_update.py --tab-level) and are tested ONCE there: the per-row evaluation of their columns is skipped (the cell keeps its status).
-    V15_TAB_LEVEL_FILTERS=0 restores the per-row test."""
-    if os.environ.get("V15_TAB_LEVEL_FILTERS", "1") == "0":
-        return set()
+    V15_TAB_LEVEL_FILTERS=0 restores the per-row test. USER 2026-10-03: flag file data/tablevel.flag ("1"/"0") also controls it (env wins, else flag, else ON)."""
+    _tl_env = os.environ.get("V15_TAB_LEVEL_FILTERS")
+    if _tl_env is not None:
+        if _tl_env == "0":
+            return set()
+    else:
+        try:
+            _tl_flag = (ROOT / "data" / "tablevel.flag").read_text().strip()
+            if _tl_flag == "0":
+                return set()
+        except Exception:
+            pass
     if "spec" not in _TAB_LEVEL_CACHE:
         try:
             _TAB_LEVEL_CACHE["spec"] = json.loads((ROOT / "data" / "wiring" / "tab_filters" / "tab_level_filters.json").read_text()).get("cats", {})
@@ -3215,9 +3224,55 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     except Exception as _ce:
         print(f"[chart-warn] {_ce}", flush=True)
     # Final heartbeat
+    _skip_alarm_summary(progress, new_symside, processed)
     _touch(f"spec-done cum={cumulative_gain:.4f} rows={processed}")
     print(f"[spec-fill] DONE {new_symside} final_gain={cumulative_gain:.4f} baseline={baseline_gain:.4f} rows={processed} pos_tabs curated", flush=True)
     return cumulative_gain, cumulative_overrides, progress
+
+def _skip_alarm_summary(progress: dict, new_symside: str, processed: int):
+    """USER 2026-10-03: mass-skip alarm — yellows+switches were skipped fleet-wide with no warning (sampling + tab-level + unwired).
+    Tallies done-rows by outcome, prints a LOUD block, and writes a SKIP_ALERT file when computed coverage is low. Never raises."""
+    try:
+        done = (progress or {}).get("done", {}) or {}
+        tot = len(done)
+        computed = 0
+        skips: dict = {}
+        y_cells = 0
+        y_rows0 = 0
+        for _k, _v in done.items():
+            if not isinstance(_v, dict):
+                continue
+            _r = str(_v.get("reason") or "")
+            _d = _v.get("delta")
+            _ok = isinstance(_d, (int, float)) and not _v.get("delta_invalid") and not _v.get("is_running")
+            if _ok:
+                computed += 1
+            else:
+                _cls = "OTHER"
+                for _cand in ("NOT_WIRED_VEC", "SKIPPED_SAMPLING", "SKIPPED_ORANGE_ROW", "TYPE_MISMATCH", "ZERO_TRADES", "SKIPPED_", "RUNNING", "INVALID", "v12 prepared", "all vectors invalid"):
+                    if _cand in _r or (_cand == "RUNNING" and _v.get("is_running")):
+                        _cls = _cand
+                        break
+                if _cls == "OTHER" and _d is None:
+                    _cls = "DELTA_NONE"
+                skips[_cls] = skips.get(_cls, 0) + 1
+            _y = _v.get("yellows") or {}
+            _yn = sum(1 for _yv in _y.values() if isinstance(_yv, dict) and isinstance(_yv.get("delta"), (int, float)))
+            y_cells += _yn
+            if _yn == 0:
+                y_rows0 += 1
+        frac = (computed / tot) if tot else 0.0
+        print(f"[SKIP-ALARM] {new_symside} rows={tot} computed={computed} ({frac:.0%}) skipped={skips} yellow_cells={y_cells} rows_zero_yellows={y_rows0}", flush=True)
+        if tot >= 50 and (frac < 0.50 or (tot > 0 and y_rows0 / tot > 0.85)):
+            try:
+                FLAGS_DIR.mkdir(parents=True, exist_ok=True)
+                (FLAGS_DIR / f"{new_symside}_SKIP_ALERT.txt").write_text(f"symside={new_symside} rows={tot} computed={computed} frac={frac:.2f} skipped={skips} yellow_cells={y_cells} rows_zero_yellows={y_rows0}\n")
+            except Exception:
+                pass
+            print(f"[SKIP-ALARM] *** ALERT {new_symside}: computed {frac:.0%} of rows, {y_rows0}/{tot} rows with zero yellow cells — see SKIP_ALERT ***", flush=True)
+    except Exception as _se:
+        print(f"[skip-alarm-warn] {_se}", flush=True)
+
 
 def _atomic_save(wb, wb_path: Path):
     # FLT2 2026-10-01: a foreign cleaner/syncer can delete our *.tmp between save and replace (ENOENT) — that crashed fresh pilots in clone_template (chmod on a never-created xlsx). Retry the whole save up to 3x.
