@@ -5893,7 +5893,7 @@ class QuickConfig:
     ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED: bool = False  # [JSN2] user: ALL_TF_AGAINST entry veto False until tested (live config False)
     ALL_TF_AGAINST_BLOCK_ENTRY_MIN_TFS: float = 4
     QUICK_ENTRY_ABLATION_SUPPRESS_VEC: bool = True  # C/003: honour ABLATION_DISABLE_QUICK_ENTRY (live kills the candidate loop; crypto)
-    WATCHDOG_DC_VEC_ENABLED: bool = True  # C/003: vec twin of the flat-key MOMENTUM_WATCHDOG DC force-open (live switches: MOMENTUM_SMA_WATCHDOG_ENABLED + WATCHDOG_DC_FORCE_OPEN_ENABLED)
+    WATCHDOG_DC_VEC_ENABLED: bool = False  # KILLED 2026-10-03 USER: vec _wd_open fired 4866/5145 COTI_SHORT 365D trades (raw DC-touch, no live gates) -> DD100; default OFF, explicit True restores
     # 2026-10-01 b2c — live crypto exit chain (ez_positions_quick.process_single_exit) master + knobs live reads through getattr-with-default (absent in config.py)
     R1_RESTRICT_TO_OVERBOUGHT_BREAKOUT: bool = True  # live getattr default True (ez_manage 46840)
     MOMENTUM_TP_ENABLED: bool = True              # vec-only toggle: live MOMENTUM_TP (ez_manage 52282) has NO switch (always on, gain>0.5)
@@ -11843,7 +11843,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _wd_crypto = str(getattr(cfg, 'MODE', 'crypto')) != 'tradier'
         if _wd_crypto and bool(getattr(cfg, 'ABLATION_DISABLE_QUICK_ENTRY', False)) and bool(getattr(cfg, 'QUICK_ENTRY_ABLATION_SUPPRESS_VEC', True)):
             entry_sig = np.zeros_like(entry_sig)
-        if _wd_crypto and bool(getattr(cfg, 'MOMENTUM_SMA_WATCHDOG_ENABLED', True)) and bool(getattr(cfg, 'WATCHDOG_DC_FORCE_OPEN_ENABLED', True)) and bool(getattr(cfg, 'WATCHDOG_DC_VEC_ENABLED', True)):
+        if _wd_crypto and bool(getattr(cfg, 'MOMENTUM_SMA_WATCHDOG_ENABLED', True)) and bool(getattr(cfg, 'WATCHDOG_DC_FORCE_OPEN_ENABLED', True)) and bool(getattr(cfg, 'WATCHDOG_DC_VEC_ENABLED', False)):
             _wd_open = np.zeros(n, dtype=bool)
             _wd_tag = np.full(n, '', dtype=object)
             for _wtf in ('15m', '1h', '4h', 'D'):

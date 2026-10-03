@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-10-03 04:20 UTC
+PERFORMANCE REPORT — 2026-10-03 04:52 UTC
 ================================================================================
 Total: 142 symbols | A=4 B=96 C=42
 Window: 14 days | Min trades: 5
@@ -34,8 +34,8 @@ Window: 14 days | Min trades: 5
           GRTUSDT  WR=71%  avg=+0.22%  total=+1.5%  trades=  7  mult=2.87
           DOTUSDT  WR=44%  avg=+0.09%  total=+1.5%  trades= 16  mult=0.85
          LINKUSDC  WR=67%  avg=+0.45%  total=+1.4%  trades=  3  mult=1.00
+          AXSUSDT  WR=60%  avg=+0.22%  total=+1.1%  trades=  5  mult=1.82
          ONDOUSDT  WR=70%  avg=+0.11%  total=+1.1%  trades= 10  mult=3.17
-          AXSUSDT  WR=50%  avg=+0.27%  total=+1.1%  trades=  4  mult=1.00
           ARBUSDC  WR=55%  avg=+0.09%  total=+1.0%  trades= 11  mult=1.79
      1000LUNCUSDT  WR=100%  avg=+0.89%  total=+0.9%  trades=  1  mult=1.00
          AMATUSDT  WR=45%  avg=+0.08%  total=+0.9%  trades= 11  mult=0.94
@@ -76,9 +76,9 @@ Window: 14 days | Min trades: 5
      1000BONKUSDC  WR=46%  avg=-0.01%  total=-0.2%  trades= 13  mult=0.82
               SMG  WR=0%  avg=-0.18%  total=-0.2%  trades=  1  mult=1.00
          USARUSDT  WR=0%  avg=-0.22%  total=-0.2%  trades=  1  mult=1.00
+         MANAUSDT  WR=67%  avg=-0.06%  total=-0.3%  trades=  6  mult=1.79
          ALGOUSDT  WR=45%  avg=-0.01%  total=-0.3%  trades= 22  mult=0.71
          AAVEUSDC  WR=50%  avg=-0.17%  total=-0.3%  trades=  2  mult=1.00
-         MANAUSDT  WR=50%  avg=-0.09%  total=-0.4%  trades=  4  mult=1.00
      FARTCOINUSDT  WR=0%  avg=-0.14%  total=-0.4%  trades=  3  mult=1.00
              IBIT  WR=0%  avg=-0.26%  total=-0.5%  trades=  2  mult=1.00
          PLTRUSDT  WR=0%  avg=-0.18%  total=-0.6%  trades=  3  mult=1.00
@@ -92,7 +92,7 @@ Window: 14 days | Min trades: 5
          BABAUSDT  WR=60%  avg=-0.32%  total=-1.6%  trades=  5  mult=0.96
           PTBUSDT  WR=0%  avg=-0.96%  total=-1.9%  trades=  2  mult=1.00
               TSM  WR=0%  avg=-0.62%  total=-2.4%  trades=  4  mult=1.00
-          ETHUSDT  WR=0%  avg=-2.92%  total=-2.9%  trades=  1  mult=1.00 ** OPEN **
+          ETHUSDT  WR=0%  avg=-2.92%  total=-2.9%  trades=  1  mult=1.00
          HYPEUSDT  WR=52%  avg=-0.06%  total=-3.0%  trades= 48  mult=0.98
               PSX  WR=64%  avg=-0.08%  total=-3.3%  trades= 39  mult=3.00
          SANDUSDT  WR=45%  avg=-0.13%  total=-4.3%  trades= 33  mult=0.57
@@ -152,7 +152,7 @@ Window: 14 days | Min trades: 5
               APO  WR=5%  avg=-4.01%  total=-92.8%  trades= 64  mult=0.12
 
 SUMMARY:
-  Total PnL (all symbols): -590.0%
-  Avg win rate: 42%
+  Total PnL (all symbols): -589.9%
+  Avg win rate: 43%
   A-tier avg mult: 10.00
   C-tier avg mult: 0.31

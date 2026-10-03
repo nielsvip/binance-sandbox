@@ -1945,6 +1945,21 @@ def _possym_decide(sym_side: str, tab: str, rkey: str, round_id: str, pos, n, ne
     return (u < p), f"pos={pos}", p, u
 
 
+def delta_vs_result(res, cum_before: float):
+    """Module-level twin of the fill loop's _delta_vs (pure — extracted 2026-10-03 for testing).
+    (delta, promotable, reason): real gain delta always reported; engine-invalid results keep
+    their delta but never promote."""
+    if not res or res.get("gain_pct") is None:
+        return None, False, str((res or {}).get("invalid_reason") or "no result")[:40]
+    if int(res.get("trades") or 0) == 0:
+        return None, False, "ZERO_TRADES"
+    d = float(res.get("gain_pct")) - cum_before
+    d = 0.0 if abs(d) < 1e-9 else d
+    if not res.get("valid"):
+        return d, False, str(res.get("invalid_reason") or "invalid")[:40]
+    return d, True, ""
+
+
 def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progress_path: Path, flags_md: Path, cumulative_gain: float, cumulative_overrides: dict, defaults: dict, baseline_gain: float, bh: float, prepared, args, baseline_vec: dict, baseline_live: dict):
     """Sequential spec filler (USER 2026-09-29 late, BACKTEST_BIBLE §56 rev b): 13 tabs in order, every row in order
     (white switch rows, then orange filter rows), no row skipped, no tab jumping.
@@ -2566,17 +2581,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         g = (res or {}).get("gain_pct")
         _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": "sequential", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "label": label, "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "fp": ((res or {}).get("behavior_fingerprint") or "")[:16], "tim": (res or {}).get("tim_pct"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cum_before, "delta": (float(g) - cum_before) if g is not None else None, "secs": round(_t.time() - t0, 4), "cached": cached, "err": err})
         return res, err
-    def _delta_vs(res, cum_before: float):
-        # (delta, promotable, reason): real gain delta always reported; engine-invalid results keep their delta but never promote
-        if not res or res.get("gain_pct") is None:
-            return None, False, str((res or {}).get("invalid_reason") or "no result")[:40]
-        if int(res.get("trades") or 0) == 0:
-            return None, False, "ZERO_TRADES"  # USER 2026-09-30: nothing traded = no delta, never a synthetic 0-gain value
-        d = float(res.get("gain_pct")) - cum_before
-        d = 0.0 if abs(d) < 1e-9 else d
-        if not res.get("valid"):
-            return d, False, str(res.get("invalid_reason") or "invalid")[:40]
-        return d, True, ""
+    _delta_vs = delta_vs_result  # module-level pure twin (test_v15_row_guards covers the verdict/settle composition)
     def _num_cell(ws, rr: int, col: int, value, good: bool, bold: bool = True):
         cell = ws.cell(row=rr, column=col)
         cell.value = float(value)
@@ -2619,8 +2624,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             return
         _write_E(sname, rr, value)
         last_E["v"] = float(value)
-    # USER 2026-09-30: E3 of EVERY tab = the running baseline when that tab starts; any later E only after a POSITIVE row
-    # (E_next = E + G). Resumed sheets: each tab's first row gets the baseline it was measured against.
+    # USER 2026-09-30: E3 of EVERY tab = the running baseline when that tab starts; any later E only after a POSITIVE row.
+    # USER 2026-10-03 RECALC-ON-FLIP: E is NEVER chained by sum (E + G is fiction when overrides interact); every
+    # promotion fresh-evaluates the full new set and E_next = fresh gain. Resumed sheets heal on the next flip.
     _done0 = progress.get("done", {})
     # USER 2026-10-03 RULE#4: this run's NPZ identity (resume-refill already enforced by the caller; rows stamp it)
     try:
@@ -2880,6 +2886,33 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 promote = False
                 _blk = _tgv
                 print(f"[promote-block] {sname}!{rr} {switch}={cand} delta={row_delta} NOT promoted: {_tgv}", flush=True)
+        # USER 2026-10-03 RECALC-ON-FLIP: never chain E by sum (dep-forced masters + interactions make sums fiction).
+        # Fresh-eval the EXACT promoted set; the flip stands only if the fresh gain beats E_before.
+        if promote and not is_running and choice is not None:
+            _rc_ov = dict(choice[2])
+            for _dk, _dv in _dep_choice.items():
+                _rc_ov[_dk] = _dv
+            _rc_ov, _ = sanitize_overrides(_rc_ov, defaults)
+            _rc_res, _rc_err = _get(sname, rr, switch, cand, "RECALC_CUMULATIVE", _rc_ov, _t.time() + float(os.environ.get("V15_RECALC_S", "120")), cumulative_before)
+            _rc_gain = _rc_res.get("gain_pct") if isinstance(_rc_res, dict) else None
+            _rc_trades = int(_rc_res.get("trades") or 0) if isinstance(_rc_res, dict) else 0
+            if _rc_err:
+                print(f"[RECALC-FALLBACK-SUM] {sname}!{rr} {switch}={cand} recalc infra-failed ({_rc_err}) — chained by sum (FICTION, flagged)", flush=True)
+            elif _rc_gain is None or not bool(_rc_res.get("valid")) or _rc_trades <= 0:
+                promote = False
+                _blk = ((_blk + "; ") if _blk else "") + f"RECALC-REJECT fresh invalid/0-trades (gain={_rc_gain} trades={_rc_trades})"
+                print(f"[promote-block] {sname}!{rr} {switch}={cand} delta={row_delta} NOT promoted: {_blk}", flush=True)
+            else:
+                _rc_honest = float(_rc_gain) - float(cumulative_before)
+                _rc_drift = float(_rc_gain) - (float(cumulative_before) + float(row_delta))
+                if abs(_rc_drift) > 1e-9:
+                    print(f"[RECALC] {sname}!{rr} {switch}={cand} sum={float(cumulative_before) + float(row_delta):.4f} fresh={float(_rc_gain):.4f} drift={_rc_drift:+.4f}", flush=True)
+                row_delta = float(_rc_honest)
+                choice = (float(row_delta), choice[1], _rc_ov, str(choice[3]) + "+recalc")
+                if row_delta <= 1e-9:
+                    promote = False
+                    _blk = ((_blk + "; ") if _blk else "") + f"RECALC-REJECT fresh {float(_rc_gain):.4f} <= E_before {float(cumulative_before):.4f}"
+                    print(f"[promote-block] {sname}!{rr} {switch}={cand} delta={row_delta} NOT promoted: {_blk}", flush=True)
         row_gain = (cumulative_before + row_delta) if row_delta is not None else None
         g = ws.cell(row=rr, column=cols["G"])
         f = ws.cell(row=rr, column=cols["F"])
