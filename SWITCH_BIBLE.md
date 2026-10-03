@@ -16,7 +16,7 @@
 6. **PARITY_PROVEN** is reserved for scalar-vs-vec parity evidence (list in `data/wiring/parity_proven.json`). `ledger_flip_proven` = a real NPZ ledger flip (data/wiring/wired_proven.json) only.
 
 
-_Generated 2026-10-03T14:45:08.150630Z · 3534 names · vec modules never reached from simulate_one: 133/202_
+_Generated 2026-10-03T20:52:38.344351Z · 3534 names · vec modules never reached from simulate_one: 133/202_
 
 ## Status counts (all names)
 
@@ -404,7 +404,7 @@ _Generated 2026-10-03T14:45:08.150630Z · 3534 names · vec modules never reache
 | `BB_SQUEEZE_THRESHOLD_15M` | unclassified | 0.025 / 0.025 / 0.025 | — | DEAD | DEAD | — · — | — |
 | `BB_SQUEEZE_THRESHOLD_1H` | unclassified | 0.03 / 0.03 / 0.03 | — | DEAD | DEAD | — · — | — |
 | `BEAR_HOLD_WT_THR` | unclassified | 53.0 / 53.0 / 53.0 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/live_unw_gates.py:88(exit_hold_blocked) · vec_decisions/live_unw_gates.py:88(exit_hold_blocked) | v12_quick_engine.py:10112(compute_exit_signals)<br>vec_decisions/live_unw_gates.py:88(exit_hold_blocked) |
-| `BEAR_SCENARIO_SYMBOLS` | unclassified | <absent> / {'GLD', 'CDE', 'BTG', 'NEM', 'HL', 'GOLD', 'GDXJ', 'OIH', ' | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26367(TradierTradeManager.execute_now) | — |
+| `BEAR_SCENARIO_SYMBOLS` | unclassified | <absent> / {'OIH', 'GOLD', 'AU', 'GLD', 'XOP', 'NEM', 'KGC', 'WPM', 'U | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26367(TradierTradeManager.execute_now) | — |
 | `BINANCE_API_BASE` | unclassified | https://fapi.binance.com / <absent> / https://fapi.binance.com | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:95(<module>) · ez_rankings.py:95(<module>) | — |
 | `BLACKLIST` | unclassified | <absent> / ['SLV', 'COPX', 'PYPL', 'QBTS', 'DINO', 'RBLX', 'MPC'] / <a | — | DEAD | LIVE_ONLY | — · tradier_manage.py:22460(TradierTradeManager.__init__) | — |
 | `BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME` | unclassified | 4h / 4h / 4h | — | DEAD | LIVE_ONLY | — · tradier_manage.py:1680(_ordinary_bottom_a_params) | — |
@@ -1563,7 +1563,7 @@ _Generated 2026-10-03T14:45:08.150630Z · 3534 names · vec modules never reache
 | `NOLOSS_DC4H_GATE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:14773(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14773(check_exit_candidates_for_account.process_single_exit) | — |
 | `NOLOSS_MIN_PROFIT_PCT_TRADIER` | unclassified | <absent> / 0.01 / 0.0 | — | DEAD+STAGED_VEC | LIVE_ONLY+STAGED_VEC | — · tradier_manage.py:19803(StockStrategy.evaluate_stop)<br>(+11) | vec_decisions/check_exit_candidates_stocks__htf_quick_tp.py:39(_htf_quick_tp_min_gain) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__k5m_real_drop_dc.py:32(_k5m_min_gain) [UNREACHABLE]<br>(+8) |
 | `NOLOSS_MIN_PROFIT_PCT_TRADIER_LIVE` | unclassified | <absent> / <absent> / 0.01 | — | VEC_ONLY | VEC_ONLY | — · — | vec_decisions/noloss_gate.py:20(noloss_blocks) |
-| `NON_SHORTABLE` | unclassified | <absent> / {'DAC', 'ICL', 'PPA', 'BITO', 'AGCO', 'PLL', 'CORN', 'INOD' | — | DEAD | LIVE_ONLY | — · tradier_manage.py:16964(StockStrategy.__init__)<br>(+6) | — |
+| `NON_SHORTABLE` | unclassified | <absent> / {'LSB', 'CLSK', 'GNK', 'OIH', 'SBIT', 'CORN', 'XOP', 'QUBT' | — | DEAD | LIVE_ONLY | — · tradier_manage.py:16964(StockStrategy.__init__)<br>(+6) | — |
 | `OBLIGATORY_EMA50_15M_ENABLED` | unclassified | False / False / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:36364(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
 | `OBLIGATORY_EMA50_15M_PCT` | unclassified | 1.0 / 1.0 / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:36365(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
 | `OBLIGATORY_HEDGE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:32577(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:13223(execute_trade_wrapper) | — |

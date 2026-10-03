@@ -1189,7 +1189,7 @@
    "vec_decisions/reentry_breakout.py:159",
    "vec_decisions/reentry_epq_vec.py:1"
   ],
-  "generated": "2026-10-03T14:45:08.150630Z",
+  "generated": "2026-10-03T20:52:38.344351Z",
   "inputs": {
    "live_gaps": 21,
    "parity_proven": 0,
@@ -25973,7 +25973,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "<absent>",
-    "config_tradier.py": "{'GLD', 'CDE', 'BTG', 'NEM', 'HL', 'GOLD', 'GDXJ', 'OIH', 'EGO', 'KGC', 'AGI', '",
+    "config_tradier.py": "{'OIH', 'GOLD', 'AU', 'GLD', 'XOP', 'NEM', 'KGC', 'WPM', 'UVXY', 'UNG', 'BOIL', ",
     "template_bold": {}
    },
    "filter_tf": false,
@@ -213014,7 +213014,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "<absent>",
-    "config_tradier.py": "{'DAC', 'ICL', 'PPA', 'BITO', 'AGCO', 'PLL', 'CORN', 'INOD', 'QUBT', 'DNN', 'AXT",
+    "config_tradier.py": "{'LSB', 'CLSK', 'GNK', 'OIH', 'SBIT', 'CORN', 'XOP', 'QUBT', 'GBTC', 'DIME', 'AS",
     "template_bold": {}
    },
    "filter_tf": false,
