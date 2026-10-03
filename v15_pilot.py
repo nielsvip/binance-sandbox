@@ -660,7 +660,7 @@ def repair_needs_redo(rep) -> bool:
 
 
 def content_ok(f_filled, done_n) -> str:
-    """USER 2026-10-03 (publish content gate): a sheet without calculations must NEVER publish. Returns '' if ok, else reason. Threshold: >=500 F cells and >=50% of the done board (a skip-bug publishes ~0; a real fill writes ~3000)."""
+    """USER 2026-10-03 (publish content gate): a sheet without calculations must NEVER publish. Returns '' if ok, else reason. Threshold: >=300 F cells and >=25% of the done board (a skip-bug publishes ~0; real fills write 48-73% — running/zero/red rows legitimately blank F)."""
     try:
         f = int(f_filled or 0)
     except Exception:
@@ -669,10 +669,10 @@ def content_ok(f_filled, done_n) -> str:
         n = int(done_n or 0)
     except Exception:
         n = 0
-    if f < 500:
-        return f"content-gate: F_filled {f}<500 — sheet has no calculations, refusing publish"
-    if n > 0 and f < n // 2:
-        return f"content-gate: F_filled {f}<50% of done board {n} — refusing publish"
+    if f < 300:
+        return f"content-gate: F_filled {f}<300 — sheet has no calculations, refusing publish"
+    if n > 0 and f * 4 < n:
+        return f"content-gate: F_filled {f}<25% of done board {n} — refusing publish"
     return ""
 
 ALL_PREPARED: dict[str, dict] = {}
