@@ -8449,5 +8449,14 @@
     ],
     "timestamp": "2026-10-03T18:05:46.069532+00:00",
     "price": 2.37218832
+  },
+  {
+    "symbol": "HIVEUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 12.4x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-03T18:27:29.387054+00:00",
+    "price": 0.05611504
   }
 ]
