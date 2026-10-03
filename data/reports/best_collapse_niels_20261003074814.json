@@ -1,0 +1,3346 @@
+{
+ "host": "niels",
+ "utc": "2026-10-03T07:48:14.180503+00:00",
+ "changes": [
+  {
+   "sym": "1000000MOGUSDT_LONG",
+   "winner": "1000000MOGUSDT_LONG_bh9p75_gain2p56_30d_matrix.xlsx",
+   "gain": 2.56,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "1000000MOGUSDT_SHORT",
+   "winner": "1000000MOGUSDT_SHORT_bhm9p75_gain6p56_30d_matrix.xlsx",
+   "gain": 6.56,
+   "restored": true,
+   "demoted": [
+    "1000000MOGUSDT_SHORT_bhm9p75_gain1p32_30d_matrix.xlsx",
+    "1000000MOGUSDT_SHORT_bhm9p75_gainm0p17_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "1000BONKUSDC_LONG",
+   "winner": "1000BONKUSDC_LONG_bh26p75_gain31p76_30d_matrix.xlsx",
+   "gain": 31.76,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "1000BONKUSDC_SHORT",
+   "winner": "1000BONKUSDC_SHORT_bhm26p75_gain12p96_30d_matrix.xlsx",
+   "gain": 12.96,
+   "restored": true,
+   "demoted": [
+    "1000BONKUSDC_SHORT_bhm26p75_gain12p72_30d_matrix.xlsx",
+    "1000BONKUSDC_SHORT_bhm26p75_gain1p49_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "1000FLOKIUSDT_LONG",
+   "winner": "1000FLOKIUSDT_LONG_bh15p84_gain36p83_30d_matrix.xlsx",
+   "gain": 36.83,
+   "restored": true,
+   "demoted": [
+    "1000FLOKIUSDT_LONG_bh14p33_gain29p04_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "1000FLOKIUSDT_SHORT",
+   "winner": "1000FLOKIUSDT_SHORT_bhm15p84_gain12p64_30d_matrix.xlsx",
+   "gain": 12.64,
+   "restored": true,
+   "demoted": [
+    "1000FLOKIUSDT_SHORT_bhm14p33_gain6p64_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "1000LUNCUSDT_LONG",
+   "winner": "1000LUNCUSDT_LONG_bh1p36_gain8p81_30d_matrix.xlsx",
+   "gain": 8.81,
+   "restored": false,
+   "demoted": [
+    "1000LUNCUSDT_LONG_bh1p36_gain0p05_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "1000LUNCUSDT_SHORT",
+   "winner": "1000LUNCUSDT_SHORT_bhm1p36_gainm0p19_30d_matrix.xlsx",
+   "gain": -0.19,
+   "restored": true,
+   "demoted": [
+    "1000LUNCUSDT_SHORT_bhm1p36_gainm0p22_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "1000PEPEUSDC_LONG",
+   "winner": "1000PEPEUSDC_LONG_bh20p23_gain63p13_30d_matrix.xlsx",
+   "gain": 63.13,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "1000PEPEUSDC_SHORT",
+   "winner": "1000PEPEUSDC_SHORT_bhm20p23_gain21p43_30d_matrix.xlsx",
+   "gain": 21.43,
+   "restored": true,
+   "demoted": [
+    "1000PEPEUSDC_SHORT_bhm27p62_gain14p81_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "1000SATSUSDT_LONG",
+   "winner": "1000SATSUSDT_LONG_bh11p86_gain19p88_30d_matrix.xlsx",
+   "gain": 19.88,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "1000SHIBUSDC_SHORT",
+   "winner": "1000SHIBUSDC_SHORT_bhm13p46_gain6p53_30d_matrix.xlsx",
+   "gain": 6.53,
+   "restored": false,
+   "demoted": [
+    "1000SHIBUSDC_SHORT_bhm13p07_gain2p52_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "1INCHUSDT_LONG",
+   "winner": "1INCHUSDT_LONG_bh14p43_gain48p19_30d_matrix.xlsx",
+   "gain": 48.19,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "1INCHUSDT_SHORT",
+   "winner": "1INCHUSDT_SHORT_bhm14p43_gain26p77_30d_matrix.xlsx",
+   "gain": 26.77,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "1MBABYDOGEUSDT_SHORT",
+   "winner": "1MBABYDOGEUSDT_SHORT_bhm14p94_gain1p18_30d_matrix.xlsx",
+   "gain": 1.18,
+   "restored": true,
+   "demoted": [
+    "1MBABYDOGEUSDT_SHORT_bhm14p94_gain0p39_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "AAPLUSDT_LONG",
+   "winner": "AAPLUSDT_LONG_bh5p49_gain3p56_30d_matrix.xlsx",
+   "gain": 3.56,
+   "restored": true,
+   "demoted": [
+    "AAPLUSDT_LONG_bh1p74_gainm0p57_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "AAPL_LONG",
+   "winner": "AAPL_LONG_bh4p66_gain16p16_30d_matrix.xlsx",
+   "gain": 16.16,
+   "restored": true,
+   "demoted": [
+    "AAPL_LONG_bh4p66_gain10p50_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "AAPL_SHORT",
+   "winner": "AAPL_SHORT_bhm6p45_gain2p82_30d_matrix.xlsx",
+   "gain": 2.82,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "ABBV_LONG",
+   "winner": "ABBV_LONG_bh6p55_gain9p29_30d_matrix.xlsx",
+   "gain": 9.29,
+   "restored": false,
+   "demoted": [
+    "ABBV_LONG_bh5p08_gain8p59_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ABT_LONG",
+   "winner": "ABT_LONG_bhm10p04_gain5p69_30d_matrix.xlsx",
+   "gain": 5.69,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "ABT_SHORT",
+   "winner": "ABT_SHORT_bh15p06_gain23p57_30d_matrix.xlsx",
+   "gain": 23.57,
+   "restored": true,
+   "demoted": [
+    "ABT_SHORT_bh15p06_gain18p_t112_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ACEUSDT_LONG",
+   "winner": "ACEUSDT_LONG_bh41p09_gain65p15_30d_matrix.xlsx",
+   "gain": 65.15,
+   "restored": false,
+   "demoted": [
+    "ACEUSDT_LONG_bhm2p58_gain22p05_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ACN_LONG",
+   "winner": "ACN_LONG_bh2p63_gain10p04_30d_matrix.xlsx",
+   "gain": 10.04,
+   "restored": false,
+   "demoted": [
+    "ACN_LONG_bh2p53_gain4p10_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ACN_SHORT",
+   "winner": "ACN_SHORT_bhm2p63_gain5p35_30d_matrix.xlsx",
+   "gain": 5.35,
+   "restored": false,
+   "demoted": [
+    "ACN_SHORT_bhm2p53_gain4p05_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ACTUSDT_LONG",
+   "winner": "ACTUSDT_LONG_bhm0p39_gain21p46_30d_matrix.xlsx",
+   "gain": 21.46,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "ACTUSDT_SHORT",
+   "winner": "ACTUSDT_SHORT_bh0p39_gain4p39_30d_matrix.xlsx",
+   "gain": 4.39,
+   "restored": true,
+   "demoted": [
+    "ACTUSDT_SHORT_bh0p39_gainm0p05_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ADAUSDC_LONG",
+   "winner": "ADAUSDC_LONG_bh25p25_gain46p73_30d_matrix.xlsx",
+   "gain": 46.73,
+   "restored": true,
+   "demoted": [
+    "ADAUSDC_LONG_bh22p23_gain18p09_30d_matrix.xlsx",
+    "ADAUSDC_LONG_bh25p66_gain4p01_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ADAUSDC_SHORT",
+   "winner": "ADAUSDC_SHORT_bhm25p25_gain21p64_30d_matrix.xlsx",
+   "gain": 21.64,
+   "restored": true,
+   "demoted": [
+    "ADAUSDC_SHORT_bhm25p66_gain7p30_30d_matrix.xlsx",
+    "ADAUSDC_SHORT_bhm22p23_gainm4p94_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ADBEUSDT_LONG",
+   "winner": "ADBEUSDT_LONG_bhm17p79_gain11p20_30d_matrix.xlsx",
+   "gain": 11.2,
+   "restored": false,
+   "demoted": [
+    "ADBEUSDT_LONG_bhm17p79_gain8p57_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ADBEUSDT_SHORT",
+   "winner": "ADBEUSDT_SHORT_bh17p79_gain23p03_30d_matrix.xlsx",
+   "gain": 23.03,
+   "restored": false,
+   "demoted": [
+    "ADBEUSDT_SHORT_bh17p79_gain18p85_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ADBE_LONG",
+   "winner": "ADBE_LONG_bhm11p40_gain7p60_30d_matrix.xlsx",
+   "gain": 7.6,
+   "restored": true,
+   "demoted": [
+    "ADBE_LONG_bhm7p12_gain7p02_30d_matrix.xlsx",
+    "ADBE_LONG_bhm7p12_gain6p93_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ADP_LONG",
+   "winner": "ADP_LONG_bhm2p95_gain7p28_30d_matrix.xlsx",
+   "gain": 7.28,
+   "restored": false,
+   "demoted": [
+    "ADP_LONG_bhm2p95_gain2p36_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "AEM_LONG",
+   "winner": "AEM_LONG_bh33p97_gain27p98_30d_matrix.xlsx",
+   "gain": 27.98,
+   "restored": false,
+   "demoted": [
+    "AEM_LONG_bhm1p01_gain5p61_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "AEM_SHORT",
+   "winner": "AEM_SHORT_bh1p01_gain18p27_30d_matrix.xlsx",
+   "gain": 18.27,
+   "restored": false,
+   "demoted": [
+    "AEM_SHORT_bh1p01_gain18p04_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "AGI_LONG",
+   "winner": "AGI_LONG_bhm3p06_gain19p00_30d_matrix.xlsx",
+   "gain": 19.0,
+   "restored": true,
+   "demoted": [
+    "AGI_LONG_bhm5p44_gain9p21_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "AGI_SHORT",
+   "winner": "AGI_SHORT_bh3p06_gain26p90_30d_matrix.xlsx",
+   "gain": 26.9,
+   "restored": true,
+   "demoted": [
+    "AGI_SHORT_bh5p44_gain17p83_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "AGLDUSDT_LONG",
+   "winner": "AGLDUSDT_LONG_bh26p12_gain10p19_30d_matrix.xlsx",
+   "gain": 10.19,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "AGLDUSDT_SHORT",
+   "winner": "AGLDUSDT_SHORT_bhm26p12_gainm0p09_30d_matrix.xlsx",
+   "gain": -0.09,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "AIAUSDT_LONG",
+   "winner": "AIAUSDT_LONG_bhm8p05_gain23p43_30d_matrix.xlsx",
+   "gain": 23.43,
+   "restored": true,
+   "demoted": [
+    "AIAUSDT_LONG_bh5p24_gain0p90_30d_matrix.xlsx",
+    "AIAUSDT_LONG_bhm8p05_gainm1p05_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "AIAUSDT_SHORT",
+   "winner": "AIAUSDT_SHORT_bh8p05_gain7p74_30d_matrix.xlsx",
+   "gain": 7.74,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "ALB_LONG",
+   "winner": "ALB_LONG_bhm19p27_gain7p23_30d_matrix.xlsx",
+   "gain": 7.23,
+   "restored": true,
+   "demoted": [
+    "ALB_LONG_bhm20p98_gain3p21_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ALB_SHORT",
+   "winner": "ALB_SHORT_bh19p27_gain34p61_30d_matrix.xlsx",
+   "gain": 34.61,
+   "restored": true,
+   "demoted": [
+    "ALB_SHORT_bh20p98_gain29p85_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ALGOUSDT_LONG",
+   "winner": "ALGOUSDT_LONG_bh44p44_gain60p29_30d_matrix.xlsx",
+   "gain": 60.29,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "ALGOUSDT_SHORT",
+   "winner": "ALGOUSDT_SHORT_bhm44p44_gain16p97_30d_matrix.xlsx",
+   "gain": 16.97,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "ALMU_LONG",
+   "winner": "ALMU_LONG_bhm11p55_gain48p26_30d_matrix.xlsx",
+   "gain": 48.26,
+   "restored": false,
+   "demoted": [
+    "ALMU_LONG_bhm11p55_gain31p76_30d_matrix.xlsx",
+    "ALMU_LONG_bhm11p55_gain26p92_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ALMU_SHORT",
+   "winner": "ALMU_SHORT_bh11p55_gain38p41_30d_matrix.xlsx",
+   "gain": 38.41,
+   "restored": false,
+   "demoted": [
+    "ALMU_SHORT_bh11p55_gain23p26_30d_matrix.xlsx",
+    "ALMU_SHORT_bh11p55_gain0p00_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "AMAT_SHORT",
+   "winner": "AMAT_SHORT_bh1p20_gain27p45_30d_matrix.xlsx",
+   "gain": 27.45,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "AMD_SHORT",
+   "winner": "AMD_SHORT_bhm17p03_gain11p26_30d_matrix.xlsx",
+   "gain": 11.26,
+   "restored": true,
+   "demoted": [
+    "AMD_SHORT_bhm33p29_gain0p61_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "AMZN_LONG",
+   "winner": "AMZN_LONG_bhm4p03_gain10p73_30d_matrix.xlsx",
+   "gain": 10.73,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "AMZN_SHORT",
+   "winner": "AMZN_SHORT_bh4p03_gain13p74_30d_matrix.xlsx",
+   "gain": 13.74,
+   "restored": true,
+   "demoted": [
+    "AMZN_SHORT_bh4p03_gain12p71_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ANKRUSDT_SHORT",
+   "winner": "ANKRUSDT_SHORT_bhm20p76_gain4p02_30d_matrix.xlsx",
+   "gain": 4.02,
+   "restored": true,
+   "demoted": [
+    "ANKRUSDT_SHORT_bhm20p76_gain0p10_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "APA_LONG",
+   "winner": "APA_LONG_bh5p42_gain10p45_30d_matrix.xlsx",
+   "gain": 10.45,
+   "restored": false,
+   "demoted": [
+    "APA_LONG_bh16p50_gain9p01_30d_matrix.xlsx",
+    "APA_LONG_bh16p50_gain7p74_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "APA_SHORT",
+   "winner": "APA_SHORT_bhm5p42_gain10p03_30d_matrix.xlsx",
+   "gain": 10.03,
+   "restored": false,
+   "demoted": [
+    "APA_SHORT_bhm16p50_gainm0p21_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "APEUSDT_SHORT",
+   "winner": "APEUSDT_SHORT_bhm8p89_gain2p38_30d_matrix.xlsx",
+   "gain": 2.38,
+   "restored": true,
+   "demoted": [
+    "APEUSDT_SHORT_bhm8p89_gain0p61_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "API3USDT_SHORT",
+   "winner": "API3USDT_SHORT_bhm25p18_gainm0p01_30d_matrix.xlsx",
+   "gain": -0.01,
+   "restored": true,
+   "demoted": [
+    "API3USDT_SHORT_bhm25p18_gainm0p34_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "APO_LONG",
+   "winner": "APO_LONG_bhm12p59_gain11p10_30d_matrix.xlsx",
+   "gain": 11.1,
+   "restored": true,
+   "demoted": [
+    "APO_LONG_bhm12p59_gain9p91_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "APPUSDT_SHORT",
+   "winner": "APPUSDT_SHORT_bh2p03_gain3p02_30d_matrix.xlsx",
+   "gain": 3.02,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "ARBUSDC_SHORT",
+   "winner": "ARBUSDC_SHORT_bhm100p00_gain9p04_30d_matrix.xlsx",
+   "gain": 9.04,
+   "restored": false,
+   "demoted": [
+    "ARBUSDC_SHORT_bhm81p88_gain1p42_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ARKMUSDT_LONG",
+   "winner": "ARKMUSDT_LONG_bh17p29_gain20p07_30d_matrix.xlsx",
+   "gain": 20.07,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "ARKMUSDT_SHORT",
+   "winner": "ARKMUSDT_SHORT_bhm17p29_gainm0p05_30d_matrix.xlsx",
+   "gain": -0.05,
+   "restored": true,
+   "demoted": [
+    "ARKMUSDT_SHORT_bhm17p29_gainm0p32_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ARMUSDT_SHORT",
+   "winner": "ARMUSDT_SHORT_bhm23p30_gain7p03_30d_matrix.xlsx",
+   "gain": 7.03,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "ARM_LONG",
+   "winner": "ARM_LONG_bh13p73_gain37p82_30d_matrix.xlsx",
+   "gain": 37.82,
+   "restored": true,
+   "demoted": [
+    "ARM_LONG_bh19p48_gain29p_t90_30d_matrix.xlsx",
+    "ARM_LONG_bh19p48_gain19p72_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ARM_SHORT",
+   "winner": "ARM_SHORT_bhm19p48_gain17p_t68_30d_matrix.xlsx",
+   "gain": 17.0,
+   "restored": false,
+   "demoted": [
+    "ARM_SHORT_bhm19p48_gain14p19_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ARPAUSDT_SHORT",
+   "winner": "ARPAUSDT_SHORT_bhm13p73_gain4p95_30d_matrix.xlsx",
+   "gain": 4.95,
+   "restored": true,
+   "demoted": [
+    "ARPAUSDT_SHORT_bhm13p73_gain3p93_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ARUSDT_LONG",
+   "winner": "ARUSDT_LONG_bh93p59_gain103p76_30d_matrix.xlsx",
+   "gain": 103.76,
+   "restored": false,
+   "demoted": [
+    "ARUSDT_LONG_bh89p39_gain80p79_30d_matrix.xlsx",
+    "ARUSDT_LONG_bh89p39_gain47p39_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ARUSDT_SHORT",
+   "winner": "ARUSDT_SHORT_bhm89p39_gain17p78_30d_matrix.xlsx",
+   "gain": 17.78,
+   "restored": false,
+   "demoted": [
+    "ARUSDT_SHORT_bhm89p39_gain15p45_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "AR_LONG",
+   "winner": "AR_LONG_bh5p92_gain30p14_30d_matrix.xlsx",
+   "gain": 30.14,
+   "restored": false,
+   "demoted": [
+    "AR_LONG_bh5p92_gain21p02_30d_matrix.xlsx",
+    "AR_LONG_bh5p92_gain19p58_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ASML_LONG",
+   "winner": "ASML_LONG_bh0p49_gain18p08_30d_matrix.xlsx",
+   "gain": 18.08,
+   "restored": false,
+   "demoted": [
+    "ASML_LONG_bh0p49_gain9p00_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ASML_SHORT",
+   "winner": "ASML_SHORT_bhm0p49_gain13p62_30d_matrix.xlsx",
+   "gain": 13.62,
+   "restored": false,
+   "demoted": [
+    "ASML_SHORT_bhm0p49_gain13p41_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ASTS_LONG",
+   "winner": "ASTS_LONG_bhm13p61_gain33p16_30d_matrix.xlsx",
+   "gain": 33.16,
+   "restored": true,
+   "demoted": [
+    "ASTS_LONG_bhm12p65_gain9p27_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ASTS_SHORT",
+   "winner": "ASTS_SHORT_bh12p65_gain43p62_30d_matrix.xlsx",
+   "gain": 43.62,
+   "restored": false,
+   "demoted": [
+    "ASTS_SHORT_bh12p65_gain40p42_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ATOMUSDT_LONG",
+   "winner": "ATOMUSDT_LONG_bh22p59_gain25p18_30d_matrix.xlsx",
+   "gain": 25.18,
+   "restored": true,
+   "demoted": [
+    "ATOMUSDT_LONG_bh17p02_gain16p56_30d_matrix.xlsx",
+    "ATOMUSDT_LONG_bh17p19_gain15p15_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ATOMUSDT_SHORT",
+   "winner": "ATOMUSDT_SHORT_bhm17p19_gain5p37_30d_matrix.xlsx",
+   "gain": 5.37,
+   "restored": false,
+   "demoted": [
+    "ATOMUSDT_SHORT_bhm17p02_gain5p37_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "AU_LONG",
+   "winner": "AU_LONG_bh28p24_gain19p83_30d_matrix.xlsx",
+   "gain": 19.83,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "AVAXUSDC_LONG",
+   "winner": "AVAXUSDC_LONG_bh56p14_gain31p22_30d_matrix.xlsx",
+   "gain": 31.22,
+   "restored": true,
+   "demoted": [
+    "AVAXUSDC_LONG_bh52p16_gain21p66_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "AVAXUSDC_SHORT",
+   "winner": "AVAXUSDC_SHORT_bhm48p95_gain15p67_30d_matrix.xlsx",
+   "gain": 15.67,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "AVGO_SHORT",
+   "winner": "AVGO_SHORT_bh8p66_gain22p99_30d_matrix.xlsx",
+   "gain": 22.99,
+   "restored": true,
+   "demoted": [
+    "AVGO_SHORT_bh5p13_gain12p02_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "AXON_LONG",
+   "winner": "AXON_LONG_bhm30p50_gain4p36_30d_matrix.xlsx",
+   "gain": 4.36,
+   "restored": true,
+   "demoted": [
+    "AXON_LONG_bhm34p40_gain0p79_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "AXON_SHORT",
+   "winner": "AXON_SHORT_bh30p50_gain34p12_30d_matrix.xlsx",
+   "gain": 34.12,
+   "restored": true,
+   "demoted": [
+    "AXON_SHORT_bh34p40_gain33p42_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "AXSUSDT_LONG",
+   "winner": "AXSUSDT_LONG_bh27p08_gain64p39_30d_matrix.xlsx",
+   "gain": 64.39,
+   "restored": true,
+   "demoted": [
+    "AXSUSDT_LONG_bh26p22_gain32p51_30d_matrix.xlsx",
+    "AXSUSDT_LONG_bh26p22_gain32p39_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "AXSUSDT_SHORT",
+   "winner": "AXSUSDT_SHORT_bhm24p66_gain6p88_30d_matrix.xlsx",
+   "gain": 6.88,
+   "restored": true,
+   "demoted": [
+    "AXSUSDT_SHORT_bhm26p22_gain1p29_30d_matrix.xlsx",
+    "AXSUSDT_SHORT_bhm26p22_gain1p10_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "AXTI_LONG",
+   "winner": "AXTI_LONG_bhm4p86_gain71p43_30d_matrix.xlsx",
+   "gain": 71.43,
+   "restored": false,
+   "demoted": [
+    "AXTI_LONG_bhm11p69_gain35p04_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "AXTI_SHORT",
+   "winner": "AXTI_SHORT_bh4p86_gain52p18_30d_matrix.xlsx",
+   "gain": 52.18,
+   "restored": false,
+   "demoted": [
+    "AXTI_SHORT_bh11p69_gain49p39_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "BABAUSDT_LONG",
+   "winner": "BABAUSDT_LONG_bhm5p62_gain12p26_30d_matrix.xlsx",
+   "gain": 12.26,
+   "restored": true,
+   "demoted": [
+    "BABAUSDT_LONG_bhm5p29_gain8p64_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "BABA_LONG",
+   "winner": "BABA_LONG_bhm16p69_gain5p35_30d_matrix.xlsx",
+   "gain": 5.35,
+   "restored": true,
+   "demoted": [
+    "BABA_LONG_bhm16p69_gain5p16_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "BABA_SHORT",
+   "winner": "BABA_SHORT_bh16p69_gain31p_t205_30d_matrix.xlsx",
+   "gain": 31.0,
+   "restored": false,
+   "demoted": [
+    "BABA_SHORT_bh16p69_gain23p94_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "BANDUSDT_SHORT",
+   "winner": "BANDUSDT_SHORT_bhm25p08_gainm0p06_30d_matrix.xlsx",
+   "gain": -0.06,
+   "restored": true,
+   "demoted": [
+    "BANDUSDT_SHORT_bhm25p08_gainm0p13_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "BATUSDT_SHORT",
+   "winner": "BATUSDT_SHORT_bhm32p70_gain3p97_30d_matrix.xlsx",
+   "gain": 3.97,
+   "restored": true,
+   "demoted": [
+    "BATUSDT_SHORT_bhm32p70_gainm0p22_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "BA_LONG",
+   "winner": "BA_LONG_bhm17p09_gain6p57_30d_matrix.xlsx",
+   "gain": 6.57,
+   "restored": false,
+   "demoted": [
+    "BA_LONG_bhm17p09_gain3p_t117_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "BCHUSDC_LONG",
+   "winner": "BCHUSDC_LONG_bh21p61_gain17p52_30d_matrix.xlsx",
+   "gain": 17.52,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "BCHUSDC_SHORT",
+   "winner": "BCHUSDC_SHORT_bhm21p61_gain7p13_30d_matrix.xlsx",
+   "gain": 7.13,
+   "restored": true,
+   "demoted": [
+    "BCHUSDC_SHORT_bhm21p61_gainm0p10_30d_matrix.xlsx",
+    "BCHUSDC_SHORT_bhm26p49_gainm4p43_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "BELUSDT_LONG",
+   "winner": "BELUSDT_LONG_bh5p58_gain14p85_30d_matrix.xlsx",
+   "gain": 14.85,
+   "restored": true,
+   "demoted": [
+    "BELUSDT_LONG_bh5p58_gain10p18_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "BG_LONG",
+   "winner": "BG_LONG_bh8p27_gain12p48_30d_matrix.xlsx",
+   "gain": 12.48,
+   "restored": false,
+   "demoted": [
+    "BG_LONG_bh8p27_gain9p66_30d_matrix.xlsx",
+    "BG_LONG_bh8p27_gain5p62_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "BHP_LONG",
+   "winner": "BHP_LONG_bh2p51_gain12p28_30d_matrix.xlsx",
+   "gain": 12.28,
+   "restored": false,
+   "demoted": [
+    "BHP_LONG_bh2p51_gain9p81_30d_matrix.xlsx",
+    "BHP_LONG_bh2p51_gain9p73_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "BIOUSDC_LONG",
+   "winner": "BIOUSDC_LONG_bh13p51_gain23p17_30d_matrix.xlsx",
+   "gain": 23.17,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "BLURUSDT_LONG",
+   "winner": "BLURUSDT_LONG_bh22p47_gain11p72_30d_matrix.xlsx",
+   "gain": 11.72,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "BLURUSDT_SHORT",
+   "winner": "BLURUSDT_SHORT_bhm22p47_gain5p02_30d_matrix.xlsx",
+   "gain": 5.02,
+   "restored": true,
+   "demoted": [
+    "BLURUSDT_SHORT_bhm22p47_gainm0p05_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "BMNRUSDT_LONG",
+   "winner": "BMNRUSDT_LONG_bh6p06_gain37p88_30d_matrix.xlsx",
+   "gain": 37.88,
+   "restored": true,
+   "demoted": [
+    "BMNRUSDT_LONG_bh6p06_gain16p99_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "BMNRUSDT_SHORT",
+   "winner": "BMNRUSDT_SHORT_bhm6p06_gain19p62_30d_matrix.xlsx",
+   "gain": 19.62,
+   "restored": true,
+   "demoted": [
+    "BMNRUSDT_SHORT_bhm6p06_gain5p50_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "BMNR_LONG",
+   "winner": "BMNR_LONG_bh45p93_gain54p75_30d_matrix.xlsx",
+   "gain": 54.75,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "BMNR_SHORT",
+   "winner": "BMNR_SHORT_bhm22p23_gain31p97_30d_matrix.xlsx",
+   "gain": 31.97,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "BNBUSDC_LONG",
+   "winner": "BNBUSDC_LONG_bh12p80_gain19p74_30d_matrix.xlsx",
+   "gain": 19.74,
+   "restored": true,
+   "demoted": [
+    "BNBUSDC_LONG_bh12p80_gain16p00_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "BNBUSDC_SHORT",
+   "winner": "BNBUSDC_SHORT_bhm11p23_gain18p89_30d_matrix.xlsx",
+   "gain": 18.89,
+   "restored": true,
+   "demoted": [
+    "BNBUSDC_SHORT_bhm12p80_gain8p05_30d_matrix.xlsx",
+    "BNBUSDC_SHORT_bhm12p80_gain4p86_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "BSVUSDT_LONG",
+   "winner": "BSVUSDT_LONG_bh26p81_gain36p78_30d_matrix.xlsx",
+   "gain": 36.78,
+   "restored": false,
+   "demoted": [
+    "BSVUSDT_LONG_bh26p81_gain16p10_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "BSVUSDT_SHORT",
+   "winner": "BSVUSDT_SHORT_bhm26p81_gain7p35_30d_matrix.xlsx",
+   "gain": 7.35,
+   "restored": false,
+   "demoted": [
+    "BSVUSDT_SHORT_bhm26p81_gain5p91_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "BTCDOMUSDT_LONG",
+   "winner": "BTCDOMUSDT_LONG_bhm5p10_gain3p13_30d_matrix.xlsx",
+   "gain": 3.13,
+   "restored": true,
+   "demoted": [
+    "BTCDOMUSDT_LONG_bhm4p45_gain0p01_30d_matrix.xlsx",
+    "BTCDOMUSDT_LONG_bhm5p10_gainm0p13_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "BTCDOMUSDT_SHORT",
+   "winner": "BTCDOMUSDT_SHORT_bh5p10_gain8p13_30d_matrix.xlsx",
+   "gain": 8.13,
+   "restored": true,
+   "demoted": [
+    "BTCDOMUSDT_SHORT_bh5p10_gain2p38_30d_matrix.xlsx",
+    "BTCDOMUSDT_SHORT_bh4p45_gain0p63_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "BWXT_LONG",
+   "winner": "BWXT_LONG_bhm19p01_gain9p44_30d_matrix.xlsx",
+   "gain": 9.44,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "BWXT_SHORT",
+   "winner": "BWXT_SHORT_bh19p01_gain36p98_30d_matrix.xlsx",
+   "gain": 36.98,
+   "restored": true,
+   "demoted": [
+    "BWXT_SHORT_bh19p01_gain23p16_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "CAT_LONG",
+   "winner": "CAT_LONG_bhm7p85_gain0p56_30d_matrix.xlsx",
+   "gain": 0.56,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "CAT_SHORT",
+   "winner": "CAT_SHORT_bh7p85_gain7p32_30d_matrix.xlsx",
+   "gain": 7.32,
+   "restored": false,
+   "demoted": [
+    "CAT_SHORT_bh7p85_gain4p88_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "CDW_LONG",
+   "winner": "CDW_LONG_bh5p66_gain18p44_30d_matrix.xlsx",
+   "gain": 18.44,
+   "restored": false,
+   "demoted": [
+    "CDW_LONG_bh5p66_gain15p95_30d_matrix.xlsx",
+    "CDW_LONG_bh5p66_gain8p99_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "CF_LONG",
+   "winner": "CF_LONG_bhm3p18_gain32p48_30d_matrix.xlsx",
+   "gain": 32.48,
+   "restored": true,
+   "demoted": [
+    "CF_LONG_bhm5p15_gain29p32_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "CHRUSDT_LONG",
+   "winner": "CHRUSDT_LONG_bh48p40_gain72p83_30d_matrix.xlsx",
+   "gain": 72.83,
+   "restored": true,
+   "demoted": [
+    "CHRUSDT_LONG_bh55p95_gain26p31_30d_matrix.xlsx",
+    "CHRUSDT_LONG_bh55p95_gain22p76_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "CHRUSDT_SHORT",
+   "winner": "CHRUSDT_SHORT_bhm48p40_gain23p87_30d_matrix.xlsx",
+   "gain": 23.87,
+   "restored": true,
+   "demoted": [
+    "CHRUSDT_SHORT_bhm55p95_gain10p09_30d_matrix.xlsx",
+    "CHRUSDT_SHORT_bhm55p95_gain0p18_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "CIBR_LONG",
+   "winner": "CIBR_LONG_bh9p79_gain23p99_30d_matrix.xlsx",
+   "gain": 23.99,
+   "restored": true,
+   "demoted": [
+    "CIBR_LONG_bh6p74_gain11p48_30d_matrix.xlsx",
+    "CIBR_LONG_bh6p74_gain9p43_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "CIBR_SHORT",
+   "winner": "CIBR_SHORT_bhm5p79_gain13p50_30d_matrix.xlsx",
+   "gain": 13.5,
+   "restored": true,
+   "demoted": [
+    "CIBR_SHORT_bhm6p74_gain12p94_30d_matrix.xlsx",
+    "CIBR_SHORT_bhm6p74_gain10p87_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "CIEN_SHORT",
+   "winner": "CIEN_SHORT_bh17p63_gain25p06_30d_matrix.xlsx",
+   "gain": 25.06,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "CLF_LONG",
+   "winner": "CLF_LONG_bhm6p50_gain7p51_30d_matrix.xlsx",
+   "gain": 7.51,
+   "restored": false,
+   "demoted": [
+    "CLF_LONG_bhm6p50_gain6p27_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "CLF_SHORT",
+   "winner": "CLF_SHORT_bh6p50_gain1p72_30d_matrix.xlsx",
+   "gain": 1.72,
+   "restored": false,
+   "demoted": [
+    "CLF_SHORT_bh6p50_gain1p68_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "CLS_LONG",
+   "winner": "CLS_LONG_bh18p80_gain31p50_30d_matrix.xlsx",
+   "gain": 31.5,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "CLS_SHORT",
+   "winner": "CLS_SHORT_bhm18p80_gain24p10_30d_matrix.xlsx",
+   "gain": 24.1,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "CLX_LONG",
+   "winner": "CLX_LONG_bhm9p43_gain11p52_30d_matrix.xlsx",
+   "gain": 11.52,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "CLX_SHORT",
+   "winner": "CLX_SHORT_bh23p93_gain26p27_30d_matrix.xlsx",
+   "gain": 26.27,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "CMC_LONG",
+   "winner": "CMC_LONG_bhm13p17_gain7p98_30d_matrix.xlsx",
+   "gain": 7.98,
+   "restored": true,
+   "demoted": [
+    "CMC_LONG_bhm12p59_gain5p22_30d_matrix.xlsx",
+    "CMC_LONG_bhm12p59_gain3p82_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "CMC_SHORT",
+   "winner": "CMC_SHORT_bh12p59_gain29p87_30d_matrix.xlsx",
+   "gain": 29.87,
+   "restored": true,
+   "demoted": [
+    "CMC_SHORT_bh12p59_gain17p70_30d_matrix.xlsx",
+    "CMC_SHORT_bh12p59_gain17p50_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "CME_LONG",
+   "winner": "CME_LONG_bhm2p36_gain9p32_30d_matrix.xlsx",
+   "gain": 9.32,
+   "restored": true,
+   "demoted": [
+    "CME_LONG_bhm2p36_gain8p_t53_30d_matrix.xlsx",
+    "CME_LONG_bhm2p36_gain4p45_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "CME_SHORT",
+   "winner": "CME_SHORT_bh2p36_gain13p31_30d_matrix.xlsx",
+   "gain": 13.31,
+   "restored": true,
+   "demoted": [
+    "CME_SHORT_bh2p36_gain13p_t41_30d_matrix.xlsx",
+    "CME_SHORT_bh2p36_gain11p92_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "COE_SHORT",
+   "winner": "COE_SHORT_bh38p91_gain104p33_30d_matrix.xlsx",
+   "gain": 104.33,
+   "restored": false,
+   "demoted": [
+    "COE_SHORT_bh40p15_gain50p30_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "COHR_LONG",
+   "winner": "COHR_LONG_bh9p94_gain53p33_30d_matrix.xlsx",
+   "gain": 53.33,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "COHR_SHORT",
+   "winner": "COHR_SHORT_bhm2p13_gain39p06_30d_matrix.xlsx",
+   "gain": 39.06,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "COIN_LONG",
+   "winner": "COIN_LONG_bh25p52_gain46p60_30d_matrix.xlsx",
+   "gain": 46.6,
+   "restored": true,
+   "demoted": [
+    "COIN_LONG_bh28p07_gain46p52_30d_matrix.xlsx",
+    "COIN_LONG_bh11p04_gain24p58_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "COMPUSDT_LONG",
+   "winner": "COMPUSDT_LONG_bh41p06_gain28p77_30d_matrix.xlsx",
+   "gain": 28.77,
+   "restored": true,
+   "demoted": [
+    "COMPUSDT_LONG_bh22p53_gain15p51_30d_matrix.xlsx",
+    "COMPUSDT_LONG_bh35p76_gain0p00_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "COMPUSDT_SHORT",
+   "winner": "COMPUSDT_SHORT_bhm35p76_gain8p00_30d_matrix.xlsx",
+   "gain": 8.0,
+   "restored": true,
+   "demoted": [
+    "COMPUSDT_SHORT_bhm22p53_gainm0p29_30d_matrix.xlsx",
+    "COMPUSDT_SHORT_bhm35p76_gainm1p27_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "COPX_LONG",
+   "winner": "COPX_LONG_bhm1p90_gain19p71_30d_matrix.xlsx",
+   "gain": 19.71,
+   "restored": false,
+   "demoted": [
+    "COPX_LONG_bh0p05_gain5p03_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "COP_LONG",
+   "winner": "COP_LONG_bh16p52_gain23p52_30d_matrix.xlsx",
+   "gain": 23.52,
+   "restored": true,
+   "demoted": [
+    "COP_LONG_bh16p52_gain15p85_30d_matrix.xlsx",
+    "COP_LONG_bh16p52_gain14p56_30d_matrix.xlsx",
+    "COP_LONG_bh16p52_gain13p50_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "COP_SHORT",
+   "winner": "COP_SHORT_bhm16p52_gain0p04_30d_matrix.xlsx",
+   "gain": 0.04,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "COTIUSDT_LONG",
+   "winner": "COTIUSDT_LONG_bh80p71_gain73p63_30d_matrix.xlsx",
+   "gain": 73.63,
+   "restored": true,
+   "demoted": [
+    "COTIUSDT_LONG_bh9p61_gain42p51_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "COTIUSDT_SHORT",
+   "winner": "COTIUSDT_SHORT_bhm9p61_gain57p56_30d_matrix.xlsx",
+   "gain": 57.56,
+   "restored": false,
+   "demoted": [
+    "COTIUSDT_SHORT_bhm9p61_gain46p60_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "CRK_LONG",
+   "winner": "CRK_LONG_bh0p56_gain10p14_30d_matrix.xlsx",
+   "gain": 10.14,
+   "restored": false,
+   "demoted": [
+    "CRK_LONG_bh0p56_gain7p43_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "CRM_LONG",
+   "winner": "CRM_LONG_bh20p19_gain39p58_30d_matrix.xlsx",
+   "gain": 39.58,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "CRM_SHORT",
+   "winner": "CRM_SHORT_bhm15p96_gain24p22_30d_matrix.xlsx",
+   "gain": 24.22,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "CRWD_LONG",
+   "winner": "CRWD_LONG_bh23p91_gain34p_t186_30d_matrix.xlsx",
+   "gain": 34.0,
+   "restored": false,
+   "demoted": [
+    "CRWD_LONG_bh23p91_gain27p53_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "CRWD_SHORT",
+   "winner": "CRWD_SHORT_bhm15p04_gainm0p58_30d_matrix.xlsx",
+   "gain": -0.58,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "CTRA_SHORT",
+   "winner": "CTRA_SHORT_bh6p50_gain9p64_30d_matrix.xlsx",
+   "gain": 9.64,
+   "restored": false,
+   "demoted": [
+    "CTRA_SHORT_bh6p50_gain9p16_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "CVX_LONG",
+   "winner": "CVX_LONG_bh0p24_gain8p89_30d_matrix.xlsx",
+   "gain": 8.89,
+   "restored": true,
+   "demoted": [
+    "CVX_LONG_bh0p24_gain6p87_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "DAR_LONG",
+   "winner": "DAR_LONG_bh10p66_gain19p76_30d_matrix.xlsx",
+   "gain": 19.76,
+   "restored": false,
+   "demoted": [
+    "DAR_LONG_bh9p66_gain12p97_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "DAR_SHORT",
+   "winner": "DAR_SHORT_bhm9p66_gain5p34_30d_matrix.xlsx",
+   "gain": 5.34,
+   "restored": false,
+   "demoted": [
+    "DAR_SHORT_bhm10p66_gain0p27_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "DASHUSDT_LONG",
+   "winner": "DASHUSDT_LONG_bh31p24_gain92p73_30d_matrix.xlsx",
+   "gain": 92.73,
+   "restored": true,
+   "demoted": [
+    "DASHUSDT_LONG_bh38p07_gain34p18_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "DASHUSDT_SHORT",
+   "winner": "DASHUSDT_SHORT_bhm31p24_gain63p65_30d_matrix.xlsx",
+   "gain": 63.65,
+   "restored": true,
+   "demoted": [
+    "DASHUSDT_SHORT_bhm38p07_gain18p40_30d_matrix.xlsx",
+    "DASHUSDT_SHORT_bhm38p07_gain15p03_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "DELL_LONG",
+   "winner": "DELL_LONG_bh14p99_gain30p_t36_30d_matrix.xlsx",
+   "gain": 30.0,
+   "restored": false,
+   "demoted": [
+    "DELL_LONG_bh14p99_gain25p54_30d_matrix.xlsx",
+    "DELL_LONG_bh14p76_gain7p13_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "DELL_SHORT",
+   "winner": "DELL_SHORT_bhm14p99_gain19p85_30d_matrix.xlsx",
+   "gain": 19.85,
+   "restored": false,
+   "demoted": [
+    "DELL_SHORT_bhm14p99_gain8p_t73_30d_matrix.xlsx",
+    "DELL_SHORT_bhm14p76_gainm0p70_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "DINO_LONG",
+   "winner": "DINO_LONG_bh17p05_gain27p75_30d_matrix.xlsx",
+   "gain": 27.75,
+   "restored": true,
+   "demoted": [
+    "DINO_LONG_bh17p05_gain27p25_30d_matrix.xlsx",
+    "DINO_LONG_bh17p05_gain22p99_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "DINO_SHORT",
+   "winner": "DINO_SHORT_bhm17p05_gain15p98_30d_matrix.xlsx",
+   "gain": 15.98,
+   "restored": true,
+   "demoted": [
+    "DINO_SHORT_bhm17p05_gain15p39_30d_matrix.xlsx",
+    "DINO_SHORT_bhm17p05_gain10p15_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "DOGEUSDC_LONG",
+   "winner": "DOGEUSDC_LONG_bh14p41_gain31p39_30d_matrix.xlsx",
+   "gain": 31.39,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "DOGEUSDC_SHORT",
+   "winner": "DOGEUSDC_SHORT_bhm8p72_gain12p58_30d_matrix.xlsx",
+   "gain": 12.58,
+   "restored": true,
+   "demoted": [
+    "DOGEUSDC_SHORT_bhm15p98_gain7p90_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "DOTUSDT_LONG",
+   "winner": "DOTUSDT_LONG_bh44p00_gain80p49_30d_matrix.xlsx",
+   "gain": 80.49,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "DOTUSDT_SHORT",
+   "winner": "DOTUSDT_SHORT_bhm44p00_gain34p82_30d_matrix.xlsx",
+   "gain": 34.82,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "EGLDUSDT_LONG",
+   "winner": "EGLDUSDT_LONG_bh16p36_gain68p48_30d_matrix.xlsx",
+   "gain": 68.48,
+   "restored": true,
+   "demoted": [
+    "EGLDUSDT_LONG_bh20p14_gain12p04_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "EGLDUSDT_SHORT",
+   "winner": "EGLDUSDT_SHORT_bhm16p36_gain28p91_30d_matrix.xlsx",
+   "gain": 28.91,
+   "restored": true,
+   "demoted": [
+    "EGLDUSDT_SHORT_bhm20p14_gain6p59_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ENAUSDC_LONG",
+   "winner": "ENAUSDC_LONG_bh58p17_gain36p30_30d_matrix.xlsx",
+   "gain": 36.3,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "ENJUSDT_LONG",
+   "winner": "ENJUSDT_LONG_bh13p20_gain19p61_30d_matrix.xlsx",
+   "gain": 19.61,
+   "restored": false,
+   "demoted": [
+    "ENJUSDT_LONG_bhm15p25_gain1p37_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ENJUSDT_SHORT",
+   "winner": "ENJUSDT_SHORT_bh15p25_gain4p22_30d_matrix.xlsx",
+   "gain": 4.22,
+   "restored": false,
+   "demoted": [
+    "ENJUSDT_SHORT_bhm13p20_gainm0p34_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ENSUSDT_LONG",
+   "winner": "ENSUSDT_LONG_bh23p74_gain43p47_30d_matrix.xlsx",
+   "gain": 43.47,
+   "restored": false,
+   "demoted": [
+    "ENSUSDT_LONG_bh23p74_gain25p77_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ENSUSDT_SHORT",
+   "winner": "ENSUSDT_SHORT_bhm23p74_gain11p49_30d_matrix.xlsx",
+   "gain": 11.49,
+   "restored": false,
+   "demoted": [
+    "ENSUSDT_SHORT_bhm23p74_gain2p15_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "EQT_LONG",
+   "winner": "EQT_LONG_bhm3p02_gain4p74_30d_matrix.xlsx",
+   "gain": 4.74,
+   "restored": true,
+   "demoted": [
+    "EQT_LONG_bhm6p37_gain4p14_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "EQT_SHORT",
+   "winner": "EQT_SHORT_bh6p37_gain17p79_30d_matrix.xlsx",
+   "gain": 17.79,
+   "restored": false,
+   "demoted": [
+    "EQT_SHORT_bh6p37_gain13p_t71_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ETCUSDT_LONG",
+   "winner": "ETCUSDT_LONG_bh22p62_gain49p49_30d_matrix.xlsx",
+   "gain": 49.49,
+   "restored": true,
+   "demoted": [
+    "ETCUSDT_LONG_bh23p41_gain19p23_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ETCUSDT_SHORT",
+   "winner": "ETCUSDT_SHORT_bhm22p62_gain11p64_30d_matrix.xlsx",
+   "gain": 11.64,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "ETHFIUSDC_LONG",
+   "winner": "ETHFIUSDC_LONG_bh37p09_gain41p85_30d_matrix.xlsx",
+   "gain": 41.85,
+   "restored": true,
+   "demoted": [
+    "ETHFIUSDC_LONG_bh31p22_gain18p85_30d_matrix.xlsx",
+    "ETHFIUSDC_LONG_bh31p22_gain10p37_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ETHFIUSDC_SHORT",
+   "winner": "ETHFIUSDC_SHORT_bhm37p09_gain13p53_30d_matrix.xlsx",
+   "gain": 13.53,
+   "restored": true,
+   "demoted": [
+    "ETHFIUSDC_SHORT_bhm31p22_gain5p68_30d_matrix.xlsx",
+    "ETHFIUSDC_SHORT_bhm31p22_gain4p82_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ETHUSDC_LONG",
+   "winner": "ETHUSDC_LONG_bh9p19_gain15p08_30d_matrix.xlsx",
+   "gain": 15.08,
+   "restored": true,
+   "demoted": [
+    "ETHUSDC_LONG_bh9p19_gain13p86_30d_matrix.xlsx",
+    "ETHUSDC_LONG_bh13p27_gain8p43_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ETHUSDC_SHORT",
+   "winner": "ETHUSDC_SHORT_bhm9p19_gain10p68_30d_matrix.xlsx",
+   "gain": 10.68,
+   "restored": true,
+   "demoted": [
+    "ETHUSDC_SHORT_bhm9p19_gain5p78_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ETN_SHORT",
+   "winner": "ETN_SHORT_bhm2p25_gain15p84_30d_matrix.xlsx",
+   "gain": 15.84,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "EXEL_LONG",
+   "winner": "EXEL_LONG_bh7p76_gain18p81_30d_matrix.xlsx",
+   "gain": 18.81,
+   "restored": false,
+   "demoted": [
+    "EXEL_LONG_bh8p15_gain11p93_30d_matrix.xlsx",
+    "EXEL_LONG_bh7p76_gain11p_t35_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "FARTCOINUSDT_LONG",
+   "winner": "FARTCOINUSDT_LONG_bhm8p49_gain17p07_30d_matrix.xlsx",
+   "gain": 17.07,
+   "restored": true,
+   "demoted": [
+    "FARTCOINUSDT_LONG_bhm8p49_gain11p08_30d_matrix.xlsx",
+    "FARTCOINUSDT_LONG_bh1p68_gain1p90_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "FARTCOINUSDT_SHORT",
+   "winner": "FARTCOINUSDT_SHORT_bh8p49_gain8p38_30d_matrix.xlsx",
+   "gain": 8.38,
+   "restored": false,
+   "demoted": [
+    "FARTCOINUSDT_SHORT_bhm1p68_gain5p14_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "FCN_LONG",
+   "winner": "FCN_LONG_bhm11p91_gain6p01_30d_matrix.xlsx",
+   "gain": 6.01,
+   "restored": false,
+   "demoted": [
+    "FCN_LONG_bhm11p91_gainm2p17_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "FCN_SHORT",
+   "winner": "FCN_SHORT_bh11p91_gain14p57_30d_matrix.xlsx",
+   "gain": 14.57,
+   "restored": false,
+   "demoted": [
+    "FCN_SHORT_bh11p91_gain6p96_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "FILUSDC_LONG",
+   "winner": "FILUSDC_LONG_bh52p16_gain62p73_30d_matrix.xlsx",
+   "gain": 62.73,
+   "restored": true,
+   "demoted": [
+    "FILUSDC_LONG_bh52p16_gain29p38_30d_matrix.xlsx",
+    "FILUSDC_LONG_bh52p16_gain27p87_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "FILUSDC_SHORT",
+   "winner": "FILUSDC_SHORT_bhm52p16_gain38p99_30d_matrix.xlsx",
+   "gain": 38.99,
+   "restored": true,
+   "demoted": [
+    "FILUSDC_SHORT_bhm52p16_gain23p69_30d_matrix.xlsx",
+    "FILUSDC_SHORT_bhm52p16_gain12p17_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "FIX_SHORT",
+   "winner": "FIX_SHORT_bh6p77_gain16p16_30d_matrix.xlsx",
+   "gain": 16.16,
+   "restored": true,
+   "demoted": [
+    "FIX_SHORT_bh0p98_gain10p33_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "GALAUSDT_LONG",
+   "winner": "GALAUSDT_LONG_bh34p28_gain55p34_30d_matrix.xlsx",
+   "gain": 55.34,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "GALAUSDT_SHORT",
+   "winner": "GALAUSDT_SHORT_bhm34p28_gain11p85_30d_matrix.xlsx",
+   "gain": 11.85,
+   "restored": true,
+   "demoted": [
+    "GALAUSDT_SHORT_bhm30p73_gain3p76_30d_matrix.xlsx",
+    "GALAUSDT_SHORT_bhm28p68_gain0p34_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "GDX_LONG",
+   "winner": "GDX_LONG_bh13p18_gain10p87_30d_matrix.xlsx",
+   "gain": 10.87,
+   "restored": true,
+   "demoted": [
+    "GDX_LONG_bh13p18_gain9p74_30d_matrix.xlsx",
+    "GDX_LONG_bh13p18_gain7p92_30d_matrix.xlsx",
+    "GDX_LONG_bh13p18_gain7p21_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "GDX_SHORT",
+   "winner": "GDX_SHORT_bhm13p18_gain4p09_30d_matrix.xlsx",
+   "gain": 4.09,
+   "restored": true,
+   "demoted": [
+    "GDX_SHORT_bhm13p18_gain3p87_30d_matrix.xlsx",
+    "GDX_SHORT_bhm13p18_gain3p24_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "GLD_LONG",
+   "winner": "GLD_LONG_bhm6p53_gain5p06_30d_matrix.xlsx",
+   "gain": 5.06,
+   "restored": false,
+   "demoted": [
+    "GLD_LONG_bhm4p83_gain4p24_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "GLD_SHORT",
+   "winner": "GLD_SHORT_bh6p53_gain9p27_30d_matrix.xlsx",
+   "gain": 9.27,
+   "restored": false,
+   "demoted": [
+    "GLD_SHORT_bh4p83_gain8p95_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "GME_LONG",
+   "winner": "GME_LONG_bh36p87_gain44p66_30d_matrix.xlsx",
+   "gain": 44.66,
+   "restored": true,
+   "demoted": [
+    "GME_LONG_bh36p87_gain39p26_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "GME_SHORT",
+   "winner": "GME_SHORT_bh19p25_gain16p53_30d_matrix.xlsx",
+   "gain": 16.53,
+   "restored": true,
+   "demoted": [
+    "GME_SHORT_bhm36p87_gain2p64_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "GOOGL_LONG",
+   "winner": "GOOGL_LONG_bh1p81_gain18p91_30d_matrix.xlsx",
+   "gain": 18.91,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "GOOGL_SHORT",
+   "winner": "GOOGL_SHORT_bh7p82_gain17p10_30d_matrix.xlsx",
+   "gain": 17.1,
+   "restored": true,
+   "demoted": [
+    "GOOGL_SHORT_bh0p97_gain12p11_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "GRAMUSDT_LONG",
+   "winner": "GRAMUSDT_LONG_bh8p72_gain16p77_30d_matrix.xlsx",
+   "gain": 16.77,
+   "restored": true,
+   "demoted": [
+    "GRAMUSDT_LONG_bh8p72_gain10p09_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "GRTUSDT_LONG",
+   "winner": "GRTUSDT_LONG_bh78p13_gain108p57_30d_matrix.xlsx",
+   "gain": 108.57,
+   "restored": true,
+   "demoted": [
+    "GRTUSDT_LONG_bh74p38_gain42p37_30d_matrix.xlsx",
+    "GRTUSDT_LONG_bh74p85_gain28p33_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "GRTUSDT_SHORT",
+   "winner": "GRTUSDT_SHORT_bhm78p13_gain22p38_30d_matrix.xlsx",
+   "gain": 22.38,
+   "restored": true,
+   "demoted": [
+    "GRTUSDT_SHORT_bhm74p85_gain10p89_30d_matrix.xlsx",
+    "GRTUSDT_SHORT_bhm74p38_gain8p17_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "HAO_LONG",
+   "winner": "HAO_LONG_bhm34p68_gain17p30_30d_matrix.xlsx",
+   "gain": 17.3,
+   "restored": false,
+   "demoted": [
+    "HAO_LONG_bhm34p68_gain16p71_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "HAO_SHORT",
+   "winner": "HAO_SHORT_bh34p68_gain82p80_30d_matrix.xlsx",
+   "gain": 82.8,
+   "restored": false,
+   "demoted": [
+    "HAO_SHORT_bh34p68_gain42p91_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "HD_LONG",
+   "winner": "HD_LONG_bhm15p75_gain0p42_30d_matrix.xlsx",
+   "gain": 0.42,
+   "restored": true,
+   "demoted": [
+    "HD_LONG_bhm15p75_gainm0p36_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "HD_SHORT",
+   "winner": "HD_SHORT_bh15p75_gain18p48_30d_matrix.xlsx",
+   "gain": 18.48,
+   "restored": false,
+   "demoted": [
+    "HD_SHORT_bh15p75_gain18p_t118_30d_matrix.xlsx",
+    "HD_SHORT_bh15p75_gain17p46_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "HOTUSDT_LONG",
+   "winner": "HOTUSDT_LONG_bh16p92_gain24p10_30d_matrix.xlsx",
+   "gain": 24.1,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "HOTUSDT_SHORT",
+   "winner": "HOTUSDT_SHORT_bhm16p92_gain1p38_30d_matrix.xlsx",
+   "gain": 1.38,
+   "restored": true,
+   "demoted": [
+    "HOTUSDT_SHORT_bhm16p92_gainm0p46_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "HYPEUSDT_LONG",
+   "winner": "HYPEUSDT_LONG_bh7p23_gain28p85_30d_matrix.xlsx",
+   "gain": 28.85,
+   "restored": true,
+   "demoted": [
+    "HYPEUSDT_LONG_bh4p00_gain0p04_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "HYPEUSDT_SHORT",
+   "winner": "HYPEUSDT_SHORT_bhm7p23_gain37p91_30d_matrix.xlsx",
+   "gain": 37.91,
+   "restored": true,
+   "demoted": [
+    "HYPEUSDT_SHORT_bhm6p12_gain19p72_30d_matrix.xlsx",
+    "HYPEUSDT_SHORT_bhm4p00_gain5p63_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "IBIT_LONG",
+   "winner": "IBIT_LONG_bh30p25_gain36p82_30d_matrix.xlsx",
+   "gain": 36.82,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "IBIT_SHORT",
+   "winner": "IBIT_SHORT_bhm30p25_gain9p28_30d_matrix.xlsx",
+   "gain": 9.28,
+   "restored": true,
+   "demoted": [
+    "IBIT_SHORT_bhm30p25_gain4p15_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "IBM_LONG",
+   "winner": "IBM_LONG_bh9p03_gain9p38_30d_matrix.xlsx",
+   "gain": 9.38,
+   "restored": false,
+   "demoted": [
+    "IBM_LONG_bh9p03_gain8p70_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ICPUSDT_LONG",
+   "winner": "ICPUSDT_LONG_bh39p75_gain39p71_30d_matrix.xlsx",
+   "gain": 39.71,
+   "restored": true,
+   "demoted": [
+    "ICPUSDT_LONG_bh39p75_gain38p18_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ICPUSDT_SHORT",
+   "winner": "ICPUSDT_SHORT_bhm39p75_gain8p53_30d_matrix.xlsx",
+   "gain": 8.53,
+   "restored": true,
+   "demoted": [
+    "ICPUSDT_SHORT_bhm23p46_gainm0p36_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "INTC_LONG",
+   "winner": "INTC_LONG_bh23p07_gain43p_t61_30d_matrix.xlsx",
+   "gain": 43.0,
+   "restored": false,
+   "demoted": [
+    "INTC_LONG_bh23p07_gain9p01_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "INTC_SHORT",
+   "winner": "INTC_SHORT_bh13p26_gain26p48_30d_matrix.xlsx",
+   "gain": 26.48,
+   "restored": true,
+   "demoted": [
+    "INTC_SHORT_bhm23p07_gain12p96_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "IOTAUSDT_LONG",
+   "winner": "IOTAUSDT_LONG_bh37p98_gain34p60_30d_matrix.xlsx",
+   "gain": 34.6,
+   "restored": false,
+   "demoted": [
+    "IOTAUSDT_LONG_bh36p74_gain20p13_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "IOTAUSDT_SHORT",
+   "winner": "IOTAUSDT_SHORT_bhm37p98_gain7p17_30d_matrix.xlsx",
+   "gain": 7.17,
+   "restored": false,
+   "demoted": [
+    "IOTAUSDT_SHORT_bhm36p74_gain0p04_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "IOTXUSDT_LONG",
+   "winner": "IOTXUSDT_LONG_bh21p47_gain76p08_30d_matrix.xlsx",
+   "gain": 76.08,
+   "restored": false,
+   "demoted": [
+    "IOTXUSDT_LONG_bh21p13_gain27p12_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "IOTXUSDT_SHORT",
+   "winner": "IOTXUSDT_SHORT_bhm21p47_gain25p41_30d_matrix.xlsx",
+   "gain": 25.41,
+   "restored": true,
+   "demoted": [
+    "IOTXUSDT_SHORT_bhm21p13_gain16p42_30d_matrix.xlsx",
+    "IOTXUSDT_SHORT_bhm21p47_gain14p39_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "JASMYUSDT_SHORT",
+   "winner": "JASMYUSDT_SHORT_bhm15p82_gain12p71_30d_matrix.xlsx",
+   "gain": 12.71,
+   "restored": true,
+   "demoted": [
+    "JASMYUSDT_SHORT_bhm14p76_gainm0p33_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "JOBY_LONG",
+   "winner": "JOBY_LONG_bhm20p81_gain6p49_30d_matrix.xlsx",
+   "gain": 6.49,
+   "restored": false,
+   "demoted": [
+    "JOBY_LONG_bhm20p81_gain1p01_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "JOBY_SHORT",
+   "winner": "JOBY_SHORT_bh20p81_gain36p67_30d_matrix.xlsx",
+   "gain": 36.67,
+   "restored": false,
+   "demoted": [
+    "JOBY_SHORT_bh20p81_gain34p63_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "JPM_LONG",
+   "winner": "JPM_LONG_bh2p73_gain5p70_30d_matrix.xlsx",
+   "gain": 5.7,
+   "restored": true,
+   "demoted": [
+    "JPM_LONG_bhm8p79_gain3p08_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "JPM_SHORT",
+   "winner": "JPM_SHORT_bh8p79_gain14p21_30d_matrix.xlsx",
+   "gain": 14.21,
+   "restored": true,
+   "demoted": [
+    "JPM_SHORT_bh8p79_gain13p55_30d_matrix.xlsx",
+    "JPM_SHORT_bh8p79_gain13p_t242_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "KASUSDT_LONG",
+   "winner": "KASUSDT_LONG_bh58p48_gain51p24_30d_matrix.xlsx",
+   "gain": 51.24,
+   "restored": true,
+   "demoted": [
+    "KASUSDT_LONG_bh58p48_gain34p11_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "KASUSDT_SHORT",
+   "winner": "KASUSDT_SHORT_bhm58p48_gain34p13_30d_matrix.xlsx",
+   "gain": 34.13,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "KSMUSDT_LONG",
+   "winner": "KSMUSDT_LONG_bh46p77_gain61p64_30d_matrix.xlsx",
+   "gain": 61.64,
+   "restored": true,
+   "demoted": [
+    "KSMUSDT_LONG_bh41p05_gain26p82_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "KSMUSDT_SHORT",
+   "winner": "KSMUSDT_SHORT_bhm46p77_gain25p39_30d_matrix.xlsx",
+   "gain": 25.39,
+   "restored": true,
+   "demoted": [
+    "KSMUSDT_SHORT_bhm41p05_gain17p74_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "LAC_LONG",
+   "winner": "LAC_LONG_bhm6p31_gain13p33_30d_matrix.xlsx",
+   "gain": 13.33,
+   "restored": true,
+   "demoted": [
+    "LAC_LONG_bhm6p31_gain10p14_30d_matrix.xlsx",
+    "LAC_LONG_bhm12p00_gain2p56_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "LAC_SHORT",
+   "winner": "LAC_SHORT_bh6p31_gain25p32_30d_matrix.xlsx",
+   "gain": 25.32,
+   "restored": true,
+   "demoted": [
+    "LAC_SHORT_bh6p31_gain22p07_30d_matrix.xlsx",
+    "LAC_SHORT_bh12p00_gain16p57_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "LDOS_SHORT",
+   "winner": "LDOS_SHORT_bh5p74_gain17p80_30d_matrix.xlsx",
+   "gain": 17.8,
+   "restored": false,
+   "demoted": [
+    "LDOS_SHORT_bh5p82_gain15p92_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "LINKUSDC_LONG",
+   "winner": "LINKUSDC_LONG_bh27p62_gain34p68_30d_matrix.xlsx",
+   "gain": 34.68,
+   "restored": true,
+   "demoted": [
+    "LINKUSDC_LONG_bh27p98_gain13p46_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "LINKUSDC_SHORT",
+   "winner": "LINKUSDC_SHORT_bhm26p53_gain34p08_30d_matrix.xlsx",
+   "gain": 34.08,
+   "restored": true,
+   "demoted": [
+    "LINKUSDC_SHORT_bhm27p98_gain7p47_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "LLY_LONG",
+   "winner": "LLY_LONG_bhm4p87_gain8p97_30d_matrix.xlsx",
+   "gain": 8.97,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "LLY_SHORT",
+   "winner": "LLY_SHORT_bh4p87_gain14p98_30d_matrix.xlsx",
+   "gain": 14.98,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "LMT_LONG",
+   "winner": "LMT_LONG_bh10p06_gain11p27_30d_matrix.xlsx",
+   "gain": 11.27,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "LNG_LONG",
+   "winner": "LNG_LONG_bh1p93_gain11p89_30d_matrix.xlsx",
+   "gain": 11.89,
+   "restored": false,
+   "demoted": [
+    "LNG_LONG_bh1p90_gain6p76_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "LNG_SHORT",
+   "winner": "LNG_SHORT_bhm1p93_gain8p54_30d_matrix.xlsx",
+   "gain": 8.54,
+   "restored": false,
+   "demoted": [
+    "LNG_SHORT_bhm1p93_gain5p39_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "LOW_SHORT",
+   "winner": "LOW_SHORT_bh14p61_gain26p55_30d_matrix.xlsx",
+   "gain": 26.55,
+   "restored": false,
+   "demoted": [
+    "LOW_SHORT_bh0p47_gain1p81_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "LRCX_LONG",
+   "winner": "LRCX_LONG_bhm5p29_gain21p37_30d_matrix.xlsx",
+   "gain": 21.37,
+   "restored": true,
+   "demoted": [
+    "LRCX_LONG_bh0p88_gain10p42_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "LRCX_SHORT",
+   "winner": "LRCX_SHORT_bhm0p88_gain24p_t157_30d_matrix.xlsx",
+   "gain": 24.0,
+   "restored": false,
+   "demoted": [
+    "LRCX_SHORT_bhm0p88_gain10p52_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "LSCC_LONG",
+   "winner": "LSCC_LONG_bh6p18_gain20p85_30d_matrix.xlsx",
+   "gain": 20.85,
+   "restored": false,
+   "demoted": [
+    "LSCC_LONG_bh6p18_gain9p41_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "LSCC_SHORT",
+   "winner": "LSCC_SHORT_bhm0p83_gain15p66_30d_matrix.xlsx",
+   "gain": 15.66,
+   "restored": true,
+   "demoted": [
+    "LSCC_SHORT_bhm6p18_gain7p20_30d_matrix.xlsx",
+    "LSCC_SHORT_bhm6p18_gain3p82_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "MANAUSDT_LONG",
+   "winner": "MANAUSDT_LONG_bh23p33_gain51p08_30d_matrix.xlsx",
+   "gain": 51.08,
+   "restored": true,
+   "demoted": [
+    "MANAUSDT_LONG_bh23p47_gain19p49_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "MANAUSDT_SHORT",
+   "winner": "MANAUSDT_SHORT_bhm23p33_gain10p56_30d_matrix.xlsx",
+   "gain": 10.56,
+   "restored": true,
+   "demoted": [
+    "MANAUSDT_SHORT_bhm23p47_gain3p79_30d_matrix.xlsx",
+    "MANAUSDT_SHORT_bhm23p47_gain0p10_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "MASKUSDT_LONG",
+   "winner": "MASKUSDT_LONG_bh8p30_gain46p64_30d_matrix.xlsx",
+   "gain": 46.64,
+   "restored": true,
+   "demoted": [
+    "MASKUSDT_LONG_bh8p30_gain14p79_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "MASKUSDT_SHORT",
+   "winner": "MASKUSDT_SHORT_bhm8p30_gain21p90_30d_matrix.xlsx",
+   "gain": 21.9,
+   "restored": true,
+   "demoted": [
+    "MASKUSDT_SHORT_bhm8p30_gain1p82_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "MCD_LONG",
+   "winner": "MCD_LONG_bhm13p14_gain1p68_30d_matrix.xlsx",
+   "gain": 1.68,
+   "restored": true,
+   "demoted": [
+    "MCD_LONG_bhm13p14_gain0p99_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "MCD_SHORT",
+   "winner": "MCD_SHORT_bh13p14_gain13p71_30d_matrix.xlsx",
+   "gain": 13.71,
+   "restored": false,
+   "demoted": [
+    "MCD_SHORT_bh13p14_gain10p74_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "MDT_LONG",
+   "winner": "MDT_LONG_bhm6p32_gain10p55_30d_matrix.xlsx",
+   "gain": 10.55,
+   "restored": true,
+   "demoted": [
+    "MDT_LONG_bhm6p32_gain4p_t110_30d_matrix.xlsx",
+    "MDT_LONG_bhm6p32_gain2p75_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "MDT_SHORT",
+   "winner": "MDT_SHORT_bh6p32_gain17p86_30d_matrix.xlsx",
+   "gain": 17.86,
+   "restored": true,
+   "demoted": [
+    "MDT_SHORT_bh6p32_gain9p80_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "META_LONG",
+   "winner": "META_LONG_bh33p59_gain25p15_30d_matrix.xlsx",
+   "gain": 25.15,
+   "restored": true,
+   "demoted": [
+    "META_LONG_bh33p59_gain13p94_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "META_SHORT",
+   "winner": "META_SHORT_bh15p24_gain10p41_30d_matrix.xlsx",
+   "gain": 10.41,
+   "restored": true,
+   "demoted": [
+    "META_SHORT_bhm33p59_gain9p88_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "MINAUSDT_LONG",
+   "winner": "MINAUSDT_LONG_bh130p30_gain57p39_30d_matrix.xlsx",
+   "gain": 57.39,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "MNTS_LONG",
+   "winner": "MNTS_LONG_bhm10p54_gain7p23_30d_matrix.xlsx",
+   "gain": 7.23,
+   "restored": false,
+   "demoted": [
+    "MNTS_LONG_bhm10p07_gain2p70_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "MNTS_SHORT",
+   "winner": "MNTS_SHORT_bh10p07_gain23p27_30d_matrix.xlsx",
+   "gain": 23.27,
+   "restored": false,
+   "demoted": [
+    "MNTS_SHORT_bh10p54_gain13p50_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "MOVEUSDT_SHORT",
+   "winner": "MOVEUSDT_SHORT_bhm4p50_gain13p37_30d_matrix.xlsx",
+   "gain": 13.37,
+   "restored": true,
+   "demoted": [
+    "MOVEUSDT_SHORT_bhm4p50_gain11p96_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "MOVRUSDT_LONG",
+   "winner": "MOVRUSDT_LONG_bh174p93_gain115p80_30d_matrix.xlsx",
+   "gain": 115.8,
+   "restored": true,
+   "demoted": [
+    "MOVRUSDT_LONG_bh268p19_gain55p84_30d_matrix.xlsx",
+    "MOVRUSDT_LONG_bh268p19_gain35p46_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "MOVRUSDT_SHORT",
+   "winner": "MOVRUSDT_SHORT_bhm100p00_gain13p77_30d_matrix.xlsx",
+   "gain": 13.77,
+   "restored": true,
+   "demoted": [
+    "MOVRUSDT_SHORT_bhm100p00_gain11p22_30d_matrix.xlsx",
+    "MOVRUSDT_SHORT_bhm100p00_gain9p62_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "MPC_LONG",
+   "winner": "MPC_LONG_bh41p87_gain22p24_30d_matrix.xlsx",
+   "gain": 22.24,
+   "restored": true,
+   "demoted": [
+    "MPC_LONG_bh14p78_gain20p49_30d_matrix.xlsx",
+    "MPC_LONG_bh14p78_gain18p24_30d_matrix.xlsx",
+    "MPC_LONG_bh14p78_gain18p_t112_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "MRVL_LONG",
+   "winner": "MRVL_LONG_bh12p64_gain58p81_30d_matrix.xlsx",
+   "gain": 58.81,
+   "restored": false,
+   "demoted": [
+    "MRVL_LONG_bh12p64_gain47p_t71_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "MRVL_SHORT",
+   "winner": "MRVL_SHORT_bhm12p64_gain11p_t106_30d_matrix.xlsx",
+   "gain": 11.0,
+   "restored": false,
+   "demoted": [
+    "MRVL_SHORT_bhm12p64_gain10p27_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "MSFT_LONG",
+   "winner": "MSFT_LONG_bh7p36_gain14p07_30d_matrix.xlsx",
+   "gain": 14.07,
+   "restored": true,
+   "demoted": [
+    "MSFT_LONG_bh7p36_gain12p02_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "MSFT_SHORT",
+   "winner": "MSFT_SHORT_bhm6p14_gain9p73_30d_matrix.xlsx",
+   "gain": 9.73,
+   "restored": true,
+   "demoted": [
+    "MSFT_SHORT_bhm7p36_gain4p20_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "MSTR_LONG",
+   "winner": "MSTR_LONG_bh67p89_gain77p76_30d_matrix.xlsx",
+   "gain": 77.76,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "MSTR_SHORT",
+   "winner": "MSTR_SHORT_bhm27p39_gain16p81_30d_matrix.xlsx",
+   "gain": 16.81,
+   "restored": true,
+   "demoted": [
+    "MSTR_SHORT_bhm37p45_gain11p_t99_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "MU_LONG",
+   "winner": "MU_LONG_bh11p11_gain33p38_30d_matrix.xlsx",
+   "gain": 33.38,
+   "restored": true,
+   "demoted": [
+    "MU_LONG_bh11p11_gain28p08_30d_matrix.xlsx",
+    "MU_LONG_bh11p11_gain26p_t91_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "MU_SHORT",
+   "winner": "MU_SHORT_bhm5p63_gain12p27_30d_matrix.xlsx",
+   "gain": 12.27,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "NEARUSDC_SHORT",
+   "winner": "NEARUSDC_SHORT_bhm100p00_gain37p81_30d_matrix.xlsx",
+   "gain": 37.81,
+   "restored": true,
+   "demoted": [
+    "NEARUSDC_SHORT_bhm100p00_gain27p28_30d_matrix.xlsx",
+    "NEARUSDC_SHORT_bhm100p00_gain6p94_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "NEM_LONG",
+   "winner": "NEM_LONG_bh38p55_gain30p79_30d_matrix.xlsx",
+   "gain": 30.79,
+   "restored": true,
+   "demoted": [
+    "NEM_LONG_bhm6p38_gain8p15_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "NEM_SHORT",
+   "winner": "NEM_SHORT_bh4p13_gain24p71_30d_matrix.xlsx",
+   "gain": 24.71,
+   "restored": true,
+   "demoted": [
+    "NEM_SHORT_bh6p38_gain20p27_30d_matrix.xlsx",
+    "NEM_SHORT_bh6p38_gain7p59_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "NFLX_LONG",
+   "winner": "NFLX_LONG_bhm9p88_gain9p78_30d_matrix.xlsx",
+   "gain": 9.78,
+   "restored": false,
+   "demoted": [
+    "NFLX_LONG_bhm9p88_gain5p68_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "NFLX_SHORT",
+   "winner": "NFLX_SHORT_bh9p88_gain22p76_30d_matrix.xlsx",
+   "gain": 22.76,
+   "restored": true,
+   "demoted": [
+    "NFLX_SHORT_bh9p88_gain22p08_30d_matrix.xlsx",
+    "NFLX_SHORT_bh9p88_gain20p57_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "NKE_LONG",
+   "winner": "NKE_LONG_bhm11p73_gain5p19_30d_matrix.xlsx",
+   "gain": 5.19,
+   "restored": false,
+   "demoted": [
+    "NKE_LONG_bhm11p73_gain5p_t150_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "NKE_SHORT",
+   "winner": "NKE_SHORT_bh11p73_gain21p86_30d_matrix.xlsx",
+   "gain": 21.86,
+   "restored": true,
+   "demoted": [
+    "NKE_SHORT_bh9p91_gain9p29_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "NOC_LONG",
+   "winner": "NOC_LONG_bhm17p48_gain4p87_30d_matrix.xlsx",
+   "gain": 4.87,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "NOC_SHORT",
+   "winner": "NOC_SHORT_bh17p75_gain22p38_30d_matrix.xlsx",
+   "gain": 22.38,
+   "restored": false,
+   "demoted": [
+    "NOC_SHORT_bh17p39_gain15p32_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "NOTUSDT_LONG",
+   "winner": "NOTUSDT_LONG_bh15p67_gain37p73_30d_matrix.xlsx",
+   "gain": 37.73,
+   "restored": true,
+   "demoted": [
+    "NOTUSDT_LONG_bh15p67_gain8p94_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "NOTUSDT_SHORT",
+   "winner": "NOTUSDT_SHORT_bhm15p67_gain27p88_30d_matrix.xlsx",
+   "gain": 27.88,
+   "restored": true,
+   "demoted": [
+    "NOTUSDT_SHORT_bhm15p67_gain2p64_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "NUKZ_SHORT",
+   "winner": "NUKZ_SHORT_bh7p30_gain6p78_30d_matrix.xlsx",
+   "gain": 6.78,
+   "restored": false,
+   "demoted": [
+    "NUKZ_SHORT_bh7p30_gain5p38_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "NVDA_LONG",
+   "winner": "NVDA_LONG_bh3p79_gain17p40_30d_matrix.xlsx",
+   "gain": 17.4,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "NVDA_SHORT",
+   "winner": "NVDA_SHORT_bhm3p79_gain15p33_30d_matrix.xlsx",
+   "gain": 15.33,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "OKE_SHORT",
+   "winner": "OKE_SHORT_bh7p48_gain19p38_30d_matrix.xlsx",
+   "gain": 19.38,
+   "restored": false,
+   "demoted": [
+    "OKE_SHORT_bh8p90_gain11p73_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "OLED_LONG",
+   "winner": "OLED_LONG_bh9p57_gain13p31_30d_matrix.xlsx",
+   "gain": 13.31,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "OLED_SHORT",
+   "winner": "OLED_SHORT_bh14p31_gain23p87_30d_matrix.xlsx",
+   "gain": 23.87,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "ONDOUSDT_SHORT",
+   "winner": "ONDOUSDT_SHORT_bhm40p67_gain0p06_30d_matrix.xlsx",
+   "gain": 0.06,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "OXY_LONG",
+   "winner": "OXY_LONG_bh15p26_gain8p46_30d_matrix.xlsx",
+   "gain": 8.46,
+   "restored": false,
+   "demoted": [
+    "OXY_LONG_bh15p26_gain5p47_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "PAAS_LONG",
+   "winner": "PAAS_LONG_bh3p24_gain14p60_30d_matrix.xlsx",
+   "gain": 14.6,
+   "restored": false,
+   "demoted": [
+    "PAAS_LONG_bh3p24_gain14p07_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "PBF_LONG",
+   "winner": "PBF_LONG_bh9p52_gain41p79_30d_matrix.xlsx",
+   "gain": 41.79,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "PBF_SHORT",
+   "winner": "PBF_SHORT_bhm25p29_gain16p23_30d_matrix.xlsx",
+   "gain": 16.23,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "PLTR_LONG",
+   "winner": "PLTR_LONG_bh13p25_gain19p59_30d_matrix.xlsx",
+   "gain": 19.59,
+   "restored": false,
+   "demoted": [
+    "PLTR_LONG_bh13p05_gain7p54_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "PR_LONG",
+   "winner": "PR_LONG_bh12p75_gain20p34_30d_matrix.xlsx",
+   "gain": 20.34,
+   "restored": false,
+   "demoted": [
+    "PR_LONG_bh12p85_gain18p48_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "PR_SHORT",
+   "winner": "PR_SHORT_bhm12p85_gain5p03_30d_matrix.xlsx",
+   "gain": 5.03,
+   "restored": false,
+   "demoted": [
+    "PR_SHORT_bhm12p85_gain3p13_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "PSX_LONG",
+   "winner": "PSX_LONG_bh32p50_gain22p78_30d_matrix.xlsx",
+   "gain": 22.78,
+   "restored": true,
+   "demoted": [
+    "PSX_LONG_bh7p71_gain18p99_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "PSX_SHORT",
+   "winner": "PSX_SHORT_bhm4p93_gain9p72_30d_matrix.xlsx",
+   "gain": 9.72,
+   "restored": true,
+   "demoted": [
+    "PSX_SHORT_bhm7p71_gain6p56_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "PTBUSDT_LONG",
+   "winner": "PTBUSDT_LONG_bh15p09_gain37p65_30d_matrix.xlsx",
+   "gain": 37.65,
+   "restored": true,
+   "demoted": [
+    "PTBUSDT_LONG_bh15p09_gain10p90_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "PTBUSDT_SHORT",
+   "winner": "PTBUSDT_SHORT_bhm15p09_gain19p67_30d_matrix.xlsx",
+   "gain": 19.67,
+   "restored": true,
+   "demoted": [
+    "PTBUSDT_SHORT_bh26p33_gain0p19_30d_matrix.xlsx",
+    "PTBUSDT_SHORT_bh26p33_gain0p00_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "PYPL_LONG",
+   "winner": "PYPL_LONG_bh11p88_gain12p13_30d_matrix.xlsx",
+   "gain": 12.13,
+   "restored": true,
+   "demoted": [
+    "PYPL_LONG_bhm11p32_gain8p55_30d_matrix.xlsx",
+    "PYPL_LONG_bhm15p03_gain8p_t127_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "PYPL_SHORT",
+   "winner": "PYPL_SHORT_bh15p03_gain27p_t207_30d_matrix.xlsx",
+   "gain": 27.0,
+   "restored": false,
+   "demoted": [
+    "PYPL_SHORT_bh11p32_gain18p33_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "QBTS_LONG",
+   "winner": "QBTS_LONG_bhm15p06_gain24p19_30d_matrix.xlsx",
+   "gain": 24.19,
+   "restored": true,
+   "demoted": [
+    "QBTS_LONG_bhm20p53_gain8p97_30d_matrix.xlsx",
+    "QBTS_LONG_bhm20p53_gain6p68_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "QBTS_SHORT",
+   "winner": "QBTS_SHORT_bh20p53_gain41p79_30d_matrix.xlsx",
+   "gain": 41.79,
+   "restored": false,
+   "demoted": [
+    "QBTS_SHORT_bh20p53_gain12p32_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "QTUMUSDT_LONG",
+   "winner": "QTUMUSDT_LONG_bh21p59_gain58p54_30d_matrix.xlsx",
+   "gain": 58.54,
+   "restored": true,
+   "demoted": [
+    "QTUMUSDT_LONG_bh21p92_gain13p55_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "QTUMUSDT_SHORT",
+   "winner": "QTUMUSDT_SHORT_bhm19p95_gain12p93_30d_matrix.xlsx",
+   "gain": 12.93,
+   "restored": true,
+   "demoted": [
+    "QTUMUSDT_SHORT_bhm21p92_gain4p34_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "RDDT_SHORT",
+   "winner": "RDDT_SHORT_bh8p78_gain19p62_30d_matrix.xlsx",
+   "gain": 19.62,
+   "restored": true,
+   "demoted": [
+    "RDDT_SHORT_bh8p78_gain14p45_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "RGLD_LONG",
+   "winner": "RGLD_LONG_bh13p78_gain17p03_30d_matrix.xlsx",
+   "gain": 17.03,
+   "restored": true,
+   "demoted": [
+    "RGLD_LONG_bh13p78_gain16p08_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "RLCUSDT_LONG",
+   "winner": "RLCUSDT_LONG_bh18p52_gain53p99_30d_matrix.xlsx",
+   "gain": 53.99,
+   "restored": true,
+   "demoted": [
+    "RLCUSDT_LONG_bh18p52_gain25p19_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "RLCUSDT_SHORT",
+   "winner": "RLCUSDT_SHORT_bhm18p52_gain30p44_30d_matrix.xlsx",
+   "gain": 30.44,
+   "restored": true,
+   "demoted": [
+    "RLCUSDT_SHORT_bhm18p52_gain18p05_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ROKU_LONG",
+   "winner": "ROKU_LONG_bhm3p74_gain1p70_30d_matrix.xlsx",
+   "gain": 1.7,
+   "restored": true,
+   "demoted": [
+    "ROKU_LONG_bh2p42_gainm0p46_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "RRC_LONG",
+   "winner": "RRC_LONG_bh0p23_gain13p04_30d_matrix.xlsx",
+   "gain": 13.04,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "RRC_SHORT",
+   "winner": "RRC_SHORT_bh6p97_gain16p77_30d_matrix.xlsx",
+   "gain": 16.77,
+   "restored": true,
+   "demoted": [
+    "RRC_SHORT_bh5p95_gain15p35_30d_matrix.xlsx",
+    "RRC_SHORT_bhm0p23_gain5p10_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "RSRUSDT_SHORT",
+   "winner": "RSRUSDT_SHORT_bhm21p37_gain3p66_30d_matrix.xlsx",
+   "gain": 3.66,
+   "restored": true,
+   "demoted": [
+    "RSRUSDT_SHORT_bhm12p66_gain1p55_30d_matrix.xlsx",
+    "RSRUSDT_SHORT_bhm21p37_gainm0p78_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "RS_LONG",
+   "winner": "RS_LONG_bhm1p64_gain5p27_30d_matrix.xlsx",
+   "gain": 5.27,
+   "restored": true,
+   "demoted": [
+    "RS_LONG_bhm8p61_gain5p04_30d_matrix.xlsx",
+    "RS_LONG_bhm8p61_gain4p52_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "RS_SHORT",
+   "winner": "RS_SHORT_bh8p61_gain18p87_30d_matrix.xlsx",
+   "gain": 18.87,
+   "restored": true,
+   "demoted": [
+    "RS_SHORT_bh8p61_gain17p40_30d_matrix.xlsx",
+    "RS_SHORT_bh8p61_gain16p88_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "RVNUSDT_LONG",
+   "winner": "RVNUSDT_LONG_bhm23p05_gain19p43_30d_matrix.xlsx",
+   "gain": 19.43,
+   "restored": true,
+   "demoted": [
+    "RVNUSDT_LONG_bhm23p05_gain4p36_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "RVNUSDT_SHORT",
+   "winner": "RVNUSDT_SHORT_bh23p05_gain32p24_30d_matrix.xlsx",
+   "gain": 32.24,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "SANDUSDT_LONG",
+   "winner": "SANDUSDT_LONG_bh17p90_gain23p23_30d_matrix.xlsx",
+   "gain": 23.23,
+   "restored": true,
+   "demoted": [
+    "SANDUSDT_LONG_bhm12p68_gain0p18_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "SAP_LONG",
+   "winner": "SAP_LONG_bh4p74_gain11p39_30d_matrix.xlsx",
+   "gain": 11.39,
+   "restored": false,
+   "demoted": [
+    "SAP_LONG_bh4p83_gain10p52_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "SAP_SHORT",
+   "winner": "SAP_SHORT_bhm4p83_gain6p33_30d_matrix.xlsx",
+   "gain": 6.33,
+   "restored": false,
+   "demoted": [
+    "SAP_SHORT_bhm4p83_gain3p97_30d_matrix.xlsx",
+    "SAP_SHORT_bhm4p83_gain2p05_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "SCCO_LONG",
+   "winner": "SCCO_LONG_bh4p60_gain10p46_30d_matrix.xlsx",
+   "gain": 10.46,
+   "restored": true,
+   "demoted": [
+    "SCCO_LONG_bh1p03_gain5p34_30d_matrix.xlsx",
+    "SCCO_LONG_bh1p03_gain2p97_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "SKLUSDT_SHORT",
+   "winner": "SKLUSDT_SHORT_bhm24p26_gain5p28_30d_matrix.xlsx",
+   "gain": 5.28,
+   "restored": true,
+   "demoted": [
+    "SKLUSDT_SHORT_bhm24p26_gainm0p51_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "SLV_LONG",
+   "winner": "SLV_LONG_bh19p12_gain16p13_30d_matrix.xlsx",
+   "gain": 16.13,
+   "restored": true,
+   "demoted": [
+    "SLV_LONG_bhm7p87_gain4p_t16_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "SMCI_SHORT",
+   "winner": "SMCI_SHORT_bhm8p31_gain27p73_30d_matrix.xlsx",
+   "gain": 27.73,
+   "restored": true,
+   "demoted": [
+    "SMCI_SHORT_bhm6p94_gain17p37_30d_matrix.xlsx",
+    "SMCI_SHORT_bhm6p94_gain16p12_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "SMG_SHORT",
+   "winner": "SMG_SHORT_bh17p66_gain24p78_30d_matrix.xlsx",
+   "gain": 24.78,
+   "restored": false,
+   "demoted": [
+    "SMG_SHORT_bh15p47_gain10p88_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "SNDK_LONG",
+   "winner": "SNDK_LONG_bh3p25_gain29p57_30d_matrix.xlsx",
+   "gain": 29.57,
+   "restored": false,
+   "demoted": [
+    "SNDK_LONG_bh3p25_gain23p08_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "SNDK_SHORT",
+   "winner": "SNDK_SHORT_bhm3p25_gain21p96_30d_matrix.xlsx",
+   "gain": 21.96,
+   "restored": false,
+   "demoted": [
+    "SNDK_SHORT_bhm3p25_gain4p57_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "SNOW_SHORT",
+   "winner": "SNOW_SHORT_bhm5p44_gain18p07_30d_matrix.xlsx",
+   "gain": 18.07,
+   "restored": true,
+   "demoted": [
+    "SNOW_SHORT_bhm5p44_gain17p64_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "SNXUSDT_LONG",
+   "winner": "SNXUSDT_LONG_bh22p89_gain53p98_30d_matrix.xlsx",
+   "gain": 53.98,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "SNXUSDT_SHORT",
+   "winner": "SNXUSDT_SHORT_bhm0p79_gain14p62_30d_matrix.xlsx",
+   "gain": 14.62,
+   "restored": true,
+   "demoted": [
+    "SNXUSDT_SHORT_bhm22p55_gainm0p46_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "SOLUSDC_LONG",
+   "winner": "SOLUSDC_LONG_bh14p42_gain36p30_30d_matrix.xlsx",
+   "gain": 36.3,
+   "restored": true,
+   "demoted": [
+    "SOLUSDC_LONG_bh19p48_gain13p69_30d_matrix.xlsx",
+    "SOLUSDC_LONG_bh11p07_gain11p79_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "SOLUSDC_SHORT",
+   "winner": "SOLUSDC_SHORT_bhm14p42_gain14p16_30d_matrix.xlsx",
+   "gain": 14.16,
+   "restored": true,
+   "demoted": [
+    "SOLUSDC_SHORT_bhm19p48_gain2p04_30d_matrix.xlsx",
+    "SOLUSDC_SHORT_bhm11p07_gainm0p09_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "STORJUSDT_SHORT",
+   "winner": "STORJUSDT_SHORT_bh6p13_gain1p48_30d_matrix.xlsx",
+   "gain": 1.48,
+   "restored": true,
+   "demoted": [
+    "STORJUSDT_SHORT_bh6p13_gain0p14_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "SUSHIUSDT_LONG",
+   "winner": "SUSHIUSDT_LONG_bh34p26_gain28p96_30d_matrix.xlsx",
+   "gain": 28.96,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "SUSHIUSDT_SHORT",
+   "winner": "SUSHIUSDT_SHORT_bhm34p26_gain10p69_30d_matrix.xlsx",
+   "gain": 10.69,
+   "restored": true,
+   "demoted": [
+    "SUSHIUSDT_SHORT_bhm34p26_gain1p93_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "TECK_LONG",
+   "winner": "TECK_LONG_bh0p08_gain13p29_30d_matrix.xlsx",
+   "gain": 13.29,
+   "restored": false,
+   "demoted": [
+    "TECK_LONG_bh0p02_gain6p96_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "THETAUSDT_LONG",
+   "winner": "THETAUSDT_LONG_bh31p73_gain29p18_30d_matrix.xlsx",
+   "gain": 29.18,
+   "restored": false,
+   "demoted": [
+    "THETAUSDT_LONG_bh32p49_gain26p75_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "THETAUSDT_SHORT",
+   "winner": "THETAUSDT_SHORT_bhm31p73_gain12p50_30d_matrix.xlsx",
+   "gain": 12.5,
+   "restored": true,
+   "demoted": [
+    "THETAUSDT_SHORT_bhm31p73_gain0p45_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "TRBUSDT_LONG",
+   "winner": "TRBUSDT_LONG_bh14p82_gain47p75_30d_matrix.xlsx",
+   "gain": 47.75,
+   "restored": true,
+   "demoted": [
+    "TRBUSDT_LONG_bh14p82_gain17p16_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "TRGP_LONG",
+   "winner": "TRGP_LONG_bh9p99_gain14p95_30d_matrix.xlsx",
+   "gain": 14.95,
+   "restored": false,
+   "demoted": [
+    "TRGP_LONG_bh9p99_gain8p47_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "TRUMPUSDC_LONG",
+   "winner": "TRUMPUSDC_LONG_bhm16p73_gain36p43_30d_matrix.xlsx",
+   "gain": 36.43,
+   "restored": true,
+   "demoted": [
+    "TRUMPUSDC_LONG_bhm16p73_gain15p45_30d_matrix.xlsx",
+    "TRUMPUSDC_LONG_bhm16p73_gain7p78_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "TRUMPUSDC_SHORT",
+   "winner": "TRUMPUSDC_SHORT_bh16p73_gain20p55_30d_matrix.xlsx",
+   "gain": 20.55,
+   "restored": true,
+   "demoted": [
+    "TRUMPUSDC_SHORT_bh16p73_gain16p04_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "TRXUSDT_LONG",
+   "winner": "TRXUSDT_LONG_bhm1p63_gain4p67_30d_matrix.xlsx",
+   "gain": 4.67,
+   "restored": false,
+   "demoted": [
+    "TRXUSDT_LONG_bh1p76_gain3p38_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "TRXUSDT_SHORT",
+   "winner": "TRXUSDT_SHORT_bh1p63_gain2p07_30d_matrix.xlsx",
+   "gain": 2.07,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "TSLA_LONG",
+   "winner": "TSLA_LONG_bh5p06_gain12p13_30d_matrix.xlsx",
+   "gain": 12.13,
+   "restored": true,
+   "demoted": [
+    "TSLA_LONG_bh5p06_gain6p29_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "TSLA_SHORT",
+   "winner": "TSLA_SHORT_bhm5p06_gain13p38_30d_matrix.xlsx",
+   "gain": 13.38,
+   "restored": false,
+   "demoted": [
+    "TSLA_SHORT_bhm5p06_gain5p31_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "TSM_LONG",
+   "winner": "TSM_LONG_bh7p51_gain12p46_30d_matrix.xlsx",
+   "gain": 12.46,
+   "restored": true,
+   "demoted": [
+    "TSM_LONG_bh7p51_gain8p76_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "TTD_LONG",
+   "winner": "TTD_LONG_bhm10p51_gain22p71_30d_matrix.xlsx",
+   "gain": 22.71,
+   "restored": false,
+   "demoted": [
+    "TTD_LONG_bhm10p51_gain16p96_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "TTD_SHORT",
+   "winner": "TTD_SHORT_bh10p51_gain22p40_30d_matrix.xlsx",
+   "gain": 22.4,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "UEC_LONG",
+   "winner": "UEC_LONG_bhm18p59_gain22p67_30d_matrix.xlsx",
+   "gain": 22.67,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "UEC_SHORT",
+   "winner": "UEC_SHORT_bh18p59_gain56p98_30d_matrix.xlsx",
+   "gain": 56.98,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "UNIUSDC_LONG",
+   "winner": "UNIUSDC_LONG_bh111p80_gain74p04_30d_matrix.xlsx",
+   "gain": 74.04,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "UNIUSDC_SHORT",
+   "winner": "UNIUSDC_SHORT_bhm68p15_gain11p96_30d_matrix.xlsx",
+   "gain": 11.96,
+   "restored": true,
+   "demoted": [
+    "UNIUSDC_SHORT_bhm56p90_gain11p66_30d_matrix.xlsx",
+    "UNIUSDC_SHORT_bhm49p50_gain10p95_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "USAR_LONG",
+   "winner": "USAR_LONG_bhm23p73_gain20p33_30d_matrix.xlsx",
+   "gain": 20.33,
+   "restored": false,
+   "demoted": [
+    "USAR_LONG_bhm23p73_gain14p22_30d_matrix.xlsx",
+    "USAR_LONG_bhm23p73_gain3p44_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "USAR_SHORT",
+   "winner": "USAR_SHORT_bh23p73_gain57p88_30d_matrix.xlsx",
+   "gain": 57.88,
+   "restored": false,
+   "demoted": [
+    "USAR_SHORT_bh23p73_gain35p97_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "UUUU_LONG",
+   "winner": "UUUU_LONG_bhm9p69_gain17p82_30d_matrix.xlsx",
+   "gain": 17.82,
+   "restored": true,
+   "demoted": [
+    "UUUU_LONG_bhm26p32_gain7p78_30d_matrix.xlsx",
+    "UUUU_LONG_bhm26p32_gain5p27_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "UUUU_SHORT",
+   "winner": "UUUU_SHORT_bh26p32_gain38p95_30d_matrix.xlsx",
+   "gain": 38.95,
+   "restored": false,
+   "demoted": [
+    "UUUU_SHORT_bh26p32_gain32p28_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "VALE_LONG",
+   "winner": "VALE_LONG_bhm3p66_gain6p51_30d_matrix.xlsx",
+   "gain": 6.51,
+   "restored": false,
+   "demoted": [
+    "VALE_LONG_bhm3p88_gain0p89_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "VALE_SHORT",
+   "winner": "VALE_SHORT_bh3p88_gain26p22_30d_matrix.xlsx",
+   "gain": 26.22,
+   "restored": false,
+   "demoted": [
+    "VALE_SHORT_bh3p66_gain14p06_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "VETUSDT_LONG",
+   "winner": "VETUSDT_LONG_bh24p58_gain33p76_30d_matrix.xlsx",
+   "gain": 33.76,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "VETUSDT_SHORT",
+   "winner": "VETUSDT_SHORT_bhm24p58_gain3p79_30d_matrix.xlsx",
+   "gain": 3.79,
+   "restored": true,
+   "demoted": [
+    "VETUSDT_SHORT_bhm24p58_gain1p92_30d_matrix.xlsx",
+    "VETUSDT_SHORT_bhm50p05_gainm6p17_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "VLO_LONG",
+   "winner": "VLO_LONG_bh15p91_gain22p36_30d_matrix.xlsx",
+   "gain": 22.36,
+   "restored": false,
+   "demoted": [
+    "VLO_LONG_bh15p91_gain8p26_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "VLO_SHORT",
+   "winner": "VLO_SHORT_bhm10p26_gain9p35_30d_matrix.xlsx",
+   "gain": 9.35,
+   "restored": true,
+   "demoted": [
+    "VLO_SHORT_bhm15p91_gain7p12_30d_matrix.xlsx",
+    "VLO_SHORT_bhm15p91_gain3p12_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "VT_LONG",
+   "winner": "VT_LONG_bhm0p94_gain4p86_30d_matrix.xlsx",
+   "gain": 4.86,
+   "restored": true,
+   "demoted": [
+    "VT_LONG_bhm0p94_gain2p57_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "VT_SHORT",
+   "winner": "VT_SHORT_bh0p94_gain5p64_30d_matrix.xlsx",
+   "gain": 5.64,
+   "restored": false,
+   "demoted": [
+    "VT_SHORT_bh0p94_gain3p49_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "WDAY_LONG",
+   "winner": "WDAY_LONG_bh13p10_gain21p15_30d_matrix.xlsx",
+   "gain": 21.15,
+   "restored": true,
+   "demoted": [
+    "WDAY_LONG_bhm2p34_gain16p86_30d_matrix.xlsx",
+    "WDAY_LONG_bhm2p34_gain15p14_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "WDAY_SHORT",
+   "winner": "WDAY_SHORT_bh2p34_gain24p63_30d_matrix.xlsx",
+   "gain": 24.63,
+   "restored": false,
+   "demoted": [
+    "WDAY_SHORT_bh2p34_gain20p17_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "WIFUSDC_LONG",
+   "winner": "WIFUSDC_LONG_bh20p83_gain21p05_30d_matrix.xlsx",
+   "gain": 21.05,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "WIFUSDC_SHORT",
+   "winner": "WIFUSDC_SHORT_bhm20p83_gain10p26_30d_matrix.xlsx",
+   "gain": 10.26,
+   "restored": true,
+   "demoted": [
+    "WIFUSDC_SHORT_bhm36p64_gain7p88_30d_matrix.xlsx",
+    "WIFUSDC_SHORT_bhm20p83_gainm2p19_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "WLDUSDC_LONG",
+   "winner": "WLDUSDC_LONG_bh47p39_gain75p59_30d_matrix.xlsx",
+   "gain": 75.59,
+   "restored": true,
+   "demoted": [
+    "WLDUSDC_LONG_bh40p00_gain41p93_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "XLE_LONG",
+   "winner": "XLE_LONG_bh10p23_gain6p37_30d_matrix.xlsx",
+   "gain": 6.37,
+   "restored": true,
+   "demoted": [
+    "XLE_LONG_bhm1p65_gain2p98_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "XLMUSDT_LONG",
+   "winner": "XLMUSDT_LONG_bh27p88_gain65p81_30d_matrix.xlsx",
+   "gain": 65.81,
+   "restored": true,
+   "demoted": [
+    "XLMUSDT_LONG_bh25p27_gain18p46_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "XLMUSDT_SHORT",
+   "winner": "XLMUSDT_SHORT_bhm25p27_gain18p66_30d_matrix.xlsx",
+   "gain": 18.66,
+   "restored": true,
+   "demoted": [
+    "XLMUSDT_SHORT_bhm25p27_gain17p63_30d_matrix.xlsx",
+    "XLMUSDT_SHORT_bhm25p27_gain7p88_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "XMRUSDT_LONG",
+   "winner": "XMRUSDT_LONG_bh5p51_gain34p91_30d_matrix.xlsx",
+   "gain": 34.91,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "XMRUSDT_SHORT",
+   "winner": "XMRUSDT_SHORT_bhm5p51_gain38p77_30d_matrix.xlsx",
+   "gain": 38.77,
+   "restored": true,
+   "demoted": [
+    "XMRUSDT_SHORT_bhm6p30_gain11p46_30d_matrix.xlsx",
+    "XMRUSDT_SHORT_bhm6p30_gain8p39_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "XRPUSDC_LONG",
+   "winner": "XRPUSDC_LONG_bh8p18_gain50p67_30d_matrix.xlsx",
+   "gain": 50.67,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "XRPUSDC_SHORT",
+   "winner": "XRPUSDC_SHORT_bhm8p18_gain39p68_30d_matrix.xlsx",
+   "gain": 39.68,
+   "restored": true,
+   "demoted": [
+    "XRPUSDC_SHORT_bhm8p18_gain4p49_30d_matrix.xlsx",
+    "XRPUSDC_SHORT_bhm11p77_gain3p39_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "XTZUSDT_LONG",
+   "winner": "XTZUSDT_LONG_bh47p61_gain85p27_30d_matrix.xlsx",
+   "gain": 85.27,
+   "restored": true,
+   "demoted": [
+    "XTZUSDT_LONG_bh49p02_gain39p79_30d_matrix.xlsx",
+    "XTZUSDT_LONG_bh49p02_gain39p34_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "XTZUSDT_SHORT",
+   "winner": "XTZUSDT_SHORT_bhm47p61_gain34p69_30d_matrix.xlsx",
+   "gain": 34.69,
+   "restored": true,
+   "demoted": [
+    "XTZUSDT_SHORT_bhm49p02_gain6p68_30d_matrix.xlsx",
+    "XTZUSDT_SHORT_bhm49p02_gain5p54_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "YFIUSDT_LONG",
+   "winner": "YFIUSDT_LONG_bh9p14_gain5p36_30d_matrix.xlsx",
+   "gain": 5.36,
+   "restored": true,
+   "demoted": []
+  },
+  {
+   "sym": "ZECUSDC_LONG",
+   "winner": "ZECUSDC_LONG_bh66p20_gain98p13_30d_matrix.xlsx",
+   "gain": 98.13,
+   "restored": true,
+   "demoted": [
+    "ZECUSDC_LONG_bh59p83_gain84p11_30d_matrix.xlsx",
+    "ZECUSDC_LONG_bh59p83_gain58p35_30d_matrix.xlsx",
+    "ZECUSDC_LONG_bh88p02_gain0p27_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ZECUSDC_SHORT",
+   "winner": "ZECUSDC_SHORT_bhm66p20_gain25p00_30d_matrix.xlsx",
+   "gain": 25.0,
+   "restored": true,
+   "demoted": [
+    "ZECUSDC_SHORT_bhm59p83_gain10p22_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ZENUSDT_LONG",
+   "winner": "ZENUSDT_LONG_bh35p69_gain86p37_30d_matrix.xlsx",
+   "gain": 86.37,
+   "restored": true,
+   "demoted": [
+    "ZENUSDT_LONG_bh31p18_gain57p47_30d_matrix.xlsx"
+   ]
+  },
+  {
+   "sym": "ZENUSDT_SHORT",
+   "winner": "ZENUSDT_SHORT_bhm32p56_gain47p07_30d_matrix.xlsx",
+   "gain": 47.07,
+   "restored": true,
+   "demoted": [
+    "ZENUSDT_SHORT_bhm31p18_gain5p59_30d_matrix.xlsx"
+   ]
+  }
+ ],
+ "left_unparseable": [
+  "ADAUSDC_SHORT_bhm25p25_gain21p64_30d_matrix.fz.tmp.xlsx",
+  "CVX_SHORT_bhm0p24_gain10p74_30d_matrix.fz.tmp.xlsx",
+  "MCD_LONG_bhm13p14_gain1p44_30d_matrix.fz.tmp.xlsx",
+  "TSM_SHORT_bhm7p51_gain1p20_30d_matrix.fz.tmp.xlsx"
+ ]
+}

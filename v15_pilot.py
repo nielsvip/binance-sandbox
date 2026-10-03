@@ -1447,6 +1447,158 @@ def _qualifies_30d(v, bh):
     return (len(r) == 0, r)
 
 
+def _nearmiss_30d(v, bh):
+    """(is_nearmiss, reasons) — USER 2026-10-03 (best-effort): a VALID floor-trading non-negative
+    set failing ONLY on TIM and/or gain<BH. Publishes flagged instead of quarantine."""
+    v = v or {}
+    if not v.get("valid"):
+        return (False, [])
+    if int(v.get("trades") or 0) < ADAPT_FLOOR_TRADES:
+        return (False, [])
+    g = v.get("gain_pct")
+    try:
+        g = float(g) if g is not None else None
+    except Exception:
+        return (False, [])
+    if g is None or g < 0:
+        return (False, [])
+    r = []
+    try:
+        tim = float(v.get("tim_pct") or 0.0)
+    except Exception:
+        tim = 0.0
+    if not (QUAL_TIM_MIN <= tim <= QUAL_TIM_MAX):
+        r.append(f"TIM {tim:.1f} outside [{QUAL_TIM_MIN:.0f},{QUAL_TIM_MAX:.0f}]")
+    try:
+        if g < float(bh or 0):
+            r.append(f"gain {g:.2f}<BH {float(bh or 0):.2f}")
+    except Exception:
+        pass
+    return (len(r) > 0, r)
+
+
+def _stamp_is_stale(stamp_ns, current_ns) -> bool:
+    """True only when both stamps are known and the NPZ is NOT newer. Missing data fails OPEN (a re-run self-heals by re-stamping)."""
+    try:
+        if stamp_ns is None or current_ns is None:
+            return False
+        return int(current_ns) <= int(stamp_ns)
+    except Exception:
+        return False
+
+
+def _npz_mtime_ns(symside):
+    """Current NPZ mtime ns for the symside. None if unresolvable."""
+    try:
+        _p = _npz_path(symside)
+        return _p.stat().st_mtime_ns if _p is not None else None
+    except Exception:
+        return None
+
+
+def _soft_verdict_fresh(symside, prog) -> bool:
+    """A NO_TRADES/BEST_EFFORT verdict clears itself when the NPZ is newer than the verdict stamp (re-run on fresh data, never on the same window)."""
+    return not _stamp_is_stale((prog or {}).get("verdict_npz_mtime_ns"), _npz_mtime_ns(symside))
+
+
+def _board_has_retryable_holes(done) -> bool:
+    """True when >=1 row carries missing_yellows (timeout/err — a re-fill can genuinely fix it). Settled verdicts (ZERO_TRADES/UNWIRED/running-blank) are deterministic and never change on re-fill."""
+    try:
+        for _v in (done or {}).values():
+            if isinstance(_v, dict) and _v.get("missing_yellows"):
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def _final_publish_class(out_dir, name) -> str:
+    """QUALIFIED unless the manifest sidecar says BEST_EFFORT. Missing/unparseable manifest = QUALIFIED (all pre-2026-10-03 publishes were qualified-only)."""
+    try:
+        _m = json.loads((Path(out_dir) / str(name).replace(".xlsx", "_manifest.json")).read_text())
+        return "BEST_EFFORT" if str(_m.get("publish_class") or "").upper() == "BEST_EFFORT" else "QUALIFIED"
+    except Exception:
+        return "QUALIFIED"
+
+
+def _best_manifest_metrics(out_dir, name) -> dict:
+    """Exact metrics dict from an active final's manifest sidecar ({} when missing)."""
+    try:
+        _m = json.loads((Path(out_dir) / str(name).replace(".xlsx", "_manifest.json")).read_text())
+        return dict(_m.get("metrics") or {})
+    except Exception:
+        return {}
+
+
+def _standing_best(out_dir, symside):
+    """(name, gain, cls) of the reigning active final, or None. Rank: QUALIFIED class first, then gain. Unparseable actives never win."""
+    try:
+        from tools.v15_final_naming import parse_final_matrix_name as _parse
+    except Exception:
+        return None
+    _best = None
+    try:
+        _files = sorted(Path(out_dir).glob(f"{symside}_bh*_30d_matrix.xlsx"))
+    except Exception:
+        return None
+    for _p in _files:
+        _d = _parse(_p.name)
+        if _d is None:
+            continue
+        _cls = _final_publish_class(out_dir, _p.name)
+        _key = (1 if _cls == "QUALIFIED" else 0, float(_d["gain"]))
+        if _best is None or _key > _best[0]:
+            _best = (_key, _p.name, float(_d["gain"]), _cls)
+    return None if _best is None else (_best[1], _best[2], _best[3])
+
+
+def _rank_final_gain(out_dir, symside, cand_name, cand_gain, cand_class="QUALIFIED"):
+    """(win, best_name, best_gain, note) — USER 2026-10-03 (best-not-newest): the candidate activates
+    only if it strictly beats the standing best (class first, then gain by >1e-9). Ties and same-name reaffirms keep the incumbent file."""
+    _st = _standing_best(out_dir, symside)
+    if _st is None:
+        return (True, None, None, "no active — publishing")
+    _bn, _bg, _bc = _st
+    if _bn == cand_name:
+        return (True, None, None, "same metrics already active — reaffirming")
+    _ck = (1 if str(cand_class).upper() == "QUALIFIED" else 0, float(cand_gain))
+    _bk = (1 if _bc == "QUALIFIED" else 0, float(_bg))
+    if _ck[0] > _bk[0] or (_ck[0] == _bk[0] and _ck[1] > _bk[1] + 1e-9):
+        return (True, None, None, f"candidate {float(cand_gain):.2f}/{cand_class} beats {_bn} {_bg:.2f}/{_bc}")
+    return (False, _bn, _bg, f"keeping {_bn} {_bg:.2f}/{_bc} over candidate {float(cand_gain):.2f}/{cand_class}")
+
+
+def _apply_best_publish(out_dir, symside, final_name, final_gain, cand_class, wb_path):
+    """Collapse the symside to ONE active = max(candidate, standing best). Winner activates (losers -> .superseded history, html/manifest companions follow). Returns (active_name, won)."""
+    _od = Path(out_dir)
+    _win, _bn, _bg, _note = _rank_final_gain(_od, symside, final_name, float(final_gain), cand_class)
+    print(f"[BEST-PUBLISH] {symside} {_note}", flush=True)
+    _keep = final_name if _win else _bn
+    for _old in _od.glob(f"{symside}_bh*_30d_matrix.xlsx"):
+        if _old.name == _keep:
+            continue
+        try:
+            _old.rename(_od / (_old.name + ".superseded"))
+        except Exception as _e:
+            print(f"[best-publish-warn] supersede {_old.name}: {_e}", flush=True)
+        for _comp in (_od / _old.name.replace(".xlsx", ".html"), _od / _old.name.replace(".xlsx", "_manifest.json")):
+            try:
+                if _comp.exists():
+                    _comp.rename(_od / (_comp.name + ".superseded"))
+            except Exception:
+                pass
+    if _win:
+        _atomic_copy(wb_path, _od / final_name)
+        return (final_name, True)
+    _hist = _od / (final_name + ".superseded")
+    if not _hist.exists():
+        try:
+            _atomic_copy(wb_path, _hist)
+        except Exception as _e:
+            print(f"[best-publish-warn] history copy: {_e}", flush=True)
+    return (_bn, False)
+
+
 def _npz_path(symside):
     """Resolve the symside's NPZ file (S1 sandbox first, then local). None if missing."""
     try:
@@ -3212,14 +3364,20 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 print(f"[compliance-repair-warn] {new_symside}: {_cr_e}", flush=True)
         _compliant = _qual_ok
         _impossible = False
+        _best_effort = None
+        _won = True
         if not _compliant:
             _depth = int(progress.get("redo_depth", 0))
+            if _redo_base is not None and int(((_redo_base[1] or {}).get("trades")) or 0) == 0:
+                print(f"[REDO-CAP] {new_symside} repaired set still 0 trades — a re-fill cannot calculate anything, skipping REDO (USER 2026-10-03)", flush=True)
+                _redo_base = None
             if _redo_base is not None and _depth < QUAL_MAX_REDOS:
                 progress["needs_redo"] = {"overrides": _redo_base[0], "result": {k: _redo_base[1].get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "valid")}, "depth": _depth + 1, "reason": _redo_base[2]}
                 progress.pop("final_path", None)
                 _maybe_write_json(force=True)
                 print(f"[REDO] {new_symside} scheduling re-fill from repaired set (depth {_depth + 1}): {_redo_base[2]}", flush=True)
-                _peer_rm_published(new_symside)
+                if _standing_best(OUT_DIR, new_symside) is None:
+                    _peer_rm_published(new_symside)
             else:
                 _impossible = True
                 progress["not_compliant"] = "; ".join(_qual_reasons) if _qual_reasons else "unknown"
@@ -3244,13 +3402,17 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _compliant = False
                 _qual_reasons = [_cg]
                 _depth = int(progress.get("redo_depth", 0))
-                if _depth < QUAL_MAX_REDOS:
+                _retryable = _board_has_retryable_holes(progress.get("done", {}))
+                if _depth < QUAL_MAX_REDOS and _retryable:
                     progress["needs_redo"] = {"overrides": dict(cumulative_overrides), "result": {k: (_fresh_final or {}).get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "valid")}, "depth": _depth + 1, "reason": _cg + " — re-fill rows for the qualified set"}
                     progress.pop("final_path", None)
                     _maybe_write_json(force=True)
                     print(f"[REDO] {new_symside} scheduling re-fill for content (depth {_depth + 1})", flush=True)
-                    _peer_rm_published(new_symside)
+                    if _standing_best(OUT_DIR, new_symside) is None:
+                        _peer_rm_published(new_symside)
                 else:
+                    if not _retryable:
+                        print(f"[REDO-CAP] {new_symside} content-gate with zero retryable holes (all verdicts settled) — a re-fill would reproduce identical nulls, skipping REDO", flush=True)
                     _impossible = True
                     progress["not_compliant"] = _cg
                     _maybe_write_json(force=True)
@@ -3289,15 +3451,47 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     progress["not_compliant"] = _cg3
                     _maybe_write_json(force=True)
         if _impossible:
-            _quarantine_impossible(new_symside, _qual_reasons, {"window": "30D", "gain_pct": (_fresh_final or {}).get("gain_pct"), "trades": (_fresh_final or {}).get("trades"), "tim_pct": (_fresh_final or {}).get("tim_pct"), "max_dd_pct": (_fresh_final or {}).get("max_dd_pct"), "valid": (_fresh_final or {}).get("valid"), "bh": float(bh or 0)}, wb, wb_path, progress, progress_path, cumulative_overrides, _qual_repairs)
-            print(f"[NOT-FINISHED] {new_symside} 30D unqualifiable after repair — quarantined, no publish", flush=True)
-            try:
-                wb.close()
-            except Exception:
-                pass
-            if _pool is not None:
-                _pool.shutdown(wait=False, cancel_futures=True)
-            return cumulative_gain, cumulative_overrides, progress
+            _stand = _standing_best(OUT_DIR, new_symside)
+            if _stand is not None:
+                _sn, _sg, _sc = _stand
+                from tools.v15_final_naming import parse_final_matrix_name as _pfm_keep
+                _sd = _pfm_keep(_sn) or {}
+                _sm = _best_manifest_metrics(OUT_DIR, _sn)
+                _sgx = _sm.get("gain_pct")
+                progress["final_gain"] = float(_sgx) if _sgx is not None else float(_sd.get("gain", 0))
+                _stx = _sm.get("trades")
+                progress["final_trades"] = int(_stx) if _stx is not None else None
+                _sbh = _sm.get("bh")
+                progress["bh"] = float(_sbh) if _sbh is not None else float(_sd.get("bh", bh or 0))
+                progress["final_path"] = str(OUT_DIR / _sn)
+                progress["last_run_failed"] = "; ".join(_qual_reasons) if _qual_reasons else "unknown"
+                progress["best_note"] = f"run failed ({progress['last_run_failed'][:80]}) — kept standing best {_sn}"
+                _maybe_write_json(force=True)
+                print(f"[RUN-FAILED-KEPT-BEST] {new_symside} this run failed ({'; '.join(_qual_reasons)}) — standing best {_sn} untouched, no quarantine, no REDO", flush=True)
+                try:
+                    wb.close()
+                except Exception:
+                    pass
+                if _pool is not None:
+                    _pool.shutdown(wait=False, cancel_futures=True)
+                return cumulative_gain, cumulative_overrides, progress
+            _nm_ok, _nm_r = _nearmiss_30d(_fresh_final, bh)
+            _calc_n = sum(1 for _v in (progress.get("done") or {}).values() if isinstance(_v, dict) and _v.get("delta") is not None)
+            if (_qual_ok or _nm_ok) and _calc_n >= 1:
+                _impossible = False
+                _compliant = True
+                _best_effort = list(_qual_reasons) if _qual_reasons else list(_nm_r)
+                print(f"[BEST-EFFORT] {new_symside} near-miss ({'; '.join(_best_effort)}) with {_calc_n} calculated rows — publishing flagged instead of quarantine (USER 2026-10-03)", flush=True)
+            else:
+                _quarantine_impossible(new_symside, _qual_reasons, {"window": "30D", "gain_pct": (_fresh_final or {}).get("gain_pct"), "trades": (_fresh_final or {}).get("trades"), "tim_pct": (_fresh_final or {}).get("tim_pct"), "max_dd_pct": (_fresh_final or {}).get("max_dd_pct"), "valid": (_fresh_final or {}).get("valid"), "bh": float(bh or 0)}, wb, wb_path, progress, progress_path, cumulative_overrides, _qual_repairs)
+                print(f"[NOT-FINISHED] {new_symside} 30D unqualifiable after repair — quarantined, no publish", flush=True)
+                try:
+                    wb.close()
+                except Exception:
+                    pass
+                if _pool is not None:
+                    _pool.shutdown(wait=False, cancel_futures=True)
+                return cumulative_gain, cumulative_overrides, progress
         if not _compliant:
             print(f"[NOT-FINISHED] {new_symside} REDO scheduled — no publish this run, herd relaunches into a fresh fill", flush=True)
             try:
@@ -3331,67 +3525,95 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if _final_trades is None:
                 raise RuntimeError("final trades unknown — refusing bh/gain publish (no-lies)")
             _final_name = _final_matrix_name(new_symside, _bh_raw, float(final_gain), int(_final_trades), 30)
-            _final_path = OUT_DIR / _final_name
             import shutil as _sh_pub
-            for _old in OUT_DIR.glob(f"{new_symside}_bh*_30d_matrix.xlsx"):
-                if _old.name != _final_name:
-                    _old.rename(OUT_DIR / (_old.name + ".superseded"))
-            for _oldh in OUT_DIR.glob(f"{new_symside}_bh*_30d_matrix.html"):
-                if _oldh.name != _final_name.replace(".xlsx", ".html"):
-                    _oldh.rename(OUT_DIR / (_oldh.name + ".superseded"))
-            for _oldm in OUT_DIR.glob(f"{new_symside}_bh*_manifest.json"):
-                if _oldm.name != _final_name.replace(".xlsx", "_manifest.json"):
-                    _oldm.rename(OUT_DIR / (_oldm.name + ".superseded"))
-            _atomic_copy(wb_path, _final_path)
-            progress["final_gain"] = float(final_gain)
-            progress["bh"] = _bh_raw
-            progress["final_trades"] = int(_final_trades)
-            progress["final_path"] = str(_final_path)
+            _cand_class = "BEST_EFFORT" if _best_effort is not None else "QUALIFIED"
+            _active_name, _won = _apply_best_publish(OUT_DIR, new_symside, _final_name, float(final_gain), _cand_class, wb_path)
+            _final_path = OUT_DIR / _active_name
+            for _vk in ("verdict", "verdict_reasons", "verdict_npz_mtime_ns"):
+                progress.pop(_vk, None)
+            progress["run_gain"] = float(final_gain)
+            progress["run_trades"] = int(_final_trades)
+            progress["run_path"] = str(OUT_DIR / (_final_name if _won else (_final_name + ".superseded")))
+            progress["run_class"] = _cand_class
+            if _won:
+                progress["final_gain"] = float(final_gain)
+                progress["bh"] = _bh_raw
+                progress["final_trades"] = int(_final_trades)
+                progress["final_path"] = str(_final_path)
+                progress["best_note"] = f"activated {_final_name}"
+            else:
+                from tools.v15_final_naming import parse_final_matrix_name as _pfm_win
+                _bd = _pfm_win(_active_name) or {}
+                _bm = _best_manifest_metrics(OUT_DIR, _active_name)
+                _bgx = _bm.get("gain_pct")
+                progress["final_gain"] = float(_bgx) if _bgx is not None else float(_bd.get("gain", final_gain))
+                _btx = _bm.get("trades")
+                progress["final_trades"] = int(_btx) if _btx is not None else None
+                _bbh = _bm.get("bh")
+                progress["bh"] = float(_bbh) if _bbh is not None else float(_bd.get("bh", bh or 0))
+                progress["final_path"] = str(_final_path)
+                progress["best_note"] = f"kept {_active_name} over {_final_name}"
             _maybe_write_json(force=True)
-            try:
-                _mf = _mc = _me = 0
-                for _mws in wb.worksheets:
-                    if _mws.title not in SWITCH_SHEETS:
-                        continue
-                    for _mr in range(3, _mws.max_row + 1):
-                        if isinstance(_mws.cell(_mr, 6).value, (int, float)):
-                            _mf += 1
-                        if _mws.cell(_mr, 3).value not in (None, ""):
-                            _mc += 1
-                        if isinstance(_mws.cell(_mr, 5).value, (int, float)):
-                            _me += 1
-                import hashlib as _hl_m, socket as _sock_m
-                _ovm = _hl_m.md5(json.dumps(cumulative_overrides, sort_keys=True, default=str).encode()).hexdigest()
-                _npp = _npz_path(new_symside)
-                _man = _build_publish_manifest(new_symside, _final_name, {**(_fresh_final or {}), "bh": _bh_raw}, (_mf, _mc, _me, len(progress.get("done", {}))), _ovm, _md5_file(_final_path), _npp.name if _npp else None, _md5_file(_npp) if _npp else None, _npz_span_days(new_symside), _md5_file(Path(__file__)), Path(args.template).name if args.template else None, _sock_m.gethostname())
-                _man_p = OUT_DIR / (_final_name.replace(".xlsx", "_manifest.json"))
-                _man_t = str(_man_p) + ".tmp"
-                _man_p.parent.mkdir(parents=True, exist_ok=True)
-                with open(_man_t, "w") as _mfh:
-                    json.dump(_man, _mfh, indent=1, default=str)
-                import os as _os_m
-                _os_m.replace(_man_t, str(_man_p))
-                print(f"[MANIFEST] {new_symside} -> {_man_p.name} F={_mf} C={_mc} E={_me} md5={(_man['file_md5'] or '?')[:12]}", flush=True)
-            except Exception as _man_e:
+            if not _won:
+                print(f"[MANIFEST] {new_symside} kept best {_active_name} — no manifest for history-filed {_final_name}", flush=True)
+            else:
                 try:
-                    _final_path.unlink(missing_ok=True)
-                except Exception:
-                    pass
-                if os.environ.get("V15_MANIFEST_STRICT", "1") == "1":
-                    raise RuntimeError(f"manifest failed, publish revoked: {_man_e}")
-                print(f"[manifest-warn] {new_symside}: {_man_e} — xlsx re-copied without manifest (STRICT=0)", flush=True)
-                _atomic_copy(wb_path, _final_path)
-            print(f"[PUBLISH] {new_symside} -> {_final_name} (fresh-verified vec; live H/I follow if verify succeeds)", flush=True)
-            try:
-                from tools.opt.hires_chart import generate_hires as _gh_pub
-                _pub_chart_name = _chart_name_for(_final_name)
-                _gh_pub(new_symside, dict(cumulative_overrides), int(args.window_days), out_name=_pub_chart_name)
-                _pub_chart_src = ROOT / "data" / "reports" / "charts_1Y" / _pub_chart_name
-                if _pub_chart_src.exists():
-                    _sh_pub.copy2(_pub_chart_src, OUT_DIR / _pub_chart_name)
-                    print(f"[PUBLISH-CHART] {new_symside} -> {_pub_chart_name} (same set as xlsx, coherent by construction)", flush=True)
-            except Exception as _pc_e:
-                print(f"[publish-chart-warn] {new_symside}: {_pc_e} — xlsx stands, chart skipped", flush=True)
+                    _mf = _mc = _me = 0
+                    for _mws in wb.worksheets:
+                        if _mws.title not in SWITCH_SHEETS:
+                            continue
+                        for _mr in range(3, _mws.max_row + 1):
+                            if isinstance(_mws.cell(_mr, 6).value, (int, float)):
+                                _mf += 1
+                            if _mws.cell(_mr, 3).value not in (None, ""):
+                                _mc += 1
+                            if isinstance(_mws.cell(_mr, 5).value, (int, float)):
+                                _me += 1
+                    import hashlib as _hl_m, socket as _sock_m
+                    _ovm = _hl_m.md5(json.dumps(cumulative_overrides, sort_keys=True, default=str).encode()).hexdigest()
+                    _npp = _npz_path(new_symside)
+                    _man = _build_publish_manifest(new_symside, _final_name, {**(_fresh_final or {}), "bh": _bh_raw}, (_mf, _mc, _me, len(progress.get("done", {}))), _ovm, _md5_file(_final_path), _npp.name if _npp else None, _md5_file(_npp) if _npp else None, _npz_span_days(new_symside), _md5_file(Path(__file__)), Path(args.template).name if args.template else None, _sock_m.gethostname())
+                    _man["publish_class"] = _cand_class
+                    if _best_effort is not None:
+                        _man["best_effort_reasons"] = list(_best_effort)
+                    _man_p = OUT_DIR / (_final_name.replace(".xlsx", "_manifest.json"))
+                    _man_t = str(_man_p) + ".tmp"
+                    _man_p.parent.mkdir(parents=True, exist_ok=True)
+                    with open(_man_t, "w") as _mfh:
+                        json.dump(_man, _mfh, indent=1, default=str)
+                    import os as _os_m
+                    _os_m.replace(_man_t, str(_man_p))
+                    print(f"[MANIFEST] {new_symside} -> {_man_p.name} F={_mf} C={_mc} E={_me} md5={(_man['file_md5'] or '?')[:12]}", flush=True)
+                except Exception as _man_e:
+                    try:
+                        _final_path.unlink(missing_ok=True)
+                    except Exception:
+                        pass
+                    if os.environ.get("V15_MANIFEST_STRICT", "1") == "1":
+                        raise RuntimeError(f"manifest failed, publish revoked: {_man_e}")
+                    print(f"[manifest-warn] {new_symside}: {_man_e} — xlsx re-copied without manifest (STRICT=0)", flush=True)
+                    _atomic_copy(wb_path, _final_path)
+            print(f"[PUBLISH] {new_symside} -> {_active_name} ({'new best' if _won else 'kept best'}; fresh-verified vec; live H/I follow if verify succeeds)", flush=True)
+            if _best_effort is not None and _won:
+                progress["verdict"] = "BEST_EFFORT"
+                progress["verdict_reasons"] = list(_best_effort)
+                progress["verdict_npz_mtime_ns"] = _npz_mtime_ns(new_symside)
+                progress["publish_class"] = "BEST_EFFORT"
+                _maybe_write_json(force=True)
+                print(f"[BEST-EFFORT] {new_symside} published flagged -> {_active_name} (reruns only on newer NPZ)", flush=True)
+            if not _won:
+                print(f"[PUBLISH-CHART] {new_symside} kept best — no new chart (loser history-filed)", flush=True)
+            else:
+                try:
+                    from tools.opt.hires_chart import generate_hires as _gh_pub
+                    _pub_chart_name = _chart_name_for(_final_name)
+                    _gh_pub(new_symside, dict(cumulative_overrides), int(args.window_days), out_name=_pub_chart_name)
+                    _pub_chart_src = ROOT / "data" / "reports" / "charts_1Y" / _pub_chart_name
+                    if _pub_chart_src.exists():
+                        _sh_pub.copy2(_pub_chart_src, OUT_DIR / _pub_chart_name)
+                        print(f"[PUBLISH-CHART] {new_symside} -> {_pub_chart_name} (same set as xlsx, coherent by construction)", flush=True)
+                except Exception as _pc_e:
+                    print(f"[publish-chart-warn] {new_symside}: {_pc_e} — xlsx stands, chart skipped", flush=True)
         except Exception as _pub_e:
             print(f"[publish-warn] {new_symside}: {_pub_e} — no xlsx, no chart; herd will retry via publish-only pass", flush=True)
             try:
@@ -3527,16 +3749,18 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 except Exception as _r365e:
                     print(f"[365-repair-warn] {new_symside}: {_r365e}", flush=True)
                 if _fixed365 is not None and _depth365 < QUAL_MAX_REDOS:
-                    for _old in OUT_DIR.glob(f"{new_symside}_bh*_30d_matrix.xlsx"):
+                    _this_run = OUT_DIR / _final_name
+                    if _this_run.exists():
                         try:
-                            _old.unlink()
+                            _this_run.unlink()
                         except Exception:
                             pass
                     progress["needs_redo"] = {"overrides": _fixed365[0], "depth": _depth365 + 1, "reason": _fixed365[1]}
                     progress.pop("final_path", None)
                     _maybe_write_json(force=True)
                     print(f"[REDO] {new_symside} 365D-driven re-fill scheduled (depth {_depth365 + 1})", flush=True)
-                    _peer_rm_published(new_symside)
+                    if _won:
+                        _peer_rm_published(new_symside)
                     try:
                         wb.close()
                     except Exception:
@@ -3547,6 +3771,20 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                                 _w.unlink()
                         except Exception:
                             pass
+                    if _pool is not None:
+                        _pool.shutdown(wait=False, cancel_futures=True)
+                    return cumulative_gain, cumulative_overrides, progress
+                if bool((_v365 or {}).get("valid")):
+                    _br = [f"365D: {r}" for r in _q365_reasons] or ["365D: valid but below gate"]
+                    progress["verdict"] = "BEST_EFFORT"
+                    progress["verdict_reasons"] = list(progress.get("verdict_reasons") or []) + _br
+                    progress["verdict_npz_mtime_ns"] = _npz_mtime_ns(new_symside)
+                    _maybe_write_json(force=True)
+                    print(f"[BEST-EFFORT] {new_symside} 365D valid-but-missing ({'; '.join(_q365_reasons)}) — keeping published {progress.get('final_path')} flagged, no quarantine (USER 2026-10-03)", flush=True)
+                    try:
+                        wb.close()
+                    except Exception:
+                        pass
                     if _pool is not None:
                         _pool.shutdown(wait=False, cancel_futures=True)
                     return cumulative_gain, cumulative_overrides, progress
@@ -4357,6 +4595,11 @@ def _run_single(new_symside, args):
         if (_early_prog or {}).get("verdict") == "IMPOSSIBLE" and os.getenv("FORCE_DC_RERUN") != "1":
             print(f"[IMPOSSIBLE-SKIP] {new_symside} tombstoned ({(_early_prog or {}).get('impossible_path')}) — manual revision required, MUST NOT RETOUCH.", flush=True)
             return
+        if (_early_prog or {}).get("verdict") in ("NO_TRADES", "BEST_EFFORT") and os.getenv("FORCE_DC_RERUN") != "1" and not _soft_verdict_fresh(new_symside, _early_prog or {}):
+            print(f"[SOFT-SKIP] {new_symside} verdict {(_early_prog or {}).get('verdict')} on same NPZ — nothing to do (reruns on NPZ refresh).", flush=True)
+            return
+        if (_early_prog or {}).get("verdict") in ("NO_TRADES", "BEST_EFFORT") and _soft_verdict_fresh(new_symside, _early_prog or {}):
+            print(f"[SOFT-REFRESH] {new_symside} verdict {(_early_prog or {}).get('verdict')} but NPZ is newer — clearing and re-running", flush=True)
         _redo_run = bool((_early_prog or {}).get("needs_redo")) and (_early_prog or {}).get("verdict") != "IMPOSSIBLE"
         if _redo_run:
             print(f"[REDO-RUN] {new_symside} re-filling from repaired set (depth {((_early_prog or {}).get('needs_redo') or {}).get('depth')})", flush=True)
@@ -4591,6 +4834,11 @@ def main():
         if (_early_prog or {}).get("verdict") == "IMPOSSIBLE" and os.getenv("FORCE_DC_RERUN") != "1":
             print(f"[IMPOSSIBLE-SKIP] {new_symside} tombstoned ({(_early_prog or {}).get('impossible_path')}) — manual revision required, MUST NOT RETOUCH.", flush=True)
             return
+        if (_early_prog or {}).get("verdict") in ("NO_TRADES", "BEST_EFFORT") and os.getenv("FORCE_DC_RERUN") != "1" and not _soft_verdict_fresh(new_symside, _early_prog or {}):
+            print(f"[SOFT-SKIP] {new_symside} verdict {(_early_prog or {}).get('verdict')} on same NPZ — nothing to do (reruns on NPZ refresh).", flush=True)
+            return
+        if (_early_prog or {}).get("verdict") in ("NO_TRADES", "BEST_EFFORT") and _soft_verdict_fresh(new_symside, _early_prog or {}):
+            print(f"[SOFT-REFRESH] {new_symside} verdict {(_early_prog or {}).get('verdict')} but NPZ is newer — clearing and re-running", flush=True)
         _redo_run = bool((_early_prog or {}).get("needs_redo")) and (_early_prog or {}).get("verdict") != "IMPOSSIBLE"
         if _redo_run:
             print(f"[REDO-RUN] {new_symside} re-filling from repaired set (depth {((_early_prog or {}).get('needs_redo') or {}).get('depth')})", flush=True)
@@ -5787,11 +6035,11 @@ def main():
             if _s1_progress.exists() and _s1_progress != progress_path:
                 try:
                     _s1_data = json.loads(_s1_progress.read_text())
-                    if _s1_data.get("verdict") == "IMPOSSIBLE" and progress.get("verdict") != "IMPOSSIBLE":
-                        for _tk in ("verdict", "impossible_reasons", "impossible_path", "impossible_metrics"):
+                    if _s1_data.get("verdict") in ("IMPOSSIBLE", "NO_TRADES", "BEST_EFFORT") and progress.get("verdict") not in ("IMPOSSIBLE", "NO_TRADES", "BEST_EFFORT"):
+                        for _tk in ("verdict", "impossible_reasons", "impossible_path", "impossible_metrics", "verdict_reasons", "verdict_npz_mtime_ns"):
                             if _tk in _s1_data:
                                 progress[_tk] = _s1_data[_tk]
-                        print(f"[respect-s1] adopted IMPOSSIBLE verdict for {new_symside} from S1 — will skip", flush=True)
+                        print(f"[respect-s1] adopted {_s1_data.get('verdict')} verdict for {new_symside} from S1 — will skip", flush=True)
                     # respect S1's better cumulative and hustler if newer/better
                     # USER 2026-10-03 hollow-fix: a board cleared for re-fill (REDO/NPZ/hollow reset) must NOT
                     # resurrect old-board rows — re-fill means every row, otherwise holes splice dishonestly.
@@ -5835,6 +6083,18 @@ def main():
     if progress.get("verdict") == "IMPOSSIBLE" and os.getenv("FORCE_DC_RERUN") != "1":
         print(f"[IMPOSSIBLE-SKIP] {new_symside} tombstoned ({progress.get('impossible_path')}) — manual revision required, MUST NOT RETOUCH.", flush=True)
         return
+    if progress.get("verdict") in ("NO_TRADES", "BEST_EFFORT") and os.getenv("FORCE_DC_RERUN") != "1":
+        if _soft_verdict_fresh(new_symside, progress):
+            print(f"[SOFT-REFRESH] {new_symside} verdict {progress.get('verdict')} but NPZ is newer — clearing verdict and re-running", flush=True)
+            for _vk in ("verdict", "verdict_reasons", "verdict_npz_mtime_ns"):
+                progress.pop(_vk, None)
+            try:
+                _atomic_write_json(progress_path, progress)
+            except Exception:
+                progress_path.write_text(json.dumps(progress))
+        else:
+            print(f"[SOFT-SKIP] {new_symside} verdict {progress.get('verdict')} on same NPZ — nothing to do (reruns on NPZ refresh).", flush=True)
+            return
     # FIX 2026-09-26: Restore cumulative_gain from last completed row to preserve progress on resume
     # When resuming, progress["cumulative_gain"] might be stale; calculate from last completed row's cumulative_after
     try:
@@ -6017,6 +6277,15 @@ def main():
         progress["floor_blockers"] = _blockers
         _atomic_write_json(progress_path, progress)
         print(f"[FLOOR-BLOCKERS] {new_symside} baseline {baseline_trades} trades; single flips that restore >={min_trades} trades: {[(b['switch'], b['flip_to'], b['trades']) for b in _blockers][:12]}", flush=True)
+        if baseline_trades == 0 and not _blockers:
+            progress["verdict"] = "NO_TRADES"
+            progress["verdict_reasons"] = [f"baseline 0 trades, no single bool flip restores >={min_trades} — sweep skipped, no REDO (USER 2026-10-03: skip dead fills)"]
+            progress["verdict_npz_mtime_ns"] = _npz_mtime_ns(new_symside)
+            progress.pop("needs_redo", None)
+            progress.pop("final_path", None)
+            _atomic_write_json(progress_path, progress)
+            print(f"[NO-TRADES-SKIP] {new_symside} baseline 0 trades + no unblock flip — XLS kept, sweep skipped, no REDO; reruns only on newer NPZ", flush=True)
+            return
         if os.environ.get("V15_SKIP_BELOW_FLOOR", "0") == "1":
             progress["diagnostic_only"] = progress["baseline_below_floor"]
             _atomic_write_json(progress_path, progress)
