@@ -8422,5 +8422,23 @@
     ],
     "timestamp": "2026-10-03T17:09:14.797770+00:00",
     "price": 41.35042658
+  },
+  {
+    "symbol": "1000SATSUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 14.1x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-03T17:29:56.899582+00:00",
+    "price": 1.264e-05
+  },
+  {
+    "symbol": "GOOGLUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 16.5x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-03T17:44:46.954740+00:00",
+    "price": 343.4
   }
 ]
