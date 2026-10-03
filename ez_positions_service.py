@@ -2923,6 +2923,14 @@ class WebSocketManager:
         consecutive_fail = 0
         log_first_success = True
         while not self._mark_price_stop:
+            _ban_rem_mp = _ban_remaining_seconds()
+            if _ban_rem_mp > 0:
+                _log_ban_skip_throttled(logger, "mark_price_rest_poll", f"paused {min(_ban_rem_mp, 60.0):.0f}s during ban (no REST until clear)")
+                try:
+                    await asyncio.sleep(min(_ban_rem_mp, 60.0))
+                except asyncio.CancelledError:
+                    break
+                continue
             try:
                 if not self._mark_price_session or self._mark_price_session.closed:
                     self._mark_price_session = await self._init_session()
@@ -2961,6 +2969,12 @@ class WebSocketManager:
                     elif resp.status in (418, 429):
                         consecutive_fail += 1
                         backoff = min(interval * (2 ** consecutive_fail), 120.0)
+                        try:
+                            _ra_mp = float(resp.headers.get("Retry-After", "0") or 0)
+                        except Exception:
+                            _ra_mp = 0.0
+                        if _ra_mp > 0:
+                            _record_ip_ban_from_exc(f"banned until {int((time.time() + _ra_mp) * 1000)}")
                         logger.warning(f"[mark_price_rest_poll] HTTP {resp.status} (rate-limited) — backoff to {backoff:.0f}s")
                     else:
                         consecutive_fail += 1

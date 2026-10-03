@@ -195,6 +195,14 @@ def _load_unwired():
         print(f"[unwired] load failed ({_ue}) — evaluating everything", flush=True)
         return frozenset(), frozenset()
 UNWIRED_SWITCHES, UNWIRED_FILTERS = _load_unwired()
+def _unwired_audit_id():
+    try:
+        _p = ROOT / "data" / "vec_unwired.json"
+        _st = _p.stat()
+        return f"{int(_st.st_mtime)}:{int(_st.st_size)}"
+    except Exception:
+        return "none"
+_UNWIRED_AUDIT_ID = _unwired_audit_id()
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -1439,26 +1447,55 @@ def _qualifies_30d(v, bh):
     return (len(r) == 0, r)
 
 
+def _npz_path(symside):
+    """Resolve the symside's NPZ file (S1 sandbox first, then local). None if missing."""
+    try:
+        sym = symside.rsplit("_", 1)[0] if symside.rsplit("_", 1)[-1] in ("LONG", "SHORT") else symside
+        for _p in (Path("/home/niels/binance-sandbox/backtest_v8/indicators") / f"{sym}.npz", Path(ROOT) / "backtest_v8" / "indicators" / f"{sym}.npz"):
+            if _p.exists():
+                return _p
+    except Exception:
+        pass
+    return None
+
+
 def _npz_span_days(symside):
     """Available-history span in days for the symside's NPZ (timestamps peek, mmap). None if unreadable."""
     try:
         import numpy as _np
-        sym = symside.rsplit("_", 1)[0] if symside.rsplit("_", 1)[-1] in ("LONG", "SHORT") else symside
-        cands = [Path("/home/niels/binance-sandbox/backtest_v8/indicators") / f"{sym}.npz", Path(ROOT) / "backtest_v8" / "indicators" / f"{sym}.npz"]
-        for _p in cands:
-            if _p.exists():
-                with _np.load(str(_p), mmap_mode="r") as _d:
-                    if "timestamps" not in _d.files:
-                        return None
-                    _t = _np.asarray(_d["timestamps"], dtype=float).ravel()
-                if len(_t) < 2:
-                    return None
-                if _t[-1] > 1e11:
-                    _t = _t / 1000
-                return float((_t[-1] - _t[0]) / 86400)
+        _p = _npz_path(symside)
+        if _p is None:
+            return None
+        with _np.load(str(_p), mmap_mode="r") as _d:
+            if "timestamps" not in _d.files:
+                return None
+            _t = _np.asarray(_d["timestamps"], dtype=float).ravel()
+        if len(_t) < 2:
+            return None
+        if _t[-1] > 1e11:
+            _t = _t / 1000
+        return float((_t[-1] - _t[0]) / 86400)
     except Exception:
         pass
     return None
+
+
+def _md5_file(path, chunk=1 << 20) -> str | None:
+    """md5 hex of a file, streamed. None on failure."""
+    try:
+        import hashlib as _hl
+        h = _hl.md5()
+        with open(str(path), "rb") as _f:
+            for _b in iter(lambda: _f.read(chunk), b""):
+                h.update(_b)
+        return h.hexdigest()
+    except Exception:
+        return None
+
+
+def _build_publish_manifest(symside, final_name, metrics, counts, overrides_md5, file_md5, npz_name, npz_md5, span_days, pilot_md5, template_name, host) -> dict:
+    """USER 2026-10-03 (xlsx source-of-truth): every published xlsx ships a manifest sidecar binding the file (md5 + F/C/E counts) to its metrics, override set, NPZ data, and pilot code. tools/sheet_audit.py --verify re-checks all of it."""
+    return {"symside": symside, "final_name": final_name, "published_utc": utcnow(), "host": host, "metrics": {k: metrics.get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "valid", "invalid_reason", "bh")}, "counts": {"F": int(counts[0]), "C": int(counts[1]), "E": int(counts[2]), "done_n": int(counts[3])}, "overrides_md5": overrides_md5, "file_md5": file_md5, "npz_name": npz_name, "npz_md5": npz_md5, "span_days": span_days, "pilot_md5": pilot_md5, "template": template_name}
 
 
 def _qualifies_365d(v, span_days=None):
@@ -1478,6 +1515,21 @@ def _qualifies_365d(v, span_days=None):
     if g is None or g < 0:
         r.append(f"gain {g}")
     return (len(r) == 0, r)
+
+
+def _peer_rm_published(new_symside, host=None):
+    """USER 2026-10-03 (xlsx source-of-truth): best-effort removal of a symside's live published artifacts (bh/gain xlsx+html+manifest) on peer hosts when local truth is revoked (REDO re-fill, quarantine). Never touches .superseded/.stale history or working files. Warn-only."""
+    import socket as _s, subprocess as _sp
+    try:
+        _hq = _s.gethostname().lower()
+        _peers = (host,) if host else (("10.0.0.4", "10.0.0.5") if (_hq == "niels" or "10.0.0.3" in _hq) else ("10.0.0.3", "157.180.125.52"))
+        for _h in _peers:
+            try:
+                _sp.run(["bash", "-c", f"ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no niels@{_h} \"rm -f ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_bh*.xlsx ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_bh*.html ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/{new_symside}_bh*_manifest.json\""], timeout=30, capture_output=True)
+            except Exception:
+                continue
+    except Exception as _e:
+        print(f"[peer-rm-warn] {new_symside}: {_e}", flush=True)
 
 
 def _quarantine_impossible(new_symside, reasons, metrics, wb, wb_path, progress, progress_path, cumulative_overrides, repairs, carry_files=()):
@@ -1542,15 +1594,20 @@ def _quarantine_impossible(new_symside, reasons, metrics, wb, wb_path, progress,
     try:
         import socket as _sock_q, subprocess as _sp_q
         _hq = _sock_q.gethostname().lower()
-        if _hq != "niels" and "10.0.0.3" not in _hq:
-            for _host in ("10.0.0.3", "157.180.125.52"):
-                try:
+        _is_s1 = _hq == "niels" or "10.0.0.3" in _hq
+        _peers = ("10.0.0.4", "10.0.0.5") if _is_s1 else ("10.0.0.3", "157.180.125.52")
+        for _host in _peers:
+            try:
+                if not _is_s1:
                     _sp_q.run(["bash", "-c", f"rsync -az -e 'ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no' {qdir}/ niels@{_host}:~/binance-sandbox/SPREADSHEETS/V15_V16_IMPOSSIBLE/{qdir.name}/"], timeout=60, capture_output=True)
-                    _sp_q.run(["bash", "-c", f"rsync -az -e 'ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no' {progress_path} niels@{_host}:~/binance-sandbox/data/reports/lifecycle_pilot/"], timeout=30, capture_output=True)
-                    print(f"[quarantine-push] {new_symside} tombstone pushed to S1 via {_host}", flush=True)
+                _sp_q.run(["bash", "-c", f"rsync -az -e 'ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no' {progress_path} niels@{_host}:/home/niels/v15_run25_20261002/progress/"], timeout=30, capture_output=True)
+                _sp_q.run(["bash", "-c", f"rsync -az -e 'ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no' {progress_path} niels@{_host}:~/binance-sandbox/data/reports/lifecycle_pilot/"], timeout=30, capture_output=True)
+                _peer_rm_published(new_symside, _host)
+                print(f"[quarantine-push] {new_symside} tombstone+peer-cleanup via {_host}", flush=True)
+                if not _is_s1:
                     break
-                except Exception:
-                    continue
+            except Exception:
+                continue
     except Exception as _qe:
         print(f"[quarantine-push-warn] {_qe}", flush=True)
     return str(qdir)
@@ -2317,6 +2374,19 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     def _ps_count(_tab, _bucket, _computed, _what="row"):
         e = _ps_counts.setdefault(f"{_tab}|{_what}|{_bucket}", [0, 0])
         e[0 if _computed else 1] += 1
+    # USER 2026-10-03 hollow-fix: every done-record carries the policy state it was measured under
+    try:
+        from tools.v15_row_guards import policy_stamp as _policy_stamp_fn
+    except Exception:
+        _policy_stamp_fn = None
+    def _policy_stamp(sname: str) -> dict:
+        try:
+            _tl_on = bool(tab_level_filters(_ps_cat, sname))
+        except Exception:
+            _tl_on = False
+        if _policy_stamp_fn is not None:
+            return _policy_stamp_fn(_ps_on, _tl_on, _UNWIRED_AUDIT_ID)
+        return {"ps": 1 if _ps_on else 0, "tl": 1 if _tl_on else 0, "uw": _UNWIRED_AUDIT_ID, "pilot": "hollowfix-20261003"}
     if _ps_on and not _ps_json:
         print(f"[POSSYM] sampling ON for round {_ps_round} but no n_sym source (data/avg_delta_pos_sym.json for {_ps_cat}) — rows without a template N_SYM column are always calculated", flush=True)
     elif _ps_on:
@@ -2347,25 +2417,21 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             # USER 2026-09-30: grey / DEAD_VEC / LIVE_ONLY rows are calculated like every other row (real engine deltas);
             # DEAD_VEC / LIVE_ONLY promotion stays blocked by promotion_block_reason
             # USER 2026-09-30: a cell is YELLOW iff the row's switch name and the column's filter name share >= 2 "_"-tokens
-            # (interim rule until the yellow-map rebuild) — decided from the NAMES, never from a cloned fill, and the row is
-            # repainted to match (sheets cloned from older templates carried misaligned yellows)
+            # (interim rule until the yellow-map rebuild) — decided from the NAMES, never from a cloned fill.
+            # USER 2026-10-03 hollow-fix: paint is written ONLY together with a calculated value (yellow write
+            # path) or RED with a failure reason — NEVER pre-painted here. Pre-painting changed cell colours
+            # for rows/cells that were then policy-skipped (0 evals): colour without calculation. Previously
+            # calculated values are never cleared here either (that destroyed real deltas without a new calc).
             _sw_tok = {t for t in str(switch).upper().split("_") if t}
-            _row_bg = PatternFill(fill_type=None)  # USER 2026-09-30: ONLY column A carries the orange row colour
             _tab_level = tab_level_filters(map_key_for_symside(new_symside), sname)
+            _ever_y = ever_yellow_cells(map_key_for_symside(new_symside))
             for hdr, col in header_maps[sname].items():
-                _c = ws.cell(row=rr, column=col)
-                _is_y = _c.fill is not None and _c.fill.fill_type == "solid" and str(_c.fill.fgColor.rgb or "").upper().endswith("FFFF00")
-                _want = len(_sw_tok & {t for t in hdr.split("=", 1)[0].upper().split("_") if t}) >= YELLOW_MIN_SHARED_TOKENS or f"{sname}\t{str(switch).strip()}={str(cand).strip()}\t{hdr}" in ever_yellow_cells(map_key_for_symside(new_symside))
-                if _want and not _is_y:
-                    _c.fill = PatternFill(start_color="FFFFFF00", end_color="FFFFFF00", fill_type="solid")
-                elif _is_y and not _want:
-                    _c.fill = _row_bg
-                    if isinstance(_c.value, (int, float)):
-                        _c.value = None  # a delta written under an old, wrong yellow assignment
-                # USER 2026-09-30: EVERY filter column after AVG_DELTA/POS_SYM is calculated for this row (running set +
-                # switch=cand + that one filter); yellow stays the visual name-match marker only
+                _want = len(_sw_tok & {t for t in hdr.split("=", 1)[0].upper().split("_") if t}) >= YELLOW_MIN_SHARED_TOKENS or f"{sname}\t{str(switch).strip()}={str(cand).strip()}\t{hdr}" in _ever_y
                 if hdr.split("=", 1)[0].strip() in _tab_level:
-                    continue  # tab-level filter: tested once as an orange row of this tab, never per switch row (cell keeps its status)
+                    if _want:
+                        info["yellow"].add(hdr)
+                        info.setdefault("excluded_tab_level", []).append(hdr)
+                    continue  # tab-level filter: tested once as an orange row of this tab, never per switch row
                 if _want:
                     info["yellow"].add(hdr)
                 elif os.environ.get("V15_ALL_FILTER_COLS", "0") != "1":
@@ -2374,6 +2440,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 if filt.strip() not in known_config_fields():
                     continue
                 if filt.strip() in UNWIRED_FILTERS or filt.strip() in UNWIRED_SWITCHES:
+                    info.setdefault("excluded_unwired", []).append(hdr)
                     continue  # not wired in the vectorized engine: no calculation, no fake 0
                 _fok, _fwhy = _cand_compatible(filt.strip(), _parse_opt_value(opt.strip(), defaults.get(filt.strip())), defaults)
                 if not _fok:
@@ -2613,7 +2680,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             g.value = st.get("g")
             g.font = Font(name="Arial", size=10, bold=False, italic=st.get("g") is None, color="808080")
             g.alignment = VISUAL_ALIGN
-            progress.setdefault("done", {})[key] = {"delta": st.get("g"), "promoted": False, "reason": st["reason"], "vec_gain": None, "trades": None, "yellows": {}, "cumulative_before": cumulative_before, "cumulative_after": cumulative_before, "npz": _run_npz_short, "complete": True}
+            _skip_is_policy = str(st["reason"]).startswith("SKIPPED")
+            progress.setdefault("done", {})[key] = {"delta": st.get("g"), "promoted": False, "reason": st["reason"], "vec_gain": None, "trades": None, "yellows": {}, "cumulative_before": cumulative_before, "cumulative_after": cumulative_before, "npz": _run_npz_short, "policy": _policy_stamp(sname), "complete": (not _skip_is_policy)}
+            if _skip_is_policy:
+                print(f"[POLICY-SKIP-PENDING] {sname}!{rr} {switch}={cand} {st['reason'][:60]} — 0 evals, row stays pending (RULE#3 refuses publish until refilled)", flush=True)
             if st["reason"].startswith(("DEAD_VEC", "LIVE_ONLY")):
                 _flag_to_md(flags_md, sname, rr, switch, cand, st["reason"], 0.0, 0.0, cumulative_before)
             progress["cumulative_gain"] = float(cumulative_gain)
@@ -2847,7 +2917,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 pass
         progress["cumulative_gain"] = float(cumulative_gain)
         div = _write_div(sname, rr, [row_gain])
-        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", ""), "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "complete": (not missing_yellows and (is_running or naked_delta is not None or reasons.get("naked") == "ZERO_TRADES"))}
+        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", ""), "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "complete": (not missing_yellows and not (st.get("sampled_filters") or []) and not (st.get("excluded_tab_level") or []) and (is_running or naked_delta is not None or reasons.get("naked") == "ZERO_TRADES"))}
+        if st.get("sampled_filters") or st.get("excluded_tab_level"):
+            print(f"[POLICY-CELLS-PENDING] {sname}!{rr} {switch}={cand} sampled={len(st.get('sampled_filters') or [])} tablevel={len(st.get('excluded_tab_level') or [])} — yellows uncalculated, row stays pending (RULE#3 refuses publish until refilled)", flush=True)
         _maybe_write_json(force=promote)
         _row_done(sname, rr, switch, cand, n_items + (1 if pos_hdrs else 0), row_delta, promote)
         _touch(f"cell {sname}!{rr} delta={row_delta}")
@@ -3073,6 +3145,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 progress.pop("final_path", None)
                 _maybe_write_json(force=True)
                 print(f"[REDO] {new_symside} scheduling re-fill from repaired set (depth {_depth + 1}): {_redo_base[2]}", flush=True)
+                _peer_rm_published(new_symside)
             else:
                 _impossible = True
                 progress["not_compliant"] = "; ".join(_qual_reasons) if _qual_reasons else "unknown"
@@ -3102,17 +3175,32 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     progress.pop("final_path", None)
                     _maybe_write_json(force=True)
                     print(f"[REDO] {new_symside} scheduling re-fill for content (depth {_depth + 1})", flush=True)
+                    _peer_rm_published(new_symside)
                 else:
                     _impossible = True
                     progress["not_compliant"] = _cg
                     _maybe_write_json(force=True)
             # USER 2026-10-03 RULE#3: rows with uncalculated yellows refuse publish (REDO re-fills them).
+            # Hollow-fix: the full hollow scan (policy skips, sampled cells, tab-level era, incomplete) —
+            # complete=False alone missed policy-skipped rows marked complete by older code.
             try:
-                _incomplete = _incomplete_rows(progress.get("done", {})) if _incomplete_rows is not None else []
+                from tools.v15_row_guards import scan_board_for_hollow as _scan_hollow_done
+                _tl_spec_done = {}
+                try:
+                    _tl_spec_done = json.loads((ROOT / "data" / "wiring" / "tab_filters" / "tab_level_filters.json").read_text())
+                except Exception:
+                    pass
+                _hol_done = _scan_hollow_done(progress.get("done", {}), map_key_for_symside(new_symside), _tl_spec_done, assume_tablevel_on=True)
+                _incomplete = _hol_done.get("drop", [])
+                if _incomplete:
+                    print(f"[COMPLETENESS-SCAN] {new_symside} hollow tally={_hol_done.get('tally', {})}", flush=True)
             except Exception:
-                _incomplete = []
+                try:
+                    _incomplete = _incomplete_rows(progress.get("done", {})) if _incomplete_rows is not None else []
+                except Exception:
+                    _incomplete = []
             if _incomplete:
-                _cg3 = f"RULE#3: {len(_incomplete)} rows with uncalculated yellows — refusing publish"
+                _cg3 = f"RULE#3: {len(_incomplete)} hollow/incomplete rows with uncalculated yellows — refusing publish"
                 print(f"[COMPLETENESS-GATE] {new_symside} {_cg3}: {(_incomplete[:5])}", flush=True)
                 _compliant = False
                 _qual_reasons = [_cg3]
@@ -3177,12 +3265,48 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             for _oldh in OUT_DIR.glob(f"{new_symside}_bh*_30d_matrix.html"):
                 if _oldh.name != _final_name.replace(".xlsx", ".html"):
                     _oldh.rename(OUT_DIR / (_oldh.name + ".superseded"))
-            _sh_pub.copy2(wb_path, _final_path)
+            for _oldm in OUT_DIR.glob(f"{new_symside}_bh*_manifest.json"):
+                if _oldm.name != _final_name.replace(".xlsx", "_manifest.json"):
+                    _oldm.rename(OUT_DIR / (_oldm.name + ".superseded"))
+            _atomic_copy(wb_path, _final_path)
             progress["final_gain"] = float(final_gain)
             progress["bh"] = _bh_raw
             progress["final_trades"] = int(_final_trades)
             progress["final_path"] = str(_final_path)
             _maybe_write_json(force=True)
+            try:
+                _mf = _mc = _me = 0
+                for _mws in wb.worksheets:
+                    if _mws.title not in SWITCH_SHEETS:
+                        continue
+                    for _mr in range(3, _mws.max_row + 1):
+                        if isinstance(_mws.cell(_mr, 6).value, (int, float)):
+                            _mf += 1
+                        if _mws.cell(_mr, 3).value not in (None, ""):
+                            _mc += 1
+                        if isinstance(_mws.cell(_mr, 5).value, (int, float)):
+                            _me += 1
+                import hashlib as _hl_m, socket as _sock_m
+                _ovm = _hl_m.md5(json.dumps(cumulative_overrides, sort_keys=True, default=str).encode()).hexdigest()
+                _npp = _npz_path(new_symside)
+                _man = _build_publish_manifest(new_symside, _final_name, {**(_fresh_final or {}), "bh": _bh_raw}, (_mf, _mc, _me, len(progress.get("done", {}))), _ovm, _md5_file(_final_path), _npp.name if _npp else None, _md5_file(_npp) if _npp else None, _npz_span_days(new_symside), _md5_file(Path(__file__)), Path(args.template).name if args.template else None, _sock_m.gethostname())
+                _man_p = OUT_DIR / (_final_name.replace(".xlsx", "_manifest.json"))
+                _man_t = str(_man_p) + ".tmp"
+                _man_p.parent.mkdir(parents=True, exist_ok=True)
+                with open(_man_t, "w") as _mfh:
+                    json.dump(_man, _mfh, indent=1, default=str)
+                import os as _os_m
+                _os_m.replace(_man_t, str(_man_p))
+                print(f"[MANIFEST] {new_symside} -> {_man_p.name} F={_mf} C={_mc} E={_me} md5={(_man['file_md5'] or '?')[:12]}", flush=True)
+            except Exception as _man_e:
+                try:
+                    _final_path.unlink(missing_ok=True)
+                except Exception:
+                    pass
+                if os.environ.get("V15_MANIFEST_STRICT", "1") == "1":
+                    raise RuntimeError(f"manifest failed, publish revoked: {_man_e}")
+                print(f"[manifest-warn] {new_symside}: {_man_e} — xlsx re-copied without manifest (STRICT=0)", flush=True)
+                _atomic_copy(wb_path, _final_path)
             print(f"[PUBLISH] {new_symside} -> {_final_name} (fresh-verified vec; live H/I follow if verify succeeds)", flush=True)
             try:
                 from tools.opt.hires_chart import generate_hires as _gh_pub
@@ -3338,6 +3462,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     progress.pop("final_path", None)
                     _maybe_write_json(force=True)
                     print(f"[REDO] {new_symside} 365D-driven re-fill scheduled (depth {_depth365 + 1})", flush=True)
+                    _peer_rm_published(new_symside)
                     try:
                         wb.close()
                     except Exception:
@@ -3450,6 +3575,50 @@ def _atomic_save(wb, wb_path: Path):
         import time as _t_r
         _t_r.sleep(1.0 + _att)
     return
+
+
+def _validate_xlsx_tmp(tmp: str, label: str):
+    """Shared xlsx validation: >=10 zip entries + CRC-32 read of each. Raises on failure."""
+    import zipfile as _zf_v
+    _z = _zf_v.ZipFile(tmp, 'r')
+    try:
+        _namelist = _z.namelist()
+        if len(_namelist) < 10:
+            raise RuntimeError(f"tmp zip has only {len(_namelist)} entries, expected >=10")
+        for _entry in _namelist:
+            try:
+                _z.getinfo(_entry)
+                _z.read(_entry)
+            except Exception as _e_crc:
+                raise RuntimeError(f"CRC-32 fail on {_entry}: {_e_crc}")
+    finally:
+        try:
+            _z.close()
+        except Exception:
+            pass
+
+
+def _atomic_copy(src: Path, dst: Path):
+    """USER 2026-10-03 (xlsx source-of-truth): publish copies must never tear. copy2 to pid-tmp, full xlsx validation, fsync, os.replace. Raises on failure (caller treats as publish failure, never a partial file)."""
+    import os as _os, shutil as _sh
+    _os.makedirs(str(dst.parent), exist_ok=True)
+    tmp = f"{dst}.{_os.getpid()}.copytmp"
+    _sh.copy2(str(src), tmp)
+    try:
+        _validate_xlsx_tmp(tmp, dst.name)
+    except Exception:
+        try:
+            _os.unlink(tmp)
+        except Exception:
+            pass
+        raise
+    try:
+        fd = _os.open(tmp, _os.O_RDONLY)
+        _os.fsync(fd)
+        _os.close(fd)
+    except Exception:
+        pass
+    _os.replace(tmp, str(dst))
 
 
 def _atomic_save_once(wb, wb_path: Path):
@@ -5447,11 +5616,13 @@ def main():
     except Exception:
         _run_npz_id = None
         _run_npz_short = "npz?"
+    _board_reset = False
     try:
         progress = json.loads(progress_path.read_text())
         # USER 2026-10-02 (finish qualification REDO): a scheduled re-fill starts CLEAN — archive the stale board
         # (rows were measured vs the old chain) and re-fill every row from the repaired baseline.
         if progress.get("needs_redo") and progress.get("verdict") != "IMPOSSIBLE":
+            _board_reset = True
             _nr3 = progress.pop("needs_redo")
             try:
                 progress.setdefault("redo_history", []).append({"depth": _nr3.get("depth"), "reason": _nr3.get("reason"), "result": _nr3.get("result"), "archived_done_n": len(progress.get("done", {})), "archived_cum": progress.get("cumulative_gain")})
@@ -5479,6 +5650,7 @@ def main():
                 except Exception:
                     pass
                 progress["done"] = {}
+                _board_reset = True
                 for _rk in ("final_gain", "final_path", "not_compliant", "cumulative_gain", "cumulative_overrides", "hustler_best_gain", "hustler_overrides", "final_365d", "repair_365d", "confirmed_365d"):
                     progress.pop(_rk, None)
                 print(f"[NPZ-CHANGED-REFILL] {new_symside} NPZ changed since board was measured — board archived, re-filling every row on the new NPZ", flush=True)
@@ -5486,6 +5658,36 @@ def main():
                 progress["npz_id"] = _run_npz_id
         except Exception as _npz_e:
             print(f"[npz-guard-warn] {new_symside}: {_npz_e}", flush=True)
+        # USER 2026-10-03 hollow-fix: boards containing policy-hollow rows (sampling/tab-level era: 0 evals
+        # yet marked done) are rebuilt from scratch via needs_redo — mid-board holes cannot be spliced honestly
+        # (positional baselines), so this launch only schedules the rebuild and exits for herd relaunch.
+        try:
+            from tools.v15_row_guards import scan_board_for_hollow as _scan_hollow_load
+            _tl_spec_load = {}
+            try:
+                _tl_spec_load = json.loads((Path(__file__).resolve().parent / "data" / "wiring" / "tab_filters" / "tab_level_filters.json").read_text())
+            except Exception:
+                pass
+            _hol_load = _scan_hollow_load(progress.get("done", {}), map_key_for_symside(new_symside), _tl_spec_load, assume_tablevel_on=True)
+            _hol_drop = _hol_load.get("drop", [])
+            if _hol_drop and progress.get("verdict") != "IMPOSSIBLE":
+                _ts0 = __import__("time").strftime("%Y%m%d%H%M%S", __import__("time").gmtime())
+                try:
+                    (progress_path.parent / (progress_path.name + f".hollowprev_{_ts0}.json")).write_text(json.dumps(progress))
+                except Exception:
+                    pass
+                _d0 = int(progress.get("redo_depth", 0)) + 1
+                progress["needs_redo"] = {"overrides": dict(progress.get("cumulative_overrides") or {}), "result": {"gain_pct": progress.get("cumulative_gain")}, "depth": _d0, "reason": f"hollow-refill: {len(_hol_drop)}/{_hol_load.get('total', 0)} rows with uncalculated yellows {dict(_hol_load.get('tally', {}))} — re-fill every row"}
+                for _rk in ("final_gain", "final_path", "not_compliant"):
+                    progress.pop(_rk, None)
+                try:
+                    _atomic_write_json(progress_path, progress)
+                except Exception:
+                    progress_path.write_text(json.dumps(progress))
+                print(f"[HOLLOW-REDO] {new_symside} {len(_hol_drop)} hollow rows {dict(_hol_load.get('tally', {}))} — board archived (.hollowprev), rebuild scheduled (depth {_d0}), exiting for herd relaunch", flush=True)
+                return
+        except Exception as _hol_e:
+            print(f"[hollow-scan-warn] {new_symside}: {_hol_e} — continuing without hollow rebuild (DONE gate re-scans)", flush=True)
         # FIX 2026-09-20: NEVER deteriorate vs BEST baseline — cumulative must be max of stored, baseline, and hustler_best
         # Prevents IBM_LONG repeat where S1 recomputes lower gain than BEST (just leave settings as is = 0 delta, never negative)
         try:
@@ -5517,7 +5719,11 @@ def main():
                                 progress[_tk] = _s1_data[_tk]
                         print(f"[respect-s1] adopted IMPOSSIBLE verdict for {new_symside} from S1 — will skip", flush=True)
                     # respect S1's better cumulative and hustler if newer/better
-                    if float(_s1_data.get("cumulative_gain", 0)) > float(progress.get("cumulative_gain", 0)):
+                    # USER 2026-10-03 hollow-fix: a board cleared for re-fill (REDO/NPZ/hollow reset) must NOT
+                    # resurrect old-board rows — re-fill means every row, otherwise holes splice dishonestly.
+                    if _board_reset:
+                        print(f"[respect-s1] board was reset for re-fill — skipping S1 adopt/merge for {new_symside}", flush=True)
+                    elif float(_s1_data.get("cumulative_gain", 0)) > float(progress.get("cumulative_gain", 0)):
                         print(f"[respect-s1] S1 progress {progress_path.name} cum {progress.get('cumulative_gain')} -> S1 { _s1_data.get('cumulative_gain'):.2f} — respect", flush=True)
                         progress = _s1_data
                     elif len(_s1_data.get("done", {})) > len(progress.get("done", {})):
@@ -5538,7 +5744,8 @@ def main():
                 except Exception as _se:
                     print(f"[respect-s1-warn] {_se}", flush=True)
             # also try scp from S1 if local s3/s5 path is empty
-            if not progress.get("done") and progress_path.exists():
+            # USER 2026-10-03 hollow-fix: never after a reset (see above).
+            if not progress.get("done") and progress_path.exists() and not _board_reset:
                 try:
                     import subprocess as _sp
                     _sp.run(["scp", "-o", "StrictHostKeyChecking=no", f"niels@157.90.168.35:/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{progress_path.name}", str(progress_path)], capture_output=True, timeout=5)

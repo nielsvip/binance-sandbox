@@ -4701,5 +4701,32 @@
     ],
     "timestamp": "2026-10-03T03:05:38.218261+00:00",
     "price": 0.02339
+  },
+  {
+    "symbol": "RAYSOLUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 18.9x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-03T03:56:23.358973+00:00",
+    "price": 1.96544428
+  },
+  {
+    "symbol": "AXSUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 20.0x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-03T03:57:30.871363+00:00",
+    "price": 1.2766
+  },
+  {
+    "symbol": "ZECUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.2x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-03T03:57:30.871363+00:00",
+    "price": 1322.35832154
   }
 ]
