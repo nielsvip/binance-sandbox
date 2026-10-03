@@ -2553,6 +2553,17 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     # USER 2026-09-30: E3 of EVERY tab = the running baseline when that tab starts; any later E only after a POSITIVE row
     # (E_next = E + G). Resumed sheets: each tab's first row gets the baseline it was measured against.
     _done0 = progress.get("done", {})
+    # USER 2026-10-03 RULE#4: this run's NPZ identity (resume-refill already enforced by the caller; rows stamp it)
+    try:
+        from tools.v15_row_guards import incomplete_rows as _incomplete_rows
+        from tools.v15_row_guards import npz_identity_for_symside as _npz_id_s
+        from tools.v15_row_guards import short_npz_id as _short_npz_s
+        _run_npz_id = progress.get("npz_id") or _npz_id_s(new_symside)
+        _run_npz_short = _short_npz_s(_run_npz_id)
+        if progress.get("npz_id") is None and _run_npz_id is not None:
+            progress["npz_id"] = _run_npz_id
+    except Exception:
+        _run_npz_id, _run_npz_short, _incomplete_rows = None, "npz?", None
     _tab_first = {s: per_tab_rows[s][0] for s in tabs if per_tab_rows.get(s)}
     for _s, (_r0, _sw0, _c0) in _tab_first.items():
         _rec0 = _done0.get(f"{_s}!{_r0}:{_sw0}={_c0}")
@@ -2602,7 +2613,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             g.value = st.get("g")
             g.font = Font(name="Arial", size=10, bold=False, italic=st.get("g") is None, color="808080")
             g.alignment = VISUAL_ALIGN
-            progress.setdefault("done", {})[key] = {"delta": st.get("g"), "promoted": False, "reason": st["reason"], "vec_gain": None, "trades": None, "yellows": {}, "cumulative_before": cumulative_before, "cumulative_after": cumulative_before}
+            progress.setdefault("done", {})[key] = {"delta": st.get("g"), "promoted": False, "reason": st["reason"], "vec_gain": None, "trades": None, "yellows": {}, "cumulative_before": cumulative_before, "cumulative_after": cumulative_before, "npz": _run_npz_short, "complete": True}
             if st["reason"].startswith(("DEAD_VEC", "LIVE_ONLY")):
                 _flag_to_md(flags_md, sname, rr, switch, cand, st["reason"], 0.0, 0.0, cumulative_before)
             progress["cumulative_gain"] = float(cumulative_gain)
@@ -2636,6 +2647,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _red_retry.append({"sheet": sname, "row": rr, "col": cols["G"], "label": "naked", "ov": switch_variant, "cum_before": cumulative_before, "key": key})
                 _zr_log({"kind": "RED", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": "F/G", "reason": nerr, "cum_before": cumulative_before})
         yellows, promotable, noop_yellows = {}, {}, []
+        missing_yellows = []  # USER 2026-10-03 RULE#3: yellows with no verdict (timeout/err) — row stays incomplete
         yellow_dups: dict = {}
         _run_ov = sanitize_overrides(dict(cumulative_overrides), defaults)[0]
         _ref_ck = _ck(_run_ov)
@@ -2655,6 +2667,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _zr_log({"kind": "ZERO_TRADES", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": hdr, "cum_before": cumulative_before})
                 continue
             if d is None:
+                missing_yellows.append(hdr)
                 _spec_mark_red(wb, sname, rr, col, reason=err or why)
                 print(f"[spec-stall] {sname}!{rr} {hdr} {err or why} -> RED, fill continues", flush=True)
                 _zr_log({"kind": "RED", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": hdr, "reason": err or why, "cum_before": cumulative_before})
@@ -2834,7 +2847,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 pass
         progress["cumulative_gain"] = float(cumulative_gain)
         div = _write_div(sname, rr, [row_gain])
-        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", ""), "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain)}
+        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", ""), "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "complete": (not missing_yellows and (is_running or naked_delta is not None or reasons.get("naked") == "ZERO_TRADES"))}
         _maybe_write_json(force=promote)
         _row_done(sname, rr, switch, cand, n_items + (1 if pos_hdrs else 0), row_delta, promote)
         _touch(f"cell {sname}!{rr} delta={row_delta}")
@@ -2863,6 +2876,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         rec.setdefault("red_fixed", {})[rc["label"]] = d
         if rc["label"] != "naked":
             rec.setdefault("yellows", {})[rc["label"]] = float(d)
+        try:
+            _ml = [m for m in (rec.get("missing_yellows") or []) if m != rc["label"]]
+            rec["missing_yellows"] = _ml
+            if not _ml and (rec.get("is_running") or rec.get("naked_delta") is not None or rc["label"] == "naked"):
+                rec["complete"] = True
+        except Exception:
+            pass
         print(f"[RED-RETRY] {rc['sheet']}!{rc['row']} {rc['label']} fixed delta={d:+.4f}{' (positive, NOT promoted: chain already passed this row)' if d > 1e-9 else ''}", flush=True)
     progress["red_retry"] = {"n": len(_red_retry), "timeout_s": _retry_s}
     try:
@@ -3085,6 +3105,26 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 else:
                     _impossible = True
                     progress["not_compliant"] = _cg
+                    _maybe_write_json(force=True)
+            # USER 2026-10-03 RULE#3: rows with uncalculated yellows refuse publish (REDO re-fills them).
+            try:
+                _incomplete = _incomplete_rows(progress.get("done", {})) if _incomplete_rows is not None else []
+            except Exception:
+                _incomplete = []
+            if _incomplete:
+                _cg3 = f"RULE#3: {len(_incomplete)} rows with uncalculated yellows — refusing publish"
+                print(f"[COMPLETENESS-GATE] {new_symside} {_cg3}: {(_incomplete[:5])}", flush=True)
+                _compliant = False
+                _qual_reasons = [_cg3]
+                _depth3 = int(progress.get("redo_depth", 0))
+                if _depth3 < QUAL_MAX_REDOS:
+                    progress["needs_redo"] = {"overrides": dict(cumulative_overrides), "result": {k: (_fresh_final or {}).get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "valid")}, "depth": _depth3 + 1, "reason": _cg3 + " — re-fill rows for the qualified set"}
+                    progress.pop("final_path", None)
+                    _maybe_write_json(force=True)
+                    print(f"[REDO] {new_symside} scheduling re-fill for completeness (depth {_depth3 + 1})", flush=True)
+                else:
+                    _impossible = True
+                    progress["not_compliant"] = _cg3
                     _maybe_write_json(force=True)
         if _impossible:
             _quarantine_impossible(new_symside, _qual_reasons, {"window": "30D", "gain_pct": (_fresh_final or {}).get("gain_pct"), "trades": (_fresh_final or {}).get("trades"), "tim_pct": (_fresh_final or {}).get("tim_pct"), "max_dd_pct": (_fresh_final or {}).get("max_dd_pct"), "valid": (_fresh_final or {}).get("valid"), "bh": float(bh or 0)}, wb, wb_path, progress, progress_path, cumulative_overrides, _qual_repairs)
