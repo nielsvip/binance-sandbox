@@ -1,6 +1,6 @@
-PERFORMANCE REPORT — 2026-10-03 17:58 UTC
+PERFORMANCE REPORT — 2026-10-03 18:58 UTC
 ================================================================================
-Total: 144 symbols | A=4 B=98 C=42
+Total: 145 symbols | A=4 B=99 C=42
 Window: 14 days | Min trades: 5
 
 --- TIER A (4 symbols) ---
@@ -9,12 +9,13 @@ Window: 14 days | Min trades: 5
              MSFT  WR=88%  avg=+0.64%  total=+17.3%  trades= 25  mult=10.00
              NVDA  WR=94%  avg=+0.80%  total=+14.5%  trades= 17  mult=10.00
 
---- TIER B (98 symbols) ---
+--- TIER B (99 symbols) ---
              AXTI  WR=56%  avg=+1.57%  total=+30.8%  trades= 18  mult=10.00
              LSCC  WR=100%  avg=+3.50%  total=+18.7%  trades=  5  mult=5.50
              INTC  WR=33%  avg=+0.80%  total=+15.1%  trades= 18  mult=3.17
              SMCI  WR=50%  avg=+1.52%  total=+12.6%  trades=  8  mult=4.60
                 A  WR=57%  avg=+0.45%  total=+10.6%  trades= 23  mult=5.19
+         MOVRUSDT  WR=100%  avg=+4.74%  total=+9.6%  trades=  2  mult=1.00
               CLS  WR=58%  avg=+0.79%  total=+9.6%  trades= 12  mult=5.11
           XLMUSDT  WR=45%  avg=+0.26%  total=+8.1%  trades= 31  mult=1.88
          DASHUSDT  WR=68%  avg=+0.17%  total=+6.5%  trades= 38  mult=5.45
@@ -41,7 +42,7 @@ Window: 14 days | Min trades: 5
           ARBUSDC  WR=55%  avg=+0.09%  total=+1.0%  trades= 11  mult=1.79
      1000LUNCUSDT  WR=100%  avg=+0.89%  total=+0.9%  trades=  1  mult=1.00
          AMATUSDT  WR=45%  avg=+0.08%  total=+0.9%  trades= 11  mult=0.94
-          STXUSDT  WR=71%  avg=+0.12%  total=+0.9%  trades=  7  mult=2.64
+          STXUSDT  WR=62%  avg=+0.11%  total=+0.9%  trades=  8  mult=2.19
          IOTAUSDT  WR=33%  avg=+0.09%  total=+0.8%  trades=  9  mult=0.68
          CRWDUSDT  WR=82%  avg=+0.06%  total=+0.7%  trades= 11  mult=4.39
         JASMYUSDT  WR=100%  avg=+0.34%  total=+0.7%  trades=  2  mult=1.00
@@ -74,7 +75,7 @@ Window: 14 days | Min trades: 5
         PENGUUSDC  WR=0%  avg=-0.00%  total=-0.0%  trades=  2  mult=1.00
              COHR  WR=50%  avg=-0.04%  total=-0.1%  trades=  2  mult=1.00
          QCOMUSDT  WR=33%  avg=-0.03%  total=-0.1%  trades=  3  mult=1.00
-          ADAUSDC  WR=54%  avg=+0.00%  total=-0.1%  trades= 37  mult=1.74
+          ADAUSDC  WR=56%  avg=+0.00%  total=-0.1%  trades= 36  mult=2.01
          LRCXUSDT  WR=0%  avg=-0.14%  total=-0.1%  trades=  1  mult=1.00
      1000BONKUSDC  WR=46%  avg=-0.01%  total=-0.2%  trades= 13  mult=0.82
               SMG  WR=0%  avg=-0.18%  total=-0.2%  trades=  1  mult=1.00
@@ -154,7 +155,7 @@ Window: 14 days | Min trades: 5
               APO  WR=5%  avg=-4.01%  total=-92.8%  trades= 64  mult=0.12
 
 SUMMARY:
-  Total PnL (all symbols): -585.2%
+  Total PnL (all symbols): -575.6%
   Avg win rate: 44%
   A-tier avg mult: 10.00
   C-tier avg mult: 0.31
