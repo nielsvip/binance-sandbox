@@ -309,6 +309,15 @@ def evaluate_month(symside: str, overrides: Mapping[str, Any], include_ledger: b
         "mode": mode,
         "tokenised": tokenised,
     })
+    try:
+        from v12_quick_engine import _base_safe as _mae_bs
+        _mae_n = int(window.get("bars") or window.get("execution_bars") or 0)
+        _mae_hi = _mae_bs(npz, "high", _mae_n, cfg) if _mae_n > 0 else []
+        _mae_lo = _mae_bs(npz, "low", _mae_n, cfg) if _mae_n > 0 else []
+        _mae_ts = npz.get("timestamps") if hasattr(npz, "get") else None
+        out["max_dd_mae_pct"] = E._wick_mae_dd_pct(ledger, _mae_hi, _mae_lo, _mae_ts, is_long, out.get("peak_capital"))
+    except Exception:
+        out["max_dd_mae_pct"] = None
     # Window-aware floor — must match evaluate_v12._validate (10 for 30D, 30 for 365D)
     # lifecycle previously used 2 → 30D ETH 16 trades valid in vector but invalid in v12 → DIFF
     wd = int(window_days)

@@ -2976,7 +2976,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _qual_t0 = _t_qual.monotonic()
                 _qual_deadline = _qual_t0 + QUAL_RETRY_TIMEOUT
                 _tpl_d = {k: defaults.get(k) for k in defaults}
-                _priors = _prior_final_sets(new_symside)[:2]
+                # USER 2026-10-03 §64: TEMPLATE_DEFAULTS mode never ingests previous tests — compliance round 2 runs without priors.
+                _priors = [] if os.environ.get("V15_TEMPLATE_DEFAULTS", "0") == "1" else _prior_final_sets(new_symside)[:2]
                 _bases_rounds = [[("final_set", dict(cumulative_overrides))],
                                  [("final_set", dict(cumulative_overrides)), ("template_defaults", dict(_tpl_d))],
                                  [("final_set", dict(cumulative_overrides)), ("template_defaults", dict(_tpl_d))] + [(f"prior_{i}", dict(ov)) for i, (src, ov) in enumerate(_priors) for _ in [0]][:2]]
@@ -3118,10 +3119,16 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         try:
             if not _compliant:
                 raise RuntimeError("not compliant — the sheet is not finished, no bh/gain publish")
-            def _fmt_bg(v):
-                return f"{v:.2f}".replace("-", "m").replace(".", "p")
+            # USER 2026-10-03 (final naming): filename gain is the ACTUAL fresh-verified final_gain as
+            # INTEGER percent; the fraction slot carries the trade count instead (gain6p_t66). BH keeps
+            # cents. final_gain here is already fresh-vec authoritative (final-fresh block above); the
+            # matching trade count comes from the same _fresh_final eval. Unknown trades -> refuse.
+            from tools.v15_final_naming import chart_name_for as _chart_name_for, final_matrix_name as _final_matrix_name
             _bh_raw = float(bh or 0)
-            _final_name = f"{new_symside}_bh{_fmt_bg(_bh_raw)}_gain{_fmt_bg(float(final_gain))}_30d_matrix.xlsx"
+            _final_trades = (_fresh_final or {}).get("trades")
+            if _final_trades is None:
+                raise RuntimeError("final trades unknown — refusing bh/gain publish (no-lies)")
+            _final_name = _final_matrix_name(new_symside, _bh_raw, float(final_gain), int(_final_trades), 30)
             _final_path = OUT_DIR / _final_name
             import shutil as _sh_pub
             for _old in OUT_DIR.glob(f"{new_symside}_bh*_30d_matrix.xlsx"):
@@ -3133,12 +3140,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _sh_pub.copy2(wb_path, _final_path)
             progress["final_gain"] = float(final_gain)
             progress["bh"] = _bh_raw
+            progress["final_trades"] = int(_final_trades)
             progress["final_path"] = str(_final_path)
             _maybe_write_json(force=True)
             print(f"[PUBLISH] {new_symside} -> {_final_name} (fresh-verified vec; live H/I follow if verify succeeds)", flush=True)
             try:
                 from tools.opt.hires_chart import generate_hires as _gh_pub
-                _pub_chart_name = _final_name.replace(".xlsx", ".html")
+                _pub_chart_name = _chart_name_for(_final_name)
                 _gh_pub(new_symside, dict(cumulative_overrides), int(args.window_days), out_name=_pub_chart_name)
                 _pub_chart_src = ROOT / "data" / "reports" / "charts_1Y" / _pub_chart_name
                 if _pub_chart_src.exists():
@@ -8026,13 +8034,18 @@ def main():
                 print(f"[365D-SAMPLE-WARN] 365D trades {_365_trades} <30 floor — diagnostic only, not for promotion", flush=True)
             # Create 365D xlsx with delta (clone template, write 365D metrics + Results_30d_Deltas equivalent)
             try:
-                # gain/bh in filename per user request (like 30D bh/gain: _bhm4p58_gain0p12_365d)
-                _bh_str = f"bh{'m' if _365_bh is not None and _365_bh<0 else ''}{abs(_365_bh):.2f}".replace('.','p') if _365_bh is not None else "bhnan"
-                _gain_str = f"gain{'m' if _365_gain is not None and _365_gain<0 else ''}{abs(_365_gain):.2f}".replace('.','p') if _365_gain is not None else "gainnan"
-                _365_target = OUT_DIR / f"{new_symside}_{_bh_str}_{_gain_str}_365d_matrix.xlsx"
+                # gain/bh in filename per user request (like 30D bh/gain); USER 2026-10-03: int-percent gain + _t{trades}
+                try:
+                    from tools.v15_final_naming import final_matrix_name as _final_matrix_name365
+                    _365_final_name = _final_matrix_name365(new_symside, _365_bh, _365_gain, _365_trades, 365)
+                except Exception:
+                    _bh_str = f"bh{'m' if _365_bh is not None and _365_bh<0 else ''}{abs(_365_bh):.2f}".replace('.','p') if _365_bh is not None else "bhnan"
+                    _gain_str = f"gain{'m' if _365_gain is not None and _365_gain<0 else ''}{abs(_365_gain):.2f}".replace('.','p') if _365_gain is not None else "gainnan"
+                    _365_final_name = f"{new_symside}_{_bh_str}_{_gain_str}_365d_matrix.xlsx"
+                _365_target = OUT_DIR / _365_final_name
                 if _365_target.exists():
                     _ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d%H%M%S")
-                    _365_target = OUT_DIR / f"{new_symside}_{_bh_str}_{_gain_str}_365d_matrix_{_ts}.xlsx"
+                    _365_target = OUT_DIR / (_365_final_name.replace(".xlsx", "") + f"_{_ts}.xlsx")
                 if not template.exists():
                     template = TEMPLATE
                 import shutil as _sh
