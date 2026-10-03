@@ -2377,8 +2377,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     # USER 2026-10-03 hollow-fix: every done-record carries the policy state it was measured under
     try:
         from tools.v15_row_guards import policy_stamp as _policy_stamp_fn
+        from tools.v15_row_guards import tried_settled as _tried_settled_fn
     except Exception:
         _policy_stamp_fn = None
+        _tried_settled_fn = None
     def _policy_stamp(sname: str) -> dict:
         try:
             _tl_on = bool(tab_level_filters(_ps_cat, sname))
@@ -2716,6 +2718,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _flag_to_md(flags_md, sname, rr, switch, cand, f"slow/failed naked: {nerr}", 0.0, 0.0, cumulative_before)
                 _red_retry.append({"sheet": sname, "row": rr, "col": cols["G"], "label": "naked", "ov": switch_variant, "cum_before": cumulative_before, "key": key})
                 _zr_log({"kind": "RED", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": "F/G", "reason": nerr, "cum_before": cumulative_before})
+        # USER 2026-10-03 hollow-fix: a deterministic engine verdict on naked (pre-eval rejection, invalid
+        # with reason — tried, answered, cached) SETTLES the row like ZERO_TRADES does. Only a missing
+        # verdict (timeout/exception) keeps the row pending. Short-circuit keeps nres/nerr safe.
+        _naked_verdict = (_tried_settled_fn(nres, nerr) if _tried_settled_fn is not None else (not nerr and nres is not None)) if not is_running else True
+        naked_settled = is_running or naked_delta is not None or reasons.get("naked") == "ZERO_TRADES" or _naked_verdict
         yellows, promotable, noop_yellows = {}, {}, []
         missing_yellows = []  # USER 2026-10-03 RULE#3: yellows with no verdict (timeout/err) — row stays incomplete
         yellow_dups: dict = {}
@@ -2736,7 +2743,20 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 ws.cell(row=rr, column=col).value = None
                 _zr_log({"kind": "ZERO_TRADES", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": hdr, "cum_before": cumulative_before})
                 continue
+            _settled_cell = _tried_settled_fn(res, err) if _tried_settled_fn is not None else (not err and res is not None)
+            if d is None and _settled_cell:
+                # USER 2026-10-03 hollow-fix: deterministic engine verdict (pre-eval rejection, invalid
+                # with reason) — SETTLED, never retried, never blocking publish. Backtest bible §56:
+                # INVALID <reason> in grey. Retrying a cached deterministic verdict is pointless.
+                _inv_cell = ws.cell(row=rr, column=col)
+                _inv_cell.value = f"INVALID {why}"[:80]
+                _inv_cell.font = Font(name="Arial", size=10, bold=False, italic=True, color="808080")
+                _inv_cell.alignment = VISUAL_ALIGN
+                _flag_to_md(flags_md, sname, rr, switch, cand, f"INVALID {hdr}: {why}", 0.0, 0.0, cumulative_before)
+                _zr_log({"kind": "INVALID", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": hdr, "reason": why, "cum_before": cumulative_before})
+                continue
             if d is None:
+                # No verdict (timeout/exception) — genuinely uncalculated, row stays pending.
                 missing_yellows.append(hdr)
                 _spec_mark_red(wb, sname, rr, col, reason=err or why)
                 print(f"[spec-stall] {sname}!{rr} {hdr} {err or why} -> RED, fill continues", flush=True)
@@ -2890,6 +2910,15 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             g.value = None
             f.value = None
             _zr_log({"kind": "ZERO_TRADES", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": "F/G", "cum_before": cumulative_before})
+        elif naked_settled:
+            # Deterministic engine verdict on naked (e.g. pre-eval rejection) — settled: blank + grey
+            # reason, logged, never RED, never retried. Only genuinely unresolved naked goes RED below.
+            g.value = None
+            g.font = Font(name="Arial", size=10, bold=False, italic=True, color="808080")
+            g.alignment = VISUAL_ALIGN
+            f.value = None
+            _flag_to_md(flags_md, sname, rr, switch, cand, f"INVALID naked: {reasons.get('naked', '')}", 0.0, 0.0, cumulative_before)
+            _zr_log({"kind": "INVALID", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": "F/G", "reason": reasons.get("naked", ""), "cum_before": cumulative_before})
         else:
             _spec_mark_red(wb, sname, rr, cols["G"], reason=reasons.get("naked", "no result"))
             f.value = None
@@ -2917,7 +2946,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 pass
         progress["cumulative_gain"] = float(cumulative_gain)
         div = _write_div(sname, rr, [row_gain])
-        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", ""), "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "complete": (not missing_yellows and not (st.get("sampled_filters") or []) and not (st.get("excluded_tab_level") or []) and (is_running or naked_delta is not None or reasons.get("naked") == "ZERO_TRADES"))}
+        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", ""), "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "complete": (not missing_yellows and not (st.get("sampled_filters") or []) and not (st.get("excluded_tab_level") or []) and naked_settled)}
         if st.get("sampled_filters") or st.get("excluded_tab_level"):
             print(f"[POLICY-CELLS-PENDING] {sname}!{rr} {switch}={cand} sampled={len(st.get('sampled_filters') or [])} tablevel={len(st.get('excluded_tab_level') or [])} — yellows uncalculated, row stays pending (RULE#3 refuses publish until refilled)", flush=True)
         _maybe_write_json(force=promote)
@@ -2935,7 +2964,19 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         d, ok, why = _delta_vs(res, rc["cum_before"])
         rec = progress.get("done", {}).get(rc["key"], {})
         if d is None:
-            print(f"[RED-RETRY] {rc['sheet']}!{rc['row']} {rc['label']} still failing ({err or why}) — stays RED", flush=True)
+            # USER 2026-10-03 hollow-fix: tried at 10s, retried at 120s, still no verdict — SETTLED per
+            # bible §5.7 (RED + reason + continue). Retrying identical stalls every REDO deadlocks
+            # publish without ever calculating; the RED cell + persisted reason is the honest record.
+            print(f"[RED-RETRY] {rc['sheet']}!{rc['row']} {rc['label']} still failing ({err or why}) — stays RED, settled (stall-persisted)", flush=True)
+            try:
+                _rr = str(rec.get("reason") or "")
+                if "stall-persisted" not in _rr:
+                    rec["reason"] = ((_rr + ";stall-persisted") if _rr else "stall-persisted")
+                # Settle only when nothing policy-untried remains — policy skips still block publish.
+                if isinstance(rec, dict) and rc["key"] in progress.get("done", {}) and not (rec.get("sampled_out_filters") or []) and not (rec.get("tab_level_excluded") or []) and not str(rec.get("reason") or "").startswith("SKIPPED"):
+                    rec["complete"] = True
+            except Exception:
+                pass
             continue
         _clear_red_fill(ws, rc["row"], rc["col"])
         cell = ws.cell(row=rc["row"], column=rc["col"])

@@ -71,6 +71,24 @@ def test_token_rule_twin():
     assert G.yellow_want_tokens("WT_LOWER_CROSS_EXIT_TF", "WT_CROSS_EXIT_APPLIES_TO_WINNERS") is True
 
 
+def test_tried_settled():
+    verdict = {"gain_pct": None, "valid": False, "invalid_reason": "override X=2.0 incompatible with bool field (rejected before eval)"}
+    assert G.tried_settled(verdict, "") is True
+    assert G.tried_settled({"gain_pct": 1.0, "valid": True}, "") is True
+    assert G.tried_settled(None, "TIMEOUT 10s") is False
+    assert G.tried_settled(None, "ERR boom") is False
+    assert G.tried_settled(None, "") is False
+
+
+def test_is_gate_casualty():
+    gate = {"verdict": "IMPOSSIBLE", "impossible_reasons": ["RULE#3: 4 hollow/incomplete rows with uncalculated yellows — refusing publish"]}
+    assert G.is_gate_casualty(gate) is True
+    strategy = {"verdict": "IMPOSSIBLE", "impossible_reasons": ["365D: invalid:DD 38.9% >30% (vomit)", "365D: gain -31.3"]}
+    assert G.is_gate_casualty(strategy) is False
+    assert G.is_gate_casualty({"verdict": None}) is False
+    assert G.is_gate_casualty(None) is False
+
+
 if __name__ == "__main__":
     for _n, _f in sorted([(k, v) for k, v in globals().items() if k.startswith("test_")]):
         _f()
