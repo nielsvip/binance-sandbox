@@ -1320,6 +1320,27 @@ def _switch_overrides(switch: str, cand_parsed) -> dict:
         return {}
     return COMPOSITE_SWITCHES[switch](cand_parsed) if switch in COMPOSITE_SWITCHES else {switch: cand_parsed}
 
+_QC_DEFAULT_INST = None
+
+
+def _config_default_of(field: str):
+    """Template lacks a bold default for this field — fall back to the config value for TYPING ONLY
+    (never as a value default). Closes the gap where orphans bypassed the type gate and died in the
+    engine with a truncated 'override ...' reason (USER 2026-10-03)."""
+    global _QC_DEFAULT_INST
+    try:
+        import config, config_tradier
+        for _o in (config.Config, config_tradier.TradierConfig):
+            if hasattr(_o, field):
+                return getattr(_o, field)
+        if _QC_DEFAULT_INST is None:
+            import v12_quick_engine as V
+            _QC_DEFAULT_INST = V.QuickConfig()
+        return getattr(_QC_DEFAULT_INST, field, None)
+    except Exception:
+        return None
+
+
 def _cand_compatible(field: str, cand_parsed, defaults: dict) -> tuple:
     """Type gate: a candidate the engine cannot consume must never be evaluated.
 
@@ -1514,6 +1535,14 @@ def _npz_mtime_ns(symside):
 def _soft_verdict_fresh(symside, prog) -> bool:
     """A NO_TRADES/BEST_EFFORT verdict clears itself when the NPZ is newer than the verdict stamp (re-run on fresh data, never on the same window)."""
     return not _stamp_is_stale((prog or {}).get("verdict_npz_mtime_ns"), _npz_mtime_ns(symside))
+
+
+def _board_calc_n(done) -> int:
+    """Calculated rows: real numeric deltas, excluding RUNNING_IDENTITY reference rows (USER 2026-10-03)."""
+    try:
+        return sum(1 for _v in (done or {}).values() if isinstance(_v, dict) and isinstance(_v.get("delta"), (int, float)) and not str(_v.get("reason") or "").startswith("RUNNING_IDENTITY"))
+    except Exception:
+        return 0
 
 
 def _board_has_retryable_holes(done) -> bool:
@@ -3037,7 +3066,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if choice is not None:
             row_delta = choice[0]
         elif is_running:
-            row_delta = None  # bold/running default without positive filters: nothing to calculate, VECTOR_DELTA stays blank
+            # USER 2026-10-03 (running-identity): candidate == running set -> delta is 0 by identity
+            # (same overrides + same NPZ = bit-identical gain). An explained value, never a fake: the
+            # RUNNING_IDENTITY reason keeps it out of zero-audit suspicion, promotion, and calc guards.
+            row_delta = 0.0
+            if not reasons.get("naked"):
+                reasons["naked"] = "RUNNING_IDENTITY: candidate == running set, delta 0 by identity (no eval needed)"
         else:
             row_delta = naked_delta
         promote = choice is not None
@@ -3089,7 +3123,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if "hustle" in results:
             _hd, _hok, _hwhy = _delta_vs(results["hustle"][0], initial_baseline)
             hustle_delta = _hd if _hok else None
-        if row_delta is not None:
+        _identity_zero = bool(is_running) and choice is None
+        if row_delta is not None and not _identity_zero:
             if _is_red_cell(ws.cell(row=rr, column=cols["G"])):
                 _clear_red_fill(ws, rr, cols["G"])
             _num_cell(ws, rr, cols["G"], row_delta, promote)
@@ -3106,7 +3141,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if abs(float(row_delta)) < 1e-12 and not is_running:
                 _zr_log({"kind": "ZERO", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": "G", "cum_before": cumulative_before})
         elif is_running:
-            g.value = None
+            # USER 2026-10-03 (running-identity): G gets the definitional 0.0; F stays blank
+            # (hustle vs the original baseline is not quoted for the running reference itself).
+            _num_cell(ws, rr, cols["G"], 0.0, False)
             f.value = None
         elif reasons.get("naked") == "ZERO_TRADES":
             g.value = None
@@ -3493,7 +3530,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _pool.shutdown(wait=False, cancel_futures=True)
                 return cumulative_gain, cumulative_overrides, progress
             _nm_ok, _nm_r = _nearmiss_30d(_fresh_final, bh)
-            _calc_n = sum(1 for _v in (progress.get("done") or {}).values() if isinstance(_v, dict) and _v.get("delta") is not None)
+            _calc_n = _board_calc_n(progress.get("done") or {})
             if (_qual_ok or _nm_ok) and _calc_n >= 1:
                 _impossible = False
                 _compliant = True

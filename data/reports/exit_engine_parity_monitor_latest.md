@@ -1,20 +1,20 @@
 # Exit-engine parity monitor
 
-generated: 2026-10-03T08:13:21.819028+00:00 · lookback: 48.0h
+generated: 2026-10-03T09:13:22.056173+00:00 · lookback: 48.0h
 
-**exit_engine rows in window: 4841** · last: 2026-10-03T08:13:01.134496+00:00
+**exit_engine rows in window: 4926** · last: 2026-10-03T09:13:04.545649+00:00
 
 ## 🔴 LEAKS (gate-disabled families that fired = illegal trades): 0
 - none — no gate-disabled family fired. ✅ parity holds for mapped exits.
 
-## ✅ GATE_ON (legitimately allowed live, has gate): 1551
-- GOLDEN_RULE: 1551
+## ✅ GATE_ON (legitimately allowed live, has gate): 1522
+- GOLDEN_RULE: 1522
 
-## ❔ UNMAPPED (no gate mapping — candidate good-paths to evaluate): 3290
--  2678  ALL_ALL_GREEN_DIRECT_CLOSE_winners_all
--   255  ALL_ALL_RED_DIRECT_CLOSE_losers_all_re
+## ❔ UNMAPPED (no gate mapping — candidate good-paths to evaluate): 3404
+-  2774  ALL_ALL_GREEN_DIRECT_CLOSE_winners_all
+-   247  ALL_ALL_RED_DIRECT_CLOSE_losers_all_re
 -   191  ALL_ALL_RED_DIRECT_OPEN_losers_all_red
--    53  DAYTRADE_TARGET_dc_15m_high_-0.10%_TAR
+-    79  DAYTRADE_TARGET_dc_15m_high_-0.10%_TAR
 -    46  DC_BREACH_REDUCE_UNHEDGED_LOW_15m_pric
 -    34  ALL_ALL_GREEN_DIRECT_OPEN_winners_all_
 -    12  RATIO_REDUCE_LONG_L100_S0_tgt75/25_bre
@@ -32,4 +32,4 @@ generated: 2026-10-03T08:13:21.819028+00:00 · lookback: 48.0h
 -     1  RATIO_CLOSE_LONG_L100_S0_tgt43/57_gain
 -     1  PPL_TP_gain1.54_URL2_50pct
 
-## actions in window: {'OPEN': 1778, 'CLOSE': 3034, 'REDUCE': 21, 'AUGMENT': 4, 'QUICK_REDUCE': 4}
+## actions in window: {'OPEN': 1749, 'CLOSE': 3148, 'REDUCE': 21, 'AUGMENT': 4, 'QUICK_REDUCE': 4}
