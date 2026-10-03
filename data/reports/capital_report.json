@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-03 02:09 UTC",
- "total_capital_usd": 25.17,
+ "generated_at": "2026-10-03 03:06 UTC",
+ "total_capital_usd": 318.89,
  "tier_capital": {
   "A": 0.0,
-  "B": 25.17,
+  "B": 318.89,
   "C": 0.0
  },
  "tier_count": {
@@ -12,19 +12,21 @@
   "C": 0
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "fin:ETHUSDT_LONG"
+ ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:QNTUSDT_LONG",
-   "symbol": "QNTUSDT",
-   "account": "ang",
-   "value_usd": 25.17,
-   "gain_pct": 0.929,
+   "pk": "fin:ETHUSDT_LONG",
+   "symbol": "ETHUSDT",
+   "account": "fin",
+   "value_usd": 318.89,
+   "gain_pct": -2.133,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 0.1,
-   "mark": 251.67
+   "amt": 0.119,
+   "mark": 2679.73605052
   }
  ]
 }

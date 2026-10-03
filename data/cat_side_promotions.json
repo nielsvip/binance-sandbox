@@ -96,12 +96,6 @@
    "tab": "REDUCE_PROFIT_LOCK",
    "kind": "promoted_switch"
   },
-  "WT_EXHAUST_EXIT_REQUIRE_GAIN": {
-   "value": "0.5",
-   "avg_delta": 0.7801,
-   "tab": "REDUCE_SIGNAL_RATER",
-   "kind": "promoted_switch"
-  },
   "EMA_9_21_FILTER_FILTER_TF": {
    "value": "15m",
    "avg_delta": 3.459306,
@@ -233,12 +227,6 @@
    "avg_delta": 0.068,
    "tab": "EXIT_VELOCITY",
    "at": "2026-10-02T18:19:34.055823Z"
-  },
-  "WT_4H_VEL_EXIT_REQUIRE_PROFIT": {
-   "value": "2.0",
-   "avg_delta": 2.746734,
-   "tab": "EXIT_VELOCITY",
-   "at": "2026-10-02T18:19:34.056075Z"
   },
   "HLR_REENTRY_MULT_D": {
    "value": "2.5",
@@ -970,18 +958,6 @@
    "tab": "EXIT_VELOCITY",
    "at": "2026-10-02T18:21:27.293843Z"
   },
-  "LEGACY_PROC_SINGLE_REENTRY": {
-   "value": "0.5",
-   "avg_delta": 3.518267,
-   "tab": "REENTRY_WINDOWED",
-   "at": "2026-10-02T18:21:30.332311Z"
-  },
-  "LEGACY_REENTRY_PSR_DC_BOUNCE": {
-   "value": "2.0",
-   "avg_delta": 0.691094,
-   "tab": "REENTRY_WINDOWED",
-   "at": "2026-10-02T18:21:30.332519Z"
-  },
   "REENTRY_SIZE_BREAKOUT_MULT": {
    "value": "0.5",
    "avg_delta": 3.356726,
@@ -1211,12 +1187,6 @@
    "avg_delta": 0.160627,
    "tab": "EXIT_STRUCTURAL",
    "at": "2026-10-02T18:22:26.221543Z"
-  },
-  "LOSS_TECHNICAL_EXIT_NO_STALE_BLOCK": {
-   "value": "2.0",
-   "avg_delta": 0.761265,
-   "tab": "EXIT_VELOCITY",
-   "at": "2026-10-02T18:22:30.721997Z"
   },
   "TREND_EXIT_SCORE_FLIP": {
    "value": "1.0",

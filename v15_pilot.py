@@ -5399,6 +5399,14 @@ def main():
             flags_md.unlink()
     except Exception:
         pass
+    # USER 2026-10-03 RULE#4: stamp the NPZ this run measures on — done rows are valid only on it
+    try:
+        from tools.v15_row_guards import npz_identity_for_symside as _npz_id0, short_npz_id as _short_npz0
+        _run_npz_id = _npz_id0(new_symside)
+        _run_npz_short = _short_npz0(_run_npz_id)
+    except Exception:
+        _run_npz_id = None
+        _run_npz_short = "npz?"
     try:
         progress = json.loads(progress_path.read_text())
         # USER 2026-10-02 (finish qualification REDO): a scheduled re-fill starts CLEAN — archive the stale board
@@ -5414,6 +5422,30 @@ def main():
             for _rk in ("final_gain", "final_path", "not_compliant", "cumulative_gain", "cumulative_overrides", "hustler_best_gain", "hustler_overrides", "final_365d", "repair_365d", "confirmed_365d"):
                 progress.pop(_rk, None)
             print(f"[REDO-RESET] {new_symside} board cleared for re-fill (depth {progress['redo_depth']})", flush=True)
+        # USER 2026-10-03 RULE#4: done rows are valid ONLY on the NPZ they were measured on. A changed
+        # NPZ invalidates the frozen board (archive + refill, never reuse) — a 0.00 delta on a changed
+        # NPZ is impossible, so reusing the old board would be a lie. Numbers stay intact in the archive.
+        try:
+            from tools.v15_row_guards import npz_changed as _npz_changed
+            _prev_npz_id = progress.get("npz_id")
+            if progress.get("done") and _npz_changed(_prev_npz_id, _run_npz_id):
+                _ts4 = __import__("time").strftime("%Y%m%d%H%M%S", __import__("time").gmtime())
+                try:
+                    (progress_path.parent / (progress_path.name + f".npzprev_{_ts4}.json")).write_text(json.dumps(progress))
+                except Exception:
+                    pass
+                try:
+                    progress.setdefault("npz_history", []).append({"prev": _prev_npz_id, "new": _run_npz_id, "archived_done_n": len(progress.get("done", {}))})
+                except Exception:
+                    pass
+                progress["done"] = {}
+                for _rk in ("final_gain", "final_path", "not_compliant", "cumulative_gain", "cumulative_overrides", "hustler_best_gain", "hustler_overrides", "final_365d", "repair_365d", "confirmed_365d"):
+                    progress.pop(_rk, None)
+                print(f"[NPZ-CHANGED-REFILL] {new_symside} NPZ changed since board was measured — board archived, re-filling every row on the new NPZ", flush=True)
+            if _run_npz_id is not None:
+                progress["npz_id"] = _run_npz_id
+        except Exception as _npz_e:
+            print(f"[npz-guard-warn] {new_symside}: {_npz_e}", flush=True)
         # FIX 2026-09-20: NEVER deteriorate vs BEST baseline — cumulative must be max of stored, baseline, and hustler_best
         # Prevents IBM_LONG repeat where S1 recomputes lower gain than BEST (just leave settings as is = 0 delta, never negative)
         try:
@@ -5426,7 +5458,7 @@ def main():
         except Exception:
             pass
     except Exception:
-        progress = {"symside": new_symside, "baseline_gain": baseline_gain, "bh": bh, "done": {}, "window_days": args.window_days}
+        progress = {"symside": new_symside, "baseline_gain": baseline_gain, "bh": bh, "done": {}, "window_days": args.window_days, "npz_id": _run_npz_id}
     # RESPECT s3/s5 shuffles and stdev: fetch latest progress from S1 peer if on s3/s5 to avoid overwriting better numbers
     try:
         import socket as _sock
@@ -5959,25 +5991,40 @@ def main():
             invalid_hdrs = []
             best = None
             vector_delta_val = None
+            # USER 2026-10-03 RULE#2/#3: pending_lbI holds ONLY genuinely evaluated deltas; settled-invalid
+            # (floor/vomit verdict) counts as calculated, timeouts/errors stay pending (never 0.0).
+            from tools.v15_row_guards import invalid_settled as _inv_settled, is_real_number as _is_real, mark_unevaluated as _mark_red, yellows_complete as _y_complete, zero_audit_line as _zero_audit
+            evaluated_hdrs = set()
+            unsettled_hdrs = []
             for idx, (variant, filt, fval, hdr) in enumerate(candidates):
                 if idx >= len(vecs): break
                 vec = vecs[idx]
                 if not vec.get("valid"):
+                    _reason = str(vec.get("invalid_reason") or vec.get("reason") or "invalid")
                     if filt is not None and hdr in htc:
-                        invalid_hdrs.append(hdr)
-                        try:
-                            _col = htc.get(hdr)
-                            if _col and ws_h is not None:
-                                from openpyxl.styles import PatternFill as _PF_red_h
-                                _c = ws_h.cell(row=r, column=_col)
-                                _c.value = 0.0
-                                _c.fill = _PF_red_h(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                _c.font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
-                        except: pass
-                        pending_lbI[hdr] = 0.0
+                        _mark_red(ws_h, r, htc.get(hdr), _reason)
+                        if _inv_settled(_reason):
+                            invalid_hdrs.append(hdr)
+                            evaluated_hdrs.add(hdr)
+                        else:
+                            unsettled_hdrs.append(hdr)
+                            print(f"[ROW-UNSETTLED] {new_symside} {sheet}!{r} {switch}={cand} yellow {hdr} no verdict ({_reason[:100]})", flush=True)
                     continue
-                vg = float(vec.get("gain_pct") or 0); delta = vg - cumulative_before
-                if filt is not None and hdr in htc: pending_lbI[hdr] = float(delta)
+                _vg_raw = vec.get("gain_pct")
+                if not _is_real(_vg_raw):
+                    if filt is not None and hdr in htc:
+                        _mark_red(ws_h, r, htc.get(hdr), f"gain-missing ({_vg_raw!r})")
+                        unsettled_hdrs.append(hdr)
+                        print(f"[ROW-UNSETTLED] {new_symside} {sheet}!{r} {switch}={cand} yellow {hdr} gain-missing", flush=True)
+                    continue
+                vg = float(_vg_raw); delta = vg - cumulative_before
+                if filt is not None and hdr in htc:
+                    pending_lbI[hdr] = float(delta)
+                    evaluated_hdrs.add(hdr)
+                    if delta == 0.0:
+                        print(_zero_audit(sheet, r, switch, filt, hdr, vg, cumulative_before, vec.get("trades"), _run_npz_short), flush=True)
+                elif filt is None and delta == 0.0:
+                    print(_zero_audit(sheet, r, switch, None, "naked", vg, cumulative_before, vec.get("trades"), _run_npz_short), flush=True)
                 if best is None or delta > best[0]: best = (delta, variant, filt, fval, hdr, vec)
                 if filt is None: vector_delta_val = float(delta)
             # identical not written — yellow-only
@@ -6003,22 +6050,35 @@ def main():
                         _col = htc.get(_hdr)
                         if _col: 
                             try:
-                                # PRECISE YELLOW: ONLY write yellow box filter if pos delta inside yellow box per user
-                                _cand_y = pending_lbI.get(_hdr)
-                                if _cand_y is not None:
-                                    ws_h.cell(row=r, column=_col).value = float(_cand_y)
-                                else:
-                                    ws_h.cell(row=r, column=_col).value = 0.0
+                                # RULE#2: no valid vector = nothing calculated — blank+red, never 0.0
+                                _mark_red(ws_h, r, _col, "no-valid-vector")
                             except: pass
-                    try: ws_h.cell(row=r, column=6).value = None; ws_h.cell(row=r, column=7).value = 0.0  # FZ: F is never a fake 0 (blank unless a real hustle value); G never 0.0 for NEG — was 0.0
+                    try: ws_h.cell(row=r, column=6).value = None
                     except: pass
+                    _mark_red(ws_h, r, 7, "no-valid-vector")
                 key = f"{sheet}!{r}:{switch}={cand}"
-                # ALWAYS WRITE YELLOWS AFTER DELTA — even when delta -1.0, yellows are candidate values, baseline never without pos delta
-                pos_y = {h: float(v) for h,v in (pending_lbI or {}).items() if float(v or 0) > 1e-9}
-                progress.setdefault("done", {})[key] = {"delta": 0.0, "vec_gain": 0, "yellows": pos_y, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before)}
+                # RULE#3: no valid vector = row NOT calculated — no done entry, stays pending (never a 0.0 row)
+                progress.get("done", {}).pop(key, None)
+                print(f"[ROW-INCOMPLETE] {new_symside} {key} no valid vector — no zeros written, stays pending", flush=True)
                 return 0.0
             delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
             delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
+            # USER 2026-10-03 RULE#3: the row is NOT complete until every yellow cell is calculated
+            # (valid delta or settled-invalid verdict). Unsettled = no done entry, stays pending.
+            _missing_y = _y_complete(relevant_hdrs, evaluated_hdrs)
+            if _missing_y:
+                for _mh in _missing_y:
+                    _mark_red(ws_h, r, htc.get(_mh), "uncalculated")
+                _key_m = f"{sheet}!{r}:{switch}={cand}"
+                progress.get("done", {}).pop(_key_m, None)
+                if ws_h is not None:
+                    try:
+                        ws_h.cell(row=r, column=6).value = None
+                    except Exception:
+                        pass
+                    _mark_red(ws_h, r, 7, f"incomplete-yellows {len(_missing_y)}")
+                print(f"[ROW-INCOMPLETE] {new_symside} {_key_m} {len(_missing_y)} yellows uncalculated — no zeros written, stays pending", flush=True)
+                return 0.0
             # SWITCH UNDERSTANDS IT CAN NOT PASS TO NEXT ROW UNTIL ALL YELLOW CELLS HAVE BEEN CALCULATED APPLYING THE SPECIFIC FILTER IN THAT COLUMN — per-yellow delta inside yellow cell, add to own delta if positive, baseline never without pos delta
             # DESTROY VIRUS: never write numbers in BASELINE without pos delta; never re-evaluate pending_lbI as overrides dict (was virus writing BB_BOUNCE garbage)
             if ws_h is not None:
@@ -6029,7 +6089,7 @@ def main():
                         continue
                     # FILTER IN HEADER APPLIED ONLY TO SWITCH IN THAT ROW — never to other rows without yellow in that column
                     if _hdr not in pending_lbI:
-                        continue
+                        continue  # settled-invalid (blank+red at eval) — post-gate, nothing unsettled reaches here
                     # per-yellow delta already calculated applying the specific filter in that column — block until done (pending_lbI holds it)
                     try:
                         _cand_y = pending_lbI.get(_hdr)
@@ -6104,7 +6164,7 @@ def main():
                     print(f"[SUSPICIOUS_30PCT] {switch}={cand} delta {delta_best:.2f} >=30% — investigating vector vs baseline {cumulative_before:.2f} vec {vec_best.get('gain_pct',0):.2f}", flush=True)
             except: pass
             key = f"{sheet}!{r}:{switch}={cand}"
-            progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "yellows": {h: float(pending_lbI.get(h, 0.0)) for h in relevant_hdrs}, "yellows_delta": {h: float(ws_h.cell(row=r, column=htc.get(h)).value) if ws_h is not None and htc.get(h) else 0.0 for h in relevant_hdrs}, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before + delta_best) if delta_best > 0 else float(cumulative_before), "best_filter": filt_best, "best_fval": fval_best}
+            progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "yellows": {h: float(pending_lbI[h]) for h in relevant_hdrs if h in pending_lbI}, "invalid_yellows": list(invalid_hdrs), "unsettled_yellows": list(unsettled_hdrs), "yellows_delta": {h: (float(ws_h.cell(row=r, column=htc.get(h)).value) if _is_real(ws_h.cell(row=r, column=htc.get(h)).value) else None) if ws_h is not None and htc.get(h) else None for h in relevant_hdrs}, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before + delta_best) if delta_best > 0 else float(cumulative_before), "best_filter": filt_best, "best_fval": fval_best, "npz": _run_npz_short, "complete": True}
             # FIX 2: POS AVG_DELTAS -> DEFAULT both in sheet and config
             if delta_best > 1e-9:
                 try:
@@ -6569,6 +6629,10 @@ def main():
                     best = None
                     pending_lbI = {}
                     vector_delta_val = None
+                    # USER 2026-10-03 RULE#2/#3: pending_lbI holds ONLY genuinely evaluated deltas (see cycle path)
+                    from tools.v15_row_guards import invalid_settled as _inv_settled, is_real_number as _is_real, mark_unevaluated as _mark_red, yellows_complete as _y_complete, zero_audit_line as _zero_audit
+                    evaluated_hdrs = set()
+                    unsettled_hdrs = []
                     print(f"[LOG {time.time():.1f}] {sheet}!{r} candidates={len(candidates)} start vec batch", flush=True)
                     # Spec: YELLOW_TIMEOUT=0.1 for every cell (naked and yellow) — plowing never blocks
                     # Every finished eval is KEPT; only unfinished at 0.1s go RED via _spec_mark_red, write -1/0, queue, continue immediately
@@ -6623,11 +6687,11 @@ def main():
                                         if _col_u:
                                             try:
                                                 _spec_mark_red(wb_keep if 'wb_keep' in locals() and wb_keep is not None else ws_keep, sheet, r, _col_u, reason=f"TIMEOUT {per_cell_deadline}s")
-                                                # write placeholder -1 or 0 per spec
+                                                # RULE#2: timeout = uncalculated — blank+red, never a 0.0 placeholder
                                                 try:
                                                     _ws_tmp = ws_keep if 'ws_keep' in locals() and ws_keep is not None else None
                                                     if _ws_tmp is not None:
-                                                        _ws_tmp.cell(row=r, column=_col_u).value = 0.0
+                                                        _mark_red(_ws_tmp, r, _col_u, f"YELLOW_TIMEOUT {per_cell_deadline}s")
                                                 except Exception:
                                                     pass
                                             except Exception:
@@ -6650,33 +6714,29 @@ def main():
                             break
                         vec = vecs[idx]
                         if not vec.get("valid"):
+                            _reason = str(vec.get("invalid_reason") or vec.get("reason") or "invalid")
                             if filt is not None and hdr in header_to_col:
-                                invalid_hdrs.append(hdr)
-                                # 🔴 MARK RED without blocking — yellow cell error still counts as calculated before row advance
-                                if hdr in header_to_col:
-                                    try:
-                                        _yc = ws_keep.cell(row=r, column=header_to_col[hdr]) if 'ws_keep' in locals() and ws_keep is not None else None
-                                        if _yc is not None:
-                                            from openpyxl.styles import PatternFill as _PF_red
-                                            _yc.value = 0.0
-                                            _yc.fill = _PF_red(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                            _yc.font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
-                                    except: pass
-                                    pending_lbI[hdr] = 0.0
+                                _mark_red(ws_keep if 'ws_keep' in locals() else None, r, header_to_col.get(hdr), _reason)
+                                if _inv_settled(_reason):
+                                    invalid_hdrs.append(hdr)
+                                    evaluated_hdrs.add(hdr)
+                                else:
+                                    unsettled_hdrs.append(hdr)
+                                    print(f"[ROW-UNSETTLED] {new_symside} {sheet}!{r} {switch}={cand} yellow {hdr} no verdict ({_reason[:100]})", flush=True)
                                     # queue for fixer (10s re-eval) — fixer will clear RED and write correct delta/yellow
                                     try:
-                                        if "unfinished" in str(vec.get("reason","")).lower() or "timeout" in str(vec.get("reason","")).lower():
+                                        if "unfinished" in _reason.lower() or "timeout" in _reason.lower():
                                             queue_red_cell(sheet, r, header_to_col.get(hdr), hdr, variant, cumulative_before, switch, cand, key=f"{sheet}!{r}:{switch}={cand}")
                                     except Exception:
                                         pass
-                            # per-yellow invalid is still a calculated yellow — continue to next yellow, do NOT block row
+                            # settled-invalid is a calculated yellow (verdict); unsettled stays pending via the RULE#3 gate
                             continue
                         # 0/1 TRADE RED LAW — ANY VERSION
                         _tr = int(vec.get("trades") or 0)
                         if _tr <= 1:
                             try:
                                 ws_keep.cell(row=r, column=6).value = None  # FZ: F never a fake 0
-                                ws_keep.cell(row=r, column=7).value = 0.0
+                                ws_keep.cell(row=r, column=7).value = None  # RULE#2: 0/1-trade = no valid delta, red+blank not 0.0
                                 from openpyxl.styles import PatternFill
                                 ws_keep.cell(row=r, column=7).fill = __import__("openpyxl").styles.PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                                 ws_keep.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", size=10, bold=True, color="FFFFFF")
@@ -6702,7 +6762,14 @@ def main():
                         if _elapsed_cell > 60 and idx == 0:
                             _flag_to_md(flags_md, sheet, r, switch, cand, f"SLOW CELL {_elapsed_cell:.1f}s (value kept)", float(vec.get("gain_pct") or 0), cumulative_before)
                             print(f"[SLOW CELL] {sheet}!{r} {switch}={cand} elapsed={_elapsed_cell:.1f}s — value kept", flush=True)
-                        vg = float(vec.get("gain_pct") or 0)
+                        _vg_raw = vec.get("gain_pct")
+                        if not _is_real(_vg_raw):
+                            if filt is not None and hdr in header_to_col:
+                                _mark_red(ws_keep if 'ws_keep' in locals() else None, r, header_to_col.get(hdr), f"gain-missing ({_vg_raw!r})")
+                                unsettled_hdrs.append(hdr)
+                                print(f"[ROW-UNSETTLED] {new_symside} {sheet}!{r} {switch}={cand} yellow {hdr} gain-missing", flush=True)
+                            continue
+                        vg = float(_vg_raw)
                         delta = vg - cumulative_before
                         if filt is None:
                             print(f"[CANDIDATE] {sheet}!{r} {switch}={cand} alone vec_gain={vg:.4f} delta={delta:.4f} vs cum {cumulative_before:.4f} trades={vec.get('trades')} sharpe={float(vec.get('pool_sharpe') or 0):.4f}", flush=True)
@@ -6710,15 +6777,17 @@ def main():
                             print(f"[CANDIDATE] {sheet}!{r} {switch}={cand}+{filt}={fval} vec_gain={vg:.4f} delta={delta:.4f} vs cum {cumulative_before:.4f} trades={vec.get('trades')} sharpe={float(vec.get('pool_sharpe') or 0):.4f}", flush=True)
                         if filt is not None and hdr in header_to_col:
                             pending_lbI[hdr] = float(delta)
+                            evaluated_hdrs.add(hdr)
+                            if delta == 0.0:
+                                print(_zero_audit(sheet, r, switch, filt, hdr, vg, cumulative_before, vec.get("trades"), _run_npz_short), flush=True)
                         if best is None or delta > best[0]:
                             best = (delta, variant, filt, fval, hdr, vec)
                         if filt is None:
                             vector_delta_val = float(delta)
+                            if delta == 0.0:
+                                print(_zero_audit(sheet, r, switch, None, "naked", vg, cumulative_before, vec.get("trades"), _run_npz_short), flush=True)
 
-                    # identical not written — yellow-only, skip synthetic
-                    for _h in invalid_hdrs:
-                        if _h not in pending_lbI:
-                            pending_lbI[_h] = 0.0
+                    # identical not written — yellow-only, skip synthetic (settled-invalid stays blank+red, never 0.0 in pending)
 
                     # CORRECT: F is best SINGLE or combined pos filters recalculated with real backtest (multi-filter combined is correct when recalculated with additional filter)
                     try:
@@ -6761,14 +6830,10 @@ def main():
                                     _col = header_to_col.get(_hdr)
                                     if not _col:
                                         continue
-                                    try:
-                                        # candidate yellows from pending_lbI (already calculated delta for this switch)
-                                        _y = pending_lbI.get(_hdr) if 'pending_lbI' in locals() else None
-                                        ws_row.cell(row=r, column=_col).value = float(_y) if _y is not None else 0.0
-                                    except Exception:
-                                        pass
+                                    _mark_red(ws_row, r, header_to_col.get(_hdr), "no-valid-vector")
                         except: pass
-                        progress.setdefault("done", {})[key] = {"delta": 0.0, "reason": "all vectors invalid", "yellows": {h: float((pending_lbI.get(h) if 'pending_lbI' in locals() and pending_lbI.get(h) is not None else 0.0)) for h in relevant_hdrs}, "invalid_yellows": list(relevant_hdrs)}
+                        progress.get("done", {}).pop(key, None)
+                        print(f"[ROW-INCOMPLETE] {new_symside} {key} no valid vector — no zeros written, stays pending", flush=True)
                         print(f"[ROW] {sheet}!{r} {switch}={cand} vs cum {cumulative_before:.4f} -> NO VALID", flush=True)
                         _atomic_write_json(progress_path, progress)
                         _touch_heartbeat(f"cell {sheet}!{r} NO VALID")
@@ -6817,6 +6882,21 @@ def main():
                         if abs(delta_best) >= 30:
                             print(f"[SUSPICIOUS_30PCT] {switch}={cand} delta {delta_best:.2f} >=30% vs cum {cumulative_before:.2f} vec {vec_best.get('gain_pct',0):.2f}", flush=True)
                     except: pass
+                    # USER 2026-10-03 RULE#3: the row is NOT complete until every yellow cell is calculated
+                    _missing_y = _y_complete(relevant_hdrs, evaluated_hdrs)
+                    if _missing_y:
+                        for _mh in _missing_y:
+                            _mark_red(ws_row, r, header_to_col.get(_mh), "uncalculated")
+                        progress.get("done", {}).pop(key, None)
+                        print(f"[ROW-INCOMPLETE] {new_symside} {key} {len(_missing_y)} yellows uncalculated — no zeros written, stays pending", flush=True)
+                        try:
+                            if ws_row is not None:
+                                ws_row.cell(row=r, column=6).value = None
+                                _mark_red(ws_row, r, 7, f"incomplete-yellows {len(_missing_y)}")
+                        except Exception:
+                            pass
+                        _prev_delta_positive = False
+                        continue
                     try:
                         if pending_lbI and ws_row is not None:
                             for hdr, d in pending_lbI.items():
@@ -6862,11 +6942,7 @@ def main():
                                                 except Exception:
                                                     pass
                                         if not _skip_zero:
-                                            try:
-                                                # ALWAYS WRITE TO EVERY YELLOW BUT AFTER CALCULATING DELTA — write candidate 0.0 (candidate is 0 when no valid) after delta calc
-                                                ws_row.cell(row=r, column=_col).value = 0.0
-                                            except Exception:
-                                                pass
+                                            _mark_red(ws_row, r, _col, "unevaluated-backstop")
                                         _missing.append(_hdr)
                             if _missing:
                                 _flag_to_md(flags_md, sheet, r, switch, cand, f"yellow backstop {len(_missing)} unevaluated", 0.0, 0.0, cumulative_before)
@@ -6998,7 +7074,7 @@ def main():
                             pass
                     except Exception as _e:
                         print(f"[row-write-err] {sheet}!{r} {_e}", flush=True)
-                    progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct","win_rate","bars","peak","n_syms","years","avg_gain_trade","gain_per_yr","sym_sharpe"]}, "best_filter": filt_best, "best_fval": fval_best, "yellows": dict(pending_lbI) if pending_lbI else {}, "invalid_yellows": list(invalid_hdrs), "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before + delta_best) if delta_best > 0 else float(cumulative_before)}
+                    progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct","win_rate","bars","peak","n_syms","years","avg_gain_trade","gain_per_yr","sym_sharpe"]}, "best_filter": filt_best, "best_fval": fval_best, "yellows": dict(pending_lbI) if pending_lbI else {}, "invalid_yellows": list(invalid_hdrs), "unsettled_yellows": list(unsettled_hdrs), "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before + delta_best) if delta_best > 0 else float(cumulative_before), "npz": _run_npz_short, "complete": True}
                     try:
                         # batch progress.json every 10 rows for 180/3min = 1s/cell (was per-row fsync = 1.6s/row)
                         if r % 10 == 0 or args.window_days not in (1,7):
