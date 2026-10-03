@@ -89,6 +89,17 @@ def test_is_gate_casualty():
     assert G.is_gate_casualty(None) is False
 
 
+def test_verdict_row_settles_composition():
+    from v15_pilot import delta_vs_result
+    res = {"gain_pct": None, "valid": False, "trades": 5, "invalid_reason": "override X=2.0 incompatible with bool field (rejected before eval)"}
+    d, promotable, reason = delta_vs_result(res, 1.0)
+    assert d is None and promotable is False and reason
+    assert G.tried_settled(res, "") is True
+    assert G.tried_settled(None, "TIMEOUT 10s") is False
+    ok = {"gain_pct": 1.5, "valid": True, "trades": 40}
+    assert delta_vs_result(ok, 1.0) == (0.5, True, "")
+
+
 if __name__ == "__main__":
     for _n, _f in sorted([(k, v) for k, v in globals().items() if k.startswith("test_")]):
         _f()
