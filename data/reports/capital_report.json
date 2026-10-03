@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-03 17:09 UTC",
- "total_capital_usd": 25.12,
+ "generated_at": "2026-10-03 18:09 UTC",
+ "total_capital_usd": 25.03,
  "tier_capital": {
   "A": 0.0,
-  "B": 25.12,
+  "B": 25.03,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:MOVRUSDT_LONG",
-   "symbol": "MOVRUSDT",
+   "pk": "ang:JASMYUSDT_LONG",
+   "symbol": "JASMYUSDT",
    "account": "ang",
-   "value_usd": 25.12,
-   "gain_pct": 0.357,
+   "value_usd": 25.03,
+   "gain_pct": 0.379,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 12.95,
-   "mark": 1.93964371
+   "amt": 4601.0,
+   "mark": 0.0054397
   }
  ]
 }
