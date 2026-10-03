@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-03 16:15 UTC",
- "total_capital_usd": 318.76,
+ "generated_at": "2026-10-03 17:09 UTC",
+ "total_capital_usd": 25.12,
  "tier_capital": {
   "A": 0.0,
-  "B": 318.76,
+  "B": 25.12,
   "C": 0.0
  },
  "tier_count": {
@@ -12,21 +12,19 @@
   "C": 0
  },
  "winners": [],
- "losers": [
-  "fin:ETHUSDT_LONG"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:ETHUSDT_LONG",
-   "symbol": "ETHUSDT",
-   "account": "fin",
-   "value_usd": 318.76,
-   "gain_pct": -2.139,
+   "pk": "ang:MOVRUSDT_LONG",
+   "symbol": "MOVRUSDT",
+   "account": "ang",
+   "value_usd": 25.12,
+   "gain_pct": 0.357,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 0.119,
-   "mark": 2678.67
+   "amt": 12.95,
+   "mark": 1.93964371
   }
  ]
 }
