@@ -33,7 +33,7 @@ CRITICAL = [
     "backtest_v8_engine.py", "backtest_v8_harness.py", "backtest_v8_sweep.py",
     "v12_quick_engine.py", "v12_wide_engine.py",
     "v15_pilot.py", "backtest_v12_engine.py",
-    "v12_quick_engine_fast.py", "v12_quick_engine_fast_v2.py", "v12_quick_engine_v2_fixed.py",
+    "v12_quick_engine_fast.py", "v12_quick_engine_fast_v2.py",
     "SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx", "SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx",
     "SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx", "SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx",
     "vec_decisions/bb_pullback_gate.py", "vec_decisions/filter_tf_gate.py", "tradier_matrix_gates.py",

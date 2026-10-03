@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-03 05:18 UTC",
- "total_capital_usd": 18.32,
+ "generated_at": "2026-10-03 05:46 UTC",
+ "total_capital_usd": 318.39,
  "tier_capital": {
   "A": 0.0,
-  "B": 18.32,
+  "B": 318.39,
   "C": 0.0
  },
  "tier_count": {
@@ -12,21 +12,21 @@
   "C": 0
  },
  "winners": [],
- "losers": [],
- "mediocre": [
-  "ang:UNIUSDC_LONG"
+ "losers": [
+  "fin:ETHUSDT_LONG"
  ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "ang:UNIUSDC_LONG",
-   "symbol": "UNIUSDC",
-   "account": "ang",
-   "value_usd": 18.32,
-   "gain_pct": 0.131,
+   "pk": "fin:ETHUSDT_LONG",
+   "symbol": "ETHUSDT",
+   "account": "fin",
+   "value_usd": 318.39,
+   "gain_pct": -2.255,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 2.0,
-   "mark": 9.1582835
+   "amt": 0.119,
+   "mark": 2675.51321705
   }
  ]
 }
