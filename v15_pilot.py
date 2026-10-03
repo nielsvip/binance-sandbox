@@ -3366,7 +3366,7 @@ def _skip_alarm_summary(progress: dict, new_symside: str, processed: int):
                     _cls = "DELTA_NONE"
                 skips[_cls] = skips.get(_cls, 0) + 1
             _y = _v.get("yellows") or {}
-            _yn = sum(1 for _yv in _y.values() if isinstance(_yv, dict) and isinstance(_yv.get("delta"), (int, float)))
+            _yn = sum(1 for _yv in _y.values() if isinstance(_yv, (int, float)) or (isinstance(_yv, dict) and isinstance(_yv.get("delta"), (int, float))))
             y_cells += _yn
             if _yn == 0:
                 y_rows0 += 1
