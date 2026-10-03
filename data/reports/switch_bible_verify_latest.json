@@ -1,5 +1,5 @@
 {
- "broken": 138,
+ "broken": 132,
  "checks": {
   "TEMPLATE_NO_CONFIG": [],
   "LINK_LOST": [],
@@ -30,15 +30,7 @@
    "EZ_MANAGE_THROTTLER_RATE [CRYPTO_LONG]",
    "EZ_MANAGE_THROTTLER_RATE [CRYPTO_SHORT]",
    "EZ_MANAGE_THROTTLER_RATE [STOCKS_LONG]",
-   "EZ_MANAGE_THROTTLER_RATE [STOCKS_SHORT]",
-   "LR_BAND_LADDER_TF_BOTTOM [CRYPTO_LONG]",
-   "LR_BAND_LADDER_TF_BOTTOM [CRYPTO_SHORT]",
-   "LR_BAND_LADDER_TF_BOTTOM [STOCKS_LONG]",
-   "LR_BAND_LADDER_TF_BOTTOM [STOCKS_SHORT]",
-   "LR_BAND_LADDER_TF_TOP [CRYPTO_LONG]",
-   "LR_BAND_LADDER_TF_TOP [CRYPTO_SHORT]",
-   "LR_BAND_LADDER_TF_TOP [STOCKS_LONG]",
-   "LR_BAND_LADDER_TF_TOP [STOCKS_SHORT]"
+   "EZ_MANAGE_THROTTLER_RATE [STOCKS_SHORT]"
   ],
   "DUPLICATE_SWITCH_ROWS": [],
   "COVERAGE": [
@@ -84,6 +76,8 @@
    "LR_BAND_LADDER_ENABLED: wired live+vec (['tradier_manage.py:10621(process_position)'] / ['v12_quick_engine.py:11781(simulate_one)']) but in no template",
    "LR_BAND_LADDER_MODE: wired live+vec (['tradier_manage.py:691(band_ladder_mult)'] / ['vec_decisions/lr_band_ladder_aug.py:55(target)']) but in no template",
    "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED: wired live+vec (['tradier_manage.py:10624(process_position)'] / ['v12_quick_engine.py:11781(simulate_one)']) but in no template",
+   "LR_BAND_LADDER_TF_BOTTOM: wired live+vec (['tradier_manage.py:1601(_ordinary_ladder_target)'] / ['vec_decisions/lr_band_ladder_aug.py:52(target)']) but in no template",
+   "LR_BAND_LADDER_TF_TOP: wired live+vec (['tradier_manage.py:1607(_ordinary_ladder_target)'] / ['vec_decisions/lr_band_ladder_aug.py:52(target)']) but in no template",
    "LR_BAND_LADDER_TOP_MULT: wired live+vec (['tradier_manage.py:1609(_ordinary_ladder_target)'] / ['vec_decisions/lr_band_ladder_aug.py:53(target)']) but in no template",
    "LR_BAND_LADDER_TRIGGER: wired live+vec (['tradier_manage.py:1618(_ordinary_ladder_target)'] / ['vec_decisions/lr_band_ladder_aug.py:54(target)']) but in no template",
    "MANDATORY_PRICE_CROSS_EPQ_ENABLED: wired live+vec (['ez_positions_quick.py:17302(process_single_reentry_evaluation_epq)'] / ['vec_decisions/reentry_epq_vec.py:104(mandatory_price_cross)']) but in no template",

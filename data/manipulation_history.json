@@ -8251,5 +8251,32 @@
     ],
     "timestamp": "2026-10-03T14:29:39.769464+00:00",
     "price": 0.002105
+  },
+  {
+    "symbol": "DKNGUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 16.8x normal"
+    ],
+    "timestamp": "2026-10-03T14:44:52.407954+00:00",
+    "price": 18.62459532
+  },
+  {
+    "symbol": "BLURUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-03T14:59:37.641721+00:00",
+    "price": 0.02132
+  },
+  {
+    "symbol": "LUNA2USDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 20.9x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-03T14:59:37.641721+00:00",
+    "price": 0.05099351
   }
 ]
