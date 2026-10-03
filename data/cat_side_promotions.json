@@ -1045,10 +1045,10 @@
    "kind": "promoted_switch"
   },
   "REENTRY_TIER1_SIZE_MULT_TRADIER": {
-   "value": 2.25,
-   "avg_delta": 0.3836,
+   "value": 3,
+   "avg_delta": 0.326036,
    "tab": "REENTRY_WINDOWED",
-   "kind": "promoted_switch"
+   "at": "2026-10-03T08:23:44.742076Z"
   },
   "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER": {
    "value": false,
@@ -1057,10 +1057,10 @@
    "kind": "promoted_switch"
   },
   "MAX_AUGMENTS_PER_POSITION": {
-   "value": "0.5",
-   "avg_delta": 0.4427,
+   "value": "0",
+   "avg_delta": 0.788001,
    "tab": "AUGMENT_RISK_SIZING",
-   "kind": "promoted_switch"
+   "at": "2026-10-03T08:23:56.210371Z"
   },
   "EMA_9_21_FILTER_ENABLED": {
    "value": false,
@@ -1094,9 +1094,9 @@
   },
   "FAST_RISER_FILTER_TF": {
    "value": "OFF",
-   "avg_delta": 0.258116,
+   "avg_delta": 0.010614,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-10-02T18:22:49.255635Z"
+   "at": "2026-10-03T08:24:06.382350Z"
   },
   "MOM3_FILTER_TF": {
    "value": "15m",
@@ -1142,15 +1142,15 @@
   },
   "WT_15M_BOUNCE_LOW_1H_GT_PREV": {
    "value": "True",
-   "avg_delta": 2.317794,
+   "avg_delta": 0.180007,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-10-02T18:22:49.255842Z"
+   "at": "2026-10-03T08:24:06.382359Z"
   },
   "EMA_9_21_FILTER_FILTER_TF": {
-   "value": "1h",
-   "avg_delta": 0.63177,
+   "value": "15m",
+   "avg_delta": 0.448554,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-10-02T18:22:49.255529Z"
+   "at": "2026-10-03T08:24:06.382332Z"
   },
   "FIRST_OPEN_THROTTLE_FILTER_TF": {
    "value": "D",
@@ -1223,6 +1223,42 @@
    "avg_delta": 14.01263,
    "tab": "GLOBAL_RISK_GATES",
    "at": "2026-10-02T18:22:49.253195Z"
+  },
+  "MANDATORY_REENTRY_WT_FILTER_TF_MODE": {
+   "value": 0,
+   "avg_delta": 1.272554,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-03T08:23:23.201129Z"
+  },
+  "WT_CROSSUNDER_FINAL_ENABLED": {
+   "value": false,
+   "avg_delta": 0.023833,
+   "tab": "ENTRY_CONFIRMATION_GATES",
+   "at": "2026-10-03T08:23:30.529191Z"
+  },
+  "LH_HL_FILTER_DC_THRESHOLD_PCT": {
+   "value": 0.25,
+   "avg_delta": 0.21154,
+   "tab": "ENTRY_CONFIRMATION_GATES",
+   "at": "2026-10-03T08:23:30.529322Z"
+  },
+  "TECHNICAL_DC_STOP_TF": {
+   "value": "1h",
+   "avg_delta": 0.317834,
+   "tab": "EXIT_STRUCTURAL",
+   "at": "2026-10-03T08:23:36.178350Z"
+  },
+  "FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED": {
+   "value": true,
+   "avg_delta": 0.713175,
+   "tab": "EXIT_STRUCTURAL",
+   "at": "2026-10-03T08:23:36.178421Z"
+  },
+  "MTF_BB_REJECT_EXIT_TF": {
+   "value": "OFF",
+   "avg_delta": 0.544805,
+   "tab": "EXIT_STRUCTURAL",
+   "at": "2026-10-03T08:23:36.178573Z"
   }
  }
 }
