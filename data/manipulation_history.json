@@ -3711,5 +3711,14 @@
     ],
     "timestamp": "2026-10-03T00:07:04.157823+00:00",
     "price": 288.04538477
+  },
+  {
+    "symbol": "YGGUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.2x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-03T01:03:05.358156+00:00",
+    "price": 0.02742417
   }
 ]

@@ -624,6 +624,57 @@ def promotion_block_reason(switch: str, sheet: str | None = None) -> str:
         return "SIZING_FALSE_ALPHA: notional, not edge"
     return ""
 
+
+def tim_guard_veto(candidate_tim, chain_tim=None) -> str:
+    """USER 2026-10-03 (TIM-guard): a G>0 promotion whose candidate set has TIM outside [20,80] is vetoed — the greedy fill must never filter the chain to death (FLOKI_SHORT desert: TIM 3.58 base -> C=0, E flat, 2794 evals wasted). G/F/Y are still recorded; only the promotion is blocked. A chain that starts out-of-band may still RECOVER: moves toward the band are allowed. Returns reason or ''. V15_TIM_GUARD=0 disables (default ON)."""
+    if os.environ.get("V15_TIM_GUARD", "1") != "1":
+        return ""
+    try:
+        t = float(candidate_tim) if candidate_tim is not None else None
+    except Exception:
+        t = None
+    if t is None:
+        return ""
+    if QUAL_TIM_MIN <= t <= QUAL_TIM_MAX:
+        return ""
+    try:
+        c = float(chain_tim) if chain_tim is not None else None
+    except Exception:
+        c = None
+    if c is not None:
+        if c < QUAL_TIM_MIN and t > c:
+            return ""
+        if c > QUAL_TIM_MAX and t < c:
+            return ""
+    if t < QUAL_TIM_MIN or t > QUAL_TIM_MAX:
+        return f"TIM-guard: candidate TIM {t:.1f} outside [{QUAL_TIM_MIN:.0f},{QUAL_TIM_MAX:.0f}] — chain health over delta"
+    return ""
+
+
+def repair_needs_redo(rep) -> bool:
+    """USER 2026-10-03 (row/set coherence): a COMPLIANCE repair that changed the set (any steps) makes the sheet rows stale — the repaired set must be re-filled (REDO), never published against rows measured for the failed set. Only a no-op repair (0 steps, identical set) may publish directly."""
+    try:
+        return len([s for s in ((rep or {}).get("steps") or []) if isinstance(s, dict) and s.get("applied")]) > 0
+    except Exception:
+        return True
+
+
+def content_ok(f_filled, done_n) -> str:
+    """USER 2026-10-03 (publish content gate): a sheet without calculations must NEVER publish. Returns '' if ok, else reason. Threshold: >=500 F cells and >=50% of the done board (a skip-bug publishes ~0; a real fill writes ~3000)."""
+    try:
+        f = int(f_filled or 0)
+    except Exception:
+        f = 0
+    try:
+        n = int(done_n or 0)
+    except Exception:
+        n = 0
+    if f < 500:
+        return f"content-gate: F_filled {f}<500 — sheet has no calculations, refusing publish"
+    if n > 0 and f < n // 2:
+        return f"content-gate: F_filled {f}<50% of done board {n} — refusing publish"
+    return ""
+
 ALL_PREPARED: dict[str, dict] = {}
 ALL_NPZ_ARRAYS: dict[str, dict] = {}
 _FILTER_DICT_CACHE = None
@@ -1856,6 +1907,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _spec_clear_live_formulas(wb)
     except Exception:
         pass
+    try:
+        chain_tim = float((baseline_vec or {}).get("tim_pct"))
+    except Exception:
+        chain_tim = None
     # Ensure header L:BI uses is_default backup handling — restore bold if lost (is_default col12 = YES means default bold)
     try:
         for sname in SWITCH_SHEETS:
@@ -2703,6 +2758,16 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if _blk:
             promote = False
             print(f"[promote-block] {sname}!{rr} {switch}={cand} delta={row_delta} NOT promoted: {_blk}", flush=True)
+        if promote:
+            try:
+                _ct = float((_src_ or {}).get("tim_pct"))
+            except Exception:
+                _ct = None
+            _tgv = tim_guard_veto(_ct, chain_tim)
+            if _tgv:
+                promote = False
+                _blk = _tgv
+                print(f"[promote-block] {sname}!{rr} {switch}={cand} delta={row_delta} NOT promoted: {_tgv}", flush=True)
         row_gain = (cumulative_before + row_delta) if row_delta is not None else None
         g = ws.cell(row=rr, column=cols["G"])
         f = ws.cell(row=rr, column=cols["F"])
@@ -2753,6 +2818,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             e_next = cumulative_gain
             _spec_state["ver"] += 1
             progress["cumulative_overrides"] = dict(cumulative_overrides)
+            try:
+                _pt = float((_src_ or {}).get("tim_pct"))
+                chain_tim = _pt
+            except Exception:
+                pass
         progress["cumulative_gain"] = float(cumulative_gain)
         div = _write_div(sname, rr, [row_gain])
         progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", ""), "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain)}
@@ -2936,7 +3006,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _qual_repairs.append(_rrep)
                     _qok, _qr2 = _qualifies_30d(_rv, bh)
                     if _qok:
-                        if _rrep.get("base_chosen") == "final_set" or _qr == 0:
+                        if not repair_needs_redo(_rrep):
                             cumulative_overrides = dict(_rov)
                             _fresh_final = _rv
                             final_gain = cumulative_gain = float(_rv.get("gain_pct"))
@@ -2956,8 +3026,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                                 print(f"[compliance-sheet-warn] {_cw_e}", flush=True)
                             print(f"[COMPLIANCE] {new_symside} revised (round {_qr}): {_rv.get('trades')} trades TIM {_rv.get('tim_pct')} DD {_rv.get('max_dd_pct')} gain {final_gain:+.4f}", flush=True)
                         else:
-                            _redo_base = (dict(_rov), dict(_rv), f"30D qualified from {_rrep.get('base_chosen')} (round {_qr}) — sheet rows stale, re-fill required")
-                            print(f"[COMPLIANCE] {new_symside} qualified from non-final base {_rrep.get('base_chosen')} — REDO required", flush=True)
+                            _redo_base = (dict(_rov), dict(_rv), f"30D repaired ({len([s for s in (_rrep.get('steps') or []) if isinstance(s, dict) and s.get('applied')])} applied steps from {_rrep.get('base_chosen')}) — sheet rows stale, re-fill required")
+                            print(f"[COMPLIANCE] {new_symside} repaired set differs — REDO required (rows must represent the published set)", flush=True)
                         break
                     _redo_base = (dict(_rov), dict(_rv), f"30D best-effort round {_qr} still failing ({'; '.join(_qr2)})")
                 progress["compliance_repair"] = _qual_repairs
@@ -2980,6 +3050,32 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         else:
             progress.pop("not_compliant", None)
             progress.pop("needs_redo", None)
+        if _compliant:
+            try:
+                _cf_n = 0
+                for _cws in wb.worksheets:
+                    if _cws.title not in SWITCH_SHEETS:
+                        continue
+                    for _cr in range(3, _cws.max_row + 1):
+                        if isinstance(_cws.cell(_cr, 6).value, (int, float)):
+                            _cf_n += 1
+            except Exception:
+                _cf_n = 0
+            _cg = content_ok(_cf_n, len(progress.get("done", {})))
+            if _cg:
+                print(f"[CONTENT-GATE] {new_symside} {_cg}", flush=True)
+                _compliant = False
+                _qual_reasons = [_cg]
+                _depth = int(progress.get("redo_depth", 0))
+                if _depth < QUAL_MAX_REDOS:
+                    progress["needs_redo"] = {"overrides": dict(cumulative_overrides), "result": {k: (_fresh_final or {}).get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "valid")}, "depth": _depth + 1, "reason": _cg + " — re-fill rows for the qualified set"}
+                    progress.pop("final_path", None)
+                    _maybe_write_json(force=True)
+                    print(f"[REDO] {new_symside} scheduling re-fill for content (depth {_depth + 1})", flush=True)
+                else:
+                    _impossible = True
+                    progress["not_compliant"] = _cg
+                    _maybe_write_json(force=True)
         if _impossible:
             _quarantine_impossible(new_symside, _qual_reasons, {"window": "30D", "gain_pct": (_fresh_final or {}).get("gain_pct"), "trades": (_fresh_final or {}).get("trades"), "tim_pct": (_fresh_final or {}).get("tim_pct"), "max_dd_pct": (_fresh_final or {}).get("max_dd_pct"), "valid": (_fresh_final or {}).get("valid"), "bh": float(bh or 0)}, wb, wb_path, progress, progress_path, cumulative_overrides, _qual_repairs)
             print(f"[NOT-FINISHED] {new_symside} 30D unqualifiable after repair — quarantined, no publish", flush=True)
@@ -3022,12 +3118,25 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             for _old in OUT_DIR.glob(f"{new_symside}_bh*_30d_matrix.xlsx"):
                 if _old.name != _final_name:
                     _old.rename(OUT_DIR / (_old.name + ".superseded"))
+            for _oldh in OUT_DIR.glob(f"{new_symside}_bh*_30d_matrix.html"):
+                if _oldh.name != _final_name.replace(".xlsx", ".html"):
+                    _oldh.rename(OUT_DIR / (_oldh.name + ".superseded"))
             _sh_pub.copy2(wb_path, _final_path)
             progress["final_gain"] = float(final_gain)
             progress["bh"] = _bh_raw
             progress["final_path"] = str(_final_path)
             _maybe_write_json(force=True)
             print(f"[PUBLISH] {new_symside} -> {_final_name} (fresh-verified vec; live H/I follow if verify succeeds)", flush=True)
+            try:
+                from tools.opt.hires_chart import generate_hires as _gh_pub
+                _pub_chart_name = _final_name.replace(".xlsx", ".html")
+                _gh_pub(new_symside, dict(cumulative_overrides), int(args.window_days), out_name=_pub_chart_name)
+                _pub_chart_src = ROOT / "data" / "reports" / "charts_1Y" / _pub_chart_name
+                if _pub_chart_src.exists():
+                    _sh_pub.copy2(_pub_chart_src, OUT_DIR / _pub_chart_name)
+                    print(f"[PUBLISH-CHART] {new_symside} -> {_pub_chart_name} (same set as xlsx, coherent by construction)", flush=True)
+            except Exception as _pc_e:
+                print(f"[publish-chart-warn] {new_symside}: {_pc_e} — xlsx stands, chart skipped", flush=True)
         except Exception as _pub_e:
             print(f"[publish-warn] {new_symside}: {_pub_e} — no xlsx, no chart; herd will retry via publish-only pass", flush=True)
             try:
@@ -4814,8 +4923,14 @@ def main():
                 _pg, _psrc, _pov = max(_scored, key=lambda t: t[0])
                 print(f"[PRIOR-FINAL] {new_symside} previous_best = {_psrc} ({_pg:.4f}% now)", flush=True)
                 _bases = [b for b in _bases if b[0] != "previous_best"] + [("previous_best", dict(_pov))]
-            overrides, baseline_vec, _adapt_report = _credible_baseline(new_symside, prepared, _bases, defaults, args.template, args.window_days)
+            overrides, baseline_vec, _adapt_report = _credible_baseline(new_symside, prepared, _bases, defaults, args.template, args.window_days, tim_min=QUAL_TIM_MIN)
             _zero_trades_early = int(baseline_vec.get("trades") or 0) == 0
+            try:
+                _bt = float(baseline_vec.get("tim_pct") or 0)
+                if not (QUAL_TIM_MIN <= _bt <= QUAL_TIM_MAX):
+                    print(f"[BASELINE-TIM-WARN] {new_symside} ADAPT could not reach TIM [{QUAL_TIM_MIN:.0f},{QUAL_TIM_MAX:.0f}] (TIM {_bt:.1f}) — filling anyway under TIM-guard; DONE-stage repair is the backstop", flush=True)
+            except Exception:
+                pass
         if int(baseline_vec.get("trades") or 0) < 10 and overrides and _adapt_report is None:
             _defaults_vec = evaluate_prepared_sanitized(prepared, dict(_tpl_defaults), window_days=args.window_days)
             print(f"[BASELINE-FALLBACK] {new_symside} previous-best {len(overrides)} overrides -> {baseline_vec.get('trades')} trades gain {baseline_vec.get('gain_pct')}; defaults -> {_defaults_vec.get('trades')} trades gain {_defaults_vec.get('gain_pct')}", flush=True)
