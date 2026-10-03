@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-03 19:09 UTC",
- "total_capital_usd": 24.69,
+ "generated_at": "2026-10-03 20:09 UTC",
+ "total_capital_usd": 9.53,
  "tier_capital": {
   "A": 0.0,
-  "B": 24.69,
+  "B": 9.53,
   "C": 0.0
  },
  "tier_count": {
@@ -12,21 +12,19 @@
   "C": 0
  },
  "winners": [],
- "losers": [
-  "ang:JASMYUSDT_LONG"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:JASMYUSDT_LONG",
-   "symbol": "JASMYUSDT",
-   "account": "ang",
-   "value_usd": 24.69,
-   "gain_pct": -0.916,
+   "pk": "men:STXUSDT_LONG",
+   "symbol": "STXUSDT",
+   "account": "men",
+   "value_usd": 9.53,
+   "gain_pct": 0.21,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 4601.0,
-   "mark": 0.005366
+   "perf_mult": 2.17,
+   "amt": 25.0,
+   "mark": 0.38133365
   }
  ]
 }

@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-10-03 18:58 UTC
+PERFORMANCE REPORT — 2026-10-03 19:58 UTC
 ================================================================================
 Total: 145 symbols | A=4 B=99 C=42
 Window: 14 days | Min trades: 5
@@ -45,7 +45,6 @@ Window: 14 days | Min trades: 5
           STXUSDT  WR=62%  avg=+0.11%  total=+0.9%  trades=  8  mult=2.19
          IOTAUSDT  WR=33%  avg=+0.09%  total=+0.8%  trades=  9  mult=0.68
          CRWDUSDT  WR=82%  avg=+0.06%  total=+0.7%  trades= 11  mult=4.39
-        JASMYUSDT  WR=100%  avg=+0.34%  total=+0.7%  trades=  2  mult=1.00
          ATOMUSDT  WR=57%  avg=+0.09%  total=+0.7%  trades=  7  mult=1.67
              AAPL  WR=100%  avg=+0.33%  total=+0.7%  trades=  2  mult=1.00
           WLDUSDC  WR=47%  avg=+0.02%  total=+0.6%  trades= 30  mult=0.83
@@ -73,9 +72,9 @@ Window: 14 days | Min trades: 5
        MORPHOUSDT  WR=100%  avg=+0.00%  total=+0.0%  trades=  1  mult=1.00
      FARTCOINUSDT  WR=0%  avg=-0.01%  total=-0.0%  trades=  1  mult=1.00
         PENGUUSDC  WR=0%  avg=-0.00%  total=-0.0%  trades=  2  mult=1.00
+          ADAUSDC  WR=61%  avg=+0.00%  total=-0.0%  trades= 33  mult=2.94
              COHR  WR=50%  avg=-0.04%  total=-0.1%  trades=  2  mult=1.00
          QCOMUSDT  WR=33%  avg=-0.03%  total=-0.1%  trades=  3  mult=1.00
-          ADAUSDC  WR=56%  avg=+0.00%  total=-0.1%  trades= 36  mult=2.01
          LRCXUSDT  WR=0%  avg=-0.14%  total=-0.1%  trades=  1  mult=1.00
      1000BONKUSDC  WR=46%  avg=-0.01%  total=-0.2%  trades= 13  mult=0.82
               SMG  WR=0%  avg=-0.18%  total=-0.2%  trades=  1  mult=1.00
@@ -83,6 +82,7 @@ Window: 14 days | Min trades: 5
          MANAUSDT  WR=67%  avg=-0.06%  total=-0.3%  trades=  6  mult=1.79
          ALGOUSDT  WR=45%  avg=-0.01%  total=-0.3%  trades= 22  mult=0.71
          AAVEUSDC  WR=50%  avg=-0.17%  total=-0.3%  trades=  2  mult=1.00
+        JASMYUSDT  WR=67%  avg=-0.17%  total=-0.5%  trades=  3  mult=1.00
              IBIT  WR=0%  avg=-0.26%  total=-0.5%  trades=  2  mult=1.00
          PLTRUSDT  WR=0%  avg=-0.18%  total=-0.6%  trades=  3  mult=1.00
          STRKUSDT  WR=0%  avg=-0.28%  total=-0.6%  trades=  2  mult=1.00
@@ -155,7 +155,7 @@ Window: 14 days | Min trades: 5
               APO  WR=5%  avg=-4.01%  total=-92.8%  trades= 64  mult=0.12
 
 SUMMARY:
-  Total PnL (all symbols): -575.6%
+  Total PnL (all symbols): -576.7%
   Avg win rate: 44%
   A-tier avg mult: 10.00
   C-tier avg mult: 0.31
