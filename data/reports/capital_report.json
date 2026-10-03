@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-03 13:03 UTC",
- "total_capital_usd": 25.13,
+ "generated_at": "2026-10-03 13:24 UTC",
+ "total_capital_usd": 318.61,
  "tier_capital": {
   "A": 0.0,
-  "B": 25.13,
+  "B": 318.61,
   "C": 0.0
  },
  "tier_count": {
@@ -12,19 +12,21 @@
   "C": 0
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "fin:ETHUSDT_LONG"
+ ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:STXUSDT_LONG",
-   "symbol": "STXUSDT",
-   "account": "ang",
-   "value_usd": 25.13,
-   "gain_pct": 1.286,
+   "pk": "fin:ETHUSDT_LONG",
+   "symbol": "ETHUSDT",
+   "account": "fin",
+   "value_usd": 318.61,
+   "gain_pct": -2.186,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 66.0,
-   "mark": 0.3808
+   "amt": 0.119,
+   "mark": 2677.38
   }
  ]
 }
