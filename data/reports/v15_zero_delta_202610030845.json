@@ -1,0 +1,44 @@
+{
+ "agg": "SPREADSHEETS/v15_avg_delta/v15_avg_delta_20261003.xlsx",
+ "min_n": 8,
+ "cats": {
+  "CRYPTO_LONG": {
+   "systematic_zero_rows": 4,
+   "explained_honest": 3,
+   "dead_suspect_rows": 1,
+   "disablable_switches": [],
+   "kg_blocked": [],
+   "suspect_sample": [
+    [
+     "ENTRY_BREAKOUT_CHANNEL",
+     "WT_15M_BOUNCE_REL_VOL_GT_1=True",
+     9
+    ]
+   ]
+  },
+  "CRYPTO_SHORT": {
+   "systematic_zero_rows": 0,
+   "explained_honest": 0,
+   "dead_suspect_rows": 0,
+   "disablable_switches": [],
+   "kg_blocked": [],
+   "suspect_sample": []
+  },
+  "STOCKS_LONG": {
+   "systematic_zero_rows": 0,
+   "explained_honest": 0,
+   "dead_suspect_rows": 0,
+   "disablable_switches": [],
+   "kg_blocked": [],
+   "suspect_sample": []
+  },
+  "STOCKS_SHORT": {
+   "systematic_zero_rows": 0,
+   "explained_honest": 0,
+   "dead_suspect_rows": 0,
+   "disablable_switches": [],
+   "kg_blocked": [],
+   "suspect_sample": []
+  }
+ }
+}

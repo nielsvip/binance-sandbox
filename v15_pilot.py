@@ -1283,9 +1283,22 @@ def _parse_opt_value(val, default):
         if _lh.strip() and _lh.strip() == _rh.strip():
             val = _rh.strip()
     if isinstance(default, bool):
-        if isinstance(val, str) and val.lower() in ("true", "false"):
-            return val.lower() == "true"
-        return bool(val)
+        if isinstance(val, bool):
+            return val
+        if isinstance(val, str):
+            s = val.strip().lower()
+            if s == "true":
+                return True
+            if s == "false":
+                return False
+            if s in ("0", "0.0"):
+                return False
+            if s in ("1", "1.0"):
+                return True
+            return val
+        if val in (0, 1, 0.0, 1.0):
+            return bool(val)
+        return val
     if isinstance(default, int) and not isinstance(default, bool):
         try:
             return int(float(str(val)))
@@ -1319,7 +1332,9 @@ def _cand_compatible(field: str, cand_parsed, defaults: dict) -> tuple:
         return False, f"TYPE_MISMATCH: {field} value {cand_parsed!r} contains '=' (K=V pollution, never a real value)"
     default = (defaults or {}).get(field)
     if default is None:
-        return True, ""
+        default = _config_default_of(field)
+        if default is None:
+            return True, ""
     if isinstance(default, bool):
         if isinstance(cand_parsed, bool):
             return True, ""
@@ -2059,7 +2074,9 @@ def _possym_enabled(round_id: str) -> bool:
         pass
     import re as _re
     m = _re.search(r"run(\d+)", str(round_id))
-    return bool(m and int(m.group(1)) >= 21)
+    if m and int(m.group(1)) >= 21:
+        print("[POSSYM] sampling default OFF (USER 2026-10-03: every row evaluates) — re-enable via V15_POSSYM_SAMPLING=1", flush=True)
+    return False
 
 
 def _possym_load_nsym(cat_side: str) -> dict:
