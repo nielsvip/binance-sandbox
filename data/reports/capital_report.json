@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-03 02:00 UTC",
- "total_capital_usd": 24.94,
+ "generated_at": "2026-10-03 02:09 UTC",
+ "total_capital_usd": 25.17,
  "tier_capital": {
   "A": 0.0,
-  "B": 24.94,
+  "B": 25.17,
   "C": 0.0
  },
  "tier_count": {
@@ -13,20 +13,18 @@
  },
  "winners": [],
  "losers": [],
- "mediocre": [
-  "ang:QNTUSDT_LONG"
- ],
+ "mediocre": [],
  "positions": [
   {
    "pk": "ang:QNTUSDT_LONG",
    "symbol": "QNTUSDT",
    "account": "ang",
-   "value_usd": 24.94,
-   "gain_pct": 0.0,
+   "value_usd": 25.17,
+   "gain_pct": 0.929,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 0.1,
-   "mark": 249.35301595
+   "mark": 251.67
   }
  ]
 }

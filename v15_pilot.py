@@ -1496,6 +1496,15 @@ def _quarantine_impossible(new_symside, reasons, metrics, wb, wb_path, progress,
         except Exception as _qe:
             print(f"[quarantine-warn] {new_symside} carry {_qe}", flush=True)
     try:
+        _fp = progress.get("final_path")
+        if _fp:
+            _hp = Path(str(_fp).replace(".xlsx", ".html"))
+            if _hp.exists():
+                _hp.rename(qdir / _hp.name)
+                print(f"[quarantine] {new_symside} carried {_hp.name} into quarantine", flush=True)
+    except Exception as _qe2:
+        print(f"[quarantine-warn] {new_symside} chart carry {_qe2}", flush=True)
+    try:
         with RED_FIXER_LOCK:
             _atomic_save(wb, qdir / f"{new_symside}_IMPOSSIBLE_{stamp}.xlsx")
     except Exception as _qe:
