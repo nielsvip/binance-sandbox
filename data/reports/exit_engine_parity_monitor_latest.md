@@ -1,18 +1,18 @@
 # Exit-engine parity monitor
 
-generated: 2026-10-02T22:39:41.354061+00:00 · lookback: 48.0h
+generated: 2026-10-03T00:13:15.073317+00:00 · lookback: 48.0h
 
-**exit_engine rows in window: 5201** · last: 2026-10-02T22:39:30.928976+00:00
+**exit_engine rows in window: 5077** · last: 2026-10-02T23:40:06.779129+00:00
 
 ## 🔴 LEAKS (gate-disabled families that fired = illegal trades): 0
 - none — no gate-disabled family fired. ✅ parity holds for mapped exits.
 
-## ✅ GATE_ON (legitimately allowed live, has gate): 1673
-- GOLDEN_RULE: 1673
+## ✅ GATE_ON (legitimately allowed live, has gate): 1662
+- GOLDEN_RULE: 1662
 
-## ❔ UNMAPPED (no gate mapping — candidate good-paths to evaluate): 3528
--  2850  ALL_ALL_GREEN_DIRECT_CLOSE_winners_all
--   331  ALL_ALL_RED_DIRECT_CLOSE_losers_all_re
+## ❔ UNMAPPED (no gate mapping — candidate good-paths to evaluate): 3415
+-  2752  ALL_ALL_GREEN_DIRECT_CLOSE_winners_all
+-   316  ALL_ALL_RED_DIRECT_CLOSE_losers_all_re
 -   191  ALL_ALL_RED_DIRECT_OPEN_losers_all_red
 -    86  ALL_ALL_GREEN_DIRECT_OPEN_winners_all_
 -    47  DC_BREACH_REDUCE_UNHEDGED_LOW_15m_pric
@@ -25,4 +25,4 @@ generated: 2026-10-02T22:39:41.354061+00:00 · lookback: 48.0h
 -     1  CRYPTO_SPIKE_FADE_SHORT_ret=+10.2%
 -     1  RATIO_CLOSE_LONG_L100_S0_tgt30/70_gain
 
-## actions in window: {'CLOSE': 3229, 'OPEN': 1953, 'REDUCE': 19}
+## actions in window: {'CLOSE': 3116, 'OPEN': 1942, 'REDUCE': 19}
