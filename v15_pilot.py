@@ -185,16 +185,20 @@ def _load_wired_filters():
 WIRED_FILTERS = _load_wired_filters()
 def _load_unwired():
     # data/vec_unwired.json (tools/v15_zero_audit.py): keys with NO reachable vectorized read AND no ledger movement in finished sheets.
-    # They are NOT calculated (row/cell stays None, reason NOT_WIRED_VEC) — a silently ignored override would give a fake exact 0.0.
-    if os.environ.get("V15_UNWIRED_SKIP", "1") == "0":
-        return frozenset(), frozenset()
+    # V15_UNWIRED_SKIP=0 (complete-rounds): audit keys CALCULATE anyway — the tag sets label their honest
+    # 0.0 rows UNWIRED_CALCULATED instead of skipping them. Returns (skip_sw, skip_fi, tag_sw, tag_fi).
     try:
         _d = json.loads((ROOT / "data" / "vec_unwired.json").read_text())
-        return frozenset(str(x).strip() for x in (list(_d.get("switches") or []) + list(_d.get("switches_manual") or []))), frozenset(str(x).strip() for x in (list(_d.get("filters") or []) + list(_d.get("filters_manual") or [])))
+        _sw = frozenset(str(x).strip() for x in (list(_d.get("switches") or []) + list(_d.get("switches_manual") or [])))
+        _fi = frozenset(str(x).strip() for x in (list(_d.get("filters") or []) + list(_d.get("filters_manual") or [])))
     except Exception as _ue:
         print(f"[unwired] load failed ({_ue}) — evaluating everything", flush=True)
-        return frozenset(), frozenset()
-UNWIRED_SWITCHES, UNWIRED_FILTERS = _load_unwired()
+        _sw, _fi = frozenset(), frozenset()
+    if os.environ.get("V15_UNWIRED_SKIP", "1") == "0":
+        print(f"[unwired] SKIP=0 — {len(_sw) + len(_fi)} audit keys calculate anyway (tagged UNWIRED_CALCULATED)", flush=True)
+        return frozenset(), frozenset(), _sw, _fi
+    return _sw, _fi, _sw, _fi
+UNWIRED_SWITCHES, UNWIRED_FILTERS, UNWIRED_TAG_SW, UNWIRED_TAG_FI = _load_unwired()
 def _unwired_audit_id():
     try:
         _p = ROOT / "data" / "vec_unwired.json"
@@ -1305,6 +1309,12 @@ def _parse_opt_value(val, default):
         except Exception:
             return val
     if isinstance(default, float):
+        # USER 2026-10-03 (complete-rounds): config_tradier encodes bools as 0.0/1.0 floats
+        # (HTF_GATE_D_MANDATORY, LH_HL_FILTER_REQUIRE_BOTH) — bool-word/native-bool cands coerce honestly.
+        if isinstance(val, bool):
+            return 1.0 if val else 0.0
+        if isinstance(val, str) and val.strip().lower() in ("true", "false"):
+            return 1.0 if val.strip().lower() == "true" else 0.0
         try:
             return float(str(val))
         except Exception:
@@ -3182,7 +3192,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 pass
         progress["cumulative_gain"] = float(cumulative_gain)
         div = _write_div(sname, rr, [row_gain])
-        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", ""), "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "complete": (not missing_yellows and not (st.get("sampled_filters") or []) and not (st.get("excluded_tab_level") or []) and naked_settled)}
+        _uw_tag = "UNWIRED_CALCULATED: switch is in the vec_unwired audit (no engine read found) — 0.0 is the honest eval delta" if (row_delta == 0 and str(switch).strip() in UNWIRED_TAG_SW) else ""
+        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", "") or _uw_tag, "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "complete": (not missing_yellows and not (st.get("sampled_filters") or []) and not (st.get("excluded_tab_level") or []) and naked_settled)}
         if st.get("sampled_filters") or st.get("excluded_tab_level"):
             print(f"[POLICY-CELLS-PENDING] {sname}!{rr} {switch}={cand} sampled={len(st.get('sampled_filters') or [])} tablevel={len(st.get('excluded_tab_level') or [])} — yellows uncalculated, row stays pending (RULE#3 refuses publish until refilled)", flush=True)
         _maybe_write_json(force=promote)
@@ -5992,6 +6003,27 @@ def main():
     _board_reset = False
     try:
         progress = json.loads(progress_path.read_text())
+        # USER 2026-10-03 (complete-rounds): rows stuck is_running are CORPSES — no worker is alive at
+        # startup (DEDUP forbids concurrent pilots; this load runs after lock acquisition), so the marker
+        # can only be left by a dead run. Settled rows (numeric delta) keep their numbers with the flag
+        # cleared; uncalculated ones drop from the board and re-drive. Without this, crash-orphaned rows
+        # read as done forever (QBTS_LONG: 835 permanent blanks).
+        try:
+            _corpse_kept = _corpse_drop = 0
+            for _ck in list((progress.get("done") or {}).keys()):
+                _cr = (progress.get("done") or {}).get(_ck)
+                if not isinstance(_cr, dict) or not _cr.get("is_running"):
+                    continue
+                if isinstance(_cr.get("delta"), (int, float)):
+                    _cr["is_running"] = False
+                    _corpse_kept += 1
+                else:
+                    del progress["done"][_ck]
+                    _corpse_drop += 1
+            if _corpse_kept or _corpse_drop:
+                print(f"[CORPSE-CLEAR] {new_symside} settled={_corpse_kept} redrive={_corpse_drop} stale is_running rows", flush=True)
+        except Exception as _corpse_e:
+            print(f"[corpse-clear-warn] {new_symside}: {_corpse_e}", flush=True)
         # USER 2026-10-02 (finish qualification REDO): a scheduled re-fill starts CLEAN — archive the stale board
         # (rows were measured vs the old chain) and re-fill every row from the repaired baseline.
         if progress.get("needs_redo") and progress.get("verdict") != "IMPOSSIBLE":
