@@ -717,6 +717,8 @@ Per box (S1 crypto, S2 stocks), all `setsid` daemons:
 | "reduce before buy" on chart | marker merge ordering | sort `(bar, OPEN<AUGMENT<REDUCE<CLOSE)` (§33) — not a sim bug |
 | New switch shows fabricated distinct delta | synthetic scaffolding (`entry_mask[0]^=True`, getattr no-op) | forbidden (§19); implement real `vec_decisions` mask |
 | Backtest → 0 trades after a config change | live-only entry engine forced on | exclude from sync (§17.3/§31); revert that field only (not the file) |
+| `v12 prepared ...` text in RED cells | type-incompatible candidate reached the engine (numeric←TF-word, dict←scalar, K=V pollution) | TYPE_MISMATCH grey-skip in pilot + `_coerce_override` reject in `evaluate_v12` (§41.1); re-run affected rows |
+| Whole file all `0.0` with reason `all vectors invalid` | legacy fallback loop wrote 0.0 for invalid evals (pre-2026-10-02) | fake zeros — re-run the sym_side on the `_spec` path; never trust or average them |
 
 ---
 
@@ -846,6 +848,16 @@ Override values arrive as strings from the sheet and must be coerced to the fiel
 - `_parse_opt(val, default)`: if `default` is `bool` → `"true"/"false"` (case-insensitive) → bool; if `int` (non-bool) → `int(float(val))`; if `float` → `float(val)`; else if val looks boolean → bool; else raw. Unknown types pass through.
 - `sanitize_overrides(overrides, defaults)` normalizes the dict against `QuickConfig` field types and drops/《coerces》 malformed values; the pilot applies it before every eval so a sheet string like `"15m"`, `"False"`, `"0.10"`, `"38"` becomes the correct typed value.
 - **Consequence for zero-deltas:** a candidate written as `"0.01"` when the field default float is `0.01` coerces to the identical value → honest 0. Confirm coercion when auditing (a `"1"` vs `1.0` mismatch is not a real change).
+
+### 41.1 TYPE GATE (2026-10-02) — incompatible candidates are never evaluated
+
+A template candidate whose type the engine cannot consume must never reach `simulate_one`. `v15_pilot._cand_compatible` (mirrored by `tools/opt/evaluate_v12._coerce_override`) rejects, before any eval:
+
+- numeric field + non-numeric string (`WT_DC_DC_POS_THRESHOLD_SHORT=OFF`, `...=15m`, `MTF_GR_EXIT_MIN_TFS=D`) — the engine's `float(...)`/`int(...)` reads raise `ValueError`;
+- dict/list field + scalar (`LR_BAND_LADDER_TF_BOTTOM=1`) — `vec_decisions` `.get(...)` reads raise `AttributeError: 'str' object has no attribute 'get'` (only when the owning family is enabled, e.g. `LR_BAND_LADDER_ENABLED=True`);
+- any raw value containing `=` (`REENTRY_FILTER_MIN_PASS=2`, `HLR_REENTRY_MULT_D=1.875 + ...`) — column-C display text, never a real value. The one exception is the `X=X` dup typo (`DC_HARD_STOP_TF=D=D`, 271 rows), which collapses to `X`.
+
+Consequences: such rows grey-skip with a `TYPE_MISMATCH` reason (never evaluated, never RED, never 0.0 — §56.0 grey rule already covered dict-valued groups); such yellow cells stay blank and are recorded as `type_skipped` in the progress JSON; ingested best-overrides are cleaned by `_clean_ingested_overrides`. Before this gate, these crashes surfaced as `v12 prepared ...` text (`reason[:30]`) in RED sheet cells. Invalid evals still never produce 0.0 (§60.4).
 
 ---
 

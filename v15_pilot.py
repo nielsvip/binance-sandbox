@@ -1210,6 +1210,10 @@ COMPOSITE_SWITCHES = {
 
 def _parse_opt_value(val, default):
     # module-level twin of the per-row _parse_opt in _spec_fill_workbook (same rules)
+    if isinstance(val, str) and "=" in val:
+        _lh, _rh = val.split("=", 1)
+        if _lh.strip() and _lh.strip() == _rh.strip():
+            val = _rh.strip()
     if isinstance(default, bool):
         if isinstance(val, str) and val.lower() in ("true", "false"):
             return val.lower() == "true"
@@ -1234,6 +1238,85 @@ def _switch_overrides(switch: str, cand_parsed) -> dict:
     if cand_parsed == DEFAULT_MARKER:
         return {}
     return COMPOSITE_SWITCHES[switch](cand_parsed) if switch in COMPOSITE_SWITCHES else {switch: cand_parsed}
+
+def _cand_compatible(field: str, cand_parsed, defaults: dict) -> tuple:
+    """Type gate: a candidate the engine cannot consume must never be evaluated.
+
+    Returns (ok, reason). Rejects numeric field + non-numeric string (OFF/15m/D),
+    dict/list field + scalar (LR_BAND_LADDER_TF_*=1), any '='-containing raw value
+    (K=V pollution — a real value never contains '='). Crash-prevention only."""
+    if cand_parsed == DEFAULT_MARKER or cand_parsed is None:
+        return True, ""
+    if isinstance(cand_parsed, str) and "=" in cand_parsed:
+        return False, f"TYPE_MISMATCH: {field} value {cand_parsed!r} contains '=' (K=V pollution, never a real value)"
+    default = (defaults or {}).get(field)
+    if default is None:
+        return True, ""
+    if isinstance(default, bool):
+        if isinstance(cand_parsed, bool):
+            return True, ""
+        if isinstance(cand_parsed, str) and cand_parsed.strip().lower() in ("true", "false"):
+            return True, ""
+        if cand_parsed in (0, 1, 0.0, 1.0):
+            return True, ""
+        return False, f"TYPE_MISMATCH: {field} expects bool, cand {cand_parsed!r}"
+    if isinstance(default, int) and not isinstance(default, bool):
+        if isinstance(cand_parsed, bool) or isinstance(cand_parsed, (int, float)):
+            return True, ""
+        if isinstance(cand_parsed, str):
+            try:
+                int(float(cand_parsed.strip()))
+                return True, ""
+            except Exception:
+                pass
+        return False, f"TYPE_MISMATCH: {field} expects int, cand {cand_parsed!r}"
+    if isinstance(default, float):
+        if isinstance(cand_parsed, bool) or isinstance(cand_parsed, (int, float)):
+            return True, ""
+        if isinstance(cand_parsed, str):
+            try:
+                float(cand_parsed.strip())
+                return True, ""
+            except Exception:
+                pass
+        return False, f"TYPE_MISMATCH: {field} expects float, cand {cand_parsed!r}"
+    if isinstance(default, dict):
+        if isinstance(cand_parsed, dict):
+            return True, ""
+        return False, f"TYPE_MISMATCH: {field} expects dict, cand {cand_parsed!r} (scalar for a dict field — grey per §56.0)"
+    if isinstance(default, (list, tuple, set)):
+        if isinstance(cand_parsed, (list, tuple, set)):
+            return True, ""
+        return False, f"TYPE_MISMATCH: {field} expects list, cand {cand_parsed!r}"
+    return True, ""
+
+def _switch_type_violation(switch: str, cand, defaults: dict) -> str:
+    """'' when the row's expanded override set is type-compatible, else the TYPE_MISMATCH reason."""
+    try:
+        ov = _switch_overrides(str(switch).strip(), _parse_opt_value(cand, (defaults or {}).get(switch))) or {}
+    except Exception:
+        return ""
+    bad = [_cand_compatible(k, v, defaults)[1] for k, v in ov.items()]
+    return "; ".join(r for r in bad if r)
+
+def _clean_ingested_overrides(ov: dict) -> dict:
+    """Drop/parse polluted ingested values: 'K=V + ...' multi-strings and single 'K=V'
+    strings are column-C display text, never real values. 'X=X' dup typos collapse to X."""
+    clean = {}
+    for k, v in dict(ov or {}).items():
+        if isinstance(v, str) and " + " in v:
+            continue
+        if isinstance(v, str) and "=" in v:
+            _lhs, _rhs = v.split("=", 1)
+            _lhs, _rhs = _lhs.strip(), _rhs.strip()
+            if not _rhs or "=" in _rhs or "+" in _rhs:
+                continue
+            if _lhs == _rhs or _lhs == str(k).strip() or not _lhs:
+                v = _rhs
+            else:
+                continue
+        clean[k] = v
+    return clean
 
 def _pool_eval(overrides: dict, window_days: int):
     # forked worker: prepared NPZ slice inherited copy-on-write from the parent (stays in RAM, no reload)
@@ -2184,6 +2267,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         elif not all(k in known_config_fields() for k in (_switch_overrides(str(switch).strip(), _parse_opt_value(cand, defaults.get(switch))) or {str(switch).strip(): None})):
             info.update(kind="skip", reason="NOT_IN_CONFIG: no config/config_tradier/QuickConfig field — grey, not calculated", g=None)
             ws.cell(row=rr, column=1).font = Font(name="Arial", size=10, color="FFBFBFBF")
+        elif (_tm_why := _switch_type_violation(str(switch).strip(), cand, defaults)):
+            info.update(kind="skip", reason=f"{_tm_why} — grey, not calculated", g=None)
+            ws.cell(row=rr, column=1).font = Font(name="Arial", size=10, color="FFBFBFBF")
         else:
             # USER 2026-09-30: grey / DEAD_VEC / LIVE_ONLY rows are calculated like every other row (real engine deltas);
             # DEAD_VEC / LIVE_ONLY promotion stays blocked by promotion_block_reason
@@ -2216,6 +2302,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     continue
                 if filt.strip() in UNWIRED_FILTERS or filt.strip() in UNWIRED_SWITCHES:
                     continue  # not wired in the vectorized engine: no calculation, no fake 0
+                _fok, _fwhy = _cand_compatible(filt.strip(), _parse_opt_value(opt.strip(), defaults.get(filt.strip())), defaults)
+                if not _fok:
+                    info.setdefault("type_skipped", []).append(hdr)
+                    continue  # type-incompatible filter value: blank cell, never evaluated, never 0.0, never RED
                 info["hdrs"].append(hdr)
                 info["h2f"][hdr] = {"filter": filt.strip(), "opt": opt.strip()}
         if _ps_on and info["kind"] == "eval":
@@ -2656,7 +2746,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             progress["cumulative_overrides"] = dict(cumulative_overrides)
         progress["cumulative_gain"] = float(cumulative_gain)
         div = _write_div(sname, rr, [row_gain])
-        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", ""), "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain)}
+        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", ""), "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain)}
         _maybe_write_json(force=promote)
         _row_done(sname, rr, switch, cand, n_items + (1 if pos_hdrs else 0), row_delta, promote)
         _touch(f"cell {sname}!{rr} delta={row_delta}")
@@ -4174,16 +4264,15 @@ def main():
                     continue
                 _co = _pd.get("cumulative_overrides") or _pd.get("overrides") or {}
                 _added = 0
-                for k, v in _co.items():
-                    if not (isinstance(v, str) and " + " in v):
-                        if overrides.get(k) != v:
-                            overrides[k] = v
-                            _added += 1
+                for k, v in _clean_ingested_overrides(_co).items():
+                    if overrides.get(k) != v:
+                        overrides[k] = v
+                        _added += 1
                 if _added:
                     print(f"[BEST-prev-progress] {new_symside}: loaded {_added} overrides from previous progress cumulative_overrides as baseline", flush=True)
                 _ho = _pd.get("hustler_overrides") or {}
                 _added2 = 0
-                for k, v in _ho.items():
+                for k, v in _clean_ingested_overrides(_ho).items():
                     if overrides.get(k) != v:
                         overrides[k] = v
                         _added2 += 1
@@ -4205,6 +4294,10 @@ def main():
             # Best-fill rows first, then promoted rows (VECTOR_DELTA > 0) in fill order, so the latest promotion wins.
             def _pv(v):
                 v = str(v).strip()
+                if "=" in v:
+                    _lh, _rh = v.split("=", 1)
+                    if _lh.strip() and _lh.strip() == _rh.strip():
+                        v = _rh.strip()
                 if v.lower() in ("true", "false"):
                     return v.lower() == "true"
                 try:
@@ -4234,7 +4327,7 @@ def main():
                             _parts.append((_k.strip(), _pv(_v)))
                     (_promo_parts if isinstance(_g, (int, float)) and _g > 1e-9 else _best_parts).extend(_parts)
             for _k, _v in _best_parts + _promo_parts:
-                if "_" in _k and len(_k) > 5 and overrides.get(_k) != _v:
+                if "_" in _k and len(_k) > 5 and "=" not in str(_v) and overrides.get(_k) != _v:
                     overrides[_k] = _v
                     _added_xls += 1
             if _added_xls:
@@ -4265,7 +4358,7 @@ def main():
             if bj.exists():
                 _base_over = _js2.loads(bj.read_text())
                 # FIX 2026-09-24: BEST must win — overwrite, not guard
-                for k, v in _base_over.items():
+                for k, v in _clean_ingested_overrides(_base_over).items():
                     overrides[k] = v
                 print(f"[baseline-json] loaded {len(_base_over)} overrides from {bj} as new baseline for shuffle", flush=True)
         except Exception as _e:
@@ -5222,7 +5315,7 @@ def main():
     # Enforce monotonic baseline: never underperform BEST (leave settings as is = 0 delta)
     cumulative_gain = max(float(progress.get("cumulative_gain") or baseline_gain), float(baseline_gain or 0), float(progress.get("hustler_best_gain") or 0))
     cumulative_overrides = dict(progress.get("cumulative_overrides", overrides))
-    cumulative_overrides = {k: v for k, v in cumulative_overrides.items() if not (isinstance(v, str) and " + " in v)}
+    cumulative_overrides = _clean_ingested_overrides(cumulative_overrides)
     _bl_trades = int(baseline_live.get("trades") or 0)
     _bl_valid = bool(baseline_live.get("valid"))
     baseline_had_zero_trades = (_bl_trades == 0) or (not _bl_valid)
