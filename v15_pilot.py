@@ -1442,8 +1442,8 @@ ADAPT_TIM_MAX, ADAPT_DD_MAX = 80.0, 30.0
 ADAPT_TREND_TARGET_PCT = float(os.environ.get("V15_TREND_TARGET_PCT", "-3.0"))
 _ADAPT_TREND_TOKENS = ("TREND", "HTF", "EMA", "ADX", "REGIME", "SMA200", "DIRECTION")
 _ADAPT_TREND_KIND = ("FILTER", "GATE", "VETO")
-# USER 2026-10-02 (finish qualification): a sheet FINISHES only when TIM in [20, 80], gain >= 0,
-# gain >= BH (30D), valid, trades floored; 365D must be valid + gain >= 0 + >= 80 trades (BIBLE §58).
+# USER 2026-10-03 (pos-gain go-live, BIBLE §65): a sheet FINISHES when TIM in [20, 80], gain > 0,
+# valid, trades floored; BH recorded (filename/manifest) but NEVER gating; 365D valid + gain > 0 + >= 80 trades.
 # Failure -> revise (§58 repair, diagnosis-phased) -> REDO (re-fill from repaired set, max 2) -> IMPOSSIBLE quarantine.
 QUAL_TIM_MIN, QUAL_TIM_MAX = 20.0, 80.0
 QUAL_365D_FLOOR_TRADES = 80
@@ -1456,7 +1456,7 @@ _ADAPT_FINAL_SOFTEN_EXCLUDE = ("GUARD", "BLOCK", "HARD", "STOP", "KILL", "HEDGE"
 
 
 def _qualifies_30d(v, bh):
-    """(ok, reasons) — 30D finish gate: valid, TIM 20-80, DD<=30, trades>=floor, gain>=0, gain>=BH."""
+    """(ok, reasons) — 30D finish gate: valid, TIM 20-80, trades>=floor, gain>0. BH recorded, never gating (USER 2026-10-03)."""
     r = []
     v = v or {}
     if not v.get("valid"):
@@ -1472,20 +1472,14 @@ def _qualifies_30d(v, bh):
         r.append(f"TIM {tim:.1f} outside [{QUAL_TIM_MIN:.0f},{QUAL_TIM_MAX:.0f}]")
     g = v.get("gain_pct")
     g = float(g) if g is not None else None
-    if g is None or g < 0:
+    if g is None or g <= 0:
         r.append(f"gain {g}")
-    else:
-        try:
-            if g < float(bh or 0):
-                r.append(f"gain {g:.2f}<BH {float(bh or 0):.2f}")
-        except Exception:
-            pass
     return (len(r) == 0, r)
 
 
 def _nearmiss_30d(v, bh):
-    """(is_nearmiss, reasons) — USER 2026-10-03 (best-effort): a VALID floor-trading non-negative
-    set failing ONLY on TIM and/or gain<BH. Publishes flagged instead of quarantine."""
+    """(is_nearmiss, reasons) — USER 2026-10-03 (best-effort + pos-gain go-live): a VALID floor-trading
+    positive-gain set failing ONLY on TIM. Publishes flagged instead of quarantine. BH never gating."""
     v = v or {}
     if not v.get("valid"):
         return (False, [])
@@ -1496,7 +1490,7 @@ def _nearmiss_30d(v, bh):
         g = float(g) if g is not None else None
     except Exception:
         return (False, [])
-    if g is None or g < 0:
+    if g is None or g <= 0:
         return (False, [])
     r = []
     try:
@@ -1505,11 +1499,6 @@ def _nearmiss_30d(v, bh):
         tim = 0.0
     if not (QUAL_TIM_MIN <= tim <= QUAL_TIM_MAX):
         r.append(f"TIM {tim:.1f} outside [{QUAL_TIM_MIN:.0f},{QUAL_TIM_MAX:.0f}]")
-    try:
-        if g < float(bh or 0):
-            r.append(f"gain {g:.2f}<BH {float(bh or 0):.2f}")
-    except Exception:
-        pass
     return (len(r) > 0, r)
 
 
@@ -1691,11 +1680,16 @@ def _md5_file(path, chunk=1 << 20) -> str | None:
 
 def _build_publish_manifest(symside, final_name, metrics, counts, overrides_md5, file_md5, npz_name, npz_md5, span_days, pilot_md5, template_name, host) -> dict:
     """USER 2026-10-03 (xlsx source-of-truth): every published xlsx ships a manifest sidecar binding the file (md5 + F/C/E counts) to its metrics, override set, NPZ data, and pilot code. tools/sheet_audit.py --verify re-checks all of it."""
-    return {"symside": symside, "final_name": final_name, "published_utc": utcnow(), "host": host, "metrics": {k: metrics.get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "valid", "invalid_reason", "bh")}, "counts": {"F": int(counts[0]), "C": int(counts[1]), "E": int(counts[2]), "done_n": int(counts[3])}, "overrides_md5": overrides_md5, "file_md5": file_md5, "npz_name": npz_name, "npz_md5": npz_md5, "span_days": span_days, "pilot_md5": pilot_md5, "template": template_name}
+    _mm = {k: metrics.get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "valid", "invalid_reason", "bh")}
+    try:
+        _mm["gain_vs_bh"] = float(metrics.get("gain_pct")) - float(metrics.get("bh"))
+    except Exception:
+        _mm["gain_vs_bh"] = None
+    return {"symside": symside, "final_name": final_name, "published_utc": utcnow(), "host": host, "metrics": _mm, "counts": {"F": int(counts[0]), "C": int(counts[1]), "E": int(counts[2]), "done_n": int(counts[3])}, "overrides_md5": overrides_md5, "file_md5": file_md5, "npz_name": npz_name, "npz_md5": npz_md5, "span_days": span_days, "pilot_md5": pilot_md5, "template": template_name}
 
 
 def _qualifies_365d(v, span_days=None):
-    """(ok, reasons) — 365D finish gate (BIBLE §58): valid, trades>=floor, gain>=0. Short-history NPZs (<330d) get a pro-rata floor max(10, round(80*span/365)) — a +26.76/73tr set on 80d of history must not die on a technicality (USER 2026-10-02: quarantine iff 365D negative). Fail-closed: unknown span -> full 80 floor."""
+    """(ok, reasons) — 365D finish gate (BIBLE §58): valid, trades>=floor, gain>0. Short-history NPZs (<330d) get a pro-rata floor max(10, round(80*span/365)) — a +26.76/73tr set on 80d of history must not die on a technicality (USER 2026-10-03: quarantine iff 365D non-positive). Fail-closed: unknown span -> full 80 floor."""
     r = []
     v = v or {}
     if not v.get("valid"):
@@ -1708,7 +1702,7 @@ def _qualifies_365d(v, span_days=None):
         r.append(f"trades {t}<{_floor}" + (f" (pro-rata {span_days:.0f}d)" if span_days is not None and span_days < 330 else ""))
     g = v.get("gain_pct")
     g = float(g) if g is not None else None
-    if g is None or g < 0:
+    if g is None or g <= 0:
         r.append(f"gain {g}")
     return (len(r) == 0, r)
 
@@ -1775,8 +1769,11 @@ def _quarantine_impossible(new_symside, reasons, metrics, wb, wb_path, progress,
     for _pat in (f"{new_symside}_bh*.xlsx", f"{new_symside}_30d_matrix.xlsx", f"{new_symside}_*.html"):
         for _f in OUT_DIR.glob(_pat):
             try:
-                _f.unlink()
-                print(f"[quarantine] {new_symside} removed CELL_BY_CELL artifact {_f.name}", flush=True)
+                _dest = qdir / _f.name
+                if _dest.exists():
+                    _dest = qdir / f"{_f.stem}_dup{_f.suffix}"
+                _f.rename(_dest)
+                print(f"[quarantine] {new_symside} carried CELL_BY_CELL artifact {_f.name} into quarantine", flush=True)
             except Exception:
                 pass
     progress["verdict"] = "IMPOSSIBLE"
@@ -3330,8 +3327,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         except Exception as _ff_e:
             print(f"[final-fresh-warn] {new_symside}: {_ff_e}", flush=True)
             _fresh_final = {}
-        # USER 2026-10-02 (finish qualification): a sheet FINISHES only when the final set qualifies — 30D:
-        # valid, TIM in [20, 80], DD <= 30, trades >= floor, gain >= 0, gain >= BH. Failure -> revise with the
+        # USER 2026-10-03 (pos-gain go-live): a sheet FINISHES when the final set qualifies — 30D:
+        # valid, TIM in [20, 80], trades >= floor, gain > 0 (BH recorded, never gating). Failure -> revise with the
         # §58 repair (diagnosis-phased: TRADES/HOLDS/EXITS/GAIN), cycling bases across rounds; still failing ->
         # REDO (re-fill the sheet from the repaired set, max QUAL_MAX_REDOS) -> IMPOSSIBLE quarantine.
         # (Supersedes 2026-09-30 "negative gain is NOT a disqualifier".)
@@ -3360,12 +3357,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                         print(f"[COMPLIANCE-TIMEOUT] {new_symside} {QUAL_RETRY_TIMEOUT:.0f}s exceeded — stopping repair, quarantining", flush=True)
                         break
                     _tail = max(0.0, _qual_deadline - _t_qual.monotonic())
-                    # run one repair round under a bounded future so gain>=0/gain>=BH never chokes the worker
+                    # run one repair round under a bounded future so compliance repair never chokes the worker (pos-gain gate, BH never targeted)
                     import concurrent.futures as _cf_qual
                     _fut = None
                     try:
                         _ex = _cf_qual.ThreadPoolExecutor(max_workers=1)
-                        _fut = _ex.submit(_credible_baseline, new_symside, prepared, _bases_rounds[_qr], defaults, args.template, args.window_days, QUAL_TIM_MIN, 0.0, float(bh or 0), True)
+                        _fut = _ex.submit(_credible_baseline, new_symside, prepared, _bases_rounds[_qr], defaults, args.template, args.window_days, tim_min=QUAL_TIM_MIN, gain_min=0.0, final_safe=True)
                         _rov, _rv, _rrep = _fut.result(timeout=_tail if _tail > 0 else 0.1)
                     except Exception as _qe:
                         try:
