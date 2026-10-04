@@ -9577,8 +9577,9 @@ class PositionService:
         for s in inf_l: add_key('inf', s, 'LONG')
         for s in inf_s: add_key('inf', s, 'SHORT')
         for s in men:
-            if s in all_winners: add_key('men', s, 'LONG')
-            if s in all_losers: add_key('men', s, 'SHORT')
+            # 2026-10-04 USER: men trades its full manual universe (symbols_men.json) BOTH sides, unconditionally
+            add_key('men', s, 'LONG')
+            add_key('men', s, 'SHORT')
         for s in fin:
             if s in all_winners: add_key('fin', s, 'LONG')
             if s in all_losers: add_key('fin', s, 'SHORT')
@@ -9670,9 +9671,9 @@ class PositionService:
                 except Exception:
                     pass
 
-            # HEDGE PAIR CLEANUP — only for ang/inf/men/fin (accounts that use winners/losers)
-            # flz symbols are intentionally added with BOTH sides — do NOT clean them up
-            _hedge_cleanup_accounts = {'ang', 'inf', 'men', 'fin'}
+            # HEDGE PAIR CLEANUP — only for ang/inf/fin (accounts that use winners/losers)
+            # flz/men symbols are intentionally added with BOTH sides — do NOT clean them up
+            _hedge_cleanup_accounts = {'ang', 'inf', 'fin'}
             if account_key in _hedge_cleanup_accounts:
                 for _sym, sides in symbols_in_account.items():
                     if 'LONG' in sides and 'SHORT' in sides:

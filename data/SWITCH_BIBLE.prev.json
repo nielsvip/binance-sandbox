@@ -968,7 +968,7 @@
    "v12_quick_engine.py": "133c9cf0e07870f8dab6cde334121ede",
    "vec_decisions/band_ladder_mult_vec.py": "0a825a32c48115ac52e2b52b6307250b",
    "vec_decisions/bb_pullback_gate.py": "d923cbc0260f1c34c68a3b0102fad3be",
-   "vec_decisions/bb_stoch_exits.py": "52463bbd3a0de164753a1a78b994c67a",
+   "vec_decisions/bb_stoch_exits.py": "e4bfb65cb15ee634072ddda1382ca395",
    "vec_decisions/blacklist_strand.py": "9e2e1558a3cd22afb7343e1ffaf85ab4",
    "vec_decisions/bottom_exit_veto.py": "d9157c6570e5a8a0818f438dec6bdd27",
    "vec_decisions/bottom_top_signals.py": "abb55283c5c319a9f74b43602b3982c1",
@@ -1227,7 +1227,7 @@
    "vec_decisions/reentry_epq_vec.py:1",
    "vec_decisions/wirec_batch1_gates.py:1"
   ],
-  "generated": "2026-10-04T07:59:52.616554Z",
+  "generated": "2026-10-04T08:01:01.596677Z",
   "inputs": {
    "live_gaps": 21,
    "parity_proven": 0,
@@ -20641,12 +20641,16 @@
     "stocks": 0
    },
    "live_read_count": {
-    "crypto": 0,
-    "stocks": 0
+    "crypto": 1,
+    "stocks": 1
    },
    "live_reads": {
-    "crypto": [],
-    "stocks": []
+    "crypto": [
+     "vec_decisions/bb_stoch_exits.py:54(bb_band_exits)"
+    ],
+    "stocks": [
+     "vec_decisions/bb_stoch_exits.py:54(bb_band_exits)"
+    ]
    },
    "live_weak_refs": {
     "crypto": [
@@ -20664,8 +20668,8 @@
     "SHORT"
    ],
    "status": {
-    "crypto": "VEC_ONLY",
-    "stocks": "VEC_ONLY"
+    "crypto": "WIRED_BOTH_UNPROVEN",
+    "stocks": "WIRED_BOTH_UNPROVEN"
    },
    "template": {
     "CRYPTO_LONG": {
@@ -20851,11 +20855,12 @@
    },
    "type": "str",
    "vec_read_count": {
-    "reachable": 1,
-    "total": 1
+    "reachable": 2,
+    "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:10261(compute_exit_signals)"
+    "v12_quick_engine.py:10261(compute_exit_signals)",
+    "vec_decisions/bb_stoch_exits.py:54(bb_band_exits)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -21418,19 +21423,23 @@
     "stocks": 0
    },
    "live_read_count": {
-    "crypto": 0,
-    "stocks": 0
+    "crypto": 1,
+    "stocks": 1
    },
    "live_reads": {
-    "crypto": [],
-    "stocks": []
+    "crypto": [
+     "vec_decisions/bb_stoch_exits.py:57(bb_band_exits)"
+    ],
+    "stocks": [
+     "vec_decisions/bb_stoch_exits.py:57(bb_band_exits)"
+    ]
    },
    "live_weak_refs": {
     "crypto": [
-     "vec_decisions/bb_stoch_exits.py:54"
+     "vec_decisions/bb_stoch_exits.py:57"
     ],
     "stocks": [
-     "vec_decisions/bb_stoch_exits.py:54"
+     "vec_decisions/bb_stoch_exits.py:57"
     ]
    },
    "name": "BB_PROFIT_TAKE_TF",
@@ -21441,8 +21450,8 @@
     "SHORT"
    ],
    "status": {
-    "crypto": "VEC_ONLY",
-    "stocks": "VEC_ONLY"
+    "crypto": "WIRED_BOTH_UNPROVEN",
+    "stocks": "WIRED_BOTH_UNPROVEN"
    },
    "template": {
     "CRYPTO_LONG": {
@@ -21628,11 +21637,12 @@
    },
    "type": "str",
    "vec_read_count": {
-    "reachable": 1,
-    "total": 1
+    "reachable": 2,
+    "total": 2
    },
    "vec_reads": [
-    "v12_quick_engine.py:10262(compute_exit_signals)"
+    "v12_quick_engine.py:10262(compute_exit_signals)",
+    "vec_decisions/bb_stoch_exits.py:57(bb_band_exits)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -26237,7 +26247,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "<absent>",
-    "config_tradier.py": "{'USO', 'OIH', 'FNV', 'WPM', 'GDX', 'GLD', 'SLV', 'UVXY', 'HL', 'XLE', 'AU', 'AE",
+    "config_tradier.py": "{'OIH', 'GLD', 'PAAS', 'FNV', 'KGC', 'HL', 'AU', 'AEM', 'AGI', 'AG', 'EGO', 'MAG",
     "template_bold": {}
    },
    "filter_tf": false,
@@ -217657,7 +217667,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "<absent>",
-    "config_tradier.py": "{'CUBT', 'HIVE', 'ZIM', 'FIX', 'COE', 'INOD', 'AXTI', 'GLD', 'NNE', 'PPA', 'CAN'",
+    "config_tradier.py": "{'BTBT', 'COPX', 'BTCL', 'ZIM', 'MAG', 'INOD', 'DIME', 'CLSK', 'GDXJ', 'URA', 'B",
     "template_bold": {}
    },
    "filter_tf": false,
@@ -324864,16 +324874,16 @@
    },
    "live_reads": {
     "crypto": [
-     "vec_decisions/bb_stoch_exits.py:80(stoch_cross_3m_exit)"
+     "vec_decisions/bb_stoch_exits.py:82(stoch_cross_3m_exit)"
     ],
     "stocks": [
-     "vec_decisions/bb_stoch_exits.py:80(stoch_cross_3m_exit)"
+     "vec_decisions/bb_stoch_exits.py:82(stoch_cross_3m_exit)"
     ]
    },
    "live_weak_refs": {
     "crypto": [
      "ez_manage.py:6009",
-     "vec_decisions/bb_stoch_exits.py:80"
+     "vec_decisions/bb_stoch_exits.py:82"
     ],
     "stocks": [
      "tradier_manage.py:4845",
@@ -324985,7 +324995,7 @@
    },
    "vec_reads": [
     "v12_quick_engine.py:10022(compute_exit_signals)",
-    "vec_decisions/bb_stoch_exits.py:80(stoch_cross_3m_exit)"
+    "vec_decisions/bb_stoch_exits.py:82(stoch_cross_3m_exit)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [

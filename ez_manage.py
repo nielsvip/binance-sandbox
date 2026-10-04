@@ -52,6 +52,11 @@ except ImportError:
     DeltaTracker = None
 
 #gpg --encrypt --recipient Niels --output .env.gpg .env # DO NOT ERASE
+try:
+    from env_gpg import load_env_gpg as _boot_load_env_gpg
+    _boot_load_env_gpg()
+except Exception:
+    pass
 
 # ── TradingPolicy (was ez_trading_policy.py — merged here) ──────────────────
 def _sf(v, default=50.0):
