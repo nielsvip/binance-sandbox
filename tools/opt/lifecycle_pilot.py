@@ -281,7 +281,8 @@ def evaluate_month(symside: str, overrides: Mapping[str, Any], include_ledger: b
     bh = E._bh(npz, side)
     trades_rows = len(ledger)
     # PAR/001 2026-10-01: trades = REALISED closes (rows with pnl_dollars) — same unit as evaluate_v12 and backtest_v12_engine; the old all-rows count is kept as trades_rows
-    trades = sum(1 for t in ledger if isinstance(t, dict) and "pnl_dollars" in t)
+    # [w2-carryin cut-fix] pre-window seed marker rows never count as trades (same filter as evaluate_v12/engine _mtrades)
+    trades = sum(1 for t in ledger if isinstance(t, dict) and "pnl_dollars" in t and not t.get("seeded_prewindow"))
     out.update({
         "valid": True,
         "invalid_reason": "",
@@ -308,6 +309,7 @@ def evaluate_month(symside: str, overrides: Mapping[str, Any], include_ledger: b
         "behavior_fingerprint": E._behavior_fingerprint(ledger),
         "mode": mode,
         "tokenised": tokenised,
+        "seeded": result.get("seeded"),  # [w2-carryin cut-fix] propagate engine seed attestation (None when unseeded)
     })
     try:
         from v12_quick_engine import _base_safe as _mae_bs

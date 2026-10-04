@@ -2764,6 +2764,8 @@ AUTO_WIRED_PARAMS = [
     'SECTOR_LS_RATIO_MAX',
     'SECTOR_LS_RATIO_MIN',
     'SECTOR_MAP',
+    'SEEDED_LEDGER_ENABLED',
+    'SEEDED_LEDGER_SNAPSHOT_JSON',
     'SENTIMENT_FADE_MODE',
     'SENTIMENT_REBALANCER_ENABLED',
     'SENTIMENT_REBAL_AUGMENT_DEVIATION_THR',
@@ -4514,6 +4516,8 @@ class QuickConfig:
     REENTRY_EPQ_MODEL_ENABLED: bool = False  # [N3 q4] live ez_positions_quick reentry evaluators (DC breakout fast-path, B16 SMA200 pullback, mandatory price cross, size tiers) 15m+ twin
     REENTRY_OBLIGATORY_MODEL_ENABLED: bool = False  # [N3 q3] live crypto OBLIGATORY_REENTRY (ez_reentry.evaluate_obligatory_reentry) 15m+ twin
     REENTRY_TIER_MODEL_ENABLED: bool = False  # [N3 q2] live crypto TIER1/TIER2_FORCED reentry twin (replaces the blanket fire when True)
+    SEEDED_LEDGER_ENABLED: bool = False  # [w2-carryin] SEEDED-LEDGER mode: seed simulate_one initial state from a live open-position snapshot at window ts0. Default False = cold start (bitwise identical to today)
+    SEEDED_LEDGER_SNAPSHOT_JSON: str = ""  # [w2-carryin] snapshot doc (V8_SEED-compatible positions map or explicit {"seeds": {...}}). Empty = no seeds
     REENTRY_BLANKET_FIRE_ENABLED: object = False  # C/003 (was None=auto: crypto True 'legacy upper bound'): live never reenters every bar — live Processing-order mix 09-25..10-01: OPEN 41191 / REENTRY 1248; True restores the legacy crypto upper bound
     OVERTRADE_GUARD_ENABLED: bool = False  # [C2 b5b] live guard is always on (cap 6 crypto / 8 stocks); default OFF here = baseline unchanged until parity-checked, see NOTES
     VEC_HONOR_DEAD_LIVE_DELTA_GATES: bool = False  # [C2 b4] True = legacy vec behaviour for DELTA_GATE_OPEN/REENTRY/AUGMENT (live ignores them)
@@ -6745,6 +6749,10 @@ class QuickConfig:
     GAP_MOC_DC_PROXIMITY_PCT: float = 0.5
     GAP_MOC_DC_WT_SAFETY_ENABLED: bool = True
     GAP_MOC_EXIT_ENABLED: bool = True
+    W2_GAP_INTRADAY_ENABLED: bool = True  # [w2-exits] live gap loop evaluates INTRADAY sentinel unconditionally (tradier:10012-10027); vec-only master, True = live parity.
+    W2_GAP_EMERGENCY_30M: bool = True  # [w2-exits] live 30m emergency force (tradier:10109-10112); vec-only master, True = live parity.
+    W2_GAP_DC_TOP: bool = True  # [w2-exits] live DC-breakdown top (tradier:9448-9462); vec-only master, True = live parity.
+    W2_OB_OS_TP_ENABLED: bool = False  # [w2-exits] OB/OS take-profit REDUCE; honest-zero until 5m-stoch NPZ regen (no k_5m/rsi_5m/d_5m); flip deliberately at regen with fresh T2.
     GAP_MOC_FORCE_MOC_AT_CLOSE: bool = True  # LIVE 2026-09-10 — force MOC at deadline even if no top
     GAP_MOC_REQUIRE_TOP: bool = True  # LIVE 2026-09-10 — only exit at small top in last 90m
     GAP_MOC_WINDOW_MINUTES: int = 90  # LIVE 2026-09-10 — start of pre-close window (14:30 ET)
@@ -9443,8 +9451,21 @@ def compute_entry_signals(npz, n, is_long, cfg):
             # htf_align_block[HTF_ALIGN_REQUIRED_TRADIER], bb_pullback_block, wt_dc_pos_block[short], lt_block[short], side switch WT_DC_LONG/SHORT_ENABLED).
             # The vec ORed B_WT_DC_LIVE AFTER those gates (ungated). k5m/stoch-gate need 5m (inert). WT_DC_STOCH_*/DC_POS_THRESHOLD/TF_ENTRY are assigned-only
             # in live (tradier_manage.py:12653-12660 never used) -> deliberately NOT applied here.
-            if str(getattr(cfg, 'MODE', 'crypto')) == 'tradier' and (bool(getattr(cfg, 'WT_DC_LIVE_GATES_ENABLED', False)) or bool(getattr(cfg, 'STOCKS_LIVE_ENTRY_STACK_ENABLED', False))):
+            # lane w2-entryveto (2026-10-04, staged): live WT_DC final
+            # condition is unconditional — dropped the vec-only master; added
+            # the two missing twins (stoch floor + gr_htf) to _wl_ok.
+            if str(getattr(cfg, 'MODE', 'crypto')) == 'tradier':
                 _wl_ok = _wtdc_htf_ok & _wt_dc_mask & (~_bb_pullback_vec_w)
+                try:
+                    import vec_decisions.wtdc_score_gates as _w2_wsg
+                    _w2_stoch = _w2_wsg.stoch_block_mask(npz, n, is_long, cfg, _safe)
+                    if _w2_stoch is not None:
+                        _wl_ok = _wl_ok & ~_w2_stoch
+                    _w2_grh = _w2_wsg.gr_htf_block_mask(npz, n, is_long, cfg, _safe)
+                    if _w2_grh is not None:
+                        _wl_ok = _wl_ok & ~_w2_grh
+                except Exception:
+                    pass
                 _wl_req = int(float(getattr(cfg, 'HTF_ALIGN_REQUIRED_TRADIER', 0) or 0))
                 if _wl_req > 0:
                     if is_long:
@@ -11779,6 +11800,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             _at_deadline[_i] = True
                     _gap_fire = _gap_fire | (_at_deadline & _gap_should)
                 exit_sig = exit_sig | _gap_fire
+                # w2-exits STAGED: GAP_MOC INTRADAY + 30m emergency + DC top (ONE call site).
+                try:
+                    import vec_decisions.w2_gap_moc_intraday as _w2gap
+                    exit_sig = exit_sig | _w2gap.gap_moc_intraday_fire(
+                        npz, n, is_long, cfg, _in_window, _is_top, _gap_should,
+                        _bars_per_day, _bar_min)
+                except Exception:
+                    pass
                 # tag for audit: ensure distinct ledger vs baseline
                 _ = getattr(cfg, 'GAP_MOC_EXIT_ENABLED', True)
                 # CLOSE-GAP sentinel (2026-09-14) — separate from open-gap, stocks-only, shorts default >0.10 vv
@@ -12020,6 +12049,20 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _ec_choke_block = _m if _ec_choke_block is None else (_ec_choke_block | _m)
     except Exception:
         _ec_choke_block = None
+    # lane w2-entryveto (2026-10-04, staged): GR-consensus + DC4 veto masks
+    # for the post-reason fire veto (live queue_trade_action twins; every
+    # open incl. reentry, MTF_ARROW/LR_BAND reasons exempt at veto site).
+    _w2_gr_block = None
+    _w2_dc4_block = None
+    try:
+        if str(getattr(cfg, 'MODE', 'crypto')) == 'tradier':
+            import vec_decisions.gr_consensus_veto as _w2_gr
+            import vec_decisions.entry_vet_stocks as _w2_evs
+            _w2_gr_block = _w2_gr.block_mask(npz, n, is_long, cfg, close, _safe)
+            _w2_dc4_block = _w2_evs.dc4_block_mask(npz, n, is_long, cfg, close, _safe)
+    except Exception:
+        _w2_gr_block = None
+        _w2_dc4_block = None
     # b7: HTF_GATE_APPLY_TO_AUGMENT (live execute_trade_wrapper 12676-12690: winner/pullback AUGMENT is gated when HTF_DIRECTION_GATE_ENABLED and APPLY_TO_AUGMENT)
     _htf_aug_ok = None
     try:
@@ -12153,6 +12196,18 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             if _stg_ok is not None:
                 entry_sig = entry_sig & _stg_ok
                 _entry_filter_masks.append(_stg_ok)
+        except Exception:
+            pass
+    # lane w2-entryveto (2026-10-04, staged): stocks queue zone+alignment
+    # vetting on the FINAL fresh-entry signal (live tradier_manage.py:
+    # 24893-24930; reentries exempt in live -> entry_sig only).
+    if str(getattr(cfg, 'MODE', 'crypto')) == 'tradier':
+        try:
+            import vec_decisions.entry_vet_stocks as _w2_evs2
+            _w2_fresh = _w2_evs2.fresh_block_mask(npz, n, is_long, cfg, close, _safe, ts)
+            if _w2_fresh is not None:
+                entry_sig = entry_sig & ~_w2_fresh
+                _entry_filter_masks.append(~_w2_fresh)
         except Exception:
             pass
     # b7 (crypto): AND-inside-OR fix for live chokepoint gates. COUNTER_TREND_ADD_BLOCK = ez_manage.execute_now 29868 (OPEN/ENTRY/BUY, reentries exempt by reason);
@@ -12382,6 +12437,18 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         arr = _safe(npz, _sp['field_long'] if is_long else _sp['field_short'], n, 0)
         if not np.all(arr == 0):
             _dd_tgt_dcs.append((_sp, arr))
+
+    # w2-exits STAGED prep: DT_TARGET_ATR + OB/OS-TP arrays (ONE import site).
+    # Aliased imports: a bare 'import vec_decisions.x' here would rebind the
+    # module-global 'vec_decisions' name as function-local and break every
+    # other vec_decisions.* use in simulate_one.
+    try:
+        import vec_decisions.w2_dt_target_atr as _w2atr
+        import vec_decisions.w2_ob_os_take_profit as _w2tp
+    except Exception:
+        _w2atr = None; _w2tp = None
+    _w2_atr15 = _safe(npz, 'atr_15m', n, 0) if daytrade_on else None
+    _w2_k5 = _safe(npz, 'k_5m', n, 0); _w2_rsi5 = _safe(npz, 'rsi_5m', n, 0); _w2_d5 = _safe(npz, 'd_5m', n, 0)
     # 2026-10-04 LH/LL top exit: shared spec + hoisted arrays (scalar in-loop fire below).
     _lhll_spec = vec_decisions.lh_ll_top_exit.resolve_lh_ll_top_exit(lambda _k, _d: getattr(cfg, _k, _d))
     _lhll_hi4h = _safe(npz, 'high_4h', n, 0); _lhll_hi4hp = _safe(npz, 'high_4h_prev', n, 0)
@@ -12734,6 +12801,24 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         except Exception:
             return False
         return True
+
+    # -- SEEDED-LEDGER (w2-carryin, hunk A): optional live-state seed at
+    # window ts0. Default OFF -> pos/trades/cd/has_closed_before untouched
+    # (cold start, bitwise identical to today). Deferred import: engine
+    # imports fine when the vec module is absent (seed ignored + traced).
+    _seeded_active = False
+    _seeded_trace = []
+    try:
+        if bool(getattr(cfg, 'SEEDED_LEDGER_ENABLED', False)):
+            import vec_decisions.seeded_ledger as _seeded_ledger
+            _seed_state = _seeded_ledger.apply_seed(cfg, sym, is_long, ts, close, half_fee, bmin)
+            if _seed_state is not None:
+                pos, trades, has_closed_before, cd, _seed_events, _seeded_trace = _seed_state
+                events.extend(_seed_events)
+                _seeded_active = True
+    except Exception as _seed_err:
+        _seeded_trace = ["SEED_IGNORED err=%s" % type(_seed_err).__name__]
+        _seeded_active = False
 
     for i in range(n):
         px = close[i]
@@ -13132,6 +13217,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             pass
                     if _qta_ct_block is not None and bool(_qta_ct_block[i]) and 'RECLAIM' not in str(entry_reason).upper():
                         continue  # [C2 b7] live queue_trade_action COUNTER_TREND_ADD_BLOCK (fresh + reentry opens)
+                    # lane w2-entryveto (2026-10-04, staged): live queue GR
+                    # consensus + DC4 vetoes (tradier_manage.py:25264-25276 /
+                    # 24893-24944) with live-exact reason exemptions.
+                    _w2_er = str(entry_reason).upper()
+                    if _w2_gr_block is not None and bool(_w2_gr_block[i]) and 'MTF_ARROW' not in _w2_er and 'LR_BAND' not in _w2_er:
+                        continue  # BLOCKED_GR_CONSENSUS twin
+                    if _w2_dc4_block is not None and bool(_w2_dc4_block[i]) and not (is_long and ('MTF_ARROW' in _w2_er or 'LR_BAND' in _w2_er)):
+                        continue  # BLOCKED_DC4 twin (LONG band-entry exempt, like live)
                     if _bt_veto is not None and bool(_bt_veto[i]):
                         continue  # BOTTOM/TOP entry REQUIRE gates (all families ORed)
                     pos = _open(qty0, px, i, entry_reason)
@@ -13631,6 +13724,16 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 # NO fallback to fixed % when DC active — fixed % eliminated per user 2026-09-26
             except Exception:
                 pass
+        elif daytrade_on and _w2_atr15 is not None and _w2atr is not None:
+            # w2-exits STAGED: DT_TARGET_ATR (ONE call site; fixed-% stays deleted per USER SPEC below).
+            try:
+                _w2_af, _w2_ar = _w2atr.dt_target_atr_fires(
+                    live_pnl_pct / 100.0, float(pos.get('entry_price', pos['avg_price'])),
+                    float(_w2_atr15[i]) if i < len(_w2_atr15) else 0.0, cfg, is_tradier)
+                if _w2_af:
+                    closed, reason = True, _w2_ar
+            except Exception:
+                pass
         # 2026-09-28 USER SPEC: fixed-% DAYTRADE_STOP/TARGET branches DELETED — "NEVER a fix % loss or
         # profit exit"; DC-channel exits above (dc_low−0.25% / dc_high−0.10%, 15m/1h) are the only daytrade exits.
         elif max_hold_bars > 0 and held_bars >= max_hold_bars:
@@ -13668,6 +13771,35 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _qr_fire = bool(qr_cond[i]) and bool(getattr(cfg, 'HLR_TOP_EXIT_ENABLED', True)) and _qr_sanctioned and _qr_hold_ok and vec_decisions.quick_reduce_strong.quick_reduce_gain_ok(cfg, live_pnl_pct)
         # live pacing: the execute-path dedup map spaces orders by AUGMENTATION_COOLDOWN_SECONDS
         # (ez_manage.py:28272/28326) — partial reduces obey it too; kills per-bar halving cascades
+        # w2-exits STAGED: Overbought/Oversold Take-Profit REDUCE 25% (ONE call site).
+        # Live tradier_manage.py:14890-14909. Honest-zero until k_5m/rsi_5m/d_5m exist in NPZs.
+        if pos['qty'] > 0 and bool(getattr(cfg, 'W2_OB_OS_TP_ENABLED', False)):
+            try:
+                _w2_tpq, _w2_tpr = _w2tp.ob_os_tp_reduce_qty(
+                    float(pos['qty']), float(live_pnl_pct),
+                    float(_w2_k5[i]) if i < len(_w2_k5) else 0.0,
+                    float(_w2_rsi5[i]) if i < len(_w2_rsi5) else 0.0,
+                    float(_w2_d5[i]) if i < len(_w2_d5) else 0.0,
+                    is_long, held_bars >= min_hold, cfg)
+            except Exception:
+                _w2_tpq, _w2_tpr = 0.0, ""
+            if _w2_tpq > 0:
+                _w2_tpq = min(float(_w2_tpq), float(pos['qty']))
+                _w2_real = (px - pos['avg_price']) * _w2_tpq if is_long else (pos['avg_price'] - px) * _w2_tpq
+                pos['realized'] += _w2_real
+                pos['fees'] += abs(_w2_tpq * px) * half_fee
+                pos['qty'] -= _w2_tpq
+                if pos['qty'] <= 1e-9:
+                    _w2_pnl = pos['realized'] - pos['fees']
+                    _w2_pct = _w2_pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
+                    _w2_ts = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                    trades.append({'pnl_dollars': _w2_pnl, 'pnl_pct': float(_w2_pct), 'deployed': pos['deployed'], 'reason': _w2_tpr, 'type': 'REDUCE', 'ts': _w2_ts, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': 0.0, 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _w2_tpr, 'bars_held': int(i - pos['entry_bar'])})
+                    pos = None; cd = cooldown_bars; has_closed_before = True
+                else:
+                    _w2_ts = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                    events.append({'type': 'REDUCE', 'ts': _w2_ts, 'price': float(px), 'qty': float(_w2_tpq), 'pos_deployed': float(pos['deployed']), 'bar': int(i), 'reason': _w2_tpr})
+                    pos['last_reduce_bar'] = int(i)
+                continue
         _red_cd_ok = (i - int(pos.get('last_reduce_bar', -10**9))) >= vec_decisions.gain_ladder_augment.cooldown_bars(cfg, bmin)
         _rc_ok = _gftf.get('reduce_confirm') is None or bool(_gftf['reduce_confirm'][i])
         if pos['qty'] > 0 and _rc_ok and (_qr_fire or (reduce_sig[i] and reduce_frac[i] > 0 and _red_cd_ok)):
@@ -13900,15 +14032,23 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                        'bar_entry': int(pos['entry_bar']), 'bar_exit': int(n-1), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': 'FINAL_MTM', 'bars_held': int(n-1 - pos['entry_bar'])})
 
     tim_pct = round(bars_in_pos / n * 100, 2)
-    if not trades:
-        return {'sym': sym, 'is_long': is_long, 'trades': 0, 'tim_pct': tim_pct,
-                'gain_pct': 0.0, 'gain_dollars': 0.0,
-                'gain_pct_2000norm': 0.0, 'gain_dollars_2000norm': 0.0,
-                'sharpe_per_trade': 0.0, 'wr': 0.0, 'mean_deployed': 0.0,
-                'peak_capital': 0.0, 'max_dd_pct': 0.0, 'bars': n, 'ledger': []}
-    deployed_arr = np.array([t['deployed'] for t in trades])
-    pnl_arr = np.array([t['pnl_dollars'] for t in trades])
-    pnl_pct_arr = np.array([float(t.get('pnl_pct', 0.0) or 0.0) for t in trades])
+    # SEEDED-LEDGER (w2-carryin, hunk B): pre-window seed rows never enter
+    # metrics (they stay in the ledger for reason trace). Unseeded:
+    # _mtrades IS trades (same object) -> bitwise identical metrics.
+    _mtrades = trades if not _seeded_active else [t for t in trades if not t.get('seeded_prewindow')]
+    if not _mtrades:
+        _res0 = {'sym': sym, 'is_long': is_long, 'trades': 0, 'tim_pct': tim_pct,
+                 'gain_pct': 0.0, 'gain_dollars': 0.0,
+                 'gain_pct_2000norm': 0.0, 'gain_dollars_2000norm': 0.0,
+                 'sharpe_per_trade': 0.0, 'wr': 0.0, 'mean_deployed': 0.0,
+                 'peak_capital': 0.0, 'max_dd_pct': 0.0, 'bars': n, 'ledger': []}
+        if _seeded_active:
+            _res0['ledger'] = sorted(trades + events, key=lambda t: (float(t.get('ts') or 0.0), 0 if t.get('type') in ('AUGMENT', 'REDUCE') else 1))
+            _res0['seeded'] = {'active': True, 'trace': list(_seeded_trace)}
+        return _res0
+    deployed_arr = np.array([t['deployed'] for t in _mtrades])
+    pnl_arr = np.array([t['pnl_dollars'] for t in _mtrades])
+    pnl_pct_arr = np.array([float(t.get('pnl_pct', 0.0) or 0.0) for t in _mtrades])
     mean_deployed = float(deployed_arr.mean()) if deployed_arr.mean() > 0 else float(getattr(cfg, 'START_POSITION_SIZE', 2000.0))
     # Faithful capital model — peak concurrent notional, per tools/opt/metrics.py:25.
     # Single-position engine never overlaps, so peak = max(deployed) across realised
@@ -13918,7 +14058,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _peak_via_bars = 0.0
     try:
         _ev = []
-        for _t in trades:
+        for _t in _mtrades:
             _d = float(_t.get('deployed') or 0.0)
             _be, _bx = _t.get('bar_entry'), _t.get('bar_exit')
             if _d > 0 and _be is not None and _bx is not None:
@@ -13944,7 +14084,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     s_raw = float(pnl_pct_arr.std()) if len(pnl_pct_arr) > 1 else 0.0
     sharpe_raw = float(pnl_pct_arr.mean() / s_raw) if s_raw > 0 else 0.0
     # Honest DD — same capital base as gain (peak_concurrent equity curve).
-    _rows_sorted = sorted(trades, key=lambda _t: (int(_t.get('bar_exit') or 0), int(_t.get('bar_entry') or 0)))
+    _rows_sorted = sorted(_mtrades, key=lambda _t: (int(_t.get('bar_exit') or 0), int(_t.get('bar_entry') or 0)))
     equity = float(peak_capital)
     peak = float(peak_capital)
     worst = 0.0
@@ -13960,8 +14100,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # Legacy 2000-norm kept as diagnostic alias (never for decisions).
     pnl_pct_norm_legacy = pnl_arr / mean_deployed * 100 if mean_deployed > 0 else pnl_pct_arr
     legacy_gain_pct = float(pnl_pct_norm_legacy.sum())
-    return {
-        'sym': sym, 'is_long': is_long, 'trades': len(trades), 'tim_pct': tim_pct,
+    _res = {
+        'sym': sym, 'is_long': is_long, 'trades': len(_mtrades), 'tim_pct': tim_pct,
         'gain_pct': round(float(gain_pct), 4),
         'gain_dollars': round(float(gain_dollars), 2),
         'gain_pct_2000norm': round(float(gain_pct), 4),
@@ -13970,11 +14110,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         'gain_dollars_legacy_2000norm': round(float(legacy_gain_pct) / 100 * 2000, 2),
         'sharpe_per_trade': round(float(sharpe_raw), 4),
         'sharpe_legacy_2000norm': round(float(pnl_pct_norm_legacy.mean() / float(pnl_pct_norm_legacy.std())) if float(pnl_pct_norm_legacy.std()) > 0 else 0.0, 4),
-        'wr': round(wins / len(trades) * 100, 1),
+        'wr': round(wins / len(_mtrades) * 100, 1),
         'mean_deployed': round(mean_deployed, 2), 'peak_capital': round(float(peak_capital), 2),
         'max_dd_pct': round(float(dd_pct), 2), 'bars': n,
         'ledger': sorted(trades + events, key=lambda t: (float(t.get('ts') or 0.0), 0 if t.get('type') in ('AUGMENT', 'REDUCE') else 1)),
     }
+    if _seeded_active:
+        _res['seeded'] = {'active': True, 'trace': list(_seeded_trace)}
+    return _res
 
 
 def true_bh_reference(npz, is_long, cfg):

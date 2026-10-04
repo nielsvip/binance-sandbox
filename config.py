@@ -4653,6 +4653,12 @@ class Config:
     DAYTRADE_DC_STOP_BUFFER_PCT: float = 0.25
     DAYTRADE_DC_TARGET_TF: str = "15m"  # DEF2 2026-10-01 user: PROFIT_TARGET = dc_high_15m-0.1% (short dc_low+0.1%) default 15m; test OFF/15m/1h/4h/combos. was OFF | 15m | 1h | 4h | '15m,1h' — LONG px>=dc_high_TF*(1-buf), SHORT px<=dc_low_TF*(1+buf)
     DAYTRADE_DC_TARGET_BUFFER_PCT: float = 0.10
+    # 2026-10-04 TECHNICAL-DC live twin (EXIT_STRUCTURAL §15 core was vector-only): shared predicate vec_decisions/dc_channel_exits.resolve_technical_dc,
+    # hook in process_position after DAYTRADE_DC. OFF/OFF = inert = zero live change until promotion (promoting template bolds is an operator decision).
+    TECHNICAL_DC_STOP_TF: str = "OFF"  # OFF | 15m | 1h | 4h | '15m,1h' (OR) — LONG px<=dc_low_TF*(1-buf), SHORT px>=dc_high_TF*(1+buf)
+    TECHNICAL_DC_STOP_BUFFER_PCT: float = 0.25
+    TECHNICAL_DC_TARGET_TF: str = "OFF"  # OFF | 15m | 1h | 4h | '15m,1h' (OR) — LONG px>=dc_high_TF*(1-buf), SHORT px<=dc_low_TF*(1+buf)
+    TECHNICAL_DC_TARGET_BUFFER_PCT: float = 0.10
     ENTRY_DC_TF: str = "OFF"  # 2026-10-04 parity cut: daytrade ENTRY channel (simple-system oracle). OFF | 15m | 1h | 4h | combos. Live twins: ez M1b + tradier M1b (ENTRY_DC gate ports).
     ENTRY_DC_BUFFER_PCT: float = 0.10  # 2026-10-04 parity cut: buffer for ENTRY_DC_TF (LONG close>=dc*(1+buf), SHORT mirrored).
     WT_LOWER_CROSS_EXIT_TF: str = "OFF"  # OFF | 15m | 1h | 4h — LONG wt1 crosses below wt2 AND px < close_15m_prev (SHORT mirrored)

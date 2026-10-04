@@ -316,3 +316,19 @@
     - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
     - `MANAUSDT_LONG` [s2] 1 cases — HTF_GATE_D_MANDATORY T=-6.233/F=-3.543
 - **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T07:31Z · window 48.0h · 289 sym_sides (local+remote)
+- ⚠️ **3 sym_sides / 3 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `HTF_GATE_D_MANDATORY`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `MANAUSDT_LONG` [s2] 1 cases — HTF_GATE_D_MANDATORY T=-6.233/F=-3.543
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T07:52Z · window 48.0h · 288 sym_sides (local+remote)
+- ⚠️ **3 sym_sides / 3 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `HTF_GATE_D_MANDATORY`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `MANAUSDT_LONG` [s2] 1 cases — HTF_GATE_D_MANDATORY T=-6.233/F=-3.543
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.

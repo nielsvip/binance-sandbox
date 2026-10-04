@@ -8,6 +8,17 @@ PY="/opt/anaconda3/envs/binance_env/bin/python"
 if [ ! -x "$PY" ]; then PY="/usr/bin/python3"; fi
 LOG="/tmp/tests_keep_running.log"
 STAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+# === SINGLETON LOCK (2026-10-04): wedged pytest runs piled up every 30min.
+_L=/tmp/ensure_tests_running.lockdir
+if ! mkdir "$_L" 2>/dev/null; then
+  _o_pid=$(cat "$_L/pid" 2>/dev/null)
+  if [ $(( $(date +%s) - $(stat -f %m "$_L" 2>/dev/null || echo 0) )) -gt 1200 ] && [ -n "$_o_pid" ] && ps -o command= -p "$_o_pid" 2>/dev/null | grep -q "ensure_tests_running"; then
+    if [ "$(ps -o pgid= -p "$_o_pid" 2>/dev/null | tr -d ' ')" = "$_o_pid" ]; then kill -9 -"$_o_pid" 2>/dev/null; else kill -9 "$_o_pid" 2>/dev/null; fi
+    sleep 2; rmdir "$_L" 2>/dev/null; mkdir "$_L" 2>/dev/null || exit 0
+  else echo "[$STAMP] another run in flight, exiting" >> "$LOG"; exit 0; fi
+fi
+echo $$ > "$_L/pid"
+trap 'rmdir "$_L" 2>/dev/null' EXIT INT TERM
 echo "[$STAMP] ensure_tests_running: pytest -q (quick parity + per_sym)" | tee -a "$LOG"
 cd "$ROOT"
 # quick subset that covers parity — full suite is heavy (30s), keep this light (<10s)

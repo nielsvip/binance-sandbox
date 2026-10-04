@@ -6,6 +6,24 @@
 # 3. Alerts if any account is losing money against STRICT_NO_LOSS rules
 # 4. Restarts crashed processes immediately
 
+# === SINGLETON LOCK (2026-10-04): overlapping runs piled up under load (pgrep
+# storm: each run slower than the 2min period -> 150+ stuck runs -> load 500).
+# Second run exits fast; stale owner (>8min) is verified + killed with group.
+_CRON_LOCKDIR="/tmp/crypto_watchdog_cron.lockdir"
+if ! mkdir "$_CRON_LOCKDIR" 2>/dev/null; then
+    _o_pid=$(cat "$_CRON_LOCKDIR/pid" 2>/dev/null); _o_mtime=$(stat -f %m "$_CRON_LOCKDIR" 2>/dev/null || echo 0)
+    _log_mtime=$(stat -f %m "/Users/niels/logs/crypto_watchdog_cron.log" 2>/dev/null || echo 0)
+    _log_quiet=$(( $(date +%s) - _log_mtime ))
+    if [ $(( $(date +%s) - _o_mtime )) -gt 480 ] && [ "$_log_quiet" -gt 600 ] && [ -n "$_o_pid" ] && ps -o command= -p "$_o_pid" 2>/dev/null | grep -q "crypto_watchdog_cron"; then
+        if [ "$(ps -o pgid= -p "$_o_pid" 2>/dev/null | tr -d ' ')" = "$_o_pid" ]; then kill -9 -"$_o_pid" 2>/dev/null; else kill -9 "$_o_pid" 2>/dev/null; fi
+        sleep 2; rmdir "$_CRON_LOCKDIR" 2>/dev/null; mkdir "$_CRON_LOCKDIR" 2>/dev/null || exit 0
+    else
+        exit 0
+    fi
+fi
+echo $$ > "$_CRON_LOCKDIR/pid"
+trap 'rmdir "$_CRON_LOCKDIR" 2>/dev/null' EXIT INT TERM
+
 WORKDIR="/Users/niels/Documents/binance"
 PYTHON="/opt/anaconda3/envs/binance_env/bin/python"
 LOGDIR="/Users/niels/logs"
@@ -33,6 +51,8 @@ CRITICAL_PROCESSES=(
     "setup_ssh_tunnels.py"
     "ez_orderbook.py"  # 2026-04-27 added — was dying silently w/o auto-restart, killing V3 OB scanner
     "ez_indicators_merger.py"  # 2026-08-12 added — SIGTERM'd 2026-08-11 23:08:34 and stayed dead 70min+ while cron logged "All healthy"; its death is the direct cause of INDICATOR_SNAPSHOT_STALE growing linearly across ang/flz/fin/men (4520 CRITICAL/hr, age 3900s+) because it is the only publisher of the 326-symbol indicator snapshot broadcast
+    "ez_positions_watchdog.py"  # 2026-10-04 added — manager of ez_positions_quick x5 + realtime; had NO resurrection path (not in cron, no plist) so the 07:10 mass-death left quick dead with nobody to relaunch it
+    "ez_share_ind.py"  # 2026-10-04 added — shared-memory bridge (hot 1m/3m path for get_hot_state); was wrapper-managed pre-07:10, dead since with no relaunch
 )
 
 # Scripts that ALREADY have a run_with_watchdog.sh wrapper in an iTerm tab.
@@ -48,6 +68,8 @@ WATCHDOG_MANAGED=(
     "ez_orderbook.py"  # 2026-04-27 added — RSS recycle ceiling 1.5GB applies via watchdog
     "ez_manage.py"     # 2026-04-27 added — RSS recycle ceiling 1.5GB applies via watchdog (was bare)
     "ez_indicators_merger.py"  # 2026-08-12 added — run_with_watchdog.sh:154 already defines NO_OUTPUT_TIMEOUT=120 for it
+    "ez_positions_watchdog.py"  # 2026-10-04 added — wrapper-managed pre-07:10 (ez_positions_watchdog_watchdog.log exists)
+    "ez_share_ind.py"  # 2026-10-04 added — wrapper-managed pre-07:10 (ez_share_ind_watchdog.log exists)
 )
 
 MISSING=""

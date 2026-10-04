@@ -46917,6 +46917,13 @@ async def process_position(
                 _gx_stop, _gx_tgt = _dc_channel_exits.resolve_daytrade_dc(lambda _k, _d: _psym_get(symbol, position_side, _k, _d))
                 if _gx_stop or _gx_tgt:
                     _gx_fire, _gx_reason = _dc_channel_exits.daytrade_dc_exit(current_price, _gx_is_long, _gx_stop, _gx_tgt, lambda _f: safe_fetch_float(_pp_shared_ind.get(_f, 0), 0.0))
+            # TECHNICAL-DC 2026-10-04 live twin of v12 EXIT_STRUCTURAL (no master gate in vec — OFF lists = inert): same shared predicate family.
+            if not _gx_fire:
+                _tx_stop, _tx_tgt = _dc_channel_exits.resolve_technical_dc(lambda _k, _d: _psym_get(symbol, position_side, _k, _d))
+                if _tx_stop or _tx_tgt:
+                    if _pp_shared_ind is None:
+                        _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                    _gx_fire, _gx_reason = _dc_channel_exits.technical_dc_exit(current_price, _gx_is_long, _tx_stop, _tx_tgt, lambda _f: safe_fetch_float(_pp_shared_ind.get(_f, 0), 0.0))
             # DEF2 2026-10-01 live twin of v12_quick_engine PROFIT_TARGET (pnl-pct exit, vintage, default OFF = inert): same predicate gain >= PROFIT_TARGET_PCT
             if not _gx_fire and bool(_psym_get(symbol, position_side, "PROFIT_TARGET_ENABLED", False)):
                 _pt_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)

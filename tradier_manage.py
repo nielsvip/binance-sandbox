@@ -10778,6 +10778,11 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _gx_stop, _gx_tgt = _dc_channel_exits.resolve_daytrade_dc(_gx_c)
                     if _gx_stop or _gx_tgt:
                         _gx_fire, _gx_reason = _dc_channel_exits.daytrade_dc_exit(current_price, is_long, _gx_stop, _gx_tgt, lambda _f: safe_fetch_float(i.get(_f, 0), 0.0))
+                # TECHNICAL-DC 2026-10-04 live twin of v12 EXIT_STRUCTURAL (no master gate in vec — OFF lists = inert): same shared predicate family.
+                if not _gx_fire:
+                    _tx_stop, _tx_tgt = _dc_channel_exits.resolve_technical_dc(_gx_c)
+                    if _tx_stop or _tx_tgt:
+                        _gx_fire, _gx_reason = _dc_channel_exits.technical_dc_exit(current_price, is_long, _tx_stop, _tx_tgt, lambda _f: safe_fetch_float(i.get(_f, 0), 0.0))
                 # DEF2 2026-10-01 live twin of v12_quick_engine PROFIT_TARGET (pnl-pct exit, vintage, default OFF = inert): same predicate gain >= PROFIT_TARGET_PCT
                 if not _gx_fire and bool(_gx_c('PROFIT_TARGET_ENABLED', False)):
                     _pt_gain = safe_fetch_float(getattr(position, 'gain', 0), 0.0)

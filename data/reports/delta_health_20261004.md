@@ -218,3 +218,13 @@
 - s1: OK (no 0/repeated-delta offenders in last 40 sheets)
 - s5: OK (no 0/repeated-delta offenders in last 40 sheets)
 - s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T07:24Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: monitor error Command '['ssh', '-o', 'ConnectTimeout=10', '-o', 'BatchMode=yes', '-o', 'Strict
+- s2: monitor error Command '['ssh', '-o', 'ConnectTimeout=10', '-o', 'BatchMode=yes', '-o', 'Strict
+
+## 2026-10-04T07:35Z
+- s1: monitor error Command '['ssh', '-o', 'ConnectTimeout=10', '-o', 'BatchMode=yes', '-o', 'Strict
+- s5: monitor error Command '['ssh', '-o', 'ConnectTimeout=10', '-o', 'BatchMode=yes', '-o', 'Strict
+- s2: monitor error Command '['ssh', '-o', 'ConnectTimeout=10', '-o', 'BatchMode=yes', '-o', 'Strict
