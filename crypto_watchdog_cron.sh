@@ -14,9 +14,14 @@ if ! mkdir "$_CRON_LOCKDIR" 2>/dev/null; then
     _o_pid=$(cat "$_CRON_LOCKDIR/pid" 2>/dev/null); _o_mtime=$(stat -f %m "$_CRON_LOCKDIR" 2>/dev/null || echo 0)
     _log_mtime=$(stat -f %m "/Users/niels/logs/crypto_watchdog_cron.log" 2>/dev/null || echo 0)
     _log_quiet=$(( $(date +%s) - _log_mtime ))
-    if [ $(( $(date +%s) - _o_mtime )) -gt 480 ] && [ "$_log_quiet" -gt 600 ] && [ -n "$_o_pid" ] && ps -o command= -p "$_o_pid" 2>/dev/null | grep -q "crypto_watchdog_cron"; then
-        if [ "$(ps -o pgid= -p "$_o_pid" 2>/dev/null | tr -d ' ')" = "$_o_pid" ]; then kill -9 -"$_o_pid" 2>/dev/null; else kill -9 "$_o_pid" 2>/dev/null; fi
-        sleep 2; rmdir "$_CRON_LOCKDIR" 2>/dev/null; mkdir "$_CRON_LOCKDIR" 2>/dev/null || exit 0
+    _owner_dead=0; { [ -z "$_o_pid" ] || ! kill -0 "$_o_pid" 2>/dev/null; } && _owner_dead=1
+    _owner_verified=0; [ -n "$_o_pid" ] && ps -o command= -p "$_o_pid" 2>/dev/null | grep -q "crypto_watchdog_cron" && _owner_verified=1
+    if { [ $(( $(date +%s) - _o_mtime )) -gt 480 ] && [ "$_log_quiet" -gt 600 ] && [ "$_owner_verified" = 1 ]; } || [ "$_owner_dead" = 1 ]; then
+        if [ "$_owner_verified" = 1 ]; then
+            if [ "$(ps -o pgid= -p "$_o_pid" 2>/dev/null | tr -d ' ')" = "$_o_pid" ]; then kill -9 -"$_o_pid" 2>/dev/null; else kill -9 "$_o_pid" 2>/dev/null; fi
+            sleep 2
+        fi
+        rmdir "$_CRON_LOCKDIR" 2>/dev/null; mkdir "$_CRON_LOCKDIR" 2>/dev/null || exit 0
     else
         exit 0
     fi

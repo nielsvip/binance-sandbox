@@ -3223,6 +3223,14 @@ try:
 except ImportError:
     _dc_channel_exits = None
 try:
+    import vec_decisions.noloss_hold as _noloss_hold  # 2026-10-04 NOLOSS/STOP_LOSS twins (shared with v12_quick_engine)
+except ImportError:
+    _noloss_hold = None
+try:
+    import vec_decisions.bb_stoch_exits as _bb_stoch_exits  # 2026-10-04 BB band-touch/stoch-cross twins (shared with v12_quick_engine)
+except ImportError:
+    _bb_stoch_exits = None
+try:
     import vec_decisions.lh_ll_top_exit as _lhll_top_exit  # 2026-10-04 LH/LL top exit (shared with v12_quick_engine)
 except ImportError:
     _lhll_top_exit = None
@@ -46924,12 +46932,30 @@ async def process_position(
                     if _pp_shared_ind is None:
                         _pp_shared_ind = await ii(trade_manager, symbol) or {}
                     _gx_fire, _gx_reason = _dc_channel_exits.technical_dc_exit(current_price, _gx_is_long, _tx_stop, _tx_tgt, lambda _f: safe_fetch_float(_pp_shared_ind.get(_f, 0), 0.0))
+            # NOLOSS 2026-10-04 live twin of v12 (hold TECHNICAL loss exits unless WT-bypass/DC-recovery): default OFF = inert.
+            if _gx_fire and _gx_reason.startswith("TECHNICAL_") and _noloss_hold is not None:
+                _nl_hold, _nl_why = _noloss_hold.noloss_hold_loss_exit(lambda _k, _d: _psym_get(symbol, position_side, _k, _d), _gx_is_long, safe_fetch_float(getattr(position, "gain", 0), 0.0), safe_fetch_float(getattr(position, "entry_price", 0), 0.0), current_price, _pp_shared_ind or {})
+                if _nl_hold:
+                    logger.warning(f"[NOLOSS_HOLD] {position_key}: holding {_gx_reason} at loss (NOLOSS_ENABLED)")
+                    _gx_fire, _gx_reason = False, ""
             # DEF2 2026-10-01 live twin of v12_quick_engine PROFIT_TARGET (pnl-pct exit, vintage, default OFF = inert): same predicate gain >= PROFIT_TARGET_PCT
             if not _gx_fire and bool(_psym_get(symbol, position_side, "PROFIT_TARGET_ENABLED", False)):
                 _pt_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
                 _pt_pct = safe_fetch_float(_psym_get(symbol, position_side, "PROFIT_TARGET_PCT", 1.6), 1.6)
                 if _pt_gain >= _pt_pct:
                     _gx_fire, _gx_reason = True, f"PROFIT_TARGET_g{_pt_gain:.2f}"
+            # STOP_LOSS 2026-10-04 live twin of v12 fixed-% stop (vec adjacency PROFIT_TARGET->STOP_LOSS; vec evaluates it before daytrade DC — reason-attribution delta only). Default OFF = inert.
+            if not _gx_fire and _noloss_hold is not None:
+                _sl_fire, _sl_reason = _noloss_hold.stop_loss_fires(lambda _k, _d: _psym_get(symbol, position_side, _k, _d), safe_fetch_float(getattr(position, "gain", 0), 0.0))
+                if _sl_fire:
+                    _gx_fire, _gx_reason = True, _sl_reason
+            # BB_BAND/STOCH_CROSS_3M 2026-10-04 live twins of v12 EXIT_STRUCTURAL band-touch/cross exits: default OFF = inert.
+            if not _gx_fire and _bb_stoch_exits is not None:
+                _bb_fire, _bb_reason = _bb_stoch_exits.bb_band_exits(lambda _k, _d: _psym_get(symbol, position_side, _k, _d), _gx_is_long, _pp_shared_ind or {})
+                if not _bb_fire:
+                    _bb_fire, _bb_reason = _bb_stoch_exits.stoch_cross_3m_exit(lambda _k, _d: _psym_get(symbol, position_side, _k, _d), _gx_is_long, _pp_shared_ind or {})
+                if _bb_fire:
+                    _gx_fire, _gx_reason = True, _bb_reason
             # LH/LL TOP EXIT 2026-10-04 live twin (default OFF = inert): structure-armed top/bottom
             # exit, same predicate as v12. Live arm uses forming-vs-completed HTF H/L (snapshot has no
             # completed[-2] bar) while vec uses completed[-1] vs completed[-2] — direction-consistent,

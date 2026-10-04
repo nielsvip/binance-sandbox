@@ -5431,7 +5431,7 @@ class Config:
     STOCH_1H_EXIT_K_MIN: float = 85.0            # v8 engine: stoch cross exit requires k_1h >= 85  # PORTED from TradierConfig 2026-08-17
     STOCH_CROSS_1H_EXIT_ENABLED: bool = True  # BACKTEST_CHANGE_T17 stoch cross on 1h triggers exit  # PORTED from TradierConfig 2026-08-17
     STOCH_CROSS_ENTRY_TRADIER: bool = True  # BACKTEST_CHANGE_T59: was True. Stoch crossover = noise on daily bars. RSI(10) is the real entry.  # PORTED from TradierConfig 2026-08-17
-    STOP_LOSS_ENABLED: bool = False  # vector sweep-only cap  # PORTED from TradierConfig 2026-08-17
+    STOP_LOSS_ENABLED: bool = False  # 2026-10-04 live twin wired (vec_decisions/noloss_hold + grey-rewire hooks); was vector sweep-only cap  # PORTED from TradierConfig 2026-08-17
     STOP_LOSS_PCT: float = 2.0  # PORTED from TradierConfig 2026-08-17
     STRENGTH_FILTER_ENABLED: bool = True  # vector 1181: score >= STRENGTH_MIN_SCORE  # PORTED from TradierConfig 2026-08-17
     STRENGTH_MIN_SCORE: float = 5.0  # PORTED from TradierConfig 2026-08-17

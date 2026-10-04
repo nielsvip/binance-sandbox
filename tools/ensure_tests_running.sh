@@ -12,9 +12,14 @@ STAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 _L=/tmp/ensure_tests_running.lockdir
 if ! mkdir "$_L" 2>/dev/null; then
   _o_pid=$(cat "$_L/pid" 2>/dev/null)
-  if [ $(( $(date +%s) - $(stat -f %m "$_L" 2>/dev/null || echo 0) )) -gt 1200 ] && [ -n "$_o_pid" ] && ps -o command= -p "$_o_pid" 2>/dev/null | grep -q "ensure_tests_running"; then
-    if [ "$(ps -o pgid= -p "$_o_pid" 2>/dev/null | tr -d ' ')" = "$_o_pid" ]; then kill -9 -"$_o_pid" 2>/dev/null; else kill -9 "$_o_pid" 2>/dev/null; fi
-    sleep 2; rmdir "$_L" 2>/dev/null; mkdir "$_L" 2>/dev/null || exit 0
+  _dead=0; { [ -z "$_o_pid" ] || ! kill -0 "$_o_pid" 2>/dev/null; } && _dead=1
+  _ver=0; [ -n "$_o_pid" ] && ps -o command= -p "$_o_pid" 2>/dev/null | grep -q "ensure_tests_running" && _ver=1
+  if [ "$_dead" = 1 ] || { [ $(( $(date +%s) - $(stat -f %m "$_L" 2>/dev/null || echo 0) )) -gt 1200 ] && [ "$_ver" = 1 ]; }; then
+    if [ "$_ver" = 1 ]; then
+      if [ "$(ps -o pgid= -p "$_o_pid" 2>/dev/null | tr -d ' ')" = "$_o_pid" ]; then kill -9 -"$_o_pid" 2>/dev/null; else kill -9 "$_o_pid" 2>/dev/null; fi
+      sleep 2
+    fi
+    rmdir "$_L" 2>/dev/null; mkdir "$_L" 2>/dev/null || exit 0
   else echo "[$STAMP] another run in flight, exiting" >> "$LOG"; exit 0; fi
 fi
 echo $$ > "$_L/pid"
