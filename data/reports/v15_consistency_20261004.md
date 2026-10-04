@@ -338,3 +338,506 @@
 - Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1
     - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
 - **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T08:35Z · window 48.0h · 335 sym_sides (local+remote)
+- ⚠️ **5 sym_sides / 5 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `HTF_DIRECTION_GATE_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `HTF_GATE_D_MANDATORY`×1, `HTF_GATE_SIGNALS_SMA200D`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `NFLX_LONG` [s2] 1 cases — HTF_DIRECTION_GATE_ENABLED T=+2.124/F=+2.124
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `MANAUSDT_LONG` [s2] 1 cases — HTF_GATE_D_MANDATORY T=-6.233/F=-3.543
+    - `TRBUSDT_LONG` [s5] 1 cases — HTF_GATE_SIGNALS_SMA200D T=-4.635/F=+0.153
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T08:37Z · window 48.0h · 335 sym_sides (local+remote)
+- ⚠️ **5 sym_sides / 5 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `HTF_DIRECTION_GATE_ENABLED`×1, `HTF_GATE_SIGNALS_SMA200D`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `HTF_GATE_D_MANDATORY`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `NFLX_LONG` [s2] 1 cases — HTF_DIRECTION_GATE_ENABLED T=+2.124/F=+2.124
+    - `TRBUSDT_LONG` [s5] 1 cases — HTF_GATE_SIGNALS_SMA200D T=-4.635/F=+0.153
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `MANAUSDT_LONG` [s2] 1 cases — HTF_GATE_D_MANDATORY T=-6.233/F=-3.543
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T08:44Z · window 48.0h · 335 sym_sides (local+remote)
+- ⚠️ **5 sym_sides / 5 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `HTF_DIRECTION_GATE_ENABLED`×1, `HTF_GATE_SIGNALS_SMA200D`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `HTF_GATE_D_MANDATORY`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `NFLX_LONG` [s2] 1 cases — HTF_DIRECTION_GATE_ENABLED T=+2.124/F=+2.124
+    - `TRBUSDT_LONG` [s5] 1 cases — HTF_GATE_SIGNALS_SMA200D T=-4.635/F=+0.153
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `MANAUSDT_LONG` [s2] 1 cases — HTF_GATE_D_MANDATORY T=-6.233/F=-3.543
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T09:05Z · window 48.0h · 335 sym_sides (local+remote)
+- ⚠️ **7 sym_sides / 7 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WICK_REJECT_ENTRY_ENABLED`×1, `WT_DIV_EXIT_ENABLED`×1, `HTF_DIRECTION_GATE_ENABLED`×1, `HTF_GATE_SIGNALS_SMA200D`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `HTF_GATE_D_MANDATORY`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `XMRUSDT_LONG` [s1] 1 cases — WICK_REJECT_ENTRY_ENABLED T=-4.546/F=+0.596
+    - `SNXUSDT_LONG` [s5] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `NFLX_LONG` [s2] 1 cases — HTF_DIRECTION_GATE_ENABLED T=+2.124/F=+2.124
+    - `TRBUSDT_LONG` [s1] 1 cases — HTF_GATE_SIGNALS_SMA200D T=-4.635/F=+0.153
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `MANAUSDT_LONG` [s2] 1 cases — HTF_GATE_D_MANDATORY T=-6.233/F=-3.543
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T09:10Z · window 48.0h · 335 sym_sides (local+remote)
+- ⚠️ **6 sym_sides / 6 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WICK_REJECT_ENTRY_ENABLED`×1, `WT_DIV_EXIT_ENABLED`×1, `HTF_DIRECTION_GATE_ENABLED`×1, `HTF_GATE_SIGNALS_SMA200D`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `XMRUSDT_LONG` [s1] 1 cases — WICK_REJECT_ENTRY_ENABLED T=-4.546/F=+0.596
+    - `SNXUSDT_LONG` [s5] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `NFLX_LONG` [s2] 1 cases — HTF_DIRECTION_GATE_ENABLED T=+2.124/F=+2.124
+    - `TRBUSDT_LONG` [s1] 1 cases — HTF_GATE_SIGNALS_SMA200D T=-4.635/F=+0.153
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T09:26Z · window 48.0h · 337 sym_sides (local+remote)
+- ⚠️ **4 sym_sides / 4 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WICK_REJECT_ENTRY_ENABLED`×1, `WT_DIV_EXIT_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `XMRUSDT_LONG` [s1] 1 cases — WICK_REJECT_ENTRY_ENABLED T=-4.546/F=+0.596
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T09:39Z · window 48.0h · 337 sym_sides (local+remote)
+- ⚠️ **4 sym_sides / 4 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WICK_REJECT_ENTRY_ENABLED`×1, `WT_DIV_EXIT_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `XMRUSDT_LONG` [s1] 1 cases — WICK_REJECT_ENTRY_ENABLED T=-4.546/F=+0.596
+    - `SNXUSDT_LONG` [s5] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T09:55Z · window 48.0h · 337 sym_sides (local+remote)
+- ⚠️ **3 sym_sides / 3 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_DIV_EXIT_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `SNXUSDT_LONG` [s5] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T10:02Z · window 48.0h · 361 sym_sides (local+remote)
+- ⚠️ **3 sym_sides / 3 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_DIV_EXIT_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T10:16Z · window 48.0h · 361 sym_sides (local+remote)
+- ⚠️ **3 sym_sides / 3 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_DIV_EXIT_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T10:31Z · window 48.0h · 361 sym_sides (local+remote)
+- ⚠️ **3 sym_sides / 3 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_DIV_EXIT_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T10:46Z · window 48.0h · 361 sym_sides (local+remote)
+- ⚠️ **5 sym_sides / 6 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×2, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1, `HTF_DIRECTION_GATE_ENABLED`×1
+    - `FILUSDC_LONG` [s1] 2 cases — WT_DIV_EXIT_ENABLED T=+2.203/F=+1.075; HTF_DIRECTION_GATE_ENABLED T=+0.012/F=-3.596
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s2] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T11:01Z · window 48.0h · 362 sym_sides (local+remote)
+- ⚠️ **5 sym_sides / 6 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×2, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1, `HTF_DIRECTION_GATE_ENABLED`×1
+    - `FILUSDC_LONG` [s1] 2 cases — WT_DIV_EXIT_ENABLED T=+2.203/F=+1.075; HTF_DIRECTION_GATE_ENABLED T=+0.012/F=-3.596
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T11:15Z · window 48.0h · 362 sym_sides (local+remote)
+- ⚠️ **4 sym_sides / 4 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1, `WT_DIV_EXIT_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T11:30Z · window 48.0h · 363 sym_sides (local+remote)
+- ⚠️ **4 sym_sides / 4 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1, `WT_DIV_EXIT_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T11:45Z · window 48.0h · 363 sym_sides (local+remote)
+- ⚠️ **4 sym_sides / 4 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1, `WT_DIV_EXIT_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T12:00Z · window 48.0h · 361 sym_sides (local+remote)
+- ⚠️ **4 sym_sides / 4 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1, `WT_DIV_EXIT_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T12:16Z · window 48.0h · 361 sym_sides (local+remote)
+- ⚠️ **4 sym_sides / 4 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1, `WT_DIV_EXIT_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T12:31Z · window 48.0h · 361 sym_sides (local+remote)
+- ⚠️ **4 sym_sides / 4 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1, `WT_DIV_EXIT_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T12:45Z · window 48.0h · 354 sym_sides (local+remote)
+- ⚠️ **4 sym_sides / 4 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1, `WT_DIV_EXIT_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T13:01Z · window 48.0h · 354 sym_sides (local+remote)
+- ⚠️ **4 sym_sides / 4 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1, `WT_DIV_EXIT_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T13:15Z · window 48.0h · 353 sym_sides (local+remote)
+- ⚠️ **4 sym_sides / 4 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1, `WT_DIV_EXIT_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T13:30Z · window 48.0h · 353 sym_sides (local+remote)
+- ⚠️ **4 sym_sides / 4 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1, `WT_DIV_EXIT_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T13:45Z · window 48.0h · 353 sym_sides (local+remote)
+- ⚠️ **4 sym_sides / 4 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1, `WT_DIV_EXIT_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T14:00Z · window 48.0h · 351 sym_sides (local+remote)
+- ⚠️ **5 sym_sides / 5 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×2, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s2] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T14:16Z · window 48.0h · 351 sym_sides (local+remote)
+- ⚠️ **5 sym_sides / 5 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×2, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s2] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T14:31Z · window 48.0h · 351 sym_sides (local+remote)
+- ⚠️ **5 sym_sides / 5 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×2, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T14:45Z · window 48.0h · 351 sym_sides (local+remote)
+- ⚠️ **5 sym_sides / 5 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×2, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T15:01Z · window 48.0h · 351 sym_sides (local+remote)
+- ⚠️ **5 sym_sides / 5 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×2, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T15:15Z · window 48.0h · 351 sym_sides (local+remote)
+- ⚠️ **5 sym_sides / 5 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×2, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T15:30Z · window 48.0h · 351 sym_sides (local+remote)
+- ⚠️ **5 sym_sides / 5 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×2, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T15:45Z · window 48.0h · 351 sym_sides (local+remote)
+- ⚠️ **5 sym_sides / 5 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×2, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T16:00Z · window 48.0h · 351 sym_sides (local+remote)
+- ⚠️ **5 sym_sides / 5 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×2, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T16:15Z · window 48.0h · 351 sym_sides (local+remote)
+- ⚠️ **5 sym_sides / 5 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×2, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T16:30Z · window 48.0h · 350 sym_sides (local+remote)
+- ⚠️ **5 sym_sides / 5 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×2, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T16:45Z · window 48.0h · 350 sym_sides (local+remote)
+- ⚠️ **5 sym_sides / 5 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×2, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T17:00Z · window 48.0h · 346 sym_sides (local+remote)
+- ⚠️ **5 sym_sides / 5 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×2, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T17:15Z · window 48.0h · 346 sym_sides (local+remote)
+- ⚠️ **5 sym_sides / 5 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×2, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T17:30Z · window 48.0h · 346 sym_sides (local+remote)
+- ⚠️ **5 sym_sides / 5 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×2, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T17:45Z · window 48.0h · 346 sym_sides (local+remote)
+- ⚠️ **6 sym_sides / 6 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×3, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `WLDUSDC_LONG` [s2] 1 cases — WT_DIV_EXIT_ENABLED T=-0.845/F=+0.440
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T18:00Z · window 48.0h · 346 sym_sides (local+remote)
+- ⚠️ **7 sym_sides / 7 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×4, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `AAVEUSDC_LONG` [s2] 1 cases — WT_DIV_EXIT_ENABLED T=-6.588/F=+0.076
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `WLDUSDC_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-0.845/F=+0.440
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T18:15Z · window 48.0h · 346 sym_sides (local+remote)
+- ⚠️ **7 sym_sides / 7 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×4, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `AAVEUSDC_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-6.588/F=+0.076
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `WLDUSDC_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-0.845/F=+0.440
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T18:30Z · window 48.0h · 346 sym_sides (local+remote)
+- ⚠️ **7 sym_sides / 7 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×4, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `AAVEUSDC_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-6.588/F=+0.076
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `WLDUSDC_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-0.845/F=+0.440
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T18:45Z · window 48.0h · 346 sym_sides (local+remote)
+- ⚠️ **7 sym_sides / 7 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×4, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `AAVEUSDC_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-6.588/F=+0.076
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `WLDUSDC_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-0.845/F=+0.440
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T19:00Z · window 48.0h · 346 sym_sides (local+remote)
+- ⚠️ **7 sym_sides / 7 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×4, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `AAVEUSDC_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-6.588/F=+0.076
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `WLDUSDC_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-0.845/F=+0.440
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T19:15Z · window 48.0h · 346 sym_sides (local+remote)
+- ⚠️ **7 sym_sides / 7 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×4, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `AAVEUSDC_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-6.588/F=+0.076
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `WLDUSDC_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-0.845/F=+0.440
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T19:30Z · window 48.0h · 346 sym_sides (local+remote)
+- ⚠️ **7 sym_sides / 7 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×4, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `AAVEUSDC_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-6.588/F=+0.076
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `WLDUSDC_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-0.845/F=+0.440
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T19:45Z · window 48.0h · 346 sym_sides (local+remote)
+- ⚠️ **7 sym_sides / 7 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×4, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `AAVEUSDC_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-6.588/F=+0.076
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `WLDUSDC_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-0.845/F=+0.440
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T20:00Z · window 48.0h · 346 sym_sides (local+remote)
+- ⚠️ **7 sym_sides / 7 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×4, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `AAVEUSDC_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-6.588/F=+0.076
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `WLDUSDC_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-0.845/F=+0.440
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-04T20:15Z · window 48.0h · 346 sym_sides (local+remote)
+- ⚠️ **7 sym_sides / 7 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `WT_DIV_EXIT_ENABLED`×4, `EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED`×1, `WT_15M_LH_WAIT_EXIT_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1
+    - `AAVEUSDC_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-6.588/F=+0.076
+    - `QBTS_LONG` [s1] 1 cases — EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED T=-4.340/F=+0.128
+    - `CLX_LONG` [s2] 1 cases — WT_15M_LH_WAIT_EXIT_ENABLED T=+0.365/F=+0.217
+    - `WLDUSDC_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-0.845/F=+0.440
+    - `PBF_SHORT` [s1] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+3.121/F=+0.957
+    - `SNXUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `ENSUSDT_LONG` [s1] 1 cases — WT_DIV_EXIT_ENABLED T=-9.062/F=+0.028
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.

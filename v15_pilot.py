@@ -689,6 +689,7 @@ def content_ok(f_filled, done_n) -> str:
 
 ALL_PREPARED: dict[str, dict] = {}
 ALL_NPZ_ARRAYS: dict[str, dict] = {}
+_RUN_RAMFP: dict[str, tuple] = {}
 _FILTER_DICT_CACHE = None
 MAX_ROWS = 50000
 
@@ -1214,6 +1215,35 @@ def _result_stamp(progress: dict, symside: str) -> None:
     except Exception:
         pass
 
+def _ram_fp(symside):
+    """In-RAM NPZ fingerprint: proves row evals and promotion measured identical bytes. None when cold (fail-open: tripwire covers the hot path only). NaN-normalized so the fp is stable."""
+    try:
+        import numpy as _np
+        _arrs = ALL_NPZ_ARRAYS.get(symside) or {}
+        if not _arrs:
+            return None
+        _close = _arrs.get("close")
+        _ts = _arrs.get("timestamps")
+        if _close is None or _ts is None:
+            return None
+        def _f(v):
+            try:
+                _x = float(v)
+                return None if _x != _x else _x
+            except Exception:
+                return None
+        return (len(_arrs), int(len(_close)), _f(_ts[0]), _f(_ts[-1]), _f(_close[0]), _f(_close[-1]), _f(_np.nansum(_np.asarray(_close, dtype="float64"))))
+    except Exception:
+        return None
+def _reverify_within_tol(new_gain, old_gain) -> bool:
+    """Reproducer gate: chain gain re-measures within abs/rel tolerance. Env-tunable, tight by default (deterministic engine: same bytes = bit-identical)."""
+    try:
+        import os as _os
+        _abs = float(_os.environ.get("V15_REVERIFY_ABS", "0.10"))
+        _rel = float(_os.environ.get("V15_REVERIFY_REL", "0.01"))
+        return abs(float(new_gain) - float(old_gain)) <= max(_abs, _rel * abs(float(old_gain)))
+    except Exception:
+        return False
 def _mandatory_note(sname: str, base: str, via_token: bool) -> None:
     if via_token:
         return
@@ -3335,6 +3365,21 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 promote = False
                 _blk = _tgv
                 print(f"[promote-block] {sname}!{rr} {switch}={cand} delta={row_delta} NOT promoted: {_tgv}", flush=True)
+        # TEAL 2026-10-04 RAMFP: the in-RAM NPZ must be identical between preload and promotion (RAM LAW
+        # forbids mid-run re-prepare; a mismatch means the row measured different bytes than the chain).
+        # Tripwire only, default OFF (V15_RAMFP=1 arms). Mismatch blocks promotion; the row revalidates on resume.
+        _ramfp_stale = False
+        if promote and os.environ.get("V15_RAMFP", "0") == "1":
+            try:
+                _ram_now = _ram_fp(new_symside)
+                _ram_run = _RUN_RAMFP.get(new_symside)
+                if _ram_run is not None and _ram_now is not None and _ram_now != _ram_run:
+                    promote = False
+                    _ramfp_stale = True
+                    _blk = ((_blk + "; ") if _blk else "") + "RAMFP-MISMATCH: in-RAM NPZ changed between preload and promotion — row revalidates on resume"
+                    print(f"[promote-block] {sname}!{rr} {switch}={cand} delta={row_delta} NOT promoted: {_blk}", flush=True)
+            except Exception as _ram_e:
+                print(f"[ramfp-warn] {sname}!{rr} {switch}={cand}: {_ram_e}", flush=True)
         # USER 2026-10-03 RECALC-ON-FLIP: never chain E by sum (dep-forced masters + interactions make sums fiction).
         # Fresh-eval the EXACT promoted set; the flip stands only if the fresh gain beats E_before.
         if promote and not is_running and choice is not None:
@@ -3432,7 +3477,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         progress["cumulative_gain"] = float(cumulative_gain)
         div = _write_div(sname, rr, [row_gain])
         _uw_tag = "UNWIRED_CALCULATED: switch is in the vec_unwired audit (no engine read found) — 0.0 is the honest eval delta" if (row_delta == 0 and str(switch).strip() in UNWIRED_TAG_SW) else ""
-        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", "") or _uw_tag, "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "complete": (not missing_yellows and not (st.get("sampled_filters") or []) and not (st.get("excluded_tab_level") or []) and naked_settled)}
+        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", "") or _uw_tag, "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "ramfp": (str(_RUN_RAMFP.get(new_symside)) if os.environ.get("V15_RAMFP", "0") == "1" else None), "complete": (not missing_yellows and not (st.get("sampled_filters") or []) and not (st.get("excluded_tab_level") or []) and naked_settled and not _ramfp_stale)}
         if st.get("sampled_filters") or st.get("excluded_tab_level"):
             print(f"[POLICY-CELLS-PENDING] {sname}!{rr} {switch}={cand} sampled={len(st.get('sampled_filters') or [])} tablevel={len(st.get('excluded_tab_level') or [])} — yellows uncalculated, row stays pending (RULE#3 refuses publish until refilled)", flush=True)
         _maybe_write_json(force=promote)
@@ -5591,6 +5636,12 @@ def main():
         prepared = ALL_PREPARED[new_symside]
         print(f"[PRELOAD-LATE-HOT] {new_symside} reuse hot from ALL_PREPARED after timeout", flush=True)
     print(f"[STEP] after preload prepared={prepared is not None}", flush=True)
+    try:
+        if os.environ.get("V15_RAMFP", "0") == "1" and new_symside not in _RUN_RAMFP:
+            _RUN_RAMFP[new_symside] = _ram_fp(new_symside)
+            print(f"[RAMFP] {new_symside} run fp captured: {_RUN_RAMFP[new_symside]}", flush=True)
+    except Exception as _ramfp_e0:
+        print(f"[ramfp-warn] {new_symside}: {_ramfp_e0}", flush=True)
     if 'prepared' not in locals() or prepared is None:
         prepared = None
     if prepared is None:
@@ -6335,10 +6386,95 @@ def main():
                 for _rk in ("final_gain", "final_path", "not_compliant", "cumulative_gain", "cumulative_overrides", "hustler_best_gain", "hustler_overrides", "final_365d", "repair_365d", "confirmed_365d"):
                     progress.pop(_rk, None)
                 print(f"[NPZ-CHANGED-REFILL] {new_symside} NPZ changed since board was measured — board archived, re-filling every row on the new NPZ", flush=True)
+            # AMBER 2026-10-04 (A) FAIL-CLOSED: boards that predate NPZ-stamping (npz_id None) auto-refill on
+            # resume — unknown-provenance boards must not seed Monday sets. Archive keeps numbers intact.
+            # Kill: V15_FAILCLOSED=0 restores legacy trust (escape hatch only, never for qualification).
+            if os.environ.get("V15_FAILCLOSED", "1") == "1" and progress.get("done") and progress.get("npz_id") is None and _run_npz_id is not None:
+                _tsA = __import__("time").strftime("%Y%m%d%H%M%S", __import__("time").gmtime())
+                try:
+                    (progress_path.parent / (progress_path.name + f".nostamp_{_tsA}.json")).write_text(json.dumps(progress))
+                except Exception:
+                    pass
+                try:
+                    progress.setdefault("npz_history", []).append({"prev": None, "new": _run_npz_id, "archived_done_n": len(progress.get("done", {})), "why": "nostamp-failclosed"})
+                except Exception:
+                    pass
+                progress["done"] = {}
+                _board_reset = True
+                for _rk in ("final_gain", "final_path", "not_compliant", "cumulative_gain", "cumulative_overrides", "hustler_best_gain", "hustler_overrides", "final_365d", "repair_365d", "confirmed_365d"):
+                    progress.pop(_rk, None)
+                print(f"[NOSTAMP-REFILL] {new_symside} board predates NPZ-stamping — archived (.nostamp), re-filling every row on current NPZ", flush=True)
+            # AMBER 2026-10-04 (B) BYTE-AUDIT log-only: md5 divergence with matching 6-key identity is the silent
+            # cross-host rot signature (S1 1165 vs S5 945 keys, known gain divergence). Pre-Monday: LOG ONLY.
+            # Tightening (invalidate on md5 mismatch) lands post-Monday.
+            try:
+                _aud_old = progress.get("npz_id") or {}
+                _aud_new = _run_npz_id or {}
+                if isinstance(_aud_old, dict) and isinstance(_aud_new, dict) and _aud_old.get("md5") and _aud_new.get("md5") and _aud_old.get("md5") != _aud_new.get("md5"):
+                    from tools.v15_row_guards import npz_changed as _npz_changed_aud
+                    _six = _npz_changed_aud(_aud_old, _aud_new)
+                    print(f"[MD5-AUDIT] {new_symside} npz md5 differs (stored={str(_aud_old.get('md5'))[:12]} current={str(_aud_new.get('md5'))[:12]}) sixkey_changed={_six} — {'SILENT-ROT-SIGNATURE (same 6-key, different bytes)' if not _six else 'board invalidated by 6-key'} (log-only pre-Monday)", flush=True)
+            except Exception as _aud_e:
+                print(f"[md5-audit-warn] {new_symside}: {_aud_e}", flush=True)
             if _run_npz_id is not None:
                 progress["npz_id"] = _run_npz_id
         except Exception as _npz_e:
             print(f"[npz-guard-warn] {new_symside}: {_npz_e}", flush=True)
+        # TEAL 2026-10-04 HOST-STAMP: boards carry their measuring host; a cross-host resume re-measures the
+        # cumulative chain gain on the NEW host's NPZ with ONE eval. Reproducers within tolerance keep the board;
+        # divergers (or unrecoverable chains) archive + refill. Kill: V15_HOSTSTAMP=0 (no stamp, no check).
+        try:
+            import socket as _sock_hs
+            _this_host = (_sock_hs.gethostname() or "").lower()
+        except Exception:
+            _this_host = ""
+        if os.environ.get("V15_HOSTSTAMP", "1") == "1" and progress.get("done") and _this_host:
+            try:
+                _stored_host = str(progress.get("host") or "")
+                if not _stored_host:
+                    progress["host"] = _this_host
+                elif _stored_host.lower() != _this_host:
+                    _hs_chain = dict(progress.get("cumulative_overrides") or {})
+                    _hs_old = progress.get("cumulative_gain")
+                    _hs_new = None
+                    _hs_err = ""
+                    try:
+                        if not _hs_chain or _hs_old is None:
+                            _hs_err = f"unrecoverable-chain(chain={len(_hs_chain)} cum={_hs_old})"
+                        else:
+                            if prepared is not None:
+                                from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_hs
+                                _hs_res = _eval_hs(prepared, _hs_chain, window_days=args.window_days)
+                            else:
+                                from tools.opt.v12_pilot import evaluate_sanitized as _eval_hs_s
+                                _hs_res = _eval_hs_s(new_symside, _hs_chain, window_days=args.window_days)
+                            _hs_new = float((_hs_res or {}).get("gain_pct")) if (_hs_res or {}).get("gain_pct") is not None else None
+                            if _hs_new is None or not bool((_hs_res or {}).get("valid")):
+                                _hs_err = f"reverify-eval-invalid(gain={_hs_new} valid={(_hs_res or {}).get('valid')})"
+                    except Exception as _hs_e:
+                        _hs_err = f"reverify-eval-error:{_hs_e}"
+                    if not _hs_err and _reverify_within_tol(_hs_new, _hs_old):
+                        progress["host"] = _this_host
+                        progress["reverified"] = {"why": f"cross-host:{_stored_host}->{_this_host}", "old": float(_hs_old), "new": float(_hs_new), "npz": _run_npz_short}
+                        print(f"[REVERIFY-KEEP] {new_symside} cross-host {_stored_host}->{_this_host} chain reproduces ({float(_hs_old):.4f}->{float(_hs_new):.4f}) — board kept", flush=True)
+                    else:
+                        _tsH = __import__("time").strftime("%Y%m%d%H%M%S", __import__("time").gmtime())
+                        try:
+                            (progress_path.parent / (progress_path.name + f".hostdiverge_{_tsH}.json")).write_text(json.dumps(progress))
+                        except Exception:
+                            pass
+                        try:
+                            progress.setdefault("npz_history", []).append({"prev": progress.get("npz_id"), "new": _run_npz_id, "archived_done_n": len(progress.get("done", {})), "why": f"cross-host-diverge:{_stored_host}->{_this_host} old={_hs_old} new={_hs_new} {_hs_err}"})
+                        except Exception:
+                            pass
+                        progress["done"] = {}
+                        _board_reset = True
+                        for _rk in ("final_gain", "final_path", "not_compliant", "cumulative_gain", "cumulative_overrides", "hustler_best_gain", "hustler_overrides", "final_365d", "repair_365d", "confirmed_365d", "reverified"):
+                            progress.pop(_rk, None)
+                        progress["host"] = _this_host
+                        print(f"[HOSTDIVERGE-REFILL] {new_symside} cross-host {_stored_host}->{_this_host} chain DIVERGES (old={_hs_old} new={_hs_new} {_hs_err}) — archived (.hostdiverge), re-filling", flush=True)
+            except Exception as _hs_e0:
+                print(f"[hoststamp-warn] {new_symside}: {_hs_e0}", flush=True)
         # USER 2026-10-03 hollow-fix: boards containing policy-hollow rows (sampling/tab-level era: 0 evals
         # yet marked done) are rebuilt from scratch via needs_redo — mid-board holes cannot be spliced honestly
         # (positional baselines), so this launch only schedules the rebuild and exits for herd relaunch.
@@ -8614,6 +8750,37 @@ def main():
     if total_pos == 0:
         _elapsed = __import__('time').time() - _v15_start_time
         print(f"[VIRUS0-15s-DISABLED] {new_symside} 0 pos after {_elapsed:.1f}s total_pos 0 cum {cumulative_gain:.4f} baseline {baseline_gain:.4f} — continuing to publish (abort disabled, yellows kept, deltas exist)", flush=True)
+    # USER 2026-10-04 (ALGO stale-751): promotion-time NPZ freshness — refuse to finalize
+    # if the NPZ changed mid-run (regen swap under a measuring pilot). Board archived +
+    # refilled, never published mixed. Guard-exception fail-opens with an honest flag.
+    try:
+        from tools.v15_row_guards import npz_identity_for_symside as _npz_idF, npz_changed as _npz_chF
+        _final_npz_id = _npz_idF(new_symside)
+        if _npz_chF(_run_npz_id, _final_npz_id):
+            _tsF = __import__("time").strftime("%Y%m%d%H%M%S", __import__("time").gmtime())
+            try:
+                (progress_path.parent / (progress_path.name + f".npzprev_{_tsF}.json")).write_text(json.dumps(progress))
+            except Exception:
+                pass
+            try:
+                progress.setdefault("npz_history", []).append({"prev": _run_npz_id, "new": _final_npz_id, "midrun_swap": True, "archived_done_n": len(progress.get("done", {}))})
+            except Exception:
+                pass
+            _dF = int(progress.get("redo_depth", 0)) + 1
+            progress["needs_redo"] = {"overrides": dict(progress.get("cumulative_overrides") or {}), "result": {"gain_pct": progress.get("cumulative_gain")}, "depth": _dF, "reason": "npz-changed-midrun: NPZ swapped under this run — board archived, re-fill every row on the new NPZ before any FINAL"}
+            progress["done"] = {}
+            for _rk in ("final_gain", "final_path", "not_compliant", "cumulative_gain", "cumulative_overrides", "hustler_best_gain", "hustler_overrides", "final_365d", "repair_365d", "confirmed_365d"):
+                progress.pop(_rk, None)
+            try:
+                _atomic_write_json(progress_path, progress)
+            except Exception:
+                progress_path.write_text(json.dumps(progress))
+            print(f"[NPZ-MIDRUN-REFUSE] {new_symside} NPZ changed during run — FINAL refused, board archived (.npzprev), rebuild scheduled (depth {_dF}), exiting for herd relaunch", flush=True)
+            return
+        progress["npz_id_final"] = _final_npz_id
+    except Exception as _npzF_e:
+        print(f"[npz-final-warn] {new_symside}: {_npzF_e} — continuing without midrun check (flagged)", flush=True)
+        progress["npz_final_check"] = f"error: {_npzF_e}"[:150]
     def fmt(v): return f"{v:.2f}".replace("-", "m").replace(".", "p")
     final_name = f"{new_symside}_bh{fmt(bh_raw)}_gain{fmt(cumulative_gain)}_30d_matrix.xlsx"
     final_path = OUT_DIR / final_name

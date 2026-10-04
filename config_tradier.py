@@ -3883,6 +3883,7 @@ class TradierConfig:
     EMA50_15M_ENTRY_FILTER_PCT: float = 0.0  # 2026-09-30 carbon-copy config.py: buffer % beyond ema_50_15m (0 = strict)
     EMA_9_21_TIMEFRAME: str = "1h"
     KINDERGARTEN_EMA_GATE_ENABLED: bool = True  # 2026-09-22 FIX: rewritten as ENTRY SWITCH at 15m (EMA 9x21 cross) — was filter blocked 100% badly written, now correctly adds entry via _kg_signal OR. Must exist on all TFs via KINDERGARTEN_FILTER_TF.
+    KINDERGARTEN_FILTER_TF: str = "15m"  # FLT2: D/4h/1h/15m restricts the KINDERGARTEN 9/21 TF scan (OFF/15m = family EMA_9_21_FILTER_TFS); twin of config.py/QuickConfig (was absent here)
     EMA_9_21_SCORE_BONUS: int = 5  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     # --- KINDERGARTEN CUMULATIVE — FIX 2026-09-14: multiple EMA/SMA setups cumulate, not OR/exclude ---
     # 9/21 does NOT exclude 50/200 or SMA; each enabled pair adds independently. Mode CUMULATIVE means

@@ -238,3 +238,378 @@
 - s1: monitor error Command '['ssh', '-o', 'ConnectTimeout=10', '-o', 'BatchMode=yes', '-o', 'Strict
 - s5: monitor error Command '['ssh', '-o', 'ConnectTimeout=10', '-o', 'BatchMode=yes', '-o', 'Strict
 - s2: monitor error Command '['ssh', '-o', 'ConnectTimeout=10', '-o', 'BatchMode=yes', '-o', 'Strict
+
+## 2026-10-04T08:29Z
+- s1: monitor error Command '['ssh', '-o', 'ConnectTimeout=10', '-o', 'BatchMode=yes', '-o', 'Strict
+- s5: monitor error Command '['ssh', '-o', 'ConnectTimeout=10', '-o', 'BatchMode=yes', '-o', 'Strict
+- s2: monitor error Command '['ssh', '-o', 'ConnectTimeout=10', '-o', 'BatchMode=yes', '-o', 'Strict
+
+## 2026-10-04T08:35Z
+- s1: monitor error Command '['ssh', '-o', 'ConnectTimeout=10', '-o', 'BatchMode=yes', '-o', 'Strict
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T08:37Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T08:47Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T08:59Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T09:03Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T09:11Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T09:21Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T09:32Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T09:41Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T09:54Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T10:00Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T10:10Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T10:20Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T10:30Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T10:40Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T10:50Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T11:00Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T11:10Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T11:20Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T11:30Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T11:40Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T11:50Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T12:00Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T12:10Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T12:20Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T12:30Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T12:40Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T12:50Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T13:00Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T13:10Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T13:20Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T13:30Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T13:40Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T13:50Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T14:00Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T14:10Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T14:20Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T14:30Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T14:40Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T14:50Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T15:00Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T15:10Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T15:20Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T15:30Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T15:40Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T15:50Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T16:00Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T16:10Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T16:20Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T16:30Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T16:40Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T16:50Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T17:00Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T17:10Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T17:20Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T17:30Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T17:40Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T17:50Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T18:00Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T18:10Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T18:20Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T18:30Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T18:40Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T18:50Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T19:00Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T19:10Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T19:20Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T19:30Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T19:40Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T19:50Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T20:00Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T20:10Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T20:20Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)
+
+## 2026-10-04T20:30Z
+- s1: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s5: OK (no 0/repeated-delta offenders in last 40 sheets)
+- s2: OK (no 0/repeated-delta offenders in last 40 sheets)

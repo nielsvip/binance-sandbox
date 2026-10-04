@@ -1,0 +1,170 @@
+{
+ "anchor_counts_verified_in_worktree_af74536ae": true,
+ "base_commit": "af74536aef1f12d171e193e71ff4faeb675d00a6",
+ "hooks": [
+  {
+   "anchor": "    # 2026-09-30 PORTED-SWITCH DISPATCHER \u2014 collision-free wiring hook (SWITCH_WIRING_GUIDE.md).",
+   "anchor_count": 1,
+   "code": "    try:  # 2026-10-04 twin_exits_dead (DEAD/STAGED exit+entry switches; every call None-safe = default-inert).\n        import vec_decisions.twin_exits_dead as _ted\n        _ted_get = lambda _k, _d: getattr(cfg, _k, _d)\n        _ted_bbk = _ted.bbkc_entry_pass_mask(npz, n, is_long, _ted_get, _safe, close)\n        if _ted_bbk is not None:\n            _ted_bbk = np.asarray(_ted_bbk, dtype=bool)\n            entry_sig = entry_sig & _ted_bbk\n            _entry_filter_masks.append(_ted_bbk)\n        _ted_wk = _ted.wick_entry_pass_mask(npz, n, is_long, _ted_get, _safe)\n        if _ted_wk is not None:\n            _ted_wk = np.asarray(_ted_wk, dtype=bool)\n            entry_sig = entry_sig & _ted_wk\n            _entry_filter_masks.append(_ted_wk)\n        _ted_mr = _ted.mu_reentry_mask(npz, n, is_long, sym, _ted_get, _safe, close)\n        if _ted_mr is not None:\n            entry_sig = entry_sig | np.asarray(_ted_mr, dtype=bool)\n        _ted_bx = _ted.bbkc_exit_mask(npz, n, is_long, _ted_get, _safe, close)\n        if _ted_bx is not None:\n            exit_sig = exit_sig | np.asarray(_ted_bx, dtype=bool)\n        _ted_wx = _ted.wick_exit_mask(npz, n, is_long, _ted_get, _safe)\n        if _ted_wx is not None:\n            exit_sig = exit_sig | np.asarray(_ted_wx, dtype=bool)\n        _ted_mu = _ted.mu_exit_mask(npz, n, is_long, sym, _ted_get, _safe)\n        if _ted_mu is not None:\n            exit_sig = exit_sig | np.asarray(_ted_mu, dtype=bool)\n        _ted_sb = _ted.stdev_fail_mask(npz, n, is_long, _ted_get, _safe)\n        if _ted_sb is not None:\n            exit_sig = exit_sig | np.asarray(_ted_sb, dtype=bool)\n    except Exception:\n        pass\n",
+   "decision_required": false,
+   "id": "H1-vec-dispatcher",
+   "notes": "EXIT_VELOCITY_WT_TFS deliberately excluded here (see H9, decision-gated). MU reentry ORs entry_sig (trigger); BBKC/WICK entries AND (confirmation gates). MU MIN_GAIN_PCT>0 and reentry cooldown are live-only documented deltas (no per-trade gain/state at mask stage; no-op at defaults).",
+   "position": "before",
+   "switches": [
+    "BBKC_ENTRY_ENABLED",
+    "BBKC_ENTRY_TF",
+    "BBKC_EXIT_ENABLED",
+    "BBKC_EXIT_TF",
+    "WICK_REJECT_ENTRY_ENABLED",
+    "WICK_REJECT_ENTRY_TF",
+    "WICK_REJECT_EXIT_ENABLED",
+    "WICK_REJECT_EXIT_TF",
+    "MU_CORRECTION_EXIT_ENABLED",
+    "MU_CORRECTION_REENTRY_ENABLED",
+    "STDEV_BREAKOUT_EXIT_PCTB_FAIL"
+   ],
+   "target": "v12_quick_engine.py"
+  },
+  {
+   "anchor": "    # 2026-09-30 PORTED-SWITCH DISPATCHER \u2014 collision-free wiring hook (SWITCH_WIRING_GUIDE.md).",
+   "anchor_count": 1,
+   "code": "    try:  # 2026-10-04 twin_exits_dead EXIT_VELOCITY_WT (APPLY ONLY AFTER OPERATOR DECISION H9).\n        import vec_decisions.twin_exits_dead as _ted\n        _ted_vw = _ted.velocity_wt_exit_mask(npz, n, is_long, lambda _k, _d: getattr(cfg, _k, _d), _safe)\n        if _ted_vw is not None:\n            exit_sig = exit_sig | np.asarray(_ted_vw, dtype=bool)\n    except Exception:\n        pass\n",
+   "decision_note": "EXIT_VELOCITY_WT_TFS ships default '1h,4h,D' (ACTIVE value) in config.py, config_tradier.py, QuickConfig and all 4 templates, with no ENABLED master and no staged consumer. Hooking it moves the baseline (BIBLE 14.1 violation). OPERATOR MUST CHOOSE: (a) add EXIT_VELOCITY_WT_ENABLED master default False (all 3 configs + template rows), then apply H9/H10/H11; or (b) change the default to OFF everywhere; or (c) confirm the velocity-against exit SHOULD be baseline-ON (then baseline changes are intended).",
+   "decision_required": true,
+   "id": "H9-vec-velocity",
+   "position": "before",
+   "switches": [
+    "EXIT_VELOCITY_WT_TFS"
+   ],
+   "target": "v12_quick_engine.py"
+  },
+  {
+   "anchor": "            # LH/LL TOP EXIT 2026-10-04 live twin (default OFF = inert): structure-armed top/bottom",
+   "anchor_count": 1,
+   "code": "            # TWIN_EXITS_DEAD 2026-10-04 (BBKC/WICK/MU exits; default OFF = inert).\n            if not _gx_fire and _twin_exits_dead is not None:\n                try:\n                    _ted_get = lambda _k, _d: _psym_get(symbol, position_side, _k, _d)\n                    _ted_need = (bool(_ted_get(\"BBKC_EXIT_ENABLED\", False)) or bool(_ted_get(\"WICK_REJECT_EXIT_ENABLED\", False)) or bool(_ted_get(\"MU_CORRECTION_EXIT_ENABLED\", False)))\n                    if _ted_need:\n                        if _pp_shared_ind is None:\n                            _pp_shared_ind = await ii(trade_manager, symbol) or {}\n                        _ted_fire, _ted_reason = _twin_exits_dead.bbkc_exit_live_fire(_pp_shared_ind, safe_fetch_float(current_price, 0.0), _gx_is_long, _ted_get)\n                        if not _ted_fire:\n                            _ted_fire, _ted_reason = _twin_exits_dead.wick_exit_live_fire(_pp_shared_ind, _gx_is_long, _ted_get)\n                        if not _ted_fire:\n                            _ted_fire, _ted_reason = _twin_exits_dead.mu_exit_live_fire(_pp_shared_ind, _gx_is_long, symbol, safe_fetch_float(getattr(position, \"gain\", 0), 0.0), _ted_get)\n                        if _ted_fire:\n                            _gx_fire, _gx_reason = True, _ted_reason\n                except Exception as _ted_e:\n                    logger.warning(f\"[TWIN_EXITS_DEAD] {position_key} probe err: {_ted_e}\")\n",
+   "decision_required": false,
+   "id": "H2-ez-grey-exits",
+   "notes": "STDEV-breakout-fail needs no ez hook: check_exit_candidates_for_account already calls check_stdev_breakout_exit (ez_positions_quick.py:14663). Close routes through the chain's existing execute_now CLOSE below the anchor.",
+   "position": "before",
+   "switches": [
+    "BBKC_EXIT_ENABLED",
+    "BBKC_EXIT_TF",
+    "WICK_REJECT_EXIT_ENABLED",
+    "WICK_REJECT_EXIT_TF",
+    "MU_CORRECTION_EXIT_ENABLED"
+   ],
+   "target": "ez_manage.py"
+  },
+  {
+   "anchor": "                # LH/LL TOP EXIT 2026-10-04 live twin (default OFF = inert): same predicate as v12.",
+   "anchor_count": 1,
+   "code": "                # TWIN_EXITS_DEAD 2026-10-04 (BBKC/WICK/STDEV-fail exits; default OFF = inert).\n                if not _gx_fire:\n                    try:\n                        _ted_need = (bool(_gx_c('BBKC_EXIT_ENABLED', False)) or bool(_gx_c('WICK_REJECT_EXIT_ENABLED', False)) or bool(_gx_c('STDEV_BREAKOUT_ENABLED', False)))\n                        if _ted_need:\n                            _ted_fire, _ted_reason = _twin_exits_dead.bbkc_exit_live_fire(i or {}, safe_fetch_float(current_price, 0.0), is_long, _gx_c)\n                            if not _ted_fire:\n                                _ted_fire, _ted_reason = _twin_exits_dead.wick_exit_live_fire(i or {}, is_long, _gx_c)\n                            if not _ted_fire and bool(_gx_c('STDEV_BREAKOUT_ENABLED', False)):\n                                _ted_stdev = getattr(trade_manager, '_ted_stdev_live', None)\n                                if _ted_stdev is None:\n                                    _ted_stdev = _twin_exits_dead.StdevFailLive()\n                                    trade_manager._ted_stdev_live = _ted_stdev\n                                _ted_fire, _ted_reason = _ted_stdev.fire(i or {}, is_long, symbol, _gx_c)\n                            if _ted_fire:\n                                _gx_fire, _gx_reason = True, _ted_reason\n                    except Exception as _ted_e:\n                        logger.warning(f\"[TWIN_EXITS_DEAD] {position_key} probe err: {_ted_e}\")\n",
+   "decision_required": false,
+   "id": "H3-tradier-grey-exits",
+   "notes": "MU_CORRECTION_EXIT needs no tradier hook: StockStrategy.evaluate_stop already implements it (tradier_manage.py:19037). STDEV state lives on trade_manager (one arm-state per venue process, keyed by symbol inside). Close routes through the chain's existing queue_trade_action CLOSE below the anchor.",
+   "position": "before",
+   "switches": [
+    "BBKC_EXIT_ENABLED",
+    "BBKC_EXIT_TF",
+    "WICK_REJECT_EXIT_ENABLED",
+    "WICK_REJECT_EXIT_TF",
+    "STDEV_BREAKOUT_EXIT_PCTB_FAIL"
+   ],
+   "target": "tradier_manage.py"
+  },
+  {
+   "anchor": "        # \u2550\u2550\u2550 UNW-L 2026-10-01 live twins of vector-only regime switches (vec_decisions/live_unw_gates.py; all default OFF = neutral) \u2550\u2550\u2550",
+   "anchor_count": 1,
+   "code": "        # \u2550\u2550\u2550 TWIN_EXITS_DEAD 2026-10-04 entry confirmation gates (BBKC/WICK veto fresh OPEN; default OFF = unchanged live; per-sym via _psym_get) \u2550\u2550\u2550\n        try:\n            if (\n                symbol\n                and (\"OPEN\" in _kill_act or \"ENTRY\" in _kill_act or _kill_act == \"BUY\")\n                and \"AUGMENT\" not in _kill_act and \"REENTRY\" not in _kill_act and \"CLOSE\" not in _kill_act and \"REDUCE\" not in _kill_act and \"HEDGE\" not in _kill_act\n                and \"HEDGE\" not in (reason or \"\").upper() and \"OBLIGATORY\" not in (reason or \"\").upper() and \"REENTRY\" not in (reason or \"\").upper()\n            ):\n                _ted_get = lambda _k, _d=None: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))\n                _ted_bbk_on = bool(_ted_get(\"BBKC_ENTRY_ENABLED\", False))\n                _ted_wk_on = bool(_ted_get(\"WICK_REJECT_ENTRY_ENABLED\", False))\n                if _ted_bbk_on or _ted_wk_on:\n                    from vec_decisions import twin_exits_dead as _ted\n                    _ted_ind = await ii(self, symbol) or {}\n                    _ted_px = safe_fetch_float(_ted_ind.get(\"current_price\", 0), 0.0)\n                    if _ted_bbk_on:\n                        _ted_ok, _ted_why = _ted.bbkc_entry_live_pass(_ted_ind, _ted_px, position_side == \"LONG\", _ted_get)\n                        if not _ted_ok:\n                            logger.warning(f\"\ud83d\udeab [BBKC_ENTRY] {position_key}: BLOCKED {action} \u2014 {_ted_why}. reason={(reason or '')[:50]}\")\n                            return f\"BLOCKED_BBKC_ENTRY_{position_side}\"\n                    if _ted_wk_on:\n                        _ted_ok, _ted_why = _ted.wick_entry_live_pass(_ted_ind, position_side == \"LONG\", _ted_get)\n                        if not _ted_ok:\n                            logger.warning(f\"\ud83d\udeab [WICK_REJECT_ENTRY] {position_key}: BLOCKED {action} \u2014 {_ted_why}. reason={(reason or '')[:50]}\")\n                            return f\"BLOCKED_WICK_REJECT_ENTRY_{position_side}\"\n        except Exception as _tede:\n            logger.warning(f\"[TWIN_EXITS_DEAD entry gates] check error (fail-open): {_tede}\")\n",
+   "decision_required": false,
+   "id": "H4-ez-choke-entries",
+   "notes": "Mirrors the adjacent EMA_BLANKET_FILTER/KINDERGARTEN fresh-OPEN veto shape (same _kill_act exemptions). Veto (not proposal) is the faithful live twin of entry_sig AND-masking; the ENTRY_CONFIRMATION_GATES tab name confirms gate semantics.",
+   "position": "before",
+   "switches": [
+    "BBKC_ENTRY_ENABLED",
+    "BBKC_ENTRY_TF",
+    "WICK_REJECT_ENTRY_ENABLED",
+    "WICK_REJECT_ENTRY_TF"
+   ],
+   "target": "ez_manage.py"
+  },
+  {
+   "anchor": "        # UNW-L 2026-10-01: WT_COMPOSITE_HTF_GATE + WT_COMPOSITE_ENTRY_BLOCK hard block on fresh OPEN / AUGMENT (vec_decisions/wt_composite_gate twin); master default False = neutral.",
+   "anchor_count": 1,
+   "code": "        # TWIN_EXITS_DEAD 2026-10-04 entry confirmation gates (BBKC/WICK veto fresh OPEN; default OFF = neutral).\n        try:\n            _ted_act = (action or '').upper()\n            if position_key and (('OPEN' in _ted_act or 'ENTRY' in _ted_act or _ted_act == 'BUY') and 'REENTER' not in _ted_act and 'CLOSE' not in _ted_act and 'REDUCE' not in _ted_act\n                                 and 'REENTRY' not in (reason or '').upper() and 'OBLIGATORY' not in (reason or '').upper()) and 'HEDGE' not in _ted_act and 'HEDGE' not in (reason or '').upper():\n                _ted_acct, _ted_sym, _ted_side = parse_position_key(position_key)\n                _ted_c = lambda _k, _d=None: _cfg(_k, _d, _ted_acct, _ted_sym, _ted_side)\n                _ted_bbk_on = bool(_ted_c('BBKC_ENTRY_ENABLED', False))\n                _ted_wk_on = bool(_ted_c('WICK_REJECT_ENTRY_ENABLED', False))\n                if _ted_bbk_on or _ted_wk_on:\n                    from vec_decisions import twin_exits_dead as _ted\n                    _ted_ind = (trade_manager.get_indicators(_ted_sym) if _ted_sym else {}) or {}\n                    _ted_px = safe_fetch_float(_ted_ind.get('current_price', 0), 0.0)\n                    if _ted_bbk_on:\n                        _ted_ok, _ted_why = _ted.bbkc_entry_live_pass(_ted_ind, _ted_px, _ted_side == 'LONG', _ted_c)\n                        if not _ted_ok:\n                            logger.warning(f\"\ud83d\udeab [BBKC_ENTRY] {position_key}: BLOCKED {action} \u2014 {_ted_why}. reason={(reason or '')[:60]}\")\n                            _direct_queue_gate_note(trade_manager, position_key, reason, 'BBKC_ENTRY')\n                            return False\n                    if _ted_wk_on:\n                        _ted_ok, _ted_why = _ted.wick_entry_live_pass(_ted_ind, _ted_side == 'LONG', _ted_c)\n                        if not _ted_ok:\n                            logger.warning(f\"\ud83d\udeab [WICK_REJECT_ENTRY] {position_key}: BLOCKED {action} \u2014 {_ted_why}. reason={(reason or '')[:60]}\")\n                            _direct_queue_gate_note(trade_manager, position_key, reason, 'WICK_REJECT_ENTRY')\n                            return False\n        except Exception as _tede2:\n            logger.warning(f\"[TWIN_EXITS_DEAD entry gates] check error (fail-open): {_tede2}\")\n",
+   "decision_required": false,
+   "id": "H5-tradier-choke-entries",
+   "notes": "Mirrors the adjacent WT_COMPOSITE fresh-OPEN veto shape in queue_trade_action (same exemptions + _direct_queue_gate_note).",
+   "position": "before",
+   "switches": [
+    "BBKC_ENTRY_ENABLED",
+    "BBKC_ENTRY_TF",
+    "WICK_REJECT_ENTRY_ENABLED",
+    "WICK_REJECT_ENTRY_TF"
+   ],
+   "target": "tradier_manage.py"
+  },
+  {
+   "anchor": "    re_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)\n    # 2026-09-18 HARDCODED RALLY REENTRY (user mandate): close > exit and wt1_15m rising",
+   "anchor_count": 1,
+   "code": "    # \u2550\u2550\u2550 MU_CORRECTION_REENTRY 2026-10-04 crypto port of tradier StockStrategy.evaluate_reentry (default OFF = inert) \u2550\u2550\u2550\n    try:\n        _mr_get = lambda _k, _d=None: _psym_get(symbol, ctx.get(\"position_side\", \"LONG\"), _k, getattr(config, _k, _d))\n        if bool(_mr_get(\"MU_CORRECTION_REENTRY_ENABLED\", False)):\n            _mr_last_t = getattr(position, \"last_reduction_time\", None)\n            if _mr_last_t is not None:\n                from vec_decisions import twin_exits_dead as _ted\n                _mr_age = 9999.0\n                try:\n                    _mr_lt = _mr_last_t if not isinstance(_mr_last_t, str) else datetime.fromisoformat(str(_mr_last_t).replace(\"Z\", \"+00:00\"))\n                    if _mr_lt.tzinfo is None:\n                        _mr_lt = _mr_lt.replace(tzinfo=timezone.utc)\n                    _mr_age = (datetime.now(timezone.utc) - _mr_lt).total_seconds() / 60.0\n                except Exception:\n                    pass\n                _mr_fire, _mr_reason = _ted.mu_reentry_live_fire(i, current_price, is_long, symbol, _mr_age, _mr_get)\n                if _mr_fire:\n                    logger.warning(f\"[MU_CORRECTION_REENTRY] {position_key}: {_mr_reason} \u2014 REOPEN\")\n                    return Signal(action=\"REENTRY\", reason=_mr_reason, conviction=90.0, quantity=re_qty)\n    except Exception as _mr_e:\n        logger.debug(f\"[MU_CORRECTION_REENTRY] {position_key}: check skipped {_mr_e}\")\n",
+   "decision_required": false,
+   "id": "H6-ez-reentry-mu",
+   "notes": "Two-line anchor (unique as a pair; the re_qty line alone occurs twice). Insert the MU block BETWEEN the two lines, i.e. after re_qty, before the HARDCODED_RALLY comment. Flat-only: evaluate_reentry already returned None when positionAmt>0. Mirrors the HARDCODED_RALLY Signal(action=REENTRY) proposal shape directly below. MU allowlist + LONG-only + cooldown enforced inside mu_reentry_live_fire.",
+   "position": "after-first-line",
+   "switches": [
+    "MU_CORRECTION_REENTRY_ENABLED"
+   ],
+   "target": "ez_manage.py"
+  },
+  {
+   "anchor": "    _lhll_top_exit = None",
+   "anchor_count": 1,
+   "code": "try:\n    import vec_decisions.twin_exits_dead as _twin_exits_dead  # 2026-10-04 DEAD exit/entry twins (shared with v12_quick_engine)\nexcept ImportError:\n    _twin_exits_dead = None\n",
+   "decision_required": false,
+   "id": "H7-ez-import",
+   "position": "after",
+   "switches": [],
+   "target": "ez_manage.py"
+  },
+  {
+   "anchor": "import vec_decisions.lh_ll_top_exit as _lhll_top_exit  # 2026-10-04 LH/LL top exit (shared with v12_quick_engine)",
+   "anchor_count": 1,
+   "code": "import vec_decisions.twin_exits_dead as _twin_exits_dead  # 2026-10-04 DEAD exit/entry twins (shared with v12_quick_engine)",
+   "decision_required": false,
+   "id": "H8-tradier-import",
+   "position": "after",
+   "switches": [],
+   "target": "tradier_manage.py"
+  },
+  {
+   "anchor": "            # LH/LL TOP EXIT 2026-10-04 live twin (default OFF = inert): structure-armed top/bottom",
+   "anchor_count": 1,
+   "code": "            # TWIN_EXITS_DEAD EXIT_VELOCITY_WT (APPLY ONLY AFTER OPERATOR DECISION H9).\n            if not _gx_fire and _twin_exits_dead is not None:\n                try:\n                    _ted_fire, _ted_reason = _twin_exits_dead.velocity_wt_exit_live_fire(_pp_shared_ind if _pp_shared_ind is not None else {}, _gx_is_long, lambda _k, _d: _psym_get(symbol, position_side, _k, _d))\n                    if _ted_fire:\n                        if _pp_shared_ind is None:\n                            _pp_shared_ind = await ii(trade_manager, symbol) or {}\n                            _ted_fire, _ted_reason = _twin_exits_dead.velocity_wt_exit_live_fire(_pp_shared_ind, _gx_is_long, lambda _k, _d: _psym_get(symbol, position_side, _k, _d))\n                        if _ted_fire:\n                            _gx_fire, _gx_reason = True, _ted_reason\n                except Exception as _ted_e:\n                    logger.warning(f\"[TWIN_EXITS_DEAD] {position_key} probe err: {_ted_e}\")\n",
+   "decision_note": "Same decision as H9. REAL block, gated by the decision flag \u2014 DO NOT APPLY until the operator chooses (a)/(b)/(c); then apply together with H9.",
+   "decision_required": true,
+   "id": "H10-ez-grey-velocity",
+   "position": "before",
+   "switches": [
+    "EXIT_VELOCITY_WT_TFS"
+   ],
+   "target": "ez_manage.py"
+  },
+  {
+   "anchor": "                # LH/LL TOP EXIT 2026-10-04 live twin (default OFF = inert): same predicate as v12.",
+   "anchor_count": 1,
+   "code": "                # TWIN_EXITS_DEAD EXIT_VELOCITY_WT (APPLY ONLY AFTER OPERATOR DECISION H9).\n                if not _gx_fire:\n                    try:\n                        _ted_fire, _ted_reason = _twin_exits_dead.velocity_wt_exit_live_fire(i or {}, is_long, _gx_c)\n                        if _ted_fire:\n                            _gx_fire, _gx_reason = True, _ted_reason\n                    except Exception as _ted_e:\n                        logger.warning(f\"[TWIN_EXITS_DEAD] {position_key} probe err: {_ted_e}\")\n",
+   "decision_note": "Same decision as H9. REAL block, gated by the decision flag \u2014 DO NOT APPLY until the operator chooses (a)/(b)/(c); then apply together with H9.",
+   "decision_required": true,
+   "id": "H11-tradier-grey-velocity",
+   "position": "before",
+   "switches": [
+    "EXIT_VELOCITY_WT_TFS"
+   ],
+   "target": "tradier_manage.py"
+  }
+ ],
+ "module": "vec_decisions/twin_exits_dead.py",
+ "no_config_specs_reason": "All 12 switches exist in config.py, config_tradier.py and QuickConfig with matching shipped defaults (evidence pack in_config all true; spot-verified config.py:4759-4787, config_tradier.py:4030-4043, v12_quick_engine.py:4127-4155/4208/4617-4618/6243). No field specs needed.",
+ "tests": "test_exits_dead_twin.py (12 passed in worktree)"
+}

@@ -4723,6 +4723,7 @@ class Config:
     EMA_9_21_FILTER_TFS: str = "1h"  # FLT2: twin of QuickConfig/cat_side default (comma list, each TF an independent 9/21 check)
     KINDERGARTEN_CUMULATIVE_MIN_TFS: int = 1  # FLT2: twin of QuickConfig/cat_side default (0 defers to EMA_9_21_FILTER_MIN_TFS)
     KINDERGARTEN_STRICT_TFS: str = ""  # FLT2: twin of QuickConfig default
+    KINDERGARTEN_CUMULATIVE_MODE: bool = True  # 2026-10-04 wave-1 merge (was missing from config.py): True = cumulate all enabled KG filters (matches QuickConfig + config_tradier + template bolds). Behavior change vs unwired live, gated pre-deploy.
     KINDERGARTEN_FILTER_TF: str = "15m"  # FLT2: D/4h/1h/15m restricts the KINDERGARTEN_EMA_GATE TF scan (OFF = legacy D,4h,1h,15m scan); twin of QuickConfig/cat_side default
     EMA_9_21_SCORE_BONUS: int = 5  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
     EMA_9_21_TIMEFRAME: str = "1h"

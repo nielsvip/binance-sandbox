@@ -425,6 +425,12 @@ def check_entry_alignment(
                 _filter_tf_gate.filter_tf_gate_blocks(indicators, config, _f)
     except Exception:
         pass
+    # MFI_ENTRY 2026-10-04 live twin of v12 AND-gate (mfi_1h LONG<60 / SHORT>40, twin_entry_ports_b.mfi_gate): default True (config.py) = ACTIVE gate, behavior change, gated pre-deploy.
+    try:
+        if _twin_entry_ports_b is not None and not _twin_entry_ports_b.mfi_gate(lambda _k, _d: getattr(config, _k, _d), is_long, indicators or {}):
+            return False, "MFI_ENTRY_ENABLED"
+    except Exception:
+        pass
     # WIRING LANE C M1b (LIVE_MIRROR ENTRY_DC_TF/BUFFER_PCT): v12 ENTRY DC gate port.
     # Default OFF -> zero live change. Per-tick application (no batch np.any guard); TF as-is.
     try:
@@ -3239,6 +3245,27 @@ try:
     import vec_decisions.lh_ll_top_exit as _lhll_top_exit  # 2026-10-04 LH/LL top exit (shared with v12_quick_engine)
 except ImportError:
     _lhll_top_exit = None
+try:
+    import vec_decisions.twin_gates_sizing_a as _twin_gates_sizing_a  # 2026-10-04 gates+sizing batch A twins (shared with v12_quick_engine)
+except ImportError:
+    _twin_gates_sizing_a = None
+_TGSA_SQ_PREV = {}
+try:
+    import vec_decisions.twin_entry_ports_b as _twin_entry_ports_b  # 2026-10-04 entry-ports-B twins (shared with v12_quick_engine)
+except ImportError:
+    _twin_entry_ports_b = None
+try:
+    import vec_decisions.twin_exits_dead as _twin_exits_dead  # 2026-10-04 DEAD exit/entry twins (shared with v12_quick_engine)
+except ImportError:
+    _twin_exits_dead = None
+try:
+    import vec_decisions.twin_entries_dead_a as _teda_entries  # 2026-10-04 entries-dead-A FUNDING/OI/RSI2 twins (shared with v12_quick_engine)
+except ImportError:
+    _teda_entries = None
+try:
+    import vec_decisions.twin_entries_dead_b as _twin_dead_b  # 2026-10-04 pack-B entries/exits (shared with v12_quick_engine)
+except ImportError:
+    _twin_dead_b = None
 from vec_decisions.process_position_stocks__alt_entries import _rz_breakout_fires  # 2026-09-29 grey rewire RZ_BREAKOUT shared predicate
 # --- FULL COVERAGE 2026-08-17: ez_ mirror of tradier_ coverage — identical params/hash so crypto vs stocks tradier_ parity is 100% identical is read at least once so switch_lab Tab 3 + vector parity can flip it ---
 # This does NOT change live trade logic (reads are dead-code gated); it makes grep-wiring and vector hash distinctness pass.
@@ -27148,6 +27175,13 @@ class MultiAccountTradeManager:
                     _bs_m = max(float(getattr(config, "BAND_SLOPE_SIZING_V2_MIN", 0.5)), min(float(getattr(config, "BAND_SLOPE_SIZING_V2_MAX", 2.5)), _bs_m))
                     quantity = quantity * _bs_m
                     logger.info(f"{position_key} [BAND_SLOPE_SIZING_V2] lrL_pct_b_{_bs_tf}={_bs_pb_f:.3f} slope_day={_bs_slope_day:+.3f}%/d mult={_bs_m:.2f} -> ${quantity * current_price:.2f}")
+                    # OPERATOR-ACTIVATED 2026-10-04 (inert 1.0 at defaults; was REPORT): live crypto has no STDEV_* switch reads;
+                    # this would apply the twin scalar factor after the V2 block. Inert at defaults.
+                    try:
+                        import vec_decisions.twin_stdev as _twin_stdev
+                        quantity = quantity * _twin_stdev.get_scalar(i, is_long, config)
+                    except Exception:
+                        pass
             higher_high_15m = bool(
                 i.get("high_15m", 0)
                 and i.get("high_15m_prev", 0)
@@ -30089,7 +30123,14 @@ class MultiAccountTradeManager:
                     from types import SimpleNamespace as _EbNS
                     from vec_decisions.wave4_families import ema_blanket_live_pass as _eb_pass
                     _eb_cfg = _EbNS(EMA_BLANKET_FILTER_ENABLED=True, EMA_BLANKET_FILTER_MIN_TFS=_psym_get(symbol, position_side, "EMA_BLANKET_FILTER_MIN_TFS", getattr(config, "EMA_BLANKET_FILTER_MIN_TFS", 3)))
-                    _eb_ok, _eb_agree, _eb_found = _eb_pass(await ii(self, symbol) or {}, position_side == "LONG", _eb_cfg)
+                    from vec_decisions.twin_yellow_filters import blanket_scan_tfs as _tyf_eb_scan, ema_blanket_blocks_live as _tyf_eb_block
+                    _tyf_eb_tf = _psym_get(symbol, position_side, "EMA_BLANKET_FILTER_FILTER_TF", getattr(config, "EMA_BLANKET_FILTER_FILTER_TF", "OFF"))
+                    if _tyf_eb_scan(_tyf_eb_tf) != ("15m", "1h", "4h", "D"):
+                        _eb_ind = await ii(self, symbol) or {}
+                        _eb_blocked = _tyf_eb_block(lambda _k, _d=None: _eb_ind.get(_k, _d), position_side == "LONG", _tyf_eb_tf, _eb_cfg.EMA_BLANKET_FILTER_MIN_TFS)
+                        _eb_ok, _eb_agree, _eb_found = (not _eb_blocked), (0 if _eb_blocked else 1), 1
+                    else:
+                        _eb_ok, _eb_agree, _eb_found = _eb_pass(await ii(self, symbol) or {}, position_side == "LONG", _eb_cfg)
                     if not _eb_ok:
                         logger.warning(f"🚫 [EMA_BLANKET_FILTER] {position_key}: BLOCKED {action} — ema9>21 agrees on {_eb_agree}/{_eb_found} TFs < {_eb_cfg.EMA_BLANKET_FILTER_MIN_TFS}. reason={(reason or '')[:50]}")
                         return f"BLOCKED_EMA_BLANKET_FILTER_{position_side}"
@@ -30123,6 +30164,59 @@ class MultiAccountTradeManager:
                             return f"BLOCKED_EMA_9_21_FILTER_{position_side}"
         except Exception as _kgxe:
             logger.warning(f"[KG/EMA_9_21 chokepoint] check error (fail-open): {_kgxe}")
+        # ═══ TWIN_EXITS_DEAD 2026-10-04 entry confirmation gates (BBKC/WICK veto fresh OPEN; default OFF = unchanged live; per-sym via _psym_get) ═══
+        try:
+            if (
+                symbol
+                and ("OPEN" in _kill_act or "ENTRY" in _kill_act or _kill_act == "BUY")
+                and "AUGMENT" not in _kill_act and "REENTRY" not in _kill_act and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
+                and "HEDGE" not in (reason or "").upper() and "OBLIGATORY" not in (reason or "").upper() and "REENTRY" not in (reason or "").upper()
+            ):
+                _ted_get = lambda _k, _d=None: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))
+                _ted_bbk_on = bool(_ted_get("BBKC_ENTRY_ENABLED", False))
+                _ted_wk_on = bool(_ted_get("WICK_REJECT_ENTRY_ENABLED", False))
+                if _ted_bbk_on or _ted_wk_on:
+                    from vec_decisions import twin_exits_dead as _ted
+                    _ted_ind = await ii(self, symbol) or {}
+                    _ted_px = safe_fetch_float(_ted_ind.get("current_price", 0), 0.0)
+                    if _ted_bbk_on:
+                        _ted_ok, _ted_why = _ted.bbkc_entry_live_pass(_ted_ind, _ted_px, position_side == "LONG", _ted_get)
+                        if not _ted_ok:
+                            logger.warning(f"🚫 [BBKC_ENTRY] {position_key}: BLOCKED {action} — {_ted_why}. reason={(reason or '')[:50]}")
+                            return f"BLOCKED_BBKC_ENTRY_{position_side}"
+                    if _ted_wk_on:
+                        _ted_ok, _ted_why = _ted.wick_entry_live_pass(_ted_ind, position_side == "LONG", _ted_get)
+                        if not _ted_ok:
+                            logger.warning(f"🚫 [WICK_REJECT_ENTRY] {position_key}: BLOCKED {action} — {_ted_why}. reason={(reason or '')[:50]}")
+                            return f"BLOCKED_WICK_REJECT_ENTRY_{position_side}"
+        except Exception as _tede:
+            logger.warning(f"[TWIN_EXITS_DEAD entry gates] check error (fail-open): {_tede}")
+        # ═══ GATES-A 2026-10-04 crypto fresh-OPEN vetoes (vec_decisions.twin_gates_sizing_a) ═══
+        # CLENOW (vec v12:9504) + CONFLUENCE 3-vote (tradier:15367 mirror) + SBA score (vec v12:9599).
+        try:
+            if (
+                symbol
+                and ("OPEN" in _kill_act or "ENTRY" in _kill_act or _kill_act == "BUY")
+                and "AUGMENT" not in _kill_act and "REENTRY" not in _kill_act and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
+                and "HEDGE" not in (reason or "").upper() and "OBLIGATORY" not in (reason or "").upper() and "REENTRY" not in (reason or "").upper()
+                and _twin_gates_sizing_a is not None
+            ):
+                _tgsa_get = lambda _k, _d=None: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))
+                _tgsa_need = bool(_tgsa_get("CLENOW_ENABLED", False)) or bool(_tgsa_get("CONFLUENCE_MODE_ENABLED", False)) or bool(_tgsa_get("SBA_BOUNCE_ENABLED", True))
+                if _tgsa_need:
+                    _tgsa_ind = await ii(self, symbol) or {}
+                    _tgsa_long = position_side == "LONG"
+                    _tgsa_px = float(_tgsa_ind.get("current_price", 0) or _tgsa_ind.get("close", 0) or 0)
+                    _tgsa_blk, _tgsa_why = _twin_gates_sizing_a.clenow_blocks(_tgsa_get, _tgsa_ind, _tgsa_long, _tgsa_px)
+                    if not _tgsa_blk:
+                        _tgsa_blk, _tgsa_why = _twin_gates_sizing_a.confluence_blocks(_tgsa_get, _tgsa_ind, _tgsa_long, "3m")
+                    if not _tgsa_blk:
+                        _tgsa_blk, _tgsa_why = _twin_gates_sizing_a.sba_veto_blocks(_tgsa_get, _tgsa_ind, _tgsa_long)
+                    if _tgsa_blk:
+                        logger.warning(f"🚫 [GATES_A_VETO] {position_key}: BLOCKED {action} — {_tgsa_why}. reason={(reason or '')[:50]}")
+                        return f"BLOCKED_GATES_A_{position_side}"
+        except Exception as _tgsae:
+            logger.warning(f"[GATES-A veto] check error (fail-open): {_tgsae}")
         # ═══ UNW-L 2026-10-01 live twins of vector-only regime switches (vec_decisions/live_unw_gates.py; all default OFF = neutral) ═══
         #   AUGMENT_BULL_KILL_ENABLED: block AUGMENT when D-bull (close_D>sma_20_D & wt1_4h>BULL_HOLD_WT_THR)   [v12_quick_engine ~10088]
         #   BULL_HOLD_EXIT_DELAY_BARS / BEAR_HOLD_EXIT_DELAY_BARS: hold technical (non-protective) CLOSE/REDUCE in D-bull (any side) / D-bear (shorts) [~9970/~9990]
@@ -35140,11 +35234,13 @@ class MultiAccountTradeManager:
                     )
                     if current_price <= 0:
                         continue
+                    from vec_decisions.twin_yellow_filters import dc_breach_tf as _tyf_dcbr
+                    _tyf_dcbr_tf = _tyf_dcbr(_psym_get(symbol, pos_side, "DC_BREACH_REDUCE_FILTER_TF", getattr(config, "DC_BREACH_REDUCE_FILTER_TF", "OFF")))
                     dc_low_15m = safe_fetch_float(
-                        indicators.get("dc_low_15m", 0.0), 0.0
+                        indicators.get(f"dc_low_{_tyf_dcbr_tf}", 0.0), 0.0
                     )
                     dc_high_15m = safe_fetch_float(
-                        indicators.get("dc_high_15m", 0.0), 0.0
+                        indicators.get(f"dc_high_{_tyf_dcbr_tf}", 0.0), 0.0
                     )
                     breached = (
                         is_long and dc_low_15m > 0 and current_price < dc_low_15m
@@ -35158,7 +35254,7 @@ class MultiAccountTradeManager:
                         continue
                     self._dc_breach_cooldown[breach_key] = time.time()
                     logger.critical(
-                        f"[DC_BREACH_REDUCE] {losing_key}: Price {current_price:.6f} crossed dc_{'low' if is_long else 'high'}_15m={'%.6f' % (dc_low_15m if is_long else dc_high_15m)}. Promoting profitable hedges & reducing loser."
+                        f"[DC_BREACH_REDUCE] {losing_key}: Price {current_price:.6f} crossed dc_{'low' if is_long else 'high'}_{_tyf_dcbr_tf}={'%.6f' % (dc_low_15m if is_long else dc_high_15m)}. Promoting profitable hedges & reducing loser."
                     )
                     related_hedges = [
                         h
@@ -35195,7 +35291,7 @@ class MultiAccountTradeManager:
                         self,
                         losing_key,
                         "REDUCE",
-                        f"DC_BREACH_REDUCE_{'LOW' if is_long else 'HIGH'}_15m_price_{current_price:.6f}",
+                        f"DC_BREACH_REDUCE_{'LOW' if is_long else 'HIGH'}_{_tyf_dcbr_tf}_price_{current_price:.6f}",
                         100.0,
                     )
                     if result and ("QUEUED" in str(result) or "SUCCESS" in str(result)):
@@ -35265,11 +35361,13 @@ class MultiAccountTradeManager:
                         )
                         if current_price <= 0:
                             continue
+                        from vec_decisions.twin_yellow_filters import dc_breach_tf as _tyf_dcbr
+                        _tyf_dcbr_tf = _tyf_dcbr(_psym_get(symbol, pos_side, "DC_BREACH_REDUCE_FILTER_TF", getattr(config, "DC_BREACH_REDUCE_FILTER_TF", "OFF")))
                         dc_low_15m = safe_fetch_float(
-                            indicators.get("dc_low_15m", 0.0), 0.0
+                            indicators.get(f"dc_low_{_tyf_dcbr_tf}", 0.0), 0.0
                         )
                         dc_high_15m = safe_fetch_float(
-                            indicators.get("dc_high_15m", 0.0), 0.0
+                            indicators.get(f"dc_high_{_tyf_dcbr_tf}", 0.0), 0.0
                         )
                         breached = (
                             is_long and dc_low_15m > 0 and current_price < dc_low_15m
@@ -35289,11 +35387,11 @@ class MultiAccountTradeManager:
                         self._dc_breach_cooldown[breach_key] = time.time()
                         _dc_action = "CLOSE" if pos_gain < 0 else "REDUCE"
                         logger.critical(
-                            f"[DC_BREACH_REDUCE_UNHEDGED] {position_key}: Price {current_price:.6f} crossed dc_{'low' if is_long else 'high'}_15m={'%.6f' % (dc_low_15m if is_long else dc_high_15m)}. gain={pos_gain:.2f}%. {'Closing' if _dc_action == 'CLOSE' else 'Reducing'} unhedged loser."
+                            f"[DC_BREACH_REDUCE_UNHEDGED] {position_key}: Price {current_price:.6f} crossed dc_{'low' if is_long else 'high'}_{_tyf_dcbr_tf}={'%.6f' % (dc_low_15m if is_long else dc_high_15m)}. gain={pos_gain:.2f}%. {'Closing' if _dc_action == 'CLOSE' else 'Reducing'} unhedged loser."
                         )
                         if _dc_action == "CLOSE":
                             _dc_close_side = "SELL" if is_long else "BUY"
-                            _dc_reason = f"DC_BREACH_REDUCE_UNHEDGED_{'LOW' if is_long else 'HIGH'}_15m_price_{current_price:.6f}"
+                            _dc_reason = f"DC_BREACH_REDUCE_UNHEDGED_{'LOW' if is_long else 'HIGH'}_{_tyf_dcbr_tf}_price_{current_price:.6f}"
                             await self.execute_now(
                                 position_key=position_key,
                                 account_key=account_key,
@@ -35322,7 +35420,7 @@ class MultiAccountTradeManager:
                                 self,
                                 position_key,
                                 "REDUCE",
-                                f"DC_BREACH_REDUCE_UNHEDGED_{'LOW' if is_long else 'HIGH'}_15m_price_{current_price:.6f}",
+                                f"DC_BREACH_REDUCE_UNHEDGED_{'LOW' if is_long else 'HIGH'}_{_tyf_dcbr_tf}_price_{current_price:.6f}",
                                 100.0,
                             )
                         if result and (
@@ -38880,6 +38978,27 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
         return None
     re_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
     # 2026-09-18 HARDCODED RALLY REENTRY (user mandate): close > exit and wt1_15m rising
+    # ═══ MU_CORRECTION_REENTRY 2026-10-04 crypto port of tradier StockStrategy.evaluate_reentry (default OFF = inert) ═══
+    try:
+        _mr_get = lambda _k, _d=None: _psym_get(symbol, ctx.get("position_side", "LONG"), _k, getattr(config, _k, _d))
+        if bool(_mr_get("MU_CORRECTION_REENTRY_ENABLED", False)):
+            _mr_last_t = getattr(position, "last_reduction_time", None)
+            if _mr_last_t is not None:
+                from vec_decisions import twin_exits_dead as _ted
+                _mr_age = 9999.0
+                try:
+                    _mr_lt = _mr_last_t if not isinstance(_mr_last_t, str) else datetime.fromisoformat(str(_mr_last_t).replace("Z", "+00:00"))
+                    if _mr_lt.tzinfo is None:
+                        _mr_lt = _mr_lt.replace(tzinfo=timezone.utc)
+                    _mr_age = (datetime.now(timezone.utc) - _mr_lt).total_seconds() / 60.0
+                except Exception:
+                    pass
+                _mr_fire, _mr_reason = _ted.mu_reentry_live_fire(i, current_price, is_long, symbol, _mr_age, _mr_get)
+                if _mr_fire:
+                    logger.warning(f"[MU_CORRECTION_REENTRY] {position_key}: {_mr_reason} — REOPEN")
+                    return Signal(action="REENTRY", reason=_mr_reason, conviction=90.0, quantity=re_qty)
+    except Exception as _mr_e:
+        logger.debug(f"[MU_CORRECTION_REENTRY] {position_key}: check skipped {_mr_e}")
     if getattr(config, "HARDCODED_RALLY_REENTRY_ENABLED", True):
         try:
             _hc_exit_px = float(getattr(position, "last_reduction_price", 0.0) or 0.0)
@@ -41823,6 +41942,14 @@ async def calculate_final_order_quantity(
             f"[{position_key}] SIZING: BaseQty={base_quantity:.4f}, Score={sizing_score:.1f}, Multiplier={size_multiplier:.2f}"
         )
     final_add_qty = base_quantity * size_multiplier
+    try:
+        if _twin_gates_sizing_a is not None and symbol and position is not None:
+            _tgsa_rm = _twin_gates_sizing_a.regime_adaptive_mult(lambda _k, _d: _psym_get(symbol, position.position_side, _k, _d), safe_fetch_float(i.get("adx_1h", 20), 20.0))
+            if _tgsa_rm is not None:
+                final_add_qty *= _tgsa_rm
+                logger.info(f"[{position_key}] REGIME_ADAPTIVE_SIZING: adx={safe_fetch_float(i.get('adx_1h', 20), 20.0):.1f} mult={_tgsa_rm:.2f}x")
+    except Exception as _tgsa_se:
+        logger.warning(f"[REGIME_ADAPTIVE_SIZING] {position_key} err (fail-open): {_tgsa_se}")
     # BACKTEST_CHANGE_24: EMA_DIST proportional sizing — larger distance from EMA = larger position
     if getattr(config, "EMA_DIST_SIZING_ENABLED", False):
         _ema20_sz = float(i.get(f"ema_20_{config.TF_FOCUS}", 0) or 0)
@@ -44457,6 +44584,239 @@ async def _process_single_override_check(
                                             80.0,
                                         )
                         # ═══════════════════════════════════════════════════════════════════
+                        # ENTRY_PORTS_B 2026-10-04 live twins (crypto): one elif per switch, each calling the shared
+                        # vec_decisions/twin_entry_ports_b predicate. Same flat-proposal mechanics as WT_3M_FORCE_OPEN:
+                        # per-sym _psym_get reads, fail-open try/except, R1 freeze-at-entry, duplicate-open cooldown,
+                        # queue_trade_action OPEN. Ungated branches only (default-OFF = inert).
+                        elif _twin_entry_ports_b is not None and bool(_psym_get(_sym_z, _side_z, "WT_15M_BOUNCE_OPEN_ENABLED", False)):
+                            try:
+                                _b15_ok, _b15_why = _twin_entry_ports_b.wt_15m_bounce(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _ind_z)
+                            except Exception:
+                                _b15_ok, _b15_why = False, ""
+                            if _b15_ok and _px_z > 0:
+                                logger.warning(f"[ENTRY_PORTS_B] {position_key}: {_b15_why} px={_px_z:.6f} -> OPEN")
+                                _r1s_b15 = safe_fetch_float(_ind_z.get(("dc_low4_3m" if _is_long_z else "dc_high4_3m") if bool(getattr(config, "R1_USE_DC_4BAR", True)) else ("dc_low_3m" if _is_long_z else "dc_high_3m")), 0.0)
+                                if _r1s_b15 > 0 and position and float(getattr(position, "r1_stop_price", 0.0) or 0.0) <= 0:
+                                    position.r1_stop_price = _r1s_b15
+                                if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+                                    pass
+                                else:
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _b15_why, 75.0)
+                        elif _twin_entry_ports_b is not None and bool(_psym_get(_sym_z, _side_z, "WT_ENTRY_ENABLED", False)):
+                            try:
+                                _wte_ok, _wte_why = _twin_entry_ports_b.wt_entry(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _ind_z)
+                            except Exception:
+                                _wte_ok, _wte_why = False, ""
+                            if _wte_ok and _px_z > 0:
+                                logger.warning(f"[ENTRY_PORTS_B] {position_key}: {_wte_why} px={_px_z:.6f} -> OPEN")
+                                _r1s_wte = safe_fetch_float(_ind_z.get(("dc_low4_3m" if _is_long_z else "dc_high4_3m") if bool(getattr(config, "R1_USE_DC_4BAR", True)) else ("dc_low_3m" if _is_long_z else "dc_high_3m")), 0.0)
+                                if _r1s_wte > 0 and position and float(getattr(position, "r1_stop_price", 0.0) or 0.0) <= 0:
+                                    position.r1_stop_price = _r1s_wte
+                                if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+                                    pass
+                                else:
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _wte_why, 75.0)
+                        elif _twin_entry_ports_b is not None and bool(_psym_get(_sym_z, _side_z, "STOCH_ENTRY_ENABLED", False)):
+                            try:
+                                _ste_ok, _ste_why = _twin_entry_ports_b.stoch_entry(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _ind_z)
+                            except Exception:
+                                _ste_ok, _ste_why = False, ""
+                            if _ste_ok and _px_z > 0:
+                                logger.warning(f"[ENTRY_PORTS_B] {position_key}: {_ste_why} px={_px_z:.6f} -> OPEN")
+                                _r1s_ste = safe_fetch_float(_ind_z.get(("dc_low4_3m" if _is_long_z else "dc_high4_3m") if bool(getattr(config, "R1_USE_DC_4BAR", True)) else ("dc_low_3m" if _is_long_z else "dc_high_3m")), 0.0)
+                                if _r1s_ste > 0 and position and float(getattr(position, "r1_stop_price", 0.0) or 0.0) <= 0:
+                                    position.r1_stop_price = _r1s_ste
+                                if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+                                    pass
+                                else:
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _ste_why, 75.0)
+                        elif _twin_entry_ports_b is not None and bool(_psym_get(_sym_z, _side_z, "SATOSHIT_ENTRY_ENABLED", False)):
+                            try:
+                                _sat_ok, _sat_why = _twin_entry_ports_b.satoshit_entry(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _ind_z)
+                            except Exception:
+                                _sat_ok, _sat_why = False, ""
+                            if _sat_ok and _px_z > 0:
+                                logger.warning(f"[ENTRY_PORTS_B] {position_key}: {_sat_why} px={_px_z:.6f} -> OPEN")
+                                _r1s_sat = safe_fetch_float(_ind_z.get(("dc_low4_3m" if _is_long_z else "dc_high4_3m") if bool(getattr(config, "R1_USE_DC_4BAR", True)) else ("dc_low_3m" if _is_long_z else "dc_high_3m")), 0.0)
+                                if _r1s_sat > 0 and position and float(getattr(position, "r1_stop_price", 0.0) or 0.0) <= 0:
+                                    position.r1_stop_price = _r1s_sat
+                                if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+                                    pass
+                                else:
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _sat_why, 75.0)
+                        elif _twin_entry_ports_b is not None and bool(_psym_get(_sym_z, _side_z, "BB_PCTB_ENTRY_ENABLED", False)):
+                            try:
+                                _bbp_ok, _bbp_why = _twin_entry_ports_b.bb_pctb_entry(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _ind_z)
+                            except Exception:
+                                _bbp_ok, _bbp_why = False, ""
+                            if _bbp_ok and _px_z > 0:
+                                logger.warning(f"[ENTRY_PORTS_B] {position_key}: {_bbp_why} px={_px_z:.6f} -> OPEN")
+                                _r1s_bbp = safe_fetch_float(_ind_z.get(("dc_low4_3m" if _is_long_z else "dc_high4_3m") if bool(getattr(config, "R1_USE_DC_4BAR", True)) else ("dc_low_3m" if _is_long_z else "dc_high_3m")), 0.0)
+                                if _r1s_bbp > 0 and position and float(getattr(position, "r1_stop_price", 0.0) or 0.0) <= 0:
+                                    position.r1_stop_price = _r1s_bbp
+                                if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+                                    pass
+                                else:
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _bbp_why, 75.0)
+                        elif _twin_entry_ports_b is not None and bool(_psym_get(_sym_z, _side_z, "BAND_ARROW_ENABLED", False)):
+                            try:
+                                _ba_ok, _ba_why = _twin_entry_ports_b.band_arrow_entry(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _ind_z)
+                            except Exception:
+                                _ba_ok, _ba_why = False, ""
+                            if _ba_ok and _px_z > 0:
+                                logger.warning(f"[ENTRY_PORTS_B] {position_key}: {_ba_why} px={_px_z:.6f} -> OPEN")
+                                _r1s_ba = safe_fetch_float(_ind_z.get(("dc_low4_3m" if _is_long_z else "dc_high4_3m") if bool(getattr(config, "R1_USE_DC_4BAR", True)) else ("dc_low_3m" if _is_long_z else "dc_high_3m")), 0.0)
+                                if _r1s_ba > 0 and position and float(getattr(position, "r1_stop_price", 0.0) or 0.0) <= 0:
+                                    position.r1_stop_price = _r1s_ba
+                                if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+                                    pass
+                                else:
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _ba_why, 88.0)
+                        elif _twin_entry_ports_b is not None and bool(_psym_get(_sym_z, _side_z, "WT_DC_DETAILED_SCORER_ENABLED", False)):
+                            try:
+                                _wtd_ok, _wtd_why = _twin_entry_ports_b.wt_dc_detailed_entry(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _ind_z, _px_z)
+                            except Exception:
+                                _wtd_ok, _wtd_why = False, ""
+                            if _wtd_ok and _px_z > 0:
+                                logger.warning(f"[ENTRY_PORTS_B] {position_key}: {_wtd_why} px={_px_z:.6f} -> OPEN")
+                                _r1s_wtd = safe_fetch_float(_ind_z.get(("dc_low4_3m" if _is_long_z else "dc_high4_3m") if bool(getattr(config, "R1_USE_DC_4BAR", True)) else ("dc_low_3m" if _is_long_z else "dc_high_3m")), 0.0)
+                                if _r1s_wtd > 0 and position and float(getattr(position, "r1_stop_price", 0.0) or 0.0) <= 0:
+                                    position.r1_stop_price = _r1s_wtd
+                                if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+                                    pass
+                                else:
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _wtd_why, 75.0)
+                        # BB_BOUNCE_ENTRY 2026-10-04 live twin (crypto, default OFF = inert): pct-b reclaim per TF,
+                        # same predicate as v12. Dormant until bb_pct_b_{TF}_prev pipeline keys exist (0 refs).
+                        elif _twin_entry_ports_b is not None and str(_psym_get(_sym_z, _side_z, "BB_BOUNCE_ENTRY_TF", "OFF") or "OFF") in ("15m", "1h", "4h", "D"):
+                            try:
+                                _t3_ok, _t3_why = _twin_entry_ports_b.bb_bounce_entry(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _ind_z)
+                            except Exception:
+                                _t3_ok, _t3_why = False, ""
+                            if _t3_ok and _px_z > 0:
+                                logger.warning(f"[ENTRY_PORTS_B] {position_key}: {_t3_why} px={_px_z:.6f} -> OPEN")
+                                _r1s_t3 = safe_fetch_float(_ind_z.get(("dc_low4_3m" if _is_long_z else "dc_high4_3m") if bool(getattr(config, "R1_USE_DC_4BAR", True)) else ("dc_low_3m" if _is_long_z else "dc_high_3m")), 0.0)
+                                if _r1s_t3 > 0 and position and float(getattr(position, "r1_stop_price", 0.0) or 0.0) <= 0:
+                                    position.r1_stop_price = _r1s_t3
+                                if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+                                    pass
+                                else:
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _t3_why, 75.0)
+                        # ENTRY_PORTS_B OPERATOR-ACTIVATED 2026-10-04 (user wiring mandate ALL-switches: default-True branches ACTIVE; see behavior-change manifest).
+                        # Exact code, same flat-proposal mechanics as above (per-sym reads, R1 freeze, dup-guard).
+                        elif _twin_entry_ports_b is not None and bool(_psym_get(_sym_z, _side_z, "SMA200_DIST_ENTRY_ENABLED", True)):
+                            try:
+                                _sma_ok, _sma_why = _twin_entry_ports_b.sma200_dist_entry(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _ind_z)
+                            except Exception:
+                                _sma_ok, _sma_why = False, ""
+                            if _sma_ok and _px_z > 0:
+                                logger.warning(f"[ENTRY_PORTS_B] {position_key}: {_sma_why} px={_px_z:.6f} -> OPEN")
+                                _r1s_sma = safe_fetch_float(_ind_z.get(("dc_low4_3m" if _is_long_z else "dc_high4_3m") if bool(getattr(config, "R1_USE_DC_4BAR", True)) else ("dc_low_3m" if _is_long_z else "dc_high_3m")), 0.0)
+                                if _r1s_sma > 0 and position and float(getattr(position, "r1_stop_price", 0.0) or 0.0) <= 0:
+                                    position.r1_stop_price = _r1s_sma
+                                if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+                                    pass
+                                else:
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _sma_why, 75.0)
+                        elif _twin_entry_ports_b is not None and bool(_psym_get(_sym_z, _side_z, "EMA20_SLOPE_ENTRY_ENABLED", True)):
+                            try:
+                                _ema_ok, _ema_why = _twin_entry_ports_b.ema20_slope_entry(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _ind_z)
+                            except Exception:
+                                _ema_ok, _ema_why = False, ""
+                            if _ema_ok and _px_z > 0:
+                                logger.warning(f"[ENTRY_PORTS_B] {position_key}: {_ema_why} px={_px_z:.6f} -> OPEN")
+                                _r1s_ema = safe_fetch_float(_ind_z.get(("dc_low4_3m" if _is_long_z else "dc_high4_3m") if bool(getattr(config, "R1_USE_DC_4BAR", True)) else ("dc_low_3m" if _is_long_z else "dc_high_3m")), 0.0)
+                                if _r1s_ema > 0 and position and float(getattr(position, "r1_stop_price", 0.0) or 0.0) <= 0:
+                                    position.r1_stop_price = _r1s_ema
+                                if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+                                    pass
+                                else:
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _ema_why, 75.0)
+                        elif _twin_entry_ports_b is not None and bool(_psym_get(_sym_z, _side_z, "VWAP_BOUNCE_ENTRY_ENABLED", True)):
+                            try:
+                                _vwap_ok, _vwap_why = _twin_entry_ports_b.vwap_bounce_entry(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _ind_z)
+                            except Exception:
+                                _vwap_ok, _vwap_why = False, ""
+                            if _vwap_ok and _px_z > 0:
+                                logger.warning(f"[ENTRY_PORTS_B] {position_key}: {_vwap_why} px={_px_z:.6f} -> OPEN")
+                                _r1s_vwap = safe_fetch_float(_ind_z.get(("dc_low4_3m" if _is_long_z else "dc_high4_3m") if bool(getattr(config, "R1_USE_DC_4BAR", True)) else ("dc_low_3m" if _is_long_z else "dc_high_3m")), 0.0)
+                                if _r1s_vwap > 0 and position and float(getattr(position, "r1_stop_price", 0.0) or 0.0) <= 0:
+                                    position.r1_stop_price = _r1s_vwap
+                                if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+                                    pass
+                                else:
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _vwap_why, 75.0)
+                        # MFI_ENTRY_ENABLED: NO elif possible — vec applies it as an AND-gate (mfi_gate, v12:9594),
+                        # not an OR-proposal. A faithful live twin must VETO other proposals when the gate fails,
+                        # which requires editing existing branches (insertion-only cannot do it). Twin predicate
+                        # mfi_gate(cfg, is_long, ind) is delivered in twin_entry_ports_b.py; operator must decide
+                        # veto placement (and note config.py default True: activating changes live fills).
+                        elif _twin_gates_sizing_a is not None and bool(_psym_get(_sym_z, _side_z, "RSI2_ENABLED", True)):
+                            _tgsa_fire_z, _tgsa_reason_z = False, ""
+                            try:
+                                _tgsa_fire_z, _tgsa_reason_z = _twin_gates_sizing_a.rsi2_fires(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _ind_z, _is_long_z)
+                            except Exception:
+                                pass
+                            if _tgsa_fire_z and _px_z > 0:
+                                logger.warning(f"[RSI2_ENTRY] {position_key}: {_tgsa_reason_z} px={_px_z:.6f} → OPEN")
+                                if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+                                    pass
+                                else:
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", f"RSI2_ENTRY_{_tgsa_reason_z}_px{_px_z:.6f}", 71.0)
+                        elif _twin_gates_sizing_a is not None and bool(_psym_get(_sym_z, _side_z, "CONNORS_RSI_ENABLED", False)):
+                            _tgsa_fire_z, _tgsa_reason_z = False, ""
+                            try:
+                                _tgsa_fire_z, _tgsa_reason_z = _twin_gates_sizing_a.connors_fires(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _ind_z, _is_long_z)
+                            except Exception:
+                                pass
+                            if _tgsa_fire_z and _px_z > 0:
+                                logger.warning(f"[CONNORS_ENTRY] {position_key}: {_tgsa_reason_z} px={_px_z:.6f} → OPEN")
+                                if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+                                    pass
+                                else:
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", f"CONNORS_RSI_ENTRY_{_tgsa_reason_z}_px{_px_z:.6f}", 71.0)
+                        elif _twin_gates_sizing_a is not None and bool(_psym_get(_sym_z, _side_z, "RZ_ENTRY_ENABLED", True)):
+                            _tgsa_fire_z, _tgsa_reason_z = False, ""
+                            try:
+                                _tgsa_fire_z, _tgsa_reason_z = _twin_gates_sizing_a.rz_bottom_fires(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _ind_z, _is_long_z, "3m")
+                            except Exception:
+                                pass
+                            if _tgsa_fire_z and _px_z > 0:
+                                logger.warning(f"[RZ_BOTTOM_ENTRY] {position_key}: {_tgsa_reason_z} px={_px_z:.6f} → OPEN")
+                                if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+                                    pass
+                                else:
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", f"RZ_BOTTOM_{_tgsa_reason_z}_px{_px_z:.6f}", 71.0)
+                        elif _twin_gates_sizing_a is not None and bool(_psym_get(_sym_z, _side_z, "SQUEEZE_ENABLED", False)):
+                            _tgsa_fire_z, _tgsa_reason_z = False, ""
+                            try:
+                                _tgsa_sq_prev = _TGSA_SQ_PREV.get(position_key)
+                                _tgsa_fire_z, _tgsa_reason_z = _twin_gates_sizing_a.squeeze_fires(_ind_z, _is_long_z, "3m", _tgsa_sq_prev)
+                                _tgsa_sq_now = _ind_z.get("squeeze_on_15m", _ind_z.get("squeeze_on", 0))
+                                _TGSA_SQ_PREV[position_key] = bool(_tgsa_sq_now) if not isinstance(_tgsa_sq_now, (int, float)) else float(_tgsa_sq_now) > 0
+                            except Exception:
+                                pass
+                            if _tgsa_fire_z and _px_z > 0:
+                                logger.warning(f"[SQUEEZE_ENTRY] {position_key}: {_tgsa_reason_z} px={_px_z:.6f} → OPEN")
+                                if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+                                    pass
+                                else:
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", f"SQUEEZE_{_tgsa_reason_z}_px{_px_z:.6f}", 70.0)
+                        elif _twin_gates_sizing_a is not None and _twin_gates_sizing_a.fh_enabled(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), False):
+                            _tgsa_fire_z, _tgsa_reason_z = False, ""
+                            try:
+                                _tgsa_now = datetime.now(timezone.utc)
+                                _tgsa_min = _tgsa_now.hour * 60 + _tgsa_now.minute
+                                _tgsa_open = safe_fetch_float(_ind_z.get("open_D", 0) or 0)
+                                _tgsa_fire_z, _tgsa_reason_z = _twin_gates_sizing_a.fh_momentum_fires(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _ind_z, _is_long_z, _tgsa_min, _px_z, _tgsa_open)
+                            except Exception:
+                                pass
+                            if _tgsa_fire_z and _px_z > 0:
+                                logger.warning(f"[FH_MOMENTUM_ENTRY] {position_key}: {_tgsa_reason_z} px={_px_z:.6f} → OPEN")
+                                if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+                                    pass
+                                else:
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", f"FH_MOMENTUM_{_tgsa_reason_z}_px{_px_z:.6f}", 70.0)
                         # RULE_A_RETEST — D/W Breakout-then-Retest entry FIRE trigger (USER 2026-05-17).
                         # Source: data/research_20260516/PLAN.md §3.3 + research_summary.md §2.
                         # Cited lift: +22 abs WR pts (Trading-Rush 100-breakout), +0.47 Sharpe (QuantPedia D1H1).
@@ -44503,6 +44863,71 @@ async def _process_single_override_check(
                                     logger.warning(f"[RULE_A_RETEST] {position_key}: FIRE {('LONG' if _is_long_z else 'SHORT')} {_ra_reason[:120]}")
                                     if time.time() - _recent_opens.get(position_key, 0) >= _DUPLICATE_OPEN_COOLDOWN:
                                         await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _ra_reason, 80.0)
+                        # ENTRY_PORTS_A 2026-10-04 wave-1 merge: crypto-live twins of vec+stocks entry families (default OFF = inert).
+                        elif bool(_psym_get(_sym_z, _side_z, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED", False)):
+                            try:
+                                from vec_decisions.twin_entry_ports_a import evaluate_bounce_deep_turn as _epa_eval_bdt
+                                _epa_fire, _epa_reason = _epa_eval_bdt(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _sym_z, _side_z, _ind_z, _px_z)
+                                if _epa_fire:
+                                    logger.warning(f"[ENTRY_PORTS_A] {position_key}: {_epa_reason} px{_px_z:.6f} -> OPEN")
+                                    if time.time() - _recent_opens.get(position_key, 0) >= _DUPLICATE_OPEN_COOLDOWN:
+                                        await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _epa_reason, 75.0)
+                            except Exception:
+                                pass
+                        elif bool(_psym_get(_sym_z, _side_z, "ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED", False)):
+                            try:
+                                from vec_decisions.twin_entry_ports_a import evaluate_bounce_donchian as _epa_eval_bd
+                                _epa_fire, _epa_reason = _epa_eval_bd(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _sym_z, _side_z, _ind_z, _px_z)
+                                if _epa_fire:
+                                    logger.warning(f"[ENTRY_PORTS_A] {position_key}: {_epa_reason} px{_px_z:.6f} -> OPEN")
+                                    if time.time() - _recent_opens.get(position_key, 0) >= _DUPLICATE_OPEN_COOLDOWN:
+                                        await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _epa_reason, 72.0)
+                            except Exception:
+                                pass
+                        elif bool(_psym_get(_sym_z, _side_z, "ENTRY_STOCH_HHHL_DIRECT_ENABLED", False)):
+                            try:
+                                from vec_decisions.twin_entry_ports_a import evaluate_stoch_hhhl as _epa_eval_hhhl
+                                _epa_fire, _epa_reason = _epa_eval_hhhl(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _sym_z, _side_z, _ind_z)
+                                if _epa_fire:
+                                    logger.warning(f"[ENTRY_PORTS_A] {position_key}: {_epa_reason} -> OPEN")
+                                    if time.time() - _recent_opens.get(position_key, 0) >= _DUPLICATE_OPEN_COOLDOWN:
+                                        await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _epa_reason, 70.0)
+                            except Exception:
+                                pass
+                        elif bool(_psym_get(_sym_z, _side_z, "ENTRY_STOCH_PARENT_DIRECT_ENABLED", False)):
+                            try:
+                                from vec_decisions.twin_entry_ports_a import evaluate_stoch_parent as _epa_eval_sp
+                                _epa_fire, _epa_reason = _epa_eval_sp(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _sym_z, _side_z, _ind_z)
+                                if _epa_fire:
+                                    logger.warning(f"[ENTRY_PORTS_A] {position_key}: {_epa_reason} -> OPEN")
+                                    if time.time() - _recent_opens.get(position_key, 0) >= _DUPLICATE_OPEN_COOLDOWN:
+                                        await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _epa_reason, 70.0)
+                            except Exception:
+                                pass
+                        # STOCH_XTREME/SMFI_DIV/VWAP_STRETCH ENTRIES 2026-10-04 (default OFF = inert): flat-proposal
+                        # mirror of WT_3M_FORCE_OPEN -- extreme-reversal triggers OPEN when flat.
+                        elif _twin_dead_b is not None and (_psym_get(_sym_z, _side_z, "STOCH_XTREME_ENTRY_ENABLED", False) or _psym_get(_sym_z, _side_z, "SMFI_DIV_ENTRY_ENABLED", False) or _psym_get(_sym_z, _side_z, "VWAP_STRETCH_ENTRY_ENABLED", False)):
+                            _twin_cz = lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d)
+                            _twin_specs_z = [_twin_dead_b.resolve_stoch_xtreme_entry(_twin_cz), _twin_dead_b.resolve_smfi_div_entry(_twin_cz), _twin_dead_b.resolve_vwap_stretch_entry(_twin_cz)]
+                            _twin_vwap_z = safe_fetch_float(_ind_z.get("vwap_npz") or _ind_z.get("vwap") or 0, 0.0)
+                            _twin_lvl_z = lambda _f: _twin_vwap_z if _f == "vwap" else safe_fetch_float(_ind_z.get(_f, 50), 50.0)
+                            for _twin_fn_z, _twin_sp_z in ((_twin_dead_b.stoch_xtreme_entry_fire, _twin_specs_z[0]), (_twin_dead_b.smfi_div_entry_fire, _twin_specs_z[1]), (_twin_dead_b.vwap_stretch_entry_fire, _twin_specs_z[2])):
+                                _twin_fire_z, _twin_reason_z = _twin_fn_z(_twin_sp_z, _is_long_z, _twin_lvl_z, safe_fetch_float(_px_z, 0.0))
+                                if _twin_fire_z and _px_z > 0:
+                                    logger.warning(f"[TWIN_DEAD_B_ENTRY] {position_key}: {_twin_reason_z} px={_px_z:.6f} -> OPEN")
+                                    if time.time() - _recent_opens.get(position_key, 0) >= _DUPLICATE_OPEN_COOLDOWN:
+                                        await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _twin_reason_z, 80.0)
+                                    break
+                        # TEDA entries-dead-A 2026-10-04 live twin (default OFF = inert): FUNDING_CROWD / OI_SURGE / RSI2_XTREME flat proposals, WT_3M_FORCE_OPEN mechanics.
+                        try:
+                            if _teda_entries is not None and (position is None or abs(safe_float(getattr(position, "positionAmt", 0))) == 0):
+                                _teda_md_z = getattr(getattr(trade_manager, "market", None), "data", None)
+                                _teda_fire_z, _teda_reason_z = _teda_entries.check_entry_proposal(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _ind_z or {}, _sym_z, _teda_md_z, None, True)
+                                if _teda_fire_z and time.time() - _recent_opens.get(position_key, 0) >= _DUPLICATE_OPEN_COOLDOWN:
+                                    logger.warning(f"[TEDA_ENTRY] {position_key}: {_teda_reason_z} -> OPEN")
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _teda_reason_z, 80.0)
+                        except Exception as _teda_e_z:
+                            logger.debug(f"[TEDA_ENTRY] {position_key}: probe err: {_teda_e_z}")
             except Exception as _tkm_e:
                 logger.debug(
                     f"[TRADEABLE_KEYS_MANDATORY] {position_key}: check failed — {_tkm_e}"
@@ -46961,6 +47386,79 @@ async def process_position(
                     _bb_fire, _bb_reason = _bb_stoch_exits.stoch_cross_3m_exit(lambda _k, _d: _psym_get(symbol, position_side, _k, _d), _gx_is_long, _pp_shared_ind or {})
                 if _bb_fire:
                     _gx_fire, _gx_reason = True, _bb_reason
+            # STOCH_XTREME/SMFI_DIV/VWAP_STRETCH EXITS 2026-10-04 live twins (default OFF = inert): same predicates as v12.
+            if not _gx_fire and _twin_dead_b is not None:
+                _twin_c = lambda _k, _d: _psym_get(symbol, position_side, _k, _d)
+                _twin_specs = [_twin_dead_b.resolve_stoch_xtreme_exit(_twin_c), _twin_dead_b.resolve_smfi_div_exit(_twin_c), _twin_dead_b.resolve_vwap_stretch_exit(_twin_c)]
+                if any(_s.get("enabled") for _s in _twin_specs):
+                    if _pp_shared_ind is None:
+                        _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                    _twin_vwap = safe_fetch_float(_pp_shared_ind.get("vwap_npz") or _pp_shared_ind.get("vwap") or 0, 0.0)
+                    _twin_lvl = lambda _f: _twin_vwap if _f == "vwap" else safe_fetch_float(_pp_shared_ind.get(_f, 50), 50.0)
+                    for _twin_fn, _twin_sp in ((_twin_dead_b.stoch_xtreme_exit_fire, _twin_specs[0]), (_twin_dead_b.smfi_div_exit_fire, _twin_specs[1]), (_twin_dead_b.vwap_stretch_exit_fire, _twin_specs[2])):
+                        _twin_fire, _twin_reason = _twin_fn(_twin_sp, _gx_is_long, _twin_lvl, safe_fetch_float(current_price, 0.0))
+                        if _twin_fire:
+                            _gx_fire, _gx_reason = True, _twin_reason
+                            break
+            # TEDA entries-dead-A 2026-10-04 live twin (default OFF = inert): FUNDING_CROWD / OI_SURGE / RSI2_XTREME velocity exits, same predicates as v12.
+            if not _gx_fire and _teda_entries is not None:
+                try:
+                    if _pp_shared_ind is None:
+                        _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                    _teda_md = getattr(getattr(trade_manager, "market", None), "data", None)
+                    _teda_fire, _teda_reason = _teda_entries.check_exit(lambda _k, _d: _psym_get(symbol, position_side, _k, _d), _gx_is_long, _pp_shared_ind or {}, symbol, _teda_md, None, True)
+                    if _teda_fire:
+                        _gx_fire, _gx_reason = True, _teda_reason
+                except Exception as _teda_e:
+                    logger.debug(f"[TEDA_EXIT] {position_key}: probe err: {_teda_e}")
+            # TWIN_EXITS_DEAD 2026-10-04 (BBKC/WICK/MU exits; default OFF = inert).
+            if not _gx_fire and _twin_exits_dead is not None:
+                try:
+                    _ted_get = lambda _k, _d: _psym_get(symbol, position_side, _k, _d)
+                    _ted_need = (bool(_ted_get("BBKC_EXIT_ENABLED", False)) or bool(_ted_get("WICK_REJECT_EXIT_ENABLED", False)) or bool(_ted_get("MU_CORRECTION_EXIT_ENABLED", False)))
+                    if _ted_need:
+                        if _pp_shared_ind is None:
+                            _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                        _ted_fire, _ted_reason = _twin_exits_dead.bbkc_exit_live_fire(_pp_shared_ind, safe_fetch_float(current_price, 0.0), _gx_is_long, _ted_get)
+                        if not _ted_fire:
+                            _ted_fire, _ted_reason = _twin_exits_dead.wick_exit_live_fire(_pp_shared_ind, _gx_is_long, _ted_get)
+                        if not _ted_fire:
+                            _ted_fire, _ted_reason = _twin_exits_dead.mu_exit_live_fire(_pp_shared_ind, _gx_is_long, symbol, safe_fetch_float(getattr(position, "gain", 0), 0.0), _ted_get)
+                        if _ted_fire:
+                            _gx_fire, _gx_reason = True, _ted_reason
+                except Exception as _ted_e:
+                    logger.warning(f"[TWIN_EXITS_DEAD] {position_key} probe err: {_ted_e}")
+            # TWIN_EXITS_DEAD EXIT_VELOCITY_WT (APPLY ONLY AFTER OPERATOR DECISION H9).
+            if not _gx_fire and _twin_exits_dead is not None:
+                try:
+                    _ted_fire, _ted_reason = _twin_exits_dead.velocity_wt_exit_live_fire(_pp_shared_ind if _pp_shared_ind is not None else {}, _gx_is_long, lambda _k, _d: _psym_get(symbol, position_side, _k, _d))
+                    if _ted_fire:
+                        if _pp_shared_ind is None:
+                            _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                            _ted_fire, _ted_reason = _twin_exits_dead.velocity_wt_exit_live_fire(_pp_shared_ind, _gx_is_long, lambda _k, _d: _psym_get(symbol, position_side, _k, _d))
+                        if _ted_fire:
+                            _gx_fire, _gx_reason = True, _ted_reason
+                except Exception as _ted_e:
+                    logger.warning(f"[TWIN_EXITS_DEAD] {position_key} probe err: {_ted_e}")
+            # WT_CROSSUNDER_FINAL 2026-10-04 live twin (EXIT, OPERATOR-ACTIVATED 2026-10-04 (user mandate; default True = live behavior change, gated pre-deploy)):
+            # wt1_3m crossunder + k_3m>=70 (long) / mirror short, same predicate as v12 compute_exit_signals.
+            if not _gx_fire and _twin_entry_ports_b is not None:
+                _xc_fire, _xc_reason = _twin_entry_ports_b.wt_crossunder_final_exit(lambda _k, _d: _psym_get(symbol, position_side, _k, _d), _gx_is_long, _pp_shared_ind or {}, "3m")
+                if _xc_fire:
+                    _gx_fire, _gx_reason = True, _xc_reason
+            # GATES-A 2026-10-04 live twins of v12 exits (twin_gates_sizing_a): VEL trigger + WT_VEL_DECAY.
+            if not _gx_fire and _twin_gates_sizing_a is not None:
+                try:
+                    _tgsa_get = lambda _k, _d: _psym_get(symbol, position_side, _k, _d)
+                    if _pp_shared_ind is None:
+                        _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                    _tgsa_fire, _tgsa_reason = _twin_gates_sizing_a.vel_exit_fires(_tgsa_get, _pp_shared_ind, _gx_is_long)
+                    if not _tgsa_fire:
+                        _tgsa_fire, _tgsa_reason = _twin_gates_sizing_a.wt_vel_decay_fires(_tgsa_get, _pp_shared_ind, _gx_is_long, "3m")
+                    if _tgsa_fire:
+                        _gx_fire, _gx_reason = True, _tgsa_reason
+                except Exception as _tgsa_e:
+                    logger.warning(f"[GATES_A_EXIT] {position_key} probe err: {_tgsa_e}")
             # LH/LL TOP EXIT 2026-10-04 live twin (default OFF = inert): structure-armed top/bottom
             # exit, same predicate as v12. Live arm uses forming-vs-completed HTF H/L (snapshot has no
             # completed[-2] bar) while vec uses completed[-1] vs completed[-2] — direction-consistent,
@@ -47011,7 +47509,8 @@ async def process_position(
             _nlk_vel_ok = True
             _nlk_vel_used = 0.0
             if bool(getattr(config, "NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST", True)):
-                _nlk_vel_tf = getattr(config, "NEWBORN_LOSS_KILL_VEL_TF", "") or "3m"
+                from vec_decisions.twin_yellow_filters import resolve_filter_tf as _tyf_resolve
+                _nlk_vel_tf = _tyf_resolve(_psym_get(symbol, position_side, "NEWBORN_LOSS_KILL_FILTER_TF", getattr(config, "NEWBORN_LOSS_KILL_FILTER_TF", "15m")), family_raw=(getattr(config, "NEWBORN_LOSS_KILL_VEL_TF", "") or "3m"), filter_default="15m") or (getattr(config, "NEWBORN_LOSS_KILL_VEL_TF", "") or "3m")
                 if _pp_shared_ind is None:
                     _pp_shared_ind = await ii(trade_manager, symbol) or {}
                 _nlk_vel_used = safe_fetch_float(_pp_shared_ind.get(f"wt_velocity_{_nlk_vel_tf}", 0.0), 0.0)
@@ -47532,7 +48031,8 @@ async def process_position(
         and bool(getattr(config, "BB_FROZEN_STOP_ENABLED", False))
     ):
         try:
-            _bb_tf = str(getattr(config, "BB_FROZEN_STOP_TF", "1h"))
+            from vec_decisions.twin_yellow_filters import frozen_stop_tf as _tyf_frozen_tf
+            _bb_tf = str(_tyf_frozen_tf(_psym_get(symbol, position_side, "FROZEN_STOP_FILTER_TF", getattr(config, "FROZEN_STOP_FILTER_TF", "15m")), _psym_get(symbol, position_side, "BB_FROZEN_STOP_TF", getattr(config, "BB_FROZEN_STOP_TF", "1h"))) or "1h")
             _bb_field_opt = str(getattr(config, "BB_FROZEN_STOP_FIELD", "lower"))
             _bb_is_long = position_side == "LONG"
             _bb_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
@@ -47628,7 +48128,8 @@ async def process_position(
             )
             _wzg_decel_ratio = float(_psym_get(symbol, position_side, "WT_VEL_DECEL_RATIO", 0.5))
             _wzg_decel_only = bool(_psym_get(symbol, position_side, "WT_VEL_USE_DECEL_RATIO_ONLY", True))
-            _wzg_tfs = tuple(_psym_get(symbol, position_side, "R2_TF_LIST", ("15m",)) or ("15m",))
+            from vec_decisions.twin_yellow_filters import r2_eff_tfs as _tyf_r2
+            _wzg_tfs = _tyf_r2(_psym_get(symbol, position_side, "EXIT_R1_R2_FILTER_TF", getattr(config, "EXIT_R1_R2_FILTER_TF", "15m")), tuple(_psym_get(symbol, position_side, "R2_TF_LIST", ("15m",)) or ("15m",)))
             # PEAK-THEN-COLLAPSE: must have peaked ≥ R2_PEAK_MIN_PCT AND now
             # be back inside [floor, band]. From-open-tiny-profit positions
             # don't fire here — R1 (DC4 newborn window) handles those.
@@ -48148,8 +48649,10 @@ async def process_position(
                 _mtfce_entry = safe_fetch_float(getattr(position, "entry_price", 0), 0)
                 _mtfce_fire = False
                 _mtfce_reason = ""
-                _mtfce_atr_tf = str(_psym_get(symbol, position_side, "MTF_ATR_TRAIL_TF", "15m"))
-                _mtfce_dc_tf = str(_psym_get(symbol, position_side, "MTF_DC_REJECT_EXIT_TF", "15m"))
+                from vec_decisions.twin_yellow_filters import mtf_atr_trail_tf as _tyf_mtf_atr
+                _mtfce_atr_tf = str(_tyf_mtf_atr(_psym_get(symbol, position_side, "MTF_ATR_TRAIL_FILTER_TF", getattr(config, "MTF_ATR_TRAIL_FILTER_TF", "15m")), _psym_get(symbol, position_side, "MTF_ATR_TRAIL_TF", "15m")) or _psym_get(symbol, position_side, "MTF_ATR_TRAIL_TF", "15m"))
+                from vec_decisions.twin_yellow_filters import mtf_dc_reject_tf as _tyf_mtf_dc
+                _mtfce_dc_tf = str(_tyf_mtf_dc(_psym_get(symbol, position_side, "MTF_DC_REJECT_FILTER_TF", getattr(config, "MTF_DC_REJECT_FILTER_TF", "15m")), _psym_get(symbol, position_side, "MTF_DC_REJECT_EXIT_TF", "15m")) or _psym_get(symbol, position_side, "MTF_DC_REJECT_EXIT_TF", "15m"))
                 _mtfce_bb_tf = str(_psym_get(symbol, position_side, "MTF_BB_REJECT_EXIT_TF", "15m"))
                 _mtfce_wt_tf = str(_psym_get(symbol, position_side, "MTF_WT_CROSS_EXIT_TF", "15m"))
                 _mtfce_atr_mult = float(_psym_get(symbol, position_side, "MTF_ATR_TRAIL_MULT", 2.5))

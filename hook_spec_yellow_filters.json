@@ -1,0 +1,491 @@
+{
+ "conventions": {
+  "anchor_match": "exact full-line text match (indentation significant); anchor_count_verified was counted with grep -c on the worktree file at spec time",
+  "code_style": "4-space indents matching each site; _ty_/_tyf_ prefixes verified collision-free (0 hits in all 3 targets)",
+  "fail_open": "every insertion is wrapped in try/except or uses fail-open resolvers; default values reproduce current behavior bit-for-bit (BACKTEST_BIBLE 14.1)",
+  "live_rules": "per-sym reads (_psym_get crypto / _cfg stocks; _cfg_auto only where the enclosing block is global-style), no order calls, veto/block returns only",
+  "module": "copy vec_decisions/twin_yellow_filters.py into place first (self-contained: numpy + stdlib only); then apply READY insertions in file order (V12, ez_manage, tradier_manage, config_tradier); PENDING insertions need the named operator decision first",
+  "positions": {
+   "after": "insert code lines immediately after the anchor line",
+   "before": "insert code lines immediately before the anchor line",
+   "replace": "replace the anchor line plus (lines - 1) following lines with code",
+   "replace_line": "replace exactly the anchor line with code"
+  }
+ },
+ "generated": "2026-10-04T12:00:00Z",
+ "insertions": [
+  {
+   "anchor": "    # 2026-09-30 PORTED-SWITCH DISPATCHER \u2014 collision-free wiring hook (SWITCH_WIRING_GUIDE.md).",
+   "anchor_count_verified": 1,
+   "code": "    # \u2500\u2500 YELLOW *_FILTER_TF twins (twin_yellow_filters.py): entry masks + reduce triggers + walk prep \u2500\u2500\n    _ty_is_tradier = str(getattr(cfg, 'MODE', 'crypto')) == 'tradier'\n    try:\n        import vec_decisions.twin_yellow_filters as _tyf\n    except Exception:\n        _tyf = None\n    _ty_breach = None\n    _ty_dcbr_tf = '15m'\n    _ty_dc_band = None\n    _ty_dc_eff = None\n    _ty_frozen_bb_arr = None\n    _ty_frozen_tf = None\n    _ty_frozen_field = 'lower'\n    if _tyf is not None:\n        try:\n            entry_sig = _tyf.apply_yellow_entry_masks(npz, n, is_long, cfg, close, entry_sig, _entry_filter_masks, _safe, include_kg=(not _ty_is_tradier))\n        except Exception:\n            pass\n        if not _ty_is_tradier:\n            try:\n                _fr = _tyf.fast_riser_signal(npz, n, is_long, cfg, close, _safe)\n                if _fr is not None:\n                    _fr = np.asarray(_fr, dtype=bool)\n                    reduce_sig = reduce_sig | _fr\n                    reduce_frac = np.where(_fr, 1.0, reduce_frac)\n            except Exception:\n                pass\n            try:\n                _ty_breach = _tyf.dc_breach_reduce_mask(npz, n, is_long, cfg, close, _safe)\n                if _ty_breach is not None:\n                    _ty_breach = np.asarray(_ty_breach, dtype=bool)\n                    _ty_dcbr_tf = _tyf.dc_breach_tf(getattr(cfg, 'DC_BREACH_REDUCE_FILTER_TF', 'OFF'))\n                    reduce_sig = reduce_sig | _ty_breach\n                    reduce_frac = np.where(_ty_breach, 1.0, reduce_frac)\n            except Exception:\n                _ty_breach = None\n        try:\n            _ty_dc_fam = str(getattr(cfg, 'MTF_DC_REJECT_EXIT_TF_TRADIER', getattr(cfg, 'MTF_DC_REJECT_EXIT_TF', '15m')) if _ty_is_tradier else getattr(cfg, 'MTF_DC_REJECT_EXIT_TF', '15m'))\n            _ty_dc_eff = _tyf.mtf_dc_reject_tf(getattr(cfg, 'MTF_DC_REJECT_FILTER_TF', '15m'), _ty_dc_fam)\n            if _ty_dc_eff is not None and bool(getattr(cfg, 'MTF_DC_REJECT_EXIT_ENABLED', False)):\n                _ty_dc_band = _safe(npz, _tyf.mtf_dc_band_key(_ty_dc_eff, is_long, bool(getattr(cfg, 'MTF_DC_REJECT_USE_DC4', False))), n, 0.0)\n            else:\n                _ty_dc_eff = None\n        except Exception:\n            _ty_dc_eff = None\n            _ty_dc_band = None\n        if not _ty_is_tradier:\n            try:\n                if bool(getattr(cfg, 'BB_FROZEN_STOP_ENABLED', False)):\n                    _ty_frozen_tf = _tyf.frozen_stop_tf(getattr(cfg, 'FROZEN_STOP_FILTER_TF', '15m'), getattr(cfg, 'BB_FROZEN_STOP_TF', '1h'))\n                    if _ty_frozen_tf is not None:\n                        _ty_frozen_field = str(getattr(cfg, 'BB_FROZEN_STOP_FIELD', 'lower'))\n                        _ty_frozen_bb_arr = _safe(npz, _tyf.frozen_bb_key(_ty_frozen_tf, _ty_frozen_field, is_long), n, 0.0)\n            except Exception:\n                _ty_frozen_bb_arr = None",
+   "id": "V12-ENTRY-MASKS",
+   "notes": "KG hard block is crypto-mode only (stocks live uses soft cumulative scoring, ez:552; stocks vec keeps its _kg_signal path). fast_riser/dc_breach/frozen are crypto-scope families (no stocks base) -> MODE-guarded so stocks MODE cannot gain fake deltas (BACKTEST_BIBLE 43). DC_BREACH vec is new (live already reduces); crypto baselines move toward live \u2014 parity fix, flagged.",
+   "position": "before",
+   "status": "READY",
+   "switches": [
+    "MOM3_FILTER_TF",
+    "MOMENTUM_BREAKOUT_FILTER_TF",
+    "DC_BREAK_FILTER_TF",
+    "KINDERGARTEN_FILTER_TF",
+    "EMA_BLANKET_FILTER_FILTER_TF",
+    "FAST_RISER_FILTER_TF",
+    "DC_BREACH_REDUCE_FILTER_TF",
+    "MTF_DC_REJECT_FILTER_TF",
+    "FROZEN_STOP_FILTER_TF"
+   ],
+   "target": "v12_quick_engine.py"
+  },
+  {
+   "anchor": "                'entry_bar': i, 'peak_pnl_pct': 0.0, 'fees': abs(qty0 * px) * half_fee, 'entry_reason': entry_reason}",
+   "anchor_count_verified": 1,
+   "code": "                'entry_bar': i, 'peak_pnl_pct': 0.0, 'fees': abs(qty0 * px) * half_fee, 'entry_reason': entry_reason, 'ty_dc_out': False, 'ty_dc_ts': 0.0, 'ty_frozen_bb': (float(_ty_frozen_bb_arr[i]) if '_ty_frozen_bb_arr' in locals() and _ty_frozen_bb_arr is not None and i < len(_ty_frozen_bb_arr) else 0.0)}",
+   "id": "V12-POS-INIT",
+   "notes": "Adds per-position yellow-filter state (crypto DC latch, stocks DC timestamp, frozen BB level at entry). locals() guard keeps partial application safe.",
+   "position": "replace_line",
+   "status": "READY",
+   "switches": [
+    "MTF_DC_REJECT_FILTER_TF",
+    "FROZEN_STOP_FILTER_TF"
+   ],
+   "target": "v12_quick_engine.py"
+  },
+  {
+   "anchor": "        closed = False\n        reason = None",
+   "anchor_count_verified": 1,
+   "code": "        _ty_fire, _ty_reason = False, ''\n        if pos is not None:\n            try:\n                if '_ty_dc_eff' in locals() and _ty_dc_eff is not None and _ty_dc_band is not None and bool(getattr(cfg, 'MTF_DC_REJECT_EXIT_ENABLED', False)):\n                    import vec_decisions.twin_yellow_filters as _tyf2\n                    _ty_band_i = float(_ty_dc_band[i]) if i < len(_ty_dc_band) else 0.0\n                    if _ty_is_tradier:\n                        _ty_lb = max(1, int(getattr(cfg, 'MTF_DC_REJECT_EXIT_LOOKBACK', 5)))\n                        _ty_ts_i = float(ts[i]) if i < len(ts) else 0.0\n                        _ty_new_ts, _ty_hit = _tyf2.dc_reject_stocks_step(float(pos.get('ty_dc_ts', 0.0)), _ty_ts_i, float(px), _ty_band_i, _ty_lb, _ty_dc_eff, is_long)\n                        pos['ty_dc_ts'] = _ty_new_ts\n                    else:\n                        _ty_out, _ty_hit = _tyf2.dc_reject_crypto_step(bool(pos.get('ty_dc_out', False)), float(px), _ty_band_i, is_long)\n                        pos['ty_dc_out'] = _ty_out\n                    if _ty_hit:\n                        _ty_fire, _ty_reason = True, 'MTF_DC_REJECT_%s_px%.4f' % (_ty_dc_eff, float(px))\n            except Exception:\n                pass\n            try:\n                if (not _ty_fire) and '_ty_frozen_bb_arr' in locals() and _ty_frozen_bb_arr is not None and bool(getattr(cfg, 'BB_FROZEN_STOP_ENABLED', False)):\n                    import vec_decisions.twin_yellow_filters as _tyf3\n                    if _tyf3.frozen_stop_fires(pos.get('ty_frozen_bb', 0.0), float(px), live_pnl_pct, is_long):\n                        _ty_fire, _ty_reason = True, 'BB_FROZEN_STOP_BREACH_g%.2f%%' % live_pnl_pct\n            except Exception:\n                pass",
+   "id": "V12-EXIT-FIRE",
+   "notes": "Two-line anchor (the bare `closed = False` line repeats with trailing comments at 13745/13747). Per-bar protective fires. Stocks DC uses the twin stocks-step (proven == mtf_exit_timing contract by test); the staged vec_paths.mtf_dc_reject is the operator's drop-in alternative (same formula, pinned by test_vec_mtf_dc_reject.py).",
+   "position": "before",
+   "status": "READY",
+   "switches": [
+    "MTF_DC_REJECT_FILTER_TF",
+    "FROZEN_STOP_FILTER_TF"
+   ],
+   "target": "v12_quick_engine.py"
+  },
+  {
+   "anchor": "        if cfg.PROFIT_TARGET_ENABLED and live_pnl_pct >= cfg.PROFIT_TARGET_PCT:",
+   "anchor_count_verified": 1,
+   "code": "        try:\n            _ty_first = bool(_ty_fire)\n        except NameError:\n            _ty_first = False\n        if _ty_first:\n            closed, reason = True, _ty_reason\n        elif cfg.PROFIT_TARGET_ENABLED and live_pnl_pct >= cfg.PROFIT_TARGET_PCT:",
+   "id": "V12-CHAIN-HEAD",
+   "notes": "First-fire-wins for yellow protective exits; original PROFIT_TARGET line preserved as elif. NameError guard keeps partial application safe.",
+   "position": "replace_line",
+   "status": "READY",
+   "switches": [
+    "MTF_DC_REJECT_FILTER_TF",
+    "FROZEN_STOP_FILTER_TF"
+   ],
+   "target": "v12_quick_engine.py"
+  },
+  {
+   "anchor": "                _red_reason = f'HLR_TOP_EXIT_SELL_TOP_g={live_pnl_pct:.2f}%' if _qr_fire else 'REDUCE_TO_FLAT'",
+   "anchor_count_verified": 1,
+   "code": "                _red_reason = ('DC_BREACH_REDUCE_%s_px%.4f' % (_ty_dcbr_tf, float(px))) if ('_ty_breach' in locals() and _ty_breach is not None and i < len(_ty_breach) and bool(_ty_breach[i])) else (f'HLR_TOP_EXIT_SELL_TOP_g={live_pnl_pct:.2f}%' if _qr_fire else 'REDUCE_TO_FLAT')",
+   "id": "V12-REDUCE-REASON",
+   "notes": "Tags breach-driven full reduces honestly. Residual: live tags CLOSE (not REDUCE) when the unhedged loser is underwater (ez:35291); economics identical (frac 1.0 -> flat), only the reason/type string differs.",
+   "position": "replace_line",
+   "status": "READY",
+   "switches": [
+    "DC_BREACH_REDUCE_FILTER_TF"
+   ],
+   "target": "v12_quick_engine.py"
+  },
+  {
+   "anchor": "                    dc_low_15m = safe_fetch_float(",
+   "anchor_count_verified": 1,
+   "code": "                    from vec_decisions.twin_yellow_filters import dc_breach_tf as _tyf_dcbr\n                    _tyf_dcbr_tf = _tyf_dcbr(_psym_get(symbol, pos_side, \"DC_BREACH_REDUCE_FILTER_TF\", getattr(config, \"DC_BREACH_REDUCE_FILTER_TF\", \"OFF\")))\n                    dc_low_15m = safe_fetch_float(\n                        indicators.get(f\"dc_low_{_tyf_dcbr_tf}\", 0.0), 0.0\n                    )\n                    dc_high_15m = safe_fetch_float(\n                        indicators.get(f\"dc_high_{_tyf_dcbr_tf}\", 0.0), 0.0\n                    )",
+   "id": "EZ-BREACH-HEDGED",
+   "lines": 6,
+   "notes": "Hedged site (20sp indent). Local var names kept (downstream breached/hedge logic untouched); only the indicator keys gain the TF. OFF->15m == today.",
+   "position": "replace",
+   "status": "READY",
+   "switches": [
+    "DC_BREACH_REDUCE_FILTER_TF"
+   ],
+   "target": "ez_manage.py"
+  },
+  {
+   "anchor": "                        f\"DC_BREACH_REDUCE_{'LOW' if is_long else 'HIGH'}_15m_price_{current_price:.6f}\",",
+   "anchor_count_verified": 1,
+   "code": "                        f\"DC_BREACH_REDUCE_{'LOW' if is_long else 'HIGH'}_{_tyf_dcbr_tf}_price_{current_price:.6f}\",",
+   "id": "EZ-BREACH-HEDGED-REASON",
+   "notes": "Reason carries the effective TF (NO-LIES: reasons must be real).",
+   "position": "replace_line",
+   "status": "READY",
+   "switches": [
+    "DC_BREACH_REDUCE_FILTER_TF"
+   ],
+   "target": "ez_manage.py"
+  },
+  {
+   "anchor": "                        f\"[DC_BREACH_REDUCE] {losing_key}: Price {current_price:.6f} crossed dc_{'low' if is_long else 'high'}_15m={'%.6f' % (dc_low_15m if is_long else dc_high_15m)}. Promoting profitable hedges & reducing loser.\"",
+   "anchor_count_verified": 1,
+   "code": "                        f\"[DC_BREACH_REDUCE] {losing_key}: Price {current_price:.6f} crossed dc_{'low' if is_long else 'high'}_{_tyf_dcbr_tf}={'%.6f' % (dc_low_15m if is_long else dc_high_15m)}. Promoting profitable hedges & reducing loser.\"",
+   "id": "EZ-BREACH-HEDGED-LOG",
+   "notes": "Full-line anchor (the short prefix repeats at the Reduce-queued line).",
+   "position": "replace_line",
+   "status": "READY",
+   "switches": [
+    "DC_BREACH_REDUCE_FILTER_TF"
+   ],
+   "target": "ez_manage.py"
+  },
+  {
+   "anchor": "                        dc_low_15m = safe_fetch_float(",
+   "anchor_count_verified": 1,
+   "code": "                        from vec_decisions.twin_yellow_filters import dc_breach_tf as _tyf_dcbr\n                        _tyf_dcbr_tf = _tyf_dcbr(_psym_get(symbol, pos_side, \"DC_BREACH_REDUCE_FILTER_TF\", getattr(config, \"DC_BREACH_REDUCE_FILTER_TF\", \"OFF\")))\n                        dc_low_15m = safe_fetch_float(\n                            indicators.get(f\"dc_low_{_tyf_dcbr_tf}\", 0.0), 0.0\n                        )\n                        dc_high_15m = safe_fetch_float(\n                            indicators.get(f\"dc_high_{_tyf_dcbr_tf}\", 0.0), 0.0\n                        )",
+   "id": "EZ-BREACH-UNHEDGED",
+   "lines": 6,
+   "notes": "Unhedged site (24sp indent). pos_side in scope (same function). CLOSE-when-underwater branch below is untouched.",
+   "position": "replace",
+   "status": "READY",
+   "switches": [
+    "DC_BREACH_REDUCE_FILTER_TF"
+   ],
+   "target": "ez_manage.py"
+  },
+  {
+   "anchor": "                            _dc_reason = f\"DC_BREACH_REDUCE_UNHEDGED_{'LOW' if is_long else 'HIGH'}_15m_price_{current_price:.6f}\"",
+   "anchor_count_verified": 1,
+   "code": "                            _dc_reason = f\"DC_BREACH_REDUCE_UNHEDGED_{'LOW' if is_long else 'HIGH'}_{_tyf_dcbr_tf}_price_{current_price:.6f}\"",
+   "id": "EZ-BREACH-UNHEDGED-REASON1",
+   "position": "replace_line",
+   "status": "READY",
+   "switches": [
+    "DC_BREACH_REDUCE_FILTER_TF"
+   ],
+   "target": "ez_manage.py"
+  },
+  {
+   "anchor": "                                f\"DC_BREACH_REDUCE_UNHEDGED_{'LOW' if is_long else 'HIGH'}_15m_price_{current_price:.6f}\",",
+   "anchor_count_verified": 1,
+   "code": "                                f\"DC_BREACH_REDUCE_UNHEDGED_{'LOW' if is_long else 'HIGH'}_{_tyf_dcbr_tf}_price_{current_price:.6f}\",",
+   "id": "EZ-BREACH-UNHEDGED-REASON2",
+   "position": "replace_line",
+   "status": "READY",
+   "switches": [
+    "DC_BREACH_REDUCE_FILTER_TF"
+   ],
+   "target": "ez_manage.py"
+  },
+  {
+   "anchor": "                            f\"[DC_BREACH_REDUCE_UNHEDGED] {position_key}: Price {current_price:.6f} crossed dc_{'low' if is_long else 'high'}_15m={'%.6f' % (dc_low_15m if is_long else dc_high_15m)}. gain={pos_gain:.2f}%. {'Closing' if _dc_action == 'CLOSE' else 'Reducing'} unhedged loser.\"",
+   "anchor_count_verified": 1,
+   "code": "                            f\"[DC_BREACH_REDUCE_UNHEDGED] {position_key}: Price {current_price:.6f} crossed dc_{'low' if is_long else 'high'}_{_tyf_dcbr_tf}={'%.6f' % (dc_low_15m if is_long else dc_high_15m)}. gain={pos_gain:.2f}%. {'Closing' if _dc_action == 'CLOSE' else 'Reducing'} unhedged loser.\"",
+   "id": "EZ-BREACH-UNHEDGED-LOG",
+   "position": "replace_line",
+   "status": "READY",
+   "switches": [
+    "DC_BREACH_REDUCE_FILTER_TF"
+   ],
+   "target": "ez_manage.py"
+  },
+  {
+   "anchor": "            _bb_tf = str(getattr(config, \"BB_FROZEN_STOP_TF\", \"1h\"))",
+   "anchor_count_verified": 1,
+   "code": "            from vec_decisions.twin_yellow_filters import frozen_stop_tf as _tyf_frozen_tf\n            _bb_tf = str(_tyf_frozen_tf(_psym_get(symbol, position_side, \"FROZEN_STOP_FILTER_TF\", getattr(config, \"FROZEN_STOP_FILTER_TF\", \"15m\")), _psym_get(symbol, position_side, \"BB_FROZEN_STOP_TF\", getattr(config, \"BB_FROZEN_STOP_TF\", \"1h\"))) or \"1h\")",
+   "id": "EZ-FROZEN-TF",
+   "notes": "R2 fallback: FILTER@15m/OFF -> 1h family knob == today. symbol/position_side in scope (process_position).",
+   "position": "replace_line",
+   "status": "READY",
+   "switches": [
+    "FROZEN_STOP_FILTER_TF"
+   ],
+   "target": "ez_manage.py"
+  },
+  {
+   "anchor": "                _mtfce_dc_tf = str(_psym_get(symbol, position_side, \"MTF_DC_REJECT_EXIT_TF\", \"15m\"))",
+   "anchor_count_verified": 1,
+   "code": "                from vec_decisions.twin_yellow_filters import mtf_dc_reject_tf as _tyf_mtf_dc\n                _mtfce_dc_tf = str(_tyf_mtf_dc(_psym_get(symbol, position_side, \"MTF_DC_REJECT_FILTER_TF\", getattr(config, \"MTF_DC_REJECT_FILTER_TF\", \"15m\")), _psym_get(symbol, position_side, \"MTF_DC_REJECT_EXIT_TF\", \"15m\")) or _psym_get(symbol, position_side, \"MTF_DC_REJECT_EXIT_TF\", \"15m\"))",
+   "id": "EZ-MTF-DC-TF",
+   "notes": "R2 fallback: FILTER@15m/OFF -> family knob == today (crypto 15m). Latch + dc4 logic below untouched.",
+   "position": "replace_line",
+   "status": "READY",
+   "switches": [
+    "MTF_DC_REJECT_FILTER_TF"
+   ],
+   "target": "ez_manage.py"
+  },
+  {
+   "anchor": "                    _eb_ok, _eb_agree, _eb_found = _eb_pass(await ii(self, symbol) or {}, position_side == \"LONG\", _eb_cfg)",
+   "anchor_count_verified": 1,
+   "code": "                    from vec_decisions.twin_yellow_filters import blanket_scan_tfs as _tyf_eb_scan, ema_blanket_blocks_live as _tyf_eb_block\n                    _tyf_eb_tf = _psym_get(symbol, position_side, \"EMA_BLANKET_FILTER_FILTER_TF\", getattr(config, \"EMA_BLANKET_FILTER_FILTER_TF\", \"OFF\"))\n                    if _tyf_eb_scan(_tyf_eb_tf) != (\"15m\", \"1h\", \"4h\", \"D\"):\n                        _eb_ind = await ii(self, symbol) or {}\n                        _eb_blocked = _tyf_eb_block(lambda _k, _d=None: _eb_ind.get(_k, _d), position_side == \"LONG\", _tyf_eb_tf, _eb_cfg.EMA_BLANKET_FILTER_MIN_TFS)\n                        _eb_ok, _eb_agree, _eb_found = (not _eb_blocked), (0 if _eb_blocked else 1), 1\n                    else:\n                        _eb_ok, _eb_agree, _eb_found = _eb_pass(await ii(self, symbol) or {}, position_side == \"LONG\", _eb_cfg)",
+   "id": "EZ-BLANKET-SWAP",
+   "notes": "Guarded swap: legacy wave4 4-TF path untouched at OFF/defaults; single-TF mode uses the tested twin (KG precedent ez:356). Master already gated outside.",
+   "position": "replace_line",
+   "status": "READY",
+   "switches": [
+    "EMA_BLANKET_FILTER_FILTER_TF"
+   ],
+   "target": "ez_manage.py"
+  },
+  {
+   "anchor": "                _mtfce_atr_tf = str(_psym_get(symbol, position_side, \"MTF_ATR_TRAIL_TF\", \"15m\"))",
+   "anchor_count_verified": 1,
+   "code": "                from vec_decisions.twin_yellow_filters import mtf_atr_trail_tf as _tyf_mtf_atr\n                _mtfce_atr_tf = str(_tyf_mtf_atr(_psym_get(symbol, position_side, \"MTF_ATR_TRAIL_FILTER_TF\", getattr(config, \"MTF_ATR_TRAIL_FILTER_TF\", \"15m\")), _psym_get(symbol, position_side, \"MTF_ATR_TRAIL_TF\", \"15m\")) or _psym_get(symbol, position_side, \"MTF_ATR_TRAIL_TF\", \"15m\"))",
+   "id": "EZ-MTF-ATR-TF",
+   "notes": "PENDING only because the vec half is unverifiable (staged-API). This live half is exact + default-inert on its own.",
+   "position": "replace_line",
+   "status": "PENDING-OPERATOR-DECISION",
+   "switches": [
+    "MTF_ATR_TRAIL_FILTER_TF"
+   ],
+   "target": "ez_manage.py"
+  },
+  {
+   "anchor": "                _nlk_vel_tf = getattr(config, \"NEWBORN_LOSS_KILL_VEL_TF\", \"\") or \"3m\"",
+   "anchor_count_verified": 1,
+   "code": "                from vec_decisions.twin_yellow_filters import resolve_filter_tf as _tyf_resolve\n                _nlk_vel_tf = _tyf_resolve(_psym_get(symbol, position_side, \"NEWBORN_LOSS_KILL_FILTER_TF\", getattr(config, \"NEWBORN_LOSS_KILL_FILTER_TF\", \"15m\")), family_raw=(getattr(config, \"NEWBORN_LOSS_KILL_VEL_TF\", \"\") or \"3m\"), filter_default=\"15m\") or (getattr(config, \"NEWBORN_LOSS_KILL_VEL_TF\", \"\") or \"3m\")",
+   "id": "EZ-NEWBORN-VEL",
+   "notes": "PENDING paired with V12-NEWBORN-VEL: live half is default-inert (3m kept), but vec/live only agree after the vec default moves 15m->3m (baseline shift) OR the operator blesses the 15m/3m split.",
+   "position": "replace_line",
+   "status": "PENDING-OPERATOR-DECISION",
+   "switches": [
+    "NEWBORN_LOSS_KILL_FILTER_TF"
+   ],
+   "target": "ez_manage.py"
+  },
+  {
+   "anchor": "            _wzg_tfs = tuple(_psym_get(symbol, position_side, \"R2_TF_LIST\", (\"15m\",)) or (\"15m\",))",
+   "anchor_count_verified": 1,
+   "code": "            from vec_decisions.twin_yellow_filters import r2_eff_tfs as _tyf_r2\n            _wzg_tfs = _tyf_r2(_psym_get(symbol, position_side, \"EXIT_R1_R2_FILTER_TF\", getattr(config, \"EXIT_R1_R2_FILTER_TF\", \"15m\")), tuple(_psym_get(symbol, position_side, \"R2_TF_LIST\", (\"15m\",)) or (\"15m\",)))",
+   "id": "EZ-R2-TFS",
+   "notes": "PENDING scope decision: R1 is 3m-fixed with no TF knob, so this wires the R2 leg only; promoting it under the R1_R2 name needs operator blessing.",
+   "position": "replace_line",
+   "status": "PENDING-OPERATOR-DECISION",
+   "switches": [
+    "EXIT_R1_R2_FILTER_TF"
+   ],
+   "target": "ez_manage.py"
+  },
+  {
+   "anchor": "        # \u2550\u2550\u2550 EMA_BLANKET_FILTER (2026-09-29 USER \"any value found in vector must be applied in live\") \u2550\u2550\u2550",
+   "anchor_count_verified": 1,
+   "code": "        # \u2550\u2550\u2550 GR_FILTER_ALL_ENTRIES stocks twin (crypto: ez_manage:30166-30197) \u2550\u2550\u2550\n        # Fresh OPEN requires mtf_live_evaluator.gr_filter_pass (breakout min-ind, sma_200_15m 5% relax). Default False = unchanged live; per-sym via _cfg.\n        try:\n            _gr_act = (action or '').upper()\n            if ('OPEN' in _gr_act or _gr_act == 'BUY') and 'AUGMENT' not in _gr_act and 'REENTER' not in _gr_act and 'REENTRY' not in (reason or '').upper() and 'HEDGE' not in (reason or '').upper() and 'OBLIGATORY' not in (reason or '').upper() and 'CLOSE' not in _gr_act and 'REDUCE' not in _gr_act and not _mandatory_reentry_qta:\n                _gr_acct, _gr_sym, _gr_side = parse_position_key(position_key)\n                _gr_get = lambda _k, _d=None: _cfg(_k, _d, _gr_acct, _gr_sym, _gr_side)\n                if bool(_gr_get('GR_FILTER_ALL_ENTRIES', False)):\n                    import mtf_live_evaluator as _mle_gr\n                    from types import SimpleNamespace as _GrNS\n                    from vec_decisions.twin_yellow_filters import gr_all_entries_blocks as _tyf_gr\n                    _gr_ind = trade_manager.get_indicators(_gr_sym) if _gr_sym else {}\n                    _gr_px = safe_fetch_float((_gr_ind or {}).get('price', (_gr_ind or {}).get('current_price', (_gr_ind or {}).get('mark_price', 0))), 0.0)\n                    _gr_pass_cfg = _GrNS(MTF_GR_FILTER_ENABLED=bool(_gr_get('MTF_GR_FILTER_ENABLED', True)), MTF_GR_MIN_TFS=int(_gr_get('MTF_GR_MIN_TFS', _gr_get('GOLDEN_RULE_HTF_MIN_TFS', 3))), MTF_GR_MIN_IND=int(_gr_get('MTF_GR_MIN_IND', _gr_get('GOLDEN_RULE_MIN_IND', 5))), MTF_GR_INVERT_DC_BB=bool(_gr_get('MTF_GR_INVERT_DC_BB', False)))\n                    if _tyf_gr(_gr_ind or {}, _gr_side, _gr_get, _gr_px, _mle_gr.gr_filter_pass, _gr_pass_cfg):\n                        logger.warning(f\"\ud83d\udfe1 [GR_FILTER_ALL_ENTRIES] {position_key}: BLOCKED {action} \u2014 GR filter fail. reason={(reason or '')[:50]}\")\n                        _direct_queue_gate_note(trade_manager, position_key, reason, \"GR_FILTER_ALL_ENTRIES\")\n                        return False\n        except Exception as _gre:\n            logger.warning(f\"[GR_FILTER_ALL_ENTRIES] check error (fail-open): {_gre}\")",
+   "id": "TR-GR-GATE",
+   "notes": "queue_trade_action gate (same conventions as the EB block below: _direct_queue_gate_note + return False). Price via the _ctb snapshot pattern (tr:14111); crypto uses tick mark \u2014 same snapshot class as every other gate in this function.",
+   "position": "before",
+   "status": "READY",
+   "switches": [
+    "GR_FILTER_ALL_ENTRIES"
+   ],
+   "target": "tradier_manage.py"
+  },
+  {
+   "anchor": "                for _tf in _tfs_9_21:",
+   "anchor_count_verified": 1,
+   "code": "                from vec_decisions.twin_yellow_filters import kg_stocks_tfs_restrict as _tyf_kg_tfs\n                _tfs_9_21 = _tyf_kg_tfs(_tfs_9_21, _cfg_auto('KINDERGARTEN_FILTER_TF', '15m'))",
+   "id": "TR-KG-RESTRICT",
+   "notes": "Mirrors the vec stocks intersect rule (v12:9614-9626) exactly: FILTER@15m/OFF keeps the family list (inert); other single TFs restrict. _cfg_auto matches the 20 surrounding reads (block is global-style; per-sym overlay can follow once account_key is threaded).",
+   "position": "before",
+   "status": "READY",
+   "switches": [
+    "KINDERGARTEN_FILTER_TF"
+   ],
+   "target": "tradier_manage.py"
+  },
+  {
+   "anchor": "                    _eb_ok, _eb_agree, _eb_found = _eb_pass(trade_manager.get_indicators(_eb_sym) if _eb_sym else {}, _eb_side == \"LONG\", _eb_cfg)",
+   "anchor_count_verified": 1,
+   "code": "                    from vec_decisions.twin_yellow_filters import blanket_scan_tfs as _tyf_eb_scan, ema_blanket_blocks_live as _tyf_eb_block\n                    _tyf_eb_tf = _cfg('EMA_BLANKET_FILTER_FILTER_TF', 'OFF', _eb_acct, _eb_sym, _eb_side)\n                    if _tyf_eb_scan(_tyf_eb_tf) != (\"15m\", \"1h\", \"4h\", \"D\"):\n                        _eb_ind2 = trade_manager.get_indicators(_eb_sym) if _eb_sym else {}\n                        _eb_blocked = _tyf_eb_block(lambda _k, _d=None: (_eb_ind2 or {}).get(_k, _d), _eb_side == \"LONG\", _tyf_eb_tf, _eb_cfg.EMA_BLANKET_FILTER_MIN_TFS)\n                        _eb_ok, _eb_agree, _eb_found = (not _eb_blocked), (0 if _eb_blocked else 1), 1\n                    else:\n                        _eb_ok, _eb_agree, _eb_found = _eb_pass(trade_manager.get_indicators(_eb_sym) if _eb_sym else {}, _eb_side == \"LONG\", _eb_cfg)",
+   "id": "TR-BLANKET-SWAP",
+   "notes": "Same guarded swap as EZ-BLANKET-SWAP, per-sym via _cfg.",
+   "position": "replace_line",
+   "status": "READY",
+   "switches": [
+    "EMA_BLANKET_FILTER_FILTER_TF"
+   ],
+   "target": "tradier_manage.py"
+  },
+  {
+   "anchor": "                _mtfce_dc_tf = str(_cfg('MTF_DC_REJECT_EXIT_TF', '1h', account_key, symbol, position_side))",
+   "anchor_count_verified": 1,
+   "code": "                from vec_decisions.twin_yellow_filters import mtf_dc_reject_tf as _tyf_mtf_dc\n                _mtfce_dc_tf = str(_tyf_mtf_dc(_cfg('MTF_DC_REJECT_FILTER_TF', '15m', account_key, symbol, position_side), _cfg('MTF_DC_REJECT_EXIT_TF', '1h', account_key, symbol, position_side)) or _cfg('MTF_DC_REJECT_EXIT_TF', '1h', account_key, symbol, position_side))",
+   "id": "TR-MTF-DC-TF",
+   "notes": "R2 fallback: FILTER@15m/OFF -> 1h family knob == today. Lookback + dc_reject_step below untouched.",
+   "position": "replace_line",
+   "status": "READY",
+   "switches": [
+    "MTF_DC_REJECT_FILTER_TF"
+   ],
+   "target": "tradier_manage.py"
+  },
+  {
+   "anchor": "                _mtfce_atr_tf = str(_cfg('MTF_ATR_TRAIL_TF_TRADIER', _cfg('MTF_ATR_TRAIL_TF', '1h', account_key, symbol, position_side), account_key, symbol, position_side))",
+   "anchor_count_verified": 1,
+   "code": "                from vec_decisions.twin_yellow_filters import mtf_atr_trail_tf as _tyf_mtf_atr\n                _tyf_atr_fam = str(_cfg('MTF_ATR_TRAIL_TF_TRADIER', _cfg('MTF_ATR_TRAIL_TF', '1h', account_key, symbol, position_side), account_key, symbol, position_side))\n                _mtfce_atr_tf = str(_tyf_mtf_atr(_cfg('MTF_ATR_TRAIL_FILTER_TF', '15m', account_key, symbol, position_side), _tyf_atr_fam) or _tyf_atr_fam)",
+   "id": "TR-MTF-ATR-TF",
+   "notes": "PENDING only because the vec half is unverifiable (staged-API). This live half is exact + default-inert on its own.",
+   "position": "replace_line",
+   "status": "PENDING-OPERATOR-DECISION",
+   "switches": [
+    "MTF_ATR_TRAIL_FILTER_TF"
+   ],
+   "target": "tradier_manage.py"
+  },
+  {
+   "anchor": "    KINDERGARTEN_EMA_GATE_ENABLED: bool = True  # 2026-09-22 FIX: rewritten as ENTRY SWITCH at 15m (EMA 9x21 cross) \u2014 was filter blocked 100% badly written, now correctly adds entry via _kg_signal OR. Must exist on all TFs via KINDERGARTEN_FILTER_TF.",
+   "anchor_count_verified": 1,
+   "code": "    KINDERGARTEN_FILTER_TF: str = \"15m\"  # FLT2: D/4h/1h/15m restricts the KINDERGARTEN 9/21 TF scan (OFF/15m = family EMA_9_21_FILTER_TFS); twin of config.py/QuickConfig (was absent here)",
+   "id": "CFG-CT-KG",
+   "notes": "The ONLY missing config field of the 44 (43/44 present in C/CT/QC). Value 15m matches config.py + QuickConfig + all 4 cat_side bolds.",
+   "position": "after",
+   "status": "READY",
+   "switches": [
+    "KINDERGARTEN_FILTER_TF"
+   ],
+   "target": "config_tradier.py"
+  },
+  {
+   "anchor": "        _nlk_tf = str(getattr(cfg, 'NEWBORN_LOSS_KILL_FILTER_TF', 'OFF') or 'OFF').strip()",
+   "anchor_count_verified": 1,
+   "code": "        import vec_decisions.twin_yellow_filters as _tyf_nlk\n        _nlk_tf = _tyf_nlk.resolve_filter_tf(getattr(cfg, 'NEWBORN_LOSS_KILL_FILTER_TF', '15m'), family_raw=(getattr(cfg, 'NEWBORN_LOSS_KILL_VEL_TF', '') or '3m'), filter_default='15m') or (getattr(cfg, 'NEWBORN_LOSS_KILL_VEL_TF', '') or '3m')",
+   "id": "V12-NEWBORN-VEL",
+   "lines": 2,
+   "notes": "PENDING: moves the vec velocity TF 15m->3m at defaults (baseline shift) to agree with live. The alternative (bless the split) keeps a permanent vec/live formula gap. Either way the operator decides; code is exact for the parity direction.",
+   "position": "replace",
+   "status": "PENDING-OPERATOR-DECISION",
+   "switches": [
+    "NEWBORN_LOSS_KILL_FILTER_TF"
+   ],
+   "target": "v12_quick_engine.py"
+  },
+  {
+   "anchor": null,
+   "anchor_count_verified": 0,
+   "code": "V12 vec half for MTF_ATR_TRAIL_FILTER_TF: staged module vec_decisions/mtf_atr_trail_exit is imported by v12 but absent from minimal checkouts, and no root test pins its call signature (unlike vec_paths.mtf_dc_reject, pinned by test_vec_mtf_dc_reject.py). Template once the signature is confirmed in the full tree: eff_tf = twin_yellow_filters.mtf_atr_trail_tf(cfg.MTF_ATR_TRAIL_FILTER_TF, cfg.MTF_ATR_TRAIL_TF); call the staged entry with the eff-TF config at the V12-EXIT-FIRE site (same pattern as MTF_DC).",
+   "id": "V12-MTF-ATR-VEC",
+   "notes": "No anchor: blocked on staged-API confirmation, not on anchor discovery.",
+   "position": "none",
+   "status": "PENDING-OPERATOR-DECISION",
+   "switches": [
+    "MTF_ATR_TRAIL_FILTER_TF"
+   ],
+   "target": "v12_quick_engine.py"
+  },
+  {
+   "anchor": null,
+   "anchor_count_verified": 0,
+   "code": "Crypto live half for MANDATORY_REENTRY_WT_FILTER_TF_MODE: the venue-neutral tradier_reentry_wt_contract.mandatory_reentry_wt_gate is importable anywhere, but ez_manage has no mandatory-reentry price-cross fire path (only tradier tr:12198-12210; crypto has GUARANTEED_REENTRY ez:42111 with different trigger semantics) AND the master defaults True, so any placement changes live crypto immediately. Template once the operator names the fire path: gate it with the contract (tf_mode from per-sym MANDATORY_REENTRY_WT_FILTER_TF_MODE, other params per-sym like tr:12201-12206), fail-open.",
+   "id": "EZ-MANDATORY-CRYPTO",
+   "notes": "No anchor: blocked on fire-path placement + master-ON behavior decision.",
+   "position": "none",
+   "status": "PENDING-OPERATOR-DECISION",
+   "switches": [
+    "MANDATORY_REENTRY_WT_FILTER_TF_MODE"
+   ],
+   "target": "ez_manage.py"
+  },
+  {
+   "anchor": null,
+   "anchor_count_verified": 0,
+   "code": "Crypto live half for WT_15M_BOUNCE_* (BB_MAX/BB_MIN/HIGH_1H_GT_PREV/LOW_1H_GT_PREV/REL_VOL_GT_1): vec is inline (v12:9696+) and stocks live is real (tr:1297-1355), but crypto has no WT-bounce family path (only `if False` hooks ez:59965-59979; live crypto opens come from MOMENTUM_WATCHDOG/candidate-loop, not shared-direct claims). twin_yellow_filters.wt_bounce_claim is the tested predicate (per-sym cfg_get, fail-open, master-off inert). Template once the operator names the opener path: eligible, detail = wt_bounce_claim(ind_get, is_long, per_sym_get); open on eligible (master WT_15M_BOUNCE_OPEN_ENABLED, default False).",
+   "id": "EZ-WT-CRYPTO",
+   "notes": "No anchor: blocked on opener-path placement.",
+   "position": "none",
+   "status": "PENDING-OPERATOR-DECISION",
+   "switches": [
+    "WT_15M_BOUNCE_BB_MAX",
+    "WT_15M_BOUNCE_BB_MIN",
+    "WT_15M_BOUNCE_HIGH_1H_GT_PREV",
+    "WT_15M_BOUNCE_LOW_1H_GT_PREV",
+    "WT_15M_BOUNCE_REL_VOL_GT_1"
+   ],
+   "target": "ez_manage.py"
+  }
+ ],
+ "noop": [
+  {
+   "reason": "live crypto already wired (ez:294-315, called from check_entry_alignment ez:558-561); live stocks already wired (tr:13389-13403); vec comes from V12-ENTRY-MASKS",
+   "switches": [
+    "MOM3_FILTER_TF",
+    "MOMENTUM_BREAKOUT_FILTER_TF"
+   ]
+  },
+  {
+   "reason": "live crypto already wired (ez:326-337); live stocks already wired (tr:13419-13426); vec comes from V12-ENTRY-MASKS",
+   "switches": [
+    "DC_BREAK_FILTER_TF"
+   ]
+  },
+  {
+   "reason": "live crypto already wired incl. FILTER_TF read (ez:52893-52960); vec comes from V12-ENTRY-MASKS; stocks has no fast-riser family (stubs only) -> out of scope, see report",
+   "switches": [
+    "FAST_RISER_FILTER_TF"
+   ]
+  },
+  {
+   "reason": "live crypto already wired incl. FILTER_TF scan (ez:350-408 + execute_now ez:30109-30117); vec comes from V12-ENTRY-MASKS; stocks via TR-KG-RESTRICT + CFG-CT-KG",
+   "switches": [
+    "KINDERGARTEN_FILTER_TF"
+   ]
+  },
+  {
+   "reason": "live crypto already wired (ez:30166-30197); stocks via TR-GR-GATE; vec is full-tree vec_decisions/ported_entry.py:79 (bible vec read; parity to verify post-deploy, live formula pinned by test_gr_blocks_passthrough_vs_real_gr_filter)",
+   "switches": [
+    "GR_FILTER_ALL_ENTRIES"
+   ]
+  },
+  {
+   "reason": "live stocks already wired (tr:12198-12210 via venue-neutral contract); vec is full-tree vec_decisions/mandatory_reentry_wt_vec.py:85; crypto PENDING (EZ-MANDATORY-CRYPTO)",
+   "switches": [
+    "MANDATORY_REENTRY_WT_FILTER_TF_MODE"
+   ]
+  },
+  {
+   "reason": "vec inline (v12:9696-9795); live stocks real (tr:1297-1355); crypto PENDING (EZ-WT-CRYPTO)",
+   "switches": [
+    "WT_15M_BOUNCE_BB_MAX",
+    "WT_15M_BOUNCE_BB_MIN",
+    "WT_15M_BOUNCE_HIGH_1H_GT_PREV",
+    "WT_15M_BOUNCE_LOW_1H_GT_PREV",
+    "WT_15M_BOUNCE_REL_VOL_GT_1"
+   ]
+  },
+  {
+   "reason": "no hook: 18 names have zero base logic in any live path (only `_ = 1` / `_=_v` / dead-_batch1 stubs) \u2014 inventing predicates would violate BACKTEST_BIBLE 19; plus DELTA/LIVE_ENTRY (17.3 live-only), EMERGENCY/NEWBORN_PROTECT (non-TF-able), BREAKOUT_RETEST (ambiguous leg), PEAK (gain-based), FH/HAIKU (loop/overseer), EXIT_TOP_FADE/BREAKEVEN/EMA_9_21 (no base/collision). Verdict NEEDS-OPERATOR-DECISION each; evidence in module header + report.",
+   "switches": [
+    "BREAKEVEN_GAIN_EROSION_FILTER_TF",
+    "BREAKOUT_RETEST_FILTER_TF",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    "DC_MOMENTUM_BOTA_SCORER_FILTER_TF",
+    "DELTA_ENGINE_FILTER_TF",
+    "EMA_9_21_FILTER_FILTER_TF",
+    "EMERGENCY_BRAKE_FILTER_TF",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF",
+    "EXIT_TOP_FADE_FILTER_TF",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF",
+    "FH_MOMENTUM_FILTER_TF",
+    "FIRST_OPEN_THROTTLE_FILTER_TF",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF",
+    "GR_FILTER_VEC_FILTER_TF",
+    "GR_V5_STATE_FILTER_TF",
+    "HAIKU_WINNER_FILTER_TF",
+    "LIVE_ENTRY_ENGINE_FILTER_TF",
+    "LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF",
+    "MTF_ARMED_ENTRIES_FILTER_TF",
+    "NEWBORN_PROTECT_FILTER_TF",
+    "NOLOSS_BYPASS_WT5OF5_FILTER_TF",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF"
+   ]
+  }
+ ],
+ "residuals": [
+  "DC_BREACH vec tags REDUCE_TO_FLAT while live tags CLOSE when the unhedged loser is underwater (economics identical, frac 1.0 -> flat)",
+  "DC_BREACH 120s per-key cooldown is live-only (vec walk keeps its ladder cooldown)",
+  "FAST_RISER NEW_POSITION age + k_3m/d_3m confirmations are live-only (17.3 class); vec models the TF-selected jump core",
+  "WT vol primary differs pre-existing: vec relative_volume_15m-first (v12:2790) vs live 1h-first (tr:1347); vec has no volume_sma path",
+  "MANDATORY vec prev uses roll (v12:9741 pattern); live reads prior-bar keys (no NPZ twin for wt1_15m_prev); 5m rows are 15m-spaced",
+  "GR vec side relies on full-tree ported_entry.py:79 (absent here); parity must be verified post-deploy against the pinned live formula",
+  "MTF_DC vec stocks-step port == mtf_exit_timing contract (tested); staged vec_paths.mtf_dc_reject is the equivalent alternative"
+ ],
+ "verify": [
+  "python3 -c \"import py_compile; py_compile.compile('vec_decisions/twin_yellow_filters.py', doraise=True)\"",
+  "python3 -m pytest test_yellow_filters_twin.py -q  # 36 passed",
+  "python3 -c \"import json; spec=json.load(open('hook_spec_yellow_filters.json')); [__import__('subprocess').run(['grep','-c',i['anchor'],i['target']],check=True) for i in spec['insertions'] if i['anchor']]\"  # every anchor re-counted",
+  "post-deploy: default-flip idempotency (14.1) + ledger-changed proof (19) per wired switch on 2-3 syms before any promotion"
+ ]
+}

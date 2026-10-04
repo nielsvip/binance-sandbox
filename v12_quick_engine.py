@@ -4072,7 +4072,7 @@ class QuickConfig:
     DC_RECOVERY_EXIT_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)
     DC_RECOVERY_EXIT_TOLERANCE_PCT: float = 0.1
     START_POSITION_SIZE: float = 28.0  # parity 2026-09-26: live Config 28.0 vs vec 500 caused 17x mismatch — align to config.Config crypto. Bold in TEMPLATE_CRYPTO_LONG.
-    CRYPTO_ROUND_TRIP_COMMISSION_PCT: float = 0.08  # USER 2026-08-08: binance futures 0.08% round trip; tradier is commission-free
+    CRYPTO_ROUND_TRIP_COMMISSION_PCT: float = 0.04  # w2-hygiene fee harmony (USER ordered 0.08->0.04; was USER 2026-08-08 binance futures 0.08% round trip); tradier is commission-free
     MIN_POSITION_SIZE: float = 1.0  # parity 2026-09-26: live Config 1.0 vs vec 55 caused 55x mismatch — align to config.Config crypto. Bold in TEMPLATE_CRYPTO.
     CT_WT_VELOCITY_GATE_ENABLED: bool = True
     CT_WT_VELOCITY_1H_MIN: float = 9.0
@@ -5153,6 +5153,12 @@ class QuickConfig:
     STDEV_SLOPE_LOOKBACK_4H: int = 180
     STDEV_SLOPE_LOOKBACK_1H: int = 168
     STDEV_SLOPE_LOOKBACK_15M: int = 96
+    # OPERATOR-ACTIVATED 2026-10-04 (QC gap-fill False/1.5 matches live configs; was REPORT): STDEV_BULL_SLOPE_BOOST_* exist in
+    # config.py:1230-1231 + config_tradier.py:2875-2876 + templates but are ABSENT from
+    # QuickConfig, so sanitize_overrides/coercion cannot type them (BIBLE §41). Twin reads them
+    # via getattr fallbacks (False/1.5) and works regardless; add fields for full parity:
+    STDEV_BULL_SLOPE_BOOST_ENABLED: bool = False
+    STDEV_BULL_SLOPE_BOOST_MULT: float = 1.5
     STDEV_SLOPE_SIZING_MODE: str = "slope_to_top"
     SLOPE_SIZING_LIVE_TWIN_ENABLED: bool = False  # [UNWV/001] live-faithful band/stdev slope sizing (vec_decisions/slope_sizing_live.py); OFF = legacy simplified stdev block (baseline unchanged)
     BB_FROZEN_STOP_ENABLED: bool = False  # auto-wired 625
@@ -10485,6 +10491,14 @@ def compute_regime_sizing_mult(npz, n, is_long, cfg):
             mult = mult * _bs_m
         except Exception:
             pass
+    # [twin_stdev] STDEV band/slope switch parametrization (7 switches) — inert at defaults
+    try:
+        import vec_decisions.twin_stdev as _twin_stdev
+        _twin_adj = _twin_stdev.get(npz, n, is_long, cfg)
+        if _twin_adj is not None and getattr(_twin_adj, "shape", None) == (n,):
+            mult = mult * _twin_adj
+    except Exception:
+        pass
     # STDEV_BREAKOUT_RETEST_SIZE_MULT — legacy proxy (kept for backward compat when STDEV_SLOPE disabled)
     _stdev_mult = float(getattr(cfg, 'STDEV_BREAKOUT_RETEST_SIZE_MULT', 1.5))
     if not bool(getattr(cfg, 'STDEV_SLOPE_SIZING_ENABLED', False)) and _stdev_mult != 1.5 and _stdev_mult > 0:
@@ -11987,7 +12001,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _fr_arr = None
     _nlk_vel = None
     if bool(getattr(cfg, 'NEWBORN_LOSS_KILL_ENABLED', False)):
-        _nlk_tf = str(getattr(cfg, 'NEWBORN_LOSS_KILL_FILTER_TF', 'OFF') or 'OFF').strip()
+        import vec_decisions.twin_yellow_filters as _tyf_nlk
+        _nlk_tf = _tyf_nlk.resolve_filter_tf(getattr(cfg, 'NEWBORN_LOSS_KILL_FILTER_TF', '15m'), family_raw=(getattr(cfg, 'NEWBORN_LOSS_KILL_VEL_TF', '') or '3m'), filter_default='15m') or (getattr(cfg, 'NEWBORN_LOSS_KILL_VEL_TF', '') or '3m')
         _nlk_key = f'wt_velocity_{_nlk_tf}' if _nlk_tf.upper() != 'OFF' else 'wt_velocity_15m'
         _nlk_vel = _safe(npz, _nlk_key, n, 0.0)
     # lane-B 2026-10-04 BOTTOM_EXIT_HTF_WT_VETO twin (live: ez:46767-46782/46869-46890/47108-47126,
@@ -12265,6 +12280,115 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _wd_open = _wd_open & np.asarray(_e921_wd, dtype=bool)
         except Exception:
             pass
+    # twin_entries_dead_b 2026-10-04 (default OFF = inert): STOCH_XTREME / SMFI_DIV /
+    # VWAP_STRETCH entry triggers (OR into entry_sig, force-open mirror) + exits (OR into exit_sig).
+    try:
+        import vec_decisions.twin_entries_dead_b as _twin_dead_b
+        for _twin_em in (_twin_dead_b.stoch_xtreme_entry_vec(npz, n, is_long, cfg, close, _safe), _twin_dead_b.smfi_div_entry_vec(npz, n, is_long, cfg, close, _safe), _twin_dead_b.vwap_stretch_entry_vec(npz, n, is_long, cfg, close, _safe)):
+            if _twin_em is not None:
+                entry_sig = entry_sig | np.asarray(_twin_em, dtype=bool)
+        for _twin_xm in (_twin_dead_b.stoch_xtreme_exit_vec(npz, n, is_long, cfg, close, _safe), _twin_dead_b.smfi_div_exit_vec(npz, n, is_long, cfg, close, _safe), _twin_dead_b.vwap_stretch_exit_vec(npz, n, is_long, cfg, close, _safe)):
+            if _twin_xm is not None:
+                exit_sig = exit_sig | np.asarray(_twin_xm, dtype=bool)
+    except Exception:
+        pass
+    # [entries-dead-A] 2026-10-04 FUNDING_CROWD / OI_SURGE / RSI2_XTREME entry+exit twins: entries OR into entry_sig (flat-proposal, WT_3M_FORCE_OPEN mirror), exits OR into exit_sig. None-safe, inert at defaults.
+    try:
+        import vec_decisions.twin_entries_dead_a as _teda
+        _teda_entry = _teda.entry_mask(npz, n, is_long, cfg, _safe)
+        if _teda_entry is not None:
+            entry_sig = entry_sig | np.asarray(_teda_entry, dtype=bool)
+        _teda_exit = _teda.exit_mask(npz, n, is_long, cfg, _safe)
+        if _teda_exit is not None:
+            exit_sig = exit_sig | np.asarray(_teda_exit, dtype=bool)
+    except Exception:
+        pass
+    try:  # 2026-10-04 twin_exits_dead (DEAD/STAGED exit+entry switches; every call None-safe = default-inert).
+        import vec_decisions.twin_exits_dead as _ted
+        _ted_get = lambda _k, _d: getattr(cfg, _k, _d)
+        _ted_bbk = _ted.bbkc_entry_pass_mask(npz, n, is_long, _ted_get, _safe, close)
+        if _ted_bbk is not None:
+            _ted_bbk = np.asarray(_ted_bbk, dtype=bool)
+            entry_sig = entry_sig & _ted_bbk
+            _entry_filter_masks.append(_ted_bbk)
+        _ted_wk = _ted.wick_entry_pass_mask(npz, n, is_long, _ted_get, _safe)
+        if _ted_wk is not None:
+            _ted_wk = np.asarray(_ted_wk, dtype=bool)
+            entry_sig = entry_sig & _ted_wk
+            _entry_filter_masks.append(_ted_wk)
+        _ted_mr = _ted.mu_reentry_mask(npz, n, is_long, sym, _ted_get, _safe, close)
+        if _ted_mr is not None:
+            entry_sig = entry_sig | np.asarray(_ted_mr, dtype=bool)
+        _ted_bx = _ted.bbkc_exit_mask(npz, n, is_long, _ted_get, _safe, close)
+        if _ted_bx is not None:
+            exit_sig = exit_sig | np.asarray(_ted_bx, dtype=bool)
+        _ted_wx = _ted.wick_exit_mask(npz, n, is_long, _ted_get, _safe)
+        if _ted_wx is not None:
+            exit_sig = exit_sig | np.asarray(_ted_wx, dtype=bool)
+        _ted_mu = _ted.mu_exit_mask(npz, n, is_long, sym, _ted_get, _safe)
+        if _ted_mu is not None:
+            exit_sig = exit_sig | np.asarray(_ted_mu, dtype=bool)
+        _ted_sb = _ted.stdev_fail_mask(npz, n, is_long, _ted_get, _safe)
+        if _ted_sb is not None:
+            exit_sig = exit_sig | np.asarray(_ted_sb, dtype=bool)
+    except Exception:
+        pass
+    # 2026-10-04 twin_exits_dead EXIT_VELOCITY_WT REMOVED 2026-10-04: ungated at defaults (no ENABLED master; TFS default 1h,4h,D fires always-on exit) — operator decision H9 pending. Twin kept in vec_decisions/twin_exits_dead.velocity_wt_exit_mask.
+    # ── YELLOW *_FILTER_TF twins (twin_yellow_filters.py): entry masks + reduce triggers + walk prep ──
+    _ty_is_tradier = str(getattr(cfg, 'MODE', 'crypto')) == 'tradier'
+    try:
+        import vec_decisions.twin_yellow_filters as _tyf
+    except Exception:
+        _tyf = None
+    _ty_breach = None
+    _ty_dcbr_tf = '15m'
+    _ty_dc_band = None
+    _ty_dc_eff = None
+    _ty_frozen_bb_arr = None
+    _ty_frozen_tf = None
+    _ty_frozen_field = 'lower'
+    if _tyf is not None:
+        try:
+            entry_sig = _tyf.apply_yellow_entry_masks(npz, n, is_long, cfg, close, entry_sig, _entry_filter_masks, _safe, include_kg=(not _ty_is_tradier))
+        except Exception:
+            pass
+        if not _ty_is_tradier:
+            try:
+                _fr = _tyf.fast_riser_signal(npz, n, is_long, cfg, close, _safe)
+                if _fr is not None:
+                    _fr = np.asarray(_fr, dtype=bool)
+                    reduce_sig = reduce_sig | _fr
+                    reduce_frac = np.where(_fr, 1.0, reduce_frac)
+            except Exception:
+                pass
+            try:
+                _ty_breach = _tyf.dc_breach_reduce_mask(npz, n, is_long, cfg, close, _safe)
+                if _ty_breach is not None:
+                    _ty_breach = np.asarray(_ty_breach, dtype=bool)
+                    _ty_dcbr_tf = _tyf.dc_breach_tf(getattr(cfg, 'DC_BREACH_REDUCE_FILTER_TF', 'OFF'))
+                    reduce_sig = reduce_sig | _ty_breach
+                    reduce_frac = np.where(_ty_breach, 1.0, reduce_frac)
+            except Exception:
+                _ty_breach = None
+        try:
+            _ty_dc_fam = str(getattr(cfg, 'MTF_DC_REJECT_EXIT_TF_TRADIER', getattr(cfg, 'MTF_DC_REJECT_EXIT_TF', '15m')) if _ty_is_tradier else getattr(cfg, 'MTF_DC_REJECT_EXIT_TF', '15m'))
+            _ty_dc_eff = _tyf.mtf_dc_reject_tf(getattr(cfg, 'MTF_DC_REJECT_FILTER_TF', '15m'), _ty_dc_fam)
+            if _ty_dc_eff is not None and bool(getattr(cfg, 'MTF_DC_REJECT_EXIT_ENABLED', False)):
+                _ty_dc_band = _safe(npz, _tyf.mtf_dc_band_key(_ty_dc_eff, is_long, bool(getattr(cfg, 'MTF_DC_REJECT_USE_DC4', False))), n, 0.0)
+            else:
+                _ty_dc_eff = None
+        except Exception:
+            _ty_dc_eff = None
+            _ty_dc_band = None
+        if not _ty_is_tradier:
+            try:
+                if bool(getattr(cfg, 'BB_FROZEN_STOP_ENABLED', False)):
+                    _ty_frozen_tf = _tyf.frozen_stop_tf(getattr(cfg, 'FROZEN_STOP_FILTER_TF', '15m'), getattr(cfg, 'BB_FROZEN_STOP_TF', '1h'))
+                    if _ty_frozen_tf is not None:
+                        _ty_frozen_field = str(getattr(cfg, 'BB_FROZEN_STOP_FIELD', 'lower'))
+                        _ty_frozen_bb_arr = _safe(npz, _tyf.frozen_bb_key(_ty_frozen_tf, _ty_frozen_field, is_long), n, 0.0)
+            except Exception:
+                _ty_frozen_bb_arr = None
     # 2026-09-30 PORTED-SWITCH DISPATCHER — collision-free wiring hook (SWITCH_WIRING_GUIDE.md).
     # Each vec_decisions/ported_<lifecycle>.py owns its switches as faithful numpy twins of ez_manage/
     # tradier_manage (15m floor, NO proxies/fabrication). apply() returns the (possibly modified) signal.
@@ -12492,7 +12616,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     trail_erosion = getattr(cfg, 'WIN_TRAIL_EROSION_PCT', 0.0)
     satoshit_partial = getattr(cfg, 'SATOSHIT_EXIT_PARTIAL_PCT', 0.0) if getattr(cfg, 'SATOSHIT_EXIT_ENABLED', False) else 0.0
 
-    commission_pct = getattr(cfg, 'CRYPTO_ROUND_TRIP_COMMISSION_PCT', 0.08) if not is_tradier else 0.0
+    commission_pct = getattr(cfg, 'CRYPTO_ROUND_TRIP_COMMISSION_PCT', 0.04) if not is_tradier else 0.0
     half_fee = commission_pct / 200.0  # commission_pct is ROUND-TRIP; each leg (open/augment/reduce/close) pays half
 
     trades = []
@@ -13703,6 +13827,31 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             events.append({'type': 'REDUCE', 'ts': _tsd, 'price': float(px), 'qty': float(_dd_qty), 'pos_deployed': float(pos['deployed']), 'bar': int(i), 'reason': _dd_reason})
             pos['last_reduce_bar'] = int(i)
 
+        _ty_fire, _ty_reason = False, ''
+        if pos is not None:
+            try:
+                if '_ty_dc_eff' in locals() and _ty_dc_eff is not None and _ty_dc_band is not None and bool(getattr(cfg, 'MTF_DC_REJECT_EXIT_ENABLED', False)):
+                    import vec_decisions.twin_yellow_filters as _tyf2
+                    _ty_band_i = float(_ty_dc_band[i]) if i < len(_ty_dc_band) else 0.0
+                    if _ty_is_tradier:
+                        _ty_lb = max(1, int(getattr(cfg, 'MTF_DC_REJECT_EXIT_LOOKBACK', 5)))
+                        _ty_ts_i = float(ts[i]) if i < len(ts) else 0.0
+                        _ty_new_ts, _ty_hit = _tyf2.dc_reject_stocks_step(float(pos.get('ty_dc_ts', 0.0)), _ty_ts_i, float(px), _ty_band_i, _ty_lb, _ty_dc_eff, is_long)
+                        pos['ty_dc_ts'] = _ty_new_ts
+                    else:
+                        _ty_out, _ty_hit = _tyf2.dc_reject_crypto_step(bool(pos.get('ty_dc_out', False)), float(px), _ty_band_i, is_long)
+                        pos['ty_dc_out'] = _ty_out
+                    if _ty_hit:
+                        _ty_fire, _ty_reason = True, 'MTF_DC_REJECT_%s_px%.4f' % (_ty_dc_eff, float(px))
+            except Exception:
+                pass
+            try:
+                if (not _ty_fire) and '_ty_frozen_bb_arr' in locals() and _ty_frozen_bb_arr is not None and bool(getattr(cfg, 'BB_FROZEN_STOP_ENABLED', False)):
+                    import vec_decisions.twin_yellow_filters as _tyf3
+                    if _tyf3.frozen_stop_fires(pos.get('ty_frozen_bb', 0.0), float(px), live_pnl_pct, is_long):
+                        _ty_fire, _ty_reason = True, 'BB_FROZEN_STOP_BREACH_g%.2f%%' % live_pnl_pct
+            except Exception:
+                pass
         closed = False
         reason = None
         if cfg.PROFIT_TARGET_ENABLED and live_pnl_pct >= cfg.PROFIT_TARGET_PCT:
@@ -14129,7 +14278,7 @@ def true_bh_reference(npz, is_long, cfg):
     reporting elsewhere; it exists purely to validate the engine's own
     internal capital-accounting consistency."""
     is_tradier = getattr(cfg, 'MODE', 'crypto') == 'tradier'
-    half_fee = 0.0 if is_tradier else getattr(cfg, 'CRYPTO_ROUND_TRIP_COMMISSION_PCT', 0.08) / 200.0
+    half_fee = 0.0 if is_tradier else getattr(cfg, 'CRYPTO_ROUND_TRIP_COMMISSION_PCT', 0.04) / 200.0
     base_tf = _base_tf(npz, cfg)
     ts = npz.get('timestamps', npz.get(f'timestamp_{base_tf}', np.array([])))
     n = len(ts)

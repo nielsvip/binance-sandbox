@@ -100,6 +100,24 @@ def test_verdict_row_settles_composition():
     assert delta_vs_result(ok, 1.0) == (0.5, True, "")
 
 
+def test_npz_midrun_same_id_no_refuse():
+    a = {"path": "p", "mtime_ns": 1, "size": 2, "n": 3, "ts_first": 4, "ts_last": 5, "md5": "aaa"}
+    assert G.npz_changed(a, dict(a)) is False
+    assert G.npz_changed(None, a) is False
+    assert G.npz_changed(a, None) is False
+
+
+def test_npz_midrun_swap_detected():
+    a = {"path": "p", "mtime_ns": 1, "size": 2, "n": 3, "ts_first": 4, "ts_last": 5, "md5": "aaa"}
+    for k, v in (("mtime_ns", 9), ("size", 9), ("n", 9), ("ts_last", 9), ("ts_first", 9), ("path", "q")):
+        b = dict(a)
+        b[k] = v
+        assert G.npz_changed(a, b) is True, k
+    b = dict(a)
+    b["md5"] = "bbb"
+    assert G.npz_changed(a, b) is False
+
+
 if __name__ == "__main__":
     for _n, _f in sorted([(k, v) for k, v in globals().items() if k.startswith("test_")]):
         _f()

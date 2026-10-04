@@ -33,9 +33,25 @@ import vec_decisions.dc_channel_exits as _dc_channel_exits  # 2026-09-29 grey-sw
 import vec_decisions.noloss_hold as _noloss_hold  # 2026-10-04 NOLOSS/STOP_LOSS twins (shared with v12_quick_engine)
 import vec_decisions.bb_stoch_exits as _bb_stoch_exits  # 2026-10-04 BB band-touch/stoch-cross twins (shared with v12_quick_engine)
 import vec_decisions.lh_ll_top_exit as _lhll_top_exit  # 2026-10-04 LH/LL top exit (shared with v12_quick_engine)
+import vec_decisions.twin_exits_dead as _twin_exits_dead  # 2026-10-04 DEAD exit/entry twins (shared with v12_quick_engine)
+try:
+    import vec_decisions.twin_entries_dead_a as _teda_entries  # 2026-10-04 entries-dead-A FUNDING/OI/RSI2 twins (shared with v12_quick_engine)
+except ImportError:
+    _teda_entries = None
+import vec_decisions.twin_entries_dead_b as _twin_dead_b  # 2026-10-04 pack-B entries/exits (shared with v12_quick_engine)
 import vec_decisions.grey_wire_exits as _grey_wire_exits  # 2026-09-30 grey-switch wiring (shared with v12_quick_engine)
+import vec_decisions.twin_sizing_reduce as _twin_sr  # 2026-10-04 sizing/reduce/exit stocks-live twins (shared predicates)
 import live_entry_gates as _live_entry_gates  # batch5 (Agent D): live twin of the vec stock entry gates + effective_min_gain
 import vec_decisions.grey_wire_entries as _grey_wire_entries  # 2026-09-30 grey-switch wiring (shared with v12_quick_engine)
+try:
+    import vec_decisions.twin_gates_sizing_a as _twin_gates_sizing_a  # 2026-10-04 gates+sizing batch A twins (shared with v12_quick_engine)
+except ImportError:
+    _twin_gates_sizing_a = None
+_TGSA_SQ_PREV = {}
+try:
+    import vec_decisions.twin_entry_ports_b as _twin_entry_ports_b  # 2026-10-04 entry-ports-B twins (shared with v12_quick_engine)
+except ImportError:
+    _twin_entry_ports_b = None
 from vec_decisions.process_position_stocks__alt_entries import _rz_breakout_fires  # 2026-09-29 grey rewire RZ_BREAKOUT shared predicate
 import aiofiles
 import numpy as np
@@ -10809,6 +10825,147 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _bb_fire, _bb_reason = _bb_stoch_exits.stoch_cross_3m_exit(_gx_c, is_long, i or {})
                     if _bb_fire:
                         _gx_fire, _gx_reason = True, _bb_reason
+                # STOCH_XTREME/SMFI_DIV/VWAP_STRETCH EXITS 2026-10-04 live twins (default OFF = inert): same predicates as v12.
+                if not _gx_fire:
+                    _twin_specs = [_twin_dead_b.resolve_stoch_xtreme_exit(_gx_c), _twin_dead_b.resolve_smfi_div_exit(_gx_c), _twin_dead_b.resolve_vwap_stretch_exit(_gx_c)]
+                    if any(_s.get("enabled") for _s in _twin_specs):
+                        _twin_vwap = safe_fetch_float(i.get("vwap_npz") or i.get("vwap") or 0, 0.0)
+                        _twin_lvl = lambda _f: _twin_vwap if _f == "vwap" else safe_fetch_float(i.get(_f, 50), 50.0)
+                        for _twin_fn, _twin_sp in ((_twin_dead_b.stoch_xtreme_exit_fire, _twin_specs[0]), (_twin_dead_b.smfi_div_exit_fire, _twin_specs[1]), (_twin_dead_b.vwap_stretch_exit_fire, _twin_specs[2])):
+                            _twin_fire, _twin_reason = _twin_fn(_twin_sp, is_long, _twin_lvl, safe_fetch_float(current_price, 0.0))
+                            if _twin_fire:
+                                _gx_fire, _gx_reason = True, _twin_reason
+                                break
+                # TEDA entries-dead-A 2026-10-04 live twin (default OFF = inert): FUNDING_CROWD / OI_SURGE / RSI2_XTREME velocity exits, same predicates as v12 (funding/OI honestly non-binding on stocks).
+                if not _gx_fire and _teda_entries is not None:
+                    try:
+                        _teda_fire, _teda_reason = _teda_entries.check_exit(_gx_c, is_long, i or {}, symbol, None, None, False)
+                        if _teda_fire:
+                            _gx_fire, _gx_reason = True, _teda_reason
+                    except Exception as _teda_e:
+                        logger.debug(f"[TEDA_EXIT] {position_key}: probe err: {_teda_e}")
+                # TWIN_EXITS_DEAD 2026-10-04 (BBKC/WICK/STDEV-fail exits; default OFF = inert).
+                if not _gx_fire:
+                    try:
+                        _ted_need = (bool(_gx_c('BBKC_EXIT_ENABLED', False)) or bool(_gx_c('WICK_REJECT_EXIT_ENABLED', False)) or bool(_gx_c('STDEV_BREAKOUT_ENABLED', False)))
+                        if _ted_need:
+                            _ted_fire, _ted_reason = _twin_exits_dead.bbkc_exit_live_fire(i or {}, safe_fetch_float(current_price, 0.0), is_long, _gx_c)
+                            if not _ted_fire:
+                                _ted_fire, _ted_reason = _twin_exits_dead.wick_exit_live_fire(i or {}, is_long, _gx_c)
+                            if not _ted_fire and bool(_gx_c('STDEV_BREAKOUT_ENABLED', False)):
+                                _ted_stdev = getattr(trade_manager, '_ted_stdev_live', None)
+                                if _ted_stdev is None:
+                                    _ted_stdev = _twin_exits_dead.StdevFailLive()
+                                    trade_manager._ted_stdev_live = _ted_stdev
+                                _ted_fire, _ted_reason = _ted_stdev.fire(i or {}, is_long, symbol, _gx_c)
+                            if _ted_fire:
+                                _gx_fire, _gx_reason = True, _ted_reason
+                    except Exception as _ted_e:
+                        logger.warning(f"[TWIN_EXITS_DEAD] {position_key} probe err: {_ted_e}")
+                # TWIN_EXITS_DEAD EXIT_VELOCITY_WT (APPLY ONLY AFTER OPERATOR DECISION H9).
+                if not _gx_fire:
+                    try:
+                        _ted_fire, _ted_reason = _twin_exits_dead.velocity_wt_exit_live_fire(i or {}, is_long, _gx_c)
+                        if _ted_fire:
+                            _gx_fire, _gx_reason = True, _ted_reason
+                    except Exception as _ted_e:
+                        logger.warning(f"[TWIN_EXITS_DEAD] {position_key} probe err: {_ted_e}")
+                # WT_CROSSUNDER_FINAL 2026-10-04 live twin (EXIT, OPERATOR-ACTIVATED 2026-10-04 (user mandate; default True = live behavior change, gated pre-deploy)):
+                # wt1_5m crossunder + k_5m>=70 (long) / mirror short, same predicate as v12 compute_exit_signals.
+                if not _gx_fire and _twin_entry_ports_b is not None:
+                    _xc_fire, _xc_reason = _twin_entry_ports_b.wt_crossunder_final_exit(_gx_c, is_long, i or {}, "5m")
+                    if _xc_fire:
+                        _gx_fire, _gx_reason = True, _xc_reason
+                # TWIN_SIZING_REDUCE 2026-10-04 stocks-live twins (shared vec_decisions/twin_sizing_reduce predicates): E_1/HTF_AGAINST/NEWBORN/WT_PERCENTILE CLOSE + CYCLE_TP/PPL/SATOSHIT REDUCE. Per-sym _gx_c, fail-open, default-inert.
+                try:
+                    if not _gx_fire:
+                        _tsr_ind = dict(i or {})
+                        try:
+                            if indicators_raw:
+                                _tsr_ind.update(indicators_raw)
+                        except Exception:
+                            pass
+                        _tsr_gain = safe_fetch_float(getattr(position, 'gain', 0), 0.0)
+                        _tsr_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0.0))
+                        _tsr_fire, _tsr_reason = _twin_sr.e1_wt_delta_fires(_gx_c, _tsr_ind, is_long)
+                        if not _tsr_fire:
+                            _tsr_fire, _tsr_reason = _twin_sr.htf_against_fires(_gx_c, _tsr_ind, is_long)
+                        if not _tsr_fire:
+                            _tsr_opened = parse_position_timestamp(getattr(position, 'opened_at', None))
+                            _tsr_age = (datetime.now(timezone.utc) - _tsr_opened).total_seconds() / 60.0 if isinstance(_tsr_opened, datetime) else -1.0
+                            _tsr_fire, _tsr_reason = _twin_sr.newborn_kill_fires(_gx_c, _tsr_ind, is_long, _tsr_age, _tsr_gain, bool(getattr(position, 'is_hedge', False)))
+                        if not _tsr_fire:
+                            _tsr_fire, _tsr_reason = _twin_sr.wt_percentile_fires(_gx_c, _tsr_ind, is_long)
+                        if _tsr_fire:
+                            _gx_fire, _gx_reason = True, _tsr_reason
+                        if not _gx_fire:
+                            _ctp_fired = (getattr(trade_manager, '_tiered_tp_hit_stocks', {}) or {}).get(position_key, set())
+                            _ctp_hit = _twin_sr.cycle_tp_tier(_gx_c, _tsr_gain, _ctp_fired)
+                            if _ctp_hit is not None:
+                                _ctp_idx, _ctp_lvl, _ctp_frac = _ctp_hit
+                                _ctp_qty = _tsr_amt * float(_ctp_frac)
+                                if _ctp_qty >= 1.0 and (_tsr_amt - _ctp_qty) >= 1.0:
+                                    if getattr(trade_manager, '_tiered_tp_hit_stocks', None) is None:
+                                        trade_manager._tiered_tp_hit_stocks = {}
+                                    _ctp_done = trade_manager._tiered_tp_hit_stocks.get(position_key, set())
+                                    _ctp_done.add(_ctp_idx)
+                                    trade_manager._tiered_tp_hit_stocks[position_key] = _ctp_done
+                                    logger.warning(f"[TIERED_TP] {position_key}: Tier {_ctp_idx} hit (gain={_tsr_gain:.2f}% >= {_ctp_lvl * 100:.2f}%) reducing {_ctp_frac * 100:.0f}% = {_ctp_qty:.6f}")
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "REDUCE", f"CYCLE_TP_TIERED_T{_ctp_idx}_{_ctp_lvl * 100:.2f}pct_gain{_tsr_gain:.2f}", 80.0, override_qty=_ctp_qty)
+                                    return "CYCLE_TP_TIERED_REDUCED"
+                            try:
+                                _ppl_ok = account_key in list(_gx_c('PARTIAL_PROFIT_LOCK_ACCOUNTS', []) or [])
+                            except Exception:
+                                _ppl_ok = False
+                            _ppl_out = _twin_sr.ppl_step(_gx_c, _tsr_gain, current_price, safe_fetch_float(getattr(position, 'entry_price', 0), 0.0), _tsr_amt, 1.0, (getattr(trade_manager, 'partial_profit_lock_state', {}) or {}).get(position_key, {}), _ppl_ok)
+                            if _ppl_out.get("action") == "reduce":
+                                if getattr(trade_manager, 'partial_profit_lock_state', None) is None:
+                                    trade_manager.partial_profit_lock_state = {}
+                                _ppl_arm = _ppl_out.get("arm", {})
+                                _ppl_long = position_side == 'LONG'
+                                _ppl_stop = _twin_sr.ppl_be_stop(_ppl_long, float(_ppl_arm.get("entry_px", 0.0)), float(_gx_c('PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT', 0.1)))
+                                _ppl_frac = float(_ppl_arm.get("frac", 0.5))
+                                _ppl_g = float(_ppl_arm.get("gain", 0.0))
+                                _ppl_entry = float(_ppl_arm.get("entry_px", 0.0))
+                                if _ppl_long:
+                                    _ppl_eff = _ppl_entry * (1.0 - _ppl_frac * (1.0 + _ppl_g / 100.0)) / (1.0 - _ppl_frac) if _ppl_frac < 1.0 else _ppl_entry
+                                else:
+                                    _ppl_eff = _ppl_entry * (1.0 - _ppl_frac * (1.0 - _ppl_g / 100.0)) / (1.0 - _ppl_frac) if _ppl_frac < 1.0 else _ppl_entry
+                                _ppl_rqty = float(_ppl_out.get("qty", 0.0))
+                                logger.warning(f"[PARTIAL_PROFIT_LOCK_TP] {position_key}: gain={_tsr_gain:.2f}% REDUCE {_ppl_rqty:.6f} + BE stop @ {_ppl_stop:.6f}")
+                                _ppl_res = await queue_trade_action(order_queue, trade_manager, position_key, "REDUCE", f"PPL_TP_gain{_tsr_gain:.2f}", 80.0, override_qty=_ppl_rqty)
+                                if _ppl_res:
+                                    trade_manager.partial_profit_lock_state[position_key] = {"fired": True, "first_exit_price": float(_ppl_arm.get("first_exit_price", 0.0)), "stop_level": float(_ppl_stop), "stop_upgraded": False, "effective_entry": float(_ppl_eff)}
+                                    return "PPL_TP_REDUCED"
+                            elif _ppl_out.get("action") == "upgrade":
+                                if getattr(trade_manager, 'partial_profit_lock_state', None) is None:
+                                    trade_manager.partial_profit_lock_state = {}
+                                trade_manager.partial_profit_lock_state[position_key] = dict(_ppl_out.get("state", {}))
+                                logger.warning(f"[PPL_STOP_UPGRADED] {position_key}: {_ppl_out.get('reason', '')}")
+                            elif _ppl_out.get("action") == "check_stop":
+                                _ppl_stop_lv = float(_ppl_out.get("stop_level", 0.0))
+                                if _twin_sr.ppl_stop_hit(position_side == 'LONG', current_price, _ppl_stop_lv):
+                                    logger.warning(f"[PARTIAL_PROFIT_LOCK_SL_HIT] {position_key}: price={current_price:.6f} hit stop={_ppl_stop_lv:.6f} — closing remainder")
+                                    _ppl_sl = await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"PPL_SL_px{current_price:.6f}_stop{_ppl_stop_lv:.6f}", 100.0, override_qty=999999)
+                                    if _ppl_sl:
+                                        try:
+                                            trade_manager.partial_profit_lock_state.pop(position_key, None)
+                                        except Exception:
+                                            pass
+                                        return "PPL_SL_CLOSED"
+                            try:
+                                _sat_ok = account_key in list(_gx_c('SATOSHIT_ACCOUNTS', []) or [])
+                            except Exception:
+                                _sat_ok = False
+                            _sat_fire, _sat_reason, _sat_frac = _twin_sr.satoshit_fires(_gx_c, _tsr_ind, is_long, _tsr_gain, _sat_ok)
+                            if _sat_fire:
+                                _sat_qty = _tsr_amt * float(_sat_frac)
+                                if _sat_qty >= 1.0 and (_tsr_amt - _sat_qty) >= 1.0:
+                                    logger.warning(f"[SATOSHIT_PARTIAL_EXIT] {position_key}: {_sat_reason} gain={_tsr_gain:.2f}% REDUCE {float(_sat_frac) * 100:.0f}%")
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "REDUCE", f"{_sat_reason}_g{_tsr_gain:.2f}", 80.0, override_qty=_sat_qty)
+                                    return "SATOSHIT_PARTIAL_REDUCED"
+                except Exception as _tsr_e:
+                    logger.warning(f"[TWIN_SR] {position_key} probe err: {_tsr_e}")
                 # LH/LL TOP EXIT 2026-10-04 live twin (default OFF = inert): same predicate as v12.
                 # Live arm uses forming-vs-completed HTF H/L while vec uses completed[-1] vs
                 # completed[-2] — direction-consistent, live arms earlier; parity delta measured.
@@ -11270,8 +11427,11 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 _mtfce_entry = safe_fetch_float(getattr(position, 'entry_price', 0), 0)
                 _mtfce_fire = False
                 _mtfce_reason = ""
-                _mtfce_atr_tf = str(_cfg('MTF_ATR_TRAIL_TF_TRADIER', _cfg('MTF_ATR_TRAIL_TF', '1h', account_key, symbol, position_side), account_key, symbol, position_side))
-                _mtfce_dc_tf = str(_cfg('MTF_DC_REJECT_EXIT_TF', '1h', account_key, symbol, position_side))
+                from vec_decisions.twin_yellow_filters import mtf_atr_trail_tf as _tyf_mtf_atr
+                _tyf_atr_fam = str(_cfg('MTF_ATR_TRAIL_TF_TRADIER', _cfg('MTF_ATR_TRAIL_TF', '1h', account_key, symbol, position_side), account_key, symbol, position_side))
+                _mtfce_atr_tf = str(_tyf_mtf_atr(_cfg('MTF_ATR_TRAIL_FILTER_TF', '15m', account_key, symbol, position_side), _tyf_atr_fam) or _tyf_atr_fam)
+                from vec_decisions.twin_yellow_filters import mtf_dc_reject_tf as _tyf_mtf_dc
+                _mtfce_dc_tf = str(_tyf_mtf_dc(_cfg('MTF_DC_REJECT_FILTER_TF', '15m', account_key, symbol, position_side), _cfg('MTF_DC_REJECT_EXIT_TF', '1h', account_key, symbol, position_side)) or _cfg('MTF_DC_REJECT_EXIT_TF', '1h', account_key, symbol, position_side))
                 _mtfce_bb_tf = str(_cfg('MTF_BB_REJECT_EXIT_TF', '1h', account_key, symbol, position_side))
                 _mtfce_wt_tf = str(_cfg('MTF_WT_CROSS_EXIT_TF', '1h', account_key, symbol, position_side))
                 _mtfce_atr_mult = float(_cfg('MTF_ATR_TRAIL_MULT', 2.5, account_key, symbol, position_side))
@@ -11281,6 +11441,12 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 # which case wall clock remains the unchanged fallback.
                 _mtfce_now_s = _mtf_indicator_event_timestamp(i, fallback_now=time.time())
                 # ─── 1. MTF_ATR_TRAIL ─────────────────────────────────────────────
+                _tgsa_trail_ok = True
+                try:
+                    if _twin_gates_sizing_a is not None:
+                        _tgsa_trail_ok = _twin_gates_sizing_a.mtf_atr_trail_on(lambda _k, _d: _cfg(_k, _d, account_key, symbol, position_side))
+                except Exception:
+                    pass
                 if bool(_cfg('MTF_ATR_TRAIL_ENABLED', False, account_key, symbol, position_side)):
                     _mtfce_atr = safe_fetch_float(i.get(f'atr_{_mtfce_atr_tf}'), 0)
                     if _mtfce_atr > 0 and _mtfce_entry > 0 and current_price is not None and current_price > 0:
@@ -11591,6 +11757,16 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     f"[WT_3M_FORCE_OPEN_ERROR] {position_key}: "
                     f"{type(_wf_err).__name__}: {_wf_err}"
                 )
+        # TEDA entries-dead-A 2026-10-04 live twin (stocks, default OFF = inert): FUNDING_CROWD / OI_SURGE / RSI2_XTREME flat proposals, WT_3M_FORCE_OPEN mechanics (funding/OI honestly non-binding on stocks).
+        if (not has_position) and _teda_entries is not None:
+            try:
+                if trade_manager.is_symbol_tradeable(symbol, account_key, position_side):
+                    _teda_fire, _teda_reason = _teda_entries.check_entry_proposal(lambda _k, _d: _cfg(_k, _d, account_key, symbol, position_side), is_long, i or {}, symbol, None, None, False)
+                    if _teda_fire:
+                        logger.warning(f"[TEDA_ENTRY] {position_key}: {_teda_reason} -> OPEN")
+                        await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _teda_reason, 80.0)
+            except Exception as _teda_e:
+                logger.debug(f"[TEDA_ENTRY] {position_key}: probe err: {_teda_e}")
         # ═══════════════════════════════════════════════════════════════════════
         # RULE_A_RETEST — D/W Breakout-then-Retest entry FIRE (USER 2026-05-17, mirror of ez_manage).
         # Source: data/research_20260516/PLAN.md §3.3. Cited +22 abs WR pts (Trading-Rush), +0.47 Sharpe (QuantPedia D1H1).
@@ -11639,6 +11815,25 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             return f"RULE_A_RETEST:{position_side}"
             except Exception as _ra_err:
                 logger.debug(f"[RULE_A_RETEST] {position_key}: probe err — {_ra_err}")
+        # STOCH_XTREME/SMFI_DIV/VWAP_STRETCH ENTRIES 2026-10-04 (default OFF = inert): flat-proposal
+        # mirror of WT_3M_FORCE_OPEN -- extreme-reversal triggers OPEN when flat.
+        if (not has_position) and (bool(_cfg('STOCH_XTREME_ENTRY_ENABLED', False, account_key, symbol, position_side)) or bool(_cfg('SMFI_DIV_ENTRY_ENABLED', False, account_key, symbol, position_side)) or bool(_cfg('VWAP_STRETCH_ENTRY_ENABLED', False, account_key, symbol, position_side))):
+            try:
+                if trade_manager.is_symbol_tradeable(symbol, account_key, position_side) and current_price > 0:
+                    _twin_ct = lambda _k, _d: _cfg(_k, _d, account_key, symbol, position_side)
+                    _twin_specs_t = [_twin_dead_b.resolve_stoch_xtreme_entry(_twin_ct), _twin_dead_b.resolve_smfi_div_entry(_twin_ct), _twin_dead_b.resolve_vwap_stretch_entry(_twin_ct)]
+                    _twin_vwap_t = safe_fetch_float(i.get("vwap_npz") or i.get("vwap") or 0, 0.0)
+                    _twin_lvl_t = lambda _f: _twin_vwap_t if _f == "vwap" else safe_fetch_float(i.get(_f, 50), 50.0)
+                    for _twin_fn_t, _twin_sp_t in ((_twin_dead_b.stoch_xtreme_entry_fire, _twin_specs_t[0]), (_twin_dead_b.smfi_div_entry_fire, _twin_specs_t[1]), (_twin_dead_b.vwap_stretch_entry_fire, _twin_specs_t[2])):
+                        _twin_fire_t, _twin_reason_t = _twin_fn_t(_twin_sp_t, is_long, _twin_lvl_t, safe_fetch_float(current_price, 0.0))
+                        if _twin_fire_t:
+                            _twin_size_t = float(_cfg_auto('WT_3M_FORCE_OPEN_SIZE_USD', 100.0)) or float(_cfg_auto('START_POSITION_SIZE', 100.0))
+                            _twin_qty_t = max(_twin_size_t / current_price, 1.0)
+                            logger.warning(f"[TWIN_DEAD_B_ENTRY] {position_key}: {_twin_reason_t} qty={_twin_qty_t:.2f}")
+                            await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _twin_reason_t, 80.0, override_qty=_twin_qty_t)
+                            break
+            except Exception as _twin_err:
+                logger.debug(f"[TWIN_DEAD_B_ENTRY] {position_key}: probe err \u2014 {_twin_err}")
         was_reduced = getattr(position, 'was_reduced', False)
         last_red_time = getattr(position, 'last_reduction_time', None)
         # FIX 2026-08-20: gain from prior closed leg must be erased when flat — USER MANDATE: positionAmt==0 => gain 0 (was -10.91% stale)
@@ -11912,6 +12107,28 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         log_rec = "HOLD"
                         log_reason = f"Stale ({freshness_reason})"
                     else:
+                        # TWIN_SIZING_REDUCE 2026-10-04 PYRAMID augment twin (once per position): add into structural strength.
+                        try:
+                            if getattr(trade_manager, '_pyramid_fired_stocks', None) is None:
+                                trade_manager._pyramid_fired_stocks = set()
+                            _pyr_c = lambda _k, _d: _cfg(_k, _d, account_key, symbol, position_side)
+                            _pyr_ind = dict(i or {})
+                            try:
+                                if indicators_raw:
+                                    _pyr_ind.update(indicators_raw)
+                            except Exception:
+                                pass
+                            _pyr_long = getattr(position, 'position_side', 'LONG') == 'LONG'
+                            _pyr_fire, _pyr_reason, _pyr_mult = _twin_sr.pyramid_fires(_pyr_c, _pyr_ind, _pyr_long, safe_fetch_float(getattr(position, 'gain', 0), 0.0))
+                            if _pyr_fire and position_key not in trade_manager._pyramid_fired_stocks and float(_pyr_mult) > 0.0 and market_open and not action_taken:
+                                _pyr_qty = max(1, int(abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0.0)) * float(_pyr_mult)))
+                                if _pyr_qty >= 1:
+                                    trade_manager._pyramid_fired_stocks.add(position_key)
+                                    logger.warning(f"[PYRAMID] {position_key}: {_pyr_reason} qty={_pyr_qty}")
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "AUGMENT", _pyr_reason, 100.0, override_qty=_pyr_qty)
+                                    return f"PYRAMID:{_pyr_reason[:60]}"
+                        except Exception as _pyr_e:
+                            logger.warning(f"[TWIN_SR_PYRAMID] {position_key} probe err: {_pyr_e}")
                         should_aug, aug_reason, aug_conf, aug_qty = await trade_manager.strategy.evaluate_augment(
                             symbol, position, indicators_raw, market_context  )
                         if should_aug:
@@ -13022,6 +13239,14 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _lbd0["n"] += 1
                     if _lbd0["n"] % 2000 == 1:
                         print(f"V8_LOG LRBAND_DBG0 region_reach={_lbd0['n']} enabled={_cfg_auto('LR_BAND_ENTRY_ENABLED', 'MISSING')} regime={_cfg_auto('LR_BAND_REGIME_ENABLED', 'MISSING')} cfg_id={id(config)}", flush=True)
+                # BB_BOUNCE_ENTRY 2026-10-04 live twin (default OFF = inert): pct-b reclaim per TF, same
+                # predicate as v12. Dormant until bb_pct_b_{TF}_prev pipeline keys exist (0 refs both venues).
+                if action_type != "OPEN" and _twin_entry_ports_b is not None:
+                    try:
+                        _t3_fire, _t3_reason = _twin_entry_ports_b.bb_bounce_entry(lambda _k, _d: _cfg_auto(_k, _d), is_long, indicators_raw if indicators_raw else i)
+                        if _t3_fire:
+                            return True, _t3_reason, qty
+                    except Exception: pass
                 if action_type != "OPEN" and _cfg_auto('BB_PCTB_ENTRY_ENABLED', False):
                     try:
                         _bb_pctb_1h = float(i.get('bb_pct_b_1h', 0.5) or 0.5)
@@ -13260,6 +13485,67 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             qty = int(max(1, _base_qty))
                             conf = 71.0
                             reason = f"CONNORS_RSI_ENTRY_{'L' if is_long else 'S'}_cr={_cr:.0f}"
+                    except Exception: pass
+                if action_type != "OPEN" and _twin_gates_sizing_a is not None and bool(_cfg_auto('RZ_ENTRY_ENABLED', False)):
+                    try:
+                        _tgsa_ind = indicators_raw if indicators_raw else i
+                        _tgsa_fire, _tgsa_rsn = _twin_gates_sizing_a.rz_bottom_fires(lambda _k, _d: _cfg_auto(_k, _d), _tgsa_ind, is_long, "5m")
+                        if _tgsa_fire:
+                            _base_qty = float(_cfg_auto('START_POSITION_SIZE', 600)) / current_price if current_price and current_price > 0 else 1
+                            action_type = "OPEN"
+                            qty = int(max(1, _base_qty))
+                            conf = 71.0
+                            reason = f"RZ_BOTTOM_{'L' if is_long else 'S'}_{_tgsa_rsn}"
+                    except Exception: pass
+                if action_type != "OPEN" and _twin_gates_sizing_a is not None and bool(_cfg_auto('SQUEEZE_ENABLED', False)):
+                    try:
+                        _tgsa_ind = indicators_raw if indicators_raw else i
+                        _tgsa_fire, _tgsa_rsn = _twin_gates_sizing_a.squeeze_fires(_tgsa_ind, is_long, "5m", _TGSA_SQ_PREV.get(f"{symbol}_{'LONG' if is_long else 'SHORT'}"))
+                        _tgsa_sq_now = _tgsa_ind.get("squeeze_on_15m", _tgsa_ind.get("squeeze_on", 0))
+                        _TGSA_SQ_PREV[f"{symbol}_{'LONG' if is_long else 'SHORT'}"] = bool(_tgsa_sq_now) if not isinstance(_tgsa_sq_now, (int, float)) else float(_tgsa_sq_now) > 0
+                        if _tgsa_fire:
+                            _base_qty = float(_cfg_auto('START_POSITION_SIZE', 600)) / current_price if current_price and current_price > 0 else 1
+                            action_type = "OPEN"
+                            qty = int(max(1, _base_qty))
+                            conf = 70.0
+                            reason = f"SQUEEZE_{'L' if is_long else 'S'}_{_tgsa_rsn}"
+                    except Exception: pass
+                if action_type != "OPEN" and _twin_gates_sizing_a is not None and (bool(_cfg_auto('TRADIER_MI_ENTRY_ENABLED_TRADIER', False)) or bool(_cfg_auto('MI_ENTRY_ENABLED_TRADIER', False))):
+                    try:
+                        _tgsa_ind = indicators_raw if indicators_raw else i
+                        _tgsa_fire, _tgsa_rsn = _twin_gates_sizing_a.tradier_mi_fires(lambda _k, _d: _cfg_auto(_k, _d), _tgsa_ind, is_long, "5m")
+                        if _tgsa_fire:
+                            _base_qty = float(_cfg_auto('START_POSITION_SIZE', 600)) / current_price if current_price and current_price > 0 else 1
+                            action_type = "OPEN"
+                            qty = int(max(1, _base_qty))
+                            conf = 70.0
+                            reason = f"TRADIER_MI_{'L' if is_long else 'S'}_{_tgsa_rsn}"
+                    except Exception: pass
+                if action_type != "OPEN" and _twin_gates_sizing_a is not None and not is_long:
+                    try:
+                        _tgsa_ind = indicators_raw if indicators_raw else i
+                        _tgsa_fire, _tgsa_rsn = _twin_gates_sizing_a.tradier_rsi_short_fires(lambda _k, _d: _cfg_auto(_k, _d), _tgsa_ind, is_long, True)
+                        if _tgsa_fire:
+                            _base_qty = float(_cfg_auto('START_POSITION_SIZE', 600)) / current_price if current_price and current_price > 0 else 1
+                            action_type = "OPEN"
+                            qty = int(max(1, _base_qty))
+                            conf = 70.0
+                            reason = f"TRADIER_RSI_SHORT_{_tgsa_rsn}"
+                    except Exception: pass
+                if action_type != "OPEN" and _twin_gates_sizing_a is not None and _twin_gates_sizing_a.fh_enabled(lambda _k, _d: _cfg_auto(_k, _d), True):
+                    try:
+                        _tgsa_ind = indicators_raw if indicators_raw else i
+                        _tgsa_now = datetime.now(timezone.utc)
+                        _tgsa_min = _tgsa_now.hour * 60 + _tgsa_now.minute
+                        _tgsa_px = float(current_price or 0)
+                        _tgsa_open = float(_tgsa_ind.get("open_D", 0) or _tgsa_ind.get("open_1h", 0) or 0)
+                        _tgsa_fire, _tgsa_rsn = _twin_gates_sizing_a.fh_momentum_fires(lambda _k, _d: _cfg_auto(_k, _d), _tgsa_ind, is_long, _tgsa_min, _tgsa_px, _tgsa_open)
+                        if _tgsa_fire:
+                            _base_qty = float(_cfg_auto('START_POSITION_SIZE', 600)) / current_price if current_price and current_price > 0 else 1
+                            action_type = "OPEN"
+                            qty = int(max(1, _base_qty))
+                            conf = 70.0
+                            reason = f"TRADIER_FH_MOMENTUM_{'L' if is_long else 'S'}_{_tgsa_rsn}"
                     except Exception: pass
                 # ═══════════════════════════════════════════════════════════════════════
                 # 🚩 GR_HTF_DIRECT_ENTRY — 2026-05-12 USER MANDATE
@@ -13718,6 +14004,13 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                             requested_qty=qty,
                                             reason=reason,
                                         )
+                                    try:
+                                        if _twin_gates_sizing_a is not None and action_type == "OPEN":
+                                            _tgsa_rm = _twin_gates_sizing_a.regime_adaptive_mult(lambda _k, _d: _cfg_auto(_k, _d), safe_fetch_float(i.get("adx_1h", 20), 20.0))
+                                            if _tgsa_rm is not None:
+                                                qty = int(max(1, qty * _tgsa_rm))
+                                    except Exception:
+                                        pass
                                     if 'REENTRY' in (reason or '').upper():
                                         await _dispatch_reentry_guaranteed_trd(order_queue, trade_manager, position_key, action_type, reason, conf, override_qty=qty)
                                     else:
@@ -14126,6 +14419,26 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                         return False
         except Exception as _ctbe:
             logger.warning(f"[COUNTER_TREND_ADD_BLOCK] check error (fail-open): {_ctbe}")
+        # ═══ GR_FILTER_ALL_ENTRIES stocks twin (crypto: ez_manage:30166-30197) ═══
+        # Fresh OPEN requires mtf_live_evaluator.gr_filter_pass (breakout min-ind, sma_200_15m 5% relax). Default False = unchanged live; per-sym via _cfg.
+        try:
+            _gr_act = (action or '').upper()
+            if ('OPEN' in _gr_act or _gr_act == 'BUY') and 'AUGMENT' not in _gr_act and 'REENTER' not in _gr_act and 'REENTRY' not in (reason or '').upper() and 'HEDGE' not in (reason or '').upper() and 'OBLIGATORY' not in (reason or '').upper() and 'CLOSE' not in _gr_act and 'REDUCE' not in _gr_act and not _mandatory_reentry_qta:
+                _gr_acct, _gr_sym, _gr_side = parse_position_key(position_key)
+                _gr_get = lambda _k, _d=None: _cfg(_k, _d, _gr_acct, _gr_sym, _gr_side)
+                if bool(_gr_get('GR_FILTER_ALL_ENTRIES', False)):
+                    import mtf_live_evaluator as _mle_gr
+                    from types import SimpleNamespace as _GrNS
+                    from vec_decisions.twin_yellow_filters import gr_all_entries_blocks as _tyf_gr
+                    _gr_ind = trade_manager.get_indicators(_gr_sym) if _gr_sym else {}
+                    _gr_px = safe_fetch_float((_gr_ind or {}).get('price', (_gr_ind or {}).get('current_price', (_gr_ind or {}).get('mark_price', 0))), 0.0)
+                    _gr_pass_cfg = _GrNS(MTF_GR_FILTER_ENABLED=bool(_gr_get('MTF_GR_FILTER_ENABLED', True)), MTF_GR_MIN_TFS=int(_gr_get('MTF_GR_MIN_TFS', _gr_get('GOLDEN_RULE_HTF_MIN_TFS', 3))), MTF_GR_MIN_IND=int(_gr_get('MTF_GR_MIN_IND', _gr_get('GOLDEN_RULE_MIN_IND', 5))), MTF_GR_INVERT_DC_BB=bool(_gr_get('MTF_GR_INVERT_DC_BB', False)))
+                    if _tyf_gr(_gr_ind or {}, _gr_side, _gr_get, _gr_px, _mle_gr.gr_filter_pass, _gr_pass_cfg):
+                        logger.warning(f"🟡 [GR_FILTER_ALL_ENTRIES] {position_key}: BLOCKED {action} — GR filter fail. reason={(reason or '')[:50]}")
+                        _direct_queue_gate_note(trade_manager, position_key, reason, "GR_FILTER_ALL_ENTRIES")
+                        return False
+        except Exception as _gre:
+            logger.warning(f"[GR_FILTER_ALL_ENTRIES] check error (fail-open): {_gre}")
         # ═══ EMA_BLANKET_FILTER (2026-09-29 USER "any value found in vector must be applied in live") ═══
         # Live twin of v12_quick wave4 ema_blanket_entry_gate: fresh OPEN requires ema_9_above_21 to agree with the side
         # on >= EMA_BLANKET_FILTER_MIN_TFS of 15m/1h/4h/D. Default OFF (config_tradier) = unchanged live; swept per sym_side.
@@ -14136,7 +14449,14 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                 _eb_cfg = SimpleNamespace(EMA_BLANKET_FILTER_ENABLED=bool(_cfg('EMA_BLANKET_FILTER_ENABLED', False, _eb_acct, _eb_sym, _eb_side)), EMA_BLANKET_FILTER_MIN_TFS=_cfg('EMA_BLANKET_FILTER_MIN_TFS', 3, _eb_acct, _eb_sym, _eb_side))
                 if _eb_cfg.EMA_BLANKET_FILTER_ENABLED:
                     from vec_decisions.wave4_families import ema_blanket_live_pass as _eb_pass
-                    _eb_ok, _eb_agree, _eb_found = _eb_pass(trade_manager.get_indicators(_eb_sym) if _eb_sym else {}, _eb_side == "LONG", _eb_cfg)
+                    from vec_decisions.twin_yellow_filters import blanket_scan_tfs as _tyf_eb_scan, ema_blanket_blocks_live as _tyf_eb_block
+                    _tyf_eb_tf = _cfg('EMA_BLANKET_FILTER_FILTER_TF', 'OFF', _eb_acct, _eb_sym, _eb_side)
+                    if _tyf_eb_scan(_tyf_eb_tf) != ("15m", "1h", "4h", "D"):
+                        _eb_ind2 = trade_manager.get_indicators(_eb_sym) if _eb_sym else {}
+                        _eb_blocked = _tyf_eb_block(lambda _k, _d=None: (_eb_ind2 or {}).get(_k, _d), _eb_side == "LONG", _tyf_eb_tf, _eb_cfg.EMA_BLANKET_FILTER_MIN_TFS)
+                        _eb_ok, _eb_agree, _eb_found = (not _eb_blocked), (0 if _eb_blocked else 1), 1
+                    else:
+                        _eb_ok, _eb_agree, _eb_found = _eb_pass(trade_manager.get_indicators(_eb_sym) if _eb_sym else {}, _eb_side == "LONG", _eb_cfg)
                     if not _eb_ok:
                         logger.warning(f"🚫 [EMA_BLANKET_FILTER] {position_key}: BLOCKED {action} — ema9>21 agrees on {_eb_agree}/{_eb_found} TFs < {_eb_cfg.EMA_BLANKET_FILTER_MIN_TFS}. reason={(reason or '')[:50]}")
                         _direct_queue_gate_note(trade_manager, position_key, reason, "EMA_BLANKET_FILTER")
@@ -14212,6 +14532,33 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                         return False
         except Exception as _unwe:
             logger.warning(f"[UNW-L regime gates] check error (fail-open): {_unwe}")
+        # TWIN_EXITS_DEAD 2026-10-04 entry confirmation gates (BBKC/WICK veto fresh OPEN; default OFF = neutral).
+        try:
+            _ted_act = (action or '').upper()
+            if position_key and (('OPEN' in _ted_act or 'ENTRY' in _ted_act or _ted_act == 'BUY') and 'REENTER' not in _ted_act and 'CLOSE' not in _ted_act and 'REDUCE' not in _ted_act
+                                 and 'REENTRY' not in (reason or '').upper() and 'OBLIGATORY' not in (reason or '').upper()) and 'HEDGE' not in _ted_act and 'HEDGE' not in (reason or '').upper():
+                _ted_acct, _ted_sym, _ted_side = parse_position_key(position_key)
+                _ted_c = lambda _k, _d=None: _cfg(_k, _d, _ted_acct, _ted_sym, _ted_side)
+                _ted_bbk_on = bool(_ted_c('BBKC_ENTRY_ENABLED', False))
+                _ted_wk_on = bool(_ted_c('WICK_REJECT_ENTRY_ENABLED', False))
+                if _ted_bbk_on or _ted_wk_on:
+                    from vec_decisions import twin_exits_dead as _ted
+                    _ted_ind = (trade_manager.get_indicators(_ted_sym) if _ted_sym else {}) or {}
+                    _ted_px = safe_fetch_float(_ted_ind.get('current_price', 0), 0.0)
+                    if _ted_bbk_on:
+                        _ted_ok, _ted_why = _ted.bbkc_entry_live_pass(_ted_ind, _ted_px, _ted_side == 'LONG', _ted_c)
+                        if not _ted_ok:
+                            logger.warning(f"🚫 [BBKC_ENTRY] {position_key}: BLOCKED {action} — {_ted_why}. reason={(reason or '')[:60]}")
+                            _direct_queue_gate_note(trade_manager, position_key, reason, 'BBKC_ENTRY')
+                            return False
+                    if _ted_wk_on:
+                        _ted_ok, _ted_why = _ted.wick_entry_live_pass(_ted_ind, _ted_side == 'LONG', _ted_c)
+                        if not _ted_ok:
+                            logger.warning(f"🚫 [WICK_REJECT_ENTRY] {position_key}: BLOCKED {action} — {_ted_why}. reason={(reason or '')[:60]}")
+                            _direct_queue_gate_note(trade_manager, position_key, reason, 'WICK_REJECT_ENTRY')
+                            return False
+        except Exception as _tede2:
+            logger.warning(f"[TWIN_EXITS_DEAD entry gates] check error (fail-open): {_tede2}")
         # UNW-L 2026-10-01: WT_COMPOSITE_HTF_GATE + WT_COMPOSITE_ENTRY_BLOCK hard block on fresh OPEN / AUGMENT (vec_decisions/wt_composite_gate twin); master default False = neutral.
         try:
             _wtc_act = (action or '').upper()
@@ -15379,6 +15726,17 @@ def _apply_research_only_live_gates(account_key, symbol, side, indicators, is_en
             if agree < min_blocks:
                 return True, f"CONFLUENCE_BLOCK(agree={agree}<{min_blocks})"
         except Exception: pass
+    # GATES-A 2026-10-04: SBA_BOUNCE + TRADIER_MFI_ENTRY_LONG fresh-entry vetoes (twin_gates_sizing_a).
+    if is_entry and _twin_gates_sizing_a is not None:
+        try:
+            _tgsa_get = lambda _k, _d: _cfg(_k, _d, account_key, symbol, side)
+            _tgsa_blk, _tgsa_why = _twin_gates_sizing_a.sba_veto_blocks(_tgsa_get, indicators or {}, is_long)
+            if not _tgsa_blk:
+                _tgsa_blk, _tgsa_why = _twin_gates_sizing_a.tradier_mfi_long_blocks(_tgsa_get, indicators or {}, is_long, True)
+            if _tgsa_blk:
+                return True, _tgsa_why
+        except Exception:
+            pass
     # STRENGTH_FILTER — vector 2760: score >= STRENGTH_MIN_SCORE (B15=4 etc). Live approximates by composite score.
     if is_entry and _cfg('STRENGTH_FILTER_ENABLED', True, account_key, symbol, side):
         try:
@@ -18476,6 +18834,18 @@ class StockStrategy:
         # USER 2026-06-22: 1 share is always minimum for stocks. int() truncates 0.505 → 0
         # for high-priced stocks (MU $1188 = 0.505 shares → id=NONE chronic failure). If qty
         # was computed as non-zero, round up to 1 rather than returning 0.
+        # TWIN_SIZING_REDUCE 2026-10-04 sizing twins (shared vec_decisions/twin_sizing_reduce predicates, vec math): FIXED_QUANTITY bypass + ATR/EMA mults. Per-sym _cfg, fail-open.
+        try:
+            _tsr_c = lambda _k, _d: _cfg(_k, _d, account_key, symbol, position_side)
+            if str(action or "").upper() in ("OPEN", "AUGMENT", "REENTRY"):
+                if _twin_sr.fixed_quantity_active(_tsr_c):
+                    return float(base_quantity)
+                _tsr_px = float(current_price or 0.0)
+                if _tsr_px > 0.0:
+                    qty = float(qty) * float(_twin_sr.atr_adaptive_size_mult(_tsr_c, i or {}, _tsr_px))
+                    qty = float(qty) * float(_twin_sr.ema_dist_size_mult(_tsr_c, i or {}, _tsr_px))
+        except Exception as _tsr_e:
+            logger.warning(f"[TWIN_SR_SIZING] {symbol} probe err: {_tsr_e}")
         qty = float(max(1, int(qty)) if qty > 0.0 else 0.0)
         if qty * current_price < 25.0: return 0.0
         return float(max(1, int(qty)) if qty > 0.0 else 0.0)
@@ -27772,6 +28142,8 @@ class TradierTradeManager:
                     _tfs_9_21 = [t.strip() for t in _raw_tfs.split(',') if t.strip()]
                 except Exception:
                     _tfs_9_21 = [str(_cfg_auto('EMA_9_21_TIMEFRAME', '1h'))]
+                from vec_decisions.twin_yellow_filters import kg_stocks_tfs_restrict as _tyf_kg_tfs
+                _tfs_9_21 = _tyf_kg_tfs(_tfs_9_21, _cfg_auto('KINDERGARTEN_FILTER_TF', '15m'))
                 for _tf in _tfs_9_21:
                     _raw = indicators.get(f'ema_9_above_21_{_tf}', None)
                     if _raw is not None:
@@ -28614,6 +28986,16 @@ class TradierTradeManager:
                         _bs_m = max(_bs_min, min(_bs_max, _bs_m))
                         max_value *= _bs_m
                         logger.info(f"[BAND_SLOPE_SIZING_V2] {symbol} {side}: lrL_pct_b_{_bs_tf}={_bs_pb:.3f} slope_day={_bs_slope_day:+.3f}%/d mult={_bs_m:.2f} (max {_bs_max:.1f}) → ${max_value:.0f}")
+                        # OPERATOR-ACTIVATED 2026-10-04 (inert 1.0 at defaults; was REPORT): live stocks reads only
+                        # STDEV_SLOPE_LOOKBACK_15M at indicator time (tradier_indicators.py:1996); no sizing-time
+                        # STDEV_* reads. This would apply the twin scalar factor after the V2/STDEV block.
+                        # Inert at defaults. NOTE: tradier uses _cfg_auto indirection; twin getattr(cfg)
+                        # matches only if config object carries the fields (config_tradier.py:972-980,2875-2876).
+                        try:
+                            import vec_decisions.twin_stdev as _twin_stdev
+                            max_value *= _twin_stdev.get_scalar(_bs_ind, _bs_long, config)
+                        except Exception:
+                            pass
                 except Exception as _bs_e:
                     logger.warning(f"[BAND_SLOPE_SIZING_V2] {symbol} sizing check failed: {_bs_e}")
             try:
