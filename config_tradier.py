@@ -1989,6 +1989,7 @@ class TradierConfig:
     K3M_CAP: int = 80
     K3M_CAP_BREAKOUT_BYPASS: bool = True
     K3M_FLOOR: int = 30
+    K3M_FLOOR_ENABLED: bool = False  # lane A 2026-10-04 LIVE_MIRROR: tradier floor stub is dead (never applies); False = today's live
     KLINE_COLUMNS: List[str] = field(
         default_factory=lambda: ["timestamp", "open", "high", "low", "close", "volume"]
     )

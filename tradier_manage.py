@@ -9426,7 +9426,7 @@ def _gap_per_symbol_should_close(is_long: bool, avg_gap: Optional[float]) -> boo
     """User rule 2026-09-11 + 2026-09-23 ALWAYS: ONLY per-symbol decides. Close longs when avg gap negative (gap-down risk) beyond thresh, shorts when avg positive beyond thresh. Near 0 → don't close on gap (only VV). Thr ALWAYS 0.10 per spec."""
     if avg_gap is None:
         return False
-    thr = float(_cfg_auto('GAP_PER_SYMBOL_AVG_THRESH_PCT', 0.10))
+    thr = float(_cfg_auto('GAP_PER_SYMBOL_AVG_THRESH_PCT', 0.10) or _cfg_auto('GAP_MOC_HOLD_POSITIVE_BIAS_PCT', 0.30))  # lane-B 2026-10-04 LIVE_MIRROR: same falsy-fallback chain as vec (v12:11586); default 0.10 truthy -> zero behavior change
     if is_long:
         return avg_gap < -thr
     else:
@@ -9986,7 +9986,7 @@ async def gap_moc_and_morning_loop(trade_manager):
                     # ---- evaluate both sentinels ----
                     # Open-gap decides per existing rule
                     avg_gap = _gap_per_symbol_avg_gap(sym)
-                    thr = float(_cfg_auto('GAP_PER_SYMBOL_AVG_THRESH_PCT', 0.10))
+                    thr = float(_cfg_auto('GAP_PER_SYMBOL_AVG_THRESH_PCT', 0.10) or _cfg_auto('GAP_MOC_HOLD_POSITIVE_BIAS_PCT', 0.30))  # lane-B 2026-10-04 LIVE_MIRROR: same falsy-fallback chain as vec (v12:11586); default 0.10 truthy -> zero behavior change
                     # Close-gap decides (stocks-only, shorts-default)
                     avg_close_gap = _gap_close_per_symbol_avg_gap(sym)
                     thr_close = float(_cfg_auto('GAP_CLOSE_PER_SYMBOL_AVG_THRESH_PCT', 0.10))

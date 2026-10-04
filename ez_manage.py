@@ -537,11 +537,13 @@ def check_entry_alignment(
     if not is_long and k_3m <= (100 - _k3m_cap):
         return False, f"K3M_CAP_SHORT({k_3m:.0f}<={100 - _k3m_cap})"
     # BACKTEST_CHANGE_9: K3M_FLOOR blocks SHORT when k_3m <= floor (mirror of K3M_CAP)
+    # lane A 2026-10-04 LIVE_MIRROR: K3M_FLOOR_ENABLED gate (default True = today's unconditional live)
     _k3m_floor = 30  # default; overridden by config at call sites
-    if not is_long and k_3m <= _k3m_floor:
-        return False, f"K3M_FLOOR_SHORT({k_3m:.0f}<={_k3m_floor})"
-    if is_long and k_3m >= (100 - _k3m_floor):
-        return False, f"K3M_FLOOR_LONG({k_3m:.0f}>={100 - _k3m_floor})"
+    if getattr(config, "K3M_FLOOR_ENABLED", True):
+        if not is_long and k_3m <= _k3m_floor:
+            return False, f"K3M_FLOOR_SHORT({k_3m:.0f}<={_k3m_floor})"
+        if is_long and k_3m >= (100 - _k3m_floor):
+            return False, f"K3M_FLOOR_LONG({k_3m:.0f}>={100 - _k3m_floor})"
     # BACKTEST_CHANGE_137: ADX regime filter — block entries in choppy/ranging markets (ADX < 20). 36%→182% improvement documented.
     if getattr(config, "ADX_REGIME_FILTER_ENABLED", False):
         _adx_1h = _sf(indicators.get(f"adx_{getattr(config, 'ADX_TF', '1h')}"), 25.0)

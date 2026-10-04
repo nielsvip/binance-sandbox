@@ -1,0 +1,4009 @@
+[
+{
+"switch": "ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"process_position"
+],
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "ALL",
+"shard": "C"
+},
+{
+"switch": "ATR_ADAPTIVE_STOP_MULT",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"calculate_final_order_quantity"
+],
+[
+"tradier_manage.py",
+"_apply_research_only_live_gates"
+],
+[
+"tradier_manage.py",
+"_wire_625_live_reads"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "ATR",
+"shard": "C"
+},
+{
+"switch": "ATR_LONG_WINDOW",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "ATR",
+"shard": "C"
+},
+{
+"switch": "ATR_TRAIL_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"check_entry_alignment"
+],
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "DEEP",
+"family": "ATR",
+"shard": "C"
+},
+{
+"switch": "ATR_TRAIL_SWEEP_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "DEEP",
+"family": "ATR",
+"shard": "C"
+},
+{
+"switch": "AUGMENTED_POSITIONS_GUARD_FLOOR_MULT",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"execute_trade_action"
+],
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+],
+[
+"tradier_manage.py",
+"_ensure_tradier_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "AUGMENTED",
+"shard": "A"
+},
+{
+"switch": "AUGMENT_AT_LOSS_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "AUGMENT",
+"shard": "C"
+},
+{
+"switch": "AUGMENT_FALLBACK_GAIN_PCT",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"_ensure_tradier_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "AUGMENT",
+"shard": "C"
+},
+{
+"switch": "AUGMENT_FALLBACK_REDUCE_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"_ensure_tradier_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "AUGMENT",
+"shard": "C"
+},
+{
+"switch": "AUGMENT_FALLBACK_REDUCE_PCT",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"_ensure_tradier_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "AUGMENT",
+"shard": "C"
+},
+{
+"switch": "AUGMENT_WT_4H_BOUNCE_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "AUGMENT",
+"shard": "C"
+},
+{
+"switch": "BANDAID_OFF_LOSER_RECOVER_PCT",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"process_position"
+],
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+],
+[
+"tradier_manage.py",
+"_ensure_tradier_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "MEDIUM",
+"family": "BANDAID",
+"shard": "B"
+},
+{
+"switch": "BAND_ARROW_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+],
+[
+"tradier_manage.py",
+"band_arrow_score"
+],
+[
+"tradier_manage.py",
+"process_position"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "MEDIUM",
+"family": "BAND",
+"shard": "C"
+},
+{
+"switch": "BAND_ARROW_SLOPE_DEADBAND",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+],
+[
+"tradier_manage.py",
+"band_arrow_score"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "BAND",
+"shard": "C"
+},
+{
+"switch": "BB_BREAKOUT_SCORE",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"_wire_625_live_reads"
+],
+[
+"tradier_manage.py",
+"process_position"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "BB",
+"shard": "C"
+},
+{
+"switch": "BEAR_MARKET_MODE_TRADIER",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_apply_trc_overrides"
+],
+[
+"tradier_manage.py",
+"_wire_625_live_reads"
+],
+[
+"tradier_manage.py",
+"calculate_signal_score"
+],
+[
+"tradier_manage.py",
+"process_position"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "BEAR",
+"shard": "C"
+},
+{
+"switch": "BLACKLIST_SYMBOLS",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"execute_trade_action"
+],
+[
+"ez_manage.py",
+"process_position"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "BLACKLIST",
+"shard": "A"
+},
+{
+"switch": "BOTTOM_EXIT_HTF_WT_VETO_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"process_position"
+],
+[
+"tradier_manage.py",
+"process_position"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "BOTTOM",
+"shard": "B"
+},
+{
+"switch": "BOUNCE_REENTRY_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "BOUNCE",
+"shard": "A"
+},
+{
+"switch": "BOUNCE_REENTRY_K_RESET_LONG",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "BOUNCE",
+"shard": "A"
+},
+{
+"switch": "BOUNCE_REENTRY_K_RESET_SHORT",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "BOUNCE",
+"shard": "A"
+},
+{
+"switch": "BREAKEVEN_GAIN_EROSION_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "BREAKEVEN",
+"shard": "C"
+},
+{
+"switch": "BREAKOUT_LEASH_REENTRY_MULT",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "BREAKOUT",
+"shard": "A"
+},
+{
+"switch": "BTC_ACCEL_RAMP_REQUIRE_POSITIVE",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "BTC",
+"shard": "B"
+},
+{
+"switch": "BTC_BREAKOUT_ENTRY_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "BTC",
+"shard": "B"
+},
+{
+"switch": "BTC_DEDICATED_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "BTC",
+"shard": "B"
+},
+{
+"switch": "BTC_DIVERGENCE_EXIT_AGAINST",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "BTC",
+"shard": "B"
+},
+{
+"switch": "BTC_GUARANTEED_REENTRY_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "BTC",
+"shard": "B"
+},
+{
+"switch": "BTC_GUARANTEED_REENTRY_MAX_AGE_BARS",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "BTC",
+"shard": "B"
+},
+{
+"switch": "BTC_GUARANTEED_REENTRY_MIN_GAP_BARS",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "BTC",
+"shard": "B"
+},
+{
+"switch": "BTC_HARD_BLOCK_OTHER_ACCOUNTS",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "BTC",
+"shard": "B"
+},
+{
+"switch": "BTC_ROUND_BANDS_EACH_SIDE",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "BTC",
+"shard": "B"
+},
+{
+"switch": "BTC_RZ_WT_DC_MULTIFACTOR",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "BTC",
+"shard": "B"
+},
+{
+"switch": "BTC_TECH_EXIT_WT_MIN_TFS",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "BTC",
+"shard": "B"
+},
+{
+"switch": "CHANNEL_REENTRY_STOP_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "CHANNEL",
+"shard": "B"
+},
+{
+"switch": "CIRCUIT_SHARPE_GATES_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "CIRCUIT",
+"shard": "C"
+},
+{
+"switch": "COOLDOWN_LOCKS_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "COOLDOWN",
+"shard": "A"
+},
+{
+"switch": "CRYPTO_SPIKE_FADE_THRESHOLD_PCT",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"crypto_spike_fade_loop"
+],
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "DEEP",
+"family": "CRYPTO",
+"shard": "B"
+},
+{
+"switch": "DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_reentry_queue_consumer_loop"
+],
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "DEEP",
+"family": "DAEMON",
+"shard": "A"
+},
+{
+"switch": "DAEMON_REENTRY_STALE_EXIT_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"process_position"
+],
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "DAEMON",
+"shard": "A"
+},
+{
+"switch": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "DC",
+"shard": "B"
+},
+{
+"switch": "DC_MOMENT_STRONG_THRESHOLD",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "DC",
+"shard": "B"
+},
+{
+"switch": "DD_BOUNCE_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"evaluate_augmentation"
+],
+[
+"ez_manage.py",
+"process_position"
+],
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "DD",
+"shard": "C"
+},
+{
+"switch": "DELTA_ENGINE_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "DELTA",
+"shard": "B"
+},
+{
+"switch": "DELTA_GATE_BB_SQUEEZE",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_apply_research_only_live_gates"
+],
+[
+"tradier_manage.py",
+"_wire_625_live_reads"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "DELTA",
+"shard": "B"
+},
+{
+"switch": "DELTA_PYRAMID_MAX",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"__init__"
+],
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "DELTA",
+"shard": "B"
+},
+{
+"switch": "DELTA_PYRAMID_PRICE_TOL",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"__init__"
+],
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "DELTA",
+"shard": "B"
+},
+{
+"switch": "DELTA_REENTRY_FILTER_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"check_reentry_delta_tolerant"
+],
+[
+"tradier_manage.py",
+"_batch1_template_live_gate_tradier"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "MEDIUM",
+"family": "DELTA",
+"shard": "B"
+},
+{
+"switch": "DELTA_REENTRY_MIN_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"check_reentry_delta_tolerant"
+],
+[
+"tradier_manage.py",
+"_apply_research_only_live_gates"
+],
+[
+"tradier_manage.py",
+"_wire_625_live_reads"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "DELTA",
+"shard": "B"
+},
+{
+"switch": "DELTA_REENTRY_Z_THRESHOLD",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"check_reentry_delta_tolerant"
+],
+[
+"tradier_manage.py",
+"_apply_research_only_live_gates"
+],
+[
+"tradier_manage.py",
+"_wire_625_live_reads"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "DELTA",
+"shard": "B"
+},
+{
+"switch": "DIRECTION_FAVORABLE_REENTRY_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"process_single_reentry_evaluation"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "DIRECTION",
+"shard": "A"
+},
+{
+"switch": "EMERGENCY_BRAKE_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"_ensure_tradier_all"
+]
+],
+"vec": [],
+"surface": "+fdict",
+"band": "MEDIUM",
+"family": "EMERGENCY",
+"shard": "B"
+},
+{
+"switch": "ENTRY_PRIMARY_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"calculate_signal_score"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "ENTRY",
+"shard": "C"
+},
+{
+"switch": "EOD_SLIM_RATIO_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_wire_625_live_reads"
+],
+[
+"tradier_manage.py",
+"last_hour_balancing_loop"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "DEEP",
+"family": "EOD",
+"shard": "C"
+},
+{
+"switch": "EXECUTE_NOW_MAX_MARK_AGE_S",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"execute_now"
+],
+[
+"tradier_manage.py",
+"execute_now"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "EXECUTE",
+"shard": "B"
+},
+{
+"switch": "EXECUTE_NOW_SINGLE_GATE_ENFORCE",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "EXECUTE",
+"shard": "B"
+},
+{
+"switch": "EXHAUSTION_EXIT_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"_ensure_tradier_all"
+]
+],
+"vec": [],
+"surface": "+fdict",
+"band": "MEDIUM",
+"family": "EXHAUSTION",
+"shard": "A"
+},
+{
+"switch": "EXIT_R1_R2_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"_ensure_tradier_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "MEDIUM",
+"family": "EXIT",
+"shard": "B"
+},
+{
+"switch": "EXIT_SCORER_DC_EXTREME",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"_ensure_tradier_all"
+],
+[
+"tradier_manage.py",
+"_wire_625_live_reads"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "EXIT",
+"shard": "B"
+},
+{
+"switch": "EXIT_STDEV_BREAKOUT_FAIL_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_wire_625_live_reads"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "EXIT",
+"shard": "B"
+},
+{
+"switch": "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"_ensure_tradier_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "MEDIUM",
+"family": "EXIT",
+"shard": "B"
+},
+{
+"switch": "EXIT_TO_REDUCE_ADAPTER_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"_ensure_tradier_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "MEDIUM",
+"family": "EXIT",
+"shard": "B"
+},
+{
+"switch": "EZ_MANAGE_THROTTLER_RATE",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"__init__"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "EZ",
+"shard": "A"
+},
+{
+"switch": "FG_FEAR_THRESHOLD",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"calculate_final_order_quantity"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "FG",
+"shard": "C"
+},
+{
+"switch": "FG_GREED_THRESHOLD",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"calculate_final_order_quantity"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "FG",
+"shard": "C"
+},
+{
+"switch": "FH_MOMENTUM_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"_ensure_tradier_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "MEDIUM",
+"family": "FH",
+"shard": "B"
+},
+{
+"switch": "FIRST_OPEN_THROTTLE_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "FIRST",
+"shard": "C"
+},
+{
+"switch": "FOLLOW_THROUGH_REENTRY_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "FOLLOW",
+"shard": "A"
+},
+{
+"switch": "FROZEN_STOP_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "FROZEN",
+"shard": "B"
+},
+{
+"switch": "FUNDING_GATE_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"_ensure_tradier_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "MEDIUM",
+"family": "FUNDING",
+"shard": "C"
+},
+{
+"switch": "GOLDEN_RULE_BASE_USD",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_golden_rule_loop"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "DEEP",
+"family": "GOLDEN",
+"shard": "B"
+},
+{
+"switch": "GOLDEN_RULE_ENFORCE_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "GOLDEN",
+"shard": "B"
+},
+{
+"switch": "GOLDEN_RULE_HTF_VOTE_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "+fdict",
+"band": "LIGHT",
+"family": "GOLDEN",
+"shard": "B"
+},
+{
+"switch": "GR_FILTER_VEC_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "GR",
+"shard": "A"
+},
+{
+"switch": "GR_FILTER_VEC_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "GR",
+"shard": "A"
+},
+{
+"switch": "GR_FILTER_VEC_MIN_TFS",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "GR",
+"shard": "A"
+},
+{
+"switch": "GR_V5_STATE_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "+fdict",
+"band": "DEEP",
+"family": "GR",
+"shard": "A"
+},
+{
+"switch": "HAIKU_WINNER_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "HAIKU",
+"shard": "A"
+},
+{
+"switch": "HA_WICK_QUALITY_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "HA",
+"shard": "C"
+},
+{
+"switch": "HA_WICK_QUALITY_SCORE",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "HA",
+"shard": "C"
+},
+{
+"switch": "HA_WICK_QUALITY_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "HA",
+"shard": "C"
+},
+{
+"switch": "HLR_REENTRY_MAX_AGE_S",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "HLR",
+"shard": "C"
+},
+{
+"switch": "HLR_SMA_BAND_PCT",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "HLR",
+"shard": "C"
+},
+{
+"switch": "HTF_TREND_VETO_BYPASS_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"execute_trade_action"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "HTF",
+"shard": "B"
+},
+{
+"switch": "HTF_TREND_VETO_BYPASS_REASONS",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"execute_trade_action"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "HTF",
+"shard": "B"
+},
+{
+"switch": "HTF_WT_CHURN_REENTRY_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"process_single_reentry_evaluation"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "HTF",
+"shard": "B"
+},
+{
+"switch": "HTF_WT_CHURN_REENTRY_MAX_AGE_MIN",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"process_single_reentry_evaluation"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "HTF",
+"shard": "B"
+},
+{
+"switch": "INTRADAY_RATIO_CHECK_INTERVAL_MIN",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"intraday_ratio_rebalance_loop"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "DEEP",
+"family": "INTRADAY",
+"shard": "C"
+},
+{
+"switch": "INTRADAY_RATIO_COOLDOWN_MIN",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"intraday_ratio_rebalance_loop"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "DEEP",
+"family": "INTRADAY",
+"shard": "C"
+},
+{
+"switch": "INTRADAY_RATIO_DEVIATION_THR",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"intraday_ratio_rebalance_loop"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "DEEP",
+"family": "INTRADAY",
+"shard": "C"
+},
+{
+"switch": "INTRADAY_RATIO_MAX_TRIMS_PER_DAY",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"intraday_ratio_rebalance_loop"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "DEEP",
+"family": "INTRADAY",
+"shard": "C"
+},
+{
+"switch": "INTRADAY_RATIO_REBALANCE_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"intraday_ratio_rebalance_loop"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "DEEP",
+"family": "INTRADAY",
+"shard": "C"
+},
+{
+"switch": "INTRADAY_RATIO_REQUIRE_TOP",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"intraday_ratio_rebalance_loop"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "DEEP",
+"family": "INTRADAY",
+"shard": "C"
+},
+{
+"switch": "INTRADAY_RATIO_TRIM_FRAC",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"intraday_ratio_rebalance_loop"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "DEEP",
+"family": "INTRADAY",
+"shard": "C"
+},
+{
+"switch": "INTRADAY_SESSION_FORCE_EXIT_UTC",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "INTRADAY",
+"shard": "C"
+},
+{
+"switch": "LEGACY_PROC_SINGLE_REENTRY",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"process_single_reentry_evaluation"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "LEGACY",
+"shard": "C"
+},
+{
+"switch": "LEGACY_REENTRY_PSR_DC_BOUNCE",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"process_single_reentry_evaluation"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "LEGACY",
+"shard": "C"
+},
+{
+"switch": "LEGACY_REENTRY_PSR_FULL_DC",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"process_single_reentry_evaluation"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "LEGACY",
+"shard": "C"
+},
+{
+"switch": "LEGACY_REENTRY_PSR_K_DC_CROSSOVER",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"process_single_reentry_evaluation"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "LEGACY",
+"shard": "C"
+},
+{
+"switch": "LEGACY_REENTRY_PSR_QUICK_RECOVERY",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"process_single_reentry_evaluation"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "LEGACY",
+"shard": "C"
+},
+{
+"switch": "LIVE_VEC_EMERGENCY_BRAKE_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"execute_now"
+],
+[
+"tradier_manage.py",
+"execute_now"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "MEDIUM",
+"family": "LIVE",
+"shard": "B"
+},
+{
+"switch": "MACD_ZERO_CROSS_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "MACD",
+"shard": "A"
+},
+{
+"switch": "MACD_ZERO_CROSS_SCORE",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "MACD",
+"shard": "A"
+},
+{
+"switch": "MACD_ZERO_CROSS_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "MACD",
+"shard": "A"
+},
+{
+"switch": "MANDATORY_REENTRY_WT_FILTER_MIN_TFS",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"process_position"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "MEDIUM",
+"family": "MANDATORY",
+"shard": "A"
+},
+{
+"switch": "MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"process_position"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "MEDIUM",
+"family": "MANDATORY",
+"shard": "A"
+},
+{
+"switch": "MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"process_position"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "MEDIUM",
+"family": "MANDATORY",
+"shard": "A"
+},
+{
+"switch": "MANDATORY_REENTRY_WT_FILTER_TF_MODE",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"process_position"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "MEDIUM",
+"family": "MANDATORY",
+"shard": "A"
+},
+{
+"switch": "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"process_position"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "MEDIUM",
+"family": "MANDATORY",
+"shard": "A"
+},
+{
+"switch": "MI_ENTRY_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "MI",
+"shard": "B"
+},
+{
+"switch": "MI_ENTRY_EXHAUST_BONUS",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "MI",
+"shard": "B"
+},
+{
+"switch": "MI_ENTRY_STRUCT_BONUS",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "MI",
+"shard": "B"
+},
+{
+"switch": "MOVER_THRESHOLD",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "MOVER",
+"shard": "C"
+},
+{
+"switch": "MTF_ARMED_ENTRIES_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "MTF",
+"shard": "C"
+},
+{
+"switch": "MTF_ATR_TRAIL_FILTER_TF",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "+fdict",
+"band": "DEEP",
+"family": "MTF",
+"shard": "C"
+},
+{
+"switch": "MTF_FILTER_STRONG_BUY_QUICK_BYPASS",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"execute_now"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "MTF",
+"shard": "C"
+},
+{
+"switch": "MTS_BOTTOM_BONUS_THRESHOLD",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "MTS",
+"shard": "A"
+},
+{
+"switch": "MTS_BOTTOM_STRONG_THRESHOLD",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "MTS",
+"shard": "A"
+},
+{
+"switch": "MTS_GATE_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl+fdict",
+"band": "LIGHT",
+"family": "MTS",
+"shard": "A"
+},
+{
+"switch": "MU_CORRECTION_EXIT_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"evaluate_stop"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "MU",
+"shard": "A"
+},
+{
+"switch": "MU_CORRECTION_REENTRY_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"evaluate_reentry"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "MU",
+"shard": "A"
+},
+{
+"switch": "OBLIGATORY_REENTRY_SCORE_TIER1",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "OBLIGATORY",
+"shard": "C"
+},
+{
+"switch": "OPEN_RATE_BREAKER_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"execute_now"
+],
+[
+"tradier_manage.py",
+"execute_now"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "OPEN",
+"shard": "B"
+},
+{
+"switch": "OPEN_RATE_MAX",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"execute_now"
+],
+[
+"tradier_manage.py",
+"execute_now"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "OPEN",
+"shard": "B"
+},
+{
+"switch": "PARTIAL_EXIT_FRAC",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "PARTIAL",
+"shard": "A"
+},
+{
+"switch": "PER_SYM_GATE_FLAT_OPEN_ENFORCE",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"execute_now"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "PER",
+"shard": "B"
+},
+{
+"switch": "RECENT_REDUCTION_GUARD_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"execute_now"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "RECENT",
+"shard": "C"
+},
+{
+"switch": "REENTRY2_DIR_FAV_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"process_single_reentry_evaluation"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "REENTRY2",
+"shard": "A"
+},
+{
+"switch": "REENTRY_EXIT_RECLAIM_BUFFER_PCT",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"evaluate_reentry"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_EXIT_RECLAIM_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"evaluate_reentry"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_K15M_PARTIAL_MULT",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"process_single_reentry_evaluation"
+],
+[
+"ez_manage.py",
+"reentry_enforcement_loop"
+],
+[
+"tradier_manage.py",
+"_wire_625_live_reads"
+],
+[
+"tradier_manage.py",
+"reentry_monitor_loop"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "DEEP",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_POST_CONSOL_ATR_THRESHOLD",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_compose_reentry_mult"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_POST_CONSOL_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_compose_reentry_mult"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_POST_CONSOL_MULT",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_compose_reentry_mult"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_POST_CONSOL_TFS_REQUIRED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_compose_reentry_mult"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_PRICE_IMPROVE_PCT",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"process_single_reentry_evaluation"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_WT15M_SIZE_MULT",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"process_single_reentry_evaluation"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REGIME_RANGING_EXIT_GAIN_MIN",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_apply_research_only_live_gates"
+],
+[
+"tradier_manage.py",
+"_wire_625_live_reads"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REGIME",
+"shard": "C"
+},
+{
+"switch": "REGIME_TRENDING_EXIT_GAIN_MIN",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_apply_research_only_live_gates"
+],
+[
+"tradier_manage.py",
+"_wire_625_live_reads"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REGIME",
+"shard": "C"
+},
+{
+"switch": "SCALP_V3_K_OB_EXIT_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "SCALP",
+"shard": "B"
+},
+{
+"switch": "SCALP_V3_K_OB_EXIT_K15M_HI",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "SCALP",
+"shard": "B"
+},
+{
+"switch": "SCALP_V3_K_OB_EXIT_K15M_LO",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "SCALP",
+"shard": "B"
+},
+{
+"switch": "SCALP_V3_K_OB_EXIT_K3M_HI",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "SCALP",
+"shard": "B"
+},
+{
+"switch": "SCALP_V3_K_OB_EXIT_K3M_LO",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "SCALP",
+"shard": "B"
+},
+{
+"switch": "SCALP_V3_K_OB_EXIT_WALL_PCT",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "SCALP",
+"shard": "B"
+},
+{
+"switch": "SCALP_V3_OB_WALL_TOO_CLOSE_PCT",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "SCALP",
+"shard": "B"
+},
+{
+"switch": "SCALP_V3_PROTECTIVE_EXIT_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "SCALP",
+"shard": "B"
+},
+{
+"switch": "SENTIMENT_REBAL_COOLDOWN_MIN",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"periodic_sentiment_rebalancing"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "SENTIMENT",
+"shard": "A"
+},
+{
+"switch": "SENTIMENT_REBAL_REDUCE_DEVIATION_THR",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_wire_625_live_reads"
+],
+[
+"tradier_manage.py",
+"periodic_sentiment_rebalancing"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "SENTIMENT",
+"shard": "A"
+},
+{
+"switch": "TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_manage_daytrade_positions"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "TRADIER",
+"shard": "B"
+},
+{
+"switch": "TRADIER_DC_DAYTRADE_STOP_USE_DC_15M",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_manage_daytrade_positions"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "TRADIER",
+"shard": "B"
+},
+{
+"switch": "TRADIER_DC_DAYTRADE_TARGET_USE_DC4_15M",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_manage_daytrade_positions"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "TRADIER",
+"shard": "B"
+},
+{
+"switch": "TRADIER_DC_DAYTRADE_TARGET_USE_DC_15M",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_manage_daytrade_positions"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "TRADIER",
+"shard": "B"
+},
+{
+"switch": "V8_ENTRY_ENGINE_WT_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"_ensure_tradier_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "V8",
+"shard": "B"
+},
+{
+"switch": "WT_15M_CROSS_ENTRY_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "WT",
+"shard": "C"
+},
+{
+"switch": "WT_AGAINST_FILTER_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"_ensure_tradier_all"
+],
+[
+"tradier_manage.py",
+"_v12_b11_reentry_allowed"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "WT",
+"shard": "C"
+},
+{
+"switch": "WT_COMPOSITE_ENTRY_GOOD",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"_ensure_tradier_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "WT",
+"shard": "C"
+},
+{
+"switch": "WT_COMPOSITE_ENTRY_OK",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"_ensure_tradier_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "WT",
+"shard": "C"
+},
+{
+"switch": "WT_COMPOSITE_ENTRY_STRONG",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"_ensure_tradier_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "WT",
+"shard": "C"
+},
+{
+"switch": "WT_DC_DIRECT_THRESHOLD",
+"need": "VEC_TWIN",
+"live": [
+[
+"tradier_manage.py",
+"_shared_direct_entry_claim"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "LIGHT",
+"family": "WT",
+"shard": "C"
+},
+{
+"switch": "WT_DIV_ENTRY_GATE_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"_ensure_tradier_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "WT",
+"shard": "C"
+},
+{
+"switch": "WT_EXHAUST_ENTRY_GATE_ENABLED",
+"need": "VEC_TWIN",
+"live": [
+[
+"ez_manage.py",
+"_ensure_ez_all"
+],
+[
+"tradier_manage.py",
+"_ensure_tradier_all"
+]
+],
+"vec": [],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "WT",
+"shard": "C"
+},
+{
+"switch": "BB_BREAKOUT_ENTRY_TF",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"compute_reentry_blocks"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "BB",
+"shard": "C"
+},
+{
+"switch": "BB_SQUEEZE_EXIT_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"wave4_families.py",
+"bb_squeeze_exit_mask"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "BB",
+"shard": "C"
+},
+{
+"switch": "DC_BREAKOUT_ENTRY_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"dc_break.py",
+"check_dc_break"
+],
+[
+"dc_break.py",
+"check_dc_break_vec"
+],
+[
+"test_dc_break.py",
+"main"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "DC",
+"shard": "B"
+},
+{
+"switch": "EMA_9_21_FILTER_FILTER_TF",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"compute_entry_signals"
+]
+],
+"surface": "tpl+fdict",
+"band": "MEDIUM",
+"family": "EMA",
+"shard": "C"
+},
+{
+"switch": "ENTRY_DC_BUFFER_PCT",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"compute_entry_signals"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "ENTRY",
+"shard": "C"
+},
+{
+"switch": "ENTRY_DC_TF",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"compute_entry_signals"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "ENTRY",
+"shard": "C"
+},
+{
+"switch": "EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"guaranteed_price_cross_reentry.py",
+"check_guaranteed_price_cross_reentry"
+],
+[
+"guaranteed_price_cross_reentry.py",
+"check_guaranteed_price_cross_reentry_vec"
+],
+[
+"test_guaranteed_price_cross_reentry.py",
+"__init__"
+],
+[
+"v12_quick_engine.py",
+"apply_tradier_defaults"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "EZ",
+"shard": "A"
+},
+{
+"switch": "EZ_REENTRY_PRICE_CROSS_PCT",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"guaranteed_price_cross_reentry.py",
+"_gpcr_thresholds"
+],
+[
+"test_guaranteed_price_cross_reentry.py",
+"__init__"
+],
+[
+"v12_quick_engine.py",
+"apply_tradier_defaults"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "EZ",
+"shard": "A"
+},
+{
+"switch": "FORCE_MIN_ONE_TRADE",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"compute_entry_signals"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "FORCE",
+"shard": "A"
+},
+{
+"switch": "GAP_MOC_HOLD_POSITIVE_BIAS_PCT",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"simulate_one"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "GAP",
+"shard": "B"
+},
+{
+"switch": "GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"apply_tradier_defaults"
+],
+[
+"v12_quick_engine.py",
+"compute_reentry_blocks"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "GUARANTEED",
+"shard": "C"
+},
+{
+"switch": "HLR_RECROSS_BYPASS_BARS",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"simulate_one"
+]
+],
+"surface": "tpl+fdict",
+"band": "MEDIUM",
+"family": "HLR",
+"shard": "C"
+},
+{
+"switch": "HLR_TOP_RECROSS_BYPASS_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"simulate_one"
+]
+],
+"surface": "tpl+fdict",
+"band": "MEDIUM",
+"family": "HLR",
+"shard": "C"
+},
+{
+"switch": "HLR_TOP_VEL_4H_THRESH",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"quick_reduce_strong.py",
+"_quick_reduce_strong_thresholds"
+]
+],
+"surface": "tpl+fdict",
+"band": "MEDIUM",
+"family": "HLR",
+"shard": "C"
+},
+{
+"switch": "HLR_TOP_VEL_D_THRESH",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"quick_reduce_strong.py",
+"_quick_reduce_strong_thresholds"
+]
+],
+"surface": "tpl+fdict",
+"band": "MEDIUM",
+"family": "HLR",
+"shard": "C"
+},
+{
+"switch": "K3M_FLOOR_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"apply_tradier_defaults"
+],
+[
+"v12_quick_engine.py",
+"compute_entry_signals"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "K3M",
+"shard": "A"
+},
+{
+"switch": "KINDERGARTEN_CUMULATIVE_MIN_TFS",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"kg_entry_gate.py",
+"effective_min_tfs"
+],
+[
+"v12_quick_engine.py",
+"compute_entry_signals"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "KINDERGARTEN",
+"shard": "B"
+},
+{
+"switch": "K_ZONE_LONG_THRESHOLD",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"compute_reentry_blocks"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "K",
+"shard": "B"
+},
+{
+"switch": "K_ZONE_SHORT_THRESHOLD",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"compute_reentry_blocks"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "K",
+"shard": "B"
+},
+{
+"switch": "OBLIGATORY_REENTRY_DEFAULT_SIZE_MULT",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"obligatory_reentry_vec.py",
+"fires"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "OBLIGATORY",
+"shard": "C"
+},
+{
+"switch": "OBLIGATORY_REENTRY_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"obligatory_reentry_vec.py",
+"fires"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "OBLIGATORY",
+"shard": "C"
+},
+{
+"switch": "OBLIGATORY_REENTRY_K15_HIGH_BLOCK",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"obligatory_reentry_vec.py",
+"fires"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "OBLIGATORY",
+"shard": "C"
+},
+{
+"switch": "OBLIGATORY_REENTRY_K15_HIGH_SIZE_FRAC",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"obligatory_reentry_vec.py",
+"fires"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "OBLIGATORY",
+"shard": "C"
+},
+{
+"switch": "OBLIGATORY_REENTRY_SHORT_K15_LOW_BLOCK",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"obligatory_reentry_vec.py",
+"fires"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "OBLIGATORY",
+"shard": "C"
+},
+{
+"switch": "OBLIGATORY_REENTRY_SHORT_K15_LOW_SIZE_FRAC",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"obligatory_reentry_vec.py",
+"fires"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "OBLIGATORY",
+"shard": "C"
+},
+{
+"switch": "OBLIGATORY_REENTRY_SMA_FIELD",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"obligatory_reentry_vec.py",
+"__init__"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "OBLIGATORY",
+"shard": "C"
+},
+{
+"switch": "OBLIGATORY_REENTRY_SMA_TF",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"obligatory_reentry_vec.py",
+"__init__"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "OBLIGATORY",
+"shard": "C"
+},
+{
+"switch": "OBLIGATORY_REENTRY_TIER1_HTF_REQUIRED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"obligatory_reentry_vec.py",
+"fires"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "OBLIGATORY",
+"shard": "C"
+},
+{
+"switch": "QUICK_REDUCE_TECHNICAL_ONLY",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"quick_reduce_sources.py",
+"_tech_only"
+],
+[
+"v12_quick_engine.py",
+"simulate_one"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "QUICK",
+"shard": "C"
+},
+{
+"switch": "REENTRY_15M_BB1H_LOW_BOUNCE_HTF_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"obligatory_reentry_vec.py",
+"fires"
+],
+[
+"reentry_15m_bb_htf.py",
+"check_bb1h_low_bounce_htf"
+],
+[
+"v12_quick_engine.py",
+"compute_reentry_blocks"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_15M_BB1H_LOW_BOUNCE_HTF_MIN_TFS",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"obligatory_reentry_vec.py",
+"fires"
+],
+[
+"reentry_15m_bb_htf.py",
+"check_bb1h_low_bounce_htf"
+],
+[
+"v12_quick_engine.py",
+"compute_reentry_blocks"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_15M_BETTER_PCT",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"obligatory_reentry_vec.py",
+"fires"
+],
+[
+"reentry_15m_bb_htf.py",
+"check_bb1h_low_bounce_htf"
+],
+[
+"reentry_15m_bb_htf.py",
+"check_dc_basis_cross_htf"
+],
+[
+"reentry_15m_bb_htf.py",
+"check_lrl_pullback_htf"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_15M_DC_BASIS_CROSS_HTF_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"obligatory_reentry_vec.py",
+"fires"
+],
+[
+"reentry_15m_bb_htf.py",
+"check_dc_basis_cross_htf"
+],
+[
+"v12_quick_engine.py",
+"compute_reentry_blocks"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_15M_DC_BASIS_CROSS_HTF_MIN_TFS",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"obligatory_reentry_vec.py",
+"fires"
+],
+[
+"reentry_15m_bb_htf.py",
+"check_dc_basis_cross_htf"
+],
+[
+"v12_quick_engine.py",
+"compute_reentry_blocks"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_15M_LRL_PULLBACK_HTF_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"obligatory_reentry_vec.py",
+"fires"
+],
+[
+"reentry_15m_bb_htf.py",
+"check_lrl_pullback_htf"
+],
+[
+"v12_quick_engine.py",
+"compute_reentry_blocks"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_15M_LRL_PULLBACK_HTF_MIN_TFS",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"obligatory_reentry_vec.py",
+"fires"
+],
+[
+"reentry_15m_bb_htf.py",
+"check_lrl_pullback_htf"
+],
+[
+"v12_quick_engine.py",
+"compute_reentry_blocks"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_B16_SIZE_MULT_STRONG",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"reentry_epq_vec.py",
+"b16_sma200_pullback"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_B16_SIZE_MULT_WEAK",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"reentry_epq_vec.py",
+"b16_sma200_pullback"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_B16_SMA200_PROX_PCT",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"reentry_epq_vec.py",
+"b16_sma200_pullback"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_B16_SMA200_PULLBACK_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"reentry_epq_vec.py",
+"b16_sma200_pullback"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_BAR_TURN_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"guaranteed_price_cross_reentry.py",
+"check_guaranteed_price_cross_reentry_vec"
+],
+[
+"guaranteed_price_cross_reentry.py",
+"reentry_confirmation_gate"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_BOUNCE_BAR_GR_BETTER_PCT",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"reentry_bounce_after_correction.py",
+"check_bounce_bar_gr"
+],
+[
+"reentry_bounce_after_correction.py",
+"check_dc_mid"
+],
+[
+"reentry_bounce_after_correction.py",
+"check_k_reset"
+],
+[
+"reentry_bounce_after_correction.py",
+"check_pullback_gr"
+],
+[
+"reentry_bounce_after_correction.py",
+"check_sma200_gr"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_BOUNCE_BAR_GR_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"reentry_bounce_after_correction.py",
+"check_bounce_bar_gr"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_BOUNCE_BAR_GR_MIN_TFS",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"reentry_bounce_after_correction.py",
+"check_bounce_bar_gr"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_CHURN_GUARD_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"guaranteed_price_cross_reentry.py",
+"check_guaranteed_price_cross_reentry"
+],
+[
+"guaranteed_price_cross_reentry.py",
+"check_guaranteed_price_cross_reentry_vec"
+],
+[
+"test_guaranteed_price_cross_reentry.py",
+"__init__"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_CHURN_GUARD_USE_4BAR",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"guaranteed_price_cross_reentry.py",
+"check_guaranteed_price_cross_reentry"
+],
+[
+"test_guaranteed_price_cross_reentry.py",
+"__init__"
+],
+[
+"test_guaranteed_price_cross_reentry.py",
+"_run"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_CHURN_GUARD_WINDOW_S",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"guaranteed_price_cross_reentry.py",
+"check_guaranteed_price_cross_reentry"
+],
+[
+"guaranteed_price_cross_reentry.py",
+"check_guaranteed_price_cross_reentry_vec"
+],
+[
+"test_guaranteed_price_cross_reentry.py",
+"__init__"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_DC_MID_GR_MIN_TFS",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"reentry_bounce_after_correction.py",
+"check_dc_mid"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_DC_MID_PULLBACK_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"reentry_bounce_after_correction.py",
+"check_dc_mid"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_DC_MID_PULLBACK_WIDTH_MAX",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"reentry_bounce_after_correction.py",
+"check_dc_mid"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_K_RESET_GR_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"reentry_bounce_after_correction.py",
+"check_k_reset"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_K_RESET_GR_MIN_TFS",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"reentry_bounce_after_correction.py",
+"check_k_reset"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_K_RESET_TF",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"reentry_bounce_after_correction.py",
+"check_k_reset"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_PULLBACK_GR_SCORE_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"reentry_bounce_after_correction.py",
+"check_pullback_gr"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_PULLBACK_GR_SCORE_MIN",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"reentry_bounce_after_correction.py",
+"check_pullback_gr"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_SMA200_BACKUP_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"guaranteed_price_cross_reentry.py",
+"check_guaranteed_price_cross_reentry"
+],
+[
+"guaranteed_price_cross_reentry.py",
+"check_guaranteed_price_cross_reentry_vec"
+],
+[
+"test_guaranteed_price_cross_reentry.py",
+"__init__"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_SMA200_GR_CONTINUATION_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"reentry_bounce_after_correction.py",
+"check_sma200_gr"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "REENTRY_SMA200_GR_MIN_TFS",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"reentry_bounce_after_correction.py",
+"check_sma200_gr"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "REENTRY",
+"shard": "A"
+},
+{
+"switch": "SBA_ADX_MAX",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"sba_bounce.py",
+"_sba_bounce_score_scalar"
+],
+[
+"sba_bounce.py",
+"sba_bounce_score_vec"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "SBA",
+"shard": "B"
+},
+{
+"switch": "SBA_BOUNCE_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"compute_entry_signals"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "SBA",
+"shard": "B"
+},
+{
+"switch": "SBA_MIN_SCORE",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"check_entry_candidates_crypto__sba_gate.py",
+"check_sba_gate"
+],
+[
+"check_entry_candidates_crypto__sba_gate.py",
+"check_sba_gate_vec"
+],
+[
+"sba_bounce.py",
+"sba_bounce_passes_vec"
+],
+[
+"test_check_entry_candidates_crypto__sba_gate.py",
+"main"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "SBA",
+"shard": "B"
+},
+{
+"switch": "SHORT_DC_LOW_BREAK_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"compute_augment_signals_ex"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "SHORT",
+"shard": "B"
+},
+{
+"switch": "SHORT_DC_LOW_BREAK_SIZE_MULT",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"compute_augment_signals_ex"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "SHORT",
+"shard": "B"
+},
+{
+"switch": "SHORT_PARTIAL_RECOVERY_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"compute_augment_signals_ex"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "SHORT",
+"shard": "B"
+},
+{
+"switch": "SHORT_PARTIAL_RECOVERY_SIZE_MULT",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"compute_augment_signals_ex"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "SHORT",
+"shard": "B"
+},
+{
+"switch": "SHORT_PARTIAL_RECOVERY_THRESHOLD_PCT",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"compute_augment_signals_ex"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "SHORT",
+"shard": "B"
+},
+{
+"switch": "SIMPLE_TP_EXIT_ENABLED",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"quick_reduce_sources.py",
+"simple_tp"
+],
+[
+"v12_quick_engine.py",
+"simulate_one"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "SIMPLE",
+"shard": "C"
+},
+{
+"switch": "SIMPLE_TP_PCT",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"quick_reduce_sources.py",
+"simple_tp"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "SIMPLE",
+"shard": "C"
+},
+{
+"switch": "TECHNICAL_DC_STOP_BUFFER_PCT",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"simulate_one"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "TECHNICAL",
+"shard": "A"
+},
+{
+"switch": "TECHNICAL_DC_TARGET_BUFFER_PCT",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"simulate_one"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "TECHNICAL",
+"shard": "A"
+},
+{
+"switch": "TRADIER_RSI_ENTRY_LONG_TRADIER",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"compute_reentry_blocks"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "TRADIER",
+"shard": "B"
+},
+{
+"switch": "TRADIER_STOCH_EXTREME_LONG_TRADIER",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"compute_reentry_blocks"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "TRADIER",
+"shard": "B"
+},
+{
+"switch": "TRADIER_STOCH_EXTREME_SHORT_TRADIER",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"v12_quick_engine.py",
+"compute_reentry_blocks"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "TRADIER",
+"shard": "B"
+},
+{
+"switch": "TREND_EXIT_SCORE_FLIP",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"check_exit_candidates_crypto__trend_reversal_exit.py",
+"_trend_reversal_thresholds"
+],
+[
+"test_check_exit_candidates_crypto__trend_reversal_exit.py",
+"main"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "TREND",
+"shard": "B"
+},
+{
+"switch": "TREND_MIN_GAIN_EXIT",
+"need": "LIVE_MIRROR",
+"live": [],
+"vec": [
+[
+"check_exit_candidates_crypto__trend_reversal_exit.py",
+"_trend_reversal_thresholds"
+],
+[
+"test_check_exit_candidates_crypto__trend_reversal_exit.py",
+"main"
+]
+],
+"surface": "tpl",
+"band": "MEDIUM",
+"family": "TREND",
+"shard": "B"
+}
+]

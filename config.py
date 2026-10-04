@@ -1944,6 +1944,7 @@ class Config:
     REENTRY_K_RESET_GR_MIN_TFS: int = 2
     REENTRY_K_RESET_TF: str = "15m"
     REENTRY_SMA200_GR_CONTINUATION_ENABLED: bool = False  # E: above SMA200 + GR + HH at better price — sweepable (15m testable)
+    REENTRY_SMA200_GR_MIN_TFS: int = 2  # E companion (lane A 2026-10-04: was missing here; tradier + live fallback 2)
     # --- 2026-09-19 TESTABLE 15m BB/DC BOUNCE (HTF confirmed) — both live+backtest comparable ---
     REENTRY_15M_DC_BASIS_CROSS_HTF_ENABLED: bool = False  # 15m close x dc_basis_15m + HTF WT >=2 + bb_pct_b_1h not extreme — TESTABLE
     REENTRY_15M_DC_BASIS_CROSS_HTF_MIN_TFS: int = 2
@@ -2623,6 +2624,7 @@ class Config:
     # === BACKTEST SWEEP WINNERS (2026-03-16) ===
     K3M_CAP: int = 80  # BACKTEST_CHANGE_105: REVERTED to 80. Tournament (10 rounds, 3042 combos) winner uses 80. BACKTEST_CHANGE_8 (70) reversed.
     K3M_FLOOR: int = 30  # BACKTEST_CHANGE_9: NEW. Block SHORT when k_3m <= 30 (mirror of K3M_CAP)
+    K3M_FLOOR_ENABLED: bool = True  # lane A 2026-10-04 LIVE_MIRROR: gates the BACKTEST_CHANGE_9 floor in check_entry_alignment; True = today's unconditional live
     CYCLE_TP_PCT: float = 0.60  # Let winners run to 60%. TP only used as absolute cap, NOT as early exit.
     CYCLE_TP_CONDITIONAL_EXIT: float = 0.003  # BACKTEST_CHANGE_101: was 0.5%. OKX top traders exit at 0.3% when stoch turns against. Matches profitable trader behavior.
     ACCOUNT_TP_PCT: Dict[str, float] = field(default_factory=dict)  # DISABLED 2026-03-29: NO fixed TP — ride winners until technicals turn. Exits via CYCLE_TP_STOCH_AGAINST, DC_BASIS_PROFIT_EXIT, IN_GAIN_TREND_EXIT only.
@@ -4826,6 +4828,7 @@ class Config:
     GAP_FILL_POSITION_SIZE: float = 600.0  # BACKTEST_CHANGE_T30 was 400 → 600 align sizing  # PORTED from TradierConfig 2026-08-17
     GAP_FILL_STOP_MULT: float = 0.3  # PORTED from TradierConfig 2026-08-17
     GAP_FILL_TP_FILL_PCT: float = 0.7  # BACKTEST_CHANGE_T18 was 0.5 → 0.7 capture more of gap  # PORTED from TradierConfig 2026-08-17
+    GAP_MOC_HOLD_POSITIVE_BIAS_PCT: float = 0.30  # lane-B 2026-10-04 LIVE_MIRROR: vec fallback (v12:11586) when GAP_PER_SYMBOL_AVG_THRESH_PCT falsy; = config_tradier.py:3362. No crypto readers (stocks gap concept); zero behavior change.  # PORTED from TradierConfig
     GHOST_ABSENT_ALERT_THRESHOLD: int = 3  # 2026-05-28: fire desktop alert after N consecutive API misses (state NEVER zeroed)  # PORTED from TradierConfig 2026-08-17
     GHOST_CLOSE_REQUIRE_CONFIRMATION: bool = True   # DEPRECATED — ghost-close zeroing abolished 2026-05-28 (ASTS disaster)  # PORTED from TradierConfig 2026-08-17
     GOLDEN_RULE_EXIT_MIN_IND: int = 2  # Per-TF min indicators for exit gate.  # PORTED from TradierConfig 2026-08-17

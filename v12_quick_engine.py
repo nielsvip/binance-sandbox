@@ -7298,6 +7298,7 @@ class QuickConfig:
     PER_SYMBOL_CONFIG_ENABLED: bool = False
     PER_SYMBOL_CONFIG_FILE: str = 'data/sweep_results/per_symbol_best_crypto_20260416_0507.json'
     PER_SYM_CONFIG_ENABLED: bool = True
+    PER_SYM_GATE_FLAT_OPEN_ENFORCE: bool = False  # lane-B 2026-10-04: live-only gate (tradier_manage disaster-guard PER_SYM_LIVE_GATE; backtest explicitly exempt) -> vec twin inert by design. Default = config_tradier.py:98 (temp OFF per 2026-09-28 USER order); live read fallback True.
     PLOTS_DIR: Path = Path("data")
     PLOT_LOOP_INTERVAL_SECONDS: int = 1800
     PNL_DECAY_COMPLETE_DAYS: int = 5
@@ -7746,6 +7747,11 @@ class QuickConfig:
     SERVER_HEARTBEAT_BLOCK_ENABLED: bool = True
     SHORT_ABOVE_EMA20_IS_PENALTY: bool = True
     SHORT_ABOVE_SMA20_BONUS: int = 15
+    SHORT_DC_LOW_BREAK_ENABLED: bool = False  # lane-B 2026-10-04 LIVE_MIRROR: was missing; default = vec fallback (compute_augment 10184). Short-only dc_low-break augment.
+    SHORT_DC_LOW_BREAK_SIZE_MULT: float = 2.0  # lane-B 2026-10-04 LIVE_MIRROR: was missing; default = vec fallback (10188). NOTE: vec computes _short_dc_mult but never consumes it (dead array) — coordinator note.
+    SHORT_PARTIAL_RECOVERY_ENABLED: bool = False  # lane-B 2026-10-04 LIVE_MIRROR: was missing; default = vec fallback (10196). Short-only dc_position recovery augment.
+    SHORT_PARTIAL_RECOVERY_SIZE_MULT: float = 2.0  # lane-B 2026-10-04 LIVE_MIRROR: was missing; default = vec fallback (10202). NOTE: _short_rec_mult likewise unconsumed.
+    SHORT_PARTIAL_RECOVERY_THRESHOLD_PCT: float = -1.0  # lane-B 2026-10-04 LIVE_MIRROR: was missing; default = vec fallback (10199).
     SHORT_RSI_MIN_1H: float = 40.0
     SHORT_STRUCT_EXIT_TF: str = 'None'  # 2026-09-26 DISABLED HYBRID — see LONG_STRUCT
     SIGNALS_FILE: Path = Path("data")
@@ -11799,6 +11805,16 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _nlk_tf = str(getattr(cfg, 'NEWBORN_LOSS_KILL_FILTER_TF', 'OFF') or 'OFF').strip()
         _nlk_key = f'wt_velocity_{_nlk_tf}' if _nlk_tf.upper() != 'OFF' else 'wt_velocity_15m'
         _nlk_vel = _safe(npz, _nlk_key, n, 0.0)
+    # lane-B 2026-10-04 BOTTOM_EXIT_HTF_WT_VETO twin (live: ez:46767-46782/46869-46890/47108-47126,
+    # tradier :10741): precompute the HTF-WT-with mask once; the NEWBORN + ULTIMATE_DC walk gates
+    # consult it per bar. None when the switch is OFF (= pre-twin behavior, zero change).
+    _be_veto = None
+    if bool(getattr(cfg, 'BOTTOM_EXIT_HTF_WT_VETO_ENABLED', True)):
+        try:
+            import vec_decisions.bottom_exit_veto as _bev
+            _be_veto = _bev.htf_with_mask_vec(npz, n, is_long, _safe)
+        except Exception:
+            _be_veto = None
     try:
         for _w4_fn in (vec_decisions.wave4_families.oi_confirm_entry_gate, vec_decisions.wave4_families.ema_blanket_entry_gate, vec_decisions.wave4_families.htf_direction_gate, vec_decisions.grey_wire_entries.wt_percentile_entry_gate):
             _w4_m = _w4_fn(npz, n, is_long, cfg, close, _safe)
@@ -12399,10 +12415,16 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _sa_cap = None
     try:
         import vec_decisions.ported_stateful_exit as _pse
-        for _sw, _mg in (_pse.masks(npz, n, is_long, cfg, _safe, close) or {}).items():
+        for _sw, _mg in (_pse.masks(npz, n, is_long, cfg, _safe, close, sym) or {}).items():
             _sx_active.append(_mg)
     except Exception:
         _sx_active = []
+    _blacklisted = False
+    try:
+        import vec_decisions.blacklist_strand as _bls
+        _blacklisted = bool(_bls.is_blacklisted(sym, cfg))
+    except Exception:
+        _blacklisted = False
     try:
         import vec_decisions.ported_stateful_augment as _psa
         for _sw, (_m, _g) in (_psa.masks(npz, n, is_long, cfg, _safe, close) or {}).items():
@@ -12835,6 +12857,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         continue  # BOTTOM/TOP entry REQUIRE gates (all families ORed)
                     pos = _open(qty0, px, i, entry_reason)
             continue
+        if _blacklisted:
+            # BLACKLIST_SYMBOLS strand (live: process_position NO_ACTION — entries open, never managed)
+            bars_in_pos += 1
+            continue
         bars_in_pos += 1
         live_pnl_pct = ((px - pos['avg_price']) / pos['avg_price'] * 100) if is_long else ((pos['avg_price'] - px) / pos['avg_price'] * 100)
         pos['peak_pnl_pct'] = max(pos['peak_pnl_pct'], live_pnl_pct)
@@ -12844,7 +12870,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         # recovery. Runs before every other exit (live parity).
         # NEWBORN_LOSS_KILL (live ez_manage.py:46524-46550, default OFF): young loser +
         # velocity-against on NEWBORN_LOSS_KILL_FILTER_TF -> force close
-        if _nlk_vel is not None and vec_decisions.generic_filter_tf.newborn_loss_kill_fires(
+        _be_nlk_vetoed = bool(_be_veto is not None and i < len(_be_veto) and _be_veto[i])
+        if _nlk_vel is not None and not _be_nlk_vetoed and vec_decisions.generic_filter_tf.newborn_loss_kill_fires(
                 cfg, is_long, held_bars * bmin, live_pnl_pct, float(_nlk_vel[i]) if i < len(_nlk_vel) else 0.0):
             pos['fees'] += abs(pos['qty'] * px) * half_fee
             _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
@@ -12899,7 +12926,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _pp_hit[0], 'type': 'CLOSE', 'ts': _pp_ts, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason', 'VECTOR_ENTRY'), 'exit_reason': _pp_hit[0], 'bars_held': int(i - pos['entry_bar'])})
                 pos = None; cd = cooldown_bars; has_closed_before = True
                 continue
-        # 2026-09-30 STATEFUL PORTED EXITS (WT_4H_VEL_EXIT / WT_EXHAUST_EXIT — gain/age-gated; ported_stateful_exit.py)
+        # 2026-09-30 STATEFUL PORTED EXITS (WT_4H_VEL_EXIT / WT_EXHAUST_EXIT / MU_CORRECTION_EXIT — gain/age-gated; ported_stateful_exit.py)
         if _sx_active:
             _sx_fire = False
             for _sm, _sg in _sx_active:
@@ -12967,6 +12994,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _ult_j = (i - 1) if (i > 0 and bool(getattr(cfg, 'DC_PRIOR_BAR_CHANNEL', True))) else i
             _ult_lvl = float(dc_low_4h[_ult_j]) if is_long else float(dc_high_4h[_ult_j])
             _ult_breach = (_ult_lvl > 0) and ((is_long and px <= _ult_lvl) or ((not is_long) and px >= _ult_lvl))
+            if _ult_breach and _be_veto is not None and i < len(_be_veto) and bool(_be_veto[i]):
+                _ult_breach = False  # BOTTOM_EXIT_HTF_WT_VETO twin (live ez:46767-46782 clears the breach)
             if _ult_breach:
                 pos['fees'] += abs(pos['qty'] * px) * half_fee
                 _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
