@@ -30,6 +30,7 @@ from zoneinfo import ZoneInfo
 
 import vec_decisions.shared_zone
 import vec_decisions.dc_channel_exits as _dc_channel_exits  # 2026-09-29 grey-switch rewire (shared with v12_quick_engine)
+import vec_decisions.lh_ll_top_exit as _lhll_top_exit  # 2026-10-04 LH/LL top exit (shared with v12_quick_engine)
 import vec_decisions.grey_wire_exits as _grey_wire_exits  # 2026-09-30 grey-switch wiring (shared with v12_quick_engine)
 import live_entry_gates as _live_entry_gates  # batch5 (Agent D): live twin of the vec stock entry gates + effective_min_gain
 import vec_decisions.grey_wire_entries as _grey_wire_entries  # 2026-09-30 grey-switch wiring (shared with v12_quick_engine)
@@ -10783,6 +10784,15 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _pt_pct = safe_fetch_float(_gx_c('PROFIT_TARGET_PCT', 1.6), 1.6)
                     if _pt_gain >= _pt_pct:
                         _gx_fire, _gx_reason = True, f"PROFIT_TARGET_g{_pt_gain:.2f}"
+                # LH/LL TOP EXIT 2026-10-04 live twin (default OFF = inert): same predicate as v12.
+                # Live arm uses forming-vs-completed HTF H/L while vec uses completed[-1] vs
+                # completed[-2] — direction-consistent, live arms earlier; parity delta measured.
+                if not _gx_fire and _lhll_top_exit is not None:
+                    _lhll_spec = _lhll_top_exit.resolve_lh_ll_top_exit(_gx_c)
+                    if _lhll_spec.get("enabled"):
+                        _lhll_fire, _lhll_reason = _lhll_top_exit.check_lh_ll_top_exit(_lhll_spec, i, safe_fetch_float(current_price, 0.0), safe_fetch_float(i.get("close_15m_prev", 0), 0.0), safe_fetch_float(i.get("wt1_15m_prev", 0), 0.0), safe_fetch_float(i.get("wt2_15m_prev", 0), 0.0), is_long)
+                        if _lhll_fire:
+                            _gx_fire, _gx_reason = True, _lhll_reason
                 # 2026-09-30 GREY-SWITCH WIRING exits (vec_decisions/grey_wire_exits.py, the SAME predicates
                 # v12_quick_engine.simulate_one calls). All enables OFF in config_tradier -> list empty -> inert.
                 _gw_fns = (_grey_wire_exits.active_exits(_gx_c) + _grey_wire_exits.active_live_only_exits(_gx_c)) if not _gx_fire else []
@@ -13925,6 +13935,34 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                     return False
         except Exception as _bf_e:
             logger.warning(f"[BALANCE_FLOOR_HALT] check error (fail-open): {_bf_e}")
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 🧬 STRICT_VEC_PARITY (USER 2026-10-04 parity guarantee; mirrors ez execute_now)
+        # — live trades ONLY vec-achievable routes. When STRICT_VEC_PARITY_MODE:
+        # block any entry/exit whose reason is NOT a strategy the vectorized
+        # backtest engine also produces (allowlist in vec_paths/vec_parity_gate.py,
+        # incl. VEC_EXIT_TOKENS_STOCKS for trb/trc). SHADOW mode logs would-block
+        # WITHOUT blocking (validate allowlist first). Fail-open on any exception.
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            _vp_mode = bool(getattr(config_tradier, "STRICT_VEC_PARITY_MODE", False))
+            _vp_shadow = bool(getattr(config_tradier, "STRICT_VEC_PARITY_SHADOW", False))
+            if _vp_mode or _vp_shadow:
+                _vp_act = (action or "").upper()
+                _vp_is_entry = ("OPEN" in _vp_act or "AUGMENT" in _vp_act or "ENTRY" in _vp_act or "REENTRY" in _vp_act or _vp_act == "BUY") and "CLOSE" not in _vp_act and "REDUCE" not in _vp_act
+                _vp_is_exit = ("CLOSE" in _vp_act or "REDUCE" in _vp_act)
+                _vp_applies = (_vp_is_entry and bool(getattr(config_tradier, "STRICT_VEC_PARITY_GATE_ENTRIES", True))) or (_vp_is_exit and bool(getattr(config_tradier, "STRICT_VEC_PARITY_GATE_EXITS", True)))
+                if _vp_applies:
+                    from vec_paths.vec_parity_gate import is_vec_achievable as _vp_ok
+                    from vec_paths.vec_parity_gate import matched_token as _vp_tok
+                    if not _vp_ok(reason or ""):
+                        if _vp_mode:
+                            logger.critical(f"🧬 [STRICT_VEC_PARITY] {position_key}: BLOCKED — reason not vec-achievable. action={action} reason={(reason or '')[:90]}")
+                            return False
+                        logger.warning(f"🧬 [STRICT_VEC_PARITY_SHADOW] {position_key}: WOULD-BLOCK (not vec-achievable). action={action} reason={(reason or '')[:90]}")
+                    elif _vp_shadow and not _vp_mode:
+                        logger.info(f"🧬 [STRICT_VEC_PARITY_SHADOW] {position_key}: allow (vec-achievable via '{_vp_tok(reason or '')}'). action={action}")
+        except Exception as _vp_e:
+            logger.warning(f"[STRICT_VEC_PARITY] check error (fail-open): {_vp_e}")
         # ═══════════════════════════════════════════════════════════════════════════
         # 🚦 OVERTRADE_GUARD — USER 2026-05-09: cap OPEN/AUGMENT to TRADES_PER_SYM_PER_DAY_MAX
         # per pkey per UTC day. CLOSE/REDUCE NOT capped. Emergency exits bypass.
@@ -17101,6 +17139,35 @@ class StockStrategy:
         if not is_regular_trading_hours():
             return 0.0, "WAIT", "Outside Market Hours"
         def g(k, default=0.0): return float(i.get(k, default))
+        # WIRING LANE C M1b (LIVE_MIRROR ENTRY_DC_TF/BUFFER_PCT): v12 ENTRY DC gate port
+        # (entries above DC low/high on 1+ TFs). Default OFF -> zero live change.
+        # No DC data on any TF -> fail OPEN (matches v12 np.any batch guard + house
+        # KG_NO_HTF_DATA_ALLOW philosophy). Residual approx: v12 blocks a no-data ROW
+        # when other rows pass; per-tick live cannot see other rows. TF as-is
+        # (no 5m->3m norm; live has 3m data).
+        if not is_exit:
+            _edc_raw = str(getattr(self.config, 'ENTRY_DC_TF', 'OFF') or 'OFF').strip()
+            if _edc_raw.upper() != 'OFF' and _edc_raw != '':
+                _edc_tfs = [p.strip() for p in _edc_raw.replace('+', ',').replace('|', ',').replace(' ', ',').split(',') if p.strip() and p.strip().upper() != 'OFF']
+                _edc_buf = float(getattr(self.config, 'ENTRY_DC_BUFFER_PCT', 0.10) or 0.10) / 100.0
+                _edc_ok = False
+                _edc_any = False
+                for _etf in _edc_tfs:
+                    _lo = g(f'dc_low_{_etf}', 0.0)
+                    _hi = g(f'dc_high_{_etf}', 0.0)
+                    if _lo <= 0 and _hi <= 0:
+                        continue
+                    _edc_any = True
+                    if is_long:
+                        if (_lo > 0 and current_price >= _lo * (1 + _edc_buf)) or (_hi > 0 and current_price >= _hi * (1 + _edc_buf)):
+                            _edc_ok = True
+                            break
+                    else:
+                        if (_hi > 0 and current_price <= _hi * (1 - _edc_buf)) or (_lo > 0 and current_price <= _lo * (1 - _edc_buf)):
+                            _edc_ok = True
+                            break
+                if not _edc_ok and _edc_any:
+                    return 0.0, "WAIT", f"ENTRY_DC_TF({_edc_raw})"
         # === BACKTEST-VALIDATED GATES (121 stocks, 60/40 train/test, STRICT_NO_LOSS) ===
         # These blocks are confirmed negative on BOTH train AND test sets
         if not is_exit and _cfg_auto('BACKTEST_VALIDATED_GATES_TRADIER', True):
@@ -17309,10 +17376,20 @@ class StockStrategy:
         dc_entry_long = _dc_pos_1h < _dc_entry_th or _dc_pos_4h < _dc_entry_th
         dc_entry_short = _dc_pos_1h > (1.0 - _dc_entry_th) or _dc_pos_4h > (1.0 - _dc_entry_th)
         # T65: DC removed from HODL entry gate (28.6% WR, PF 0.65 on stocks). DC stays as scoring BONUS only.
+        # WIRING LANE C M1c (LIVE_MIRROR BB_BREAKOUT_ENTRY_TF): v12 BB_BREAKOUT_ENTRY block
+        # port (bb_pct_b_TF >0.95 long / <0.05 short). Default OFF -> False -> zero live change.
+        _bb_tf = str(getattr(self.config, 'BB_BREAKOUT_ENTRY_TF', 'OFF') or 'OFF').strip()
+        _bb_breakout = False
+        if _bb_tf.upper() != 'OFF' and _bb_tf in ("15m", "1h", "4h", "D"):
+            _bb_pct = g(f'bb_pct_b_{_bb_tf}', 0.5)
+            if is_long:
+                _bb_breakout = (_bb_pct > 0.95) and (g(f'bb_upper_{_bb_tf}', 0.0) > 0)
+            else:
+                _bb_breakout = (_bb_pct < 0.05) and (g(f'bb_lower_{_bb_tf}', 0.0) > 0)
         if is_long:
-            good_entry = stoch_long or kzone_long or rsi_long
+            good_entry = stoch_long or kzone_long or rsi_long or _bb_breakout
         else:
-            good_entry = stoch_short or kzone_short or rsi_short
+            good_entry = stoch_short or kzone_short or rsi_short or _bb_breakout
         if not good_entry:
             return 0.0, "WAIT", f"NO_{'LONG' if is_long else 'SHORT'}_SETUP"
         if dc_entry_long or dc_entry_short:
@@ -17609,6 +17686,24 @@ class StockStrategy:
                     score -= 5; reasons.append("4h_Bottom")
                 if gain > 5.0 and k_15m > d_15m:
                     score -= 5; reasons.append("Take_Profit")
+            # WIRING LANE C M1c (LIVE_MIRROR BB_SQUEEZE_EXIT_ENABLED): wave4 bb_squeeze_exit_mask
+            # port — transition INTO squeeze while in trade (both sides). Binary trigger mapped to
+            # a -15 sibling-calibrated penalty (like Broken_1h). Default OFF -> zero live change.
+            # Vec parity: first AVAILABLE TF only (15m, else 1h) — wave4 returns on first npz hit,
+            # NOT an OR across TFs. Live has no bar history (vec uses np.roll), so the _prev leg
+            # must exist as a live indicator; absent legs -> fail-open (skip). Residual approx:
+            # none when legs present; fail-open (allow) when absent, vs vec None (skip) — same.
+            if bool(getattr(self.config, 'BB_SQUEEZE_EXIT_ENABLED', False)):
+                _sq_tf_use = None
+                for _sq_tf in ("15m", "1h"):
+                    if f'squeeze_on_{_sq_tf}' in i and f'squeeze_on_{_sq_tf}_prev' in i:
+                        _sq_tf_use = _sq_tf
+                        break
+                if _sq_tf_use is not None:
+                    _sq_on = g(f'squeeze_on_{_sq_tf_use}', 0.0) > 0
+                    _sq_prev = g(f'squeeze_on_{_sq_tf_use}_prev', 0.0) > 0
+                    if _sq_on and not _sq_prev:
+                        score -= 15; reasons.append("BB_SQUEEZE_EXIT")
 
         # URGENT_FIX: Bear market bias — penalize longs, favor shorts
         if _cfg_auto('BEAR_MARKET_MODE_TRADIER', False):
@@ -21572,6 +21667,30 @@ class StockStrategy:
                         if qty > 0:
                             tf_name = {1:"DC5M",2:"DC15M",3:"DC1H",4:"DC4H"}[active_tier]
                             return True, f"DC_TIER{active_tier}_{tf_name}_AUG target={target_value:.0f} cur={current_value:.0f}", 80.0, qty
+
+            # MOP-UP M 2026-10-04 (B12 SHORTx5 LIVE_MIRROR): vec SHORT PUMP twins
+            # (v12 _short_dc_sig/_short_rec_sig). SHORT-only; masters False = inert.
+            # Keys/guards mirror vec exactly (unqualified dc_low/dc_position,
+            # fail-closed; _thr read-but-unused like vec). Reads RAW indicators:
+            # parse_market_data drops unqualified keys from parsed `i`.
+            if not is_long:
+                _sraw = indicators if isinstance(indicators, dict) else {}
+                if bool(getattr(self.config, 'SHORT_DC_LOW_BREAK_ENABLED', False)):
+                    _sdc_lo = float(_sraw.get('dc_low', 0) or 0)
+                    if _sdc_lo > 0 and current_price < _sdc_lo:
+                        _sdc_mult = float(getattr(self.config, 'SHORT_DC_LOW_BREAK_SIZE_MULT', 2.0) or 2.0)
+                        _sdc_qty = current_qty * _sdc_mult
+                        if _sdc_qty >= 0.5:
+                            return True, f"SHORT_DC_LOW_BREAK_px{current_price:.2f}<lo{_sdc_lo:.2f}", 70.0, _sdc_qty
+                if bool(getattr(self.config, 'SHORT_PARTIAL_RECOVERY_ENABLED', False)):
+                    _spr_pos = float(_sraw.get('dc_position', 0.5) or 0.5)
+                    _spr_thr = float(getattr(self.config, 'SHORT_PARTIAL_RECOVERY_THRESHOLD_PCT', -1.0))  # read-but-unused (vec parity)
+                    _ = _spr_thr
+                    if 0.2 < _spr_pos < 0.4:
+                        _spr_mult = float(getattr(self.config, 'SHORT_PARTIAL_RECOVERY_SIZE_MULT', 2.0) or 2.0)
+                        _spr_qty = current_qty * _spr_mult
+                        if _spr_qty >= 0.5:
+                            return True, f"SHORT_PARTIAL_RECOVERY_dcpos{_spr_pos:.2f}", 70.0, _spr_qty
 
             return False, "", 0.0, 0.0
         except Exception as e:

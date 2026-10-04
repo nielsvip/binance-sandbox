@@ -233,7 +233,7 @@ class TradierConfig:
     # 2026-07-10 USER MANDATE: these must be in the trb universes every rankings cycle
     # ("need to be trading no matter what"); injected by tradier_rankings before save.
     TRADIER_MANDATORY_LONG_TRB = ["MU", "SNDK", "NVDA", "GOOGL", "META", "MSFT", "AAPL", "ASML", "TSLA", "AMZN", "MRVL", "RBLX", "VLO", "INTC", "MSTR", "IBIT", "HOOD", "VT", "GLD", "SLV", "COPX", "QQQ", "SPY","BMNR","COIN", "HOOD","ZCSH","CRWD"]  # VT added USER 2026-07-11; OLED(wsh0.80) USAR(wsh0.59) added USER 2026-07-21; GLD/COPX added USER 2026-08-15 TradingView long (INTC already there, RBLX stays short, PLTR both); QQQ/SPY added USER 2026-08-17 index steady; CRWD added USER 2026-09-28 (both sides, WT_DC-detailed candidate)
-    TRADIER_MANDATORY_SHORT_TRB = ["MSTR", "MU", "NVDA", "WDAY", "PLTR", "TSLA", "AMZN", "AAPL", "RBLX","BMNR","COIN","HOOD","ZCSH","CRWD"]  # PLTR both sides per USER 2026-08-15 (was long only, now also short); CRWD added USER 2026-09-28 (both sides)
+    TRADIER_MANDATORY_SHORT_TRB = ["ORCL","MSTR", "MU", "NVDA", "WDAY", "PLTR", "TSLA", "AMZN", "AAPL", "RBLX","BMNR","COIN","HOOD","ZCSH","CRWD"]  # PLTR both sides per USER 2026-08-15 (was long only, now also short); CRWD added USER 2026-09-28 (both sides)
     NON_SHORTABLE = {"HII", "LAC", "LEC", "USAR", "SMG", "JOBY", "COE", "FIX", "AXTI", "FCN", "ASML", "HAO", "ETHE", "TCEHY", "ALMU", "XIACF", "BITO", "GBTC", "MARA", "CLSK", "HIVE", "CAN", "BTBT", "CUBT", "ETH", "BTC", "QUBT", "GLD", "ETHD", "AGCO", "SBIT", "INOD", "BTCL", "DIME", "UCO", "PDBC", "COPX", "BLOK", "USO", "UNG", "BOIL", "WEAT", "CORN", "DBA", "GDXJ", "XME", "XOP", "OIH", "URA", "URNM", "ITA", "PPA", "MOO", "REMX", "IPI", "LSB", "UAN", "ASC", "EGLE", "GNK", "NAT", "TNK", "NNE", "DNN", "PLL", "SGML", "MAG", "BTG", "ICL", "SQM", "GOGL", "SBLK", "DAC", "FRO", "ZIM", "GOLD", "UNG"}
     EXCEPTIONS = ['GOOGL', 'MSFT', 'NVDA', 'CVX', 'XOM', 'IBIT', 'GLD', 'ETH', 'XLE', 'GDX', 'USO', 'SLV'] #4* max order size and max pos size
     EXCEPTION_REENTRY_MAX_USD: float = 10000.0  # 2026-09-30: exceptions may reenter up to $10k but ONLY as reentry of previous position same size never higher than previous (MSFT 4×). Fresh OPEN still $2.5k.
@@ -654,6 +654,8 @@ class TradierConfig:
     ENTRY_MIN_ALIGNMENT: int =             5      # 2026-06-09: lowered 10→5 (10=impossible, max score=10 but alignment=5/10 was blocking good trades). Was 8→10. ROLLBACK: 8.
     ENTRY_PRIMARY_TF: str =                '4h'   # BACKTEST_CHANGE_T7 was 1h → 4h slower primary TF
     ENTRY_TRIGGER_TF: str =                '15m'  # Trigger TF for crossover (was 5m, shifted to 15m for stocks) ; WIRED 2026-04-16 (priority 92/100) — tradier_manage.py:2680 referenced in entry eval
+    ENTRY_DC_TF: str = "OFF"  # WIRING LANE C M1b: vec-live parity (v12 ENTRY DC gate 2026-09-26); OFF = no gate (live fallback)
+    ENTRY_DC_BUFFER_PCT: float = 0.10  # WIRING LANE C M1b: pct buffer above/below the DC band
     # === SMA200 DISTANCE FILTER (backtest) ===
     SMA200_DIST_ENTRY_ENABLED: bool = False  # BACKTEST_CHANGE_T3 SMA200 distance gate for entries
     SMA200_DIST_LONG_THRESHOLD_4H: float = -10.0  # BACKTEST_CHANGE_T3 only long when price within -10% of SMA200 on 4h
@@ -839,6 +841,13 @@ class TradierConfig:
     MTF_ARMED_ENTRIES_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
     DC_BREACH_REDUCE_FILTER_TF: str = "OFF"  # 2026-09-29: tradier_manage only stub-reads it (no live effect) -> OFF = real live behavior; parity with config.py/QuickConfig
     HAIKU_WINNER_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
+    HAIKU_WINNER_ENABLED: bool = True  # [w2-haiku] 2026-10-04: crypto-overseer parity mirror (twin is crypto-only); True = live standing behavior.
+    HAIKU_AUGMENT_GAIN_THRESHOLD: float = 3.0  # [w2-haiku] live AUGMENT_GAIN_THRESHOLD
+    HAIKU_REDUCE_GAIN_THRESHOLD: float = 2.5  # [w2-haiku] live REDUCE_GAIN_THRESHOLD
+    HAIKU_AUGMENT_FRACTION: float = 0.10  # [w2-haiku] live AUGMENT_FRACTION
+    HAIKU_MIN_GAIN: float = 3.0  # [w2-haiku] second augment gate
+    HAIKU_MIN_POSITION_VALUE: float = 5.0  # [w2-haiku] $ floor
+    HAIKU_AUGMENT_INTERVAL_S: float = 60.0  # [w2-haiku] per-position cooldown
     NEWBORN_PROTECT_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
     NEWBORN_LOSS_KILL_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
     BB_PULLBACK_GATE_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
@@ -3746,6 +3755,8 @@ class TradierConfig:
     DAYTRADE_DC_STOP_BUFFER_PCT: float = 0.25
     DAYTRADE_DC_TARGET_TF: str = "15m"  # DEF2 2026-10-01 user: PROFIT_TARGET = dc_high_15m-0.1% default 15m (was OFF)
     DAYTRADE_DC_TARGET_BUFFER_PCT: float = 0.10
+    ENTRY_DC_TF: str = "OFF"  # 2026-10-04 parity cut: daytrade ENTRY channel (simple-system oracle). Live twins: ez M1b + tradier M1b (ENTRY_DC gate ports).
+    ENTRY_DC_BUFFER_PCT: float = 0.10  # 2026-10-04 parity cut: buffer for ENTRY_DC_TF.
     WT_LOWER_CROSS_EXIT_TF: str = "OFF"
     # 2026-09-30 GREY-SWITCH WIRING batch 1 (exits): stock live port of crypto ez_manage.process_position exits, ONE
     # predicate set vec_decisions/grey_wire_exits.py shared with v12_quick_engine.simulate_one; hook = tradier_manage
@@ -3792,6 +3803,13 @@ class TradierConfig:
     HLR_TOP_EXIT_LIVE_SANCTIONED: bool = False  # 2026-10-02 SELL_TOP sanction mirror (stocks live HLR = stubs-only; stays False).
     HLR_TOP_RECROSS_BYPASS_ENABLED: bool = False  # 2026-10-02 recross-bypass mirror (stocks).
     HLR_RECROSS_BYPASS_BARS: int = 32  # window (15m bars) for the SELL_TOP recross bypass.
+    LH_LL_TOP_EXIT_ENABLED: bool = False  # 2026-10-04 LH/LL top exit mirror (stocks): structure-armed top/bottom exit, sweep-gated.
+    LH_LL_TOP_EXIT_STRUCT_TF: str = "OFF"  # "4h" | "D" | "4h,D" (OR) — which HTF bar structure arms the exit.
+    LH_LL_TOP_EXIT_STRUCT_MODE: str = "LH_LL"  # "LH" | "LL" | "LH_LL" | "LH_AND_LL" (short mirrors to HH/HL).
+    LH_LL_TOP_EXIT_MODE: str = "EITHER"  # "WT15M" | "DC1H" | "EITHER" | "BOTH" (BOTH = WT cross into 1h edge).
+    LH_LL_TOP_EXIT_DC1H_BUFFER_PCT: float = 0.10  # touch band below dc_high_1h (long) / above dc_low_1h (short).
+    LH_LL_TOP_EXIT_BOTH_TOL_PCT: float = 0.30  # BOTH mode: WT cross counts only within tol of the 1h edge.
+    LH_LL_TOP_EXIT_REQUIRE_PRICE_CONFIRM: bool = False  # WT leg additionally needs px<pxp (long) / px>pxp (short).
     # batch 3: BREAKEVEN_GAIN_EROSION stock live port (grey_wire_exits.breakeven_gain_erosion). OFF = today's stock live.
     BREAKEVEN_GAIN_EROSION_ENABLED: bool = False
     BREAKEVEN_GAIN_EROSION_MIN_GAIN: float = 50.0
@@ -4211,6 +4229,7 @@ class TradierConfig:
     HARDCODED_RALLY_HTF_TREND_TF: str = "OFF"  # OFF | 1h | 4h | 1h,4h
     HARDCODED_RALLY_DC_POS_MAX: float = 0.0
     HARDCODED_RALLY_SMA200_SIDE_ENABLED: bool = False
+    TARGET_DC_IMMEDIATE_REENTRY_ENABLED: bool = True  # 2026-10-04 parity cut (aug-reentry): master for TARGET-DC immediate reentry. True = today's vec behavior (neutral); live twin pending — no live reads yet, zero live change.
     # === YOUTUBE STRATEGIES (2026-03-27) — DISABLED on trb 2026-03-30 ===
     # These were implemented from YouTube research with FAKE backtests (reimplemented logic, not real functions).
     # "Sharpe 5.17" etc were fabricated numbers. Connors RSI augmented MRVL at -6.74% on real money.
@@ -4618,7 +4637,7 @@ class TradierConfig:
     BB_BREAKOUT_ENTRY_TF: str = "OFF"
     BB_EXIT_AT_LOSS_TF: str = "OFF"
     BB_PROFIT_TAKE_TF: str = "OFF"
-    BB_SQUEEZE_EXIT_ENABLED: bool = False  # Exit squeeze release - split from master to avoid double count 2026-09-04
+    BB_SQUEEZE_EXIT_ENABLED: bool = False  # Exit squeeze release - split from master to avoid double count 2026-09-04; WIRING LANE C M1c: live meaning now = wave4 bb_squeeze_exit_mask parity (exit on transition INTO squeeze while in trade); was dormant (touch-refs only) before the M1c mirror
     BB_SQUEEZE_WIDTH_PERCENTILE: float = 0.2  # Width must be in bottom 20% to count as squeeze — parity with config.py 2382
     # === PER-ROW FILTERS (2026-09-07) -- per-switch filter settings from TEMPLATE.xlsx L:BI ===
     # Maps switch name -> {filter_name: value, ...} for filters that are opportune for that switch.

@@ -55,10 +55,10 @@
    "kind": "promoted_switch"
   },
   "MIN_GAIN_TO_BUY_AGGRESSIVELY": {
-   "value": 6,
-   "avg_delta": 2.934,
+   "value": 4.5,
+   "avg_delta": 0.502307,
    "tab": "AUGMENT_TREND",
-   "kind": "promoted_switch"
+   "at": "2026-10-04T02:44:38.703297Z"
   },
   "DC_EDGE_SIZING_ENABLED": {
    "value": false,
@@ -110,9 +110,9 @@
   },
   "MTF_ATR_TRAIL_FILTER_TF": {
    "value": "1h",
-   "avg_delta": 3.1697,
+   "avg_delta": 0.269929,
    "tab": "GLOBAL_RISK_GATES",
-   "kind": "promoted_filter"
+   "at": "2026-10-04T02:45:01.789491Z"
   },
   "NEWBORN_LOSS_KILL_FILTER_TF": {
    "value": "15m",
@@ -122,15 +122,15 @@
   },
   "WT_15M_BOUNCE_OPEN_ENABLED": {
    "value": "False",
-   "avg_delta": 4.528415,
+   "avg_delta": 1.781462,
    "tab": "ENTRY_REVERSAL_BOUNCE",
-   "at": "2026-10-02T18:19:18.634217Z"
+   "at": "2026-10-04T02:43:24.046549Z"
   },
   "WT_DIV_EXIT_ENABLED": {
    "value": "False",
-   "avg_delta": 1.37726,
+   "avg_delta": 1.143354,
    "tab": "ENTRY_REVERSAL_BOUNCE",
-   "at": "2026-10-02T18:19:18.634227Z"
+   "at": "2026-10-04T02:43:24.046534Z"
   },
   "FAST_RISER_FILTER_TF": {
    "value": "OFF",
@@ -194,9 +194,9 @@
   },
   "WT_DC_ENTRY_THRESHOLD": {
    "value": 45,
-   "avg_delta": 3.486535,
+   "avg_delta": 0.921479,
    "tab": "ENTRY_CONFIRMATION_GATES",
-   "at": "2026-10-02T18:19:26.219098Z"
+   "at": "2026-10-04T02:43:47.869911Z"
   },
   "WT_LOWER_CROSS_EXIT_TF": {
    "value": "1h",
@@ -275,6 +275,18 @@
    "avg_delta": 1.469321,
    "tab": "GLOBAL_RISK_GATES",
    "at": "2026-10-02T18:19:50.149294Z"
+  },
+  "ATR_ADAPTIVE_SIZING_TARGET_PCT": {
+   "value": "3.0",
+   "avg_delta": 0.286107,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-04T02:43:36.431528Z"
+  },
+  "MAX_ORDER_VALUE": {
+   "value": 90,
+   "avg_delta": 1.22976,
+   "tab": "GLOBAL_RISK_GATES",
+   "at": "2026-10-04T02:45:01.780605Z"
   }
  },
  "CRYPTO_SHORT": {
@@ -309,10 +321,10 @@
    "kind": "promoted_switch"
   },
   "REGIME_RANGING_WT_EXIT_VEL": {
-   "value": -1.5,
-   "avg_delta": 0.232,
+   "value": -3,
+   "avg_delta": 0.025725,
    "tab": "EXIT_STRUCTURAL",
-   "kind": "promoted_switch"
+   "at": "2026-10-04T02:47:19.424559Z"
   },
   "REGIME_TRENDING_WT_EXIT_VEL": {
    "value": -18,
@@ -388,15 +400,15 @@
   },
   "BB_SQUEEZE_ENTRY_ENABLED": {
    "value": "True",
-   "avg_delta": 10.834673,
+   "avg_delta": 4.035313,
    "tab": "ENTRY_REVERSAL_BOUNCE",
-   "at": "2026-10-02T18:20:14.147130Z"
+   "at": "2026-10-04T02:46:35.111551Z"
   },
   "DC_BREAK_FILTER_TF": {
-   "value": "1h",
-   "avg_delta": 1.41883,
+   "value": "D",
+   "avg_delta": 0.816002,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-10-02T18:20:44.087796Z"
+   "at": "2026-10-04T02:48:35.672819Z"
   },
   "BREAKOUT_RETEST_FILTER_TF": {
    "value": "1h",
@@ -460,9 +472,9 @@
   },
   "EMA_9_21_FILTER_FILTER_TF": {
    "value": "15m",
-   "avg_delta": 0.484674,
+   "avg_delta": 1.640991,
    "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-10-02T18:20:44.087805Z"
+   "at": "2026-10-04T02:48:35.672835Z"
   },
   "EXIT_R1_R2_FILTER_TF": {
    "value": "15m",
@@ -604,9 +616,9 @@
   },
   "SCALP_V3_AUG_BE_STOP_PCT": {
    "value": 0.1,
-   "avg_delta": 2.561537,
+   "avg_delta": 0.321321,
    "tab": "AUGMENT_RISK_SIZING",
-   "at": "2026-10-02T18:20:39.211039Z"
+   "at": "2026-10-04T02:48:18.873039Z"
   },
   "MAX_AUGMENTS_PER_POSITION": {
    "value": 10,
@@ -643,6 +655,12 @@
    "avg_delta": 0.005311,
    "tab": "GLOBAL_RISK_GATES",
    "at": "2026-10-02T18:20:44.085220Z"
+  },
+  "DC_EDGE_SIZING_MAX_MULT": {
+   "value": 6,
+   "avg_delta": 0.099503,
+   "tab": "AUGMENT_RISK_SIZING",
+   "at": "2026-10-04T02:48:18.873906Z"
   }
  },
  "STOCKS_LONG": {
@@ -665,10 +683,10 @@
    "kind": "promoted_switch"
   },
   "REENTRY2_DC_BREAK_FILTER_TF": {
-   "value": "D",
-   "avg_delta": 1.0054,
+   "value": "1h",
+   "avg_delta": 0.405794,
    "tab": "REENTRY_WINDOWED",
-   "kind": "promoted_switch"
+   "at": "2026-10-04T02:52:00.450418Z"
   },
   "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER": {
    "value": false,
@@ -785,10 +803,10 @@
    "at": "2026-10-02T18:21:10.020055Z"
   },
   "MANDATORY_REENTRY_WT_FILTER_TF_MODE": {
-   "value": "15m_only",
-   "avg_delta": 5.440372,
-   "tab": "GLOBAL_RISK_GATES",
-   "at": "2026-10-02T18:21:45.985353Z"
+   "value": 0,
+   "avg_delta": 0.929826,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-04T02:50:40.053010Z"
   },
   "HTF_BULL_ENTRY_FILTER_TF": {
    "value": "15m",
@@ -999,6 +1017,42 @@
    "avg_delta": 12.686777,
    "tab": "GLOBAL_RISK_GATES",
    "at": "2026-10-02T18:21:45.982452Z"
+  },
+  "BB_BOUNCE_ENTRY_TF": {
+   "value": "OFF",
+   "avg_delta": 1.887604,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-04T02:50:40.052836Z"
+  },
+  "DC_BREAKOUT_TF": {
+   "value": "OFF",
+   "avg_delta": 1.812236,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-04T02:50:54.817915Z"
+  },
+  "RZ_BOT_BB_THRESHOLD": {
+   "value": "0.225",
+   "avg_delta": 0.135453,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-04T02:50:54.819846Z"
+  },
+  "LH_HL_FILTER_DC_THRESHOLD_PCT": {
+   "value": 1,
+   "avg_delta": 0.346175,
+   "tab": "ENTRY_CONFIRMATION_GATES",
+   "at": "2026-10-04T02:51:09.866325Z"
+  },
+  "BB_EXIT_AT_LOSS_TF": {
+   "value": "15m",
+   "avg_delta": 0.005605,
+   "tab": "EXIT_STRUCTURAL",
+   "at": "2026-10-04T02:51:30.267392Z"
+  },
+  "MIN_GAIN_TO_BUY_AGGRESSIVELY": {
+   "value": 6,
+   "avg_delta": 1.362522,
+   "tab": "AUGMENT_TREND",
+   "at": "2026-10-04T02:52:26.697483Z"
   }
  },
  "STOCKS_SHORT": {
@@ -1046,9 +1100,9 @@
   },
   "REENTRY_TIER1_SIZE_MULT_TRADIER": {
    "value": 3,
-   "avg_delta": 0.326036,
+   "avg_delta": 0.279136,
    "tab": "REENTRY_WINDOWED",
-   "at": "2026-10-03T08:23:44.742076Z"
+   "at": "2026-10-04T02:56:29.330101Z"
   },
   "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER": {
    "value": false,
@@ -1058,9 +1112,9 @@
   },
   "MAX_AUGMENTS_PER_POSITION": {
    "value": "0",
-   "avg_delta": 0.788001,
+   "avg_delta": 0.295101,
    "tab": "AUGMENT_RISK_SIZING",
-   "at": "2026-10-03T08:23:56.210371Z"
+   "at": "2026-10-04T02:56:59.686306Z"
   },
   "EMA_9_21_FILTER_ENABLED": {
    "value": false,
@@ -1228,7 +1282,7 @@
    "value": 0,
    "avg_delta": 1.272554,
    "tab": "ENTRY_REVERSAL_BOUNCE",
-   "at": "2026-10-03T08:23:23.201129Z"
+   "at": "2026-10-04T02:55:25.845343Z"
   },
   "WT_CROSSUNDER_FINAL_ENABLED": {
    "value": false,
@@ -1238,9 +1292,9 @@
   },
   "LH_HL_FILTER_DC_THRESHOLD_PCT": {
    "value": 0.25,
-   "avg_delta": 0.21154,
+   "avg_delta": 0.498628,
    "tab": "ENTRY_CONFIRMATION_GATES",
-   "at": "2026-10-03T08:23:30.529322Z"
+   "at": "2026-10-04T02:55:46.977658Z"
   },
   "TECHNICAL_DC_STOP_TF": {
    "value": "1h",
@@ -1259,6 +1313,30 @@
    "avg_delta": 0.544805,
    "tab": "EXIT_STRUCTURAL",
    "at": "2026-10-03T08:23:36.178573Z"
+  },
+  "BB_PULLBACK_GATE_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 1.19653,
+   "tab": "ENTRY_REVERSAL_BOUNCE",
+   "at": "2026-10-04T02:55:25.845226Z"
+  },
+  "BREAKOUT_RETEST_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.024051,
+   "tab": "ENTRY_BREAKOUT_CHANNEL",
+   "at": "2026-10-04T02:55:36.248517Z"
+  },
+  "GAP_CLOSE_MOC_EXIT_ENABLED": {
+   "value": false,
+   "avg_delta": 0.046138,
+   "tab": "EXIT_STRUCTURAL",
+   "at": "2026-10-04T02:56:02.887202Z"
+  },
+  "REENTRY2_DC_BREAK_FILTER_TF": {
+   "value": "OFF",
+   "avg_delta": 0.235834,
+   "tab": "REENTRY_WINDOWED",
+   "at": "2026-10-04T02:56:29.330184Z"
   }
  }
 }

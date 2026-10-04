@@ -1,0 +1,681 @@
+{
+ "round_id": "0f8ca1e2284c8296fa67b2d217546c98",
+ "agg": "/Users/niels/Documents/binance/SPREADSHEETS/v15_vector_delta_latest.xlsx",
+ "refused": {
+  "CRYPTO_SHORT": [
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "WT_MOMENTUM_EXIT_THRESHOLD=1",
+    0.0,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "MANDATORY_REENTRY_WT_FILTER_TF_MODE=15m_only",
+    7.7928,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "LH_HL_FILTER_TF_REQ=1",
+    1.2025,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "MANDATORY_REENTRY_WT_FILTER_TF_MODE=15m_only",
+    7.7928,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "WT_15M_BOUNCE_BB_MIN=0.05",
+    7.7928,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "WT_COMPOSITE_ENTRY_GOOD=30",
+    0.2936,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "WT_COMPOSITE_ENTRY_OK=10",
+    0.2589,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "V8_ENTRY_ENGINE_DC_ENABLED=True",
+    0.1674,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "STDEV_BREAKOUT_ENABLED=False",
+    0.2425,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "STDEV_BREAKOUT_PCTB_SHORT=-0.125",
+    6.0498,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "REENTRY2_STOCH_CROSS_ENABLED=False",
+    0.2425,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "MACD_ZERO_CROSS_ENABLED=False",
+    0.2425,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "STOCH_CROSS_ENTRY_TRADIER=True",
+    0.2425,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "TRADIER_MFI_ENTRY_LONG_ENABLED=False",
+    0.1674,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "TRADIER_MFI_ENTRY_LONG_ENABLED=True",
+    0.6876,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "STDEV_BREAKOUT_PCTB_LONG=1.0",
+    0.6952,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "STDEV_BREAKOUT_PCTB_LONG=0",
+    1.5314,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "STDEV_BREAKOUT_PCTB_LONG=1.125",
+    6.0498,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "ENTRY_PRIMARY_TF=4h",
+    0.2425,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "WT_COMPOSITE_ENTRY_BLOCK=-20",
+    0.2589,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "HAIKU_ENTRY_GATE_ENABLED=False",
+    0.2425,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "MOM3_FILTER_TF=15m",
+    0.6536,
+    1,
+    4,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "TRADIER_RSI2_EXIT_THRESHOLD_SHORT=10.0",
+    0.2425,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "TRADIER_RSI2_EXIT_THRESHOLD_SHORT=12.5",
+    1.5314,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "TRADIER_RSI2_EXIT_THRESHOLD_SHORT=7.5",
+    1.5314,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "TRADIER_RSI2_EXIT_THRESHOLD_SHORT=5.0",
+    1.5314,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "TRADIER_RSI2_EXIT_THRESHOLD_LONG=90.0",
+    0.2425,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "TRADIER_RSI2_EXIT_THRESHOLD_LONG=45.0",
+    1.5314,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "TRADIER_RSI2_EXIT_THRESHOLD_LONG=67.5",
+    1.5314,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "f",
+    "MOM3_FILTER_TF=15m",
+    0.6536,
+    1,
+    4,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "RSI2_XTREME_ENTRY_TF=15m",
+    1.4718,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "WT_DC_HTF_GATE=4h_D",
+    2.0661,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "WT_DC_DIRECT_THRESHOLD=20",
+    0.9112,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "ABLATION_DISABLE_QUICK_ENTRY=False",
+    1.2454,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "MOMENTUM_BREAKOUT_FILTER_TF=OFF",
+    1.2083,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "FUNDING_GATE_ENABLED=True",
+    1.1383,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "WT_AGAINST_FILTER_ENABLED=False",
+    3.3964,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "f",
+    "MOMENTUM_BREAKOUT_FILTER_TF=OFF",
+    1.2083,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "TECHNICAL_DC_TARGET_TF=1h",
+    0.1147,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "TECHNICAL_DC_TARGET_TF=15m",
+    0.1701,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "MOM3_FILTER_TF=OFF",
+    0.0843,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "MOM3_FILTER_TF=OFF",
+    0.0843,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "LH_HL_FILTER_TF_REQ=2",
+    1.1505,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "LH_HL_FILTER_TF_REQ=2",
+    1.1505,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "f",
+    "LH_HL_FILTER_TF_REQ=2",
+    1.1505,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "f",
+    "LH_HL_FILTER_TF_REQ=1",
+    0.1036,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "OBLIGATORY_REENTRY_DEFAULT_SIZE_MULT=1",
+    0.2589,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED=1",
+    0.0666,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY_SIZE_EXTENDED_K1H=90",
+    0.625,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY_POST_CONSOL_TFS_REQUIRED=2",
+    0.2589,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "BTC_GUARANTEED_REENTRY_MAX_AGE_BARS=480",
+    0.8361,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY_PRICE_IMPROVE_PCT=0.08",
+    7.7928,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "GUARANTEED_REENTRY_DELTA_GATE_ENABLED=False",
+    7.7928,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "GUARANTEED_REENTRY_STRICT_CONFIRMATION=True",
+    7.7928,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "sw",
+    "REENTRY_SIZE_BREAKOUT_MULT=1.5",
+    5.8144,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=4h",
+    0.9779,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=1h",
+    0.9514,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_TREND",
+    "f",
+    "EMA_9_21_FILTER_FILTER_TF=15m",
+    0.0769,
+    1,
+    7,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_TREND",
+    "f",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=OFF",
+    2.9147,
+    1,
+    5,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_TREND",
+    "f",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=D",
+    2.9147,
+    1,
+    5,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_TREND",
+    "f",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=4h",
+    2.9147,
+    1,
+    5,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_TREND",
+    "f",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=1h",
+    2.9147,
+    1,
+    5,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_TREND",
+    "f",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=15m",
+    2.9147,
+    1,
+    5,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=15m",
+    0.6978,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=15m",
+    0.6978,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=15m",
+    0.6978,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "WT_PERCENTILE_ENTRY_OB_D=90",
+    0.2589,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "WT_PERCENTILE_ENTRY_OS_D=10",
+    0.2589,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "MI_ENTRY_ENABLED=False",
+    7.7928,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "GAP_PER_SYMBOL_AVG_THRESH_PCT=0.10",
+    0.1633,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "BAR_PATTERNS_FILTER_TF=OFF",
+    0.125,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "EMA20_SLOPE_SHORT_THRESHOLD_1H=0.1",
+    0.0311,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "START_POSITION_SIZE=28.0",
+    5.8123,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "MIN_POSITION_SIZE=1.0",
+    5.8123,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ]
+  ]
+ },
+ "CRYPTO_SHORT": {
+  "rows_with_stats": 1760,
+  "cleared": {},
+  "promoted_switch": [],
+  "promoted_filter": [],
+  "violations": []
+ }
+}

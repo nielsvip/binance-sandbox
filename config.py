@@ -2063,6 +2063,7 @@ class Config:
     HARDCODED_RALLY_HTF_TREND_TF: str = "OFF"  # OFF | 1h | 4h | 1h,4h
     HARDCODED_RALLY_DC_POS_MAX: float = 0.0
     HARDCODED_RALLY_SMA200_SIDE_ENABLED: bool = False
+    TARGET_DC_IMMEDIATE_REENTRY_ENABLED: bool = True  # 2026-10-04 parity cut (aug-reentry): master for TARGET-DC immediate reentry (2026-09-26 mandate). True = today's vec behavior (neutral); live twin pending (LIVE_SPEC_TARGET_DC.md) — no live reads yet, zero live change.
     # Aggressive tier window (2026-04-17 reentry sweep: crypto peak at 8-12 bars = 24-36min on 3m).
     # Within this window, a fresh dc_x3m or stoch_x3m with 1h still trending bypasses safety gates.
     REENTRY_AGGRESSIVE_WINDOW_MIN: float = 30.0  # 30 min on crypto (3m base = 10 bars — matches Sharpe peak)
@@ -2621,6 +2622,13 @@ class Config:
     HLR_TOP_EXIT_LIVE_SANCTIONED: bool = False  # 2026-10-02 SELL_TOP sanction (MOVR §63): live QUICK_REDUCE_TECHNICAL_ONLY suppresses HLR_TOP_EXIT (no sanctioned token) — per-sym True re-allows it live AND in vec. Sweep-gated.
     HLR_TOP_RECROSS_BYPASS_ENABLED: bool = False  # 2026-10-02 premature-top backstop (§63): after a SELL_TOP exit, a recross of the exit price within HLR_RECROSS_BYPASS_BARS reenters bypassing the KG/GR/STOP/DC4H choke. Sweep-gated vs 2026-09-27 anti-churn.
     HLR_RECROSS_BYPASS_BARS: int = 32  # window (15m bars) for the SELL_TOP recross bypass above.
+    LH_LL_TOP_EXIT_ENABLED: bool = False  # 2026-10-04 LH/LL top exit: after prev completed 4h/D prints LH/LL (long; HH/HL short), exit near the bounce extreme via WT15M rollover / DC1H touch instead of the DC stop. Sweep-gated.
+    LH_LL_TOP_EXIT_STRUCT_TF: str = "OFF"  # "4h" | "D" | "4h,D" (OR) — which HTF bar structure arms the exit.
+    LH_LL_TOP_EXIT_STRUCT_MODE: str = "LH_LL"  # "LH" | "LL" | "LH_LL" | "LH_AND_LL" (short mirrors to HH/HL).
+    LH_LL_TOP_EXIT_MODE: str = "EITHER"  # "WT15M" | "DC1H" | "EITHER" | "BOTH" (BOTH = WT cross into 1h edge).
+    LH_LL_TOP_EXIT_DC1H_BUFFER_PCT: float = 0.10  # touch band below dc_high_1h (long) / above dc_low_1h (short).
+    LH_LL_TOP_EXIT_BOTH_TOL_PCT: float = 0.30  # BOTH mode: WT cross counts only within tol of the 1h edge.
+    LH_LL_TOP_EXIT_REQUIRE_PRICE_CONFIRM: bool = False  # WT leg additionally needs px<pxp (long) / px>pxp (short).
     # === BACKTEST SWEEP WINNERS (2026-03-16) ===
     K3M_CAP: int = 80  # BACKTEST_CHANGE_105: REVERTED to 80. Tournament (10 rounds, 3042 combos) winner uses 80. BACKTEST_CHANGE_8 (70) reversed.
     K3M_FLOOR: int = 30  # BACKTEST_CHANGE_9: NEW. Block SHORT when k_3m <= 30 (mirror of K3M_CAP)
@@ -2641,6 +2649,7 @@ class Config:
     BB_SQUEEZE_ENTRY_ENABLED: bool = True  # Enter when Bollinger bands compress (< threshold)
     BB_SQUEEZE_THRESHOLD_1H: float = 0.03  # bb_squeeze < this on 1h = entry signal
     BB_SQUEEZE_THRESHOLD_15M: float = 0.025  # bb_squeeze < this on 15m = entry signal
+    BB_SQUEEZE_EXIT_ENABLED: bool = False  # WIRING LANE C M1c: TTM compression exit (squeeze turning ON); OFF = live fallback
     # --- 2026-09-19 BB 15m/1h/4h/D family — bounce / breakout / profit-take / exit-at-loss + filter TFs — TESTABLE 15m+ in NPZ ---
     BB_BOUNCE_ENTRY_TF: str = "OFF"  # ENTRY_REVERSAL_BOUNCE OFF/15m/1h/4h/D — long bounce off bb_lower, short off bb_upper
     BB_BREAKOUT_ENTRY_TF: str = "OFF"  # ENTRY_BREAKOUT_CHANNEL — close > bb_upper (long) / < bb_lower (short) breakout
@@ -2715,6 +2724,7 @@ class Config:
     K_ZONE_LONG_THRESHOLD: int = 35  # BACKTEST_CHANGE_101: Tournament v2 (76.8K configs): 35/50/70 identical but 35 matches original K-zone logic. Was 90 (basically no filter).
     K_ZONE_SHORT_THRESHOLD: int = 10  # BACKTEST_CHANGE_101: wide zone accepts more profitable entries (was 65)
     K_ZONE_ENTRY_BONUS: int = 25  # Score bonus when K-zone + candle confirms (HA flip, hammer, engulfing)
+    K_ZONE_EZ_BINARY_MIRROR_ENABLED: bool = False  # MOP-UP M 2026-10-04 (B12 K_ZONEx2): binary K-zone entry-allow in check_entry_alignment (vec B_KZONE twin); OFF = zero live change (canonical K_ZONE_ENTRY_ENABLED stays True for the epq scorer)
     BOUNCE_REENTRY_ENABLED: bool = True  # BACKTEST_CHANGE_110: After profitable exit, require K to pull back to zone before reentering. 96%+ reentry WR.
     BOUNCE_REENTRY_K_RESET_LONG: int = 35  # K must drop below this after exit before LONG reentry allowed
     # === MOVER DETECTION — INF ACCOUNT (2026-03-22 — 65k combos × 207 sym, 99%+ WR) ===
@@ -4643,6 +4653,8 @@ class Config:
     DAYTRADE_DC_STOP_BUFFER_PCT: float = 0.25
     DAYTRADE_DC_TARGET_TF: str = "15m"  # DEF2 2026-10-01 user: PROFIT_TARGET = dc_high_15m-0.1% (short dc_low+0.1%) default 15m; test OFF/15m/1h/4h/combos. was OFF | 15m | 1h | 4h | '15m,1h' — LONG px>=dc_high_TF*(1-buf), SHORT px<=dc_low_TF*(1+buf)
     DAYTRADE_DC_TARGET_BUFFER_PCT: float = 0.10
+    ENTRY_DC_TF: str = "OFF"  # 2026-10-04 parity cut: daytrade ENTRY channel (simple-system oracle). OFF | 15m | 1h | 4h | combos. Live twins: ez M1b + tradier M1b (ENTRY_DC gate ports).
+    ENTRY_DC_BUFFER_PCT: float = 0.10  # 2026-10-04 parity cut: buffer for ENTRY_DC_TF (LONG close>=dc*(1+buf), SHORT mirrored).
     WT_LOWER_CROSS_EXIT_TF: str = "OFF"  # OFF | 15m | 1h | 4h — LONG wt1 crosses below wt2 AND px < close_15m_prev (SHORT mirrored)
     DC_ENTRY_VETO_ENABLED_TRADIER: bool = False  # SENTINEL_FIX 2026-04-14: when True, DC_POSITION_ENTRY_THRESHOLD gates entries (require dc_pos in zone). Default False = live unchanged.  # PORTED from TradierConfig 2026-08-17
     DC_LOW_FROZEN_STOP_ENABLED: bool = False       # master switch; sweep variants set True + TF  # PORTED from TradierConfig 2026-08-17
@@ -4728,6 +4740,8 @@ class Config:
     ENTRY_MIN_ALIGNMENT: int =             5      # 2026-06-09: lowered 10→5 (10=impossible, max score=10 but alignment=5/10 was blocking good trades). Was 8→10. ROLLBACK: 8.  # PORTED from TradierConfig 2026-08-17
     ENTRY_PRIMARY_TF: str =                '4h'   # BACKTEST_CHANGE_T7 was 1h → 4h slower primary TF  # PORTED from TradierConfig 2026-08-17
     ENTRY_STOCH_HHHL_DIRECT_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    ENTRY_DC_TF: str = "OFF"  # WIRING LANE C M1b: vec-live parity (v12 ENTRY DC gate 2026-09-26); OFF = no gate (live fallback)
+    ENTRY_DC_BUFFER_PCT: float = 0.10  # WIRING LANE C M1b: pct buffer above/below the DC band
     # BOTTOM/TOP families 2026-10-02 (staged: DIV/SMFI need indicator unlock for live; no template rows yet)
     DIV_ENTRY_ENABLED: bool = False
     DIV_ENTRY_TF: str = "1h"
@@ -5126,6 +5140,13 @@ class Config:
     GR_FILTER_VEC_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     GR_V5_STATE_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     HAIKU_WINNER_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    HAIKU_WINNER_ENABLED: bool = True  # [w2-haiku] 2026-10-04: overseer runs UNGATED live (ez startup, no switch reads this yet) — True = today's live behavior; vec twin master mirrors this.
+    HAIKU_AUGMENT_GAIN_THRESHOLD: float = 3.0  # [w2-haiku] live AUGMENT_GAIN_THRESHOLD (HaikuOverseer consts)
+    HAIKU_REDUCE_GAIN_THRESHOLD: float = 2.5  # [w2-haiku] live REDUCE_GAIN_THRESHOLD
+    HAIKU_AUGMENT_FRACTION: float = 0.10  # [w2-haiku] live AUGMENT_FRACTION
+    HAIKU_MIN_GAIN: float = 3.0  # [w2-haiku] mirror of MIN_GAIN (second augment gate)
+    HAIKU_MIN_POSITION_VALUE: float = 5.0  # [w2-haiku] live MIN_POSITION_VALUE ($ floor)
+    HAIKU_AUGMENT_INTERVAL_S: float = 60.0  # [w2-haiku] live AUGMENT_INTERVAL (per-position cooldown)
     KILLER_KNOB_FINDER_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     LIVE_ENTRY_ENGINE_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity

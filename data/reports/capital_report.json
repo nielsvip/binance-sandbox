@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-04 01:22 UTC",
- "total_capital_usd": 25.0,
+ "generated_at": "2026-10-04 07:07 UTC",
+ "total_capital_usd": 1104.7,
  "tier_capital": {
   "A": 0.0,
-  "B": 25.0,
+  "B": 1104.7,
   "C": 0.0
  },
  "tier_count": {
@@ -13,18 +13,20 @@
  },
  "winners": [],
  "losers": [],
- "mediocre": [],
+ "mediocre": [
+  "ang:BTCUSDT_LONG"
+ ],
  "positions": [
   {
-   "pk": "flz:DASHUSDT_LONG",
-   "symbol": "DASHUSDT",
-   "account": "flz",
-   "value_usd": 25.0,
-   "gain_pct": -0.076,
+   "pk": "ang:BTCUSDT_LONG",
+   "symbol": "BTCUSDT",
+   "account": "ang",
+   "value_usd": 1104.7,
+   "gain_pct": -0.005,
    "tier": "B",
-   "perf_mult": 3.76,
-   "amt": 0.424,
-   "mark": 58.97002115
+   "perf_mult": 1.0,
+   "amt": 0.013,
+   "mark": 84976.7
   }
  ]
 }

@@ -1,8 +1,6 @@
 {
  "_doc": "sweep-only default overrides (evaluate_v12._apply_sweep_cat_overrides, after cat_side defaults). NOT read by live.",
- "overrides": {
-  "AUGMENT_MIN_GAIN_PCT": 0.0
- },
- "at": "2026-10-01T05:50:43.334527Z",
- "why": "queue C/001 LG-19: MIN_GAIN_TO_BUY_AGGRESSIVELY is shadowed while AUGMENT_MIN_GAIN_PCT=3.0; live cat_side file must keep 3.0 until Agent D's live helper+config are applied"
+ "overrides": {},
+ "at": "2026-10-04T07:45Z",
+ "why": "M4 RESOLVED 2026-10-04: AUGMENT_MIN_GAIN_PCT removed (was sweep 0.0 vs live 3.0). PROVEN EQUIVALENT, not divergent: vec QuickConfig default is already 0.0 (=defer to MIN_GAIN_TO_BUY_AGGRESSIVELY 3.0) via vec_decisions.uagain_gate.effective_min_gain, the exact mirror of live live_entry_gates.effective_min_gain (Agent D batch5, LG-19); live override 3.0 == vec effective 3.0. File entry was redundant (restated vec default) and tripped lint M4 nominally on all sets. Empty {} = no-op; M4 vacuous-truthful. If a future knob truly needs sweep!=live, re-add with parity proof."
 }

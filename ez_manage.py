@@ -420,6 +420,58 @@ def check_entry_alignment(
                 _filter_tf_gate.filter_tf_gate_blocks(indicators, config, _f)
     except Exception:
         pass
+    # WIRING LANE C M1b (LIVE_MIRROR ENTRY_DC_TF/BUFFER_PCT): v12 ENTRY DC gate port.
+    # Default OFF -> zero live change. Per-tick application (no batch np.any guard); TF as-is.
+    try:
+        _edc_raw = str(getattr(config, 'ENTRY_DC_TF', 'OFF') or 'OFF').strip()
+        if _edc_raw.upper() != 'OFF' and _edc_raw != '':
+            _edc_tfs = [p.strip() for p in _edc_raw.replace('+', ',').replace('|', ',').replace(' ', ',').split(',') if p.strip() and p.strip().upper() != 'OFF']
+            _edc_buf = float(getattr(config, 'ENTRY_DC_BUFFER_PCT', 0.10) or 0.10) / 100.0
+            _edc_close = float(indicators.get("close", 0) or indicators.get("current_price", 0) or 0)
+            _edc_ok = False
+            _edc_any = False
+            for _etf in _edc_tfs:
+                _lo = float(indicators.get(f"dc_low_{_etf}", 0) or 0)
+                _hi = float(indicators.get(f"dc_high_{_etf}", 0) or 0)
+                if _lo <= 0 and _hi <= 0:
+                    continue
+                _edc_any = True
+                if is_long:
+                    if (_lo > 0 and _edc_close >= _lo * (1 + _edc_buf)) or (_hi > 0 and _edc_close >= _hi * (1 + _edc_buf)):
+                        _edc_ok = True
+                        break
+                else:
+                    if (_hi > 0 and _edc_close <= _hi * (1 - _edc_buf)) or (_lo > 0 and _edc_close <= _lo * (1 - _edc_buf)):
+                        _edc_ok = True
+                        break
+            # No DC data on any TF -> fail OPEN (matches v12 np.any batch guard +
+            # house KG_NO_HTF_DATA_ALLOW philosophy). Residual approx: v12 blocks a
+            # no-data ROW when other rows pass; per-tick live cannot see other rows.
+            if not _edc_ok and _edc_any:
+                return False, f"ENTRY_DC_TF_{_edc_raw}"
+    except Exception:
+        pass
+    # MOP-UP M 2026-10-04 (B12 K_ZONEx2 LIVE_MIRROR): vec B_KZONE twin (v12:8372).
+    # Binary K-zone entry-allow: LONG k_3m < LONG_THR / SHORT k_3m > SHORT_THR.
+    # Master K_ZONE_EZ_BINARY_MIRROR_ENABLED default False -> zero live change.
+    # Raw k_3m (pre-neutralization) mirrors vec NPZ reads. RESIDUAL: early-allow
+    # bypasses downstream live gates; vec OR-block still passes AND-gates.
+    try:
+        if bool(getattr(config, 'K_ZONE_EZ_BINARY_MIRROR_ENABLED', False)):
+            _kz_raw = indicators.get("k_3m", 50)
+            _kz_k3m = 50.0 if _kz_raw is None else float(_kz_raw)
+            if is_long:
+                _kz_thr = getattr(config, 'K_ZONE_LONG_THRESHOLD', 35)
+                _kz_thr = 35.0 if _kz_thr is None else float(_kz_thr)
+                if _kz_k3m < _kz_thr:
+                    return True, f"KZONE_LONG(k3m={_kz_k3m:.0f}<{_kz_thr:.0f})"
+            else:
+                _kz_thr = getattr(config, 'K_ZONE_SHORT_THRESHOLD', 10)
+                _kz_thr = 10.0 if _kz_thr is None else float(_kz_thr)
+                if _kz_k3m > _kz_thr:
+                    return True, f"KZONE_SHORT(k3m={_kz_k3m:.0f}>{_kz_thr:.0f})"
+    except Exception:
+        pass
     """Returns (allowed, reason). Requires 2/3 LTF (k_1m/3m/15m) AND 2/3 HTF (1h/4h/D) aligned.
     No crash hard-block here — hedges and trend-following entries must pass through.
     Crash ratio enforcement lives in compute_applied_ratio and ratio_rebalance_loop."""
@@ -3170,6 +3222,10 @@ try:
     import vec_decisions.dc_channel_exits as _dc_channel_exits  # 2026-09-29 grey-switch rewire (shared with v12_quick_engine)
 except ImportError:
     _dc_channel_exits = None
+try:
+    import vec_decisions.lh_ll_top_exit as _lhll_top_exit  # 2026-10-04 LH/LL top exit (shared with v12_quick_engine)
+except ImportError:
+    _lhll_top_exit = None
 from vec_decisions.process_position_stocks__alt_entries import _rz_breakout_fires  # 2026-09-29 grey rewire RZ_BREAKOUT shared predicate
 # --- FULL COVERAGE 2026-08-17: ez_ mirror of tradier_ coverage — identical params/hash so crypto vs stocks tradier_ parity is 100% identical is read at least once so switch_lab Tab 3 + vector parity can flip it ---
 # This does NOT change live trade logic (reads are dead-code gated); it makes grep-wiring and vector hash distinctness pass.
@@ -38847,8 +38903,9 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
         except Exception as _gre:
             logger.warning(f"[GR_HTF_REENTRY] {position_key}: {_gre}")
     # B00: PRICE ABOVE EXIT — price recovered above exit + meaningful buffer, trend
-    # confirmed by SMA200, momentum confirmed by 3m stoch rising + 15m WT cross.
-    # Only fires when all 3 conditions hold to avoid noise-triggered re-entries.
+    # confirmed by ema_9_15m (2026-10-04 ALL-15M: sma_200_1m has no 15m equiv), momentum
+    # confirmed by 15m WT cross (+ 3m stoch rising only when USE_1M_3M_SIGNALS_ENABLED).
+    # k3m is NOT k15m: no substitution — the 3m leg is bypassed (not blocking) while OFF.
     if getattr(config, "REENTRY_EXIT_RECLAIM_ENABLED", True):
         _exit_px = float(getattr(position, "last_reduction_price", 0.0) or 0.0)
         if _exit_px > 0:
@@ -38857,13 +38914,18 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
                 not is_long and current_price <= _exit_px * (1.0 - _buf)
             )
             if _above:
-                _sma_200 = float(i.get("sma_200_1m", 0) or 0)
+                _sma_200 = float(i.get("ema_9_15m", 0) or 0)
                 _sma_ok = _sma_200 <= 0 or (
                     (is_long and current_price > _sma_200) or (not is_long and current_price < _sma_200)
                 )
-                _k_3m = float(i.get("k_3m", 50) or 50)
-                _k_3m_prev = float(i.get("k_3m_prev", _k_3m) or _k_3m)
-                _mom_ok = (is_long and _k_3m > _k_3m_prev) or (not is_long and _k_3m < _k_3m_prev)
+                _k3m_on = bool(getattr(config, "USE_1M_3M_SIGNALS_ENABLED", False))
+                if _k3m_on:
+                    _k_3m = float(i.get("k_3m", 50) or 50)
+                    _k_3m_prev = float(i.get("k_3m_prev", _k_3m) or _k_3m)
+                    _mom_ok = (is_long and _k_3m > _k_3m_prev) or (not is_long and _k_3m < _k_3m_prev)
+                else:
+                    _k_3m = _k_3m_prev = 50.0
+                    _mom_ok = True
                 _wt1_15 = float(i.get("wt1_15m", 0) or 0)
                 _wt2_15 = float(i.get("wt2_15m", 0) or 0)
                 _vel_15 = float(i.get("wt_velocity_15m", 0) or 0)
@@ -39077,6 +39139,33 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
                 conviction=65.0,
                 quantity=aug_qty,
             )
+    # MOP-UP M 2026-10-04 (B12 SHORTx5 LIVE_MIRROR): vec SHORT PUMP twins
+    # (compute_augment _short_dc_sig/_short_rec_sig). SHORT-only; masters False = inert.
+    # Data keys mirror vec EXACTLY (unqualified dc_low/dc_position + vec fail-closed
+    # guards: dc_low>0; band defaults 0.5). _thr read-but-unused like vec.
+    if not is_long:
+        if bool(getattr(config, "SHORT_DC_LOW_BREAK_ENABLED", False)):
+            _sdc_lo = safe_fetch_float(i.get("dc_low"), 0)
+            if _sdc_lo > 0 and current_price < _sdc_lo:
+                _sdc_mult = float(getattr(config, "SHORT_DC_LOW_BREAK_SIZE_MULT", 2.0) or 2.0)
+                return Signal(
+                    action="AUGMENT",
+                    reason=f"SHORT_DC_LOW_BREAK_px{current_price:.4f}<lo{_sdc_lo:.4f}",
+                    conviction=70.0,
+                    quantity=abs(pos_amt) * _sdc_mult,
+                )
+        if bool(getattr(config, "SHORT_PARTIAL_RECOVERY_ENABLED", False)):
+            _spr_pos = safe_fetch_float(i.get("dc_position"), 0.5)
+            _spr_thr = float(getattr(config, "SHORT_PARTIAL_RECOVERY_THRESHOLD_PCT", -1.0))  # read-but-unused (vec parity)
+            _ = _spr_thr
+            if 0.2 < _spr_pos < 0.4:
+                _spr_mult = float(getattr(config, "SHORT_PARTIAL_RECOVERY_SIZE_MULT", 2.0) or 2.0)
+                return Signal(
+                    action="AUGMENT",
+                    reason=f"SHORT_PARTIAL_RECOVERY_dcpos{_spr_pos:.2f}",
+                    conviction=70.0,
+                    quantity=abs(pos_amt) * _spr_mult,
+                )
     return None
 
 
@@ -42179,6 +42268,16 @@ async def process_single_reentry_evaluation(
             return
         if min_since_exit < 120:
             reentry_amount = position.max_quantity
+        # WIRING LANE C M1a (LIVE_MIRROR OBLIGATORY_REENTRY_ENABLED): cross-path kill-switch
+        # consistency — ez_reentry.evaluate_obligatory_reentry honors this flag (default True);
+        # when the operator disables obligatory reentry, this evaluator also stands down.
+        # Default True -> zero live change.
+        if not bool(getattr(config, "OBLIGATORY_REENTRY_ENABLED", True)):
+            if config.VERBOSE:
+                logger.debug(
+                    f"[process_single_reentry_evaluation] {position_key}: NOT_ALLOWED - OBLIGATORY_REENTRY_ENABLED=False"
+                )
+            return
         i = await ii(trade_manager, symbol)
         if not i:
             return
@@ -46824,6 +46923,18 @@ async def process_position(
                 _pt_pct = safe_fetch_float(_psym_get(symbol, position_side, "PROFIT_TARGET_PCT", 1.6), 1.6)
                 if _pt_gain >= _pt_pct:
                     _gx_fire, _gx_reason = True, f"PROFIT_TARGET_g{_pt_gain:.2f}"
+            # LH/LL TOP EXIT 2026-10-04 live twin (default OFF = inert): structure-armed top/bottom
+            # exit, same predicate as v12. Live arm uses forming-vs-completed HTF H/L (snapshot has no
+            # completed[-2] bar) while vec uses completed[-1] vs completed[-2] — direction-consistent,
+            # live arms earlier intra-bar; parity delta is measured, not assumed.
+            if not _gx_fire and _lhll_top_exit is not None:
+                _lhll_spec = _lhll_top_exit.resolve_lh_ll_top_exit(lambda _k, _d: _psym_get(symbol, position_side, _k, _d))
+                if _lhll_spec.get("enabled"):
+                    if _pp_shared_ind is None:
+                        _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                    _lhll_fire, _lhll_reason = _lhll_top_exit.check_lh_ll_top_exit(_lhll_spec, _pp_shared_ind, safe_fetch_float(current_price, 0.0), safe_fetch_float(_pp_shared_ind.get("close_15m_prev", 0), 0.0), safe_fetch_float(_pp_shared_ind.get("wt1_15m_prev", 0), 0.0), safe_fetch_float(_pp_shared_ind.get("wt2_15m_prev", 0), 0.0), _gx_is_long)
+                    if _lhll_fire:
+                        _gx_fire, _gx_reason = True, _lhll_reason
             if _gx_fire:
                 _gx_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                 _gx_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
@@ -51216,12 +51327,39 @@ async def process_position(
                             _ppl_is_hedge = True
                 except Exception:
                     pass
+            # WIRING LANE C M1b (LIVE_MIRROR SIMPLE_TP_EXIT_ENABLED/PCT + QUICK_REDUCE_TECHNICAL_ONLY):
+            # vec vec_decisions.quick_reduce_sources.simple_tp + live rate() bc139 port. Crypto only
+            # (no tradier twin, like vec). Fires only when tech-only suppression is OFF and TP
+            # enabled — both inert at live defaults (True/False) -> zero live change.
+            _stp_fired = False
+            try:
+                _stp_tponly = bool(getattr(config, "QUICK_REDUCE_TECHNICAL_ONLY", True))
+                _stp_en = bool(getattr(config, "SIMPLE_TP_EXIT_ENABLED", False))
+                _stp_tp = float(getattr(config, "SIMPLE_TP_PCT", 0.50))
+                if (not _stp_tponly and _stp_en and _pp_gain >= _stp_tp
+                        and not _sat_skip_standard_exits):
+                    _stp_amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0))
+                    _stp_qty = _stp_amt - pos_min_qty  # live: ALL BUT DUST (epq:15001)
+                    if _stp_qty > pos_min_qty:
+                        _stp_uid = f"SIMPLE_TP_{position_key}_{int(time.time())}"
+                        _stp_reason = f"SIMPLE_TP_EXIT(gain={_pp_gain:.2f}%>=tp={_stp_tp}%)_bc139"
+                        logger.warning(f"[SIMPLE_TP_EXIT] {position_key}: gain={_pp_gain:.2f}% — firing REDUCE (all-but-dust)")
+                        _stp_result = await trade_manager.execute_now(
+                            position_key, account_key, symbol, _stp_amt,
+                            ("SELL" if is_long else "BUY"), position_side, _stp_qty,
+                            current_price, _stp_uid, _stp_reason, False, "QUICK_REDUCE",
+                        )
+                        if "SUCCESS" in str(_stp_result or "").upper():
+                            _stp_fired = True
+            except Exception:
+                pass
             # 2026-05-18 per-sym overlay
             if (
                 _psym_get(symbol, position_side, "PARTIAL_PROFIT_LOCK_ENABLED", False)
                 and account_key in getattr(config, "PARTIAL_PROFIT_LOCK_ACCOUNTS", [])
                 and not _sat_skip_standard_exits
                 and not _ppl_is_hedge
+                and not _stp_fired
             ):
                 _ppl_min_gain = float(
                     _psym_get(symbol, position_side, "PARTIAL_PROFIT_LOCK_GAIN_PCT", 0.5)

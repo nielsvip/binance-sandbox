@@ -1000,6 +1000,233 @@ def opportune_filter_rows(symside: str, sheet: str, switch: str) -> list[dict]:
         return []
     return [e for e in _load_filter_dictionary() if (e.get("filter") or "").strip() in bases and not _is_general(e["rec"])]
 
+# USER 2026-10-04 KINDERGARTEN MANDATE: the simple trend-alignment entry filters (kindergarten
+# gate + EMA 9/21 + retiring blanket) MUST be tested on EVERY row of the ENTRY tabs, and the
+# take-profit + step-back-in combo (rally reentry knobs + DC TARGET exits) on EVERY row of the
+# REENTRY tabs. The >=2-shared-token yellow rule withholds these from most rows (a bounce/
+# breakout switch shares <2 tokens with KINDERGARTEN_*/EMA_9_21_*), so without this the sweep
+# can never discover trend-aligned entries or take+reenter combos. Outcomes stay greedy-honest
+# (every mandatory cell is a real engine eval, pos-only promotion unchanged); kill-switches
+# V15_KG_MANDATORY=0 / V15_RECROSS_MANDATORY=0 restore token-only behavior.
+ENTRY_TABS_MANDATORY = frozenset({"ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES"})
+REENTRY_TABS_MANDATORY = frozenset({"REENTRY_WINDOWED", "REENTRY_ADAPTIVE"})
+RECROSS_MANDATORY_BASES = frozenset({
+    "HARDCODED_RALLY_REENTRY_ENABLED", "HARDCODED_RALLY_REENTRY_REQUIRE_WT",
+    "HARDCODED_RALLY_MIN_MOVE_PCT", "HARDCODED_RALLY_MIN_AGE_MIN",
+    "HARDCODED_RALLY_HTF_TREND_TF", "HARDCODED_RALLY_DC_POS_MAX",
+    "HARDCODED_RALLY_SMA200_SIDE_ENABLED",
+    "DAYTRADE_DC_TARGET_TF", "TECHNICAL_DC_TARGET_TF",
+})
+# USER 2026-10-04 ADDITION: everything trades both directions now, so the vec-wired
+# counter-trend protection filters are tested on EVERY ENTRY row too (greedy decides on/off:
+# counterproductive stays off). TOP_OF_RANGE_BLOCK_ENABLED + HTF_TREND_VETO_ENABLED are NOT
+# here: live-only, no vectorized read — testing them would burn evals on structural zeros
+# (genuine engine gap, needs vec wiring in locked files — flagged, not worked around).
+COUNTER_TREND_MANDATORY_BASES = frozenset({
+    "COUNTER_TREND_ADD_BLOCK_ENABLED", "COUNTER_TREND_SMA200_BYPASS_ENABLED",
+    "HTF_DIRECTION_GATE_ENABLED", "GR_FILTER_ALL_ENTRIES", "ADX_REGIME_FILTER_ENABLED",
+})
+_KG_BASES_CACHE: set | None = None
+_MANDATORY_HITS: dict = {}
+
+def _load_kg_bases() -> set:
+    global _KG_BASES_CACHE
+    if _KG_BASES_CACHE is None:
+        bases = set()
+        try:
+            _kg = json.loads((ROOT / "data" / "kindergarten_filters.json").read_text())
+            for _k in list(_kg.get("kindergarten_bases", [])) + list(_kg.get("retiring_bases", [])):
+                if _k and isinstance(_k, str):
+                    bases.add(_k.strip())
+        except Exception as _e:
+            print(f"[KG-mandatory-warn] kindergarten_filters.json unreadable ({_e}) — mandatory set empty", flush=True)
+        try:
+            bases &= known_config_fields()
+        except Exception:
+            pass
+        _KG_BASES_CACHE = bases
+        print(f"[KG-mandatory] {len(bases)} real KG bases loaded", flush=True)
+    return _KG_BASES_CACHE
+
+def mandatory_bases_for_tab(sname: str) -> set:
+    if sname in ENTRY_TABS_MANDATORY:
+        out = set()
+        if os.environ.get("V15_KG_MANDATORY", "1") != "0":
+            out |= _load_kg_bases()
+        if os.environ.get("V15_CT_MANDATORY", "1") != "0":
+            try:
+                out |= set(COUNTER_TREND_MANDATORY_BASES) & known_config_fields()
+            except Exception:
+                out |= set(COUNTER_TREND_MANDATORY_BASES)
+        return out
+    if sname in REENTRY_TABS_MANDATORY and os.environ.get("V15_RECROSS_MANDATORY", "1") != "0":
+        try:
+            return set(RECROSS_MANDATORY_BASES) & known_config_fields()
+        except Exception:
+            return set(RECROSS_MANDATORY_BASES)
+    return set()
+
+# USER 2026-10-04 ESSENTIAL-ROWS GATE: the make-or-break protection filters. No sheet may
+# finish/qualify while any of these has no non-zero number in its rows (naked G, any yellow,
+# or a ledger move). A zero here = protection unproven on this window = the side must not
+# trade (bearish LONG trading into a downtrend on unproven protection is how accounts die).
+# Membership rule: vec-wired on BOTH venues + white/orange rows with >=2 candidates exist.
+# Deliberately NOT here: KINDERGARTEN_ALWAYS_TEST (dead, no read anywhere),
+# EMA_9_21_SCORE_BONUS (DEAD_CONFIRMED), KINDERGARTEN_CUMULATIVE_MODE (stocks-only read),
+# KINDERGARTEN_STRICT_TFS ('' default unrepresentable as a row; group greyed -> truth fallback),
+# TOP_OF_RANGE_BLOCK_ENABLED + HTF_TREND_VETO_ENABLED (live-only, no vec read).
+# Venue binding proven by S1 flip test 2026-10-04 (tmp_s1_flip_test.py) — see matrix in report.
+ESSENTIAL_GATE_SWITCHES = frozenset({
+    "KINDERGARTEN_EMA_GATE_ENABLED", "KINDERGARTEN_FILTER_TF",
+    "KINDERGARTEN_CUMULATIVE_MIN_TFS",
+    "EMA_9_21_FILTER_ENABLED", "EMA_9_21_FILTER_FILTER_TF", "EMA_9_21_FILTER_MIN_TFS",
+    "EMA_9_21_FILTER_TFS", "EMA_9_21_TIMEFRAME",
+    "EMA_BLANKET_FILTER_ENABLED", "EMA_BLANKET_FILTER_FILTER_TF", "EMA_BLANKET_FILTER_MIN_TFS",
+    "HARDCODED_RALLY_REENTRY_ENABLED", "HARDCODED_RALLY_REENTRY_REQUIRE_WT",
+    "HARDCODED_RALLY_MIN_MOVE_PCT", "HARDCODED_RALLY_MIN_AGE_MIN",
+    "HARDCODED_RALLY_HTF_TREND_TF", "HARDCODED_RALLY_DC_POS_MAX",
+    "HARDCODED_RALLY_SMA200_SIDE_ENABLED",
+    "DAYTRADE_DC_TARGET_TF", "TECHNICAL_DC_TARGET_TF",
+    "COUNTER_TREND_ADD_BLOCK_ENABLED", "COUNTER_TREND_SMA200_BYPASS_ENABLED",
+    "HTF_DIRECTION_GATE_ENABLED", "GR_FILTER_ALL_ENTRIES", "ADX_REGIME_FILTER_ENABLED",
+})
+
+def _gate_parent_on(final_overrides: dict, parents: tuple) -> bool:
+    fo = final_overrides or {}
+    for p in parents:
+        v = fo.get(p)
+        if v is None:
+            continue
+        if isinstance(v, bool) and v:
+            return True
+        if str(v).strip().lower() in ("true", "1", "yes", "on"):
+            return True
+    return False
+
+# sub-knob -> parent gates: a sub reads vacuous-zero while every parent is OFF in the final
+# set (no-op by design, §14.3 case 2) — the gate SKIPs it instead of failing, so a correctly
+# rejected (counterproductive, stays-off) gate never poisons its own sheet.
+ESSENTIAL_GATE_PARENTS = {
+    "KINDERGARTEN_FILTER_TF": ("KINDERGARTEN_EMA_GATE_ENABLED", "EMA_9_21_FILTER_ENABLED"),
+    "KINDERGARTEN_CUMULATIVE_MIN_TFS": ("KINDERGARTEN_EMA_GATE_ENABLED", "EMA_9_21_FILTER_ENABLED"),
+    "EMA_9_21_FILTER_FILTER_TF": ("EMA_9_21_FILTER_ENABLED", "KINDERGARTEN_EMA_GATE_ENABLED"),
+    "EMA_9_21_FILTER_MIN_TFS": ("EMA_9_21_FILTER_ENABLED", "KINDERGARTEN_EMA_GATE_ENABLED"),
+    "EMA_9_21_FILTER_TFS": ("EMA_9_21_FILTER_ENABLED", "KINDERGARTEN_EMA_GATE_ENABLED"),
+    "EMA_9_21_TIMEFRAME": ("EMA_9_21_FILTER_ENABLED", "KINDERGARTEN_EMA_GATE_ENABLED"),
+    "EMA_BLANKET_FILTER_FILTER_TF": ("EMA_BLANKET_FILTER_ENABLED",),
+    "EMA_BLANKET_FILTER_MIN_TFS": ("EMA_BLANKET_FILTER_ENABLED",),
+    "HARDCODED_RALLY_MIN_MOVE_PCT": ("HARDCODED_RALLY_REENTRY_ENABLED",),
+    "HARDCODED_RALLY_MIN_AGE_MIN": ("HARDCODED_RALLY_REENTRY_ENABLED",),
+    "HARDCODED_RALLY_HTF_TREND_TF": ("HARDCODED_RALLY_REENTRY_ENABLED",),
+    "HARDCODED_RALLY_DC_POS_MAX": ("HARDCODED_RALLY_REENTRY_ENABLED",),
+    "HARDCODED_RALLY_SMA200_SIDE_ENABLED": ("HARDCODED_RALLY_REENTRY_ENABLED",),
+    "HARDCODED_RALLY_REENTRY_REQUIRE_WT": ("HARDCODED_RALLY_REENTRY_ENABLED",),
+    "COUNTER_TREND_SMA200_BYPASS_ENABLED": ("COUNTER_TREND_ADD_BLOCK_ENABLED",),
+}
+
+def essential_gate_check(done: dict, final_overrides: dict | None = None, is_long: bool = True, is_crypto: bool = True) -> dict:
+    per = {}
+    xrow_yellow = {}
+    for key, rec in (done or {}).items():
+        if not isinstance(rec, dict):
+            continue
+        sw = rec.get("switch")
+        if not sw and isinstance(key, str) and ":" in key:
+            try:
+                sw = key.split(":")[1].split("=")[0]
+            except Exception:
+                sw = None
+        if sw in ESSENTIAL_GATE_SWITCHES:
+            per.setdefault(sw, []).append(rec)
+        for h, yd in (rec.get("yellows") or {}).items():
+            if isinstance(yd, (int, float)) and abs(yd) > 1e-9 and isinstance(h, str) and "=" in h:
+                xrow_yellow.setdefault(h.split("=", 1)[0].strip(), []).append((key, yd))
+    out = {}
+    for sw in ESSENTIAL_GATE_SWITCHES:
+        if sw == "GR_FILTER_ALL_ENTRIES" and not is_long:
+            out[sw] = {"status": "SKIP", "reason": "LONG-only filter (live + vec), no SHORT path exists"}
+            continue
+        if sw == "ADX_REGIME_FILTER_ENABLED" and not is_crypto:
+            out[sw] = {"status": "SKIP", "reason": "crypto-only vec read (MODE!=tradier guard), no stocks path"}
+            continue
+        parents = ESSENTIAL_GATE_PARENTS.get(sw)
+        if parents and not _gate_parent_on(final_overrides, parents):
+            out[sw] = {"status": "SKIP", "reason": f"vacuous-honest (parents {parents} all OFF in final set)"}
+            continue
+        recs = per.get(sw, [])
+        tested = [r for r in recs if not r.get("is_running") and r.get("delta") is not None]
+        if not tested:
+            if sw in xrow_yellow:
+                _xk, _xd = xrow_yellow[sw][0]
+                out[sw] = {"status": "PASS", "reason": f"cross-row yellow {_xd:+.4f} ({_xk})"}
+            else:
+                out[sw] = {"status": "FAIL", "reason": f"untested ({len(recs)} rows, all running/skipped/missing)"}
+            continue
+        ev = None
+        for r in tested:
+            d = r.get("delta")
+            if isinstance(d, (int, float)) and abs(d) > 1e-9:
+                ev = f"naked {d:+.4f}"
+                break
+            for h, yd in (r.get("yellows") or {}).items():
+                if isinstance(yd, (int, float)) and abs(yd) > 1e-9:
+                    ev = f"yellow {h} {yd:+.4f}"
+                    break
+            if ev:
+                break
+            if r.get("naked_binding") is True:
+                ev = "ledger-move (gain-neutral)"
+                break
+        if not ev and sw in xrow_yellow:
+            _xk, _xd = xrow_yellow[sw][0]
+            ev = f"cross-row yellow {_xd:+.4f} ({_xk})"
+        if ev:
+            out[sw] = {"status": "PASS", "reason": ev}
+        else:
+            out[sw] = {"status": "FAIL", "reason": f"all-zero ({len(tested)} rows evaluated, ledger unmoved)"}
+    return out
+
+_START_STAMP = None
+def _capture_start_stamp() -> None:
+    global _START_STAMP
+    try:
+        import hashlib as _hl
+        from datetime import datetime, timezone
+        _START_STAMP = {"result_engine_md5": _hl.md5((ROOT / "v12_quick_engine.py").read_bytes()).hexdigest(), "result_pilot_md5": _hl.md5(Path(__file__).resolve().read_bytes()).hexdigest(), "result_config_md5_crypto": _hl.md5((ROOT / "config.py").read_bytes()).hexdigest(), "result_config_md5_stocks": _hl.md5((ROOT / "config_tradier.py").read_bytes()).hexdigest(), "result_start_utc": datetime.now(timezone.utc).isoformat()}
+    except Exception:
+        _START_STAMP = None
+def _result_stamp(progress: dict, symside: str) -> None:
+    try:
+        import hashlib as _hl
+        from datetime import datetime, timezone
+        _is_stocks = map_key_for_symside(symside).startswith("STOCKS")
+        if _START_STAMP:
+            progress["result_engine_md5"] = _START_STAMP["result_engine_md5"]
+            progress["result_pilot_md5"] = _START_STAMP["result_pilot_md5"]
+            progress["result_config_md5"] = _START_STAMP["result_config_md5_stocks" if _is_stocks else "result_config_md5_crypto"]
+            progress["result_start_utc"] = _START_STAMP["result_start_utc"]
+        else:
+            for _k, _p in (("result_engine_md5", ROOT / "v12_quick_engine.py"),
+                           ("result_pilot_md5", Path(__file__).resolve()),
+                           ("result_config_md5", ROOT / ("config_tradier.py" if _is_stocks else "config.py"))):
+                progress[_k] = _hl.md5(_p.read_bytes()).hexdigest()
+        progress["result_done_utc"] = datetime.now(timezone.utc).isoformat()
+    except Exception:
+        pass
+
+def _mandatory_note(sname: str, base: str, via_token: bool) -> None:
+    if via_token:
+        return
+    _d = _MANDATORY_HITS.setdefault(sname, {})
+    _d[base] = _d.get(base, 0) + 1
+
+def _mandatory_summary() -> str:
+    parts = []
+    for _s in sorted(_MANDATORY_HITS):
+        _d = _MANDATORY_HITS[_s]
+        parts.append(f"{_s}:{sum(_d.values())}cells/{len(_d)}bases")
+    return ", ".join(parts) if parts else "none"
+
 def sanitize_overrides(overrides: dict, defaults: dict) -> tuple[dict, list]:
     sanitized = {}
     warns = []
@@ -1129,8 +1356,14 @@ def template_bold_defaults(template_path, defaults: dict, truth: dict | None = N
             if truth is not None and sw in truth and sw not in (promoted or set()) and (isinstance(truth[sw], (dict, list, tuple, set)) or not _same_default(v, truth[sw])):
                 # USER 2026-09-30: a placeholder bold (group options do not contain the real default) is never pushed as
                 # the default into the engine / the 4-set layer — the real live value stays the default
-                UNTRUSTED_BOLD.append((tab, sw, v, truth[sw]))
-                continue
+                # USER 2026-10-04: EXCEPT the 2026-10-03 ABLATION ABOLITION shape (template False vs config True):
+                # the abolition outranks this guard — reinstating truth True re-imposes fleet-wide entry death
+                # (PEPE_LONG bolds 150 trades -> 0). The abolition False IS the default.
+                if sw.startswith("ABLATION_DISABLE_") and isinstance(v, bool) and not v and truth[sw] in (True, 1):
+                    pass
+                else:
+                    UNTRUSTED_BOLD.append((tab, sw, v, truth[sw]))
+                    continue
             if sw in vals and str(vals[sw]) != str(v):
                 bad.append(f"{sw}: default {vals[sw]!r} ({where[sw]}) != {v!r} ({tab})")
                 continue
@@ -2647,8 +2880,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _sw_tok = {t for t in str(switch).upper().split("_") if t}
             _tab_level = tab_level_filters(map_key_for_symside(new_symside), sname)
             _ever_y = ever_yellow_cells(map_key_for_symside(new_symside))
+            _mand = mandatory_bases_for_tab(sname)
             for hdr, col in header_maps[sname].items():
-                _want = len(_sw_tok & {t for t in hdr.split("=", 1)[0].upper().split("_") if t}) >= YELLOW_MIN_SHARED_TOKENS or f"{sname}\t{str(switch).strip()}={str(cand).strip()}\t{hdr}" in _ever_y
+                _hdr_base = hdr.split("=", 1)[0].strip()
+                _via_token = len(_sw_tok & {t for t in _hdr_base.upper().split("_") if t}) >= YELLOW_MIN_SHARED_TOKENS or f"{sname}\t{str(switch).strip()}={str(cand).strip()}\t{hdr}" in _ever_y
+                _want = _via_token or _hdr_base in _mand
+                _mand_only = _want and not _via_token
                 if hdr.split("=", 1)[0].strip() in _tab_level:
                     if _want:
                         info["yellow"].add(hdr)
@@ -2668,6 +2905,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 if not _fok:
                     info.setdefault("type_skipped", []).append(hdr)
                     continue  # type-incompatible filter value: blank cell, never evaluated, never 0.0, never RED
+                if _mand_only:
+                    _mandatory_note(sname, _hdr_base, False)
                 info["hdrs"].append(hdr)
                 info["h2f"][hdr] = {"filter": filt.strip(), "opt": opt.strip()}
         if _ps_on and info["kind"] == "eval":
@@ -3512,6 +3751,27 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _impossible = True
                     progress["not_compliant"] = _cg3
                     _maybe_write_json(force=True)
+            # USER 2026-10-04 ESSENTIAL-ROWS GATE: protection filters must prove with non-zero
+            # numbers (naked G, any yellow, or a ledger move) or the sheet cannot qualify.
+            # Deterministic zeros: no REDO (a re-fill reproduces them) — straight to impossible.
+            if _compliant and fast_switches is None:
+                _eg_cs = map_key_for_symside(new_symside)
+                _eg = essential_gate_check(progress.get("done", {}), dict(cumulative_overrides), new_symside.upper().endswith("_LONG"), _eg_cs.startswith("CRYPTO"))
+                _eg_fail = {sw: info for sw, info in _eg.items() if info["status"] == "FAIL"}
+                if _eg_fail:
+                    _cg4 = f"ESSENTIAL-ROWS: {len(_eg_fail)} protection filters without a non-zero number ({', '.join(sorted(_eg_fail))}) — refusing publish"
+                    print(f"[ESSENTIAL-GATE] {new_symside} {_cg4}", flush=True)
+                    _flag_to_md(flags_md, "ESSENTIAL-GATE", 0, "ESSENTIAL_ROWS", "GATE", _cg4, 0.0, 0.0, cumulative_gain)
+                    progress["unprotected"] = {sw: info["reason"] for sw, info in _eg_fail.items()}
+                    _compliant = False
+                    _qual_reasons = [_cg4]
+                    _impossible = True
+                    progress["not_compliant"] = _cg4
+                    _maybe_write_json(force=True)
+                else:
+                    progress.pop("unprotected", None)
+                    print(f"[ESSENTIAL-GATE] {new_symside} all {len(_eg)} essential filters proven non-zero", flush=True)
+            _result_stamp(progress, new_symside)
         if _impossible:
             _stand = _standing_best(OUT_DIR, new_symside)
             if _stand is not None:
@@ -3890,6 +4150,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         print(f"[chart-warn] {_ce}", flush=True)
     # Final heartbeat
     _skip_alarm_summary(progress, new_symside, processed)
+    print(f"[mandatory-yellows] {_mandatory_summary()}", flush=True)
     _touch(f"spec-done cum={cumulative_gain:.4f} rows={processed}")
     print(f"[spec-fill] DONE {new_symside} final_gain={cumulative_gain:.4f} baseline={baseline_gain:.4f} rows={processed} pos_tabs curated", flush=True)
     return cumulative_gain, cumulative_overrides, progress
@@ -4196,6 +4457,20 @@ def preload_prepared(symside: str, window_days: int = 30):
 def live_evaluate(symside: str, overrides: dict, window_days: int = 30) -> dict:
     import os as _os
     _os.environ["V12_NPZ_CACHE"] = "32"
+    # 2026-10-04 parity-harness (staged): enable the scalar churn fix for the
+    # DONE-stage live verify (same pattern as tools/v15_parity_check.py). Without
+    # this, backtest_v12_engine wipes per-bar cooldowns/debounces every simulated
+    # bar, exits re-fire every bar (1775 closes/900s ZENUSDT), and this call burns
+    # the full LIVE_TIMEOUT (900s) -> H/I left BLANK. Process-local to the pilot
+    # worker; live trading runs in separate processes and never reads BT_ flags.
+    try:
+        import config as _c_live
+        _c_live.BT_PRESERVE_DEBOUNCE_ACROSS_BARS = True
+        import config_tradier as _ct_live
+        _ct_live.BT_PRESERVE_DEBOUNCE_ACROSS_BARS = True
+        _ct_live.TradierConfig.BT_PRESERVE_DEBOUNCE_ACROSS_BARS = True
+    except Exception:
+        pass
     try:
         import dataclasses as _dc, v12_quick_engine as _VQ
         _q_defaults = {f.name: f.default for f in _dc.fields(_VQ.QuickConfig)}
@@ -4712,6 +4987,7 @@ def _run_single_core(new_symside, args, _v15_start_time):
     _v15_start_time = _v15_start_time
 
 def main():
+    _capture_start_stamp()
     _cycle_deque = None
     _cycle_indices = None
     # Ensure _cycle_deque defined for sequential mode to avoid NameError
@@ -6411,6 +6687,12 @@ def main():
         except Exception:
             pass
         print(f"[spec-fill] workbook complete, {rows_filled} rows filled, returning early cum={cumulative_gain:.4f}", flush=True)
+        print(f"[mandatory-yellows] {_mandatory_summary()}", flush=True)
+        try:
+            _result_stamp(progress, new_symside)
+            _atomic_write_json(progress_path, progress)
+        except Exception:
+            pass
         return
     except Exception as _spec_e:
         import traceback as _tb_spec
