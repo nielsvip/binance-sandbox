@@ -540,5 +540,95 @@
     ],
     "timestamp": "2026-10-05T18:49:09.646923+00:00",
     "price": 0.4889
+  },
+  {
+    "symbol": "BSPUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 10.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-05T18:52:59.543580+00:00",
+    "price": 31.83
+  },
+  {
+    "symbol": "C98USDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.9x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-05T18:52:59.543580+00:00",
+    "price": 0.01718
+  },
+  {
+    "symbol": "NVDAUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.2x (from rankings)"
+    ],
+    "timestamp": "2026-10-05T18:54:50.139649+00:00",
+    "price": 239.004068
+  },
+  {
+    "symbol": "ENJUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-05T19:00:27.156615+00:00",
+    "price": 0.03369158
+  },
+  {
+    "symbol": "BOMEUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.2x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-05T19:07:53.474505+00:00",
+    "price": 0.00101325
+  },
+  {
+    "symbol": "BXUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 15.4x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-05T19:07:53.474505+00:00",
+    "price": 112.72
+  },
+  {
+    "symbol": "COSTUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 14.5x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-05T19:07:53.474505+00:00",
+    "price": 920.9
+  },
+  {
+    "symbol": "CRMUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 12.6x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-05T19:07:53.474505+00:00",
+    "price": 230.07
+  },
+  {
+    "symbol": "ICPUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-05T19:11:07.258918+00:00",
+    "price": 3.541
+  },
+  {
+    "symbol": "NBISUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 26.6x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-05T19:11:07.258918+00:00",
+    "price": 232.36069268
   }
 ]
