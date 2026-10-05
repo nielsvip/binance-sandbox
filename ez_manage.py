@@ -40003,6 +40003,55 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
                         return Signal(action="AUGMENT", reason=f"TRAILING_AUG_step{_ta_next:.2f}%_g{gain:.2f}%_count{int(_ta_state.get('aug_count', 0)) + 1}/{_ta_max_augs}", conviction=80.0, quantity=_ta_qty)
     except Exception:
         pass
+    # LANE-L2 2026-10-05 AUGMENT_AT_LOSS higher-low/lower-high restricted loss-add (USER-APPROVED: add ONLY on confirmed HL/LH, never catch a falling knife). Gate OFF (default False) = zero change. Fires before the gain gate like DD_BOUNCE. Vec: vec_decisions/lane_vec_augment_at_loss.py (identical definition; parent inserts v12 call site). NOTE: downstream LOSER_KILL + AUGMENT_GATE_QUEUE still block at-loss AUGMENTs — live firing needs a separately-authorized exec carve-out; sweep/vec path unaffected.
+    try:
+        _aal_side = getattr(position, "position_side", "LONG" if is_long else "SHORT")
+        if bool(_psym_get(symbol, _aal_side, "AUGMENT_AT_LOSS_ENABLED", getattr(config, "AUGMENT_AT_LOSS_ENABLED", False))) and pos_amt > 0 and gain <= 0:
+            if not hasattr(trade_manager, "_aug_at_loss_state"):
+                trade_manager._aug_at_loss_state = {}
+            _aal_st = trade_manager._aug_at_loss_state.get(position_key, {})
+            if is_long:
+                _aal_cur = safe_fetch_float(i.get("low_15m_prev"), 0.0)
+                _aal_prv = _aal_st.get("prev_low_15m_prev")
+                _aal_last = safe_fetch_float(_aal_st.get("last_aug_low"), float("-inf"))
+                _aal_dcc = safe_fetch_float(i.get("dc_low_15m_prev"), 0.0)
+                _aal_dcp = _aal_st.get("prev_dc_low_15m_prev")
+                _aal_sig = _aal_cur > 0 and _aal_prv is not None and _aal_cur > safe_fetch_float(_aal_prv, 0.0)
+                _aal_dc_ok = _aal_dcp is None or _aal_dcc <= 0 or _aal_dcc >= safe_fetch_float(_aal_dcp, 0.0)
+                _aal_fresh = _aal_cur > _aal_last
+            else:
+                _aal_cur = safe_fetch_float(i.get("high_15m_prev"), 0.0)
+                _aal_prv = _aal_st.get("prev_high_15m_prev")
+                _aal_last = safe_fetch_float(_aal_st.get("last_aug_high"), float("inf"))
+                _aal_dcc = safe_fetch_float(i.get("dc_high_15m_prev"), 0.0)
+                _aal_dcp = _aal_st.get("prev_dc_high_15m_prev")
+                _aal_sig = _aal_cur > 0 and _aal_prv is not None and _aal_cur < safe_fetch_float(_aal_prv, 0.0)
+                _aal_dc_ok = _aal_dcp is None or _aal_dcc <= 0 or _aal_dcc <= safe_fetch_float(_aal_dcp, 0.0)
+                _aal_fresh = _aal_cur < _aal_last
+            _aal_cnt = safe_fetch_float(getattr(position, "augmented_count", 0), 0.0)
+            try:
+                _aal_cap = float(_psym_get(symbol, _aal_side, "MAX_AUGMENTS_PER_POSITION", getattr(config, "MAX_AUGMENTS_PER_POSITION", 999999)))
+            except (TypeError, ValueError):
+                _aal_cap = 999999.0
+            _aal_new = dict(_aal_st)
+            if is_long:
+                _aal_new["prev_low_15m_prev"] = _aal_cur
+                if _aal_dcc > 0:
+                    _aal_new["prev_dc_low_15m_prev"] = _aal_dcc
+            else:
+                _aal_new["prev_high_15m_prev"] = _aal_cur
+                if _aal_dcc > 0:
+                    _aal_new["prev_dc_high_15m_prev"] = _aal_dcc
+            if _aal_sig and _aal_dc_ok and _aal_fresh and _aal_cnt < _aal_cap:
+                _aal_qty = float(getattr(config, "START_POSITION_SIZE", 28.0)) / max(current_price, 1e-9)
+                if _aal_qty > 0:
+                    _aal_new["last_aug_low" if is_long else "last_aug_high"] = _aal_cur
+                    trade_manager._aug_at_loss_state[position_key] = _aal_new
+                    logger.info(f"{position_key} [AUGMENT_AT_LOSS] {'HL' if is_long else 'LH'}={_aal_cur:.4f} g={gain:.2f}% cnt{int(_aal_cnt) + 1}")
+                    return Signal(action="AUGMENT", reason=f"AUGMENT_AT_LOSS_{'HL' if is_long else 'LH'} lvl={_aal_cur:.4f} g={gain:.2f}%", conviction=70.0, quantity=_aal_qty)
+            trade_manager._aug_at_loss_state[position_key] = _aal_new
+    except Exception:
+        pass
     if pos_amt <= 0 or gain < 0.3:
         return None
     now = datetime.now(timezone.utc)

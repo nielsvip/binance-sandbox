@@ -15198,6 +15198,13 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                         return False
         except Exception as _gwee:
             logger.warning(f"[GREY_WIRE_OPEN_GATE] check error (fail-open): {_gwee}")
+        # WIRING LANE M 2026-10-05: STOCKS_LIVE_ENTRY_STACK (vec v12:9502/9967: tradier entries use the live fresh-OPEN source stack with per-source gates). Live routes every fresh OPEN through that gated stack below, so ON explicitly selects current behavior. Read-only selector; OFF keeps the sole path.
+        try:
+            _sles_on = bool(_cfg_auto("STOCKS_LIVE_ENTRY_STACK_ENABLED", False))
+            if _sles_on and config.VERBOSE2:
+                logger.info(f"[ENTRY_STACK] {position_key}: live source stack selected_sles")
+        except Exception:
+            pass
         # ═══ batch5 LIVE_ENTRY_GATES (Agent D 2026-10-01, USER priority "trade reduction must come from filters functioning in BOTH vector and live") ═══
         # Live twin of the vec stock entry gates (live_entry_gates.check_entry_gates -> vec_decisions LH_HL / EMA_9_21 / ALIGNMENT / TREND / HTF_CONF predicates).
         # MASTER SWITCH LIVE_ENTRY_GATES_ENABLED default False => unchanged live. Reentries (REENTRY / HARDCODED_RALLY / mandatory reclaim) bypass unless
@@ -19114,6 +19121,21 @@ class StockStrategy:
         # Apply Knife Penalty immediately
         qty *= knife_penalty
         if qty <= 0: return 0.0
+        # WIRING LANE M 2026-10-05: ATR_ADAPTIVE_STOP risk-distance sizing (port of ez BACKTEST_CHANGE_130 + vec wirec_sizing.fg_atr_size_mult; score -40/-15 == mult 0.84/0.94). OFF default.
+        try:
+            if bool(_cfg_auto("ATR_ADAPTIVE_STOP_ENABLED", False)):
+                _atr_tf = str(_cfg_auto("ATR_ADAPTIVE_STOP_TF", "1h") or "1h")
+                _atr_v = float(i.get("atr_%s" % _atr_tf, 0) or 0)
+                if _atr_v > 0 and current_price > 0:
+                    _atr_r = _atr_v * float(_cfg_auto("ATR_ADAPTIVE_STOP_MULT", 2.0)) / current_price * 100
+                    if _atr_r > 5.0:
+                        qty *= 0.84
+                        log_parts.append("ATRrisk(>5)")
+                    elif _atr_r > 3.0:
+                        qty *= 0.94
+                        log_parts.append("ATRrisk(>3)")
+        except Exception:
+            pass
         # ============================================
         # 1. TIME-BASED STRATEGY SELECTION
         # ============================================
@@ -22794,6 +22816,61 @@ class StockStrategy:
                                         return True, f"DD_BOUNCE_AUG_{_ddb_tf} wt={_ddb_wt:.1f} px={current_price:.2f}>prev={_ddb_last_px:.2f} g={gain:.2f}%", 70.0, qty
             except Exception as _ddb_e:
                 logger.debug(f"[DD_BOUNCE] {symbol}: check skipped ({type(_ddb_e).__name__})")
+            # LANE-L2 2026-10-05 AUGMENT_AT_LOSS higher-low/lower-high restricted loss-add (USER-APPROVED: add ONLY on confirmed HL/LH, never catch a falling knife). Gate OFF (default False) = zero change. Fires before the gain gate like WT_D/DD_BOUNCE above. Vec: vec_decisions/lane_vec_augment_at_loss.py (identical definition; parent inserts v12 call site). NOTE: downstream AUGMENT_PROFITABLE_ONLY/HARD_MIN_GAIN_WALL still block at-loss AUGMENTs — live firing needs a separately-authorized exec carve-out; sweep/vec path unaffected.
+            try:
+                if bool(_cfg_auto('AUGMENT_AT_LOSS_ENABLED', False)) and current_qty > 0 and gain <= 0:
+                    if not hasattr(self, '_aug_at_loss_state'):
+                        self._aug_at_loss_state = {}
+                    _aal_pk = f"{getattr(self, 'account_key', symbol)}:{symbol}_{'LONG' if is_long else 'SHORT'}"
+                    _aal_st = self._aug_at_loss_state.get(_aal_pk, {})
+                    if is_long:
+                        _aal_cur = float(i.get('low_15m_prev', 0) or 0)
+                        _aal_prv = _aal_st.get('prev_low_15m_prev')
+                        _aal_last = float(_aal_st.get('last_aug_low', float('-inf')))
+                        _aal_dcc = float(i.get('dc_low_15m_prev', 0) or 0)
+                        _aal_dcp = _aal_st.get('prev_dc_low_15m_prev')
+                        _aal_sig = _aal_cur > 0 and _aal_prv is not None and _aal_cur > float(_aal_prv)
+                        _aal_dc_ok = _aal_dcp is None or _aal_dcc <= 0 or _aal_dcc >= float(_aal_dcp)
+                        _aal_fresh = _aal_cur > _aal_last
+                    else:
+                        _aal_cur = float(i.get('high_15m_prev', 0) or 0)
+                        _aal_prv = _aal_st.get('prev_high_15m_prev')
+                        _aal_last = float(_aal_st.get('last_aug_high', float('inf')))
+                        _aal_dcc = float(i.get('dc_high_15m_prev', 0) or 0)
+                        _aal_dcp = _aal_st.get('prev_dc_high_15m_prev')
+                        _aal_sig = _aal_cur > 0 and _aal_prv is not None and _aal_cur < float(_aal_prv)
+                        _aal_dc_ok = _aal_dcp is None or _aal_dcc <= 0 or _aal_dcc <= float(_aal_dcp)
+                        _aal_fresh = _aal_cur < _aal_last
+                    try:
+                        _aal_cap = int(float(_cfg_auto('MAX_AUGMENTS_PER_POSITION', 999999)))
+                    except Exception:
+                        _aal_cap = 999999
+                    _aal_new = dict(_aal_st)
+                    if is_long:
+                        _aal_new['prev_low_15m_prev'] = _aal_cur
+                        if _aal_dcc > 0:
+                            _aal_new['prev_dc_low_15m_prev'] = _aal_dcc
+                    else:
+                        _aal_new['prev_high_15m_prev'] = _aal_cur
+                        if _aal_dcc > 0:
+                            _aal_new['prev_dc_high_15m_prev'] = _aal_dcc
+                    if _aal_sig and _aal_dc_ok and _aal_fresh and int(_aal_st.get('aug_count', 0)) < _aal_cap:
+                        _aal_max_val = _cfg_auto('MAX_SYMBOL_VALUE_TRADIER', 15000)
+                        if current_value < _aal_max_val:
+                            _aal_raw = max(1.0, round(float(_cfg_auto('START_POSITION_SIZE', 100)) / max(current_price, 0.01)))
+                            _aal_raw = min(_aal_raw, (_aal_max_val - current_value) / max(current_price, 0.01))
+                            if _aal_raw >= 1.0:
+                                direction = "LONG" if is_long else "SHORT"
+                                qty = await self.calculate_quantity_complex(symbol, "AUGMENT", direction, _aal_raw, indicators, position, market_context)
+                                if qty > 0:
+                                    _aal_new['last_aug_low' if is_long else 'last_aug_high'] = _aal_cur
+                                    _aal_new['aug_count'] = int(_aal_st.get('aug_count', 0)) + 1
+                                    self._aug_at_loss_state[_aal_pk] = _aal_new
+                                    logger.info(f"{symbol} [AUGMENT_AT_LOSS] {'HL' if is_long else 'LH'}={_aal_cur:.2f} g={gain:.2f}% cnt{_aal_new['aug_count']}/{_aal_cap}")
+                                    return True, f"AUGMENT_AT_LOSS_{'HL' if is_long else 'LH'} {symbol} px={current_price:.2f} g={gain:.2f}% cnt{_aal_new['aug_count']}/{_aal_cap}", 70.0, qty
+                    self._aug_at_loss_state[_aal_pk] = _aal_new
+            except Exception as _aal_e:
+                logger.debug(f"[AUGMENT_AT_LOSS] {symbol}: check skipped ({type(_aal_e).__name__})")
             # 2026-04-28 PATH B (B4): TRAILING_AUG — compound winners with stepped augments at small gains.
             # Investigation showed evaluate_augment had 0 fires on tradier vs 17,449 on crypto because
             # MIN_GAIN_TO_BUY_AGGRESSIVELY=3% was too high for typical stock moves. New path fires every

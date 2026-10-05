@@ -1313,7 +1313,7 @@ class TradierConfig:
     ATR_PARITY_USE_DAILY: bool = True
     ATR_TRAIL_SWEEP_ENABLED: bool = False
     AUGMENTED_POSITIONS_GUARD_FLOOR_MULT: float = 0.5
-    AUGMENT_AT_LOSS_ENABLED: bool = False
+    AUGMENT_AT_LOSS_ENABLED: bool = False  # LANE-L2 2026-10-05 USER-APPROVED wiring under HL/LH restriction (tradier evaluate_augment + lane_vec_augment_at_loss.py); default False — sweep ON to test.
     AUGMENT_BULL_KILL_ENABLED: bool = False
     AUGMENT_ONLY_WHEN_PROFITABLE: bool = True
     AUGMENT_WT_4H_BOUNCE_ENABLED: bool = False
@@ -3601,7 +3601,7 @@ class TradierConfig:
     LEADERBOARD_ENTRY_ENABLED_TRADIER: bool = False  # §13 leaderboard (stocks). OFF.
     DIRECTION_FAVORABLE_REENTRY_ENABLED_TRADIER: bool = False  # §6 direction favorable (stocks). OFF.
     B10_STOCH_REV_LIVE_ENABLED_TRADIER: bool = False  # §7 B10 stoch rev (stocks). OFF live.
-    AUGMENT_AT_LOSS_ENABLED_TRADIER: bool = False  # 2026-08-18 DEBATE GATE (stocks). OFF — augment at loss may be revisited MUCH LATER only with Tier-2 proof + USER unlock. OPEN at loss impossible (flat has no loss).
+    AUGMENT_AT_LOSS_ENABLED_TRADIER: bool = False  # 2026-08-18 DEBATE GATE (stocks). OFF — augment at loss may be revisited MUCH LATER only with Tier-2 proof + USER unlock. OPEN at loss impossible (flat has no loss). LANE-L2 2026-10-05: live reads the shared AUGMENT_AT_LOSS_ENABLED above; this venue twin stays inert.
     SQUEEZE_FIRE_ENABLED_TRADIER: bool = False  # SQUEEZE fire (stocks). OFF until vec hook.
     # === TRC AGGRESSIVE SANDBOX — "after-sandbox sandbox" ===
     # trc is paper-money. Push extreme settings here to prove before applying to trb.

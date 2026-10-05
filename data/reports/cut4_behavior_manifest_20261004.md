@@ -129,3 +129,27 @@ twins, no template rows. Harmless (defaults = today's behavior).
   2026-10-05 13:00 UTC (log data/reports/twin_watch_20261005.log, fails only
   to monitor) + one-shot cron final proof 12:30 UTC. P0 specs persisted to
   repo root (hook_spec_p0_*.json) as durable merge evidence.
+
+## NPZ width_prev fleet patch 2026-10-05 ~14:00 UTC (operator: zeros in sheets)
+- Root causes found for sheet zeros: (1) matrices predate cut#5 vec wiring
+  (IBIT 01:32 vs engine 01:37; VLO Oct 2; AXON Oct 4) -> stale measured zeros,
+  re-sweep fixes; (2) dc_width_1h_prev missing from all NPZs -> daytrade
+  1h-expansion gate fail-open (now fixed); (3) final_score/trend_val LT keys
+  missing -> hard-short LT gate vetoes on 0.5 default (OPEN, see below).
+- Servers cleared: S1/S4/S5 all on cut#5 v12 92feb8f3 (12 twins); S1 config
+  has P0 fields. Zero-count NOT a version problem.
+- Fix shipped: backtest_v8_precompute.py emits dc_width_{tf}_prev (roll-first,
+  Mac-side, needs deploy for future recomputes); tools/npz_add_width_prev.py
+  backfilled all 668 S1 NPZs (atomic, idempotent, verified exact); S1 sync
+  pushed to .4/.5/.6, verified True/946 keys on S4+S5. test_npz_width_prev.py
+  green (convention pins).
+- LT SCORES UNFILLABLE historically: no ranking history exists (only current
+  snapshot, Aug 20). trend_val_raw = price-derived (weighted TF slopes) but
+  normalized against cross-symbol globals per ranking run -> per-bar
+  reconstruction needs a 2-pass design (per-bar slopes + global history).
+  final_score = composite incl sentiment -> no history at all. OPERATOR
+  DECISION needed: (a) reconstruction project, (b) forward-record only,
+  (c) leave gate strict-veto (current, parity-consistent both sides).
+- Infra flags (not this lane): S1 disk 97% (10G free), mem 1G avail; gateway
+  jump path down mid-run (used s1-pub + S1-hop); S4 default python3 lacks
+  numpy (herd env may differ).

@@ -11825,6 +11825,21 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         pass
     augment_sig, augment_mult, _aug_bounce_sig, _aug_pyramid_sig = compute_augment_signals_ex(npz, n, is_long, cfg)  # [UNWV/002] typed sources
     reduce_sig, reduce_frac, qr_cond = compute_reduce_signals(npz, n, is_long, cfg)
+    # WIRING LANE L1 2026-10-05: sentiment-rebal twins (need position/portfolio state absent in vec -> None, read-only; fire when NPZ ships real sentiment legs). Fail-open.
+    try:
+        import vec_decisions.lane_vec_senteod as _lvse
+        _lvse.get("SENTIMENT_REBAL_REDUCE_DEVIATION_THR", npz, n, is_long, cfg)
+        _lvse.get("SENTIMENT_REBAL_COOLDOWN_MIN", npz, n, is_long, cfg)
+    except Exception:
+        pass
+    # WIRING LANE L2 2026-10-05: augment-at-loss structural mask (higher-low / lower-high on closed 15m bars + DC confirm). gain_arr=zeros decomposes the twin to its pure structural legs (at_loss forced True); the in-loop choke point ANDs the real live_pnl_pct<=0. OFF default -> None. Fail-open.
+    _aal_struct = None
+    try:
+        if bool(getattr(cfg, "AUGMENT_AT_LOSS_ENABLED", False)):
+            import vec_decisions.lane_vec_augment_at_loss as _lvaal
+            _aal_struct = _lvaal.get("AUGMENT_AT_LOSS_ENABLED", npz, n, is_long, cfg, gain_arr=np.zeros(n, dtype=float))
+    except Exception:
+        _aal_struct = None
     # WIRING LANE C L1b: live execute_now RECENT_REDUCTION_GUARD twin; default OFF = unchanged.
     try:
         import vec_decisions.wirec_execnow_guards as _wirec_rrg
@@ -13943,10 +13958,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     pos['wirem_dd_pending'] = (_dd_st, _dd_tf)
             except Exception:
                 _dd_fire = False
-        _uag_src_ok = _hq_fire or _dd_fire or _n4_fire or (not _n4_live_only and (_gl_fire or ((augment_sig[i] or _fr_fire) and vec_decisions.uagain_gate.uagain_gate_pass(
+        # WIRING LANE L2 2026-10-05: augment-at-loss fire (HIGHER-LOW / LOWER-HIGH only, NEVER falling knife: HL/LH struct mask + strictly at-loss/breakeven). Bypasses ONLY the profit gate below; htf/qta/cap/cooldown all still apply.
+        _aal_fire = bool(_aal_struct is not None and live_pnl_pct <= 0 and bool(_aal_struct[i]))
+        _uag_src_ok = _hq_fire or _dd_fire or _n4_fire or _aal_fire or (not _n4_live_only and (_gl_fire or ((augment_sig[i] or _fr_fire) and vec_decisions.uagain_gate.uagain_gate_pass(
             cfg, is_long, px, float(pos.get('last_aug_px', 0.0)) or float(pos.get('entry_price', pos['avg_price'])), live_pnl_pct, float(pos.get('peak_pnl_pct', 0.0)), _uag_typed_min))))
         # (H3 DELTA pyramid veto removed cut#5: live price-tol unenforced (touches only) + cited wt_dc_delta.py absent; re-add with live proof)
-        if _uag_src_ok and (_htf_aug_ok is None or bool(_htf_aug_ok[i])) and not (_qta_ct_block is not None and bool(_qta_ct_block[i])) and (_augment_allowed(cfg, live_pnl_pct) or _n4_bypass_profit or _dd_fire or _hq_fire) and (_sa_cap is None or int(pos.get('n_augments', 0)) < _sa_cap):
+        if _uag_src_ok and (_htf_aug_ok is None or bool(_htf_aug_ok[i])) and not (_qta_ct_block is not None and bool(_qta_ct_block[i])) and (_augment_allowed(cfg, live_pnl_pct) or _n4_bypass_profit or _dd_fire or _hq_fire or _aal_fire) and (_sa_cap is None or int(pos.get('n_augments', 0)) < _sa_cap):
             _aug_cd_bars = vec_decisions.gain_ladder_augment.cooldown_bars(cfg, bmin)
             _aug_last_bar = int(pos.get('last_aug_bar', -10**9))
             if _dd_fire or _hq_fire or (i - _aug_last_bar) >= _aug_cd_bars:
@@ -13970,11 +13987,15 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     if _n4_tr_new is not None:
                         pos['n4_tr'] = _n4_tr_new  # committed only when the augment executes (live: state set after a successful order)
                 _hq_drove = False
+                _aal_reason = ''
                 if _hq_fire and not _dd_fire:
                     add_qty = float(_hq_qty)  # [w2-haiku] live exact qty (min(amt*0.10, amt*0.4)); no regime/size mults
                     _hq_drove = True
                 elif _hq_fire:
                     _hq_reason = ''  # DD won the tie; haiku state NOT committed (refires next bar)
+                if _aal_fire and not (_dd_fire or _hq_fire or _n4_fire):
+                    add_qty = pos['qty']  # WIRING LANE L2: one START_POSITION_SIZE step (1x add, MOP-UP M C41 idiom); lowest size priority
+                    _aal_reason = 'AUGMENT_AT_LOSS_HL' if is_long else 'AUGMENT_AT_LOSS_LH'
                 if add_qty > 0:
                     new_qty = pos['qty'] + add_qty
                     pos['avg_price'] = (pos['avg_price'] * pos['qty'] + px * add_qty) / new_qty
@@ -13992,7 +14013,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     _ts_aug = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
                     # event row: NO pnl_dollars/pnl_pct/bar_entry/bar_exit keys — metric
                     # consumers key on those fields and must never count position scaling
-                    events.append({'type': 'AUGMENT', 'ts': _ts_aug, 'price': float(px), 'qty': float(add_qty), 'pos_deployed': float(pos['deployed']), 'bar': int(i), 'reason': _hq_reason or _n4_reason or _gl_reason or 'VEC_AUGMENT_SIG'})
+                    events.append({'type': 'AUGMENT', 'ts': _ts_aug, 'price': float(px), 'qty': float(add_qty), 'pos_deployed': float(pos['deployed']), 'bar': int(i), 'reason': _aal_reason or _hq_reason or _n4_reason or _gl_reason or 'VEC_AUGMENT_SIG'})
                     try:
                         _ot_d = vec_decisions.overtrade_guard.day_of(_ts_aug); _ot_cnt[_ot_d] = _ot_cnt.get(_ot_d, 0) + 1
                     except Exception:
