@@ -11913,6 +11913,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # Vectorizable: uses only npz open_D/close_D_prev/wt1_15m/wt2_15m/ha_15m. Live aggregates market-wide;
     # vector approximates per-symbol bias (same direction signal). Intraday ratio stays LIVE-ONLY behind
     # PARITY_DISABLE_NON_VECTORIZABLE — not modeled here (no portfolio).
+    _gap_fire = None  # WIRING LANE E: pre-init (gap block is tradier-gated; loop reads unconditionally)
+    _gm_window = _gm_force = _gm_dip = _gm_wt = _gm_ha = _gm_dc = _gm_vv = None
+    _gm_reentry_on = False
+    _gm_bpd = None
     try:
         _gap_enabled = bool(getattr(cfg, 'GAP_MOC_EXIT_ENABLED', True))
         _parity_off = bool(getattr(cfg, 'PARITY_DISABLE_NON_VECTORIZABLE', False)) or bool(getattr(cfg, 'V12_PARITY_DISABLE_NON_VECTORIZABLE', False))
@@ -11922,9 +11926,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _parity_off = True
         # INTRADAY_RATIO is non-vectorizable — ensure it never fires in vector
         # (documented VEC_UNSUPPORTED). GAP sentinel IS vectorized per-symbol.
-        if _gap_enabled and not _parity_off and is_tradier if 'is_tradier' in dir() else getattr(cfg,'MODE','crypto')=='tradier':
-            # Fallback if is_tradier not yet defined — recompute
-            _is_tr = getattr(cfg, 'MODE', 'crypto') == 'tradier'
+        # WIRING LANE E FIX: the old conditional-expression gate (`... if 'is_tradier' in dir() else MODE=='tradier')` always took the else-branch here (is_tradier is defined later at loop setup), so the master flag never disabled the block. Explicit gate. NOTE: no _parity_off term — this block IS the vectorizable per-symbol subset (see header comment); parity mode keeps it, only the master + venue gate it.
+        _is_tr = getattr(cfg, 'MODE', 'crypto') == 'tradier'
+        if _gap_enabled and _is_tr:
             if _is_tr:
                 _open_d = _safe(npz, 'open_D', n)
                 _prev_d = _safe(npz, 'close_D_prev', n)
@@ -12038,6 +12042,22 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             _at_deadline[_i] = True
                     _gap_fire = _gap_fire | (_at_deadline & _gap_should)
                 exit_sig = exit_sig | _gap_fire
+                # WIRING LANE E 2026-10-05: morning-rebuy masks (live tradier 9948-10005). Same tradier gate as the exit above.
+                try:
+                    import vec_decisions.lane_vec_gapmoc as _lvgm
+                    _gm_reentry_on = _lvgm.morning_reentry_armed(npz, n, is_long, cfg) is not None
+                    if _gm_reentry_on:
+                        _gm_ts = npz.get('timestamps', None)
+                        _gm_window = _lvgm.morning_window_mask(_gm_ts, n, _bar_min, _bars_per_day, cfg)
+                        _gm_force = _lvgm.force_at_end_mask(_gm_ts, n, _bar_min, _bars_per_day, cfg)
+                        _gm_dip = _lvgm.dip_ok_mask(npz, n, is_long, cfg)
+                        _gm_wt = _lvgm.wt_ok_mask(npz, n, is_long, cfg)
+                        _gm_ha = _lvgm.ha_ok_mask(npz, n, is_long, cfg)
+                        _gm_dc = _lvgm.dc_breakout_mask(npz, n, is_long, cfg)
+                        _gm_vv = _lvgm.vv_danger_mask(npz, n, is_long, cfg)
+                        _gm_bpd = _bars_per_day
+                except Exception:
+                    pass
                 # w2-exits STAGED: GAP_MOC INTRADAY + 30m emergency + DC top (ONE call site).
                 try:
                     import vec_decisions.w2_gap_moc_intraday as _w2gap
@@ -12849,6 +12869,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     pos = None
     cd = 0
     has_closed_before = False
+    _gap_pending = None  # WIRING LANE E: gap-exit pending morning rebuy {amt, exit_price, exit_gain, day}
     bars_in_pos = 0
     # ═══ VIGILANCE GUARD (USER 2026-09-28, 3rd mandate: "we do not use fix %") — vectorized mirror
     # of the live guards: a LOSING position whose price breaches dc_low4_{TF} (long) / dc_high4_{TF}
@@ -13182,6 +13203,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     cd = 0
             except Exception:
                 pass
+        # WIRING LANE E: GAP morning rebuy bypasses signal cooldown (live: queued OPEN, no signal cooldown)
+        if pos is None and cd > 0 and _gap_pending is not None and _gm_reentry_on and _gm_window is not None and bool(_gm_window[i]):
+            cd = 0
         # Loosened for TIM>20: when REQUIRE_WT=False, close>exit alone suffices
         if getattr(cfg, "HARDCODED_RALLY_REENTRY_ENABLED", True) and getattr(cfg, "HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN", True) and pos is None and has_closed_before and trades and cd > 0:
             try:
@@ -13307,6 +13331,15 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             fire = True
                 except Exception:
                     pass
+            # WIRING LANE E 2026-10-05: GAP morning rebuy trigger (live tradier 9948-10005). Pending set by the gap inline-close; fires in the first-120m window on dip/wt/ha/dc/force; vv-danger drops pending (not attractive); later gates may veto (retry next bar, like live).
+            _gm_rebuy = False
+            if not fire and _gap_pending is not None and _gm_reentry_on and _gm_window is not None and bool(_gm_window[i]):
+                if _gm_vv is not None and bool(_gm_vv[i]):
+                    _gap_pending = None
+                elif ((_gm_dip is not None and bool(_gm_dip[i])) or (_gm_wt is not None and bool(_gm_wt[i])) or (_gm_ha is not None and bool(_gm_ha[i])) or (_gm_dc is not None and bool(_gm_dc[i])) or (_gm_force is not None and bool(_gm_force[i]))):
+                    fire = True
+                    _gm_rebuy = True
+            # NOTE: no stale expiry — live persists pending across days incl. weekends (tradier 9909-9910); window force/vv-drop/position-open resolve it.
             # 2026-09-18 HARDCODED RALLY REENTRY (user mandate): close > exit AND wt1_15m rising — loosened for TIM>20
             if not fire and getattr(cfg, "HARDCODED_RALLY_REENTRY_ENABLED", True) and has_closed_before and trades:
                 try:
@@ -13527,6 +13560,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 pass
                 except Exception:
                     pass
+            if _gm_rebuy and _gap_pending is not None:
+                fire = True  # WIRING LANE E: morning rebuy bypasses signal vetoes above (live: queued OPEN, not a signal; order guards below still apply)
             if fire:
                 mult = getattr(cfg, 'REENTRY_TIER1_SIZE_MULT_TRADIER', 1.0) if (has_closed_before and is_tradier) else 1.0
                 if _n3_tier:
@@ -13542,6 +13577,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     _dollar = _dollar * float(_grd_open_mult[i])  # W2-GR5M: DIRECT 2x OPEN
                 if _n3_epq_dollar:
                     _dollar = float(_n3_epq_dollar)  # [N3 q4] live reentry_amount sizing (max_quantity x tier mult)
+                if _gm_rebuy and _gap_pending is not None:  # WIRING LANE E: live rebuy = exit amount x1.25 if exit was green (tradier 9987-9988)
+                    _dollar = float(_gap_pending.get('amt', 0) or 0)
+                    if float(_gap_pending.get('exit_gain', 0) or 0) > 0:
+                        _dollar = _dollar * float(getattr(cfg, 'GAP_MOC_REENTRY_SIZE_MULT', 1.25))
                 try:
                     _cap = float(getattr(cfg, "MAX_ORDER_VALUE", 2500.0) or 2500.0)
                     if _cap > 0:
@@ -13595,6 +13634,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 entry_reason = 'GR_HTF_DIRECT_ENTRY_%d' % int(_grd_entry_score[i] if _grd_entry_score is not None and i < len(_grd_entry_score) else 0)
                     except Exception:
                         pass
+                    if _gm_rebuy:
+                        entry_reason = 'GAP_MORNING_REENTRY'  # WIRING LANE E: last-writer-wins over generic derivation
                     # [C2 b5b] live OVERTRADE_GUARD: fresh (non-reentry) entries blocked once TRADES_PER_SYM_PER_DAY_MAX fills happened today (ez_manage.py:30405, tradier_manage.py:13843)
                     if getattr(cfg, 'OVERTRADE_GUARD_ENABLED', False):
                         try:
@@ -13615,6 +13656,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     if _bt_veto is not None and bool(_bt_veto[i]):
                         continue  # BOTTOM/TOP entry REQUIRE gates (all families ORed)
                     pos = _open(qty0, px, i, entry_reason)
+                    if _gm_rebuy:
+                        _gap_pending = None  # WIRING LANE E: rebuy executed, pending resolved (live 9992-9993)
+                    elif _gap_pending is not None:
+                        _gap_pending = None  # WIRING LANE E: generic open while pending -> drop (live 9954-9958: position exists)
             continue
         if _blacklisted:
             # BLACKLIST_SYMBOLS strand (live: process_position NO_ACTION — entries open, never managed)
@@ -14321,6 +14366,17 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _cmp_reason, 'type': 'CLOSE', 'ts': _tsc, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _cmp_reason, 'bars_held': int(i - pos['entry_bar'])})
                 pos = None; cd = cooldown_bars; has_closed_before = True
                 continue
+        # WIRING LANE E 2026-10-05: GAP_MOC inline close (30-session avg gap >0.1% against overnight -> close at small top in last 90m; records morning-rebuy pending). Precedence over generic exit_sig at gap bars for exact attribution; no min_hold/NOLOSS (live MOC is a risk exit, closes regardless).
+        if _gap_fire is not None and pos is not None and bool(_gap_fire[i]):
+            pos['fees'] += abs(pos['qty'] * px) * half_fee
+            _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
+            _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
+            _tsc = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+            trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': 'GAP_MOC_EXIT', 'type': 'CLOSE', 'ts': _tsc, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': 'GAP_MOC_EXIT', 'bars_held': int(i - pos['entry_bar'])})
+            if _gm_reentry_on and _gm_bpd is not None:
+                _gap_pending = {'amt': float(pos['qty'] * px), 'exit_price': float(px), 'exit_gain': float(_pct), 'day': int(i // _gm_bpd)}
+            pos = None; cd = cooldown_bars; has_closed_before = True
+            continue
         _xc_ok = _gftf.get('exit_confirm') is None or bool(_gftf['exit_confirm'][i])
         if exit_sig[i] and held_bars >= min_hold and _xc_ok:
             if 0 < satoshit_partial < 1.0:

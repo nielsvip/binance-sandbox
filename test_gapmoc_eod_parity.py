@@ -14,9 +14,9 @@ def _rows(tpl, tab):
 
 def test_eod_lookback_default_30_everywhere():
     from v12_quick_engine import QuickConfig
-    import config_tradier
+    from config_tradier import TradierConfig
     assert int(QuickConfig().GAP_PER_SYMBOL_LOOKBACK_DAYS) == 30
-    assert int(config_tradier.GAP_PER_SYMBOL_LOOKBACK_DAYS) == 30
+    assert int(TradierConfig.GAP_PER_SYMBOL_LOOKBACK_DAYS) == 30
 
 
 def test_eod_loop_knob_defaults():
@@ -27,6 +27,32 @@ def test_eod_loop_knob_defaults():
     assert bool(c.GAP_MORNING_REENTRY_ENABLED) is True
     assert int(c.GAP_MORNING_REENTRY_MINUTES_AFTER_OPEN) == 120
     assert float(c.GAP_MOC_REENTRY_SIZE_MULT) == 1.25
+
+
+def _eod_counts(**kw):
+    import numpy as np
+    from v12_quick_engine import QuickConfig, simulate_one
+    d = dict(np.load("backtest_v8/indicators/AAPL.npz", allow_pickle=True))
+    cfg = QuickConfig()
+    cfg.MODE = "tradier"
+    for k, v in kw.items():
+        setattr(cfg, k, v)
+    led = simulate_one(d, "AAPL", True, cfg).get("ledger", []) or []
+    n_exit = sum(1 for e in led if e.get("type") == "CLOSE" and "GAP_MOC" in str(e.get("reason", "")))
+    n_rebuy = sum(1 for e in led if e.get("type") == "OPEN" and "GAP_MORNING" in str(e.get("reason", "")))
+    return n_exit, n_rebuy
+
+
+def test_eod_gap_exit_and_rebuy_fire():
+    n_exit, n_rebuy = _eod_counts()
+    assert n_exit > 0, "gap exit never fires at defaults"
+    assert n_rebuy > 0, "morning rebuy never fires at defaults"
+
+
+def test_eod_masters_disable():
+    assert _eod_counts(GAP_MOC_EXIT_ENABLED=False) == (0, 0)
+    n_exit, n_rebuy = _eod_counts(GAP_MORNING_REENTRY_ENABLED=False)
+    assert n_exit > 0 and n_rebuy == 0
 
 
 def test_eod_template_yes_rows():
