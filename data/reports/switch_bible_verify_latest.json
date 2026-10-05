@@ -8,8 +8,8 @@
   "NOT_IN_CAT_SIDE_DEFAULTS": [],
   "DUPLICATE_SWITCH_ROWS": [],
   "COVERAGE": [
-   "CHANNEL_REENTRY_STOP_FIELD: wired live+vec (['ez_manage.py:49751(process_position)'] / ['vec_decisions/lane_vec_stub4.py:280(_channel_level)']) but in no template",
-   "CHANNEL_REENTRY_STOP_TF: wired live+vec (['ez_manage.py:49750(process_position)'] / ['vec_decisions/lane_vec_stub4.py:279(_channel_level)']) but in no template",
+   "CHANNEL_REENTRY_STOP_FIELD: wired live+vec (['ez_manage.py:49800(process_position)'] / ['vec_decisions/lane_vec_stub4.py:280(_channel_level)']) but in no template",
+   "CHANNEL_REENTRY_STOP_TF: wired live+vec (['ez_manage.py:49799(process_position)'] / ['vec_decisions/lane_vec_stub4.py:279(_channel_level)']) but in no template",
    "EXIT_SCORER_FULL_SCORE: wired live+vec (['wt_dc_exit_scorer.py:71(score_exit)'] / ['v12_quick_engine.py:11814(simulate_one)']) but in no template",
    "EXIT_SCORER_K_EXTREME: wired live+vec (['wt_dc_exit_scorer.py:68(score_exit)'] / ['v12_quick_engine.py:11819(simulate_one)']) but in no template",
    "EXIT_SCORER_MIN_CONDITIONS: wired live+vec (['wt_dc_exit_scorer.py:67(score_exit)'] / ['v12_quick_engine.py:11818(simulate_one)']) but in no template",
@@ -18,7 +18,7 @@
    "FOLLOW_THROUGH_WINDOW_BARS: wired live+vec (['ez_manage.py:37432(MultiAccountTradeManager.reentry_enforcement_loop)'] / ['vec_decisions/lane_vec_stub4.py:260(follow_through_fire_mask)']) but in no template",
    "MIN_GAIN: wired live+vec (['ez_manage.py:22257(MultiAccountTradeManager._handle_signal_message)'] / ['vec_decisions/lane_vec_gates2.py:447(augmented_guard_block_mask)']) but in no template",
    "MOVER_DETECTION_ENABLED: wired live+vec (['ez_positions_quick.py:4933(RatingRegistry.scan_movers)'] / ['v12_quick_engine.py:11806(simulate_one)']) but in no template",
-   "R2_TF_LIST: wired live+vec (['ez_manage.py:49105(process_position)'] / ['vec_decisions/lane_vec_entryq2.py:529(exit_r1_r2_tf_valid)']) but in no template",
+   "R2_TF_LIST: wired live+vec (['ez_manage.py:49154(process_position)'] / ['vec_decisions/lane_vec_entryq2.py:529(exit_r1_r2_tf_valid)']) but in no template",
    "RECENT_REDUCTION_GUARD_USE_4BAR: wired live+vec (['ez_manage.py:32725(MultiAccountTradeManager.execute_now)'] / ['vec_decisions/wirec_execnow_guards.py:119(recent_reduction_guard_allow)']) but in no template",
    "REENTRY_CROSS_MAX_BARS_AGO: wired live+vec (['ez_positions_quick.py:16980(evaluate_reentry_epq)'] / ['vec_decisions/lane_vec_reentry2.py:366(cross_freshness_mask)']) but in no template",
    "VOL_SPIKE_ENABLED: wired live+vec (['ez_positions_quick.py:11816(detect_volume_spike)'] / ['v12_quick_engine.py:11807(simulate_one)']) but in no template"

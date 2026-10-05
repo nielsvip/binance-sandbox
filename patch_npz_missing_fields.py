@@ -210,9 +210,10 @@ def patch_one_npz(path: Path, mode: str, skip_5m: bool = True) -> dict:
     return added
 
 
-def inject_sentiment_pass(npz_dir: Path):
+def inject_sentiment_pass(npz_dir: Path, force=False):
     """Cross-sym pass: compute market_sentiment_score from wt_composite_bias across all syms.
-    STREAMING — load only timestamps+bias per sym (small), accumulate globally, then second pass writes."""
+    STREAMING — load only timestamps+bias per sym (small), accumulate globally, then second pass writes.
+    force=True recomputes even when a (possibly stale constant-50) key exists."""
     from collections import defaultdict
     files = sorted(npz_dir.glob("*.npz"))
     print(f"  [sentiment] pass 1: scan {len(files)} files for ts+bias...")
@@ -248,7 +249,7 @@ def inject_sentiment_pass(npz_dir: Path):
         p = npz_dir / f"{p_stem}.npz"
         try:
             with np.load(str(p), allow_pickle=True) as z_in:
-                if 'market_sentiment_score' in z_in.files and len(z_in['market_sentiment_score']) == len(ts):
+                if not force and 'market_sentiment_score' in z_in.files and len(z_in['market_sentiment_score']) == len(ts):
                     continue
                 z_out = dict(z_in)
             mss = np.array([ts_score_dict.get(int(t), 50.0) for t in ts], dtype=np.float32)

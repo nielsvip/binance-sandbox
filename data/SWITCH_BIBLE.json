@@ -1257,7 +1257,7 @@
    "vec_decisions/twin_yellow_filters.py:1",
    "vec_decisions/wirec_batch1_gates.py:1"
   ],
-  "generated": "2026-10-05T18:09:19.839072Z",
+  "generated": "2026-10-05T18:49:21.865856Z",
   "inputs": {
    "live_gaps": 21,
    "parity_proven": 0,
@@ -5929,7 +5929,7 @@
    "agent_c_registry": null,
    "conflict_quick_vs_live": {},
    "defaults": {
-    "QuickConfig": "{'tra': {'id': '6YB69627', 'key': 'M7o5eDTG7IiPknfo2dpCwtIfCkeb', 'env': 'live'}",
+    "QuickConfig": "{'tra': {'id': None, 'key': None, 'env': 'live'}, 'trb': {'id': None, 'key': Non",
     "QuickConfig_apply_tradier_defaults": "<n/a>",
     "cat_side_defaults_4": {
      "CRYPTO_LONG": "<absent>",
@@ -5938,7 +5938,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "<absent>",
-    "config_tradier.py": "{'tra': {'id': '6YB69627', 'key': 'M7o5eDTG7IiPknfo2dpCwtIfCkeb', 'env': 'live'}",
+    "config_tradier.py": "{'tra': {'id': None, 'key': None, 'env': 'live'}, 'trb': {'id': None, 'key': Non",
     "template_bold": {}
    },
    "filter_tf": false,
@@ -28690,7 +28690,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "<absent>",
-    "config_tradier.py": "{'AU', 'SLV', 'VXX', 'EGO', 'UNG', 'WPM', 'AGI', 'GLD', 'XOP', 'OIH', 'AEM', 'UC",
+    "config_tradier.py": "{'VXX', 'BTG', 'UCO', 'OIH', 'GDXJ', 'GOLD', 'GDX', 'MAG', 'WPM', 'RGLD', 'BOIL'",
     "template_bold": {}
    },
    "filter_tf": false,
@@ -231070,7 +231070,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "<absent>",
-    "config_tradier.py": "{'BTCL', 'GNK', 'UNG', 'IPI', 'GLD', 'LAC', 'XOP', 'EGLE', 'TNK', 'URNM', 'DBA',",
+    "config_tradier.py": "{'DBA', 'ICL', 'HIVE', 'BTCL', 'ETHD', 'GNK', 'CAN', 'CLSK', 'HAO', 'ITA', 'USO'",
     "template_bold": {}
    },
    "filter_tf": false,
@@ -357098,7 +357098,7 @@
    "agent_c_registry": null,
    "conflict_quick_vs_live": {},
    "defaults": {
-    "QuickConfig": "VA11623260",
+    "QuickConfig": "",
     "QuickConfig_apply_tradier_defaults": "VA11623260",
     "cat_side_defaults_4": {
      "CRYPTO_LONG": "<absent>",
@@ -357107,7 +357107,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "",
-    "config_tradier.py": "VA11623260",
+    "config_tradier.py": "",
     "template_bold": {}
    },
    "filter_tf": false,
@@ -357230,8 +357230,8 @@
    "agent_c_registry": null,
    "conflict_quick_vs_live": {},
    "defaults": {
-    "QuickConfig": "gDrr1UwivxxQPo6jUCyntP1hv7uk",
-    "QuickConfig_apply_tradier_defaults": "gDrr1UwivxxQPo6jUCyntP1hv7uk",
+    "QuickConfig": "",
+    "QuickConfig_apply_tradier_defaults": "",
     "cat_side_defaults_4": {
      "CRYPTO_LONG": "<absent>",
      "CRYPTO_SHORT": "<absent>",
@@ -357239,7 +357239,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "",
-    "config_tradier.py": "gDrr1UwivxxQPo6jUCyntP1hv7uk",
+    "config_tradier.py": "",
     "template_bold": {}
    },
    "filter_tf": false,
@@ -376651,7 +376651,7 @@
    "agent_c_registry": null,
    "conflict_quick_vs_live": {},
    "defaults": {
-    "QuickConfig": true,
+    "QuickConfig": false,
     "QuickConfig_apply_tradier_defaults": true,
     "cat_side_defaults_4": {
      "CRYPTO_LONG": false,
@@ -376660,7 +376660,7 @@
      "STOCKS_SHORT": true
     },
     "config.py": "<absent>",
-    "config_tradier.py": true,
+    "config_tradier.py": false,
     "template_bold": {}
    },
    "filter_tf": false,
