@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-05 04:02 UTC",
- "total_capital_usd": 5.54,
+ "generated_at": "2026-10-05 18:20 UTC",
+ "total_capital_usd": 5.44,
  "tier_capital": {
   "A": 0.0,
-  "B": 5.54,
+  "B": 5.44,
   "C": 0.0
  },
  "tier_count": {
@@ -12,19 +12,21 @@
   "C": 0
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "men:VETUSDT_LONG"
+ ],
  "mediocre": [],
  "positions": [
   {
    "pk": "men:VETUSDT_LONG",
    "symbol": "VETUSDT",
    "account": "men",
-   "value_usd": 5.54,
-   "gain_pct": -0.419,
+   "value_usd": 5.44,
+   "gain_pct": -2.219,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 630.0,
-   "mark": 0.008791
+   "mark": 0.00863212
   }
  ]
 }
