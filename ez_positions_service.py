@@ -1,4 +1,9 @@
 # ── PositionsServiceClient (was service_clients.py — merged here) ────────────
+try:
+    from env_gpg import load_env_gpg as _boot_load_env_gpg
+    _boot_load_env_gpg()
+except Exception:
+    pass
 import asyncio
 import asyncio.subprocess as aio_subprocess
 import fnmatch
@@ -1329,8 +1334,10 @@ class AccountConfig:
         missing = []
         if not self.api_key: missing.append(f"{p}_API_KEY")
         if not self.api_secret: missing.append(f"{p}_API_SECRET")
-        if not self.webhook_url: missing.append(f"{p}_WEBHOOK_URL")
-        if not self.webhook_secret: missing.append(f"{p}_WEBHOOK_SECRET")
+        # 2026-10-04 USER: FINANDY BUST — webhooks no longer exist. Only Binance
+        # credentials required (mirrors ez_manage.py 2026-09-10). Keep fields for compat.
+        # if not self.webhook_url: missing.append(f"{p}_WEBHOOK_URL")
+        # if not self.webhook_secret: missing.append(f"{p}_WEBHOOK_SECRET")
         if missing:
             raise ValueError(f"Missing environment variables for account '{p}': {', '.join(missing)}")
         self._init_ip_cycle()

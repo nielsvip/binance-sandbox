@@ -44,6 +44,7 @@ class Config:
     BB_PCTB_ENTRY_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
     COOLDOWN_BARS: int = 3  # parity 2026-08-17: vector->live (was vector-only)
     ENTRY_SCORE_THRESHOLD: float = 18.0  # parity 2026-08-17: vector->live (was vector-only)
+    FORCE_MIN_ONE_TRADE: bool = False  # lane L1 2026-10-04 LIVE_MIRROR honest-0: vec-only synthetic (v12 forces first-bar entry when no signals); live NEVER forces trades — no live hook by design (§17 parity default only, = QuickConfig False).
     MIN_HOLD_BARS: int = 3  # 2026-09-07 UNLOCK lower hold per user — was 10 (30min at 3m). Lowered to 3 (9min) to let exits fire faster; FLZ per_sym still overrides to 48 where proven — this lowers the default floor for all non-per_sym and new symbols. ROLLBACK: 10.
     MODE: str = "crypto"  # parity 2026-08-17: vector->live (was vector-only)
     STOCH_ENTRY_ENABLED: bool = False  # parity 2026-08-17: SWITCH tested per_sym + 7D crypto+stocks (bypass removed)
@@ -56,6 +57,7 @@ class Config:
     REENTRY_GR_HLHH_MODE: str = "OR"  # from tradier 2616 — sweep OR/HH/HL × min_tfs
     REENTRY_GR_MIN_TFS: int = 2  # from tradier 2617 — min TFs with HL/HH
     WT_DC_HTF_GATE: str = "4h_D"  # 2026-09-10 FIX vs B&H: was none → 4h_D — ensures larger-TF WT direction (D+4h) blocks counter-trend trades. User: against trend + larger TF WT. Crypto now matches tradier.
+    WT_DC_ENABLED: bool = True  # 2026-10-05 P0: master of the WT_DC entry path (template bold True, QuickConfig True, tradier True); live entry leg in ez_manage entry-port chain mirrors v12:9425 scorer block
     WT_DC_ENTRY_THRESHOLD: float = 0.0  # crypto 0 vs tradier 45
     TRA_WT_DC_ENTRY_THRESHOLD: float = 0.0  # keep for crypto parity (tradier 85)
     WT_DC_DETAILED_SCORER_ENABLED: bool = False  # 2026-09-28 opt-in: detailed _score_long/_score_short slowdown/accel scorer (thr 43) vs simple multi-TF. Off=live unchanged. Crypto live has no WT_DC entry caller, so this affects backtest/sweep only for crypto.
@@ -73,6 +75,10 @@ class Config:
     WT_DC_STOCH_THRESHOLD_LONG: float = 40.0  # stoch gate LONG: 30|40|50
     WT_DC_STOCH_THRESHOLD_SHORT: float = 60.0  # stoch gate SHORT: 50|60|70
     WT_DC_HTF_GATE_MODE: str = "AND"  # HTF alignment mode: AND=both HTFs must agree, OR=either — default AND
+    WT_DC_DC_POS_MIN: float = 0.20  # 2026-10-05 P0: hard-short dc_pos floor (v12:9402, tradier 0.20); baked in vec entry mask
+    WT_DC_FINAL_SCORE_MAX: float = 0.40  # 2026-10-05 P0: hard-short LT-score cap (v12:9411, tradier 0.40); baked in vec entry mask
+    WT_DC_K5M_HARD_ENABLED: bool = False  # 2026-10-05 P0: hard-short 5m-K gate master (v12:9396, tradier False); False=inert
+    WT_DC_K5M_MIN_SHORT_HARD: float = 20.0  # 2026-10-05 P0: hard-short 5m-K floor when enabled (v12:9399, tradier 20.0)
     WT_DC_TF_COMBO: str = "1h_4h_D"  # TF combo shorthand: 1h_4h_D|15m_1h_4h|15m_1h_4h_D — parsed into gate TFs, default 1h_4h_D
     WT_DC_DIRECT_TF_ENTRY: str = "1h"  # direct-path WT cross TF: 15m|1h|4h — default 1h
     WT_DC_DIRECT_DC_TF: str = "1h"  # direct-path DC TF: 15m|1h|4h|D
@@ -4352,6 +4358,8 @@ class Config:
     VEC_LIVE_REDUCE_DEFAULT_FRAC: float = 1.0     # non-PPL exits → full close (REDUCE-labeled)
     VEC_LIVE_REDUCE_PPL_STEP1_FRAC: float = 0.5   # PPL step 1 → genuine 50% partial
     VEC_LIVE_REDUCE_PPL_REASONS: tuple = ("PARTIAL_PROFIT_LOCK_STEP1", "PPL_STEP1")
+    VEC_VEL_EXIT_AS_TRIGGER: bool = True  # 2026-10-04 cut5: promotes twin/live fallback (twin_gates_sizing_a:133, v12:9905) to field; = QuickConfig True; neutral
+    VEC_HONOR_DEAD_LIVE_DELTA_GATES: bool = False  # 2026-10-04 cut5: promotes twin fallback (twin_p0_crypto_a:284, v12:9293/10300) to field; = QuickConfig False; neutral
     VEC_REDUCE_CASCADE_COOLDOWN_S: float = 0.0    # 0 = OFF; live's Redis _recent_reduces floor (~15-60s)
     VEC_LIVE_REDUCE_PARITY_FRAC: float = 0.0      # legacy override (still respected if >0)
     VEC_LIVE_REDUCE_PARITY_KEEP_DUST: bool = False
@@ -4728,6 +4736,30 @@ class Config:
     EMA_9_21_SCORE_BONUS: int = 5  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
     EMA_9_21_TIMEFRAME: str = "1h"
     KINDERGARTEN_EMA_GATE_ENABLED: bool = False  # USER FIX 2026-09-22: 0 trades lie from True 100% block — False + 15m in _ALL_FILTER_TF, exists but not block
+    WT_DC_ENTRY_THRESHOLD_LIVE_ENABLED: bool = False  # LANE-A 2026-10-04: live twin of vec WT_DC_ENTRY_THRESHOLD (v12:9436 wtdc score>=thr entry gate); False = inert
+    WT_DC_DC_POS_THRESHOLD_LONG_LIVE_ENABLED: bool = False  # LANE-A 2026-10-04: live twin of vec WT_DC_DC_POS_THRESHOLD_LONG (v12:9325 dc_position_1h<thr LONG entry); False = inert
+    WT_DC_DC_POS_THRESHOLD_SHORT_LIVE_ENABLED: bool = False  # LANE-A 2026-10-04: live twin of vec WT_DC_DC_POS_THRESHOLD_SHORT (v12:9326 dc_position_1h>thr SHORT entry); False = inert
+    WT_DC_HTF_GATE_LIVE_ENABLED: bool = False  # LANE-A 2026-10-04: live twin of vec WT_DC_HTF_GATE (v12:9352 4h/D WT-against veto); False = inert
+    TF_HTF1_LIVE_ENABLED: bool = False  # LANE-A 2026-10-04: live twin of vec TF_HTF1 selector (v12:9062 HTF alignment TF); False = inert
+    TF_HTF3_LIVE_ENABLED: bool = False  # LANE-A 2026-10-04: live twin of vec TF_HTF3 selector (v12:9063 HTF alignment TF); False = inert
+    ENTRY_SCORE_THRESHOLD_LIVE_ENABLED: bool = False  # LANE-A 2026-10-04: live twin of vec ENTRY_SCORE_THRESHOLD (v12:9453 entry score floor); False = inert
+    EMA_9_21_FILTER_TF_LIVE_ENABLED: bool = False  # LANE-A 2026-10-04: live twin of vec EMA_9_21_FILTER_FILTER_TF (v12:9620 9/21 TF check); False = inert
+    WT_DC_DIRECT_THRESHOLD_LIVE_ENABLED: bool = False  # LANE-A 2026-10-04: live twin of vec WT_DC_DIRECT_THRESHOLD (wirec_entry_tf.py:97 wtdc direct block, -1=off); False = inert
+    WT_EXIT_MIN_TFS_LIVE_ENABLED: bool = False  # LANE-A 2026-10-04: live twin of vec WT_EXIT_MIN_TFS (v12:9896 delta-exit wt_against floor); False = inert
+    TF_FOCUS_WEIGHT_LIVE_ENABLED: bool = False  # LANE-A2 2026-10-04: live twin of vec TF_FOCUS_WEIGHT (v12:8759 1h&4h WT-aligned score bonus; twin requires the alignment); False = inert
+    TF_ALIGNMENT_MIN_TOTAL_LIVE_ENABLED: bool = False  # LANE-A2 2026-10-04: live twin of vec TF_ALIGNMENT_MIN_TOTAL (v12:9264 tf_cnt>=need over 1h/4h/D); False = inert
+    STRENGTH_MIN_SCORE_LIVE_ENABLED: bool = False  # LANE-A2 2026-10-04: live twin of vec STRENGTH_MIN_SCORE (v12:9162 entry-score floor via live entry_score); False = inert
+    K3M_FLOOR_LIVE_ENABLED: bool = False  # LANE-A2 2026-10-04: live twin of vec K3M_FLOOR (v12:9010 LONG k<100-floor / SHORT k>floor); False = inert
+    DC_POSITION_ENTRY_THRESHOLD_LIVE_ENABLED: bool = False  # LANE-A2 2026-10-04: live twin of vec DC_POSITION_ENTRY_THRESHOLD (v12:8675 B_DAYTRADE dc_pos_15m zone); False = inert
+    CHOP_TRENDING_THRESHOLD_LIVE_ENABLED: bool = False  # LANE-A2 2026-10-04: live twin of vec CHOP_TRENDING_THRESHOLD (v12:9047 CT_CHOP_4H ranging veto leg); False = inert
+    CHOP_RANGING_THRESHOLD_LIVE_ENABLED: bool = False  # LANE-A2 2026-10-04: live twin of vec CHOP_RANGING_THRESHOLD (v12:9048 CT_CHOP_4H ranging veto leg); False = inert
+    WT_DC_STOCH_THRESHOLD_LONG_LIVE_ENABLED: bool = False  # LANE-A2 2026-10-04: live twin of vec WT_DC_STOCH_THRESHOLD_LONG (v12:9327 LONG stoch_k<thr); False = inert
+    WT_DC_STOCH_THRESHOLD_SHORT_LIVE_ENABLED: bool = False  # LANE-A2 2026-10-04: live twin of vec WT_DC_STOCH_THRESHOLD_SHORT (v12:9328 SHORT stoch_k>thr); False = inert
+    HTF_MIN_ALIGNED_LIVE_ENABLED: bool = False  # LANE-A2 2026-10-04: live twin of vec HTF_MIN_ALIGNED (v12:9324 htf_cnt>=min over 1h/HTF1/HTF3, count leg only); False = inert
+    ENTRY_ZONE_LONG_LIVE_ENABLED: bool = False  # LANE-A3 2026-10-04: live twin of vec ENTRY_ZONE_LONG (v12:9824 LONG blocked if stoch_k_1h>thr); False = inert
+    ENTRY_ZONE_SHORT_LIVE_ENABLED: bool = False  # LANE-A3 2026-10-04: live twin of vec ENTRY_ZONE_SHORT (v12:9825 SHORT blocked if stoch_k_1h<thr); False = inert
+    D_TREND_REQUIRED_LIVE_ENABLED: bool = False  # LANE-A3 2026-10-04: live twin of vec D_TREND_REQUIRED (v12:9072 D ha aligned-or-neutral leg); False = inert
+    HTF_ALIGNMENT_ENABLED_LIVE_ENABLED: bool = False  # LANE-A3 2026-10-04: live twin of vec HTF_ALIGNMENT_ENABLED master (v12:9061 full htf_ok: count+D legs); False = inert
     EMERGENCY_BRAKE_DC_STOP_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
     EMERGENCY_BRAKE_DC_STOP_FIELD: str = 'dc_low_15m'  # PORTED from TradierConfig 2026-08-17
     ENABLE_IP_ROTATION: bool = False  # NOT DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
@@ -5108,6 +5140,8 @@ class Config:
     EMA_BLANKET_FILTER_ENABLED: bool = False  # 2026-09-29 USER: now WIRED live (ez_manage.execute_now OPEN gate = v12 wave4 twin). Was True but UNREAD by live (census NEITHER) -> False keeps live behaviour identical + = QuickConfig; swept per sym_side. (2026-09-10: EMA blanket blocks counter-trend.)
     EMA_BLANKET_FILTER_MIN_TFS: int = 3  # was 2 → 3 TFs must confirm
     FOLLOW_THROUGH_REENTRY_ENABLED: bool = False
+    FOLLOW_THROUGH_MIN_MOVE_PCT: float = 0.05  # LANE-J2 2026-10-05: walker per_sym_engine_crypto.py:166 (fav move frac; live fires when fav_pct >= min*100)
+    FOLLOW_THROUGH_WINDOW_BARS: int = 5  # LANE-J2 2026-10-05: walker per_sym_engine_crypto.py:167 (15m bars after exit)
     GR_FILTER_VEC_ENABLED: bool = False
     GR_FILTER_VEC_MIN_TFS: int = 2
     REVERSE_ON_EXIT_ENABLED: bool = False
@@ -5202,9 +5236,12 @@ class Config:
 
     ATR_TRAIL_SWEEP_ENABLED: bool = False  # auto-added TEMPLATE parity 2026-09-04
     CHANNEL_REENTRY_STOP_ENABLED: bool = False  # auto-added TEMPLATE parity 2026-09-04
+    CHANNEL_REENTRY_STOP_TF: str = "1h"  # LANE-J2 2026-10-05: vec_paths/tight_breakout_stops.py:60 default
+    CHANNEL_REENTRY_STOP_FIELD: str = "dc_high"  # LANE-J2 2026-10-05: vec_paths/tight_breakout_stops.py:61 default (bb_upper alt; auto-flips for SHORT)
     DYN_STRUCT_TRAIL_ENABLED: bool = False  # auto-added TEMPLATE parity 2026-09-04
     HAIKU_ENTRY_GATE_ENABLED: bool = False  # auto-added TEMPLATE parity 2026-09-04
     WT_15M_CROSS_ENTRY_ENABLED: bool = False  # auto-added TEMPLATE parity 2026-09-04
+    WT_SIMPLE_GUARANTEE_ENABLED: bool = False  # LANE-H3 2026-10-05: crypto live twin of vec/compute_entry+exit_signals (G2 stocks mirror); False = inert
     OPTIONS_WT_SLOWDOWN_PCT: float = 25.0        # velocity must shrink by ≥25% bar-over-bar for slowdown to fire  # PORTED from TradierConfig 2026-08-17
     ORB_ENABLED: bool = False  # OFF for trb (real $). TRC overrides to True.  # PORTED from TradierConfig 2026-08-17
     ORB_LONG_BUDGET: float = 2000.0  # WIRED 2026-04-16 (priority 85/100) — tradier_manage.py:5286 TRC override destination  # PORTED from TradierConfig 2026-08-17

@@ -19,11 +19,11 @@ if ! mkdir "$_L" 2>/dev/null; then
       if [ "$(ps -o pgid= -p "$_o_pid" 2>/dev/null | tr -d ' ')" = "$_o_pid" ]; then kill -9 -"$_o_pid" 2>/dev/null; else kill -9 "$_o_pid" 2>/dev/null; fi
       sleep 2
     fi
-    rmdir "$_L" 2>/dev/null; mkdir "$_L" 2>/dev/null || exit 0
+    rm -rf "$_L" 2>/dev/null; mkdir "$_L" 2>/dev/null || exit 0
   else echo "[$STAMP] another run in flight, exiting" >> "$LOG"; exit 0; fi
 fi
 echo $$ > "$_L/pid"
-trap 'rmdir "$_L" 2>/dev/null' EXIT INT TERM
+trap 'rm -f "$_L/pid" 2>/dev/null; rmdir "$_L" 2>/dev/null' EXIT INT TERM
 echo "[$STAMP] ensure_tests_running: pytest -q (quick parity + per_sym)" | tee -a "$LOG"
 cd "$ROOT"
 # quick subset that covers parity — full suite is heavy (30s), keep this light (<10s)

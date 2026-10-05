@@ -372,8 +372,10 @@ class AccountConfig:
         missing = []
         if not self.api_key: missing.append(f"{self.prefix.lower()}_API_KEY")
         if not self.api_secret: missing.append(f"{self.prefix.lower()}_API_SECRET")
-        if not self.webhook_url: missing.append(f"{self.prefix.lower()}_WEBHOOK_URL")
-        if not self.webhook_secret: missing.append(f"{self.prefix.lower()}_WEBHOOK_SECRET")
+        # 2026-10-04 USER: FINANDY BUST — webhooks no longer exist. Only Binance
+        # credentials required (mirrors ez_manage.py 2026-09-10). Keep fields for compat.
+        # if not self.webhook_url: missing.append(f"{self.prefix.lower()}_WEBHOOK_URL")
+        # if not self.webhook_secret: missing.append(f"{self.prefix.lower()}_WEBHOOK_SECRET")
         if missing:
             raise ValueError(f"Missing environment variables for account '{self.prefix}': {', '.join(missing)}")
         self._init_ip_cycle()
@@ -13368,6 +13370,18 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
         if _is_pure_augment and not is_hedge and real_gain < _half_min_gain and real_amt > 0 and not _is_sba and not _reason_is_reentry:
             logger.warning(f"[AUGMENT_HALF_MIN_GAIN] {position_key}: BLOCKED augment — gain {real_gain:.2f}% < {_half_min_gain:.2f}% (0.5×MIN_GAIN). Wait for gain to build.")
             return False, f"BLOCKED_AUGMENT_BELOW_HALF_MIN_GAIN_{real_gain:.2f}%"
+        if getattr(config, 'ABLATION_DISABLE_AGGRESSIVE_HEDGE', False) and _is_pure_augment and not is_hedge:
+            return False, 'BLOCKED_ABLATION_AGGRESSIVE_HEDGE'
+        if getattr(config, 'AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER', False) and _is_pure_augment and not is_hedge and not (real_gain > 0):
+            logger.warning(f'[AUGMENT_TRADIER_PROFIT_ONLY] {position_key}: BLOCKED augment — gain {real_gain:.2f}% not > 0.')
+            return False, f'BLOCKED_AUGMENT_TRADIER_PROFIT_ONLY_{real_gain:.2f}%'
+        try:
+            import vec_decisions.twin_p0_crypto_a as _twin_p0a
+            _p0a_aug_ok = _twin_p0a.delta_gate_augment_allows(config)
+        except Exception:
+            _p0a_aug_ok = True
+        if not _p0a_aug_ok and _is_pure_augment and not is_hedge:
+            return False, 'BLOCKED_DELTA_GATE_AUGMENT_OFF'
         if getattr(config, 'AUGMENT_ONLY_WHEN_PROFITABLE', True) and real_gain < 0 and real_amt > 0 and not _is_sba and not is_hedge and not _reason_is_reentry:
             logger.warning(f"[AUGMENT_PROFITABLE_ONLY] {position_key}: BLOCKED augment in quick — position is losing (gain={real_gain:.2f}%). Only augment winners.")
             return False, f"BLOCKED_AUGMENT_LOSING_POSITION_{real_gain:.2f}%"
@@ -14162,6 +14176,18 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     elif (not is_long) and _k1m_now < 10 and _k1m_now > _k1m_prev_v:
                         hard_exit_reason = f"K1M_EXTREME_REVERSE_SHORT_k1m={_k1m_now:.0f}>prev={_k1m_prev_v:.0f}_gain{current_gain:.2f}%"
                         logger.critical(f"🔥 [K1M_EXTREME_REVERSE_SHORT] {position_key}: k_1m={_k1m_now:.0f}<10 turning up — locking profit at {current_gain:.2f}%")
+                # ═══ BB RECOVERY EXIT (twin_p0_crypto_a; vector v12:10017-10025) — default OFF = inert ═══
+                if not hard_exit_reason and not is_hedge and bool(_sw_get(symbol, position_side, 'BB_RECOVERY_EXIT_ENABLED_TRADIER', False)):
+                    try:
+                        import vec_decisions.twin_p0_crypto_a as _twin_p0a
+                        _bbr_u = safe_fetch_float(indicators.get('bb_upper_1h', 0), 0)
+                        _bbr_l = safe_fetch_float(indicators.get('bb_lower_1h', 0), 0)
+                        _bbr_k = safe_fetch_float(indicators.get('k_1h', 50), 50)
+                        if _bbr_u > 0 and _bbr_l > 0 and _twin_p0a.bb_recovery_exit(current_price, _bbr_u, _bbr_l, _bbr_k, is_long):
+                            hard_exit_reason = f'BB_RECOVERY_EXIT_TRADIER_{position_side}_px{current_price:.4f}_k{_bbr_k:.0f}'
+                            logger.critical(f'[BB_RECOVERY_EXIT] {position_key}: {hard_exit_reason}')
+                    except Exception:
+                        pass
                 # ═══ PARABOLIC EXHAUSTION EXIT (USER RULE 2026-04-10): k_15m extreme + DC breakout + 3m structure crack ═══
                 # Even when delta says hold and the move looks unstoppable, if the LTF (3m) makes a wrong-way structure
                 # break (lower-low for LONG / higher-high for SHORT), get out NOW. Catches parabolic tops/bottoms.

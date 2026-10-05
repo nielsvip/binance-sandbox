@@ -1,0 +1,548 @@
+{
+ "entries": [
+  {
+   "anchor_unique_line": "    import vec_decisions.twin_entries_dead_a as _teda_entries  # 2026-10-04 entries-dead-A FUNDING/OI/RSI2 twins (shared with v12_quick_engine)",
+   "file": "ez_manage.py",
+   "insert_code": "try:\n    import vec_decisions.twin_p0_crypto_b as _twin_p0c_b  # 2026-10-05 P0 crypto-B twins (shared with v12_quick_engine)\nexcept ImportError:\n    _twin_p0c_b = None",
+   "position": "before",
+   "switch": "_IMPORT"
+  },
+  {
+   "anchor_unique_line": "    # BACKTEST_CHANGE_9: K3M_FLOOR blocks SHORT when k_3m <= floor (mirror of K3M_CAP)",
+   "file": "ez_manage.py",
+   "insert_code": "    # [twin_p0_crypto_b] K3M_FLOOR vector-parity veto (v12:9001-9025). Vec k_3m IS 15m\n    # on crypto (BASE_TF, v12:4066); twin uses the 15m/1h/base chain + override branch.\n    # Existing block below stays (real-3m layer, conservative AND). BINDS AT DEFAULTS\n    # (floor 30 always applied in vec, v12:9025) \u2014 15m-k vs 3m-k delta is the change.\n    try:\n        import vec_decisions.twin_p0_crypto_b as _p0b\n        if not _p0b.k3m_floor_ok(lambda _k, _d: getattr(config, _k, _d), is_long, _p0b.with_aliases(indicators)):\n            return False, \"P0B_K3M_FLOOR_VETO\"\n    except Exception:\n        pass",
+   "notes": "Promoted K3M_FLOOR value wires in via getattr(config). K3M_FLOOR_ENABLED default diverges (vec False / live True); twin mirrors vec given the same config.",
+   "position": "before",
+   "switch": "K3M_FLOOR"
+  },
+  {
+   "anchor_unique_line": "    # BACKTEST_CHANGE_137: ADX regime filter \u2014 block entries in choppy/ranging markets (ADX < 20). 36%\u2192182% improvement documented.",
+   "file": "ez_manage.py",
+   "insert_code": "    # [twin_p0_crypto_b] K_ZONE veto (v12:9224-9231). Inert at default (gate False).\n    try:\n        import vec_decisions.twin_p0_crypto_b as _p0b\n        if not _p0b.kzone_veto_ok(lambda _k, _d: getattr(config, _k, _d), is_long, _p0b.with_aliases(indicators)):\n            return False, \"P0B_KZONE_VETO\"\n    except Exception:\n        pass",
+   "position": "before",
+   "switch": "K_ZONE_VETO_ENABLED_TRADIER"
+  },
+  {
+   "anchor_unique_line": "    # BC_170: WT velocity 1h must confirm direction (strongest single predictor, d=0.347, 1947 trades)",
+   "file": "ez_manage.py",
+   "insert_code": "    # [twin_p0_crypto_b] Stoch-cross veto, base-TF (=15m crypto, v12:9248-9255). Inert at\n    # default (gate False). Fail-closed without prev key (mirrors vec bar-0 roll).\n    try:\n        import vec_decisions.twin_p0_crypto_b as _p0b\n        if not _p0b.stoch_cross_ok(lambda _k, _d: getattr(config, _k, _d), is_long, _p0b.with_aliases(indicators)):\n            return False, \"P0B_STOCH_CROSS_VETO\"\n    except Exception:\n        pass",
+   "notes": "Tradier threshold-select slice (v12:8799-8804) is tradier-only; twin encodes it in tradier_stoch_entry_fire (NEEDS-OPERATOR-DECISION for crypto). For full parity the indicators pipeline should carry stoch_k/d_15m_prev.",
+   "position": "before",
+   "switch": "STOCH_CROSS_ENTRY_TRADIER"
+  },
+  {
+   "anchor_unique_line": "    # BC_171: 15m momentum must confirm direction (d=0.345 k_15m, d=0.321 mfi_15m)",
+   "file": "ez_manage.py",
+   "insert_code": "    # [twin_p0_crypto_b] VWAP side filter (v12:9126-9129). Inert at default (gate False).\n    try:\n        import vec_decisions.twin_p0_crypto_b as _p0b\n        _p0b_ind = _p0b.with_aliases(indicators)\n        _p0b_px = _sf(_p0b_ind.get(\"close\", 0.0), 0.0)\n        if not _p0b.vwap_filter_ok(lambda _k, _d: getattr(config, _k, _d), is_long, _p0b_ind, _p0b_px):\n            return False, \"P0B_VWAP_VETO\"\n    except Exception:\n        pass",
+   "position": "before",
+   "switch": "VWAP_FILTER_ENABLED"
+  },
+  {
+   "anchor_unique_line": "    # BACKTEST_CHANGE_137: ADX regime filter \u2014 block entries in choppy/ranging markets (ADX < 20). 36%\u2192182% improvement documented.",
+   "file": "ez_manage.py",
+   "insert_code": "    # [twin_p0_crypto_b] WT_DC stoch-K gate (v12:9343-9348, 9391, ANDed at v12:9600).\n    # BINDS AT DEFAULTS (no enable gate in vec; 40/60 thresholds always apply when\n    # stoch_k_15m present) \u2014 this vetoes live longs with K>=40 / shorts with K<=60.\n    try:\n        import vec_decisions.twin_p0_crypto_b as _p0b\n        if not _p0b.wtdc_stoch_ok(lambda _k, _d: getattr(config, _k, _d), is_long, _p0b.with_aliases(indicators)):\n            return False, \"P0B_WTDC_STOCH_VETO\"\n    except Exception:\n        pass",
+   "notes": "Highest-blast hook in this batch; operator confirms before applying. Present in config.py already (no config_add).",
+   "position": "before",
+   "switch": [
+    "WT_DC_STOCH_THRESHOLD_LONG",
+    "WT_DC_STOCH_THRESHOLD_SHORT"
+   ]
+  },
+  {
+   "anchor_unique_line": "    # BACKTEST_CHANGE_137: ADX regime filter \u2014 block entries in choppy/ranging markets (ADX < 20). 36%\u2192182% improvement documented.",
+   "file": "ez_manage.py",
+   "insert_code": "    # [twin_p0_crypto_b] WT_DC HTF gate (v12:9349-9388, ANDed at v12:9600). Base 4h+D\n    # alignment veto is BAKED ON in vec (raw 'none' -> 4h_d both sides) \u2014 BINDS AT\n    # DEFAULTS. WT_DC_HTF_GATE_MODE only matters when TF_HTF/HTF2 are overridden.\n    try:\n        import vec_decisions.twin_p0_crypto_b as _p0b\n        if not _p0b.wtdc_htf_ok(lambda _k, _d: getattr(config, _k, _d), is_long, _p0b.with_aliases(indicators)):\n            return False, \"P0B_WTDC_HTF_VETO\"\n    except Exception:\n        pass",
+   "notes": "Operator confirms: blocks LONG-into-downtrend / SHORT-into-uptrend on 4h+D.",
+   "position": "before",
+   "switch": "WT_DC_HTF_GATE_MODE"
+  },
+  {
+   "anchor_unique_line": "    # BACKTEST_CHANGE_137: ADX regime filter \u2014 block entries in choppy/ranging markets (ADX < 20). 36%\u2192182% improvement documented.",
+   "file": "ez_manage.py",
+   "insert_code": "    # [twin_p0_crypto_b] WT_DC hard-short K floor (v12:9395-9399). Shorts only; inert\n    # at default (WT_DC_K5M_HARD_ENABLED False; npz/live lack 5m -> 15m fallback).\n    try:\n        import vec_decisions.twin_p0_crypto_b as _p0b\n        if not _p0b.wtdc_k5m_ok(lambda _k, _d: getattr(config, _k, _d), is_long, _p0b.with_aliases(indicators)):\n            return False, \"P0B_WTDC_K5M_VETO\"\n    except Exception:\n        pass",
+   "position": "before",
+   "switch": [
+    "WT_DC_K5M_HARD_ENABLED",
+    "WT_DC_K5M_MIN_SHORT_HARD"
+   ]
+  },
+  {
+   "anchor_unique_line": "    # BACKTEST_CHANGE_137: ADX regime filter \u2014 block entries in choppy/ranging markets (ADX < 20). 36%\u2192182% improvement documented.",
+   "file": "ez_manage.py",
+   "insert_code": "    # [twin_p0_crypto_b] WT_DC hard-short DC-pos floor (v12:9400-9403). Shorts only;\n    # BINDS AT DEFAULTS (unconditional dc_pos_15m >= 0.20 in vec). dc_pos recomputed\n    # from dc_high/low_15m + close exactly like vec (0.5 fallback).\n    try:\n        import vec_decisions.twin_p0_crypto_b as _p0b\n        _p0b_ind = _p0b.with_aliases(indicators)\n        _p0b_px = _sf(_p0b_ind.get(\"close\", 0.0), 0.0)\n        if not _p0b.wtdc_dcpos_ok(lambda _k, _d: getattr(config, _k, _d), is_long, _p0b_ind, _p0b_px):\n            return False, \"P0B_WTDC_DCPOS_VETO\"\n    except Exception:\n        pass",
+   "notes": "Apply config_add (inert 0.0) BEFORE this hook to keep it a no-op until the promoted value lands; otherwise the twin default 0.20 binds immediately.",
+   "position": "before",
+   "switch": "WT_DC_DC_POS_MIN"
+  },
+  {
+   "anchor_unique_line": "    # BACKTEST_CHANGE_137: ADX regime filter \u2014 block entries in choppy/ranging markets (ADX < 20). 36%\u2192182% improvement documented.",
+   "file": "ez_manage.py",
+   "insert_code": "    # [twin_p0_crypto_b] WT_DC hard-short LT-score cap (v12:9404-9411). Shorts only;\n    # BINDS AT DEFAULTS (final_score_norm_lt < 0.40, trend_val fallback). VERIFY the\n    # LT pipeline keys exist in live indicators \u2014 absent keys read 0.5 and veto.\n    try:\n        import vec_decisions.twin_p0_crypto_b as _p0b\n        if not _p0b.wtdc_final_ok(lambda _k, _d: getattr(config, _k, _d), is_long, _p0b.with_aliases(indicators)):\n            return False, \"P0B_WTDC_FINAL_VETO\"\n    except Exception:\n        pass",
+   "notes": "Apply config_add (inert +inf) BEFORE this hook to keep it a no-op until promotion; otherwise the twin default 0.40 binds immediately.",
+   "position": "before",
+   "switch": "WT_DC_FINAL_SCORE_MAX"
+  },
+  {
+   "anchor_unique_line": "                                    await queue_trade_action(order_queue, trade_manager, position_key, \"OPEN\", _vwap_why, 75.0)",
+   "file": "ez_manage.py",
+   "insert_code": "                        elif bool(_psym_get(_sym_z, _side_z, \"WT_DC_ENABLED\", False)):\n                            try:\n                                import vec_decisions.twin_p0_crypto_b as _p0b_wtdc\n                                _wtdc_ok, _wtdc_why = _p0b_wtdc.wtdc_live_entry_fire(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _p0b_wtdc.with_aliases(_ind_z))\n                            except Exception:\n                                _wtdc_ok, _wtdc_why = False, \"\"\n                            if _wtdc_ok and _px_z > 0:\n                                logger.warning(f\"[P0B_WTDC] {position_key}: {_wtdc_why} px={_px_z:.6f} -> OPEN\")\n                                _r1s_p0w = safe_fetch_float(_ind_z.get((\"dc_low4_3m\" if _is_long_z else \"dc_high4_3m\") if bool(getattr(config, \"R1_USE_DC_4BAR\", True)) else (\"dc_low_3m\" if _is_long_z else \"dc_high_3m\")), 0.0)\n                                if _r1s_p0w > 0 and position and float(getattr(position, \"r1_stop_price\", 0.0) or 0.0) <= 0:\n                                    position.r1_stop_price = _r1s_p0w\n                                if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:\n                                    pass\n                                else:\n                                    await queue_trade_action(order_queue, trade_manager, position_key, \"OPEN\", _wtdc_why, 75.0)",
+   "notes": "B_WT_DC_LIVE OR-proposal (v12:9424-9449), simple multi-TF scorer ported exactly (scorer_vec:233-284). Inert at default (gate False). QuickConfig default True diverges \u2014 operator promotes explicitly. Needs stoch_k_5m + wt_cross_1h + dc_position_1h keys (else score 0, no fire \u2014 same as vec invalid gate).",
+   "position": "after",
+   "switch": "WT_DC_ENABLED"
+  },
+  {
+   "anchor_unique_line": "                                    await queue_trade_action(order_queue, trade_manager, position_key, \"OPEN\", _vwap_why, 75.0)",
+   "file": "ez_manage.py",
+   "insert_code": "                        elif bool(_psym_get(_sym_z, _side_z, \"DC_DAYTRADE_ENABLED\", False)) or bool(_psym_get(_sym_z, _side_z, \"TRADIER_DC_DAYTRADE_ENABLED\", False)):\n                            try:\n                                import vec_decisions.twin_p0_crypto_b as _p0b_dt\n                                _dt_ok, _dt_why = _p0b_dt.daytrade_entry_fire(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _p0b_dt.with_aliases(_ind_z))\n                            except Exception:\n                                _dt_ok, _dt_why = False, \"\"\n                            if _dt_ok and _px_z > 0:\n                                logger.warning(f\"[P0B_DAYTRADE] {position_key}: {_dt_why} px={_px_z:.6f} -> OPEN\")\n                                _r1s_p0d = safe_fetch_float(_ind_z.get((\"dc_low4_3m\" if _is_long_z else \"dc_high4_3m\") if bool(getattr(config, \"R1_USE_DC_4BAR\", True)) else (\"dc_low_3m\" if _is_long_z else \"dc_high_3m\")), 0.0)\n                                if _r1s_p0d > 0 and position and float(getattr(position, \"r1_stop_price\", 0.0) or 0.0) <= 0:\n                                    position.r1_stop_price = _r1s_p0d\n                                if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:\n                                    pass\n                                else:\n                                    await queue_trade_action(order_queue, trade_manager, position_key, \"OPEN\", _dt_why, 75.0)",
+   "notes": "B_DAYTRADE OR-proposal, crypto branch (v12:8673-8679). Inert at default (both enables False). Crypto threshold DC_POSITION_ENTRY_THRESHOLD is sibling-A owned; this entry covers the TRADIER enable + expansion knobs.",
+   "position": "after",
+   "switch": [
+    "TRADIER_DC_DAYTRADE_ENABLED",
+    "TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION"
+   ]
+  },
+  {
+   "anchor_unique_line": "            # SATOSHIT EXIT \u2014 partial close via maker order (like Satoshit: take 70% profit, keep 30% runner)",
+   "file": "ez_manage.py",
+   "insert_code": "            # [twin_p0_crypto_b] vec SATOSHIT exit OR-trigger (v12:10001-10015, rsi_1h + base-k\n            # votes). Sibling block below uses cross-down logic; this adds the vec RSI+K trigger\n            # with identical partial-exit mechanics + same account/gain guards (intentional graft).\n            try:\n                import vec_decisions.twin_p0_crypto_b as _p0b_sx\n                _p0sx_fire, _p0sx_reason = _p0b_sx.satoshit_exit_fire(lambda _k, _d: getattr(config, _k, _d), is_long, _p0b_sx.with_aliases(i))\n            except Exception:\n                _p0sx_fire, _p0sx_reason = False, \"\"\n            if (_p0sx_fire and getattr(config, \"SATOSHIT_ENABLED\", False)\n                    and account_key in getattr(config, \"SATOSHIT_ACCOUNTS\", [])\n                    and _pp_gain > getattr(config, \"NOLOSS_MIN_PROFIT_PCT\", 0.50)):\n                _p0sx_amt = abs(safe_fetch_float(getattr(position, \"positionAmt\", 0.0), 0.0))\n                _p0sx_partial = getattr(config, \"SATOSHIT_EXIT_PARTIAL_PCT\", 0.70)\n                _p0sx_reduce = _p0sx_amt * _p0sx_partial\n                _p0sx_keep = _p0sx_amt - _p0sx_reduce\n                if _p0sx_reduce > pos_min_qty and _p0sx_keep > pos_min_qty:\n                    _p0sx_side = \"SELL\" if is_long else \"BUY\"\n                    _p0sx_uid = f\"SATOSHIT_VEC_{position_key}_{int(time.time())}\"\n                    logger.warning(f\"[SATOSHIT_VEC_EXIT] {position_key}: {_p0sx_reason} gain={_pp_gain:.2f}% \u2014 routing through execute_now partial close {_p0sx_partial * 100:.0f}%\")\n                    from ez_satoshit import record_satoshit_exit as _p0sx_rec\n                    _p0sx_rec(position_key, \"LONG\" if is_long else \"SHORT\", _pp_gain)\n                    _p0sx_res = await trade_manager.execute_now(position_key, account_key, symbol, _p0sx_amt, _p0sx_side, position_side, _p0sx_reduce, current_price, _p0sx_uid, f\"SATOSHIT_VEC_EXIT_{_p0sx_reason}_gain{_pp_gain:.2f}_partial{_p0sx_partial * 100:.0f}pct\", False, \"QUICK_REDUCE\")\n                    if \"SUCCESS\" in str(_p0sx_res or \"\").upper():\n                        logger.warning(f\"[SATOSHIT_VEC_EXIT_OK] {position_key}: execute_now success \u2014 runner {_p0sx_keep:.6f} still riding\")\n                        return (f\"{EvalStatus.ACTION_TAKEN}:SATOSHIT_VEC_EXIT\")\n                    else:\n                        logger.warning(f\"[SATOSHIT_VEC_EXIT_FAILED] {position_key}: execute_now={str(_p0sx_res or '')[:60]} \u2014 not retrying\")",
+   "notes": "Inert at default (SATOSHIT_EXIT_ENABLED False). Base k = 15m on crypto (v12:10003).",
+   "position": "before",
+   "switch": [
+    "SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER",
+    "SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER",
+    "SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER",
+    "SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER"
+   ]
+  },
+  {
+   "switch": [
+    "TF_FOCUS_ENTRY_HARD_GATE",
+    "TF_FOCUS_WEIGHT"
+   ],
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "DEAD in vector: v12:8760-8766 computes focus_mult but no read site exists (grep focus_mult = defs only). No live parent; promoting cannot move the ledger. Twin tf_focus_ok always passes + documents dead.",
+   "twin": "tf_focus_ok / tf_focus_ok_vec",
+   "vec_ref": "v12_quick_engine.py:8755-8766"
+  },
+  {
+   "switch": [
+    "STRENGTH_FILTER_ENABLED",
+    "STRENGTH_MIN_SCORE"
+   ],
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Vec scores OR-block fires with V8Q weights (v12:9144-9162); live has no block-fire accumulator, so no mappable live parent. Twin strength_ok + STRENGTH_WEIGHTS delivered; operator must decide block-fire plumbing before any hook.",
+   "twin": "strength_ok / strength_ok_vec / strength_score",
+   "vec_ref": "v12_quick_engine.py:9144-9162"
+  },
+  {
+   "switch": "MIN_HOLD_BARS",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Vec wraps the whole exit loop (held_bars>=min_hold at v12:13919,13932,14000,14017,14055); insertion-only cannot wrap the live exit section, so veto placement needs the operator. Twin min_hold_bars/min_hold_ok delivered. Crypto-binds (max with MIN_HOLD_BARS_BEFORE_EXIT).",
+   "twin": "min_hold_bars / min_hold_ok",
+   "vec_ref": "v12_quick_engine.py:12507"
+  },
+  {
+   "switch": "MIN_HOLD_MINUTES_TRADIER",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Tradier-only in vector (v12:12518 is_tradier gate); no crypto live effect. Twin encodes the MODE gate (crypto inert).",
+   "twin": "min_hold_bars / min_hold_ok",
+   "vec_ref": "v12_quick_engine.py:12518-12519"
+  },
+  {
+   "switch": "MTF_ATR_TRAIL_TF_TRADIER",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Tradier-only in vector (v12:12655 selects it only when is_tradier; crypto uses MTF_ATR_TRAIL_TF). Twin mtf_atr_trail_tf encodes the selection.",
+   "twin": "mtf_atr_trail_tf",
+   "vec_ref": "v12_quick_engine.py:12654-12660"
+  },
+  {
+   "switch": [
+    "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER",
+    "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER",
+    "PARTIAL_PROFIT_LOCK_FRAC_TRADIER",
+    "PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER"
+   ],
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "No functional vector predicate in this checkout: v12 delegates to vec_decisions.reduce_profit_lock.ppl_step (v12:13758) whose module is absent here, so blind mirroring is refused. Twin mirrors the stocks-live reference (tradier_manage:19973-20027). No ez parent: crypto PPL uses generic knobs in ez_positions_quick. Operator decides crypto PPL-TRADIER adoption.",
+   "twin": "ppl_params / ppl_tp_fire / ppl_be_stop / ppl_arm_upgrade / ppl_sl_hit",
+   "vec_ref": "v12_quick_engine.py:13754-13759 + tradier_manage.py:19973-20027"
+  },
+  {
+   "switch": [
+    "REENTRY_ENTRY_FILTER_ENABLED",
+    "REENTRY_FILTER_MIN_PASS"
+   ],
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Vec counts passes over live entry-filter masks (v12:12469-12470,13179-13180); live reentry path has no mask-vector parent to graft onto insertion-only. Twin reentry_fire_allowed/reentry_filter_need delivered; operator decides mask plumbing + placement.",
+   "twin": "reentry_fire_allowed / reentry_filter_need",
+   "vec_ref": "v12_quick_engine.py:12469-12470,13177-13181"
+  },
+  {
+   "switch": "REENTRY_TIER1_SIZE_MULT_TRADIER",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Tradier-only in vector (v12:13268 has_closed_before AND is_tradier). Twin reentry_tier1_mult encodes the gate (crypto 1.0).",
+   "twin": "reentry_tier1_mult",
+   "vec_ref": "v12_quick_engine.py:13267-13275"
+  },
+  {
+   "switch": "SIMPLE_PRICE_GT0_ENABLED",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Test switch (v12:12509-12513): entry EVERY bar, exit every 2nd bar, bypasses all holds/cooldown. No safe live parent; auto-hooking would trade recklessly. Twin simple_gt0 mirrors exactly for lab use only.",
+   "twin": "simple_gt0 / simple_gt0_vec",
+   "vec_ref": "v12_quick_engine.py:12508-12513"
+  },
+  {
+   "switch": "TF_ALIGNMENT_MIN_TOTAL",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Tradier-only in vector (v12:9257 MODE+BACKTEST_VALIDATED gates; comment notes crypto regression). Twin tf_alignment_ok encodes the gates (crypto inert).",
+   "twin": "tf_alignment_ok / tf_alignment_ok_vec",
+   "vec_ref": "v12_quick_engine.py:9256-9266"
+  },
+  {
+   "switch": "TRADIER_ENTRY_SCORE_THRESHOLD",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Tradier-only in vector (v12:9285 MODE gate + >=24 arm). Twin tradier_entry_score_ok encodes it (crypto inert).",
+   "twin": "tradier_entry_score_ok / tradier_entry_score_ok_vec",
+   "vec_ref": "v12_quick_engine.py:9283-9288"
+  },
+  {
+   "switch": [
+    "TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER",
+    "TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER"
+   ],
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Tradier-branch-only in vector (v12:8430-8431 select them only when is_tradier; crypto uses K_ZONE_LONG/SHORT_THRESHOLD). Twin kzone_entry_fire encodes the selection.",
+   "twin": "kzone_entry_fire / kzone_entry_fire_vec",
+   "vec_ref": "v12_quick_engine.py:8428-8432"
+  },
+  {
+   "switch": "TRADIER_RSI_ENTRY_LONG_TRADIER",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Tradier-only in vector (v12:8791 MODE gate). Twin tradier_rsi_entry_fire encodes the gate (crypto never fires).",
+   "twin": "tradier_rsi_entry_fire / tradier_rsi_entry_fire_vec",
+   "vec_ref": "v12_quick_engine.py:8791-8798"
+  },
+  {
+   "switch": [
+    "TRADIER_STOCH_ENTRY_LONG_TRADIER",
+    "TRADIER_STOCH_ENTRY_SHORT_TRADIER",
+    "TRADIER_STOCH_EXTREME_LONG_TRADIER",
+    "TRADIER_STOCH_EXTREME_SHORT_TRADIER"
+   ],
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Tradier-only in vector (v12:8799-8804 inside the MODE==tradier block). Twin tradier_stoch_entry_fire encodes the gate. (STOCH_CROSS_ENTRY_TRADIER itself IS hooked for its all-mode veto slice v12:9248.) Note code/QuickConfig divergence: getattr short default 70 (v12:8801) vs QuickConfig 52 (v12:4498) \u2014 twin mirrors the getattr chain.",
+   "twin": "tradier_stoch_entry_fire / tradier_stoch_entry_fire_vec",
+   "vec_ref": "v12_quick_engine.py:8799-8804"
+  },
+  {
+   "switch": "TRADIER_DC_POSITION_ENTRY_THRESHOLD",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Tradier-branch-only in vector (v12:8675; crypto uses DC_POSITION_ENTRY_THRESHOLD, sibling-A owned). Twin daytrade_entry_fire encodes the selection; the daytrade elif hook reads it on tradier MODE only.",
+   "twin": "daytrade_entry_fire / daytrade_entry_fire_vec",
+   "vec_ref": "v12_quick_engine.py:8673-8679"
+  },
+  {
+   "switch": [
+    "TRADIER_DC_DAYTRADE_STOP_PCT",
+    "TRADIER_DC_DAYTRADE_TARGET_PCT"
+   ],
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "DEAD in vector: assigned v12:12527-12528 but the fixed-% branches were DELETED (v12:13886-13887 USER SPEC \u2014 only DC-channel/ATR daytrade exits remain). Twin daytrade_pct_resolve returns the assigned values + daytrade_pct_fires()=False. Promoting is a no-op until branches are rewritten \u2014 operator call.",
+   "twin": "daytrade_pct_resolve / daytrade_pct_fires / daytrade_pct_note",
+   "vec_ref": "v12_quick_engine.py:12525-12532,13886-13887"
+  },
+  {
+   "switch": [
+    "TRADIER_DC_DAYTRADE_STOP_USE_DC_15M",
+    "TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M",
+    "TRADIER_DC_DAYTRADE_TARGET_USE_DC_15M",
+    "TRADIER_DC_DAYTRADE_TARGET_USE_DC4_15M"
+   ],
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "DEAD in vector: field defs only (v12:4724-4727), zero functional reads repo-wide outside tradier_manage stocks-live (33345-33348). Twin daytrade_use_dc_flags returns the flags with no effect. Operator decides whether to port the DC-stop/target variants to the ez daytrade exit.",
+   "twin": "daytrade_use_dc_flags / daytrade_use_dc_note",
+   "vec_ref": "v12_quick_engine.py:4719-4727 + tradier_manage.py:33345-33348"
+  },
+  {
+   "switch": "LR_BAND_LADDER_STOCH_EXTREME",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "No functional vector read (v12 defaults only: 4606/6118); reference is stocks-live tradier_manage:1543-1569. No ez parent (ez:59587 is a no-op stub; v15 pilots list it in _PRUNED_ORANGE). Twin lr_ladder_stoch_ok mirrors the per-TF stoch slice (limit 30.0, rising/falling).",
+   "twin": "lr_ladder_stoch_ok",
+   "vec_ref": "tradier_manage.py:1501-1569 (no v12 predicate)"
+  },
+  {
+   "switch": "WIN_TRAIL_EROSION_PCT",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Vec exit trigger (v12:13890: peak erosion >= peak*pct); live has no peak-trail parent (ez hits are allowlist-only). Twin win_trail_erosion_fire delivered; operator decides exit-flow placement. NOTE vec QuickConfig default 0.0 (v12:4510, STRUCTURAL ONLY) = inert; only binds when promoted >0.",
+   "twin": "win_trail_erosion_fire / win_trail_erosion_fire_vec",
+   "vec_ref": "v12_quick_engine.py:12616,13890"
+  },
+  {
+   "switch": "WT_D_BOUNCE_DD_STOP_ENABLED",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "No functional vector read in this checkout (v12 delegates to absent reduce_profit_lock.dd_bounce_stop_fires, v12:13810). Twin mirrors stocks-live tradier_manage:12091 (qty>=0.5, aug_px>0, price back through aug price). Crypto DD-leg parent in ez unconfirmed \u2014 operator decides.",
+   "twin": "wt_d_bounce_dd_stop_fire",
+   "vec_ref": "v12_quick_engine.py:13808-13811 + tradier_manage.py:12091"
+  },
+  {
+   "config_add": {
+    "file": "config.py",
+    "key": "WT_DC_ENABLED",
+    "default": false
+   },
+   "switch": "WT_DC_ENABLED",
+   "reason": "Missing from config.py (crypto live config); present in QuickConfig + config_tradier. INERT default (False): hook H10 elif gated on it; False=inert until promoted (code default v12:9424; QuickConfig True diverges \u2014 deliberate safe wiring). Apply BEFORE hooks so hooks are no-ops until promoted values land."
+  },
+  {
+   "config_add": {
+    "file": "config.py",
+    "key": "WT_DC_DC_POS_MIN",
+    "default": 0.0
+   },
+   "switch": "WT_DC_DC_POS_MIN",
+   "reason": "Missing from config.py (crypto live config); present in QuickConfig + config_tradier. INERT default (0.0): short veto dc_pos>=min; 0.0 always passes = inert until promoted (vec default 0.20). Apply BEFORE hooks so hooks are no-ops until promoted values land."
+  },
+  {
+   "config_add": {
+    "file": "config.py",
+    "key": "WT_DC_FINAL_SCORE_MAX",
+    "default": Infinity
+   },
+   "switch": "WT_DC_FINAL_SCORE_MAX",
+   "reason": "Missing from config.py (crypto live config); present in QuickConfig + config_tradier. INERT default (inf): short veto final<max; +inf never vetoes = inert until promoted (vec default 0.40). Apply BEFORE hooks so hooks are no-ops until promoted values land."
+  },
+  {
+   "config_add": {
+    "file": "config.py",
+    "key": "WT_DC_K5M_HARD_ENABLED",
+    "default": false
+   },
+   "switch": "WT_DC_K5M_HARD_ENABLED",
+   "reason": "Missing from config.py (crypto live config); present in QuickConfig + config_tradier. INERT default (False): hard-short K gate; False=inert = vec default (v12:4224). Apply BEFORE hooks so hooks are no-ops until promoted values land."
+  },
+  {
+   "config_add": {
+    "file": "config.py",
+    "key": "WT_DC_K5M_MIN_SHORT_HARD",
+    "default": 20.0
+   },
+   "switch": "WT_DC_K5M_MIN_SHORT_HARD",
+   "reason": "Missing from config.py (crypto live config); present in QuickConfig + config_tradier. INERT default (20.0): unread while HARD_ENABLED False; vec default (v12:4223). Apply BEFORE hooks so hooks are no-ops until promoted values land."
+  },
+  {
+   "switch": [
+    "TF_FOCUS_ENTRY_HARD_GATE",
+    "TF_FOCUS_WEIGHT"
+   ],
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "DEAD in vector: v12:8760-8766 computes focus_mult but no read site exists (grep focus_mult = defs only). No live parent; promoting cannot move the ledger. Twin tf_focus_ok always passes + documents dead.",
+   "twin": "tf_focus_ok / tf_focus_ok_vec",
+   "vec_ref": "v12_quick_engine.py:8755-8766"
+  },
+  {
+   "switch": [
+    "STRENGTH_FILTER_ENABLED",
+    "STRENGTH_MIN_SCORE"
+   ],
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Vec scores OR-block fires with V8Q weights (v12:9144-9162); live has no block-fire accumulator, so no mappable live parent. Twin strength_ok + STRENGTH_WEIGHTS delivered; operator must decide block-fire plumbing before any hook.",
+   "twin": "strength_ok / strength_ok_vec / strength_score",
+   "vec_ref": "v12_quick_engine.py:9144-9162"
+  },
+  {
+   "switch": "MIN_HOLD_BARS",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Vec wraps the whole exit loop (held_bars>=min_hold at v12:13919,13932,14000,14017,14055); insertion-only cannot wrap the live exit section, so veto placement needs the operator. Twin min_hold_bars/min_hold_ok delivered. Crypto-binds (max with MIN_HOLD_BARS_BEFORE_EXIT).",
+   "twin": "min_hold_bars / min_hold_ok",
+   "vec_ref": "v12_quick_engine.py:12507"
+  },
+  {
+   "switch": "MIN_HOLD_MINUTES_TRADIER",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Tradier-only in vector (v12:12518 is_tradier gate); no crypto live effect. Twin encodes the MODE gate (crypto inert).",
+   "twin": "min_hold_bars / min_hold_ok",
+   "vec_ref": "v12_quick_engine.py:12518-12519"
+  },
+  {
+   "switch": "MTF_ATR_TRAIL_TF_TRADIER",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Tradier-only in vector (v12:12655 selects it only when is_tradier; crypto uses MTF_ATR_TRAIL_TF). Twin mtf_atr_trail_tf encodes the selection.",
+   "twin": "mtf_atr_trail_tf",
+   "vec_ref": "v12_quick_engine.py:12654-12660"
+  },
+  {
+   "switch": [
+    "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER",
+    "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER",
+    "PARTIAL_PROFIT_LOCK_FRAC_TRADIER",
+    "PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER"
+   ],
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "No functional vector predicate in this checkout: v12 delegates to vec_decisions.reduce_profit_lock.ppl_step (v12:13758) whose module is absent here, so blind mirroring is refused. Twin mirrors the stocks-live reference (tradier_manage:19973-20027). No ez parent: crypto PPL uses generic knobs in ez_positions_quick. Operator decides crypto PPL-TRADIER adoption.",
+   "twin": "ppl_params / ppl_tp_fire / ppl_be_stop / ppl_arm_upgrade / ppl_sl_hit",
+   "vec_ref": "v12_quick_engine.py:13754-13759 + tradier_manage.py:19973-20027"
+  },
+  {
+   "switch": [
+    "REENTRY_ENTRY_FILTER_ENABLED",
+    "REENTRY_FILTER_MIN_PASS"
+   ],
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Vec counts passes over live entry-filter masks (v12:12469-12470,13179-13180); live reentry path has no mask-vector parent to graft onto insertion-only. Twin reentry_fire_allowed/reentry_filter_need delivered; operator decides mask plumbing + placement.",
+   "twin": "reentry_fire_allowed / reentry_filter_need",
+   "vec_ref": "v12_quick_engine.py:12469-12470,13177-13181"
+  },
+  {
+   "switch": "REENTRY_TIER1_SIZE_MULT_TRADIER",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Tradier-only in vector (v12:13268 has_closed_before AND is_tradier). Twin reentry_tier1_mult encodes the gate (crypto 1.0).",
+   "twin": "reentry_tier1_mult",
+   "vec_ref": "v12_quick_engine.py:13267-13275"
+  },
+  {
+   "switch": "SIMPLE_PRICE_GT0_ENABLED",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Test switch (v12:12509-12513): entry EVERY bar, exit every 2nd bar, bypasses all holds/cooldown. No safe live parent; auto-hooking would trade recklessly. Twin simple_gt0 mirrors exactly for lab use only.",
+   "twin": "simple_gt0 / simple_gt0_vec",
+   "vec_ref": "v12_quick_engine.py:12508-12513"
+  },
+  {
+   "switch": "TF_ALIGNMENT_MIN_TOTAL",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Tradier-only in vector (v12:9257 MODE+BACKTEST_VALIDATED gates; comment notes crypto regression). Twin tf_alignment_ok encodes the gates (crypto inert).",
+   "twin": "tf_alignment_ok / tf_alignment_ok_vec",
+   "vec_ref": "v12_quick_engine.py:9256-9266"
+  },
+  {
+   "switch": "TRADIER_ENTRY_SCORE_THRESHOLD",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Tradier-only in vector (v12:9285 MODE gate + >=24 arm). Twin tradier_entry_score_ok encodes it (crypto inert).",
+   "twin": "tradier_entry_score_ok / tradier_entry_score_ok_vec",
+   "vec_ref": "v12_quick_engine.py:9283-9288"
+  },
+  {
+   "switch": [
+    "TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER",
+    "TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER"
+   ],
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Tradier-branch-only in vector (v12:8430-8431 select them only when is_tradier; crypto uses K_ZONE_LONG/SHORT_THRESHOLD). Twin kzone_entry_fire encodes the selection.",
+   "twin": "kzone_entry_fire / kzone_entry_fire_vec",
+   "vec_ref": "v12_quick_engine.py:8428-8432"
+  },
+  {
+   "switch": "TRADIER_RSI_ENTRY_LONG_TRADIER",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Tradier-only in vector (v12:8791 MODE gate). Twin tradier_rsi_entry_fire encodes the gate (crypto never fires).",
+   "twin": "tradier_rsi_entry_fire / tradier_rsi_entry_fire_vec",
+   "vec_ref": "v12_quick_engine.py:8791-8798"
+  },
+  {
+   "switch": [
+    "TRADIER_STOCH_ENTRY_LONG_TRADIER",
+    "TRADIER_STOCH_ENTRY_SHORT_TRADIER",
+    "TRADIER_STOCH_EXTREME_LONG_TRADIER",
+    "TRADIER_STOCH_EXTREME_SHORT_TRADIER"
+   ],
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Tradier-only in vector (v12:8799-8804 inside the MODE==tradier block). Twin tradier_stoch_entry_fire encodes the gate. (STOCH_CROSS_ENTRY_TRADIER itself IS hooked for its all-mode veto slice v12:9248.) Note code/QuickConfig divergence: getattr short default 70 (v12:8801) vs QuickConfig 52 (v12:4498) \u2014 twin mirrors the getattr chain.",
+   "twin": "tradier_stoch_entry_fire / tradier_stoch_entry_fire_vec",
+   "vec_ref": "v12_quick_engine.py:8799-8804"
+  },
+  {
+   "switch": "TRADIER_DC_POSITION_ENTRY_THRESHOLD",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Tradier-branch-only in vector (v12:8675; crypto uses DC_POSITION_ENTRY_THRESHOLD, sibling-A owned). Twin daytrade_entry_fire encodes the selection; the daytrade elif hook reads it on tradier MODE only.",
+   "twin": "daytrade_entry_fire / daytrade_entry_fire_vec",
+   "vec_ref": "v12_quick_engine.py:8673-8679"
+  },
+  {
+   "switch": [
+    "TRADIER_DC_DAYTRADE_STOP_PCT",
+    "TRADIER_DC_DAYTRADE_TARGET_PCT"
+   ],
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "DEAD in vector: assigned v12:12527-12528 but the fixed-% branches were DELETED (v12:13886-13887 USER SPEC \u2014 only DC-channel/ATR daytrade exits remain). Twin daytrade_pct_resolve returns the assigned values + daytrade_pct_fires()=False. Promoting is a no-op until branches are rewritten \u2014 operator call.",
+   "twin": "daytrade_pct_resolve / daytrade_pct_fires / daytrade_pct_note",
+   "vec_ref": "v12_quick_engine.py:12525-12532,13886-13887"
+  },
+  {
+   "switch": [
+    "TRADIER_DC_DAYTRADE_STOP_USE_DC_15M",
+    "TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M",
+    "TRADIER_DC_DAYTRADE_TARGET_USE_DC_15M",
+    "TRADIER_DC_DAYTRADE_TARGET_USE_DC4_15M"
+   ],
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "DEAD in vector: field defs only (v12:4724-4727), zero functional reads repo-wide outside tradier_manage stocks-live (33345-33348). Twin daytrade_use_dc_flags returns the flags with no effect. Operator decides whether to port the DC-stop/target variants to the ez daytrade exit.",
+   "twin": "daytrade_use_dc_flags / daytrade_use_dc_note",
+   "vec_ref": "v12_quick_engine.py:4719-4727 + tradier_manage.py:33345-33348"
+  },
+  {
+   "switch": "LR_BAND_LADDER_STOCH_EXTREME",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "No functional vector read (v12 defaults only: 4606/6118); reference is stocks-live tradier_manage:1543-1569. No ez parent (ez:59587 is a no-op stub; v15 pilots list it in _PRUNED_ORANGE). Twin lr_ladder_stoch_ok mirrors the per-TF stoch slice (limit 30.0, rising/falling).",
+   "twin": "lr_ladder_stoch_ok",
+   "vec_ref": "tradier_manage.py:1501-1569 (no v12 predicate)"
+  },
+  {
+   "switch": "WIN_TRAIL_EROSION_PCT",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "Vec exit trigger (v12:13890: peak erosion >= peak*pct); live has no peak-trail parent (ez hits are allowlist-only). Twin win_trail_erosion_fire delivered; operator decides exit-flow placement. NOTE vec QuickConfig default 0.0 (v12:4510, STRUCTURAL ONLY) = inert; only binds when promoted >0.",
+   "twin": "win_trail_erosion_fire / win_trail_erosion_fire_vec",
+   "vec_ref": "v12_quick_engine.py:12616,13890"
+  },
+  {
+   "switch": "WT_D_BOUNCE_DD_STOP_ENABLED",
+   "decision": "NEEDS-OPERATOR-DECISION",
+   "reason": "No functional vector read in this checkout (v12 delegates to absent reduce_profit_lock.dd_bounce_stop_fires, v12:13810). Twin mirrors stocks-live tradier_manage:12091 (qty>=0.5, aug_px>0, price back through aug price). Crypto DD-leg parent in ez unconfirmed \u2014 operator decides.",
+   "twin": "wt_d_bounce_dd_stop_fire",
+   "vec_ref": "v12_quick_engine.py:13808-13811 + tradier_manage.py:12091"
+  },
+  {
+   "config_add": {
+    "file": "config.py",
+    "key": "WT_DC_ENABLED",
+    "default": false
+   },
+   "switch": "WT_DC_ENABLED",
+   "reason": "Missing from config.py (crypto live config); present in QuickConfig + config_tradier. INERT default (False): hook H10 elif gated on it; False=inert until promoted (code default v12:9424; QuickConfig True diverges \u2014 deliberate safe wiring). Apply BEFORE hooks so hooks are no-ops until promoted values land."
+  },
+  {
+   "config_add": {
+    "file": "config.py",
+    "key": "WT_DC_DC_POS_MIN",
+    "default": 0.0
+   },
+   "switch": "WT_DC_DC_POS_MIN",
+   "reason": "Missing from config.py (crypto live config); present in QuickConfig + config_tradier. INERT default (0.0): short veto dc_pos>=min; 0.0 always passes = inert until promoted (vec default 0.20). Apply BEFORE hooks so hooks are no-ops until promoted values land."
+  },
+  {
+   "config_add": {
+    "file": "config.py",
+    "key": "WT_DC_FINAL_SCORE_MAX",
+    "default": Infinity
+   },
+   "switch": "WT_DC_FINAL_SCORE_MAX",
+   "reason": "Missing from config.py (crypto live config); present in QuickConfig + config_tradier. INERT default (inf): short veto final<max; +inf never vetoes = inert until promoted (vec default 0.40). Apply BEFORE hooks so hooks are no-ops until promoted values land."
+  },
+  {
+   "config_add": {
+    "file": "config.py",
+    "key": "WT_DC_K5M_HARD_ENABLED",
+    "default": false
+   },
+   "switch": "WT_DC_K5M_HARD_ENABLED",
+   "reason": "Missing from config.py (crypto live config); present in QuickConfig + config_tradier. INERT default (False): hard-short K gate; False=inert = vec default (v12:4224). Apply BEFORE hooks so hooks are no-ops until promoted values land."
+  },
+  {
+   "config_add": {
+    "file": "config.py",
+    "key": "WT_DC_K5M_MIN_SHORT_HARD",
+    "default": 20.0
+   },
+   "switch": "WT_DC_K5M_MIN_SHORT_HARD",
+   "reason": "Missing from config.py (crypto live config); present in QuickConfig + config_tradier. INERT default (20.0): unread while HARD_ENABLED False; vec default (v12:4223). Apply BEFORE hooks so hooks are no-ops until promoted values land."
+  }
+ ]
+}

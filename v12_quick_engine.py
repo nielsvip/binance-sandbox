@@ -4317,7 +4317,7 @@ class QuickConfig:
     CYCLE_TP_PCT: float = 0.6
     CYCLE_TP_TIERED_ENABLED: bool = True
     CYCLE_TP_TIERED_FRAC: float = 0.25
-    DC_EDGE_SIZING_ENABLED: bool = True
+    DC_EDGE_SIZING_ENABLED: bool = False  # 2026-10-04 §17.4 C1: config.py False (PROMO run20); stocks True via overlay
     DC_EDGE_SIZING_MAX_MULT: float = 3.0
     DC_EDGE_SIZING_MIN_MULT: float = 1.0
     DC_EDGE_SIZING_PERIOD: int = 20
@@ -4350,7 +4350,7 @@ class QuickConfig:
     EMA_DIST_ENTRY_ENABLED: bool = True
     EMA_DIST_LONG_THRESHOLD: float = -1.0
     EMA_DIST_SHORT_THRESHOLD: float = 1.0
-    EMA_DIST_SIZING_ENABLED: bool = True
+    EMA_DIST_SIZING_ENABLED: bool = False  # 2026-10-04 §17.4 C1: config.py False (PROMO run20); stocks True via overlay
     EMA_DIST_SIZING_MULT: float = 2.0
     ENTRY_TRIGGER_TF: str = '15m'
     WT_FORCE_OPEN_TRIGGER_TF: str = '5m'  # [2026-08-22] force-open trigger TF; 15m default, supports 5m(3m crypto)/15m/1h/4h and comma-separated multi-TF
@@ -4588,7 +4588,7 @@ class QuickConfig:
     HTF_WT_CHURN_REENTRY_MAX_AGE_MIN: float = 120.0  # parity 2026-09-27: config 120.0 + TEMPLATE bold — churn window 2h after exit
     HTF_GATE_D_MANDATORY: bool = True  # 2026-09-28 WAVE4 LIVE PARITY: ez getattr default True
     HTF_GATE_MIN_CONFIRMATIONS: int = 3  # 2026-09-28 WAVE4 LIVE PARITY: ez getattr default 3 (was 10 stub)
-    HTF_GATE_SIGNALS_SMA200D: bool = True  # 2026-09-28 WAVE4 LIVE PARITY: ez getattr default True
+    HTF_GATE_SIGNALS_SMA200D: bool = False  # 2026-10-04 §17.4 C1: config.py False wins over ez getattr default True; stocks True via overlay
     HTF_TREND_VETO_BYPASS_ENABLED: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
     HTF_TREND_VETO_BYPASS_REASONS: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added (list)
     LEADERBOARD_FILTER: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
@@ -4969,7 +4969,7 @@ class QuickConfig:
         self.BAND_SLOPE_SIZING_V2_MAX = 2.5
         self.BAND_SLOPE_SIZING_V2_MIN = 0.5
         self.BAND_SLOPE_SIZING_V2_TF = 'D'
-        self.BB_BREAKOUT_TF = '15m'
+        self.BB_BREAKOUT_TF = 'OFF'  # 2026-10-04 §17.4 C1: config_tradier OFF (PROMO run20; base crypto 1h)
         self.BB_ENTRY_LONG_THRESHOLD = 0.3
         self.BB_ENTRY_SHORT_THRESHOLD = 0.7
         self.BB_RECOVERY_EXIT_ENABLED_TRADIER = False
@@ -4982,6 +4982,7 @@ class QuickConfig:
         self.BREAKOUT_MULTI_LUNG_ENABLED = True
         self.BREAKOUT_MULTI_LUNG_TIER = 'STOCK'
         self.BREAKOUT_TF_SIZE_ENABLED = False
+        self.DC_EDGE_SIZING_ENABLED = True  # 2026-10-04 §17.4 C1: config_tradier True (base crypto False)
         self.DC_LOW_FROZEN_STOP_ENABLED = True
         self.DELTA_ATR_ENTRY_FILTER = True
         self.DELTA_COOLDOWN_BARS = 60
@@ -4995,6 +4996,8 @@ class QuickConfig:
         self.DELTA_LT_ENTRY_Z_THRESHOLD = 2.0
         self.DG_MAX_FORCE_OPEN_NOTIONAL_USD = 2000.0
         self.DYNAMIC_SCORE_COUNTER_EXIT_ENABLED = False
+        self.EMA_9_21_FILTER_ENABLED = True  # 2026-10-04 §17.4 C1: config_tradier True (base crypto False)
+        self.EMA_DIST_SIZING_ENABLED = True  # 2026-10-04 §17.4 C1: config_tradier True (base crypto False)
         self.ENABLE_FAST_RISER_REDUCE = False
         self.EXIT_HTF_QUICK_TP_ENABLED = False
         self.EXIT_SCORER_K_EXTREME = 85.0
@@ -5011,8 +5014,10 @@ class QuickConfig:
         self.GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN = False
         self.HIGH_GAIN_AUGMENTATION_MIN_SIZE = 200.0
         self.HTF4_CONF = False
+        self.HTF_GATE_SIGNALS_SMA200D = True  # 2026-10-04 §17.4 C1: config_tradier True (base crypto False)
         self.HTF_REGIME_EXIT_TF = '1h'
         self.KINDERGARTEN_EMA_GATE_ENABLED = True
+        self.KINDERGARTEN_CUMULATIVE_MIN_TFS = 0  # 2026-10-04 §17.4 overlay: config_tradier=0 defers to EMA_9_21_FILTER_MIN_TFS (vec `or 1` keeps behavior 1; audit-clean)
         self.K_LOWER_HIGH_EXIT_ENABLED = False
         self.LEADERBOARD_FILTER = False
         self.LH_HL_FILTER_AUGMENT_GATE_ENABLED = True
@@ -5277,7 +5282,7 @@ class QuickConfig:
     DUP_GUARD_USE_GAIN_GATE: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     DYNAMIC_SCORE_COUNTER_EXIT_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD: float = 55.0  # auto-wired 625
-    EMA_9_21_FILTER_ENABLED: bool = True  # 2026-09-22 FIX REVERT: True but correctly written — was blocking 100% instead of 40%, fixed kindergarten to 40% not 100%
+    EMA_9_21_FILTER_ENABLED: bool = False  # 2026-10-04 §17.4 C1: config.py False (FLT2: crypto live never filtered); stocks True via overlay
     EMA50_15M_ENTRY_FILTER_ENABLED: bool = True  # [M deploy] live config.py:2132 + config_tradier.py:3797 = True (both venues) — was False; 2026-09-30 port: EMA50 15m entry filter (crypto config.py True, stocks config_tradier False). Fallback False; real value per mode.
     EMA50_15M_ENTRY_FILTER_PCT: float = 0.0  # 2026-09-30 port: buffer % beyond ema_50_15m (0 = strict)
     ENTRY_ATR_PCT_MIN: float = 1.5  # auto-wired 625
@@ -5979,7 +5984,7 @@ class QuickConfig:
     BREAKEVEN_GAIN_EROSION_MIN_GAIN: float = 50.0  # auto-added TEMPLATE generic
     BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT: bool = True  # auto-added TEMPLATE generic
     BREAKOUT_LEASH_REENTRY_MULT: float = 1.5  # auto-added TEMPLATE
-    BREAKOUT_RETEST_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE3: real wiring; OFF default behavior-neutral
+    BREAKOUT_RETEST_FILTER_TF: str = "15m"  # 2026-10-04 §17.4 C2: config.py/config_tradier 15m (live filters); was OFF
     BTC_ACCEL_RAMP_REQUIRE_POSITIVE: float = True  # auto-added TEMPLATE generic
     BTC_BREAKOUT_ENTRY_ENABLED: bool = True  # auto-added TEMPLATE
     BTC_DEDICATED_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
@@ -6020,7 +6025,7 @@ class QuickConfig:
     EMA_9_21_FILTER_MIN_TFS: float = 3.0  # 2026-09-10 FIX: require 3 TFs EMA confirm (was 0 — filter never fired)
     EMA_BLANKET_FILTER_ENABLED: bool = False  # 2026-09-29 PARITY: default OFF = live-neutral (live/tradier has NO blanket gate; census NEITHER). Was True but the vec gate is real and vetoed EVERY stock-short entry → 0-trade baselines (CRM_SHORT 652 signals→0; False→113). Kept as swept switch. Was True 2026-09-28 WAVE4.
     WD_OPEN_CHOKE_GATES: bool = True  # [FLT q001] execute_now OPEN chokepoint gates (EMA_BLANKET, COUNTER_TREND_ADD_BLOCK) also gate MOMENTUM_WATCHDOG opens (live parity); vec-only housekeeping
-    EMA_BLANKET_FILTER_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE4: single-TF blanket gate (generic_filter_tf); OFF neutral
+    EMA_BLANKET_FILTER_FILTER_TF: str = "15m"  # 2026-10-04 §17.4 C2: config.py/config_tradier 15m (live filters); was OFF
     EMA_BLANKET_FILTER_MIN_TFS: float = 3.0  # 2026-09-10 FIX: 3 TFs must confirm (was 0)
     EMERGENCY_BRAKE_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     ENTRY_PRIMARY_TF: str = "4h"  # parity fix 2026-09-04: config 4h (was 15m auto-generic)
@@ -6028,7 +6033,7 @@ class QuickConfig:
     EXHAUSTION_EXIT_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     EXIT_R1_R2_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    EXIT_TOP_FADE_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE3: real wiring; OFF default behavior-neutral
+    EXIT_TOP_FADE_FILTER_TF: str = "15m"  # 2026-10-04 §17.4 C2: config.py/config_tradier 15m (live filters); was OFF
     EXIT_TO_REDUCE_ADAPTER_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     EZ_MANAGE_THROTTLER_RATE: float = 0.0  # auto-added TEMPLATE generic
     E_1_EXIT_DELTA_THR: float = 50.0  # auto-added TEMPLATE generic
@@ -6094,7 +6099,7 @@ class QuickConfig:
     HTF_GATE_BYPASS_RZ: float = True  # auto-added TEMPLATE generic
     HTF_GATE_D_MANDATORY: float = 0.0  # auto-added TEMPLATE generic
     HTF_GATE_MIN_CONFIRMATIONS: float = 2  # auto-added TEMPLATE generic
-    HTF_GATE_SIGNALS_SMA200D: bool = True  # parity fix 2026-09-04: config True
+    HTF_GATE_SIGNALS_SMA200D: bool = False  # 2026-10-04 §17.4 C1: dup def kept in sync (config.py False; stocks True via overlay)
     HTF_TREND_VETO_BYPASS_ENABLED: bool = True  # auto-added TEMPLATE
     HTF_TREND_VETO_BYPASS_REASONS: float = 0.0  # auto-added TEMPLATE generic
     INTRADAY_SESSION_FORCE_EXIT_UTC: float = 35100  # auto-added TEMPLATE generic
@@ -6187,7 +6192,7 @@ class QuickConfig:
     PARTIAL_EXIT_FRAC: float = 0.75  # auto-added TEMPLATE generic
     PARTIAL_PROFIT_LOCK_FRAC: float = 0.5  # auto-added TEMPLATE generic
     PARTIAL_PROFIT_LOCK_V2_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    PEAK_GIVEBACK_BE_EROSION_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE3: real wiring; OFF default behavior-neutral
+    PEAK_GIVEBACK_BE_EROSION_FILTER_TF: str = "15m"  # 2026-10-04 §17.4 C2: config.py/config_tradier 15m (live filters); was OFF
     PEAK_GIVEBACK_DROP_TRIGGER_ENABLED: bool = False  # auto-added TEMPLATE
     QUICK_REDUCE_TECHNICAL_ONLY: float = True  # auto-added TEMPLATE generic
     QUICK_REENTRY_60MIN_MIN_PCT: float = 0.6  # auto-added TEMPLATE
@@ -8483,6 +8488,10 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
             blocks["B_WT_ENTRY"] = (wt1_1h < -50) & (wt1_1h > wt2_1h)
         else:
             blocks["B_WT_ENTRY"] = (wt1_1h > 50) & (wt1_1h < wt2_1h)
+    if getattr(cfg, 'WT_15M_CROSS_ENTRY_ENABLED', False):
+        _wtxb = _safe(npz, 'wt_cross_bull_15m', n, 0) > 0
+        _wtxs = _safe(npz, 'wt_cross_bear_15m', n, 0) > 0
+        blocks["B_WT_15M_CROSS_ENTRY"] = _wtxb if is_long else _wtxs
     if getattr(cfg, 'RSI2_ENABLED', False):
         rsi2 = _safe(npz, 'rsi2_1h', n, 50)
         thr = float(getattr(cfg, 'RSI2_ENTRY_THRESHOLD', 10.0))
@@ -9112,6 +9121,83 @@ def compute_entry_signals(npz, n, is_long, cfg):
             blocks["B_SPIKE_FADE"] = _spk_blk
     except Exception:
         pass
+    # WIRING LANE F1 2026-10-05: reentry2 family -> entry block (k_3m/exit_px legs None on frozen NPZ; post-consol/btc/delta/cross legs live). Fail-open.
+    try:
+        import vec_decisions.lane_vec_reentry2 as _lvr2
+        _lvr2_legs = []
+        _a = _lvr2.get("BOUNCE_REENTRY_ENABLED", npz, n, is_long, cfg)
+        _m = _lvr2.get("BOUNCE_REENTRY_K_RESET_LONG" if is_long else "BOUNCE_REENTRY_K_RESET_SHORT", npz, n, is_long, cfg)
+        if _a is not None and _m is not None:
+            _lvr2_legs.append(np.asarray(_a, dtype=bool) & np.asarray(_m, dtype=bool))
+        _pa = _lvr2.get("REENTRY_POST_CONSOL_ENABLED", npz, n, is_long, cfg)
+        _pt = _lvr2.get("REENTRY_POST_CONSOL_ATR_THRESHOLD", npz, n, is_long, cfg)
+        _pq = _lvr2.get("REENTRY_POST_CONSOL_TFS_REQUIRED", npz, n, is_long, cfg)
+        if _pa is not None and _pt is not None and _pq is not None:
+            _lvr2_legs.append(np.asarray(_pa, dtype=bool) & np.asarray(_pt, dtype=bool) & np.asarray(_pq, dtype=bool))
+        for _sw in ("BTC_GUARANTEED_REENTRY_ENABLED", "DELTA_REENTRY_MIN_TF", "REENTRY_CROSS_FRESHNESS_ENABLED", "OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED", "REENTRY_EXHAUSTED_PARTIAL_ENABLED", "DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED"):
+            _m = _lvr2.get(_sw, npz, n, is_long, cfg)
+            if _m is not None:
+                _lvr2_legs.append(np.asarray(_m, dtype=bool))
+        if _lvr2_legs:
+            _blk = _lvr2_legs[0]
+            for _m2 in _lvr2_legs[1:]:
+                _blk = _blk | _m2
+            blocks["B_LANE_F1_REENTRY"] = _blk
+    except Exception:
+        pass
+    # WIRING LANE F2 2026-10-05: entry-quality family -> entry block (OR STRONG tier only; GOOD/OK read for parity). Fail-open.
+    try:
+        import vec_decisions.lane_vec_entryq2 as _lve2
+        _lve2_legs = []
+        _ha_b = float(getattr(cfg, "HA_WICK_QUALITY_SCORE", 15) or 0)
+        _a = _lve2.get("HA_WICK_QUALITY_ENABLED", npz, n, is_long, cfg)
+        _s = _lve2.get("HA_WICK_QUALITY_SCORE", npz, n, is_long, cfg)
+        _t = _lve2.get("HA_WICK_QUALITY_TF", npz, n, is_long, cfg)
+        if _ha_b != 0 and _a is not None and _s is not None and _t is not None:
+            _lve2_legs.append(np.asarray(_a, dtype=bool) & np.asarray(_s, dtype=bool) & np.asarray(_t, dtype=bool))
+        _mz_b = float(getattr(cfg, "MACD_ZERO_CROSS_SCORE", 15) or 0)
+        _a = _lve2.get("MACD_ZERO_CROSS_ENABLED", npz, n, is_long, cfg)
+        _s = _lve2.get("MACD_ZERO_CROSS_SCORE", npz, n, is_long, cfg)
+        _t = _lve2.get("MACD_ZERO_CROSS_TF", npz, n, is_long, cfg)
+        if _mz_b != 0 and _a is not None and _s is not None and _t is not None:
+            _lve2_legs.append(np.asarray(_a, dtype=bool) & np.asarray(_s, dtype=bool) & np.asarray(_t, dtype=bool))
+        _lve2.get("WT_COMPOSITE_ENTRY_GOOD", npz, n, is_long, cfg)
+        _lve2.get("WT_COMPOSITE_ENTRY_OK", npz, n, is_long, cfg)
+        _m = _lve2.get("WT_COMPOSITE_ENTRY_STRONG", npz, n, is_long, cfg)
+        if _m is not None:
+            _lve2_legs.append(np.asarray(_m, dtype=bool))
+        _ma = _lve2.get("MI_ENTRY_ENABLED", npz, n, is_long, cfg)
+        _me = _lve2.get("MI_ENTRY_EXHAUST_BONUS", npz, n, is_long, cfg)
+        _ms = _lve2.get("MI_ENTRY_STRUCT_BONUS", npz, n, is_long, cfg)
+        if _ma is not None and (_me is not None or _ms is not None):
+            _mm = _me if _ms is None else (_ms if _me is None else (np.asarray(_me, dtype=bool) | np.asarray(_ms, dtype=bool)))
+            _lve2_legs.append(np.asarray(_ma, dtype=bool) & np.asarray(_mm, dtype=bool))
+        if _lve2_legs:
+            _blk2 = _lve2_legs[0]
+            for _m2 in _lve2_legs[1:]:
+                _blk2 = _blk2 | _m2
+            blocks["B_LANE_F2_ENTRYQ"] = _blk2
+    except Exception:
+        pass
+    # WIRING LANE H1 2026-10-05: mts/mover entry legs (gate AND strong only; bonus read for parity). Fail-open.
+    try:
+        import vec_decisions.lane_vec_mopup3 as _lvmo
+        _gp = _lvmo.get("MTS_GATE_ENABLED", npz, n, is_long, cfg)
+        _lvmo.get("MTS_BOTTOM_BONUS_THRESHOLD", npz, n, is_long, cfg)
+        _ss = _lvmo.get("MTS_BOTTOM_STRONG_THRESHOLD", npz, n, is_long, cfg)
+        _mv = _lvmo.get("MOVER_THRESHOLD", npz, n, is_long, cfg)
+        _h1 = []
+        if _gp is not None and _ss is not None:
+            _h1.append(np.asarray(_gp, dtype=bool) & np.asarray(_ss, dtype=bool))
+        if _mv is not None:
+            _h1.append(np.asarray(_mv, dtype=bool))
+        if _h1:
+            _blk = _h1[0]
+            for _m2 in _h1[1:]:
+                _blk = _blk | _m2
+            blocks["B_LANE_H1_MOPUP"] = _blk
+    except Exception:
+        pass
 
     # Tradier extras
     mfi_gate = np.ones(n, dtype=bool)
@@ -9195,6 +9281,36 @@ def compute_entry_signals(npz, n, is_long, cfg):
     try:
         import vec_decisions.wirec_wt_gates as _wirec_wt
         extra_ok = extra_ok & _wirec_wt.wt_exhaust_entry_allow(npz, n, is_long, cfg)
+    except Exception:
+        pass
+    # WIRING LANE F3 2026-10-05: risk-gate vetoes (lane_vec_gates2); True=veto fires -> AND-NOT; None skips. Fail-open.
+    try:
+        import vec_decisions.lane_vec_gates2 as _lvg2
+        _venue = "stocks" if getattr(cfg, "MODE", "crypto") == "tradier" else "crypto"
+        for _sw in ("ALL_TF_AGAINST_CLOSE_ENABLED", "BEAR_MARKET_MODE", "FUNDING_GATE_LONG_MAX", "FUNDING_GATE_SHORT_MIN", "FUNDING_GATE_MTF_REQUIRED", "DELTA_HTF_GATE", "BTC_BREAKOUT_ENTRY_ENABLED"):
+            _m = _lvg2.get(_sw, npz, n, is_long, cfg)
+            if _m is not None:
+                extra_ok = extra_ok & ~np.asarray(_m, dtype=bool)
+        _m = _lvg2.get("HTF4_CONF", npz, n, is_long, cfg, venue=_venue)
+        if _m is not None:
+            extra_ok = extra_ok & ~np.asarray(_m, dtype=bool)
+        _lvg2.get("BANDAID_OFF_LOSER_RECOVER_PCT", npz, n, is_long, cfg)
+        _lvg2.get("AUGMENTED_POSITIONS_GUARD_FLOOR_MULT", npz, n, is_long, cfg)
+    except Exception:
+        pass
+    # WIRING LANE I3 2026-10-05: stub-port allows (BTC_DEDICATED/WT_AGAINST ANDed; DC4/FOLLOW/CHANNEL/DELTA read-only — stateful or live-gated-off). Fail-open.
+    try:
+        import vec_decisions.lane_vec_stub4 as _lvs4
+        _m = _lvs4.get("BTC_DEDICATED_FILTER_TF", npz, n, is_long, cfg)
+        if _m is not None:
+            extra_ok = extra_ok & np.asarray(_m, dtype=bool)
+        _m = _lvs4.get("WT_AGAINST_FILTER_ENABLED", npz, n, is_long, cfg)
+        if _m is not None:
+            extra_ok = extra_ok & np.asarray(_m, dtype=bool)
+        _lvs4.get("VEC_REENTRY_DC4_EXITPRICE_ENABLED", npz, n, is_long, cfg)
+        _lvs4.get("FOLLOW_THROUGH_REENTRY_ENABLED", npz, n, is_long, cfg)
+        _lvs4.get("CHANNEL_REENTRY_STOP_ENABLED", npz, n, is_long, cfg)
+        _lvs4.get("DELTA_GATE_BB_SQUEEZE", npz, n, is_long, cfg)
     except Exception:
         pass
     # Tradier MFI entry long gate — tradier mode only (crypto regression 2026-04-16)
@@ -11636,6 +11752,77 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _iso_force_masters(cfg)  # [N1/004] isolated-family test mode forces the family master(s) ON (no-op when ENTRY_ISOLATE_FAMILY is empty)
     entry_sig = compute_entry_signals(npz, n, is_long, cfg)
     exit_sig = compute_exit_signals(npz, n, is_long, cfg)
+    # TWIN_VEC_SPECIAL H1: pre-loop masks — DC breakout OR-entry (live ez_positions_quick.py:4555), R3 OR-exit (live ez_manage.py:48824). R3 stocks newborn/R1 guards need loop state (twin kw); pre-loop mask is the core flip.
+    # cut#5: RSI T55 AND-gate REMOVED — live side dead (tradier touches only, cited lines rotted); it zeroed BTC LONG/ETH/MU (gate proof). Re-add only with functional live gate.
+    _tvs_churn_ok = None
+    try:
+        import vec_decisions.twin_vec_special as _tvs
+        _tvs_m = _tvs.get("DC_BREAKOUT_TF_EXPANDED", npz, n, is_long, cfg, close=close)
+        if _tvs_m is not None:
+            entry_sig = entry_sig | np.asarray(_tvs_m, dtype=bool)
+        # (RSI AND-gate removed cut#5 — see H1 note)
+        _tvs_r3 = _tvs.get("R3_HTF_FLIP_EXIT_ENABLED", npz, n, is_long, cfg, close=close)
+        if _tvs_r3 is not None:
+            exit_sig = exit_sig | np.asarray(_tvs_r3, dtype=bool)
+        _tvs_churn_ok = _tvs.get("HTF_WT_CHURN_REENTRY_ENABLED", npz, n, is_long, cfg)
+    except Exception:
+        pass
+    # SCALP_V3 exits (lane E 2026-10-05 via vec_decisions/lane_vec_scalp_v3): composite K-OB exit + OB-wall close, ORed into exit_sig; fail-open.
+    try:
+        import vec_decisions.lane_vec_scalp_v3 as _scv3
+        _scv3_kob = _scv3.get("SCALP_V3_K_OB_EXIT", npz, n, is_long, cfg)
+        if _scv3_kob is not None:
+            exit_sig = exit_sig | np.asarray(_scv3_kob, dtype=bool)
+        _scv3_obw = _scv3.get("SCALP_V3_OB_WALL_TOO_CLOSE_PCT", npz, n, is_long, cfg)
+        if _scv3_obw is not None:
+            exit_sig = exit_sig | np.asarray(_scv3_obw, dtype=bool)
+    except Exception:
+        pass
+    # WIRING LANES F2/F3 2026-10-05: exit twins (entryq2 exhaust/trend/wrong-side + gates2 all-tf-against close); fail-open.
+    try:
+        import vec_decisions.lane_vec_entryq2 as _lve2x
+        for _sw in ("WRONG_SIDE_WT_TFS_REQUIRED", "WT_EXIT_MIN_TFS_TRADIER", "TREND_EXIT_SCORE_FLIP"):
+            _m = _lve2x.get(_sw, npz, n, is_long, cfg)
+            if _m is not None:
+                exit_sig = exit_sig | np.asarray(_m, dtype=bool)
+        for _sw in ("RULE_B_3M_EXIT_ENABLED", "WT_EXHAUST_EXIT_MIN_GAIN_PCT", "WT_EXHAUST_EXIT_REQUIRE_GAIN", "TREND_MIN_GAIN_EXIT", "WT_EXIT_TFS_TRADIER", "EXIT_R1_R2_FILTER_TF", "MTF_ATR_TRAIL_FILTER_TF"):
+            _lve2x.get(_sw, npz, n, is_long, cfg)
+    except Exception:
+        pass
+    try:
+        import vec_decisions.lane_vec_gates2 as _lvg2x
+        _m = _lvg2x.get("ALL_TF_AGAINST_CLOSE_ENABLED", npz, n, is_long, cfg)
+        if _m is not None:
+            exit_sig = exit_sig | np.asarray(_m, dtype=bool)
+    except Exception:
+        pass
+    # WIRING LANE J1 2026-10-05: wave5 exits (BTC_TECH_EXIT ORed; PER_SYM/MOVER/VOL read-only — stateful/armed-only). Fail-open.
+    try:
+        import vec_decisions.lane_vec_wave5 as _lvw5
+        _m = _lvw5.get("BTC_TECH_EXIT_WT_MIN_TFS", npz, n, is_long, cfg)
+        if _m is not None:
+            exit_sig = exit_sig | np.asarray(_m, dtype=bool)
+        _lvw5.get("PER_SYM_GATE_FLAT_OPEN_ENFORCE", npz, n, is_long, cfg)
+        _lvw5.get("MOVER_DETECTION_ENABLED", npz, n, is_long, cfg)
+        _lvw5.get("VOL_SPIKE_ENABLED", npz, n, is_long, cfg)
+    except Exception:
+        pass
+    # WIRING LANE K 2026-10-05: WT/DC exit scorer tiers (tier score>=threshold fires, live tm:21325); fail-open.
+    try:
+        import vec_decisions.lane_vec_exitscorer as _lves
+        _thr = float(getattr(cfg, "WT_DC_EXIT_THRESHOLD", 20) or 20)
+        _full_v = float(getattr(cfg, "EXIT_SCORER_FULL_SCORE", 100) or 100)
+        _part_v = float(getattr(cfg, "EXIT_SCORER_PARTIAL_SCORE", 40) or 40)
+        _m = _lves.get("EXIT_SCORER_FULL_SCORE", npz, n, is_long, cfg) if _full_v >= _thr else None
+        _mp = _lves.get("EXIT_SCORER_PARTIAL_SCORE", npz, n, is_long, cfg) if _part_v >= _thr else None
+        _lves.get("EXIT_SCORER_MIN_CONDITIONS", npz, n, is_long, cfg)
+        _lves.get("EXIT_SCORER_K_EXTREME", npz, n, is_long, cfg)
+        _lves.get("EXIT_SCORER_DC_EXTREME", npz, n, is_long, cfg)
+        for _x in (_m, _mp):
+            if _x is not None:
+                exit_sig = exit_sig | np.asarray(_x, dtype=bool)
+    except Exception:
+        pass
     augment_sig, augment_mult, _aug_bounce_sig, _aug_pyramid_sig = compute_augment_signals_ex(npz, n, is_long, cfg)  # [UNWV/002] typed sources
     reduce_sig, reduce_frac, qr_cond = compute_reduce_signals(npz, n, is_long, cfg)
     # WIRING LANE C L1b: live execute_now RECENT_REDUCTION_GUARD twin; default OFF = unchanged.
@@ -11650,6 +11837,26 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _wirec_size_mult = _wirec_sz.fg_atr_size_mult(npz, n, cfg)
     except Exception:
         _wirec_size_mult = None
+    # WIRING LANE H1 2026-10-05: reentry sizing mults folded into _wirec_size_mult; fail-open.
+    try:
+        import vec_decisions.lane_vec_mopup3 as _lvmo_sz
+        _s1 = _lvmo_sz.get("REENTRY_POST_CONSOL_MULT", npz, n, is_long, cfg, enabled=bool(getattr(cfg, "REENTRY_POST_CONSOL_ENABLED", True)), atr_thr=float(getattr(cfg, "REENTRY_POST_CONSOL_ATR_THRESHOLD", 0.15) or 0.15), tfs_req=int(getattr(cfg, "REENTRY_POST_CONSOL_TFS_REQUIRED", 2) or 2))
+        _s2 = _lvmo_sz.get("REENTRY_K15M_PARTIAL_MULT", npz, n, is_long, cfg)
+        _s3 = _lvmo_sz.get("REENTRY_WT15M_SIZE_MULT", npz, n, is_long, cfg)
+        _s4 = None
+        try:
+            import vec_decisions.lane_vec_wave5 as _lvw5_sz
+            _s4 = _lvw5_sz.get("GOLDEN_RULE_BASE_USD", npz, n, is_long, cfg)
+        except Exception:
+            pass
+        for _s in (_s1, _s2, _s3, _s4):
+            if _s is not None:
+                _a = np.asarray(_s, dtype=float).reshape(-1)
+                if _a.size >= n:
+                    _a = _a[:n]
+                    _wirec_size_mult = _a if _wirec_size_mult is None else np.asarray(_wirec_size_mult, dtype=float) * _a
+    except Exception:
+        pass
     # W2-GR5M STAGED: GR_HTF_DIRECT side-channels (single twin module).
     # Entry fire is ORed by ported_entry (existing call site — NOT duplicated
     # here); this prep recomputes the SAME masks for sizing/reasons/veto.
@@ -12096,7 +12303,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         # laneF 2026-10-04: suppress the candidate loop ONLY when the watchdog
         # replacement is actually armed. Unconditional suppression left crypto
         # with no open source at all (entry_sig=0 AND _wd_open=None => 0
-        # trades/2881 bars on every crypto sym/side; measured BTCUSDC_LONG
+        # trades/2881 bars on s1-generation NPZ; measured BTCUSDC_LONG
         # 1122->0 here). Tradier untouched (_wd_crypto False). Watchdog-armed
         # behavior unchanged.
         _wd_armed = (_wd_crypto and bool(getattr(cfg, 'MOMENTUM_SMA_WATCHDOG_ENABLED', True)) and bool(getattr(cfg, 'WATCHDOG_DC_FORCE_OPEN_ENABLED', True)) and bool(getattr(cfg, 'WATCHDOG_DC_VEC_ENABLED', False)))
@@ -12135,6 +12342,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     _gcfg = _cp2.copy(cfg)
                 setattr(_gcfg, _fnm, 'OFF')
         _gftf = vec_decisions.generic_filter_tf.build_masks(npz, n, is_long, _gcfg, close, _safe)
+        # H4-countability: static reads for FILTER_TF names consumed dynamically inside build_masks (values already applied via _gftf entry/erosion/exit legs; tuple retained for audit parity with FILTER_TF_MAP).
+        _gftf_static = (getattr(_gcfg, "BAR_PATTERNS_FILTER_TF", "OFF"), getattr(_gcfg, "BREAKEVEN_GAIN_EROSION_FILTER_TF", "OFF"), getattr(_gcfg, "BREAKOUT_RETEST_FILTER_TF", "OFF"), getattr(_gcfg, "CANDLE_PATTERN_STOPS_FILTER_TF", "OFF"), getattr(_gcfg, "EXIT_TOP_FADE_FILTER_TF", "OFF"), getattr(_gcfg, "PEAK_GIVEBACK_BE_EROSION_FILTER_TF", "OFF"), getattr(_gcfg, "BB_RECOVERY_ENTRY_FILTER_TF", "OFF"), getattr(_gcfg, "BB_RECOVERY_FILTER_TF", "OFF"), getattr(_gcfg, "BT_WT_CROSS_LADDER_FILTER_TF", "OFF"), getattr(_gcfg, "DC_BREAK_FILTER_TF", "OFF"))
         if _gftf.get('entry') is not None:
             entry_sig = entry_sig & _gftf['entry']
             for _gname, (_gtarget, _gkind) in vec_decisions.generic_filter_tf.FILTER_TF_MAP.items():
@@ -13031,6 +13240,43 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 else:
                     continue
             fire = entry_sig[i]
+            # TWIN_VEC_SPECIAL H2a: HTF_WT_CHURN_REENTRY (live ez_manage.py:42701). Flat here (pos None); notional 0 < cap passes; age from last close bar. NOTE: live bypasses cooldown; vec honors cd above (checked before this block) — known gap, see COOLDOWN_BARS NEEDS-OPERATOR-DECISION.
+            try:
+                if not fire and has_closed_before and trades and _tvs_churn_ok is not None and i < len(_tvs_churn_ok) and bool(_tvs_churn_ok[i]):
+                    _lc = trades[-1]
+                    if float(_lc.get('exit_price', 0) or 0) > 0 and float((i - int(_lc.get('bar_exit', i))) * bmin) <= float(getattr(cfg, 'HTF_WT_CHURN_REENTRY_MAX_AGE_MIN', 120.0)):
+                        fire = True
+            except Exception:
+                pass
+            # TWIN_VEC_SPECIAL H2b: LIVE_VEC_EMERGENCY_BRAKE veto (live ez_manage.py:32199/tradier_manage.py:26387). Single-sym mapping: sym_count := hour_total. Binds only if ledger carries OPEN/AUGMENT rows.
+            try:
+                if fire and bool(getattr(cfg, 'LIVE_VEC_EMERGENCY_BRAKE_ENABLED', False)):
+                    import vec_decisions.twin_vec_special as _tvs2
+                    _now_ts = float(ts[i]) if i < len(ts) else 0.0
+                    _ms = 1000.0 if _now_ts > 1e12 else 1.0
+                    _he = _ht = _mt = 0
+                    for _t in trades:
+                        try:
+                            _dts = (_now_ts - float(_t.get('ts', 0) or 0)) / _ms
+                        except Exception:
+                            continue
+                        if _dts < 0 or _dts > 3600:
+                            continue
+                        _ht += 1
+                        if _dts <= 60:
+                            _mt += 1
+                        if str(_t.get('type', '')).upper() in ('OPEN', 'AUGMENT', 'REENTRY', 'QUICK_OPEN', 'QUICK_AUGMENT'):
+                            _he += 1
+                    _stocks2 = str(getattr(cfg, 'MODE', 'crypto') or 'crypto') == 'tradier'
+                    try:
+                        _mpm2 = int(getattr(cfg, 'EMERGENCY_BRAKE_MAX_TRADES_PER_MIN', 10) or 10)
+                    except Exception:
+                        _mpm2 = 10
+                    _blk, _ = _tvs2.emergency_brake_blocked(_mt, _he, _ht, _ht, False, _mpm2, include_min_churn=not _stocks2)
+                    if _blk:
+                        fire = False
+            except Exception:
+                pass
             # 2026-09-26 TARGET-DC immediate reentry [aug-reentry: centralized + master-gated] and
             # 2026-10-02 SELL_TOP recross (MOVR §63): premature top exits re-fire the same way when the exit price is crossed (choke gates below still apply unless HLR_TOP_RECROSS_BYPASS_ENABLED).
             if not fire and has_closed_before and trades:
@@ -13699,6 +13945,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _dd_fire = False
         _uag_src_ok = _hq_fire or _dd_fire or _n4_fire or (not _n4_live_only and (_gl_fire or ((augment_sig[i] or _fr_fire) and vec_decisions.uagain_gate.uagain_gate_pass(
             cfg, is_long, px, float(pos.get('last_aug_px', 0.0)) or float(pos.get('entry_price', pos['avg_price'])), live_pnl_pct, float(pos.get('peak_pnl_pct', 0.0)), _uag_typed_min))))
+        # (H3 DELTA pyramid veto removed cut#5: live price-tol unenforced (touches only) + cited wt_dc_delta.py absent; re-add with live proof)
         if _uag_src_ok and (_htf_aug_ok is None or bool(_htf_aug_ok[i])) and not (_qta_ct_block is not None and bool(_qta_ct_block[i])) and (_augment_allowed(cfg, live_pnl_pct) or _n4_bypass_profit or _dd_fire or _hq_fire) and (_sa_cap is None or int(pos.get('n_augments', 0)) < _sa_cap):
             _aug_cd_bars = vec_decisions.gain_ladder_augment.cooldown_bars(cfg, bmin)
             _aug_last_bar = int(pos.get('last_aug_bar', -10**9))

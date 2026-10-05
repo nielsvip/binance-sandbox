@@ -59,4 +59,6 @@ def load_env_gpg() -> int:
             continue
         os.environ[k] = v
         n += 1
+    if n > 0:
+        print(f"[env_gpg] loaded {n} keys from .env.gpg", file=sys.stderr)
     return n

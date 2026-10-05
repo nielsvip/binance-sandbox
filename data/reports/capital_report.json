@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-04 09:55 UTC",
- "total_capital_usd": 1107.86,
+ "generated_at": "2026-10-05 04:02 UTC",
+ "total_capital_usd": 5.54,
  "tier_capital": {
   "A": 0.0,
-  "B": 1107.86,
+  "B": 5.54,
   "C": 0.0
  },
  "tier_count": {
@@ -13,20 +13,18 @@
  },
  "winners": [],
  "losers": [],
- "mediocre": [
-  "ang:BTCUSDT_LONG"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "ang:BTCUSDT_LONG",
-   "symbol": "BTCUSDT",
-   "account": "ang",
-   "value_usd": 1107.86,
-   "gain_pct": 0.281,
+   "pk": "men:VETUSDT_LONG",
+   "symbol": "VETUSDT",
+   "account": "men",
+   "value_usd": 5.54,
+   "gain_pct": -0.419,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 0.013,
-   "mark": 85219.9
+   "amt": 630.0,
+   "mark": 0.008791
   }
  ]
 }

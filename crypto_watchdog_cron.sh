@@ -21,13 +21,13 @@ if ! mkdir "$_CRON_LOCKDIR" 2>/dev/null; then
             if [ "$(ps -o pgid= -p "$_o_pid" 2>/dev/null | tr -d ' ')" = "$_o_pid" ]; then kill -9 -"$_o_pid" 2>/dev/null; else kill -9 "$_o_pid" 2>/dev/null; fi
             sleep 2
         fi
-        rmdir "$_CRON_LOCKDIR" 2>/dev/null; mkdir "$_CRON_LOCKDIR" 2>/dev/null || exit 0
+        rm -rf "$_CRON_LOCKDIR" 2>/dev/null; mkdir "$_CRON_LOCKDIR" 2>/dev/null || exit 0
     else
         exit 0
     fi
 fi
 echo $$ > "$_CRON_LOCKDIR/pid"
-trap 'rmdir "$_CRON_LOCKDIR" 2>/dev/null' EXIT INT TERM
+trap 'rm -f "$_CRON_LOCKDIR/pid" 2>/dev/null; rmdir "$_CRON_LOCKDIR" 2>/dev/null' EXIT INT TERM
 
 WORKDIR="/Users/niels/Documents/binance"
 PYTHON="/opt/anaconda3/envs/binance_env/bin/python"

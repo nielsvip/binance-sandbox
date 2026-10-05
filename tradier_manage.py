@@ -197,6 +197,7 @@ except Exception:
 _TR_TREND_V1_STATE: Dict[str, Dict[str, Any]] = {}  # key = f"{account}:{symbol}_{side}"
 _TR_TREND_V1_LAST_D_CLOSE: Dict[str, float] = {}    # detect D-bar boundary on live by close_D change
 _RECENT_OPEN_ATTEMPTS: deque = deque()  # timestamps of fresh OPENs that passed entry gates — OPEN_RATE_BREAKER flood breaker (carbon-copy of ez_manage._RECENT_OPEN_ATTEMPTS)
+_recent_reduces: Dict[str, float] = {}  # LANE I2 2026-10-05: position_key -> last confirmed reduce ts (crypto port ez:884) — read by RECENT_REDUCTION_GUARD in execute_now, stamped on confirmed reduces
 
 # GAP_RISK_EXIT state — per-position retrigger (persists after retrace so COND_A/B can fire on any later bar)
 _GAP_RISK_STATE: Dict[str, Dict[str, Any]] = {}  # key = position_key, val = {gap_dir, gap_open, prev_close, retraced, ext_high, ext_low}
@@ -7976,6 +7977,52 @@ def _wire_trb_stocks_hemisphere_tradier(account_key, symbol, side):
     _ = getattr(config, "WT_EXIT_VELOCITY_TRADIER", False)
     _ = getattr(config_tradier, "WT_EXIT_VELOCITY_TRADIER", False)
     _ = _cfg("WT_EXIT_VELOCITY_TRADIER", False, account_key, symbol, side)
+    # LANE-D 2026-10-05 — stocks VEC_ONLY live-twin reads (pure reads, behavior inert; parity UNPROVEN)
+    _ = getattr(config, "WT_SIMPLE_GUARANTEE_ENABLED", False)
+    _ = getattr(config_tradier, "WT_SIMPLE_GUARANTEE_ENABLED", False)
+    _ = _cfg("WT_SIMPLE_GUARANTEE_ENABLED", False, account_key, symbol, side)
+    _ = getattr(config, "PRICE_CROSSED_HTF_AGAINST_VETO_HA_BYPASS", True)
+    _ = getattr(config_tradier, "PRICE_CROSSED_HTF_AGAINST_VETO_HA_BYPASS", True)
+    _ = _cfg("PRICE_CROSSED_HTF_AGAINST_VETO_HA_BYPASS", True, account_key, symbol, side)
+    _ = getattr(config, "STOCKS_LIVE_ENTRY_STACK_ENABLED", False)
+    _ = getattr(config_tradier, "STOCKS_LIVE_ENTRY_STACK_ENABLED", False)
+    _ = _cfg("STOCKS_LIVE_ENTRY_STACK_ENABLED", False, account_key, symbol, side)
+    _ = getattr(config, "TARGET_DC_IMMEDIATE_REENTRY_ENABLED", True)
+    _ = getattr(config_tradier, "TARGET_DC_IMMEDIATE_REENTRY_ENABLED", True)
+    _ = _cfg("TARGET_DC_IMMEDIATE_REENTRY_ENABLED", True, account_key, symbol, side)
+    _ = getattr(config, "HAIKU_REDUCE_GAIN_THRESHOLD", 2.5)
+    _ = getattr(config_tradier, "HAIKU_REDUCE_GAIN_THRESHOLD", 2.5)
+    _ = _cfg("HAIKU_REDUCE_GAIN_THRESHOLD", 2.5, account_key, symbol, side)
+    _ = getattr(config, "HAIKU_MIN_POSITION_VALUE", 5.0)
+    _ = getattr(config_tradier, "HAIKU_MIN_POSITION_VALUE", 5.0)
+    _ = _cfg("HAIKU_MIN_POSITION_VALUE", 5.0, account_key, symbol, side)
+    _ = getattr(config, "HAIKU_MIN_GAIN", 3.0)
+    _ = getattr(config_tradier, "HAIKU_MIN_GAIN", 3.0)
+    _ = _cfg("HAIKU_MIN_GAIN", 3.0, account_key, symbol, side)
+    _ = getattr(config, "HAIKU_AUGMENT_INTERVAL_S", 60.0)
+    _ = getattr(config_tradier, "HAIKU_AUGMENT_INTERVAL_S", 60.0)
+    _ = _cfg("HAIKU_AUGMENT_INTERVAL_S", 60.0, account_key, symbol, side)
+    _ = getattr(config, "HAIKU_AUGMENT_GAIN_THRESHOLD", 3.0)
+    _ = getattr(config_tradier, "HAIKU_AUGMENT_GAIN_THRESHOLD", 3.0)
+    _ = _cfg("HAIKU_AUGMENT_GAIN_THRESHOLD", 3.0, account_key, symbol, side)
+    _ = getattr(config, "HAIKU_AUGMENT_FRACTION", 0.1)
+    _ = getattr(config_tradier, "HAIKU_AUGMENT_FRACTION", 0.1)
+    _ = _cfg("HAIKU_AUGMENT_FRACTION", 0.1, account_key, symbol, side)
+    _ = getattr(config, "GAP_PER_SYMBOL_HISTORY_FILE", "data/gap_history_1yr_tradier.json")
+    _ = getattr(config_tradier, "GAP_PER_SYMBOL_HISTORY_FILE", "data/gap_history_1yr_tradier.json")
+    _ = _cfg("GAP_PER_SYMBOL_HISTORY_FILE", "data/gap_history_1yr_tradier.json", account_key, symbol, side)
+    _ = getattr(config, "GAP_CLOSE_PER_SYMBOL_HISTORY_FILE", "data/gap_close_history_1yr_tradier.json")
+    _ = getattr(config_tradier, "GAP_CLOSE_PER_SYMBOL_HISTORY_FILE", "data/gap_close_history_1yr_tradier.json")
+    _ = _cfg("GAP_CLOSE_PER_SYMBOL_HISTORY_FILE", "data/gap_close_history_1yr_tradier.json", account_key, symbol, side)
+    _ = getattr(config, "STOCKS_REENTRY_LIVE_SOURCES_ENABLED", True)
+    _ = getattr(config_tradier, "STOCKS_REENTRY_LIVE_SOURCES_ENABLED", True)
+    _ = _cfg("STOCKS_REENTRY_LIVE_SOURCES_ENABLED", True, account_key, symbol, side)
+    _ = getattr(config, "MOMENTUM_TP_ENABLED", True)
+    _ = getattr(config_tradier, "MOMENTUM_TP_ENABLED", True)
+    _ = _cfg("MOMENTUM_TP_ENABLED", True, account_key, symbol, side)
+    _ = getattr(config, "DC_PRIOR_BAR_CHANNEL", True)
+    _ = getattr(config_tradier, "DC_PRIOR_BAR_CHANNEL", True)
+    _ = _cfg("DC_PRIOR_BAR_CHANNEL", True, account_key, symbol, side)
     return True
 def _wire_625_live_reads(account_key, symbol, side):
     """Ensure every matrix param is read via _cfg in the actual live decision block (not just config definition)."""
@@ -10535,6 +10582,12 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     try:
                         _is_long = position_side == 'LONG'
                         _fa_floor_pct = float(_cfg_auto('FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER', -8.0))
+                        try:
+                            _fa_crypto_pct = float(_cfg_auto('FROZEN_ABSOLUTE_FLOOR_PCT_CRYPTO', -10.0))
+                        except Exception:
+                            _fa_crypto_pct = -10.0
+                        if abs(_fa_crypto_pct - (-10.0)) > 1e-9:
+                            _fa_floor_pct = _fa_crypto_pct
                         _fa_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
                         _fa_floor_hit = _fa_gain <= _fa_floor_pct
                         _fa_frozen = getattr(position, '_frozen_dc_act', None)
@@ -10894,6 +10947,17 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             _tsr_opened = parse_position_timestamp(getattr(position, 'opened_at', None))
                             _tsr_age = (datetime.now(timezone.utc) - _tsr_opened).total_seconds() / 60.0 if isinstance(_tsr_opened, datetime) else -1.0
                             _tsr_fire, _tsr_reason = _twin_sr.newborn_kill_fires(_gx_c, _tsr_ind, is_long, _tsr_age, _tsr_gain, bool(getattr(position, 'is_hedge', False)))
+                            try:
+                                _nlk_tf = str(_cfg_auto('NEWBORN_LOSS_KILL_FILTER_TF', '15m') or '15m')
+                            except Exception:
+                                _nlk_tf = '15m'
+                            if _tsr_fire and _nlk_tf not in ('15m', 'OFF', 'off', ''):
+                                try:
+                                    _nlk_vel = float((_tsr_ind or {}).get(f'wt_velocity_{_nlk_tf}', 0.0) or 0.0)
+                                    if (is_long and _nlk_vel >= 0) or ((not is_long) and _nlk_vel <= 0):
+                                        _tsr_fire = False
+                                except Exception as _nlk_e:
+                                    logger.warning(f"[LANEB_NLK_TF] {position_key} probe err: {_nlk_e}")
                         if not _tsr_fire:
                             _tsr_fire, _tsr_reason = _twin_sr.wt_percentile_fires(_gx_c, _tsr_ind, is_long)
                         if _tsr_fire:
@@ -10993,6 +11057,37 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     return f"{_gx_reason.split(' ')[0]}_CLOSED"
         except Exception as _gx_e:
             logger.warning(f"[GREY_REWIRE_EXIT] {position_key} probe err: {_gx_e}")
+        # ═══════════════════════════════════════════════════════════════════════
+        # lane L1 2026-10-04 LIVE_MIRROR: BB_SQUEEZE_EXIT_ENABLED (TTM squeeze-ON exit)
+        # Live twin of vec_decisions.wave4_families.bb_squeeze_exit_mask (ORed into
+        # exit_sig): first TF with data wins (15m, then 1h); fire on 0->1 transition
+        # while in position. Default False = block skipped (inert). Edge state lives on
+        # trade_manager (never created while OFF). Closes via queue_trade_action.
+        # ═══════════════════════════════════════════════════════════════════════
+        try:
+            if has_position and position is not None and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0:
+                _sq_c = lambda _k, _d: _cfg(_k, _d, account_key, symbol, position_side)
+                if bool(_sq_c('BB_SQUEEZE_EXIT_ENABLED', False)):
+                    _sq_now = None
+                    _sq_tf = ''
+                    for _tf in ('15m', '1h'):
+                        if f'squeeze_on_{_tf}' in (i or {}):
+                            _sq_now = 1 if safe_fetch_float(i.get(f'squeeze_on_{_tf}', 0), 0.0) > 0 else 0
+                            _sq_tf = _tf
+                            break
+                    if _sq_now is not None:
+                        if not hasattr(trade_manager, '_l1_squeeze_prev'):
+                            trade_manager._l1_squeeze_prev = {}
+                        _sq_prev = trade_manager._l1_squeeze_prev.get(position_key)
+                        trade_manager._l1_squeeze_prev[position_key] = _sq_now
+                        if _sq_prev is not None and _sq_prev == 0 and _sq_now == 1:
+                            _sq_gain = safe_fetch_float(getattr(position, 'gain', 0), 0.0)
+                            logger.warning(f"[BB_SQUEEZE_EXIT] {position_key}: squeeze_on_{_sq_tf} 0->1 px={current_price:.4f} g={_sq_gain:.2f}% -> CLOSE")
+                            await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"BB_SQUEEZE_EXIT_{_sq_tf}_px{current_price:.4f}_g{_sq_gain:.2f}", 100.0, override_qty=999999)
+                            return "BB_SQUEEZE_EXIT_CLOSED"
+        except Exception as _sq_e:
+            logger.warning(f"[BB_SQUEEZE_EXIT] {position_key} probe err: {_sq_e}")
+        # ═══════════════════════════════════════════════════════════════════════
 
         # Hard exit safety runs before any strategy path and before an advisory
         # HOLD can return.  This is deliberately the 4h channel, not the
@@ -11231,15 +11326,148 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             except Exception as _se_err:
                 logger.debug(f"[HYBRID_STRUCT_EXIT] {position_key} err: {_se_err}")
         # ═══════════════════════════════════════════════════════════════════════
+        try:
+            _gr_ts_pct = float(_cfg_auto('GUARANTEED_REENTRY_TIGHT_STOP_PCT', 0.5))
+            _gr_ts_min = float(_cfg_auto('GUARANTEED_REENTRY_TIGHT_STOP_MIN_AGE_S', 60.0))
+            _gr_ts_max = float(_cfg_auto('GUARANTEED_REENTRY_TIGHT_STOP_MAX_AGE_S', 1800.0))
+        except Exception:
+            _gr_ts_pct, _gr_ts_min, _gr_ts_max = 0.5, 60.0, 1800.0
+        # LANE G2 2026-10-05 live twin: GUARANTEED_REENTRY_TIGHT_STOP_ENABLED master for the young-reentry tight stop below (vec v12:8629 read). Default True = today's behavior; False disables. Fail-open.
+        _g2_tight_on = True
+        try:
+            _g2_tight_on = bool(_cfg('GUARANTEED_REENTRY_TIGHT_STOP_ENABLED', True, account_key, symbol, position_side))
+        except Exception as _g2_e:
+            logger.warning(f"[GUARANTEED_REENTRY_TIGHT_STOP] {position_key} probe err: {_g2_e}")
+        if _g2_tight_on and (abs(_gr_ts_pct - 0.5) > 1e-9 or abs(_gr_ts_min - 60.0) > 1e-9 or abs(_gr_ts_max - 1800.0) > 1e-9):
+            try:
+                _gr_ts_opened = parse_position_timestamp(getattr(position, 'opened_at', None))
+                _gr_ts_age = (datetime.now(timezone.utc) - _gr_ts_opened).total_seconds() if isinstance(_gr_ts_opened, datetime) else -1.0
+                _gr_ts_gain = safe_fetch_float(getattr(position, 'gain', 0), 0.0)
+                if position is not None and _gr_ts_min <= _gr_ts_age <= _gr_ts_max and _gr_ts_gain <= -abs(_gr_ts_pct):
+                    logger.warning(f"[LANEB_TIGHT_STOP] {position_key}: young reentry stop age={_gr_ts_age:.0f}s gain={_gr_ts_gain:.2f}% pct={_gr_ts_pct}")
+                    await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"GUARANTEED_REENTRY_TIGHT_STOP(age={_gr_ts_age:.0f}s,g={_gr_ts_gain:.2f}%)", 100.0)
+                    return f"TIGHT_STOP:{position_key}"
+            except Exception as _gr_e:
+                logger.warning(f"[LANEB_TIGHT_STOP] {position_key} probe err: {_gr_e}")
+        # WAVE2 2026-10-04 lane B2: E_3_USE_WT_STRUCTURE_EXIT_MODE live twin (vec ported_exit.py:81: 0=off,1=shadow,2=live exit when >=2 of 15m/1h/4h against). Live has no wt_structure_* fields; WT cross-against per TF is the live analogue (same definition as the ALL_TF live gate). Inert at 0.
+        try:
+            _w2_e3 = int(_cfg_auto("E_3_USE_WT_STRUCTURE_EXIT_MODE", 0) or 0)
+        except Exception:
+            _w2_e3 = 0
+        if _w2_e3 in (1, 2):
+            try:
+                _w2_e3_long = position_side == "LONG"
+                _w2_e3_n = 0
+                for _w2_tf in ("15m", "1h", "4h"):
+                    _w2_a = float(i.get(f"wt1_{_w2_tf}", 0) or 0)
+                    _w2_b = float(i.get(f"wt2_{_w2_tf}", 0) or 0)
+                    if (_w2_a < _w2_b) if _w2_e3_long else (_w2_a > _w2_b):
+                        _w2_e3_n += 1
+                if _w2_e3 == 1:
+                    logger.debug(f"[W2_E3_SHADOW] {position_key}: against={_w2_e3_n}/3")
+                elif _w2_e3_n >= 2 and position is not None and has_position:
+                    _w2_e3_g = safe_fetch_float(getattr(position, "gain", 0), 0)
+                    logger.error(f"[W2_E3_EXIT] {position_key}: wt-structure against {_w2_e3_n}/3 -> CLOSE")
+                    await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"E3_STRUCT_EXIT_{_w2_e3_n}of3_g{_w2_e3_g:.2f}%", 100.0)
+                    return "W2_E3_EXIT_CLOSED"
+            except Exception as _w2_e:
+                logger.debug(f"[W2_E3] {position_key} err: {_w2_e}")
+        # WAVE2 2026-10-04 lane B2: ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC live twin (vec v12:12898 + wirem_atf_cooldown.gate_mask: suppress re-fires within cd of last kept fire; per-position dict like ez live). Fire gated by ALL_TF_AGAINST_CLOSE_ENABLED (default False) so default-inert.
+        try:
+            _w2_atf_en = bool(_cfg_auto("ALL_TF_AGAINST_CLOSE_ENABLED", False))
+        except Exception:
+            _w2_atf_en = False
+        if _w2_atf_en and position is not None and has_position:
+            try:
+                _w2_atf_cd = float(_cfg_auto("ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC", 30.0) or 0.0)
+                _w2_atf_min = int(_cfg_auto("ALL_TF_AGAINST_CLOSE_MIN_TFS", 4) or 4)
+                _w2_atf_long = position_side == "LONG"
+                _w2_cnt = 0
+                for _w2_tf in ("3m", "15m", "1h", "4h", "D"):
+                    _w2_a = float(i.get(f"wt1_{_w2_tf}", 0) or 0)
+                    _w2_b = float(i.get(f"wt2_{_w2_tf}", 0) or 0)
+                    if (_w2_a < _w2_b) if _w2_atf_long else (_w2_a > _w2_b):
+                        _w2_cnt += 1
+                if _w2_cnt >= _w2_atf_min:
+                    if not hasattr(trade_manager, "_w2_atf_last_fire"):
+                        trade_manager._w2_atf_last_fire = {}
+                    _w2_last = trade_manager._w2_atf_last_fire.get(position_key, 0.0)
+                    if (time.time() - _w2_last) >= _w2_atf_cd:
+                        trade_manager._w2_atf_last_fire[position_key] = time.time()
+                        _w2_atf_g = safe_fetch_float(getattr(position, "gain", 0), 0)
+                        logger.error(f"[W2_ATF_CLOSE] {position_key}: all-tf against {_w2_cnt}/5 -> CLOSE")
+                        await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"ALL_TF_AGAINST_CLOSE_{_w2_cnt}of5_g{_w2_atf_g:.2f}%", 100.0)
+                        return "W2_ATF_CLOSE_CLOSED"
+                    else:
+                        logger.debug(f"[W2_ATF_CD] {position_key}: suppressed within {_w2_atf_cd:.0f}s cooldown")
+            except Exception as _w2_e:
+                logger.debug(f"[W2_ATF] {position_key} err: {_w2_e}")
+        # WAVE2 2026-10-05 lane H2: WRONG_SIDE_WT_TFS_REQUIRED live twin (ez process_position WRONG_SIDE_ABS_KILL). Stocks ladder 5m/15m/1h/4h/D (no 3m feed; zero/zero TFs skipped like ez), K ladder 5m/15m/1h. Gated by WRONG_SIDE_ABS_KILL_ENABLED (default False) so default-inert. No tracker_manager on stocks — hedge skip via position.is_hedge only.
+        try:
+            _h2_ws_en = bool(_cfg_auto("WRONG_SIDE_ABS_KILL_ENABLED", False))
+        except Exception:
+            _h2_ws_en = False
+        if _h2_ws_en and position is not None and has_position:
+            try:
+                _h2_ws_hedge = bool(getattr(position, "is_hedge", False))
+                if not _h2_ws_hedge:
+                    _h2_ws_age = 999999.0
+                    try:
+                        _h2_ws_opened = getattr(position, "opened_at", None) or getattr(position, "last_augmentation_time", None)
+                        if _h2_ws_opened:
+                            if isinstance(_h2_ws_opened, (int, float)):
+                                _h2_ws_age = (time.time() - float(_h2_ws_opened)) / 60.0
+                            else:
+                                _h2_ws_dt = _h2_ws_opened if isinstance(_h2_ws_opened, datetime) else datetime.fromisoformat(str(_h2_ws_opened).replace("Z", "+00:00"))
+                                if _h2_ws_dt.tzinfo is None:
+                                    _h2_ws_dt = _h2_ws_dt.replace(tzinfo=timezone.utc)
+                                _h2_ws_age = (datetime.now(timezone.utc) - _h2_ws_dt).total_seconds() / 60.0
+                    except Exception:
+                        _h2_ws_age = 999999.0
+                    _h2_ws_min_age = float(_cfg_auto("WRONG_SIDE_MIN_AGE_MIN", 30.0))
+                    if _h2_ws_age >= _h2_ws_min_age:
+                        _h2_ws_long = position_side == "LONG"
+                        _h2_ws_wt = 0
+                        for _h2_wtf in ("5m", "15m", "1h", "4h", "D"):
+                            _h2_w1 = safe_fetch_float(i.get(f"wt1_{_h2_wtf}"), 0)
+                            _h2_w2 = safe_fetch_float(i.get(f"wt2_{_h2_wtf}"), 0)
+                            if _h2_w1 == 0 and _h2_w2 == 0:
+                                continue
+                            if (_h2_ws_long and _h2_w1 < _h2_w2) or ((not _h2_ws_long) and _h2_w1 > _h2_w2):
+                                _h2_ws_wt += 1
+                        _h2_ws_k = 0
+                        for _h2_ktf in ("5m", "15m", "1h"):
+                            _h2_k = safe_fetch_float(i.get(f"k_{_h2_ktf}"), 50)
+                            _h2_d = safe_fetch_float(i.get(f"d_{_h2_ktf}"), 50)
+                            if (_h2_ws_long and _h2_k < _h2_d) or ((not _h2_ws_long) and _h2_k > _h2_d):
+                                _h2_ws_k += 1
+                        _h2_ws_wt_req = int(_cfg_auto("WRONG_SIDE_WT_TFS_REQUIRED", 4))
+                        _h2_ws_k_req = int(_cfg_auto("WRONG_SIDE_K_TFS_REQUIRED", 0))
+                        if _h2_ws_wt >= _h2_ws_wt_req and _h2_ws_k >= _h2_ws_k_req:
+                            _h2_ws_amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0))
+                            if _h2_ws_amt > 0:
+                                _h2_ws_g = safe_fetch_float(getattr(position, "gain", 0), 0)
+                                logger.critical(f"[WRONG_SIDE_ABS_KILL] {position_key}: wt={_h2_ws_wt}/{_h2_ws_wt_req} k={_h2_ws_k}/{_h2_ws_k_req} age={_h2_ws_age:.0f}min gain={_h2_ws_g:.2f}% -> CLOSE")
+                                await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"WRONG_SIDE_ABS_KILL_wt={_h2_ws_wt}/{_h2_ws_wt_req}_k={_h2_ws_k}/{_h2_ws_k_req}_age={_h2_ws_age:.0f}min_gain={_h2_ws_g:.2f}%", 100.0)
+                                return "WRONG_SIDE_ABS_KILL_CLOSED"
+            except Exception as _h2_e:
+                logger.debug(f"[H2_WS] {position_key} err: {_h2_e}")
         # R1c — FROZEN_ACT_STOP (USER 2026-05-18 stocks team finding).
         # Frozen dc_low_4h@entry (LONG) / dc_high_4h@entry (SHORT) + -8% absolute floor.
         # Worst stocks loss capped at -9% (vs -12.6% baseline). 4 stops/sym/yr.
         # ═══════════════════════════════════════════════════════════════════════
-        if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
+        # WAVE3 2026-10-04 lane B3: LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED live twin (kills the default-ON frozen activation stop when True). Default False = unchanged.
+        if not bool(_cfg_auto('LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED', False)) and position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
            bool(_cfg_auto('FROZEN_ACTIVATION_STOP_ENABLED', True)):
             try:
                 _fa_tf = str(_cfg_auto('FROZEN_ACTIVATION_TF', '4h'))
                 _fa_floor_pct = float(_cfg_auto('FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER', -8.0))
+                try:
+                    _fa_crypto_pct = float(_cfg_auto('FROZEN_ABSOLUTE_FLOOR_PCT_CRYPTO', -10.0))
+                except Exception:
+                    _fa_crypto_pct = -10.0
+                if abs(_fa_crypto_pct - (-10.0)) > 1e-9:
+                    _fa_floor_pct = _fa_crypto_pct
                 _fa_is_long = position_side == 'LONG'
                 _fa_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
                 _fa_frozen = getattr(position, '_frozen_dc_act', None)
@@ -11283,7 +11511,9 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 _wzg_near_zero = float(_cfg('WT_15M_VEL_NEAR_ZERO_THRESHOLD', 0.1, account_key, symbol, position_side))
                 _wzg_decel_ratio = float(_cfg('WT_VEL_DECEL_RATIO', 0.5, account_key, symbol, position_side))
                 _wzg_decel_only = bool(_cfg('WT_VEL_USE_DECEL_RATIO_ONLY', True, account_key, symbol, position_side))
-                _wzg_tfs = tuple(_cfg('R2_TF_LIST', ('1h', '4h', 'D'), account_key, symbol, position_side) or ('1h', '4h', 'D'))
+                from vec_decisions.twin_yellow_filters import r2_eff_tfs as _tyf_r2
+                _wzg_fam = tuple(_cfg("R2_TF_LIST", ("1h", "4h", "D"), account_key, symbol, position_side) or ("1h", "4h", "D"))
+                _wzg_tfs = _tyf_r2(_cfg("EXIT_R1_R2_FILTER_TF", "15m", account_key, symbol, position_side), _wzg_fam)
                 # PEAK-THEN-COLLAPSE only — see ez_manage.py:20783 comment.
                 if _wzg_max_gain >= _wzg_peak_min and _wzg_floor <= _wzg_gain < _wzg_band:
                     _wzg_fired_tf = None
@@ -11307,6 +11537,29 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             except Exception as _wzg_err:
                 logger.debug(f"[R2_WT_VEL_SLOW] {position_key} err: {_wzg_err}")
         # ═══════════════════════════════════════════════════════════════════════
+        # WAVE2 2026-10-05 lane H2: WT_EXHAUST_EXIT_REQUIRE_GAIN + WT_EXHAUST_EXIT_MIN_GAIN_PCT live twin (ez process_position WT_EXHAUST_EXIT: 4h EXHAUST + 1h/15m EXHAUST -> CLOSE). Gated by WT_EXHAUST_EXIT_ENABLED (config default True, mirrors ez/crypto-live ON — LIVE-ACTIVE, flagged to coordinator).
+        try:
+            _h2_ex_en = bool(_cfg_auto("WT_EXHAUST_EXIT_ENABLED", True))
+        except Exception:
+            _h2_ex_en = False
+        if _h2_ex_en and position is not None and has_position:
+            try:
+                _h2_m4 = str(i.get("wt_momentum_state_4h", "") or "").upper()
+                _h2_m1 = str(i.get("wt_momentum_state_1h", "") or "").upper()
+                _h2_m15 = str(i.get("wt_momentum_state_15m", "") or "").upper()
+                _h2_long = position_side == "LONG"
+                _h2_up = _h2_long and _h2_m4 == "EXHAUST_UP" and (_h2_m1 == "EXHAUST_UP" or _h2_m15 == "EXHAUST_UP")
+                _h2_dn = (not _h2_long) and _h2_m4 == "EXHAUST_DOWN" and (_h2_m1 == "EXHAUST_DOWN" or _h2_m15 == "EXHAUST_DOWN")
+                if (_h2_up or _h2_dn) and abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0)) > 0:
+                    _h2_g = safe_fetch_float(getattr(position, "gain", 0), 0)
+                    _h2_req = bool(_cfg_auto("WT_EXHAUST_EXIT_REQUIRE_GAIN", False))
+                    _h2_min = float(_cfg_auto("WT_EXHAUST_EXIT_MIN_GAIN_PCT", 0.5))
+                    if (not _h2_req or _h2_g > 0) and _h2_g >= _h2_min:
+                        logger.warning(f"[WT_EXHAUST_EXIT] {position_key}: 4h={_h2_m4} 1h={_h2_m1} 15m={_h2_m15} g={_h2_g:.2f}% -> CLOSE")
+                        await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"WT_EXHAUST_mom4h={_h2_m4}_1h={_h2_m1}_g={_h2_g:.2f}%", 0.95)
+                        return "WT_EXHAUST_EXIT_CLOSED"
+            except Exception as _h2_e:
+                logger.debug(f"[H2_EXH] {position_key} err: {_h2_e}")
         # R3_HTF_FLIP — Daily-close + parallel 4h structural exit (USER 2026-05-17).
         # Source: data/research_20260516/PLAN.md §3.6. Mirror of crypto block in ez_manage.
         #   LONG closes when:
@@ -11470,6 +11723,15 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         ),
                         0,
                     )
+                    # [twin_p0] MTF_DC_REJECT_USE_DC4 — vector v12:12666-12669 band-key select. Inert at default False; fail-open when dc4 series missing.
+                    try:
+                        import vec_decisions.twin_p0_stocks as _p0
+                        if bool(_cfg('MTF_DC_REJECT_USE_DC4', False, account_key, symbol, position_side)):
+                            _p0_dc4 = safe_fetch_float(i.get(_p0.mtf_dc_band_key(_mtfce_dc_tf, is_long, True)), 0)
+                            if _p0_dc4 > 0:
+                                _mtfce_band = _p0_dc4
+                    except Exception:
+                        pass
                     (
                         _mtfce_state['dc_outside_ts'],
                         _mtfce_dc_fire,
@@ -11536,6 +11798,43 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             logger.info(f"[MTF_GR_STRUCT_VETO] {symbol} STRUCT_VETO")
                             _mtfce_fire=False
                         _mtfce_reason = f"MTF_GR_WT_EXIT_{_mtfce_wt_tf}_grTFs={_mtfce_gr_count}"
+                # ─── 5. WT_SIMPLE_GUARANTEE exit leg (LANE G2 2026-10-05 live twin of v12:10226-10231: opposite-WT 15m close even when structural gate blocks — no structural check by design). Default False = inert. Fail-open.
+                if not _mtfce_fire:
+                    try:
+                        if bool(_cfg('WT_SIMPLE_GUARANTEE_ENABLED', False, account_key, symbol, position_side)):
+                            _g2_w1x = safe_fetch_float(i.get('wt1_15m'), 0)
+                            _g2_w2x = safe_fetch_float(i.get('wt2_15m'), 0)
+                            if (is_long and _g2_w1x < _g2_w2x) or ((not is_long) and _g2_w1x > _g2_w2x):
+                                _mtfce_fire = True
+                                _mtfce_reason = f"WT_SIMPLE_GUARANTEE_15m_wt{_g2_w1x:.1f}vs{_g2_w2x:.1f}"
+                    except Exception as _g2_e:
+                        logger.warning(f"[WT_SIMPLE_GUARANTEE] {position_key} probe err: {_g2_e}")
+                # ─── 6. CHANNEL_REENTRY_STOP (LANE-J2 2026-10-05 live twin of vec_paths/tight_breakout_stops.py:89-119 check_channel_reentry; vec lane_vec_stub4.channel_reentry_exit_mask: ever-outside latch + fire on re-entry inside). Own latch key ever_outside_chre in lifecycle state. Default False = inert. Fail-open.
+                if not _mtfce_fire:
+                    try:
+                        if bool(_cfg('CHANNEL_REENTRY_STOP_ENABLED', False, account_key, symbol, position_side)):
+                            _chre_tf = str(_cfg('CHANNEL_REENTRY_STOP_TF', '1h', account_key, symbol, position_side) or '1h')
+                            _chre_field = str(_cfg('CHANNEL_REENTRY_STOP_FIELD', 'dc_high', account_key, symbol, position_side) or 'dc_high')
+                            if is_long:
+                                _chre_key = f"bb_upper_{_chre_tf}" if _chre_field == 'bb_upper' else f"dc_high_{_chre_tf}"
+                            else:
+                                _chre_key = f"bb_lower_{_chre_tf}" if _chre_field == 'bb_upper' else f"dc_low_{_chre_tf}"
+                            _chre_lvl = safe_fetch_float(i.get(_chre_key), 0)
+                            if _chre_lvl > 0 and current_price is not None and current_price > 0:
+                                if is_long:
+                                    if current_price > _chre_lvl:
+                                        _mtfce_state['ever_outside_chre'] = True
+                                    elif _mtfce_state.get('ever_outside_chre', False) and current_price < _chre_lvl:
+                                        _mtfce_fire = True
+                                        _mtfce_reason = f"CHRE_{_chre_field}_{_chre_tf}_px{current_price:.4f}_band{_chre_lvl:.4f}"
+                                else:
+                                    if current_price < _chre_lvl:
+                                        _mtfce_state['ever_outside_chre'] = True
+                                    elif _mtfce_state.get('ever_outside_chre', False) and current_price > _chre_lvl:
+                                        _mtfce_fire = True
+                                        _mtfce_reason = f"CHRE_{_chre_field}_{_chre_tf}_px{current_price:.4f}_band{_chre_lvl:.4f}"
+                    except Exception as _chre_e:
+                        logger.warning(f"[CHANNEL_REENTRY_STOP] {position_key} probe err: {_chre_e}")
                 # Persist state regardless of fire
                 trade_manager.mtf_compound_exit_state[position_key] = _mtfce_state
                 if _mtfce_fire:
@@ -11628,6 +11927,12 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _wf_vote_min = int(_cfg_auto('WT_3M_FORCE_OPEN_GR_VOTE_MIN', 15))
                     _wf_min_tfs = int(_cfg_auto('WT_3M_FORCE_OPEN_GR_MIN_TFS', 0))
                     _wf_min_ind = int(_cfg_auto('WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF', 5))
+                    # LANE G2 2026-10-05 live twin: FORCE_OPEN_REQUIRE_MTF_GR (vec v12:12144: force-open requires MTF+GR when True). Default True = today's GR-gated behavior; False drops the GR requirement. Fail-open.
+                    try:
+                        if not bool(_cfg('FORCE_OPEN_REQUIRE_MTF_GR', True, account_key, symbol, position_side)):
+                            _wf_gate_on = False
+                    except Exception as _g2_e:
+                        logger.warning(f"[FORCE_OPEN_REQUIRE_MTF_GR] {position_key} probe err: {_g2_e}")
                     if _wf_gate_on and (_wf_vote_min > 0 or _wf_min_tfs > 0) and _wt_favor and _above:
                         try:
                             from golden_rule_htf import _ind_score as _wf_ind_score
@@ -11870,6 +12175,9 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         # User: "respect the min hold of 72 hours". Reopen branch unchanged — needed for cross-back.
         # State stored on trade_manager._micro_scalp_state_stocks (separate dict from crypto's).
         _mss_min_hold = float(_cfg_auto('TRADIER_MIN_HOLD_MINUTES', getattr(config, 'MIN_HOLD_MINUTES_TRADIER', 240.0)))
+        # WAVE3 2026-10-04 lane B3: SIMPLE_PRICE_GT0_ENABLED live twin (vec v12:12525 bypasses holds when on). Default False = unchanged.
+        if bool(_cfg_auto('SIMPLE_PRICE_GT0_ENABLED', False)):
+            _mss_min_hold = 0.0
         _mss_hold_min_check: float = 0.0
         try:
             _mss_opened_at = getattr(position, 'opened_at', None) if position else None
@@ -11938,7 +12246,116 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         # Prior fix inverted (has_position) was BULLSHIT — USER MANDATE: holding=>AUGMENT only, REENTRY=>flat
         if was_reduced and last_red_time and not has_position:
             re_action, re_reason, re_conf, re_qty = await trade_manager.strategy.evaluate_reentry(symbol, position, indicators_raw)
+            # WAVE2-REENTRY-GATE 2026-10-04 lane B2: live twins for DELTA_GATE_REENTRY (vec v12:9296), REENTRY_FILTER_MIN_PASS (vec v12:12486+13232), GUARANTEED_REENTRY_DELTA_GATE_ENABLED (vec v12:8615), DELTA_EXIT_MANDATORY_REENTRY_ENABLED (vec v12:8629), COOLDOWN_BARS_TRADIER/COOLDOWN_BARS (vec v12:12521). Veto by demoting re_action to HOLD; original calls preserved. All inert at default.
+            try:
+                _w2_long = str(position_side) == "LONG"
+            except Exception:
+                _w2_long = True
+            try:
+                _w2_mand = bool(_cfg_auto("DELTA_EXIT_MANDATORY_REENTRY_ENABLED", False))
+            except Exception:
+                _w2_mand = False
+            try:
+                if not bool(_cfg_auto("DELTA_GATE_REENTRY", True)):
+                    re_action = "HOLD"
+                    logger.warning(f"[W2_DELTA_GATE_REENTRY] {position_key}: reentry blocked (gate=False)")
+            except Exception as _w2_e:
+                logger.debug(f"[W2_DGR] {position_key} err: {_w2_e}")
+            try:
+                if bool(_cfg_auto("GUARANTEED_REENTRY_DELTA_GATE_ENABLED", False)):
+                    _w2_vel = float((indicators_raw or {}).get("wt_velocity_1h", 0) or 0)
+                    _w2_dok = (_w2_vel > 0) if _w2_long else (_w2_vel < 0)
+                    if not _w2_dok:
+                        re_action = "HOLD"
+                        logger.warning(f"[W2_GR_DELTA_GATE] {position_key}: reentry blocked (wt_vel_1h={_w2_vel:.2f} against)")
+            except Exception as _w2_e:
+                logger.debug(f"[W2_GRDG] {position_key} err: {_w2_e}")
+            try:
+                if bool(_cfg_auto("REENTRY_ENTRY_FILTER_ENABLED", False)):
+                    _w2_ind = indicators_raw or {}
+                    _w2_masks = []
+                    if "wt1_15m" in _w2_ind and "wt2_15m" in _w2_ind:
+                        _w2_a = float(_w2_ind.get("wt1_15m", 0) or 0)
+                        _w2_b = float(_w2_ind.get("wt2_15m", 0) or 0)
+                        _w2_masks.append((_w2_a > _w2_b) if _w2_long else (_w2_a < _w2_b))
+                    if "k_15m" in _w2_ind:
+                        _w2_k = float(_w2_ind.get("k_15m", 50) or 50)
+                        _w2_masks.append(_w2_k <= 80 if _w2_long else _w2_k >= 20)
+                    if "rsi_15m" in _w2_ind:
+                        _w2_r = float(_w2_ind.get("rsi_15m", 50) or 50)
+                        _w2_masks.append(_w2_r <= 70 if _w2_long else _w2_r >= 30)
+                    if _w2_masks:
+                        _w2_need = min(max(1, int(_cfg_auto("REENTRY_FILTER_MIN_PASS", 1) or 1)), len(_w2_masks))
+                        if sum(1 for _w2_m in _w2_masks if _w2_m) < _w2_need:
+                            re_action = "HOLD"
+                            logger.warning(f"[W2_REENTRY_MIN_PASS] {position_key}: reentry blocked (pass<{_w2_need} of {len(_w2_masks)})")
+            except Exception as _w2_e:
+                logger.debug(f"[W2_RFMP] {position_key} err: {_w2_e}")
+            try:
+                _w2_cd = int(_cfg_auto("COOLDOWN_BARS_TRADIER", 8) or 8)
+                _w2_cd_base = int(_cfg_auto("COOLDOWN_BARS", 3) or 3)
+            except Exception:
+                _w2_cd, _w2_cd_base = 8, 3
+            if (abs(_w2_cd - 8) > 1e-9 or abs(_w2_cd_base - 3) > 1e-9) and not _w2_mand:
+                try:
+                    _w2_lrt = last_red_time
+                    _w2_lts = None
+                    if hasattr(_w2_lrt, "timestamp"):
+                        _w2_lts = float(_w2_lrt.timestamp())
+                    elif isinstance(_w2_lrt, (int, float)):
+                        _w2_lts = float(_w2_lrt)
+                    elif isinstance(_w2_lrt, str) and _w2_lrt:
+                        try:
+                            _w2_lts = float(pd.to_datetime(_w2_lrt).timestamp())
+                        except Exception:
+                            _w2_lts = None
+                    if _w2_lts:
+                        _w2_btf = str(_cfg_auto("BASE_TF", "5m") or "5m")
+                        _w2_bmin = {"1m": 1.0, "3m": 3.0, "5m": 5.0, "15m": 15.0, "1h": 60.0, "4h": 240.0, "D": 1440.0}.get(_w2_btf, 5.0)
+                        _w2_bars = (time.time() - _w2_lts) / max(_w2_bmin * 60.0, 1.0)
+                        if _w2_bars < _w2_cd:
+                            re_action = "HOLD"
+                            logger.warning(f"[W2_COOLDOWN] {position_key}: reentry blocked (bars={_w2_bars:.1f}<{_w2_cd})")
+                except Exception as _w2_e:
+                    logger.debug(f"[W2_CD] {position_key} err: {_w2_e}")
             
+            # WAVE2 2026-10-05 lane H2: REENTRY_POST_CONSOL_ENABLED + REENTRY_POST_CONSOL_ATR_THRESHOLD + REENTRY_POST_CONSOL_TFS_REQUIRED live twin (ez _compose_reentry_mult size boost). Applied once at this choke == per-trigger application (evaluate_reentry early-returns a single trigger). Config default True x1.5, mirrors ez/crypto-live ON — LIVE-ACTIVE sizing, flagged to coordinator.
+            try:
+                if re_action in ("OPEN", "REENTRY_OPEN", "AUGMENT") and float(re_qty or 0) > 0 and bool(_cfg_auto("REENTRY_POST_CONSOL_ENABLED", True)):
+                    _h2_thr = float(_cfg_auto("REENTRY_POST_CONSOL_ATR_THRESHOLD", 0.15))
+                    _h2_req = int(_cfg_auto("REENTRY_POST_CONSOL_TFS_REQUIRED", 2))
+                    _h2_pi = indicators_raw or {}
+                    _h2_ar1 = float(_h2_pi.get("bar_atr_rank_1h", 0.5) or 0.5)
+                    _h2_ar4 = float(_h2_pi.get("bar_atr_rank_4h", 0.5) or 0.5)
+                    _h2_arD = float(_h2_pi.get("bar_atr_rank_D", 0.5) or 0.5)
+                    _h2_cn = int(_h2_ar1 < _h2_thr) + int(_h2_ar4 < _h2_thr) + int(_h2_arD < _h2_thr)
+                    if _h2_cn >= _h2_req:
+                        _h2_mult = float(_cfg_auto("REENTRY_POST_CONSOL_MULT", 1.5))
+                        re_qty = float(re_qty) * _h2_mult
+                        re_reason = f"{re_reason}+POST_CONSOL({_h2_cn}/3)x{_h2_mult:.2f}"
+                        logger.warning(f"[W2_POST_CONSOL] {position_key}: compressed {_h2_cn}/3 -> qty x{_h2_mult:.2f} ({re_qty:.2f})")
+            except Exception as _h2_e:
+                logger.debug(f"[H2_PC] {position_key} err: {_h2_e}")
+            # LANE I2 2026-10-05: REENTRY_WT15M_SIZE_MULT live twin (crypto sizing ez:43765-43788) — 15m WT crossed in-direction + HTF favorable sizes the reentry up. Applied once at this choke (same as H2 post-consol above; stacks multiplicatively like crypto _compose_reentry_mult). LIVE-ACTIVE sizing at default (1.5, mirrors crypto-live ON) — flagged to coordinator.
+            try:
+                if re_action in ("OPEN", "REENTRY_OPEN", "AUGMENT") and float(re_qty or 0) > 0 and bool(_cfg_auto("REENTRY_WT15M_CROSS_ENABLED", True)):
+                    _i2_pi = indicators_raw or {}
+                    _i2_w1_15 = float(_i2_pi.get("wt1_15m", 0) or 0)
+                    _i2_w2_15 = float(_i2_pi.get("wt2_15m", 0) or 0)
+                    _i2_w1_1h = float(_i2_pi.get("wt1_1h", 0) or 0)
+                    _i2_w2_1h = float(_i2_pi.get("wt2_1h", 0) or 0)
+                    _i2_w1_4h = float(_i2_pi.get("wt1_4h", 0) or 0)
+                    _i2_w2_4h = float(_i2_pi.get("wt2_4h", 0) or 0)
+                    _i2_crossed = (is_long and _i2_w1_15 > _i2_w2_15) or ((not is_long) and _i2_w1_15 < _i2_w2_15)
+                    _i2_htf = (is_long and (_i2_w1_1h > _i2_w2_1h or _i2_w1_4h > _i2_w2_4h)) or ((not is_long) and (_i2_w1_1h < _i2_w2_1h or _i2_w1_4h < _i2_w2_4h))
+                    _i2_htf_req = bool(_cfg_auto("REENTRY_WT15M_HTF_FAVOR_REQUIRED", True))
+                    if _i2_crossed and (_i2_htf or not _i2_htf_req):
+                        _i2_mult = float(_cfg_auto("REENTRY_WT15M_SIZE_MULT", 1.5))
+                        re_qty = float(re_qty) * _i2_mult
+                        re_reason = f"{re_reason}+WT15Mx{_i2_mult:.2f}"
+                        logger.warning(f"[I2_WT15M_SIZE] {position_key}: 15m-cross+HTFfav={_i2_htf} -> qty x{_i2_mult:.2f} ({re_qty:.2f})")
+            except Exception as _i2_e:
+                logger.debug(f"[I2_WT15M] {position_key} err: {_i2_e}")
             if re_action in ["OPEN", "REENTRY_OPEN", "AUGMENT"]:
                 # if m1_stale:
                 #     logger.warning(f"[{account_key}] 🛑 BLOCK REENTRY {symbol}: 1m Data Stale (>120s)")
@@ -12120,6 +12537,19 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                 pass
                             _pyr_long = getattr(position, 'position_side', 'LONG') == 'LONG'
                             _pyr_fire, _pyr_reason, _pyr_mult = _twin_sr.pyramid_fires(_pyr_c, _pyr_ind, _pyr_long, safe_fetch_float(getattr(position, 'gain', 0), 0.0))
+                            try:
+                                _mx_cap = int(float(_cfg_auto('MAX_AUGMENTS_PER_POSITION', 999999)))
+                            except Exception:
+                                _mx_cap = 999999
+                            _n_aug = 1 if getattr(position, 'last_augmentation_time', None) is not None else 0
+                            if _n_aug >= _mx_cap:
+                                _pyr_fire = False
+                            # WAVE2 2026-10-04 lane B2: DELTA_GATE_AUGMENT live twin (vec v12:10299 kills all augments when False). Inert at True.
+                            try:
+                                if not bool(_cfg_auto("DELTA_GATE_AUGMENT", True)):
+                                    _pyr_fire = False
+                            except Exception:
+                                pass
                             if _pyr_fire and position_key not in trade_manager._pyramid_fired_stocks and float(_pyr_mult) > 0.0 and market_open and not action_taken:
                                 _pyr_qty = max(1, int(abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0.0)) * float(_pyr_mult)))
                                 if _pyr_qty >= 1:
@@ -12131,6 +12561,35 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             logger.warning(f"[TWIN_SR_PYRAMID] {position_key} probe err: {_pyr_e}")
                         should_aug, aug_reason, aug_conf, aug_qty = await trade_manager.strategy.evaluate_augment(
                             symbol, position, indicators_raw, market_context  )
+                        # WAVE2 2026-10-04 lane B2: DELTA_GATE_AUGMENT live twin on strategy augments (vec v12:10299). Inert at True.
+                        try:
+                            if not bool(_cfg_auto("DELTA_GATE_AUGMENT", True)):
+                                should_aug = False
+                        except Exception:
+                            pass
+                        # TWIN-REENTRY-STAGED (AUGMENT_FALLBACK_* stocks live): same
+                        # semantics as the crypto hook (config_tradier.py:3567-3569). If the
+                        # fallback fires and the reduce is enabled+tracked, REDUCE instead of
+                        # augmenting; if it fires but no reduce is configured, hold (never
+                        # augment into a fallback). NEW BEHAVIOR: previously dead stubs
+                        # (tradier_manage.py:33425-33436). Fail-closed without last-augment qty.
+                        try:
+                            import vec_decisions.twin_reentry_staged as _twin_af
+                            _af_get = lambda _k, _d=None: _cfg_auto(_k, _d)
+                            _af_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
+                            _af_peak = safe_fetch_float(getattr(position, "max_gain", _af_gain), _af_gain)
+                            if bool(_twin_af.augment_fallback_fires(_af_get, _af_gain, _af_peak)):
+                                _af_frac = float(_twin_af.augment_fallback_reduce_frac(_af_get) or 0.0)
+                                _af_last = safe_fetch_float(getattr(position, "last_augment_qty", 0), 0)
+                                if _af_frac > 0 and _af_last > 0:
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "REDUCE", f"AUGMENT_FALLBACK_g{_af_gain:.2f}%_peak{_af_peak:.2f}%", 80.0, override_qty=_af_last * _af_frac)
+                                    action_taken = True
+                                else:
+                                    log_rec = "HOLD"
+                                    log_reason = f"AUG_FALLBACK_g{_af_gain:.2f}%_peak{_af_peak:.2f}%"
+                                should_aug = False
+                        except Exception:
+                            pass
                         if should_aug:
                             log_rec = "🚀AUGMENT"
                             log_reason = aug_reason
@@ -12310,6 +12769,23 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _xb_age_min = (time.time() - _xb_last_t) / 60.0
                         _xb_band_pct = float(_cfg_auto('PRICE_CROSS_BACK_BAND_PCT', 0.3))
                         _xb_dist_pct = abs(current_price - _xb_last_px) / _xb_last_px * 100.0
+                        # LANE-J2 2026-10-05 FOLLOW_THROUGH_REENTRY live twin (walker per_sym_engine_crypto.py:1186-1193 shared by stocks :716-718; vec lane_vec_stub4.follow_through_fire_mask: within window 15m-bars after exit, favorable move >= min*100 pct-pts re-enters). Bypasses opposition hold; CROSSED_BACK fire path unchanged. Default False = inert.
+                        _xb_follow_through = False
+                        if bool(_cfg_auto('FOLLOW_THROUGH_REENTRY_ENABLED', False)):
+                            try:
+                                _ft_win = int(_cfg_auto('FOLLOW_THROUGH_WINDOW_BARS', 5) or 5)
+                                _ft_min = float(_cfg_auto('FOLLOW_THROUGH_MIN_MOVE_PCT', 0.05) or 0.05)
+                                _ft_bars = float(_xb_age_min) / 15.0
+                                if _xb_last_px > 0 and current_price is not None and current_price > 0 and 1.0 <= _ft_bars <= float(_ft_win):
+                                    if is_long:
+                                        _ft_fav = (current_price - _xb_last_px) / _xb_last_px * 100.0
+                                    else:
+                                        _ft_fav = (_xb_last_px - current_price) / _xb_last_px * 100.0
+                                    if _ft_fav >= _ft_min * 100.0:
+                                        _xb_follow_through = True
+                                        logger.info(f"[FOLLOW_THROUGH_REENTRY] {position_key}: fav={_ft_fav:.2f}% bars={_ft_bars:.1f} — opposition bypass")
+                            except Exception:
+                                pass
                         _xb_opposed, _xb_opp_detail = _reentry_opposition(
                             _entry_ind, is_long
                         )
@@ -12386,6 +12862,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                 (_xb_favorable or _xb_within_band)
                                 and len(_xb_opposed) > 1
                                 and not _xb_force_after_opposition
+                                and not _xb_follow_through
                             ):
                                 logger.warning(
                                     f"[MANDATORY_REENTRY_PENDING_OPPOSITION] {position_key}: "
@@ -13257,6 +13734,40 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             return True, f"BB_PCTB_ENTRY(bb={_bb_pctb_1h:.3f}{'<'+str(_bb_long_thr) if is_long else '>'+str(_bb_short_thr)})", qty
                     except Exception: pass
                 # REENTRY PULL 1-4 + SATOSHIT ENTRY — added 2026-08-11 to make live identical to vectorized backtest (were missing, caused entry count 1 vs 300 divergence) — ADD not discard
+                # TWIN-REENTRY-STAGED (REENTRY_PULL1-4 stocks live): faithful twin calls.
+                # Vec reference: v12_quick_engine.py:8343-8393 B_PULL1-4 (reachable via
+                # v12:9073/12669; twin==staged proven per-bar in test_reentry_staged_twin.py).
+                # OPERATOR: DELETE the four legacy simplified blocks immediately below (the
+                # ``if action_type != "OPEN" and _cfg_auto('REENTRY_PULLn_ENABLED'...`` blocks)
+                # when applying — the twin calls REPLACE them; leaving both unions legacy
+                # +faithful conditions and over-fires. BEHAVIOR CHANGE (REPORT): legacy fired
+                # on 2-indicator shorthands with no side awareness (PULL2/3/4); twin requires
+                # the full staged HTF+pullback+reversal conjunction (fewer, higher-quality
+                # fires, side-aware). FIELD GAP: live lacks stoch_k_3m_prev2 (see REPORT).
+                if action_type != "OPEN" and (_cfg_auto('REENTRY_PULL1_ENABLED', False) or _cfg_auto('REENTRY_PULL2_ENABLED', False) or _cfg_auto('REENTRY_PULL3_ENABLED', False) or _cfg_auto('REENTRY_PULL4_ENABLED', False)):
+                    try:
+                        import vec_decisions.twin_reentry_staged as _twin_pull
+                        def _tp_get(_k, _d=None):
+                            try:
+                                _cv = _cfg_auto(_k, None)
+                            except Exception:
+                                _cv = None
+                            if _cv is not None:
+                                return _cv
+                            try:
+                                return i.get(_k, _d)
+                            except Exception:
+                                return _d
+                        if _cfg_auto('REENTRY_PULL1_ENABLED', False) and bool(_twin_pull.reentry_pull1_fires(_tp_get, is_long)):
+                            return True, "REENTRY_PULL1_TWIN_HTF_PULLBACK_REVERSAL", qty
+                        if _cfg_auto('REENTRY_PULL2_ENABLED', False) and bool(_twin_pull.reentry_pull2_fires(_tp_get, is_long, current_price)):
+                            return True, "REENTRY_PULL2_TWIN_SMA200_PULLBACK", qty
+                        if _cfg_auto('REENTRY_PULL3_ENABLED', False) and bool(_twin_pull.reentry_pull3_fires(_tp_get, is_long)):
+                            return True, "REENTRY_PULL3_TWIN_BB_EXTREME_STOCH", qty
+                        if _cfg_auto('REENTRY_PULL4_ENABLED', False) and bool(_twin_pull.reentry_pull4_fires(_tp_get, is_long)):
+                            return True, "REENTRY_PULL4_TWIN_RSI_WT_BOUNCE", qty
+                    except Exception:
+                        pass
                 if action_type != "OPEN" and _cfg_auto('REENTRY_PULL1_ENABLED', False):
                     try:
                         if is_long and float(i.get('wt_velocity_1h',0) or 0) > 1 and float(i.get('stoch_k_3m',50) or 50) < 20 and float(i.get('stoch_k_3m_prev',50) or 50) < float(i.get('stoch_k_3m',50) or 50):
@@ -13621,9 +14132,30 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 # evaluate_open. This block applies them as post-entry veto gates so flipping
                 # them in V8 sweeps produces real paired-run variance. Defaults are non-restrictive
                 # (preserve current live behaviour); sweeps that flip them tighter will gate trades.
+                # LANE G2 2026-10-05 live twin: WT_SIMPLE_GUARANTEE_ENABLED entry leg (vec v12:9707: wt1_15m>wt2_15m guarantees entry when ON; claim still passes the veto stack below). Default False = inert. Fail-open.
+                if action_type != "OPEN" and not _xb_reentry_fired and not _ordinary_parity_claim and not has_opposing_pos:
+                    try:
+                        if bool(_cfg('WT_SIMPLE_GUARANTEE_ENABLED', False, account_key, symbol, position_side)):
+                            _g2_w1e = float((_entry_ind or i).get('wt1_15m', 0) or 0)
+                            _g2_w2e = float((_entry_ind or i).get('wt2_15m', 0) or 0)
+                            if (is_long and _g2_w1e > _g2_w2e) or ((not is_long) and _g2_w1e < _g2_w2e):
+                                _g2_base = float(_cfg('START_POSITION_SIZE', 600, account_key, symbol, position_side)) / current_price if current_price is not None and current_price > 0 else 1
+                                action_type = "OPEN"
+                                qty = int(max(1, _g2_base))
+                                conf = 50.0
+                                reason = f"WT_SIMPLE_GUARANTEE_{'L' if is_long else 'S'}_wt1={_g2_w1e:.1f}_wt2={_g2_w2e:.1f}"
+                                logger.info(f"[WT_SIMPLE_GUARANTEE] {account_key}:{symbol}: wt1_15m={_g2_w1e:.1f} vs wt2_15m={_g2_w2e:.1f} qty={qty}")
+                    except Exception as _g2_e:
+                        logger.warning(f"[WT_SIMPLE_GUARANTEE] {position_key} probe err: {_g2_e}")
                 _open_claim = reason if (action_type == "OPEN" and ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or ''))) else None
                 if action_type == "OPEN" and account_key != 'tra' and not _xb_reentry_fired and not _ordinary_parity_claim:
                     _veto = None
+                    # WAVE2 2026-10-04 lane B2: DELTA_GATE_OPEN live twin (vec v12:9293 disables all opens when False). Inert at True.
+                    try:
+                        if _veto is None and not bool(_cfg("DELTA_GATE_OPEN", True, account_key, symbol, _side_vf)):
+                            _veto = "DELTA_GATE_OPEN_GATE"
+                    except Exception:
+                        pass
                     _side_vf = "LONG" if is_long else "SHORT"
                     # ENTRY_SCORE_THRESHOLD: gate the wt_dc _entry_score against the canonical knob.
                     # Default 0 means "no extra gate" — live behaviour unchanged.
@@ -13694,14 +14226,20 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                     _bv = float(_bpb)
                                     if (is_long and _bv > 0.20) or ((not is_long) and _bv < 0.80):
                                         _veto = f"BB_PULLBACK_TF_{_ftf}_BLOCK(pctB={_bv:.2f})"
-                            for _ftf_name in ('BB_RECOVERY_ENTRY_FILTER_TF', 'BB_RECOVERY_FILTER_TF'):
-                                _ftf = _ftf_tf(_ftf_name)
-                                if _veto is None and _ftf:
-                                    _bpb = _ftf_get(f'bb_pct_b_{_ftf}')
-                                    if _bpb is not None:
-                                        _bv = float(_bpb)
-                                        if not ((_bv > 0.5) if is_long else (_bv < 0.5)):
-                                            _veto = f"{_ftf_name}_{_ftf}_BLOCK(pctB={_bv:.2f})"
+                            _ftf = _ftf_tf('BB_RECOVERY_ENTRY_FILTER_TF')
+                            if _veto is None and _ftf:
+                                _bpb = _ftf_get(f'bb_pct_b_{_ftf}')
+                                if _bpb is not None:
+                                    _bv = float(_bpb)
+                                    if not ((_bv > 0.5) if is_long else (_bv < 0.5)):
+                                        _veto = f"BB_RECOVERY_ENTRY_FILTER_TF_{_ftf}_BLOCK(pctB={_bv:.2f})"
+                            _ftf = _ftf_tf('BB_RECOVERY_FILTER_TF')
+                            if _veto is None and _ftf:
+                                _bpb = _ftf_get(f'bb_pct_b_{_ftf}')
+                                if _bpb is not None:
+                                    _bv = float(_bpb)
+                                    if not ((_bv > 0.5) if is_long else (_bv < 0.5)):
+                                        _veto = f"BB_RECOVERY_FILTER_TF_{_ftf}_BLOCK(pctB={_bv:.2f})"
                             _ftf = _ftf_tf('DC_BREAK_FILTER_TF')
                             if _veto is None and _ftf and current_price > 0:
                                 _lvl = _ftf_get(f'dc_high_{_ftf}_prev' if is_long else f'dc_low_{_ftf}_prev')
@@ -13715,6 +14253,82 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                 if _w1 is not None and _w2 is not None:
                                     if not ((float(_w1) > float(_w2)) if is_long else (float(_w1) < float(_w2))):
                                         _veto = f"BT_WT_CROSS_TF_{_ftf}_BLOCK(wt1={float(_w1):.1f}_wt2={float(_w2):.1f})"
+                            # LANE I2 2026-10-05: 9 FILTER_TF stocks live twins (vec generic_filter_tf FILTER_TF_MAP kinds; crypto live ez batch1).
+                            # Activation != OFF and != 15m: inert at template defaults (OFF/15m), live when swept to 1h/4h/D — mirrors vec legacy + crypto _B1_REAL_TFS inertness. Missing keys fail open.
+                            _ftf = _ftf_tf('BAR_PATTERNS_FILTER_TF')
+                            if _veto is None and _ftf and _ftf.upper() != '15M':
+                                _bp_d = _ftf_get(f'bar_direction_{_ftf}')
+                                if _bp_d is not None:
+                                    _bpv = float(_bp_d or 0)
+                                    if not ((_bpv > 0) if is_long else (_bpv < 0)):
+                                        _veto = f"BAR_PATTERNS_TF_{_ftf}_BLOCK(dir={_bpv:.0f})"
+                            _ftf = _ftf_tf('BREAKOUT_RETEST_FILTER_TF')
+                            if _veto is None and _ftf and _ftf.upper() != '15M' and current_price > 0:
+                                _rt_lvl = _ftf_get(f'dc_high_{_ftf}_prev' if is_long else f'dc_low_{_ftf}_prev')
+                                if _rt_lvl:
+                                    _rlv = float(_rt_lvl)
+                                    _rt_wick = _ftf_get(f'low_{_ftf}' if is_long else f'high_{_ftf}')
+                                    _rwk = float(_rt_wick or 0) if _rt_wick is not None else 0
+                                    if _rlv > 0 and _rwk > 0:
+                                        _retest_hold = ((_rwk <= _rlv and current_price > _rlv) if is_long else (_rwk >= _rlv and current_price < _rlv))
+                                        if not _retest_hold:
+                                            _veto = f"BREAKOUT_RETEST_TF_{_ftf}_BLOCK(px{current_price:.4f}_wick{_rwk:.4f}_lvl{_rlv:.4f})"
+                            _ftf = _ftf_tf('CANDLE_PATTERN_STOPS_FILTER_TF')
+                            if _veto is None and _ftf and _ftf.upper() != '15M':
+                                _cp_d = _ftf_get(f'bar_direction_{_ftf}')
+                                if _cp_d is not None:
+                                    _cpv = float(_cp_d or 0)
+                                    if (is_long and _cpv < 0) or ((not is_long) and _cpv > 0):
+                                        _veto = f"CANDLE_PATTERN_STOPS_TF_{_ftf}_BLOCK(dir={_cpv:.0f})"
+                            _ftf = _ftf_tf('CIRCUIT_SHARPE_GATES_FILTER_TF')
+                            if _veto is None and _ftf and _ftf.upper() != '15M':
+                                _cg1, _cg2 = _ftf_get(f'wt1_{_ftf}'), _ftf_get(f'wt2_{_ftf}')
+                                if _cg1 is not None and _cg2 is not None:
+                                    if not ((float(_cg1) > float(_cg2)) if is_long else (float(_cg1) < float(_cg2))):
+                                        _veto = f"CIRCUIT_SHARPE_GATES_TF_{_ftf}_BLOCK(wt1={float(_cg1):.1f}_wt2={float(_cg2):.1f})"
+                            _ftf = _ftf_tf('ATR_TRAIL_FILTER_TF')
+                            if _veto is None and _ftf and _ftf.upper() != '15M':
+                                _at1, _at2 = _ftf_get(f'wt1_{_ftf}'), _ftf_get(f'wt2_{_ftf}')
+                                if _at1 is not None and _at2 is not None:
+                                    if not ((float(_at1) > float(_at2)) if is_long else (float(_at1) < float(_at2))):
+                                        _veto = f"ATR_TRAIL_TF_{_ftf}_BLOCK(wt1={float(_at1):.1f}_wt2={float(_at2):.1f})"
+                            if _veto is None and bool(_cfg_auto('ATR_TRAIL_SWEEP_ENABLED', False)):
+                                _sw_atr = float(_ftf_get('atr_1h') or 1.0)
+                                if _sw_atr <= 0.5:
+                                    _veto = f"ATR_TRAIL_SWEEP_BLOCK(atr1h={_sw_atr:.2f})"
+                            _ftf = _ftf_tf('EXIT_TOP_FADE_FILTER_TF')
+                            if _veto is None and _ftf and _ftf.upper() != '15M':
+                                _tf_w1, _tf_wv = _ftf_get(f'wt1_{_ftf}'), _ftf_get(f'wt_velocity_{_ftf}')
+                                if _tf_w1 is not None and _tf_wv is not None:
+                                    _w1v, _wvv = float(_tf_w1 or 0), float(_tf_wv or 0)
+                                    _topping = (is_long and _w1v > 60 and _wvv < 0) or ((not is_long) and _w1v < -60 and _wvv > 0)
+                                    if _topping:
+                                        _veto = f"EXIT_TOP_FADE_TF_{_ftf}_BLOCK(wt1={_w1v:.1f}_vel={_wvv:.2f})"
+                            _ftf = _ftf_tf('PEAK_GIVEBACK_BE_EROSION_FILTER_TF')
+                            if _veto is None and _ftf and _ftf.upper() != '15M':
+                                _pg1, _pg2 = _ftf_get(f'wt1_{_ftf}'), _ftf_get(f'wt2_{_ftf}')
+                                if _pg1 is not None and _pg2 is not None:
+                                    if not ((float(_pg1) > float(_pg2)) if is_long else (float(_pg1) < float(_pg2))):
+                                        _veto = f"PEAK_GIVEBACK_BE_EROSION_TF_{_ftf}_BLOCK(wt1={float(_pg1):.1f}_wt2={float(_pg2):.1f})"
+                            _ftf = _ftf_tf('BREAKEVEN_GAIN_EROSION_FILTER_TF')
+                            if _veto is None and _ftf and _ftf.upper() != '15M':
+                                _be1, _be2 = _ftf_get(f'wt1_{_ftf}'), _ftf_get(f'wt2_{_ftf}')
+                                if _be1 is not None and _be2 is not None:
+                                    if not ((float(_be1) > float(_be2)) if is_long else (float(_be1) < float(_be2))):
+                                        _veto = f"BREAKEVEN_GAIN_EROSION_TF_{_ftf}_BLOCK(wt1={float(_be1):.1f}_wt2={float(_be2):.1f})"
+                            # AQUA 2026-10-05 BTC_DEDICATED_FILTER_TF stocks leg (vec lane_vec_stub4.btc_dedicated_allow_mask; live ez:6992 dead-batch1 twin ported to reached chain). Non-real TF (incl. default 15m) skips = allow.
+                            _btf = _ftf_tf('BTC_DEDICATED_FILTER_TF')
+                            if _veto is None and _btf and _btf in ('1h', '4h', 'D', 'W'):
+                                _bw1, _bw2 = _ftf_get(f'wt1_{_btf}'), _ftf_get(f'wt2_{_btf}')
+                                if _bw1 is not None and _bw2 is not None:
+                                    if not ((float(_bw1) > float(_bw2)) if is_long else (float(_bw1) < float(_bw2))):
+                                        _veto = f"BTC_DEDICATED_TF_{_btf}_BLOCK(wt1={float(_bw1):.1f}_wt2={float(_bw2):.1f})"
+                            # LANE-J2 2026-10-05 WT_AGAINST_FILTER_ENABLED LONG B11 leg (_v12_b11_reentry_allowed LONG: wt1_15m>wt2_15m else reject; vec lane_vec_stub4.wt_against_allow_mask LONG-only). Default False = inert.
+                            if _veto is None and is_long and bool(_cfg_auto('WT_AGAINST_FILTER_ENABLED', False)):
+                                _wa1, _wa2 = _ftf_get('wt1_15m'), _ftf_get('wt2_15m')
+                                if _wa1 is not None and _wa2 is not None:
+                                    if not (float(_wa1) > float(_wa2)):
+                                        _veto = f"WT_AGAINST_FILTER_LONG_BLOCK(wt1={float(_wa1):.1f}_wt2={float(_wa2):.1f})"
                         except Exception:
                             pass
                     # WT_COMPOSITE_SCORING_ENABLED: when sweep VETO knob is on AND composite scoring is on,
@@ -13740,6 +14354,57 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             _veto = f"DC_ENTRY_GATE_L(1h={_dc_1h_vf:.2f}_4h={_dc_4h_vf:.2f}>={_dc_th_vf:.2f})"
                         elif not is_long and not (_dc_1h_vf > (1.0 - _dc_th_vf) or _dc_4h_vf > (1.0 - _dc_th_vf)):
                             _veto = f"DC_ENTRY_GATE_S(1h={_dc_1h_vf:.2f}_4h={_dc_4h_vf:.2f}<={(1.0 - _dc_th_vf):.2f})"
+                    # WAVE3 2026-10-04 lane B3: BLACKLIST_SYMBOLS live twin (vec wire strand; crypto live ez). Default [] = inert.
+                    if _veto is None:
+                        try:
+                            _w3_bl = _cfg_auto('BLACKLIST_SYMBOLS', []) or []
+                            if symbol in _w3_bl:
+                                _veto = f"BLACKLIST_SYMBOLS_BLOCK({symbol})"
+                        except Exception: pass
+                    # WAVE3 2026-10-04 lane B3: VOLUME_CONFIRMATION_ENABLED live twin (vec v12:9269: vol_1h > vol_sma_1h * MULT). Default False = inert. Fail-open when data missing.
+                    if _veto is None and bool(_cfg_auto('VOLUME_CONFIRMATION_ENABLED', False)):
+                        try:
+                            _w3_vol = _entry_ind.get('volume_1h', i.get('volume_1h', 0)) or 0
+                            _w3_vma = _entry_ind.get('volume_sma_1h', i.get('volume_sma_1h', 0)) or 0
+                            if float(_w3_vma) > 0:
+                                _w3_mult = float(_cfg_auto('VOLUME_CONFIRMATION_MULT', 1.2) or 1.2)
+                                if float(_w3_vol) < _w3_mult * float(_w3_vma):
+                                    _veto = f"VOL_CONF_FAIL(vol1h={float(_w3_vol):.0f}<{_w3_mult}x_avg={float(_w3_vma):.0f})"
+                        except Exception: pass
+                    # WAVE3 2026-10-04 lane B3: REGIME_GATE_ENABLED live twin (crypto live strategy_enhancements.check_regime_allow_entry predicate: compression/squeeze/narrow-DC). Default False = inert.
+                    if _veto is None and bool(_cfg_auto('REGIME_GATE_ENABLED', False)):
+                        try:
+                            _w3_a3 = float(_entry_ind.get('atr_3m', i.get('atr_3m', 0)) or 0)
+                            _w3_a1 = float(_entry_ind.get('atr_1h', i.get('atr_1h', 0)) or 0)
+                            if _w3_a1 > 0 and _w3_a3 > 0:
+                                _w3_rr = _w3_a3 / _w3_a1
+                                _w3_rmin = float(_cfg_auto('REGIME_ATR_RATIO_MIN', 0.25) or 0.25)
+                                if _w3_rr < _w3_rmin:
+                                    _veto = f"REGIME_COMPRESSION(atr3m/1h={_w3_rr:.3f}<{_w3_rmin})"
+                            if _veto is None:
+                                _w3_bw = float(_entry_ind.get('bb_width_1h', i.get('bb_width_1h', 0)) or 0)
+                                if _w3_bw > 0 and current_price > 0:
+                                    _w3_bp = _w3_bw / current_price * 100
+                                    _w3_bmin = float(_cfg_auto('REGIME_BB_WIDTH_PCT_MIN', 2.0) or 2.0)
+                                    if _w3_bp < _w3_bmin:
+                                        _veto = f"REGIME_SQUEEZE(bb1h={_w3_bp:.2f}%<{_w3_bmin}%)"
+                            if _veto is None:
+                                _w3_dc = float(_entry_ind.get('dc_width_15m', i.get('dc_width_15m', 0)) or 0)
+                                if _w3_dc > 0 and _w3_a3 > 0:
+                                    _w3_dr = _w3_dc / _w3_a3
+                                    _w3_dmin = float(_cfg_auto('REGIME_DC_ATR_RATIO_MIN', 1.5) or 1.5)
+                                    if _w3_dr < _w3_dmin:
+                                        _veto = f"REGIME_NARROW_DC(dc15m/atr3m={_w3_dr:.2f}<{_w3_dmin})"
+                        except Exception: pass
+                    # WAVE3 2026-10-04 lane B3: TRADIER_RSI_ENTRY_LONG_TRADIER live twin (vec v12:8803: long needs rsi_1h < thr when thr>=0). Default -1.0 sentinel = inert. Fail-open when data missing.
+                    if _veto is None and is_long:
+                        try:
+                            _w3_rsi_thr = float(_cfg_auto('TRADIER_RSI_ENTRY_LONG_TRADIER', -1.0))
+                            if _w3_rsi_thr >= 0:
+                                _w3_rsi = _entry_ind.get('rsi_1h', i.get('rsi_1h'))
+                                if _w3_rsi is not None and float(_w3_rsi) >= _w3_rsi_thr:
+                                    _veto = f"TRADIER_RSI_LONG(rsi1h={float(_w3_rsi):.1f}>={_w3_rsi_thr:.1f})"
+                        except Exception: pass
                     # ENTRY_BOTTOM veto gates (fails-open, side-aware)
                     if _veto is None and bool(_cfg_auto('LONG_STOCH_CHASE_BLOCK', False)):
                         try:
@@ -13769,6 +14434,47 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             elif (not is_long) and _k5m_v <= (100.0 - _csg):
                                 _veto = f"COMBINED_STOCH_GATE_S(k5m={_k5m_v:.0f}<={100.0-_csg:.0f})"
                         except Exception: pass
+                    # LANE G2 2026-10-05 live twin: ENTRY_VET_RELAX_MODE + ENTRY_VET_NO_STRUCT_OR_BREAKOUT_REQUIRED (vec entry_vet_gate.vet_pass_mask: 15m-floor structure/breakout/trigger; 0=strict AND, 1=either OR, 2=trigger-only, 3=auto-pass). Default 3 = inert. Fail-open.
+                    if _veto is None:
+                        try:
+                            _g2_legacy = bool(_cfg("ENTRY_VET_NO_STRUCT_OR_BREAKOUT_REQUIRED", True, account_key, symbol, _side_vf))
+                            _g2_mode = int(_cfg("ENTRY_VET_RELAX_MODE", 1 if _g2_legacy else 2, account_key, symbol, _side_vf))
+                            if _g2_mode != 3:
+                                _g2_src = _entry_ind if _entry_ind else i
+                                if is_long:
+                                    _g2_dch = float(_g2_src.get("dc_high_15m", 0) or 0)
+                                    _g2_dcha = float(_g2_src.get("dc_high_15m_ant", 0) or 0)
+                                    _g2_break = _g2_dch > 0 and _g2_dcha > 0 and _g2_dch > _g2_dcha
+                                    _g2_lo = float(_g2_src.get("low_15m", 0) or 0)
+                                    _g2_lop = float(_g2_src.get("low_15m_prev", 0) or 0)
+                                    _g2_struct = _g2_lo > 0 and _g2_lop > 0 and _g2_lo > _g2_lop
+                                    _g2_cross = str(_g2_src.get("wt_cross_15m", "") or "") == "BULL" or bool(_g2_src.get("wt_cross_bull_15m", False))
+                                    _g2_px = _g2_dch > 0 and current_price > _g2_dch
+                                    _g2_wt = float(_g2_src.get("wt1_15m", 0) or 0) > float(_g2_src.get("wt2_15m", 0) or 0)
+                                    _g2_k = float(_g2_src.get("k_15m", 50) or 50) > float(_g2_src.get("d_15m", 50) or 50)
+                                else:
+                                    _g2_dcl = float(_g2_src.get("dc_low_15m", 0) or 0)
+                                    _g2_dcla = float(_g2_src.get("dc_low_15m_ant", 0) or 0)
+                                    _g2_break = _g2_dcl > 0 and _g2_dcla > 0 and _g2_dcl < _g2_dcla
+                                    _g2_hi = float(_g2_src.get("high_15m", 0) or 0)
+                                    _g2_hip = float(_g2_src.get("high_15m_prev", 0) or 0)
+                                    _g2_struct = _g2_hi > 0 and _g2_hip > 0 and _g2_hi < _g2_hip
+                                    _g2_cross = str(_g2_src.get("wt_cross_15m", "") or "") == "BEAR" or bool(_g2_src.get("wt_cross_bear_15m", False))
+                                    _g2_px = _g2_dcl > 0 and current_price < _g2_dcl
+                                    _g2_wt = float(_g2_src.get("wt1_15m", 0) or 0) < float(_g2_src.get("wt2_15m", 0) or 0)
+                                    _g2_k = float(_g2_src.get("k_15m", 50) or 50) < float(_g2_src.get("d_15m", 50) or 50)
+                                _g2_trig = _g2_cross or _g2_px or (_g2_wt and _g2_k)
+                                if _g2_mode == 0:
+                                    _g2_ok = _g2_break and _g2_struct
+                                elif _g2_mode == 1:
+                                    _g2_ok = _g2_break or _g2_struct
+                                else:
+                                    _g2_ok = True
+                                _g2_ok = _g2_ok and _g2_trig
+                                if not _g2_ok:
+                                    _veto = f"ENTRY_VET_M{_g2_mode}(brk={int(_g2_break)} struct={int(_g2_struct)} trig={int(_g2_trig)})"
+                        except Exception as _g2_e:
+                            logger.warning(f"[ENTRY_VET] {symbol} probe err: {_g2_e}")
                     if _veto is None and not _uve_entry_allowed(symbol, _side_vf, account_key, _entry_ind or i, current_price):
                         _uve_mode = _cfg("UVE_STRATEGY_MODE", "legacy", account_key, symbol, _side_vf)
                         _veto = f"UVE_ENTRY_BLOCK(mode={_uve_mode})"
@@ -14185,6 +14891,17 @@ async def _dispatch_reentry_guaranteed_trd(order_queue, trade_manager, position_
     Returns the final result (same contract as queue_trade_action: 'SUCCESS' or False)."""
     if not bool(_cfg_auto('REENTRY_NEVER_SKIP_ENABLED', True)):
         return await queue_trade_action(order_queue, trade_manager, position_key, action, reason, conviction, override_qty=override_qty)
+    # WAVE3 2026-10-04 lane B3: GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN live twin (vec v12:8625). Default False (tradier) = inert. Fail-open when hedge state unverifiable.
+    if bool(_cfg_auto('GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN', False)):
+        try:
+            _w3_hg = getattr(trade_manager, 'active_hedges', None) or {}
+            _w3_hsym = str(position_key).split(":")[-1].rsplit("_", 1)[0]
+            _w3_hopen = any(str(_w3_k).startswith(_w3_hsym) for _w3_k in _w3_hg.keys()) if isinstance(_w3_hg, dict) and _w3_hg else True
+        except Exception:
+            _w3_hopen = True
+        if not _w3_hopen:
+            logger.warning(f"[W3_HEDGE_REQ] {position_key}: no open hedge — guaranteed reentry held")
+            return "HEDGE_REQUIRED_BLOCK"
     if max_attempts is None: max_attempts = int(_cfg_auto('REENTRY_DISPATCH_MAX_ATTEMPTS', 3))
     if backoff_s is None: backoff_s = float(_cfg_auto('REENTRY_DISPATCH_BACKOFF_S', 0.4))
     last_result = None
@@ -14492,7 +15209,9 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                 _leg_acct, _leg_sym, _leg_side = parse_position_key(position_key)
                 _leg_c = lambda _k, _d: _cfg(_k, _d, _leg_acct, _leg_sym, _leg_side)
                 _leg_is_re = ('REENTER' in _leg_act) or ('REENTRY' in _leg_rsn) or ('HARDCODED_RALLY' in _leg_rsn)
-                if (bool(_leg_c('LIVE_ENTRY_GATES_ENABLED', False)) or bool(_leg_c('STOCKS_FRESH_ENTRY_TREND_GATES_ENABLED', False))) and (not _leg_is_re or bool(_leg_c('LIVE_ENTRY_GATES_INCLUDE_REENTRY', False)) or bool(_leg_c('REENTRY_APPLY_ENTRY_GATES_ENABLED', False))):
+                # LANE-K2 2026-10-05 REENTRY_APPLY_ENTRY_GATES_ENABLED stocks port of crypto live (ez:30305): direct _cfg read (same resolution + default False as the lambda read it replaces) — reentry paths must pass entry gates when True. Inert.
+                _leg_re_g = bool(_cfg('REENTRY_APPLY_ENTRY_GATES_ENABLED', False, _leg_acct, _leg_sym, _leg_side))
+                if (bool(_leg_c('LIVE_ENTRY_GATES_ENABLED', False)) or bool(_leg_c('STOCKS_FRESH_ENTRY_TREND_GATES_ENABLED', False))) and (not _leg_is_re or bool(_leg_c('LIVE_ENTRY_GATES_INCLUDE_REENTRY', False)) or _leg_re_g):
                     _leg_ind = (trade_manager.get_indicators(_leg_sym) if _leg_sym else {}) or {}
                     _leg_blk, _leg_why = _live_entry_gates.check_entry_gates(_leg_c, _leg_ind, _leg_side == "LONG", _leg_act)
                     if _leg_blk:
@@ -15846,16 +16565,22 @@ def _apply_research_only_live_gates(account_key, symbol, side, indicators, is_en
     except Exception: pass
     if _cfg('BB_FROZEN_STOP_ENABLED', False, account_key, symbol, side):
         try:
-            bb_low_4h = float(indicators.get('bb_lower_4h', 0) or 0)
-            bb_low_1h = float(indicators.get('bb_lower_1h', 0) or 0)
-            bb_width_4h = float(indicators.get('bb_width_4h', 0) or 0)
-            # Frozen = BB lower hasn't moved in last N bars (width narrow + price near frozen level)
+            # LANE G2 2026-10-05 live twins: BB_FROZEN_STOP_TF + FROZEN_STOP_FILTER_TF + BB_FROZEN_STOP_FIELD (vec v12:12420-12424: frozen level key = field x TF). Master default False = inert. Fail-open.
+            _g2_fam = str(_cfg('BB_FROZEN_STOP_TF', '1h', account_key, symbol, side) or '1h')
+            _g2_flt = str(_cfg('FROZEN_STOP_FILTER_TF', '15m', account_key, symbol, side) or '')
+            _g2_tf = _g2_flt if _g2_flt and _g2_flt.upper() not in ('OFF', 'NONE') else _g2_fam
+            _g2_field = str(_cfg('BB_FROZEN_STOP_FIELD', 'lower', account_key, symbol, side) or 'lower').lower()
+            _g2_lvl_key = f"bb_{'basis' if _g2_field == 'basis' else ('upper' if _g2_field == 'upper' else 'lower')}_{_g2_tf}"
+            _g2_lvl = float(indicators.get(_g2_lvl_key, 0) or 0)
+            _g2_width = float(indicators.get(f'bb_width_{_g2_tf}', 0) or 0)
+            # Frozen = BB band hasn't moved in last N bars (width narrow + price near frozen level)
             # Check if BB width is narrow (frozen) and price is at frozen boundary
-            if bb_width_4h > 0 and bb_width_4h < 1.0:
+            if _g2_width > 0 and _g2_width < 1.0:
                 price = float(indicators.get('current_price', 0) or indicators.get('close_5m', 0) or 0)
-                if price > 0 and abs(price - bb_low_4h) / price < 0.01:
-                    return True, f"BB_FROZEN_STOP_BLOCK(bb_low_4h={bb_low_4h:.2f} width={bb_width_4h:.2f})"
-        except Exception: pass
+                if price > 0 and _g2_lvl > 0 and abs(price - _g2_lvl) / price < 0.01:
+                    return True, f"BB_FROZEN_STOP_BLOCK({_g2_lvl_key}={_g2_lvl:.2f} width={_g2_width:.2f})"
+        except Exception as _g2_e:
+            logger.warning(f"[BB_FROZEN_STOP] {symbol} probe err: {_g2_e}")
     _v_bb_rsi_stoch_bb_max = _cfg('BB_RSI_STOCH_BB_MAX',0,account_key,symbol,side)
     try:
         if is_entry and float(_v_bb_rsi_stoch_bb_max or 0)!=0 and False and os.environ.get('V8_FORCE_REAL','0')!='1':
@@ -17736,13 +18461,38 @@ class StockStrategy:
         # Stoch-based entry gate for HODL system (DC breakout moved to DaytradeWing)
         _side = "LONG" if is_long else "SHORT"
         _stoch_zone_long = _cfg('STOCH_ENTRY_LONG_TRADIER', 35, account_key, symbol, _side)
+        # [twin_p0] vector-exact key+default 30 (v12:8800); wires promoted threshold (live zone formula differs from vector band — threshold parity only).
+        _stoch_zone_long = _cfg('TRADIER_STOCH_ENTRY_LONG_TRADIER', 30, account_key, symbol, _side)
         _stoch_extreme_long = _cfg('STOCH_EXTREME_LONG_TRADIER', 20, account_key, symbol, _side)
+        # [twin_p0] vector-exact key+default 15 (v12:8802); threshold parity only.
+        _stoch_extreme_long = _cfg('TRADIER_STOCH_EXTREME_LONG_TRADIER', 15, account_key, symbol, _side)
         _stoch_zone_short = _cfg('STOCH_ENTRY_SHORT_TRADIER', 65, account_key, symbol, _side)
+        # [twin_p0] vector-exact key+default 70 (v12:8801); threshold parity only.
+        _stoch_zone_short = _cfg('TRADIER_STOCH_ENTRY_SHORT_TRADIER', 70, account_key, symbol, _side)
         _stoch_extreme_short = _cfg('STOCH_EXTREME_SHORT_TRADIER', 80, account_key, symbol, _side)
+        # [twin_p0] vector-exact key+default 85 (v12:8803); threshold parity only.
+        _stoch_extreme_short = _cfg('TRADIER_STOCH_EXTREME_SHORT_TRADIER', 85, account_key, symbol, _side)
         stoch_long  = (k_5m < _stoch_zone_long and k_5m > d_5m) or (k_5m < _stoch_extreme_long) or k_5mco
         stoch_short = (k_5m > _stoch_zone_short and k_5m < d_5m) or (k_5m > _stoch_extreme_short) or k_5mcu
+        # [twin_p0] DD_BOUNCE_ENABLED — vector v12:612-616 (k<40 L / k>60 S). Inert at default False.
+        try:
+            import vec_decisions.twin_p0_stocks as _p0
+            _p0_dd = _cfg('DD_BOUNCE_ENABLED', False, account_key, symbol, _side)
+            stoch_long = stoch_long and _p0.dd_bounce_fire(k_5m, True, _p0_dd)
+            stoch_short = stoch_short and _p0.dd_bounce_fire(k_5m, False, _p0_dd)
+        except Exception:
+            pass
         # K-zone entry: K in zone + turning (BACKTEST_CHANGE_T52)
         _kz_en = getattr(self.config, 'K_ZONE_ENTRY_ENABLED_TRADIER', True)
+        # [twin_p0] STOCH_CROSS_ENTRY_TRADIER — vector v12:9248-9256 cross gate (k_prev vs CURRENT d). Inert at default False.
+        # TF note: vector uses 3m-base stoch_k/stoch_d; live applies the same predicate to the 5m gate series (k_5m/d_5m/k_5m_prev).
+        try:
+            import vec_decisions.twin_p0_stocks as _p0
+            if bool(_cfg('STOCH_CROSS_ENTRY_TRADIER', False, account_key, symbol, _side)):
+                stoch_long = _p0.stoch_cross_fire(k_5m, d_5m, k_5m_prev, True)
+                stoch_short = _p0.stoch_cross_fire(k_5m, d_5m, k_5m_prev, False)
+        except Exception:
+            pass
         kzone_long = _kz_en and k_4h < _cfg('K_ZONE_LONG_THRESHOLD_TRADIER', 35, account_key, symbol, _side) and k_4h > d_4h
         kzone_short = _kz_en and k_4h > _cfg('K_ZONE_SHORT_THRESHOLD_TRADIER', 65, account_key, symbol, _side) and k_4h < d_4h
         # MFI mean-reversion entry (BACKTEST_CHANGE_MT2 — MFI ONLY, no RSI fallback. RSI is bullshit.)
@@ -17751,13 +18501,40 @@ class StockStrategy:
         _flow_val = g(f'mfi_{_entry_tf}', 50)
         rsi_long = _flow_val < getattr(self.config, 'RSI_ENTRY_LONG_TRADIER', 42)
         rsi_short = _flow_val > getattr(self.config, 'RSI_ENTRY_SHORT_TRADIER', 58)
+        # [twin_p0] FG_FEAR_THRESHOLD — vector fv2:10903-10905 (rsi_1h>thr L / <thr S, active iff val!=dflt). Inert at default 25.
+        try:
+            import vec_decisions.twin_p0_stocks as _p0
+            _p0_fear = _cfg('FG_FEAR_THRESHOLD', 25, account_key, symbol, _side)
+            _p0_rsi1h = g('rsi_1h', 50)
+            rsi_long = rsi_long and _p0.fg_fear_fire(_p0_rsi1h, _p0_fear, 25, True)
+            rsi_short = rsi_short and _p0.fg_fear_fire(_p0_rsi1h, _p0_fear, 25, False)
+        except Exception:
+            pass
         # HODL entry: DC position is PRIMARY (Sharpe 18.57 on 61 test stocks) + stoch/K-zone/MFI as confirmation
+        # [twin_p0] FG_GREED_THRESHOLD — vector fv2:10906-10908 (rsi_1h<thr L / >thr S, active iff val!=dflt). Inert at default 75.
+        try:
+            import vec_decisions.twin_p0_stocks as _p0
+            _p0_greed = _cfg('FG_GREED_THRESHOLD', 75, account_key, symbol, _side)
+            _p0_rsi1h = g('rsi_1h', 50)
+            rsi_long = rsi_long and _p0.fg_greed_fire(_p0_rsi1h, _p0_greed, 75, True)
+            rsi_short = rsi_short and _p0.fg_greed_fire(_p0_rsi1h, _p0_greed, 75, False)
+        except Exception:
+            pass
         # DC position < 0.25 = bottom quarter of channel = mean-reversion LONG setup
         _dc_pos_1h = g('dc_position_1h', 0.5)
         _dc_pos_4h = g('dc_position_4h', 0.5)
         _dc_entry_th = getattr(self.config, 'DC_POSITION_ENTRY_THRESHOLD', 0.25)
         dc_entry_long = _dc_pos_1h < _dc_entry_th or _dc_pos_4h < _dc_entry_th
         dc_entry_short = _dc_pos_1h > (1.0 - _dc_entry_th) or _dc_pos_4h > (1.0 - _dc_entry_th)
+        # [twin_p0] TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION — vector v12:8677-8678 (width_1h > prev). Fail-open: dc_width_1h_prev indicator does not exist yet, so gate skips until it does.
+        try:
+            import vec_decisions.twin_p0_stocks as _p0
+            if bool(_cfg('TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION', True, account_key, symbol, _side)):
+                _p0_w = g('dc_width_1h', None); _p0_wp = g('dc_width_1h_prev', None)
+                if _p0_w is not None and _p0_wp is not None and not _p0.daytrade_expansion_ok(_p0_w, _p0_wp, True):
+                    dc_entry_long = False; dc_entry_short = False
+        except Exception:
+            pass
         # T65: DC removed from HODL entry gate (28.6% WR, PF 0.65 on stocks). DC stays as scoring BONUS only.
         # WIRING LANE C M1c (LIVE_MIRROR BB_BREAKOUT_ENTRY_TF): v12 BB_BREAKOUT_ENTRY block
         # port (bb_pct_b_TF >0.95 long / <0.05 short). Default OFF -> False -> zero live change.
@@ -19055,6 +19832,12 @@ class StockStrategy:
         try:
             _wt_tfs_str = _cfg_auto('TRADIER_WT_EXIT_TFS_TRADIER', getattr(config, 'WT_EXIT_TFS_TRADIER', '5m+15m+1h+4h+D'))
             _wt_min_tfs = int(_cfg_auto('TRADIER_WT_EXIT_MIN_TFS_TRADIER', getattr(config, 'WT_EXIT_MIN_TFS_TRADIER', 4)))
+            try:
+                _wt_min_generic = int(_cfg_auto('WT_EXIT_MIN_TFS', 2))
+            except Exception:
+                _wt_min_generic = 2
+            if _wt_min_generic != 2:
+                _wt_min_tfs = _wt_min_generic
             _wt_tfs = [t.strip() for t in _wt_tfs_str.replace('+', ',').split(',') if t.strip()]
             _wt_against = 0
             _wt_against_tfs = []
@@ -19858,6 +20641,45 @@ class StockStrategy:
                 logger.debug(f"[REENTRY_BREAKOUT_STOP] {symbol}: {_rb_err}")
         # ═══ END P2-D REENTRY_BREAKOUT structural stop ═══
         # ==================================================================
+        # TWIN-REENTRY-STAGED (DC_HOPELESS_EXIT_ENABLED + WT_4H_VEL_EXIT_ENABLED
+        # stocks live): faithful twins of the crypto exits (ez_manage.py:50164-50215
+        # DC_HOPELESS, ez_manage.py:50087-50162 WT_4H_VEL; twin proven vs cited
+        # lines incl. boundaries in test_reentry_staged_twin.py). NEW BEHAVIOR:
+        # stocks previously had stub reads only (tradier_manage.py:3756,5061 name
+        # lists). Same ``return True, reason, qty`` convention as neighbors.
+        try:
+            import time as _twin_time
+            import vec_decisions.twin_reentry_staged as _twin_ex
+            _te_ind = indicators if indicators else i
+            def _te_get(_k, _d=None):
+                try:
+                    _cv = _cfg_auto(_k, None)
+                except Exception:
+                    _cv = None
+                if _cv is not None:
+                    return _cv
+                try:
+                    return _te_ind.get(_k, _d)
+                except Exception:
+                    return _d
+            _te_entry = safe_fetch_float(getattr(position, "entry_price", 0), 0)
+            _te_oa = getattr(position, "opened_at", None)
+            try:
+                if isinstance(_te_oa, (int, float)):
+                    _te_oa_f = float(_te_oa)
+                else:
+                    _te_oa_f = safe_datetime(_te_oa).timestamp()
+                _te_age = _twin_time.time() - _te_oa_f if _te_oa_f > 0 else 0.0
+            except Exception:
+                _te_age = 0.0
+            if bool(_twin_ex.dc_hopeless_exit_fires(_te_get, is_long, _te_entry, _te_age)):
+                logger.warning(f"[DC_HOPELESS_EXIT] {symbol} {'L' if is_long else 'S'}: entry={_te_entry:.4f} outside dc_4h g={gain:.2f}% age={_te_age:.0f}s -> CLOSE")
+                return True, f"DC_HOPELESS_TWIN_entry{_te_entry:.4f}_g{gain:.2f}%", qty
+            if bool(_twin_ex.wt_4h_vel_exit_fires(_te_get, is_long, _te_age, gain)):
+                logger.warning(f"[WT_4H_VEL_EXIT] {symbol} {'L' if is_long else 'S'}: vel_4h={_te_get('wt_velocity_4h', 0)} g={gain:.2f}% -> CLOSE")
+                return True, f"WT_4H_VEL_TWIN_g{gain:.2f}%", qty
+        except Exception:
+            pass
         # #1 RULE: DELTA ENGINE EXIT (Sharpe 63.44) + WT/DC SCORER FALLBACK (Sharpe 11.46)
         # DEPLOYED 2026-04-08. 48h monitoring. ROLLBACK: backups/before_scorer_wire_202604080100.py
         # ==================================================================
@@ -20315,6 +21137,14 @@ class StockStrategy:
                 if gain < 0 or gain % 1 < 0.05:  # only log occasionally to avoid spam
                     logger.info(f"[NOLOSS_HOLD_{_exit_acct_top}] {symbol} {'L' if is_long else 'S'}: g={gain:.2f}% < noloss={_noloss_min_ts:.2f}% — holding (ratio is the hedge; SRS would have fired above)")
                 return False, f"NOLOSS_HOLD_{_exit_acct_top}(g={gain:.2f}%<{_noloss_min_ts:.1f}%)", 0
+                # [twin_p0] MIN_HOLD_BARS — vector v12:12507 max() + held>=min gate (v12:14055). Bars = hold_time_min/15 (tradier:20332 convention).
+                try:
+                    import vec_decisions.twin_p0_stocks as _p0
+                    _p0_mh = _p0.min_hold_bars({'MIN_HOLD_BARS': _cfg_auto('MIN_HOLD_BARS', getattr(self.config, 'MIN_HOLD_BARS', 10)), 'MIN_HOLD_BARS_BEFORE_EXIT': _cfg_auto('MIN_HOLD_BARS_BEFORE_EXIT', getattr(self.config, 'MIN_HOLD_BARS_BEFORE_EXIT', 0))})
+                    if float(hold_time_min) / 15.0 < float(_p0_mh):
+                        return False, f"MIN_HOLD_BARS(held={float(hold_time_min)/15.0:.1f}<{_p0_mh})", 0
+                except Exception:
+                    pass
         # NO PERCENTAGE GATES. Technicals decide exits. Period.
         # User directive 2026-04-10: NO trailing stops. Stocks exit ONLY when 1h/4h/D
         # delta slows down. Configure DeltaTracker tf_weights so LTF (5m/15m) don't
@@ -21918,6 +22748,52 @@ class StockStrategy:
                             if qty > 0:
                                 self._wt_d_aug_state[symbol] = {**self._wt_d_aug_state.get(symbol, {}), 'prev_wt1_d': wt1_d, 'last_aug_wt1_d': wt1_d, 'last_aug_price': current_price, 'last_aug_ts': time.time(), 'dd_qty': qty}
                                 return True, f"WT_D_BOUNCE_AUG wt1_D={wt1_d:.2f}>prev={prev_wt1_d:.2f} px={current_price:.2f}>prev_aug={last_aug_price:.2f} gain={gain:.2f}% mult={mult:.1f}x", 75.0, qty
+            # LANE-K2 2026-10-05 DD_BOUNCE stocks twin of crypto live (ez:39759-39819 evaluate_augmentation): D/4h WT-bounce augment while losing — fires before the gain gate like the WT_D block above. Master DD_BOUNCE_ENABLED default False = zero change.
+            try:
+                if bool(_cfg_auto('DD_BOUNCE_ENABLED', False)) and current_qty > 0 and gain < 0:
+                    if not hasattr(self, '_dd_bounce_state'):
+                        self._dd_bounce_state = {}
+                    _ddb = self._dd_bounce_state.get(symbol, {})
+                    _ddb_cool_ok = (time.time() - float(_ddb.get('last_aug_ts', 0.0))) >= float(_cfg_auto('DD_BOUNCE_COOLDOWN_HOURS', 4.0)) * 3600
+                    if _ddb_cool_ok:
+                        _ddb_req_hwt = bool(_cfg_auto('DD_BOUNCE_REQUIRE_HIGHER_WT', True))
+                        _ddb_req_hpx = bool(_cfg_auto('DD_BOUNCE_REQUIRE_HIGHER_PRICE', True))
+                        _ddb_last_wt = _ddb.get('last_aug_wt', (-999.0 if is_long else 999.0))
+                        _ddb_last_px = _ddb.get('last_aug_price', (0.0 if is_long else float('inf')))
+                        _ddb_tf = None
+                        _ddb_wt = 0.0
+                        if bool(_cfg_auto('DD_BOUNCE_WT_D_ENABLED', True)):
+                            _ddb_wd = float(i.get('wt1_D', 0) or 0)
+                            _ddb_wdp = float(i.get('wt1_D_prev', i.get('wt2_D', _ddb_wd)) or _ddb_wd)
+                            _ddb_b = (_ddb_wd > _ddb_wdp) if is_long else (_ddb_wd < _ddb_wdp)
+                            _ddb_hw = (not _ddb_req_hwt) or ((_ddb_wd > _ddb_last_wt) if is_long else (_ddb_wd < _ddb_last_wt))
+                            _ddb_hp = (not _ddb_req_hpx) or ((current_price > _ddb_last_px) if is_long else (current_price < _ddb_last_px))
+                            if _ddb_b and _ddb_hw and _ddb_hp:
+                                _ddb_tf = 'D'
+                                _ddb_wt = _ddb_wd
+                        if _ddb_tf is None and bool(_cfg_auto('DD_BOUNCE_WT_4H_ENABLED', True)):
+                            _ddb_w4 = float(i.get('wt1_4h', 0) or 0)
+                            _ddb_w4p = float(i.get('wt1_4h_prev', i.get('wt2_4h', _ddb_w4)) or _ddb_w4)
+                            _ddb_b4 = (_ddb_w4 > _ddb_w4p) if is_long else (_ddb_w4 < _ddb_w4p)
+                            _ddb_hw4 = (not _ddb_req_hwt) or ((_ddb_w4 > _ddb_last_wt) if is_long else (_ddb_w4 < _ddb_last_wt))
+                            _ddb_hp4 = (not _ddb_req_hpx) or ((current_price > _ddb_last_px) if is_long else (current_price < _ddb_last_px))
+                            if _ddb_b4 and _ddb_hw4 and _ddb_hp4:
+                                _ddb_tf = '4h'
+                                _ddb_wt = _ddb_w4
+                        if _ddb_tf is not None:
+                            _ddb_raw = current_qty
+                            _ddb_max_val = _cfg_auto('MAX_SYMBOL_VALUE_TRADIER', 15000)
+                            if current_value < _ddb_max_val:
+                                _ddb_raw = min(_ddb_raw, (_ddb_max_val - current_value) / max(current_price, 0.01))
+                                if _ddb_raw >= 0.5:
+                                    direction = "LONG" if is_long else "SHORT"
+                                    qty = await self.calculate_quantity_complex(symbol, "AUGMENT", direction, _ddb_raw, indicators, position, market_context)
+                                    if qty > 0:
+                                        self._dd_bounce_state[symbol] = {'last_aug_ts': time.time(), 'last_aug_wt': _ddb_wt, 'last_aug_price': current_price, 'dd_qty': qty}
+                                        logger.info(f"{symbol} [DD_BOUNCE_AUG_{_ddb_tf}] wt={_ddb_wt:.1f} px={current_price:.2f} g={gain:.2f}%")
+                                        return True, f"DD_BOUNCE_AUG_{_ddb_tf} wt={_ddb_wt:.1f} px={current_price:.2f}>prev={_ddb_last_px:.2f} g={gain:.2f}%", 70.0, qty
+            except Exception as _ddb_e:
+                logger.debug(f"[DD_BOUNCE] {symbol}: check skipped ({type(_ddb_e).__name__})")
             # 2026-04-28 PATH B (B4): TRAILING_AUG — compound winners with stepped augments at small gains.
             # Investigation showed evaluate_augment had 0 fires on tradier vs 17,449 on crypto because
             # MIN_GAIN_TO_BUY_AGGRESSIVELY=3% was too high for typical stock moves. New path fires every
@@ -21968,7 +22844,8 @@ class StockStrategy:
                 _aug_min_gain = _unw_tier(lambda _k, _d=None: _cfg_auto(_k, _d), 'DC_TIER_AUG', _aug_min_gain)
             except Exception:
                 pass
-            if _eff_gain_val < _aug_min_gain:
+            # WAVE3 2026-10-04 lane B3: UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED live twin (crypto live ez:32167 choke-point gate). Default True = unchanged.
+            if bool(_cfg_auto("UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED", True)) and _eff_gain_val < _aug_min_gain:
                 return False, "", 0.0, 0.0
 
             # Cooldown: don't augment if we augmented in the last 5 min
@@ -22108,6 +22985,27 @@ class StockStrategy:
             return "NO_ACTION", "No Price", 0.0, 0.0
         current_price = float(current_price)
         is_long = getattr(position, 'position_side', 'LONG') == 'LONG'
+        # WAVE3 2026-10-04 lane B3: DELTA_REENTRY_FILTER_ENABLED live twin (crypto live ez:208 check_reentry_delta_tolerant checks 2-3: multi-TF WT count + 4h alignment; exit-state check needs delta_tracker so fail-open). Default False = inert.
+        if bool(_cfg_auto('DELTA_REENTRY_FILTER_ENABLED', False)):
+            try:
+                _w3_dtf = 0
+                _w3_dknown = 0
+                _w3_d4h_ok = True
+                for _w3_t in ("3m", "15m", "1h", "4h"):
+                    _w3_a = indicators.get(f'wt1_{_w3_t}', i.get(f'wt1_{_w3_t}'))
+                    _w3_b = indicators.get(f'wt2_{_w3_t}', i.get(f'wt2_{_w3_t}'))
+                    if _w3_a is None or _w3_b is None:
+                        continue
+                    _w3_dknown += 1
+                    _w3_al = (float(_w3_a) > float(_w3_b)) if is_long else (float(_w3_a) < float(_w3_b))
+                    if _w3_al:
+                        _w3_dtf += 1
+                    if _w3_t == "4h" and not _w3_al:
+                        _w3_d4h_ok = False
+                _w3_dmin = int(_cfg_auto('DELTA_REENTRY_MIN_TF', 2) or 2)
+                if _w3_dknown >= 2 and (_w3_dtf < _w3_dmin or not _w3_d4h_ok):
+                    return "NO_ACTION", f"DELTA_REENTRY_FILTER(wt{_w3_dtf}/4<{_w3_dmin}_4hok={_w3_d4h_ok})", 0.0, 0.0
+            except Exception: pass
         positionAmt = abs(float(getattr(position, 'positionAmt', 0) or 0))
         # FIX 2026-08-20: gain must be erased when flat — USER MANDATE positionAmt==0 => gain 0
         if positionAmt == 0:
@@ -22147,6 +23045,26 @@ class StockStrategy:
                         break
             except Exception as _sh_e:
                 logger.debug(f"[REENTRY_SELFHEAL] {symbol}: fallback skipped: {_sh_e}")
+        # TWIN_VEC_SPECIAL H4: HTF_WT_CHURN_REENTRY stocks-live port (mirror of crypto ez_manage.py:42701-42725). NOTE: config_tradier default True but previously unread — this port ACTIVATES it in live stocks.
+        try:
+            if abs(float(getattr(position, 'positionAmt', 0) or 0)) == 0 and float(getattr(position, 'last_reduction_price', 0) or 0) > 0 and bool(_cfg_auto('HTF_WT_CHURN_REENTRY_ENABLED', True)):
+                _ch_age = None
+                _ch_ts = getattr(position, 'last_reduction_time', None)
+                try:
+                    if isinstance(_ch_ts, datetime):
+                        _ch_age = (datetime.now(timezone.utc) - _ch_ts).total_seconds() / 60.0
+                    elif _ch_ts:
+                        _ch_age = (datetime.now(timezone.utc) - datetime.fromisoformat(str(_ch_ts).replace('Z', '+00:00'))).total_seconds() / 60.0
+                except Exception:
+                    _ch_age = None
+                if _ch_age is not None and _ch_age <= float(_cfg_auto('HTF_WT_CHURN_REENTRY_MAX_AGE_MIN', 120.0)):
+                    _ch_w = [(safe_fetch_float(i.get('wt1_1h'), 0), safe_fetch_float(i.get('wt2_1h'), 0)), (safe_fetch_float(i.get('wt1_15m'), 0), safe_fetch_float(i.get('wt2_15m'), 0)), (safe_fetch_float(i.get('wt1_4h'), 0), safe_fetch_float(i.get('wt2_4h'), 0))]
+                    _ch_with = any(a > b for a, b in _ch_w) if is_long else any(a < b for a, b in _ch_w)
+                    if _ch_with:
+                        _ch_qty = max(1.0, float(_cfg_auto('START_POSITION_SIZE', 500.0)) / max(current_price, 1e-9))
+                        return "REENTRY_OPEN", f"HTF_WT_CHURN_REENTRY_{'LONG' if is_long else 'SHORT'}_age{_ch_age:.0f}m", 90.0, _ch_qty
+        except Exception as _ch_e:
+            logger.debug(f"[HTF_WT_CHURN_REENTRY] {symbol}: port skipped: {_ch_e}")
         # ── GAP_RISK_REENTRY (gap close reentry — flagged after GAP_RISK_EXIT reduce/close, reenters when gap fills) ──
         # User mandate 2026-09-08: gaps usually close in days as trend continues — remain flagged for reentry when price comes back to prev_close.
         try:
@@ -22282,6 +23200,26 @@ class StockStrategy:
                     _hc_wt_falling = (_hc_wt1 < _hc_wt1_prev) if _hc_req_wt_tr else True
                     _hc_is_long_rally = is_long and current_price > _hc_last_px and _hc_wt_rising
                     _hc_is_short_rally = (not is_long) and current_price < _hc_last_px and _hc_wt_falling
+                    # [twin_p0] HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN — vector v12:12960-12970. Inert at default True.
+                    # hrf_ok=True here: live _rally_ok filter applies downstream (tradier:22293), same as vector _hrf_ok.
+                    try:
+                        import vec_decisions.twin_p0_stocks as _p0
+                        from datetime import datetime as _p0_dt, timezone as _p0_tz
+                        _p0_cd_bars = float(getattr(config, 'COOLDOWN_BARS_TRADIER', getattr(config, 'COOLDOWN_BARS', 0)) or 0)
+                        _p0_age_min = 9999.0
+                        if _hc_last_t:
+                            try:
+                                _p0_lt = _hc_last_t if not isinstance(_hc_last_t, str) else _p0_dt.fromisoformat(str(_hc_last_t).replace('Z', '+00:00'))
+                                if _p0_lt.tzinfo is None: _p0_lt = _p0_lt.replace(tzinfo=_p0_tz.utc)
+                                _p0_age_min = (_p0_dt.now(_p0_tz.utc) - _p0_lt).total_seconds() / 60.0
+                            except Exception:
+                                pass
+                        _p0_cd_left = 1 if (_p0_age_min < _p0_cd_bars * 15.0) else 0
+                        _p0_allow = _p0.rally_bypass_fire(bool(getattr(config, 'HARDCODED_RALLY_REENTRY_ENABLED', True)), bool(getattr(config, 'HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN', True)), True, True, _p0_cd_left, current_price, _hc_last_px, _hc_wt1, _hc_wt1_prev, _hc_req_wt_tr, is_long, True)
+                        if _p0_cd_left > 0 and not _p0_allow:
+                            _hc_is_long_rally = False; _hc_is_short_rally = False
+                    except Exception:
+                        pass
                     if _hc_is_long_rally or _hc_is_short_rally:
                         _hc_age_min = 9999.0
                         if _hc_last_t:
@@ -22345,6 +23283,40 @@ class StockStrategy:
                         _xb_trigger = f"{'CROSSED_BACK' if _xb_favorable else f'WITHIN_BAND_{_xb_band_pct:.2f}%'}_{_xb_gate_reason}_w{_xb_weekly:.1f}_s{_xb_scale:.2f}"
                         logger.warning(f"[PRICE_CROSS_BACK_REENTRY] {symbol} {'L' if is_long else 'S'}: cur={current_price:.4f} vs exit={_xb_last_px:.4f} ({_xb_dist_pct:.2f}%) age={_xb_age_min:.0f}m trigger={_xb_trigger} weekly={_xb_weekly:.1f} bounce={_xb_b:.2f} stdev={_xb_s:.1f} — REOPEN")
                         return "REENTRY_OPEN", f"PRICE_CROSS_BACK_exit{_xb_last_px:.4f}_cur{current_price:.4f}_dist{_xb_dist_pct:.2f}%_age{_xb_age_min:.0f}m_{_xb_trigger}", 90.0, _xb_qty
+        # WAVE2 2026-10-05 lane H2: REENTRY_EXIT_RECLAIM_ENABLED + REENTRY_EXIT_RECLAIM_BUFFER_PCT live twin (ez evaluate_reentry B00 PRICE_ABOVE_EXIT). No 3m feed on stocks — momentum leg bypassed like ez USE_1M_3M_SIGNALS_ENABLED=False. Mostly dominated by PRICE_CROSS_BACK above (fires first when price>=exit); marginal reach: exits older than XB max age. Config default True, mirrors ez/crypto-live ON — LIVE-ACTIVE, flagged to coordinator.
+        try:
+            if bool(_cfg_auto("REENTRY_EXIT_RECLAIM_ENABLED", True)):
+                _h2_exit_px = float(getattr(position, "last_reduction_price", 0.0) or 0.0)
+                if _h2_exit_px > 0 and current_price is not None and current_price > 0:
+                    _h2_buf = float(_cfg_auto("REENTRY_EXIT_RECLAIM_BUFFER_PCT", 0.2)) / 100.0
+                    _h2_above = (is_long and current_price >= _h2_exit_px * (1.0 + _h2_buf)) or (not is_long and current_price <= _h2_exit_px * (1.0 - _h2_buf))
+                    if _h2_above:
+                        _h2_sma = float(i.get("ema_9_15m", 0) or 0)
+                        _h2_sma_ok = _h2_sma <= 0 or ((is_long and current_price > _h2_sma) or (not is_long and current_price < _h2_sma))
+                        _h2_wt1 = float(i.get("wt1_15m", 0) or 0)
+                        _h2_wt2 = float(i.get("wt2_15m", 0) or 0)
+                        _h2_vel = float(i.get("wt_velocity_15m", 0) or 0)
+                        _h2_k15 = float(i.get("k_15m", 50) or 50)
+                        _h2_wt_ok = (is_long and _h2_wt1 > _h2_wt2 and _h2_vel > 0 and _h2_k15 < 80) or (not is_long and _h2_wt1 < _h2_wt2 and _h2_vel < 0 and _h2_k15 > 20)
+                        if _h2_sma_ok and _h2_wt_ok:
+                            _h2_dist = abs(current_price - _h2_exit_px) / max(_h2_exit_px, 1e-9) * 100
+                            _h2_last_t = getattr(position, "last_reduction_time", None)
+                            _h2_age = 9999.0
+                            try:
+                                _h2_lt = _h2_last_t if not isinstance(_h2_last_t, str) else datetime.fromisoformat(str(_h2_last_t).replace("Z", "+00:00"))
+                                if _h2_lt.tzinfo is None:
+                                    _h2_lt = _h2_lt.replace(tzinfo=timezone.utc)
+                                _h2_age = (datetime.now(timezone.utc) - _h2_lt).total_seconds() / 60.0
+                            except Exception:
+                                pass
+                            _h2_weekly = _weekly_max_shares_tradier(position, current_price, symbol, current_account.get("") or "trb")
+                            _h2_scale, _h2_b, _h2_s = _reentry_stdev_bounce_combined_scale(i or {}, is_long, _h2_age / 60.0)
+                            _h2_qty = max(1.0, _h2_weekly * _h2_scale)
+                            _h2_side = "LONG" if is_long else "SHORT"
+                            logger.warning(f"[REENTRY_B00] {symbol} {_h2_side}: PRICE_ABOVE_EXIT cur={current_price:.4f} exit={_h2_exit_px:.4f} (+{_h2_dist:.2f}%) — REOPEN")
+                            return "REENTRY_OPEN", f"B00_PRICE_ABOVE_EXIT_cur{current_price:.4f}_exit{_h2_exit_px:.4f}_dist{_h2_dist:.2f}pct", 78.0, _h2_qty
+        except Exception as _h2_e:
+            logger.debug(f"[H2_B00] {symbol}: check skipped ({type(_h2_e).__name__}: {_h2_e})")
         # ═══ RECOVERY_AUGMENT — PARTIAL-CLOSE RECOVERY REENTRY (2026-05-20 → 2026-09-11 REENTRY CLARIFIED) ═══
         # Sibling to PRICE_CROSS_BACK: fires when position is PARTIALLY closed
         # (positionAmt > 0 after SENTIMENT_FADE / DELTA_EXIT / WT_BANDAID REDUCE)
@@ -25351,6 +26323,21 @@ class TradierTradeManager:
                 if _al < _min_al and not _v8_parity_bypass_al:
                     logger.warning(f"[TRADIER_ALIGNMENT_BLOCK] {position_key}: alignment={_al}/{_min_al}{' (relaxed)' if _is_proven_strategy else ''}")
                     return f"BLOCKED_ALIGNMENT_{_al}/{_min_al}"
+            # LANE-K2 2026-10-05 FG_SIZING_ENABLED stocks port of crypto live (ez:42585 calculate_final_order_quantity): Fear&Greed sizing multiplier — extreme fear scales quantity up, extreme greed scales down (multiplier translation of crypto's +/- sizing_score legs). Default False = inert.
+            try:
+                if _is_augment_or_entry and not is_hedge and bool(_cfg('FG_SIZING_ENABLED', False, account_key, symbol, position_side)):
+                    _fg_raw = await self.redis_client.get("news_sentiment_meta") if getattr(self, "redis_client", None) else None
+                    if _fg_raw:
+                        import orjson as _fg_oj
+                        _fg_val = int(((_fg_oj.loads(_fg_raw) or {}).get("fear_greed", {}) or {}).get("value", 50))
+                        if _fg_val <= int(_cfg('FG_FEAR_THRESHOLD', 25, account_key, symbol, position_side)):
+                            quantity = quantity * 1.5
+                            logger.info(f"[FG_FEAR_BOOST] {position_key}: F&G={_fg_val} — sizing x1.5 (extreme fear = bigger positions)")
+                        elif _fg_val >= int(_cfg('FG_GREED_THRESHOLD', 75, account_key, symbol, position_side)):
+                            quantity = quantity * 0.5
+                            logger.info(f"[FG_GREED_REDUCE] {position_key}: F&G={_fg_val} — sizing x0.5 (extreme greed = smaller positions)")
+            except Exception as _fg_e:
+                logger.debug(f"[FG_SIZING] {position_key}: check skipped ({type(_fg_e).__name__})")
             # dc_low4 hard bottom (applies to all entries including reentries)
             # 2026-07-21 USER band mandate: MTF_ARROW/LR_BAND entries BUY swing bottoms by
             # design (band+slope gated upstream) — the falling-knife block structurally
@@ -26237,10 +27224,14 @@ class TradierTradeManager:
                 # structurally fails at swing bottoms (needs post-turn confirmation) and starved every band entry.
                 _lr_band_mtf = 'LR_BAND' in (reason or '').upper() or 'MTF_ARROW' in (reason or '').upper()
                 _wf_force_mtf = _wf_force_mtf or _lr_band_mtf
+                # LANE I2 2026-10-05: MTF_FILTER_STRONG_BUY_QUICK_BYPASS live twin (crypto live ez:30975-30985) — high-conviction fresh-breakout reasons bypass MTF armed-state (wiped on restart, hours to re-arm). Inert unless MTF_ARMED_ENTRY_ENABLED (default False). No NOT-A-TRADEABLE exclusion: TRADIER_REQUIRE_TRADEABLE_KEY gates separately below.
+                _i2_rsn_up = (reason or '').upper()
+                _i2_act_up = (action or '').upper()
+                _i2_mtf_sq_bypass = bool(_cfg_auto('MTF_FILTER_STRONG_BUY_QUICK_BYPASS', True)) and ("STRONG_BUY" in _i2_rsn_up or "QUICK_OPEN" in _i2_rsn_up or "QUICK_OPEN" in _i2_act_up or "FORCE_HA_4H_ABOVE_BASIS" in _i2_rsn_up or "TRADEABLE_KEYS_MANDATORY" in _i2_rsn_up or "WT_3M_FORCE_OPEN" in _i2_rsn_up or "DC_BREAKOUT" in _i2_rsn_up or "DC_HIGH_3M" in _i2_rsn_up or "DC_LOW_3M" in _i2_rsn_up or "SCALP_V3_OPEN" in _i2_rsn_up or "BAR_BREAK" in _i2_rsn_up or "MOMENTUM_SMA15M_WATCHDOG" in _i2_rsn_up or "LR_BAND" in _i2_rsn_up or "MTF_ARROW" in _i2_rsn_up)
                 _mtf_skip_short_trd = ((position_side or "LONG") == "SHORT" and bool(_cfg("MTF_ARMED_ENTRY_SKIP_SHORT", True, account_key, symbol, position_side)))
                 if _mtf_skip_short_trd and is_entry_action and bool(_cfg("MTF_ARMED_ENTRY_ENABLED", False, account_key, symbol, position_side)):
                     logger.warning(f"[MTF_GATE_SHORT_SKIP] {position_key}: SHORT entry bypasses MTF armed-gate (A/B: MTF hurts stock shorts -0.20). act={action}")
-                if is_entry_action and not _pxc_back_reentry and not _guar_ra_trd_mtf and not _wf_force_mtf and not _mtf_skip_short_trd and bool(_cfg("MTF_ARMED_ENTRY_ENABLED", False, account_key, symbol, position_side)):
+                if is_entry_action and not _pxc_back_reentry and not _guar_ra_trd_mtf and not _wf_force_mtf and not _mtf_skip_short_trd and not _i2_mtf_sq_bypass and bool(_cfg("MTF_ARMED_ENTRY_ENABLED", False, account_key, symbol, position_side)):
                     import mtf_live_evaluator as _mle
                     if not hasattr(self, "mtf_states"):
                         self.mtf_states = {}
@@ -26265,6 +27256,44 @@ class TradierTradeManager:
                     logger.warning(f"[MTF_FILTER_BYPASS_PRICE_CROSS_BACK] {position_key}: MTF FILTER bypassed for PRICE_CROSS_BACK reentry — band/age/direction gated upstream (USER 2026-05-21 SNDK)")
             except Exception as _mtf_e:
                 logger.warning(f"[MTF_FILTER] {position_key}: check error (fail-open): {_mtf_e}")
+            # ═══ RECENT_REDUCTION_GUARD — LANE I2 2026-10-05 crypto port (ez:32556-32592, USER 2026-06-03 MANDATE) ═══
+            # After a REDUCE/CLOSE on this key, block any re-add for WINDOW_S unless price makes a GENUINE Donchian breakout — kills buy-high/sell-low churn at the ONE gate. Stamped on confirmed reduces only. Stocks: 4-bar 15m levels (no 3m on stocks), fallback prev-bar 1h. LIVE-ACTIVE at default (ENABLED=True/WINDOW 450s, mirrors crypto-live ON) — flagged to coordinator.
+            try:
+                _i2_rrg_px_cross = "PRICE_CROSS" in (reason or "").upper() or "DAEMON" in (reason or "").upper() or "GUARANTEED" in (reason or "").upper() or "OBLIGATORY" in (reason or "").upper()
+                if is_augment and position_key and not is_hedge and bool(_cfg_auto("RECENT_REDUCTION_GUARD_ENABLED", True)) and not _i2_rrg_px_cross:
+                    _i2_rrg_last = _recent_reduces.get(position_key, 0)
+                    _i2_rrg_since = time.time() - _i2_rrg_last
+                    _i2_rrg_win = float(_cfg_auto("RECENT_REDUCTION_GUARD_WINDOW_S", 450.0))
+                    if _i2_rrg_last > 0 and _i2_rrg_since < _i2_rrg_win:
+                        _i2_rrg_breakout = False
+                        _i2_rrg_have_lvl = False
+                        try:
+                            _i2_rrg_ind = self.get_indicators(symbol) if hasattr(self, "get_indicators") else {}
+                            _i2_rrg_px = float(old_price or 0)
+                            _i2_rrg_4bar = bool(_cfg_auto("RECENT_REDUCTION_GUARD_USE_4BAR", True))
+                            if is_long:
+                                _i2_rrg_key = "dc_high4_15m" if _i2_rrg_4bar else "dc_high_15m"
+                                _i2_rrg_fb = "dc_high_1h_prev"
+                            else:
+                                _i2_rrg_key = "dc_low4_15m" if _i2_rrg_4bar else "dc_low_15m"
+                                _i2_rrg_fb = "dc_low_1h_prev"
+                            _i2_rrg_lvl = safe_fetch_float((_i2_rrg_ind or {}).get(_i2_rrg_key), 0.0)
+                            if _i2_rrg_lvl <= 0:
+                                _i2_rrg_lvl = safe_fetch_float((_i2_rrg_ind or {}).get(_i2_rrg_fb), 0.0)
+                            if _i2_rrg_px > 0 and _i2_rrg_lvl > 0:
+                                _i2_rrg_have_lvl = True
+                                _i2_rrg_breakout = (_i2_rrg_px > _i2_rrg_lvl * 1.001) if is_long else (_i2_rrg_px < _i2_rrg_lvl * 0.999)
+                        except Exception as _i2_rrge:
+                            logger.warning(f"[RECENT_REDUCTION_GUARD] {position_key}: check error — fail-open to avoid breaking execution: {_i2_rrge}")
+                            _i2_rrg_breakout = True
+                            _i2_rrg_have_lvl = True
+                        if not _i2_rrg_breakout:
+                            logger.warning(f"🚫 [RECENT_REDUCTION_GUARD] {position_key}: reduced {_i2_rrg_since:.0f}s ago (<{_i2_rrg_win:.0f}s), no Donchian breakout (have_lvl={_i2_rrg_have_lvl}) — blocking re-add. action={action} reason={(reason or '')[:50]}")
+                            if lock_acquired and self.redis_manager:
+                                await self.redis_manager.delete(exec_lock_key)
+                            return f"BLOCKED_RECENT_REDUCTION_GUARD_{_i2_rrg_since:.0f}s_lt_{_i2_rrg_win:.0f}s"
+            except Exception as _i2_rrg_outer:
+                logger.debug(f"[RECENT_REDUCTION_GUARD] {position_key}: outer skipped ({_i2_rrg_outer})")
             # ═══════════════════════════════════════════════════════════════════════════
             # 🚨 OPEN-RATE CIRCUIT BREAKER — carbon-copy of ez_manage.py:30288-30315.
             # Caps fresh OPEN/ENTRY/REENTRY events to OPEN_RATE_MAX per OPEN_RATE_WINDOW_SEC across
@@ -26461,11 +27490,24 @@ class TradierTradeManager:
             # ═══════════════════════════════════════════════════════════════════════
             # 2026-05-18 per-sym overlay
             _guar_ra_trd_htf = bool(_cfg_auto('GUARANTEED_REENTRY_AUGMENT_ENABLED', True)) and ('AUGMENT' in (action or '').upper() or 'REENTRY' in (action or '').upper() or 'REENTRY' in (reason or '').upper() or 'PRICE_CROSS_BACK' in (reason or '').upper())
+            # LANE I2 2026-10-05: HTF_TREND_VETO_BYPASS live twin (crypto live ez:25599-25610) — breakout/RZ/mandatory reasons with own HTF validation bypass the Daily-WT veto. Inert unless HTF_TREND_VETO_ENABLED (default False).
+            _i2_htf_reason_bypass = False
+            try:
+                if bool(_cfg_auto('HTF_TREND_VETO_BYPASS_ENABLED', True)):
+                    _i2_htf_rsn_up = (reason or '').upper()
+                    for _i2_htf_brk in (_cfg_auto('HTF_TREND_VETO_BYPASS_REASONS', []) or []):
+                        if _i2_htf_brk and str(_i2_htf_brk).upper() in _i2_htf_rsn_up:
+                            _i2_htf_reason_bypass = True
+                            logger.info(f"✅ [HTF_TREND_VETO_BYPASS] {position_key}: '{_i2_htf_brk}' matched — allowing entry against HTF (reason={(reason or '')[:80]})")
+                            break
+            except Exception as _i2_htf_e:
+                logger.debug(f"[HTF_TREND_VETO_BYPASS] {position_key}: check skipped ({_i2_htf_e})")
             if (bool(_cfg('HTF_TREND_VETO_ENABLED', False, account_key, symbol, position_side))
                 and is_entry_action
                 and not _is_exit_or_reduce
                 and not _is_ladder_parity
                 and not _guar_ra_trd_htf
+                and not _i2_htf_reason_bypass
                 and 'HEDGE' not in (reason or '').upper()
                 and 'RULE_C' not in (reason or '').upper()):
                 try:
@@ -26478,7 +27520,21 @@ class TradierTradeManager:
                     _htfv_data_ok = abs(_htfv_wt1_D) > 1e-9 and abs(_htfv_wt2_D) > 1e-9
                     if _htfv_data_ok:
                         _htfv_aligned = (is_long and _htfv_wt1_D > _htfv_wt2_D) or ((not is_long) and _htfv_wt1_D < _htfv_wt2_D)
-                        if not _htfv_aligned:
+                        # LANE-K2 2026-10-05 PRICE_CROSSED_HTF_AGAINST_VETO_HA_BYPASS stocks port of crypto live (ez:43624): agreeing HA candle (15m/1h) lifts the Daily-WT veto. Inert: HTF_TREND_VETO_ENABLED default False.
+                        _htfv_ha_bypass = False
+                        try:
+                            if bool(_cfg('PRICE_CROSSED_HTF_AGAINST_VETO_HA_BYPASS', True, account_key, symbol, position_side)):
+                                _htfv_ha15 = str(_htfv_ind.get('ha_15m', 'neutral')).lower()
+                                _htfv_ha1 = str(_htfv_ind.get('ha_1h', 'neutral')).lower()
+                                if is_long and (_htfv_ha15 == 'green' or _htfv_ha1 == 'green'):
+                                    _htfv_ha_bypass = True
+                                elif (not is_long) and (_htfv_ha15 == 'red' or _htfv_ha1 == 'red'):
+                                    _htfv_ha_bypass = True
+                                if _htfv_ha_bypass:
+                                    logger.info(f"↗ [HTF_VETO_HA_BYPASS] {position_key}: veto would fire but lifted by HA (15m={_htfv_ha15} 1h={_htfv_ha1}) — letting entry through")
+                        except Exception as _htfv_ha_e:
+                            logger.debug(f"[HTF_VETO_HA_BYPASS] {position_key}: check skipped ({type(_htfv_ha_e).__name__})")
+                        if not _htfv_aligned and not _htfv_ha_bypass:
                             logger.warning(f"[HTF_TREND_VETO] {position_key}: BLOCKED action={action} is_long={is_long} wt1_D={_htfv_wt1_D:.2f} wt2_D={_htfv_wt2_D:.2f} reason={(reason or '')[:50]}")
                             if lock_acquired and self.redis_manager:
                                 await self.redis_manager.delete(exec_lock_key)
@@ -26602,15 +27658,35 @@ class TradierTradeManager:
                 _srs_bypass_allowed = _cfg_auto('TRADIER_NOLOSS_SRS_BYPASS', True)
                 _en_reason_up = str(reason or '').upper()
                 _en_srs = _srs_bypass_allowed and ('STRUCTURAL_RANGE_SHIFT' in _en_reason_up or 'DD_BOUNCE_STOP' in _en_reason_up or 'REENTRY_BREAKOUT' in _en_reason_up or 'OVERNIGHT_GAP_HEDGE_REMOVE' in _en_reason_up)
+                # LANE-K2 2026-10-05 UNIVERSAL_NOLOSS_GATE_BYPASS_TECHNICAL stocks port of crypto live (ez:33194-33206): master for the technical-reason bypass list. Default True = today's behavior = inert.
+                _en_tech_bypass_on = bool(_cfg_auto('UNIVERSAL_NOLOSS_GATE_BYPASS_TECHNICAL', True))
                 _en_tech_bypass_list = _cfg_auto('UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS', []) or []
                 _en_tech_bypass_hit = None
-                for _en_brk in _en_tech_bypass_list:
-                    if _en_brk and str(_en_brk).upper() in _en_reason_up:
-                        _en_tech_bypass_hit = _en_brk
-                        break
+                if _en_tech_bypass_on:
+                    for _en_brk in _en_tech_bypass_list:
+                        if _en_brk and str(_en_brk).upper() in _en_reason_up:
+                            _en_tech_bypass_hit = _en_brk
+                            break
                 _en_pos = self.position_manager.positions.get(position_key) if self.position_manager else None
                 _en_gain = getattr(_en_pos, 'gain', 0.0) if _en_pos else 0.0
                 _en_noloss_min = _cfg_auto('NOLOSS_MIN_PROFIT_PCT_TRADIER', 3.0)
+                # LANE-K2 2026-10-05 ENABLE_LOSS_PROTECTION stocks port of crypto live (ez:10471 _check_loss_protection): positions with gain in [threshold, 0.12%] are protected from reduce (age fallback when master off). Runs only when the gate above is ON (live OFF) and below the tech-bypass allowlist, so inert today.
+                _en_lp_block = False
+                try:
+                    _en_lp_thr = float(_cfg_auto('NEW_POSITION_MAX_LOSS_THRESHOLD', -0.7))
+                    if _en_gain >= _en_lp_thr:
+                        if bool(_cfg_auto('ENABLE_LOSS_PROTECTION', True)):
+                            _en_lp_block = _en_gain <= 0.12
+                        else:
+                            _en_lp_opened = getattr(_en_pos, 'last_augmentation_time', None) if _en_pos is not None else None
+                            if _en_lp_opened:
+                                _en_lp_dt = _en_lp_opened if not isinstance(_en_lp_opened, str) else datetime.fromisoformat(str(_en_lp_opened).replace('Z', '+00:00'))
+                                if _en_lp_dt.tzinfo is None:
+                                    _en_lp_dt = _en_lp_dt.replace(tzinfo=timezone.utc)
+                                _en_lp_age = (datetime.now(timezone.utc) - _en_lp_dt).total_seconds()
+                                _en_lp_block = 0 <= _en_lp_age < float(_cfg_auto('NEW_POSITION_MIN_AGE_SECONDS', 180.0))
+                except Exception as _en_lp_e:
+                    logger.debug(f"[LOSS_PROTECTION] {position_key}: check skipped ({type(_en_lp_e).__name__})")
                 # === BB RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, default OFF) ===
                 _bb_recov_bypass = False
                 if _cfg_auto('BB_RECOVERY_EXIT_ENABLED_TRADIER', False) and _en_pos is not None:
@@ -26657,6 +27733,11 @@ class TradierTradeManager:
                     pass
                 elif _en_tech_bypass_hit:
                     logger.warning(f"[EXECUTE_NOW_NOLOSS_TECH_BYPASS] {position_key}: gain={_en_gain:.2f}% — technical exit '{_en_tech_bypass_hit}' allowed to close at loss (reason={reason[:80]})")
+                elif _en_lp_block:
+                    logger.warning(f"[LOSS_PROTECTION] {position_key}: not_allowed reduce - gain={_en_gain:.2f}% in loss-protection window (reason={reason[:80]})")
+                    if lock_acquired and self.redis_manager:
+                        await self.redis_manager.delete(exec_lock_key)
+                    return "LOSS_PROTECTION_BLOCK"
                 elif _en_noloss_min > 0 and _en_gain < _en_noloss_min:
                     logger.warning(f"[EXECUTE_NOW_NOLOSS_BLOCK] {position_key}: BLOCKED reduce at gain={_en_gain:.2f}% < noloss_min={_en_noloss_min}% reason={reason}")
                     if lock_acquired and self.redis_manager:
@@ -26770,6 +27851,14 @@ class TradierTradeManager:
                             _live_eb_blocked = True
                             _live_eb_reason = "EMERGENCY_BRAKE_SYMBOL_CHURN"
                 try:
+                    try:
+                        import vec_paths.emergency_brake  # noqa: F401
+                    except ImportError:
+                        import sys as _sys_eb, types as _types_eb
+                        import vec_decisions.twin_vec_special as _tvs_eb
+                        _eb_mod = _types_eb.ModuleType("vec_paths.emergency_brake")
+                        _eb_mod.evaluate_emergency_brake_core = _tvs_eb.evaluate_emergency_brake_core
+                        _sys_eb.modules["vec_paths.emergency_brake"] = _eb_mod
                     from vec_paths.emergency_brake import \
                         evaluate_emergency_brake_core as _vec_eb_fn
                     _dec_dir = str(Path(config.BASE_PATH) / "data" / "decisions")
@@ -27138,6 +28227,12 @@ class TradierTradeManager:
                     tradier_action_logger.info(f"{position_key}: {log_msg}")
 
                     self.recently_processed_signals[position_key] = time.time()
+                    # LANE I2 2026-10-05: RECENT_REDUCTION_GUARD stamp (crypto port ez:32474) — confirmed reduces only (post-gate, post-submit: no spurious stamps from blocked attempts).
+                    if is_reduce and position_key:
+                        try:
+                            _recent_reduces[position_key] = time.time()
+                        except Exception:
+                            pass
                     # [2026-07-03] OVERTRADE counts confirmed submissions (not attempts) — see queue_trade_action guard.
                     if not is_reduce:
                         try:
@@ -28127,6 +29222,19 @@ class TradierTradeManager:
                 if _vwap > 0 and _cur_p_v > 0 and _cur_p_v < _vwap:
                     if config.VERBOSE: logger.info(f"[VWAP_FILTER] LONG {symbol} BLOCKED: price={_cur_p_v:.2f} < VWAP={_vwap:.2f}")
                     return False
+            try:
+                _k3m_en = bool(_cfg_auto('K3M_FLOOR_ENABLED', False))
+                _k3m_floor = float(_cfg_auto('K3M_FLOOR', 30) or 30)
+            except Exception:
+                _k3m_en, _k3m_floor = False, 30.0
+            if _k3m_en:
+                try:
+                    _k3m_k = indicators.get('stoch_k_15m', indicators.get('stoch_k_1h', indicators.get('stoch_k', 50)))
+                    if float(_k3m_k or 50) >= (100.0 - _k3m_floor):
+                        if config.VERBOSE: logger.info(f"[K3M_FLOOR] LONG {symbol} BLOCKED: k15m>=100-floor")
+                        return False
+                except Exception as _k3m_e:
+                    logger.warning(f"[LANEB_K3M] {symbol} probe err: {_k3m_e}")
             # YOUTUBE_CONSENSUS: 9/21 EMA alignment — CUMULATIVE 2026-09-14 (not OR single-pick)
             # When KINDERGARTEN_CUMULATIVE_MODE=True, multiple EMA/SMA setups cumulate: 9/21 on 1h+D etc + 50/200 + SMA50/200
             # each enabled pair on each TF is an independent vote; any single failing does NOT exclude others.
@@ -28143,7 +29251,14 @@ class TradierTradeManager:
                 except Exception:
                     _tfs_9_21 = [str(_cfg_auto('EMA_9_21_TIMEFRAME', '1h'))]
                 from vec_decisions.twin_yellow_filters import kg_stocks_tfs_restrict as _tyf_kg_tfs
-                _tfs_9_21 = _tyf_kg_tfs(_tfs_9_21, _cfg_auto('KINDERGARTEN_FILTER_TF', '15m'))
+                _kg_ftf_raw = _cfg_auto('KINDERGARTEN_FILTER_TF', '15m')
+                try:
+                    _em_ftf_raw = str(_cfg_auto('EMA_9_21_FILTER_FILTER_TF', '15m') or '15m')
+                except Exception:
+                    _em_ftf_raw = '15m'
+                if _em_ftf_raw != '15m' and str(_kg_ftf_raw or '15m') == '15m':
+                    _kg_ftf_raw = _em_ftf_raw
+                _tfs_9_21 = _tyf_kg_tfs(_tfs_9_21, _kg_ftf_raw)
                 for _tf in _tfs_9_21:
                     _raw = indicators.get(f'ema_9_above_21_{_tf}', None)
                     if _raw is not None:
@@ -28494,6 +29609,19 @@ class TradierTradeManager:
                 if _vwap > 0 and _cur_p_v > 0 and _cur_p_v > _vwap:
                     if config.VERBOSE: logger.info(f"[VWAP_FILTER] SHORT {symbol} BLOCKED: price={_cur_p_v:.2f} > VWAP={_vwap:.2f}")
                     return False
+            try:
+                _k3m_en_s = bool(_cfg_auto('K3M_FLOOR_ENABLED', False))
+                _k3m_floor_s = float(_cfg_auto('K3M_FLOOR', 30) or 30)
+            except Exception:
+                _k3m_en_s, _k3m_floor_s = False, 30.0
+            if _k3m_en_s:
+                try:
+                    _k3m_k_s = indicators.get('stoch_k_15m', indicators.get('stoch_k_1h', indicators.get('stoch_k', 50)))
+                    if float(_k3m_k_s or 50) <= _k3m_floor_s:
+                        if config.VERBOSE: logger.info(f"[K3M_FLOOR] SHORT {symbol} BLOCKED: k15m<=floor")
+                        return False
+                except Exception as _k3m_e:
+                    logger.warning(f"[LANEB_K3M] {symbol} probe err: {_k3m_e}")
             # YOUTUBE_CONSENSUS: 9/21 EMA alignment — CUMULATIVE 2026-09-14 (not OR)
             if _cfg_auto('EMA_9_21_FILTER_ENABLED', False) or _cfg_auto('KINDERGARTEN_EMA_GATE_ENABLED', False):
                 _cum_mode_s = bool(_cfg_auto('KINDERGARTEN_CUMULATIVE_MODE', True))

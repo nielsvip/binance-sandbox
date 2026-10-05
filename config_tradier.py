@@ -59,6 +59,7 @@ class TradierConfig:
     BB_PCTB_ENTRY_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
     COOLDOWN_BARS: int = 3  # parity 2026-08-17: vector->live (was vector-only)
     ENTRY_SCORE_THRESHOLD: float = 18.0  # parity 2026-08-17: vector->live (was vector-only)
+    FORCE_MIN_ONE_TRADE: bool = False  # lane L1 2026-10-04 LIVE_MIRROR honest-0: vec-only synthetic (v12 forces first-bar entry when no signals); live NEVER forces trades — no live hook by design (§17 parity default only, = QuickConfig False).
     MIN_HOLD_BARS: int = 10  # parity 2026-08-17: vector->live (was vector-only)
     MODE: str = "tradier"
     # ═══ VIGILANCE GUARD — USER EXTREME VIGILANCE MANDATE 2026-09-28 (stocks) ═══
@@ -281,6 +282,8 @@ class TradierConfig:
     # batch5 live_entry_gates (Agent D): MASTER default False = today's live behaviour; each gate below only applies when the master is on.
     LIVE_ENTRY_GATES_ENABLED: bool = False
     STOCKS_FRESH_ENTRY_TREND_GATES_ENABLED: bool = False  # D8: revive _apply_research_only_live_gates(is_entry) at the open choke point (swept, default OFF)
+    STOCKS_LIVE_TWINS_ENABLED: bool = False  # 2026-10-04 cut5: promotes twin fallback (twin_p0_crypto_a:277, v12:9899/12835) to field; = QuickConfig False; neutral
+    STOCKS_LIVE_ENTRY_STACK_ENABLED: bool = False  # 2026-10-04 cut5: promotes twin fallback (twin_p0_crypto_b:312, v12:9391/9856/12141) to field; = QuickConfig False; neutral
     WT_D_EXHAUST_GATE_ENABLED: bool = False  # n5/006 live twin: block fresh opens when wt1_D and wt1_4h are both beyond +-WT_D_EXHAUST_THRESHOLD (default OFF, swept; only under STOCKS_FRESH_ENTRY_TREND_GATES_ENABLED)
     WT_D_EXHAUST_THRESHOLD: float = 60.0
     LIVE_ENTRY_GATES_INCLUDE_REENTRY: bool = False  # False = REENTRY/HARDCODED_RALLY opens keep bypassing the gates (today)
@@ -1472,6 +1475,8 @@ class TradierConfig:
     BULL_HOLD_HTF_TF: str = "4h"
     BULL_HOLD_WT_THR: float = -53.0
     CHANNEL_REENTRY_STOP_ENABLED: bool = False
+    CHANNEL_REENTRY_STOP_TF: str = "1h"  # LANE-J2 2026-10-05: vec_paths/tight_breakout_stops.py:60 default
+    CHANNEL_REENTRY_STOP_FIELD: str = "dc_high"  # LANE-J2 2026-10-05: vec_paths/tight_breakout_stops.py:61 default (bb_upper alt; auto-flips for SHORT)
     CHOP_RANGING_THRESHOLD: float = 61.8
     CHOP_TRENDING_THRESHOLD: float = 38.2
     CIRCUIT_BREAKER_ACCOUNT_HALT_MIN: int = 60
@@ -1638,6 +1643,8 @@ class TradierConfig:
     DISASTER_GUARD_ENABLED: bool = True
     DYNAMIC_SCORE_AUGMENT_ENABLED: bool = True
     DYN_STRUCT_TRAIL_ENABLED: bool = False
+    DYN_STRUCT_TRAIL_MIN_GAIN_PCT: float = 0.0  # 2026-10-04 cut5: promotes live _cfg fallback (tradier_manage:11112) to field; = QuickConfig 0.0; neutral
+    DYN_STRUCT_TRAIL_TF: str = "4h"  # 2026-10-04 cut5: promotes live _cfg fallback (tradier_manage:11111) to field; = QuickConfig 4h; neutral
     D_TREND_REQUIRED: bool = True
     E2E_REPLAY_VALIDATOR_FILTER_TF: str = "15m"
     EMA200_STOCHRSI_BODY_MULT: float = 1.05
@@ -1782,6 +1789,8 @@ class TradierConfig:
     FG_SIZING_ENABLED: bool = False
     FIXED_QUANTITY_ENABLED: bool = False
     FOLLOW_THROUGH_REENTRY_ENABLED: bool = False
+    FOLLOW_THROUGH_MIN_MOVE_PCT: float = 0.05  # LANE-J2 2026-10-05: walker per_sym_engine_crypto.py:166 shared by stocks :716-718 (live fires when fav_pct >= min*100)
+    FOLLOW_THROUGH_WINDOW_BARS: int = 5  # LANE-J2 2026-10-05: walker per_sym_engine_crypto.py:167 shared by stocks (15m bars after exit)
     FOOTHOLD_PILEON_ENABLED: bool = False
     FORCE_OPEN_REQUIRE_MTF_GR: bool = True
     FORCE_REFRESH_SECONDS: float = 10
@@ -3097,6 +3106,8 @@ class TradierConfig:
     VEC_LIVE_REDUCE_PARITY_FRAC: float = 0.0
     VEC_LIVE_REDUCE_PARITY_KEEP_DUST: bool = False
     VEC_LIVE_REDUCE_PPL_REASONS: tuple = ("PARTIAL_PROFIT_LOCK_STEP1", "PPL_STEP1")
+    VEC_VEL_EXIT_AS_TRIGGER: bool = True  # 2026-10-04 cut5: promotes twin/live fallback (twin_gates_sizing_a:133, v12:9905) to field; = QuickConfig True; neutral
+    VEC_HONOR_DEAD_LIVE_DELTA_GATES: bool = False  # 2026-10-04 cut5: promotes twin fallback (twin_p0_crypto_a:284, v12:9293/10300) to field; = QuickConfig False; neutral
     VEC_LIVE_REDUCE_PPL_STEP1_FRAC: float = 0.5
     VEC_MTF_ARMED_BYPASS_STRONG: bool = True
     VEC_MTF_ARMED_GATE_HEDGE_OPEN: bool = False
@@ -4784,3 +4795,8 @@ class TradierConfig:
     # (day low at entry for calls, day high for puts), BUY the opposite-side best-priced option
     # as a hedge leg; release the hedge if the level is reclaimed (±0.1% margin). Once hedged,
     # the PAIR exits at pair_tp/-pair_sl on combined premium. sl=60 is the pre-hedge disaster stop.
+    # ═══ LANE-D 2026-10-05 — stocks VEC_ONLY live-twin defaults (mirror v12 QuickConfig; read-only wiring, behavior inert)
+    WT_SIMPLE_GUARANTEE_ENABLED: bool = False  # v12:6976 vector-only entry crutch; OFF = honest 0-trade baselines
+    STOCKS_REENTRY_LIVE_SOURCES_ENABLED: bool = True  # v12:5170 stocks live reentry ladder pathways on 15m+ data
+    MOMENTUM_TP_ENABLED: bool = True  # v12:5948 vec-only toggle; live MOMENTUM_TP always-on gain>0.5
+    DC_PRIOR_BAR_CHANNEL: bool = True  # v12:5950 DC-channel exits compare close vs PREVIOUS bar channel

@@ -1,0 +1,434 @@
+[
+ {
+  "kind": "header",
+  "spec": "hook_spec_p0_crypto_a",
+  "scope": "rows 1-53 of /tmp/p0_vec_only_crypto.txt (crypto agent A)",
+  "connected": 10,
+  "needs_decision_count": 43,
+  "config_add": [
+   {
+    "file": "config.py",
+    "key": "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER",
+    "default": false,
+    "note": "Only hooked key absent from config.py (anchor hint: after config.py:136 AUGMENT_ONLY_WHEN_PROFITABLE). Inert False. All other hooked keys already exist in config.py."
+   }
+  ],
+  "shared_anchor_seq": "A1 (quick augment guard) shared by ABLATION_DISABLE_AGGRESSIVE_HEDGE + AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER + DELTA_GATE_AUGMENT (all position=before; mutually independent if-blocks, any order). Vet-docstring anchor shared by DELTA_GATE_OPEN + COMBINED_STOCH_GATE_TRADIER (both position=after; independent vetoes, any order).",
+  "anchor_counts_verified": {
+   "ez_positions_quick.py ::         if getattr(config, 'AUGMENT_ONLY_WHEN_PROFITABLE', T": 1,
+   "ez_manage.py ::     current_price = safe_fetch_float(ctx.get(\"current_price\"": 1,
+   "ez_manage.py ::     async def monitor_dc_breach_reduce(self):": 1,
+   "ez_manage.py ::     The ONLY entry should be a higher low on HTF AND higher ": 1,
+   "ez_manage.py ::     \"\"\"Price crossing exit = ALWAYS eligible, 0% tolerance. ": 1,
+   "ez_manage.py ::                                         _hc_bypass = True": 1,
+   "ez_positions_quick.py ::                 # ═══ PARABOLIC EXHAUSTION EXIT (USER RULE 2": 1
+  },
+  "notes": [
+   "Live baseline: zero functional reads of all 53 keys in ez lane (only catalog lists + `_ =` audit no-ops) — confirmed VEC_ONLY.",
+   "_apply_625_ablation_gates (v12:11488) is never called: effective ablation semantics are the inline block (v12:12473-12498).",
+   "v12_quick_engine is unimportable in this checkout (missing vec_decisions.* modules); twins verified against transcribed references (test_p0_crypto_a_twin.py, 32 tests).",
+   "DELTA_GATE_* hooks mirror the vector's VEC_HONOR_DEAD_LIVE_DELTA_GATES lock exactly: gate False alone changes nothing on either side."
+  ]
+ },
+ {
+  "switch": "ABLATION_DISABLE_AGGRESSIVE_HEDGE",
+  "file": "ez_positions_quick.py",
+  "anchor_unique_line": "        if getattr(config, 'AUGMENT_ONLY_WHEN_PROFITABLE', True) and real_gain < 0 and real_amt > 0 and not _is_sba and not is_hedge and not _reason_is_reentry:",
+  "position": "before",
+  "vec_ref": "v12:12473-12474 augment_sig[:]=False",
+  "live_ref": "quick augment guard ~13360-13373",
+  "inert": "default False = no block",
+  "insert_code": "        if getattr(config, 'ABLATION_DISABLE_AGGRESSIVE_HEDGE', False) and _is_pure_augment and not is_hedge:\n            return False, 'BLOCKED_ABLATION_AGGRESSIVE_HEDGE'\n"
+ },
+ {
+  "switch": "ABLATION_DISABLE_HIGH_GAIN_AUGMENT",
+  "file": "ez_manage.py",
+  "anchor_unique_line": "    current_price = safe_fetch_float(ctx.get(\"current_price\", 0), 0)",
+  "position": "after",
+  "vec_ref": "v12:12483-12484 augment_sig[:]=False",
+  "live_ref": "evaluate_augmentation ~39099",
+  "inert": "default False = no block",
+  "insert_code": "    try:\n        import vec_decisions.twin_p0_crypto_a as _twin_p0a\n        if _twin_p0a.ablation_high_gain_kills_augment(config):\n            return None\n    except Exception:\n        pass\n"
+ },
+ {
+  "switch": "ABLATION_DISABLE_DC_BREACH_REDUCE",
+  "file": "ez_manage.py",
+  "anchor_unique_line": "    async def monitor_dc_breach_reduce(self):",
+  "position": "after",
+  "vec_ref": "v12:12479-12480 reduce_sig=False,frac=0",
+  "live_ref": "monitor_dc_breach_reduce ~35197",
+  "inert": "default False = monitor runs",
+  "insert_code": "        if getattr(config, 'ABLATION_DISABLE_DC_BREACH_REDUCE', False):\n            return\n"
+ },
+ {
+  "switch": "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER",
+  "file": "ez_positions_quick.py",
+  "anchor_unique_line": "        if getattr(config, 'AUGMENT_ONLY_WHEN_PROFITABLE', True) and real_gain < 0 and real_amt > 0 and not _is_sba and not is_hedge and not _reason_is_reentry:",
+  "position": "before",
+  "vec_ref": "v12:10377-10380 _augment_allowed (NOT mode-gated; loop v12:13702)",
+  "live_ref": "quick augment guard ~13360-13373",
+  "inert": "default False = base gate unchanged; needs config_add (absent from config.py)",
+  "insert_code": "        if getattr(config, 'AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER', False) and _is_pure_augment and not is_hedge and not (real_gain > 0):\n            logger.warning(f'[AUGMENT_TRADIER_PROFIT_ONLY] {position_key}: BLOCKED augment — gain {real_gain:.2f}% not > 0.')\n            return False, f'BLOCKED_AUGMENT_TRADIER_PROFIT_ONLY_{real_gain:.2f}%'\n"
+ },
+ {
+  "switch": "DELTA_GATE_OPEN",
+  "file": "ez_manage.py",
+  "anchor_unique_line": "    The ONLY entry should be a higher low on HTF AND higher volume (unless re-entry).\"\"\"",
+  "position": "after",
+  "vec_ref": "v12:9293-9294 (honor-gated kill)",
+  "live_ref": "check_entry_vetting ~1133 (module-global config)",
+  "inert": "honor flag False at default = always allows; gate default True",
+  "insert_code": "    try:\n        import vec_decisions.twin_p0_crypto_a as _twin_p0a\n        if not _twin_p0a.delta_gate_open_allows(config):\n            return False, 'DELTA_GATE_OPEN_OFF'\n    except Exception:\n        pass\n"
+ },
+ {
+  "switch": "DELTA_GATE_REENTRY",
+  "file": "ez_manage.py",
+  "anchor_unique_line": "    \"\"\"Price crossing exit = ALWAYS eligible, 0% tolerance. No stoch gate when price has crossed.\"\"\"",
+  "position": "after",
+  "vec_ref": "v12:9296-9301 (honor-gated kill)",
+  "live_ref": "check_reentry_eligible ~3127",
+  "inert": "honor flag False at default = always allows; gate default True",
+  "insert_code": "    try:\n        import vec_decisions.twin_p0_crypto_a as _twin_p0a\n        if not _twin_p0a.delta_gate_reentry_allows(config):\n            return False, 'DELTA_GATE_REENTRY_OFF'\n    except Exception:\n        pass\n"
+ },
+ {
+  "switch": "DELTA_GATE_AUGMENT",
+  "file": "ez_positions_quick.py",
+  "anchor_unique_line": "        if getattr(config, 'AUGMENT_ONLY_WHEN_PROFITABLE', True) and real_gain < 0 and real_amt > 0 and not _is_sba and not is_hedge and not _reason_is_reentry:",
+  "position": "before",
+  "vec_ref": "v12:10299-10300 (honor-gated kill)",
+  "live_ref": "quick augment guard ~13360-13373",
+  "inert": "honor flag False at default = always allows; gate default True",
+  "insert_code": "        try:\n            import vec_decisions.twin_p0_crypto_a as _twin_p0a\n            _p0a_aug_ok = _twin_p0a.delta_gate_augment_allows(config)\n        except Exception:\n            _p0a_aug_ok = True\n        if not _p0a_aug_ok and _is_pure_augment and not is_hedge:\n            return False, 'BLOCKED_DELTA_GATE_AUGMENT_OFF'\n"
+ },
+ {
+  "switch": "HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN",
+  "file": "ez_manage.py",
+  "anchor_unique_line": "                                        _hc_bypass = True",
+  "position": "after",
+  "vec_ref": "v12:12960 bypass only if flag True (default True)",
+  "live_ref": "rally pre-fetch ~36684-36699 (bypasses unconditionally today)",
+  "inert": "default True = bypass preserved exactly as today",
+  "insert_code": "                                        if not bool(getattr(config, 'HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN', True)):\n                                            _hc_bypass = False\n"
+ },
+ {
+  "switch": "BB_RECOVERY_EXIT_ENABLED_TRADIER",
+  "file": "ez_positions_quick.py",
+  "anchor_unique_line": "                # ═══ PARABOLIC EXHAUSTION EXIT (USER RULE 2026-04-10): k_15m extreme + DC breakout + 3m structure crack ═══",
+  "position": "before",
+  "vec_ref": "v12:10017-10025 (not mode-gated)",
+  "live_ref": "hard-exit eval ~14136-14156 (K1M sibling block)",
+  "inert": "default False = block never runs. NOTE: predicate exact; hedge exclusion per live invariant; NO profit guard (mirrors vector — operator ack).",
+  "insert_code": "                # ═══ BB RECOVERY EXIT (twin_p0_crypto_a; vector v12:10017-10025) — default OFF = inert ═══\n                if not hard_exit_reason and not is_hedge and bool(_sw_get(symbol, position_side, 'BB_RECOVERY_EXIT_ENABLED_TRADIER', False)):\n                    try:\n                        import vec_decisions.twin_p0_crypto_a as _twin_p0a\n                        _bbr_u = safe_fetch_float(indicators.get('bb_upper_1h', 0), 0)\n                        _bbr_l = safe_fetch_float(indicators.get('bb_lower_1h', 0), 0)\n                        _bbr_k = safe_fetch_float(indicators.get('k_1h', 50), 50)\n                        if _bbr_u > 0 and _bbr_l > 0 and _twin_p0a.bb_recovery_exit(current_price, _bbr_u, _bbr_l, _bbr_k, is_long):\n                            hard_exit_reason = f'BB_RECOVERY_EXIT_TRADIER_{position_side}_px{current_price:.4f}_k{_bbr_k:.0f}'\n                            logger.critical(f'[BB_RECOVERY_EXIT] {position_key}: {hard_exit_reason}')\n                    except Exception:\n                        pass\n"
+ },
+ {
+  "switch": "COMBINED_STOCH_GATE_TRADIER",
+  "file": "ez_manage.py",
+  "anchor_unique_line": "    The ONLY entry should be a higher low on HTF AND higher volume (unless re-entry).\"\"\"",
+  "position": "after",
+  "vec_ref": "v12:9235-9243 (k_5m else k_3m fallback; not mode-gated)",
+  "live_ref": "check_entry_vetting ~1133 (live has no k_5m -> k_3m fallback, mirroring vector)",
+  "inert": "default 100.0: csg<100 required to act",
+  "insert_code": "    try:\n        import vec_decisions.twin_p0_crypto_a as _twin_p0a\n        _csg = float(getattr(config, 'COMBINED_STOCH_GATE_TRADIER', 100.0))\n    except Exception:\n        _csg = 100.0\n    if _csg < 100.0:\n        _csg_k = _twin_p0a.resolve_csg_k('k_5m' in indicators, _sf(indicators.get('k_5m'), 50), _sf(indicators.get('k_3m'), 50))\n        if not _twin_p0a.stoch_gate_pass(_csg_k, config, is_long):\n            return False, f'COMBINED_STOCH_GATE_k{_csg_k:.0f}_csg{_csg:.0f}'\n"
+ },
+ {
+  "switch": "ABLATION_DISABLE_RATIO_REBALANCE",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Vector effectively inert: inline v12:12485-12486 is `pass # no ratio model`; the killing _apply_625_ablation_gates (v12:11522) is never called. Live HAS a ratio loop (ez_manage:37166) but hooking a kill would INTRODUCE divergence. Operator: vectorize-then-connect."
+ },
+ {
+  "switch": "ABLATION_DISABLE_SPIKE_FADE_EXIT",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Vector effectively inert: inline v12:12496-12498 `pass`; _apply_625 killer (v12:11530) never called. No live spike-fade exit parent either."
+ },
+ {
+  "switch": "ADX_TRENDING_THRESHOLD",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Vector uses it for WT-velocity regime-reduce branching + REGIME_GATE sizing (v12:10412-10449); live crypto has neither parent (only hardcoded ADX cutoffs in quality scorer). Threshold has no inert value — needs a live regime family first."
+ },
+ {
+  "switch": "BACKTEST_VALIDATED_GATES_TRADIER",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Vector gated to MODE==tradier (v12:9257). Zero crypto effect; a crypto live hook would create unmodeled behavior. Stocks-lane item."
+ },
+ {
+  "switch": "CHOP_RANGING_THRESHOLD",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Read-but-unused in vector formula (v12:9048; only trending_thr feeds is_ranging). Live CT_CHOP gate uses a different single-threshold formula (CT_CHOP_4H_MAX, ez_manage:662). No exact parent."
+ },
+ {
+  "switch": "CHOP_TRENDING_THRESHOLD",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Live CT_CHOP_4H gate formula differs (no ADX<25 / BB-width<0.5 legs); threshold has no inert value under the live master. Needs live formula decision."
+ },
+ {
+  "switch": "COOLDOWN_BARS",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Unit mismatch: vector is bar-based post-close cd (v12:12505); live crypto is seconds-based REENTRY_COOLDOWN_S (default 0). Bar->time conversion needs operator decision."
+ },
+ {
+  "switch": "COOLDOWN_BARS_TRADIER",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Tradier branch of v12:12505; never affects crypto vector. Stocks-lane item."
+ },
+ {
+  "switch": "DC_BREAK_LOW_HTF_ALIGN_MIN",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "No live DC-break-low hard-short parent in ez lane (vector v12:9414)."
+ },
+ {
+  "switch": "DC_DAYTRADE_STOP_PCT",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Dead in vector: computed v12:12531, never consumed (DC-list path replaced fixed %). Live daytrade is DC-list-only. A fixed-% exit hook would introduce divergence."
+ },
+ {
+  "switch": "DC_DAYTRADE_TARGET_PCT",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Dead in vector: computed v12:12532, never consumed. Same as STOP_PCT."
+ },
+ {
+  "switch": "DC_HARD_STOP_REENTRY_COOLDOWN_HOURS",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Vector gated is_tradier (v12:13531). Stocks-lane item."
+ },
+ {
+  "switch": "DC_POSITION_ENTRY_THRESHOLD",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Vector B_DAYTRADE *entry* block (v12:8673); live crypto daytrade is exit-only with no entry parent, and the master is shared with live exits (a new entry block would fire under live's enabled master)."
+ },
+ {
+  "switch": "DELTA_ATR_ENTRY_FILTER",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "No live delta-entry ATR move-filter parent (wt_dc_delta.py has no B_DELTAENTRY / atr*0.3 concept; vector v12:8729)."
+ },
+ {
+  "switch": "DELTA_EXIT_DC_FLOOR",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Vector requires tradier + STOCKS_LIVE_TWINS_ENABLED (v12:9898). Stocks-lane item."
+ },
+ {
+  "switch": "DELTA_MAX_HOLD_BARS",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "No live delta max-hold/age exit parent (wt_dc_delta.py has exit_min_hold only; vector v12:12520)."
+ },
+ {
+  "switch": "DYN_STRUCT_TRAIL_ENABLED",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Vector gated tradier (v12:11958). Stocks-lane item."
+ },
+ {
+  "switch": "FORCE_MIN_ONE_TRADE",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Backtest-only construct (force first-valid-bar entry, v12:9870); no live meaning."
+ },
+ {
+  "switch": "GAP_CLOSE_MOC_EXIT_ENABLED",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Stocks/MOC-only; crypto has no market close; vector requires tradier (only_stocks default True, v12:11833). No ez parent."
+ },
+ {
+  "switch": "GAP_CLOSE_MOC_FORCE_MOC_AT_CLOSE",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Same close-gap family: no ez parent."
+ },
+ {
+  "switch": "GAP_CLOSE_MOC_ONLY_FOR_SHORTS",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Same close-gap family: no ez parent."
+ },
+ {
+  "switch": "GAP_CLOSE_MOC_ONLY_STOCKS",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Same close-gap family: no ez parent."
+ },
+ {
+  "switch": "GAP_CLOSE_PER_SYMBOL_AVG_THRESH_PCT",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Same close-gap family: no ez parent."
+ },
+ {
+  "switch": "GAP_CLOSE_PER_SYMBOL_LOOKBACK_DAYS",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Same close-gap family: no ez parent."
+ },
+ {
+  "switch": "GAP_INVENTORY_LOOKBACK_DAYS",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Fallback input to the tradier-only GAP sentinel (v12:11758). No ez parent."
+ },
+ {
+  "switch": "GAP_MOC_DC_PROXIMITY_PCT",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Same GAP-MOC family (VV proximity, v12:11798). No ez parent."
+ },
+ {
+  "switch": "GAP_MOC_EXIT_ENABLED",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Master of the tradier-only GAP sentinel (v12:11695); crypto has no MOC. No ez parent."
+ },
+ {
+  "switch": "GAP_MOC_FORCE_MOC_AT_CLOSE",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Same GAP-MOC family. No ez parent."
+ },
+ {
+  "switch": "GAP_MOC_HOLD_POSITIVE_BIAS_PCT",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Same GAP-MOC family (threshold fallback, v12:11775). No ez parent."
+ },
+ {
+  "switch": "GAP_PER_SYMBOL_AVG_THRESH_PCT",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Same GAP-MOC family. No ez parent."
+ },
+ {
+  "switch": "GAP_PER_SYMBOL_LOOKBACK_DAYS",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Same GAP-MOC family. No ez parent."
+ },
+ {
+  "switch": "GAP_RISK_EXIT_ENABLED",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Vector gated tradier (v12:11905); live parent is tradier_manage, not ez; vector module absent in this checkout. Stocks-lane item."
+ },
+ {
+  "switch": "GAP_RISK_EXIT_COND_A_ENABLED",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Same GAP_RISK family (A-enable OR-leg). Stocks-lane item."
+ },
+ {
+  "switch": "GAP_RISK_EXIT_COND_B_ENABLED",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Same GAP_RISK family (B-enable OR-leg). Stocks-lane item."
+ },
+ {
+  "switch": "GAP_RISK_EXIT_LONG_ENABLED",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Same GAP_RISK family (side gate). Stocks-lane item."
+ },
+ {
+  "switch": "GAP_RISK_EXIT_SHORT_ENABLED",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Same GAP_RISK family (side gate). Stocks-lane item."
+ },
+ {
+  "switch": "GAP_RISK_EXIT_OPEN_RECLAIM_ENABLED",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Same GAP_RISK family (A-enable OR-leg). Stocks-lane item."
+ },
+ {
+  "switch": "GAP_RISK_EXIT_STRUCTURE_BREAK_ENABLED",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Same GAP_RISK family (B-enable OR-leg). Stocks-lane item."
+ },
+ {
+  "switch": "GAP_RISK_REENTRY_ENABLED",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Config-only: no vector predicate anywhere (field v12:6805, zero functional reads). Nothing to mirror; needs operator spec."
+ },
+ {
+  "switch": "GAP_RISK_REENTRY_MAX_DAYS",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Config-only: no vector predicate anywhere. Needs operator spec."
+ },
+ {
+  "switch": "GAP_RISK_REENTRY_ON_FILL",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Config-only: no vector predicate anywhere. Needs operator spec."
+ },
+ {
+  "switch": "GAP_RISK_REENTRY_REQUIRE_TREND",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Config-only: no vector predicate anywhere. Needs operator spec."
+ },
+ {
+  "switch": "GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN",
+  "file": null,
+  "anchor_unique_line": null,
+  "insert_code": null,
+  "needs_decision": "Vector dead-read (v12:8624 read, v12:8630 discarded, zero effect); a live hook with the vector default True would NEWLY block reentries. Operator must choose the live default."
+ }
+]

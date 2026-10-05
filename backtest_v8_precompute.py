@@ -1185,6 +1185,10 @@ def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
     # DC width + position
     dc_range = dc_high - dc_low
     out[f"dc_width_{tf}"] = (dc_range / dc_basis.replace(0, 1e-10) * 100).values.astype(np.float32)
+    _wprev = np.roll(out[f"dc_width_{tf}"], 1).astype(np.float32)
+    if len(_wprev):
+        _wprev[0] = out[f"dc_width_{tf}"][0]
+    out[f"dc_width_{tf}_prev"] = _wprev
     out[f"dc_position_{tf}"] = ((close - dc_low) / dc_range.replace(0, 1e-10)).clip(0, 1).values.astype(np.float32)
     # DC4 (4-bar)
     dc_high4 = high.rolling(4, min_periods=1).max()

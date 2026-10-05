@@ -680,6 +680,41 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
             )
         else:
             crossed = (is_long and cur_px > exit_px) or ((not is_long) and cur_px < exit_px)
+        # TWIN-REENTRY-STAGED (REENTRY_PULL1-4 crypto live): pullback-in-trend
+        # reentry proposals (staged vec: v12_quick_engine.py:8343-8393 B_PULL1-4,
+        # scalarized in vec_decisions/twin_reentry_staged.py; twin==staged proven
+        # per-bar in test_reentry_staged_twin.py). OR-fire: a PULL proposal forces
+        # the crossed path below (dedup + pos_amt==0 + confirmation gate still
+        # apply). NEW BEHAVIOR: crypto had no PULL live reads (only name-list refs
+        # ez_manage.py:5676-5679). Inert at defaults (all four ENABLED=False).
+        # FIELD GAP: live lacks stoch_k_3m_prev2 (see REPORT).
+        _pull_tag = ""
+        try:
+            import vec_decisions.twin_reentry_staged as _twin_pull
+            _pull_ind = _lookup_indicators(trade_manager, sym) if sym else {}
+            def _pull_get2(_k, _d=None):
+                try:
+                    _cv = getattr(_cfg, _k, None)
+                except Exception:
+                    _cv = None
+                if _cv is not None:
+                    return _cv
+                try:
+                    return _pull_ind.get(_k, _d)
+                except Exception:
+                    return _d
+            if bool(_twin_pull.reentry_pull1_fires(_pull_get2, is_long)):
+                _pull_tag = "PULL1"
+            elif bool(_twin_pull.reentry_pull2_fires(_pull_get2, is_long, cur_px)):
+                _pull_tag = "PULL2"
+            elif bool(_twin_pull.reentry_pull3_fires(_pull_get2, is_long)):
+                _pull_tag = "PULL3"
+            elif bool(_twin_pull.reentry_pull4_fires(_pull_get2, is_long)):
+                _pull_tag = "PULL4"
+            if _pull_tag:
+                crossed = True
+        except Exception:
+            _pull_tag = ""
         if not crossed:
             continue
         last_fire = float(trade_manager._price_cross_last_fire.get(pk, 0))
@@ -698,6 +733,14 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
         _reason_str = str(exit_reason or "").upper()
         _is_leash_re = "BREAKOUT_LEASH" in _reason_str
         _gate_ok, _gate_reason = check_reentry_confirmation(ind, is_long, _cfg, cur_px, is_leash_re=_is_leash_re, exit_price=exit_px)
+        # TWIN-REENTRY-STAGED: tag PULL-proposal fires in the reentry reason so
+        # the ledger distinguishes them from price-cross fires (pairs with the
+        # BEFORE-crossed hook above; NameError-safe if applied alone).
+        try:
+            if _pull_tag:
+                _gate_reason = f"{_gate_reason}+REENTRY_{_pull_tag}"
+        except NameError:
+            pass
         if not _gate_ok:
             continue
         def _f(k, default=None):
