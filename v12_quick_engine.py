@@ -183,6 +183,7 @@ import vec_decisions.wave4_families
 import vec_decisions.momentum_watchdog
 import vec_decisions.watchdog_dc_breakout  # w2-watchdog: staged twin (parent cut copies the module into place)
 import vec_decisions.mtf_gr_filter
+import vec_decisions.small_account_sizer  # DH parity 2026-10-05: live 0.15x + lot-step twin
 import vec_decisions.shared_zone
 try:
     import tools.hooks.persistent_v12_hooks  # ensures vec_identical guard runs (LOCKED)
@@ -7089,6 +7090,9 @@ class QuickConfig:
     MAX_MEMORY_GB: int = 8
     MAX_ORDER_VALUE_FIN: float = 280.0
     MAX_ORDER_VALUE_MEN: float = 280.0
+    SMALL_ACCOUNT_SIZER_ENABLED: bool = False  # DH parity 2026-10-05: twin of live small-account sizing (ez_manage 0.15x + lot-step). §17.3 exclusion class: OFF by default (live sizing zeroes sim sizing); enable with VEC_ACCOUNT_KEY for per-account forward parity only.
+    VEC_ACCOUNT_KEY: str = ""  # DH parity 2026-10-05: live account this sim replicates (fin/men/ang/inf/flz). "" = no account-specific rules (legacy).
+    SMALL_ACCOUNT_MIN_NOTIONAL_USD: float = 5.0  # DH parity 2026-10-05: exchange min-notional; dust below this never fills (men DASH 0.001 Oct 4).
     MAX_POSITION_SIZE_BTC: float = 2000.0
     MAX_POSITION_SIZE_FIN: float = 280.0
     MAX_POSITION_SIZE_MEN: float = 280.0
@@ -13600,6 +13604,15 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         qty0, _wirec_hte = _whlr2.apply_reentry_floor(_wirec_hte, qty0, px, float(ts[i]) if i < len(ts) else 0.0, cfg)
                     except Exception:
                         pass
+                # DH parity 2026-10-05: live small-account sizing twin (0.15x + lot-step).
+                # No-op unless SMALL_ACCOUNT_SIZER_ENABLED + VEC_ACCOUNT_KEY (crypto only).
+                if qty0 > 0 and bool(getattr(cfg, "SMALL_ACCOUNT_SIZER_ENABLED", False)) and str(getattr(cfg, "VEC_ACCOUNT_KEY", "") or "") and str(getattr(cfg, "MODE", "crypto") or "crypto") != "tradier":
+                    try:
+                        _sas_q, _sas_tok = vec_decisions.small_account_sizer.apply_live_sizing(
+                            float(qty0), float(px), str(sym), str(getattr(cfg, "VEC_ACCOUNT_KEY", "")).strip().lower(), cfg)
+                        qty0 = _sas_q
+                    except Exception:
+                        pass
                 if qty0 > 0:
                     # Derive real entry reason from the block that fired at this bar
                     entry_reason = 'VECTOR_ENTRY'
@@ -14043,6 +14056,15 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 if _aal_fire and not (_dd_fire or _hq_fire or _n4_fire):
                     add_qty = pos['qty']  # WIRING LANE L2: one START_POSITION_SIZE step (1x add, MOP-UP M C41 idiom); lowest size priority
                     _aal_reason = 'AUGMENT_AT_LOSS_HL' if is_long else 'AUGMENT_AT_LOSS_LH'
+                # DH parity 2026-10-05: live small-account sizing twin on augments too
+                # (live maker path floors augments identically). Gated, crypto only.
+                if add_qty > 0 and bool(getattr(cfg, "SMALL_ACCOUNT_SIZER_ENABLED", False)) and str(getattr(cfg, "VEC_ACCOUNT_KEY", "") or "") and str(getattr(cfg, "MODE", "crypto") or "crypto") != "tradier":
+                    try:
+                        _sas_q, _sas_tok = vec_decisions.small_account_sizer.apply_live_sizing(
+                            float(add_qty), float(px), str(sym), str(getattr(cfg, "VEC_ACCOUNT_KEY", "")).strip().lower(), cfg)
+                        add_qty = _sas_q
+                    except Exception:
+                        pass
                 if add_qty > 0:
                     new_qty = pos['qty'] + add_qty
                     pos['avg_price'] = (pos['avg_price'] * pos['qty'] + px * add_qty) / new_qty

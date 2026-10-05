@@ -28835,6 +28835,13 @@ class MultiAccountTradeManager:
                         f"🛑 [DEDUPE_LOGICAL_DEMAND] Duplicate order blocked: {position_key} (last queued {min_since:.1f}s ago <180s) — REFUSING 2×/80× (AMD 2× in 3s) — VERIFY EXCHANGE FIRST"
                     )
                     return True
+            # 2026-10-05 USER queue-jump: unique_id="queue_check" probes (queue_trade_action
+            # pre-check, no order sent) must NEVER stamp order_deduplication — the BROKER_SYNC
+            # gate reads position_key stamps as unconfirmed real orders and PENDING-blocks the
+            # same attempt seconds later (men:STXUSDT_LONG 59x, 538 fleet-wide, ~0 trades).
+            # Check-only: a genuine recent stamp above already returned True; record nothing.
+            if unique_id == "queue_check":
+                return False
             # Also block same side regardless of unique_id — unique_id no longer bypasses dedupe for same position_key/side
             # Keep key for logging but don't use to bypass position_key block
             key = f"{position_key}:{side}:{unique_id}"
