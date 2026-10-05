@@ -837,5 +837,32 @@
     ],
     "timestamp": "2026-10-05T19:37:59.007610+00:00",
     "price": 0.01451405
+  },
+  {
+    "symbol": "EWTUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 8.8x normal"
+    ],
+    "timestamp": "2026-10-05T22:53:34.587263+00:00",
+    "price": 118.27
+  },
+  {
+    "symbol": "FLUXUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 21.8x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-05T22:53:34.587263+00:00",
+    "price": 0.08444
+  },
+  {
+    "symbol": "RONINUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 10.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-05T22:59:39.911770+00:00",
+    "price": 0.0679595
   }
 ]

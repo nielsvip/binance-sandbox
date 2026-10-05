@@ -6756,7 +6756,7 @@ class QuickConfig:
     GAP_PER_SYMBOL_INVENTORY_FILE: str = 'data/gap_inventory_tradier_per_symbol.json'
     GAP_PER_SYMBOL_HISTORY_FILE: str = 'data/gap_history_1yr_tradier.json'
     GAP_PER_SYMBOL_AVG_THRESH_PCT: float = 0.10  # E: POS avg keep long, NEG keep short, else close last 90m on local high / dc_low4_3m breakdown vv
-    GAP_PER_SYMBOL_LOOKBACK_DAYS: int = 20  # 20 trading days (1 month) per spec E — last 20 opens vs prior closes
+    GAP_PER_SYMBOL_LOOKBACK_DAYS: int = 30  # USER 2026-10-05: 30 trading days — 30D gap avg; matches live gap30d file
     GAP_MOC_DC_PROXIMITY_PCT: float = 0.5
     GAP_MOC_DC_WT_SAFETY_ENABLED: bool = True
     GAP_MOC_EXIT_ENABLED: bool = True
@@ -11998,13 +11998,15 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _wt1_15 = _safe(npz, 'wt1_15m', n); _wt2_15 = _safe(npz, 'wt2_15m', n)
                 _wt1_5 = _safe(npz, 'wt1_5m', n); _wt2_5 = _safe(npz, 'wt2_5m', n)
                 # last 90m window: last 6 bars of each RTH day (15m) or 18 bars (5m)
-                _bars_90m = max(2, int(90/max(_bar_min,1)))
+                _bars_90m = max(2, int(float(getattr(cfg, 'GAP_MOC_WINDOW_MINUTES', 90))/max(_bar_min,1)))  # WIRING LANE E: live knob (default 90 = 14:30 ET)
                 _in_window = _np_gap.zeros(n, dtype=bool)
                 for _i in range(n):
                     _off = _i % _bars_per_day
                     if _bars_per_day - _bars_90m <= _off < _bars_per_day:
                         _in_window[_i] = True
                 _is_top = (_wt1_15 < _wt2_15) if is_long else (_wt1_15 > _wt2_15)
+                if not bool(getattr(cfg, 'GAP_MOC_REQUIRE_TOP', True)):  # WIRING LANE E: live _is_small_top_for_gap_exit returns True when OFF
+                    _is_top = _np_gap.ones(n, dtype=bool)
                 # PER-SYMBOL decides: longs when avg < -thr (gap-down risk), shorts when avg > thr (gap-up risk); near 0 (|avg|<=thr) only VV closes
                 if is_long:
                     _gap_should = _avg_gap < -_thr
