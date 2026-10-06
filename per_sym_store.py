@@ -263,16 +263,43 @@ def _row_to_entry(row: sqlite3.Row) -> dict:
     return base
 
 
+_JSON_FALLBACK_CACHE: dict = {}
+
+
+def _json_fallback_entry(p: Path, sym_side: str):
+    # 2026-10-06 triage: per-file cache keyed on (mtime_ns, size, ino). Uncached, every call re-parsed ~140MB
+    # (crypto+stocks per_sym JSON) synchronously -> 1.5-2.4s per _psym_get for sym_sides absent from SQLite,
+    # stalling the ez_manage event loop for minutes (men stalls, ang PAU_TIMEOUT exit 42). Keeps only the key
+    # set + entries actually requested (not the whole 70MB dict) to bound RSS. Same data, same result.
+    st = p.stat()
+    sig = (st.st_mtime_ns, st.st_size, st.st_ino)
+    hit = _JSON_FALLBACK_CACHE.get(str(p))
+    if hit is None or hit[0] != sig:
+        hit = (sig, None, {})
+        _JSON_FALLBACK_CACHE[str(p)] = hit
+    if hit[1] is not None and sym_side not in hit[1]:
+        return None
+    if sym_side in hit[2]:
+        return hit[2][sym_side]
+    raw = json.loads(p.read_text())
+    keys = frozenset(raw.keys()) if isinstance(raw, dict) else frozenset()
+    val = raw.get(sym_side) if isinstance(raw, dict) else None
+    _JSON_FALLBACK_CACHE[str(p)] = (sig, keys, dict(hit[2]))
+    _JSON_FALLBACK_CACHE[str(p)][2][sym_side] = val
+    return val
+
+
 def _json_load_fallback(sym_side: str) -> Optional[dict]:
     """Try each JSON file for the sym_side. Returns raw entry or None."""
+    import copy as _copy
     # choose file set based on suffix heuristic, but try all
     for p in (CRYPTO_JSON, STOCKS_JSON, TRB_JSON, TRC_JSON):
         try:
             if not p.exists():
                 continue
-            raw = json.loads(p.read_text())
-            if sym_side in raw and isinstance(raw[sym_side], dict):
-                e = dict(raw[sym_side])
+            _ent = _json_fallback_entry(p, sym_side)
+            if isinstance(_ent, dict):
+                e = _copy.deepcopy(_ent)
                 e["_source"] = f"json:{p.name}"
                 # ensure full_config present: fallback to overrides if missing
                 if "full_config" not in e and "overrides" in e:
