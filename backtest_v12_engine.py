@@ -4043,6 +4043,31 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             ez_manage._PROCESS_START_TS = 0.0
         except Exception:
             pass
+        # Live rate limiters (EMERGENCY_BRAKE trades/min in ez_positions_quick, execute_now hourly/minute entry caps) count
+        # rows in <cwd|BASE_PATH>/data/decisions/decisions_<acct>_<WALL day>.jsonl against the WALL clock. A replay fills
+        # many sim bars per wall minute and concurrent replays in one copy share that file -> the caps fire on replay speed
+        # (1INCH BLOCKED_EMERGENCY_BRAKE x3, COTI_SHORT x12). Decision recording is I/O: write it per run, off that path.
+        try:
+            import tempfile as _tf_dec
+            import utils as _utils_dec
+            _dec_dir = Path(_tf_dec.mkdtemp(prefix="v12_decisions_"))
+
+            async def _v12_rec_crypto(redis_manager, account_key, position_key, action, reason, indicators, extra_data=None, *a, **kw):
+                try:
+                    with open(_dec_dir / f"decisions_{account_key}.jsonl", "a") as _fh:
+                        _fh.write(json.dumps({"sim_ts": float(_sim_ts[0]), "pk": position_key, "action": action, "reason": str(reason)[:200]}, default=str) + "\n")
+                except Exception:
+                    pass
+
+            async def _v12_rec(redis_manager, account_key, position_key, action, reason, indicators, score=None, market_context=None, trade_details=None, *a, **kw):
+                return await _v12_rec_crypto(redis_manager, account_key, position_key, action, reason, indicators)
+            for _m_dec in (_utils_dec, ez_manage, ez_positions_quick):
+                if hasattr(_m_dec, "record_decision_context_crypto"):
+                    _m_dec.record_decision_context_crypto = _v12_rec_crypto
+                if hasattr(_m_dec, "record_decision_context"):
+                    _m_dec.record_decision_context = _v12_rec
+        except Exception as _dec_e:
+            v8_logger.warning(f"[V12_REAL_EXECUTE] decision-recorder isolation failed: {_dec_e}")
         for _dtm in (ez_manage, ez_positions_quick):
             try:
                 if getattr(_dtm, "datetime", None) is datetime:

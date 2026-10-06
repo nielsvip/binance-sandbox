@@ -277,6 +277,17 @@ def _atomic_write_json(path: Path, obj: dict):
     os.replace(tmp, path)
 
 
+_MISSING = object()
+_VENUE_CACHE = {}
+
+
+def _venue_values_cached(stocks: bool, root: Path) -> tuple:
+    key = (bool(stocks), str(root))
+    if key not in _VENUE_CACHE:
+        _VENUE_CACHE[key] = _venue_values(bool(stocks), root)
+    return _VENUE_CACHE[key]
+
+
 def register_workbook_result(
     sym_side: str,
     overrides: dict,
@@ -285,8 +296,16 @@ def register_workbook_result(
     dry_run: bool = False,
     tag: str = None,
     root: Path = None,
+    diff_only: bool = False,
 ) -> dict:
-    """Register a workbook-end positive result on every surface. See module doc."""
+    """Register a workbook-end positive result on every surface. See module doc.
+
+    diff_only (daily chain step 3, director 2026-10-06): register ONLY keys whose value differs from the effective
+    default (cat_side_defaults_4 > venue global), so later daily default promotions still reach the sym_side.
+    In this mode a key absent from the cat_side snapshot is typed against the venue global (config.py /
+    config_tradier.py); a key with no usable live ref (absent / dict-typed live) is dropped when it equals the
+    QuickConfig default (no-op) and refuses otherwise; a non-integral float for a live-int field is kept as float
+    when QuickConfig declares that field float (the value the vector engine actually evaluated)."""
     root = Path(root) if root else _ROOT()
     sys.path.insert(0, str(root))
     rep = {"sym_side": sym_side, "registered": False, "dry_run": bool(dry_run)}
@@ -343,15 +362,43 @@ def register_workbook_result(
         )
         return rep
     coerced, bad = {}, {}
+    if diff_only:
+        live_vals, quick_vals = _venue_values_cached(not is_crypto_sym(symbol), root)
+        same, noop, floatkept = [], [], []
     for k, v in overrides.items():
-        if k not in snap:
-            bad[k] = "not a cat_side/config key"
+        if not diff_only:
+            if k not in snap:
+                bad[k] = "not a cat_side/config key"
+                continue
+            ok_c, cv = coerce_like(v, snap[k])
+            if ok_c:
+                coerced[k] = cv
+            else:
+                bad[k] = cv
             continue
-        ok_c, cv = coerce_like(v, snap[k])
-        if ok_c:
-            coerced[k] = cv
-        else:
+        ref = snap[k] if k in snap else live_vals.get(k, _MISSING)
+        if ref is _MISSING or isinstance(ref, (dict, list, tuple, set)):
+            qd = quick_vals.get(k, _MISSING)
+            if qd is not _MISSING and _same_val(v, qd):
+                noop.append(k)
+            else:
+                bad[k] = "no live config ref (absent or dict-typed) and value != QuickConfig default"
+            continue
+        ok_c, cv = coerce_like(v, ref)
+        if not ok_c and isinstance(ref, int) and not isinstance(ref, bool) and isinstance(v, float) and isinstance(quick_vals.get(k), float) and not isinstance(quick_vals.get(k), bool):
+            ok_c, cv = True, float(v)
+            floatkept.append(k)
+        if not ok_c:
             bad[k] = cv
+        elif _same_val(cv, ref):
+            same.append(k)
+        else:
+            coerced[k] = cv
+    if diff_only:
+        rep["diff_only"] = {"n_in": len(overrides), "n_differs": len(coerced), "n_equal_default": len(same), "n_noop_nonlive": len(noop), "noop_nonlive": noop[:20], "float_kept_for_int": floatkept}
+        if not bad and not coerced:
+            rep["reason"] = "diff_only: no key differs from the effective default (nothing to register)"
+            return rep
     if bad:
         rep["reason"] = (
             f"type-gate refused ALL ({len(bad)} bad): {dict(list(bad.items())[:6])}"

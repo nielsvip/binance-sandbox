@@ -87,11 +87,17 @@ Steps 1+2 of §68.3 now run on **S1** (the Mac sleeps; S1 does not):
 
 ## Still missing from the chain (NOT implemented — open items)
 
-1. **Step 3, per-sym settings go-live.** Nothing takes the qualified per-sym best sets (30D valid + positive, 365D confirmed,
-   `switch_parity.register_workbook_result` gates) and writes them to the live surfaces on the Mac (config / SQLite `per_sym_store` /
-   per-sym JSON book + trb overlay). Registrations happen only server-side at workbook DONE (0 so far fleet-wide; refused on `*_VEC_ONLY_*`
-   keys) and no job moves them to the Mac. Needed: a Mac-side daily applier after `v15_daily_chain_mac_apply.sh` that pulls the qualified
-   final sets from the servers and runs the registrar on the Mac, post-verified by re-read.
+1. **Step 3, per-sym settings go-live: built, DRY-RUN only (added 2026-10-06 ~18:10Z, coordinator scope addition).**
+   `tools/v15_persym_golive.py` runs as Mac apply step 5b. It reads the rebuild's one-latest-file-per-sym_side selection, freshly evaluates
+   each `cumulative_overrides` on the server that holds the NPZ (30D, `prepare_batch` + `evaluate_prepared_sanitized`), maps the renamed
+   `*_VEC_ONLY_*` keys (CRYPTO_VEC_ONLY_REENTRY to CRYPTO_REENTRY_PATHWAYS, HAIKU_WINNER_VEC_ONLY to HAIKU_WINNER_AUGMENT,
+   KEY_LEVEL_CRASH_VEC_ONLY to KEY_LEVEL_CRASH_EXIT, KG_STOCKS_LIVE_GATE_VEC_ONLY to KG_STOCKS_HARD_VETO; EMA50 VEC_ONLY dropped), and gates
+   with `switch_parity.register_workbook_result(dry_run=True)` + the 365D verdict + no SIMPLE_PRICE_GT0. The report is
+   `data/daily_chain/persym_golive_<date>.json`. `--apply` (the registrar's real writer) is NOT wired into cron and waits for director/user
+   confirmation. First report (20261006, director's selection): 543 selected, 457 evaluated, **18 PASS**, 394 not qualified on the fresh
+   eval, 19 SIMPLE_PRICE_GT0, 32 type-gate (RECENT_REDUCTION_GUARD_ENABLED, AUGMENT_MIN_GAIN_PCT, ...), 4 failing a 365D verdict.
+   Open design point: the stored sets are FULL (~800 keys), so registering pins every key per-sym (per-sym > cat_side), and later default
+   promotions would no longer reach those sym_sides.
 2. **Step 3b, inf universe** (`tools/v15_daily_inf_universe.py`, Mac 13:05Z, dry-run only). Blocked for `--apply`: the locked live
    `ez_rankings.py` rewrites `symbols_inf_long/short.json` every ~2.5 min (`[INF_BEST_SAVE]`), so a daily write would be overwritten within
    minutes. Needs a user unlock of ez_rankings.py to retire that writer (+ restart), then flip the cron to `--apply`.

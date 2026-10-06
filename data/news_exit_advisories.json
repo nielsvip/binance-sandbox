@@ -1,118 +1,54 @@
 {
-  "generated_at": "2026-10-06T18:00:55.601312+00:00",
-  "count": 14,
+  "generated_at": "2026-10-06T18:20:13.415589+00:00",
+  "count": 6,
   "advisories": [
     {
-      "symbol": "AG",
+      "symbol": "AR",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.60 threshold=0.45",
-      "score": 0.597,
-      "ts": "2026-10-06T18:00:55.601226+00:00"
+      "reason": "bullish_news_score=0.52 threshold=0.45",
+      "score": 0.524,
+      "ts": "2026-10-06T18:20:13.415523+00:00"
     },
     {
-      "symbol": "ALKT",
+      "symbol": "GOOGL",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.71 threshold=0.45",
-      "score": 0.706,
-      "ts": "2026-10-06T18:00:55.601237+00:00"
+      "reason": "bullish_news_score=0.59 threshold=0.45",
+      "score": 0.587,
+      "ts": "2026-10-06T18:20:13.415536+00:00"
     },
     {
-      "symbol": "APA",
+      "symbol": "INTC",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.91 threshold=0.45",
-      "score": 0.906,
-      "ts": "2026-10-06T18:00:55.601239+00:00"
+      "reason": "bullish_news_score=0.46 threshold=0.45",
+      "score": 0.464,
+      "ts": "2026-10-06T18:20:13.415539+00:00"
     },
     {
-      "symbol": "AU",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.53 threshold=0.45",
-      "score": 0.525,
-      "ts": "2026-10-06T18:00:55.601242+00:00"
-    },
-    {
-      "symbol": "AXTI",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.48 threshold=0.45",
-      "score": 0.483,
-      "ts": "2026-10-06T18:00:55.601244+00:00"
-    },
-    {
-      "symbol": "A",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.55 threshold=0.45",
-      "score": 0.551,
-      "ts": "2026-10-06T18:00:55.601245+00:00"
-    },
-    {
-      "symbol": "BABA",
+      "symbol": "LOW",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.46 threshold=0.45",
       "score": 0.459,
-      "ts": "2026-10-06T18:00:55.601247+00:00"
+      "ts": "2026-10-06T18:20:13.415541+00:00"
     },
     {
-      "symbol": "BG",
+      "symbol": "MSFT",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.72 threshold=0.45",
-      "score": 0.718,
-      "ts": "2026-10-06T18:00:55.601249+00:00"
+      "reason": "bullish_news_score=0.59 threshold=0.45",
+      "score": 0.586,
+      "ts": "2026-10-06T18:20:13.415544+00:00"
     },
     {
-      "symbol": "BIDU",
+      "symbol": "RRC",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.70 threshold=0.45",
-      "score": 0.705,
-      "ts": "2026-10-06T18:00:55.601250+00:00"
-    },
-    {
-      "symbol": "BKR",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.48 threshold=0.45",
-      "score": 0.484,
-      "ts": "2026-10-06T18:00:55.601252+00:00"
-    },
-    {
-      "symbol": "CDE",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.62 threshold=0.45",
-      "score": 0.62,
-      "ts": "2026-10-06T18:00:55.601254+00:00"
-    },
-    {
-      "symbol": "CF",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.88 threshold=0.45",
-      "score": 0.878,
-      "ts": "2026-10-06T18:00:55.601256+00:00"
-    },
-    {
-      "symbol": "CHRD",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.49 threshold=0.45",
-      "score": 0.494,
-      "ts": "2026-10-06T18:00:55.601257+00:00"
-    },
-    {
-      "symbol": "CLS",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.51 threshold=0.45",
-      "score": 0.511,
-      "ts": "2026-10-06T18:00:55.601259+00:00"
+      "reason": "bullish_news_score=0.50 threshold=0.45",
+      "score": 0.497,
+      "ts": "2026-10-06T18:20:13.415547+00:00"
     }
   ]
 }

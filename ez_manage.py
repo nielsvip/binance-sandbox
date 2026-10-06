@@ -31566,6 +31566,7 @@ class MultiAccountTradeManager:
         # 🚫 EXIT BLOCKER LH/LL — 2026-09-15 USER: block REDUCE/CLOSE unless LH (closed 15m) OR LL (forming) ===
         try:
             if (bool(getattr(config, "EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED", False))
+                and not _vd_exempt  # lane A 2026-10-06 (CHRUSDT_LONG 173x BLOCKED_EXIT_LH_LL_REQUIRED): a vec-decided exit is never re-gated
                 and ("REDUCE" in _kill_act or "CLOSE" in _kill_act)
                 and "HEDGE" not in (reason or "").upper()):
                 _blk_sym = symbol or (position_key.split(":")[-1].rsplit("_", 1)[0] if position_key else "")
@@ -32862,21 +32863,21 @@ class MultiAccountTradeManager:
                         return f"BLOCKED_CIRCUIT_BREAKER_{_cb_reason[:40]}"
                     # TIER C #7: hour-of-day
                     _hr_ok, _hr_reason = _sxe.check_hour_allow_entry(config)
-                    if not _hr_ok:
+                    if not _hr_ok and not _vd_exempt:  # lane A 2026-10-06: decision gate, vec-decided orders exempt (hard safety = circuit breaker above stays)
                         logger.info(f"[HOUR_BLOCK] {position_key}: {_hr_reason}")
                         return f"BLOCKED_HOUR_OF_DAY_{_hr_reason[:40]}"
                     # TIER A #3: regime gate (skip chop)
                     _rg_ok, _rg_reason = _sxe.check_regime_allow_entry(
                         config, _sxe_ind, _sxe_px
                     )
-                    if not _rg_ok:
+                    if not _rg_ok and not _vd_exempt:  # lane A 2026-10-06 (1INCHUSDT_LONG 45x BLOCKED_REGIME_REGIME_SQUEEZE on vec-decided opens): decision gate, vec-decided exempt
                         logger.info(f"[REGIME_BLOCK] {position_key}: {_rg_reason}")
                         return f"BLOCKED_REGIME_{_rg_reason[:40]}"
                     # TIER C #6: volume confirmation
                     _vol_ok, _vol_reason = _sxe.check_volume_confirmation(
                         config, _sxe_ind
                     )
-                    if not _vol_ok:
+                    if not _vol_ok and not _vd_exempt:  # decision gate, vec-decided exempt
                         logger.info(f"[VOLUME_BLOCK] {position_key}: {_vol_reason}")
                         return f"BLOCKED_VOLUME_{_vol_reason[:40]}"
             except Exception as _sxe_err:
@@ -48355,6 +48356,9 @@ async def periodic_direct_high_gain_reopen(
     # DEAD_CODE: #0A
 
 
+_VEC_EXACT_FALLBACK_LOGGED: set = set()
+
+
 async def _vec_exact_process_position(account_key, position_key, trade_manager) -> bool:
     """parity-loop-crypto 2026-10-06 (PARITY_VEC_EXACT_MODE): True = handled here, native process_position must not run.
     Flat key + ENTRY family twinned: native flat-key openers are suppressed (the vec ENTRY twin runs in the EPQ candidate loop).
@@ -48377,7 +48381,12 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
         if "EXIT" not in fams:
             return False
         # SAFETY: no twin decision available for this sym_side (no store / warm-up / error) -> native exits run (never strand a position)
-        if _vx.actions_at(_sym, _side, time.time()).get("status") != "OK":
+        _vx_st = _vx.actions_at(_sym, _side, time.time())
+        if _vx_st.get("status") != "OK":
+            _fb_key = (position_key, _vx_st.get("status"), _vx_st.get("bar_ts"))
+            if _fb_key not in _VEC_EXACT_FALLBACK_LOGGED:
+                _VEC_EXACT_FALLBACK_LOGGED.add(_fb_key)
+                logger.warning(f"[VEC_EXACT_NATIVE_FALLBACK] {position_key}: twin status={_vx_st.get('status')} bar={_vx_st.get('bar_ts')} -> native exits run this bar")
             return False
         want = ("CLOSE", "REDUCE") + (("AUGMENT",) if "AUGMENT" in fams else ())
         for _a in _vx.take(_sym, _side, time.time(), want):
@@ -48386,7 +48395,8 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                 break
             _px = safe_fetch_float(getattr(_pos, "mark_price", 0), 0.0) or safe_fetch_float(_a.get("vec_price"), 0.0)
             _act, _oside, _qty, _full = _vx.order_args(_a, _side, _amt, _px)
-            if _qty <= 0:  # vec action of zero size on the live position (e.g. a vec REDUCE fraction of 0) -> nothing to send
+            if _qty <= 0:  # vec action of zero size on the live position (e.g. a vec REDUCE fraction of 0) -> nothing to send, never a SUCCESS
+                logger.warning(f"[VEC_EXACT] {position_key} {_act} {_a['reason'][:60]} SKIPPED zero qty (frac={_a.get('qty_frac')} to_flat={_a.get('to_flat')})")
                 continue
             _lq, _lov = _vx.live_sizing_args(_act, _qty, _px, config)
             _res = await trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_lq, current_price=_px, side=_oside, position_side=_side, unique_id=f"VX{int(_a['bar_ts'])}{_a['n']}", is_full_close=_full, action=_act, reason=_vx.tagged_reason(_a), override_qty=_lov, is_hedge=False)
