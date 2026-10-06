@@ -16,7 +16,7 @@
 6. **PARITY_PROVEN** is reserved for scalar-vs-vec parity evidence (list in `data/wiring/parity_proven.json`). `ledger_flip_proven` = a real NPZ ledger flip (data/wiring/wired_proven.json) only.
 
 
-_Generated 2026-10-06T05:48:42.318697Z · 3609 names · vec modules never reached from simulate_one: 128/271_
+_Generated 2026-10-06T06:04:25.010192Z · 3609 names · vec modules never reached from simulate_one: 128/271_
 
 ## Status counts (all names)
 
@@ -34,8 +34,8 @@ _Generated 2026-10-06T05:48:42.318697Z · 3609 names · vec modules never reache
 - `btc_loop.py` `5a201bd53b`
 - `c5_stdev_trace.py` `ccc581c8ad`
 - `classic_formations.py` `4780e48c48`
-- `config.py` `ceb7930fe5`
-- `config_tradier.py` `761d6969e2`
+- `config.py` `82942a6d1d`
+- `config_tradier.py` `28ef39c0a5`
 - `entry_bounce_deep_turn_composite_v1.py` `2473d56142`
 - `entry_engine_dc.py` `1867aaa203`
 - `entry_engine_htf.py` `4195a92866`
@@ -102,7 +102,7 @@ _Generated 2026-10-06T05:48:42.318697Z · 3609 names · vec modules never reache
 - `trc_advisory_consumer.py` `4e76610ad9`
 - `utils.py` `47aed6d412`
 - `uve_engine.py` `8d6d80b713`
-- `v12_quick_engine.py` `c8c71b7bd3`
+- `v12_quick_engine.py` `5506425e19`
 - `vec_decisions/band_ladder_mult_vec.py` `0a825a32c4`
 - `vec_decisions/bb_pullback_gate.py` `d923cbc026`
 - `vec_decisions/bb_stoch_exits.py` `e4bfb65cb1`
@@ -461,7 +461,7 @@ _Generated 2026-10-06T05:48:42.318697Z · 3609 names · vec modules never reache
 | `BB_SQUEEZE_COOLDOWN` | unclassified | 300.0 / 300.0 / 300.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:16249(check_entry_candidates_for_account.worker) · ez_positions_quick.py:16249(check_entry_candidates_for_account.worker) | — |
 | `BB_SQUEEZE_THRESHOLD_15M` | unclassified | 0.025 / 0.025 / 0.025 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:16825(_apply_research_only_live_gates) | — |
 | `BB_SQUEEZE_THRESHOLD_1H` | unclassified | 0.03 / 0.03 / 0.03 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:16830(_apply_research_only_live_gates) | — |
-| `BEAR_SCENARIO_SYMBOLS` | unclassified | <absent> / {'HL', 'UVXY', 'BOIL', 'EGO', 'FNV', 'GLD', 'NEM', 'KGC', ' | — | DEAD | LIVE_ONLY | — · tradier_manage.py:28295(TradierTradeManager.execute_now) | — |
+| `BEAR_SCENARIO_SYMBOLS` | unclassified | <absent> / {'HL', 'USO', 'AEM', 'MAG', 'OIH', 'GDX', 'UNG', 'XLE', 'SL | — | DEAD | LIVE_ONLY | — · tradier_manage.py:28295(TradierTradeManager.execute_now) | — |
 | `BINANCE_API_BASE` | unclassified | https://fapi.binance.com / <absent> / https://fapi.binance.com | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:95(<module>) · ez_rankings.py:95(<module>) | — |
 | `BLACKLIST` | unclassified | <absent> / ['SLV', 'COPX', 'PYPL', 'QBTS', 'DINO', 'RBLX', 'MPC'] / <a | — | DEAD | LIVE_ONLY | — · tradier_manage.py:24257(TradierTradeManager.__init__) | — |
 | `BLACKLIST_SYMBOLS` | unclassified | [] / [] / [] | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:25000(MultiAccountTradeManager.execute_trade_action)<br>(+1) · tradier_manage.py:14406(process_position) | vec_decisions/blacklist_strand.py:37(is_blacklisted) |
@@ -1541,7 +1541,7 @@ _Generated 2026-10-06T05:48:42.318697Z · 3609 names · vec modules never reache
 | `NOLOSS_BB1H_GATE_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:20719(StockStrategy.evaluate_stop) | vec_decisions/check_exit_candidates_stocks__noloss_bb1h.py:44(check_noloss_bb1h) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__noloss_bb1h.py:65(check_noloss_bb1h_vec) [UNREACHABLE] |
 | `NOLOSS_DC4H_GATE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:14800(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:14800(check_exit_candidates_for_account.process_single_exit) | — |
 | `NOLOSS_MIN_PROFIT_PCT_TRADIER_LIVE` | unclassified | <absent> / <absent> / 0.01 | — | VEC_ONLY | VEC_ONLY | — · — | vec_decisions/noloss_gate.py:20(noloss_blocks) |
-| `NON_SHORTABLE` | unclassified | <absent> / {'REMX', 'ETH', 'BTBT', 'QUBT', 'BTCL', 'CLSK', 'SMG', 'ALM | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18328(StockStrategy.__init__)<br>(+6) | — |
+| `NON_SHORTABLE` | unclassified | <absent> / {'ICL', 'HIVE', 'MAG', 'OIH', 'UNG', 'CUBT', 'COPX', 'GLD', | — | DEAD | LIVE_ONLY | — · tradier_manage.py:18328(StockStrategy.__init__)<br>(+6) | — |
 | `OBLIGATORY_EMA50_15M_ENABLED` | unclassified | False / False / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:37644(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
 | `OBLIGATORY_EMA50_15M_PCT` | unclassified | 1.0 / 1.0 / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:37645(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
 | `OBLIGATORY_HEDGE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:33858(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:13225(execute_trade_wrapper) | — |
@@ -2653,7 +2653,7 @@ _Generated 2026-10-06T05:48:42.318697Z · 3609 names · vec modules never reache
 | `UNDERWATER_HEDGE_OR_CLOSE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:51223(process_position) · — | — |
 | `UNDERWATER_HEDGE_OR_CLOSE_HTF_CLOSE_REQUIRED` | unclassified | 2 / 2 / 2 | — | LIVE_ONLY | DEAD | ez_manage.py:51335(process_position) · — | — |
 | `UNDERWATER_HOC_USDC_MAKER_BYPASS` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:51346(process_position) · — | — |
-| `UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS` | exit | ['SCALP_V3_CLOSE', 'SCALP_V3_OPEN_PROTECTIVE', 'RIDICULOUS_HOLD', 'RID | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:33725(MultiAccountTradeManager.execute_now)<br>(+2) · tradier_manage.py:27986(TradierTradeManager.execute_now) | vec_decisions/noloss_gate.py:33(noloss_blocks) |
+| `UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS` | exit | ['SCALP_V3_CLOSE', 'SCALP_V3_OPEN_PROTECTIVE', 'DAYTRADE_STOP', 'RIDIC | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:33725(MultiAccountTradeManager.execute_now)<br>(+2) · tradier_manage.py:27986(TradierTradeManager.execute_now) | vec_decisions/noloss_gate.py:33(noloss_blocks) |
 | `USE_1M_3M_SIGNALS_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:683(check_entry_alignment)<br>(+1) · — | — |
 | `USE_INDICATOR_SNAPSHOT` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `USE_SANDBOX` | unclassified | <absent> / False / False | — | DEAD | DEAD | — · — | — |

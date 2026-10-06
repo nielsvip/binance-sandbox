@@ -11792,7 +11792,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     base_tf = _base_tf(npz, cfg)
     ts = npz.get('timestamps', npz.get(f'timestamp_{base_tf}', np.array([])))
     n = len(ts)
-    if n < 100:
+    # PARITY LOOP STOCKS 2026-10-06: tradier_vec_exact (PARITY_VEC_EXACT_MODE) evaluates bar-by-bar prefixes of the live buffer; the first 99 bars of a
+    # window must be decidable exactly as in the full-window run (NPZ indicators are precomputed, no warm-up). Oracle-only attribute, never a QuickConfig field.
+    if n < 100 and not (getattr(cfg, '_PARITY_PREFIX_EVAL', False) and n >= 2):
         return None
     # lane-D 2026-10-06: crypto live has NONE of these reentry pathways (verified ez_manage): HARDCODED_RALLY/PRICE_CROSS_BACK live in
     # evaluate_reentry, unreachable for flat keys (process_position ZERO_AMT return :48126 + evaluate_reentry needs a position object

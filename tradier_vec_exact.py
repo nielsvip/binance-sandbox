@@ -239,6 +239,7 @@ class VecExactOracle:
             self.telemetry["compact_short"] += 1
             return []
         cfg = copy.deepcopy(self._cfg(sym, side, overrides))
+        cfg._PARITY_PREFIX_EVAL = True  # v12 simulate_one: decide the window's first 99 bars like the full-window run
         try:
             res = V.simulate_one(npz, sym, side == "LONG", cfg) or {}
         except Exception:

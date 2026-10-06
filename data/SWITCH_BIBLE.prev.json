@@ -901,8 +901,8 @@
    "btc_loop.py": "5a201bd53befebd2585a5c193a8b907a",
    "c5_stdev_trace.py": "ccc581c8ad9efdd65f13701d7d179fd9",
    "classic_formations.py": "4780e48c48e4c45b5166fb256fb483fa",
-   "config.py": "ceb7930fe5e767e552911b631094387d",
-   "config_tradier.py": "2420730bbd9ed9e5c974eeffea455df6",
+   "config.py": "82942a6d1de92d2f5a6ddd75949cc1b3",
+   "config_tradier.py": "28ef39c0a557ce4224040f4c820cf6b4",
    "entry_bounce_deep_turn_composite_v1.py": "2473d56142d432a0d8d2dc3b1491cf29",
    "entry_engine_dc.py": "1867aaa203bde4c156735882c7584330",
    "entry_engine_htf.py": "4195a92866d53bfd765f0dc0efb2ac19",
@@ -969,7 +969,7 @@
    "trc_advisory_consumer.py": "4e76610ad982ab506f5a09060ff43ef9",
    "utils.py": "47aed6d412d0ae3a02582f2a56549180",
    "uve_engine.py": "8d6d80b7139001558c4f0a768e558a76",
-   "v12_quick_engine.py": "c8c71b7bd30fe0db5fb8337044c3890c",
+   "v12_quick_engine.py": "5506425e192f862827816ec245bd1c1b",
    "vec_decisions/band_ladder_mult_vec.py": "0a825a32c48115ac52e2b52b6307250b",
    "vec_decisions/bb_pullback_gate.py": "d923cbc0260f1c34c68a3b0102fad3be",
    "vec_decisions/bb_stoch_exits.py": "e4bfb65cb15ee634072ddda1382ca395",
@@ -1171,7 +1171,7 @@
    "vec_decisions/test_check_exit_candidates_stocks.py": "a5602e8614ae4f1042d3ef8988615201",
    "vec_decisions/test_dc_break.py": "b9a3957c4a53512493d6eb8c97a4d27d",
    "vec_decisions/test_delta_exit_top.py": "3e6aef7d2e8127544ab82946ef9fb689",
-   "vec_decisions/test_entry_vet_rsi_t55.py": "37a056f938def71a7b165e5ddb091b9d",
+   "vec_decisions/test_entry_vet_rsi_t55.py": "100df538a975501f15d80b430cc8e4f8",
    "vec_decisions/test_guaranteed_price_cross_reentry.py": "f0ac462057429ed9abd77f429fe7fb69",
    "vec_decisions/test_lh_ll_top_exit.py": "f25fe1085c286ccdf7f663cb03f839a8",
    "vec_decisions/test_parity_cut_20261004.py": "1a96d2c085717788fa25e6cca2861cf4",
@@ -1267,7 +1267,7 @@
    "vec_decisions/twin_yellow_filters.py:1",
    "vec_decisions/wirec_batch1_gates.py:1"
   ],
-  "generated": "2026-10-06T05:33:16.250820Z",
+  "generated": "2026-10-06T06:04:25.010192Z",
   "inputs": {
    "live_gaps": 21,
    "parity_proven": 0,
@@ -28716,7 +28716,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "<absent>",
-    "config_tradier.py": "{'NEM', 'USO', 'XOP', 'AEM', 'BTG', 'XLE', 'UNG', 'OIH', 'FNV', 'GDX', 'SLV', 'R",
+    "config_tradier.py": "{'HL', 'USO', 'AEM', 'MAG', 'OIH', 'GDX', 'UNG', 'XLE', 'SLV', 'BOIL', 'AG', 'GL",
     "template_bold": {}
    },
    "filter_tf": false,
@@ -61925,16 +61925,16 @@
      "STOCKS_SHORT": "15m,1h,4h"
     },
     "config.py": "15m,1h,4h",
-    "config_tradier.py": "15m",
+    "config_tradier.py": "15m,1h,4h",
     "template_bold": {
      "CRYPTO_LONG": [
-      "OFF"
+      "15m,1h,4h"
      ],
      "CRYPTO_SHORT": [
-      "OFF"
+      "15m,1h,4h"
      ],
      "STOCKS_LONG": [
-      "15m"
+      "15m,1h,4h"
      ],
      "STOCKS_SHORT": [
       "15m,1h,4h"
@@ -62014,7 +62014,7 @@
       {
        "default": true,
        "grey": false,
-       "option": "OFF",
+       "option": "15m,1h,4h",
        "orange": false,
        "row": 14,
        "tab": "EXIT_STRUCTURAL"
@@ -62064,7 +62064,7 @@
       {
        "default": true,
        "grey": false,
-       "option": "OFF",
+       "option": "15m,1h,4h",
        "orange": false,
        "row": 27,
        "tab": "EXIT_STRUCTURAL"
@@ -62106,7 +62106,7 @@
       {
        "default": true,
        "grey": false,
-       "option": "15m",
+       "option": "15m,1h,4h",
        "orange": false,
        "row": 19,
        "tab": "EXIT_STRUCTURAL"
@@ -71782,10 +71782,10 @@
     "config_tradier.py": 3.0,
     "template_bold": {
      "CRYPTO_LONG": [
-      1.5
+      3
      ],
      "CRYPTO_SHORT": [
-      6
+      3
      ],
      "STOCKS_LONG": [
       3
@@ -71862,7 +71862,7 @@
        "tab": "AUGMENT_RISK_SIZING"
       },
       {
-       "default": false,
+       "default": true,
        "grey": false,
        "option": 3,
        "orange": true,
@@ -71870,7 +71870,7 @@
        "tab": "AUGMENT_RISK_SIZING"
       },
       {
-       "default": true,
+       "default": false,
        "grey": false,
        "option": 1.5,
        "orange": true,
@@ -71891,7 +71891,7 @@
        "tab": "AUGMENT_RISK_SIZING"
       },
       {
-       "default": false,
+       "default": true,
        "grey": false,
        "option": 3,
        "orange": true,
@@ -71907,7 +71907,7 @@
        "tab": "AUGMENT_RISK_SIZING"
       },
       {
-       "default": true,
+       "default": false,
        "grey": false,
        "option": 6,
        "orange": true,
@@ -232860,7 +232860,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "<absent>",
-    "config_tradier.py": "{'FCN', 'MARA', 'ASML', 'UNG', 'DBA', 'OIH', 'DAC', 'IPI', 'COE', 'HAO', 'GNK', ",
+    "config_tradier.py": "{'ICL', 'HIVE', 'MAG', 'OIH', 'UNG', 'CUBT', 'COPX', 'GLD', 'ETHD', 'HAO', 'UAN'",
     "template_bold": {}
    },
    "filter_tf": false,
@@ -301920,9 +301920,9 @@
    "vec_reads": [
     "vec_decisions/check_entry_candidates_stocks__rsi_sma_mfi_gates.py:51(_rsi_params) [UNREACHABLE]",
     "vec_decisions/entry_vet_rsi_t55.py:75(rsi_block_mask)",
-    "vec_decisions/test_entry_vet_rsi_t55.py:62(test_knobs_default_to_live_values)",
-    "vec_decisions/test_entry_vet_rsi_t55.py:62(test_knobs_default_to_live_values)",
-    "vec_decisions/test_entry_vet_rsi_t55.py:68(test_knobs_default_to_live_values)",
+    "vec_decisions/test_entry_vet_rsi_t55.py:63(test_knobs_default_to_live_values)",
+    "vec_decisions/test_entry_vet_rsi_t55.py:63(test_knobs_default_to_live_values)",
+    "vec_decisions/test_entry_vet_rsi_t55.py:69(test_knobs_default_to_live_values)",
     "vec_decisions/twin_vec_special.py:355(rsi_entry_gate_mask)",
     "vec_decisions/twin_vec_special.py:363(rsi_mfi_score_mask)"
    ],
@@ -302421,9 +302421,9 @@
    },
    "vec_reads": [
     "vec_decisions/entry_vet_rsi_t55.py:64(rsi_block_mask)",
-    "vec_decisions/test_entry_vet_rsi_t55.py:64(test_knobs_default_to_live_values)",
-    "vec_decisions/test_entry_vet_rsi_t55.py:64(test_knobs_default_to_live_values)",
-    "vec_decisions/test_entry_vet_rsi_t55.py:68(test_knobs_default_to_live_values)",
+    "vec_decisions/test_entry_vet_rsi_t55.py:65(test_knobs_default_to_live_values)",
+    "vec_decisions/test_entry_vet_rsi_t55.py:65(test_knobs_default_to_live_values)",
+    "vec_decisions/test_entry_vet_rsi_t55.py:69(test_knobs_default_to_live_values)",
     "vec_decisions/twin_vec_special.py:326(rsi_t55_key)"
    ],
    "vec_unwired_listed": false,
@@ -302550,9 +302550,9 @@
    "vec_reads": [
     "vec_decisions/check_entry_candidates_stocks__rsi_sma_mfi_gates.py:52(_rsi_params) [UNREACHABLE]",
     "vec_decisions/entry_vet_rsi_t55.py:78(rsi_block_mask)",
-    "vec_decisions/test_entry_vet_rsi_t55.py:63(test_knobs_default_to_live_values)",
-    "vec_decisions/test_entry_vet_rsi_t55.py:63(test_knobs_default_to_live_values)",
-    "vec_decisions/test_entry_vet_rsi_t55.py:68(test_knobs_default_to_live_values)",
+    "vec_decisions/test_entry_vet_rsi_t55.py:64(test_knobs_default_to_live_values)",
+    "vec_decisions/test_entry_vet_rsi_t55.py:64(test_knobs_default_to_live_values)",
+    "vec_decisions/test_entry_vet_rsi_t55.py:69(test_knobs_default_to_live_values)",
     "vec_decisions/twin_vec_special.py:356(rsi_entry_gate_mask)",
     "vec_decisions/twin_vec_special.py:364(rsi_mfi_score_mask)"
    ],
@@ -302565,22 +302565,22 @@
    "agent_c_registry": null,
    "conflict_quick_vs_live": {},
    "defaults": {
-    "QuickConfig": true,
-    "QuickConfig_apply_tradier_defaults": true,
+    "QuickConfig": false,
+    "QuickConfig_apply_tradier_defaults": false,
     "cat_side_defaults_4": {
-     "CRYPTO_LONG": true,
-     "CRYPTO_SHORT": true,
+     "CRYPTO_LONG": false,
+     "CRYPTO_SHORT": false,
      "STOCKS_LONG": "<absent>",
      "STOCKS_SHORT": "<absent>"
     },
-    "config.py": true,
+    "config.py": false,
     "config_tradier.py": "<absent>",
     "template_bold": {
      "CRYPTO_LONG": [
-      true
+      false
      ],
      "CRYPTO_SHORT": [
-      true
+      false
      ]
     }
    },
@@ -302628,7 +302628,7 @@
     "CRYPTO_LONG": {
      "rows": [
       {
-       "default": true,
+       "default": false,
        "grey": false,
        "option": true,
        "orange": false,
@@ -302636,7 +302636,7 @@
        "tab": "ENTRY_CONFIRMATION_GATES"
       },
       {
-       "default": false,
+       "default": true,
        "grey": false,
        "option": false,
        "orange": false,
@@ -302649,7 +302649,7 @@
     "CRYPTO_SHORT": {
      "rows": [
       {
-       "default": true,
+       "default": false,
        "grey": false,
        "option": true,
        "orange": false,
@@ -302657,7 +302657,7 @@
        "tab": "ENTRY_CONFIRMATION_GATES"
       },
       {
-       "default": false,
+       "default": true,
        "grey": false,
        "option": false,
        "orange": false,
@@ -302675,7 +302675,7 @@
    },
    "vec_reads": [
     "vec_decisions/entry_vet_rsi_t55.py:59(rsi_block_mask)",
-    "vec_decisions/test_entry_vet_rsi_t55.py:73(test_master_switch_default_true_and_false_passthrough)"
+    "vec_decisions/test_entry_vet_rsi_t55.py:75(test_master_switch_default_true_and_false_passthrough)"
    ],
    "vec_unwired_listed": false,
    "venues_in_templates": [
@@ -378761,8 +378761,8 @@
      "STOCKS_LONG": "<absent>",
      "STOCKS_SHORT": "<absent>"
     },
-    "config.py": "['SCALP_V3_CLOSE', 'SCALP_V3_OPEN_PROTECTIVE', 'RIDICULOUS_HOLD', 'RIDICULOUS_LO",
-    "config_tradier.py": "['SCALP_V3_CLOSE', 'SCALP_V3_OPEN_PROTECTIVE', 'RIDICULOUS_HOLD', 'RIDICULOUS_LO",
+    "config.py": "['SCALP_V3_CLOSE', 'SCALP_V3_OPEN_PROTECTIVE', 'DAYTRADE_STOP', 'RIDICULOUS_HOLD",
+    "config_tradier.py": "['SCALP_V3_CLOSE', 'SCALP_V3_OPEN_PROTECTIVE', 'DAYTRADE_STOP', 'RIDICULOUS_HOLD",
     "template_bold": {}
    },
    "filter_tf": false,

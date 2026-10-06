@@ -901,8 +901,8 @@
    "btc_loop.py": "5a201bd53befebd2585a5c193a8b907a",
    "c5_stdev_trace.py": "ccc581c8ad9efdd65f13701d7d179fd9",
    "classic_formations.py": "4780e48c48e4c45b5166fb256fb483fa",
-   "config.py": "ceb7930fe5e767e552911b631094387d",
-   "config_tradier.py": "761d6969e26261e369d8b119b00d158f",
+   "config.py": "82942a6d1de92d2f5a6ddd75949cc1b3",
+   "config_tradier.py": "28ef39c0a557ce4224040f4c820cf6b4",
    "entry_bounce_deep_turn_composite_v1.py": "2473d56142d432a0d8d2dc3b1491cf29",
    "entry_engine_dc.py": "1867aaa203bde4c156735882c7584330",
    "entry_engine_htf.py": "4195a92866d53bfd765f0dc0efb2ac19",
@@ -969,7 +969,7 @@
    "trc_advisory_consumer.py": "4e76610ad982ab506f5a09060ff43ef9",
    "utils.py": "47aed6d412d0ae3a02582f2a56549180",
    "uve_engine.py": "8d6d80b7139001558c4f0a768e558a76",
-   "v12_quick_engine.py": "c8c71b7bd30fe0db5fb8337044c3890c",
+   "v12_quick_engine.py": "5506425e192f862827816ec245bd1c1b",
    "vec_decisions/band_ladder_mult_vec.py": "0a825a32c48115ac52e2b52b6307250b",
    "vec_decisions/bb_pullback_gate.py": "d923cbc0260f1c34c68a3b0102fad3be",
    "vec_decisions/bb_stoch_exits.py": "e4bfb65cb15ee634072ddda1382ca395",
@@ -1267,7 +1267,7 @@
    "vec_decisions/twin_yellow_filters.py:1",
    "vec_decisions/wirec_batch1_gates.py:1"
   ],
-  "generated": "2026-10-06T05:48:42.318697Z",
+  "generated": "2026-10-06T06:04:25.010192Z",
   "inputs": {
    "live_gaps": 21,
    "parity_proven": 0,
@@ -28716,7 +28716,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "<absent>",
-    "config_tradier.py": "{'HL', 'UVXY', 'BOIL', 'EGO', 'FNV', 'GLD', 'NEM', 'KGC', 'AU', 'PAAS', 'WPM', '",
+    "config_tradier.py": "{'HL', 'USO', 'AEM', 'MAG', 'OIH', 'GDX', 'UNG', 'XLE', 'SLV', 'BOIL', 'AG', 'GL",
     "template_bold": {}
    },
    "filter_tf": false,
@@ -232860,7 +232860,7 @@
      "STOCKS_SHORT": "<absent>"
     },
     "config.py": "<absent>",
-    "config_tradier.py": "{'REMX', 'ETH', 'BTBT', 'QUBT', 'BTCL', 'CLSK', 'SMG', 'ALMU', 'ITA', 'XOP', 'DN",
+    "config_tradier.py": "{'ICL', 'HIVE', 'MAG', 'OIH', 'UNG', 'CUBT', 'COPX', 'GLD', 'ETHD', 'HAO', 'UAN'",
     "template_bold": {}
    },
    "filter_tf": false,
@@ -378761,8 +378761,8 @@
      "STOCKS_LONG": "<absent>",
      "STOCKS_SHORT": "<absent>"
     },
-    "config.py": "['SCALP_V3_CLOSE', 'SCALP_V3_OPEN_PROTECTIVE', 'RIDICULOUS_HOLD', 'RIDICULOUS_LO",
-    "config_tradier.py": "['SCALP_V3_CLOSE', 'SCALP_V3_OPEN_PROTECTIVE', 'RIDICULOUS_HOLD', 'RIDICULOUS_LO",
+    "config.py": "['SCALP_V3_CLOSE', 'SCALP_V3_OPEN_PROTECTIVE', 'DAYTRADE_STOP', 'RIDICULOUS_HOLD",
+    "config_tradier.py": "['SCALP_V3_CLOSE', 'SCALP_V3_OPEN_PROTECTIVE', 'DAYTRADE_STOP', 'RIDICULOUS_HOLD",
     "template_bold": {}
    },
    "filter_tf": false,

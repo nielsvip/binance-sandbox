@@ -25269,7 +25269,7 @@ class MultiAccountTradeManager:
                 # for sub-MIN_GAIN augments) — 15m is informational only at this gate.
                 _eta_htf_ok = _eta_1h_ok or _eta_4h_ok
                 _aug_tag = "WINNER" if _eta_winner else "PULLBACK"
-                if not _eta_3m_ok or not _eta_htf_ok:
+                if (not _eta_3m_ok or not _eta_htf_ok) and not _vec_decided_reason_ok(reason):
                     logger.warning(
                         f"🚫 [15M_GATE_WT_3m15m] {position_key}: BLOCKED {_aug_tag} aug — 3m={_eta_3m_ok} 15m={_eta_15m_ok} 1h={_eta_1h_ok} 4h={_eta_4h_ok} htf={_eta_htf_ok}. gain={_eta_pos_gain:.2f}%"
                     )
@@ -33087,7 +33087,7 @@ class MultiAccountTradeManager:
                 or "DELTA_EXIT" in _reason_upper
                 or "DC_BREACH" in _reason_upper
             )
-            if _since_red < _DUPLICATE_REDUCE_COOLDOWN and not _v3_urgent_close:
+            if _since_red < _DUPLICATE_REDUCE_COOLDOWN and not _v3_urgent_close and not _vd_exempt:
                 logger.warning(
                     f"[HARD_REDUCE_LOCK] {position_key}: BLOCKED - last reduce {_since_red:.0f}s ago (need {_DUPLICATE_REDUCE_COOLDOWN}s). action={action} reason={reason}"
                 )
@@ -34694,6 +34694,7 @@ class MultiAccountTradeManager:
                         quantity > current_real_amt - retention_qty
                         and "GAIN_GUARD" not in reason.upper()
                         and "FORCE" not in reason.upper()
+                        and not _vd_exempt
                     ):
                         quantity = current_real_amt - retention_qty
                 if quantity <= 0.0:
@@ -48323,6 +48324,9 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
         if _amt <= 0:
             return "ENTRY" in fams
         if "EXIT" not in fams:
+            return False
+        # SAFETY: no twin decision available for this sym_side (no store / warm-up / error) -> native exits run (never strand a position)
+        if _vx.actions_at(_sym, _side, time.time()).get("status") != "OK":
             return False
         want = ("CLOSE", "REDUCE") + (("AUGMENT",) if "AUGMENT" in fams else ())
         for _a in _vx.take(_sym, _side, time.time(), want):
