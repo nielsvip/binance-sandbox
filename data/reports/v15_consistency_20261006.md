@@ -816,3 +816,32 @@
     - `JASMYUSDT_LONG` [s5] 1 cases — WICK_REJECT_ENTRY_ENABLED T=-2.122/F=+2.574
     - `THETAUSDT_LONG` [s5] 1 cases — MTF_DC_REJECT_USE_DC4 T=-0.122/F=+0.316
 - **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-06T12:01Z · window 48.0h · 203 sym_sides (local+remote)
+- ⚠️ **10 sym_sides / 10 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `HTF_GATE_SIGNALS_SMA200D`×2, `OI_CONFIRM_ENABLED`×2, `WT_DIV_EXIT_ENABLED`×1, `CT_CHOP_4H_GATE_ENABLED`×1, `HARDCODED_RALLY_SMA200_SIDE_ENABLED`×1, `WT_15M_BOUNCE_OPEN_ENABLED`×1, `WICK_REJECT_ENTRY_ENABLED`×1, `MTF_DC_REJECT_USE_DC4`×1
+    - `BNBUSDC_LONG` [s5] 1 cases — HTF_GATE_SIGNALS_SMA200D T=-10.796/F=+0.100
+    - `ARUSDT_LONG` [s2] 1 cases — OI_CONFIRM_ENABLED T=+0.065/F=-1.941
+    - `SNXUSDT_LONG` [s5] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `RRC_LONG` [s2] 1 cases — CT_CHOP_4H_GATE_ENABLED T=-7.873/F=+0.073
+    - `ENSUSDT_SHORT` [s2] 1 cases — HARDCODED_RALLY_SMA200_SIDE_ENABLED T=+0.170/F=-2.467
+    - `TRBUSDT_LONG` [s5] 1 cases — OI_CONFIRM_ENABLED T=+0.406/F=-2.290
+    - `XRPUSDC_LONG` [s5] 1 cases — HTF_GATE_SIGNALS_SMA200D T=-11.139/F=+1.590
+    - `SLV_SHORT` [s5] 1 cases — WT_15M_BOUNCE_OPEN_ENABLED T=+0.948/F=+0.948
+    - `JASMYUSDT_LONG` [s5] 1 cases — WICK_REJECT_ENTRY_ENABLED T=-2.122/F=+2.574
+    - `THETAUSDT_LONG` [s5] 1 cases — MTF_DC_REJECT_USE_DC4 T=-0.122/F=+0.316
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-06T12:15Z · window 48.0h · 204 sym_sides (local+remote)
+- ⚠️ **9 sym_sides / 9 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `HTF_GATE_SIGNALS_SMA200D`×2, `OI_CONFIRM_ENABLED`×2, `WT_DIV_EXIT_ENABLED`×1, `CT_CHOP_4H_GATE_ENABLED`×1, `HARDCODED_RALLY_SMA200_SIDE_ENABLED`×1, `WICK_REJECT_ENTRY_ENABLED`×1, `MTF_DC_REJECT_USE_DC4`×1
+    - `BNBUSDC_LONG` [s5] 1 cases — HTF_GATE_SIGNALS_SMA200D T=-10.796/F=+0.100
+    - `ARUSDT_LONG` [s2] 1 cases — OI_CONFIRM_ENABLED T=+0.065/F=-1.941
+    - `SNXUSDT_LONG` [s5] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `RRC_LONG` [s2] 1 cases — CT_CHOP_4H_GATE_ENABLED T=-7.873/F=+0.073
+    - `ENSUSDT_SHORT` [s2] 1 cases — HARDCODED_RALLY_SMA200_SIDE_ENABLED T=+0.170/F=-2.467
+    - `TRBUSDT_LONG` [s5] 1 cases — OI_CONFIRM_ENABLED T=+0.406/F=-2.290
+    - `XRPUSDC_LONG` [s5] 1 cases — HTF_GATE_SIGNALS_SMA200D T=-11.139/F=+1.590
+    - `JASMYUSDT_LONG` [s5] 1 cases — WICK_REJECT_ENTRY_ENABLED T=-2.122/F=+2.574
+    - `THETAUSDT_LONG` [s5] 1 cases — MTF_DC_REJECT_USE_DC4 T=-0.122/F=+0.316
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
