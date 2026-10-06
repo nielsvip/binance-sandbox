@@ -13439,7 +13439,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     # setups fire — long-term hold needs few, very high quality entries.
                     if _wtdc_detailed:
                         _entry_threshold = float(_cfg_auto('WT_DC_DETAILED_ENTRY_THRESHOLD', 43))
-                        _det_tf = str(_unw_wtdc_tf(_cfg_auto, 'WT_DC_TF_ENTRY', '1h')).lower()
+                        _det_tf = str(_unw_wtdc_tf(lambda k, d=None: _cfg(k, d, account_key, symbol, position_side), 'WT_DC_TF_ENTRY', '1h')).lower()
                         if _det_tf == '15m':
                             _entry_threshold = max(20.0, _entry_threshold - 10.0)
                         elif _det_tf == '4h':
@@ -13465,7 +13465,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         # SHORT K5M block disabled when hard switch OFF
                     # Hard HTF gate — always 4h_D for shorts (cannot be turned off via 'none')
                     # 2026-09-19 TF-expanded: WT_DC_TF_HTF/HTF2 + HTF_GATE_MODE + STOCH/DC_TF + thresholds (15m+ only, vector parity)
-                    _wt_dc_tf_entry = str(_unw_wtdc_tf(_cfg_auto, 'WT_DC_TF_ENTRY', '1h'))
+                    _wt_dc_tf_entry = str(_unw_wtdc_tf(lambda k, d=None: _cfg(k, d, account_key, symbol, position_side), 'WT_DC_TF_ENTRY', '1h'))
                     _wt_dc_dc_tf = str(_cfg_auto('WT_DC_DC_TF', '1h'))
                     _wt_dc_stoch_tf = str(_cfg_auto('WT_DC_STOCH_TF', '5m'))
                     _wt_dc_htf_mode = str(_cfg_auto('WT_DC_HTF_GATE_MODE', 'AND')).upper()
@@ -13483,8 +13483,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     # 2026-09-23 FIX: init _htf_block else UnboundLocalError at line 12046 when default 4h/D gate takes no branch (seen 50+ crashes in trb log .3)
                     _htf_block = False
                     # TF-HTF2 expanded gate (vector parity): when WT_DC_TF_HTF/HTF2 differ from legacy 4h/D, use them with AND/OR mode
-                    _wt_dc_htf = str(_unw_wtdc_tf(_cfg_auto, 'WT_DC_TF_HTF', '4h')).lower()
-                    _wt_dc_htf2 = str(_unw_wtdc_tf(_cfg_auto, 'WT_DC_TF_HTF2', 'D')).lower()
+                    _wt_dc_htf = str(_unw_wtdc_tf(lambda k, d=None: _cfg(k, d, account_key, symbol, position_side), 'WT_DC_TF_HTF', '4h')).lower()
+                    _wt_dc_htf2 = str(_unw_wtdc_tf(lambda k, d=None: _cfg(k, d, account_key, symbol, position_side), 'WT_DC_TF_HTF2', 'D')).lower()
                     if _wt_dc_htf != '4h' or _wt_dc_htf2.lower() != 'd':
                         _exp_htf1_against = False
                         _exp_htf2_against = False
@@ -16490,7 +16490,11 @@ class CorrelationMatrix:
 # --- AUTO-WIRED LIVE for remaining 308 RESEARCH ONLY (explicit literals for scanner) ---
 # ═══ AUTO-GENERATED RESEARCH-ONLY LIVE GATES — explicit literals for scanner + causal per-bar gating ═══
 def _unw_wtdc_tf(cfg_get, key, default):
-    """UNW-L 2026-10-01: WT_DC_TF_COMBO ('A_B_C' shorthand) -> WT_DC_TF_ENTRY/HTF/HTF2, same resolution as v12_quick_engine._wtdc_combo_resolve. Default combo '1h_4h_D' = no change."""
+    """UNW-L 2026-10-01: WT_DC_TF_COMBO ('A_B_C' shorthand) -> WT_DC_TF_ENTRY/HTF/HTF2, same resolution as v12_quick_engine._wtdc_combo_resolve. Default combo '1h_4h_D' = no change.
+    MU_GAP 2026-10-06: callers MUST pass a context-closing getter (lambda k, d: _cfg(k, d, account_key, symbol, position_side)), NEVER bare _cfg_auto:
+    _cfg_auto resolves (account,symbol,side) via caller-frame inspection, which sees THIS wrapper's frame (no context) and silently falls back to the
+    global default — live ran WT_DC_TF_ENTRY=1h/thr45 while per_sym+cat_side intend 15m/thr35 (S1 MU_LONG trace proof). Repaired per user order 2026-10-05
+    (immediate gap repair; tradier_manage locked otherwise). Same latent class at the twin_gates_sizing_a/rsi lambda sites (no MU behavior change)."""
     try:
         from vec_decisions.live_unw_gates import wtdc_combo_tfs
         _c = wtdc_combo_tfs(lambda k, d=None: cfg_get(k, d))

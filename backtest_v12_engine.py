@@ -17172,14 +17172,35 @@ if __name__ == "__main__":
 
 
 # ── v12 pipeline API ────────────────────────────────────────────────────────
+_RUN_ONE_OVERRIDE_ISSUES: list = []
+
+
 def _run_one_apply_overrides(overrides: dict, mode: str):
     """Apply overrides to the live config (4-level patch). Returns snapshot for restore."""
     import config as _cfg
     import config_tradier as _ct
     snap = {}
+    _RUN_ONE_OVERRIDE_ISSUES.clear()
     if not overrides:
         return snap
     for k, v in (overrides or {}).items():
+        # 2026-10-06 parity lane A: a scalar override for a container-typed live field (AXSUSDT_LONG
+        # EZ_MANAGE_THROTTLER_RATE=0.0 vs Dict) crashed MultiAccountTradeManager.__init__ (.get on float) and
+        # killed the whole live leg. Never apply a type-incompatible container override; report it instead.
+        _cur_t = None
+        for _src in (_cfg, getattr(_cfg, "Config", None), getattr(_ct, "TradierConfig", None)):
+            try:
+                _c = getattr(_src, k, None) if _src is not None else None
+            except Exception:
+                _c = None
+            if _c is not None:
+                _cur_t = _c
+                break
+        if isinstance(_cur_t, (dict, list, tuple, set)) and not isinstance(v, type(_cur_t)):
+            _RUN_ONE_OVERRIDE_ISSUES.append({"key": k, "value": repr(v)[:80], "live_type": type(_cur_t).__name__, "action": "SKIPPED_CONTAINER_TYPE_MISMATCH"})
+            continue
+        if _cur_t is not None and not isinstance(_cur_t, bool) and isinstance(_cur_t, (int, float)) and isinstance(v, str):
+            _RUN_ONE_OVERRIDE_ISSUES.append({"key": k, "value": repr(v)[:80], "live_type": type(_cur_t).__name__, "action": "APPLIED_STR_FOR_NUMBER"})
         # tradier keys may be prefixed; handle both forms for tradier mode
         keys = [k]
         if mode == "tradier" and k.startswith("TRADIER_"):
@@ -17454,7 +17475,7 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
                 __import__("os").environ["V8_LADDER_ONLY_SIDE"] = _prev_side
     except Exception as _e:
         import traceback as _tb
-        return {"symside": symside, "valid": False, "invalid_reason": f"run_one {type(_e).__name__}: {_e}", "gain_per_mo": 0.0, "trades": 0, "gain_pct": 0.0, "pool_sharpe": 0.0, "max_dd_pct": 0.0, "tim_pct": 0.0, "score": float("-inf"), "trace": _tb.format_exc()[:800]}
+        return {"symside": symside, "valid": False, "invalid_reason": f"run_one {type(_e).__name__}: {_e}", "gain_per_mo": 0.0, "trades": 0, "gain_pct": 0.0, "pool_sharpe": 0.0, "max_dd_pct": 0.0, "tim_pct": 0.0, "score": float("-inf"), "trace": (lambda _t: _t if len(_t) <= 3000 else _t[:600] + "\n...\n" + _t[-2400:])(_tb.format_exc()), "override_issues": list(_RUN_ONE_OVERRIDE_ISSUES)}
     finally:
         _run_one_restore_overrides(snap, mode)
     # map executed_trades (list of dicts) to metrics via tools/opt/metrics
@@ -17562,13 +17583,16 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
             bh_pct = None
         m = _M.compute(events, trs, t_start, t_end, bh_pct, float(window_days))
         # ensure symside and overrides echoed
-        m["symside"] = symside; m["overrides"] = dict(overrides)
+        m["symside"] = symside; m["overrides"] = dict(overrides); m["override_issues"] = list(_RUN_ONE_OVERRIDE_ISSUES)
         # also expose ledger-like trades for parity tracing: map executed closes to ts/type/price
         m["ledger"] = [{"ts": float(getattr(e,"ts",0)), "type": getattr(e,"type",""), "price": float(getattr(e,"value",0)/max(1e-9,float(getattr(e,"qty",0)))) if getattr(e,"qty",0) else 0.0, "qty": float(getattr(e,"qty",0)), "pnl_pct": float(getattr(e,"pnl_pct",0)), "reason": ""} for e in events if getattr(e,"type","")=="CLOSE"]
+        # 2026-10-06 trade-parity (tools/v15_trade_parity.py): every executed live-path event with its action + reason,
+        # so vec and live ledgers can be matched trade-by-trade. Output only — no simulation change.
+        m["execution_ledger"] = [{"ts": float(getattr(e, "ts", 0)), "type": getattr(e, "type", ""), "action": str(ev.get("action", "") or "").upper(), "reason": str(ev.get("reason", "") or "")[:160], "qty": float(getattr(e, "qty", 0)), "price": float(ev.get("price", 0) or 0), "pnl_pct": float(getattr(e, "pnl_pct", 0)), "raw_type": str(ev.get("type", "") or ""), "position_key": str(ev.get("position_key", "") or ""), "position_side": str(ev.get("position_side", "") or ""), "side": str(ev.get("side", "") or "")} for e, ev in zip(events, executed or [])]
         return m
     except Exception as _e2:
         import traceback as _tb2
-        return {"symside": symside, "valid": False, "invalid_reason": f"metrics {_e2}", "gain_per_mo": 0.0, "trades": len(trs) if 'trs' in locals() else 0, "gain_pct": 0.0, "pool_sharpe": 0.0, "max_dd_pct": 0.0, "tim_pct": 0.0, "score": float("-inf"), "trace": _tb2.format_exc()[:800]}
+        return {"symside": symside, "valid": False, "invalid_reason": f"metrics {_e2}", "gain_per_mo": 0.0, "trades": len(trs) if 'trs' in locals() else 0, "gain_pct": 0.0, "pool_sharpe": 0.0, "max_dd_pct": 0.0, "tim_pct": 0.0, "score": float("-inf"), "trace": (lambda _t: _t if len(_t) <= 3000 else _t[:600] + "\n...\n" + _t[-2400:])(_tb2.format_exc()), "override_issues": list(_RUN_ONE_OVERRIDE_ISSUES)}
 
 
 def parity(symside, overrides=None, tol=0.20, window_days=365, offset_days=0):

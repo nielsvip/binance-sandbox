@@ -153,3 +153,16 @@ twins, no template rows. Harmless (defaults = today's behavior).
 - Infra flags (not this lane): S1 disk 97% (10G free), mem 1G avail; gateway
   jump path down mid-run (used s1-pub + S1-hop); S4 default python3 lacks
   numpy (herd env may differ).
+
+## Sentiment-from-klines rebuild 2026-10-06 ~00:45 UTC (operator order)
+- Found: market_sentiment_score existed but 597/668 files were stale flat-50
+  (bias healthy, grids overlap -> old bad write). Formula is kline-derived
+  (cross-sym WT-bias ratio) = honest reconstruction, no external feed needed.
+- tools/npz_sentiment_force.py: same formula, OOM-proof (sqlite score table,
+  zip-surgery writes, --only-flat finisher). Survived 4 killed attempts
+  (S1 mem pressure); final: 667/667 varied (IBIT std 25.19, 19k uniques).
+  1 holdout ETH.npz (orphan, not swept, partial regen without bias) left
+  for the normal regen cycle.
+- Synced S1->.4/.5/.6 via sync_indicators.sh; IBIT md5 identical on all 3.
+- Note: this is MARKET sentiment. Ranking LT scores (final_score_norm_lt /
+  trend_val_norm_lt) remain unfilled (no ranking history) per prior entry.

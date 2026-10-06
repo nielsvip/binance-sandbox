@@ -2784,11 +2784,23 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 return None, None
             if not _span["done"]:
                 _span["v"], _span["done"] = _npz_span_days(new_symside), True
+                try:  # USER 2026-10-06: the 365D slice is prepared ONCE and kept in RAM for every finalist
+                    _span["prep"] = _vp.prepare_batch(new_symside, 365)
+                    print(f"[DIAG] {new_symside} 365D slice prepared in RAM (span {_span['v']})", flush=True)
+                except Exception as _pe365:
+                    _span["prep"] = None
+                    print(f"[DIAG-warn] 365D prepare failed ({_pe365}) — disk path per finalist", flush=True)
+            r = None
+            ex = _cf.ThreadPoolExecutor(max_workers=1)
             try:
-                r = _vp.evaluate_sanitized_with_timeout(new_symside, dict(ov), 365, timeout_sec=int(min(QUAL_365D_TIMEOUT, 180)))
+                if _span.get("prep") is not None:
+                    r = ex.submit(_vp.evaluate_prepared_sanitized, _span["prep"], dict(ov), 365).result(timeout=180)
+                else:
+                    r = _vp.evaluate_sanitized_with_timeout(new_symside, dict(ov), 365, timeout_sec=int(min(QUAL_365D_TIMEOUT, 180)))
             except Exception as _e365:
                 print(f"[DIAG-warn] 365D eval: {_e365}", flush=True)
-                r = None
+            finally:
+                ex.shutdown(wait=False)
             _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": "sequential", "sheet": "DIAGNOSE_REPAIR", "row": None, "switch": "VERIFY_365D", "cand": "", "label": "DIAG_365D", "fn": "tools.opt.v12_pilot.evaluate_sanitized", "window_days": 365, "gain_pct": (r or {}).get("gain_pct"), "trades": (r or {}).get("trades"), "tim": (r or {}).get("tim_pct"), "valid": (r or {}).get("valid"), "invalid_reason": (r or {}).get("invalid_reason")})
             return r, _span["v"]
         origin = dict(cumulative_overrides)
@@ -2800,9 +2812,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         print(f"[DIAG] {new_symside} start mode={mode} budget={budget:.0f}s candidates={len(cands)} workers={_n_proc}", flush=True)
         _touch("diag-start")
         rep = _DR.run({"defaults": defaults, "sanitize": lambda ov: sanitize_overrides(ov, defaults)[0], "same_val": _same_val,
-                       "candidates": cands, "base_overrides": origin, "base_res": base_res, "bh": bh, "deadline": t0 + budget,
+                       "candidates": cands, "base_overrides": origin, "base_res": base_res, "bh": bh, "deadline": t0 + budget, "cat_side": map_key_for_symside(new_symside),
                        "eval_many": _eval_many, "eval_ledger": _eval_ledger, "eval_365": _eval_365, "qualifies_365": _qualifies_365d,
                        "log": lambda m: print(f"{m} [{new_symside}]", flush=True), "touch": _touch})
+        _span.pop("prep", None)  # release the 365D slice before DONE (OOM history, see pool release below)
         best = dict(rep.get("best_overrides") or origin)
         applied = False
         if rep.get("accepted") and mode == "publish":
