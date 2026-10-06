@@ -16467,6 +16467,12 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                         elif (not is_long) and not (_rsi1h_gate_val > float(getattr(config, 'RSI_ENTRY_MIN_SHORT', 63.0))):
                             logger.info(f"[RSI_ENTRY_GATE] {position_key}: BLOCKED rsi_1h={_rsi1h_gate_val:.1f}")
                             return
+                    if curr_amt == 0 and str(rec).upper().startswith("STRONG_") and not bool(getattr(config, "QUICK_OPEN_STRONG_VEC_ENABLED", False)):
+                        # 2026-10-06 parity-loop-crypto (director): the scoring-engine STRONG_BUY/STRONG_SELL open (reason QUICK_OPEN_STRONG_*) fired ~3,083x/48h
+                        # while its mapped switch QUICK_OPEN_STRONG_VEC_ENABLED (ez_manage _EXIT_REASON_FAMILY_GATE) was False and read nowhere. The switch now
+                        # governs the producer, same value as vec (QuickConfig False; vec has no such producer).
+                        logger.info(f"[QUICK_OPEN_STRONG_OFF] {position_key}: rec={rec} OPEN not sent (QUICK_OPEN_STRONG_VEC_ENABLED=False) r={str(reason)[:60]}")
+                        return
                     await tracker_manager.set_processing(position_key)
                     await tracker_manager.transition_to_exit(account_key, position_key, current_price, qty, status='PENDING_OPEN')
                     if "BREAKOUT_PLAY" in reason or "MOMENTUM_SCALP" in reason:

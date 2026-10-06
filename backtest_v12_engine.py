@@ -8441,9 +8441,23 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     # answer with the sim account's cash so the GFV gate sees a funded cash account (every AMD_LONG vec-exact open was
     # GFV_SETTLED_CASH_BLOCK_0). The GFV gate logic itself still runs.
     if os.environ.get("V12_REAL_EXECUTE") == "1":
+        # settled cash = effectively unlimited: the vec qty (vec notional, e.g. $13.8k CRWD) exceeds the harness's 10k
+        # bookkeeping capital, and account-level cash is not a per-sym decision (GFV_SETTLED_CASH_BLOCK_10000 on AAPL).
         async def _v12_settled_cash(_acct, *a, **kw):
-            return float(capital)
+            return float(os.environ.get("V12_SIM_SETTLED_CASH", "1e12"))
         manager._get_settled_cash_from_broker = _v12_settled_cash
+        # GFV tracker: per-run, in-memory (the live one persists data/gfv_tracker.json — shared by concurrent replays and
+        # by earlier runs) and on the SIM clock (tradier_manage `datetime` -> sim), so T+1 settlement follows sim days.
+        try:
+            _gfv = getattr(manager, "gfv_tracker", None)
+            if _gfv is not None:
+                _gfv.unsettled_sales = []
+                _gfv.restricted_positions = {}
+                _gfv._save = lambda *a, **kw: None
+            if getattr(tm_mod, "datetime", None) is datetime:
+                tm_mod.datetime = _SimDatetimeCls
+        except Exception as _gfv_e:
+            v8_logger.warning(f"[V12_REAL_EXECUTE] gfv/sim-datetime patch failed: {_gfv_e}")
     async def _fresh(sym, pk=None, *_a, **_kw): return True, "NPZ", True, manager.market_snapshot.get(sym.upper(), {})
     manager.is_data_fresh = _fresh
     async def _price(sym, *_a, **_kw): return price_cache.get(sym.upper(), 0.0), _sim_ts[0]

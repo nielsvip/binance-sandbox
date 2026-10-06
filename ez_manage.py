@@ -7988,6 +7988,15 @@ def _vec_exact_mode_on() -> bool:
         return False
 
 
+def _vec_exact_families() -> set:
+    """parity-loop-crypto 2026-10-06: twinned families (PARITY_VEC_EXACT_FAMILIES) while the master is on."""
+    try:
+        from live_twins import vec_exact as _vx_f
+        return set(_vx_f.families(config))
+    except Exception:
+        return set()
+
+
 def _vec_decided_reason_ok(reason) -> bool:
     """2026-10-06 director: an order decided by the vec engine — in-script twin (|VEC_EXACT, master on) or X3 VEC_DRIVEN_* intent.
     execute_trade_action's ENTRY_VET and DELTA engine gate never refuse these (hard safety unchanged)."""
@@ -21840,6 +21849,12 @@ class MultiAccountTradeManager:
                                     continue
                             except Exception:
                                 pass
+                        if auto_action in ("OPEN", "AUGMENT") and (not bool(getattr(config, "RANKING_WEBHOOK_DIRECT_ENTRY_ENABLED", False)) or (_vec_exact_mode_on() and "ENTRY" in _vec_exact_families())):
+                            logger.info(f"[DIRECT_QUEUE_OFF] {position_key}: {signal_type.upper()} {auto_action} not queued (RANKING_WEBHOOK_DIRECT_ENTRY_ENABLED={bool(getattr(config, 'RANKING_WEBHOOK_DIRECT_ENTRY_ENABLED', False))}, vec_exact={_vec_exact_mode_on()})")
+                            continue
+                        if auto_action == "CLOSE" and _vec_exact_mode_on() and "EXIT" in _vec_exact_families():
+                            logger.info(f"[DIRECT_QUEUE_OFF] {position_key}: {signal_type.upper()} CLOSE not queued (PARITY_VEC_EXACT_MODE with EXIT twinned: exits come from the vec twin)")
+                            continue
                         logger.warning(
                             f"[🚀 DIRECT_QUEUE] {position_key}: {signal_type.upper()} signal -> {auto_action} (conviction={conviction:.1f})"
                         )
@@ -30573,7 +30588,7 @@ class MultiAccountTradeManager:
         # (broker-sync, emergency_brake, quarantine) so exit-trigger parity is
         # measured even when the order is later blocked. leak=True → a gate-disabled
         # family still fired = illegal trade under parity. Pure logging, fail-open.
-        if bool(getattr(config, "EXIT_ENGINE_PARITY_LOG_ENABLED", True)):
+        if bool(getattr(config, "EXIT_ENGINE_PARITY_LOG_ENABLED", True)) and not os.environ.get("PYTEST_CURRENT_TEST"):  # 2026-10-06: tests/test_vec_driven_consumer.py wrote fake men:BTCUSDT_LONG rows (WT_DC_ENTRY "leak") into the live ledger
             try:
                 _xr = (reason or "").strip()
                 if _xr:

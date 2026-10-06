@@ -2364,11 +2364,11 @@ def _credible_baseline(new_symside, prepared, base_sets, defaults, template_path
 
 
 # ── POS_SYM SAMPLING (USER 2026-10-01 16:50Z): rows/filters with few positive sym_sides are re-tested only now and then ──
-# POS_SYM 0 -> 1 of 20 sym_sides, 1 -> 1 of 10, 2 -> 1 of 6, 3 -> 1 of 3, >=4 always. Deterministic hash(sym_side|tab|switch=cand|round).
+# POS_SYM 0 -> 1 of 20 sym_sides, 1 -> 1 of 10, 2 -> 1 of 6, 3 -> 1 of 2, >=4 always. Deterministic hash(sym_side|tab|switch=cand|round).
 # A sampled-out row/cell is NEVER a 0: G/F/H stay blank, reason SKIPPED_SAMPLING(pos_sym=k) in the progress JSON, E/greedy chain untouched.
 # Never sampled: bold default rows, rows without evidence (n_sym < 8 or unknown n_sym), rows never evaluated (no POS_SYM).
 # Switch: env V15_POSSYM_SAMPLING=1|0 (wins), else flag file <base>/data/possym_sampling.flag ("1"/"0"), else ON from round run21 on.
-_POSSYM_P = {0: 1.0 / 20, 1: 1.0 / 10, 2: 1.0 / 6, 3: 1.0 / 3}
+_POSSYM_P = {0: 1.0 / 20, 1: 1.0 / 10, 2: 1.0 / 6, 3: 1.0 / 2}  # USER 2026-10-06: pos_sym 3 -> 1 in 2 (was 1/3); sampling ON again
 _POSSYM_MIN_N = int(os.environ.get("V15_POSSYM_MIN_N", "20"))  # USER 2026-10-01: >= 20 evaluated sym_sides in the cat_side before a row may be sampled
 
 

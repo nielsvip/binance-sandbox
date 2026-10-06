@@ -1930,10 +1930,14 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
             # NPZ_WM_FROM_D_LEGACY=1 restores the per-host W/M files as the history source.
             _wm_hist = dfs.get(tf)
             if os.environ.get("NPZ_WM_FROM_D_LEGACY") != "1" and dfs.get("D") is not None and len(dfs["D"]) >= 30:
-                _dwm = _crypto_wm_frame(dfs["D"], None, tf)
+                # Depth = the last NPZ_WM_D_BARS (1500 = one Binance klines page, always present in the live ez_klines D file) daily bars: 50/200-period
+                # W/M EMAs never converge on <=100 monthly bars, so a host with deeper D history (S1 gateway) gave different W/M values (ATOMUSDT wt_cross_bull_M).
+                _dwm = _crypto_wm_frame(dfs["D"].iloc[-int(os.environ.get("NPZ_WM_D_BARS", "1500")):], None, tf)
                 if _dwm is not None and len(_dwm) >= 2:
                     _wm_hist = pd.concat([_dwm, _dwm.iloc[-1:]])  # D buckets are already complete; _crypto_wm_frame drops the history's last row as partial
             _wmf = _crypto_wm_frame(_resample_src_df, _wm_hist, tf)
+            if _wmf is not None and len(_wmf):
+                _wmf = _wmf[~_wmf.index.duplicated(keep="last")].sort_index()
             if _wmf is not None and len(_wmf) >= 10:
                 dfs[tf] = _wmf
                 logger.info(f"  {symbol}: {tf} frame = authentic history + 15m-resampled fresh buckets ({len(_wmf)} rows, last {_wmf.index[-1]})")

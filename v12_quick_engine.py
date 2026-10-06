@@ -4254,6 +4254,7 @@ class QuickConfig:
     OBLIGATORY_EMA50_15M_ENABLED: bool = False  # 2026-10-06 parity-loop-crypto live-switch mirror: config.py live value (read by a live opener/closer; switch_parity verify-live-switches)
     OBLIGATORY_EMA50_15M_PCT: float = 1.0  # 2026-10-06 parity-loop-crypto live-switch mirror: config.py live value (read by a live opener/closer; switch_parity verify-live-switches)
     WT_EXIT_MIN_TFS_LIVE_ENABLED: bool = False  # 2026-10-06 parity-loop-crypto live-switch mirror: config.py live value (read by a live opener/closer; switch_parity verify-live-switches)
+    RANKING_WEBHOOK_DIRECT_ENTRY_ENABLED: bool = False  # 2026-10-06 parity-loop-crypto live-switch mirror: live ranking-webhook ALL_GREEN/ALL_RED direct OPEN/AUGMENT path; vec has no such producer -> False = parity (True is not modelled)
     CRYPTO_REENTRY_PATHWAYS_ENABLED: bool = False  # lane-D 2026-10-06 director ruling: brand-new switch -> default = today-live (False); True = vec-only behaviour test row (lanes B/C build the live twin).  # crypto: HARDCODED_RALLY / TARGET-DC recross / HTF_WT_CHURN / REENTRY_MANDATORY pathways have no reachable live counterpart; True = old vec
     GAP_MOC_TS_SESSION_WINDOW_ENABLED: bool = True  # lane-D bug fix: GAP_MOC window/deadline + 30-day avg from ET timestamps (NPZ has 64 bars/day); False = old `i % 26` arithmetic
     STOCKS_OPENING_BUFFER_ENTRY_ENABLED: bool = True  # lane-D live twin: tradier OPENING_BUFFER_NO_CLOSE_MINUTES also blocks reentry (:23182) and augment (:22710)
