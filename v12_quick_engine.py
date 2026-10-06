@@ -4233,7 +4233,7 @@ class QuickConfig:
     STOCKS_WTDC_SCORER_EXIT_ENABLED: bool = True  # stocks: live evaluate_stop WT_DC scorer exit chain twin (opening buffer + 240/60 min hold + NOLOSS + N-of-5 scorer); vec_decisions/stocks_wtdc_scorer_exit.py
     TRADIER_MIN_HOLD_MINUTES_SHORT: float = 60.0  # config_tradier.py:4165 (live evaluate_stop short min hold)
     STOCKS_RTH_ONLY_ENABLED: bool = True  # stocks: live acts only Mon-Fri 09:30-16:00 ET; NPZ carries 04:00-20:00 bars; False = old vec (trades extended hours)
-    EMA50_15M_ENTRY_FILTER_VEC_ONLY_ENABLED: bool = True  # lane-D 2026-10-06 director: True (no-op gate) — lane C wired the stocks live EMA50 twin, lane B wiring crypto; EMA50_15M_ENTRY_FILTER_ENABLED decides.  # EMA50 15m entry filter is dead live (crypto: _NON_VEC_KNOBS_EZ mask; stocks: only in dead should_enter_long/short); True = old vec filter
+    EMA50_15M_ENTRY_FILTER_VEC_ONLY_ENABLED: bool = False  # lane-D 2026-10-06 director: crypto live has no ema_50_15m (ez_indicators never emits it) -> False; apply_tradier_defaults sets True (stocks live twin, lane C).  # EMA50 15m entry filter is dead live (crypto: _NON_VEC_KNOBS_EZ mask; stocks: only in dead should_enter_long/short); True = old vec filter
     KG_STOCKS_LIVE_GATE_VEC_ONLY_ENABLED: bool = False  # lane-D 2026-10-06 director ruling: brand-new switch -> default = today-live (False); True = vec-only behaviour test row (lanes B/C build the live twin).  # stocks KG/EMA_9_21 hard veto has no live caller (should_enter_* dead); True = old vec veto
     HAIKU_WINNER_VEC_ONLY_ENABLED: bool = False  # lane-D 2026-10-06 director ruling: brand-new switch -> default = today-live (False); True = vec-only behaviour test row (lanes B/C build the live twin).  # crypto HaikuOverseer AUGMENT is refused live by STRICT_VEC_PARITY (reason has no allowlist token); True = old vec haiku augment
     KEY_LEVEL_CRASH_VEC_ONLY_ENABLED: bool = False  # lane-D 2026-10-06 director ruling: brand-new switch -> default = today-live (False); True = vec-only behaviour test row (lanes B/C build the live twin).  # crypto KEY_LEVEL_CRASH lives only in EPQ check_exit_candidates (ablated live: ABLATION_DISABLE_QUICK_EXIT=True); True = old vec
@@ -5154,6 +5154,8 @@ class QuickConfig:
         self.VWAP_BOUNCE_ENTRY_ENABLED = False
         self.WRONG_SIDE_DIV_TFS_REQUIRED = 1
         self.WT_15M_BOUNCE_OPEN_ENABLED = True  # lane-D 2026-10-06: kept True (director correction: vec baseline = TEMPLATE/cat defaults, live brought forward)
+        self.EMA50_15M_ENTRY_FILTER_VEC_ONLY_ENABLED = True  # lane-D 2026-10-06: stocks live EMA50 twin exists (lane C)
+        self.EXIT_VELOCITY_WT_ENABLED = False  # lane-D 2026-10-06 (lane C proof): tradier process_position passes the parsed dict, parser drops wt_velocity_* -> live EXIT_VELOCITY_WT never fires on stocks
         self.WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED = True
         self.WT_3M_FORCE_OPEN_SIZE_USD = 1200.0
         self.WT_3M_FORCE_OPEN_TARGET_USD = 2500.0
@@ -12506,7 +12508,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # where ema_50_15m>0 and px>0 (live guard). Crypto config.py default True (fixes a live>vec parity
     # gap); config_tradier default False (stocks inert until swept). No arbitrary proxy — real EMA50.
     try:
-        if bool(getattr(cfg, 'EMA50_15M_ENTRY_FILTER_ENABLED', False)) and bool(getattr(cfg, 'EMA50_15M_ENTRY_FILTER_VEC_ONLY_ENABLED', True)):  # lane-D: live-dead filter, default off
+        if bool(getattr(cfg, 'EMA50_15M_ENTRY_FILTER_ENABLED', False)) and bool(getattr(cfg, 'EMA50_15M_ENTRY_FILTER_VEC_ONLY_ENABLED', False)):  # lane-D: live-dead filter, default off
             _ema50_15m = _safe(npz, 'ema_50_15m', n, 0.0)
             _ema_filter_pct = float(getattr(cfg, 'EMA50_15M_ENTRY_FILTER_PCT', 0.0) or 0.0) / 100.0
             _ema_valid = (_ema50_15m > 0) & (close > 0)
@@ -13898,6 +13900,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _lec_hit = None if _lec_quick_ablated else _lec.step(_lec_P, cfg, i, px, {'gain': live_pnl_pct, 'peak': pos.get('peak_pnl_pct', 0.0), 'age_min': held_bars * bmin,
                                                       'entry_price': pos.get('entry_price', pos['avg_price']), 'reentered': 'REENTRY' in str(pos.get('entry_reason', '')).upper(),
                                                       'was_augmented': int(pos.get('n_augments', 0)) > 0})
+            # lane-D 2026-10-06 (director/lane B): KEY_LEVEL_CRASH_VEC_ONLY_ENABLED=True runs the key-level leg INDEPENDENTLY of the
+            # quick-exit ablation, exactly like live_twins/key_level.decide (sev>=3 of 15m/1h/4h/D prior-bar channels, no fire below
+            # -0.01% unless LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED, live reduce_fraction bands).
+            if _lec_hit is None and _lec_quick_ablated and bool(getattr(cfg, 'KEY_LEVEL_CRASH_VEC_ONLY_ENABLED', False)) and bool(getattr(cfg, 'KEY_LEVEL_CRASH_ENABLED', True)):
+                _kl_sev = int(_lec_P['keylevel_sev'][i]) if 'keylevel_sev' in _lec_P else 0
+                if _kl_sev >= 3 and not (live_pnl_pct < -0.01 and not bool(getattr(cfg, 'LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED', False))):
+                    _lec_hit = (f"KEY_LEVEL_{'CRASH' if is_long else 'BREAKOUT'}_S{_kl_sev}_DC_{'LOW' if is_long else 'HIGH'}_BROKEN", False)
             if _lec_hit:
                 _lec_reason, _lec_full = _lec_hit
                 _lec_frac = None if _lec_full else _lec.reduce_fraction(cfg, live_pnl_pct)

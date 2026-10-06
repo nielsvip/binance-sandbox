@@ -863,7 +863,8 @@ class TradierConfig:
     EXIT_R1_R2_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19 (CRYPTO_LONG yellow)
     HTF_BULL_ENTRY_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     ATR_TRAIL_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
-    EXIT_VELOCITY_WT_ENABLED: bool = True  # PARITY LANE C 2026-10-06: master of the live always-on EXIT_VELOCITY_WT exit (True = unchanged); vec twin same name (lane D)
+    CFG_AUTO_REPAIRED_SIDE_PERSYM_ENABLED: bool = False  # PARITY LANE C 2026-10-06: _cfg_auto frames whose side was BUY/SELL (execute_now/execute_trade_action/queue_trade_action/handle_order) now resolve cat_side(correct side) > global; True = also per-sym PROMOTIONS first (13 params / ~47 sym_sides change, see data/parity/lane_C_stocks_ledger.md). Global-only switch.
+    EXIT_VELOCITY_WT_ENABLED: bool = False  # PARITY LANE C 2026-10-06: master of the live always-on EXIT_VELOCITY_WT exit (True = unchanged); vec twin same name (lane D)  # director 2026-10-06: live parser drops wt_velocity_* (lane C) -> exit never fires live; default = live reality
     STOCKS_WTDC_SCORER_EXIT_ENABLED: bool = True  # PARITY LANE C 2026-10-06: master alongside WT_DC_EXIT_ENABLED for the evaluate_stop WT_DC scorer exit (True = unchanged)
     MULTI_TF_EXIT_ENABLED_TRADIER: bool = False  # PARITY LANE C 2026-10-06: True = evaluate_multi_tf_exit also runs while the WT_DC scorer holds (vec semantics); False = today
     KG_STOCKS_LIVE_GATE_VEC_ONLY_ENABLED: bool = False  # PARITY LANE C 2026-10-06: True = vec stocks KINDERGARTEN/EMA_9_21 hard veto applied live (tradier_filter_tf_twins.kg_stocks_block); False = today

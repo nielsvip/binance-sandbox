@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-10-06 01:40 UTC
+PERFORMANCE REPORT — 2026-10-06 01:58 UTC
 ================================================================================
 Total: 138 symbols | A=5 B=92 C=41
 Window: 14 days | Min trades: 5
@@ -33,9 +33,9 @@ Window: 14 days | Min trades: 5
           HOTUSDT  WR=57%  avg=+0.23%  total=+1.6%  trades=  7  mult=2.00
           ETHUSDC  WR=67%  avg=+0.10%  total=+1.5%  trades= 15  mult=3.75
           STXUSDT  WR=61%  avg=+0.07%  total=+1.3%  trades= 18  mult=3.25
-          GRTUSDT  WR=75%  avg=+0.28%  total=+1.1%  trades=  4  mult=1.00
           ARBUSDC  WR=55%  avg=+0.09%  total=+1.0%  trades= 11  mult=1.79
          CELRUSDT  WR=100%  avg=+0.34%  total=+1.0%  trades=  3  mult=1.00
+          GRTUSDT  WR=67%  avg=+0.31%  total=+0.9%  trades=  3  mult=1.00
      1000LUNCUSDT  WR=100%  avg=+0.89%  total=+0.9%  trades=  1  mult=1.00
           XTZUSDT  WR=75%  avg=+0.20%  total=+0.8%  trades=  4  mult=1.00
          IOTAUSDT  WR=33%  avg=+0.09%  total=+0.8%  trades=  9  mult=0.68
@@ -92,7 +92,7 @@ Window: 14 days | Min trades: 5
               TSM  WR=0%  avg=-0.62%  total=-2.4%  trades=  4  mult=1.00
           ETHUSDT  WR=0%  avg=-2.92%  total=-2.9%  trades=  1  mult=1.00
               PSX  WR=62%  avg=-0.09%  total=-3.4%  trades= 37  mult=2.61
-         IOTXUSDT  WR=52%  avg=-0.15%  total=-4.2%  trades= 27  mult=0.76
+         IOTXUSDT  WR=56%  avg=-0.14%  total=-3.6%  trades= 25  mult=1.11
          SANDUSDT  WR=45%  avg=-0.13%  total=-4.3%  trades= 33  mult=0.57
        RAYSOLUSDT  WR=50%  avg=-1.26%  total=-5.1%  trades=  4  mult=1.00
              AVGO  WR=0%  avg=-1.32%  total=-5.2%  trades=  4  mult=1.00
@@ -148,7 +148,7 @@ Window: 14 days | Min trades: 5
               APO  WR=5%  avg=-4.01%  total=-92.8%  trades= 64  mult=0.12
 
 SUMMARY:
-  Total PnL (all symbols): -459.6%
+  Total PnL (all symbols): -459.2%
   Avg win rate: 45%
   A-tier avg mult: 10.00
   C-tier avg mult: 0.33

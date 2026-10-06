@@ -6615,7 +6615,7 @@ def _cfg(param, default=None, account_key=None, symbol=None, side=None, _promoti
     # SQLite primary: full resolved per_sym config (~5000 keys, defaults snapshot + overrides)
     # Every per_sym entry includes defaults of that moment so TEMPLATE changes cannot drift live.
     # PER_SYM_STORE_SQLITE_DISABLED=1 forces JSON-only parity audit.
-    if symbol and side and os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1":
+    if symbol and side and _promotions_only != "cat" and os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1":
         try:
             import per_sym_store as _pss
             # PARITY LANE C 2026-10-06 (director): _promotions_only=True reads ONLY the row's promotion overrides, never the
@@ -6647,14 +6647,14 @@ def _cfg(param, default=None, account_key=None, symbol=None, side=None, _promoti
         and not bool(getattr(config, 'R1_DC_LOW4_3M_EMERGENCY_ENABLED', False))
     ):
         return False
-    if symbol and side:
+    if symbol and side and _promotions_only != "cat":
         exact = _load_full_recipe_live_cfgs().get(f"{symbol}_{side}", {})
         if param in exact:
             return exact[param]
         _bv = _tradier_final_book_get(f"{symbol}_{side}", param)
         if _bv is not None:
             return _bv
-    if account_key and symbol and side:
+    if account_key and symbol and side and _promotions_only != "cat":
         # 2026-08-15 corrected: TRB = pure best found settings only (4yr per-sym sweep winners).
         # TRC = TRB baseline + weekly month-back overlay (30d, exp weight on last days) — analogous
         # to crypto where fin trades men symbols+settings with 7D overlay while men is pure best.
@@ -6726,10 +6726,13 @@ def _cfg_auto(param, default=None):
             try:
                 ak = getattr(loc['self'], 'account_key', None)
             except: pass
-        # legacy-resolved frames keep the historical _cfg precedence; frames repaired from BUY/SELL resolve promotions-only (director 2026-10-06)
-        if _legacy_ok:
-            side = _legacy_side
-        return _cfg(param, default, ak, sym, side, _promotions_only=not _legacy_ok)
+        # legacy-resolved frames keep the historical _cfg precedence. Frames REPAIRED from BUY/SELL: cat_side(correct side) > global only
+        # ("cat" mode = today's values, since STOCKS_LONG == STOCKS_SHORT for every affected key) unless the global switch
+        # CFG_AUTO_REPAIRED_SIDE_PERSYM_ENABLED is True -> per-sym PROMOTIONS > cat_side > global (director 2026-10-06; promotion list in lane C ledger).
+        if _legacy_ok or not _legacy_side or side is None:
+            return _cfg(param, default, ak, sym, _legacy_side)
+        _rep_mode = True if bool(getattr(config, 'CFG_AUTO_REPAIRED_SIDE_PERSYM_ENABLED', False)) else "cat"
+        return _cfg(param, default, ak, sym, side, _promotions_only=_rep_mode)
     except:
         return _cfg(param, default, None, None, None)
     finally:
