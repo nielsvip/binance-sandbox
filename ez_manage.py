@@ -33733,6 +33733,11 @@ class MultiAccountTradeManager:
                         break
                 # 2026-04-26: SCALP_V3_NOLOSS_BYPASS_DENY_SR removed — close on technicals ALWAYS.
                 # Former guard revoked _ung_bypass when price was within 1.5% of any S/R level.
+            # 2026-10-06 director/USER ruling 3 ("NOLOSS is a lie with only exceptions"): a vec-decided close (in-script twin
+            # |VEC_EXACT or X3 VEC_DRIVEN_* on a vec-driven sym_side) executes at a loss exactly where the vec engine closes.
+            if not _ung_bypass and _vd_exempt:
+                _ung_bypass = True
+                logger.warning(f"⚠️ [UNIVERSAL_NOLOSS_VEC_DECIDED_BYPASS][{account_key}] {position_key}: vec-decided close allowed at loss (reason={reason[:60]})")
             _ung_srs = "STRUCTURAL_RANGE_SHIFT" in reason_upper
             if not _ung_bypass:
                 pos = (

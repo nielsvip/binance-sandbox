@@ -5389,40 +5389,7 @@ def main():
     import os
     os.environ["V8_SWEEP_MODE"] = "1"
     os.environ.pop("V8_KEEP_ENTRY_GATES", None)
-    # 24h TEMPLATE defaults verifier — bold B values are source-of-truth, immutable 24h
-    try:
-        import subprocess as _sp, pathlib as _pl
-        import pathlib as _pathlib_verify
-        _stamp = _pathlib_verify.Path("SPREADSHEETS/.template_defaults_verified.json")
-        _need_verify = True
-        if _stamp.exists():
-            try:
-                import json as _js, time as _tm
-                _verified_at = float(_js.load(open(_stamp)).get("verified_at", 0))
-                if (_tm.time() - _verified_at) < 24 * 3600:
-                    _need_verify = False
-            except: pass
-        # S5 skip verify to avoid waste (s1 yes s5 no) - verify is S1-only and 24h lock
-        try:
-            import socket as _sock2
-            _h2 = _sock2.gethostname().lower()
-            if "s5" in _h2:
-                print("[TEMPLATE-VERIFY] S5 skip (s1 yes s5 no) — S1 already verified, saving 233k wasted", flush=True)
-                _need_verify=False
-        except: pass
-        if _need_verify:
-            if os.getenv("V15_FORCE_USE") == "1" or os.getenv("FORCE_DC_RERUN") == "1":
-                print("[TEMPLATE-VERIFY] V15_FORCE_USE/FORCE_DC_RERUN — skip verify to avoid hang, never block pilot", flush=True)
-            else:
-                print("[TEMPLATE-VERIFY] 24h expired or no stamp — re-verifying bold defaults vs config source of truth (ONLY backtests, not per sym)", flush=True)
-                try:
-                    _sp.run([sys.executable, "tools/verify_template_defaults.py"], check=False, timeout=8)
-                except Exception as _e_v:
-                    print(f"[TEMPLATE-VERIFY-TIMEOUT] skip verify >8s {_e_v} — never hang", flush=True)
-        else:
-            print("[TEMPLATE-VERIFY] within 24h immutable or S5 skip — skipping to avoid 233k waste", flush=True)
-    except Exception as _e:
-        print(f"[TEMPLATE-VERIFY-WARN] {_e}", flush=True)
+    # USER 2026-10-06: TEMPLATE defaults are rewritten ONLY by the daily job (once per 24h, before market open, after v15_avg_delta) — never by a pilot start
 
     if sys.platform == "darwin" and not args.dry_run and not args.allow_mac and os.getenv("V15_ALLOW_MAC") != "1" and "PYTEST_CURRENT_TEST" not in os.environ:
         print("[BLOCKED] v15_pilot is S1-ONLY — NEVER RUN ON MACBOOK except for code writing/testing.", file=sys.stderr, flush=True)
