@@ -43,10 +43,6 @@
   "at": "06 20:57:14 - ",
   "reason": "seeded_from_log"
  },
- "ang:SKYUSDT_LONG": {
-  "at": "2026-10-06T21:20:48Z",
-  "reason": "ENTRY_SIGNAL"
- },
  "ang:GALAUSDT_SHORT": {
   "at": "2026-10-06T21:29:19Z",
   "reason": "B12"
@@ -83,8 +79,16 @@
   "at": "2026-10-06T22:45:57Z",
   "reason": "B_KZONE"
  },
+ "ang:UNIUSDC_SHORT": {
+  "at": "2026-10-06T23:20:55Z",
+  "reason": "B_KZONE"
+ },
  "ang:ENJUSDT_LONG": {
-  "at": "2026-10-06T22:46:02Z",
+  "at": "2026-10-06T23:20:57Z",
   "reason": "B12"
+ },
+ "ang:AAPLUSDT_LONG": {
+  "at": "2026-10-06T23:21:06Z",
+  "reason": "B_SRS_ENTRY"
  }
 }

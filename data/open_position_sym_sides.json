@@ -1,5 +1,5 @@
 {
- "at": "2026-10-06T23:05:01.098605+00:00",
+ "at": "2026-10-06T23:25:01.513615+00:00",
  "source": "Mac {acct}/{long,short}_positions.json |positionAmt|>0",
  "sym_sides": [
   "ADAUSDC_SHORT",
@@ -69,19 +69,17 @@
    "NEARUSDC_LONG",
    "NMRUSDT_LONG",
    "RENDERUSDT_LONG",
-   "SANDUSDT_LONG",
-   "SKYUSDT_LONG",
    "SNXUSDT_LONG",
    "ZROUSDT_LONG"
   ],
   "fin": [
-   "ADAUSDC_SHORT",
-   "SANDUSDT_LONG"
+   "ADAUSDC_SHORT"
   ],
   "inf": [
    "ALGOUSDT_SHORT",
    "ARBUSDC_SHORT",
    "ARUSDT_LONG",
+   "NEARUSDC_LONG",
    "NMRUSDT_LONG",
    "RENDERUSDT_LONG",
    "ZROUSDT_LONG"

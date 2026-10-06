@@ -11924,11 +11924,21 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # 2026-10-06 USER: the RSI-T55 veto twin (vec_decisions/entry_vet_rsi_t55.py) is REMOVED (never approved). History: cut#6 had re-added it — cut#5 premise REFUTED by S1 parity leg-1: live crypto gate IS functional
     # (ez_manage.check_entry_vetting:1426-1434, enforced per-open :26075-26087); honest recount blocks 2647 bars RSI_T55_BLOCK_LONG. "Zeroed BTC LONG" was live parity, not a bug.
     _tvs_churn_ok = None
+    _entry_or_srcs = []  # 2026-10-06 ENTRY_SOURCE_LABEL (USER: ENTRY_SIGNAL fallback banned): (label, mask) for every non-B OR-source ORed into entry_sig. Label-only; trade logic untouched.
+    try:
+        _force_bar0 = int(np.argmax(np.asarray(close) > 0)) if bool(getattr(cfg, 'FORCE_MIN_ONE_TRADE', False)) else -1
+    except Exception:
+        _force_bar0 = -1
     try:
         import vec_decisions.twin_vec_special as _tvs
         _tvs_m = _tvs.get("DC_BREAKOUT_TF_EXPANDED", npz, n, is_long, cfg, close=close)
         if _tvs_m is not None:
             entry_sig = entry_sig | np.asarray(_tvs_m, dtype=bool)
+            try:
+                _tvs_tf = str(getattr(cfg, "DC_BREAKOUT_TF_EXPANDED", getattr(cfg, "DC_BREAKOUT_TF", "1h")) or "1h").upper()
+            except Exception:
+                _tvs_tf = "1H"
+            _entry_or_srcs.append((f"DC_BREAKOUT_TF_EXPANDED_{_tvs_tf}", np.asarray(_tvs_m, dtype=bool)))
         # (RSI AND-gate removed cut#5 — see H1 note)
         _tvs_r3 = _tvs.get("R3_HTF_FLIP_EXIT_ENABLED", npz, n, is_long, cfg, close=close)
         if _tvs_r3 is not None:
@@ -12737,9 +12747,20 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # VWAP_STRETCH entry triggers (OR into entry_sig, force-open mirror) + exits (OR into exit_sig).
     try:
         import vec_decisions.twin_entries_dead_b as _twin_dead_b
-        for _twin_em in (_twin_dead_b.stoch_xtreme_entry_vec(npz, n, is_long, cfg, close, _safe), _twin_dead_b.smfi_div_entry_vec(npz, n, is_long, cfg, close, _safe), _twin_dead_b.vwap_stretch_entry_vec(npz, n, is_long, cfg, close, _safe)):
+        _twin_dead_b_entries = (("STOCH_XTREME_ENTRY", _twin_dead_b.stoch_xtreme_entry_vec(npz, n, is_long, cfg, close, _safe)), ("SMFI_DIV_ENTRY", _twin_dead_b.smfi_div_entry_vec(npz, n, is_long, cfg, close, _safe)), ("VWAP_STRETCH_ENTRY", _twin_dead_b.vwap_stretch_entry_vec(npz, n, is_long, cfg, close, _safe)))
+        for _twin_nm, _twin_em in _twin_dead_b_entries:
             if _twin_em is not None:
                 entry_sig = entry_sig | np.asarray(_twin_em, dtype=bool)
+                try:
+                    if _twin_nm == "STOCH_XTREME_ENTRY":
+                        _twin_nm = f"STOCH_XTREME_ENTRY_{str(getattr(cfg, 'STOCH_XTREME_ENTRY_TF', '1h') or '1h').upper()}"
+                    elif _twin_nm == "SMFI_DIV_ENTRY":
+                        _twin_nm = f"SMFI_DIV_ENTRY_{str(getattr(cfg, 'SMFI_DIV_ENTRY_TF', '1h') or '1h').upper()}"
+                    elif _twin_nm == "VWAP_STRETCH_ENTRY":
+                        _twin_nm = f"VWAP_STRETCH_ENTRY_PCT{float(getattr(cfg, 'VWAP_STRETCH_ENTRY_PCT', 1.0) or 1.0):g}"
+                except Exception:
+                    pass
+                _entry_or_srcs.append((_twin_nm, np.asarray(_twin_em, dtype=bool)))
         for _twin_xm in (_twin_dead_b.stoch_xtreme_exit_vec(npz, n, is_long, cfg, close, _safe), _twin_dead_b.smfi_div_exit_vec(npz, n, is_long, cfg, close, _safe), _twin_dead_b.vwap_stretch_exit_vec(npz, n, is_long, cfg, close, _safe)):
             if _twin_xm is not None:
                 exit_sig = exit_sig | np.asarray(_twin_xm, dtype=bool)
@@ -12751,6 +12772,23 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _teda_entry = _teda.entry_mask(npz, n, is_long, cfg, _safe)
         if _teda_entry is not None:
             entry_sig = entry_sig | np.asarray(_teda_entry, dtype=bool)
+            try:
+                from vec_decisions.twin_entries_dead_a import _entry_funding_mask as _te_f, _entry_oi_mask as _te_o, _entry_rsi2_mask as _te_r
+                for _te_nm, _te_m in (("FUNDING_CROWD_ENTRY", _te_f(npz, n, is_long, cfg, _safe)), ("OI_SURGE_ENTRY", _te_o(npz, n, is_long, cfg, _safe)), ("RSI2_XTREME_ENTRY", _te_r(npz, n, is_long, cfg, _safe))):
+                    if _te_m is None:
+                        continue
+                    try:
+                        if _te_nm == "FUNDING_CROWD_ENTRY":
+                            _te_nm = f"FUNDING_CROWD_ENTRY_Z{float(getattr(cfg, 'FUNDING_CROWD_ENTRY_Z', 2.0) or 2.0):g}"
+                        elif _te_nm == "OI_SURGE_ENTRY":
+                            _te_nm = f"OI_SURGE_ENTRY_PCT{float(getattr(cfg, 'OI_SURGE_ENTRY_PCT', 3.0) or 3.0):g}"
+                        else:
+                            _te_nm = f"RSI2_XTREME_ENTRY_{str(getattr(cfg, 'RSI2_XTREME_ENTRY_TF', '1h') or '1h').upper()}"
+                    except Exception:
+                        pass
+                    _entry_or_srcs.append((_te_nm, np.asarray(_te_m, dtype=bool)))
+            except Exception:
+                _entry_or_srcs.append(("TEDA_ENTRY", np.asarray(_teda_entry, dtype=bool)))
         _teda_exit = _teda.exit_mask(npz, n, is_long, cfg, _safe)
         if _teda_exit is not None:
             exit_sig = exit_sig | np.asarray(_teda_exit, dtype=bool)
@@ -12772,6 +12810,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _ted_mr = _ted.mu_reentry_mask(npz, n, is_long, sym, _ted_get, _safe, close)
         if _ted_mr is not None:
             entry_sig = entry_sig | np.asarray(_ted_mr, dtype=bool)
+            try:
+                _mu_tol = float(_ted_get("MU_CORRECTION_REENTRY_DC_TOL_PCT", 2.0) or 2.0)
+                _entry_or_srcs.append((f"MU_REENTRY_TOL{_mu_tol:g}PCT", np.asarray(_ted_mr, dtype=bool)))
+            except Exception:
+                _entry_or_srcs.append(("MU_REENTRY", np.asarray(_ted_mr, dtype=bool)))
         _ted_bx = _ted.bbkc_exit_mask(npz, n, is_long, _ted_get, _safe, close)
         if _ted_bx is not None:
             exit_sig = exit_sig | np.asarray(_ted_bx, dtype=bool)
@@ -13589,12 +13632,18 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 else:
                     continue
             fire = entry_sig[i]
+            _fire_src = None  # 2026-10-06 ENTRY_SOURCE_LABEL: provenance of the in-loop fire below (first-writer-wins; label-only)
             # TWIN_VEC_SPECIAL H2a: HTF_WT_CHURN_REENTRY (live ez_manage.py:42701). Flat here (pos None); notional 0 < cap passes; age from last close bar. NOTE: live bypasses cooldown; vec honors cd above (checked before this block) — known gap, see COOLDOWN_BARS NEEDS-OPERATOR-DECISION.
             try:
                 if not fire and has_closed_before and trades and _tvs_churn_ok is not None and i < len(_tvs_churn_ok) and bool(_tvs_churn_ok[i]):
                     _lc = trades[-1]
                     if float(_lc.get('exit_price', 0) or 0) > 0 and float((i - int(_lc.get('bar_exit', i))) * bmin) <= float(getattr(cfg, 'HTF_WT_CHURN_REENTRY_MAX_AGE_MIN', 120.0)):
                         fire = True
+                        if _fire_src is None:
+                            try:
+                                _fire_src = f"HTF_WT_CHURN_REENTRY_{float(getattr(cfg, 'HTF_WT_CHURN_REENTRY_MAX_AGE_MIN', 120.0) or 120.0):g}MIN"
+                            except Exception:
+                                _fire_src = "HTF_WT_CHURN_REENTRY"
             except Exception:
                 pass
             # TWIN_VEC_SPECIAL H2b: LIVE_VEC_EMERGENCY_BRAKE veto (live ez_manage.py:32199/tradier_manage.py:26387). Single-sym mapping: sym_count := hour_total. Binds only if ledger carries OPEN/AUGMENT rows.
@@ -13637,6 +13686,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         _le = float(trades[-1].get('exit_price',0) or 0)
                         if _le > 0 and ((is_long and px > _le) or (not is_long and px < _le)):
                             fire = True
+                            if _fire_src is None:
+                                _fire_src = 'TARGET_DC_REENTRY' if _is_target_dc else 'SELL_TOP_RECROSS_REENTRY'
                 except Exception:
                     pass
             # WIRING LANE E 2026-10-05: GAP morning rebuy trigger (live tradier 9948-10005). Pending set by the gap inline-close; fires in the first-120m window on dip/wt/ha/dc/force; vv-danger drops pending (not attractive); later gates may veto (retry next bar, like live).
@@ -13676,6 +13727,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         _n3_tier_reason = vec_decisions.reentry_tiers.tier_reason(_n3_tier, is_long, _n3_ex, px, _n3_k, _n3_mins)
                     if _n3_tier and not fire:
                         fire = True
+                        if _fire_src is None:
+                            _fire_src = f"REENTRY_TIER_{_n3_tier}"
                 except Exception:
                     _n3_tier = None
                     _n3_tier_reason = None
@@ -13691,16 +13744,22 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         _tier = _E.size_tier_mult(_n3_epq, i, px, _ex, cfg)
                         if _E.dc_breakout(_n3_epq, i, px, cfg):
                             fire = True
+                            if _fire_src is None:
+                                _fire_src = 'EPQ_DC_BREAKOUT_REENTRY'
                             _n3_epq_dollar = px * max(_pq, _sps / px) * _tier
                         else:
                             _b_ok, _b_m = _E.b16_sma200_pullback(_n3_epq, i, px, cfg)
                             if _b_ok:
                                 fire = True
+                                if _fire_src is None:
+                                    _fire_src = 'EPQ_B16_SMA200_PULLBACK'
                                 _n3_epq_dollar = _sps * _b_m
                             else:
                                 _m_ok, _m_m = _E.mandatory_price_cross(_n3_epq, i, px, _ex, _mins, cfg)
                                 if _m_ok:
                                     fire = True
+                                    if _fire_src is None:
+                                        _fire_src = 'EPQ_MANDATORY_PRICE_CROSS'
                                     _n3_epq_dollar = px * max(_pq * _tier * _m_m, _sps / px)
                 except Exception:
                     _n3_epq_dollar = None
@@ -13711,6 +13770,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         _n3_obl, i, px, float(trades[-1].get('exit_price', 0) or 0), float(close[i - 1]) if i > 0 else 0.0, cfg)  # WIRING LANE C L1f: score plumbed (binary fire; unused downstream)
                     if _o_ok:
                         fire = True
+                        if _fire_src is None:
+                            try:
+                                _o_tag = ''.join(c if (c.isalnum() or c == '_') else '_' for c in str(_o_reason or '').upper())[:40].strip('_')
+                                _fire_src = f"OBLIGATORY_{_o_tag}" if _o_tag else 'OBLIGATORY_REENTRY'
+                            except Exception:
+                                _fire_src = 'OBLIGATORY_REENTRY'
                         _n3_obl_mult = _o_mult
                 except Exception:
                     _n3_obl_mult = None
@@ -13725,6 +13790,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     _wirec_leg_inv = bool(_lg_inv)
                     if not fire and _lg_ok:
                         fire = True
+                        if _fire_src is None:
+                            _fire_src = 'LEGACY_PSR_REENTRY'
                         _wirec_leg_mult = _lg_m
                 except Exception:
                     pass
@@ -13768,6 +13835,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             _sr_path = ''
                     if _sr_path:
                         fire = True
+                        if _fire_src is None:
+                            try:
+                                _sr_tag = ''.join(c if (c.isalnum() or c == '_') else '_' for c in str(_sr_path or '').upper())[:40].strip('_')
+                                _fire_src = f"SRS_{_sr_tag}" if _sr_tag else 'SRS_REENTRY'
+                            except Exception:
+                                _fire_src = 'SRS_REENTRY'
                 except Exception:
                     pass
             if not fire and _wd_open is not None and bool(_wd_open[i]):
@@ -13948,6 +14021,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             entry_reason = 'MOMENTUM_WATCHDOG_DC_%s_BREAKOUT_%s' % (_wd_tag[i], 'LONG' if is_long else 'SHORT')
                             _hardcoded_fired = True
                         if not _hardcoded_fired:
+                            _res_attributed = False  # 2026-10-06 ENTRY_SOURCE_LABEL: True when the resolver below named a non-B source (GR override key)
                             for _bname, _barr in _entry_blocks_cache.items():
                                 if _barr[i]:
                                     entry_reason = _bname
@@ -13957,8 +14031,45 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             if entry_reason == 'VECTOR_ENTRY' and has_closed_before and getattr(cfg, 'REENTRY_MANDATORY', False) and not entry_sig[i]:
                                 entry_reason = 'REENTRY_MANDATORY'
                             if entry_reason == 'VECTOR_ENTRY':
-                                entry_reason = 'ENTRY_SIGNAL'
-                            if entry_reason == 'ENTRY_SIGNAL' and _grd_entry_fire is not None and i < len(_grd_entry_fire) and bool(_grd_entry_fire[i]):
+                                # 2026-10-06 ENTRY_SOURCE_LABEL (USER: ENTRY_SIGNAL fallback banned — every open names its switch+settings).
+                                # entry_sig base fires only via B-blocks (compute_entry_signals raw = OR(blocks), all downstream gates AND-only),
+                                # so entry_sig[i] + no B-block ⟹ one of the captured non-B OR-masks fired. Loop-state fires carry _fire_src.
+                                _res = None
+                                if bool(entry_sig[i]):
+                                    try:
+                                        for _rn, _ra in _entry_or_srcs:
+                                            try:
+                                                if _ra is not None and i < len(_ra) and bool(_ra[i]):
+                                                    _res = _rn
+                                                    break
+                                            except Exception:
+                                                pass
+                                    except Exception:
+                                        pass
+                                    if _res is None:
+                                        try:
+                                            if i == _force_bar0:
+                                                _res = 'FORCE_MIN_ONE_TRADE'
+                                        except Exception:
+                                            pass
+                                if _res is None:
+                                    try:
+                                        _res = _fire_src or None
+                                    except Exception:
+                                        _res = None
+                                if _res is None:
+                                    _res = 'ENTRY_SOURCE_UNKNOWN'
+                                    try:
+                                        _tally = globals().setdefault('_ENTRY_SOURCE_UNKNOWN_TALLY', [])
+                                        if len(_tally) < 50:
+                                            _tally.append((str(sym), bool(is_long), int(i)))
+                                            if len(_tally) == 1:
+                                                logger.warning(f"[ENTRY_SOURCE_UNKNOWN] {sym} {'LONG' if is_long else 'SHORT'} bar {i}: entry_sig={bool(entry_sig[i])} — resolver incomplete, investigate")
+                                    except Exception:
+                                        pass
+                                entry_reason = _res
+                                _res_attributed = True
+                            if _res_attributed and _grd_entry_fire is not None and i < len(_grd_entry_fire) and bool(_grd_entry_fire[i]):
                                 entry_reason = 'GR_HTF_DIRECT_ENTRY_%d' % int(_grd_entry_score[i] if _grd_entry_score is not None and i < len(_grd_entry_score) else 0)
                     except Exception:
                         pass

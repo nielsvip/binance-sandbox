@@ -1,20 +1,25 @@
-CAPITAL ALLOCATION REPORT — 2026-10-06 23:06 UTC
+CAPITAL ALLOCATION REPORT — 2026-10-06 23:21 UTC
 ================================================================================
-Total capital deployed: $22.46 across 2 positions
+Total capital deployed: $797.46 across 12 positions
 
 TIER DISTRIBUTION:
   Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $     13.44 ( 59.8%) — 1 positions
-  Tier C: $      9.02 ( 40.2%) — 1 positions
+  Tier B: $    771.07 ( 96.7%) — 10 positions
+  Tier C: $     26.40 (  3.3%) — 2 positions
 
   ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
-  ** C-tier OVERWEIGHT: 40% vs target <20% — reduce poor performers **
 
 WINNERS — augment these (A-tier, in gain) [0]:
   (none)
 
-LOSERS — reduce allocation (C-tier or losing) [1]:
-                    fin:SANDUSDT_LONG  $    9.02  gain=+0.35%  tier=C  mult=0.37
+LOSERS — reduce allocation (C-tier or losing) [6]:
+                     ang:EDUUSDT_LONG  $   76.45  gain=-4.61%  tier=B  mult=1.00
+                     ang:NMRUSDT_LONG  $  396.61  gain=-1.15%  tier=B  mult=1.00
+                    ang:NEARUSDC_LONG  $   35.58  gain=-0.94%  tier=B  mult=1.00
+                     ang:ZROUSDT_LONG  $  178.58  gain=-0.65%  tier=B  mult=1.00
+                     ang:SNXUSDT_LONG  $    6.03  gain=+0.79%  tier=C  mult=0.50
+                    ang:SANDUSDT_LONG  $   20.37  gain=+0.93%  tier=C  mult=0.37
 
-MEDIOCRE — capital sitting idle [0]:
-  (none)
+MEDIOCRE — capital sitting idle [2]:
+                  ang:RENDERUSDT_LONG  $    8.07  gain=-0.27%  tier=B
+                     ang:KSMUSDT_LONG  $    7.46  gain=-0.15%  tier=B
