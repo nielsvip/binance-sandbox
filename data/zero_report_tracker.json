@@ -979,16 +979,6 @@
     "source": "phantom_kill_bootstrap",
     "last_seen": "2026-05-03T15:01:40.924332+00:00"
   },
-  "men:SNXUSDT_LONG": {
-    "count": 14,
-    "first_seen": "2026-05-03T17:18:23.917264+00:00",
-    "source": "phantom_kill_bootstrap",
-    "last_seen": "2026-05-03T17:23:25.142811+00:00",
-    "last_increment_at": "2026-05-03T17:23:00.545928+00:00",
-    "sources": {
-      "API": 12
-    }
-  },
   "inf:SKLUSDT_LONG": {
     "count": 2,
     "first_seen_zero_at": "2026-05-12T04:13:16.043261+00:00",
@@ -1673,15 +1663,6 @@
     "first_seen": "2026-10-06T04:20:11.750552+00:00",
     "source": "phantom_kill_bootstrap",
     "last_seen": "2026-10-06T04:20:51.402213+00:00"
-  },
-  "ang:GALAUSDT_SHORT": {
-    "count": 4,
-    "first_seen_zero_at": "2026-10-06T04:29:51.741061+00:00",
-    "last_increment_at": "2026-10-06T04:31:32.137764+00:00",
-    "sources": {
-      "API_ABSENCE": 3
-    },
-    "last_seen": "2026-10-06T04:31:45.912212+00:00"
   },
   "ang:AVAXUSDC_LONG": {
     "count": 3,

@@ -19,6 +19,9 @@ if [ ! -w "$LOGDIR" ]; then
     LOGDIR="$WORKDIR/logs"
     mkdir -p "$LOGDIR"
 fi
+# 2026-10-06 USER: test hooks (no live impact) — pytest dry-runs point these at /tmp.
+if [[ -n "${WATCHDOG_TEST_LOGDIR:-}" ]]; then LOGDIR="$WATCHDOG_TEST_LOGDIR"; mkdir -p "$LOGDIR"; fi
+if [[ -n "${WATCHDOG_TEST_WORKDIR:-}" ]]; then WORKDIR="$WATCHDOG_TEST_WORKDIR"; fi
 
 # Timeouts and limits
 TIMEOUT=0                 # DISABLED — never kill healthy processes. NO_OUTPUT_TIMEOUT handles stuck ones.
@@ -258,6 +261,11 @@ check_rapid_restarts() {
         log "ERROR: Too many rapid restarts ($count in ${RAPID_WINDOW}s). Exiting to prevent crash loop."
         exit 1
     fi
+    # 2026-10-06 USER: churn alert marker (10 silent waves/90min went unnoticed) — alert BEFORE the 15x kill-switch trips.
+    if [ "$count" -ge 6 ]; then
+        echo "$(date +'%Y-%m-%d %H:%M:%S') $count restarts in ${RAPID_WINDOW}s" > "$LOGDIR/.restart_alert_${SCRIPT_BASE}${ACCT_SUFFIX}"
+        log "ALERT: restart churn ($count in ${RAPID_WINDOW}s) — marker $LOGDIR/.restart_alert_${SCRIPT_BASE}${ACCT_SUFFIX}"
+    fi
     
     # Check minimum interval since last restart
     local last_restart=$(tail -n 2 "$RESTART_TRACKER" | head -n 1)
@@ -453,7 +461,13 @@ run_script() {
     # Wait for process to exit
     wait "$script_pid" 2>/dev/null
     local exit_code=$?
-    log "Script exited with code: $exit_code"
+    local _sig=""
+    if [[ "$exit_code" -gt 128 ]]; then _sig=" (signal $((exit_code - 128)): $(kill -l $((exit_code - 128)) 2>/dev/null || echo ?))"; fi
+    log "Script exited with code: $exit_code$_sig"
+    # 2026-10-06 USER: capture WHY — tail of the child's stderr into the watchdog log (was undiagnosable).
+    local _et
+    _et=$(tail -n 15 "$stderr_log" 2>/dev/null | tr '\n' '|' | cut -c1-900)
+    if [[ -n "$_et" ]]; then log "[EXIT_REASON] ${_et}"; fi
     return $exit_code
 }
 
@@ -465,6 +479,7 @@ main() {
     log "Timeout: ${TIMEOUT}s (0=disabled)"
     log "No-output timeout: ${NO_OUTPUT_TIMEOUT}s"
     log "Monitoring log: ${PYTHON_LOG}"
+    log "Parent: pid=$PPID cmd=$(ps -o command= -p $PPID 2>/dev/null | cut -c1-120)"
     
     # Verify script exists
     if [ ! -f "$WORKDIR/$SCRIPT" ]; then
@@ -485,6 +500,7 @@ main() {
     # 30+ min uptime, and the counter never reset. Distinguishes "ceiling exceeded after
     # legitimate work" from "thrash loop where every restart OOMs in <60s".
     local consecutive_sigkill=0
+    local consecutive_fail=0
     local _run_started_at=0
     while true; do
         # Check for rapid restarts
@@ -525,6 +541,14 @@ main() {
             exit 1
         }
 
+        # 2026-10-06 USER: never launch into critical memory pressure (jetsam would SIGKILL
+        # the spawn immediately). Bounded 300s wait, then launch anyway — never deadlock trading.
+        local _pg_wait=0
+        while [[ "$(mac_pressure_level)" -ge 4 && "$_pg_wait" -lt 300 ]]; do
+            if [[ "$((_pg_wait % 60))" -eq 0 ]]; then log "[PRESSURE_GATE] level≥4 critical — delaying launch 60s (${_pg_wait}s/300s)"; fi
+            sleep 60
+            _pg_wait=$((_pg_wait + 60))
+        done
         # Run the script
         _run_started_at=$(date +%s)
         run_script
@@ -581,8 +605,19 @@ main() {
                 log "[SIGKILL_BACKOFF] resetting counter (last exit=$_last_exit, was $consecutive_sigkill)"
             fi
             consecutive_sigkill=0
-            log "Script stopped. Restarting in 5 seconds..."
-            sleep 5
+            # 2026-10-06 USER: backoff on consecutive failures (exit 1 crash loops relaunched every 5s).
+            # 0/143 (clean / graceful TERM recycle) reset the counter and relaunch fast as before.
+            if [[ "$_last_exit" -ne 0 && "$_last_exit" -ne 143 ]]; then
+                consecutive_fail=$((consecutive_fail + 1))
+                local _fbo=$((5 * (1 << (consecutive_fail - 1))))
+                if [[ "$_fbo" -gt 300 ]]; then _fbo=300; fi
+                log "[RESTART_BACKOFF] consecutive failure #${consecutive_fail} (code $_last_exit) — sleeping ${_fbo}s"
+                sleep "$_fbo"
+            else
+                consecutive_fail=0
+                log "Script stopped. Restarting in 5 seconds..."
+                sleep 5
+            fi
         fi
     done
 }

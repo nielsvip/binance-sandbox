@@ -3135,6 +3135,22 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     # POS_SYM sampling context (see _possym_* above): read once per workbook
     _ps_round = _possym_round_id(progress_path)
     _ps_on = _possym_enabled(_ps_round)
+    # USER 2026-10-06 REDO-HEAL: a REDO re-fill exists to heal holes — sampled rows ARE the holes
+    # (scan_board_for_hollow flags every SKIPPED_SAMPLING row policy-skip + sampled-cells, RULE#3
+    # refuses publish). Sampling re-skips deterministically within a round (same sym_side|tab|
+    # switch|round hash), so a sampled REDO reproduces identical holes -> futile wipe loop -> depth 2
+    # -> IMPOSSIBLE with zero finals. REDO refills therefore run sample-free: every row genuinely
+    # evaluated, greedy chain rebuilt cleanly in order, board completes, RULE#3 passes. First passes
+    # keep sampling (pos_sym 0 -> 1/20 etc.); only the heal pass pays full price. Single-use marker
+    # (set by REDO-RESET, consumed here): redo_depth persists after publish so it must NOT gate this,
+    # or later fresh NPZ reruns would silently lose sampling.
+    try:
+        _redo_heal = bool((progress or {}).pop("_redo_heal_run", None))
+    except Exception:
+        _redo_heal = False
+    if _redo_heal and _ps_on:
+        print(f"[REDO-HEAL] {new_symside} REDO re-fill: pos_sym sampling OFF for this heal pass (every row evaluated)", flush=True)
+        _ps_on = False
     _ps_cat = map_key_for_symside(new_symside)
     _ps_json = _possym_load_nsym(_ps_cat) if _ps_on else {}
     _ps_counts: dict = {}
@@ -6706,6 +6722,7 @@ def main():
             except Exception:
                 pass
             progress["redo_depth"] = int(_nr3.get("depth", 1))
+            progress["_redo_heal_run"] = int(_nr3.get("depth", 1))  # REDO-HEAL: consumed at fill start (sampling OFF this pass)
             progress["done"] = {}
             for _rk in ("final_gain", "final_path", "not_compliant", "cumulative_gain", "cumulative_overrides", "hustler_best_gain", "hustler_overrides", "final_365d", "repair_365d", "confirmed_365d"):
                 progress.pop(_rk, None)

@@ -1,8 +1,4 @@
 {
- "inf:ZROUSDT_LONG": {
-  "at": "06 20:14:41 - ",
-  "reason": "seeded_from_log"
- },
  "inf:NMRUSDT_LONG": {
   "at": "06 20:14:50 - ",
   "reason": "seeded_from_log"
@@ -27,20 +23,8 @@
   "at": "2026-10-06T21:28:15Z",
   "reason": "GOLDEN_RULE_ENTRY"
  },
- "inf:ALGOUSDT_SHORT": {
-  "at": "2026-10-06T21:30:36Z",
-  "reason": "GOLDEN_RULE_ENTRY"
- },
- "inf:AGLDUSDT_SHORT": {
-  "at": "2026-10-06T21:45:10Z",
+ "inf:AAVEUSDC_LONG": {
+  "at": "2026-10-06T22:00:33Z",
   "reason": "B_KZONE"
- },
- "inf:AIAUSDT_LONG": {
-  "at": "2026-10-06T21:45:12Z",
-  "reason": "B_KZONE"
- },
- "inf:KSMUSDT_LONG": {
-  "at": "2026-10-06T21:45:25Z",
-  "reason": "B_SRS_ENTRY"
  }
 }

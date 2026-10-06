@@ -8079,19 +8079,15 @@ def _psym_sps_raw(symbol: str, side: str):
     try:
         if os.environ.get("V8_DISABLE_PER_SYM") == "1":
             return getattr(config, "START_POSITION_SIZE", 45.0)
-        global _ezm_per_sym_cfgs, _ezm_per_sym_cfgs_mtime
-        try:
-            mtime = _ezm_per_sym_cfgs_path.stat().st_mtime
-            if mtime != _ezm_per_sym_cfgs_mtime:
-                with _ezm_per_sym_cfgs_path.open() as _f:
-                    raw = json.load(_f)
-                _ezm_per_sym_cfgs = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict)}
-                _ezm_per_sym_cfgs_mtime = mtime
-        except FileNotFoundError:
-            pass
-        except Exception:
-            pass
-        ov = _ezm_per_sym_cfgs.get(f"{symbol}_{side}", {})
+        # USER 2026-10-06 SINGLE SOURCE: sizing reads sqlite overrides (was JSON layer — dual-sourced vs _psym_get).
+        _sps_ov = None
+        if os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1":
+            try:
+                import per_sym_store as _pss_sps
+                _sps_ov = _pss_sps.get_overrides(f"{symbol}_{side}")
+            except Exception:
+                _sps_ov = None
+        ov = _sps_ov if isinstance(_sps_ov, dict) else {}
         _cv = _ezm_conviction_mult(symbol, side)
         if "START_POSITION_SIZE_OVERRIDE_USD" in ov:
             v = ov["START_POSITION_SIZE_OVERRIDE_USD"]
@@ -34953,6 +34949,7 @@ class MultiAccountTradeManager:
                 # 2026-10-06 USER (men NMR/KSM $14-18 vec OPENs -> $180: indicator adds + sentiment x2 + LS_REBALANCE x2 + DC_POS + LADDER x3):
                 # HARD ceiling for every new OPEN / AUGMENT step, vec or native = START_POSITION_SIZE(sym_side) x perf tier (missing -> 1.0).
                 # Live multipliers still apply INSIDE the ceiling; MAX_ORDER_VALUE (above) stays the absolute cap; MAX_POSITION_SIZE caps the total.
+                # 2026-10-06 USER: the ceiling is additionally clamped to OPEN_CEIL_HARD_MAX_USD ($28) — reentries included, no tier boost can exceed it.
                 if bool(getattr(config, "OPEN_CEIL_SPS_TIER_ENABLED", True)) and quantity and quantity > 0 and current_price and current_price > 0 and not is_reduce:
                     try:
                         _oc_side = position_side or ("LONG" if side == "BUY" else "SHORT")
@@ -34963,10 +34960,13 @@ class MultiAccountTradeManager:
                         except Exception:
                             _oc_mult = 1.0
                         _oc_ceil = max(_oc_base * _oc_mult, float(getattr(config, "PERF_TIER_MIN_ORDER_USD", 6.0)))
+                        _oc_hard = float(getattr(config, "OPEN_CEIL_HARD_MAX_USD", 28.0))
+                        if _oc_ceil > _oc_hard:
+                            _oc_ceil = _oc_hard
                         if quantity * current_price > _oc_ceil:
                             _oc_q0 = quantity
                             quantity = _oc_ceil / current_price
-                            logger.warning(f"[OPEN_CEIL_SPS] {position_key} {action}: ${_oc_q0 * current_price:.2f} -> ${quantity * current_price:.2f} (SPS ${_oc_base:.2f} x tier {_oc_mult:.2f}) reason={(reason or '')[:50]}")
+                            logger.warning(f"[OPEN_CEIL_SPS] {position_key} {action}: ${_oc_q0 * current_price:.2f} -> ${quantity * current_price:.2f} (SPS ${_oc_base:.2f} x tier {_oc_mult:.2f} hard ${_oc_hard:.0f}) reason={(reason or '')[:50]}")
                         if "AUGMENT" in str(action).upper():
                             _oc_max = float(get_max_position_size(symbol, account_key=account_key))
                             _oc_cur = abs(float(current_real_amt or 0.0)) * current_price

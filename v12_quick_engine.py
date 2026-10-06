@@ -4264,6 +4264,8 @@ class QuickConfig:
     MIN_HOLD_LIVE_SECONDS_ENABLED: bool = True  # crypto: live hold = MIN_HOLD_BARS_BEFORE_EXIT x 180 s (3m bars), not x 15m; False = old vec max(MIN_HOLD_BARS, MIN_HOLD_BARS_BEFORE_EXIT) 15m bars
     COOLDOWN_FROM_LIVE_SECONDS_ENABLED: bool = False  # lane-D: default False = vec baseline COOLDOWN_BARS (director correction); True = live wall-clock test row.  # director 2026-10-06: vec cooldown follows live wall-clock (crypto REENTRY_COOLDOWN_S, stocks TRADIER_POST_CLOSE_COOLDOWN_MIN); False = COOLDOWN_BARS(_TRADIER)
     DC_HARD_STOP_TF: str = "4h"  # ULTIMATE_DC HARD_STOP TF: 4h|D — per sym_side sweepable; D wider = fewer stops
+    DC_HARD_STOP_1H_ENABLED: bool = True  # USER 2026-10-06 — SHORT px >= dc_high_1h*1.0025 → CLOSE, no veto (sweepable)
+    DC_HARD_STOP_15M_ENABLED: bool = True  # USER 2026-10-06 — SHORT px >= dc_high_15m*1.0025 → CLOSE, no veto (sweepable)
     WT_LOWER_CROSS_EXIT_TF: str = "1h"  # WT lower cross exit TF: OFF/15m/1h/4h — LONG wt cross down + price lower, SHORT opposite; added 2026-09-27 as option in big WT TF sweep
     # ── 2026-09-03 HARD SHORT GATES — baked (mirrors tradier_manage) ──
     ROTATION_S_FINAL_SCORE_MAX: float = 0.35
@@ -11911,6 +11913,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     else:
         dc_high_4h = _safe(npz, 'dc_high_4h', n)
         dc_low_4h = _safe(npz, 'dc_low_4h', n)
+    _uh_h4 = _safe(npz, 'dc_high_4h', n, 0); _uh_h1 = _safe(npz, 'dc_high_1h', n, 0); _uh_h15 = _safe(npz, 'dc_high_15m', n, 0)  # USER 2026-10-06 uncond-stop twin: TRUE TF channels (dc_high_4h var is TF-swapped above)
     _wtdc_combo_resolve(cfg)  # [N1/004] WT_DC_TF_COMBO -> entry/htf/htf2 TFs
     _iso_force_masters(cfg)  # [N1/004] isolated-family test mode forces the family master(s) ON (no-op when ENTRY_ISOLATE_FAMILY is empty)
     entry_sig = compute_entry_signals(npz, n, is_long, cfg)
@@ -14156,6 +14159,36 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _vig_blocked = True
             _vig_block_px = float(px)
             continue
+        # 2026-10-06 USER MANDATE twin — UNCONDITIONAL SHORT DC-HIGH STOP (hardcoded 4h + switched 1h/15m, +0.25%). No veto.
+        try:
+            _uh_j = (i - 1) if (i > 0 and bool(getattr(cfg, 'DC_PRIOR_BAR_CHANNEL', True))) else i
+            _uh_fire = ""
+            if (not is_long) and pos is not None:
+                _uh_lvl4 = float(_uh_h4[_uh_j]) if _uh_j < len(_uh_h4) else 0.0
+                if _uh_lvl4 > 0 and px >= _uh_lvl4 * 1.0025:
+                    _uh_fire = "UNCOND_DC_HIGH_4H"
+                if not _uh_fire and bool(getattr(cfg, 'DC_HARD_STOP_1H_ENABLED', True)):
+                    _uh_lvl1 = float(_uh_h1[_uh_j]) if _uh_j < len(_uh_h1) else 0.0
+                    if _uh_lvl1 > 0 and px >= _uh_lvl1 * 1.0025:
+                        _uh_fire = "UNCOND_DC_HIGH_1H"
+                if not _uh_fire and bool(getattr(cfg, 'DC_HARD_STOP_15M_ENABLED', True)):
+                    _uh_lvl15 = float(_uh_h15[_uh_j]) if _uh_j < len(_uh_h15) else 0.0
+                    if _uh_lvl15 > 0 and px >= _uh_lvl15 * 1.0025:
+                        _uh_fire = "UNCOND_DC_HIGH_15M"
+            if _uh_fire:
+                pos['fees'] += abs(pos['qty'] * px) * half_fee
+                _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
+                _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
+                _tsu = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _uh_fire, 'type': 'CLOSE', 'ts': _tsu, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _uh_fire, 'bars_held': int(i - pos['entry_bar'])})
+                pos = None; cd = cooldown_bars; has_closed_before = True
+                if is_tradier:
+                    _dc_cd_h = float(getattr(cfg, 'DC_HARD_STOP_REENTRY_COOLDOWN_HOURS', 4.0) or 0.0)
+                    if _dc_cd_h > 0:
+                        cd = max(cd, int(round(_dc_cd_h * 60.0 / max(bmin, 1))))
+                continue
+        except Exception:
+            pass
         # 2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP: DC CHANNEL BREACH TF = DC_HARD_STOP_TF (4h|D)
         # No trade may be held through dc_low_TF (LONG) / dc_high_TF (SHORT) at any loss. TF per sym_side, D wider.
         try:
@@ -14769,7 +14802,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _gap_pending = {'amt': float(pos['qty'] * px), 'exit_price': float(px), 'exit_gain': float(_pct), 'day': int(i // _gm_bpd)}
             pos = None; cd = cooldown_bars; has_closed_before = True
             continue
-        _xc_ok = _gftf.get('exit_confirm') is None or bool(_gftf['exit_confirm'][i])
+        _xc_ap = pos['avg_price'] if pos is not None else 0
+        _xc_loss = pos is not None and _xc_ap != 0 and ((((px - _xc_ap) / _xc_ap * 100) if is_long else ((_xc_ap - px) / _xc_ap * 100)) < 0)  # USER 2026-10-06 twin: loss exits bypass exit_confirm
+        _xc_ok = _xc_loss or (_gftf.get('exit_confirm') is None or bool(_gftf['exit_confirm'][i]))
         if exit_sig[i] and held_bars >= min_hold and _xc_ok:
             if 0 < satoshit_partial < 1.0:
                 reduce_qty = pos['qty'] * satoshit_partial

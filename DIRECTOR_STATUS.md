@@ -1,5 +1,20 @@
 # DIRECTOR STATUS — 2026-10-06 (newest block at top)
 
+## 22:02Z — FLEET MAP RECONCILED (swift owned inversion, verified)
+- ez_manage: Mac 1dbd8609 (batch+swift4hunks; live runs 6d9d8c57 until next restart) == s5sb/s5live; s1/s2 c676843f (swift hunks, NO batch). s1sb markers verified exact (RSI2=6 BB=6 CD=1 FH=4). Rollout: Mac ez wholesale to s1/s2 AFTER B+C+verify (director GO, not during storm). s1live v12 6382->873e unexplained (not swift, not director; suspect cutter/ruby-silent).
+- canvas watchdog hardening landed on Mac (+38/-3). frost NPZ loop: first full clean cycle 21:49Z, trap stays live.
+
+## 22:00Z — STANDING POLICY: MAC TRADES AND THAT'S IT (USER-mandated, broadcast to all peers)
+- Backtests, pytest suites, sweeps/herds, openpyxl herd work: S1/S4/S5 ONLY. Mac = live trading + light edits/greps/compile. Trigger: 10 restart waves/90min (OOM SIGKILLs incl. fin 137 + pkill waves), box at 72% RAM + swap. Bible already on s5 (cron+build verified). ruby demanded to ACK (silent x2); swift told suites go to servers (95% CPU burn); canvas watchdog-hardening proceeds; frost already compliant.
+- Fleet: split-brain unresolved — swift deploy claims unverifiable on all hosts probed; push freeze stands until reconcile. GR_V5_STATE/PPLV2_FILTER_TF need operator spec (surfaced).
+
+## 21:50Z — BIBLE ON s5, Mac trades-only (USER order)
+- s5:~/bible-run (35,460 files, Mac-fresh seed ez=6d9d8c57) + tools/switch_bible_cycle_linux.sh + cron */10 (SWITCH_BIBLE_S5) + first build DONE 21:49:18Z (SWITCH_BIBLE.md+json written). Per-cycle input refresh from S1 (server-side). Mac cron bible line DELETED (crontab backed up); Mac procs clean. Mac pulls outputs on demand: rsync -az s5:~/bible-run/SWITCH_BIBLE.md s5:~/bible-run/data/SWITCH_BIBLE.json . (docs: s5:~/bible-run/data/wiring/, data/reports/switch_bible_verify_latest.json).
+- KSM RESOLVED: 21:23:31 CONFIRMED pre=0.0 post=4.8 MATCH_FILLED — broker was flat, old 30.8 gone without trace; no doubling. men NMR substituted out 21:48:32 (11.1 @ $15.59, -$6.3) for margin room.
+- CORRECTION: no sacred-field breach — rewrite_row_from_broker only writes entry/mark when >0 (docstring+code correct); the entry=0.0 was the log echoing broker values. My earlier claim was a misread; CORRUPTION path preserves entry (GALA 0.0024 intact).
+- Live: 3 full restart waves (21:04/21:10 pkill, 21:31) + OOM singles (fin 137 21:21, flz/men/inf/ang rolling). Ceiling holding on every placed order post-restart ($16-28, SAND $40.61 via tier 2.54). Phantom pattern: cancel-capture assumes fills, broker-sync corrects minutes later (VET/GALA/XLM/KSM-old/SAND).
+- Peers: swift wiring 8 switches (regions clear, Mac-only, no restart/push); canvas holding for GO (config_tradier +2 verified); ruby silent (receipt confirmed); frost trap: S1 killer is manual pkill habit, no cron sweeper.
+
 ## 21:00Z — DIRECTOR RESUMED as Muse sage-pyxis (Claude 5dda7810 + all subagents died 20:48Z)
 - Live: all 5 crypto up (men/fin/inf/flz/ang; ang restarted ~20:56, cause unknown — 3rd unexplained restart today). Twin VEC_EXACT OPENs flowing (ang HYPE/AAOI/ALAB 20:57-58). men NMR_LONG -4.3% (-$7.7) native exit suppressed, NO twin CLOSE dispatched — still stranded; men KSM_SHORT 30.8 (-$0.6) twin CLOSE 20:42 stuck→nuked 20:47, partial native reduce filled, remainder held with no exit driver.
 - 21:05Z ALL 5 RESTARTED (21:04:36-21:05:25, trigger unknown) -> OPEN_CEIL LIVE, proven: inf APE $180->$28 (SPS $28 x tier 1.0). Post-restart verification running; NO further restarts until B+C+tests. v12 HOT (ruby TIER mid-landing, multi-author window) - canvas HOLDING off it, sps_raw sqlite retarget queued post-verify.

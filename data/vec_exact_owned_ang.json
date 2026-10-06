@@ -59,12 +59,20 @@
   "at": "2026-10-06T21:45:25Z",
   "reason": "ENTRY_SIGNAL"
  },
- "ang:ENJUSDT_LONG": {
-  "at": "2026-10-06T21:45:42Z",
-  "reason": "B_DELTAENTRY"
- },
  "ang:KSMUSDT_LONG": {
   "at": "2026-10-06T21:45:43Z",
   "reason": "B_SRS_ENTRY"
+ },
+ "ang:AAVEUSDC_LONG": {
+  "at": "2026-10-06T22:00:30Z",
+  "reason": "B_KZONE"
+ },
+ "ang:ADAUSDC_SHORT": {
+  "at": "2026-10-06T22:00:36Z",
+  "reason": "B12"
+ },
+ "ang:GRAMUSDT_SHORT": {
+  "at": "2026-10-06T22:00:45Z",
+  "reason": "B_KZONE"
  }
 }
