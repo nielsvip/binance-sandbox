@@ -5871,6 +5871,17 @@ def main():
         return
     defaults.update(_tpl_defaults)
     print(f"[DEFAULTS-GATE] {new_symside}: {len(_tpl_defaults)} bold defaults from {Path(args.template).name} = running default", flush=True)
+    try:  # USER 2026-10-06 obligated symmetry: refuse to fill when defaults are disparate across surfaces
+        import switch_parity as _spg
+        _gate = _spg.startup_gate(map_key_for_symside(new_symside), template_path=args.template)
+        for _w in _gate.get("warnings", [])[:8]:
+            print(f"[PARITY-GATE-warn] {_w}", flush=True)
+        if not _gate.get("ok"):
+            print(f"[PARITY-GATE] {new_symside}: hard default disparity — NOT running: {_gate.get('hard')[:6]} (fix: python switch_parity.py sync-defaults --apply --confirm-unlocked)", flush=True)
+            return
+        print(f"[PARITY-GATE] {new_symside}: defaults symmetric ({'cached' if _gate.get('cached') else 'verified'})", flush=True)
+    except Exception as _ge:
+        print(f"[PARITY-GATE-warn] gate crashed ({_ge}) — allowing run", flush=True)
     overrides = {**_tpl_defaults, **overrides}
     _recipe_only_overrides = {**_tpl_defaults, **_recipe_only_overrides}
     _ingested_overrides = dict(overrides)  # previous best / prev-sheet set — candidate base for the credible-baseline stage

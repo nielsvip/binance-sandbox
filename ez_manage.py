@@ -26488,6 +26488,7 @@ class MultiAccountTradeManager:
                 and not _is_reentry_bypass
                 and not _is_force_open_eta
                 and not _is_strong_buy_or_quick_bypass
+                and not _vec_exact_reason_ok(reason)
             ):
                 _d_sig = self.delta_tracker.update(symbol, i)
                 _delta_ok = _d_sig and (
@@ -30590,6 +30591,10 @@ class MultiAccountTradeManager:
                     else:
                         logger.warning(f"⛔ [VEC_DRIVEN_NATIVE_SUPPRESSED] {position_key} action={action} reason={(reason or '')[:80]} — sym_side is VEC_DRIVEN live; native decision refused")
                         return "BLOCKED_VEC_DRIVEN_NATIVE_SUPPRESSED"
+                # USER 2026-10-06 PARITY: only vectorized trades open/increase positions on EVERY key; native exits still manage existing positions
+                elif bool(getattr(_ezm_base_config, "VEC_DRIVEN_NATIVE_ENTRY_BLOCK_ALL", True)) and not _vdm_en.is_vec_driven_reason(reason) and not _broker_sync_is_exit(action) and not _vec_exact_reason_ok(reason):
+                    logger.warning(f"⛔ [VEC_ONLY_ENTRY_BLOCK] {position_key} action={action} reason={(reason or '')[:80]} — native position increase refused (only VEC_DRIVEN trades open)")
+                    return "BLOCKED_VEC_ONLY_ENTRY"
             except Exception as _vd_e:
                 logger.warning(f"[VEC_DRIVEN] {position_key}: gate error {_vd_e} (no exemption)")
         # parity-loop-crypto 2026-10-06: in-script vec twin orders (PARITY_VEC_EXACT_MODE) share the vec-decided exemption set
@@ -30853,7 +30858,7 @@ class MultiAccountTradeManager:
         # ═══ PARITY LANE B 2026-10-06: vec entry FILTER_TF gates (MOM3 / MOMENTUM_BREAKOUT / DC_BREAK / BB_BOUNCE_ENTRY_TF / BREAKOUT_RETEST[ARMED]) on fresh OPEN + vec strict open block (HTF_DIRECTION_GATE + nested OI_CONFIRM) on every non-augment open ═══
         # Twins: live_twins/parity_open_gates.py (mirrors vec_decisions filter_tf_gates / generic_filter_tf / wave4_families). Resolution per-sym promotion > cat_side default > global (_psym_cs_get).
         try:
-            if symbol and ("OPEN" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act or _kill_act == "BUY") and "AUGMENT" not in _kill_act and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act and "HEDGE" not in (reason or "").upper():
+            if not _vd_exempt and symbol and ("OPEN" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act or _kill_act == "BUY") and "AUGMENT" not in _kill_act and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act and "HEDGE" not in (reason or "").upper():
                 from live_twins import parity_open_gates as _lpog
                 _lpog_get = lambda _k, _d=None: _psym_cs_get(symbol, position_side, _k, _d)
                 _lpog_long = position_side == "LONG"
@@ -30885,6 +30890,7 @@ class MultiAccountTradeManager:
                 and ("OPEN" in _kill_act or "ENTRY" in _kill_act or _kill_act == "BUY")
                 and "AUGMENT" not in _kill_act and "REENTRY" not in _kill_act and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
                 and "HEDGE" not in (reason or "").upper() and "OBLIGATORY" not in (reason or "").upper() and "REENTRY" not in (reason or "").upper()
+                and not _vd_exempt
             ):
                 _kgx_get = lambda _k, _d=None: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))
                 _kgx_on = bool(_kgx_get("KINDERGARTEN_EMA_GATE_ENABLED", False))
@@ -30911,6 +30917,7 @@ class MultiAccountTradeManager:
                 and ("OPEN" in _kill_act or "ENTRY" in _kill_act or _kill_act == "BUY")
                 and "AUGMENT" not in _kill_act and "REENTRY" not in _kill_act and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
                 and "HEDGE" not in (reason or "").upper() and "OBLIGATORY" not in (reason or "").upper() and "REENTRY" not in (reason or "").upper()
+                and not _vd_exempt
             ):
                 _ted_get = lambda _k, _d=None: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))
                 _ted_bbk_on = bool(_ted_get("BBKC_ENTRY_ENABLED", False))
@@ -30941,6 +30948,7 @@ class MultiAccountTradeManager:
                 and ("OPEN" in _kill_act or "ENTRY" in _kill_act or _kill_act == "BUY")
                 and "AUGMENT" not in _kill_act and "REENTRY" not in _kill_act and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
                 and "HEDGE" not in (reason or "").upper() and "OBLIGATORY" not in (reason or "").upper() and "REENTRY" not in (reason or "").upper()
+                and not _vd_exempt
             ):
                 _la_get = lambda _k, _d=None: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))
                 _la_long = position_side == "LONG"
@@ -31058,6 +31066,7 @@ class MultiAccountTradeManager:
                 and ("OPEN" in _kill_act or "ENTRY" in _kill_act or _kill_act == "BUY")
                 and "AUGMENT" not in _kill_act and "REENTRY" not in _kill_act and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
                 and "HEDGE" not in (reason or "").upper() and "OBLIGATORY" not in (reason or "").upper() and "REENTRY" not in (reason or "").upper()
+                and not _vd_exempt
             ):
                 _lb2_get = lambda _k, _d=None: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))
                 _lb2_long = position_side == "LONG"
@@ -31195,6 +31204,7 @@ class MultiAccountTradeManager:
                 and ("OPEN" in _kill_act or "ENTRY" in _kill_act or _kill_act == "BUY")
                 and "AUGMENT" not in _kill_act and "REENTRY" not in _kill_act and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
                 and "HEDGE" not in (reason or "").upper() and "OBLIGATORY" not in (reason or "").upper() and "REENTRY" not in (reason or "").upper()
+                and not _vd_exempt
             ):
                 _lb3_long = position_side == "LONG"
                 _lb3_on = bool(_psym_get(symbol, position_side, "ENTRY_ZONE_LONG_LIVE_ENABLED", getattr(config, "ENTRY_ZONE_LONG_LIVE_ENABLED", False))) or bool(_psym_get(symbol, position_side, "ENTRY_ZONE_SHORT_LIVE_ENABLED", getattr(config, "ENTRY_ZONE_SHORT_LIVE_ENABLED", False))) or bool(_psym_get(symbol, position_side, "D_TREND_REQUIRED_LIVE_ENABLED", getattr(config, "D_TREND_REQUIRED_LIVE_ENABLED", False))) or bool(_psym_get(symbol, position_side, "HTF_ALIGNMENT_ENABLED_LIVE_ENABLED", getattr(config, "HTF_ALIGNMENT_ENABLED_LIVE_ENABLED", False)))
@@ -31262,6 +31272,7 @@ class MultiAccountTradeManager:
                 and "AUGMENT" not in _kill_act and "REENTRY" not in _kill_act and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
                 and "HEDGE" not in (reason or "").upper() and "OBLIGATORY" not in (reason or "").upper() and "REENTRY" not in (reason or "").upper()
                 and _twin_gates_sizing_a is not None
+                and not _vd_exempt
             ):
                 _tgsa_get = lambda _k, _d=None: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))
                 _tgsa_need = bool(_tgsa_get("CLENOW_ENABLED", False)) or bool(_tgsa_get("CONFLUENCE_MODE_ENABLED", False)) or bool(_tgsa_get("SBA_BOUNCE_ENABLED", True))
@@ -48327,7 +48338,8 @@ async def process_position(
     if not position_key or not trade_manager:
         return
     # parity-loop-crypto 2026-10-06: PARITY_VEC_EXACT_MODE — the twinned families are decided by the vec twin only
-    if bool(getattr(_ezm_base_config, "PARITY_VEC_EXACT_MODE", False)) or bool(getattr(config, "PARITY_VEC_EXACT_MODE", False)):
+    # FIX 2026-10-06: bare `config` is function-local (assigned line ~48386) → UnboundLocalError killed every monitor cycle. Use trade_manager.config (this function's own convention).
+    if bool(getattr(_ezm_base_config, "PARITY_VEC_EXACT_MODE", False)) or bool(getattr(getattr(trade_manager, "config", None), "PARITY_VEC_EXACT_MODE", False)):
         if await _vec_exact_process_position(account_key, position_key, trade_manager):
             return
     # REAL: open reported positions must never be filtered by tradeable_keys

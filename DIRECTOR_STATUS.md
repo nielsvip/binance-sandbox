@@ -2,7 +2,8 @@
 
 | # | Workstream | Owner | State | Blocker / next |
 |---|---|---|---|---|
-| 1 | **Fresh crypto data** — NPZ bar refresh on S1 (old `~/npzb` loop was DEAD → NPZs 2–5 days stale) | X2 agent (user-approved install) | building; proof → install every-minute cron | 45/48 live keys STALE until it runs |
+| 0 | **CAUSAL MAP** (switch=value → result, fleet): `tools/v15_causal_map.py` → `data/causal/causal_map.md` + per-cat_side csv + fault_levers.csv from 91 repair/autopsy runs | director ✅ · cat_side stack agent running (greedy multi-sym_side default stacks, 30D+365D) | repairs so far: crypto 39/41 improved, 41/41 positive, 14 pass 365D; stocks 37/50 improved, 28 pass 365D | stack report → `data/causal/catside/CATSIDE_STACK_REPORT.md` |
+| 1 | **NPZ** — USER: S1 daily build + 15m append (with sentiment/EOD) is canonical; do NOT refresh/rebuild | X2 STOPPED | X2's 56 appended NPZs restored from `~/npz_backup_20261006` (md5-verified) so tonight's fundoi install isn't blocked | none |
 | 2 | **Emergency bridge** (≤3 h, monitored): S1 executor runs v12 per proven set → Mac ez_manage executes via queue_trade_action → execute_trade_action → execute_now | X1 ✅ (cron live, equivalence 7/7 sym_sides 0 mismatches) · X3 ✅ (consumer, 25 tests) | ON: `VEC_DRIVEN_ENABLED=True`, registry 37 sym_sides on real accounts, expiry +3 h, KILL = `data/vec_live/KILL`, pull + monitor crons on Mac | first intent emitted (1000BONKUSDC_SHORT 03:30Z); needs #1 for the rest |
 | 3 | **Live config = vec baseline** | director ✅ | all `ABLATION_DISABLE_*` = False (config.py + config_tradier.py), reentry enforce loop on; crypto accounts restarted | Muse (`--yolo`) also restarts live accounts concurrently — risk |
 | 4 | **Indicator speed + 2nd source** | director ✅ (`ii()` JSON parse once per file, redis 30 s breaker) · infra agent (S1 ez_indicators + Mac pull) | ii() fix live after restart; S1 stack in progress | — |

@@ -1475,15 +1475,6 @@
     "source": "phantom_kill_bootstrap",
     "last_seen": "2026-08-01T16:33:45.488097+00:00"
   },
-  "fin:AVAXUSDC_LONG": {
-    "count": 2,
-    "first_seen_zero_at": "2026-08-04T13:28:36.649326+00:00",
-    "last_increment_at": "2026-08-04T13:28:36.649326+00:00",
-    "sources": {
-      "API_ABSENCE": 1
-    },
-    "last_seen": "2026-08-04T13:28:52.387152+00:00"
-  },
   "inf:HYPEUSDT_LONG": {
     "count": 4,
     "first_seen_zero_at": "2026-08-04T15:38:30.525027+00:00",
@@ -1641,14 +1632,6 @@
       "API_ABSENCE": 2
     }
   },
-  "ang:GALAUSDT_SHORT": {
-    "count": 2,
-    "first_seen_zero_at": "2026-09-23T19:13:34.655582+00:00",
-    "last_increment_at": "2026-09-23T19:13:57.703276+00:00",
-    "sources": {
-      "API_ABSENCE": 2
-    }
-  },
   "ang:API3USDT_SHORT": {
     "count": 2,
     "first_seen_zero_at": "2026-09-23T19:45:00.796466+00:00",
@@ -1690,5 +1673,11 @@
       "API_ABSENCE": 1
     },
     "last_seen": "2026-09-24T18:09:32.175536+00:00"
+  },
+  "fin:AVAXUSDC_LONG": {
+    "count": 2,
+    "first_seen": "2026-10-06T04:20:11.750552+00:00",
+    "source": "phantom_kill_bootstrap",
+    "last_seen": "2026-10-06T04:20:51.402213+00:00"
   }
 }

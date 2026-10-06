@@ -4112,7 +4112,7 @@ class QuickConfig:
     STRUCTURAL_RANGE_SHIFT_TF: str = "dc_4h"
     REENTRY_RALLY_K15M_MAX: float = 30.0
     REENTRY_RALLY_HTF_MIN: int = 1  # EMERGENCY 2026-09-11: 3→1 matches config_tradier (tested in TEMPLATE, rollback if v14 proves 3 better)
-    HTF_ALIGNMENT_ENABLED: bool = False  # 2026-10-04 parity cut (global lane): live master-gated OFF while vec True was ACTIVE (GDX −1.85pp flip) — real parity gap
+    HTF_ALIGNMENT_ENABLED: bool = True  # 2026-10-04 parity cut (global lane): live master-gated OFF while vec True was ACTIVE (GDX −1.85pp flip) — real parity gap
     HTF_MIN_ALIGNED: int = 1
     D_TREND_REQUIRED: bool = True
     K_ZONE_ENTRY_ENABLED: bool = True
@@ -4395,7 +4395,7 @@ class QuickConfig:
     EMA_DIST_SIZING_MULT: float = 2.0
     ENTRY_TRIGGER_TF: str = '15m'
     WT_FORCE_OPEN_TRIGGER_TF: str = '5m'  # [2026-08-22] force-open trigger TF; 15m default, supports 5m(3m crypto)/15m/1h/4h and comma-separated multi-TF
-    WT_DC_DIRECT_THRESHOLD: float = -1.0  # WIRING LANE C L1d: DIVERGENCE live 20.0 (config_tradier:1132); -1 disabled = inert until promotion; sweep 10/20/30
+    WT_DC_DIRECT_THRESHOLD: float = 20.0  # WIRING LANE C L1d: DIVERGENCE live 20.0 (config_tradier:1132); -1 disabled = inert until promotion; sweep 10/20/30
     HA_3M_ENTRY_WEIGHT: float = -0.5
     HOLD_BARS_CLOSE: int = 50
     HOLD_BARS_MID: int = 500
@@ -4451,7 +4451,7 @@ class QuickConfig:
     REGIME_RANGING_K_ZONE_BONUS: int = 40
     REGIME_RANGING_MIN_HOLD_BARS: int = 8
     REGIME_RANGING_NOLOSS_MIN: float = 0.05
-    REGIME_RANGING_POSITION_SIZE_MULT: float = 0.5
+    REGIME_RANGING_POSITION_SIZE_MULT: float = 0.25  # parity 2026-10-06: crypto truth (stocks pinned in overlay)
     REGIME_RANGING_REENTRY_SIZE_MULT: float = 1.0
     REGIME_RANGING_SLOT_RESERVE_PCT: float = 0.6
     REGIME_RANGING_STALE_HOURS: float = 48.0
@@ -4634,8 +4634,8 @@ class QuickConfig:
     HTF_TREND_VETO_BYPASS_REASONS: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added (list)
     LEADERBOARD_FILTER: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
     LEGACY_PROC_SINGLE_REENTRY: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    LEGACY_REENTRY_PSR_DC_BOUNCE: bool = False  # WIRING LANE C L1e: DIVERGENCE live True; inert until promotion
-    LEGACY_REENTRY_PSR_FULL_DC: bool = False  # WIRING LANE C L1e: DIVERGENCE live True; inert until promotion
+    LEGACY_REENTRY_PSR_DC_BOUNCE: bool = True  # WIRING LANE C L1e: live True; parity-synced 2026-10-06 (was False)
+    LEGACY_REENTRY_PSR_FULL_DC: bool = True  # WIRING LANE C L1e: live True; parity-synced 2026-10-06 (was False)
     LEGACY_REENTRY_PSR_K_DC_CROSSOVER: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
     LH_HL_FILTER_ENABLED: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
     LH_HL_FILTER_MODE: str = "OFF"  # FIX 2026-09-06: LIVE_ONLY auto-added
@@ -4662,7 +4662,7 @@ class QuickConfig:
     NEW_POSITION_MAX_LOSS_THRESHOLD: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
     NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 3  # EMERGENCY 2026-09-11: 5→3 matches config_tradier (TEMPLATE bold 5→3, rollback if v14 proves 5 better)
     REENTRY2_DC_BREAK_ALLOW_15M: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    REENTRY2_DC_BREAK_FILTER_TF: str = "3m"  # FIX 2026-09-06: LIVE_ONLY auto-added
+    REENTRY2_DC_BREAK_FILTER_TF: str = "OFF"  # FIX 2026-09-06: LIVE_ONLY auto-added; parity 2026-10-06 OFF
     REENTRY2_DC_BREAK_REQUIRE_K_FILTER: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
     REENTRY2_DC_BREAK_REQUIRE_WT_FILTER: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
     REENTRY2_DIR_FAV_ENABLED: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
@@ -4982,7 +4982,7 @@ class QuickConfig:
         self.STOCH_CROSS_1H_EXIT_ENABLED = True
         self.MFI_FLIP_EXIT_ENABLED = True
         self.WT_CROSSUNDER_FINAL_ENABLED = True
-        self.MI_EXIT_ENABLED = True  # N2/007 DEF2: legacy default kept (live False = sweep option)
+        self.MI_EXIT_ENABLED = False  # N2/007 DEF2: legacy default kept (live False = sweep option)
         self.GAP_RISK_EXIT_ENABLED = True  # N2/007: live config_tradier True (2026-09-30)
         self.ENTRY_SCORE_THRESHOLD = 24.0
         self.K3M_FLOOR = 30.0
@@ -5167,6 +5167,12 @@ class QuickConfig:
         self.ENTRY_SCORE_THRESHOLD = 18.0
         self.VWAP_FILTER_ENABLED = False
         # §17.3 exclusion: MAX_ORDER_VALUE stays at sim default (live order-size cap zeroes sim position sizing)
+        # parity 2026-10-06: stocks-uniform bolds (raw carries crypto truth) — obligated symmetry, see switch_parity.py
+        self.REGIME_RANGING_POSITION_SIZE_MULT = 0.5
+        self.DAYTRADE_DC_STOP_TF = "15m"
+        self.WT_15M_BOUNCE_BB_MAX = 0.9
+        self.FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED = True
+        self.MTF_BB_REJECT_EXIT_TF = "OFF"
     ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = False  # auto-wired 625
     ABLATION_DISABLE_AUGMENTATION: bool = False  # auto-wired 625
     ABLATION_DISABLE_CHECK_NOLOSS: bool = False  # auto-wired 625
@@ -6149,10 +6155,10 @@ class QuickConfig:
     KILLER_KNOB_FINDER_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     LEADERBOARD_FILTER: float = True  # auto-added TEMPLATE generic
     LEGACY_PROC_SINGLE_REENTRY: float = 0.0  # auto-added TEMPLATE generic
-    LEGACY_REENTRY_PSR_DC_BOUNCE: float = False  # WIRING LANE C L1e: DIVERGENCE live True (config.py:2290); inert until promotion
-    LEGACY_REENTRY_PSR_FULL_DC: float = False  # WIRING LANE C L1e: DIVERGENCE live True (config.py:2289); inert until promotion
+    LEGACY_REENTRY_PSR_DC_BOUNCE: float = True  # WIRING LANE C L1e: live True (config.py:2290); parity-synced 2026-10-06 (was False)
+    LEGACY_REENTRY_PSR_FULL_DC: float = True  # WIRING LANE C L1e: live True (config.py:2289); parity-synced 2026-10-06 (was False)
     LEGACY_REENTRY_PSR_K_DC_CROSSOVER: float = 0.0  # auto-added TEMPLATE generic
-    LEGACY_REENTRY_PSR_QUICK_RECOVERY: float = False  # WIRING LANE C L1e: DIVERGENCE live True (config.py:2287); inert until promotion
+    LEGACY_REENTRY_PSR_QUICK_RECOVERY: float = True  # WIRING LANE C L1e: DIVERGENCE live True (config.py:2287); inert until promotion
     LH_HL_FILTER_ENABLED: bool = False  # auto-added TEMPLATE
     LH_HL_FILTER_MODE: float = 'STRICT_2BAR'  # auto-added TEMPLATE generic
     LH_HL_FILTER_REQUIRE_BOTH: float = 0.0  # auto-added TEMPLATE generic
@@ -6240,7 +6246,7 @@ class QuickConfig:
     QUICK_REDUCE_TECHNICAL_ONLY: float = True  # auto-added TEMPLATE generic
     QUICK_REENTRY_60MIN_MIN_PCT: float = 0.6  # auto-added TEMPLATE
     REENTRY2_DC_BREAK_ALLOW_15M: float = True  # auto-added TEMPLATE generic
-    REENTRY2_DC_BREAK_FILTER_TF: str = "3m"  # 2026-09-29 accordance fix: was "15m" dup overriding "3m" (config="3m")
+    REENTRY2_DC_BREAK_FILTER_TF: str = "OFF"  # parity 2026-10-06 OFF (was "3m" dup; config="OFF")
     REENTRY2_DC_BREAK_REQUIRE_K_FILTER: float = True  # auto-added TEMPLATE generic
     REENTRY2_DC_BREAK_REQUIRE_WT_FILTER: float = 0.0  # auto-added TEMPLATE generic
     REENTRY2_DIR_FAV_ENABLED: bool = True  # auto-added TEMPLATE

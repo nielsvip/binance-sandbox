@@ -311,7 +311,7 @@ class TradierConfig:
     FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED: bool = False
     FORMATION_HEAD_SHOULDERS_EXIT_ENABLED: bool = False
     FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED: bool = False
-    FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED: bool = False
+    FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED: bool = True
     FORMATION_WEDGE_ENTRY_ENABLED: bool = False
     FORMATION_WEDGE_EXIT_ENABLED: bool = False
     FORMATION_TRIANGLE_ENTRY_ENABLED: bool = False
@@ -906,7 +906,7 @@ class TradierConfig:
     PEAK_GIVEBACK_BE_EROSION_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
 
     WT_15M_BOUNCE_BB_MIN: float = 0.05
-    WT_15M_BOUNCE_BB_MAX: float = 0.95
+    WT_15M_BOUNCE_BB_MAX: float = 0.9
     WT_15M_BOUNCE_REQUIRE_BOTH_HTF: bool = False
     WT_15M_BOUNCE_FILTER_HL_ENABLED: bool = False
     WT_15M_BOUNCE_FILTER_HH_ENABLED: bool = False
@@ -2194,7 +2194,7 @@ class TradierConfig:
     MTF_ATR_TRAIL_TF: str = '15m'
     MTF_BB_REJECT_EXIT_ENABLED: bool = True
     MTF_BB_REJECT_EXIT_LOOKBACK: int = 5
-    MTF_BB_REJECT_EXIT_TF: str = '1h'
+    MTF_BB_REJECT_EXIT_TF: str = 'OFF'
     MTF_DC_REJECT_EXIT_ENABLED: bool = True
     MTF_DC_REJECT_EXIT_LOOKBACK: int = 5
     MTF_DC_REJECT_EXIT_TF: str = '1h'
@@ -3769,7 +3769,7 @@ class TradierConfig:
     # live twins of v12_quick_engine exits (shared predicate vec_decisions/dc_channel_exits.py, hook in tradier_manage.process_position
     # after ULTIMATE_DC). Inert defaults; per_sym_active_config_stocks.json already carries 'OFF'. QuickConfig sweep baseline keeps
     # DAYTRADE_DC_*_TF='15m,1h' (BIBLE §15) — promoting that to live is an operator decision.
-    DAYTRADE_DC_STOP_TF: str = "OFF"
+    DAYTRADE_DC_STOP_TF: str = "15m"
     DAYTRADE_DC_STOP_BUFFER_PCT: float = 0.25
     DAYTRADE_DC_TARGET_TF: str = "15m"  # DEF2 2026-10-01 user: PROFIT_TARGET = dc_high_15m-0.1% default 15m (was OFF)
     DAYTRADE_DC_TARGET_BUFFER_PCT: float = 0.10

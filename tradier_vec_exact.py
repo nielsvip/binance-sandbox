@@ -29,6 +29,26 @@ import numpy as np
 
 EXECUTION_TF = "15m"
 _HA_BACK = {"red": -1.0, "neutral": 0.0, "green": 1.0}
+# NPZ integer encodings (backtest_v8_precompute; decoded to these labels by backtest_v8_harness._INT_DECODE and sent as labels by the
+# live bridge). The sheet engine reads the integer codes, so the live labels are mapped back to them.
+_INT_ENCODE = {
+    "wt_cross_": {"BEAR": -1.0, "NONE": 0.0, "BULL": 1.0},
+    "wt_signal_": {"BEAR": -1.0, "NEUTRAL": 0.0, "BULL": 1.0},
+    "wt_divergence_": {"BEAR": -1.0, "": 0.0, "BULL": 1.0},
+    "wt_momentum_state_": {"EXHAUST_DOWN": -2.0, "IMPULSE_DOWN": -1.0, "NEUTRAL": 0.0, "IMPULSE_UP": 1.0, "EXHAUST_UP": 2.0},
+    "wt_peak_structure_": {"LH": -1.0, "NEUTRAL": 0.0, "HH": 1.0},
+    "wt_trough_structure_": {"LL": -1.0, "NEUTRAL": 0.0, "HL": 1.0},
+    "wt_structure_": {"LH": -1.0, "NEUTRAL": 0.0, "HH": 1.0},
+    "wt_wave_phase_": {"CONTRACTING": -1.0, "NEUTRAL": 0.0, "EXPANDING": 1.0},
+    "wt_composite_bias": {"SHORT": -1.0, "NEUTRAL": 0.0, "LONG": 1.0},
+}
+
+
+def _encode_label(k: str, v: str):
+    for pre, m in _INT_ENCODE.items():
+        if k.startswith(pre):
+            return m.get(v, v)
+    return v
 _DROP_PREFIX = ("_", "0", "age_")
 _DROP_KEYS = {"current_price", "mark_price", "prev_price", "ts", "timestamp"}
 _NON_DECISION_REASONS = ("FINAL_MTM",)
@@ -70,7 +90,7 @@ def normalize_row(ind: Dict[str, Any]) -> Dict[str, Any]:
         elif isinstance(v, (int, float, np.integer, np.floating)):
             out[k] = float(v)
         elif isinstance(v, str):
-            out[k] = v
+            out[k] = _encode_label(k, v)
     return out
 
 

@@ -1067,6 +1067,7 @@ class Config:
     PARITY_VEC_EXACT_MODE: bool = False  # 2026-10-06 parity-loop-crypto (USER ruling via director): True = live decides with the SAME v12 code at each closed 15m bar (live_twins/vec_exact.py) and suppresses the native paths of the twinned families (EPQ candidate scoring for ENTRY); False = byte-identical live
     PARITY_VEC_EXACT_FAMILIES: str = "ENTRY"  # comma list of twinned families under PARITY_VEC_EXACT_MODE: ENTRY (vec OPENs), EXIT (vec CLOSE/REDUCE), AUGMENT
     VEC_DRIVEN_ENABLED: bool = True  # 2026-10-06 X3 VEC-DRIVEN LIVE: global master; a sym_side is vec-driven LIVE only if this is True AND data/vec_live/vec_driven.json lists it mode=live for this account (live_twins/vec_driven.py). False = byte-identical live  # 2026-10-06 director: emergency bridge ON (expiry in data/vec_live/vec_driven.json)
+    VEC_DRIVEN_NATIVE_ENTRY_BLOCK_ALL: bool = True  # USER 2026-10-06 PARITY: with VEC_DRIVEN_ENABLED, native OPEN/AUGMENT/REENTRY/HEDGE refused on every key (only VEC_DRIVEN_* open); native CLOSE/REDUCE allowed
     VEC_DRIVEN_CONSUMER_INTERVAL_S: float = 10.0  # 2026-10-06 X3: consumer loop period (s); intents pulled from S1 by tools/vec_live_pull.sh
     VEC_DRIVEN_EXEMPT_RATIO_GATES: bool = False  # 2026-10-06 X3: True also exempts execute_trade_action LS_RATIO_1H / MARKET_REGIME / RATIO_GATE portfolio gates for VEC_DRIVEN_* (vec is single-sym, these block single-side opens); False = kept
     MULTI_TF_EXIT_ENABLED: bool = False  # 2026-10-06 parity lane B (= QuickConfig lane D): live process_position runs evaluate_multi_tf_exit (WT_DIV/WT_ACCEL/WT_15M_LH_WAIT score components) only when promoted per-sym; False = today's live (no crypto caller)
@@ -1884,7 +1885,7 @@ class Config:
     REENTRY2_DC_BREAK_REQUIRE_K_FILTER: bool = True   # require stoch k>d (LONG)/<(SHORT) on FILTER_TF. Sweep OFF to drop the K gate.
     REENTRY2_DC_BREAK_REQUIRE_WT_FILTER: bool = False  # require wt1>wt2 (LONG)/<(SHORT) on FILTER_TF. Sweep ON to add a WT-momentum gate.
     REENTRY2_DC_BREAK_ALLOW_15M: bool = True           # also fire on a dc_15m break. dc_1h ALWAYS fires (never off). Sweep OFF for 1h-only.
-    REENTRY2_DC_BREAK_FILTER_TF: str = "3m"            # K/WT filters read stoch_k_<TF>/wt1_<TF>. Live stays 3m until SWEEP proves 15m/1h better (USER 2026-05-29: "3m seems too short — TEST IT"). Missing-data fails OPEN (does not block).
+    REENTRY2_DC_BREAK_FILTER_TF: str = "OFF"            # K/WT filters read stoch_k_<TF>/wt1_<TF>. Live stays 3m until SWEEP proves 15m/1h better (USER 2026-05-29: "3m seems too short — TEST IT"). Missing-data fails OPEN (does not block).
     REENTRY2_QUICK_RECOVERY_ENABLED: bool = True  # quick recovery after exit + momentum
     QUICK_RECOVERY_WINDOW_MIN: float = 120.0  # 2026-04-26 NEW — was hardcoded 60.0 (ez_manage.py:18259, ez_positions_quick.py:14647). Widened to give K3m alignment more time. 9,386 NOT_ALLOWED rejects in 2d at 60.
     # === V8_QUICK v2 WINNER (2026-04-16 micro-experiments) ===
@@ -3026,7 +3027,7 @@ class Config:
     REGIME_RANGING_WT_EXIT_VEL: float = -3.0  # Exit on lighter reversal
     REGIME_RANGING_K_ZONE_BONUS: int = 40  # Mean reversion K-zone bonus (was 25)
     REGIME_RANGING_DC_BREAKOUT_SCORE: int = 0  # DC breakout disabled in ranging
-    REGIME_RANGING_POSITION_SIZE_MULT: float = 0.5  # Half-size, more slots
+    REGIME_RANGING_POSITION_SIZE_MULT: float = 0.25  # Half-size, more slots
     REGIME_RANGING_SLOT_RESERVE_PCT: float = 0.60  # Reserve 60% slots for new entries
     REGIME_RANGING_REENTRY_SIZE_MULT: float = 1.0  # Standard reentry
     REGIME_RANGING_STALE_HOURS: float = 48.0  # Evict breakeven positions after 48h
@@ -3035,7 +3036,7 @@ class Config:
     REGIME_TRENDING_NOLOSS_MIN: float = 0.50  # Let winners run in trends
     REGIME_TRENDING_EXIT_GAIN_MIN: float = 2.0  # Only exit at 2%+ gain
     REGIME_TRENDING_MIN_HOLD_BARS: int = 48  # 12h at 15m — hold longer
-    REGIME_TRENDING_WT_REDUCE_FRAC_LOW: float = 0.10  # Trim gently
+    REGIME_TRENDING_WT_REDUCE_FRAC_LOW: float = 0.2  # Trim gently
     REGIME_TRENDING_WT_REDUCE_FRAC_MED: float = 0.15  # Still gentle
     REGIME_TRENDING_WT_EXIT_VEL: float = -12.0  # Only exit on strong reversal
     REGIME_TRENDING_K_ZONE_BONUS: int = 15  # K-zone less important
