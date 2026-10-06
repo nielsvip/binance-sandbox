@@ -4532,9 +4532,9 @@ class TradierConfig:
     ABLATION_DISABLE_CHECK_NOLOSS: bool = False  # Keep
     ABLATION_DISABLE_DC_BREACH_REDUCE: bool = False  # Disable DC breach reduce monitor
     ABLATION_DISABLE_ENTRY_LEADERBOARD: bool = False  # Keep — needs live testing
-    ABLATION_DISABLE_ENTRY_RANKING: bool = True  # ABLATION: 0.000 Sharpe delta = no effect (needs Redis, adds noise)
+    ABLATION_DISABLE_ENTRY_RANKING: bool = False  # ABLATION: 0.000 Sharpe delta = no effect (needs Redis, adds noise)  # 2026-10-06 USER: ablation never True outside a test
     ABLATION_DISABLE_ENTRY_REVERSAL: bool = False  # Keep — reversal entry untested
-    ABLATION_DISABLE_ENTRY_TECHNICAL: bool = True  # ABLATION: -0.018 Sharpe delta = redundant. REENTRY alone = same performance.
+    ABLATION_DISABLE_ENTRY_TECHNICAL: bool = False  # ABLATION: -0.018 Sharpe delta = redundant. REENTRY alone = same performance.  # 2026-10-06 USER: ablation never True outside a test
     ABLATION_DISABLE_FAST_RISER: bool = False  # Keep
     ABLATION_DISABLE_HEDGE: bool = False  # Keep
     ABLATION_DISABLE_HIGH_GAIN_AUGMENT: bool = False  # Disable direct_high_gain_augmentation

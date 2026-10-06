@@ -15325,7 +15325,39 @@ def _write_exit_to_disk(account_key: str, position_key: str, symbol: str, positi
         _disk_exit_cache_invalidate(account_key)
 
 
+async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> None:
+    """PARITY_VEC_EXACT_MODE ENTRY family: flat keys open exactly where the vec engine opens (live_twins/vec_exact.py),
+    reason = vec reason + ' |VEC_EXACT', routed execute_trade_action -> execute_now."""
+    try:
+        from live_twins import vec_exact as _vx
+    except Exception as _e:
+        logger.error(f"[VEC_EXACT] import failed: {_e}")
+        return
+    if "ENTRY" not in _vx.families(config):
+        return
+    for _pk in list(position_keys or []):
+        try:
+            _acct, _sym, _side = _pk.split(":", 1)[0], _pk.split(":", 1)[-1].rsplit("_", 1)[0], _pk.rsplit("_", 1)[-1]
+            if _side not in ("LONG", "SHORT"):
+                continue
+            _pos = trade_manager.positions.get(_pk) if hasattr(trade_manager, "positions") else None
+            _amt = abs(safe_fetch_float(getattr(_pos, "positionAmt", 0), 0)) if _pos is not None else 0.0
+            if _amt > 0:
+                continue
+            for _a in _vx.take(_sym, _side, time.time(), ("OPEN",)):
+                _px = safe_fetch_float(_a.get("vec_price"), 0.0)
+                _act, _oside, _qty, _full = _vx.order_args(_a, _side, _amt, _px)
+                _res = await trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=_pk, symbol=_sym, quantity=_qty, current_price=_px, side=_oside, position_side=_side, unique_id=f"VX{int(_a['bar_ts'])}{_a['n']}", is_full_close=_full, action=_act, reason=_vx.tagged_reason(_a), is_hedge=False)
+                logger.info(f"[VEC_EXACT] {_pk} {_act} {_a['reason'][:60]} qty={_qty:.6f} -> {str(_res)[:120]}")
+        except Exception as _e:
+            logger.error(f"[VEC_EXACT] {_pk}: {_e}")
+
+
 async def check_entry_candidates_for_account(trade_manager, account_key: str, redis_manager, tracker_manager: TrackerManager, order_queue, data_manager: FastDataManager, hedge_engine: HedgeEngine=None, position_keys: List[str] = None, force: bool = False) -> None:
+    # 2026-10-06 parity-loop-crypto: PARITY_VEC_EXACT_MODE replaces the native candidate scoring (no vec twin) by the vec ENTRY twin
+    if bool(getattr(config, 'PARITY_VEC_EXACT_MODE', False)):
+        await _vec_exact_entries(trade_manager, account_key, position_keys)
+        return
     if getattr(config, 'ABLATION_DISABLE_QUICK_ENTRY', False): return
     if not position_keys:
         logger.info(f"🔍 {position_keys} no pos keys sent")

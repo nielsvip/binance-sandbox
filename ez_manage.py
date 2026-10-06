@@ -7965,6 +7965,37 @@ def _lane_b_vec_only_parity_ok(symbol: str, side: str, reason: str) -> bool:
     return False
 
 
+_VEC_DRIVEN_REGISTRY = None
+
+
+def _vec_exact_reason_ok(reason) -> bool:
+    """parity-loop-crypto 2026-10-06: True for an order decided by the in-script vec twin (live_twins/vec_exact.py, reason tag
+    ' |VEC_EXACT') while PARITY_VEC_EXACT_MODE is on. Such orders already passed the vec engine's own gate/choke stack, so the
+    live discretionary gates without a vec twin are exempt (same exemption set as X3's VEC_DRIVEN). False when the master is off."""
+    try:
+        if not (bool(getattr(_ezm_base_config, "PARITY_VEC_EXACT_MODE", False)) or bool(getattr(config, "PARITY_VEC_EXACT_MODE", False))):
+            return False
+    except Exception:
+        return False
+    return " |VEC_EXACT" in str(reason or "")
+
+
+def _vec_driven_mode(symbol: str, side: str, account_key: str) -> str:
+    """X3 VEC-DRIVEN LIVE 2026-10-06: 'off' | 'shadow' | 'live' for this account's sym_side (live_twins/vec_driven.py).
+    Global VEC_DRIVEN_ENABLED False -> 'off' without touching any file (byte-identical live)."""
+    global _VEC_DRIVEN_REGISTRY
+    if not bool(getattr(_ezm_base_config, "VEC_DRIVEN_ENABLED", False)):
+        return "off"
+    try:
+        from live_twins import vec_driven as _vdm
+        if _VEC_DRIVEN_REGISTRY is None:
+            _VEC_DRIVEN_REGISTRY = _vdm.VecDrivenRegistry(_vdm.vec_live_dir(getattr(_ezm_base_config, "BASE_PATH", ".")) / "vec_driven.json")
+        return _VEC_DRIVEN_REGISTRY.mode(f"{str(symbol or '').upper()}_{str(side or '').upper()}", str(account_key or ""), True)
+    except Exception as _vdm_e:
+        logger.warning(f"[VEC_DRIVEN] mode lookup failed for {symbol}_{side} acct={account_key}: {_vdm_e} -> off")
+        return "off"
+
+
 def _psym_cs_get(symbol: str, side: str, knob: str, default):
     """Parity lane B 2026-10-06 (director: per-sym > cat_side default > global, the TEMPLATE/v15_vector_delta baseline reaches live).
     Order: per-sym PROMOTION layer (per_sym_store overrides_json -> per_sym_active_config.json overrides) -> cat_side default
@@ -8012,6 +8043,31 @@ def _ezm_is_live_side_enabled(symbol: str, side: str, account_key: str | None = 
         return True, "V8_DISABLE_PER_SYM"
     if not bool(getattr(config, "PER_SYM_CONFIG_ENABLED", True)):
         return True, "PER_SYM_CONFIG_ENABLED=False"
+    # USER 2026-10-06 LIVE-BOOK-PRESENCE: crypto live trades the per_sym book full_config verbatim — no evidence bars, no template fallback. Entry present = tradeable. Missing = blocked. Stocks keep evidence logic below.
+    _is_crypto_key = symbol.endswith("USDT") or symbol.endswith("USDC") or symbol.endswith("USDS")
+    if _is_crypto_key:
+        _bp_key = f"{symbol}_{side}"
+        try:
+            if os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1":
+                import per_sym_store as _pss_bp
+                _bp_full = _pss_bp.get_full_config(_bp_key)
+                if isinstance(_bp_full, dict) and _bp_full:
+                    return True, "book presence: full_config trades verbatim"
+        except Exception:
+            pass
+        try:
+            _bp_mtime = _ezm_per_sym_cfgs_path.stat().st_mtime
+            if _bp_mtime != _ezm_per_sym_raw_mtime:
+                with _ezm_per_sym_cfgs_path.open() as _bp_f:
+                    _bp_raw = json.load(_bp_f)
+                _ezm_per_sym_raw = {k: v for k, v in _bp_raw.items() if isinstance(v, dict)}
+                _ezm_per_sym_raw_mtime = _bp_mtime
+            _bp_entry = _ezm_per_sym_raw.get(_bp_key)
+            if isinstance(_bp_entry, dict) and isinstance(_bp_entry.get("full_config"), dict) and _bp_entry["full_config"]:
+                return True, "book presence(JSON): full_config trades verbatim"
+        except Exception:
+            pass
+        return False, f"no book entry {_bp_key} -> blocked (no fallback)"
     # SQLite primary: try per_sym_store (full snapshot) for live gate — keeps gate correct when TEMPLATE drifts
     _gate_via_sqlite = False
     if os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1":
@@ -24496,6 +24552,181 @@ class MultiAccountTradeManager:
             except Exception:
                 await asyncio.sleep(5)
 
+    async def _vec_driven_live_amt(self, position_key: str, symbol: str):
+        """(abs positionAmt, price, min_qty, position) for the vec-driven consumer."""
+        position = await self.get_position(position_key, max_age_s=5.0)
+        amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0)) if position else 0.0
+        price = safe_fetch_float(await quick_price(symbol), 0.0)
+        if price <= 0 and position:
+            price = safe_fetch_float(getattr(position, "mark_price", 0.0), 0.0) or safe_fetch_float(getattr(position, "entry_price", 0.0), 0.0)
+        min_qty = max((float(getattr(config, "MIN_POSITION_SIZE", 1.0)) / price) if price > 0 else 0.0, float(self.min_qty.get(symbol, 0.0) or 0.0))
+        return amt, price, min_qty, position
+
+    async def _vec_driven_send(self, account_key: str, ss: str, action: str, vec_type: str, vec_reason, qty_frac, src: str, caps=None, modes=None) -> str:
+        """Translate one vec decision into the existing order path: queue_trade_action -> execute_trade_action -> execute_now.
+        OPEN/AUGMENT size = qty_frac x calculate_final_order_quantity (same preliminary qty as queue_trade_action); REDUCE = qty_frac of
+        the live amount; CLOSE = all. Always override_qty so execute_trade_action's discretionary entry vetting (incl. RSI veto) is skipped."""
+        from live_twins import vec_driven as _vdm
+        symbol, side = _vdm.split_ss(ss)
+        position_key = f"{account_key}:{ss}"
+        amt, price, min_qty, position = await self._vec_driven_live_amt(position_key, symbol)
+        if price <= 0:
+            logger.warning(f"[VEC_DRIVEN_LIVE] {position_key}: no price — {src} {action} not sent")
+            return "SKIPPED_NO_PRICE"
+        normal_qty = 0.0
+        if action in ("OPEN", "AUGMENT"):
+            if action == "OPEN":
+                prelim = max(float(self.config.START_POSITION_SIZE) / price, 1.2 * float(self.min_qty.get(symbol, 0.001) or 0.001))
+            else:
+                prelim = max(2 * float(self.config.START_POSITION_SIZE) / price, 0.6 * amt)
+            reason_probe = _vdm.make_reason(action, vec_reason)
+            normal_qty = await calculate_final_order_quantity(position_key, account_key, symbol, position, action, self, 0.5, prelim, reason_probe, None)
+        final_action, qty = _vdm.order_qty(action, qty_frac, amt, normal_qty)
+        reason = _vdm.make_reason(final_action, vec_reason)
+        if final_action in ("OPEN", "AUGMENT"):
+            qty = _vdm.cap_open_qty(qty, price, float(self.config.START_POSITION_SIZE))
+        if final_action in ("OPEN", "AUGMENT") and (Path(getattr(self.config, "BASE_PATH", ".")) / "data" / f"HALT_TRADING_{account_key}").exists():
+            logger.critical(f"🛑 [VEC_DRIVEN_MARGIN] {position_key}: {src} {final_action} refused — data/HALT_TRADING_{account_key} present (balance_floor_watchdog: free margin at/below the account floor)")
+            return "REFUSED_MARGIN_FLOOR"
+        if final_action == "OPEN" and caps is not None:
+            n_open = 0
+            if caps.max_concurrent > 0:
+                for _ss_c, _m_c in (modes or {}).items():
+                    if _m_c == "live" and _ss_c != ss:
+                        _amt_c, _px_c, _mq_c, _p_c = await self._vec_driven_live_amt(f"{account_key}:{_ss_c}", _vdm.split_ss(_ss_c)[0])
+                        if _amt_c > _mq_c:
+                            n_open += 1
+            _cap_ok, _cap_why = caps.check(account_key, ss, n_open)
+            if not _cap_ok:
+                logger.warning(f"🚧 [VEC_DRIVEN_CAP] {position_key}: {src} OPEN refused — {_cap_why}")
+                return f"REFUSED_CAP_{_cap_why}"
+            caps.record(account_key, ss)
+        if qty <= 0:
+            logger.warning(f"[VEC_DRIVEN_LIVE] {position_key}: qty<=0 for {src} {final_action} (amt={amt} normal={normal_qty}) — not sent")
+            return "SKIPPED_ZERO_QTY"
+        res = await queue_trade_action(self.order_queue, self, position_key, final_action, reason, 0.5, override_qty=qty)
+        logger.info(f"🧭 [VEC_DRIVEN_LIVE] {position_key}: {src} {vec_type}->{final_action} qty={qty:.8f} amt={amt:.8f} px={price} reason={reason} -> {res}")
+        return str(res)
+
+    async def _vec_driven_consumer_loop(self):
+        """X3 VEC-DRIVEN LIVE (2026-10-06): consume S1 vec intents (data/vec_live/intents/*.json, pulled by tools/vec_live_pull.sh)
+        for this process's accounts. SHADOW: log intent vs native fills on that bar to data/vec_live/shadow_compare_{acct}.jsonl,
+        never orders. LIVE: send through queue_trade_action (reason VEC_DRIVEN_*), idempotent via data/vec_live/consumed_{acct}.json,
+        then reconcile live vs data/vec_live/state/{SS}.json target (one attempt per SS per target bar, after a grace period)."""
+        from live_twins import vec_driven as _vdm
+        base = _vdm.vec_live_dir(getattr(self.config, "BASE_PATH", "."))
+        registry = _vdm.VecDrivenRegistry(base / "vec_driven.json")
+        caps = _vdm.OpenCaps(int(getattr(_ezm_base_config, "VEC_DRIVEN_MAX_CONCURRENT", 0)), int(getattr(_ezm_base_config, "VEC_DRIVEN_MAX_OPENS_PER_HOUR", 0)))  # USER 2026-10-06: no concurrent/hourly caps (0 = off); 1 open per sym_side per bar kept
+        stores: Dict[str, Any] = {}
+        last_sent: Dict[str, float] = {}
+        last_live_ok = None
+        logger.info(f"🧭 [VEC_DRIVEN] consumer started base={base} accounts={list(self.accounts)}")
+        while True:
+            try:
+                await asyncio.sleep(float(getattr(_ezm_base_config, "VEC_DRIVEN_CONSUMER_INTERVAL_S", 10.0)))
+                if not bool(getattr(_ezm_base_config, "VEC_DRIVEN_ENABLED", False)):
+                    continue
+                max_age = float(getattr(_ezm_base_config, "VEC_DRIVEN_MAX_INTENT_AGE_S", 300.0))
+                state_max_age = float(getattr(_ezm_base_config, "VEC_DRIVEN_STATE_MAX_AGE_S", 1200.0))
+                grace = float(getattr(_ezm_base_config, "VEC_DRIVEN_RECONCILE_GRACE_S", 180.0))
+                _live_ok, _live_why = registry.live_allowed()
+                if _live_ok != last_live_ok:
+                    _exp_txt = datetime.fromtimestamp(registry.expires_at(), timezone.utc).isoformat() if registry.expires_at() > 0 else "n/a"
+                    if _live_ok:
+                        logger.warning(f"🧭 [VEC_DRIVEN] LIVE mode ARMED until {_exp_txt} (KILL file: {registry.kill_path})")
+                    else:
+                        logger.critical(f"🛑 [VEC_DRIVEN] LIVE mode DISARMED ({_live_why}, expiry {_exp_txt}) — all sym_sides SHADOW, positions handed back to native management (nothing force-closed)")
+                    last_live_ok = _live_ok
+                intents = _vdm.load_intents(base / "intents")
+                now = time.time()
+                for account_key in list(self.accounts):
+                    modes = registry.sym_sides_for(account_key, True)
+                    if not modes:
+                        continue
+                    store = stores.get(account_key) or _vdm.ConsumedStore(base / f"consumed_{account_key}.json")
+                    stores[account_key] = store
+                    for it in intents:
+                        ss = it["ss"]
+                        mode = modes.get(ss)
+                        if not mode or store.has(it["intent_id"]):
+                            continue
+                        it_mode = str(it.get("mode") or "").lower()
+                        bar = it["_bar_epoch"]
+                        symbol, side = _vdm.split_ss(ss)
+                        position_key = f"{account_key}:{ss}"
+                        if mode == "shadow" or it_mode == "shadow":
+                            if bar > 0 and now < bar + _vdm.BAR_SECONDS + 30:
+                                continue
+                            amt, _px, min_qty, _pos = await self._vec_driven_live_amt(position_key, symbol)
+                            would, why = _vdm.translate(it["type"], amt, min_qty)
+                            hist = Path(getattr(self.config, "BASE_PATH", ".")) / "data" / "history" / account_key / f"{ss}.jsonl"
+                            native = _vdm.native_trades_on_bar(hist, bar - _vdm.BAR_SECONDS, 2 * _vdm.BAR_SECONDS)
+                            rec = _vdm.shadow_record(account_key, it, native, amt, would, why)
+                            _vdm.append_jsonl(base / f"shadow_compare_{account_key}.jsonl", rec)
+                            logger.info(f"🧭 [VEC_DRIVEN_SHADOW] {position_key} intent={it['intent_id']} {it['type']} bar={it.get('bar_ts')} would={would or why} native={rec['native_types']} match={rec['native_matches']}")
+                            store.mark(it["intent_id"])
+                            continue
+                        _it_age = _vdm.intent_age_s(it, now)
+                        if _it_age > max_age:
+                            logger.warning(f"[VEC_DRIVEN_LIVE] {position_key}: intent {it['intent_id']} {it['type']} bar={it.get('bar_ts')} is {_it_age:.0f}s old > {max_age:.0f}s — STALE, consumed WITHOUT order (reconcile owns the target)")
+                            _vdm.append_jsonl(base / f"live_exec_{account_key}.jsonl", {"ts": time.time(), "intent_id": it["intent_id"], "ss": ss, "bar_ts": it.get("bar_ts"), "type": it["type"], "action": None, "result": f"REFUSED_STALE_{_it_age:.0f}s"})
+                            store.mark(it["intent_id"])
+                            continue
+                        amt, _px, min_qty, _pos = await self._vec_driven_live_amt(position_key, symbol)
+                        action, why = _vdm.translate(it["type"], amt, min_qty)
+                        store.mark(it["intent_id"])
+                        if not action:
+                            logger.warning(f"[VEC_DRIVEN_LIVE] {position_key}: intent {it['intent_id']} {it['type']} not sent ({why}, amt={amt:.8f}) — reconcile will act toward target")
+                            _vdm.append_jsonl(base / f"live_exec_{account_key}.jsonl", {"ts": time.time(), "intent_id": it["intent_id"], "ss": ss, "bar_ts": it.get("bar_ts"), "type": it["type"], "action": None, "result": f"SKIPPED_{why}"})
+                            continue
+                        res = await self._vec_driven_send(account_key, ss, action, it["type"], it.get("reason"), it.get("qty_frac"), f"intent={it['intent_id']}", caps=caps, modes=modes)
+                        last_sent[position_key] = time.time()
+                        _vdm.append_jsonl(base / f"live_exec_{account_key}.jsonl", {"ts": time.time(), "intent_id": it["intent_id"], "ss": ss, "bar_ts": it.get("bar_ts"), "type": it["type"], "action": action, "result": res})
+                    for ss, mode in modes.items():
+                        if mode != "live":
+                            continue
+                        position_key = f"{account_key}:{ss}"
+                        if time.time() - last_sent.get(position_key, 0.0) < grace:
+                            continue
+                        st = _vdm.load_state(base / "state", ss)
+                        if not st:
+                            continue
+                        if st.get("actionable") is False or st.get("engine_valid") is False:
+                            continue
+                        _st_fresh = _vdm.parse_bar_ts(st.get("written_at") or st.get("updated_at") or st.get("generated_at"))
+                        if _st_fresh <= 0:
+                            try:
+                                _st_fresh = (base / "state" / f"{ss}.json").stat().st_mtime
+                            except OSError:
+                                _st_fresh = 0.0
+                        if now - _st_fresh > state_max_age:
+                            continue
+                        target = _vdm.normalize_target(st.get("target_state"))
+                        bar_key = st.get("bar_ts")
+                        if target is None or store.reconcile_done(ss, bar_key):
+                            continue
+                        symbol, side = _vdm.split_ss(ss)
+                        amt, _px, min_qty, _pos = await self._vec_driven_live_amt(position_key, symbol)
+                        act = _vdm.reconcile_action(target, amt, min_qty)
+                        if not act:
+                            continue
+                        _st_tgt = st.get("target_state") if isinstance(st.get("target_state"), dict) else {}
+                        _st_dec_age = now - (_vdm.parse_bar_ts(_st_tgt.get("entry_ts")) or _vdm.parse_bar_ts(st.get("bar_ts")))
+                        if act == "OPEN" and _st_dec_age > max_age + _vdm.BAR_SECONDS:
+                            store.mark_reconcile(ss, bar_key)
+                            logger.warning(f"[VEC_DRIVEN_RECONCILE] {position_key}: target open but decision bar {bar_key} is {_st_dec_age:.0f}s old > {max_age:.0f}s — no late OPEN (stale guard)")
+                            continue
+                        store.mark_reconcile(ss, bar_key)
+                        logger.warning(f"🧭 [VEC_DRIVEN_RECONCILE] {position_key}: live amt={amt:.8f} != target {st.get('target_state')} (bar={bar_key}) -> {act} (one attempt this bar)")
+                        res = await self._vec_driven_send(account_key, ss, act, act, f"RECONCILE_{st.get('reason') or ''}", st.get("qty_frac") if act == "OPEN" else 1.0, "reconcile", caps=caps, modes=modes)
+                        last_sent[position_key] = time.time()
+                        _vdm.append_jsonl(base / f"live_exec_{account_key}.jsonl", {"ts": time.time(), "reconcile": True, "ss": ss, "bar_ts": bar_key, "action": act, "result": res})
+            except asyncio.CancelledError:
+                break
+            except Exception as _vdc_e:
+                logger.error(f"[VEC_DRIVEN] consumer cycle error: {_vdc_e}", exc_info=True)
+                await asyncio.sleep(5)
+
     async def execute_trade_action(
         self,
         account_key,
@@ -25116,12 +25347,15 @@ class MultiAccountTradeManager:
             or ("INTERVENTION" in reason.upper())
             or ("MANUAL" in reason.upper())
         )
+        # X3 2026-10-06: VEC_DRIVEN_EXEMPT_RATIO_GATES (default False = kept) lets vec-decided entries on vec-driven live sym_sides skip the portfolio LS_RATIO_1H / MARKET_REGIME / RATIO_GATE block below.
+        _vd_ratio_exempt = bool(getattr(_ezm_base_config, "VEC_DRIVEN_EXEMPT_RATIO_GATES", False)) and str(reason or "").upper().startswith("VEC_DRIVEN_") and _vec_driven_mode(symbol, position_side, account_key) == "live"
         if (
             is_entry_action
             and "HEDGE" not in reason.upper()
             and "REENTRY" not in action.upper()
             and not _is_winner_augment
             and not _is_golden_or_intervention
+            and not _vd_ratio_exempt
             and self.positions_service
         ):
             try:
@@ -26227,6 +26461,7 @@ class MultiAccountTradeManager:
                 and "HEDGE" not in action
                 and "QUICK" not in action
                 and not _is_force_open_eta
+                and not _vec_exact_reason_ok(reason)
             ):
                 logger.warning(f"[ENTRY_VET] {position_key}: BLOCKED — reason={_tp_entry_reason} action={action} r={(reason or '')[:60]}")
                 return f"{position_key}_BLOCKED_ENTRY_VET_{_tp_entry_reason}"
@@ -30331,12 +30566,39 @@ class MultiAccountTradeManager:
                         logger.warning(f"⚠️ [EXIT_ENGINE_LEAK] {position_key} action={action} fired family='{_fam}' but gate {_knob}={_gval} is DISABLED — illegal trade under parity (reason={_xr[:60]})")
             except Exception as _xe_err:
                 logger.debug(f"[EXIT_ENGINE_PARITY] {position_key}: instrumentation skipped ({_xe_err})")
+        # ─── X3 VEC-DRIVEN LIVE (2026-10-06 USER "THE SECOND A VECTORIZED TRADE WOULD OCCUR A LIVE TRADE OCCURS") ───
+        # sym_side mode=live (VEC_DRIVEN_ENABLED + data/vec_live/vec_driven.json): only VEC_DRIVEN_* orders trade it
+        # (they skip the discretionary gates flagged _vd_exempt below); every native decision is suppressed here, the
+        # single order chokepoint, except an emergency (liquidation/margin/balance-floor/manual) reduce/close.
+        _vd_exempt = False
+        if bool(getattr(_ezm_base_config, "VEC_DRIVEN_ENABLED", False)):
+            try:
+                from live_twins import vec_driven as _vdm_en
+                if _vec_driven_mode(symbol, position_side, account_key) == "live":
+                    if _vdm_en.is_vec_driven_reason(reason):
+                        _vd_exempt = True
+                        logger.info(f"🧭 [VEC_DRIVEN_EXEC] {position_key} action={action} qty={quantity} reason={(reason or '')[:80]} — vec-decided, discretionary gates exempt")
+                    elif _vdm_en.is_emergency_reason(reason) and (is_full_close or _broker_sync_is_exit(action)):
+                        logger.critical(f"🚨🚨 [VEC_DRIVEN_EMERGENCY_NATIVE] {position_key} action={action} reason={(reason or '')[:80]} — native EMERGENCY exit allowed on a vec-driven sym_side")
+                    else:
+                        logger.warning(f"⛔ [VEC_DRIVEN_NATIVE_SUPPRESSED] {position_key} action={action} reason={(reason or '')[:80]} — sym_side is VEC_DRIVEN live; native decision refused")
+                        return "BLOCKED_VEC_DRIVEN_NATIVE_SUPPRESSED"
+            except Exception as _vd_e:
+                logger.warning(f"[VEC_DRIVEN] {position_key}: gate error {_vd_e} (no exemption)")
+        # parity-loop-crypto 2026-10-06: in-script vec twin orders (PARITY_VEC_EXACT_MODE) share the vec-decided exemption set
+        if not _vd_exempt and _vec_exact_reason_ok(reason):
+            _vd_exempt = True
+            logger.info(f"🧬 [VEC_EXACT_EXEC] {position_key} action={action} qty={quantity} reason={(reason or '')[:80]} — vec-decided (in-script twin), discretionary gates exempt")
         # ─── 365D CONFIRMATION GATE (2026-09-28 USER MANDATE — fail-closed, no bypasses) ───
         # Blocks EVERY position-increasing action (incl. hedge opens — guards apply to ALL callers)
         # for sym_sides without a fresh positive 365D confirmation. CLOSE/REDUCE never blocked.
+        # X3 2026-10-06 director: VEC_DRIVEN_* on a vec-driven live sym_side exempt (director-certified 365D proven set).
         _act365 = str(action or "").upper()
         if any(_t in _act365 for _t in ("OPEN", "AUGMENT", "REENTRY", "REVERSE")):
             _ok365, _why365 = _confirm_365d_allows(symbol, position_side)
+            if not _ok365 and _vd_exempt:
+                logger.warning(f"🧭 [VEC_DRIVEN_365D_EXEMPT] {position_key} action={action} — 365D gate would block ({_why365}); director-certified 365D vec set, allowed")
+                _ok365 = True
             if not _ok365:
                 logger.warning(f"🛑 [365D_CONFIRM_BLOCK] {position_key} action={action} reason_in='{(reason or '')[:60]}' BLOCKED: {_why365}")
                 return "BLOCKED_NO_365D_CONFIRM"
@@ -31132,6 +31394,9 @@ class MultiAccountTradeManager:
                 # per-account gate: parse account from position_key (ang:..., inf:...)
                 _acct_for_gate = position_key.split(":")[0] if position_key and ":" in position_key else None
                 _live_ok, _live_reason = _ezm_is_live_side_enabled(symbol, position_side, _acct_for_gate)
+                if not _live_ok and _vd_exempt:
+                    logger.info(f"🧭 [VEC_DRIVEN_PER_SYM_LIVE_GATE_EXEMPT] {position_key}: per-sym gate would block ({_live_reason}); vec-driven live sym_side, allowed")
+                    _live_ok = True
                 if not _live_ok:
                     logger.critical(f"🚫 [PER_SYM_LIVE_GATE] {position_key}: BLOCKED live side not profitable gain>0 and beat bh required. side={position_side} reason={_live_reason} action={action}")
                     return f"BLOCKED_PER_SYM_LIVE_GATE_{position_side}"
@@ -31161,7 +31426,7 @@ class MultiAccountTradeManager:
                         is_vec_achievable as _vp_ok
                     from vec_paths.vec_parity_gate import \
                         matched_token as _vp_tok
-                    if not _vp_ok(reason or "") and not _lane_b_vec_only_parity_ok(symbol, position_side, reason or ""):
+                    if not _vp_ok(reason or "") and not _lane_b_vec_only_parity_ok(symbol, position_side, reason or "") and not _vd_exempt:
                         if _vp_mode:
                             logger.critical(f"🧬 [STRICT_VEC_PARITY] {position_key}: BLOCKED — reason not vec-achievable. action={action} reason={(reason or '')[:90]}")
                             return f"BLOCKED_VEC_PARITY_{(_kill_act or 'NA')[:12]}"
@@ -31551,7 +31816,7 @@ class MultiAccountTradeManager:
                     or "DC_BREAKOUT" in str(reason or "").upper()
                     or "REENTRY" in str(reason or "").upper()
                 )
-                if _ot_max > 0 and not _ot_emerg:
+                if _ot_max > 0 and not _ot_emerg and not _vd_exempt:
                     # Count ONLY executed fills from data/history/<acct>/<SYM_SIDE>.jsonl (NOT proposed decisions).
                     # history types are AUGMENT (OPEN counted as AUGMENT) + OPEN if present; REDUCE/CLOSE not counted.
                     try:
@@ -32356,7 +32621,7 @@ class MultiAccountTradeManager:
         # 🔒 ABSOLUTE LOCK — applies to every OPEN/AUGMENT/HEDGE/ENTRY, no exemptions.
         # 2026-08-21 FLZ FIX: OBLIGATORY_OPEN and dip REENTRY must bypass absolute lock — otherwise
         # 6 symbols firing within seconds each block for 300s and none persist (seen BTC BLOCKED 297s after ETH and REENTRY 175s).
-        _abs_is_obligatory = "OBLIGATORY" in (reason or "").upper() or "REENTRY" in (reason or "").upper() or "PRICE_CROSS" in (reason or "").upper() or "DAEMON" in (reason or "").upper()
+        _abs_is_obligatory = "OBLIGATORY" in (reason or "").upper() or "REENTRY" in (reason or "").upper() or "PRICE_CROSS" in (reason or "").upper() or "DAEMON" in (reason or "").upper() or _vd_exempt
         # 2026-04-24: Redis-backed so it survives process restarts. TTL 5min (user directive).
         if _abs_is_obligatory:
             logger.info(f"[ABSOLUTE_OPEN_LOCK_BYPASS] {position_key}: OBLIGATORY_OPEN bypassing absolute lock. reason={(reason or '')[:50]}")
@@ -32433,7 +32698,7 @@ class MultiAccountTradeManager:
             or "QUICK_RECOVERY" in _reason_up_preflight
             or action == "REENTRY"
         )
-        if _is_open_action and position_key and not _is_reentry_preflight:
+        if _is_open_action and position_key and not _is_reentry_preflight and not _vd_exempt:
             _pf_ts = max(
                 _recent_opens.get(position_key, 0), _AUGMENT_LOCK.get(position_key, 0)
             )
@@ -32887,7 +33152,7 @@ class MultiAccountTradeManager:
         # is available, fail-CLOSED (block the re-add) — a missed reentry is far cheaper than the churn.
         # 2026-08-21 FLZ FIX: USER "open every position with at least max qty if price crosses exit price" — dip reentry (PRICE_CROSS) must bypass 1hr churn guard, otherwise BTC blocked 0s after reduce.
         _rrg_is_price_cross_reentry = "PRICE_CROSS" in (reason or "").upper() or "DAEMON" in (reason or "").upper() or "GUARANTEED" in (reason or "").upper() or "OBLIGATORY" in (reason or "").upper()
-        if _is_aug and position_key and not is_hedge and bool(getattr(config, "RECENT_REDUCTION_GUARD_ENABLED", False)) and not _rrg_is_price_cross_reentry:
+        if _is_aug and position_key and not is_hedge and bool(getattr(config, "RECENT_REDUCTION_GUARD_ENABLED", False)) and not _rrg_is_price_cross_reentry and not _vd_exempt:
             _rrg_last_red = _recent_reduces.get(position_key, 0)
             _rrg_since = time.time() - _rrg_last_red
             _rrg_window = float(getattr(config, "RECENT_REDUCTION_GUARD_WINDOW_S", 900.0))
@@ -33334,7 +33599,7 @@ class MultiAccountTradeManager:
                             or "R1_DC_LOW4_3M_EMERGENCY" in _nb_reason_up
                             or "HTF_AGAINST_FORCE_CLOSE" in _nb_reason_up
                         )
-                        if not _nb_dc_broken and not _nb_emergency:
+                        if not _nb_dc_broken and not _nb_emergency and not _vd_exempt:
                             logger.critical(
                                 f"🛡️ [NEWBORN_PROTECT] {position_key}: BLOCKED {action} ({reason[:60]}) — position only {_nb_age_s:.0f}s old (need 900s) and price NOT at dc_3m extreme"
                             )
@@ -34293,7 +34558,8 @@ class MultiAccountTradeManager:
                 # Add reason-side bypasses for V3 / protective / emergency / gain_erosion.
                 _reason_up_drain = (reason or "").upper()
                 _drain_bypass = (
-                    "SCALP_V3" in _reason_up_drain
+                    _vd_exempt  # X3 2026-10-06: vec-decided REDUCE/CLOSE on a vec-driven live sym_side (LOW_GAIN_DRAIN + ABORT STOP draining exempt)
+                    or "SCALP_V3" in _reason_up_drain
                     or "PROTECTIVE_EXIT" in _reason_up_drain
                     or "GAIN_EROSION" in _reason_up_drain
                     or "EMERGENCY" in _reason_up_drain
@@ -34347,6 +34613,7 @@ class MultiAccountTradeManager:
                     return "ABORT STOP draining"
                 if (
                     account_key in ["flz", "men", "fin"]
+                    and not _vd_exempt
                     and position.gain < 0.6
                     and "HEDGE" not in action
                     and "CLOSE" not in action
@@ -60404,6 +60671,11 @@ async def main():
             background_tasks.append(
                 asyncio.create_task(trade_manager._inf_impulse_consumer_loop())
             )
+            # X3 VEC-DRIVEN LIVE 2026-10-06: S1 vec intents -> queue_trade_action -> execute_now (VEC_DRIVEN_*). Not started while VEC_DRIVEN_ENABLED=False.
+            if bool(getattr(_ezm_base_config, "VEC_DRIVEN_ENABLED", False)):
+                background_tasks.append(
+                    asyncio.create_task(trade_manager._vec_driven_consumer_loop())
+                )
             background_tasks.append(
                 asyncio.create_task(monitor_system_state(trade_manager))
             )

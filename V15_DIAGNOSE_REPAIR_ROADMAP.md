@@ -63,6 +63,15 @@ are twinned INSIDE the live producers (ez_positions_quick / ez_manage signal flo
 routed through execute_trade_action → execute_now; master `PARITY_VEC_EXACT_MODE` (default False) suppresses every live
 path without a vec twin; backtest_v12_engine runs the WHOLE scripts (real execute_now, only I/O stubbed, no injected
 v12-predicate producers) and must show identical trips. No separate opener, no bypass.
+**EMERGENCY BRIDGE (USER 2026-10-06, verbatim: "an emergency fix that needs to be closely monitored as it is very dangerous,
+and it can only run for a couple of hours until you fix the ACTUAL parity"):** S1 bar-fresh NPZ refresh (X2) + S1 executor
+running v12 per proven set (X1, fixed anchor, ≥100 bars, no FINAL_MTM, only current-bar events) + ez_manage consumer via
+queue_trade_action → execute_trade_action → execute_now (X3) with hard expiry (+3 h), KILL file, caps (6 positions/account,
+START size, 20 opens/h), stale-intent guard and tools/vec_live_monitor.py. Starts with the six 30D+365D-qualified sets.
+**ACTUAL PARITY (the goal):** live ez_/tradier_ functions and their vectorized twins call the SAME predicate code, in the
+real scripts at their native cadence (second / 1m / 3m / 5m), verified by backtest_v12_engine. Open decision: vec engine is
+clamped to a 15m floor while live decides on 1m/3m/5m — either vec gets 3m/5m NPZ data or live decides at 15m closes
+(loops report which functions need which inputs).
 **Hard facts, never switches:** stocks trade only in RTH (09:30–16:00 ET) — `v12_quick_engine` RTH gate is
 unconditional + fail-closed since 2026-10-06 (old engine traded 04:00–20:00 NPZ bars → EVERY earlier stock sheet and
 the first s2 repair queue are INVALID; stock repair re-runs on `~/binance-cut6` on s2).

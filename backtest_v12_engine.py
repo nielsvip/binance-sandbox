@@ -1475,6 +1475,18 @@ def _sim_datetime_now(tz=None):
     return datetime.now(tz or timezone.utc)
 
 
+class _SimDatetimeCls(datetime):
+    """parity lane A (V12_REAL_EXECUTE): module-level `datetime` replacement whose now()/utcnow() follow the sim clock, so
+    live wall-clock freshness gates (EPQ rate() STALE_INDICATORS: datetime.now - timestamp_15m > 90 min) see sim time."""
+    @classmethod
+    def now(cls, tz=None):
+        return _sim_datetime_now(tz)
+
+    @classmethod
+    def utcnow(cls):
+        return _sim_datetime_utcnow()
+
+
 def _sim_datetime_utcnow():
     ts = _sim_ts[0]
     if ts > 0:
@@ -1833,8 +1845,25 @@ def apply_patches(stores: Dict[str, IndicatorStore], mode: str):
     # --- Patch ii() to return NPZ data ---
     _indicator_cache: Dict[str, Dict] = {}
 
+    _ltf_sub = os.environ.get("V12_REAL_EXECUTE") == "1" and os.environ.get("V12_LTF_FROM_15M", "1") == "1"
+
     async def _npz_ii(tm, symbol, **kwargs):
-        return _indicator_cache.get(symbol, {})
+        _d = _indicator_cache.get(symbol, {})
+        if _ltf_sub and _d:
+            # parity lane A (V12_REAL_EXECUTE): the frozen NPZ has no 1m/3m stoch, so the real execute_trade_action saw
+            # k3=d3=0 and refused every open (BLOCKED UNCALCULATED_STOCH). Mirror the vector engine's rule ("3m is 15m",
+            # clamp_config): absent/zero 1m/3m stoch fields take the 15m value. Harness data substitution, logged in reports.
+            _d = dict(_d)
+            for _b in ("k", "d"):
+                for _sfx in ("", "_prev"):
+                    _src = _d.get(f"{_b}_15m{_sfx}")
+                    if _src is None:
+                        continue
+                    for _tf in ("1m", "3m"):
+                        _kk = f"{_b}_{_tf}{_sfx}"
+                        if not _d.get(_kk):
+                            _d[_kk] = _src
+        return _d
     ez_manage.ii = _npz_ii
 
     # Also patch in ez_positions_quick if it has its own ii
@@ -3950,6 +3979,12 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         trade_manager.execute_trade_action = _crypto_eta
     else:
         v8_logger.warning("[V12_REAL_EXECUTE] crypto: real execute_trade_action + execute_now (broker I/O stubbed only)")
+        for _dtm in (ez_manage, ez_positions_quick):
+            try:
+                if getattr(_dtm, "datetime", None) is datetime:
+                    _dtm.datetime = _SimDatetimeCls
+            except Exception:
+                pass
 
     # 2026-05-18 FIX: Patch execute_now to route through _crypto_eta.
     # process_position (ez_manage.py) calls trade_manager.execute_now() directly (not

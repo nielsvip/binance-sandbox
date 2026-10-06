@@ -859,7 +859,7 @@ class Config:
     EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED: bool = False
     EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED: bool = False
     EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED: bool = False
-    EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED: bool = False
+    EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED: bool = True  # 2026-10-06 director (USER: full vector-live parity): = vec baseline (cat_side) value
     EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED: bool = False
     EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED: bool = False
     EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED: bool = False
@@ -1064,6 +1064,11 @@ class Config:
     HAIKU_WINNER_VEC_ONLY_ENABLED: bool = False  # 2026-10-06 phase 4: True lets HaikuOverseer HAIKU_* augments through STRICT_VEC_PARITY (vec haiku_augment twins manage_winners; needs HAIKU_WINNER_ENABLED); False = today live (refused)
     KEY_LEVEL_CRASH_VEC_ONLY_ENABLED: bool = False  # 2026-10-06 phase 4: key-level crash exit outside the ablated EPQ quick chain (live_twins/key_level.py); False = today live
     EMA50_15M_ENTRY_FILTER_VEC_ONLY_ENABLED: bool = False  # 2026-10-06 phase 4: vec EMA50 15m entry filter; live twin BLOCKED_NO_LIVE_DATA (ez_indicators emits no ema_50_15m); False = today live
+    PARITY_VEC_EXACT_MODE: bool = False  # 2026-10-06 parity-loop-crypto (USER ruling via director): True = live decides with the SAME v12 code at each closed 15m bar (live_twins/vec_exact.py) and suppresses the native paths of the twinned families (EPQ candidate scoring for ENTRY); False = byte-identical live
+    PARITY_VEC_EXACT_FAMILIES: str = "ENTRY"  # comma list of twinned families under PARITY_VEC_EXACT_MODE: ENTRY (vec OPENs), EXIT (vec CLOSE/REDUCE), AUGMENT
+    VEC_DRIVEN_ENABLED: bool = False  # 2026-10-06 X3 VEC-DRIVEN LIVE: global master; a sym_side is vec-driven LIVE only if this is True AND data/vec_live/vec_driven.json lists it mode=live for this account (live_twins/vec_driven.py). False = byte-identical live
+    VEC_DRIVEN_CONSUMER_INTERVAL_S: float = 10.0  # 2026-10-06 X3: consumer loop period (s); intents pulled from S1 by tools/vec_live_pull.sh
+    VEC_DRIVEN_EXEMPT_RATIO_GATES: bool = False  # 2026-10-06 X3: True also exempts execute_trade_action LS_RATIO_1H / MARKET_REGIME / RATIO_GATE portfolio gates for VEC_DRIVEN_* (vec is single-sym, these block single-side opens); False = kept
     MULTI_TF_EXIT_ENABLED: bool = False  # 2026-10-06 parity lane B (= QuickConfig lane D): live process_position runs evaluate_multi_tf_exit (WT_DIV/WT_ACCEL/WT_15M_LH_WAIT score components) only when promoted per-sym; False = today's live (no crypto caller)
     SIMPLE_PRICE_GT0_ENABLED: bool = False  # SIMPLE price>0 test — ridiculously simple, always trades when enabled (added 2026-09-06 alongside WT15, never fails)
     # 2026-05-09 USER MANDATE — R3 HEDGE_INVARIANT loss-bypass dump.
@@ -2869,25 +2874,25 @@ class Config:
     # === FUNCTION-LEVEL ABLATION FLAGS (sweep_daemon uses these to test each function's value) ===
     # Default: all False (all functions enabled). Set one to True to disable that function.
     # V8 sweep overrides via V8_OVERRIDE_FILE JSON.
-    ABLATION_DISABLE_ENTRY_TECHNICAL: bool = True       # ABLATION: -0.018 Sharpe delta = redundant. REENTRY alone = same performance.
-    ABLATION_DISABLE_ENTRY_LEADERBOARD: bool = True    # 2026-09-21 OFF — adaptive regime off (P8) until forward proves +delta. Was False.
-    ABLATION_DISABLE_ENTRY_RANKING: bool = True         # ABLATION: 0.000 Sharpe delta = no effect (needs Redis, adds noise)
+    ABLATION_DISABLE_ENTRY_TECHNICAL: bool = False       # ABLATION: -0.018 Sharpe delta = redundant. REENTRY alone = same performance.  # 2026-10-06 USER: ablation is for investigating imparity only — never True outside a test
+    ABLATION_DISABLE_ENTRY_LEADERBOARD: bool = False    # 2026-09-21 OFF — adaptive regime off (P8) until forward proves +delta. Was False.  # 2026-10-06 USER: ablation is for investigating imparity only — never True outside a test
+    ABLATION_DISABLE_ENTRY_RANKING: bool = False         # ABLATION: 0.000 Sharpe delta = no effect (needs Redis, adds noise)  # 2026-10-06 USER: ablation is for investigating imparity only — never True outside a test
     ABLATION_DISABLE_ENTRY_REVERSAL: bool = False       # Keep — reversal entry untested
     ABLATION_DISABLE_REENTRY: bool = False              # CRITICAL: -1.9 Sharpe when removed. THE system IS reentry. NEVER disable.
-    ABLATION_DISABLE_AUGMENTATION: bool = True         # 2026-09-21 OFF by default — non-vectorizable bounce augment off until forward proves +delta. Was False.
+    ABLATION_DISABLE_AUGMENTATION: bool = False         # 2026-09-21 OFF by default — non-vectorizable bounce augment off until forward proves +delta. Was False.  # 2026-10-06 director (USER: full vector-live parity): = vec baseline (cat_side) value
     ABLATION_DISABLE_FAST_RISER: bool = False           # Keep
     ABLATION_DISABLE_CHECK_NOLOSS: bool = False         # Keep
-    ABLATION_DISABLE_HEDGE: bool = True                # 2026-09-21 OFF — hedge off until forward proves +delta (P2/P5). Was False.
-    ABLATION_DISABLE_RATIO_REBALANCE: bool = True      # 2026-09-21 OFF — ratio rebalance off until forward proves +delta. Was False.
-    ABLATION_DISABLE_QUICK_EXIT: bool = True           # 2026-09-21 OFF — quick exit without guaranteed reentry off (P6). Was False.
-    ABLATION_DISABLE_QUICK_ENTRY: bool = True          # 2026-09-21 OFF — quick entry off (P6). Was False.
-    ABLATION_DISABLE_REENTRY_ENFORCE: bool = True      # 2026-09-21 OFF — reentry enforce off (P6). Was False.
-    ABLATION_DISABLE_SPIKE_FADE_EXIT: bool = True      # 2026-09-21 OFF — 1m spike fade cannot be verified with NPZ (P7). Was False.
-    ABLATION_DISABLE_SCALP_GUARD: bool = True          # 2026-09-21 OFF — scalp guard off (P7). Was False.
-    ABLATION_DISABLE_DC_BREACH_REDUCE: bool = True     # 2026-09-21 OFF — DC breach reduce off (P2) until forward proves +delta. Was False.
-    ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = True     # 2026-09-21 OFF — aggressive hedge off. Was False.
-    ABLATION_DISABLE_HIGH_GAIN_AUGMENT: bool = True    # 2026-09-21 OFF — high gain augment off (P7). Was False.
-    ABLATION_DISABLE_PERIODIC_REENTRY: bool = True     # 2026-09-21 OFF — periodic reentry off (P7). Was False.
+    ABLATION_DISABLE_HEDGE: bool = False                # 2026-09-21 OFF — hedge off until forward proves +delta (P2/P5). Was False.  # 2026-10-06 USER: ablation is for investigating imparity only — never True outside a test
+    ABLATION_DISABLE_RATIO_REBALANCE: bool = False      # 2026-09-21 OFF — ratio rebalance off until forward proves +delta. Was False.  # 2026-10-06 USER: ablation is for investigating imparity only — never True outside a test
+    ABLATION_DISABLE_QUICK_EXIT: bool = False           # 2026-09-21 OFF — quick exit without guaranteed reentry off (P6). Was False.  # 2026-10-06 director (USER: full vector-live parity): = vec baseline (cat_side) value
+    ABLATION_DISABLE_QUICK_ENTRY: bool = False          # 2026-09-21 OFF — quick entry off (P6). Was False.  # 2026-10-06 USER: ablation is for investigating imparity only — never True outside a test
+    ABLATION_DISABLE_REENTRY_ENFORCE: bool = False      # 2026-09-21 OFF — reentry enforce off (P6). Was False.  # 2026-10-06 director (USER: full vector-live parity): = vec baseline (cat_side) value
+    ABLATION_DISABLE_SPIKE_FADE_EXIT: bool = False      # 2026-09-21 OFF — 1m spike fade cannot be verified with NPZ (P7). Was False.  # 2026-10-06 USER: ablation is for investigating imparity only — never True outside a test
+    ABLATION_DISABLE_SCALP_GUARD: bool = False          # 2026-09-21 OFF — scalp guard off (P7). Was False.  # 2026-10-06 USER: ablation is for investigating imparity only — never True outside a test
+    ABLATION_DISABLE_DC_BREACH_REDUCE: bool = False     # 2026-09-21 OFF — DC breach reduce off (P2) until forward proves +delta. Was False.  # 2026-10-06 USER: ablation is for investigating imparity only — never True outside a test
+    ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = False     # 2026-09-21 OFF — aggressive hedge off. Was False.  # 2026-10-06 USER: ablation is for investigating imparity only — never True outside a test
+    ABLATION_DISABLE_HIGH_GAIN_AUGMENT: bool = False    # 2026-09-21 OFF — high gain augment off (P7). Was False.  # 2026-10-06 director (USER: full vector-live parity): = vec baseline (cat_side) value
+    ABLATION_DISABLE_PERIODIC_REENTRY: bool = False     # 2026-09-21 OFF — periodic reentry off (P7). Was False.  # 2026-10-06 USER: ablation is for investigating imparity only — never True outside a test
     # === ABLATION BACKTEST RESULTS (2026-03-21 — 3507 configs × 243 sym, P1+P2+P3 OOS-validated) ===
     RSI_ENTRY_GATE_ENABLED: bool = False  # BC_154: DISABLED — 67-config ablation (48sym/4yr): stoch_gate_50 does the filtering. no_filter+stoch50 = Sharpe 0.790 (#1) vs RSI37 = 0.638
     RSI_ENTRY_MAX_LONG: float = 37.0  # BC_154: kept for reference but gate is disabled

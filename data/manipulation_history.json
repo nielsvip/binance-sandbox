@@ -2115,5 +2115,68 @@
     ],
     "timestamp": "2026-10-06T03:20:45.796138+00:00",
     "price": 0.10445263
+  },
+  {
+    "symbol": "FIDAUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 18.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T03:25:04.468812+00:00",
+    "price": 0.02149431
+  },
+  {
+    "symbol": "GALAUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T03:26:17.858997+00:00",
+    "price": 0.00242098
+  },
+  {
+    "symbol": "XBIUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 14.1x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-06T03:27:38.010262+00:00",
+    "price": 156.62
+  },
+  {
+    "symbol": "QNTXUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T03:29:56.644211+00:00",
+    "price": 45.65
+  },
+  {
+    "symbol": "ADBEUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 14.0x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-06T03:31:33.084635+00:00",
+    "price": 239.33242894
+  },
+  {
+    "symbol": "BRKBUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 12.9x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-06T03:39:12.203496+00:00",
+    "price": 505.23834177
+  },
+  {
+    "symbol": "BNCUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 16.1x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-06T03:41:20.567533+00:00",
+    "price": 5.99324483
   }
 ]
