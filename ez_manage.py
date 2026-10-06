@@ -33530,7 +33530,7 @@ class MultiAccountTradeManager:
             return f"{position_key} WAIT MEANS WAIT"
         debounce_key = f"debounce_exec:{position_key}"
         if self.redis_manager:
-            if await self.redis_manager.get(debounce_key):
+            if await self.redis_manager.get(debounce_key) and not _vd_exempt:  # 2026-10-06 parity: vec-decided orders are emitted once per bar by the twin (no duplicate to debounce)
                 return "BLOCK_DEBOUNCE_ACTIVE_10s"
         act_upper = (action or "").upper()
         reason_upper = (reason or "").upper()
