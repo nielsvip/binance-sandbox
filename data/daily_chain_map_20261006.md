@@ -96,8 +96,14 @@ Steps 1+2 of §68.3 now run on **S1** (the Mac sleeps; S1 does not):
    `data/daily_chain/persym_golive_<date>.json`. `--apply` (the registrar's real writer) is NOT wired into cron and waits for director/user
    confirmation. First report (20261006, director's selection): 543 selected, 457 evaluated, **18 PASS**, 394 not qualified on the fresh
    eval, 19 SIMPLE_PRICE_GT0, 32 type-gate (RECENT_REDUCTION_GUARD_ENABLED, AUGMENT_MIN_GAIN_PCT, ...), 4 failing a 365D verdict.
-   Open design point: the stored sets are FULL (~800 keys), so registering pins every key per-sym (per-sym > cat_side), and later default
-   promotions would no longer reach those sym_sides.
+   **Revised ~18:50Z (director decision):** registration is now `diff_only` (new `register_workbook_result(..., diff_only=True)`): only keys
+   that differ from the effective default (cat_side_defaults_4 > venue global) are pinned per-sym, so later daily promotions still reach them.
+   The 32 type refusals are fixed: keys missing from cat_side_defaults_4 are now typed against the venue global (RECENT_REDUCTION_GUARD_ENABLED,
+   AUGMENT_MIN_GAIN_PCT, stocks REENTRY2_DC_BREAK_FILTER_TF); non-live keys (WT_DC_DETAILED_TF, dict-typed EZ_MANAGE_THROTTLER_RATE) are dropped
+   when they sit at the QuickConfig default; a float for a live-int field is kept as float when QuickConfig declares it float. Re-run: 31 PASS,
+   0 type refusals, 401 not qualified on the fresh eval. The fresh 30D numbers moved between the two runs ~40 min apart (e.g. AAVEUSDC_LONG
+   +25.98%/TIM 24 to +3.38%/TIM 11.6 for the same set), so the fleet NPZ/engine changed in between. Registering replaces the whole book entry,
+   so today's `clean_ONLY_CROSSES_v33` keys that are not in the diff-set fall back to cat_side defaults.
 2. **Step 3b, inf universe** (`tools/v15_daily_inf_universe.py`, Mac 13:05Z, dry-run only). Blocked for `--apply`: the locked live
    `ez_rankings.py` rewrites `symbols_inf_long/short.json` every ~2.5 min (`[INF_BEST_SAVE]`), so a daily write would be overwritten within
    minutes. Needs a user unlock of ez_rankings.py to retire that writer (+ restart), then flip the cron to `--apply`.

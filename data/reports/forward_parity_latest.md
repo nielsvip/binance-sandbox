@@ -1,12 +1,12 @@
 # Forward parity — LIVE vs VECTOR (auto, read-only)
 
-generated 2026-10-06T18:24:41+00:00 · producers: tools/forward_parity/live_vs_vec.py (crypto hourly :07, stocks every 15 min RTH), tools/decisions_history_parity.py (:17), tools/exit_engine_parity_monitor.py (launchd hourly), tools/daily_parity_test.py (launchd daily)
+generated 2026-10-06T18:39:15+00:00 · producers: tools/forward_parity/live_vs_vec.py (crypto hourly :07, stocks every 15 min RTH), tools/decisions_history_parity.py (:17), tools/exit_engine_parity_monitor.py (launchd hourly), tools/daily_parity_test.py (launchd daily)
 
 PASS = every vector decision on the judged 15m bars has a live fill of the same class within +-2 bars, every live fill has a vector decision, and end state (in/out) agrees. FAIL classes: VEC_ONLY_LIVE_NO_SIGNAL (live logic did not fire), VEC_ONLY_LIVE_BLOCKED (live attempted, gate/execution stopped it), VEC_ONLY_STATE_CASCADE (consequence of an earlier divergence), LIVE_ONLY_VEC_FAMILY (vector twin exists but did not fire), LIVE_ONLY_NONVEC (1m/3m/5m/tick/webhook/portfolio input — no vec counterpart), STATE_MISMATCH, NPZ_STALE (S1 NPZ behind live, judged on the newest window the vector can see).
 
 ## Test 1 - 15m LIVE vs VECTOR, CRYPTO
 
-run 2026-10-06T18:20:10+00:00 (5 min ago) · engine v12 918b5bdc · NPZ sync tail · window 24.0h from 2026-10-05T18:07Z · tol +-2 bars · 242 live keys / 131 sym_sides · 787.3 s
+run 2026-10-06T18:20:10+00:00 (19 min ago) · engine v12 918b5bdc · NPZ sync tail · window 24.0h from 2026-10-05T18:07Z · tol +-2 bars · 242 live keys / 131 sym_sides · 787.3 s
 
 **Verdict: FAIL** — FAIL 112 · PASS with decisions 0 · IDLE (no decision either side, counts as pass) 110 · NO_DATA 20 · judged on a STALE-shifted window (S1 NPZ behind live) 222
 
@@ -191,29 +191,27 @@ intents in window: 2 · result: NOT_IN_MAC_REGISTRY 2 · consumer files: **none 
 
 ## Test 1 - 15m LIVE vs VECTOR, STOCKS
 
-run 2026-10-06T18:24:40+00:00 (0 min ago) · engine v12 918b5bdc · NPZ sync tail · window 24.0h from 2026-10-05T18:20Z · tol +-2 bars · 148 live keys / 129 sym_sides · 266.9 s
+run 2026-10-06T18:39:14+00:00 (0 min ago) · engine v12 918b5bdc · NPZ sync tail · window 24.0h from 2026-10-05T18:37Z · tol +-2 bars · 148 live keys / 129 sym_sides · 133.1 s
 
-**Verdict: FAIL** — FAIL 70 · PASS with decisions 3 · IDLE (no decision either side, counts as pass) 71 · NO_DATA 4 · judged on a STALE-shifted window (S1 NPZ behind live) 5
+**Verdict: FAIL** — FAIL 68 · PASS with decisions 3 · IDLE (no decision either side, counts as pass) 73 · NO_DATA 4 · judged on a STALE-shifted window (S1 NPZ behind live) 5
 
-- vector fired, live did not (VEC_ONLY): LIVE_NO_SIGNAL 5, LIVE_ALREADY_FLAT 5, LIVE_ALREADY_IN_POSITION 1
+- vector fired, live did not (VEC_ONLY): LIVE_ALREADY_FLAT 5, LIVE_NO_SIGNAL 2
 - live fired, vector did not (LIVE_ONLY): -
 - vector replay made 0 trades in 30D for 60/129 sym_sides with the live set (engine md5 918b5bdc): every live fill on those keys is LIVE_ONLY by construction — engine/set problem, not live drift. e.g. AAPL_LONG, ACN_LONG, AMAT_LONG, AMZN_LONG, AMZN_SHORT, APA_LONG, ASML_LONG, AXTI_LONG
 - vector errors: prepare failed: ValueError: NPZ has only 19 distinct stock s 2, prepare failed: ValueError: NPZ has only 20 distinct stock s 1, prepare failed: ValueError: NPZ has only 18 distinct stock s 1
-- FAIL classes (sym_sides): STATE_MISMATCH 65, VEC_ONLY_STATE_CASCADE 6, VEC_ONLY_LIVE_NO_SIGNAL 5, NPZ_STALE 2
+- FAIL classes (sym_sides): STATE_MISMATCH 65, VEC_ONLY_STATE_CASCADE 5, NPZ_STALE 2, VEC_ONLY_LIVE_NO_SIGNAL 2
 
 ### FAIL per sym_side
 
 | key | classes | vec_only (why) | live_only (function@tf) | vec/live in pos | judged window | set |
 |---|---|---|---|---|---|---|
-| trb:UEC_SHORT | VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_NO_SIGNAL 1, LIVE_ALREADY_FLAT 1 | - | False/False | last window | trb/active_config |
-| trc:UEC_SHORT | STATE_MISMATCH, VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_NO_SIGNAL 1, LIVE_ALREADY_FLAT 1 | - | False/True | last window | trb/active_config |
-| trb:ADBE_SHORT | VEC_ONLY_LIVE_NO_SIGNAL | LIVE_NO_SIGNAL 1 | - | True/True | last window | trb/active_config |
 | trb:AMD_LONG | VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_FLAT 1 | - | False/False | last window | trb/active_config |
 | trb:IBIT_LONG | STATE_MISMATCH, VEC_ONLY_LIVE_NO_SIGNAL | LIVE_NO_SIGNAL 1 | - | False/True | last window | trb/active_config |
 | trb:LEXX_SHORT | STATE_MISMATCH, VEC_ONLY_LIVE_NO_SIGNAL | LIVE_NO_SIGNAL 1 | - | True/False | last window | defaults(cat_side) |
 | trb:QLYS_LONG | NPZ_STALE, VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_FLAT 1 | - | False/False | 2026-09-10T16:00Z..2026-09-11T16:00Z | defaults(cat_side) |
-| trc:ADBE_SHORT | VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_IN_POSITION 1 | - | True/True | last window | trb/active_config |
+| trb:UEC_SHORT | VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_FLAT 1 | - | False/False | last window | trb/active_config |
 | trc:IBIT_LONG | STATE_MISMATCH, VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_FLAT 1 | - | False/True | last window | trb/active_config |
+| trc:UEC_SHORT | STATE_MISMATCH, VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_FLAT 1 | - | False/True | last window | trb/active_config |
 | trb:AAPL_SHORT | STATE_MISMATCH | - | - | True/False | last window | trb/active_config |
 | trb:ABT_SHORT | STATE_MISMATCH | - | - | True/False | last window | trb/active_config |
 | trb:ALKT_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
@@ -276,7 +274,7 @@ run 2026-10-06T18:24:40+00:00 (0 min ago) · engine v12 918b5bdc · NPZ sync tai
 | trc:RRC_SHORT | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
 | trc:VLO_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
 
-PASS with activity: trb:COHR_LONG, trb:PSX_LONG, trc:META_LONG  ·  PASS_IDLE (no decision either side): 71
+PASS with activity: trb:COHR_LONG, trb:PSX_LONG, trc:META_LONG  ·  PASS_IDLE (no decision either side): 73
 
 NO_DATA reasons: prepare failed: ValueError: NPZ has only 19 distin 2, prepare failed: ValueError: NPZ has only 20 distin 1, prepare failed: ValueError: NPZ has only 18 distin 1
 
@@ -284,16 +282,15 @@ NO_DATA reasons: prepare failed: ValueError: NPZ has only 19 distin 2, prepare f
 
 | family | input TF | vec twin | gate switch | live attempts | live fills | vec events | matched | vec_only | live_only | status |
 |---|---|---|---|---|---|---|---|---|---|---|
-| BROKER_SYNC | tick | N | safety (exempt) | 0 | 178 | 0 | 0 | 0 | 0 | PASS |
+| BROKER_SYNC | tick | N | safety (exempt) | 0 | 318 | 0 | 0 | 0 | 0 | PASS |
 | DC_DAYTRADE_TARGET | 15m | Y | DC_DAYTRADE_ENABLED | 0 | 1 | 3 | 0 | 3 | 0 | FAIL |
 | DC_BREAK | 15m | N | ? (switch not identified) | 0 | 3 | 0 | 0 | 0 | 0 | PASS |
-| HARDCODED_RALLY_REENTRY | 15m | Y | HARDCODED_RALLY_REENTRY_ENABLED | 0 | 1 | 2 | 0 | 2 | 0 | FAIL |
-| UNCLASSIFIED:B_EMASLOPE | 15m | Y | ? (switch not identified) | 0 | 0 | 2 | 0 | 2 | 0 | FAIL |
 | REENTRY_OTHER | 15m | Y | ABLATION_DISABLE_REENTRY | 0 | 2 | 0 | 0 | 0 | 0 | PASS |
 | GAP_MOC | 5m | Y | ? (switch not identified) | 0 | 0 | 2 | 0 | 2 | 0 | FAIL |
 | UNCLASSIFIED:PRE_CLOSE | 15m | N | ? (switch not identified) | 0 | 1 | 0 | 0 | 0 | 0 | PASS |
 | UNCLASSIFIED:B | 15m | Y | ? (switch not identified) | 0 | 0 | 1 | 0 | 1 | 0 | FAIL |
 | DC_DAYTRADE_STOP | 15m | Y | DC_DAYTRADE_ENABLED | 0 | 0 | 1 | 0 | 1 | 0 | FAIL |
+| HARDCODED_RALLY_REENTRY | 15m | Y | HARDCODED_RALLY_REENTRY_ENABLED | 0 | 1 | 0 | 0 | 0 | 0 | PASS |
 
 ## Test 2 - LIVE_ONLY functions (1m/3m/5m, tick, webhook, portfolio, no vec twin), STOCKS
 
@@ -304,7 +301,7 @@ These decisions have no 15m vector counterpart by construction; listed so drift 
 
 ## decisions -> history parity (switch intents vs live fills)
 
-`DH_20261005_20261006.json` generated 2026-10-06T18:17:02.821182+00:00 (8 min ago) · intents 448 · matched 35 · **missing 413**
+`DH_20261005_20261006.json` generated 2026-10-06T18:17:02.821182+00:00 (22 min ago) · intents 448 · matched 35 · **missing 413**
 
 matched/intents per account: fin 4/9, men 8/37, ang 14/27, inf 0/0 (no decision file), flz 9/10, trb 0/201, trc 0/164
 
@@ -344,7 +341,7 @@ Gap classes: NUKE_STALE_MAKER_ORDER = maker exit rested >60 s and was cancelled 
 
 ## Exit-engine gate parity (execute_now, all exits)
 
-generated 2026-10-06T18:00:17.269906+00:00 (24 min ago) · lookback 48.0h · exit rows 6207 · **LEAKS 3295** · gate ON 1789 · UNGATED 1035 · safety 4 · unmapped 6
+generated 2026-10-06T18:00:17.269906+00:00 (39 min ago) · lookback 48.0h · exit rows 6207 · **LEAKS 3295** · gate ON 1789 · UNGATED 1035 · safety 4 · unmapped 6
 
 LEAKS (gate OFF for that sym_side yet fired): QUICK_OPEN_STRONG 3293, WT_DC_ENTRY (WT_DC_ENTRY_ENABLED=False) 2
 

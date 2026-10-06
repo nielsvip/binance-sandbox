@@ -454,6 +454,8 @@ def register_workbook_result(
     rep["n_snapshot"] = len(snap)
     rep["n_full"] = len(full)
     if dry_run:
+        if diff_only:
+            rep["would_register"] = dict(coerced)
         rep["reason"] = "dry_run (gates passed, nothing written)"
         rep["would_tag"] = new_tag
         return rep
