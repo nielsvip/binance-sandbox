@@ -17554,7 +17554,18 @@ def _run_one_twin_prefix_on():
                 v8_logger.warning(f"[V12_TWIN_PREFIX_EVAL] {_tpe}")
             return _orig_ep(prepared, overrides, *a, **kw)
         _E.evaluate_prepared = _ep
-        st = {"orig_ep": _orig_ep, "orig_min": _vx._MIN_BARS}
+        # large parity (90D): the twin hard-codes E.prepare(symside, 30); prepare the run's own window instead so the twin's
+        # anchor/bars equal the vec leg's (V12_TWIN_WINDOW_DAYS is set by run_one to its window_days).
+        _orig_prep = _E.prepare
+        _twd = int(os.environ.get("V12_TWIN_WINDOW_DAYS", "30") or 30)
+
+        def _prep(symside, window_days=365, *a, **kw):
+            if int(window_days) == 30 and _twd != 30:
+                window_days = _twd
+            return _orig_prep(symside, window_days, *a, **kw)
+        if _twd != 30:
+            _E.prepare = _prep
+        st = {"orig_ep": _orig_ep, "orig_min": _vx._MIN_BARS, "orig_prep": _orig_prep}
         _vx._MIN_BARS = 2
     except Exception as _e:
         st = {"error": str(_e)[:200]}
@@ -17568,6 +17579,7 @@ def _run_one_twin_prefix_off(st) -> None:
         import live_twins.vec_exact as _vx
         from tools.opt import evaluate_v12 as _E
         _E.evaluate_prepared = st["orig_ep"]
+        _E.prepare = st.get("orig_prep", _E.prepare)
         _vx._MIN_BARS = st["orig_min"]
     except Exception:
         pass
@@ -17658,7 +17670,8 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
                             if _valid.size >= 2:
                                 _dates = _np_f.array([_dt.datetime.fromtimestamp(float(s), tz=_dt.timezone.utc).date() for s in _valid])
                                 _uniq = sorted(set(_dates.tolist()))
-                                _need = 30 if int(window_days) == 30 else (7 if int(window_days) == 7 else 30)
+                                # parity lane A 2026-10-06: N-session stock windows (90D large parity) — was hard 30/7
+                                _need = int(window_days) if int(window_days) >= 7 else 7
                                 if len(_uniq) >= _need:
                                     _first = _uniq[-_need]
                                     start_date = _first.isoformat()
@@ -17694,6 +17707,7 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
     # load stores for this one symbol; use get_npz_dir resolution helper
     snap = _run_one_apply_overrides(overrides, mode)
     _sp_state = _run_one_set_precedence_on(symside, overrides, mode) if os.environ.get("V12_RUN_ONE_SET_PRECEDENCE") == "1" else None
+    os.environ["V12_TWIN_WINDOW_DAYS"] = str(int(window_days))
     _tp_state = _run_one_twin_prefix_on() if os.environ.get("V12_TWIN_PREFIX_EVAL") == "1" else None
     stores = {}; resolution = "3m" if mode == "crypto" else "5m"
     executed = []

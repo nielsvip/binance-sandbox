@@ -1777,7 +1777,7 @@ def _inject_fear_greed(merged: dict, ts_epoch_sec: np.ndarray, base_tf: str) -> 
     merged["fear_greed"] = fg_arr
 
 
-def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
+def compute_symbol(symbol: str, mode: str) -> bool:
     t0 = time.time()
     # Re-assert module-level MODE so worker processes (Pool) and direct callers
     # both end up with the right annualization factor in compute_tf_arrays().
@@ -2526,12 +2526,6 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
     # S1 fetch needed: tradier_klines_append.py --symbols <SYM> --days-back 400
     # 2026-10-01 FIX: For W/M SMA depth, D span can satisfy coverage when 15m is truncated (~80d).
     # Tradier D has ~2500 days (2016-2026) even when 15m is only ~80d; allow save if either 15m or D covers 300d.
-    # 2026-10-06 parity-loop-crypto (ruling 2, STAGED — needs user unlock): in-memory arrays for the live vec twin
-    # (live_twins/vec_exact.py source=live_klines). Same builder as the NPZ files, no coverage guard, no disk write.
-    if return_arrays:
-        if mode == "crypto" and os.environ.get("NPZ_HTF_LEGACY_LAG1") != "1":
-            merged["htf_align"] = np.array(["causal_v3" if os.environ.get("NPZ_WM_LEGACY") != "1" else "causal_v2"])
-        return merged
     _span_15m = _frame_span_seconds(dfs.get(_resample_src_tf, base_df)) / 86400.0
     _span_d = _frame_span_seconds(dfs.get("D")) / 86400.0 if mode == "tradier" and dfs.get("D") is not None else 0.0
     _span_days = max(_span_15m, _span_d) if mode == "tradier" else n * 15 / 1440.0

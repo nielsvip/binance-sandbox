@@ -1,12 +1,12 @@
 # Forward parity — LIVE vs VECTOR (auto, read-only)
 
-generated 2026-10-06T16:00:13+00:00 · producers: tools/forward_parity/live_vs_vec.py (crypto hourly :07, stocks every 15 min RTH), tools/decisions_history_parity.py (:17), tools/exit_engine_parity_monitor.py (launchd hourly), tools/daily_parity_test.py (launchd daily)
+generated 2026-10-06T16:17:13+00:00 · producers: tools/forward_parity/live_vs_vec.py (crypto hourly :07, stocks every 15 min RTH), tools/decisions_history_parity.py (:17), tools/exit_engine_parity_monitor.py (launchd hourly), tools/daily_parity_test.py (launchd daily)
 
 PASS = every vector decision on the judged 15m bars has a live fill of the same class within +-2 bars, every live fill has a vector decision, and end state (in/out) agrees. FAIL classes: VEC_ONLY_LIVE_NO_SIGNAL (live logic did not fire), VEC_ONLY_LIVE_BLOCKED (live attempted, gate/execution stopped it), VEC_ONLY_STATE_CASCADE (consequence of an earlier divergence), LIVE_ONLY_VEC_FAMILY (vector twin exists but did not fire), LIVE_ONLY_NONVEC (1m/3m/5m/tick/webhook/portfolio input — no vec counterpart), STATE_MISMATCH, NPZ_STALE (S1 NPZ behind live, judged on the newest window the vector can see).
 
 ## Test 1 - 15m LIVE vs VECTOR, CRYPTO
 
-run 2026-10-06T15:18:41+00:00 (42 min ago) · engine v12 d84863e5 · NPZ sync tail · window 24.0h from 2026-10-05T15:07Z · tol +-2 bars · 242 live keys / 131 sym_sides · 699.4 s
+run 2026-10-06T15:18:41+00:00 (59 min ago) · engine v12 d84863e5 · NPZ sync tail · window 24.0h from 2026-10-05T15:07Z · tol +-2 bars · 242 live keys / 131 sym_sides · 699.4 s
 
 **Verdict: FAIL** — FAIL 29 · PASS with decisions 0 · IDLE (no decision either side, counts as pass) 193 · NO_DATA 20 · judged on a STALE-shifted window (S1 NPZ behind live) 222
 
@@ -117,7 +117,7 @@ execute_now gate refusals tagged VEC_DRIVEN in ez_manage logs: {'flz': {'UNKNOWN
 
 ## Test 1 - 15m LIVE vs VECTOR, STOCKS
 
-run 2026-10-06T15:59:16+00:00 (1 min ago) · engine v12 d84863e5 · NPZ sync tail · window 24.0h from 2026-10-05T15:52Z · tol +-2 bars · 148 live keys / 129 sym_sides · 432.1 s
+run 2026-10-06T15:59:16+00:00 (18 min ago) · engine v12 d84863e5 · NPZ sync tail · window 24.0h from 2026-10-05T15:52Z · tol +-2 bars · 148 live keys / 129 sym_sides · 432.1 s
 
 **Verdict: FAIL** — FAIL 82 · PASS with decisions 3 · IDLE (no decision either side, counts as pass) 59 · NO_DATA 4 · judged on a STALE-shifted window (S1 NPZ behind live) 5
 
@@ -248,21 +248,21 @@ These decisions have no 15m vector counterpart by construction; listed so drift 
 
 ## decisions -> history parity (switch intents vs live fills)
 
-`DH_20261005_20261006.json` generated 2026-10-06T15:17:02.102180+00:00 (43 min ago) · intents 259 · matched 35 · **missing 224**
+`DH_20261005_20261006.json` generated 2026-10-06T16:17:02.563374+00:00 (0 min ago) · intents 357 · matched 35 · **missing 322**
 
-matched/intents per account: fin 4/9, men 8/37, ang 14/27, inf 0/0 (no decision file), flz 9/10, trb 0/100, trc 0/76
+matched/intents per account: fin 4/9, men 8/37, ang 14/27, inf 0/0 (no decision file), flz 9/10, trb 0/156, trc 0/118
 
 | function family | action | intent result | n | blocking execution filter | vector same decision +-2 bars (Y/N/? = not judged) |
 |---|---|---|---|---|---|
-| UNCLASSIFIED:? | OPEN | MISSING | 63 | UNATTRIBUTED 63 | ? 62, N 1 |
-| UNCLASSIFIED:? | REDUCE | MISSING | 47 | UNATTRIBUTED 47 | ? 47 |
-| UNCLASSIFIED:? | CLOSE | MISSING | 25 | UNATTRIBUTED 25 | ? 25 |
+| UNCLASSIFIED:? | OPEN | MISSING | 80 | UNATTRIBUTED 80 | ? 79, N 1 |
+| UNCLASSIFIED:? | REDUCE | MISSING | 73 | UNATTRIBUTED 73 | ? 73 |
+| UNCLASSIFIED:? | CLOSE | MISSING | 42 | UNATTRIBUTED 42 | ? 42 |
+| UNCLASSIFIED:? | REENTRY | MISSING | 30 | UNATTRIBUTED 30 | ? 30 |
+| UNCLASSIFIED:? | SHORT SELL | MISSING | 19 | UNATTRIBUTED 19 | ? 19 |
 | BB_RECOVERY_EXIT | REDUCE | MISSING | 18 | NO_QUANTITY_LEFT_TO_REDUCE 5, BLOCKED_MAKER_SUPPRESS_WEBHOOK 5, HARD_REDUCE_LOCK 4, NUKE_STALE_MAKER_ORDER 3 | ? 18 |
-| UNCLASSIFIED:? | REENTRY | MISSING | 14 | UNATTRIBUTED 14 | ? 14 |
-| UNCLASSIFIED:? | SHORT SELL | MISSING | 11 | UNATTRIBUTED 11 | ? 11 |
+| UNCLASSIFIED:? | WAIT | MISSING | 16 | UNATTRIBUTED 16 | ? 16 |
+| UNCLASSIFIED:? | LONG BUY | MISSING | 11 | UNATTRIBUTED 11 | ? 11 |
 | EXIT_VELOCITY_WT | CLOSE | MISSING | 10 | NUKE_STALE_MAKER_ORDER 10 | N 9, ? 1 |
-| UNCLASSIFIED:? | WAIT | MISSING | 8 | UNATTRIBUTED 8 | ? 8 |
-| UNCLASSIFIED:? | LONG BUY | MISSING | 7 | UNATTRIBUTED 7 | ? 7 |
 | WT_LOWER_CROSS_EXIT | CLOSE | MISSING | 5 | UNATTRIBUTED 3, NUKE_STALE_MAKER_ORDER 2 | ? 4, N 1 |
 | QUICK_REDUCE_STRONG | STRONG_REDUCE | MISSING | 4 | NUKE_STALE_MAKER_ORDER 4 | N 4 |
 | QUICK_REDUCE_OTHER | REDUCE | MISSING | 3 | UNATTRIBUTED 3 | N 3 |
@@ -270,6 +270,7 @@ matched/intents per account: fin 4/9, men 8/37, ang 14/27, inf 0/0 (no decision 
 | RATIO_REBALANCE | REDUCE | MISSING | 2 | NUKE_STALE_MAKER_ORDER 1, BLOCKED_MAKER_SUPPRESS_WEBHOOK 1 | ? 2 |
 | DC_BREACH_REDUCE | CLOSE | MISSING | 2 | UNATTRIBUTED 2 | N 2 |
 | QUICK_OPEN_STRONG | QUICK_OPEN | MISSING | 2 | MAKER_ZERO_QTY 2 | N 2 |
+| UNCLASSIFIED:? | 🔫 HEAVY_ART | MISSING | 2 | UNATTRIBUTED 2 | ? 2 |
 | UNCLASSIFIED:? | 💥CLOSE | MISSING | 1 | UNATTRIBUTED 1 | ? 1 |
 | EXIT_VELOCITY_WT | CLOSE | MATCHED | 8 | filled 8 | N 6, ? 2 |
 | QUICK_OPEN_STRONG | QUICK_OPEN | MATCHED | 7 | filled 7 | N 6, ? 1 |
@@ -286,7 +287,7 @@ Gap classes: NUKE_STALE_MAKER_ORDER = maker exit rested >60 s and was cancelled 
 
 ## Exit-engine gate parity (execute_now, all exits)
 
-generated 2026-10-06T16:00:10.279643+00:00 (0 min ago) · lookback 48.0h · exit rows 5956 · **LEAKS 3085** · gate ON 1753 · UNGATED 1035 · safety 4 · unmapped 2
+generated 2026-10-06T16:00:10.279643+00:00 (17 min ago) · lookback 48.0h · exit rows 5956 · **LEAKS 3085** · gate ON 1753 · UNGATED 1035 · safety 4 · unmapped 2
 
 LEAKS (gate OFF for that sym_side yet fired): QUICK_OPEN_STRONG 3083, WT_DC_ENTRY (WT_DC_ENTRY_ENABLED=False) 2
 
