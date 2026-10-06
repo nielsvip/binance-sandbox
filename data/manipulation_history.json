@@ -2059,5 +2059,95 @@
     ],
     "timestamp": "2026-10-06T14:56:40.638658+00:00",
     "price": 85.52032905
+  },
+  {
+    "symbol": "TERUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 16.9x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T15:09:59.182902+00:00",
+    "price": 436.1919942
+  },
+  {
+    "symbol": "AAVEUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T15:11:02.543810+00:00",
+    "price": 182.25
+  },
+  {
+    "symbol": "AMATUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 7.3x normal"
+    ],
+    "timestamp": "2026-10-06T15:11:02.543810+00:00",
+    "price": 534.78668918
+  },
+  {
+    "symbol": "AMDUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 10.0x normal"
+    ],
+    "timestamp": "2026-10-06T15:11:02.543810+00:00",
+    "price": 657.35
+  },
+  {
+    "symbol": "XTZUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 16.2x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T15:11:02.543810+00:00",
+    "price": 0.33624529
+  },
+  {
+    "symbol": "ZECUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.8x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T15:11:02.543810+00:00",
+    "price": 1372.5234932
+  },
+  {
+    "symbol": "IWMUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 6.3x normal"
+    ],
+    "timestamp": "2026-10-06T15:14:11.965384+00:00",
+    "price": 283.20703243
+  },
+  {
+    "symbol": "ACEUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 19.9x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T15:16:21.822782+00:00",
+    "price": 0.19677311
+  },
+  {
+    "symbol": "COHRUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 10.3x normal"
+    ],
+    "timestamp": "2026-10-06T15:16:21.822782+00:00",
+    "price": 339.4228137
+  },
+  {
+    "symbol": "WMTUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 6.2x normal"
+    ],
+    "timestamp": "2026-10-06T15:16:21.822782+00:00",
+    "price": 106.24
   }
 ]
