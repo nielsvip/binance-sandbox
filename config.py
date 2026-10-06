@@ -1132,7 +1132,7 @@ class Config:
     # Same structure as STDEV_BREAKOUT which has been working in tradier_manage.py.
     GOLDEN_RULE_REQUIRE_ACTIVATION: bool = True              # if True, gate fails when no activation TF shows breakout
     GOLDEN_RULE_ACTIVATION_TF_LIST: List[str] = field(default_factory=lambda: ["D", "4h"])  # WHERE breakout must happen
-    GOLDEN_RULE_ENTRY_TF_LIST: List[str] = field(default_factory=lambda: ["1h", "15m", "3m"])  # WHERE entry trigger fires
+    GOLDEN_RULE_ENTRY_TF_LIST: List[str] = field(default_factory=lambda: ["1h", "15m"])  # WHERE entry trigger fires (USER 2026-10-06 NO-3M PARITY TEMPORARY: 3m dropped until NPZ/vec carry real 3m — NOTE_3M_REENABLE)
     # The GOLDEN_RULE entry consensus uses the EXISTING tested config keys
     # GOLDEN_RULE_HTF_MIN_TFS and GOLDEN_RULE_MIN_IND (defined at line ~1964
     # below) — same knobs that backtest_v8_engine.py and backtest_v8_sweep.py

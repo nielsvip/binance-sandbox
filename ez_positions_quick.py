@@ -15348,7 +15348,7 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
                 _vx.observe(_sym, await _ez_ii(trade_manager, _sym), time.time())
             if _amt > 0:
                 continue
-            for _a in _vx.take(_sym, _side, time.time(), ("OPEN",)):
+            for _a in await __import__("positions_truth").offloop_serialized(_vx.take, _sym, _side, time.time(), ("OPEN",)):  # 2026-10-06 director: off the event loop (men PAU_TIMEOUT)
                 _px = safe_fetch_float(_a.get("vec_price"), 0.0)
                 _act, _oside, _qty, _full = _vx.order_args(_a, _side, _amt, _px)
                 _lq, _lov = _vx.live_sizing_args(_act, _qty, _px, config)

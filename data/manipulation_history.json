@@ -2383,5 +2383,23 @@
     ],
     "timestamp": "2026-10-06T18:38:08.645177+00:00",
     "price": 9.087e-05
+  },
+  {
+    "symbol": "BEAMXUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 14.2x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T18:58:52.220407+00:00",
+    "price": 0.00248955
+  },
+  {
+    "symbol": "YFIUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 15.2x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T19:10:24.037198+00:00",
+    "price": 2546.43333333
   }
 ]

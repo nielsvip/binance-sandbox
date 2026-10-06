@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-10-06T18:41:38.223540+00:00",
-  "count": 5,
+  "generated_at": "2026-10-06T19:08:35.947236+00:00",
+  "count": 3,
   "advisories": [
     {
       "symbol": "GOOGL",
@@ -8,7 +8,7 @@
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.59 threshold=0.45",
       "score": 0.587,
-      "ts": "2026-10-06T18:41:38.223495+00:00"
+      "ts": "2026-10-06T19:08:35.947144+00:00"
     },
     {
       "symbol": "INTC",
@@ -16,15 +16,7 @@
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.46 threshold=0.45",
       "score": 0.464,
-      "ts": "2026-10-06T18:41:38.223506+00:00"
-    },
-    {
-      "symbol": "LOW",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.46 threshold=0.45",
-      "score": 0.459,
-      "ts": "2026-10-06T18:41:38.223509+00:00"
+      "ts": "2026-10-06T19:08:35.947157+00:00"
     },
     {
       "symbol": "MSFT",
@@ -32,15 +24,7 @@
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.59 threshold=0.45",
       "score": 0.586,
-      "ts": "2026-10-06T18:41:38.223512+00:00"
-    },
-    {
-      "symbol": "RRC",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.48 threshold=0.45",
-      "score": 0.479,
-      "ts": "2026-10-06T18:41:38.223516+00:00"
+      "ts": "2026-10-06T19:08:35.947162+00:00"
     }
   ]
 }

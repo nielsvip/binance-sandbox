@@ -107,3 +107,17 @@ Steps 1+2 of §68.3 now run on **S1** (the Mac sleeps; S1 does not):
 2. **Step 3b, inf universe** (`tools/v15_daily_inf_universe.py`, Mac 13:05Z, dry-run only). Blocked for `--apply`: the locked live
    `ez_rankings.py` rewrites `symbols_inf_long/short.json` every ~2.5 min (`[INF_BEST_SAVE]`), so a daily write would be overwritten within
    minutes. Needs a user unlock of ez_rankings.py to retire that writer (+ restart), then flip the cron to `--apply`.
+
+## Tradeable-only universe + open positions + tradeable check (2026-10-06 ~19:30Z, USER ruling)
+
+- `tools/v15_universe.py` `tradeable_sym_sides()` now ADDS every sym_side with an open position (`data/open_position_sym_sides.json`), after the
+  `data/universe_exclude.json` subtraction (an excluded symbol such as GOOGLUSDT comes back only while it has an open position). Today it adds
+  AVGO_SHORT, RRC_SHORT, USAR_SHORT, giving 263 sym_sides. Today's universe was rebuilt and pushed.
+- `tools/v15_open_positions_push.py` (Mac cron `*/5 # V15_OPEN_POSITIONS_PUSH`): {flz,men,ang,inf,fin,tra,trb,trc}/{long,short}_positions.json,
+  |positionAmt|>0, atomic write + rsync to S1/s2/s5 with md5 verify. An unreadable positions file aborts the run and keeps the last good file.
+- `tools/v15_tradeable_check.py` = S1 chain step 6b (non-fatal; included in the stamp): every tradeable sym_side's latest sheet is re-evaluated fresh at 30D;
+  SYSTEM_ERROR when there is no sheet, the eval fails, trades < 10 or TIM < 20%. First run (dry, today's selection): 263 tradeable, 40 OK, 223 SYSTEM_ERROR
+  (no sheet 53, zero trades 89, TIM<20 44, set incompatible with engine 15, trades<10 13, both 9); 26 of the 36 open positions are SYSTEM_ERROR.
+  Report: data/daily_chain/20261006_tradeable_check_DRYRUN.json.
+- Timing gap: the Mac `v15_universe.py --push` cron is still 13:45Z (after the open and after the 12:15Z chain), so the chain reads the previous day's
+  universe plus the fresh 5-min open-position file.

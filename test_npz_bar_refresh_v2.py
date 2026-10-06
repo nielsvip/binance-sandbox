@@ -199,3 +199,29 @@ def test_stamp_sent_through_ledger(tmp_path):
     assert cur["C"]["ts_last"] == 2000
     assert nbr.stamp_sent_through(sp) == {"A": 2000, "B": 1000, "C": 2000}
     assert nbr.stamp_sent_through(tmp_path / "missing.json") == {}
+
+
+def test_builder_forces_classic_stock_path(monkeypatch):
+    import os
+    import types
+    stub = types.SimpleNamespace(load_klines=None, compute_tf_arrays=None, _frame_span_seconds=None, _crypto_wm_frame=None, resample_tf=None)
+    monkeypatch.setitem(sys.modules, "backtest_v8_precompute", stub)
+    monkeypatch.delenv("NPZ_STOCK_FRAMES_LEGACY", raising=False)
+    nbr.Builder()
+    assert os.environ["NPZ_STOCK_FRAMES_LEGACY"] == "1"
+
+
+def test_darwin_guard_refuses_loop_and_live(monkeypatch, tmp_path, capsys):
+    import pytest
+    monkeypatch.setattr(nbr.sys, "platform", "darwin")
+    monkeypatch.setattr(sys, "argv", ["npz_bar_refresh.py", "--loop"])
+    with pytest.raises(SystemExit):
+        nbr.main()
+    monkeypatch.setattr(sys, "argv", ["npz_bar_refresh.py", "--mode", "crypto"])
+    with pytest.raises(SystemExit):
+        nbr.main()
+    called = {}
+    monkeypatch.setattr(nbr, "one_cycle", lambda a, w15, state, in_loop: called.setdefault("ran", True) or {})
+    monkeypatch.setattr(sys, "argv", ["npz_bar_refresh.py", "--mode", "crypto", "--dry-run", "--lock", str(tmp_path / "t.lock")])
+    nbr.main()
+    assert called.get("ran") is True

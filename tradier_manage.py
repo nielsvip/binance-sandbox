@@ -1923,6 +1923,14 @@ def _reentry_bounce_scale_tradier(indicators: dict, is_long: bool, hours_since_e
     Maps WT favor count + k_5m rising + level to 10-150%.  Weak bounce still
     reenters but at 10%, strong at 150%.  Never raises, clamped 0.10-1.50.
     """
+    # USER 2026-10-06 NO-5M PARITY (TEMPORARY — NOTE_3M_REENABLE): scale uses 5m WT/stoch which vectorized
+    # cannot see; neutral 1.0 while 5m is off so live reentry sizes match vectorized. Re-enable with real 5m.
+    try:
+        import config_tradier as _ct_mod
+        if not bool(getattr(_ct_mod.TradierConfig(), "LIVE_5m_trading_ENABLED", False)):
+            return 1.0
+    except Exception:
+        pass
     try:
         i = indicators or {}
         wt1_5 = float(i.get('wt1_5m', 0) or 0)
@@ -27374,6 +27382,12 @@ class TradierTradeManager:
             return (False, "")
 
     async def execute_now(self, position_key: str, account_key: str, symbol: str, original_position_amt: float, side: str, position_side: str, quantity: float, old_price: float, unique_id: str, reason: str, is_full_close: bool, action: str = None, decision_recorded: bool = False) -> str:  # 2026-10-06 director: NameError fix — recorder flag passed through from execute_trade_action (direct paths default False = record here)
+        # USER 2026-10-06 NO-QUICK PARITY (TEMPORARY — NOTE_QUICK_REENABLE): QUICK has no functional vector model;
+        # live must not trade what vectorized cannot see. Blocks ALL QUICK actions/reasons. Non-QUICK exits still manage.
+        # NOTE_QUICK_REENABLE: re-enable ONLY when v12 wires real QUICK signal logic (BACKTEST_BIBLE §39) AND §43 parity passes.
+        if action in ("QUICK_OPEN", "QUICK_AUGMENT", "QUICK_CLOSE", "QUICK_REDUCE", "QUICK_HEDGE") or "QUICK" in str(reason or "").upper():
+            logger.critical(f"🚫 [NO_QUICK_PARITY] {position_key}: QUICK disabled until vectorized (action={action} reason={(reason or '')[:80]})")
+            return "BLOCKED_QUICK_DISABLED_NO_VEC"
         # PARITY LOOP STOCKS 2026-10-06: VEC_EXACT order (PARITY_VEC_EXACT_MODE) = the vec decision -> decision gates below are skipped ("NO GATES"; NOLOSS has only exceptions).
         _vx_ex = is_vec_exact_reason(reason) and bool(_cfg('PARITY_VEC_EXACT_MODE', False, account_key, symbol, position_side))
         # BROKER_SYNC LOGICAL DEMAND — 2026-09-08: 80× same order sent because it thought not received without checking broker.

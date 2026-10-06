@@ -1818,7 +1818,7 @@ class TradierConfig:
     GOLDEN_RULE_DC_D_ENABLED: bool = True
     GOLDEN_RULE_DC_W_ENABLED: bool = True
     GOLDEN_RULE_ENABLED: bool = True
-    GOLDEN_RULE_ENTRY_TF_LIST: List[str] = field(default_factory=lambda: ["1h", "15m", "3m"])
+    GOLDEN_RULE_ENTRY_TF_LIST: List[str] = field(default_factory=lambda: ["1h", "15m"])  # USER 2026-10-06 NO-3M PARITY TEMPORARY: 3m dropped until NPZ/vec carry real 3m — NOTE_3M_REENABLE
     GOLDEN_RULE_EXIT_MIN_IND: int = 2
     GOLDEN_RULE_EXIT_MIN_TFS: int = 0
     GOLDEN_RULE_HTF_MIN_TFS: int = 1

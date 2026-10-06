@@ -17950,10 +17950,16 @@ class MultiAccountTradeManager:
                             if not ind:
                                 continue
                             try:
-                                wt1 = safe_fetch_float(ind.get("wt1_3m"), None)
-                                wt2 = safe_fetch_float(ind.get("wt2_3m"), None)
+                                # USER 2026-10-06 NO-3M PARITY (TEMPORARY — NOTE_3M_REENABLE): NPZ has no 3m series and v12
+                                # falls back to 15m; live golden must see exactly what vectorized sees. While
+                                # USE_1M_3M_SIGNALS_ENABLED is False, golden reads 15m in place of 3m (same fallback).
+                                # NOTE_3M_REENABLE: restore 3m reads ONLY when NPZ carries real 3m WT/stoch (precompute)
+                                # AND v12 golden consumes them (no 15m fallback) AND §43 parity passes on golden trades.
+                                _no3m = not bool(getattr(config, "USE_1M_3M_SIGNALS_ENABLED", False))
+                                wt1 = safe_fetch_float(ind.get("wt1_15m" if _no3m else "wt1_3m"), None)
+                                wt2 = safe_fetch_float(ind.get("wt2_15m" if _no3m else "wt2_3m"), None)
                                 price = safe_fetch_float(
-                                    ind.get("current_price") or ind.get("close_3m"),
+                                    ind.get("current_price") if _no3m else (ind.get("current_price") or ind.get("close_3m")),
                                     None,
                                 )
                                 dc_h_1h = safe_fetch_float(ind.get("dc_high_1h"), None)
@@ -17961,10 +17967,10 @@ class MultiAccountTradeManager:
                                 dc_b_1h = safe_fetch_float(ind.get("dc_basis_1h"), None)
                                 bb_u_1h = safe_fetch_float(ind.get("bb_upper_1h"), None)
                                 bb_l_1h = safe_fetch_float(ind.get("bb_lower_1h"), None)
-                                k_3m = safe_fetch_float(ind.get("k_3m"), 50)
-                                d_3m = safe_fetch_float(ind.get("d_3m"), 50)
+                                k_3m = safe_fetch_float(ind.get("k_15m" if _no3m else "k_3m"), 50)
+                                d_3m = safe_fetch_float(ind.get("d_15m" if _no3m else "d_3m"), 50)
                                 k_3m_prev = safe_fetch_float(
-                                    ind.get("k_3m_prev") or ind.get("k_3m_prev"),
+                                    ind.get("k_15m_prev" if _no3m else "k_3m_prev") or ind.get("k_15m_prev" if _no3m else "k_3m_prev"),
                                     k_3m,
                                 )
                             except Exception:
@@ -18164,7 +18170,7 @@ class MultiAccountTradeManager:
                                 f"dc_h1h={dc_h_1h}" if is_long else f"dc_l1h={dc_l_1h}"
                             )
                             logger.critical(
-                                f"🌟 [GOLDEN_RULE] {pkey} mult={mult}x wt1_3m={wt1:.1f}>{wt2:.1f} px={price:g} {_gr_lvl} → {action} qty={qty:.4f} (\${target_usd:.0f})"
+                                f"🌟 [GOLDEN_RULE] {pkey} mult={mult}x wt1_{'15m' if _no3m else '3m'}={wt1:.1f}>{wt2:.1f} px={price:g} {_gr_lvl} → {action} qty={qty:.4f} (\${target_usd:.0f})"
                             )
                             try:
                                 result = await self.execute_now(
@@ -30610,6 +30616,15 @@ class MultiAccountTradeManager:
                         logger.warning(f"⚠️ [EXIT_ENGINE_LEAK] {position_key} action={action} fired family='{_fam}' but gate {_knob}={_gval} is DISABLED — illegal trade under parity (reason={_xr[:60]})")
             except Exception as _xe_err:
                 logger.debug(f"[EXIT_ENGINE_PARITY] {position_key}: instrumentation skipped ({_xe_err})")
+        # ─── USER 2026-10-06 NO-QUICK PARITY (TEMPORARY — NOTE_QUICK_REENABLE) ───
+        # The QUICK family has no functional vector model (QUICK_OPEN_STRONG_VEC_ENABLED=False both sides);
+        # live must not trade what vectorized cannot see. Blocks ALL QUICK actions/reasons regardless of
+        # producer (producer file unidentified — reason built outside ez_manage). Non-QUICK exits still manage.
+        # NOTE_QUICK_REENABLE: re-enable ONLY when v12 wires real QUICK signal logic (vec_decisions/ predicate +
+        # engine call site per BACKTEST_BIBLE §39) AND scalar/vec parity passes (§43 ratio 0.80–1.25, gain <0.5pp/<15%).
+        if action in ("QUICK_OPEN", "QUICK_AUGMENT", "QUICK_CLOSE", "QUICK_REDUCE", "QUICK_HEDGE") or "QUICK" in str(reason or "").upper():
+            logger.critical(f"🚫 [NO_QUICK_PARITY] {position_key}: QUICK disabled until vectorized (action={action} reason={(reason or '')[:80]})")
+            return "BLOCKED_QUICK_DISABLED_NO_VEC"
         # ─── X3 VEC-DRIVEN LIVE (2026-10-06 USER "THE SECOND A VECTORIZED TRADE WOULD OCCUR A LIVE TRADE OCCURS") ───
         # sym_side mode=live (VEC_DRIVEN_ENABLED + data/vec_live/vec_driven.json): only VEC_DRIVEN_* orders trade it
         # (they skip the discretionary gates flagged _vd_exempt below); every native decision is suppressed here, the
@@ -48367,6 +48382,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
     try:
         from live_twins import vec_exact as _vx
         _vx.set_cfg(config)
+        _vx.logger = logger  # 2026-10-06 switch-over: twin lines + heartbeat go to ez_manage_{acct}.log (the 'vec_exact' logger had no handler -> stderr)
         fams = _vx.families(config)
         _acct, _rest = position_key.split(":", 1) if ":" in position_key else (account_key, position_key)
         _sym, _side = _rest.rsplit("_", 1)
@@ -48381,7 +48397,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
         if "EXIT" not in fams:
             return False
         # SAFETY: no twin decision available for this sym_side (no store / warm-up / error) -> native exits run (never strand a position)
-        _vx_st = _vx.actions_at(_sym, _side, time.time())
+        _vx_st = await __import__("positions_truth").offloop_serialized(_vx.actions_at, _sym, _side, time.time())  # 2026-10-06 director: off the event loop (men os._exit(42) PAU_TIMEOUT: ~20s compute blocked the loop)
         if _vx_st.get("status") != "OK":
             _fb_key = (position_key, _vx_st.get("status"), _vx_st.get("bar_ts"))
             if _fb_key not in _VEC_EXACT_FALLBACK_LOGGED:
@@ -48389,7 +48405,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                 logger.warning(f"[VEC_EXACT_NATIVE_FALLBACK] {position_key}: twin status={_vx_st.get('status')} bar={_vx_st.get('bar_ts')} -> native exits run this bar")
             return False
         want = ("CLOSE", "REDUCE") + (("AUGMENT",) if "AUGMENT" in fams else ())
-        for _a in _vx.take(_sym, _side, time.time(), want):
+        for _a in await __import__("positions_truth").offloop_serialized(_vx.take, _sym, _side, time.time(), want):  # 2026-10-06 director: off the event loop
             _amt = abs(safe_fetch_float(getattr(trade_manager.positions.get(position_key), "positionAmt", 0), 0))
             if _amt <= 0:
                 break
@@ -57020,7 +57036,7 @@ async def crypto_spike_fade_loop(trade_manager: MultiAccountTradeManager):
     )
     while True:
         try:
-            if not getattr(config, "CRYPTO_SPIKE_FADE_ENABLED", True):
+            if not getattr(config, "CRYPTO_SPIKE_FADE_ENABLED", True) or (_vec_exact_mode_on() and "ENTRY" in _vec_exact_families()):  # 2026-10-06 switch-over: native opener off at the source while the vec twin owns ENTRY (fin XLMUSDT_SHORT 19:00:54)
                 await asyncio.sleep(60)
                 continue
             thresh = getattr(config, "CRYPTO_SPIKE_FADE_THRESHOLD_PCT", 3.0)
