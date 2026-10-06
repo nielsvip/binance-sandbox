@@ -341,6 +341,19 @@ def short_dc_high_stop_fires(current_price, dc_high, tol_pct=DC_UNCOND_STOP_TOL_
     return px >= lvl * (1.0 + tol / 100.0)
 
 
+def long_dc_low_stop_fires(current_price, dc_low, tol_pct=DC_UNCOND_STOP_TOL_PCT):
+    """USER 2026-10-06: LONG unconditional close when price crosses dc_low - tol. Missing/invalid level never fires."""
+    try:
+        px = float(current_price or 0.0)
+        lvl = float(dc_low or 0.0)
+        tol = float(tol_pct if tol_pct is not None else DC_UNCOND_STOP_TOL_PCT)
+    except (TypeError, ValueError):
+        return False
+    if px <= 0 or lvl <= 0:
+        return False
+    return px <= lvl * (1.0 - tol / 100.0)
+
+
 def wt15m_against(is_long, wt1_15m):
     """USER 2026-10-06: True when 15m WaveTrend opposes the position. Missing/flat reads False."""
     try:

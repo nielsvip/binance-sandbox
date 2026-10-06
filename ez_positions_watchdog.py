@@ -108,9 +108,8 @@ async def watchdog_loop():
                     logger.warning(f"[{acct}] Position data STALE ({age:.0f}s > {STALE_THRESHOLD_S}s) — starting realtime backup fetcher")
                     if _start_realtime(acct):
                         last_start_time[acct] = time.time()
-                elif age <= STALE_THRESHOLD_S and realtime_running:
-                    logger.info(f"[{acct}] Position data FRESH ({age:.0f}s) — stopping realtime backup (ez_manage handling it)")
-                    _stop_realtime(acct)
+                # 2026-10-06: no-stop — realtime stays as warm standby and self-arbitrates (skips fetches/writes
+                # while service files are fresh, takes over within one 6s loop when stale). Nothing to do here.
         except Exception as e:
             logger.error(f"[WATCHDOG] Error in check loop: {e}")
         await asyncio.sleep(CHECK_INTERVAL_S)

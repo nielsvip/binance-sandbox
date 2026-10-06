@@ -43,16 +43,28 @@
   "at": "2026-10-06T21:37:42Z",
   "reason": "B_KZONE"
  },
- "men:MELANIAUSDT_SHORT": {
-  "at": "2026-10-06T21:45:28Z",
-  "reason": "B_KZONE"
- },
  "men:ENJUSDT_LONG": {
   "at": "2026-10-06T21:46:17Z",
   "reason": "B_DELTAENTRY"
  },
- "men:BBUSDT_LONG": {
-  "at": "2026-10-06T22:01:55Z",
+ "men:NEARUSDC_SHORT": {
+  "at": "2026-10-06T22:16:03Z",
+  "reason": "B_KZONE"
+ },
+ "men:ADAUSDC_LONG": {
+  "at": "2026-10-06T22:16:10Z",
+  "reason": "B_KZONE"
+ },
+ "men:XMRUSDT_SHORT": {
+  "at": "2026-10-06T22:19:29Z",
+  "reason": "B12"
+ },
+ "men:SNXUSDT_LONG": {
+  "at": "2026-10-06T22:22:04Z",
+  "reason": "ENTRY_SIGNAL"
+ },
+ "men:NMRUSDT_LONG": {
+  "at": "2026-10-06T22:24:32Z",
   "reason": "B_KZONE"
  }
 }

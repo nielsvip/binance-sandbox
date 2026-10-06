@@ -11914,6 +11914,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         dc_high_4h = _safe(npz, 'dc_high_4h', n)
         dc_low_4h = _safe(npz, 'dc_low_4h', n)
     _uh_h4 = _safe(npz, 'dc_high_4h', n, 0); _uh_h1 = _safe(npz, 'dc_high_1h', n, 0); _uh_h15 = _safe(npz, 'dc_high_15m', n, 0)  # USER 2026-10-06 uncond-stop twin: TRUE TF channels (dc_high_4h var is TF-swapped above)
+    _uh_l4 = _safe(npz, 'dc_low_4h', n, 0); _uh_l1 = _safe(npz, 'dc_low_1h', n, 0); _uh_l15 = _safe(npz, 'dc_low_15m', n, 0)  # USER 2026-10-06 uncond-stop twin LONG side (dc_low_4h var is TF-swapped above)
     _wtdc_combo_resolve(cfg)  # [N1/004] WT_DC_TF_COMBO -> entry/htf/htf2 TFs
     _iso_force_masters(cfg)  # [N1/004] isolated-family test mode forces the family master(s) ON (no-op when ENTRY_ISOLATE_FAMILY is empty)
     entry_sig = compute_entry_signals(npz, n, is_long, cfg)
@@ -14159,22 +14160,35 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _vig_blocked = True
             _vig_block_px = float(px)
             continue
-        # 2026-10-06 USER MANDATE twin — UNCONDITIONAL SHORT DC-HIGH STOP (hardcoded 4h + switched 1h/15m, +0.25%). No veto.
+        # 2026-10-06 USER MANDATE twin — UNCONDITIONAL DC STOP BOTH SIDES (hardcoded 4h + switched 1h/15m, ±0.25%). No veto.
         try:
             _uh_j = (i - 1) if (i > 0 and bool(getattr(cfg, 'DC_PRIOR_BAR_CHANNEL', True))) else i
             _uh_fire = ""
-            if (not is_long) and pos is not None:
-                _uh_lvl4 = float(_uh_h4[_uh_j]) if _uh_j < len(_uh_h4) else 0.0
-                if _uh_lvl4 > 0 and px >= _uh_lvl4 * 1.0025:
-                    _uh_fire = "UNCOND_DC_HIGH_4H"
-                if not _uh_fire and bool(getattr(cfg, 'DC_HARD_STOP_1H_ENABLED', True)):
-                    _uh_lvl1 = float(_uh_h1[_uh_j]) if _uh_j < len(_uh_h1) else 0.0
-                    if _uh_lvl1 > 0 and px >= _uh_lvl1 * 1.0025:
-                        _uh_fire = "UNCOND_DC_HIGH_1H"
-                if not _uh_fire and bool(getattr(cfg, 'DC_HARD_STOP_15M_ENABLED', True)):
-                    _uh_lvl15 = float(_uh_h15[_uh_j]) if _uh_j < len(_uh_h15) else 0.0
-                    if _uh_lvl15 > 0 and px >= _uh_lvl15 * 1.0025:
-                        _uh_fire = "UNCOND_DC_HIGH_15M"
+            if pos is not None:
+                if is_long:
+                    _uh_llvl4 = float(_uh_l4[_uh_j]) if _uh_j < len(_uh_l4) else 0.0
+                    if _uh_llvl4 > 0 and px <= _uh_llvl4 * 0.9975:
+                        _uh_fire = "UNCOND_DC_LOW_4H"
+                    if not _uh_fire and bool(getattr(cfg, 'DC_HARD_STOP_1H_ENABLED', True)):
+                        _uh_llvl1 = float(_uh_l1[_uh_j]) if _uh_j < len(_uh_l1) else 0.0
+                        if _uh_llvl1 > 0 and px <= _uh_llvl1 * 0.9975:
+                            _uh_fire = "UNCOND_DC_LOW_1H"
+                    if not _uh_fire and bool(getattr(cfg, 'DC_HARD_STOP_15M_ENABLED', True)):
+                        _uh_llvl15 = float(_uh_l15[_uh_j]) if _uh_j < len(_uh_l15) else 0.0
+                        if _uh_llvl15 > 0 and px <= _uh_llvl15 * 0.9975:
+                            _uh_fire = "UNCOND_DC_LOW_15M"
+                else:
+                    _uh_lvl4 = float(_uh_h4[_uh_j]) if _uh_j < len(_uh_h4) else 0.0
+                    if _uh_lvl4 > 0 and px >= _uh_lvl4 * 1.0025:
+                        _uh_fire = "UNCOND_DC_HIGH_4H"
+                    if not _uh_fire and bool(getattr(cfg, 'DC_HARD_STOP_1H_ENABLED', True)):
+                        _uh_lvl1 = float(_uh_h1[_uh_j]) if _uh_j < len(_uh_h1) else 0.0
+                        if _uh_lvl1 > 0 and px >= _uh_lvl1 * 1.0025:
+                            _uh_fire = "UNCOND_DC_HIGH_1H"
+                    if not _uh_fire and bool(getattr(cfg, 'DC_HARD_STOP_15M_ENABLED', True)):
+                        _uh_lvl15 = float(_uh_h15[_uh_j]) if _uh_j < len(_uh_h15) else 0.0
+                        if _uh_lvl15 > 0 and px >= _uh_lvl15 * 1.0025:
+                            _uh_fire = "UNCOND_DC_HIGH_15M"
             if _uh_fire:
                 pos['fees'] += abs(pos['qty'] * px) * half_fee
                 _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']

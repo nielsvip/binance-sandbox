@@ -6717,16 +6717,58 @@ def main():
         if progress.get("needs_redo") and progress.get("verdict") != "IMPOSSIBLE":
             _board_reset = True
             _nr3 = progress.pop("needs_redo")
+            # USER 2026-10-06 HOLES-ONLY (no-recalc law): a RULE#3-completeness REDO carries the
+            # IDENTICAL chain (sampled rows never promote, so the chain is untouched) — wiping ~3400
+            # evaluated rows to heal skipped cells is pure waste the fleet cannot afford. Drop only the
+            # hollow keys, keep the chain, refill holes sample-free vs the frozen chain (replay map at
+            # fill start). Any other REDO (repaired set, 365D, escalation) wipes as before — the chain
+            # genuinely changed there. False-negative (dict mismatch) falls back to wipe: safe waste.
+            _nr3_reason = str(_nr3.get("reason") or "")
+            _chain_same = False
+            _holes_dropped = []
             try:
-                progress.setdefault("redo_history", []).append({"depth": _nr3.get("depth"), "reason": _nr3.get("reason"), "result": _nr3.get("result"), "archived_done_n": len(progress.get("done", {})), "archived_cum": progress.get("cumulative_gain")})
+                _chain_same = ("RULE#3" in _nr3_reason) and (dict(_nr3.get("overrides") or {}) == dict(progress.get("cumulative_overrides") or {}))
             except Exception:
-                pass
-            progress["redo_depth"] = int(_nr3.get("depth", 1))
-            progress["_redo_heal_run"] = int(_nr3.get("depth", 1))  # REDO-HEAL: consumed at fill start (sampling OFF this pass)
-            progress["done"] = {}
-            for _rk in ("final_gain", "final_path", "not_compliant", "cumulative_gain", "cumulative_overrides", "hustler_best_gain", "hustler_overrides", "final_365d", "repair_365d", "confirmed_365d"):
-                progress.pop(_rk, None)
-            print(f"[REDO-RESET] {new_symside} board cleared for re-fill (depth {progress['redo_depth']})", flush=True)
+                _chain_same = False
+            if _chain_same:
+                try:
+                    from tools.v15_row_guards import scan_board_for_hollow as _scan_holes
+                    _tl_spec = {}
+                    try:
+                        _tl_spec = json.loads((ROOT / "data" / "wiring" / "tab_filters" / "tab_level_filters.json").read_text())
+                    except Exception:
+                        pass
+                    _holes_dropped = list((_scan_holes(progress.get("done", {}), map_key_for_symside(new_symside), _tl_spec, assume_tablevel_on=True) or {}).get("drop", []))
+                except Exception as _ho_e:
+                    print(f"[HOLES-ONLY-warn] {new_symside} hollow scan failed ({_ho_e}) — full wipe fallback", flush=True)
+                    _holes_dropped = []
+                    _chain_same = False
+            if _chain_same and _holes_dropped:
+                for _hk in _holes_dropped:
+                    (progress.get("done") or {}).pop(_hk, None)
+                progress["redo_depth"] = int(_nr3.get("depth", 1))
+                progress["_redo_heal_run"] = int(_nr3.get("depth", 1))  # REDO-HEAL: sampling OFF this pass
+                progress["_redo_holes_only"] = {"n": len(_holes_dropped), "depth": int(_nr3.get("depth", 1))}
+                for _rk in ("final_gain", "final_path", "not_compliant"):
+                    progress.pop(_rk, None)
+                try:
+                    progress.setdefault("redo_history", []).append({"depth": _nr3.get("depth"), "reason": _nr3.get("reason"), "result": _nr3.get("result"), "archived_done_n": 0, "archived_cum": progress.get("cumulative_gain"), "holes_only": len(_holes_dropped)})
+                except Exception:
+                    pass
+                print(f"[REDO-HOLES] {new_symside} chain-identical RULE#3 REDO: kept {len(progress.get('done', {}))} rows + chain, dropped {len(_holes_dropped)} hollow keys for sample-free refill (depth {_nr3.get('depth')})", flush=True)
+            else:
+                try:
+                    progress.setdefault("redo_history", []).append({"depth": _nr3.get("depth"), "reason": _nr3.get("reason"), "result": _nr3.get("result"), "archived_done_n": len(progress.get("done", {})), "archived_cum": progress.get("cumulative_gain")})
+                except Exception:
+                    pass
+                progress["redo_depth"] = int(_nr3.get("depth", 1))
+                progress["_redo_heal_run"] = int(_nr3.get("depth", 1))  # REDO-HEAL: consumed at fill end (sampling OFF this pass)
+                progress.pop("_redo_holes_only", None)
+                progress.pop("_holes_would_promote", None)
+                progress["done"] = {}
+                for _rk in ("final_gain", "final_path", "not_compliant", "cumulative_gain", "cumulative_overrides", "hustler_best_gain", "hustler_overrides", "final_365d", "repair_365d", "confirmed_365d"):
+                    progress.pop(_rk, None)
+                print(f"[REDO-RESET] {new_symside} board cleared for re-fill (depth {progress['redo_depth']})", flush=True)
         # USER 2026-10-03 RULE#4: done rows are valid ONLY on the NPZ they were measured on. A changed
         # NPZ invalidates the frozen board (archive + refill, never reuse) — a 0.00 delta on a changed
         # NPZ is impossible, so reusing the old board would be a lie. Numbers stay intact in the archive.

@@ -1538,6 +1538,60 @@ class AccountConfig:
         if self.client:
             logger.debug(f"Closed Binance client for account '{self.prefix}'", extra={'color': "green"})
 
+SAVE_STALE_REFUSE_S = 120.0
+
+
+def memory_positions_newest(positions):
+    """newest last_updated (epoch) across position objects; None when no parseable stamp (fail-open)."""
+    from datetime import datetime, timezone
+    newest = None
+    for pos in (positions or {}).values():
+        lu = getattr(pos, "last_updated", None)
+        try:
+            if isinstance(lu, str):
+                lu = datetime.fromisoformat(lu.replace("Z", "+00:00"))
+            if hasattr(lu, "timestamp"):
+                ts = lu.timestamp()
+            elif isinstance(lu, (int, float)):
+                ts = float(lu)
+            else:
+                continue
+            if newest is None or ts > newest:
+                newest = ts
+        except Exception:
+            continue
+    return newest
+
+
+async def save_positions_guarded(service, account_key, force=False):
+    """newest-wins save: refuses to overwrite newer disk data with older memory (two-writer arbitration
+    between the service primary and the realtime backup) and refuses memory older than SAVE_STALE_REFUSE_S.
+    Fail-open on unknowns (missing stamps/errors) — only PROVEN-stale saves are refused. Returns True if saved."""
+    import time as _time
+    try:
+        mem_newest = memory_positions_newest((service.positions_by_account or {}).get(account_key))
+        if mem_newest is not None:
+            disk_newest = 0.0
+            for side in ("long", "short"):
+                try:
+                    p = service.get_position_file(account_key, side)
+                    if p.exists():
+                        disk_newest = max(disk_newest, p.stat().st_mtime)
+                except Exception:
+                    pass
+            if mem_newest < disk_newest - 1.0:
+                logger.warning(f"[save_guard][{account_key}] REFUSED older-over-newer (mem {mem_newest:.0f} < disk {disk_newest:.0f})")
+                return False
+            if _time.time() - mem_newest > SAVE_STALE_REFUSE_S:
+                logger.warning(f"[save_guard][{account_key}] REFUSED memory {(_time.time() - mem_newest):.0f}s old (cap {SAVE_STALE_REFUSE_S:.0f}s)")
+                return False
+    except Exception as e:
+        logger.debug(f"[save_guard][{account_key}] guard error, fail-open: {e}")
+    from ez_positions import atomic_save_positions
+    await atomic_save_positions(service, account_key, force=force)
+    return True
+
+
 async def load_accounts_from_config(config_obj: Config, logger_obj: Optional[logging.Logger] = None) -> Dict[str, AccountConfig]:
     accounts = {}
     for account_key in getattr(config_obj, "ACCOUNT_KEYS", []):
@@ -2803,7 +2857,7 @@ class WebSocketManager:
                 logger.warning(f"[handle_account_update][{account_key}] Broadcasted {len(updated_position_keys)} position update(s) from WebSocket to Redis")
                 try :
                     logger.warning(f"[handle_account_update][{account_key}] 💾💾💾 Saving {len(updated_position_keys)} WebSocket position updates to files...")
-                    await atomic_save_positions(self.service, account_key, force=True)
+                    await save_positions_guarded(self.service, account_key, force=True)
                     logger.warning(f"[handle_account_update][{account_key}] Saved {len(updated_position_keys)} WebSocket position updates to files")
                 except Exception as save_err:
                     logger.error(f"[handle_account_update][{account_key}] Failed to save WebSocket updates to files: {save_err}", exc_info=True)
@@ -7462,10 +7516,10 @@ class PositionService:
 
         # 2026-05-20: bound the save. Even with the to_thread refactor, a stuck filesystem could still hold the await; the 15s ceiling + background fallback keeps PAU from tripping the 120s tripwire.
         try:
-            await asyncio.wait_for(atomic_save_positions(self, account_key, force=True), timeout=15.0)
+            await asyncio.wait_for(save_positions_guarded(self, account_key, force=True), timeout=15.0)
         except asyncio.TimeoutError:
             logger.warning(f"[handle_augmentation][{position_key}] atomic_save_positions >15s — backgrounding to keep PAU live")
-            asyncio.create_task(atomic_save_positions(self, account_key, force=True))
+            asyncio.create_task(save_positions_guarded(self, account_key, force=True))
 
     def _fetch_decision_context_blocking(self, position_key: str) -> dict:
         """Synchronous JSONL/disk scan for decision context. MUST run in asyncio.to_thread — never on event loop. Each JSONL file can be 1–12 MB; line scan blocks event loop and was contributing to process_account_update HUNG > 120s on 2026-04-29."""
@@ -7819,10 +7873,10 @@ class PositionService:
 
         # 2026-05-20: bound the save (see handle_augmentation note).
         try:
-            await asyncio.wait_for(atomic_save_positions(self, account_key, force=True), timeout=15.0)
+            await asyncio.wait_for(save_positions_guarded(self, account_key, force=True), timeout=15.0)
         except asyncio.TimeoutError:
             logger.warning(f"[handle_reduction][{position_key}] atomic_save_positions >15s — backgrounding to keep PAU live")
-            asyncio.create_task(atomic_save_positions(self, account_key, force=True))
+            asyncio.create_task(save_positions_guarded(self, account_key, force=True))
         try :
             # 2026-05-07: bounded; this path issues open-orders fetch + cancel/place via
             # asyncio.to_thread Binance calls and was a second hang point inside the
@@ -11768,7 +11822,7 @@ class PositionService:
                     # Iterate through all configured accounts and write their positions to files
                     for account_key in list(self.positions_by_account.keys()):
                         try:
-                            await atomic_save_positions(self, account_key, force=False)
+                            await save_positions_guarded(self, account_key, force=False)
                         except Exception as account_exc:
                             logger.error(f"[_positions_periodic_save_loop] Error auto-saving account {account_key}: {account_exc}")
                             
@@ -12081,7 +12135,7 @@ class PositionService:
                     from ez_positions import atomic_save_positions
                     for account_key in self.accounts.keys():
                         try :
-                            await atomic_save_positions(self, account_key, force=False)
+                            await save_positions_guarded(self, account_key, force=False)
                             await self.save_augmented_positions(account_key, min_interval=0)
                             await self.save_reduced_positions(account_key, min_interval=0)
                             await self.save_reversed_positions(account_key, min_interval=0)
@@ -12330,8 +12384,7 @@ class PositionService:
             if killed > 0:
                 logger.critical(f"[PHANTOM_KILL][{account_key}] Zeroed {killed} phantoms ({threshold}-confirmation). Saving.")
                 try:
-                    from ez_positions import atomic_save_positions
-                    await atomic_save_positions(self, account_key, force=True)
+                    await save_positions_guarded(self, account_key, force=True)
                 except Exception as save_err:
                     logger.error(f"[PHANTOM_KILL][{account_key}] Save failed: {save_err}", exc_info=True)
                 total_killed += killed

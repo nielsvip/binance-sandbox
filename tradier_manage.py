@@ -10792,31 +10792,44 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 return f"BT_EXIT_{_bt_pre}_CLOSED"
         except Exception as _bt_e:
             logger.warning(f"[BT_EXIT] probe err {position_key}: {_bt_e}")
-        # 2026-10-06 USER MANDATE — UNCONDITIONAL SHORT DC-HIGH STOP: hardcoded 4h + switched 1h/15m (default True), all +0.25%.
-        # SHORT crossing dc_high+0.25% closes immediately. Gain/age-agnostic. NO veto, NO confirm, NO NOLOSS may stop it.
+        # 2026-10-06 USER MANDATE — UNCONDITIONAL DC STOP BOTH SIDES: hardcoded 4h + switched 1h/15m (default True), ±0.25%.
+        # SHORT crossing dc_high+0.25% / LONG crossing dc_low-0.25% closes immediately. Gain/age-agnostic. NO veto, NO confirm, NO NOLOSS may stop it.
         try:
-            if (not is_long) and has_position and position is not None and abs(safe_float(getattr(position, "positionAmt", 0))) > 0:
+            if has_position and position is not None and abs(safe_float(getattr(position, "positionAmt", 0))) > 0:
                 _uh_px = safe_fetch_float(current_price, 0.0)
                 _uh_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
                 _uh_fire = ""
-                _uh_h4 = safe_fetch_float(i.get("dc_high_4h", 0), 0.0)
-                if _ftf_twins.short_dc_high_stop_fires(_uh_px, _uh_h4):
-                    _uh_fire = f"DC_HIGH_4H_UNCOND_px{_uh_px:.4f}_lvl{_uh_h4:.4f}"
-                if not _uh_fire and _ftf_twins.truthy(_cfg("DC_HARD_STOP_1H_ENABLED", True, account_key, symbol, position_side)):
-                    _uh_h1 = safe_fetch_float(i.get("dc_high_1h", 0), 0.0)
-                    if _ftf_twins.short_dc_high_stop_fires(_uh_px, _uh_h1):
-                        _uh_fire = f"DC_HIGH_1H_UNCOND_px{_uh_px:.4f}_lvl{_uh_h1:.4f}"
-                if not _uh_fire and _ftf_twins.truthy(_cfg("DC_HARD_STOP_15M_ENABLED", True, account_key, symbol, position_side)):
-                    _uh_h15 = safe_fetch_float(i.get("dc_high_15m", 0), 0.0)
-                    if _ftf_twins.short_dc_high_stop_fires(_uh_px, _uh_h15):
-                        _uh_fire = f"DC_HIGH_15M_UNCOND_px{_uh_px:.4f}_lvl{_uh_h15:.4f}"
+                if is_long:
+                    _uh_l4 = safe_fetch_float(i.get("dc_low_4h", 0), 0.0)
+                    if _ftf_twins.long_dc_low_stop_fires(_uh_px, _uh_l4):
+                        _uh_fire = f"DC_LOW_4H_UNCOND_px{_uh_px:.4f}_lvl{_uh_l4:.4f}"
+                    if not _uh_fire and _ftf_twins.truthy(_cfg("DC_HARD_STOP_1H_ENABLED", True, account_key, symbol, position_side)):
+                        _uh_l1 = safe_fetch_float(i.get("dc_low_1h", 0), 0.0)
+                        if _ftf_twins.long_dc_low_stop_fires(_uh_px, _uh_l1):
+                            _uh_fire = f"DC_LOW_1H_UNCOND_px{_uh_px:.4f}_lvl{_uh_l1:.4f}"
+                    if not _uh_fire and _ftf_twins.truthy(_cfg("DC_HARD_STOP_15M_ENABLED", True, account_key, symbol, position_side)):
+                        _uh_l15 = safe_fetch_float(i.get("dc_low_15m", 0), 0.0)
+                        if _ftf_twins.long_dc_low_stop_fires(_uh_px, _uh_l15):
+                            _uh_fire = f"DC_LOW_15M_UNCOND_px{_uh_px:.4f}_lvl{_uh_l15:.4f}"
+                else:
+                    _uh_h4 = safe_fetch_float(i.get("dc_high_4h", 0), 0.0)
+                    if _ftf_twins.short_dc_high_stop_fires(_uh_px, _uh_h4):
+                        _uh_fire = f"DC_HIGH_4H_UNCOND_px{_uh_px:.4f}_lvl{_uh_h4:.4f}"
+                    if not _uh_fire and _ftf_twins.truthy(_cfg("DC_HARD_STOP_1H_ENABLED", True, account_key, symbol, position_side)):
+                        _uh_h1 = safe_fetch_float(i.get("dc_high_1h", 0), 0.0)
+                        if _ftf_twins.short_dc_high_stop_fires(_uh_px, _uh_h1):
+                            _uh_fire = f"DC_HIGH_1H_UNCOND_px{_uh_px:.4f}_lvl{_uh_h1:.4f}"
+                    if not _uh_fire and _ftf_twins.truthy(_cfg("DC_HARD_STOP_15M_ENABLED", True, account_key, symbol, position_side)):
+                        _uh_h15 = safe_fetch_float(i.get("dc_high_15m", 0), 0.0)
+                        if _ftf_twins.short_dc_high_stop_fires(_uh_px, _uh_h15):
+                            _uh_fire = f"DC_HIGH_15M_UNCOND_px{_uh_px:.4f}_lvl{_uh_h15:.4f}"
                 if _uh_fire:
-                    logger.critical(f"⛔ [UNCOND_DC_HIGH_HARD_STOP] {position_key}: SHORT {_uh_fire} g={_uh_gain:.2f}% → IMMEDIATE CLOSE (USER 2026-10-06, no veto)")
-                    dc_hardstop_cooldown_record(symbol, "SHORT")
+                    logger.critical(f"⛔ [UNCOND_DC_HARD_STOP] {position_key}: {position_side} {_uh_fire} g={_uh_gain:.2f}% → IMMEDIATE CLOSE (USER 2026-10-06, no veto)")
+                    dc_hardstop_cooldown_record(symbol, position_side)
                     await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"UNCOND_{_uh_fire}_g{_uh_gain:.2f}", 100.0, override_qty=999999)
-                    return "UNCOND_DC_HIGH_CLOSED"
+                    return "UNCOND_DC_CLOSED"
         except Exception as _uh_e:
-            logger.warning(f"[UNCOND_DC_HIGH] {position_key} probe err: {_uh_e}")
+            logger.warning(f"[UNCOND_DC] {position_key} probe err: {_uh_e}")
         # 2026-10-06 USER MANDATE — NON-TRADEABLE: exit at first wt1_15m against, keep closed (execute layer blocks reentry).
         try:
             if has_position and position is not None and abs(safe_float(getattr(position, "positionAmt", 0))) > 0:

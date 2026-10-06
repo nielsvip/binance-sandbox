@@ -14,9 +14,8 @@ import os
 import fcntl
 from pathlib import Path
 from contextvars import ContextVar
-from ez_positions_service import bootstrap_position_service, WebSocketManager
+from ez_positions_service import bootstrap_position_service, WebSocketManager, save_positions_guarded
 from utils import load_environment_from_gpg, orjson_default
-from ez_positions import atomic_save_positions
 load_environment_from_gpg(None)
 logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(levelname)s %(message)s")
 logger = logging.getLogger("ez_positions_realtime")
@@ -33,6 +32,27 @@ _initial_file_handler.setFormatter(file_formatter)
 logger.addHandler(_initial_file_handler)
 logger.setLevel(logging.DEBUG)
 
+def should_standby(file_mtime, my_last_write, now, stale_s=30.0):
+    """True when the service primary is alive (fresh files written by someone else) so realtime stays warm but silent."""
+    if file_mtime <= 0:
+        return False
+    if now - file_mtime > stale_s:
+        return False
+    return file_mtime > my_last_write + 1.0
+
+
+def _freshest_file_mtime(service, account_key):
+    newest = 0.0
+    for side in ("long", "short"):
+        try:
+            p = service.get_position_file(account_key, side)
+            if p.exists():
+                newest = max(newest, p.stat().st_mtime)
+        except Exception:
+            pass
+    return newest
+
+
 class RealtimePositionUpdater:
     def __init__(self, position_service, account_key: str):
         self.position_service = position_service
@@ -40,6 +60,8 @@ class RealtimePositionUpdater:
         self.running = True
         self.has_fetched_once = False
         self._last_file_refresh = time.time()
+        self._last_own_write = 0.0
+        self._standby_skips = 0
         
     async def fetch_loop(self) -> None:
         """CRITICAL: Fetch positions from API every 6 seconds and save ALL positions"""
@@ -63,6 +85,13 @@ class RealtimePositionUpdater:
                         logger.error(f"[FETCH_LOOP][{self.account_key}] Exception creating client: {client_err}", exc_info=True)
                         await asyncio.sleep(4.0)
                         continue
+                _fm = _freshest_file_mtime(self.position_service, self.account_key)
+                if should_standby(_fm, self._last_own_write, time.time()):
+                    self._standby_skips += 1
+                    if self._standby_skips % 50 == 1:
+                        logger.warning(f"[FETCH_LOOP][{self.account_key}] ⏸️ standby (service primary fresh, files {time.time()-_fm:.0f}s old) — no fetch, staying warm")
+                    await asyncio.sleep(6.0)
+                    continue
                 try:
                     client_obj = getattr(account, "client", None)
                     if not client_obj:
@@ -101,8 +130,10 @@ class RealtimePositionUpdater:
                         account_positions = self.position_service.positions_by_account.get(self.account_key, {})
                         if account_positions:
                             try:
-                                await atomic_save_positions(self.position_service, self.account_key)
-                                logger.warning(f"[FETCH_LOOP][{self.account_key}] ✅ SAVED {len(account_positions)} positions")
+                                _saved = await save_positions_guarded(self.position_service, self.account_key)
+                                if _saved:
+                                    self._last_own_write = time.time()
+                                logger.warning(f"[FETCH_LOOP][{self.account_key}] ✅ {'SAVED' if _saved else 'SAVE-REFUSED-STALE'} {len(account_positions)} positions")
                             except Exception as save_err:
                                 logger.error(f"[FETCH_LOOP][{self.account_key}] ❌ Save failed: {save_err}", exc_info=True)
                         else:
@@ -270,10 +301,14 @@ async def main():
                     logger.error(f"[WS][{account_key}] ❌ Broadcast failed: {broadcast_err}", exc_info=True)
                 
                 # CRITICAL: Save ALL positions from memory after WebSocket update
-                # handle_account_update already updated memory, now save to files
+                # handle_account_update already updated memory, now save to files (skipped while service primary is fresh)
                 try:
-                    await atomic_save_positions(service, account_key, force=True)
-                    logger.warning(f"[WS][{account_key}] ✅✅✅ Saved all positions from memory after WebSocket update")
+                    _wfm = _freshest_file_mtime(service, account_key)
+                    if should_standby(_wfm, updater._last_own_write, time.time()):
+                        logger.debug(f"[WS][{account_key}] ⏸️ save skipped (service primary is fresh)")
+                    elif await save_positions_guarded(service, account_key, force=True):
+                        updater._last_own_write = time.time()
+                        logger.warning(f"[WS][{account_key}] ✅✅✅ Saved all positions from memory after WebSocket update")
                 except Exception as save_err:
                     logger.error(f"[WS][{account_key}] ❌ Failed to save positions: {save_err}", exc_info=True)
             except Exception as e:
