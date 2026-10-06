@@ -15895,10 +15895,13 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                         _t2_max_min = getattr(config, 'REENTRY_TIER2_MAX_MINUTES', 120.0)
                         _px_crossed = (is_long and current_price > _reentry_px * (1.0 + _px_cross_pct)) or (not is_long and current_price < _reentry_px * (1.0 - _px_cross_pct))
                         _trend_past_exit = (is_long and current_price > _reentry_px * (1.0 + _t2_price_pct)) or (not is_long and current_price < _reentry_px * (1.0 - _t2_price_pct))
-                        _px_k3m = safe_fetch_float(indicators.get('k_3m', 50), 50)
-                        _px_k3m_prev = safe_fetch_float(indicators.get('k_3m_prev', 50), 50)
-                        _px_k1m = safe_fetch_float(indicators.get('k_1m', 50), 50)
-                        _px_d1m = safe_fetch_float(indicators.get('d_1m', 50), 50)
+                        # 2026-10-06 NO-1m/3m PARITY (NOTE_3M_REENABLE): exhausted/momentum legs read 15m
+                        # while the switch is off (NPZ has no 1m/3m; vec twin is 15m-only). Reason labels unchanged.
+                        _px_no3m = not bool(getattr(config, "USE_1M_3M_SIGNALS_ENABLED", False))
+                        _px_k3m = safe_fetch_float(indicators.get('k_15m' if _px_no3m else 'k_3m', 50), 50)
+                        _px_k3m_prev = safe_fetch_float(indicators.get('k_15m_prev' if _px_no3m else 'k_3m_prev', 50), 50)
+                        _px_k1m = safe_fetch_float(indicators.get('k_15m' if _px_no3m else 'k_1m', 50), 50)
+                        _px_d1m = safe_fetch_float(indicators.get('d_15m' if _px_no3m else 'd_1m', 50), 50)
                         _px_exhausted = (is_long and _px_k3m > 95) or (not is_long and _px_k3m < 5)
                         _px_momentum = (is_long and (_px_k3m > _px_k3m_prev or _px_k1m > _px_d1m)) or (not is_long and (_px_k3m < _px_k3m_prev or _px_k1m < _px_d1m))
                         if _px_crossed:
@@ -16270,7 +16273,8 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                                 # See _apply_ratio_sizing() and ratio-aware exit logic in rate().
                                 pass
                 # == WR/LR PULLBACK: HTF trend + k_1h/k_15m/k_3m all low + k_1m turning up ==
-                if not should_trade:
+                # 2026-10-06 full-parity: WR_PULLBACK_ENABLED gate (default True = unchanged; vec twin honors it).
+                if not should_trade and bool(getattr(config, "WR_PULLBACK_ENABLED", True)):
                     _wr_sym_key = f"{account_key}:{symbol}"
                     if (time.time() - _wr_pullback_last.get(_wr_sym_key, 0.0)) >= 300.0:
                         _wr_long = set(getattr(trade_manager, f"symbols_{account_key}_long", None) or [])
@@ -16280,11 +16284,13 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                         _ha4h_w = str(indicators.get("ha_4h", "")).lower()
                         _k1h_w = safe_fetch_float(indicators.get("k_1h", 50), 50)
                         _k15m_w = safe_fetch_float(indicators.get("k_15m", 50), 50)
-                        _k3m_w = safe_fetch_float(indicators.get("k_3m", 50), 50)
-                        _d3m_w = safe_fetch_float(indicators.get("d_3m", 50), 50)
-                        _k1m_w = safe_fetch_float(metrics.get("k_1m", 50), 50)
-                        _k1m_prev_w = safe_fetch_float(metrics.get("k_1m_prev", 50), 50)
-                        _k1mco_w = metrics.get("wt_cross_1m") == "BULL"  # WT cross replaces stoch
+                        # 2026-10-06 NO-1m/3m PARITY (NOTE_3M_REENABLE): 3m/1m legs read 15m while off (== vec).
+                        _wr_no3m = not bool(getattr(config, "USE_1M_3M_SIGNALS_ENABLED", False))
+                        _k3m_w = safe_fetch_float(indicators.get('k_15m' if _wr_no3m else 'k_3m', 50), 50)
+                        _d3m_w = safe_fetch_float(indicators.get('d_15m' if _wr_no3m else 'd_3m', 50), 50)
+                        _k1m_w = safe_fetch_float((indicators.get('k_15m', 50) if _wr_no3m else metrics.get("k_1m", 50)), 50)
+                        _k1m_prev_w = safe_fetch_float((indicators.get('k_15m_prev', 50) if _wr_no3m else metrics.get("k_1m_prev", 50)), 50)
+                        _k1mco_w = (indicators.get("wt_cross_15m") == "BULL" if _wr_no3m else metrics.get("wt_cross_1m") == "BULL")  # WT cross replaces stoch
                         _wr_fire = False
                         if is_long and symbol in _wr_long:
                             # Symbol in WR list = HTF trend confirmed by ranking. ha_4h!=red = not in active 4h downtrend
@@ -16298,7 +16304,8 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                             # Symbol in LR list = HTF downtrend confirmed by ranking. ha_4h!=green = not in active 4h uptrend
                             _htf_ok = _ha4h_w != "green"
                             _all_high = _k1h_w > 55 and _k15m_w > 55 and _k3m_w > 60
-                            _1m_turning = (metrics.get("wt_cross_1m") == "BEAR") or (_k1m_w < _k1m_prev_w and _k1m_w > 70)  # WT cross replaces stoch
+                            _wtc1_w = (indicators.get("wt_cross_15m") if _wr_no3m else metrics.get("wt_cross_1m"))  # NO-1m/3m: 15m leg while off
+                            _1m_turning = (_wtc1_w == "BEAR") or (_k1m_w < _k1m_prev_w and _k1m_w > 70)  # WT cross replaces stoch
                             if _htf_ok and _all_high and _1m_turning:
                                 _wr_fire = True; score = max(score, 22); rec = "GOOD_SELL"
                                 reason = f"LR_SHORTTOP_k4={_k4h_w:.0f}_k1h={_k1h_w:.0f}_k15={_k15m_w:.0f}_k3={_k3m_w:.0f}_k1m={_k1m_w:.0f}"

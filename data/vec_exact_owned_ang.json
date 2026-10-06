@@ -3,10 +3,6 @@
   "at": "06 20:04:50 - ",
   "reason": "seeded_from_log"
  },
- "ang:RENDERUSDT_LONG": {
-  "at": "06 19:26:29 - ",
-  "reason": "seeded_from_log"
- },
  "ang:ZECUSDC_LONG": {
   "at": "06 20:02:03 - ",
   "reason": "seeded_from_log"
@@ -19,16 +15,8 @@
   "at": "06 20:04:50 - ",
   "reason": "seeded_from_log"
  },
- "ang:ETHUSDC_LONG": {
-  "at": "2026-10-06T20:20:44Z",
-  "reason": "B_EMA20SLOPE"
- },
  "ang:NEARUSDC_LONG": {
   "at": "06 20:15:57 - ",
-  "reason": "seeded_from_log"
- },
- "ang:TRBUSDT_LONG": {
-  "at": "06 20:16:02 - ",
   "reason": "seeded_from_log"
  },
  "ang:1000LUNCUSDT_LONG": {
@@ -43,12 +31,20 @@
   "at": "06 20:34:30 - ",
   "reason": "seeded_from_log"
  },
- "ang:AAPLUSDT_LONG": {
-  "at": "06 20:35:12 - ",
-  "reason": "seeded_from_log"
- },
  "ang:SNXUSDT_LONG": {
   "at": "06 20:37:52 - ",
+  "reason": "seeded_from_log"
+ },
+ "ang:AAOIUSDT_LONG": {
+  "at": "2026-10-06T20:58:03Z",
+  "reason": "B10"
+ },
+ "ang:ALABUSDT_LONG": {
+  "at": "2026-10-06T20:58:17Z",
+  "reason": "B14"
+ },
+ "ang:HYPEUSDT_LONG": {
+  "at": "06 20:57:14 - ",
   "reason": "seeded_from_log"
  }
 }

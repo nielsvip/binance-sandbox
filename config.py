@@ -629,6 +629,7 @@ class Config:
     PYRAMID_MAX_DC_POS_15M_SHORT: float = 0.3        # SHORT: DC pos < 0.3 = lower third.
     PYRAMID_SIZE_MULT: float = 0.5                   # Add N × position_amt (0.5 = 50%).
     REENTRY_MANDATORY: bool = True  # 2026-09-07 RE-AFFIRMED obligatory per user unlock — enforce reentry after every exit (parity with BACKTEST_REPLICA_SWITCHES.md §3). Was already True; kept True. See also WT_3M_FORCE_OPEN + LEGACY_GUARANTEED_REENTRY re-enabled below.
+    REENTRY_TIER_MODEL_ENABLED: bool = True  # 2026-10-06 USER full-parity: vec twin master (live TIER always runs; True = twin replaces blanket)
     # === TWO-TIER MANDATORY REENTRY (BC_155) ===
     # Tier 1 (PULLBACK): Wait for K zone reset, enter at 120-150% size (better price)
     # Tier 2 (CHASE): Trend continues without pullback, enter at 70-100% size (don't miss move)

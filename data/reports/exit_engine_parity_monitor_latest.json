@@ -1,30 +1,43 @@
 {
- "now": "2026-10-06T20:00:22.441438+00:00",
+ "now": "2026-10-06T21:00:25.902710+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 12,
- "last_exit_ts": "2026-10-06T19:50:39.532964+00:00",
+ "n_exit_rows": 215,
+ "last_exit_ts": "2026-10-06T20:58:12.933183+00:00",
  "n_leaks": 0,
- "n_gate_on": 4,
+ "n_gate_on": 103,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 0,
- "n_unverified": 0,
+ "n_unmapped": 9,
+ "n_unverified": 1,
  "since": "2026-10-06T18:48:00+00:00",
  "vec_exact_by_action": {
-  "OPEN": 8
+  "OPEN": 83,
+  "CLOSE": 17,
+  "REDUCE": 2
  },
- "native_rows": 4,
- "unverified_by_family": {},
+ "native_rows": 113,
+ "unverified_by_family": {
+  "WEBHOOK_HANDLE_SIGNAL (None=None)": 1
+ },
  "leaks_by_family": {},
  "leak_keys": {},
  "gate_on_by_family": {
   "CRYPTO_SPIKE_FADE (CRYPTO_SPIKE_FADE_ENABLED)": 1,
-  "GOLDEN_RULE": 3
+  "GOLDEN_RULE": 3,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 79,
+  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 20
  },
  "ungated_by_family": {},
  "safety_by_family": {},
- "unmapped": {},
+ "unmapped": {
+  "WT_CROSSUNDER_FINAL_L_k=95": 6,
+  "BB_TAKE_4h": 2,
+  "MARGIN_FREE_FOR_ang:SNXUSDT_LONG": 1
+ },
  "actions": {
-  "OPEN": 12
+  "OPEN": 87,
+  "CLOSE": 124,
+  "REDUCE": 3,
+  "QUICK_CLOSE": 1
  }
 }

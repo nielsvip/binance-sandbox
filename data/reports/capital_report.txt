@@ -1,10 +1,10 @@
-CAPITAL ALLOCATION REPORT — 2026-10-06 20:48 UTC
+CAPITAL ALLOCATION REPORT — 2026-10-06 21:12 UTC
 ================================================================================
-Total capital deployed: $71.88 across 1 positions
+Total capital deployed: $385.50 across 9 positions
 
 TIER DISTRIBUTION:
   Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $     71.88 (100.0%) — 1 positions
+  Tier B: $    385.49 (100.0%) — 9 positions
   Tier C: $      0.00 (  0.0%) — 0 positions
 
   ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
@@ -12,8 +12,12 @@ TIER DISTRIBUTION:
 WINNERS — augment these (A-tier, in gain) [0]:
   (none)
 
-LOSERS — reduce allocation (C-tier or losing) [0]:
-  (none)
+LOSERS — reduce allocation (C-tier or losing) [4]:
+                     men:NMRUSDT_LONG  $  173.04  gain=-3.48%  tier=B  mult=1.00
+                    men:RLCUSDT_SHORT  $   21.79  gain=-2.79%  tier=B  mult=1.00
+                  men:RENDERUSDT_LONG  $    9.16  gain=-0.65%  tier=B  mult=1.00
+                   men:GALAUSDT_SHORT  $    2.01  gain=-0.60%  tier=B  mult=1.00
 
-MEDIOCRE — capital sitting idle [1]:
-                    flz:HYPEUSDT_LONG  $   71.88  gain=+0.00%  tier=B
+MEDIOCRE — capital sitting idle [2]:
+                    men:XTZUSDT_SHORT  $   27.97  gain=+0.03%  tier=B
+                    men:XLMUSDT_SHORT  $   15.92  gain=+0.08%  tier=B

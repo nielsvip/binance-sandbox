@@ -4574,7 +4574,7 @@ class QuickConfig:
     BACKTEST_VALIDATED_GATES_TRADIER: bool = True
     REENTRY_EPQ_MODEL_ENABLED: bool = False  # [N3 q4] live ez_positions_quick reentry evaluators (DC breakout fast-path, B16 SMA200 pullback, mandatory price cross, size tiers) 15m+ twin
     REENTRY_OBLIGATORY_MODEL_ENABLED: bool = False  # [N3 q3] live crypto OBLIGATORY_REENTRY (ez_reentry.evaluate_obligatory_reentry) 15m+ twin
-    REENTRY_TIER_MODEL_ENABLED: bool = False  # [N3 q2] live crypto TIER1/TIER2_FORCED reentry twin (replaces the blanket fire when True)
+    REENTRY_TIER_MODEL_ENABLED: bool = True  # 2026-10-06 USER full-parity: live TIER always runs; twin replaces blanket (was False)
     SEEDED_LEDGER_ENABLED: bool = False  # [w2-carryin] SEEDED-LEDGER mode: seed simulate_one initial state from a live open-position snapshot at window ts0. Default False = cold start (bitwise identical to today)
     SEEDED_LEDGER_SNAPSHOT_JSON: str = ""  # [w2-carryin] snapshot doc (V8_SEED-compatible positions map or explicit {"seeds": {...}}). Empty = no seeds
     REENTRY_BLANKET_FIRE_ENABLED: object = False  # C/003 (was None=auto: crypto True 'legacy upper bound'): live never reenters every bar — live Processing-order mix 09-25..10-01: OPEN 41191 / REENTRY 1248; True restores the legacy crypto upper bound
@@ -13148,6 +13148,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _hc_wt1_15m = _safe(npz, 'wt1_15m', n)
     except Exception:
         _hc_wt1_15m = close * 0
+    # 2026-10-06 TIER twin inputs (15m stoch, == live NO-1m/3m fallback legs).
+    try:
+        _n3_k15 = _safe(npz, 'stoch_k_15m', n, 50.0)
+        _n3_d15 = _safe(npz, 'stoch_d_15m', n, 50.0)
+    except Exception:
+        _n3_k15 = close * 0 + 50.0
+        _n3_d15 = close * 0 + 50.0
     # RE/001 HARDCODED_RALLY optional filters (all default OFF = neutral); same predicate as live staged RE/001
     try:
         import vec_decisions.hardcoded_rally_filters as _hrfm
@@ -13612,13 +13619,22 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 except Exception:
                     pass
             _n3_tier = None
+            _n3_tier_reason = None
             if has_closed_before and trades and getattr(cfg, 'REENTRY_TIER_MODEL_ENABLED', False) and str(getattr(cfg, 'MODE', 'crypto')) != 'tradier':
                 try:
-                    _n3_tier = vec_decisions.reentry_tiers.tier_fire(is_long, px, float(trades[-1].get('exit_price', 0) or 0), (float(ts[i]) - float(ts[min(int(trades[-1].get('bar_exit', i)), len(ts) - 1)])) / 60.0, cfg)
+                    _n3_ex = float(trades[-1].get('exit_price', 0) or 0)
+                    _n3_mins = (float(ts[i]) - float(ts[min(int(trades[-1].get('bar_exit', i)), len(ts) - 1)])) / 60.0
+                    _n3_k = float(_n3_k15[i] if i < len(_n3_k15) else 50.0)
+                    _n3_kp = float(_n3_k15[i - 1] if i > 0 and i - 1 < len(_n3_k15) else _n3_k)
+                    _n3_d = float(_n3_d15[i] if i < len(_n3_d15) else 50.0)
+                    _n3_tier = vec_decisions.reentry_tiers.tier_fire(is_long, px, _n3_ex, _n3_mins, cfg, _n3_k, _n3_kp, _n3_d)
+                    if _n3_tier:
+                        _n3_tier_reason = vec_decisions.reentry_tiers.tier_reason(_n3_tier, is_long, _n3_ex, px, _n3_k, _n3_mins)
                     if _n3_tier and not fire:
                         fire = True
                 except Exception:
                     _n3_tier = None
+                    _n3_tier_reason = None
             _n3_epq_dollar = None
             if has_closed_before and trades and _n3_epq is not None:  # evaluated even when another pathway (rally/entry block) already fired: EPQ sizing/priority applies (assumption: live process_single reentry_amount sizing)
                 try:
@@ -13892,6 +13908,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 if _barr[i]:
                                     entry_reason = _bname
                                     break
+                            if entry_reason == 'VECTOR_ENTRY' and _n3_tier_reason:
+                                entry_reason = _n3_tier_reason
                             if entry_reason == 'VECTOR_ENTRY' and has_closed_before and getattr(cfg, 'REENTRY_MANDATORY', False) and not entry_sig[i]:
                                 entry_reason = 'REENTRY_MANDATORY'
                             if entry_reason == 'VECTOR_ENTRY':

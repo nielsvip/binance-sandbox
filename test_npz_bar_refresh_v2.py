@@ -248,6 +248,10 @@ def test_drain_pool_shutdown(monkeypatch):
     rs = [{"symbol": "A", "status": "FRESH"}]
     assert nbr._drain_pool(FakePool(rs + [None]), [1]) == rs
     assert nbr._drain_pool(FakePool([TimeoutError(), MpTimeoutError(), rs[0], None]), [1]) == rs
+    with pytest.raises(nbr._Shutdown):
+        nbr._drain_pool(FakePool([TimeoutError()] * 121 + [None]), [1])
+    with pytest.raises(nbr._Shutdown):
+        nbr._drain_pool(FakePool(rs + [MpTimeoutError()] * 61 + [None]), [1])
     monkeypatch.setitem(nbr._TERM, "n", 1)
     with pytest.raises(nbr._Shutdown):
         nbr._drain_pool(FakePool(rs + [None]), [1])

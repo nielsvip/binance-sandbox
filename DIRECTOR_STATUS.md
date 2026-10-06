@@ -1,4 +1,15 @@
-# DIRECTOR STATUS — 2026-10-06 (updated by the director session; newest at top of each row)
+# DIRECTOR STATUS — 2026-10-06 (newest block at top)
+
+## 21:00Z — DIRECTOR RESUMED as Muse sage-pyxis (Claude 5dda7810 + all subagents died 20:48Z)
+- Live: all 5 crypto up (men/fin/inf/flz/ang; ang restarted ~20:56, cause unknown — 3rd unexplained restart today). Twin VEC_EXACT OPENs flowing (ang HYPE/AAOI/ALAB 20:57-58). men NMR_LONG -4.3% (-$7.7) native exit suppressed, NO twin CLOSE dispatched — still stranded; men KSM_SHORT 30.8 (-$0.6) twin CLOSE 20:42 stuck→nuked 20:47, partial native reduce filled, remainder held with no exit driver.
+- 21:05Z ALL 5 RESTARTED (21:04:36-21:05:25, trigger unknown) -> OPEN_CEIL LIVE, proven: inf APE $180->$28 (SPS $28 x tier 1.0). Post-restart verification running; NO further restarts until B+C+tests. v12 HOT (ruby TIER mid-landing, multi-author window) - canvas HOLDING off it, sps_raw sqlite retarget queued post-verify.
+- Crypto batch on disk (was NOT live, NO restart yet): (A) OPEN_CEIL_SPS_TIER=True in execute_now ✓, SIGNAL_IMMEDIATE_REDUCE=False gating both webhook paths + v12 mirror ✓, QUICK_OPEN_STRONG_VEC=False ✓. MISSING: (B) anti-stranding, (C) twin CLOSE/REDUCE immediate dispatch (vec_exact save 20:47 was byte-identical = silent no-op), ALL batch tests. Batched restart BLOCKED until B+C+tests done.
+- Memory: cyclical 180-520M free (rankings/indicators cycles); killed ruby-supernova Mac backtest 20:55 (216M→488M). Monitors: live orders/alarms + LOWMEM<300M (persistent).
+- Muse peers (messaged, file locks set): swift-meridian HOLDING for fleet-quiet (fix verified, ETA ~2h cap) ✓; canvas-radiation IDLE done (tradier 0f307106 verified, ez 6814b6c7→6d9d8c57 by later batch, 16/16 tests) ✓; ruby-supernova ACTIVE parity edits + backtests (receipt confirmed, NO REPLY yet — owns EPQ/config-TIER lane); frost-radiation REPLIED 21:01Z: S1 NPZ 15m refresh loop, SIGTERM-trap to ID ~11min killer, ETA ~15min, no fleet lock, S1-side compute only.
+- Dead-agent pending queue: P0 crypto batch completion→restart; P0 self-healer build (revamp died in research; freshness fix tested, needs restart); P1 SWITCH_BIBLE→S1 (Mac cron held); P1 lane A rounds (table overdue); P2 stocks self-healer+halt flags pre-13:30Z; P2 X2 56-NPZ restore decision (open since 04:04Z); P3 infra dual-source, lane E .md, encyclopedia v2, repair queues.
+- Fleet: swift reports cutter engine cut landing 20:34-20:47+ split-brain; all fleet sync HELD until cutter identified.
+
+## Older board (pre-resume)
 
 | # | Workstream | Owner | State | Blocker / next |
 |---|---|---|---|---|
