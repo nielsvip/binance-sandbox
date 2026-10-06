@@ -1268,18 +1268,26 @@ def _order_function_switch_reads(path: Path) -> dict:
         if not any(_name(c.func).split(".")[-1] in ORDER_CALLS for c in calls):
             continue
         keys = set()
+        _fallback_ids = set()
+        for c in calls:  # getattr(config, K) used only as the default argument of _psym_get/_psym_cs_get is a fallback, not a global read
+            if _name(c.func).split(".")[-1] in ("_psym_get", "_psym_cs_get"):
+                for a_ in c.args[3:]:
+                    for sub in ast.walk(a_):
+                        _fallback_ids.add(id(sub))
         for c in calls:
+            if id(c) in _fallback_ids:
+                continue
             f = _name(c.func)
             if f == "getattr" and len(c.args) >= 2 and _name(c.args[0]) in CFG_NAMES and isinstance(c.args[1], ast.Constant) and isinstance(c.args[1].value, str):
-                keys.add(c.args[1].value)
+                keys.add((c.args[1].value, "global"))
             elif f.split(".")[-1] in ("_psym_get", "_psym_cs_get") and len(c.args) >= 3 and isinstance(c.args[2], ast.Constant) and isinstance(c.args[2].value, str):
-                keys.add(c.args[2].value)
+                keys.add((c.args[2].value, "cat_side"))
         for n in ast.walk(fn):
             if isinstance(n, ast.Attribute) and _name(n.value) in CFG_NAMES and n.attr.isupper():
-                keys.add(n.attr)
-        for k in keys:
+                keys.add((n.attr, "global"))
+        for k, kind in keys:
             if k.isupper() and len(k) > 2:
-                out.setdefault(k, []).append(fn.name)
+                out.setdefault(k, []).append(f"{fn.name}[{kind}]")
     return out
 
 
@@ -1314,19 +1322,22 @@ def verify_live_order_switches(root: Path = None, cat_sides=("CRYPTO_LONG", "CRY
         lv = live_vals[k]
         if callable(lv) or isinstance(lv, (dict, list, set, tuple, Path)):
             continue
+        kinds = {x.rsplit("[", 1)[-1].rstrip("]") for x in reads[k]}
         prob = []
-        if k not in quick_vals:
-            prob.append("missing_in_quickconfig")
-        elif not _same_val(lv, quick_vals[k]):
-            prob.append(f"quickconfig={quick_vals[k]!r}")
+        if k not in quick_vals and not all(k in (cat_file.get(cs) or {}) for cs in cat_sides):
+            prob.append("missing_in_quickconfig_and_template")
+        if "global" in kinds and "cat_side" in kinds and any(k in (cat_file.get(cs) or {}) and not _same_val(lv, (cat_file.get(cs) or {})[k]) for cs in cat_sides):
+            prob.append("live_inconsistent_read(global+cat_side sites disagree)")
         for cs in cat_sides:
-            cv = (cat_file.get(cs) or {})
-            if k not in cv:
-                prob.append(f"missing_in_template[{cs}]")
-            elif not _same_val(lv, cv[k]):
-                prob.append(f"template[{cs}]={cv[k]!r}")
+            cv = cat_file.get(cs) or {}
+            vec_eff = cv[k] if k in cv else quick_vals.get(k, "<missing>")
+            live_eff = cv[k] if (kinds == {"cat_side"} and k in cv) else lv
+            if not _same_val(live_eff, vec_eff):
+                prob.append(f"{cs}: live_eff={live_eff!r} vec_eff={vec_eff!r}")
         if prob:
             rep["hard"].append({"key": k, "live": lv, "problems": prob, "read_in": sorted(reads[k])[:4]})
+        elif k not in quick_vals:
+            rep.setdefault("soft_missing_quickconfig", []).append(k)
     rep["n_hard"] = len(rep["hard"])
     return rep
 

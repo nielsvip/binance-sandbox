@@ -1855,7 +1855,8 @@ def apply_patches(stores: Dict[str, IndicatorStore], mode: str):
     # --- Patch ii() to return NPZ data ---
     _indicator_cache: Dict[str, Dict] = {}
 
-    _ltf_sub = os.environ.get("V12_REAL_EXECUTE") == "1" and os.environ.get("V12_LTF_FROM_15M", "1") == "1"
+    # V12_LTF_FROM_15M: "1" forces the substitution (trade parity), unset = only under V12_REAL_EXECUTE, "0" = never
+    _ltf_sub = os.environ.get("V12_LTF_FROM_15M") == "1" or (os.environ.get("V12_REAL_EXECUTE") == "1" and os.environ.get("V12_LTF_FROM_15M", "1") == "1")
 
     async def _npz_ii(tm, symbol, **kwargs):
         _d = _indicator_cache.get(symbol, {})
@@ -3146,6 +3147,17 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 _f1_ru = str(reason or "").upper()
                 _f1_force = any(_k in _f1_ru for _k in ("WT_3M_FORCE_OPEN", "TRADEABLE_KEYS_MANDATORY", "FORCE_HA_4H_ABOVE_BASIS", "MOMENTUM_WATCHDOG")) and bool(getattr(config, "WT_3M_FORCE_OPEN_BYPASS_GATES", True))
                 _f1_ind = indicator_cache.get(sym.upper(), {}) if isinstance(indicator_cache, dict) else {}
+                if _f1_ind and os.environ.get("V12_LTF_FROM_15M") == "1":
+                    # parity lane A: the frozen NPZ has no 1m/3m stoch; with k3=d3=0 the live ENTRY_VET combined-stoch gate refused
+                    # every vec-exact SHORT open (FLNCUSDT_SHORT 'COMBINED_STOCH_GATE_k0_csg60'). Vec rule: 3m is 15m.
+                    _f1_ind = dict(_f1_ind)
+                    for _b in ("k", "d"):
+                        for _sfx in ("", "_prev"):
+                            _src = _f1_ind.get(f"{_b}_15m{_sfx}")
+                            if _src is not None:
+                                for _tf in ("1m", "3m"):
+                                    if not _f1_ind.get(f"{_b}_{_tf}{_sfx}"):
+                                        _f1_ind[f"{_b}_{_tf}{_sfx}"] = _src
                 if _f1_ind and not _f1_force and "QUICK" not in str(act).upper():
                     _f1_ok, _f1_why = ez_manage.check_entry_vetting(_f1_ind, float(px), (pk.endswith("_LONG")))
                     if not _f1_ok:
@@ -6600,14 +6612,31 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # process_single_reentry_evaluation path (DIR_FAVORABLE, DC_BREAKOUT, QUICK_RECOVERY,
         # WT15M_CROSS, K15M_PARTIAL, POST_CONSOL) is unreachable and every REENTRY2_*/WT15M/
         # K15M/POST_CONSOL switch shows zero variance.
-        if getattr(config, 'REENTRY_2_ENABLED', True):
+        # 2026-10-06 parity lane A (crypto loop): V12_REENTRY2_LIVE_CADENCE=1 (set by trade parity) calls each path only when
+        # live would: evaluate_reentry_2 via ez_manage.monitor_system_state (60 s loop; needs EZ_REENTRY_INLINE_ENABLED and
+        # EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED), evaluate_reentry_2_epq via ez_positions_quick.evaluate_reentry_2_periodic_loop_epq
+        # (started only with EZ_REENTRY_INLINE_ENABLED and EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED; 60 s period; skips when
+        # REENTRY_2_ENABLED is False or ABLATION_DISABLE_REENTRY_ENFORCE is True). Global config reads, like the live loops.
+        # Default (unset) = old behaviour: both every step.
+        _r2_live = os.environ.get("V12_REENTRY2_LIVE_CADENCE") == "1"
+        _r2_now = float(_sim_ts[0]) if _sim_ts else 0.0
+        _r2_last = trade_manager.__dict__.setdefault("_v12_r2_last", {"mon": -1e18, "epq": -1e18})
+        _r2_inline = bool(getattr(config, 'EZ_REENTRY_INLINE_ENABLED', True))
+        _r2_run_mon = getattr(config, 'REENTRY_2_ENABLED', True) and (not _r2_live or (
+            _r2_inline and bool(getattr(config, 'EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED', True)) and _r2_now - _r2_last["mon"] >= 60.0))
+        _r2_run_epq = getattr(config, 'REENTRY_2_ENABLED', True) and (not _r2_live or (
+            _r2_inline and bool(getattr(config, 'EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED', True))
+            and not bool(getattr(config, 'ABLATION_DISABLE_REENTRY_ENFORCE', False)) and _r2_now - _r2_last["epq"] >= 60.0))
+        if _r2_run_mon:
+            _r2_last["mon"] = _r2_now
             try:
                 await ez_reentry.get_evaluate_reentry_2()(trade_manager)
             except Exception as _re_err:
                 if step < 10 or step % 1000 == 0:
                     v8_logger.error(f"[V8_REENTRY2_ERR] step={step} err={_re_err}")
-            # LIVE ALSO calls evaluate_reentry_2_epq (ez_positions_quick.py:14472 periodic loop).
-            # Mirror that here so backtest runs both paths — they share reentry_data dict.
+        if _r2_run_epq:
+            _r2_last["epq"] = _r2_now
+            # LIVE ALSO calls evaluate_reentry_2_epq (ez_positions_quick.py periodic loop) — they share reentry_data dict.
             try:
                 await ez_reentry.get_evaluate_reentry_2_epq()(trade_manager, data_manager=data_manager)
             except Exception as _re_epq_err:
@@ -17494,6 +17523,56 @@ def _run_one_set_precedence_on(symside: str, overrides: dict, mode: str):
     return st
 
 
+def _run_one_twin_prefix_on():
+    """2026-10-06 parity lane A (director, V12_TWIN_PREFIX_EVAL=1): the crypto vec-exact twin (live_twins/vec_exact) cuts its
+    prepared 30D window at bar k and needs >= 100 bars (v12 n<100 guard), so it decides nothing in the window's first 99 bars,
+    while the sheet's full-window run does (NPZ indicators are precomputed; real live has ample history). Replay-only fix,
+    the crypto counterpart of the stocks oracle's _PARITY_PREFIX_EVAL: for a cut with 2 <= n < 100 bars, evaluate the twin's
+    own full prepared window (same anchor, same bars) and keep only ledger events at ts <= the cut's last bar. v12 is causal
+    (a cut at k reproduces the full run's actions at k; loop_crypto_log 0e), so this is the prefix decision, without the guard."""
+    st = {}
+    try:
+        import numpy as _np_tp
+        import live_twins.vec_exact as _vx
+        from tools.opt import evaluate_v12 as _E
+        _orig_ep = _E.evaluate_prepared
+
+        def _ep(prepared, overrides, *a, **kw):
+            try:
+                _ts = _np_tp.asarray((prepared or {}).get("npz_prepared", {}).get("timestamps", []))
+                _n = len(_ts)
+                _full = ((_vx._PREP.get(str((prepared or {}).get("symside", ""))) or {}).get("prep"))
+                if 2 <= _n < 100 and _full is not None and _full is not prepared:
+                    kw["include_ledger"] = True
+                    r = _orig_ep(_full, overrides, *a, **kw)
+                    _cut = float(_ts[-1])
+                    r = dict(r or {})
+                    r["execution_ledger"] = [e for e in (r.get("execution_ledger") or []) if float(e.get("ts") or 0.0) <= _cut]
+                    r["_v12_twin_prefix_eval"] = True
+                    return r
+            except Exception as _tpe:
+                v8_logger.warning(f"[V12_TWIN_PREFIX_EVAL] {_tpe}")
+            return _orig_ep(prepared, overrides, *a, **kw)
+        _E.evaluate_prepared = _ep
+        st = {"orig_ep": _orig_ep, "orig_min": _vx._MIN_BARS}
+        _vx._MIN_BARS = 2
+    except Exception as _e:
+        st = {"error": str(_e)[:200]}
+    return st
+
+
+def _run_one_twin_prefix_off(st) -> None:
+    if not st or "orig_ep" not in st:
+        return
+    try:
+        import live_twins.vec_exact as _vx
+        from tools.opt import evaluate_v12 as _E
+        _E.evaluate_prepared = st["orig_ep"]
+        _vx._MIN_BARS = st["orig_min"]
+    except Exception:
+        pass
+
+
 def _run_one_set_precedence_off(st) -> None:
     if not st or "_orig" not in st:
         return
@@ -17615,6 +17694,7 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
     # load stores for this one symbol; use get_npz_dir resolution helper
     snap = _run_one_apply_overrides(overrides, mode)
     _sp_state = _run_one_set_precedence_on(symside, overrides, mode) if os.environ.get("V12_RUN_ONE_SET_PRECEDENCE") == "1" else None
+    _tp_state = _run_one_twin_prefix_on() if os.environ.get("V12_TWIN_PREFIX_EVAL") == "1" else None
     stores = {}; resolution = "3m" if mode == "crypto" else "5m"
     executed = []
     try:
@@ -17660,6 +17740,7 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
     finally:
         _run_one_restore_overrides(snap, mode)
         _run_one_set_precedence_off(_sp_state)
+        _run_one_twin_prefix_off(_tp_state)
     # map executed_trades (list of dicts) to metrics via tools/opt/metrics
     try:
         from tools.opt import metrics as _M

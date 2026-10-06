@@ -859,7 +859,7 @@ class Config:
     EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED: bool = False
     EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED: bool = False
     EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED: bool = False
-    EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED: bool = True  # 2026-10-06 director (USER: full vector-live parity): = vec baseline (cat_side) value
+    EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED: bool = False  # 2026-10-06 director correction: QuickConfig + cat_side are False (my earlier True created a native reentry producer vec does not have)
     EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED: bool = False
     EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED: bool = False
     EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED: bool = False
