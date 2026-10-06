@@ -3056,6 +3056,20 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 pos.opened_at = _sim_datetime_now(timezone.utc)
         return True
     trade_manager.send_webhook = _recording_webhook
+    # parity-loop-crypto (iso copy only, proposed to lane A): V12_REAL_EXECUTE maker-order I/O stub = immediate fill at the
+    # given price (order I/O only; every decision gate before it still runs). Without it real-execute closes die at
+    # BLOCKED_MAKER_SUPPRESS_WEBHOOK and live keeps positions vec already closed.
+    if os.environ.get("V12_REAL_EXECUTE") == "1" and os.environ.get("V12_MAKER_STUB", "1") == "1":
+        async def _plc_maker_fill(account_key, position_key, symbol, positionAmt, current_price, qty_abs, side, position_side, unique_id, reason, *a, **kw):
+            _q = abs(float(qty_abs or 0.0))
+            _cur = abs(float(getattr(trade_manager.positions.get(position_key), "positionAmt", 0.0) or 0.0))
+            _is_long = str(position_key).endswith("_LONG")
+            _red = (side == "SELL" and _is_long) or (side == "BUY" and not _is_long)
+            await _recording_webhook(position_key=position_key, account_key=account_key, symbol=symbol, positionAmt=positionAmt, quantity=_q,
+                                     price=float(current_price or 0.0), side=side, position_side=position_side, unique_id=unique_id,
+                                     is_full_close=bool(_red and _q >= _cur - 1e-12), reason=reason)
+            return True, _q
+        trade_manager.place_maker_order = _plc_maker_fill
 
     # Seed symbol_configs so maker loop doesn't crash with "Symbol config missing"
     for sym in stores.keys():
@@ -4915,6 +4929,14 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 trade_manager.price_cache_2[sym] = p
             if hasattr(trade_manager, 'price_update_time'):
                 trade_manager.price_update_time[sym] = float(ts)
+        # parity-loop-crypto (iso copy only, proposed to lane A): VEC_DRIVEN intent feed
+        if os.environ.get("V12_VEC_INTENT_FEED"):
+            from tools.parity_sample import vec_intent_feed as _vif
+            await _vif.feed(float(ts), trade_manager, account_key, price_cache)
+            if os.environ.get("V12_VEC_INTENT_ONLY") == "1":
+                await drain_pending_v8_tasks()
+                await asyncio.sleep(0)
+                continue
 
         # ─── V8_LADDER_FORCE_INITIAL_SIDE (crypto matrix-primitive port 2026-07-30,
         # mirror of run_simulation_tradier :9181): stage-0 needs an unambiguous
@@ -6772,6 +6794,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         _gate_total_checks += len(all_position_keys)
         entry_pks = []
         for _epk in all_position_keys:
+            # parity-loop-crypto (iso, proposed to lane A): real-execute mode skips _crypto_eta's side contract -> isolate the tested side here
+            if os.environ.get("V12_REAL_EXECUTE") == "1" and os.environ.get("V8_LADDER_ONLY_SIDE") and not str(_epk).endswith("_" + os.environ["V8_LADDER_ONLY_SIDE"].upper()):
+                continue
             _epos = trade_manager.positions.get(_epk)
             if _epos and abs(getattr(_epos, 'positionAmt', 0)) >= 0.001:
                 continue
