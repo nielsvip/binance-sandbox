@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-06 05:15:24 UTC
+# Copilot Status — 2026-10-06 05:33:58 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,12 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-06T04:56:09
-- **STALE_INDICATORS** [tradier]  — 2026-10-06T04:58:10
-- **STALE_INDICATORS** [tradier]  — 2026-10-06T05:00:12
-- **STALE_INDICATORS** [tradier]  — 2026-10-06T05:02:13
-- **STALE_INDICATORS** [tradier]  — 2026-10-06T05:04:15
-- **STALE_INDICATORS** [tradier]  — 2026-10-06T05:06:16
-- **STALE_INDICATORS** [tradier]  — 2026-10-06T05:08:18
-- **STALE_INDICATORS** [tradier]  — 2026-10-06T05:10:19
-- **STALE_INDICATORS** [tradier]  — 2026-10-06T05:12:21
-- **STALE_INDICATORS** [tradier]  — 2026-10-06T05:14:23
+- **STALE_INDICATORS** [tradier]  — 2026-10-06T05:23:49
+- **STALE_INDICATORS** [tradier]  — 2026-10-06T05:25:51
+- **STALE_INDICATORS** [tradier]  — 2026-10-06T05:27:53
+- **STALE_INDICATORS** [tradier]  — 2026-10-06T05:29:54
+- **STALE_INDICATORS** [tradier]  — 2026-10-06T05:31:56
+- **STALE_INDICATORS** [tradier]  — 2026-10-06T05:33:57
 
 ## Missed Trades (trader comparison)
 
@@ -46,7 +42,7 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 50
+**Issues (last 1h):** 49
 - [MEDIUM] tradier_manage.py for trc is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running

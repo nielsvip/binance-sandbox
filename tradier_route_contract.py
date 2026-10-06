@@ -6,6 +6,7 @@ from typing import Mapping
 
 MANDATORY_RECLAIM_REASON_PREFIX = "MANDATORY_REENTRY_PRICE_CROSS"
 ORDINARY_LADDER_TARGET_REASON_PREFIX = "LR_BAND_LADDER_PARITY_TARGET"
+VEC_EXACT_REASON_PREFIX = "VEC_EXACT_"
 
 
 def is_mandatory_reclaim_reason(reason: object) -> bool:
@@ -18,6 +19,11 @@ def is_mandatory_reclaim_reason(reason: object) -> bool:
     return str(reason or "").strip().upper().startswith(
         MANDATORY_RECLAIM_REASON_PREFIX
     )
+
+
+def is_vec_exact_reason(reason: object) -> bool:
+    """PARITY_VEC_EXACT_MODE order (tradier_vec_exact): the reason carries a v12_quick_engine decision of this bar."""
+    return str(reason or "").strip().upper().startswith(VEC_EXACT_REASON_PREFIX)
 
 
 def is_ordinary_ladder_target_reason(reason: object) -> bool:

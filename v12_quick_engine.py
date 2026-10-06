@@ -4752,7 +4752,7 @@ class QuickConfig:
     # NEVER a fixed % loss or profit exit; the legacy fixed branch is deleted from simulate_one.
     DAYTRADE_DC_STOP_TF: str = "OFF"
     DAYTRADE_DC_STOP_BUFFER_PCT: float = 0.25
-    DAYTRADE_DC_TARGET_TF: str = "15m"  # DEF2 2026-10-01 user PROFIT_TARGET dc_high_15m-0.1%
+    DAYTRADE_DC_TARGET_TF: str = "15m,1h,4h"  # 2026-10-06 USER/director ruling 4 (within 0.1% on 15m/1h/4h, two-sided). Was "15m". DEF2 2026-10-01 user PROFIT_TARGET dc_high_15m-0.1%
     DAYTRADE_DC_TARGET_BUFFER_PCT: float = 0.10
     # 2026-09-29 grey-switch rewire: legacy daytrade DC aliases (tradier live _manage_daytrade_positions
     # 2026-09-24 semantics) — resolved by vec_decisions.dc_channel_exits.resolve_daytrade_dc in BOTH engines;

@@ -155,6 +155,7 @@ from tradier_route_contract import (
     flat_entry_data_error,
     is_mandatory_reclaim_reason,
     is_ordinary_ladder_target_reason,
+    is_vec_exact_reason,
 )
 from wt_dc_delta import DeltaTracker
 from wt_dc_entry_scorer import score_entry as wt_dc_score_entry
@@ -15092,11 +15093,50 @@ async def _record_submit_decision(trade_manager, position_key: str, action: str,
         return False
 
 
+async def _queue_vec_exact_order(order_queue, trade_manager, position_key, action, reason, conviction, override_qty, record_decision=True):
+    """PARITY LOOP STOCKS 2026-10-06: queue one PARITY_VEC_EXACT_MODE order with the vec qty. Only structural guards remain:
+    no double open, nothing to close, Tradier no-hedge (cannot hold LONG+SHORT), price present. Decision gates/sizing multipliers are the vec's."""
+    account_key, symbol, position_side = parse_position_key(position_key)
+    position = trade_manager.position_manager.get_position(position_key)
+    _amt = abs(float(getattr(position, 'positionAmt', 0) or 0)) if position else 0.0
+    if action in ("CLOSE", "REDUCE", "AUGMENT") and _amt <= 0:
+        return "VEC_EXACT_NO_POSITION"
+    if action == "OPEN" and _amt > 0:
+        return "VEC_EXACT_ALREADY_OPEN"
+    if action in ("OPEN", "AUGMENT") and trade_manager.position_manager:
+        _opp = trade_manager.position_manager.get_position(construct_position_key(account_key, symbol, "SHORT" if position_side == "LONG" else "LONG"))
+        if _opp and abs(float(getattr(_opp, 'positionAmt', 0) or 0)) > 0:
+            return "VEC_EXACT_OPPOSING_POSITION"
+    _gcp = await trade_manager.get_current_price(symbol)
+    current_price = float(_gcp[0]) if isinstance(_gcp, tuple) and _gcp and _gcp[0] is not None else float(_gcp or 0.0) if not isinstance(_gcp, tuple) else 0.0
+    if current_price <= 0:
+        return "VEC_EXACT_NO_PRICE"
+    quantity = float(override_qty or 0.0)
+    if action in ("CLOSE", "REDUCE"):
+        quantity = _amt if action == "CLOSE" else min(quantity, _amt)
+    if quantity <= 0:
+        return "VEC_EXACT_NO_QTY"
+    side = ("BUY" if position_side == "LONG" else "SELL") if action in ("OPEN", "AUGMENT") else ("SELL" if position_side == "LONG" else "BUY")
+    order = {'account_key': account_key, 'symbol': symbol, 'position_side': position_side, 'side': side, 'quantity': quantity, 'action': action,
+             'reason': reason, 'current_price': current_price, 'priority': conviction, 'order_id': f"{position_key}_{action}_{int(time.time())}", 'override_qty': quantity}
+    success, msg = await order_queue.add_order(order)
+    if not success:
+        return f"QUEUE_ADD_REFUSED:{msg}"
+    if record_decision:
+        await _record_submit_decision(trade_manager, position_key, action, reason, quantity, current_price, side, conviction)
+    return "SUCCESS"
+
+
 async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_key: str, action: str, reason: str, conviction: float = 50.0, override_qty: float = None, record_decision: bool = True):
     try:
         _mandatory_reentry_qta = is_mandatory_reclaim_reason(reason)
         _ordinary_parity_qta = is_ordinary_ladder_target_reason(reason)
         account_key, _, _ = parse_position_key(position_key)
+        # PARITY LOOP STOCKS 2026-10-06 (director ruling "NO GATES"): a VEC_EXACT order is the vec decision of this bar -> no queue decision gates/sizing multipliers.
+        if is_vec_exact_reason(reason):
+            _vx_a, _vx_s, _vx_side = parse_position_key(position_key)
+            if bool(_cfg('PARITY_VEC_EXACT_MODE', False, _vx_a, _vx_s, _vx_side)):
+                return await _queue_vec_exact_order(order_queue, trade_manager, position_key, action, reason, conviction, override_qty, record_decision)
         current_account.set(account_key)
         if ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or '')) and 'CLOSE' not in (action or '').upper() and 'REDUCE' not in (action or '').upper():
             logger.warning(f"[ARROW_QTA_RECEIVED] {position_key} {action} reason={(reason or '')[:90]}")
@@ -26418,6 +26458,16 @@ class TradierTradeManager:
         _is_mandatory_reclaim = is_mandatory_reclaim_reason(reason)
         _is_ladder_parity_route = is_ordinary_ladder_target_reason(reason)
         hedge_for = None # Tradier logic usually doesn't use hedge_for like ez_manage
+        # PARITY LOOP STOCKS 2026-10-06 (director ruling "NO GATES"; NOLOSS has only exceptions): a VEC_EXACT order executes the vec decision with the vec qty -> straight to execute_now.
+        if is_vec_exact_reason(reason) and bool(_cfg('PARITY_VEC_EXACT_MODE', False, account_key, symbol, position_side)):
+            _vx_pos = self.position_manager.get_position(position_key) if self.position_manager else None
+            _vx_amt = abs(float(getattr(_vx_pos, 'positionAmt', 0) or 0)) if _vx_pos else 0.0
+            _vx_qty = float(override_qty if override_qty else quantity)
+            if _is_exit_or_reduce:
+                _vx_qty = min(_vx_qty, _vx_amt)
+            if _vx_qty <= 0:
+                return "VEC_EXACT_NO_QTY"
+            return await self.execute_now(position_key, account_key, symbol, _vx_amt, side, position_side, _vx_qty, current_price, unique_id, reason, bool(is_full_close or action in ('CLOSE', 'FULL_CLOSE')), action)
         # HARD RISK CEILING: no new exposure once broker equity is 50% below
         # its persisted high-water mark. Reductions/closes remain available.
         if not _is_exit_or_reduce and action != 'HEDGE_CLOSE':
@@ -27308,6 +27358,8 @@ class TradierTradeManager:
             return (False, "")
 
     async def execute_now(self, position_key: str, account_key: str, symbol: str, original_position_amt: float, side: str, position_side: str, quantity: float, old_price: float, unique_id: str, reason: str, is_full_close: bool, action: str = None) -> str:
+        # PARITY LOOP STOCKS 2026-10-06: VEC_EXACT order (PARITY_VEC_EXACT_MODE) = the vec decision -> decision gates below are skipped ("NO GATES"; NOLOSS has only exceptions).
+        _vx_ex = is_vec_exact_reason(reason) and bool(_cfg('PARITY_VEC_EXACT_MODE', False, account_key, symbol, position_side))
         # BROKER_SYNC LOGICAL DEMAND — 2026-09-08: 80× same order sent because it thought not received without checking broker.
         # DEMAND recent broker positions info before any trade (both crypto and stock) — not optional, not a switch.
         try:
@@ -27437,7 +27489,7 @@ class TradierTradeManager:
             # ═══ VIGILANCE GUARD (USER EXTREME VIGILANCE 2026-09-28): blocked sym_sides refuse ALL new
             # exposure (opens AND augments); exits/reduces always pass. ═══
             try:
-                if bool(_cfg_auto('VIGILANCE_GUARD_ENABLED', True)) and (not _is_exit_or_reduce) and (not is_reduce):
+                if bool(_cfg_auto('VIGILANCE_GUARD_ENABLED', True)) and (not _is_exit_or_reduce) and (not is_reduce) and not _vx_ex:
                     _vg_blk, _vg_why = vigilance_is_blocked(symbol, position_side)
                     if _vg_blk:
                         # USER 2026-09-28 (2nd mandate): auto-resume the moment the sym_side recovers —
@@ -27458,7 +27510,7 @@ class TradierTradeManager:
             try:
                 if _opens_exposure:
                     _dc_cd, _dc_left = dc_hardstop_cooldown_active(symbol, position_side)
-                    if _dc_cd:
+                    if _dc_cd and not _vx_ex:
                         logger.critical(f"🚨 [DC_HARDSTOP_COOLDOWN_BLOCK] {position_key}: reopen refused, {_dc_left/60.0:.0f}m left — action={action} reason={(reason or '')[:60]}")
                         if lock_acquired and self.redis_manager:
                             await self.redis_manager.delete(exec_lock_key)
@@ -27502,7 +27554,7 @@ class TradierTradeManager:
                 _mtf_skip_short_trd = ((position_side or "LONG") == "SHORT" and bool(_cfg("MTF_ARMED_ENTRY_SKIP_SHORT", True, account_key, symbol, position_side)))
                 if _mtf_skip_short_trd and is_entry_action and bool(_cfg("MTF_ARMED_ENTRY_ENABLED", False, account_key, symbol, position_side)):
                     logger.warning(f"[MTF_GATE_SHORT_SKIP] {position_key}: SHORT entry bypasses MTF armed-gate (A/B: MTF hurts stock shorts -0.20). act={action}")
-                if is_entry_action and not _pxc_back_reentry and not _guar_ra_trd_mtf and not _wf_force_mtf and not _mtf_skip_short_trd and not _i2_mtf_sq_bypass and bool(_cfg("MTF_ARMED_ENTRY_ENABLED", False, account_key, symbol, position_side)):
+                if is_entry_action and not _vx_ex and not _pxc_back_reentry and not _guar_ra_trd_mtf and not _wf_force_mtf and not _mtf_skip_short_trd and not _i2_mtf_sq_bypass and bool(_cfg("MTF_ARMED_ENTRY_ENABLED", False, account_key, symbol, position_side)):
                     import mtf_live_evaluator as _mle
                     if not hasattr(self, "mtf_states"):
                         self.mtf_states = {}
@@ -27531,7 +27583,7 @@ class TradierTradeManager:
             # After a REDUCE/CLOSE on this key, block any re-add for WINDOW_S unless price makes a GENUINE Donchian breakout — kills buy-high/sell-low churn at the ONE gate. Stamped on confirmed reduces only. Stocks: 4-bar 15m levels (no 3m on stocks), fallback prev-bar 1h. LIVE-ACTIVE at default (ENABLED=True/WINDOW 450s, mirrors crypto-live ON) — flagged to coordinator.
             try:
                 _i2_rrg_px_cross = "PRICE_CROSS" in (reason or "").upper() or "DAEMON" in (reason or "").upper() or "GUARANTEED" in (reason or "").upper() or "OBLIGATORY" in (reason or "").upper()
-                if is_augment and position_key and not is_hedge and bool(_cfg_auto("RECENT_REDUCTION_GUARD_ENABLED", True)) and not _i2_rrg_px_cross:
+                if is_augment and position_key and not is_hedge and bool(_cfg_auto("RECENT_REDUCTION_GUARD_ENABLED", True)) and not _i2_rrg_px_cross and not _vx_ex:
                     _i2_rrg_last = _recent_reduces.get(position_key, 0)
                     _i2_rrg_since = time.time() - _i2_rrg_last
                     _i2_rrg_win = float(_cfg_auto("RECENT_REDUCTION_GUARD_WINDOW_S", 450.0))
@@ -27577,7 +27629,7 @@ class TradierTradeManager:
                 _orb_act = (action or "").upper()
                 _orb_is_open = (("OPEN" in _orb_act or "ENTRY" in _orb_act or "REENTRY" in _orb_act)
                                 and "REDUCE" not in _orb_act and "CLOSE" not in _orb_act and "HEDGE" not in _orb_act)
-                if _orb_is_open and bool(getattr(config, "OPEN_RATE_BREAKER_ENABLED", True)):
+                if _orb_is_open and bool(getattr(config, "OPEN_RATE_BREAKER_ENABLED", True)) and not _vx_ex:
                     _orb_win = float(getattr(config, "OPEN_RATE_WINDOW_SEC", 60.0))
                     _orb_max = int(getattr(config, "OPEN_RATE_MAX", 15))
                     _orb_now = time.time()
@@ -27615,7 +27667,7 @@ class TradierTradeManager:
             # Only fires on fresh opens where the position is currently flat (positionAmt==0).
             # Augments on existing open positions are NOT gated here — they pass through.
             _dg_is_flat_open = abs(float(original_position_amt or 0)) < 0.0001
-            if account_key in {'trb', 'trc', 'tra'} and is_entry_action and not _is_mandatory_reclaim and not _is_ladder_parity and not _is_exit_or_reduce and _dg_is_flat_open:
+            if account_key in {'trb', 'trc', 'tra'} and is_entry_action and not _is_mandatory_reclaim and not _is_ladder_parity and not _is_exit_or_reduce and _dg_is_flat_open and not _vx_ex:
                 _dg_block, _dg_tag = self._disaster_guard_for_entry(position_key, account_key, symbol, position_side, float(quantity), float(old_price), reason)
                 if _dg_block:
                     logger.critical(f"🛑 [DISASTER_GUARD_BLOCKED_FORCE_OPEN] {position_key}: {_dg_tag} reason={reason}")
@@ -27632,7 +27684,7 @@ class TradierTradeManager:
             # CHURN_FIX #1 (USER 2026-09-28): _opens_exposure closes the reclaim/ladder-parity/
             # REENTRY_OPEN/None-action leak — a trades:0 side can no longer be re-opened by any path.
             _ps_gate_entry = is_entry_action or (_opens_exposure and bool(_cfg_auto('PER_SYM_GATE_FLAT_OPEN_ENFORCE', True)))
-            if account_key in {'trb', 'trc', 'tra'} and _ps_gate_entry and not _is_exit_or_reduce and 'HEDGE' not in (reason or '').upper():
+            if account_key in {'trb', 'trc', 'tra'} and _ps_gate_entry and not _is_exit_or_reduce and 'HEDGE' not in (reason or '').upper() and not _vx_ex:
                 try:
                     _live_ok = True
                     _live_reason = "unknown"
@@ -27805,7 +27857,7 @@ class TradierTradeManager:
                                     logger.info(f"↗ [HTF_VETO_HA_BYPASS] {position_key}: veto would fire but lifted by HA (15m={_htfv_ha15} 1h={_htfv_ha1}) — letting entry through")
                         except Exception as _htfv_ha_e:
                             logger.debug(f"[HTF_VETO_HA_BYPASS] {position_key}: check skipped ({type(_htfv_ha_e).__name__})")
-                        if not _htfv_aligned and not _htfv_ha_bypass:
+                        if not _htfv_aligned and not _htfv_ha_bypass and not _vx_ex:
                             logger.warning(f"[HTF_TREND_VETO] {position_key}: BLOCKED action={action} is_long={is_long} wt1_D={_htfv_wt1_D:.2f} wt2_D={_htfv_wt2_D:.2f} reason={(reason or '')[:50]}")
                             if lock_acquired and self.redis_manager:
                                 await self.redis_manager.delete(exec_lock_key)
@@ -27837,7 +27889,7 @@ class TradierTradeManager:
                         _htfr_data_ok = abs(_htfr_wt1_D) > 1e-9 and abs(_htfr_wt2_D) > 1e-9
                         if _htfr_data_ok:
                             _htfr_supports = (is_long and _htfr_wt1_D > _htfr_wt2_D) or ((not is_long) and _htfr_wt1_D < _htfr_wt2_D)
-                            if _htfr_supports:
+                            if _htfr_supports and not _vx_ex:
                                 logger.warning(f"[HTF_TREND_VETO_ON_REDUCE] {position_key}: BLOCKED action={action} is_long={is_long} wt1_D={_htfr_wt1_D:.2f} wt2_D={_htfr_wt2_D:.2f} reason={(reason or '')[:50]} (HTF still supports side — hold)")
                                 if lock_acquired and self.redis_manager:
                                     await self.redis_manager.delete(exec_lock_key)
@@ -27864,7 +27916,7 @@ class TradierTradeManager:
                         # For LONG: need LH closed OR LL forming; for SHORT: need HL? mirror to same check per user spec (LH OR LL)
                         _blk_pass = _blk_closed_lh or _blk_forming_ll if is_long else (_blk_closed_hl or _blk_forming_ll)
                         # Strict per user spec: either LH in latest closed 15m bar OR LL in currently forming candle (vv shorts)
-                        if not _blk_pass:
+                        if not _blk_pass and not _vx_ex:
                             logger.warning(f"[EXIT_BLOCKER_LH_LL] {position_key}: BLOCKED action={action} reason={(reason or '')[:60]} — no LH closed (pk={_blk_pk_s}) nor LL forming (low={_blk_low:.4f} prev={_blk_low_prev:.4f})")
                             if lock_acquired and self.redis_manager:
                                 await self.redis_manager.delete(exec_lock_key)
@@ -27878,7 +27930,7 @@ class TradierTradeManager:
                 'WT_3M_FORCE_OPEN_BYPASS_GATES', True,
                 account_key, symbol, position_side,
             ))
-            if is_augment and recent_signal_ts > 0 and time.time() - recent_signal_ts < _cfg_auto('AUGMENTATION_COOLDOWN_SECONDS', 120.0) and not _wt3m_force_open and not _is_mandatory_reclaim and not _is_ladder_parity:
+            if is_augment and not _vx_ex and recent_signal_ts > 0 and time.time() - recent_signal_ts < _cfg_auto('AUGMENTATION_COOLDOWN_SECONDS', 120.0) and not _wt3m_force_open and not _is_mandatory_reclaim and not _is_ladder_parity:
                 logger.warning(f"[EXECUTE_NOW_BLOCKED] {position_key}: Augmentation cooldown active")
                 if lock_acquired and self.redis_manager:
                     await self.redis_manager.delete(exec_lock_key)
@@ -27899,7 +27951,7 @@ class TradierTradeManager:
                     )
                 )
             )
-            if is_reduce and not _e02_contract_reduce and recent_signal_ts > 0 and time.time() - recent_signal_ts < _cfg_auto('REDUCTION_COOLDOWN_SECONDS', 30.0):
+            if is_reduce and not _e02_contract_reduce and not _vx_ex and recent_signal_ts > 0 and time.time() - recent_signal_ts < _cfg_auto('REDUCTION_COOLDOWN_SECONDS', 30.0):
                 position = self.position_manager.positions.get(position_key) if self.position_manager else None
                 position_gain = getattr(position, 'gain', 0.0) if position else 0.0
                 # Cooldown applies regardless of gain — no bypass for any loss level
@@ -27993,6 +28045,8 @@ class TradierTradeManager:
                         logger.debug(f"[BB_RECOVERY_EXIT_BYPASS] {position_key}: error: {_br_e}")
                 if not _ung_active_t:
                     pass  # master switch OFF (config_tradier.UNIVERSAL_NOLOSS_GATE=False) — targeted, not blanket; technical exits fire freely
+                elif _vx_ex:
+                    pass  # PARITY LOOP STOCKS 2026-10-06: NOLOSS exception — a vec-decided close executes at a loss (director/user ruling)
                 elif _e02_contract_reduce:
                     logger.warning(
                         f"[EXECUTE_NOW_E02_BYPASS] {position_key}: "
@@ -28140,7 +28194,7 @@ class TradierTradeManager:
                     _compare_file = Path(_cfg_auto('BASE_PATH', "/users/niels/documents/binance")) / "data" / "live_vs_vec_compare.jsonl"
                     with open(str(_compare_file), "a") as _cf: _cf.write(json.dumps(_compare_eb) + "\n")
                     if _divergent_eb: logger.warning(f"⚠️ [LIVE_VS_VEC_DIVERGENCE] emergency_brake divergence on {position_key} action={action}: live_blocked={_live_eb_blocked} ({_live_eb_reason}) vs vec_blocked={_vec_eb_blocked} ({_vec_eb_res})")
-                    if bool(_cfg_auto('LIVE_VEC_EMERGENCY_BRAKE_ENABLED', False)):
+                    if bool(_cfg_auto('LIVE_VEC_EMERGENCY_BRAKE_ENABLED', False)) and not _vx_ex:
                         if _vec_eb_blocked:
                             logger.critical(f"🛑 [LIVE_VEC_EMERGENCY_BRAKE] {position_key}: VEC BRAKE ENFORCED! reason={_vec_eb_res}")
                             if lock_acquired and self.redis_manager: await self.redis_manager.delete(exec_lock_key)
@@ -28148,7 +28202,7 @@ class TradierTradeManager:
                         _live_eb_blocked = False
                 except Exception as _eb_sh_err:
                     logger.warning(f"[LIVE_VEC_EMERGENCY_BRAKE_SHADOW_ERR] {type(_eb_sh_err).__name__}: {_eb_sh_err}")
-                if _live_eb_blocked:
+                if _live_eb_blocked and not _vx_ex:
                     if _live_eb_reason == "EMERGENCY_BRAKE_MAX_ENTRIES":
                         logger.critical(f"🛑 [EMERGENCY_BRAKE] {_acct}: {_cache['entries']} entries/hr — HALTED. Max 500. Glitch detected.")
                         if lock_acquired and self.redis_manager: await self.redis_manager.delete(exec_lock_key)
@@ -28186,7 +28240,7 @@ class TradierTradeManager:
                 _compare_file = Path(_cfg_auto('BASE_PATH', "/users/niels/documents/binance")) / "data" / "live_vs_vec_compare.jsonl"
                 with open(str(_compare_file), "a") as _cf: _cf.write(json.dumps(_compare_q) + "\n")
                 if _divergent_q: logger.warning(f"⚠️ [LIVE_VS_VEC_DIVERGENCE] quarantine_strategy divergence on {position_key} action={action}: live_blocked={_live_q_blocked} ({_live_q_name}) vs vec_blocked={_vec_q_blocked} ({_vec_q_res})")
-                if bool(_cfg_auto('LIVE_VEC_QUARANTINE_STRATEGY_ENABLED', False)):
+                if bool(_cfg_auto('LIVE_VEC_QUARANTINE_STRATEGY_ENABLED', False)) and not _vx_ex:
                     if _vec_q_blocked:
                         logger.warning(f"⛔ [LIVE_VEC_QUARANTINE_BLOCK] {position_key}: VEC QUARANTINE ENFORCED! reason='{_reason_key}' matches quarantined '{_vec_q_res}'")
                         if lock_acquired and self.redis_manager: await self.redis_manager.delete(exec_lock_key)
@@ -28310,7 +28364,7 @@ class TradierTradeManager:
                                 # ── FUNDING_GATE_TRADIER (P/C ratio analogue) ──
                                 if _fg_enabled:
                                     _fg_apply = (not is_hedge) or bool(_cfg_auto('FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED', False))
-                                    if _fg_apply:
+                                    if _fg_apply and not _vx_ex:
                                         _prefer_near = bool(_cfg_auto('FUNDING_GATE_TRADIER_NEAR_MONEY_PREFER', True))
                                         _pc_long_max = float(_cfg_auto('FUNDING_GATE_PC_RATIO_LONG_MAX', 1.2))
                                         _pc_short_min = float(_cfg_auto('FUNDING_GATE_PC_RATIO_SHORT_MIN', 0.83))
@@ -28359,7 +28413,7 @@ class TradierTradeManager:
                                             if _px_old > 0 and current_price is not None and current_price > 0:
                                                 _px_chg_pct = (float(current_price) - _px_old) / _px_old * 100.0
                                         except Exception: _px_chg_pct = None
-                                        if _oi_chg is not None and _px_chg_pct is not None and abs(_oi_chg) >= _oi_min_pct and abs(_px_chg_pct) >= _oi_px_min_pct:
+                                        if _oi_chg is not None and _px_chg_pct is not None and abs(_oi_chg) >= _oi_min_pct and abs(_px_chg_pct) >= _oi_px_min_pct and not _vx_ex:
                                             _px_up = _px_chg_pct > 0; _oi_up = _oi_chg > 0
                                             if is_long:
                                                 if _px_up and not _oi_up:
@@ -34744,16 +34798,6 @@ class StockDaytradeWing:
             if not allow_long and not allow_short: return
     async def _manage_daytrade_positions(self, snapshot: dict):
         acc = self.account_key
-        stop_pct = _cfg_auto('DC_DAYTRADE_STOP_PCT', 0.015)
-        # 2026-09-24: dc level variants for daytrade stop (vectorizable, npz 15m has dc, 3/5m not in npz)
-        stop_use_dc_15m = bool(_cfg_auto('DC_DAYTRADE_STOP_USE_DC_15M', False) or _cfg_auto('TRADIER_DC_DAYTRADE_STOP_USE_DC_15M', False))
-        stop_use_dc4_15m = bool(_cfg_auto('DC_DAYTRADE_STOP_USE_DC4_15M', False) or _cfg_auto('TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M', False))
-        target_use_dc_15m = bool(_cfg_auto('DC_DAYTRADE_TARGET_USE_DC_15M', False) or _cfg_auto('TRADIER_DC_DAYTRADE_TARGET_USE_DC_15M', False))
-        target_use_dc4_15m = bool(_cfg_auto('DC_DAYTRADE_TARGET_USE_DC4_15M', False) or _cfg_auto('TRADIER_DC_DAYTRADE_TARGET_USE_DC4_15M', False))
-        target_dc_buffer = float(_cfg_auto('DC_DAYTRADE_TARGET_DC_BUFFER_PCT', _cfg_auto('TRADIER_DC_DAYTRADE_TARGET_DC_BUFFER_PCT', 0.002)) or 0.002)
-        target_pct = _cfg_auto('DC_DAYTRADE_TARGET_PCT', 0.01)
-        max_hold = _cfg_auto('DC_DAYTRADE_MAX_HOLD_MINUTES', 240.0)
-        noloss_min = _cfg_auto('NOLOSS_MIN_PROFIT_PCT_TRADIER', 1.0) / 100.0
         positions = self.trade_manager.position_manager.get_positions_by_account(acc)
         for pk, pos in list(positions.items()):
             if getattr(pos, 'trade_wing', 'swing') != 'daytrade': continue
@@ -34765,65 +34809,17 @@ class StockDaytradeWing:
             price, _ = await self.trade_manager.get_current_price(pos.symbol)
             price = float(price or 0)
             if price <= 0: continue
-            gain_pct = ((price - entry) / entry) if is_long else ((entry - price) / entry)
-            opened_at = getattr(pos, 'opened_at', None)
-            age_min = 0.0
-            if opened_at:
-                ots = opened_at.timestamp() if hasattr(opened_at, 'timestamp') else float(opened_at)
-                age_min = (time.time() - ots) / 60.0
             should_exit, exit_reason = False, ""
-            # 2026-05-16: ATR-aware effective DT target (DEFAULT OFF behind DT_TARGET_ATR_ENABLED flag).
-            # Pull short-horizon ATR (5m primary, 15m fallback) from snapshot. Use 2× ATR / entry
-            # as target when ATR available — beats a fixed 0.5–1% target that often clips winners
-            # before they breathe. `target_pct` (config knob) is the no-ATR fallback. Reason label
-            # switches to DT_TARGET_ATR when ATR-driven so logs are grep-able. Flag default False:
-            # legacy fixed-target behavior preserved until sweep-validated.
-            _dt_atr_enabled = bool(_cfg_auto('DT_TARGET_ATR_ENABLED', False))
-            _effective_target = max(target_pct, noloss_min)
-            _atr_target_pct = 0.0
-            if _dt_atr_enabled:
-                _sym_data_t1 = snapshot.get(pos.symbol.upper(), {}) or {}
-                _atr_5m_t1 = safe_fetch_float(_sym_data_t1.get('atr_5m', 0))
-                _atr_15m_t1 = safe_fetch_float(_sym_data_t1.get('atr_15m', 0))
-                _atr_t1 = _atr_5m_t1 if _atr_5m_t1 > 0 else _atr_15m_t1
-                _atr_target_pct = (2.0 * _atr_t1 / entry) if (_atr_t1 > 0 and entry > 0) else 0.0
-                _effective_target = max(_atr_target_pct, target_pct, noloss_min)
-            if gain_pct <= -stop_pct and gain_pct < -0.015:
-                logger.warning(f"📊 [DAYTRADE] DT_STOP BLOCKED by STRICT_NO_LOSS: {pos.symbol} gain={gain_pct:.2%} — NEVER close at a loss")
-                should_exit = False; exit_reason = ""
-            # 2026-09-24: dc level stop variants (vectorizable, 15m) — when enabled, use dc_low/high_15m or dc_low4/high4_15m as stop
-            elif (stop_use_dc_15m or stop_use_dc4_15m) and not should_exit:
-                _sym_data_stop = snapshot.get(pos.symbol.upper(), {}) or {}
-                _dc_stop = 0
-                if stop_use_dc4_15m:
-                    _dc_stop = safe_fetch_float(_sym_data_stop.get('dc_low4_15m' if is_long else 'dc_high4_15m', 0))
-                if stop_use_dc_15m and _dc_stop == 0:
-                    _dc_stop = safe_fetch_float(_sym_data_stop.get('dc_low_15m' if is_long else 'dc_high_15m', 0))
-                if _dc_stop > 0:
-                    if (is_long and price < _dc_stop) or (not is_long and price > _dc_stop):
-                        should_exit = True; exit_reason = f"DT_DC_{'4_' if stop_use_dc4_15m else ''}15M_STOP {gain_pct:.2%} dc={_dc_stop:.2f}"
-            # 2026-09-24: dc level target variants (near dc for breakout re-entry) — several % via TEMPLATE already sweepable, plus dc
-            elif (target_use_dc_15m or target_use_dc4_15m) and not should_exit:
-                _sym_data_tgt = snapshot.get(pos.symbol.upper(), {}) or {}
-                _dc_tgt = 0
-                if target_use_dc4_15m:
-                    _dc_tgt = safe_fetch_float(_sym_data_tgt.get('dc_high4_15m' if is_long else 'dc_low4_15m', 0))
-                if target_use_dc_15m and _dc_tgt == 0:
-                    _dc_tgt = safe_fetch_float(_sym_data_tgt.get('dc_high_15m' if is_long else 'dc_low_15m', 0))
-                if _dc_tgt > 0 and abs(price - _dc_tgt) / _dc_tgt < target_dc_buffer:
-                    should_exit = True; exit_reason = f"DT_DC_{'4_' if target_use_dc4_15m else ''}15M_TARGET {gain_pct:.2%} dc={_dc_tgt:.2f}"
-            elif gain_pct >= _effective_target:
-                should_exit = True
-                exit_reason = f"DT_TARGET_ATR {gain_pct:.2%}" if (_dt_atr_enabled and _atr_target_pct > target_pct) else f"DT_TARGET {gain_pct:.2%}"
-            elif age_min >= max_hold and gain_pct >= noloss_min:
-                should_exit = True; exit_reason = f"DT_TIMEOUT {age_min:.0f}m {gain_pct:.2%}"
-            else:
-                sym_data = snapshot.get(pos.symbol.upper(), {})
-                if sym_data:
-                    dc_basis_5m = safe_fetch_float(sym_data.get('dc_basis_5m', 0))
-                    if dc_basis_5m > 0 and gain_pct >= noloss_min:
-                        if (is_long and price < dc_basis_5m) or (not is_long and price > dc_basis_5m):
-                            should_exit = True; exit_reason = f"DT_BASIS_CROSS {gain_pct:.2%}"
+            # PARITY LOOP STOCKS 2026-10-06 (director/USER ruling 1+3): the daytrade wing exits through the SAME shared vec function as process_position
+            # (tm ~10916) and v12 (12933/14439): dc_channel_exits.resolve_daytrade_dc + daytrade_dc_exit -> DAYTRADE_STOP / DAYTRADE_TARGET (two-sided
+            # dc_target_hit within DAYTRADE_DC_TARGET_BUFFER_PCT 0.10% of dc_high/dc_low on the DAYTRADE_DC_*_TF list) and the legacy DC_DAYTRADE_*_USE_DC(4)_15M
+            # aliases, each behind its TEMPLATE switch. Removed (no vec twin): fixed-% DT_TARGET / DT_TARGET_ATR, DT_TIMEOUT, DT_BASIS_CROSS (5m), and the
+            # STRICT_NO_LOSS stop block (NOLOSS has only exceptions: a vec-decided technical close executes at a loss). Backup before_dt_wing_shared_dc_exits_*.
+            _dt_sym_data = snapshot.get(pos.symbol.upper(), {}) or {}
+            _dt_get = lambda _k, _d, _s=pos.symbol, _sd=pos.position_side: _cfg(_k, _d, acc, _s, _sd)
+            _dt_stop_specs, _dt_tgt_specs = _dc_channel_exits.resolve_daytrade_dc(_dt_get)
+            if _dt_stop_specs or _dt_tgt_specs:
+                should_exit, exit_reason = _dc_channel_exits.daytrade_dc_exit(price, is_long, _dt_stop_specs, _dt_tgt_specs, lambda _f, _d=_dt_sym_data: safe_fetch_float(_d.get(_f, 0), 0.0))
             # P2-C: GR Phase 2 augment — if Phase 1 entry and price retest dc_basis + WT confirm
             if (not should_exit and _cfg_auto('DC_BREAK_GR_MULT_ENABLED', False)
                     and getattr(pos, '_dc_break_phase', 0) == 1):

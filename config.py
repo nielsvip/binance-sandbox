@@ -4673,7 +4673,7 @@ class Config:
     DAYTRADE_DC_STOP_TF: str = "OFF"  # OFF | 15m | 1h | 4h | '15m,1h' (OR) — LONG px<=dc_low_TF*(1-buf), SHORT px>=dc_high_TF*(1+buf)
     DC_PRIOR_BAR_CHANNEL: bool = True  # 2026-10-06 parity lane B: = QuickConfig; DC STOP exits (DAYTRADE_DC_STOP_TF / TECHNICAL_DC_STOP_TF) compare price with the PRIOR-bar channel dc_*_{tf}_prev (live_twins/dc_prior_bar.py); inert while both STOP TFs are OFF
     DAYTRADE_DC_STOP_BUFFER_PCT: float = 0.25
-    DAYTRADE_DC_TARGET_TF: str = "15m"  # DEF2 2026-10-01 user: PROFIT_TARGET = dc_high_15m-0.1% (short dc_low+0.1%) default 15m; test OFF/15m/1h/4h/combos. was OFF | 15m | 1h | 4h | '15m,1h' — LONG px>=dc_high_TF*(1-buf), SHORT px<=dc_low_TF*(1+buf)
+    DAYTRADE_DC_TARGET_TF: str = "15m,1h,4h"  # 2026-10-06 USER/director ruling 4: within 0.1% of dc_high/dc_low on 15m/1h/4h (two-sided, dc_channel_exits). Was "15m". DEF2 2026-10-01 user: PROFIT_TARGET = dc_high_15m-0.1% (short dc_low+0.1%) default 15m; test OFF/15m/1h/4h/combos. was OFF | 15m | 1h | 4h | '15m,1h' — LONG px>=dc_high_TF*(1-buf), SHORT px<=dc_low_TF*(1+buf)
     DAYTRADE_DC_TARGET_BUFFER_PCT: float = 0.10
     # 2026-10-04 TECHNICAL-DC live twin (EXIT_STRUCTURAL §15 core was vector-only): shared predicate vec_decisions/dc_channel_exits.resolve_technical_dc,
     # hook in process_position after DAYTRADE_DC. OFF/OFF = inert = zero live change until promotion (promoting template bolds is an operator decision).

@@ -3771,7 +3771,7 @@ class TradierConfig:
     # DAYTRADE_DC_*_TF='15m,1h' (BIBLE §15) — promoting that to live is an operator decision.
     DAYTRADE_DC_STOP_TF: str = "15m"
     DAYTRADE_DC_STOP_BUFFER_PCT: float = 0.25
-    DAYTRADE_DC_TARGET_TF: str = "15m"  # DEF2 2026-10-01 user: PROFIT_TARGET = dc_high_15m-0.1% default 15m (was OFF)
+    DAYTRADE_DC_TARGET_TF: str = "15m,1h,4h"  # 2026-10-06 USER ruling: DAYTRADE target only within 0.1% of dc_high/dc_low 15m/1h/4h (= config.py + QuickConfig). Was "15m". DEF2 2026-10-01 user: PROFIT_TARGET = dc_high_15m-0.1% default 15m (was OFF)
     DAYTRADE_DC_TARGET_BUFFER_PCT: float = 0.10
     # 2026-10-04 TECHNICAL-DC live twin (EXIT_STRUCTURAL §15 core was vector-only): shared predicate vec_decisions/dc_channel_exits.resolve_technical_dc,
     # hook in process_position after DAYTRADE_DC. OFF/OFF = inert = zero live change until promotion (promoting template bolds is an operator decision).
