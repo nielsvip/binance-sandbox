@@ -4567,5 +4567,32 @@
     ],
     "timestamp": "2026-10-06T10:15:14.708193+00:00",
     "price": 1.56178976
+  },
+  {
+    "symbol": "MELANIAUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T10:16:58.984802+00:00",
+    "price": 0.10347
+  },
+  {
+    "symbol": "WDCUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T10:19:37.258941+00:00",
+    "price": 432.66534527
+  },
+  {
+    "symbol": "TXNUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 23.7x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T10:23:26.987991+00:00",
+    "price": 294.48877643
   }
 ]
