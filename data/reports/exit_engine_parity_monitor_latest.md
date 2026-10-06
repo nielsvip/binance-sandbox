@@ -1,25 +1,25 @@
 # Exit-engine parity monitor
 
-generated: 2026-10-06T17:00:13.463888+00:00 · lookback: 48.0h
+generated: 2026-10-06T18:00:17.269906+00:00 · lookback: 48.0h
 
-**exit_engine rows in window: 6103** · last: 2026-10-06T16:59:47.870188+00:00
+**exit_engine rows in window: 6207** · last: 2026-10-06T17:59:47.962162+00:00
 
-## 🔴 LEAKS (gate-disabled families that fired = illegal trades): 3211
-- **QUICK_OPEN_STRONG**: 3209
+## 🔴 LEAKS (gate-disabled families that fired = illegal trades): 3295
+- **QUICK_OPEN_STRONG**: 3293
 - **WT_DC_ENTRY (WT_DC_ENTRY_ENABLED=False)**: 2
 
 top leak reasons:
-  -  2985  QUICK_OPEN_STRONG_BUY
-  -   224  QUICK_OPEN_STRONG_SELL
+  -  3063  QUICK_OPEN_STRONG_BUY
+  -   230  QUICK_OPEN_STRONG_SELL
   -     2  WT_DC_ENTRY
 
 → For each: if the path is GOOD (profitable), add its twin to v12_quick_engine + set the gate default ON in config so best cat_side stays default. If BAD, close the code gate so it honors the disabled knob.
 
-## ✅ GATE_ON (legitimately allowed live, has gate): 1770
-- GOLDEN_RULE: 1156
+## ✅ GATE_ON (legitimately allowed live, has gate): 1789
+- GOLDEN_RULE: 1173
 - EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED): 311
 - BB_RECOVERY_EXIT (BB_RECOVERY_EXIT_ENABLED_TRADIER): 118
-- CRYPTO_SPIKE_FADE (CRYPTO_SPIKE_FADE_ENABLED): 37
+- CRYPTO_SPIKE_FADE (CRYPTO_SPIKE_FADE_ENABLED): 39
 - QUICK_REDUCE_STRONG (ABLATION_DISABLE_QUICK_EXIT): 33
 - QUICK_REDUCE_OTHER (ABLATION_DISABLE_QUICK_EXIT): 30
 - WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF): 29
@@ -32,20 +32,20 @@ top leak reasons:
 
 top leaking keys:
   -   139  QUICK_OPEN_STRONG inf:XTZUSDT_LONG
+  -   105  QUICK_OPEN_STRONG inf:THETAUSDT_LONG
   -    99  QUICK_OPEN_STRONG inf:AAVEUSDC_LONG
-  -    93  QUICK_OPEN_STRONG inf:THETAUSDT_LONG
+  -    97  QUICK_OPEN_STRONG inf:EGLDUSDT_LONG
   -    90  QUICK_OPEN_STRONG flz:ETHUSDC_LONG
-  -    90  QUICK_OPEN_STRONG inf:EGLDUSDT_LONG
   -    87  QUICK_OPEN_STRONG inf:1000BONKUSDC_LONG
+  -    81  QUICK_OPEN_STRONG inf:IOTAUSDT_LONG
   -    80  QUICK_OPEN_STRONG ang:DOTUSDT_LONG
-  -    73  QUICK_OPEN_STRONG inf:IOTAUSDT_LONG
-  -    68  QUICK_OPEN_STRONG inf:ARUSDT_LONG
-  -    68  QUICK_OPEN_STRONG ang:YFIUSDT_LONG
-  -    65  QUICK_OPEN_STRONG flz:BNBUSDC_LONG
+  -    73  QUICK_OPEN_STRONG ang:YFIUSDT_LONG
+  -    71  QUICK_OPEN_STRONG inf:ARUSDT_LONG
+  -    67  QUICK_OPEN_STRONG flz:BNBUSDC_LONG
+  -    63  QUICK_OPEN_STRONG flz:ZECUSDC_LONG
   -    62  QUICK_OPEN_STRONG flz:HYPEUSDT_LONG
-  -    62  QUICK_OPEN_STRONG flz:ZECUSDC_LONG
-  -    55  QUICK_OPEN_STRONG fin:ATOMUSDT_LONG
-  -    54  QUICK_OPEN_STRONG flz:BTCUSDC_LONG
+  -    57  QUICK_OPEN_STRONG fin:ATOMUSDT_LONG
+  -    56  QUICK_OPEN_STRONG flz:BTCUSDC_LONG
 
 ## ⛔ UNGATED (family fires live with NO switch — live-side switch hook missing): 1035
 -  1007  RANKING_DIRECT_ALL_GREEN
@@ -63,7 +63,8 @@ top leaking keys:
 -     2  SAFETY_LIQUIDATION
 -     2  SAFETY_MARGIN
 
-## ❔ UNMAPPED (family not in tools/forward_parity/families.py — add it): 5
+## ❔ UNMAPPED (family not in tools/forward_parity/families.py — add it): 6
 -     5  MTF_GR_WT_EXIT_15m_grTFs=3
+-     1  BB_BOUNCE_ENTRY_1h_S
 
-## actions in window: {'OPEN': 1210, 'CLOSE': 1406, 'REDUCE': 180, 'AUGMENT': 13, 'QUICK_OPEN': 3237, 'STRONG_REDUCE': 33, 'NO_PROFIT': 19, 'SCALP_REDUCE': 5}
+## actions in window: {'OPEN': 1230, 'CLOSE': 1406, 'REDUCE': 180, 'AUGMENT': 13, 'QUICK_OPEN': 3321, 'STRONG_REDUCE': 33, 'NO_PROFIT': 19, 'SCALP_REDUCE': 5}

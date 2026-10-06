@@ -15351,7 +15351,8 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
             for _a in _vx.take(_sym, _side, time.time(), ("OPEN",)):
                 _px = safe_fetch_float(_a.get("vec_price"), 0.0)
                 _act, _oside, _qty, _full = _vx.order_args(_a, _side, _amt, _px)
-                _res = await trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=_pk, symbol=_sym, quantity=_qty, current_price=_px, side=_oside, position_side=_side, unique_id=f"VX{int(_a['bar_ts'])}{_a['n']}", is_full_close=_full, action=_act, reason=_vx.tagged_reason(_a), override_qty=_qty, is_hedge=False)
+                _lq, _lov = _vx.live_sizing_args(_act, _qty, _px, config)
+                _res = await trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=_pk, symbol=_sym, quantity=_lq, current_price=_px, side=_oside, position_side=_side, unique_id=f"VX{int(_a['bar_ts'])}{_a['n']}", is_full_close=_full, action=_act, reason=_vx.tagged_reason(_a), override_qty=_lov, is_hedge=False)
                 logger.info(f"[VEC_EXACT] {_pk} {_act} {_a['reason'][:60]} qty={_qty:.6f} -> {str(_res)[:120]}")
         except Exception as _e:
             logger.error(f"[VEC_EXACT] {_pk}: {_e}")

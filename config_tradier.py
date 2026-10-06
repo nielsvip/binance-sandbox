@@ -1828,7 +1828,7 @@ class TradierConfig:
     GOLDEN_RULE_MULT_4H: float = 2.0
     GOLDEN_RULE_MULT_D: float = 3.0
     GOLDEN_RULE_MULT_W: float = 4.0
-    GOLDEN_RULE_REQUIRE_ACTIVATION: bool = True
+    GOLDEN_RULE_REQUIRE_ACTIVATION: bool = False  # 2026-10-06 daily chain (director 17:2xZ stocks-uniform template bold)
     GR_BB_EXTENDED_LONG: float = 0.75
     GR_DC_EXTENDED_LONG: float = 0.65
     GR_FILTER_ALL_ENTRIES: bool = False
@@ -3501,7 +3501,7 @@ class TradierConfig:
     BOUNCE_REENTRY_K_RESET_SHORT_TRADIER: int = 65  # 2026-04-26 WIRED — tradier_manage.py:5450 + 8344. SHORT mirror. Previously DEAD_CONFIRMED (priority 90).
     # ═══ SAFETY SWITCHES (2026-04-16 audit) ═══
     TRADIER_REQUIRE_TRADEABLE_KEY: bool = True     # Gate entry at execute_now if not in tradeable_keys
-    TRADIER_LS_RATIO_SIZING_ENABLED: bool = False  # BIBLE 68.1 2026-10-06 (director): execute_now L/S RATIO_BOOST_x1.5 / RATIO_CUT_x0.6 entry sizing has NO vec twin -> off on both sides (QuickConfig False). True only once v12 sizes the same way.
+    TRADIER_LS_RATIO_SIZING_ENABLED: bool = True  # USER 2026-10-06 (binding): live sizing only, not vectorized — sizing is live's job (execute_now L/S RATIO_BOOST x1.5 / RATIO_CUT x0.6, also on VEC_EXACT orders); QuickConfig mirror True for switch_parity symmetry.
     TRADIER_RATIO_REQUIRE_MIN_GAIN: bool = False   # Block RATIO_BOOST on positions with gain < min
     TRADIER_RATIO_BOOST_MIN_GAIN_PCT: float = 1.0  # Min gain for ratio boost to fire
     TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED: bool = False  # True=legacy (bypass after 48h); False=always enforce stoch
@@ -3829,7 +3829,7 @@ class TradierConfig:
     HLR_TOP_EXIT_LIVE_SANCTIONED: bool = False  # 2026-10-02 SELL_TOP sanction mirror (stocks live HLR = stubs-only; stays False).
     HLR_TOP_RECROSS_BYPASS_ENABLED: bool = False  # 2026-10-02 recross-bypass mirror (stocks).
     HLR_RECROSS_BYPASS_BARS: int = 32  # window (15m bars) for the SELL_TOP recross bypass.
-    LH_LL_TOP_EXIT_ENABLED: bool = False  # 2026-10-04 LH/LL top exit mirror (stocks): structure-armed top/bottom exit, sweep-gated.
+    LH_LL_TOP_EXIT_ENABLED: bool = True  # 2026-10-06 daily chain (stocks-uniform template bold); was False.  2026-10-04 LH/LL top exit mirror (stocks): structure-armed top/bottom exit, sweep-gated.
     LH_LL_TOP_EXIT_STRUCT_TF: str = "OFF"  # "4h" | "D" | "4h,D" (OR) — which HTF bar structure arms the exit.
     LH_LL_TOP_EXIT_STRUCT_MODE: str = "LH_LL"  # "LH" | "LL" | "LH_LL" | "LH_AND_LL" (short mirrors to HH/HL).
     LH_LL_TOP_EXIT_MODE: str = "EITHER"  # "WT15M" | "DC1H" | "EITHER" | "BOTH" (BOTH = WT cross into 1h edge).
@@ -4604,7 +4604,7 @@ class TradierConfig:
     ATR_ADAPTIVE_SIZING_ENABLED: bool = False  # BACKTEST_CHANGE_135: Inverse ATR sizing (high vol = smaller)
     ATR_ADAPTIVE_SIZING_TARGET_PCT: float = 1.5  # 2026-04-26: 12% target (was 2%) — Phase 8 winner setting
     ATR_ADAPTIVE_STOP_ENABLED: bool = True  # BACKTEST_CHANGE_130: ATR-based sizing reduction (not stop — STRICT_NO_LOSS)
-    ATR_ADAPTIVE_STOP_MULT: float = 2.0  # BACKTEST_CHANGE_130: ATR(14) x this = risk distance
+    ATR_ADAPTIVE_STOP_MULT: float = 2.5  # 2026-10-06 daily chain (stocks-uniform template bold), was 2.0;  BACKTEST_CHANGE_130: ATR(14) x this = risk distance
     ATR_ADAPTIVE_STOP_TF: str = '1h'
     ATR_LONG_WINDOW = 100
     AUGMENT_BLOWPAST_ENABLED: bool = True  # gain >= 3×MIN_GAIN, conviction 90. Highest conviction.
@@ -4653,7 +4653,7 @@ class TradierConfig:
     BB_RSI_STOCH_RSI_MAX: float = 40.0  # 2026-05-23: was 30
     BB_RSI_STOCH_K_MAX: float = 30.0  # 2026-05-23: was 20
     BB_PULLBACK_GATE_ENABLED: bool = True  # 2026-05-23: SWEEP WINNER — ΔSharpe +0.0056 vs baseline, only positive arm
-    BB_PULLBACK_GATE_TF: str = '15m'
+    BB_PULLBACK_GATE_TF: str = 'OFF'  # 2026-10-06 daily chain (stocks-uniform template bold), was '15m'
     BB_PULLBACK_GATE_LONG_MAX: float = 0.30
     BB_PULLBACK_GATE_SHORT_MIN: float = 0.70
     BB_SQUEEZE_COOLDOWN: float = 300.0  # Seconds between BB squeeze entries per symbol

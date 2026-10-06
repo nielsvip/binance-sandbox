@@ -768,6 +768,10 @@ def verify_default_surfaces(
                 "class": "",
             }
             ob = other_bolds.get(k, "<absent>")
+            if ob == "<absent>":
+                # 2026-10-06 §67: the partner template has no trusted bold row (absent, or untrusted on a host without the promotion record) ->
+                # the partner's cat_side_defaults_4 value is the side truth (DC_HARD_STOP_TF STOCKS_LONG 'D' vs STOCKS_SHORT cat '4h' = side split, not hard)
+                ob = (cat_file.get(other) or {}).get(k, "<absent>")
             row["other_bold"] = ob
             row["global_differs"] = gv != "<absent>" and not _same_val(bv, gv)
             row["quick_differs"] = qv != "<absent>" and not _same_val(bv, qv)
@@ -819,8 +823,10 @@ def sync_default_surfaces(
     root: Path = None,
     template_dir: str = "SPREADSHEETS",
     keys: list = None,
+    only_files: list = None,
 ) -> dict:
-    """Plan (default) or apply template-bold -> global edits. Apply needs explicit unlock."""
+    """Plan (default) or apply template-bold -> global edits. Apply needs explicit unlock.
+    only_files: apply only edits to these file names (the rest stay in rep["planned_other_files"] for their owner)."""
     root = Path(root) if root else _ROOT()
     rep = {"planned": [], "needs_manual": [], "applied": [], "error": ""}
     if apply and not confirm_unlocked:
@@ -862,7 +868,8 @@ def sync_default_surfaces(
         return _overlay_cache[key]
 
     def _plan_edit(fpath, pat, kind, m, cs, k, bv):
-        if (fpath.name, k) in seen:
+        _sk = (fpath.name, k, "overlay" if kind.startswith("quick-overlay") else "raw")
+        if _sk in seen:
             return
         try:
             lines = fpath.read_text().splitlines(keepends=True)
@@ -883,7 +890,7 @@ def sync_default_surfaces(
         new_val = _render_value(bv, old.group(2))
         if old.group(2).strip() == new_val.strip():
             return
-        seen.add((fpath.name, k))
+        seen.add(_sk)
         rep["planned"].append(
             {
                 "file": fpath.name,
@@ -896,8 +903,33 @@ def sync_default_surfaces(
             }
         )
 
+    try:
+        _cat_all = json.loads((root / "data" / "cat_side_defaults_4.json").read_text())
+    except Exception:
+        _cat_all = {}
+    allb = audit.get("bolds", {})
+
+    def _side_val(s2, k):
+        v = allb.get(s2, {}).get(k, "<absent>")
+        return v if v != "<absent>" else (_cat_all.get(s2) or {}).get(k, "<absent>")
+
+    def _venue_split(sides, k):
+        vs = [_side_val(s2, k) for s2 in sides]
+        vs = [v for v in vs if v != "<absent>"]
+        return len(vs) == 2 and not _same_val(vs[0], vs[1])
+
+    def _plan_overlay_add(v12, m, cs, k, val):
+        if (v12.name, k, "overlay") in seen:
+            return
+        seen.add((v12.name, k, "overlay"))
+        rep["planned"].append({"file": v12.name, "line": 0, "key": k, "cat_side": cs, "kind": "quick-overlay-add", "old": "<raw>", "new": _render_value(val, "'")})
+
+    rep["side_split_info"] = []
     for m in audit["mismatches"]:
-        if m.get("class") not in ("bold-vs-global", "bold-vs-quick"):
+        _cls = m.get("class")
+        # 2026-10-06: a just-promoted key is still `bold-vs-cat` until build_cat_side_defaults_4 runs (the writer syncs before the cat build):
+        # the promoted template bold is the truth, so explicitly requested keys are synced from that class too.
+        if _cls not in ("bold-vs-global", "bold-vs-quick") and not (_cls == "bold-vs-cat" and want and m.get("key") in want):
             continue
         if want and m.get("key") not in want:
             continue
@@ -906,6 +938,11 @@ def sync_default_surfaces(
             rep["needs_manual"].append({**m, "why": "non-scalar bold"})
             continue
         stocks = cs.startswith("STOCKS")
+        venue = ("STOCKS_LONG", "STOCKS_SHORT") if stocks else ("CRYPTO_LONG", "CRYPTO_SHORT")
+        if _venue_split(venue, k):
+            # §67 value-truth: one global cannot hold two side bolds -> cat_side_defaults_4 carries the side truth (informational)
+            rep["side_split_info"].append({"cat_side": cs, "key": k, "sides": {s2: _side_val(s2, k) for s2 in venue}})
+            continue
         if m.get("global_differs"):
             fpath = root / ("config_tradier.py" if stocks else "config.py")
             _plan_edit(
@@ -941,42 +978,45 @@ def sync_default_surfaces(
                     k,
                     bv,
                 )
-            else:
-                allb = audit.get("bolds", {})
-                pin = [
-                    allb.get(s2, {}).get(k, "<absent>")
-                    for s2 in (
-                        ("CRYPTO_LONG", "CRYPTO_SHORT") if has_overlay else CAT_SIDES
-                    )
-                ]
-                if any(p != "<absent>" and not _same_val(p, bv) for p in pin):
-                    rep["needs_manual"].append(
-                        {
-                            **m,
-                            "why": "raw shared with another cat_side at another value — needs overlay line",
-                        }
-                    )
+                continue
+            crypto_vals = [_side_val(s2, k) for s2 in ("CRYPTO_LONG", "CRYPTO_SHORT")]
+            if stocks:
+                # raw carries the crypto truth; stocks-uniform value differs from it -> overlay line (was: needs_manual "needs overlay line")
+                if any(v != "<absent>" and not _same_val(v, bv) for v in crypto_vals) and a1 > a0:
+                    _plan_overlay_add(v12, m, cs, k, bv)
                     continue
-                _plan_edit(
-                    v12,
-                    re.compile(rf"^(\s*{re.escape(k)}\s*:[^=]+=\s*)(.+?)(\s*(#.*)?)$"),
-                    "quick-field",
-                    m,
-                    cs,
-                    k,
-                    bv,
-                )
+            _plan_edit(
+                v12,
+                re.compile(rf"^(\s*{re.escape(k)}\s*:[^=]+=\s*)(.+?)(\s*(#.*)?)$"),
+                "quick-field",
+                m,
+                cs,
+                k,
+                bv,
+            )
+            if not stocks and not has_overlay and a1 > a0 and not _venue_split(("STOCKS_LONG", "STOCKS_SHORT"), k):
+                sv = [_side_val(s2, k) for s2 in ("STOCKS_LONG", "STOCKS_SHORT")]
+                sv = [v for v in sv if v != "<absent>"]
+                if sv and not _same_val(sv[0], bv) and isinstance(sv[0], (bool, int, float, str)):
+                    # the raw edit would move the stocks QuickConfig away from the stocks-uniform bold -> pin stocks with an overlay line
+                    _plan_overlay_add(v12, m, "STOCKS_*", k, sv[0])
+    if only_files:
+        rep["planned_other_files"] = [p for p in rep["planned"] if p["file"] not in set(only_files)]
+        rep["planned"] = [p for p in rep["planned"] if p["file"] in set(only_files)]
     if apply and rep["planned"]:
         by_file = {}
         for p in rep["planned"]:
             by_file.setdefault(p["file"], []).append(p)
         for fname, edits in by_file.items():
             fpath = root / fname
-            bp = root / "backups" / f"before_parity_sync_{_today()}_{fname}"
+            bp = root / "backups" / f"before_parity_sync_{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d%H%M%S')}_{fname}"  # 2026-10-06: was per-day -> a 2nd run the same day overwrote the first backup
             try:
                 shutil.copy2(fpath, bp)
                 lines = fpath.read_text().splitlines(keepends=True)
+                _adds = [p for p in edits if p["kind"] == "quick-overlay-add"]
                 for p in edits:
+                    if p["kind"] == "quick-overlay-add":
+                        continue
                     i = p["line"] - 1
                     mline = re.match(
                         r"^(\s*(?:self\.)?{}[^=]*=\s*)(.+?)(\s*(#.*)?)$".format(
@@ -988,6 +1028,17 @@ def sync_default_surfaces(
                         raise RuntimeError(f"line drift {fname}:{p['line']} {p['key']}")
                     eol = "\n" if lines[i].endswith("\n") else ""
                     lines[i] = f"{mline.group(1)}{p['new']}{mline.group(3) or ''}{eol}"
+                if _adds:
+                    _overlay_cache.clear()
+                    b0, b1 = _overlay_range(lines)
+                    if b1 <= b0:
+                        raise RuntimeError("apply_tradier_defaults not found for overlay add")
+                    ins = b1
+                    while ins - 1 > b0 and lines[ins - 1].strip() == "":
+                        ins -= 1
+                    new_lines = [f"        # parity-sync {_today()}: stocks-uniform bold differs from the raw (crypto) value — §67 overlay\n"]
+                    new_lines += [f"        self.{p['key']} = {p['new']}\n" for p in _adds]
+                    lines[ins:ins] = new_lines
                 fpath.write_text("".join(lines))
                 import py_compile
 
@@ -1381,6 +1432,7 @@ def main(argv=None) -> int:
     p_syn.add_argument(
         "--keys", default=None, help="comma-separated key filter for targeted sync"
     )
+    p_syn.add_argument("--only-files", default=None, help="comma-separated file names to apply (others reported in planned_other_files)")
     p_syn.add_argument("--apply", action="store_true")
     p_syn.add_argument("--confirm-unlocked", action="store_true")
     p_lvs = sub.add_parser(
@@ -1462,6 +1514,7 @@ def main(argv=None) -> int:
             confirm_unlocked=a.confirm_unlocked,
             template_dir=a.template_dir,
             keys=(a.keys.split(",") if a.keys else None),
+            only_files=(a.only_files.split(",") if a.only_files else None),
         )
         print(json.dumps(rep, indent=1, default=str))
         return 0 if not rep.get("error") else 1

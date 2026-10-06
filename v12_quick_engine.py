@@ -4233,7 +4233,7 @@ class QuickConfig:
     STOCKS_WTDC_SCORER_EXIT_ENABLED: bool = True  # stocks: live evaluate_stop WT_DC scorer exit chain twin (opening buffer + 240/60 min hold + NOLOSS + N-of-5 scorer); vec_decisions/stocks_wtdc_scorer_exit.py
     TRADIER_MIN_HOLD_MINUTES_SHORT: float = 60.0  # config_tradier.py:4165 (live evaluate_stop short min hold)
     STOCKS_RTH_ONLY_ENABLED: bool = True  # INERT 2026-10-06: RTH-only is unconditional for stocks (USER: stocks never trade outside market hours); kept only so old overrides parse
-    TRADIER_LS_RATIO_SIZING_ENABLED: bool = False  # BIBLE 68.1 2026-10-06: live tradier execute_now L/S ratio boost/cut sizing has no vec twin -> False on both sides (config_tradier False); never True until a vec twin exists
+    TRADIER_LS_RATIO_SIZING_ENABLED: bool = True  # live sizing only, not vectorized (USER 2026-10-06: sizing is live's job) — mirror of config_tradier for switch_parity symmetry
     KG_STOCKS_HARD_VETO_ENABLED: bool = False  # lane-D 2026-10-06 director ruling: brand-new switch -> default = today-live (False); True = vec-only behaviour test row (lanes B/C build the live twin).  # stocks KG/EMA_9_21 hard veto has no live caller (should_enter_* dead); True = old vec veto
     HAIKU_WINNER_AUGMENT_ENABLED: bool = False  # lane-D 2026-10-06 director ruling: brand-new switch -> default = today-live (False); True = vec-only behaviour test row (lanes B/C build the live twin).  # crypto HaikuOverseer AUGMENT is refused live by STRICT_VEC_PARITY (reason has no allowlist token); True = old vec haiku augment
     KEY_LEVEL_CRASH_EXIT_ENABLED: bool = False  # lane-D 2026-10-06 director ruling: brand-new switch -> default = today-live (False); True = vec-only behaviour test row (lanes B/C build the live twin).  # crypto KEY_LEVEL_CRASH lives only in EPQ check_exit_candidates (ablated live: ABLATION_DISABLE_QUICK_EXIT=True); True = old vec
@@ -4488,7 +4488,7 @@ class QuickConfig:
     REGIME_TRENDING_REENTRY_SIZE_MULT: float = 2.0
     REGIME_TRENDING_SLOT_RESERVE_PCT: float = 0.4
     REGIME_TRENDING_WT_EXIT_VEL: float = -12.0
-    REGIME_TRENDING_WT_REDUCE_FRAC_LOW: float = 0.1
+    REGIME_TRENDING_WT_REDUCE_FRAC_LOW: float = 0.2
     REGIME_TRENDING_WT_REDUCE_FRAC_MED: float = 0.15
     RSI_EXIT_LONG_TRADIER: float = 85.0
     RSI_EXIT_SHORT_TRADIER: float = 15.0
@@ -5191,6 +5191,11 @@ class QuickConfig:
         self.WT_15M_BOUNCE_BB_MAX = 0.9
         self.FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED = True
         self.MTF_BB_REJECT_EXIT_TF = "OFF"
+        # parity-sync 20261006: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
+        self.FAST_RISER_DOUBLE_ENABLED = False
+        self.ATR_ADAPTIVE_STOP_MULT = 2.5
+        self.BB_PULLBACK_GATE_TF = 'OFF'
+        self.GOLDEN_RULE_REQUIRE_ACTIVATION = False
     ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = False  # auto-wired 625
     ABLATION_DISABLE_AUGMENTATION: bool = False  # auto-wired 625
     ABLATION_DISABLE_CHECK_NOLOSS: bool = False  # auto-wired 625
@@ -6146,7 +6151,7 @@ class QuickConfig:
     HLR_TOP_EXIT_LIVE_SANCTIONED: bool = False  # 2026-10-02 SELL_TOP sanction (MOVR §63): vec twin of live QUICK_REDUCE_TECHNICAL_ONLY suppression of HLR_TOP_EXIT — qr fires only when sanctioned per-sym.
     HLR_TOP_RECROSS_BYPASS_ENABLED: bool = False  # 2026-10-02 premature-top backstop (§63): post-SELL_TOP recross reentry bypasses the KG/GR/STOP/DC4H choke within HLR_RECROSS_BYPASS_BARS.
     HLR_RECROSS_BYPASS_BARS: int = 32  # window (15m bars) for the SELL_TOP recross bypass above.
-    LH_LL_TOP_EXIT_ENABLED: bool = False  # 2026-10-04 LH/LL top exit: structure-armed top/bottom exit via WT15M rollover / DC1H touch. Inert until promoted.
+    LH_LL_TOP_EXIT_ENABLED: bool = True  # 2026-10-04 LH/LL top exit: structure-armed top/bottom exit via WT15M rollover / DC1H touch. Inert until promoted.
     LH_LL_TOP_EXIT_STRUCT_TF: str = "OFF"  # "4h" | "D" | "4h,D" (OR).
     LH_LL_TOP_EXIT_STRUCT_MODE: str = "LH_LL"  # "LH" | "LL" | "LH_LL" | "LH_AND_LL" (short mirrors to HH/HL).
     LH_LL_TOP_EXIT_MODE: str = "EITHER"  # "WT15M" | "DC1H" | "EITHER" | "BOTH".
@@ -6773,7 +6778,7 @@ class QuickConfig:
     EZ_REENTRY_QUEUE_CONSUMER_INTERVAL_S: float = 5.0
     FAPI_BASE_URL: str = 'https://fapi.binance.com/fapi/v1'
     FAST_CUT_LOSS_MIN_AGE_MINUTES: float = 15.0
-    FAST_RISER_DOUBLE_ENABLED: bool = False
+    FAST_RISER_DOUBLE_ENABLED: bool = True
     FG_SIZING_ENABLED: bool = False
     FH_MOMENTUM_MAX_POSITIONS: int = 5
     FINAL_SCORE_FILE: Path = Path("data")

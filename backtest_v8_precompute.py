@@ -1981,7 +1981,8 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
     if _stock_live:
         from vec_decisions.stock_live_frames import StepFrames as _StepFrames, forming_values as _forming_values, STEP_TFS as _STEP_TFS
         _sf = _StepFrames(base_df, _stock_auth.get("1h"), _stock_auth.get("4h"), _stock_auth.get("D"))
-        _step_vals = _forming_values(_sf, compute_tf_arrays, tfs=_STEP_TFS)
+        from vec_decisions.stock_live_frames import builder_step_fn as _builder_step_fn
+        _step_vals = _forming_values(_sf, _builder_step_fn(compute_tf_arrays), tfs=_STEP_TFS)
         for _t in _STEP_TFS:
             merged.update(_step_vals.get(_t, {}))
             if _t != base_tf:
@@ -2564,6 +2565,11 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
             cum_vol[i] = running_vol
         vwap_d = np.where(cum_vol > 0, cum_tpv / cum_vol, merged[f"close_{base_tf}"].astype(np.float64)).astype(np.float32)
         merged["vwap_D"] = vwap_d
+    if _stock_live:
+        # option A: the per-step live-frame values are final — re-apply over every post-pass above that rewrote a live field from broadcast /
+        # full-history arrays (lr_trend_*, linearity_4h, lrL_*, bb_width_1h/4h, adx_1h, lr_pct_b_*, volume_sma_1h, choppiness_4h, t_up_15m).
+        for _t in _STEP_TFS:
+            merged.update(_step_vals.get(_t, {}))
     # Save — ATOMICALLY. Sweeps read these NPZ live; a half-written file would corrupt a
     # running sweep. Write to a temp file in the same dir (ends with .npz so savez doesn't
     # re-append it), then os.replace (atomic rename on the same filesystem).

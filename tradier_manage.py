@@ -1,6 +1,7 @@
 # pylint: disable=W,C,R,I
 #!/usr/bin/env python3
 import asyncio
+import order_dedupe_guard as _odg  # 2026-10-06 USER ORDER_DEDUPE_GUARD: broker-confirmed final-state gate on every order
 from live_rally_filters import rally_ok as _rally_ok
 import tradier_filter_tf_twins as _ftf_twins  # PARITY LANE C 2026-10-06: vec entry FILTER_TF predicates (stocks live)
 import datetime as dt
@@ -15093,9 +15094,168 @@ async def _record_submit_decision(trade_manager, position_key: str, action: str,
         return False
 
 
+def _qta_ls_ratio_scale(trade_manager, position_key, position_side, absolute_target):
+    """queue_trade_action L/S ratio entry scale (extracted verbatim 2026-10-06 so VEC_EXACT orders get the identical live sizing — USER: sizing is live's job)."""
+    ls_ratio_scale = 1.0
+    ls_ratio_reason = ""
+    # 2026-09-30 FIX: LS ratio must NOT be bypassed by WT_3M_FORCE_OPEN — 37k long imbalance built via WT_3M longs gap-down while LS ratio was bypassed (LS_RATIO_ENFORCE True but WF bypass skipped scaling). WT_3M now scales like any entry; only mandatory reentry / ladder parity skip.
+    if _cfg_auto('LS_RATIO_ENFORCE_TRADIER', False) and trade_manager.position_manager and not absolute_target:
+        _lv2 = 0.0; _sv2 = 0.0
+        for _pk, _p in trade_manager.position_manager.positions.items():
+            _amt = abs(float(getattr(_p, 'positionAmt', 0) or getattr(_p, 'quantity', 0)))
+            if _amt <= 0: continue
+            _px = float(getattr(_p, 'mark_price', 0) or getattr(_p, 'entry_price', 0))
+            if _px <= 0: continue
+            _val = _amt * _px
+            if _pk.endswith("_LONG"): _lv2 += _val
+            elif _pk.endswith("_SHORT"): _sv2 += _val
+        _adj2 = _ls_ratio_4h_adj_tradier.get("adj", 0.0)
+        _ls_min2 = max(0.30, _cfg_auto('LS_RATIO_MIN_TRADIER', 0.50) + _adj2)
+        _ls_max2 = min(3.00, _cfg_auto('LS_RATIO_MAX_TRADIER', 2.00) + _adj2)
+        _ratio2 = _lv2 / max(_sv2, 1.0)
+        if position_side == "LONG":
+            if _ratio2 > _ls_max2:
+                ls_ratio_scale = max(0.33, min(1.0, _ls_max2 / max(_ratio2, 0.1)))
+                ls_ratio_reason = f"L/S {_ratio2:.2f} > max {_ls_max2:.2f} overweight LONG -> scale {ls_ratio_scale:.2f}"
+                logger.warning(f"[LS_RATIO_SCALE] {position_key}: {ls_ratio_reason}, reducing LONG")
+            elif _ratio2 < _ls_min2:
+                ls_ratio_scale = min(2.0, max(1.0, _ls_min2 / max(_ratio2, 0.1)))
+                ls_ratio_reason = f"L/S {_ratio2:.2f} < min {_ls_min2:.2f} underweight LONG -> scale {ls_ratio_scale:.2f}"
+                logger.warning(f"[LS_RATIO_SCALE] {position_key}: {ls_ratio_reason}, augmenting LONG")
+        elif position_side == "SHORT":
+            if _ratio2 < _ls_min2:
+                ls_ratio_scale = max(0.33, min(1.0, _ratio2 / max(_ls_min2, 0.1)))
+                ls_ratio_reason = f"L/S {_ratio2:.2f} < min {_ls_min2:.2f} overweight SHORT -> scale {ls_ratio_scale:.2f}"
+                logger.warning(f"[LS_RATIO_SCALE] {position_key}: {ls_ratio_reason}, reducing SHORT")
+            elif _ratio2 > _ls_max2:
+                ls_ratio_scale = min(2.0, max(1.0, _ratio2 / max(_ls_max2, 0.1)))
+                ls_ratio_reason = f"L/S {_ratio2:.2f} > max {_ls_max2:.2f} underweight SHORT -> scale {ls_ratio_scale:.2f}"
+                logger.warning(f"[LS_RATIO_SCALE] {position_key}: {ls_ratio_reason}, augmenting SHORT")
+    return ls_ratio_scale, ls_ratio_reason
+
+
+def _qta_entry_sizing(trade_manager, position_key, account_key, symbol, position_side, action, reason, quantity, current_price, ls_ratio_scale, ls_ratio_reason, absolute_target):
+    """queue_trade_action live sizing (L/S scale, BREAKOUT_SIZE_LADDER, D_STRUCT_ENTRY_MULT, SYMBOL_PERF, max order value) — extracted verbatim 2026-10-06
+    so native and VEC_EXACT orders get the IDENTICAL live quantity (USER: sizing is live's job; parity = decisions)."""
+    if ls_ratio_scale != 1.0 and quantity > 0 and action.upper() in ("OPEN", "AUGMENT", "REENTER", "REENTRY", "BUY"):
+        _orig_qty = quantity
+        quantity = max(1.0, quantity * ls_ratio_scale)
+        # round to whole shares for stocks, keep 2 decimals for crypto/fractional
+        try:
+            if quantity >= 10:
+                quantity = round(quantity)
+            else:
+                quantity = round(quantity, 2)
+        except Exception:
+            pass
+        logger.info(f"[LS_RATIO_SCALE_APPLIED] {position_key}: {ls_ratio_reason} qty {_orig_qty:.2f} -> {quantity:.2f} (scale {ls_ratio_scale:.2f}x)")
+    if quantity <= 0:
+        return quantity
+    _absolute_target_order = absolute_target
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 📈 BREAKOUT_SIZE_LADDER — STOCKS (USER 2026-05-30): HIGHER open/reentry/augment qty when price is
+    # strongly extended past ema_200_15m (stocks have no sma_200_15m → ema_200_15m anchor). Tiered
+    # ×1.5/×2/×3 (cap MAX_MULT) by |price-ema_200_15m|/ema_200_15m (LONG above / SHORT below). Entry
+    # actions only; downstream buying-power/QTY checks still apply. Add-to-strength (COUNTER_TREND_ADD_BLOCK
+    # ran at queue top). Fail-open. ROLLBACK: BREAKOUT_SIZE_LADDER_ENABLED=False.
+    # ═══════════════════════════════════════════════════════════════════════════
+    try:
+        if ((not _absolute_target_order)
+                and bool(_cfg_auto('BREAKOUT_SIZE_LADDER_ENABLED', True))
+                and action in ("OPEN", "AUGMENT", "REENTER", "REENTRY")
+                and quantity and quantity > 0):
+            _bsli = trade_manager.get_indicators(symbol) if symbol else {}
+            _bsl_is_long = position_side == "LONG"
+            _bsl_px = float(current_price) if current_price else 0.0
+            _bsl_ema = safe_fetch_float(_bsli.get("ema_200_15m"), 0.0) if _bsli else 0.0
+            if _bsl_px > 0 and _bsl_ema > 0:
+                _bsl_dist = ((_bsl_px - _bsl_ema) / _bsl_ema * 100.0) if _bsl_is_long else ((_bsl_ema - _bsl_px) / _bsl_ema * 100.0)
+                _bsl_mult = 1.0
+                if _bsl_dist >= float(_cfg_auto('BREAKOUT_SIZE_EMA200_T3_PCT', 2.5)):
+                    _bsl_mult = float(_cfg_auto('BREAKOUT_SIZE_EMA200_T3_MULT', 3.0))
+                elif _bsl_dist >= float(_cfg_auto('BREAKOUT_SIZE_EMA200_T2_PCT', 1.5)):
+                    _bsl_mult = float(_cfg_auto('BREAKOUT_SIZE_EMA200_T2_MULT', 2.0))
+                elif _bsl_dist >= float(_cfg_auto('BREAKOUT_SIZE_EMA200_T1_PCT', 1.0)):
+                    _bsl_mult = float(_cfg_auto('BREAKOUT_SIZE_EMA200_T1_MULT', 1.5))
+                if _bsl_mult > 1.0:
+                    _bsl_mult = min(_bsl_mult, float(_cfg("BREAKOUT_SIZE_MAX_MULT", 3.0, account_key, symbol, position_side)))
+                    _bsl_orig = quantity
+                    quantity = quantity * _bsl_mult
+                    logger.warning(f"[BREAKOUT_SIZE_LADDER] {position_key} side={position_side}: dist={_bsl_dist:.2f}% past ema_200_15m → qty {_bsl_orig:.4f}→{quantity:.4f} (×{_bsl_mult}). reason={(reason or '')[:40]}")
+    except Exception as _bsle:
+        logger.warning(f"[BREAKOUT_SIZE_LADDER] {position_key}: check error (fail-open): {_bsle}")
+    try:
+        if ((not _absolute_target_order)
+                and bool(_cfg_auto('D_STRUCT_ENTRY_MULT_ENABLED', True))
+                and action in ("OPEN", "AUGMENT", "REENTER", "REENTRY")
+                and quantity and quantity > 0):
+            _dsm_is_long = position_side == "LONG"
+            _dsm_i = trade_manager.get_indicators(symbol) if symbol else {}
+            _dsm_high = safe_fetch_float(_dsm_i.get("high_D"), 0.0)
+            _dsm_low = safe_fetch_float(_dsm_i.get("low_D"), 0.0)
+            _dsm_highp = safe_fetch_float(_dsm_i.get("high_D_prev"), 0.0)
+            _dsm_lowp = safe_fetch_float(_dsm_i.get("low_D_prev"), 0.0)
+            _dsm_sma200 = safe_fetch_float(_dsm_i.get("sma_200_D"), 0.0)
+            _dsm_wt1_D = safe_fetch_float(_dsm_i.get("wt1_D"), 0.0)
+            if _dsm_high > 0 and _dsm_highp > 0 and _dsm_low > 0 and _dsm_lowp > 0:
+                _dsm_wt1_min = float(_cfg_auto('D_STRUCT_ENTRY_WT1_MIN', -40.0))
+                _dsm_wt1_max = float(_cfg_auto('D_STRUCT_ENTRY_WT1_MAX', 40.0))
+                if _dsm_is_long:
+                    _dsm_ok = (_dsm_high > _dsm_highp and _dsm_low > _dsm_lowp
+                               and (float(current_price) > _dsm_sma200 if _dsm_sma200 > 0 else True)
+                               and (_dsm_wt1_D > _dsm_wt1_min if _dsm_wt1_D != 0 else True))
+                else:
+                    _dsm_ok = (_dsm_high < _dsm_highp and _dsm_low < _dsm_lowp
+                               and (float(current_price) < _dsm_sma200 if _dsm_sma200 > 0 else True)
+                               and (_dsm_wt1_D < _dsm_wt1_max if _dsm_wt1_D != 0 else True))
+                if _dsm_ok:
+                    _dsm_mult = float(_cfg_auto('D_STRUCT_ENTRY_MULT', 1.3))
+                    _dsm_orig = quantity
+                    quantity = quantity * _dsm_mult
+                    logger.warning(f"[D_STRUCT_ENTRY_MULT] {position_key} side={position_side}: D {'HH+HL' if _dsm_is_long else 'LL+LH'} + SMA200 + WT → qty {_dsm_orig:.4f}→{quantity:.4f} (×{_dsm_mult:.2f}). reason={(reason or '')[:40]}")
+    except Exception as _dsme:
+        logger.warning(f"[D_STRUCT_ENTRY_MULT] {position_key}: check error (fail-open): {_dsme}")
+    if (not _absolute_target_order) and config.SYMBOL_PERF_ENABLED and action in ('OPEN', 'AUGMENT', 'REENTRY', 'QUICK_OPEN', 'QUICK_AUGMENT'):
+        try:
+            from utils import get_performance_multiplier
+            _perf_mult = get_performance_multiplier(symbol, default=1.0)
+            quantity = max(1, int(quantity * (0.7 + _perf_mult * 0.3)))
+        except Exception:
+            pass
+    # USER 2026-06-03 NO-EXCEPTIONS: WT_3M_FORCE_OPEN (with-trend, above-200MA, WT-favor build)
+    # must NOT be clamped to the small MAX_ORDER_VALUE — that's the "$100 dribble" cap. It is
+    # bounded instead by DG_MAX_FORCE_OPEN_NOTIONAL_USD (per fire) + WT_3M_FORCE_OPEN_TARGET_USD.
+    _wf_force = ("WT_3M_FORCE_OPEN" in (reason or "").upper()) and bool(_cfg(
+        "WT_3M_FORCE_OPEN_BYPASS_GATES", True, account_key, symbol, position_side,
+    ))
+    max_order_value = (
+        float(
+            _cfg(
+                "LR_BAND_LADDER_CAPACITY_USD",
+                16000.0,
+                account_key,
+                symbol,
+                position_side,
+            )
+        )
+        if _absolute_target_order
+        else (
+            float(_cfg_auto('DG_MAX_FORCE_OPEN_NOTIONAL_USD', 4000.0))
+            if _wf_force
+            else config.MAX_ORDER_VALUE
+        )
+    )
+    order_value = quantity * current_price
+    if order_value > max_order_value:
+        quantity = int(max_order_value / current_price)
+        if config.VERBOSE: logger.debug(f"[queue_trade_action] {symbol} quantity adjusted to {quantity} to respect max_order_value={max_order_value}")
+    return quantity
+
+
 async def _queue_vec_exact_order(order_queue, trade_manager, position_key, action, reason, conviction, override_qty, record_decision=True):
     """PARITY LOOP STOCKS 2026-10-06: queue one PARITY_VEC_EXACT_MODE order with the vec qty. Only structural guards remain:
-    no double open, nothing to close, Tradier no-hedge (cannot hold LONG+SHORT), price present. Decision gates/sizing multipliers are the vec's."""
+    no double open, nothing to close, Tradier no-hedge (cannot hold LONG+SHORT), price present. Decision gates are the vec's; SIZING is live's (USER 2026-10-06):
+    the same _qta_ls_ratio_scale / _qta_entry_sizing a native order gets."""
     account_key, symbol, position_side = parse_position_key(position_key)
     position = trade_manager.position_manager.get_position(position_key)
     _amt = abs(float(getattr(position, 'positionAmt', 0) or 0)) if position else 0.0
@@ -15114,6 +15274,10 @@ async def _queue_vec_exact_order(order_queue, trade_manager, position_key, actio
     quantity = float(override_qty or 0.0)
     if action in ("CLOSE", "REDUCE"):
         quantity = _amt if action == "CLOSE" else min(quantity, _amt)
+    elif action in ("OPEN", "AUGMENT") and quantity > 0:
+        # USER 2026-10-06 (binding): parity = decisions; live sizes. The vec decision gets the SAME live sizing a native order gets.
+        _vx_scale, _vx_sreason = _qta_ls_ratio_scale(trade_manager, position_key, position_side, False) if action == "OPEN" else (1.0, "")
+        quantity = _qta_entry_sizing(trade_manager, position_key, account_key, symbol, position_side, action, reason, quantity, current_price, _vx_scale, _vx_sreason, False)
     if quantity <= 0:
         return "VEC_EXACT_NO_QTY"
     side = ("BUY" if position_side == "LONG" else "SELL") if action in ("OPEN", "AUGMENT") else ("SELL" if position_side == "LONG" else "BUY")
@@ -15685,41 +15849,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                 'WT_3M_FORCE_OPEN_BYPASS_GATES', True, account_key, symbol,
                 position_side,
             ))
-            ls_ratio_scale = 1.0
-            ls_ratio_reason = ""
-            # 2026-09-30 FIX: LS ratio must NOT be bypassed by WT_3M_FORCE_OPEN — 37k long imbalance built via WT_3M longs gap-down while LS ratio was bypassed (LS_RATIO_ENFORCE True but WF bypass skipped scaling). WT_3M now scales like any entry; only mandatory reentry / ladder parity skip.
-            if _cfg_auto('LS_RATIO_ENFORCE_TRADIER', False) and trade_manager.position_manager and not _mandatory_reentry_qta and not _ordinary_parity_qta:
-                _lv2 = 0.0; _sv2 = 0.0
-                for _pk, _p in trade_manager.position_manager.positions.items():
-                    _amt = abs(float(getattr(_p, 'positionAmt', 0) or getattr(_p, 'quantity', 0)))
-                    if _amt <= 0: continue
-                    _px = float(getattr(_p, 'mark_price', 0) or getattr(_p, 'entry_price', 0))
-                    if _px <= 0: continue
-                    _val = _amt * _px
-                    if _pk.endswith("_LONG"): _lv2 += _val
-                    elif _pk.endswith("_SHORT"): _sv2 += _val
-                _adj2 = _ls_ratio_4h_adj_tradier.get("adj", 0.0)
-                _ls_min2 = max(0.30, _cfg_auto('LS_RATIO_MIN_TRADIER', 0.50) + _adj2)
-                _ls_max2 = min(3.00, _cfg_auto('LS_RATIO_MAX_TRADIER', 2.00) + _adj2)
-                _ratio2 = _lv2 / max(_sv2, 1.0)
-                if position_side == "LONG":
-                    if _ratio2 > _ls_max2:
-                        ls_ratio_scale = max(0.33, min(1.0, _ls_max2 / max(_ratio2, 0.1)))
-                        ls_ratio_reason = f"L/S {_ratio2:.2f} > max {_ls_max2:.2f} overweight LONG -> scale {ls_ratio_scale:.2f}"
-                        logger.warning(f"[LS_RATIO_SCALE] {position_key}: {ls_ratio_reason}, reducing LONG")
-                    elif _ratio2 < _ls_min2:
-                        ls_ratio_scale = min(2.0, max(1.0, _ls_min2 / max(_ratio2, 0.1)))
-                        ls_ratio_reason = f"L/S {_ratio2:.2f} < min {_ls_min2:.2f} underweight LONG -> scale {ls_ratio_scale:.2f}"
-                        logger.warning(f"[LS_RATIO_SCALE] {position_key}: {ls_ratio_reason}, augmenting LONG")
-                elif position_side == "SHORT":
-                    if _ratio2 < _ls_min2:
-                        ls_ratio_scale = max(0.33, min(1.0, _ratio2 / max(_ls_min2, 0.1)))
-                        ls_ratio_reason = f"L/S {_ratio2:.2f} < min {_ls_min2:.2f} overweight SHORT -> scale {ls_ratio_scale:.2f}"
-                        logger.warning(f"[LS_RATIO_SCALE] {position_key}: {ls_ratio_reason}, reducing SHORT")
-                    elif _ratio2 > _ls_max2:
-                        ls_ratio_scale = min(2.0, max(1.0, _ratio2 / max(_ls_max2, 0.1)))
-                        ls_ratio_reason = f"L/S {_ratio2:.2f} > max {_ls_max2:.2f} underweight SHORT -> scale {ls_ratio_scale:.2f}"
-                        logger.warning(f"[LS_RATIO_SCALE] {position_key}: {ls_ratio_reason}, augmenting SHORT")
+            ls_ratio_scale, ls_ratio_reason = _qta_ls_ratio_scale(trade_manager, position_key, position_side, _mandatory_reentry_qta or _ordinary_parity_qta)
             side = "BUY" if position_side == "LONG" else "SELL"
         elif action in ["CLOSE", "REDUCE", "SELL"]:
             side = "SELL" if position_side == "LONG" else "BUY"
@@ -15788,121 +15918,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                 quantity = override_qty if override_qty else await trade_manager.calculate_position_size(symbol, current_price, account_key=account_key)
         else:
             return False
-        if 'ls_ratio_scale' in locals() and ls_ratio_scale != 1.0 and quantity > 0 and action.upper() in ("OPEN", "AUGMENT", "REENTER", "REENTRY", "BUY"):
-            _orig_qty = quantity
-            quantity = max(1.0, quantity * ls_ratio_scale)
-            # round to whole shares for stocks, keep 2 decimals for crypto/fractional
-            try:
-                if quantity >= 10:
-                    quantity = round(quantity)
-                else:
-                    quantity = round(quantity, 2)
-            except Exception:
-                pass
-            logger.info(f"[LS_RATIO_SCALE_APPLIED] {position_key}: {ls_ratio_reason} qty {_orig_qty:.2f} -> {quantity:.2f} (scale {ls_ratio_scale:.2f}x)")
-        if quantity <= 0:
-            return False
-        _ladder_parity_order = _ordinary_parity_qta
-        _absolute_target_order = (
-            _ladder_parity_order or _mandatory_reentry_qta
-        )
-        # ═══════════════════════════════════════════════════════════════════════════
-        # 📈 BREAKOUT_SIZE_LADDER — STOCKS (USER 2026-05-30): HIGHER open/reentry/augment qty when price is
-        # strongly extended past ema_200_15m (stocks have no sma_200_15m → ema_200_15m anchor). Tiered
-        # ×1.5/×2/×3 (cap MAX_MULT) by |price-ema_200_15m|/ema_200_15m (LONG above / SHORT below). Entry
-        # actions only; downstream buying-power/QTY checks still apply. Add-to-strength (COUNTER_TREND_ADD_BLOCK
-        # ran at queue top). Fail-open. ROLLBACK: BREAKOUT_SIZE_LADDER_ENABLED=False.
-        # ═══════════════════════════════════════════════════════════════════════════
-        try:
-            if ((not _absolute_target_order)
-                    and bool(_cfg_auto('BREAKOUT_SIZE_LADDER_ENABLED', True))
-                    and action in ("OPEN", "AUGMENT", "REENTER", "REENTRY")
-                    and quantity and quantity > 0):
-                _bsli = trade_manager.get_indicators(symbol) if symbol else {}
-                _bsl_is_long = position_side == "LONG"
-                _bsl_px = float(current_price) if current_price else 0.0
-                _bsl_ema = safe_fetch_float(_bsli.get("ema_200_15m"), 0.0) if _bsli else 0.0
-                if _bsl_px > 0 and _bsl_ema > 0:
-                    _bsl_dist = ((_bsl_px - _bsl_ema) / _bsl_ema * 100.0) if _bsl_is_long else ((_bsl_ema - _bsl_px) / _bsl_ema * 100.0)
-                    _bsl_mult = 1.0
-                    if _bsl_dist >= float(_cfg_auto('BREAKOUT_SIZE_EMA200_T3_PCT', 2.5)):
-                        _bsl_mult = float(_cfg_auto('BREAKOUT_SIZE_EMA200_T3_MULT', 3.0))
-                    elif _bsl_dist >= float(_cfg_auto('BREAKOUT_SIZE_EMA200_T2_PCT', 1.5)):
-                        _bsl_mult = float(_cfg_auto('BREAKOUT_SIZE_EMA200_T2_MULT', 2.0))
-                    elif _bsl_dist >= float(_cfg_auto('BREAKOUT_SIZE_EMA200_T1_PCT', 1.0)):
-                        _bsl_mult = float(_cfg_auto('BREAKOUT_SIZE_EMA200_T1_MULT', 1.5))
-                    if _bsl_mult > 1.0:
-                        _bsl_mult = min(_bsl_mult, float(_cfg("BREAKOUT_SIZE_MAX_MULT", 3.0, account_key, symbol, position_side)))
-                        _bsl_orig = quantity
-                        quantity = quantity * _bsl_mult
-                        logger.warning(f"[BREAKOUT_SIZE_LADDER] {position_key} side={position_side}: dist={_bsl_dist:.2f}% past ema_200_15m → qty {_bsl_orig:.4f}→{quantity:.4f} (×{_bsl_mult}). reason={(reason or '')[:40]}")
-        except Exception as _bsle:
-            logger.warning(f"[BREAKOUT_SIZE_LADDER] {position_key}: check error (fail-open): {_bsle}")
-        try:
-            if ((not _absolute_target_order)
-                    and bool(_cfg_auto('D_STRUCT_ENTRY_MULT_ENABLED', True))
-                    and action in ("OPEN", "AUGMENT", "REENTER", "REENTRY")
-                    and quantity and quantity > 0):
-                _dsm_is_long = position_side == "LONG"
-                _dsm_i = trade_manager.get_indicators(symbol) if symbol else {}
-                _dsm_high = safe_fetch_float(_dsm_i.get("high_D"), 0.0)
-                _dsm_low = safe_fetch_float(_dsm_i.get("low_D"), 0.0)
-                _dsm_highp = safe_fetch_float(_dsm_i.get("high_D_prev"), 0.0)
-                _dsm_lowp = safe_fetch_float(_dsm_i.get("low_D_prev"), 0.0)
-                _dsm_sma200 = safe_fetch_float(_dsm_i.get("sma_200_D"), 0.0)
-                _dsm_wt1_D = safe_fetch_float(_dsm_i.get("wt1_D"), 0.0)
-                if _dsm_high > 0 and _dsm_highp > 0 and _dsm_low > 0 and _dsm_lowp > 0:
-                    _dsm_wt1_min = float(_cfg_auto('D_STRUCT_ENTRY_WT1_MIN', -40.0))
-                    _dsm_wt1_max = float(_cfg_auto('D_STRUCT_ENTRY_WT1_MAX', 40.0))
-                    if _dsm_is_long:
-                        _dsm_ok = (_dsm_high > _dsm_highp and _dsm_low > _dsm_lowp
-                                   and (float(current_price) > _dsm_sma200 if _dsm_sma200 > 0 else True)
-                                   and (_dsm_wt1_D > _dsm_wt1_min if _dsm_wt1_D != 0 else True))
-                    else:
-                        _dsm_ok = (_dsm_high < _dsm_highp and _dsm_low < _dsm_lowp
-                                   and (float(current_price) < _dsm_sma200 if _dsm_sma200 > 0 else True)
-                                   and (_dsm_wt1_D < _dsm_wt1_max if _dsm_wt1_D != 0 else True))
-                    if _dsm_ok:
-                        _dsm_mult = float(_cfg_auto('D_STRUCT_ENTRY_MULT', 1.3))
-                        _dsm_orig = quantity
-                        quantity = quantity * _dsm_mult
-                        logger.warning(f"[D_STRUCT_ENTRY_MULT] {position_key} side={position_side}: D {'HH+HL' if _dsm_is_long else 'LL+LH'} + SMA200 + WT → qty {_dsm_orig:.4f}→{quantity:.4f} (×{_dsm_mult:.2f}). reason={(reason or '')[:40]}")
-        except Exception as _dsme:
-            logger.warning(f"[D_STRUCT_ENTRY_MULT] {position_key}: check error (fail-open): {_dsme}")
-        if (not _absolute_target_order) and config.SYMBOL_PERF_ENABLED and action in ('OPEN', 'AUGMENT', 'REENTRY', 'QUICK_OPEN', 'QUICK_AUGMENT'):
-            try:
-                from utils import get_performance_multiplier
-                _perf_mult = get_performance_multiplier(symbol, default=1.0)
-                quantity = max(1, int(quantity * (0.7 + _perf_mult * 0.3)))
-            except Exception:
-                pass
-        # USER 2026-06-03 NO-EXCEPTIONS: WT_3M_FORCE_OPEN (with-trend, above-200MA, WT-favor build)
-        # must NOT be clamped to the small MAX_ORDER_VALUE — that's the "$100 dribble" cap. It is
-        # bounded instead by DG_MAX_FORCE_OPEN_NOTIONAL_USD (per fire) + WT_3M_FORCE_OPEN_TARGET_USD.
-        _wf_force = ("WT_3M_FORCE_OPEN" in (reason or "").upper()) and bool(_cfg(
-            "WT_3M_FORCE_OPEN_BYPASS_GATES", True, account_key, symbol, position_side,
-        ))
-        max_order_value = (
-            float(
-                _cfg(
-                    "LR_BAND_LADDER_CAPACITY_USD",
-                    16000.0,
-                    account_key,
-                    symbol,
-                    position_side,
-                )
-            )
-            if _absolute_target_order
-            else (
-                float(_cfg_auto('DG_MAX_FORCE_OPEN_NOTIONAL_USD', 4000.0))
-                if _wf_force
-                else config.MAX_ORDER_VALUE
-            )
-        )
-        order_value = quantity * current_price
-        if order_value > max_order_value:
-            quantity = int(max_order_value / current_price)
-            if config.VERBOSE: logger.debug(f"[queue_trade_action] {symbol} quantity adjusted to {quantity} to respect max_order_value={max_order_value}")
+        quantity = _qta_entry_sizing(trade_manager, position_key, account_key, symbol, position_side, action, reason, quantity, current_price, ls_ratio_scale if 'ls_ratio_scale' in locals() else 1.0, ls_ratio_reason if 'ls_ratio_reason' in locals() else "", _ordinary_parity_qta or _mandatory_reentry_qta)
         if quantity <= 0:
             return False
         
@@ -25963,7 +25979,7 @@ class TradierTradeManager:
         if not is_regular_trading_hours():
             logger.debug(f"[PLACE_ORDER] Not in trading hours, skipping order: {symbol} {action} {side} qty={quantity}")
             return {}
-        client = TradierAPIClient(config, account_key=account_key)
+        client = _odg.wrap_tradier_client(TradierAPIClient(config, account_key=account_key), account_key, cfg=config, logger=logger)  # ORDER_DEDUPE_GUARD wire gate (chase limit + market fallback)
         try:
             # 2. TRADEABILITY & HOURS CHECK — entries only. Exits/reduces must NOT be
             # re-gated here: is_symbol_tradeable's own contract (~line 23747) says exit
@@ -27575,6 +27591,13 @@ class TradierTradeManager:
                             _orig_qty = quantity
                             quantity = quantity * _mtf_mult
                             logger.warning(f"[MTF_LUMPY_HALF] {position_key}: qty {_orig_qty:.4f}→{quantity:.4f} (mult={_mtf_mult})")
+                elif is_entry_action and _vx_ex and not _pxc_back_reentry and not _guar_ra_trd_mtf and not _wf_force_mtf and not _mtf_skip_short_trd and not _i2_mtf_sq_bypass and bool(_cfg("MTF_ARMED_ENTRY_ENABLED", False, account_key, symbol, position_side)):
+                    # USER 2026-10-06: VEC_EXACT skips the MTF decision gate but keeps the live MTF size multiplier (sizing is live's job).
+                    _mtf_mult = float(_cfg("MTF_SIZE_MULT", 1.0, account_key, symbol, position_side))
+                    if 0 < _mtf_mult < 1.0:
+                        _orig_qty = quantity
+                        quantity = quantity * _mtf_mult
+                        logger.warning(f"[MTF_LUMPY_HALF] {position_key}: qty {_orig_qty:.4f}→{quantity:.4f} (mult={_mtf_mult}) VEC_EXACT")
                 elif _pxc_back_reentry and is_entry_action:
                     logger.warning(f"[MTF_FILTER_BYPASS_PRICE_CROSS_BACK] {position_key}: MTF FILTER bypassed for PRICE_CROSS_BACK reentry — band/age/direction gated upstream (USER 2026-05-21 SNDK)")
             except Exception as _mtf_e:
@@ -28277,7 +28300,6 @@ class TradierTradeManager:
                 (_is_augment_or_entry or is_entry_action)
                 and not _is_exit_or_reduce
                 and not is_hedge
-                and not _vx_ex
             ):
                 _tf_mult, _tf_label = _breakout_tf_size_mult_tradier(reason)
                 if _tf_mult != 1.0:
@@ -28292,9 +28314,9 @@ class TradierTradeManager:
             # BEAR_SCENARIO_SYMBOLS (GLD, USO, XLE, GDX, etc.) go UP when the market goes DOWN.
             # A LONG on a bear_scenario symbol = bearish market bet → flip its contribution to the ratio.
             _pm = self.position_manager
-            # BIBLE 68.1 2026-10-06 (director): VEC_EXACT orders carry the vec qty unchanged to the order; the L/S ratio boost/cut has NO vec twin
-            # -> its own switch TRADIER_LS_RATIO_SIZING_ENABLED (config_tradier + QuickConfig, both False = off on both sides).
-            if _pm and current_price > 0 and not is_hedge and not _is_mandatory_reclaim and not _is_ladder_parity and not _vx_ex and bool(_cfg('TRADIER_LS_RATIO_SIZING_ENABLED', False, account_key, symbol, position_side)):
+            # USER 2026-10-06 (binding): sizing is live's job — VEC_EXACT orders get this L/S ratio boost/cut like native orders. Own switch
+            # TRADIER_LS_RATIO_SIZING_ENABLED (default True = the historic live behaviour; QuickConfig mirror True, live sizing only, not vectorized).
+            if _pm and current_price > 0 and not is_hedge and not _is_mandatory_reclaim and not _is_ladder_parity and bool(_cfg('TRADIER_LS_RATIO_SIZING_ENABLED', True, account_key, symbol, position_side)):
                 _bear_set = _cfg_auto('BEAR_SCENARIO_SYMBOLS', set())
                 _long_val = 0.0
                 _short_val = 0.0
@@ -28526,6 +28548,12 @@ class TradierTradeManager:
                     if lock_acquired and self.redis_manager:
                         await self.redis_manager.delete(exec_lock_key)
                     return f"TRA_DAILY_BUY_LIMIT_{_eff_buys}of{_tra_max}"
+            # ORDER_DEDUPE_GUARD (USER 2026-10-06 ABSOLUTE): broker must confirm NO open/pending/partial order on the symbol and
+            # every prior order of this system FINAL (filled qty known) — else NO order. Every origin, emergency closes included.
+            _odg_dec = await _odg.tradier_preflight_with_factory(lambda: TradierAPIClient(config, account_key=account_key), account_key, symbol, origin=f"{action}|{(reason or '')[:80]}", cfg=config, logger=logger)
+            if not _odg_dec.allowed:
+                if lock_acquired and self.redis_manager: await self.redis_manager.delete(exec_lock_key)
+                return f"ORDER_DEDUPE_BLOCK_{_odg_dec.code}"
             result = await self.place_order(  symbol, side, quantity, "market", duration="day",
                 action=action, position_side=position_side, account_key=account_key,
                 reason=reason)
@@ -28803,14 +28831,16 @@ class TradierTradeManager:
                     return f"ORDER_REJECTED:{order_reject_reason}"
             else:
                 logger.error(f"[TRADE] ❌ {symbol} {side} Failed: Invalid API response.")
-                if lock_acquired and self.redis_manager: await self.redis_manager.delete(exec_lock_key)
+                if lock_acquired and self.redis_manager and not _odg.ledger_has_nonfinal("tradier", account_key, symbol): await self.redis_manager.delete(exec_lock_key)
                 return "ORDER_API_ERROR"
 
         except Exception as e:
             logger.error(f"[EXECUTE_CRASH] {position_key}: {e}",  exc_info=True )
-            if lock_acquired and self.redis_manager:
+            if lock_acquired and self.redis_manager and not _odg.ledger_has_nonfinal("tradier", account_key, symbol):
                 try: await self.redis_manager.delete(exec_lock_key)
                 except Exception: pass
+            elif lock_acquired:
+                logger.critical(f"🔒 [ORDER_DEDUPE_LOCK_HELD] {position_key}: exception after submit — order on {symbol} not broker-confirmed FINAL, exec lock NOT released")
             return f"EXCEPTION_{str(e)[:50]}"
 
     def _resolve_entry_reason(self, position_key: str) -> str:

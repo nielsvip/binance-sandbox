@@ -1067,6 +1067,7 @@ class Config:
     PARITY_VEC_EXACT_FAMILIES: str = "ENTRY"  # comma list of twinned families under PARITY_VEC_EXACT_MODE: ENTRY (vec OPENs), EXIT (vec CLOSE/REDUCE), AUGMENT
     PARITY_VEC_EXACT_SOURCE: str = "npz"  # 2026-10-06 twin data source: npz (15m NPZ store; servers/replay) | live_klines (NPZ builder in memory on live klines_cache; needs staged backtest_v8_precompute return_arrays) | live_snapshots (rolling buffer of live ii() dicts at closed 15m bars)
     PARITY_VEC_EXACT_SNAPSHOT_FINAL: str = "next_bar"  # live_snapshots: next_bar (live: a bar is final when the next starts) | on_arrival (replay: the per-bar dict is already final)
+    PARITY_VEC_EXACT_LIVE_SIZING: bool = True  # USER ruling 2026-10-06: vec-decided OPEN/AUGMENT get the normal live sizing (execute_trade_action, override_qty None); parity = decisions, not size. False = vec qty override (paper/test only)
     RANKING_WEBHOOK_DIRECT_ENTRY_ENABLED: bool = False  # 2026-10-06 parity-loop-crypto (director): ranking-webhook ALL_GREEN/ALL_RED direct OPEN/AUGMENT path (_handle_signal_message DIRECT_QUEUE). No vec twin -> OFF on both sides (QuickConfig mirror False); always off at the source under PARITY_VEC_EXACT_MODE with ENTRY twinned
     VEC_DRIVEN_ENABLED: bool = True  # 2026-10-06 X3 VEC-DRIVEN LIVE: global master; a sym_side is vec-driven LIVE only if this is True AND data/vec_live/vec_driven.json lists it mode=live for this account (live_twins/vec_driven.py). False = byte-identical live  # 2026-10-06 director: emergency bridge ON (expiry in data/vec_live/vec_driven.json)
     VEC_DRIVEN_NATIVE_ENTRY_BLOCK_ALL: bool = True  # USER 2026-10-06 PARITY: with VEC_DRIVEN_ENABLED, native OPEN/AUGMENT/REENTRY/HEDGE refused on every key (only VEC_DRIVEN_* open); native CLOSE/REDUCE allowed
@@ -2644,7 +2645,7 @@ class Config:
     HLR_TOP_EXIT_LIVE_SANCTIONED: bool = False  # 2026-10-02 SELL_TOP sanction (MOVR §63): live QUICK_REDUCE_TECHNICAL_ONLY suppresses HLR_TOP_EXIT (no sanctioned token) — per-sym True re-allows it live AND in vec. Sweep-gated.
     HLR_TOP_RECROSS_BYPASS_ENABLED: bool = False  # 2026-10-02 premature-top backstop (§63): after a SELL_TOP exit, a recross of the exit price within HLR_RECROSS_BYPASS_BARS reenters bypassing the KG/GR/STOP/DC4H choke. Sweep-gated vs 2026-09-27 anti-churn.
     HLR_RECROSS_BYPASS_BARS: int = 32  # window (15m bars) for the SELL_TOP recross bypass above.
-    LH_LL_TOP_EXIT_ENABLED: bool = False  # 2026-10-04 LH/LL top exit: after prev completed 4h/D prints LH/LL (long; HH/HL short), exit near the bounce extreme via WT15M rollover / DC1H touch instead of the DC stop. Sweep-gated.
+    LH_LL_TOP_EXIT_ENABLED: bool = True  # 2026-10-04 LH/LL top exit: after prev completed 4h/D prints LH/LL (long; HH/HL short), exit near the bounce extreme via WT15M rollover / DC1H touch instead of the DC stop. Sweep-gated.
     LH_LL_TOP_EXIT_STRUCT_TF: str = "OFF"  # "4h" | "D" | "4h,D" (OR) — which HTF bar structure arms the exit.
     LH_LL_TOP_EXIT_STRUCT_MODE: str = "LH_LL"  # "LH" | "LL" | "LH_LL" | "LH_AND_LL" (short mirrors to HH/HL).
     LH_LL_TOP_EXIT_MODE: str = "EITHER"  # "WT15M" | "DC1H" | "EITHER" | "BOTH" (BOTH = WT cross into 1h edge).
@@ -2904,7 +2905,7 @@ class Config:
     EXIT_GAIN_THRESHOLD_MIN: float = 1.0  # BACKTEST_CHANGE_112: was 0.3 (GAIN_THRESHOLD_LOW). Higher threshold = fewer whipsaw exits. IS+OOS validated.
     STOP_MAJOR_LOSS_BLOCK_ENABLED: bool = True  # BACKTEST_CHANGE_113: Block the STOP_MAJOR_LOSS reduce path entirely. #1 PnL destroyer (-125k% cumulative). L/S ratio IS the hedge.
     IMMEDIATE_WRONG_WAY_ENABLED: bool = False  # BACKTEST_CHANGE_114: was implicitly True. #2 PnL destroyer. Tight stops kill trades that recover.
-    FAST_RISER_DOUBLE_ENABLED: bool = False  # BACKTEST_CHANGE_115: was True. Net negative PnL. Fast riser doubles amplify losers.
+    FAST_RISER_DOUBLE_ENABLED: bool = True  # BACKTEST_CHANGE_115: was True. Net negative PnL. Fast riser doubles amplify losers.
     AUGMENT_PYRAMID_ENABLED: bool = True  # Re-enabled — pyramid must always run, sizing handles risk
     # === RESEARCH-BACKED STRATEGIES (2026-03-23 — 9 agents, 100+ sources, 567k backtests, academic papers) ===
     ADX_REGIME_FILTER_ENABLED: bool = False  # BACKTEST_CHANGE_137: ADX<20 = sizing penalty + entry deduction.

@@ -2399,7 +2399,7 @@ class TradierBarManager:
                 _dix = pd.to_datetime(_dd["timestamp"].astype(str), utc=True, format="ISO8601", errors="coerce")
                 _ok = _dix.notna().values
                 _dd = _dd.loc[_ok].copy()
-                _dd.index = pd.DatetimeIndex(_dix[_ok])
+                _dd.index = pd.DatetimeIndex(_dix[_ok]).rename(None)
                 _dd = _dd.sort_index()
                 _dd = _dd[~_dd.index.duplicated(keep="last")]
                 bundle["D"] = _ddf(_dd).reset_index(drop=True)

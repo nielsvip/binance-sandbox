@@ -2369,7 +2369,7 @@ def _credible_baseline(new_symside, prepared, base_sets, defaults, template_path
 # Never sampled: bold default rows, rows without evidence (n_sym < 8 or unknown n_sym), rows never evaluated (no POS_SYM).
 # Switch: env V15_POSSYM_SAMPLING=1|0 (wins), else flag file <base>/data/possym_sampling.flag ("1"/"0"), else ON from round run21 on.
 _POSSYM_P = {0: 1.0 / 20, 1: 1.0 / 10, 2: 1.0 / 6, 3: 1.0 / 2}  # USER 2026-10-06: pos_sym 3 -> 1 in 2 (was 1/3); sampling ON again
-_POSSYM_MIN_N = int(os.environ.get("V15_POSSYM_MIN_N", "20"))  # USER 2026-10-01: >= 20 evaluated sym_sides in the cat_side before a row may be sampled
+_POSSYM_MIN_N = int(os.environ.get("V15_POSSYM_MIN_N", "3"))  # USER 2026-10-06: sampling must speed sheets ~70-80% -> min evidence 3 sym_sides (= template writer --min-n); was 20 (USER 2026-10-01)
 
 
 def _possym_round_id(progress_path) -> str:

@@ -1,6 +1,7 @@
 # pyright: basic
 import argparse
 import asyncio
+import order_dedupe_guard as _odg  # 2026-10-06 USER ORDER_DEDUPE_GUARD: broker-confirmed final-state gate on every order
 from live_rally_filters import rally_ok as _rally_ok, age_minutes as _rally_age
 import fnmatch
 import functools
@@ -10069,7 +10070,7 @@ class AccountConfig:
                 logger.info(
                     f"[{self.prefix}] Initializing Binance client with API key: {self.api_key[:8]}...{self.api_key[-4:]} (len: {len(self.api_key)})"
                 )
-                self.client = Client(api_key=self.api_key, api_secret=self.api_secret)
+                self.client = _odg.wrap_binance_client(Client(api_key=self.api_key, api_secret=self.api_secret), self.prefix, cfg=config, logger=logger)  # ORDER_DEDUPE_GUARD wire gate (every futures_create_order)
                 self._apply_ip_binding(self.client)
                 self.sync_binance_time()
                 logger.debug(
@@ -34313,6 +34314,13 @@ class MultiAccountTradeManager:
                         f"🚫 [LOCK_BLOCK] {position_key}: exec lock not acquired for {action}. lock_key={exec_lock_key}"
                     )
                     return "BLOCK_SKIPPED_LOCK_ACTIVE"
+            # ORDER_DEDUPE_GUARD (USER 2026-10-06 ABSOLUTE): broker must confirm NO open order on the symbol and every prior
+            # order of this system FINAL (filled/canceled/rejected/expired, filled qty known) — else NO order. Every origin
+            # (VEC_EXACT_/VEC_DRIVEN_, emergency closes included). Fail-closed. GuardedBinanceClient re-checks + claims at the wire.
+            if not is_sandbox_account(config, account_key):
+                _odg_dec = await _odg.binance_execute_now_preflight(getattr(self.accounts.get(account_key), "client", None), account_key, symbol, position_side, origin=f"{action}|{(reason or '')[:80]}", cfg=config, logger=logger)
+                if not _odg_dec.allowed:
+                    return f"ORDER_DEDUPE_BLOCK_{_odg_dec.code}"
             _rup = (reason or "").upper()
             _is_reentry_exec = (
                 "REENTRY" in _rup
@@ -35461,6 +35469,12 @@ class MultiAccountTradeManager:
                     await self.redis_manager.set(debounce_key, "1", ex=10)
                 except Exception:
                     pass
+            try:
+                if not keep_lock_active and not is_sandbox_account(config, account_key) and _odg.ledger_has_nonfinal("binance", account_key, symbol):
+                    keep_lock_active = True
+                    logger.critical(f"🔒 [ORDER_DEDUPE_LOCK_HELD] {position_key}: an order on {symbol} is not broker-confirmed FINAL — exec lock NOT released")
+            except Exception:
+                keep_lock_active = True
             if not keep_lock_active:
                 try:
                     if self.redis_manager:
@@ -48374,7 +48388,8 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
             _act, _oside, _qty, _full = _vx.order_args(_a, _side, _amt, _px)
             if _qty <= 0:  # vec action of zero size on the live position (e.g. a vec REDUCE fraction of 0) -> nothing to send
                 continue
-            _res = await trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_qty, current_price=_px, side=_oside, position_side=_side, unique_id=f"VX{int(_a['bar_ts'])}{_a['n']}", is_full_close=_full, action=_act, reason=_vx.tagged_reason(_a), override_qty=_qty, is_hedge=False)
+            _lq, _lov = _vx.live_sizing_args(_act, _qty, _px, config)
+            _res = await trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_lq, current_price=_px, side=_oside, position_side=_side, unique_id=f"VX{int(_a['bar_ts'])}{_a['n']}", is_full_close=_full, action=_act, reason=_vx.tagged_reason(_a), override_qty=_lov, is_hedge=False)
             logger.info(f"[VEC_EXACT] {position_key} {_act} {_a['reason'][:60]} qty={_qty:.6f} -> {str(_res)[:120]}")
         return True
     except Exception as _vx_e:
