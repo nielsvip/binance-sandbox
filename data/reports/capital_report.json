@@ -1,14 +1,14 @@
 {
- "generated_at": "2026-10-06 22:06 UTC",
- "total_capital_usd": 9.03,
+ "generated_at": "2026-10-06 23:06 UTC",
+ "total_capital_usd": 22.46,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 9.03
+  "B": 13.44,
+  "C": 9.02
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
+  "B": 1,
   "C": 1
  },
  "winners": [],
@@ -18,15 +18,26 @@
  "mediocre": [],
  "positions": [
   {
+   "pk": "fin:ADAUSDC_SHORT",
+   "symbol": "ADAUSDC",
+   "account": "fin",
+   "value_usd": 13.44,
+   "gain_pct": 0.186,
+   "tier": "B",
+   "perf_mult": 2.78,
+   "amt": 50.2,
+   "mark": 0.2678
+  },
+  {
    "pk": "fin:SANDUSDT_LONG",
    "symbol": "SANDUSDT",
    "account": "fin",
-   "value_usd": 9.03,
-   "gain_pct": 0.408,
+   "value_usd": 9.02,
+   "gain_pct": 0.347,
    "tier": "C",
    "perf_mult": 0.37,
    "amt": 136.0,
-   "mark": 0.06637
+   "mark": 0.06632959
   }
  ]
 }

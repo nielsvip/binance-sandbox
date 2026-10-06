@@ -4038,5 +4038,140 @@
     ],
     "timestamp": "2026-10-06T22:44:56.652351+00:00",
     "price": 8.05411011
+  },
+  {
+    "symbol": "XVSUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 15.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T22:48:34.156569+00:00",
+    "price": 3.29820333
+  },
+  {
+    "symbol": "AAVEUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 20.9x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T22:51:26.283833+00:00",
+    "price": 180.19124214
+  },
+  {
+    "symbol": "1000000MOGUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T22:52:58.103923+00:00",
+    "price": 0.1193
+  },
+  {
+    "symbol": "CHRUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.4x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T22:57:37.746565+00:00",
+    "price": 0.02284424
+  },
+  {
+    "symbol": "SPCXUSD1",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T22:57:37.746565+00:00",
+    "price": 170.49337978
+  },
+  {
+    "symbol": "SSVUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.1x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T22:57:37.746565+00:00",
+    "price": 3.06375833
+  },
+  {
+    "symbol": "BATUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T23:01:06.492141+00:00",
+    "price": 0.10040154
+  },
+  {
+    "symbol": "HDUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 15.6x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-06T23:02:38.923235+00:00",
+    "price": 287.36437418
+  },
+  {
+    "symbol": "MEWUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 12.8x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-06T23:02:38.923235+00:00",
+    "price": 0.00052006
+  },
+  {
+    "symbol": "DRAMUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.1x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T23:03:43.255509+00:00",
+    "price": 59.77148139
+  },
+  {
+    "symbol": "ARBUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.9x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T23:05:43.942751+00:00",
+    "price": 0.20065
+  },
+  {
+    "symbol": "SCRUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 21.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T23:05:53.617462+00:00",
+    "price": 0.0264
+  },
+  {
+    "symbol": "SEIUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T23:05:53.617462+00:00",
+    "price": 0.07202
+  },
+  {
+    "symbol": "TQQQUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T23:05:53.617462+00:00",
+    "price": 84.49
+  },
+  {
+    "symbol": "TRBUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 31.1x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-06T23:05:53.617462+00:00",
+    "price": 22.63932355
   }
 ]

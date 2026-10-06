@@ -1,11 +1,11 @@
 {
- "at": "2026-10-06T22:45:01.650134+00:00",
+ "at": "2026-10-06T23:05:01.098605+00:00",
  "source": "Mac {acct}/{long,short}_positions.json |positionAmt|>0",
  "sym_sides": [
-  "ADAUSDC_LONG",
   "ADAUSDC_SHORT",
   "ADBE_SHORT",
   "ALB_SHORT",
+  "ALGOUSDT_SHORT",
   "APO_SHORT",
   "ARBUSDC_SHORT",
   "ARUSDT_LONG",
@@ -79,14 +79,14 @@
    "SANDUSDT_LONG"
   ],
   "inf": [
+   "ALGOUSDT_SHORT",
    "ARBUSDC_SHORT",
    "ARUSDT_LONG",
    "NMRUSDT_LONG",
-   "RENDERUSDT_LONG"
+   "RENDERUSDT_LONG",
+   "ZROUSDT_LONG"
   ],
   "men": [
-   "ADAUSDC_LONG",
-   "ADAUSDC_SHORT",
    "EDUUSDT_LONG",
    "ETHUSDC_LONG",
    "GALAUSDT_SHORT",

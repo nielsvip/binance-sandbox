@@ -3111,80 +3111,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _next_pending(tabs[0])
     queue = [(sname, rr, sw, cand) for sname in tabs for (rr, sw, cand) in per_tab_rows[sname]]
     pending_queue = [q for q in queue if (q[0], f"{q[2]}={q[3]}") not in _done_ids_cache["ids"]]
-    # USER 2026-10-06 HOLES-ONLY (no-recalc law): replay the kept chain in queue order so each hole
-    # measures vs its TRUE cumulative_before (the value the original pass had at that row). Kept rows
-    # carry every pass-1 promotion in order, so the replay reproduces the chain exactly. Abort guards:
-    # a done key missing from the queue (template reorder changed row numbers) or a pending row that
-    # is not a known hole (new template rows) both mean the chain order changed -> escalate to full
-    # wipe+refill (existing lawful path) instead of measuring against a stale replay.
-    _holes_only = False
-    _hole_cum = {}
-    _inexact_holes = set()
-    _holes_abort = ""
-    _would_promote = []
-    try:
-        _holes_only = bool((progress or {}).get("_redo_holes_only"))
-    except Exception:
-        _holes_only = False
-    if _holes_only:
-        try:
-            _qkeys = [f"{_hs}!{_hr}:{_hsw}={_hcd}" for (_hs, _hr, _hsw, _hcd) in queue]
-            _qset = set(_qkeys)
-            import re as _re_qk
-            _done_keys = {k for k in (progress.get("done") or {}).keys() if _re_qk.match(r"^[^!]+!\d+:", str(k))}  # row keys only (!GLOBAL:/foreign keys never abort)
-            _stale_done = sorted(_done_keys - _qset)
-            if _stale_done:
-                _holes_abort = f"template order changed under board ({len(_stale_done)} done keys not in queue, e.g. {_stale_done[0]})"
-            else:
-                _run = float(baseline_gain)
-                _promo_idx_max = -1
-                for _qi, _qk in enumerate(_qkeys):
-                    _hrec = (progress.get("done") or {}).get(_qk)
-                    if isinstance(_hrec, dict) and _hrec.get("cumulative_after") is not None:
-                        try:
-                            _run = float(_hrec.get("cumulative_after"))
-                        except Exception:
-                            pass
-                        try:
-                            if _hrec.get("promoted"):
-                                _promo_idx_max = _qi
-                        except Exception:
-                            pass
-                    else:
-                        _hole_cum[_qk] = _run
-                # HOLES-ONLY ref fidelity: holes at/after the last kept promotion measure vs the exact
-                # ref (chain-at-hole == final chain). Earlier holes use the final-chain ref (inexact for
-                # binding/dup verdicts only — G/F deltas stay exact). Essential-gate rows need exact
-                # evidence, so an inexact essential hole escalates; other inexact holes proceed with
-                # dup-blanking disabled (never blank a real number on an inexact verdict) + tagged.
-                _inexact_holes = set()
-                try:
-                    _qidx = {k: i for i, k in enumerate(_qkeys)}
-                    _inexact_holes = {k for k in _hole_cum if _qidx.get(k, 0) < _promo_idx_max}
-                except Exception:
-                    _inexact_holes = set()
-                try:
-                    _ess_hit = sorted({k.split(":", 1)[1].split("=", 1)[0] for k in _inexact_holes if ":" in k} & set(ESSENTIAL_GATE_SWITCHES or ()))
-                except Exception:
-                    _ess_hit = []
-                if _ess_hit:
-                    _holes_abort = f"essential-gate row(s) {_ess_hit} need exact binding evidence but precede kept promotions — full rebuild required"
-                _pend_ids = {(q[0], f"{q[2]}={q[3]}") for q in pending_queue}
-                _hole_ids = {(k.split("!", 1)[0], k.split(":", 1)[1]) for k in _hole_cum if "!" in k and ":" in k}
-                _new_rows = sorted(_pend_ids - _hole_ids)
-                if _new_rows:
-                    _holes_abort = f"template gained rows under board ({len(_new_rows)} pending non-holes, e.g. {_new_rows[0]})"
-            if _holes_abort:
-                print(f"[HOLES-ABORT] {new_symside} {_holes_abort} — escalating to full wipe+refill", flush=True)
-                pending_queue = []
-            else:
-                print(f"[HOLES-ONLY] {new_symside} chain replay: {len(_hole_cum)} holes vs frozen chain (kept {len(progress.get('done', {}))} rows, no re-eval)", flush=True)
-        except Exception as _ho_e:
-            print(f"[HOLES-ONLY-warn] {new_symside} replay failed ({_ho_e}) — escalating to full wipe+refill", flush=True)
-            _holes_only = False
-            _hole_cum = {}
-            _holes_abort = f"replay error: {_ho_e}"
-            pending_queue = []
+    # USER 2026-10-06 HOLES-ONLY (no-recalc law): REDO-RESET dropped only hollow keys for a
+    # chain-identical REDO; the refill below evaluates exactly those holes (pending) sample-free
+    # (REDO-HEAL) vs the CONTINUED chain — the same evaluation-sequence semantics as normal resume
+    # (resumed rows also measure vs the continued chain; promotions extend it). Kept rows stand as
+    # history and are never re-evaluated. A dropped hole that promoted vetoes this path at REDO-RESET
+    # (full wipe — its chain link cannot be spliced). No replay/suppression/escalation: verified
+    # 2026-10-06 that positional replay is both unnecessary (continuation precedent) and wrong under
+    # template renumbers (all Oct-06 boards straddle the 20:10 template rewrite).
     total_rows = len(queue)
     processed = 0
     loop_guard = 0
@@ -3571,9 +3505,6 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             ws.cell(row=rr, column=cols["E"]).value = None
         e_next = None
         key = f"{sname}!{rr}:{switch}={cand}"
-        _ref_inexact = bool(_holes_only and key in _inexact_holes)
-        if _holes_only and key in _hole_cum:
-            cumulative_before = float(_hole_cum[key])  # HOLES-ONLY: measure vs the frozen chain value at this row, not the fill-start value
         _harvest()
         plan = _row_plan(sname, rr, switch, cand)
         st = plan["static"]
@@ -3672,7 +3603,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _fp_y = _fp_of(res)
             _fp_noop = _fp_y is not None and naked_fp is not None and _fp_y == naked_fp
             _is_dup = False
-            if not _fp_noop and _fp_y is not None and ok and (is_running or naked_binding is False) and not (_holes_only and _ref_inexact):  # HOLES-ONLY: never blank on an inexact-ref verdict
+            if not _fp_noop and _fp_y is not None and ok and (is_running or naked_binding is False):
                 _skey = (_ref_ck, hdr)
                 _same_as_standalone = True
                 if not is_running:
@@ -3775,7 +3706,6 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if _blk:
             promote = False
             print(f"[promote-block] {sname}!{rr} {switch}={cand} delta={row_delta} NOT promoted: {_blk}", flush=True)
-        _holes_tgv = False
         if promote:
             try:
                 _ct = float((_src_ or {}).get("tim_pct"))
@@ -3786,11 +3716,6 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 promote = False
                 _blk = _tgv
                 print(f"[promote-block] {sname}!{rr} {switch}={cand} delta={row_delta} NOT promoted: {_tgv}", flush=True)
-                # HOLES-ONLY: chain_tim is the fill-start value (stale vs this row's chain point), so a
-                # TIM veto here may not match the true pass verdict — escalate and let the full rebuild
-                # decide with true TIMs (safe direction: waste beats a wrong published chain).
-                if _holes_only:
-                    _holes_tgv = True
         # TEAL 2026-10-04 RAMFP: the in-RAM NPZ must be identical between preload and promotion (RAM LAW
         # forbids mid-run re-prepare; a mismatch means the row measured different bytes than the chain).
         # Tripwire only, default OFF (V15_RAMFP=1 arms). Mismatch blocks promotion; the row revalidates on resume.
@@ -3833,29 +3758,6 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     promote = False
                     _blk = ((_blk + "; ") if _blk else "") + f"RECALC-REJECT fresh {float(_rc_gain):.4f} <= E_before {float(cumulative_before):.4f}"
                     print(f"[promote-block] {sname}!{rr} {switch}={cand} delta={row_delta} NOT promoted: {_blk}", flush=True)
-        # USER 2026-10-06 HOLES-ONLY: the chain is frozen for measurement — a hole that WOULD promote
-        # invalidates every downstream kept row, so the board must escalate to a full greedy rebuild
-        # (existing wipe path). Record + persist immediately (kill-safe: relaunch re-escalates).
-        # A TIM veto on stale chain_tim also escalates (full pass re-decides with true TIMs).
-        try:
-            _rd_pos = row_delta is not None and float(row_delta) > 1e-9
-        except Exception:
-            _rd_pos = False
-        _holes_would = bool(_holes_only and (promote or (_holes_tgv and _rd_pos)))
-        if _holes_would:
-            _would_promote.append(key)
-            try:
-                _pwp = progress.setdefault("_holes_would_promote", [])
-                if key not in _pwp:
-                    _pwp.append(key)
-                _maybe_write_json(force=True)
-            except Exception:
-                pass
-            print(f"[HOLES-ONLY] {sname}!{rr} {switch}={cand} G={row_delta:+.4f} WOULD promote vs frozen chain {cumulative_before:.4f} — suppressed (escalate to full rebuild)", flush=True)
-            promote = False
-            _blk = ((_blk + "; ") if _blk else "") + "HOLES-ONLY: promotion suppressed, chain frozen for measurement"
-        if _holes_only:
-            cumulative_gain = float(cumulative_before)  # HOLES-ONLY: walk the frozen replay (no advance); restored to final chain at loop end
         row_gain = (cumulative_before + row_delta) if row_delta is not None else None
         g = ws.cell(row=rr, column=cols["G"])
         f = ws.cell(row=rr, column=cols["F"])
@@ -3923,16 +3825,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 chain_tim = _pt
             except Exception:
                 pass
-        if not _holes_only:
-            progress["cumulative_gain"] = float(cumulative_gain)  # HOLES-ONLY: stored final chain untouched (cumulative_gain walks the replay)
+        progress["cumulative_gain"] = float(cumulative_gain)
         div = _write_div(sname, rr, [row_gain])
         _uw_tag = "UNWIRED_CALCULATED: switch is in the vec_unwired audit (no engine read found) — 0.0 is the honest eval delta" if (row_delta == 0 and str(switch).strip() in UNWIRED_TAG_SW) else ""
         progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", "") or _uw_tag, "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "ramfp": (str(_RUN_RAMFP.get(new_symside)) if os.environ.get("V15_RAMFP", "0") == "1" else None), "complete": (not missing_yellows and not (st.get("sampled_filters") or []) and not (st.get("excluded_tab_level") or []) and naked_settled and not _ramfp_stale)}
-        if _holes_only and _ref_inexact:
-            try:
-                progress["done"][key]["ref_holes_only"] = True  # binding/dup verdicts vs final-chain ref (hole precedes kept promotions); G/F deltas exact
-            except Exception:
-                pass
         if st.get("sampled_filters") or st.get("excluded_tab_level"):
             print(f"[POLICY-CELLS-PENDING] {sname}!{rr} {switch}={cand} sampled={len(st.get('sampled_filters') or [])} tablevel={len(st.get('excluded_tab_level') or [])} — yellows uncalculated, row stays pending (RULE#3 refuses publish until refilled)", flush=True)
         _maybe_write_json(force=promote)
@@ -3941,41 +3837,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         print(f"[spec-row] {sname}!{rr} {switch}={cand}{' (running)' if is_running else ''} yellows={len(st['hdrs'])} pos={len(pos_hdrs)} G={row_delta} vs {cumulative_before:.4f} -> {'POS ' + choice[3] + ' E_next=' + format(cumulative_gain, '.4f') if promote else 'no-promote'}", flush=True)
         _maybe_save()
         processed += 1
-    # USER 2026-10-06 HOLES-ONLY gate: a clean heal (no would-promote, no abort) proceeds to DONE with
-    # the intact chain; any would-promote/abort escalates to a full greedy rebuild (existing wipe path —
-    # the reason carries no RULE#3 marker so REDO-RESET wipes). Depth-bounded like every other REDO.
-    _esc_list = []
+    # USER 2026-10-06 REDO-HEAL: the heal marker served its purpose once the fill completes (sampling
+    # only affects the fill). Pop it so later fresh reruns sample normally. A kill before this point
+    # resumes sample-free (marker persists) — correct, the refill is still incomplete.
     try:
-        _esc_list = list(dict.fromkeys(list(progress.get("_holes_would_promote") or []) + list(_would_promote)))
+        if progress.pop("_redo_heal_run", None) is not None:
+            print(f"[REDO-HEAL] {new_symside} heal pass complete — sampling restored for future runs", flush=True)
     except Exception:
-        _esc_list = list(_would_promote)
-    if _holes_abort or (_holes_only and _esc_list):
-        _depth_e = int(progress.get("redo_depth", 0))
-        if _holes_abort:
-            _esc_reason = f"HOLES-ORDER-CHANGE: {_holes_abort} — full greedy rebuild required"
-        else:
-            _esc_reason = f"HOLES-PROMOTE: {len(_esc_list)} refilled holes would promote vs frozen chain ({', '.join(_esc_list[:3])}) — full greedy rebuild required"
-        if _depth_e < QUAL_MAX_REDOS:
-            progress["needs_redo"] = {"overrides": dict(cumulative_overrides), "result": {}, "depth": _depth_e + 1, "reason": _esc_reason}
-            progress.pop("final_path", None)
-            print(f"[HOLES-ESCALATE] {new_symside} {_esc_reason} (depth {_depth_e + 1})", flush=True)
-        else:
-            progress["not_compliant"] = _esc_reason
-            print(f"[HOLES-ESCALATE] {new_symside} {_esc_reason} — REDO depth exhausted, marking not_compliant", flush=True)
-        progress.pop("_redo_heal_run", None)
-        progress.pop("_redo_holes_only", None)
-        progress.pop("_holes_would_promote", None)
-        _maybe_write_json(force=True)
-        return cumulative_gain, cumulative_overrides, progress
-    if _holes_only:
-        try:
-            cumulative_gain = float(progress.get("cumulative_gain", cumulative_gain))
-        except Exception:
-            pass
-        progress.pop("_redo_heal_run", None)
-        progress.pop("_redo_holes_only", None)
-        progress.pop("_holes_would_promote", None)
-        print(f"[HOLES-ONLY] {new_symside} heal complete: {len(_hole_cum)} holes filled, 0 would-promote — chain intact, proceeding to DONE", flush=True)
+        pass
     # RED retry ("fixed asap"): the chain moved on, so a retried cell only gets its REAL delta vs the baseline it was
     # measured against (never promoted after the fact); still-failing cells stay RED for tools/v15_assure.
     _retry_s = float(os.environ.get("V15_RED_RETRY_S", "120"))
@@ -6867,16 +6736,17 @@ def main():
             _nr3 = progress.pop("needs_redo")
             # USER 2026-10-06 HOLES-ONLY (no-recalc law): a RULE#3-completeness REDO carries the
             # IDENTICAL chain — wiping ~3400 evaluated rows to heal skipped cells is pure waste the fleet
-            # cannot afford. Drop only the hollow keys, keep the chain, refill holes sample-free vs the
-            # frozen chain (replay map at fill start). Vetoes (full wipe): a dropped hole that promoted
-            # (invalidates downstream kept rows), repaired-set/365D/escalation REDOs (chain changed),
-            # overrides mismatch. All fallbacks wipe: safe waste, never a wrong chain.
+            # cannot afford. Drop only the hollow keys, keep the chain, refill holes sample-free
+            # (REDO-HEAL) vs the CONTINUED chain — same evaluation-sequence semantics as normal resume.
+            # Vetoes (full wipe): a dropped hole that promoted (its chain link cannot be spliced),
+            # repaired-set/365D REDOs (chain changed), overrides mismatch. All fallbacks wipe: safe
+            # waste, never a wrong chain.
             _nr3_reason = str(_nr3.get("reason") or "")
             _chain_same = False
             _holes_dropped = []
             try:
                 # RULE#3 (DONE gate) and hollow-refill (launch gate) both carry the identical chain;
-                # repaired-set/365D/escalation REDOs carry a changed set and always wipe.
+                # repaired-set/365D REDOs carry a changed set and always wipe.
                 _chain_same = (("RULE#3" in _nr3_reason) or ("hollow-refill" in _nr3_reason)) and (dict(_nr3.get("overrides") or {}) == dict(progress.get("cumulative_overrides") or {}))
             except Exception:
                 _chain_same = False
@@ -6905,8 +6775,7 @@ def main():
                 for _hk in _holes_dropped:
                     (progress.get("done") or {}).pop(_hk, None)
                 progress["redo_depth"] = int(_nr3.get("depth", 1))
-                progress["_redo_heal_run"] = int(_nr3.get("depth", 1))  # REDO-HEAL: sampling OFF this pass
-                progress["_redo_holes_only"] = {"n": len(_holes_dropped), "depth": int(_nr3.get("depth", 1))}
+                progress["_redo_heal_run"] = int(_nr3.get("depth", 1))  # REDO-HEAL: sampling OFF this pass (popped at loop end)
                 for _rk in ("final_gain", "final_path", "not_compliant"):
                     progress.pop(_rk, None)
                 try:
@@ -6920,9 +6789,7 @@ def main():
                 except Exception:
                     pass
                 progress["redo_depth"] = int(_nr3.get("depth", 1))
-                progress["_redo_heal_run"] = int(_nr3.get("depth", 1))  # REDO-HEAL: consumed at fill end (sampling OFF this pass)
-                progress.pop("_redo_holes_only", None)
-                progress.pop("_holes_would_promote", None)
+                progress["_redo_heal_run"] = int(_nr3.get("depth", 1))  # REDO-HEAL: sampling OFF this pass (popped at loop end)
                 progress["done"] = {}
                 for _rk in ("final_gain", "final_path", "not_compliant", "cumulative_gain", "cumulative_overrides", "hustler_best_gain", "hustler_overrides", "final_365d", "repair_365d", "confirmed_365d"):
                     progress.pop(_rk, None)
@@ -6945,7 +6812,7 @@ def main():
                     pass
                 progress["done"] = {}
                 _board_reset = True
-                for _rk in ("final_gain", "final_path", "not_compliant", "cumulative_gain", "cumulative_overrides", "hustler_best_gain", "hustler_overrides", "final_365d", "repair_365d", "confirmed_365d", "_redo_heal_run", "_redo_holes_only", "_holes_would_promote"):
+                for _rk in ("final_gain", "final_path", "not_compliant", "cumulative_gain", "cumulative_overrides", "hustler_best_gain", "hustler_overrides", "final_365d", "repair_365d", "confirmed_365d", "_redo_heal_run"):
                     progress.pop(_rk, None)
                 print(f"[NPZ-CHANGED-REFILL] {new_symside} NPZ changed since board was measured — board archived, re-filling every row on the new NPZ", flush=True)
             # AMBER 2026-10-04 (A) FAIL-CLOSED: boards that predate NPZ-stamping (npz_id None) auto-refill on
@@ -6963,7 +6830,7 @@ def main():
                     pass
                 progress["done"] = {}
                 _board_reset = True
-                for _rk in ("final_gain", "final_path", "not_compliant", "cumulative_gain", "cumulative_overrides", "hustler_best_gain", "hustler_overrides", "final_365d", "repair_365d", "confirmed_365d", "_redo_heal_run", "_redo_holes_only", "_holes_would_promote"):
+                for _rk in ("final_gain", "final_path", "not_compliant", "cumulative_gain", "cumulative_overrides", "hustler_best_gain", "hustler_overrides", "final_365d", "repair_365d", "confirmed_365d", "_redo_heal_run"):
                     progress.pop(_rk, None)
                 print(f"[NOSTAMP-REFILL] {new_symside} board predates NPZ-stamping — archived (.nostamp), re-filling every row on current NPZ", flush=True)
             # AMBER 2026-10-04 (B) BYTE-AUDIT log-only: md5 divergence with matching 6-key identity is the silent
@@ -7031,7 +6898,7 @@ def main():
                             pass
                         progress["done"] = {}
                         _board_reset = True
-                        for _rk in ("final_gain", "final_path", "not_compliant", "cumulative_gain", "cumulative_overrides", "hustler_best_gain", "hustler_overrides", "final_365d", "repair_365d", "confirmed_365d", "reverified", "_redo_heal_run", "_redo_holes_only", "_holes_would_promote"):
+                        for _rk in ("final_gain", "final_path", "not_compliant", "cumulative_gain", "cumulative_overrides", "hustler_best_gain", "hustler_overrides", "final_365d", "repair_365d", "confirmed_365d", "reverified", "_redo_heal_run"):
                             progress.pop(_rk, None)
                         progress["host"] = _this_host
                         print(f"[HOSTDIVERGE-REFILL] {new_symside} cross-host {_stored_host}->{_this_host} chain DIVERGES (old={_hs_old} new={_hs_new} {_hs_err}) — archived (.hostdiverge), re-filling", flush=True)
@@ -9331,7 +9198,7 @@ def main():
             _dF = int(progress.get("redo_depth", 0)) + 1
             progress["needs_redo"] = {"overrides": dict(progress.get("cumulative_overrides") or {}), "result": {"gain_pct": progress.get("cumulative_gain")}, "depth": _dF, "reason": "npz-changed-midrun: NPZ swapped under this run — board archived, re-fill every row on the new NPZ before any FINAL"}
             progress["done"] = {}
-            for _rk in ("final_gain", "final_path", "not_compliant", "cumulative_gain", "cumulative_overrides", "hustler_best_gain", "hustler_overrides", "final_365d", "repair_365d", "confirmed_365d", "_redo_heal_run", "_redo_holes_only", "_holes_would_promote"):
+            for _rk in ("final_gain", "final_path", "not_compliant", "cumulative_gain", "cumulative_overrides", "hustler_best_gain", "hustler_overrides", "final_365d", "repair_365d", "confirmed_365d", "_redo_heal_run"):
                 progress.pop(_rk, None)
             try:
                 _atomic_write_json(progress_path, progress)

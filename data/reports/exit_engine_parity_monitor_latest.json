@@ -1,21 +1,21 @@
 {
- "now": "2026-10-06T22:00:34.214354+00:00",
+ "now": "2026-10-06T23:00:35.593168+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 353,
- "last_exit_ts": "2026-10-06T22:00:30.393293+00:00",
+ "n_exit_rows": 465,
+ "last_exit_ts": "2026-10-06T22:59:55.682153+00:00",
  "n_leaks": 0,
- "n_gate_on": 157,
+ "n_gate_on": 205,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 11,
+ "n_unmapped": 15,
  "n_unverified": 1,
  "since": "2026-10-06T18:48:00+00:00",
  "vec_exact_by_action": {
-  "OPEN": 142,
-  "CLOSE": 40,
+  "OPEN": 181,
+  "CLOSE": 61,
   "REDUCE": 2
  },
- "native_rows": 169,
+ "native_rows": 221,
  "unverified_by_family": {
   "WEBHOOK_HANDLE_SIGNAL (None=None)": 1
  },
@@ -24,23 +24,26 @@
  "gate_on_by_family": {
   "CRYPTO_SPIKE_FADE (CRYPTO_SPIKE_FADE_ENABLED)": 1,
   "GOLDEN_RULE": 3,
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 122,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 169,
   "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 30,
-  "CYCLE_TP (CYCLE_TP_TIERED_ENABLED)": 1
+  "CYCLE_TP (CYCLE_TP_TIERED_ENABLED)": 2
  },
  "ungated_by_family": {},
  "safety_by_family": {},
  "unmapped": {
   "WT_CROSSUNDER_FINAL_L_k=95": 6,
   "BB_TAKE_4h": 2,
+  "WT_CROSSUNDER_FINAL_L_k=72": 2,
   "MARGIN_FREE_FOR_ang:SNXUSDT_LONG": 1,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.66% age": 1,
-  "SUBSTITUTION_FOR_men:SNXUSDT_LONG": 1
+  "SUBSTITUTION_FOR_men:SNXUSDT_LONG": 1,
+  "SUBSTITUTION_FOR_men:BBUSDT_LONG": 1,
+  "ORPHANED_HEDGE_PARENT_CLOSED": 1
  },
  "actions": {
-  "OPEN": 146,
-  "CLOSE": 201,
-  "REDUCE": 4,
-  "QUICK_CLOSE": 2
+  "OPEN": 185,
+  "CLOSE": 271,
+  "REDUCE": 5,
+  "QUICK_CLOSE": 4
  }
 }
