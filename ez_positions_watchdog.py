@@ -94,8 +94,12 @@ def _stop_realtime(account_key: str):
 async def watchdog_loop():
     logger.info(f"[WATCHDOG] Started — monitoring {ACCOUNT_KEYS} every {CHECK_INTERVAL_S}s, stale threshold={STALE_THRESHOLD_S}s")
     last_start_time = {}  # account_key -> timestamp when we last started realtime
+    _last_hb = 0.0
     while True:
         try:
+            if time.time() - _last_hb >= 300:  # 2026-10-06: heartbeat — run_with_watchdog NO_OUTPUT_TIMEOUT=600 SIGKILLed this quiet loop every ~10 min
+                _last_hb = time.time()
+                logger.info(f"[WATCHDOG_HEARTBEAT] alive — freshness " + " ".join(f"{a}={_get_freshness(a):.0f}s" for a in ACCOUNT_KEYS))
             for acct in ACCOUNT_KEYS:
                 age = _get_freshness(acct)
                 realtime_running = _is_realtime_running(acct)

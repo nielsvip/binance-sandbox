@@ -3293,7 +3293,7 @@ def ez_negbook_is_blocked(symbol: str, position_side: str) -> bool:
                     if not isinstance(_v, dict) or _k == "_meta":
                         continue
                     _g = _v.get("acc_gain_pct")
-                    if (_g is not None and float(_g) <= 0) or "_NEG_BLOCK" in str(_v.get("winning_tag", "")):
+                    if __import__("perf_tier_sizing").negbook_blocks(_v, bool(getattr(config, "PERF_TIER_SIZING_ENABLED", False))):  # PERF_TIER_SIZING 2026-10-06: tier ON -> only _NEG_BLOCK tag blocks; acc_gain<=0 = minimal size
                         _keys[_k] = True
         except Exception as _e:
             logger.warning(f"[NEGBOOK] load error (fail-open): {_e}")
@@ -8336,6 +8336,19 @@ def _ezm_conviction_mult(symbol: str, side: str) -> float:
 
 
 def _psym_sps(symbol: str, side: str):
+    """PERF_TIER_SIZING 2026-10-06 (USER): _psym_sps_raw x per-sym performance tier (data/persym_size_tiers.json; <1 allowed),
+    floored at PERF_TIER_MIN_ORDER_USD (exchange minimum) and capped at MAX_ORDER_VALUE. Switch off / file missing = raw."""
+    _raw = _psym_sps_raw(symbol, side)
+    if not bool(getattr(config, "PERF_TIER_SIZING_ENABLED", False)):
+        return _raw
+    try:
+        import perf_tier_sizing as _pts
+        return _pts.apply_usd(_raw, symbol, side, float(getattr(config, "PERF_TIER_MIN_ORDER_USD", 6.0)), float(getattr(config, "MAX_ORDER_VALUE", 300.0)))
+    except Exception:
+        return _raw
+
+
+def _psym_sps_raw(symbol: str, side: str):
     """Effective START_POSITION_SIZE for (symbol, side). Honors per-sym
     START_POSITION_SIZE_OVERRIDE_USD first, then per-sym START_POSITION_SIZE,
     finally config.START_POSITION_SIZE. Use at sizing call sites in lieu of
@@ -30574,6 +30587,7 @@ class MultiAccountTradeManager:
     # 0E
     _execute_now_open_in_flight: dict = {}  # FIX 2026-04-08: ATOMIC open-in-flight guard inside execute_now itself
 
+    @_odg.execute_now_gate("binance")  # POSITIONS REVAMP 2026-10-06: execute_now token — the wire refuses exposure-increasing orders without it
     async def execute_now(
         self,
         position_key: Optional[str] = None,
@@ -30618,15 +30632,6 @@ class MultiAccountTradeManager:
                         logger.warning(f"⚠️ [EXIT_ENGINE_LEAK] {position_key} action={action} fired family='{_fam}' but gate {_knob}={_gval} is DISABLED — illegal trade under parity (reason={_xr[:60]})")
             except Exception as _xe_err:
                 logger.debug(f"[EXIT_ENGINE_PARITY] {position_key}: instrumentation skipped ({_xe_err})")
-        # ─── USER 2026-10-06 NO-QUICK PARITY (TEMPORARY — NOTE_QUICK_REENABLE) ───
-        # The QUICK family has no functional vector model (QUICK_OPEN_STRONG_VEC_ENABLED=False both sides);
-        # live must not trade what vectorized cannot see. Blocks ALL QUICK actions/reasons regardless of
-        # producer (producer file unidentified — reason built outside ez_manage). Non-QUICK exits still manage.
-        # NOTE_QUICK_REENABLE: re-enable ONLY when v12 wires real QUICK signal logic (vec_decisions/ predicate +
-        # engine call site per BACKTEST_BIBLE §39) AND scalar/vec parity passes (§43 ratio 0.80–1.25, gain <0.5pp/<15%).
-        if action in ("QUICK_OPEN", "QUICK_AUGMENT", "QUICK_CLOSE", "QUICK_REDUCE", "QUICK_HEDGE") or "QUICK" in str(reason or "").upper():
-            logger.critical(f"🚫 [NO_QUICK_PARITY] {position_key}: QUICK disabled until vectorized (action={action} reason={(reason or '')[:80]})")
-            return "BLOCKED_QUICK_DISABLED_NO_VEC"
         # ─── X3 VEC-DRIVEN LIVE (2026-10-06 USER "THE SECOND A VECTORIZED TRADE WOULD OCCUR A LIVE TRADE OCCURS") ───
         # sym_side mode=live (VEC_DRIVEN_ENABLED + data/vec_live/vec_driven.json): only VEC_DRIVEN_* orders trade it
         # (they skip the discretionary gates flagged _vd_exempt below); every native decision is suppressed here, the
@@ -61210,6 +61215,32 @@ async def main():
             logger.error("The application will attempt a full restart in 30 seconds.")
         finally:
             logger.warning("--- SHUTDOWN & CLEANUP SEQUENCE INITIATED ---")
+            # 2026-10-06 switch-over (director): the in-memory order queue is NOT persisted, but its worker keeps executing during shutdown
+            # (fin:DASHUSDT_SHORT CRYPTO_SPIKE_FADE OPEN queued 19:13:24 by the old process, executed 19:14:16 after SHUTDOWN 19:14:13).
+            # In exact mode: purge pending non-vec ENTRY orders (OPEN/AUGMENT/REENTRY without |VEC_EXACT) first; exits and vec orders stay.
+            try:
+                _sd_oq = getattr(trade_manager, "order_queue", None) if "trade_manager" in locals() else None
+                _sd_q = getattr(_sd_oq, "_orders", None)
+                if _sd_q is not None and _vec_exact_mode_on():
+                    _sd_keep, _sd_drop = [], []
+                    while True:
+                        try:
+                            _sd_o = _sd_q.get_nowait()
+                        except asyncio.QueueEmpty:
+                            break
+                        _sd_q.task_done()
+                        _sd_act = str(_sd_o.get("action", "")).upper()
+                        _sd_rsn = str(_sd_o.get("reason", "") or "")
+                        if any(t in _sd_act for t in ("OPEN", "AUGMENT", "REENTRY")) and "CLOSE" not in _sd_act and "|VEC_EXACT" not in _sd_rsn:
+                            _sd_drop.append(f"{_sd_o.get('account_key')}:{_sd_o.get('symbol')}_{_sd_o.get('position_side')} {_sd_act} {_sd_rsn[:40]}")
+                        else:
+                            _sd_keep.append(_sd_o)
+                    for _sd_o in _sd_keep:
+                        _sd_q.put_nowait(_sd_o)
+                    if _sd_drop:
+                        logger.warning(f"[VEC_EXACT_QUEUE_PURGE] shutdown: dropped {len(_sd_drop)} pending non-vec entry order(s): {_sd_drop[:10]}")
+            except Exception as _sd_e:
+                logger.warning(f"[VEC_EXACT_QUEUE_PURGE] skipped: {_sd_e}")
             await delete_server_heartbeat()
             for task in background_tasks:
                 task.cancel()

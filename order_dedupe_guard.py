@@ -24,8 +24,13 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import contextvars
 import fcntl
+import functools
+import hashlib
+import inspect
 import json
+import math
 import logging
 import os
 import threading
@@ -57,6 +62,13 @@ DEFAULTS = {
     "ORDER_DEDUPE_LEDGER_KEEP": 40,
     "ORDER_DEDUPE_IGNORE_ORDER_TYPES": (),  # e.g. ("STOP_MARKET",) — empty = strict (every open order blocks)
     "ORDER_DEDUPE_AUTO_CANCEL_OWN_AFTER_SEC": 120.0,  # cancel-and-confirm for OUR OWN ledger orders left working this long (0 = off). Foreign orders: never.
+    # ── POSITIONS REVAMP 2026-10-06 (IBIT incident): wire-level exposure gate ──
+    "WIRE_EXPOSURE_GATE_ENABLED": True,  # master switch for the three checks below (False = logged CRITICAL on every order)
+    "WIRE_REQUIRE_EXECUTE_NOW": True,  # exposure-INCREASING orders must carry the execute_now context token (no bypass path can open/augment)
+    "WIRE_REFUSE_OPEN_ON_NONZERO": True,  # pure OPEN actions (decided as "from flat") are refused when the broker shows a same-side position
+    "WIRE_AUGMENT_MIN_GAIN_PCT": None,  # None -> max(2.5, MIN_GAIN_TO_BUY_AGGRESSIVELY); gain vs max(broker avg entry, last same-direction fill)
+    "WIRE_AUGMENT_LAST_FILL_LOOKBACK_SEC": 3 * 86400.0,
+    "WIRE_REFUSE_BAD_QTY": True,  # zero / negative / NaN / inf quantity never sent
 }
 
 
@@ -281,6 +293,176 @@ class _GuardBase:
         return Decision(True)
 
 
+# ─────────────── execute_now context token + wire exposure gate (POSITIONS REVAMP 2026-10-06) ───────────────
+# INVARIANT 2 (open only from zero) and INVARIANT 5 (execute_now is the only gate) enforced at the broker wire:
+#   * execute_now (both venues) is decorated with execute_now_gate(); it sets a ContextVar token for its duration.
+#     asyncio.to_thread / create_task copy the context, so every wire call made on behalf of that execute_now sees it.
+#   * An exposure-INCREASING order without a token (REENTRY_MONITOR, copilot, webhook, helper scripts) is refused.
+#   * The first increasing leg of a call is judged against a FRESH broker position query (never a file, never a cache):
+#       broker flat  -> OPEN allowed;  broker non-zero same side -> it is an AUGMENT: pure-OPEN actions are refused,
+#       every other action must pass the augment gain floor vs max(broker avg entry, last same-direction fill).
+#   * Later legs of the SAME execute_now (chase re-place, market fallback) may only fill the remainder of the first
+#     leg's quantity: broker-confirmed delta (and ledger fills) already >= intent -> refused, else clamped.
+_ORDER_AUTH: contextvars.ContextVar = contextvars.ContextVar("odg_execute_now_token", default=None)
+PURE_OPEN_ACTIONS = {"OPEN", "QUICK_OPEN", "REENTRY_OPEN", "HEDGE_OPEN", "REVERSE", "FRESH_OPEN", "ENTRY"}
+_EXEC_ARG_NAMES = ("position_key", "account_key", "symbol", "position_side", "action", "reason", "quantity", "side")
+
+
+class ExposureBlocked(Exception):
+    pass
+
+
+def current_token() -> Optional[Dict[str, Any]]:
+    return _ORDER_AUTH.get()
+
+
+def _token_from_args(venue: str, args: Dict[str, Any]) -> Dict[str, Any]:
+    pk = str(args.get("position_key") or "")
+    acct = args.get("account_key") or (pk.split(":", 1)[0] if ":" in pk else None)
+    sym = args.get("symbol")
+    ps = args.get("position_side")
+    if not sym and pk:
+        tail = pk.split(":", 1)[-1]
+        if "_" in tail:
+            sym, ps2 = tail.rsplit("_", 1)
+            ps = ps or ps2
+    return {"venue": venue, "account": acct, "symbol": str(sym or "").upper(), "position_side": str(ps or "").upper(), "action": str(args.get("action") or "").upper(), "reason": str(args.get("reason") or "")[:160], "ts": time.time(), "keys": {}, "orders": []}
+
+
+def execute_now_gate(venue: str):
+    """Decorator for execute_now: stamps the context token used by the wire gate. Transparent otherwise (functools.wraps keeps
+    inspect.getsource / signature pointing at the real execute_now)."""
+
+    def deco(fn):
+        sig = inspect.signature(fn)
+
+        @functools.wraps(fn)
+        async def wrapper(*a, **kw):
+            try:
+                bound = sig.bind_partial(*a, **kw).arguments
+            except Exception:
+                bound = dict(kw)
+            tok = _ORDER_AUTH.set(_token_from_args(venue, {k: bound.get(k) for k in _EXEC_ARG_NAMES}))
+            try:
+                return await fn(*a, **kw)
+            finally:
+                _ORDER_AUTH.reset(tok)
+
+        wrapper.__odg_execute_now_gate__ = True
+        return wrapper
+
+    return deco
+
+
+@contextlib.contextmanager
+def execute_now_context(venue: str, **args):
+    """Same token as the decorator, for tests / tools that must emulate an execute_now call."""
+    tok = _ORDER_AUTH.set(_token_from_args(venue, args))
+    try:
+        yield _ORDER_AUTH.get()
+    finally:
+        _ORDER_AUTH.reset(tok)
+
+
+def _bad_qty(q: Any) -> bool:
+    try:
+        v = float(q)
+    except (TypeError, ValueError):
+        return True
+    return not math.isfinite(v) or v <= 0
+
+
+def _augment_floor(cfg: Any) -> float:
+    v = _cfg(cfg, "WIRE_AUGMENT_MIN_GAIN_PCT")
+    if v is None:
+        base = 3.0
+        try:
+            if cfg is not None and hasattr(cfg, "MIN_GAIN_TO_BUY_AGGRESSIVELY"):
+                base = float(getattr(cfg, "MIN_GAIN_TO_BUY_AGGRESSIVELY"))
+        except Exception:
+            base = 3.0
+        return max(2.5, base)
+    return max(2.5, float(v))  # CLAUDE.md: never below 2.5
+
+
+def _gain_pct(is_long: bool, ref: float, mark: float) -> Optional[float]:
+    if not (ref > 0 and mark > 0 and math.isfinite(ref) and math.isfinite(mark)):
+        return None
+    return (mark - ref) / ref * 100.0 if is_long else (ref - mark) / ref * 100.0
+
+
+def _last_fill_price(guard: "_GuardBase", symbol: str, side: str, position_side: str) -> Optional[float]:
+    lookback = float(_cfg(guard.cfg, "WIRE_AUGMENT_LAST_FILL_LOOKBACK_SEC"))
+    now = guard.clock()
+    for o in reversed(guard.ledger.orders(symbol)):
+        if str(o.get("side", "")).upper() != str(side).upper() or str(o.get("position_side", "") or "").upper() != str(position_side or "").upper():
+            continue
+        if now - _f(o.get("submitted_at"), 0.0) > lookback:
+            break
+        if _f(o.get("executed_qty")) > 0 and _f(o.get("avg_price")) > 0:
+            return _f(o.get("avg_price"))
+    return None
+
+
+def exposure_decision(guard: "_GuardBase", symbol: str, side: str, position_side: str, is_long: bool, qty: float, broker: Dict[str, Any], origin: str = "") -> Decision:
+    """Pure decision for an exposure-INCREASING order. broker = {"amt": abs same-side qty, "entry": avg entry, "mark": mark}."""
+    cfg = guard.cfg
+    tok = _ORDER_AUTH.get()
+    sym = symbol.upper()
+    if tok is None or (tok.get("symbol") and tok.get("symbol") != sym):
+        if bool(_cfg(cfg, "WIRE_REQUIRE_EXECUTE_NOW")):
+            return Decision(False, "NOT_VIA_EXECUTE_NOW", {"token": {k: (tok or {}).get(k) for k in ("symbol", "action", "reason")}, "origin": origin[:120]})
+        guard.log.critical(f"⚠️ [WIRE_NO_TOKEN] {guard.broker}:{guard.account}:{sym} increasing order outside execute_now allowed by config")
+        tok = {"action": "", "keys": {}, "orders": []}
+    key = f"{sym}|{str(position_side or '').upper()}"
+    amt = abs(_f(broker.get("amt")))
+    st = tok.setdefault("keys", {}).get(key)
+    action = str(tok.get("action") or "").upper()
+    ev = {"broker_amt": amt, "broker_entry": broker.get("entry"), "mark": broker.get("mark"), "action": action, "requested": qty, "reason": str(tok.get("reason") or "")[:100]}
+    if st is None:  # first increasing leg of this execute_now call
+        if amt > 1e-12:
+            if action in PURE_OPEN_ACTIONS and bool(_cfg(cfg, "WIRE_REFUSE_OPEN_ON_NONZERO")):
+                return Decision(False, "OPEN_ON_NONZERO_POSITION", ev)
+            floor = _augment_floor(cfg)
+            entry = _f(broker.get("entry"))
+            last = _last_fill_price(guard, sym, side, position_side)
+            refs = [r for r in (entry, last) if r and r > 0]
+            if not refs:
+                return Decision(False, "AUGMENT_REF_PRICE_UNKNOWN", ev)
+            ref = max(refs) if is_long else min(refs)
+            gain = _gain_pct(is_long, ref, _f(broker.get("mark")))
+            ev.update({"ref_price": ref, "last_fill": last, "gain_pct": gain, "floor_pct": floor})
+            if gain is None:
+                return Decision(False, "AUGMENT_MARK_UNKNOWN", ev)
+            if gain < floor:
+                return Decision(False, "AUGMENT_GAIN_GATE", ev)
+        tok["keys"][key] = {"baseline": amt, "intent": float(qty), "first_ts": time.time()}
+        return Decision(True, "OPEN_FROM_ZERO" if amt <= 1e-12 else "AUGMENT_OK", ev)
+    # follow-up leg in the same call: only the remainder of the first leg's intent
+    delta = max(0.0, amt - _f(st.get("baseline")))
+    ledger_filled = 0.0
+    try:
+        ids = set(tok.get("orders") or [])
+        ledger_filled = sum(_f(o.get("executed_qty")) for o in guard.ledger.orders(sym) if (o.get("client_order_id") or o.get("local_id")) in ids)
+    except Exception:
+        pass
+    filled = max(delta, ledger_filled)
+    intent = _f(st.get("intent"))
+    remaining = intent - filled
+    ev.update({"intent": intent, "broker_delta": delta, "ledger_filled": ledger_filled, "remaining": remaining})
+    if remaining <= max(1e-12, intent * 0.001):
+        return Decision(False, "INTENT_FILLED_IN_CALL", ev)
+    if qty > remaining * 1.0000001:
+        return Decision(True, "CLAMP", ev, clamp_qty=remaining)
+    return Decision(True, "FOLLOWUP_OK", ev)
+
+
+def _remember_order(ident: Optional[str]) -> None:
+    tok = _ORDER_AUTH.get()
+    if tok is not None and ident:
+        tok.setdefault("orders", []).append(ident)
+
+
 # ───────────────────────────── Binance futures ─────────────────────────────
 class BinanceDedupeGuard(_GuardBase):
     broker = "binance"
@@ -342,7 +524,7 @@ class BinanceDedupeGuard(_GuardBase):
             st = str((resp or {}).get("status", "")).upper()
             exq = (resp or {}).get("executedQty")
             if st in BINANCE_FINAL and exq is not None:
-                self._mark(sym, entry, status=st, executed_qty=_f(exq), final=True, state="FINAL", order_id=resp.get("orderId") or entry.get("order_id"))
+                self._mark(sym, entry, status=st, executed_qty=_f(exq), final=True, state="FINAL", order_id=resp.get("orderId") or entry.get("order_id"), avg_price=_f(resp.get("avgPrice"), 0.0))
                 continue
             is_own_cancel = bool(entry.get("cancel_requested_at")) and now - _f(entry.get("cancel_requested_at")) < cancel_recent
             own_pending = own_pending or is_own_cancel
@@ -423,6 +605,23 @@ class BinanceDedupeGuard(_GuardBase):
                 raise OrderDedupeBlockedBinance(dec)
             qty_raw = params.get("quantity")
             qty = _f(qty_raw, 0.0)
+            closing_flag = str(params.get("closePosition", "")).lower() == "true" or params.get("closePosition") is True
+            if bool(_cfg(self.cfg, "WIRE_REFUSE_BAD_QTY")) and not closing_flag and _bad_qty(qty_raw):
+                raise OrderDedupeBlockedBinance(self._block(symbol, "BAD_QTY", {"quantity": str(qty_raw)}, origin))
+            if bool(_cfg(self.cfg, "WIRE_EXPOSURE_GATE_ENABLED")):
+                edec = self.exposure_gate(inner_client, symbol, side, ps, qty, params, origin)
+                if not edec.allowed:
+                    raise OrderDedupeBlockedBinance(self._block(symbol, edec.code, edec.evidence, origin))
+                if edec.clamp_qty is not None:
+                    new_q = _fmt_like(qty_raw, edec.clamp_qty)
+                    if _f(new_q, 0.0) <= 0:
+                        raise OrderDedupeBlockedBinance(self._block(symbol, "INTENT_REMAINDER_ZERO", edec.evidence, origin))
+                    self.log.warning(f"✂️ [WIRE_EXPOSURE_CLAMP] binance:{self.account}:{symbol} {side}/{ps} qty {qty_raw} -> {new_q} {edec.evidence}")
+                    params["quantity"] = new_q
+                    qty_raw = new_q
+                    qty = _f(new_q)
+            else:
+                self.log.critical(f"⚠️ [WIRE_EXPOSURE_GATE_DISABLED] binance:{self.account}:{symbol} — open-from-zero / execute_now token NOT enforced")
             if dec.code != "DISABLED" and qty > 0:
                 idec = self.intent_check(symbol, side, ps, qty)
                 if not idec.allowed:
@@ -438,8 +637,9 @@ class BinanceDedupeGuard(_GuardBase):
             params["newClientOrderId"] = cid
             entry = {"client_order_id": cid, "order_id": None, "side": side, "position_side": ps, "qty": qty, "type": str(params.get("type", "")), "submitted_at": self.clock(), "state": "SUBMITTING", "status": None, "executed_qty": 0.0, "final": False, "origin": origin[:120]}
             self.ledger.mutate(symbol, lambda orders: orders.append(entry))
+            _remember_order(cid)
         try:
-            resp = inner_client.futures_create_order(**params)
+            resp = _raw_binance_create(inner_client, params)
         except Exception as e:
             code = getattr(e, "code", None)
             status_code = getattr(e, "status_code", None)
@@ -453,8 +653,42 @@ class BinanceDedupeGuard(_GuardBase):
         st = str((resp or {}).get("status", "")).upper()
         exq = (resp or {}).get("executedQty")
         final = st in BINANCE_FINAL and exq is not None
-        self._mark(symbol, entry, state="FINAL" if final else "SUBMITTED", order_id=(resp or {}).get("orderId"), status=st or None, executed_qty=_f(exq, 0.0), final=final)
+        self._mark(symbol, entry, state="FINAL" if final else "SUBMITTED", order_id=(resp or {}).get("orderId"), status=st or None, executed_qty=_f(exq, 0.0), final=final, avg_price=_f((resp or {}).get("avgPrice"), 0.0))
         return resp
+
+    def broker_position(self, inner_client, symbol: str, position_side: str) -> Dict[str, Any]:
+        """FRESH broker read (positionRisk for the symbol). Raises on failure — callers fail closed."""
+        rows = inner_client.futures_position_information(symbol=symbol.upper())
+        if not isinstance(rows, list):
+            raise RuntimeError(f"positionRisk unparseable: {str(rows)[:200]}")
+        ps = str(position_side or "").upper() or "BOTH"
+        for r in rows:
+            if str(r.get("symbol", "")).upper() != symbol.upper():
+                continue
+            if str(r.get("positionSide", "BOTH")).upper() == ps:
+                return {"signed": _f(r.get("positionAmt")), "amt": abs(_f(r.get("positionAmt"))), "entry": _f(r.get("entryPrice")), "mark": _f(r.get("markPrice"))}
+        return {"signed": 0.0, "amt": 0.0, "entry": 0.0, "mark": 0.0}
+
+    def exposure_gate(self, inner_client, symbol: str, side: str, ps: str, qty: float, params: Dict[str, Any], origin: str = "") -> Decision:
+        reduce_only = str(params.get("reduceOnly", "")).lower() == "true" or params.get("reduceOnly") is True
+        close_pos = str(params.get("closePosition", "")).lower() == "true" or params.get("closePosition") is True
+        if reduce_only or close_pos:
+            return Decision(True, "DECREASING")
+        hedge_side = ps in ("LONG", "SHORT")
+        if hedge_side and not ((ps == "LONG" and side == "BUY") or (ps == "SHORT" and side == "SELL")):
+            if _ORDER_AUTH.get() is None:
+                self.log.critical(f"⚠️ [ORDER_OUTSIDE_EXECUTE_NOW] binance:{self.account}:{symbol} decreasing {side}/{ps} qty={qty} origin={origin[:80]} — allowed (exits never stranded), route it through execute_now")
+            return Decision(True, "DECREASING")
+        try:
+            bp = self.broker_position(inner_client, symbol, ps)
+        except Exception as e:
+            return Decision(False, "BROKER_POSITION_UNKNOWN", {"error": repr(e)[:300]})
+        if not hedge_side:  # one-way mode: increasing iff flat or same sign
+            signed = bp["signed"]
+            if signed != 0 and ((signed > 0) != (side == "BUY")):
+                return Decision(True, "DECREASING")
+        is_long = (ps == "LONG") if hedge_side else (side == "BUY")
+        return exposure_decision(self, symbol, side, ps, is_long, qty, bp, origin)
 
     def observe(self, symbol: str, resp: Any, cancel_requested: bool = False, order_id=None, client_order_id=None) -> None:
         """Record broker-returned order state (cancel / get_order responses)."""
@@ -470,6 +704,8 @@ class BinanceDedupeGuard(_GuardBase):
                 exq = resp.get("executedQty")
                 final = st in BINANCE_FINAL and exq is not None
                 fields = {"status": st, "executed_qty": _f(exq, 0.0)}
+                if _f(resp.get("avgPrice"), 0.0) > 0:
+                    fields["avg_price"] = _f(resp.get("avgPrice"))
                 if final:
                     fields.update(final=True, state="FINAL")
                 if oid is not None:
@@ -495,6 +731,60 @@ def _fmt_like(raw: Any, value: float) -> str:
         return f"{q:f}"
     except (InvalidOperation, ValueError):
         return str(value)
+
+
+_ORIG_BINANCE_CREATE: Optional[Callable] = None
+_ORIG_BINANCE_BATCH: Optional[Callable] = None
+_BINANCE_KEY_ACCOUNTS: Dict[str, str] = {}
+
+
+def _raw_binance_create(client, params: Dict[str, Any]):
+    """The ONLY call that reaches python-binance's real futures_create_order (unpatched original when the class guard is installed)."""
+    if _ORIG_BINANCE_CREATE is not None and not isinstance(client, GuardedBinanceClient) and isinstance(client, _binance_client_cls() or ()):
+        return _ORIG_BINANCE_CREATE(client, **params)
+    return client.futures_create_order(**params)
+
+
+def _binance_client_cls():
+    try:
+        from binance.client import Client as _C  # noqa: WPS433
+        return _C
+    except Exception:
+        return None
+
+
+def _binance_account_for(client) -> str:
+    acct = getattr(client, "_odg_account", None)
+    if acct:
+        return acct
+    key = str(getattr(client, "API_KEY", "") or "")
+    if key in _BINANCE_KEY_ACCOUNTS:
+        return _BINANCE_KEY_ACCOUNTS[key]
+    return "key_" + hashlib.sha1(key.encode()).hexdigest()[:10]
+
+
+def install_binance_class_guard(cfg: Any = None, logger: Optional[logging.Logger] = None) -> bool:
+    """Patch python-binance Client so EVERY instance in this process (raw Client() objects in helpers included) goes through
+    the guard: futures_create_order -> guarded_create, futures_place_batch_order -> refused. Idempotent."""
+    global _ORIG_BINANCE_CREATE, _ORIG_BINANCE_BATCH
+    C = _binance_client_cls()
+    if C is None or _ORIG_BINANCE_CREATE is not None:
+        return _ORIG_BINANCE_CREATE is not None
+    _ORIG_BINANCE_CREATE = C.futures_create_order
+    _ORIG_BINANCE_BATCH = getattr(C, "futures_place_batch_order", None)
+
+    def futures_create_order(self, **params):
+        g = get_binance_guard(_binance_account_for(self), cfg, logger)
+        return g.guarded_create(self, params, origin="class:" + str(params.get("newClientOrderId") or ""))
+
+    def futures_place_batch_order(self, **params):
+        g = get_binance_guard(_binance_account_for(self), cfg, logger)
+        raise OrderDedupeBlockedBinance(g._block(str(params.get("symbol", "?")), "BATCH_ORDERS_NOT_ALLOWED", {}, "class-batch"))
+
+    futures_create_order.__odg_patched__ = True
+    C.futures_create_order = futures_create_order
+    C.futures_place_batch_order = futures_place_batch_order
+    return True
 
 
 class GuardedBinanceClient:
@@ -541,12 +831,24 @@ def get_binance_guard(account: str, cfg: Any = None, logger: Optional[logging.Lo
     g = _BINANCE_GUARDS.get(account)
     if g is None:
         g = _BINANCE_GUARDS[account] = BinanceDedupeGuard(account, cfg=cfg, logger=logger, ledger_dir=ledger_dir)
+    else:
+        if cfg is not None and g.cfg is None:
+            g.cfg = cfg
+        if logger is not None and g.log is _LOG:
+            g.log = logger
     return g
 
 
 def wrap_binance_client(client, account: str, cfg: Any = None, logger: Optional[logging.Logger] = None, ledger_dir: Optional[Path] = None):
     if client is None or isinstance(client, GuardedBinanceClient):
         return client
+    try:
+        key = str(getattr(client, "API_KEY", "") or "")
+        if key:
+            _BINANCE_KEY_ACCOUNTS[key] = account
+        client._odg_account = account
+    except Exception:
+        pass
     return GuardedBinanceClient(client, get_binance_guard(account, cfg, logger, ledger_dir))
 
 
@@ -670,7 +972,7 @@ class TradierDedupeGuard(_GuardBase):
             st = str(bo.get("status", "")).lower()
             exq = bo.get("exec_quantity")
             if st in TRADIER_FINAL and exq is not None:
-                self._mark(sym, entry, status=st, executed_qty=_f(exq), final=True, state="FINAL")
+                self._mark(sym, entry, status=st, executed_qty=_f(exq), final=True, state="FINAL", avg_price=_f(bo.get("avg_fill_price"), 0.0))
                 continue
             is_own_cancel = bool(entry.get("cancel_requested_at")) and now - _f(entry.get("cancel_requested_at")) < cancel_recent
             return Decision(False, "LAST_ORDER_NOT_FINAL", {**ident, "broker": self._order_ev(bo)}), is_own_cancel
@@ -732,6 +1034,24 @@ class TradierDedupeGuard(_GuardBase):
             if not dec.allowed:
                 return {"errors": {"error": [f"ORDER_DEDUPE_BLOCK:{dec.code}"]}, "order_dedupe_block": {"code": dec.code, "evidence": dec.evidence}}
             qty = _f(quantity, 0.0)
+            if bool(_cfg(self.cfg, "WIRE_REFUSE_BAD_QTY")) and (_bad_qty(quantity) or int(qty) < 1):
+                d2 = self._block(sym, "BAD_QTY", {"quantity": str(quantity)}, origin)
+                return {"errors": {"error": [f"ORDER_DEDUPE_BLOCK:{d2.code}"]}, "order_dedupe_block": {"code": d2.code, "evidence": d2.evidence}}
+            if bool(_cfg(self.cfg, "WIRE_EXPOSURE_GATE_ENABLED")):
+                edec = await self.exposure_gate(inner_client, sym, side, qty, origin)
+                if not edec.allowed:
+                    d2 = self._block(sym, edec.code, edec.evidence, origin)
+                    return {"errors": {"error": [f"ORDER_DEDUPE_BLOCK:{d2.code}"]}, "order_dedupe_block": {"code": d2.code, "evidence": d2.evidence}}
+                if edec.clamp_qty is not None:
+                    new_q = float(int(edec.clamp_qty))
+                    if new_q < 1:
+                        d2 = self._block(sym, "INTENT_REMAINDER_ZERO", edec.evidence, origin)
+                        return {"errors": {"error": [f"ORDER_DEDUPE_BLOCK:{d2.code}"]}, "order_dedupe_block": {"code": d2.code, "evidence": d2.evidence}}
+                    self.log.warning(f"✂️ [WIRE_EXPOSURE_CLAMP] tradier:{self.account}:{sym} {side} qty {quantity} -> {new_q} {edec.evidence}")
+                    quantity = new_q
+                    qty = new_q
+            else:
+                self.log.critical(f"⚠️ [WIRE_EXPOSURE_GATE_DISABLED] tradier:{self.account}:{sym} — open-from-zero / execute_now token NOT enforced")
             if dec.code != "DISABLED" and qty > 0:
                 idec = self.intent_check(sym, side, "", qty)
                 if not idec.allowed:
@@ -747,8 +1067,10 @@ class TradierDedupeGuard(_GuardBase):
                     qty = new_q
             entry = {"local_id": uuid.uuid4().hex, "order_id": None, "side": str(side).lower(), "position_side": "", "qty": qty, "type": order_type, "submitted_at": self.clock(), "state": "SUBMITTING", "status": None, "executed_qty": 0.0, "final": False, "origin": origin[:120]}
             self.ledger.mutate(sym, lambda orders: orders.append(entry))
+            _remember_order(entry["local_id"])
         try:
-            res = await inner_client.place_order(account_key=account_key, symbol=symbol, side=side, quantity=quantity, order_type=order_type, price=price, stop=stop, duration=duration)
+            raw = getattr(inner_client, "_odg_raw_place_order", None) or inner_client.place_order
+            res = await raw(account_key=account_key, symbol=symbol, side=side, quantity=quantity, order_type=order_type, price=price, stop=stop, duration=duration)
         except BaseException as e:
             self._mark(sym, entry, state="UNKNOWN", evidence=repr(e)[:200])
             self.log.critical(f"🚨 [ORDER_DEDUPE_UNKNOWN] tradier:{self.account}:{sym} place_order raised {e!r} — key frozen until broker listing confirms")
@@ -767,6 +1089,77 @@ class TradierDedupeGuard(_GuardBase):
             self.log.critical(f"🚨 [ORDER_DEDUPE_UNKNOWN] tradier:{self.account}:{sym} place_order returned no id ({str(res)[:120]}) — key frozen until broker listing confirms")
         return res
 
+    async def guarded_generic(self, inner_client, symbol: str, side: str, quantity: float, call: Callable[[], Any], origin: str = "") -> Dict[str, Any]:
+        """Option / multileg orders: broker-FINAL dedupe on the underlying + ledger + no retry. (Exposure gate is equity-only;
+        option strategies run outside execute_now and are logged CRITICAL on every order.)"""
+        sym = str(symbol).upper()
+        async with self.akey_lock(sym):
+            dec = await self.preflight(inner_client, sym, origin=origin)
+            if not dec.allowed:
+                return {"errors": {"error": [f"ORDER_DEDUPE_BLOCK:{dec.code}"]}, "order_dedupe_block": {"code": dec.code, "evidence": dec.evidence}}
+            if bool(_cfg(self.cfg, "WIRE_REFUSE_BAD_QTY")) and _bad_qty(quantity):
+                d2 = self._block(sym, "BAD_QTY", {"quantity": str(quantity)}, origin)
+                return {"errors": {"error": [f"ORDER_DEDUPE_BLOCK:{d2.code}"]}, "order_dedupe_block": {"code": d2.code, "evidence": d2.evidence}}
+            if _ORDER_AUTH.get() is None:
+                self.log.critical(f"⚠️ [ORDER_OUTSIDE_EXECUTE_NOW] tradier:{self.account}:{sym} option order {side} qty={quantity} origin={origin[:80]} — dedupe-guarded only")
+            entry = {"local_id": uuid.uuid4().hex, "order_id": None, "side": str(side).lower(), "position_side": "", "qty": _f(quantity), "type": "option", "submitted_at": self.clock(), "state": "SUBMITTING", "status": None, "executed_qty": 0.0, "final": False, "origin": origin[:120]}
+            self.ledger.mutate(sym, lambda orders: orders.append(entry))
+        try:
+            res = await call()
+        except BaseException as e:
+            self._mark(sym, entry, state="UNKNOWN", evidence=repr(e)[:200])
+            raise
+        order = (res or {}).get("order") if isinstance(res, dict) else None
+        oid = order.get("id") if isinstance(order, dict) else None
+        if oid:
+            self._mark(sym, entry, order_id=oid, status=str(order.get("status", "") or "").lower() or None, state="SUBMITTED")
+        elif isinstance(res, dict) and res.get("errors"):
+            self._mark(sym, entry, state="FINAL", status="rejected_by_broker", final=True, executed_qty=0.0, evidence=str(res.get("errors"))[:200])
+        else:
+            self._mark(sym, entry, state="UNKNOWN", evidence=str(res)[:200])
+        return res
+
+    async def broker_position(self, inner_client, symbol: str, is_long: bool) -> Dict[str, Any]:
+        """FRESH broker read: GET positions (+ quote for mark when a position exists). Raises on failure (fail closed)."""
+        q = float(_cfg(self.cfg, "ORDER_DEDUPE_QUERY_TIMEOUT_SEC"))
+        rows = await asyncio.wait_for(inner_client.get_account_positions(self.account), timeout=q)
+        if rows is None:
+            raise RuntimeError("positions query failed (None)")
+        if isinstance(rows, dict):
+            p = rows.get("positions", rows)
+            rows = p.get("position", []) if isinstance(p, dict) else p
+            rows = rows if isinstance(rows, list) else [rows]
+        signed = 0.0
+        cost = 0.0
+        for r in rows or []:
+            if str((r or {}).get("symbol", "")).strip().upper() == symbol.upper():
+                signed += _f(r.get("quantity"))
+                cost += _f(r.get("cost_basis"))
+        same = signed if is_long else -signed
+        amt = max(0.0, same)
+        out = {"signed": signed, "amt": amt, "opposing": max(0.0, -same), "entry": abs(cost) / abs(signed) if signed else 0.0, "mark": 0.0}
+        if amt > 0:
+            quote = await asyncio.wait_for(inner_client.get_quote(symbol), timeout=q)
+            last = _f((quote or {}).get("last"))
+            bid, ask = _f((quote or {}).get("bid")), _f((quote or {}).get("ask"))
+            out["mark"] = (bid if is_long else ask) or last  # conservative: what we could actually trade at
+        return out
+
+    async def exposure_gate(self, inner_client, symbol: str, side: str, qty: float, origin: str = "") -> Decision:
+        s = str(side).lower()
+        if s not in ("buy", "sell_short"):
+            if _ORDER_AUTH.get() is None:
+                self.log.critical(f"⚠️ [ORDER_OUTSIDE_EXECUTE_NOW] tradier:{self.account}:{symbol} decreasing {s} qty={qty} origin={origin[:80]} — allowed (exits never stranded), route it through execute_now")
+            return Decision(True, "DECREASING")
+        is_long = s == "buy"
+        try:
+            bp = await self.broker_position(inner_client, symbol, is_long)
+        except Exception as e:
+            return Decision(False, "BROKER_POSITION_UNKNOWN", {"error": repr(e)[:300]})
+        if bp.get("opposing", 0) > 0:
+            return Decision(False, "OPPOSING_POSITION_HELD", {"broker_signed": bp.get("signed")})
+        return exposure_decision(self, symbol, s, "", is_long, qty, bp, origin)
+
     def observe(self, symbol: str, order: Any, order_id=None, cancel_requested: bool = False) -> None:
         try:
             sym = str(symbol).upper()
@@ -781,6 +1174,8 @@ class TradierDedupeGuard(_GuardBase):
                 st = str(order.get("status")).lower()
                 exq = order.get("exec_quantity")
                 fields = {"status": st, "executed_qty": _f(exq, 0.0)}
+                if _f(order.get("avg_fill_price"), 0.0) > 0:
+                    fields["avg_price"] = _f(order.get("avg_fill_price"))
                 if st in TRADIER_FINAL and exq is not None:
                     fields.update(final=True, state="FINAL")
                 self.ledger.update_order(sym, match, **fields)
@@ -840,6 +1235,11 @@ def get_tradier_guard(account: str, cfg: Any = None, logger: Optional[logging.Lo
     g = _TRADIER_GUARDS.get(account)
     if g is None:
         g = _TRADIER_GUARDS[account] = TradierDedupeGuard(account, cfg=cfg, logger=logger, ledger_dir=ledger_dir)
+    else:
+        if cfg is not None and g.cfg is None:
+            g.cfg = cfg
+        if logger is not None and g.log is _LOG:
+            g.log = logger
     return g
 
 
@@ -872,6 +1272,13 @@ async def tradier_preflight_with_factory(factory: Callable[[], Any], account: st
         if cli is not None:
             with contextlib.suppress(Exception):
                 await cli.close()
+
+
+if os.environ.get("ODG_CLASS_GUARD", "1") != "0":  # every importing process: raw python-binance Client objects are gated too
+    try:
+        install_binance_class_guard()
+    except Exception as _e:  # pragma: no cover
+        _LOG.critical(f"[ORDER_DEDUPE] class guard install failed: {_e!r}")
 
 
 if __name__ == "__main__":  # local, read-only ledger dump (no broker calls)

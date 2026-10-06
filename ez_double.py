@@ -31,6 +31,7 @@ from dotenv import load_dotenv
 from filelock import FileLock
 
 from binance import AsyncClient, BinanceSocketManager
+import order_dedupe_guard as _odg  # noqa: F401  POSITIONS REVAMP 2026-10-06: class-level guard on every python-binance futures_create_order
 from binance.client import Client
 from binance.enums import *
 from binance.exceptions import BinanceAPIException

@@ -16,6 +16,7 @@ import aiohttp
 import websockets
 
 from config_tradier import TradierConfig
+_ODG_IN_GENERIC: ContextVar = ContextVar("tradier_odg_in_generic", default=False)  # POSITIONS REVAMP: re-entry marker for guarded option orders
 
 current_account = ContextVar("current_account", default="unknown")
 logger = logging.getLogger("tradier_api")
@@ -50,6 +51,7 @@ class TradierAPIClient:
         self.SANDBOX_URL = "https://sandbox.tradier.com/v1"
 
         target_key = account_key or "tra"
+        self._odg_account_key = target_key  # order_dedupe_guard ledger/guard key
         
         # 1. Determine Context (Sandbox vs Live)
         if target_key.lower() == 'trc':
@@ -207,6 +209,10 @@ class TradierAPIClient:
             self._last_request_time = time.time()
 
     async def _request(self, method: str, endpoint: str, params: Dict = None, data: Dict = None, use_data_context: bool = False, headers: Dict = None, retry_count: int = 0) -> Dict:     
+        _order_mutation = method.upper() in ("POST", "PUT") and "/orders" in str(endpoint)  # POSITIONS REVAMP 2026-10-06: order POST/PUT is NEVER retried (lost response != not sent; reconcile by GET orders)
+        if retry_count > 0 and _order_mutation:
+            logger.critical(f"🛑 [ORDER_POST_NO_RETRY] refusing retry #{retry_count} of {method} {endpoint} — outcome reconciled from broker order listing")
+            return {}
         if retry_count > 5:
             logger.error(f"❌ [GIVE UP] {endpoint} failed after 5 retries.")
             return {}
@@ -268,9 +274,14 @@ class TradierAPIClient:
                     if match: 
                         TradierAPIClient._global_ban_expires = int(match.group(1)) / 1000.0
                     await self.trigger_rotation("Quota Violation")
+                    if _order_mutation:
+                        return {}  # never re-POST an order
                     return await self._request(method, endpoint, params, data, use_data_context, headers, retry_count + 1)
                 
                 if response.status in [502, 503, 504]:
+                    if _order_mutation:
+                        logger.critical(f"🚨 [ORDER_POST_UNKNOWN] {response.status} after {method} {endpoint} — order outcome UNKNOWN, NOT retried")
+                        return {}
                     return await self._request(method, endpoint, params, data, use_data_context, headers, retry_count + 1)
                 if response.status == 401:
                     async with TradierAPIClient._ban_lock:
@@ -313,6 +324,9 @@ class TradierAPIClient:
         except (AttributeError, aiohttp.ClientConnectionError, aiohttp.ServerDisconnectedError, asyncio.TimeoutError) as e:
             logger.warning(f"⚠️ Net Error ({type(e).__name__}: {e}) on {self._current_ip} for {method} {endpoint}. Reconnecting... (retry {retry_count})")
             await self.connect()
+            if _order_mutation:
+                logger.critical(f"🚨 [ORDER_POST_UNKNOWN] {type(e).__name__} after {method} {endpoint} — order outcome UNKNOWN, NOT retried")
+                return {}
             return await self._request(method, endpoint, params, data, use_data_context, headers, retry_count + 1)
 
         except Exception as e:
@@ -345,6 +359,13 @@ class TradierAPIClient:
         return res.get('balances', {}) if res else {}
 
     async def place_order(self, account_key: str, symbol: str, side: str, quantity: float, order_type: str="market", price: float=None, stop: float=None, duration: str="day") -> Dict:
+        # POSITIONS REVAMP 2026-10-06: EVERY equity order from EVERY caller goes through order_dedupe_guard (previous orders
+        # broker-FINAL, open-only-from-zero, execute_now token for exposure-increasing orders, zero/NaN qty refused).
+        import order_dedupe_guard as _odg
+        guard = _odg.get_tradier_guard(account_key or self._odg_account_key, getattr(self, "config", None))
+        return await guard.guarded_place(self, account_key or self._odg_account_key, symbol, side, quantity, order_type, price, stop, duration, origin="tradier_api.place_order")
+
+    async def _odg_raw_place_order(self, account_key: str, symbol: str, side: str, quantity: float, order_type: str="market", price: float=None, stop: float=None, duration: str="day") -> Dict:
         if not self._current_id: 
             return {"error": "Missing Account ID"}
         data = { "class": "equity", "symbol": symbol.upper(), "side": side.lower(),
@@ -358,6 +379,14 @@ class TradierAPIClient:
         return res
     async def place_option_order(self, account_key: str, symbol: str, option_symbol: str, side: str, quantity: int, order_type: str = "limit", price: float = None, duration: str = "day") -> Dict:
         """Place an option order. side: buy_to_open, sell_to_close, buy_to_close, sell_to_open."""
+        import order_dedupe_guard as _odg  # POSITIONS REVAMP 2026-10-06: broker-FINAL dedupe + ledger on every option order
+        if not _ODG_IN_GENERIC.get():
+            _odg_tok = _ODG_IN_GENERIC.set(True)
+            try:
+                guard = _odg.get_tradier_guard(account_key or self._odg_account_key, getattr(self, "config", None))
+                return await guard.guarded_generic(self, symbol, side, quantity, lambda: self.place_option_order(account_key, symbol, option_symbol, side, quantity, order_type, price, duration), origin=f"option {option_symbol}")
+            finally:
+                _ODG_IN_GENERIC.reset(_odg_tok)
         if not self._current_id:
             return {"error": "Missing Account ID"}
         data = {"class": "option", "symbol": symbol.upper(), "option_symbol": option_symbol, "side": side.lower(), "quantity": str(int(quantity)), "type": order_type.lower(), "duration": duration.lower()}
@@ -373,6 +402,15 @@ class TradierAPIClient:
         legs = [{'option_symbol': OCC, 'side': 'sell_to_open', 'quantity': 1}, ...]
         order_type: 'credit' (receive net credit, price > 0), 'debit' (pay), 'even', 'market'.
         For a bull put credit spread: order_type='credit', price = net credit amount (positive)."""
+        import order_dedupe_guard as _odg  # POSITIONS REVAMP 2026-10-06: broker-FINAL dedupe + ledger on every multileg order
+        if not _ODG_IN_GENERIC.get():
+            _odg_tok = _ODG_IN_GENERIC.set(True)
+            try:
+                guard = _odg.get_tradier_guard(self._odg_account_key, getattr(self, "config", None))
+                _q = sum(float(l.get("quantity", 1) or 0) for l in (legs or [])) or 0
+                return await guard.guarded_generic(self, symbol, "multileg", _q, lambda: self.place_multileg_option_order(symbol, legs, order_type, price, duration), origin="multileg")
+            finally:
+                _ODG_IN_GENERIC.reset(_odg_tok)
         if not self._current_id:
             return {"error": "Missing Account ID"}
         if not legs or len(legs) < 2:

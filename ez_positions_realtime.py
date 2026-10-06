@@ -82,7 +82,7 @@ class RealtimePositionUpdater:
                         try:
                             # 2026-04-29 user: bumped 60→120s. flz was crashing every 116s on this exact gate.
                             # Stale-data trading risk vs constant-crash data loss — 120s gives slow-API accounts headroom.
-                            _pau_timeout = float(getattr(config, 'PAU_TIMEOUT_SEC', 120.0))
+                            _pau_timeout = float(getattr(globals().get('config'), 'PAU_TIMEOUT_SEC', 120.0))  # 2026-10-06: `config` never imported here -> NameError -> os._exit(43)
                             updated_keys = await asyncio.wait_for(self.position_service.process_account_update(self.account_key, positions_data, single=False, skip_broadcast_save=False), timeout=_pau_timeout)
                         except asyncio.TimeoutError:
                             logger.critical(f"[FETCH_LOOP][{self.account_key}] 🚨🚨🚨 process_account_update HUNG > {_pau_timeout}s — CRASHING realtime worker so watchdog respawns.")

@@ -125,6 +125,8 @@ STOCH_OVERSOLD = 22
 # Stoch warns "running out of breath". Candle confirms or denies.
 # A shooting star at K=90 = EXIT. A strong green at K=90 = still going.
 # ============================================================
+BREAKOUT_AGENT_DIRECT_ORDERS_ENABLED = os.environ.get("BREAKOUT_AGENT_DIRECT_ORDERS_ENABLED", "0") == "1"  # POSITIONS REVAMP 2026-10-06: off = raw REST orders never sent (orders must go through execute_now / guarded clients)
+
 class Lung:
     @staticmethod
     def _detect_candle_patterns(bars: List[dict], direction: str) -> Tuple[float, str]:
@@ -880,6 +882,9 @@ class BreakoutAgent:
                 success = True
             except Exception as e:
                 logger.error(f"[SIGNAL_FAIL] {account_key} {symbol}: {e}")
+            if not BREAKOUT_AGENT_DIRECT_ORDERS_ENABLED:  # POSITIONS REVAMP 2026-10-06: raw REST /fapi/v1/order bypassed every guard (and doubled the signal above)
+                logger.critical(f"[BREAKOUT_AGENT_DIRECT_ORDER_DISABLED] {account_key} {side} {qty} {symbol} — raw REST order not sent; signal only")
+                continue
             try:
                 api_key = os.getenv(f"BINANCE_API_KEY_{account_key.upper()}", self.binance_api_key)
                 api_secret = os.getenv(f"BINANCE_API_SECRET_{account_key.upper()}", self.binance_api_secret)
@@ -903,6 +908,9 @@ class BreakoutAgent:
         if self.paper_mode:
             logger.info(f"📝 [PAPER_STOCK] {side} {shares} {symbol} @ {price} | {reason}")
             return True
+        if not BREAKOUT_AGENT_DIRECT_ORDERS_ENABLED:  # POSITIONS REVAMP 2026-10-06: raw Tradier POST /orders bypassed every guard
+            logger.critical(f"[BREAKOUT_AGENT_DIRECT_ORDER_DISABLED] stock {side} {shares} {symbol} — raw POST not sent")
+            return False
         try:
             acct_cfg = tradier_config.ACCOUNTS.get(STOCK_ACCOUNT, {})
             base_url = "https://api.tradier.com/v1" if acct_cfg.get("env") == "live" else "https://sandbox.tradier.com/v1"

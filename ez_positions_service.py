@@ -1034,6 +1034,11 @@ POSITION AFTER (attempted write):
         try :
             os.chmod(str_file_path, 0o664)
         except Exception: pass
+        if ("long_positions.json" in name_lower or "short_positions.json" in name_lower):  # 2026-10-06 USER POSITIONS_TRUTH freshness contract: .<file>.meta.json written_at AFTER the data replace
+            try:
+                import positions_truth as _ptruth
+                _ptruth.write_meta(file_path_obj, writer=f"ez_positions_service:{os.getpid()}", config=config)
+            except Exception: pass
         return True
     except Exception as e:
         logger.error(f"Atomic write failed for {str_file_path}: {e}", exc_info=True)
@@ -4664,6 +4669,9 @@ class PositionService:
                 await handle.write(json_bytes)
             try :
                 os.replace(tmp_path, path)
+                if is_positions_file:  # 2026-10-06 USER POSITIONS_TRUTH freshness contract: .<file>.meta.json written_at AFTER the data replace
+                    import positions_truth as _ptruth
+                    _ptruth.write_meta(path, writer=f"ez_positions_service._atomic_write:{os.getpid()}", config=config)
             except FileNotFoundError:
                 pass
         except ValueError as ve:

@@ -124,3 +124,40 @@
 {"ts": "2026-10-06T19:25:46Z", "severity": "WARN", "kind": "NO_PER_KEY_BLOCK_AVAILABLE", "key": "trb:BWXT_SHORT", "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for RAPID_LOSS_KEY unrealised -6.88% (60-min high +0.00%), amt 9 (opens/augments blocked; exits untouched)"}
 {"ts": "2026-10-06T19:25:46Z", "severity": "CRITICAL", "kind": "RAPID_LOSS_KEY", "key": "trb:EQT_SHORT", "evidence": "unrealised -4.03% (60-min high +0.00%), amt 10"}
 {"ts": "2026-10-06T19:25:46Z", "severity": "WARN", "kind": "NO_PER_KEY_BLOCK_AVAILABLE", "key": "trb:EQT_SHORT", "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for RAPID_LOSS_KEY unrealised -4.03% (60-min high +0.00%), amt 10 (opens/augments blocked; exits untouched)"}
+{"ts": "2026-10-06T19:28:53Z", "severity": "CRITICAL", "kind": "VEC_DECISION_NOT_FILLED", "key": "men:RENDERUSDT_LONG", "evidence": "OPEN B14 decided 2026-10-06T19:18:52Z bar=2026-10-06T19:00:00Z: no fill in 600s and no refusal logged"}
+{"ts": "2026-10-06T19:29:14Z", "severity": "INFO", "kind": "VEC_EXIT_WHILE_LIVE_FLAT", "key": "ang:ZROUSDT_LONG", "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.31% bar=2026-10-06T19:00:00Z: live already flat (state divergence, no order needed)"}
+{"ts": "2026-10-06T19:29:14Z", "severity": "CRITICAL", "kind": "VEC_DECISION_NOT_FILLED", "key": "ang:RENDERUSDT_LONG", "evidence": "OPEN B14 decided 2026-10-06T19:19:11Z bar=2026-10-06T19:00:00Z: no fill in 600s and no refusal logged"}
+{"ts": "2026-10-06T19:29:55Z", "severity": "CRITICAL", "kind": "VEC_DECISION_NOT_FILLED", "key": "inf:RENDERUSDT_LONG", "evidence": "OPEN B14 decided 2026-10-06T19:19:45Z bar=2026-10-06T19:00:00Z: no fill in 600s and no refusal logged"}
+{"ts": "2026-10-06T19:31:20Z", "severity": "CRITICAL", "kind": "PROCESS_DOWN", "key": "fin", "evidence": "no ez_manage.py --account fin process"}
+{"ts": "2026-10-06T19:31:20Z", "severity": "CRITICAL", "kind": "PROCESS_DOWN", "key": "men", "evidence": "no ez_manage.py --account men process"}
+{"ts": "2026-10-06T19:31:20Z", "severity": "CRITICAL", "kind": "PROCESS_DOWN", "key": "ang", "evidence": "no ez_manage.py --account ang process"}
+{"ts": "2026-10-06T19:31:20Z", "severity": "CRITICAL", "kind": "PROCESS_DOWN", "key": "inf", "evidence": "no ez_manage.py --account inf process"}
+{"ts": "2026-10-06T19:31:20Z", "severity": "CRITICAL", "kind": "PROCESS_DOWN", "key": "flz", "evidence": "no ez_manage.py --account flz process"}
+{"ts": "2026-10-06T19:31:20Z", "severity": "CRITICAL", "kind": "PROCESS_DOWN", "key": "trb", "evidence": "no tradier_manage.py --accounts trb process"}
+{"ts": "2026-10-06T19:31:20Z", "severity": "CRITICAL", "kind": "PROCESS_DOWN", "key": "trc", "evidence": "no tradier_manage.py --accounts trc process"}
+{"ts": "2026-10-06T19:32:43Z", "severity": "CRITICAL", "kind": "STALE_LOG", "key": "trb", "evidence": "tradier_manage_trb.log not written for 125s"}
+{"ts": "2026-10-06T19:32:43Z", "severity": "CRITICAL", "kind": "STALE_LOG", "key": "trc", "evidence": "tradier_manage_trc.log not written for 120s"}
+{"ts": "2026-10-06T19:33:04Z", "severity": "CRITICAL", "kind": "RESTART_LOOP", "key": "fin", "evidence": "3 new process ids in 30 min (['47707', '4252', '7690'])"}
+{"ts": "2026-10-06T19:33:04Z", "severity": "CRITICAL", "kind": "RESTART_LOOP", "key": "men", "evidence": "3 new process ids in 30 min (['47664', '4250', '7657'])"}
+{"ts": "2026-10-06T19:33:04Z", "severity": "CRITICAL", "kind": "RESTART_LOOP", "key": "ang", "evidence": "3 new process ids in 30 min (['47685', '4256', '7694'])"}
+{"ts": "2026-10-06T19:33:04Z", "severity": "CRITICAL", "kind": "RESTART_LOOP", "key": "inf", "evidence": "3 new process ids in 30 min (['47610', '4254', '7692'])"}
+{"ts": "2026-10-06T19:33:04Z", "severity": "CRITICAL", "kind": "RESTART_LOOP", "key": "flz", "evidence": "3 new process ids in 30 min (['47650', '4249', '7655'])"}
+{"ts": "2026-10-06T19:37:33Z", "severity": "CRITICAL", "kind": "ACCOUNT_EQUITY_DROP", "key": "trc", "evidence": "unrealised PnL of the same open positions fell $42.69 since 2026-10-06T19:29:34Z (now $-285.50)"}
+{"ts": "2026-10-06T19:39:44Z", "severity": "CRITICAL", "kind": "ACCOUNT_EQUITY_DROP", "key": "trb", "evidence": "unrealised PnL of the same open positions fell $73.23 since 2026-10-06T19:19:51Z (now $+363.30)"}
+{"ts": "2026-10-06T19:40:48Z", "severity": "CRITICAL", "kind": "RAPID_LOSS_KEY", "key": "trb:BWXT_SHORT", "evidence": "unrealised -6.53% (60-min high +0.00%), amt 9"}
+{"ts": "2026-10-06T19:40:48Z", "severity": "WARN", "kind": "NO_PER_KEY_BLOCK_AVAILABLE", "key": "trb:BWXT_SHORT", "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for RAPID_LOSS_KEY unrealised -6.53% (60-min high +0.00%), amt 9 (opens/augments blocked; exits untouched)"}
+{"ts": "2026-10-06T19:41:53Z", "severity": "CRITICAL", "kind": "RAPID_LOSS_KEY", "key": "trb:EQT_SHORT", "evidence": "unrealised -4.03% (60-min high +0.00%), amt 10"}
+{"ts": "2026-10-06T19:41:53Z", "severity": "WARN", "kind": "NO_PER_KEY_BLOCK_AVAILABLE", "key": "trb:EQT_SHORT", "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for RAPID_LOSS_KEY unrealised -4.03% (60-min high +0.00%), amt 10 (opens/augments blocked; exits untouched)"}
+{"ts": "2026-10-06T19:43:43Z", "severity": "CRITICAL", "kind": "RAPID_LOSS_KEY", "key": "trb:UUUU_SHORT", "evidence": "unrealised -4.12% (60-min high +0.00%), amt 193"}
+{"ts": "2026-10-06T19:43:43Z", "severity": "WARN", "kind": "NO_PER_KEY_BLOCK_AVAILABLE", "key": "trb:UUUU_SHORT", "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for RAPID_LOSS_KEY unrealised -4.12% (60-min high +0.00%), amt 193 (opens/augments blocked; exits untouched)"}
+{"ts": "2026-10-06T19:44:04Z", "severity": "CRITICAL", "kind": "VEC_DECISION_NOT_FILLED", "key": "fin:IOTXUSDT_LONG", "evidence": "OPEN B_KZONE decided 2026-10-06T19:34:03Z bar=2026-10-06T19:15:00Z: no fill in 600s and no refusal logged"}
+{"ts": "2026-10-06T19:44:26Z", "severity": "INFO", "kind": "VEC_EXIT_WHILE_LIVE_FLAT", "key": "ang:RENDERUSDT_LONG", "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-1.52% bar=2026-10-06T19:15:00Z: live already flat (state divergence, no order needed)"}
+{"ts": "2026-10-06T19:44:27Z", "severity": "CRITICAL", "kind": "STALE_LOG", "key": "trb", "evidence": "tradier_manage_trb.log not written for 127s"}
+{"ts": "2026-10-06T19:44:49Z", "severity": "CRITICAL", "kind": "VEC_DECISION_NOT_FILLED", "key": "inf:IOTXUSDT_LONG", "evidence": "OPEN B_KZONE decided 2026-10-06T19:34:49Z bar=2026-10-06T19:15:00Z: no fill in 600s and no refusal logged"}
+{"ts": "2026-10-06T19:44:49Z", "severity": "CRITICAL", "kind": "VEC_DECISION_NOT_FILLED", "key": "flz:BTCDOMUSDT_LONG", "evidence": "OPEN B_VWAPBOUNCE decided 2026-10-06T19:34:36Z bar=2026-10-06T19:15:00Z: no fill in 600s and no refusal logged"}
+{"ts": "2026-10-06T19:45:10Z", "severity": "INFO", "kind": "VEC_EXIT_WHILE_LIVE_FLAT", "key": "inf:RENDERUSDT_LONG", "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-1.52% bar=2026-10-06T19:15:00Z: live already flat (state divergence, no order needed)"}
+{"ts": "2026-10-06T19:45:55Z", "severity": "WARN", "kind": "BROKER_SYNC_HISTORY_SPAM", "key": "trc:IBIT_LONG", "evidence": "94 broker-sync rows written to fill history in 10 min (last: OPEN 51.6262 'BROKER_SYNC_REJECTED_AUG_VALUE_CAP_3746>2000') \u2014 history pollution, not orders"}
+{"ts": "2026-10-06T19:46:39Z", "severity": "CRITICAL", "kind": "PROCESS_DOWN", "key": "trc", "evidence": "no tradier_manage.py --accounts trc process"}
+{"ts": "2026-10-06T19:47:00Z", "severity": "CRITICAL", "kind": "PROCESS_DOWN", "key": "trb", "evidence": "no tradier_manage.py --accounts trb process"}
+{"ts": "2026-10-06T19:48:24Z", "severity": "CRITICAL", "kind": "STALE_LOG", "key": "trc", "evidence": "tradier_manage_trc.log not written for 121s"}
+{"ts": "2026-10-06T19:49:13Z", "severity": "CRITICAL", "kind": "RESTART_LOOP", "key": "flz", "evidence": "3 new process ids in 30 min (['4249', '7655', '59886'])"}

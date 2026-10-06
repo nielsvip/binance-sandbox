@@ -4086,7 +4086,7 @@ class QuickConfig:
     ENTRY_SCORE_THRESHOLD: float = 18.0
     K3M_FLOOR: float = 30
     K3M_FLOOR_ENABLED: bool = False
-    COOLDOWN_BARS: int = 3  # USER 2026-09-27: NO FUCKING COOLDOWN
+    COOLDOWN_BARS: int = 0  # USER 2026-09-27: NO FUCKING COOLDOWN
     NOLOSS_ENABLED: bool = False
     DC_RECOVERY_EXIT_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)
     DC_RECOVERY_EXIT_TOLERANCE_PCT: float = 0.1
@@ -4262,7 +4262,7 @@ class QuickConfig:
     MIN_HOLD_LIVE_SECONDS_ENABLED: bool = True  # crypto: live hold = MIN_HOLD_BARS_BEFORE_EXIT x 180 s (3m bars), not x 15m; False = old vec max(MIN_HOLD_BARS, MIN_HOLD_BARS_BEFORE_EXIT) 15m bars
     COOLDOWN_FROM_LIVE_SECONDS_ENABLED: bool = False  # lane-D: default False = vec baseline COOLDOWN_BARS (director correction); True = live wall-clock test row.  # director 2026-10-06: vec cooldown follows live wall-clock (crypto REENTRY_COOLDOWN_S, stocks TRADIER_POST_CLOSE_COOLDOWN_MIN); False = COOLDOWN_BARS(_TRADIER)
     DC_HARD_STOP_TF: str = "4h"  # ULTIMATE_DC HARD_STOP TF: 4h|D — per sym_side sweepable; D wider = fewer stops
-    WT_LOWER_CROSS_EXIT_TF: str = "OFF"  # WT lower cross exit TF: OFF/15m/1h/4h — LONG wt cross down + price lower, SHORT opposite; added 2026-09-27 as option in big WT TF sweep
+    WT_LOWER_CROSS_EXIT_TF: str = "1h"  # WT lower cross exit TF: OFF/15m/1h/4h — LONG wt cross down + price lower, SHORT opposite; added 2026-09-27 as option in big WT TF sweep
     # ── 2026-09-03 HARD SHORT GATES — baked (mirrors tradier_manage) ──
     ROTATION_S_FINAL_SCORE_MAX: float = 0.35
     ROTATION_S_WT_BEAR_ALIGN_MIN: int = 2
@@ -4353,7 +4353,7 @@ class QuickConfig:
     ADX_TRENDING_THRESHOLD: float = 25.0
     ALIGNMENT_GATE_TOTAL: int = 36
     ATR_ADAPTIVE_SIZING_ENABLED: bool = False
-    ATR_ADAPTIVE_SIZING_TARGET_PCT: float = 2.0
+    ATR_ADAPTIVE_SIZING_TARGET_PCT: float = 3.0
     ATR_ADAPTIVE_STOP_ENABLED: bool = False  # live parity: config_tradier True (was False, caused 0 trades)
     ATR_ADAPTIVE_STOP_MULT: float = 2.0
     ATR_ADAPTIVE_STOP_TF: str = '1h'
@@ -4583,12 +4583,12 @@ class QuickConfig:
     BB_SQUEEZE_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # 2026-04-16: off until sweep-proven
     BB_SQUEEZE_COOLDOWN: float = 300.0
     BB_SQUEEZE_MIN_ALIGNMENT: int = 10
-    BB_SQUEEZE_WIDTH_PERCENTILE: float = 0.2
+    BB_SQUEEZE_WIDTH_PERCENTILE: float = 0.25
     BB_BREAKOUT_ENABLED: bool = False
     BB_BREAKOUT_TF: str = '1h'
     BB_BREAKOUT_SCORE: int = 20
     DC_BREAKOUT_SCORE: int = 15  # hooked by name for TEMPLATE CHART_ENTRY_BREAKOUT 12-13, missing 2026-09-03 audit
-    DC_BREAKOUT_TF: str = '1h'  # hooked by name for TEMPLATE CHART_ENTRY_BREAKOUT 14, missing 2026-09-03 audit
+    DC_BREAKOUT_TF: str = 'OFF'  # hooked by name for TEMPLATE CHART_ENTRY_BREAKOUT 14, missing 2026-09-03 audit
     BB_RSI_STOCH_SCALP_ENABLED: bool = False
     BB_RSI_STOCH_SCALP_SCORE: int = 25
     BEAR_MARKET_MODE_TRADIER: bool = True
@@ -5001,11 +5001,11 @@ class QuickConfig:
         self.WT_CROSSUNDER_FINAL_ENABLED = True
         self.MI_EXIT_ENABLED = False  # N2/007 DEF2: legacy default kept (live False = sweep option)
         self.GAP_RISK_EXIT_ENABLED = True  # N2/007: live config_tradier True (2026-09-30)
-        self.ENTRY_SCORE_THRESHOLD = 24.0
+        self.ENTRY_SCORE_THRESHOLD = 27.0
         self.K3M_FLOOR = 30.0
         self.K3M_FLOOR_ENABLED = False
         # 2026-09-29 grey rewire: RZ_BREAKOUT twin — tradier live RZ_BOT_BB_THRESHOLD (config_tradier.py:2072)
-        self.RZ_BOT_BB_THRESHOLD = 0.375
+        self.RZ_BOT_BB_THRESHOLD = 0.225
         # 2026-09-29 grey rewire (BIBLE §17.5 entry/exit-gate parity): crypto-live features the stock baseline
         # applied although tradier_manage never reads them (only _wire_weak_/_FULL_COVERAGE stubs) -> stock
         # live default = absent. Measured: HTF_DIRECTION_GATE binds AMD_SHORT/AAPL/ABBV, HLR_TOP_EXIT binds AMD_SHORT.
@@ -5129,12 +5129,12 @@ class QuickConfig:
         self.REENTRY_BAR_TURN_TF = '5m'
         self.REENTRY_LIVE_MONITOR_DC_BREAK_TF = '5m'
         self.REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR = False
-        self.REENTRY_RALLY_K15M_MAX = 100.0
+        self.REENTRY_RALLY_K15M_MAX = 75.0
         self.REENTRY_TIER2_MAX_MINUTES_TRADIER = 120.0
         self.REENTRY_TIER2_MIN_MINUTES_TRADIER = 10.0
         self.REENTRY_TIER2_PRICE_PCT_TRADIER = 0.003
         self.REENTRY_TIER2_SIZE_MULT_TRADIER = 0.8
-        self.RZ_BOT_BB_THRESHOLD = 0.375
+        self.RZ_BOT_BB_THRESHOLD = 0.225
         self.RZ_ENTRY_ENABLED = False
         self.RZ_K_EXIT = 80.0
         self.SATOSHIT_LONG_MFI_MAX_TRADIER = 120.0
@@ -5180,8 +5180,22 @@ class QuickConfig:
         self.WT_DC_SHORT_ENABLED = True
         self.WT_VEL_DECAY_EXIT_ENABLED = True
         # §17.4 order fix: original method code above overwrites these two — re-assert live values LAST
-        self.ENTRY_SCORE_THRESHOLD = 18.0
+        self.ENTRY_SCORE_THRESHOLD = 27.0
         self.VWAP_FILTER_ENABLED = False
+        # 2026-10-06 globals push: STOCKS unanimous 0 (CRYPTO base differs) — overlay carries stocks truth
+        self.MAX_AUGMENTS_PER_POSITION = 0
+        # 2026-10-06 globals push: CL-pushed base differs from SL truth — overlay restores stocks truth (MAX_ORDER excluded §17.3)
+        self.BREAKEVEN_GAIN_EROSION_FILTER_TF = 'OFF'
+        self.COOLDOWN_BARS = 3
+        self.DC_BREAKOUT_TF = '1h'
+        self.EXIT_TOP_FADE_FILTER_TF = '15m'
+        self.MIN_GAIN_TO_BUY_AGGRESSIVELY = 6.0
+        self.MTF_ATR_TRAIL_FILTER_TF = '15m'
+        self.MTF_DC_REJECT_EXIT_TF = '1h'
+        self.MTF_WT_CROSS_EXIT_TF = '15m'
+        self.WT_4H_VEL_EXIT_K_EXTREME_HIGH = 80.0
+        self.WT_LOWER_CROSS_EXIT_TF = 'OFF'
+        self.WT_PERCENTILE_EXIT_OS_D = 10.0
         # §17.3 exclusion: MAX_ORDER_VALUE stays at sim default (live order-size cap zeroes sim position sizing)
         # parity 2026-10-06: stocks-uniform bolds (raw carries crypto truth) — obligated symmetry, see switch_parity.py
         self.REGIME_RANGING_POSITION_SIZE_MULT = 0.5
@@ -5194,6 +5208,24 @@ class QuickConfig:
         self.ATR_ADAPTIVE_STOP_MULT = 2.5
         self.BB_PULLBACK_GATE_TF = 'OFF'
         self.GOLDEN_RULE_REQUIRE_ACTIVATION = False
+        self.BB_EXIT_AT_LOSS_TF = '15m'
+        self.BOUNCE_AUGMENT_MIN_LOSS_PCT = -0.375
+        self.BREAKOUT_LEASH_REENTRY_MULT = 0.0
+        self.BREAKOUT_RETEST_FILTER_TF = 'OFF'
+        self.CIRCUIT_SHARPE_GATES_FILTER_TF = '4h'
+        self.DC_MOMENTUM_BOTA_SCORER_FILTER_TF = '1h'
+        self.EMA_BLANKET_FILTER_FILTER_TF = 'OFF'
+        self.FH_MOMENTUM_FILTER_TF = '4h'
+        self.GAP_PER_SYMBOL_AVG_THRESH_PCT = 0.3
+        self.GR_V5_STATE_FILTER_TF = 'OFF'
+        self.LH_HL_FILTER_DC_THRESHOLD_PCT = 1.0
+        self.MIN_GAIN_TO_BUY_AGGRESSIVELY = 6.0
+        self.PARTIAL_PROFIT_LOCK_V2_FILTER_TF = 'OFF'
+        self.PEAK_GIVEBACK_BE_EROSION_FILTER_TF = 'OFF'
+        self.REENTRY_SIZE_BREAKOUT_MULT = 0.5
+        self.REGIME_TRENDING_WT_REDUCE_FRAC_LOW = 0.15
+        self.WT_15M_BOUNCE_LOW_1H_GT_PREV = True
+        self.WT_DC_TF_ENTRY = '15m'
     ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = False  # auto-wired 625
     ABLATION_DISABLE_AUGMENTATION: bool = False  # auto-wired 625
     ABLATION_DISABLE_CHECK_NOLOSS: bool = False  # auto-wired 625
@@ -5493,7 +5525,7 @@ class QuickConfig:
     MINERVINI_MAX_HOLD_DAYS: float = 40  # auto-wired 625
     MINERVINI_POSITION_SIZE: float = 800.0  # auto-wired 625
     MINERVINI_TARGET_PCT: float = 25.0  # auto-wired 625
-    MIN_GAIN_TO_BUY_AGGRESSIVELY: float = 3.0  # auto-wired 625
+    MIN_GAIN_TO_BUY_AGGRESSIVELY: float = 4.5  # auto-wired 625
     MIN_HOLD_BARS_TRADIER: float = 40  # auto-wired 625
     MI_DIV_EXIT_ENABLED_TRADIER: bool = False  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     MI_ENTRY_EXHAUST_BONUS_TRADIER: float = 4  # auto-wired 625
@@ -6050,7 +6082,7 @@ class QuickConfig:
     BOUNCE_REENTRY_K_RESET_SHORT: float = 65  # auto-added TEMPLATE generic
     BREAKEVEN_DC_FIELD_MODE: str = 'DC4'  # auto-added TEMPLATE generic
     BREAKEVEN_GAIN_EROSION_ENABLED: bool = False  # auto-added TEMPLATE
-    BREAKEVEN_GAIN_EROSION_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE2: generic_filter_tf real gate; OFF default behavior-neutral (only dead-farm reads before)
+    BREAKEVEN_GAIN_EROSION_FILTER_TF: str = "1h"  # 2026-09-28 WAVE2: generic_filter_tf real gate; OFF default behavior-neutral (only dead-farm reads before)
     BREAKEVEN_GAIN_EROSION_MIN_GAIN: float = 50.0  # auto-added TEMPLATE generic
     BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT: bool = True  # auto-added TEMPLATE generic
     BREAKOUT_LEASH_REENTRY_MULT: float = 1.5  # auto-added TEMPLATE
@@ -6103,7 +6135,7 @@ class QuickConfig:
     EXHAUSTION_EXIT_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     EXIT_R1_R2_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    EXIT_TOP_FADE_FILTER_TF: str = "15m"  # 2026-10-04 §17.4 C2: config.py/config_tradier 15m (live filters); was OFF
+    EXIT_TOP_FADE_FILTER_TF: str = "OFF"  # 2026-10-04 §17.4 C2: config.py/config_tradier 15m (live filters); was OFF
     EXIT_TO_REDUCE_ADAPTER_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     EZ_MANAGE_THROTTLER_RATE: float = 0.0  # auto-added TEMPLATE generic
     E_1_EXIT_DELTA_THR: float = 50.0  # auto-added TEMPLATE generic
@@ -6224,7 +6256,7 @@ class QuickConfig:
     MOMENTUM_BREAKOUT_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE1: real gate (vec_decisions/filter_tf_gates); OFF default is behavior-neutral (field was never read before)
     MOVER_THRESHOLD: float = 5.0  # auto-added TEMPLATE
     MTF_ARMED_ENTRIES_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    MTF_ATR_TRAIL_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
+    MTF_ATR_TRAIL_FILTER_TF: str = "1h"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     MTF_DC_REJECT_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     MTF_FILTER_STRONG_BUY_QUICK_BYPASS: float = True  # auto-added TEMPLATE generic
     MTF_GR_MIN_IND: float = 7  # auto-added TEMPLATE generic
@@ -6262,7 +6294,7 @@ class QuickConfig:
     PARTIAL_EXIT_FRAC: float = 0.75  # auto-added TEMPLATE generic
     PARTIAL_PROFIT_LOCK_FRAC: float = 0.5  # auto-added TEMPLATE generic
     PARTIAL_PROFIT_LOCK_V2_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    PEAK_GIVEBACK_BE_EROSION_FILTER_TF: str = "15m"  # 2026-10-04 §17.4 C2: config.py/config_tradier 15m (live filters); was OFF
+    PEAK_GIVEBACK_BE_EROSION_FILTER_TF: str = "OFF"  # 2026-10-04 §17.4 C2: config.py/config_tradier 15m (live filters); was OFF
     PEAK_GIVEBACK_DROP_TRIGGER_ENABLED: bool = False  # auto-added TEMPLATE
     QUICK_REDUCE_TECHNICAL_ONLY: float = True  # auto-added TEMPLATE generic
     QUICK_REENTRY_60MIN_MIN_PCT: float = 0.6  # auto-added TEMPLATE
@@ -6335,7 +6367,7 @@ class QuickConfig:
     WRONG_SIDE_WT_TFS_REQUIRED: int = 4  # parity fix 2026-09-04: config 4
     WT_15M_CROSS_ENTRY_ENABLED: bool = False  # auto-added TEMPLATE
     WT_4H_VEL_EXIT_ENABLED: bool = False  # auto-added TEMPLATE
-    WT_4H_VEL_EXIT_K_EXTREME_HIGH: float = 80.0  # auto-added TEMPLATE generic
+    WT_4H_VEL_EXIT_K_EXTREME_HIGH: float = 2.0  # auto-added TEMPLATE generic
     WT_4H_VEL_EXIT_K_EXTREME_LOW: float = 20.0  # auto-added TEMPLATE generic
     WT_4H_VEL_EXIT_REQUIRE_K_EXTREME: float = True  # auto-added TEMPLATE generic
     WT_4H_VEL_EXIT_REQUIRE_PROFIT: float = True  # auto-added TEMPLATE generic
@@ -6362,7 +6394,7 @@ class QuickConfig:
     WT_PERCENTILE_EXIT_OB_4H: float = 55.0  # auto-added TEMPLATE generic
     WT_PERCENTILE_EXIT_OB_D: float = 75.0  # auto-added TEMPLATE generic
     WT_PERCENTILE_EXIT_OS_4H: float = 25.0  # auto-added TEMPLATE generic
-    WT_PERCENTILE_EXIT_OS_D: float = 10.0  # auto-added TEMPLATE generic
+    WT_PERCENTILE_EXIT_OS_D: float = 2.0  # auto-added TEMPLATE generic
     WT_REDUCE_FRAC_HIGH: float = 0.5  # auto-added TEMPLATE generic
     WT_REDUCE_FRAC_LOW: float = 0.15  # auto-added TEMPLATE generic
     WT_REDUCE_FRAC_MED: float = 0.25  # auto-added TEMPLATE generic
@@ -7242,7 +7274,7 @@ class QuickConfig:
     MTF_BB_REJECT_EXIT_LOOKBACK: int = 5
     MTF_BB_REJECT_EXIT_TF: str = '1h'
     MTF_DC_REJECT_EXIT_LOOKBACK: int = 5
-    MTF_DC_REJECT_EXIT_TF: str = '1h'
+    MTF_DC_REJECT_EXIT_TF: str = '4h'
     MTF_EXIT_MIN_OPEN_TS: float = 1779235200.0
     MTF_GR_EXIT_MIN_IND: int = 5
     MTF_GR_EXIT_MIN_TFS: int = 3
@@ -7250,7 +7282,7 @@ class QuickConfig:
     MTF_DC_REJECT_USE_DC4: bool = False  # NEW 2026-09-28 (user): band field dc_high4/dc_low4_{TF} instead of dc_high/dc_low_{TF}; wired live ez_manage same session
     MTF_GR_MIN_TFS: int = 3
     MTF_WT_CROSS_EXIT_DIRECT_ENABLED: bool = False
-    MTF_WT_CROSS_EXIT_TF: str = '15m'
+    MTF_WT_CROSS_EXIT_TF: str = '1h'
     MTS_BOTTOM_MIN: float = 15.0
     MTS_BOTTOM_MIN_SHORT: float = 10.0
     MTS_ENTRY_QUALITY_BONUS: float = 25.0

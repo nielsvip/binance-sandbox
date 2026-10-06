@@ -49,6 +49,7 @@ sys.path.insert(0, str(BASE_PATH))
 from utils import load_environment_from_gpg
 import redis
 from binance.client import Client
+import order_dedupe_guard as _odg  # noqa: F401  POSITIONS REVAMP 2026-10-06: class-level guard on every python-binance futures_create_order
 
 load_environment_from_gpg(logger)
 

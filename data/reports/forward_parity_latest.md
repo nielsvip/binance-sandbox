@@ -1,6 +1,6 @@
 # Forward parity — LIVE vs VECTOR (auto, read-only)
 
-generated 2026-10-06T19:26:48+00:00 · producers: tools/forward_parity/live_vs_vec.py (crypto hourly :07, stocks every 15 min RTH), tools/decisions_history_parity.py (:17), tools/exit_engine_parity_monitor.py (launchd hourly), tools/daily_parity_test.py (launchd daily)
+generated 2026-10-06T19:48:24+00:00 · producers: tools/forward_parity/live_vs_vec.py (crypto hourly :07, stocks every 15 min RTH), tools/decisions_history_parity.py (:17), tools/exit_engine_parity_monitor.py (launchd hourly), tools/daily_parity_test.py (launchd daily)
 
 **REGIME PARITY_VEC_EXACT since 2026-10-06T18:48:00Z** — all monitors reset at the switch; old-regime results archived in `data/forward_parity/archive/pre_vec_exact_until_20261006T1848Z`. Universe: tradeable_keys.json + open positions only.
 
@@ -10,11 +10,11 @@ PASS (legacy definition) = every vector decision on the judged 15m bars has a li
 
 ## LIVE GUARDIAN (every 20 s, both systems) — tools/forward_parity/live_guardian.py
 
-last sweep 2026-10-06T19:26:48Z (0 min ago) · 0.68 s · dry_run=False · RTH=True · regime start 2026-10-06T18:48:00Z
+last sweep 2026-10-06T19:48:23Z (0 min ago) · 0.77 s · dry_run=False · RTH=True · regime start 2026-10-06T18:48:00Z
 
 thresholds: STORM_KEY_FILLS=6, STORM_KEY_MIN=10, ATTEMPT_STORM=30, ATTEMPT_MIN=5, CHURN_ROUNDTRIPS=3, DUP_S=20, ACCOUNT_STORM_FILLS=25, ACCOUNT_STORM_MIN=10, ACCOUNT_DUP_PAIRS=3, FILL_WAIT_S=600, SIZE_MULT=3.0, LOSS_DROP_PP=4.0, LOSS_FLOOR_PCT=-3.0, EQUITY_DROP_USD=25.0, RESTARTS=3, STALE_LOG_S=120, NON_VEC_BLOCK_N=2, KEY_BLOCK_TTL_S=7200, POS_MISMATCH_PCT=5.0
 
-alerts this sweep: VEC_EXIT_WHILE_LIVE_FLAT 8, VEC_DECISION_NOT_FILLED 7, RAPID_LOSS_KEY 3, NO_PER_KEY_BLOCK_AVAILABLE 3, SIZE_ANOMALY 3, ACCOUNT_EQUITY_DROP 1, BROKER_SYNC_HISTORY_SPAM 1, CAP_BYPASS 1
+alerts this sweep: VEC_EXIT_WHILE_LIVE_FLAT 13, VEC_DECISION_NOT_FILLED 13, RAPID_LOSS_KEY 2, NO_PER_KEY_BLOCK_AVAILABLE 2, ACCOUNT_EQUITY_DROP 2, BROKER_SYNC_HISTORY_SPAM 1, POSITION_STATE_MISMATCH 1, STALE_LOG 1
 
 ### Active interventions (4) — exits are never blocked; positions are never closed by the guardian
 
@@ -29,33 +29,36 @@ alerts this sweep: VEC_EXIT_WHILE_LIVE_FLAT 8, VEC_DECISION_NOT_FILLED 7, RAPID_
 
 | ts | severity | kind | key | evidence |
 |---|---|---|---|---|
-| 19:26:48 | CRITICAL | RAPID_LOSS_KEY | trb:UUUU_SHORT | unrealised -4.49% (60-min high +0.00%), amt 193 |
-| 19:26:48 | WARN | NO_PER_KEY_BLOCK_AVAILABLE | trb:UUUU_SHORT | stocks: tradier_manage honours no per-key open block; would have blocked for RAPID_LOSS_KEY unrealised -4.49% (60-min high +0.00%), amt 193 (opens/aug |
-| 19:26:48 | CRITICAL | RAPID_LOSS_KEY | trb:BWXT_SHORT | unrealised -6.85% (60-min high +0.00%), amt 9 |
-| 19:26:48 | WARN | NO_PER_KEY_BLOCK_AVAILABLE | trb:BWXT_SHORT | stocks: tradier_manage honours no per-key open block; would have blocked for RAPID_LOSS_KEY unrealised -6.85% (60-min high +0.00%), amt 9 (opens/augme |
-| 19:26:48 | CRITICAL | RAPID_LOSS_KEY | trb:EQT_SHORT | unrealised -4.03% (60-min high +0.00%), amt 10 |
-| 19:26:48 | WARN | NO_PER_KEY_BLOCK_AVAILABLE | trb:EQT_SHORT | stocks: tradier_manage honours no per-key open block; would have blocked for RAPID_LOSS_KEY unrealised -4.03% (60-min high +0.00%), amt 10 (opens/augm |
-| 19:26:48 | CRITICAL | ACCOUNT_EQUITY_DROP | trb | unrealised PnL of the same open positions fell $30.71 since 2026-10-06T19:19:51Z (now $+405.82) |
-| 19:26:48 | WARN | BROKER_SYNC_HISTORY_SPAM | trc:IBIT_LONG | 40 broker-sync rows written to fill history in 10 min (last: OPEN 51.6796 'BROKER_SYNC_REJECTED_AUG_VALUE_CAP_3740>2000') — history pollution, not ord |
-| 19:26:48 | CRITICAL | SIZE_ANOMALY | men:EDUUSDT_LONG | BREAKOUT_SIZE_LADDER resized qty 1594.69->4784.07 = $330.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 1594.69) |
-| 19:26:48 | CRITICAL | CAP_BYPASS | men:ZROUSDT_LONG | 06 19:13:29 - WARNING - [men] [REENTRY_GRANDFATHERED] men:ZROUSDT_LONG: bypass MAX_ORDER_VALUE $440 / MAX_POSITION_SIZE $220 — restoring $289 on bounc |
-| 19:26:48 | CRITICAL | SIZE_ANOMALY | men:ZROUSDT_LONG | BREAKOUT_SIZE_LADDER resized qty 130.845->392.534 = $867.88 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 130.845) |
-| 19:26:48 | CRITICAL | SIZE_ANOMALY | men:RENDERUSDT_LONG | BREAKOUT_SIZE_LADDER resized qty 76.4951->229.485 = $495.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 76.4951) |
-| 19:26:48 | CRITICAL | VEC_DECISION_NOT_FILLED | men:GRTUSDT_LONG | OPEN ENTRY_SIGNAL decided 2026-10-06T18:59:47Z bar=2026-10-06T18:30:00Z: no fill in 600s and no refusal logged |
-| 19:26:48 | CRITICAL | VEC_DECISION_NOT_FILLED | men:ZROUSDT_LONG | OPEN HARDCODED_RALLY_REENTRY decided 2026-10-06T19:06:18Z bar=2026-10-06T18:45:00Z: no fill in 600s and no refusal logged |
-| 19:26:48 | CRITICAL | VEC_DECISION_NOT_FILLED | men:EDUUSDT_LONG | OPEN B15 decided 2026-10-06T19:11:42Z bar=2026-10-06T18:45:00Z: no fill in 600s and no refusal logged |
-| 19:26:48 | CRITICAL | VEC_DECISION_NOT_FILLED | ang:EDUUSDT_LONG | OPEN B15 decided 2026-10-06T19:08:38Z bar=2026-10-06T18:45:00Z: no fill in 600s and no refusal logged |
-| 19:26:48 | CRITICAL | VEC_DECISION_NOT_FILLED | ang:ZROUSDT_LONG | OPEN B15 decided 2026-10-06T19:14:16Z bar=2026-10-06T18:45:00Z: no fill in 600s and no refusal logged |
-| 19:26:48 | CRITICAL | VEC_DECISION_NOT_FILLED | inf:ZROUSDT_LONG | OPEN B15 decided 2026-10-06T19:13:57Z bar=2026-10-06T18:45:00Z: no fill in 600s and no refusal logged |
-| 19:26:48 | CRITICAL | VEC_DECISION_NOT_FILLED | flz:ZECUSDC_LONG | CLOSE EXIT_VELOCITY_WT against-long g-0.12% decided 2026-10-06T18:55:38Z bar=2026-10-06T18:30:00Z: no fill in 600s and no refusal logged |
+| 19:48:23 | CRITICAL | RAPID_LOSS_KEY | trb:UUUU_SHORT | unrealised -4.03% (60-min high +0.00%), amt 193 |
+| 19:48:23 | WARN | NO_PER_KEY_BLOCK_AVAILABLE | trb:UUUU_SHORT | stocks: tradier_manage honours no per-key open block; would have blocked for RAPID_LOSS_KEY unrealised -4.03% (60-min high +0.00%), amt 193 (opens/aug |
+| 19:48:23 | CRITICAL | RAPID_LOSS_KEY | trb:BWXT_SHORT | unrealised -6.46% (60-min high +0.00%), amt 9 |
+| 19:48:23 | WARN | NO_PER_KEY_BLOCK_AVAILABLE | trb:BWXT_SHORT | stocks: tradier_manage honours no per-key open block; would have blocked for RAPID_LOSS_KEY unrealised -6.46% (60-min high +0.00%), amt 9 (opens/augme |
+| 19:48:23 | CRITICAL | ACCOUNT_EQUITY_DROP | trb | unrealised PnL of the same open positions fell $77.18 since 2026-10-06T19:19:51Z (now $+359.35) |
+| 19:48:23 | WARN | BROKER_SYNC_HISTORY_SPAM | trc:IBIT_LONG | 87 broker-sync rows written to fill history in 10 min (last: OPEN 51.6049 'BROKER_SYNC_REJECTED_AUG_VALUE_CAP_3748>2000') — history pollution, not ord |
+| 19:48:23 | CRITICAL | ACCOUNT_EQUITY_DROP | trc | unrealised PnL of the same open positions fell $55.38 since 2026-10-06T19:29:34Z (now $-298.19) |
+| 19:48:23 | WARN | POSITION_STATE_MISMATCH | trc:IBIT_LONG | positions file amt 129 vs fill-ledger amt 12188.6 |
+| 19:48:23 | CRITICAL | VEC_DECISION_NOT_FILLED | fin:IOTXUSDT_LONG | OPEN B_KZONE decided 2026-10-06T19:34:03Z bar=2026-10-06T19:15:00Z: no fill in 600s and no refusal logged |
+| 19:48:23 | CRITICAL | VEC_DECISION_NOT_FILLED | men:GRTUSDT_LONG | OPEN ENTRY_SIGNAL decided 2026-10-06T18:59:47Z bar=2026-10-06T18:30:00Z: no fill in 600s and no refusal logged |
+| 19:48:23 | CRITICAL | VEC_DECISION_NOT_FILLED | men:ZROUSDT_LONG | OPEN HARDCODED_RALLY_REENTRY decided 2026-10-06T19:06:18Z bar=2026-10-06T18:45:00Z: no fill in 600s and no refusal logged |
+| 19:48:23 | CRITICAL | VEC_DECISION_NOT_FILLED | men:EDUUSDT_LONG | OPEN B15 decided 2026-10-06T19:11:42Z bar=2026-10-06T18:45:00Z: no fill in 600s and no refusal logged |
+| 19:48:23 | CRITICAL | VEC_DECISION_NOT_FILLED | men:RENDERUSDT_LONG | OPEN B14 decided 2026-10-06T19:18:52Z bar=2026-10-06T19:00:00Z: no fill in 600s and no refusal logged |
+| 19:48:23 | CRITICAL | VEC_DECISION_NOT_FILLED | ang:EDUUSDT_LONG | OPEN B15 decided 2026-10-06T19:08:38Z bar=2026-10-06T18:45:00Z: no fill in 600s and no refusal logged |
+| 19:48:23 | CRITICAL | VEC_DECISION_NOT_FILLED | ang:ZROUSDT_LONG | OPEN B15 decided 2026-10-06T19:14:16Z bar=2026-10-06T18:45:00Z: no fill in 600s and no refusal logged |
+| 19:48:23 | CRITICAL | VEC_DECISION_NOT_FILLED | ang:RENDERUSDT_LONG | OPEN B14 decided 2026-10-06T19:19:11Z bar=2026-10-06T19:00:00Z: no fill in 600s and no refusal logged |
+| 19:48:23 | CRITICAL | VEC_DECISION_NOT_FILLED | inf:ZROUSDT_LONG | OPEN B15 decided 2026-10-06T19:13:57Z bar=2026-10-06T18:45:00Z: no fill in 600s and no refusal logged |
+| 19:48:23 | CRITICAL | VEC_DECISION_NOT_FILLED | inf:RENDERUSDT_LONG | OPEN B14 decided 2026-10-06T19:19:45Z bar=2026-10-06T19:00:00Z: no fill in 600s and no refusal logged |
+| 19:48:23 | CRITICAL | VEC_DECISION_NOT_FILLED | inf:IOTXUSDT_LONG | OPEN B_KZONE decided 2026-10-06T19:34:49Z bar=2026-10-06T19:15:00Z: no fill in 600s and no refusal logged |
+| 19:48:24 | CRITICAL | VEC_DECISION_NOT_FILLED | flz:ZECUSDC_LONG | CLOSE EXIT_VELOCITY_WT against-long g-0.12% decided 2026-10-06T18:55:38Z bar=2026-10-06T18:30:00Z: no fill in 600s and no refusal logged |
+| 19:48:24 | CRITICAL | VEC_DECISION_NOT_FILLED | flz:BTCDOMUSDT_LONG | OPEN B_VWAPBOUNCE decided 2026-10-06T19:34:36Z bar=2026-10-06T19:15:00Z: no fill in 600s and no refusal logged |
+| 19:48:24 | CRITICAL | STALE_LOG | trc | tradier_manage_trc.log not written for 121s |
 
-live vec decisions since switch (per account): fin: {'live_vec_decisions': 2, 'state_divergent': 2, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 0, 'vec_exact_fills_without_decision': 0}; men: {'live_vec_decisions': 7, 'state_divergent': 3, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 3, 'vec_exact_fills_without_decision': 0}; ang: {'live_vec_decisions': 7, 'state_divergent': 2, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 2, 'vec_exact_fills_without_decision': 0}; inf: {'live_vec_decisions': 3, 'state_divergent': 1, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 1, 'vec_exact_fills_without_decision': 0}; flz: {'live_vec_decisions': 1, 'state_divergent': 0, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 1, 'vec_exact_fills_without_decision': 0}
+live vec decisions since switch (per account): fin: {'live_vec_decisions': 3, 'state_divergent': 2, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 1, 'vec_exact_fills_without_decision': 0}; men: {'live_vec_decisions': 7, 'state_divergent': 3, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 4, 'vec_exact_fills_without_decision': 0}; ang: {'live_vec_decisions': 9, 'state_divergent': 6, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 3, 'vec_exact_fills_without_decision': 0}; inf: {'live_vec_decisions': 5, 'state_divergent': 2, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 3, 'vec_exact_fills_without_decision': 0}; flz: {'live_vec_decisions': 2, 'state_divergent': 0, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 2, 'vec_exact_fills_without_decision': 0}
 
-processes: fin pids=['47707'] starts30m=1 log_age=1.0s, men pids=['47664'] starts30m=1 log_age=1.0s, ang pids=['47685'] starts30m=1 log_age=7.0s, inf pids=['47610'] starts30m=1 log_age=0.0s, flz pids=['47650'] starts30m=1 log_age=10.0s, trb pids=['75016'] starts30m=1 log_age=8.0s, trc pids=['75159'] starts30m=1 log_age=0.0s
+processes: fin pids=['7690'] starts30m=2 log_age=23.0s, men pids=['7657'] starts30m=2 log_age=5.0s, ang pids=['7694'] starts30m=2 log_age=5.0s, inf pids=['7692'] starts30m=2 log_age=26.0s, flz pids=['7655'] starts30m=2 log_age=10.0s, trb pids=['54274'] starts30m=2 log_age=116.0s, trc pids=['54273'] starts30m=2 log_age=121.0s
 
 ## Test 1 - 15m LIVE vs VECTOR, CRYPTO
 
-run 2026-10-06T19:26:39+00:00 (0 min ago) · engine v12 70968f5e · NPZ sync tail · window 24.0h from 2026-10-06T18:48Z · tol +-1 bars · 190 live keys / 131 sym_sides · 1178.1 s
+run 2026-10-06T19:26:39+00:00 (22 min ago) · engine v12 70968f5e · NPZ sync tail · window 24.0h from 2026-10-06T18:48Z · tol +-1 bars · 190 live keys / 131 sym_sides · 1178.1 s
 
 **Regime PARITY_VEC_EXACT since 2026-10-06T18:48:00Z** (previous regime archived: `data/forward_parity/archive/pre_vec_exact_until_20261006T1848Z`). Rule: every live fill = a vec decision at the same 15m bar and side (fill may land up to 1 bar later); every vec decision = a live fill or a logged hard-safety refusal; quantity not compared.
 
@@ -113,57 +116,35 @@ These decisions have no 15m vector counterpart by construction; listed so drift 
 
 ## Test 1 - 15m LIVE vs VECTOR, STOCKS
 
-run 2026-10-06T18:53:37+00:00 (33 min ago) · engine v12 918b5bdc · NPZ sync tail · window 24.0h from 2026-10-05T18:52Z · tol +-2 bars · 42 live keys / 31 sym_sides · 94.7 s
+run 2026-10-06T19:45:38+00:00 (3 min ago) · engine v12 c5d1abdc · NPZ sync tail · window 24.0h from 2026-10-06T18:48Z · tol +-1 bars · 42 live keys / 31 sym_sides · 475.2 s
 
-**Verdict: FAIL** — FAIL 26 · PASS with decisions 0 · IDLE (no decision either side, counts as pass) 16 · NO_DATA 0 · judged on a STALE-shifted window (S1 NPZ behind live) 0
+**Regime PARITY_VEC_EXACT since 2026-10-06T18:48:00Z** (previous regime archived: `data/forward_parity/archive/pre_vec_exact_until_20261006T1848Z`). Rule: every live fill = a vec decision at the same 15m bar and side (fill may land up to 1 bar later); every vec decision = a live fill or a logged hard-safety refusal; quantity not compared.
 
-- vector fired, live did not (VEC_ONLY): LIVE_ALREADY_FLAT 2, LIVE_NO_SIGNAL 1
+**Verdict: PASS** — FAIL 0 · PASS with decisions 1 · IDLE (no decision either side, counts as pass) 41 · NO_DATA 0 · judged on a STALE-shifted window (S1 NPZ behind live) 0
+
+- vector fired, live did not (VEC_ONLY): -
 - live fired, vector did not (LIVE_ONLY): -
-- vector replay made 0 trades in 30D for 16/31 sym_sides with the live set (engine md5 918b5bdc): every live fill on those keys is LIVE_ONLY by construction — engine/set problem, not live drift. e.g. AXTI_LONG, A_LONG, BWXT_SHORT, CLS_LONG, CRWD_LONG, EXEL_LONG, GOOGL_LONG, MSFT_LONG
-- FAIL classes (sym_sides): STATE_MISMATCH 26, VEC_ONLY_STATE_CASCADE 2, VEC_ONLY_LIVE_NO_SIGNAL 1
+- vector replay made 0 trades in 30D for 14/31 sym_sides with the live set (engine md5 c5d1abdc): every live fill on those keys is LIVE_ONLY by construction — engine/set problem, not live drift. e.g. AXTI_LONG, A_LONG, CLS_LONG, CRWD_LONG, EQT_SHORT, EXEL_LONG, GOOGL_LONG, MSFT_LONG
+- since switch: live fills 216 (tagged |VEC_EXACT 0) · vec decisions 0 · matched 0 · out-of-universe live fills (not judged, no CPU): 0
+
+### Per sym_side with any decision since the switch
+
+| key | status | vec decisions | live fills (VEC_EXACT) | matched | vec not filled (why) | live not vec (what) |
+|---|---|---|---|---|---|---|
+| trc:IBIT_LONG | PASS | 0 | 216 (0) | 0 | - | - |
 
 ### FAIL per sym_side
 
 | key | classes | vec_only (why) | live_only (function@tf) | vec/live in pos | judged window | set |
 |---|---|---|---|---|---|---|
-| trb:IBIT_LONG | STATE_MISMATCH, VEC_ONLY_LIVE_NO_SIGNAL | LIVE_NO_SIGNAL 1 | - | False/True | last window | trb/active_config |
-| trc:IBIT_LONG | STATE_MISMATCH, VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_FLAT 1 | - | False/True | last window | trb/active_config |
-| trc:UEC_SHORT | STATE_MISMATCH, VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_FLAT 1 | - | False/True | last window | trb/active_config |
-| trb:AXTI_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trb:BWXT_SHORT | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trb:CLS_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trb:CRWD_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trb:EQT_SHORT | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trb:EXEL_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trb:GOOGL_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trb:MSFT_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trb:NKE_SHORT | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trb:NVDA_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trb:QQQ_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trb:SNDK_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trb:TSM_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trc:AXON_SHORT | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trc:A_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trc:BWXT_SHORT | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trc:EQT_SHORT | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trc:MU_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trc:NKE_SHORT | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trc:NVDA_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trc:PSX_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trc:RRC_SHORT | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trc:VLO_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
 
-PASS with activity: -  ·  PASS_IDLE (no decision either side): 16
+PASS with activity: trc:IBIT_LONG  ·  PASS_IDLE (no decision either side): 41
 
 ### Per function family (stocks)
 
 | family | input TF | vec twin | gate switch | live attempts | live fills | vec events | matched | vec_only | live_only | status |
 |---|---|---|---|---|---|---|---|---|---|---|
-| BROKER_SYNC | tick | N | safety (exempt) | 0 | 450 | 0 | 0 | 0 | 0 | PASS |
-| DC_BREAK | 15m | N | ? (switch not identified) | 0 | 2 | 0 | 0 | 0 | 0 | PASS |
-| DC_DAYTRADE_TARGET | 15m | Y | DC_DAYTRADE_ENABLED | 0 | 0 | 2 | 0 | 2 | 0 | FAIL |
-| REENTRY_OTHER | 15m | Y | ABLATION_DISABLE_REENTRY | 0 | 1 | 0 | 0 | 0 | 0 | PASS |
-| GAP_MOC | 5m | Y | ? (switch not identified) | 0 | 0 | 1 | 0 | 1 | 0 | FAIL |
+| BROKER_SYNC | tick | N | safety (exempt) | 0 | 216 | 0 | 0 | 0 | 0 | PASS |
 
 ## Test 2 - LIVE_ONLY functions (1m/3m/5m, tick, webhook, portfolio, no vec twin), STOCKS
 
@@ -188,20 +169,20 @@ no exits since the switch yet
 
 ## decisions -> history parity (switch intents vs live fills) — rows since 2026-10-06T18:48:00+00:00 only
 
-`DH_20261005_20261006.json` generated 2026-10-06T19:17:02.209748+00:00 (10 min ago) · intents 495 · matched 35 · **missing 460**
+`DH_20261005_20261006.json` generated 2026-10-06T19:17:02.209748+00:00 (31 min ago) · intents 495 · matched 35 · **missing 460**
 
 matched/intents per account: fin 4/9, men 8/37, ang 14/27, inf 0/0 (no decision file), flz 9/10, trb 0/229, trc 0/183
 
 | function family | action | intent result | n | blocking execution filter | vector same decision +-2 bars (Y/N/? = not judged) |
 |---|---|---|---|---|---|
 | UNCLASSIFIED:? | OPEN | MISSING | 3 | UNATTRIBUTED 3 | ? 3 |
-| UNCLASSIFIED:? | CLOSE | MISSING | 3 | UNATTRIBUTED 3 | ? 3 |
+| UNCLASSIFIED:? | CLOSE | MISSING | 3 | UNATTRIBUTED 3 | N 2, ? 1 |
 
 Gap classes: NUKE_STALE_MAKER_ORDER = maker exit rested >60 s and was cancelled (microstructure, no vec twin); UNATTRIBUTED = no blocking log line found (logging hook missing in the execution path); MAKER_ZERO_QTY / MARKET_API_ERROR = sizing/broker. Operator decisions: `data/decisions_history_parity/NEEDS-OPERATOR-DECISION_*.md`.
 
 ## Exit-engine gate parity (execute_now, all exits)
 
-generated 2026-10-06T19:00:22.014298+00:00 (26 min ago) · lookback 48.0h · exit rows 0 · **LEAKS 0** · gate ON 0 · UNGATED 0 · safety 0 · unmapped 0
+generated 2026-10-06T19:00:22.014298+00:00 (48 min ago) · lookback 48.0h · exit rows 0 · **LEAKS 0** · gate ON 0 · UNGATED 0 · safety 0 · unmapped 0
 
 ## 7-day rollup (tools/daily_parity_test.py)
 

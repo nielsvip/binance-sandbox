@@ -225,3 +225,24 @@ def test_darwin_guard_refuses_loop_and_live(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(sys, "argv", ["npz_bar_refresh.py", "--mode", "crypto", "--dry-run", "--lock", str(tmp_path / "t.lock")])
     nbr.main()
     assert called.get("ran") is True
+
+
+def test_drain_pool_shutdown(monkeypatch):
+    import pytest
+    class FakeIt:
+        def __init__(self, rs):
+            self.rs = list(rs)
+        def next(self, timeout=None):
+            if not self.rs:
+                raise StopIteration
+            return self.rs.pop(0)
+    class FakePool:
+        def __init__(self, rs):
+            self.rs = rs
+        def imap(self, fn, jobs):
+            return FakeIt(self.rs)
+    rs = [{"symbol": "A", "status": "FRESH"}]
+    assert nbr._drain_pool(FakePool(rs), [1]) == rs
+    monkeypatch.setitem(nbr._TERM, "n", 1)
+    with pytest.raises(nbr._Shutdown):
+        nbr._drain_pool(FakePool(rs), [1])

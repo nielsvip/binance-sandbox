@@ -404,7 +404,7 @@ def negbook_is_blocked(symbol: str, position_side: str) -> bool:
                     if not isinstance(_v, dict):
                         continue
                     _g = _v.get("acc_gain_pct")
-                    if (_g is not None and float(_g) <= 0) or "_NEG_BLOCK" in str(_v.get("winning_tag", "")):
+                    if __import__("perf_tier_sizing").negbook_blocks(_v, bool(getattr(config, "PERF_TIER_SIZING_ENABLED", False))):  # PERF_TIER_SIZING 2026-10-06: tier ON -> only _NEG_BLOCK tag blocks; acc_gain<=0 = minimal size
                         _keys[_k] = True
         except Exception as _e:
             logger.warning(f"[NEGBOOK] load error (fail-open): {_e}")
@@ -8019,7 +8019,7 @@ def _wire_trb_stocks_hemisphere_tradier(account_key, symbol, side):
     _ = getattr(config, "WT_EXIT_VELOCITY_TRADIER", False)
     _ = getattr(config_tradier, "WT_EXIT_VELOCITY_TRADIER", False)
     _ = _cfg("WT_EXIT_VELOCITY_TRADIER", False, account_key, symbol, side)
-    # LANE-D 2026-10-05 — stocks VEC_ONLY live-twin reads (pure reads, behavior inert; parity UNPROVEN)
+    # LANE-D 2026-10-05 — stocks live-twin reads (former vec-only rows, BIBLE 68: one switch on both surfaces) (pure reads, behavior inert; parity UNPROVEN)
     _ = getattr(config, "WT_SIMPLE_GUARANTEE_ENABLED", False)
     _ = getattr(config_tradier, "WT_SIMPLE_GUARANTEE_ENABLED", False)
     _ = _cfg("WT_SIMPLE_GUARANTEE_ENABLED", False, account_key, symbol, side)
@@ -14350,7 +14350,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             # EMA50_15M_ENTRY_FILTER: vec entry_sig mask (v12 EMA50 block) — live twin, per-sym _cfg (cat_side STOCKS default carried forward).
                             if _veto is None:
                                 _veto = _ftf_twins.ema50_block(_ftf_get, _px_ftf, is_long, _ftf_ps('EMA50_15M_ENTRY_FILTER_ENABLED', False), _ftf_ps('EMA50_15M_ENTRY_FILTER_PCT', 0.0))
-                            # KG_STOCKS_LIVE_GATE_VEC_ONLY_ENABLED (default False = today): when True, the vec stocks KINDERGARTEN/EMA_9_21 hard veto (live_kindergarten_stocks) applies live.
+                            # KG_STOCKS_HARD_VETO_ENABLED (default False = today; same switch in vec v12): when True, the vec stocks KINDERGARTEN/EMA_9_21 hard veto (live_kindergarten_stocks) applies live.
                             if _veto is None:
                                 _veto = _ftf_twins.kg_stocks_block(_ftf_ps, _ftf_get, _px_ftf, is_long)
                             # PARITY LANE C 2026-10-06: CANDLE_PATTERN_STOPS / EXIT_TOP_FADE / PEAK_GIVEBACK_BE_EROSION / BREAKEVEN_GAIN_EROSION FILTER_TF entry vetoes REMOVED
@@ -15230,6 +15230,18 @@ def _qta_entry_sizing(trade_manager, position_key, account_key, symbol, position
             quantity = max(1, int(quantity * (0.7 + _perf_mult * 0.3)))
         except Exception:
             pass
+    if (not _absolute_target_order) and bool(getattr(config, "PERF_TIER_SIZING_ENABLED", False)) and action in ('OPEN', 'AUGMENT', 'REENTRY', 'QUICK_OPEN', 'QUICK_AUGMENT'):
+        try:  # PERF_TIER_SIZING 2026-10-06 (USER): per-sym performance tier (<1 allowed; whole shares rounded down; <1 share = skip); MAX_ORDER_VALUE cap below still applies
+            import perf_tier_sizing as _pts
+            _pt_q0 = quantity
+            quantity = _pts.apply_qty(quantity, symbol, position_side)
+            if quantity != _pt_q0:
+                logger.info(f"[PERF_TIER_SIZING] {position_key}: qty {_pt_q0}->{quantity} (x{_pts.get_mult(symbol, position_side):.2f})")
+            if quantity < 1:  # USER 2026-10-06: tier size below one share -> skip the trade entirely (no 1-share floor)
+                logger.warning(f"[PERF_TIER_SIZING] {position_key}: tier qty {quantity} < 1 share -> trade SKIPPED")
+                return 0
+        except Exception as _pte:
+            logger.warning(f"[PERF_TIER_SIZING] {position_key}: fail-open {_pte}")
     # USER 2026-06-03 NO-EXCEPTIONS: WT_3M_FORCE_OPEN (with-trend, above-200MA, WT-favor build)
     # must NOT be clamped to the small MAX_ORDER_VALUE — that's the "$100 dribble" cap. It is
     # bounded instead by DG_MAX_FORCE_OPEN_NOTIONAL_USD (per fire) + WT_3M_FORCE_OPEN_TARGET_USD.
@@ -27381,13 +27393,8 @@ class TradierTradeManager:
                 return (True, "DG_EXCEPTION_SHORT_FAILCLOSED")
             return (False, "")
 
+    @_odg.execute_now_gate("tradier")  # POSITIONS REVAMP 2026-10-06: execute_now token — the wire refuses exposure-increasing orders without it
     async def execute_now(self, position_key: str, account_key: str, symbol: str, original_position_amt: float, side: str, position_side: str, quantity: float, old_price: float, unique_id: str, reason: str, is_full_close: bool, action: str = None, decision_recorded: bool = False) -> str:  # 2026-10-06 director: NameError fix — recorder flag passed through from execute_trade_action (direct paths default False = record here)
-        # USER 2026-10-06 NO-QUICK PARITY (TEMPORARY — NOTE_QUICK_REENABLE): QUICK has no functional vector model;
-        # live must not trade what vectorized cannot see. Blocks ALL QUICK actions/reasons. Non-QUICK exits still manage.
-        # NOTE_QUICK_REENABLE: re-enable ONLY when v12 wires real QUICK signal logic (BACKTEST_BIBLE §39) AND §43 parity passes.
-        if action in ("QUICK_OPEN", "QUICK_AUGMENT", "QUICK_CLOSE", "QUICK_REDUCE", "QUICK_HEDGE") or "QUICK" in str(reason or "").upper():
-            logger.critical(f"🚫 [NO_QUICK_PARITY] {position_key}: QUICK disabled until vectorized (action={action} reason={(reason or '')[:80]})")
-            return "BLOCKED_QUICK_DISABLED_NO_VEC"
         # PARITY LOOP STOCKS 2026-10-06: VEC_EXACT order (PARITY_VEC_EXACT_MODE) = the vec decision -> decision gates below are skipped ("NO GATES"; NOLOSS has only exceptions).
         _vx_ex = is_vec_exact_reason(reason) and bool(_cfg('PARITY_VEC_EXACT_MODE', False, account_key, symbol, position_side))
         # BROKER_SYNC LOGICAL DEMAND — 2026-09-08: 80× same order sent because it thought not received without checking broker.
@@ -29431,7 +29438,10 @@ class TradierTradeManager:
                             logger.warning(f"[REENTRY_MONITOR] {pk}: PLACING REAL ORDER {api_side} {reentry_qty} {symbol} @ market | k5m={k_5m:.0f} wt={wt_support}")
                             result = {}
                             try:
-                                result = await self.place_order(symbol, api_side, float(reentry_qty), "market", duration="day", action="REENTRY", position_side=side, account_key=acc)
+                                # POSITIONS REVAMP 2026-10-06 (IBIT incident): REENTRY_MONITOR no longer calls place_order directly —
+                                # it goes through execute_now (all gates + broker open-from-zero/augment-gain check at the wire).
+                                _rm_exec = await self.execute_now(position_key=pk, account_key=acc, symbol=symbol, original_position_amt=0.0, side=order_side, position_side=side, quantity=float(reentry_qty), old_price=float(current_price), unique_id=f"REENTRY_MONITOR_{pk}_{int(time.time())}", reason=reentry_reason, is_full_close=False, action="REENTRY")
+                                result = {"order": {"id": ("EXECUTE_NOW_OK" if str(_rm_exec).startswith("SUCCESS") else "NONE"), "status": str(_rm_exec)}, "via_execute_now": True}
                                 order_id = result.get("order", {}).get("id", "NONE") if isinstance(result, dict) else str(result)
                                 order_status = result.get("order", {}).get("status", "UNKNOWN") if isinstance(result, dict) else "UNKNOWN"
                                 logger.warning(f"[REENTRY_MONITOR] {pk}: ORDER RESULT id={order_id} status={order_status}")
@@ -29475,7 +29485,7 @@ class TradierTradeManager:
                             # 2026-05-28 USER: this reopen path uses place_order() directly and bypassed
                             # execute_trade_action's _append_to_history — every reopen was invisible in
                             # /history/. Log it here on a real fill so the trade ledger is complete.
-                            if "GHOST" not in str(order_id) and order_id not in ("NONE", "N/A"):
+                            if "GHOST" not in str(order_id) and order_id not in ("NONE", "N/A") and not (isinstance(result, dict) and result.get("via_execute_now")):  # execute_now already wrote history
                                 try:
                                     await self._append_to_history(pk, "REENTRY", float(reentry_qty), float(_fill_price), reentry_reason)
                                 except Exception as _rm_hist_e:

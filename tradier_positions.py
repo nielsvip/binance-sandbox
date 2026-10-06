@@ -31,6 +31,7 @@ from dateutil.parser import isoparse
 from config_tradier import TradierConfig
 from position_time_contract import parse_position_timestamp
 from tradier_api import TradierAPIClient
+import positions_truth as _ptruth  # 2026-10-06 USER POSITIONS_TRUTH
 from utils import (
     clean_position_key,
     construct_position_key,
@@ -183,6 +184,8 @@ async def atomic_write_json(file_path: Path, data: Dict):
             f.flush()
             os.fsync(f.fileno())
         shutil.move(str(temp_file), str(file_path))
+        if _ptruth.is_positions_file(file_path):  # 2026-10-06 USER POSITIONS_TRUTH freshness contract: .<file>.meta.json AFTER the data replace
+            _ptruth.write_meta(file_path, writer=f"tradier_positions:{os.getpid()}")
     except Exception as e:
         if temp_file.exists():
             try: temp_file.unlink()
@@ -1701,9 +1704,9 @@ class TradierPositionManager:
                     logger.error(f"[POSITION_UPDATE_ERR] {position_key}: handle_* raised: {_upd_err}")
                 finally:
                     # 2026-09-08 FIX: do NOT overwrite veto-clamped positionAmt — veto already set correct clamped value
-                    if not getattr(existing_position, '_broker_sync_vetoed', False):
+                    if bool(_ptruth.cfg(self.config, "POSITIONS_FILE_BROKER_TRUTH_ONLY")) or not getattr(existing_position, '_broker_sync_vetoed', False):  # 2026-10-06 USER POSITIONS_TRUTH: file = broker qty always (veto only logs)
                         existing_position.positionAmt = amt_abs
-                    else:
+                    if getattr(existing_position, '_broker_sync_vetoed', False):
                         # clear flag for next sync
                         try:
                             delattr(existing_position, '_broker_sync_vetoed')
@@ -1717,7 +1720,7 @@ class TradierPositionManager:
         # NOTE: I am removing _update_prices_for_positions from the end because 
         # we now do it at the START of the loop for every symbol.
         
-        if updated_keys_in_api:
+        if updated_keys_in_api or isinstance(raw_positions_data, list):  # 2026-10-06 POSITIONS_TRUTH: confirmed-empty broker is a successful sync too (written_at must advance)
             self._mark_positions_dirty()
             if not skip_broadcast_save:
                 await self.broadcast_to_redis(self.positions, should_log=False)
