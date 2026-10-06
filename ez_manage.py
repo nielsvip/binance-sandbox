@@ -45759,6 +45759,17 @@ async def _parity_flat_open_check(trade_manager, position_key: str, position, or
             return
         if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
             return
+        # COOLDOWN_BARS (2026-10-06 venue-separation: TEMPLATE_CRYPTO_LONG port; twin of tradier W2_COOLDOWN — bars since last exit, 15m crypto bars; 0=inert)
+        _cd_bars = int(_psym_get(_sym_p, _side_p, "COOLDOWN_BARS", getattr(config, "COOLDOWN_BARS", 0)) or 0)
+        if _act_p == "REENTRY" and _cd_bars > 0:
+            try:
+                _cd_ex = _parity_last_exit(trade_manager, position_key)
+                _cd_age_m = float(_cd_ex[2]) if _cd_ex and len(_cd_ex) > 2 else None
+                if _cd_age_m is not None and (_cd_age_m / 15.0) < _cd_bars:
+                    logger.warning(f"[COOLDOWN_BARS] {position_key}: reentry blocked (bars={_cd_age_m / 15.0:.1f}<{_cd_bars})")
+                    return
+            except Exception as _cd_e:
+                logger.debug(f"[COOLDOWN_BARS_ERR] {position_key} err: {_cd_e}")
         _r1s_p = safe_fetch_float(_ind_p.get(("dc_low4_3m" if _long_p else "dc_high4_3m") if bool(getattr(config, "R1_USE_DC_4BAR", True)) else ("dc_low_3m" if _long_p else "dc_high_3m")), 0.0)
         if _r1s_p > 0 and position and float(getattr(position, "r1_stop_price", 0.0) or 0.0) <= 0:
             position.r1_stop_price = _r1s_p
@@ -49768,6 +49779,64 @@ async def process_position(
                         return f"{EvalStatus.ACTION_TAKEN}:BB_FROZEN_STOP_CLOSED"
         except Exception as _bb_stop_err:
             logger.debug(f"[BB_FROZEN_STOP_ERR] {position_key} stop check err: {_bb_stop_err}")
+    # ═══ RSI2_EXIT_LIVE (2026-10-06 venue-separation: TEMPLATE_CRYPTO_SHORT TRADIER_RSI2_EXIT_THRESHOLD_LONG port; twin of tradier_manage RSI2_EXIT_LIVE + vec extra_exit rsi2_3m) ═══
+    if (
+        position
+        and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
+        and bool(_psym_get(symbol, position_side, "TRADIER_RSI2_ENABLED", getattr(config, "TRADIER_RSI2_ENABLED", False)))
+    ):
+        try:
+            _r2_is_long = position_side == "LONG"
+            if _pp_shared_ind is None:
+                _pp_shared_ind = await ii(trade_manager, symbol) or {}
+            _r2_ind = _pp_shared_ind or {}
+            _r2v = None
+            for _r2k in ("rsi_2_3m", "rsi_2_15m", "rsi_2_1h"):
+                if _r2_ind.get(_r2k) is not None:
+                    _r2v = _r2_ind.get(_r2k)
+                    break
+            if _r2v is not None:
+                _r2v = safe_fetch_float(_r2v, 50.0)
+                if _r2_is_long:
+                    _r2_thr = float(_psym_get(symbol, position_side, "TRADIER_RSI2_EXIT_THRESHOLD_LONG", getattr(config, "TRADIER_RSI2_EXIT_THRESHOLD_LONG", 90.0)))
+                    _r2_fire = _r2v >= _r2_thr
+                else:
+                    _r2_thr = float(_psym_get(symbol, position_side, "TRADIER_RSI2_EXIT_THRESHOLD_SHORT", getattr(config, "TRADIER_RSI2_EXIT_THRESHOLD_SHORT", 10.0)))
+                    _r2_fire = _r2v <= _r2_thr
+                if _r2_fire:
+                    _r2_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
+                    _r2_close_side = "SELL" if _r2_is_long else "BUY"
+                    _r2_reason = f"RSI2_EXIT_LIVE_rsi2={_r2v:.1f}_thr={_r2_thr}"
+                    logger.critical(f"🔥 [RSI2_EXIT_LIVE] {position_key}: rsi2={_r2v:.1f} thr={_r2_thr} → CLOSE")
+                    _r2_result = await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_r2_amt, side=_r2_close_side, position_side=position_side, quantity=_r2_amt, old_price=current_price, unique_id=f"RSI2_EXIT_LIVE_{int(time.time())}", reason=_r2_reason, is_full_close=True, action="CLOSE")
+                    if isinstance(_r2_result, str) and not any(x in _r2_result.upper() for x in ("BLOCK", "SKIP", "REJECT")):
+                        trade_manager.processing_keys.discard(position_key)
+                        return f"{EvalStatus.ACTION_TAKEN}:RSI2_EXIT_LIVE_CLOSED"
+        except Exception as _r2_err:
+            logger.debug(f"[RSI2_EXIT_LIVE_ERR] {position_key} rsi2 exit err: {_r2_err}")
+    # ═══ BB_BAND_EXIT (2026-10-06 venue-separation: TEMPLATE_STOCKS_LONG BB_EXIT_AT_LOSS_TF port; shared core vec_decisions.bb_stoch_exits.bb_band_exits, twin of vec compute_exit_signals; LOSS+TAKE, OFF=inert) ═══
+    if (
+        position
+        and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
+    ):
+        try:
+            from vec_decisions.bb_stoch_exits import bb_band_exits as _bbx_exits
+            _bbx_is_long = position_side == "LONG"
+            if _pp_shared_ind is None:
+                _pp_shared_ind = await ii(trade_manager, symbol) or {}
+            _bbx_ind = _pp_shared_ind or {}
+            _bbx_fire, _bbx_rsn = _bbx_exits(lambda _k, _d: _psym_get(symbol, position_side, _k, getattr(config, _k, _d)), _bbx_is_long, _bbx_ind)
+            if _bbx_fire:
+                _bbx_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
+                _bbx_close_side = "SELL" if _bbx_is_long else "BUY"
+                _bbx_reason = f"BB_BAND_EXIT_{_bbx_rsn}"
+                logger.critical(f"🛑 [BB_BAND_EXIT] {position_key}: {_bbx_rsn} → CLOSE")
+                _bbx_result = await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_bbx_amt, side=_bbx_close_side, position_side=position_side, quantity=_bbx_amt, old_price=current_price, unique_id=f"BB_BAND_EXIT_{int(time.time())}", reason=_bbx_reason, is_full_close=True, action="CLOSE")
+                if isinstance(_bbx_result, str) and not any(x in _bbx_result.upper() for x in ("BLOCK", "SKIP", "REJECT")):
+                    trade_manager.processing_keys.discard(position_key)
+                    return f"{EvalStatus.ACTION_TAKEN}:BB_BAND_EXIT_CLOSED"
+        except Exception as _bbx_err:
+            logger.debug(f"[BB_BAND_EXIT_ERR] {position_key} bb exit err: {_bbx_err}")
     # ═══ LR_BAND_HARVEST (2026-07-19 USER band mandate): exit at the UPPER regression band —
     # the sell-at-top half of LR_BAND_ENTRY. Profit-only; crypto always FULL close (live REDUCE
     # behaves as full close per 2026-05-26 architecture note). Default OFF pending Tier-2 proof.
@@ -56865,10 +56934,11 @@ async def crypto_fh_momentum_loop(trade_manager: MultiAccountTradeManager):
                 move_pct = (current_price - open_d) / open_d * 100.0
                 if abs(move_pct) < min_move:
                     continue
+                _fh_tf = str(getattr(config, "FH_MOMENTUM_FILTER_TF", "D") or "D")
                 dc_pos = float(
-                    ind.get("dc_position_D", ind.get("dc_position_4h", 0.5)) or 0.5
+                    ind.get(f"dc_position_{_fh_tf}", ind.get("dc_position_4h", 0.5)) or 0.5
                 )
-                if dc_confirm:
+                if dc_confirm and _fh_tf != "OFF":
                     if move_pct > 0 and dc_pos > dc_max_long:
                         continue
                     if move_pct < 0 and dc_pos < (1.0 - dc_max_long):

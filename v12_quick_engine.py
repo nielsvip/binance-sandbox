@@ -8959,7 +8959,13 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
             confirm = np.ones(n, dtype=bool)
             if getattr(cfg, 'TRADIER_FH_MOMENTUM_DC_CONFIRM', True):
                 dc_max = getattr(cfg, 'TRADIER_FH_MOMENTUM_DC_MAX_LONG', 0.33)
-                confirm = confirm & ((dc_pos_15m <= dc_max) if is_long else (dc_pos_15m >= (1 - dc_max)))
+                _fh_tf = str(getattr(cfg, 'FH_MOMENTUM_FILTER_TF', '15m') or '15m')
+                if _fh_tf != 'OFF':
+                    if _fh_tf not in ('15m', '1h', '4h', 'D'):
+                        _fh_tf = '15m'
+                    _fh_key = f'dc_position_{_fh_tf}'
+                    _fh_dc = _safe(npz, _fh_key, n) if _fh_key in npz else dc_pos_15m
+                    confirm = confirm & ((_fh_dc <= dc_max) if is_long else (_fh_dc >= (1 - dc_max)))
             if getattr(cfg, 'TRADIER_FH_MOMENTUM_MFI_CONFIRM', True):
                 mfi_min = getattr(cfg, 'TRADIER_FH_MOMENTUM_MFI_MIN', 55.0)
                 confirm = confirm & ((mfi_1h_arr >= mfi_min) if is_long else (mfi_1h_arr <= (100 - mfi_min)))

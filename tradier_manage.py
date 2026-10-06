@@ -14154,6 +14154,21 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             conf = 70.0
                             reason = f"TRADIER_FH_MOMENTUM_{'L' if is_long else 'S'}_{_tgsa_rsn}"
                     except Exception: pass
+                if action_type != "OPEN" and bool(_cfg_auto('DC_BREAKOUT_ENTRY_ENABLED', False)):
+                    try:
+                        _dc_ind = indicators_raw if indicators_raw else i
+                        _dc_tf = str(_cfg_auto('DC_BREAKOUT_TF_EXPANDED', _cfg_auto('DC_BREAKOUT_TF', '1h')) or '1h')
+                        _dc_hi = safe_fetch_float((_dc_ind or {}).get(f'dc_high_{_dc_tf}'), 0)
+                        _dc_lo = safe_fetch_float((_dc_ind or {}).get(f'dc_low_{_dc_tf}'), 0)
+                        _dc_adx = safe_fetch_float((_dc_ind or {}).get(f'adx_{_dc_tf}'), 0)
+                        _dc_fire = _dc_hi > 0 and _dc_lo > 0 and _dc_adx > 25 and ((is_long and current_price > _dc_hi) or (not is_long and current_price < _dc_lo))
+                        if _dc_fire:
+                            _base_qty = float(_cfg_auto('START_POSITION_SIZE', 600)) / current_price if current_price and current_price > 0 else 1
+                            action_type = "OPEN"
+                            qty = int(max(1, _base_qty))
+                            conf = 70.0
+                            reason = f"TRADIER_DC_BREAKOUT_{'L' if is_long else 'S'}_adx{_dc_adx:.0f}"
+                    except Exception: pass
                 # ═══════════════════════════════════════════════════════════════════════
                 # 🚩 GR_HTF_DIRECT_ENTRY — 2026-05-12 USER MANDATE
                 # Direct entry signal: Score = n_tfs_aligned × GOLDEN_RULE_MIN_IND.
@@ -21254,6 +21269,19 @@ class StockStrategy:
                         return True, f"STOCH_CROSS_1H_EXIT_LIVE_k={_k:.1f}_g={gain:.2f}%", qty
                     else:
                         logger.info(f"[STOCH_CROSS_1H_EXIT_LIVE_VETO] {symbol} {'L' if is_long else 'S'}: STRUCT_VETO")
+            # BB_BAND_EXIT (2026-10-06 venue-separation: SL BB_EXIT_AT_LOSS_TF port; shared core vec_decisions.bb_stoch_exits.bb_band_exits, twin of vec compute_exit_signals; LOSS+TAKE, OFF=inert, no gain gate per vec)
+            try:
+                from vec_decisions.bb_stoch_exits import bb_band_exits as _bbx_exits_tr
+            except Exception:
+                _bbx_exits_tr = None
+            if _bbx_exits_tr is not None:
+                _bbx_fire, _bbx_rsn = _bbx_exits_tr(lambda _k, _d: _cfg(_k, _d, _exit_acct_top or "trb", symbol, _et_side_live), is_long, _et_ind_live or {})
+                if _bbx_fire:
+                    if _live_sep_ok():
+                        logger.warning(f"[BB_BAND_EXIT_LIVE] {symbol} {'L' if is_long else 'S'}: {_bbx_rsn} gain={gain:.2f}%")
+                        return True, f"BB_BAND_EXIT_LIVE_{_bbx_rsn}_g={gain:.2f}%", qty
+                    else:
+                        logger.info(f"[BB_BAND_EXIT_LIVE_VETO] {symbol} {'L' if is_long else 'S'}: STRUCT_VETO")
             # FORMATION exits need structural veto too — existing formation block returns without veto; patch by re-checking here if formation would fire but structural fails, we would have already returned. So we add veto wrapper after formation block below.
             # REGIME thresholds are enforced via gain checks above/below; regime itself is not an independent signal.
         except Exception as _live_e:

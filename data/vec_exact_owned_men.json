@@ -39,14 +39,6 @@
   "at": "06 20:04:11 - ",
   "reason": "seeded_from_log"
  },
- "men:ATOMUSDT_SHORT": {
-  "at": "2026-10-06T21:26:33Z",
-  "reason": "B_KZONE"
- },
- "men:LTCUSDC_SHORT": {
-  "at": "2026-10-06T21:26:38Z",
-  "reason": "B12"
- },
  "men:KMNOUSDT_SHORT": {
   "at": "2026-10-06T21:26:38Z",
   "reason": "GOLDEN_RULE_ENTRY"
@@ -55,20 +47,40 @@
   "at": "2026-10-06T21:26:46Z",
   "reason": "ENTRY_SIGNAL"
  },
- "men:VETUSDT_SHORT": {
-  "at": "2026-10-06T21:27:24Z",
-  "reason": "B_KZONE"
- },
- "men:AXSUSDT_SHORT": {
-  "at": "2026-10-06T21:30:09Z",
-  "reason": "B_KZONE"
- },
- "men:ALGOUSDT_SHORT": {
-  "at": "2026-10-06T21:30:44Z",
-  "reason": "GOLDEN_RULE_ENTRY"
- },
  "men:SANDUSDT_LONG": {
   "at": "06 21:15:56 - ",
   "reason": "seeded_from_log"
+ },
+ "men:SNXUSDT_SHORT": {
+  "at": "2026-10-06T21:37:42Z",
+  "reason": "B14"
+ },
+ "men:ENJUSDT_SHORT": {
+  "at": "2026-10-06T21:37:42Z",
+  "reason": "B_KZONE"
+ },
+ "men:MELANIAUSDT_SHORT": {
+  "at": "2026-10-06T21:45:28Z",
+  "reason": "B_KZONE"
+ },
+ "men:ENSUSDT_LONG": {
+  "at": "2026-10-06T21:45:35Z",
+  "reason": "ENTRY_SIGNAL"
+ },
+ "men:KSMUSDT_LONG": {
+  "at": "2026-10-06T21:46:10Z",
+  "reason": "B_SRS_ENTRY"
+ },
+ "men:ENJUSDT_LONG": {
+  "at": "2026-10-06T21:46:17Z",
+  "reason": "B_DELTAENTRY"
+ },
+ "men:MANAUSDT_SHORT": {
+  "at": "2026-10-06T21:46:23Z",
+  "reason": "B12"
+ },
+ "men:SNXUSDT_LONG": {
+  "at": "2026-10-06T21:48:04Z",
+  "reason": "ENTRY_SIGNAL"
  }
 }
