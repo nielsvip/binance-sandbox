@@ -7980,6 +7980,14 @@ def _vec_exact_reason_ok(reason) -> bool:
     return " |VEC_EXACT" in str(reason or "")
 
 
+def _vec_exact_mode_on() -> bool:
+    """parity-loop-crypto 2026-10-06: PARITY_VEC_EXACT_MODE master (global or per-sym proxy)."""
+    try:
+        return bool(getattr(_ezm_base_config, "PARITY_VEC_EXACT_MODE", False)) or bool(getattr(config, "PARITY_VEC_EXACT_MODE", False))
+    except Exception:
+        return False
+
+
 def _vec_decided_reason_ok(reason) -> bool:
     """2026-10-06 director: an order decided by the vec engine — in-script twin (|VEC_EXACT, master on) or X3 VEC_DRIVEN_* intent.
     execute_trade_action's ENTRY_VET and DELTA engine gate never refuse these (hard safety unchanged)."""
@@ -30613,6 +30621,25 @@ class MultiAccountTradeManager:
         if not _vd_exempt and _vec_exact_reason_ok(reason):
             _vd_exempt = True
             logger.info(f"🧬 [VEC_EXACT_EXEC] {position_key} action={action} qty={quantity} reason={(reason or '')[:80]} — vec-decided (in-script twin), discretionary gates exempt")
+        # parity-loop-crypto 2026-10-06 (director/lane A): in PARITY_VEC_EXACT_MODE the vec twin is the ONLY producer of the twinned
+        # families. Every native order of a twinned family (reentry daemons/inline/price-cross/EPQ openers, monitor-loop closers,
+        # native augments) is suppressed at this single chokepoint. Emergency reduce/close (liquidation/margin/balance-floor/manual)
+        # always passes. Master off -> nothing here runs.
+        elif _vec_exact_mode_on():
+            try:
+                from live_twins import vec_exact as _vxn
+                from live_twins import vec_driven as _vdn
+                _vx_fams = _vxn.families(config)
+                _vx_act = str(action or "").upper()
+                _vx_is_exit = ("CLOSE" in _vx_act or "REDUCE" in _vx_act or bool(is_full_close))
+                _vx_is_aug = ("AUGMENT" in _vx_act) and not _vx_is_exit
+                _vx_is_entry = (not _vx_is_exit) and (not _vx_is_aug) and any(_t in _vx_act for _t in ("OPEN", "ENTRY", "REENTRY", "BUY", "SELL", "REVERSE"))
+                _vx_fam = "EXIT" if _vx_is_exit else ("AUGMENT" if _vx_is_aug else ("ENTRY" if _vx_is_entry else ""))
+                if _vx_fam and _vx_fam in _vx_fams and not (_vx_is_exit and _vdn.is_emergency_reason(reason)):
+                    logger.warning(f"⛔ [VEC_EXACT_NATIVE_SUPPRESSED] {position_key} action={action} fam={_vx_fam} reason={(reason or '')[:80]} — PARITY_VEC_EXACT_MODE: only the vec twin trades this family")
+                    return f"BLOCKED_VEC_EXACT_NATIVE_{_vx_fam}"
+            except Exception as _vxn_e:
+                logger.warning(f"[VEC_EXACT] native-suppress check error (fail-open): {_vxn_e}")
         # ─── 365D CONFIRMATION GATE (2026-09-28 USER MANDATE — fail-closed, no bypasses) ───
         # Blocks EVERY position-increasing action (incl. hedge opens — guards apply to ALL callers)
         # for sym_sides without a fresh positive 365D confirmation. CLOSE/REDUCE never blocked.

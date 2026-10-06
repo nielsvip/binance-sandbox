@@ -1798,6 +1798,16 @@ def apply_patches(stores: Dict[str, IndicatorStore], mode: str):
             pass
     except Exception:
         pass
+    # 2026-10-06 parity lane A: asyncio.sleep(d>0) schedules its wake-up through loop.call_later, which is a no-op above, so
+    # any live `await asyncio.sleep(0.4)` (e.g. REENTRY_DISPATCH_TRANSIENT_FAIL retry backoff) never returned and the run hung
+    # forever in ep_poll (AXS/SNX vec-exact runs, 2026-10-06). Sim time has no wall-clock waits: every sleep yields once.
+    if not getattr(asyncio.sleep, "_v8_sim_sleep", False):
+        _v8_orig_sleep = asyncio.sleep
+
+        async def _v8_sim_sleep(delay=0, result=None, *a, **kw):
+            return await _v8_orig_sleep(0, result)
+        _v8_sim_sleep._v8_sim_sleep = True
+        asyncio.sleep = _v8_sim_sleep
 
 
     # --- Patch time in ALL trading modules ---
@@ -9152,6 +9162,12 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             _is_contract_entry = (
                 _is_mandatory_reentry or _is_ordinary_ladder_target
             )
+            # 2026-10-06 parity lane A (director/stocks loop): the gate blocks below (V8NS sweep vetoes + size scalars, SATOSHIT,
+            # DELTA_ENTRY, GR_HTF, WT_DC/ENTRY_SCORE thresholds, SRS, LS_RATIO, GOLDEN_RULE) are harness re-implementations
+            # that run BEFORE the real tradier execute_trade_action; they refused vec-exact opens (AMD_LONG
+            # BLOCKED_ENTRY_SCORE_THRESHOLD_25lt30). Vec-decided orders are contract entries; under V12_LIVE_ONLY_PRODUCERS
+            # every entry skips them, so only tradier_manage's own gates decide.
+            _is_contract_entry = _is_contract_entry or _reason.startswith(("VEC_EXACT_", "VEC_DRIVEN_")) or os.environ.get("V12_LIVE_ONLY_PRODUCERS") == "1"
             # ═══════════════════════════════════════════════════════════════════════════
             # 2026-05-12 — V8_DECISION_ONLY FAST PATH (tradier real-eta)
             # Bypass _orig_eta (which calls calculate_final_order_quantity and many gates).
