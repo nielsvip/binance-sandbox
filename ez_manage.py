@@ -30621,25 +30621,6 @@ class MultiAccountTradeManager:
         if not _vd_exempt and _vec_exact_reason_ok(reason):
             _vd_exempt = True
             logger.info(f"🧬 [VEC_EXACT_EXEC] {position_key} action={action} qty={quantity} reason={(reason or '')[:80]} — vec-decided (in-script twin), discretionary gates exempt")
-        # parity-loop-crypto 2026-10-06 (director/lane A): in PARITY_VEC_EXACT_MODE the vec twin is the ONLY producer of the twinned
-        # families. Every native order of a twinned family (reentry daemons/inline/price-cross/EPQ openers, monitor-loop closers,
-        # native augments) is suppressed at this single chokepoint. Emergency reduce/close (liquidation/margin/balance-floor/manual)
-        # always passes. Master off -> nothing here runs.
-        elif _vec_exact_mode_on():
-            try:
-                from live_twins import vec_exact as _vxn
-                from live_twins import vec_driven as _vdn
-                _vx_fams = _vxn.families(config)
-                _vx_act = str(action or "").upper()
-                _vx_is_exit = ("CLOSE" in _vx_act or "REDUCE" in _vx_act or bool(is_full_close))
-                _vx_is_aug = ("AUGMENT" in _vx_act) and not _vx_is_exit
-                _vx_is_entry = (not _vx_is_exit) and (not _vx_is_aug) and any(_t in _vx_act for _t in ("OPEN", "ENTRY", "REENTRY", "BUY", "SELL", "REVERSE"))
-                _vx_fam = "EXIT" if _vx_is_exit else ("AUGMENT" if _vx_is_aug else ("ENTRY" if _vx_is_entry else ""))
-                if _vx_fam and _vx_fam in _vx_fams and not (_vx_is_exit and _vdn.is_emergency_reason(reason)):
-                    logger.warning(f"⛔ [VEC_EXACT_NATIVE_SUPPRESSED] {position_key} action={action} fam={_vx_fam} reason={(reason or '')[:80]} — PARITY_VEC_EXACT_MODE: only the vec twin trades this family")
-                    return f"BLOCKED_VEC_EXACT_NATIVE_{_vx_fam}"
-            except Exception as _vxn_e:
-                logger.warning(f"[VEC_EXACT] native-suppress check error (fail-open): {_vxn_e}")
         # ─── 365D CONFIRMATION GATE (2026-09-28 USER MANDATE — fail-closed, no bypasses) ───
         # Blocks EVERY position-increasing action (incl. hedge opens — guards apply to ALL callers)
         # for sym_sides without a fresh positive 365D confirmation. CLOSE/REDUCE never blocked.
@@ -37599,6 +37580,8 @@ class MultiAccountTradeManager:
             try:
                 await asyncio.sleep(float(getattr(config, "MOMENTUM_SMA_WATCHDOG_INTERVAL_S", 60.0)))
                 if not bool(getattr(config, "MOMENTUM_SMA_WATCHDOG_ENABLED", True)):
+                    continue
+                if _vec_exact_mode_on():  # 2026-10-06 parity-loop-crypto: native watchdog opens/escalations OFF in exact mode (no 15m vec twin; vec twin is the only producer)
                     continue
                 _wt_cap = float(getattr(config, "MOMENTUM_SMA_WATCHDOG_WT_CAP", 80.0))
                 _cd = float(getattr(config, "MOMENTUM_SMA_WATCHDOG_COOLDOWN_S", 300.0))
@@ -58345,6 +58328,9 @@ async def _reentry_queue_consumer_loop(trade_manager: MultiAccountTradeManager) 
         f"[REENTRY_QUEUE] consumer started — interval={interval}s queue={queue_base}"
     )
     while True:
+        if _vec_exact_mode_on():  # 2026-10-06 parity-loop-crypto: daemon reentries OFF in exact mode (dead live path, no vec twin)
+            await asyncio.sleep(interval)
+            continue
         try:
             now = time.time()
             _fired_this_tick: set = set()
