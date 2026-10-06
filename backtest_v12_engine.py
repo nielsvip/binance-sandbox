@@ -2101,6 +2101,9 @@ def apply_patches(stores: Dict[str, IndicatorStore], mode: str):
 # STEP 6: NPZ data loader
 # ═══════════════════════════════════════════════════════════════
 def get_npz_dir(mode):
+    # parity lane A 2026-10-06: V12_NPZ_DIR = frozen NPZ dir for parity runs (set by tools/v15_trade_parity TRADE_PARITY_NPZ_DIR)
+    if os.environ.get("V12_NPZ_DIR"):
+        return Path(os.environ["V12_NPZ_DIR"]), "3m" if mode == "crypto" else "5m"
     # V4 deprecated — backtest_v8 is primary for both crypto and tradier
     if mode == "crypto":
         search = ["backtest_v8", "backtest_v7"]
@@ -11020,6 +11023,13 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     _bb_src = f'bb_pct_b_{_bb_ptf}'
                     ind[_bb_pk] = float(store.get(_bb_src, _bb_pidx)) if _bb_pidx != idx and _bb_src in store.arrays else ind.get(_bb_src, 0.5)
             indicator_cache[sym.upper()] = ind
+            # stocks loop 2026-10-06: exact mode ingests EVERY bar (non-RTH included) into the vec-exact oracle
+            if os.environ.get("V8_VEC_EXACT_INGEST") == "1":
+                try:
+                    import tradier_vec_exact as _tve
+                    _tve.ORACLE.ingest(sym, ind)
+                except Exception as _tve_e:
+                    v8_logger.warning(f"[V8_VEC_EXACT_INGEST] {sym}: {_tve_e}")
             price_cache[sym.upper()] = p
             manager.price_cache[sym.upper()] = {"price": p, "timestamp": float(ts)}
         # Fill ordinary ladder/E02/reclaim orders only after a strictly later
@@ -17555,7 +17565,7 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
             pass
         if start_date is None:
             # Fallback: try direct NPZ file read
-            for _npz_dir in [BASE_PATH / "backtest_v8" / "indicators"]:
+            for _npz_dir in ([Path(os.environ["V12_NPZ_DIR"])] if os.environ.get("V12_NPZ_DIR") else []) + [BASE_PATH / "backtest_v8" / "indicators"]:
                 _p = _npz_dir / f"{sym}.npz"
                 if _p.exists():
                     _d = dict(_np_f.load(str(_p), allow_pickle=True))
