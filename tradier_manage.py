@@ -14853,8 +14853,52 @@ class OrderQueue:
                     _arrow_dbg(f"HANDLE_ORDER_RTH_SKIP {symbol} {action}")
                 return
             logger.info(f"[ORDER_DEBUG] Processing order: {symbol} {action} {side} qty={quantity}")
-            position_key = construct_position_key(account_key, symbol, order.get('position_side', ''))            
-            result = await self.trade_manager.execute_trade_action(account_key=account_key,position_key=position_key,symbol=symbol,quantity=quantity,current_price=price,side=side,position_side=order.get('position_side', ''),unique_id=order.get('unique_id', f"{account_key}:{symbol}_{action}_{int(time.time())}"),is_full_close=(action == "CLOSE"),action=action,reason=reason,override_qty=order.get('override_qty'),decision_recorded=True  )
+            position_key = construct_position_key(account_key, symbol, order.get('position_side', ''))
+            # 2026-10-06 STALL-SKIP (USER immediate-repair 2026-10-05; tradier_manage.py is
+            # LOCKED — this edit is that authorized queue-consumer stall repair, backup at
+            # backups/before_qstall_*): Oct 5 trb/trc consumers wedged inside ONE unbounded
+            # execute_trade_action await (zero ORDER_RESULT all Monday) while the loop stayed
+            # alive. Bound every execution: on timeout the order is loud-skipped and the
+            # consumer moves to the next order. wait_for(shield(task)) guarantees the
+            # consumer proceeds even if the stuck coroutine ignores cancellation during
+            # cleanup; broker-side guards (BROKER_SYNC_DEMAND / EXCHANGE_OPEN_ORDER /
+            # OPPOSING) make a late fill safe.
+            try:
+                _exec_timeout_s = float(_cfg_auto('ORDER_EXEC_TIMEOUT_S', 120.0) or 120.0)
+            except Exception:
+                _exec_timeout_s = 120.0
+            if _exec_timeout_s <= 0:
+                _exec_timeout_s = 120.0
+            _exec_task = asyncio.ensure_future(self.trade_manager.execute_trade_action(account_key=account_key,position_key=position_key,symbol=symbol,quantity=quantity,current_price=price,side=side,position_side=order.get('position_side', ''),unique_id=order.get('unique_id', f"{account_key}:{symbol}_{action}_{int(time.time())}"),is_full_close=(action == "CLOSE"),action=action,reason=reason,override_qty=order.get('override_qty'),decision_recorded=True  ))
+            try:
+                result = await asyncio.wait_for(asyncio.shield(_exec_task), timeout=_exec_timeout_s)
+            except asyncio.TimeoutError:
+                try:
+                    _qdepth = self._orders.qsize()
+                except Exception:
+                    _qdepth = -1
+                logger.critical(f"[ORDER_STALL_SKIP] {position_key} {action} {side} qty={quantity} reason={(reason or '')[:80]}: execute_trade_action exceeded {_exec_timeout_s:.0f}s — SKIPPING to next order (fail-open; queue_depth={_qdepth}). Late broker fill remains guarded by BROKER_SYNC_DEMAND/EXCHANGE_OPEN_ORDER dedup.")
+                try:
+                    _exec_task.cancel()
+                except Exception:
+                    pass
+                def _stall_done_cb(_t, _pk=position_key):
+                    try:
+                        if _t.cancelled():
+                            logger.critical(f"[ORDER_STALL_LATE] {_pk}: orphaned execute cancelled cleanly after stall-skip")
+                        else:
+                            _exc = _t.exception()
+                            if _exc is not None:
+                                logger.critical(f"[ORDER_STALL_LATE] {_pk}: orphaned execute raised {type(_exc).__name__}: {str(_exc)[:120]}")
+                            else:
+                                logger.critical(f"[ORDER_STALL_LATE] {_pk}: orphaned execute LATE-returned: {str(_t.result())[:120]}")
+                    except Exception:
+                        pass
+                try:
+                    _exec_task.add_done_callback(_stall_done_cb)
+                except Exception:
+                    pass
+                result = "TIMEOUT_STALL_SKIP"
             if 'MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or ''):
                 _arrow_dbg(f"HANDLE_ORDER {symbol} {action} result={result} qty={quantity} price={price}")
             if result == "SUCCESS":
