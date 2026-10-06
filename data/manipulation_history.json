@@ -1806,5 +1806,23 @@
     ],
     "timestamp": "2026-10-06T14:15:59.866937+00:00",
     "price": 381.58
+  },
+  {
+    "symbol": "STXXUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.6x (from rankings)"
+    ],
+    "timestamp": "2026-10-06T14:31:44.766907+00:00",
+    "price": 835.55775793
+  },
+  {
+    "symbol": "MUUUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.0x (from rankings)"
+    ],
+    "timestamp": "2026-10-06T14:34:23.966747+00:00",
+    "price": 36.24798033
   }
 ]
