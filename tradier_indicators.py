@@ -2968,6 +2968,8 @@ class TradierIndicatorOrchestrator:
         if not result: return
         symbol_data = self.data.setdefault(symbol, {})
         symbol_data.update(result)
+        if timeframe == "D":
+            self._inject_wm_wavetrend(symbol_data, df, symbol=symbol)
         self._inject_dc_moment(symbol, symbol_data)
         self._inject_wt_composite(symbol, symbol_data)
         self._update_master_timestamp(symbol_data)
@@ -3006,6 +3008,8 @@ class TradierIndicatorOrchestrator:
             return False
         symbol_data = self.data.setdefault(symbol, {})
         symbol_data.update(result)
+        if timeframe == "D":
+            self._inject_wm_wavetrend(symbol_data, df, symbol=symbol)
         self._inject_dc_moment(symbol, symbol_data)
         self._inject_wt_composite(symbol, symbol_data)
         self._update_master_timestamp(symbol_data)
@@ -3042,6 +3046,63 @@ class TradierIndicatorOrchestrator:
             return False
         return all(self._symbol_complete(sym) for sym in self.symbols)
     
+    def _inject_wm_wavetrend(self, symbol_data: Dict[str, Any], df: pd.DataFrame, now_ts: Optional[float] = None, symbol: Optional[str] = None) -> None:
+        """PARITY LOOP STOCKS 2026-10-06 (USER: live!=vec disparity must be impossible): W/M WaveTrend exactly like the NPZ builder
+        (backtest_v8_precompute: D deduped per ET date -> W-MON / MS left-labelled, wavetrend(), _fit pad/truncate, tradier lag-2 as-of =
+        previous fully closed W/M bar). Feeds the shared WT composite (vec_decisions.wt_cross_tf_composite). Fail-open: fields stay absent."""
+        try:
+            from vec_decisions.wt_cross_tf_composite import wm_frames_from_daily, asof_index_tradier
+            d = df.copy()
+            if "timestamp" in d.columns:
+                d = d.set_index(pd.to_datetime(d["timestamp"], utc=True))
+            if not isinstance(d.index, pd.DatetimeIndex) or len(d) < 100:
+                return
+            d = d.sort_index()
+            d = d[~d.index.duplicated(keep="last")]
+            try:
+                from backtest_v8_precompute import _dedupe_daily_frame as _ddf
+                d = _ddf(d)
+            except Exception:
+                pass
+            cols = [c for c in ("open", "high", "low", "close", "volume") if c in d.columns]
+            frames = wm_frames_from_daily(d[cols].astype(float))
+            # builder parity: authentic older W/M provider bars strictly before the first D-derived bar are prepended (precompute _prepend_authentic_history)
+            if symbol:
+                try:
+                    from backtest_v8_precompute import load_klines as _pl, _prepend_authentic_history as _pah
+                    _kdir = Path(getattr(TradierConfig, "BASE_PATH", Path(__file__).resolve().parent)) / "klines_cache" / "tradier"
+                    for _tf in list(frames):
+                        _auth = _pl(_kdir / f"{symbol}_{_tf}.json")
+                        if _auth is not None and len(_auth):
+                            frames[_tf] = _pah(frames[_tf], _auth[[c for c in cols if c in _auth.columns]])
+                except Exception:
+                    pass
+            t = float(now_ts) if now_ts is not None else utc_now().timestamp()
+            for tf, f in frames.items():
+                n = len(f)
+                if n < 10:
+                    continue
+                w1s, w2s = wavetrend(f, timeframe=tf)
+                if w1s is None or w1s.empty:
+                    continue
+                def _fit(arr, n=n):
+                    a = np.asarray(arr, dtype=np.float64)
+                    if len(a) == n: return a
+                    if len(a) > n: return a[:n]
+                    return np.pad(a, (0, n - len(a)), mode="edge")
+                w1, w2 = _fit(w1s.values), _fit(w2s.values)
+                src = np.array([int(pd.Timestamp(x).timestamp()) for x in f.index], dtype=np.int64)
+                j = asof_index_tradier(src, t)
+                if j < 0:
+                    continue
+                symbol_data[f"wt1_{tf}"] = float(np.float32(w1[j]))
+                symbol_data[f"wt2_{tf}"] = float(np.float32(w2[j]))
+                symbol_data[f"wt_score_{tf}"] = float(np.float32(w1[j] - w2[j]))
+                symbol_data[f"wt_bullish_{tf}"] = int(w1[j] > w2[j])
+                symbol_data[f"timestamp_{tf}_src"] = int(src[j])
+        except Exception as _wm_e:
+            logger.debug(f"[WM_WAVETREND] skipped: {_wm_e}")
+
     def _inject_wt_composite(self, symbol: str, symbol_data: Dict[str, Any]) -> None:
         """Cross-TF WaveTrend composite — inlined. Stock TFs: 5m, 15m, 1h, 4h, D."""
         try:
@@ -3049,8 +3110,7 @@ class TradierIndicatorOrchestrator:
             _sf = lambda v, d=0.0: float(v) if v is not None else d
             n_tfs = len(tfs)
             bull_count = sum(1 for tf in tfs if _sf(symbol_data.get(f"wt1_{tf}")) > _sf(symbol_data.get(f"wt2_{tf}")))
-            symbol_data["wt_bull_alignment"] = bull_count
-            symbol_data["wt_bear_alignment"] = n_tfs - bull_count
+            # wt_bull/bear_alignment: set below from the shared NPZ-builder formula (was a 5-TF wt1>wt2 count incl. 5m)
             htf_tfs = [tf for tf in tfs if tf not in ("3m", "5m")]
             hl_count = sum(1 for tf in htf_tfs if symbol_data.get(f"wt_trough_structure_{tf}") == "HL")
             lh_count = sum(1 for tf in htf_tfs if symbol_data.get(f"wt_peak_structure_{tf}") == "LH")
@@ -3113,10 +3173,11 @@ class TradierIndicatorOrchestrator:
                 elif st == "IMPULSE_UP": long_score += w * 0.7
                 elif st == "EXHAUST_UP": short_score += w
                 elif st == "IMPULSE_DOWN": short_score += w * 0.7
-            symbol_data["wt_composite_long"] = max(-100.0, min(100.0, long_score))
-            symbol_data["wt_composite_short"] = max(-100.0, min(100.0, short_score))
-            symbol_data["wt_composite_bias"] = "LONG" if long_score > short_score + 10 else ("SHORT" if short_score > long_score + 10 else "NEUTRAL")
-            symbol_data["wt_composite_delta"] = round(long_score - short_score, 2)
+            # PARITY LOOP STOCKS 2026-10-06 (USER/director: live!=vec disparity must be impossible): wt_composite_long/short/delta/bias and
+            # wt_bull/bear_alignment = the NPZ builder formula via the ONE shared function (TFs 15m/1h/4h/D/W/M, weights 2/3/4/5/2/1, no clamp,
+            # no +10 hysteresis). The old inline heuristic score (clamped +-100, 5m included) is gone. Backup before_wt_composite_shared_*.
+            from vec_decisions.wt_cross_tf_composite import scalar_fields as _wtc_scalar
+            symbol_data.update(_wtc_scalar(symbol_data.get))
         except Exception:
             pass
 

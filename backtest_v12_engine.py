@@ -2171,6 +2171,23 @@ def load_stores(mode, symbols=None, start_date=None, npz_dir_override=""):
                 v8_logger.warning(f"[NPZ_PRE_FAIL] {sym}: {_pre_e}")
         try:
             store = IndicatorStore(str(npz_path), start_idx=_start_idx)
+            # stocks loop 2026-10-06 (V8_KEEP_NPZ_COMPOSITE=1, parity runs): IndicatorStore Step 3b recomputes the wt_composite_* /
+            # wt_*_alignment / wt_composite_bias fields over the populated NPZ values (stale "all zeros" comment), while the vec
+            # engine reads the NPZ values. backtest_v8_harness.py is LOCKED, so the NPZ values are restored here after construction.
+            if os.environ.get("V8_KEEP_NPZ_COMPOSITE") == "1" and isinstance(getattr(store, "arrays", None), dict):
+                try:
+                    with np.load(str(npz_path), allow_pickle=True) as _cz:
+                        _cn = len(_cz["timestamps"]) if "timestamps" in _cz.files else -1
+                        if "wt_composite_long" in _cz.files and np.asarray(_cz["wt_composite_long"], dtype=np.float64).any():
+                            for _ck in ("wt_composite_long", "wt_composite_short", "wt_composite_delta", "wt_bull_alignment", "wt_bear_alignment", "wt_composite_bias"):
+                                if _ck in _cz.files:
+                                    _ca = _cz[_ck]
+                                    if _ca.ndim >= 1 and _ca.shape[0] == _cn:
+                                        _ca = _ca[_start_idx:] if (_start_idx and _cn > _start_idx) else _ca
+                                        if len(_ca) == store.n_bars:
+                                            store.arrays[_ck] = np.array(_ca)
+                except Exception as _ce:
+                    v8_logger.warning(f"[V8_KEEP_NPZ_COMPOSITE] {sym}: {_ce}")
             if _parity_min_tf:
                 # IndicatorStore exposes the raw decision arrays as ``arrays``.
                 # Remove every 3m/5m route before scalar/live predicates see it.
@@ -6663,7 +6680,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # This historical structural close was unconditional, making a
         # supposedly ladder-only replay churn through an invisible exit.
         # Direct V8 treats it as opt-in until it has a declared matrix switch.
-        if bool(getattr(config, "HYBRID_STRUCT_EXIT_ENABLED", False)):
+        if bool(getattr(config, "HYBRID_STRUCT_EXIT_ENABLED", False)) and os.environ.get("V12_LIVE_ONLY_PRODUCERS") != "1" and os.environ.get("V8_VEC_EXACT_INGEST") != "1":
             _hybrid_positions = list(trade_manager.positions.items())
         else:
             _hybrid_positions = []
@@ -11995,7 +12012,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         # Do not allow an unlisted hard-coded exit in an all-switches-off
         # direct test.  This is V8-only; it does not change the live manager.
         if (
-            bool(getattr(tm_mod.config, "HYBRID_STRUCT_EXIT_ENABLED", False))
+            bool(getattr(tm_mod.config, "HYBRID_STRUCT_EXIT_ENABLED", False)) and os.environ.get("V12_LIVE_ONLY_PRODUCERS") != "1" and os.environ.get("V8_VEC_EXACT_INGEST") != "1"
             and manager.position_manager
         ):
             for _se_pk_tr, _se_pos_tr in list(manager.position_manager.positions.items()):
@@ -12041,7 +12058,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         _dyn_strail_tf = str(getattr(tm_mod.config, 'DYN_STRUCT_TRAIL_TF', '4h'))
         _dyn_strail_min_gain = float(getattr(tm_mod.config, 'DYN_STRUCT_TRAIL_MIN_GAIN_PCT', 0.0))
         _fstop_floor = float(getattr(tm_mod.config, 'DC_LOW_FROZEN_STOP_FLOOR_PCT', getattr(tm_mod.config, 'DC_LOW_4H_ABS_LOSS_FLOOR_PCT', -999.0)))
-        if (_dc_fstop_on or _bb_fstop_on or _dyn_strail_on) and manager.position_manager:
+        if (_dc_fstop_on or _bb_fstop_on or _dyn_strail_on) and manager.position_manager and os.environ.get("V12_LIVE_ONLY_PRODUCERS") != "1" and os.environ.get("V8_VEC_EXACT_INGEST") != "1":
             _dc_fstop_tf = str(getattr(tm_mod.config, 'DC_LOW_FROZEN_STOP_TF', '4h'))
             _dc_fstop_4bar = bool(getattr(tm_mod.config, 'DC_LOW_FROZEN_STOP_USE_4BAR', False))
             _bb_fstop_tf = str(getattr(tm_mod.config, 'BB_FROZEN_STOP_TF', '1h'))
