@@ -17,6 +17,7 @@ import websockets
 
 from config_tradier import TradierConfig
 _ODG_IN_GENERIC: ContextVar = ContextVar("tradier_odg_in_generic", default=False)  # POSITIONS REVAMP: re-entry marker for guarded option orders
+_ODG_RAW_OK: ContextVar = ContextVar("tradier_odg_raw_ok", default=False)  # PHASE 3: only the guard's raw submit may POST /orders
 
 current_account = ContextVar("current_account", default="unknown")
 logger = logging.getLogger("tradier_api")
@@ -210,6 +211,9 @@ class TradierAPIClient:
 
     async def _request(self, method: str, endpoint: str, params: Dict = None, data: Dict = None, use_data_context: bool = False, headers: Dict = None, retry_count: int = 0) -> Dict:     
         _order_mutation = method.upper() in ("POST", "PUT") and "/orders" in str(endpoint)  # POSITIONS REVAMP 2026-10-06: order POST/PUT is NEVER retried (lost response != not sent; reconcile by GET orders)
+        if _order_mutation and not (_ODG_RAW_OK.get() or _ODG_IN_GENERIC.get()):  # PHASE 3: a raw _request("POST", ".../orders") from any caller bypassed the guard
+            logger.critical(f"🛑 [ORDER_POST_OUTSIDE_GUARD] refused {method} {endpoint} — orders must go through execute_now -> TradierAPIClient.place_order (guarded)")
+            return {"errors": {"error": ["ORDER_DEDUPE_BLOCK:RAW_ORDER_POST_OUTSIDE_GUARD"]}}
         if retry_count > 0 and _order_mutation:
             logger.critical(f"🛑 [ORDER_POST_NO_RETRY] refusing retry #{retry_count} of {method} {endpoint} — outcome reconciled from broker order listing")
             return {}
@@ -366,6 +370,13 @@ class TradierAPIClient:
         return await guard.guarded_place(self, account_key or self._odg_account_key, symbol, side, quantity, order_type, price, stop, duration, origin="tradier_api.place_order")
 
     async def _odg_raw_place_order(self, account_key: str, symbol: str, side: str, quantity: float, order_type: str="market", price: float=None, stop: float=None, duration: str="day") -> Dict:
+        _raw_tok = _ODG_RAW_OK.set(True)
+        try:
+            return await self._odg_raw_place_order_inner(account_key, symbol, side, quantity, order_type, price, stop, duration)
+        finally:
+            _ODG_RAW_OK.reset(_raw_tok)
+
+    async def _odg_raw_place_order_inner(self, account_key: str, symbol: str, side: str, quantity: float, order_type: str="market", price: float=None, stop: float=None, duration: str="day") -> Dict:
         if not self._current_id: 
             return {"error": "Missing Account ID"}
         data = { "class": "equity", "symbol": symbol.upper(), "side": side.lower(),

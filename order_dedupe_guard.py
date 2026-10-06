@@ -43,7 +43,8 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 _LOG = logging.getLogger("order_dedupe_guard")
-_NO_BACKOFF_CODES = {"NOT_VIA_EXECUTE_NOW", "OPEN_ON_NONZERO_POSITION", "AUGMENT_GAIN_GATE", "AUGMENT_REF_PRICE_UNKNOWN", "AUGMENT_MARK_UNKNOWN", "INTENT_FILLED_IN_CALL", "KEY_UNCONFIRMED_LOCK", "BAD_QTY", "OPPOSING_POSITION_HELD", "BROKER_POSITION_UNKNOWN", "INTENT_REMAINDER_ZERO"}
+HARD_ENTRY_BANNED_ACCOUNTS = frozenset({"tra"})  # USER 2026-10-06: tra is one trade from account closure — exits only, forever (not a config switch)
+_NO_BACKOFF_CODES = {"ACCOUNT_ENTRY_BANNED", "NOT_VIA_EXECUTE_NOW", "POSITIONS_FILE_NOT_REFLECTED", "NOT_VIA_EXECUTE_NOW", "OPEN_ON_NONZERO_POSITION", "AUGMENT_GAIN_GATE", "AUGMENT_REF_PRICE_UNKNOWN", "AUGMENT_MARK_UNKNOWN", "INTENT_FILLED_IN_CALL", "KEY_UNCONFIRMED_LOCK", "BAD_QTY", "OPPOSING_POSITION_HELD", "BROKER_POSITION_UNKNOWN", "INTENT_REMAINDER_ZERO"}
 
 BINANCE_FINAL = {"FILLED", "CANCELED", "EXPIRED", "REJECTED", "EXPIRED_IN_MATCH", "NOT_FOUND", "REJECTED_BY_BROKER"}
 TRADIER_FINAL = {"filled", "canceled", "expired", "rejected", "error", "not_found", "rejected_by_broker"}
@@ -70,7 +71,12 @@ DEFAULTS = {
     "WIRE_AUGMENT_MIN_GAIN_PCT": None,  # None -> max(2.5, MIN_GAIN_TO_BUY_AGGRESSIVELY); gain vs max(broker avg entry, last same-direction fill)
     "WIRE_AUGMENT_LAST_FILL_LOOKBACK_SEC": 3 * 86400.0,
     "WIRE_REFUSE_BAD_QTY": True,  # zero / negative / NaN / inf quantity never sent
-    "WIRE_UNCONFIRMED_LOCK_SEC": 120.0,  # after an UNCONFIRMED_BY_BROKER result, exposure-increasing orders on that symbol are refused this long (exits pass)
+    "WIRE_UNCONFIRMED_LOCK_SEC": 120.0,
+    # ── PHASE 3 (2026-10-06 USER) ──
+    "WIRE_REQUIRE_EXECUTE_NOW_ALL": True,  # EVERY order (exits too) must come from execute_now — no other path can reach the broker
+    "WIRE_ENTRY_BANNED_ACCOUNTS": (),  # extra accounts with a hard entry ban (HARD_ENTRY_BANNED_ACCOUNTS always applies)
+    "WIRE_FILE_REFLECTION_ENABLED": True,  # next order on a key only once {acct}/{long|short}_positions.json shows the broker qty (written after the fill)
+    "POSITIONS_FILE_SYNC_WAIT_S": 1.0,  # the positions service gets this long; beyond = BROKEN POSITIONS MANAGEMENT alarm + rewrite from broker  # after an UNCONFIRMED_BY_BROKER result, exposure-increasing orders on that symbol are refused this long (exits pass)
 }
 
 
@@ -490,6 +496,105 @@ def retag_action(action: str) -> None:
         tok["action"] = str(action or "").upper()
 
 
+def entry_banned(account: Any, cfg: Any = None) -> bool:
+    """Hard account-level entry ban: HARD_ENTRY_BANNED_ACCOUNTS (code constant) + WIRE_ENTRY_BANNED_ACCOUNTS (config) +
+    env ODG_ENTRY_BANNED_ACCOUNTS (comma list). Config/env can only ADD accounts, never remove the hard set."""
+    a = str(account or "").lower()
+    extra = set()
+    try:
+        extra |= {str(x).lower() for x in (_cfg(cfg, "WIRE_ENTRY_BANNED_ACCOUNTS") or ())}
+    except Exception:
+        pass
+    extra |= {x.strip().lower() for x in os.environ.get("ODG_ENTRY_BANNED_ACCOUNTS", "").split(",") if x.strip()}
+    return a in HARD_ENTRY_BANNED_ACCOUNTS or a in extra
+
+
+def _last_fill_ts(guard: "_GuardBase", symbol: str, position_side: Optional[str]) -> Optional[float]:
+    best = None
+    for o in guard.ledger.orders(symbol):
+        if position_side is not None and guard.broker == "binance" and str(o.get("position_side", "") or "").upper() not in ("", str(position_side).upper()):
+            continue
+        if o.get("final") and _f(o.get("executed_qty")) > 0:
+            t = _f(o.get("fill_ts"), 0.0) or _f(o.get("updated_at"), 0.0)
+            best = t if best is None else max(best, t)
+    return best
+
+
+def file_gate_decision(guard: "_GuardBase", venue: str, symbol: str, position_side: str, broker: Dict[str, Any], token_key: str, sleep: Callable[[float], Any] = time.sleep) -> Decision:
+    """PHASE 3 #2: no order on a key until {acct}/{long|short}_positions.json shows the broker-confirmed quantity, written after
+    the last fill. Follow-up legs of the SAME execute_now call are exempt (their fills are tracked by the in-call intent gate).
+    The service gets POSITIONS_FILE_SYNC_WAIT_S; beyond that it is stalled -> BROKEN POSITIONS MANAGEMENT alarm + the row is
+    rewritten from the broker; the order proceeds only if the rewritten file now reflects the broker."""
+    import positions_truth as _pt  # noqa: WPS433
+
+    if not bool(_cfg(guard.cfg, "WIRE_FILE_REFLECTION_ENABLED")):
+        return Decision(True, "FILE_GATE_DISABLED")
+    tok = _ORDER_AUTH.get()
+    if tok is not None and (token_key in (tok.get("keys") or {}) or token_key in (tok.get("file_ok") or ())):
+        return Decision(True, "FOLLOWUP_LEG")
+    last_fill = _last_fill_ts(guard, symbol, position_side if venue == "binance" else None)
+    deadline = time.time() + float(_cfg(guard.cfg, "POSITIONS_FILE_SYNC_WAIT_S"))
+    while True:
+        ok, ev = _pt.file_reflects(venue, guard.account, symbol, position_side, _f(broker.get("amt")), last_fill)
+        if ok:
+            _file_ok(token_key)
+            return Decision(True, "FILE_REFLECTS", ev)
+        if time.time() >= deadline:
+            break
+        r = sleep(0.2)
+        if inspect.isawaitable(r):  # pragma: no cover — async callers use file_gate_decision_async
+            raise RuntimeError("use file_gate_decision_async")
+    return _file_gate_heal(guard, venue, symbol, position_side, broker, last_fill, {**ev, "token_key": token_key})
+
+
+def _file_gate_heal(guard, venue, symbol, position_side, broker, last_fill, ev) -> Decision:
+    import positions_truth as _pt  # noqa: WPS433
+
+    _pt.broken_positions_alarm(venue, guard.account, ev.get("key", symbol), {**ev, "stall_s": float(_cfg(guard.cfg, "POSITIONS_FILE_SYNC_WAIT_S"))}, logger=guard.log)
+    if _pt.rewrite_row_from_broker(venue, guard.account, symbol, position_side, broker, logger=guard.log):
+        ok2, ev2 = _pt.file_reflects(venue, guard.account, symbol, position_side, _f(broker.get("amt")), last_fill)
+        ev2["token_key"] = ev.get("token_key")
+        if ok2:
+            _file_ok(ev2.get("token_key") or "")
+            return Decision(True, "FILE_REWRITTEN_FROM_BROKER", ev2)
+        ev = ev2
+    return Decision(False, "POSITIONS_FILE_NOT_REFLECTED", ev)
+
+
+async def file_gate_decision_async(guard: "_GuardBase", venue: str, symbol: str, position_side: str, broker: Dict[str, Any], token_key: str) -> Decision:
+    import positions_truth as _pt  # noqa: WPS433
+
+    if not bool(_cfg(guard.cfg, "WIRE_FILE_REFLECTION_ENABLED")):
+        return Decision(True, "FILE_GATE_DISABLED")
+    tok = _ORDER_AUTH.get()
+    if tok is not None and (token_key in (tok.get("keys") or {}) or token_key in (tok.get("file_ok") or ())):
+        return Decision(True, "FOLLOWUP_LEG")
+    last_fill = _last_fill_ts(guard, symbol, None)
+    deadline = time.time() + float(_cfg(guard.cfg, "POSITIONS_FILE_SYNC_WAIT_S"))
+    while True:
+        ok, ev = _pt.file_reflects(venue, guard.account, symbol, position_side, _f(broker.get("amt")), last_fill)
+        if ok:
+            _file_ok(token_key)
+            return Decision(True, "FILE_REFLECTS", ev)
+        if time.time() >= deadline:
+            break
+        await asyncio.sleep(0.2)
+    return _file_gate_heal(guard, venue, symbol, position_side, broker, last_fill, {**ev, "token_key": token_key})
+
+
+def _file_ok(token_key: str) -> None:
+    tok = _ORDER_AUTH.get()
+    if tok is not None and token_key:
+        tok.setdefault("file_ok", set()).add(token_key)
+
+
+def _token_for(symbol: str) -> Optional[Dict[str, Any]]:
+    tok = _ORDER_AUTH.get()
+    if tok is None or (tok.get("symbol") and tok.get("symbol") != str(symbol).upper()):
+        return None
+    return tok
+
+
 def _remember_order(ident: Optional[str]) -> None:
     tok = _ORDER_AUTH.get()
     if tok is not None and ident:
@@ -557,7 +662,7 @@ class BinanceDedupeGuard(_GuardBase):
             st = str((resp or {}).get("status", "")).upper()
             exq = (resp or {}).get("executedQty")
             if st in BINANCE_FINAL and exq is not None:
-                self._mark(sym, entry, status=st, executed_qty=_f(exq), final=True, state="FINAL", order_id=resp.get("orderId") or entry.get("order_id"), avg_price=_f(resp.get("avgPrice"), 0.0))
+                self._mark(sym, entry, status=st, executed_qty=_f(exq), final=True, state="FINAL", order_id=resp.get("orderId") or entry.get("order_id"), avg_price=_f(resp.get("avgPrice"), 0.0), fill_ts=(_f(resp.get("updateTime"), 0.0) / 1000.0) or self.clock())
                 continue
             is_own_cancel = bool(entry.get("cancel_requested_at")) and now - _f(entry.get("cancel_requested_at")) < cancel_recent
             own_pending = own_pending or is_own_cancel
@@ -641,6 +746,9 @@ class BinanceDedupeGuard(_GuardBase):
             closing_flag = str(params.get("closePosition", "")).lower() == "true" or params.get("closePosition") is True
             if bool(_cfg(self.cfg, "WIRE_REFUSE_BAD_QTY")) and not closing_flag and _bad_qty(qty_raw):
                 raise OrderDedupeBlockedBinance(self._block(symbol, "BAD_QTY", {"quantity": str(qty_raw)}, origin))
+            p3 = self.phase3_gate(inner_client, symbol, side, ps, params, origin)
+            if not p3.allowed:
+                raise OrderDedupeBlockedBinance(self._block(symbol, p3.code, p3.evidence, origin))
             if bool(_cfg(self.cfg, "WIRE_EXPOSURE_GATE_ENABLED")):
                 edec = self.exposure_gate(inner_client, symbol, side, ps, qty, params, origin)
                 if not edec.allowed:
@@ -686,11 +794,47 @@ class BinanceDedupeGuard(_GuardBase):
         st = str((resp or {}).get("status", "")).upper()
         exq = (resp or {}).get("executedQty")
         final = st in BINANCE_FINAL and exq is not None
-        self._mark(symbol, entry, state="FINAL" if final else "SUBMITTED", order_id=(resp or {}).get("orderId"), status=st or None, executed_qty=_f(exq, 0.0), final=final, avg_price=_f((resp or {}).get("avgPrice"), 0.0))
+        self._mark(symbol, entry, state="FINAL" if final else "SUBMITTED", order_id=(resp or {}).get("orderId"), status=st or None, executed_qty=_f(exq, 0.0), final=final, avg_price=_f((resp or {}).get("avgPrice"), 0.0), fill_ts=(_f((resp or {}).get("updateTime"), 0.0) / 1000.0) or self.clock())
         return resp
 
+    def phase3_gate(self, inner_client, symbol: str, side: str, ps: str, params: Dict[str, Any], origin: str = "") -> Decision:
+        """PHASE 3: hard entry ban (tra), execute_now token for EVERY order, positions file must reflect the broker."""
+        reduce_only = str(params.get("reduceOnly", "")).lower() == "true" or params.get("reduceOnly") is True
+        close_pos = str(params.get("closePosition", "")).lower() == "true" or params.get("closePosition") is True
+        hedge = ps in ("LONG", "SHORT")
+        increasing = (not reduce_only and not close_pos and hedge and ((ps == "LONG" and side == "BUY") or (ps == "SHORT" and side == "SELL")))
+        banned = entry_banned(self.account, self.cfg)
+        if banned and increasing:
+            return Decision(False, "ACCOUNT_ENTRY_BANNED", {"account": self.account, "side": side, "position_side": ps})
+        if _token_for(symbol) is None and bool(_cfg(self.cfg, "WIRE_REQUIRE_EXECUTE_NOW_ALL")):
+            return Decision(False, "NOT_VIA_EXECUTE_NOW", {"side": side, "position_side": ps, "origin": origin[:120], "token": {k: (_ORDER_AUTH.get() or {}).get(k) for k in ("symbol", "action")}})
+        self._bp_cache = {}  # never reuse a broker read across submits — only within this one (phase3 -> exposure gate)
+        if not bool(_cfg(self.cfg, "WIRE_FILE_REFLECTION_ENABLED")) and (hedge or not banned):
+            return Decision(True, "PHASE3_OK")
+        try:
+            bp = self.broker_position(inner_client, symbol, ps)
+        except Exception as e:
+            return Decision(False, "BROKER_POSITION_UNKNOWN", {"error": repr(e)[:300]})
+        key_ps = ps
+        if not hedge:
+            signed = bp.get("signed", 0.0)
+            increasing = not reduce_only and not close_pos and (signed == 0 or ((signed > 0) == (side == "BUY")))
+            key_ps = "LONG" if (signed > 0 or (signed == 0 and side == "BUY")) else "SHORT"
+            if banned and increasing:
+                return Decision(False, "ACCOUNT_ENTRY_BANNED", {"account": self.account, "side": side, "position_side": ps})
+        return file_gate_decision(self, "binance", symbol, key_ps, bp, f"{symbol.upper()}|{ps}")
+
     def broker_position(self, inner_client, symbol: str, position_side: str) -> Dict[str, Any]:
-        """FRESH broker read (positionRisk for the symbol). Raises on failure — callers fail closed."""
+        """FRESH broker read (positionRisk for the symbol). Raises on failure — callers fail closed. Reused for 0.3 s inside one submit."""
+        ck = (symbol.upper(), str(position_side or "").upper())
+        hit = self.__dict__.setdefault("_bp_cache", {}).get(ck)
+        if hit and time.time() - hit[0] < 0.3:
+            return dict(hit[1])
+        out = self._broker_position_uncached(inner_client, symbol, position_side)
+        self._bp_cache[ck] = (time.time(), dict(out))
+        return out
+
+    def _broker_position_uncached(self, inner_client, symbol: str, position_side: str) -> Dict[str, Any]:
         rows = inner_client.futures_position_information(symbol=symbol.upper())
         if not isinstance(rows, list):
             raise RuntimeError(f"positionRisk unparseable: {str(rows)[:200]}")
@@ -740,6 +884,7 @@ class BinanceDedupeGuard(_GuardBase):
                 if _f(resp.get("avgPrice"), 0.0) > 0:
                     fields["avg_price"] = _f(resp.get("avgPrice"))
                 if final:
+                    fields["fill_ts"] = (_f(resp.get("updateTime"), 0.0) / 1000.0) or self.clock()
                     fields.update(final=True, state="FINAL")
                 if oid is not None:
                     fields["order_id"] = oid
@@ -1005,7 +1150,7 @@ class TradierDedupeGuard(_GuardBase):
             st = str(bo.get("status", "")).lower()
             exq = bo.get("exec_quantity")
             if st in TRADIER_FINAL and exq is not None:
-                self._mark(sym, entry, status=st, executed_qty=_f(exq), final=True, state="FINAL", avg_price=_f(bo.get("avg_fill_price"), 0.0))
+                self._mark(sym, entry, status=st, executed_qty=_f(exq), final=True, state="FINAL", avg_price=_f(bo.get("avg_fill_price"), 0.0), fill_ts=_parse_ts(bo.get("transaction_date")) or self.clock())
                 continue
             is_own_cancel = bool(entry.get("cancel_requested_at")) and now - _f(entry.get("cancel_requested_at")) < cancel_recent
             return Decision(False, "LAST_ORDER_NOT_FINAL", {**ident, "broker": self._order_ev(bo)}), is_own_cancel
@@ -1070,6 +1215,10 @@ class TradierDedupeGuard(_GuardBase):
             if bool(_cfg(self.cfg, "WIRE_REFUSE_BAD_QTY")) and (_bad_qty(quantity) or int(qty) < 1):
                 d2 = self._block(sym, "BAD_QTY", {"quantity": str(quantity)}, origin)
                 return {"errors": {"error": [f"ORDER_DEDUPE_BLOCK:{d2.code}"]}, "order_dedupe_block": {"code": d2.code, "evidence": d2.evidence}}
+            p3 = await self.phase3_gate(inner_client, sym, side, origin)
+            if not p3.allowed:
+                d2 = self._block(sym, p3.code, p3.evidence, origin)
+                return {"errors": {"error": [f"ORDER_DEDUPE_BLOCK:{d2.code}"]}, "order_dedupe_block": {"code": d2.code, "evidence": d2.evidence}}
             if bool(_cfg(self.cfg, "WIRE_EXPOSURE_GATE_ENABLED")):
                 edec = await self.exposure_gate(inner_client, sym, side, qty, origin)
                 if not edec.allowed:
@@ -1133,8 +1282,13 @@ class TradierDedupeGuard(_GuardBase):
             if bool(_cfg(self.cfg, "WIRE_REFUSE_BAD_QTY")) and _bad_qty(quantity):
                 d2 = self._block(sym, "BAD_QTY", {"quantity": str(quantity)}, origin)
                 return {"errors": {"error": [f"ORDER_DEDUPE_BLOCK:{d2.code}"]}, "order_dedupe_block": {"code": d2.code, "evidence": d2.evidence}}
-            if _ORDER_AUTH.get() is None:
-                self.log.critical(f"⚠️ [ORDER_OUTSIDE_EXECUTE_NOW] tradier:{self.account}:{sym} option order {side} qty={quantity} origin={origin[:80]} — dedupe-guarded only")
+            s_l = str(side).lower()
+            if entry_banned(self.account, self.cfg) and (s_l.endswith("_open") or s_l == "multileg"):
+                d2 = self._block(sym, "ACCOUNT_ENTRY_BANNED", {"account": self.account, "side": s_l}, origin)
+                return {"errors": {"error": [f"ORDER_DEDUPE_BLOCK:{d2.code}"]}, "order_dedupe_block": {"code": d2.code, "evidence": d2.evidence}}
+            if _token_for(sym) is None and bool(_cfg(self.cfg, "WIRE_REQUIRE_EXECUTE_NOW_ALL")):
+                d2 = self._block(sym, "NOT_VIA_EXECUTE_NOW", {"side": s_l, "origin": origin[:120], "kind": "option"}, origin)
+                return {"errors": {"error": [f"ORDER_DEDUPE_BLOCK:{d2.code}"]}, "order_dedupe_block": {"code": d2.code, "evidence": d2.evidence}}
             entry = {"local_id": uuid.uuid4().hex, "order_id": None, "side": str(side).lower(), "position_side": "", "qty": _f(quantity), "type": "option", "submitted_at": self.clock(), "state": "SUBMITTING", "status": None, "executed_qty": 0.0, "final": False, "origin": origin[:120]}
             self.ledger.mutate(sym, lambda orders: orders.append(entry))
         try:
@@ -1151,6 +1305,22 @@ class TradierDedupeGuard(_GuardBase):
         else:
             self._mark(sym, entry, state="UNKNOWN", evidence=str(res)[:200])
         return res
+
+    async def phase3_gate(self, inner_client, symbol: str, side: str, origin: str = "") -> Decision:
+        s = str(side).lower()
+        increasing = s in ("buy", "sell_short")
+        if increasing and entry_banned(self.account, self.cfg):
+            return Decision(False, "ACCOUNT_ENTRY_BANNED", {"account": self.account, "side": s})
+        if _token_for(symbol) is None and bool(_cfg(self.cfg, "WIRE_REQUIRE_EXECUTE_NOW_ALL")):
+            return Decision(False, "NOT_VIA_EXECUTE_NOW", {"side": s, "origin": origin[:120], "token": {k: (_ORDER_AUTH.get() or {}).get(k) for k in ("symbol", "action")}})
+        is_long = s in ("buy", "sell")
+        if not bool(_cfg(self.cfg, "WIRE_FILE_REFLECTION_ENABLED")):
+            return Decision(True, "PHASE3_OK")
+        try:
+            bp = await self.broker_position(inner_client, symbol, is_long)
+        except Exception as e:
+            return Decision(False, "BROKER_POSITION_UNKNOWN", {"error": repr(e)[:300]})
+        return await file_gate_decision_async(self, "tradier", symbol, "LONG" if is_long else "SHORT", bp, f"{symbol.upper()}|")
 
     async def broker_position(self, inner_client, symbol: str, is_long: bool) -> Dict[str, Any]:
         """FRESH broker read: GET positions (+ quote for mark when a position exists). Raises on failure (fail closed)."""
@@ -1210,7 +1380,7 @@ class TradierDedupeGuard(_GuardBase):
                 if _f(order.get("avg_fill_price"), 0.0) > 0:
                     fields["avg_price"] = _f(order.get("avg_fill_price"))
                 if st in TRADIER_FINAL and exq is not None:
-                    fields.update(final=True, state="FINAL")
+                    fields.update(final=True, state="FINAL", fill_ts=_parse_ts(order.get("transaction_date")) or self.clock())
                 self.ledger.update_order(sym, match, **fields)
         except Exception as e:
             self.log.warning(f"[ORDER_DEDUPE_OBSERVE] tradier {symbol}: {e!r}")

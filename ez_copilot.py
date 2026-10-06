@@ -960,25 +960,19 @@ async def tradier_order_listener(redis_client: aioredis.Redis):
             if action == "OPEN" or action.startswith("OPEN_"):
                 is_long = direction == "LONG" or "LONG" in action
                 side = "buy" if is_long else "sell_short"
-                logger.warning(f"[COPILOT TRADIER] Placing {side} order: {symbol} x{qty} @ ~${price:.2f} — {reason}")
-                try:
-                    await api.switch_account(account)
-                    result = await api.place_order(account, symbol, side, qty, order_type="market")
-                    logger.warning(f"[COPILOT TRADIER] Order result: {json.dumps(result, default=str)[:200]}")
-                except Exception as e:
-                    logger.error(f"[COPILOT TRADIER] Order failed: {e}")
+                # PHASE 3 2026-10-06 USER: every order goes through tradier_manage execute_now — copilot cannot OPEN directly any more.
+                logger.critical(f"[COPILOT TRADIER] OPEN {side} {symbol} x{qty} NOT sent — direct broker orders are disabled; tradier_manage execute_now is the only order path ({reason})")
             elif action == "AUGMENT":
                 # Augment existing position
                 is_long = "_LONG" in data.get("position_key", "")
                 side = "buy" if is_long else "sell_short"
                 aug_qty = max(1, int(qty * 0.5))  # 50% of base size for augments
-                logger.warning(f"[COPILOT TRADIER] Augmenting {symbol} {side} x{aug_qty} — {reason}")
-                try:
-                    await api.switch_account(account)
-                    result = await api.place_order(account, symbol, side, aug_qty, order_type="market")
-                    logger.warning(f"[COPILOT TRADIER] Augment result: {json.dumps(result, default=str)[:200]}")
+                logger.warning(f"[COPILOT TRADIER] Augment request {symbol} {side} x{aug_qty} -> tradier_manage COPILOT_BRIDGE (execute_now, all gates) — {reason}")
+                try:  # PHASE 3 2026-10-06 USER: routed through tradier_manage.copilot_bridge_loop -> execute_now(action="AUGMENT")
+                    _pk = data.get("position_key") or f"{account}:{symbol}_{'LONG' if is_long else 'SHORT'}"
+                    await redis_client.publish("haiku_agent_augments", json.dumps({"account_key": account, "position_key": _pk, "qty": aug_qty, "price": price, "reason": f"COPILOT {reason}"[:200]}))
                 except Exception as e:
-                    logger.error(f"[COPILOT TRADIER] Augment failed: {e}")
+                    logger.error(f"[COPILOT TRADIER] Augment publish failed: {e}")
         except Exception as e:
             logger.error(f"[COPILOT] Tradier order listener error: {e}")
 

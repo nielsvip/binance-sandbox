@@ -5179,7 +5179,7 @@ class Config:
     CIRCUIT_SHARPE_GATES_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     COOLDOWN_LOCKS_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     DC_BREACH_REDUCE_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
-    DC_BREAK_FILTER_TF: str = "1h"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
+    DC_BREAK_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
     DC_MOMENTUM_BOTA_SCORER_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     DELTA_ENGINE_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     DUP_GUARD_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity

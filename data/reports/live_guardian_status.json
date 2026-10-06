@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-06T20:11:52Z",
+ "ts": "2026-10-06T20:32:38Z",
  "dry_run": false,
  "regime_start": "2026-10-06T18:48:00Z",
  "thresholds": {
@@ -26,9 +26,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 0,
-   "open_positions": 0,
-   "unrealised_usd": 0.0,
+   "fills_6h": 1,
+   "open_positions": 1,
+   "unrealised_usd": 0.11,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 4,
@@ -37,67 +37,67 @@
     "refused_non_safety": 0,
     "safety_refusals": 0,
     "not_filled_no_log": 1,
-    "vec_exact_fills_without_decision": 0
-   }
-  },
-  "men": {
-   "fills_6h": 2,
-   "open_positions": 3,
-   "unrealised_usd": -2.37,
-   "pos_mismatch": 0,
-   "vec_parity": {
-    "live_vec_decisions": 7,
-    "state_divergent": 3,
-    "filled": 0,
-    "refused_non_safety": 0,
-    "safety_refusals": 0,
-    "not_filled_no_log": 4,
-    "vec_exact_fills_without_decision": 2
-   }
-  },
-  "ang": {
-   "fills_6h": 4,
-   "open_positions": 3,
-   "unrealised_usd": -2.31,
-   "pos_mismatch": 0,
-   "vec_parity": {
-    "live_vec_decisions": 14,
-    "state_divergent": 6,
-    "filled": 2,
-    "refused_non_safety": 1,
-    "safety_refusals": 0,
-    "not_filled_no_log": 3,
     "vec_exact_fills_without_decision": 1
    }
   },
+  "men": {
+   "fills_6h": 4,
+   "open_positions": 5,
+   "unrealised_usd": -7.29,
+   "pos_mismatch": 0,
+   "vec_parity": {
+    "live_vec_decisions": 17,
+    "state_divergent": 7,
+    "filled": 1,
+    "refused_non_safety": 0,
+    "safety_refusals": 0,
+    "not_filled_no_log": 9,
+    "vec_exact_fills_without_decision": 3
+   }
+  },
+  "ang": {
+   "fills_6h": 8,
+   "open_positions": 7,
+   "unrealised_usd": -10.78,
+   "pos_mismatch": 0,
+   "vec_parity": {
+    "live_vec_decisions": 16,
+    "state_divergent": 9,
+    "filled": 2,
+    "refused_non_safety": 1,
+    "safety_refusals": 0,
+    "not_filled_no_log": 4,
+    "vec_exact_fills_without_decision": 5
+   }
+  },
   "inf": {
-   "fills_6h": 0,
+   "fills_6h": 5,
+   "open_positions": 3,
+   "unrealised_usd": -0.7,
+   "pos_mismatch": 0,
+   "vec_parity": {
+    "live_vec_decisions": 8,
+    "state_divergent": 4,
+    "filled": 1,
+    "refused_non_safety": 0,
+    "safety_refusals": 0,
+    "not_filled_no_log": 3,
+    "vec_exact_fills_without_decision": 3
+   }
+  },
+  "flz": {
+   "fills_6h": 2,
    "open_positions": 0,
    "unrealised_usd": 0.0,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 8,
-    "state_divergent": 2,
-    "filled": 0,
-    "refused_non_safety": 0,
-    "safety_refusals": 0,
-    "not_filled_no_log": 3,
-    "vec_exact_fills_without_decision": 0
-   }
-  },
-  "flz": {
-   "fills_6h": 1,
-   "open_positions": 1,
-   "unrealised_usd": -0.09,
-   "pos_mismatch": 0,
-   "vec_parity": {
-    "live_vec_decisions": 2,
-    "state_divergent": 0,
+    "live_vec_decisions": 3,
+    "state_divergent": 1,
     "filled": 0,
     "refused_non_safety": 0,
     "safety_refusals": 0,
     "not_filled_no_log": 2,
-    "vec_exact_fills_without_decision": 1
+    "vec_exact_fills_without_decision": 2
    }
   }
  },
@@ -105,363 +105,518 @@
  "process": {
   "fin": {
    "pids": [
-    "22500"
+    "94887"
    ],
    "starts_30m": 4,
-   "log_age_s": 16.0
+   "log_age_s": 2.0
   },
   "men": {
-   "pids": [],
-   "starts_30m": 3,
-   "log_age_s": 33.0
-  },
-  "ang": {
    "pids": [
-    "25998"
+    "94867"
    ],
    "starts_30m": 4,
-   "log_age_s": 0.0
+   "log_age_s": 1.0
+  },
+  "ang": {
+   "pids": [],
+   "starts_30m": 3,
+   "log_age_s": 4.0
   },
   "inf": {
    "pids": [
-    "23636"
+    "94756"
    ],
    "starts_30m": 4,
-   "log_age_s": 16.0
+   "log_age_s": 2.0
   },
   "flz": {
    "pids": [
-    "20132"
+    "94866"
    ],
    "starts_30m": 4,
-   "log_age_s": 4.0
+   "log_age_s": 1.0
   },
   "trb": {
    "pids": [],
-   "starts_30m": 1,
-   "log_age_s": 258.0
+   "starts_30m": 0,
+   "log_age_s": 253.0
   },
   "trc": {
    "pids": [],
-   "starts_30m": 1,
-   "log_age_s": 258.0
+   "starts_30m": 0,
+   "log_age_s": 257.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "fin:IOTXUSDT_LONG",
    "evidence": "CLOSE STATEFUL_PORTED_EXIT g0.47% age15m bar=2026-10-06T18:30:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "fin:IOTXUSDT_LONG",
    "evidence": "CLOSE STATEFUL_PORTED_EXIT g0.47% age15m bar=2026-10-06T18:30:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:IOTXUSDT_LONG",
    "evidence": "OPEN B_KZONE decided 2026-10-06T19:34:03Z bar=2026-10-06T19:15:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "fin:ETHFIUSDC_LONG",
    "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-06T19:45:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "men:KSMUSDT_SHORT",
-   "evidence": "entry notional $179.47 (median $6.82, MAX_ORDER_VALUE $300) @ 2026-10-06T20:04:46Z B15 |VEC_EXACT"
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "fin:SANDUSDT_LONG",
+   "evidence": "AUGMENT 272 @ 2026-10-06T20:17:29Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
-   "key": "men:EDUUSDT_LONG",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 4299.15->12897.4 = $840.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 4299.15)"
+   "key": "men:AXSUSDT_SHORT",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 125.853->377.56 = $471.84 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 125.853)"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
-   "key": "men:NMRUSDT_LONG",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 13.0015->39.0045 = $630.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 13.0015)"
+   "key": "men:MELANIAUSDT_SHORT",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 1631.08->3262.16 = $330.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 1631.08)"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "men:IOTXUSDT_LONG",
    "evidence": "CLOSE STATEFUL_PORTED_EXIT g0.47% age15m bar=2026-10-06T18:30:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "men:EDUUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-3.38% bar=2026-10-06T18:30:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "men:GRTUSDT_LONG",
    "evidence": "OPEN ENTRY_SIGNAL decided 2026-10-06T18:59:47Z bar=2026-10-06T18:30:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "men:ZROUSDT_LONG",
    "evidence": "OPEN HARDCODED_RALLY_REENTRY decided 2026-10-06T19:06:18Z bar=2026-10-06T18:45:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "men:GRTUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.17% bar=2026-10-06T18:45:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "men:EDUUSDT_LONG",
    "evidence": "OPEN B15 decided 2026-10-06T19:11:42Z bar=2026-10-06T18:45:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "men:RENDERUSDT_LONG",
    "evidence": "OPEN B14 decided 2026-10-06T19:18:52Z bar=2026-10-06T19:00:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_NOT_FILLED",
+   "key": "men:ZROUSDT_LONG",
+   "evidence": "OPEN GOLDEN_RULE_ENTRY decided 2026-10-06T20:13:59Z bar=2026-10-06T19:45:00Z: no fill in 600s and no refusal logged"
+  },
+  {
+   "ts": "2026-10-06T20:32:38Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_NOT_FILLED",
+   "key": "men:ARUSDT_LONG",
+   "evidence": "OPEN B_KZONE decided 2026-10-06T20:14:00Z bar=2026-10-06T19:45:00Z: no fill in 600s and no refusal logged"
+  },
+  {
+   "ts": "2026-10-06T20:32:38Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_NOT_FILLED",
+   "key": "men:EDUUSDT_LONG",
+   "evidence": "OPEN B15 decided 2026-10-06T20:14:02Z bar=2026-10-06T19:45:00Z: no fill in 600s and no refusal logged"
+  },
+  {
+   "ts": "2026-10-06T20:32:38Z",
+   "severity": "INFO",
+   "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
+   "key": "men:XTZUSDT_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-06T19:45:00Z: live already flat (state divergence, no order needed)"
+  },
+  {
+   "ts": "2026-10-06T20:32:38Z",
+   "severity": "INFO",
+   "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
+   "key": "men:ZROUSDT_LONG",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.45% bar=2026-10-06T20:00:00Z: live already flat (state divergence, no order needed)"
+  },
+  {
+   "ts": "2026-10-06T20:32:38Z",
+   "severity": "WARN",
+   "kind": "VEC_OPEN_WHILE_LIVE_IN",
+   "key": "men:ALGOUSDT_SHORT",
+   "evidence": "OPEN B_KZONE bar=2026-10-06T20:00:00Z: live already holds 89.3 (state divergence)"
+  },
+  {
+   "ts": "2026-10-06T20:32:38Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_NOT_FILLED",
+   "key": "men:NEARUSDC_LONG",
+   "evidence": "OPEN B12 decided 2026-10-06T20:20:45Z bar=2026-10-06T20:00:00Z: no fill in 600s and no refusal logged"
+  },
+  {
+   "ts": "2026-10-06T20:32:38Z",
+   "severity": "INFO",
+   "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
+   "key": "men:XTZUSDT_LONG",
+   "evidence": "CLOSE STATEFUL_PORTED_EXIT g0.42% age30m bar=2026-10-06T20:00:00Z: live already flat (state divergence, no order needed)"
+  },
+  {
+   "ts": "2026-10-06T20:32:38Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_NOT_FILLED",
+   "key": "men:XLMUSDT_SHORT",
+   "evidence": "OPEN DC_BREAKOUT_ENTRY decided 2026-10-06T20:20:46Z bar=2026-10-06T20:00:00Z: no fill in 600s and no refusal logged"
+  },
+  {
+   "ts": "2026-10-06T20:32:38Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "men:SNXUSDT_SHORT",
+   "evidence": "AUGMENT 25.8 @ 2026-10-06T20:22:34Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
+  },
+  {
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:NMRUSDT_LONG",
    "evidence": "AUGMENT 11.1 @ 2026-10-06T20:04:49Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:KSMUSDT_SHORT",
    "evidence": "AUGMENT 36.4 @ 2026-10-06T20:04:46Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "ang:NMRUSDT_LONG",
-   "evidence": "entry notional $349.68 (median $0.00, MAX_ORDER_VALUE $300) @ 2026-10-06T20:06:05Z HARDCODED_RALLY_REENTRY |VEC_EXACT"
-  },
-  {
-   "ts": "2026-10-06T20:11:52Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "ang:NMRUSDT_LONG",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 8.43592->25.3078 = $405.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 8.43592)"
-  },
-  {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "ang:EDUUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-1.81% bar=2026-10-06T18:30:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "ang:EDUUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-1.81% bar=2026-10-06T18:30:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "ang:EDUUSDT_LONG",
    "evidence": "OPEN B15 decided 2026-10-06T19:08:38Z bar=2026-10-06T18:45:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "ang:ZROUSDT_LONG",
    "evidence": "OPEN B15 decided 2026-10-06T19:14:16Z bar=2026-10-06T18:45:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "ang:ZROUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.31% bar=2026-10-06T19:00:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "ang:EDUUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g0.59% bar=2026-10-06T19:00:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "ang:RENDERUSDT_LONG",
    "evidence": "OPEN B14 decided 2026-10-06T19:19:11Z bar=2026-10-06T19:00:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "ang:RENDERUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-1.52% bar=2026-10-06T19:15:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "ang:EDUUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-3.60% bar=2026-10-06T19:15:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "ang:AAOIUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.42% bar=2026-10-06T19:30:00Z refused by non-safety gate: 06 20:00:56 - ERROR - [ang] \ud83d\udee1\ufe0f [execute_trade_action] BLOCKED NOT TRADEABLE ang:AAOIUSDT_LONG (no hedge auto-add) is_hedge=False action=OPEN reason=B_KZONE |VEC_EXACT"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
+   "severity": "INFO",
+   "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
+   "key": "ang:ETHFIUSDC_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-06T19:45:00Z: live already flat (state divergence, no order needed)"
+  },
+  {
+   "ts": "2026-10-06T20:32:38Z",
+   "severity": "INFO",
+   "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
+   "key": "ang:ETHFIUSDC_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-06T19:45:00Z: live already flat (state divergence, no order needed)"
+  },
+  {
+   "ts": "2026-10-06T20:32:38Z",
+   "severity": "INFO",
+   "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
+   "key": "ang:ETHFIUSDC_LONG",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-long g0.84% bar=2026-10-06T20:00:00Z: live already flat (state divergence, no order needed)"
+  },
+  {
+   "ts": "2026-10-06T20:32:38Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_NOT_FILLED",
+   "key": "ang:AAVEUSDC_LONG",
+   "evidence": "OPEN B_SRS_ENTRY decided 2026-10-06T20:20:49Z bar=2026-10-06T20:00:00Z: no fill in 600s and no refusal logged"
+  },
+  {
+   "ts": "2026-10-06T20:32:38Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "ang:NEARUSDC_LONG",
+   "evidence": "AUGMENT 7 @ 2026-10-06T20:18:41Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
+  },
+  {
+   "ts": "2026-10-06T20:32:38Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:ZROUSDT_LONG",
    "evidence": "AUGMENT 79 @ 2026-10-06T20:05:31Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:38Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "ang:TRBUSDT_LONG",
+   "evidence": "AUGMENT 1.8 @ 2026-10-06T20:17:46Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
+  },
+  {
+   "ts": "2026-10-06T20:32:38Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "ang:ENJUSDT_LONG",
+   "evidence": "AUGMENT 240 @ 2026-10-06T20:17:54Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
+  },
+  {
+   "ts": "2026-10-06T20:32:38Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "ang:SANDUSDT_LONG",
+   "evidence": "AUGMENT 305 @ 2026-10-06T20:19:12Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
+  },
+  {
+   "ts": "2026-10-06T20:32:39Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "inf:IOTXUSDT_LONG",
    "evidence": "CLOSE STATEFUL_PORTED_EXIT g0.47% age15m bar=2026-10-06T18:30:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:39Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:ZROUSDT_LONG",
    "evidence": "OPEN B15 decided 2026-10-06T19:13:57Z bar=2026-10-06T18:45:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:39Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:RENDERUSDT_LONG",
    "evidence": "OPEN B14 decided 2026-10-06T19:19:45Z bar=2026-10-06T19:00:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:39Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:IOTXUSDT_LONG",
    "evidence": "OPEN B_KZONE decided 2026-10-06T19:34:49Z bar=2026-10-06T19:15:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:39Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "inf:RENDERUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-1.52% bar=2026-10-06T19:15:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "flz:ZECUSDC_LONG",
-   "evidence": "entry notional $78.15 (median $24.82, MAX_ORDER_VALUE $300) @ 2026-10-06T20:03:23Z HARDCODED_RALLY_REENTRY |VEC_EXACT"
+   "ts": "2026-10-06T20:32:39Z",
+   "severity": "INFO",
+   "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
+   "key": "inf:XTZUSDT_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-06T19:45:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:39Z",
+   "severity": "INFO",
+   "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
+   "key": "inf:APEUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.38% bar=2026-10-06T19:45:00Z: live already flat (state divergence, no order needed)"
+  },
+  {
+   "ts": "2026-10-06T20:32:39Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "inf:NEARUSDC_LONG",
+   "evidence": "AUGMENT 7 @ 2026-10-06T20:17:50Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
+  },
+  {
+   "ts": "2026-10-06T20:32:39Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "inf:ZROUSDT_LONG",
+   "evidence": "AUGMENT 26.6 @ 2026-10-06T20:15:53Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
+  },
+  {
+   "ts": "2026-10-06T20:32:39Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "inf:NMRUSDT_LONG",
+   "evidence": "AUGMENT 4.4 @ 2026-10-06T20:16:30Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
+  },
+  {
+   "ts": "2026-10-06T20:32:39Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:ZECUSDC_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.12% decided 2026-10-06T18:55:38Z bar=2026-10-06T18:30:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:39Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:BTCDOMUSDT_LONG",
    "evidence": "OPEN B_VWAPBOUNCE decided 2026-10-06T19:34:36Z bar=2026-10-06T19:15:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:39Z",
+   "severity": "INFO",
+   "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
+   "key": "flz:DOGEUSDC_SHORT",
+   "evidence": "CLOSE MTF_GR_WT_EXIT_15m_grTFs=3 bar=2026-10-06T20:00:00Z: live already flat (state divergence, no order needed)"
+  },
+  {
+   "ts": "2026-10-06T20:32:39Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:ZECUSDC_LONG",
    "evidence": "AUGMENT 0.058 @ 2026-10-06T20:03:23Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:39Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "flz:ZECUSDC_LONG",
+   "evidence": "REDUCE 0.058 @ 2026-10-06T20:24:10Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
+  },
+  {
+   "ts": "2026-10-06T20:32:39Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "fin",
-   "evidence": "4 new process ids in 30 min (['63196', '80533', '7388', '22500'])"
+   "evidence": "4 new process ids in 30 min (['7388', '22500', '58782', '94887'])"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:39Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "men",
-   "evidence": "3 new process ids in 30 min (['72151', '80421', '6108'])"
+   "evidence": "4 new process ids in 30 min (['6108', '30426', '58948', '94867'])"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
-   "severity": "CRITICAL",
-   "kind": "PROCESS_DOWN",
-   "key": "men",
-   "evidence": "no ez_manage.py --account men process"
-  },
-  {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:39Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "ang",
-   "evidence": "4 new process ids in 30 min (['66247', '80422', '7614', '25998'])"
+   "evidence": "3 new process ids in 30 min (['7614', '25998', '58982'])"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:39Z",
+   "severity": "CRITICAL",
+   "kind": "PROCESS_DOWN",
+   "key": "ang",
+   "evidence": "no ez_manage.py --account ang process"
+  },
+  {
+   "ts": "2026-10-06T20:32:39Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "inf",
-   "evidence": "4 new process ids in 30 min (['69301', '80401', '7595', '23636'])"
+   "evidence": "4 new process ids in 30 min (['7595', '23636', '58446', '94756'])"
   },
   {
-   "ts": "2026-10-06T20:11:52Z",
+   "ts": "2026-10-06T20:32:39Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "flz",
-   "evidence": "4 new process ids in 30 min (['59886', '80799', '9438', '20132'])"
+   "evidence": "4 new process ids in 30 min (['9438', '20132', '58740', '94866'])"
   }
  ],
  "alert_counts": {
-  "VEC_EXIT_WHILE_LIVE_FLAT": 14,
-  "VEC_DECISION_NOT_FILLED": 13,
-  "SIZE_ANOMALY": 6,
-  "FILL_WITHOUT_VEC_DECISION": 4,
+  "VEC_EXIT_WHILE_LIVE_FLAT": 23,
+  "VEC_DECISION_NOT_FILLED": 19,
+  "FILL_WITHOUT_VEC_DECISION": 14,
+  "SIZE_ANOMALY": 2,
+  "VEC_OPEN_WHILE_LIVE_IN": 1,
   "VEC_DECISION_REFUSED": 1,
   "RESTART_LOOP": 5,
   "PROCESS_DOWN": 1
@@ -527,7 +682,28 @@
    "why": "SIZE_ANOMALY entry notional $349.68 (median $0.00, MAX_ORDER_VALUE $300) @ 2026-10-06T20:06:05Z HARDCODED_RALLY_REENTRY |VEC_EXACT",
    "undo": "redis-cli -p 6379 DEL open_blocked:ang:NMRUSDT_LONG",
    "dry_run": false
+  },
+  "key:inf:ARUSDT_LONG": {
+   "ts": 1791317595.306337,
+   "until": 1791324795.306339,
+   "why": "SIZE_ANOMALY entry notional $101.26 (median $5.86, MAX_ORDER_VALUE $300) @ 2026-10-06T20:12:57Z B_KZONE |VEC_EXACT",
+   "undo": "redis-cli -p 6379 DEL open_blocked:inf:ARUSDT_LONG",
+   "dry_run": false
+  },
+  "key:men:ALGOUSDT_SHORT": {
+   "ts": 1791317802.353089,
+   "until": 1791325002.353107,
+   "why": "SIZE_ANOMALY BREAKOUT_SIZE_LADDER qty 1333.63->4000.9 ($495) past 1.5x MAX_ORDER_VALUE",
+   "undo": "redis-cli -p 6379 DEL open_blocked:men:ALGOUSDT_SHORT",
+   "dry_run": false
+  },
+  "key:men:AXSUSDT_SHORT": {
+   "ts": 1791318093.3124118,
+   "until": 1791325293.312414,
+   "why": "SIZE_ANOMALY BREAKOUT_SIZE_LADDER qty 125.853->377.56 ($472) past 1.5x MAX_ORDER_VALUE",
+   "undo": "redis-cli -p 6379 DEL open_blocked:men:AXSUSDT_SHORT",
+   "dry_run": false
   }
  },
- "sweep_s": 0.48
+ "sweep_s": 0.8
 }

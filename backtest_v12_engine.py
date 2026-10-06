@@ -4707,6 +4707,117 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         except Exception as _golden_native_exc:
             v8_logger.exception("[V12_GOLDEN_NATIVE] event build failed: %s", _golden_native_exc)
             _golden_native_events = {}
+    _dc_native_events = {}
+    if bool(getattr(config, "DC_BREAKOUT_ENTRY_ENABLED", True)):
+        try:
+            # 2026-10-06 USER full-parity: shared DC tiered twin (live EPQ DC path: tier ladder +
+            # k15m cap + WT confirm + 900s cooldown + live-exact reason per bar).
+            import vec_decisions.check_entry_candidates_crypto__dc_breakout_tiered as _v12_dc
+            for _dc_sym, _dc_store in stores.items():
+                _dc_ts_arr = np.asarray(_dc_store.timestamps, dtype=float)
+                _dc_n = len(_dc_ts_arr)
+                _dc_a = _dc_store.arrays
+
+                def _dck(_k, _d=0.0):
+                    _v = _dc_a.get(_k) if hasattr(_dc_a, "get") else None
+                    if _v is not None and isinstance(_v, np.ndarray) and len(_v) == _dc_n:
+                        return _v.astype(np.float64)
+                    return np.full(_dc_n, _d, dtype=np.float64)
+
+                for _dc_side in _position_sides:
+                    _dc_is_long = _dc_side == "LONG"
+                    _dc_r = _v12_dc.check_dc_breakout_tiered_vec(
+                        config, _dck("close"), _dck("dc_high_4h"), _dck("dc_high_1h"), _dck("dc_high_15m"), _dck("dc_high_3m"),
+                        _dck("dc_low_4h"), _dck("dc_low_1h"), _dck("dc_low_15m"), _dck("dc_low_3m"), _dck("stoch_k_15m", 50.0),
+                        _dck("wt1_3m"), _dck("wt2_3m"), _dck("wt1_15m"), _dck("wt2_15m"), _dc_is_long, details=True)
+                    _dc_last = 0.0
+                    for _dc_idx in np.where(_dc_r["mask"])[0]:
+                        _dc_ts = int(_dc_ts_arr[_dc_idx])
+                        if _dc_ts - _dc_last < 900.0:
+                            continue  # live 900s per-position cooldown mirror
+                        _dc_last = float(_dc_ts)
+                        _dc_tier = str(_dc_r["tier"][_dc_idx])
+                        _dc_mult = float(_dc_r["mult"][_dc_idx])
+                        _dc_lvl = float(_dc_r["level"][_dc_idx])
+                        _dc_native_events[(_dc_sym, _dc_side, _dc_ts)] = f"DC_BREAKOUT_{_dc_tier}_x{_dc_mult}@{_dc_lvl:.8g}"
+            v8_logger.info("[V12_DC_NATIVE] built %d standalone scalar events", len(_dc_native_events))
+        except Exception as _dc_native_exc:
+            v8_logger.exception("[V12_DC_NATIVE] event build failed: %s", _dc_native_exc)
+            _dc_native_events = {}
+    _vs_native_events = {}
+    if bool(getattr(config, "VOL_SPIKE_ENABLED", True)):
+        try:
+            # 2026-10-06 USER full-parity: shared VOL-spike twin (live EPQ VOL path: relvol+body+
+            # shared-computed-alignment+DC-floor, per-SYM 300s cooldown, live-exact reason).
+            import vec_decisions.check_entry_candidates_crypto__vol_spike_reversal as _v12_vs
+            import vec_decisions.alignment as _v12_vs_align
+            _vs_cd = float(getattr(config, "VOL_SPIKE_COOLDOWN", 300.0))
+            for _vs_sym, _vs_store in stores.items():
+                _vs_ts_arr = np.asarray(_vs_store.timestamps, dtype=float)
+                _vs_n = len(_vs_ts_arr)
+                _vs_a = _vs_store.arrays
+
+                def _vsk(_k, _d=0.0):
+                    _v = _vs_a.get(_k) if hasattr(_vs_a, "get") else None
+                    if _v is not None and isinstance(_v, np.ndarray) and len(_v) == _vs_n:
+                        return _v.astype(np.float64)
+                    return np.full(_vs_n, _d, dtype=np.float64)
+
+                _vs_rv = _vsk("relative_volume_15m")
+                _vs_last = 0.0
+                for _vs_side in _position_sides:
+                    _vs_is_long = _vs_side == "LONG"
+                    _vs_al = _v12_vs_align.compute_alignment_vec(_vs_a, _vs_n, _vs_is_long)
+                    _vs_mask = _v12_vs.check_vol_spike_reversal_vec(
+                        config, _vs_rv, _vsk("high_15m"), _vsk("low_15m"), _vsk("open_15m"),
+                        _vsk("close_15m"), _vs_al, _vsk("dc_low4_15m"), _vsk("dc_high4_15m"),
+                        _vsk("close"), _vs_is_long, ratio_ok=True)
+                    for _vs_idx in np.where(np.asarray(_vs_mask, dtype=bool))[0]:
+                        _vs_ts = int(_vs_ts_arr[_vs_idx])
+                        if _vs_ts - _vs_last < _vs_cd:
+                            continue  # live per-SYM cooldown mirror
+                        _vs_last = float(_vs_ts)
+                        _vs_sig = "BUY" if _vs_is_long else "SELL"
+                        _vs_native_events[(_vs_sym, _vs_side, _vs_ts)] = (
+                            f"VOL_SPIKE_REVERSAL_{_vs_sig}_relvol={float(_vs_rv[_vs_idx]):.1f}_align={float(_vs_al[_vs_idx]):.0f}")
+            v8_logger.info("[V12_VS_NATIVE] built %d standalone scalar events", len(_vs_native_events))
+        except Exception as _vs_native_exc:
+            v8_logger.exception("[V12_VS_NATIVE] event build failed: %s", _vs_native_exc)
+            _vs_native_events = {}
+    _sboun_native_events = {}
+    if bool(getattr(config, "STDEV_BOUNCE_ENABLED", False)):
+        try:
+            # 2026-10-06 USER full-parity: shared STDEV-bounce twin (live detect_stdev_bounce:
+            # band-touch + rvol, first HTF wins, live-exact reason). Stateless (no cooldown live).
+            import vec_decisions.stdev_bounce_crypto as _v12_sboun
+            for _sboun_sym, _sboun_store in stores.items():
+                _sboun_ts_arr = np.asarray(_sboun_store.timestamps, dtype=float)
+                _sboun_n = len(_sboun_ts_arr)
+                _sboun_a = _sboun_store.arrays
+
+                def _sbk(_k, _d=0.0):
+                    _v = _sboun_a.get(_k) if hasattr(_sboun_a, "get") else None
+                    if _v is not None and isinstance(_v, np.ndarray) and len(_v) == _sboun_n:
+                        return _v.astype(np.float64)
+                    return np.full(_sboun_n, _d, dtype=np.float64)
+
+                def _sboun_safe(_npz, _key, _n, _default=0.0):
+                    return _sbk(_key, _default)
+
+                for _sboun_side in _position_sides:
+                    _sboun_is_long = _sboun_side == "LONG"
+                    _sboun_r = _v12_sboun.fires(_sboun_a, _sboun_n, _sboun_is_long, config, _sboun_safe, details=True)
+                    if _sboun_r is None:
+                        continue
+                    for _sboun_idx in np.where(np.asarray(_sboun_r["mask"], dtype=bool))[0]:
+                        _sboun_ts = int(_sboun_ts_arr[_sboun_idx])
+                        _sboun_sig = "BUY" if _sboun_is_long else "SELL"
+                        _sboun_native_events[(_sboun_sym, _sboun_side, _sboun_ts)] = (
+                            f"STDEV_BOUNCE_{_sboun_sig}_{_sboun_r['htf'][_sboun_idx]}_pctb={float(_sboun_r['pctb'][_sboun_idx]):.3f}_rvol={float(_sboun_r['rvol'][_sboun_idx]):.1f}")
+            v8_logger.info("[V12_SBOUN_NATIVE] built %d standalone scalar events", len(_sboun_native_events))
+        except Exception as _sboun_native_exc:
+            v8_logger.exception("[V12_SBOUN_NATIVE] event build failed: %s", _sboun_native_exc)
+            _sboun_native_events = {}
     # Exact parity mode needs Quick's sequential ledger, not a raw predicate
     # mask: the latter is intentionally broad and has no position/hold state.
     # Keep the live admission prefilter above for ordinary scalar simulations.
@@ -4789,6 +4900,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                           len(_stdev_native_events), len(_stdev_native_exit_events), len(_b11_native_events), len(_srs_native_events),
                           len(_golden_native_events), len(_quick_entry_event_sets))
         _stdev_native_events, _stdev_native_exit_events, _b11_native_events, _srs_native_events, _golden_native_events = {}, {}, {}, {}, {}
+        _dc_native_events = {}
+        _vs_native_events = {}
+        _sboun_native_events = {}
         _quick_entry_event_sets, _quick_exit_event_sets, _quick_ledger_entries, _quick_ledger_exits = {}, {}, {}, {}
         _v12_exit_batch3 = _v12_exit_batch2 = _v12_obligatory_reentry = _v12_hlr_reentry = None
         # the [SIGNAL_GATE] admission prefilter (flat keys only reach process_position on bars with an NPZ cross event) is a
@@ -5528,6 +5642,88 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                             "symbol": _golden_sym, "side": _golden_side,
                             "reason": _golden_reason, "opened_ts": _golden_ts,
                         }
+        # 2026-10-06 USER full-parity: DC-breakout native events (shared EPQ DC twin).
+        if _dc_native_events and os.environ.get("V12_PARITY_QUICK_LEDGER_REPLAY", "0") != "1":
+            _dc_ts = int(ts)
+            for _dc_sym in stores:
+                for _dc_side in _position_sides:
+                    _dc_reason = _dc_native_events.get((_dc_sym, _dc_side, _dc_ts))
+                    if _dc_reason is None:
+                        continue
+                    _dc_pk = f"{account_key}:{_dc_sym}_{_dc_side}"
+                    _dc_px = float(price_cache.get(_dc_sym.upper(), 0.0) or 0.0)
+                    if _dc_px <= 0.0:
+                        continue
+                    # SIZING SEAM (documented): live sizes DC via score-driven calculate_dynamic_quantity
+                    # (score 15+tier*5 → 3x/ARMY × full mult chain); flat SPS until the sizing twin lands.
+                    _dc_qty = float(getattr(config, "START_POSITION_SIZE", 45.0)) / _dc_px
+                    if _dc_qty * _dc_px < 1.0:
+                        continue
+                    _dc_pos = trade_manager.positions.get(_dc_pk)
+                    _dc_cur = abs(float(getattr(_dc_pos, "positionAmt", 0.0) or 0.0))
+                    _dc_result = await _crypto_eta(
+                        account_key=account_key, position_key=_dc_pk, symbol=_dc_sym,
+                        quantity=_dc_qty, current_price=_dc_px,
+                        side="BUY" if _dc_side == "LONG" else "SELL",
+                        position_side=_dc_side, action="OPEN" if _dc_cur <= 0 else "AUGMENT",
+                        reason=_dc_reason, is_full_close=False, is_hedge=False,
+                    )
+                    v8_logger.info("[V12_DC_NATIVE] %s ts=%s result=%s",
+                                   _dc_pk, _dc_ts, _dc_result)
+        # 2026-10-06 USER full-parity: VOL-spike native events (shared EPQ VOL twin).
+        if _vs_native_events and os.environ.get("V12_PARITY_QUICK_LEDGER_REPLAY", "0") != "1":
+            _vs_ts = int(ts)
+            for _vs_sym in stores:
+                for _vs_side in _position_sides:
+                    _vs_reason = _vs_native_events.get((_vs_sym, _vs_side, _vs_ts))
+                    if _vs_reason is None:
+                        continue
+                    _vs_pk = f"{account_key}:{_vs_sym}_{_vs_side}"
+                    _vs_px = float(price_cache.get(_vs_sym.upper(), 0.0) or 0.0)
+                    if _vs_px <= 0.0:
+                        continue
+                    # SIZING SEAM (documented): live score-driven sizing; flat SPS until sizing twin.
+                    _vs_qty = float(getattr(config, "START_POSITION_SIZE", 45.0)) / _vs_px
+                    if _vs_qty * _vs_px < 1.0:
+                        continue
+                    _vs_pos = trade_manager.positions.get(_vs_pk)
+                    _vs_cur = abs(float(getattr(_vs_pos, "positionAmt", 0.0) or 0.0))
+                    _vs_result = await _crypto_eta(
+                        account_key=account_key, position_key=_vs_pk, symbol=_vs_sym,
+                        quantity=_vs_qty, current_price=_vs_px,
+                        side="BUY" if _vs_side == "LONG" else "SELL",
+                        position_side=_vs_side, action="OPEN" if _vs_cur <= 0 else "AUGMENT",
+                        reason=_vs_reason, is_full_close=False, is_hedge=False,
+                    )
+                    v8_logger.info("[V12_VS_NATIVE] %s ts=%s result=%s",
+                                   _vs_pk, _vs_ts, _vs_result)
+        # 2026-10-06 USER full-parity: STDEV-bounce native events (shared twin).
+        if _sboun_native_events and os.environ.get("V12_PARITY_QUICK_LEDGER_REPLAY", "0") != "1":
+            _sboun_ts = int(ts)
+            for _sboun_sym in stores:
+                for _sboun_side in _position_sides:
+                    _sboun_reason = _sboun_native_events.get((_sboun_sym, _sboun_side, _sboun_ts))
+                    if _sboun_reason is None:
+                        continue
+                    _sboun_pk = f"{account_key}:{_sboun_sym}_{_sboun_side}"
+                    _sboun_px = float(price_cache.get(_sboun_sym.upper(), 0.0) or 0.0)
+                    if _sboun_px <= 0.0:
+                        continue
+                    # SIZING SEAM (documented): live score-driven sizing; flat SPS until sizing twin.
+                    _sboun_qty = float(getattr(config, "START_POSITION_SIZE", 45.0)) / _sboun_px
+                    if _sboun_qty * _sboun_px < 1.0:
+                        continue
+                    _sboun_pos = trade_manager.positions.get(_sboun_pk)
+                    _sboun_cur = abs(float(getattr(_sboun_pos, "positionAmt", 0.0) or 0.0))
+                    _sboun_result = await _crypto_eta(
+                        account_key=account_key, position_key=_sboun_pk, symbol=_sboun_sym,
+                        quantity=_sboun_qty, current_price=_sboun_px,
+                        side="BUY" if _sboun_side == "LONG" else "SELL",
+                        position_side=_sboun_side, action="OPEN" if _sboun_cur <= 0 else "AUGMENT",
+                        reason=_sboun_reason, is_full_close=False, is_hedge=False,
+                    )
+                    v8_logger.info("[V12_SBOUN_NATIVE] %s ts=%s result=%s",
+                                   _sboun_pk, _sboun_ts, _sboun_result)
 
         # Structural Range Shift is an independent direct Quick entry block.
         # Its broad predicate is restricted to the matching causal ledger row

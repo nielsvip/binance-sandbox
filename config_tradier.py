@@ -4320,8 +4320,8 @@ class TradierConfig:
     TRADIER_FH_MOMENTUM_ENABLED: bool = True
     TRADIER_FH_MOMENTUM_MIN_MOVE_PCT: float = 0.5       # min gap move % to qualify
     TRADIER_FH_MOMENTUM_DC_CONFIRM: bool = True         # require DC breakout confirm
-    TRADIER_FH_MOMENTUM_DC_MAX_LONG: float = 0.5  # BIBLE 68 2026-10-06 alias-bridge reconcile: = FH_MOMENTUM_DC_MAX_LONG (daily-chain value vec reads), was 0.33 # only longs in bottom third of DC range
-    TRADIER_FH_MOMENTUM_MFI_CONFIRM: bool = False  # BIBLE 68 2026-10-06 alias-bridge reconcile: = FH_MOMENTUM_MFI_CONFIRM (daily-chain value vec reads), was True # require MFI > threshold confirm
+    TRADIER_FH_MOMENTUM_DC_MAX_LONG: float = 0.33  # BIBLE 68/67 2026-10-06: own template bold (vec v12 reads THIS name in its TRADIER_ blocks; the un-prefixed twin keeps its own bold); alias bridge copy removed in tradier_manage
+    TRADIER_FH_MOMENTUM_MFI_CONFIRM: bool = True  # BIBLE 68/67 2026-10-06: own template bold (vec v12 reads THIS name in its TRADIER_ blocks; the un-prefixed twin keeps its own bold); alias bridge copy removed in tradier_manage
     TRADIER_FH_MOMENTUM_MFI_MIN: float = 55.0           # min MFI for FH long entry
     TRADIER_FH_MOMENTUM_WINDOW_MINUTES: int = 60        # FH window in minutes after 13:30 UTC
 
@@ -4332,12 +4332,12 @@ class TradierConfig:
 
     # DC Daytrade — buy DC upper-quarter breakouts on 5m/15m with 1h expansion
     TRADIER_DC_DAYTRADE_ENABLED: bool = True
-    TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES: int = 240  # BIBLE 68 2026-10-06 alias-bridge reconcile: = DC_DAYTRADE_MAX_HOLD_MINUTES (daily-chain value vec reads), was 0 # 2026-09-15: OFF by default per user - max hold disabled
+    TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES: int = 0  # BIBLE 68/67 2026-10-06: own template bold (vec v12 reads THIS name in its TRADIER_ blocks; the un-prefixed twin keeps its own bold); alias bridge copy removed in tradier_manage
     TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION: bool = True
-    TRADIER_DC_DAYTRADE_STOP_PCT: float = 0.015  # BIBLE 68 2026-10-06 alias-bridge reconcile: = DC_DAYTRADE_STOP_PCT (daily-chain value vec reads), was 0.005 # 0.5% hard stop — LEGACY hard % (never hard % stops per user 2026-09-24, keep but prefer dc levels below)
+    TRADIER_DC_DAYTRADE_STOP_PCT: float = 0.005  # BIBLE 68/67 2026-10-06: own template bold (vec v12 reads THIS name in its TRADIER_ blocks; the un-prefixed twin keeps its own bold); alias bridge copy removed in tradier_manage
     TRADIER_DC_DAYTRADE_STOP_USE_DC_15M: bool = False  # 2026-09-24: use dc_low/high_15m as stop instead of hard % (vectorizable)
     TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M: bool = False  # 2026-09-24: use dc_low4/high4_15m (4-bar tight) as stop — was 3/5m replacement
-    TRADIER_DC_DAYTRADE_TARGET_PCT: float = 0.01  # BIBLE 68 2026-10-06 alias-bridge reconcile: = DC_DAYTRADE_TARGET_PCT (daily-chain value vec reads), was 0.005 # REVERTED 2026-05-18 18:30 (was 0.015 since 2026-05-17). 2026-05-17 flip had no sample-floor proof; isolated vec sweep queued. — 2026-09-24: sweep 1.5% and several % (0.005, 0.01, 0.015, 0.02) plus dc variants below
+    TRADIER_DC_DAYTRADE_TARGET_PCT: float = 0.005  # BIBLE 68/67 2026-10-06: own template bold (vec v12 reads THIS name in its TRADIER_ blocks; the un-prefixed twin keeps its own bold); alias bridge copy removed in tradier_manage
     TRADIER_DC_DAYTRADE_TARGET_USE_DC_15M: bool = False  # 2026-09-24: use near dc_high/low_15m as target for breakout re-entry (vectorizable)
     TRADIER_DC_DAYTRADE_TARGET_USE_DC4_15M: bool = False  # 2026-09-24: use near dc_high4/low4_15m as target — tighter 4-bar
     TRADIER_DC_DAYTRADE_TARGET_DC_BUFFER_PCT: float = 0.002  # 0.2% buffer near dc for target
@@ -4361,17 +4361,17 @@ class TradierConfig:
     # K-Zone — stochastic K-zone entry filter
     TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER: int = 35     # S1_SWEEP_2026-04-15: 35 top S1 cfg Sharpe=4.23 on 20605 trades (was 80)
     TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER: int = 65    # S1_SWEEP_2026-04-15: 65 top S1 cfg Sharpe=4.23 on 20605 trades (was 20)
-    TRADIER_K_ZONE_ENTRY_BONUS_TRADIER: int = 20  # BIBLE 68 2026-10-06 alias-bridge reconcile: = K_ZONE_ENTRY_BONUS_TRADIER (daily-chain value vec reads), was 25 # score add when K in zone
+    TRADIER_K_ZONE_ENTRY_BONUS_TRADIER: int = 25  # BIBLE 68/67 2026-10-06: own template bold (vec v12 reads THIS name in its TRADIER_ blocks; the un-prefixed twin keeps its own bold); alias bridge copy removed in tradier_manage
 
     # RSI2 — 2-period RSI exit gate
     TRADIER_RSI2_ENABLED: bool = True
-    TRADIER_RSI2_EXIT_THRESHOLD_LONG: float = 70.0  # BIBLE 68 2026-10-06 alias-bridge reconcile: = RSI2_EXIT_THRESHOLD_LONG (daily-chain value vec reads), was 90.0 # exit long when RSI2 > this
-    TRADIER_RSI2_EXIT_THRESHOLD_SHORT: float = 30.0  # BIBLE 68 2026-10-06 alias-bridge reconcile: = RSI2_EXIT_THRESHOLD_SHORT (daily-chain value vec reads), was 10.0 # exit short when RSI2 < this
+    TRADIER_RSI2_EXIT_THRESHOLD_LONG: float = 90.0  # BIBLE 68/67 2026-10-06: own template bold (vec v12 reads THIS name in its TRADIER_ blocks; the un-prefixed twin keeps its own bold); alias bridge copy removed in tradier_manage
+    TRADIER_RSI2_EXIT_THRESHOLD_SHORT: float = 10.0  # BIBLE 68/67 2026-10-06: own template bold (vec v12 reads THIS name in its TRADIER_ blocks; the un-prefixed twin keeps its own bold); alias bridge copy removed in tradier_manage
 
     # RSI Entry — SHORTS ONLY (2026-04-14 rule). Longs use MFI only.
     # Short side: RSI + relative volume gate (high short volume distorts MFI).
-    TRADIER_RSI_ENTRY_LONG_TRADIER: float = 40.0  # BIBLE 68 2026-10-06 alias-bridge reconcile: = RSI_ENTRY_LONG_TRADIER (daily-chain value vec reads), was -1.0 # SENTINEL: <0 => DISABLED (long uses MFI)
-    TRADIER_RSI_ENTRY_SHORT_TRADIER: float = 58.0  # BIBLE 68 2026-10-06 alias-bridge reconcile: = RSI_ENTRY_SHORT_TRADIER (daily-chain value vec reads), was 70.0 # RSI > this to consider short (LEGACY: single-TF default)
+    TRADIER_RSI_ENTRY_LONG_TRADIER: float = -1.0  # BIBLE 68/67 2026-10-06: own template bold (vec v12 reads THIS name in its TRADIER_ blocks; the un-prefixed twin keeps its own bold); alias bridge copy removed in tradier_manage
+    TRADIER_RSI_ENTRY_SHORT_TRADIER: float = 70.0  # BIBLE 68/67 2026-10-06: own template bold (vec v12 reads THIS name in its TRADIER_ blocks; the un-prefixed twin keeps its own bold); alias bridge copy removed in tradier_manage
     TRADIER_RSI_SHORT_REL_VOLUME_MIN: float = 2.4  # relative vol > 1.2× avg required
     # --- per-TF RSI entry thresholds (2026-04-17) — long<= / short>=, tuned from A/B on full 109-sym × 3yr ---
     # LONG (mean-reversion): tighter RSI = better signal. A/B winner: rsi15<40 paired with rsi1h<22.
@@ -4396,7 +4396,7 @@ class TradierConfig:
 
     # Stoch entry filters (non-K-zone)
     TRADIER_STOCH_ENTRY_LONG_TRADIER: int = 30          # K < this for normal long entry
-    TRADIER_STOCH_ENTRY_SHORT_TRADIER: int = 65  # BIBLE 68 2026-10-06 alias-bridge reconcile: = STOCH_ENTRY_SHORT_TRADIER (daily-chain value vec reads), was 52 # K > this for normal short entry
+    TRADIER_STOCH_ENTRY_SHORT_TRADIER: int = 52  # BIBLE 68/67 2026-10-06: own template bold (vec v12 reads THIS name in its TRADIER_ blocks; the un-prefixed twin keeps its own bold); alias bridge copy removed in tradier_manage
     WT_DC_ENTRY_K5M_MAX_LONG: float = 100.0  # 2026-04-27: hard k5m cap for WT_DC_ENTRY_THRESHOLD-path LONG entries (default inert at 100). Lower to 80 to block "buy at 5m top" e.g. NVDA k5m=95.
     WT_DC_ENTRY_K5M_MIN_SHORT: float = 0.0   # 2026-04-27: hard k5m floor for WT_DC_ENTRY_THRESHOLD-path SHORT entries (default inert at 0). Raise to 20 to block "short at 5m bottom".
     # 2026-05-16: bar-maturity guard on WT_DC_ENTRY path (DEFAULT OFF behind WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED).
@@ -4453,7 +4453,7 @@ class TradierConfig:
     TRADIER_WT_EXIT_MIN_TFS_TRADIER: int = 5             # REVERTED 2026-04-17: 4 = exits too eagerly. Mar-30 baseline = 5 (require ALL 5 TFs against). Patient exits.
 
     # Entry score aggregate threshold
-    TRADIER_ENTRY_SCORE_THRESHOLD: int = 27  # BIBLE 68 2026-10-06 alias-bridge reconcile: = ENTRY_SCORE_THRESHOLD (daily-chain value vec reads), was 30 # 2026-04-23 EMERGENCY: raised 24→30. 2.8155 validated winner uses 30. Reduces bad entries.
+    TRADIER_ENTRY_SCORE_THRESHOLD: int = 30  # BIBLE 68/67 2026-10-06: own template bold (vec v12 reads THIS name in its TRADIER_ blocks; the un-prefixed twin keeps its own bold); alias bridge copy removed in tradier_manage
     # ========================================================================
     # --- END RECONNECTED SWITCHES ---
     # ========================================================================

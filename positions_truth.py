@@ -322,6 +322,14 @@ def hang_reconcile(service: Any, account_key: str, rows: Any, where: str, config
     cnt[account_key] = cnt.get(account_key, 0) + 1
     limit = int(getattr(config, "POSITIONS_HANG_EXIT_AFTER", 3) if config is not None else 3)
     log.critical(f"🩹 [POSITIONS_HANG_RECONCILE] {account_key}: {where} — broker snapshot seeded={seeded}, local marked STALE (orders use broker truth), consecutive={cnt[account_key]}/{limit}")
+    try:  # PHASE 3 USER: stall -> alarm + rewrite every broker-held sym_side row from the broker
+        broken_positions_alarm("binance", account_key, "*", {"where": where, "consecutive": cnt[account_key]}, logger=log)
+        snap = _CACHES.get(("binance", account_key))
+        if seeded and snap is not None and snap.last is not None:
+            for (sym, ps), amt in snap.last.amounts.items():
+                rewrite_row_from_broker("binance", account_key, sym, ps, {"amt": amt, "entry": snap.last.entries.get((sym, ps), 0.0)}, logger=log)
+    except Exception as e:
+        log.error(f"[POSITIONS_HANG_RECONCILE] rewrite failed: {e!r}")
     return cnt[account_key] >= limit
 
 
@@ -551,6 +559,8 @@ async def ez_pre_order_check(mgr: Any, account_key: str, symbol: str, position_k
     if abs(broker_amt - local_amt) > qty_tol(config, broker_amt, local_amt):
         log.critical(f"🚨 [POSITIONS_BROKER_MISMATCH] {position_key}: local={local_amt:.8f} broker={broker_amt:.8f} (local age {age:.1f}s) action={action} — broker truth wins; resync requested")
         _ez_resync(mgr, account_key)
+        broken_positions_alarm("binance", account_key, position_key, {"local": local_amt, "broker": broker_amt, "local_age_s": round(age, 2), "action": str(action)}, logger=log)  # PHASE 3
+        rewrite_row_from_broker("binance", account_key, symbol, position_side, {"amt": broker_amt, "entry": snap.entries.get((str(symbol).upper(), str(position_side).upper()), 0.0)}, logger=log)
         if exit_like and broker_amt <= qty_tol(config, local_amt):
             return "SKIP_BROKER_FLAT"
         if not exit_like and bool(cfg(config, "POSITIONS_MISMATCH_BLOCKS_ENTRIES")):
@@ -674,6 +684,8 @@ def tradier_pre_order(account_key: str, symbol: str, position_side: str, action:
     lq, bq = abs(_f(local_qty)), abs(_f(broker_qty))
     if abs(lq - bq) > max(qty_tol(config, lq, bq), 1e-6):
         log.critical(f"🚨 [POSITIONS_BROKER_MISMATCH] {account_key}:{symbol}_{k[2]}: local={lq:.6f} broker={bq:.6f} action={action} — broker truth wins")
+        broken_positions_alarm("tradier", str(account_key), f"{account_key}:{str(symbol).upper()}_{k[2]}", {"local": lq, "broker": bq, "action": str(action)}, logger=log)  # PHASE 3
+        rewrite_row_from_broker("tradier", str(account_key), symbol, k[2], {"amt": bq}, logger=log)
         if not is_exit_action(action, reason) and bool(cfg(config, "POSITIONS_MISMATCH_BLOCKS_ENTRIES")):
             return "POSITIONS_BROKER_MISMATCH"
     return None
@@ -824,3 +836,188 @@ def tradier_reader_written_at(wrapper: Any) -> Optional[float]:
     if isinstance(wrapper, dict):
         return _epoch(wrapper.get("timestamp"))
     return None
+
+
+# ───────────────────────────── PHASE 3 (2026-10-06 USER): positions file must reflect the broker before the next order ─────────────────────────────
+ALARM_TEXT = "BROKEN POSITIONS MANAGEMENT SCRIPT"
+
+
+def _live_side_effects_allowed() -> bool:
+    """Under pytest, live positions files / alerts / dashboard / notifications are never touched unless a test redirected
+    them (POSITIONS_BASE_DIR). 2026-10-06: a test run once wrote false alarms + a fake row into the live data dirs."""
+    return not (os.environ.get("PYTEST_CURRENT_TEST") and not os.environ.get("POSITIONS_BASE_DIR"))
+_ALARM_LAST: Dict[str, float] = {}
+_REPO = Path(__file__).resolve().parent
+
+
+def positions_file_for(venue: str, account: str, position_side: str) -> Path:
+    """{acct}/long_positions.json | short_positions.json (crypto: BASE/acct; tradier: account_dir from config_tradier)."""
+    name = "short_positions.json" if str(position_side).upper() == "SHORT" else "long_positions.json"
+    base = os.environ.get("POSITIONS_BASE_DIR")
+    if base:
+        return Path(base) / account / name
+    if venue == "tradier":
+        try:
+            from config_tradier import TradierConfig  # noqa: WPS433
+
+            ac = TradierConfig().get_account_config(account) or {}
+            if ac.get("account_dir"):
+                return Path(ac["account_dir"]) / name
+        except Exception:
+            pass
+    return _REPO / account / name
+
+
+def read_file_row(path: Path, key: str) -> Tuple[Optional[float], Optional[Dict[str, Any]], Optional[float]]:
+    """(abs amount or 0.0 if the key is absent, row, written_at from meta). Unreadable file -> (None, None, None)."""
+    try:
+        with open(path) as fh:
+            data = json.load(fh)
+    except FileNotFoundError:
+        return 0.0, None, read_written_at(path)
+    except Exception:
+        return None, None, None
+    row = data.get(key) if isinstance(data, dict) else None
+    amt = abs(_f((row or {}).get("positionAmt"), 0.0)) if isinstance(row, dict) else 0.0
+    return amt, row, read_written_at(path)
+
+
+def alerts_dir() -> Path:
+    return Path(os.environ.get("POSITIONS_ALERTS_DIR") or (_REPO / "data" / "alerts"))
+
+
+def guardian_jsonl() -> Path:
+    return Path(os.environ.get("POSITIONS_GUARDIAN_JSONL") or (_REPO / "data" / "reports" / "live_guardian.jsonl"))
+
+
+def broken_positions_alarm(venue: str, account: str, key: str, detail: Dict[str, Any], logger: Optional[logging.Logger] = None) -> None:
+    """CRITICAL log with the exact text, flag file, live-guardian dashboard row, macOS notification (rate-limited 60 s/account)."""
+    log = logger or _LOG
+    now = time.time()
+    iso = datetime.fromtimestamp(now, timezone.utc).isoformat()
+    msg = f"{ALARM_TEXT} {venue}:{account} {key} {json.dumps(detail, default=str)[:600]}"
+    log.critical(msg)
+    if log is not _LOG:
+        _LOG.critical(msg)
+    if not _live_side_effects_allowed():
+        return
+    rec = {"ts": iso, "severity": "CRITICAL", "kind": "BROKEN_POSITIONS_MANAGEMENT", "key": key, "account": account, "venue": venue, "evidence": f"{ALARM_TEXT}: {json.dumps(detail, default=str)[:900]}"}
+    try:
+        d = alerts_dir()
+        d.mkdir(parents=True, exist_ok=True)
+        flag = d / f"BROKEN_POSITIONS_MANAGEMENT_{account}.flag"
+        prev = []
+        try:
+            prev = json.loads(flag.read_text()).get("events", [])[-49:]
+        except Exception:
+            prev = []
+        tmp = flag.with_name(flag.name + f".{os.getpid()}.tmp")
+        tmp.write_text(json.dumps({"alarm": ALARM_TEXT, "account": account, "last": rec, "events": prev + [rec]}, indent=1, default=str))
+        os.replace(tmp, flag)
+    except Exception as e:
+        _LOG.error(f"[ALARM] flag write failed: {e!r}")
+    try:
+        g = guardian_jsonl()
+        g.parent.mkdir(parents=True, exist_ok=True)
+        with open(g, "a") as fh:
+            fh.write(json.dumps(rec, default=str) + "\n")
+    except Exception as e:
+        _LOG.error(f"[ALARM] guardian write failed: {e!r}")
+    if os.environ.get("POSITIONS_ALARM_NOTIFY", "1") == "1" and now - _ALARM_LAST.get(account, 0.0) >= 60.0:
+        _ALARM_LAST[account] = now
+        try:
+            import subprocess
+            import sys as _sys
+
+            if _sys.platform == "darwin":
+                text = f"{venue}:{account} {key} — positions file did not reflect the broker; rewritten from broker".replace('"', "'")
+                subprocess.Popen(["osascript", "-e", f'display notification "{text}" with title "{ALARM_TEXT}" sound name "Sosumi"'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            _LOG.error(f"[ALARM] notification failed: {e!r}")
+
+
+def _update_memory_binance(account: str, key: str, fields: Dict[str, Any]) -> None:
+    """Keep the in-process crypto positions service consistent, so its next save does not re-write the stale value."""
+    try:
+        import sys as _sys
+
+        eps = _sys.modules.get("ez_positions_service")
+        svc = getattr(eps, "service_global", None) if eps else None
+        if svc is None:
+            return
+        pos = (svc.positions_by_account.get(account) or {}).get(key)
+        if pos is None:
+            return
+        for k, v in fields.items():
+            if k in ("positionAmt", "entry_price", "mark_price") and hasattr(pos, k):
+                setattr(pos, k, v)
+    except Exception:
+        pass
+
+
+def rewrite_row_from_broker(venue: str, account: str, symbol: str, position_side: str, broker: Dict[str, Any], logger: Optional[logging.Logger] = None) -> bool:
+    """Rewrite every BROKER-SOURCED field of that sym_side row from the broker (positionAmt, entry_price, mark_price,
+    unrealized pnl, broker_synced_at, last_updated). Local bookkeeping (opened_at, max_gain, ...) is kept; entry_price /
+    opened_at / max_gain are never zeroed; rows are never deleted. Atomic replace + written_at meta."""
+    log = logger or _LOG
+    ps = str(position_side).upper()
+    key = f"{account}:{str(symbol).upper()}_{ps}"
+    if not _live_side_effects_allowed():
+        log.critical(f"[POSITIONS_FILE_REWRITE_SKIPPED_TEST] {venue}:{key} — pytest without POSITIONS_BASE_DIR, live file untouched")
+        return False
+    path = positions_file_for(venue, account, ps)
+    now = time.time()
+    iso = datetime.fromtimestamp(now, timezone.utc).isoformat().replace("+00:00", "Z")
+    try:
+        try:
+            with open(path) as fh:
+                data = json.load(fh)
+            if not isinstance(data, dict):
+                raise ValueError("root not dict")
+        except FileNotFoundError:
+            data = {}
+        amt = abs(_f(broker.get("amt")))
+        entry, mark = _f(broker.get("entry")), _f(broker.get("mark"))
+        row = dict(data.get(key) or {})
+        if not row and amt <= 0:
+            return True  # flat and absent: nothing to reflect
+        fields: Dict[str, Any] = {"positionAmt": amt, "position_side": ps, "symbol": str(symbol).upper(), "last_updated": iso, "broker_synced_at": iso, "broker_rewrite_reason": "POSITIONS_FILE_NOT_REFLECTED"}
+        if entry > 0:
+            fields["entry_price"] = entry
+        if mark > 0:
+            fields["mark_price"] = mark
+            fields["mark_price_last_updated"] = iso
+        if amt > 0 and entry > 0 and mark > 0:
+            pnl = (mark - entry) * amt if ps == "LONG" else (entry - mark) * amt
+            fields["unrealized_pnl_USD" if venue == "binance" else "unrealized_pnl"] = pnl
+        if not row.get("opened_at") and amt > 0:
+            fields["opened_at"] = iso
+        row.update(fields)
+        data[key] = row
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_name(f".{path.name}.broker_rewrite.{os.getpid()}.tmp")
+        with open(tmp, "w") as fh:
+            json.dump(data, fh, default=str)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, path)
+        write_meta(path, writer=f"broker_rewrite:{os.getpid()}", broker_synced_at=now)
+        if venue == "binance":
+            _update_memory_binance(account, key, fields)
+        log.critical(f"🩹 [POSITIONS_FILE_REWRITTEN_FROM_BROKER] {venue}:{key} positionAmt={amt} entry={entry} mark={mark} -> {path}")
+        return True
+    except Exception as e:
+        log.critical(f"🛑 [POSITIONS_FILE_REWRITE_FAILED] {venue}:{key}: {e!r}")
+        return False
+
+
+def file_reflects(venue: str, account: str, symbol: str, position_side: str, broker_amt: float, last_fill_ts: Optional[float], tol_s: float = 2.0) -> Tuple[bool, Dict[str, Any]]:
+    ps = str(position_side).upper()
+    key = f"{account}:{str(symbol).upper()}_{ps}"
+    path = positions_file_for(venue, account, ps)
+    amt, row, wa = read_file_row(path, key)
+    tol = qty_tol(None, abs(broker_amt), amt or 0.0)
+    ok_amt = amt is not None and abs((amt or 0.0) - abs(broker_amt)) <= tol
+    recent = last_fill_ts is not None and (time.time() - last_fill_ts) <= float(os.environ.get("POSITIONS_FILE_FILL_RECENT_S", "600"))
+    ok_time = (not recent) or (wa is not None and wa >= last_fill_ts - tol_s)
+    return ok_amt and ok_time, {"file": str(path), "key": key, "file_amt": amt, "broker_amt": broker_amt, "written_at": wa, "last_fill_ts": last_fill_ts}

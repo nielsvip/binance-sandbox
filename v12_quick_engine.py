@@ -8405,6 +8405,32 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
             blocks["GOLDEN_RULE_ENTRY"] = np.asarray(_gr_blk["fire"], dtype=bool)
         except Exception:
             pass
+    # 2026-10-06 USER full-parity: tiered DC-breakout entry (shared twin of the EPQ DC path).
+    if bool(getattr(cfg, 'DC_BREAKOUT_ENTRY_ENABLED', True)):
+        try:
+            _dc_twin = vec_decisions.check_entry_candidates_crypto__dc_breakout_tiered
+            _dc_dch3 = _safe(npz, 'dc_high_3m', n)
+            _dc_dcl3 = _safe(npz, 'dc_low_3m', n)
+            blocks["DC_BREAKOUT_ENTRY"] = np.asarray(_dc_twin.check_dc_breakout_tiered_vec(
+                cfg, close, dc_high_4h, dc_high_1h, dc_high_15m, _dc_dch3,
+                dc_low_4h, dc_low_1h, dc_low_15m, _dc_dcl3, k_15m,
+                wt1_3m, wt2_3m, wt1_15m, wt2_15m, is_long), dtype=bool)
+        except Exception:
+            pass
+    # 2026-10-06 USER full-parity: VOL-spike reversal fade (shared EPQ twin).
+    # SEAM (documented): L/S ratio_ok is account-state: engine passes True; the live-vec path is
+    # gates-exempt so this matches VEC_EXACT. Alignment is the shared computed score (both sides).
+    if bool(getattr(cfg, 'VOL_SPIKE_ENABLED', True)):
+        try:
+            _vs_twin = vec_decisions.check_entry_candidates_crypto__vol_spike_reversal
+            import vec_decisions.alignment as _vs_align
+            blocks["VOL_SPIKE_REVERSAL"] = np.asarray(_vs_twin.check_vol_spike_reversal_vec(
+                cfg, _safe(npz, 'relative_volume_15m', n), _safe(npz, 'high_15m', n),
+                _safe(npz, 'low_15m', n), _safe(npz, 'open_15m', n), _safe(npz, 'close_15m', n),
+                _vs_align.compute_alignment_vec(npz, n, is_long), _safe(npz, 'dc_low4_15m', n),
+                _safe(npz, 'dc_high4_15m', n), close, is_long, ratio_ok=True), dtype=bool)
+        except Exception:
+            pass
     if cfg.REENTRY_B02_BC156_BOTTOM_ENABLED:
         if is_long:
             wt_bull_cnt = wt_bull_3m.astype(int) + wt_bull_15m.astype(int) + wt_bull_1h.astype(int) + wt_bull_4h.astype(int)
@@ -9073,6 +9099,14 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
                 blocks['B_STDEV_BREAKOUT'] = _sbc_m
     except Exception:
         pass
+    try:  # 2026-10-06 crypto STDEV_BOUNCE twin (ez_positions_quick.detect_stdev_bounce); inert unless STDEV_BOUNCE_ENABLED
+        if str(getattr(cfg, 'MODE', 'crypto')) != 'tradier':
+            import vec_decisions.stdev_bounce_crypto as _sboun
+            _sboun_m = _sboun.fires(npz, n, is_long, cfg, _safe)
+            if _sboun_m is not None:
+                blocks['B_STDEV_BOUNCE'] = _sboun_m
+    except Exception:
+        pass
     return blocks
 
 
@@ -9081,7 +9115,7 @@ _ENTRY_FAMILY_ALIASES = {
     'DC_BREAKOUT': ['B11', 'B15'], 'WT_DC': ['B_WT_DC_LIVE'], 'KZONE': ['B_KZONE', 'B_KZONE_TRADIER'], 'BB_SQUEEZE': ['B_BBSQUEEZE'], 'BB_PCTB': ['B_BBPCTB'],
     'BOUNCE_DEEP_TURN': ['B_BOUNCE_DEEP_TURN'], 'BOUNCE_DONCHIAN': ['B_BOUNCE_DONCHIAN'], 'STOCH_HHHL': ['B_STOCH_HHHL_DIRECT'], 'STOCH_PARENT': ['B_STOCH_PARENT_DIRECT'],
     'STOCH_ENTRY': ['B_STOCH_ENTRY'], 'WT_ENTRY': ['B_WT_ENTRY'], 'RSI2': ['B_RSI2_ENTRY'], 'CONNORS': ['B_CONNORS_ENTRY'], 'MOM3': ['B_MOM3'], 'MOM5': ['B_MOM5'],
-    'EMA20_SLOPE': ['B_EMA20SLOPE'], 'EMA_DIST': ['B_EMADIST'], 'SMA200_DIST': ['B_SMA200DIST'], 'SRS': ['B_SRS_ENTRY'], 'WT_CROSS_B12': ['B12'], 'HA_STACK_B14': ['B14'], 'STDEV_BREAKOUT': ['B_STDEV_BREAKOUT'],
+    'EMA20_SLOPE': ['B_EMA20SLOPE'], 'EMA_DIST': ['B_EMADIST'], 'SMA200_DIST': ['B_SMA200DIST'], 'SRS': ['B_SRS_ENTRY'], 'WT_CROSS_B12': ['B12'], 'HA_STACK_B14': ['B14'], 'STDEV_BREAKOUT': ['B_STDEV_BREAKOUT'], 'STDEV_BOUNCE': ['B_STDEV_BOUNCE'],
 }
 
 
@@ -9092,7 +9126,7 @@ _ENTRY_FAMILY_MASTERS = {
     'BOUNCE_DONCHIAN': ['ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED'], 'STOCH_HHHL': ['ENTRY_STOCH_HHHL_DIRECT_ENABLED'], 'STOCH_PARENT': ['ENTRY_STOCH_PARENT_DIRECT_ENABLED'],
     'STOCH_ENTRY': ['STOCH_ENTRY_ENABLED'], 'WT_ENTRY': ['WT_ENTRY_ENABLED'], 'RSI2': ['RSI2_ENABLED'], 'CONNORS': ['CONNORS_RSI_ENABLED'], 'MOM3': ['MOM3_ENTRY_ENABLED'],
     'MOM5': ['MOM5_ENTRY_ENABLED'], 'EMA20_SLOPE': ['EMA20_SLOPE_ENTRY_ENABLED'], 'EMA_DIST': ['EMA_DIST_ENTRY_ENABLED'], 'SMA200_DIST': ['SMA200_DIST_ENTRY_ENABLED'],
-    'WT_CROSS_B12': ['REENTRY_B12_WT_MOM_ENABLED'], 'HA_STACK_B14': ['REENTRY_B14_HA_TREND_ENABLED'], 'WT_DC': ['WT_DC_ENABLED'], 'STDEV_BREAKOUT': ['STDEV_BREAKOUT_ENABLED'],
+    'WT_CROSS_B12': ['REENTRY_B12_WT_MOM_ENABLED'], 'HA_STACK_B14': ['REENTRY_B14_HA_TREND_ENABLED'], 'WT_DC': ['WT_DC_ENABLED'], 'STDEV_BREAKOUT': ['STDEV_BREAKOUT_ENABLED'], 'STDEV_BOUNCE': ['STDEV_BOUNCE_ENABLED'],
 }
 
 
@@ -9361,6 +9395,10 @@ def compute_entry_signals(npz, n, is_long, cfg):
             # ORIGINAL V8Q v3 weights — proven Sharpe 1.93 on TOP3
             "B15": 4,       # Strong trend continuation (#1 single block, Sharpe 0.89)
             "GOLDEN_RULE_ENTRY": 6,  # 2026-10-06 golden twin: fires standalone (live loop is independent of other entries)
+            "DC_BREAKOUT_ENTRY": 6,  # 2026-10-06 DC twin: standalone (live DC path overrides earlier triggers)
+            "VOL_SPIKE_REVERSAL": 6,  # 2026-10-06 VOL twin: standalone (live score 20); alignment-dead both sides for now
+            "B_STDEV_BREAKOUT": 6,  # 2026-10-06 parity FIX (was default 1): live fires standalone (score 25/22)
+            "B_STDEV_BOUNCE": 6,  # 2026-10-06 bounce twin: standalone (live score 22)
             "B04": 3,       # DC retest (Sharpe 0.39)
             "B11": 3,       # DC break (Sharpe 0.34, 94% WR)
             "B02": 2,       # BC156 bottom bounce (Sharpe 0.31)

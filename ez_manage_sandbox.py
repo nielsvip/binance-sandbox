@@ -12648,6 +12648,9 @@ class MultiAccountTradeManager:
         return False
 
     async def send_foothold_webhook(self, position_key, account_key, symbol, foothold_qty, current_price, side, position_side, reason):
+        if os.environ.get("SANDBOX_FOOTHOLD_WEBHOOK_ENABLED", "0") != "1":  # PHASE 3 2026-10-06 USER: raw Finandy webhook = order outside execute_now/guard — off
+            logger.critical(f"[FOOTHOLD_WEBHOOK_DISABLED] {position_key}: raw webhook order not sent (orders only via execute_now + guarded client)")
+            return False
         if account_key not in self.accounts:
             logger.error(f"[s end_foothold_webhook] Account '{account_key}' not found in self.accounts for {position_key}")
             return False

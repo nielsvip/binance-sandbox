@@ -309,8 +309,13 @@ def candle_against_confirm(get_ind, is_long, tf):
 EXIT_CONFIRM_PREFIXES = ("TECHNICAL_", "WT_CROSSUNDER_FINAL", "WT_CROSSOVER_FINAL")
 
 
-def exit_confirm_block(get_ind, is_long, reason, top_fade_tf, candle_tf):
-    """vec simulate_one `_xc_ok`: exit_sig-block closes (TECHNICAL dc / WT final) need every active exit_confirm filter. Returns veto str or None."""
+def exit_confirm_block(get_ind, is_long, reason, top_fade_tf, candle_tf, gain_pct=None):
+    """vec simulate_one `_xc_ok`: exit_sig-block closes (TECHNICAL dc / WT final) need every active exit_confirm filter. Returns veto str or None. USER 2026-10-06: loss exits (gain_pct<0 = capital conservation) bypass every confirm; confirms gate profit exits only."""
+    try:
+        if gain_pct is not None and float(gain_pct) < 0:
+            return None
+    except (TypeError, ValueError):
+        pass
     if not str(reason or "").startswith(EXIT_CONFIRM_PREFIXES):
         return None
     if not top_fade_confirm(get_ind, is_long, top_fade_tf):
@@ -318,6 +323,33 @@ def exit_confirm_block(get_ind, is_long, reason, top_fade_tf, candle_tf):
     if not candle_against_confirm(get_ind, is_long, candle_tf):
         return f"CANDLE_PATTERN_STOPS_FILTER_TF_{candle_tf}_NO_CONFIRM"
     return None
+
+
+DC_UNCOND_STOP_TOL_PCT = 0.25
+
+
+def short_dc_high_stop_fires(current_price, dc_high, tol_pct=DC_UNCOND_STOP_TOL_PCT):
+    """USER 2026-10-06: SHORT unconditional close when price crosses dc_high + tol. Missing/invalid level never fires."""
+    try:
+        px = float(current_price or 0.0)
+        lvl = float(dc_high or 0.0)
+        tol = float(tol_pct if tol_pct is not None else DC_UNCOND_STOP_TOL_PCT)
+    except (TypeError, ValueError):
+        return False
+    if px <= 0 or lvl <= 0:
+        return False
+    return px >= lvl * (1.0 + tol / 100.0)
+
+
+def wt15m_against(is_long, wt1_15m):
+    """USER 2026-10-06: True when 15m WaveTrend opposes the position. Missing/flat reads False."""
+    try:
+        w = float(wt1_15m)
+    except (TypeError, ValueError):
+        return False
+    if w == 0:
+        return False
+    return (w < 0) if is_long else (w > 0)
 
 
 FAST_RISER_MIN_GAIN_PCT = 0.8

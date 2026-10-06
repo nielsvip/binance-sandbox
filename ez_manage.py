@@ -7806,132 +7806,27 @@ def _ezm_default(symbol: str, side: str, knob: str, default):
 
 
 def _psym_get(symbol: str, side: str, knob: str, default):
-    """Per-sym knob lookup. SQLite primary (per_sym_store.db full_config  ~5000 keys)
-    with JSON backup, then cat_side defaults, then global config.
-
-    Every per_sym entry now carries the full resolved config (defaults snapshot
-    at promotion + overrides) so TEMPLATE changes cannot drift live.  About
-    5000 keys per sym_side.  Parallel run: SQLite by default, JSON always kept.
-    """
-    # 2026-09-26 PARITY MASTER 2: when parity switch True, all NON_VECTORIZABLE knobs forced OFF (entire script)
+    """USER 2026-10-06 SINGLE SOURCE: latest sqlite per-sym overrides > TEMPLATE baseline (cat_side copy) > global.
+    All JSON/book/xlsx/tradeable_keys layers removed — they ran conflicting configs."""
     if (bool(getattr(config, "PARITY_DISABLE_NON_VECTORIZABLE", False)) or bool(getattr(config, "V12_PARITY_DISABLE_NON_VECTORIZABLE", False))) and knob in _NON_VEC_KNOBS_EZ:
         if isinstance(default, bool):
             return False
         if isinstance(default, str) and knob.endswith("_TF"):
             return "None"
         return default
-    # SQLite primary: full resolved config (defaults snapshot + overrides, ~5000 keys)
-    # PER_SYM_STORE_SQLITE_DISABLED=1 forces JSON-only path for parity audit
-    if os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1":
+    if symbol and side and os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1" and os.environ.get("V8_DISABLE_PER_SYM") != "1" and bool(getattr(config, "PER_SYM_CONFIG_ENABLED", True)):
         try:
             import per_sym_store as _pss
-            _full = _pss.get_full_config(f"{symbol}_{side}")
-            if _full is not None and knob in _full:
-                return _full[knob]
-            # also try overrides layer (legacy rows without full_config)
-            _ov_pss = _pss.get_overrides(f"{symbol}_{side}")
-            if _ov_pss is not None and knob in _ov_pss:
-                return _ov_pss[knob]
+            _ov = _pss.get_overrides(f"{symbol}_{side}")
+            if _ov is not None and knob in _ov:
+                return _ov[knob]
         except Exception:
             pass
-    if os.environ.get("V8_DISABLE_PER_SYM") == "1":
-        return _ezm_default(symbol, side, knob, default)
-    if not bool(getattr(config, "PER_SYM_CONFIG_ENABLED", True)):
-        return _ezm_default(symbol, side, knob, default)
-    global _ezm_per_sym_cfgs, _ezm_per_sym_cfgs_mtime, _ezm_per_sym_raw, _ezm_per_sym_raw_mtime
-    try:
-        mtime = _ezm_per_sym_cfgs_path.stat().st_mtime
-        if mtime != _ezm_per_sym_cfgs_mtime:
-            with _ezm_per_sym_cfgs_path.open() as _f:
-                raw = json.load(_f)
-            _ezm_per_sym_cfgs = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict) and k != "_meta"}
-            _ezm_per_sym_raw = {k: v for k, v in raw.items() if isinstance(v, dict) and k != "_meta"}
-            _ezm_per_sym_cfgs_mtime = mtime
-            _ezm_per_sym_raw_mtime = mtime
-    except FileNotFoundError:
-        pass
-    except Exception:
-        pass
-    key = f"{symbol}_{side}"
-    # If SQLite full_config was missing for this knob, try JSON backup before cat_side.
-    # When PER_SYM_STORE_SQLITE_DISABLED=1 the JSON full_config (defaults+overrides) is the truth,
-    # so check it as fallback — overrides alone would miss the snapshot semantics.
-    _json_hit = False
-    ov = _ezm_apply_final_book(key, _ezm_per_sym_cfgs.get(key, {}))
-    if knob in ov:
-        _json_hit = True
-        return ov[knob]
-    # JSON full_config fallback (complete snapshot, used when sqlite disabled or for audit)
-    try:
-        _raw_full = _ezm_per_sym_raw.get(key, {})
-        _fc = _raw_full.get("full_config") if isinstance(_raw_full, dict) else None
-        if isinstance(_fc, dict) and knob in _fc:
-            return _fc[knob]
-    except Exception:
-        pass
-    # USER 2026-09-30: FOUR-default layer — no per-sym override -> this sym_side's cat_side default (supersedes the
-    # runtime TEMPLATE xlsx fallback below, which it was built from)
-    _csd_v = _ezm_cat_side_default(symbol, side, knob)
-    if _csd_v is not _EZM_CSD_MISSING:
-        return _csd_v
-    # Template fallback: never-calculated sym_side in tradeable_keys must trade TEMPLATE per category until calculated
-    # STOCK vs CRYPTO determined by suffix: crypto has USDT/USDC/USDS, stocks are bare (AAPL, NVDA etc)
-    if ov == {}:
-        # Only for tradeable_keys members that have no per_sym entry
-        try:
-            _tk_check = Path(__file__).resolve().parent / "tradeable_keys.json"
-            if _tk_check.exists():
-                _tk_raw_chk = json.loads(_tk_check.read_text())
-                _tk_set_chk = set(str(k).split(":",1)[1] if ":" in str(k) else str(k) for k in _tk_raw_chk if isinstance(k, str))
-                if f"{symbol}_{side}" in _tk_set_chk:
-                    is_crypto = symbol.endswith("USDT") or symbol.endswith("USDC") or symbol.endswith("USDS")
-                    # Pick template file per category
-                    if is_crypto:
-                        tpl_file = Path(__file__).resolve().parent / f"SPREADSHEETS/TEMPLATE_CRYPTO_{side}.xlsx"
-                    else:
-                        tpl_file = Path(__file__).resolve().parent / f"SPREADSHEETS/TEMPLATE_STOCKS_{side}.xlsx"
-                    # Lazy load template switch values (cached)
-                    global _ezm_template_cache, _ezm_template_mtime
-                    try:
-                        _ezm_template_cache
-                    except NameError:
-                        _ezm_template_cache = {}; _ezm_template_mtime = {}
-                    mtime_tpl = tpl_file.stat().st_mtime if tpl_file.exists() else 0
-                    if tpl_file.exists() and _ezm_template_mtime.get(str(tpl_file)) != mtime_tpl:
-                        import openpyxl as _oxl
-                        wb = _oxl.load_workbook(str(tpl_file), data_only=True, read_only=True)
-                        d = {}
-                        for ws in wb.worksheets:
-                            # Load ALL sheets — every switch lives somewhere (ENTRY/EXIT/FILTER/STDEV/HTF etc)
-                            for row in ws.iter_rows(min_row=4, values_only=True):
-                                if not row or not row[0]: continue
-                                sw = str(row[0]).strip()
-                                if sw and len(row) > 1 and row[1] is not None:
-                                    # row[1] is B - default value for that TEMPLATE per category
-                                    if sw not in d:
-                                        d[sw] = row[1]
-                        _ezm_template_cache[str(tpl_file)] = d
-                        _ezm_template_mtime[str(tpl_file)] = mtime_tpl
-                    tpl_vals = _ezm_template_cache.get(str(tpl_file), {})
-                    if knob in tpl_vals and tpl_vals[knob] is not None:
-                        return tpl_vals[knob]
-                    # For knobs not in TEMPLATE (e.g. MIN_POSITION_SIZE), TEMPLATE baseline equals config default — allowed as template-derived, not old defaults
-                    return _ezm_default(symbol, side, knob, default)
-        except Exception as _e:
-            logger.warning(f"[TEMPLATE_ERROR] {symbol}_{side} {knob} template load failed {_e} — falling back to config for never-calculated")
-            # Fallback to config for never-calculated is template-equivalent for non-template knobs
-            try:
-                _tk_f = Path(__file__).resolve().parent / "tradeable_keys.json"
-                if _tk_f.exists():
-                    _tk_r = json.loads(_tk_f.read_text())
-                    _tk_s = set(str(k).split(":",1)[1] if ":" in str(k) else str(k) for k in _tk_r if isinstance(k, str))
-                    if f"{symbol}_{side}" in _tk_s:
-                        return _ezm_default(symbol, side, knob, default)
-            except Exception:
-                pass
-            pass
-    # For never-calculated, template fallback already handled above — if still here, template had it or we already returned config-equivalent
-    return _ezm_default(symbol, side, knob, default)
+    if symbol and side:
+        _csd_v = _ezm_cat_side_default(symbol, side, knob)
+        if _csd_v is not _EZM_CSD_MISSING:
+            return _csd_v
+    return getattr(config, knob, default)
 
 
 _LANE_B_SIZING_HOLD_LOGGED: set = set()
@@ -8031,38 +7926,8 @@ def _vec_driven_mode(symbol: str, side: str, account_key: str) -> str:
 
 
 def _psym_cs_get(symbol: str, side: str, knob: str, default):
-    """Parity lane B 2026-10-06 (director: per-sym > cat_side default > global, the TEMPLATE/v15_vector_delta baseline reaches live).
-    Order: per-sym PROMOTION layer (per_sym_store overrides_json -> per_sym_active_config.json overrides) -> cat_side default
-    (cat_side_defaults.py, data/cat_side_defaults_4.json / kv_json, hot-reloaded) -> GLOBAL base config value.
-    Unlike _psym_get it never returns the per_sym_store full_config DEFAULTS SNAPSHOT (stale defaults captured at promotion must
-    not override the current cat_side baseline; tools/parity_persym_snapshot_cleanup.py lists them)."""
-    if symbol and side and os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1":
-        try:
-            import per_sym_store as _pss
-            _ov_p = _pss.get_overrides(f"{symbol}_{side}")
-            if _ov_p is not None and knob in _ov_p:
-                return _ov_p[knob]
-        except Exception:
-            pass
-    if symbol and side and os.environ.get("V8_DISABLE_PER_SYM") != "1":
-        try:
-            global _ezm_per_sym_cfgs, _ezm_per_sym_cfgs_mtime
-            _mt_p = _ezm_per_sym_cfgs_path.stat().st_mtime
-            if _mt_p != _ezm_per_sym_cfgs_mtime:
-                with _ezm_per_sym_cfgs_path.open() as _f_p:
-                    _raw_p = json.load(_f_p)
-                _ezm_per_sym_cfgs = {k: v.get("overrides", {}) for k, v in _raw_p.items() if isinstance(v, dict) and k != "_meta"}
-                _ezm_per_sym_cfgs_mtime = _mt_p
-            _ov_j = (_ezm_per_sym_cfgs or {}).get(f"{symbol}_{side}")
-            if _ov_j is not None and knob in _ov_j:
-                return _ov_j[knob]
-        except Exception:
-            pass
-    if symbol and side:
-        _cs_v = _ezm_cat_side_default(symbol, side, knob)
-        if _cs_v is not _EZM_CSD_MISSING:
-            return _cs_v
-    return getattr(_ezm_base_config, knob, default)
+    """USER 2026-10-06 SINGLE SOURCE: identical to _psym_get now (sqlite overrides > TEMPLATE > global). Kept as alias for lane callers."""
+    return _psym_get(symbol, side, knob, default)
 
 
 def _ezm_is_live_side_enabled(symbol: str, side: str, account_key: str | None = None) -> tuple[bool, str]:
@@ -36312,6 +36177,9 @@ class MultiAccountTradeManager:
         """Ultra-fast watchdog (1-second tick) dedicated exclusively to enforcing tight micro-stops and momentum-cuts on Breakout Scalp trades."""
         logger.info("🛡️ [BREAKOUT_GUARD] Strict Close Monitor initialized.")
         while True:
+            if _vx_native_off():  # 2026-10-06 USER churn audit: native EXIT producer off at the source while the vec twin owns EXIT (legacy positions keep process_position native exits; emergency margin/oversize/stale-price closes stay)
+                await asyncio.sleep(30)
+                continue
             try:
                 await asyncio.sleep(1.0)
                 if (
@@ -36484,6 +36352,9 @@ class MultiAccountTradeManager:
             "[DC_BREACH_MONITOR] DC breach reduce monitor started (3s interval)"
         )
         while True:
+            if _vx_native_off():  # 2026-10-06 USER churn audit: native EXIT producer off at the source while the vec twin owns EXIT (legacy positions keep process_position native exits; emergency margin/oversize/stale-price closes stay)
+                await asyncio.sleep(30)
+                continue
             try:
                 await asyncio.sleep(3.0)
                 if not hasattr(self, "tracker_manager") or not self.tracker_manager:
@@ -56864,6 +56735,9 @@ async def _spike_fade_1m_exit_monitor(trade_manager):
         "[SF_1M_EXIT] Started — 3m structure exhaustion exit for spike fade (uses existing indicator data)"
     )
     while True:
+        if _vx_native_off():  # 2026-10-06 USER churn audit: native EXIT producer off at the source while the vec twin owns EXIT (legacy positions keep process_position native exits; emergency margin/oversize/stale-price closes stay)
+            await asyncio.sleep(30)
+            continue
         try:
             snap = (
                 trade_manager.service.indicators_snapshot
@@ -59415,7 +59289,7 @@ Only say REVERSE if confidence >= 0.75. Otherwise say OK."""
     async def _execute_trade(
         self, account_key, position_key, action, qty, price, reason
     ):
-        if _vx_native_off() and action not in ("REDUCE", "CLOSE"):  # 2026-10-06 switch-over: native opener/augmenter/hedge off at the source while the vec twin owns ENTRY (PARITY_VEC_EXACT_MODE)
+        if _vx_native_off():  # 2026-10-06 switch-over: native opener/augmenter/hedge off at the source while the vec twin owns ENTRY (PARITY_VEC_EXACT_MODE)
             return "BLOCKED_VEC_EXACT_NATIVE_OFF"
         try:
             pos = await self.tracker_manager.get_position(position_key)

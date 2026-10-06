@@ -5938,9 +5938,8 @@ def _reconnect_20260414_sync_aliases():
             setattr(config, _alias, _cv)
         elif _av is not None and _cv is None:
             setattr(config, _canon, _av)
-        elif _cv is not None and _av is not None and _cv != _av:
-            # Sweep most likely set TRADIER_<NAME> — propagate to alias.
-            setattr(config, _alias, _cv)
+        # BIBLE 68/67 2026-10-06: when both names exist they keep their OWN values (vec v12 reads both names in different blocks, each = its
+        # template bold). The old "TRADIER_<NAME> wins" copy made live <NAME> differ from the <NAME> vec reads -> removed.
 _reconnect_20260414_sync_aliases()
 
 
@@ -6608,92 +6607,27 @@ def _load_global_per_sym_cfgs() -> dict:
 
 
 def _cfg(param, default=None, account_key=None, symbol=None, side=None, _promotions_only=False):
-    """Per-symbol config lookup with strict per-symbol-first fallback chain.
-    Order:
-      1. trb/active_config.json (7D agent output for this account)
-      2. per_sym_active_config.json (global per-symbol custom — long-term sweep winner)
-      3. regime override (config.get_symbol_setting)
-      4. global default (config.PARAM) — basic baseline
-    Falls back to basic ONLY when no custom settings exist for this (sym, side, param).
-
-    2026-05-18 Path B: when param == 'START_POSITION_SIZE', also try
-    'START_POSITION_SIZE_OVERRIDE_USD' (per-sym trial-sizing key) FIRST in the
-    same overlay chain. Honors user mandate that PROMOTE_MIN_AMOUNT pending
-    candidates trade at the daemon-written $5 trial size before promotion.
-
-    2026-05-31 FINAL per_sym BOOK is AUTHORITATIVE for LONG_ENABLED/SHORT_ENABLED/
-    BREAKOUT_SIZE_MAX_MULT/MOMENTUM_SMA_WATCHDOG_PCT — checked FIRST when enabled."""
-    # SQLite primary: full resolved per_sym config (~5000 keys, defaults snapshot + overrides)
-    # Every per_sym entry includes defaults of that moment so TEMPLATE changes cannot drift live.
-    # PER_SYM_STORE_SQLITE_DISABLED=1 forces JSON-only parity audit.
-    if symbol and side and _promotions_only != "cat" and os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1":
-        try:
-            import per_sym_store as _pss
-            # PARITY LANE C 2026-10-06 (director): _promotions_only=True reads ONLY the row's promotion overrides, never the
-            # full_config defaults snapshot (stale captured defaults must not beat the cat_side baseline; same rule as ez _psym_cs_get).
-            _fc = _pss.get_overrides(f"{symbol}_{side}") if _promotions_only else _pss.get_full_config(f"{symbol}_{side}")
-            if _fc is not None and param in _fc:
-                return _fc[param]
-        except Exception:
-            pass
+    """USER 2026-10-06 SINGLE SOURCE: latest sqlite per-sym overrides > TEMPLATE baseline (cat_side copy) > global.
+    All JSON/book/regime/master layers removed — they ran conflicting configs. Sweep override stays first (backtest-only)."""
     _test_found, _test_value = _v8_sweep_override(param)
     if _test_found:
         return _test_value
-    # PARTIAL_PROFIT_LOCK_ENABLED is a global emergency/master switch.  Hourly,
-    # per-symbol, and Redis overlays may narrow it to False, but they must never
-    # resurrect PPL after the operator has switched the global setting off.
-    # Without this guard, stale active_config.json entries containing True took
-    # precedence over config_tradier.py=False and emitted live PPL reductions.
-    if (
-        param == "PARTIAL_PROFIT_LOCK_ENABLED"
-        and not bool(getattr(config, 'PARTIAL_PROFIT_LOCK_ENABLED', False))
-    ):
-        return False
-    # R1 is also a global emergency/master switch.  Global OFF is absolute,
-    # while an enabled global may still be narrowed by a live-reloaded overlay.
-    # Do not return an in-memory True here: a long-running process can retain an
-    # obsolete value and would then ignore the operator's false safety overlay.
-    if (
-        param == "R1_DC_LOW4_3M_EMERGENCY_ENABLED"
-        and not bool(getattr(config, 'R1_DC_LOW4_3M_EMERGENCY_ENABLED', False))
-    ):
-        return False
-    if symbol and side and _promotions_only != "cat":
-        exact = _load_full_recipe_live_cfgs().get(f"{symbol}_{side}", {})
-        if param in exact:
-            return exact[param]
-        _bv = _tradier_final_book_get(f"{symbol}_{side}", param)
-        if _bv is not None:
-            return _bv
-    if account_key and symbol and side and _promotions_only != "cat":
-        # 2026-08-15 corrected: TRB = pure best found settings only (4yr per-sym sweep winners).
-        # TRC = TRB baseline + weekly month-back overlay (30d, exp weight on last days) — analogous
-        # to crypto where fin trades men symbols+settings with 7D overlay while men is pure best.
-        # 2026-07-19 parity: TRC trades same symbols as TRB (symbols_trb_long/short) but settings differ.
-        # Both arms honor _inject_neg_sharpe_no_trade: wsharpe<0 → LONG/SHORT_ENABLED=False.
-        if account_key in ("trb", "trc"):
-            # 1. Per-account config: TRB reads its pure best; TRC reads its overlay-augmented file
-            cfgs = _load_tradier_per_sym_cfgs(Path(config.BASE_PATH) / "data" / "hourly_reconfig" / account_key / "active_config.json")
-            entry = cfgs.get(f"{symbol}_{side}", {})
-            # 2026-05-18 trial-sizing override 
-            if param == "START_POSITION_SIZE" and "START_POSITION_SIZE_OVERRIDE_USD" in entry and entry["START_POSITION_SIZE_OVERRIDE_USD"] is not None: return entry["START_POSITION_SIZE_OVERRIDE_USD"]
-            if param in entry: return entry[param]
-            # 2. Global per-symbol custom (single source of truth for per-symbol settings)
-            gentry = _load_global_per_sym_cfgs().get(f"{symbol}_{side}", {})
-            # 2026-05-18 trial-sizing override
-            if param == "START_POSITION_SIZE" and "START_POSITION_SIZE_OVERRIDE_USD" in gentry and gentry["START_POSITION_SIZE_OVERRIDE_USD"] is not None: return gentry["START_POSITION_SIZE_OVERRIDE_USD"]
-            if param in gentry: return gentry[param]
-        # 3. Regime override (applies to all accounts — not per_sym agent output)
-        # FIX 2026-09-04: TradierConfig may not have get_symbol_setting (removed from config.py/tradier)
-        # Guard so live backtest doesn't crash with AttributeError -> 0 trades
+    if param == "START_POSITION_SIZE" and symbol and side and _promotions_only != "cat" and os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1" and os.environ.get("V8_DISABLE_PER_SYM") != "1":
         try:
-            if hasattr(config, "get_symbol_setting"):
-                v = config.get_symbol_setting(account_key, f"{symbol}_{side}", param)
-                if v is not None:
-                    return v
+            import per_sym_store as _pss_ts
+            _ov_ts = _pss_ts.get_overrides(f"{symbol}_{side}")
+            if _ov_ts is not None and _ov_ts.get("START_POSITION_SIZE_OVERRIDE_USD") is not None:
+                return _ov_ts["START_POSITION_SIZE_OVERRIDE_USD"]
         except Exception:
             pass
-    # 4. USER 2026-09-30: FOUR-default layer — no per-sym value -> this sym_side's cat_side default (STOCKS_LONG/SHORT)
+    if symbol and side and _promotions_only != "cat" and os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1" and os.environ.get("V8_DISABLE_PER_SYM") != "1":
+        try:
+            import per_sym_store as _pss
+            _ov = _pss.get_overrides(f"{symbol}_{side}")
+            if _ov is not None and param in _ov:
+                return _ov[param]
+        except Exception:
+            pass
     if symbol and side and bool(getattr(config, "CAT_SIDE_DEFAULTS_ENABLED", True)):
         try:
             import cat_side_defaults as _csd
@@ -6703,7 +6637,6 @@ def _cfg(param, default=None, account_key=None, symbol=None, side=None, _promoti
                 return _csd_v
         except Exception:
             pass
-    # 5. Basic baseline
     return getattr(config, param, default)
 
 def _cfg_auto(param, default=None):
@@ -9949,6 +9882,9 @@ async def gap_moc_and_morning_loop(trade_manager):
     _gap_inventory_load()
     _gap_per_symbol_load(force=True)
     _gap_moc_load_pending()  # 2026-09-14: survive restarts (Friday exits -> Monday rebuys)
+    for _ban_pk in [k for k in list(_GAP_MOC_PENDING_REENTRY) if _odg.entry_banned(str(k).split(":", 1)[0], config)]:  # PHASE 3 USER: tra never re-enters
+        _GAP_MOC_PENDING_REENTRY.pop(_ban_pk, None)
+        logger.critical(f"[GAP_MOC] dropped restored morning rebuy {_ban_pk}: account is ENTRY-BANNED (exits only)")
     if _GAP_MOC_PENDING_REENTRY:
         logger.warning(f"[GAP_MOC] restored {len(_GAP_MOC_PENDING_REENTRY)} pending morning rebuys from disk")
     _morning_done_today = False
@@ -9992,6 +9928,9 @@ async def gap_moc_and_morning_loop(trade_manager):
                     _gap_per_symbol_load()
                     _morning_evaluated = 0
                     for pk, info in list(_GAP_MOC_PENDING_REENTRY.items()):
+                        if _odg.entry_banned(str(pk).split(":", 1)[0], config):  # PHASE 3 USER: banned account — never queue a rebuy
+                            _GAP_MOC_PENDING_REENTRY.pop(pk, None)
+                            continue
                         try:
                             poss = trade_manager.position_manager.get_positions_by_account('trb') or {}
                             cur = poss.get(pk)
@@ -10853,6 +10792,48 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 return f"BT_EXIT_{_bt_pre}_CLOSED"
         except Exception as _bt_e:
             logger.warning(f"[BT_EXIT] probe err {position_key}: {_bt_e}")
+        # 2026-10-06 USER MANDATE — UNCONDITIONAL SHORT DC-HIGH STOP: hardcoded 4h + switched 1h/15m (default True), all +0.25%.
+        # SHORT crossing dc_high+0.25% closes immediately. Gain/age-agnostic. NO veto, NO confirm, NO NOLOSS may stop it.
+        try:
+            if (not is_long) and has_position and position is not None and abs(safe_float(getattr(position, "positionAmt", 0))) > 0:
+                _uh_px = safe_fetch_float(current_price, 0.0)
+                _uh_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
+                _uh_fire = ""
+                _uh_h4 = safe_fetch_float(i.get("dc_high_4h", 0), 0.0)
+                if _ftf_twins.short_dc_high_stop_fires(_uh_px, _uh_h4):
+                    _uh_fire = f"DC_HIGH_4H_UNCOND_px{_uh_px:.4f}_lvl{_uh_h4:.4f}"
+                if not _uh_fire and _ftf_twins.truthy(_cfg("DC_HARD_STOP_1H_ENABLED", True, account_key, symbol, position_side)):
+                    _uh_h1 = safe_fetch_float(i.get("dc_high_1h", 0), 0.0)
+                    if _ftf_twins.short_dc_high_stop_fires(_uh_px, _uh_h1):
+                        _uh_fire = f"DC_HIGH_1H_UNCOND_px{_uh_px:.4f}_lvl{_uh_h1:.4f}"
+                if not _uh_fire and _ftf_twins.truthy(_cfg("DC_HARD_STOP_15M_ENABLED", True, account_key, symbol, position_side)):
+                    _uh_h15 = safe_fetch_float(i.get("dc_high_15m", 0), 0.0)
+                    if _ftf_twins.short_dc_high_stop_fires(_uh_px, _uh_h15):
+                        _uh_fire = f"DC_HIGH_15M_UNCOND_px{_uh_px:.4f}_lvl{_uh_h15:.4f}"
+                if _uh_fire:
+                    logger.critical(f"⛔ [UNCOND_DC_HIGH_HARD_STOP] {position_key}: SHORT {_uh_fire} g={_uh_gain:.2f}% → IMMEDIATE CLOSE (USER 2026-10-06, no veto)")
+                    dc_hardstop_cooldown_record(symbol, "SHORT")
+                    await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"UNCOND_{_uh_fire}_g{_uh_gain:.2f}", 100.0, override_qty=999999)
+                    return "UNCOND_DC_HIGH_CLOSED"
+        except Exception as _uh_e:
+            logger.warning(f"[UNCOND_DC_HIGH] {position_key} probe err: {_uh_e}")
+        # 2026-10-06 USER MANDATE — NON-TRADEABLE: exit at first wt1_15m against, keep closed (execute layer blocks reentry).
+        try:
+            if has_position and position is not None and abs(safe_float(getattr(position, "positionAmt", 0))) > 0:
+                _nt_tradeable = True
+                try:
+                    _nt_tradeable = bool(trade_manager.is_symbol_tradeable(symbol, account_key, position_side))
+                except Exception:
+                    _nt_tradeable = True
+                if not _nt_tradeable and _ftf_twins.wt15m_against(is_long, safe_fetch_float(i.get("wt1_15m", 0), 0.0)):
+                    _nt_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
+                    _nt_w1 = safe_fetch_float(i.get("wt1_15m", 0), 0.0)
+                    logger.critical(f"🚨 [NON_TRADEABLE_WT15M_EXIT] {position_key}: not tradeable + wt1_15m {_nt_w1:.1f} against → CLOSE + keep closed g={_nt_gain:.2f}%")
+                    vigilance_block(symbol, position_side, f"NON_TRADEABLE_WT15M_EXIT_wt{_nt_w1:.1f}_g{_nt_gain:.2f}", exit_price=current_price)
+                    await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"NON_TRADEABLE_WT15M_EXIT_{'LONG' if is_long else 'SHORT'}_wt{_nt_w1:.1f}_g{_nt_gain:.2f}", 100.0, override_qty=999999)
+                    return "NON_TRADEABLE_WT15M_CLOSED"
+        except Exception as _nt_e:
+            logger.warning(f"[NON_TRADEABLE] {position_key} probe err: {_nt_e}")
         # ═══ VIGILANCE GUARD (USER 2026-09-28, 3rd mandate: "we do not use fix %"): STRUCTURAL stop —
         # position at a loss AND price breaches dc_low4_{TF} (LONG) / dc_high4_{TF} (SHORT), TF from
         # VIGILANCE_DC4_STOP_TF (user granted 15m) → IMMEDIATE CLOSE + sym_side entry-block until recovery.
@@ -10934,7 +10915,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 # PARITY LANE C 2026-10-06: vec exit_confirm (EXIT_TOP_FADE / CANDLE_PATTERN_STOPS FILTER_TF) gates exit_sig-block closes (TECHNICAL dc / WT final).
                 if _gx_fire:
                     _xcf_ind = indicators_raw if indicators_raw else (i or {})
-                    _xcf_veto = _ftf_twins.exit_confirm_block(lambda _k: _xcf_ind.get(_k), is_long, _gx_reason, _ftf_twins.resolve_tf(_cfg_ps('EXIT_TOP_FADE_FILTER_TF', 'OFF', account_key, symbol, position_side)), _ftf_twins.resolve_tf(_cfg_ps('CANDLE_PATTERN_STOPS_FILTER_TF', 'OFF', account_key, symbol, position_side)))
+                    _xcf_veto = _ftf_twins.exit_confirm_block(lambda _k: _xcf_ind.get(_k), is_long, _gx_reason, _ftf_twins.resolve_tf(_cfg_ps('EXIT_TOP_FADE_FILTER_TF', 'OFF', account_key, symbol, position_side)), _ftf_twins.resolve_tf(_cfg_ps('CANDLE_PATTERN_STOPS_FILTER_TF', 'OFF', account_key, symbol, position_side)), safe_fetch_float(getattr(position, 'gain', 0), 0.0))
                     if _xcf_veto:
                         logger.info(f"[LANE_C_EXIT_CONFIRM] {position_key}: hold {_gx_reason} — {_xcf_veto}")
                         _gx_fire, _gx_reason = False, ""
@@ -11014,7 +10995,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _xc_fire, _xc_reason = _twin_entry_ports_b.wt_crossunder_final_exit(_gx_c, is_long, i or {}, "5m")
                     if _xc_fire:
                         _xcf_ind = indicators_raw if indicators_raw else (i or {})
-                        _xcf_veto = _ftf_twins.exit_confirm_block(lambda _k: _xcf_ind.get(_k), is_long, _xc_reason, _ftf_twins.resolve_tf(_cfg_ps('EXIT_TOP_FADE_FILTER_TF', 'OFF', account_key, symbol, position_side)), _ftf_twins.resolve_tf(_cfg_ps('CANDLE_PATTERN_STOPS_FILTER_TF', 'OFF', account_key, symbol, position_side)))
+                        _xcf_veto = _ftf_twins.exit_confirm_block(lambda _k: _xcf_ind.get(_k), is_long, _xc_reason, _ftf_twins.resolve_tf(_cfg_ps('EXIT_TOP_FADE_FILTER_TF', 'OFF', account_key, symbol, position_side)), _ftf_twins.resolve_tf(_cfg_ps('CANDLE_PATTERN_STOPS_FILTER_TF', 'OFF', account_key, symbol, position_side)), safe_fetch_float(getattr(position, 'gain', 0), 0.0))
                         if _xcf_veto:
                             logger.info(f"[LANE_C_EXIT_CONFIRM] {position_key}: hold {_xc_reason} — {_xcf_veto}")
                         else:
@@ -12494,7 +12475,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             if should_exit:
                 try:
                     _xcf_ind = indicators_raw or {}
-                    _xcf_veto = _ftf_twins.exit_confirm_block(lambda _k: _xcf_ind.get(_k), position_side == "LONG", exit_reason, _ftf_twins.resolve_tf(_cfg_ps('EXIT_TOP_FADE_FILTER_TF', 'OFF', account_key, symbol, position_side)), _ftf_twins.resolve_tf(_cfg_ps('CANDLE_PATTERN_STOPS_FILTER_TF', 'OFF', account_key, symbol, position_side)))
+                    _xcf_veto = _ftf_twins.exit_confirm_block(lambda _k: _xcf_ind.get(_k), position_side == "LONG", exit_reason, _ftf_twins.resolve_tf(_cfg_ps('EXIT_TOP_FADE_FILTER_TF', 'OFF', account_key, symbol, position_side)), _ftf_twins.resolve_tf(_cfg_ps('CANDLE_PATTERN_STOPS_FILTER_TF', 'OFF', account_key, symbol, position_side)), safe_fetch_float(getattr(position, 'gain', 0), 0.0))
                     if _xcf_veto:
                         logger.info(f"[LANE_C_EXIT_CONFIRM] {position_key}: hold {exit_reason} — {_xcf_veto}")
                         should_exit = False
@@ -27440,6 +27421,9 @@ class TradierTradeManager:
     @_odg.execute_now_gate("tradier")  # POSITIONS REVAMP 2026-10-06: execute_now token — the wire refuses exposure-increasing orders without it
     @_ptruth.tradier_confirmed  # 2026-10-06 USER POSITIONS_TRUTH: SUCCESS only when the broker-confirmed position matches (order id alone is not a fill)
     async def execute_now(self, position_key: str, account_key: str, symbol: str, original_position_amt: float, side: str, position_side: str, quantity: float, old_price: float, unique_id: str, reason: str, is_full_close: bool, action: str = None, decision_recorded: bool = False) -> str:  # 2026-10-06 director: NameError fix — recorder flag passed through from execute_trade_action (direct paths default False = record here)
+        if _odg.entry_banned(account_key, config) and (str(action or "").upper() in ("OPEN", "AUGMENT", "REENTRY", "REENTER", "REENTRY_OPEN", "QUICK_OPEN", "QUICK_AUGMENT", "REVERSE", "HEDGE_OPEN") or (not action and not is_full_close and str(side).upper() == ("BUY" if str(position_side).upper() == "LONG" else "SELL"))):
+            logger.critical(f"🚫 [ACCOUNT_ENTRY_BANNED] {position_key}: {account_key} is entry-banned (exits only) — {action} refused")  # PHASE 3 USER: tra one trade from closure
+            return "BLOCKED_ACCOUNT_ENTRY_BANNED"
         # PARITY LOOP STOCKS 2026-10-06: VEC_EXACT order (PARITY_VEC_EXACT_MODE) = the vec decision -> decision gates below are skipped ("NO GATES"; NOLOSS has only exceptions).
         _vx_ex = is_vec_exact_reason(reason) and bool(_cfg('PARITY_VEC_EXACT_MODE', False, account_key, symbol, position_side))
         # BROKER_SYNC LOGICAL DEMAND — 2026-09-08: 80× same order sent because it thought not received without checking broker.
@@ -34629,7 +34613,9 @@ class StockBreakoutScalper:
                 cp = snap['price']
                 qty = max(1, int(min(self.MAX_USD, self.BASE_USD * max(1, chg / 0.5)) / cp))
                 try:
-                    order = await trade_manager.place_order(sym, "buy", qty, order_type="market")
+                    # PHASE 3 2026-10-06: through execute_now (was a direct place_order with no action = never valid)
+                    _sbs_res = await trade_manager.execute_now(position_key=f"{self.ACCT}:{sym}_LONG", account_key=self.ACCT, symbol=sym, original_position_amt=0.0, side="BUY", position_side="LONG", quantity=float(qty), old_price=float(cp), unique_id=f"STOCK_OUTLIER_{sym}_L_{int(now)}", reason=f"STOCK_OUTLIER chg={chg:+.2f}%", is_full_close=False, action="OPEN")
+                    order = str(_sbs_res).startswith("SUCCESS")
                     if order:
                         logger.warning(f"[STOCK_OUTLIER] 🟢 LONG {sym} chg={chg:+.2f}% med={median:+.2f}% qty={qty} ${qty*cp:.0f}")
                         self._state["positions"][key] = {"sym": sym, "side": "LONG", "ep": cp, "qty": qty, "ts": now, "max_g": 0, "prev_high": snap['high'], "prev_low": snap['low']}
@@ -34645,7 +34631,8 @@ class StockBreakoutScalper:
                 cp = snap['price']
                 qty = max(1, int(min(self.MAX_USD, self.BASE_USD * max(1, abs(chg) / 0.5)) / cp))
                 try:
-                    order = await trade_manager.place_order(sym, "sell_short", qty, order_type="market")
+                    _sbs_res = await trade_manager.execute_now(position_key=f"{self.ACCT}:{sym}_SHORT", account_key=self.ACCT, symbol=sym, original_position_amt=0.0, side="SELL", position_side="SHORT", quantity=float(qty), old_price=float(cp), unique_id=f"STOCK_OUTLIER_{sym}_S_{int(now)}", reason=f"STOCK_OUTLIER chg={chg:+.2f}%", is_full_close=False, action="OPEN")
+                    order = str(_sbs_res).startswith("SUCCESS")
                     if order:
                         logger.warning(f"[STOCK_OUTLIER] 🔴 SHORT {sym} chg={chg:+.2f}% med={median:+.2f}% qty={qty} ${qty*cp:.0f}")
                         self._state["positions"][key] = {"sym": sym, "side": "SHORT", "ep": cp, "qty": qty, "ts": now, "max_g": 0, "prev_high": snap['high'], "prev_low": snap['low']}
@@ -34677,7 +34664,8 @@ class StockBreakoutScalper:
                 if should_exit:
                     try:
                         close_side = "sell" if pos['side'] == 'LONG' else "buy_to_cover"
-                        await trade_manager.place_order(pos['sym'], close_side, pos['qty'], order_type="market")
+                        _sbs_ps = 'LONG' if pos['side'] == 'LONG' else 'SHORT'
+                        await trade_manager.execute_now(position_key=f"{self.ACCT}:{pos['sym']}_{_sbs_ps}", account_key=self.ACCT, symbol=pos['sym'], original_position_amt=float(pos['qty']), side=("SELL" if _sbs_ps == 'LONG' else "BUY"), position_side=_sbs_ps, quantity=float(pos['qty']), old_price=float(cp), unique_id=f"STOCK_OUTLIER_{pos['sym']}_X_{int(now)}", reason=f"STOCK_OUTLIER_EXIT {reason}", is_full_close=True, action="CLOSE")  # PHASE 3: through execute_now
                         logger.warning(f"[STOCK_OUTLIER] ⚡ EXIT {key} {reason}")
                     except Exception as e:
                         logger.error(f"[STOCK_OUTLIER] ❌ EXIT {key}: {e}")

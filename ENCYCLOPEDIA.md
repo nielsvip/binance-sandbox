@@ -216,3 +216,62 @@ gaps. **Missing switches/filters across the fleet:** `python tools/v15_missing_l
 - Stocks: `reentry_monitor_loop` bypasses execute_now; `_cfg_auto` side-key bug; BB4H elif swallows augments. [03 §6]
 - `ULTIMATE_DC` per-sym `DC_HARD_STOP_TF` ignored live; `UNIVERSAL_NOLOSS_GATE` off at defaults. [02]
 - SWITCH_BIBLE counts ~35 switches as wired whose only vec reads are in never-called modules. [06 §8–9]
+
+---
+
+## 10. ENCYCLOPEDIA v2 — knowledge graph + graph-guided search (director lane, 2026-10-06)
+
+**Files:** `data/encyclopedia_v2/graph.json` (machine-readable), `data/encyclopedia_v2/graph.md` (readable: exit precedence,
+master switches, fault → path → levers per cat_side, group-ablation evidence, family rules),
+`data/encyclopedia_v2/template_row_utility.md` / `.csv` (**every TEMPLATE row → lifecycle, family, code reads, gating filters,
+utility tags, evidence**), `data/encyclopedia_v2/runs/` (raw per-sym_side reports: `{SS}.gs.json` graph search, `{SS}.dr.json`
+DIAGNOSE+REPAIR, `ablation/`), `data/encyclopedia_v2/COMPARISON.md` (GS vs DR table).
+**Rebuild:** `python tools/v15_knowledge_graph.py --runs-dir data/encyclopedia_v2/runs/latest_gs` (~30 s, Mac OK — static scan + evidence files).
+
+### 10.1 What the graph is (all edges from code or real engine evidence)
+
+| Element | Source | Count (build 2026-10-06) |
+|---|---|---|
+| switch / filter nodes | every TEMPLATE_FINAL_NORM row of the 4 templates + every yellow `FILTER=opt` header | 1163 switches, 73 filters |
+| function nodes | AST of `v12_quick_engine.py` + `vec_decisions/*.py` (top-level functions, reachability from simulate_one via call edges) | ~1680 |
+| `switch -[enables/parameterises]-> function` | AST: every `getattr(cfg,'X')` / `cfg.X` read of a QuickConfig field, with line | ~37k edges |
+| `function -[member_of]-> lifecycle` | module/function name rules (`FAMILY_RULES`, printed in graph.md): ENTRY_GATE, ENTRY_OPEN, REENTRY, EXIT_CLOSE, EXIT_VETO, AUGMENT, REDUCE, SIZING, GLOBAL | — |
+| `filter -[gates]-> switch` | TEMPLATE yellow cells (fill FFFFFF00), per cat_side | — |
+| `exit -[preempts]-> exit` | first occurrence of each closer's reason anchor inside simulate_one's position branch (first hit wins) | 19 closers |
+| `choke gate -[starves]-> ENTRY_OPEN, REENTRY` | open-choke modules (`_strict_open_block` / `_ec_choke_block`) bind every open incl. reentries | — |
+| `master -[enables]-> switch` | code blocks that force switches off: `CRYPTO_REENTRY_PATHWAYS_ENABLED=False` forces HARDCODED_RALLY / TARGET_DC_IMMEDIATE / HTF_WT_CHURN / REENTRY_MANDATORY off (crypto) | — |
+| utility tags per `switch=value` × cat_side | fresh graph-search screens on the live-equal NPZs (≥2 sym_sides) else fleet causal map + autopsy + avg_delta | MORE/FEWER_TRADES, HIGHER/LOWER_TIM, LOWER/HIGHER_DD, HIGHER_GAIN, EARLIER/LATER_EXIT, FEWER_LOSERS, BIGGER_WINNERS |
+| fault → utilities → levers | `UTILITY_FAULTS` + ranked evidence (`fault_index` in graph.json) | 19 faults × 4 cat_sides |
+| group evidence | group ablation (below), `group_evidence` in graph.json | per cat_side |
+
+Exit precedence (simulate_one, first hit wins; earlier pre-empts every later one): NEWBORN_LOSS_KILL → ALL_TF_AGAINST_CLOSE →
+LIVE_EXIT_CHAIN → STATEFUL_PORTED_EXIT → MULTI_TF_EXIT → MI_EXIT → VIGILANCE_DC4 → ULTIMATE_DC hard stop → WT_LOWER_CROSS →
+DAYTRADE_DC → (augment block) → PARTIAL_PROFIT_LOCK → DD_BOUNCE_STOP → QUICK_REDUCE/SELL_TOP → MTF_ATR_TRAIL → MTF compound →
+GAP_MOC → TECHNICAL_EXIT (exit_sig, label-only unless `VEC_EXIT_SIG_IS_TRIGGER`) → FINAL_MTM. A switch on a later closer
+can only matter on bars where none of the earlier closers fired — this is why many exit rows show an honest 0 delta.
+
+### 10.2 Fault → graph path → levers (how to use it)
+
+For a fault: `graph.json fault_index[cat_side][FAULT]` (ranked levers with their measured Δgain/Δtrades/ΔTIM/ΔDD and share
+positive) → the lifecycles in `FAULT_LIFECYCLES` (tools/v15_graph_search.py) → the yellow filters that gate those switches
+(`templates[cat].yellow`). The readable version (top 8 per fault and cat_side) is in `graph.md` §"Fault -> graph path -> levers".
+
+| Fault | Utilities that fix it | Lifecycles the search opens/tightens | First structural path (measured, §10.4) |
+|---|---|---|---|
+| TOO_FEW_TRADES / FEW_TRADES | MORE_TRADES | ENTRY_GATE (relax), ENTRY_OPEN, REENTRY | single trade-adders + relax their yellow filters; if NO single row adds a trade → DEEP OPEN (all allowed gates/FILTER_TFs at once) then re-tighten |
+| TOO_MANY_TRADES / LOW_EDGE / LOSERS | FEWER_TRADES, FEWER_LOSERS | ENTRY_GATE, REENTRY_GATE, EXIT_VETO | crypto: remove the EXIT_VELOCITY family (it is the churn engine: −330..−420 trades/30D) |
+| GAIN_NEG | FEWER_LOSERS, HIGHER_GAIN | ENTRY_GATE, EXIT_CLOSE, REENTRY_GATE | gate openers (HTF/OI/ALL_TF_AGAINST block) then re-tighten exits |
+| TIM_HIGH / FAIL_365D_TIM | LOWER_TIM, EARLIER_EXIT | EXIT_CLOSE, REDUCE | exit closers in precedence order |
+| TIM_LOW / PREMATURE_EXITS / BELOW_BH | LATER_EXIT, BIGGER_WINNERS, HIGHER_TIM | EXIT_CLOSE (slow/disable the dominant ledger exit via its precedence master), EXIT_VETO, AUGMENT | exit attack: dominant exit reason → precedence node → its master/TF switch |
+| DD_HIGH / FAIL_365D_DD | LOWER_DD, FEWER_LOSERS | EXIT_CLOSE, REDUCE, ENTRY_GATE, AUGMENT | measured on 365D directly (16 best 30D-valid lifecycle candidates → 365D) |
+| MISSED_AUGMENTS | BIGGER_WINNERS | AUGMENT, AUGMENT_GATE | — |
+
+### 10.3 Group ablation (investigation only — never live)
+
+`tools/v15_graph_search.py` switches OFF (bool → False, TF → OFF; numeric thresholds untouched; parity/infra fields never)
+and separately reverts to cat_side DEFAULT every TAB, LIFECYCLE, code family, name family (≥3 members) and the FILTER_TF group
+on the sym_side's start set, on 30D (and 365D for the coarse groups); explicit `ABLATION_DISABLE_*` flags are measured only.
+Groups whose removal improves the dual-window key are **culprits** (applied minus forbidden members, then members re-added
+best-first); groups with a weak contribution get their settings re-tested best-first from three starts (current / OFF /
+DEFAULT) because greedy chains are path-dependent. Ablation states are never finalists (they may hold forbidden members).
+

@@ -5753,6 +5753,9 @@ class HedgeEngine:
                 return True
             except Exception: return True
         while not stop_event.is_set():
+            if _vx_native_off():  # 2026-10-06 USER churn audit: native EXIT producer off at the source while the vec twin owns EXIT (legacy positions keep process_position native exits; emergency margin/oversize/stale-price closes stay)
+                await asyncio.sleep(30)
+                continue
             try:
                 await asyncio.sleep(CHECK_INTERVAL)
                 async with self.tracker_manager._hedges_lock:
@@ -6650,6 +6653,8 @@ class HedgeEngine:
 
     async def cleanup_infinite_hedges(self, account_key: str):
             """Removes hedge records older than 24h - closes the position on exchange first"""
+            if _vx_native_off():  # 2026-10-06 USER churn audit: native EXIT producer off at the source while the vec twin owns EXIT (legacy positions keep process_position native exits; emergency margin/oversize/stale-price closes stay)
+                return None
             stale_hedges = []
             async with self.tracker_manager._hedges_lock:
                 clean_list = []
@@ -6703,6 +6708,8 @@ class HedgeEngine:
         logger.info(f"🎓 [PROMOTION] {position_key} graduated from HEDGE to STANDARD POSITION.")
 
     async def monitor_and_manage_hedges(self, account_key: str) -> List[Dict[str, Any]]:
+        if _vx_native_off():  # 2026-10-06 USER churn audit: native EXIT producer off at the source while the vec twin owns EXIT (legacy positions keep process_position native exits; emergency margin/oversize/stale-price closes stay)
+            return None
         actions_taken = []
         if getattr(self.config, 'ABLATION_DISABLE_HEDGE', False):
             return actions_taken
@@ -11870,7 +11877,12 @@ def detect_bb_squeeze_breakout(symbol: str, is_long: bool, indicators: dict) -> 
     if symbol not in _bb_squeeze_state:
         _bb_squeeze_state[symbol] = {'in_squeeze': False, 'squeeze_bars': 0, 'width_at_squeeze': 0.0, 'width_history': deque(maxlen=100)}
     state = _bb_squeeze_state[symbol]
-    state['width_history'].append(bb_width)
+    # 2026-10-06 full-parity FIX: width history + squeeze age advance per 15m BAR (not per worker
+    # call); the vec twin ports a per-bar deque. Grid-aligned to exchange 15m closes (//900).
+    _bbs_bar_now = int(time.time() // 900)
+    if state.get('last_bar', 0) != _bbs_bar_now:
+        state['last_bar'] = _bbs_bar_now
+        state['width_history'].append(bb_width)
     if len(state['width_history']) < 20:
         return None
     width_percentile = getattr(config, "BB_SQUEEZE_WIDTH_PERCENTILE", 0.2)
@@ -11883,7 +11895,9 @@ def detect_bb_squeeze_breakout(symbol: str, is_long: bool, indicators: dict) -> 
             state['squeeze_bars'] = 1
             state['width_at_squeeze'] = bb_width
         return None
-    state['squeeze_bars'] += 1
+    if state.get('sqz_bar', 0) != _bbs_bar_now:
+        state['sqz_bar'] = _bbs_bar_now
+        state['squeeze_bars'] += 1
     if bb_width > squeeze_threshold * 1.5:
         if bb_pct_b > 1.0 and is_long:
             state['in_squeeze'] = False
@@ -11980,7 +11994,13 @@ def detect_stdev_breakout(symbol: str, is_long: bool, indicators: dict, metrics:
                 return {'signal': 'SELL', 'phase': 'BREAKOUT', 'htf': tf, 'pctb': pctb, 'rvol': rvol, 'size_mult': 1.0, 'score': getattr(config, "STDEV_BREAKOUT_SCORE", 25)}
         return None
     # Expire stale breakouts
-    state['bars_since'] += 1
+    # 2026-10-06 full-parity FIX: STDEV_BREAKOUT_MAX_AGE_BARS counts 15m BARS (not worker calls —
+    # per-call expiry killed breakouts in ~minutes while the vec twin holds 50 bars). Grid-aligned
+    # to exchange 15m closes (//900), identical to vec bar cadence.
+    _sb_bar_now = int(time.time() // 900)
+    if state.get('last_bar', 0) != _sb_bar_now:
+        state['last_bar'] = _sb_bar_now
+        state['bars_since'] += 1
     if state['bars_since'] > max_age:
         state['active'] = False
         return None
@@ -12185,6 +12205,8 @@ _realloc_cooldowns = {}
 
 async def reallocate_capital_for_winner(trade_manager, tracker_manager, hedge_engine, account_key: str, winner_key: str, winner_gain: float, data_manager=None):
     """Close smallest profitable position to free capital for a big winner. Returns (freed_usd, donor_key) or (0, None)."""
+    if _vx_native_off():  # 2026-10-06 USER churn audit: native EXIT producer off at the source while the vec twin owns EXIT (legacy positions keep process_position native exits; emergency margin/oversize/stale-price closes stay)
+        return 0.0, None
     global _realloc_cooldowns
     _cd_key = f"realloc_{account_key}"
     if time.time() - _realloc_cooldowns.get(_cd_key, 0) < 300:
@@ -15380,10 +15402,10 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
                 _px = safe_fetch_float(_a.get("vec_price"), 0.0)
                 _act, _oside, _qty, _full = _vx.order_args(_a, _side, _amt, _px)
                 _lq, _lov = _vx.live_sizing_args(_act, _qty, _px, config)
+                _vx.owned_add(_pk, _a.get("reason", ""))  # 2026-10-06: register BEFORE sending (results like UNCONFIRMED_BY_BROKER_* still fill); a failed OPEN leaves the key flat -> the hook drops it
                 _res = await trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=_pk, symbol=_sym, quantity=_lq, current_price=_px, side=_oside, position_side=_side, unique_id=f"VX{int(_a['bar_ts'])}{_a['n']}", is_full_close=_full, action=_act, reason=_vx.tagged_reason(_a), override_qty=_lov, is_hedge=False)
                 logger.info(f"[VEC_EXACT] {_pk} {_act} {_a['reason'][:60]} qty={_qty:.6f} -> {str(_res)[:120]}")
-                if str(_res).upper().startswith("SUCCESS"):
-                    _vx.owned_add(_pk, _a.get("reason", ""))  # 2026-10-06 director: twin-opened -> twin exits; others keep native exits
+
         except Exception as _e:
             logger.error(f"[VEC_EXACT] {_pk}: {_e}")
 
@@ -15947,7 +15969,8 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                             logger.info(f"[ENTRY_SYMGATE] {position_key}: fresh entry blocked by DELTA gate")
                             return
                 # == DC BREAKOUT CHECK (PRIMARY - runs BEFORE signal gates) ==
-                if 'STALE_INDICATORS' not in str(reason) and position_key in tracker_manager.tradeable_position_keys.get(account_key, set()):
+                # 2026-10-06 full-parity: DC_BREAKOUT_ENTRY_ENABLED gate (default True = unchanged; vec twin honors the same switch).
+                if 'STALE_INDICATORS' not in str(reason) and position_key in tracker_manager.tradeable_position_keys.get(account_key, set()) and bool(getattr(config, 'DC_BREAKOUT_ENTRY_ENABLED', True)):
                     _force_fresh = False
                     try:
                         _ts3m = indicators.get('timestamp_15m') or indicators.get('timestamp_3m') or indicators.get('timestamp', '')
@@ -15967,7 +15990,8 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                         _dch4h = safe_fetch_float(indicators.get('dc_high_4h', 0), 0)
                         _dc_tf, _dc_tier_mult = None, 1.0
                         _dc_allow_15m = bool(getattr(config, 'DC_BREAKOUT_ALLOW_15M', False))
-                        _dc_allow_3m = bool(getattr(config, 'DC_BREAKOUT_ALLOW_3M', False))
+                        _dc_no3m_pre = not bool(getattr(config, "USE_1M_3M_SIGNALS_ENABLED", False))
+                        _dc_allow_3m = bool(getattr(config, 'DC_BREAKOUT_ALLOW_3M', False)) and not _dc_no3m_pre
                         # BREAKOUT: LONG when price > DC high, SHORT when price < DC low
                         if is_long:
                             if _dch4h > 0 and current_price > _dch4h * (1 + _buf): _dc_tf, _dc_tier_mult = "DC4H", 3.0
@@ -16003,8 +16027,11 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                             # USER 2026-05-30: even when k_15m is ignored (dc_1h+ break), STILL require WT on the
                             # right track — wt1_3m AND/OR wt1_15m momentum aligned. Don't enter a breakout into a
                             # WT reversal ("don't get suicidal"). 3m OR 15m WT must confirm the direction.
-                            _wt1_3m_dcb = safe_fetch_float(indicators.get('wt1_3m', 0), 0)
-                            _wt2_3m_dcb = safe_fetch_float(indicators.get('wt2_3m', 0), 0)
+                            # USER 2026-10-06 NO-3M PARITY (TEMPORARY — NOTE_3M_REENABLE): NPZ has no 3m and the
+                            # vec twin confirms on 15m only; live must see exactly what vectorized sees.
+                            _dc_no3m = _dc_no3m_pre
+                            _wt1_3m_dcb = safe_fetch_float(indicators.get('wt1_15m' if _dc_no3m else 'wt1_3m', 0), 0)
+                            _wt2_3m_dcb = safe_fetch_float(indicators.get('wt2_15m' if _dc_no3m else 'wt2_3m', 0), 0)
                             _wt_ok = (is_long and (_wt1_3m_dcb > _wt2_3m_dcb or _wt1_15m > _wt2_15m)) or (not is_long and (_wt1_3m_dcb < _wt2_3m_dcb or _wt1_15m < _wt2_15m))
                             if _stoch_wrong:
                                 logger.warning(f"[DC_BREAKOUT_BLOCKED] {position_key}: {_dc_tf} blocked — {'LONG' if is_long else 'SHORT'} at k15m={_k15m:.0f} (extreme wrong side)")
@@ -16278,15 +16305,21 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                             _wr_pullback_last[_wr_sym_key] = time.time()
                             logger.warning(f"[WR_PULLBACK] {position_key}: k4={_k4h_w:.0f} k1h={_k1h_w:.0f} k15={_k15m_w:.0f} k3={_k3m_w:.0f} k1m={_k1m_w:.0f} | {reason}")
                 # == BB SQUEEZE BREAKOUT ==
-                if not should_trade and getattr(config, "BB_SQUEEZE_ENABLED", False):
+                # 2026-10-06 full-parity: BB_SQUEEZE_ENTRY_ENABLED is ANDed (vec twin honors both switches).
+                if not should_trade and getattr(config, "BB_SQUEEZE_ENABLED", False) and bool(getattr(config, "BB_SQUEEZE_ENTRY_ENABLED", True)):
                     _bbs_sym_key = f"{account_key}:{symbol}"
                     _bbs_cooldown = getattr(config, "BB_SQUEEZE_COOLDOWN", 300.0)
                     if (time.time() - _bb_squeeze_last.get(_bbs_sym_key, 0.0)) >= _bbs_cooldown:
                         _bbs_signal = detect_bb_squeeze_breakout(symbol, is_long, indicators)
                         if _bbs_signal:
                             _bbs_min_align = getattr(config, "BB_SQUEEZE_MIN_ALIGNMENT", 10)
-                            _bbs_alignment = safe_fetch_float(indicators.get('alignment', 0), 0)
-                            _bbs_k3m = safe_fetch_float(indicators.get('k_3m', 50), 50)
+                            # 2026-10-06 full-parity: shared computed alignment (the bare indicator key was
+                            # never populated = always 0 = family dead; vec used computed since 09-28).
+                            from vec_decisions.alignment import compute_alignment_scalar as _bbs_align
+                            _bbs_alignment = float(_bbs_align(indicators, is_long))
+                            # 2026-10-06 NO-3M PARITY (NOTE_3M_REENABLE): k leg reads 15m while off (== vec).
+                            _bbs_no3m = not bool(getattr(config, "USE_1M_3M_SIGNALS_ENABLED", False))
+                            _bbs_k3m = safe_fetch_float(indicators.get('k_15m' if _bbs_no3m else 'k_3m', 50), 50)
                             _bbs_stoch_ok = (is_long and _bbs_k3m < 75) or (not is_long and _bbs_k3m > 25)
                             if _bbs_alignment >= _bbs_min_align and _bbs_stoch_ok:
                                 should_trade = True
@@ -16333,7 +16366,9 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                         _vs_signal = detect_volume_spike(symbol, is_long, indicators, metrics)
                         if _vs_signal:
                             _vs_min_align = getattr(config, "VOL_SPIKE_MIN_ALIGNMENT", 3)
-                            _vs_alignment = safe_fetch_float(indicators.get('alignment', 0), 0)
+                            # 2026-10-06 full-parity: shared computed alignment (bare key never populated).
+                            from vec_decisions.alignment import compute_alignment_scalar as _vs_align
+                            _vs_alignment = float(_vs_align(indicators, is_long))
                             _vs_max_imb = getattr(config, "VOL_SPIKE_LS_MAX_IMBALANCE", 1.5)
                             _vs_ratio_ok = True
                             _vs_dcl4 = safe_fetch_float(indicators.get('dc_low4_15m', 0), 0)
@@ -18097,6 +18132,9 @@ async def pair_flatten_stuck_loop(trade_manager, account_key: str, stop_event: a
     """
     logger.info(f"🤝 [PAIR_FLATTEN][{account_key}] STARTED")
     while not stop_event.is_set():
+        if _vx_native_off():  # 2026-10-06 USER churn audit: native EXIT producer off at the source while the vec twin owns EXIT (legacy positions keep process_position native exits; emergency margin/oversize/stale-price closes stay)
+            await asyncio.sleep(30)
+            continue
         try:
             await asyncio.sleep(180)  # every 3 minutes
             positions = tracker_manager.positions_service.positions_by_account.get(account_key, {}) if hasattr(tracker_manager, 'positions_service') and tracker_manager.positions_service else {}
@@ -18653,6 +18691,8 @@ async def _scalp_v3_protective_exits(trade_manager, account_key: str,
       - K_1m or K_3m dropped ≥ DROP_MIN pts (LONG) / rose (SHORT)
       - wt1_3m crossed wt2_3m against position side
     """
+    if _vx_native_off():  # 2026-10-06 USER churn audit: native EXIT producer off at the source while the vec twin owns EXIT (legacy positions keep process_position native exits; emergency margin/oversize/stale-price closes stay)
+        return 0
     if not getattr(config, 'SCALP_V3_PROTECTIVE_EXIT_ENABLED', True):
         return 0
     k_drop_min = float(getattr(config, 'SCALP_V3_PROTECTIVE_K_DROP_MIN', 5.0))
