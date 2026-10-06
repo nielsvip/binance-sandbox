@@ -23,7 +23,7 @@ rsync -avz --progress --exclude='*TEMPLATE*' --exclude='*_20*.xlsx' --exclude='*
 echo "[$(date)] Sync S1 -> Mac V15_V16_CELL_BY_CELL xls (live update + finals-once)..."
 rsync -avz --progress --exclude='*_bh*_gain*_30d_matrix.xlsx' --exclude='*_bh*_gain*_30d_matrix.html' --exclude='*_bh*_gain*_manifest.json' --exclude='*_20*.xlsx' --exclude='*pilot*.xlsx' --exclude='V15_AVG*' --include='*.xlsx' --exclude='*' -e "ssh -o BatchMode=yes" "$SRC_V15DIR" "$DST_V15" 2>&1 | tail -n 20
 rsync -avz --progress --ignore-existing --include='*_bh*_gain*_30d_matrix.xlsx' --include='*_bh*_gain*_30d_matrix.html' --include='*_bh*_gain*_manifest.json' --exclude='*' -e "ssh -o BatchMode=yes" "$SRC_V15DIR" "$DST_V15" 2>&1 | tail -n 20
-python3 /Users/niels/Documents/binance/tools/v15_final_sync_guard.py --audit "$DST_V15" 2>&1 | tail -n 3 || true
+python3 /Users/niels/Documents/binance/tools/v15_final_sync_guard.py --audit "$DST_V15" 2>&1 | head -n 1 || true
 echo "[$(date)] Sync S1 -> Mac SPREADSHEET COMPLETE/FINAL charts..."
 rsync -avz --progress -e "ssh -o BatchMode=yes" "$SRC_SPREADSHEET_CHARTS" "$DST" 2>&1 | tail -n 20
 rsync -avz --progress -e "ssh -o BatchMode=yes" "$SRC_SPREADSHEET_FINALS" "$DST" 2>&1 | tail -n 20

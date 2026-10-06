@@ -29733,7 +29733,7 @@ class MultiAccountTradeManager:
             # 2026-09-24 EXIT-FILL GUARANTEE: Finandy bankrupt -> webhook dead. Maker 90s chase (was 30s),
             # then Binance MARKET fallback to guarantee fill. Critical for REDUCE (exits) - PLTR 5x Canceled at 193.2 gave up.
             if ta == "REDUCE":
-                if remaining > (step * 0.5):  # any meaningful remainder, not just >10%
+                if remaining > (step * Decimal("0.5")):  # any meaningful remainder, not just >10% (2026-10-05: Decimal*float crash fix — step is Decimal)
                     logger.warning(
                         f"[MAKER_FALLBACK_EXIT] {position_key} timeout REDUCE remaining={remaining:.6f}/{qty_abs:.6f} -> MARKET fallback to guarantee close."
                     )
