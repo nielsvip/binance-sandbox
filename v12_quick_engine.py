@@ -66,6 +66,8 @@ import numpy as np
 # Every switch predicate must live in vec_decisions and be called by v12_quick,
 # not re-implemented inline. This block is verified by tools/hooks/persistent_v12_hooks.py.
 import vec_decisions.breakout_opener
+import vec_decisions.stocks_live_session_gates  # lane-D 2026-10-06
+import vec_decisions.stocks_wtdc_scorer_exit  # lane-D 2026-10-06
 import vec_decisions.check_entry_candidates_crypto__bb_squeeze_gate
 import vec_decisions.check_entry_candidates_crypto__compression_boost
 import vec_decisions.check_entry_candidates_crypto__dc_breakout_tiered
@@ -2551,6 +2553,7 @@ AUTO_WIRED_PARAMS = [
     'RSI_ENTRY_MIN_SHORT',
     'RSI_ENTRY_PERIOD_TRADIER',
     'RSI_ENTRY_SHORT_TRADIER',
+    'RSI_ENTRY_VETO_ENABLED',
     'RSI_EXIT_LONG_TRADIER',
     'RSI_EXIT_SHORT_TRADIER',
     'RSI_MACD_EMA_ENABLED',
@@ -3805,6 +3808,18 @@ AUTO_WIRED_PARAMS = [
     'EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF',
     'EXIT_TOP_FADE_FILTER_TF',
     'EXIT_TO_REDUCE_ADAPTER_FILTER_TF',
+    'EXIT_VELOCITY_WT_ENABLED',
+    'MULTI_TF_EXIT_ENABLED',
+    'MULTI_TF_EXIT_ENABLED_TRADIER',
+    'STOCKS_WTDC_SCORER_EXIT_ENABLED',
+    'STOCKS_RTH_ONLY_ENABLED',
+    'EMA50_15M_ENTRY_FILTER_VEC_ONLY_ENABLED',
+    'KG_STOCKS_LIVE_GATE_VEC_ONLY_ENABLED',
+    'HAIKU_WINNER_VEC_ONLY_ENABLED',
+    'KEY_LEVEL_CRASH_VEC_ONLY_ENABLED',
+    'COOLDOWN_FROM_LIVE_SECONDS_ENABLED',
+    'MIN_HOLD_LIVE_SECONDS_ENABLED',
+    'CRYPTO_VEC_ONLY_REENTRY_ENABLED',
     'FAST_RISER_FILTER_TF',
     'FH_MOMENTUM_FILTER_TF',
     'FIRST_OPEN_THROTTLE_FILTER_TF',
@@ -4207,6 +4222,20 @@ class QuickConfig:
     WT_DC_DIRECT_DC_TF: str = "1h"
     DC_BREAKOUT_TF_EXPANDED: str = "1h"
     EXIT_VELOCITY_WT_TFS: str = "1h,4h,D"
+    EXIT_VELOCITY_WT_ENABLED: bool = True  # lane-D 2026-10-06 director H9: live ez_manage:48387 + tradier_manage:10918 run EXIT_VELOCITY_WT always-on (no master) -> vec twin default ON; False = old vec (no exit) as a test row
+    # lane-D 2026-10-06 parity switches: default = LIVE behaviour; the non-default value restores the old vec-only behaviour as a test row
+    MULTI_TF_EXIT_ENABLED: bool = False  # crypto: ez_manage.evaluate_multi_tf_exit (:41642) has NO crypto caller -> vec MULTI_TF_EXIT is vec-only; True = old vec
+    MULTI_TF_EXIT_ENABLED_TRADIER: bool = False  # stocks: evaluate_multi_tf_exit (:22004) is reached only when the WT_DC scorer exit is off; True = also run it while the scorer is on (old vec)
+    STOCKS_WTDC_SCORER_EXIT_ENABLED: bool = True  # stocks: live evaluate_stop WT_DC scorer exit chain twin (opening buffer + 240/60 min hold + NOLOSS + N-of-5 scorer); vec_decisions/stocks_wtdc_scorer_exit.py
+    TRADIER_MIN_HOLD_MINUTES_SHORT: float = 60.0  # config_tradier.py:4165 (live evaluate_stop short min hold)
+    STOCKS_RTH_ONLY_ENABLED: bool = True  # stocks: live acts only Mon-Fri 09:30-16:00 ET; NPZ carries 04:00-20:00 bars; False = old vec (trades extended hours)
+    EMA50_15M_ENTRY_FILTER_VEC_ONLY_ENABLED: bool = False  # EMA50 15m entry filter is dead live (crypto: _NON_VEC_KNOBS_EZ mask; stocks: only in dead should_enter_long/short); True = old vec filter
+    KG_STOCKS_LIVE_GATE_VEC_ONLY_ENABLED: bool = False  # stocks KG/EMA_9_21 hard veto has no live caller (should_enter_* dead); True = old vec veto
+    HAIKU_WINNER_VEC_ONLY_ENABLED: bool = False  # crypto HaikuOverseer AUGMENT is refused live by STRICT_VEC_PARITY (reason has no allowlist token); True = old vec haiku augment
+    KEY_LEVEL_CRASH_VEC_ONLY_ENABLED: bool = False  # crypto KEY_LEVEL_CRASH lives only in EPQ check_exit_candidates (ablated live: ABLATION_DISABLE_QUICK_EXIT=True); True = old vec
+    CRYPTO_VEC_ONLY_REENTRY_ENABLED: bool = False  # crypto: HARDCODED_RALLY / TARGET-DC recross / HTF_WT_CHURN / REENTRY_MANDATORY pathways have no reachable live counterpart; True = old vec
+    MIN_HOLD_LIVE_SECONDS_ENABLED: bool = True  # crypto: live hold = MIN_HOLD_BARS_BEFORE_EXIT x 180 s (3m bars), not x 15m; False = old vec max(MIN_HOLD_BARS, MIN_HOLD_BARS_BEFORE_EXIT) 15m bars
+    COOLDOWN_FROM_LIVE_SECONDS_ENABLED: bool = True  # director 2026-10-06: vec cooldown follows live wall-clock (crypto REENTRY_COOLDOWN_S, stocks TRADIER_POST_CLOSE_COOLDOWN_MIN); False = COOLDOWN_BARS(_TRADIER)
     DC_HARD_STOP_TF: str = "4h"  # ULTIMATE_DC HARD_STOP TF: 4h|D — per sym_side sweepable; D wider = fewer stops
     WT_LOWER_CROSS_EXIT_TF: str = "OFF"  # WT lower cross exit TF: OFF/15m/1h/4h — LONG wt cross down + price lower, SHORT opposite; added 2026-09-27 as option in big WT TF sweep
     # ── 2026-09-03 HARD SHORT GATES — baked (mirrors tradier_manage) ──
@@ -4248,6 +4277,7 @@ class QuickConfig:
     RSI_ENTRY_LONG_TRADIER: float = 40.0  # §17 live parity: config.py + TradierConfig 40.0 — vec twin vec_decisions/entry_vet_rsi_t55.py (cut#6)
     RSI_ENTRY_SHORT_TRADIER: float = 58.0  # §17 live parity: config.py + TradierConfig 58.0 — vec twin vec_decisions/entry_vet_rsi_t55.py (cut#6)
     RSI_ENTRY_PERIOD_TRADIER: int = 10  # §17 live parity: config.py + TradierConfig 10 — vec twin vec_decisions/entry_vet_rsi_t55.py (cut#6)
+    RSI_ENTRY_VETO_ENABLED: bool = True  # lane-D 2026-10-06 master for vec_decisions/entry_vet_rsi_t55 (both call sites); True = live check_entry_vetting RSI veto (lane B mirrors in config.py)
     MFI_ENTRY_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)
     MFI_ENTRY_LONG_MAX: float = 60.0
     MFI_ENTRY_SHORT_MIN: float = 40.0
@@ -4986,7 +5016,7 @@ class QuickConfig:
         self.BREAKOUT_MULTI_LUNG_ENABLED = True
         self.BREAKOUT_MULTI_LUNG_TIER = 'STOCK'
         self.BREAKOUT_TF_SIZE_ENABLED = False
-        self.DC_EDGE_SIZING_ENABLED = True  # 2026-10-04 §17.4 C1: config_tradier True (base crypto False)
+        self.DC_EDGE_SIZING_ENABLED = False  # lane-D 2026-10-06: live tradier_manage:16772 DC_EDGE_SIZING branch is `and False` (dead) -> live off; was True
         self.DC_LOW_FROZEN_STOP_ENABLED = True
         self.DELTA_ATR_ENTRY_FILTER = True
         self.DELTA_COOLDOWN_BARS = 60
@@ -5116,7 +5146,7 @@ class QuickConfig:
         self.VERBOSE_STOPS = True
         self.VWAP_BOUNCE_ENTRY_ENABLED = False
         self.WRONG_SIDE_DIV_TFS_REQUIRED = 1
-        self.WT_15M_BOUNCE_OPEN_ENABLED = True
+        self.WT_15M_BOUNCE_OPEN_ENABLED = False  # lane-D 2026-10-06 director integral rule: live default off (lane C wiring); was True (forced cd0/min_hold1)
         self.WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED = True
         self.WT_3M_FORCE_OPEN_SIZE_USD = 1200.0
         self.WT_3M_FORCE_OPEN_TARGET_USD = 2500.0
@@ -5152,7 +5182,7 @@ class QuickConfig:
     BAND_SLOPE_SIZING_V2_MAX: float = 1.8  # TEMPLATE 2.5 (was 1.25) — STDEV ladder D 6mo 10x
     BAND_SLOPE_SIZING_V2_MIN: float = 0.7  # TEMPLATE 0.5 (was 0.25)
     BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY: float = 1.0  # TEMPLATE 1.0 (was 0.5)
-    STDEV_SLOPE_SIZING_ENABLED: bool = True  # stdev 2.5 ladder master
+    STDEV_SLOPE_SIZING_ENABLED: bool = False  # lane-D 2026-10-06: crypto live forced off (_NON_VEC_KNOBS_EZ ez_manage:7523-7539); director: live off both venues (lane B/C wiring). was True. stdev 2.5 ladder master
     STDEV_BAND_MULTIPLIER: float = 2.5
     STDEV_SLOPE_SIZING_D_MAX: float = 10.0
     STDEV_SLOPE_SIZING_4H_MAX: float = 4.0
@@ -6037,7 +6067,7 @@ class QuickConfig:
     EXHAUSTION_EXIT_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     EXIT_R1_R2_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    EXIT_TOP_FADE_FILTER_TF: str = "15m"  # 2026-10-04 §17.4 C2: config.py/config_tradier 15m (live filters); was OFF
+    EXIT_TOP_FADE_FILTER_TF: str = "OFF"  # lane-D 2026-10-06 director: live off (lane B/C wiring); was "15m".  # 2026-10-04 §17.4 C2: config.py/config_tradier 15m (live filters); was OFF
     EXIT_TO_REDUCE_ADAPTER_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     EZ_MANAGE_THROTTLER_RATE: float = 0.0  # auto-added TEMPLATE generic
     E_1_EXIT_DELTA_THR: float = 50.0  # auto-added TEMPLATE generic
@@ -6743,7 +6773,7 @@ class QuickConfig:
     FULL_RECIPE_ONLY_ENABLED: bool = False
     FUNDING_EXTREME_LONG_THRESHOLD_PCT: float = -0.03
     FUNDING_EXTREME_SHORT_THRESHOLD_PCT: float = 0.05
-    FUNDING_GATE_ENABLED: bool = True
+    FUNDING_GATE_ENABLED: bool = False  # lane-D 2026-10-06: live FUNDING gate only in EPQ execute_trade_wrapper (ez_positions_quick:12753, hedge opens via HedgeEngine); no live gate on ordinary opens -> vec strict open veto off. was True
     FUNDING_GATE_MTF_LONG_MAX_BULL_TFS: int = 0
     FUNDING_GATE_MTF_SHORT_MAX_BEAR_TFS: int = 1
     FUNDING_HEDGE_GATE_ENABLED: bool = True
@@ -9458,8 +9488,8 @@ def compute_entry_signals(npz, n, is_long, cfg):
     _wtdc_htf_mode = str(getattr(cfg, 'WT_DC_HTF_GATE_MODE', 'AND')).upper()
     _wtdc_entry_ok = np.ones(n, dtype=bool)
     if _wtdc_tf_entry in ('15m', '1h', '4h', 'd'):
-        _k = f"wt1_{_wtdc_tf_entry.upper()}" if _wtdc_tf_entry.upper() != 'D' else 'wt1_D'
-        _k2 = f"wt2_{_wtdc_tf_entry.upper()}" if _wtdc_tf_entry.upper() != 'D' else 'wt2_D'
+        _k = f"wt1_{_wtdc_tf_entry}" if _wtdc_tf_entry.upper() != 'D' else 'wt1_D'  # lane-D 2026-10-06: NPZ/live keys are lowercase (wt1_1h); was .upper() -> missing key -> gate inert
+        _k2 = f"wt2_{_wtdc_tf_entry}" if _wtdc_tf_entry.upper() != 'D' else 'wt2_D'
         _a1 = _safe(npz, _k, n, 0); _a2 = _safe(npz, _k2, n, 0)
         if _a1.sum() != 0 or _a2.sum() != 0:
             _wtdc_entry_ok = (_a1 > _a2) if is_long else (_a1 < _a2)
@@ -9502,8 +9532,8 @@ def compute_entry_signals(npz, n, is_long, cfg):
                 if _arr_name == '_htf1_ok': _htf1_ok = np.ones(n, dtype=bool)
                 else: _htf2_ok = np.ones(n, dtype=bool)
                 continue
-            _k = f"wt1_{_tf_label.upper()}" if _tf_label.upper() != 'D' else 'wt1_D'
-            _k2 = f"wt2_{_tf_label.upper()}" if _tf_label.upper() != 'D' else 'wt2_D'
+            _k = f"wt1_{_tf_label}" if _tf_label.upper() != 'D' else 'wt1_D'  # lane-D 2026-10-06: lowercase keys (was .upper() -> inert)
+            _k2 = f"wt2_{_tf_label}" if _tf_label.upper() != 'D' else 'wt2_D'
             _a1 = _safe(npz, _k, n, 0); _a2 = _safe(npz, _k2, n, 0)
             if _a1.sum() == 0 and _a2.sum() == 0:
                 continue
@@ -11749,6 +11779,15 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     n = len(ts)
     if n < 100:
         return None
+    # lane-D 2026-10-06: crypto live has NONE of these reentry pathways (verified ez_manage): HARDCODED_RALLY/PRICE_CROSS_BACK live in
+    # evaluate_reentry, unreachable for flat keys (process_position ZERO_AMT return :48126 + evaluate_reentry needs a position object
+    # :39645); HTF_WT_CHURN_REENTRY refused by STRICT_VEC_PARITY (reason has no allowlist token); reentry_enforcement_loop
+    # (REENTRY_MANDATORY) off; no TARGET-DC immediate recross. CRYPTO_VEC_ONLY_REENTRY_ENABLED=True restores the old vec pathways.
+    if str(getattr(cfg, 'MODE', 'crypto')) != 'tradier' and not bool(getattr(cfg, 'CRYPTO_VEC_ONLY_REENTRY_ENABLED', False)):
+        import copy as _lane_copy
+        cfg = _lane_copy.copy(cfg)
+        for _lane_k in ('HARDCODED_RALLY_REENTRY_ENABLED', 'TARGET_DC_IMMEDIATE_REENTRY_ENABLED', 'HTF_WT_CHURN_REENTRY_ENABLED', 'REENTRY_MANDATORY'):
+            setattr(cfg, _lane_k, False)
     close = _base_safe(npz, 'close', n, cfg)
     # HARD_STOP TF switch: 4h (tight) vs D (wide) per sym_side
     _hs_tf_v12 = str(getattr(cfg, 'DC_HARD_STOP_TF', '4h') or '4h').strip().upper()
@@ -12427,7 +12466,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # where ema_50_15m>0 and px>0 (live guard). Crypto config.py default True (fixes a live>vec parity
     # gap); config_tradier default False (stocks inert until swept). No arbitrary proxy — real EMA50.
     try:
-        if bool(getattr(cfg, 'EMA50_15M_ENTRY_FILTER_ENABLED', False)):
+        if bool(getattr(cfg, 'EMA50_15M_ENTRY_FILTER_ENABLED', False)) and bool(getattr(cfg, 'EMA50_15M_ENTRY_FILTER_VEC_ONLY_ENABLED', False)):  # lane-D: live-dead filter, default off
             _ema50_15m = _safe(npz, 'ema_50_15m', n, 0.0)
             _ema_filter_pct = float(getattr(cfg, 'EMA50_15M_ENTRY_FILTER_PCT', 0.0) or 0.0) / 100.0
             _ema_valid = (_ema50_15m > 0) & (close > 0)
@@ -12459,7 +12498,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     except Exception:
         _atf_entry_block = None
     # b6: STOCKS live KINDERGARTEN/EMA_9_21 hard veto (tradier_manage.should_enter_long/short) applied on the FINAL entry signal (after every OR'd family) — see vec_decisions/live_kindergarten_stocks.py
-    if str(getattr(cfg, 'MODE', 'crypto')) == 'tradier' and bool(getattr(cfg, 'KG_STOCKS_LIVE_GATE', True)):
+    if str(getattr(cfg, 'MODE', 'crypto')) == 'tradier' and bool(getattr(cfg, 'KG_STOCKS_LIVE_GATE', True)) and bool(getattr(cfg, 'KG_STOCKS_LIVE_GATE_VEC_ONLY_ENABLED', False)):  # lane-D: live-dead veto, default off
         try:
             import vec_decisions.live_kindergarten_stocks as _lks
             _lks_ok = _lks.pass_mask(npz, n, is_long, cfg, close, _safe)
@@ -12599,6 +12638,15 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     except Exception:
         pass
     # 2026-10-04 twin_exits_dead EXIT_VELOCITY_WT REMOVED 2026-10-04: ungated at defaults (no ENABLED master; TFS default 1h,4h,D fires always-on exit) — operator decision H9 pending. Twin kept in vec_decisions/twin_exits_dead.velocity_wt_exit_mask.
+    # lane-D 2026-10-06 (director H9 decision: build twin, default ON like live): EXIT_VELOCITY_WT closes in the walk
+    # (live: GREY_REWIRE chain, CLOSE via execute_now, no MIN_HOLD, any P&L; crypto ez_manage:48387, stocks tradier_manage:10918).
+    _xvel_mask = None
+    if bool(getattr(cfg, 'EXIT_VELOCITY_WT_ENABLED', True)):
+        try:
+            import vec_decisions.twin_exits_dead as _ted_xv
+            _xvel_mask = _ted_xv.velocity_wt_exit_mask(npz, n, is_long, lambda _k, _d: getattr(cfg, _k, _d), _safe)
+        except Exception:
+            _xvel_mask = None
     # ── YELLOW *_FILTER_TF twins (twin_yellow_filters.py): entry masks + reduce triggers + walk prep ──
     _ty_is_tradier = str(getattr(cfg, 'MODE', 'crypto')) == 'tradier'
     try:
@@ -12782,6 +12830,25 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         min_hold = 1
     if is_tradier and getattr(cfg, 'MIN_HOLD_MINUTES_TRADIER', 0.0) > 0:
         min_hold = max(min_hold, int(round(cfg.MIN_HOLD_MINUTES_TRADIER / max(bmin, 1))))
+    # lane-D 2026-10-06 (director/lane-B audit): crypto live MIN_HOLD = MIN_HOLD_BARS_BEFORE_EXIT x 180 s (ez_manage:48143-48144);
+    # MIN_HOLD_BARS has no crypto live reader. On the 15m grid: min_hold = ceil(bars*180 / bar_s).
+    if (not is_tradier) and bool(getattr(cfg, 'MIN_HOLD_LIVE_SECONDS_ENABLED', True)) and not bool(getattr(cfg, 'SIMPLE_PRICE_GT0_ENABLED', False)) and not bool(getattr(cfg, 'WT_15M_BOUNCE_OPEN_ENABLED', False)):
+        try:
+            import math as _lane_math2
+            min_hold = max(0, int(_lane_math2.ceil(float(getattr(cfg, 'MIN_HOLD_BARS_BEFORE_EXIT', 10) or 0) * 180.0 / (max(bmin, 1) * 60.0))))
+        except Exception:
+            pass
+    # lane-D 2026-10-06 (director): cooldown follows LIVE wall-clock. Live may re-open S seconds after the exit; on the
+    # 15m grid the first eligible bar is i+ceil(S/bar_s), i.e. ceil(S/bar_s)-1 bars are skipped (vec cd = bars skipped).
+    if bool(getattr(cfg, 'COOLDOWN_FROM_LIVE_SECONDS_ENABLED', True)) and not bool(getattr(cfg, 'SIMPLE_PRICE_GT0_ENABLED', False)):
+        try:
+            import math as _lane_math
+            _cd_s = float(getattr(cfg, 'TRADIER_POST_CLOSE_COOLDOWN_MIN', 15.0)) * 60.0 if is_tradier else float(getattr(cfg, 'REENTRY_COOLDOWN_S', 60.0))
+            _cd_live = max(0, int(_lane_math.ceil(max(_cd_s, 0.0) / (max(bmin, 1) * 60.0))) - 1)
+            if not bool(getattr(cfg, 'WT_15M_BOUNCE_OPEN_ENABLED', False)):
+                cooldown_bars = _cd_live
+        except Exception:
+            pass
     max_hold_bars = getattr(cfg, 'DELTA_MAX_HOLD_BARS', 0) if getattr(cfg, 'DELTA_ENGINE_ENABLED', False) else 0
     # venue-aware daytrade toggle — tradier vs crypto both respect DC_DAYTRADE_ENABLED
     _dt_enabled_tradier = bool(getattr(cfg, 'TRADIER_DC_DAYTRADE_ENABLED', False))
@@ -13156,6 +13223,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             import vec_decisions.live_exit_chain as _lec
             _lec_P = _lec.prepare(npz, n, is_long, cfg, close, _safe)
             _lec_P = _lec.prepare_pp(npz, n, is_long, cfg, close, _safe, _lec_P)
+            if _lec_P is not None and not bool(getattr(cfg, 'KEY_LEVEL_CRASH_VEC_ONLY_ENABLED', False)) and 'keylevel_sev' in _lec_P:
+                _lec_P['keylevel_sev'] = np.zeros(n)  # lane-D: KEY_LEVEL_CRASH is EPQ-only (ablated live)
         except Exception:
             _lec_P = None
     # 2026-10-03 exit-crypto: STOP_FUNCTIONS_KILL branch A (ez_manage.py:52245, kill2-shaped REDUCE).
@@ -13176,6 +13245,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         import vec_decisions.mtf_exit_scorer as _mtfs
         _mtf_base, _mtf_late, _mtf_min_gain, _mtf_override = _mtfs.score_array_parts(npz, n, is_long, cfg, _safe, close)
     except Exception:
+        _mtf_base = None
+    # lane-D 2026-10-06: live reach of evaluate_multi_tf_exit — crypto: none; stocks: only when the WT_DC scorer exit is off
+    if not is_tradier and not bool(getattr(cfg, 'MULTI_TF_EXIT_ENABLED', False)):
+        _mtf_base = None
+    if is_tradier and bool(getattr(cfg, 'WT_DC_EXIT_ENABLED', True)) and bool(getattr(cfg, 'STOCKS_WTDC_SCORER_EXIT_ENABLED', True)) and not bool(getattr(cfg, 'MULTI_TF_EXIT_ENABLED_TRADIER', False)):
         _mtf_base = None
     def _stategate_ok(_g, _gain, _age_min, _age_bars, _peak):
         try:
@@ -13210,9 +13284,51 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _seeded_trace = ["SEED_IGNORED err=%s" % type(_seed_err).__name__]
         _seeded_active = False
 
+    # lane-D 2026-10-06 STOCKS live session/hold gates (vec_decisions/stocks_live_session_gates.py, stocks_wtdc_scorer_exit.py)
+    _sg_rth_off = None; _sg_obuf = None; _htfv_sup = None; _wsx_score = None
+    if is_tradier:
+        try:
+            import vec_decisions.stocks_live_session_gates as _slsg
+            _sg_ts = np.asarray(npz.get('timestamp_15m', ts), dtype=float)
+            if len(_sg_ts) != n:
+                _sg_ts = np.asarray(ts, dtype=float)
+            if len(_sg_ts) == n:
+                if bool(getattr(cfg, 'STOCKS_RTH_ONLY_ENABLED', True)):
+                    _sg_rth_off = ~_slsg.rth_mask(_sg_ts, bmin)
+                _sg_obuf = _slsg.opening_buffer_mask(_sg_ts, float(getattr(cfg, 'OPENING_BUFFER_NO_CLOSE_MINUTES', 30.0) or 0.0), bmin)
+            if bool(getattr(cfg, 'HTF_TREND_VETO_ON_REDUCE_ENABLED', False)):
+                _htfv_sup = _slsg.daily_wt_supports_mask(_safe(npz, 'wt1_D', n, 0.0), _safe(npz, 'wt2_D', n, 0.0), is_long)
+        except Exception:
+            _sg_rth_off = None; _sg_obuf = None; _htfv_sup = None
+        if bool(getattr(cfg, 'STOCKS_WTDC_SCORER_EXIT_ENABLED', True)) and bool(getattr(cfg, 'WT_DC_EXIT_ENABLED', True)):
+            try:
+                import vec_decisions.stocks_wtdc_scorer_exit as _swx
+                _wsx_score = _swx.score_array(npz, n, is_long, cfg)
+                _wsx_pp_up, _wsx_pp_dn = _swx.parabolic_masks(npz, n, cfg, _safe)
+                _wsx_against = _swx.against_count_array(npz, n, is_long, _safe)
+                _wsx_thr = float(getattr(cfg, 'WT_DC_EXIT_THRESHOLD', 30) or 30)
+                _wsx_hold = _swx.min_hold_minutes(cfg, is_long)
+                _wsx_dcl = _safe(npz, 'dc_low_15m', n, 0.0)
+                _wsx_dch = _safe(npz, 'dc_high_15m', n, 0.0)
+            except Exception:
+                _wsx_score = None
+
+    def _htfv_block(_bi, _reason):
+        # live tradier execute_now HTF_TREND_VETO_ON_REDUCE: refuse REDUCE/CLOSE while Daily WT supports the side
+        if _htfv_sup is None:
+            return False
+        try:
+            return vec_decisions.stocks_live_session_gates.htf_veto_blocks(_reason, bool(_htfv_sup[_bi]))
+        except Exception:
+            return False
+
     for i in range(n):
         px = close[i]
         if px <= 0:
+            continue
+        if _sg_rth_off is not None and bool(_sg_rth_off[i]):
+            if pos is not None:
+                bars_in_pos += 1  # held through the closed session; live never acts outside RTH
             continue
         # 2026-09-18 HARDCODED RALLY REENTRY bypass cooldown: if close>exit and wt rising, ignore cd
         # 2026-09-26 TARGET-DC immediate reentry [aug-reentry: centralized in target_dc_reentry_gate + master-gated]
@@ -13790,6 +13906,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             for _sm, _sg in _sx_active:
                 if bool(_sm[i]) and _stategate_ok(_sg, live_pnl_pct, held_bars * bmin, held_bars, pos.get('peak_pnl_pct', 0.0)):
                     _sx_fire = True; break
+            if _sx_fire and _htfv_block(i, 'STATEFUL_PORTED_EXIT'):
+                _sx_fire = False  # lane-D: stocks HTF_TREND_VETO_ON_REDUCE
             if _sx_fire:
                 pos['fees'] += abs(pos['qty'] * px) * half_fee
                 _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
@@ -13808,7 +13926,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             if _mtf_min_gain > 0 and live_pnl_pct < _mtf_min_gain: _msc = 0.0
             _msc = _msc if _msc < 100.0 else 100.0
             _mthr = 35.0 if live_pnl_pct > 1.0 else 45.0 if live_pnl_pct > 0.3 else 55.0
-            if (_msc >= _mthr or bool(_mtf_override[i])) and (float(getattr(cfg, 'VEC_GENERIC_EXIT_MIN_GAIN_PCT', 0.0) or 0.0) <= 0 or live_pnl_pct >= float(getattr(cfg, 'VEC_GENERIC_EXIT_MIN_GAIN_PCT', 0.0) or 0.0)) and not vec_decisions.noloss_gate.noloss_blocks(cfg, 'MULTI_TF_EXIT', live_pnl_pct) and not (_qta_eb_block is not None and bool(_qta_eb_block[i])):  # [C2 b5b] live UNIVERSAL_NOLOSS_GATE
+            if (_msc >= _mthr or bool(_mtf_override[i])) and (float(getattr(cfg, 'VEC_GENERIC_EXIT_MIN_GAIN_PCT', 0.0) or 0.0) <= 0 or live_pnl_pct >= float(getattr(cfg, 'VEC_GENERIC_EXIT_MIN_GAIN_PCT', 0.0) or 0.0)) and not vec_decisions.noloss_gate.noloss_blocks(cfg, 'MULTI_TF_EXIT', live_pnl_pct) and not (_qta_eb_block is not None and bool(_qta_eb_block[i])) and not _htfv_block(i, 'MULTI_TF_EXIT'):  # [C2 b5b] live UNIVERSAL_NOLOSS_GATE
                 pos['fees'] += abs(pos['qty'] * px) * half_fee
                 _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
                 _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
@@ -13854,6 +13972,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _ult_breach = (_ult_lvl > 0) and ((is_long and px <= _ult_lvl) or ((not is_long) and px >= _ult_lvl))
             if _ult_breach and _be_veto is not None and i < len(_be_veto) and bool(_be_veto[i]):
                 _ult_breach = False  # BOTTOM_EXIT_HTF_WT_VETO twin (live ez:46767-46782 clears the breach)
+            if _ult_breach and _htfv_block(i, 'ULTIMATE_DC_HARD_STOP'):
+                _ult_breach = False  # lane-D: stocks HTF_TREND_VETO_ON_REDUCE refuses the close
             if _ult_breach:
                 pos['fees'] += abs(pos['qty'] * px) * half_fee
                 _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
@@ -13898,6 +14018,27 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     continue
         except Exception:
             pass
+        # lane-D 2026-10-06 EXIT_VELOCITY_WT twin (live GREY_REWIRE order: WT_LOWER_CROSS -> DAYTRADE DC -> ... -> EXIT_VELOCITY_WT).
+        # A bar where the DAYTRADE DC exit also hits is left to the DAYTRADE chain below (live priority + its TARGET cd=0 semantics).
+        if _xvel_mask is not None and bool(_xvel_mask[i]):
+            try:
+                _xv_dt = False
+                if daytrade_on and (_dd_stop_dcs or _dd_tgt_dcs):
+                    _xv_pb = bool(getattr(cfg, 'DC_PRIOR_BAR_CHANNEL', True)) and i > 0
+                    _xv_lv = {(_sp['field_long'] if is_long else _sp['field_short']): (float(_arr[i - 1 if _xv_pb else i]) if i < len(_arr) else 0.0) for _sp, _arr in _dd_stop_dcs}
+                    _xv_lv.update({(_sp['field_long'] if is_long else _sp['field_short']): (float(_arr[i]) if i < len(_arr) else 0.0) for _sp, _arr in _dd_tgt_dcs})
+                    _xv_dt, _ = vec_decisions.dc_channel_exits.daytrade_dc_exit(float(px), is_long, [_sp for _sp, _ in _dd_stop_dcs], [_sp for _sp, _ in _dd_tgt_dcs], lambda _fld: _xv_lv.get(_fld, 0.0))
+                if not _xv_dt and not vec_decisions.noloss_gate.noloss_blocks(cfg, 'EXIT_VELOCITY_WT', live_pnl_pct) and not _htfv_block(i, 'EXIT_VELOCITY_WT'):
+                    pos['fees'] += abs(pos['qty'] * px) * half_fee
+                    _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
+                    _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
+                    _tsxv = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                    _xv_reason = f"EXIT_VELOCITY_WT {'against-long' if is_long else 'against-short'} g{live_pnl_pct:.2f}%"
+                    trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': _xv_reason, 'type': 'CLOSE', 'ts': _tsxv, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': _xv_reason, 'bars_held': int(i - pos['entry_bar'])})
+                    pos = None; cd = cooldown_bars; has_closed_before = True
+                    continue
+            except Exception:
+                pass
         # LH/LL TOP EXIT (2026-10-04): prev completed 4h/D printed LH/LL (long; HH/HL short)
         # -> exit near the bounce extreme via WT15M rollover / DC1H touch. Honors MIN_HOLD.
         # DC stop untouched (worst-case backstop wins when no bounce forms). Shared predicate with live.
@@ -13959,7 +14100,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         try:
             _hq_act, _hq_qty, _hq_reason, _hq_st = vec_decisions.haiku_augment.step(
                 cfg, is_long, px, float(pos['avg_price']), live_pnl_pct, float(pos['qty']),
-                pos.get('haiku') or {}, int(i), bmin)
+                pos.get('haiku') or {}, int(i), bmin) if bool(getattr(cfg, 'HAIKU_WINNER_VEC_ONLY_ENABLED', False)) else (None, 0.0, '', None)  # lane-D: live AUGMENT refused by STRICT_VEC_PARITY
             if _hq_act == 'AUGMENT' and _hq_qty > 0:
                 _hq_fire = True
             elif _hq_act == 'REDUCE' and _hq_qty > 0:
@@ -14246,6 +14387,21 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             closed = False  # [C2 b5b] live UNIVERSAL_NOLOSS_GATE (default OFF) blocks a technical close at a real loss
         if closed and _qta_eb_block is not None and bool(_qta_eb_block[i]):
             closed = False  # [C2 b7c] live EXIT_BLOCKER_REQUIRE_LH_LL
+        if closed and _htfv_block(i, reason):
+            closed = False  # lane-D: stocks HTF_TREND_VETO_ON_REDUCE (live execute_now :27754)
+        # lane-D 2026-10-06 STOCKS live evaluate_stop WT_DC scorer exit (after process_position's DAYTRADE DC in live order)
+        if not closed and _wsx_score is not None and pos is not None:
+            try:
+                if (_sg_obuf is None or not bool(_sg_obuf[i])) and float(_wsx_score[i]) >= _wsx_thr:
+                    _wj = (i - 1) if (i > 0 and bool(getattr(cfg, 'DC_PRIOR_BAR_CHANNEL', True))) else i
+                    if not vec_decisions.stocks_wtdc_scorer_exit.min_hold_blocks(held_bars * bmin, float(px), float(_wsx_dcl[_wj]), float(_wsx_dch[_wj]), is_long, _wsx_hold):
+                        if not vec_decisions.stocks_wtdc_scorer_exit.noloss_holds(live_pnl_pct, int(_wsx_against[i]), cfg):
+                            if not (bool(_wsx_pp_up[i]) if is_long else bool(_wsx_pp_dn[i])):
+                                _wsx_reason = f"WT_DC_EXIT_{float(_wsx_score[i]):.0f}_g={live_pnl_pct:.2f}%_MANDATORY_REENTRY"
+                                if not _htfv_block(i, _wsx_reason) and not (_qta_eb_block is not None and bool(_qta_eb_block[i])):
+                                    closed, reason = True, _wsx_reason
+            except Exception:
+                pass
         if closed:
             pos['fees'] += abs(pos['qty'] * px) * half_fee
             pnl_dollars = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
@@ -14404,7 +14560,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 pos = None; cd = cooldown_bars; has_closed_before = True
                 continue
         # WIRING LANE E 2026-10-05: GAP_MOC inline close (30-session avg gap >0.1% against overnight -> close at small top in last 90m; records morning-rebuy pending). Precedence over generic exit_sig at gap bars for exact attribution; no min_hold/NOLOSS (live MOC is a risk exit, closes regardless).
-        if _gap_fire is not None and pos is not None and bool(_gap_fire[i]):
+        if _gap_fire is not None and pos is not None and bool(_gap_fire[i]) and not _htfv_block(i, 'GAP_MOC_EXIT'):
             pos['fees'] += abs(pos['qty'] * px) * half_fee
             _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
             _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
@@ -14526,6 +14682,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 continue  # N2/011 live gain floor
             if vec_decisions.noloss_gate.noloss_blocks(cfg, _tech_reason, live_pnl_pct):
                 continue  # [C2 b5b] live UNIVERSAL_NOLOSS_GATE
+            if _htfv_block(i, _tech_reason):
+                continue  # lane-D: stocks HTF_TREND_VETO_ON_REDUCE
             pos['fees'] += abs(pos['qty'] * px) * half_fee
             pnl_dollars = pnl_preview - pos['fees']
             pnl_pct = pnl_dollars / pos['deployed'] * 100 if pos['deployed'] else 0.0

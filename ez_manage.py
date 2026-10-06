@@ -1350,7 +1350,7 @@ def check_winner_momentum(
 # 6. ENTRY VETTING — DC breakout + higher low/lower high
 # ═══════════════════════════════════════════════════════════════════════════════
 def check_entry_vetting(
-    indicators: Dict[str, Any], current_price: float, is_long: bool
+    indicators: Dict[str, Any], current_price: float, is_long: bool, symbol: Optional[str] = None, side: Optional[str] = None
 ) -> Tuple[bool, str]:
     """NO ENTRY unless price has broken recent DC highs on at least 3m tf
     OR low_15m > low_15m_prev, AND (stoch crossover on 1m/3m OR price > dc_high_3m).
@@ -1426,7 +1426,15 @@ def check_entry_vetting(
     # TWIN_VEC_SPECIAL H5: T55 RSI entry-gate crypto-live port (mirror of stocks tradier_manage.py:27835-27860/28185-28205). ONLY if RSI data exists. config.py has no RSI_ENTRY_* fields — getattr defaults used, no config edit needed.
     _rsi_period = int(getattr(config, 'RSI_ENTRY_PERIOD_TRADIER', 10))
     _rsi_val = indicators.get(f'rsi_{_rsi_period}_D', indicators.get('rsi_D', indicators.get('rsi_1h', indicators.get('rsi_15m', None))))
-    if _rsi_val is not None:
+    # 2026-10-06 director (parity lane B): RSI_ENTRY_VETO_ENABLED master (default True = unchanged); per-sym chain via _psym_get when symbol/side known, else per-sym ctx proxy. Vec twin: vec_decisions/entry_vet_rsi_t55.py (same switch).
+    _rsi_veto_raw = getattr(config, 'RSI_ENTRY_VETO_ENABLED', True)
+    if symbol and side:
+        try:
+            _rsi_veto_raw = _psym_get(symbol, side, 'RSI_ENTRY_VETO_ENABLED', _rsi_veto_raw)
+        except Exception:
+            pass
+    _rsi_veto_on = (_rsi_veto_raw.strip().lower() in ('true', '1', 'yes')) if isinstance(_rsi_veto_raw, str) else bool(_rsi_veto_raw)
+    if _rsi_val is not None and _rsi_veto_on:
         _rsi_val = float(_rsi_val or 50)
         if is_long and _rsi_val > float(getattr(config, 'RSI_ENTRY_LONG_TRADIER', 42.0)):
             return False, "RSI_T55_BLOCK_LONG"
@@ -26067,7 +26075,7 @@ class MultiAccountTradeManager:
             )
             quantity = float(quantity) * _tp_dc_mult
             _tp_entry_ok, _tp_entry_reason = trading_policy.check_entry_vetting(
-                i, current_price, is_long
+                i, current_price, is_long, symbol=symbol, side=position_side
             )
             _reason_up_eta = (reason or "").upper()
             _is_force_open_eta = (
@@ -30436,6 +30444,32 @@ class MultiAccountTradeManager:
                         return f"BLOCKED_EMA_BLANKET_FILTER_{position_side}"
         except Exception as _ebe:
             logger.warning(f"[EMA_BLANKET_FILTER] check error (fail-open): {_ebe}")
+        # ═══ PARITY LANE B 2026-10-06: vec entry FILTER_TF gates (MOM3 / DC_BREAK / BREAKOUT_RETEST[ARMED]) on fresh OPEN + vec strict open block (HTF_DIRECTION_GATE + nested OI_CONFIRM) on every non-augment open ═══
+        # Twins: live_twins/parity_open_gates.py (mirrors vec_decisions filter_tf_gates / generic_filter_tf / wave4_families). All OFF/False at config.py default = unchanged live. Per-sym via _psym_get.
+        try:
+            if symbol and ("OPEN" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act or _kill_act == "BUY") and "AUGMENT" not in _kill_act and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act and "HEDGE" not in (reason or "").upper():
+                from live_twins import parity_open_gates as _lpog
+                _lpog_get = lambda _k, _d=None: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))
+                _lpog_long = position_side == "LONG"
+                _lpog_fresh = (_re_g or "REENTRY" not in _kill_act) and (_re_g or ("OBLIGATORY" not in (reason or "").upper() and "REENTRY" not in (reason or "").upper()))
+                _lpog_ftf_on = _lpog_fresh and (_lpog._tf(_lpog_get, "MOM3_FILTER_TF") or _lpog._tf(_lpog_get, "DC_BREAK_FILTER_TF") or (_lpog._truthy(_lpog_get("BREAKOUT_RETEST_ARMED_ENABLED", False)) and _lpog._tf(_lpog_get, "BREAKOUT_RETEST_FILTER_TF")))
+                _lpog_htf_on = _lpog._truthy(_lpog_get("HTF_DIRECTION_GATE_ENABLED", False)) and not _lpog.htf_gate_bypassed(reason or "", _lpog_get)
+                if _lpog_ftf_on or _lpog_htf_on:
+                    _lpog_ind = await ii(self, symbol) or {}
+                    _lpog_pos = await self.get_position(position_key) if position_key else None
+                    _lpog_px = safe_fetch_float(await price(symbol, _lpog_pos), 0.0) or safe_fetch_float(_lpog_ind.get("current_price", _lpog_ind.get("close", 0)), 0.0)
+                    if _lpog_ftf_on:
+                        _lpog_blk, _lpog_why = _lpog.entry_filter_tf_veto(_lpog_ind, _lpog_long, _lpog_px, _lpog_get)
+                        if _lpog_blk:
+                            logger.warning(f"🚫 [PARITY_FILTER_TF] {position_key}: BLOCKED {action} — {_lpog_why} reason={(reason or '')[:50]}")
+                            return f"BLOCKED_PARITY_FILTER_TF_{_lpog_why}"
+                    if _lpog_htf_on:
+                        _lpog_blk, _lpog_why = _lpog.strict_open_veto(_lpog_ind, _lpog_long, _lpog_px, _lpog_get)
+                        if _lpog_blk:
+                            logger.warning(f"🚫 [PARITY_STRICT_OPEN] {position_key}: BLOCKED {action} — {_lpog_why} reason={(reason or '')[:50]}")
+                            return f"BLOCKED_PARITY_STRICT_OPEN_{_lpog_why}"
+        except Exception as _lpog_e:
+            logger.warning(f"[PARITY_OPEN_GATES] check error (fail-open): {_lpog_e}")
         # ═══ KINDERGARTEN + EMA_9_21 crypto fresh-OPEN gates (FLT2 2026-10-01 USER "any value found in vector must be applied in live") ═══
         # Live twins of v12_quick_engine (_wd_open + final entry_sig): ez_manage._kindergarten_ema_gate (KINDERGARTEN_EMA_GATE_ENABLED, KINDERGARTEN_FILTER_TF) and
         # vec_decisions.kg_entry_gate.ema921_pass (EMA_9_21_FILTER_ENABLED/_TFS/_MIN_TFS, KINDERGARTEN_STRICT_TFS, KINDERGARTEN_CUMULATIVE_MIN_TFS). Fresh OPEN only (same exemptions as EMA_BLANKET).
@@ -48297,7 +48331,13 @@ async def process_position(
             if not _gx_fire and bool(getattr(config, "DC_DAYTRADE_ENABLED", False)):
                 _gx_stop, _gx_tgt = _dc_channel_exits.resolve_daytrade_dc(lambda _k, _d: _psym_get(symbol, position_side, _k, _d))
                 if _gx_stop or _gx_tgt:
-                    _gx_fire, _gx_reason = _dc_channel_exits.daytrade_dc_exit(current_price, _gx_is_long, _gx_stop, _gx_tgt, lambda _f: safe_fetch_float(_pp_shared_ind.get(_f, 0), 0.0))
+                    # PARITY LANE B 2026-10-06: STOP levels from the prior-bar channel (vec DC_PRIOR_BAR_CHANNEL, default True); targets same-bar. Only active when a STOP TF is set (default OFF).
+                    try:
+                        from live_twins import dc_prior_bar as _ldpb
+                        _gx_lvl = _ldpb.level_getter(_pp_shared_ind, _gx_is_long, _gx_stop, _psym_get(symbol, position_side, "DC_PRIOR_BAR_CHANNEL", getattr(config, "DC_PRIOR_BAR_CHANNEL", True)))
+                    except Exception:
+                        _gx_lvl = lambda _f: safe_fetch_float(_pp_shared_ind.get(_f, 0), 0.0)
+                    _gx_fire, _gx_reason = _dc_channel_exits.daytrade_dc_exit(current_price, _gx_is_long, _gx_stop, _gx_tgt, _gx_lvl)
             # LANE-H3 2026-10-05 DT_TARGET_ATR crypto daytrade-target twin of stocks wing (tradier_manage.py StockDaytradeWing; vec: vec_decisions/w2_dt_target_atr.py). Gate OFF (default False) = zero change. ATR 15m only (no live atr_5m key); fires when gain >= max(2*atr/entry, fixed, noloss), reason DT_TARGET_ATR when ATR drives.
             if not _gx_fire and bool(getattr(config, "DC_DAYTRADE_ENABLED", False)) and bool(_psym_get(symbol, position_side, "DT_TARGET_ATR_ENABLED", getattr(config, "DT_TARGET_ATR_ENABLED", False))):
                 try:
@@ -48317,7 +48357,12 @@ async def process_position(
                 if _tx_stop or _tx_tgt:
                     if _pp_shared_ind is None:
                         _pp_shared_ind = await ii(trade_manager, symbol) or {}
-                    _gx_fire, _gx_reason = _dc_channel_exits.technical_dc_exit(current_price, _gx_is_long, _tx_stop, _tx_tgt, lambda _f: safe_fetch_float(_pp_shared_ind.get(_f, 0), 0.0))
+                    try:
+                        from live_twins import dc_prior_bar as _ldpb
+                        _tx_lvl = _ldpb.level_getter(_pp_shared_ind, _gx_is_long, _tx_stop, _psym_get(symbol, position_side, "DC_PRIOR_BAR_CHANNEL", getattr(config, "DC_PRIOR_BAR_CHANNEL", True)))
+                    except Exception:
+                        _tx_lvl = lambda _f: safe_fetch_float(_pp_shared_ind.get(_f, 0), 0.0)
+                    _gx_fire, _gx_reason = _dc_channel_exits.technical_dc_exit(current_price, _gx_is_long, _tx_stop, _tx_tgt, _tx_lvl)
             # NOLOSS 2026-10-04 live twin of v12 (hold TECHNICAL loss exits unless WT-bypass/DC-recovery): default OFF = inert.
             if _gx_fire and _gx_reason.startswith("TECHNICAL_") and _noloss_hold is not None:
                 _nl_hold, _nl_why = _noloss_hold.noloss_hold_loss_exit(lambda _k, _d: _psym_get(symbol, position_side, _k, _d), _gx_is_long, safe_fetch_float(getattr(position, "gain", 0), 0.0), safe_fetch_float(getattr(position, "entry_price", 0), 0.0), current_price, _pp_shared_ind or {})

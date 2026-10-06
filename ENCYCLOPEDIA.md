@@ -187,6 +187,13 @@ coherence.
 
 ## 6. How an agent diagnoses a sym_side (procedure)
 
+**One command:** `python tools/v15_diagnose_symside.py {SYM}_{SIDE}` (on S1/S2/S5 — needs full NPZ; `--no-eval` on the Mac
+reads the manifest / DIAGNOSE_REPAIR result) prints metrics, named faults (§3 thresholds), exit/entry reason mix, hold
+length, first levers per fault, and — when the pilot's DIAGNOSE_REPAIR ran — the real lever map of THIS sym_side and its
+gaps. **Missing switches/filters across the fleet:** `python tools/v15_missing_levers.py` →
+`data/parity/missing_levers_{date}.md`. **Does the sheet trade live?** `python tools/v15_trade_parity.py --sym-side SS`
+(trade-by-trade vec vs live-path) — sym_sides that fail are `_NEG_BLOCK`ed at go-live.
+
 1. Open the newest workbook / progress JSON for the sym_side. If it has a `DIAGNOSE_REPAIR` tab, start there: faults
    before/after, finalists' 365D, GAPS, lever map.
 2. Otherwise re-evaluate the final set with `include_ledger=True` (BIBLE §45 cheatsheet) — never diagnose from the

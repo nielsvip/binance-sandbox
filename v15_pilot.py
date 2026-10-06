@@ -595,6 +595,9 @@ def get_template_for_symside(symside: str) -> Path:
 
 # V15_OUT_DIR isolates proof runs (DONE-stage publish renames same-sym_side sheets in OUT_DIR to .superseded)
 OUT_DIR = Path(os.environ["V15_OUT_DIR"]) if os.environ.get("V15_OUT_DIR") else ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
+# 2026-10-06: an isolated run (own V15_OUT_DIR or V15_ISOLATED_PROOF=1) never touches peer hosts (no peer rm of published finals,
+# no quarantine rsync) and quarantines inside its own out dir — proofs must not delete fleet evidence (BIBLE §63 MOVR lesson)
+ISOLATED_RUN = bool(os.environ.get("V15_OUT_DIR")) or os.environ.get("V15_ISOLATED_PROOF") == "1"
 # V15_PROGRESS_DIR isolates test runs from herd/cron progress sync (s1_pull_from_s2s3s5.sh restores stale JSON)
 PROGRESS_DIR = Path(os.environ["V15_PROGRESS_DIR"]) if os.environ.get("V15_PROGRESS_DIR") else ROOT / "data" / "reports" / "lifecycle_pilot"
 FLAGS_DIR = ROOT / "data" / "reports" / "v15_flags"
@@ -1724,7 +1727,7 @@ QUAL_365D_FLOOR_TRADES = 80
 QUAL_MAX_REDOS = int(os.environ.get("V15_QUAL_MAX_REDOS", "2"))
 QUAL_365D_TIMEOUT = float(os.environ.get("V15_QUAL_365D_TIMEOUT", "600"))
 QUAL_RETRY_TIMEOUT = float(os.environ.get("V15_QUAL_RETRY_TIMEOUT", "300"))
-IMPOSSIBLE_DIR = ROOT / "SPREADSHEETS" / "V15_V16_IMPOSSIBLE"
+IMPOSSIBLE_DIR = (OUT_DIR / "V15_V16_IMPOSSIBLE") if ISOLATED_RUN else ROOT / "SPREADSHEETS" / "V15_V16_IMPOSSIBLE"
 # BIBLE §58: final-set repair never loosens safety gates — these tokens are excluded from SOFTEN in final_safe mode.
 _ADAPT_FINAL_SOFTEN_EXCLUDE = ("GUARD", "BLOCK", "HARD", "STOP", "KILL", "HEDGE", "STDEV_REJECT", "RISK")
 
@@ -1984,6 +1987,9 @@ def _qualifies_365d(v, span_days=None):
 def _peer_rm_published(new_symside, host=None):
     """USER 2026-10-03 (xlsx source-of-truth): best-effort removal of a symside's live published artifacts (bh/gain xlsx+html+manifest) on peer hosts when local truth is revoked (REDO re-fill, quarantine). Never touches .superseded/.stale history or working files. Warn-only."""
     import socket as _s, subprocess as _sp
+    if ISOLATED_RUN:
+        print(f"[peer-rm] {new_symside}: isolated run — peers untouched", flush=True)
+        return
     try:
         _hq = _s.gethostname().lower()
         _peers = (host,) if host else (("10.0.0.4", "10.0.0.5") if (_hq == "niels" or "10.0.0.3" in _hq) else ("10.0.0.3", "157.180.125.52"))
@@ -2060,6 +2066,8 @@ def _quarantine_impossible(new_symside, reasons, metrics, wb, wb_path, progress,
     print(f"[IMPOSSIBLE] {new_symside} quarantined -> {qdir} ({'; '.join(reasons)})", flush=True)
     try:
         import socket as _sock_q, subprocess as _sp_q
+        if ISOLATED_RUN:
+            raise RuntimeError("isolated run — quarantine stays local")
         _hq = _sock_q.gethostname().lower()
         _is_s1 = _hq == "niels" or "10.0.0.3" in _hq
         _peers = ("10.0.0.4", "10.0.0.5") if _is_s1 else ("10.0.0.3", "157.180.125.52")

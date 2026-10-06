@@ -2,6 +2,7 @@
 #!/usr/bin/env python3
 import asyncio
 from live_rally_filters import rally_ok as _rally_ok
+import tradier_filter_tf_twins as _ftf_twins  # PARITY LANE C 2026-10-06: vec entry FILTER_TF predicates (stocks live)
 import datetime as dt
 import hashlib
 import json
@@ -14204,75 +14205,35 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             def _ftf_tf(_n):
                                 _t = str(_cfg_auto(_n, "OFF") or "OFF").strip()
                                 return None if _t.upper() == "OFF" else _t
-                            _ftf = _ftf_tf('MOM3_FILTER_TF')
-                            if _veto is None and _ftf and current_price > 0:
-                                _c3 = float(_ftf_get(f'close_3bar_{_ftf}') or 0)
-                                if _c3 > 0:
-                                    _m3 = (current_price - _c3) / _c3 * 100
-                                    _m3ok = (_m3 < float(_cfg_auto('MOM3_LONG_THRESHOLD', -1.0) or -1.0)) if is_long else (_m3 > float(_cfg_auto('MOM3_SHORT_THRESHOLD', 1.0) or 1.0))
-                                    if not _m3ok:
-                                        _veto = f"MOM3_FILTER_TF_{_ftf}_BLOCK({_m3:.2f}%)"
-                            _ftf = _ftf_tf('MOMENTUM_BREAKOUT_FILTER_TF')
-                            if _veto is None and _ftf and current_price > 0:
-                                _c3 = float(_ftf_get(f'close_3bar_{_ftf}') or 0)
-                                if _c3 > 0:
-                                    _mbv = (current_price - _c3) / _c3 * 100
-                                    if not ((_mbv > 0) if is_long else (_mbv < 0)):
-                                        _veto = f"MOMENTUM_BREAKOUT_TF_{_ftf}_BLOCK({_mbv:.2f}%)"
-                            _ftf = _ftf_tf('BB_PULLBACK_GATE_FILTER_TF')
-                            if _veto is None and _ftf:
-                                _bpb = _ftf_get(f'bb_pct_b_{_ftf}')
-                                if _bpb is not None:
-                                    _bv = float(_bpb)
-                                    if (is_long and _bv > 0.20) or ((not is_long) and _bv < 0.80):
-                                        _veto = f"BB_PULLBACK_TF_{_ftf}_BLOCK(pctB={_bv:.2f})"
-                            _ftf = _ftf_tf('BB_RECOVERY_ENTRY_FILTER_TF')
-                            if _veto is None and _ftf:
-                                _bpb = _ftf_get(f'bb_pct_b_{_ftf}')
-                                if _bpb is not None:
-                                    _bv = float(_bpb)
-                                    if not ((_bv > 0.5) if is_long else (_bv < 0.5)):
-                                        _veto = f"BB_RECOVERY_ENTRY_FILTER_TF_{_ftf}_BLOCK(pctB={_bv:.2f})"
-                            _ftf = _ftf_tf('BB_RECOVERY_FILTER_TF')
-                            if _veto is None and _ftf:
-                                _bpb = _ftf_get(f'bb_pct_b_{_ftf}')
-                                if _bpb is not None:
-                                    _bv = float(_bpb)
-                                    if not ((_bv > 0.5) if is_long else (_bv < 0.5)):
-                                        _veto = f"BB_RECOVERY_FILTER_TF_{_ftf}_BLOCK(pctB={_bv:.2f})"
-                            _ftf = _ftf_tf('DC_BREAK_FILTER_TF')
-                            if _veto is None and _ftf and current_price > 0:
-                                _lvl = _ftf_get(f'dc_high_{_ftf}_prev' if is_long else f'dc_low_{_ftf}_prev')
-                                if _lvl:
-                                    _lv = float(_lvl)
-                                    if not ((current_price > _lv) if is_long else (current_price < _lv)):
-                                        _veto = f"DC_BREAK_TF_{_ftf}_BLOCK(px{current_price:.4f}_vs_{_lv:.4f})"
-                            _ftf = _ftf_tf('BT_WT_CROSS_LADDER_FILTER_TF')
-                            if _veto is None and _ftf:
-                                _w1, _w2 = _ftf_get(f'wt1_{_ftf}'), _ftf_get(f'wt2_{_ftf}')
-                                if _w1 is not None and _w2 is not None:
-                                    if not ((float(_w1) > float(_w2)) if is_long else (float(_w1) < float(_w2))):
-                                        _veto = f"BT_WT_CROSS_TF_{_ftf}_BLOCK(wt1={float(_w1):.1f}_wt2={float(_w2):.1f})"
-                            # LANE I2 2026-10-05: 9 FILTER_TF stocks live twins (vec generic_filter_tf FILTER_TF_MAP kinds; crypto live ez batch1).
-                            # Activation != OFF and != 15m: inert at template defaults (OFF/15m), live when swept to 1h/4h/D — mirrors vec legacy + crypto _B1_REAL_TFS inertness. Missing keys fail open.
-                            _ftf = _ftf_tf('BAR_PATTERNS_FILTER_TF')
+                            # PARITY LANE C 2026-10-06: entry FILTER_TFs with a vec entry_sig mask resolve PER-SYM (_cfg account/symbol/side;
+                            # _cfg_auto inside this nested helper saw no locals -> global only) and use the exact vec predicates (tradier_filter_tf_twins).
+                            def _ftf_ps(_n, _d="OFF"):
+                                return _cfg(_n, _d, account_key, symbol, _side_vf)
+                            _px_ftf = float(current_price or 0)
+                            if _veto is None:
+                                _veto = _ftf_twins.mom3_block(_ftf_get, _px_ftf, is_long, _ftf_twins.resolve_tf(_ftf_ps('MOM3_FILTER_TF')), _ftf_ps('MOM3_LONG_THRESHOLD', -1.0), _ftf_ps('MOM3_SHORT_THRESHOLD', 1.0))
+                            if _veto is None:
+                                _veto = _ftf_twins.momentum_breakout_block(_ftf_get, _px_ftf, is_long, _ftf_twins.resolve_tf(_ftf_ps('MOMENTUM_BREAKOUT_FILTER_TF')))
+                            if _veto is None:
+                                _veto = _ftf_twins.bb_pullback_filter_block(_ftf_get, is_long, _ftf_twins.resolve_tf(_ftf_ps('BB_PULLBACK_GATE_FILTER_TF')), _ftf_ps('BB_PULLBACK_GATE_ENABLED', False), _ftf_ps('BB_PULLBACK_GATE_LONG_MAX', 0.30), _ftf_ps('BB_PULLBACK_GATE_SHORT_MIN', 0.70))
+                            if _veto is None:
+                                _veto = _ftf_twins.bb_reclaim_block(_ftf_get, is_long, _ftf_twins.resolve_tf(_ftf_ps('BB_RECOVERY_ENTRY_FILTER_TF')), 'BB_RECOVERY_ENTRY_FILTER_TF')
+                            if _veto is None:
+                                _veto = _ftf_twins.bb_reclaim_block(_ftf_get, is_long, _ftf_twins.resolve_tf(_ftf_ps('BB_RECOVERY_FILTER_TF')), 'BB_RECOVERY_FILTER_TF')
+                            if _veto is None:
+                                _veto = _ftf_twins.dc_break_block(_ftf_get, _px_ftf, is_long, _ftf_twins.resolve_tf(_ftf_ps('DC_BREAK_FILTER_TF')))
+                            if _veto is None:
+                                _veto = _ftf_twins.wt_cross_side_block(_ftf_get, is_long, _ftf_twins.resolve_tf(_ftf_ps('BT_WT_CROSS_LADDER_FILTER_TF')), 'BT_WT_CROSS_TF')
+                            # BAR_PATTERNS: config_tradier default '15m' vs vec/template 'OFF' -> 15m stays inert live (pre-existing LANE I2 rule); vec code-set predicate.
+                            _ftf = _ftf_twins.resolve_tf(_ftf_ps('BAR_PATTERNS_FILTER_TF'))
                             if _veto is None and _ftf and _ftf.upper() != '15M':
-                                _bp_d = _ftf_get(f'bar_direction_{_ftf}')
-                                if _bp_d is not None:
-                                    _bpv = float(_bp_d or 0)
-                                    if not ((_bpv > 0) if is_long else (_bpv < 0)):
-                                        _veto = f"BAR_PATTERNS_TF_{_ftf}_BLOCK(dir={_bpv:.0f})"
-                            _ftf = _ftf_tf('BREAKOUT_RETEST_FILTER_TF')
-                            if _veto is None and _ftf and _ftf.upper() != '15M' and current_price > 0:
-                                _rt_lvl = _ftf_get(f'dc_high_{_ftf}_prev' if is_long else f'dc_low_{_ftf}_prev')
-                                if _rt_lvl:
-                                    _rlv = float(_rt_lvl)
-                                    _rt_wick = _ftf_get(f'low_{_ftf}' if is_long else f'high_{_ftf}')
-                                    _rwk = float(_rt_wick or 0) if _rt_wick is not None else 0
-                                    if _rlv > 0 and _rwk > 0:
-                                        _retest_hold = ((_rwk <= _rlv and current_price > _rlv) if is_long else (_rwk >= _rlv and current_price < _rlv))
-                                        if not _retest_hold:
-                                            _veto = f"BREAKOUT_RETEST_TF_{_ftf}_BLOCK(px{current_price:.4f}_wick{_rwk:.4f}_lvl{_rlv:.4f})"
+                                _veto = _ftf_twins.bar_pattern_side_block(_ftf_get, is_long, _ftf)
+                            # BREAKOUT_RETEST: vec forces OFF unless BREAKOUT_RETEST_ARMED_ENABLED (v12 [JSN2]) -> same master gate live.
+                            if _veto is None:
+                                _veto = _ftf_twins.dc_retest_hold_block(_ftf_get, _px_ftf, is_long, _ftf_twins.resolve_tf(_ftf_ps('BREAKOUT_RETEST_FILTER_TF')), _ftf_ps('BREAKOUT_RETEST_ARMED_ENABLED', False))
+                            # BB_BOUNCE_ENTRY_TF: vec generic_filter_tf FILTER_TF_MAP ('entry','bb_bounce') AND-mask on every entry.
+                            if _veto is None:
+                                _veto = _ftf_twins.bb_bounce_filter_block(_ftf_get, _px_ftf, is_long, _ftf_twins.resolve_tf(_ftf_ps('BB_BOUNCE_ENTRY_TF')))
                             _ftf = _ftf_tf('CANDLE_PATTERN_STOPS_FILTER_TF')
                             if _veto is None and _ftf and _ftf.upper() != '15M':
                                 _cp_d = _ftf_get(f'bar_direction_{_ftf}')

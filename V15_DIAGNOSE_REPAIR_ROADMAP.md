@@ -28,6 +28,14 @@ Already in place (2026-10-06): `execution_ledger` from the scalar replay; `tools
 matching, gap register); `tools/v15_parity_check.py` fails PARITY when < 80 % of trips match both ways
 (`V15_TRADE_PARITY_GATE=0` disables) → `v15_final_phase.qualify` → NEGATIVE → `golive_final` `_NEG_BLOCK`.
 
+**INTEGRAL DEFAULT RULE (director, 2026-10-06, binding for every switch now and in future):** a switch's default is
+the CURRENT LIVE behaviour on every surface (config.py / config_tradier.py, QuickConfig + apply_tradier_defaults,
+cat_side defaults, TEMPLATE bold). Live and vec implement the switch identically. A sheet promotion turns it on per
+sym_side, and then both sides do it. Consequences: pos_sym>0 vec "tests" are wired live with default OFF (= today's
+live), vec default-on paths that live lacks flip to OFF in vec (engine cut → re-baseline), stale per-sym snapshot values
+are cleaned before restart (`tools/parity_persym_snapshot_cleanup.py`, dry-run first). "Live behaviour changes at
+default" must be an EMPTY list at deploy; changes happen only through promotions the sheets measured.
+
 **Exit criteria for the emergency:**
 1. Live leg of the harness runs for every venue/side (no harness crashes; artefacts like single-side portfolio gates,
    3m-vs-15m cadence and the execute_now stub documented and either removed or explicitly accounted for).
@@ -95,10 +103,28 @@ Every eval is a real engine eval logged to the delta log (sentinel stays alive);
    `[DIAG] skipped: only …s left` lines; if frequent, raise herd cap or lower `V15_DIAG_REPAIR_S`.
 7. **Daily loop:** repaired sets flow into the morning go-live exactly like today's finals (365D + trade-level parity +
    `golive_final`), so the improvements reach live before the open.
-8. **Missing-switch worklist:** aggregate `gaps` (MISSING_LEVER / LEVER_EXISTS_BUT_COSTLY) from every
+8. **365D-aware search when the origin fails 365D** (proof BNBUSDC_LONG 2026-10-06: 30D +13.23 → +14.30 repaired,
+   but 365D −18.58 / DD 39.6 → −15.07 / DD 35.6, still invalid). When the origin's 365D verdict fails, the phase must
+   score candidates on BOTH windows (key = worst-window validity, then worst-window gain — the §58 loop's rule) using
+   the 365D slice already prepared in RAM, instead of only verifying finalists at the end. Implement as a 6th phase
+   `REPAIR_365` in `tools/v15_diagnose_repair.run` with its own budget share.
+   **DONE (Mac, unit-tested, not deployed):** origin 365D checked up front; if it fails, 45 % of the budget is reserved
+   and `repair_365()` screens stop/exit/filter/gate candidates on 30D (cost ≤ max(2pp, 50 %)), evaluates the cheapest on
+   the 365D slice in RAM and applies by (365 qualified ∧ 30 compliant, 365 qualified, 30 compliant, 365 valid, −excess,
+   worst-window gain). USER 2026-10-06: "a 30D rally would have total negligence over stops and filters as they were
+   never needed" — this is the integral fix, effective only after parity (stops/filters must exist identically live).
+9. **Switch-gating guard (USER 2026-10-06: "NO new functions without switches in the TEMPLATE_* files connected to both
+   vector and live").** Add `tools/verify_switch_gated.py` to the pilot DEFAULTS-GATE / engine_deploy checks: every
+   reachable `vec_decisions` predicate and every live gate must be governed by a config field present in config*.py,
+   QuickConfig and a TEMPLATE row (one bold default). Ungated functions refuse the deploy. First offender handled:
+   `entry_vet_rsi_t55` / live `check_entry_vetting` RSI veto → `RSI_ENTRY_VETO_ENABLED` (default True = live as-is):
+   config.py:5311 + ez_manage check_entry_vetting (lane B, 15 tests) + QuickConfig:4252/AUTO_WIRED + vec module (lane D,
+   13 tests) + Mac TEMPLATE_CRYPTO_{LONG,SHORT} and TEMPLATE_FINAL_NORM rows in ENTRY_CONFIRMATION_GATES (True bold/YES,
+   False/NO). S1 template rows go out WITH the parity deploy (template + engine + live together).
+10. **Missing-switch worklist:** aggregate `gaps` (MISSING_LEVER / LEVER_EXISTS_BUT_COSTLY) from every
    `v15_diag_repair/*.json` per cat_side → `data/parity/missing_levers_{date}.md` — the input for new switches/filters,
    each built by the 4-surface wiring rule (vec + ez + tradier + config) so parity holds from day one.
-9. **Encyclopedia upkeep:** after the parity cut, refresh the chapters' read-first facts (ENCYCLOPEDIA §1, §7) — several
+11. **Encyclopedia upkeep:** after the parity cut, refresh the chapters' read-first facts (ENCYCLOPEDIA §1, §7) — several
    items there (label-only exits, vec-only augments, inert live paths) are exactly what the parity lanes change.
 
 ---
