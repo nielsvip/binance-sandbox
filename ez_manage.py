@@ -7647,6 +7647,9 @@ def _broker_sync_is_exit(action):
     return any(_t in str(action or "").upper() for _t in ("CLOSE", "REDUCE"))
 
 
+DIRECT_QUEUE_PRICE_MAX_AGE_S = 900.0  # USER 2026-10-06: 15m bar cadence — price may be up to one bar old before a sym_side is skipped
+
+
 def _broker_sync_freshest_ts(*candidates):
     best = None
     for cand in candidates:
@@ -21554,6 +21557,33 @@ class MultiAccountTradeManager:
                             account_key, target_side
                         ) or not self.is_symbol_allowed(account_key, symbol):
                             continue
+                        _gate_pos_ts = _broker_sync_freshest_ts(
+                            getattr(self, "positions_last_sync", None),
+                            getattr(getattr(self, "position_manager", None), "last_synced_at", None),
+                            getattr(self.positions_service, "positions_last_sync", None)
+                            if self.positions_service
+                            else None,
+                        )
+                        _gate_pos_age = (
+                            (datetime.now(timezone.utc) - _gate_pos_ts).total_seconds()
+                            if _gate_pos_ts is not None
+                            else None
+                        )
+                        if _gate_pos_age is None or _gate_pos_age > 60.0:
+                            logger.info(
+                                f"[SYM_GATE_POS_AGE] {symbol} {account_key}: positions age={_gate_pos_age} s"
+                            )
+                        _gate_px, _gate_px_ts = await self.get_current_price(symbol)
+                        if not _gate_px or _gate_px <= 0 or _gate_px_ts is None:
+                            logger.warning(
+                                f"[SYM_GATE_NO_PRICE] {symbol} {account_key}: price={_gate_px} ts={_gate_px_ts} — signal not evaluated"
+                            )
+                            continue
+                        if (datetime.now(timezone.utc) - _gate_px_ts).total_seconds() > DIRECT_QUEUE_PRICE_MAX_AGE_S:
+                            logger.warning(
+                                f"[SYM_GATE_PRICE_STALE] {symbol} {account_key}: price age beyond {DIRECT_QUEUE_PRICE_MAX_AGE_S:.0f}s — signal not evaluated"
+                            )
+                            continue
                         if not _check_leaderboard_allowed(
                             self, symbol, target_side, account_key
                         ):
@@ -21573,7 +21603,23 @@ class MultiAccountTradeManager:
                                 f"[_handle_signal_message00] ⚠️ SKIPPING - construct_position_key returned None: account={account_key}, symbol={symbol}, entry_side={target_side}"
                             )
                             continue
-                        position = await self.get_position(position_key)
+                        position = await self.get_position(position_key, max_age_s=0.0)
+                        if not is_entry:
+                            _svc_exit_pos = (
+                                self.positions_service.positions.get(position_key)
+                                if self.positions_service
+                                else None
+                            )
+                            _exit_fresh_amt = (
+                                abs(safe_fetch_float(getattr(_svc_exit_pos, "positionAmt", 0.0), 0.0))
+                                if _svc_exit_pos is not None
+                                else 0.0
+                            )
+                            if _exit_fresh_amt <= 0:
+                                logger.info(
+                                    f"[DIRECT_QUEUE_SKIP_FLAT] {position_key}: exit signal but positionAmt=0 in positions_service — no CLOSE queued"
+                                )
+                                continue
                         current_price = (
                             signal_price if signal_price and signal_price > 0 else None
                         )
@@ -21617,6 +21663,11 @@ class MultiAccountTradeManager:
                                 )
                             )
                         indicators = await ii(self, symbol)
+                        if not indicators:
+                            logger.info(
+                                f"[DIRECT_QUEUE_SKIP_NO_INDICATORS] {position_key}: no indicators loaded — signal not evaluated"
+                            )
+                            continue
                         is_long = target_side == "LONG"
                         conviction = float(
                             indicators.get(

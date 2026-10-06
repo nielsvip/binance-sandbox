@@ -51,6 +51,15 @@ V15_AUTOPILOT, TOP30_REQUEUE; S2: TOP30_REQUEUE; Mac: v15_gain_pusher), Mac laun
 ~/Library/LaunchAgents/com.niels.fleet-healer.plist`, Mac crontab restore — with the parity engine + auto-correct
 (DIAGNOSE_REPAIR) deployed and a new defaults round id.
 
+**PARITY DEFINITION (USER 2026-10-06, verbatim):** "THE SECOND A VECTORIZED TRADE WOULD OCCUR A LIVE TRADE OCCURS" —
+verified with `backtest_v12_engine` (replays the REAL ez_/tradier_ process_position) trade by trade
+(`tools/v15_trade_parity.py`). Live is NOT driven by vec decisions (NPZs live on another system and are not bar-fresh —
+the vec-driven executor idea was stopped). Fix-and-verify loops: PARITY LOOP CRYPTO / STOCKS (logs
+`data/parity/loop_{crypto,stocks}_log.md`), harness = lane A, settings evidence = lane E.
+**Hard facts, never switches:** stocks trade only in RTH (09:30–16:00 ET) — `v12_quick_engine` RTH gate is
+unconditional + fail-closed since 2026-10-06 (old engine traded 04:00–20:00 NPZ bars → EVERY earlier stock sheet and
+the first s2 repair queue are INVALID; stock repair re-runs on `~/binance-cut6` on s2).
+
 **Exit criteria for the emergency:**
 1. Live leg of the harness runs for every venue/side (no harness crashes; artefacts like single-side portfolio gates,
    3m-vs-15m cadence and the execute_now stub documented and either removed or explicitly accounted for).

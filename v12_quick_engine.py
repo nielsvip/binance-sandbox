@@ -4232,7 +4232,7 @@ class QuickConfig:
     MULTI_TF_EXIT_ENABLED_TRADIER: bool = False  # lane-D 2026-10-06 director ruling: brand-new switch -> default = today-live (False); True = vec-only behaviour test row (lanes B/C build the live twin).  # stocks: evaluate_multi_tf_exit (:22004) is reached only when the WT_DC scorer exit is off; True = also run it while the scorer is on (old vec)
     STOCKS_WTDC_SCORER_EXIT_ENABLED: bool = True  # stocks: live evaluate_stop WT_DC scorer exit chain twin (opening buffer + 240/60 min hold + NOLOSS + N-of-5 scorer); vec_decisions/stocks_wtdc_scorer_exit.py
     TRADIER_MIN_HOLD_MINUTES_SHORT: float = 60.0  # config_tradier.py:4165 (live evaluate_stop short min hold)
-    STOCKS_RTH_ONLY_ENABLED: bool = True  # stocks: live acts only Mon-Fri 09:30-16:00 ET; NPZ carries 04:00-20:00 bars; False = old vec (trades extended hours)
+    STOCKS_RTH_ONLY_ENABLED: bool = True  # INERT 2026-10-06: RTH-only is unconditional for stocks (USER: stocks never trade outside market hours); kept only so old overrides parse
     EMA50_15M_ENTRY_FILTER_VEC_ONLY_ENABLED: bool = False  # lane-D 2026-10-06 director: crypto live has no ema_50_15m (ez_indicators never emits it) -> False; apply_tradier_defaults sets True (stocks live twin, lane C).  # EMA50 15m entry filter is dead live (crypto: _NON_VEC_KNOBS_EZ mask; stocks: only in dead should_enter_long/short); True = old vec filter
     KG_STOCKS_LIVE_GATE_VEC_ONLY_ENABLED: bool = False  # lane-D 2026-10-06 director ruling: brand-new switch -> default = today-live (False); True = vec-only behaviour test row (lanes B/C build the live twin).  # stocks KG/EMA_9_21 hard veto has no live caller (should_enter_* dead); True = old vec veto
     HAIKU_WINNER_VEC_ONLY_ENABLED: bool = False  # lane-D 2026-10-06 director ruling: brand-new switch -> default = today-live (False); True = vec-only behaviour test row (lanes B/C build the live twin).  # crypto HaikuOverseer AUGMENT is refused live by STRICT_VEC_PARITY (reason has no allowlist token); True = old vec haiku augment
@@ -13339,8 +13339,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             if len(_sg_ts) != n:
                 _sg_ts = np.asarray(ts, dtype=float)
             if len(_sg_ts) == n:
-                if bool(getattr(cfg, 'STOCKS_RTH_ONLY_ENABLED', True)):
-                    _sg_rth_off = ~_slsg.rth_mask(_sg_ts, bmin)
+                # USER 2026-10-06: STOCKS NEVER TRADE OUTSIDE MARKET HOURS — unconditional (no switch, no template row)
+                _sg_rth_off = ~_slsg.rth_mask(_sg_ts, bmin)
                 _sg_obuf = _slsg.opening_buffer_mask(_sg_ts, float(getattr(cfg, 'OPENING_BUFFER_NO_CLOSE_MINUTES', 30.0) or 0.0), bmin)
             if bool(getattr(cfg, 'HTF_TREND_VETO_ON_REDUCE_ENABLED', False)):
                 _htfv_sup = _slsg.daily_wt_supports_mask(_safe(npz, 'wt1_D', n, 0.0), _safe(npz, 'wt2_D', n, 0.0), is_long)
@@ -13374,6 +13374,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         except Exception:
             return False
 
+    if is_tradier and _sg_rth_off is None:
+        # fail closed: without a session mask a stock run would trade 04:00-20:00 bars — never allowed
+        try:
+            import vec_decisions.stocks_live_session_gates as _slsg2
+            _sg_rth_off = ~_slsg2.rth_mask(np.asarray(ts, dtype=float), bmin)
+        except Exception:
+            _sg_rth_off = np.ones(n, dtype=bool)
     for i in range(n):
         px = close[i]
         if px <= 0:
