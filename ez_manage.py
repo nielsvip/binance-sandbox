@@ -7931,186 +7931,31 @@ def _psym_cs_get(symbol: str, side: str, knob: str, default):
 
 
 def _ezm_is_live_side_enabled(symbol: str, side: str, account_key: str | None = None) -> tuple[bool, str]:
-    """Live gate: per_sym must exist, gain>0 and beat bh.
-    Backtest still explores disabled side occasionally (exploration), but live blocks.
-    Handles both crypto (per_sym_active_config.json) and stocks (per_sym_active_config_stocks.json).
-    PARITY 2026-09-24: restored — live trades exactly what per_sym recommends.
-    2026-09-24 account fix: tradeable_keys are per-account (ang:..., inf:... etc.) so TEMPLATE fallback checks per-account, not global.
-    Returns (enabled, reason)."""
-    global _ezm_per_sym_raw, _ezm_per_sym_raw_mtime, _ezm_per_sym_cfgs, _ezm_per_sym_cfgs_mtime, _ezm_per_sym_stocks_raw, _ezm_per_sym_stocks_mtime
+    """USER 2026-10-06 SINGLE SOURCE: sqlite row decides; no row -> TEMPLATE baseline trades (enabled). JSON/BEST/keys layers removed."""
     if os.environ.get("V8_DISABLE_PER_SYM") == "1":
         return True, "V8_DISABLE_PER_SYM"
     if not bool(getattr(config, "PER_SYM_CONFIG_ENABLED", True)):
         return True, "PER_SYM_CONFIG_ENABLED=False"
-    # USER 2026-10-06 LIVE-BOOK-PRESENCE: crypto live trades the per_sym book full_config verbatim — no evidence bars, no template fallback. Entry present = tradeable. Missing = blocked. Stocks keep evidence logic below.
-    _is_crypto_key = symbol.endswith("USDT") or symbol.endswith("USDC") or symbol.endswith("USDS")
-    if _is_crypto_key:
-        _bp_key = f"{symbol}_{side}"
-        try:
-            if os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1":
-                import per_sym_store as _pss_bp
-                _bp_full = _pss_bp.get_full_config(_bp_key)
-                if isinstance(_bp_full, dict) and _bp_full:
-                    return True, "book presence: full_config trades verbatim"
-        except Exception:
-            pass
-        try:
-            _bp_mtime = _ezm_per_sym_cfgs_path.stat().st_mtime
-            if _bp_mtime != _ezm_per_sym_raw_mtime:
-                with _ezm_per_sym_cfgs_path.open() as _bp_f:
-                    _bp_raw = json.load(_bp_f)
-                _ezm_per_sym_raw = {k: v for k, v in _bp_raw.items() if isinstance(v, dict)}
-                _ezm_per_sym_raw_mtime = _bp_mtime
-            _bp_entry = _ezm_per_sym_raw.get(_bp_key)
-            if isinstance(_bp_entry, dict) and isinstance(_bp_entry.get("full_config"), dict) and _bp_entry["full_config"]:
-                return True, "book presence(JSON): full_config trades verbatim"
-        except Exception:
-            pass
-        return False, f"no book entry {_bp_key} -> blocked (no fallback)"
-    # SQLite primary: try per_sym_store (full snapshot) for live gate — keeps gate correct when TEMPLATE drifts
-    _gate_via_sqlite = False
+    _row = None
     if os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1":
         try:
-            import per_sym_store as _pss_gate
-            _gate_entry = _pss_gate.get(f"{symbol}_{side}")
-            if _gate_entry is not None:
-                raw_entry = _gate_entry
-                _pss_is_stock = symbol.replace("USDT","").replace("USDC","") != symbol and _gate_entry.get("cat_side","").startswith("STOCKS")
-                key = f"{symbol}_{side}"
-                is_stock = _pss_is_stock or (raw_entry.get("cat_side","").startswith("STOCKS"))
-                _gate_via_sqlite = True
+            import per_sym_store as _pss_g
+            _row = _pss_g.get(f"{symbol}_{side}")
         except Exception:
-            _gate_via_sqlite = False
-    if not _gate_via_sqlite:
-        try:
-            mtime = _ezm_per_sym_cfgs_path.stat().st_mtime
-            if mtime != _ezm_per_sym_raw_mtime:
-                with _ezm_per_sym_cfgs_path.open() as _f:
-                    raw = json.load(_f)
-                _ezm_per_sym_raw = {k: v for k, v in raw.items() if isinstance(v, dict)}
-                _ezm_per_sym_cfgs = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict)}
-                _ezm_per_sym_raw_mtime = mtime
-                _ezm_per_sym_cfgs_mtime = mtime
-        except FileNotFoundError:
-            pass
-        except Exception as e:
-            return True, f"load error fail-open {e}"
-        # Try stocks per_sym as well (for stock symbols traded via ez_manage with USDT suffix e.g. SNDKUSDT)
-        try:
-            mtime_s = _ezm_per_sym_stocks_path.stat().st_mtime
-            if mtime_s != _ezm_per_sym_stocks_mtime:
-                with _ezm_per_sym_stocks_path.open() as _f:
-                    raw_s = json.load(_f)
-                _ezm_per_sym_stocks_raw = {k: v for k, v in raw_s.items() if isinstance(v, dict)}
-                _ezm_per_sym_stocks_mtime = mtime_s
-        except FileNotFoundError:
-            _ezm_per_sym_stocks_raw = {}
-        except Exception:
-            pass
-        key = f"{symbol}_{side}"
-        raw_entry = _ezm_per_sym_raw.get(key)
-    is_stock = False
-    if raw_entry is None:
-        base = symbol.replace("USDT", "").replace("USDC", "")
-        base_key = f"{base}_{side}"
-        raw_entry = _ezm_per_sym_stocks_raw.get(base_key) or _ezm_per_sym_stocks_raw.get(key)
-        if raw_entry is not None:
-            is_stock = True
-        else:
-            # PARITY 2026-09-24 account fix: per-account tradeable_keys (ang:..., inf:...) so check account prefix
-            try:
-                _tk_path = Path(__file__).resolve().parent / "tradeable_keys.json"
-                if _tk_path.exists():
-                    _tk_raw2 = json.loads(_tk_path.read_text())
-                    if account_key:
-                        if f"{account_key}:{symbol}_{side}" in _tk_raw2:
-                            return True, f"TEMPLATE fallback until per_sym calculated for {account_key}:{key}"
-                    else:
-                        # no account: fallback to any-account check (e.g. global verify)
-                        _tk_set2 = set(str(k).split(":", 1)[1] if ":" in str(k) else str(k) for k in _tk_raw2 if isinstance(k, str))
-                        if f"{symbol}_{side}" in _tk_set2:
-                            return True, f"TEMPLATE fallback until per_sym calculated for {key} (any account)"
-            except Exception:
-                pass
-            # Also check BEST matrices for stocks (SPREADSHEETS/BEST/STOCKS_{SIDE}) as secondary gate for non-tradeable
-            try:
-                import re as _re
-                pattern = _re.compile(r"(.+?)_(LONG|SHORT)_bh(.+?)_gain(.+?)_30d_matrix")
-                def _pg(s): return -float(s[1:].replace('p','.')) if s.startswith('m') else float(s.replace('p','.'))
-                best_dir = Path(__file__).resolve().parent / f"SPREADSHEETS/BEST/STOCKS_{side}"
-                if best_dir.exists():
-                    for f in best_dir.iterdir():
-                        if f.name.startswith(f"{base}_{side}_bh"):
-                            m = pattern.match(f.name)
-                            if m:
-                                bh = _pg(m.group(3)); gain = _pg(m.group(4))
-                                if gain <= 0 or gain <= bh:
-                                    return False, f"BEST stock {base}_{side} gain {gain} bh {bh} not beating (needs gain>0 AND beat bh)"
-            except Exception:
-                pass
-            return False, f"no per_sym entry {key} -> ancient defaults"
-    # Stocks case: use stocks per_sym (already loaded as raw_entry with is_stock True)
-    if is_stock:
-        # ERASED LONG_ENABLED/SHORT_ENABLED per user 2026-09-23: _SHORT means not is_long
-        pass
-        # Stocks live gate: check BEST first (gain>0 and beat bh) then ps wsharpe/pnl
-        try:
-            import re as _re2
-            pattern2 = _re2.compile(r"(.+?)_(LONG|SHORT)_bh(.+?)_gain(.+?)_30d_matrix")
-            def _pg2(s): return -float(s[1:].replace('p','.')) if s.startswith('m') else float(s.replace('p','.'))
-            base2 = symbol.replace("USDT", "").replace("USDC", "")
-            best_dir2 = Path(__file__).resolve().parent / f"SPREADSHEETS/BEST/STOCKS_{side}"
-            if best_dir2.exists():
-                for f2 in best_dir2.iterdir():
-                    if f2.name.startswith(f"{base2}_{side}_bh"):
-                        m2 = pattern2.match(f2.name)
-                        if m2:
-                            bh2 = _pg2(m2.group(3)); gain2 = _pg2(m2.group(4))
-                            if gain2 <= 0 or gain2 <= bh2:
-                                return False, f"BEST stock {base2}_{side} gain {gain2} bh {bh2} not beating (needs AND)"
-        except Exception:
-            pass
-        # Check ps wsharpe/pnl
-        w2 = raw_entry.get("wsharpe") if "wsharpe" in raw_entry else raw_entry.get("pool_sharpe")
-        pnl2 = raw_entry.get("total_pnl_pct") if "total_pnl_pct" in raw_entry else raw_entry.get("acc_gain_pct") or raw_entry.get("gain_pct")
-        trades2 = raw_entry.get("trades")
-        tag2 = raw_entry.get("winning_tag", "")
-        sample2 = raw_entry.get("sample_tag", "")
-        if "DISABLED" in str(tag2) or sample2 == "NO_TRADES" or (trades2 == 0 and (w2 == 0 or w2 is None)):
-            return False, f"stocks disabled tag {tag2[:30]} w={w2} trades={trades2}"
-        if w2 is not None and w2 <= 0 and pnl2 is not None and pnl2 <= 0:
-            return False, f"stocks w {w2} pnl {pnl2} not profitable"
-        return True, "stocks live enabled gain>0 and beats bh"
-    # ERASED LONG_ENABLED/SHORT_ENABLED per user 2026-09-23: _SHORT means not is_long, no bare flag
-    ov = _ezm_apply_final_book(key, _ezm_per_sym_cfgs.get(key, {}))
-    # Live gate: gain>0 AND beat bh per side — if both sides positive keep both, if one loses a lot keep one
-    # If per_sym has no gain/bh (vectorized_opt with only wsharpe), use wsharpe>0 as fallback (backtest still probes)
-    g = raw_entry.get("acc_gain_pct")
-    if g is None:
-        g = raw_entry.get("gain_pct") or raw_entry.get("total_gain_pct") or raw_entry.get("gain_vs_bh")
-    bh = raw_entry.get("bh_pct")
-    gain_vs_bh = raw_entry.get("gain_vs_bh")
-    has_gain_pos = g is not None and g > 0
-    has_beat = (gain_vs_bh is not None and gain_vs_bh > 0) or (g is not None and bh is not None and g > bh)
-    has_gain_data = (g is not None) or (gain_vs_bh is not None) or (bh is not None)
-    # Require both gain>0 AND beat bh for live if gain data exists; otherwise fallback to wsharpe
-    if has_gain_data:
-        if not has_gain_pos or not has_beat:
-            return False, f"needs gain>0 ({g}) AND beat bh (gvb {gain_vs_bh} bh {bh}) has_gain_pos={has_gain_pos} has_beat={has_beat}"
-    else:
-        # No gain/bh — check wsharpe as fallback (e.g. vectorized_opt)
-        w_tmp = raw_entry.get("wsharpe") if "wsharpe" in raw_entry else raw_entry.get("pool_sharpe")
-        trades_tmp = raw_entry.get("trades")
-        if w_tmp is None or w_tmp <= 0 or trades_tmp is None or trades_tmp == 0:
-            return False, f"no gain data and wsharpe {w_tmp} trades {trades_tmp} not positive"
-    # Check disabled tags
-    tag = raw_entry.get("winning_tag", "")
-    sample = raw_entry.get("sample_tag", "")
-    trades = raw_entry.get("trades")
-    w = raw_entry.get("wsharpe") if "wsharpe" in raw_entry else raw_entry.get("pool_sharpe")
-    if "DISABLED" in str(tag) or sample == "NO_TRADES" or (trades == 0 and (w == 0 or w is None)):
-        return False, f"disabled tag {tag[:30]} w={w} trades={trades}"
-    return True, f"live enabled AND gain>0({has_gain_pos}) and beat bh({has_beat})"
+            _row = None
+    if _row is None:
+        return True, f"no per_sym {symbol}_{side} -> TEMPLATE baseline trades"
+    _tag = _row.get("winning_tag", "")
+    if "DISABLED" in str(_tag):
+        return False, f"disabled tag {_tag[:30]}"
+    _w = _row.get("wsharpe") if "wsharpe" in _row else _row.get("pool_sharpe")
+    _pnl = _row.get("total_pnl_pct") if "total_pnl_pct" in _row else _row.get("acc_gain_pct") or _row.get("gain_pct")
+    _tr = _row.get("trades")
+    if _row.get("sample_tag", "") == "NO_TRADES" or (_tr == 0 and (_w == 0 or _w is None)):
+        return False, f"no-trade row w={_w} trades={_tr}"
+    if _w is not None and _w <= 0 and _pnl is not None and _pnl <= 0:
+        return False, f"w {_w} pnl {_pnl} not profitable"
+    return True, "sqlite per_sym enabled"
 
 
 _EXPLODING_LEDGER: Dict[str, Any] = {}  # {symbol: {pct_15d, side, updated}}
@@ -22233,6 +22078,9 @@ class MultiAccountTradeManager:
                                             ),
                                         )
                                     )
+                                    if not bool(getattr(config, "SIGNAL_IMMEDIATE_REDUCE_ENABLED", False)):  # 2026-10-06 USER churn audit: webhook signal exits have no vec twin -> own switch, OFF both sides
+                                        logger.info(f"[SIGNAL_REDUCE_OFF] {position_key}: EXIT_ON_ALL {signal_category} REDUCE not queued (SIGNAL_IMMEDIATE_REDUCE_ENABLED=False)")
+                                        continue
                                     reason_code = f"[SIGNAL_MESS]:EXIT_ON_ALL_{signal_category}_{event_type}_REDUCE"
                                     logger.warning(
                                         f"[🚀 EXIT_ON_ALL] {position_key}: {signal_category} signal -> REDUCE (conviction={conviction:.1f})"
@@ -22884,6 +22732,9 @@ class MultiAccountTradeManager:
                                                 continue
                                             # 2026-04-26: S/R guard removed — close on technicals ALWAYS.
                                             # Former SCALP_V3_IMMEDIATE_REDUCE_SKIP_SR blocked reduces at S/R levels.
+                                            if not bool(getattr(config, "SIGNAL_IMMEDIATE_REDUCE_ENABLED", False)):  # 2026-10-06 USER churn audit: webhook signal exits have no vec twin -> own switch, OFF both sides
+                                                logger.info(f"[SIGNAL_REDUCE_OFF] {position_key}: IMMEDIATE_REDUCE {signal_category} not queued (SIGNAL_IMMEDIATE_REDUCE_ENABLED=False)")
+                                                continue
                                             reason_code = (
                                                 f"[HANDLE_SIGNAL]:{signal_category}_{event_type}_IMMEDIATE_REDUCE"
                                                 if signal_category != "UNKNOWN"
@@ -35099,6 +34950,33 @@ class MultiAccountTradeManager:
                                 return "BLOCKED_VEC_EXACT_POSITION_AT_CAP"
                     except Exception as _vxp_e:
                         logger.warning(f"[VEC_EXACT_HARD_CAP] {position_key}: position cap check error {_vxp_e}")
+                # 2026-10-06 USER (men NMR/KSM $14-18 vec OPENs -> $180: indicator adds + sentiment x2 + LS_REBALANCE x2 + DC_POS + LADDER x3):
+                # HARD ceiling for every new OPEN / AUGMENT step, vec or native = START_POSITION_SIZE(sym_side) x perf tier (missing -> 1.0).
+                # Live multipliers still apply INSIDE the ceiling; MAX_ORDER_VALUE (above) stays the absolute cap; MAX_POSITION_SIZE caps the total.
+                if bool(getattr(config, "OPEN_CEIL_SPS_TIER_ENABLED", True)) and quantity and quantity > 0 and current_price and current_price > 0 and not is_reduce:
+                    try:
+                        _oc_side = position_side or ("LONG" if side == "BUY" else "SHORT")
+                        _oc_base = float(_psym_sps_raw(symbol, _oc_side) or config.START_POSITION_SIZE)
+                        try:
+                            import perf_tier_sizing as _oc_pts
+                            _oc_mult = float(_oc_pts.get_mult(symbol, _oc_side)) if bool(getattr(config, "PERF_TIER_SIZING_ENABLED", False)) else 1.0
+                        except Exception:
+                            _oc_mult = 1.0
+                        _oc_ceil = max(_oc_base * _oc_mult, float(getattr(config, "PERF_TIER_MIN_ORDER_USD", 6.0)))
+                        if quantity * current_price > _oc_ceil:
+                            _oc_q0 = quantity
+                            quantity = _oc_ceil / current_price
+                            logger.warning(f"[OPEN_CEIL_SPS] {position_key} {action}: ${_oc_q0 * current_price:.2f} -> ${quantity * current_price:.2f} (SPS ${_oc_base:.2f} x tier {_oc_mult:.2f}) reason={(reason or '')[:50]}")
+                        if "AUGMENT" in str(action).upper():
+                            _oc_max = float(get_max_position_size(symbol, account_key=account_key))
+                            _oc_cur = abs(float(current_real_amt or 0.0)) * current_price
+                            if _oc_cur + quantity * current_price > _oc_max:
+                                quantity = max(0.0, (_oc_max - _oc_cur) / current_price)
+                                logger.warning(f"[OPEN_CEIL_SPS] {position_key} AUGMENT: total capped at MAX_POSITION_SIZE ${_oc_max:.0f} (current ${_oc_cur:.2f}) -> ${quantity * current_price:.2f}")
+                                if quantity * current_price < float(getattr(config, "PERF_TIER_MIN_ORDER_USD", 6.0)):
+                                    return "BLOCKED_OPEN_CEIL_POSITION_AT_MAX"
+                    except Exception as _oc_e:
+                        logger.warning(f"[OPEN_CEIL_SPS] {position_key}: ceiling check error {_oc_e}")
                 # ═══ CENTRALIZED FOOTHOLD ═══
                 # Centralized in place_maker_order (USER 2026-06-02) to prevent double webhook sends.
 
@@ -48936,6 +48814,26 @@ async def process_position(
                         return f"{EvalStatus.ACTION_TAKEN}:VIGILANCE_DC4_{_vg_tf}_CLOSED"
         except Exception as _vg_e:
             logger.warning(f"[VIGILANCE] probe err {position_key}: {_vg_e}")
+    # 2026-10-06 USER MANDATE — NON-TRADEABLE: exit at first wt1_15m against, keep closed (entry gate blocks reentry).
+    if position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0:
+        try:
+            _nt_en, _nt_why = _ezm_is_live_side_enabled(symbol, position_side, account_key)
+            if not _nt_en:
+                if _pp_shared_ind is None:
+                    _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                _nt_w1 = safe_fetch_float((_pp_shared_ind or {}).get("wt1_15m", 0), 0.0)
+                _nt_against = _nt_w1 != 0 and ((position_side == "LONG" and _nt_w1 < 0) or (position_side == "SHORT" and _nt_w1 > 0))
+                if _nt_against:
+                    _nt_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
+                    _nt_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
+                    _nt_side = "SELL" if position_side == "LONG" else "BUY"
+                    logger.critical(f"🚨 [NON_TRADEABLE_WT15M_EXIT] {position_key}: not tradeable ({_nt_why}) + wt1_15m {_nt_w1:.1f} against → CLOSE + keep closed g={_nt_gain:.2f}%")
+                    ez_vigilance_block(symbol, position_side, f"NON_TRADEABLE_WT15M_EXIT_wt{_nt_w1:.1f}_g{_nt_gain:.2f}", exit_price=current_price)
+                    await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_nt_amt, side=_nt_side, position_side=position_side, quantity=_nt_amt, old_price=current_price, unique_id=f"NON_TRADEABLE_WT15M_{int(time.time())}", reason=f"NON_TRADEABLE_WT15M_EXIT_{position_side}_wt{_nt_w1:.1f}_g{_nt_gain:.2f}", is_full_close=True, action="CLOSE")
+                    trade_manager.processing_keys.discard(position_key)
+                    return f"{EvalStatus.ACTION_TAKEN}:NON_TRADEABLE_WT15M_CLOSED"
+        except Exception as _nt_e:
+            logger.warning(f"[NON_TRADEABLE] {position_key} probe err: {_nt_e}")
     # ═══════════════════════════════════════════════════════════════════════════
     # 2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP: DC CHANNEL BREACH.
     # No position may be held through dc_low_TF (LONG) / dc_high_TF (SHORT) where TF = DC_HARD_STOP_TF (4h|D) per sym_side.

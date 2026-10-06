@@ -11868,9 +11868,11 @@ def detect_bb_squeeze_breakout(symbol: str, is_long: bool, indicators: dict) -> 
     """Detect BB squeeze breakout: width compresses below 20th percentile then price breaks out. Returns None, 'BUY', or 'SELL'."""
     if not getattr(config, "BB_SQUEEZE_ENABLED", False):
         return None
-    bb_upper = safe_fetch_float(indicators.get('bb_upper_1h', 0), 0)
-    bb_lower = safe_fetch_float(indicators.get('bb_lower_1h', 0), 0)
-    bb_pct_b = safe_fetch_float(indicators.get('bb_pct_b_1h', 0.5), 0.5)
+    # 2026-10-06 full-parity: TF-parametric (vec twin honors BB_SQUEEZE_ENTRY_TF; default 1h = unchanged).
+    _bbs_tf = str(getattr(config, "BB_SQUEEZE_ENTRY_TF", "1h") or "1h").lower()
+    bb_upper = safe_fetch_float(indicators.get(f'bb_upper_{_bbs_tf}', 0), 0)
+    bb_lower = safe_fetch_float(indicators.get(f'bb_lower_{_bbs_tf}', 0), 0)
+    bb_pct_b = safe_fetch_float(indicators.get(f'bb_pct_b_{_bbs_tf}', 0.5), 0.5)
     if bb_lower <= 0 or bb_upper <= 0:
         return None
     bb_width = (bb_upper - bb_lower) / bb_lower * 100.0
@@ -11885,7 +11887,7 @@ def detect_bb_squeeze_breakout(symbol: str, is_long: bool, indicators: dict) -> 
         state['width_history'].append(bb_width)
     if len(state['width_history']) < 20:
         return None
-    width_percentile = getattr(config, "BB_SQUEEZE_WIDTH_PERCENTILE", 0.2)
+    width_percentile = getattr(config, "BB_SQUEEZE_WIDTH_PERCENTILE", 0.25)
     sorted_widths = sorted(state['width_history'])
     threshold_idx = max(0, int(len(sorted_widths) * width_percentile) - 1)
     squeeze_threshold = sorted_widths[threshold_idx]

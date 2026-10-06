@@ -149,7 +149,7 @@ class Config:
     AUGMENT_FALLBACK_REDUCE_ENABLED: bool = False
     AUGMENT_FALLBACK_REDUCE_PCT: float = 0.5
     AUGMENT_FALLBACK_GAIN_PCT: float = 1.0
-    MAX_AUGMENTS_PER_POSITION: int = 10  # USER 2026-05-30: NO cap — augment a million times as long as gain > 0.5*MIN_GAIN (and wt1_1h aligned via add-block)  # 2026-05-21 USER MANDATE: position must compound to 20x start_position_size when price moves favorably. Was 3 ("stop piling into losers") — but combined with disabled-BREAKEVEN_GAIN_EROSION (line 2559) and MTF_ATR_TRAIL=2x protection (line 1363), augments only continue when price is moving in our favor. ROLLBACK: 3.
+    MAX_AUGMENTS_PER_POSITION: int = 999999  # USER 2026-05-30: NO cap — augment a million times as long as gain > 0.5*MIN_GAIN (and wt1_1h aligned via add-block)  # 2026-05-21 USER MANDATE: position must compound to 20x start_position_size when price moves favorably. Was 3 ("stop piling into losers") — but combined with disabled-BREAKEVEN_GAIN_EROSION (line 2559) and MTF_ATR_TRAIL=2x protection (line 1363), augments only continue when price is moving in our favor. ROLLBACK: 3.
     BEAR_MARKET_MODE: bool = True  # URGENT_FIX: When True, favor shorts over longs
     # MIN_PROFIT_FOR_PROFIT_TAKING: float =   0.4
 
@@ -1069,6 +1069,8 @@ class Config:
     PARITY_VEC_EXACT_SNAPSHOT_FINAL: str = "next_bar"  # live_snapshots: next_bar (live: a bar is final when the next starts) | on_arrival (replay: the per-bar dict is already final)
     PARITY_VEC_EXACT_LIVE_SIZING: bool = True  # USER ruling 2026-10-06: vec-decided OPEN/AUGMENT get the normal live sizing (execute_trade_action, override_qty None); parity = decisions, not size. False = vec qty override (paper/test only)
     WATCHDOG_DC_VEC_ENABLED: bool = False  # 2026-10-06 director: QuickConfig switch of the vec momentum-watchdog DC-breakout opener (v12 _wd_open twin); config mirror so the daily chain / TEMPLATE can sweep it. Live native watchdog is off in exact mode; vec decides when True
+    OPEN_CEIL_SPS_TIER_ENABLED: bool = True  # 2026-10-06 USER: hard ceiling per new OPEN / AUGMENT step = START_POSITION_SIZE(sym_side) x perf tier (vec or native); live multipliers apply inside it; MAX_ORDER_VALUE stays the absolute cap. Log [OPEN_CEIL_SPS]
+    SIGNAL_IMMEDIATE_REDUCE_ENABLED: bool = False  # 2026-10-06 USER churn audit: webhook _handle_signal_message EXIT_ON_ALL / IMMEDIATE_REDUCE signal exits (no vec twin) -> own switch OFF on both sides (QuickConfig mirror False)
     RANKING_WEBHOOK_DIRECT_ENTRY_ENABLED: bool = False  # 2026-10-06 parity-loop-crypto (director): ranking-webhook ALL_GREEN/ALL_RED direct OPEN/AUGMENT path (_handle_signal_message DIRECT_QUEUE). No vec twin -> OFF on both sides (QuickConfig mirror False); always off at the source under PARITY_VEC_EXACT_MODE with ENTRY twinned
     VEC_DRIVEN_ENABLED: bool = False  # 2026-10-06 X3 VEC-DRIVEN LIVE: global master; a sym_side is vec-driven LIVE only if this is True AND data/vec_live/vec_driven.json lists it mode=live for this account (live_twins/vec_driven.py). False = byte-identical live  # 2026-10-06 director: emergency bridge ON (expiry in data/vec_live/vec_driven.json)
     VEC_DRIVEN_NATIVE_ENTRY_BLOCK_ALL: bool = False  # USER 2026-10-06 PARITY: with VEC_DRIVEN_ENABLED, native OPEN/AUGMENT/REENTRY/HEDGE refused on every key (only VEC_DRIVEN_* open); native CLOSE/REDUCE allowed
@@ -2569,6 +2571,7 @@ class Config:
     BB_SQUEEZE_WIDTH_PERCENTILE: float = 0.25  # Width must be in bottom 20% to count as squeeze
     BB_SQUEEZE_MIN_ALIGNMENT: int = 10  # Minimum alignment score to allow BB squeeze entry
     BB_SQUEEZE_COOLDOWN: float = 300.0  # Seconds between BB squeeze entries per symbol
+    BB_SQUEEZE_ENTRY_TF: str = "1h"  # 2026-10-06 full-parity: detector TF (vec twin honors; default 1h = unchanged)
     VOL_SPIKE_ENABLED: bool = True  # Volume spike reversal: 93.5% WR, Sharpe 13.9
     VOL_SPIKE_RELVOL_THRESHOLD: float = 3.0  # Relative volume must be > 3x 20-bar avg
     VOL_SPIKE_BODY_RATIO: float = 0.7  # Candle body must be > 70% of total range

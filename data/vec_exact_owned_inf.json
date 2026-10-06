@@ -1,12 +1,4 @@
 {
- "inf:RENDERUSDT_LONG": {
-  "at": "06 19:21:31 - ",
-  "reason": "seeded_from_log"
- },
- "inf:ARUSDT_LONG": {
-  "at": "06 20:10:44 - ",
-  "reason": "seeded_from_log"
- },
  "inf:ZROUSDT_LONG": {
   "at": "06 20:14:41 - ",
   "reason": "seeded_from_log"
@@ -15,16 +7,20 @@
   "at": "06 20:14:50 - ",
   "reason": "seeded_from_log"
  },
- "inf:NEARUSDC_LONG": {
-  "at": "06 20:15:42 - ",
-  "reason": "seeded_from_log"
+ "inf:1000LUNCUSDT_LONG": {
+  "at": "2026-10-06T20:33:04Z",
+  "reason": "B12"
  },
- "inf:AGLDUSDT_SHORT": {
-  "at": "2026-10-06T20:32:40Z",
+ "inf:AAPLUSDT_LONG": {
+  "at": "2026-10-06T20:33:21Z",
+  "reason": "B12"
+ },
+ "inf:ADBEUSDT_LONG": {
+  "at": "2026-10-06T20:33:35Z",
   "reason": "B_SRS_ENTRY"
  },
- "inf:XTZUSDT_LONG": {
-  "at": "2026-10-06T20:32:40Z",
-  "reason": "B_SRS_ENTRY"
+ "inf:ARUSDT_LONG": {
+  "at": "2026-10-06T20:45:57Z",
+  "reason": "B_VWAPBOUNCE"
  }
 }

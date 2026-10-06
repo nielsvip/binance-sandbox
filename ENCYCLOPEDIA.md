@@ -275,3 +275,28 @@ Groups whose removal improves the dual-window key are **culprits** (applied minu
 best-first); groups with a weak contribution get their settings re-tested best-first from three starts (current / OFF /
 DEFAULT) because greedy chains are path-dependent. Ablation states are never finalists (they may hold forbidden members).
 
+### 10.6 The graph search (tools/v15_graph_search.py) and its pilot integration
+
+Phases on one sym_side (30D + 365D slices prepared once in RAM; 365D evals in the fork pool when standalone):
+0 DIAGNOSE (DR.diagnose + autopsy faults PREMATURE_EXITS / MISSED_AUGMENTS / LOSERS / MISSED_MOVES + 365D faults) →
+1 SCREEN (every TEMPLATE candidate with ledger → per-sym lever map + per-trade attribution) → 2 ABLATE → 3 CULPRITS →
+5 PATHS (per fault: openers of distinct families + relax their yellow filters on trade-starved paths, then re-tighten
+best-first; DEEP OPEN when no single row adds a trade; exit attack through the precedence graph) → 4 REORDER weak groups →
+repeat on the new state while it improves → 6 POLISH (dual-window climb) → PRUNE (batch revert of neutral changes,
+30D+365D verified) → 7 VERIFY (finalists + origin on 365D; selection (30D compliant, 365D qualified, score);
+score = adj_gain(30D) + 0.1 × gain(365D); acceptance as DIAGNOSE+REPAIR: status up, or +0.5pp 30D without losing status).
+Safety = DIAGNOSE+REPAIR's (`_forbidden`) + parity/infra fields never touched + ablation states never finalists.
+
+| Use | Command / switch |
+|---|---|
+| standalone, one or many sym_sides (S2/S5, nice, `oom_score_adj=1000`, pauses while MemAvailable < `GS_MIN_AVAIL_MB`) | `nice -n 15 .venv/bin/python tools/v15_graph_search.py --symsides A_LONG,B_SHORT --out ~/v15_graph_X --method gs|dr|both|chain --budget 600 --workers 3 --parallel 1` |
+| compare methods (same-process pairs only) | `python tools/v15_graph_compare.py <run dirs> [--pair dr,gs | dr2,chain] --md out.md` |
+| in v15_pilot (after DIAGNOSE+REPAIR, from its chosen set; **default OFF**) | `V15_GRAPH_SEARCH=1` (budget `V15_GRAPH_SEARCH_S`, default 600 s, clipped to the 90-min herd cap); results in the `DIAGNOSE_REPAIR` tab (GRAPH SEARCH section: steps, fault paths, group ablation) and `progress.diagnose_repair.graph_search` |
+| rebuild the graph with new evidence | `python tools/v15_knowledge_graph.py --runs-dir <dir of {SS}.gs.json> --ablation-dir <dir>` |
+| unit tests | `pytest tests/test_v15_graph_search.py` (synthetic engine: culprit removal keeps good members, safety, prune, ablation never applied) |
+
+Comparisons are only valid **inside one process** (method `both` / `chain`): the platform changed several times during
+the measurement (engine `918b5bdc` → `c5d1abdc` at 19:44Z, config/QuickConfig "globals push" 19:42Z, cat_side_defaults
+20:02Z, vec_decisions edits) — two processes started minutes apart measured different systems (ETHUSDC_LONG defaults: 511
+trades at 19:45Z, 0 trades at 19:47Z). Every run JSON carries a `provenance` block (md5 of engine, evaluate_v12, pilot,
+configs, vec_decisions, tools).

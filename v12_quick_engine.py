@@ -4254,6 +4254,7 @@ class QuickConfig:
     OBLIGATORY_EMA50_15M_ENABLED: bool = False  # 2026-10-06 parity-loop-crypto live-switch mirror: config.py live value (read by a live opener/closer; switch_parity verify-live-switches)
     OBLIGATORY_EMA50_15M_PCT: float = 1.0  # 2026-10-06 parity-loop-crypto live-switch mirror: config.py live value (read by a live opener/closer; switch_parity verify-live-switches)
     WT_EXIT_MIN_TFS_LIVE_ENABLED: bool = False  # 2026-10-06 parity-loop-crypto live-switch mirror: config.py live value (read by a live opener/closer; switch_parity verify-live-switches)
+    SIGNAL_IMMEDIATE_REDUCE_ENABLED: bool = False  # 2026-10-06 live-switch mirror: live webhook signal exits (EXIT_ON_ALL / IMMEDIATE_REDUCE); vec has no such producer -> False = parity
     RANKING_WEBHOOK_DIRECT_ENTRY_ENABLED: bool = False  # 2026-10-06 parity-loop-crypto live-switch mirror: live ranking-webhook ALL_GREEN/ALL_RED direct OPEN/AUGMENT path; vec has no such producer -> False = parity (True is not modelled)
     CRYPTO_REENTRY_PATHWAYS_ENABLED: bool = False  # lane-D 2026-10-06 director ruling: brand-new switch -> default = today-live (False); True = vec-only behaviour test row (lanes B/C build the live twin).  # crypto: HARDCODED_RALLY / TARGET-DC recross / HTF_WT_CHURN / REENTRY_MANDATORY pathways have no reachable live counterpart; True = old vec
     GAP_MOC_TS_SESSION_WINDOW_ENABLED: bool = True  # lane-D bug fix: GAP_MOC window/deadline + 30-day avg from ET timestamps (NPZ has 64 bars/day); False = old `i % 26` arithmetic
@@ -4584,6 +4585,7 @@ class QuickConfig:
     BB_SQUEEZE_COOLDOWN: float = 300.0
     BB_SQUEEZE_MIN_ALIGNMENT: int = 10
     BB_SQUEEZE_WIDTH_PERCENTILE: float = 0.25
+    BB_SQUEEZE_ENTRY_TF: str = "1h"  # 2026-10-06 full-parity: detector TF (live honors; default 1h)
     BB_BREAKOUT_ENABLED: bool = False
     BB_BREAKOUT_TF: str = '1h'
     BB_BREAKOUT_SCORE: int = 20
@@ -4991,25 +4993,14 @@ class QuickConfig:
         self.ABLATION_DISABLE_QUICK_ENTRY = False
         self.ABLATION_DISABLE_QUICK_EXIT = False
         self.STRUCTURAL_RANGE_SHIFT_TF = "bb_1h"
-        self.K_ZONE_ENTRY_ENABLED = True
-        self.MFI_ENTRY_ENABLED = True
-        self.VWAP_FILTER_ENABLED = True
-        self.FH_MOMENTUM_ENABLED = True
-        self.DC_DAYTRADE_ENABLED = True
-        self.STOCH_CROSS_1H_EXIT_ENABLED = True
-        self.MFI_FLIP_EXIT_ENABLED = True
-        self.WT_CROSSUNDER_FINAL_ENABLED = True
-        self.MI_EXIT_ENABLED = False  # N2/007 DEF2: legacy default kept (live False = sweep option)
         self.GAP_RISK_EXIT_ENABLED = True  # N2/007: live config_tradier True (2026-09-30)
         self.ENTRY_SCORE_THRESHOLD = 27.0
         self.K3M_FLOOR = 30.0
-        self.K3M_FLOOR_ENABLED = False
         # 2026-09-29 grey rewire: RZ_BREAKOUT twin — tradier live RZ_BOT_BB_THRESHOLD (config_tradier.py:2072)
         self.RZ_BOT_BB_THRESHOLD = 0.225
         # 2026-09-29 grey rewire (BIBLE §17.5 entry/exit-gate parity): crypto-live features the stock baseline
         # applied although tradier_manage never reads them (only _wire_weak_/_FULL_COVERAGE stubs) -> stock
         # live default = absent. Measured: HTF_DIRECTION_GATE binds AMD_SHORT/AAPL/ABBV, HLR_TOP_EXIT binds AMD_SHORT.
-        self.HTF_DIRECTION_GATE_ENABLED = False
         self.HLR_TOP_EXIT_ENABLED = False
         # 2026-09-29 USER: stocks sized at crypto $28 -> whole-share floor 0 -> 47% of entries vanished and
         # STDEV off = 0 trades. Live parity config_tradier.py:120/152.
@@ -5084,15 +5075,12 @@ class QuickConfig:
         self.LR_BAND_ENTRY_TF = 'D'
         self.MAX_CONCURRENT_POSITIONS = 24
         self.MAX_POSITION_SIZE = 5000.0
-        self.MFI_ENTRY_ENABLED = False
-        self.MFI_FLIP_EXIT_ENABLED = False
         self.MIN_HOLD_BARS = 10
         self.MIN_POSITION_SIZE = 100
         self.MI_ENTRY_EXHAUST_BONUS_TRADIER = 8
         self.MI_ENTRY_STRUCT_BONUS_TRADIER = 10
         self.MI_MIN_GAIN_EXIT_TRADIER = 0.5
         self.MOMENTUM_WATCHDOG_ENABLED = True
-        self.MTF_ATR_TRAIL_ENABLED = False
         self.MTF_ATR_TRAIL_MULT = 2.5
         self.MTF_EXIT_USE_COMPOUND = False
         self.MTS_WEIGHT_15m = 4.0
@@ -5108,7 +5096,6 @@ class QuickConfig:
         self.OPTIONS_EQUITY_HEDGE_DIRECTION_GUARD_ENABLED = False
         self.OPTIONS_HEDGE_PAIR_GUARD_ENABLED = False
         self.ORDER_CACHE_TTL = 10
-        self.OUTLIER_DETECTOR_ENABLED = False
         self.OUTLIER_SCAN_INTERVAL = 300.0
         self.OUTLIER_STALE_HOURS = 24.0
         self.PARABOLIC_BB_PCT_B_4H_MIN = 0.9
@@ -5143,7 +5130,6 @@ class QuickConfig:
         self.SHORT_STRUCT_EXIT_TF = '15m'
         self.SMA200_DIST_ENTRY_ENABLED = False
         self.STDEV_BREAKOUT_EXIT_WT_ENABLED = False
-        self.STOCH_CROSS_1H_EXIT_ENABLED = False
         self.STRUCTURAL_EXIT_GATE_ENABLED = False
         self.STRUCTURAL_RANGE_SHIFT_K_HIGH = 85.0
         self.STRUCTURAL_RANGE_SHIFT_K_LOW = 15.0
@@ -5181,21 +5167,16 @@ class QuickConfig:
         self.WT_VEL_DECAY_EXIT_ENABLED = True
         # §17.4 order fix: original method code above overwrites these two — re-assert live values LAST
         self.ENTRY_SCORE_THRESHOLD = 27.0
-        self.VWAP_FILTER_ENABLED = False
         # 2026-10-06 globals push: STOCKS unanimous 0 (CRYPTO base differs) — overlay carries stocks truth
         self.MAX_AUGMENTS_PER_POSITION = 0
         # 2026-10-06 globals push: CL-pushed base differs from SL truth — overlay restores stocks truth (MAX_ORDER excluded §17.3)
-        self.BREAKEVEN_GAIN_EROSION_FILTER_TF = 'OFF'
         self.COOLDOWN_BARS = 3
-        self.DC_BREAKOUT_TF = '1h'
         self.EXIT_TOP_FADE_FILTER_TF = '15m'
         self.MIN_GAIN_TO_BUY_AGGRESSIVELY = 6.0
         self.MTF_ATR_TRAIL_FILTER_TF = '15m'
         self.MTF_DC_REJECT_EXIT_TF = '1h'
         self.MTF_WT_CROSS_EXIT_TF = '15m'
-        self.WT_4H_VEL_EXIT_K_EXTREME_HIGH = 80.0
         self.WT_LOWER_CROSS_EXIT_TF = 'OFF'
-        self.WT_PERCENTILE_EXIT_OS_D = 10.0
         # §17.3 exclusion: MAX_ORDER_VALUE stays at sim default (live order-size cap zeroes sim position sizing)
         # parity 2026-10-06: stocks-uniform bolds (raw carries crypto truth) — obligated symmetry, see switch_parity.py
         self.REGIME_RANGING_POSITION_SIZE_MULT = 0.5
@@ -5219,9 +5200,7 @@ class QuickConfig:
         self.GAP_PER_SYMBOL_AVG_THRESH_PCT = 0.3
         self.GR_V5_STATE_FILTER_TF = 'OFF'
         self.LH_HL_FILTER_DC_THRESHOLD_PCT = 1.0
-        self.MIN_GAIN_TO_BUY_AGGRESSIVELY = 6.0
         self.PARTIAL_PROFIT_LOCK_V2_FILTER_TF = 'OFF'
-        self.PEAK_GIVEBACK_BE_EROSION_FILTER_TF = 'OFF'
         self.REENTRY_SIZE_BREAKOUT_MULT = 0.5
         self.REGIME_TRENDING_WT_REDUCE_FRAC_LOW = 0.15
         self.WT_15M_BOUNCE_LOW_1H_GT_PREV = True
@@ -8405,19 +8384,9 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
             blocks["GOLDEN_RULE_ENTRY"] = np.asarray(_gr_blk["fire"], dtype=bool)
         except Exception:
             pass
-    # 2026-10-06 USER full-parity: tiered DC-breakout entry (shared twin of the EPQ DC path).
-    if bool(getattr(cfg, 'DC_BREAKOUT_ENTRY_ENABLED', True)):
-        try:
-            _dc_twin = vec_decisions.check_entry_candidates_crypto__dc_breakout_tiered
-            _dc_dch3 = _safe(npz, 'dc_high_3m', n)
-            _dc_dcl3 = _safe(npz, 'dc_low_3m', n)
-            blocks["DC_BREAKOUT_ENTRY"] = np.asarray(_dc_twin.check_dc_breakout_tiered_vec(
-                cfg, close, dc_high_4h, dc_high_1h, dc_high_15m, _dc_dch3,
-                dc_low_4h, dc_low_1h, dc_low_15m, _dc_dcl3, k_15m,
-                wt1_3m, wt2_3m, wt1_15m, wt2_15m, is_long), dtype=bool)
-        except Exception:
-            pass
     # 2026-10-06 USER full-parity: VOL-spike reversal fade (shared EPQ twin).
+    # Order NOTE: live worker is LAST-writer-wins (VOL at 16343 overwrites DC at 15943); vec reason
+    # is FIRST-wins, so VOL precedes DC here for identical tie attribution. GOLDEN stays first (own loop).
     # SEAM (documented): L/S ratio_ok is account-state: engine passes True; the live-vec path is
     # gates-exempt so this matches VEC_EXACT. Alignment is the shared computed score (both sides).
     if bool(getattr(cfg, 'VOL_SPIKE_ENABLED', True)):
@@ -8428,7 +8397,19 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
                 cfg, _safe(npz, 'relative_volume_15m', n), _safe(npz, 'high_15m', n),
                 _safe(npz, 'low_15m', n), _safe(npz, 'open_15m', n), _safe(npz, 'close_15m', n),
                 _vs_align.compute_alignment_vec(npz, n, is_long), _safe(npz, 'dc_low4_15m', n),
-                _safe(npz, 'dc_high4_15m', n), close, is_long, ratio_ok=True), dtype=bool)
+                _safe(npz, 'dc_high4_15m', n), close, is_long, True), dtype=bool)
+        except Exception:
+            pass
+    # 2026-10-06 USER full-parity: tiered DC-breakout entry (shared twin of the EPQ DC path).
+    if bool(getattr(cfg, 'DC_BREAKOUT_ENTRY_ENABLED', True)):
+        try:
+            _dc_twin = vec_decisions.check_entry_candidates_crypto__dc_breakout_tiered
+            _dc_dch3 = _safe(npz, 'dc_high_3m', n)
+            _dc_dcl3 = _safe(npz, 'dc_low_3m', n)
+            blocks["DC_BREAKOUT_ENTRY"] = np.asarray(_dc_twin.check_dc_breakout_tiered_vec(
+                cfg, close, dc_high_4h, dc_high_1h, dc_high_15m, _dc_dch3,
+                dc_low_4h, dc_low_1h, dc_low_15m, _dc_dcl3, k_15m,
+                wt1_3m, wt2_3m, wt1_15m, wt2_15m, is_long), dtype=bool)
         except Exception:
             pass
     if cfg.REENTRY_B02_BC156_BOTTOM_ENABLED:
@@ -9399,6 +9380,7 @@ def compute_entry_signals(npz, n, is_long, cfg):
             "VOL_SPIKE_REVERSAL": 6,  # 2026-10-06 VOL twin: standalone (live score 20); alignment-dead both sides for now
             "B_STDEV_BREAKOUT": 6,  # 2026-10-06 parity FIX (was default 1): live fires standalone (score 25/22)
             "B_STDEV_BOUNCE": 6,  # 2026-10-06 bounce twin: standalone (live score 22)
+            "B_BBSQUEEZE": 6,  # 2026-10-06 parity FIX (was default 1): live fallback (score 18, wins only when alone)
             "B04": 3,       # DC retest (Sharpe 0.39)
             "B11": 3,       # DC break (Sharpe 0.34, 94% WR)
             "B02": 2,       # BC156 bottom bounce (Sharpe 0.31)

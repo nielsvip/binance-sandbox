@@ -82,9 +82,27 @@ def _epoch(ts: Any) -> Optional[float]:
             ts = ts.replace(tzinfo=timezone.utc)
         return ts.timestamp()
     try:
-        return datetime.fromisoformat(str(ts).replace("Z", "+00:00")).timestamp()
+        d = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+        if d.tzinfo is None:
+            d = d.replace(tzinfo=timezone.utc)
+        return d.timestamp()
     except Exception:
         return None
+
+
+ENTRY_FRESHNESS_FIELDS = ("last_updated", "mark_price_last_updated")
+
+
+def entry_written_at(entry: Any, fallback: Optional[float] = None) -> Optional[float]:
+    """USER 2026-10-06: freshness of ONE sym_side = its own last_updated (ISO Z), else mark_price_last_updated, else the
+    caller's fallback (file meta written_at / service sync stamp). Works for file rows (dict) and in-memory objects."""
+    if entry is not None:
+        for k in ENTRY_FRESHNESS_FIELDS:
+            v = entry.get(k) if isinstance(entry, dict) else getattr(entry, k, None)
+            e = _epoch(v)
+            if e is not None:
+                return e
+    return fallback
 
 
 def is_zero_qty(qty: Any) -> bool:
@@ -398,6 +416,11 @@ def evaluate(pre: Optional[float], post: Optional[float], kind: str, requested: 
     if kind == "close":
         return (post <= tol, "FLAT_CONFIRMED" if post <= tol else "NOT_FLAT", 0.0)
     if pre is None:
+        # 2026-10-06 (RENDER men 20:18): no pre snapshot -> reconcile from the broker post position + the broker-confirmed fill
+        if filled is not None and filled > tol:
+            if kind == "reduce":
+                return True, "RECONCILED_FILL_NO_PRE", None
+            return (post + tol >= filled, "RECONCILED_POST_COVERS_FILL" if post + tol >= filled else "POST_BELOW_FILL", None)
         return False, "NO_PRE_SNAPSHOT", None
     sign = -1.0 if kind == "reduce" else 1.0
     if filled is not None:
@@ -412,9 +435,9 @@ def evaluate(pre: Optional[float], post: Optional[float], kind: str, requested: 
     return False, ("PARTIAL_UNVERIFIED" if moved > tol else "NO_CHANGE"), expected
 
 
-async def confirm_position_change(get_amount: Callable[[bool], Awaitable[Optional[float]]], pre: Optional[float], kind: str, requested: float, filled_fn: Optional[Callable[[], Awaitable[Optional[float]]]] = None, config: Any = None, clock: Callable[[], float] = time.time, sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep, timeout: Optional[float] = None) -> Confirm:
+async def confirm_position_change(get_amount: Callable[[bool], Awaitable[Optional[float]]], pre: Optional[float], kind: str, requested: float, filled_fn: Optional[Callable[[], Awaitable[Optional[float]]]] = None, config: Any = None, clock: Callable[[], float] = time.time, sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep, timeout: Optional[float] = None, poll_s: Optional[float] = None) -> Confirm:
     deadline = clock() + float(cfg(config, "POSITIONS_CONFIRM_TIMEOUT_S") if timeout is None else timeout)
-    poll = float(cfg(config, "POSITIONS_CONFIRM_POLL_S"))
+    poll = float(cfg(config, "POSITIONS_CONFIRM_POLL_S") if poll_s is None else poll_s)
     polls = 0
     while True:
         polls += 1
@@ -514,8 +537,8 @@ def _ez_local(mgr: Any, position_key: str) -> Tuple[Optional[float], Optional[fl
         except Exception:
             pos = None
     amt = abs(_f(getattr(pos, "positionAmt", 0.0))) if pos is not None else 0.0
-    ts = _epoch(getattr(svc, "positions_last_sync", None)) if svc is not None else None
-    return amt, ts
+    sync_ts = _epoch(getattr(svc, "positions_last_sync", None)) if svc is not None else None
+    return amt, entry_written_at(pos, sync_ts)
 
 
 def ez_broker(mgr: Any, account_key: str, config: Any = None, logger: Optional[logging.Logger] = None) -> BrokerPositions:
@@ -619,6 +642,13 @@ async def ez_execute_now_guarded(mgr: Any, core: Callable[..., Awaitable[Any]], 
     store = mgr.__dict__.setdefault("_ptruth_pre", {})
     if position_key:
         store.pop(position_key, None)
+    pre_snap_amt = None
+    if not sandbox and account_key and symbol:
+        try:  # pre-trade broker position, taken reliably here (<=1 s cache / fresh read); STEP2 may refine it
+            _ps = await ez_broker(mgr, account_key, config, log).snapshot(reason=f"pre {position_key}")
+            pre_snap_amt = None if _ps is None else _ps.amount(symbol, position_side)
+        except Exception:
+            pre_snap_amt = None
     result = await core(*args, **kwargs)
     if sandbox or not isinstance(result, str) or "SUCCESS" not in result.upper() or "SANDBOX" in result.upper():
         return result
@@ -627,6 +657,8 @@ async def ez_execute_now_guarded(mgr: Any, core: Callable[..., Awaitable[Any]], 
         return result
     pre_rec = store.pop(position_key, None) or {}
     pre = pre_rec.get("pre", pre_rec.get("local")) if pre_rec else None
+    if pre is None:
+        pre = pre_snap_amt
     kind = classify_kind(action, full, reason, a.get("side"), position_side)
     bp = ez_broker(mgr, account_key, config, log)
 
@@ -660,6 +692,7 @@ async def ez_execute_now_guarded(mgr: Any, core: Callable[..., Awaitable[Any]], 
     log.critical(f"🚨 [POSITIONS_UNCONFIRMED] {position_key}: core returned {result} but broker shows pre={conf.pre} post={conf.post} expected={conf.expected} filled={conf.filled} kind={kind} code={conf.code} — NOT SUCCESS")
     _ez_resync(mgr, account_key)
     _lock_key("binance", account_key, symbol, conf.code)
+    _spawn_late_confirm(position_key, account_key, symbol, _amt, pre, kind, _f(qty), filled_fn, config, log)
     return f"{UNCONFIRMED_PREFIX}{conf.code}"
 
 
@@ -708,6 +741,13 @@ async def tradier_execute_now_guarded(mgr: Any, core: Callable[..., Awaitable[An
     start = time.time()
     k = (str(account_key), symbol, position_side)
     _TRADIER_PRE.pop(k, None)
+    pre_snap_amt = None
+    try:
+        _tbp = get_broker_positions("tradier", str(account_key), tradier_fetcher(lambda: client_factory(account_key), str(account_key)), config=config, logger=log)
+        _ts = await _tbp.snapshot(reason=f"pre {position_key}")
+        pre_snap_amt = None if _ts is None else _ts.amount(symbol, position_side)
+    except Exception:
+        pre_snap_amt = None
     result = await core(*args, **kwargs)
     if not isinstance(result, str) or "SUCCESS" not in result.upper():
         return result
@@ -717,11 +757,7 @@ async def tradier_execute_now_guarded(mgr: Any, core: Callable[..., Awaitable[An
     rec = _TRADIER_PRE.pop(k, None)
     pre = rec.get("pre") if rec and _f(rec.get("ts")) >= start - 1.0 else None
     if pre is None:
-        try:
-            local = mgr.position_manager.get_position(position_key)
-            pre = abs(_f(getattr(local, "positionAmt", 0.0))) if local is not None else None
-        except Exception:
-            pre = None
+        pre = pre_snap_amt
     kind = classify_kind(action, full, reason, a.get("side"), position_side)
     bp = get_broker_positions("tradier", str(account_key), tradier_fetcher(lambda: client_factory(account_key), str(account_key)), config=config, logger=log)
 
@@ -761,7 +797,33 @@ async def tradier_execute_now_guarded(mgr: Any, core: Callable[..., Awaitable[An
         return result
     log.critical(f"🚨 [POSITIONS_UNCONFIRMED] {position_key}: core returned {result} but broker shows pre={conf.pre} post={conf.post} expected={conf.expected} filled={conf.filled} kind={kind} code={conf.code} — NOT SUCCESS")
     _lock_key("tradier", account_key, symbol, conf.code)
+    _spawn_late_confirm(position_key, account_key, symbol, _amt, pre, kind, _f(qty), filled_fn, config, log)
     return f"{UNCONFIRMED_PREFIX}{conf.code}"
+
+
+_LATE_TASKS: Dict[str, Any] = {}
+
+
+def _spawn_late_confirm(position_key, account_key, symbol, get_amount, pre, kind, requested, filled_fn, config, log) -> None:
+    """Maker/limit fills can complete AFTER execute_now returned: keep re-checking (ledger refresh + broker) in the
+    background; once the broker confirms, log POSITIONS_CONFIRMED_LATE and release the unconfirmed-key lock."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return
+
+    async def _run():
+        conf = await confirm_position_change(get_amount, pre, kind, requested, filled_fn, config, timeout=float(getattr(config, "POSITIONS_LATE_CONFIRM_S", 300.0) if config is not None else 300.0), poll_s=float(getattr(config, "POSITIONS_LATE_CONFIRM_POLL_S", 10.0) if config is not None else 10.0))  # rate-limit safe
+        if conf.ok:
+            log.warning(f"✅ [POSITIONS_CONFIRMED_LATE] {position_key}: broker now confirms kind={kind} pre={conf.pre} post={conf.post} filled={conf.filled} code={conf.code} — key lock released")
+            _unlock_key(account_key, symbol)
+        else:
+            log.critical(f"🚨 [POSITIONS_STILL_UNCONFIRMED] {position_key}: after late re-check pre={conf.pre} post={conf.post} filled={conf.filled} code={conf.code} — lock kept until expiry; reconcile manually")
+
+    old = _LATE_TASKS.get(str(position_key))
+    if old is not None and not old.done():
+        old.cancel()
+    _LATE_TASKS[str(position_key)] = loop.create_task(_run())
 
 
 def _unlock_key(account: Any, symbol: Any) -> None:
@@ -1015,7 +1077,8 @@ def file_reflects(venue: str, account: str, symbol: str, position_side: str, bro
     ps = str(position_side).upper()
     key = f"{account}:{str(symbol).upper()}_{ps}"
     path = positions_file_for(venue, account, ps)
-    amt, row, wa = read_file_row(path, key)
+    amt, row, meta_wa = read_file_row(path, key)
+    wa = entry_written_at(row, meta_wa)
     tol = qty_tol(None, abs(broker_amt), amt or 0.0)
     ok_amt = amt is not None and abs((amt or 0.0) - abs(broker_amt)) <= tol
     recent = last_fill_ts is not None and (time.time() - last_fill_ts) <= float(os.environ.get("POSITIONS_FILE_FILL_RECENT_S", "600"))

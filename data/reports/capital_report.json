@@ -1,67 +1,32 @@
 {
- "generated_at": "2026-10-06 20:21 UTC",
- "total_capital_usd": 366.58,
+ "generated_at": "2026-10-06 20:48 UTC",
+ "total_capital_usd": 71.88,
  "tier_capital": {
   "A": 0.0,
-  "B": 366.58,
+  "B": 71.88,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 4,
+  "B": 1,
   "C": 0
  },
  "winners": [],
- "losers": [
-  "men:NMRUSDT_LONG",
-  "men:GALAUSDT_SHORT",
-  "men:KSMUSDT_SHORT"
+ "losers": [],
+ "mediocre": [
+  "flz:HYPEUSDT_LONG"
  ],
- "mediocre": [],
  "positions": [
   {
-   "pk": "men:KSMUSDT_SHORT",
-   "symbol": "KSMUSDT",
-   "account": "men",
-   "value_usd": 180.72,
-   "gain_pct": -0.693,
+   "pk": "flz:HYPEUSDT_LONG",
+   "symbol": "HYPEUSDT",
+   "account": "flz",
+   "value_usd": 71.88,
+   "gain_pct": 0.0,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 36.4,
-   "mark": 4.9648028
-  },
-  {
-   "pk": "men:NMRUSDT_LONG",
-   "symbol": "NMRUSDT",
-   "account": "men",
-   "value_usd": 174.56,
-   "gain_pct": -2.637,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 11.1,
-   "mark": 15.726
-  },
-  {
-   "pk": "men:RENDERUSDT_LONG",
-   "symbol": "RENDERUSDT",
-   "account": "men",
-   "value_usd": 9.26,
-   "gain_pct": 0.375,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 4.3,
-   "mark": 2.153
-  },
-  {
-   "pk": "men:GALAUSDT_SHORT",
-   "symbol": "GALAUSDT",
-   "account": "men",
-   "value_usd": 2.04,
-   "gain_pct": -2.28,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 828.0,
-   "mark": 0.00246598
+   "perf_mult": 0.47,
+   "amt": 0.78,
+   "mark": 92.149
   }
  ]
 }

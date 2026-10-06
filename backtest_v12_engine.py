@@ -4771,7 +4771,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     _vs_mask = _v12_vs.check_vol_spike_reversal_vec(
                         config, _vs_rv, _vsk("high_15m"), _vsk("low_15m"), _vsk("open_15m"),
                         _vsk("close_15m"), _vs_al, _vsk("dc_low4_15m"), _vsk("dc_high4_15m"),
-                        _vsk("close"), _vs_is_long, ratio_ok=True)
+                        _vsk("close"), _vs_is_long, True)
                     for _vs_idx in np.where(np.asarray(_vs_mask, dtype=bool))[0]:
                         _vs_ts = int(_vs_ts_arr[_vs_idx])
                         if _vs_ts - _vs_last < _vs_cd:
@@ -4818,6 +4818,39 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         except Exception as _sboun_native_exc:
             v8_logger.exception("[V12_SBOUN_NATIVE] event build failed: %s", _sboun_native_exc)
             _sboun_native_events = {}
+    _bbs_native_events = {}
+    if bool(getattr(config, "BB_SQUEEZE_ENABLED", False)) and bool(getattr(config, "BB_SQUEEZE_ENTRY_ENABLED", True)):
+        try:
+            # 2026-10-06 USER full-parity: shared BB-squeeze twin (live detector + align + k gate,
+            # per-SYM cooldown, live-exact reason). Both enable switches ANDed (== live).
+            import vec_decisions.check_entry_candidates_crypto__bb_squeeze_gate as _v12_bbs
+            _bbs_cd = float(getattr(config, "BB_SQUEEZE_COOLDOWN", 300.0))
+            _bbs_no3m = not bool(getattr(config, "USE_1M_3M_SIGNALS_ENABLED", False))
+            for _bbs_sym, _bbs_store in stores.items():
+                _bbs_ts_arr = np.asarray(_bbs_store.timestamps, dtype=float)
+                _bbs_n = len(_bbs_ts_arr)
+                _bbs_last = 0.0
+                for _bbs_side in _position_sides:
+                    _bbs_is_long = _bbs_side == "LONG"
+                    _bbs_mask = _v12_bbs.bb_squeeze_entry_mask_vec(_bbs_store.arrays, _bbs_n, config, _bbs_is_long)
+                    _bbs_al = _v12_bbs.compute_alignment_vec(_bbs_store.arrays, _bbs_n, _bbs_is_long)
+                    _bbs_kk = _bbs_store.arrays.get("k_15m" if _bbs_no3m else "k_3m")
+                    if _bbs_kk is None or len(np.asarray(_bbs_kk)) != _bbs_n:
+                        _bbs_kk = np.full(_bbs_n, 50.0)
+                    else:
+                        _bbs_kk = np.asarray(_bbs_kk, dtype=float)
+                    for _bbs_idx in np.where(np.asarray(_bbs_mask, dtype=bool))[0]:
+                        _bbs_ts = int(_bbs_ts_arr[_bbs_idx])
+                        if _bbs_ts - _bbs_last < _bbs_cd:
+                            continue  # live per-SYM cooldown mirror
+                        _bbs_last = float(_bbs_ts)
+                        _bbs_sig = "BUY" if _bbs_is_long else "SELL"
+                        _bbs_native_events[(_bbs_sym, _bbs_side, _bbs_ts)] = (
+                            f"BB_SQUEEZE_BREAKOUT_{_bbs_sig}_align={float(_bbs_al[_bbs_idx]):.0f}_k3={float(_bbs_kk[_bbs_idx]):.0f}")
+            v8_logger.info("[V12_BBS_NATIVE] built %d standalone scalar events", len(_bbs_native_events))
+        except Exception as _bbs_native_exc:
+            v8_logger.exception("[V12_BBS_NATIVE] event build failed: %s", _bbs_native_exc)
+            _bbs_native_events = {}
     # Exact parity mode needs Quick's sequential ledger, not a raw predicate
     # mask: the latter is intentionally broad and has no position/hold state.
     # Keep the live admission prefilter above for ordinary scalar simulations.
@@ -4903,6 +4936,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         _dc_native_events = {}
         _vs_native_events = {}
         _sboun_native_events = {}
+        _bbs_native_events = {}
         _quick_entry_event_sets, _quick_exit_event_sets, _quick_ledger_entries, _quick_ledger_exits = {}, {}, {}, {}
         _v12_exit_batch3 = _v12_exit_batch2 = _v12_obligatory_reentry = _v12_hlr_reentry = None
         # the [SIGNAL_GATE] admission prefilter (flat keys only reach process_position on bars with an NPZ cross event) is a
@@ -5724,6 +5758,33 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     )
                     v8_logger.info("[V12_SBOUN_NATIVE] %s ts=%s result=%s",
                                    _sboun_pk, _sboun_ts, _sboun_result)
+        # 2026-10-06 USER full-parity: BB-squeeze native events (shared twin).
+        if _bbs_native_events and os.environ.get("V12_PARITY_QUICK_LEDGER_REPLAY", "0") != "1":
+            _bbs_ts = int(ts)
+            for _bbs_sym in stores:
+                for _bbs_side in _position_sides:
+                    _bbs_reason = _bbs_native_events.get((_bbs_sym, _bbs_side, _bbs_ts))
+                    if _bbs_reason is None:
+                        continue
+                    _bbs_pk = f"{account_key}:{_bbs_sym}_{_bbs_side}"
+                    _bbs_px = float(price_cache.get(_bbs_sym.upper(), 0.0) or 0.0)
+                    if _bbs_px <= 0.0:
+                        continue
+                    # SIZING SEAM (documented): live score-driven sizing; flat SPS until sizing twin.
+                    _bbs_qty = float(getattr(config, "START_POSITION_SIZE", 45.0)) / _bbs_px
+                    if _bbs_qty * _bbs_px < 1.0:
+                        continue
+                    _bbs_pos = trade_manager.positions.get(_bbs_pk)
+                    _bbs_cur = abs(float(getattr(_bbs_pos, "positionAmt", 0.0) or 0.0))
+                    _bbs_result = await _crypto_eta(
+                        account_key=account_key, position_key=_bbs_pk, symbol=_bbs_sym,
+                        quantity=_bbs_qty, current_price=_bbs_px,
+                        side="BUY" if _bbs_side == "LONG" else "SELL",
+                        position_side=_bbs_side, action="OPEN" if _bbs_cur <= 0 else "AUGMENT",
+                        reason=_bbs_reason, is_full_close=False, is_hedge=False,
+                    )
+                    v8_logger.info("[V12_BBS_NATIVE] %s ts=%s result=%s",
+                                   _bbs_pk, _bbs_ts, _bbs_result)
 
         # Structural Range Shift is an independent direct Quick entry block.
         # Its broad predicate is restricted to the matching causal ledger row
@@ -7101,7 +7162,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             if os.environ.get("V12_REAL_EXECUTE") == "1" and os.environ.get("V8_LADDER_ONLY_SIDE") and not str(_epk).endswith("_" + os.environ["V8_LADDER_ONLY_SIDE"].upper()):
                 continue
             _epos = trade_manager.positions.get(_epk)
-            if _epos and abs(getattr(_epos, 'positionAmt', 0)) >= 0.001:
+            # parity lane A 2026-10-06: same "open" threshold as the process_position loop (> 0.0001) — live acts on any
+            # nonzero amount; 0.001 treated a 0.000848 BTC position as flat (BTCUSDC_LONG silence after 09-12).
+            if _epos and abs(getattr(_epos, 'positionAmt', 0)) > 0.0001:
                 continue
             _esym = (getattr(_epos, 'symbol', '') if _epos else '') or (_epk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _epk else _epk.rsplit('_', 1)[0])
             _egate = _entry_signal_sets.get(_esym)
