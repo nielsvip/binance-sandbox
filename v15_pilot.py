@@ -1706,6 +1706,17 @@ def _pool_eval(overrides: dict, window_days: int):
     t0 = _tp.time()
     return _eps(_POOL_PREPARED, overrides, window_days), _tp.time() - t0
 
+def _pool_eval_ledger(overrides: dict, window_days: int):
+    """forked worker for the DIAGNOSE_REPAIR trade autopsy: metrics + compact realised trade rows in gain-pp units."""
+    import time as _tp
+    from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps
+    from tools import v15_trade_autopsy as _TA
+    t0 = _tp.time()
+    r = _eps(_POOL_PREPARED, overrides, window_days, True)
+    keep = {k: r.get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "wr_pct", "valid", "invalid_reason", "bh_pct", "behavior_fingerprint")}
+    keep["_rows"] = _TA.scaled_rows(r)
+    return keep, _tp.time() - t0
+
 ADAPT_FLOOR_TRADES = 10
 ADAPT_ULTRA_NEG_PCT = float(os.environ.get("V15_ULTRA_NEG_PCT", "-5.0"))
 ADAPT_MAX_STEPS = int(os.environ.get("V15_ADAPT_MAX_STEPS", "12"))
@@ -2811,6 +2822,34 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 ex.shutdown(wait=False)
             _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": "sequential", "sheet": "DIAGNOSE_REPAIR", "row": None, "switch": "VERIFY_365D", "cand": "", "label": "DIAG_365D", "fn": "tools.opt.v12_pilot.evaluate_sanitized", "window_days": 365, "gain_pct": (r or {}).get("gain_pct"), "trades": (r or {}).get("trades"), "tim": (r or {}).get("tim_pct"), "valid": (r or {}).get("valid"), "invalid_reason": (r or {}).get("invalid_reason")})
             return r, _span["v"]
+        def _eval_many_ledger(items, phase, cum_before, deadline):
+            # trade autopsy screen: ledger evals on the same fork pool (NPZ in RAM); one delta-log line per eval (sentinel)
+            cb = float(cum_before) if cum_before is not None else float(cumulative_gain)
+            futs = []
+            for lab, ov, c in items:
+                futs.append((lab, ov, c, _pool.submit(_pool_eval_ledger, ov, args.window_days) if _pool is not None else None, _t.time()))
+            wave_deadline = min(deadline + 60.0, _t.time() + YELLOW_TIMEOUT * (-(-len(items) // max(1, _n_proc)) + 2))
+            out = []
+            for lab, ov, c, fut, t0e in futs:
+                res, err = None, ""
+                try:
+                    if fut is not None:
+                        res, _secs = fut.result(timeout=max(0.01, wave_deadline - _t.time()))
+                    else:
+                        res, _secs = _pool_eval_ledger(ov, args.window_days)
+                except Exception as _le:
+                    err = f"ERR {_le}"[:120]
+                    if fut is not None:
+                        fut.cancel()
+                g = (res or {}).get("gain_pct")
+                _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": "sequential", "sheet": "DIAGNOSE_REPAIR", "row": (c or {}).get("row"), "switch": (c or {}).get("switch", lab), "cand": str((c or {}).get("cand", "")), "label": f"{phase}:{lab}", "fn": "evaluate_prepared_sanitized+ledger", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "tim": (res or {}).get("tim_pct"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cb, "delta": (float(g) - cb) if g is not None else None, "secs": round(_t.time() - t0e, 4), "cached": False, "err": err})
+                out.append((None if err else res, err))
+            return out
+        _npzp = (prepared or {}).get("npz_prepared") or {}
+        try:
+            _close = [float(x) for x in _npzp.get("close")]
+        except Exception:
+            _close = None
         origin = dict(cumulative_overrides)
         base_res, base_err = _get("DIAGNOSE_REPAIR", None, "BASE", "", "DIAG_BASE", sanitize_overrides(origin, defaults)[0], _t.time() + 60.0, float(cumulative_gain))
         if base_res is None:
@@ -2822,6 +2861,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         rep = _DR.run({"defaults": defaults, "sanitize": lambda ov: sanitize_overrides(ov, defaults)[0], "same_val": _same_val,
                        "candidates": cands, "base_overrides": origin, "base_res": base_res, "bh": bh, "deadline": t0 + budget, "cat_side": map_key_for_symside(new_symside),
                        "eval_many": _eval_many, "eval_ledger": _eval_ledger, "eval_365": _eval_365, "qualifies_365": _qualifies_365d,
+                       "eval_many_ledger": _eval_many_ledger if os.environ.get("V15_DIAG_AUTOPSY", "1") == "1" else None, "close": _close, "npz": _npzp, "is_long": new_symside.endswith("_LONG"),
                        "log": lambda m: print(f"{m} [{new_symside}]", flush=True), "touch": _touch})
         _span.pop("prep", None)  # release the 365D slice before DONE (OOM history, see pool release below)
         best = dict(rep.get("best_overrides") or origin)
@@ -2895,6 +2935,20 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _row(["GAPS", "metric", "status", "best", "move", "gain_at", "note"], True)
             for g in rep.get("gaps", []):
                 _row([g["fault"], g["metric"], g["status"], g.get("best"), g.get("move"), g.get("gain_at"), g.get("note")])
+            if rep.get("autopsy"):
+                _row([])
+                _row(["TRADE AUTOPSY", f"trades={rep['autopsy']['n_trades']}", f"bad={rep['autopsy']['bad']}", f"fixed by a clean row={rep['autopsy']['fixed_clean']}", f"rows effective {rep['autopsy']['n_effective']}/{rep['autopsy']['n_screened']}"], True)
+                _row(["ROW RECOMMENDATIONS", "tab", "row", "cand", "losers_fixed", "premature_fixed", "aug_fixed", "captured_moves", "saved_pp", "hurt_pp", "net_pp", "real_d_gain", "valid"], True)
+                for r_ in rep.get("row_recommendations", [])[:80]:
+                    _row([r_["switch"], r_["tab"], r_.get("row"), r_["cand"], r_["losers_fixed"], r_["premature_fixed"], r_["aug_fixed"], r_["captured_moves"], r_["saved_pp"], r_["hurt_pp"], r_["net_pp"], r_["real_d_gain"], r_["valid"]])
+                _row([])
+                _row(["BAD TRADES", "exit bar", "pnl_pp", "labels", "entry reason", "exit reason", "fix 1 (row, kind, pp, real Δgain)", "fix 2", "fix 3"], True)
+                for t_ in rep.get("trade_fixes", [])[:300]:
+                    _row([t_["be"], t_["bx"], t_["pnl_pp"], ",".join(t_["cls"]), t_["entry_reason"], t_["exit_reason"]] + [f"{f[0]} {f[1]} {f[2]:+.3f} Δ{f[3]:+.3f}" for f in t_["fixes"][:3]] or ["NONE — see MISSING FUNCTIONS"])
+                _row([])
+                _row(["MISSING FUNCTIONS", "rule"], True)
+                for m_ in rep.get("missing_functions", []):
+                    _row([m_["feature"], m_["rule"]])
             _row([])
             _row(["LEVER MAP vs final set (screen 0)", "tab", "row", "cand", "d_gain", "d_trades", "d_tim", "d_dd", "valid", "blocked"], True)
             for lm in sorted(rep.get("lever_map", []), key=lambda x: -((x.get("d") or {}).get("gain") or -1e9)):
@@ -2902,6 +2956,23 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _row([lm["switch"], lm["tab"], lm.get("row"), lm["cand"], d.get("gain"), d.get("trades"), d.get("tim"), d.get("dd"), lm.get("valid"), lm.get("blocked")])
         except Exception as _tw:
             print(f"[DIAG-warn] tab write: {_tw}", flush=True)
+        # AUTOPSY_FIX column next to each TEMPLATE row: which row to apply and what it fixes (pilot-readable + human-readable)
+        try:
+            for r_ in rep.get("row_recommendations", []):
+                if not r_.get("row") or r_["tab"] not in wb.sheetnames:
+                    continue
+                ws_ = wb[r_["tab"]]
+                hm_ = _hdr_col_map(ws_)
+                col_ = hm_.get("AUTOPSY_FIX")
+                if col_ is None:
+                    col_ = max((cc for cc in range(1, ws_.max_column + 1) if ws_.cell(row=2, column=cc).value not in (None, "")), default=ws_.max_column) + 1
+                    ws_.cell(row=2, column=col_).value = "AUTOPSY_FIX"
+                    ws_.cell(row=2, column=col_).font = Font(name="Arial", size=10, bold=True)
+                cell_ = ws_.cell(row=int(r_["row"]), column=col_)
+                cell_.value = f"L{r_['losers_fixed']} P{r_['premature_fixed']} A{r_['aug_fixed']} net{r_['net_pp']:+.2f} real{r_['real_d_gain']:+.2f}"
+                cell_.font = Font(name="Arial", size=10, color="006100" if (r_["real_d_gain"] or 0) > 1e-9 else "9C0006")
+        except Exception as _af:
+            print(f"[DIAG-warn] AUTOPSY_FIX column: {_af}", flush=True)
         # full report (incl. lever map) beside the delta log; compact summary in the progress JSON
         try:
             _drp = progress_path.parent / "v15_diag_repair" / f"{new_symside}.json"
@@ -2909,7 +2980,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _atomic_write_json(_drp, {**rep, "best_overrides": best, "applied": applied, "mode": mode})
         except Exception as _jw:
             print(f"[DIAG-warn] report json: {_jw}", flush=True)
-        progress["diagnose_repair"] = {k: rep.get(k) for k in ("accepted", "accept_reason", "before", "after", "changes", "diagnosis_before", "diagnosis_after", "liveness", "gaps", "n_evals", "secs", "c_unplaced", "adopt_refused")}
+        progress["diagnose_repair"] = {k: rep.get(k) for k in ("accepted", "accept_reason", "before", "after", "changes", "diagnosis_before", "diagnosis_after", "liveness", "gaps", "n_evals", "secs", "c_unplaced", "adopt_refused", "autopsy", "missing_functions")}
+        progress["diagnose_repair"]["row_recommendations_top"] = (rep.get("row_recommendations") or [])[:25]
         progress["diagnose_repair"].update({"mode": mode, "applied": applied, "complete": True, "result_key": _sk(cumulative_overrides), "steps": [{k: s_.get(k) for k in ("phase", "round", "applied", "gain", "trades", "tim", "dd", "valid")} for s_ in rep.get("steps", [])]})
         _maybe_write_json(force=True)
         print(f"[DIAG] {new_symside} {'APPLIED' if applied else 'kept origin'} gain {(rep.get('before') or {}).get('gain')} -> {cumulative_gain:.4f} changes={len(rep.get('changes') or [])} ({_t.time()-t0:.0f}s)", flush=True)

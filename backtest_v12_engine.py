@@ -17328,70 +17328,44 @@ def _run_one_set_precedence_on(symside: str, overrides: dict, mode: str):
     """2026-10-06 parity lane A (opt-in V12_RUN_ONE_SET_PRECEDENCE=1): make the tested set reach the live per-sym readers.
     Global setattr alone is shadowed: ez _psym_get / tradier _cfg read per_sym_store.db full_config (~3400-key snapshot per
     sym_side) FIRST, so the scalar measured the store's current config, not the set (e.g. CRWD/AMD/BNB store:
-    DAYTRADE_DC_TARGET_TF='OFF'). This models the set PROMOTED as this sym_side's per-sym overrides:
-      - PER_SYM_STORE_SQLITE_DISABLED=1 (live readers fall to their JSON chain);
-      - crypto: ez_manage._ezm_per_sym_cfgs_path -> temp copy of per_sym_active_config.json with this sym_side's
-        overrides = {**current overrides, **set} (metadata/full_config kept, so non-set keys resolve as live);
-      - stocks: tradier _v8_sweep_override hook (V8_OVERRIDE_FILE + V8_BACKTEST_OVERRIDE_PRECEDENCE=1, needs V8_SWEEP_MODE=1
-        which run_one sets) -> the set wins over every JSON overlay.
-    Harness/env only; restored by _run_one_set_precedence_off."""
-    import tempfile
-    st = {"env": {k: os.environ.get(k) for k in ("PER_SYM_STORE_SQLITE_DISABLED", "V8_OVERRIDE_FILE", "V8_BACKTEST_OVERRIDE_PRECEDENCE")}, "files": []}
-    os.environ["PER_SYM_STORE_SQLITE_DISABLED"] = "1"
+    DAYTRADE_DC_TARGET_TF='OFF'). This models the set PROMOTED into this sym_side's store row: in-process wrap of
+    per_sym_store.get_full_config / get_overrides returning {**stored row, **set} for this sym_side only (every other key and
+    sym_side unchanged; the SQLite path stays on, as live). Harness-only monkeypatch, restored by _run_one_set_precedence_off."""
+    st = {"mode": "per_sym_store_merge", "n_keys": len(overrides or {})}
     try:
-        if mode == "crypto":
-            import ez_manage as _ez
-            src = _ez._ezm_per_sym_cfgs_path
-            try:
-                raw = json.loads(Path(src).read_text())
-            except Exception:
-                raw = {}
-            ent = dict(raw.get(symside) or {})
-            ent["overrides"] = {**(ent.get("overrides") or {}), **dict(overrides or {})}
-            raw[symside] = ent
-            fd, tmp = tempfile.mkstemp(prefix=f"v12_setprec_{symside}_", suffix=".json")
-            with os.fdopen(fd, "w") as fh:
-                json.dump(raw, fh, default=str)
-            st["files"].append(tmp)
-            st["ez_path"] = src
-            _ez._ezm_per_sym_cfgs_path = Path(tmp)
-            for _g in ("_ezm_per_sym_cfgs_mtime", "_ezm_per_sym_raw_mtime"):
-                if hasattr(_ez, _g):
-                    setattr(_ez, _g, None)
-        else:
-            fd, tmp = tempfile.mkstemp(prefix=f"v12_setprec_{symside}_", suffix=".json")
-            with os.fdopen(fd, "w") as fh:
-                json.dump(dict(overrides or {}), fh, default=str)
-            st["files"].append(tmp)
-            os.environ["V8_OVERRIDE_FILE"] = tmp
-            os.environ["V8_BACKTEST_OVERRIDE_PRECEDENCE"] = "1"
+        import per_sym_store as _pss
+        _ov = dict(overrides or {})
+        _key = str(symside)
+        _orig_full, _orig_ovr = _pss.get_full_config, _pss.get_overrides
+
+        def _full(sym_side, *a, **k):
+            r = _orig_full(sym_side, *a, **k)
+            if str(sym_side) == _key:
+                return {**(r or {}), **_ov}
+            return r
+
+        def _ovr(sym_side, *a, **k):
+            r = _orig_ovr(sym_side, *a, **k)
+            if str(sym_side) == _key:
+                return {**(r or {}), **_ov}
+            return r
+
+        _pss.get_full_config, _pss.get_overrides = _full, _ovr
+        st["_orig"] = (_orig_full, _orig_ovr)
+        st["store_row_existed"] = _orig_full(_key) is not None
     except Exception as _e:
         st["error"] = str(_e)[:200]
     return st
 
 
 def _run_one_set_precedence_off(st) -> None:
-    if not st:
+    if not st or "_orig" not in st:
         return
-    for k, v in (st.get("env") or {}).items():
-        if v is None:
-            os.environ.pop(k, None)
-        else:
-            os.environ[k] = v
-    if st.get("ez_path") is not None:
-        try:
-            import ez_manage as _ez
-            _ez._ezm_per_sym_cfgs_path = st["ez_path"]
-            for _g in ("_ezm_per_sym_cfgs_mtime", "_ezm_per_sym_raw_mtime"):
-                if hasattr(_ez, _g):
-                    setattr(_ez, _g, None)
-        except Exception:
-            pass
-    for f in st.get("files") or []:
-        try:
-            os.unlink(f)
-        except Exception:
-            pass
+    try:
+        import per_sym_store as _pss
+        _pss.get_full_config, _pss.get_overrides = st.pop("_orig")
+    except Exception:
+        pass
 
 
 def _enable_npz_parity() -> None:
@@ -17655,7 +17629,7 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
             bh_pct = None
         m = _M.compute(events, trs, t_start, t_end, bh_pct, float(window_days))
         # ensure symside and overrides echoed
-        m["symside"] = symside; m["overrides"] = dict(overrides); m["override_issues"] = list(_RUN_ONE_OVERRIDE_ISSUES); m["set_precedence"] = {k: v for k, v in (_sp_state or {}).items() if k != "files"} if _sp_state else None
+        m["symside"] = symside; m["overrides"] = dict(overrides); m["override_issues"] = list(_RUN_ONE_OVERRIDE_ISSUES); m["set_precedence"] = {k: v for k, v in (_sp_state or {}).items() if k != "_orig"} if _sp_state else None
         # also expose ledger-like trades for parity tracing: map executed closes to ts/type/price
         m["ledger"] = [{"ts": float(getattr(e,"ts",0)), "type": getattr(e,"type",""), "price": float(getattr(e,"value",0)/max(1e-9,float(getattr(e,"qty",0)))) if getattr(e,"qty",0) else 0.0, "qty": float(getattr(e,"qty",0)), "pnl_pct": float(getattr(e,"pnl_pct",0)), "reason": ""} for e in events if getattr(e,"type","")=="CLOSE"]
         # 2026-10-06 trade-parity (tools/v15_trade_parity.py): every executed live-path event with its action + reason,
