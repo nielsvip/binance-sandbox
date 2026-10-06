@@ -128,3 +128,49 @@ def test_splice_appends_only_new_rows_and_reports_ts():
 def test_next_cycle_wait_aligns():
     now = float(dt.datetime(2026, 10, 6, 4, 10, 0, tzinfo=dt.timezone.utc).timestamp())
     assert nbr.next_cycle_wait(now) == 75.0 + 5 * 60  # next boundary 04:15 + 75s
+
+
+def _et(y, mo, d, h, mi):
+    import pandas as pd
+    return int(pd.Timestamp(f"{y:04d}-{mo:02d}-{d:02d} {h:02d}:{mi:02d}", tz="America/New_York").timestamp())
+
+
+def test_last_session_final_bar():
+    tue_night = dt.datetime(2026, 10, 6, 4, 35, tzinfo=dt.timezone.utc)  # Tue 00:35 ET
+    assert nbr.last_session_final_bar(tue_night) == _et(2026, 10, 5, 19, 45)  # Monday ext close
+    mon_open = dt.datetime(2026, 10, 5, 14, 0, tzinfo=dt.timezone.utc)  # Mon 10:00 ET
+    assert nbr.last_session_final_bar(mon_open) == _et(2026, 10, 2, 19, 45)  # Friday (Monday not closed)
+    sat = dt.datetime(2026, 10, 10, 12, 0, tzinfo=dt.timezone.utc)
+    assert nbr.last_session_final_bar(sat) == _et(2026, 10, 9, 19, 45)  # Friday
+    mon_eve = dt.datetime(2026, 10, 6, 0, 30, tzinfo=dt.timezone.utc)  # Mon 20:30 ET (ext closed)
+    assert nbr.last_session_final_bar(mon_eve) == _et(2026, 10, 5, 19, 45)
+
+
+def test_stock_prefetch_action_routing():
+    assert nbr.stock_prefetch_action("A", 100, None, 90)[0] == "job"
+    act, r = nbr.stock_prefetch_action("V", None, "no prefetch", None)
+    assert act == "result" and r["status"] == "NO_NPZ"
+    act, r = nbr.stock_prefetch_action("A", None, None, 90)
+    assert act == "result" and r["status"] == "FRESH" and r["ts_before"] == 90
+    act, r = nbr.stock_prefetch_action("A", None, "boom", 90)
+    assert act == "fail" and r["status"] == "PREFETCH_FAILED"
+
+
+def test_backfill_volume_D_50_sma_verified():
+    import pandas as pd
+    d1, d2, d3 = _et(2026, 10, 1, 16, 0), _et(2026, 10, 2, 16, 0), _et(2026, 10, 5, 16, 0)
+    td = np.array([d1] * 4 + [d2] * 4 + [d3] * 4)
+    vol = np.array([100.0] * 4 + [200.0] * 4 + [300.0] * 4, dtype=np.float32)
+    sma_native = pd.Series([100.0, 200.0, 300.0]).rolling(50, min_periods=1).mean().values
+    full = {"volume_D": vol, "timestamp_D": td}
+    L = {"volume_D_50_sma": np.repeat(sma_native, 4)[:10].astype(np.float32)}
+    out = nbr.backfill_legacy_keys(full, L, ["volume_D_50_sma"], "TEST")
+    assert "volume_D_50_sma" in out and len(out["volume_D_50_sma"]) == 12
+    assert np.allclose(out["volume_D_50_sma"][:10].astype(float), L["volume_D_50_sma"].astype(float), rtol=1e-6)
+
+
+def test_backfill_volume_D_50_sma_refuses_mismatch():
+    d1, d2 = 1000, 2000
+    full = {"volume_D": np.full(12, 100.0, dtype=np.float32), "timestamp_D": np.array([d1] * 6 + [d2] * 6)}
+    L = {"volume_D_50_sma": np.full(10, 999.0, dtype=np.float32)}  # wrong values
+    assert nbr.backfill_legacy_keys(full, L, ["volume_D_50_sma"], "TEST") == {}

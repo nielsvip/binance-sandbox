@@ -48326,7 +48326,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                 break
             _px = safe_fetch_float(getattr(_pos, "mark_price", 0), 0.0) or safe_fetch_float(_a.get("vec_price"), 0.0)
             _act, _oside, _qty, _full = _vx.order_args(_a, _side, _amt, _px)
-            _res = await trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_qty, current_price=_px, side=_oside, position_side=_side, unique_id=f"VX{int(_a['bar_ts'])}{_a['n']}", is_full_close=_full, action=_act, reason=_vx.tagged_reason(_a), is_hedge=False)
+            _res = await trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_qty, current_price=_px, side=_oside, position_side=_side, unique_id=f"VX{int(_a['bar_ts'])}{_a['n']}", is_full_close=_full, action=_act, reason=_vx.tagged_reason(_a), override_qty=_qty, is_hedge=False)
             logger.info(f"[VEC_EXACT] {position_key} {_act} {_a['reason'][:60]} qty={_qty:.6f} -> {str(_res)[:120]}")
         return True
     except Exception as _vx_e:

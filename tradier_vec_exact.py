@@ -325,10 +325,15 @@ def record_dispatch(base_path: Any, position_key: str, event: Dict[str, Any], ac
         import pathlib
         d = pathlib.Path(str(base_path)) / "data" / "reports" / "vec_exact"
         d.mkdir(parents=True, exist_ok=True)
-        day = datetime.fromtimestamp(float(event.get("ts") or 0.0), tz=timezone.utc).strftime("%Y%m%d")
+        import time as _time
+        day = _time.strftime("%Y%m%d", _time.gmtime(float(event.get("ts") or 0.0)))
         row = {"pk": position_key, "bar_ts": event.get("ts"), "vec_type": event.get("type"), "vec_reason": str(event.get("reason"))[:120], "vec_qty": event.get("qty"),
                "sent": list(action) if action else None, "result": str(result)[:80]}
         with open(d / f"dispatch_{day}.jsonl", "a") as fh:
             fh.write(json.dumps(row, default=str) + "\n")
-    except Exception:
-        pass
+    except Exception as e:
+        ORACLE.telemetry["dispatch_log_error"] = ORACLE.telemetry.get("dispatch_log_error", 0) + 1
+        ORACLE.telemetry["dispatch_log_last_error"] = f"{type(e).__name__}: {e}"[:160]
+        if ORACLE.telemetry["dispatch_log_error"] == 1:
+            import os as _os
+            _os.write(2, f"VEC_EXACT_DISPATCH_LOG_ERROR {ORACLE.telemetry['dispatch_log_last_error']}\n".encode())
