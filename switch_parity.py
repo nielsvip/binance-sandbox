@@ -1239,6 +1239,98 @@ def startup_gate(cat_side: str, template_path: str = None, root: Path = None) ->
     return rep
 
 
+ORDER_CALLS = ("queue_trade_action", "execute_trade_action", "execute_now", "_dispatch_reentry_guaranteed", "_ez_queue_trade_action", "_crypto_eta")
+CFG_NAMES = ("config", "config_obj", "_ezm_base_config", "cfg", "self.config", "trade_manager.config")
+LIVE_ORDER_FILES = ("ez_manage.py", "ez_positions_quick.py")
+
+
+def _order_function_switch_reads(path: Path) -> dict:
+    """AST scan: {KEY: [function names]} for every config switch read inside a function that issues orders
+    (calls queue_trade_action / execute_trade_action / execute_now / _dispatch_reentry_guaranteed).
+    Reads = getattr(<config-like>, 'KEY', ...), <config-like>.KEY, _psym_get/_psym_cs_get(sym, side, 'KEY', ...)."""
+    import ast
+
+    tree = ast.parse(path.read_text(errors="ignore"))
+    out = {}
+
+    def _name(n):
+        if isinstance(n, ast.Name):
+            return n.id
+        if isinstance(n, ast.Attribute):
+            b = _name(n.value)
+            return f"{b}.{n.attr}" if b else n.attr
+        return ""
+
+    for fn in ast.walk(tree):
+        if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        calls = [n for n in ast.walk(fn) if isinstance(n, ast.Call)]
+        if not any(_name(c.func).split(".")[-1] in ORDER_CALLS for c in calls):
+            continue
+        keys = set()
+        for c in calls:
+            f = _name(c.func)
+            if f == "getattr" and len(c.args) >= 2 and _name(c.args[0]) in CFG_NAMES and isinstance(c.args[1], ast.Constant) and isinstance(c.args[1].value, str):
+                keys.add(c.args[1].value)
+            elif f.split(".")[-1] in ("_psym_get", "_psym_cs_get") and len(c.args) >= 3 and isinstance(c.args[2], ast.Constant) and isinstance(c.args[2].value, str):
+                keys.add(c.args[2].value)
+        for n in ast.walk(fn):
+            if isinstance(n, ast.Attribute) and _name(n.value) in CFG_NAMES and n.attr.isupper():
+                keys.add(n.attr)
+        for k in keys:
+            if k.isupper() and len(k) > 2:
+                out.setdefault(k, []).append(fn.name)
+    return out
+
+
+def verify_live_order_switches(root: Path = None, cat_sides=("CRYPTO_LONG", "CRYPTO_SHORT")) -> dict:
+    """2026-10-06 director (parity hole): every config.py switch read by a live opener/closer (a function that issues orders in
+    ez_manage / ez_positions_quick) must exist in QuickConfig AND in the TEMPLATE-bold layer (cat_side_defaults_4, built from the
+    TEMPLATE bolds) with the same value as the live global. HARD findings: missing_in_quickconfig, missing_in_template,
+    value_mismatch (live global vs QuickConfig effective value vs cat_side). Curated exclusions (secrets, infra, §64 ablation)
+    are reported separately, never as HARD. QuickConfig values are the effective dataclass values (duplicate field names: last wins)."""
+    root = Path(root) if root else _ROOT()
+    live_vals, quick_vals = _venue_values(False, root)
+    try:
+        cat_file = json.loads((root / "data" / "cat_side_defaults_4.json").read_text())
+    except Exception as _e:
+        return {"error": f"cat_side file unreadable: {_e}"}
+    reads = {}
+    for f in LIVE_ORDER_FILES:
+        p = root / f
+        if p.exists():
+            for k, fns in _order_function_switch_reads(p).items():
+                reads.setdefault(k, set()).update(f"{f}:{x}" for x in fns)
+    rep = {"order_switches": 0, "hard": [], "excluded": [], "not_config": 0}
+    for k in sorted(reads):
+        if k not in live_vals:
+            rep["not_config"] += 1
+            continue
+        rep["order_switches"] += 1
+        ex = _excluded(k) or ("parity/bridge infra master (live-only by design)" if k.startswith(("PARITY_VEC_EXACT_", "VEC_DRIVEN_")) or k == "EXIT_ENGINE_PARITY_LOG_ENABLED" else "")
+        if ex:
+            rep["excluded"].append({"key": k, "why": ex})
+            continue
+        lv = live_vals[k]
+        if callable(lv) or isinstance(lv, (dict, list, set, tuple, Path)):
+            continue
+        prob = []
+        if k not in quick_vals:
+            prob.append("missing_in_quickconfig")
+        elif not _same_val(lv, quick_vals[k]):
+            prob.append(f"quickconfig={quick_vals[k]!r}")
+        for cs in cat_sides:
+            cv = (cat_file.get(cs) or {})
+            if k not in cv:
+                prob.append(f"missing_in_template[{cs}]")
+            elif not _same_val(lv, cv[k]):
+                prob.append(f"template[{cs}]={cv[k]!r}")
+        if prob:
+            rep["hard"].append({"key": k, "live": lv, "problems": prob, "read_in": sorted(reads[k])[:4]})
+    rep["n_hard"] = len(rep["hard"])
+    return rep
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="switch_parity")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -1280,6 +1372,12 @@ def main(argv=None) -> int:
     )
     p_syn.add_argument("--apply", action="store_true")
     p_syn.add_argument("--confirm-unlocked", action="store_true")
+    p_lvs = sub.add_parser(
+        "verify-live-switches", help="every switch read by a live crypto opener/closer exists in QuickConfig + TEMPLATE with the live value"
+    )
+    p_lvs.add_argument("--strict", action="store_true", help="exit 1 on any HARD finding")
+    p_lvs.add_argument("--show", type=int, default=40)
+    p_lvs.add_argument("--json", default=None, help="write the full report here")
     p_cat = sub.add_parser(
         "sync-cat", help="fill stale/missing cat_side defaults from template bolds"
     )
@@ -1290,6 +1388,14 @@ def main(argv=None) -> int:
     )
     p_cat.add_argument("--apply", action="store_true")
     a = ap.parse_args(argv)
+    if a.cmd == "verify-live-switches":
+        rep = verify_live_order_switches()
+        if a.json:
+            Path(a.json).write_text(json.dumps(rep, indent=1, default=str))
+        print(f"LIVE_ORDER_SWITCHES order_switches={rep.get('order_switches')} hard={rep.get('n_hard')} excluded={len(rep.get('excluded') or [])}")
+        for h in (rep.get("hard") or [])[: a.show]:
+            print(f"  HARD {h['key']} live={h['live']!r} {h['problems']} read_in={h['read_in']}")
+        return 1 if (a.strict and rep.get("n_hard")) else 0
     if a.cmd == "register":
         rep = register_workbook_result(
             a.sym_side,

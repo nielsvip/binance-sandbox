@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-06 08:11:16 UTC
+# Copilot Status — 2026-10-06 08:31:33 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-06T07:51:59
-- **STALE_INDICATORS** [tradier]  — 2026-10-06T07:54:00
-- **STALE_INDICATORS** [tradier]  — 2026-10-06T07:56:03
-- **STALE_INDICATORS** [tradier]  — 2026-10-06T07:58:05
-- **STALE_INDICATORS** [tradier]  — 2026-10-06T08:00:06
-- **STALE_INDICATORS** [tradier]  — 2026-10-06T08:02:08
-- **STALE_INDICATORS** [tradier]  — 2026-10-06T08:04:09
-- **STALE_INDICATORS** [tradier]  — 2026-10-06T08:06:11
-- **STALE_INDICATORS** [tradier]  — 2026-10-06T08:08:13
-- **STALE_INDICATORS** [tradier]  — 2026-10-06T08:10:14
+- **STALE_INDICATORS** [tradier]  — 2026-10-06T08:12:16
+- **STALE_INDICATORS** [tradier]  — 2026-10-06T08:14:18
+- **STALE_INDICATORS** [tradier]  — 2026-10-06T08:16:20
+- **STALE_INDICATORS** [tradier]  — 2026-10-06T08:18:21
+- **STALE_INDICATORS** [tradier]  — 2026-10-06T08:20:23
+- **STALE_INDICATORS** [tradier]  — 2026-10-06T08:22:25
+- **STALE_INDICATORS** [tradier]  — 2026-10-06T08:24:26
+- **STALE_INDICATORS** [tradier]  — 2026-10-06T08:26:28
+- **STALE_INDICATORS** [tradier]  — 2026-10-06T08:28:30
+- **STALE_INDICATORS** [tradier]  — 2026-10-06T08:30:31
 
 ## Missed Trades (trader comparison)
 

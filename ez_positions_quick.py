@@ -17557,6 +17557,10 @@ async def evaluate_reentry_2_epq(trade_manager, data_manager=None):
       - STOCH_CROSSOVER (REENTRY2_STOCH_CROSS_ENABLED)"""
     if not getattr(config, 'REENTRY_2_ENABLED', True):
         return
+    # 2026-10-06 parity-loop-crypto: in PARITY_VEC_EXACT_MODE (ENTRY twinned) this native reentry producer is OFF — its vec twin
+    # (v12 compute_reentry_blocks B_REENTRY2: DC_BREAK / STOCH_CROSS / QUICK_RECOVERY) reaches live through the vec ENTRY twin.
+    if bool(getattr(config, 'PARITY_VEC_EXACT_MODE', False)) and 'ENTRY' in {x.strip().upper() for x in str(getattr(config, 'PARITY_VEC_EXACT_FAMILIES', 'ENTRY')).split(',')}:
+        return
     config_accounts = set(getattr(config, 'ACCOUNT_KEYS', []))
     loaded_accounts = set(trade_manager.accounts.keys()) if hasattr(trade_manager, 'accounts') else set()
     managed_accounts = config_accounts.intersection(loaded_accounts)

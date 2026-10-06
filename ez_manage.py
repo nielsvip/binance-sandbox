@@ -45038,6 +45038,14 @@ async def evaluate_reentry_2(trade_manager):
       - STOCH_CROSSOVER_REENTRY: gated by REENTRY2_STOCH_CROSS_ENABLED"""
     global _evaluate_reentry_2_counter
     _evaluate_reentry_2_counter += 1
+    # 2026-10-06 parity-loop-crypto: in PARITY_VEC_EXACT_MODE (ENTRY twinned) this native reentry producer is OFF (vec twin B_REENTRY2 via the vec ENTRY twin)
+    if _vec_exact_mode_on():
+        try:
+            from live_twins import vec_exact as _vx_r2
+            if 'ENTRY' in _vx_r2.families(config):
+                return
+        except Exception:
+            pass
     # 2026-09-26 parity master — check trade_manager + global + env + STRICT SINGLE_GATE (only PARITY_DISABLE, not STRICT alone, to preserve vector reentries)
     import os as _os_e2
     _par = False
