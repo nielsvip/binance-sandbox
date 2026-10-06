@@ -11124,6 +11124,30 @@ async def _refresh_cold_data_cache(trade_manager):
         pass
 
 
+_II_JSON_CACHE = {"path": None, "mtime": 0.0, "data": None}
+_II_REDIS_DOWN_UNTIL = {}
+
+
+def _ii_market_json() -> dict:
+    """2026-10-06 director (USER: 'json 1ms later from s1 gateway and macbook — no excuse to be 1/5th second late'):
+    parse latest_market_data JSON once per file update (mtime), never once per symbol per call."""
+    try:
+        latest_file = _get_latest_market_data_file()
+        if not latest_file:
+            return {}
+        mt = os.path.getmtime(latest_file)
+        if _II_JSON_CACHE["data"] is None or _II_JSON_CACHE["path"] != latest_file or mt != _II_JSON_CACHE["mtime"]:
+            with open(latest_file, "rb") as f:
+                content = f.read()
+            if content:
+                d = orjson.loads(content)
+                if isinstance(d, dict):
+                    _II_JSON_CACHE.update(path=latest_file, mtime=mt, data=d)
+        return _II_JSON_CACHE["data"] or {}
+    except Exception:
+        return _II_JSON_CACHE["data"] or {}
+
+
 async def ii(
     trade_manager: Optional["MultiAccountTradeManager"] = None,
     raw_symbol: Optional[str] = None,
@@ -11149,7 +11173,7 @@ async def ii(
         if rm and hasattr(rm, "connections") and rm.connections:
             for name in ["local", "gateway", "server"]:
                 client = rm.connections.get(name)
-                if client:
+                if client and _II_REDIS_DOWN_UNTIL.get(name, 0.0) <= now:
                     try:
                         hot_raw = await asyncio.wait_for(client.get(f"hot_metrics:{sym}"), timeout=0.1)
                         if hot_raw:
@@ -11159,7 +11183,8 @@ async def ii(
                                 result = parsed.copy()
                                 trade_manager.indicators_source_label = f"redis_hot_{name}"
                                 break
-                    except Exception: pass
+                    except Exception:
+                        _II_REDIS_DOWN_UNTIL[name] = now + 30.0  # circuit breaker: JSON answers immediately for 30 s
     # hot_metrics (Redis path 2) only has 1m/3m stoch — supplement HTF fields if missing.
     # Bridge (shared memory) returns k_3m=0/d_3m=0 when ez_indicators skips 3m
     # computation due to stale mark price (>3s gap). Override both-zero 3m stoch from JSON.
@@ -11189,12 +11214,10 @@ async def ii(
     _3m_zero = bool(result) and result.get("k_3m", 0) == 0 and result.get("d_3m", 0) == 0
     if not result or _htf_needed or _3m_zero:
         try:
-            latest_file = _get_latest_market_data_file()
-            if latest_file:
-                with open(latest_file, "rb") as f:
-                    file_content = f.read()
-                    if file_content:
-                        full_data = orjson.loads(file_content)
+            full_data = _ii_market_json()
+            if True:
+                if True:
+                    if full_data:
                         if isinstance(full_data, dict) and sym in full_data:
                             file_sym_data = full_data[sym]
                             if not result:

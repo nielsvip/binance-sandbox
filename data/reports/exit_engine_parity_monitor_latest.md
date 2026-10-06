@@ -1,17 +1,17 @@
 # Exit-engine parity monitor
 
-generated: 2026-10-06T02:02:50.790620+00:00 · lookback: 48.0h
+generated: 2026-10-06T03:02:51.131573+00:00 · lookback: 48.0h
 
-**exit_engine rows in window: 2022** · last: 2026-10-06T02:02:27.186864+00:00
+**exit_engine rows in window: 2133** · last: 2026-10-06T02:59:55.221365+00:00
 
 ## 🔴 LEAKS (gate-disabled families that fired = illegal trades): 0
 - none — no gate-disabled family fired. ✅ parity holds for mapped exits.
 
-## ✅ GATE_ON (legitimately allowed live, has gate): 752
-- GOLDEN_RULE: 752
+## ✅ GATE_ON (legitimately allowed live, has gate): 755
+- GOLDEN_RULE: 755
 
-## ❔ UNMAPPED (no gate mapping — candidate good-paths to evaluate): 1270
--   993  ALL_ALL_GREEN_DIRECT_CLOSE_winners_all
+## ❔ UNMAPPED (no gate mapping — candidate good-paths to evaluate): 1378
+-  1090  ALL_ALL_GREEN_DIRECT_CLOSE_winners_all
 -    43  ALL_ALL_RED_DIRECT_CLOSE_losers_all_re
 -    29  WT_LOWER_CROSS_EXIT_wt_1h_lower_wt+pri
 -    28  EXIT_VELOCITY_WT_4h_vel-10.2-against-l
@@ -20,6 +20,7 @@ generated: 2026-10-06T02:02:50.790620+00:00 · lookback: 48.0h
 -    19  EXIT_VELOCITY_WT_1h_vel-40.3-against-l
 -    13  EXIT_VELOCITY_WT_4h_vel-1.1-against-lo
 -    12  DAYTRADE_TARGET_dc_15m_high_-0.10%_TAR
+-    10  EXIT_VELOCITY_WT_1h_vel-32.5-against-l
 -     9  EXIT_VELOCITY_WT_4h_vel-34.5-against-l
 -     7  ALL_ALL_GREEN_DIRECT_OPEN_winners_all_
 -     7  EXIT_VELOCITY_WT_1h_vel-72.6-against-l
@@ -29,7 +30,6 @@ generated: 2026-10-06T02:02:50.790620+00:00 · lookback: 48.0h
 -     4  EXIT_VELOCITY_WT_4h_vel-42.5-against-l
 -     3  CRYPTO_SPIKE_FADE_LONG_ret=-11.0%
 -     3  EXIT_VELOCITY_WT_4h_vel-33.0-against-l
--     2  EXIT_VELOCITY_WT_D_vel-8.5-against-lon
--     2  RATIO_REDUCE_LONG_L100_S0_tgt30/70_bre
+-     3  EXIT_VELOCITY_WT_1h_vel-60.7-against-l
 
-## actions in window: {'OPEN': 774, 'CLOSE': 1234, 'REDUCE': 14}
+## actions in window: {'OPEN': 777, 'CLOSE': 1342, 'REDUCE': 14}

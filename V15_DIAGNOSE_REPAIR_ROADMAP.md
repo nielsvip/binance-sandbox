@@ -56,6 +56,13 @@ verified with `backtest_v12_engine` (replays the REAL ez_/tradier_ process_posit
 (`tools/v15_trade_parity.py`). Live is NOT driven by vec decisions (NPZs live on another system and are not bar-fresh —
 the vec-driven executor idea was stopped). Fix-and-verify loops: PARITY LOOP CRYPTO / STOCKS (logs
 `data/parity/loop_{crypto,stocks}_log.md`), harness = lane A, settings evidence = lane E.
+**USER RULING (verbatim, 2026-10-06):** "Live crypto has to run through execute_trade_action and execute_now in ez_manage
+or be sent there from ez_positions_quick — it has to run the entire scripts (while the non vectorizable functions are
+switched off temporarily) producing THE EXACT SAME RESULTS from the TEMPLATE_ and v12_quick." → vec entry/exit producers
+are twinned INSIDE the live producers (ez_positions_quick / ez_manage signal flow; tradier_manage open/exit flow) and
+routed through execute_trade_action → execute_now; master `PARITY_VEC_EXACT_MODE` (default False) suppresses every live
+path without a vec twin; backtest_v12_engine runs the WHOLE scripts (real execute_now, only I/O stubbed, no injected
+v12-predicate producers) and must show identical trips. No separate opener, no bypass.
 **Hard facts, never switches:** stocks trade only in RTH (09:30–16:00 ET) — `v12_quick_engine` RTH gate is
 unconditional + fail-closed since 2026-10-06 (old engine traded 04:00–20:00 NPZ bars → EVERY earlier stock sheet and
 the first s2 repair queue are INVALID; stock repair re-runs on `~/binance-cut6` on s2).

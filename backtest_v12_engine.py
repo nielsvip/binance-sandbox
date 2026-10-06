@@ -124,13 +124,12 @@ try:
     sys.path.insert(0, str(BASE_PATH))
     IS_SERVER = BASE_PATH != Path("/Users/niels/Documents/binance")
 except Exception:
+    # 2026-10-06 parity lane A: tools/infra_paths.py does not exist on Mac/S1/s2/s5, so this branch is the normal one. It used to
+    # pin /home/niels/binance-sandbox, making isolated copies (cut/loop dirs) silently import the SANDBOX tradier_manage/config.
+    # Now: V12_BASE_PATH override, else the repo this engine file lives in (== the old value for the canonical deployments).
     IS_SERVER = platform.system() == "Linux"
-    if IS_SERVER:
-        BASE_PATH = Path("/home/niels/binance-sandbox")
-        sys.path.insert(0, str(BASE_PATH))
-    else:
-        BASE_PATH = Path("/Users/niels/Documents/binance")
-        sys.path.insert(0, str(BASE_PATH))
+    BASE_PATH = Path(os.environ.get("V12_BASE_PATH") or Path(__file__).resolve().parent)
+    sys.path.insert(0, str(BASE_PATH))
 # Isolated c5 canary only: allow the shadow engine to import the matching
 # shadow tradier_manage/helpers while every c4 worker continues importing the
 # active sandbox tree above.  Production/c4 never sets this variable.
@@ -3943,7 +3942,14 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 trade_manager.positions[pk] = np2
                 trade_manager.positions_by_account.setdefault(acct, {})[pk] = np2
         return "SUCCESS"
-    trade_manager.execute_trade_action = _crypto_eta
+    # 2026-10-06 parity lane A (USER RULING H3): V12_REAL_EXECUTE=1 keeps the REAL ez_manage execute_trade_action and
+    # execute_now (every live gate runs); only exchange/broker I/O stays stubbed (send_webhook -> _recording_webhook fills at
+    # the bar price, futures_create_order mock). Default unchanged (seam).
+    _v12_real_execute = os.environ.get("V12_REAL_EXECUTE") == "1"
+    if not _v12_real_execute:
+        trade_manager.execute_trade_action = _crypto_eta
+    else:
+        v8_logger.warning("[V12_REAL_EXECUTE] crypto: real execute_trade_action + execute_now (broker I/O stubbed only)")
 
     # 2026-05-18 FIX: Patch execute_now to route through _crypto_eta.
     # process_position (ez_manage.py) calls trade_manager.execute_now() directly (not
@@ -3972,7 +3978,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             is_hedge=is_hedge,
             hedge_for=hedge_for,
         )
-    trade_manager.execute_now = _v8_execute_now_crypto
+    if not _v12_real_execute:
+        trade_manager.execute_now = _v8_execute_now_crypto
 
     # 2026-05-12 — V8_DECISION_ONLY: stub calculate_final_order_quantity so queue_trade_action
     # doesn't spin up the expensive `ii()` indicator fetcher to compute sizing. We don't care
@@ -4639,6 +4646,22 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             _quick_exit_event_sets = {}
             _quick_ledger_entries = {}
             _quick_ledger_exits = {}
+    # 2026-10-06 parity lane A (USER RULING H1): V12_LIVE_ONLY_PRODUCERS=1 removes every vec-derived producer this harness
+    # injects into the live leg (STDEV / B11 / B_SRS_ENTRY / GOLDEN_RULE opens built from v12 predicates, and the native
+    # exits/reentries chained on them: WRONG_SIDE_ABS_KILL, WT cross, STDEV exit, HLR, ALL_TF, obligatory/HLR reentry, plus the
+    # Quick ledger schedules). Those opens/closes were fake parity: the live leg must contain only what the live scripts produce.
+    if os.environ.get("V12_LIVE_ONLY_PRODUCERS") == "1":
+        v8_logger.warning("[V12_LIVE_ONLY_PRODUCERS] removed injected producers: stdev=%d stdev_exit=%d b11=%d srs=%d golden=%d quick_sched=%d",
+                          len(_stdev_native_events), len(_stdev_native_exit_events), len(_b11_native_events), len(_srs_native_events),
+                          len(_golden_native_events), len(_quick_entry_event_sets))
+        _stdev_native_events, _stdev_native_exit_events, _b11_native_events, _srs_native_events, _golden_native_events = {}, {}, {}, {}, {}
+        _quick_entry_event_sets, _quick_exit_event_sets, _quick_ledger_entries, _quick_ledger_exits = {}, {}, {}, {}
+        _v12_exit_batch3 = _v12_exit_batch2 = _v12_obligatory_reentry = _v12_hlr_reentry = None
+        # the [SIGNAL_GATE] admission prefilter (flat keys only reach process_position on bars with an NPZ cross event) is a
+        # harness speed-up live does not have: live evaluates every tick.
+        _entry_signal_sets = {}
+        if os.environ.get("V12_PARITY_QUICK_LEDGER_REPLAY", "0") == "1":
+            raise RuntimeError("V12_LIVE_ONLY_PRODUCERS=1 is incompatible with V12_PARITY_QUICK_LEDGER_REPLAY=1 (ledger replay = vec decisions)")
     # ─────────────────────────────────────────────────────────────────────────
 
     # Start the OrderQueue processor (REAL)
@@ -8112,7 +8135,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     tm_mod.is_regular_trading_hours = _sim_irth
     if hasattr(tm_mod, 'minutes_since'):
         _oms = tm_mod.minutes_since
-        def _sms(ts_obj, now=None):
+        def _sms(ts_obj=None, now=None, **_kw):
+            ts_obj = _kw.get("timestamp_obj", ts_obj)
             if now is None: now = _sim_now_t(timezone.utc)
             return _oms(ts_obj, now=now)
         tm_mod.minutes_since = _sms
@@ -8293,9 +8317,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         async def get_quotes(self, syms, *a, **kw):
             return {s: {"last": price_cache.get(s.upper(),0)} for s in (syms if isinstance(syms, list) else [syms])}
     manager.api_client = _CaptureAPI()
-    async def _fresh(sym, pk=None): return True, "NPZ", True, manager.market_snapshot.get(sym.upper(), {})
+    async def _fresh(sym, pk=None, *_a, **_kw): return True, "NPZ", True, manager.market_snapshot.get(sym.upper(), {})
     manager.is_data_fresh = _fresh
-    async def _price(sym): return price_cache.get(sym.upper(), 0.0), _sim_ts[0]
+    async def _price(sym, *_a, **_kw): return price_cache.get(sym.upper(), 0.0), _sim_ts[0]
     manager.get_current_price = _price
     async def _place(*args, **kw):
         # Handle both positional (symbol,side,qty,order_type,price,...) and keyword calls
@@ -9513,7 +9537,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     _v8_syms = set(s.upper() for s in stores.keys())
     _side_gate_off = bool(os.environ.get("V8_SIDE_GATE_DISABLED", ""))
     _ladder_only_side = os.environ.get("V8_LADDER_ONLY_SIDE", "").lower()
-    def _always_tradeable(sym, acc=None, side=None):
+    def _always_tradeable(sym, acc=None, side=None, **_kw):
         if sym.upper() not in _v8_syms:
             return False
         if _ladder_only_side in ("long", "short"):
@@ -10087,14 +10111,20 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 manager.positions_service.positions_by_account.setdefault(account_key_en, {})[position_key] = _pos_ref
         manager.recently_processed_signals[position_key] = _sim_ts[0]
         return "SUCCESS"
-    manager.execute_now = _v8_execute_now
+    if os.environ.get("V12_REAL_EXECUTE") == "1":
+        # parity lane A H3 (stocks): keep the REAL tradier execute_now; broker I/O = manager.place_order stub (_place).
+        v8_logger.warning("[V12_REAL_EXECUTE] tradier: real execute_now (broker I/O stubbed only)")
+    else:
+        manager.execute_now = _v8_execute_now
     # Backtest queue_trade_action: only a true CLOSE substitutes the current
     # position quantity for live's 999999 broker-clamp sentinel.  The former
     # code also overwrote every REDUCE request, turning a 50% LR harvest into a
     # full exit.  Preserve a valid partial reduce; clamp malformed/oversized
     # reduces defensively to the actual simulated position.
     _orig_qta = tm_mod.queue_trade_action
-    async def _bt_queue_trade_action(order_queue_bt, trade_manager_bt, position_key_bt, action_bt, reason_bt, conviction_bt=50.0, override_qty=None):
+    async def _bt_queue_trade_action(order_queue_bt, trade_manager_bt, position_key_bt, action_bt, reason_bt, conviction_bt=50.0, override_qty=None, **_qta_kw):
+        # 2026-10-06 parity lane A: live queue_trade_action gained record_decision (tm 2026-10-05); a fixed-signature wrapper
+        # raised TypeError on every tail OPEN/REENTRY dispatch, swallowed by process_position. Forward all extra kwargs.
         _act_up = (action_bt or '').upper()
         if _act_up in ("CLOSE", "REDUCE"):
             _pm_bt = manager.position_manager
@@ -10107,7 +10137,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         override_qty = _actual_qty
                     else:
                         override_qty = min(_requested_qty, _actual_qty)
-        return await _orig_qta(order_queue_bt, trade_manager_bt, position_key_bt, action_bt, reason_bt, conviction_bt, override_qty=override_qty)
+        return await _orig_qta(order_queue_bt, trade_manager_bt, position_key_bt, action_bt, reason_bt, conviction_bt, override_qty=override_qty, **_qta_kw)
     tm_mod.queue_trade_action = _bt_queue_trade_action
     # 2026-05-12 — V8_DECISION_ONLY: stub tradier sizing/qty calculator (tradier_manage version
     # mirrors ez_manage.calculate_final_order_quantity). Also stub ez_manage's in case the
@@ -10281,7 +10311,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     # runnable.  Preserve blacklist/non-shortable safety while removing that
     # circular live-overlay dependency from the backtest only.
     _v8_live_tradeable_t = manager.is_symbol_tradeable
-    def _v8_exact_tradeable_t(symbol, account, side):
+    def _v8_exact_tradeable_t(symbol, account=None, side=None, **_kw):
+        account = _kw.get("account_key", account)
         if str(account) != str(account_key):
             return _v8_live_tradeable_t(symbol, account, side)
         _contract_side = os.environ.get(
@@ -11658,7 +11689,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 return _formation_consumer_admitted_t and any(bool(getattr(tm_mod.config, switch_t, False)) for switch_t in switches_t)
 
         _sat_enabled = getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', True)
-        if step % 3 == 0:
+        # 2026-10-06 parity lane A: flat-key candidates were evaluated every 3rd 5m bar only; live ticks every few minutes.
+        # V12_FLAT_CANDIDATE_EVERY (default 3 = unchanged); trade-parity runs set 1 (every simulated bar).
+        if step % max(1, int(os.environ.get("V12_FLAT_CANDIDATE_EVERY", "3") or 3)) == 0:
             for s in stores:
                 ind = indicator_cache.get(s.upper(), {})
                 if not ind: continue
@@ -17462,7 +17495,7 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
             pass
         if start_date is None:
             # Fallback: try direct NPZ file read
-            for _npz_dir in [BASE_PATH / "backtest_v8" / "indicators", _P("/home/niels/binance-sandbox/backtest_v8/indicators")]:
+            for _npz_dir in [BASE_PATH / "backtest_v8" / "indicators"]:
                 _p = _npz_dir / f"{sym}.npz"
                 if _p.exists():
                     _d = dict(_np_f.load(str(_p), allow_pickle=True))
@@ -17533,8 +17566,30 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
         events = []
         # executed_trades entries have timestamp, type eta, quantity, price, pnl_pct/pnl_dollars, cash_flow etc
         # we need events with ts, type, qty, value, pnl_pct
+        _wh_book = {}
         for ev in (executed or []):
             # ev is dict with keys like timestamp, type, quantity, price, pnl_pct, action, reason
+            # 2026-10-06 parity lane A (V12_REAL_EXECUTE): real execute_now fills arrive as broker-stub "webhook" records
+            # (no action/pnl). Normalise them to eta-shaped OPEN/AUGMENT/REDUCE/CLOSE with a price-based pnl_pct.
+            if os.environ.get("V12_REAL_EXECUTE") == "1" and str(ev.get("type", "")).lower() == "webhook" and ev.get("position_key"):
+                try:
+                    _wpk = str(ev.get("position_key")); _wlong = _wpk.endswith("_LONG")
+                    _wq = abs(float(ev.get("quantity", 0) or 0)); _wpx = float(ev.get("price", 0) or 0)
+                    _wbuy = str(ev.get("side", "")).upper() == "BUY"
+                    _wq0, _wavg = _wh_book.get(_wpk, (0.0, 0.0))
+                    if _wbuy == _wlong:
+                        ev["action"] = "OPEN" if _wq0 <= 1e-12 else "AUGMENT"
+                        _nq = _wq0 + _wq
+                        _wh_book[_wpk] = (_nq, (_wavg * _wq0 + _wpx * _wq) / _nq if _nq > 0 else _wpx)
+                    else:
+                        _full = bool(ev.get("is_full_close")) or _wq >= _wq0 - 1e-12
+                        ev["action"] = "CLOSE" if _full else "REDUCE"
+                        if _wavg > 0 and _wpx > 0:
+                            ev["pnl_pct"] = ((_wpx / _wavg) - 1.0) * 100.0 * (1.0 if _wlong else -1.0)
+                        _wh_book[_wpk] = (0.0, 0.0) if _full else (max(0.0, _wq0 - _wq), _wavg)
+                    ev["type"] = "eta"
+                except Exception:
+                    pass
             ts_raw = ev.get("timestamp", 0)
             try:
                 if hasattr(ts_raw, "timestamp"):
