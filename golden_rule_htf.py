@@ -260,6 +260,7 @@ def _run_gate(
         _require_act = bool(getattr(_cfg_obj, 'GOLDEN_RULE_REQUIRE_ACTIVATION', False))
         _act_list = list(getattr(_cfg_obj, 'GOLDEN_RULE_ACTIVATION_TF_LIST', None) or [])
         _entry_list = list(getattr(_cfg_obj, 'GOLDEN_RULE_ENTRY_TF_LIST', None) or [])
+        _low_allowed = bool(getattr(_cfg_obj, 'USE_1M_3M_SIGNALS_ENABLED', False))
     except Exception:
         _vote_min = 0
         _dc_thr = 0.0
@@ -267,17 +268,24 @@ def _run_gate(
         _require_act = False
         _act_list = []
         _entry_list = []
+        _low_allowed = False
     tfs_default = _TRADIER_TFS if mode == "tradier" else _CRYPTO_TFS
+    # USER 2026-10-06 NO-1m/3m/5m PARITY (TEMPORARY — NOTE_3M_REENABLE): NPZ has no 1m/3m/5m keys
+    # and every vec twin skips 3m/5m; live must see exactly what vectorized sees. While
+    # USE_1M_3M_SIGNALS_ENABLED is False (False for months), 3m/5m TFs are skipped here AND in
+    # _check_activation. NOTE_3M_REENABLE: restore ONLY when NPZ carries real 3m/5m series AND all
+    # vec twins consume them AND §43 parity passes on golden trades.
+    _skip_low = (lambda _tfs: [t for t in _tfs if _low_allowed or t not in ("3m", "5m")])
 
     # === USER 2026-05-18 activation/entry split (when REQUIRE_ACTIVATION=True) ===
     if _require_act and _act_list:
-        act_ok, act_detail = _check_activation(ind, _act_list, is_long, px, _dc_thr, _bb_thr)
+        act_ok, act_detail = _check_activation(ind, _skip_low(_act_list), is_long, px, _dc_thr, _bb_thr)
         if not act_ok:
             return False, 0, act_detail
         # Activation confirmed — score only entry TFs (cheaper, semantically correct).
-        tfs = _entry_list if _entry_list else tfs_default
+        tfs = _skip_low(_entry_list) if _entry_list else _skip_low(tfs_default)
     else:
-        tfs = tfs_default
+        tfs = _skip_low(tfs_default)
 
     # === legacy total-vote-score gate ===
     if _vote_min > 0:

@@ -5347,6 +5347,8 @@ class HedgeEngine:
         """RE-ENABLED 2026-04-08: 100% same-symbol hedge when position enters loss AND WT against.
         Cascade fix (2026-03-29): tracker consultation prevents hedge-the-hedge and double-hedge.
         ONE hedge per loser. No dual. No cross-symbol."""
+        if _vx_native_off():  # 2026-10-06 switch-over: native opener/augmenter/hedge off at the source while the vec twin owns ENTRY (PARITY_VEC_EXACT_MODE)
+            return None
         if not self.positions_service:
             return
         positions = self.positions_service.positions_by_account.get(account_key, {})
@@ -7083,6 +7085,8 @@ class HedgeEngine:
         # different symbol that lives long after the V3 scalp closes — orphaning + counter-bleed.
         # User directive: V3-tagged losers must hedge same-symbol only (or skip entirely if
         # same-symbol can't open). DO NOT remove without explicit user re-approval.
+        if _vx_native_off():  # 2026-10-06 switch-over: native opener/augmenter/hedge off at the source while the vec twin owns ENTRY (PARITY_VEC_EXACT_MODE)
+            return {'overall_status': 'blocked_vec_exact_native_off'}
         return None
         try:
             _v3_pos = None
@@ -15378,6 +15382,8 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
                 _lq, _lov = _vx.live_sizing_args(_act, _qty, _px, config)
                 _res = await trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=_pk, symbol=_sym, quantity=_lq, current_price=_px, side=_oside, position_side=_side, unique_id=f"VX{int(_a['bar_ts'])}{_a['n']}", is_full_close=_full, action=_act, reason=_vx.tagged_reason(_a), override_qty=_lov, is_hedge=False)
                 logger.info(f"[VEC_EXACT] {_pk} {_act} {_a['reason'][:60]} qty={_qty:.6f} -> {str(_res)[:120]}")
+                if str(_res).upper().startswith("SUCCESS"):
+                    _vx.owned_add(_pk, _a.get("reason", ""))  # 2026-10-06 director: twin-opened -> twin exits; others keep native exits
         except Exception as _e:
             logger.error(f"[VEC_EXACT] {_pk}: {_e}")
 
@@ -17730,6 +17736,8 @@ _bounce_augment_cooldowns: Dict[str, float] = {}
 async def aggressive_hedge_scanner(trade_manager, account_key: str, tracker_manager: TrackerManager, hedge_engine: HedgeEngine):
     # FIX 2026-04-07: PERMANENTLY DISABLED — caused multi-hedge cascade on RAYSOLUSDT.
     # Inline triggers (process_position, HEDGE_MODE_BLOCK) are sufficient. This loop just piles up.
+    if _vx_native_off():  # 2026-10-06 switch-over: native opener/augmenter/hedge off at the source while the vec twin owns ENTRY (PARITY_VEC_EXACT_MODE)
+        return None
     return
     if not is_hedge_account(config, account_key):
         return

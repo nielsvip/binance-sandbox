@@ -77,7 +77,7 @@ for SANDBOX in "${SANDBOXES[@]}"; do
         [ -f "$LOCAL/$f" ] && rsync -a --checksum --timeout=60 -e "ssh $SSH_OPTS" "$LOCAL/$f" "$SANDBOX/$f" 2>/dev/null
     done
     # Elastic infra + herd — system-only snapshot on S1 (no NPZ/XLS) for instant s2..sN rebuild
-    for d in infra/elastic tools/v15_local_herd.py tools/elastic_idle_watchdog.py; do
+    for d in infra/elastic tools/v15_fleet_scheduler.py tools/elastic_idle_watchdog.py; do
         if [ -e "$LOCAL/$d" ]; then
             rsync -az --checksum --timeout=60 -e "ssh $SSH_OPTS" "$LOCAL/$d" "$SANDBOX/$(dirname $d)/" 2>/dev/null || true
         fi

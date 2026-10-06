@@ -1,32 +1,32 @@
 {
- "generated_at": "2026-10-06 19:35 UTC",
- "total_capital_usd": 2.02,
+ "generated_at": "2026-10-06 20:10 UTC",
+ "total_capital_usd": 78.14,
  "tier_capital": {
   "A": 0.0,
-  "B": 2.02,
-  "C": 0.0
+  "B": 0.0,
+  "C": 78.14
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "men:GALAUSDT_SHORT"
+  "flz:ZECUSDC_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:GALAUSDT_SHORT",
-   "symbol": "GALAUSDT",
-   "account": "men",
-   "value_usd": 2.02,
-   "gain_pct": -1.365,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 828.0,
-   "mark": 0.0024439
+   "pk": "flz:ZECUSDC_LONG",
+   "symbol": "ZECUSDC",
+   "account": "flz",
+   "value_usd": 78.14,
+   "gain_pct": -0.017,
+   "tier": "C",
+   "perf_mult": 0.45,
+   "amt": 0.058,
+   "mark": 1347.22
   }
  ]
 }

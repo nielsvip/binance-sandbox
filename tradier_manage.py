@@ -2,6 +2,7 @@
 #!/usr/bin/env python3
 import asyncio
 import order_dedupe_guard as _odg  # 2026-10-06 USER ORDER_DEDUPE_GUARD: broker-confirmed final-state gate on every order
+import positions_truth as _ptruth  # 2026-10-06 USER POSITIONS_TRUTH: zero-qty refusal, broker-confirmed SUCCESS, local!=broker refuses entries
 from live_rally_filters import rally_ok as _rally_ok
 import tradier_filter_tf_twins as _ftf_twins  # PARITY LANE C 2026-10-06: vec entry FILTER_TF predicates (stocks live)
 import datetime as dt
@@ -16382,6 +16383,7 @@ class PositionReader:
         self.redis_client = None
         self.positions: Dict[str, TradierPosition] = {} 
         self.ladder_levels = {}
+        self.written_at: Dict[str, float] = {}  # 2026-10-06 USER POSITIONS_TRUTH: acc -> broker-sync written_at (Redis wrapper ts / file meta)
 
 
     async def connect(self):
@@ -16419,37 +16421,45 @@ class PositionReader:
 
     def set_stop_loss(self, symbol, position_side, stop_loss): pass
     async def save_all_positions(self):
+        # POSITIONS REVAMP 2026-10-06: tradier_positions.py is the ONLY writer of broker quantities. This second writer used
+        # to dump optimistic in-memory amounts non-atomically and drop rows (trc IBIT file 51.6 vs broker 129). Now:
+        # disk rows are never dropped, positionAmt/quantity always come from the broker-written disk row, memory-only keys
+        # are never added, and the write is atomic (tmp + fsync + replace). No meta stamp: this is not a broker sync.
         from dataclasses import asdict
-        accounts_data: Dict[str, Dict[str, dict]] = {}
+        mem: Dict[str, Dict[str, dict]] = {}
         for pk, pos in self.positions.items():
-            amt = abs(float(getattr(pos, 'positionAmt', 0) or 0))
-            if amt == 0:
-                continue
             acc = pk.split(":")[0]
-            if acc not in accounts_data:
-                accounts_data[acc] = {"long": {}, "short": {}}
             side_key = "short" if pk.endswith("_SHORT") else "long"
-            accounts_data[acc][side_key][pk] = pos.to_dict() if hasattr(pos, 'to_dict') else (asdict(pos) if hasattr(pos, '__dataclass_fields__') else pos.__dict__)
-        for acc, sides in accounts_data.items():
+            mem.setdefault(acc, {"long": {}, "short": {}})[side_key][pk] = pos.to_dict() if hasattr(pos, 'to_dict') else (asdict(pos) if hasattr(pos, '__dataclass_fields__') else dict(pos.__dict__))
+        for acc, sides in mem.items():
             acc_conf = config.get_account_config(acc)
             acc_dir = acc_conf['account_dir'] if acc_conf and 'account_dir' in acc_conf else config.BASE_PATH / acc
             if not os.path.exists(acc_dir):
-                os.makedirs(acc_dir, exist_ok=True)
+                continue
             for side_name, positions_dict in sides.items():
                 fpath = os.path.join(acc_dir, f"{side_name}_positions.json")
-                clean = {}
-                for pk_key, pk_data in positions_dict.items():
-                    amt = 0
-                    if isinstance(pk_data, dict):
-                        amt = abs(float(pk_data.get('positionAmt', 0) or 0))
-                    elif hasattr(pk_data, 'positionAmt'):
-                        amt = abs(float(getattr(pk_data, 'positionAmt', 0) or 0))
-                    if amt > 0:
-                        clean[pk_key] = pk_data
                 try:
-                    async with aiofiles.open(fpath, "wb") as f:
-                        await f.write(orjson.dumps(clean, option=orjson.OPT_INDENT_2, default=default_json_serializer))
-                    logger.info(f"[SAVE] {acc}/{side_name}_positions.json: {len(clean)} active positions (memory=truth, no disk merge)")
+                    disk = await load_json_safe(fpath) if os.path.exists(fpath) else {}
+                    if not isinstance(disk, dict):
+                        logger.error(f"[SAVE] {fpath}: unreadable disk state — not writing (broker writer owns this file)")
+                        continue
+                    merged = {}
+                    for pk_key, drow in disk.items():
+                        row = dict(drow) if isinstance(drow, dict) else drow
+                        mrow = positions_dict.get(pk_key)
+                        if isinstance(row, dict) and isinstance(mrow, dict):
+                            keep = {k: row[k] for k in ("positionAmt", "quantity", "cost_basis") if k in row}
+                            row = {**row, **mrow, **keep}
+                        merged[pk_key] = row
+                    if merged == disk:
+                        continue
+                    tmp = f"{fpath}.tmp.{os.getpid()}"
+                    with open(tmp, "wb") as f:
+                        f.write(orjson.dumps(merged, option=orjson.OPT_INDENT_2, default=default_json_serializer))
+                        f.flush()
+                        os.fsync(f.fileno())
+                    os.replace(tmp, fpath)
+                    logger.info(f"[SAVE] {acc}/{side_name}_positions.json: {len(merged)} rows (broker qty preserved, atomic)")
                 except Exception as e:
                     logger.error(f"[SAVE] Failed to write {fpath}: {e}")
     async def save_all(self): await self.save_all_positions()
@@ -16468,6 +16478,9 @@ class PositionReader:
                 data = await self.redis_client.get(key)
                 if data:
                     wrapper = pickle.loads(data)
+                    _pt_wa = _ptruth.tradier_reader_written_at(wrapper)
+                    if _pt_wa is not None:
+                        self.written_at[acc] = _pt_wa
                     raw_pos_dict = wrapper.get('positions', {})
                     if raw_pos_dict:
                         data_found = True
@@ -16518,6 +16531,11 @@ class PositionReader:
                     continue
                 
                 data = await load_json_safe(fpath)
+                _pt_wa = _ptruth.read_written_at(fpath)  # 2026-10-06 POSITIONS_TRUTH: no meta = unknown = stale
+                if _pt_wa is None:
+                    self.written_at.pop(account_key, None)
+                else:
+                    self.written_at[account_key] = min(_pt_wa, self.written_at.get(account_key, _pt_wa))
                 
                 if not isinstance(data, dict):
                     continue
@@ -26054,6 +26072,14 @@ class TradierTradeManager:
             if has_opposing_in_api and action in ["OPEN", "AUGMENT", "REENTER", "REENTRY", "QUICK_OPEN", "REVERSE", "HEDGE_OPEN"]:
                 logger.critical(f"[OPPOSING_BLOCK] {account_key}:{symbol}_{position_side}: BLOCKED — API shows opposing position held. Cannot open {position_side} while opposite side exists in Tradier.")
                 return {"errors": {"error": [f"Opposing position held in API for {symbol}"]}}
+            # 2026-10-06 USER POSITIONS_TRUTH: this call's API holdings = broker pre-order qty (no extra request); local != broker refuses entries
+            if api_positions is None:
+                return {"errors": {"error": ["POSITIONS_BROKER_UNREACHABLE"]}}
+            _pt_pm = getattr(getattr(self, 'trade_manager', None), 'position_manager', None)
+            _pt_lp = _pt_pm.positions.get(f"{account_key}:{symbol.upper()}_{position_side}") if (_pt_pm is not None and position_side) else None
+            _pt_blk = _ptruth.tradier_pre_order(account_key, symbol, position_side or "LONG", action, current_qty, (abs(float(getattr(_pt_lp, 'positionAmt', 0) or 0)) if _pt_lp is not None else None), (getattr(_pt_pm, 'written_at', None) or {}).get(account_key), reason, config, logger)
+            if _pt_blk:
+                return {"errors": {"error": [_pt_blk]}}
 
             is_exception = symbol.upper() in self.exceptions
             max_order = self.limit_exception_order if is_exception else self.limit_normal_order
@@ -26200,8 +26226,26 @@ class TradierTradeManager:
                 
                 # If not filled, cancel and loop back for a better price
                 await client.cancel_order(account_key, order_id)
+                # POSITIONS REVAMP 2026-10-06: the cancel is only real when the BROKER reports a final status with the
+                # filled qty known. FILLED is not canceled; an unreadable status is not canceled. No re-place / market
+                # fallback until confirmed (the IBIT chase-timeout MARKET at 17:56:58 bought on top of a filled limit).
+                _cc_final = None
+                for _cc_i in range(int(_cfg_auto('TRADIER_CHASE_CANCEL_CONFIRM_POLLS', 12) or 12)):
+                    _cc = await client.get_order_status(account_key, order_id)
+                    _cc_st = str((_cc or {}).get('status', '') or '').lower()
+                    if _cc_st in ('canceled', 'filled', 'expired', 'rejected') and (_cc or {}).get('exec_quantity') is not None:
+                        _cc_final = _cc
+                        break
+                    await asyncio.sleep(0.5)
+                if _cc_final is None:
+                    logger.critical(f"🛑 [CHASE_CANCEL_UNCONFIRMED] {account_key}:{symbol} order {order_id}: broker never confirmed canceled/filled — NO re-place, NO market fallback (key stays frozen until the broker shows it final)")
+                    return {"errors": {"error": ["CHASE_CANCEL_UNCONFIRMED"]}, "chase_order_id": order_id}
+                exec_qty = float(_cc_final.get('exec_quantity', 0) or 0)
+                if str(_cc_final.get('status', '')).lower() == 'filled' or exec_qty >= remaining_to_fill:
+                    logger.warning(f"✅ [CHASE_FILLED_ON_CANCEL] {account_key}:{symbol} order {order_id} filled {exec_qty} before the cancel landed — no re-place")
+                    return _cc_final
                 remaining_to_fill -= exec_qty
-                last_order_result = status_res
+                last_order_result = _cc_final
                 logger.info(f"⏳ Partial Fill: {exec_qty}/{remaining_to_fill + exec_qty}. Re-calculating...")
 
             # 5. FINAL FALLBACK: MARKET ORDER (If still not filled after 10s)
@@ -27394,6 +27438,7 @@ class TradierTradeManager:
             return (False, "")
 
     @_odg.execute_now_gate("tradier")  # POSITIONS REVAMP 2026-10-06: execute_now token — the wire refuses exposure-increasing orders without it
+    @_ptruth.tradier_confirmed  # 2026-10-06 USER POSITIONS_TRUTH: SUCCESS only when the broker-confirmed position matches (order id alone is not a fill)
     async def execute_now(self, position_key: str, account_key: str, symbol: str, original_position_amt: float, side: str, position_side: str, quantity: float, old_price: float, unique_id: str, reason: str, is_full_close: bool, action: str = None, decision_recorded: bool = False) -> str:  # 2026-10-06 director: NameError fix — recorder flag passed through from execute_trade_action (direct paths default False = record here)
         # PARITY LOOP STOCKS 2026-10-06: VEC_EXACT order (PARITY_VEC_EXACT_MODE) = the vec decision -> decision gates below are skipped ("NO GATES"; NOLOSS has only exceptions).
         _vx_ex = is_vec_exact_reason(reason) and bool(_cfg('PARITY_VEC_EXACT_MODE', False, account_key, symbol, position_side))

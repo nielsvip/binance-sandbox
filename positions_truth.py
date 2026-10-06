@@ -289,6 +289,49 @@ class BrokerPositions:
 _CACHES: Dict[Tuple[str, str], BrokerPositions] = {}
 
 
+def seed_snapshot(broker: str, account: str, rows: Any, fetched_at: Optional[float] = None) -> bool:
+    """A writer that just fetched broker rows (e.g. fetch_positions whose processing then hung) seeds the shared broker
+    snapshot so order decisions keep using broker truth while local state is being reconciled."""
+    try:
+        if not isinstance(rows, list):
+            return False
+        amounts, entries = (normalize_binance if broker == "binance" else normalize_tradier)(rows)
+        bp = _CACHES.get((broker, account))
+        snap = BrokerSnapshot(broker, account, time.time() if fetched_at is None else fetched_at, amounts, entries)
+        if bp is not None:
+            bp.last = snap
+        else:
+            bp = _CACHES[(broker, account)] = BrokerPositions(broker, account, lambda: asyncio.sleep(0, result=None))
+            bp.last = snap
+        return True
+    except Exception:
+        return False
+
+
+def hang_reconcile(service: Any, account_key: str, rows: Any, where: str, config: Any = None, logger: Optional[logging.Logger] = None) -> bool:
+    """INVARIANT 6: a hung / failed position update must NOT os._exit and lose state. Instead: seed broker truth for order
+    decisions, age the local sync stamp so every order-bound read falls back to the broker (ez_pre_order_check), and count
+    consecutive hangs. Returns True when the caller should give up and exit (POSITIONS_HANG_EXIT_AFTER consecutive)."""
+    log = logger or _LOG
+    seeded = seed_snapshot("binance", account_key, rows)
+    try:
+        service.positions_last_sync = datetime.fromtimestamp(0, timezone.utc)
+    except Exception:
+        pass
+    cnt = service.__dict__.setdefault("_ptruth_hangs", {})
+    cnt[account_key] = cnt.get(account_key, 0) + 1
+    limit = int(getattr(config, "POSITIONS_HANG_EXIT_AFTER", 3) if config is not None else 3)
+    log.critical(f"🩹 [POSITIONS_HANG_RECONCILE] {account_key}: {where} — broker snapshot seeded={seeded}, local marked STALE (orders use broker truth), consecutive={cnt[account_key]}/{limit}")
+    return cnt[account_key] >= limit
+
+
+def hang_ok(service: Any, account_key: str) -> None:
+    try:
+        service.__dict__.setdefault("_ptruth_hangs", {})[account_key] = 0
+    except Exception:
+        pass
+
+
 def get_broker_positions(broker: str, account: str, fetch: Callable[[], Awaitable[Any]], config: Any = None, ban_remaining: Optional[Callable[[], float]] = None, logger: Optional[logging.Logger] = None) -> BrokerPositions:
     k = (broker, account)
     bp = _CACHES.get(k)
@@ -515,6 +558,25 @@ async def ez_pre_order_check(mgr: Any, account_key: str, symbol: str, position_k
     return None
 
 
+async def ez_broker_moved(mgr: Any, account_key: str, symbol: str, position_side: str, baseline: float, kind: str, config: Any = None, logger: Optional[logging.Logger] = None) -> bool:
+    """FRESH broker read (forced): did the position move from `baseline` in the `kind` direction ("increase"/"reduce")?
+    Used instead of the lagging WS/local verifier before any fallback order is considered. Broker unreachable -> False."""
+    snap = await ez_broker(mgr, account_key, config, logger).snapshot(force=True, reason=f"moved? {symbol} {kind}")
+    if snap is None:
+        return False
+    amt = snap.amount(symbol, position_side)
+    tol = qty_tol(config, amt, baseline)
+    return (amt < abs(baseline) - tol) if kind == "reduce" else (amt > abs(baseline) + tol)
+
+
+def ez_leftover_position(mgr: Any, account_key: str, symbol: str, position_side: str) -> Optional[float]:
+    """Synchronous peek at the last broker snapshot (<= POSITIONS_BROKER_CACHE_S old) — None if unknown."""
+    bp = _CACHES.get(("binance", account_key))
+    if bp is None or not bp._fresh():
+        return None
+    return bp.last.amount(symbol, position_side)
+
+
 def _bind(core: Callable, args: tuple, kwargs: dict) -> Dict[str, Any]:
     try:
         ba = inspect.signature(core).bind(*args, **kwargs)
@@ -583,9 +645,11 @@ async def ez_execute_now_guarded(mgr: Any, core: Callable[..., Awaitable[Any]], 
     conf = await confirm_position_change(_amt, pre, kind, _f(qty), filled_fn, config)
     if conf.ok:
         log.info(f"✅ [POSITIONS_CONFIRMED] {position_key}: {result} kind={kind} pre={conf.pre} post={conf.post} filled={conf.filled} code={conf.code}")
+        _unlock_key(account_key, symbol)
         return result
     log.critical(f"🚨 [POSITIONS_UNCONFIRMED] {position_key}: core returned {result} but broker shows pre={conf.pre} post={conf.post} expected={conf.expected} filled={conf.filled} kind={kind} code={conf.code} — NOT SUCCESS")
     _ez_resync(mgr, account_key)
+    _lock_key("binance", account_key, symbol, conf.code)
     return f"{UNCONFIRMED_PREFIX}{conf.code}"
 
 
@@ -681,9 +745,30 @@ async def tradier_execute_now_guarded(mgr: Any, core: Callable[..., Awaitable[An
     conf = await confirm_position_change(_amt, pre, kind, _f(qty), filled_fn, config)
     if conf.ok:
         log.info(f"✅ [POSITIONS_CONFIRMED] {position_key}: {result} kind={kind} pre={conf.pre} post={conf.post} filled={conf.filled} code={conf.code}")
+        _unlock_key(account_key, symbol)
         return result
     log.critical(f"🚨 [POSITIONS_UNCONFIRMED] {position_key}: core returned {result} but broker shows pre={conf.pre} post={conf.post} expected={conf.expected} filled={conf.filled} kind={kind} code={conf.code} — NOT SUCCESS")
+    _lock_key("tradier", account_key, symbol, conf.code)
     return f"{UNCONFIRMED_PREFIX}{conf.code}"
+
+
+def _unlock_key(account: Any, symbol: Any) -> None:
+    try:
+        import order_dedupe_guard as _odg
+
+        for b in ("binance", "tradier"):
+            _odg.clear_unconfirmed(b, str(account), str(symbol))
+    except Exception:
+        pass
+
+
+def _lock_key(broker: str, account: Any, symbol: Any, code: str) -> None:
+    try:
+        import order_dedupe_guard as _odg
+
+        _odg.mark_unconfirmed(broker, str(account), str(symbol), code)
+    except Exception:
+        pass
 
 
 def ez_confirmed(fn: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:

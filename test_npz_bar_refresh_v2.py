@@ -229,20 +229,25 @@ def test_darwin_guard_refuses_loop_and_live(monkeypatch, tmp_path, capsys):
 
 def test_drain_pool_shutdown(monkeypatch):
     import pytest
+    from multiprocessing.context import TimeoutError as MpTimeoutError
     class FakeIt:
-        def __init__(self, rs):
-            self.rs = list(rs)
+        def __init__(self, script):
+            self.script = list(script)
         def next(self, timeout=None):
-            if not self.rs:
+            act = self.script.pop(0)
+            if isinstance(act, Exception):
+                raise act
+            if act is None:
                 raise StopIteration
-            return self.rs.pop(0)
+            return act
     class FakePool:
-        def __init__(self, rs):
-            self.rs = rs
+        def __init__(self, script):
+            self.script = script
         def imap(self, fn, jobs):
-            return FakeIt(self.rs)
+            return FakeIt(self.script)
     rs = [{"symbol": "A", "status": "FRESH"}]
-    assert nbr._drain_pool(FakePool(rs), [1]) == rs
+    assert nbr._drain_pool(FakePool(rs + [None]), [1]) == rs
+    assert nbr._drain_pool(FakePool([TimeoutError(), MpTimeoutError(), rs[0], None]), [1]) == rs
     monkeypatch.setitem(nbr._TERM, "n", 1)
     with pytest.raises(nbr._Shutdown):
-        nbr._drain_pool(FakePool(rs), [1])
+        nbr._drain_pool(FakePool(rs + [None]), [1])

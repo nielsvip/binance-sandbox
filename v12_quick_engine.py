@@ -6927,12 +6927,18 @@ class QuickConfig:
     GOLDEN_RULE_DC_D_ENABLED: bool = True
     GOLDEN_RULE_DC_W_ENABLED: bool = True
     GOLDEN_RULE_ENABLED: bool = True
-    GOLDEN_RULE_ENTRY_TF_LIST: List[str] = field(default_factory=lambda: ['1h', '15m', '3m'])
+    GOLDEN_RULE_ENTRY_TF_LIST: List[str] = field(default_factory=lambda: ['1h', '15m'])  # 2026-10-06 NO-3M: == live config (3m dropped; twin also skips 3m)
     GOLDEN_RULE_MULT_15M: float = 1.0
     GOLDEN_RULE_MULT_1H: float = 1.5
     GOLDEN_RULE_MULT_4H: float = 2.0
     GOLDEN_RULE_MULT_D: float = 3.0
     GOLDEN_RULE_MULT_W: float = 4.0
+    GOLDEN_RULE_MULT_BREAKOUT: float = 0.1  # 2026-10-06 golden twin: live phase mult (ez_manage loop)
+    GOLDEN_RULE_MULT_RETEST: float = 5.0  # 2026-10-06 golden twin: live phase mult (ez_manage loop)
+    GOLDEN_RULE_RETEST_WINDOW_S: float = 14400.0  # 2026-10-06 golden twin: live retest window
+    GOLDEN_RULE_COOLDOWN_S: float = 600.0  # 2026-10-06 golden twin: live per-pkey cooldown
+    GOLDEN_RULE_MAX_FIRES_PER_TICK: int = 5  # 2026-10-06 golden twin: live per-tick cap
+    USE_1M_3M_SIGNALS_ENABLED: bool = False  # 2026-10-06 golden twin: native-TF selector (False for months)
     GOLDEN_RULE_REQUIRE_HEDGE_OPEN: bool = True
     GRACEFUL_EXIT_FILE_TEMPLATE: Path = Path("data")
     GR_HEDGE_SCORE_FLOOR: int = 15
@@ -8387,6 +8393,18 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
     ha_3m = _base_ha(npz, 'ha', n, cfg); ha_15m = _ha_int(npz, 'ha_15m', n); ha_1h = _ha_int(npz, 'ha_1h', n)
 
     blocks = {}
+    # 2026-10-06 USER full-parity: GOLDEN_RULE loop trigger (breakout 0.1x / retest 5.0x + consensus + veto).
+    # Shared twin of ez_manage._golden_rule_loop. Inserted FIRST so golden bars carry the golden reason.
+    if bool(getattr(cfg, 'GOLDEN_RULE_ENABLED', True)):
+        try:
+            import vec_decisions.golden_loop as _gloop_blk
+            _gr_ts_blk = npz.get('timestamps', None)
+            if _gr_ts_blk is None or len(np.asarray(_gr_ts_blk)) != n:
+                _gr_ts_blk = np.arange(n, dtype=float) * 900.0
+            _gr_blk = _gloop_blk.golden_entry(npz, np.asarray(_gr_ts_blk, dtype=float), is_long, str(getattr(cfg, 'MODE', 'crypto')), cfg)
+            blocks["GOLDEN_RULE_ENTRY"] = np.asarray(_gr_blk["fire"], dtype=bool)
+        except Exception:
+            pass
     if cfg.REENTRY_B02_BC156_BOTTOM_ENABLED:
         if is_long:
             wt_bull_cnt = wt_bull_3m.astype(int) + wt_bull_15m.astype(int) + wt_bull_1h.astype(int) + wt_bull_4h.astype(int)
@@ -9342,6 +9360,7 @@ def compute_entry_signals(npz, n, is_long, cfg):
         weights = {
             # ORIGINAL V8Q v3 weights — proven Sharpe 1.93 on TOP3
             "B15": 4,       # Strong trend continuation (#1 single block, Sharpe 0.89)
+            "GOLDEN_RULE_ENTRY": 6,  # 2026-10-06 golden twin: fires standalone (live loop is independent of other entries)
             "B04": 3,       # DC retest (Sharpe 0.39)
             "B11": 3,       # DC break (Sharpe 0.34, 94% WR)
             "B02": 2,       # BC156 bottom bounce (Sharpe 0.31)
@@ -9759,55 +9778,17 @@ def compute_entry_signals(npz, n, is_long, cfg):
     # 2026-08-18 GOLDEN_RULE parity — live blocks entry when < MIN_TFS TFs each have >= MIN_IND bullish indicators
     # BNBUSDC divergence: live GOLDEN_RULE_CONSENSUS_BLOCK_ENTRY tfs=0/3req while vector had no gate → 0 vs vector trades mismatch
     # Invert semantics: GR loop entries are breakout mode (DC/BB extended = bullish), matching golden_rule_htf invert_dc_bb=True
+    # 2026-10-06 USER full-parity: inline consensus replaced by shared vec_decisions.golden_loop.consensus_pass
+    # (adds activation/entry TF split, vote mode, GR_DC/BB thresholds, 3m/5m skip; fixes whole-array WT gate bug).
     _gr_ok = np.ones(n, dtype=bool)
-    _gr_min_tfs = int(float(getattr(cfg, 'GOLDEN_RULE_HTF_MIN_TFS', getattr(cfg, 'GOLDEN_RULE_MIN_TFS', 0))) or 0)
-    _gr_min_ind = int(float(getattr(cfg, 'GOLDEN_RULE_MIN_IND', 0) or 0))
-    if _gr_min_tfs > 0 and _gr_min_ind > 0:
-        _mode = str(getattr(cfg, 'MODE', 'crypto')).lower()
-        _tfs = ["3m","15m","1h","4h","D","W"] if _mode == "crypto" else ["5m","15m","1h","4h","D","W"]
-        # per-TF indicator count (vectorized) — 11 indicators per TF as in golden_rule_htf._ind_score
-        _tf_scores = []
-        for tf in _tfs:
-            _s = np.zeros(n, dtype=int)
-            wt1 = _safe(npz, f'wt1_{tf}', n); wt2 = _safe(npz, f'wt2_{tf}', n)
-            if wt1.sum() != 0 or wt2.sum() != 0:
-                _s += (wt1 > wt2).astype(int) if is_long else (wt1 < wt2).astype(int)
-            rsi = _safe(npz, f'rsi_{tf}', n, -1)
-            _has = rsi >= 0
-            _s += np.where(_has, (rsi > 50).astype(int) if is_long else (rsi < 50).astype(int), 0)
-            mfi = _safe(npz, f'mfi_{tf}', n, -1)
-            _has = mfi >= 0
-            _s += np.where(_has, (mfi > 50).astype(int) if is_long else (mfi < 50).astype(int), 0)
-            dc_pos = _safe(npz, f'dc_position_{tf}', n, -1)
-            _has = dc_pos >= 0
-            # breakout mode: extended = bullish
-            _s += np.where(_has, (dc_pos >= 0.65).astype(int) if is_long else (dc_pos <= 0.35).astype(int), 0)
-            bb = _safe(npz, f'bb_pct_b_{tf}', n, -1)
-            _has = bb >= 0
-            _s += np.where(_has, (bb >= 0.75).astype(int) if is_long else (bb <= 0.25).astype(int), 0)
-            rvol = _safe(npz, f'relative_volume_{tf}', n, -1)
-            _has = rvol >= 0
-            _s += np.where(_has, (rvol > 1.0).astype(int), 0)
-            k = _safe(npz, f'stoch_k_{tf}', n, -1)
-            _has = k >= 0
-            _s += np.where(_has, (k < 80).astype(int) if is_long else (k > 20).astype(int), 0)
-            adx = _safe(npz, f'adx_{tf}', n, -1)
-            _has = adx > 0
-            _s += np.where(_has, (adx > 20).astype(int), 0)
-            mh = _safe(npz, f'macd_hist_{tf}', n, 0)
-            _has = mh != 0
-            _s += np.where(_has, (mh > 0).astype(int) if is_long else (mh < 0).astype(int), 0)
-            ha = _safe(npz, f'ha_color_{tf}', n, 0)
-            _has = ha != 0
-            _s += np.where(_has, (ha > 0).astype(int) if is_long else (ha < 0).astype(int), 0)
-            d = _safe(npz, f'stoch_d_{tf}', n, -1)
-            _has = (d >= 0) & (k >= 0)
-            _s += np.where(_has, (k > d).astype(int) if is_long else (k < d).astype(int), 0)
-            _tf_scores.append(_s >= _gr_min_ind)
-        if _tf_scores:
-            _stack = np.stack(_tf_scores, axis=0)
-            _n_tfs = _stack.sum(axis=0)
-            _gr_ok = _n_tfs >= _gr_min_tfs
+    try:
+        import vec_decisions.golden_loop as _gloop_ce
+        _gr_ts_ce = npz.get('timestamps', None)
+        if _gr_ts_ce is None or len(np.asarray(_gr_ts_ce)) != n:
+            _gr_ts_ce = np.arange(n, dtype=float) * 900.0
+        _gr_ok = np.asarray(_gloop_ce.consensus_pass(npz, np.asarray(_gr_ts_ce, dtype=float), is_long, str(getattr(cfg, 'MODE', 'crypto')), cfg, px=close, invert_dc_bb=True), dtype=bool)
+    except Exception:
+        pass
 
     # 2026-09-03 VEC_IDENTICAL: BB_PULLBACK_GATE_TF (QuickConfig 3893) — inline predicate replaced by shared vec_decisions call (same as live tradier_manage/tradier_matrix_gates)
     # Prior inline: pct_b = npz[f"bb_pct_b_{tf}"]; blocked = pct_b > LONG_MAX / < SHORT_MIN (shifted, untested drift)
@@ -13871,7 +13852,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     try:
                         # 2026-09-18 HARDCODED tag before generic
                         _hardcoded_fired = False
-                        if has_closed_before and trades and not entry_sig[i]:
+                        if has_closed_before and trades and not entry_sig[i] and bool(getattr(cfg, "HARDCODED_RALLY_REENTRY_ENABLED", True)):  # 2026-10-06: label only when the pathway is on (it is forced off while CRYPTO_REENTRY_PATHWAYS_ENABLED=False; ZRO 19:13 mislabel)
                             try:
                                 _hc_last = float(trades[-1].get('exit_price', 0) or 0)
                                 if _hc_last > 0:

@@ -4680,24 +4680,28 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     _golden_native_events = {}
     if bool(getattr(config, "GOLDEN_RULE_ENABLED", False)):
         try:
-            from vec_paths.v12_reentry_augment_filter_gap_batch6 import golden_rule_decision as _v12_golden
+            # 2026-10-06 USER full-parity: shared golden_loop twin (live breakout/retest phases +
+            # consensus + veto + phase mults). Replaces TF-tier cascade model (dead: required wt1_3m).
+            import vec_decisions.golden_loop as _v12_golden_loop
+            _golden_cd = float(getattr(config, "GOLDEN_RULE_COOLDOWN_S", 600.0))
             for _golden_sym, _golden_store in stores.items():
-                _golden_n = len(_golden_store.timestamps)
+                _golden_ts_arr = np.asarray(_golden_store.timestamps, dtype=float)
                 _golden_arrays = _golden_store.arrays
-                _golden_state = {
-                    "candidate_mask": np.ones(_golden_n, dtype=bool),
-                    "cooldown_ready": np.ones(_golden_n, dtype=bool),
-                    "current_notional": np.zeros(_golden_n, dtype=float),
-                }
                 for _golden_side in _position_sides:
-                    _golden_result = _v12_golden(
-                        _golden_arrays, _golden_state, _golden_side == "LONG", "crypto", config,
+                    _golden_is_long = _golden_side == "LONG"
+                    _golden_result = _v12_golden_loop.golden_entry(
+                        _golden_arrays, _golden_ts_arr, _golden_is_long, "crypto", config,
                     )
-                    if not _golden_result.available:
-                        continue
-                    for _golden_idx in np.where(_golden_result.mask)[0]:
-                        _golden_native_events[(_golden_sym, _golden_side, int(_golden_store.timestamps[_golden_idx]))] = (
-                            float(_golden_result.target_usd[_golden_idx])
+                    _golden_last_fire = 0.0
+                    for _golden_idx in np.where(_golden_result["fire"])[0]:
+                        _golden_ts = int(_golden_ts_arr[_golden_idx])
+                        if _golden_ts - _golden_last_fire < _golden_cd:
+                            continue  # live per-pkey 600s cooldown mirror
+                        _golden_last_fire = float(_golden_ts)
+                        _golden_mult = float(_golden_result["mult"][_golden_idx])
+                        _golden_native_events[(_golden_sym, _golden_side, _golden_ts)] = (
+                            float(_golden_result["target_usd"][_golden_idx]),
+                            _v12_golden_loop.golden_reason(_golden_is_long, _golden_mult),
                         )
             v8_logger.info("[V12_GOLDEN_NATIVE] built %d standalone scalar events", len(_golden_native_events))
         except Exception as _golden_native_exc:
@@ -5488,9 +5492,10 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             _golden_ts = int(ts)
             for _golden_sym in stores:
                 for _golden_side in _position_sides:
-                    _golden_notional = _golden_native_events.get((_golden_sym, _golden_side, _golden_ts))
-                    if _golden_notional is None:
+                    _golden_ev = _golden_native_events.get((_golden_sym, _golden_side, _golden_ts))
+                    if _golden_ev is None:
                         continue
+                    _golden_notional, _golden_reason = _golden_ev
                     if os.environ.get("V12_PARITY_QUICK_EVENT_GATE", "0") == "1":
                         _golden_ledger_row = _quick_ledger_entries.get(
                             (_golden_sym, _golden_side, _golden_ts), {}
@@ -5499,25 +5504,29 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                             continue
                     _golden_pk = f"{account_key}:{_golden_sym}_{_golden_side}"
                     _golden_pos = trade_manager.positions.get(_golden_pk)
-                    if abs(float(getattr(_golden_pos, "positionAmt", 0.0) or 0.0)) > 1e-10:
-                        continue
+                    _golden_cur = abs(float(getattr(_golden_pos, "positionAmt", 0.0) or 0.0))
                     _golden_px = float(price_cache.get(_golden_sym.upper(), 0.0) or 0.0)
                     if _golden_px <= 0.0:
                         continue
-                    _golden_qty = float(_golden_notional) / _golden_px
+                    # Live mirror (ez_manage loop): notional gate + OPEN-or-AUGMENT + $1 min.
+                    if _golden_cur > 0 and _golden_cur * _golden_px >= float(_golden_notional) * 0.8:
+                        continue
+                    _golden_qty = float(_golden_notional) / _golden_px - _golden_cur
+                    if _golden_qty * _golden_px < 1.0:
+                        continue
                     _golden_result = await _crypto_eta(
                         account_key=account_key, position_key=_golden_pk, symbol=_golden_sym,
                         quantity=_golden_qty, current_price=_golden_px,
                         side="BUY" if _golden_side == "LONG" else "SELL",
-                        position_side=_golden_side, action="OPEN", reason="GOLDEN_RULE_ENTRY",
-                        is_full_close=False, is_hedge=False,
+                        position_side=_golden_side, action="OPEN" if _golden_cur <= 0 else "AUGMENT",
+                        reason=_golden_reason, is_full_close=False, is_hedge=False,
                     )
                     v8_logger.info("[V12_GOLDEN_NATIVE] %s ts=%s result=%s",
                                    _golden_pk, _golden_ts, _golden_result)
                     if "SUCCESS" in str(_golden_result).upper():
                         _native_entry_meta[_golden_pk] = {
                             "symbol": _golden_sym, "side": _golden_side,
-                            "reason": "GOLDEN_RULE_ENTRY", "opened_ts": _golden_ts,
+                            "reason": _golden_reason, "opened_ts": _golden_ts,
                         }
 
         # Structural Range Shift is an independent direct Quick entry block.
@@ -7277,65 +7286,37 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 _gr_bb_lD = float(_gr_ind.get('bb_lower_D', 0) or 0)
                 for _gr_is_long in (True, False):
                     _gr_pk = f'{account_key}:{_gr_sym}_{"LONG" if _gr_is_long else "SHORT"}'
-                    if _gr_is_long:
-                        if _gr_wt1 <= _gr_wt2:
-                            continue
-                        _gr_dc15_ok = _gr_dc_15 and _gr_dc_h15 > 0 and _gr_p > _gr_dc_h15
-                        _gr_bb15_ok = _gr_bb_15 and _gr_bb_u15 > 0 and _gr_p > _gr_bb_u15
-                    else:
-                        if _gr_wt1 >= _gr_wt2:
-                            continue
-                        _gr_dc15_ok = _gr_dc_15 and _gr_dc_l15 > 0 and _gr_p < _gr_dc_l15
-                        _gr_bb15_ok = _gr_bb_15 and _gr_bb_l15 > 0 and _gr_p < _gr_bb_l15
-                    # ═══ 2026-05-12 USER MANDATE: GOLDEN_RULE IS A SIGNAL NOT A FILTER ═══
-                    # GR must GENERATE MORE entries, not block them. Two trigger paths now fire
-                    # entries (UNION, not intersection):
-                    #   1) DC/BB break path (legacy) — fires when _gr_dc15_ok OR _gr_bb15_ok
-                    #   2) GR_TOTAL_VOTE_SCORE_MIN signal — fires when sum-across-TFs of
-                    #      indicators-agreeing >= threshold. Adds entries the breakout path missed.
-                    # No filtering: if neither triggers, we skip; if either triggers, we enter.
-                    _vote_signal_fire = False
-                    try:
-                        _vote_min = int(getattr(ez_manage.config, 'GR_TOTAL_VOTE_SCORE_MIN', 0) or 0)
-                        if _vote_min > 0:
-                            from golden_rule_htf import score_entry_htf as _gr_score_entry_x
-                            _gr_mode_x = "tradier" if mode == "tradier" else "crypto"
-                            _gr_vote_min_tfs = int(getattr(ez_manage.config, 'GOLDEN_RULE_HTF_MIN_TFS', 1))
-                            _gr_vote_min_ind = int(getattr(ez_manage.config, 'GOLDEN_RULE_MIN_IND', 1))
-                            # vote-sum mode: score_entry_htf internally uses GR_TOTAL_VOTE_SCORE_MIN threshold
-                            _vote_passes, _vote_n, _ = _gr_score_entry_x(_gr_ind, _gr_is_long, _gr_mode_x, _gr_vote_min_tfs, _gr_vote_min_ind, _gr_p)
-                            _vote_signal_fire = bool(_vote_passes)
-                    except Exception as _gr_vote_err:
-                        if step < 5:
-                            v8_logger.warning(f'[GR_VOTE_SIGNAL] {_gr_pk}: {_gr_vote_err}')
-                    # SIGNAL UNION: skip ONLY when neither path triggers
-                    if not (_gr_dc15_ok or _gr_bb15_ok or _vote_signal_fire):
+                    # 2026-10-06 USER full-parity: shared golden_loop.scalar_fire (live breakout/retest
+                    # phases + consensus + veto). Replaces dead cascade (wt1_3m/wt1_5m keys don't exist).
+                    # NOTE: live loop is trigger AND consensus AND NOT veto — the 2026-05-12 UNION is
+                    # superseded for parity (vote mode still adds fires via GR_TOTAL_VOTE_SCORE_MIN>0).
+                    if '_gr_loop_state' not in dir():
+                        _gr_loop_state = {}
+                    import vec_decisions.golden_loop as _gr_loop_mod
+                    _gr_mode_s = "tradier" if mode == "tradier" else "crypto"
+                    _gr_st = _gr_loop_state.get(_gr_pk, {})
+                    _gr_row = dict(_gr_ind) if isinstance(_gr_ind, dict) else {}
+                    _gr_ntf = _gr_loop_mod.native_tf(_gr_mode_s, ez_manage.config, _gr_row)
+                    _gr_kpk = "k_15m_prev" if _gr_ntf == "15m" else ("k_3m_prev" if _gr_ntf == "3m" else "k_5m_prev")
+                    if _gr_kpk not in _gr_row and "prev_k" in _gr_st:
+                        _gr_row[_gr_kpk] = _gr_st["prev_k"]
+                    _gr_cd_s = float(getattr(ez_manage.config, 'GOLDEN_RULE_COOLDOWN_S', 600.0))
+                    if float(ts) - float(_gr_st.get("last_fire", 0.0) or 0.0) < _gr_cd_s:
                         continue
-                    # Tag the entry reason so we can distinguish vote-signal vs breakout origin
-                    _gr_signal_origin = "VOTE" if (_vote_signal_fire and not (_gr_dc15_ok or _gr_bb15_ok)) else ("BREAKOUT" if (_gr_dc15_ok or _gr_bb15_ok) else "BOTH")
-                    if bool(getattr(ez_manage.config, 'GOLDEN_RULE_HTF_VETO_ENABLED', False)):
-                        _gr_w1_D_v = float(_gr_ind.get('wt1_D', 0) or 0)
-                        _gr_w2_D_v = float(_gr_ind.get('wt2_D', 0) or 0)
-                        if _gr_w1_D_v != 0 or _gr_w2_D_v != 0:
-                            if _gr_is_long and _gr_w1_D_v < _gr_w2_D_v:
-                                continue
-                            if (not _gr_is_long) and _gr_w1_D_v > _gr_w2_D_v:
-                                continue
-                    _gr_mult = _gr_m15
-                    if _gr_is_long:
-                        if (_gr_dc_1h and _gr_dc_h1h > 0 and _gr_p > _gr_dc_h1h) or (_gr_bb_1h and _gr_bb_u1h > 0 and _gr_p > _gr_bb_u1h):
-                            _gr_mult = _gr_m1h
-                        if (_gr_dc_4h and _gr_dc_h4h > 0 and _gr_p > _gr_dc_h4h) or (_gr_bb_4h and _gr_bb_u4h > 0 and _gr_p > _gr_bb_u4h):
-                            _gr_mult = _gr_m4h
-                        if (_gr_dc_D and _gr_dc_hD > 0 and _gr_p > _gr_dc_hD) or (_gr_bb_D and _gr_bb_uD > 0 and _gr_p > _gr_bb_uD):
-                            _gr_mult = _gr_mD
-                    else:
-                        if (_gr_dc_1h and _gr_dc_l1h > 0 and _gr_p < _gr_dc_l1h) or (_gr_bb_1h and _gr_bb_l1h > 0 and _gr_p < _gr_bb_l1h):
-                            _gr_mult = _gr_m1h
-                        if (_gr_dc_4h and _gr_dc_l4h > 0 and _gr_p < _gr_dc_l4h) or (_gr_bb_4h and _gr_bb_l4h > 0 and _gr_p < _gr_bb_l4h):
-                            _gr_mult = _gr_m4h
-                        if (_gr_dc_D and _gr_dc_lD > 0 and _gr_p < _gr_dc_lD) or (_gr_bb_D and _gr_bb_lD > 0 and _gr_p < _gr_bb_lD):
-                            _gr_mult = _gr_mD
+                    _gr_fire = _gr_loop_mod.scalar_fire(_gr_row, bool(_gr_st.get("prev_above", False)), float(_gr_st.get("breakout_ts", 0.0) or 0.0), float(ts), _gr_is_long, _gr_mode_s, ez_manage.config)
+                    _gr_st["prev_above"] = _gr_fire["prev_above"]
+                    _gr_st["breakout_ts"] = _gr_fire["breakout_ts"]
+                    try:
+                        _gr_kk = "k_15m" if _gr_ntf == "15m" else ("k_3m" if _gr_ntf == "3m" else "k_5m")
+                        _gr_st["prev_k"] = float(_gr_row.get(_gr_kk, _gr_row.get("stoch_k_15m", 50.0)) or 50.0)
+                    except Exception:
+                        pass
+                    _gr_loop_state[_gr_pk] = _gr_st
+                    if not _gr_fire["fire"]:
+                        continue
+                    _gr_st["last_fire"] = float(ts)
+                    _gr_mult = float(_gr_fire["mult"])
+                    _gr_reason = _gr_fire["reason"]
                     _gr_target_usd = _gr_base_usd * _gr_mult
                     _gr_target_qty = _gr_target_usd / _gr_p
                     # FIX 2026-05-08: tradier stocks require integer shares — $5 base → 0.018 AAPL → rounds to 0 → never fires.
@@ -7357,7 +7338,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                             account_key=account_key, position_key=_gr_pk, symbol=_gr_sym,
                             quantity=_gr_qty, current_price=_gr_p, side=_gr_side,
                             position_side=_gr_ps, action=_gr_action,
-                            reason=f'GOLDEN_RULE_{_gr_ps}_mult{_gr_mult}x',
+                            reason=_gr_reason,
                             is_full_close=False, is_hedge=False)
                     except Exception as _gr_err:
                         if step < 10 or step % 5000 == 0:

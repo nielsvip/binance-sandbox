@@ -2636,10 +2636,13 @@ class WebSocketManager:
                                         try:
                                             await asyncio.wait_for(self.handle_account_update(data, account_key), timeout=60.0)
                                         except asyncio.TimeoutError:
-                                            logger.critical(f"[WS][{account_key}] 🚨🚨🚨 handle_account_update HUNG > 60s — CRASHING worker so watchdog respawns.")
-                                            try: sys.stdout.flush(); sys.stderr.flush()
-                                            except Exception: pass
-                                            os._exit(44)
+                                            # POSITIONS REVAMP 2026-10-06: reconcile, reconnect WS; exit only after N consecutive hangs
+                                            import positions_truth as _ptruth
+                                            if _ptruth.hang_reconcile(self.service if getattr(self, "service", None) is not None else self, account_key, None, "WS handle_account_update HUNG > 60s", config, logger):
+                                                try: sys.stdout.flush(); sys.stderr.flush()
+                                                except Exception: pass
+                                                os._exit(44)
+                                            break
                                     elif event_type == "listenKeyExpired":
                                         logger.warning(f"[{account_key}] Listen key expired. Triggering full restart.")
                                         return
@@ -6681,10 +6684,20 @@ class PositionService:
                     _pau_timeout = float(getattr(config, 'PAU_TIMEOUT_SEC', 120.0))
                     updated_keys = await asyncio.wait_for(self.process_account_update(account_key, positions_data, single=False, skip_broadcast_save=False), timeout=_pau_timeout)
                 except asyncio.TimeoutError:
-                    logger.critical(f"[fetch_positions][{account_key}] 🚨🚨🚨 process_account_update HUNG > {_pau_timeout}s — CRASHING worker so watchdog respawns. Stale positions WILL trade wrong if we continue.")
-                    try: sys.stdout.flush(); sys.stderr.flush()
-                    except Exception: pass
-                    os._exit(42)
+                    # POSITIONS REVAMP 2026-10-06: reconcile instead of os._exit(42) (lost state + restart loops). Orders use the
+                    # broker snapshot just fetched; local is marked stale; exit only after N consecutive hangs.
+                    import positions_truth as _ptruth
+                    if _ptruth.hang_reconcile(self, account_key, positions_data, f"process_account_update HUNG > {_pau_timeout}s", config, logger):
+                        logger.critical(f"[fetch_positions][{account_key}] 🚨 process_account_update hung repeatedly — exiting for watchdog respawn (last resort)")
+                        try: sys.stdout.flush(); sys.stderr.flush()
+                        except Exception: pass
+                        os._exit(42)
+                    return {}
+                try:
+                    import positions_truth as _ptruth
+                    _ptruth.hang_ok(self, account_key)
+                except Exception:
+                    pass
                 if config.VERBOSE_FETCH_LOGGING: logger.info(f"[fetch_positions][{account_key}] 🚨 process_account_update RETURNED: {len(updated_keys)} updated keys")
                 if config.VERBOSE_FETCH_LOGGING: logger.info(f'[fetch_positions][{account_key}] process_account_update processed and saved {len(updated_keys)} updated position keys, {len(self.positions_by_account.get(account_key, {}))} total positions in memory')
                 if not updated_keys and len(positions_data) > 0:
@@ -6694,10 +6707,13 @@ class PositionService:
                 if config.VERBOSE_FETCH_LOGGING: logger.debug(f"[fetch_positions][{account_key}] Processing complete, positions_dirty={self._positions_dirty}, updated_keys={len(updated_keys)}")
                 result = positions_data
             except Exception as e:
-                logger.critical(f"[fetch_positions][{account_key}] 🚨🚨🚨 process_account_update RAISED — CRASHING worker so watchdog respawns. Error: {e}", exc_info=True)
-                try: sys.stdout.flush(); sys.stderr.flush()
-                except Exception: pass
-                os._exit(43)
+                logger.critical(f"[fetch_positions][{account_key}] 🚨🚨🚨 process_account_update RAISED: {e}", exc_info=True)
+                import positions_truth as _ptruth
+                if _ptruth.hang_reconcile(self, account_key, positions_data, f"process_account_update RAISED {e!r}"[:200], config, logger):
+                    try: sys.stdout.flush(); sys.stderr.flush()
+                    except Exception: pass
+                    os._exit(43)
+                result = {}
         except Exception as e:
             logger.error(f"[fetch_positions][{account_key}] Unexpected error in fetch_positions: {e}", exc_info=True)
             result = {}

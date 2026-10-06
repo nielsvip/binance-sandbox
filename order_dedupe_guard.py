@@ -43,6 +43,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 _LOG = logging.getLogger("order_dedupe_guard")
+_NO_BACKOFF_CODES = {"NOT_VIA_EXECUTE_NOW", "OPEN_ON_NONZERO_POSITION", "AUGMENT_GAIN_GATE", "AUGMENT_REF_PRICE_UNKNOWN", "AUGMENT_MARK_UNKNOWN", "INTENT_FILLED_IN_CALL", "KEY_UNCONFIRMED_LOCK", "BAD_QTY", "OPPOSING_POSITION_HELD", "BROKER_POSITION_UNKNOWN", "INTENT_REMAINDER_ZERO"}
 
 BINANCE_FINAL = {"FILLED", "CANCELED", "EXPIRED", "REJECTED", "EXPIRED_IN_MATCH", "NOT_FOUND", "REJECTED_BY_BROKER"}
 TRADIER_FINAL = {"filled", "canceled", "expired", "rejected", "error", "not_found", "rejected_by_broker"}
@@ -69,6 +70,7 @@ DEFAULTS = {
     "WIRE_AUGMENT_MIN_GAIN_PCT": None,  # None -> max(2.5, MIN_GAIN_TO_BUY_AGGRESSIVELY); gain vs max(broker avg entry, last same-direction fill)
     "WIRE_AUGMENT_LAST_FILL_LOOKBACK_SEC": 3 * 86400.0,
     "WIRE_REFUSE_BAD_QTY": True,  # zero / negative / NaN / inf quantity never sent
+    "WIRE_UNCONFIRMED_LOCK_SEC": 120.0,  # after an UNCONFIRMED_BY_BROKER result, exposure-increasing orders on that symbol are refused this long (exits pass)
 }
 
 
@@ -248,7 +250,8 @@ class _GuardBase:
 
     def _block(self, symbol: str, code: str, evidence: Dict[str, Any], origin: str = "") -> Decision:
         d = Decision(False, code, evidence)
-        self._backoff[symbol.upper()] = (self.clock(), d)
+        if code not in _NO_BACKOFF_CODES:  # exposure/qty refusals are per-order decisions: they must never delay an exit
+            self._backoff[symbol.upper()] = (self.clock(), d)
         self.log.critical(f"🛑 [ORDER_DEDUPE_BLOCK] {self.broker}:{self.account}:{symbol} code={code} origin={origin[:80]} evidence={json.dumps(evidence, default=str)[:900]}")
         try:
             with open(self.ledger.dir / "order_dedupe_blocks.jsonl", "a") as fh:
@@ -419,6 +422,9 @@ def exposure_decision(guard: "_GuardBase", symbol: str, side: str, position_side
     st = tok.setdefault("keys", {}).get(key)
     action = str(tok.get("action") or "").upper()
     ev = {"broker_amt": amt, "broker_entry": broker.get("entry"), "mark": broker.get("mark"), "action": action, "requested": qty, "reason": str(tok.get("reason") or "")[:100]}
+    lock = unconfirmed_lock(guard.broker, guard.account, sym, cfg)
+    if lock is not None:
+        return Decision(False, "KEY_UNCONFIRMED_LOCK", {**ev, "lock": lock})
     if st is None:  # first increasing leg of this execute_now call
         if amt > 1e-12:
             if action in PURE_OPEN_ACTIONS and bool(_cfg(cfg, "WIRE_REFUSE_OPEN_ON_NONZERO")):
@@ -455,6 +461,33 @@ def exposure_decision(guard: "_GuardBase", symbol: str, side: str, position_side
     if qty > remaining * 1.0000001:
         return Decision(True, "CLAMP", ev, clamp_qty=remaining)
     return Decision(True, "FOLLOWUP_OK", ev)
+
+
+_UNCONFIRMED: Dict[tuple, Dict[str, Any]] = {}
+
+
+def mark_unconfirmed(broker: str, account: str, symbol: str, code: str = "") -> None:
+    """INVARIANT 4: a result the broker did not confirm keeps the key locked for new exposure until reconciled."""
+    _UNCONFIRMED[(broker, str(account), str(symbol).upper())] = {"ts": time.time(), "code": code}
+    _LOG.critical(f"🔒 [WIRE_UNCONFIRMED_LOCK] {broker}:{account}:{symbol} code={code} — increasing orders refused until reconciled")
+
+
+def clear_unconfirmed(broker: str, account: str, symbol: str) -> None:
+    _UNCONFIRMED.pop((broker, str(account), str(symbol).upper()), None)
+
+
+def unconfirmed_lock(broker: str, account: str, symbol: str, cfg: Any = None) -> Optional[Dict[str, Any]]:
+    rec = _UNCONFIRMED.get((broker, str(account), str(symbol).upper()))
+    if rec and time.time() - rec["ts"] < float(_cfg(cfg, "WIRE_UNCONFIRMED_LOCK_SEC")):
+        return rec
+    return None
+
+
+def retag_action(action: str) -> None:
+    """execute_now converted its action (e.g. OPEN on a leftover position -> AUGMENT after the gain gate): keep the wire token in sync."""
+    tok = _ORDER_AUTH.get()
+    if tok is not None:
+        tok["action"] = str(action or "").upper()
 
 
 def _remember_order(ident: Optional[str]) -> None:

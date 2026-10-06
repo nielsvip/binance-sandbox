@@ -2,6 +2,7 @@
 import argparse
 import asyncio
 import order_dedupe_guard as _odg  # 2026-10-06 USER ORDER_DEDUPE_GUARD: broker-confirmed final-state gate on every order
+import positions_truth as _ptruth  # 2026-10-06 USER POSITIONS_TRUTH: stale->broker fallback, zero-qty refusal, broker-confirmed SUCCESS
 from live_rally_filters import rally_ok as _rally_ok, age_minutes as _rally_age
 import fnmatch
 import functools
@@ -992,6 +993,17 @@ _LAST_EXECUTE_NOW_ENTRY_TS: float = 0.0
 # after a simultaneous restart). Plus a global rolling-window open-rate circuit breaker.
 _PROCESS_START_TS: float = time.time()
 _RECENT_OPEN_ATTEMPTS: deque = deque()  # timestamps of fresh OPENs that passed MTF — flood breaker
+
+
+def _ptruth_gain(position_side, entry, price):
+    """POSITIONS REVAMP: gain % of a broker position vs its average entry (None if unknown)."""
+    try:
+        entry, price = float(entry), float(price)
+    except (TypeError, ValueError):
+        return None
+    if entry <= 0 or price <= 0:
+        return None
+    return (price - entry) / entry * 100.0 if str(position_side).upper() == "LONG" else (entry - price) / entry * 100.0
 
 
 def _exec_now_wire_tripwire(site: str, position_key=None, reason=None) -> None:
@@ -17857,6 +17869,9 @@ class MultiAccountTradeManager:
         if not hasattr(self, "_golden_last_trigger"):
             self._golden_last_trigger = {}
         while True:
+            if _vx_native_off():  # 2026-10-06 switch-over: native GOLDEN_RULE opener off at the source while the vec twin owns ENTRY (vec GOLDEN_RULE is twinned)
+                await asyncio.sleep(30)
+                continue
             try:
                 allowed = list(getattr(self, "_allowed_accounts", set()) or {})
                 # Per-account symbol pools
@@ -17933,10 +17948,14 @@ class MultiAccountTradeManager:
                             pkey = f"{ak}:{sym}_{'LONG' if is_long else 'SHORT'}"
                             if pkey not in self.tradeable_keys:
                                 continue
+                            # 2026-10-06 USER book-verbatim: golden knobs resolve per-sym book first
+                            # (SQLite full_config), then global — identical values trade identically.
+                            _gr_side_ps = 'LONG' if is_long else 'SHORT'
+                            _gr_cooldown_ps = float(_psym_get(sym, _gr_side_ps, "GOLDEN_RULE_COOLDOWN_S", cooldown))
                             # cooldown
                             if (
                                 time.time() - self._golden_last_trigger.get(pkey, 0)
-                                < cooldown
+                                < _gr_cooldown_ps
                             ):
                                 continue
                             # filter by side eligibility
@@ -18001,13 +18020,13 @@ class MultiAccountTradeManager:
                             if not hasattr(self, "_golden_breakout_ts"):
                                 self._golden_breakout_ts = {}
                             _m_breakout = float(
-                                getattr(config, "GOLDEN_RULE_MULT_BREAKOUT", 0.1)
+                                _psym_get(sym, _gr_side_ps, "GOLDEN_RULE_MULT_BREAKOUT", getattr(config, "GOLDEN_RULE_MULT_BREAKOUT", 0.1))
                             )
                             _m_retest = float(
-                                getattr(config, "GOLDEN_RULE_MULT_RETEST", 5.0)
+                                _psym_get(sym, _gr_side_ps, "GOLDEN_RULE_MULT_RETEST", getattr(config, "GOLDEN_RULE_MULT_RETEST", 5.0))
                             )
                             _retest_win = float(
-                                getattr(config, "GOLDEN_RULE_RETEST_WINDOW_S", 14400.0)
+                                _psym_get(sym, _gr_side_ps, "GOLDEN_RULE_RETEST_WINDOW_S", getattr(config, "GOLDEN_RULE_RETEST_WINDOW_S", 14400.0))
                             )
                             _prev_key = (sym, "LONG" if is_long else "SHORT")
                             _bk_key = _prev_key
@@ -18081,7 +18100,7 @@ class MultiAccountTradeManager:
                             # existing live behavior. Set the live value via sweep winner
                             # override; do NOT hardcode here.
                             _gr_min_tfs = int(
-                                getattr(config, "GOLDEN_RULE_HTF_MIN_TFS", 0)
+                                _psym_get(sym, _gr_side_ps, "GOLDEN_RULE_HTF_MIN_TFS", getattr(config, "GOLDEN_RULE_HTF_MIN_TFS", 0))
                             )
                             if _gr_min_tfs > 0:
                                 try:
@@ -18089,7 +18108,7 @@ class MultiAccountTradeManager:
                                         score_entry_htf as _gr_score_entry
 
                                     _gr_min_ind = int(
-                                        getattr(config, "GOLDEN_RULE_MIN_IND", 2)
+                                        _psym_get(sym, _gr_side_ps, "GOLDEN_RULE_MIN_IND", getattr(config, "GOLDEN_RULE_MIN_IND", 2))
                                     )
                                     _gr_pass, _gr_n_tfs, _gr_detail = _gr_score_entry(
                                         ind,
@@ -18111,7 +18130,7 @@ class MultiAccountTradeManager:
                                     )
                             # ═══ HTF VETO (defense-in-depth) ═══════════════════════
                             if bool(
-                                getattr(config, "GOLDEN_RULE_HTF_VETO_ENABLED", True)
+                                _psym_get(sym, _gr_side_ps, "GOLDEN_RULE_HTF_VETO_ENABLED", getattr(config, "GOLDEN_RULE_HTF_VETO_ENABLED", True))
                             ):
                                 _w1_D = safe_fetch_float(ind.get("wt1_D"), 0)
                                 _w2_D = safe_fetch_float(ind.get("wt2_D"), 0)
@@ -18124,7 +18143,7 @@ class MultiAccountTradeManager:
                                 _4h_bullish = _ha_4h == "green" and _w1_4h > _w2_4h
                                 _4h_bearish = _ha_4h == "red" and _w1_4h < _w2_4h
                                 _require_D = bool(
-                                    getattr(config, "HTF_VETO_REQUIRE_D", True)
+                                    _psym_get(sym, _gr_side_ps, "HTF_VETO_REQUIRE_D", getattr(config, "HTF_VETO_REQUIRE_D", True))
                                 )
                                 _vetoed = False
                                 if is_long:
@@ -18146,7 +18165,7 @@ class MultiAccountTradeManager:
                                         f"[GOLDEN_RULE_HTF_VETO] {pkey} {'LONG' if is_long else 'SHORT'}: HTF against (D ha={_ha_D} wt1>wt2={_w1_D > _w2_D}, 4h ha={_ha_4h} wt1>wt2={_w1_4h > _w2_4h}) — REFUSED"
                                     )
                                     continue
-                            target_usd = base_usd * mult
+                            target_usd = float(_psym_get(sym, _gr_side_ps, "GOLDEN_RULE_BASE_USD", base_usd)) * mult
                             target_qty = target_usd / price
                             try:
                                 pos = self.positions.get(pkey)
@@ -18228,9 +18247,6 @@ class MultiAccountTradeManager:
             pass
         poll_s = float(getattr(config, "INTERVENTION_QUEUE_POLL_S", 3.0))
         while True:
-            if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
-                await asyncio.sleep(30)
-                continue
             try:
                 accounts_iter = list(getattr(self, "accounts", {}) or {})
                 for account_key in accounts_iter:
@@ -24109,20 +24125,33 @@ class MultiAccountTradeManager:
         try:
             account_key, symbol, position_side = parse_position_key(position_key)
             client = self.accounts.get(account_key).client
-            cancel_result = await asyncio.to_thread(
-                client.futures_cancel_order, symbol=symbol, orderId=order_id
-            )
-            if cancel_result.get("status") not in {"CANCELED", "NEW"}:
-                await asyncio.sleep(0.5)
-                status = await asyncio.to_thread(
-                    client.futures_get_order, symbol=symbol, orderId=order_id
+            # POSITIONS REVAMP 2026-10-06: True ONLY when the broker reports CANCELED/EXPIRED (off the book). FILLED is
+            # not canceled, NEW is not canceled, -2011/-2013 ("unknown order") means re-query, never assume.
+            try:
+                cancel_result = await asyncio.to_thread(
+                    client.futures_cancel_order, symbol=symbol, orderId=order_id
                 )
-                final = status.get("status")
-                if final not in {"CANCELED", "FILLED", "EXPIRED", "REJECTED"}:
-                    logger.warning(
-                        f"[CANCEL_CONFIRM] {symbol} order {order_id} status {final}"
+            except BinanceAPIException as _ce:
+                if _ce.code not in (-2011, -2013):
+                    raise
+                cancel_result = {"status": f"ERR{_ce.code}"}
+            final = str((cancel_result or {}).get("status", "")).upper()
+            for _cc_i in range(10):
+                if final in {"CANCELED", "EXPIRED", "FILLED", "REJECTED", "EXPIRED_IN_MATCH"}:
+                    break
+                await asyncio.sleep(0.5)
+                try:
+                    status = await asyncio.to_thread(
+                        client.futures_get_order, symbol=symbol, orderId=order_id
                     )
-                    return False
+                    final = str(status.get("status", "")).upper()
+                except BinanceAPIException as _ge:
+                    final = f"ERR{_ge.code}"
+            if final not in {"CANCELED", "EXPIRED", "EXPIRED_IN_MATCH"}:
+                logger.critical(
+                    f"[CANCEL_CONFIRM] {symbol} order {order_id} broker status {final} — NOT confirmed canceled"
+                )
+                return False
             if self.stop_manager:
                 order_id_str = str(order_id)
                 self.stop_manager._managed_stop_ids.discard(order_id_str)
@@ -24130,10 +24159,8 @@ class MultiAccountTradeManager:
                 asyncio.create_task(self.stop_manager._flush_registry())
             return True
         except BinanceAPIException as e:
-            if e.code in (-2011, -2013):
-                return True
             logger.error(
-                f"[CANCEL_CONFIRM] Binance error cancelling {symbol}:{order_id}: {e}"
+                f"[CANCEL_CONFIRM] Binance error cancelling {symbol}:{order_id}: {e} — NOT confirmed canceled"
             )
             return False
         except Exception as exc:
@@ -27798,6 +27825,13 @@ class MultiAccountTradeManager:
                 quantity = max(
                     6 * config.MIN_POSITION_SIZE / current_price, 1.2 * exchange_min_qty
                 )
+            if quantity <= 3 * config.MIN_POSITION_SIZE / current_price and _vec_exact_reason_ok(reason):
+                # 2026-10-06 lane A (round 3: AAVE 68, ARM 74, AIA 73 ... refusals): the live DC-channel penalties drove a vec-decided OPEN/AUGMENT
+                # negative (e.g. $34.39 -> $-23.65) and this guard vetoed it. USER/§68.1: live sizing may RESIZE a vec decision, never veto it ->
+                # floor at the same minimum the 3-7x band uses (6 x MIN_POSITION_SIZE). The final hard caps still apply in execute_now.
+                _vxf_q0 = quantity
+                quantity = max(6 * config.MIN_POSITION_SIZE / current_price, 1.2 * exchange_min_qty)
+                logger.warning(f"[VEC_EXACT_SIZE_FLOOR] {position_key}: live sizing left ${_vxf_q0 * current_price:.2f} -> floored to ${quantity * current_price:.2f} (vec decision kept)")
             if quantity <= 3 * config.MIN_POSITION_SIZE / current_price:
                 logger.warning(
                     f"{position_key} order not_allowed no quantity left ${quantity * current_price} should have been killed before this point"
@@ -30588,6 +30622,7 @@ class MultiAccountTradeManager:
     _execute_now_open_in_flight: dict = {}  # FIX 2026-04-08: ATOMIC open-in-flight guard inside execute_now itself
 
     @_odg.execute_now_gate("binance")  # POSITIONS REVAMP 2026-10-06: execute_now token — the wire refuses exposure-increasing orders without it
+    @_ptruth.ez_confirmed  # 2026-10-06 USER POSITIONS_TRUTH: zero qty never sent; SUCCESS only when the broker-confirmed position matches
     async def execute_now(
         self,
         position_key: Optional[str] = None,
@@ -33041,6 +33076,39 @@ class MultiAccountTradeManager:
         _act_check = (action or "").upper()
         _is_reduce = _act_check in ("CLOSE", "REDUCE", "SELL", "QUICK_CLOSE", "FULL_CLOSE", "PROFIT_TAKE", "STOP_MAJOR_LOSS_REDUCE", "STOP_FUNCTIONS_KILL", "HEDGE_CLOSE", "NO_PROFIT") or "CLOSE" in (reason or "").upper() or "REDUCE" in (reason or "").upper() or "NO_PROFIT" in (reason or "").upper()
         _force_webhook_reduces = False
+        # POSITIONS REVAMP 2026-10-06: OPEN on a leftover BROKER position (local may be stale/flat) becomes a gain-gated
+        # AUGMENT here, before the UAG gate below. Broker read = positions_truth snapshot (<=1 s cache, single-flight).
+        if (
+            not _is_reduce
+            and position_key
+            and str(action or "").upper() in _odg.PURE_OPEN_ACTIONS
+            and bool(getattr(config, "OPEN_ON_LEFTOVER_TO_AUGMENT_ENABLED", True))
+        ):
+            try:
+                _lo_acct, _lo_sym, _lo_ps = parse_position_key(position_key)
+            except Exception:
+                _lo_acct, _lo_sym, _lo_ps = account_key, symbol, position_side
+            if _lo_acct and not is_sandbox_account(config, _lo_acct):
+                _lo_snap = await _ptruth.ez_broker(self, _lo_acct, config, logger).snapshot(reason=f"open_on_leftover {position_key}")
+                if _lo_snap is None:
+                    logger.critical(f"🛑 [OPEN_ON_LEFTOVER] {position_key}: broker position unknown — OPEN refused (fail closed)")
+                    return "BLOCKED_POSITIONS_BROKER_UNREACHABLE"
+                _lo_amt = _lo_snap.amount(_lo_sym, _lo_ps)
+                if _lo_amt > 0:
+                    import live_entry_gates as _leg_lo
+                    _lo_min = max(2.5, float(_leg_lo.effective_min_gain(lambda _k, _d: getattr(config, _k, _d))))
+                    _lo_entry = float(_lo_snap.entries.get((_lo_sym.upper(), _lo_ps.upper()), 0.0) or 0.0)
+                    try:
+                        _lo_px = float(await quick_price(_lo_sym) or 0.0)
+                    except Exception:
+                        _lo_px = 0.0
+                    _lo_gain = _ptruth_gain(_lo_ps, _lo_entry, _lo_px)
+                    if _lo_gain is None or _lo_gain < _lo_min:
+                        logger.warning(f"🚫 [OPEN_ON_LEFTOVER_BLOCK] {position_key}: broker holds {_lo_amt} (entry={_lo_entry} px={_lo_px}) — OPEN treated as AUGMENT, gain={_lo_gain} < {_lo_min:.2f}% — refused")
+                        return "BLOCKED_OPEN_ON_LEFTOVER_GAIN_GATE"
+                    logger.warning(f"🔁 [OPEN_ON_LEFTOVER_TO_AUGMENT] {position_key}: broker holds {_lo_amt}, gain={_lo_gain:+.2f}% >= {_lo_min:.2f}% — action {action} -> AUGMENT")
+                    action = "AUGMENT"
+                    _odg.retag_action("AUGMENT")
         # UNIVERSAL_AUGMENT_GAIN_GATE — 2026-05-26 USER MANDATE
         # MIN_GAIN_TO_BUY_AGGRESSIVELY=3.0% must enforce as a HARD gate on all augments.
         # Prior check at line 18472 used 0.3*MIN_GAIN (0.9%) and exempted REENTRY/HEDGE/
@@ -34381,6 +34449,10 @@ class MultiAccountTradeManager:
                     except Exception as e:
                         logger.debug(f"CD err: {e}")
             logger.info(f"[EXEC_TRACE] {position_key}: STEP2_POS_FETCH action={action}")
+            if not is_sandbox_account(config, account_key):  # 2026-10-06 USER POSITIONS_TRUTH: local older than POSITIONS_MAX_AGE_S -> broker positionRisk; mismatch refuses entries
+                _pt_blk = await _ptruth.ez_pre_order_check(self, account_key, symbol, position_key, position_side, action, reason, config=config, logger=logger)
+                if _pt_blk:
+                    return _pt_blk
             position = await self.get_position(position_key)
             baseline_amt = (safe_fetch_float(position.positionAmt, 0.0))
             current_real_amt = (
@@ -34928,6 +35000,8 @@ class MultiAccountTradeManager:
                             initial_positionAmt=baseline_amt,
                             action=action,
                         )
+                        if not reduce_verified:  # POSITIONS REVAMP 2026-10-06 (E2): local/WS verify lags — ask the broker before anything else
+                            reduce_verified = await _ptruth.ez_broker_moved(self, account_key, symbol, position_side, abs(baseline_amt), "reduce", config=config, logger=logger)
                         if reduce_verified:
                             await self.handle_filled_maker(
                                 account_key,
@@ -34995,6 +35069,11 @@ class MultiAccountTradeManager:
                                     )
                                 )
                             return "SUCCESS"
+                        # POSITIONS REVAMP 2026-10-06 (E2): maker reported success but neither the verifier nor a fresh broker
+                        # read shows the reduce — NEVER fire a MARKET on top (double close). Key stays locked until reconciled.
+                        logger.critical(f"🛑 [MAKER_REDUCE_UNCONFIRMED] {position_key}: maker success, broker shows no reduce from {baseline_amt} — NO market fallback")
+                        _odg.mark_unconfirmed("binance", account_key, symbol, "MAKER_REDUCE_UNCONFIRMED")
+                        return "UNCONFIRMED_BY_BROKER_MAKER_REDUCE"
                     # Maker failed — fall through to webhook UNLESS sentinel says suppress
                     if executed_qty < 0:
                         logger.warning(
@@ -35143,6 +35222,18 @@ class MultiAccountTradeManager:
                         f"[ORDER_SIZE_CAP] {position_key}: ${_order_usd:.2f} > MAX_ORDER_VALUE ${_max_order_usd:.2f} — capping"
                     )
                     quantity = _max_order_usd / current_price
+                if _vec_exact_reason_ok(reason):  # 2026-10-06 live guardian: vec-decided orders also never exceed MAX_POSITION_SIZE (after every multiplier)
+                    try:
+                        _vxp_max = float(get_max_position_size(symbol, account_key=account_key))
+                        _vxp_cur = abs(float(current_real_amt or 0.0)) * current_price
+                        if _vxp_cur + abs(quantity) * current_price > _vxp_max:
+                            _vxp_q0 = quantity
+                            quantity = max(0.0, (_vxp_max - _vxp_cur) / current_price)
+                            logger.warning(f"[VEC_EXACT_HARD_CAP] {position_key}: position cap MAX_POSITION_SIZE=${_vxp_max:.0f} current=${_vxp_cur:.2f} -> qty {_vxp_q0:.6f}->{quantity:.6f} (${quantity * current_price:.2f})")
+                            if quantity * current_price < float(getattr(config, "MIN_POSITION_SIZE", 0.0) or 0.0) * 0.5:
+                                return "BLOCKED_VEC_EXACT_POSITION_AT_CAP"
+                    except Exception as _vxp_e:
+                        logger.warning(f"[VEC_EXACT_HARD_CAP] {position_key}: position cap check error {_vxp_e}")
                 # ═══ CENTRALIZED FOOTHOLD ═══
                 # Centralized in place_maker_order (USER 2026-06-02) to prevent double webhook sends.
 
@@ -35398,7 +35489,10 @@ class MultiAccountTradeManager:
                             > 0.0001
                         ):
                             return "SUCCESS"
-                        if is_augment:
+                        if await _ptruth.ez_broker_moved(self, account_key, symbol, position_side, abs(original_positionAmt), "increase", config=config, logger=logger):  # POSITIONS REVAMP (E3): fresh broker read, not WS
+                            logger.warning(f"[EXECUTE_UNVERIFIED_BROKER_FILLED] {position_key}: broker shows the maker filled — no fallback")
+                            return "SUCCESS"
+                        if True:  # POSITIONS REVAMP 2026-10-06 (E3): OPEN as well as AUGMENT — confirm the maker is CANCELED before any fallback
                             logger.warning(
                                 f"[AUG_UNVERIFIED] {position_key}: Augment maker unverified after 28s — confirming cancellation before webhook fallback."
                             )
@@ -45300,6 +45394,8 @@ async def process_with_semaphore(trade_manager, position_key, reentry_data, conf
 async def direct_high_gain_augmentation(
     position_key: str, order_queue: OrderQueue, trade_manager: MultiAccountTradeManager
 ):
+    if _vx_native_off():  # 2026-10-06 switch-over: native opener/augmenter/hedge off at the source while the vec twin owns ENTRY (PARITY_VEC_EXACT_MODE)
+        return None
     tradeable_keys = await trade_manager.load_tradeable()
     now = datetime.now(timezone.utc)
     if position_key not in tradeable_keys:
@@ -48415,6 +48511,7 @@ async def periodic_direct_high_gain_reopen(
 
 
 _VEC_EXACT_FALLBACK_LOGGED: set = set()
+_VEC_EXACT_LEGACY_LOGGED: set = set()
 
 
 async def _vec_exact_process_position(account_key, position_key, trade_manager) -> bool:
@@ -48436,8 +48533,14 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
         if _vx.source() == "live_snapshots":
             _vx.observe(_sym, await ii(trade_manager, _sym), time.time())
         if _amt <= 0:
+            _vx.owned_drop(position_key)
             return "ENTRY" in fams
         if "EXIT" not in fams:
+            return False
+        if not _vx.owned_has(position_key):  # 2026-10-06 director (stranding, option b): not opened by the twin -> native exits manage it
+            if position_key not in _VEC_EXACT_LEGACY_LOGGED:
+                _VEC_EXACT_LEGACY_LOGGED.add(position_key)
+                logger.warning(f"[VEC_EXACT_LEGACY_NATIVE] {position_key}: open position not opened by the vec twin -> native process_position exits run for it")
             return False
         # SAFETY: no twin decision available for this sym_side (no store / warm-up / error) -> native exits run (never strand a position)
         _vx_st = await __import__("positions_truth").offloop_serialized(_vx.actions_at, _sym, _side, time.time())  # 2026-10-06 director: off the event loop (men os._exit(42) PAU_TIMEOUT: ~20s compute blocked the loop)
@@ -56930,6 +57033,9 @@ async def crypto_fh_momentum_loop(trade_manager: MultiAccountTradeManager):
     _ran_today = ""
     while True:
         try:
+            if _vx_native_off():  # 2026-10-06 switch-over: native FH_MOMENTUM opener off at the source while the vec twin owns ENTRY
+                await asyncio.sleep(60)
+                continue
             if not getattr(config, "CRYPTO_FH_MOMENTUM_ENABLED", False):
                 await asyncio.sleep(60)
                 continue
@@ -59309,6 +59415,8 @@ Only say REVERSE if confidence >= 0.75. Otherwise say OK."""
     async def _execute_trade(
         self, account_key, position_key, action, qty, price, reason
     ):
+        if _vx_native_off() and action not in ("REDUCE", "CLOSE"):  # 2026-10-06 switch-over: native opener/augmenter/hedge off at the source while the vec twin owns ENTRY (PARITY_VEC_EXACT_MODE)
+            return "BLOCKED_VEC_EXACT_NATIVE_OFF"
         try:
             pos = await self.tracker_manager.get_position(position_key)
             if not pos:
@@ -60482,7 +60590,7 @@ async def main():
                         enable_auto_fetch=True,
                         load_priority="disk",
                     ),
-                    timeout=30.0,
+                    timeout=float(getattr(config, "POSITIONS_BOOTSTRAP_TIMEOUT_S", 75.0)),  # POSITIONS REVAMP 2026-10-06: was 30 = inner positionRisk 30 s -> outer always won (men restart loop)
                 )
                 keys_to_purge = [
                     k
