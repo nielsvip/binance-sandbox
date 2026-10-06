@@ -33513,7 +33513,7 @@ class MultiAccountTradeManager:
             and "REDUCE" not in _bofzp_act
             and "KILL" not in _bofzp_act
         )
-        if _bofzp_is_entry and original_positionAmt > 0:
+        if _bofzp_is_entry and original_positionAmt > 0 and not (_vd_exempt and "AUGMENT" in _bofzp_act):  # 2026-10-06 parity: vec-decided AUGMENT adds to an open position by definition
             return "BLOCK_OPEN_IS_FOR_ZERO_POS"
         await self.load_tradeable()
         if account_key not in self._allowed_accounts:
@@ -34669,7 +34669,8 @@ class MultiAccountTradeManager:
                     ):
                         return "NO QUANTITY LEFT TO REDUCE 2"
                 if quantity <= 0.0 or quantity >= current_real_amt:
-                    quantity = current_real_amt - retention_qty
+                    # 2026-10-06 parity: a vec-decided REDUCE sized at/above the live amount closes the live amount (vec has no retention floor)
+                    quantity = current_real_amt if (_vd_exempt and quantity > 0.0) else current_real_amt - retention_qty
                 if is_full_close and (
                     "FORCE" in reason_upper
                     or "GAIN_GUARD" in reason_upper
@@ -48314,6 +48315,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
     15m bar are executed (live_twins/vec_exact.py) and every native exit/augment/reduce path is suppressed."""
     try:
         from live_twins import vec_exact as _vx
+        _vx.set_cfg(config)
         fams = _vx.families(config)
         _acct, _rest = position_key.split(":", 1) if ":" in position_key else (account_key, position_key)
         _sym, _side = _rest.rsplit("_", 1)
@@ -48321,6 +48323,8 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
             return False
         _pos = trade_manager.positions.get(position_key) if hasattr(trade_manager, "positions") else None
         _amt = abs(safe_fetch_float(getattr(_pos, "positionAmt", 0), 0)) if _pos is not None else 0.0
+        if _vx.source() == "live_snapshots":
+            _vx.observe(_sym, await ii(trade_manager, _sym), time.time())
         if _amt <= 0:
             return "ENTRY" in fams
         if "EXIT" not in fams:

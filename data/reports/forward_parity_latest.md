@@ -1,12 +1,12 @@
 # Forward parity — LIVE vs VECTOR (auto, read-only)
 
-generated 2026-10-06T06:17:04+00:00 · producers: tools/forward_parity/live_vs_vec.py (crypto hourly :07, stocks every 15 min RTH), tools/decisions_history_parity.py (:17), tools/exit_engine_parity_monitor.py (launchd hourly), tools/daily_parity_test.py (launchd daily)
+generated 2026-10-06T06:59:43+00:00 · producers: tools/forward_parity/live_vs_vec.py (crypto hourly :07, stocks every 15 min RTH), tools/decisions_history_parity.py (:17), tools/exit_engine_parity_monitor.py (launchd hourly), tools/daily_parity_test.py (launchd daily)
 
 PASS = every vector decision on the judged 15m bars has a live fill of the same class within +-2 bars, every live fill has a vector decision, and end state (in/out) agrees. FAIL classes: VEC_ONLY_LIVE_NO_SIGNAL (live logic did not fire), VEC_ONLY_LIVE_BLOCKED (live attempted, gate/execution stopped it), VEC_ONLY_STATE_CASCADE (consequence of an earlier divergence), LIVE_ONLY_VEC_FAMILY (vector twin exists but did not fire), LIVE_ONLY_NONVEC (1m/3m/5m/tick/webhook/portfolio input — no vec counterpart), STATE_MISMATCH, NPZ_STALE (S1 NPZ behind live, judged on the newest window the vector can see).
 
 ## Test 1 - 15m LIVE vs VECTOR, CRYPTO
 
-run 2026-10-06T06:16:18+00:00 (1 min ago) · engine v12 697b2734 · NPZ sync tail · window 24.0h from 2026-10-05T06:07Z · tol +-2 bars · 109 live keys / 65 sym_sides · 557.0 s
+run 2026-10-06T06:16:18+00:00 (43 min ago) · engine v12 697b2734 · NPZ sync tail · window 24.0h from 2026-10-05T06:07Z · tol +-2 bars · 109 live keys / 65 sym_sides · 557.0 s
 
 **Verdict: FAIL** — FAIL 9 · PASS with decisions 0 · IDLE (no decision either side, counts as pass) 96 · NO_DATA 4 · judged on a STALE-shifted window (S1 NPZ behind live) 7
 
@@ -97,7 +97,7 @@ execute_now gate refusals tagged VEC_DRIVEN in ez_manage logs: {'fin': {'UNKNOWN
 
 ## Test 1 - 15m LIVE vs VECTOR, STOCKS
 
-run 2026-10-06T06:09:23+00:00 (8 min ago) · engine v12 697b2734 · NPZ sync ? · window 24.0h from 2026-10-05T06:09Z · tol +-2 bars · 144 live keys / 125 sym_sides · 19.1 s
+run 2026-10-06T06:09:23+00:00 (50 min ago) · engine v12 697b2734 · NPZ sync ? · window 24.0h from 2026-10-05T06:09Z · tol +-2 bars · 144 live keys / 125 sym_sides · 19.1 s
 
 **Verdict: FAIL** — FAIL 78 · PASS with decisions 0 · IDLE (no decision either side, counts as pass) 55 · NO_DATA 11 · judged on a STALE-shifted window (S1 NPZ behind live) 4
 
@@ -219,7 +219,7 @@ These decisions have no 15m vector counterpart by construction; listed so drift 
 
 ## decisions -> history parity (switch intents vs live fills)
 
-`DH_20261005_20261006.json` generated 2026-10-06T06:17:01.493850+00:00 (0 min ago) · intents 73 · matched 33 · **missing 40**
+`DH_20261005_20261006.json` generated 2026-10-06T06:17:01.493850+00:00 (43 min ago) · intents 73 · matched 33 · **missing 40**
 
 matched/intents per account: fin 4/9, men 6/27, ang 14/27, inf 0/0 (no decision file), flz 9/10, trb 0/0 (no decision file), trc 0/0 (no decision file)
 
@@ -246,11 +246,11 @@ Gap classes: NUKE_STALE_MAKER_ORDER = maker exit rested >60 s and was cancelled 
 
 ## Exit-engine gate parity (execute_now, all exits)
 
-generated 2026-10-06T05:59:40.734436+00:00 (17 min ago) · lookback 48.0h · exit rows 3086 · **LEAKS 662** · gate ON 1298 · UNGATED 1076 · safety 4 · unmapped 0
+generated 2026-10-06T06:59:42.272898+00:00 (0 min ago) · lookback 48.0h · exit rows 3250 · **LEAKS 792** · gate ON 1346 · UNGATED 1053 · safety 4 · unmapped 0
 
-LEAKS (gate OFF for that sym_side yet fired): QUICK_OPEN_STRONG 660, WT_DC_ENTRY (WT_DC_ENTRY_ENABLED=False) 2
+LEAKS (gate OFF for that sym_side yet fired): QUICK_OPEN_STRONG 790, WT_DC_ENTRY (WT_DC_ENTRY_ENABLED=False) 2
 
-UNGATED families (fire with no switch — live-side switch hook missing, cannot be turned off): RANKING_DIRECT_ALL_GREEN 1048, RANKING_DIRECT_ALL_RED 28
+UNGATED families (fire with no switch — live-side switch hook missing, cannot be turned off): RANKING_DIRECT_ALL_GREEN 1025, RANKING_DIRECT_ALL_RED 28
 
 ## 7-day rollup (tools/daily_parity_test.py)
 

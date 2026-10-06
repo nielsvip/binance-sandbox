@@ -15334,6 +15334,7 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
     except Exception as _e:
         logger.error(f"[VEC_EXACT] import failed: {_e}")
         return
+    _vx.set_cfg(config)
     if "ENTRY" not in _vx.families(config):
         return
     for _pk in list(position_keys or []):
@@ -15343,6 +15344,8 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
                 continue
             _pos = trade_manager.positions.get(_pk) if hasattr(trade_manager, "positions") else None
             _amt = abs(safe_fetch_float(getattr(_pos, "positionAmt", 0), 0)) if _pos is not None else 0.0
+            if _vx.source() == "live_snapshots":
+                _vx.observe(_sym, await _ez_ii(trade_manager, _sym), time.time())
             if _amt > 0:
                 continue
             for _a in _vx.take(_sym, _side, time.time(), ("OPEN",)):
