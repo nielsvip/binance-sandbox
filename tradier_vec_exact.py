@@ -52,6 +52,7 @@ def _encode_label(k: str, v: str):
 _DROP_PREFIX = ("_", "0", "age_")
 _DROP_KEYS = {"current_price", "mark_price", "prev_price", "ts", "timestamp"}
 _NON_DECISION_REASONS = ("FINAL_MTM",)
+_HARNESS_ENV_SHIELD = ("V8_LADDER_ONLY_SIDE", "V8_BACKTEST_BYPASS_DRAWDOWN", "V8_SWEEP_MODE")
 
 
 def _epoch(v: Any) -> Optional[float]:
@@ -240,11 +241,17 @@ class VecExactOracle:
             return []
         cfg = copy.deepcopy(self._cfg(sym, side, overrides))
         cfg._PARITY_PREFIX_EVAL = True  # v12 simulate_one: decide the window's first 99 bars like the full-window run
+        # the sheet engine runs outside any backtest harness: hide harness-only env switches the vec reads (vec_decisions/entry_vet_stocks._v8_bypass
+        # reads V8_LADDER_ONLY_SIDE / V8_BACKTEST_BYPASS_DRAWDOWN; backtest_v12_engine.run_one sets V8_LADDER_ONLY_SIDE during the live leg).
+        import os as _os
+        _shield = {k: _os.environ.pop(k) for k in _HARNESS_ENV_SHIELD if k in _os.environ}
         try:
             res = V.simulate_one(npz, sym, side == "LONG", cfg) or {}
         except Exception:
             self.telemetry["errors"] += 1
             raise
+        finally:
+            _os.environ.update(_shield)
         self.telemetry["evals"] += 1
         ex_last = float(np.asarray(npz["timestamps"], dtype="float64")[-1])
         out = []

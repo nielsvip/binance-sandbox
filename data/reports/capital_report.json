@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-06 06:25 UTC",
- "total_capital_usd": 20.79,
+ "generated_at": "2026-10-06 07:25 UTC",
+ "total_capital_usd": 11.45,
  "tier_capital": {
   "A": 0.0,
-  "B": 20.8,
+  "B": 11.46,
   "C": 0.0
  },
  "tier_count": {
@@ -19,23 +19,23 @@
    "pk": "men:AVAXUSDC_LONG",
    "symbol": "AVAXUSDC",
    "account": "men",
-   "value_usd": 18.81,
-   "gain_pct": 0.231,
+   "value_usd": 9.45,
+   "gain_pct": 0.116,
    "tier": "B",
-   "perf_mult": 3.89,
-   "amt": 1.67,
-   "mark": 11.261
+   "perf_mult": 4.62,
+   "amt": 0.84,
+   "mark": 11.248
   },
   {
    "pk": "men:GALAUSDT_SHORT",
    "symbol": "GALAUSDT",
    "account": "men",
-   "value_usd": 1.99,
-   "gain_pct": 0.415,
+   "value_usd": 2.01,
+   "gain_pct": -0.456,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 828.0,
-   "mark": 0.002401
+   "mark": 0.002422
   }
  ]
 }

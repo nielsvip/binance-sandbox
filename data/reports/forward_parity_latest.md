@@ -1,27 +1,28 @@
 # Forward parity — LIVE vs VECTOR (auto, read-only)
 
-generated 2026-10-06T06:59:43+00:00 · producers: tools/forward_parity/live_vs_vec.py (crypto hourly :07, stocks every 15 min RTH), tools/decisions_history_parity.py (:17), tools/exit_engine_parity_monitor.py (launchd hourly), tools/daily_parity_test.py (launchd daily)
+generated 2026-10-06T07:18:32+00:00 · producers: tools/forward_parity/live_vs_vec.py (crypto hourly :07, stocks every 15 min RTH), tools/decisions_history_parity.py (:17), tools/exit_engine_parity_monitor.py (launchd hourly), tools/daily_parity_test.py (launchd daily)
 
 PASS = every vector decision on the judged 15m bars has a live fill of the same class within +-2 bars, every live fill has a vector decision, and end state (in/out) agrees. FAIL classes: VEC_ONLY_LIVE_NO_SIGNAL (live logic did not fire), VEC_ONLY_LIVE_BLOCKED (live attempted, gate/execution stopped it), VEC_ONLY_STATE_CASCADE (consequence of an earlier divergence), LIVE_ONLY_VEC_FAMILY (vector twin exists but did not fire), LIVE_ONLY_NONVEC (1m/3m/5m/tick/webhook/portfolio input — no vec counterpart), STATE_MISMATCH, NPZ_STALE (S1 NPZ behind live, judged on the newest window the vector can see).
 
 ## Test 1 - 15m LIVE vs VECTOR, CRYPTO
 
-run 2026-10-06T06:16:18+00:00 (43 min ago) · engine v12 697b2734 · NPZ sync tail · window 24.0h from 2026-10-05T06:07Z · tol +-2 bars · 109 live keys / 65 sym_sides · 557.0 s
+run 2026-10-06T07:18:31+00:00 (0 min ago) · engine v12 697b2734 · NPZ sync tail · window 24.0h from 2026-10-05T07:07Z · tol +-2 bars · 224 live keys / 120 sym_sides · 689.5 s
 
-**Verdict: FAIL** — FAIL 9 · PASS with decisions 0 · IDLE (no decision either side, counts as pass) 96 · NO_DATA 4 · judged on a STALE-shifted window (S1 NPZ behind live) 7
+**Verdict: FAIL** — FAIL 10 · PASS with decisions 0 · IDLE (no decision either side, counts as pass) 200 · NO_DATA 14 · judged on a STALE-shifted window (S1 NPZ behind live) 25
 
-- vector fired, live did not (VEC_ONLY): LIVE_ALREADY_IN_POSITION 3, LIVE_NO_SIGNAL 3
+- vector fired, live did not (VEC_ONLY): LIVE_NO_SIGNAL 8, LIVE_ALREADY_IN_POSITION 4, LIVE_ALREADY_FLAT 4
 - live fired, vector did not (LIVE_ONLY): LIVE_ONLY_NONVEC:QUICK_OPEN_STRONG@3m 6, LIVE_ONLY_VEC_FAMILY:EXIT_VELOCITY_WT 6, LIVE_ONLY_NONVEC:QUICK_REDUCE_STRONG@3m 3, LIVE_ONLY_NONVEC:GUARANTEED_REENTRY@3m 1, LIVE_ONLY_VEC_FAMILY:GUARANTEED_REENTRY 1, LIVE_ONLY_NONVEC:GAIN_EROSION_STOP@3m 1
-- NPZ missing on S1 (no vector possible): 100PEPEUSDC
-- vector replay made 0 trades in 30D for 57/65 sym_sides with the live set (engine md5 697b2734): every live fill on those keys is LIVE_ONLY by construction — engine/set problem, not live drift. e.g. 1000BONKUSDC_LONG, 1INCHUSDT_LONG, 1INCHUSDT_SHORT, AAVEUSDC_LONG, ADAUSDC_LONG, AGLDUSDT_SHORT, ALGOUSDT_LONG, ALGOUSDT_SHORT
-- vector errors: prepare failed: no npz 4
-- FAIL classes (sym_sides): LIVE_ONLY_NONVEC 7, LIVE_ONLY_VEC_FAMILY 6, VEC_ONLY_LIVE_NO_SIGNAL 1, VEC_ONLY_STATE_CASCADE 1, STATE_MISMATCH 1
+- NPZ missing on S1 (no vector possible): 100PEPEUSDC, EDUUSDT, KMNOUSDT, MELANIAUSDT
+- vector replay made 0 trades in 30D for 102/120 sym_sides with the live set (engine md5 697b2734): every live fill on those keys is LIVE_ONLY by construction — engine/set problem, not live drift. e.g. 1000BONKUSDC_LONG, 1INCHUSDT_LONG, 1INCHUSDT_SHORT, AAVEUSDC_LONG, ADAUSDC_LONG, ADAUSDC_SHORT, AGLDUSDT_SHORT, ALGOUSDT_LONG
+- vector errors: prepare failed: no npz 11
+- FAIL classes (sym_sides): LIVE_ONLY_NONVEC 7, LIVE_ONLY_VEC_FAMILY 6, VEC_ONLY_LIVE_NO_SIGNAL 2, VEC_ONLY_STATE_CASCADE 2, STATE_MISMATCH 1
 
 ### FAIL per sym_side
 
 | key | classes | vec_only (why) | live_only (function@tf) | vec/live in pos | judged window | set |
 |---|---|---|---|---|---|---|
-| flz:XRPUSDC_SHORT | VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_IN_POSITION 3, LIVE_NO_SIGNAL 3 | - | False/False | last window | per_sym_active_config:clean_ |
+| flz:XRPUSDC_SHORT | VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_IN_POSITION 4, LIVE_NO_SIGNAL 4 | - | False/False | last window | per_sym_active_config:clean_ |
+| men:XRPUSDC_SHORT | VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_NO_SIGNAL 4, LIVE_ALREADY_FLAT 4 | - | False/False | last window | per_sym_active_config:clean_ |
 | ang:ZECUSDC_LONG | LIVE_ONLY_NONVEC, LIVE_ONLY_VEC_FAMILY | - | LIVE_ONLY_NONVEC:QUICK_OPEN_STRONG@3m 2, LIVE_ONLY_VEC_FAMILY:EXIT_VELOCITY_WT 2 | False/False | last window | per_sym_active_config:clean_ |
 | flz:SOLUSDC_SHORT | LIVE_ONLY_NONVEC, LIVE_ONLY_VEC_FAMILY | - | LIVE_ONLY_VEC_FAMILY:GUARANTEED_REENTRY 1, LIVE_ONLY_NONVEC:QUICK_REDUCE_STRONG@3m 1, LIVE_ONLY_NONVEC:GAIN_EROSION_STOP@3m 1 | False/False | last window | per_sym_active_config:clean_ |
 | ang:GALAUSDT_SHORT | LIVE_ONLY_NONVEC | - | LIVE_ONLY_NONVEC:QUICK_OPEN_STRONG@3m 1, LIVE_ONLY_NONVEC:QUICK_REDUCE_STRONG@3m 1 | False/False | last window | per_sym_active_config:clean_ |
@@ -31,35 +32,35 @@ run 2026-10-06T06:16:18+00:00 (43 min ago) · engine v12 697b2734 · NPZ sync ta
 | men:GALAUSDT_SHORT | LIVE_ONLY_NONVEC, STATE_MISMATCH | - | LIVE_ONLY_NONVEC:QUICK_OPEN_STRONG@3m 1, LIVE_ONLY_NONVEC:QUICK_REDUCE_STRONG@3m 1 | False/True | last window | per_sym_active_config:clean_ |
 | men:VETUSDT_LONG | LIVE_ONLY_VEC_FAMILY | - | LIVE_ONLY_VEC_FAMILY:EXIT_VELOCITY_WT 1 | False/False | last window | defaults(cat_side) |
 
-PASS with activity: -  ·  PASS_IDLE (no decision either side): 96
+PASS with activity: -  ·  PASS_IDLE (no decision either side): 200
 
-NO_DATA reasons: prepare failed: no npz 4
+NO_DATA reasons: prepare failed: no npz 14
 
 ### Per function family (crypto)
 
 | family | input TF | vec twin | gate switch | live attempts | live fills | vec events | matched | vec_only | live_only | status |
 |---|---|---|---|---|---|---|---|---|---|---|
-| QUICK_OPEN_STRONG | 3m | Y | QUICK_OPEN_STRONG_VEC_ENABLED | 473 | 6 | 0 | 0 | 0 | 6 | LIVE_ONLY(nonvec) |
-| RANKING_DIRECT_ALL_GREEN | webhook | N | **UNGATED (verified: no switch)** | 399 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
-| GOLDEN_RULE | 15m | Y | GOLDEN_RULE_ENABLED | 183 | 0 | 0 | 0 | 0 | 0 | IDLE |
-| EXIT_VELOCITY_WT | 1h | Y | EXIT_VELOCITY_WT_ENABLED | 154 | 6 | 4 | 0 | 3 | 6 | FAIL |
-| BB_RECOVERY_EXIT | 15m | N | BB_RECOVERY_EXIT_ENABLED_TRADIER | 94 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
+| QUICK_OPEN_STRONG | 3m | Y | QUICK_OPEN_STRONG_VEC_ENABLED | 774 | 6 | 0 | 0 | 0 | 6 | LIVE_ONLY(nonvec) |
+| RANKING_DIRECT_ALL_GREEN | webhook | N | **UNGATED (verified: no switch)** | 477 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
+| GOLDEN_RULE | 15m | Y | GOLDEN_RULE_ENABLED | 252 | 0 | 0 | 0 | 0 | 0 | IDLE |
+| EXIT_VELOCITY_WT | 1h | Y | EXIT_VELOCITY_WT_ENABLED | 165 | 6 | 10 | 0 | 8 | 6 | FAIL |
+| BB_RECOVERY_EXIT | 15m | N | BB_RECOVERY_EXIT_ENABLED_TRADIER | 115 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
 | QUICK_REDUCE_STRONG | 3m | N | ABLATION_DISABLE_QUICK_EXIT | 33 | 3 | 0 | 0 | 0 | 3 | LIVE_ONLY(nonvec) |
-| RANKING_DIRECT_ALL_RED | webhook | N | **UNGATED (verified: no switch)** | 22 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
-| CRYPTO_SPIKE_FADE | 3m | N | CRYPTO_SPIKE_FADE_ENABLED | 20 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
+| RANKING_DIRECT_ALL_RED | webhook | N | **UNGATED (verified: no switch)** | 27 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
+| CRYPTO_SPIKE_FADE | 3m | N | CRYPTO_SPIKE_FADE_ENABLED | 26 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
+| QUICK_REDUCE_OTHER | 3m | N | ABLATION_DISABLE_QUICK_EXIT | 20 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
 | QUICK_REDUCE_NO_PROFIT | 1m | N | ABLATION_DISABLE_QUICK_EXIT | 19 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
-| QUICK_REDUCE_OTHER | 3m | N | ABLATION_DISABLE_QUICK_EXIT | 19 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
 | WT_LOWER_CROSS_EXIT | 1h | Y | WT_LOWER_CROSS_EXIT_TF | 17 | 0 | 0 | 0 | 0 | 0 | IDLE |
+| QUICK_OPEN_GOOD | 3m | N | ? (switch not identified) | 15 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
 | WEBHOOK_HANDLE_SIGNAL | webhook | N | ? (switch not identified) | 11 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
-| QUICK_OPEN_GOOD | 3m | N | ? (switch not identified) | 10 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
-| DC_DAYTRADE_TARGET | 15m | Y | DC_DAYTRADE_ENABLED | 8 | 0 | 0 | 0 | 0 | 0 | IDLE |
-| RATIO_REBALANCE | portfolio | N | ABLATION_DISABLE_RATIO_REBALANCE | 7 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
-| HARDCODED_RALLY_REENTRY | 15m | Y | HARDCODED_RALLY_REENTRY_ENABLED | 4 | 0 | 2 | 0 | 2 | 0 | FAIL |
-| GUARANTEED_REENTRY | 3m | Y | ? (switch not identified) | 4 | 2 | 0 | 0 | 0 | 2 | LIVE_ONLY(nonvec) |
+| GUARANTEED_REENTRY | 3m | Y | ? (switch not identified) | 9 | 2 | 0 | 0 | 0 | 2 | LIVE_ONLY(nonvec) |
+| DC_DAYTRADE_TARGET | 15m | Y | DC_DAYTRADE_ENABLED | 10 | 0 | 0 | 0 | 0 | 0 | IDLE |
+| HARDCODED_RALLY_REENTRY | 15m | Y | HARDCODED_RALLY_REENTRY_ENABLED | 4 | 0 | 6 | 0 | 4 | 0 | FAIL |
+| RATIO_REBALANCE | portfolio | N | ABLATION_DISABLE_RATIO_REBALANCE | 8 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
 | QUICK_REDUCE_SCALP | 1m | N | ABLATION_DISABLE_SCALP_GUARD | 5 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
+| UNCLASSIFIED:B_KZONE | 15m | Y | ? (switch not identified) | 0 | 0 | 4 | 0 | 4 | 0 | FAIL |
 | DELTA_EXIT | 3m | N | DELTA_EXIT_ENABLED | 2 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
 | GAIN_EROSION_STOP | 3m | N | ? (switch not identified) | 1 | 1 | 0 | 0 | 0 | 1 | LIVE_ONLY(nonvec) |
-| UNCLASSIFIED:B_KZONE | 15m | Y | ? (switch not identified) | 0 | 0 | 2 | 0 | 1 | 0 | FAIL |
 | DC_BREACH_REDUCE | 15m | Y | ABLATION_DISABLE_DC_BREACH_REDUCE | 1 | 0 | 0 | 0 | 0 | 0 | IDLE |
 
 ## Test 2 - LIVE_ONLY functions (1m/3m/5m, tick, webhook, portfolio, no vec twin), CRYPTO
@@ -68,19 +69,19 @@ These decisions have no 15m vector counterpart by construction; listed so drift 
 
 | function family | input TF | attempts | fills | gate switch |
 |---|---|---|---|---|
-| QUICK_OPEN_STRONG | 3m | 473 | 6 | QUICK_OPEN_STRONG_VEC_ENABLED |
-| RANKING_DIRECT_ALL_GREEN | webhook | 399 | 0 | **UNGATED (verified: no switch)** |
-| BB_RECOVERY_EXIT | 15m | 94 | 0 | BB_RECOVERY_EXIT_ENABLED_TRADIER |
+| QUICK_OPEN_STRONG | 3m | 774 | 6 | QUICK_OPEN_STRONG_VEC_ENABLED |
+| RANKING_DIRECT_ALL_GREEN | webhook | 477 | 0 | **UNGATED (verified: no switch)** |
+| BB_RECOVERY_EXIT | 15m | 115 | 0 | BB_RECOVERY_EXIT_ENABLED_TRADIER |
 | QUICK_REDUCE_STRONG | 3m | 33 | 3 | ABLATION_DISABLE_QUICK_EXIT |
-| RANKING_DIRECT_ALL_RED | webhook | 22 | 0 | **UNGATED (verified: no switch)** |
-| CRYPTO_SPIKE_FADE | 3m | 20 | 0 | CRYPTO_SPIKE_FADE_ENABLED |
+| RANKING_DIRECT_ALL_RED | webhook | 27 | 0 | **UNGATED (verified: no switch)** |
+| CRYPTO_SPIKE_FADE | 3m | 26 | 0 | CRYPTO_SPIKE_FADE_ENABLED |
+| QUICK_REDUCE_OTHER | 3m | 20 | 0 | ABLATION_DISABLE_QUICK_EXIT |
 | QUICK_REDUCE_NO_PROFIT | 1m | 19 | 0 | ABLATION_DISABLE_QUICK_EXIT |
-| QUICK_REDUCE_OTHER | 3m | 19 | 0 | ABLATION_DISABLE_QUICK_EXIT |
+| QUICK_OPEN_GOOD | 3m | 15 | 0 | ? (switch not identified) |
 | WEBHOOK_HANDLE_SIGNAL | webhook | 11 | 0 | ? (switch not identified) |
-| QUICK_OPEN_GOOD | 3m | 10 | 0 | ? (switch not identified) |
-| RATIO_REBALANCE | portfolio | 7 | 0 | ABLATION_DISABLE_RATIO_REBALANCE |
+| GUARANTEED_REENTRY | 3m | 9 | 2 | ? (switch not identified) |
+| RATIO_REBALANCE | portfolio | 8 | 0 | ABLATION_DISABLE_RATIO_REBALANCE |
 | QUICK_REDUCE_SCALP | 1m | 5 | 0 | ABLATION_DISABLE_SCALP_GUARD |
-| GUARANTEED_REENTRY | 3m | 4 | 2 | ? (switch not identified) |
 | DELTA_EXIT | 3m | 2 | 0 | DELTA_EXIT_ENABLED |
 | GAIN_EROSION_STOP | 3m | 1 | 1 | ? (switch not identified) |
 
@@ -88,7 +89,7 @@ These decisions have no 15m vector counterpart by construction; listed so drift 
 
 intents in window: 2 · result: NOT_IN_MAC_REGISTRY 2 · consumer files: **none (live consumer has not written data/vec_live/live_exec_*.jsonl)**
 
-execute_now gate refusals tagged VEC_DRIVEN in ez_manage logs: {'fin': {'UNKNOWN': 106, 'GOLDEN_RULE': 1}, 'men': {'UNKNOWN': 88, 'GOLDEN_RULE': 1}, 'ang': {'UNKNOWN': 126, 'GOLDEN_RULE': 1}, 'inf': {'UNKNOWN': 202, 'GOLDEN_RULE': 2}, 'flz': {'UNKNOWN': 78, 'GOLDEN_RULE': 3}}
+execute_now gate refusals tagged VEC_DRIVEN in ez_manage logs: {'fin': {'UNKNOWN': 124, 'GOLDEN_RULE': 1}, 'men': {'UNKNOWN': 110, 'GOLDEN_RULE': 1}, 'ang': {'UNKNOWN': 152, 'GOLDEN_RULE': 1}, 'inf': {'UNKNOWN': 228, 'GOLDEN_RULE': 2}, 'flz': {'UNKNOWN': 78, 'GOLDEN_RULE': 4}}
 
 | bar | ss | acct | type | vec reason | result |
 |---|---|---|---|---|---|
@@ -97,7 +98,7 @@ execute_now gate refusals tagged VEC_DRIVEN in ez_manage logs: {'fin': {'UNKNOWN
 
 ## Test 1 - 15m LIVE vs VECTOR, STOCKS
 
-run 2026-10-06T06:09:23+00:00 (50 min ago) · engine v12 697b2734 · NPZ sync ? · window 24.0h from 2026-10-05T06:09Z · tol +-2 bars · 144 live keys / 125 sym_sides · 19.1 s
+run 2026-10-06T06:09:23+00:00 (69 min ago) · engine v12 697b2734 · NPZ sync ? · window 24.0h from 2026-10-05T06:09Z · tol +-2 bars · 144 live keys / 125 sym_sides · 19.1 s
 
 **Verdict: FAIL** — FAIL 78 · PASS with decisions 0 · IDLE (no decision either side, counts as pass) 55 · NO_DATA 11 · judged on a STALE-shifted window (S1 NPZ behind live) 4
 
@@ -219,13 +220,13 @@ These decisions have no 15m vector counterpart by construction; listed so drift 
 
 ## decisions -> history parity (switch intents vs live fills)
 
-`DH_20261005_20261006.json` generated 2026-10-06T06:17:01.493850+00:00 (43 min ago) · intents 73 · matched 33 · **missing 40**
+`DH_20261005_20261006.json` generated 2026-10-06T07:17:01.903475+00:00 (2 min ago) · intents 77 · matched 34 · **missing 43**
 
-matched/intents per account: fin 4/9, men 6/27, ang 14/27, inf 0/0 (no decision file), flz 9/10, trb 0/0 (no decision file), trc 0/0 (no decision file)
+matched/intents per account: fin 4/9, men 7/31, ang 14/27, inf 0/0 (no decision file), flz 9/10, trb 0/0 (no decision file), trc 0/0 (no decision file)
 
 | function family | action | intent result | n | blocking execution filter | vector same decision +-2 bars (Y/N/? = not judged) |
 |---|---|---|---|---|---|
-| BB_RECOVERY_EXIT | REDUCE | MISSING | 15 | NO_QUANTITY_LEFT_TO_REDUCE 5, BLOCKED_MAKER_SUPPRESS_WEBHOOK 5, HARD_REDUCE_LOCK 4, NUKE_STALE_MAKER_ORDER 1 | ? 15 |
+| BB_RECOVERY_EXIT | REDUCE | MISSING | 18 | NO_QUANTITY_LEFT_TO_REDUCE 5, BLOCKED_MAKER_SUPPRESS_WEBHOOK 5, HARD_REDUCE_LOCK 4, NUKE_STALE_MAKER_ORDER 3 | ? 18 |
 | EXIT_VELOCITY_WT | CLOSE | MISSING | 10 | NUKE_STALE_MAKER_ORDER 10 | N 9, ? 1 |
 | WT_LOWER_CROSS_EXIT | CLOSE | MISSING | 5 | NUKE_STALE_MAKER_ORDER 4, UNATTRIBUTED 1 | ? 4, N 1 |
 | QUICK_REDUCE_STRONG | STRONG_REDUCE | MISSING | 4 | NUKE_STALE_MAKER_ORDER 4 | N 4 |
@@ -235,8 +236,8 @@ matched/intents per account: fin 4/9, men 6/27, ang 14/27, inf 0/0 (no decision 
 | EXIT_VELOCITY_WT | CLOSE | MATCHED | 8 | filled 8 | N 6, ? 2 |
 | QUICK_OPEN_STRONG | QUICK_OPEN | MATCHED | 7 | filled 7 | N 6, ? 1 |
 | GOLDEN_RULE | OPEN | MATCHED | 6 | filled 6 | ? 6 |
+| BB_RECOVERY_EXIT | REDUCE | MATCHED | 4 | filled 4 | ? 4 |
 | QUICK_REDUCE_STRONG | STRONG_REDUCE | MATCHED | 3 | filled 3 | N 3 |
-| BB_RECOVERY_EXIT | REDUCE | MATCHED | 3 | filled 3 | ? 3 |
 | WT_LOWER_CROSS_EXIT | CLOSE | MATCHED | 2 | filled 2 | ? 2 |
 | GUARANTEED_REENTRY | OPEN | MATCHED | 2 | filled 2 | N 2 |
 | DC_DAYTRADE_TARGET | CLOSE | MATCHED | 1 | filled 1 | ? 1 |
@@ -246,7 +247,7 @@ Gap classes: NUKE_STALE_MAKER_ORDER = maker exit rested >60 s and was cancelled 
 
 ## Exit-engine gate parity (execute_now, all exits)
 
-generated 2026-10-06T06:59:42.272898+00:00 (0 min ago) · lookback 48.0h · exit rows 3250 · **LEAKS 792** · gate ON 1346 · UNGATED 1053 · safety 4 · unmapped 0
+generated 2026-10-06T06:59:42.272898+00:00 (19 min ago) · lookback 48.0h · exit rows 3250 · **LEAKS 792** · gate ON 1346 · UNGATED 1053 · safety 4 · unmapped 0
 
 LEAKS (gate OFF for that sym_side yet fired): QUICK_OPEN_STRONG 790, WT_DC_ENTRY (WT_DC_ENTRY_ENABLED=False) 2
 
