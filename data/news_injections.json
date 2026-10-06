@@ -1,5 +1,238 @@
 {
-  "active": [],
+  "active": [
+    {
+      "symbol": "RLCUSDT",
+      "account": "ang",
+      "side": "LONG",
+      "file": "symbols_ang_long.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.926,
+      "reason": "Trending (score=0.88)",
+      "was_new": false
+    },
+    {
+      "symbol": "NMRUSDT",
+      "account": "ang",
+      "side": "LONG",
+      "file": "symbols_ang_long.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.856,
+      "reason": "Trending (score=0.81)",
+      "was_new": true
+    },
+    {
+      "symbol": "ZROUSDT",
+      "account": "ang",
+      "side": "LONG",
+      "file": "symbols_ang_long.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.668,
+      "reason": "Trending (score=0.67)",
+      "was_new": true
+    },
+    {
+      "symbol": "NEARUSDC",
+      "account": "ang",
+      "side": "LONG",
+      "file": "symbols_ang_long.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.571,
+      "reason": "Trending (score=0.74)",
+      "was_new": true
+    },
+    {
+      "symbol": "RENDERUSDT",
+      "account": "ang",
+      "side": "LONG",
+      "file": "symbols_ang_long.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.471,
+      "reason": "24h +8.3% (mcap #78)",
+      "was_new": true
+    },
+    {
+      "symbol": "SKYUSDT",
+      "account": "ang",
+      "side": "SHORT",
+      "file": "symbols_ang_short.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.415,
+      "reason": "24h -9.4% (mcap #53)",
+      "was_new": true
+    },
+    {
+      "symbol": "RLCUSDT",
+      "account": "inf",
+      "side": "LONG",
+      "file": "symbols_inf_long.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.926,
+      "reason": "Trending (score=0.88)",
+      "was_new": true
+    },
+    {
+      "symbol": "NMRUSDT",
+      "account": "inf",
+      "side": "LONG",
+      "file": "symbols_inf_long.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.856,
+      "reason": "Trending (score=0.81)",
+      "was_new": true
+    },
+    {
+      "symbol": "ZROUSDT",
+      "account": "inf",
+      "side": "LONG",
+      "file": "symbols_inf_long.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.668,
+      "reason": "Trending (score=0.67)",
+      "was_new": true
+    },
+    {
+      "symbol": "NEARUSDC",
+      "account": "inf",
+      "side": "LONG",
+      "file": "symbols_inf_long.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.571,
+      "reason": "Trending (score=0.74)",
+      "was_new": true
+    },
+    {
+      "symbol": "RENDERUSDT",
+      "account": "inf",
+      "side": "LONG",
+      "file": "symbols_inf_long.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.471,
+      "reason": "24h +8.3% (mcap #78)",
+      "was_new": true
+    },
+    {
+      "symbol": "SKYUSDT",
+      "account": "inf",
+      "side": "SHORT",
+      "file": "symbols_inf_short.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.415,
+      "reason": "24h -9.4% (mcap #53)",
+      "was_new": true
+    },
+    {
+      "symbol": "RLCUSDT",
+      "account": "men",
+      "side": "LONG",
+      "file": "symbols_men.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.926,
+      "reason": "Trending (score=0.88)",
+      "was_new": false
+    },
+    {
+      "symbol": "NMRUSDT",
+      "account": "men",
+      "side": "LONG",
+      "file": "symbols_men.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.856,
+      "reason": "Trending (score=0.81)",
+      "was_new": true
+    },
+    {
+      "symbol": "ZROUSDT",
+      "account": "men",
+      "side": "LONG",
+      "file": "symbols_men.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.668,
+      "reason": "Trending (score=0.67)",
+      "was_new": true
+    },
+    {
+      "symbol": "NEARUSDC",
+      "account": "men",
+      "side": "LONG",
+      "file": "symbols_men.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.571,
+      "reason": "Trending (score=0.74)",
+      "was_new": true
+    },
+    {
+      "symbol": "RENDERUSDT",
+      "account": "men",
+      "side": "LONG",
+      "file": "symbols_men.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.471,
+      "reason": "24h +8.3% (mcap #78)",
+      "was_new": true
+    },
+    {
+      "symbol": "SKYUSDT",
+      "account": "men",
+      "side": "SHORT",
+      "file": "symbols_men.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.415,
+      "reason": "24h -9.4% (mcap #53)",
+      "was_new": true
+    },
+    {
+      "symbol": "APA",
+      "account": "trb",
+      "side": "LONG",
+      "file": "symbols_trb_long.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "last_relevant_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.906,
+      "reason": "Best Value Stocks to Buy for October 6th",
+      "_is_stock": true,
+      "was_new": true,
+      "direct_write": true
+    },
+    {
+      "symbol": "CF",
+      "account": "trb",
+      "side": "LONG",
+      "file": "symbols_trb_long.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "last_relevant_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.878,
+      "reason": "CF Industries Holdings (NYSE:CF): A Decent Value Stock Backed by Strong Profitab",
+      "_is_stock": true,
+      "was_new": true,
+      "direct_write": true
+    },
+    {
+      "symbol": "PR",
+      "account": "trb",
+      "side": "LONG",
+      "file": "symbols_trb_long.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "last_relevant_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.846,
+      "reason": "This NYC startup requires 4 days in office but just let everyone work remote for",
+      "_is_stock": true,
+      "was_new": true,
+      "direct_write": true
+    },
+    {
+      "symbol": "COPX",
+      "account": "trb",
+      "side": "SHORT",
+      "file": "symbols_trb_short.json",
+      "injected_at": "2026-10-06T13:05:32.608993+00:00",
+      "last_relevant_at": "2026-10-06T13:05:32.608993+00:00",
+      "conviction": 0.527,
+      "reason": "Commodities: Oil Supported By Geopolitical Risks Despite Supply Gains",
+      "_is_stock": true,
+      "was_new": true,
+      "direct_write": true
+    }
+  ],
   "history": [
     {
       "symbol": "PENGUUSDC",
