@@ -1013,6 +1013,42 @@ def _clean_requested_orphan_sync_transport() -> None:
         pass
 
 
+def _position_ages_s():
+    """(min_age, max_age) content age (s) of open crypto positions per account from last_updated; None when flat/missing. Never raises."""
+    mins, maxs = {}, {}
+    for acct in CRYPTO_ACCOUNTS:
+        oldest = None
+        newest = None
+        try:
+            for side in ("long", "short"):
+                p = Path(BASE_PATH) / acct / f"{side}_positions.json"
+                if not p.exists():
+                    continue
+                try:
+                    data = json.loads(p.read_text())
+                except Exception:
+                    continue
+                items = data.values() if isinstance(data, dict) else (data if isinstance(data, list) else [])
+                for pos in items:
+                    lu = pos.get("last_updated") if isinstance(pos, dict) else None
+                    if not lu:
+                        continue
+                    try:
+                        ts = datetime.fromisoformat(str(lu).replace("Z", "+00:00")).timestamp()
+                    except Exception:
+                        continue
+                    if oldest is None or ts < oldest:
+                        oldest = ts
+                    if newest is None or ts > newest:
+                        newest = ts
+        except Exception:
+            pass
+        now = time.time()
+        mins[acct] = round(now - newest, 1) if newest else None
+        maxs[acct] = round(now - oldest, 1) if oldest else None
+    return mins, maxs
+
+
 def _early_trb_operator_cleanup():
     """Process the exact operator cleanup before any network/sync work."""
     if not os.path.exists(TRB_OPERATOR_CLEANUP_REQUEST):
@@ -1104,11 +1140,14 @@ def main():
         accounts[acct] = _pgrep_alive(f"python -u ez_manage.py --account {acct}")
     for acct in STOCK_ACCOUNTS:
         accounts[acct] = _pgrep_alive(f"python -u tradier_manage.py --accounts {acct}")
+    _pos_min, _pos_max = _position_ages_s()
     payload = {
         "ts": datetime.now(timezone.utc).isoformat(),
         "epoch": time.time(),
         "market_open_et": market_open,
         "accounts": accounts,
+        "position_max_age_s": _pos_max,
+        "position_min_age_s": _pos_min,
     }
     with open(OUT_PATH, "w") as fh:
         json.dump(payload, fh, indent=2)

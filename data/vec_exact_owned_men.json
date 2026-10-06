@@ -39,14 +39,6 @@
   "at": "06 21:15:56 - ",
   "reason": "seeded_from_log"
  },
- "men:ENJUSDT_SHORT": {
-  "at": "2026-10-06T21:37:42Z",
-  "reason": "B_KZONE"
- },
- "men:ENJUSDT_LONG": {
-  "at": "2026-10-06T21:46:17Z",
-  "reason": "B_DELTAENTRY"
- },
  "men:NEARUSDC_SHORT": {
   "at": "2026-10-06T22:16:03Z",
   "reason": "B_KZONE"
@@ -64,7 +56,23 @@
   "reason": "ENTRY_SIGNAL"
  },
  "men:NMRUSDT_LONG": {
-  "at": "2026-10-06T22:24:32Z",
+  "at": "2026-10-06T22:45:33Z",
+  "reason": "B_KZONE"
+ },
+ "men:NEARUSDC_LONG": {
+  "at": "2026-10-06T22:45:43Z",
+  "reason": "ENTRY_SIGNAL"
+ },
+ "men:ZROUSDT_LONG": {
+  "at": "2026-10-06T22:45:49Z",
+  "reason": "B_KZONE"
+ },
+ "men:ENJUSDT_LONG": {
+  "at": "2026-10-06T22:45:58Z",
+  "reason": "B12"
+ },
+ "men:ALGOUSDT_SHORT": {
+  "at": "2026-10-06T22:46:14Z",
   "reason": "B_KZONE"
  }
 }

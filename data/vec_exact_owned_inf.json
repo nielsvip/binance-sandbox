@@ -27,8 +27,20 @@
   "at": "2026-10-06T22:15:35Z",
   "reason": "B12"
  },
- "inf:APEUSDT_SHORT": {
-  "at": "2026-10-06T22:15:47Z",
-  "reason": "B15"
+ "inf:RENDERUSDT_LONG": {
+  "at": "2026-10-06T22:31:11Z",
+  "reason": "B_KZONE"
+ },
+ "inf:NEARUSDC_LONG": {
+  "at": "2026-10-06T22:45:23Z",
+  "reason": "ENTRY_SIGNAL"
+ },
+ "inf:ALGOUSDT_SHORT": {
+  "at": "2026-10-06T22:45:51Z",
+  "reason": "B_KZONE"
+ },
+ "inf:ZROUSDT_LONG": {
+  "at": "2026-10-06T22:45:53Z",
+  "reason": "B_KZONE"
  }
 }
