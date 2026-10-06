@@ -1,22 +1,46 @@
 {
-  "generated_at": "2026-10-06T15:18:11.495506+00:00",
-  "count": 4,
+  "generated_at": "2026-10-06T15:38:57.135976+00:00",
+  "count": 6,
   "advisories": [
+    {
+      "symbol": "CRK",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.61 threshold=0.45",
+      "score": 0.606,
+      "ts": "2026-10-06T15:38:57.135934+00:00"
+    },
     {
       "symbol": "GOOGL",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.59 threshold=0.45",
       "score": 0.587,
-      "ts": "2026-10-06T15:18:11.495468+00:00"
+      "ts": "2026-10-06T15:38:57.135944+00:00"
     },
     {
       "symbol": "INTC",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.56 threshold=0.45",
-      "score": 0.555,
-      "ts": "2026-10-06T15:18:11.495475+00:00"
+      "reason": "bullish_news_score=0.55 threshold=0.45",
+      "score": 0.551,
+      "ts": "2026-10-06T15:38:57.135946+00:00"
+    },
+    {
+      "symbol": "LOW",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.46 threshold=0.45",
+      "score": 0.459,
+      "ts": "2026-10-06T15:38:57.135948+00:00"
+    },
+    {
+      "symbol": "MA",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.74 threshold=0.45",
+      "score": 0.735,
+      "ts": "2026-10-06T15:38:57.135950+00:00"
     },
     {
       "symbol": "MSFT",
@@ -24,15 +48,7 @@
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.66 threshold=0.45",
       "score": 0.66,
-      "ts": "2026-10-06T15:18:11.495480+00:00"
-    },
-    {
-      "symbol": "RRC",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.61 threshold=0.45",
-      "score": 0.607,
-      "ts": "2026-10-06T15:18:11.495484+00:00"
+      "ts": "2026-10-06T15:38:57.135953+00:00"
     }
   ]
 }

@@ -1,39 +1,57 @@
 # Forward parity — LIVE vs VECTOR (auto, read-only)
 
-generated 2026-10-06T15:17:15+00:00 · producers: tools/forward_parity/live_vs_vec.py (crypto hourly :07, stocks every 15 min RTH), tools/decisions_history_parity.py (:17), tools/exit_engine_parity_monitor.py (launchd hourly), tools/daily_parity_test.py (launchd daily)
+generated 2026-10-06T15:30:18+00:00 · producers: tools/forward_parity/live_vs_vec.py (crypto hourly :07, stocks every 15 min RTH), tools/decisions_history_parity.py (:17), tools/exit_engine_parity_monitor.py (launchd hourly), tools/daily_parity_test.py (launchd daily)
 
 PASS = every vector decision on the judged 15m bars has a live fill of the same class within +-2 bars, every live fill has a vector decision, and end state (in/out) agrees. FAIL classes: VEC_ONLY_LIVE_NO_SIGNAL (live logic did not fire), VEC_ONLY_LIVE_BLOCKED (live attempted, gate/execution stopped it), VEC_ONLY_STATE_CASCADE (consequence of an earlier divergence), LIVE_ONLY_VEC_FAMILY (vector twin exists but did not fire), LIVE_ONLY_NONVEC (1m/3m/5m/tick/webhook/portfolio input — no vec counterpart), STATE_MISMATCH, NPZ_STALE (S1 NPZ behind live, judged on the newest window the vector can see).
 
 ## Test 1 - 15m LIVE vs VECTOR, CRYPTO
 
-run 2026-10-06T14:32:45+00:00 (45 min ago) · engine v12 d84863e5 · NPZ sync tail · window 24.0h from 2026-10-05T14:07Z · tol +-2 bars · 242 live keys / 131 sym_sides · 1544.3 s
+run 2026-10-06T15:18:41+00:00 (12 min ago) · engine v12 d84863e5 · NPZ sync tail · window 24.0h from 2026-10-05T15:07Z · tol +-2 bars · 242 live keys / 131 sym_sides · 699.4 s
 
-**Verdict: FAIL** — FAIL 11 · PASS with decisions 0 · IDLE (no decision either side, counts as pass) 211 · NO_DATA 20 · judged on a STALE-shifted window (S1 NPZ behind live) 40
+**Verdict: FAIL** — FAIL 29 · PASS with decisions 0 · IDLE (no decision either side, counts as pass) 193 · NO_DATA 20 · judged on a STALE-shifted window (S1 NPZ behind live) 222
 
 - vector fired, live did not (VEC_ONLY): LIVE_NO_SIGNAL 14, LIVE_ALREADY_IN_POSITION 7, LIVE_ALREADY_FLAT 7
 - live fired, vector did not (LIVE_ONLY): LIVE_ONLY_NONVEC:QUICK_OPEN_STRONG@3m 6, LIVE_ONLY_VEC_FAMILY:EXIT_VELOCITY_WT 6, LIVE_ONLY_NONVEC:QUICK_REDUCE_STRONG@3m 3, LIVE_ONLY_NONVEC:GUARANTEED_REENTRY@3m 1, LIVE_ONLY_VEC_FAMILY:GUARANTEED_REENTRY 1, LIVE_ONLY_NONVEC:GAIN_EROSION_STOP@3m 1
 - NPZ missing on S1 (no vector possible): 100PEPEUSDC, EDUUSDT, KMNOUSDT, MELANIAUSDT, NMRUSDT
 - vector replay made 0 trades in 30D for 110/131 sym_sides with the live set (engine md5 d84863e5): every live fill on those keys is LIVE_ONLY by construction — engine/set problem, not live drift. e.g. 1000BONKUSDC_LONG, 1INCHUSDT_LONG, 1INCHUSDT_SHORT, AAVEUSDC_LONG, ADAUSDC_LONG, ADAUSDC_SHORT, AGLDUSDT_SHORT, ALGOUSDT_LONG
 - vector errors: prepare failed: no npz 13
-- FAIL classes (sym_sides): LIVE_ONLY_NONVEC 7, LIVE_ONLY_VEC_FAMILY 6, STATE_MISMATCH 2, VEC_ONLY_LIVE_NO_SIGNAL 2, VEC_ONLY_STATE_CASCADE 2, NPZ_STALE 1
+- FAIL classes (sym_sides): NPZ_STALE 29, STATE_MISMATCH 23, LIVE_ONLY_NONVEC 7, LIVE_ONLY_VEC_FAMILY 6, VEC_ONLY_LIVE_NO_SIGNAL 2, VEC_ONLY_STATE_CASCADE 2
 
 ### FAIL per sym_side
 
 | key | classes | vec_only (why) | live_only (function@tf) | vec/live in pos | judged window | set |
 |---|---|---|---|---|---|---|
-| flz:XRPUSDC_SHORT | VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_IN_POSITION 7, LIVE_NO_SIGNAL 7 | - | False/False | last window | per_sym_active_config:clean_ |
-| men:XRPUSDC_SHORT | VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_NO_SIGNAL 7, LIVE_ALREADY_FLAT 7 | - | False/False | last window | per_sym_active_config:clean_ |
-| ang:ZECUSDC_LONG | LIVE_ONLY_NONVEC, LIVE_ONLY_VEC_FAMILY | - | LIVE_ONLY_NONVEC:QUICK_OPEN_STRONG@3m 2, LIVE_ONLY_VEC_FAMILY:EXIT_VELOCITY_WT 2 | False/False | last window | per_sym_active_config:clean_ |
-| flz:SOLUSDC_SHORT | LIVE_ONLY_NONVEC, LIVE_ONLY_VEC_FAMILY | - | LIVE_ONLY_VEC_FAMILY:GUARANTEED_REENTRY 1, LIVE_ONLY_NONVEC:QUICK_REDUCE_STRONG@3m 1, LIVE_ONLY_NONVEC:GAIN_EROSION_STOP@3m 1 | False/False | last window | per_sym_active_config:clean_ |
-| ang:GALAUSDT_SHORT | LIVE_ONLY_NONVEC | - | LIVE_ONLY_NONVEC:QUICK_OPEN_STRONG@3m 1, LIVE_ONLY_NONVEC:QUICK_REDUCE_STRONG@3m 1 | False/False | last window | per_sym_active_config:clean_ |
-| fin:THETAUSDT_LONG | LIVE_ONLY_NONVEC, LIVE_ONLY_VEC_FAMILY | - | LIVE_ONLY_NONVEC:QUICK_OPEN_STRONG@3m 1, LIVE_ONLY_VEC_FAMILY:EXIT_VELOCITY_WT 1 | False/False | last window | vec_driven:progress:f4144e33 |
-| flz:ETHUSDC_SHORT | LIVE_ONLY_NONVEC, LIVE_ONLY_VEC_FAMILY | - | LIVE_ONLY_NONVEC:GUARANTEED_REENTRY@3m 1, LIVE_ONLY_VEC_FAMILY:EXIT_VELOCITY_WT 1 | False/False | last window | per_sym_active_config:clean_ |
-| flz:ZECUSDC_LONG | LIVE_ONLY_NONVEC, LIVE_ONLY_VEC_FAMILY | - | LIVE_ONLY_NONVEC:QUICK_OPEN_STRONG@3m 1, LIVE_ONLY_VEC_FAMILY:EXIT_VELOCITY_WT 1 | False/False | last window | per_sym_active_config:clean_ |
-| men:GALAUSDT_SHORT | LIVE_ONLY_NONVEC, STATE_MISMATCH | - | LIVE_ONLY_NONVEC:QUICK_OPEN_STRONG@3m 1, LIVE_ONLY_NONVEC:QUICK_REDUCE_STRONG@3m 1 | False/True | last window | per_sym_active_config:clean_ |
-| men:VETUSDT_LONG | LIVE_ONLY_VEC_FAMILY | - | LIVE_ONLY_VEC_FAMILY:EXIT_VELOCITY_WT 1 | False/False | last window | defaults(cat_side) |
+| flz:XRPUSDC_SHORT | NPZ_STALE, STATE_MISMATCH, VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_IN_POSITION 7, LIVE_NO_SIGNAL 7 | - | False/True | 2026-10-05T13:00Z..2026-10-06T13:00Z | per_sym_active_config:clean_ |
+| men:XRPUSDC_SHORT | NPZ_STALE, VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_NO_SIGNAL 7, LIVE_ALREADY_FLAT 7 | - | False/False | 2026-10-05T13:00Z..2026-10-06T13:00Z | per_sym_active_config:clean_ |
+| ang:ZECUSDC_LONG | LIVE_ONLY_NONVEC, LIVE_ONLY_VEC_FAMILY, NPZ_STALE | - | LIVE_ONLY_NONVEC:QUICK_OPEN_STRONG@3m 2, LIVE_ONLY_VEC_FAMILY:EXIT_VELOCITY_WT 2 | False/False | 2026-10-05T13:00Z..2026-10-06T13:00Z | per_sym_active_config:clean_ |
+| flz:SOLUSDC_SHORT | LIVE_ONLY_NONVEC, LIVE_ONLY_VEC_FAMILY, NPZ_STALE | - | LIVE_ONLY_VEC_FAMILY:GUARANTEED_REENTRY 1, LIVE_ONLY_NONVEC:QUICK_REDUCE_STRONG@3m 1, LIVE_ONLY_NONVEC:GAIN_EROSION_STOP@3m 1 | False/False | 2026-10-05T12:45Z..2026-10-06T12:45Z | per_sym_active_config:clean_ |
+| ang:GALAUSDT_SHORT | LIVE_ONLY_NONVEC, NPZ_STALE, STATE_MISMATCH | - | LIVE_ONLY_NONVEC:QUICK_OPEN_STRONG@3m 1, LIVE_ONLY_NONVEC:QUICK_REDUCE_STRONG@3m 1 | False/True | 2026-10-05T13:00Z..2026-10-06T13:00Z | per_sym_active_config:clean_ |
+| fin:THETAUSDT_LONG | LIVE_ONLY_NONVEC, LIVE_ONLY_VEC_FAMILY, NPZ_STALE | - | LIVE_ONLY_NONVEC:QUICK_OPEN_STRONG@3m 1, LIVE_ONLY_VEC_FAMILY:EXIT_VELOCITY_WT 1 | False/False | 2026-10-05T12:45Z..2026-10-06T12:45Z | vec_driven:progress:f4144e33 |
+| flz:ETHUSDC_SHORT | LIVE_ONLY_NONVEC, LIVE_ONLY_VEC_FAMILY, NPZ_STALE | - | LIVE_ONLY_NONVEC:GUARANTEED_REENTRY@3m 1, LIVE_ONLY_VEC_FAMILY:EXIT_VELOCITY_WT 1 | False/False | 2026-10-05T12:45Z..2026-10-06T12:45Z | per_sym_active_config:clean_ |
+| flz:ZECUSDC_LONG | LIVE_ONLY_NONVEC, LIVE_ONLY_VEC_FAMILY, NPZ_STALE, STATE_MISMATCH | - | LIVE_ONLY_NONVEC:QUICK_OPEN_STRONG@3m 1, LIVE_ONLY_VEC_FAMILY:EXIT_VELOCITY_WT 1 | False/True | 2026-10-05T13:00Z..2026-10-06T13:00Z | per_sym_active_config:clean_ |
+| men:GALAUSDT_SHORT | LIVE_ONLY_NONVEC, NPZ_STALE, STATE_MISMATCH | - | LIVE_ONLY_NONVEC:QUICK_OPEN_STRONG@3m 1, LIVE_ONLY_NONVEC:QUICK_REDUCE_STRONG@3m 1 | False/True | 2026-10-05T13:00Z..2026-10-06T13:00Z | per_sym_active_config:clean_ |
+| men:VETUSDT_LONG | LIVE_ONLY_VEC_FAMILY, NPZ_STALE | - | LIVE_ONLY_VEC_FAMILY:EXIT_VELOCITY_WT 1 | False/False | 2026-10-05T12:45Z..2026-10-06T12:45Z | defaults(cat_side) |
+| ang:ATOMUSDT_SHORT | NPZ_STALE, STATE_MISMATCH | - | - | False/True | 2026-10-05T12:45Z..2026-10-06T12:45Z | per_sym_active_config:clean_ |
+| fin:ALGOUSDT_SHORT (VD) | NPZ_STALE, STATE_MISMATCH | - | - | False/True | 2026-10-05T12:45Z..2026-10-06T12:45Z | vec_driven:candidates:ed033e |
+| flz:BNBUSDC_LONG (VD) | NPZ_STALE, STATE_MISMATCH | - | - | False/True | 2026-10-05T12:45Z..2026-10-06T12:45Z | vec_driven:candidates:ea9eb6 |
+| flz:BTCUSDC_LONG (VD) | NPZ_STALE, STATE_MISMATCH | - | - | False/True | 2026-10-05T12:45Z..2026-10-06T12:45Z | vec_driven:candidates:f6f02f |
+| flz:DASHUSDT_SHORT | NPZ_STALE, STATE_MISMATCH | - | - | False/True | 2026-10-05T13:00Z..2026-10-06T13:00Z | per_sym_active_config:clean_ |
+| flz:ETHUSDC_LONG | NPZ_STALE, STATE_MISMATCH | - | - | False/True | 2026-10-05T12:45Z..2026-10-06T12:45Z | per_sym_active_config:clean_ |
 | flz:GRAMUSDT_SHORT | NPZ_STALE, STATE_MISMATCH | - | - | False/True | 2026-09-30T01:30Z..2026-10-01T01:30Z | defaults(cat_side) |
+| flz:HYPEUSDT_LONG | NPZ_STALE, STATE_MISMATCH | - | - | False/True | 2026-10-05T13:00Z..2026-10-06T13:00Z | per_sym_active_config:clean_ |
+| flz:HYPEUSDT_SHORT | NPZ_STALE, STATE_MISMATCH | - | - | False/True | 2026-10-05T13:00Z..2026-10-06T13:00Z | per_sym_active_config:clean_ |
+| flz:SOLUSDC_LONG | NPZ_STALE, STATE_MISMATCH | - | - | False/True | 2026-10-05T12:45Z..2026-10-06T12:45Z | per_sym_active_config:clean_ |
+| inf:ACEUSDT_SHORT (VD) | NPZ_STALE, STATE_MISMATCH | - | - | False/True | 2026-10-05T12:45Z..2026-10-06T12:45Z | vec_driven:progress:3cfa64df |
+| inf:IOTAUSDT_LONG (VD) | NPZ_STALE, STATE_MISMATCH | - | - | False/True | 2026-10-05T13:00Z..2026-10-06T13:00Z | vec_driven:progress:07b10a2f |
+| inf:SANDUSDT_SHORT | NPZ_STALE, STATE_MISMATCH | - | - | False/True | 2026-10-05T12:45Z..2026-10-06T12:45Z | per_sym_active_config:clean_ |
+| men:ADAUSDC_LONG | NPZ_STALE, STATE_MISMATCH | - | - | False/True | 2026-10-05T12:45Z..2026-10-06T12:45Z | vec_driven:candidates:c37700 |
+| men:ALGOUSDT_SHORT (VD) | NPZ_STALE, STATE_MISMATCH | - | - | False/True | 2026-10-05T12:45Z..2026-10-06T12:45Z | vec_driven:candidates:ed033e |
+| men:COTIUSDT_LONG (VD) | NPZ_STALE, STATE_MISMATCH | - | - | False/True | 2026-10-05T12:45Z..2026-10-06T12:45Z | vec_driven_MD5_MISMATCH:07b1 |
+| men:KSMUSDT_LONG (VD) | NPZ_STALE, STATE_MISMATCH | - | - | False/True | 2026-10-05T12:45Z..2026-10-06T12:45Z | vec_driven:progress:e3f3ba65 |
+| men:LINKUSDC_LONG (VD) | NPZ_STALE, STATE_MISMATCH | - | - | False/True | 2026-10-05T12:45Z..2026-10-06T12:45Z | vec_driven:progress:558e933b |
+| men:XRPUSDC_LONG | NPZ_STALE, STATE_MISMATCH | - | - | False/True | 2026-10-05T13:00Z..2026-10-06T13:00Z | per_sym_active_config:clean_ |
 
-PASS with activity: -  ·  PASS_IDLE (no decision either side): 211
+PASS with activity: -  ·  PASS_IDLE (no decision either side): 193
 
 NO_DATA reasons: prepare failed: no npz 20
 
@@ -41,8 +59,8 @@ NO_DATA reasons: prepare failed: no npz 20
 
 | family | input TF | vec twin | gate switch | live attempts | live fills | vec events | matched | vec_only | live_only | status |
 |---|---|---|---|---|---|---|---|---|---|---|
-| QUICK_OPEN_STRONG | 3m | Y | QUICK_OPEN_STRONG_VEC_ENABLED | 2535 | 6 | 0 | 0 | 0 | 6 | LIVE_ONLY(nonvec) |
-| GOLDEN_RULE | 15m | Y | GOLDEN_RULE_ENABLED | 657 | 0 | 0 | 0 | 0 | 0 | IDLE |
+| QUICK_OPEN_STRONG | 3m | Y | QUICK_OPEN_STRONG_VEC_ENABLED | 2703 | 6 | 0 | 0 | 0 | 6 | LIVE_ONLY(nonvec) |
+| GOLDEN_RULE | 15m | Y | GOLDEN_RULE_ENABLED | 701 | 0 | 0 | 0 | 0 | 0 | IDLE |
 | RANKING_DIRECT_ALL_GREEN | webhook | N | **UNGATED (verified: no switch)** | 510 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
 | EXIT_VELOCITY_WT | 1h | Y | EXIT_VELOCITY_WT_ENABLED | 181 | 6 | 14 | 0 | 14 | 6 | FAIL |
 | BB_RECOVERY_EXIT | 15m | N | BB_RECOVERY_EXIT_ENABLED_TRADIER | 118 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
@@ -55,7 +73,7 @@ NO_DATA reasons: prepare failed: no npz 20
 | WT_LOWER_CROSS_EXIT | 1h | Y | WT_LOWER_CROSS_EXIT_TF | 17 | 0 | 0 | 0 | 0 | 0 | IDLE |
 | GUARANTEED_REENTRY | 3m | Y | ? (switch not identified) | 13 | 2 | 0 | 0 | 0 | 2 | LIVE_ONLY(nonvec) |
 | WEBHOOK_HANDLE_SIGNAL | webhook | N | ? (switch not identified) | 14 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
-| HARDCODED_RALLY_REENTRY | 15m | Y | HARDCODED_RALLY_REENTRY_ENABLED | 4 | 0 | 8 | 0 | 8 | 0 | FAIL |
+| HARDCODED_RALLY_REENTRY | 15m | Y | HARDCODED_RALLY_REENTRY_ENABLED | 5 | 0 | 8 | 0 | 8 | 0 | FAIL |
 | DC_DAYTRADE_TARGET | 15m | Y | DC_DAYTRADE_ENABLED | 10 | 0 | 0 | 0 | 0 | 0 | IDLE |
 | RATIO_REBALANCE | portfolio | N | ABLATION_DISABLE_RATIO_REBALANCE | 9 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
 | UNCLASSIFIED:B_KZONE | 15m | Y | ? (switch not identified) | 0 | 0 | 6 | 0 | 6 | 0 | FAIL |
@@ -70,7 +88,7 @@ These decisions have no 15m vector counterpart by construction; listed so drift 
 
 | function family | input TF | attempts | fills | gate switch |
 |---|---|---|---|---|
-| QUICK_OPEN_STRONG | 3m | 2535 | 6 | QUICK_OPEN_STRONG_VEC_ENABLED |
+| QUICK_OPEN_STRONG | 3m | 2703 | 6 | QUICK_OPEN_STRONG_VEC_ENABLED |
 | RANKING_DIRECT_ALL_GREEN | webhook | 510 | 0 | **UNGATED (verified: no switch)** |
 | BB_RECOVERY_EXIT | 15m | 118 | 0 | BB_RECOVERY_EXIT_ENABLED_TRADIER |
 | QUICK_REDUCE_STRONG | 3m | 33 | 3 | ABLATION_DISABLE_QUICK_EXIT |
@@ -90,7 +108,7 @@ These decisions have no 15m vector counterpart by construction; listed so drift 
 
 intents in window: 2 · result: NOT_IN_MAC_REGISTRY 2 · consumer files: **none (live consumer has not written data/vec_live/live_exec_*.jsonl)**
 
-execute_now gate refusals tagged VEC_DRIVEN in ez_manage logs: {'flz': {'UNKNOWN': 28, 'GOLDEN_RULE': 2}}
+execute_now gate refusals tagged VEC_DRIVEN in ez_manage logs: {'flz': {'UNKNOWN': 18, 'GOLDEN_RULE': 2}}
 
 | bar | ss | acct | type | vec reason | result |
 |---|---|---|---|---|---|
@@ -99,104 +117,48 @@ execute_now gate refusals tagged VEC_DRIVEN in ez_manage logs: {'flz': {'UNKNOWN
 
 ## Test 1 - 15m LIVE vs VECTOR, STOCKS
 
-run 2026-10-06T14:57:59+00:00 (19 min ago) · engine v12 d84863e5 · NPZ sync tail · window 24.0h from 2026-10-05T14:52Z · tol +-2 bars · 148 live keys / 129 sym_sides · 358.3 s
+run 2026-10-06T15:30:17+00:00 (0 min ago) · engine v12 d84863e5 · NPZ sync tail · window 24.0h from 2026-10-05T15:18Z · tol +-2 bars · 148 live keys / 129 sym_sides · 695.5 s
 
-**Verdict: FAIL** — FAIL 84 · PASS with decisions 2 · IDLE (no decision either side, counts as pass) 58 · NO_DATA 4 · judged on a STALE-shifted window (S1 NPZ behind live) 5
+**Verdict: FAIL** — FAIL 26 · PASS with decisions 3 · IDLE (no decision either side, counts as pass) 115 · NO_DATA 4 · judged on a STALE-shifted window (S1 NPZ behind live) 5
 
-- vector fired, live did not (VEC_ONLY): LIVE_NO_SIGNAL 50, LIVE_ALREADY_FLAT 44, LIVE_ALREADY_IN_POSITION 4
+- vector fired, live did not (VEC_ONLY): LIVE_NO_SIGNAL 47, LIVE_ALREADY_FLAT 42, LIVE_ALREADY_IN_POSITION 4
 - live fired, vector did not (LIVE_ONLY): -
 - vector replay made 0 trades in 30D for 24/129 sym_sides with the live set (engine md5 d84863e5): every live fill on those keys is LIVE_ONLY by construction — engine/set problem, not live drift. e.g. AMZN_SHORT, APA_LONG, A_LONG, BA_SHORT, BNO_LONG, BWXT_SHORT, CIBR_LONG, COHR_LONG
 - vector errors: prepare failed: ValueError: NPZ has only 19 distinct stock s 2, prepare failed: ValueError: NPZ has only 20 distinct stock s 1, prepare failed: ValueError: NPZ has only 18 distinct stock s 1
-- FAIL classes (sym_sides): STATE_MISMATCH 72, VEC_ONLY_LIVE_NO_SIGNAL 19, VEC_ONLY_STATE_CASCADE 17, NPZ_STALE 4
+- FAIL classes (sym_sides): VEC_ONLY_LIVE_NO_SIGNAL 17, VEC_ONLY_STATE_CASCADE 16, STATE_MISMATCH 6, NPZ_STALE 4
 
 ### FAIL per sym_side
 
 | key | classes | vec_only (why) | live_only (function@tf) | vec/live in pos | judged window | set |
 |---|---|---|---|---|---|---|
-| trb:VT_LONG | VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_FLAT 11, LIVE_NO_SIGNAL 10 | - | False/False | last window | trb/active_config |
-| trb:SPY_LONG | VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_NO_SIGNAL 10, LIVE_ALREADY_FLAT 10 | - | False/False | last window | trb/active_config |
+| trb:SPY_LONG | VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_NO_SIGNAL 10, LIVE_ALREADY_FLAT 10 | - | False/None | last window | trb/active_config |
+| trb:VT_LONG | VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_FLAT 10, LIVE_NO_SIGNAL 9 | - | False/None | last window | trb/active_config |
 | trb:QRVO_LONG | NPZ_STALE, STATE_MISMATCH, VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_NO_SIGNAL 4, LIVE_ALREADY_FLAT 4 | - | True/False | 2026-09-10T16:00Z..2026-09-11T16:00Z | per_sym_active_config_stocks |
-| trb:ADBE_SHORT | VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_NO_SIGNAL 4, LIVE_ALREADY_FLAT 3 | - | True/True | last window | trb/active_config |
+| trb:ADBE_SHORT | VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_NO_SIGNAL 4, LIVE_ALREADY_FLAT 3 | - | True/None | last window | trb/active_config |
 | trb:GOOGL_LONG | VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_NO_SIGNAL 4, LIVE_ALREADY_FLAT 3 | - | True/True | last window | trb/active_config |
-| trc:ADBE_SHORT | VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_IN_POSITION 4, LIVE_NO_SIGNAL 3 | - | True/True | last window | trb/active_config |
+| trc:ADBE_SHORT | VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_IN_POSITION 4, LIVE_NO_SIGNAL 3 | - | True/None | last window | trb/active_config |
 | trb:QCOM_LONG | NPZ_STALE, STATE_MISMATCH, VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_NO_SIGNAL 3, LIVE_ALREADY_FLAT 3 | - | True/False | 2026-09-10T16:00Z..2026-09-11T16:00Z | defaults(cat_side) |
-| trb:SHOP_LONG | STATE_MISMATCH, VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_NO_SIGNAL 1, LIVE_ALREADY_FLAT 1 | - | True/False | last window | defaults(cat_side) |
-| trb:UEC_SHORT | VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_NO_SIGNAL 1, LIVE_ALREADY_FLAT 1 | - | False/False | last window | trb/active_config |
-| trc:UEC_SHORT | STATE_MISMATCH, VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_NO_SIGNAL 1, LIVE_ALREADY_FLAT 1 | - | False/True | last window | trb/active_config |
-| trb:AAPL_LONG | STATE_MISMATCH, VEC_ONLY_LIVE_NO_SIGNAL | LIVE_NO_SIGNAL 1 | - | True/False | last window | trb/active_config |
-| trb:AMAT_LONG | STATE_MISMATCH, VEC_ONLY_LIVE_NO_SIGNAL | LIVE_NO_SIGNAL 1 | - | True/False | last window | defaults(cat_side) |
-| trb:AMD_LONG | VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_FLAT 1 | - | False/False | last window | trb/active_config |
-| trb:EQT_SHORT | STATE_MISMATCH, VEC_ONLY_LIVE_NO_SIGNAL | LIVE_NO_SIGNAL 1 | - | False/True | last window | trb/active_config |
-| trb:FIX_LONG | STATE_MISMATCH, VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_FLAT 1 | - | True/False | last window | defaults(cat_side) |
-| trb:GME_LONG | VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_FLAT 1 | - | False/False | last window | defaults(cat_side) |
-| trb:IBIT_LONG | STATE_MISMATCH, VEC_ONLY_LIVE_NO_SIGNAL | LIVE_NO_SIGNAL 1 | - | False/True | last window | trb/active_config |
-| trb:LEXX_SHORT | STATE_MISMATCH, VEC_ONLY_LIVE_NO_SIGNAL | LIVE_NO_SIGNAL 1 | - | True/False | last window | defaults(cat_side) |
-| trb:LMT_SHORT | STATE_MISMATCH, VEC_ONLY_LIVE_NO_SIGNAL | LIVE_NO_SIGNAL 1 | - | True/False | last window | trb/active_config |
-| trb:MSTR_LONG | VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_FLAT 1 | - | False/False | last window | trb/active_config |
-| trb:SMCI_LONG | STATE_MISMATCH, VEC_ONLY_LIVE_NO_SIGNAL | LIVE_NO_SIGNAL 1 | - | True/False | last window | defaults(cat_side) |
-| trb:STZ_SHORT | VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_FLAT 1 | - | False/False | last window | defaults(cat_side) |
+| trb:SHOP_LONG | VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_NO_SIGNAL 1, LIVE_ALREADY_FLAT 1 | - | True/None | last window | defaults(cat_side) |
+| trb:UEC_SHORT | VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_NO_SIGNAL 1, LIVE_ALREADY_FLAT 1 | - | False/None | last window | trb/active_config |
+| trc:UEC_SHORT | VEC_ONLY_LIVE_NO_SIGNAL, VEC_ONLY_STATE_CASCADE | LIVE_NO_SIGNAL 1, LIVE_ALREADY_FLAT 1 | - | False/None | last window | trb/active_config |
+| trb:AAPL_LONG | VEC_ONLY_LIVE_NO_SIGNAL | LIVE_NO_SIGNAL 1 | - | True/None | last window | trb/active_config |
+| trb:AMAT_LONG | VEC_ONLY_LIVE_NO_SIGNAL | LIVE_NO_SIGNAL 1 | - | True/None | last window | defaults(cat_side) |
+| trb:AMD_LONG | VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_FLAT 1 | - | False/None | last window | trb/active_config |
+| trb:FIX_LONG | VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_FLAT 1 | - | True/None | last window | defaults(cat_side) |
+| trb:GME_LONG | VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_FLAT 1 | - | False/None | last window | defaults(cat_side) |
+| trb:IBIT_LONG | VEC_ONLY_LIVE_NO_SIGNAL | LIVE_NO_SIGNAL 1 | - | False/None | last window | trb/active_config |
+| trb:LEXX_SHORT | VEC_ONLY_LIVE_NO_SIGNAL | LIVE_NO_SIGNAL 1 | - | True/None | last window | defaults(cat_side) |
+| trb:LMT_SHORT | VEC_ONLY_LIVE_NO_SIGNAL | LIVE_NO_SIGNAL 1 | - | True/None | last window | trb/active_config |
+| trb:MSTR_LONG | VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_FLAT 1 | - | False/None | last window | trb/active_config |
+| trb:SMCI_LONG | VEC_ONLY_LIVE_NO_SIGNAL | LIVE_NO_SIGNAL 1 | - | True/None | last window | defaults(cat_side) |
+| trb:STZ_SHORT | VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_FLAT 1 | - | False/None | last window | defaults(cat_side) |
 | trb:VICR_LONG | NPZ_STALE, VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_FLAT 1 | - | False/False | 2026-09-10T19:30Z..2026-09-11T19:30Z | defaults(cat_side) |
-| trc:EQT_SHORT | STATE_MISMATCH, VEC_ONLY_STATE_CASCADE | LIVE_ALREADY_FLAT 1 | - | False/True | last window | trb/active_config |
-| trc:IBIT_LONG | VEC_ONLY_LIVE_NO_SIGNAL | LIVE_NO_SIGNAL 1 | - | False/False | last window | trb/active_config |
-| trc:RRC_SHORT | STATE_MISMATCH, VEC_ONLY_LIVE_NO_SIGNAL | LIVE_NO_SIGNAL 1 | - | False/True | last window | trb/active_config |
-| trb:AAPL_SHORT | STATE_MISMATCH | - | - | True/False | last window | trb/active_config |
-| trb:ABT_SHORT | STATE_MISMATCH | - | - | True/False | last window | trb/active_config |
-| trb:ALKT_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:AMZN_LONG | STATE_MISMATCH | - | - | True/False | last window | trb/active_config |
-| trb:AR_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:ASML_LONG | STATE_MISMATCH | - | - | True/False | last window | trb/active_config |
-| trb:BABA_SHORT | STATE_MISMATCH | - | - | True/False | last window | trb/active_config |
-| trb:BIDU_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:BKR_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:BMNR_SHORT | STATE_MISMATCH | - | - | True/False | last window | trb/active_config |
-| trb:BWXT_SHORT | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trb:CF_SHORT | STATE_MISMATCH | - | - | True/False | last window | trb/active_config |
+| trc:IBIT_LONG | STATE_MISMATCH, VEC_ONLY_LIVE_NO_SIGNAL | LIVE_NO_SIGNAL 1 | - | False/True | last window | trb/active_config |
 | trb:COHR_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trb:COIN_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:COPX_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:CVS_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:EXEL_LONG | STATE_MISMATCH | - | - | True/False | last window | trb/active_config |
-| trb:FANG_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
 | trb:GE_SHORT | NPZ_STALE, STATE_MISMATCH | - | - | True/False | 2026-09-10T16:00Z..2026-09-11T16:00Z | defaults(cat_side) |
-| trb:GM_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:HD_SHORT | STATE_MISMATCH | - | - | True/False | last window | trb/active_config |
-| trb:LITE_LONG | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:LSCC_LONG | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:MNTS_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:MOS_SHORT | STATE_MISMATCH | - | - | True/False | last window | trb/active_config |
-| trb:MRVL_LONG | STATE_MISMATCH | - | - | True/False | last window | trb/active_config |
-| trb:MU_SHORT | STATE_MISMATCH | - | - | True/False | last window | trb/active_config |
-| trb:NFLX_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:NKE_SHORT | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trb:NOC_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:NUE_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:NXE_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:OLED_LONG | STATE_MISMATCH | - | - | True/False | last window | trb/active_config |
-| trb:PEP_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:PYPL_SHORT | STATE_MISMATCH | - | - | True/False | last window | trb/active_config |
-| trb:QQQ_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trb:RBLX_SHORT | STATE_MISMATCH | - | - | True/False | last window | trb/active_config |
-| trb:RTX_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:SBUX_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:SLB_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:SNDK_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trb:SNOW_LONG | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:TDG_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:TMO_LONG | STATE_MISMATCH | - | - | True/False | last window | trb/active_config |
-| trb:TSLA_SHORT | STATE_MISMATCH | - | - | True/False | last window | trb/active_config |
-| trb:TSM_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trb:UNH_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:UPS_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:VALE_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:VLO_LONG | STATE_MISMATCH | - | - | True/False | last window | trb/active_config |
-| trb:ZCSH_SHORT | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trb:ZETA_LONG | STATE_MISMATCH | - | - | True/False | last window | defaults(cat_side) |
-| trc:AXON_SHORT | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
-| trc:A_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
+| trc:MU_LONG | STATE_MISMATCH | - | - | False/True | last window | trb/active_config |
 
-... 4 more FAIL rows in `data/forward_parity/stocks_latest.json`
-
-PASS with activity: trb:PSX_LONG, trc:META_LONG  ·  PASS_IDLE (no decision either side): 58
+PASS with activity: trb:EXEL_LONG, trb:PSX_LONG, trc:META_LONG  ·  PASS_IDLE (no decision either side): 115
 
 NO_DATA reasons: prepare failed: ValueError: NPZ has only 19 distin 2, prepare failed: ValueError: NPZ has only 20 distin 1, prepare failed: ValueError: NPZ has only 18 distin 1
 
@@ -204,21 +166,22 @@ NO_DATA reasons: prepare failed: ValueError: NPZ has only 19 distin 2, prepare f
 
 | family | input TF | vec twin | gate switch | live attempts | live fills | vec events | matched | vec_only | live_only | status |
 |---|---|---|---|---|---|---|---|---|---|---|
-| DC_DAYTRADE_TARGET | 15m | Y | DC_DAYTRADE_ENABLED | 0 | 2 | 32 | 0 | 32 | 0 | FAIL |
+| DC_DAYTRADE_TARGET | 15m | Y | DC_DAYTRADE_ENABLED | 0 | 2 | 31 | 0 | 31 | 0 | FAIL |
 | HARDCODED_RALLY_REENTRY | 15m | Y | HARDCODED_RALLY_REENTRY_ENABLED | 0 | 0 | 15 | 0 | 15 | 0 | FAIL |
+| BROKER_SYNC | tick | N | safety (exempt) | 0 | 14 | 0 | 0 | 0 | 0 | PASS |
 | UNCLASSIFIED:B_EMASLOPE | 15m | Y | ? (switch not identified) | 0 | 0 | 13 | 0 | 13 | 0 | FAIL |
-| BROKER_SYNC | tick | N | safety (exempt) | 0 | 12 | 0 | 0 | 0 | 0 | PASS |
-| UNCLASSIFIED:B | 15m | Y | ? (switch not identified) | 0 | 0 | 9 | 0 | 9 | 0 | FAIL |
 | UNCLASSIFIED:DD_BOUNCE_STOP | 15m | Y | ? (switch not identified) | 0 | 0 | 9 | 0 | 9 | 0 | FAIL |
+| UNCLASSIFIED:B | 15m | Y | ? (switch not identified) | 0 | 0 | 8 | 0 | 8 | 0 | FAIL |
 | UNCLASSIFIED:PULLBACK_AUG | 15m | Y | ? (switch not identified) | 0 | 0 | 8 | 0 | 8 | 0 | FAIL |
-| DC_DAYTRADE_STOP | 15m | Y | DC_DAYTRADE_ENABLED | 0 | 0 | 5 | 0 | 5 | 0 | FAIL |
 | GAP_MOC | 5m | Y | ? (switch not identified) | 0 | 0 | 4 | 0 | 4 | 0 | FAIL |
 | CYCLE_TP | tick | Y | CYCLE_TP_TIERED_ENABLED | 0 | 4 | 0 | 0 | 0 | 0 | PASS |
+| UNCLASSIFIED:DC_BREAK_HIGH | 15m | N | ? (switch not identified) | 0 | 3 | 0 | 0 | 0 | 0 | PASS |
 | REENTRY_OTHER | 15m | Y | ABLATION_DISABLE_REENTRY | 0 | 2 | 1 | 0 | 1 | 0 | FAIL |
-| UNCLASSIFIED:DC_BREAK_HIGH | 15m | N | ? (switch not identified) | 0 | 2 | 0 | 0 | 0 | 0 | PASS |
+| DC_DAYTRADE_STOP | 15m | Y | DC_DAYTRADE_ENABLED | 0 | 0 | 2 | 0 | 2 | 0 | FAIL |
+| UNCLASSIFIED:SYNC_DETECTION | 15m | N | ? (switch not identified) | 0 | 2 | 0 | 0 | 0 | 0 | PASS |
 | UNCLASSIFIED:B_WT_M | 15m | Y | ? (switch not identified) | 0 | 0 | 1 | 0 | 1 | 0 | FAIL |
 | UNCLASSIFIED:UAG_LADDER | 15m | Y | ? (switch not identified) | 0 | 0 | 1 | 0 | 1 | 0 | FAIL |
-| UNCLASSIFIED:SYNC_DETECTION | 15m | N | ? (switch not identified) | 0 | 1 | 0 | 0 | 0 | 0 | PASS |
+| UNCLASSIFIED:SENT_STRAT_DIV | 15m | N | ? (switch not identified) | 0 | 1 | 0 | 0 | 0 | 0 | PASS |
 
 ## Test 2 - LIVE_ONLY functions (1m/3m/5m, tick, webhook, portfolio, no vec twin), STOCKS
 
@@ -229,7 +192,7 @@ These decisions have no 15m vector counterpart by construction; listed so drift 
 
 ## decisions -> history parity (switch intents vs live fills)
 
-`DH_20261005_20261006.json` generated 2026-10-06T15:17:02.102180+00:00 (0 min ago) · intents 259 · matched 35 · **missing 224**
+`DH_20261005_20261006.json` generated 2026-10-06T15:17:02.102180+00:00 (13 min ago) · intents 259 · matched 35 · **missing 224**
 
 matched/intents per account: fin 4/9, men 8/37, ang 14/27, inf 0/0 (no decision file), flz 9/10, trb 0/100, trc 0/76
 
@@ -267,7 +230,7 @@ Gap classes: NUKE_STALE_MAKER_ORDER = maker exit rested >60 s and was cancelled 
 
 ## Exit-engine gate parity (execute_now, all exits)
 
-generated 2026-10-06T15:00:06.462814+00:00 (17 min ago) · lookback 48.0h · exit rows 5753 · **LEAKS 2913** · gate ON 1724 · UNGATED 1035 · safety 4 · unmapped 0
+generated 2026-10-06T15:00:06.462814+00:00 (30 min ago) · lookback 48.0h · exit rows 5753 · **LEAKS 2913** · gate ON 1724 · UNGATED 1035 · safety 4 · unmapped 0
 
 LEAKS (gate OFF for that sym_side yet fired): QUICK_OPEN_STRONG 2911, WT_DC_ENTRY (WT_DC_ENTRY_ENABLED=False) 2
 
