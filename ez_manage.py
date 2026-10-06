@@ -1424,23 +1424,7 @@ def check_entry_vetting(
     # mode 3: auto-pass (skip both pre-check and trigger gate below)
     if _ev_mode != 3 and not trigger:
         return False, "NO_TRIGGER"
-    # TWIN_VEC_SPECIAL H5: T55 RSI entry-gate crypto-live port (mirror of stocks tradier_manage.py:27835-27860/28185-28205). ONLY if RSI data exists. config.py has no RSI_ENTRY_* fields — getattr defaults used, no config edit needed.
-    _rsi_period = int(getattr(config, 'RSI_ENTRY_PERIOD_TRADIER', 10))
-    _rsi_val = indicators.get(f'rsi_{_rsi_period}_D', indicators.get('rsi_D', indicators.get('rsi_1h', indicators.get('rsi_15m', None))))
-    # 2026-10-06 director (parity lane B): RSI_ENTRY_VETO_ENABLED master (default True = unchanged); per-sym > cat_side > global via _psym_cs_get when symbol/side known, else per-sym ctx proxy. Vec twin: vec_decisions/entry_vet_rsi_t55.py (same switch).
-    _rsi_veto_raw = getattr(config, 'RSI_ENTRY_VETO_ENABLED', True)
-    if symbol and side:
-        try:
-            _rsi_veto_raw = _psym_cs_get(symbol, side, 'RSI_ENTRY_VETO_ENABLED', _rsi_veto_raw)
-        except Exception:
-            pass
-    _rsi_veto_on = (_rsi_veto_raw.strip().lower() in ('true', '1', 'yes')) if isinstance(_rsi_veto_raw, str) else bool(_rsi_veto_raw)
-    if _rsi_val is not None and _rsi_veto_on:
-        _rsi_val = float(_rsi_val or 50)
-        if is_long and _rsi_val > float(getattr(config, 'RSI_ENTRY_LONG_TRADIER', 42.0)):
-            return False, "RSI_T55_BLOCK_LONG"
-        if (not is_long) and _rsi_val < float(getattr(config, 'RSI_ENTRY_SHORT_TRADIER', 58.0)):
-            return False, "RSI_T55_BLOCK_SHORT"
+    # 2026-10-06 USER: the H5 daily-RSI entry veto (RSI_T55_BLOCK_*, RSI_ENTRY_VETO_ENABLED) was never approved -> removed (audit data/parity/rsi_veto_audit_20261006.md)
         # CRYPTO HEMISPHERE — wire 1613 missing config.py switches (BATCH1 pattern adx_1h/wt1_15m) — 2026-09-07
     try:
         _adx_miss = _sf(indicators.get('adx_1h'), 20.0)
@@ -7998,6 +7982,14 @@ def _vec_exact_families() -> set:
         return set()
 
 
+def _vx_native_off() -> bool:
+    """2026-10-06 switch-over: True while PARITY_VEC_EXACT_MODE twins ENTRY -> every native opener/augmenter/reentry/hedge/rebalance producer stays off at its source."""
+    try:
+        return _vec_exact_mode_on() and "ENTRY" in _vec_exact_families()
+    except Exception:
+        return False
+
+
 def _vec_decided_reason_ok(reason) -> bool:
     """2026-10-06 director: an order decided by the vec engine — in-script twin (|VEC_EXACT, master on) or X3 VEC_DRIVEN_* intent.
     execute_trade_action's ENTRY_VET and DELTA engine gate never refuse these (hard safety unchanged)."""
@@ -9063,6 +9055,8 @@ async def handle_market_index_spike(
     trade_manager, market_index: float, previous_index: float
 ):
     """Handle market index spike: queue longs, reduce shorts"""
+    if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+        return None
     global logger
     SPIKE_THRESHOLD = 4.0
     if previous_index is None or (market_index - previous_index) < SPIKE_THRESHOLD:
@@ -9175,6 +9169,8 @@ async def handle_market_index_drop(
     trade_manager, market_index: float, previous_index: float
 ):
     """Handle market index drop: reduce longs, queue shorts"""
+    if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+        return None
     global logger
     DROP_THRESHOLD = -11.0
     CRASH_LEVEL = (
@@ -18219,6 +18215,9 @@ class MultiAccountTradeManager:
             pass
         poll_s = float(getattr(config, "INTERVENTION_QUEUE_POLL_S", 3.0))
         while True:
+            if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+                await asyncio.sleep(30)
+                continue
             try:
                 accounts_iter = list(getattr(self, "accounts", {}) or {})
                 for account_key in accounts_iter:
@@ -24537,6 +24536,9 @@ class MultiAccountTradeManager:
         except Exception:
             _pos = 0
         while True:
+            if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+                await asyncio.sleep(30)
+                continue
             try:
                 if _imp_file.exists():
                     sz = _imp_file.stat().st_size
@@ -28297,7 +28299,7 @@ class MultiAccountTradeManager:
             else config.MAX_ORDER_VALUE
         )
         # REAL POSITION PROTECTION: REENTRY restoring a real reported position bypasses caps
-        _is_reentry_bypass = "REENTRY" in (action or "").upper() or "REENTRY" in (reason or "").upper()
+        _is_reentry_bypass = ("REENTRY" in (action or "").upper() or "REENTRY" in (reason or "").upper()) and not _vec_exact_reason_ok(reason)  # 2026-10-06 live guardian: a vec-decided order (|VEC_EXACT, e.g. HARDCODED_RALLY_REENTRY) is never grandfathered past MAX_ORDER_VALUE / MAX_POSITION_SIZE
         if _is_reentry_bypass:
             logger.warning(f"[REENTRY_GRANDFATHERED] {position_key}: bypass MAX_ORDER_VALUE ${max_order_value_usd:.0f} / MAX_POSITION_SIZE ${get_max_position_size(symbol, account_key=account_key):.0f} — restoring ${quantity * current_price:.0f} on bounce (prior max {float(getattr(position, 'max_quantity',0) or 0):.4f})")
         if not _is_reentry_bypass and quantity * current_price > max_order_value_usd:
@@ -30644,8 +30646,8 @@ class MultiAccountTradeManager:
                         return "BLOCKED_VEC_DRIVEN_NATIVE_SUPPRESSED"
                 # USER 2026-10-06 PARITY: only vectorized trades open/increase positions on EVERY key; native exits still manage existing positions
                 elif bool(getattr(_ezm_base_config, "VEC_DRIVEN_NATIVE_ENTRY_BLOCK_ALL", True)) and not _vdm_en.is_vec_driven_reason(reason) and not _broker_sync_is_exit(action) and not _vec_exact_reason_ok(reason):
-                    logger.warning(f"⛔ [VEC_ONLY_ENTRY_BLOCK] {position_key} action={action} reason={(reason or '')[:80]} — native position increase refused (only VEC_DRIVEN trades open)")
-                    return "BLOCKED_VEC_ONLY_ENTRY"
+                    logger.warning(f"⛔ [NATIVE_ENTRY_BLOCK_VEC_DRIVEN] {position_key} action={action} reason={(reason or '')[:80]} — native position increase refused (only VEC_DRIVEN trades open)")
+                    return "BLOCKED_NATIVE_ENTRY_VEC_DRIVEN"
             except Exception as _vd_e:
                 logger.warning(f"[VEC_DRIVEN] {position_key}: gate error {_vd_e} (no exemption)")
         # parity-loop-crypto 2026-10-06: in-script vec twin orders (PARITY_VEC_EXACT_MODE) share the vec-decided exemption set
@@ -30990,7 +30992,7 @@ class MultiAccountTradeManager:
                             return f"BLOCKED_WICK_REJECT_ENTRY_{position_side}"
         except Exception as _tede:
             logger.warning(f"[TWIN_EXITS_DEAD entry gates] check error (fail-open): {_tede}")
-        # ═══ LANE-A 2026-10-04 crypto fresh-OPEN live twins (TOP10 VEC_ONLY w/ template rows; all default OFF) ═══
+        # ═══ LANE-A 2026-10-04 crypto fresh-OPEN live twins (TOP10 then vector-only w/ template rows; all default OFF) ═══
         # Twins of v12_quick_engine.compute_entry_signals reads: WT_DC_ENTRY_THRESHOLD (:9436), WT_DC_DC_POS_THRESHOLD_LONG/SHORT (:9325/9326),
         # WT_DC_HTF_GATE (:9352), TF_HTF1/TF_HTF3 (:9062/9063), ENTRY_SCORE_THRESHOLD (:9453), EMA_9_21_FILTER_FILTER_TF (:9620),
         # WT_DC_DIRECT_THRESHOLD (vec_decisions/wirec_entry_tf.py:97). Missing live data = skip (fail-open). Fresh OPEN only.
@@ -31106,7 +31108,7 @@ class MultiAccountTradeManager:
                         return f"BLOCKED_WT_EXIT_MIN_TFS_{position_side}"
         except Exception as _laxe:
             logger.warning(f"[LANE-A exit twin] check error (fail-open): {_laxe}")
-        # ═══ LANE-A2 2026-10-04 crypto fresh-OPEN live twins wave-2 (NEXT10 VEC_ONLY w/ template rows; all default OFF) ═══
+        # ═══ LANE-A2 2026-10-04 crypto fresh-OPEN live twins wave-2 (NEXT10 then vector-only w/ template rows; all default OFF) ═══
         # Twins of v12_quick_engine reads: TF_FOCUS_WEIGHT (:8759 1h&4h WT-aligned score bonus -> twin requires the alignment),
         # TF_ALIGNMENT_MIN_TOTAL (:9264 tf_cnt>=need over 1h/4h/D), STRENGTH_MIN_SCORE (:9162 score floor via live entry_score proxy),
         # K3M_FLOOR (:9010 LONG k<100-floor / SHORT k>floor), DC_POSITION_ENTRY_THRESHOLD (:8675 B_DAYTRADE dc_pos_15m zone),
@@ -31245,7 +31247,7 @@ class MultiAccountTradeManager:
                             return f"BLOCKED_HTF_MIN_ALIGNED_{position_side}"
         except Exception as _lb2e:
             logger.warning(f"[LANE-A2 entry twins] check error (fail-open): {_lb2e}")
-        # ═══ LANE-A3 2026-10-04 crypto fresh-OPEN live twins wave-3 (NEXT VEC_ONLY w/ template rows; all default OFF) ═══
+        # ═══ LANE-A3 2026-10-04 crypto fresh-OPEN live twins wave-3 (NEXT then vector-only w/ template rows; all default OFF) ═══
         # Twins of v12_quick_engine reads in DIRECT _psym_get shape (scanner-enforced; no lambda wrapper):
         # ENTRY_ZONE_LONG/SHORT (:9824/9825 stoch_k_1h zone block), D_TREND_REQUIRED (:9072 D ha aligned-or-neutral leg),
         # HTF_ALIGNMENT_ENABLED (:9061 master: htf_cnt>=HTF_MIN_ALIGNED over 1h/HTF1/HTF3, + D leg if D_TREND_REQUIRED).
@@ -34478,7 +34480,7 @@ class MultiAccountTradeManager:
             # A downturn exit saves them; bounce reentry must restore SAME value or more,
             # NOT restricted by MAX_ORDER / MAX_POSITION if they existed before.
             # Grandfathered reentry (flat→restore) bypasses caps up to prior max_quantity.
-            _grandfathered_reentry = bool(_is_reentry_exec)
+            _grandfathered_reentry = bool(_is_reentry_exec) and not _vec_exact_reason_ok(reason)  # 2026-10-06: vec-decided orders never bypass the caps
             if _grandfathered_reentry:
                 try:
                     _prior_max = float(getattr(position, "max_quantity", 0) or 0) if position else 0
@@ -34503,6 +34505,20 @@ class MultiAccountTradeManager:
                 current_notional + (quantity * current_price) > max_pos_size_usd
             ):
                 logger.warning(f"[REENTRY_GRANDFATHERED] {position_key}: bypass MAX_POSITION_SIZE ${max_pos_size_usd:.0f} — restoring ${current_notional + quantity * current_price:.0f} on bounce")
+            # 2026-10-06 live guardian (men:ZROUSDT_LONG $28 vec OPEN -> ~$868, EDUUSDT_LONG $110 -> $330): FINAL hard cap for vec-decided entries,
+            # applied AFTER every live multiplier (LS_REBALANCE, DC_POS_SIZE, BREAKOUT_SIZE_LADDER, INF_7D_BOOST): order value <= MAX_ORDER_VALUE and
+            # position notional <= MAX_POSITION_SIZE for OPEN as well as AUGMENT. Live sizing stays (USER); only the account caps bind. Exits untouched.
+            if _vec_exact_reason_ok(reason) and not is_reduce and quantity and quantity > 0 and current_price and current_price > 0:
+                _vxc_q0 = quantity
+                if quantity * current_price > max_order_value_usd:
+                    quantity = max_order_value_usd / current_price
+                if current_notional + quantity * current_price > max_pos_size_usd:
+                    quantity = max(0.0, (max_pos_size_usd - current_notional) / current_price)
+                if quantity != _vxc_q0:
+                    logger.warning(f"[VEC_EXACT_HARD_CAP] {position_key}: qty {_vxc_q0:.6f} (${_vxc_q0 * current_price:.2f}) -> {quantity:.6f} (${quantity * current_price:.2f}) MAX_ORDER_VALUE=${max_order_value_usd:.0f} MAX_POSITION_SIZE=${max_pos_size_usd:.0f} current=${current_notional:.2f}")
+                if quantity * current_price < float(getattr(config, "MIN_POSITION_SIZE", 0.0) or 0.0) * 0.5 and current_notional > 0:
+                    logger.warning(f"[VEC_EXACT_HARD_CAP] {position_key}: position already at MAX_POSITION_SIZE (${current_notional:.2f}) -> no order")
+                    return "BLOCKED_VEC_EXACT_POSITION_AT_CAP"
             pos_min_qty = max(
                 config.MIN_POSITION_SIZE / current_price,
                 self.min_qty.get(symbol, 0.0001),
@@ -35593,6 +35609,9 @@ class MultiAccountTradeManager:
         _req_dir = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "cross_account_hedge_requests"
         logger.critical(f"[CROSS_ACCT_SCAN] Started scanner for {account_key}")
         while not stop_event.is_set():
+            if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+                await asyncio.sleep(30)
+                continue
             try:
                 await asyncio.sleep(10)
                 if not _req_dir.exists():
@@ -36615,6 +36634,9 @@ class MultiAccountTradeManager:
         _scan_cd = 0
         _STATES = ("WATCHING", "RIDING_UP", "HEDGED", "RIDING_DUMP", "COOLDOWN")
         while True:
+            if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+                await asyncio.sleep(30)
+                continue
             try:
                 await asyncio.sleep(
                     getattr(config, "MOMENTUM_RIDER_SCAN_INTERVAL", 10.0)
@@ -37809,6 +37831,9 @@ class MultiAccountTradeManager:
         REENTRY_COOLDOWN = float(getattr(config, "REENTRY_COOLDOWN_S", 0.0))
         REENTRY_CRASH_TIMEOUT_SEC = 300.0
         while True:
+            if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+                await asyncio.sleep(30)
+                continue
             try:
                 await asyncio.sleep(15.0)
                 if not getattr(config, "REENTRY_MANDATORY", True):
@@ -38370,6 +38395,9 @@ class MultiAccountTradeManager:
             return int(getattr(config, key, default))
 
         while True:
+            if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+                await asyncio.sleep(30)
+                continue
             try:
                 await asyncio.sleep(30.0)
                 if not self.positions_service:
@@ -43640,6 +43668,8 @@ async def process_single_reentry_evaluation(
     trade_manager, position_key, reentry_data, config
 ):
     """Process a single position for reentry evaluation - extracted for parallel processing"""
+    if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+        return f"{EvalStatus.NO_ACTION}:VEC_EXACT_NATIVE_OFF"
     _psym_tok_re = None
     try:
         ak_re, sym_re, side_re = parse_position_key(position_key)
@@ -45850,6 +45880,8 @@ async def _parity_flat_open_check(trade_manager, position_key: str, position, or
     - CRYPTO_REENTRY_PATHWAYS_ENABLED: vec HTF_WT_CHURN / TARGET-DC+SELL_TOP recross / HARDCODED_RALLY / REENTRY_MANDATORY
       (live_twins/vec_reentry.py) on the last exit in trade_manager.reentry_data -> queue_trade_action REENTRY (reason
       CRYPTO_REENTRY_PATHWAY_*, admitted by STRICT_VEC_PARITY only while the switch is on). All execute_now gates apply."""
+    if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+        return None
     try:
         _sym_p, _side_p, _get_p, _w15, _bbt, _vr = _parity_flat_open_switches(position_key)
         if not (_w15 or _bbt or _vr):
@@ -45899,6 +45931,8 @@ async def _process_single_override_check(
     now_ts: float,
     config,
 ):
+    if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+        return "SKIPPED_VEC_EXACT_NATIVE_OFF"
     if position_key not in trade_manager.tradeable_keys:
         return
     try:
@@ -47179,6 +47213,8 @@ async def _process_single_override_check(
 async def override_check_uptrend_positions(
     trade_manager: MultiAccountTradeManager, account_key: Optional[str] = None
 ):
+    if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+        return None
     if not account_key:
         return
     global _override_check_counter
@@ -47533,6 +47569,8 @@ async def _process_single_monitor_direct_high_gain(
     direct_high_gain_dict: dict,
     now: datetime,
 ):
+    if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+        return f"{EvalStatus.NO_ACTION}:VEC_EXACT_NATIVE_OFF"
     tradeable_keys = await trade_manager.load_tradeable()
     if position_key not in tradeable_keys:
         return
@@ -58129,6 +58167,8 @@ async def _price_level_reentry_monitor(trade_manager: MultiAccountTradeManager) 
     guaranteed partial REENTRY via execute_now when price crosses any uncrossed level.
     No stoch gate — partial is always guaranteed. Zero-amount entries fall back to
     START_POSITION_SIZE. Deduplicates via _reentry_monitor_fired cache."""
+    if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+        return None
     cfg = getattr(trade_manager, "config", config)
     if not getattr(cfg, "REENTRY_LIVE_MONITOR_ENABLED", True):
         return
@@ -60876,6 +60916,8 @@ async def main():
                     )
                     async for message in pubsub.listen():
                         if message["type"] != "message":
+                            continue
+                        if _vx_native_off():  # 2026-10-06 switch-over: copilot reversal/augment commands are native producers -> off while the vec twin owns ENTRY
                             continue
                         try:
                             data = json.loads(message["data"])

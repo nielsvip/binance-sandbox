@@ -3035,6 +3035,12 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     "avgPrice": str(px), "executedQty": str(qty)}
         def futures_cancel_order(self, **kw):
             return {"status": "CANCELED"}
+        # 2026-10-06 parity lane A: order_dedupe_guard (live, every order) asks the broker for open orders / order state; the
+        # stub fills immediately, so nothing is ever open and every placed order is FILLED (was BROKER_UNREACHABLE_OPEN_ORDERS).
+        def futures_get_open_orders(self, **kw):
+            return []
+        def futures_get_order(self, **kw):
+            return {"status": "FILLED", "orderId": kw.get("orderId"), "clientOrderId": kw.get("origClientOrderId"), "executedQty": "0"}
         def futures_countdown_cancel_all(self, **kw):
             return {}
         def futures_symbol_ticker(self, **kw):
@@ -8479,6 +8485,39 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         async def _v12_settled_cash(_acct, *a, **kw):
             return float(os.environ.get("V12_SIM_SETTLED_CASH", "1e12"))
         manager._get_settled_cash_from_broker = _v12_settled_cash
+
+        # real tradier execute_now builds fresh TradierAPIClient()s (order_dedupe_guard preflight via factory, settled cash,
+        # wrap_tradier_client): broker I/O. Sim broker: connects, has no open orders, every order lookup is filled.
+        class _V12SimTradierClient:
+            def __init__(self, *a, **kw):
+                self.account_key = kw.get("account_key") or (a[1] if len(a) > 1 else account_key)
+                self._current_id = "SIM"
+
+            async def connect(self, *a, **kw):
+                return True
+
+            async def close(self, *a, **kw):
+                return None
+
+            async def _request(self, method, path, *a, **kw):
+                if str(path).rstrip("/").endswith("/orders"):
+                    return {"orders": "null"}
+                if "/orders/" in str(path):
+                    return {"order": {"id": str(path).rsplit("/", 1)[-1], "status": "filled"}}
+                return {}
+
+            async def get_orders(self, *a, **kw):
+                return []
+
+            async def get_account_balances(self, *a, **kw):
+                _c = float(os.environ.get("V12_SIM_SETTLED_CASH", "1e12"))
+                return {"total_equity": _c, "buying_power": _c, "cash": {"cash_available": _c}, "settled_cash": _c}
+
+            def __getattr__(self, name):
+                async def _noop(*a, **kw):
+                    return None
+                return _noop
+        tm_mod.TradierAPIClient = _V12SimTradierClient
         # GFV tracker: per-run, in-memory (the live one persists data/gfv_tracker.json — shared by concurrent replays and
         # by earlier runs) and on the SIM clock (tradier_manage `datetime` -> sim), so T+1 settlement follows sim days.
         try:
@@ -17674,6 +17713,11 @@ def _enable_npz_parity() -> None:
 
 
 def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=None):
+    # parity lane A: the live order_dedupe_guard ledger lives in <BASE_PATH>/data/safety/order_ledger and would be shared by
+    # concurrent replays (same symbol, 30D + 90D) -> per-process ledger dir unless the caller set one.
+    if not os.environ.get("ORDER_DEDUPE_LEDGER_DIR"):
+        import tempfile as _tf_odg
+        os.environ["ORDER_DEDUPE_LEDGER_DIR"] = _tf_odg.mkdtemp(prefix="v12_order_ledger_")
     """Contract used by tools/opt/run_pipeline.py — same metric names as v12.
 
     Drives the live call path for ONE config. Slow by design: this is the

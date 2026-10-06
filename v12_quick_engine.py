@@ -2555,7 +2555,6 @@ AUTO_WIRED_PARAMS = [
     'RSI_ENTRY_MIN_SHORT',
     'RSI_ENTRY_PERIOD_TRADIER',
     'RSI_ENTRY_SHORT_TRADIER',
-    'RSI_ENTRY_VETO_ENABLED',
     'RSI_EXIT_LONG_TRADIER',
     'RSI_EXIT_SHORT_TRADIER',
     'RSI_MACD_EMA_ENABLED',
@@ -4300,10 +4299,9 @@ class QuickConfig:
     RSI_ENTRY_GATE_ENABLED: bool = False
     RSI_ENTRY_MAX_LONG: float = 37.0
     RSI_ENTRY_MIN_SHORT: float = 63.0
-    RSI_ENTRY_LONG_TRADIER: float = 40.0  # §17 live parity: config.py + TradierConfig 40.0 — vec twin vec_decisions/entry_vet_rsi_t55.py (cut#6)
-    RSI_ENTRY_SHORT_TRADIER: float = 58.0  # §17 live parity: config.py + TradierConfig 58.0 — vec twin vec_decisions/entry_vet_rsi_t55.py (cut#6)
-    RSI_ENTRY_PERIOD_TRADIER: int = 10  # §17 live parity: config.py + TradierConfig 10 — vec twin vec_decisions/entry_vet_rsi_t55.py (cut#6)
-    RSI_ENTRY_VETO_ENABLED: bool = False  # 2026-10-06 USER: never approved -> default OFF (live config.py + TEMPLATE bold False). lane-D 2026-10-06 master for vec_decisions/entry_vet_rsi_t55 (both call sites); True = live check_entry_vetting RSI veto (lane B mirrors in config.py)
+    RSI_ENTRY_LONG_TRADIER: float = 40.0  # §17 live parity: config.py + TradierConfig 40.0 — stocks RSI entry thresholds
+    RSI_ENTRY_SHORT_TRADIER: float = 58.0  # §17 live parity: config.py + TradierConfig 58.0 — stocks RSI entry thresholds
+    RSI_ENTRY_PERIOD_TRADIER: int = 10  # §17 live parity: config.py + TradierConfig 10 — stocks RSI entry thresholds
     MFI_ENTRY_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)
     MFI_ENTRY_LONG_MAX: float = 60.0
     MFI_ENTRY_SHORT_MIN: float = 40.0
@@ -11846,7 +11844,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     exit_sig = compute_exit_signals(npz, n, is_long, cfg)
     # TWIN_VEC_SPECIAL H1: pre-loop masks — DC breakout OR-entry (live ez_positions_quick.py:4555), R3 OR-exit (live ez_manage.py:48824). R3 stocks newborn/R1 guards need loop state (twin kw); pre-loop mask is the core flip.
     # cut#5: RSI T55 AND-gate REMOVED — live side dead (tradier touches only, cited lines rotted); it zeroed BTC LONG/ETH/MU (gate proof). Re-add only with functional live gate.
-    # cut#6 (2026-10-06): RE-ADDED as vec_decisions/entry_vet_rsi_t55.py — cut#5 premise REFUTED by S1 parity leg-1: live crypto gate IS functional
+    # 2026-10-06 USER: the RSI-T55 veto twin (vec_decisions/entry_vet_rsi_t55.py) is REMOVED (never approved). History: cut#6 had re-added it — cut#5 premise REFUTED by S1 parity leg-1: live crypto gate IS functional
     # (ez_manage.check_entry_vetting:1426-1434, enforced per-open :26075-26087); honest recount blocks 2647 bars RSI_T55_BLOCK_LONG. "Zeroed BTC LONG" was live parity, not a bug.
     _tvs_churn_ok = None
     try:
@@ -12423,7 +12421,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _ec_choke_block = None
     try:
         import vec_decisions.entry_vet_gate as _evg_c
-        import vec_decisions.entry_vet_rsi_t55 as _evrsi_c
         import vec_decisions.stdev_macro_entry as _sme_c
         import vec_decisions.wt_div_entry_gate as _wdv_c
         _ec_cands = []
@@ -12431,9 +12428,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _ev_c = _evg_c.vet_pass_mask(npz, n, is_long, cfg, close, _safe)
             if _ev_c is not None:
                 _ec_cands.append(~np.asarray(_ev_c, dtype=bool))
-            _evrsi_c_m = _evrsi_c.rsi_block_mask(npz, n, is_long, cfg, _safe)
-            if _evrsi_c_m is not None:
-                _ec_cands.append(np.asarray(_evrsi_c_m, dtype=bool))
         _sm_c = _sme_c.entry_veto_mask(npz, n, is_long, cfg, _safe)
         if _sm_c is not None:
             _ec_cands.append(np.asarray(_sm_c, dtype=bool))
@@ -12544,7 +12538,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # where ema_50_15m>0 and px>0 (live guard). Crypto config.py default True (fixes a live>vec parity
     # gap); config_tradier default False (stocks inert until swept). No arbitrary proxy — real EMA50.
     try:
-        if bool(getattr(cfg, 'EMA50_15M_ENTRY_FILTER_ENABLED', False)):  # BIBLE 68.1 2026-10-06: stocks = ONE switch (EMA50_15M_ENTRY_FILTER_ENABLED) exactly like live tradier_manage ema50_block; *_VEC_ONLY_* ignored for tradier (crypto side: crypto loop)
+        if bool(getattr(cfg, 'EMA50_15M_ENTRY_FILTER_ENABLED', False)):  # BIBLE 68.1 2026-10-06: stocks = ONE switch (EMA50_15M_ENTRY_FILTER_ENABLED) exactly like live tradier_manage ema50_block; the old split construct is gone (crypto side: crypto loop)
             _ema50_15m = _safe(npz, 'ema_50_15m', n, 0.0)
             _ema_filter_pct = float(getattr(cfg, 'EMA50_15M_ENTRY_FILTER_PCT', 0.0) or 0.0) / 100.0
             _ema_valid = (_ema50_15m > 0) & (close > 0)

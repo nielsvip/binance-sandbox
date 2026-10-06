@@ -2858,11 +2858,45 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             return
         print(f"[DIAG] {new_symside} start mode={mode} budget={budget:.0f}s candidates={len(cands)} workers={_n_proc}", flush=True)
         _touch("diag-start")
-        rep = _DR.run({"defaults": defaults, "sanitize": lambda ov: sanitize_overrides(ov, defaults)[0], "same_val": _same_val,
-                       "candidates": cands, "base_overrides": origin, "base_res": base_res, "bh": bh, "deadline": t0 + budget, "cat_side": map_key_for_symside(new_symside),
-                       "eval_many": _eval_many, "eval_ledger": _eval_ledger, "eval_365": _eval_365, "qualifies_365": _qualifies_365d,
-                       "eval_many_ledger": _eval_many_ledger if os.environ.get("V15_DIAG_AUTOPSY", "1") == "1" else None, "close": _close, "npz": _npzp, "is_long": new_symside.endswith("_LONG"),
-                       "log": lambda m: print(f"{m} [{new_symside}]", flush=True), "touch": _touch})
+        _dr_ctx = {"defaults": defaults, "sanitize": lambda ov: sanitize_overrides(ov, defaults)[0], "same_val": _same_val,
+                   "candidates": cands, "base_overrides": origin, "base_res": base_res, "bh": bh, "deadline": t0 + budget, "cat_side": map_key_for_symside(new_symside),
+                   "eval_many": _eval_many, "eval_ledger": _eval_ledger, "eval_365": _eval_365, "qualifies_365": _qualifies_365d,
+                   "eval_many_ledger": _eval_many_ledger if os.environ.get("V15_DIAG_AUTOPSY", "1") == "1" else None, "close": _close, "npz": _npzp, "is_long": new_symside.endswith("_LONG"),
+                   "log": lambda m: print(f"{m} [{new_symside}]", flush=True), "touch": _touch}
+        rep = _DR.run(_dr_ctx)
+        # ENCYCLOPEDIA v2 GRAPH SEARCH (tools/v15_graph_search.py, director 2026-10-06): group ablation + graph-guided fault paths +
+        # dual-window (30D+365D) judge, continuing from the DIAGNOSE+REPAIR choice. DEFAULT OFF until the director approves
+        # (V15_GRAPH_SEARCH=1 enables; V15_GRAPH_SEARCH_S budget, default 600 s, clipped to the 90-min herd cap).
+        if os.environ.get("V15_GRAPH_SEARCH", "0") == "1":
+            try:
+                from tools import v15_graph_search as _GS
+                gs_budget = min(float(os.environ.get("V15_GRAPH_SEARCH_S", "600")), 5400.0 - (_t.time() - _PILOT_T0) - 900.0)
+                gs_origin = dict(rep.get("best_overrides") or origin)
+                if gs_budget < 120:
+                    rep["graph_search"] = {"skipped": f"budget {gs_budget:.0f}s"}
+                else:
+                    gs_res, gs_err = _get("DIAGNOSE_REPAIR", None, "GS_BASE", "", "GS_BASE", sanitize_overrides(gs_origin, defaults)[0], _t.time() + 60.0, float(cumulative_gain))
+                    if gs_res is None:
+                        rep["graph_search"] = {"skipped": f"base eval {gs_err}"}
+                    else:
+                        _touch("gs-start")
+                        gsr = _GS.run({**_dr_ctx, "candidates": [dict(c) for c in cands], "base_overrides": gs_origin, "base_res": gs_res, "deadline": _t.time() + gs_budget,
+                                       "graph": _GS.load_graph(map_key_for_symside(new_symside))})
+                        rep["graph_search"] = {k: gsr.get(k) for k in ("accepted", "accept_reason", "before", "after", "after_365", "q365_after", "changes", "faults_before", "steps", "macro", "iterations", "n_evals", "n_evals_365", "secs")}
+                        rep["graph_search"]["ablation_top"] = (gsr.get("ablation") or [])[:40]
+                        if gsr.get("accepted"):
+                            best_gs = dict(gsr["best_overrides"])
+                            rep["accepted"] = True
+                            rep["best_overrides"] = best_gs
+                            rep["after"] = gsr["after"]
+                            rep["changes"] = sorted(k for k in set(best_gs) | set(origin) if not _same_val(best_gs.get(k, defaults.get(k)), origin.get(k, defaults.get(k))))
+                            rep["accept_reason"] = f"{rep.get('accept_reason')} + graph_search {gsr.get('accept_reason')}"
+                            rep.setdefault("steps", []).extend([{**s_, "phase": f"GS_{s_.get('phase')}", "round": s_.get("round", 0), "tab": s_.get("tab", ""), "row": None} for s_ in gsr.get("steps", [])])
+                        print(f"[GS] {new_symside} graph search accepted={gsr.get('accepted')} gain {(gsr.get('before') or {}).get('gain')} -> {(gsr.get('after') or {}).get('gain')} q365={gsr.get('q365_after')} ({gsr.get('secs')}s)", flush=True)
+            except Exception as _gse:
+                import traceback as _tb_gs
+                rep["graph_search"] = {"error": str(_gse)[:300]}
+                print(f"[GS-warn] {new_symside}: {_gse}\n{_tb_gs.format_exc()[-1200:]}", flush=True)
         _span.pop("prep", None)  # release the 365D slice before DONE (OOM history, see pool release below)
         best = dict(rep.get("best_overrides") or origin)
         applied = False
@@ -2949,6 +2983,21 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _row(["MISSING FUNCTIONS", "rule"], True)
                 for m_ in rep.get("missing_functions", []):
                     _row([m_["feature"], m_["rule"]])
+            if isinstance(rep.get("graph_search"), dict) and rep["graph_search"].get("before"):
+                gsr_ = rep["graph_search"]
+                _row([])
+                _row(["GRAPH SEARCH (ENCYCLOPEDIA v2)", f"accepted={gsr_.get('accepted')}", gsr_.get("accept_reason"), f"evals={gsr_.get('n_evals')}+{gsr_.get('n_evals_365')}x365D", f"secs={gsr_.get('secs')}", f"faults={','.join(gsr_.get('faults_before') or [])}"], True)
+                _row(["GS STEPS", "applied", "gain_30d", "trades", "tim", "dd", "gain_365d", "dd_365d", "q365"], True)
+                for s_ in gsr_.get("steps") or []:
+                    _row([s_.get("phase"), s_.get("applied"), s_.get("gain"), s_.get("trades"), s_.get("tim"), s_.get("dd"), s_.get("gain_365"), s_.get("dd_365"), s_.get("q365")])
+                _row(["GS FAULT PATHS", "openers", "relaxed", "opened_gain", "opened_trades", "final_gain", "final_trades", "accepted"], True)
+                for m_ in gsr_.get("macro") or []:
+                    _row([m_.get("fault"), "; ".join(m_.get("openers") or [m_.get("status", "")]), ", ".join(m_.get("relaxed") or [])[:400], m_.get("opened_gain"), m_.get("opened_trades"), m_.get("final_gain"), m_.get("final_trades"), m_.get("accepted")])
+                _row(["GS GROUP ABLATION (removal on the start set)", "mode", "n_changed", "d_gain", "d_trades", "d_tim", "d_dd", "d_gain_365d", "q365"], True)
+                for a_ in gsr_.get("ablation_top") or []:
+                    d_ = a_.get("d") or {}
+                    d3_ = a_.get("d365") or {}
+                    _row([a_.get("group"), a_.get("mode"), a_.get("n_changed"), d_.get("gain"), d_.get("trades"), d_.get("tim"), d_.get("dd"), d3_.get("gain"), d3_.get("q365")])
             _row([])
             _row(["LEVER MAP vs final set (screen 0)", "tab", "row", "cand", "d_gain", "d_trades", "d_tim", "d_dd", "valid", "blocked"], True)
             for lm in sorted(rep.get("lever_map", []), key=lambda x: -((x.get("d") or {}).get("gain") or -1e9)):
@@ -2981,6 +3030,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         except Exception as _jw:
             print(f"[DIAG-warn] report json: {_jw}", flush=True)
         progress["diagnose_repair"] = {k: rep.get(k) for k in ("accepted", "accept_reason", "before", "after", "changes", "diagnosis_before", "diagnosis_after", "liveness", "gaps", "n_evals", "secs", "c_unplaced", "adopt_refused", "autopsy", "missing_functions")}
+        if rep.get("graph_search"):
+            progress["diagnose_repair"]["graph_search"] = {k: v for k, v in rep["graph_search"].items() if k not in ("steps", "ablation_top", "macro")}
         progress["diagnose_repair"]["row_recommendations_top"] = (rep.get("row_recommendations") or [])[:25]
         progress["diagnose_repair"].update({"mode": mode, "applied": applied, "complete": True, "result_key": _sk(cumulative_overrides), "steps": [{k: s_.get(k) for k in ("phase", "round", "applied", "gain", "trades", "tim", "dd", "valid")} for s_ in rep.get("steps", [])]})
         _maybe_write_json(force=True)

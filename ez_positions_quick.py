@@ -122,6 +122,8 @@ async def _dispatch_reentry_guaranteed(trade_manager, position_key, reason, conv
     """USER MANDATE 2026-05-09: reentry signals must NEVER be silently dropped on transient queue failure.
     Wraps _ez_queue_trade_action with N retries + explicit logging for every attempt.
     Returns the final result string (same contract as _ez_queue_trade_action)."""
+    if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+        return "BLOCKED_VEC_EXACT_NATIVE_OFF"
     if not bool(getattr(config, 'REENTRY_NEVER_SKIP_ENABLED', True)):
         return await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, conviction, override_qty=override_qty)
     if max_attempts is None: max_attempts = int(getattr(config, 'REENTRY_DISPATCH_MAX_ATTEMPTS', 3))
@@ -6334,6 +6336,9 @@ class HedgeEngine:
         _hedge_killed_cooldowns: Dict[str, float] = {}
         _resize_cooldowns: Dict[str, float] = {}
         while not stop_event.is_set():
+            if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+                await asyncio.sleep(30)
+                continue
             try:
                 await asyncio.sleep(10)
                 for account_key in self.config.ACCOUNT_KEYS:
@@ -7629,6 +7634,8 @@ class HedgeEngine:
 
     async def _execute_same_symbol_hedge_inner(self, account_key, origin_position, symbol, origin_side, qty, current_price, hedge_side, hedge_key, origin_key, hedge_symbol=None):
         # 2026-04-17: hedge_symbol may differ from symbol when origin was USDT and USDC sibling exists.
+        if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+            return False
         if hedge_symbol is None: hedge_symbol = symbol
         # ═══ MANDATORY TRACKER CHECK (2026-03-29) — consult tracker BEFORE doing anything ═══
         # 1. Is the ORIGIN itself a hedge? If so, do NOT hedge-the-hedge.
@@ -8073,6 +8080,8 @@ class SentimentMomentumStrategy:
             if (current_longs + current_shorts) >= max_pos: break
 
     async def _execute_entry(self, account_key: str, cand: dict):
+        if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+            return None
         symbol = cand['symbol']
         side = cand['side'] 
         price = cand['price']
@@ -11427,6 +11436,8 @@ class SentimentExposureManager:
 
     async def _force_fresh_entry(self, account_key: str, side: str, sentiment_score: float, count: int = 1):
         """Force entry into top-ranked symbols if we are under-exposed."""
+        if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+            return None
         tradeable = list(self.tracker_manager.tradeable_keys)
         random.shuffle(tradeable)
         found = 0
@@ -11463,6 +11474,8 @@ class SentimentExposureManager:
                 await self._augment_side(account_key, data['shorts'], shortfall, "SHORT", sentiment_score, is_severely_skewed)
 
     async def _augment_side(self, account_key: str, position_keys: list, shortfall_usd: float, side: str, sentiment_score: float, is_severely_skewed: bool):
+        if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+            return None
         remaining = shortfall_usd
         # 1. Try augmenting existing positions
         for pos_key in position_keys:
@@ -11491,6 +11504,8 @@ class SentimentExposureManager:
             await self._force_fresh_entry(account_key, side, sentiment_score, count=2)
 
     async def _manage_individual_position(self, position_key: str, is_bullish_regime: bool):
+        if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+            return None
         await self.tracker_manager._get_tradeable_keys_cached() 
         account_key, symbol, side = parse_position_key(position_key)
         is_long = (side == 'LONG')
@@ -15326,6 +15341,15 @@ def _write_exit_to_disk(account_key: str, position_key: str, symbol: str, positi
         _disk_exit_cache_invalidate(account_key)
 
 
+def _vx_native_off() -> bool:
+    """2026-10-06 switch-over: True while PARITY_VEC_EXACT_MODE twins ENTRY -> native EPQ openers/augmenters/reentry/hedges off at the source."""
+    try:
+        from live_twins import vec_exact as _vx_no
+        return _vx_no.enabled(config) and "ENTRY" in _vx_no.families(config)
+    except Exception:
+        return False
+
+
 async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> None:
     """PARITY_VEC_EXACT_MODE ENTRY family: flat keys open exactly where the vec engine opens (live_twins/vec_exact.py),
     reason = vec reason + ' |VEC_EXACT', routed execute_trade_action -> execute_now."""
@@ -16665,6 +16689,9 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
     REENTRY_CRASH_TIMEOUT_SEC = 300.0
     _src_refresh_ctr = 0
     while not stop_event.is_set():
+        if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+            await asyncio.sleep(30)
+            continue
         try:
             await asyncio.sleep(15.0)
             if bool(getattr(config, 'ABLATION_DISABLE_REENTRY_ENFORCE', False)):
@@ -18869,6 +18896,8 @@ async def _scalp_v3_attempt_augments(trade_manager, account_key: str,
       - Augment size capped at min(absolute_cap, SCALP_V3_AUG_MAX_FRAC_OF_POS × cur_notional)
       - Cooldown 180s (was 60) to let each add breathe before next.
     """
+    if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+        return 0
     if not getattr(config, 'SCALP_V3_AUG_ENABLED', True):
         return 0
     min_gain = float(getattr(config, 'SCALP_V3_AUG_MIN_GAIN', 2.0))
@@ -18980,6 +19009,8 @@ async def _scalp_v3_attempt_open(sym: str, account_key: str, trade_manager,
                                    div: float, vel: float,
                                    ob_long: float = 0.0, ob_short: float = 0.0,
                                    forced_side: Optional[str] = None) -> bool:
+    if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+        return False
     _, ind, _, _, _, _, fresh = await data_manager.get_hot_state(sym)
     if not ind: return False
     price = safe_fetch_float(ind.get('current_price', 0), 0)

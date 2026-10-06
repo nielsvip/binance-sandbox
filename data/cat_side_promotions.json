@@ -950,12 +950,6 @@
    "tab": "ENTRY_CONFIRMATION_GATES",
    "at": "2026-10-06T17:20:03.823765Z"
   },
-  "EMA50_15M_ENTRY_FILTER_VEC_ONLY_ENABLED": {
-   "value": true,
-   "avg_delta": 3.256434,
-   "tab": "ENTRY_CONFIRMATION_GATES",
-   "at": "2026-10-06T17:20:03.823815Z"
-  },
   "WT_DC_ENTRY_THRESHOLD": {
    "value": "40",
    "avg_delta": 0.744127,
@@ -992,7 +986,7 @@
    "tab": "REENTRY_ADAPTIVE",
    "at": "2026-10-06T17:20:26.500932Z"
   },
-  "HAIKU_WINNER_VEC_ONLY_ENABLED": {
+  "HAIKU_WINNER_AUGMENT_ENABLED": {
    "value": true,
    "avg_delta": 1.182638,
    "tab": "AUGMENT_TREND",

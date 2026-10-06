@@ -281,6 +281,19 @@ _MISSING = object()
 _VENUE_CACHE = {}
 
 
+def _quick_float_field(key: str) -> bool:
+    """QuickConfig declares the field float (annotation; the default may be an int literal like 900)."""
+    try:
+        import dataclasses as _dc
+        import v12_quick_engine as _V
+        if "_qff" not in _VENUE_CACHE:
+            _VENUE_CACHE["_qff"] = {f.name: f.type for f in _dc.fields(_V.QuickConfig)}
+        t = _VENUE_CACHE["_qff"].get(key)
+        return t is float or str(t) in ("float", "<class 'float'>")
+    except Exception:
+        return False
+
+
 def _venue_values_cached(stocks: bool, root: Path) -> tuple:
     key = (bool(stocks), str(root))
     if key not in _VENUE_CACHE:
@@ -297,6 +310,7 @@ def register_workbook_result(
     tag: str = None,
     root: Path = None,
     diff_only: bool = False,
+    require_qualified: bool = True,
 ) -> dict:
     """Register a workbook-end positive result on every surface. See module doc.
 
@@ -305,7 +319,12 @@ def register_workbook_result(
     In this mode a key absent from the cat_side snapshot is typed against the venue global (config.py /
     config_tradier.py); a key with no usable live ref (absent / dict-typed live) is dropped when it equals the
     QuickConfig default (no-op) and refuses otherwise; a non-integral float for a live-int field is kept as float
-    when QuickConfig declares that field float (the value the vector engine actually evaluated)."""
+    when QuickConfig declares that field float (the value the vector engine actually evaluated).
+
+    require_qualified=False (USER 2026-10-06 via director: apply ALL finished tests, risk carried by size): skips the n_promoted
+    and 30D-qualify gates (reasons kept in rep["unqualified_reasons"]); secret/type gates and _NEG_BLOCK handling still apply.
+    NOTE: live ez_negbook_is_blocked / tradier twin block any book entry with acc_gain_pct <= 0, so a negative set registered
+    this way does NOT trade until that block becomes a size tier."""
     root = Path(root) if root else _ROOT()
     sys.path.insert(0, str(root))
     rep = {"sym_side": sym_side, "registered": False, "dry_run": bool(dry_run)}
@@ -344,11 +363,14 @@ def register_workbook_result(
         n_prom = int(ev.get("n_promoted") or 0)
     except Exception:
         n_prom = 0
-    if n_prom < 1:
+    ok_q, q_reasons = qualifies_30d(ev)
+    rep["qualified_30d"] = bool(ok_q and n_prom >= 1)
+    if not require_qualified:  # USER 2026-10-06 (via director): register EVERY finished set; risk is carried by size, not by refusal
+        rep["unqualified_reasons"] = ([] if n_prom >= 1 else [f"n_promoted={n_prom}"]) + list(q_reasons)
+    elif n_prom < 1:
         rep["reason"] = f"n_promoted={n_prom} (no VALID positive branch this workbook)"
         return rep
-    ok_q, q_reasons = qualifies_30d(ev)
-    if not ok_q:
+    elif not ok_q:
         rep["reason"] = f"final set not qualified: {'; '.join(q_reasons)}"
         return rep
     secrets = [k for k in overrides if SECRET_RE.search(k)]
@@ -379,13 +401,13 @@ def register_workbook_result(
         ref = snap[k] if k in snap else live_vals.get(k, _MISSING)
         if ref is _MISSING or isinstance(ref, (dict, list, tuple, set)):
             qd = quick_vals.get(k, _MISSING)
-            if qd is not _MISSING and _same_val(v, qd):
+            if (qd is not _MISSING and _same_val(v, qd)) or (ref is _MISSING and qd is _MISSING):  # equal to vec default, or read by NO surface (no live key, no QuickConfig field)
                 noop.append(k)
             else:
                 bad[k] = "no live config ref (absent or dict-typed) and value != QuickConfig default"
             continue
         ok_c, cv = coerce_like(v, ref)
-        if not ok_c and isinstance(ref, int) and not isinstance(ref, bool) and isinstance(v, float) and isinstance(quick_vals.get(k), float) and not isinstance(quick_vals.get(k), bool):
+        if not ok_c and isinstance(ref, int) and not isinstance(ref, bool) and isinstance(v, float) and _quick_float_field(k):
             ok_c, cv = True, float(v)
             floatkept.append(k)
         if not ok_c:
