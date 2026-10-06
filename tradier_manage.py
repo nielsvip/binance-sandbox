@@ -26467,7 +26467,7 @@ class TradierTradeManager:
                 _vx_qty = min(_vx_qty, _vx_amt)
             if _vx_qty <= 0:
                 return "VEC_EXACT_NO_QTY"
-            return await self.execute_now(position_key, account_key, symbol, _vx_amt, side, position_side, _vx_qty, current_price, unique_id, reason, bool(is_full_close or action in ('CLOSE', 'FULL_CLOSE')), action)
+            return await self.execute_now(position_key, account_key, symbol, _vx_amt, side, position_side, _vx_qty, current_price, unique_id, reason, bool(is_full_close or action in ('CLOSE', 'FULL_CLOSE')), action, decision_recorded=decision_recorded)
         # HARD RISK CEILING: no new exposure once broker equity is 50% below
         # its persisted high-water mark. Reductions/closes remain available.
         if not _is_exit_or_reduce and action != 'HEDGE_CLOSE':
@@ -26941,7 +26941,7 @@ class TradierTradeManager:
             final_qty = max(1, int(min(qty_to_close, pos_qty)))
             if final_qty < 1: return "QTY_ZERO"
             logger.info(f"[{position_key}] EXIT EXECUTE: {action} {final_qty} @ {current_price}")
-            return await self.execute_now(position_key, account_key, symbol, pos_qty, side, position_side, float(final_qty), current_price, unique_id, reason, is_full_close, action)
+            return await self.execute_now(position_key, account_key, symbol, pos_qty, side, position_side, float(final_qty), current_price, unique_id, reason, is_full_close, action, decision_recorded=decision_recorded)
 
         # 6. Entry/Augment Quantity Calculation (The Quantizing Logic)
         SP = config.START_POSITION_SIZE / current_price
@@ -27007,7 +27007,7 @@ class TradierTradeManager:
                     logger.error(f"[GOLDEN_RULE_SCORER_ENTRY_FAIL] {position_key}: {_gr_tr_err}")
 
         logger.info(f"[{position_key}] {action} EXECUTE: {final_shares} shares @ {current_price}")
-        return await self.execute_now(position_key, account_key, symbol, abs(position.positionAmt), side, position_side, float(final_shares), current_price, unique_id, reason, is_full_close, action)
+        return await self.execute_now(position_key, account_key, symbol, abs(position.positionAmt), side, position_side, float(final_shares), current_price, unique_id, reason, is_full_close, action, decision_recorded=decision_recorded)
 
     async def _get_settled_cash_from_broker(self, account_key: str) -> float:
         # Query Tradier for ACTUAL settled cash. Fail-closed: return 0.0 on any error.
@@ -27357,7 +27357,7 @@ class TradierTradeManager:
                 return (True, "DG_EXCEPTION_SHORT_FAILCLOSED")
             return (False, "")
 
-    async def execute_now(self, position_key: str, account_key: str, symbol: str, original_position_amt: float, side: str, position_side: str, quantity: float, old_price: float, unique_id: str, reason: str, is_full_close: bool, action: str = None) -> str:
+    async def execute_now(self, position_key: str, account_key: str, symbol: str, original_position_amt: float, side: str, position_side: str, quantity: float, old_price: float, unique_id: str, reason: str, is_full_close: bool, action: str = None, decision_recorded: bool = False) -> str:  # 2026-10-06 director: NameError fix — recorder flag passed through from execute_trade_action (direct paths default False = record here)
         # PARITY LOOP STOCKS 2026-10-06: VEC_EXACT order (PARITY_VEC_EXACT_MODE) = the vec decision -> decision gates below are skipped ("NO GATES"; NOLOSS has only exceptions).
         _vx_ex = is_vec_exact_reason(reason) and bool(_cfg('PARITY_VEC_EXACT_MODE', False, account_key, symbol, position_side))
         # BROKER_SYNC LOGICAL DEMAND — 2026-09-08: 80× same order sent because it thought not received without checking broker.
@@ -28277,6 +28277,7 @@ class TradierTradeManager:
                 (_is_augment_or_entry or is_entry_action)
                 and not _is_exit_or_reduce
                 and not is_hedge
+                and not _vx_ex
             ):
                 _tf_mult, _tf_label = _breakout_tf_size_mult_tradier(reason)
                 if _tf_mult != 1.0:
@@ -28291,7 +28292,9 @@ class TradierTradeManager:
             # BEAR_SCENARIO_SYMBOLS (GLD, USO, XLE, GDX, etc.) go UP when the market goes DOWN.
             # A LONG on a bear_scenario symbol = bearish market bet → flip its contribution to the ratio.
             _pm = self.position_manager
-            if _pm and current_price > 0 and not is_hedge and not _is_mandatory_reclaim and not _is_ladder_parity:
+            # BIBLE 68.1 2026-10-06 (director): VEC_EXACT orders carry the vec qty unchanged to the order; the L/S ratio boost/cut has NO vec twin
+            # -> its own switch TRADIER_LS_RATIO_SIZING_ENABLED (config_tradier + QuickConfig, both False = off on both sides).
+            if _pm and current_price > 0 and not is_hedge and not _is_mandatory_reclaim and not _is_ladder_parity and not _vx_ex and bool(_cfg('TRADIER_LS_RATIO_SIZING_ENABLED', False, account_key, symbol, position_side)):
                 _bear_set = _cfg_auto('BEAR_SCENARIO_SYMBOLS', set())
                 _long_val = 0.0
                 _short_val = 0.0

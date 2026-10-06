@@ -62,3 +62,36 @@ Tested under a cron-like env (`env -i`, PATH=/usr/bin:/bin): ssh to s1-pub/s2/s5
 and the ez_rankings writer is retired:
 
     5 13 * * * cd /Users/niels/Documents/binance && /Users/niels/Documents/binance/.venv/bin/python tools/v15_daily_inf_universe.py --apply >> /tmp/v15_daily_inf_universe.log 2>&1 # V15_INF_UNIVERSE
+
+## S1 daily chain installed (2026-10-06 ~17:45Z, director design A-F)
+
+Steps 1+2 of §68.3 now run on **S1** (the Mac sleeps; S1 does not):
+
+    S1:  0 13 * * * cd /home/niels/binance-sandbox && flock -n /tmp/v15_daily_chain.lock bash tools/v15_daily_chain_s1.sh >> /home/niels/logs/v15_daily_chain.log 2>&1 # V15_DAILY_CHAIN_S1
+    Mac: 20 13 * * * PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin /bin/bash /Users/niels/Documents/binance/tools/v15_daily_chain_mac_apply.sh >> /tmp/v15_daily_chain_mac_apply.log 2>&1 # V15_DAILY_CHAIN_MAC_APPLY
+
+- `tools/v15_daily_chain_s1.sh`: rebuild (`V15_FLEET_HOSTS=tools/fleet_hosts_final.json`, 127.0.0.1/10.0.0.4/10.0.0.5) → template writer on
+  SPREADSHEETS then TEMPLATE_FINAL_NORM with `V15_TEMPLATE_SYNC_SURFACES=0` (S1 never edits config.py / config_tradier.py / v12_quick_engine.py;
+  the promoted keys land in the report as `promoted_keys`) → build_cat_side_defaults_4 + sweep copy → `v15_possym_json_from_agg.py` →
+  zero-delta watchdog (non-fatal) → push to s2/s5 + md5 verify + kv sync → `data/daily_chain/<date>.json` (FAILED stamp `<date>.FAILED.json`).
+  `DRYRUN=1` = rebuild into /tmp + writer report-only.
+- `tools/v15_daily_chain_mac_apply.sh`: requires S1's DONE stamp, pulls the chain state md5-verified against it, kv-syncs, runs
+  `switch_parity.py sync-defaults --keys <promoted_keys> --apply --confirm-unlocked` on the Mac (backup + compile + import), pushes changed code
+  files to S1/s2/s5 (sandbox + ~/binance) md5-verified, logs `switch_parity.py gate` for the 4 cat_sides on Mac/S1/s2/s5. Restarts nothing.
+- `tools/v15_state_kv_sync.py`: the template writer and `cat_side_defaults._load` read SQLite `kv_json` FIRST and the JSON only as fallback,
+  so a copied JSON alone changes nothing while a stale kv row exists. Found today: S1's kv rows for `cat_side_defaults_4` and
+  `cat_side_promotions` were from 16:25Z (older than the 17:32Z JSON push) → S1 pilots were reading the pre-chain cat_side defaults. Fixed
+  in the state move; every chain push/pull now runs the kv sync on the receiving host.
+- Disabled on the Mac (tag `#REPLACED_BY_S1_CHAIN_20261006#`): the 05:00Z `v15_daily_selfimprove.sh` line and the 03:00Z
+  `verify_template_defaults.py` line (forbidden second template writer, §68.2 #4).
+
+## Still missing from the chain (NOT implemented — open items)
+
+1. **Step 3, per-sym settings go-live.** Nothing takes the qualified per-sym best sets (30D valid + positive, 365D confirmed,
+   `switch_parity.register_workbook_result` gates) and writes them to the live surfaces on the Mac (config / SQLite `per_sym_store` /
+   per-sym JSON book + trb overlay). Registrations happen only server-side at workbook DONE (0 so far fleet-wide; refused on `*_VEC_ONLY_*`
+   keys) and no job moves them to the Mac. Needed: a Mac-side daily applier after `v15_daily_chain_mac_apply.sh` that pulls the qualified
+   final sets from the servers and runs the registrar on the Mac, post-verified by re-read.
+2. **Step 3b, inf universe** (`tools/v15_daily_inf_universe.py`, Mac 13:05Z, dry-run only). Blocked for `--apply`: the locked live
+   `ez_rankings.py` rewrites `symbols_inf_long/short.json` every ~2.5 min (`[INF_BEST_SAVE]`), so a daily write would be overwritten within
+   minutes. Needs a user unlock of ez_rankings.py to retire that writer (+ restart), then flip the cron to `--apply`.

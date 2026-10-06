@@ -4035,6 +4035,14 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         trade_manager.execute_trade_action = _crypto_eta
     else:
         v8_logger.warning("[V12_REAL_EXECUTE] crypto: real execute_trade_action + execute_now (broker I/O stubbed only)")
+        # ez_manage._PROCESS_START_TS is the WALL time at import while ez_manage.time is the SIM clock, so
+        # (time.time() - _PROCESS_START_TS) was negative for the whole replay and the COLD_START_FLOOD_GUARD window never
+        # ended (BTCUSDC_SHORT "2464984s left"): every vec-exact open lost its MTF bypass. A live process is warm after
+        # its first minutes -> anchor process start before the sim.
+        try:
+            ez_manage._PROCESS_START_TS = 0.0
+        except Exception:
+            pass
         for _dtm in (ez_manage, ez_positions_quick):
             try:
                 if getattr(_dtm, "datetime", None) is datetime:

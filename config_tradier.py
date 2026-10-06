@@ -3501,6 +3501,7 @@ class TradierConfig:
     BOUNCE_REENTRY_K_RESET_SHORT_TRADIER: int = 65  # 2026-04-26 WIRED — tradier_manage.py:5450 + 8344. SHORT mirror. Previously DEAD_CONFIRMED (priority 90).
     # ═══ SAFETY SWITCHES (2026-04-16 audit) ═══
     TRADIER_REQUIRE_TRADEABLE_KEY: bool = True     # Gate entry at execute_now if not in tradeable_keys
+    TRADIER_LS_RATIO_SIZING_ENABLED: bool = False  # BIBLE 68.1 2026-10-06 (director): execute_now L/S RATIO_BOOST_x1.5 / RATIO_CUT_x0.6 entry sizing has NO vec twin -> off on both sides (QuickConfig False). True only once v12 sizes the same way.
     TRADIER_RATIO_REQUIRE_MIN_GAIN: bool = False   # Block RATIO_BOOST on positions with gain < min
     TRADIER_RATIO_BOOST_MIN_GAIN_PCT: float = 1.0  # Min gain for ratio boost to fire
     TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED: bool = False  # True=legacy (bypass after 48h); False=always enforce stoch

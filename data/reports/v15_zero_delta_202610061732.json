@@ -1,0 +1,44 @@
+{
+ "agg": "SPREADSHEETS/v15_avg_delta/v15_avg_delta_20261006.xlsx",
+ "min_n": 8,
+ "cats": {
+  "CRYPTO_LONG": {
+   "systematic_zero_rows": 0,
+   "explained_honest": 0,
+   "dead_suspect_rows": 0,
+   "disablable_switches": [],
+   "kg_blocked": [],
+   "suspect_sample": []
+  },
+  "CRYPTO_SHORT": {
+   "systematic_zero_rows": 0,
+   "explained_honest": 0,
+   "dead_suspect_rows": 0,
+   "disablable_switches": [],
+   "kg_blocked": [],
+   "suspect_sample": []
+  },
+  "STOCKS_LONG": {
+   "systematic_zero_rows": 0,
+   "explained_honest": 0,
+   "dead_suspect_rows": 0,
+   "disablable_switches": [],
+   "kg_blocked": [],
+   "suspect_sample": []
+  },
+  "STOCKS_SHORT": {
+   "systematic_zero_rows": 2,
+   "explained_honest": 1,
+   "dead_suspect_rows": 1,
+   "disablable_switches": [],
+   "kg_blocked": [],
+   "suspect_sample": [
+    [
+     "ENTRY_REVERSAL_BOUNCE",
+     "GR_FILTER_ALL_ENTRIES=True",
+     15
+    ]
+   ]
+  }
+ }
+}

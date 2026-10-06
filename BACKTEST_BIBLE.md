@@ -1438,6 +1438,13 @@ Mon 2026-10-05 06:00 UTC: best (newest-round) 30D sheet of every sym_side → 36
 5. The fleet then sweeps on the new defaults (S1 coordinator; each sym_side baselined on its previous best) and the next
    pre-market run repeats 1-4. Nothing else moves defaults.
 
+### 68.3a Sizing is NOT part of parity (USER 2026-10-06)
+- Parity = the same trade DECISION at the same moment (open / augment / reduce / close, side, bar). **Quantities are live's
+  job**: `execute_trade_action` / `execute_now` define live sizing (ratio boost/cut, ladders, structure multipliers, …) and
+  that amplification is correct behaviour. Vec-decided orders go through the same live sizing as native ones.
+- A parallel paper forward test executes paper orders of the exact vectorized size for comparison.
+- Never strip, gate or "parity-fix" live sizing multipliers; never use quantity equality in a parity verdict.
+
 ### 68.4 How parity is proven
 - **Trade-level replay** (`tools/v15_trade_parity.py`, `backtest_v12_engine.run_one`): the REAL live scripts
   (`process_position` → `execute_trade_action` → `execute_now`) on frozen NPZ vs `simulate_one` on the same NPZ and set:

@@ -1,94 +1,30 @@
 {
-  "generated_at": "2026-10-06T17:16:10.890047+00:00",
-  "count": 11,
+  "generated_at": "2026-10-06T17:43:19.854360+00:00",
+  "count": 3,
   "advisories": [
     {
-      "symbol": "AR",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.55 threshold=0.45",
-      "score": 0.553,
-      "ts": "2026-10-06T17:16:10.889979+00:00"
-    },
-    {
-      "symbol": "DAR",
+      "symbol": "GOOGL",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.59 threshold=0.45",
-      "score": 0.586,
-      "ts": "2026-10-06T17:16:10.889992+00:00"
+      "score": 0.587,
+      "ts": "2026-10-06T17:43:19.854319+00:00"
     },
     {
-      "symbol": "DVN",
+      "symbol": "INTC",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.84 threshold=0.45",
-      "score": 0.844,
-      "ts": "2026-10-06T17:16:10.889995+00:00"
+      "reason": "bullish_news_score=0.46 threshold=0.45",
+      "score": 0.464,
+      "ts": "2026-10-06T17:43:19.854330+00:00"
     },
     {
-      "symbol": "EXEL",
+      "symbol": "LOW",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.51 threshold=0.45",
-      "score": 0.511,
-      "ts": "2026-10-06T17:16:10.889997+00:00"
-    },
-    {
-      "symbol": "FIVN",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.84 threshold=0.45",
-      "score": 0.843,
-      "ts": "2026-10-06T17:16:10.889999+00:00"
-    },
-    {
-      "symbol": "JNJ",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.57 threshold=0.45",
-      "score": 0.569,
-      "ts": "2026-10-06T17:16:10.890002+00:00"
-    },
-    {
-      "symbol": "KGC",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.61 threshold=0.45",
-      "score": 0.612,
-      "ts": "2026-10-06T17:16:10.890004+00:00"
-    },
-    {
-      "symbol": "LAC",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.67 threshold=0.45",
-      "score": 0.67,
-      "ts": "2026-10-06T17:16:10.890006+00:00"
-    },
-    {
-      "symbol": "LNG",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.58 threshold=0.45",
-      "score": 0.579,
-      "ts": "2026-10-06T17:16:10.890008+00:00"
-    },
-    {
-      "symbol": "MA",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.50 threshold=0.45",
-      "score": 0.496,
-      "ts": "2026-10-06T17:16:10.890009+00:00"
-    },
-    {
-      "symbol": "MSFT",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.66 threshold=0.45",
-      "score": 0.66,
-      "ts": "2026-10-06T17:16:10.890011+00:00"
+      "reason": "bullish_news_score=0.46 threshold=0.45",
+      "score": 0.459,
+      "ts": "2026-10-06T17:43:19.854333+00:00"
     }
   ]
 }
