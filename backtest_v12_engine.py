@@ -4851,6 +4851,55 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         except Exception as _bbs_native_exc:
             v8_logger.exception("[V12_BBS_NATIVE] event build failed: %s", _bbs_native_exc)
             _bbs_native_events = {}
+    _wr_native_events = {}
+    if bool(getattr(config, "WR_PULLBACK_ENABLED", True)):
+        try:
+            # 2026-10-06 USER full-parity: shared WR/LR pullback twin (live EPQ WR path:
+            # HTF + k_1h/k_15m/k_3m legs + 1m turning, per-SYM 300s cooldown, list-gated).
+            # Membership from data/wr_lists_history.jsonl (wr_in_list_at); unknown => skip (fail-closed).
+            import vec_decisions.check_entry_candidates_crypto__wr_lr_pullback as _v12_wr
+            _wr_cd = 300.0  # live hardcoded per-SYM cooldown (== EPQ)
+            for _wr_sym, _wr_store in stores.items():
+                _wr_ts_arr = np.asarray(_wr_store.timestamps, dtype=float)
+                _wr_n = len(_wr_ts_arr)
+                _wr_a = _wr_store.arrays
+
+                def _wrk(_k, _d=0.0):
+                    _v = _wr_a.get(_k) if hasattr(_wr_a, "get") else None
+                    if _v is not None and isinstance(_v, np.ndarray) and len(_v) == _wr_n:
+                        return _v.astype(np.float64)
+                    return np.full(_wr_n, _d, dtype=np.float64)
+
+                _wr_ha4_raw = _wr_a.get("ha_4h") if hasattr(_wr_a, "get") else None
+                if _wr_ha4_raw is not None and isinstance(_wr_ha4_raw, np.ndarray) and len(_wr_ha4_raw) == _wr_n:
+                    _wr_ha4i = np.asarray(_wr_ha4_raw).astype(np.int64)
+                else:
+                    _wr_ha4i = np.zeros(_wr_n, dtype=np.int64)
+                _wr_ha4s = np.where(_wr_ha4i == -1, 'red', np.where(_wr_ha4i == 1, 'green', 'neutral'))
+                _wr_last = 0.0
+                for _wr_side in _position_sides:
+                    _wr_is_long = _wr_side == "LONG"
+                    _wr_k1h = _wrk("stoch_k_1h", 50.0)
+                    _wr_k15 = _wrk("stoch_k_15m", 50.0)
+                    _wr_k15p = _wrk("stoch_k_15m_prev", 50.0)
+                    _wr_mask = _v12_wr.check_wr_lr_pullback_vec(
+                        config, _wr_ha4s, _wr_k1h, _wr_k15, _wrk("stoch_k_3m", 50.0),
+                        np.full(_wr_n, 50.0), np.full(_wr_n, 50.0), np.full(_wr_n, '', dtype=str),
+                        True, _wr_is_long, _wr_k15p, None)
+                    for _wr_idx in np.where(np.asarray(_wr_mask, dtype=bool))[0]:
+                        _wr_ts = int(_wr_ts_arr[_wr_idx])
+                        if _wr_ts - _wr_last < _wr_cd:
+                            continue  # live per-SYM cooldown mirror
+                        if _v12_wr.wr_in_list_at(_wr_sym, _wr_is_long, float(_wr_ts)) is not True:
+                            continue  # no archive proof => fail-closed
+                        _wr_last = float(_wr_ts)
+                        _wr_sig = "BUY" if _wr_is_long else "SELL"
+                        _wr_native_events[(_wr_sym, _wr_side, _wr_ts)] = (
+                            f"WR_PULLBACK_{_wr_sig}_k1h={float(_wr_k1h[_wr_idx]):.0f}_k15={float(_wr_k15[_wr_idx]):.0f}")
+            v8_logger.info("[V12_WR_NATIVE] built %d standalone scalar events", len(_wr_native_events))
+        except Exception as _wr_native_exc:
+            v8_logger.exception("[V12_WR_NATIVE] event build failed: %s", _wr_native_exc)
+            _wr_native_events = {}
     # Exact parity mode needs Quick's sequential ledger, not a raw predicate
     # mask: the latter is intentionally broad and has no position/hold state.
     # Keep the live admission prefilter above for ordinary scalar simulations.
@@ -4937,6 +4986,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         _vs_native_events = {}
         _sboun_native_events = {}
         _bbs_native_events = {}
+        _wr_native_events = {}
         _quick_entry_event_sets, _quick_exit_event_sets, _quick_ledger_entries, _quick_ledger_exits = {}, {}, {}, {}
         _v12_exit_batch3 = _v12_exit_batch2 = _v12_obligatory_reentry = _v12_hlr_reentry = None
         # the [SIGNAL_GATE] admission prefilter (flat keys only reach process_position on bars with an NPZ cross event) is a
@@ -5785,6 +5835,33 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     )
                     v8_logger.info("[V12_BBS_NATIVE] %s ts=%s result=%s",
                                    _bbs_pk, _bbs_ts, _bbs_result)
+        # 2026-10-06 USER full-parity: WR/LR pullback native events (shared twin, list-gated).
+        if _wr_native_events and os.environ.get("V12_PARITY_QUICK_LEDGER_REPLAY", "0") != "1":
+            _wr_ts = int(ts)
+            for _wr_sym in stores:
+                for _wr_side in _position_sides:
+                    _wr_reason = _wr_native_events.get((_wr_sym, _wr_side, _wr_ts))
+                    if _wr_reason is None:
+                        continue
+                    _wr_pk = f"{account_key}:{_wr_sym}_{_wr_side}"
+                    _wr_px = float(price_cache.get(_wr_sym.upper(), 0.0) or 0.0)
+                    if _wr_px <= 0.0:
+                        continue
+                    # SIZING SEAM (documented): live score-driven sizing; flat SPS until sizing twin.
+                    _wr_qty = float(getattr(config, "START_POSITION_SIZE", 45.0)) / _wr_px
+                    if _wr_qty * _wr_px < 1.0:
+                        continue
+                    _wr_pos = trade_manager.positions.get(_wr_pk)
+                    _wr_cur = abs(float(getattr(_wr_pos, "positionAmt", 0.0) or 0.0))
+                    _wr_result = await _crypto_eta(
+                        account_key=account_key, position_key=_wr_pk, symbol=_wr_sym,
+                        quantity=_wr_qty, current_price=_wr_px,
+                        side="BUY" if _wr_side == "LONG" else "SELL",
+                        position_side=_wr_side, action="OPEN" if _wr_cur <= 0 else "AUGMENT",
+                        reason=_wr_reason, is_full_close=False, is_hedge=False,
+                    )
+                    v8_logger.info("[V12_WR_NATIVE] %s ts=%s result=%s",
+                                   _wr_pk, _wr_ts, _wr_result)
 
         # Structural Range Shift is an independent direct Quick entry block.
         # Its broad predicate is restricted to the matching causal ledger row

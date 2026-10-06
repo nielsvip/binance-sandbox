@@ -2578,6 +2578,7 @@ class Config:
     VOL_SPIKE_BODY_RATIO: float = 0.7  # Candle body must be > 70% of total range
     VOL_SPIKE_COOLDOWN: float = 300.0  # Seconds between vol spike entries per symbol
     VOL_SPIKE_MIN_ALIGNMENT: int = 3  # Lower alignment threshold for spike entries
+    WR_PULLBACK_ENABLED: bool = True  # NEW switch 2026-10-06 (no prior default): True preserves live always-on WR behavior (shared EPQ/vec twin)
     VOL_SPIKE_LS_MAX_IMBALANCE: float = 1.5  # Max L/S ratio imbalance before blocking
     # === 2.5σ STDEV BREAKOUT (HTF breakout + LTF retest scaling) ===
     # Replaces all_red/all_green. When price breaks 2.5σ on D/4h, enter immediately.

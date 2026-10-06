@@ -31,6 +31,13 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
+import contextvars as _contextvars
+import itertools as _itertools
+
+# 2026-10-06 21:22Z triage (men:ADAUSDC_SHORT 21:08:24 false MISMATCH_FILLED): the per-position_key pre store was clobbered by a
+# concurrent execute_now on the same key (CLOSE started while the OPEN was still confirming). Each guarded call now tags its pre record.
+_PT_CALL_ID: "_contextvars.ContextVar[Optional[int]]" = _contextvars.ContextVar("_PT_CALL_ID", default=None)
+_PT_CALL_SEQ = _itertools.count(1)
 
 _LOG = logging.getLogger("positions_truth")
 
@@ -566,19 +573,20 @@ async def ez_pre_order_check(mgr: Any, account_key: str, symbol: str, position_k
     t = time.time() if now is None else now
     age = age_s(local_ts, t)
     exit_like = is_exit_action(action, reason)
+    _call = _PT_CALL_ID.get()
     if age <= float(cfg(config, "POSITIONS_MAX_AGE_S")):
-        store[position_key] = {"pre": local_amt, "local": local_amt, "source": "local", "ts": t}
+        store[position_key] = {"pre": local_amt, "local": local_amt, "source": "local", "ts": t, **({"call": _call} if _call is not None else {})}
         return None
     log.warning(f"[POSITIONS_STALE_FALLBACK] {position_key}: local positions age {age:.2f}s > {float(cfg(config, 'POSITIONS_MAX_AGE_S')):.2f}s — polling broker directly (action={action})")
     snap = await ez_broker(mgr, account_key, config, log).snapshot(reason=f"pre_order {position_key} {action}")
     if snap is None:
-        store[position_key] = {"pre": None, "local": local_amt, "source": "none", "ts": t}
+        store[position_key] = {"pre": None, "local": local_amt, "source": "none", "ts": t, **({"call": _call} if _call is not None else {})}
         if exit_like:
             log.critical(f"⚠️ [POSITIONS_BROKER_UNREACHABLE] {position_key}: broker poll failed — EXIT {action} proceeds (exits never blocked); result must still be broker-confirmed")
             return None
         return "BLOCKED_POSITIONS_BROKER_UNREACHABLE"
     broker_amt = snap.amount(symbol, position_side)
-    store[position_key] = {"pre": broker_amt, "local": local_amt, "source": "broker", "ts": t, "fetched_at": snap.fetched_at}
+    store[position_key] = {"pre": broker_amt, "local": local_amt, "source": "broker", "ts": t, "fetched_at": snap.fetched_at, **({"call": _call} if _call is not None else {})}
     if abs(broker_amt - local_amt) > qty_tol(config, broker_amt, local_amt):
         log.critical(f"🚨 [POSITIONS_BROKER_MISMATCH] {position_key}: local={local_amt:.8f} broker={broker_amt:.8f} (local age {age:.1f}s) action={action} — broker truth wins; resync requested")
         _ez_resync(mgr, account_key)
@@ -649,13 +657,23 @@ async def ez_execute_now_guarded(mgr: Any, core: Callable[..., Awaitable[Any]], 
             pre_snap_amt = None if _ps is None else _ps.amount(symbol, position_side)
         except Exception:
             pre_snap_amt = None
-    result = await core(*args, **kwargs)
+    _my_call = next(_PT_CALL_SEQ)
+    _call_tok = _PT_CALL_ID.set(_my_call)
+    try:
+        result = await core(*args, **kwargs)
+    finally:
+        _PT_CALL_ID.reset(_call_tok)
     if sandbox or not isinstance(result, str) or "SUCCESS" not in result.upper() or "SANDBOX" in result.upper():
         return result
     if not bool(cfg(config, "POSITIONS_CONFIRM_ENABLED")):
         log.critical(f"⚠️ [POSITIONS_CONFIRM_DISABLED] {position_key}: {result} NOT broker-confirmed (config)")
         return result
-    pre_rec = store.pop(position_key, None) or {}
+    pre_rec = store.get(position_key) or {}
+    if pre_rec.get("call", _my_call) != _my_call:
+        log.warning(f"[POSITIONS_PRE_FOREIGN] {position_key}: pre record belongs to a concurrent execute_now (call {pre_rec.get('call')} != {_my_call}) — using this call's own pre snapshot {pre_snap_amt}")
+        pre_rec = {}
+    else:
+        store.pop(position_key, None)
     pre = pre_rec.get("pre", pre_rec.get("local")) if pre_rec else None
     if pre is None:
         pre = pre_snap_amt

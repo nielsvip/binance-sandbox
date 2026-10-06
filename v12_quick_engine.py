@@ -3217,6 +3217,7 @@ AUTO_WIRED_PARAMS = [
     'WATCHDOG_WT3M_ESCALATE_ENABLED',
     'WINNER_PROTECT_ENABLED',
     'WIN_TRAIL_EROSION_PCT',
+    'WR_PULLBACK_ENABLED',
     'WRONG_SIDE_ABS_KILL_ENABLED',
     'WRONG_SIDE_DIV_LOOKBACK_BARS',
     'WRONG_SIDE_DIV_TFS_REQUIRED',
@@ -6008,6 +6009,7 @@ class QuickConfig:
     V8Q_D_TREND_REQUIRED: bool = True  # live parity: config_tradier True (added batch 2)
     V8Q_STRENGTH_FILTER_ENABLED: bool = False  # live parity: config_tradier True (added batch 2)
     VOL_SPIKE_ENABLED: bool = True  # live parity: config_tradier True (added batch 2)
+    WR_PULLBACK_ENABLED: bool = True  # NEW switch 2026-10-06 (no prior default): True preserves live always-on WR behavior
     WT_15M_SAME_HEDGE_ENABLED: bool = False  # live parity: config_tradier True (added batch 2)
     ADX_RANGING_THRESHOLD: float = 10.0  # parity fix 2026-09-13: config_tradier 20 (was 0 drift)
     ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC: float = 30.0  # auto-added TEMPLATE
@@ -8412,6 +8414,36 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
                 wt1_3m, wt2_3m, wt1_15m, wt2_15m, is_long), dtype=bool)
         except Exception:
             pass
+    # 2026-10-06 USER full-parity: WR/LR pullback entry (shared EPQ twin).
+    # SEAM (documented): list membership is live universe-state. Sweeps pass in_list=True
+    # (chart shows entries conditional on listing — same convention as VOL ratio_ok=True).
+    # backtest_v12 uses wr_in_list_at(ts) from data/wr_lists_history.jsonl (fail-closed).
+    # k_1m legs read the 15m fallback while the switch is off (== live); under switch-ON,
+    # v12's k_3m var is base-TF stoch (15m on crypto NPZs) — honest available proxy.
+    if bool(getattr(cfg, 'WR_PULLBACK_ENABLED', True)):
+        try:
+            _wr_twin = vec_decisions.check_entry_candidates_crypto__wr_lr_pullback
+            _wr_ha4 = _ha_int(npz, 'ha_4h', n)
+            _wr_ha4s = np.where(_wr_ha4 == -1, 'red', np.where(_wr_ha4 == 1, 'green', 'neutral'))
+            _wr_k15prev = _safe(npz, 'stoch_k_15m_prev', n, 50)
+            blocks["WR_PULLBACK"] = np.asarray(_wr_twin.check_wr_lr_pullback_vec(
+                cfg, _wr_ha4s, k_1h, k_15m, k_3m,
+                np.full(n, 50.0), np.full(n, 50.0), np.full(n, '', dtype=str),
+                True, is_long, _wr_k15prev, None), dtype=bool)
+        except Exception:
+            pass
+    # 2026-10-06 USER full-parity: classic-formation ENTRY (shared detector twin of the EPQ block).
+    # Per-family ENTRY switches are previously tested with CORRECT IMMUTABLE False defaults (config.py
+    # + book); per_sym values change ONLY via daily v15_avg_delta per cat_side, NEVER by an agent.
+    # Twin outputs zeros while defaults hold; it exists so vec==live IF v15 ever enables a family.
+    # Live score 29 = standalone.
+    try:
+        import vec_decisions.formation_entry_live as _n2fe
+        _form_entry = np.asarray(_n2fe.formation_entry_mask(npz, n, cfg, is_long), dtype=bool)
+        if _form_entry.any():
+            blocks["FORMATION_ENTRY"] = _form_entry
+    except Exception:
+        pass
     if cfg.REENTRY_B02_BC156_BOTTOM_ENABLED:
         if is_long:
             wt_bull_cnt = wt_bull_3m.astype(int) + wt_bull_15m.astype(int) + wt_bull_1h.astype(int) + wt_bull_4h.astype(int)
@@ -9381,6 +9413,8 @@ def compute_entry_signals(npz, n, is_long, cfg):
             "B_STDEV_BREAKOUT": 6,  # 2026-10-06 parity FIX (was default 1): live fires standalone (score 25/22)
             "B_STDEV_BOUNCE": 6,  # 2026-10-06 bounce twin: standalone (live score 22)
             "B_BBSQUEEZE": 6,  # 2026-10-06 parity FIX (was default 1): live fallback (score 18, wins only when alone)
+            "WR_PULLBACK": 6,  # 2026-10-06 WR twin: standalone (live score 22, list-gated; sweeps pass in_list=True)
+            "FORMATION_ENTRY": 6,  # 2026-10-06 formation twin: standalone (live score 29; switches off = zeros)
             "B04": 3,       # DC retest (Sharpe 0.39)
             "B11": 3,       # DC break (Sharpe 0.34, 94% WR)
             "B02": 2,       # BC156 bottom bounce (Sharpe 0.31)
