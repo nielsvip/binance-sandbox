@@ -30,14 +30,15 @@ VLINES = V12.read_text().splitlines()
 
 # ── staged-source exec harness ─────────────────────────────────────────────
 def _load_staged_pulls():
-    assert VLINES[8265].startswith("def compute_reentry_blocks("), "v12 slice anchor moved: 8266"
-    assert "B_PULL1" in VLINES[8352], "v12 anchor moved: 8353"
-    assert VLINES[8353].strip().startswith("if getattr(cfg, 'REENTRY_PULL1_ENABLED'"), "v12 anchor moved: 8354"
-    assert "B_PULL2" in VLINES[8366], "v12 anchor moved: 8367"
-    assert "B_PULL3" in VLINES[8379], "v12 anchor moved: 8380"
-    assert "B_PULL4" in VLINES[8392], "v12 anchor moved: 8393"
-    assert VLINES[8403].strip().startswith('blocks["B_PULL4"]'), "v12 anchor moved: 8404"
-    assert VLINES[8404].strip() == "", "v12 slice end moved: 8405 not blank"
+    _D = next(i for i, _l in enumerate(VLINES) if _l.startswith("def compute_reentry_blocks("))
+    assert VLINES[_D].startswith("def compute_reentry_blocks("), "v12 slice anchor missing"
+    assert "B_PULL1" in VLINES[_D + 87], "v12 content moved: B_PULL1"
+    assert VLINES[_D + 88].strip().startswith("if getattr(cfg, 'REENTRY_PULL1_ENABLED'"), "v12 content moved: PULL1-if"
+    assert "B_PULL2" in VLINES[_D + 101], "v12 content moved: B_PULL2"
+    assert "B_PULL3" in VLINES[_D + 114], "v12 content moved: B_PULL3"
+    assert "B_PULL4" in VLINES[_D + 127], "v12 content moved: B_PULL4"
+    assert VLINES[_D + 138].strip().startswith('blocks["B_PULL4"]'), "v12 content moved: B_PULL4-block"
+    assert VLINES[_D + 139].strip() == "", "v12 slice end moved: not blank"
     ns = {"np": np, "numpy": np}
     wanted = {"_safe", "_safeb", "_ha_int", "_base_tf", "_base_safe", "_base_bool", "_base_ha"}
     mod = ast.parse(V12.read_text())
@@ -47,7 +48,7 @@ def _load_staged_pulls():
             found.add(node.name)
             exec(compile(ast.fix_missing_locations(ast.Module(body=[node], type_ignores=[])), "<v12helpers>", "exec"), ns)
     assert found == wanted, f"helpers missing: {wanted - found}"
-    body = "\n".join(VLINES[8265:8404]) + "\n    return dict(blocks)\n"
+    body = "\n".join(VLINES[_D:_D + 139]) + "\n    return dict(blocks)\n"
     exec(compile(body, "<staged_pulls>", "exec"), ns)
     return ns["compute_reentry_blocks"]
 

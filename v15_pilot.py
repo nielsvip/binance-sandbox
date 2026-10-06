@@ -215,6 +215,7 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 import numpy as np
 import threading
+_PILOT_T0 = time.time()  # process start: DIAGNOSE_REPAIR budget stays inside the herd 90-min hardcap
 # queue already imported at top via `import queue`; RED_CELL_QUEUE defined there
 
 # ——— RED FIXER AGENT ———
@@ -2710,6 +2711,187 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         progress["cumulative_gain"] = float(cumulative_gain)
         progress["cumulative_overrides"] = dict(cumulative_overrides)
         print(f"[final-recheck] {len(recs)} distinct orange filters vs final cum {cum0:.4f} computed={len(futs)} cached={len(recs)-len(futs)} best={'%s=%s %+.4f' % (best[1], best[2], best[0]) if best else 'none'} -> cum {cumulative_gain:.4f} ({_t.time()-t0:.1f}s)", flush=True)
+    def _diagnose_repair():
+        # USER 2026-10-06: post-fill DIAGNOSE+REPAIR (tools/v15_diagnose_repair.run) — see the call site for the contract.
+        nonlocal cumulative_gain, cumulative_overrides
+        import hashlib as _hl
+        from tools import v15_diagnose_repair as _DR
+        from tools.opt import v12_pilot as _vp
+        t0 = _t.time()
+        mode = os.environ.get("V15_DIAG_REPAIR_MODE", "publish")
+        budget = float(os.environ.get("V15_DIAG_REPAIR_S", "900"))
+        hard_left = 5400.0 - (t0 - _PILOT_T0) - 900.0  # herd kills pilots >90 min; keep 15 min for DONE/publish/365D
+        budget = min(budget, hard_left)
+        _sk = lambda ov: _hl.md5(json.dumps(sorted((k, str(v)) for k, v in ov.items())).encode()).hexdigest()
+        prev = progress.get("diagnose_repair") or {}
+        if prev.get("complete") and prev.get("result_key") == _sk(cumulative_overrides):
+            print(f"[DIAG] {new_symside} already repaired this exact set ({prev.get('accepted')}) — skip (resume)", flush=True)
+            return
+        if budget < 120:
+            print(f"[DIAG] {new_symside} skipped: only {budget:.0f}s left inside the 90-min herd cap", flush=True)
+            progress["diagnose_repair"] = {"skipped": f"budget {budget:.0f}s"}
+            return
+        # candidates = every evaluable template row (white + orange) + every yellow filter=opt, distinct
+        cands, seen = [], set()
+        for sname in tabs:
+            for (rr, sw, cand) in per_tab_rows.get(sname, []):
+                if (sw, str(cand)) in seen:
+                    continue
+                try:
+                    st = _row_static(sname, rr, sw, cand)
+                except Exception:
+                    continue
+                if st.get("kind") != "eval":
+                    continue
+                ov = _switch_overrides(sw, _parse_opt_value(cand, defaults.get(sw)))
+                if not ov:
+                    continue
+                seen.add((sw, str(cand)))
+                cands.append({"tab": sname, "row": rr, "switch": sw, "cand": cand, "ov": ov, "orange": (sname, rr) in orange_rows, "blocked": promotion_block_reason(sw, sname)})
+        for sname in tabs:
+            for hdr in header_maps.get(sname, {}):
+                filt, opt = [x.strip() for x in hdr.split("=", 1)]
+                if (filt, opt) in seen or filt not in known_config_fields() or filt in UNWIRED_FILTERS or filt in UNWIRED_SWITCHES:
+                    continue
+                val = _parse_opt_value(opt, defaults.get(filt))
+                if not _cand_compatible(filt, val, defaults)[0]:
+                    continue
+                seen.add((filt, opt))
+                cands.append({"tab": sname, "row": None, "switch": filt, "cand": opt, "ov": {filt: val}, "orange": True, "blocked": promotion_block_reason(filt, sname)})
+        def _eval_many(items, phase, cum_before, deadline):
+            cb = float(cum_before) if cum_before is not None else float(cumulative_gain)
+            for _l, ov, _c in items:
+                _submit(ov)
+            wave_deadline = min(deadline + 60.0, _t.time() + YELLOW_TIMEOUT * (-(-len(items) // max(1, _n_proc)) + 2))
+            out = []
+            for lab, ov, c in items:
+                res, err = _get("DIAGNOSE_REPAIR", (c or {}).get("row"), (c or {}).get("switch", lab), (c or {}).get("cand", ""), f"{phase}:{lab}", ov, wave_deadline, cb)
+                out.append((None if err else res, err))
+            _harvest()
+            return out
+        def _eval_ledger(ov):
+            ex = _cf.ThreadPoolExecutor(max_workers=1)
+            try:
+                return ex.submit(_vp.evaluate_prepared_sanitized, prepared, dict(ov), args.window_days, True).result(timeout=90)
+            except Exception as _le:
+                print(f"[DIAG-warn] ledger eval: {_le}", flush=True)
+                return None
+            finally:
+                ex.shutdown(wait=False)
+        _span = {"v": None, "done": False}
+        def _eval_365(ov):
+            if os.environ.get("V15_SKIP_365D_AT_DONE") == "1":
+                return None, None
+            if not _span["done"]:
+                _span["v"], _span["done"] = _npz_span_days(new_symside), True
+            try:
+                r = _vp.evaluate_sanitized_with_timeout(new_symside, dict(ov), 365, timeout_sec=int(min(QUAL_365D_TIMEOUT, 180)))
+            except Exception as _e365:
+                print(f"[DIAG-warn] 365D eval: {_e365}", flush=True)
+                r = None
+            _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": "sequential", "sheet": "DIAGNOSE_REPAIR", "row": None, "switch": "VERIFY_365D", "cand": "", "label": "DIAG_365D", "fn": "tools.opt.v12_pilot.evaluate_sanitized", "window_days": 365, "gain_pct": (r or {}).get("gain_pct"), "trades": (r or {}).get("trades"), "tim": (r or {}).get("tim_pct"), "valid": (r or {}).get("valid"), "invalid_reason": (r or {}).get("invalid_reason")})
+            return r, _span["v"]
+        origin = dict(cumulative_overrides)
+        base_res, base_err = _get("DIAGNOSE_REPAIR", None, "BASE", "", "DIAG_BASE", sanitize_overrides(origin, defaults)[0], _t.time() + 60.0, float(cumulative_gain))
+        if base_res is None:
+            print(f"[DIAG] {new_symside} base eval failed ({base_err}) — skip", flush=True)
+            progress["diagnose_repair"] = {"skipped": f"base eval {base_err}"}
+            return
+        print(f"[DIAG] {new_symside} start mode={mode} budget={budget:.0f}s candidates={len(cands)} workers={_n_proc}", flush=True)
+        _touch("diag-start")
+        rep = _DR.run({"defaults": defaults, "sanitize": lambda ov: sanitize_overrides(ov, defaults)[0], "same_val": _same_val,
+                       "candidates": cands, "base_overrides": origin, "base_res": base_res, "bh": bh, "deadline": t0 + budget,
+                       "eval_many": _eval_many, "eval_ledger": _eval_ledger, "eval_365": _eval_365, "qualifies_365": _qualifies_365d,
+                       "log": lambda m: print(f"{m} [{new_symside}]", flush=True), "touch": _touch})
+        best = dict(rep.get("best_overrides") or origin)
+        applied = False
+        if rep.get("accepted") and mode == "publish":
+            # NO-LIES: the adopted gain is a fresh real eval of exactly the adopted set (cache key = full set)
+            fres, ferr = _get("DIAGNOSE_REPAIR", None, "ADOPT", "", "DIAG_ADOPT", sanitize_overrides(best, defaults)[0], _t.time() + 60.0, float(cumulative_gain))
+            if fres is not None and _DR.compliant(_DR.metrics(fres, bh)):
+                cumulative_overrides = sanitize_overrides(best, defaults)[0]
+                cumulative_gain = float(fres.get("gain_pct"))
+                progress["cumulative_overrides"] = dict(cumulative_overrides)
+                progress["cumulative_gain"] = float(cumulative_gain)
+                applied = True
+                # C = published set: each change goes to the C cell of the row that tests it; reverts-to-default leave C
+                placed, unplaced = set(), []
+                for c in cands:
+                    keys = [k for k in c["ov"] if k in rep.get("changes", [])]
+                    if not keys or c["row"] is None or any(k in placed for k in keys):
+                        continue
+                    if all(_same_val(cumulative_overrides.get(k, defaults.get(k)), v) for k, v in c["ov"].items()):
+                        _set_override(wb[c["tab"]], c["tab"], c["row"], _resolve_cols(wb[c["tab"]]), [f"{c['switch']}={c['cand']}"])
+                        placed.update(c["ov"].keys())
+                for k in rep.get("changes", []):
+                    if k in placed:
+                        continue
+                    if _same_val(cumulative_overrides.get(k, defaults.get(k)), defaults.get(k)) and k in _c_where:
+                        _c_drop(*_c_where.pop(k), k)
+                    elif not _same_val(cumulative_overrides.get(k, defaults.get(k)), defaults.get(k)):
+                        unplaced.append(f"{k}={cumulative_overrides.get(k)}")
+                rep["c_unplaced"] = unplaced
+            else:
+                rep["adopt_refused"] = f"fresh adopt eval not compliant ({ferr or (fres or {}).get('invalid_reason')})"
+        # DIAGNOSE_REPAIR tab: diagnosis before/after, every step, finalists (30D+365D), gaps, lever map vs the final set
+        try:
+            if "DIAGNOSE_REPAIR" in wb.sheetnames:
+                del wb["DIAGNOSE_REPAIR"]
+            dws = wb.create_sheet("DIAGNOSE_REPAIR")
+            B = Font(name="Arial", size=10, bold=True)
+            def _row(vals, bold=False):
+                dws.append(list(vals))
+                if bold:
+                    for cc in dws[dws.max_row]:
+                        cc.font = B
+            mb, ma = rep.get("before") or {}, rep.get("after") or {}
+            _row(["DIAGNOSE_REPAIR", new_symside, f"mode={mode}", f"accepted={rep.get('accepted')}", f"applied={applied}", rep.get("accept_reason"), f"evals={rep.get('n_evals')}", f"secs={rep.get('secs')}"], True)
+            _row(["metric", "before", "after"], True)
+            for k in ("gain", "bh", "trades", "tim", "dd", "wr", "valid", "reason"):
+                _row([k, mb.get(k), ma.get(k)])
+            _row(["liveness entry/reentry/augment rows (moving/measured)", str(rep.get("liveness", {}).get("before")), str(rep.get("liveness", {}).get("after_soften")), str(rep.get("liveness", {}).get("final"))])
+            _row([])
+            _row(["FAULTS BEFORE", "detail", "lever family"], True)
+            for f in rep.get("diagnosis_before", []):
+                _row(list(f))
+            _row(["FAULTS AFTER", "detail", "lever family"], True)
+            for f in rep.get("diagnosis_after", []):
+                _row(list(f))
+            _row([])
+            _row(["EXIT MIX (before)", "n", "share", "mean_pnl_pct", "wr_pct"], True)
+            for r_, a in (rep.get("mix_before", {}).get("exit") or {}).items():
+                _row([r_, a["n"], round(a["share"], 3), round(a["mean_pnl_pct"], 4), round(a["wr_pct"], 1)])
+            _row([])
+            _row(["STEPS", "round", "applied", "tab", "row", "gain_pct", "trades", "tim_pct", "max_dd_pct", "wr_pct", "valid", "evals"], True)
+            for s_ in rep.get("steps", []):
+                _row([s_["phase"], s_["round"], s_["applied"], s_["tab"], s_.get("row"), s_.get("gain"), s_.get("trades"), s_.get("tim"), s_.get("dd"), s_.get("wr"), s_.get("valid"), s_.get("evals")])
+            _row([])
+            _row(["FINALISTS", "n_changes", "gain_30d", "trades_30d", "tim_30d", "dd_30d", "compliant_30d", "gain_365d", "trades_365d", "q365", "why365", "changes"], True)
+            for f in rep.get("finalists", []):
+                m3, m6 = f["m"] or {}, f.get("m365") or {}
+                _row(["ORIGIN" if not f["changes"] else "REPAIRED", len(f["changes"]), m3.get("gain"), m3.get("trades"), m3.get("tim"), m3.get("dd"), _DR.compliant(m3) if m3 else None, m6.get("gain"), m6.get("trades"), f["q365"], "; ".join(f.get("why365") or []), ", ".join(f["changes"])[:900]])
+            _row([])
+            _row(["GAPS", "metric", "status", "best", "move", "gain_at", "note"], True)
+            for g in rep.get("gaps", []):
+                _row([g["fault"], g["metric"], g["status"], g.get("best"), g.get("move"), g.get("gain_at"), g.get("note")])
+            _row([])
+            _row(["LEVER MAP vs final set (screen 0)", "tab", "row", "cand", "d_gain", "d_trades", "d_tim", "d_dd", "valid", "blocked"], True)
+            for lm in sorted(rep.get("lever_map", []), key=lambda x: -((x.get("d") or {}).get("gain") or -1e9)):
+                d = lm.get("d") or {}
+                _row([lm["switch"], lm["tab"], lm.get("row"), lm["cand"], d.get("gain"), d.get("trades"), d.get("tim"), d.get("dd"), lm.get("valid"), lm.get("blocked")])
+        except Exception as _tw:
+            print(f"[DIAG-warn] tab write: {_tw}", flush=True)
+        # full report (incl. lever map) beside the delta log; compact summary in the progress JSON
+        try:
+            _drp = progress_path.parent / "v15_diag_repair" / f"{new_symside}.json"
+            _drp.parent.mkdir(parents=True, exist_ok=True)
+            _atomic_write_json(_drp, {**rep, "best_overrides": best, "applied": applied, "mode": mode})
+        except Exception as _jw:
+            print(f"[DIAG-warn] report json: {_jw}", flush=True)
+        progress["diagnose_repair"] = {k: rep.get(k) for k in ("accepted", "accept_reason", "before", "after", "changes", "diagnosis_before", "diagnosis_after", "liveness", "gaps", "n_evals", "secs", "c_unplaced", "adopt_refused")}
+        progress["diagnose_repair"].update({"mode": mode, "applied": applied, "complete": True, "result_key": _sk(cumulative_overrides), "steps": [{k: s_.get(k) for k in ("phase", "round", "applied", "gain", "trades", "tim", "dd", "valid")} for s_ in rep.get("steps", [])]})
+        _maybe_write_json(force=True)
+        print(f"[DIAG] {new_symside} {'APPLIED' if applied else 'kept origin'} gain {(rep.get('before') or {}).get('gain')} -> {cumulative_gain:.4f} changes={len(rep.get('changes') or [])} ({_t.time()-t0:.0f}s)", flush=True)
     # ── SEQUENTIAL FILL — USER 2026-09-29 late (BACKTEST_BIBLE §56 rev. 2026-09-29b), supersedes the R16/R17 tab-jump ──
     # Tabs in SWITCH_SHEETS order, rows in order (white switch rows, then orange filter rows), NO row skipped, NO jumping.
     # Per row: every yellow cell = running set + switch=cand + that filter, delta vs the LATEST baseline, always written.
@@ -3550,6 +3732,16 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _final_filter_recheck()
     except Exception as _fe:
         print(f"[final-recheck-warn] {_fe}", flush=True)
+    # USER 2026-10-06 DIAGNOSE+REPAIR (tools/v15_diagnose_repair.py, ENCYCLOPEDIA.md §DIAGNOSIS): all cells calculated,
+    # NPZ + fork pool still hot -> diagnose the final set, then non-sequential SOFTEN -> ADD -> TIGHTEN -> POLISH,
+    # 365D check of the finalists, replace the final set only when compliant and better. V15_DIAG_REPAIR=0 disables,
+    # V15_DIAG_REPAIR_MODE=report measures + writes the tab without changing the set.
+    try:
+        if os.environ.get("V15_DIAG_REPAIR", "1") == "1" and fast_switches is None and prepared is not None:
+            _diagnose_repair()
+    except Exception as _dre:
+        import traceback as _tb_dr
+        print(f"[DIAG-warn] {new_symside}: {_dre}\n{_tb_dr.format_exc()[-1500:]}", flush=True)
     if _ps_on and _ps_counts:
         try:
             progress["possym_sampling"] = {"round": _ps_round, "cat": _ps_cat, "counts": {k: {"computed": v[0], "skipped": v[1]} for k, v in _ps_counts.items()}}

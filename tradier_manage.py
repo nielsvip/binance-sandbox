@@ -14718,7 +14718,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                     except Exception:
                                         pass
                                     if 'REENTRY' in (reason or '').upper():
-                                        await _dispatch_reentry_guaranteed_trd(order_queue, trade_manager, position_key, action_type, reason, conf, override_qty=qty)
+                                        await _dispatch_reentry_guaranteed_trd(order_queue, trade_manager, position_key, action_type, reason, conf, override_qty=qty, record_decision=False)
                                     else:
                                         _direct_route_handoff_telemetry(
                                             trade_manager, position_key,
@@ -14731,7 +14731,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                         )
                                         _direct_claims[position_key] = _shared_direct_handoff_claim
                                         try:
-                                            _direct_dispatch_result = await queue_trade_action(order_queue, trade_manager, position_key, action_type, reason, conf, override_qty=qty)
+                                            _direct_dispatch_result = await queue_trade_action(order_queue, trade_manager, position_key, action_type, reason, conf, override_qty=qty, record_decision=False)
                                         finally:
                                             _direct_claims.pop(position_key, None)
                                         _direct_route_handoff_telemetry(
@@ -14763,7 +14763,16 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
              _gain = calculate_gain(position_side, current_price, _entry) if _entry > 0 else 0.0
              _qty = locals().get('aug_qty', None) or locals().get('qty', 0) or 0
              _tdetails = {"qty": _qty, "price": current_price, "value": round(float(_qty) * current_price, 2), "entry_price": _entry, "gain_pct": round(_gain, 2), "position_amt": position.positionAmt if position else 0, "action_type": log_rec, "side": "BUY" if is_long else "SELL"}
-             await record_decision_context(trade_manager.redis_manager, account_key, position_key, log_rec, log_reason, i, tech_score, market_context, trade_details=_tdetails)
+             # 2026-10-05 USER immediate-repair (recorder): skip when the queue already
+             # recorded this pass's dispatch (earlier strategy branches record at submit;
+             # tail-dispatch sites pass record_decision=False and consume the claim).
+             _qta_claim_ts = 0.0
+             try:
+                 _qta_claim_ts = float((getattr(trade_manager, '_qta_decision_ts', None) or {}).pop(position_key, 0.0) or 0.0)
+             except Exception:
+                 _qta_claim_ts = 0.0
+             if not (time.time() - _qta_claim_ts < 5.0):
+                 await record_decision_context(trade_manager.redis_manager, account_key, position_key, log_rec, log_reason, i, tech_score, market_context, trade_details=_tdetails)
 
         # 6. UNIFIED VISUAL LOGGING
         await log_stoch_snapshot(trade_manager, account_key, event_type or "DECISION", position_key, current_price, indicators_raw, tech_score, sentiment_rank, log_rec, log_reason, force=(action_taken or force))
@@ -14845,7 +14854,7 @@ class OrderQueue:
                 return
             logger.info(f"[ORDER_DEBUG] Processing order: {symbol} {action} {side} qty={quantity}")
             position_key = construct_position_key(account_key, symbol, order.get('position_side', ''))            
-            result = await self.trade_manager.execute_trade_action(account_key=account_key,position_key=position_key,symbol=symbol,quantity=quantity,current_price=price,side=side,position_side=order.get('position_side', ''),unique_id=order.get('unique_id', f"{account_key}:{symbol}_{action}_{int(time.time())}"),is_full_close=(action == "CLOSE"),action=action,reason=reason,override_qty=order.get('override_qty')  )
+            result = await self.trade_manager.execute_trade_action(account_key=account_key,position_key=position_key,symbol=symbol,quantity=quantity,current_price=price,side=side,position_side=order.get('position_side', ''),unique_id=order.get('unique_id', f"{account_key}:{symbol}_{action}_{int(time.time())}"),is_full_close=(action == "CLOSE"),action=action,reason=reason,override_qty=order.get('override_qty'),decision_recorded=True  )
             if 'MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or ''):
                 _arrow_dbg(f"HANDLE_ORDER {symbol} {action} result={result} qty={quantity} price={price}")
             if result == "SUCCESS":
@@ -14885,12 +14894,12 @@ class OrderQueue:
             logger.error(f"[handle_order] Critical Error: {e}",  exc_info=True )
 
 
-async def _dispatch_reentry_guaranteed_trd(order_queue, trade_manager, position_key, action, reason, conviction, override_qty=None, max_attempts=None, backoff_s=None):
+async def _dispatch_reentry_guaranteed_trd(order_queue, trade_manager, position_key, action, reason, conviction, override_qty=None, max_attempts=None, backoff_s=None, record_decision=True):
     """USER MANDATE 2026-05-09 (mirror of crypto helper): reentry signals must NEVER be silently dropped on transient queue failure.
     Wraps queue_trade_action with N retries + explicit logging for every attempt.
     Returns the final result (same contract as queue_trade_action: 'SUCCESS' or False)."""
     if not bool(_cfg_auto('REENTRY_NEVER_SKIP_ENABLED', True)):
-        return await queue_trade_action(order_queue, trade_manager, position_key, action, reason, conviction, override_qty=override_qty)
+        return await queue_trade_action(order_queue, trade_manager, position_key, action, reason, conviction, override_qty=override_qty, record_decision=record_decision)
     # WAVE3 2026-10-04 lane B3: GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN live twin (vec v12:8625). Default False (tradier) = inert. Fail-open when hedge state unverifiable.
     if bool(_cfg_auto('GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN', False)):
         try:
@@ -14908,7 +14917,7 @@ async def _dispatch_reentry_guaranteed_trd(order_queue, trade_manager, position_
     _block_substrings = ('BALANCE_FLOOR_HALT', 'OVERTRADE_GUARD', 'DAILY_LOSS_HALT', 'MAX_POS_BLOCK', 'LS_RATIO_BLOCK', 'RED_ZONE_TRADIER', 'UNMAPPED_ACTION_BLOCK', 'ALLOWLIST_BLOCK', 'OPENING_BUFFER_NO_TRADE')
     for attempt in range(1, max_attempts + 1):
         try:
-            last_result = await queue_trade_action(order_queue, trade_manager, position_key, action, reason, conviction, override_qty=override_qty)
+            last_result = await queue_trade_action(order_queue, trade_manager, position_key, action, reason, conviction, override_qty=override_qty, record_decision=record_decision)
         except Exception as _re_e:
             logger.error(f"💥 [REENTRY_DISPATCH_CRASH] {position_key} attempt={attempt}/{max_attempts}: {type(_re_e).__name__}: {_re_e}")
             last_result = f"CRASH:{type(_re_e).__name__}"
@@ -14936,7 +14945,65 @@ async def _dispatch_reentry_guaranteed_trd(order_queue, trade_manager, position_
     return last_result
 
 
-async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_key: str, action: str, reason: str, conviction: float = 50.0, override_qty: float = None):
+async def _record_submit_decision(trade_manager, position_key: str, action: str, reason: str,
+                                  quantity: float, current_price: float, side: str,
+                                  conviction: float = 50.0) -> bool:
+    """2026-10-05 USER immediate-repair (recorder): decision line for every submitted order.
+
+    Direct-dispatch paths (GAP_FILL/GAP_MOC/SECTOR_HEDGE/wings/early exits) submit via
+    queue_trade_action / execute_trade_action without passing through the process_position
+    tail that owns the only record_decision_context call — Oct 5 live submits were invisible
+    in data/decisions/. Same writer + schema as the strategy path. Fail-open: never raises.
+    History intentionally stays fill-time (execute SUCCESS); queue-time history would
+    fabricate fills for orders still awaiting execution and double-count the overtrade guard.
+    """
+    try:
+        _rm = getattr(trade_manager, 'redis_manager', None)
+        try:
+            _acct, _sym, _pside = parse_position_key(position_key)
+        except Exception:
+            _acct = (position_key.split(':')[0] if position_key and ':' in position_key else 'unknown')
+            _sym, _pside = '', ''
+        _ind = {}
+        try:
+            _ind = (trade_manager.get_indicators(_sym) if _sym else {}) or {}
+            if not isinstance(_ind, dict):
+                _ind = {}
+        except Exception:
+            _ind = {}
+        _entry, _pamt = 0.0, 0.0
+        try:
+            _pm = getattr(trade_manager, 'position_manager', None)
+            _pos = _pm.get_position(position_key) if _pm else None
+            if _pos is not None:
+                _entry = float(getattr(_pos, 'entry_price', 0.0) or 0.0)
+                _pamt = float(getattr(_pos, 'positionAmt', 0.0) or 0.0)
+        except Exception:
+            pass
+        _gain = 0.0
+        try:
+            if _entry > 0 and float(current_price or 0) > 0 and _pside:
+                _gain = float(calculate_gain(_pside, float(current_price), _entry))
+        except Exception:
+            _gain = 0.0
+        _qty = float(quantity or 0)
+        _px = float(current_price or 0)
+        _td = {"qty": _qty, "price": _px, "value": round(_qty * _px, 2),
+               "entry_price": _entry, "gain_pct": round(_gain, 2), "position_amt": _pamt,
+               "action_type": action, "side": side}
+        await record_decision_context(_rm, _acct, position_key, action, reason, _ind,
+                                      conviction, {"bias": 0.0, "is_tech": False}, trade_details=_td)
+        try:
+            trade_manager.__dict__.setdefault('_qta_decision_ts', {})[position_key] = time.time()
+        except Exception:
+            pass
+        return True
+    except Exception as _e:
+        logger.warning(f"[SUBMIT_RECORD] {position_key} {action} record failed (fail-open): {_e}")
+        return False
+
+
+async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_key: str, action: str, reason: str, conviction: float = 50.0, override_qty: float = None, record_decision: bool = True):
     try:
         _mandatory_reentry_qta = is_mandatory_reclaim_reason(reason)
         _ordinary_parity_qta = is_ordinary_ladder_target_reason(reason)
@@ -15732,6 +15799,17 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
             _arrow_dbg(f"QTA_QUEUED {position_key} {action} success={success} msg={msg}")
         if not success:
             return f"QUEUE_ADD_REFUSED:{msg}"
+        # 2026-10-05 USER immediate-repair (recorder): every queued submit appends a
+        # decision line — direct-dispatch paths bypass the process_position tail writer.
+        if record_decision:
+            await _record_submit_decision(trade_manager, position_key, action, final_reason, quantity, current_price, side, conviction)
+        else:
+            # Caller owns the record (strategy-path tail); consume any prior claim so the
+            # tail does not mistake an earlier dispatch's claim for this one.
+            try:
+                (getattr(trade_manager, '_qta_decision_ts', None) or {}).pop(position_key, None)
+            except Exception:
+                pass
         return "SUCCESS"
     except Exception as e:
         logger.error(f"[queue_trade_action] Error: {e}",  exc_info=True )
@@ -15743,8 +15821,8 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
         return f"QTA_EXCEPTION:{type(e).__name__}:{str(e)[:120]}"
 
 _qta_undecorated = queue_trade_action
-async def _qta_arrow_traced(order_queue, trade_manager, position_key, action, reason, conviction=50.0, override_qty=None):
-    res = await _qta_undecorated(order_queue, trade_manager, position_key, action, reason, conviction, override_qty=override_qty)
+async def _qta_arrow_traced(order_queue, trade_manager, position_key, action, reason, conviction=50.0, override_qty=None, record_decision=True):
+    res = await _qta_undecorated(order_queue, trade_manager, position_key, action, reason, conviction, override_qty=override_qty, record_decision=record_decision)
     if res != "SUCCESS" and ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or '')):
         _arrow_dbg(f"QTA_REFUSED {position_key} {action} result={res} reason={(reason or '')[:80]}")
     return res
@@ -26207,7 +26285,7 @@ class TradierTradeManager:
         #    they were already de-fanged in step 3, but kept here for any future restrictive use.
         return True
 
-    async def execute_trade_action(self, account_key, position_key, symbol, quantity, current_price, side, position_side, unique_id, is_full_close=False, action='', reason='', override_qty=None):
+    async def execute_trade_action(self, account_key, position_key, symbol, quantity, current_price, side, position_side, unique_id, is_full_close=False, action='', reason='', override_qty=None, decision_recorded=False):
         if not is_regular_trading_hours(): return "MARKET_CLOSED"
         current_account.set(account_key)
         _is_exit_or_reduce = action in ('REDUCE', 'CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'QUICK_CLOSE')
@@ -28532,6 +28610,11 @@ class TradierTradeManager:
                             _trace_row["filled_price"] = float(current_price)
 
                     await self._append_to_history(position_key, action, quantity, current_price, reason)
+                    # 2026-10-05 USER immediate-repair (recorder): direct-execute paths
+                    # (PPL/ratio/scalp/daytrade) bypass the queue writer — record the
+                    # decision unless already recorded at queue time (handle_order=True).
+                    if not decision_recorded:
+                        await _record_submit_decision(self, position_key, action, reason, quantity, current_price, side, 50.0)
                     if lock_acquired and self.redis_manager:
                         # Ghost-cleared positions get 5-min cooldown to stop repeat loops
                         ghost_ttl = 300 if order_id == "GHOST_CLEARED" else 5

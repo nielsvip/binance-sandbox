@@ -4245,6 +4245,9 @@ class QuickConfig:
     RSI_ENTRY_GATE_ENABLED: bool = False
     RSI_ENTRY_MAX_LONG: float = 37.0
     RSI_ENTRY_MIN_SHORT: float = 63.0
+    RSI_ENTRY_LONG_TRADIER: float = 40.0  # §17 live parity: config.py + TradierConfig 40.0 — vec twin vec_decisions/entry_vet_rsi_t55.py (cut#6)
+    RSI_ENTRY_SHORT_TRADIER: float = 58.0  # §17 live parity: config.py + TradierConfig 58.0 — vec twin vec_decisions/entry_vet_rsi_t55.py (cut#6)
+    RSI_ENTRY_PERIOD_TRADIER: int = 10  # §17 live parity: config.py + TradierConfig 10 — vec twin vec_decisions/entry_vet_rsi_t55.py (cut#6)
     MFI_ENTRY_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)
     MFI_ENTRY_LONG_MAX: float = 60.0
     MFI_ENTRY_SHORT_MIN: float = 40.0
@@ -8434,10 +8437,16 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
     vwap_D_arr = _safe(npz, 'vwap_D', n)
     adx_1h_arr = _safe(npz, 'adx_1h', n, 20)
 
-    if getattr(cfg, 'K_ZONE_ENTRY_ENABLED', False):
-        is_tradier = getattr(cfg, 'MODE', 'crypto') == 'tradier'
-        lo_thr = getattr(cfg, 'TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER', 35) if is_tradier else getattr(cfg, 'K_ZONE_LONG_THRESHOLD', 35)
-        hi_thr = getattr(cfg, 'TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER', 65) if is_tradier else getattr(cfg, 'K_ZONE_SHORT_THRESHOLD', 65)
+    # MU_GAP 2026-10-06: B_KZONE is the CRYPTO block (live reader: ez_positions_quick
+    # rate via K_ZONE_ENTRY_ENABLED). Live stocks reads ONLY K_ZONE_ENTRY_ENABLED_TRADIER
+    # (tradier_manage process_position branch B; pinned S1:13711); the crypto flag firing
+    # B_KZONE for MODE=tradier minted 8 vec-only MU_LONG opens. Venue-gate: tradier uses
+    # B_KZONE_TRADIER below, crypto keeps B_KZONE. Live is truth (Bible §17.4).
+    _kz_tradier = getattr(cfg, 'MODE', 'crypto') == 'tradier'
+    _kz_on = (not _kz_tradier) and bool(getattr(cfg, 'K_ZONE_ENTRY_ENABLED', False))
+    if _kz_on:
+        lo_thr = getattr(cfg, 'K_ZONE_LONG_THRESHOLD', 35)
+        hi_thr = getattr(cfg, 'K_ZONE_SHORT_THRESHOLD', 65)
         blocks["B_KZONE"] = (k_3m < lo_thr) if is_long else (k_3m > hi_thr)
 
     # ENTRY_BOTTOM vector twins (fails-open, side-aware LONG/SHORT mirror, causal next-bar) 2026-08-18
@@ -11758,6 +11767,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     exit_sig = compute_exit_signals(npz, n, is_long, cfg)
     # TWIN_VEC_SPECIAL H1: pre-loop masks — DC breakout OR-entry (live ez_positions_quick.py:4555), R3 OR-exit (live ez_manage.py:48824). R3 stocks newborn/R1 guards need loop state (twin kw); pre-loop mask is the core flip.
     # cut#5: RSI T55 AND-gate REMOVED — live side dead (tradier touches only, cited lines rotted); it zeroed BTC LONG/ETH/MU (gate proof). Re-add only with functional live gate.
+    # cut#6 (2026-10-06): RE-ADDED as vec_decisions/entry_vet_rsi_t55.py — cut#5 premise REFUTED by S1 parity leg-1: live crypto gate IS functional
+    # (ez_manage.check_entry_vetting:1426-1434, enforced per-open :26075-26087); honest recount blocks 2647 bars RSI_T55_BLOCK_LONG. "Zeroed BTC LONG" was live parity, not a bug.
     _tvs_churn_ok = None
     try:
         import vec_decisions.twin_vec_special as _tvs
@@ -12295,6 +12306,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _ec_choke_block = None
     try:
         import vec_decisions.entry_vet_gate as _evg_c
+        import vec_decisions.entry_vet_rsi_t55 as _evrsi_c
         import vec_decisions.stdev_macro_entry as _sme_c
         import vec_decisions.wt_div_entry_gate as _wdv_c
         _ec_cands = []
@@ -12302,6 +12314,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _ev_c = _evg_c.vet_pass_mask(npz, n, is_long, cfg, close, _safe)
             if _ev_c is not None:
                 _ec_cands.append(~np.asarray(_ev_c, dtype=bool))
+            _evrsi_c_m = _evrsi_c.rsi_block_mask(npz, n, is_long, cfg, _safe)
+            if _evrsi_c_m is not None:
+                _ec_cands.append(np.asarray(_evrsi_c_m, dtype=bool))
         _sm_c = _sme_c.entry_veto_mask(npz, n, is_long, cfg, _safe)
         if _sm_c is not None:
             _ec_cands.append(np.asarray(_sm_c, dtype=bool))
