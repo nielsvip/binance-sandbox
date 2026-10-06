@@ -5816,7 +5816,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # Close when 1h+15m+3m+D all against. Same non-zero guard as live.
         # Knobs: HTF_AGAINST_FORCE_CLOSE_ENABLED (default True), _CONFIRM_3M (True), _CONFIRM_D (True).
         # ═══════════════════════════════════════════════════════════════════════════
-        if bool(getattr(config, 'HTF_AGAINST_FORCE_CLOSE_ENABLED', True)) and mode == "crypto":
+        if os.environ.get("V12_LIVE_ONLY_PRODUCERS") != "1" and bool(getattr(config, 'HTF_AGAINST_FORCE_CLOSE_ENABLED', True)) and mode == "crypto":
             try:
                 for _hac_pk, _hac_pos in list(trade_manager.positions.items()):
                     if abs(getattr(_hac_pos, 'positionAmt', 0)) < 0.0001:
@@ -5976,7 +5976,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # ═══════════════════════════════════════════════════════════════════════════
         # 2026-09-29 USER: crypto only — in tradier mode this read the crypto config (no _TRADIER knob -> 15m hardcoded)
         # and double-fired with the tradier DISC block below (MTF_ATR_TRAIL_TF_TRADIER) = churn
-        if mode != "tradier" and bool(getattr(config, 'MTF_EXIT_USE_COMPOUND', False)) and bool(getattr(config, 'MTF_ATR_TRAIL_ENABLED', False)):
+        if os.environ.get("V12_LIVE_ONLY_PRODUCERS") != "1" and mode != "tradier" and bool(getattr(config, 'MTF_EXIT_USE_COMPOUND', False)) and bool(getattr(config, 'MTF_ATR_TRAIL_ENABLED', False)):
             try:
                 from vec_paths.mtf_atr_trail import update_and_check as _mtfat_check, mtf_atr_trail_tf as _mtfat_tf
                 if not hasattr(trade_manager, 'mtf_compound_exit_state'):
@@ -6015,7 +6015,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # behavior. Sweep arms enable it by overriding the bypass list in V8_OVERRIDE_FILE.
         # Knobs: BB_FROZEN_STOP_ENABLED / BB_FROZEN_STOP_TF / BB_FROZEN_STOP_FIELD.
         # ═══════════════════════════════════════════════════════════════════════════
-        if bool(getattr(config, 'BB_FROZEN_STOP_ENABLED', False)):
+        if os.environ.get("V12_LIVE_ONLY_PRODUCERS") != "1" and bool(getattr(config, 'BB_FROZEN_STOP_ENABLED', False)):
             try:
                 _bbfs_tf = str(getattr(config, 'BB_FROZEN_STOP_TF', '1h'))
                 _bbfs_field_opt = str(getattr(config, 'BB_FROZEN_STOP_FIELD', 'lower'))
@@ -6061,7 +6061,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # Bypass reasons R4_STDEV_MACRO_TOP/BOT added to UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS.
         # Default OFF behind STDEV_MACRO_R4_EXIT_ENABLED. Fail-open on missing macro_z fields.
         # ═══════════════════════════════════════════════════════════════════════════
-        if bool(getattr(config, 'STDEV_MACRO_R4_EXIT_ENABLED', False)):
+        if os.environ.get("V12_LIVE_ONLY_PRODUCERS") != "1" and bool(getattr(config, 'STDEV_MACRO_R4_EXIT_ENABLED', False)):
             try:
                 import stdev_macro as _r4_sm
                 for _r4_pk, _r4_pos in list(trade_manager.positions.items()):
@@ -12120,7 +12120,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         # and what the tradier override loader above sets) — NOT the module-level
         # crypto `config`, whose MTF_ATR_TRAIL_TF would wrongly yield 15m here.
         # ═══════════════════════════════════════════════════════════════════════
-        if bool(getattr(tm_mod.config, 'MTF_EXIT_USE_COMPOUND', False)) and bool(getattr(tm_mod.config, 'MTF_ATR_TRAIL_ENABLED', False)) and manager.position_manager:
+        if os.environ.get("V12_LIVE_ONLY_PRODUCERS") != "1" and bool(getattr(tm_mod.config, 'MTF_EXIT_USE_COMPOUND', False)) and bool(getattr(tm_mod.config, 'MTF_ATR_TRAIL_ENABLED', False)) and manager.position_manager:
             try:
                 from vec_paths.mtf_atr_trail import update_and_check as _mtfat_check_tr, mtf_atr_trail_tf as _mtfat_tf_fn_tr
                 _mtfat_states_tr = manager.__dict__.setdefault('mtf_compound_exit_state', {})

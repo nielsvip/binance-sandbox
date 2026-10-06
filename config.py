@@ -1540,6 +1540,7 @@ class Config:
         # 2026-05-05 USER MANDATE (LUNC -65% incident): emergency safety closes BYPASS NOLOSS.
         # These are LAST-RESORT exits when position is hopeless (held >48h, or beyond -15%, or wt-against bleed).
         # NOLOSS_GATE blocking these IS what caused -65% LUNC to never close.
+        'DAYTRADE_STOP',                  # 2026-10-06 USER ruling (director): NOLOSS has only exceptions — vec-decided technical exit (shared dc_channel_exits DAYTRADE_STOP) executes at a loss
         'RIDICULOUS_HOLD',                # RIDICULOUS_HOLD_age{X}h_cap48h_g{X}% — held too long
         'RIDICULOUS_LOSS',                # RIDICULOUS_LOSS_g{X}%_cap-15.0% — beyond catastrophic
         'UNDERWATER_HEDGE_OR_CLOSE',      # wt1_3m flipped against + already hedged + still bleeding
@@ -5322,7 +5323,7 @@ class Config:
     RSI_ENTRY_LONG_TRADIER: float = 40.0  # A/B 2026-04-17 full 109-sym × 3yr: rsi15<40 Sharpe=0.477 beats <42 and <35. Was 42. Evidence: MOM_rsi15_lt40_rsi1h_lt22 peak.  # PORTED from TradierConfig 2026-08-17
     RSI_ENTRY_PERIOD_TRADIER: int = 10  # BACKTEST_CHANGE_T55: was 2. RSI(10) = OOS champion. Deeper mean-reversion captures bigger moves. Sharpe 6.43, WR 73.9%, PF 8.18  # PORTED from TradierConfig 2026-08-17
     RSI_ENTRY_SHORT_TRADIER: float = 58.0  # BACKTEST_CHANGE_T64: was 70. RSI>58 for shorts.  # PORTED from TradierConfig 2026-08-17
-    RSI_ENTRY_VETO_ENABLED: bool = True  # 2026-10-06 director: gates live check_entry_vetting RSI veto (also the per-open execute_trade_action ENTRY_VET call) and vec twin vec_decisions/entry_vet_rsi_t55.py; default True = unchanged live behaviour
+    RSI_ENTRY_VETO_ENABLED: bool = False  # 2026-10-06 USER: daily-RSI veto never approved -> default OFF everywhere (live+vec+TEMPLATE). director: gates live check_entry_vetting RSI veto (also the per-open execute_trade_action ENTRY_VET call) and vec twin vec_decisions/entry_vet_rsi_t55.py; default True = unchanged live behaviour
     RSI_EXIT_LONG_TRADIER: float = 85.0  # BACKTEST_CHANGE_T56: was 70. Exit at RSI>85 = let winners run longer. +311% PnL over 4.8yr  # PORTED from TradierConfig 2026-08-17
     RSI_EXIT_SHORT_TRADIER: float = 15.0  # BACKTEST_CHANGE_T56: exit when RSI < 15  # PORTED from TradierConfig 2026-08-17
     RULE_B_5M_EXIT_ENABLED: bool = True   # 2026-09-21 ON per user — exit on 5m switch stays ON while general 3m/5m trading stays OFF (BASE_TF 15m). Was False 2026-09-21, now True per user 5m exit on. ROLLBACK: False.  # PORTED from TradierConfig 2026-08-17

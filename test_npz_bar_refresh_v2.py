@@ -174,3 +174,28 @@ def test_backfill_volume_D_50_sma_refuses_mismatch():
     full = {"volume_D": np.full(12, 100.0, dtype=np.float32), "timestamp_D": np.array([d1] * 6 + [d2] * 6)}
     L = {"volume_D_50_sma": np.full(10, 999.0, dtype=np.float32)}  # wrong values
     assert nbr.backfill_legacy_keys(full, L, ["volume_D_50_sma"], "TEST") == {}
+
+
+def test_backlog_window():
+    now = 2000000
+    assert nbr.backlog_window(None, 100, now) is None
+    assert nbr.backlog_window(1500, 1500, now) is None  # tracked current
+    assert nbr.backlog_window(1500, 1000, now) == (1000, 1500)  # interruption backlog
+    lo, hi = nbr.backlog_window(1500, None, now)  # unknown -> last 20h
+    assert (lo, hi) == (now - nbr.SENT_BACKFILL_S, 1500)
+
+
+def test_stamp_sent_through_ledger(tmp_path):
+    sp = tmp_path / "npz_fresh.json"
+    res = [{"symbol": "A", "status": "INSTALLED", "ts_after": 2000, "ts_before": 1000, "n_old": 10, "appended": 1},
+           {"symbol": "B", "status": "INSTALLED", "ts_after": 2000, "ts_before": 1000, "n_old": 10, "appended": 1},
+           {"symbol": "C", "status": "FRESH", "ts_before": 2000}]
+    nbr.stamp(res, {"A": 2000, "C": 2000}, sp)
+    import json
+    cur = json.loads(sp.read_text())
+    assert cur["A"]["sent_through"] == 2000  # patched
+    assert cur["B"]["sent_through"] == 1000  # installed but unpatched -> backlog from ts_before
+    assert cur["C"]["sent_through"] == 2000  # fresh backlog-patched
+    assert cur["C"]["ts_last"] == 2000
+    assert nbr.stamp_sent_through(sp) == {"A": 2000, "B": 1000, "C": 2000}
+    assert nbr.stamp_sent_through(tmp_path / "missing.json") == {}

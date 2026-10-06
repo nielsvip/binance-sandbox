@@ -4284,7 +4284,7 @@ class QuickConfig:
     RSI_ENTRY_LONG_TRADIER: float = 40.0  # §17 live parity: config.py + TradierConfig 40.0 — vec twin vec_decisions/entry_vet_rsi_t55.py (cut#6)
     RSI_ENTRY_SHORT_TRADIER: float = 58.0  # §17 live parity: config.py + TradierConfig 58.0 — vec twin vec_decisions/entry_vet_rsi_t55.py (cut#6)
     RSI_ENTRY_PERIOD_TRADIER: int = 10  # §17 live parity: config.py + TradierConfig 10 — vec twin vec_decisions/entry_vet_rsi_t55.py (cut#6)
-    RSI_ENTRY_VETO_ENABLED: bool = True  # lane-D 2026-10-06 master for vec_decisions/entry_vet_rsi_t55 (both call sites); True = live check_entry_vetting RSI veto (lane B mirrors in config.py)
+    RSI_ENTRY_VETO_ENABLED: bool = False  # 2026-10-06 USER: never approved -> default OFF (live config.py + TEMPLATE bold False). lane-D 2026-10-06 master for vec_decisions/entry_vet_rsi_t55 (both call sites); True = live check_entry_vetting RSI veto (lane B mirrors in config.py)
     MFI_ENTRY_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)
     MFI_ENTRY_LONG_MAX: float = 60.0
     MFI_ENTRY_SHORT_MIN: float = 40.0
