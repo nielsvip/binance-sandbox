@@ -1,5 +1,5 @@
 {
- "at": "2026-10-06T23:25:01.513615+00:00",
+ "at": "2026-10-06T23:45:01.238487+00:00",
  "source": "Mac {acct}/{long,short}_positions.json |positionAmt|>0",
  "sym_sides": [
   "ADAUSDC_SHORT",
@@ -8,6 +8,7 @@
   "ALGOUSDT_SHORT",
   "APO_SHORT",
   "ARBUSDC_SHORT",
+  "ARPAUSDT_SHORT",
   "ARUSDT_LONG",
   "AVGO_SHORT",
   "AXON_SHORT",
@@ -24,7 +25,6 @@
   "GOOGL_LONG",
   "IBIT_LONG",
   "KMNOUSDT_SHORT",
-  "KSMUSDT_LONG",
   "KSMUSDT_SHORT",
   "LOW_SHORT",
   "META_LONG",
@@ -57,23 +57,28 @@
   "XLMUSDT_SHORT",
   "XMRUSDT_SHORT",
   "XTZUSDT_SHORT",
+  "ZECUSDC_LONG",
   "ZROUSDT_LONG"
  ],
  "by_account": {
   "ang": [
    "ADAUSDC_SHORT",
    "ARBUSDC_SHORT",
+   "ARPAUSDT_SHORT",
    "EDUUSDT_LONG",
    "GALAUSDT_SHORT",
-   "KSMUSDT_LONG",
    "NEARUSDC_LONG",
    "NMRUSDT_LONG",
    "RENDERUSDT_LONG",
    "SNXUSDT_LONG",
+   "ZECUSDC_LONG",
    "ZROUSDT_LONG"
   ],
   "fin": [
    "ADAUSDC_SHORT"
+  ],
+  "flz": [
+   "ZECUSDC_LONG"
   ],
   "inf": [
    "ALGOUSDT_SHORT",

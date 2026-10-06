@@ -3,10 +3,6 @@
   "at": "06 20:04:50 - ",
   "reason": "seeded_from_log"
  },
- "ang:ZECUSDC_LONG": {
-  "at": "06 20:02:03 - ",
-  "reason": "seeded_from_log"
- },
  "ang:ZROUSDT_LONG": {
   "at": "06 20:04:49 - ",
   "reason": "seeded_from_log"
@@ -55,10 +51,6 @@
   "at": "2026-10-06T21:45:25Z",
   "reason": "ENTRY_SIGNAL"
  },
- "ang:KSMUSDT_LONG": {
-  "at": "2026-10-06T21:45:43Z",
-  "reason": "B_SRS_ENTRY"
- },
  "ang:ADAUSDC_SHORT": {
   "at": "2026-10-06T22:00:36Z",
   "reason": "B12"
@@ -75,20 +67,24 @@
   "at": "2026-10-06T22:31:27Z",
   "reason": "B12"
  },
- "ang:TRBUSDT_LONG": {
-  "at": "2026-10-06T22:45:57Z",
-  "reason": "B_KZONE"
- },
- "ang:UNIUSDC_SHORT": {
-  "at": "2026-10-06T23:20:55Z",
-  "reason": "B_KZONE"
- },
- "ang:ENJUSDT_LONG": {
-  "at": "2026-10-06T23:20:57Z",
-  "reason": "B12"
- },
  "ang:AAPLUSDT_LONG": {
   "at": "2026-10-06T23:21:06Z",
   "reason": "B_SRS_ENTRY"
+ },
+ "ang:ZECUSDC_LONG": {
+  "at": "2026-10-06T23:31:00Z",
+  "reason": "B_SRS_ENTRY"
+ },
+ "ang:ARPAUSDT_SHORT": {
+  "at": "2026-10-06T23:43:06Z",
+  "reason": "B12"
+ },
+ "ang:LTCUSDC_SHORT": {
+  "at": "2026-10-06T23:45:42Z",
+  "reason": "B14"
+ },
+ "ang:ETHFIUSDC_LONG": {
+  "at": "2026-10-06T23:45:50Z",
+  "reason": "B_KZONE"
  }
 }

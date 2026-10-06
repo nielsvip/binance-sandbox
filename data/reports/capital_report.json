@@ -1,161 +1,32 @@
 {
- "generated_at": "2026-10-06 23:21 UTC",
- "total_capital_usd": 797.46,
+ "generated_at": "2026-10-06 23:36 UTC",
+ "total_capital_usd": 6.84,
  "tier_capital": {
   "A": 0.0,
-  "B": 771.07,
-  "C": 26.4
+  "B": 0.0,
+  "C": 6.84
  },
  "tier_count": {
   "A": 0,
-  "B": 10,
-  "C": 2
+  "B": 0,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "ang:EDUUSDT_LONG",
-  "ang:NMRUSDT_LONG",
-  "ang:NEARUSDC_LONG",
-  "ang:ZROUSDT_LONG",
-  "ang:SNXUSDT_LONG",
-  "ang:SANDUSDT_LONG"
+  "flz:ZECUSDC_LONG"
  ],
- "mediocre": [
-  "ang:RENDERUSDT_LONG",
-  "ang:KSMUSDT_LONG"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "ang:NMRUSDT_LONG",
-   "symbol": "NMRUSDT",
-   "account": "ang",
-   "value_usd": 396.61,
-   "gain_pct": -1.149,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 24.9,
-   "mark": 15.92803422
-  },
-  {
-   "pk": "ang:ZROUSDT_LONG",
-   "symbol": "ZROUSDT",
-   "account": "ang",
-   "value_usd": 178.58,
-   "gain_pct": -0.654,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 79.0,
-   "mark": 2.26050789
-  },
-  {
-   "pk": "ang:EDUUSDT_LONG",
-   "symbol": "EDUUSDT",
-   "account": "ang",
-   "value_usd": 76.45,
-   "gain_pct": -4.614,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 1193.0,
-   "mark": 0.06408
-  },
-  {
-   "pk": "ang:NEARUSDC_LONG",
-   "symbol": "NEARUSDC",
-   "account": "ang",
-   "value_usd": 35.58,
-   "gain_pct": -0.935,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 7.0,
-   "mark": 5.083
-  },
-  {
-   "pk": "ang:GALAUSDT_SHORT",
-   "symbol": "GALAUSDT",
-   "account": "ang",
-   "value_usd": 28.18,
-   "gain_pct": -0.487,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 11556.0,
-   "mark": 0.00243847
-  },
-  {
-   "pk": "ang:SANDUSDT_LONG",
-   "symbol": "SANDUSDT",
-   "account": "ang",
-   "value_usd": 20.37,
-   "gain_pct": 0.925,
+   "pk": "flz:ZECUSDC_LONG",
+   "symbol": "ZECUSDC",
+   "account": "flz",
+   "value_usd": 6.84,
+   "gain_pct": -0.069,
    "tier": "C",
-   "perf_mult": 0.37,
-   "amt": 305.0,
-   "mark": 0.06679681
-  },
-  {
-   "pk": "ang:ARBUSDC_SHORT",
-   "symbol": "ARBUSDC",
-   "account": "ang",
-   "value_usd": 16.04,
-   "gain_pct": -0.419,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 79.7,
-   "mark": 0.20124
-  },
-  {
-   "pk": "ang:ADAUSDC_SHORT",
-   "symbol": "ADAUSDC",
-   "account": "ang",
-   "value_usd": 15.93,
-   "gain_pct": 0.298,
-   "tier": "B",
-   "perf_mult": 2.78,
-   "amt": 59.5,
-   "mark": 0.2677
-  },
-  {
-   "pk": "ang:SKYUSDT_LONG",
-   "symbol": "SKYUSDT",
-   "account": "ang",
-   "value_usd": 8.17,
-   "gain_pct": 1.195,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 91.0,
-   "mark": 0.08975
-  },
-  {
-   "pk": "ang:RENDERUSDT_LONG",
-   "symbol": "RENDERUSDT",
-   "account": "ang",
-   "value_usd": 8.07,
-   "gain_pct": -0.266,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 3.8,
-   "mark": 2.123
-  },
-  {
-   "pk": "ang:KSMUSDT_LONG",
-   "symbol": "KSMUSDT",
-   "account": "ang",
-   "value_usd": 7.46,
-   "gain_pct": -0.146,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 1.5,
-   "mark": 4.971
-  },
-  {
-   "pk": "ang:SNXUSDT_LONG",
-   "symbol": "SNXUSDT",
-   "account": "ang",
-   "value_usd": 6.03,
-   "gain_pct": 0.792,
-   "tier": "C",
-   "perf_mult": 0.5,
-   "amt": 23.6,
-   "mark": 0.2555
+   "perf_mult": 0.51,
+   "amt": 0.005,
+   "mark": 1367.49046615
   }
  ]
 }

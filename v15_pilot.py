@@ -2370,6 +2370,50 @@ def _credible_baseline(new_symside, prepared, base_sets, defaults, template_path
 # Switch: env V15_POSSYM_SAMPLING=1|0 (wins), else flag file <base>/data/possym_sampling.flag ("1"/"0"), else ON from round run21 on.
 _POSSYM_P = {0: 1.0 / 20, 1: 1.0 / 10, 2: 1.0 / 6, 3: 1.0 / 2}  # USER 2026-10-06: pos_sym 3 -> 1 in 2 (was 1/3); sampling ON again
 _POSSYM_MIN_N = int(os.environ.get("V15_POSSYM_MIN_N", "3"))  # USER 2026-10-06: sampling must speed sheets ~70-80% -> min evidence 3 sym_sides (= template writer --min-n); was 20 (USER 2026-10-01)
+_ZERO_MIN_N_ROW = int(os.environ.get("V15_ZERO_MIN_N_ROW", "15"))
+_ZERO_MIN_N_CELL = int(os.environ.get("V15_ZERO_MIN_N_CELL", "10"))
+
+
+def _zero_enabled() -> bool:
+    return os.environ.get("V15_ZERO_FORMULA_SKIP", "1") == "1"
+
+
+def _zero_book_enabled() -> bool:
+    return os.environ.get("V15_ZERO_BOOK", "1") == "1"
+
+
+def _zero_load_cell_evidence(cat_side: str) -> dict:
+    try:
+        f = Path(os.environ.get("V15_ZERO_CELL_JSON") or (Path(__file__).resolve().parent / "data" / "cell_evidence" / f"{cat_side}.json"))
+        if not f.exists():
+            return {}
+        j = json.loads(f.read_text())
+        d = j.get("cells") or {}
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
+def _zero_condemned(pos, n, min_n) -> bool:
+    try:
+        return int(pos) == 0 and int(n) >= int(min_n)
+    except Exception:
+        return False
+
+
+def _zero_partition_hdrs(hdrs, keys, cell_ev, min_n):
+    kept, skipped = [], []
+    for h in hdrs:
+        ce = (cell_ev or {}).get(keys.get(h))
+        if isinstance(ce, dict) and _zero_condemned(ce.get("pos_sym"), ce.get("n_sym"), min_n):
+            skipped.append(h)
+        else:
+            kept.append(h)
+    return kept, skipped
+
+
+def _zero_book_entry(kind, tab, switch, cand, header, pos, n, avg):
+    return {"kind": kind, "tab": tab, "switch": switch, "cand": str(cand), "header": header or "", "pos_sym": pos, "n_sym": n, "avg_delta": avg, "status": "SKIPPED_BAD_FORMULA", "note": "NOT OBSOLETE — bad formula, fix then evidence regen lifts the skip"}
 
 
 def _possym_round_id(progress_path) -> str:
@@ -2630,11 +2674,31 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         cell.alignment = VISUAL_ALIGN
         return v
     _last_save = {"t": _t.time()}
+    def _zero_flush_book():
+        try:
+            if not _zero_book_enabled():
+                return
+            _zb_rows = _zero_book.get("rows") or {}
+            _zb_crows = _zero_book.get("cell_rows") or {}
+            _zb_hdrs = _zero_book.get("cells_by_header") or {}
+            _sig = (len(_zb_rows), len(_zb_crows), sum(len(v) for v in _zb_crows.values()))
+            if _sig == _zero_flushed.get("sig"):
+                return
+            _zero_flushed["sig"] = _sig
+            _led = ROOT / "data" / "zero_formula_book" / _ps_cat / f"{new_symside}.json"
+            _led.parent.mkdir(parents=True, exist_ok=True)
+            _tmp = _led.with_suffix(".json.tmp")
+            _tmp.write_text(json.dumps({"symside": new_symside, "cat": _ps_cat, "at": utcnow(), "rows": _zb_rows, "cell_rows": _zb_crows, "cells_total": sum(len(v) for v in _zb_crows.values())}))
+            os.replace(_tmp, _led)
+            print(f"[ZERO-FORMULA] book flushed rows={len(_zb_rows)} cellrows={len(_zb_crows)} cells={sum(len(v) for v in _zb_crows.values())}", flush=True)
+        except Exception as _zfe:
+            print(f"[ZERO-FORMULA-WARN] flush failed {_zfe}", flush=True)
     def _maybe_save():
         # a full openpyxl save of the ~2.5MB workbook costs ~10s — per-row saves made rows 12s instead of ~1s.
         # progress JSON (source of truth, written every row) + refill_from_json cover a crash between saves.
         if _t.time() - _last_save["t"] >= XLSX_SAVE_EVERY_S:
             try:
+                _zero_flush_book()
                 _atomic_save(wb, wb_path)
             except Exception as _se:
                 print(f"[spec-save-warn] {_se}", flush=True)
@@ -3162,6 +3226,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _ps_on = False
     _ps_cat = map_key_for_symside(new_symside)
     _ps_json = _possym_load_nsym(_ps_cat) if _ps_on else {}
+    _zero_on = _zero_enabled()
+    _zero_row_ev = _possym_load_nsym(_ps_cat) if _zero_on else {}
+    _zero_cell_ev = _zero_load_cell_evidence(_ps_cat) if _zero_on else {}
+    _zero_book = progress.setdefault("zero_book", {"rows": {}, "cell_rows": {}, "cells_by_header": {}})
+    _zero_flushed = {"n": -1}
+    if _zero_on:
+        print(f"[ZERO-FORMULA] skip ON cat={_ps_cat} row_ev={len(_zero_row_ev)} cell_ev={len(_zero_cell_ev)} min_row={_ZERO_MIN_N_ROW} min_cell={_ZERO_MIN_N_CELL}", flush=True)
     _ps_counts: dict = {}
     _ps_new: set = set()
     _ps_filt: dict = {}
@@ -3316,6 +3387,31 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                         info["hdrs"] = _kept
             except Exception as _pe:
                 print(f"[POSSYM-WARN] {sname}!{rr} {_pe} — row calculated", flush=True)
+        if _zero_on and info["kind"] == "eval":
+            try:
+                _zp, _zn, _zisd = _ps_row_ev(ws, rr, sname, switch, cand)
+                _zrkey = f"{sname}!{str(switch).strip()}={str(cand).strip()}"
+                if _zp is None:
+                    _zjr = (_zero_row_ev or {}).get(_zrkey)
+                    if isinstance(_zjr, dict):
+                        _zp, _zn = _zjr.get("pos_sym"), _zjr.get("n_sym")
+                if not _zisd and _zero_condemned(_zp, _zn, _ZERO_MIN_N_ROW):
+                    _zjr2 = (_zero_row_ev or {}).get(_zrkey) or {}
+                    info.update(kind="skip", reason=f"ZERO_FORMULA_ROW: pos_sym=0 in {_zn} syms, never positive — skipped, booked for formula fix (NOT obsolete)", g=None)
+                    if _zero_book_enabled():
+                        _zero_book["rows"][_zrkey] = _zero_book_entry("row", sname, str(switch).strip(), cand, "", int(_zp), int(_zn), _zjr2.get("avg_delta"))
+                else:
+                    _zkeys = {h: f"{_zrkey}@{str(h).strip()}" for h in info["hdrs"]}
+                    _zkept, _zskip = _zero_partition_hdrs(info["hdrs"], _zkeys, _zero_cell_ev, _ZERO_MIN_N_CELL)
+                    if _zskip:
+                        info["hdrs"] = _zkept
+                        info["zero_skipped"] = _zskip
+                        if _zero_book_enabled():
+                            for h in _zskip:
+                                _zero_book["cells_by_header"].setdefault(str(h).strip(), []).append(_zrkey)
+                            _zero_book["cell_rows"][_zrkey] = sorted(str(h).strip() for h in _zskip)
+            except Exception as _ze:
+                print(f"[ZERO-FORMULA-WARN] {sname}!{rr} {_ze} — row calculated", flush=True)
         _static_info[k] = info
         return info
     def _row_plan(sname: str, rr: int, switch, cand) -> dict:
@@ -3828,7 +3924,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         progress["cumulative_gain"] = float(cumulative_gain)
         div = _write_div(sname, rr, [row_gain])
         _uw_tag = "UNWIRED_CALCULATED: switch is in the vec_unwired audit (no engine read found) — 0.0 is the honest eval delta" if (row_delta == 0 and str(switch).strip() in UNWIRED_TAG_SW) else ""
-        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", "") or _uw_tag, "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "ramfp": (str(_RUN_RAMFP.get(new_symside)) if os.environ.get("V15_RAMFP", "0") == "1" else None), "complete": (not missing_yellows and not (st.get("sampled_filters") or []) and not (st.get("excluded_tab_level") or []) and naked_settled and not _ramfp_stale)}
+        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "zero_skipped_filters": st.get("zero_skipped") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", "") or _uw_tag, "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "ramfp": (str(_RUN_RAMFP.get(new_symside)) if os.environ.get("V15_RAMFP", "0") == "1" else None), "complete": (not missing_yellows and not (st.get("sampled_filters") or []) and not (st.get("excluded_tab_level") or []) and naked_settled and not _ramfp_stale)}
         if st.get("sampled_filters") or st.get("excluded_tab_level"):
             print(f"[POLICY-CELLS-PENDING] {sname}!{rr} {switch}={cand} sampled={len(st.get('sampled_filters') or [])} tablevel={len(st.get('excluded_tab_level') or [])} — yellows uncalculated, row stays pending (RULE#3 refuses publish until refilled)", flush=True)
         _maybe_write_json(force=promote)
@@ -4292,6 +4388,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _final_name = _final_matrix_name(new_symside, _bh_raw, float(final_gain), int(_final_trades), 30)
             import shutil as _sh_pub
             _cand_class = "BEST_EFFORT" if _best_effort is not None else "QUALIFIED"
+            _zero_flush_book()
             _active_name, _won = _apply_best_publish(OUT_DIR, new_symside, _final_name, float(final_gain), _cand_class, wb_path)
             _final_path = OUT_DIR / _active_name
             for _vk in ("verdict", "verdict_reasons", "verdict_npz_mtime_ns"):
