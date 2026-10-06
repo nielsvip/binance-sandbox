@@ -1,14 +1,22 @@
 {
-  "generated_at": "2026-10-06T13:14:52.061213+00:00",
-  "count": 3,
+  "generated_at": "2026-10-06T13:30:43.951658+00:00",
+  "count": 4,
   "advisories": [
+    {
+      "symbol": "BA",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.49 threshold=0.45",
+      "score": 0.493,
+      "ts": "2026-10-06T13:30:43.951617+00:00"
+    },
     {
       "symbol": "MA",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.74 threshold=0.45",
       "score": 0.735,
-      "ts": "2026-10-06T13:14:52.061175+00:00"
+      "ts": "2026-10-06T13:30:43.951630+00:00"
     },
     {
       "symbol": "MSFT",
@@ -16,7 +24,7 @@
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.66 threshold=0.45",
       "score": 0.66,
-      "ts": "2026-10-06T13:14:52.061188+00:00"
+      "ts": "2026-10-06T13:30:43.951633+00:00"
     },
     {
       "symbol": "PR",
@@ -24,7 +32,7 @@
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.85 threshold=0.45",
       "score": 0.846,
-      "ts": "2026-10-06T13:14:52.061191+00:00"
+      "ts": "2026-10-06T13:30:43.951637+00:00"
     }
   ]
 }

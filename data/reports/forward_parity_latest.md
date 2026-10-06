@@ -1,12 +1,12 @@
 # Forward parity — LIVE vs VECTOR (auto, read-only)
 
-generated 2026-10-06T13:17:03+00:00 · producers: tools/forward_parity/live_vs_vec.py (crypto hourly :07, stocks every 15 min RTH), tools/decisions_history_parity.py (:17), tools/exit_engine_parity_monitor.py (launchd hourly), tools/daily_parity_test.py (launchd daily)
+generated 2026-10-06T13:22:00+00:00 · producers: tools/forward_parity/live_vs_vec.py (crypto hourly :07, stocks every 15 min RTH), tools/decisions_history_parity.py (:17), tools/exit_engine_parity_monitor.py (launchd hourly), tools/daily_parity_test.py (launchd daily)
 
 PASS = every vector decision on the judged 15m bars has a live fill of the same class within +-2 bars, every live fill has a vector decision, and end state (in/out) agrees. FAIL classes: VEC_ONLY_LIVE_NO_SIGNAL (live logic did not fire), VEC_ONLY_LIVE_BLOCKED (live attempted, gate/execution stopped it), VEC_ONLY_STATE_CASCADE (consequence of an earlier divergence), LIVE_ONLY_VEC_FAMILY (vector twin exists but did not fire), LIVE_ONLY_NONVEC (1m/3m/5m/tick/webhook/portfolio input — no vec counterpart), STATE_MISMATCH, NPZ_STALE (S1 NPZ behind live, judged on the newest window the vector can see).
 
 ## Test 1 - 15m LIVE vs VECTOR, CRYPTO
 
-run 2026-10-06T13:16:53+00:00 (0 min ago) · engine v12 d84863e5 · NPZ sync tail · window 24.0h from 2026-10-05T13:07Z · tol +-2 bars · 218 live keys / 120 sym_sides · 591.6 s
+run 2026-10-06T13:16:53+00:00 (5 min ago) · engine v12 d84863e5 · NPZ sync tail · window 24.0h from 2026-10-05T13:07Z · tol +-2 bars · 218 live keys / 120 sym_sides · 591.6 s
 
 **Verdict: FAIL** — FAIL 12 · PASS with decisions 0 · IDLE (no decision either side, counts as pass) 190 · NO_DATA 16 · judged on a STALE-shifted window (S1 NPZ behind live) 45
 
@@ -100,7 +100,7 @@ execute_now gate refusals tagged VEC_DRIVEN in ez_manage logs: {'flz': {'UNKNOWN
 
 ## Test 1 - 15m LIVE vs VECTOR, STOCKS
 
-run 2026-10-06T06:09:23+00:00 (7.1 h ago) · engine v12 697b2734 · NPZ sync ? · window 24.0h from 2026-10-05T06:09Z · tol +-2 bars · 144 live keys / 125 sym_sides · 19.1 s
+run 2026-10-06T06:09:23+00:00 (7.2 h ago) · engine v12 697b2734 · NPZ sync ? · window 24.0h from 2026-10-05T06:09Z · tol +-2 bars · 144 live keys / 125 sym_sides · 19.1 s
 
 **Verdict: FAIL** — FAIL 78 · PASS with decisions 0 · IDLE (no decision either side, counts as pass) 55 · NO_DATA 11 · judged on a STALE-shifted window (S1 NPZ behind live) 4
 
@@ -222,7 +222,7 @@ These decisions have no 15m vector counterpart by construction; listed so drift 
 
 ## decisions -> history parity (switch intents vs live fills)
 
-`DH_20261005_20261006.json` generated 2026-10-06T13:17:01.236824+00:00 (0 min ago) · intents 83 · matched 35 · **missing 48**
+`DH_20261005_20261006.json` generated 2026-10-06T13:17:01.236824+00:00 (5 min ago) · intents 83 · matched 35 · **missing 48**
 
 matched/intents per account: fin 4/9, men 8/37, ang 14/27, inf 0/0 (no decision file), flz 9/10, trb 0/0 (no decision file), trc 0/0 (no decision file)
 
@@ -252,7 +252,7 @@ Gap classes: NUKE_STALE_MAKER_ORDER = maker exit rested >60 s and was cancelled 
 
 ## Exit-engine gate parity (execute_now, all exits)
 
-generated 2026-10-06T12:59:59.498860+00:00 (17 min ago) · lookback 48.0h · exit rows 5155 · **LEAKS 2388** · gate ON 1651 · UNGATED 1035 · safety 4 · unmapped 0
+generated 2026-10-06T12:59:59.498860+00:00 (22 min ago) · lookback 48.0h · exit rows 5155 · **LEAKS 2388** · gate ON 1651 · UNGATED 1035 · safety 4 · unmapped 0
 
 LEAKS (gate OFF for that sym_side yet fired): QUICK_OPEN_STRONG 2386, WT_DC_ENTRY (WT_DC_ENTRY_ENABLED=False) 2
 
