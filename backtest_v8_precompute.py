@@ -1924,7 +1924,16 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
             if _existing_wm is not None and len(_existing_wm) >= 200:
                 continue
         if mode == "crypto" and tf in _CRYPTO_WM_TFS and os.environ.get("NPZ_WM_LEGACY") != "1" and os.environ.get("NPZ_HTF_LEGACY_LAG1") != "1":
-            _wmf = _crypto_wm_frame(_resample_src_df, dfs.get(tf), tf)
+            # 2026-10-06 parity-loop-crypto: older W/M history = complete buckets aggregated from the authentic D frame (Binance W/M klines ARE the
+            # OHLCV aggregate of the dailies). The *_W/_M.json files differ per host (gateway proxy history to 2020, Mac files stale since
+            # 2026-08-24 with a gap before the 15m tail) so W/M values depended on which host built the arrays -> live_klines twin != NPZ.
+            # NPZ_WM_FROM_D_LEGACY=1 restores the per-host W/M files as the history source.
+            _wm_hist = dfs.get(tf)
+            if os.environ.get("NPZ_WM_FROM_D_LEGACY") != "1" and dfs.get("D") is not None and len(dfs["D"]) >= 30:
+                _dwm = _crypto_wm_frame(dfs["D"], None, tf)
+                if _dwm is not None and len(_dwm) >= 2:
+                    _wm_hist = pd.concat([_dwm, _dwm.iloc[-1:]])  # D buckets are already complete; _crypto_wm_frame drops the history's last row as partial
+            _wmf = _crypto_wm_frame(_resample_src_df, _wm_hist, tf)
             if _wmf is not None and len(_wmf) >= 10:
                 dfs[tf] = _wmf
                 logger.info(f"  {symbol}: {tf} frame = authentic history + 15m-resampled fresh buckets ({len(_wmf)} rows, last {_wmf.index[-1]})")
@@ -1946,6 +1955,16 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
             # klines_cache_backtest). Resampling may only APPEND gaps or
             # fill a missing timeframe; it must never truncate.
             existing = dfs.get(tf)
+            # 2026-10-06 parity-loop-crypto (BIBLE 68.2 #6, live frames): crypto HTF frames = authentic exchange bars wherever they exist
+            # (live ez_indicators computes 1h/4h/D on the authentic klines), the 15m resample only fills timestamps the authentic files
+            # lack. The old length rule (resampled wins when it is longer) made the SAME bar take different values depending on how
+            # much 15m history was loaded: a ~1800-bar live build used authentic 1h, a full-history build the resample (BTCUSDC
+            # close_1h up to 55 apart, rsi_1h 1.4) -> the live_klines twin diverged from the full-history NPZ on the decision window.
+            # NPZ_HTF_LENGTH_RULE_LEGACY=1 restores the old rule.
+            if mode == "crypto" and existing is not None and len(existing) and os.environ.get("NPZ_HTF_LENGTH_RULE_LEGACY") != "1":
+                dfs[tf] = _merge_authentic_bars(resampled, existing)
+                logger.info(f"  {symbol}: {tf} frame = authentic bars ({len(existing)}) + 15m-resampled gap fill ({len(dfs[tf]) - len(existing)})")
+                continue
             if existing is not None and len(existing) >= len(resampled):
                 logger.info(f"  {symbol}: KEEP authentic {tf} ({len(existing)} bars) over resampled {len(resampled)} — append-only, not overwriting")
                 continue

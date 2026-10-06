@@ -8436,6 +8436,14 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         async def get_quotes(self, syms, *a, **kw):
             return {s: {"last": price_cache.get(s.upper(),0)} for s in (syms if isinstance(syms, list) else [syms])}
     manager.api_client = _CaptureAPI()
+    # parity lane A 2026-10-06 (V12_REAL_EXECUTE): the real tradier execute_now asks the BROKER for settled cash
+    # (_get_settled_cash_from_broker -> TradierAPIClient.get_account_balances; fail-closed 0.0). In the sim that is broker I/O:
+    # answer with the sim account's cash so the GFV gate sees a funded cash account (every AMD_LONG vec-exact open was
+    # GFV_SETTLED_CASH_BLOCK_0). The GFV gate logic itself still runs.
+    if os.environ.get("V12_REAL_EXECUTE") == "1":
+        async def _v12_settled_cash(_acct, *a, **kw):
+            return float(capital)
+        manager._get_settled_cash_from_broker = _v12_settled_cash
     async def _fresh(sym, pk=None, *_a, **_kw): return True, "NPZ", True, manager.market_snapshot.get(sym.upper(), {})
     manager.is_data_fresh = _fresh
     async def _price(sym, *_a, **_kw): return price_cache.get(sym.upper(), 0.0), _sim_ts[0]

@@ -7943,9 +7943,9 @@ _LANE_B_SIZING_HOLD_LOGGED: set = set()
 def _lane_b_vec_only_parity_ok(symbol: str, side: str, reason: str) -> bool:
     """Parity lane B 2026-10-06 phase 4: STRICT_VEC_PARITY allowlist extension for vec-achievable families that are
     vec-only behind a per-sym switch (per-sym > cat_side > global via _psym_cs_get). False unless the switch is on.
-      VEC_ONLY_REENTRY_*                              <- CRYPTO_VEC_ONLY_REENTRY_ENABLED (live_twins/vec_reentry.py)
-      HAIKU_WINNER_AUG_ / HAIKU_REENTER_ / HAIKU_REDUCE_ <- HAIKU_WINNER_VEC_ONLY_ENABLED and HAIKU_WINNER_ENABLED (vec haiku_augment)
-      KEY_LEVEL_CRASH_ / KEY_LEVEL_BREAKOUT_          <- KEY_LEVEL_CRASH_VEC_ONLY_ENABLED (live_twins/key_level.py)"""
+      CRYPTO_REENTRY_PATHWAY_*                              <- CRYPTO_REENTRY_PATHWAYS_ENABLED (live_twins/vec_reentry.py)
+      HAIKU_WINNER_AUG_ / HAIKU_REENTER_ / HAIKU_REDUCE_ <- HAIKU_WINNER_AUGMENT_ENABLED and HAIKU_WINNER_ENABLED (vec haiku_augment)
+      KEY_LEVEL_CRASH_ / KEY_LEVEL_BREAKOUT_          <- KEY_LEVEL_CRASH_EXIT_ENABLED (live_twins/key_level.py)"""
     try:
         if not symbol or not side:
             return False
@@ -7954,12 +7954,12 @@ def _lane_b_vec_only_parity_ok(symbol: str, side: str, reason: str) -> bool:
         def _on(k, d=False):
             v = _psym_cs_get(symbol, side, k, d)
             return (v.strip().lower() in ("true", "1", "yes")) if isinstance(v, str) else bool(v)
-        if r.startswith("VEC_ONLY_REENTRY_"):
-            return _on("CRYPTO_VEC_ONLY_REENTRY_ENABLED")
+        if r.startswith("CRYPTO_REENTRY_PATHWAY_"):
+            return _on("CRYPTO_REENTRY_PATHWAYS_ENABLED")
         if r.startswith(("HAIKU_WINNER_AUG_", "HAIKU_REENTER_", "HAIKU_REDUCE_")):
-            return _on("HAIKU_WINNER_VEC_ONLY_ENABLED") and _on("HAIKU_WINNER_ENABLED", True)
+            return _on("HAIKU_WINNER_AUGMENT_ENABLED") and _on("HAIKU_WINNER_ENABLED", True)
         if r.startswith(("KEY_LEVEL_CRASH_", "KEY_LEVEL_BREAKOUT_")):
-            return _on("KEY_LEVEL_CRASH_VEC_ONLY_ENABLED")
+            return _on("KEY_LEVEL_CRASH_EXIT_ENABLED")
     except Exception:
         return False
     return False
@@ -45771,7 +45771,7 @@ def _parity_flat_open_switches(position_key: str):
     _tb = lambda _v: (_v.strip().lower() in ("true", "1", "yes")) if isinstance(_v, str) else bool(_v)
     _w15 = _tb(_get_p("WT_15M_BOUNCE_OPEN_ENABLED", False))
     _bbt = str(_get_p("BB_BOUNCE_ENTRY_TF", "OFF") or "OFF").strip() in ("15m", "1h", "4h", "D")
-    _vr = _tb(_get_p("CRYPTO_VEC_ONLY_REENTRY_ENABLED", False))
+    _vr = _tb(_get_p("CRYPTO_REENTRY_PATHWAYS_ENABLED", False))
     return _sym_p, _side_p, _get_p, _w15, _bbt, _vr
 
 
@@ -45802,9 +45802,9 @@ def _parity_last_exit(trade_manager, position_key: str):
 async def _parity_flat_open_check(trade_manager, position_key: str, position, order_queue):
     """Live twins for FLAT keys (vec entry/reentry sources live never reached):
     - WT_15M_BOUNCE_OPEN_ENABLED / BB_BOUNCE_ENTRY_TF openers (vec_decisions/twin_entry_ports_b) -> queue_trade_action OPEN;
-    - CRYPTO_VEC_ONLY_REENTRY_ENABLED: vec HTF_WT_CHURN / TARGET-DC+SELL_TOP recross / HARDCODED_RALLY / REENTRY_MANDATORY
+    - CRYPTO_REENTRY_PATHWAYS_ENABLED: vec HTF_WT_CHURN / TARGET-DC+SELL_TOP recross / HARDCODED_RALLY / REENTRY_MANDATORY
       (live_twins/vec_reentry.py) on the last exit in trade_manager.reentry_data -> queue_trade_action REENTRY (reason
-      VEC_ONLY_REENTRY_*, admitted by STRICT_VEC_PARITY only while the switch is on). All execute_now gates apply."""
+      CRYPTO_REENTRY_PATHWAY_*, admitted by STRICT_VEC_PARITY only while the switch is on). All execute_now gates apply."""
     try:
         _sym_p, _side_p, _get_p, _w15, _bbt, _vr = _parity_flat_open_switches(position_key)
         if not (_w15 or _bbt or _vr):
@@ -45827,7 +45827,7 @@ async def _parity_flat_open_check(trade_manager, position_key: str, position, or
             _vr_ok, _vr_path = _lbvr.fires(_get_p, _ind_p, _long_p, _px_p, _ex_px, _ex_rs, _ex_age, rally_ok=_rally_ok)
             if _vr_ok:
                 _ok_p, _act_p = True, "REENTRY"
-                _why_p = f"VEC_ONLY_REENTRY_{_vr_path}_{_side_p}_px{_px_p:.6f}_exit{_ex_px:.6f}_age{_ex_age:.0f}m"
+                _why_p = f"CRYPTO_REENTRY_PATHWAY_{_vr_path}_{_side_p}_px{_px_p:.6f}_exit{_ex_px:.6f}_age{_ex_age:.0f}m"
         if not _ok_p:
             return
         if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
@@ -49116,11 +49116,11 @@ async def process_position(
                 return f"{EvalStatus.ACTION_TAKEN}:{_gx_reason.split(' ')[0]}_CLOSED"
         except Exception as _gx_e:
             logger.warning(f"[GREY_REWIRE_EXIT] {position_key} probe err: {_gx_e}")
-    # PARITY LANE B 2026-10-06 phase 4: KEY_LEVEL_CRASH_VEC_ONLY_ENABLED — vec live_exit_chain key-level leg outside the ablated EPQ chain
+    # PARITY LANE B 2026-10-06 phase 4: KEY_LEVEL_CRASH_EXIT_ENABLED — vec live_exit_chain key-level leg outside the ablated EPQ chain
     # (live_twins/key_level.py; severity>=3 of 15m/1h/4h/D prior-bar channels broken, no fire below -0.01% gain, live reduce bands). Default False = inert.
     if position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0:
         try:
-            _klx_raw = _psym_cs_get(symbol, position_side, "KEY_LEVEL_CRASH_VEC_ONLY_ENABLED", False)
+            _klx_raw = _psym_cs_get(symbol, position_side, "KEY_LEVEL_CRASH_EXIT_ENABLED", False)
             if (_klx_raw.strip().lower() in ("true", "1", "yes")) if isinstance(_klx_raw, str) else bool(_klx_raw):
                 from live_twins import key_level as _lbkl
                 if _pp_shared_ind is None:
@@ -49135,12 +49135,12 @@ async def process_position(
                     if _klx_amt - _klx_qty < 0.10 * _klx_ref:
                         _klx_qty = _klx_amt
                     _klx_full = _klx_qty >= _klx_amt - 1e-12
-                    logger.warning(f"[KEY_LEVEL_VEC_ONLY] {position_key}: {_klx_reason} g={_klx_gain:.2f}% -> {'CLOSE' if _klx_full else 'REDUCE'} {_klx_qty:.6f}/{_klx_amt:.6f}")
-                    await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_klx_amt, side="SELL" if _klx_long else "BUY", position_side=position_side, quantity=_klx_qty, old_price=current_price, unique_id=f"KEY_LEVEL_VEC_ONLY_{int(time.time())}", reason=f"{_klx_reason}_g{_klx_gain:.2f}", is_full_close=_klx_full, action="CLOSE" if _klx_full else "REDUCE")
+                    logger.warning(f"[KEY_LEVEL_CRASH_EXIT] {position_key}: {_klx_reason} g={_klx_gain:.2f}% -> {'CLOSE' if _klx_full else 'REDUCE'} {_klx_qty:.6f}/{_klx_amt:.6f}")
+                    await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_klx_amt, side="SELL" if _klx_long else "BUY", position_side=position_side, quantity=_klx_qty, old_price=current_price, unique_id=f"KEY_LEVEL_CRASH_EXIT_{int(time.time())}", reason=f"{_klx_reason}_g{_klx_gain:.2f}", is_full_close=_klx_full, action="CLOSE" if _klx_full else "REDUCE")
                     trade_manager.processing_keys.discard(position_key)
-                    return f"{EvalStatus.ACTION_TAKEN}:KEY_LEVEL_VEC_ONLY_{'CLOSED' if _klx_full else 'REDUCED'}"
+                    return f"{EvalStatus.ACTION_TAKEN}:KEY_LEVEL_CRASH_EXIT_{'CLOSED' if _klx_full else 'REDUCED'}"
         except Exception as _klx_e:
-            logger.warning(f"[KEY_LEVEL_VEC_ONLY] {position_key} probe err: {_klx_e}")
+            logger.warning(f"[KEY_LEVEL_CRASH_EXIT] {position_key} probe err: {_klx_e}")
     # ═══════════════════════════════════════════════════════════════════════════
     # lane L1 2026-10-04 LIVE_MIRROR: BB_SQUEEZE_EXIT_ENABLED (TTM squeeze-ON exit)
     # Live twin of vec_decisions.wave4_families.bb_squeeze_exit_mask (ORed into

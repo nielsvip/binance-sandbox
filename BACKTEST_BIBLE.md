@@ -1427,6 +1427,12 @@ Mon 2026-10-05 06:00 UTC: best (newest-round) 30D sheet of every sym_side → 36
 3. **Apply the new per-sym settings to live** — per sym_side best sets that pass the gates (30D valid + positive, 365D
    confirmed, `switch_parity.register_workbook_result`) are written to ALL live surfaces together: the config files, the
    SQLite store (`per_sym_store`) and the per-sym JSON book (+ trb overlay for stocks), post-verified by re-read.
+3b. **Refresh the inf account universe** (USER 2026-10-06): `symbols_inf_long.json` / `symbols_inf_short.json` are rewritten
+   with the **25 best LONG and 25 best SHORT crypto sym_sides of that day's backtest** (ranked on the fresh 30D result of the
+   final per-sym set; only sym_sides that pass the same gates as step 3: valid, gain > 0, TIM 20-80, DD ≤ 30, ≥10 trades,
+   365D confirmed when available; only tradeable symbols; never a SIMPLE_PRICE_GT0 set). Symbols with an OPEN inf position stay
+   listed until that position is closed (no stranding). Backup + atomic write; `tradeable_keys.json` follows via
+   ez_positions_service. Tool: `tools/v15_daily_inf_universe.py` (run inside the pre-market chain, after step 3).
 4. **Live trades those settings with functions identical to the vectorized ones** (§68.1). Precedence everywhere:
    per-sym > cat_side > global, identical in live and vector.
 5. The fleet then sweeps on the new defaults (S1 coordinator; each sym_side baselined on its previous best) and the next

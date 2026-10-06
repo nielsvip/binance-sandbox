@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-10-06 16:30 UTC
+PERFORMANCE REPORT — 2026-10-06 16:46 UTC
 ================================================================================
 Total: 135 symbols | A=5 B=89 C=41
 Window: 14 days | Min trades: 5
@@ -20,7 +20,7 @@ Window: 14 days | Min trades: 5
          MOVRUSDT  WR=100%  avg=+2.38%  total=+9.7%  trades=  4  mult=1.00
               CLS  WR=58%  avg=+0.79%  total=+9.6%  trades= 12  mult=5.11
               PSX  WR=71%  avg=+0.23%  total=+8.2%  trades= 35  mult=6.41
-         GALAUSDT  WR=100%  avg=+2.21%  total=+4.4%  trades=  2  mult=1.00
+         GALAUSDT  WR=100%  avg=+2.21%  total=+4.4%  trades=  2  mult=1.00 ** OPEN **
              SNOW  WR=100%  avg=+1.94%  total=+3.9%  trades=  2  mult=1.00
               GME  WR=100%  avg=+1.93%  total=+3.9%  trades=  2  mult=1.00
                RS  WR=47%  avg=+0.11%  total=+3.6%  trades= 34  mult=1.19
@@ -82,9 +82,9 @@ Window: 14 days | Min trades: 5
          MINAUSDT  WR=0%  avg=-0.12%  total=-0.5%  trades=  4  mult=1.00
         1INCHUSDT  WR=25%  avg=-0.13%  total=-0.5%  trades=  4  mult=1.00
          PLTRUSDT  WR=0%  avg=-0.18%  total=-0.6%  trades=  3  mult=1.00
-             MSTR  WR=71%  avg=-0.10%  total=-0.7%  trades=  7  mult=2.12
           ENSUSDT  WR=0%  avg=-0.81%  total=-0.8%  trades=  1  mult=1.00
         JASMYUSDT  WR=50%  avg=-0.25%  total=-1.0%  trades=  4  mult=1.00
+             MSTR  WR=67%  avg=-0.25%  total=-1.5%  trades=  6  mult=1.40
          BABAUSDT  WR=60%  avg=-0.32%  total=-1.6%  trades=  5  mult=0.96
           PTBUSDT  WR=0%  avg=-0.96%  total=-1.9%  trades=  2  mult=1.00
              CRWD  WR=50%  avg=-0.07%  total=-2.1%  trades= 26  mult=0.82
@@ -145,7 +145,7 @@ Window: 14 days | Min trades: 5
               APO  WR=5%  avg=-4.01%  total=-92.8%  trades= 64  mult=0.12
 
 SUMMARY:
-  Total PnL (all symbols): -385.9%
+  Total PnL (all symbols): -386.7%
   Avg win rate: 46%
   A-tier avg mult: 9.08
   C-tier avg mult: 0.35
