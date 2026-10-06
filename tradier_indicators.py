@@ -1816,6 +1816,9 @@ class IndicatorCalculator:
             result[f"wt_score_{timeframe}"] = result[f"wt1_{timeframe}"] - result[f"wt2_{timeframe}"]
             prev_wt1 = float(wt1.iloc[-2]) if len(wt1) > 1 and pd.notna(wt1.iloc[-2]) else result[f"wt1_{timeframe}"]
             prev_wt2 = float(wt2.iloc[-2]) if len(wt2) > 1 and pd.notna(wt2.iloc[-2]) else result[f"wt2_{timeframe}"]
+            # PARITY LANE C 2026-10-06: previous-bar WT under a NEW private key (vec np.roll prev-row twin). Not wt1_{tf}_prev: existing live readers default that key to the current value.
+            result[f"_lc_wt1_{timeframe}_prev"] = prev_wt1
+            result[f"_lc_wt2_{timeframe}_prev"] = prev_wt2
             if prev_wt1 <= prev_wt2 and result[f"wt1_{timeframe}"] > result[f"wt2_{timeframe}"] and result[f"wt1_{timeframe}"] < -50: result[f"wt_signal_{timeframe}"] = "BUY"
             elif prev_wt1 >= prev_wt2 and result[f"wt1_{timeframe}"] < result[f"wt2_{timeframe}"] and result[f"wt1_{timeframe}"] > 50: result[f"wt_signal_{timeframe}"] = "SELL"
             else: result[f"wt_signal_{timeframe}"] = "NEUTRAL"
@@ -1969,6 +1972,14 @@ class IndicatorCalculator:
                 result[f"bb_upper_{timeframe}"] = _bb_u
                 result[f"bb_lower_{timeframe}"] = _bb_l
                 result[f"bb_pct_b_{timeframe}"] = _bb_pb
+                # PARITY LANE C 2026-10-06: previous-bar %B under a NEW private key (vec BB_BOUNCE prev-row twin). Not bb_pct_b_{tf}_prev: existing live exit readers default that key to the current value.
+                try:
+                    if len(close_series) > 20:
+                        _bb_pb_prev = bb_features(close_series.iloc[:-1], length=20, std_mult=2.0)[2]
+                        if _bb_pb_prev is not None:
+                            result[f"_lc_bb_pct_b_{timeframe}_prev"] = _bb_pb_prev
+                except Exception:
+                    pass
                 # bb_width was computed too early (before bb existed) — compute here after bb is known
                 try:
                     _bb_mid = (_bb_u + _bb_l) / 2.0 if (_bb_u + _bb_l) > 0 else 0

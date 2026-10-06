@@ -6596,7 +6596,7 @@ def _load_global_per_sym_cfgs() -> dict:
     return _global_per_sym_cfgs
 
 
-def _cfg(param, default=None, account_key=None, symbol=None, side=None):
+def _cfg(param, default=None, account_key=None, symbol=None, side=None, _promotions_only=False):
     """Per-symbol config lookup with strict per-symbol-first fallback chain.
     Order:
       1. trb/active_config.json (7D agent output for this account)
@@ -6618,7 +6618,9 @@ def _cfg(param, default=None, account_key=None, symbol=None, side=None):
     if symbol and side and os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1":
         try:
             import per_sym_store as _pss
-            _fc = _pss.get_full_config(f"{symbol}_{side}")
+            # PARITY LANE C 2026-10-06 (director): _promotions_only=True reads ONLY the row's promotion overrides, never the
+            # full_config defaults snapshot (stale captured defaults must not beat the cat_side baseline; same rule as ez _psym_cs_get).
+            _fc = _pss.get_overrides(f"{symbol}_{side}") if _promotions_only else _pss.get_full_config(f"{symbol}_{side}")
             if _fc is not None and param in _fc:
                 return _fc[param]
         except Exception:
@@ -6701,18 +6703,44 @@ def _cfg_auto(param, default=None):
         loc = frame.f_locals
         ak = loc.get('account_key') or loc.get('account') or loc.get('acct') or None
         sym = loc.get('symbol') or loc.get('sym') or None
-        side = loc.get('side') or loc.get('position_side') or loc.get('pos_side') or loc.get('positionSide') or None
+        # PARITY LANE C 2026-10-06: order-side locals ('BUY'/'SELL' in execute_trade_action/execute_now) are NOT a position side —
+        # they missed every per-sym row and cat_side_of() mapped LONG positions to STOCKS_SHORT. Use the first LONG/SHORT candidate.
+        _legacy_side = loc.get('side') or loc.get('position_side') or loc.get('pos_side') or loc.get('positionSide') or None
+        _legacy_ok = isinstance(_legacy_side, str) and _legacy_side.strip().upper() in ('LONG', 'SHORT')
+        side = None
+        for _sk in ('side', 'position_side', 'pos_side', 'positionSide'):
+            _sv = loc.get(_sk)
+            if isinstance(_sv, str) and _sv.strip().upper() in ('LONG', 'SHORT'):
+                side = _sv.strip().upper()
+                break
+        if side is None:
+            _pk = loc.get('position_key')
+            if isinstance(_pk, str) and _pk.count(':') >= 1:
+                try:
+                    _pk_side = parse_position_key(_pk)[2]
+                    if str(_pk_side).upper() in ('LONG', 'SHORT'):
+                        side = str(_pk_side).upper()
+                except Exception:
+                    side = None
         if ak is None and 'self' in loc:
             try:
                 ak = getattr(loc['self'], 'account_key', None)
             except: pass
-        return _cfg(param, default, ak, sym, side)
+        # legacy-resolved frames keep the historical _cfg precedence; frames repaired from BUY/SELL resolve promotions-only (director 2026-10-06)
+        if _legacy_ok:
+            side = _legacy_side
+        return _cfg(param, default, ak, sym, side, _promotions_only=not _legacy_ok)
     except:
         return _cfg(param, default, None, None, None)
     finally:
         try:
             del frame
         except: pass
+
+
+def _cfg_ps(param, default=None, account_key=None, symbol=None, side=None):
+    """PARITY LANE C 2026-10-06: per-sym PROMOTION > cat_side default > global (no full_config snapshot). Used by every lane-C read."""
+    return _cfg(param, default, account_key, symbol, side, _promotions_only=True)
 
 
 # 2026-08-09 625 live wiring — every matrix param read via _cfg in live decision path (mirrors vector)
@@ -10855,6 +10883,13 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _tx_stop, _tx_tgt = _dc_channel_exits.resolve_technical_dc(_gx_c)
                     if _tx_stop or _tx_tgt:
                         _gx_fire, _gx_reason = _dc_channel_exits.technical_dc_exit(current_price, is_long, _tx_stop, _tx_tgt, lambda _f: safe_fetch_float(i.get(_f, 0), 0.0))
+                # PARITY LANE C 2026-10-06: vec exit_confirm (EXIT_TOP_FADE / CANDLE_PATTERN_STOPS FILTER_TF) gates exit_sig-block closes (TECHNICAL dc / WT final).
+                if _gx_fire:
+                    _xcf_ind = indicators_raw if indicators_raw else (i or {})
+                    _xcf_veto = _ftf_twins.exit_confirm_block(lambda _k: _xcf_ind.get(_k), is_long, _gx_reason, _ftf_twins.resolve_tf(_cfg_ps('EXIT_TOP_FADE_FILTER_TF', 'OFF', account_key, symbol, position_side)), _ftf_twins.resolve_tf(_cfg_ps('CANDLE_PATTERN_STOPS_FILTER_TF', 'OFF', account_key, symbol, position_side)))
+                    if _xcf_veto:
+                        logger.info(f"[LANE_C_EXIT_CONFIRM] {position_key}: hold {_gx_reason} — {_xcf_veto}")
+                        _gx_fire, _gx_reason = False, ""
                 # NOLOSS 2026-10-04 live twin of v12 (hold TECHNICAL loss exits unless WT-bypass/DC-recovery): default OFF = inert.
                 if _gx_fire and _gx_reason.startswith("TECHNICAL_"):
                     _nl_hold, _nl_why = _noloss_hold.noloss_hold_loss_exit(_gx_c, is_long, safe_fetch_float(getattr(position, 'gain', 0), 0.0), safe_fetch_float(getattr(position, 'entry_price', 0), 0.0), current_price, i or {})
@@ -10917,7 +10952,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     except Exception as _ted_e:
                         logger.warning(f"[TWIN_EXITS_DEAD] {position_key} probe err: {_ted_e}")
                 # TWIN_EXITS_DEAD EXIT_VELOCITY_WT (APPLY ONLY AFTER OPERATOR DECISION H9).
-                if not _gx_fire:
+                # PARITY LANE C 2026-10-06: master EXIT_VELOCITY_WT_ENABLED (default True = unchanged; same name as lane-D vec twin).
+                if not _gx_fire and bool(_cfg_ps('EXIT_VELOCITY_WT_ENABLED', True, account_key, symbol, position_side)):
                     try:
                         _ted_fire, _ted_reason = _twin_exits_dead.velocity_wt_exit_live_fire(i or {}, is_long, _gx_c)
                         if _ted_fire:
@@ -10929,7 +10965,12 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 if not _gx_fire and _twin_entry_ports_b is not None:
                     _xc_fire, _xc_reason = _twin_entry_ports_b.wt_crossunder_final_exit(_gx_c, is_long, i or {}, "5m")
                     if _xc_fire:
-                        _gx_fire, _gx_reason = True, _xc_reason
+                        _xcf_ind = indicators_raw if indicators_raw else (i or {})
+                        _xcf_veto = _ftf_twins.exit_confirm_block(lambda _k: _xcf_ind.get(_k), is_long, _xc_reason, _ftf_twins.resolve_tf(_cfg_ps('EXIT_TOP_FADE_FILTER_TF', 'OFF', account_key, symbol, position_side)), _ftf_twins.resolve_tf(_cfg_ps('CANDLE_PATTERN_STOPS_FILTER_TF', 'OFF', account_key, symbol, position_side)))
+                        if _xcf_veto:
+                            logger.info(f"[LANE_C_EXIT_CONFIRM] {position_key}: hold {_xc_reason} — {_xcf_veto}")
+                        else:
+                            _gx_fire, _gx_reason = True, _xc_reason
                 # TWIN_SIZING_REDUCE 2026-10-04 stocks-live twins (shared vec_decisions/twin_sizing_reduce predicates): E_1/HTF_AGAINST/NEWBORN/WT_PERCENTILE CLOSE + CYCLE_TP/PPL/SATOSHIT REDUCE. Per-sym _gx_c, fail-open, default-inert.
                 try:
                     if not _gx_fire:
@@ -10947,18 +10988,21 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         if not _tsr_fire:
                             _tsr_opened = parse_position_timestamp(getattr(position, 'opened_at', None))
                             _tsr_age = (datetime.now(timezone.utc) - _tsr_opened).total_seconds() / 60.0 if isinstance(_tsr_opened, datetime) else -1.0
-                            _tsr_fire, _tsr_reason = _twin_sr.newborn_kill_fires(_gx_c, _tsr_ind, is_long, _tsr_age, _tsr_gain, bool(getattr(position, 'is_hedge', False)))
-                            try:
-                                _nlk_tf = str(_cfg_auto('NEWBORN_LOSS_KILL_FILTER_TF', '15m') or '15m')
-                            except Exception:
-                                _nlk_tf = '15m'
-                            if _tsr_fire and _nlk_tf not in ('15m', 'OFF', 'off', ''):
+                            # PARITY LANE C 2026-10-06: velocity TF selected exactly like vec simulate_one (FILTER_TF replaces NEWBORN_LOSS_KILL_VEL_TF unless at its 15m default;
+                            # VEL_TF '' -> '3m'); twin runs age/gain/HTF-veto legs with its own velocity leg disabled, the vec-keyed velocity leg is applied here.
+                            _nlk_req = bool(_cfg_ps('NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST', True, account_key, symbol, position_side))
+                            _tsr_fire, _tsr_reason = _twin_sr.newborn_kill_fires(lambda _k, _d=None: (False if _k == 'NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST' else _gx_c(_k, _d)), _tsr_ind, is_long, _tsr_age, _tsr_gain, bool(getattr(position, 'is_hedge', False)))
+                            if _tsr_fire and _nlk_req:
                                 try:
-                                    _nlk_vel = float((_tsr_ind or {}).get(f'wt_velocity_{_nlk_tf}', 0.0) or 0.0)
-                                    if (is_long and _nlk_vel >= 0) or ((not is_long) and _nlk_vel <= 0):
+                                    _nlk_key = _ftf_twins.newborn_vel_key(_cfg_ps('NEWBORN_LOSS_KILL_FILTER_TF', '15m', account_key, symbol, position_side), _cfg_ps('NEWBORN_LOSS_KILL_VEL_TF', '', account_key, symbol, position_side))
+                                    _nlk_vel = float((_tsr_ind or {}).get(_nlk_key, 0.0) or 0.0)
+                                    if not ((is_long and _nlk_vel < 0) or ((not is_long) and _nlk_vel > 0)):
                                         _tsr_fire = False
+                                    else:
+                                        _tsr_reason = f"{_tsr_reason}_{_nlk_key}={_nlk_vel:.2f}"
                                 except Exception as _nlk_e:
-                                    logger.warning(f"[LANEB_NLK_TF] {position_key} probe err: {_nlk_e}")
+                                    _tsr_fire = False
+                                    logger.warning(f"[LANEC_NLK_TF] {position_key} probe err: {_nlk_e}")
                         if not _tsr_fire:
                             _tsr_fire, _tsr_reason = _twin_sr.wt_percentile_fires(_gx_c, _tsr_ind, is_long)
                         if _tsr_fire:
@@ -12398,7 +12442,17 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             in_grace_period = position_age_minutes < 10.0
             should_exit, exit_reason, exit_qty = await trade_manager.strategy.evaluate_stop(
                 symbol, position, indicators_raw, market_context, in_grace_period )
-            
+            # PARITY LANE C 2026-10-06: vec exit_confirm (EXIT_TOP_FADE / CANDLE_PATTERN_STOPS FILTER_TF) on exit_sig-block closes (WT_CROSS*_FINAL / TECHNICAL_*).
+            if should_exit:
+                try:
+                    _xcf_ind = indicators_raw or {}
+                    _xcf_veto = _ftf_twins.exit_confirm_block(lambda _k: _xcf_ind.get(_k), position_side == "LONG", exit_reason, _ftf_twins.resolve_tf(_cfg_ps('EXIT_TOP_FADE_FILTER_TF', 'OFF', account_key, symbol, position_side)), _ftf_twins.resolve_tf(_cfg_ps('CANDLE_PATTERN_STOPS_FILTER_TF', 'OFF', account_key, symbol, position_side)))
+                    if _xcf_veto:
+                        logger.info(f"[LANE_C_EXIT_CONFIRM] {position_key}: hold {exit_reason} — {_xcf_veto}")
+                        should_exit = False
+                except Exception as _xcf_e:
+                    logger.warning(f"[LANE_C_EXIT_CONFIRM] {position_key} probe err: {_xcf_e}")
+
             if should_exit:
                 # IDEMPOTENCY GUARD (2026-04-26): if a CLOSE for this symbol was queued
                 # recently, suppress the duplicate. Without this, the 30s loop re-fires
@@ -13719,12 +13773,24 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         print(f"V8_LOG LRBAND_DBG0 region_reach={_lbd0['n']} enabled={_cfg_auto('LR_BAND_ENTRY_ENABLED', 'MISSING')} regime={_cfg_auto('LR_BAND_REGIME_ENABLED', 'MISSING')} cfg_id={id(config)}", flush=True)
                 # BB_BOUNCE_ENTRY 2026-10-04 live twin (default OFF = inert): pct-b reclaim per TF, same
                 # predicate as v12. Dormant until bb_pct_b_{TF}_prev pipeline keys exist (0 refs both venues).
-                if action_type != "OPEN" and _twin_entry_ports_b is not None:
+                # PARITY LANE C 2026-10-06: BB_BOUNCE_ENTRY + WT_15M_BOUNCE_OPEN entry SOURCES moved from the dead tuple-return into the real OPEN path
+                # (queue -> VARIANCE_FIX vetoes -> execute_now). Per-sym _cfg (store > active_config > cat_side > config). Prev rows from tradier_indicators _lc_* keys.
+                if action_type != "OPEN":
                     try:
-                        _t3_fire, _t3_reason = _twin_entry_ports_b.bb_bounce_entry(lambda _k, _d: _cfg_auto(_k, _d), is_long, indicators_raw if indicators_raw else i)
-                        if _t3_fire:
-                            return True, _t3_reason, qty
-                    except Exception: pass
+                        _lc_ind = indicators_raw if indicators_raw else i
+                        _lc_get = lambda _k: (_lc_ind or {}).get(_k)
+                        _lc_c = lambda _k, _d=None: _cfg_ps(_k, _d, account_key, symbol, position_side)
+                        _t3_fire, _t3_reason = _ftf_twins.bb_bounce_source_fires(_lc_get, is_long, str(_lc_c('BB_BOUNCE_ENTRY_TF', 'OFF') or 'OFF').strip())
+                        if not _t3_fire:
+                            _t3_fire, _t3_reason = _ftf_twins.wt15_bounce_fires(_lc_c, _lc_get, is_long)
+                        if _t3_fire and current_price is not None and current_price > 0:
+                            action_type = "OPEN"
+                            qty = int(max(1, float(_lc_c('START_POSITION_SIZE', 600)) / current_price))
+                            conf = 60.0
+                            reason = _t3_reason
+                            logger.info(f"[LANE_C_ENTRY_SOURCE] {account_key}:{symbol}: {_t3_reason} qty={qty}")
+                    except Exception as _t3_e:
+                        logger.warning(f"[LANE_C_ENTRY_SOURCE] {account_key}:{symbol} probe err: {_t3_e}")
                 if action_type != "OPEN" and _cfg_auto('BB_PCTB_ENTRY_ENABLED', False):
                     try:
                         _bb_pctb_1h = float(i.get('bb_pct_b_1h', 0.5) or 0.5)
@@ -14151,6 +14217,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 _open_claim = reason if (action_type == "OPEN" and ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or ''))) else None
                 if action_type == "OPEN" and account_key != 'tra' and not _xb_reentry_fired and not _ordinary_parity_claim:
                     _veto = None
+                    _side_vf = "LONG" if is_long else "SHORT"  # PARITY LANE C 2026-10-06: assigned before DELTA_GATE_OPEN (was UnboundLocalError -> gate never ran)
                     # WAVE2 2026-10-04 lane B2: DELTA_GATE_OPEN live twin (vec v12:9293 disables all opens when False). Inert at True.
                     try:
                         if _veto is None and not bool(_cfg("DELTA_GATE_OPEN", True, account_key, symbol, _side_vf)):
@@ -14208,7 +14275,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             # PARITY LANE C 2026-10-06: entry FILTER_TFs with a vec entry_sig mask resolve PER-SYM (_cfg account/symbol/side;
                             # _cfg_auto inside this nested helper saw no locals -> global only) and use the exact vec predicates (tradier_filter_tf_twins).
                             def _ftf_ps(_n, _d="OFF"):
-                                return _cfg(_n, _d, account_key, symbol, _side_vf)
+                                return _cfg_ps(_n, _d, account_key, symbol, _side_vf)
                             _px_ftf = float(current_price or 0)
                             if _veto is None:
                                 _veto = _ftf_twins.mom3_block(_ftf_get, _px_ftf, is_long, _ftf_twins.resolve_tf(_ftf_ps('MOM3_FILTER_TF')), _ftf_ps('MOM3_LONG_THRESHOLD', -1.0), _ftf_ps('MOM3_SHORT_THRESHOLD', 1.0))
@@ -14224,23 +14291,23 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                 _veto = _ftf_twins.dc_break_block(_ftf_get, _px_ftf, is_long, _ftf_twins.resolve_tf(_ftf_ps('DC_BREAK_FILTER_TF')))
                             if _veto is None:
                                 _veto = _ftf_twins.wt_cross_side_block(_ftf_get, is_long, _ftf_twins.resolve_tf(_ftf_ps('BT_WT_CROSS_LADDER_FILTER_TF')), 'BT_WT_CROSS_TF')
-                            # BAR_PATTERNS: config_tradier default '15m' vs vec/template 'OFF' -> 15m stays inert live (pre-existing LANE I2 rule); vec code-set predicate.
-                            _ftf = _ftf_twins.resolve_tf(_ftf_ps('BAR_PATTERNS_FILTER_TF'))
-                            if _veto is None and _ftf and _ftf.upper() != '15M':
-                                _veto = _ftf_twins.bar_pattern_side_block(_ftf_get, is_long, _ftf)
+                            # BAR_PATTERNS: vec code-set predicate at any non-OFF TF (config_tradier default now 'OFF' = template bold; the old 15m skip is gone).
+                            if _veto is None:
+                                _veto = _ftf_twins.bar_pattern_side_block(_ftf_get, is_long, _ftf_twins.resolve_tf(_ftf_ps('BAR_PATTERNS_FILTER_TF')))
                             # BREAKOUT_RETEST: vec forces OFF unless BREAKOUT_RETEST_ARMED_ENABLED (v12 [JSN2]) -> same master gate live.
                             if _veto is None:
                                 _veto = _ftf_twins.dc_retest_hold_block(_ftf_get, _px_ftf, is_long, _ftf_twins.resolve_tf(_ftf_ps('BREAKOUT_RETEST_FILTER_TF')), _ftf_ps('BREAKOUT_RETEST_ARMED_ENABLED', False))
                             # BB_BOUNCE_ENTRY_TF: vec generic_filter_tf FILTER_TF_MAP ('entry','bb_bounce') AND-mask on every entry.
                             if _veto is None:
                                 _veto = _ftf_twins.bb_bounce_filter_block(_ftf_get, _px_ftf, is_long, _ftf_twins.resolve_tf(_ftf_ps('BB_BOUNCE_ENTRY_TF')))
-                            _ftf = _ftf_tf('CANDLE_PATTERN_STOPS_FILTER_TF')
-                            if _veto is None and _ftf and _ftf.upper() != '15M':
-                                _cp_d = _ftf_get(f'bar_direction_{_ftf}')
-                                if _cp_d is not None:
-                                    _cpv = float(_cp_d or 0)
-                                    if (is_long and _cpv < 0) or ((not is_long) and _cpv > 0):
-                                        _veto = f"CANDLE_PATTERN_STOPS_TF_{_ftf}_BLOCK(dir={_cpv:.0f})"
+                            # EMA50_15M_ENTRY_FILTER: vec entry_sig mask (v12 EMA50 block) — live twin, per-sym _cfg (cat_side STOCKS default carried forward).
+                            if _veto is None:
+                                _veto = _ftf_twins.ema50_block(_ftf_get, _px_ftf, is_long, _ftf_ps('EMA50_15M_ENTRY_FILTER_ENABLED', False), _ftf_ps('EMA50_15M_ENTRY_FILTER_PCT', 0.0))
+                            # KG_STOCKS_LIVE_GATE_VEC_ONLY_ENABLED (default False = today): when True, the vec stocks KINDERGARTEN/EMA_9_21 hard veto (live_kindergarten_stocks) applies live.
+                            if _veto is None:
+                                _veto = _ftf_twins.kg_stocks_block(_ftf_ps, _ftf_get, _px_ftf, is_long)
+                            # PARITY LANE C 2026-10-06: CANDLE_PATTERN_STOPS / EXIT_TOP_FADE / PEAK_GIVEBACK_BE_EROSION / BREAKEVEN_GAIN_EROSION FILTER_TF entry vetoes REMOVED
+                            # (wrong lifecycle; were inert at 15m/OFF). Vec applies them as exit_confirm / erosion_confirm -> see _ftf_twins.exit_confirm_block at the exit sites.
                             _ftf = _ftf_tf('CIRCUIT_SHARPE_GATES_FILTER_TF')
                             if _veto is None and _ftf and _ftf.upper() != '15M':
                                 _cg1, _cg2 = _ftf_get(f'wt1_{_ftf}'), _ftf_get(f'wt2_{_ftf}')
@@ -14257,26 +14324,6 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                 _sw_atr = float(_ftf_get('atr_1h') or 1.0)
                                 if _sw_atr <= 0.5:
                                     _veto = f"ATR_TRAIL_SWEEP_BLOCK(atr1h={_sw_atr:.2f})"
-                            _ftf = _ftf_tf('EXIT_TOP_FADE_FILTER_TF')
-                            if _veto is None and _ftf and _ftf.upper() != '15M':
-                                _tf_w1, _tf_wv = _ftf_get(f'wt1_{_ftf}'), _ftf_get(f'wt_velocity_{_ftf}')
-                                if _tf_w1 is not None and _tf_wv is not None:
-                                    _w1v, _wvv = float(_tf_w1 or 0), float(_tf_wv or 0)
-                                    _topping = (is_long and _w1v > 60 and _wvv < 0) or ((not is_long) and _w1v < -60 and _wvv > 0)
-                                    if _topping:
-                                        _veto = f"EXIT_TOP_FADE_TF_{_ftf}_BLOCK(wt1={_w1v:.1f}_vel={_wvv:.2f})"
-                            _ftf = _ftf_tf('PEAK_GIVEBACK_BE_EROSION_FILTER_TF')
-                            if _veto is None and _ftf and _ftf.upper() != '15M':
-                                _pg1, _pg2 = _ftf_get(f'wt1_{_ftf}'), _ftf_get(f'wt2_{_ftf}')
-                                if _pg1 is not None and _pg2 is not None:
-                                    if not ((float(_pg1) > float(_pg2)) if is_long else (float(_pg1) < float(_pg2))):
-                                        _veto = f"PEAK_GIVEBACK_BE_EROSION_TF_{_ftf}_BLOCK(wt1={float(_pg1):.1f}_wt2={float(_pg2):.1f})"
-                            _ftf = _ftf_tf('BREAKEVEN_GAIN_EROSION_FILTER_TF')
-                            if _veto is None and _ftf and _ftf.upper() != '15M':
-                                _be1, _be2 = _ftf_get(f'wt1_{_ftf}'), _ftf_get(f'wt2_{_ftf}')
-                                if _be1 is not None and _be2 is not None:
-                                    if not ((float(_be1) > float(_be2)) if is_long else (float(_be1) < float(_be2))):
-                                        _veto = f"BREAKEVEN_GAIN_EROSION_TF_{_ftf}_BLOCK(wt1={float(_be1):.1f}_wt2={float(_be2):.1f})"
                             # AQUA 2026-10-05 BTC_DEDICATED_FILTER_TF stocks leg (vec lane_vec_stub4.btc_dedicated_allow_mask; live ez:6992 dead-batch1 twin ported to reached chain). Non-real TF (incl. default 15m) skips = allow.
                             _btf = _ftf_tf('BTC_DEDICATED_FILTER_TF')
                             if _veto is None and _btf and _btf in ('1h', '4h', 'D', 'W'):
@@ -21431,7 +21478,7 @@ class StockStrategy:
                 return True, _reason, qty
             return False, f"OPTIONS_HOLD_D_intact_cross={_wt_cross_D}_ha={_ha_D}_g={gain:.2f}%", 0
         _exit_ind = indicators if indicators else i
-        _wtdc_exit_enabled = path_switch(config, "WT_DC_EXIT_ENABLED", True)
+        _wtdc_exit_enabled = path_switch(config, "WT_DC_EXIT_ENABLED", True) and bool(_cfg_ps("STOCKS_WTDC_SCORER_EXIT_ENABLED", True, current_account.get('') or None, symbol, "LONG" if is_long else "SHORT"))  # PARITY LANE C 2026-10-06 master (default True = unchanged; vec same name)
         if _wtdc_exit_enabled:
             _exit_score, _exit_reason = wt_dc_score_exit(
                 _exit_ind, is_long, current_price, cfg=config
@@ -21493,6 +21540,14 @@ class StockStrategy:
             # changes behaviour.
             _vf_exit_side = "LONG" if is_long else "SHORT"
             _vf_acct = current_account.get('')
+            # PARITY LANE C 2026-10-06: MULTI_TF_EXIT_ENABLED_TRADIER (default False = today: the scorer hold below returns before
+            # evaluate_multi_tf_exit). True = vec semantics (v12: multi-TF exit active even with the WT_DC scorer on) using the same
+            # shield + NOLOSS floor as the reached path 3.1 further down.
+            if bool(_cfg_ps('MULTI_TF_EXIT_ENABLED_TRADIER', False, _vf_acct, symbol, _vf_exit_side)) and not (hold_time_min < 20.0 or (-0.3 < gain < 0.3 and hold_time_min < 40.0)):
+                _mt2_exit, _mt2_reason, _mt2_score = self.evaluate_multi_tf_exit(i, is_long, gain, hold_time_min, current_price)
+                if _mt2_exit and gain >= _cfg_auto('NOLOSS_MIN_PROFIT_PCT_TRADIER', 0.3):
+                    logger.warning(f"[MULTI_TF_EXIT] {symbol} {'L' if is_long else 'S'}: {_mt2_reason} (MULTI_TF_EXIT_ENABLED_TRADIER)")
+                    return True, _mt2_reason, qty
             # WT_EXIT_TFS / WT_EXIT_MIN_TFS — only fires if WT_EXIT_VETO_ENABLED_TRADIER is on.
             if _cfg_auto('WT_EXIT_VETO_ENABLED_TRADIER', False):
                 try:
@@ -23028,6 +23083,21 @@ class StockStrategy:
                         return False, "", 0.0, 0.0
                 except Exception:
                     pass
+
+            # PARITY LANE C 2026-10-06: FAST_RISER_DOUBLE augment (vec filter_tf_gates.fast_riser_sig + gain>0.8%, 100% add after the
+            # universal gain gate + cooldown above). FAST_RISER_FILTER_TF OFF (config/cat default) = inert. NOTE: process_position only
+            # reaches evaluate_augment when BB4H_BREAKOUT_LADDER_ENABLED is False (BB4H elif shadowing) — vec has no such shadow.
+            try:
+                _fr_tf = _ftf_twins.resolve_tf(_cfg_ps('FAST_RISER_FILTER_TF', 'OFF', _ol_account, symbol, _ol_side))
+                if _fr_tf and current_qty > 0:
+                    _fr_fire, _fr_reason = _ftf_twins.fast_riser_fires(lambda _k: (indicators or {}).get(_k), current_price, is_long, _fr_tf, gain)
+                    if _fr_fire:
+                        _fr_qty = await self.calculate_quantity_complex(symbol, "AUGMENT", _ol_side, current_qty, indicators, position, market_context)
+                        if _fr_qty and _fr_qty > 0:
+                            logger.warning(f"[FAST_RISER_DOUBLE] {symbol} {_ol_side}: {_fr_reason} add={_fr_qty}")
+                            return True, _fr_reason, 75.0, _fr_qty
+            except Exception as _fr_e:
+                logger.warning(f"[FAST_RISER_DOUBLE] {symbol} probe err: {_fr_e}")
 
             # Default True preserves the historical live behavior. This gate
             # controls only the DC breakout-tier block below; earlier WT_D

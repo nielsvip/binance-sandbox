@@ -1058,6 +1058,13 @@ class Config:
     WT_15M_BOUNCE_REL_VOL_GT_1: bool = False  # alias for VOLUME_FILTER — template row WT_15M_BOUNCE_REL_VOL_GT_1
     WT_ACCEL_EXIT_ENABLED: bool = False  # FIX 2026-09-08: parity guard — missing from configs, present in TEMPLATE
     WT_DIV_EXIT_ENABLED: bool = False  # FIX 2026-09-08: parity guard — missing from configs, present in TEMPLATE
+    PARITY_LIVE_SIZING_MULT_ENABLED: bool = False  # 2026-10-06 DIRECTOR SIZING HOLD: False forces the lane-B vec sizing legs (STDEV_SLOPE_SIZING / DC_EDGE_SIZING) to x1.0 live until the user approves
+    EXIT_VELOCITY_WT_ENABLED: bool = True  # 2026-10-06 DIRECTOR ruling 4: master of the always-on live EXIT_VELOCITY_WT exit (ez_manage GREY_REWIRE); True = unchanged live; lane D vec twin same name
+    CRYPTO_VEC_ONLY_REENTRY_ENABLED: bool = False  # 2026-10-06 phase 4: live twin of vec HARDCODED_RALLY / TARGET-DC+SELL_TOP recross / HTF_WT_CHURN / REENTRY_MANDATORY for flat keys (live_twins/vec_reentry.py); False = today live
+    HAIKU_WINNER_VEC_ONLY_ENABLED: bool = False  # 2026-10-06 phase 4: True lets HaikuOverseer HAIKU_* augments through STRICT_VEC_PARITY (vec haiku_augment twins manage_winners; needs HAIKU_WINNER_ENABLED); False = today live (refused)
+    KEY_LEVEL_CRASH_VEC_ONLY_ENABLED: bool = False  # 2026-10-06 phase 4: key-level crash exit outside the ablated EPQ quick chain (live_twins/key_level.py); False = today live
+    EMA50_15M_ENTRY_FILTER_VEC_ONLY_ENABLED: bool = False  # 2026-10-06 phase 4: vec EMA50 15m entry filter; live twin BLOCKED_NO_LIVE_DATA (ez_indicators emits no ema_50_15m); False = today live
+    MULTI_TF_EXIT_ENABLED: bool = False  # 2026-10-06 parity lane B (= QuickConfig lane D): live process_position runs evaluate_multi_tf_exit (WT_DIV/WT_ACCEL/WT_15M_LH_WAIT score components) only when promoted per-sym; False = today's live (no crypto caller)
     SIMPLE_PRICE_GT0_ENABLED: bool = False  # SIMPLE price>0 test — ridiculously simple, always trades when enabled (added 2026-09-06 alongside WT15, never fails)
     # 2026-05-09 USER MANDATE — R3 HEDGE_INVARIANT loss-bypass dump.
     # When wt1_3m AND wt1_1h are against a position AND gain<0 AND no hedge
@@ -5155,7 +5162,7 @@ class Config:
     BREAKOUT_RETEST_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     BTC_DEDICATED_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     BT_WT_CROSS_LADDER_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")
-    CANDLE_PATTERN_STOPS_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    CANDLE_PATTERN_STOPS_FILTER_TF: str = "OFF"  # 2026-10-06 DIRECTOR ruling 3: was 15m; vec QuickConfig OFF and live never applied it -> OFF = parity
     CIRCUIT_SHARPE_GATES_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     COOLDOWN_LOCKS_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
     DC_BREACH_REDUCE_FILTER_TF: str = "OFF"  # 2026-09-28 USER parity order: real live read wired; OFF = today's behavior (was unread stub "15m")

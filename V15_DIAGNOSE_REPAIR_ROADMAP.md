@@ -22,19 +22,34 @@ v15_avg_delta) are wired INTO live; every other vec default behaviour must equal
 | A harness + evidence | `backtest_v12_engine.py`, `tools/v15_trade_parity.py`, `tools/v15_parity_check.py` | fix live-leg crash (`'float' object has no attribute 'get'`), trade-level parity on a cross-venue sample, gap register | `data/reports/trade_parity/*`, `data/parity/gap_register_20261006.md` |
 | B crypto live wiring | `ez_manage.py`, `ez_positions_quick.py`, `mtf_live_evaluator.py`, `config.py` | wire pos_sym>0 vec-only/dead switches live; expose fake live twins (FILTER_TF stub farms, ablation-inert paths) | `data/parity/lane_B_crypto_ledger.md`, `tests/test_parity_live_twin_*` |
 | C stocks live wiring | `tradier_manage.py`, `tradier_*.py`, `config_tradier.py` | same for stocks | `data/parity/lane_C_stocks_ledger.md` |
+| E experimental parity settings | none (read-only; host scratch) | cache each live-path ledger once, sweep vec settings for max trade match → which vec behaviours lane D must change | `data/parity/lane_E_parity_settings_20261006.md` |
 | D vec baseline = live | `v12_quick_engine.py`, `vec_decisions/` | default-on vec behaviour live lacks → behind a switch defaulting to live; live gates → vec twins | `data/parity/lane_D_baseline_gap_list.md` |
 
 Already in place (2026-10-06): `execution_ledger` from the scalar replay; `tools/v15_trade_parity.py` (round-trip
 matching, gap register); `tools/v15_parity_check.py` fails PARITY when < 80 % of trips match both ways
 (`V15_TRADE_PARITY_GATE=0` disables) → `v15_final_phase.qualify` → NEGATIVE → `golive_final` `_NEG_BLOCK`.
 
-**INTEGRAL DEFAULT RULE (director, 2026-10-06, binding for every switch now and in future):** a switch's default is
+**DEFAULT / BASELINE RULE (USER 2026-10-06, supersedes the director's first draft):** the baseline per sym_side is the
+better of (latest round's best result for that sym_side) and (cat_side defaults = TEMPLATE_* bold, recalculated every
+24 h by `v15_vector_delta` per CRYPTO/STOCKS × LONG/SHORT); it is APPLIED FORWARD TO LIVE (never pushed backward into
+vec). Every switch exists identically in live and vec; live resolves per-sym > cat_side > global. Only a BRAND-NEW
+switch (a live-only gate getting its vec twin) takes current live behaviour as its initial template default.
+Earlier draft (now superseded): a switch's default is
 the CURRENT LIVE behaviour on every surface (config.py / config_tradier.py, QuickConfig + apply_tradier_defaults,
 cat_side defaults, TEMPLATE bold). Live and vec implement the switch identically. A sheet promotion turns it on per
 sym_side, and then both sides do it. Consequences: pos_sym>0 vec "tests" are wired live with default OFF (= today's
 live), vec default-on paths that live lacks flip to OFF in vec (engine cut → re-baseline), stale per-sym snapshot values
 are cleaned before restart (`tools/parity_persym_snapshot_cleanup.py`, dry-run first). "Live behaviour changes at
 default" must be an EMPTY list at deploy; changes happen only through promotions the sheets measured.
+
+**FLEET PAUSED for parity (2026-10-06 ~01:25Z, USER "stop running tests … dedicate all compute to parity"):**
+herd daemons + in-flight pilots stopped on S1/S2/S5; crons tagged `#PARITY_PAUSE_20261006#` (S1: V15_FLEET_SCHED ×2,
+V15_AUTOPILOT, TOP30_REQUEUE; S2: TOP30_REQUEUE; Mac: v15_gain_pusher), Mac launchd `com.niels.fleet-healer` unloaded
+(it relaunches herds on all hosts). Backups: `~/crontab_before_parity_pause_20261006.txt` on each host,
+`~/crontab_mac_before_parity_pause_20261006.txt` on the Mac. RESUME (after parity is proven, via the S1 coordinator):
+`crontab ~/crontab_before_parity_pause_20261006.txt` on each host (or remove the tag), `launchctl load
+~/Library/LaunchAgents/com.niels.fleet-healer.plist`, Mac crontab restore — with the parity engine + auto-correct
+(DIAGNOSE_REPAIR) deployed and a new defaults round id.
 
 **Exit criteria for the emergency:**
 1. Live leg of the harness runs for every venue/side (no harness crashes; artefacts like single-side portfolio gates,

@@ -1426,11 +1426,11 @@ def check_entry_vetting(
     # TWIN_VEC_SPECIAL H5: T55 RSI entry-gate crypto-live port (mirror of stocks tradier_manage.py:27835-27860/28185-28205). ONLY if RSI data exists. config.py has no RSI_ENTRY_* fields — getattr defaults used, no config edit needed.
     _rsi_period = int(getattr(config, 'RSI_ENTRY_PERIOD_TRADIER', 10))
     _rsi_val = indicators.get(f'rsi_{_rsi_period}_D', indicators.get('rsi_D', indicators.get('rsi_1h', indicators.get('rsi_15m', None))))
-    # 2026-10-06 director (parity lane B): RSI_ENTRY_VETO_ENABLED master (default True = unchanged); per-sym chain via _psym_get when symbol/side known, else per-sym ctx proxy. Vec twin: vec_decisions/entry_vet_rsi_t55.py (same switch).
+    # 2026-10-06 director (parity lane B): RSI_ENTRY_VETO_ENABLED master (default True = unchanged); per-sym > cat_side > global via _psym_cs_get when symbol/side known, else per-sym ctx proxy. Vec twin: vec_decisions/entry_vet_rsi_t55.py (same switch).
     _rsi_veto_raw = getattr(config, 'RSI_ENTRY_VETO_ENABLED', True)
     if symbol and side:
         try:
-            _rsi_veto_raw = _psym_get(symbol, side, 'RSI_ENTRY_VETO_ENABLED', _rsi_veto_raw)
+            _rsi_veto_raw = _psym_cs_get(symbol, side, 'RSI_ENTRY_VETO_ENABLED', _rsi_veto_raw)
         except Exception:
             pass
     _rsi_veto_on = (_rsi_veto_raw.strip().lower() in ('true', '1', 'yes')) if isinstance(_rsi_veto_raw, str) else bool(_rsi_veto_raw)
@@ -7932,6 +7932,69 @@ def _psym_get(symbol: str, side: str, knob: str, default):
             pass
     # For never-calculated, template fallback already handled above — if still here, template had it or we already returned config-equivalent
     return _ezm_default(symbol, side, knob, default)
+
+
+_LANE_B_SIZING_HOLD_LOGGED: set = set()
+
+
+def _lane_b_vec_only_parity_ok(symbol: str, side: str, reason: str) -> bool:
+    """Parity lane B 2026-10-06 phase 4: STRICT_VEC_PARITY allowlist extension for vec-achievable families that are
+    vec-only behind a per-sym switch (per-sym > cat_side > global via _psym_cs_get). False unless the switch is on.
+      VEC_ONLY_REENTRY_*                              <- CRYPTO_VEC_ONLY_REENTRY_ENABLED (live_twins/vec_reentry.py)
+      HAIKU_WINNER_AUG_ / HAIKU_REENTER_ / HAIKU_REDUCE_ <- HAIKU_WINNER_VEC_ONLY_ENABLED and HAIKU_WINNER_ENABLED (vec haiku_augment)
+      KEY_LEVEL_CRASH_ / KEY_LEVEL_BREAKOUT_          <- KEY_LEVEL_CRASH_VEC_ONLY_ENABLED (live_twins/key_level.py)"""
+    try:
+        if not symbol or not side:
+            return False
+        r = str(reason or "").upper()
+
+        def _on(k, d=False):
+            v = _psym_cs_get(symbol, side, k, d)
+            return (v.strip().lower() in ("true", "1", "yes")) if isinstance(v, str) else bool(v)
+        if r.startswith("VEC_ONLY_REENTRY_"):
+            return _on("CRYPTO_VEC_ONLY_REENTRY_ENABLED")
+        if r.startswith(("HAIKU_WINNER_AUG_", "HAIKU_REENTER_", "HAIKU_REDUCE_")):
+            return _on("HAIKU_WINNER_VEC_ONLY_ENABLED") and _on("HAIKU_WINNER_ENABLED", True)
+        if r.startswith(("KEY_LEVEL_CRASH_", "KEY_LEVEL_BREAKOUT_")):
+            return _on("KEY_LEVEL_CRASH_VEC_ONLY_ENABLED")
+    except Exception:
+        return False
+    return False
+
+
+def _psym_cs_get(symbol: str, side: str, knob: str, default):
+    """Parity lane B 2026-10-06 (director: per-sym > cat_side default > global, the TEMPLATE/v15_vector_delta baseline reaches live).
+    Order: per-sym PROMOTION layer (per_sym_store overrides_json -> per_sym_active_config.json overrides) -> cat_side default
+    (cat_side_defaults.py, data/cat_side_defaults_4.json / kv_json, hot-reloaded) -> GLOBAL base config value.
+    Unlike _psym_get it never returns the per_sym_store full_config DEFAULTS SNAPSHOT (stale defaults captured at promotion must
+    not override the current cat_side baseline; tools/parity_persym_snapshot_cleanup.py lists them)."""
+    if symbol and side and os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1":
+        try:
+            import per_sym_store as _pss
+            _ov_p = _pss.get_overrides(f"{symbol}_{side}")
+            if _ov_p is not None and knob in _ov_p:
+                return _ov_p[knob]
+        except Exception:
+            pass
+    if symbol and side and os.environ.get("V8_DISABLE_PER_SYM") != "1":
+        try:
+            global _ezm_per_sym_cfgs, _ezm_per_sym_cfgs_mtime
+            _mt_p = _ezm_per_sym_cfgs_path.stat().st_mtime
+            if _mt_p != _ezm_per_sym_cfgs_mtime:
+                with _ezm_per_sym_cfgs_path.open() as _f_p:
+                    _raw_p = json.load(_f_p)
+                _ezm_per_sym_cfgs = {k: v.get("overrides", {}) for k, v in _raw_p.items() if isinstance(v, dict) and k != "_meta"}
+                _ezm_per_sym_cfgs_mtime = _mt_p
+            _ov_j = (_ezm_per_sym_cfgs or {}).get(f"{symbol}_{side}")
+            if _ov_j is not None and knob in _ov_j:
+                return _ov_j[knob]
+        except Exception:
+            pass
+    if symbol and side:
+        _cs_v = _ezm_cat_side_default(symbol, side, knob)
+        if _cs_v is not _EZM_CSD_MISSING:
+            return _cs_v
+    return getattr(_ezm_base_config, knob, default)
 
 
 def _ezm_is_live_side_enabled(symbol: str, side: str, account_key: str | None = None) -> tuple[bool, str]:
@@ -30444,15 +30507,15 @@ class MultiAccountTradeManager:
                         return f"BLOCKED_EMA_BLANKET_FILTER_{position_side}"
         except Exception as _ebe:
             logger.warning(f"[EMA_BLANKET_FILTER] check error (fail-open): {_ebe}")
-        # ═══ PARITY LANE B 2026-10-06: vec entry FILTER_TF gates (MOM3 / DC_BREAK / BREAKOUT_RETEST[ARMED]) on fresh OPEN + vec strict open block (HTF_DIRECTION_GATE + nested OI_CONFIRM) on every non-augment open ═══
-        # Twins: live_twins/parity_open_gates.py (mirrors vec_decisions filter_tf_gates / generic_filter_tf / wave4_families). All OFF/False at config.py default = unchanged live. Per-sym via _psym_get.
+        # ═══ PARITY LANE B 2026-10-06: vec entry FILTER_TF gates (MOM3 / MOMENTUM_BREAKOUT / DC_BREAK / BB_BOUNCE_ENTRY_TF / BREAKOUT_RETEST[ARMED]) on fresh OPEN + vec strict open block (HTF_DIRECTION_GATE + nested OI_CONFIRM) on every non-augment open ═══
+        # Twins: live_twins/parity_open_gates.py (mirrors vec_decisions filter_tf_gates / generic_filter_tf / wave4_families). Resolution per-sym promotion > cat_side default > global (_psym_cs_get).
         try:
             if symbol and ("OPEN" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act or _kill_act == "BUY") and "AUGMENT" not in _kill_act and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act and "HEDGE" not in (reason or "").upper():
                 from live_twins import parity_open_gates as _lpog
-                _lpog_get = lambda _k, _d=None: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))
+                _lpog_get = lambda _k, _d=None: _psym_cs_get(symbol, position_side, _k, _d)
                 _lpog_long = position_side == "LONG"
                 _lpog_fresh = (_re_g or "REENTRY" not in _kill_act) and (_re_g or ("OBLIGATORY" not in (reason or "").upper() and "REENTRY" not in (reason or "").upper()))
-                _lpog_ftf_on = _lpog_fresh and (_lpog._tf(_lpog_get, "MOM3_FILTER_TF") or _lpog._tf(_lpog_get, "DC_BREAK_FILTER_TF") or (_lpog._truthy(_lpog_get("BREAKOUT_RETEST_ARMED_ENABLED", False)) and _lpog._tf(_lpog_get, "BREAKOUT_RETEST_FILTER_TF")))
+                _lpog_ftf_on = _lpog_fresh and _lpog.entry_filter_active(_lpog_get)
                 _lpog_htf_on = _lpog._truthy(_lpog_get("HTF_DIRECTION_GATE_ENABLED", False)) and not _lpog.htf_gate_bypassed(reason or "", _lpog_get)
                 if _lpog_ftf_on or _lpog_htf_on:
                     _lpog_ind = await ii(self, symbol) or {}
@@ -31024,7 +31087,7 @@ class MultiAccountTradeManager:
                         is_vec_achievable as _vp_ok
                     from vec_paths.vec_parity_gate import \
                         matched_token as _vp_tok
-                    if not _vp_ok(reason or ""):
+                    if not _vp_ok(reason or "") and not _lane_b_vec_only_parity_ok(symbol, position_side, reason or ""):
                         if _vp_mode:
                             logger.critical(f"🧬 [STRICT_VEC_PARITY] {position_key}: BLOCKED — reason not vec-achievable. action={action} reason={(reason or '')[:90]}")
                             return f"BLOCKED_VEC_PARITY_{(_kill_act or 'NA')[:12]}"
@@ -42861,6 +42924,26 @@ async def calculate_final_order_quantity(
                 logger.info(f"[{position_key}] REGIME_ADAPTIVE_SIZING: adx={safe_fetch_float(i.get('adx_1h', 20), 20.0):.1f} mult={_tgsa_rm:.2f}x")
     except Exception as _tgsa_se:
         logger.warning(f"[REGIME_ADAPTIVE_SIZING] {position_key} err (fail-open): {_tgsa_se}")
+    # PARITY LANE B 2026-10-06: vec compute_regime_sizing_mult DC_EDGE + STDEV_SLOPE legs (live_twins/sizing.py); per-sym > cat_side > global (_psym_cs_get); switch off = x1.
+    try:
+        if symbol and position is not None:
+            from live_twins import sizing as _lbsz
+            _lbsz_get = lambda _k, _d: _psym_cs_get(symbol, position.position_side, _k, _d)
+            _lbsz_long = position.position_side == "LONG"
+            for _lbsz_tag, _lbsz_fn in (("DC_EDGE_SIZING", _lbsz.dc_edge_mult), ("STDEV_SLOPE_SIZING", _lbsz.stdev_slope_mult)):
+                _lbsz_m = _lbsz_fn(_lbsz_get, i, _lbsz_long)
+                # DIRECTOR 2026-10-06 SIZING HOLD: PARITY_LIVE_SIZING_MULT_ENABLED (config.py, default False) forces x1.0 until the user approves real-money sizing.
+                if _lbsz_m is not None and not bool(getattr(_ezm_base_config, "PARITY_LIVE_SIZING_MULT_ENABLED", False)):
+                    _lbsz_hold_key = f"{symbol}:{_lbsz_tag}"
+                    if _lbsz_hold_key not in _LANE_B_SIZING_HOLD_LOGGED:
+                        _LANE_B_SIZING_HOLD_LOGGED.add(_lbsz_hold_key)
+                        logger.warning(f"[PARITY_SIZING_HOLD] {symbol} {_lbsz_tag}: vec mult={_lbsz_m:.2f}x resolved but forced x1.0 (PARITY_LIVE_SIZING_MULT_ENABLED=False)")
+                    _lbsz_m = None
+                if _lbsz_m is not None and _lbsz_m > 0:
+                    final_add_qty *= _lbsz_m
+                    logger.info(f"[{position_key}] {_lbsz_tag}: mult={_lbsz_m:.2f}x -> qty=${final_add_qty * current_price:.2f}")
+    except Exception as _lbsz_e:
+        logger.warning(f"[PARITY_SIZING] {position_key} err (fail-open): {_lbsz_e}")
     # BACKTEST_CHANGE_24: EMA_DIST proportional sizing — larger distance from EMA = larger position
     if getattr(config, "EMA_DIST_SIZING_ENABLED", False):
         _ema20_sz = float(i.get(f"ema_20_{config.TF_FOCUS}", 0) or 0)
@@ -45293,6 +45376,83 @@ async def direct_high_gain_augmentation(
             latest_state = direct_high_gain_dict.get(position_key)
 
 
+def _parity_flat_open_switches(position_key: str):
+    """Parity lane B 2026-10-06: (symbol, side, getter, wt15_on, bb_bounce_on, vec_reentry_on) for a flat key; per-sym > cat_side > global."""
+    _ak_p, _sym_p, _side_p = parse_position_key(position_key)
+    _get_p = lambda _k, _d: _psym_cs_get(_sym_p, _side_p, _k, _d)
+    _tb = lambda _v: (_v.strip().lower() in ("true", "1", "yes")) if isinstance(_v, str) else bool(_v)
+    _w15 = _tb(_get_p("WT_15M_BOUNCE_OPEN_ENABLED", False))
+    _bbt = str(_get_p("BB_BOUNCE_ENTRY_TF", "OFF") or "OFF").strip() in ("15m", "1h", "4h", "D")
+    _vr = _tb(_get_p("CRYPTO_VEC_ONLY_REENTRY_ENABLED", False))
+    return _sym_p, _side_p, _get_p, _w15, _bbt, _vr
+
+
+def _parity_flat_open_enabled(position_key: str) -> bool:
+    try:
+        _s, _sd, _g, _w15, _bbt, _vr = _parity_flat_open_switches(position_key)
+        return bool(_s) and _sd in ("LONG", "SHORT") and (_w15 or _bbt or _vr)
+    except Exception:
+        return False
+
+
+def _parity_last_exit(trade_manager, position_key: str):
+    """(exit_price, exit_reason, age_min) of the key's last CLOSE/REDUCE from trade_manager.reentry_data (written by execute_now on every close)."""
+    _rd = (getattr(trade_manager, "reentry_data", None) or {}).get(position_key)
+    if not _rd and getattr(trade_manager, "service", None) is not None:
+        _rd = (getattr(trade_manager.service, "reentry_data", None) or {}).get(position_key)
+    if not isinstance(_rd, dict):
+        return 0.0, "", 0.0
+    _rs = str(_rd.get("reason", "") or "")
+    for _pfx in ("CLOSED_", "REDUCED_"):
+        if _rs.startswith(_pfx):
+            _rs = _rs[len(_pfx):]
+            break
+    _age = _rally_age(_rd.get("timestamp"))
+    return safe_fetch_float(_rd.get("reentry_level", 0), 0.0), _rs, (float(_age) if _age is not None else 0.0)
+
+
+async def _parity_flat_open_check(trade_manager, position_key: str, position, order_queue):
+    """Live twins for FLAT keys (vec entry/reentry sources live never reached):
+    - WT_15M_BOUNCE_OPEN_ENABLED / BB_BOUNCE_ENTRY_TF openers (vec_decisions/twin_entry_ports_b) -> queue_trade_action OPEN;
+    - CRYPTO_VEC_ONLY_REENTRY_ENABLED: vec HTF_WT_CHURN / TARGET-DC+SELL_TOP recross / HARDCODED_RALLY / REENTRY_MANDATORY
+      (live_twins/vec_reentry.py) on the last exit in trade_manager.reentry_data -> queue_trade_action REENTRY (reason
+      VEC_ONLY_REENTRY_*, admitted by STRICT_VEC_PARITY only while the switch is on). All execute_now gates apply."""
+    try:
+        _sym_p, _side_p, _get_p, _w15, _bbt, _vr = _parity_flat_open_switches(position_key)
+        if not (_w15 or _bbt or _vr):
+            return
+        _ind_p = await ii(trade_manager, _sym_p)
+        if not isinstance(_ind_p, dict):
+            return
+        _px_p = safe_fetch_float(await price(_sym_p, position), 0) or safe_fetch_float(_ind_p.get("current_price"), 0)
+        if not (_px_p > 0):
+            return
+        _long_p = _side_p == "LONG"
+        _ok_p, _why_p, _act_p = False, "", "OPEN"
+        if _w15 and _twin_entry_ports_b is not None:
+            _ok_p, _why_p = _twin_entry_ports_b.wt_15m_bounce(lambda _k, _d: True if _k == "WT_15M_BOUNCE_OPEN_ENABLED" else _get_p(_k, _d), _long_p, _ind_p)
+        if not _ok_p and _bbt and _twin_entry_ports_b is not None:
+            _ok_p, _why_p = _twin_entry_ports_b.bb_bounce_entry(_get_p, _long_p, _ind_p)
+        if not _ok_p and _vr:
+            from live_twins import vec_reentry as _lbvr
+            _ex_px, _ex_rs, _ex_age = _parity_last_exit(trade_manager, position_key)
+            _vr_ok, _vr_path = _lbvr.fires(_get_p, _ind_p, _long_p, _px_p, _ex_px, _ex_rs, _ex_age, rally_ok=_rally_ok)
+            if _vr_ok:
+                _ok_p, _act_p = True, "REENTRY"
+                _why_p = f"VEC_ONLY_REENTRY_{_vr_path}_{_side_p}_px{_px_p:.6f}_exit{_ex_px:.6f}_age{_ex_age:.0f}m"
+        if not _ok_p:
+            return
+        if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+            return
+        _r1s_p = safe_fetch_float(_ind_p.get(("dc_low4_3m" if _long_p else "dc_high4_3m") if bool(getattr(config, "R1_USE_DC_4BAR", True)) else ("dc_low_3m" if _long_p else "dc_high_3m")), 0.0)
+        if _r1s_p > 0 and position and float(getattr(position, "r1_stop_price", 0.0) or 0.0) <= 0:
+            position.r1_stop_price = _r1s_p
+        logger.warning(f"[PARITY_FLAT_OPEN] {position_key}: {_why_p} px={_px_p:.6f} -> {_act_p}")
+        await queue_trade_action(order_queue, trade_manager, position_key, _act_p, _why_p, 90.0 if _act_p == "REENTRY" else 75.0)
+    except Exception as _pfo_e:
+        logger.warning(f"[PARITY_FLAT_OPEN] {position_key} err (fail-open): {_pfo_e}")
+
+
 _override_check_counter = {}
 _override_check_semaphore = asyncio.Semaphore(100)
 
@@ -46686,6 +46846,23 @@ async def override_check_uptrend_positions(
                 ]
                 if _zero_tasks:
                     await asyncio.gather(*_zero_tasks, return_exceptions=True)
+            # PARITY LANE B 2026-10-06: vec flat openers WT_15M_BOUNCE_OPEN_ENABLED / BB_BOUNCE_ENTRY_TF reach live outside the
+            # (parity-masked, default-off) TRADEABLE_KEYS_MANDATORY block. Same predicates (vec_decisions/twin_entry_ports_b), queue_trade_action OPEN -> execute_now.
+            if _tk and not bool(getattr(config, "TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED", True)):
+                try:
+                    _pfo_keys = []
+                    for _pfo_pk in _tk:
+                        if not str(_pfo_pk).startswith(f"{account_key}:"):
+                            continue
+                        _pfo_pos = account_positions.get(_pfo_pk)
+                        if _pfo_pos and hasattr(_pfo_pos, "positionAmt") and abs(float(_pfo_pos.positionAmt)) > 0:
+                            continue
+                        if _parity_flat_open_enabled(_pfo_pk):
+                            _pfo_keys.append(_pfo_pk)
+                    if _pfo_keys:
+                        await asyncio.gather(*[_parity_flat_open_check(trade_manager, _pfo_pk, account_positions.get(_pfo_pk), order_queue) for _pfo_pk in _pfo_keys], return_exceptions=True)
+                except Exception as _pfo_e:
+                    logger.warning(f"[PARITY_FLAT_OPEN] {account_key} scan err (fail-open): {_pfo_e}")
         symbols = await trade_manager.get_symbols_for_account(account_key)
         for symbol in symbols:
             try:
@@ -48334,7 +48511,7 @@ async def process_position(
                     # PARITY LANE B 2026-10-06: STOP levels from the prior-bar channel (vec DC_PRIOR_BAR_CHANNEL, default True); targets same-bar. Only active when a STOP TF is set (default OFF).
                     try:
                         from live_twins import dc_prior_bar as _ldpb
-                        _gx_lvl = _ldpb.level_getter(_pp_shared_ind, _gx_is_long, _gx_stop, _psym_get(symbol, position_side, "DC_PRIOR_BAR_CHANNEL", getattr(config, "DC_PRIOR_BAR_CHANNEL", True)))
+                        _gx_lvl = _ldpb.level_getter(_pp_shared_ind, _gx_is_long, _gx_stop, _psym_cs_get(symbol, position_side, "DC_PRIOR_BAR_CHANNEL", True))
                     except Exception:
                         _gx_lvl = lambda _f: safe_fetch_float(_pp_shared_ind.get(_f, 0), 0.0)
                     _gx_fire, _gx_reason = _dc_channel_exits.daytrade_dc_exit(current_price, _gx_is_long, _gx_stop, _gx_tgt, _gx_lvl)
@@ -48359,10 +48536,20 @@ async def process_position(
                         _pp_shared_ind = await ii(trade_manager, symbol) or {}
                     try:
                         from live_twins import dc_prior_bar as _ldpb
-                        _tx_lvl = _ldpb.level_getter(_pp_shared_ind, _gx_is_long, _tx_stop, _psym_get(symbol, position_side, "DC_PRIOR_BAR_CHANNEL", getattr(config, "DC_PRIOR_BAR_CHANNEL", True)))
+                        _tx_lvl = _ldpb.level_getter(_pp_shared_ind, _gx_is_long, _tx_stop, _psym_cs_get(symbol, position_side, "DC_PRIOR_BAR_CHANNEL", True))
                     except Exception:
                         _tx_lvl = lambda _f: safe_fetch_float(_pp_shared_ind.get(_f, 0), 0.0)
                     _gx_fire, _gx_reason = _dc_channel_exits.technical_dc_exit(current_price, _gx_is_long, _tx_stop, _tx_tgt, _tx_lvl)
+                    # PARITY LANE B 2026-10-06: vec FILTER_TF exit_confirm (EXIT_TOP_FADE / CANDLE_PATTERN_STOPS) gates the exit_sig TECHNICAL_DC close (live_twins/exit_confirm.py).
+                    if _gx_fire:
+                        try:
+                            from live_twins import exit_confirm as _lbxc
+                            _lbxc_ok, _lbxc_why = _lbxc.exit_confirm(_pp_shared_ind or {}, _gx_is_long, lambda _k, _d: _psym_cs_get(symbol, position_side, _k, _d))
+                            if not _lbxc_ok:
+                                logger.info(f"[PARITY_EXIT_CONFIRM] {position_key}: hold {_gx_reason} — {_lbxc_why} not confirmed")
+                                _gx_fire, _gx_reason = False, ""
+                        except Exception as _lbxc_e:
+                            logger.warning(f"[PARITY_EXIT_CONFIRM] {position_key} err (fail-open): {_lbxc_e}")
             # NOLOSS 2026-10-04 live twin of v12 (hold TECHNICAL loss exits unless WT-bypass/DC-recovery): default OFF = inert.
             if _gx_fire and _gx_reason.startswith("TECHNICAL_") and _noloss_hold is not None:
                 _nl_hold, _nl_why = _noloss_hold.noloss_hold_loss_exit(lambda _k, _d: _psym_get(symbol, position_side, _k, _d), _gx_is_long, safe_fetch_float(getattr(position, "gain", 0), 0.0), safe_fetch_float(getattr(position, "entry_price", 0), 0.0), current_price, _pp_shared_ind or {})
@@ -48430,7 +48617,10 @@ async def process_position(
                 except Exception as _ted_e:
                     logger.warning(f"[TWIN_EXITS_DEAD] {position_key} probe err: {_ted_e}")
             # TWIN_EXITS_DEAD EXIT_VELOCITY_WT (APPLY ONLY AFTER OPERATOR DECISION H9).
-            if not _gx_fire and _twin_exits_dead is not None:
+            # DIRECTOR 2026-10-06: EXIT_VELOCITY_WT_ENABLED master (config.py default True = unchanged always-on live exit; lane D vec twin same name). per-sym > cat_side > global.
+            _evw_raw = _psym_cs_get(symbol, position_side, "EXIT_VELOCITY_WT_ENABLED", True)
+            _evw_on = (_evw_raw.strip().lower() in ("true", "1", "yes")) if isinstance(_evw_raw, str) else bool(_evw_raw)
+            if not _gx_fire and _twin_exits_dead is not None and _evw_on:
                 try:
                     _ted_fire, _ted_reason = _twin_exits_dead.velocity_wt_exit_live_fire(_pp_shared_ind if _pp_shared_ind is not None else {}, _gx_is_long, lambda _k, _d: _psym_get(symbol, position_side, _k, _d))
                     if _ted_fire:
@@ -48472,6 +48662,17 @@ async def process_position(
                     _lhll_fire, _lhll_reason = _lhll_top_exit.check_lh_ll_top_exit(_lhll_spec, _pp_shared_ind, safe_fetch_float(current_price, 0.0), safe_fetch_float(_pp_shared_ind.get("close_15m_prev", 0), 0.0), safe_fetch_float(_pp_shared_ind.get("wt1_15m_prev", 0), 0.0), safe_fetch_float(_pp_shared_ind.get("wt2_15m_prev", 0), 0.0), _gx_is_long)
                     if _lhll_fire:
                         _gx_fire, _gx_reason = True, _lhll_reason
+            # PARITY LANE B 2026-10-06: MULTI_TF_EXIT_ENABLED (= QuickConfig lane D master) runs evaluate_multi_tf_exit live — the exact scorer the vec twin
+            # vec_decisions/mtf_exit_scorer ports (WT_DIV_EXIT / WT_ACCEL_EXIT / WT_15M_LH_WAIT_EXIT are its components). per-sym > cat_side > global; False = no crypto caller (today).
+            if not _gx_fire:
+                _mtfx_raw = _psym_cs_get(symbol, position_side, "MULTI_TF_EXIT_ENABLED", False)
+                _mtfx_on = (_mtfx_raw.strip().lower() in ("true", "1", "yes")) if isinstance(_mtfx_raw, str) else bool(_mtfx_raw)
+                if _mtfx_on:
+                    if _pp_shared_ind is None:
+                        _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                    _mtfx_fire, _mtfx_reason, _mtfx_score = evaluate_multi_tf_exit(_pp_shared_ind or {}, _gx_is_long, safe_fetch_float(getattr(position, "gain", 0), 0.0), 0.0, safe_fetch_float(current_price, 0.0))
+                    if _mtfx_fire:
+                        _gx_fire, _gx_reason = True, (_mtfx_reason or f"MULTI_TF_EXIT(s={_mtfx_score:.0f})")
             if _gx_fire:
                 _gx_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                 _gx_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
@@ -48481,6 +48682,31 @@ async def process_position(
                 return f"{EvalStatus.ACTION_TAKEN}:{_gx_reason.split(' ')[0]}_CLOSED"
         except Exception as _gx_e:
             logger.warning(f"[GREY_REWIRE_EXIT] {position_key} probe err: {_gx_e}")
+    # PARITY LANE B 2026-10-06 phase 4: KEY_LEVEL_CRASH_VEC_ONLY_ENABLED — vec live_exit_chain key-level leg outside the ablated EPQ chain
+    # (live_twins/key_level.py; severity>=3 of 15m/1h/4h/D prior-bar channels broken, no fire below -0.01% gain, live reduce bands). Default False = inert.
+    if position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0:
+        try:
+            _klx_raw = _psym_cs_get(symbol, position_side, "KEY_LEVEL_CRASH_VEC_ONLY_ENABLED", False)
+            if (_klx_raw.strip().lower() in ("true", "1", "yes")) if isinstance(_klx_raw, str) else bool(_klx_raw):
+                from live_twins import key_level as _lbkl
+                if _pp_shared_ind is None:
+                    _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                _klx_long = position_side == "LONG"
+                _klx_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
+                _klx_fire, _klx_reason, _klx_frac = _lbkl.decide(lambda _k, _d: _psym_cs_get(symbol, position_side, _k, _d), _pp_shared_ind or {}, _klx_long, safe_fetch_float(current_price, 0.0), _klx_gain)
+                if _klx_fire:
+                    _klx_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
+                    _klx_qty = _klx_amt if _klx_frac is None else _klx_amt * float(_klx_frac)
+                    _klx_ref = abs(safe_fetch_float(getattr(position, "max_quantity", 0), 0.0)) or _klx_amt
+                    if _klx_amt - _klx_qty < 0.10 * _klx_ref:
+                        _klx_qty = _klx_amt
+                    _klx_full = _klx_qty >= _klx_amt - 1e-12
+                    logger.warning(f"[KEY_LEVEL_VEC_ONLY] {position_key}: {_klx_reason} g={_klx_gain:.2f}% -> {'CLOSE' if _klx_full else 'REDUCE'} {_klx_qty:.6f}/{_klx_amt:.6f}")
+                    await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_klx_amt, side="SELL" if _klx_long else "BUY", position_side=position_side, quantity=_klx_qty, old_price=current_price, unique_id=f"KEY_LEVEL_VEC_ONLY_{int(time.time())}", reason=f"{_klx_reason}_g{_klx_gain:.2f}", is_full_close=_klx_full, action="CLOSE" if _klx_full else "REDUCE")
+                    trade_manager.processing_keys.discard(position_key)
+                    return f"{EvalStatus.ACTION_TAKEN}:KEY_LEVEL_VEC_ONLY_{'CLOSED' if _klx_full else 'REDUCED'}"
+        except Exception as _klx_e:
+            logger.warning(f"[KEY_LEVEL_VEC_ONLY] {position_key} probe err: {_klx_e}")
     # ═══════════════════════════════════════════════════════════════════════════
     # lane L1 2026-10-04 LIVE_MIRROR: BB_SQUEEZE_EXIT_ENABLED (TTM squeeze-ON exit)
     # Live twin of vec_decisions.wave4_families.bb_squeeze_exit_mask (ORed into
@@ -49945,7 +50171,18 @@ async def process_position(
                 _grde_exit_score_min = float(
                     getattr(config, "GR_HTF_DIRECT_EXIT_SCORE", 18.0)
                 )
+                _grde_xc_ok = True
                 if _grde_exit_score >= _grde_exit_score_min:
+                    # PARITY LANE B 2026-10-06: vec FILTER_TF exit_confirm gates the sole-GR exit_sig close too (live_twins/exit_confirm.py; inert when both filters OFF).
+                    try:
+                        from live_twins import exit_confirm as _lbxc
+                        _grde_xc_ok, _grde_xc_why = _lbxc.exit_confirm(_grde_exit_ind, _grde_exit_is_long, lambda _k, _d: _psym_cs_get(symbol, position_side, _k, _d))
+                        if not _grde_xc_ok:
+                            logger.info(f"[PARITY_EXIT_CONFIRM] {position_key}: hold GR_HTF_DIRECT_EXIT score={_grde_exit_score:.0f} — {_grde_xc_why} not confirmed")
+                    except Exception as _grde_xc_e:
+                        _grde_xc_ok = True
+                        logger.warning(f"[PARITY_EXIT_CONFIRM] {position_key} GR err (fail-open): {_grde_xc_e}")
+                if _grde_exit_score >= _grde_exit_score_min and _grde_xc_ok:
                     _grde_exit_amt = abs(
                         safe_float(getattr(position, "positionAmt", 0))
                     )
