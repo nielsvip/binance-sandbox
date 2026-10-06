@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-06 02:22 UTC",
- "total_capital_usd": 5.43,
+ "generated_at": "2026-10-06 03:52 UTC",
+ "total_capital_usd": 17.41,
  "tier_capital": {
   "A": 0.0,
-  "B": 5.43,
+  "B": 17.41,
   "C": 0.0
  },
  "tier_count": {
@@ -12,21 +12,21 @@
   "C": 0
  },
  "winners": [],
- "losers": [
-  "men:VETUSDT_LONG"
+ "losers": [],
+ "mediocre": [
+  "ang:ZECUSDC_LONG"
  ],
- "mediocre": [],
  "positions": [
   {
-   "pk": "men:VETUSDT_LONG",
-   "symbol": "VETUSDT",
-   "account": "men",
-   "value_usd": 5.43,
-   "gain_pct": -2.288,
+   "pk": "ang:ZECUSDC_LONG",
+   "symbol": "ZECUSDC",
+   "account": "ang",
+   "value_usd": 17.41,
+   "gain_pct": 0.071,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 630.0,
-   "mark": 0.00862469
+   "perf_mult": 0.78,
+   "amt": 0.013,
+   "mark": 1339.53675857
   }
  ]
 }

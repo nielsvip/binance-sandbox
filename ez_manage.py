@@ -27749,7 +27749,7 @@ class MultiAccountTradeManager:
                 (is_long and k_3m > 70 or k_15m > 70)
                 or (not is_long and k_3m < 30 or k_15m < 30)
             ) and self.is_same_direction(position_side, side):
-                quantity = 0.7 * quantity
+                pass  # USER 2026-10-06 VEC-SIZE PARITY: stoch 0.7x removed (no vec twin)
             if (
                 (is_long and k_15m < k_15m_prev or ha_3m == "red")
                 or (not is_long and k_15m > k_15m_prev or ha_3m == "green")
@@ -27762,13 +27762,13 @@ class MultiAccountTradeManager:
             if position.positionAmt > _sps_psp_a and (
                 position.gain < 0.3 * config.MIN_GAIN or position.realized_pnl < 0
             ):
-                quantity = 0.7 * quantity
+                pass  # USER 2026-10-06 VEC-SIZE PARITY: 0.7x removed (no vec twin)
             if "MISMATCH" in reason:
-                quantity = 0.3 * quantity
+                pass  # USER 2026-10-06 VEC-SIZE PARITY: MISMATCH 0.3x removed (no vec twin)
             if account_key in ["inf", "men", "ang", "men", "fin"] and (
                 "QUICK" not in action or position.gain < 0.6
             ):
-                quantity = 0.8 * quantity
+                pass  # USER 2026-10-06 VEC-SIZE PARITY: account 0.8x removed (no vec twin)
             s_local = _v if (_v := i.get("0market_sentiment_local")) is not None else 0.0
             s_global = _v if (_v := i.get("0market_sentiment_score")) is not None else 0.0
             if is_long:
@@ -27791,10 +27791,10 @@ class MultiAccountTradeManager:
             sentiment_mult = base_mult * relative_mult
             if n_global < -10:
                 sentiment_mult = min(sentiment_mult, 0.5)
-            quantity = quantity * sentiment_mult
+            pass  # USER 2026-10-06 VEC-SIZE PARITY: sentiment_mult not applied (no vec twin; logged below for audit)
             strength = _v if (_v := i.get("0sentiment_strength")) is not None else 50
             strength_mult = 0.8 + (0.4 * (strength / 100.0))
-            quantity = quantity * strength_mult
+            pass  # USER 2026-10-06 VEC-SIZE PARITY: strength_mult not applied (no vec twin)
             logger.info(
                 f"{position_key} fffffff execute_ after market sentiment $ {quantity * current_price:.2f} (L:{n_local:.0f} G:{n_global:.0f} D:{delta:.0f} -> x{sentiment_mult:.2f})"
             )
@@ -29604,6 +29604,13 @@ class MultiAccountTradeManager:
                 await release_locks()
                 return False, -1.0
             qty_str = f"{qty_dec}"
+            _mkr_notional = float(qty_dec) * float(current_price or 0.0)
+            if _mkr_notional < 5.0:
+                logger.critical(
+                    f"🚫 [MAKER_MIN_NOTIONAL] {position_key}: ${_mkr_notional:.2f} < $5.00 exchange minimum — ORDER NOT PLACED (no dust loop)"
+                )
+                await release_locks()
+                return False, -1.0
             logger.critical(
                 f"📊 [MAKER_QTY] {position_key}: qty_abs={qty_abs:.6f} step={step} → qty_str={qty_str} side={side} reason={reason[:50]}"
             )
@@ -35029,16 +35036,7 @@ class MultiAccountTradeManager:
                 if not config.HEDGE_MODE and "HEDGE" in reason.upper():
                     return "BLOCKED_AUGMENT_HEDGE_MOTHER FUUCKER YOU ARE ILLEGAL"
 
-                if (
-                    account_key in ["inf", "fin", "men"]
-                    and not is_hedge
-                    and not _is_scalp_v3_reason
-                ):
-                    quantity = (
-                        min(0.15 * quantity, 2 * config.START_POSITION_SIZE)
-                        / current_price
-                    )
-
+                # USER 2026-10-06 VEC-SIZE PARITY: deleted inf/fin/men 0.15x/price mutilation (mixed coin/USD units → ~100x dust → min-notional reject loop; no vec twin; ang/flz never had it and fill).
                 _order_usd = abs(quantity * current_price)
                 _max_order_usd = getattr(config, "MAX_ORDER_VALUE", 120.0)
                 if _order_usd > _max_order_usd:
@@ -48279,6 +48277,39 @@ async def periodic_direct_high_gain_reopen(
     # DEAD_CODE: #0A
 
 
+async def _vec_exact_process_position(account_key, position_key, trade_manager) -> bool:
+    """parity-loop-crypto 2026-10-06 (PARITY_VEC_EXACT_MODE): True = handled here, native process_position must not run.
+    Flat key + ENTRY family twinned: native flat-key openers are suppressed (the vec ENTRY twin runs in the EPQ candidate loop).
+    Open position + EXIT family twinned: the vec CLOSE/REDUCE (and AUGMENT when that family is twinned) at the current closed
+    15m bar are executed (live_twins/vec_exact.py) and every native exit/augment/reduce path is suppressed."""
+    try:
+        from live_twins import vec_exact as _vx
+        fams = _vx.families(config)
+        _acct, _rest = position_key.split(":", 1) if ":" in position_key else (account_key, position_key)
+        _sym, _side = _rest.rsplit("_", 1)
+        if _side not in ("LONG", "SHORT"):
+            return False
+        _pos = trade_manager.positions.get(position_key) if hasattr(trade_manager, "positions") else None
+        _amt = abs(safe_fetch_float(getattr(_pos, "positionAmt", 0), 0)) if _pos is not None else 0.0
+        if _amt <= 0:
+            return "ENTRY" in fams
+        if "EXIT" not in fams:
+            return False
+        want = ("CLOSE", "REDUCE") + (("AUGMENT",) if "AUGMENT" in fams else ())
+        for _a in _vx.take(_sym, _side, time.time(), want):
+            _amt = abs(safe_fetch_float(getattr(trade_manager.positions.get(position_key), "positionAmt", 0), 0))
+            if _amt <= 0:
+                break
+            _px = safe_fetch_float(getattr(_pos, "mark_price", 0), 0.0) or safe_fetch_float(_a.get("vec_price"), 0.0)
+            _act, _oside, _qty, _full = _vx.order_args(_a, _side, _amt, _px)
+            _res = await trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_qty, current_price=_px, side=_oside, position_side=_side, unique_id=f"VX{int(_a['bar_ts'])}{_a['n']}", is_full_close=_full, action=_act, reason=_vx.tagged_reason(_a), is_hedge=False)
+            logger.info(f"[VEC_EXACT] {position_key} {_act} {_a['reason'][:60]} qty={_qty:.6f} -> {str(_res)[:120]}")
+        return True
+    except Exception as _vx_e:
+        logger.error(f"[VEC_EXACT] process_position {position_key}: {_vx_e}")
+        return False
+
+
 @timed_function("process_position")
 async def process_position(
     account_key: Optional[str] = None,
@@ -48295,6 +48326,10 @@ async def process_position(
     # Cheap O(1) checks before anything else.
     if not position_key or not trade_manager:
         return
+    # parity-loop-crypto 2026-10-06: PARITY_VEC_EXACT_MODE — the twinned families are decided by the vec twin only
+    if bool(getattr(_ezm_base_config, "PARITY_VEC_EXACT_MODE", False)) or bool(getattr(config, "PARITY_VEC_EXACT_MODE", False)):
+        if await _vec_exact_process_position(account_key, position_key, trade_manager):
+            return
     # REAL: open reported positions must never be filtered by tradeable_keys
     _is_real_open_early = False
     try:

@@ -267,8 +267,28 @@ def vec_reason(event: Dict[str, Any]) -> str:
     return f"VEC_EXACT_{event['type']}_{event['reason']}"[:160]
 
 
-def overrides_for(symbol: str, side: str, getter: Optional[Callable[[str], Any]] = None) -> Dict[str, Any]:
-    """the promoted set of this sym_side = per_sym_store.get_overrides (what the sheet promoted)."""
+def _set_dir() -> str:
+    import sys
+    for _m in ("tradier_manage", "config_tradier"):
+        mod = sys.modules.get(_m)
+        cfg = getattr(mod, "config", None) or getattr(mod, "TradierConfig", None) if mod is not None else None
+        if cfg is not None and hasattr(cfg, "PARITY_VEC_EXACT_SET_DIR"):
+            return str(getattr(cfg, "PARITY_VEC_EXACT_SET_DIR", "") or "")
+    return ""
+
+
+def overrides_for(symbol: str, side: str, getter: Optional[Callable[[str], Any]] = None, set_dir: Optional[str] = None) -> Dict[str, Any]:
+    """the set this sym_side runs: config_tradier.PARITY_VEC_EXACT_SET_DIR/<SYM_SIDE>.json (frozen sheet set) when configured,
+    else per_sym_store.get_overrides (the promoted row; NOTE a store row can carry keys the sheet never measured)."""
+    ss = f"{str(symbol).upper()}_{side}"
+    d = _set_dir() if set_dir is None else set_dir
+    if d:
+        import pathlib
+        p = pathlib.Path(d) / f"{ss}.json"
+        if p.exists():
+            body = json.loads(p.read_text())
+            ov = body.get("cumulative_overrides") or body.get("best_overrides") or body.get("overrides") or body
+            return {k: v for k, v in dict(ov).items() if k not in ("PARITY_VEC_EXACT_MODE", "PARITY_VEC_EXACT_SET_DIR")}
     if getter is None:
         import per_sym_store as _pss
         getter = _pss.get_overrides

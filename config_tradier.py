@@ -283,6 +283,8 @@ class TradierConfig:
     LIVE_ENTRY_GATES_ENABLED: bool = False
     STOCKS_FRESH_ENTRY_TREND_GATES_ENABLED: bool = False  # D8: revive _apply_research_only_live_gates(is_entry) at the open choke point (swept, default OFF)
     STOCKS_LIVE_TWINS_ENABLED: bool = False  # 2026-10-04 cut5: promotes twin fallback (twin_p0_crypto_a:277, v12:9899/12835) to field; = QuickConfig False; neutral
+    PARITY_VEC_EXACT_MODE: bool = False  # PARITY LOOP STOCKS 2026-10-06: True = process_position executes the vec (v12_quick_engine) decision of each bar via tradier_vec_exact; every live-only path suppressed. False = unchanged live.
+    PARITY_VEC_EXACT_SET_DIR: str = ""  # PARITY LOOP STOCKS 2026-10-06: exact-mode set source. '' = per_sym_store.get_overrides (promoted row); a dir = <dir>/<SYM_SIDE>.json cumulative_overrides (frozen sheet set; parity proofs).
     STOCKS_LIVE_ENTRY_STACK_ENABLED: bool = False  # 2026-10-04 cut5: promotes twin fallback (twin_p0_crypto_b:312, v12:9391/9856/12141) to field; = QuickConfig False; neutral
     WT_D_EXHAUST_GATE_ENABLED: bool = False  # n5/006 live twin: block fresh opens when wt1_D and wt1_4h are both beyond +-WT_D_EXHAUST_THRESHOLD (default OFF, swept; only under STOCKS_FRESH_ENTRY_TREND_GATES_ENABLED)
     WT_D_EXHAUST_THRESHOLD: float = 60.0

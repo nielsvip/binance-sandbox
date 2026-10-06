@@ -13804,6 +13804,7 @@ def _spawn_bounded_check(account_key, kind, coro, force=False, cap=6):
 
 async def check_exit_candidates_for_account(trade_manager, account_key: str, redis_manager, tracker_manager: TrackerManager, order_queue, data_manager: FastDataManager, hedge_engine: HedgeEngine=None, position_keys: List[str] = None, force: bool = False) -> None:
     if not position_keys: return
+    if bool(getattr(config, 'PARITY_VEC_EXACT_MODE', False)) and "EXIT" in {x.strip().upper() for x in str(getattr(config, 'PARITY_VEC_EXACT_FAMILIES', 'ENTRY')).split(",")}: return  # 2026-10-06 parity-loop-crypto: vec EXIT twin owns exits (ez_manage._vec_exact_process_position)
     if getattr(config, 'ABLATION_DISABLE_QUICK_EXIT', False): return
     _now_gate = time.time()
     _min_gap = 5.0 if force else 20.0

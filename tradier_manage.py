@@ -10514,6 +10514,35 @@ def detect_stdev_breakout_t(symbol: str, is_long: bool, i: dict) -> dict:
     return None
 
 
+async def _vec_exact_process(account_key, position_key, symbol, position_side, order_queue, trade_manager, indicators_raw, position):
+    """PARITY LOOP STOCKS 2026-10-06 PARITY_VEC_EXACT_MODE: the decision of this bar is the vec decision (tradier_vec_exact runs the real
+    v12_quick_engine.simulate_one on the buffered live rows with the promoted per-sym set); every live-only path is suppressed.
+    Orders still go queue_trade_action -> execute_trade_action -> execute_now (all execution gates live)."""
+    import tradier_vec_exact as _tve
+    _tve.ORACLE.ingest(symbol, indicators_raw)
+    _events = _tve.ORACLE.decide(symbol, position_side, _tve.overrides_for(symbol, position_side, set_dir=str(_cfg('PARITY_VEC_EXACT_SET_DIR', '', account_key, symbol, position_side) or '')))
+    _amt = abs(float(getattr(position, 'positionAmt', 0) or 0)) if position else 0.0
+    _out = []
+    for _ev in _events:
+        _act = _tve.live_action_for(_ev, _amt)
+        if _act is None:
+            logger.warning(f"[VEC_EXACT_SKIP] {position_key}: vec {_ev['type']} {_ev['reason'][:60]} but live amt={_amt}")
+            _out.append(f"SKIP:{_ev['type']}")
+            continue
+        _res = await queue_trade_action(order_queue, trade_manager, position_key, _act[0], _tve.vec_reason(_ev), 100.0, override_qty=_act[1])
+        logger.warning(f"[VEC_EXACT] {position_key}: {_act[0]} qty={_act[1]:.4f} reason={_tve.vec_reason(_ev)[:80]} -> {_res}")
+        _out.append(f"{_act[0]}:{_res}")
+        if _act[0] == "OPEN":
+            _amt = _act[1]
+        elif _act[0] == "AUGMENT":
+            _amt += _act[1]
+        elif _act[0] == "REDUCE":
+            _amt = max(0.0, _amt - _act[1])
+        elif _act[0] == "CLOSE":
+            _amt = 0.0
+    return "VEC_EXACT" + (":" + ",".join(_out) if _out else "")
+
+
 async def process_position(account_key: str, position_key: str, order_queue: "OrderQueue", trade_manager, event_type=None, force: bool = False):
     current_account.set(account_key)
     try:
@@ -10658,6 +10687,9 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         if not indicators_raw:
             if force: logger.info(f"[{account_key}] SKIP {symbol}: No indicators found.")
             return "NO_DATA"
+        # PARITY LOOP STOCKS 2026-10-06: PARITY_VEC_EXACT_MODE (default False = live byte-identical) -> the vec decision drives this bar.
+        if bool(_cfg('PARITY_VEC_EXACT_MODE', False, account_key, symbol, position_side)):
+            return await _vec_exact_process(account_key, position_key, symbol, position_side, order_queue, trade_manager, indicators_raw, position)
 
         i = trade_manager.strategy.parse_market_data(indicators_raw)
         # Warm the shared Bottom-A trail history while flat.  Active-position

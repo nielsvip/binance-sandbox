@@ -3866,6 +3866,35 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         print("[spec-fill] eval cache dropped + gc before DONE stage", flush=True)
     except Exception:
         pass
+    def _parity_register_at_done(_why: str):
+        # USER 2026-10-06: every workbook-end positive registers on ALL surfaces immediately
+        # (SQLite + per_sym JSON + trb overlay + ledger via switch_parity). Never raises.
+        if os.environ.get("SWITCH_PARITY_REGISTER", "1") == "0":
+            print(f"[PARITY-REGISTER] {new_symside} skipped ({_why}; SWITCH_PARITY_REGISTER=0)", flush=True)
+            return
+        try:
+            from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps_par
+            _par_vec = _eps_par(prepared, dict(cumulative_overrides), args.window_days) if prepared is not None else {}
+        except Exception as _par_e:
+            print(f"[PARITY-REGISTER] {new_symside} skipped ({_why}; fresh eval failed: {_par_e})", flush=True)
+            return
+        try:
+            _par_prom = sum(1 for _v in (progress.get("done", {}) or {}).values() if isinstance(_v, dict) and _v.get("promoted"))
+            import switch_parity as _sp
+            _par_ev = {"n_promoted": _par_prom, "valid": bool((_par_vec or {}).get("valid")), "invalid_reason": (_par_vec or {}).get("invalid_reason"), "gain_pct": (_par_vec or {}).get("gain_pct"), "trades": (_par_vec or {}).get("trades"), "tim_pct": (_par_vec or {}).get("tim_pct"), "max_dd_pct": (_par_vec or {}).get("max_dd_pct"), "pool_sharpe": (_par_vec or {}).get("pool_sharpe"), "bh_pct": bh, "baseline_gain": baseline_gain}
+            try:
+                import hashlib as _par_hl
+                _par_ev["engine_md5"] = _par_hl.md5((ROOT / "v12_quick_engine.py").read_bytes()).hexdigest()[:8]
+            except Exception:
+                _par_ev["engine_md5"] = ""
+            try:
+                _par_ev["npz_id"] = _run_npz_short
+            except NameError:
+                _par_ev["npz_id"] = ""
+            _par_rep = _sp.register_workbook_result(new_symside, dict(cumulative_overrides), _par_ev)
+            print(f"[PARITY-REGISTER] {new_symside} {_why} registered={_par_rep.get('registered')} tag={_par_rep.get('tag')} n={_par_rep.get('n_keys')} reason={str(_par_rep.get('reason', ''))[:160]}", flush=True)
+        except Exception as _par_e2:
+            print(f"[PARITY-REGISTER] {new_symside} skipped ({_why}; registrar error: {_par_e2})", flush=True)
     _maybe_write_json(force=True)
     if _any_pending():
         print(f"[spec-fill] incomplete after loop guard {loop_guard} pending remains — will still save", flush=True)
@@ -4433,6 +4462,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     progress["verdict_npz_mtime_ns"] = _npz_mtime_ns(new_symside)
                     _maybe_write_json(force=True)
                     print(f"[BEST-EFFORT] {new_symside} 365D valid-but-missing ({'; '.join(_q365_reasons)}) — keeping published {progress.get('final_path')} flagged, no quarantine (USER 2026-10-03)", flush=True)
+                    _parity_register_at_done("best-effort")
                     try:
                         wb.close()
                     except Exception:
@@ -4483,6 +4513,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     print(f"[mandatory-yellows] {_mandatory_summary()}", flush=True)
     _touch(f"spec-done cum={cumulative_gain:.4f} rows={processed}")
     print(f"[spec-fill] DONE {new_symside} final_gain={cumulative_gain:.4f} baseline={baseline_gain:.4f} rows={processed} pos_tabs curated", flush=True)
+    _parity_register_at_done("done")
     return cumulative_gain, cumulative_overrides, progress
 
 def _skip_alarm_summary(progress: dict, new_symside: str, processed: int):
