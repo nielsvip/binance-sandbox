@@ -2389,7 +2389,23 @@ class TradierBarManager:
                     logger.error(f"BLOCKED write {symbol}_{tf}: only {new_count} bars (disk had {disk_counts.get(tf, 0)}) — refusing to destroy data")
                     continue
                 await self._write_json(self.cache_dir / f"{symbol}_{tf}.json", df.to_dict("records"))
-            
+        # PARITY LOOP STOCKS 2026-10-06 (BIBLE §68.2.6, live D frame == NPZ D frame): the D json carries two rows per ET date
+        # (13:30Z/14:30Z provider-fetch + 20:00Z/21:00Z writer) -> every D indicator ran on doubled bars. Compute on one bar per ET
+        # date via the builder's own _dedupe_daily_frame (16:00 ET row wins). In-memory only: the json on disk is not rewritten.
+        if "D" in bundle and not bundle["D"].empty and "timestamp" in bundle["D"].columns:
+            try:
+                from backtest_v8_precompute import _dedupe_daily_frame as _ddf
+                _dd = bundle["D"].copy()
+                _dix = pd.to_datetime(_dd["timestamp"].astype(str), utc=True, format="ISO8601", errors="coerce")
+                _ok = _dix.notna().values
+                _dd = _dd.loc[_ok].copy()
+                _dd.index = pd.DatetimeIndex(_dix[_ok])
+                _dd = _dd.sort_index()
+                _dd = _dd[~_dd.index.duplicated(keep="last")]
+                bundle["D"] = _ddf(_dd).reset_index(drop=True)
+            except Exception as _dde:
+                logger.warning(f"D dedupe failed {symbol}: {_dde}")
+
         async with self._cache_lock:
             self._memory_cache[symbol] = {tf: df.copy() for tf, df in bundle.items()}
             

@@ -173,6 +173,7 @@ import vec_decisions.gain_ladder_augment
 import vec_decisions.haiku_augment  # [w2-haiku] HAIKU_WINNER twin
 import vec_decisions.noloss_gate  # [C2 b5b] live UNIVERSAL_NOLOSS_GATE
 import vec_decisions.overtrade_guard  # [C2 b5b] live OVERTRADE_GUARD (per-sym per-UTC-day fill cap)
+import vec_decisions.aug_gain_gate  # parity-loop-crypto live AUGMENT gain gate twin
 import vec_decisions.uagain_gate  # [C2 b5] execute_now UNIVERSAL_AUGMENT_GAIN_GATE choke point for non-ladder augment sources
 import vec_decisions.reduce_profit_lock
 import vec_decisions.stock_augment_sources
@@ -3815,7 +3816,7 @@ AUTO_WIRED_PARAMS = [
     'STOCKS_WTDC_SCORER_EXIT_ENABLED',
     'STOCKS_RTH_ONLY_ENABLED',
     'EMA50_15M_ENTRY_FILTER_VEC_ONLY_ENABLED',
-    'KG_STOCKS_LIVE_GATE_VEC_ONLY_ENABLED',
+    'KG_STOCKS_HARD_VETO_ENABLED',
     'HAIKU_WINNER_VEC_ONLY_ENABLED',
     'KEY_LEVEL_CRASH_VEC_ONLY_ENABLED',
     'COOLDOWN_FROM_LIVE_SECONDS_ENABLED',
@@ -4234,9 +4235,10 @@ class QuickConfig:
     TRADIER_MIN_HOLD_MINUTES_SHORT: float = 60.0  # config_tradier.py:4165 (live evaluate_stop short min hold)
     STOCKS_RTH_ONLY_ENABLED: bool = True  # INERT 2026-10-06: RTH-only is unconditional for stocks (USER: stocks never trade outside market hours); kept only so old overrides parse
     EMA50_15M_ENTRY_FILTER_VEC_ONLY_ENABLED: bool = False  # lane-D 2026-10-06 director: crypto live has no ema_50_15m (ez_indicators never emits it) -> False; apply_tradier_defaults sets True (stocks live twin, lane C).  # EMA50 15m entry filter is dead live (crypto: _NON_VEC_KNOBS_EZ mask; stocks: only in dead should_enter_long/short); True = old vec filter
-    KG_STOCKS_LIVE_GATE_VEC_ONLY_ENABLED: bool = False  # lane-D 2026-10-06 director ruling: brand-new switch -> default = today-live (False); True = vec-only behaviour test row (lanes B/C build the live twin).  # stocks KG/EMA_9_21 hard veto has no live caller (should_enter_* dead); True = old vec veto
+    KG_STOCKS_HARD_VETO_ENABLED: bool = False  # lane-D 2026-10-06 director ruling: brand-new switch -> default = today-live (False); True = vec-only behaviour test row (lanes B/C build the live twin).  # stocks KG/EMA_9_21 hard veto has no live caller (should_enter_* dead); True = old vec veto
     HAIKU_WINNER_VEC_ONLY_ENABLED: bool = False  # lane-D 2026-10-06 director ruling: brand-new switch -> default = today-live (False); True = vec-only behaviour test row (lanes B/C build the live twin).  # crypto HaikuOverseer AUGMENT is refused live by STRICT_VEC_PARITY (reason has no allowlist token); True = old vec haiku augment
     KEY_LEVEL_CRASH_VEC_ONLY_ENABLED: bool = False  # lane-D 2026-10-06 director ruling: brand-new switch -> default = today-live (False); True = vec-only behaviour test row (lanes B/C build the live twin).  # crypto KEY_LEVEL_CRASH lives only in EPQ check_exit_candidates (ablated live: ABLATION_DISABLE_QUICK_EXIT=True); True = old vec
+    AUG_GAIN_GATE_LIVE_TWIN_ENABLED: bool = True  # 2026-10-06 parity-loop-crypto: twin of the live AUGMENT gain gate (ez_manage ~24930: MIN_GAIN 3%, 0.5x at bounce, LOSER_KILL); False = old vec (gate not modelled)
     CHANNEL_REENTRY_STOP_FIELD: str = 'dc_high'  # 2026-10-06 parity-loop-crypto live-switch mirror: config.py live value (read by a live opener/closer; switch_parity verify-live-switches)
     CHANNEL_REENTRY_STOP_TF: str = '1h'  # 2026-10-06 parity-loop-crypto live-switch mirror: config.py live value (read by a live opener/closer; switch_parity verify-live-switches)
     FOLLOW_THROUGH_MIN_MOVE_PCT: float = 0.05  # 2026-10-06 parity-loop-crypto live-switch mirror: config.py live value (read by a live opener/closer; switch_parity verify-live-switches)
@@ -11920,6 +11922,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _lvse.get("SENTIMENT_REBAL_COOLDOWN_MIN", npz, n, is_long, cfg)
     except Exception:
         pass
+    # parity-loop-crypto 2026-10-06: live AUGMENT gain gate twin inputs (vec_decisions/aug_gain_gate; crypto)
+    _agg_on = str(getattr(cfg, 'MODE', 'crypto')) != 'tradier' and bool(getattr(cfg, 'AUG_GAIN_GATE_LIVE_TWIN_ENABLED', True))
+    if _agg_on:
+        _agg_w1h = _safe(npz, 'wt1_1h', n); _agg_w2h = _safe(npz, 'wt2_1h', n)
+        _agg_tr15 = _safe(npz, 'wt_trough_structure_15m', n); _agg_pk15 = _safe(npz, 'wt_peak_structure_15m', n)
     # WIRING LANE L2 2026-10-05: augment-at-loss structural mask (higher-low / lower-high on closed 15m bars + DC confirm). gain_arr=zeros decomposes the twin to its pure structural legs (at_loss forced True); the in-loop choke point ANDs the real live_pnl_pct<=0. OFF default -> None. Fail-open.
     _aal_struct = None
     try:
@@ -12533,7 +12540,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # where ema_50_15m>0 and px>0 (live guard). Crypto config.py default True (fixes a live>vec parity
     # gap); config_tradier default False (stocks inert until swept). No arbitrary proxy — real EMA50.
     try:
-        if bool(getattr(cfg, 'EMA50_15M_ENTRY_FILTER_ENABLED', False)) and bool(getattr(cfg, 'EMA50_15M_ENTRY_FILTER_VEC_ONLY_ENABLED', False)):  # lane-D: live-dead filter, default off
+        if bool(getattr(cfg, 'EMA50_15M_ENTRY_FILTER_ENABLED', False)) and (str(getattr(cfg, 'MODE', 'crypto')) == 'tradier' or bool(getattr(cfg, 'EMA50_15M_ENTRY_FILTER_VEC_ONLY_ENABLED', False))):  # BIBLE 68.1 2026-10-06: stocks = ONE switch (EMA50_15M_ENTRY_FILTER_ENABLED) exactly like live tradier_manage ema50_block; *_VEC_ONLY_* ignored for tradier (crypto side: crypto loop)
             _ema50_15m = _safe(npz, 'ema_50_15m', n, 0.0)
             _ema_filter_pct = float(getattr(cfg, 'EMA50_15M_ENTRY_FILTER_PCT', 0.0) or 0.0) / 100.0
             _ema_valid = (_ema50_15m > 0) & (close > 0)
@@ -12565,7 +12572,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     except Exception:
         _atf_entry_block = None
     # b6: STOCKS live KINDERGARTEN/EMA_9_21 hard veto (tradier_manage.should_enter_long/short) applied on the FINAL entry signal (after every OR'd family) — see vec_decisions/live_kindergarten_stocks.py
-    if str(getattr(cfg, 'MODE', 'crypto')) == 'tradier' and bool(getattr(cfg, 'KG_STOCKS_LIVE_GATE', True)) and bool(getattr(cfg, 'KG_STOCKS_LIVE_GATE_VEC_ONLY_ENABLED', False)):  # lane-D: live-dead veto, default off
+    if str(getattr(cfg, 'MODE', 'crypto')) == 'tradier' and bool(getattr(cfg, 'KG_STOCKS_LIVE_GATE', True)) and bool(getattr(cfg, 'KG_STOCKS_HARD_VETO_ENABLED', False)):  # BIBLE 68.1 2026-10-06 (director option B): plain both-surface switch, == tradier_filter_tf_twins.kg_stocks_block
         try:
             import vec_decisions.live_kindergarten_stocks as _lks
             _lks_ok = _lks.pass_mask(npz, n, is_long, cfg, close, _safe)
@@ -14274,6 +14281,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _aal_fire = bool(_aal_struct is not None and live_pnl_pct <= 0 and bool(_aal_struct[i]))
         _uag_src_ok = _hq_fire or _dd_fire or _n4_fire or _aal_fire or (not _n4_live_only and (_gl_fire or ((augment_sig[i] or _fr_fire) and vec_decisions.uagain_gate.uagain_gate_pass(
             cfg, is_long, px, float(pos.get('last_aug_px', 0.0)) or float(pos.get('entry_price', pos['avg_price'])), live_pnl_pct, float(pos.get('peak_pnl_pct', 0.0)), _uag_typed_min))))
+        # parity-loop-crypto 2026-10-06: live execute_trade_action AUGMENT gain gate (MIN_GAIN, 0.5x at a bounce, LOSER_KILL) on the ladder /
+        # bounce / fast-riser sources. Exit reference = last closed trade's exit price (live position.last_reduction_price persists across lifecycles).
+        if _uag_src_ok and _agg_on and (_gl_fire or bool(augment_sig[i]) or _fr_fire) and not (_hq_fire or _dd_fire or _n4_fire or _aal_fire):
+            _agg_exit = float(trades[-1].get('exit_price', 0) or 0) if trades else 0.0
+            if not vec_decisions.aug_gain_gate.passes(cfg, is_long, float(px), float(live_pnl_pct), float(pos['qty']) * float(px), _agg_exit,
+                                                      float(_agg_w1h[i]), float(_agg_w2h[i]), float(_agg_tr15[i]), float(_agg_pk15[i])):
+                _uag_src_ok = False
         # (H3 DELTA pyramid veto removed cut#5: live price-tol unenforced (touches only) + cited wt_dc_delta.py absent; re-add with live proof)
         if _uag_src_ok and not (_sg_obuf is not None and bool(_sg_obuf[i]) and bool(getattr(cfg, 'STOCKS_OPENING_BUFFER_ENTRY_ENABLED', True))) and (_htf_aug_ok is None or bool(_htf_aug_ok[i])) and not (_qta_ct_block is not None and bool(_qta_ct_block[i])) and (_augment_allowed(cfg, live_pnl_pct) or _n4_bypass_profit or _dd_fire or _hq_fire or _aal_fire) and (_sa_cap is None or int(pos.get('n_augments', 0)) < _sa_cap):
             _aug_cd_bars = vec_decisions.gain_ladder_augment.cooldown_bars(cfg, bmin)

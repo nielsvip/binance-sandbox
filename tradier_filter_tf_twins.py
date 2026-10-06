@@ -377,8 +377,8 @@ def _kg_tfs(s):
 
 def kg_stocks_block(get_cfg, get_ind, price, is_long):
     """Scalar twin of vec_decisions.live_kindergarten_stocks.pass_mask (applied by vec only when KG_STOCKS_LIVE_GATE and
-    KG_STOCKS_LIVE_GATE_VEC_ONLY_ENABLED). Key presence per tick == vec `k in npz`. Returns veto str or None."""
-    if not (truthy(get_cfg("KG_STOCKS_LIVE_GATE", True)) and truthy(get_cfg("KG_STOCKS_LIVE_GATE_VEC_ONLY_ENABLED", False))):
+    KG_STOCKS_HARD_VETO_ENABLED). Key presence per tick == vec `k in npz`. Returns veto str or None."""
+    if not (truthy(get_cfg("KG_STOCKS_LIVE_GATE", True)) and truthy(get_cfg("KG_STOCKS_HARD_VETO_ENABLED", False))):
         return None
     if not (truthy(get_cfg("EMA_9_21_FILTER_ENABLED", False)) or truthy(get_cfg("KINDERGARTEN_EMA_GATE_ENABLED", False))):
         return None

@@ -6466,7 +6466,7 @@ def main():
     # SELF-MONITOR thread: continuously watch E3 baseline (E2 is header 'BASELINE' preserved per spec), abort & fix if empty/0
     try:
         import threading as _th_mon, time as _t_mon
-        _genuine_zero_baseline = bool(locals().get("_genuine_zero_baseline", False))
+        _genuine_zero_baseline = bool(locals().get("_genuine_zero_baseline", False)) or int(baseline_vec.get("trades") or 0) == 0 or bool(locals().get("_zero_trades_early"))
         def _baseline_self_monitor():
             _fails = 0
             while True:

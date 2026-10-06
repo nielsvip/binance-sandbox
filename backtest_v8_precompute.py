@@ -1340,10 +1340,11 @@ def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
             # HA is per-bar: need full series. heikin_ashi returns last 2 values.
             # Compute full HA series manually
             ha_close = (open_ + high + low + close) / 4.0
-            ha_open = pd.Series(np.zeros(n), index=df.index)
-            ha_open.iloc[0] = (open_.iloc[0] + close.iloc[0]) / 2.0
+            _ho = np.zeros(n); _hcv = ha_close.values.astype(np.float64)  # same float64 recursion as the old .iloc loop (bitwise), ~40x faster
+            _ho[0] = (open_.iloc[0] + close.iloc[0]) / 2.0
             for i in range(1, n):
-                ha_open.iloc[i] = (ha_open.iloc[i-1] + ha_close.iloc[i-1]) / 2.0
+                _ho[i] = (_ho[i-1] + _hcv[i-1]) / 2.0
+            ha_open = pd.Series(_ho, index=df.index)
             ha_colors = np.where(ha_close > ha_open, 1, np.where(ha_close < ha_open, -1, 0)).astype(np.int8)
             out[f"ha_{tf}"] = ha_colors
     except Exception:
@@ -1524,9 +1525,11 @@ def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
     _ha_close = (open_ + high + low + close) / 4.0
     _ha_open = pd.Series(np.zeros(n), index=df.index)
     if n > 0:
-        _ha_open.iloc[0] = (open_.iloc[0] + close.iloc[0]) / 2.0
+        _ho2 = np.zeros(n); _hcv2 = _ha_close.values.astype(np.float64)  # same float64 recursion as the old .iloc loop (bitwise)
+        _ho2[0] = (open_.iloc[0] + close.iloc[0]) / 2.0
         for i in range(1, n):
-            _ha_open.iloc[i] = (_ha_open.iloc[i - 1] + _ha_close.iloc[i - 1]) / 2.0
+            _ho2[i] = (_ho2[i - 1] + _hcv2[i - 1]) / 2.0
+        _ha_open = pd.Series(_ho2, index=df.index)
         _ha_color = np.where(_ha_close.values > _ha_open.values, 1,
                              np.where(_ha_close.values < _ha_open.values, -1, 0)).astype(np.int8)
         out[f"ha_color_{tf}"] = _ha_color
@@ -1847,6 +1850,19 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
         logger.warning(f"[SKIP] {symbol}: no {base_tf} klines")
         return False
     base_df = dfs[base_tf]
+    # PARITY LOOP STOCKS 2026-10-06 option A (BIBLE §68.2.6, director): stock 15m base = live's filter_strict_market_hours frame and
+    # 15m/1h/4h/D values per 15m step on live's own (forming-bar, 600-clipped) frames — vec_decisions/stock_live_frames.py.
+    # NPZ_STOCK_FRAMES_LEGACY=1 rebuilds the old frames (comparison only).
+    _stock_live = mode == "tradier" and os.environ.get("NPZ_STOCK_FRAMES_LEGACY") != "1"
+    _stock_auth = {}
+    if _stock_live:
+        from vec_decisions.stock_live_frames import live_rth_15m as _live_rth_15m
+        base_df = _live_rth_15m(base_df)
+        dfs[base_tf] = base_df
+        _stock_auth = {t: (dfs[t].copy() if t in dfs else None) for t in ("1h", "4h", "D")}
+        if len(base_df) < 30:
+            logger.warning(f"[SKIP] {symbol}: <30 live-session 15m bars")
+            return False
     # 15m-only base — no 1/3/5m fabrication. Pure 15m history.
     n = len(base_df)
     _dt_unit = np.datetime_data(base_df.index.values.dtype)[0]
@@ -1939,8 +1955,19 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
             dfs[tf] = resampled
     merged = {"timestamps": ts_epoch, "close": base_df["close"].values.astype(np.float32)}
     # Compute indicators per TF — ONE call, returns FULL arrays
+    if _stock_live:
+        from vec_decisions.stock_live_frames import StepFrames as _StepFrames, forming_values as _forming_values, STEP_TFS as _STEP_TFS
+        _sf = _StepFrames(base_df, _stock_auth.get("1h"), _stock_auth.get("4h"), _stock_auth.get("D"))
+        _step_vals = _forming_values(_sf, compute_tf_arrays, tfs=_STEP_TFS)
+        for _t in _STEP_TFS:
+            merged.update(_step_vals.get(_t, {}))
+            if _t != base_tf:
+                merged[f"timestamp_{_t}"] = _sf.forming_label(_t)
+        logger.info(f"  {symbol}: stock live frames — {n} steps x {len(_STEP_TFS)} TFs on live forming/600-clipped frames")
     for tf in tfs:
         if tf not in dfs:
+            continue
+        if _stock_live and tf in ("15m", "1h", "4h", "D"):
             continue
         df = dfs[tf]
         tf_arrays = compute_tf_arrays(df, tf)

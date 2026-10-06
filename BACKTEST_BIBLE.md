@@ -6,6 +6,11 @@
 > and verifies 4× SHA-256. If conflict, THIS file wins.
 > Historical `backtest_bible_0901.md` (745K) is fallback only.
 
+> 🔴 **PARITY DEFINITION — READ §68 BEFORE ANY ENGINE, LIVE, TEMPLATE OR DEFAULTS WORK (USER 2026-10-06).**
+> Vectorized == live BY DEFINITION. The vectorized engine is now the source of truth; live functions are
+> adapted to the vectorized functions. There is NO "vec-only trading", NO vec-only switch, NO gate that
+> "makes" live match. Defaults/per-sym settings change ONLY through the daily pre-market chain (§68.3).
+
 > **RULE 0 — NEVER REVERT.** Find better version in `backups/` on S1+Mac before git.
 > Diff and patch current — never overwrite newer with older. Git is unreliable — check dates.
 
@@ -1379,3 +1384,61 @@ Mon 2026-10-05 06:00 UTC: best (newest-round) 30D sheet of every sym_side → 36
 **Value-truth semantics (why globals are not overwritten per-sym):** a single global cannot equal two side bolds. Per-side truth lives in `cat_side_defaults_4` (`side-split-cat-truth`, informational — effective parity holds via the cat layer for all scoped reads). Globals/QuickConfig carry the template bold only when uniform across the venue (cross-venue raw guarded: a raw edit that would break another cat_side is refused as `needs_manual`). `fallback-split` (3+ distinct bolds, e.g. `REGIME_TRENDING_WT_REDUCE_FRAC_LOW` 0.2/0.15/0.1) is architecturally unrepresentable in raw+overlay — cat-side truth wins, documented. Exclusions: §17.3/§31 set + `MAX_AUGMENTS_PER_POSITION` (USER no-cap mandate) + ablation exemption (§64).
 
 **Initial close (2026-10-06, user-unlocked):** hard 63→0 on MAIN templates (11 tool edits + 7 manual: 3 duplicate-field pairs in QuickConfig fixed on both lines, `REGIME_RANGING` raw + 5 `apply_tradier_defaults` appends). Backups `backups/before_parity_sync_20261006_*`. Behavior-neutral for scoped reads (cat_side already carried every synced key). Cat fill (2026-10-06, same mandate): `switch_parity.py sync-cat --apply` filled 36 keys (12 stale incl. 8 ledger-evidenced staged promotions + 4 newly-trusted after the global sync, 24 missing — all verified bold==global==quick before fill) into `data/cat_side_defaults_4.json` + kv dual-write, backup `backups/before_parity_catfill_20261006_042816.json`. The 4 fossil pairs (`MOM3_FILTER_TF`/`VIGILANCE_GUARD_ENABLED`/`WT_CROSSUNDER_FINAL_ENABLED` on SHORT sides) are HELD at builder P0-FOSSIL live-truth values — their template bolds are stale and only the template lane may move them. Residual backlog: 4 fossil `bold-vs-cat`, 8 structural template violations (block `build_cat_side_defaults_4.py` on Mac MAIN stocks templates). Fleet deploy = engine cut: rsync `switch_parity.py`, `v15_pilot.py`, `tools/v15_daily_template_update.py`, `config.py`, `config_tradier.py`, `v12_quick_engine.py` to S1/S2/S5 × sandbox+live, md5-verify, `import v12_quick_engine` per host; S1 baseline sanity (`GDX_LONG`/`AXTI_LONG`/`AXTI_SHORT` trades not collapsed) before herds relaunch. Tests: `tests/test_switch_parity.py` (16).
+
+---
+
+## 68. PARITY DEFINITION + DAILY PRE-MARKET CHAIN (USER 2026-10-06, AUTHORITATIVE — supersedes every earlier "parity" wording)
+
+### 68.1 What parity means
+- **Vectorized == live by definition.** That is what the backtest system was built for. Phase 1 (done): the vectorized
+  engine (`v12_quick_engine` + `vec_decisions/`) was set up to reflect live. Phase 2 (now): the vectorized engine produces
+  better results than live — partly through experimental functions that so far existed only in vector — so **live is
+  adjusted to vector**. The vectorized function is the **source of truth** that drives the trades on the zoomable
+  charts; the charts we choose to make live must trade live exactly as charted.
+- **Parity = the daily chain (§68.3) works perfectly AND every live function is identical to its vectorized function**
+  (same code or a proven twin, same switch, same effective value, same data). Same trade, same moment.
+- A vectorized function that has proven itself (positive in the sheets / pos_sym) and does not exist live is
+  **implemented live** (`ez_manage.py` / `ez_positions_quick.py` / `tradier_manage.py` + `config.py` / `config_tradier.py`)
+  behind the SAME switch with the SAME default — it is never "vec-only".
+- A live path with no vectorized function is either given a vectorized twin, or switched OFF by its OWN switch on both
+  sides (same value in TEMPLATE / config / QuickConfig). Never by a gate.
+
+### 68.2 Forbidden (agents keep doing these — stop)
+1. **"Vec-only trading", `*_VEC_ONLY_*` switches/rows, or any construct that lets a function trade in one surface only.**
+2. **Parity by gates**: blocking native live orders so that only vec-decided orders fill (e.g. `VEC_DRIVEN_NATIVE_ENTRY_BLOCK_ALL`,
+   execute_now suppression lists, the VEC_DRIVEN intent bridge). These are emergency/transition tools only, never parity, and
+   are removed as soon as the functions are identical.
+3. **Flipping vectorized defaults back to old live values** (vector is the truth; live follows), and **ablation flags True
+   outside a single investigative test** (§64).
+4. **Writing template defaults outside the daily chain**: no pilot start, verifier, healer or agent rewrites `TEMPLATE_*`
+   bold / `is_default` (the in-pilot `TEMPLATE-VERIFY` rewrite was removed 2026-10-06). The ONE writer is the daily update.
+5. **Editing defaults/per-sym settings by hand** in config / SQLite / per-sym JSON outside the chain, or pushing older
+   files over newer ones (templates and code go Mac→servers; results come servers→S1/Mac).
+6. **Indicator data that differs from live**: the NPZ builder (`backtest_v8_precompute.py`) must compute every field with
+   live's functions and parameters on live's frames, with no look-ahead (crypto WaveTrend on crypto params; stocks on RTH
+   frames). Guard tests: `tests/test_parity_crypto_builder_vs_live.py`, `tests/test_parity_stock_builder_vs_live.py`.
+
+### 68.3 The daily pre-market chain (EVERY day, before market open — the only path by which settings change)
+1. **Recalculate all deltas** from the latest round: `v15_avg_delta` / `tools/v15_vector_delta.py` → per cat_side
+   (CRYPTO_LONG/SHORT, STOCKS_LONG/SHORT) `average_delta` and `pos_sym` for every switch row and filter.
+2. **Define the defaults in the templates**: the single template writer (`tools/v15_daily_template_update.py --apply`)
+   sets `TEMPLATE_*` bold + `is_default`, and in the same run syncs the venue globals (`config.py`, `config_tradier.py`),
+   `QuickConfig` and `data/cat_side_defaults_4.json` (`switch_parity.sync_default_surfaces`, §67).
+3. **Apply the new per-sym settings to live** — per sym_side best sets that pass the gates (30D valid + positive, 365D
+   confirmed, `switch_parity.register_workbook_result`) are written to ALL live surfaces together: the config files, the
+   SQLite store (`per_sym_store`) and the per-sym JSON book (+ trb overlay for stocks), post-verified by re-read.
+4. **Live trades those settings with functions identical to the vectorized ones** (§68.1). Precedence everywhere:
+   per-sym > cat_side > global, identical in live and vector.
+5. The fleet then sweeps on the new defaults (S1 coordinator; each sym_side baselined on its previous best) and the next
+   pre-market run repeats 1-4. Nothing else moves defaults.
+
+### 68.4 How parity is proven
+- **Trade-level replay** (`tools/v15_trade_parity.py`, `backtest_v12_engine.run_one`): the REAL live scripts
+  (`process_position` → `execute_trade_action` → `execute_now`) on frozen NPZ vs `simulate_one` on the same NPZ and set:
+  vec→live and live→vec trip match ≥0.95, exits agree. The harness must import only the code under test (fail closed on
+  sandbox imports), apply only the sym_side's own set, inject no producers of its own, and call live loops at live cadence.
+- **Data-level**: the builder guard tests above PASS (live indicator functions == NPZ fields on live frames).
+- **Switch-level**: `switch_parity.py gate` (all cat_sides) and `switch_parity.py verify-live-switches --strict` report 0 hard.
+- Status 2026-10-06: crypto 5/5 and stocks 11/11 sample sym_sides at 1.0 in the isolated replay (live executing the vec
+  decision through the real order path); live-equal builder applied (user unlock); large replay (80 crypto + 101 stock
+  sym_sides × 30D/90D) running; NPZ fleet rebuild on the live-equal builder in progress → all sheets re-measured after it.
