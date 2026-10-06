@@ -1,32 +1,55 @@
 {
- "generated_at": "2026-10-06 04:21 UTC",
- "total_capital_usd": 6.33,
+ "generated_at": "2026-10-06 04:22 UTC",
+ "total_capital_usd": 110.53,
  "tier_capital": {
   "A": 0.0,
-  "B": 6.33,
+  "B": 110.53,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 3,
   "C": 0
  },
  "winners": [],
  "losers": [],
  "mediocre": [
-  "fin:THETAUSDT_LONG"
+  "ang:GALAUSDT_SHORT",
+  "ang:ZECUSDC_LONG"
  ],
  "positions": [
   {
-   "pk": "fin:THETAUSDT_LONG",
-   "symbol": "THETAUSDT",
-   "account": "fin",
-   "value_usd": 6.33,
-   "gain_pct": -0.114,
+   "pk": "ang:GALAUSDT_SHORT",
+   "symbol": "GALAUSDT",
+   "account": "ang",
+   "value_usd": 80.09,
+   "gain_pct": -0.183,
    "tier": "B",
-   "perf_mult": 0.85,
-   "amt": 27.6,
-   "mark": 0.22948781
+   "perf_mult": 1.0,
+   "amt": 33135.0,
+   "mark": 0.00241697
+  },
+  {
+   "pk": "ang:AVAXUSDC_LONG",
+   "symbol": "AVAXUSDC",
+   "account": "ang",
+   "value_usd": 25.08,
+   "gain_pct": 0.594,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 2.23,
+   "mark": 11.248
+  },
+  {
+   "pk": "ang:ZECUSDC_LONG",
+   "symbol": "ZECUSDC",
+   "account": "ang",
+   "value_usd": 5.36,
+   "gain_pct": -0.221,
+   "tier": "B",
+   "perf_mult": 0.43,
+   "amt": 0.004,
+   "mark": 1341.21476661
   }
  ]
 }

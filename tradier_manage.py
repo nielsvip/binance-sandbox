@@ -10527,9 +10527,11 @@ async def _vec_exact_process(account_key, position_key, symbol, position_side, o
         _act = _tve.live_action_for(_ev, _amt)
         if _act is None:
             logger.warning(f"[VEC_EXACT_SKIP] {position_key}: vec {_ev['type']} {_ev['reason'][:60]} but live amt={_amt}")
+            _tve.record_dispatch(config.BASE_PATH, position_key, _ev, None, f"SKIP_LIVE_AMT_{_amt}")
             _out.append(f"SKIP:{_ev['type']}")
             continue
         _res = await queue_trade_action(order_queue, trade_manager, position_key, _act[0], _tve.vec_reason(_ev), 100.0, override_qty=_act[1])
+        _tve.record_dispatch(config.BASE_PATH, position_key, _ev, _act, _res)
         logger.warning(f"[VEC_EXACT] {position_key}: {_act[0]} qty={_act[1]:.4f} reason={_tve.vec_reason(_ev)[:80]} -> {_res}")
         _out.append(f"{_act[0]}:{_res}")
         if _act[0] == "OPEN":

@@ -1679,5 +1679,14 @@
     "first_seen": "2026-10-06T04:20:11.750552+00:00",
     "source": "phantom_kill_bootstrap",
     "last_seen": "2026-10-06T04:20:51.402213+00:00"
+  },
+  "ang:GALAUSDT_SHORT": {
+    "count": 4,
+    "first_seen_zero_at": "2026-10-06T04:29:51.741061+00:00",
+    "last_increment_at": "2026-10-06T04:31:32.137764+00:00",
+    "sources": {
+      "API_ABSENCE": 3
+    },
+    "last_seen": "2026-10-06T04:31:45.912212+00:00"
   }
 }

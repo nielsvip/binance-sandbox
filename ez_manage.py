@@ -7980,6 +7980,18 @@ def _vec_exact_reason_ok(reason) -> bool:
     return " |VEC_EXACT" in str(reason or "")
 
 
+def _vec_decided_reason_ok(reason) -> bool:
+    """2026-10-06 director: an order decided by the vec engine — in-script twin (|VEC_EXACT, master on) or X3 VEC_DRIVEN_* intent.
+    execute_trade_action's ENTRY_VET and DELTA engine gate never refuse these (hard safety unchanged)."""
+    if _vec_exact_reason_ok(reason):
+        return True
+    try:
+        from live_twins import vec_driven as _vdm_r
+        return bool(_vdm_r.is_vec_driven_reason(reason))
+    except Exception:
+        return False
+
+
 def _vec_driven_mode(symbol: str, side: str, account_key: str) -> str:
     """X3 VEC-DRIVEN LIVE 2026-10-06: 'off' | 'shadow' | 'live' for this account's sym_side (live_twins/vec_driven.py).
     Global VEC_DRIVEN_ENABLED False -> 'off' without touching any file (byte-identical live)."""
@@ -26461,7 +26473,7 @@ class MultiAccountTradeManager:
                 and "HEDGE" not in action
                 and "QUICK" not in action
                 and not _is_force_open_eta
-                and not _vec_exact_reason_ok(reason)
+                and not _vec_decided_reason_ok(reason)
             ):
                 logger.warning(f"[ENTRY_VET] {position_key}: BLOCKED — reason={_tp_entry_reason} action={action} r={(reason or '')[:60]}")
                 return f"{position_key}_BLOCKED_ENTRY_VET_{_tp_entry_reason}"
@@ -26488,7 +26500,7 @@ class MultiAccountTradeManager:
                 and not _is_reentry_bypass
                 and not _is_force_open_eta
                 and not _is_strong_buy_or_quick_bypass
-                and not _vec_exact_reason_ok(reason)
+                and not _vec_decided_reason_ok(reason)
             ):
                 _d_sig = self.delta_tracker.update(symbol, i)
                 _delta_ok = _d_sig and (
@@ -30785,6 +30797,7 @@ class MultiAccountTradeManager:
         try:
             if (
                 bool(getattr(config, "COUNTER_TREND_ADD_BLOCK_ENABLED", True))
+                and not _vd_exempt
                 and symbol
                 and ("OPEN" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act or _kill_act == "BUY")
                 and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
@@ -31294,7 +31307,7 @@ class MultiAccountTradeManager:
         #   AUGMENT_BULL_KILL_ENABLED: block AUGMENT when D-bull (close_D>sma_20_D & wt1_4h>BULL_HOLD_WT_THR)   [v12_quick_engine ~10088]
         #   BULL_HOLD_EXIT_DELAY_BARS / BEAR_HOLD_EXIT_DELAY_BARS: hold technical (non-protective) CLOSE/REDUCE in D-bull (any side) / D-bear (shorts) [~9970/~9990]
         try:
-            if symbol and position_side in ("LONG", "SHORT"):
+            if symbol and position_side in ("LONG", "SHORT") and not _vd_exempt:
                 _unw_get = lambda _k, _d=None: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))
                 _unw_aug = "AUGMENT" in _kill_act and bool(_unw_get("AUGMENT_BULL_KILL_ENABLED", False))
                 _unw_exit = (("CLOSE" in _kill_act or "REDUCE" in _kill_act) and "HEDGE" not in _kill_act
@@ -31316,7 +31329,7 @@ class MultiAccountTradeManager:
                 ("AUGMENT" in _kill_act)
                 or (("OPEN" in _kill_act or "ENTRY" in _kill_act or _kill_act == "BUY") and "REENTRY" not in _kill_act and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
                     and "REENTRY" not in (reason or "").upper() and "OBLIGATORY" not in (reason or "").upper())
-            ) and "HEDGE" not in (reason or "").upper():
+            ) and "HEDGE" not in (reason or "").upper() and not _vd_exempt:
                 _wtc_get = lambda _k, _d=None: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))
                 if bool(_wtc_get("WT_COMPOSITE_HTF_GATE", False)):
                     from vec_decisions import live_unw_gates as _unw2

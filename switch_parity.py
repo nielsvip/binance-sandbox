@@ -108,6 +108,18 @@ EXCLUDE_SUFFIX = (
 EXCLUDE_PREFIX = ("ABLATION_DISABLE_",)
 EXCLUDE_SUBSTR = ("_LIVE_MONITOR_", "LIVE_5M_TRADING")
 
+# Builder P0-FOSSIL pins (tools/build_cat_side_defaults_4.py): the builder forces
+# cat = live truth for these (side,key) pairs (SHORT-entry killers). Cat-fill must
+# never overwrite them — the template bolds are stale, template lane owns them.
+FOSSIL_HELD = frozenset(
+    {
+        ("CRYPTO_SHORT", "MOM3_FILTER_TF"),
+        ("STOCKS_SHORT", "MOM3_FILTER_TF"),
+        ("CRYPTO_SHORT", "VIGILANCE_GUARD_ENABLED"),
+        ("STOCKS_SHORT", "WT_CROSSUNDER_FINAL_ENABLED"),
+    }
+)
+
 
 def _ROOT() -> Path:
     return Path(os.environ.get("SWITCH_PARITY_ROOT") or Path(__file__).resolve().parent)
@@ -993,6 +1005,138 @@ def sync_default_surfaces(
     return rep
 
 
+def sync_cat_keys(
+    cat_side: str = None,
+    keys: list = None,
+    apply: bool = False,
+    root: Path = None,
+    template_dir: str = "SPREADSHEETS",
+) -> dict:
+    """Fill stale/missing cat_side defaults from template bolds (targeted, per-key guarded).
+
+    Covers ONLY `bold-vs-cat` rows and `missing_from_cat` keys: value = template
+    bold. Each key independently: fossil-held pairs skipped (builder re-pins
+    them), secrets refused, type-coerce failure skips that key loudly. Writes
+    the JSON file (backup first, atomic) + kv dual-write, then verifies re-read.
+    Dry-run by default; --apply writes. Template files are never touched.
+    """
+    root = Path(root) if root else _ROOT()
+    rep = {
+        "planned": [],
+        "skipped": [],
+        "fossils_held": [],
+        "applied": False,
+        "error": "",
+    }
+    audit = verify_default_surfaces(cat_side, root=root, template_dir=template_dir)
+    if audit.get("error"):
+        rep["error"] = audit["error"]
+        return rep
+    want = set(keys or [])
+    targets = {}
+    for m in audit.get("mismatches", []):
+        if m.get("class") != "bold-vs-cat":
+            continue
+        if want and m.get("key") not in want:
+            continue
+        targets[(m["cat_side"], m["key"])] = m["bold"]
+    for mc in audit.get("missing_from_cat", []):
+        try:
+            cs, k = mc.split(":", 1)
+        except ValueError:
+            continue
+        if want and k not in want:
+            continue
+        bv = (audit.get("bolds", {}).get(cs, {}) or {}).get(k, "<absent>")
+        if bv != "<absent>":
+            targets[(cs, k)] = bv
+    if not targets:
+        return rep
+    sys.path.insert(0, str(root))
+    import v12_quick_engine as V
+
+    for (cs, k), bv in sorted(targets.items()):
+        if (cs, k) in FOSSIL_HELD:
+            rep["fossils_held"].append(
+                f"{cs}:{k} (builder P0-FOSSIL pin — template lane owns the bold)"
+            )
+            continue
+        if SECRET_RE.search(k):
+            rep["skipped"].append(f"{cs}:{k} secret refused")
+            continue
+        if not isinstance(bv, (bool, int, float, str)):
+            rep["skipped"].append(f"{cs}:{k} non-scalar bold {bv!r}")
+            continue
+        qc = V.QuickConfig()
+        if cs.startswith("STOCKS"):
+            qc.apply_tradier_defaults()
+        ref = getattr(qc, k, None)
+        if ref is None:
+            try:
+                if cs.startswith("STOCKS"):
+                    import config_tradier as CT
+
+                    ref = getattr(CT.TradierConfig(), k, None)
+                else:
+                    import config as C
+
+                    ref = getattr(C.Config(), k, None)
+            except Exception:
+                ref = None
+        if ref is not None:
+            ok_c, cv = coerce_like(bv, ref)
+            if not ok_c:
+                rep["skipped"].append(f"{cs}:{k} coerce refused: {cv}")
+                continue
+            bv = cv
+        rep["planned"].append({"cat_side": cs, "key": k, "value": bv})
+    if not apply or not rep["planned"]:
+        return rep
+    cat_path = root / "data" / "cat_side_defaults_4.json"
+    try:
+        raw0 = cat_path.read_text()
+        cat = json.loads(raw0)
+    except Exception as _e:
+        rep["error"] = f"cat file unreadable: {_e}"
+        return rep
+    try:
+        bdir = root / "backups"
+        bdir.mkdir(parents=True, exist_ok=True)
+        bp = (
+            bdir
+            / f"before_parity_catfill_{_today()}_{datetime.datetime.now(datetime.timezone.utc).strftime('%H%M%S')}.json"
+        )
+        bp.write_text(raw0)
+        rep["backup"] = bp.name
+    except Exception as _e:
+        rep["error"] = f"backup failed (refusing): {_e}"
+        return rep
+    for p in rep["planned"]:
+        cat.setdefault(p["cat_side"], {})[p["key"]] = p["value"]
+    try:
+        _atomic_write_json(cat_path, cat)
+        import per_sym_store as _pss
+
+        _pss.kv_put(_pss.KV_CAT_SIDE_DEFAULTS_4, cat)
+        back = json.loads(cat_path.read_text())
+        bad = [
+            p
+            for p in rep["planned"]
+            if back.get(p["cat_side"], {}).get(p["key"], "<absent>") != p["value"]
+        ]
+        if bad:
+            rep["error"] = f"post-verify FAILED: {bad[:4]}"
+            return rep
+        rep["applied"] = True
+    except Exception as _e:
+        try:
+            cat_path.write_text(raw0)
+        except Exception:
+            pass
+        rep["error"] = f"{_e} (restored)"
+    return rep
+
+
 def startup_gate(cat_side: str, template_path: str = None, root: Path = None) -> dict:
     """Pilot startup gate: refuse to run when THIS cat_side has hard default disparity.
 
@@ -1136,6 +1280,15 @@ def main(argv=None) -> int:
     )
     p_syn.add_argument("--apply", action="store_true")
     p_syn.add_argument("--confirm-unlocked", action="store_true")
+    p_cat = sub.add_parser(
+        "sync-cat", help="fill stale/missing cat_side defaults from template bolds"
+    )
+    p_cat.add_argument("--cat-side", default=None)
+    p_cat.add_argument("--template-dir", default="SPREADSHEETS")
+    p_cat.add_argument(
+        "--keys", default=None, help="comma-separated key filter for targeted sync"
+    )
+    p_cat.add_argument("--apply", action="store_true")
     a = ap.parse_args(argv)
     if a.cmd == "register":
         rep = register_workbook_result(
@@ -1192,6 +1345,15 @@ def main(argv=None) -> int:
             confirm_unlocked=a.confirm_unlocked,
             template_dir=a.template_dir,
             keys=(a.keys.split(",") if a.keys else None),
+        )
+        print(json.dumps(rep, indent=1, default=str))
+        return 0 if not rep.get("error") else 1
+    if a.cmd == "sync-cat":
+        rep = sync_cat_keys(
+            a.cat_side,
+            keys=(a.keys.split(",") if a.keys else None),
+            apply=a.apply,
+            template_dir=a.template_dir,
         )
         print(json.dumps(rep, indent=1, default=str))
         return 0 if not rep.get("error") else 1

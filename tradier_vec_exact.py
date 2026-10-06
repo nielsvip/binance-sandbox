@@ -317,3 +317,18 @@ def overrides_for(symbol: str, side: str, getter: Optional[Callable[[str], Any]]
     except Exception:
         ov = {}
     return dict(ov) if isinstance(ov, dict) else {}
+
+
+def record_dispatch(base_path: Any, position_key: str, event: Dict[str, Any], action: Optional[tuple], result: Any) -> None:
+    """append-only audit of every exact-mode decision (data/reports/vec_exact/dispatch_<UTCdate>.jsonl): vec event, live action sent, queue result."""
+    try:
+        import pathlib
+        d = pathlib.Path(str(base_path)) / "data" / "reports" / "vec_exact"
+        d.mkdir(parents=True, exist_ok=True)
+        day = datetime.fromtimestamp(float(event.get("ts") or 0.0), tz=timezone.utc).strftime("%Y%m%d")
+        row = {"pk": position_key, "bar_ts": event.get("ts"), "vec_type": event.get("type"), "vec_reason": str(event.get("reason"))[:120], "vec_qty": event.get("qty"),
+               "sent": list(action) if action else None, "result": str(result)[:80]}
+        with open(d / f"dispatch_{day}.jsonl", "a") as fh:
+            fh.write(json.dumps(row, default=str) + "\n")
+    except Exception:
+        pass
