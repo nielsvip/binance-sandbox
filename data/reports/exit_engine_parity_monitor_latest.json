@@ -1,21 +1,21 @@
 {
- "now": "2026-10-07T03:00:41.258805+00:00",
+ "now": "2026-10-07T04:00:43.393462+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 819,
- "last_exit_ts": "2026-10-07T03:00:39.094051+00:00",
+ "n_exit_rows": 938,
+ "last_exit_ts": "2026-10-07T04:00:38.387629+00:00",
  "n_leaks": 0,
- "n_gate_on": 324,
+ "n_gate_on": 373,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 42,
+ "n_unmapped": 58,
  "n_unverified": 1,
  "since": "2026-10-06T18:48:00+00:00",
  "vec_exact_by_action": {
-  "OPEN": 312,
-  "CLOSE": 134,
+  "OPEN": 345,
+  "CLOSE": 155,
   "REDUCE": 6
  },
- "native_rows": 367,
+ "native_rows": 432,
  "unverified_by_family": {
   "WEBHOOK_HANDLE_SIGNAL (None=None)": 1
  },
@@ -24,7 +24,7 @@
  "gate_on_by_family": {
   "CRYPTO_SPIKE_FADE (CRYPTO_SPIKE_FADE_ENABLED)": 1,
   "GOLDEN_RULE": 3,
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 269,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 318,
   "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 45,
   "CYCLE_TP (CYCLE_TP_TIERED_ENABLED)": 6
  },
@@ -32,14 +32,18 @@
  "safety_by_family": {},
  "unmapped": {
   "WT_CROSSUNDER_FINAL_L_k=95": 6,
-  "ORPHANED_HEDGE_PARENT_CLOSED": 3,
+  "ORPHANED_HEDGE_PARENT_CLOSED": 4,
+  "CB_HTF_EXHAUST_BAD_ENTRY: g=-2.26% age": 3,
+  "CB_HTF_EXHAUST_BAD_ENTRY: g=-2.28% age": 3,
   "BB_TAKE_4h": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.66% age": 2,
   "WT_CROSSUNDER_FINAL_L_k=72": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-2.66% age": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-4.27% age": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-2.69% age": 2,
+  "SUBSTITUTION_FOR_men:ATOMUSDT_SHORT": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-2.75% age": 2,
+  "CB_HTF_EXHAUST_BAD_ENTRY: g=-2.25% age": 2,
   "MARGIN_FREE_FOR_ang:SNXUSDT_LONG": 1,
   "SUBSTITUTION_FOR_men:SNXUSDT_LONG": 1,
   "SUBSTITUTION_FOR_men:BBUSDT_LONG": 1,
@@ -53,17 +57,22 @@
   "CB_HTF_EXHAUST_HTF_EXHAUST: g=-2.32% a": 1,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-2.79% age": 1,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-2.62% age": 1,
-  "SUBSTITUTION_FOR_men:ATOMUSDT_SHORT": 1,
   "SUBSTITUTION_FOR_men:IOTXUSDT_LONG": 1,
   "SUBSTITUTION_FOR_men:MELANIAUSDT_SHORT": 1,
   "SUBSTITUTION_FOR_men:QTUMUSDT_SHORT": 1,
   "SUBSTITUTION_FOR_men:COMPUSDT_SHORT": 1,
-  "SUBSTITUTION_FOR_men:EGLDUSDT_SHORT": 1
+  "SUBSTITUTION_FOR_men:EGLDUSDT_SHORT": 1,
+  "SUBSTITUTION_FOR_men:UNIUSDC_SHORT": 1,
+  "CB_HTF_EXHAUST_BAD_ENTRY: g=-2.01% age": 1,
+  "CB_HTF_EXHAUST_BAD_ENTRY: g=-1.63% age": 1,
+  "SUBSTITUTION_FOR_men:SOLUSDC_SHORT": 1,
+  "SUBSTITUTION_FOR_men:ALGOUSDT_SHORT": 1,
+  "SUBSTITUTION_FOR_men:BTCUSDC_SHORT": 1
  },
  "actions": {
-  "OPEN": 316,
-  "CLOSE": 476,
+  "OPEN": 349,
+  "CLOSE": 556,
   "REDUCE": 13,
-  "QUICK_CLOSE": 14
+  "QUICK_CLOSE": 20
  }
 }
