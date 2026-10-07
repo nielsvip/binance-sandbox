@@ -1,30 +1,20 @@
-CAPITAL ALLOCATION REPORT — 2026-10-07 17:15 UTC
+CAPITAL ALLOCATION REPORT — 2026-10-07 18:01 UTC
 ================================================================================
-Total capital deployed: $592.10 across 34 positions
+Total capital deployed: $31.42 across 2 positions
 
 TIER DISTRIBUTION:
   Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $    544.54 ( 92.0%) — 32 positions
-  Tier C: $     47.57 (  8.0%) — 2 positions
+  Tier B: $     15.73 ( 50.1%) — 1 positions
+  Tier C: $     15.69 ( 49.9%) — 1 positions
 
   ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
+  ** C-tier OVERWEIGHT: 50% vs target <20% — reduce poor performers **
 
 WINNERS — augment these (A-tier, in gain) [0]:
   (none)
 
-LOSERS — reduce allocation (C-tier or losing) [12]:
-                     men:SKYUSDT_LONG  $    3.67  gain=-9.89%  tier=B  mult=1.00
-                    men:EDUUSDT_SHORT  $   29.37  gain=-4.66%  tier=B  mult=0.45
-                     men:ZROUSDT_LONG  $   15.27  gain=-3.18%  tier=C  mult=0.44
-                   men:MANAUSDT_SHORT  $    2.94  gain=-3.13%  tier=B  mult=1.00
-                   men:IOTXUSDT_SHORT  $   15.14  gain=-1.73%  tier=B  mult=1.42
-                    men:AXSUSDT_SHORT  $   15.71  gain=-1.49%  tier=B  mult=1.00
-                     men:ENJUSDT_LONG  $   13.12  gain=-1.47%  tier=B  mult=1.00
-                men:MELANIAUSDT_SHORT  $   16.19  gain=-1.36%  tier=B  mult=1.00
-                   men:COTIUSDT_SHORT  $   24.48  gain=-1.34%  tier=B  mult=1.00
-                   men:COMPUSDT_SHORT  $   16.12  gain=-0.65%  tier=B  mult=1.00
-                    men:ENJUSDT_SHORT  $   20.15  gain=-0.60%  tier=B  mult=1.00
-                    men:SANDUSDT_LONG  $   32.30  gain=+15.19%  tier=C  mult=0.80
+LOSERS — reduce allocation (C-tier or losing) [1]:
+                    flz:ZECUSDC_SHORT  $   15.69  gain=+1.34%  tier=C  mult=0.33
 
-MEDIOCRE — capital sitting idle [1]:
-                  men:RENDERUSDT_LONG  $   16.47  gain=-0.24%  tier=B
+MEDIOCRE — capital sitting idle [0]:
+  (none)
