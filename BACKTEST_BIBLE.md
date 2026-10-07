@@ -1599,3 +1599,22 @@ Rules: a FAILED mac-apply is never the end of the story — the 20:00Z retry or 
 run closes it. A new cron slot that writes templates or config MUST reuse these scripts (never a new
 writer — §70 allowlist) and MUST be idempotent (stamp-checked no-op). Cron edits are backed up to
 `backups/before_*cron*` like any other edit.
+
+## 76. WRITER SELF-HEALING + PERSISTER LAW (USER 2026-10-07)
+
+**Default repair:** the daily writer establishes what it verifies. A white switch group with no
+promotable winner keeps its default — unless broken (0 or 2+ YES/bold), in which case the writer heals
+it: single-bold half-write → YES completes it; else the row matching the venue live default
+(`venue_values`: QuickConfig overlaid with `config.Config`/`TradierConfig`); else the first row.
+Orange filter groups are not repaired (owned by tab-level appends; the gate still guards them).
+`--no-promote` disables repair. Repairs land in `repaired_defaults`, NEVER in `ledger`/`promoted_keys`
+(they align the template TO config — nothing syncs back, no floor-guard). First catch: 96 broken
+groups on 2026-10-07 (STDEV_*/GOLDEN_RULE_*/VOL_SPIKE_*/REENTRY_TIER* — recent switches that landed
+without defaults and bricked the chain + fail-closed pilot baselines). Guard tests:
+`tests/test_v15_daily_template_update_repair.py`.
+**Persister:** of the chain's two writer runs, only the MAIN run persists `cat_side_promotions` +
+round ledger + `promoted_keys` (gate: `tdir == SPREADSHEETS`); the norm run writes xlsx only. The
+stamp reads the main report. (A 2026-10-07 repoint briefly flipped the gate to norm — restored same
+night; repoints must never flip behavioral gates.) OPEN DESIGN QUESTION (pre-existing, not changed):
+fleet defaults JSON is built from MAIN bolds while pilots read NORM bolds — main/norm bold drift
+would split sweep/live from pilot baselines; needs a director ruling, not a silent fix.
