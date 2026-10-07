@@ -8,6 +8,7 @@ sanity (real fields, disjoint groups, no permits/bypasses inside).
 Ledger-delta proofs (each flag True moves a real ledger) are manual S1/Mac
 single-eval runs quoted in the lane report — they need NPZs, not unit runs.
 """
+
 import dataclasses as dc
 import unittest
 from pathlib import Path
@@ -17,8 +18,14 @@ import config_tradier
 import v12_quick_engine as V
 from vec_decisions import filter_ablation_groups as fab
 
-FLAGS = ("ABLATION_DISABLE_FILTER_ENTRY", "ABLATION_DISABLE_FILTER_MTF_HTF", "ABLATION_DISABLE_FILTER_REENTRY",
-         "ABLATION_DISABLE_FILTER_EXIT", "ABLATION_DISABLE_FILTER_AUGMENT", "ABLATION_DISABLE_FILTER_REDUCE")
+FLAGS = (
+    "ABLATION_DISABLE_FILTER_ENTRY",
+    "ABLATION_DISABLE_FILTER_MTF_HTF",
+    "ABLATION_DISABLE_FILTER_REENTRY",
+    "ABLATION_DISABLE_FILTER_EXIT",
+    "ABLATION_DISABLE_FILTER_AUGMENT",
+    "ABLATION_DISABLE_FILTER_REDUCE",
+)
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -37,7 +44,9 @@ class TestFilterAblationRegistration(unittest.TestCase):
     def test_existing_defaults_untouched(self):
         self.assertIs(config.Config().ABLATION_DISABLE_REENTRY, False)
         self.assertIs(V.QuickConfig().ABLATION_DISABLE_REENTRY, False)
-        for f in FLAGS:  # my 6 additions are unique (list has pre-existing dups — not mine)
+        for (
+            f
+        ) in FLAGS:  # my 6 additions are unique (list has pre-existing dups — not mine)
             self.assertEqual(V.AUTO_WIRED_PARAMS.count(f), 1, f)
 
     def test_auto_wired_and_625(self):
@@ -98,10 +107,20 @@ class TestFilterAblationApply(unittest.TestCase):
         for f in FLAGS:
             setattr(q, f, True)
         fab.apply(q)
-        for name in ("DELTA_GATE_OPEN", "DELTA_GATE_REENTRY", "DELTA_GATE_AUGMENT", "HTF_GATE_BYPASS_RZ",
-                     "MTF_GR_EXIT_GATE_ENABLED", "KG_STOCKS_LIVE_GATE", "STRICT_VEC_PARITY_GATE_ENTRIES",
-                     "KINDERGARTEN_FILTER_TF", "FAST_RISER_FILTER_TF", "FROZEN_STOP_FILTER_TF",
-                     "MTF_DC_REJECT_FILTER_TF", "NEWBORN_LOSS_KILL_FILTER_TF"):
+        for name in (
+            "DELTA_GATE_OPEN",
+            "DELTA_GATE_REENTRY",
+            "DELTA_GATE_AUGMENT",
+            "HTF_GATE_BYPASS_RZ",
+            "MTF_GR_EXIT_GATE_ENABLED",
+            "KG_STOCKS_LIVE_GATE",
+            "STRICT_VEC_PARITY_GATE_ENTRIES",
+            "KINDERGARTEN_FILTER_TF",
+            "FAST_RISER_FILTER_TF",
+            "FROZEN_STOP_FILTER_TF",
+            "MTF_DC_REJECT_FILTER_TF",
+            "NEWBORN_LOSS_KILL_FILTER_TF",
+        ):
             fresh = getattr(V.QuickConfig(), name)
             self.assertEqual(getattr(q, name), fresh, name)
 
@@ -133,9 +152,11 @@ class TestFilterAblationMapping(unittest.TestCase):
 class TestFilterAblationGSWiring(unittest.TestCase):
     def test_ablation_flags_wired(self):
         import sys
+
         sys.path.insert(0, str(ROOT / "tools"))
         sys.path.insert(0, str(ROOT))
         import v15_graph_search as G
+
         for f in FLAGS:
             self.assertIn(f, G.ABLATION_FLAGS, f)
         self.assertIs(G.FILTER_SERIES_ENABLED, False)
@@ -143,7 +164,9 @@ class TestFilterAblationGSWiring(unittest.TestCase):
 
     def test_deep_open_default_untouched(self):
         lines = (ROOT / "tools" / "v15_graph_search.py").read_text().splitlines()
-        i = next(i for i, l in enumerate(lines) if l.strip().startswith("def deep_open("))
+        i = next(
+            i for i, l in enumerate(lines) if l.strip().startswith("def deep_open(")
+        )
         j = next(j for j in range(i + 1, len(lines)) if lines[j].startswith("    def "))
         body = "\n".join(lines[i:j])
         self.assertNotIn("FILTER_SERIES", body)

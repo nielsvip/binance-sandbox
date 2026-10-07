@@ -63,7 +63,7 @@ def is_num(v):
     return isinstance(v, (int, float)) and not isinstance(v, bool)
 
 def stream_file(path, want_values):
-    """Stream the 12 tabs. want_values=False -> counts only. Returns dict."""
+    """Stream the 13 tabs. want_values=False -> counts only. Returns dict."""
     import openpyxl
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     out_tabs = {} if want_values else None
@@ -72,7 +72,7 @@ def stream_file(path, want_values):
     n_str = 0
     dups = 0
     try:
-        for tab in TABS12:
+        for tab in TABS:
             if tab not in wb.sheetnames:
                 continue
             ws = wb[tab]
@@ -97,6 +97,8 @@ def stream_file(path, want_values):
                 hs = str(h).strip()
                 if hs.startswith("WHAT SWITCH"):
                     break
+                if "=" not in hs:
+                    continue
                 ycols.append((i, hs))
             headers = [h for _, h in ycols]
             seen = set()
@@ -156,8 +158,8 @@ def count_one(path):
         return {"file": os.path.basename(path), "ok": False, "err": str(e)[:200]}
 
 def do_count(args):
-    files = sorted([str(p) for p in SRC.glob("*.xlsx")])
-    print(f"[count] {len(files)} xlsx, workers={args.workers}", flush=True)
+    files = sorted([str(p) for p in SRC.glob("*.xlsx") if FILE_PAT.match(p.name)])
+    print(f"[count] {len(files)} finalized bh_gain_t xlsx, workers={args.workers}", flush=True)
     with Pool(args.workers) as pool:
         res = pool.map(count_one, files, chunksize=8)
     ok = [r for r in res if r.get("ok")]
@@ -186,11 +188,9 @@ def do_select(args):
     sel = {}
     for ss, cands in by_ss.items():
         cands.sort(key=lambda r: r["mtime"], reverse=True)
-        best = max(r["cells"] for r in cands)
-        floor = 0.5 * best if best > 0 else 0
-        pick = next((r for r in cands if r["cells"] >= floor), cands[0])
+        pick = cands[0]
         sel[f"{ss[0]}_{ss[1]}"] = {"file": pick["file"], "mtime": pick["mtime"], "size": pick["size"],
-            "n_g": pick["n_g"], "n_y": pick["n_y"], "floor": floor, "best": best,
+            "n_g": pick["n_g"], "n_y": pick["n_y"], "best": max(r["cells"] for r in cands),
             "ncands": len(cands), "cat": cat_side_of(ss[0], ss[1])}
     cats = collections.Counter(v["cat"] for v in sel.values())
     print(f"[select] sym_sides={len(sel)} cats={dict(cats)}", flush=True)
@@ -233,7 +233,7 @@ def template_rowkeys(tpl_path):
     wb = openpyxl.load_workbook(tpl_path, read_only=True, data_only=True)
     keys = {}
     try:
-        for tab in TABS12:
+        for tab in TABS:
             if tab not in wb.sheetnames:
                 continue
             ws = wb[tab]
@@ -314,18 +314,16 @@ def do_build(args):
                     rk = (tab, sw, cand)
                     pkeys.add(rk)
                     if g is not None:
-                        a = row_acc.setdefault(rk, [0.0, 0, 0])
-                        a[0] += g
-                        a[1] += 1
+                        a = row_acc.setdefault(rk, [0, 0])
+                        a[0] += 1
                         if g > POS_EPS:
-                            a[2] += 1
+                            a[1] += 1
                     for j, y in yvals:
                         ck = (tab, sw, cand, hdrs[j])
-                        a = cell_acc.setdefault(ck, [0.0, 0, 0])
-                        a[0] += y
-                        a[1] += 1
+                        a = cell_acc.setdefault(ck, [0, 0])
+                        a[0] += 1
                         if y > POS_EPS:
-                            a[2] += 1
+                            a[1] += 1
         print(f"[build] {cat}: rowkeys={len(row_acc)} cellkeys={len(cell_acc)}", flush=True)
         tpl_path = pick_template(cat, pkeys)
         twb = openpyxl.load_workbook(tpl_path)
@@ -335,8 +333,8 @@ def do_build(args):
         cov["A1"] = f"{cat} — avg/pos_sym matrix inventory"
         cov["A2"] = f"source template: {tpl_path} (picked by rowkey hit rate)"
         cov["A3"] = f"built: {t0} local; sym_sides={len(sss)}; rowkeys={len(row_acc)}; cellkeys={len(cell_acc)}"
-        cov["A4"] = "semantics: base sheet=TEMPLATE tab AVG (yellow cells=avg_delta, M=row avg of VECTOR_DELTA, N=row pos_sym); _POS sheet=same grid with pos_sym counts; _N sheet=numeric-value counts. blank=never numeric in any sym_side (never tested/skipped/invalid-text). pos=delta>1e-9. avg=mean over numerics incl exact zeros."
-        cov["A5"] = "selection: ONE newest xlsx per sym_side from SPREADSHEETS/V15_V16_CELL_BY_CELL with >=50% of that sym_side's best numeric-cell count (else next newest)."
+        cov["A4"] = "semantics: each trading tab = TEMPLATE grid with pos_sym COUNTS (N=row #sym_sides with VECTOR_DELTA>1e-9; every filter cell=#sym_sides with that cell delta>1e-9, same cell as the sym_side sheets). M left blank. blank=never numeric in any sym_side (never tested/skipped/invalid-text). exact 0=tested, never positive."
+        cov["A5"] = "selection: ONE finalized xlsx per sym_side (latest *_bh*_gain*_t*_30d_matrix.xlsx) from SPREADSHEETS/V15_V16_CELL_BY_CELL. Live working files never enter."
         try:
             uni = json.loads((ROOT / "data" / "tradeable_universe_20261006.json").read_text())
             trad = []
@@ -358,7 +356,7 @@ def do_build(args):
         for col in range(1, 7):
             cov.column_dimensions[get_column_letter(col)].width = 34 if col == 2 else 16
         unmatched = []
-        for tab in TABS12:
+        for tab in TABS:
             if tab not in twb.sheetnames:
                 unmatched.append([tab, "TAB MISSING IN TEMPLATE", "", "", 0, 0])
                 continue
@@ -374,6 +372,8 @@ def do_build(args):
                 hs = str(h).strip()
                 if hs.startswith("WHAT SWITCH"):
                     break
+                if "=" not in hs:
+                    continue
                 yhdr_tpl.append(hs)
             extra_hdrs = sorted({ck[3] for ck in cell_acc if ck[0] == tab} - set(yhdr_tpl))
             out_hdrs = yhdr_tpl + extra_hdrs
@@ -407,73 +407,62 @@ def do_build(args):
                 allrows.append((None, None, None, None, None, None, None, None))
                 for sw, cand in extra_rows:
                     allrows.append((sw, cand, cand, "(EXTRA: in sym files, not in template)", "", None, False, True))
-            for variant, vname in (("avg", tab), ("pos", tab + "_POS"), ("n", tab + "_N")):
-                ws = nwb.create_sheet(vname)
-                ws.freeze_panes = tws.freeze_panes
-                ws.sheet_properties.tabColor = tws.sheet_properties.tabColor
-                for c in range(1, 15):
-                    w = widths.get(c)
-                    if w:
-                        ws.column_dimensions[get_column_letter(c)].width = w
-                for j in range(len(out_hdrs)):
-                    c = 15 + j
-                    w = widths.get(c) if c <= maxc else 14
-                    ws.column_dimensions[get_column_letter(c)].width = w or 14
-                for c in range(1, 15):
-                    v = hdr2[c - 1] if c - 1 < len(hdr2) else None
-                    cell = ws.cell(row=2, column=c, value=v)
-                    if c - 1 < len(r2fills):
-                        cell.fill = r2fills[c - 1]
-                        cell.font = r2fonts[c - 1]
-                for j, h in enumerate(out_hdrs):
-                    cell = ws.cell(row=2, column=15 + j, value=h)
-                    if j < len(yhdr_tpl) and 14 + j < len(r2fills):
-                        cell.fill = r2fills[14 + j]
-                        cell.font = r2fonts[14 + j]
-                    else:
-                        cell.fill = EXTRA_HDR_FILL
-                r1 = [tws.cell(row=1, column=c).value for c in range(1, 15)]
-                for c, v in enumerate(r1, start=1):
-                    if v is not None:
-                        ws.cell(row=1, column=c, value=v)
-                wr = 3
-                for sw, cand, b, d, l, afill, bbold, is_extra in allrows:
-                    if sw is None:
-                        ws.cell(row=wr, column=1, value="EXTRA ROWS (in sym files, not in template)").fill = EXTRA_HDR_FILL
-                        wr += 1
-                        continue
-                    rk = (tab, sw, cand)
-                    ra = row_acc.get(rk)
-                    ws.cell(row=wr, column=1, value=sw)
-                    if afill is not None:
-                        ws.cell(row=wr, column=1).fill = afill
-                    bc = ws.cell(row=wr, column=2, value=b)
-                    if bbold:
-                        f = bc.font.copy()
-                        f.bold = True
-                        bc.font = f
-                    ws.cell(row=wr, column=4, value=d)
-                    ws.cell(row=wr, column=12, value=l)
-                    if ra is not None:
-                        avg = ra[0] / ra[1]
-                        mcell = ws.cell(row=wr, column=13, value=avg)
-                        ncell = ws.cell(row=wr, column=14, value=ra[2])
-                        mcell.fill = GREEN if avg > POS_EPS else (RED if avg < -POS_EPS else PatternFill())
-                        ncell.fill = GREEN if ra[2] > 0 else RED
-                    for j, h in enumerate(out_hdrs):
-                        a = cell_acc.get((tab, sw, cand, h))
-                        if a is None:
-                            continue
-                        if variant == "avg":
-                            v = a[0] / a[1]
-                            cell = ws.cell(row=wr, column=15 + j, value=v)
-                            cell.fill = GREEN if v > POS_EPS else (RED if v < -POS_EPS else PatternFill())
-                        elif variant == "pos":
-                            cell = ws.cell(row=wr, column=15 + j, value=a[2])
-                            cell.fill = GREEN if a[2] > 0 else RED
-                        else:
-                            ws.cell(row=wr, column=15 + j, value=a[1])
+            ws = nwb.create_sheet(tab)
+            ws.freeze_panes = tws.freeze_panes
+            ws.sheet_properties.tabColor = tws.sheet_properties.tabColor
+            for c in range(1, 15):
+                w = widths.get(c)
+                if w:
+                    ws.column_dimensions[get_column_letter(c)].width = w
+            for j in range(len(out_hdrs)):
+                c = 15 + j
+                w = widths.get(c) if c <= maxc else 14
+                ws.column_dimensions[get_column_letter(c)].width = w or 14
+            for c in range(1, 15):
+                v = hdr2[c - 1] if c - 1 < len(hdr2) else None
+                cell = ws.cell(row=2, column=c, value=v)
+                if c - 1 < len(r2fills):
+                    cell.fill = r2fills[c - 1]
+                    cell.font = r2fonts[c - 1]
+            for j, h in enumerate(out_hdrs):
+                cell = ws.cell(row=2, column=15 + j, value=h)
+                if j < len(yhdr_tpl) and 14 + j < len(r2fills):
+                    cell.fill = r2fills[14 + j]
+                    cell.font = r2fonts[14 + j]
+                else:
+                    cell.fill = EXTRA_HDR_FILL
+            r1 = [tws.cell(row=1, column=c).value for c in range(1, 15)]
+            for c, v in enumerate(r1, start=1):
+                if v is not None:
+                    ws.cell(row=1, column=c, value=v)
+            wr = 3
+            for sw, cand, b, d, l, afill, bbold, is_extra in allrows:
+                if sw is None:
+                    ws.cell(row=wr, column=1, value="EXTRA ROWS (in sym files, not in template)").fill = EXTRA_HDR_FILL
                     wr += 1
+                    continue
+                rk = (tab, sw, cand)
+                ra = row_acc.get(rk)
+                ws.cell(row=wr, column=1, value=sw)
+                if afill is not None:
+                    ws.cell(row=wr, column=1).fill = afill
+                bc = ws.cell(row=wr, column=2, value=b)
+                if bbold:
+                    f = bc.font.copy()
+                    f.bold = True
+                    bc.font = f
+                ws.cell(row=wr, column=4, value=d)
+                ws.cell(row=wr, column=12, value=l)
+                if ra is not None:
+                    ncell = ws.cell(row=wr, column=14, value=ra[1])
+                    ncell.fill = GREEN if ra[1] > 0 else RED
+                for j, h in enumerate(out_hdrs):
+                    a = cell_acc.get((tab, sw, cand, h))
+                    if a is None:
+                        continue
+                    cell = ws.cell(row=wr, column=15 + j, value=a[1])
+                    cell.fill = GREEN if a[1] > 0 else RED
+                wr += 1
         un = nwb.create_sheet("UNMATCHED")
         un.append(["tab", "kind", "a", "b", "c", "d"])
         for row in unmatched:
