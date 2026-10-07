@@ -90,5 +90,25 @@
  "ang:NMRUSDT_LONG": {
   "at": "2026-10-07T11:01:07Z",
   "reason": "WR_PULLBACK"
+ },
+ "ang:ACEUSDT_SHORT": {
+  "at": "2026-10-07T11:15:42Z",
+  "reason": "B15"
+ },
+ "ang:AIAUSDT_LONG": {
+  "at": "2026-10-07T11:15:47Z",
+  "reason": "B_EMA20SLOPE"
+ },
+ "ang:DOGEUSDC_SHORT": {
+  "at": "2026-10-07T11:15:52Z",
+  "reason": "B_EMA20SLOPE"
+ },
+ "ang:ETCUSDT_SHORT": {
+  "at": "2026-10-07T11:15:53Z",
+  "reason": "B_KZONE"
+ },
+ "ang:EDUUSDT_LONG": {
+  "at": "2026-10-07T11:15:55Z",
+  "reason": "B_KZONE"
  }
 }

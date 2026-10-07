@@ -1104,6 +1104,15 @@
     },
     "last_seen": "2026-05-22T03:22:07.133966+00:00"
   },
+  "men:COMPUSDT_SHORT": {
+    "count": 40,
+    "first_seen_zero_at": "2026-05-27T21:50:33.418192+00:00",
+    "last_increment_at": "2026-05-27T22:12:51.984984+00:00",
+    "sources": {
+      "API_ABSENCE": 38
+    },
+    "last_seen": "2026-05-27T22:17:23.568015+00:00"
+  },
   "inf:XMRUSDT_SHORT": {
     "count": 1,
     "first_seen_zero_at": "2026-05-30T03:13:06.436841+00:00",
@@ -1444,6 +1453,12 @@
     },
     "last_seen": "2026-07-19T23:02:45.105092+00:00"
   },
+  "men:LINKUSDC_SHORT": {
+    "count": 2,
+    "first_seen": "2026-08-01T16:32:44.909636+00:00",
+    "source": "phantom_kill_bootstrap",
+    "last_seen": "2026-08-01T16:33:45.488097+00:00"
+  },
   "inf:HYPEUSDT_LONG": {
     "count": 4,
     "first_seen_zero_at": "2026-08-04T15:38:30.525027+00:00",
@@ -1585,6 +1600,14 @@
       "API_ABSENCE": 2
     }
   },
+  "ang:ATOMUSDT_SHORT": {
+    "count": 16,
+    "first_seen_zero_at": "2026-09-22T19:16:13.742340+00:00",
+    "last_increment_at": "2026-09-22T19:38:31.282327+00:00",
+    "sources": {
+      "API_ABSENCE": 16
+    }
+  },
   "fin:SNXUSDT_SHORT": {
     "count": 2,
     "first_seen_zero_at": "2026-09-23T16:29:11.380925+00:00",
@@ -1609,6 +1632,14 @@
       "API_ABSENCE": 3
     },
     "last_seen": "2026-09-24T17:58:23.611196+00:00"
+  },
+  "inf:ARBUSDC_SHORT": {
+    "count": 4,
+    "first_seen_zero_at": "2026-09-24T18:04:16.774581+00:00",
+    "last_increment_at": "2026-09-24T18:08:09.310430+00:00",
+    "sources": {
+      "API_ABSENCE": 4
+    }
   },
   "inf:IOTAUSDT_LONG": {
     "count": 2,
@@ -1642,23 +1673,12 @@
     },
     "last_seen": "2026-10-06T04:52:29.367376+00:00"
   },
-  "ang:ZECUSDC_LONG": {
-    "count": 2,
-    "first_seen_zero_at": "2026-10-07T02:16:46.124226+00:00",
-    "last_increment_at": "2026-10-07T02:16:46.124226+00:00",
+  "men:RENDERUSDT_LONG": {
+    "count": 1,
+    "first_seen_zero_at": "2026-10-07T02:49:38.035200+00:00",
+    "last_increment_at": "2026-10-07T02:49:38.035200+00:00",
     "sources": {
       "API_ABSENCE": 1
-    },
-    "last_seen": "2026-10-07T02:17:09.828235+00:00"
-  },
-  "men:RENDERUSDT_LONG": {
-    "count": 5,
-    "first_seen": "2026-10-07T10:23:51.744049+00:00",
-    "source": "phantom_kill_bootstrap",
-    "last_seen": "2026-10-07T10:23:51.744061+00:00",
-    "last_increment_at": "2026-10-07T10:27:03.143448+00:00",
-    "sources": {
-      "API_ABSENCE": 4
     }
   }
 }

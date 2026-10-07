@@ -31,12 +31,20 @@
   "at": "2026-10-07T03:30:15Z",
   "reason": "B_KZONE"
  },
- "flz:BNBUSDC_LONG": {
-  "at": "2026-10-07T08:15:09Z",
-  "reason": "B12"
- },
  "flz:SOLUSDC_SHORT": {
   "at": "2026-10-07T08:15:15Z",
   "reason": "B04"
+ },
+ "flz:GRAMUSDT_SHORT": {
+  "at": "2026-10-07T11:11:30Z",
+  "reason": "B_KZONE"
+ },
+ "flz:BNBUSDC_SHORT": {
+  "at": "2026-10-07T11:15:02Z",
+  "reason": "B12"
+ },
+ "flz:DOGEUSDC_SHORT": {
+  "at": "2026-10-07T11:15:19Z",
+  "reason": "B_EMA20SLOPE"
  }
 }

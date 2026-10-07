@@ -1,87 +1,63 @@
 {
- "generated_at": "2026-10-07 11:04 UTC",
- "total_capital_usd": 130.02,
+ "generated_at": "2026-10-07 11:10 UTC",
+ "total_capital_usd": 72.65,
  "tier_capital": {
   "A": 0.0,
-  "B": 130.01,
+  "B": 72.65,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 6,
+  "B": 4,
   "C": 0
  },
  "winners": [],
- "losers": [
-  "inf:ARUSDT_LONG"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:ARUSDT_LONG",
-   "symbol": "ARUSDT",
-   "account": "inf",
-   "value_usd": 69.82,
-   "gain_pct": -0.541,
+   "pk": "ang:NEARUSDC_LONG",
+   "symbol": "NEARUSDC",
+   "account": "ang",
+   "value_usd": 35.34,
+   "gain_pct": 0.951,
    "tier": "B",
-   "perf_mult": 0.77,
-   "amt": 16.4,
-   "mark": 4.25704917
+   "perf_mult": 1.0,
+   "amt": 7.0,
+   "mark": 5.048
   },
   {
-   "pk": "inf:ARKMUSDT_SHORT",
+   "pk": "ang:ATOMUSDT_SHORT",
+   "symbol": "ATOMUSDT",
+   "account": "ang",
+   "value_usd": 15.81,
+   "gain_pct": 1.434,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 9.39,
+   "mark": 1.684
+  },
+  {
+   "pk": "ang:ARKMUSDT_SHORT",
    "symbol": "ARKMUSDT",
-   "account": "inf",
-   "value_usd": 15.69,
-   "gain_pct": 1.468,
+   "account": "ang",
+   "value_usd": 15.71,
+   "gain_pct": 0.973,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 124.0,
-   "mark": 0.1265147
+   "mark": 0.1267
   },
   {
-   "pk": "inf:API3USDT_SHORT",
-   "symbol": "API3USDT",
-   "account": "inf",
-   "value_usd": 15.63,
-   "gain_pct": 2.156,
+   "pk": "ang:DOTUSDT_SHORT",
+   "symbol": "DOTUSDT",
+   "account": "ang",
+   "value_usd": 5.79,
+   "gain_pct": 0.876,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 49.5,
-   "mark": 0.31580229
-  },
-  {
-   "pk": "inf:SOLUSDC_SHORT",
-   "symbol": "SOLUSDC",
-   "account": "inf",
-   "value_usd": 15.27,
-   "gain_pct": 0.548,
-   "tier": "B",
-   "perf_mult": 2.08,
-   "amt": 0.13,
-   "mark": 117.48266332
-  },
-  {
-   "pk": "inf:NEARUSDC_LONG",
-   "symbol": "NEARUSDC",
-   "account": "inf",
-   "value_usd": 10.05,
-   "gain_pct": 1.302,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 2.0,
-   "mark": 5.02690111
-  },
-  {
-   "pk": "inf:ALGOUSDT_SHORT",
-   "symbol": "ALGOUSDT",
-   "account": "inf",
-   "value_usd": 3.55,
-   "gain_pct": 4.875,
-   "tier": "B",
-   "perf_mult": 0.72,
-   "amt": 30.2,
-   "mark": 0.11765295
+   "amt": 5.2,
+   "mark": 1.1131
   }
  ]
 }
