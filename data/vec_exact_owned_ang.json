@@ -47,10 +47,6 @@
   "at": "2026-10-07T01:00:50Z",
   "reason": "B_EMA20SLOPE"
  },
- "ang:XTZUSDT_LONG": {
-  "at": "2026-10-07T01:39:07Z",
-  "reason": "B_KZONE"
- },
  "ang:ARKMUSDT_SHORT": {
   "at": "2026-10-07T02:15:10Z",
   "reason": "DC_BREAKOUT_ENTRY"
@@ -78,5 +74,37 @@
  "ang:KMNOUSDT_LONG": {
   "at": "2026-10-07T08:15:23Z",
   "reason": "B_SMA200DIST"
+ },
+ "ang:LTCUSDC_LONG": {
+  "at": "2026-10-07T10:31:25Z",
+  "reason": "B12"
+ },
+ "ang:AXSUSDT_SHORT": {
+  "at": "2026-10-07T10:39:02Z",
+  "reason": "B_EMA20SLOPE"
+ },
+ "ang:SKYUSDT_SHORT": {
+  "at": "2026-10-07T10:39:11Z",
+  "reason": "B12"
+ },
+ "ang:ENJUSDT_SHORT": {
+  "at": "2026-10-07T10:45:20Z",
+  "reason": "B_EMA20SLOPE"
+ },
+ "ang:AAPLUSDT_LONG": {
+  "at": "2026-10-07T10:45:21Z",
+  "reason": "B_VWAPBOUNCE"
+ },
+ "ang:GALAUSDT_SHORT": {
+  "at": "2026-10-07T10:45:25Z",
+  "reason": "B_KZONE"
+ },
+ "ang:ALGOUSDT_SHORT": {
+  "at": "2026-10-07T10:45:33Z",
+  "reason": "B_EMA20SLOPE"
+ },
+ "ang:SANDUSDT_LONG": {
+  "at": "2026-10-07T10:45:50Z",
+  "reason": "GOLDEN_RULE_ENTRY"
  }
 }

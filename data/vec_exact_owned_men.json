@@ -59,17 +59,9 @@
   "at": "2026-10-07T06:15:47Z",
   "reason": "B12"
  },
- "men:EDUUSDT_LONG": {
-  "at": "2026-10-07T07:00:41Z",
-  "reason": "B12"
- },
  "men:ARUSDT_SHORT": {
   "at": "2026-10-07T07:03:13Z",
   "reason": "B_KZONE"
- },
- "men:RENDERUSDT_LONG": {
-  "at": "2026-10-07T07:32:04Z",
-  "reason": "ENTRY_SOURCE_UNKNOWN"
  },
  "men:COMPUSDT_SHORT": {
   "at": "2026-10-07T07:45:44Z",
@@ -99,10 +91,6 @@
   "at": "2026-10-07T08:32:15Z",
   "reason": "GOLDEN_RULE_ENTRY"
  },
- "men:QTUMUSDT_SHORT": {
-  "at": "2026-10-07T08:46:29Z",
-  "reason": "B14"
- },
  "men:AXSUSDT_SHORT": {
   "at": "2026-10-07T09:17:32Z",
   "reason": "GOLDEN_RULE_ENTRY"
@@ -110,5 +98,21 @@
  "men:ENJUSDT_SHORT": {
   "at": "2026-10-07T09:44:00Z",
   "reason": "DC_BREAKOUT_ENTRY"
+ },
+ "men:LTCUSDC_LONG": {
+  "at": "2026-10-07T10:31:43Z",
+  "reason": "B12"
+ },
+ "men:ALGOUSDT_SHORT": {
+  "at": "2026-10-07T10:45:53Z",
+  "reason": "B_EMA20SLOPE"
+ },
+ "men:KMNOUSDT_SHORT": {
+  "at": "2026-10-07T10:46:03Z",
+  "reason": "B_EMA20SLOPE"
+ },
+ "men:BTCUSDC_SHORT": {
+  "at": "2026-10-07T10:46:17Z",
+  "reason": "B_KZONE"
  }
 }
