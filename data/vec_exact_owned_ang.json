@@ -3,10 +3,6 @@
   "at": "06 20:04:50 - ",
   "reason": "seeded_from_log"
  },
- "ang:ZROUSDT_LONG": {
-  "at": "06 20:04:49 - ",
-  "reason": "seeded_from_log"
- },
  "ang:NEARUSDC_LONG": {
   "at": "06 20:15:57 - ",
   "reason": "seeded_from_log"
@@ -123,8 +119,16 @@
   "at": "2026-10-07T02:45:46Z",
   "reason": "DC_BREAKOUT_ENTRY"
  },
- "ang:AIAUSDT_LONG": {
-  "at": "2026-10-07T03:00:29Z",
+ "ang:APPUSDT_LONG": {
+  "at": "2026-10-07T03:10:32Z",
+  "reason": "B14"
+ },
+ "ang:COTIUSDT_SHORT": {
+  "at": "2026-10-07T03:15:28Z",
+  "reason": "DC_BREAKOUT_ENTRY"
+ },
+ "ang:ETHFIUSDC_LONG": {
+  "at": "2026-10-07T03:15:45Z",
   "reason": "B_KZONE"
  }
 }
