@@ -31,8 +31,11 @@ DST_V15="/Users/niels/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL/"
 # in-progress sheets only; pass 2 pulls finals + same-stem chart + manifest with
 # --ignore-existing. Patterns owned by tools/v15_final_sync_guard.py (FINAL_GLOBS).
 DST_CHARTS="/Users/niels/Documents/binance/data/reports/charts_1M/"
+SANDBOX_S6="~/binance-sandbox/data/s6_365"
+RSYNC_S6="binance-sandbox/data/s6_365"
+DST_S6="/Users/niels/Documents/binance/SPREADSHEETS/S6_365/"
 MAX_AGE_MIN="${V15_SYNC_MAX_AGE_MIN:-4320}"
-mkdir -p "$DST" "$DST_V15" "$DST_CHARTS"
+mkdir -p "$DST" "$DST_V15" "$DST_CHARTS" "$DST_S6"
 # recent_list <host> <ssh-opts> <remote-dir> <list-file>: basenames in remote-dir
 # modified within MAX_AGE_MIN, one per line. Always exits 0 with the file present;
 # empty on ssh/find failure (fail-closed: the pull then transfers nothing).
@@ -47,12 +50,14 @@ LIST_CELL="$(mktemp /tmp/v15sync_cell.XXXXXX)"
 LIST_CELL_S2="$(mktemp /tmp/v15sync_cell_s2.XXXXXX)"
 LIST_CELL_S5="$(mktemp /tmp/v15sync_cell_s5.XXXXXX)"
 LIST_1M="$(mktemp /tmp/v15sync_1m.XXXXXX)"
-trap 'rm -f "$LIST_SPREAD" "$LIST_CELL" "$LIST_CELL_S2" "$LIST_CELL_S5" "$LIST_1M"' EXIT
+LIST_S6="$(mktemp /tmp/v15sync_s6.XXXXXX)"
+trap 'rm -f "$LIST_SPREAD" "$LIST_CELL" "$LIST_CELL_S2" "$LIST_CELL_S5" "$LIST_1M" "$LIST_S6"' EXIT
 recent_list "$S1" "-o BatchMode=yes -o ConnectTimeout=10" "$SANDBOX_SPREAD" "$LIST_SPREAD"
 recent_list "$S1" "-o BatchMode=yes -o ConnectTimeout=10" "$SANDBOX_CELL" "$LIST_CELL"
 recent_list "$S2" "-o BatchMode=yes -o ConnectTimeout=15" "$SANDBOX_CELL" "$LIST_CELL_S2"
 recent_list "$S5" "-o BatchMode=yes -o ConnectTimeout=15" "$SANDBOX_CELL" "$LIST_CELL_S5"
 recent_list "$S1" "-o BatchMode=yes -o ConnectTimeout=10" "$SANDBOX_1M" "$LIST_1M"
+recent_list "$S1" "-o BatchMode=yes -o ConnectTimeout=10" "$SANDBOX_S6" "$LIST_S6"
 # progress board first (tiny, written every minute on S1 by tools/v15_progress_board.py) so Mac monitoring never waits on xlsx
 rsync -auz --timeout=30 --files-from="$LIST_SPREAD" --include='V15_PROGRESS.md' --include='V15_PROGRESS.csv' --exclude='*' -e "$RSYNC_SSH" "$S1:$RSYNC_SPREAD/" "$DST" 2>&1 | tail -n 3
 echo "[$(date)] Sync S1 -> Mac xls (new-only: max age ${MAX_AGE_MIN}min)... (TEMPLATE* excluded - Mac is source of truth, never S1->Mac)"
@@ -74,6 +79,8 @@ echo "[$(date)] Sync S1 -> Mac per-tab charts (new-only)..."
 rsync -auvz --progress --files-from="$LIST_SPREAD" --exclude='*TEMPLATE*' --include='*_chart.html' --exclude='*' -e "$RSYNC_SSH" "$S1:$RSYNC_SPREAD/" "$DST" 2>&1 | tail -n 20
 echo "[$(date)] Sync S1 -> Mac charts_1M (new-only)..."
 rsync -auvz --progress --files-from="$LIST_1M" --include='*.html' --exclude='*' -e "$RSYNC_SSH" "$S1:$RSYNC_1M/" "$DST_CHARTS" 2>&1 | tail -n 20
+echo "[$(date)] Sync S1 -> Mac S6_365 365D+GS verdicts (new-only)..."
+rsync -auvz --progress --files-from="$LIST_S6" --include='*.json' --exclude='*' -e "$RSYNC_SSH" "$S1:$RSYNC_S6/" "$DST_S6" 2>&1 | tail -n 10
 echo "[$(date)] Mac sync done: $(ls -lh "$DST"*.xlsx 2>&1 | wc -l) xlsx, $(ls -lh "$DST"*.html 2>&1 | wc -l) html in SPREADSHEETS, $(ls -lh "$DST_CHARTS"*.html 2>&1 | wc -l) charts in charts_1M"
 
 # BADZIP FIX 2026-09-29: xlsx sources are atomic-writers only (see tools/xlsx_atomic.py).

@@ -102,6 +102,6 @@ New pilot launches clone the new templates automatically. Never restart running 
   the fleet set; currently gated by the pre-existing violation backlog — see Step 5.4).
 - Refused legacy: `tools/v15_add_switches.py`, `tools/v15_add_orange_rows.py` (USER 2026-09-30
   class refusal; superseded by this guide — do not un-refuse them, use the adder above).
-- The fleet reads `SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_*.xlsx` (4 files, ~3393 rows each).
-  The generic `SPREADSHEETS/TEMPLATE_*.xlsx` set (~7249 rows) is NOT pilot-consumed; do not add
-  switch rows there expecting pilots to see them.
+- The ONLY templates are `SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_*.xlsx` (4 independent files,
+  ~3393 rows each, diverging per cat_side). The legacy generic `SPREADSHEETS/TEMPLATE_*.xlsx` set was
+  archived on 2026-10-07 (`backups/archive_generic_templates_20261007/`, never restored over FINAL_NORM).

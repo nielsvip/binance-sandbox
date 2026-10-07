@@ -1,10 +1,14 @@
-# 📖 BACKTEST BIBLE — Single Source of Truth — 2026-09-26 Redo
+# 📖 BACKTEST BIBLE — Single Source of Truth — 2026-09-26 Redo, updated 2026-10-07
 
 > **Canonical file.** Mac `BACKTEST_BIBLE.md` is the only canonical copy.
-> After every edit `tools/sync_backtest_bible.sh` publishes identical bytes to
-> `S1:/home/niels/binance-sandbox/BACKTEST_BIBLE.md` and `S1:data/reports/BACKTEST_BIBLE.md`
-> and verifies 4× SHA-256. If conflict, THIS file wins.
+> After every edit, publish identical bytes by hand (the old `tools/sync_backtest_bible.sh`
+> no longer exists — retired 2026-10-07):
+> `rsync -az BACKTEST_BIBLE.md s1:~/binance-sandbox/BACKTEST_BIBLE.md` plus
+> `S1:data/reports/BACKTEST_BIBLE.md`, then `sha256sum` all copies incl. Mac.
+> If conflict, THIS file wins.
 > Historical `backtest_bible_0901.md` (745K) is fallback only.
+> 2026-10-07 cut: 4 independent templates (§70), switch-add (§71), zero-formula skip (§72),
+> possym sampling (§73), fleet/scheduler reality (§74); STDEV active; G = joint-first (§56.0).
 
 > 🔴 **PARITY DEFINITION — READ §68 BEFORE ANY ENGINE, LIVE, TEMPLATE OR DEFAULTS WORK (USER 2026-10-06).**
 > Vectorized == live BY DEFINITION. The vectorized engine is now the source of truth; live functions are
@@ -37,10 +41,10 @@ Lying Sharpe/gain/DD wiped out half the user's net worth in 4 months. Every metr
 
 - **Gateway** `157.90.168.35` (`gateway-internal` via `~/.ssh/config` ProxyJump, fallback `157.180.125.52:22` direct, `s1-sftp` ControlMaster `~/.ssh/cm-s1-int` on `127.0.0.1:2201`). Bootstrap: `ssh -fNT s1-sftp` then verify `ssh s1-int "hostname"` and `ssh s5 "hostname"`.
 - **S1 Niels** `s1-int 127.0.0.1:2201 / s1-pub 157.180.125.52:22 / niels 10.0.0.3 / hel1 2a01:4f9:c013:fdf7::/64` — 16c 30 Gi 79 G free, `backtest_v8/indicators 473×31 G` local, `SPREADSHEETS/` + `data/reports/lifecycle_pilot/` source of truth.
-- **S4 `65.108.49.184` (10.0.0.4), S5 `10.0.0.5`, future `S6…`** — `10.0.0.x via gateway ProxyJump`, ephemeral, **exact image of S1** (`rsync -az s1-int:~/binance-sandbox/ niels@10.0.0.x:~/binance-sandbox/`). Never provision from scratch; always clone S1.
+- **S2 `10.0.0.4` (hostname `s2`), S5 `10.0.0.5` (hostname `s5`), future `S6…`** — `10.0.0.x via gateway ProxyJump`, ephemeral, **exact image of S1** (`rsync -az s1-int:~/binance-sandbox/ niels@10.0.0.x:~/binance-sandbox/`). Never provision from scratch; always clone S1. (Older docs' `S4` name is retired — the fleet observed 2026-10-07 is S1/S2/S5.)
 - **Mac** `Darwin /opt/anaconda3/envs/binance_env/bin/python 134×10 G` — **LIVE trading + dashboard only, never backtests** except `--dry-run` / `--allow-mac`. Mac NPZ truncated → `0 trades DATA_ERROR`.
 
-**Code sync:** Edit only on Mac (`/Users/niels/Documents/binance`), then `rsync -az -e "ssh -S none -o StrictHostKeyChecking=accept-new"` `v15_pilot.py`, `SPREADSHEETS/TEMPLATE*.xlsx`, `tools/v15_local_herd.py` to `~/binance-sandbox/` + `~/binance/` on S1/S4/S5, `md5sum` verify. Never `push.py`.
+**Code sync:** Edit only on Mac (`/Users/niels/Documents/binance`), then `rsync -az -e "ssh -S none -o StrictHostKeyChecking=accept-new"` the changed runtime files (`v15_pilot.py`, `SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_*.xlsx`, `tools/v15_row_guards.py`, `data/cell_evidence/*.json`, …) to `~/binance-sandbox/` on S1/S2/S5, `md5sum` verify. Never `push.py`. (`tools/v15_local_herd.py` is deleted — the scheduler launches pilots; see §74. Running pilots keep their loaded code; only new launches take the new bytes.)
 
 **NPZ sync:** S1 is NPZ source (`backtest_v8/indicators/*.npz`). `tools/sync_indicators.sh` rsyncs to `10.0.0.4/5` every 60 s. If `ZECUSDC` missing `stdev_edge_15m`, run `backtest_v8_precompute.py --symbol ZECUSDC --mode crypto` on S1.
 
@@ -50,8 +54,8 @@ Lying Sharpe/gain/DD wiped out half the user's net worth in 4 months. Every metr
 
 | Source | Path | Content | Window |
 |---|---|---|---|
-| **NPZ indicators** | `backtest_v8/indicators/{SYM}.npz` (S1: `~/binance-sandbox/backtest_v8/indicators/`) | Per-bar arrays: `open/high/low/close/volume`, `dc_position_*`, `wt1/wt2_*`, `atr_*`, `sma_200_1h`, `adx_1h`, `stdev_edge_*`, `stdev_slope_*`, `timestamps` (unix ms) | Pilot slices **30 days** (`timestamps[-1] - 30d` crypto, `20 RTH sessions` stocks) via `prepare_batch(sym, 30)` |
-| **TEMPLATE workbook** | `SPREADSHEETS/TEMPLATE*.xlsx` | 13 `SWITCH_SHEETS` + `*_BASELINE_METRICS` + `FILTER_DICTIONARY_V2` + `FILTERS_EXPLAINED` + `LEGEND_FILTERS` | Cloned per `sym_side` to `V15_V16_CELL_BY_CELL/{SYM}_{SIDE}_30d_matrix.xlsx` |
+| **NPZ indicators** | `backtest_v8/indicators/{SYM}.npz` (S1: `~/binance-sandbox/backtest_v8/indicators/`) | Per-bar arrays: `open/high/low/close/volume`, `dc_position_*`, `wt1/wt2_*`, `atr_*`, `sma_200_1h`, `adx_1h`, `stdev_edge_*`, `stdev_slope_*`, `timestamps` (unix **seconds**) | Pilot slices **30 days** (`timestamps[-1] - 30d` crypto, `20 RTH sessions` stocks) via `prepare_batch(sym, 30)` |
+| **TEMPLATE workbook** | `SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_{CRYPTO,STOCKS}_{LONG,SHORT}.xlsx` — 4 independent files, never generic (§70) | 13 `SWITCH_SHEETS` + `*_BASELINE_METRICS` + `FILTER_DICTIONARY_V2` + `FILTERS_EXPLAINED` + `LEGEND_FILTERS` | Cloned per `sym_side` to `V15_V16_CELL_BY_CELL/{SYM}_{SIDE}_30d_matrix.xlsx` |
 | **Previous best overrides** | `SPREADSHEETS/` + `SPREADSHEETS/V15_V16_CELL_BY_CELL/` + `data/reports/lifecycle_pilot/*_v14_progress.json` (`cumulative_overrides`, `hustler_overrides`) + `hustler_best.json` | Best `switch=cand` and `filter=opt` per exact `SYM_SIDE` | Ingested **before** baseline; best wins over `config.py`/`config_tradier.py` defaults — never `if k not in overrides` guard |
 | **Defaults** | `config.py` / `config_tradier.py` | 851 `QuickConfig` fields | Sanitized via `sanitize_overrides()` |
 
@@ -63,26 +67,25 @@ Lying Sharpe/gain/DD wiped out half the user's net worth in 4 months. Every metr
 
 | Engine | Real reads | s/eval | Role |
 |---|---|---|---|
-| `v12_quick_engine` (`QuickConfig`, 851 reads) | 851 | 0.07 s | **Vector sweep** — `V.simulate_one(npz,sym,is_long,cfg)` + `prepare_batch` / `evaluate_prepared_sanitized` (hot `ALL_PREPARED`, `V12_NPZ_CACHE=32`). What `v15_pilot` calls for every yellow cell and every `VECTOR_DELTA`. |
-| `backtest_v12_engine` (266 + 1981 stubs) | 266 | ~30 s | **Scalar live-faithful verifier** — calls real `ez_manage.process_position` / `tradier_manage.process_position` bar-by-bar, guarded by `_assert_live_path`. What `v15_pilot` calls **once per workbook** (winning set) to fill `LIVE_DELTA`/`LIVE_SHARPE` and prove parity. |
+| `v12_quick_engine` (`QuickConfig`, ~851 reads, 15 384 lines) | ~851 | ~0.07 s unloaded / 0.09–0.17 s loaded (2026-10-07 fleet audit) | **Vector sweep** — `V.simulate_one(npz,sym,is_long,cfg)` + `prepare_batch` / `evaluate_prepared_sanitized` (hot `ALL_PREPARED`, `V12_NPZ_CACHE=32` pilot-forced). What `v15_pilot` calls for every yellow cell and every `VECTOR_DELTA`. |
+| `backtest_v12_engine` | scalar | ~30 s+ | **Scalar live-faithful verifier** — calls real `ez_manage.process_position` / `tradier_manage.process_position` bar-by-bar, guarded by `_assert_live_path`. What `v15_pilot` calls **once per workbook** (winning set) to fill `LIVE_DELTA`/`LIVE_SHARPE` and prove parity — deferred under the fleet's `--vector-only` + `V15_SKIP_LIVE_AT_DONE=1` launches. |
 
 Parity = `v12_quick_engine` vs `backtest_v12_engine` on **same frozen 30-day NPZ**. `backtest_v12_engine` carries no-vectorisation guard — do not defeat. Trade ratio must be 0.80–1.25 and gain mismatch <0.5 pp and <15%.
 
 ---
 
-## 4. TEMPLATE SYSTEM — THE 12-TAB WORKBOOK
+## 4. TEMPLATE SYSTEM — THE 13-TAB WORKBOOK × 4 INDEPENDENT FILES
 
 ### 4.1 Source
 
-`SPREADSHEETS/TEMPLATE*.xlsx` — four variants, selected per `sym_side` by `get_template_for_symside()`:
+`SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_*.xlsx` — four INDEPENDENT files, selected per `sym_side` by `get_template_for_symside()` (exact file, no cross-side fallback — a missing file refuses the run). They diverge per cat_side by design (§70). The legacy generic `SPREADSHEETS/TEMPLATE_*.xlsx` set was archived 2026-10-07 (`backups/archive_generic_templates_20261007/`, never restored); `TEMPLATE.xlsx` no longer exists.
 
 - `TEMPLATE_STOCKS_LONG.xlsx` / `TEMPLATE_STOCKS_SHORT.xlsx` → stocks via `tradier_manage` / `config_tradier.py`
 - `TEMPLATE_CRYPTO_LONG.xlsx` / `TEMPLATE_CRYPTO_SHORT.xlsx` → crypto via `ez_manage` / `config.py`
-- `TEMPLATE.xlsx` generic fallback (deprecated for new runs).
 
 Each template has:
 
-- **13 `SWITCH_SHEETS`** in fixed order: `STDEV_SLOPE_SIZING, ENTRY_REVERSAL_BOUNCE, ENTRY_BREAKOUT_CHANNEL, ENTRY_CONFIRMATION_GATES, EXIT_STRUCTURAL, EXIT_VELOCITY, REENTRY_WINDOWED, REENTRY_ADAPTIVE, AUGMENT_TREND, AUGMENT_RISK_SIZING, REDUCE_PROFIT_LOCK, REDUCE_SIGNAL_RATER, GLOBAL_RISK_GATES` — **`STDEV_SLOPE_SIZING` is SKIPPED until rewritten (see §4.2), so 12 tabs are active.**
+- **13 `SWITCH_SHEETS`** in fixed order: `STDEV_SLOPE_SIZING, ENTRY_REVERSAL_BOUNCE, ENTRY_BREAKOUT_CHANNEL, ENTRY_CONFIRMATION_GATES, EXIT_STRUCTURAL, EXIT_VELOCITY, REENTRY_WINDOWED, REENTRY_ADAPTIVE, AUGMENT_TREND, AUGMENT_RISK_SIZING, REDUCE_PROFIT_LOCK, REDUCE_SIGNAL_RATER, GLOBAL_RISK_GATES` — **all 13 active** (`SKIP_SHEETS` is empty; `STDEV_SLOPE_SIZING` is a single T/F switch tab per §56 R20, filled like the rest).
 - **`TEMPLATE_BASELINE_METRICS`** (renamed on clone to `{SYM}_{SIDE}_BASELINE_METRICS`)
 - **`FILTER_DICTIONARY_V2`** — every filter's `Filter | Option Value | Sheets applicable | Switches exactly (gates) | Recommendation (SPECIFIC/GENERAL)` — the source of yellow-cell eligibility.
 - **`LEGEND_FILTERS` / `FILTERS_EXPLAINED` / `INSTRUCTIONS_V2`** — human docs.
@@ -107,23 +110,23 @@ Columns may be added, so `v15_pilot` resolves every column via `_hdr_col_map()` 
 | C | `override` | Override for this row | `switch=cand [+ pos_yellow_headers]` | **Bold** if non-default, only when `VECTOR_DELTA > 0` for that row's positive yellows. Never overwrite — **add** header names. |
 | D | `Family` | `SPECIFIC` vs `GENERAL` | never | `GENERAL` rows are orange per-sheet rollups, never yellow per-switch. |
 | E | `BASELINE` | Cumulative baseline before this row | numeric float or blank | **E2 is always header `BASELINE` (string, never overwritten). E3 = `baseline_gain` (first numeric). All other E cells stay BLANK until a POS delta promotes the next row/tab (see §5.4).** |
-| F | `HUSTLE_DELTA` | Alias of `VECTOR_DELTA` vs `cumulative_before` | float pos/neg | Never leave as `VLOOKUP` — pilot decides. Fill `#4472C4` header style handled by `_auto_adjust_all_sheets`. |
-| G | `VECTOR_DELTA` | `sum(pos yellow deltas)` vs `cumulative_before` | float pos/neg | Every row gets a value — pos green `006100` or neg red `FFC7CE`. Never `None`. |
+| F | `HUSTLE_DELTA` | Row result vs the ORIGINAL (initial) baseline (§56.0) | **BLANK by default** (`V15_WRITE_HUSTLE=0` under worst2best; `=1` to write) | Never `VLOOKUP` — pilot decides. Fill `#4472C4` header style handled by `_auto_adjust_all_sheets`. |
+| G | `VECTOR_DELTA` | Row COMPLETE delta vs `cumulative_before`: real JOINT eval (switch + all positive yellows together), else best single positive, else naked (§56.0 — never an arithmetic sum) | float pos/neg on evaluated rows; **BLANK (never 0.0) on skipped/invalid** (§41.1, RULE#2) | Pos green `006100` / neg red `FFC7CE`. |
 | H | `LIVE_DELTA` | `live_gain - cumulative_before` | **BLANK until workbook complete** | Contains formulas in template — **pilot clears them at start** (`_spec_clear_live_formulas`). Filled once at the end via `backtest_v12_engine` on winning set. Never per-row. |
 | I | `LIVE_SHARPE` | `live pool_sharpe` delta | **BLANK until workbook complete** | Same as H — cleared at start, filled once at end. |
 | J | `REAL_COMPLETE` | — | — | — |
 | K | `PER_ROW_FILTERS` | Comma-joined positive yellow headers for this row | `hdr1, hdr2` or blank | Per-row via `_write_per_row_HIK`. |
 | L | `is_default (backup if bold lost)` | `YES` if row B should be bold | never | If bold lost, pilot restores B bold from `L=YES` at workbook open. |
 | M:N | `AVG DELTA` / `POS_SYM` | Maintained by `V15_AVG_DELTAS` | never by pilot | Reordered `worst_first` while keeping entire column content together — yellow cells for a row always stay with same switch name when row order changes. |
-| O:BI | Yellow headers `FILTER=OPT` (e.g. `ATR_TRAIL_FILTER_TF=OFF`) | Per-yellow delta vs `cumulative_before` | float delta per yellow cell | **Opportune yellows only** (see §5.3). Written before row advances. |
+| L:BI | Yellow headers `FILTER=OPT` (e.g. `ATR_TRAIL_FILTER_TF=OFF`) | Per-yellow delta vs `cumulative_before` | float delta per yellow cell | **Opportune yellows only** (see §5.3). Written before row advances. |
 | — | `ORANGE (FILTER)` fields below SWITCH in same column C | Per-sheet GENERAL rollups | — | **Can NEVER be above white (SWITCH) rows.** White switches occupy `r=3..n_switch`, orange GENERAL rows follow below — never interleaved. |
 | — | `WHAT SWITCH` | Sentinel ending yellow block | never | Header scan stops here. |
 
 **Visual:** All cells `Arial 10 left`, row height 15, column width `max_len+2 cap 30` via `_auto_adjust_all_sheets` before every `_atomic_save`. `DC_BREAKOUT_SCORE` int `10`, TF `15m` string, `False/True` not `FALSE/TRUE`. Only switch column C may carry non-default bold; no blueish/orange outside C.
 
-### 4.3 STDEV_SLOPE_SIZING — skipped
+### 4.3 STDEV_SLOPE_SIZING — active single-switch tab
 
-34 rows implementing `compute_regime_sizing_mult()` (`BAND_SLOPE_SIZING_V2`, `stdev_edge_*`, `stdev_slope_*` per TF `D/4h/1h/15m`). Sheet stays in TEMPLATE but `SKIP_SHEETS = {"STDEV_SLOPE_SIZING"}` — never calculated until rewritten. Effective workbook = **12 tabs, ~3800 rows** (was 4801 with STDEV).
+`STDEV_SLOPE_SIZING` is ONE switch (`True` = use the 1–5× regime multiplier, `False` = don't — §56 R20), filled like every other tab (`SKIP_SHEETS` is empty). Requires `stdev_edge_*`/`stdev_slope_*` in the NPZ; if genuinely missing, its row is marked with the reason and logged — never silently dropped. Effective workbook = **13 tabs, ~3400 rows** (CRYPTO_LONG 2026-10-07; counts drift as switches are added — see the floor test, never pin exact counts in prose).
 
 ---
 
@@ -133,7 +136,7 @@ Columns may be added, so `v15_pilot` resolves every column via `_hdr_col_map()` 
 
 ### 5.1 Where it runs
 
-**S1 only** (`s1-int 127.0.0.1:2201` via `s1-sftp` ControlMaster). The herd (`tools/v15_local_herd.py`, `tools/v15_overnight_herd.py`, `tools/v15_cpu80_watchdog.py`) launches **one `v15_pilot` per `sym_side`** with `worst2best` / `cycle` / `shuffle` ordering, `workers 56` (S1) / `28` (S5), `V12_NPZ_CACHE=32`, `ALL_PREPARED` in RAM. Mac never runs sweeps (except `--dry-run`), S4/S5 are clones.
+**Fleet S1/S2/S5** (never Mac except `--dry-run`). The scheduler (`tools/v15_fleet_scheduler.py`, S1 cron `*/2`, config `tools/fleet_hosts_final.json` — workers/pairs/memory-guard per host) launches **one `v15_pilot` per `sym_side`** with `--seq-mode worst2best --window-days 30 --vector-only` (live verify deferred), `V12_NPZ_CACHE=32` (pilot-forced), `ALL_PREPARED` in RAM. (The old herd daemons are retired — see §74. Worker counts are tuned per host in the fleet config, not in this file.)
 
 ### 5.2 Step 0 — Clone + ingest best overrides + baseline
 
@@ -141,7 +144,7 @@ For each new `sym_side` (e.g. `AAPL_LONG`):
 
 1. **Find best overrides for that exact `sym_side`:** Search `SPREADSHEETS/` + `SPREADSHEETS/V15_V16_CELL_BY_CELL/` + `data/reports/lifecycle_pilot/*_v14_progress.json` (`cumulative_overrides` / `hustler_overrides`) + `hustler_best.json`. **Best wins over defaults — never `if k not in overrides` guard.** Every non-default from the winning set is written **bold in column C `override`** before any calculation — never changing bold/regular of column B `default` (column B only changes via maintenance when `V15_AVG_DELTAS.xls` recalculates `AVG_DELTA` and reorders `worst_first`).
 
-2. **Clone:** `TEMPLATE{STOCKS|CRYPTO}_{LONG|SHORT}.xlsx` → `SPREADSHEETS/V15_V16_CELL_BY_CELL/{SYM}_{SIDE}_30d_matrix.xlsx` via `_atomic_save` (validates `ZipFile ≥10` entries before `os.replace` to avoid 225 KB truncation). Rename `TEMPLATE_BASELINE_METRICS` → `{SYM}_{SIDE}_BASELINE_METRICS`, fix `G` `VLOOKUP &"_"&`→`&"="&`, clear `#NUM!/#NAME?/0` in `E`.
+2. **Clone:** `SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE{STOCKS|CRYPTO}_{LONG|SHORT}.xlsx` → `SPREADSHEETS/V15_V16_CELL_BY_CELL/{SYM}_{SIDE}_30d_matrix.xlsx` via `_atomic_save` (validates `ZipFile ≥10` entries before `os.replace` to avoid 225 KB truncation). Rename `TEMPLATE_BASELINE_METRICS` → `{SYM}_{SIDE}_BASELINE_METRICS`, fix `G` `VLOOKUP &"_"&`→`&"="&`, clear `#NUM!/#NAME?/0` in `E`.
 
 3. **Fill ALL overrides in sheet before baseline:** `BEST-C-FILL` — pilot iterates every sheet row `3..max_row`; if `A=Switch` exists in `overrides`, set `C=override` (e.g. `C3=False` for `WT_15M_BOUNCE_OPEN_ENABLED`). This is how the first row calculates baseline **while** all overrides are already in the sheet.
 
@@ -149,19 +152,19 @@ For each new `sym_side` (e.g. `AAPL_LONG`):
 
 ### 5.3 Step 1 — Per-row yellow evaluation
 
-For each tab **sequentially** (`ENTRY_REVERSAL_BOUNCE → ENTRY_BREAKOUT_CHANNEL → ENTRY_CONFIRMATION_GATES → EXIT_STRUCTURAL → EXIT_VELOCITY → REENTRY_WINDOWED → REENTRY_ADAPTIVE → AUGMENT_TREND → AUGMENT_RISK_SIZING → REDUCE_PROFIT_LOCK → REDUCE_SIGNAL_RATER → GLOBAL_RISK_GATES`, STDEV skipped), for each `switch=cand` row `3..max_row` **in order**:
+For each tab in `SWITCH_SHEETS` order (`STDEV_SLOPE_SIZING → ENTRY_REVERSAL_BOUNCE → ENTRY_BREAKOUT_CHANNEL → ENTRY_CONFIRMATION_GATES → EXIT_STRUCTURAL → EXIT_VELOCITY → REENTRY_WINDOWED → REENTRY_ADAPTIVE → AUGMENT_TREND → AUGMENT_RISK_SIZING → REDUCE_PROFIT_LOCK → REDUCE_SIGNAL_RATER → GLOBAL_RISK_GATES`), rows visited worst-first (`--seq-mode worst2best`) with `--nav-mode jump` on NEG/0 (next pending row of the next tab) — jump changes VISIT ORDER only; every row still fills (coverage-audited; a mode that drops rows violates §56.0):
 
-- **Opportune yellows** for that exact `switch` — from `FILTER_DICTIONARY_V2` / `FILTERS_EXPLAINED`, filtered by the yellow headers `O:BI` (row 2) for that sheet. A yellow cell exists iff:
+- **Opportune yellows** for that exact `switch` — from `FILTER_DICTIONARY_V2` / `FILTERS_EXPLAINED`, filtered by the yellow headers `L:BI` (row 2) for that sheet. (Interim eligibility until the yellow-map rebuild: row switch name and column filter name share ≥2 `_`-tokens, or the cell is in the ever-yellow map, or the base is mandatory for the tab.) A yellow cell exists iff:
   - `Recommendation` is `SPECIFIC` (not `GENERAL` — GENERAL is the orange per-sheet rollup, never yellow per-switch),
   - `Sheets applicable` contains the sheet's lifecycle (`ENTRY`, `EXIT`, `REENTRY`, `AUGMENT`, `REDUCE`, `GLOBAL_CHECK`) or `ALL`,
   - `Switches exactly (gates)` token-overlaps the current `switch` (`_token_overlap` requires ≥2 strong tokens or exact switch containment — generic `FILTER` token alone is not enough),
-  - and `FILTER=OPT` header exists in `O:BI` for that sheet.
+  - and `FILTER=OPT` header exists in `L:BI` for that sheet.
 
   **If a cell is yellow, the filter in the column name MUST be tested for THAT SWITCH AND ONLY THAT SWITCH** — not applied to any other override or default. Never calculate random filters that are not yellow for that row (forbidden — wastes CPU, lies about provenance).
 
-- **Candidates:** `[naked]` (switch=cand alone) `+ each yellow filter variant` (switch=cand **plus that one filter** = `FILTER=OPT`, vs `cumulative_before`). Each candidate evaluated via `v12_quick_engine` (`ThreadPool 16`, `0.07 s` each, `V12_NPZ_CACHE=32` from RAM). Every yellow delta is written **into that yellow cell** (`L:BI`) before the next row — never batched to end.
+- **Candidates:** `[naked]` (switch=cand alone) `+ each yellow filter variant` (switch=cand **plus that one filter** = `FILTER=OPT`, vs `cumulative_before`). Each candidate evaluated via `v12_quick_engine` (fork pool `_n_proc = min(workers, cpu-1)`, ~0.07 s unloaded each, `V12_NPZ_CACHE=32` from RAM). Every yellow delta is written **into that yellow cell** (`L:BI`) before the next row — never batched to end. (Evidence-condemned never-positive rows/cells are skipped + booked instead of evaluated — §72; sampled rows/cells are deferred to the heal pass — §73.)
 
-- **`VECTOR_DELTA` (G) = sum of positive yellow deltas for that row** (`>1e-9` summed via `_per_yellow_sum` into `delta_best`). Naked delta is only used when there are **no yellows** for that row (see §5.4 — no-yellow rule). Negative/zero yellows are written but **not added** to `G`.
+- **`VECTOR_DELTA` (G) = the row's COMPLETE delta** (§56.0 — never an arithmetic sum): real JOINT eval (switch + all positive yellows together) if `>1e-9`, else the best single positive (filter or naked), else the naked delta (which covers the no-yellows case). Negative/zero yellows are written but **never promoted**.
 
 - **If positive:** add the **column header name** to `override` (C) and `PER_ROW_FILTERS` (K) — **add, never overwrite** existing content — and add its delta to `VECTOR_DELTA` (sum if already valued). When all yellows for the row are done the row is complete.
 
@@ -171,23 +174,23 @@ After all yellows for the row are evaluated:
 
 | Condition | Meaning | Action |
 |---|---|---|
-| `VECTOR_DELTA > 1e-9` (positive sum of pos yellows) | Row is winner | Write `C` (switch + pos yellows), `F/G/K` + yellow `L:BI` cells. **Move down 1 row on SAME TAB.** `E` for the next pending row on this tab = `cumulative_before + VECTOR_DELTA` (numeric `E_next = E + G`). `cumulative_gain` and `cumulative_overrides` advance (add switch=cand + each pos yellow filter). |
-| `VECTOR_DELTA` is `None`, zero, or negative (no pos yellows) | Row is loser | Write `F/G/K` + yellow `L:BI` deltas (with negative red fill for G), leave `C` blank. **DO NOT MOVE DOWN the tab.** Move to **first pending row in the next tab**, write `E = cumulative_before` there, and repeat process on that new tab. |
-| Row has **no yellow cells at all** | Untestable switch alone | Evaluate naked switch vs `cumulative_before`, write `F/G` as that delta, then **always continue to next TAB (not next ROW)** per spec — even if POS — because there is nothing to exploit on this row. |
+| `VECTOR_DELTA > 1e-9` (complete delta — joint, best single, or naked) | Row is winner | Write `C` (switch + adopted filters), `G/K` + yellow `L:BI` cells (`F` stays blank unless `V15_WRITE_HUSTLE=1`). **Move down 1 row on SAME TAB.** `E` for the next pending row on this tab = `cumulative_before + VECTOR_DELTA` (numeric `E_next = E + G`). `cumulative_gain` and `cumulative_overrides` advance. |
+| `VECTOR_DELTA` is zero or negative (nothing positive) | Row is loser | Write `G/K` + yellow `L:BI` deltas (negative red fill for G), leave `C` blank. **DO NOT MOVE DOWN the tab** (`--nav-mode jump`, the fleet default). Move to **first pending row in the next tab**, write `E = cumulative_before` there, and repeat on that tab. (`--nav-mode fill_tab` stays instead; jump only reorders visits — every row still fills.) |
+| Row has **no yellow cells at all** | Naked-only row | `G` = the naked delta; same navigation as every row (**POS stays, NEG jumps**). (Older bible text claimed no-yellow rows always jump tabs even when POS — corrected 2026-10-07: neither the code nor §56 supports that; the naked switch itself is what gets exploited.) |
 
 **Baseline invariant:** `E` (BASELINE) **only gets written after a positive delta** — otherwise it **stays BLANK normally**. The only `E` values that exist are `E3 = baseline_gain` and each `E` that was promoted by a preceding POS row on its tab (or the first pending row of a newly entered tab which inherits the current `cumulative_gain`). `_validate_e_chain_and_yellows` asserts `new_cum ≥ old_cum` and `delta == vg - cum`.
 
-**Every row in every tab needs a delta value pos or neg.** All rows are filled in order; if a tab is complete it is skipped in remaining rounds. Only `hustle`/`shuffle` mode fills rows in random order (shuffle via `_rnd.shuffle(rows)` per tab).
+**Every row in every tab gets a verdict** (delta, settled skip, or pending→refilled) — jump reorders visits, it never drops rows. `None` (blank) G on an EVALUATED row is a bug; blank G on a skipped/invalid row is correct (§41.1).
 
 ### 5.5 Step 3 — LIVE verification (deferred)
 
 `LIVE_DELTA` (H) and `LIVE_SHARPE` (I) **contain formulas that screw up sheet fill — they stay BLANK until the entire workbook is complete** (`_spec_clear_live_formulas` clears any formulas at open, `_write_per_row_HIK` writes only `K` per row and leaves `H/I = None`).
 
-When the 12-tab workbook is fully filled, pilot runs the **winning set** (`cumulative_overrides`) through `backtest_v12_engine` (`live_evaluate`, 30 s timeout) and fills **every processed row's `H`/`I`** with the live parity result (POS rows get `live_delta`/`live_sharpe`, NEG rows get their own negative delta / `0.0` sharpe). Per-row parity fail marks flags but never aborts the sheet. Falls back to vector result on 30 s live timeout. Final charts and 365-day robustness rerun are handled after (§7).
+When the 13-tab workbook is fully filled, pilot runs the **winning set** (`cumulative_overrides`) through `backtest_v12_engine` (`live_evaluate`) and fills **every processed row's `H`/`I`** with the live parity result (POS rows get `live_delta`/`live_sharpe`, NEG rows get their own negative delta / `0.0` sharpe). Per-row parity fail marks flags but never aborts the sheet. Falls back to vector result on live timeout. (Fleet launches pass `--vector-only` + `V15_SKIP_LIVE_AT_DONE=1`, so live verify is deferred, not per-run.) Final charts and 365-day robustness rerun are handled after (§7).
 
 ### 5.6 Speed — NPZ in RAM
 
-NPZ for the `sym_side` is preloaded **once** via `preload_prepared()` → `ALL_PREPARED[sym]` (0.85–1.5 G) and kept for all ~3800 row×yellow evaluations. `evaluate_prepared_sanitized()` uses RAM arrays only. Per-row disk reload is forbidden. The herd keeps workers at **max 80% RAM** (`avail > 1500` guard, `V12_NPZ_CACHE=32`).
+NPZ for the `sym_side` is preloaded **once** via `preload_prepared()` → `ALL_PREPARED[sym]` (pilot parents run 4–8 GB RSS under load — 2026-10-07 fleet audit) and kept for all row×yellow evaluations. `evaluate_prepared_sanitized()` uses RAM arrays only. Per-row disk reload is forbidden. The scheduler's memory guard (`mem_reserve_mb`, `oom_mb` per host in `tools/fleet_hosts_final.json`) stops new launches when tight and reaps the youngest pilot below the OOM floor; `V12_NPZ_CACHE=32` is pilot-forced (launcher env values are vestigial).
 
 ### 5.7 Stall guard — >10 s = RED and move on
 
@@ -202,43 +205,31 @@ Never stall the entire workbook on one cell. Baseline evaluation has its own 60 
 
 ---
 
-## 6. WHY THE TEMPLATE SYSTEM IS NOW STUCK — OVER A WEEK WITHOUT A SINGLE TAB
+## 6. INCIDENT INVARIANTS (2026-09 post-mortem, compressed 2026-10-07 — all fixed in code, kept as law)
 
-Despite having a working last-good workbook (`SPREADSHEETS/V15_V16_CELL_BY_CELL/UNIUSDC_LONG_bh57p81_gain32p89_30d_matrix.xlsx` — did copy `BEST→C`, baseline via `v12_quick_engine`, per-row `F/G` + `L:BI` yellows correctly — `E2` numeric, `C` populated, `231` yellows), the current pilot produces for **every `sym_side` with `*_v14_progress.json done>0`: `E2=BASELINE` string, `C` empty, `F/G/H/L:BI None`, sheets showing `BASELINE #NUM! 0`** and not a single tab completes. Spend is `~$0.40/hr ×3` with zero output.
+A week-long stall (every `sym_side` showing `E2=BASELINE`, `C` empty, `F/G/H/L:BI None`) traced to 7 defects. Every one is fixed; every fix is now an invariant — reintroducing any of them reintroduces the stall:
 
-### 6.1 Root causes — template instructions were never correctly implemented
+1. **Zero-trade baselines still clone + write an XLS**, then skip the sweep (never early-return before `clone_template`).
+2. **Best wins over defaults — never `if k not in overrides`** when ingesting the winning set into `C`.
+3. **Prev-XLS parser handles single-value `C`** (`False`, not just `K=V + …` with `F>0`).
+4. **Every `_atomic_save` zip-validates** (`ZipFile ≥10` entries) before `os.replace` — truncated saves never land.
+5. **All columns resolve via row-2 headers** (never hardcoded coordinates); yellow detection reads `L:BI` `=` headers.
+6. **`H`/`I` formulas cleared at open** (data rows never carry `VLOOKUP`/`IF` in `H/I`).
+7. **Every tab in `SWITCH_SHEETS` fills** (the old `SKIP_SHEETS={"STDEV…"}` workaround is retired — STDEV is rewritten and active, §4.3).
 
-1. **`0-trades` early return before `clone_template` → no XLS at all for `0 trades` (`DATA_ERROR`).** Pilot returned before cloning the workbook, so valid zero-trade baselines (which must still write an XLS and then skip sweep) produced no file — downstream logic found no file and stalled.
-
-2. **`if k not in overrides` guard → `C` empty.** When ingesting best overrides, the guard skipped any `switch` already present in `cumulative_overrides` from defaults, so the winning set never overwrote the template defaults and column C stayed empty. Spec requires **best wins over defaults — never `if k not in overrides`**.
-
-3. **XLS prev-parser only handled `C="K=V + …"` with `F>0`, missed single-value `C` (`False`) baseline overrides.** Single-value overrides (e.g. `WT_15M_BOUNCE_ENABLED=False`) were not parsed from previous XLS, so the ingested best set was incomplete and baseline was computed from wrong defaults.
-
-4. **`_atomic_save` without zip-validate → `225 KB` BadZip (`CLF_LONG done 2243` unreadable).** Truncated saves (OOM/pkill) were not validated (`ZipFile ≥10` entries) before `os.replace`, producing unreadable workbooks that looked `done` in JSON but had no fill.
-
-5. **Column-C coordinate write vs header lookup.** Pilot wrote to hardcoded `col 3` without resolving row-2 headers, so any inserted column broke the fill. Columns `O:BI` (yellow) header detection missed `"="` headers after column inserts, so _opportune filters_ returned empty → every row followed the no-yellow path (single naked eval then jump to next tab without ever filling yellows).
-
-6. **`LIVE_DELTA`/`LIVE_SHARPE` formulas left in template screws up fill.** `H`/`I` not cleared at open left `VLOOKUP`/`IF` formulas in data rows, which interfered with `_hdr_col_map` and caused `E2` to be detected as numeric instead of header string, collapsing the `E2/E3` distinction.
-
-7. **`STDEV_SLOPE_SIZING` still in `SWITCH_SHEETS` without being skipped → 13-tab loop stall.** `STDEV` wiring is half-finished (`compute_regime_sizing_mult` with per-TF maps and NPZ `stdev_edge_*`/`stdev_slope_*` not on all hosts) and its 34 rows stall; until removed via `SKIP_SHEETS` the workbook never advanced past the first tab.
-
-### 6.2 What the spec demands to unstick it
-
-- Restore `BEST→C` ingestion (no guard), fix parser for single-value `C`, clear `H/I` formulas at open, resolve all columns via row-2 headers, zip-validate every `_atomic_save`, keep `STDEV` in `SKIP_SHEETS`, and keep NPZ in RAM. Refill lost XLS from JSON truth via `tools/v15_refill_from_json.py` (`_atomic_save` validated) so compute is never lost.
-
-**First priority at any moment:** If `E2=BASELINE/0`, `C` empty, or `F/G None` for a `sym_side` with `done>0`, **stop herd**, fix `v15_pilot.py` to restore the spec above, validate `E2` numeric via `_validate_e_chain_and_yellows`, and refill XLS from JSON — before any other work.
+**Standing rule:** refill lost/truncated XLS from JSON truth via `tools/v15_refill_from_json.py` (validated save) so compute is never lost. **First priority at any moment:** if `C` is empty or `F/G` are `None` for a `sym_side` with `done>0`, stop the fleet, restore the invariants above, validate via `_validate_e_chain_and_yellows`, refill from JSON — before any other work.
 
 ---
 
 ## 7. v12_quick_engine — STALL FUNCTIONS THAT BLOCK THE ENTIRE WORKBOOK
 
-`v12_quick_engine.py` (22 472 lines, 851 real reads) is `v15_pilot`'s inner loop — every yellow cell does `evaluate_prepared_sanitized → simulate_one → compute_*_signals → _batch*_template_wiring`. Functions that stall >10 s on common NPZ block the whole workbook because `v15_pilot`'s `ThreadPool 16` waits on them and the per-yellow `10 s` guard must fire to prevent hang.
+`v12_quick_engine.py` (15 384 lines, ~851 real reads) is `v15_pilot`'s inner loop — every yellow cell does `evaluate_prepared_sanitized → simulate_one → compute_*_signals → vec_decisions.*`. Functions that stall >10 s on common NPZ block the whole workbook because the pilot's fork pool waits on them and the per-yellow `10 s` guard must fire to prevent hang.
 
 ### 7.1 Known stall-prone areas
 
-- **`_batch1.._batchN_template_wiring()` (wiring blocks for 600+ switches).** Each batch tests `abs(thr-def)>1e-9` or `bool(getattr(cfg, "X_ENABLED"))` then touches NPZ arrays (`_safe(npz, "wt1_3m", n)`, `atr_1h`, `adx_1h`, etc.). When a switch's NPZ key is missing and fallback is `close`/`zeros`, the mask logic still branches through `&`/`|` over `n=10k` arrays — cheap per call but multiplied by **all batches for every candidate** (2–5 batches × 3800 rows × ~5 yellows = ~75k batch invocations). Any batch that does `np.arange(n) % 20 == 0` or multi-TF loops without early-exit stalls proportionally. Keep each batch to **constant-time mask ops only** — no per-bar Python loops, no `safe` fallback that recomputes `close` repeatedly.
+- **`_batchN_template_wiring()` blocks — REMOVED 2026-09-29** (§26.6 cleanup; do not reintroduce batch-per-switch wiring — new wiring goes in `vec_decisions/` predicates + a single call site). The same law applies to any replacement: **constant-time mask ops only** — no per-bar Python loops, no `safe` fallback that recomputes `close` repeatedly.
 
-- **`compute_regime_sizing_mult()` (STDEV ladder).** Per-TF `_stdev_max_map {'D':10,'4h':4,'1h':2,'15m':1.5} × edge × slope_mult × lookback × band`, clipped `[MIN,MAX]`. Requires `stdev_edge_*`/`stdev_slope_*` in NPZ (243 files on S1, missing on `ZECUSDC` until `backtest_v8_precompute.py --symbol ZECUSDC --mode crypto`). When missing, fallback recomputes from `close` has been the widest stall.
+- **`compute_regime_sizing_mult()` (STDEV).** Single-switch tab (§4.3) reading `stdev_edge_*`/`stdev_slope_*` per TF. Requires those keys in the NPZ — regenerate a symbol's NPZ (`backtest_v8_precompute.py --symbol X --mode crypto`) when genuinely missing; never silently substitute `close` and call the row calculated.
 
 - **`compute_entry_signals` / `compute_exit_signals` / `compute_augment_signals` / `compute_reduce_signals` / `compute_reentry_blocks`.** Each calls dozens of `vec_decisions.*` gating predicates. `vec_decisions` that consult `dc_position_15m`/`wt_velocity_1h` with TF string mismatch branch (`if _tf != '15m'`) and per-bar `np.arange` modulate exit density — must remain vector masks.
 
@@ -258,14 +249,14 @@ Despite having a working last-good workbook (`SPREADSHEETS/V15_V16_CELL_BY_CELL/
 |---|---|---|---|
 | C | `override` | `switch + options + yellow-filter settings` **ONLY IF** pos delta inside yellow box (`>1e-9`) | Pos-only, bold if non-default, orange never above white |
 | E | `BASELINE` (row 2 header preserved, `E3 = baseline_gain`) | `cumulative_before` (previous winning gain) | Self-monitor checks `E3` numeric, restores `E2` header if corrupted, aborts only after 3 fails. Blank unless POS promoted |
-| F | `HUSTLE_DELTA` | `vec_gain - baseline_gain` (vs baseline) | `Arial 10 left`, blue `#4472C4` header, white bold per row, `auto width+2 cap30 height15`, every row float not `VLOOKUP` |
-| G | `VECTOR_DELTA` | `delta_best = vec_gain - cumulative_before` (vs cum, per-yellow `sum_pos`) | Float, green `006100` pos / red `FFC7CE` neg, every row filled pos or neg, never leave `VLOOKUP` |
+| F | `HUSTLE_DELTA` | `vec_gain - baseline_gain` (vs ORIGINAL baseline) | `Arial 10 left`, blue `#4472C4` header; **BLANK by default** (`V15_WRITE_HUSTLE=0` under worst2best), never `VLOOKUP` |
+| G | `VECTOR_DELTA` | Row complete delta vs `cumulative_before`: real JOINT eval, else best single positive, else naked (§56.0) | Float pos/neg on evaluated rows, green `006100` / red `FFC7CE`; **BLANK (never 0.0) on skipped/invalid**, never `VLOOKUP` |
 | H | `LIVE_DELTA` (col 8) | `live_gain - cumulative_before` (parity live) | **Per-workbook** written via `_write_per_row_HIK` after complete — blank per row until complete |
 | I | `LIVE_SHARPE` (col 9) | `live pool_sharpe` per row | Per-workbook via `HIK` |
 | K | `PER_ROW_FILTERS` (col 11) | Comma-joined pos yellows for that switch | Per-row via `HIK` |
-| L:BI | Yellow headers row 2 (`col_by_header` lookup) | Per-yellow delta inside yellow cell vs `cumulative_before` | Pos-only added to `C/K/G` via `sum_pos>1e-9`, all yellows for row calculated (no cap), `0.0` backstop for empty |
+| L:BI | Yellow headers row 2 (`col_by_header` lookup) | Per-yellow delta inside yellow cell vs `cumulative_before` | Positives feed the JOINT eval + `C/K` adoption; evaluated yellows always get a real delta; skipped cells stay BLANK (never 0.0) |
 
-**Sequential fill:** 12 tabs (`STDEV_SLOPE_SIZING` in `SKIP_SHEETS`, never calculated, sheet stays but skipped). `worst_first` / `cycle` / `shuffle` modes supported; `cycle` rotates deque on NEG delta. Every row in every tab filled in order pos or neg before next tab. Hustle beam `width 64 depth 10` + exhaustive `top12` subsets finds max combination vs `baseline+cum`. **Never ditch a `sym_side` halfway** — every `sym_side` must run to the last sheet even if 12 sheets are NEG (`SHEET NEVER ABANDONED`).
+**Sequential fill:** 13 tabs, `--seq-mode worst2best` (worst-first visit order) with `--nav-mode jump` on NEG/0 (jump reorders visits only — every row still fills; `fill_tab` stays instead). `cycle` rotates deque on NEG delta. Hustle beam `width 64 depth 10` + exhaustive `top12` subsets finds max combination vs `baseline+cum`. **Never ditch a `sym_side` halfway** — every `sym_side` must run to the last sheet even if 13 sheets are NEG (`SHEET NEVER ABANDONED`).
 
 **E-chain guard:** Baseline written to `E3` (float), `E2` header `BASELINE` preserved via `ws.cell(row=3,col5)=baseline` and self-monitor that checks `E3` numeric and restores header without overwriting numeric. `_validate_e_chain_and_yellows` asserts `delta==vg-cum` and `new_cum ≥ old`.
 
@@ -281,7 +272,7 @@ Despite having a working last-good workbook (`SPREADSHEETS/V15_V16_CELL_BY_CELL/
 
 - **Parity:** Every pos delta verified via `live_evaluate(sym, overrides, 30)` (scalar bar-by-bar) vs `vector_evaluate_cached` (vector, `V12_NPZ_CACHE=32`, RAM via `preload_prepared`). `parity_ok` requires trade ratio `0.80..1.25` and gain mismatch `<0.5 pp` and `<15%`. Per-row parity fail marks red and logs `flags.md` without aborting sheet. Final switch-by-switch live verification on winning set.
 
-- **Sync:** Edit only on Mac, then `rsync -az -e "ssh -S none -o StrictHostKeyChecking=accept-new"` to `~/binance-sandbox/` on S1 (canonical) + S5, `md5sum` verify. S1 NPZ `473×31 G` (16c 30 Gi), Mac `134×10 G` never backtests except `--dry-run`.
+- **Sync:** Edit only on Mac, then `rsync -az -e "ssh -S none -o StrictHostKeyChecking=accept-new"` to `~/binance-sandbox/` on S1 (canonical) + S2 + S5, `md5sum` verify. S1 NPZ `473×31 G` (16c 30 Gi), Mac `134×10 G` never backtests except `--dry-run`. (Fleet live-verify runs deferred — see §3.)
 
 ---
 
@@ -297,15 +288,17 @@ Beat ideas to death: add friction (1.5–2× slippage, worst-case fills), seek *
 
 `Mac` `Darwin` `/opt/anaconda3/envs/binance_env/bin/python` `134×10 G` — **LIVE trading + dashboard only, never backtests** (except `--dry-run`/`--allow-mac`).
 
-`S1` `157.180.125.52` / `s1-int 127.0.0.1:2201` (`ssh -fNT s1-sftp` ControlMaster `~/.ssh/cm-s1-int`, fallback `157.90.168.35` gateway, `10.0.0.3`) `16c 30 Gi 79 G free` `473×31 G` — **BACKTESTS ONLY**.
+`S1` `157.180.125.52` / `s1-int 127.0.0.1:2201` (`ssh -fNT s1-sftp` ControlMaster `~/.ssh/cm-s1-int`, fallback `157.90.168.35` gateway, `10.0.0.3`) `16c 30 Gi 79 G free` `473×31 G` — **LIVE trading stack + backtest pilots + fleet scheduler** (corrected 2026-10-07: S1 was never backtests-only; the live `ez_*`/`tradier_*` stack runs here).
+
+`S2` `10.0.0.4` / `S5` `10.0.0.5` via gateway ProxyJump — backtest pilots (+ `v15_trade_parity.py` lane). All 16c/30 GB.
 
 **Before any ssh:** `ssh -fNT s1-sftp` else `Connection refused 127.0.0.1:2201`. Try both `s1-int` and `s1-pub` before declaring S1 down. `~/binance-sandbox` canonical — never hardcode, use `Path(__file__).resolve().parents[1]`.
 
 ---
 
-## 12. TEMPLATE MAINTENANCE — V15_AVG_DELTAS
+## 12. TEMPLATE MAINTENANCE — AVG-DELTA PIPELINE (ONE WRITER PER JOB)
 
-Defaults (column B bold) only change when `V15_AVG_DELTAS.xls` recalculates `AVG DELTA` / `POS_SYM` and reorders rows `worst_first` while keeping **entire column content together** — yellow cells for a row always stay with same switch name when row order changes. Never change bold/regular of `default` column outside this maintenance. `is_default` (col L) is backup if bold lost.
+Defaults (column B bold) only change through the avg-delta pipeline: `tools/v15_cell_evidence.py` + `data/avg_delta_pos_sym.json` feed `tools/v15_daily_template_update.py`, which recalculates `AVG DELTA` / `POS_SYM` and reorders rows `worst_first` while keeping **entire column content together** — yellow cells for a row always stay with same switch name when row order changes. Never change bold/regular of `default` column outside this maintenance. `is_default` (col L) is backup if bold lost. Writer allowlist for the 4 templates (§70): daily-update (avg/promotions), bookkeeper (books), switch-add (new rows), staged-apply (verified restructures) — nothing else.
 
 ---
 
@@ -348,7 +341,7 @@ Only after 1–4 are excluded is "the engine path for this switch needs work" a 
 ### 14.4 The units — "cells" vs "switches"
 
 - A **switch** is one name in col A (e.g. `WT_LOWER_CROSS_EXIT_TF`). There are on the order of ~200 switch names across the 12 active tabs.
-- A **cell** is one evaluated quantity: each switch row spawns `1 naked + K yellow` candidate evaluations, and there are multiple candidate *values* per switch. Across 12 tabs × rows × candidate values × all `L:BI` yellows this is **>5000 cells**.
+- A **cell** is one evaluated quantity: each switch row spawns `1 naked + K yellow` candidate evaluations, and there are multiple candidate *values* per switch. Across 13 tabs × rows × candidate values × all `L:BI` yellows this is **>5000 cells**.
 - When the operator says "5000+ cell fills," that is the cell count (F/G/E + every `L:BI` yellow across all rows of all sheets), not the switch-name count. Always answer in the operator's unit.
 
 ---
@@ -468,12 +461,14 @@ Do not report "N switches are dead/unwired" as a conclusion — it conflates no-
  "secs":0.07, "cached":false, "err":""}
 ```
 
+Per-row lines use `label: ROW_DONE` (`row_secs`, `n_evals`, `delta`, `promoted`, `cum_after`); post-spec stages log `FINAL_RECHECK`, `FINAL_DIAGNOSE`, `DIAG_365D`, `REPAIR365_SCREEN:*`.
+
 This is the **audit source of truth**. Standard audits:
 
 - **Fill count / zero rate:** count records; `delta==0` (`abs<1e-9`) vs non-zero; % non-zero per `label=="naked"` and overall.
 - **Distinct outcomes:** `len(set(round(gain_pct,6)))` — how many distinct strategy states the sweep reached.
 - **Duplicate deltas:** `collections.Counter(round(delta,6))` — a delta value repeated across unrelated switches often indicates a shared fallback path; investigate.
-- **Timing:** `secs` distribution; count `>0.1s` (cached target ~0.07s) and `max` (see §22).
+- **Timing:** `secs` distribution for eval lines, `row_secs` for `ROW_DONE`; count `>0.1s` (cached target ~0.07s unloaded) and `max` (see §22).
 - **Which switches move the ledger:** `Counter(switch for r in records if label=='naked' and abs(delta)>=1e-9)`.
 
 **Verified baseline (2026-09-29, GDX_LONG):** the 16:05 real run and a 00:15 isolated re-run were statistically identical — ~1117 naked flips, ~2% non-zero, the same ~11 switches producing deltas, ~17 distinct gains. This is the steady-state profile for this symbol under the current baseline; it is not a regression. "Cells filled" means every cell was *written* (E/F/G/K + all `L:BI`), which the pilot still does — the delta *content* being mostly 0 for a given symbol is a baseline/coverage property, audited via this log.
@@ -502,7 +497,7 @@ Verified 2026-09-29: both PASS on the current engine (determinism exact; default
 
 ## 22. TIMING — 0.07s CACHED, 0.1s TARGET, 10s HARD GUARD
 
-- With NPZ in RAM (`ALL_PREPARED`, `V12_NPZ_CACHE=32`, `evaluate_prepared_sanitized`), a single cached eval is **~0.07s**; a cold/first eval ~0.11s.
+- With NPZ in RAM (`ALL_PREPARED`, `V12_NPZ_CACHE=32`, `evaluate_prepared_sanitized`), a single cached eval is **~0.07s unloaded**; a cold/first eval ~0.11s. Under fleet load (2026-10-07 audit, 3 fork workers, contended 16-core boxes): mean 0.09s / median 0.12s / p90 0.17s per eval — the 0.03–0.07s figure is per-EVAL (one candidate), while a row costs ~205 evals / workers (≈7s at 3 workers) and a symbol costs 3393 rows × ~2.7 refill passes + post-stages (see §74 for the full wall-time math).
 - **Target: every cell fills in ≤0.1s.** A cell that takes materially longer is almost always doing a **per-row disk reload** or a per-bar Python loop — fix it (§7). Verified 2026-09-29 GDX_LONG: 26k evals, mean well under 0.1s, only ~1.7% exceeded 0.1s with a max of 0.23s (acceptable tail under CPU contention; investigate if the tail grows).
 - Two distinct guards exist and serve different purposes: the **10s per-yellow hard stall guard** (`YELLOW_TIMEOUT`, marks the cell + tab RED and moves on — never hang; §5.7) and the **0.1s performance target** (a cell routinely over this is a perf regression to fix, not a stall to RED). Do not confuse them.
 - The filler must **never get stuck on a cell**: on stall, RED the cell, log to `data/reports/v15_flags/{SYM}_{SIDE}_flags.md`, continue. Monitors sweep the flags every ~10 min so other agents can pick up RED cells for repair.
@@ -513,10 +508,10 @@ Verified 2026-09-29: both PASS on the current engine (determinism exact; default
 
 To prove the pipeline end-to-end without disturbing the running herd:
 
-1. **Isolate:** launch with `V15_PROGRESS_DIR=/tmp/proof_{sym}` so the proof's progress JSON + delta-log do not collide with the herd/cron sync. Add `V15_SKIP_LIVE_AT_DONE=1` to defer the (slow, sometimes parent-killing) live-verify at DONE. Add `SWITCH_PARITY_REGISTER=0` so the proof's DONE stage does not register its set into the live per-sym books (§67 registrar).
-2. **One symbol, max workers:** `v15_pilot.py --sym-side {SYM}_{SIDE} --template SPREADSHEETS/TEMPLATE_{cat}_{side}.xlsx --seq-mode worst2best --window-days 30 --vector-only --workers 14` (16-core box → 14–15 workers). `_n_proc = min(workers, cpu_count-1)`.
-3. **Server placement:** s1 = crypto, s2 = stocks by convention; but s1 has the stock NPZs too and (2026-09-29) far more free RAM than s2 (s2 was ~1 GB free vs s1 ~22 GB). If s2 is RAM-starved, run a stock proof on s1 rather than risk OOM-killing s2's in-flight pilots — never add load that could kill a running filler.
-4. **Verify the fill (from the delta-log + xlsx):** every row wrote F/G + all `L:BI`; no None; timing ≤0.1s median; baseline correct (determinism + idempotency); greedy `E` chain monotonic; and the finished workbook is named with `bh` and `gain` and has a zoomable chart on the Mac (`tools/generate_zoomable_charts_mac.py`, output `SPREADSHEETS/charts/{stem}_zoom.html`).
+1. **Isolate:** launch with `V15_PROGRESS_DIR=/tmp/proof_{sym}` so the proof's progress JSON + delta-log do not collide with the scheduler fleet. Add `V15_SKIP_LIVE_AT_DONE=1` to defer the (slow, sometimes parent-killing) live-verify at DONE. Add `SWITCH_PARITY_REGISTER=0` so the proof's DONE stage does not register its set into the live per-sym books (§67 registrar).
+2. **One symbol, max workers:** `v15_pilot.py --sym-side {SYM}_{SIDE} --template SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_{cat}_{side}.xlsx --seq-mode worst2best --window-days 30 --vector-only --workers 14` (16-core box → 14–15 workers). `_n_proc = min(workers, cpu_count-1)`.
+3. **Server placement:** all three fleet hosts run crypto (stocks queue is empty); check `free -m` first — never add load that could kill a running filler (2026-09-29 note: s2 was ~1 GB free vs s1 ~22 GB; capacities swing — measure, don't assume).
+4. **Verify the fill (from the delta-log + xlsx):** every row wrote G + all `L:BI` (F blank unless `V15_WRITE_HUSTLE=1`); no `None` on evaluated rows; timing ≤0.1s median unloaded; baseline correct (determinism + idempotency); greedy `E` chain monotonic; and the finished workbook is named with `bh` and `gain` and has a zoomable chart on the Mac (`tools/generate_zoomable_charts_mac.py`, output `SPREADSHEETS/charts/{stem}_zoom.html`).
 5. **"Good gains":** the headline `gain` is the finisher's fresh re-anchored full-set evaluation under the pilot's own engine — never a chained/mixed-engine number.
 
 ---
@@ -574,18 +569,20 @@ Yellow headers eligible for this switch (from `FILTER_DICTIONARY_V2`, `SPECIFIC`
 
 Processing:
 
-1. **Default-variant row (`=OFF`):** naked flip to `OFF` = the current value → naked delta `0` (integrity; §14.1). The row's value comes from its yellows: evaluate `{...cum..., WT_LOWER_CROSS_EXIT_TF:OFF, <each yellow>}` vs `6.20`. Suppose two yellows are positive (+0.30, +0.12) and the rest ≤0. `G = sum_pos = 0.42`. Since `G>0`: write `C = "WT_LOWER_CROSS_EXIT_TF=OFF + WT_CROSS_EXIT_APPLIES_TO_WINNERS=0.5 + EMA_9_21_FILTER_FILTER_TF=4h"`, `F/G = 0.42`, `K = those two headers`, each `L:BI` yellow cell = its own delta (pos green, neg red). Move **down one row on this tab**; next row `E = 6.20 + 0.42 = 6.62`; `cumulative_overrides` gains those two filters.
-2. **`=1h` row:** naked flip to `1h` vs `6.62` — suppose `+1.20` (real ledger change: fewer late exits). Then its yellows on top. Suppose `G = 1.20 + (pos yellows 0.05) = 1.25 > 0`. Promote: `C = "WT_LOWER_CROSS_EXIT_TF=1h + <pos yellow>"`, `E_next = 6.62 + 1.25 = 7.87`, overrides gain `WT_LOWER_CROSS_EXIT_TF=1h`.
-3. **`=4h` row:** naked flip to `4h` vs `7.87` — suppose `-0.30` and no positive yellows → `G = 0` (or the negative naked if no yellows). Not promoted: `C` stays blank, `F/G` written (red), `E_next` **stays blank** (baseline does not advance), `cumulative` unchanged. Because this row had yellows evaluated and none positive, we still **move to the next tab** only when the tab's rows are exhausted; within a tab we continue down its remaining rows.
-4. When `EXIT_VELOCITY`'s rows are exhausted, move to `REENTRY_WINDOWED` with the current `cumulative` (7.87) written to its first pending row's `E`.
+1. **Default-variant row (`=OFF`):** naked flip to `OFF` = the current value → naked delta `0` (integrity; §14.1). The row's value comes from its yellows: evaluate `{...cum..., WT_LOWER_CROSS_EXIT_TF:OFF, <each yellow>}` vs `6.20`. Suppose two yellows are positive (+0.30, +0.12) and the rest ≤0. The pilot runs the real JOINT eval (switch + both yellows together); suppose it returns `+0.40`. `G = 0.40` (never the 0.42 sum — §56.0). Since `G>0`: write `C = "WT_LOWER_CROSS_EXIT_TF=OFF + WT_CROSS_EXIT_APPLIES_TO_WINNERS=0.5 + EMA_9_21_FILTER_FILTER_TF=4h"`, `G = 0.40`, `K = those two headers`, each `L:BI` yellow cell = its own delta (pos green, neg red). Move **down one row on this tab**; next row `E = 6.20 + 0.40 = 6.60`; `cumulative_overrides` gains those two filters.
+2. **`=1h` row:** naked flip to `1h` vs `6.60` — suppose `+1.20` (real ledger change: fewer late exits). Then its yellows on top, then the JOINT eval; suppose it returns `+1.24 > 0`. Promote: `C = "WT_LOWER_CROSS_EXIT_TF=1h + <pos yellows>"`, `E_next = 6.60 + 1.24 = 7.84`, overrides gain `WT_LOWER_CROSS_EXIT_TF=1h`.
+3. **`=4h` row:** naked flip to `4h` vs `7.84` — suppose `-0.30` and no positive yellows → `G = -0.30` (the naked delta). Not promoted: `C` stays blank, `G` written (red), `E_next` **stays blank** (baseline does not advance), `cumulative` unchanged. Under `--nav-mode jump` the next visit is the first pending row of the next tab (jump reorders visits only — every row still fills).
+4. Pending rows of `EXIT_VELOCITY` are still all visited (worst-first across tabs); the tab's chain continues from the current `cumulative` (7.84).
 
-Key invariants exercised: every row wrote `F/G` (pos or neg) and every eligible `L:BI`; `C` only for promoted rows; `E` only advanced on positive `G`; the default-variant row's value came from yellows, not from the (zero) naked flip.
+Key invariants exercised: every evaluated row wrote `G` (pos or neg) and every eligible `L:BI`; `C` only for promoted rows; `E` only advanced on positive `G`; the default-variant row's value came from yellows, not from the (zero) naked flip. (`F` stays blank under worst2best unless `V15_WRITE_HUSTLE=1`.)
 
 ---
 
-## 28. THE 12 ACTIVE TABS — WHAT EACH SWEEPS
+## 28. THE 13 ACTIVE TABS — WHAT EACH SWEEPS
 
-Order is fixed (`STDEV_SLOPE_SIZING` present but in `SKIP_SHEETS`). Lifecycle tag drives yellow eligibility (`Sheets applicable`).
+Order is fixed (all 13 fill). Lifecycle tag drives yellow eligibility (`Sheets applicable`).
+
+0. **STDEV_SLOPE_SIZING** (`SPECIFIC`, sizing) — ONE switch: use the 1–5× regime multiplier or don't (§4.3).
 
 1. **ENTRY_REVERSAL_BOUNCE** (`ENTRY`) — bounce/reversal openers: `BB_SQUEEZE_ENTRY_ENABLED`, `BB_PULLBACK_GATE_TF`, `WT_15M_BOUNCE_OPEN_ENABLED`, BB recovery entries. Yellows: BB/WT confirmation filters.
 2. **ENTRY_BREAKOUT_CHANNEL** (`ENTRY`) — breakout/channel openers: `WT_DC_DETAILED_TF`, `DC_BREAKOUT_TF`, `DC_BREAKOUT_SCORE`, breakout retest. Largest tab (~54 base switches → ~210 rows).
@@ -598,11 +595,9 @@ Order is fixed (`STDEV_SLOPE_SIZING` present but in `SKIP_SHEETS`). Lifecycle ta
 9. **AUGMENT_RISK_SIZING** (`AUGMENT`) — add sizing: partial-recovery size mult, pyramid, augment gain gate.
 10. **REDUCE_PROFIT_LOCK** (`REDUCE`) — profit locks: partial-profit-lock v2, breakeven-gain-erosion, HTF-gate-apply-to-open.
 11. **REDUCE_SIGNAL_RATER** (`REDUCE`) — signal-rated reduces: MI entry-struct bonus, quick-reduce-technical, signal rater.
-12. **GLOBAL_RISK_GATES** (`GLOBAL_CHECK`) — portfolio/rate gates: `OPEN_RATE_MAX`, blacklist, circuit gates, bear-market mode. (`GLOBAL_RISK_GATES` has a documented VLOOKUP waiver — see §4.2.)
+12. **GLOBAL_RISK_GATES** (`GLOBAL_CHECK`) — portfolio/rate gates: `OPEN_RATE_MAX`, blacklist, circuit gates, bear-market mode. (No VLOOKUP waiver is in force — data rows carry no formulas anywhere; the pilot's docstring allows a waiver only if explicitly documented, and none is.)
 
-`STDEV_SLOPE_SIZING` (`SPECIFIC`, sizing) — skipped until `compute_regime_sizing_mult` is fully wired and `stdev_edge_*`/`stdev_slope_*` exist on all hosts.
-
-**Yellow eligibility recap (per §5.3):** a filter is a yellow for a switch iff `Recommendation=SPECIFIC` AND (`Sheets applicable` contains the tab's lifecycle OR `ALL`) AND `Switches exactly (gates)` token-overlaps the switch AND the `FILTER=OPT` header exists in that tab's `O:BI`. Never evaluate a filter that is not yellow for the row.
+**Yellow eligibility recap (per §5.3):** a filter is a yellow for a switch iff `Recommendation=SPECIFIC` AND (`Sheets applicable` contains the tab's lifecycle OR `ALL`) AND `Switches exactly (gates)` token-overlaps the switch AND the `FILTER=OPT` header exists in that tab's `L:BI`. (Interim until the yellow-map rebuild: ≥2 shared `_`-tokens, ever-yellow map, or mandatory base.) Never evaluate a filter that is not yellow for the row.
 
 ---
 
@@ -675,13 +670,13 @@ When closing the QuickConfig↔live gap (§17), classify each mismatched field:
 
 ## 32. THE FINISHER / RE-ANCHOR / PUBLISH PIPELINE
 
-After a workbook's 12 tabs are filled, the finisher (`tools/v15_finisher.py --watch`) publishes it:
+After a workbook's 13 tabs are filled, the pilot's DONE stage publishes it (the standalone `v15_finisher.py --watch` daemon is retired — publish is in-pilot since the scheduler era, §74):
 
 - **Re-anchor:** the headline `gain` is recomputed as a **fresh full-set evaluation** of the final `cumulative_overrides` under the pilot's own engine — never the chained running total (which could carry mixed-engine arithmetic across a cut). If the fresh eval and the chained total diverge beyond tolerance, the sheet is stamped `engine_mixed_chain`/`CONTAMINATED` and **held, not published**.
 - **Name:** the published file carries `bh` and `gain` in the filename, e.g. `AXTI_SHORT_bhm1p03_gain11p29_30d_matrix.xlsx` (`m` = minus, `p` = decimal point).
 - **Chart:** `tools/generate_zoomable_charts_mac.py` runs on the Mac over `V15_V16_CELL_BY_CELL(_FINAL)`, output `SPREADSHEETS/charts/{stem}_zoom.html` (offline `file://`, Chart.js zoom/pan, `bh`/`gain` in title). No auto-trigger — run it manually.
-- **Publish-before-live:** publish happens inside the DONE stage *before* the optional live-verify, so a slow/failing live-verify never loses the published sheet. `V15_SKIP_LIVE_AT_DONE=1` defers live-verify entirely for showcase/proof runs.
-- **Board `is_complete` = complete AND published** — drives herd requeue of unpublished-but-complete sheets.
+- **Publish-before-live:** publish happens inside the DONE stage *before* the optional live-verify, so a slow/failing live-verify never loses the published sheet. `V15_SKIP_LIVE_AT_DONE=1` defers live-verify entirely for showcase/proof runs (fleet default).
+- **Scheduler requeue:** the scheduler tracks `done30` per cat_side from published finals and launches only unfinished pairs — complete-but-unpublished sheets get relaunched, never stranded.
 
 ---
 
@@ -694,17 +689,18 @@ After a workbook's 12 tabs are filled, the finisher (`tools/v15_finisher.py --wa
 
 ---
 
-## 34. HERD / SENTINEL / WATCHDOG / FINISHER — THE DAEMONS
+## 34. DAEMON LAYER — RETIRED 2026-10-06 (SCHEDULER ERA)
 
-Per box (S1 crypto, S2 stocks), all `setsid` daemons:
+The herd/sentinel/finisher/assure/redflag daemons are **retired**: none run on the fleet (verified 2026-10-07 — absent from S1 crontab and process list), `tools/v15_local_herd.py` is deleted. Do not revive them; do not cite their logs/flags as live mechanisms.
 
-- **herd** `tools/v15_local_herd.py` — queue of `SYM_SIDE`, launches **one pilot per sym_side** (twin-pair `2×8` workers to avoid oversubscribing 16 cores), `push_to_s1()` rsyncs `SPREADSHEETS/` + `data/reports/lifecycle_pilot/` back. Log `/tmp/v15_local_herd.log`. Reaps orphaned pilots (ppid==1) only when >30min old AND >15min idle.
-- **sentinel** `tools/v15_cell_sentinel.py` — kills+relaunches pilots idle >12min. Log `/tmp/v15_sentinel.log`.
-- **finisher** `tools/v15_finisher.py --watch` — re-anchor → bh/gain name → chart → state (§32). Log `/tmp/v15_finisher.log`.
-- **assure** `tools/v15_assure.py watch` — refills JSON-ahead sheets from `*_v14_progress.json` truth (audit/refill/complete/bench/watch). Log `/tmp/v15_assure_watch*.log`.
-- **redflag** `tools/v15_redflag.py` — echo/zero/stall/coverage detectors, run per monitor cycle.
+What replaced each (see §74):
 
-**Never kill an in-flight pilot to make room** — it loses that sheet's compute. Add load only where there is headroom; a RAM-starved box (S2 was ~1 GB free 2026-09-29) must not get another max-worker pilot.
+- **Launch/queue/reap** → `tools/v15_fleet_scheduler.py` (S1 cron `*/2`): slots per host, memory guard, OOM/hardcap/stall reaps, `done30` tracking. Log `/tmp/v15_fleet_sched.log` (JSONL per tick).
+- **Publish** → in-pilot DONE stage (§32).
+- **Refill** → `tools/v15_refill_from_json.py` on demand (JSON truth → XLS).
+- **Idle/stuck pilots** → scheduler stall reap (`stall_min`) + OOM reap.
+
+**Never kill an in-flight pilot to make room** — it loses that sheet's compute. Add load only where there is headroom; a RAM-starved box must not get another max-worker pilot.
 
 ---
 
@@ -732,8 +728,8 @@ Per box (S1 crypto, S2 stocks), all `setsid` daemons:
 - **Baseline** — strategy gain with all switches/filters at bold/default (+ promoted best-overrides for that `SYM_SIDE`). What is live.
 - **Naked delta** — delta of flipping the switch alone (no yellow) vs `cumulative_before`.
 - **Yellow (cell/filter)** — a `FILTER=OPT` candidate eligible for a specific switch's row (`L:BI`); its cell holds the delta of `switch + that one filter`.
-- **`G` / VECTOR_DELTA** — sum of positive yellow deltas for the row (or the naked delta if the row has no yellows).
-- **`F` / HUSTLE_DELTA** — the row's vector delta vs the baseline/all-settings-so-far (see column contract §4.2 and memory `v15_column_semantics_2026_09_28`).
+- **`G` / VECTOR_DELTA** — the row's COMPLETE delta: real JOINT eval, else best single positive, else naked (§56.0 — never an arithmetic sum).
+- **`F` / HUSTLE_DELTA** — the row result vs the ORIGINAL (initial) baseline; blank by default under worst2best (see column contract §4.2).
 - **`E` / BASELINE** — cumulative gain before the row; only advances (`E+G`) when `G>0`, else blank.
 - **`K` / PER_ROW_FILTERS** — comma-joined positive yellow header names promoted on the row.
 - **Promote** — write `C`, advance `E`, add to `cumulative_overrides` (only on `G>0`).
@@ -747,42 +743,42 @@ Per box (S1 crypto, S2 stocks), all `setsid` daemons:
 
 ## 37. THE GREEDY STATE MACHINE — PSEUDOCODE
 
-The exact control flow `v15_pilot` must implement per tab (STDEV skipped). This is normative — code that deviates is wrong.
+The exact control flow `v15_pilot` implements (all 13 tabs, STDEV first). This is normative — code that deviates is wrong.
 
 ```
 cumulative_gain      = baseline_gain          # from *_BASELINE_METRICS!B2
 cumulative_overrides = ingest_best(SYM_SIDE)  # prior-best wins over defaults (no "if k not in" guard)
 write E3 = baseline_gain ; keep E2 = "BASELINE" (header string)
 
-for tab in TABS_IN_ORDER:                      # ENTRY_REVERSAL_BOUNCE ... GLOBAL_RISK_GATES
-    write E(first_pending_row(tab)) = cumulative_gain
-    for row in rows(tab):                       # switch=cand rows, in order (or shuffled in hustle)
-        switch, cand = row.A, row.candidate
-        yellows = opportune_yellows(switch, tab) # SPECIFIC + lifecycle/ALL + token-overlap + header exists
-        cum_before = cumulative_gain
+visit rows worst-first (--seq-mode worst2best); on NEG/0 jump to next tab's first pending row
+(--nav-mode jump; jump reorders visits only — every row still fills)
 
-        naked = eval(cumulative_overrides + {switch:cand}) - cum_before      # ~0.07s, RAM
-        per_yellow = { hdr: eval(cumulative_overrides + {switch:cand} + {filter(hdr)}) - cum_before
-                       for hdr in yellows }                                   # each written to L:BI now
-        write F,G for the row ; write every L:BI cell (pos green / neg red)
+for each visited row:                          # switch=cand
+    switch, cand = row.A, row.candidate
+    yellows = opportune_yellows(switch, tab)   # SPECIFIC + lifecycle/ALL + token-overlap + header exists
+    cum_before = cumulative_gain
 
-        if yellows:
-            G = sum(d for d in per_yellow.values() if d > 1e-9)   # positive yellows only
-            if G > 1e-9:
-                write C = "switch=cand + " + join(pos_yellow_headers)     # bold if non-default
-                write K = pos_yellow_headers
-                cumulative_gain      += G
-                cumulative_overrides += {switch:cand} + {each pos yellow filter}
-                # stay on THIS tab, next row's E = cumulative_gain
-            else:
-                leave C blank ; E of next row stays BLANK ; do not advance cumulative
-                # continue down remaining rows of this tab
-        else:   # no yellows for this row
-            write F=G=naked
-            # per spec, a no-yellow row cannot be exploited further -> move to NEXT TAB
-            break
+    naked = eval(cumulative_overrides + {switch:cand}) - cum_before      # ~0.07s, RAM
+    per_yellow = { hdr: eval(cumulative_overrides + {switch:cand} + {filter(hdr)}) - cum_before
+                   for hdr in yellows }                                   # each written to L:BI now
+    pos = {hdr:d for hdr,d in per_yellow.items() if d > 1e-9}
+    joint = eval(cumulative_overrides + {switch:cand} + {all pos filters}) - cum_before if pos else -inf
+    if joint > 1e-9:      G, adopted = joint, pos            # JOINT first (§56.0 — never a sum)
+    elif pos:             G, adopted = best_single(pos)       # best single positive
+    else:                 G, adopted = naked, {}              # naked (covers no-yellow rows)
+    write G (+F iff V15_WRITE_HUSTLE=1); write every L:BI cell (pos green / neg red)
 
-# after all tabs: run winning set through backtest_v12_engine -> fill H/I once; finisher re-anchors & publishes
+    if G > 1e-9:
+        write C = "switch=cand + " + join(adopted)           # bold if non-default
+        write K = adopted headers
+        cumulative_gain      += G
+        cumulative_overrides += {switch:cand} + adopted
+        # stay on THIS tab, next row's E = cumulative_gain
+    else:
+        leave C blank ; E of next row stays BLANK ; do not advance cumulative
+        # jump: next visit is next tab's first pending row (fill_tab: stay instead)
+
+# after all tabs: endgame cycle, then winning set through backtest_v12_engine -> H/I; DONE publishes (§§32,69)
 ```
 
 Notes:
@@ -827,7 +823,7 @@ When §18 concludes a switch truly needs engine logic (rare), wire it honestly:
 3. **Call it once** in `simulate_one` (entry: `entry_sig &= mask`; exit: `exit_sig |= mask`; etc.), inside the family's try/except.
 4. **Prove it** — the switch flip must produce a delta **with a changed trade ledger**: compare `include_ledger=True` results (opens/closes differ), not just gain. If gain moves but the ledger is identical, the delta is spurious — do not ship.
 5. **Integrity** — setting the switch to its default (`OFF`) must give exactly 0 (predicate returns `None`).
-6. **Parity** — add a faithful scalar twin path in `backtest_v12_engine` (or confirm the live `process_position` already does it) before promoting on vector numbers alone (§44).
+6. **Parity** — add a faithful scalar twin path in `backtest_v12_engine` (or confirm the live `process_position` already does it) before promoting on vector numbers alone (§43; then 365D robustness, §44).
 7. **Never** satisfy an audit with `_ = getattr(cfg, "X")` reads (§19).
 
 ---
@@ -965,7 +961,7 @@ Connection: `ssh -fNT s1-sftp` first (else `Connection refused 127.0.0.1:2201`);
 
 ## 48. BEST-OVERRIDE INGEST — HOW A SYM_SIDE STARTS
 
-Whether a `SYM_SIDE` starts from defaults or from prior-best determines its baseline (§14):
+Whether a `SYM_SIDE` starts from defaults or from prior-best determines its baseline (§14). **Gating law: §64 currently FORBIDS starting from prior-best — all rounds run defaults-pure until every sym_side has full 30D coverage** (the run25 defaults-purity violation). This section describes the MECHANISM, which re-activates when §64's gate lifts:
 
 - **Tested before** → start from the **best promoted overrides** of the last run for that exact `SYM_SIDE`. Sources searched, best wins over defaults (never `if k not in overrides`):
   - `data/reports/lifecycle_pilot/{SYM}_{SIDE}_v14_progress.json` → `cumulative_overrides` / `hustler_overrides`.
@@ -994,8 +990,8 @@ Whether a `SYM_SIDE` starts from defaults or from prior-best determines its base
 The filler must never block on a cell; instead it marks and moves, and a monitor reaps:
 
 - On stall (>10s) or eval error: RED the single cell (`FF0000` fill, white bold), RED the tab (`tabColor="FF0000"`), write the reason into the cell, append `data/reports/v15_flags/{SYM}_{SIDE}_flags.md`, and continue to the next yellow (or next tab if no yellows).
-- `tools/v15_redflag.py` + the sentinel/finisher sweep flags on a ~10-minute cycle; a repair agent picks up RED cells, roots the cause (usually a slow/broken predicate or a missing NPZ key), fixes forward, and the assure/refill path recomputes just those cells from JSON truth.
-- **Never** leave a cell blank/None on stall, never erase a computed value to hide a stall, never let one cell push a workbook past ~20 min (hard target) / 60 min (absolute).
+- Flag sweeps run on a ~10-minute cycle (the old redflag/sentinel daemons are retired, §34 — the scheduler's stall reap + on-demand `v15_refill_from_json.py` cover the loop); a repair agent picks up RED cells, roots the cause (usually a slow/broken predicate or a missing NPZ key), fixes forward, and the refill path recomputes just those cells from JSON truth.
+- **Never** leave a cell blank/None on stall, never erase a computed value to hide a stall, never let one cell push a workbook past ~20 min (hard target) / 60 min (absolute). (Observed 2026-10-07: full symbols run 1–12h — the 20/60min targets are NOT met; see §74 for the wall-time breakdown and the reduction plan.)
 - BadZip protection: every write via `_atomic_save` (tmp+fsync+rename, `ZipFile≥10` validate, keep `.bak`); the JSON progress file is the source of truth so a corrupted xlsx is rebuilt, not lost.
 
 ---
@@ -1006,7 +1002,7 @@ A sheet with "good gains, all deltas applied correctly" means:
 
 - Headline `gain` = finisher's **fresh re-anchored full-set eval** (§32), not a chained total — reproducible to the last decimal by an independent `evaluate_sanitized` re-run.
 - `gain > baseline` (greedy only climbs) and `gain` beats or reasonably trails B&H (`bh` in the name for context; a strategy can be worth keeping below B&H if it has far lower DD/exposure).
-- Metric gates (interim → real): `pool_sharpe > 0.2` interim (`>0.5`/`>1.0` for promotion), `TIM 20–80`, `max_dd_pct ≤ 30`, trade count above the sample floor (`≥30/sym`, `≥48 crypto`/`≥100 stocks` universe) else `[DIAGNOSTIC ONLY]`.
+- Metric gates (three different gates — do not conflate): **operating gate** `pool_sharpe > 0.2` (+ `TIM 20–80`, `max_dd_pct ≤ 30`) for sweep promotion; **interim bar** `> 0.5`; **real-money bar** `> 1.0`. Trade count above the sample floor (`≥30/sym`, `≥48 crypto`/`≥100 stocks` universe) else `[DIAGNOSTIC ONLY]`.
 - **DD semantics (USER 2026-10-03): `max_dd_pct` = realized peak-to-trough on peak-concurrent equity (the standard). `max_dd_mae_pct` (DDmtm on charts) = wick-adverse MTM on the SAME base = the max the strategy COULD have lost, always ≥ DD. Per-trade `pnl%` divides by THAT trade's deployed — never compare it against DD directly; chart `eq%` (= pnl/peak equity) is the reconciling column. Mean-deployed DD normalization stays BANNED (MU_SHORT 125.8% — exceeds capital ever at risk).**
 - **Peak-concurrent fix (USER 2026-10-03): trade `deployed` sums fills and never subtracts REDUCEs — `_peak_concurrent` now replays the signed OPEN/AUGMENT/REDUCE/CLOSE event stream and reports max open, not gross churn (GALAUSDT_SHORT proof: $510.77 → $326.27, gain 3.21% → 5.02%, DD 1.91% → 2.96%, DDmtm 2.08% → 3.20%). ALL gain/DD %s fleet-wide rescale by each eval's own churn factor (~1.0–2.5x, augment-heavy symsides move most); deltas stay differences of honest %s. Engine `peak_capital` (locked) still reports fill-sum — honest surfaces use `E._peak_concurrent`, engine stays `*_RAW` diagnostic only.**
 - Every promoted delta traces to a real changed trade ledger (§19) and, for live promotion, passes scalar parity (§43) and 365D robustness (§44).
@@ -1035,7 +1031,7 @@ Use these as the "this is what a correct fill looks like" reference:
 - **`trades`** (metric source):
   - `CLOSE` → `{type:"CLOSE", pnl_dollars, pnl_pct, deployed, reason, exit_reason, ts, price, entry_price, exit_price, qty, bar_entry, bar_exit, bars_held, entry_reason}`.
   - `REDUCE` rows may also be appended to `trades` with `qty:0.0` (chart marker; not a metric close).
-- **Metrics** use CLOSE rows only: `gain_pct = Σpnl_$ / mean_deployed *100` (avg-trade-deployed convention), `pool_sharpe = mean(per_trade_ret)/stdev`, win rate = `#(pnl_pct>0)/#CLOSE`.
+- **Metrics** use CLOSE rows only: `gain_pct = pnl_usd / capital *100` where `capital = peak_notional(events)` (peak-based per the §51 peak-concurrent fix — mean-deployed normalization is BANNED), `pool_sharpe = mean(per_trade_ret)/stdev`, win rate = `#(pnl_pct>0)/#CLOSE`.
 - **Ordering invariant:** a position must `OPEN` before any `AUGMENT/REDUCE/CLOSE`; the sim enforces this (reduce/augment only run when `pos is not None`). Any "reduce before buy" seen downstream is a **merge/chart sort** artifact — sort by `(bar, OPEN<AUGMENT<REDUCE<CLOSE)` (§33/§25).
 - **"Empty trades" clarification:** zero-qty `REDUCE` marker rows and zero-pnl `OPEN`/`AUGMENT` events are normal ledger entries for charting, not metric trades — do not mistake them for a defect; they are excluded from gain/sharpe.
 
@@ -1157,6 +1153,17 @@ The bold row needs no calculation: it IS the baseline.
   measured against (never promoted after the fact — the chain has passed it). Still failing → stays RED for `v15_assure`.
 - LIVE_DELTA / LIVE_SHARPE stay blank until the workbook is complete (R23 unchanged).
 
+> **§56 tool-name map (2026-10-07 — the verbatim law below stands; only tool names moved):**
+> `v15_avg_delta_apply` → `tools/v15_daily_template_update.py` (avg/promotions writer);
+> `v15_avg_delta_rebuild` → `tools/v15_cell_evidence.py` + `data/avg_delta_pos_sym.json`;
+> row adds → `tools/v15_switch_add.py` (the ONE add-switch exception, SWITCH_ADD_GUIDE.md);
+> books → `tools/v15_template_bookkeeper.py` (S1 cron 12:30 UTC, sole book writer);
+> bulk restructures → `tools/v15_template_staged_apply.py` (staged+verified; currently refuses on the
+> pre-existing violation backlog). Legacy `SPREADSHEETS/TEMPLATE_*.xlsx` set archived
+> (`backups/archive_generic_templates_20261007/`); the ONLY templates are the 4
+> `SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_*.xlsx` (§70).
+> `v15_add_orange_rows` / `v15_add_switches` stay refused (superseded, do not un-refuse).
+
 **Templates are changed by ONE script only:** `tools/v15_avg_delta_apply.py` (after `tools/v15_avg_delta_rebuild.py`, stats
 per `SWITCH=value` / `FILTER=opt`) writes AVG_DELTA/POS_SYM by header, promotes the highest POSITIVE avg-delta row/header of a
 group to bold + `is_default=YES` (previous default regular + `NO`, ledger `data/cat_side_promotions.json`), and re-orders
@@ -1228,7 +1235,7 @@ defaults per switch, one per cat_side — a new architecture) → run the full 3
 (each sym_side baselined on its previous best, using the template's worst_first order) → verify 365D, then
 backtest_v12_engine if time → apply pos-30D-gain AND pos-365D winners to live per_sym before open →
 recompute avg_delta (ADD pos_sym, REPLACE avg) and roll to the next day. Selective test frequency by pos_sym
-(0→1/10, 1→1/5, 2→1/3, 3→½, >3→every) via a v15_pilot change, NOT row deletion (nothing is ever deleted).
+(~~0→1/10, 1→1/5, 2→1/3~~ — 2026-09-29 values, superseded 2026-10-06: current probabilities are 0→1/20, 1→1/10, 2→1/6, 3→½, >3→every — see §73) via a v15_pilot change, NOT row deletion (nothing is ever deleted).
 JIT NPZ regen per symbol (N+1 while computing N); daily symbol-universe scan (add new, drop untraded).
 Compute priority everywhere: pending 30D first, then 365D, then live-faithful rerun. s5 is a temporary
 hybrid (all NPZ). INVARIANTS: NO-LIES real deltas only; defaults change only via promotion; rows move whole;
@@ -1263,25 +1270,19 @@ be resolved before implementation — do not build past Stage 0 until they are a
 
 **Do not:** discard a sym_side for a negative 365D; promote a set that is only 30D-positive; loosen the TIM/DD/floor gates to make a window "valid"; count a window as fixed while it is invalid.
 
-## 59. FLEET RUN REGIME + CRON INDEPENDENCE (USER 2026-09-29 PM, AUTHORITATIVE) — see HANDOFF_SWEEP_20260929_PM.md
+## 59. FLEET RUN REGIME — RETIRED 2026-10-06 (SCHEDULER ERA; was USER 2026-09-29 PM)
 
-**Everything runs on cron, survives reboots, resumes where it left off. Servers never <85% CPU; they run ONLY 30D backtests. Parity forward-tests run on the Mac, never servers.**
+The sweep-cron/full-sweep-driver regime below is **retired** (replaced by `tools/v15_fleet_scheduler.py`, §74). Kept as history; only the pipeline-order law survives:
 
-**Pipeline (order is law):** 30D run #1 ALL sym_sides (disabled/now-switched-off sides FIRST) → recalc `v15_avg_delta` → rebuild templates → 30D run #2 ALL sym_sides → 365D verification + adjustments (§58). No 365D run until run #2 completes.
+**Pipeline (order is law):** 30D run #1 ALL sym_sides → recalc avg-delta → rebuild templates → 30D run #2 ALL sym_sides → 365D verification + adjustments (§58). No 365D run until run #2 completes.
 
-**Main sweep = `tools/v15_sweep_cron.sh` (cron `*/5` + `@reboot`) → `tools/v15_full_sweep_driver.py`.** Per host: s1 crypto shard 0/2, s5 crypto shard 1/2, s2 stocks 0/1. Order = **worst-first by SYMBOL, disabled symbols first** (`data/reports/per_sym_recheck_20260929/run_order_{crypto,stocks}.txt`, disabled-set `priority_negzero_{crypto,stocks}.txt`). Each symbol runs **LONG+SHORT together** (one NPZ load, shared via OS page cache — never load a symbol twice). Disabled (neg/zero) side = `V15_TEMPLATE_DEFAULTS=1` (reset toward cat_side defaults; `[ADAPT-BASE]` still picks best credible of {defaults, recipe, prev_best}); positive side = FRESH best-base.
+**Guard-bypass law (survives):** the pilot's `ALREADY FINISHED (early) — MUST NOT RETOUCH` skip only fires when it finds a prior progress JSON in `V15_PROGRESS_DIR`. Every fresh pass MUST point `--progress-dir` at a NEW empty iso dir — that is what re-runs a finished side on the new template. Sheets still land in `SPREADSHEETS/V15_V16_CELL_BY_CELL/`.
 
-**Guard-bypass law:** the pilot's `ALREADY FINISHED (early) — MUST NOT RETOUCH` skip only fires when it finds a prior progress JSON in `V15_PROGRESS_DIR`. Every fresh pass MUST point `--progress-dir` at a NEW empty iso dir (`~/v15_runN_YYYYMMDD/progress`) — that is what re-runs a finished side on the new template. Sheets still land in `SPREADSHEETS/V15_V16_CELL_BY_CELL/`.
-
-**Old rig is dead + stays dead:** `tools/reset_fleet_20260929.sh` killed all spawners (cycle_follower/iso_dispatch/mega_supervisor/herd/finisher) and disabled their crons; `v15_sweep_cron.sh` holds the herd singleton lock (`flock_hold_herd` on `/tmp/v15_local_herd.lock`) so any respawned `v15_local_herd` self-exits. Never re-enable those crons during the run.
-
-**Monitoring (NO-LIES, every cell fill):** `tools/v15_delta_health_monitor.py` (Mac cron `*/10`) flags **0-delta sides** (dead NPZ/no-op stub — fix NPZ or mark stub) and **repeated-identical-delta** (fabricated `v12_quick_engine` distinctness — never promote, re-run + trace). Offenders → `data/reports/delta_health_{date}.md`. Fix immediately (§18–§21).
-
-**Yellow agent (all switch × all filter × 5 TF × 4 cat_side, on an OLD template, applied to the latest template when done):** a long-running (days) background job that MUST run on cron, survive reboots, and resume. As of this handoff it is NOT running and its exact tool/state store is unconfirmed — resume it as a cron guard only once identified; it must not starve the 30D sweep.
+(Retired detail: `v15_sweep_cron.sh`/`v15_full_sweep_driver.py` sharding, `v15_delta_health_monitor.py` Mac cron, the unconfirmed yellow-agent job, `reset_fleet_20260929.sh` — see git/backups history. Servers run backtests AND (S1) the live stack — §11.)
 
 ---
 
-*End of bible — if a procedure above conflicts with older text, this wins. §59 (fleet run regime + cron independence) and §58 (negative 365D = faulty 30D sheet → repair loop, never a disqualification) are operator-authoritative. §14–§57 are the 2026-09-29 operator-corrected additions; §56 is the operator's verbatim fill spec and is the highest authority on how `TEMPLATE_*.xlsx` is filled; §57 + DAILY_OPTIMIZATION_PLAN.md define the daily self-optimization loop; run regime + monitoring live in HANDOFF_SWEEP_20260929_PM.md.*
+*End of the 2026-09-29 body — if a procedure above conflicts with older text, this wins. §59's pipeline-order law and §58 (negative 365D = faulty 30D sheet → repair loop, never a disqualification) are operator-authoritative. §14–§57 are the 2026-09-29 operator-corrected additions; §56 is the operator's verbatim fill spec and is the highest authority on how the templates are filled; §57 + DAILY_OPTIMIZATION_PLAN.md define the daily self-optimization loop; current run regime lives in §74.*
 
 
 ## 60. DEVELOPMENTS 2026-10-01 → 10-02 (ESTABLISHED FACTS — read before touching data, engine or scheduler)
@@ -1304,7 +1305,7 @@ be resolved before implementation — do not build past Stage 0 until they are a
 
 **60.9 Engine deploy protocol.** Engine files change only through `tools/engine_deploy.py --stage DIR` (atomic, md5, import check on all hosts, `data/engine_deploy/CURRENT.json`). Current engine md5 `ecacb3be`. Pilots import the engine at start: record md5 per result.
 
-## 61. AUTOPILOT (USER 2026-10-02) — UNATTENDED OPERATION, coordinated by s1. See AUTOPILOT_RUNBOOK.md.
+## 61. AUTOPILOT (USER 2026-10-02) — ON HOLD (`#BUILDER_HOLD` in S1 crontab, verified 2026-10-07). See AUTOPILOT_RUNBOOK.md.
 `tools/v15_autopilot.py` (s1 cron */5, flock, resumable state `data/autopilot/state.json`) drives rounds: SWEEP (scheduler launches 30D pilots into the current progress dir) → COLLECT (per-host partials → merged workbook) → TEMPLATE (`v15_daily_template_update --apply`, NO `--sync-defaults`) → NORMALISE (`TEMPLATE_FINAL_NORM`) → DEFAULTS (sweep-only json) → SYNC (s2/s5, md5) → RESTART (new progress dir + defaults round id). `tools/v15_npz_keeper.py` (s1 cron */10) refreshes the NPZs of the next 10 pending STOCK symbols just before their turn (Tradier tail rebuild on s1, push to s2/s5 with md5, skipped for a host that is running the symbol). s1 is the template source of truth while the user is away (Mac template pushes are disabled, `#AUTOPILOT_OFF#` in the Mac crontab). Failure policy: a failing round-end stage is retried every tick; after 6 failures the round restarts on the PREVIOUS defaults so servers stay busy, and `STATUS.json` carries an `alert`.
 
 
@@ -1337,7 +1338,7 @@ Mon 2026-10-05 06:00 UTC: best (newest-round) 30D sheet of every sym_side → 36
 
 **Rule:** every pilot run baselines against the **latest cat_side defaults** (template bold/is_default=YES rows = `_tpl_defaults`, gated against venue truth + `cat_side_promotions.json`). Starting from a previous test — live recipes, `*_best.json` / `hustler_best.json`, previous progress `cumulative_overrides`, previous-xls C-fill, or an ADAPT-BASE that picks `previous_best` — is **completely forbidden until all 354×2 sym_sides have produced final sheets**. Rationale: chaining from a 5-minute-old test bakes that test's greedy path into every number and makes cross-sym sheets incomparable; the first full-coverage round must be defaults-pure.
 
-**Enforcement (mechanism, verified in `v15_pilot.py`):** `V15_TEMPLATE_DEFAULTS=1` drops all ingested overrides → `overrides = dict(_tpl_defaults)` (:4658-4662); `V15_ADAPT_BASELINE=0` disables the ADAPT-BASE max-pick (default 1, and forced on under `V15_FRESH_RUN=1` at :4908); omit `V15_INGEST_BEST` (without it, FRESH_RUN falls back to recipe-only at :4630 — still previous-test-derived, so TEMPLATE_DEFAULTS=1 must accompany it). `V15_FRESH_RUN=1` + isolated `V15_PROGRESS_DIR` + isolated `--out` still required for ISO rounds. `CAT_SIDE_DEFAULTS_PATH` is consumed nowhere in the pilot/tools tree (dead env var — do not rely on it). Consequence, accepted: a defaults baseline that lands sub-floor yields a `[DIAGNOSTIC ONLY]` sheet with the sweep skipped — honest, per the rule — instead of a rescued number. Standing violation to clear: the run25 fleet launches with `V15_INGEST_BEST=1`; its rounds are previous-test-chained until the herd switches to this mode. Second enforcement (2026-10-03, `v15_pilot.py:2979` → `:3072` after the parallel manifest update, which preserved the gate; fleet md5 `402312f95ec7b674fac8c1e7f8a89079`): compliance-repair round 2 used to inject `prior_0/1` fleet sets via `_prior_final_sets()` — under `V15_TEMPLATE_DEFAULTS=1` priors are now forced to `[]`, so every compliance round stays defaults-pure. Third enforcement — the bold-type law: a template bold that cannot pass `_coerce_override` under its field type deterministically voids EVERY defaults-pure set (observed: bold `'0.5'` for bool `WT_EXHAUST_EXIT_REQUIRE_GAIN` rejected all PEPE/1INCH compliance rounds 0-1, forcing the §64-violating round-2 priors that produced the VOID first-launch ADAPT numbers +27.65/+12.41). Fix (2026-10-03): 6 phantom promotions voided from `data/cat_side_promotions.json` + SQL KV on Mac/S1 (S2/S5 have no SQL store, JSON fallback covers them) — `WT_EXHAUST_EXIT_REQUIRE_GAIN`/`WT_4H_VEL_EXIT_REQUIRE_PROFIT` (CRYPTO_LONG), `LEGACY_PROC_SINGLE_REENTRY`/`LEGACY_REENTRY_PSR_DC_BOUNCE` (STOCKS_LONG), `LOSS_TECHNICAL_EXIT_NO_STALE_BLOCK` (STOCKS_SHORT), `DC_BREAKOUT_SCORE` (CRYPTO_SHORT) — and template bolds moved to config-parity (`WT_EXHAUST`→`False` ×4, `DC_BREAKOUT_SCORE`→`15`, `LH_HL_FILTER_REQUIRE_BOTH`→native bool). Exact-loader audit (`template_bold_defaults` + coerce per key) now reports 0 poison keys and 0 loader violations on all 4 cat_sides. Note: the Oct-02 avg_delta batch that wrote the phantoms measured deltas for values the strict engine cannot evaluate — any future promoter must coerce-check values before recording them. Fourth enforcement — the ablation exemption (2026-10-03, entry-death outage): `ABLATION_DISABLE_*=True` in crypto template bolds deterministically kills ALL entries (fleet-wide 0-1 trades on every crypto sym_side, both directions; proven: cat_side set with 13 True → 1 trade, same set with all False → 203 trades PEPE / 186 1INCH, valid). Root cause chain: `config.py` ablation defaults flipped True on 2026-09-21 (live forward-proving regime) → template bolds followed to config-parity → every defaults-pure baseline died; prior-based runs survived only via per_sym overrides that lack ablation keys... until the Oct-02 builder run (`tools/build_cat_side_defaults_4.py`, 18:33Z) also wrote True into `cat_side_defaults_4.json`. Fix: bold+`is_default=YES` moved True→False for all 13 ablation switches in `TEMPLATE_CRYPTO_LONG/SHORT` + `TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_*` (102 bold flips + 102 YES moves, zero row add/delete; STOCKS untouched — working), JSON purged to match (md5 `d29bd72d`), deployed S1/S2. LAW: ablation switches are EXEMPT from config-parity — the live OFF-proving state must never leak into backtest defaults; any builder/promoter emitting `ABLATION_DISABLE_*=True` into a crypto default set is a P0 violation. Fifth enforcement — the per_sym-baseline skip: the Oct-02 "cat_side vs per_sym, best as E3" block (`v15_pilot.py:5077`) starts a sym from its own prior best = running against itself. Defaults-pure rounds must export `V15_SKIP_CAT_PERSYM_BASELINE=1` (baseline = template bolds only, no comparison). Verified 2026-10-03: PEPE 226 trades / 1INCH 222 trades, valid, zero priors. Sixth enforcement — the self-improvement loop (2026-10-03): defaults improve ONLY via rebuild→daily-update→builder, unfrozen this date (`TEMPLATES_FROZEN` lifted to backups/, user-ordered). Promoter gates now: coerce-check per field type (phantom class refused), ablation-True P0-refused, `--min-n 3` evidence floor, every refusal ledgered. Builder P0: crypto `ABLATION_DISABLE_*` forced False post-fill (template False bolds are dropped as "untrusted vs config truth" and refilled True = entry death; observed 9 re-emitted, forced back). Fleet runs `TEMPLATE_FINAL_NORM` (structurally distinct from MAIN — updater runs on BOTH dirs). Zero-delta watchdog (`tools/v15_zero_delta_watchdog.py`): avg==0+median==0 over ≥8 syms on a non-default value = dead suspect → `--apply` appends to the pilot's skip list (KG never added); first run: 1 suspect row (`WT_15M_BOUNCE_REL_VOL_GT_1=True`), 0 disablable. Daily cron `V15_SELFIMPROVE` 05:00 UTC (`tools/v15_daily_selfimprove.sh`, dated-agg explicit — `*latest*` names are clobbered by S1→Mac pulls). Full-compute law: `V15_POSSYM_SAMPLING=0` fleet-wide (both launchers) — validity requires every row calculated. Seventh enforcement — the complete-rounds law (USER 2026-10-03, round `run27_complete_20261003`): (1) CORPSE-CLEAR — rows stuck `is_running` are dead-run orphans (QBTS_LONG: 835 permanent blanks reading as done); the pilot drops uncalculated ones at startup (post-DEDUP, safe) and re-drives them. (2) UNWIRED RECALC — `V15_UNWIRED_SKIP=0` fleet-wide: audit keys calculate anyway, honest 0.0 rows tagged `UNWIRED_CALCULATED` (never blank, never fake). No switch is ignored until several complete rounds exist. (3) HOLLOW BOARDS REOPEN — `symside_status` no longer counts corpses, undecided blanks, `NOT_WIRED_VEC` or `SKIPPED_SAMPLING` rows as filled (QBTS_LONG 3084/3088 → 2280/3088); re-driving hollow boards is NOT a §65 retest (they never qualified). (4) ACTIVE-ONLY SCOPE — this round runs actively-traded symbols only (crypto `symbols_active.json` + TRB long/short; default ON, `V15_ACTIVE_ONLY=0` restores full queue; explicit `--order` bypasses): S1 150→100, s2 204→111. (5) CLAIM-ADOPT + DONE-CLEAR — a restarted herd adopts same-host dead-PID claims immediately instead of idling 90m on its own corpse (registry lives on S1; workers adopt via `_s1_run`; other hosts' claims untouched); `_only_complete` clears claim done-markers for reopened boards (a `done` file otherwise blocks the redrive forever — 29 stale markers found). (6) NO-SHADOW LAW — `import glob, json` inside `main()` made `json` function-local → UnboundLocalError swallowed by inner excepts (silent unfiltered order) / fatal outside try (herd death, S1 idle); fixed via `_jsu`/`_jsact` aliases; regression `test_herd_noshadow.py` (AST: main() binds no module-global name) fails pre-fix, passes post-fix. (7) TEMPLATE HYGIENE — 20 untestable rows deleted from all 8 templates (phantom switches `UNIVERSAL_NOLOSS_BYPASS_REASONS`/`CIRCUIT_BREAKER_THRESHOLD_PCT` in no config + unwired; `BB_BREAKOUT_ENTRY_TF=20` int-for-str) + `DC_BREAKOUT_SCORE` 0.75→0 (label==tested value); parser coerces bool-words/native-bools → 1.0/0.0 for float defaults (config_tradier 0.0/1.0 bool encoding: `HTF_GATE_D_MANDATORY`, `LH_HL_FILTER_REQUIRE_BOTH`). Fleet topology corrected: `s2-int` tunnels to S1 (same bytes); real workers are S1 `niels` + s2-box `10.0.0.4` (hostname s2, stocks) + s5 `10.0.0.5` (hostname s5) — all three herds restarted uniform this date.
+**Enforcement (mechanism, verified in `v15_pilot.py`):** `V15_TEMPLATE_DEFAULTS=1` drops all ingested overrides → `overrides = dict(_tpl_defaults)` (:4658-4662); `V15_ADAPT_BASELINE=0` disables the ADAPT-BASE max-pick (default 1, and forced on under `V15_FRESH_RUN=1` at :4908); omit `V15_INGEST_BEST` (without it, FRESH_RUN falls back to recipe-only at :4630 — still previous-test-derived, so TEMPLATE_DEFAULTS=1 must accompany it). `V15_FRESH_RUN=1` + isolated `V15_PROGRESS_DIR` + isolated `--out` still required for ISO rounds. `CAT_SIDE_DEFAULTS_PATH` is consumed nowhere in the pilot/tools tree (dead env var — do not rely on it). Consequence, accepted: a defaults baseline that lands sub-floor yields a `[DIAGNOSTIC ONLY]` sheet with the sweep skipped — honest, per the rule — instead of a rescued number. Standing violation to clear: the run25 fleet launches with `V15_INGEST_BEST=1`; its rounds are previous-test-chained until the herd switches to this mode. **CLEARED 2026-10-06/07: current launcher env is `V15_TEMPLATE_DEFAULTS=1` + `V15_FRESH_RUN=1` + `V15_UNWIRED_SKIP=0` with NO `V15_INGEST_BEST` (verified on live fleet cmdlines) — rounds are defaults-pure.** Second enforcement (2026-10-03, `v15_pilot.py:2979` → `:3072` after the parallel manifest update, which preserved the gate; fleet md5 `402312f95ec7b674fac8c1e7f8a89079`): compliance-repair round 2 used to inject `prior_0/1` fleet sets via `_prior_final_sets()` — under `V15_TEMPLATE_DEFAULTS=1` priors are now forced to `[]`, so every compliance round stays defaults-pure. Third enforcement — the bold-type law: a template bold that cannot pass `_coerce_override` under its field type deterministically voids EVERY defaults-pure set (observed: bold `'0.5'` for bool `WT_EXHAUST_EXIT_REQUIRE_GAIN` rejected all PEPE/1INCH compliance rounds 0-1, forcing the §64-violating round-2 priors that produced the VOID first-launch ADAPT numbers +27.65/+12.41). Fix (2026-10-03): 6 phantom promotions voided from `data/cat_side_promotions.json` + SQL KV on Mac/S1 (S2/S5 have no SQL store, JSON fallback covers them) — `WT_EXHAUST_EXIT_REQUIRE_GAIN`/`WT_4H_VEL_EXIT_REQUIRE_PROFIT` (CRYPTO_LONG), `LEGACY_PROC_SINGLE_REENTRY`/`LEGACY_REENTRY_PSR_DC_BOUNCE` (STOCKS_LONG), `LOSS_TECHNICAL_EXIT_NO_STALE_BLOCK` (STOCKS_SHORT), `DC_BREAKOUT_SCORE` (CRYPTO_SHORT) — and template bolds moved to config-parity (`WT_EXHAUST`→`False` ×4, `DC_BREAKOUT_SCORE`→`15`, `LH_HL_FILTER_REQUIRE_BOTH`→native bool). Exact-loader audit (`template_bold_defaults` + coerce per key) now reports 0 poison keys and 0 loader violations on all 4 cat_sides. Note: the Oct-02 avg_delta batch that wrote the phantoms measured deltas for values the strict engine cannot evaluate — any future promoter must coerce-check values before recording them. Fourth enforcement — the ablation exemption (2026-10-03, entry-death outage): `ABLATION_DISABLE_*=True` in crypto template bolds deterministically kills ALL entries (fleet-wide 0-1 trades on every crypto sym_side, both directions; proven: cat_side set with 13 True → 1 trade, same set with all False → 203 trades PEPE / 186 1INCH, valid). Root cause chain: `config.py` ablation defaults flipped True on 2026-09-21 (live forward-proving regime) → template bolds followed to config-parity → every defaults-pure baseline died; prior-based runs survived only via per_sym overrides that lack ablation keys... until the Oct-02 builder run (`tools/build_cat_side_defaults_4.py`, 18:33Z) also wrote True into `cat_side_defaults_4.json`. Fix: bold+`is_default=YES` moved True→False for all 13 ablation switches in `TEMPLATE_CRYPTO_LONG/SHORT` + `TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_*` (102 bold flips + 102 YES moves, zero row add/delete; STOCKS untouched — working), JSON purged to match (md5 `d29bd72d`), deployed S1/S2. LAW: ablation switches are EXEMPT from config-parity — the live OFF-proving state must never leak into backtest defaults; any builder/promoter emitting `ABLATION_DISABLE_*=True` into a crypto default set is a P0 violation. Fifth enforcement — the per_sym-baseline skip: the Oct-02 "cat_side vs per_sym, best as E3" block (`v15_pilot.py:5077`) starts a sym from its own prior best = running against itself. Defaults-pure rounds must export `V15_SKIP_CAT_PERSYM_BASELINE=1` (baseline = template bolds only, no comparison). Verified 2026-10-03: PEPE 226 trades / 1INCH 222 trades, valid, zero priors. Sixth enforcement — the self-improvement loop (2026-10-03): defaults improve ONLY via rebuild→daily-update→builder, unfrozen this date (`TEMPLATES_FROZEN` lifted to backups/, user-ordered). Promoter gates now: coerce-check per field type (phantom class refused), ablation-True P0-refused, `--min-n 3` evidence floor, every refusal ledgered. Builder P0: crypto `ABLATION_DISABLE_*` forced False post-fill (template False bolds are dropped as "untrusted vs config truth" and refilled True = entry death; observed 9 re-emitted, forced back). Fleet runs `TEMPLATE_FINAL_NORM` (the ONLY templates since 2026-10-07 — the legacy `SPREADSHEETS/TEMPLATE_*.xlsx` set is archived; the updater runs on FINAL_NORM only). Zero-delta watchdog (`tools/v15_zero_delta_watchdog.py`): avg==0+median==0 over ≥8 syms on a non-default value = dead suspect → `--apply` appends to the pilot's skip list (KG never added); first run: 1 suspect row (`WT_15M_BOUNCE_REL_VOL_GT_1=True`), 0 disablable. Daily cron `V15_SELFIMPROVE` 05:00 UTC (`tools/v15_daily_selfimprove.sh`, dated-agg explicit — `*latest*` names are clobbered by S1→Mac pulls). Full-compute law: `V15_POSSYM_SAMPLING=0` fleet-wide (both launchers) — validity requires every row calculated. **SUSPENDED by later user order 2026-10-06 ("sampling ON again" — fleet now launches `V15_POSSYM_SAMPLING=1`; see §73). Sampling defers low-evidence rows/cells to a sample-free heal pass rather than deleting them, which is why the suspension is validity-safe.** Seventh enforcement — the complete-rounds law (USER 2026-10-03, round `run27_complete_20261003`): (1) CORPSE-CLEAR — rows stuck `is_running` are dead-run orphans (QBTS_LONG: 835 permanent blanks reading as done); the pilot drops uncalculated ones at startup (post-DEDUP, safe) and re-drives them. (2) UNWIRED RECALC — `V15_UNWIRED_SKIP=0` fleet-wide: audit keys calculate anyway, honest 0.0 rows tagged `UNWIRED_CALCULATED` (never blank, never fake). No switch is ignored until several complete rounds exist. (3) HOLLOW BOARDS REOPEN — `symside_status` no longer counts corpses, undecided blanks, `NOT_WIRED_VEC` or `SKIPPED_SAMPLING` rows as filled (QBTS_LONG 3084/3088 → 2280/3088); re-driving hollow boards is NOT a §65 retest (they never qualified). (4) ACTIVE-ONLY SCOPE — this round runs actively-traded symbols only (crypto `symbols_active.json` + TRB long/short; default ON, `V15_ACTIVE_ONLY=0` restores full queue; explicit `--order` bypasses): S1 150→100, s2 204→111. (5) CLAIM-ADOPT + DONE-CLEAR — a restarted herd adopts same-host dead-PID claims immediately instead of idling 90m on its own corpse (registry lives on S1; workers adopt via `_s1_run`; other hosts' claims untouched); `_only_complete` clears claim done-markers for reopened boards (a `done` file otherwise blocks the redrive forever — 29 stale markers found). (6) NO-SHADOW LAW — `import glob, json` inside `main()` made `json` function-local → UnboundLocalError swallowed by inner excepts (silent unfiltered order) / fatal outside try (herd death, S1 idle); fixed via `_jsu`/`_jsact` aliases; regression `test_herd_noshadow.py` (AST: main() binds no module-global name) fails pre-fix, passes post-fix. (7) TEMPLATE HYGIENE — 20 untestable rows deleted from all 8 templates (phantom switches `UNIVERSAL_NOLOSS_BYPASS_REASONS`/`CIRCUIT_BREAKER_THRESHOLD_PCT` in no config + unwired; `BB_BREAKOUT_ENTRY_TF=20` int-for-str) + `DC_BREAKOUT_SCORE` 0.75→0 (label==tested value); parser coerces bool-words/native-bools → 1.0/0.0 for float defaults (config_tradier 0.0/1.0 bool encoding: `HTF_GATE_D_MANDATORY`, `LH_HL_FILTER_REQUIRE_BOTH`). Fleet topology corrected: `s2-int` tunnels to S1 (same bytes); real workers are S1 `niels` + s2-box `10.0.0.4` (hostname s2, stocks) + s5 `10.0.0.5` (hostname s5) — all three herds restarted uniform this date.
 
 ## 65. NO-RETEST LAW (USER 2026-10-03, AUTHORITATIVE — compute-once)
 
@@ -1345,7 +1346,7 @@ Mon 2026-10-05 06:00 UTC: best (newest-round) 30D sheet of every sym_side → 36
 
 **Why the hole existed:** three retest paths ignored prior finals — (1) template-mtime staleness (`xlsx older than TEMPLATE_*` → re-run, so every template deploy retested the universe), (2) BEST-order freshness (BEST validation ignores global done and re-runs on latest template), (3) the `is_complete` requalify (a final whose progress JSON is missing locally reads as not-done). The pilot's DEDUP lock and the claim registry only stop *concurrent* doubles, never sequential reruns.
 
-**Enforcement (mechanism, in `tools/v15_local_herd.py`):** `_protected_qualified(order)` unions the qualifying set into `combined_done` at init (after the requalify block) and at every 60s global-refresh rebuild, so qualified syms can never enter `todo`. Non-S1 hosts union S1's finals over ssh (S1 is the push hub); ssh failure degrades to local-only. Release valve: only when `set(order) <= qualified` may NPZ-refreshed syms (`backtest_v8/indicators/{BASE}.npz` mtime newer than the final) return to `todo`; everyone else stays protected. Losers stay retestable (they have no qualifying final) — the `v15_365_cycle` loser path is unchanged. `tools/v15_overnight_herd.py` needs no patch: its done-set already counts ANY xlsx (even stale) as done, so it has no retest hole. Deployed 2026-10-03 (md5 `aae528fb3b81a9f866c42ed7e10af53f`, S1/S2/S5 verified); running herds pick it up at next start — in-flight pilots finish their wave undisturbed.
+**Enforcement — HERD MECHANISM RETIRED 2026-10-06 with the herd; scheduler-era enforcement is PARTIAL (gap flagged 2026-10-07):** the retired mechanism (`tools/v15_local_herd.py` `_protected_qualified(order)`, NPZ-refresh release valve, ssh union of S1 finals) no longer runs. What the scheduler enforces today: `done30` tracking per cat_side from published finals — finished pairs are not relaunched. NOT yet ported: the NPZ-refresh release valve (fresh data does not currently release a qualified sym) and the ssh finals union (each host counts its own finals). The hollow-board exception below and the pilot-side midrun-swap refusal still hold (pilot code, launcher-independent).
 
 **Hollow-board exception (USER 2026-10-03 complete-rounds, enforced in `_qualified_final_set`):** a qualifying final protects ONLY a complete board. A qual whose local progress/final exists on this host but `is_complete()` is False (hollow: corpses/blanks/NOT_WIRED/SKIPPED rows unfilled) is released to `todo` with a `[HOLLOW-REOPEN]` line — redrive is not retest (the board never finished). Remote-only quals (no local progress/final — finished elsewhere) stay protected (compute-once). Zero-trades boards report `is_complete` True (terminal, never redriven); unfillable redrives park via the herd STALLED guard. Fleet proof 2026-10-04: S1 64→1 protected/todo 51, s2 99→1/todo 110, s5 69→2/todo 46; claim slate 317→0 (zero done-markers existed); S1/s5 crypto queues split disjoint 76/74 by base (twins together, was identical 150-line files); herd md5 `405800a7`.
 
@@ -1377,7 +1378,7 @@ Mon 2026-10-05 06:00 UTC: best (newest-round) 30D sheet of every sym_side → 36
 
 **1. Workbook-end registrar (per-sym values).** `switch_parity.register_workbook_result()`, called by `v15_pilot._spec_fill_workbook` at DONE (`done` + `best-effort` returns): every workbook end with ≥1 VALID promoted positive fresh-evaluates the final set and, if it qualifies (valid, TIM 20-80, ≥10 trades, gain>0 — mirrors `_qualifies_30d`), atomically writes SQLite primary + per-sym JSON book + trb overlay (stocks) + `data/parity_promotions.jsonl` ledger, then post-verifies by re-read. Refuses ALL on: zero promotions, unqualified final set, secret keys, any type-coerce failure, empty cat_side snapshot. Existing `_NEG_BLOCK` is preserved unless 365D evidence lifts it (values register everywhere immediately; live-trading enablement keeps its 365D/parity gates). `SWITCH_PARITY_REGISTER=0` disables (proof runs must set it — proof protocol §23 updated).
 
-**2. Promotion hook (default values).** `tools/v15_daily_template_update.py --apply` (the ONE template writer) auto-syncs the just-promoted keys' venue globals + QuickConfig in the same run via `switch_parity.sync_default_surfaces(keys=...)` (targeted, guarded, backup+compile per file, failures loud in the report, never fatal to the update).
+**2. Promotion hook (default values).** `tools/v15_daily_template_update.py --apply` (the avg/promotions writer — one of the 4 allow-listed template writers in §70, not the sole writer) auto-syncs the just-promoted keys' venue globals + QuickConfig in the same run via `switch_parity.sync_default_surfaces(keys=...)` (targeted, guarded, backup+compile per file, failures loud in the report, never fatal to the update).
 
 **3. Pilot startup gate.** `switch_parity.startup_gate()` runs at every pilot start after `[DEFAULTS-GATE]`: hard disparity (`bold-vs-global`, `bold-vs-quick`) REFUSES the run; template-lane backlog (`bold-vs-cat`, `missing_from_cat`, `template-default-violation`) warns loudly. Cached in `/tmp` by template+config md5 (≈0.1 s warm). `SWITCH_PARITY_GATE=off` escapes (loud). Cron form: `switch_parity.py gate --cat-side X` (exit 1 on hard disparity).
 
@@ -1475,3 +1476,89 @@ Mon 2026-10-05 06:00 UTC: best (newest-round) 30D sheet of every sym_side → 36
   sequence with step deltas, drops) and merges `endgame_knowledge.json`. No look-ahead: knowledge loads at cycle entry
   from PRIOR workbooks only; the current run appends at exit. Resume-keyed `(symside|set-hash)`, corrupt files fall back
   to alphabetical, never fatal. Guard tests: `tests/test_v15_endgame.py`.
+
+---
+
+## 70. FOUR INDEPENDENT TEMPLATES — NEVER GENERIC (USER 2026-10-07, ARCHITECTURE LAW)
+
+The ONLY templates are the 4 `SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_{CRYPTO,STOCKS}_{LONG,SHORT}.xlsx`
+files — one per venue×side, independent, diverging by design (CRYPTO_LONG carried 3393 SWITCH rows on
+2026-10-07; counts differ per file and grow as switches are added — never pin exact counts in prose or
+tests; pin floors). The legacy generic `SPREADSHEETS/TEMPLATE_*.xlsx` set was archived 2026-10-07
+(`backups/archive_generic_templates_20261007/`, never restored over FINAL_NORM); `TEMPLATE.xlsx` no
+longer exists. Consequences:
+
+- **Resolution is exact:** `get_template_for_symside()` returns the run's own file or REFUSES
+  (`SystemExit`) — there is NO cross-side fallback (a missing crypto file is never substituted with a
+  stocks file). `--template` still overrides explicitly (fleet launches pass it).
+- **No symmetry assumptions:** tabs, rows, defaults and yellows differ per file. Any code that copies
+  rows across files must map per-file tabs/headers; any test that asserts equal shape across files is wrong.
+- **Writer allowlist (LOCKED_FILES.md one-script rule):** ONLY these four writers touch the 4 files —
+  `tools/v15_daily_template_update.py` (avg/promotions), `tools/v15_template_bookkeeper.py` (books,
+  S1 cron 12:30 UTC), `tools/v15_switch_add.py` (new rows, §71), `tools/v15_template_staged_apply.py`
+  (verified restructures; currently refuses on the pre-existing violation backlog). Pilots write
+  ledgers/progress only. No hand edits, no other writers, no exceptions beyond §71.
+
+## 71. ADDING A SWITCH — THE ONE ROW-ADD PATH (USER 2026-10-06/07)
+
+Full procedure: [SWITCH_ADD_GUIDE.md](SWITCH_ADD_GUIDE.md) (any agent can follow it). Summary of the law:
+
+1. **Wire code FIRST:** venue config field + `QuickConfig` field (+`apply_tradier_defaults` for stocks) +
+   live function on the `process_position()` path + `vec_decisions/` predicate + SINGLE call site in
+   `v12_quick_engine.py` + `cat_side_defaults_4` rebuild + behavioral test.
+2. **Registry + index:** `data/wiring/vec_function_registry.json` entry (`suggested_home_tab` + ≥2
+   `valid_options`), then `build_switch_bible.py` + `verify_switch_bible.py` green for the switch.
+3. **Rows:** `tools/v15_switch_add.py --switch --tab --candidates(≥2) --default` — dry-run, review,
+   `--apply` (whole-row insert after the last WHITE row, style mirrored, default first + bold +
+   `is_default` YES, backup + row-guard + defaults-gate proof). Refuses unwired/duplicates/mismatches.
+4. **Proofs:** `backtest_v12_engine` ledger-flip with the switch flipped vs default; pilot smoke;
+   bible green; `--fleet` sync + md5.
+- `tools/v15_add_switches.py` / `v15_add_orange_rows.py` stay refused (2026-09-30 class refusal,
+  superseded — never un-refuse). Backlog signal: `verify_switch_bible` COVERAGE (wired but in no
+  template — 53 entries on 2026-10-07 incl. 23 retired-generic-only switches).
+
+## 72. ZERO-FORMULA SKIP — NEVER-POSITIVE ROWS/CELLS ARE SKIPPED + BOOKED (USER 2026-10-06)
+
+Evidence-condemned rows (`pos_sym=0` in ≥15 syms, `V15_ZERO_MIN_N_ROW`) and yellow cells (`pos_sym=0`
+in ≥10 syms, `V15_ZERO_MIN_N_CELL`, cell map from `tools/v15_cell_evidence.py` over progress-JSON
+yellows) are SKIPPED — blank, never fake 0 — with settled verdict `ZERO_FORMULA_*` (a structural
+prefix in `tools/v15_row_guards.py`: never refilled, exempt from RULE#3 hollow, stands across heal
+passes). Chain-neutral by construction (only deltas `>1e-9` promote — §37). **Skipped ≠ obsolete:**
+every skip is booked (`progress["zero_book"]` + `data/zero_formula_book/{CAT}/{SYM}.json` + the
+`ZERO_FORMULA_BOOK` sheet the bookkeeper maintains) for formula-fix investigation; a formula fix +
+evidence regen lifts the skip automatically. Never skips defaults or unevidenced rows (fail-open);
+kill switch `V15_ZERO_FORMULA_SKIP=0`. Measured effect 2026-10-07: 69–77% of evaluated cell evals hit
+condemned cells. Guard tests: `tests/test_v15_zero_formula.py`.
+
+## 73. POSSYM SAMPLING — CURRENT PROBABILITIES + PASS STRUCTURE (USER 2026-10-06)
+
+Sampling is ON fleet-wide (`V15_POSSYM_SAMPLING=1`; the 2026-10-03 full-compute suspension in §64 is
+itself suspended — sampling defers, never deletes). Per-round compute probabilities from
+`data/avg_delta_pos_sym.json` evidence (`pos_sym`/`n_sym`, min evidence `V15_POSSYM_MIN_N=3`):
+**0→1/20, 1→1/10, 2→1/6, 3→½, ≥4→every** (deterministic draw per sym|tab|row|round — same input
+re-skips identically within a round). Pass 1 evaluates winners; skipped rows/cells stay pending
+(`SKIPPED_SAMPLING`, blank); RULE#3 refuses publish while hollow, which schedules a sample-free
+REDO heal pass that evaluates every hole (holes-only, chain carried). Defaults and unevidenced rows
+are never sampled. Yellow sampling uses the filter's orange-row evidence as proxy (cell-level
+evidence now exists for the zero-skip, §72, but sampling still uses the proxy).
+
+## 74. FLEET REALITY + WALL-TIME MATH (AUDITED 2026-10-07)
+
+Launcher: `tools/v15_fleet_scheduler.py` (S1 cron `*/2`, `--once` per tick) with
+`tools/fleet_hosts_final.json` (`max_pairs`, `workers_per_side`, `mem_reserve_mb`, `oom_mb` per host;
+tuned there, never in prose). Launches `--seq-mode worst2best --window-days 30 --vector-only`
+(`V15_TEMPLATE_DEFAULTS=1`, `V15_FRESH_RUN=1`, `V15_POSSYM_SAMPLING=1`, `V15_UNWIRED_SKIP=0`,
+`V15_SKIP_LIVE_AT_DONE=1`, NO `V15_INGEST_BEST`). Reaps: 8h hardcap, 60min stall, OOM floor
+(youngest pilot SIGKILLed — progress JSON persists, relaunch refills). No launches over cap or under
+reserve. Observed 2026-10-07: S1 also runs the live stack + scheduler (load 20–40 pre-tune);
+S2/S5 additionally run the `v15_trade_parity.py` lane (~3.5 cores each); S1 reboots interrupted runs
+(daily ~12:55 plus ad-hoc — cause under investigation, needs sudo).
+
+**Wall-time math (why 0.07s becomes hours — all figures audited, none estimated):** 0.07s is per-EVAL
+(one candidate; loaded 0.09–0.17s). Per-ROW ≈ 205 evals / workers (≈7s at 3 workers). Per-SYM ≈
+3393 rows × ~1.5s avg (skipped + eval mix) × ~2.7 refill passes + FINAL_RECHECK (~3800 evals) +
+DIAGNOSE/REPAIR365 (~20k evals) ≈ 5–8h at unloaded pace, 12h+ contended. Reduction levers in force:
+fewer+faster pilots (cores are the bound), zero-formula skip (§72, ~70% of cell evals), possym
+sampling (§73). Structural floor: full-fidelity (all yellows + all passes + post-stages) cannot go
+sub-~50min even at 16 workers — sub-10min requires cutting evals (fewer yellows / single pass / no
+post-stages), a science decision, not an ops tweak.
