@@ -1602,10 +1602,11 @@ writer — §70 allowlist) and MUST be idempotent (stamp-checked no-op). Cron ed
 
 ## 76. WRITER SELF-HEALING + PERSISTER LAW (USER 2026-10-07)
 
-**Default repair:** the daily writer establishes what it verifies. A white switch group with no
-promotable winner keeps its default — unless broken (0 or 2+ YES/bold), in which case the writer heals
-it: single-bold half-write → YES completes it; else the row matching the venue live default
-(`venue_values`: QuickConfig overlaid with `config.Config`/`TradierConfig`); else the first row.
+**Default repair:** the daily writer establishes what it verifies. A group with no promotable
+winner keeps its default — unless broken (0 or 2+ YES/bold), in which case the writer heals
+it color-blind (broken switch groups sit in orange rows too — first version skipped orange and
+repaired 0): single-bold half-write → YES completes it; else the row matching the venue live
+default (`venue_values`: QuickConfig overlaid with `config.Config`/`TradierConfig`); else the first row.
 Orange filter groups are not repaired (owned by tab-level appends; the gate still guards them).
 `--no-promote` disables repair. Repairs land in `repaired_defaults`, NEVER in `ledger`/`promoted_keys`
 (they align the template TO config — nothing syncs back, no floor-guard). First catch: 96 broken

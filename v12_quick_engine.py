@@ -11933,10 +11933,16 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         dc_low_4h = _safe(npz, 'dc_low_4h', n)
     _uh_h4 = _safe(npz, 'dc_high_4h', n, 0); _uh_h1 = _safe(npz, 'dc_high_1h', n, 0); _uh_h15 = _safe(npz, 'dc_high_15m', n, 0)  # USER 2026-10-06 uncond-stop twin: TRUE TF channels (dc_high_4h var is TF-swapped above)
     _uh_l4 = _safe(npz, 'dc_low_4h', n, 0); _uh_l1 = _safe(npz, 'dc_low_1h', n, 0); _uh_l15 = _safe(npz, 'dc_low_15m', n, 0)  # USER 2026-10-06 uncond-stop twin LONG side (dc_low_4h var is TF-swapped above)
-    try:
-        import vec_decisions.filter_ablation_groups as _fabl
-        _fabl_forced = _fabl.apply(cfg)  # 2026-10-07 filter-ablation: True flags force their groups off (no-op when all False)
-    except Exception:
+    # 2026-10-07 filter-ablation: True flags force their groups off (explicit getattr
+    # fast path — all False skips the import; static names keep the reads AST-visible
+    # for SWITCH_BIBLE, mirroring the ABLATION_DISABLE_REENTRY inline pattern).
+    if getattr(cfg, 'ABLATION_DISABLE_FILTER_ENTRY', False) or getattr(cfg, 'ABLATION_DISABLE_FILTER_MTF_HTF', False) or getattr(cfg, 'ABLATION_DISABLE_FILTER_REENTRY', False) or getattr(cfg, 'ABLATION_DISABLE_FILTER_EXIT', False) or getattr(cfg, 'ABLATION_DISABLE_FILTER_AUGMENT', False) or getattr(cfg, 'ABLATION_DISABLE_FILTER_REDUCE', False):
+        try:
+            import vec_decisions.filter_ablation_groups as _fabl
+            _fabl_forced = _fabl.apply(cfg)
+        except Exception:
+            _fabl_forced = []
+    else:
         _fabl_forced = []
     _wtdc_combo_resolve(cfg)  # [N1/004] WT_DC_TF_COMBO -> entry/htf/htf2 TFs
     _iso_force_masters(cfg)  # [N1/004] isolated-family test mode forces the family master(s) ON (no-op when ENTRY_ISOLATE_FAMILY is empty)

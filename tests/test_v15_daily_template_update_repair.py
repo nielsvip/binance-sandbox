@@ -115,3 +115,36 @@ def test_no_promote_disables_repair(monkeypatch):
     st = _state(wb[TAB])["SW_NODEFAULT"]
     assert all(i is None and not b for _, i, b in st)
     assert rep.get("repaired_defaults", []) == []
+
+
+def test_repair_orange_rows_not_skipped(monkeypatch):
+    _stub_pilot(monkeypatch)
+    wb = _wb([("SW_NODEFAULT", [(False, None, False), (True, None, False)])])
+    ws = wb[TAB]
+    orange = openpyxl.styles.PatternFill(start_color="FFE699", fill_type="solid")
+    ws.cell(row=3, column=1).fill = orange
+    ws.cell(row=4, column=1).fill = orange
+    rep = _run(ws)
+    st = _state(ws)["SW_NODEFAULT"]
+    assert [(v, i, b) for v, i, b in st] == [(False, "YES", True), (True, "NO", False)]
+    assert rep["repaired_defaults"][0][:3] == [TAB, "SW_NODEFAULT", "config-default"]
+
+
+def test_repair_real_template_rows_with_real_config():
+    import v15_daily_template_update as W2
+
+    W2._VENUE_CACHE.clear()
+    wb = openpyxl.load_workbook(str(ROOT / "SPREADSHEETS" / "TEMPLATE_CRYPTO_LONG.xlsx"))
+    ws = wb["ENTRY_REVERSAL_BOUNCE"]
+    rep = {"rows_with_stats": 0, "promoted_switch": [], "promoted_filter": [], "ledger": {}}
+    W2.apply_tab(ws, {}, {}, {}, True, rep, {}, {}, "CRYPTO_LONG", True)
+    got = {a: how for _t, a, how, _v in rep.get("repaired_defaults", [])}
+    assert "STDEV_BOUNCE_ENABLED" in got
+    groups = W2.groups_by_name(ws)
+    for a in ("STDEV_BOUNCE_ENABLED", "STDEV_BOUNCE_PCTB_LONG", "BB_SQUEEZE_COOLDOWN"):
+        rows = groups[a]
+        c_isd = W2.col_of(ws, "is_default")
+        yes = [r for r in rows if str(ws.cell(row=r, column=c_isd).value or "").strip().upper() == "YES"]
+        bold = [r for r in rows if ws.cell(row=r, column=2).font is not None and ws.cell(row=r, column=2).font.b]
+        assert len(yes) == 1 and yes == bold, a
+    W2._VENUE_CACHE.clear()

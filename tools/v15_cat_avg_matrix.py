@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""Per-cat_side avg/pos_sym matrix inventory (USER 2026-10-07).
+"""Per-cat_side pos_sym matrix inventory (USER 2026-10-07).
 
 Builds ONE xlsx per cat_side (CRYPTO_LONG/CRYPTO_SHORT/STOCKS_LONG/STOCKS_SHORT),
-each mirroring its TEMPLATE_{cat_side} (12 trading tabs, every white switch row,
+each mirroring its TEMPLATE_{cat_side} (13 trading tabs, every white switch row,
 every orange filter row, every per-switch filter column O..end) with:
-  - row M AVG_DELTA / N POS_SYM = avg + pos_sym of VECTOR_DELTA across sym_sides
-  - every yellow/filter cell that EVER held a number in ANY sym_side final xlsx:
-    avg_delta (base sheet), pos_sym (_POS sheet), n (_N sheet)
-Blanks = never numeric anywhere (never tested / skipped / invalid text only).
-Cells filled regardless of yellow paint (decisions need unpainted numbers too).
+  - N POS_SYM = #sym_sides with row VECTOR_DELTA > 1e-9
+  - every filter cell = #sym_sides with that cell's delta > 1e-9 (same cell as
+    the sym_side sheets: same row key, same column header)
+Number or blank (None): blank = never numeric in any sym_side (never tested /
+skipped / invalid text only). Exact zeros count as tested, never as positive.
+M AVG_DELTA left blank (counts only). Cells filled regardless of yellow paint.
 
-Source: SPREADSHEEDS/V15_V16_CELL_BY_CELL final xlsx per sym_side (ONE file per
-sym_side: newest, with >=50% of that sym_side's best numeric-cell count, else the
-next newest -- same rule as tools/v15_avg_delta_rebuild.select_latest).
-pos_sym = #sym_sides with delta > 1e-9. avg = mean over numeric values (exact
-zeros count in n, not in pos). No medians, no annualization, full precision.
+Source: SPREADSHEEDS/V15_V16_CELL_BY_CELL finalized xlsx ONLY — ONE file per
+sym_side: the latest * _bh*_gain*_t*_30d_matrix.xlsx (published final with
+buy-and-hold, gain and trades in the filename). Live working files
+(SYM_SIDE_30d_matrix.xlsx without bh/gain/t) NEVER enter.
 
 Steps (checkpointed in data/cat_avg/): count -> select -> extract -> build.
 """
@@ -26,20 +26,22 @@ SRC = ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
 OUTDIR = ROOT / "SPREADSHEETS" / "V15_CAT_AVG"
 WORK = ROOT / "data" / "cat_avg"
 PARTIALS = pathlib.Path("/tmp/catavg_partials")
-TABS12 = ["ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES",
+TABS = ["STDEV_SLOPE_SIZING", "ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES",
     "EXIT_STRUCTURAL", "EXIT_VELOCITY", "REENTRY_WINDOWED", "REENTRY_ADAPTIVE",
     "AUGMENT_TREND", "AUGMENT_RISK_SIZING", "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER",
     "GLOBAL_RISK_GATES"]
 CAT_SIDES = ["CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT"]
 POS_EPS = 1e-9
-FILE_PAT = re.compile(r"^(.+)_(LONG|SHORT)_(?:bh.+_gain.+_)?30d_matrix.*\.xlsx$")
+FILE_PAT = re.compile(r"^(.+)_(LONG|SHORT)_bh.+_gain.+_t\d+_30d_matrix.*\.xlsx$")
 
 def sym_side_of(fname):
     m = FILE_PAT.match(fname)
     return (m.group(1), m.group(2)) if m else (None, None)
 
+CRYPTO_SUFFIX = ("USDT", "USDC", "USD1", "BUSD", "FDUSD", "TUSD", "DAI")
+
 def is_crypto(sym):
-    return sym.endswith("USDT") or sym.endswith("USDC")
+    return sym.endswith(CRYPTO_SUFFIX)
 
 def cat_side_of(sym, side):
     return ("CRYPTO" if is_crypto(sym) else "STOCKS") + "_" + side
@@ -279,6 +281,13 @@ def do_build(args):
     for ss, info in sel.items():
         p = PARTIALS / f"{ss}.json"
         if p.exists():
+            try:
+                _pf = json.loads(p.read_text()).get("file")
+            except Exception:
+                _pf = None
+            if _pf is not None and _pf != info["file"]:
+                print(f"[build] STALE partial {ss}: partial={_pf} selection={info['file']} — rerun extract", flush=True)
+                continue
             by_cat[info["cat"]].append(ss)
     OUTDIR.mkdir(parents=True, exist_ok=True)
     GREEN = PatternFill("solid", fgColor="006100")

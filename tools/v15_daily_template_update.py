@@ -13,10 +13,12 @@ Per template / per SWITCH_SHEETS tab:
   2. PROMOTION (the only place defaults change): per switch NAME the value with the highest POSITIVE avg (pos_sym >= --min-pos-sym)
      becomes the single bold default (+ is_default YES) in every tab that has that value; previous default regular + NO. Same for
      every yellow filter header (one bold "FILTER=opt" per filter, DEFAULT comment). ONE default per switch / filter, no more, no less.
-     2c. DEFAULT REPAIR (2026-10-07): a white switch group with NO winner keeps its default — unless it is broken (0 or 2+ YES/bold),
+     2c. DEFAULT REPAIR (2026-10-07): a group with NO winner keeps its default — unless it is broken (0 or 2+ YES/bold),
      in which case the writer heals it INSTEAD of failing verification forever: single-bold half-write -> YES completes it; else the
-     row matching the venue live default (config.Config / TradierConfig via venue_values); else the first row. Repairs are reported
-     as repaired_defaults (never in ledger/promoted_keys: they align the template TO config, nothing syncs back). --no-promote disables.
+     row matching the venue live default (config.Config / TradierConfig via venue_values); else the first row. Color-blind: broken
+     switch groups sit in orange rows too (appended at tab bottoms) and verification/pilot demand YES==bold regardless of fill.
+     Repairs are reported as repaired_defaults (never in ledger/promoted_keys: they align the template TO config, nothing syncs
+     back). --no-promote disables.
   3. worst_first: white switch groups by mean AVG_DELTA (most negative first, untested groups last), orange filter groups below;
      inside a group rows ascending by AVG_DELTA; whole rows (every cell, yellows, fonts, fills) move together.
 Verified before save (row multiset unchanged, no white below orange, one YES == bold per switch name per tab, one bold header per
@@ -295,9 +297,9 @@ def _pilot_mod():
 
 
 def _repair_default(ws, tab, a, rows, c_isd, cs, rep):
-    """Heal a winner-less white switch group with 0 or 2+ defaults (else the gate fails forever). Returns True if repaired."""
-    if is_orange(ws, rows[0]):
-        return False
+    """Heal a winner-less group with 0 or 2+ defaults (else the gate fails forever). Color-blind on purpose:
+    verification and the pilot demand exactly-one YES==bold per A-group regardless of fill, and broken switch
+    groups do sit in orange rows (STDEV_*/GOLDEN_RULE_* appended at tab bottoms). Returns True if repaired."""
     yes = [r for r in rows if str(ws.cell(row=r, column=c_isd).value or "").strip().upper() == "YES"]
     bold = [r for r in rows if ws.cell(row=r, column=2).font is not None and ws.cell(row=r, column=2).font.b]
     if len(yes) == 1 and yes == bold:

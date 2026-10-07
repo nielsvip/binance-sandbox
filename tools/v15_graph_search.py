@@ -622,7 +622,9 @@ class GraphSearch(DR._Search):
         selects this method, else deep_open() — default behavior unchanged.
         FUTURE integration point (parent-owned): the HEAL_365 continuation + culprits()
         FLAG-hit drill-down — per-step series deltas + FLAG ablation hits feed the culprit
-        branch (apply offending FILTERS:* group minus forbidden members, forward re-add)."""
+        branch (apply offending FILTERS:* group minus forbidden members, forward re-add).
+        RERUN WAVE (parent 2026-10-07): heal_365() (runs post-polish, 365D-fault rounds)
+        is the integration point for the rerun wave, in addition to this deep_open routing."""
         try:
             from vec_decisions import filter_ablation_groups as _fab
         except Exception:
