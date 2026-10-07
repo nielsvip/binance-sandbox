@@ -82,7 +82,7 @@ def render(ss, verdict, gs):
     before, after = g.get("before") or {}, g.get("after") or {}
     m365 = g.get("after_365")
     L = [f"# THOUGHT PROCESS — {ss}",
-         f"cat_side={cat} rendered={datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}", ""]
+         f"cat_side={cat} gs_build={(g or {}).get('gs_build', '?')} rendered={datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}", ""]
     L.append("## 1. STARTING POINT (book, as traded live) [RECORDED]")
     L.append(f"30D: gain={_fmt(w30.get('gain'))} trades={w30.get('trades', '?')} "
              f"tim={_fmt(w30.get('tim'))} dd={_fmt(w30.get('dd'))}")
@@ -184,6 +184,22 @@ def render(ss, verdict, gs):
         L.append(f"residual_gaps [DERIVED]: {rg or 'none — fully repaired on recorded metrics'}")
     tradeable = bool(g.get("accepted")) and bool(g.get("q365_after")) and m365 is not None
     L.append(f"TRADEABLE_365: {'YES' if tradeable else 'NO'}")
+    L.append("")
+    L.append("## 8. HEAL_365 + MONTHLY [RECORDED]")
+    for h in g.get("heal_rounds", []) or []:
+        L.append(f"- round{h.get('round')}: faults={h.get('faults')} monthly={h.get('monthly')} worst={h.get('worst')} "
+                 f"g30={_fmt(h.get('gain30'))} g365={_fmt(h.get('gain365'))} accepted={h.get('accepted', '?')}{(' ' + h.get('why', '')) if h.get('why') else ''}")
+    mt = g.get("monthly") or {}
+    if mt.get("slices"):
+        L.append(f"monthly mode={mt.get('mode')}:")
+        for s in mt["slices"]:
+            L.append(f"  {s.get('id')}: n={s.get('n')} pnl={s.get('pnl'):+} wr={s.get('wr')} losers={s.get('losers')} hold={s.get('avg_hold')} exits={s.get('top_exits')}")
+        w = mt.get("worst") or {}
+        L.append(f"worst slice: {w.get('id')} (pnl={w.get('pnl')})")
+    elif mt:
+        L.append(f"monthly: {mt.get('mode', '?')}")
+    else:
+        L.append("- no heal rounds (365D green/unmeasured or pre-HEAL build)")
     thought = {"ss": ss, "cat_side": cat, "w30": w30, "w365": w365, "q365_base": v.get("q365"),
                "faults": faults, "fault_src": fsrc.split()[0].lower(),
                "n_evals": g.get("n_evals"), "secs": g.get("secs"),
@@ -196,7 +212,8 @@ def render(ss, verdict, gs):
                "after": {k: after.get(k) for k in ("gain", "trades", "tim", "dd", "wr")},
                "m365": {k: m365.get(k) for k in ("gain", "trades", "tim", "dd")} if m365 else None,
                "q365_after": g.get("q365_after"), "accepted": g.get("accepted"),
-               "accept_reason": g.get("accept_reason"), "tradeable_365": tradeable}
+               "accept_reason": g.get("accept_reason"), "tradeable_365": tradeable, "gs_build": g.get("gs_build"),
+               "heal_rounds": g.get("heal_rounds"), "monthly": g.get("monthly")}
     return "\n".join(L) + "\n", thought
 
 

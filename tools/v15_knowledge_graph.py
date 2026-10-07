@@ -614,6 +614,22 @@ def build(ablation_dir: Path | None = None, runs_dir: Path | None = None) -> dic
                 if n.get("code_family"):
                     g[f"CODEFAM:{n['code_family']}"].add(r["switch"])
         g["FILTERS:ALL_FILTER_TF"] = {f for f in tpl[cat]["filters"] if f.endswith(("_FILTER_TF", "_TF_REQ"))}
+        # 2026-10-07 filter-ablation lane: coherent per-lifecycle FILTERS groups from the
+        # shared mapping (vec_decisions/filter_ablation_groups.py) — same membership the
+        # ABLATION_DISABLE_FILTER_* engine flags force off, so FLAG ablation and group-OFF
+        # ablation measure the same layer (members restricted to quickconfig fields).
+        try:
+            import sys as _sys
+            if str(ROOT) not in _sys.path:
+                _sys.path.insert(0, str(ROOT))
+            from vec_decisions import filter_ablation_groups as _fab
+            _fab_names = {"ABLATION_DISABLE_FILTER_ENTRY": "FILTERS:ENTRY", "ABLATION_DISABLE_FILTER_MTF_HTF": "FILTERS:MTF_HTF",
+                          "ABLATION_DISABLE_FILTER_REENTRY": "FILTERS:REENTRY", "ABLATION_DISABLE_FILTER_EXIT": "FILTERS:EXIT",
+                          "ABLATION_DISABLE_FILTER_AUGMENT": "FILTERS:AUGMENT", "ABLATION_DISABLE_FILTER_REDUCE": "FILTERS:REDUCE"}
+            for _flag, _gname in _fab_names.items():
+                g[_gname] = {m for m in _fab.GROUPS[_flag] if m in fields}
+        except Exception:
+            pass
         groups[cat] = {k: sorted(v) for k, v in g.items() if len(v) >= (1 if k.startswith(("TAB:", "LIFECYCLE:", "FILTERS:")) else 3)}
     # measured group utilities (ablation)
     group_evidence = {}

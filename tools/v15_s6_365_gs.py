@@ -115,6 +115,17 @@ def run_side(ss, outdir, gs_budget=600.0, workers=6, ckptdir=None):
                 pass
             return None
 
+    def one_ledger365(ov):  # USER 2026-10-07: 365D+ledger eval for the HEAL monthly table (slimmed like many_ledger)
+        try:
+            f = ex.submit(VP.evaluate_prepared_sanitized, prep365, dict(ov), 365, True)
+            r = f.result(timeout=240.0)
+            keep = {k: r.get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "wr_pct", "valid", "invalid_reason", "bh_pct", "behavior_fingerprint")}
+            keep["_rows"] = TA.scaled_rows(r)
+            return keep, span
+        except Exception as e:
+            log(f"EVAL_365LEDGER_RAISED {type(e).__name__}: {str(e)[:160]}")
+            return None, span
+
     def many365(items, deadline):
         out = []
         for it in items:
@@ -192,9 +203,9 @@ def run_side(ss, outdir, gs_budget=600.0, workers=6, ckptdir=None):
         except Exception:
             pass
     base_m = DR.metrics(r30, r30.get("bh_pct"))
-    ctx = {"defaults": defaults, "sanitize": lambda ov: P.sanitize_overrides(ov, defaults)[0], "same_val": P.same_val, "candidates": cands, "base_overrides": dict(book), "base_res": r30, "bh": r30.get("bh_pct"), "deadline": time.time() + gs_budget, "cat_side": cat_side, "eval_many": many30, "eval_ledger": lambda ov: one(prep30, ov, 30, 120.0) or {}, "eval_365": lambda ov: (one(prep365, ov, 365, 180.0), span), "qualifies_365": lambda r, s: P._qualifies_365d(r, s if s else span), "eval_many_365": many365, "eval_many_ledger": many_ledger, "close": [float(x) for x in ((prep30 or {}).get("npz_prepared") or {}).get("close", [])] or None, "npz": (prep30 or {}).get("npz_prepared") or {}, "is_long": is_long, "graph": GS.load_graph(cat_side), "log": log, "touch": lambda m: None, "shutdown_requested": lambda: shut["v"], "checkpoint": ckpt, "resume_memo": ck.get("memo") or {}, "resume_m365": ck.get("m365") or {}, "resume_hall_prov": ck.get("hall_prov") or {}, "resume_gs": ck.get("gs")}
+    ctx = {"defaults": defaults, "sanitize": lambda ov: P.sanitize_overrides(ov, defaults)[0], "same_val": P.same_val, "candidates": cands, "base_overrides": dict(book), "base_res": r30, "bh": r30.get("bh_pct"), "deadline": time.time() + gs_budget, "cat_side": cat_side, "eval_many": many30, "eval_ledger": lambda ov: one(prep30, ov, 30, 120.0) or {}, "eval_365": lambda ov: (one(prep365, ov, 365, 180.0), span), "eval_365_ledger": one_ledger365, "npz365": (prep365 or {}).get("npz_prepared") or {}, "qualifies_365": lambda r, s: P._qualifies_365d(r, s if s else span), "eval_many_365": many365, "eval_many_ledger": many_ledger, "close": [float(x) for x in ((prep30 or {}).get("npz_prepared") or {}).get("close", [])] or None, "npz": (prep30 or {}).get("npz_prepared") or {}, "is_long": is_long, "graph": GS.load_graph(cat_side), "log": log, "touch": lambda m: None, "shutdown_requested": lambda: shut["v"], "checkpoint": ckpt, "resume_memo": ck.get("memo") or {}, "resume_m365": ck.get("m365") or {}, "resume_hall_prov": ck.get("hall_prov") or {}, "resume_gs": ck.get("gs")}
     gs = GS.run(ctx)
-    gs_out = {"sym_side": ss, "accepted": gs.get("accepted"), "accept_reason": gs.get("accept_reason"), "before": gs.get("before"), "after": gs.get("after"), "after_365": gs.get("after_365"), "q365_after": gs.get("q365_after"), "changes": gs.get("changes"), "best_overrides": gs.get("best_overrides"), "n_evals": gs.get("n_evals"), "n_evals_365": gs.get("n_evals_365"), "secs": gs.get("secs"), "ablation_top": (gs.get("ablation") or [])[:20], "steps": gs.get("steps"), "finalists": gs.get("finalists"), "iterations": gs.get("iterations"), "diagnosis_after": gs.get("diagnosis_after"), "macro": gs.get("macro")}
+    gs_out = {"sym_side": ss, "accepted": gs.get("accepted"), "accept_reason": gs.get("accept_reason"), "before": gs.get("before"), "after": gs.get("after"), "after_365": gs.get("after_365"), "q365_after": gs.get("q365_after"), "changes": gs.get("changes"), "best_overrides": gs.get("best_overrides"), "n_evals": gs.get("n_evals"), "n_evals_365": gs.get("n_evals_365"), "secs": gs.get("secs"), "ablation_top": (gs.get("ablation") or [])[:20], "steps": gs.get("steps"), "finalists": gs.get("finalists"), "iterations": gs.get("iterations"), "diagnosis_after": gs.get("diagnosis_after"), "macro": gs.get("macro"), "gs_build": gs.get("gs_build"), "heal_rounds": gs.get("heal_rounds"), "monthly": gs.get("monthly")}
     (outdir / f"{ss}_gs.json").write_text(json.dumps(gs_out, indent=1, default=str))
     try:
         from tools import v15_thought_rundown as TR

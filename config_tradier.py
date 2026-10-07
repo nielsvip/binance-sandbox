@@ -4586,6 +4586,12 @@ class TradierConfig:
     EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED: bool = True
     ABLATION_DISABLE_SCALP_GUARD: bool = False  # Disable monitor_strict_close_positions
     ABLATION_DISABLE_SPIKE_FADE_EXIT: bool = False  # Disable spike fade 1m exit monitor
+    ABLATION_DISABLE_FILTER_ENTRY: bool = False  # 2026-10-07 filter-ablation lane: True = bypass all ENTRY_GATE filters. Ablation never True outside a test.
+    ABLATION_DISABLE_FILTER_MTF_HTF: bool = False  # 2026-10-07 filter-ablation lane: True = bypass all MTF/HTF entry confirmations. Ablation never True outside a test.
+    ABLATION_DISABLE_FILTER_REENTRY: bool = False  # 2026-10-07 filter-ablation lane: True = bypass all REENTRY_GATE filters. Ablation never True outside a test.
+    ABLATION_DISABLE_FILTER_EXIT: bool = False  # 2026-10-07 filter-ablation lane: True = bypass all EXIT_VETO filters. Ablation never True outside a test.
+    ABLATION_DISABLE_FILTER_AUGMENT: bool = False  # 2026-10-07 filter-ablation lane: True = bypass all AUGMENT_GATE filters. Ablation never True outside a test.
+    ABLATION_DISABLE_FILTER_REDUCE: bool = False  # 2026-10-07 filter-ablation lane: True = bypass all REDUCE gates. Ablation never True outside a test.
     ADAPTIVE_REGIME_DC_BREAKDOWN_THRESHOLD: float = 0.1  # dc_position < this = breakout DOWN ; DEAD_CONFIRMED (priority 65/100) — no plausible wiring site found 20260416
     ADAPTIVE_REGIME_DC_BREAKOUT_THRESHOLD: float = 0.9  # dc_position > this = breakout UP ; DEAD_CONFIRMED (priority 65/100) — no plausible wiring site found 20260416
     ADAPTIVE_REGIME_DECAY_HALFLIFE_H: float = 24.0  # Exponential weight half-life (hours) ; DEAD_CONFIRMED (priority 65/100) — no plausible wiring site found 20260416

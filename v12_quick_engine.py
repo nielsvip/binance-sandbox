@@ -708,6 +708,12 @@ AUTO_WIRED_PARAMS = [
     'ABLATION_DISABLE_ENTRY_REVERSAL',
     'ABLATION_DISABLE_ENTRY_TECHNICAL',
     'ABLATION_DISABLE_FAST_RISER',
+    'ABLATION_DISABLE_FILTER_AUGMENT',
+    'ABLATION_DISABLE_FILTER_ENTRY',
+    'ABLATION_DISABLE_FILTER_EXIT',
+    'ABLATION_DISABLE_FILTER_MTF_HTF',
+    'ABLATION_DISABLE_FILTER_REDUCE',
+    'ABLATION_DISABLE_FILTER_REENTRY',
     'ABLATION_DISABLE_HEDGE',
     'ABLATION_DISABLE_HIGH_GAIN_AUGMENT',
     'ABLATION_DISABLE_PERIODIC_REENTRY',
@@ -4761,6 +4767,12 @@ class QuickConfig:
     SATOSHIT_ENTRY_ENABLED: bool = False
     # ===== 2026-08-09: missing 16 matrix params not previously in QuickConfig =====
     ABLATION_DISABLE_REENTRY: bool = False
+    ABLATION_DISABLE_FILTER_ENTRY: bool = False  # 2026-10-07 filter-ablation: True = bypass ENTRY_GATE filters (filter_ablation_groups.apply at simulate_one top)
+    ABLATION_DISABLE_FILTER_MTF_HTF: bool = False  # 2026-10-07 filter-ablation: True = bypass MTF/HTF entry confirmations
+    ABLATION_DISABLE_FILTER_REENTRY: bool = False  # 2026-10-07 filter-ablation: True = bypass REENTRY_GATE filters
+    ABLATION_DISABLE_FILTER_EXIT: bool = False  # 2026-10-07 filter-ablation: True = bypass EXIT_VETO filters
+    ABLATION_DISABLE_FILTER_AUGMENT: bool = False  # 2026-10-07 filter-ablation: True = bypass AUGMENT_GATE filters
+    ABLATION_DISABLE_FILTER_REDUCE: bool = False  # 2026-10-07 filter-ablation: True = bypass REDUCE gates
     DC_DAYTRADE_MAX_HOLD_MINUTES: float = 240.0
     DC_DAYTRADE_REQUIRE_1H_EXPANSION: bool = True
     DC_DAYTRADE_STOP_PCT: float = 0.015
@@ -10810,6 +10822,12 @@ _DEFAULTS_625 = {
     "ABLATION_DISABLE_ENTRY_RANKING": False,
     "ABLATION_DISABLE_ENTRY_REVERSAL": False,
     "ABLATION_DISABLE_ENTRY_TECHNICAL": False,
+    "ABLATION_DISABLE_FILTER_AUGMENT": False,
+    "ABLATION_DISABLE_FILTER_ENTRY": False,
+    "ABLATION_DISABLE_FILTER_EXIT": False,
+    "ABLATION_DISABLE_FILTER_MTF_HTF": False,
+    "ABLATION_DISABLE_FILTER_REDUCE": False,
+    "ABLATION_DISABLE_FILTER_REENTRY": False,
     "ABLATION_DISABLE_HEDGE": False,
     "ABLATION_DISABLE_HIGH_GAIN_AUGMENT": False,
     "ABLATION_DISABLE_PERIODIC_REENTRY": False,
@@ -11915,6 +11933,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         dc_low_4h = _safe(npz, 'dc_low_4h', n)
     _uh_h4 = _safe(npz, 'dc_high_4h', n, 0); _uh_h1 = _safe(npz, 'dc_high_1h', n, 0); _uh_h15 = _safe(npz, 'dc_high_15m', n, 0)  # USER 2026-10-06 uncond-stop twin: TRUE TF channels (dc_high_4h var is TF-swapped above)
     _uh_l4 = _safe(npz, 'dc_low_4h', n, 0); _uh_l1 = _safe(npz, 'dc_low_1h', n, 0); _uh_l15 = _safe(npz, 'dc_low_15m', n, 0)  # USER 2026-10-06 uncond-stop twin LONG side (dc_low_4h var is TF-swapped above)
+    try:
+        import vec_decisions.filter_ablation_groups as _fabl
+        _fabl_forced = _fabl.apply(cfg)  # 2026-10-07 filter-ablation: True flags force their groups off (no-op when all False)
+    except Exception:
+        _fabl_forced = []
     _wtdc_combo_resolve(cfg)  # [N1/004] WT_DC_TF_COMBO -> entry/htf/htf2 TFs
     _iso_force_masters(cfg)  # [N1/004] isolated-family test mode forces the family master(s) ON (no-op when ENTRY_ISOLATE_FAMILY is empty)
     entry_sig = compute_entry_signals(npz, n, is_long, cfg)

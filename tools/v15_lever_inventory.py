@@ -64,7 +64,10 @@ def build(d):
             per_family[(cat, ab.get("group"))].append(
                 {"dg": ab["gain"], "dt": ab.get("trades"), "dtim": ab.get("tim"), "ddd": ab.get("dd"),
                  "changed": ab.get("changed"), "mode": ab.get("mode"), "ss": t.get("ss")})
-    inv = {"n_sides": len(thoughts), "min_n": MIN_N, "by_fault": {}, "by_switch": {}, "by_family": {}}
+    _builds: dict = {}
+    for t in thoughts:
+        _builds[t.get("gs_build", "?")] = _builds.get(t.get("gs_build", "?"), 0) + 1
+    inv = {"n_sides": len(thoughts), "min_n": MIN_N, "builds": _builds, "by_fault": {}, "by_switch": {}, "by_family": {}}
     for (cat, fault), rows in sorted(per_fault.items()):
         by_lev = defaultdict(list)
         for r in rows:
@@ -103,7 +106,7 @@ def build(d):
 
 
 def render_md(inv):
-    L = [f"# LEVER INVENTORY — {inv['n_sides']} sides (QUALIFIED at n>={inv['min_n']})", ""]
+    L = [f"# LEVER INVENTORY — {inv['n_sides']} sides (QUALIFIED at n>={inv['min_n']}) builds={inv.get('builds', {})}", ""]
     for key in sorted(inv["by_fault"]):
         L.append(f"## {key}")
         for l in inv["by_fault"][key][:10]:

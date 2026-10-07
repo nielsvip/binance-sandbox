@@ -2908,6 +2908,12 @@ class Config:
     ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = False     # 2026-09-21 OFF — aggressive hedge off. Was False.  # 2026-10-06 USER: ablation is for investigating imparity only — never True outside a test
     ABLATION_DISABLE_HIGH_GAIN_AUGMENT: bool = False    # 2026-09-21 OFF — high gain augment off (P7). Was False.  # 2026-10-06 director (USER: full vector-live parity): = vec baseline (cat_side) value
     ABLATION_DISABLE_PERIODIC_REENTRY: bool = False     # 2026-09-21 OFF — periodic reentry off (P7). Was False.  # 2026-10-06 USER: ablation is for investigating imparity only — never True outside a test
+    ABLATION_DISABLE_FILTER_ENTRY: bool = False         # 2026-10-07 filter-ablation lane: True = bypass all ENTRY_GATE filters (vec_decisions/filter_ablation_groups.py).  # 2026-10-06 USER: ablation is for investigating imparity only — never True outside a test
+    ABLATION_DISABLE_FILTER_MTF_HTF: bool = False       # 2026-10-07 filter-ablation lane: True = bypass all MTF/HTF entry confirmations.  # 2026-10-06 USER: ablation is for investigating imparity only — never True outside a test
+    ABLATION_DISABLE_FILTER_REENTRY: bool = False       # 2026-10-07 filter-ablation lane: True = bypass all REENTRY_GATE filters.  # 2026-10-06 USER: ablation is for investigating imparity only — never True outside a test
+    ABLATION_DISABLE_FILTER_EXIT: bool = False          # 2026-10-07 filter-ablation lane: True = bypass all EXIT_VETO filters.  # 2026-10-06 USER: ablation is for investigating imparity only — never True outside a test
+    ABLATION_DISABLE_FILTER_AUGMENT: bool = False       # 2026-10-07 filter-ablation lane: True = bypass all AUGMENT_GATE filters.  # 2026-10-06 USER: ablation is for investigating imparity only — never True outside a test
+    ABLATION_DISABLE_FILTER_REDUCE: bool = False        # 2026-10-07 filter-ablation lane: True = bypass all REDUCE gates.  # 2026-10-06 USER: ablation is for investigating imparity only — never True outside a test
     # === ABLATION BACKTEST RESULTS (2026-03-21 — 3507 configs × 243 sym, P1+P2+P3 OOS-validated) ===
     RSI_ENTRY_GATE_ENABLED: bool = False  # BC_154: DISABLED — 67-config ablation (48sym/4yr): stoch_gate_50 does the filtering. no_filter+stoch50 = Sharpe 0.790 (#1) vs RSI37 = 0.638
     RSI_ENTRY_MAX_LONG: float = 37.0  # BC_154: kept for reference but gate is disabled

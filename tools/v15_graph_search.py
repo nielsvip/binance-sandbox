@@ -52,7 +52,20 @@ from tools import v15_diagnose_repair as DR  # noqa: E402
 from tools.v15_shutdown import V15Shutdown  # noqa: E402
 
 GRAPH_PATH = ROOT / "data" / "encyclopedia_v2" / "graph.json"
-ABLATION_FLAGS = ("ABLATION_DISABLE_REENTRY", "ABLATION_DISABLE_AUGMENTATION", "ABLATION_DISABLE_HIGH_GAIN_AUGMENT", "ABLATION_DISABLE_DC_BREACH_REDUCE")
+ABLATION_FLAGS = ("ABLATION_DISABLE_REENTRY", "ABLATION_DISABLE_AUGMENTATION", "ABLATION_DISABLE_HIGH_GAIN_AUGMENT", "ABLATION_DISABLE_DC_BREACH_REDUCE",
+                  "ABLATION_DISABLE_FILTER_ENTRY", "ABLATION_DISABLE_FILTER_MTF_HTF", "ABLATION_DISABLE_FILTER_REENTRY", "ABLATION_DISABLE_FILTER_EXIT",
+                  "ABLATION_DISABLE_FILTER_AUGMENT", "ABLATION_DISABLE_FILTER_REDUCE")
+# 2026-10-07 filter-ablation lane (PROPOSAL, default OFF): when True, starved
+# sides open via the ordered filter-ablation series (ordered_filter_open) instead
+# of deep_open()'s all-gates-at-once blast. Parent/user flips for reruns after
+# worst_first. Env override: V15_GS_FILTER_SERIES=1.
+FILTER_SERIES_ENABLED = os.environ.get("V15_GS_FILTER_SERIES", "0") == "1"
+BUILD = "heal1-20261007"  # USER 2026-10-07: bump on ANY behavior change; stamped into every report (gs_build)
+FLAG_LIFECYCLES = (("HIGH_GAIN_AUGMENT", ("AUGMENT", "AUGMENT_GATE")), ("AUGMENTATION", ("AUGMENT", "AUGMENT_GATE")), ("AUGMENT", ("AUGMENT", "AUGMENT_GATE")),
+                   ("REENTRY", ("REENTRY", "REENTRY_GATE")), ("DC_BREACH_REDUCE", ("REDUCE", "EXIT_CLOSE")), ("REDUCE", ("REDUCE",)),
+                   ("FILTER_MTF_HTF", ("ENTRY_GATE", "REENTRY_GATE")), ("FILTER_ENTRY", ("ENTRY_GATE", "ENTRY_OPEN")), ("FILTER_REENTRY", ("REENTRY", "REENTRY_GATE")),
+                   ("FILTER_EXIT", ("EXIT_CLOSE", "EXIT_VETO")), ("FILTER_AUGMENT", ("AUGMENT", "AUGMENT_GATE")), ("FILTER_REDUCE", ("REDUCE", "EXIT_CLOSE")),
+                   ("ENTRY", ("ENTRY_OPEN", "ENTRY_GATE")), ("EXIT", ("EXIT_CLOSE", "EXIT_VETO")), ("HEDGE", ("GLOBAL",)))
 COARSE = ("TAB:", "LIFECYCLE:", "CODEFAM:", "FILTERS:")
 NO_TOUCH_TOKENS = ("PARITY", "VEC_ONLY", "STRICT_VEC", "SIMPLE_PRICE_GT0", "RTH_ONLY")
 NO_TOUCH_EXACT = {"MODE", "BASE_TF", "TF_HTF1", "TF_HTF2", "TF_HTF3", "SIM_ACCOUNT", "SIM_TRADING_ACCOUNT", "VEC_ACCOUNT_KEY"}
@@ -307,6 +320,45 @@ class GraphSearch(DR._Search):
         self.log(f"[GS-ABLATE-{tag}] {len(out)} group ablations; removal helps 30D: {[(a['group'] + '|' + a['mode'], round(a['d']['gain'], 2)) for a in out[:5] if a['d']['gain'] and a['d']['gain'] > 0]}")
         return out
 
+    def _flag_lifecycles(self, flag: str) -> tuple:
+        """lifecycles under an ablation FLAG (diagnostic -> drill target). Graph node first, name-substring fallback."""
+        g = self.gsw.get(flag) or {}
+        for cand in (g.get("code_family"), g.get("family"), g.get("lifecycle")):
+            if cand and cand != "ABLATION":
+                hit = next((lc for key, lc in FLAG_LIFECYCLES if key in str(cand).upper()), None)
+                if hit:
+                    return hit
+        u = str(flag).upper()
+        hit = next((lc for key, lc in FLAG_LIFECYCLES if key in u), None)
+        return hit or ()
+
+    def _drill_flag(self, state: dict, state_m: dict, cur: tuple, a: dict) -> tuple:
+        """USER 2026-10-07: a FLAG ablation hit is a direction, not a verdict — drill switch-by-switch into its lifecycles
+        (dual-window climb). The flag itself is NO_TOUCH and never enters state."""
+        d30 = abs((a.get("d") or {}).get("gain") or 0.0)
+        d365 = abs((a.get("d365") or {}).get("gain") or 0.0)
+        if max(d30, d365) < 0.5:
+            return state, state_m, cur, 0
+        fams = self._flag_lifecycles(a.get("changed", [None])[0])
+        if not fams:
+            self.rep["macro"].append({"flag": a.get("group"), "status": "drill skipped: family unresolvable"})
+            return state, state_m, cur, 0
+        fam_sw = [c["switch"] for c in self.cands if (self.gsw.get(c["switch"]) or {}).get("lifecycle") in fams and not c["switch"].startswith("ABLATION_")]
+        ids = {c["_id"] for c in self.cands if c["switch"] in set(fam_sw)} | self.linked_filters(fam_sw)
+        ids = {i for i in ids if not self.cands[i]["switch"].startswith("ABLATION_")}
+        if len(ids) < 2:
+            self.rep["macro"].append({"flag": a.get("group"), "status": f"drill skipped: only {len(ids)} cands in {fams}"})
+            return state, state_m, cur, 0
+        st, stm = self.climb(state, state_m, f"FLAG[{a.get('group')}]", only=ids, rounds=4, k365=4, frac_stop=0.35)
+        self.m365_many([st])
+        if self.key_of(st, stm) > cur:
+            self._step("CULPRIT_FLAG", f"{a.get('group')}: drill {fams} ({len(ids)} cands)", st, stm)
+            self.rep["macro"].append({"flag": a.get("group"), "fams": fams, "n_ids": len(ids), "gain": stm["gain"], "trades": stm["trades"], "accepted": True})
+            return st, stm, self.key_of(st, stm), 1
+        self.rep["macro"].append({"flag": a.get("group"), "fams": fams, "n_ids": len(ids), "accepted": False,
+                                  "note": f"family unfixable switch-by-switch; flag-off itself would gain {d30:+.2f}/30D {d365:+.2f}/365D (diagnostic only)"})
+        return state, state_m, cur, 1
+
     def culprits(self, state: dict, state_m: dict, abl: list, max_groups: int = 4) -> tuple:
         cur = self.key_of(state, state_m)
         tried = 0
@@ -314,6 +366,8 @@ class GraphSearch(DR._Search):
             if tried >= max_groups or self.left() < 0.45 * self.budget:
                 break
             if a["measure_only"]:
+                state, state_m, cur, used = self._drill_flag(state, state_m, cur, a)
+                tried += used
                 continue
             ov = a["_ov"]
             allowed = {k: ov.get(k, self.defaults.get(k)) for k in a["changed"] if self._allowed_change(state, k, ov.get(k, self.defaults.get(k)))}
@@ -554,6 +608,68 @@ class GraphSearch(DR._Search):
             return st, stm, kk
         return state, state_m, cur
 
+    def ordered_filter_open(self, state: dict, state_m: dict, fault: str, cur: tuple) -> tuple:
+        """PROPOSAL (2026-10-07 filter-ablation lane; gated by FILTER_SERIES_ENABLED,
+        default OFF — deep_open() default behavior unchanged): starved side opens via
+        a CUMULATIVE ordered series of coherent filter-group ablations (ENTRY, then
+        +MTF_HTF, then +REENTRY — vec_decisions.filter_ablation_groups.SERIES_ORDER)
+        instead of deep_open()'s all-gates-at-once blast. Each step is measured, so
+        the report shows WHICH layer starved the side. Flags are measure-only: before
+        the re-tighten climb they are translated to individual member-OFF overrides
+        (the climb then keeps/drops members like deep_open) and the flags are dropped
+        (ABLATION_*=True is never applied — see module safety rule).
+        ROUTING (paths() starved-fault branch, parent-granted 2026-10-07): FILTER_SERIES_ENABLED
+        selects this method, else deep_open() — default behavior unchanged.
+        FUTURE integration point (parent-owned): the HEAL_365 continuation + culprits()
+        FLAG-hit drill-down — per-step series deltas + FLAG ablation hits feed the culprit
+        branch (apply offending FILTERS:* group minus forbidden members, forward re-add)."""
+        try:
+            from vec_decisions import filter_ablation_groups as _fab
+        except Exception:
+            self.rep["macro"].append({"fault": fault, "status": "filter series unavailable (no mapping module); caller should fall back to deep_open"})
+            return state, state_m, cur
+        v, steps = dict(state), []
+        for flag in _fab.SERIES_ORDER:
+            if flag in self.defaults and not (v.get(flag, self.defaults.get(flag)) is True):
+                v[flag] = True
+            m = self.evaluate([(f"FILTER_SERIES[{fault}][{flag}]", v, None, False)], "FILTER_SERIES", state_m["gain"])[0][0]
+            steps.append({"flag": flag, "trades": (m or {}).get("trades"), "gain": (m or {}).get("gain")})
+            if m is None:
+                break
+        rec = {"fault": fault, "series": "ordered_filter_open", "steps": steps}
+        last_m = self.evaluate([(f"FILTER_SERIES[{fault}][ALL]", v, None, False)], "FILTER_SERIES", state_m["gain"])[0][0]
+        if last_m is None or last_m["trades"] <= state_m["trades"]:
+            rec["status"] = "series added no trades: the block is outside the filter groups (engine hard block / data)"
+            self.rep["macro"].append(rec)
+            return state, state_m, cur
+        # translate flags -> individual member-OFF overrides (members stay climbable; flags dropped)
+        w = {k: val for k, val in v.items() if k not in _fab.FLAGS}
+        opened_keys = []
+        for flag in _fab.SERIES_ORDER:
+            if v.get(flag) is not True:
+                continue
+            w2, ch = self.group_ov(w, list(_fab.GROUPS[flag]), "OFF")
+            for k in ch:
+                if self._allowed_change(state, k, w2.get(k)):
+                    w[k] = w2[k]
+                    opened_keys.append(k)
+        m2 = self.evaluate([(f"FILTER_SERIES[{fault}][TRANSLATED]", w, None, True)], "FILTER_SERIES", state_m["gain"])[0][0]
+        if m2 is None or m2["trades"] <= state_m["trades"]:
+            rec.update({"translated_trades": (m2 or {}).get("trades"), "status": "flag->member translation lost the opened trades (allowed-change filter); keeping base"})
+            self.rep["macro"].append(rec)
+            return state, state_m, cur
+        self.m365_many([w])
+        ids = {c["_id"] for c in self.cands if (self.gsw.get(c["switch"]) or {}).get("lifecycle", "") in ("EXIT_CLOSE", "REDUCE", "EXIT_VETO", "ENTRY_GATE", "REENTRY_GATE", "ENTRY_OPEN", "REENTRY")}
+        st, stm = self.climb(w, m2, f"SERIES[{fault}]", only=ids, rounds=8, k365=6, frac_stop=0.25)
+        self.m365_many([st])
+        kk = self.key_of(st, stm)
+        rec.update({"opened_keys": len(opened_keys), "final_gain": stm["gain"], "final_trades": stm["trades"], "accepted": kk > cur})
+        self.rep["macro"].append(rec)
+        if kk > cur:
+            self._step("FILTER_SERIES", f"{fault}: ordered series -> {len(opened_keys)} members opened -> re-tighten", st, stm)
+            return st, stm, kk
+        return state, state_m, cur
+
     def paths(self, state: dict, state_m: dict, scr: list, base_m: dict, faults: list, mix: dict) -> tuple:
         cur = self.key_of(state, state_m)
         for fault in faults[:5]:
@@ -562,7 +678,10 @@ class GraphSearch(DR._Search):
             ops = self.openers(fault, scr, base_m, state=state)
             extra_ids = set(self.exit_attack(state, mix)) if fault in ("PREMATURE_EXITS", "BELOW_BH_MATERIAL", "TIM_LOW") else set()
             if not ops and not extra_ids and fault in ("TOO_FEW_TRADES", "FEW_TRADES", "FAIL_365D_TRADES", "MISSED_MOVES"):
-                state, state_m, cur = self.deep_open(state, state_m, fault, cur)
+                if FILTER_SERIES_ENABLED:  # 2026-10-07 filter-ablation lane (default OFF): ordered series instead of the deep_open blast
+                    state, state_m, cur = self.ordered_filter_open(state, state_m, fault, cur)
+                else:
+                    state, state_m, cur = self.deep_open(state, state_m, fault, cur)
                 continue
             if not ops and not extra_ids:
                 self.rep["macro"].append({"fault": fault, "status": "no measured opener in the graph lifecycles"})
@@ -679,6 +798,147 @@ def autopsy_card(S: GraphSearch, ctx: dict, origin: dict, base_m: dict, scr_ledg
     return card, base
 
 
+def monthly_table(S, ctx: dict, state: dict) -> dict:
+    """USER 2026-10-07: month-by-month 365D attribution (zero extra evals beyond ONE 365D+ledger eval, cached per state).
+    Calendar months when npz365 timestamps align, else 12 bar-quantile slices (labeled approx). Worst slice -> mapped faults."""
+    from tools import v15_trade_autopsy as TA
+    if not hasattr(S, "heal_cache"):
+        S.heal_cache = {}
+    key = S._k(S.sanitize(state))
+    if key in S.heal_cache:
+        return S.heal_cache[key]
+    ev = ctx.get("eval_365_ledger")
+    if ev is None:
+        return {"mode": "no-365-ledger", "slices": [], "worst": None}
+    try:
+        r, _span = ev(state)
+        rows = TA.scaled_rows(r)
+    except Exception:
+        return {"mode": "no-rows", "slices": [], "worst": None}
+    if not rows:
+        return {"mode": "no-rows", "slices": [], "worst": None}
+    ts, mode, nbx = None, "quantile12", max([t.get("bx", 0) for t in rows] + [0])
+    try:
+        _ts = ((ctx.get("npz365") or {}).get("timestamps")) or []
+        _cl = ((ctx.get("npz365") or {}).get("close")) or []
+        if _ts and _cl and len(_ts) == len(_cl) and nbx < len(_ts):
+            ts, mode = _ts, "calendar"
+    except Exception:
+        ts, mode = None, "quantile12"
+    import datetime as _dt
+    slices = {}
+    for t in rows:
+        bx = t.get("bx", 0)
+        if mode == "calendar":
+            try:
+                _e = float(ts[bx if bx < len(ts) else -1])
+                sid = _dt.datetime.fromtimestamp(_e / 1000.0 if _e > 1e11 else _e, tz=_dt.timezone.utc).strftime("%Y-%m")
+            except Exception:
+                sid = f"Q{min(11, int(12 * bx / max(1, nbx + 1)))}~"
+        else:
+            sid = f"Q{min(11, int(12 * bx / max(1, nbx + 1)))}~"
+        s = slices.setdefault(sid, {"id": sid, "n": 0, "pnl": 0.0, "wins": 0, "holds": [], "exits": {}})
+        s["n"] += 1
+        s["pnl"] += float(t.get("pnl") or 0.0)
+        s["wins"] += 1 if float(t.get("pnl") or 0.0) > 0 else 0
+        s["holds"].append(max(0, t.get("bx", 0) - t.get("be", 0)))
+        _er = str(t.get("exit_reason") or "?")
+        s["exits"][_er] = s["exits"].get(_er, 0) + 1
+    out = []
+    for sid in sorted(slices):
+        s = slices[sid]
+        out.append({"id": sid, "n": s["n"], "pnl": round(s["pnl"], 2), "wr": round(100.0 * s["wins"] / max(1, s["n"]), 1),
+                    "losers": round(100.0 * (s["n"] - s["wins"]) / max(1, s["n"]), 1),
+                    "avg_hold": round(sum(s["holds"]) / max(1, len(s["holds"])), 1),
+                    "top_exits": sorted(s["exits"].items(), key=lambda kv: -kv[1])[:3]})
+    cand = [s for s in out if s["n"] >= 5] or out
+    worst = min(cand, key=lambda s: s["pnl"]) if cand else None
+    res = {"mode": mode, "slices": out, "worst": worst}
+    S.heal_cache[key] = res
+    return res
+
+
+def monthly_faults(worst: dict | None) -> list:
+    """worst slice -> known fault names (openers-compatible). Honest subset: only what the slice proves."""
+    if not worst:
+        return []
+    f = []
+    if worst.get("losers", 0) > 60:
+        f.append("LOSERS")
+    if worst.get("avg_hold", 1e9) < 20 and worst.get("losers", 0) > 50:
+        f.append("PREMATURE_EXITS")
+    if worst.get("n", 0) < 5:
+        f.append("TOO_FEW_TRADES")
+    if worst.get("pnl", 0) < -2:
+        f.append("GAIN_NEG")
+    return f
+
+
+def heal_365(S, ctx: dict, state: dict, state_m: dict) -> tuple:
+    """USER 2026-10-07: a 365D-red side keeps working until 365D gain is positive — focused 365D-fault rounds with a
+    hard 30D-compliance floor (heal can never regress live 30D). Bounded by absolute floors so prune+verify keep theirs.
+    Requires measured 365D (skips honestly otherwise); monthly table targets the worst slice (cached, ~free)."""
+    r = S.m365c.get(S._k(S.sanitize(state)))
+    m365 = r[0] if r else None
+    if m365 is None or m365.get("gain") is None:
+        S.rep["macro"].append({"phase": "HEAL_365", "status": "skipped: 365D unmeasured"})
+        return state, state_m
+    if (m365.get("gain") or -1e9) >= 0 and r[1]:
+        S.rep["macro"].append({"phase": "HEAL_365", "status": "skipped: 365D already green"})
+        return state, state_m
+    if S.left() < 60:
+        S.rep["macro"].append({"phase": "HEAL_365", "status": "skipped: no heal budget (left<60s)"})
+        return state, state_m
+    cur, g365 = S.key_of(state, state_m), (m365.get("gain") or -1e9)
+    for rnd in range(3):
+        if S.left() < 45:
+            S.rep["macro"].append({"phase": "HEAL_365", "status": "stop: verify floor (left<45s)"})
+            break
+        mt = monthly_table(S, ctx, state)
+        S.rep["monthly"] = mt
+        mix = DR.ledger_mix(ctx["eval_ledger"](state)) if ctx.get("eval_ledger") else {}
+        faults = S.faults(state_m, mix, S.m365c.get(S._k(S.sanitize(state))), {})
+        for mf in monthly_faults(mt.get("worst")):
+            if mf not in faults:
+                faults.append(mf)
+        faults = [f for f in faults if "365" in f] + [f for f in faults if "365" not in f]
+        scr = S.screen(state, state_m, f"HEAL_SCREEN{rnd}", only=S.shortlist(None, 300))
+        ids = set()
+        for fault in faults[:3]:
+            try:
+                ops = S.openers(fault, scr, state_m, state=state)
+            except Exception:
+                ops = []
+            ids |= {c["_id"] for c, _mv in ops}
+            ids |= {c["_id"] for c in S.cands if (S.gsw.get(c["switch"]) or {}).get("lifecycle") in FAULT_LIFECYCLES.get(fault, ())}
+        ids |= S.shortlist(None, 60)
+        ids = {i for i in ids if not S.cands[i]["switch"].startswith("ABLATION_")}
+        if not ids:
+            S.rep["macro"].append({"phase": "HEAL_365", "round": rnd, "status": "no heal ids"})
+            break
+        st, stm = S.climb(state, state_m, f"HEAL[{rnd}]", only=ids, rounds=3, k365=4, frac_stop=0.0)
+        S.m365_many([st])
+        rh = S.m365c.get(S._k(S.sanitize(st)))
+        h365 = rh[0].get("gain") if rh and rh[0] else None
+        rec = {"phase": "HEAL_365", "round": rnd, "faults": faults[:4], "monthly": mt.get("mode"),
+               "worst": (mt.get("worst") or {}).get("id"), "gain30": stm["gain"], "gain365": h365, "left": round(S.left(), 1)}
+        if DR.compliant(stm) and h365 is not None and h365 >= g365 - 1e-9 and S.key_of(st, stm) > cur:
+            state, state_m, cur, g365 = st, stm, S.key_of(st, stm), h365
+            rec["accepted"] = True
+            S._step("HEAL_365", f"round{rnd}: 365D {g365:+.2f} ({mt.get('mode')}/{rec['worst']})", st, stm)
+            S.rep.setdefault("heal_rounds", []).append(rec)
+            if h365 >= 0 and rh[1]:
+                S.rep["macro"].append({"phase": "HEAL_365", "status": "healed: 365D green"})
+                break
+        else:
+            rec["accepted"] = False
+            rec["why"] = "30D-noncompliant" if not DR.compliant(stm) else ("365D-unmeasured" if h365 is None else ("365D-worse" if h365 < g365 - 1e-9 else "key-stalled"))
+            S.rep.setdefault("heal_rounds", []).append(rec)
+            S.rep["macro"].append({"phase": "HEAL_365", "round": rnd, "status": f"no advance ({rec['why']})"})
+            break
+    return state, state_m
+
+
 def run(ctx: dict) -> dict:
     """ctx = tools/v15_diagnose_repair.run ctx + graph (load_graph) [+ eval_many_365(ovs, deadline)->[(res, span)]].
     Returns a DIAGNOSE+REPAIR-compatible report (accepted, best_overrides, after, changes, finalists, steps) + ablation/macro."""
@@ -691,6 +951,7 @@ def run(ctx: dict) -> dict:
     S.memo[S._k(origin)] = base_m
     rep = S.rep
     rep.update({"method": "graph_search", "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(t0)), "n_candidates": len(S.cands), "before": base_m, "graph_engine_md5": S.G.get("engine_md5")})
+    rep["gs_build"] = BUILD
     S.m365_many([origin])
     o365 = S.m365c.get(S._k(origin))
     rep["origin_365"] = {"m365": o365[0], "q365": o365[1], "why365": o365[2]} if o365 else None
@@ -775,6 +1036,7 @@ def run(ctx: dict) -> dict:
     # 6 POLISH
     if S.left() > 0.08 * S.budget:
         state, state_m = S.climb(state, state_m, "POLISH", only=S.shortlist(None, 200), rounds=6, k365=6, frac_stop=0.05)
+    state, state_m = heal_365(S, ctx, state, state_m)  # USER 2026-10-07: 365D-red sides keep healing (bounded, 30D-safe)
     S.deadline += reserve
     if S.changes(state):
         state, state_m = prune(S, state, state_m)
