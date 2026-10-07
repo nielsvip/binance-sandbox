@@ -117,6 +117,43 @@ case, not a sampling case. Per filter with a NONE-heavy column:
   works (fail-open), but priority forcing needs the JSONs present in
   `data/cat_avg/` on every pilot host (S1/S2/S5 + Mac).
 
+## 7b. Wiring batch 1 — DONE + PROVEN (2026-10-07 ~23:30Z)
+
+Three UNWIRED filters carried the ez batch1 live entry veto
+(`_batch1_template_live_gate`: TF-gated wt1>wt2 long / wt1<wt2 short, OFF inert)
+but had no live vec path (same-name inline legs sit in v12
+`_batch1_template_wiring`, DISABLED/passthrough since the 2026-09-28 purge —
+audit body only). Wired via the live generic path
+(`vec_decisions.generic_filter_tf.FILTER_TF_MAP`, consumer in
+`simulate_one`): `("entry", "wt_cross_side")` × 3, no live change needed
+(crypto live already vetoes; stocks live matches all other mapped FILTER_TFs:
+no batch1 gate — family-wide standing, not batch-1 gap).
+
+| filter | NONE cells | proof (A/B ledger moved) |
+|---|---|---|
+| DELTA_ENGINE_FILTER_TF | 53055 | S1 ETH LONG, s2 DOGE LONG, s5 ETH SHORT |
+| DC_MOMENTUM_BOTA_SCORER_FILTER_TF | 51640 | same 3 hosts |
+| CIRCUIT_SHARPE_GATES_FILTER_TF | 44475 | same 3 hosts |
+
+Cut: MAP + v12 static-tuple line + `data/vec_unwired.json` trim (switches
+184→182, filters 23→20) + twin verdicts, deployed sandbox+live × S1/s2/s5
+md5-verified, tests `tests/test_v15_filter_tf_batch1.py` 5/5. Fresh pilots
+calculate these headers immediately (UNWIRED skip gone) + priority-forcing
+covers their NONE cells. BASE moved vec-side toward live (vetoes now apply at
+defaults, as live always did) — directionally parity-improving.
+
+Remaining queue (20 names, ~1.02M NONE): 2 DEAD_VEC by design
+(`PARTIAL_PROFIT_LOCK_V2`, `NOLOSS_BYPASS_WT5OF5` — operator call: accept
+permanent NONE or remove headers); FROZEN_STOP next (position-state stop
+machinery — needs vec design, TF helper exists); 17 more need per-filter
+live-semantics archaeology (several look live-only-concept:
+LIVE_ONLY_SIGNALS_BATCH5, LIVE_ENTRY_ENGINE, MTF_ARMED_ENTRIES,
+OPEN_INTENT_SIZE_GATES, NEWBORN_PROTECT, FIRST_OPEN_THROTTLE,
+EMERGENCY_BRAKE, HAIKU_WINNER, GR_V5_STATE, GR_FILTER_VEC,
+GOLDEN_RULE_*×2, EXIT_*×3, MANDATORY_REENTRY_WT_*). Rule: no live predicate
+found → no invention (BLOCKED for operator semantics, GR_V5/PPL_V2
+precedent).
+
 ## 7. Template paint (this order, 2026-10-07)
 
 `tools/v15_yellow_paint_pos.py --apply` painted all 8 template files (main +
