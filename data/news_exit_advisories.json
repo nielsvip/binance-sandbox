@@ -1,86 +1,166 @@
 {
-  "generated_at": "2026-10-07T13:46:12.696392+00:00",
-  "count": 10,
+  "generated_at": "2026-10-07T14:32:04.587969+00:00",
+  "count": 20,
   "advisories": [
     {
-      "symbol": "DAR",
+      "symbol": "ABT",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.72 threshold=0.45",
-      "score": 0.719,
-      "ts": "2026-10-07T13:46:12.696325+00:00"
+      "reason": "bullish_news_score=0.50 threshold=0.45",
+      "score": 0.503,
+      "ts": "2026-10-07T14:32:04.587873+00:00"
     },
     {
-      "symbol": "DVN",
+      "symbol": "AEM",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.83 threshold=0.45",
-      "score": 0.829,
-      "ts": "2026-10-07T13:46:12.696340+00:00"
+      "reason": "bullish_news_score=0.58 threshold=0.45",
+      "score": 0.576,
+      "ts": "2026-10-07T14:32:04.587889+00:00"
     },
     {
-      "symbol": "EXEL",
+      "symbol": "AG",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.51 threshold=0.45",
-      "score": 0.511,
-      "ts": "2026-10-07T13:46:12.696343+00:00"
+      "reason": "bullish_news_score=0.62 threshold=0.45",
+      "score": 0.624,
+      "ts": "2026-10-07T14:32:04.587891+00:00"
     },
     {
-      "symbol": "FIVN",
+      "symbol": "APA",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.82 threshold=0.45",
-      "score": 0.822,
-      "ts": "2026-10-07T13:46:12.696345+00:00"
+      "reason": "bullish_news_score=0.45 threshold=0.45",
+      "score": 0.453,
+      "ts": "2026-10-07T14:32:04.587893+00:00"
     },
     {
-      "symbol": "FIX",
+      "symbol": "ASML",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.69 threshold=0.45",
-      "score": 0.691,
-      "ts": "2026-10-07T13:46:12.696346+00:00"
+      "reason": "bullish_news_score=0.46 threshold=0.45",
+      "score": 0.461,
+      "ts": "2026-10-07T14:32:04.587895+00:00"
     },
     {
-      "symbol": "FNV",
+      "symbol": "ASTS",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.51 threshold=0.45",
-      "score": 0.507,
-      "ts": "2026-10-07T13:46:12.696348+00:00"
+      "reason": "bullish_news_score=0.57 threshold=0.45",
+      "score": 0.571,
+      "ts": "2026-10-07T14:32:04.587897+00:00"
     },
     {
-      "symbol": "HP",
+      "symbol": "AU",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.80 threshold=0.45",
-      "score": 0.802,
-      "ts": "2026-10-07T13:46:12.696350+00:00"
+      "reason": "bullish_news_score=0.62 threshold=0.45",
+      "score": 0.616,
+      "ts": "2026-10-07T14:32:04.587900+00:00"
     },
     {
-      "symbol": "KGC",
+      "symbol": "AXON",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.47 threshold=0.45",
-      "score": 0.468,
-      "ts": "2026-10-07T13:46:12.696352+00:00"
+      "reason": "bullish_news_score=0.65 threshold=0.45",
+      "score": 0.648,
+      "ts": "2026-10-07T14:32:04.587901+00:00"
     },
     {
-      "symbol": "LAC",
+      "symbol": "AXTI",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.67 threshold=0.45",
-      "score": 0.67,
-      "ts": "2026-10-07T13:46:12.696354+00:00"
+      "reason": "bullish_news_score=0.48 threshold=0.45",
+      "score": 0.483,
+      "ts": "2026-10-07T14:32:04.587903+00:00"
     },
     {
-      "symbol": "LNG",
+      "symbol": "BG",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.77 threshold=0.45",
+      "score": 0.765,
+      "ts": "2026-10-07T14:32:04.587905+00:00"
+    },
+    {
+      "symbol": "BIDU",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.55 threshold=0.45",
       "score": 0.546,
-      "ts": "2026-10-07T13:46:12.696356+00:00"
+      "ts": "2026-10-07T14:32:04.587907+00:00"
+    },
+    {
+      "symbol": "BKR",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.47 threshold=0.45",
+      "score": 0.472,
+      "ts": "2026-10-07T14:32:04.587908+00:00"
+    },
+    {
+      "symbol": "BOTZ",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.49 threshold=0.45",
+      "score": 0.494,
+      "ts": "2026-10-07T14:32:04.587910+00:00"
+    },
+    {
+      "symbol": "CAT",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.46 threshold=0.45",
+      "score": 0.458,
+      "ts": "2026-10-07T14:32:04.587911+00:00"
+    },
+    {
+      "symbol": "CDE",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.62 threshold=0.45",
+      "score": 0.62,
+      "ts": "2026-10-07T14:32:04.587913+00:00"
+    },
+    {
+      "symbol": "CHRD",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.49 threshold=0.45",
+      "score": 0.492,
+      "ts": "2026-10-07T14:32:04.587915+00:00"
+    },
+    {
+      "symbol": "CIBR",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.59 threshold=0.45",
+      "score": 0.594,
+      "ts": "2026-10-07T14:32:04.587916+00:00"
+    },
+    {
+      "symbol": "CLS",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.50 threshold=0.45",
+      "score": 0.5,
+      "ts": "2026-10-07T14:32:04.587918+00:00"
+    },
+    {
+      "symbol": "CMC",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.85 threshold=0.45",
+      "score": 0.851,
+      "ts": "2026-10-07T14:32:04.587920+00:00"
+    },
+    {
+      "symbol": "CRWD",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.48 threshold=0.45",
+      "score": 0.479,
+      "ts": "2026-10-07T14:32:04.587922+00:00"
     }
   ]
 }

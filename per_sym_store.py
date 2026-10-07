@@ -131,7 +131,69 @@ CREATE TABLE IF NOT EXISTS kv_json (
 # ---------------------------------------------------------------------------
 # DB helpers
 # ---------------------------------------------------------------------------
+# 2026-10-07 hourly triage (tradier 14:15Z): every get()/kv_get() ran _ensure_db (connect +
+# executescript + PRAGMA/ALTER/INDEX + WAL + commit + close) then a 2nd connect + SELECT * +
+# json.loads of ~2x123KB blobs + close, synchronously on the live asyncio thread, hundreds of
+# times per symbol via tradier _cfg / cat_side_defaults._load. macOS `sample` of trb pid 59940
+# showed ~75% of main-thread time in sqlite connect/close/parse -> event-loop starvation ->
+# every order ORDER_STALL_SKIP (0 broker orders 13:30-14:15Z). Fix = memoize schema setup per
+# DB file + cache parsed reads keyed on the db/-wal file signature (any writer, any process,
+# bumps -wal or db mtime_ns/size -> cache dropped). Values returned are identical; copies are
+# handed out so callers cannot mutate the cache.
+_ENSURED_DB: set = set()
+_READ_CACHE: dict = {"sig": None, "get": {}, "kv": {}}
+_READ_MISS = object()
+
+
+def _db_signature():
+    sig = [str(DB_PATH)]
+    for p in (DB_PATH, Path(str(DB_PATH) + "-wal")):
+        try:
+            st = os.stat(p)
+            sig.extend((st.st_ino, st.st_mtime_ns, st.st_size))
+        except OSError:
+            sig.extend((0, 0, 0))
+    return tuple(sig)
+
+
+def _read_cache_bucket(name: str) -> dict:
+    sig = _db_signature()
+    if _READ_CACHE["sig"] != sig:
+        _READ_CACHE["sig"] = sig
+        _READ_CACHE["get"] = {}
+        _READ_CACHE["kv"] = {}
+    return _READ_CACHE[name]
+
+
+def _invalidate_read_cache() -> None:
+    _READ_CACHE["sig"] = None
+    _READ_CACHE["get"] = {}
+    _READ_CACHE["kv"] = {}
+
+
+def _copy2(v):
+    if isinstance(v, dict):
+        return {k: (dict(x) if isinstance(x, dict) else list(x) if isinstance(x, list) else x) for k, x in v.items()}
+    if isinstance(v, list):
+        return [(dict(x) if isinstance(x, dict) else list(x) if isinstance(x, list) else x) for x in v]
+    return v
+
+
 def _ensure_db() -> None:
+    try:
+        _ens_key = (str(DB_PATH), os.stat(DB_PATH).st_ino)
+    except OSError:
+        _ens_key = None
+    if _ens_key is not None and _ens_key in _ENSURED_DB:
+        return
+    _ensure_db_impl()
+    try:
+        _ENSURED_DB.add((str(DB_PATH), os.stat(DB_PATH).st_ino))
+    except OSError:
+        pass
+
+
+def _ensure_db_impl() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(str(DB_PATH), timeout=5.0)
     try:
@@ -317,18 +379,30 @@ def get(sym_side: str) -> Optional[dict]:
     sym_side = str(sym_side).strip()
     if os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1":
         try:
+            _bucket = _read_cache_bucket("get")
+            _hit = _bucket.get(sym_side)
+            if _hit is not None:
+                if _hit is _READ_MISS:
+                    return _json_load_fallback(sym_side)
+                if not _hit.get("full_config"):
+                    jf = _json_load_fallback(sym_side)
+                    if jf and jf.get("full_config"):
+                        return jf
+                return _copy2(_hit)
             con = _connect()
             try:
                 cur = con.execute("SELECT * FROM per_sym_active WHERE sym_side=?", (sym_side,))
                 row = cur.fetchone()
                 if row is not None:
                     e = _row_to_entry(row)
+                    _bucket[sym_side] = e
                     # if full_config is empty but json has it, prefer json
                     if not e.get("full_config"):
                         jf = _json_load_fallback(sym_side)
                         if jf and jf.get("full_config"):
                             return jf
-                    return e
+                    return _copy2(e)
+                _bucket[sym_side] = _READ_MISS
             finally:
                 con.close()
         except Exception:
@@ -626,6 +700,7 @@ def upsert(
             ),
         )
         con.commit()
+        _invalidate_read_cache()
         # history — compact results + compressed full/snapshot so 30d trail stays small
         try:
             now_epoch = time.time()
@@ -769,6 +844,7 @@ def kv_put(key: str, value: Any, compress: bool = False) -> None:
                 (str(key), js, now_iso, time.time()),
             )
             con.commit()
+            _invalidate_read_cache()
         finally:
             con.close()
     except Exception as _e:
@@ -785,13 +861,20 @@ def kv_get(key: str) -> Optional[Any]:
     if os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") == "1":
         return None
     try:
+        _bucket = _read_cache_bucket("kv")
+        _hit = _bucket.get(str(key), _READ_MISS)
+        if _hit is not _READ_MISS:
+            return _copy2(_hit)
         con = _connect()
         try:
             row = con.execute("SELECT value_json FROM kv_json WHERE key=?", (str(key),)).fetchone()
             if row is None or row["value_json"] is None:
+                _bucket[str(key)] = None
                 return None
             raw = _maybe_decompress(row["value_json"])
-            return json.loads(raw) if raw else None
+            _val = json.loads(raw) if raw else None
+            _bucket[str(key)] = _val
+            return _copy2(_val)
         finally:
             con.close()
     except Exception:

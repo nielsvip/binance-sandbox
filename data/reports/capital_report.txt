@@ -1,11 +1,11 @@
-CAPITAL ALLOCATION REPORT — 2026-10-07 13:14 UTC
+CAPITAL ALLOCATION REPORT — 2026-10-07 14:14 UTC
 ================================================================================
-Total capital deployed: $538.37 across 31 positions
+Total capital deployed: $539.41 across 31 positions
 
 TIER DISTRIBUTION:
   Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $    495.18 ( 92.0%) — 29 positions
-  Tier C: $     43.19 (  8.0%) — 2 positions
+  Tier B: $    496.06 ( 92.0%) — 29 positions
+  Tier C: $     43.34 (  8.0%) — 2 positions
 
   ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
 
@@ -13,12 +13,14 @@ WINNERS — augment these (A-tier, in gain) [0]:
   (none)
 
 LOSERS — reduce allocation (C-tier or losing) [5]:
-                     men:SKYUSDT_LONG  $    3.67  gain=-10.11%  tier=B  mult=1.00
-                    men:SANDUSDT_LONG  $   27.94  gain=-3.42%  tier=C  mult=0.37
-                     men:ZROUSDT_LONG  $   15.25  gain=-3.29%  tier=C  mult=0.44
-                     men:ADAUSDC_LONG  $   21.69  gain=-1.17%  tier=B  mult=3.23
-                    men:EDUUSDT_SHORT  $   28.28  gain=-0.75%  tier=B  mult=0.45
+                     men:SKYUSDT_LONG  $    3.69  gain=-9.56%  tier=B  mult=1.00
+                     men:ZROUSDT_LONG  $   15.15  gain=-3.94%  tier=C  mult=0.44
+                    men:SANDUSDT_LONG  $   28.19  gain=-2.54%  tier=C  mult=0.37
+                    men:EDUUSDT_SHORT  $   28.67  gain=-2.16%  tier=B  mult=0.45
+                     men:ADAUSDC_LONG  $   21.66  gain=-1.32%  tier=B  mult=3.23
 
-MEDIOCRE — capital sitting idle [2]:
-                    men:ETCUSDT_SHORT  $   27.90  gain=+0.11%  tier=B
-                   men:COTIUSDT_SHORT  $   24.19  gain=-0.14%  tier=B
+MEDIOCRE — capital sitting idle [4]:
+                   men:ALGOUSDT_SHORT  $   18.05  gain=+0.28%  tier=B
+                  men:RENDERUSDT_LONG  $   16.46  gain=-0.29%  tier=B
+                men:MELANIAUSDT_SHORT  $   16.01  gain=-0.21%  tier=B
+                    men:BNBUSDC_SHORT  $   15.35  gain=+0.04%  tier=B
