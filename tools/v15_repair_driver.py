@@ -130,8 +130,9 @@ def candidates_for(ss: str, defaults: dict, P) -> list:
 def same_val(a, b):  # = v15_pilot._spec_fill_workbook._same_val
     if isinstance(a, bool) or isinstance(b, bool) or str(a).lower() in ("true", "false") or str(b).lower() in ("true", "false"):
         return str(a).strip().lower() == str(b).strip().lower()
-    try:
-        return abs(float(a) - float(b)) < 1e-12
+    try:  # USER 2026-10-07: exact-equality fast path — abs(inf-inf)=nan made inf NEVER equal inf
+        fa, fb = float(a), float(b)
+        return fa == fb or abs(fa - fb) < 1e-12
     except Exception:
         return str(a).strip() == str(b).strip()
 

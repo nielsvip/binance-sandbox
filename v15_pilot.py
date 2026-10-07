@@ -2485,8 +2485,9 @@ def same_val(a, b) -> bool:
     """Module-level twin of _spec_fill_workbook._same_val (identical body) for standalone drivers (s6 365D+GS)."""
     if isinstance(a, bool) or isinstance(b, bool) or str(a).lower() in ("true", "false") or str(b).lower() in ("true", "false"):
         return str(a).strip().lower() == str(b).strip().lower()
-    try:
-        return abs(float(a) - float(b)) < 1e-12
+    try:  # USER 2026-10-07: exact-equality fast path — abs(inf-inf)=nan made inf NEVER equal inf (MOVER_ACCOUNT phantom)
+        fa, fb = float(a), float(b)
+        return fa == fb or abs(fa - fb) < 1e-12
     except Exception:
         return str(a).strip() == str(b).strip()
 
@@ -3678,8 +3679,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     def _same_val(a, b) -> bool:
         if isinstance(a, bool) or isinstance(b, bool) or str(a).lower() in ("true", "false") or str(b).lower() in ("true", "false"):
             return str(a).strip().lower() == str(b).strip().lower()
-        try:
-            return abs(float(a) - float(b)) < 1e-12
+        try:  # USER 2026-10-07: exact-equality fast path — abs(inf-inf)=nan made inf NEVER equal inf (MOVER_ACCOUNT phantom)
+            fa, fb = float(a), float(b)
+            return fa == fb or abs(fa - fb) < 1e-12
         except Exception:
             return str(a).strip() == str(b).strip()
     def _ck(ov: dict):
