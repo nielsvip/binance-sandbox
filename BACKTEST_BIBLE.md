@@ -1497,7 +1497,7 @@ no longer exists. Consequences:
   rows across files must map per-file tabs/headers; any test that asserts equal shape across files is wrong.
 - **Writer allowlist (LOCKED_FILES.md one-script rule):** ONLY these four writers touch the template
   files (both the main and the norm set) — `tools/v15_daily_template_update.py` (avg/promotions),
-  `tools/v15_template_bookkeeper.py` (books, S1 cron 12:30 UTC), `tools/v15_switch_add.py` (new rows,
+  `tools/v15_template_bookkeeper.py` (books, S1 cron 12:00 UTC — before the chain, §75), `tools/v15_switch_add.py` (new rows,
   §71), `tools/v15_template_staged_apply.py` (verified restructures; currently refuses on the
   pre-existing violation backlog). Pilots write ledgers/progress only. No hand edits, no other
   writers, no exceptions beyond §71.
@@ -1582,3 +1582,20 @@ fewer+faster pilots (cores are the bound), zero-formula skip (§72, ~70% of cell
 sampling (§73). Structural floor: full-fidelity (all yellows + all passes + post-stages) cannot go
 sub-~50min even at 16 workers — sub-10min requires cutting evals (fewer yellows / single pass / no
 post-stages), a science decision, not an ops tweak.
+
+## 75. DAILY SCHEDULE — CLOCKS, ORDER, RETRIES (USER 2026-10-07)
+
+All UTC. Market open 13:30Z (09:30 ET) — everything lands before it.
+
+| UTC | What | Where | Note |
+|---|---|---|---|
+| 12:00 | bookkeeper (ZERO_FORMULA_BOOK sheets) | S1 cron | Runs BEFORE the chain: the chain writer preserves non-SWITCH tabs, so books ride through the rewrite and the stamp md5s include them. Moved from 12:30Z 2026-10-07 (it raced the chain's step-2 rewrite on the same files with a different lock). |
+| 12:15 | daily chain (avg → templates → defaults → possym → push s2/s5) | S1 cron `V15_DAILY_CHAIN_S1` | ~45 min. Stamps `data/daily_chain/<date>.json`. Fail-stop (except watchdog/tradeable-check). |
+| 13:00 | Mac follow-up (pull stamped set → kv sync → config sync → push code → gates) | Mac cron `V15_DAILY_CHAIN_MAC_APPLY` | Waits up to 55 min for the SAME-date stamp — the Mac is ~1h behind S1, never a day, when the chain lands. |
+| 20:00 | Mac retry slot (same script, step-0 no-ops a DONE day) | Mac cron `V15_DAILY_CHAIN_MAC_RETRY` | Catches late chains (stamp after ~13:55Z). Added 2026-10-07. |
+| @reboot | chain catch-up (only if no stamp AND slot passed, ≥12:20Z) | S1 cron `V15_DAILY_CHAIN_REBOOT_CATCHUP` | Added 2026-10-07 after S1 rebooted through the 12:15Z slot and the whole day was silently skipped. |
+
+Rules: a FAILED mac-apply is never the end of the story — the 20:00Z retry or a same-day manual
+run closes it. A new cron slot that writes templates or config MUST reuse these scripts (never a new
+writer — §70 allowlist) and MUST be idempotent (stamp-checked no-op). Cron edits are backed up to
+`backups/before_*cron*` like any other edit.

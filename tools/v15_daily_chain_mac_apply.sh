@@ -1,7 +1,8 @@
 #!/bin/bash
 # v15_daily_chain_mac_apply — Mac follow-up of the S1 daily chain (BIBLE §68.3 step 2 code surfaces, director design 2026-10-06).
-# Cron (Mac, 13:00Z, after S1 12:15Z tools/v15_daily_chain_s1.sh):
+# Cron (Mac, 13:00Z after S1 12:15Z tools/v15_daily_chain_s1.sh, retry 20:00Z; step 0 no-ops a DONE day):
 #   0 13 * * * PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin /bin/bash /Users/niels/Documents/binance/tools/v15_daily_chain_mac_apply.sh >> /tmp/v15_daily_chain_mac_apply.log 2>&1 # V15_DAILY_CHAIN_MAC_APPLY
+#   0 20 * * * PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin /bin/bash /Users/niels/Documents/binance/tools/v15_daily_chain_mac_apply.sh >> /tmp/v15_daily_chain_mac_apply.log 2>&1 # V15_DAILY_CHAIN_MAC_RETRY
 # 1 require S1's done-stamp data/daily_chain/<date>.json -> 2 pull the chain's state (8 templates, cat_side_defaults_4 + sweep copy,
 # avg_delta_pos_sym.json, agg files, cat_side_promotions, round ledger, reports), md5-verified against the stamp, backups first,
 # then kv sync (SQL-primary readers) -> 3 switch_parity sync-defaults for the stamp's promoted_keys ON THE MAC (backup, compile, md5)
@@ -36,6 +37,12 @@ fail() {
 md5f() { md5 -q "$1" 2>/dev/null || echo MISSING; }
 log "=== start date=$DATE DRYRUN=$DRYRUN s1=$S1 hosts=$HOSTS dest=$DEST"
 [ -x "$PY" ] || fail 0 "venv python missing"
+
+# 0. idempotency (USER 2026-10-07: a 20:00Z retry slot re-runs this script; a DONE day is a no-op, a FAILED day retries)
+if [ "$DRYRUN" != 1 ] && [ -s "$STAMP" ] && grep -q '"status":"DONE"' "$STAMP" 2>/dev/null; then
+  log "already applied today ($STAMP DONE) — retry slot no-op, exit 0"
+  exit 0
+fi
 
 # 1. S1 done-stamp
 SJ=$DEST/data/daily_chain/$DATE.json

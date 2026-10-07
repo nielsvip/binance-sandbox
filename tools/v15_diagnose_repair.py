@@ -206,7 +206,7 @@ class _Search:
         self.same = ctx["same_val"]
         self.bh = ctx.get("bh")
         self.deadline = float(ctx["deadline"])
-        self.origin = dict(ctx["base_overrides"])
+        self.origin = dict(self.sanitize(dict(ctx["base_overrides"])))  # USER 2026-10-07: sanitized like run-origin (GS:689/DR:452); raw origin inflated changes() with sanitize phantoms (MOVER_ACCOUNT)
         self.memo: dict = {}
         self.n_evals = 0
         self.hall: list = []  # (key, ov, m, changes)
