@@ -99,12 +99,32 @@
   "at": "2026-10-07T07:06:48Z",
   "reason": "B15"
  },
- "ang:AAPLUSDT_LONG": {
-  "at": "2026-10-07T07:30:51Z",
+ "ang:BNBUSDC_LONG": {
+  "at": "2026-10-07T08:15:10Z",
+  "reason": "B12"
+ },
+ "ang:KMNOUSDT_LONG": {
+  "at": "2026-10-07T08:15:23Z",
+  "reason": "B_SMA200DIST"
+ },
+ "ang:ACEUSDT_SHORT": {
+  "at": "2026-10-07T08:15:27Z",
+  "reason": "DC_BREAKOUT_ENTRY"
+ },
+ "ang:GALAUSDT_SHORT": {
+  "at": "2026-10-07T08:16:12Z",
+  "reason": "GOLDEN_RULE_ENTRY"
+ },
+ "ang:EGLDUSDT_SHORT": {
+  "at": "2026-10-07T08:16:15Z",
+  "reason": "DC_BREAKOUT_ENTRY"
+ },
+ "ang:ENJUSDT_SHORT": {
+  "at": "2026-10-07T08:16:23Z",
   "reason": "B_KZONE"
  },
  "ang:RLCUSDT_LONG": {
-  "at": "2026-10-07T07:45:54Z",
+  "at": "2026-10-07T08:16:23Z",
   "reason": "B12"
  }
 }
