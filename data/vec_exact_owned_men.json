@@ -115,10 +115,6 @@
   "at": "2026-10-07T14:06:02Z",
   "reason": "B_EMADIST"
  },
- "men:SKYUSDT_SHORT": {
-  "at": "2026-10-07T14:23:13Z",
-  "reason": "B_KZONE"
- },
  "men:RLCUSDT_SHORT": {
   "at": "2026-10-07T14:46:34Z",
   "reason": "B_KZONE"
@@ -127,24 +123,24 @@
   "at": "2026-10-07T15:02:59Z",
   "reason": "B_KZONE"
  },
- "men:AVAXUSDC_SHORT": {
-  "at": "2026-10-07T15:18:19Z",
-  "reason": "B_KZONE"
- },
  "men:XRPUSDC_SHORT": {
   "at": "2026-10-07T15:25:16Z",
   "reason": "B_KZONE"
  },
- "men:ENJUSDT_LONG": {
-  "at": "2026-10-07T16:13:34Z",
+ "men:RVNUSDT_LONG": {
+  "at": "2026-10-07T16:25:54Z",
   "reason": "B12"
  },
- "men:YFIUSDT_LONG": {
-  "at": "2026-10-07T16:16:15Z",
-  "reason": "B12"
- },
- "men:VETUSDT_SHORT": {
-  "at": "2026-10-07T16:18:30Z",
+ "men:CHRUSDT_SHORT": {
+  "at": "2026-10-07T16:31:42Z",
   "reason": "B_KZONE"
+ },
+ "men:KMNOUSDT_SHORT": {
+  "at": "2026-10-07T16:33:12Z",
+  "reason": "B15"
+ },
+ "men:ENJUSDT_LONG": {
+  "at": "2026-10-07T16:38:07Z",
+  "reason": "VOL_SPIKE_REVERSAL"
  }
 }

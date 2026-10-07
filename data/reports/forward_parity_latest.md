@@ -1,6 +1,6 @@
 # Forward parity — LIVE vs VECTOR (auto, read-only)
 
-generated 2026-10-07T16:18:14+00:00 · producers: tools/forward_parity/live_vs_vec.py (crypto hourly :07, stocks every 15 min RTH), tools/decisions_history_parity.py (:17), tools/exit_engine_parity_monitor.py (launchd hourly), tools/daily_parity_test.py (launchd daily)
+generated 2026-10-07T16:39:06+00:00 · producers: tools/forward_parity/live_vs_vec.py (crypto hourly :07, stocks every 15 min RTH), tools/decisions_history_parity.py (:17), tools/exit_engine_parity_monitor.py (launchd hourly), tools/daily_parity_test.py (launchd daily)
 
 **REGIME PARITY_VEC_EXACT since 2026-10-06T18:48:00Z** — all monitors reset at the switch; old-regime results archived in `data/forward_parity/archive/pre_vec_exact_until_20261006T1848Z`. Universe: tradeable_keys.json + open positions only.
 
@@ -10,11 +10,11 @@ PASS (legacy definition) = every vector decision on the judged 15m bars has a li
 
 ## LIVE GUARDIAN (every 20 s, both systems) — tools/forward_parity/live_guardian.py
 
-last sweep 2026-10-07T16:18:14Z (0 min ago) · 0.6 s · dry_run=False · RTH=True · regime start 2026-10-06T18:48:00Z
+last sweep 2026-10-07T16:39:05Z (0 min ago) · 1.42 s · dry_run=False · RTH=True · regime start 2026-10-06T18:48:00Z
 
 thresholds: STORM_KEY_FILLS=6, STORM_KEY_MIN=10, ATTEMPT_STORM=30, ATTEMPT_MIN=5, CHURN_ROUNDTRIPS=3, DUP_S=20, ACCOUNT_STORM_FILLS=25, ACCOUNT_STORM_MIN=10, ACCOUNT_DUP_PAIRS=3, FILL_WAIT_S=600, SIZE_MULT=3.0, LOSS_DROP_PP=4.0, LOSS_FLOOR_PCT=-3.0, EQUITY_DROP_USD=25.0, RESTARTS=3, STALE_LOG_S=120, NON_VEC_BLOCK_N=2, KEY_BLOCK_TTL_S=7200, POS_MISMATCH_PCT=5.0
 
-alerts this sweep: FILL_WITHOUT_VEC_DECISION 63, POSITION_STATE_MISMATCH 20, RAPID_LOSS_KEY 5, NON_VEC_ENTRY_FILL 2, VEC_EXIT_WHILE_LIVE_FLAT 1, VEC_DECISION_NOT_FILLED 1, VEC_OPEN_WHILE_LIVE_IN 1, STALE_LOG 1
+alerts this sweep: FILL_WITHOUT_VEC_DECISION 61, RAPID_LOSS_KEY 3, NON_VEC_ENTRY_FILL 2, ACCOUNT_EQUITY_DROP 1, SIZE_ANOMALY 1, VEC_EXIT_WHILE_LIVE_FLAT 1, VEC_DECISION_NOT_FILLED 1, VEC_OPEN_WHILE_LIVE_IN 1
 
 ### Active interventions (9) — exits are never blocked; positions are never closed by the guardian
 
@@ -26,7 +26,7 @@ alerts this sweep: FILL_WITHOUT_VEC_DECISION 63, POSITION_STATE_MISMATCH 20, RAP
 | acct:ang | 02:23:30Z | ACCOUNT_EQUITY_DROP unrealised PnL of the same open positions fell $30.08 since 2026-10-07T02:21:26Z (now $-2.34) | `rm /Users/niels/Documents/binance/data/HALT_TRADING_ang` |
 | key:men:MANAUSDT_SHORT | 15:51:45Z | RAPID_LOSS_KEY unrealised -4.40% (60-min high +3.33%), amt 28 (opens/augments blocked; exits untouched) | `redis-cli -p 6379 DEL open_blocked:men:MANAUSDT_SHORT` |
 | key:men:ENJUSDT_SHORT | 16:09:33Z | RAPID_LOSS_KEY unrealised -3.44% (60-min high +2.85%), amt 671 (opens/augments blocked; exits untouched) | `redis-cli -p 6379 DEL open_blocked:men:ENJUSDT_SHORT` |
-| key:inf:SANDUSDT_SHORT | 14:34:23Z | RAPID_LOSS_KEY unrealised -3.48% (60-min high +1.13%), amt 191 (opens/augments blocked; exits untouched) | `redis-cli -p 6379 DEL open_blocked:inf:SANDUSDT_SHORT` |
+| key:inf:SANDUSDT_SHORT | 16:34:34Z | RAPID_LOSS_KEY unrealised -21.93% (60-min high -4.68%), amt 191 (opens/augments blocked; exits untouched) | `redis-cli -p 6379 DEL open_blocked:inf:SANDUSDT_SHORT` |
 | key:men:CHRUSDT_SHORT | 15:22:08Z | SIZE_ANOMALY BREAKOUT_SIZE_LADDER qty 7645.97->22937.9 ($495) past 1.5x MAX_ORDER_VALUE | `redis-cli -p 6379 DEL open_blocked:men:CHRUSDT_SHORT` |
 | key:fin:MANAUSDT_SHORT | 15:52:26Z | RAPID_LOSS_KEY unrealised -4.65% (60-min high +3.49%), amt 113 (opens/augments blocked; exits untouched) | `redis-cli -p 6379 DEL open_blocked:fin:MANAUSDT_SHORT` |
 
@@ -34,39 +34,39 @@ alerts this sweep: FILL_WITHOUT_VEC_DECISION 63, POSITION_STATE_MISMATCH 20, RAP
 
 | ts | severity | kind | key | evidence |
 |---|---|---|---|---|
-| 16:18:14 | WARN | POSITION_STATE_MISMATCH | inf:ACEUSDT_SHORT | positions file amt 94.87 vs fill-ledger amt 185.55 |
-| 16:18:14 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:AGLDUSDT_SHORT | AUGMENT 81 @ 2026-10-07T11:40:26Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 16:18:14 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:AIAUSDT_LONG | AUGMENT 76 @ 2026-10-07T11:25:01Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 16:18:14 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:AIAUSDT_LONG | REDUCE 76 @ 2026-10-07T11:41:26Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 16:18:14 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:BNBUSDC_SHORT | AUGMENT 0.02 @ 2026-10-07T11:26:36Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 16:18:14 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:1INCHUSDT_SHORT | AUGMENT 162 @ 2026-10-07T12:27:53Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 16:18:14 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:ACEUSDT_SHORT | AUGMENT 4.19 @ 2026-10-07T11:23:41Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 16:18:14 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:ACEUSDT_SHORT | AUGMENT 90.68 @ 2026-10-07T11:25:42Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 16:18:14 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:ACEUSDT_SHORT | AUGMENT 90.68 @ 2026-10-07T11:26:06Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 16:18:14 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:SANDUSDT_SHORT | AUGMENT 191 @ 2026-10-07T12:14:13Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 16:18:14 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:APEUSDT_SHORT | AUGMENT 109 @ 2026-10-07T12:50:26Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 16:18:14 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:ARPAUSDT_SHORT | AUGMENT 1451 @ 2026-10-07T11:24:15Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 16:18:14 | WARN | POSITION_STATE_MISMATCH | flz:BNBUSDC_LONG | positions file amt 0 vs fill-ledger amt 0.27 |
-| 16:18:14 | WARN | POSITION_STATE_MISMATCH | flz:GRAMUSDT_SHORT | positions file amt 11 vs fill-ledger amt 66.4 |
-| 16:18:14 | WARN | POSITION_STATE_MISMATCH | flz:DASHUSDT_SHORT | positions file amt 0 vs fill-ledger amt 0.849 |
-| 16:18:14 | WARN | POSITION_STATE_MISMATCH | flz:XRPUSDC_SHORT | positions file amt 0 vs fill-ledger amt 39.9 |
-| 16:18:14 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:GRAMUSDT_SHORT | AUGMENT 11 @ 2026-10-07T12:45:07Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 16:18:14 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:HYPEUSDT_SHORT | AUGMENT 0.17 @ 2026-10-07T12:45:42Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 16:18:14 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:HYPEUSDT_SHORT | REDUCE 0.17 @ 2026-10-07T13:03:39Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 16:18:14 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:HYPEUSDT_SHORT | AUGMENT 0.18 @ 2026-10-07T14:06:22Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 16:18:14 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:SOLUSDC_SHORT | REDUCE 0.13 @ 2026-10-07T13:01:56Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 16:18:14 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:DASHUSDT_SHORT | REDUCE 0.298 @ 2026-10-07T11:36:47Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 16:18:14 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:XRPUSDC_SHORT | AUGMENT 11 @ 2026-10-07T12:45:45Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 16:18:14 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:XRPUSDC_SHORT | REDUCE 11 @ 2026-10-07T13:03:40Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 16:18:14 | CRITICAL | STALE_LOG | trb | tradier_manage_trb.log not written for 121s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | men:XRPUSDC_SHORT | REDUCE 11 @ 2026-10-07T13:18:32Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | men:XRPUSDC_SHORT | REDUCE 11 @ 2026-10-07T13:19:22Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | men:XRPUSDC_SHORT | AUGMENT 11.2 @ 2026-10-07T15:36:23Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | men:AVAXUSDC_SHORT | AUGMENT 1.44 @ 2026-10-07T15:29:42Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | ang:ARKMUSDT_SHORT | REDUCE 124 @ 2026-10-07T12:33:01Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | RAPID_LOSS_KEY | inf:SANDUSDT_SHORT | unrealised -17.36% (60-min high -4.68%), amt 191 |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:AGLDUSDT_SHORT | AUGMENT 81 @ 2026-10-07T11:40:26Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:AIAUSDT_LONG | AUGMENT 76 @ 2026-10-07T11:25:01Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:AIAUSDT_LONG | REDUCE 76 @ 2026-10-07T11:41:26Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:BNBUSDC_SHORT | AUGMENT 0.02 @ 2026-10-07T11:26:36Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:1INCHUSDT_SHORT | AUGMENT 162 @ 2026-10-07T12:27:53Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:ACEUSDT_SHORT | AUGMENT 4.19 @ 2026-10-07T11:23:41Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:ACEUSDT_SHORT | AUGMENT 90.68 @ 2026-10-07T11:25:42Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:ACEUSDT_SHORT | AUGMENT 90.68 @ 2026-10-07T11:26:06Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:SANDUSDT_SHORT | AUGMENT 191 @ 2026-10-07T12:14:13Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:APEUSDT_SHORT | AUGMENT 109 @ 2026-10-07T12:50:26Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:ARPAUSDT_SHORT | AUGMENT 1451 @ 2026-10-07T11:24:15Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:GRAMUSDT_SHORT | AUGMENT 11 @ 2026-10-07T12:45:07Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:HYPEUSDT_SHORT | AUGMENT 0.17 @ 2026-10-07T12:45:42Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:HYPEUSDT_SHORT | REDUCE 0.17 @ 2026-10-07T13:03:39Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:HYPEUSDT_SHORT | AUGMENT 0.18 @ 2026-10-07T14:06:22Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:SOLUSDC_SHORT | REDUCE 0.13 @ 2026-10-07T13:01:56Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:DASHUSDT_SHORT | REDUCE 0.298 @ 2026-10-07T11:36:47Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:XRPUSDC_SHORT | AUGMENT 11 @ 2026-10-07T12:45:45Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 16:39:06 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:XRPUSDC_SHORT | REDUCE 11 @ 2026-10-07T13:03:40Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
 
-live vec decisions since switch (per account): fin: {'live_vec_decisions': 0, 'state_divergent': 0, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 0, 'vec_exact_fills_without_decision': 1}; men: {'live_vec_decisions': 9, 'state_divergent': 2, 'filled': 6, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 1, 'vec_exact_fills_without_decision': 42}; ang: {'live_vec_decisions': 0, 'state_divergent': 0, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 0, 'vec_exact_fills_without_decision': 1}; inf: {'live_vec_decisions': 0, 'state_divergent': 0, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 0, 'vec_exact_fills_without_decision': 11}; flz: {'live_vec_decisions': 0, 'state_divergent': 0, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 0, 'vec_exact_fills_without_decision': 8}
+live vec decisions since switch (per account): fin: {'live_vec_decisions': 0, 'state_divergent': 0, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 0, 'vec_exact_fills_without_decision': 0}; men: {'live_vec_decisions': 9, 'state_divergent': 2, 'filled': 6, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 1, 'vec_exact_fills_without_decision': 41}; ang: {'live_vec_decisions': 0, 'state_divergent': 0, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 0, 'vec_exact_fills_without_decision': 1}; inf: {'live_vec_decisions': 0, 'state_divergent': 0, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 0, 'vec_exact_fills_without_decision': 11}; flz: {'live_vec_decisions': 0, 'state_divergent': 0, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 0, 'vec_exact_fills_without_decision': 8}
 
-processes: fin pids=['79637'] starts30m=1 log_age=38.0s, men pids=['7966'] starts30m=1 log_age=1.0s, ang pids=['87375'] starts30m=1 log_age=1.0s, inf pids=['68630'] starts30m=1 log_age=11.0s, flz pids=['58053'] starts30m=1 log_age=3.0s, trb pids=['59940'] starts30m=1 log_age=121.0s, trc pids=['60336'] starts30m=1 log_age=30.0s
+processes: fin pids=['79637'] starts30m=1 log_age=12.0s, men pids=['7966'] starts30m=1 log_age=2.0s, ang pids=['87375'] starts30m=1 log_age=15.0s, inf pids=['68630'] starts30m=1 log_age=6.0s, flz pids=['58053'] starts30m=1 log_age=16.0s, trb pids=['59940'] starts30m=1 log_age=1.0s, trc pids=['60336'] starts30m=1 log_age=0.0s
 
 ## Test 1 - 15m LIVE vs VECTOR, CRYPTO
 
-run 2026-10-07T16:10:38+00:00 (8 min ago) · engine v12 0c621913 · NPZ sync full · window 24.0h from 2026-10-06T18:48Z · tol +-1 bars · 236 live keys / 139 sym_sides · 216.7 s
+run 2026-10-07T16:10:38+00:00 (28 min ago) · engine v12 0c621913 · NPZ sync full · window 24.0h from 2026-10-06T18:48Z · tol +-1 bars · 236 live keys / 139 sym_sides · 216.7 s
 
 **Regime PARITY_VEC_EXACT since 2026-10-06T18:48:00Z** (previous regime archived: `data/forward_parity/archive/pre_vec_exact_until_20261006T1848Z`). Rule: every live fill = a vec decision at the same 15m bar and side (fill may land up to 1 bar later); every vec decision = a live fill or a logged hard-safety refusal; quantity not compared.
 
@@ -375,24 +375,23 @@ These decisions have no 15m vector counterpart by construction; listed so drift 
 
 ## Test 1 - 15m LIVE vs VECTOR, STOCKS
 
-run 2026-10-07T16:11:28+00:00 (7 min ago) · engine v12 0c621913 · NPZ sync full · window 24.0h from 2026-10-06T18:48Z · tol +-1 bars · 40 live keys / 29 sym_sides · 49.3 s
+run 2026-10-07T16:38:06+00:00 (1 min ago) · engine v12 0c621913 · NPZ sync full · window 24.0h from 2026-10-06T18:48Z · tol +-1 bars · 39 live keys / 28 sym_sides · 64.8 s
 
 **Regime PARITY_VEC_EXACT since 2026-10-06T18:48:00Z** (previous regime archived: `data/forward_parity/archive/pre_vec_exact_until_20261006T1848Z`). Rule: every live fill = a vec decision at the same 15m bar and side (fill may land up to 1 bar later); every vec decision = a live fill or a logged hard-safety refusal; quantity not compared.
 
-**Verdict: FAIL** — FAIL 2 · PASS with decisions 3 · IDLE (no decision either side, counts as pass) 35 · NO_DATA 0 · judged on a STALE-shifted window (S1 NPZ behind live) 0
+**Verdict: FAIL** — FAIL 2 · PASS with decisions 2 · IDLE (no decision either side, counts as pass) 35 · NO_DATA 0 · judged on a STALE-shifted window (S1 NPZ behind live) 0
 
 - vector fired, live did not (VEC_ONLY): MISSING_NO_LIVE_LOG 2, LIVE_ALREADY_FLAT 1, LIVE_ALREADY_IN_POSITION 1
 - live fired, vector did not (LIVE_ONLY): -
-- vector replay made 0 trades in 30D for 3/29 sym_sides with the live set (engine md5 0c621913): every live fill on those keys is LIVE_ONLY by construction — engine/set problem, not live drift. e.g. A_LONG, EQT_SHORT, SNDK_LONG
+- vector replay made 0 trades in 30D for 3/28 sym_sides with the live set (engine md5 0c621913): every live fill on those keys is LIVE_ONLY by construction — engine/set problem, not live drift. e.g. A_LONG, EQT_SHORT, SNDK_LONG
 - FAIL classes (sym_sides): STATE_CASCADE 2, VEC_DECISION_NOT_FILLED_NO_LOG 2
-- since switch: live fills 247 (tagged |VEC_EXACT 0) · vec decisions 4 · matched 0 · out-of-universe live fills (not judged, no CPU): 6
+- since switch: live fills 243 (tagged |VEC_EXACT 0) · vec decisions 4 · matched 0 · out-of-universe live fills (not judged, no CPU): 12
 
 ### Per sym_side with any decision since the switch
 
 | key | status | vec decisions | live fills (VEC_EXACT) | matched | vec not filled (why) | live not vec (what) |
 |---|---|---|---|---|---|---|
 | trb:ADBE_SHORT | FAIL | 2 | 0 (0) | 0 | LIVE_ALREADY_FLAT 1, MISSING_NO_LIVE_LOG 1 | - |
-| trb:AXTI_LONG | PASS | 0 | 4 (0) | 0 | - | - |
 | trb:COHR_LONG | PASS | 0 | 6 (0) | 0 | - | - |
 | trc:ADBE_SHORT | FAIL | 2 | 0 (0) | 0 | MISSING_NO_LIVE_LOG 1, LIVE_ALREADY_IN_POSITION 1 | - |
 | trc:IBIT_LONG | PASS | 0 | 237 (0) | 0 | - | - |
@@ -404,16 +403,15 @@ run 2026-10-07T16:11:28+00:00 (7 min ago) · engine v12 0c621913 · NPZ sync ful
 | trb:ADBE_SHORT | STATE_CASCADE, VEC_DECISION_NOT_FILLED_NO_LOG | LIVE_ALREADY_FLAT 1, MISSING_NO_LIVE_LOG 1 | - | None/None | last window | trb/active_config |
 | trc:ADBE_SHORT | STATE_CASCADE, VEC_DECISION_NOT_FILLED_NO_LOG | MISSING_NO_LIVE_LOG 1, LIVE_ALREADY_IN_POSITION 1 | - | None/None | last window | trb/active_config |
 
-PASS with activity: trb:AXTI_LONG, trb:COHR_LONG, trc:IBIT_LONG  ·  PASS_IDLE (no decision either side): 35
+PASS with activity: trb:COHR_LONG, trc:IBIT_LONG  ·  PASS_IDLE (no decision either side): 35
 
 ### Per function family (stocks)
 
 | family | input TF | vec twin | gate switch | live attempts | live fills | vec events | matched | vec_only | live_only | status |
 |---|---|---|---|---|---|---|---|---|---|---|
-| BROKER_SYNC | tick | N | safety (exempt) | 0 | 242 | 0 | 0 | 0 | 0 | PASS |
+| BROKER_SYNC | tick | N | safety (exempt) | 0 | 240 | 0 | 0 | 0 | 0 | PASS |
 | DC_DAYTRADE_TARGET | 15m | Y | DC_DAYTRADE_ENABLED | 0 | 0 | 2 | 0 | 2 | 0 | FAIL |
 | UNCLASSIFIED:B_SRS_ENTRY | 15m | Y | ? (switch not identified) | 0 | 0 | 2 | 0 | 2 | 0 | FAIL |
-| CYCLE_TP | tick | Y | CYCLE_TP_TIERED_ENABLED | 0 | 2 | 0 | 0 | 0 | 0 | PASS |
 | DC_BREAK | 15m | N | ? (switch not identified) | 0 | 2 | 0 | 0 | 0 | 0 | PASS |
 | UNCLASSIFIED:DC_HOPELESS_ENTRY= | 15m | N | ? (switch not identified) | 0 | 1 | 0 | 0 | 0 | 0 | PASS |
 
@@ -535,44 +533,44 @@ sizing factors seen on matched entries: BAND_SLOPE_SIZING_V2 50
 
 | day | exits | comparable | live PnL $ | vec-size PnL $ | sizing alpha $ | uncomparable live PnL $ |
 |---|---|---|---|---|---|---|
-| 2026-10-07 | 3 | 0 | +0.00 | +0.00 | **+0.00** | -126.09 |
+| 2026-10-07 | 1 | 0 | +0.00 | +0.00 | **+0.00** | -137.04 |
 
 ### STOCKS — per sym_side per day
 
 | key | day | exits (comparable) | live PnL $ | vec-size PnL $ | alpha $ | avg live/vec size | factors |
 |---|---|---|---|---|---|---|---|
-| trb:AXTI_LONG | 2026-10-07 | 2 (0) | +0.00 | +0.00 | +0.00 | None | - |
 | trb:COHR_LONG | 2026-10-07 | 1 (0) | +0.00 | +0.00 | +0.00 | None | - |
 
 ## decisions -> history parity (switch intents vs live fills) — rows since 2026-10-06T18:48:00+00:00 only
 
-`DH_20261006_20261007.json` generated 2026-10-07T15:17:02.141017+00:00 (61 min ago) · intents 2645 · matched 352 · **missing 2293**
+`DH_20261006_20261007.json` generated 2026-10-07T16:17:01.162536+00:00 (22 min ago) · intents 2786 · matched 358 · **missing 2428**
 
-matched/intents per account: fin 25/207, men 158/1133, ang 61/410, inf 55/273, flz 53/82, trb 0/325, trc 0/215
+matched/intents per account: fin 25/208, men 164/1152, ang 61/410, inf 55/273, flz 53/83, trb 0/409, trc 0/251
 
 | function family | action | intent result | n | blocking execution filter | vector same decision +-2 bars (Y/N/? = not judged) |
 |---|---|---|---|---|---|
-| UNCLASSIFIED:WINNER | HAIKU_AUGMENT | MISSING | 862 | UNATTRIBUTED 829, NUKE_STALE_MAKER_ORDER 16, BLOCKED_MAKER_SUPPRESS_WEBHOOK 9, LIVE_RESTART_ORPHAN 5 | Y 404, ? 291, N 167 |
-| EXIT_VELOCITY_WT | CLOSE | MISSING | 490 | MAKER_BLOCK_LOCK_BUSY 404, NUKE_STALE_MAKER_ORDER 39, UNATTRIBUTED 24, LIVE_RESTART_ORPHAN 12 | Y 222, ? 208, N 60 |
-| UNCLASSIFIED:? | CLOSE | MISSING | 90 | UNATTRIBUTED 90 | ? 87, N 2, Y 1 |
-| UNCLASSIFIED:SUBSTITUTION_FOR_MEN | QUICK_CLOSE | MISSING | 71 | MAKER_BLOCK_LOCK_BUSY 45, UNATTRIBUTED 14, HARD_REDUCE_LOCK 11, NUKE_STALE_MAKER_ORDER 1 | ? 69, N 2 |
+| UNCLASSIFIED:WINNER | HAIKU_AUGMENT | MISSING | 870 | UNATTRIBUTED 837, NUKE_STALE_MAKER_ORDER 16, BLOCKED_MAKER_SUPPRESS_WEBHOOK 9, LIVE_RESTART_ORPHAN 5 | Y 404, ? 299, N 167 |
+| EXIT_VELOCITY_WT | CLOSE | MISSING | 491 | MAKER_BLOCK_LOCK_BUSY 404, NUKE_STALE_MAKER_ORDER 35, UNATTRIBUTED 29, LIVE_RESTART_ORPHAN 12 | Y 222, ? 209, N 60 |
+| UNCLASSIFIED:? | CLOSE | MISSING | 159 | UNATTRIBUTED 159 | ? 156, N 2, Y 1 |
+| UNCLASSIFIED:SUBSTITUTION_FOR_MEN | QUICK_CLOSE | MISSING | 74 | MAKER_BLOCK_LOCK_BUSY 47, UNATTRIBUTED 15, HARD_REDUCE_LOCK 11, NUKE_STALE_MAKER_ORDER 1 | ? 72, N 2 |
 | UNCLASSIFIED:RSI_EXIT_LIVE | CLOSE | MISSING | 62 | MAKER_BLOCK_LOCK_BUSY 62 | Y 44, ? 18 |
 | DC_DAYTRADE_TARGET | CLOSE | MISSING | 60 | MAKER_BLOCK_LOCK_BUSY 50, NUKE_STALE_MAKER_ORDER 6, UNATTRIBUTED 2, ORDER_SIZE_CAP 1 | ? 34, Y 17, N 9 |
-| UNCLASSIFIED:B_KZONE | OPEN | MISSING | 52 | MAKER_FAILED_SUPPRESS_WEBHOOK 25, NUKE_STALE_MAKER_ORDER 14, MAKER_ZERO_QTY 7, UNATTRIBUTED 3 | N 20, Y 19, ? 13 |
-| UNCLASSIFIED:B | OPEN | MISSING | 48 | MAKER_FAILED_SUPPRESS_WEBHOOK 26, NUKE_STALE_MAKER_ORDER 13, UNATTRIBUTED 7, LIVE_RESTART_ORPHAN 1 | Y 27, ? 11, N 10 |
-| UNCLASSIFIED:? | REDUCE | MISSING | 25 | UNATTRIBUTED 25 | ? 25 |
-| UNCLASSIFIED:B_SRS_ENTRY | OPEN | MISSING | 14 | MAKER_FAILED_SUPPRESS_WEBHOOK 5, NUKE_STALE_MAKER_ORDER 4, UNATTRIBUTED 3, MAKER_ZERO_QTY 2 | Y 7, N 6, ? 1 |
+| UNCLASSIFIED:? | REDUCE | MISSING | 59 | UNATTRIBUTED 59 | ? 59 |
+| UNCLASSIFIED:B_KZONE | OPEN | MISSING | 52 | MAKER_FAILED_SUPPRESS_WEBHOOK 23, NUKE_STALE_MAKER_ORDER 12, UNATTRIBUTED 9, MAKER_ZERO_QTY 5 | N 20, Y 19, ? 13 |
+| UNCLASSIFIED:B | OPEN | MISSING | 49 | MAKER_FAILED_SUPPRESS_WEBHOOK 22, UNATTRIBUTED 14, NUKE_STALE_MAKER_ORDER 10, MAKER_ZERO_QTY 2 | Y 27, ? 12, N 10 |
+| UNCLASSIFIED:? | SHORT SELL | MISSING | 16 | UNATTRIBUTED 16 | ? 16 |
+| UNCLASSIFIED:B_SRS_ENTRY | OPEN | MISSING | 15 | MAKER_FAILED_SUPPRESS_WEBHOOK 5, UNATTRIBUTED 4, NUKE_STALE_MAKER_ORDER 3, MAKER_ZERO_QTY 2 | Y 7, N 6, ? 2 |
 | UNCLASSIFIED:WT_CROSS_EXIT | REDUCE | MISSING | 14 | BLOCKED_MAKER_SUPPRESS_WEBHOOK 9, UNATTRIBUTED 3, LIVE_RESTART_ORPHAN 2 | ? 6, Y 5, N 3 |
-| GOLDEN_RULE | OPEN | MISSING | 9 | NUKE_STALE_MAKER_ORDER 7, MAKER_FAILED_SUPPRESS_WEBHOOK 1, MAKER_ZERO_QTY 1 | ? 5, Y 4 |
+| UNCLASSIFIED:? | LONG BUY | MISSING | 12 | UNATTRIBUTED 12 | ? 12 |
+| GOLDEN_RULE | OPEN | MISSING | 9 | NUKE_STALE_MAKER_ORDER 6, MAKER_FAILED_SUPPRESS_WEBHOOK 1, MAKER_ZERO_QTY 1, UNATTRIBUTED 1 | ? 5, Y 4 |
 | UNCLASSIFIED:ENTRY_SIGNAL | OPEN | MISSING | 8 | UNATTRIBUTED 3, NUKE_STALE_MAKER_ORDER 2, MAKER_ZERO_QTY 2, MAKER_FAILED_SUPPRESS_WEBHOOK 1 | N 6, Y 1, ? 1 |
-| UNCLASSIFIED:? | SHORT SELL | MISSING | 8 | UNATTRIBUTED 8 | ? 8 |
 | UNCLASSIFIED:? | OPEN | MISSING | 5 | UNATTRIBUTED 5 | ? 5 |
-| UNCLASSIFIED:? | LONG BUY | MISSING | 5 | UNATTRIBUTED 5 | ? 5 |
-| UNCLASSIFIED:DC_BREAKOUT_ENTRY | OPEN | MISSING | 4 | MAKER_FAILED_SUPPRESS_WEBHOOK 4 | Y 2, ? 2 |
+| UNCLASSIFIED:DC_BREAKOUT_ENTRY | OPEN | MISSING | 4 | MAKER_FAILED_SUPPRESS_WEBHOOK 3, UNATTRIBUTED 1 | Y 2, ? 2 |
+| UNCLASSIFIED:B_VWAPBOUNCE | OPEN | MISSING | 4 | UNATTRIBUTED 2, MAKER_FAILED_SUPPRESS_WEBHOOK 1, HARD_REDUCE_LOCK 1 | ? 3, N 1 |
 | UNCLASSIFIED:B_DELTAENTRY | OPEN | MISSING | 3 | LIVE_RESTART_ORPHAN 1, MAKER_FAILED_SUPPRESS_WEBHOOK 1, UNATTRIBUTED 1 | Y 3 |
-| UNCLASSIFIED:B_VWAPBOUNCE | OPEN | MISSING | 3 | UNATTRIBUTED 2, MAKER_FAILED_SUPPRESS_WEBHOOK 1 | ? 2, N 1 |
 | UNCLASSIFIED:CB_HTF_EXHAUST | CLOSE | MISSING | 2 | UNATTRIBUTED 1, HARD_REDUCE_LOCK 1 | N 1, Y 1 |
 | UNCLASSIFIED:B_EMADIST | OPEN | MISSING | 2 | MAKER_FAILED_SUPPRESS_WEBHOOK 2 | N 2 |
+| UNCLASSIFIED:? | 🔫 HEAVY_ART | MISSING | 2 | UNATTRIBUTED 2 | ? 2 |
 | UNCLASSIFIED:PROFIT_TP_EXHAUSTION | CLOSE | MISSING | 1 | LIVE_RESTART_ORPHAN 1 | Y 1 |
 | HARDCODED_RALLY_REENTRY | OPEN | MISSING | 1 | MAKER_FAILED_SUPPRESS_WEBHOOK 1 | ? 1 |
 | UNCLASSIFIED:MTF_DC_REJECT | CLOSE | MISSING | 1 | LIVE_RESTART_ORPHAN 1 | Y 1 |
@@ -580,13 +578,13 @@ matched/intents per account: fin 25/207, men 158/1133, ang 61/410, inf 55/273, f
 | UNCLASSIFIED:UNCOND_DC_HIGH | CLOSE | MISSING | 1 | HARD_REDUCE_LOCK 1 | N 1 |
 | UNCLASSIFIED:WT_CROSSUNDER_FINAL | CLOSE | MISSING | 1 | UNATTRIBUTED 1 | Y 1 |
 | UNCLASSIFIED:? | 💥CLOSE | MISSING | 1 | UNATTRIBUTED 1 | ? 1 |
-| EXIT_VELOCITY_WT | CLOSE | MATCHED | 75 | filled 75 | Y 31, ? 30, N 14 |
+| EXIT_VELOCITY_WT | CLOSE | MATCHED | 76 | filled 76 | Y 31, ? 31, N 14 |
 | UNCLASSIFIED:B | OPEN | MATCHED | 72 | filled 72 | Y 32, ? 29, N 11 |
-| UNCLASSIFIED:B_KZONE | OPEN | MATCHED | 48 | filled 48 | ? 21, Y 18, N 9 |
+| UNCLASSIFIED:B_KZONE | OPEN | MATCHED | 50 | filled 50 | ? 23, Y 18, N 9 |
 | UNCLASSIFIED:DC_BREAKOUT_ENTRY | OPEN | MATCHED | 22 | filled 22 | Y 13, ? 9 |
-| UNCLASSIFIED:CB_HTF_EXHAUST | CLOSE | MATCHED | 18 | filled 18 | ? 12, N 5, Y 1 |
+| UNCLASSIFIED:CB_HTF_EXHAUST | CLOSE | MATCHED | 19 | filled 19 | ? 13, N 5, Y 1 |
 | UNCLASSIFIED:ENTRY_SIGNAL | OPEN | MATCHED | 12 | filled 12 | Y 10, ? 2 |
-| DC_DAYTRADE_TARGET | CLOSE | MATCHED | 11 | filled 11 | ? 7, N 2, Y 2 |
+| DC_DAYTRADE_TARGET | CLOSE | MATCHED | 12 | filled 12 | ? 8, N 2, Y 2 |
 | GOLDEN_RULE | OPEN | MATCHED | 9 | filled 9 | ? 5, Y 4 |
 | UNCLASSIFIED:SUBSTITUTION_FOR_MEN | QUICK_CLOSE | MATCHED | 9 | filled 9 | ? 4, Y 3, N 2 |
 | UNCLASSIFIED:B_EMASLOPE | OPEN | MATCHED | 5 | filled 5 | ? 5 |
@@ -598,6 +596,7 @@ matched/intents per account: fin 25/207, men 158/1133, ang 61/410, inf 55/273, f
 | UNCLASSIFIED:MARGIN_FREE_FOR | QUICK_CLOSE | MATCHED | 3 | filled 3 | ? 3 |
 | UNCLASSIFIED:B_DELTAENTRY | OPEN | MATCHED | 2 | filled 2 | Y 2 |
 | UNCLASSIFIED:WINNER | HAIKU_AUGMENT | MATCHED | 2 | filled 2 | ? 1, Y 1 |
+| UNCLASSIFIED:ENTRY_SOURCE_UNKNOWN | OPEN | MATCHED | 2 | filled 2 | ? 2 |
 | UNCLASSIFIED:STATEFUL_PORTED_EXIT | CLOSE | MATCHED | 2 | filled 2 | Y 1, N 1 |
 | UNCLASSIFIED:WT_CROSSUNDER_FINAL | CLOSE | MATCHED | 1 | filled 1 | Y 1 |
 | WEBHOOK_HANDLE_SIGNAL | REDUCE | MATCHED | 1 | filled 1 | Y 1 |
@@ -605,7 +604,6 @@ matched/intents per account: fin 25/207, men 158/1133, ang 61/410, inf 55/273, f
 | UNCLASSIFIED:UNCOND_DC_LOW | CLOSE | MATCHED | 1 | filled 1 | Y 1 |
 | UNCLASSIFIED:B_MOM | OPEN | MATCHED | 1 | filled 1 | Y 1 |
 | REENTRY_OTHER | OPEN | MATCHED | 1 | filled 1 | ? 1 |
-| UNCLASSIFIED:ENTRY_SOURCE_UNKNOWN | OPEN | MATCHED | 1 | filled 1 | ? 1 |
 | WT_LOWER_CROSS_EXIT | CLOSE | MATCHED | 1 | filled 1 | ? 1 |
 | UNCLASSIFIED:MTF_GR_WT | CLOSE | MATCHED | 1 | filled 1 | ? 1 |
 | UNCLASSIFIED:B_EMADIST | OPEN | MATCHED | 1 | filled 1 | ? 1 |
@@ -617,7 +615,7 @@ Gap classes: NUKE_STALE_MAKER_ORDER = maker exit rested >60 s and was cancelled 
 
 ## Exit-engine gate parity (execute_now, all exits)
 
-generated 2026-10-07T16:00:58.311982+00:00 (17 min ago) · lookback 48.0h · exit rows 1996 · **LEAKS 0** · gate ON 682 · UNGATED 0 · safety 0 · unmapped 282
+generated 2026-10-07T16:00:58.311982+00:00 (38 min ago) · lookback 48.0h · exit rows 1996 · **LEAKS 0** · gate ON 682 · UNGATED 0 · safety 0 · unmapped 282
 
 ## 7-day rollup (tools/daily_parity_test.py)
 
