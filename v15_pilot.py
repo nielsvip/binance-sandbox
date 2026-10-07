@@ -3194,6 +3194,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             try:
                 if delta.get("memo"): progress.setdefault("diagnose_memo", {}).update(delta["memo"])
                 if delta.get("m365"): progress.setdefault("diagnose_m365", {}).update(delta["m365"])
+                if delta.get("autopsy"): progress["diagnose_autopsy"] = delta["autopsy"]
                 progress["diagnose_npz"] = _run_npz_short
                 if _t.time() - _last_diag_ckpt["t"] >= 10.0:
                     _last_diag_ckpt["t"] = _t.time()
@@ -3260,7 +3261,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                    "log": lambda m: print(f"{m} [{new_symside}]", flush=True), "touch": _touch,
                    "shutdown_requested": lambda: _SHUTDOWN["v"], "checkpoint": _diag_ckpt, "eval_many_365": _eval_many_365,
                    "resume_memo": (progress.get("diagnose_memo") or {}) if progress.get("diagnose_npz") == _run_npz_short else {},
-                   "resume_m365": (progress.get("diagnose_m365") or {}) if progress.get("diagnose_npz") == _run_npz_short else {}}
+                   "resume_m365": (progress.get("diagnose_m365") or {}) if progress.get("diagnose_npz") == _run_npz_short else {},
+                   "resume_autopsy": (progress.get("diagnose_autopsy") or None) if (progress.get("diagnose_npz") == _run_npz_short and (progress.get("diagnose_autopsy") or {}).get("origin_key") == _sk(sanitize_overrides(dict(origin), defaults)[0])) else None}
         if _dr_ctx["resume_memo"] or _dr_ctx["resume_m365"]:
             print(f"[DIAG] {new_symside} resuming with {len(_dr_ctx['resume_memo'])} memo + {len(_dr_ctx['resume_m365'])} m365 evals (replay, no recompute)", flush=True)
         elif progress.get("diagnose_npz") and progress.get("diagnose_npz") != _run_npz_short:
@@ -3442,7 +3444,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             progress["diagnose_repair"]["graph_search"] = {k: v for k, v in rep["graph_search"].items() if k not in ("steps", "ablation_top", "macro")}
         progress["diagnose_repair"]["row_recommendations_top"] = (rep.get("row_recommendations") or [])[:25]
         progress["diagnose_repair"].update({"mode": mode, "applied": applied, "complete": True, "result_key": _sk(cumulative_overrides), "steps": [{k: s_.get(k) for k in ("phase", "round", "applied", "gain", "trades", "tim", "dd", "valid")} for s_ in rep.get("steps", [])]})
-        progress.pop("diagnose_memo", None); progress.pop("diagnose_m365", None); progress.pop("diagnose_npz", None)  # USER 2026-10-07: checkpoint served, keep JSON lean
+        progress.pop("diagnose_memo", None); progress.pop("diagnose_m365", None); progress.pop("diagnose_npz", None); progress.pop("diagnose_autopsy", None)  # USER 2026-10-07: checkpoint served, keep JSON lean
         _maybe_write_json(force=True)
         print(f"[DIAG] {new_symside} {'APPLIED' if applied else 'kept origin'} gain {(rep.get('before') or {}).get('gain')} -> {cumulative_gain:.4f} changes={len(rep.get('changes') or [])} ({_t.time()-t0:.0f}s)", flush=True)
     # ── SEQUENTIAL FILL — USER 2026-09-29 late (BACKTEST_BIBLE §56 rev. 2026-09-29b), supersedes the R16/R17 tab-jump ──

@@ -1,9 +1,10 @@
 {
- "at": "2026-10-07T01:25:00.876218+00:00",
+ "at": "2026-10-07T01:45:00.951631+00:00",
  "source": "Mac {acct}/{long,short}_positions.json |positionAmt|>0",
  "sym_sides": [
   "ADAUSDC_SHORT",
   "ADBE_SHORT",
+  "AGLDUSDT_SHORT",
   "ALB_SHORT",
   "ALGOUSDT_SHORT",
   "APO_SHORT",
@@ -54,7 +55,6 @@
   "SKYUSDT_LONG",
   "SNDK_LONG",
   "SNXUSDT_LONG",
-  "SOLUSDC_SHORT",
   "TSM_LONG",
   "TTD_SHORT",
   "UEC_SHORT",
@@ -94,10 +94,10 @@
   ],
   "flz": [
    "DOGEUSDC_LONG",
-   "SOLUSDC_SHORT",
    "ZECUSDC_LONG"
   ],
   "inf": [
+   "AGLDUSDT_SHORT",
    "ALGOUSDT_SHORT",
    "ARUSDT_LONG",
    "IOTXUSDT_LONG",
