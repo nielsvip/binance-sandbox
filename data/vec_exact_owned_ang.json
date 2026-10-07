@@ -55,10 +55,6 @@
   "at": "2026-10-07T01:00:50Z",
   "reason": "B_EMA20SLOPE"
  },
- "ang:VETUSDT_LONG": {
-  "at": "2026-10-07T01:01:51Z",
-  "reason": "B12"
- },
  "ang:XTZUSDT_LONG": {
   "at": "2026-10-07T01:39:07Z",
   "reason": "B_KZONE"
@@ -106,5 +102,17 @@
  "ang:APEUSDT_SHORT": {
   "at": "2026-10-07T08:30:58Z",
   "reason": "B_KZONE"
+ },
+ "ang:BNBUSDC_LONG": {
+  "at": "2026-10-07T08:45:06Z",
+  "reason": "B12"
+ },
+ "ang:RLCUSDT_LONG": {
+  "at": "2026-10-07T08:46:30Z",
+  "reason": "B_EMA20SLOPE"
+ },
+ "ang:ZECUSDC_LONG": {
+  "at": "2026-10-07T08:46:34Z",
+  "reason": "B_SRS_ENTRY"
  }
 }
