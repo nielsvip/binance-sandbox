@@ -23,10 +23,6 @@
   "at": "2026-10-06T20:58:17Z",
   "reason": "B14"
  },
- "ang:GALAUSDT_SHORT": {
-  "at": "2026-10-06T21:29:19Z",
-  "reason": "B12"
- },
  "ang:ADAUSDC_SHORT": {
   "at": "2026-10-06T22:00:36Z",
   "reason": "B12"
@@ -34,10 +30,6 @@
  "ang:ARBUSDC_SHORT": {
   "at": "2026-10-06T22:16:11Z",
   "reason": "B12"
- },
- "ang:ZECUSDC_LONG": {
-  "at": "2026-10-06T23:31:00Z",
-  "reason": "B_SRS_ENTRY"
  },
  "ang:ARPAUSDT_SHORT": {
   "at": "2026-10-06T23:43:06Z",
@@ -71,10 +63,6 @@
   "at": "2026-10-07T01:39:07Z",
   "reason": "B_KZONE"
  },
- "ang:ARUSDT_SHORT": {
-  "at": "2026-10-07T02:00:51Z",
-  "reason": "B12"
- },
  "ang:ARKMUSDT_SHORT": {
   "at": "2026-10-07T02:15:10Z",
   "reason": "DC_BREAKOUT_ENTRY"
@@ -95,40 +83,32 @@
   "at": "2026-10-07T02:45:35Z",
   "reason": "B_KZONE"
  },
- "ang:EGLDUSDT_SHORT": {
-  "at": "2026-10-07T02:45:46Z",
-  "reason": "DC_BREAKOUT_ENTRY"
- },
  "ang:APPUSDT_LONG": {
   "at": "2026-10-07T03:10:32Z",
   "reason": "B14"
- },
- "ang:THETAUSDT_SHORT": {
-  "at": "2026-10-07T05:45:03Z",
-  "reason": "B_KZONE"
  },
  "ang:UNIUSDC_SHORT": {
   "at": "2026-10-07T05:45:32Z",
   "reason": "B_KZONE"
  },
- "ang:XTZUSDT_SHORT": {
-  "at": "2026-10-07T06:01:09Z",
-  "reason": "B15"
- },
- "ang:ZROUSDT_LONG": {
-  "at": "2026-10-07T06:30:26Z",
-  "reason": "ENTRY_SOURCE_UNKNOWN"
- },
- "ang:KMNOUSDT_LONG": {
-  "at": "2026-10-07T06:45:26Z",
-  "reason": "B_SMA200DIST"
- },
  "ang:SNXUSDT_SHORT": {
   "at": "2026-10-07T07:00:26Z",
   "reason": "B_KZONE"
  },
- "ang:RENDERUSDT_LONG": {
-  "at": "2026-10-07T07:00:48Z",
-  "reason": "ENTRY_SOURCE_UNKNOWN"
+ "ang:VETUSDT_SHORT": {
+  "at": "2026-10-07T07:06:48Z",
+  "reason": "B15"
+ },
+ "ang:KMNOUSDT_LONG": {
+  "at": "2026-10-07T07:15:21Z",
+  "reason": "B_SMA200DIST"
+ },
+ "ang:RLCUSDT_LONG": {
+  "at": "2026-10-07T07:15:21Z",
+  "reason": "B12"
+ },
+ "ang:SANDUSDT_LONG": {
+  "at": "2026-10-07T07:15:47Z",
+  "reason": "B_MOM3"
  }
 }

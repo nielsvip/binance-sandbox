@@ -7,10 +7,6 @@
   "at": "06 20:04:11 - ",
   "reason": "seeded_from_log"
  },
- "men:KMNOUSDT_SHORT": {
-  "at": "2026-10-06T21:26:38Z",
-  "reason": "GOLDEN_RULE_ENTRY"
- },
  "men:SKYUSDT_LONG": {
   "at": "2026-10-06T21:26:46Z",
   "reason": "ENTRY_SIGNAL"
@@ -22,10 +18,6 @@
  "men:LTCUSDC_SHORT": {
   "at": "2026-10-06T23:45:47Z",
   "reason": "B14"
- },
- "men:KMNOUSDT_LONG": {
-  "at": "2026-10-07T01:50:54Z",
-  "reason": "B_SMA200DIST"
  },
  "men:DOTUSDT_SHORT": {
   "at": "2026-10-07T02:15:39Z",
@@ -75,16 +67,20 @@
   "at": "2026-10-07T06:15:47Z",
   "reason": "B12"
  },
- "men:RENDERUSDT_LONG": {
-  "at": "2026-10-07T07:00:05Z",
-  "reason": "ENTRY_SOURCE_UNKNOWN"
- },
  "men:EDUUSDT_LONG": {
   "at": "2026-10-07T07:00:41Z",
   "reason": "B12"
  },
- "men:SNXUSDT_SHORT": {
-  "at": "2026-10-07T07:01:00Z",
+ "men:ARUSDT_SHORT": {
+  "at": "2026-10-07T07:03:13Z",
   "reason": "B_KZONE"
+ },
+ "men:RLCUSDT_LONG": {
+  "at": "2026-10-07T07:16:29Z",
+  "reason": "B12"
+ },
+ "men:KMNOUSDT_LONG": {
+  "at": "2026-10-07T07:16:30Z",
+  "reason": "B_SMA200DIST"
  }
 }

@@ -1,22 +1,31 @@
-CAPITAL ALLOCATION REPORT — 2026-10-07 07:00 UTC
+CAPITAL ALLOCATION REPORT — 2026-10-07 07:16 UTC
 ================================================================================
-Total capital deployed: $52.96 across 4 positions
+Total capital deployed: $340.87 across 20 positions
 
 TIER DISTRIBUTION:
   Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $     37.11 ( 70.1%) — 3 positions
-  Tier C: $     15.86 ( 29.9%) — 1 positions
+  Tier B: $    296.49 ( 87.0%) — 18 positions
+  Tier C: $     44.40 ( 13.0%) — 2 positions
 
   ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
-  ** C-tier OVERWEIGHT: 30% vs target <20% — reduce poor performers **
 
 WINNERS — augment these (A-tier, in gain) [0]:
   (none)
 
-LOSERS — reduce allocation (C-tier or losing) [3]:
-                   flz:DASHUSDT_SHORT  $   16.15  gain=-0.97%  tier=B  mult=2.46
-                   flz:HYPEUSDT_SHORT  $   15.49  gain=-0.51%  tier=B  mult=2.78
-                    flz:ZECUSDC_SHORT  $   15.86  gain=+0.28%  tier=C  mult=0.33
+LOSERS — reduce allocation (C-tier or losing) [7]:
+                     men:SKYUSDT_LONG  $    4.00  gain=-1.98%  tier=B  mult=1.00
+                    men:XMRUSDT_SHORT  $   15.98  gain=-1.90%  tier=B  mult=1.00
+                    men:KSMUSDT_SHORT  $   23.54  gain=-1.45%  tier=B  mult=1.00
+                     men:EDUUSDT_LONG  $   15.77  gain=-1.38%  tier=B  mult=1.00
+                    men:SANDUSDT_LONG  $   28.70  gain=-0.78%  tier=C  mult=0.37
+                   men:MANAUSDT_SHORT  $    2.88  gain=-0.73%  tier=B  mult=1.00
+                     men:ZROUSDT_LONG  $   15.70  gain=-0.45%  tier=C  mult=0.44
 
-MEDIOCRE — capital sitting idle [0]:
-  (none)
+MEDIOCRE — capital sitting idle [7]:
+                    men:LTCUSDC_SHORT  $   31.44  gain=-0.15%  tier=B
+                  men:THETAUSDT_SHORT  $   27.97  gain=+0.19%  tier=B
+                    men:VETUSDT_SHORT  $   27.95  gain=+0.07%  tier=B
+                    men:XTZUSDT_SHORT  $   26.45  gain=-0.14%  tier=B
+                    men:YFIUSDT_SHORT  $   14.69  gain=-0.22%  tier=B
+                  men:1INCHUSDT_SHORT  $   14.67  gain=-0.23%  tier=B
+                     men:ARUSDT_SHORT  $    5.58  gain=+0.10%  tier=B
