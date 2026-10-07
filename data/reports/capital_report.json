@@ -1,43 +1,114 @@
 {
- "generated_at": "2026-10-07 23:01 UTC",
- "total_capital_usd": 31.3,
+ "generated_at": "2026-10-07 23:06 UTC",
+ "total_capital_usd": 149.04,
  "tier_capital": {
   "A": 0.0,
-  "B": 31.3,
-  "C": 0.0
+  "B": 108.07,
+  "C": 40.95
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
-  "C": 0
+  "B": 5,
+  "C": 3
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "inf:ACEUSDT_SHORT",
+  "inf:ARUSDT_LONG",
+  "inf:ARPAUSDT_SHORT",
+  "inf:ZROUSDT_LONG"
+ ],
  "mediocre": [
-  "flz:BNBUSDC_LONG"
+  "inf:1000BONKUSDC_LONG"
  ],
  "positions": [
   {
-   "pk": "flz:HYPEUSDT_SHORT",
-   "symbol": "HYPEUSDT",
-   "account": "flz",
-   "value_usd": 15.85,
-   "gain_pct": 0.894,
-   "tier": "B",
-   "perf_mult": 3.84,
-   "amt": 0.18,
-   "mark": 88.06967917
-  },
-  {
-   "pk": "flz:BNBUSDC_LONG",
-   "symbol": "BNBUSDC",
-   "account": "flz",
-   "value_usd": 15.45,
-   "gain_pct": 0.044,
+   "pk": "inf:ARUSDT_LONG",
+   "symbol": "ARUSDT",
+   "account": "inf",
+   "value_usd": 68.91,
+   "gain_pct": -1.826,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 0.02,
-   "mark": 772.36
+   "amt": 16.4,
+   "mark": 4.2020431
+  },
+  {
+   "pk": "inf:ACEUSDT_SHORT",
+   "symbol": "ACEUSDT",
+   "account": "inf",
+   "value_usd": 16.96,
+   "gain_pct": -6.079,
+   "tier": "C",
+   "perf_mult": 0.81,
+   "amt": 94.87,
+   "mark": 0.17881021
+  },
+  {
+   "pk": "inf:ZROUSDT_LONG",
+   "symbol": "ZROUSDT",
+   "account": "inf",
+   "value_usd": 15.98,
+   "gain_pct": 1.056,
+   "tier": "C",
+   "perf_mult": 0.52,
+   "amt": 7.2,
+   "mark": 2.22000445
+  },
+  {
+   "pk": "inf:ARKMUSDT_SHORT",
+   "symbol": "ARKMUSDT",
+   "account": "inf",
+   "value_usd": 15.67,
+   "gain_pct": 1.558,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 124.0,
+   "mark": 0.1264
+  },
+  {
+   "pk": "inf:API3USDT_SHORT",
+   "symbol": "API3USDT",
+   "account": "inf",
+   "value_usd": 15.34,
+   "gain_pct": 3.976,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 49.5,
+   "mark": 0.30992708
+  },
+  {
+   "pk": "inf:ARPAUSDT_SHORT",
+   "symbol": "ARPAUSDT",
+   "account": "inf",
+   "value_usd": 8.01,
+   "gain_pct": -0.35,
+   "tier": "C",
+   "perf_mult": 0.33,
+   "amt": 726.0,
+   "mark": 0.011032
+  },
+  {
+   "pk": "inf:1000BONKUSDC_LONG",
+   "symbol": "1000BONKUSDC",
+   "account": "inf",
+   "value_usd": 4.58,
+   "gain_pct": 0.092,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 1313.0,
+   "mark": 0.0034882
+  },
+  {
+   "pk": "inf:ALGOUSDT_SHORT",
+   "symbol": "ALGOUSDT",
+   "account": "inf",
+   "value_usd": 3.57,
+   "gain_pct": 4.352,
+   "tier": "B",
+   "perf_mult": 5.5,
+   "amt": 30.2,
+   "mark": 0.1183
   }
  ]
 }
