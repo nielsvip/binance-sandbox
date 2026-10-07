@@ -2501,7 +2501,7 @@ def scan_template_cands(template_path, defaults: dict, cat_side: str, zero_on: b
     import openpyxl as _oxl
     stats = {"rows": 0, "eval": 0, "skip": 0, "zero_skipped": 0, "filters": 0}
     _zm = _possym_load_nsym(cat_side) if zero_on else {}
-    wb = _oxl.load_workbook(template_path, read_only=True, data_only=True)
+    wb = _oxl.load_workbook(template_path, read_only=False, data_only=True)  # USER 2026-10-07: read_only random .cell() access grinds (100% CPU, 7+ min); normal mode like the pilot parses in seconds
     try:
         tabs = [s for s in wb.sheetnames if s in SWITCH_SHEETS and s not in SKIP_SHEETS]
         per_tab, orange, hmaps = {}, set(), {}
