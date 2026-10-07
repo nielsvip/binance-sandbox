@@ -71,10 +71,6 @@
   "at": "2026-10-07T05:45:32Z",
   "reason": "B_KZONE"
  },
- "ang:KMNOUSDT_LONG": {
-  "at": "2026-10-07T08:15:23Z",
-  "reason": "B_SMA200DIST"
- },
  "ang:AXSUSDT_SHORT": {
   "at": "2026-10-07T10:39:02Z",
   "reason": "B_EMA20SLOPE"
@@ -87,17 +83,9 @@
   "at": "2026-10-07T10:45:33Z",
   "reason": "B_EMA20SLOPE"
  },
- "ang:NMRUSDT_LONG": {
-  "at": "2026-10-07T11:01:07Z",
-  "reason": "WR_PULLBACK"
- },
  "ang:ACEUSDT_SHORT": {
   "at": "2026-10-07T11:15:42Z",
   "reason": "B15"
- },
- "ang:AIAUSDT_LONG": {
-  "at": "2026-10-07T11:15:47Z",
-  "reason": "B_EMA20SLOPE"
  },
  "ang:DOGEUSDC_SHORT": {
   "at": "2026-10-07T11:15:52Z",
@@ -105,10 +93,6 @@
  },
  "ang:ETCUSDT_SHORT": {
   "at": "2026-10-07T11:15:53Z",
-  "reason": "B_KZONE"
- },
- "ang:EDUUSDT_LONG": {
-  "at": "2026-10-07T11:15:55Z",
   "reason": "B_KZONE"
  }
 }
