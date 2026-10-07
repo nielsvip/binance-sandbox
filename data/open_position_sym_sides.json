@@ -1,5 +1,5 @@
 {
- "at": "2026-10-07T04:05:00.716610+00:00",
+ "at": "2026-10-07T04:25:01.910257+00:00",
  "source": "Mac {acct}/{long,short}_positions.json |positionAmt|>0",
  "sym_sides": [
   "1INCHUSDT_SHORT",
@@ -20,6 +20,7 @@
   "AXON_SHORT",
   "AXTI_LONG",
   "A_LONG",
+  "BTCUSDC_SHORT",
   "BWXT_SHORT",
   "CLS_LONG",
   "COTIUSDT_SHORT",
@@ -108,8 +109,10 @@
    "AIAUSDT_LONG",
    "ALGOUSDT_SHORT",
    "APEUSDT_SHORT",
+   "ARBUSDC_SHORT",
    "ARKMUSDT_SHORT",
    "ARUSDT_LONG",
+   "BTCUSDC_SHORT",
    "NEARUSDC_LONG",
    "SOLUSDC_SHORT"
   ],
@@ -129,7 +132,6 @@
    "NMRUSDT_LONG",
    "SKYUSDT_LONG",
    "XMRUSDT_SHORT",
-   "XRPUSDC_SHORT",
    "XTZUSDT_SHORT",
    "YFIUSDT_SHORT"
   ],

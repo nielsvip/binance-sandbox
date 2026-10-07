@@ -1,23 +1,24 @@
-CAPITAL ALLOCATION REPORT — 2026-10-07 04:07 UTC
+CAPITAL ALLOCATION REPORT — 2026-10-07 04:10 UTC
 ================================================================================
-Total capital deployed: $86.61 across 6 positions
+Total capital deployed: $223.96 across 9 positions
 
 TIER DISTRIBUTION:
   Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $     68.96 ( 79.6%) — 5 positions
-  Tier C: $     17.66 ( 20.4%) — 1 positions
+  Tier B: $    196.07 ( 87.5%) — 8 positions
+  Tier C: $     27.89 ( 12.5%) — 1 positions
 
   ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
-  ** C-tier OVERWEIGHT: 20% vs target <20% — reduce poor performers **
 
 WINNERS — augment these (A-tier, in gain) [0]:
   (none)
 
-LOSERS — reduce allocation (C-tier or losing) [4]:
-                    fin:SANDUSDT_LONG  $   17.66  gain=-3.05%  tier=C  mult=0.37
-                     fin:RLCUSDT_LONG  $   15.03  gain=-2.30%  tier=B  mult=1.00
-                     fin:KSMUSDT_LONG  $   17.40  gain=-0.74%  tier=B  mult=1.00
-                    fin:IOTXUSDT_LONG  $    5.92  gain=-0.58%  tier=B  mult=1.98
+LOSERS — reduce allocation (C-tier or losing) [2]:
+                    ang:SANDUSDT_LONG  $   27.89  gain=-1.04%  tier=C  mult=0.37
+                    ang:NEARUSDC_LONG  $   34.64  gain=-0.84%  tier=B  mult=1.00
 
-MEDIOCRE — capital sitting idle [0]:
-  (none)
+MEDIOCRE — capital sitting idle [5]:
+                     ang:EDUUSDT_LONG  $   74.08  gain=-0.05%  tier=B
+                   ang:GALAUSDT_SHORT  $   26.70  gain=+0.22%  tier=B
+                   ang:ATOMUSDT_SHORT  $   16.03  gain=+0.11%  tier=B
+                    ang:ARBUSDC_SHORT  $   14.75  gain=+0.27%  tier=B
+                    ang:DOTUSDT_SHORT  $    5.83  gain=+0.23%  tier=B
