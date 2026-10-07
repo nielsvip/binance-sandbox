@@ -1,5 +1,5 @@
 {
- "at": "2026-10-07T02:25:01.462225+00:00",
+ "at": "2026-10-07T02:45:05.596779+00:00",
  "source": "Mac {acct}/{long,short}_positions.json |positionAmt|>0",
  "sym_sides": [
   "ADAUSDC_SHORT",
@@ -31,13 +31,13 @@
   "GALAUSDT_SHORT",
   "GOOGL_LONG",
   "IBIT_LONG",
+  "IOTXUSDT_LONG",
   "KMNOUSDT_LONG",
   "KMNOUSDT_SHORT",
   "KSMUSDT_LONG",
   "KSMUSDT_SHORT",
   "LOW_SHORT",
   "LTCUSDC_SHORT",
-  "MANAUSDT_SHORT",
   "META_LONG",
   "MSFT_LONG",
   "MSTR_LONG",
@@ -58,6 +58,7 @@
   "SKYUSDT_LONG",
   "SNDK_LONG",
   "SNXUSDT_LONG",
+  "SOLUSDC_SHORT",
   "TSM_LONG",
   "TTD_SHORT",
   "UEC_SHORT",
@@ -72,7 +73,6 @@
  ],
  "by_account": {
   "ang": [
-   "ADAUSDC_SHORT",
    "ARBUSDC_SHORT",
    "ARKMUSDT_SHORT",
    "ARPAUSDT_SHORT",
@@ -89,19 +89,22 @@
   ],
   "fin": [
    "ADAUSDC_SHORT",
+   "IOTXUSDT_LONG",
    "KSMUSDT_LONG",
    "RLCUSDT_LONG",
    "SANDUSDT_LONG"
   ],
   "flz": [
-   "DOGEUSDC_SHORT"
+   "DOGEUSDC_SHORT",
+   "SOLUSDC_SHORT"
   ],
   "inf": [
    "AGLDUSDT_SHORT",
    "ALGOUSDT_SHORT",
    "ARKMUSDT_SHORT",
    "ARUSDT_LONG",
-   "NEARUSDC_LONG"
+   "NEARUSDC_LONG",
+   "SOLUSDC_SHORT"
   ],
   "men": [
    "ADAUSDC_SHORT",
@@ -113,9 +116,7 @@
    "KMNOUSDT_SHORT",
    "KSMUSDT_SHORT",
    "LTCUSDC_SHORT",
-   "MANAUSDT_SHORT",
    "NEARUSDC_SHORT",
-   "NMRUSDT_LONG",
    "RENDERUSDT_LONG",
    "SKYUSDT_LONG",
    "SNXUSDT_LONG",
