@@ -1,56 +1,182 @@
 {
- "generated_at": "2026-10-07 01:06 UTC",
- "total_capital_usd": 45.32,
+ "generated_at": "2026-10-07 01:21 UTC",
+ "total_capital_usd": 853.18,
  "tier_capital": {
   "A": 0.0,
-  "B": 31.24,
-  "C": 14.07
+  "B": 846.37,
+  "C": 6.8
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
+  "B": 13,
   "C": 1
  },
  "winners": [],
  "losers": [
-  "fin:SANDUSDT_LONG"
+  "ang:EDUUSDT_LONG",
+  "ang:GALAUSDT_SHORT",
+  "ang:ZROUSDT_LONG",
+  "ang:ASTSUSDT_LONG",
+  "ang:NEARUSDC_LONG",
+  "ang:ZECUSDC_LONG"
  ],
  "mediocre": [
-  "fin:KSMUSDT_LONG"
+  "ang:ENJUSDT_LONG"
  ],
  "positions": [
   {
-   "pk": "fin:KSMUSDT_LONG",
-   "symbol": "KSMUSDT",
-   "account": "fin",
-   "value_usd": 17.87,
-   "gain_pct": -0.241,
+   "pk": "ang:NMRUSDT_LONG",
+   "symbol": "NMRUSDT",
+   "account": "ang",
+   "value_usd": 408.38,
+   "gain_pct": 1.786,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 3.6,
-   "mark": 4.9651
+   "amt": 24.9,
+   "mark": 16.401
   },
   {
-   "pk": "fin:SANDUSDT_LONG",
-   "symbol": "SANDUSDT",
-   "account": "fin",
-   "value_usd": 14.07,
-   "gain_pct": 1.265,
-   "tier": "C",
-   "perf_mult": 0.37,
-   "amt": 202.0,
-   "mark": 0.06966
+   "pk": "ang:ZROUSDT_LONG",
+   "symbol": "ZROUSDT",
+   "account": "ang",
+   "value_usd": 178.6,
+   "gain_pct": -0.641,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 79.0,
+   "mark": 2.26078596
   },
   {
-   "pk": "fin:ADAUSDC_SHORT",
+   "pk": "ang:EDUUSDT_LONG",
+   "symbol": "EDUUSDT",
+   "account": "ang",
+   "value_usd": 76.47,
+   "gain_pct": -4.588,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 1193.0,
+   "mark": 0.06409772
+  },
+  {
+   "pk": "ang:NEARUSDC_LONG",
+   "symbol": "NEARUSDC",
+   "account": "ang",
+   "value_usd": 35.72,
+   "gain_pct": -0.546,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 7.0,
+   "mark": 5.103
+  },
+  {
+   "pk": "ang:GALAUSDT_SHORT",
+   "symbol": "GALAUSDT",
+   "account": "ang",
+   "value_usd": 28.24,
+   "gain_pct": -0.734,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 11556.0,
+   "mark": 0.002444
+  },
+  {
+   "pk": "ang:KSMUSDT_LONG",
+   "symbol": "KSMUSDT",
+   "account": "ang",
+   "value_usd": 20.79,
+   "gain_pct": -0.462,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 4.2,
+   "mark": 4.951
+  },
+  {
+   "pk": "ang:ETHFIUSDC_LONG",
+   "symbol": "ETHFIUSDC",
+   "account": "ang",
+   "value_usd": 19.74,
+   "gain_pct": 0.554,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 25.2,
+   "mark": 0.7833282
+  },
+  {
+   "pk": "ang:RLCUSDT_LONG",
+   "symbol": "RLCUSDT",
+   "account": "ang",
+   "value_usd": 16.48,
+   "gain_pct": 3.755,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 21.3,
+   "mark": 0.77369945
+  },
+  {
+   "pk": "ang:ENJUSDT_LONG",
+   "symbol": "ENJUSDT",
+   "account": "ang",
+   "value_usd": 15.99,
+   "gain_pct": 0.15,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 479.0,
+   "mark": 0.03339
+  },
+  {
+   "pk": "ang:ARBUSDC_SHORT",
+   "symbol": "ARBUSDC",
+   "account": "ang",
+   "value_usd": 15.81,
+   "gain_pct": 1.038,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 79.7,
+   "mark": 0.19839477
+  },
+  {
+   "pk": "ang:ADAUSDC_SHORT",
    "symbol": "ADAUSDC",
-   "account": "fin",
-   "value_usd": 13.37,
-   "gain_pct": 0.783,
+   "account": "ang",
+   "value_usd": 15.76,
+   "gain_pct": 1.378,
    "tier": "B",
    "perf_mult": 2.78,
-   "amt": 50.2,
-   "mark": 0.26632135
+   "amt": 59.5,
+   "mark": 0.2648
+  },
+  {
+   "pk": "ang:ARPAUSDT_SHORT",
+   "symbol": "ARPAUSDT",
+   "account": "ang",
+   "value_usd": 8.72,
+   "gain_pct": 0.926,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 726.0,
+   "mark": 0.01201241
+  },
+  {
+   "pk": "ang:ZECUSDC_LONG",
+   "symbol": "ZECUSDC",
+   "account": "ang",
+   "value_usd": 6.8,
+   "gain_pct": -0.483,
+   "tier": "C",
+   "perf_mult": 0.44,
+   "amt": 0.005,
+   "mark": 1360.75
+  },
+  {
+   "pk": "ang:ASTSUSDT_LONG",
+   "symbol": "ASTSUSDT",
+   "account": "ang",
+   "value_usd": 5.67,
+   "gain_pct": -0.569,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 0.09,
+   "mark": 62.94665762
   }
  ]
 }
