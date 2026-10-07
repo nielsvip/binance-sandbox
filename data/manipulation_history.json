@@ -7987,5 +7987,86 @@
     ],
     "timestamp": "2026-10-07T15:53:42.198441+00:00",
     "price": 68.62517087
+  },
+  {
+    "symbol": "ARBUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 24.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-07T16:06:35.163348+00:00",
+    "price": 0.18384034
+  },
+  {
+    "symbol": "BLURUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.9x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-07T16:06:35.163348+00:00",
+    "price": 0.01917222
+  },
+  {
+    "symbol": "BRETTUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-07T16:06:35.163348+00:00",
+    "price": 0.00537752
+  },
+  {
+    "symbol": "CBRSUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 18.8x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-07T16:06:35.163348+00:00",
+    "price": 173.59540287
+  },
+  {
+    "symbol": "CHRUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 19.8x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-07T16:06:35.163348+00:00",
+    "price": 0.02151027
+  },
+  {
+    "symbol": "ZENUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 19.7x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-07T16:06:35.163348+00:00",
+    "price": 6.56305729
+  },
+  {
+    "symbol": "QNTXUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 14.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-07T16:11:02.821543+00:00",
+    "price": 43.88
+  },
+  {
+    "symbol": "SANDUSDT",
+    "severity": 2,
+    "reasons": [
+      "PRICE_RANGE_3M: 21.3% range (spike detected)"
+    ],
+    "timestamp": "2026-10-07T16:11:02.821543+00:00",
+    "price": 0.08281
+  },
+  {
+    "symbol": "VUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.4x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-07T16:11:02.821543+00:00",
+    "price": 372.2
   }
 ]

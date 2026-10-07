@@ -95,16 +95,24 @@
   "at": "2026-10-07T15:37:06Z",
   "reason": "B_KZONE"
  },
- "ang:EDUUSDT_LONG": {
-  "at": "2026-10-07T15:48:35Z",
-  "reason": "ENTRY_SOURCE_UNKNOWN"
- },
- "ang:RENDERUSDT_LONG": {
-  "at": "2026-10-07T15:54:26Z",
-  "reason": "B_EMADIST"
- },
  "ang:IOTAUSDT_LONG": {
   "at": "2026-10-07T15:55:35Z",
+  "reason": "B12"
+ },
+ "ang:SANDUSDT_LONG": {
+  "at": "2026-10-07T16:10:40Z",
+  "reason": "DC_BREAKOUT_ENTRY"
+ },
+ "ang:1000PEPEUSDC_LONG": {
+  "at": "2026-10-07T16:15:11Z",
+  "reason": "B_SRS_ENTRY"
+ },
+ "ang:GRAMUSDT_SHORT": {
+  "at": "2026-10-07T16:16:06Z",
+  "reason": "B15"
+ },
+ "ang:YFIUSDT_LONG": {
+  "at": "2026-10-07T16:17:36Z",
   "reason": "B12"
  }
 }
