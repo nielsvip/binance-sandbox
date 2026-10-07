@@ -2714,6 +2714,18 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     def _maybe_write_json(force: bool = False):
         # full rewrite of a progress JSON that grows every row is O(rows^2); the append-only DELTA-LOG keeps every eval,
         # so the JSON is written every PROGRESS_JSON_EVERY_S, on every promotion, and at the end.
+        if _SHUTDOWN["v"]:  # USER 2026-10-07: graceful exit at row boundary (this is the live spec-row choke point) — persist first, never corrupt
+            try: _atomic_write_json(progress_path, progress)
+            except Exception: pass
+            raise V15Shutdown("shutdown in fill")
+        _slice_s = float(os.environ.get("V15_FILL_SLICE_S", "2400"))  # USER 2026-10-07: NO CALC >40 min — fill time-slices, resume is instant (holes-only)
+        if _slice_s > 0 and progress.get("final_gain") is None and progress.get("diagnose_repair") is None and (_t.time() - _PILOT_T0) > _slice_s:
+            try: _atomic_write_json(progress_path, progress)
+            except Exception: pass
+            try: _atomic_save(wb, wb_path)  # USER 2026-10-07: slice saves the workbook so resume continues (no hollow-redo); shutdown path skips this (OOM: speed+RAM)
+            except Exception as _se: print(f"[SLICE-save-warn] {_se}", flush=True)
+            print(f"[SLICE] {new_symside} fill hit {_slice_s:.0f}s cap — clean exit, scheduler relaunches into holes-only resume", flush=True)
+            sys.exit(11)
         if force or _t.time() - _last_json["t"] >= PROGRESS_JSON_EVERY_S:
             _atomic_write_json(progress_path, progress)
             _last_json["t"] = _t.time()
@@ -2801,6 +2813,217 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         progress["cumulative_gain"] = float(cumulative_gain)
         progress["cumulative_overrides"] = dict(cumulative_overrides)
         print(f"[final-recheck] {len(recs)} distinct orange filters vs final cum {cum0:.4f} computed={len(futs)} cached={len(recs)-len(futs)} best={'%s=%s %+.4f' % (best[1], best[2], best[0]) if best else 'none'} -> cum {cumulative_gain:.4f} ({_t.time()-t0:.1f}s)", flush=True)
+    def _endgame_filter_cycle():
+        # USER 2026-10-07 ENDGAME (authoritative order): filter DEFAULTS (last-best) apply from moment 1 (running set);
+        # filter ALTERNATIVES are tested per-row after the switch (orange). At workbook end, BEFORE diagnose+repair:
+        #   1. REPAIR illegal values (int-truncate float count knobs, drop ABLATION_DISABLE_*=True P0 §64) + fresh re-eval.
+        #   2. STRIP all promoted filters -> naked switch-only base + fresh re-eval.
+        #   3. NAKED RETEST every promoted switch leave-one-out vs the stripped base: each shows its ACTUAL marginal
+        #      delta. Honest zeros are cause-tagged (§18 protocol: fp-same=NON_BINDING, fp-moved=OFFSET) — never faked (§19).
+        #   4. REAPPLY filters one-by-one greedy (best positive first) toward gain > bh+10pts. Greedy law §14.2 rules the
+        #      method (ALL positives reapply, even past the target); the target is a reported goal, never forced.
+        # Dropped (never-positive) filters are _c_drop-ped from their original C cells so C == the final set (§56.0).
+        # TIER-entry share is measured from the final ledger and reported (flag only — no auto-action).
+        # Resume-safe (progress endgame result_key), budgeted (herd 90-min cap), V15_ENDGAME=0 disables. Never raises.
+        nonlocal cumulative_gain, cumulative_overrides
+        import hashlib as _eg_hl
+        t0 = _t.time()
+        try:
+            if os.environ.get("V15_ENDGAME", "1") != "1":
+                print(f"[ENDGAME] {new_symside} skipped (V15_ENDGAME=0)", flush=True)
+                progress["endgame"] = {"skipped": "V15_ENDGAME=0"}
+                return
+            if fast_switches is not None or prepared is None:
+                print(f"[ENDGAME] {new_symside} skipped (fast mode or no prepared NPZ)", flush=True)
+                progress["endgame"] = {"skipped": "fast/no-prepared"}
+                return
+            budget = min(float(os.environ.get("V15_ENDGAME_S", "600")), 5400.0 - (t0 - _PILOT_T0) - 900.0)
+            if budget < 60:
+                print(f"[ENDGAME] {new_symside} skipped: only {budget:.0f}s left inside the 90-min herd cap", flush=True)
+                progress["endgame"] = {"skipped": f"budget {budget:.0f}s"}
+                return
+            max_evals = int(os.environ.get("V15_ENDGAME_MAX_EVALS", "1500"))
+            target_pts = float(os.environ.get("V15_ENDGAME_TARGET_PTS", "10.0"))
+            _sk = lambda ov: _eg_hl.md5(json.dumps(sorted((k, str(v)) for k, v in ov.items())).encode()).hexdigest()
+            prev = progress.get("endgame") or {}
+            if prev.get("complete") and prev.get("result_key") == _sk(cumulative_overrides):
+                print(f"[ENDGAME] {new_symside} already ran on this exact set — skip (resume)", flush=True)
+                return
+            deadline = t0 + budget
+            _n_eval = [0]
+            def _eg_eval(label, ov, cum_before, switch="", cand=""):
+                _n_eval[0] += 1
+                dl = min(deadline, _t.time() + YELLOW_TIMEOUT * 4)
+                return _get("ENDGAME", None, switch, cand, label, sanitize_overrides(dict(ov), defaults)[0], dl, float(cum_before))
+            # 1. partition promoted keys into switches vs filters (orange-row switches + yellow header names)
+            filt_names = set()
+            try:
+                for sname in tabs:
+                    for (rr, sw, _cd) in per_tab_rows.get(sname, []):
+                        if (sname, rr) in orange_rows:
+                            filt_names.add(sw)
+                    for hdr in header_maps.get(sname, {}):
+                        filt_names.add(str(hdr).split("=", 1)[0].strip())
+            except Exception:
+                pass
+            F = {k: v for k, v in cumulative_overrides.items() if k in filt_names and not _same_val(v, defaults.get(k))}
+            S = {k: v for k, v in cumulative_overrides.items() if k not in filt_names and not _same_val(v, defaults.get(k))}
+            print(f"[ENDGAME] {new_symside} start: {len(S)} switches, {len(F)} filters, target bh+{target_pts:g} (bh={bh})", flush=True)
+            # 2. REPAIR illegal values (encyclopedia duty): int-truncate float counts, drop ablation-True P0
+            repaired, repairs = dict(cumulative_overrides), []
+            for k in list(repaired.keys()):
+                if k.startswith("ABLATION_DISABLE_") and bool(repaired[k]):
+                    repairs.append((k, repaired.pop(k), "<DROPPED-P0>"))
+            for k, v in list(repaired.items()):
+                dv = defaults.get(k)
+                if isinstance(dv, int) and not isinstance(dv, bool) and isinstance(v, float) and not v.is_integer():
+                    repaired[k] = int(v)
+                    repairs.append((k, v, int(v)))
+            if repairs:
+                rres, rerr = _eg_eval("ENDGAME_REPAIR", repaired, float(cumulative_gain), "REPAIR", f"{len(repairs)}fixes")
+                if rres is not None and rres.get("gain_pct") is not None:
+                    print(f"[ENDGAME] {new_symside} REPAIR adopted ({len(repairs)} fixes): {float(cumulative_gain):.4f} -> {float(rres['gain_pct']):.4f} ({rerr or 'ok'})", flush=True)
+                    cumulative_overrides = sanitize_overrides(repaired, defaults)[0]
+                    cumulative_gain = float(rres["gain_pct"])
+                    F = {k: v for k, v in cumulative_overrides.items() if k in filt_names and not _same_val(v, defaults.get(k))}
+                    S = {k: v for k, v in cumulative_overrides.items() if k not in filt_names and not _same_val(v, defaults.get(k))}
+                else:
+                    print(f"[ENDGAME] {new_symside} REPAIR eval failed ({rerr}) — set unchanged, fixes logged only", flush=True)
+            # 3. STRIP filters -> naked switch-only base
+            _pre_strip_gain = float(cumulative_gain)
+            stripped = {k: v for k, v in cumulative_overrides.items() if k not in F}
+            sres, serr = _eg_eval("ENDGAME_STRIP", stripped, float(cumulative_gain), "STRIP", f"{len(F)}filters")
+            if sres is None or sres.get("gain_pct") is None:
+                print(f"[ENDGAME] {new_symside} STRIP eval failed ({serr}) — abort, set unchanged", flush=True)
+                progress["endgame"] = {"skipped": f"strip eval {serr}", "repairs": [(k, str(a), str(b)) for k, a, b in repairs]}
+                return
+            base_gain = float(sres["gain_pct"])
+            base_fp = str((sres or {}).get("behavior_fingerprint") or "")
+            base = sanitize_overrides(stripped, defaults)[0]
+            print(f"[ENDGAME] {new_symside} STRIP: {float(cumulative_gain):.4f} -> naked {base_gain:.4f} ({len(F)} filters out)", flush=True)
+            # 4. NAKED RETEST each promoted switch leave-one-out vs the stripped base (ACTUAL marginal deltas)
+            naked_rows = []
+            for k in sorted(S.keys()):
+                if _t.time() > deadline or _n_eval[0] >= max_evals or _SHUTDOWN["v"]:
+                    naked_rows.append((k, S[k], None, "BUDGET/SHUTDOWN"))
+                    continue
+                wo = {kk: vv for kk, vv in base.items() if kk != k}
+                wres, werr = _eg_eval("ENDGAME_NAKED", wo, base_gain, k, str(S[k]))
+                if wres is None or wres.get("gain_pct") is None:
+                    naked_rows.append((k, S[k], None, f"EVAL_{werr}"))
+                    continue
+                d = base_gain - float(wres["gain_pct"])
+                cause = ""
+                if abs(d) < 1e-9:
+                    wfp = str((wres or {}).get("behavior_fingerprint") or "")
+                    cause = "NON_BINDING_ZERO" if wfp == base_fp else "OFFSET_ZERO"
+                naked_rows.append((k, S[k], d, cause, int(wres.get("trades") or 0), bool(wres.get("valid"))))
+            n_zero = sum(1 for r in naked_rows if r[2] is not None and abs(r[2]) < 1e-9)
+            print(f"[ENDGAME] {new_symside} NAKED: {len(naked_rows)} switches retested, {n_zero} honest-zero ({[(r[0], r[3]) for r in naked_rows if r[2] is not None and abs(r[2]) < 1e-9][:8]})", flush=True)
+            # 5. REAPPLY filters one-by-one greedy toward bh+target
+            working, work_gain = dict(base), base_gain
+            remaining = dict(F)
+            applied, target_step = [], None
+            tgt = (float(bh) + target_pts) if bh is not None else None
+            while remaining and _t.time() < deadline and _n_eval[0] < max_evals and not _SHUTDOWN["v"]:
+                best_f, best_g, best_res = None, None, None
+                for fk, fv in sorted(remaining.items()):
+                    if _t.time() > deadline or _n_eval[0] >= max_evals:
+                        break
+                    cand_ov = dict(working)
+                    cand_ov[fk] = fv
+                    cres, cerr = _eg_eval("ENDGAME_REAPPLY_TRY", cand_ov, work_gain, fk, str(fv))
+                    if cres is None or cres.get("gain_pct") is None:
+                        continue
+                    g = float(cres["gain_pct"])
+                    if g - work_gain > 1e-9 and (best_g is None or g > best_g):
+                        best_f, best_g, best_res = fk, g, cres
+                if best_f is None:
+                    break
+                working[best_f] = remaining.pop(best_f)
+                work_gain = best_g
+                applied.append((best_f, working[best_f], best_g, int((best_res or {}).get("trades") or 0)))
+                if tgt is not None and target_step is None and best_g >= tgt:
+                    target_step = len(applied)
+            target_met = tgt is not None and work_gain >= tgt
+            print(f"[ENDGAME] {new_symside} REAPPLY: {len(applied)}/{len(F)} filters back, {base_gain:.4f} -> {work_gain:.4f}, target {('MET@step%d' % target_step) if target_step else ('MISSED' if tgt is not None else 'n/a')} (bh+{target_pts:g}={tgt})", flush=True)
+            # 6. ADOPT the reapplied set (fresh NO-LIES eval of exactly the adopted set) + C-reconcile drops
+            adopted = False
+            ares, aerr = _eg_eval("ENDGAME_ADOPT", working, base_gain, "ADOPT", f"{len(applied)}filters")
+            if ares is not None and ares.get("gain_pct") is not None and int(ares.get("trades") or 0) > 0 and ares.get("valid"):
+                cumulative_overrides = sanitize_overrides(working, defaults)[0]
+                cumulative_gain = float(ares["gain_pct"])
+                progress["cumulative_overrides"] = dict(cumulative_overrides)
+                progress["cumulative_gain"] = float(cumulative_gain)
+                adopted = True
+                for dk in remaining.keys():
+                    try:
+                        if dk in _c_where:
+                            _c_drop(*_c_where.pop(dk), dk)
+                    except Exception:
+                        pass
+                if remaining:
+                    print(f"[ENDGAME] {new_symside} C-reconciled: {len(remaining)} never-positive filters dropped from C: {sorted(remaining.keys())[:10]}", flush=True)
+            else:
+                print(f"[ENDGAME] {new_symside} ADOPT refused (valid={bool((ares or {}).get('valid'))} trades={(ares or {}).get('trades')} err={aerr}) — set unchanged", flush=True)
+            # 7. TIER-entry share from the final ledger (report-only flag; no auto-action)
+            tier_share, tier_n, open_n = None, 0, 0
+            try:
+                from tools.opt import v12_pilot as _vp_eg
+                _lres = _vp_eg.evaluate_prepared_sanitized(prepared, dict(cumulative_overrides), args.window_days, True)
+                for _t in ((_lres or {}).get("ledger") or []):
+                    if str((_t or {}).get("type") or "").upper() != "OPEN":
+                        continue
+                    open_n += 1
+                    if str((_t or {}).get("reason") or (_t or {}).get("entry_reason") or "").upper().startswith(("TIER1", "TIER2")):
+                        tier_n += 1
+                tier_share = (tier_n / open_n) if open_n else 0.0
+            except Exception as _te:
+                print(f"[ENDGAME-warn] {new_symside} tier-share ledger eval: {_te}", flush=True)
+            # 8. ENDGAME sheet + progress record (resume key = adopted set)
+            try:
+                if "ENDGAME_FILTER_CYCLE" in wb.sheetnames:
+                    del wb["ENDGAME_FILTER_CYCLE"]
+                ews = wb.create_sheet("ENDGAME_FILTER_CYCLE")
+                B = Font(name="Arial", size=10, bold=True)
+                def _erow(vals, bold=False):
+                    ews.append(list(vals))
+                    if bold:
+                        for cc in ews[ews.max_row]:
+                            cc.font = B
+                _erow(["ENDGAME_FILTER_CYCLE", new_symside, f"switches={len(S)}", f"filters={len(F)}", f"target=bh+{target_pts:g}={tgt}", f"target_met={target_met}", f"adopted={adopted}", f"evals={_n_eval[0]}", f"secs={round(_t.time()-t0,1)}"], True)
+                _erow(["REPAIR", "key", "before", "after"], True)
+                for k, a, b in repairs:
+                    _erow(["REPAIR", k, str(a)[:60], str(b)[:60]])
+                _erow(["STRIP", f"{len(F)} filters out", f"{_pre_strip_gain:.4f}->{base_gain:.4f}", "base=sanitized switch-only set"])
+                _erow(["NAKED_RETEST", "switch", "value", "marginal_delta_vs_stripped_base", "cause_if_zero", "trades_wo", "valid_wo"], True)
+                for r in naked_rows:
+                    _erow(["NAKED", r[0], str(r[1])[:40], r[2], r[3] if len(r) > 3 else "", r[4] if len(r) > 4 else "", r[5] if len(r) > 5 else ""])
+                _erow(["REAPPLY", "step", "filter", "value", "gain_after", "trades"], True)
+                for i, (fk, fv, g, tr) in enumerate(applied, 1):
+                    _erow(["REAPPLY", i, fk, str(fv)[:40], g, tr])
+                _erow(["DROPPED_FILTERS", ",".join(sorted(remaining.keys()))[:900]])
+                _erow(["TIER_SHARE", f"{tier_n}/{open_n}={tier_share}", "DOMINANT>30%" if (tier_share or 0) > 0.30 else "ok", "report-only: no auto-action"])
+            except Exception as _ese:
+                print(f"[ENDGAME-warn] {new_symside} sheet write: {_ese}", flush=True)
+            progress["endgame"] = {"complete": True, "result_key": _sk(dict(cumulative_overrides)), "switches": len(S), "filters": len(F),
+                                   "repairs": [(k, str(a), str(b)) for k, a, b in repairs], "strip_gain": base_gain,
+                                   "naked": [(r[0], r[2], r[3] if len(r) > 3 else "") for r in naked_rows],
+                                   "reapplied": [(f, g) for f, _v, g, _t in applied], "dropped": sorted(remaining.keys()),
+                                   "target_pts": target_pts, "target_gain": tgt, "target_met": target_met, "target_step": target_step,
+                                   "adopted": adopted, "final_gain": float(cumulative_gain), "tier_share": tier_share,
+                                   "tier_opens": tier_n, "opens": open_n, "evals": _n_eval[0], "secs": round(_t.time() - t0, 1)}
+            try:
+                _atomic_write_json(progress_path, progress)
+            except Exception:
+                pass
+            print(f"[ENDGAME] {new_symside} done in {round(_t.time()-t0,1)}s, {target_met=}, adopted={adopted}", flush=True)
+        except V15Shutdown:
+            raise
+        except Exception as _ege:
+            import traceback as _tb_eg
+            print(f"[ENDGAME-warn] {new_symside}: {_ege}\n{_tb_eg.format_exc()[-1200:]}", flush=True)
+
     def _diagnose_repair():
         # USER 2026-10-06: post-fill DIAGNOSE+REPAIR (tools/v15_diagnose_repair.run) — see the call site for the contract.
         nonlocal cumulative_gain, cumulative_overrides
@@ -4070,6 +4293,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _final_filter_recheck()
     except Exception as _fe:
         print(f"[final-recheck-warn] {_fe}", flush=True)
+    # USER 2026-10-07 ENDGAME: strip filters -> naked switch retest -> one-by-one reapply to bh+10.
+    # Deterministic audit BEFORE the beam-search repair. V15_ENDGAME=0 disables.
+    try:
+        _endgame_filter_cycle()
+    except V15Shutdown:
+        raise
+    except Exception as _ege2:
+        print(f"[ENDGAME-warn] outer {_ege2}", flush=True)
     # USER 2026-10-06 DIAGNOSE+REPAIR (tools/v15_diagnose_repair.py, ENCYCLOPEDIA.md §DIAGNOSIS): all cells calculated,
     # NPZ + fork pool still hot -> diagnose the final set, then non-sequential SOFTEN -> ADD -> TIGHTEN -> POLISH,
     # 365D check of the finalists, replace the final set only when compliant and better. V15_DIAG_REPAIR=0 disables,
