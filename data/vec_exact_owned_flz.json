@@ -35,12 +35,16 @@
   "at": "2026-10-07T14:00:06Z",
   "reason": "DC_BREAKOUT_ENTRY"
  },
- "flz:ZECUSDC_LONG": {
-  "at": "2026-10-07T16:45:17Z",
-  "reason": "B_SRS_ENTRY"
+ "flz:BTCUSDC_SHORT": {
+  "at": "2026-10-07T17:15:10Z",
+  "reason": "B_KZONE"
  },
- "flz:ETHUSDC_SHORT": {
-  "at": "2026-10-07T17:00:12Z",
-  "reason": "DC_BREAKOUT_ENTRY"
+ "flz:SOLUSDC_SHORT": {
+  "at": "2026-10-07T17:15:15Z",
+  "reason": "B_KZONE"
+ },
+ "flz:ZECUSDC_LONG": {
+  "at": "2026-10-07T17:15:40Z",
+  "reason": "B_SRS_ENTRY"
  }
 }

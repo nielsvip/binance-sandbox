@@ -1,9 +1,10 @@
 {
- "at": "2026-10-07T17:00:01.561420+00:00",
+ "at": "2026-10-07T17:20:01.674070+00:00",
  "source": "Mac {acct}/{long,short}_positions.json |positionAmt|>0",
  "sym_sides": [
   "1INCHUSDT_SHORT",
   "ACEUSDT_SHORT",
+  "ADAUSDC_LONG",
   "ADAUSDC_SHORT",
   "ADBE_SHORT",
   "AGLDUSDT_SHORT",
@@ -58,7 +59,6 @@
   "NVDA_LONG",
   "PSX_LONG",
   "PYPL_SHORT",
-  "QQQ_LONG",
   "RENDERUSDT_LONG",
   "RLCUSDT_SHORT",
   "RRC_SHORT",
@@ -121,7 +121,7 @@
   ],
   "men": [
    "1INCHUSDT_SHORT",
-   "ADAUSDC_SHORT",
+   "ADAUSDC_LONG",
    "ALGOUSDT_SHORT",
    "ARUSDT_SHORT",
    "AXSUSDT_SHORT",
@@ -175,7 +175,6 @@
    "MSFT_LONG",
    "NKE_SHORT",
    "NVDA_LONG",
-   "QQQ_LONG",
    "SNDK_LONG",
    "TSM_LONG",
    "TTD_SHORT",

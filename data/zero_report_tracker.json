@@ -397,6 +397,12 @@
     "source": "phantom_kill_bootstrap",
     "last_seen": "2026-03-30T17:18:49.807138+00:00"
   },
+  "men:EDUUSDT_SHORT": {
+    "count": 2,
+    "first_seen": "2026-03-30T17:17:23.970791+00:00",
+    "source": "phantom_kill_bootstrap",
+    "last_seen": "2026-03-30T17:18:49.807169+00:00"
+  },
   "men:CHRUSDT_LONG": {
     "count": 2,
     "first_seen": "2026-03-30T17:17:23.970795+00:00",
@@ -1098,6 +1104,15 @@
     },
     "last_seen": "2026-05-22T03:22:07.133966+00:00"
   },
+  "men:COMPUSDT_SHORT": {
+    "count": 40,
+    "first_seen_zero_at": "2026-05-27T21:50:33.418192+00:00",
+    "last_increment_at": "2026-05-27T22:12:51.984984+00:00",
+    "sources": {
+      "API_ABSENCE": 38
+    },
+    "last_seen": "2026-05-27T22:17:23.568015+00:00"
+  },
   "inf:XMRUSDT_SHORT": {
     "count": 1,
     "first_seen_zero_at": "2026-05-30T03:13:06.436841+00:00",
@@ -1438,6 +1453,12 @@
     },
     "last_seen": "2026-07-19T23:02:45.105092+00:00"
   },
+  "men:LINKUSDC_SHORT": {
+    "count": 2,
+    "first_seen": "2026-08-01T16:32:44.909636+00:00",
+    "source": "phantom_kill_bootstrap",
+    "last_seen": "2026-08-01T16:33:45.488097+00:00"
+  },
   "inf:HYPEUSDT_LONG": {
     "count": 4,
     "first_seen_zero_at": "2026-08-04T15:38:30.525027+00:00",
@@ -1652,57 +1673,12 @@
     },
     "last_seen": "2026-10-06T04:52:29.367376+00:00"
   },
-  "men:EGLDUSDT_SHORT": {
-    "count": 4,
-    "first_seen_zero_at": "2026-10-07T14:50:36.049905+00:00",
-    "last_increment_at": "2026-10-07T14:52:59.369817+00:00",
+  "men:RENDERUSDT_LONG": {
+    "count": 1,
+    "first_seen_zero_at": "2026-10-07T02:49:38.035200+00:00",
+    "last_increment_at": "2026-10-07T02:49:38.035200+00:00",
     "sources": {
-      "API_ABSENCE": 3
-    },
-    "last_seen": "2026-10-07T14:53:16.703556+00:00"
-  },
-  "men:QTUMUSDT_SHORT": {
-    "count": 4,
-    "first_seen_zero_at": "2026-10-07T15:32:13.948357+00:00",
-    "last_increment_at": "2026-10-07T15:34:13.056229+00:00",
-    "sources": {
-      "API_ABSENCE": 3
-    },
-    "last_seen": "2026-10-07T15:34:38.099874+00:00"
-  },
-  "men:AVAXUSDC_SHORT": {
-    "count": 8,
-    "first_seen_zero_at": "2026-10-07T16:11:40.358622+00:00",
-    "last_increment_at": "2026-10-07T16:24:16.883400+00:00",
-    "sources": {
-      "API_ABSENCE": 7
-    },
-    "last_seen": "2026-10-07T16:14:37.273140+00:00"
-  },
-  "men:SKYUSDT_SHORT": {
-    "count": 8,
-    "first_seen_zero_at": "2026-10-07T16:11:40.358622+00:00",
-    "last_increment_at": "2026-10-07T16:24:16.883400+00:00",
-    "sources": {
-      "API_ABSENCE": 7
-    },
-    "last_seen": "2026-10-07T16:14:37.273164+00:00"
-  },
-  "men:BNBUSDC_SHORT": {
-    "count": 3,
-    "first_seen_zero_at": "2026-10-07T16:45:11.781890+00:00",
-    "last_increment_at": "2026-10-07T16:46:42.093861+00:00",
-    "sources": {
-      "API_ABSENCE": 3
+      "API_ABSENCE": 1
     }
-  },
-  "men:ADAUSDC_LONG": {
-    "count": 5,
-    "first_seen_zero_at": "2026-10-07T16:51:38.218737+00:00",
-    "last_increment_at": "2026-10-07T16:54:19.325835+00:00",
-    "sources": {
-      "API_ABSENCE": 4
-    },
-    "last_seen": "2026-10-07T16:53:22.105160+00:00"
   }
 }

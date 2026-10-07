@@ -139,6 +139,11 @@
       "blocked_at": "2026-10-07T15:37:50.891136+00:00",
       "reason": "NON_TRADEABLE_WT15M_EXIT_wt25.5_g0.16",
       "exit_price": 54.685
+    },
+    "RRC_SHORT": {
+      "blocked_at": "2026-10-07T17:08:41.665268+00:00",
+      "reason": "NON_TRADEABLE_WT15M_EXIT_wt0.7_g-5.55",
+      "exit_price": 39.685
     }
   },
   "streaks": {
@@ -278,12 +283,17 @@
       ]
     },
     "QQQ_LONG": {
-      "consec_losses": 1,
+      "consec_losses": 0,
       "last": [
         {
           "ts": "2026-09-28T13:47:17.077921+00:00",
           "gain_pct": -0.2069,
           "reason": "VIGILANCE_DC4_15m_HARD_STOP_USER_LONG_g-0.14_lvl738.7100_qty_999999"
+        },
+        {
+          "ts": "2026-10-07T17:04:17.549168+00:00",
+          "gain_pct": 2.3168,
+          "reason": "WRONG_SIDE_ABS_KILL_wt=4/4_k=2/0_age=7413min_gain=2.25%"
         }
       ]
     },

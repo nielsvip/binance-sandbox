@@ -11,10 +11,6 @@
   "at": "2026-10-07T02:15:39Z",
   "reason": "DC_BREAKOUT_ENTRY"
  },
- "men:ADAUSDC_SHORT": {
-  "at": "2026-10-07T02:15:45Z",
-  "reason": "DC_BREAKOUT_ENTRY"
- },
  "men:YFIUSDT_SHORT": {
   "at": "2026-10-07T03:15:35Z",
   "reason": "B15"
@@ -127,12 +123,20 @@
   "at": "2026-10-07T16:38:07Z",
   "reason": "VOL_SPIKE_REVERSAL"
  },
- "men:NMRUSDT_SHORT": {
-  "at": "2026-10-07T16:55:17Z",
+ "men:ADAUSDC_LONG": {
+  "at": "2026-10-07T17:01:20Z",
+  "reason": "B12"
+ },
+ "men:EGLDUSDT_SHORT": {
+  "at": "2026-10-07T17:15:53Z",
+  "reason": "DC_BREAKOUT_ENTRY"
+ },
+ "men:BTCUSDC_SHORT": {
+  "at": "2026-10-07T17:15:53Z",
   "reason": "B_KZONE"
  },
- "men:SKYUSDT_SHORT": {
-  "at": "2026-10-07T16:56:20Z",
-  "reason": "B_KZONE"
+ "men:BBUSDT_LONG": {
+  "at": "2026-10-07T17:16:22Z",
+  "reason": "B_SMA200DIST"
  }
 }

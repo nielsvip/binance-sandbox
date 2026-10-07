@@ -1,16 +1,16 @@
 # Exit-engine parity monitor
 
-generated: 2026-10-07T16:00:58.311982+00:00 · lookback: 48.0h
+generated: 2026-10-07T17:01:00.046114+00:00 · lookback: 48.0h
 
-**exit_engine rows in window: 1996** · since 2026-10-06T18:48:00+00:00 · last: 2026-10-07T15:58:04.077820+00:00
+**exit_engine rows in window: 2067** · since 2026-10-06T18:48:00+00:00 · last: 2026-10-07T16:59:56.555628+00:00
 
-VEC_EXACT-decided orders (the vec engine decided; not gate-judged): {'OPEN': 643, 'CLOSE': 352, 'REDUCE': 36} — every OTHER row below is a native live path firing under PARITY_VEC_EXACT_MODE
+VEC_EXACT-decided orders (the vec engine decided; not gate-judged): {'OPEN': 673, 'CLOSE': 368, 'REDUCE': 37} — every OTHER row below is a native live path firing under PARITY_VEC_EXACT_MODE
 
 ## 🔴 LEAKS (gate-disabled families that fired = illegal trades): 0
 - none — no gate-disabled family fired. ✅ parity holds for mapped exits.
 
-## ✅ GATE_ON (legitimately allowed live, has gate): 682
-- EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED): 576
+## ✅ GATE_ON (legitimately allowed live, has gate): 690
+- EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED): 584
 - DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED): 92
 - CYCLE_TP (CYCLE_TP_TIERED_ENABLED): 6
 - WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF): 4
@@ -24,26 +24,26 @@ VEC_EXACT-decided orders (the vec engine decided; not gate-judged): {'OPEN': 643
 
 ## 🛟 SAFETY (exempt by design: broker sync / margin / liquidation): 0
 
-## ❔ UNMAPPED (family not in tools/forward_parity/families.py — add it): 282
+## ❔ UNMAPPED (family not in tools/forward_parity/families.py — add it): 298
 -    28  RSI2_EXIT_LIVE_rsi2=5.4_thr=10.0
 -    22  RSI2_EXIT_LIVE_rsi2=7.0_thr=10.0
 -    21  RSI2_EXIT_LIVE_rsi2=3.0_thr=10.0
 -     9  SUBSTITUTION_FOR_men:COMPUSDT_SHORT
 -     8  SUBSTITUTION_FOR_men:BTCUSDC_SHORT
 -     8  SUBSTITUTION_FOR_men:ETHUSDC_SHORT
+-     7  SUBSTITUTION_FOR_men:SKYUSDT_SHORT
 -     6  WT_CROSSUNDER_FINAL_L_k=95
 -     6  ORPHANED_HEDGE_PARENT_CLOSED
--     6  SUBSTITUTION_FOR_men:SKYUSDT_SHORT
 -     5  SUBSTITUTION_FOR_men:QTUMUSDT_SHORT
 -     5  SUBSTITUTION_FOR_men:ALGOUSDT_SHORT
+-     5  SUBSTITUTION_FOR_men:NMRUSDT_SHORT
+-     5  SUBSTITUTION_FOR_men:CHRUSDT_SHORT
 -     5  SUBSTITUTION_FOR_men:EDUUSDT_LONG
 -     5  SUBSTITUTION_FOR_men:RLCUSDT_LONG
 -     4  SUBSTITUTION_FOR_men:MELANIAUSDT_SHORT
 -     4  SUBSTITUTION_FOR_men:EGLDUSDT_SHORT
 -     4  SUBSTITUTION_FOR_men:AXSUSDT_SHORT
--     4  SUBSTITUTION_FOR_men:NMRUSDT_SHORT
 -     4  CB_HTF_EXHAUST_BAD_ENTRY: g=-0.84% age
 -     3  CB_HTF_EXHAUST_BAD_ENTRY: g=-0.66% age
--     3  SUBSTITUTION_FOR_men:ATOMUSDT_SHORT
 
-## actions in window: {'OPEN': 647, 'CLOSE': 1164, 'REDUCE': 43, 'QUICK_CLOSE': 142}
+## actions in window: {'OPEN': 677, 'CLOSE': 1194, 'REDUCE': 44, 'QUICK_CLOSE': 152}
