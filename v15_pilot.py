@@ -2991,11 +2991,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             try:
                 from tools.opt import v12_pilot as _vp_eg
                 _lres = _vp_eg.evaluate_prepared_sanitized(prepared, dict(cumulative_overrides), args.window_days, True)
-                for _t in ((_lres or {}).get("ledger") or []):
-                    if str((_t or {}).get("type") or "").upper() != "OPEN":
+                for _lt in ((_lres or {}).get("ledger") or []):
+                    if str((_lt or {}).get("type") or "").upper() != "OPEN":
                         continue
                     open_n += 1
-                    if str((_t or {}).get("reason") or (_t or {}).get("entry_reason") or "").upper().startswith(("TIER1", "TIER2")):
+                    if str((_lt or {}).get("reason") or (_lt or {}).get("entry_reason") or "").upper().startswith(("TIER1", "TIER2")):
                         tier_n += 1
                 tier_share = (tier_n / open_n) if open_n else 0.0
             except Exception as _te:

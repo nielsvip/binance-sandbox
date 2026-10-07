@@ -59,12 +59,20 @@
   "at": "2026-10-07T04:49:35Z",
   "reason": "B14"
  },
- "men:SOLUSDC_SHORT": {
-  "at": "2026-10-07T05:00:48Z",
-  "reason": "B14"
- },
  "men:NMRUSDT_LONG": {
   "at": "2026-10-07T05:00:52Z",
+  "reason": "DC_BREAKOUT_ENTRY"
+ },
+ "men:AXSUSDT_SHORT": {
+  "at": "2026-10-07T05:15:04Z",
+  "reason": "B_KZONE"
+ },
+ "men:ETHUSDC_SHORT": {
+  "at": "2026-10-07T05:15:47Z",
+  "reason": "B15"
+ },
+ "men:COMPUSDT_SHORT": {
+  "at": "2026-10-07T05:17:42Z",
   "reason": "DC_BREAKOUT_ENTRY"
  }
 }

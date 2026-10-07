@@ -1,20 +1,22 @@
-CAPITAL ALLOCATION REPORT — 2026-10-07 05:00 UTC
+CAPITAL ALLOCATION REPORT — 2026-10-07 05:10 UTC
 ================================================================================
-Total capital deployed: $74.83 across 5 positions
+Total capital deployed: $224.30 across 9 positions
 
 TIER DISTRIBUTION:
   Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $     59.06 ( 78.9%) — 4 positions
-  Tier C: $     15.78 ( 21.1%) — 1 positions
+  Tier B: $    195.28 ( 87.1%) — 8 positions
+  Tier C: $     29.01 ( 12.9%) — 1 positions
 
   ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
-  ** C-tier OVERWEIGHT: 21% vs target <20% — reduce poor performers **
 
 WINNERS — augment these (A-tier, in gain) [0]:
   (none)
 
-LOSERS — reduce allocation (C-tier or losing) [1]:
-                    flz:ZECUSDC_SHORT  $   15.78  gain=+0.78%  tier=C  mult=0.33
+LOSERS — reduce allocation (C-tier or losing) [3]:
+                     ang:EDUUSDT_LONG  $   73.19  gain=-0.79%  tier=B  mult=1.00
+                    ang:NEARUSDC_LONG  $   34.76  gain=-0.50%  tier=B  mult=1.00
+                    ang:SANDUSDT_LONG  $   29.01  gain=+2.76%  tier=C  mult=0.37
 
-MEDIOCRE — capital sitting idle [0]:
-  (none)
+MEDIOCRE — capital sitting idle [2]:
+                   ang:ATOMUSDT_SHORT  $   16.00  gain=+0.28%  tier=B
+                    ang:ARBUSDC_SHORT  $   14.80  gain=-0.07%  tier=B
