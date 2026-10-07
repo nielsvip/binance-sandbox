@@ -1567,6 +1567,13 @@ still uses the proxy) — EXCEPT unevidenced cells: a name-yellow cell with NO e
 must-calculate priority inside every computed row and is never sampled out (`none_priority`
 bucket; fail-open when the JSONs are absent). Row sampling still gates the row; the priority
 applies within computed rows. Full work order: `NONE_CELLS_PRIORITY_20261007.md`.
+**Fleet enforcement (USER 2026-10-07):** two layers — scheduler launch env `V15_POSSYM_SAMPLING=1`
+(env wins) plus `data/possym_sampling.flag=1` on every host (fallback for any launcher); verified
+live on s1/s2/s5 + Mac. Evidence distribution: chain step 4 rebuilds + pushes
+`data/avg_delta_pos_sym.json`, step 4b regens + pushes `data/avg_delta_pos_sym_cell.json` +
+`data/cell_evidence/*.json` (multi progress-dir union, newest-wins per sym_side); Mac-apply pulls
+both with per-file stamp-md5 checks. Guard tests: `tests/test_v15_possym_sampling.py` (exact prob
+table, always-compute buckets, determinism, pos=0 rate band, env precedence, zero default-ON).
 
 ## 74. FLEET REALITY + WALL-TIME MATH (AUDITED 2026-10-07)
 

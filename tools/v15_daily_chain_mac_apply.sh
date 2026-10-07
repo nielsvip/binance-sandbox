@@ -80,6 +80,7 @@ KEYS=$("$PY" -c "import json,sys; print(','.join(json.load(open(sys.argv[1])).ge
 PULL="SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx"
 PULL="$PULL SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx"
 PULL="$PULL data/cat_side_defaults_4.json data/sweep_defaults/cat_side_defaults_4.json data/avg_delta_pos_sym.json"
+PULL="$PULL data/avg_delta_pos_sym_cell.json"
 PULL="$PULL $AGG SPREADSHEETS/v15_avg_delta_latest.xlsx SPREADSHEETS/v15_vector_delta_latest.xlsx data/cat_side_promotions.json data/avg_delta_round_ledger.json"
 if [ "$DRYRUN" != 1 ]; then
   mkdir -p "backups/daily_chain_mac_$TS"
@@ -89,6 +90,20 @@ fi
 log "step2 pull $(echo $PULL | wc -w | tr -d ' ') files from $S1 -> $DEST"
 for F in $PULL; do
   mkdir -p "$(dirname "$DEST/$F")" && rsync -az -e "$SSH" "$S1:binance-sandbox/$F" "$DEST/$F" || fail 2 "pull $F from $S1"
+done
+# 2b. cell-evidence runtime maps (zero-skip): whole dir, each file md5-verified against the stamp (2026-10-07)
+if [ "$DRYRUN" != 1 ]; then
+  mkdir -p "$DEST/data/cell_evidence" "backups/daily_chain_mac_$TS/cell_evidence"
+  for CF in "$DEST"/data/cell_evidence/*.json; do [ -f "$CF" ] && cp -p "$CF" "backups/daily_chain_mac_$TS/cell_evidence/"; done
+fi
+rsync -az --delete -e "$SSH" "$S1:binance-sandbox/data/cell_evidence/" "$DEST/data/cell_evidence/" || fail 2 "pull cell_evidence"
+for CF in "$DEST"/data/cell_evidence/*.json; do
+  [ -f "$CF" ] || continue
+  F="data/cell_evidence/$(basename "$CF")"
+  WANT=$("$PY" -c "import json,sys; print(json.load(open(sys.argv[1]))['pushed_md5'].get(sys.argv[2],'NOT_IN_STAMP'))" "$SJ" "$F")
+  GOT=$(md5f "$CF")
+  [ "$WANT" = "$GOT" ] || fail 2 "md5 mismatch $F stamp=$WANT pulled=$GOT"
+  log "step2b cell_evidence $F s1=$GOT"
 done
 if [ "$DRYRUN" = 1 ] && [ -n "${CHAIN_TEST_REPORT:-}" ]; then
   log "step2 TEST_FIXTURE: no S1 work_$DATE reports to pull (skipped)"

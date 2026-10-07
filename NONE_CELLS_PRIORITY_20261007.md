@@ -63,6 +63,28 @@ unevaluated stays blank, never 0 (§19).
 
 ## 4. Wiring triage — "switches connected correctly so an actual value comes out"
 
+Measured 2026-10-07 (template grid vs finalized evidence): ~58% of NONE cells
+sit under UNWIRED filters (pilot skips them: `excluded_unwired`, never
+evaluated) — pilot compute alone can NEVER drain those. Split per cat_side:
+
+| cat_side | NONE under wired filters (drain via compute) | NONE under UNWIRED filters (need wiring) |
+|---|---|---|
+| CRYPTO_LONG | 210513 | 290035 |
+| CRYPTO_SHORT | 215067 | 286678 |
+| STOCKS_LONG | 220293 | 299119 |
+| STOCKS_SHORT | 203300 | 298286 |
+
+Top UNWIRED NONE owners (all 4 cats): `OPEN_INTENT_SIZE_GATES_FILTER_TF`,
+`NEWBORN_PROTECT_FILTER_TF`, `LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF`,
+`FIRST_OPEN_THROTTLE_FILTER_TF` (~2600-2740 NONE cells each per TF value).
+Top wired-but-thin (drain via compute): `WT_15M_BOUNCE_REL_VOL_GT_1`,
+`WT_15M_BOUNCE_BB_MAX/HIGH_1H/LOW_1H`, `MOM3_FILTER_TF`, `DC_BREAK_FILTER_TF`,
+`BREAKOUT_RETEST_FILTER_TF`, `MOMENTUM_BREAKOUT_FILTER_TF`.
+
+Anomaly: 111 UNWIRED headers (47 on STOCKS_SHORT) carry pos > 0 evidence —
+impossible under the current skip, so that evidence predates the UNWIRED
+verdict (stale) or the verdict is wrong. Per-filter call before rewiring.
+
 A NONE cell that keeps producing no value after being attempted is a wiring
 case, not a sampling case. Per filter with a NONE-heavy column:
 
