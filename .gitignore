@@ -17,7 +17,9 @@ tools/*
 !tools/contributor_preflight.py
 !tools/audit_artifact_guard.py
 !data/
+data/*
 !data/reports/
+data/reports/*
 !artifacts/
 !artifacts/audit/
 !data/reports/CROSS_PLATFORM_CONTRIBUTOR_KIT_PLAN_20260731.md
@@ -111,3 +113,23 @@ data/*.csv.gz
 *.csv.gz
 data/BTC_1M_full.csv
 data/MU_1M_full.csv
+
+# Root-level data dumps grandfathered before the */ rule (2026-10-07 cleanup:
+# 592 data/* + root 100_* csv/xlsx were tracked and churning through every
+# autosave into the s1 git mirror). Blanket-ban them at root so they never
+# come back; subdirs remain covered by */ above.
+/*.csv
+/*.xlsx
+/*.xls
+/*.tsv
+/*.jsonl
+/*.npz
+/*.pkl
+/*.parquet
+/*.log
+/*.out
+/*.tmp
+/*.lock
+/*.gateway
+/*.pulse
+nohup.out

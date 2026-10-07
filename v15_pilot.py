@@ -570,17 +570,18 @@ def _auto_adjust_sheet(ws):
     except Exception:
         pass
 
-TEMPLATE_STOCKS_LONG = ROOT / "SPREADSHEETS" / "TEMPLATE_STOCKS_LONG.xlsx"
-TEMPLATE_STOCKS_SHORT = ROOT / "SPREADSHEETS" / "TEMPLATE_STOCKS_SHORT.xlsx"
-TEMPLATE_CRYPTO_LONG = ROOT / "SPREADSHEETS" / "TEMPLATE_CRYPTO_LONG.xlsx"
-TEMPLATE_CRYPTO_SHORT = ROOT / "SPREADSHEETS" / "TEMPLATE_CRYPTO_SHORT.xlsx"
-# USER 2026-09-28: TEMPLATE.xlsx is LEGACY (replaced long ago by the 4 cat_side templates).
-# Alias kept only so old --template defaults keep working; remapped per symside at runtime.
+TEMPLATE_STOCKS_LONG = ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / "TEMPLATE_STOCKS_LONG.xlsx"
+TEMPLATE_STOCKS_SHORT = ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / "TEMPLATE_STOCKS_SHORT.xlsx"
+TEMPLATE_CRYPTO_LONG = ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / "TEMPLATE_CRYPTO_LONG.xlsx"
+TEMPLATE_CRYPTO_SHORT = ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / "TEMPLATE_CRYPTO_SHORT.xlsx"
+# USER 2026-10-07: 4 INDEPENDENT templates, never a generic one. The legacy
+# SPREADSHEETS/TEMPLATE_*.xlsx set is archived (backups/archive_generic_templates_*);
+# each cat_side owns its file and they diverge. TEMPLATE alias = STOCKS_LONG norm file.
 TEMPLATE = TEMPLATE_STOCKS_LONG
 
 
 def get_template_for_symside(symside: str) -> Path:
-    """User 2026-09-24: TEMPLATE.xlsx discarded — pick side-specific template per symside."""
+    """4 independent templates (USER 2026-10-07): exact cat_side file, no cross-file fallback."""
     s = symside.upper()
     # strip _LONG/_SHORT suffix before crypto check (ZECUSDC_LONG -> ZECUSDC)
     base = s[:-5] if s.endswith("_LONG") else s[:-6] if s.endswith("_SHORT") else s
@@ -593,11 +594,7 @@ def get_template_for_symside(symside: str) -> Path:
         cand = TEMPLATE_STOCKS_LONG if is_long else TEMPLATE_STOCKS_SHORT
     if cand.exists():
         return cand
-    # fallback chain
-    for p in [TEMPLATE_STOCKS_LONG, TEMPLATE_STOCKS_SHORT, TEMPLATE_CRYPTO_LONG, TEMPLATE_CRYPTO_SHORT]:
-        if p.exists():
-            return p
-    return TEMPLATE_STOCKS_LONG
+    raise SystemExit(f"REFUSED: missing template {cand} for {symside} — no cross-side fallback (4 independent templates); restore the file, never substitute another side's")
 
 
 # V15_OUT_DIR isolates proof runs (DONE-stage publish renames same-sym_side sheets in OUT_DIR to .superseded)
@@ -816,7 +813,7 @@ def _load_filter_dictionary() -> list[dict]:
     global _FILTER_DICT_CACHE
     if _FILTER_DICT_CACHE is not None:
         return _FILTER_DICT_CACHE
-    candidates = [ROOT / "SPREADSHEETS" / "TEMPLATE_CRYPTO_LONG.xlsx", ROOT / "SPREADSHEETS" / "TEMPLATE_CRYPTO_SHORT.xlsx", ROOT / "SPREADSHEETS" / "TEMPLATE_STOCKS_LONG.xlsx", ROOT / "SPREADSHEETS" / "TEMPLATE_STOCKS_SHORT.xlsx", ROOT / "SPREADSHEETS" / "TEMPLATE.xlsx"]
+    candidates = [ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / "TEMPLATE_CRYPTO_LONG.xlsx", ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / "TEMPLATE_CRYPTO_SHORT.xlsx", ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / "TEMPLATE_STOCKS_LONG.xlsx", ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / "TEMPLATE_STOCKS_SHORT.xlsx"]
     ws = None
     wb = None
     for p in candidates:
@@ -2482,6 +2479,139 @@ def _possym_decide(sym_side: str, tab: str, rkey: str, round_id: str, pos, n, ne
     p = _POSSYM_P[pos]
     u = _possym_draw(sym_side, tab, rkey, round_id)
     return (u < p), f"pos={pos}", p, u
+
+
+def same_val(a, b) -> bool:
+    """Module-level twin of _spec_fill_workbook._same_val (identical body) for standalone drivers (s6 365D+GS)."""
+    if isinstance(a, bool) or isinstance(b, bool) or str(a).lower() in ("true", "false") or str(b).lower() in ("true", "false"):
+        return str(a).strip().lower() == str(b).strip().lower()
+    try:
+        return abs(float(a) - float(b)) < 1e-12
+    except Exception:
+        return str(a).strip() == str(b).strip()
+
+
+def scan_template_cands(template_path, defaults: dict, cat_side: str, zero_on: bool = True) -> tuple:
+    """Standalone mirror of the pilot's per_tab_rows + header_maps + orange scan and the _row_static KIND decision
+    (USER 2026-10-07 s6: the 365D+GS driver needs the same candidate space as in-pilot diagnose/graph-search).
+    Returns ([{tab,row,switch,cand,ov,orange,blocked}], stats). Structural skips + ZERO_FORMULA condemned rows are
+    excluded exactly like the pilot; possym SAMPLING is deliberately NOT applied (s6 tests the full evaluable space).
+    Template-embedded POS/N fallback columns are not read (fleet JSON evidence wins, same as the pilot's first source).
+    This function only enumerates moves — every number still comes from a real v12 engine eval in the caller."""
+    import openpyxl as _oxl
+    stats = {"rows": 0, "eval": 0, "skip": 0, "zero_skipped": 0, "filters": 0}
+    _zm = _possym_load_nsym(cat_side) if zero_on else {}
+    wb = _oxl.load_workbook(template_path, read_only=True, data_only=True)
+    try:
+        tabs = [s for s in wb.sheetnames if s in SWITCH_SHEETS and s not in SKIP_SHEETS]
+        per_tab, orange, hmaps = {}, set(), {}
+        for sname in tabs:
+            ws = wb[sname]
+            cols = _resolve_cols(ws)
+            rows = []
+            for rr in range(3, ws.max_row + 1):
+                sw = ws.cell(row=rr, column=1).value
+                if sw is None or (isinstance(sw, str) and sw.strip() == ""):
+                    continue
+                sw = str(sw).strip()
+                if sw.lower() in ("switch", "general", "blanket", "filter", "option value") or sw.startswith("—"):
+                    continue
+                cand = ws.cell(row=rr, column=2).value
+                if cand is None:
+                    cand = defaults.get(sw)
+                    cand = DEFAULT_MARKER if cand is None else cand
+                if isinstance(cand, str) and cand.strip().lower() in ("option value", "sheets applicable", "gates"):
+                    continue
+                try:
+                    if str(ws.cell(row=rr, column=1).fill.fgColor.rgb or "").upper().endswith("FFE699"):
+                        orange.add((sname, rr))
+                except Exception:
+                    pass
+                try:
+                    _isdef = str(ws.cell(row=rr, column=cols["L"]).value or "").strip().upper() == "YES"
+                except Exception:
+                    _isdef = False
+                rows.append((rr, sw, cand, _isdef))
+            rows.sort(key=lambda x: (sname, x[0]) in orange)
+            per_tab[sname] = rows
+            hm = {}
+            for cc in range(12, ws.max_column + 50):
+                try:
+                    hv = ws.cell(row=2, column=cc).value
+                except Exception:
+                    hv = None
+                if hv and isinstance(hv, str) and "=" in hv and not hv.upper().startswith("WHAT SWITCH"):
+                    hm[hv.strip()] = cc
+                if hv and isinstance(hv, str) and hv.strip().upper().startswith("WHAT SWITCH"):
+                    break
+            hmaps[sname] = hm
+    finally:
+        try:
+            wb.close()
+        except Exception:
+            pass
+    cands, seen = [], set()
+    for sname in tabs:
+        for rr, sw, cand, _isdef in per_tab.get(sname, []):
+            stats["rows"] += 1
+            if (sw, str(cand)) in seen:
+                continue
+            if cand is None or str(cand).strip() in ("", "None", "none"):
+                stats["skip"] += 1
+                continue
+            if str(sw).strip() in UNWIRED_SWITCHES or str(sw).strip() in UNWIRED_FILTERS:
+                stats["skip"] += 1
+                continue
+            if str(cand).strip().upper().endswith("_ALT"):
+                stats["skip"] += 1
+                continue
+            try:
+                _ov_probe = _switch_overrides(str(sw).strip(), _parse_opt_value(cand, defaults.get(sw))) or {str(sw).strip(): None}
+            except Exception:
+                stats["skip"] += 1
+                continue
+            if not all(k in known_config_fields() for k in _ov_probe):
+                stats["skip"] += 1
+                continue
+            try:
+                if _switch_type_violation(str(sw).strip(), cand, defaults):
+                    stats["skip"] += 1
+                    continue
+            except Exception:
+                pass
+            if zero_on and not _isdef:
+                _zrkey = f"{sname}!{str(sw).strip()}={str(cand).strip()}"
+                _zjr = _zm.get(_zrkey)
+                if isinstance(_zjr, dict) and _zero_condemned(_zjr.get("pos_sym"), _zjr.get("n_sym"), _ZERO_MIN_N_ROW):
+                    stats["skip"] += 1
+                    stats["zero_skipped"] += 1
+                    continue
+            try:
+                ov = _switch_overrides(sw, _parse_opt_value(cand, defaults.get(sw)))
+            except Exception:
+                stats["skip"] += 1
+                continue
+            if not ov:
+                stats["skip"] += 1
+                continue
+            seen.add((sw, str(cand)))
+            cands.append({"tab": sname, "row": rr, "switch": sw, "cand": cand, "ov": ov, "orange": (sname, rr) in orange, "blocked": promotion_block_reason(sw, sname)})
+            stats["eval"] += 1
+    for sname in tabs:
+        for hdr in hmaps.get(sname, {}):
+            filt, opt = [x.strip() for x in hdr.split("=", 1)]
+            if (filt, opt) in seen or filt not in known_config_fields() or filt in UNWIRED_FILTERS or filt in UNWIRED_SWITCHES:
+                continue
+            try:
+                val = _parse_opt_value(opt, defaults.get(filt))
+                if not _cand_compatible(filt, val, defaults)[0]:
+                    continue
+            except Exception:
+                continue
+            seen.add((filt, opt))
+            cands.append({"tab": sname, "row": None, "switch": filt, "cand": opt, "ov": {filt: val}, "orange": True, "blocked": promotion_block_reason(filt, sname)})
+            stats["filters"] += 1
+    return cands, stats
 
 
 def delta_vs_result(res, cum_before: float):

@@ -19,7 +19,7 @@ def test_dc_daytrade_stop_variants_exist():
 def test_dc_daytrade_hard_pct_not_in_template_as_sweep():
     # TEMPLATE should have hard % legacy but new dc variants sweepable (stop + target near dc for breakout re-entry)
     import openpyxl
-    for tmpl in ["SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx", "SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx"]:
+    for tmpl in ["SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx", "SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx"]:
         p = pathlib.Path(tmpl)
         if not p.exists():
             continue
