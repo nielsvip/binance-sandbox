@@ -219,7 +219,7 @@ if mode == "probe":
         def verdict(f):
             try:
                 d = json.load(open(f))
-                return {"ok": bool(d.get("final_both_ok")), "unverifiable": bool(d.get("unverifiable")), "final_progress": d.get("final_progress")}
+                return {"ok": bool(d.get("final_both_ok")), "unverifiable": bool(d.get("unverifiable")), "final_progress": d.get("final_progress"), "ts": str(d.get("ts", ""))}
             except Exception:
                 return None
         for f in glob.glob(os.path.join(w, "v365", "*_365_cycle.json")):
@@ -562,6 +562,7 @@ def tick(args, cfg, now):
     vorder = venue_order(now)
     # ---- merge host views
     running, owner, started, done, quar, v365, repair, gs = {}, {}, set(), set(), set(), {}, {}, {}
+    done_host, v365_host, rep_host = {}, {}, {}
     for n, s in stats.items():
         if not s:
             continue
@@ -570,11 +571,17 @@ def tick(args, cfg, now):
             owner.setdefault(ss.rsplit("_", 1)[0], n)
         for ss in s["started"]:
             started.add(ss); owner.setdefault(ss.rsplit("_", 1)[0], n)
-        done |= set(s["done"])
+        for ss in s["done"]:
+            done.add(ss); done_host.setdefault(ss, n)
         quar |= set(s.get("quarantined", []))
-        v365.update(s["v365"])
+        for ss, v in s["v365"].items():
+            if ss not in v365 or str(v.get("ts", "")) > str(v365[ss].get("ts", "")):
+                v365[ss] = v; v365_host[ss] = n
         for ss, d in s["repair"].items():
-            repair.setdefault(ss, {}).update({int(k): v for k, v in d.items()})
+            for k, v in d.items():
+                _kk = (ss, int(k))
+                if int(k) not in repair.get(ss, {}) or str(v.get("ts", "")) > str(repair[ss][int(k)].get("ts", "")):
+                    repair.setdefault(ss, {})[int(k)] = v; rep_host[_kk] = n
         for ss, d in s.get("gs", {}).items():
             gs.setdefault(ss, {}).update({int(k): v for k, v in d.items()})
     universe_syms = {"stocks": set(stocks), "crypto": set(crypto)}
@@ -656,6 +663,9 @@ def tick(args, cfg, now):
     held = {h["name"]: {} for h in hosts}
     for sym in all_syms:
         hn = owner.get(sym)
+        _runhn = next((running[f"{sym}_{sd}"]["host"] for sd in ("LONG", "SHORT") if f"{sym}_{sd}" in running), None)
+        if _runhn:
+            hn = _runhn  # USER 2026-10-08: stolen chain work holds its slot where it RUNS, not on the 30D owner
         if not hn or hn not in held:
             continue
         if any(f"{sym}_{sd}" in running for sd in ("LONG", "SHORT")) and not terminal(sym):
