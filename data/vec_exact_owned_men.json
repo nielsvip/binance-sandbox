@@ -119,10 +119,6 @@
   "at": "2026-10-07T14:23:13Z",
   "reason": "B_KZONE"
  },
- "men:QTUMUSDT_SHORT": {
-  "at": "2026-10-07T14:29:40Z",
-  "reason": "B_KZONE"
- },
  "men:RLCUSDT_SHORT": {
   "at": "2026-10-07T14:46:34Z",
   "reason": "B_KZONE"
@@ -139,8 +135,12 @@
   "at": "2026-10-07T15:25:16Z",
   "reason": "B_KZONE"
  },
+ "men:EGLDUSDT_SHORT": {
+  "at": "2026-10-07T15:46:33Z",
+  "reason": "B_KZONE"
+ },
  "men:EDUUSDT_LONG": {
-  "at": "2026-10-07T15:25:16Z",
-  "reason": "B_VWAPBOUNCE"
+  "at": "2026-10-07T15:50:26Z",
+  "reason": "ENTRY_SOURCE_UNKNOWN"
  }
 }
