@@ -59,10 +59,6 @@
   "at": "2026-10-07T00:00:30Z",
   "reason": "B12"
  },
- "ang:FILUSDC_LONG": {
-  "at": "2026-10-07T00:15:11Z",
-  "reason": "B_KZONE"
- },
  "ang:XRPUSDC_SHORT": {
   "at": "2026-10-07T00:16:23Z",
   "reason": "B_KZONE"
@@ -118,5 +114,25 @@
  "ang:APPUSDT_LONG": {
   "at": "2026-10-07T03:10:32Z",
   "reason": "B14"
+ },
+ "ang:THETAUSDT_SHORT": {
+  "at": "2026-10-07T05:45:03Z",
+  "reason": "B_KZONE"
+ },
+ "ang:UNIUSDC_SHORT": {
+  "at": "2026-10-07T05:45:32Z",
+  "reason": "B_KZONE"
+ },
+ "ang:RENDERUSDT_LONG": {
+  "at": "2026-10-07T06:00:58Z",
+  "reason": "B_VWAPBOUNCE"
+ },
+ "ang:ZROUSDT_LONG": {
+  "at": "2026-10-07T06:01:02Z",
+  "reason": "B_REENTRY2"
+ },
+ "ang:XTZUSDT_SHORT": {
+  "at": "2026-10-07T06:01:09Z",
+  "reason": "B15"
  }
 }
