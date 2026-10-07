@@ -1,0 +1,78 @@
+{
+ "_doc": "Variant run FROM s1 (scheduler lives on s1 because the Mac sleeps): ssh targets are s1 loopback and the 10.0.0.x internal IPs.",
+ "hosts": [
+  {
+   "name": "s1",
+   "ssh": [
+    "127.0.0.1"
+   ],
+   "root": "~/binance-sandbox",
+   "venues": [
+    "crypto"
+   ],
+   "mem_reserve_mb": 6000,
+   "max_pairs": 3,
+   "workers_per_side": 6,
+   "oom_mb": 2000,
+   "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM"
+  },
+  {
+   "name": "s2",
+   "ssh": [
+    "10.0.0.4"
+   ],
+   "root": "~/binance-sandbox",
+   "venues": [
+    "crypto"
+   ],
+   "mem_reserve_mb": 5000,
+   "max_pairs": 3,
+   "workers_per_side": 4,
+   "oom_mb": 1500,
+   "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM"
+  },
+  {
+   "name": "s5",
+   "ssh": [
+    "10.0.0.5"
+   ],
+   "root": "~/binance-sandbox",
+   "venues": [
+    "crypto"
+   ],
+   "mem_reserve_mb": 4000,
+   "max_pairs": 3,
+   "workers_per_side": 6,
+   "oom_mb": 1500,
+   "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM"
+  },
+  {
+   "name": "s6",
+   "ssh": [
+    "10.0.0.6"
+   ],
+   "root": "~/binance-sandbox",
+   "venues": [
+    "crypto"
+   ],
+   "mem_reserve_mb": 4000,
+   "max_pairs": 3,
+   "workers_per_side": 6,
+   "oom_mb": 1500,
+   "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM"
+  }
+ ],
+ "cpu_target_pct": 90,
+ "default_job_rss_mb": 3500,
+ "order_dir": "data/reports/per_sym_recheck_20260929",
+ "default_pair_mb": 4000,
+ "_doc2": "max_pairs = concurrent SYMBOL pairs per host (clamped 2..6; s5 hybrid under memory pressure 2-3); workers_per_side = pilot --workers",
+ "_doc3": "2026-10-01: venues stocks-only on all hosts until crypto NPZs are rebuilt (NPZ integrity audit: crypto NPZ affected by the 09-24..10-01 klines-tail issue); then restore s1 ['crypto'] and s5 ['crypto','stocks']",
+ "_doc5": "2026-10-01 05:45Z: all hosts run the sweep on the user's FINAL templates (normalised copy TEMPLATE_FINAL_NORM, yellow painted); Agent Y discovery shares CPU",
+ "_doc6": "2026-10-01 CPU guard: admission uses real busy% (/proc/stat) not load1; clamp max_pairs 8; s2 8 pairs x4 workers (was dipping to 70%).",
+ "_unfenced_20261003": "s5_verify_20261003 over (peer gone, no verify procs on s5 08:0xZ); s5 back under s1 coordination per user order",
+ "_doc_throughput": "USER 2026-10-06: ~5 sym_sides per server in RAM, each sheet incl. DIAGNOSE+REPAIR ~1h, then next (was 6 pairs x 3-4 workers = thrash)",
+ "_doc_tune_20261006": "2026-10-06 22:33Z: workers 3->6/4/6 (s1/s2/s5), pairs 3->2 (min clamp; cores are the bound, fewer+faster beats more+stalled), reserve 3000->6000/5000/4000 (live stack on s1, trade_parity foreign on s2/s5), oom_mb 500->2000/1500/1500 (500 lets box thrash before reaping). s2 conservative: was 2.6GB free. Running pilots keep workers=3 until rotate; over-cap hosts launch nothing until drain.",
+ "_doc_venues": "2026-10-06 director: crypto only until the stock NPZ fleet is rebuilt on the live-equal builder (frames A); then restore ['stocks','crypto']",
+ "_doc_steal_20261008": "USER 2026-10-08: pass-2 chain stealing (365D/REPAIR-a1 onto idle hosts, S1-relayed fetch, slot where work runs); max_pairs 3 all hosts (cpu 90 + mem guard throttle, reserves/oom reaper/hardcap unchanged); s6 (10.0.0.6, 16C/30G) joins as 4th crypto worker. Chain sequence ON via data/autopilot/chain_mode.flag (NO_CHAIN env stays, flag wins). 30D->365D->corrections->better-30D+pos-365D per symbol before slot release; repair bounded (365Dx2 tries, REPAIR a1+a2) then terminal_failing parks (no gridlock)."
+}

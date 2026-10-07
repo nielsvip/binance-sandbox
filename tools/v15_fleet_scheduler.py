@@ -536,6 +536,16 @@ def _steal_fetch(hosts, thief_host, sym, specs, log):
             if r1.returncode != 0 or not os.path.exists(tmp):
                 log.setdefault("steal_fetch_fail", {})[sym] = f"pull {src_host}:{src} rc={r1.returncode}"
                 return False
+            try:
+                _jd = json.load(open(tmp))
+                assert isinstance(_jd.get("final_gain"), (int, float)), "no final_gain yet"
+            except Exception as _je:
+                try:
+                    os.unlink(tmp)
+                except Exception:
+                    pass
+                log.setdefault("steal_fetch_fail", {})[sym] = f"unstable source {src_host}:{os.path.basename(src)} ({_je}); retry next tick"
+                return False
             r2 = subprocess.run(["rsync", "-az", "-e", "ssh -o ConnectTimeout=8 -o BatchMode=yes", tmp, f"{tgt_thief}:{dst}"], capture_output=True, timeout=120)
             try:
                 os.unlink(tmp)
