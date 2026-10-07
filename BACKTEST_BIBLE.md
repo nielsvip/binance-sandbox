@@ -1578,14 +1578,20 @@ table, always-compute buckets, determinism, pos=0 rate band, env precedence, zer
 ## 74. FLEET REALITY + WALL-TIME MATH (AUDITED 2026-10-07)
 
 Launcher: `tools/v15_fleet_scheduler.py` (S1 cron `*/2`, `--once` per tick) with
-`tools/fleet_hosts_final.json` (`max_pairs`, `workers_per_side`, `mem_reserve_mb`, `oom_mb` per host;
-tuned there, never in prose). Launches `--seq-mode worst2best --window-days 30 --vector-only`
+`tools/fleet_hosts_final.json` (4 hosts since 2026-10-07: s1/s2/s5/s6; `max_pairs`, `workers_per_side`,
+`mem_reserve_mb`, `oom_mb` per host; tuned there, never in prose). Launches `--seq-mode worst2best --window-days 30 --vector-only`
 (`V15_TEMPLATE_DEFAULTS=1`, `V15_FRESH_RUN=1`, `V15_POSSYM_SAMPLING=1`, `V15_UNWIRED_SKIP=0`,
 `V15_SKIP_LIVE_AT_DONE=1`, NO `V15_INGEST_BEST`). Reaps: 8h hardcap, 60min stall, OOM floor
 (youngest pilot SIGKILLed — progress JSON persists, relaunch refills). No launches over cap or under
 reserve. Observed 2026-10-07: S1 also runs the live stack + scheduler (load 20–40 pre-tune);
 S2/S5 additionally run the `v15_trade_parity.py` lane (~3.5 cores each); S1 reboots interrupted runs
 (daily ~12:55 plus ad-hoc — cause under investigation, needs sudo).
+**Chain sequence (VERIFIED 2026-10-07 — currently OFF):** the scheduler codes the full per-symbol
+chain (`need30` → `need365` → GS-heal/`needrepair` → terminal; pass 2 steals 365D/REPAIR-a1 onto idle
+hosts; slot released only at terminal), BUT it is gated: `V15_SCHED_NO_CHAIN=1` (S1 cron env, USER
+2026-10-01 order) + missing `data/autopilot/chain_mode.flag` → slots release after 30D. The 30D→365D→
+30D-again loop runs ONLY when the flag file exists (one command: `touch` it on S1). Do not create it
+without explicit user order — 365D chains multiply per-symbol compute several-fold.
 
 **Wall-time math (why 0.07s becomes hours — all figures audited, none estimated):** 0.07s is per-EVAL
 (one candidate; loaded 0.09–0.17s). Per-ROW ≈ 205 evals / workers (≈7s at 3 workers). Per-SYM ≈
