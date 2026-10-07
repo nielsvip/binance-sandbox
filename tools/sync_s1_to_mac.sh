@@ -80,7 +80,7 @@ rsync -auvz --progress --files-from="$LIST_SPREAD" --exclude='*TEMPLATE*' --incl
 echo "[$(date)] Sync S1 -> Mac charts_1M (new-only)..."
 rsync -auvz --progress --files-from="$LIST_1M" --include='*.html' --exclude='*' -e "$RSYNC_SSH" "$S1:$RSYNC_1M/" "$DST_CHARTS" 2>&1 | tail -n 20
 echo "[$(date)] Sync S1 -> Mac S6_365 365D+GS verdicts (new-only)..."
-rsync -auvz --progress --files-from="$LIST_S6" --include='*.json' --exclude='*' -e "$RSYNC_SSH" "$S1:$RSYNC_S6/" "$DST_S6" 2>&1 | tail -n 10
+rsync -auvz --progress --files-from="$LIST_S6" --include='*.json' --include='*.md' --exclude='*' -e "$RSYNC_SSH" "$S1:$RSYNC_S6/" "$DST_S6" 2>&1 | tail -n 10
 echo "[$(date)] Mac sync done: $(ls -lh "$DST"*.xlsx 2>&1 | wc -l) xlsx, $(ls -lh "$DST"*.html 2>&1 | wc -l) html in SPREADSHEETS, $(ls -lh "$DST_CHARTS"*.html 2>&1 | wc -l) charts in charts_1M"
 
 # BADZIP FIX 2026-09-29: xlsx sources are atomic-writers only (see tools/xlsx_atomic.py).
