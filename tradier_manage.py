@@ -23810,7 +23810,6 @@ class StockStrategy:
         _last_red_px = float(getattr(position, 'last_reduction_price', 0) or 0)
         _t2_pct_t = _cfg_auto('REENTRY_TIER2_PRICE_PCT_TRADIER', 0.003)
         _t2_min_t = _cfg_auto('REENTRY_TIER2_MIN_MINUTES_TRADIER', 10.0)
-        _t2_max_t = _cfg_auto('REENTRY_TIER2_MAX_MINUTES_TRADIER', 120.0)
         _t2_size_t = _cfg_auto('REENTRY_TIER2_SIZE_MULT_TRADIER', 0.8)
         k_5m_t2 = float(i.get('k_5m', 50) or 50); k_5m_prev_t2 = float(i.get('k_5m_prev', 50) or 50); k_15m_t2 = float(i.get('k_15m', 50) or 50)
         if _last_red_px > 0 and last_red_age_min >= _t2_min_t and last_red_age_min < 1200:
@@ -23823,12 +23822,7 @@ class StockStrategy:
                 _t2_qty_t = max(1.0, _t2_weekly * _t2_scale * float(_t2_size_t))
                 logger.warning(f"[TIER2_CHASE] {'LONG' if is_long else 'SHORT'} {symbol}: Trend past exit {_last_red_px:.2f}→{current_price:.2f} ({last_red_age_min:.0f}min) weekly={_t2_weekly:.1f} scale={_t2_scale:.2f} chase at {_t2_size_t*100:.0f}% qty={_t2_qty_t:.2f}")
                 return "REENTRY_OPEN", f"TIER2_CHASE_exit{_last_red_px:.2f}_cur{current_price:.2f}_t{last_red_age_min:.0f}m_w{_t2_weekly:.1f}_s{_t2_scale:.2f}", 75.0, _t2_qty_t
-            if last_red_age_min >= _t2_max_t and _not_exh_t:
-                _t2f_weekly = _weekly_max_shares_tradier(position, current_price, symbol, current_account.get('') or 'trb')
-                _t2f_scale, _, _ = _reentry_stdev_bounce_combined_scale(i or {}, is_long, last_red_age_min / 60.0)
-                _forced_qty_t = max(1.0, _t2f_weekly * max(0.10, _t2f_scale * 0.5))
-                logger.warning(f"[TIER2_FORCED] {'LONG' if is_long else 'SHORT'} {symbol}: {last_red_age_min:.0f}min overdue weekly={_t2f_weekly:.1f} scale={_t2f_scale:.2f} — forced min reentry qty={_forced_qty_t:.2f}")
-                return "REENTRY_OPEN", f"TIER2_FORCED_{last_red_age_min:.0f}min_exit{_last_red_px:.2f}", 60.0, _forced_qty_t
+            # 2026-10-07 USER KILL: TIER2_FORCED (time-based reopen) DELETED — reentry is ALWAYS technical and ONLY on trend continuation.
             if last_red_age_min >= 60.0:
                 logger.warning(f"⚠️ [REENTRY_OVERDUE] {symbol}: {last_red_age_min:.0f}min since exit at {_last_red_px:.2f}, waiting! k5m={k_5m_t2:.0f}")
             elif last_red_age_min >= 30.0:

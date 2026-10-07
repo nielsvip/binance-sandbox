@@ -79,7 +79,14 @@ import dataclasses
 import datetime
 import itertools
 import queue
+import signal as _sig
 from pathlib import Path
+from tools.v15_shutdown import V15Shutdown
+_SHUTDOWN = {"v": False}  # USER 2026-10-07: SIGTERM/SIGINT -> finish cell/chunk, persist, exit (THROTTLE instead of OOM)
+def _sig_shutdown(signum, frame):
+    _SHUTDOWN["v"] = True
+    try: print(f"[shutdown] signal {signum} -> will exit at next cell/chunk boundary", flush=True)
+    except Exception: pass
 
 # Spec stall guard: >10s on a cell -> RED + reason, continue. 0.07 turned every eval slower than 70ms into a fake 0.0 delta.
 GREY_SKIP_RGB = {"FFBFBFBF", "00BFBFBF"}  # template switch-name font = skip row (tools/v15_template_fix.py sets it)
@@ -2862,9 +2869,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             finally:
                 ex.shutdown(wait=False)
         _span = {"v": None, "done": False}
-        def _eval_365(ov):
-            if os.environ.get("V15_SKIP_365D_AT_DONE") == "1":
-                return None, None
+        def _ensure_365prep():
             if not _span["done"]:
                 _span["v"], _span["done"] = _npz_span_days(new_symside), True
                 try:  # USER 2026-10-06: the 365D slice is prepared ONCE and kept in RAM for every finalist
@@ -2873,6 +2878,52 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 except Exception as _pe365:
                     _span["prep"] = None
                     print(f"[DIAG-warn] 365D prepare failed ({_pe365}) — disk path per finalist", flush=True)
+        def _eval_many_365(items365, deadline):
+            # USER 2026-10-07: batched 365D dual-window scoring (was serial 1.5s x N) — same evaluator, same values
+            if os.environ.get("V15_SKIP_365D_AT_DONE") == "1" or not items365:
+                return [(None, None)] * len(items365)
+            _ensure_365prep()
+            if _SHUTDOWN["v"]:
+                raise V15Shutdown("shutdown before 365D batch")
+            _dl = min(deadline, _t.time() + max(60.0, 200.0 * (-(-len(items365) // 6) + 1)))
+            out365 = [(None, None)] * len(items365)
+            if _span.get("prep") is not None:
+                ex365 = _cf.ThreadPoolExecutor(max_workers=min(6, len(items365)))
+                try:
+                    futs = [ex365.submit(_vp.evaluate_prepared_sanitized, _span["prep"], dict(ov), 365) for ov, _k in items365]
+                    for _i, _f in enumerate(futs):
+                        try: out365[_i] = (_f.result(timeout=max(1.0, _dl - _t.time())), _span["v"])
+                        except Exception: out365[_i] = (None, _span["v"])
+                        if _SHUTDOWN["v"]:
+                            raise V15Shutdown("shutdown in 365D batch")
+                finally:
+                    try: ex365.shutdown(wait=False, cancel_futures=True)
+                    except Exception: pass
+            else:
+                for _i, (ov, _k) in enumerate(items365):
+                    if _SHUTDOWN["v"]:
+                        raise V15Shutdown("shutdown in 365D batch")
+                    if _t.time() > _dl:
+                        break
+                    try: out365[_i] = (_vp.evaluate_sanitized_with_timeout(new_symside, dict(ov), 365, timeout_sec=180), _span["v"])
+                    except Exception: pass
+            return out365
+        _last_diag_ckpt = {"t": 0.0}
+        def _diag_ckpt(delta):
+            # USER 2026-10-07: merge diagnose memo deltas + persist (throttled) — resume replays, never recomputes
+            try:
+                if delta.get("memo"): progress.setdefault("diagnose_memo", {}).update(delta["memo"])
+                if delta.get("m365"): progress.setdefault("diagnose_m365", {}).update(delta["m365"])
+                progress["diagnose_npz"] = _run_npz_short
+                if _t.time() - _last_diag_ckpt["t"] >= 10.0:
+                    _last_diag_ckpt["t"] = _t.time()
+                    _atomic_write_json(progress_path, progress)
+            except V15Shutdown: raise
+            except Exception: pass
+        def _eval_365(ov):
+            if os.environ.get("V15_SKIP_365D_AT_DONE") == "1":
+                return None, None
+            _ensure_365prep()
             r = None
             ex = _cf.ThreadPoolExecutor(max_workers=1)
             try:
@@ -2926,8 +2977,21 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                    "candidates": cands, "base_overrides": origin, "base_res": base_res, "bh": bh, "deadline": t0 + budget, "cat_side": map_key_for_symside(new_symside),
                    "eval_many": _eval_many, "eval_ledger": _eval_ledger, "eval_365": _eval_365, "qualifies_365": _qualifies_365d,
                    "eval_many_ledger": _eval_many_ledger if os.environ.get("V15_DIAG_AUTOPSY", "1") == "1" else None, "close": _close, "npz": _npzp, "is_long": new_symside.endswith("_LONG"),
-                   "log": lambda m: print(f"{m} [{new_symside}]", flush=True), "touch": _touch}
-        rep = _DR.run(_dr_ctx)
+                   "log": lambda m: print(f"{m} [{new_symside}]", flush=True), "touch": _touch,
+                   "shutdown_requested": lambda: _SHUTDOWN["v"], "checkpoint": _diag_ckpt, "eval_many_365": _eval_many_365,
+                   "resume_memo": (progress.get("diagnose_memo") or {}) if progress.get("diagnose_npz") == _run_npz_short else {},
+                   "resume_m365": (progress.get("diagnose_m365") or {}) if progress.get("diagnose_npz") == _run_npz_short else {}}
+        if _dr_ctx["resume_memo"] or _dr_ctx["resume_m365"]:
+            print(f"[DIAG] {new_symside} resuming with {len(_dr_ctx['resume_memo'])} memo + {len(_dr_ctx['resume_m365'])} m365 evals (replay, no recompute)", flush=True)
+        elif progress.get("diagnose_npz") and progress.get("diagnose_npz") != _run_npz_short:
+            progress.pop("diagnose_memo", None); progress.pop("diagnose_m365", None)
+            print(f"[DIAG] {new_symside} NPZ changed ({progress.get('diagnose_npz')} -> {_run_npz_short}) — diagnose memo wiped", flush=True)
+        try:
+            rep = _DR.run(_dr_ctx)
+        except V15Shutdown:
+            try: _maybe_write_json(force=True)
+            except Exception: pass
+            raise
         # ENCYCLOPEDIA v2 GRAPH SEARCH (tools/v15_graph_search.py, director 2026-10-06): group ablation + graph-guided fault paths +
         # dual-window (30D+365D) judge, continuing from the DIAGNOSE+REPAIR choice. DEFAULT OFF until the director approves
         # (V15_GRAPH_SEARCH=1 enables; V15_GRAPH_SEARCH_S budget, default 600 s, clipped to the 90-min herd cap).
@@ -3098,6 +3162,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             progress["diagnose_repair"]["graph_search"] = {k: v for k, v in rep["graph_search"].items() if k not in ("steps", "ablation_top", "macro")}
         progress["diagnose_repair"]["row_recommendations_top"] = (rep.get("row_recommendations") or [])[:25]
         progress["diagnose_repair"].update({"mode": mode, "applied": applied, "complete": True, "result_key": _sk(cumulative_overrides), "steps": [{k: s_.get(k) for k in ("phase", "round", "applied", "gain", "trades", "tim", "dd", "valid")} for s_ in rep.get("steps", [])]})
+        progress.pop("diagnose_memo", None); progress.pop("diagnose_m365", None); progress.pop("diagnose_npz", None)  # USER 2026-10-07: checkpoint served, keep JSON lean
         _maybe_write_json(force=True)
         print(f"[DIAG] {new_symside} {'APPLIED' if applied else 'kept origin'} gain {(rep.get('before') or {}).get('gain')} -> {cumulative_gain:.4f} changes={len(rep.get('changes') or [])} ({_t.time()-t0:.0f}s)", flush=True)
     # ── SEQUENTIAL FILL — USER 2026-09-29 late (BACKTEST_BIBLE §56 rev. 2026-09-29b), supersedes the R16/R17 tab-jump ──
@@ -4496,9 +4561,21 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             import concurrent.futures as _cf_live
             _ex_live = _cf_live.ThreadPoolExecutor(max_workers=1)
             try:
-                live_res = _ex_live.submit(live_evaluate, new_symside, dict(cumulative_overrides), args.window_days).result(timeout=LIVE_TIMEOUT)
-            except _cf_live.TimeoutError:
-                live_reason = f"live_evaluate timeout {LIVE_TIMEOUT:.0f}s"
+                _lf = _ex_live.submit(live_evaluate, new_symside, dict(cumulative_overrides), args.window_days)
+                _live_dl = time.time() + LIVE_TIMEOUT
+                while True:  # USER 2026-10-07: chunked wait (same LIVE_TIMEOUT) so SIGTERM exits in seconds, not 15 min
+                    if _SHUTDOWN["v"]:
+                        try: _atomic_write_json(progress_path, progress)
+                        except Exception: pass
+                        raise V15Shutdown("shutdown during LIVE verify")
+                    try:
+                        live_res = _lf.result(timeout=min(10.0, max(1.0, _live_dl - time.time())))
+                        break
+                    except _cf_live.TimeoutError:
+                        if time.time() >= _live_dl:
+                            live_reason = f"live_evaluate timeout {LIVE_TIMEOUT:.0f}s"
+                            break
+            except V15Shutdown: raise
             except Exception as _le:
                 live_reason = f"live_evaluate failed {_le}"[:80]
             finally:
@@ -7363,6 +7440,18 @@ def main():
     per_cell_timeout_sec = YELLOW_TIMEOUT  # spec YELLOW_TIMEOUT=0.1 for every cell (naked and yellow)
     # NEVER WAIT — hard YELLOW_TIMEOUT per cell, then mark cell+tab RED via _spec_mark_red, write -1/0, enqueue queue.Queue, plowing never blocks
     def _touch_heartbeat(msg: str):
+        if _SHUTDOWN["v"]:  # USER 2026-10-07: graceful exit — persist first, never corrupt (atomic tmp+rename)
+            try: _atomic_write_json(progress_path, progress)
+            except Exception: pass
+            try: heartbeat_path.write_text(f"{time.time():.0f} SHUTDOWN {msg}")
+            except: pass
+            raise V15Shutdown(f"shutdown at {msg}")
+        _slice_s = float(os.environ.get("V15_FILL_SLICE_S", "2400"))  # USER 2026-10-07: NO CALC >40 min — fill time-slices, resume is instant (holes-only)
+        if _slice_s > 0 and progress.get("final_gain") is None and progress.get("diagnose_repair") is None and (time.time() - _PILOT_T0) > _slice_s:
+            try: _atomic_write_json(progress_path, progress)
+            except Exception: pass
+            print(f"[SLICE] {new_symside} fill hit {_slice_s:.0f}s cap — clean exit, scheduler relaunches into holes-only resume", flush=True)
+            sys.exit(11)
         try:
             heartbeat_path.write_text(f"{time.time():.0f} {msg}")
         except: pass
@@ -10105,4 +10194,11 @@ def main():
         print(f"[queue-next-warn] {e}", flush=True)
 
 if __name__ == "__main__":
-    main()
+    try:
+        _sig.signal(_sig.SIGTERM, _sig_shutdown)
+        _sig.signal(_sig.SIGINT, _sig_shutdown)
+    except Exception: pass
+    try:
+        main()
+    except V15Shutdown:
+        sys.exit(143)

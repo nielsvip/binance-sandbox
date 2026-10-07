@@ -3247,7 +3247,6 @@ class AdvancedSignalRater:
         _bounce_enabled = getattr(config, 'BOUNCE_REENTRY_ENABLED', True)
         _tier2_price_pct = getattr(config, 'REENTRY_TIER2_PRICE_PCT', 0.003)
         _tier2_min_min = getattr(config, 'REENTRY_TIER2_MIN_MINUTES', 10.0)
-        _tier2_max_min = getattr(config, 'REENTRY_TIER2_MAX_MINUTES', 120.0)
         _tier1_forced = False
         _tier2_chase = False
         if _bounce_enabled and not is_exit and min_since_red < 120 and min_since_red > 0:
@@ -15892,7 +15891,6 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                         _px_cross_pct = 0.001
                         _t2_price_pct = getattr(config, 'REENTRY_TIER2_PRICE_PCT', 0.003)
                         _t2_min_min = getattr(config, 'REENTRY_TIER2_MIN_MINUTES', 10.0)
-                        _t2_max_min = getattr(config, 'REENTRY_TIER2_MAX_MINUTES', 120.0)
                         _px_crossed = (is_long and current_price > _reentry_px * (1.0 + _px_cross_pct)) or (not is_long and current_price < _reentry_px * (1.0 - _px_cross_pct))
                         _trend_past_exit = (is_long and current_price > _reentry_px * (1.0 + _t2_price_pct)) or (not is_long and current_price < _reentry_px * (1.0 - _t2_price_pct))
                         # 2026-10-06 NO-1m/3m PARITY (NOTE_3M_REENABLE): exhausted/momentum legs read 15m
@@ -15927,14 +15925,7 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                             reason = f"TIER2_CHASE_REENTRY_exit{_reentry_px:.4f}_cur{current_price:.4f}_k3m{_px_k3m:.0f}_min{_min_since_exit_epq:.0f}"
                             rec = "BUY" if is_long else "SELL"
                             logger.warning(f"[TIER2_CHASE] {position_key}: Trend continued past exit {_reentry_px:.6f}→{current_price:.6f} ({_min_since_exit_epq:.0f}min) — CHASE ENTRY at 80% (k3m={_px_k3m:.0f})")
-                        elif _min_since_exit_epq >= _t2_max_min and not _px_exhausted and _reentry_px > 0:
-                            should_trade = True
-                            _dc_breakout_entry = True
-                            _reentry_tier = 'TIER2_FORCED'
-                            score = max(score, 15.0)
-                            reason = f"TIER2_FORCED_REENTRY_{_min_since_exit_epq:.0f}min_exit{_reentry_px:.4f}_cur{current_price:.4f}"
-                            rec = "BUY" if is_long else "SELL"
-                            logger.warning(f"[TIER2_FORCED] {position_key}: {_min_since_exit_epq:.0f}min overdue — FORCED minimum reentry (k3m={_px_k3m:.0f})")
+                        # 2026-10-07 USER KILL: TIER2_FORCED (time-based reopen) DELETED — reentry is ALWAYS technical (TIER1 cross / TIER2 chase) and ONLY on trend continuation. Age alone never reopens.
                         _warn_min = getattr(config, 'REENTRY_ESCALATION_WARN_MIN', 30.0)
                         _crit_min = getattr(config, 'REENTRY_ESCALATION_CRIT_MIN', 60.0)
                         if not should_trade and _min_since_exit_epq >= _crit_min:
@@ -16510,9 +16501,8 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                         _t1_floor = config.START_POSITION_SIZE / current_price * _t1_mult if current_price > 0 else qty
                         qty = max(qty, _t1_floor, _re_amount if _re_amount > 0 else 0)
                         logger.info(f"[TIER1_SIZE] {position_key}: qty={qty:.4f} ({_t1_mult}x SPS re_amt={_re_amount:.4f})")
-                    elif _reentry_tier in ('TIER2', 'TIER2_FORCED'):
+                    elif _reentry_tier == 'TIER2':
                         _t2_mult = getattr(config, 'REENTRY_TIER2_SIZE_MULT', 0.8)
-                        if _reentry_tier == 'TIER2_FORCED': _t2_mult = 0.5
                         _t2_floor = config.START_POSITION_SIZE / current_price if current_price > 0 else qty
                         qty = max(_t2_floor, _min_qty_sym, _re_amount if _re_amount > 0 else 0)
                         logger.info(f"[{_reentry_tier}_SIZE] {position_key}: qty={qty:.4f} (SPS floor re_amt={_re_amount:.4f})")

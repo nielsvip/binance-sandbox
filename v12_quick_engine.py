@@ -5251,7 +5251,7 @@ class QuickConfig:
     STDEV_SLOPE_SIZING_MODE: str = "slope_to_top"
     SLOPE_SIZING_LIVE_TWIN_ENABLED: bool = False  # [UNWV/001] live-faithful band/stdev slope sizing (vec_decisions/slope_sizing_live.py); OFF = legacy simplified stdev block (baseline unchanged)
     BB_FROZEN_STOP_ENABLED: bool = False  # auto-wired 625
-    STOCKS_REENTRY_LIVE_SOURCES_ENABLED: bool = True  # [C2 q002] stocks live reentry ladder pathways on 15m+ data (PRICE_CROSS_BACK band, TIER2_FORCED, EMA200_1H_BOUNCE)
+    STOCKS_REENTRY_LIVE_SOURCES_ENABLED: bool = True  # [C2 q002] stocks live reentry ladder pathways on 15m+ data (PRICE_CROSS_BACK band, EMA200_1H_BOUNCE). 2026-10-07: TIER2_FORCED KILLED (USER).
     STOCKS_LIVE_TWINS_ENABLED: bool = False  # [C2 q007 -> DEF2/001 default OFF/neutral] stocks DELTA_EXIT_DC_FLOOR hold + STDEV_BREAKOUT size twin (vec_decisions/stocks_live_twins.py); True = live-faithful
     STOCKS_LIVE_ENTRY_STACK_ENABLED: bool = False  # [C2 q003] stocks fresh-OPEN signal built from the live per-source stack (vec_decisions/live_stocks_entry.py); ON also activates the WT_DC live gates
     STOCKS_FRESH_ENTRY_TREND_GATES_ENABLED: bool = False  # N5 006 MASTER (default OFF = neutral): stock fresh-open trend gates (HTF/D_TREND/STRENGTH/WT_D_EXHAUST/CT_*/CLENOW) applied on final entry signal; each gate also needs its own switch
@@ -13816,7 +13816,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     except Exception:
                         pass
             # [C2 q002] STOCKS live reentry ladder pathways computable on 15m+ data (tradier_manage.py evaluate_reentry): PRICE_CROSS_BACK (incl. 0.3% below-exit band),
-            # TIER2_FORCED (120 min..20 h after the exit, regardless of price), EMA200_1H_BOUNCE. Switch STOCKS_REENTRY_LIVE_SOURCES_ENABLED (default True for MODE=tradier).
+            # EMA200_1H_BOUNCE. 2026-10-07 USER KILL: TIER2_FORCED DELETED. Switch STOCKS_REENTRY_LIVE_SOURCES_ENABLED (default True for MODE=tradier).
             if (not fire and has_closed_before and trades and str(getattr(cfg, 'MODE', 'crypto')) == 'tradier'
                     and bool(getattr(cfg, 'STOCKS_REENTRY_LIVE_SOURCES_ENABLED', True))):
                 try:
