@@ -47,6 +47,13 @@ FILTER_TF_MAP = {
     "BB_RECOVERY_ENTRY_FILTER_TF": ("entry", "bb_reclaim"),
     "BB_RECOVERY_FILTER_TF": ("entry", "bb_reclaim"),  # doc: "same as above but generic"
     "DC_BREAK_FILTER_TF": ("entry", "dc_break"),
+    # Batch 1 (2026-10-07 NONE wiring): live-faithful twins of the ez batch1 entry veto
+    # (ez_manage._batch1_template_live_gate: TF-gated wt1>wt2 long / < short, OFF inert).
+    # NOTE: same-name inline legs in v12 _batch1_template_wiring are DISABLED (passthrough
+    # since the 2026-09-28 purge) — this MAP is the live path, do NOT add inline duplicates.
+    "DELTA_ENGINE_FILTER_TF": ("entry", "wt_cross_side"),
+    "DC_MOMENTUM_BOTA_SCORER_FILTER_TF": ("entry", "wt_cross_side"),
+    "CIRCUIT_SHARPE_GATES_FILTER_TF": ("entry", "wt_cross_side"),
     "BT_WT_CROSS_LADDER_FILTER_TF": ("entry", "wt_cross_side"),
     "DC_BREACH_REDUCE_FILTER_TF": ("reduce_confirm", "dc_breach_against"),
     "BREAKEVEN_GAIN_EROSION_FILTER_TF": ("erosion_confirm", "wt_against"),
