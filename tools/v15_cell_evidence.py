@@ -6,6 +6,7 @@ the missing cell map: TAB!SWITCH=cand@HEADER -> {pos_sym, n_sym, avg_delta},
 counted over sym_sides with a REAL numeric evaluated delta (None skipped).
 
 Usage: python3 tools/v15_cell_evidence.py [progress_dir] [out_json]
+progress_dir may be comma-separated (union, newest file wins per sym_side).
 """
 import glob
 import json
@@ -27,7 +28,16 @@ def cat_of(symside):
 def main():
     pdir = sys.argv[1] if len(sys.argv) > 1 else "data/reports/lifecycle_pilot"
     out = sys.argv[2] if len(sys.argv) > 2 else "data/avg_delta_pos_sym_cell.json"
-    files = sorted(glob.glob(os.path.join(pdir, "*_progress.json")))
+    pdirs = [p.strip() for p in str(pdir).split(",") if p.strip()]
+    cand = [f for p in pdirs for f in glob.glob(os.path.join(p, "*_progress.json"))]
+    files, _seen = [], set()
+    for f in sorted(cand, key=lambda p: os.path.getmtime(p) if os.path.exists(p) else 0, reverse=True):
+        ss0 = os.path.basename(f).replace("_v14_progress.json", "")
+        if ss0 in _seen:
+            continue
+        _seen.add(ss0)
+        files.append(f)
+    files.sort()
     agg = defaultdict(lambda: [set(), 0, 0.0])
     nfiles = 0
     for f in files:

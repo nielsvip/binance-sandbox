@@ -9,6 +9,8 @@
 # tools/v15_daily_chain_mac_apply.sh syncs report promoted_keys at 13:20Z) -> 3 cat_side_defaults_4 (+ sweep copy)
 # -> 4 avg_delta_pos_sym.json -> 5 zero-delta watchdog (non-fatal) -> 6 push to s2/s5 + kv sync + md5 verify
 # -> 6b tradeable check (non-fatal; SYSTEM_ERROR rows for tradeable keys with <10 trades/30D or TIM<20%) -> 7 done-stamp json.
+# 4b (2026-10-07): cell-evidence regen (zero-skip maps) over ALL local progress dirs (campaign dirs move; glob, don't pin)
+# + push data/avg_delta_pos_sym_cell.json + data/cell_evidence/*.json to s2/s5 so every host's pilots skip condemned cells.
 # Any failed step stops the chain (except 5). DRYRUN=1: rebuild into /tmp + template writer WITHOUT --apply, nothing else written/pushed.
 # Never relies on *latest* names: the dated aggregate is passed explicitly through every step.
 set -u
@@ -81,6 +83,9 @@ if [ "$DRYRUN" = 1 ]; then
   log "step3 cat_side_defaults_4 SKIPPED (DRYRUN)"
   log "step4 pos_sym json (DRYRUN -> $WORK/avg_delta_pos_sym.json)"
   timeout 300 "$PY" -u tools/v15_possym_json_from_agg.py "$AGG" "$WORK/avg_delta_pos_sym.json" || fail 4 "possym rc=$?"
+  log "step4b cell evidence (DRYRUN -> $WORK/avg_delta_pos_sym_cell.json)"
+  _pdirs=$(ls -d /home/niels/v15_*/ data/reports/lifecycle_pilot 2>/dev/null | tr '\n' ',' | sed 's/,$//')
+  timeout 900 "$PY" -u tools/v15_cell_evidence.py "$_pdirs" "$WORK/avg_delta_pos_sym_cell.json" || fail 4b "cell_evidence rc=$?"
   log "step5 zero-delta watchdog (DRYRUN, report-only)"
   timeout 600 "$PY" -u tools/v15_zero_delta_watchdog.py --agg "$AGG" || log "step5 watchdog rc=$? (non-fatal)"
   log "step6 push SKIPPED (DRYRUN) targets=$TARGETS"
@@ -104,6 +109,14 @@ timeout 300 "$PY" -u tools/v15_possym_json_from_agg.py "$AGG" data/avg_delta_pos
 cp "$AGG" SPREADSHEETS/v15_avg_delta_latest.xlsx && cp "$AGG" SPREADSHEETS/v15_vector_delta_latest.xlsx || fail 4 "latest copies"
 STEPS_OK="$STEPS_OK,4"
 
+# 4b. cell-evidence regen (zero-skip runtime maps) + verify at least one cat_side map exists
+log "step4b v15_cell_evidence"
+_pdirs=$(ls -d /home/niels/v15_*/ data/reports/lifecycle_pilot 2>/dev/null | tr '\n' ',' | sed 's/,$//')
+[ -n "$_pdirs" ] || fail 4b "no progress dirs found"
+timeout 900 "$PY" -u tools/v15_cell_evidence.py "$_pdirs" data/avg_delta_pos_sym_cell.json || fail 4b "cell_evidence rc=$?"
+ls data/cell_evidence/*.json >/dev/null 2>&1 || fail 4b "no data/cell_evidence/*.json written"
+STEPS_OK="$STEPS_OK,4b"
+
 # 5. zero-delta watchdog (non-fatal)
 log "step5 zero-delta watchdog"
 timeout 600 "$PY" -u tools/v15_zero_delta_watchdog.py --agg "$AGG" --apply || log "step5 watchdog rc=$? (non-fatal, chain continues)"
@@ -113,6 +126,7 @@ STEPS_OK="$STEPS_OK,5"
 FILES="SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx"
 FILES="$FILES SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx"
 FILES="$FILES data/cat_side_defaults_4.json data/sweep_defaults/cat_side_defaults_4.json data/avg_delta_pos_sym.json"
+FILES="$FILES data/avg_delta_pos_sym_cell.json data/cell_evidence/*.json"
 FILES="$FILES $AGG SPREADSHEETS/v15_avg_delta_latest.xlsx SPREADSHEETS/v15_vector_delta_latest.xlsx"
 FILES="$FILES data/reports/lifecycle_pilot/disabled_switches_never_pos_per_category.json data/cat_side_promotions.json data/avg_delta_round_ledger.json"
 for F in $FILES; do [ -f "$F" ] || fail 6 "push file missing: $F"; done

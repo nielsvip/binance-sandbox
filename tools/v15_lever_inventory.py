@@ -67,6 +67,9 @@ def build(d):
     _builds: dict = {}
     for t in thoughts:
         _builds[t.get("gs_build", "?")] = _builds.get(t.get("gs_build", "?"), 0) + 1
+    for t in thoughts:
+        for _sk in t.get("phase_skips") or []:
+            _builds[f"skip:{_sk}"] = _builds.get(f"skip:{_sk}", 0) + 1
     inv = {"n_sides": len(thoughts), "min_n": MIN_N, "builds": _builds, "by_fault": {}, "by_switch": {}, "by_family": {}}
     for (cat, fault), rows in sorted(per_fault.items()):
         by_lev = defaultdict(list)

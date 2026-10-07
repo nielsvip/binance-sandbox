@@ -276,6 +276,16 @@ class _Search:
                 missing.append((k, self.sanitize(ov)))
         if not missing:
             return
+        if len(missing) > 48:  # USER 2026-10-07: cap the prefetch (1600x365D ate the whole budget) — top-48 by 30D quality only
+            _mkeys = {}
+            for m, ov, c in results:
+                if m is not None:
+                    try:
+                        _mkeys[self._k(self.sanitize(ov))] = quality_key(m)
+                    except Exception:
+                        pass
+            missing.sort(key=lambda ko: _mkeys.get(ko[0], (False, False, 0, 0, -1e9, 0)), reverse=True)
+            missing = missing[:48]
         batched = self.ctx.get("eval_many_365")
         if batched is None:  # non-pilot callers keep today's exact serial behavior
             for k, ov in missing:

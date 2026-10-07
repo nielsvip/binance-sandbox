@@ -216,7 +216,8 @@ def render(ss, verdict, gs):
                "m365": {k: m365.get(k) for k in ("gain", "trades", "tim", "dd")} if m365 else None,
                "q365_after": g.get("q365_after"), "accepted": g.get("accepted"),
                "accept_reason": g.get("accept_reason"), "tradeable_365": tradeable, "gs_build": g.get("gs_build"),
-               "heal_rounds": g.get("heal_rounds"), "monthly": g.get("monthly")}
+               "heal_rounds": g.get("heal_rounds"), "monthly": g.get("monthly"), "phase_secs": g.get("phase_secs"),
+               "phase_skips": g.get("phase_skips")}
     return "\n".join(L) + "\n", thought
 
 

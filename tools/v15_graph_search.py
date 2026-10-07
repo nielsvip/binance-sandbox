@@ -60,7 +60,7 @@ ABLATION_FLAGS = ("ABLATION_DISABLE_REENTRY", "ABLATION_DISABLE_AUGMENTATION", "
 # of deep_open()'s all-gates-at-once blast. Parent/user flips for reruns after
 # worst_first. Env override: V15_GS_FILTER_SERIES=1.
 FILTER_SERIES_ENABLED = os.environ.get("V15_GS_FILTER_SERIES", "0") == "1"
-BUILD = "heal2-20261007"  # USER 2026-10-07: bump on ANY behavior change; stamped into every report (gs_build)
+BUILD = "heal3-20261007"  # USER 2026-10-07: bump on ANY behavior change; stamped into every report (gs_build)
 PHASE_PLAN = (("ABLATE", 0.16, 60), ("CULPRITS", 0.16, 60), ("PATHS", 0.30, 90), ("REORDER", 0.09, 25), ("POLISH", 0.06, 15), ("HEAL", 0.23, 90))
 
 
@@ -1054,9 +1054,10 @@ def run(ctx: dict) -> dict:
     scr, faults, mix = scr0, faults0, mix0
     box_ends = {}  # USER 2026-10-07: absolute phase schedule (it0 guaranteed, slosh flows forward)
     _r2, _te = S.deadline - time.time(), time.time()
+    _mscale = min(1.0, max(0.25, (S.budget + reserve) / 1200.0))  # minimums degrade gracefully on small budgets
     for _nm, _fr, _mn in PHASE_PLAN:
         _te += max(0.0, _r2) * _fr
-        box_ends[_nm] = (_te, _mn)
+        box_ends[_nm] = (_te, max(10.0, _mn * _mscale))
     rep["phase_secs"], rep["phase_skips"] = {}, []
     for it in range(4):
         if S._shutdown_hit():

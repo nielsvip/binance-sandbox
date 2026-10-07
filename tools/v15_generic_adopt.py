@@ -49,6 +49,9 @@ def generic_better(g, gm, b, qg, qb):
     if (g.get("gain") or -1e9) >= (b.get("gain") or -1e9) + GAP_PP and (g.get("dd") or 1e9) <= (b.get("dd") or 1e9) + DD_TOL \
             and (g.get("trades") or 0) >= 30 and g.get("valid"):
         return True, f"+{(g['gain'] - b['gain']):.2f}pp@365D"
+    if not g.get("valid") and not b.get("valid") and (g.get("gain") or -1e9) >= (b.get("gain") or -1e9) + 2.0 \
+            and (g.get("dd") or 1e9) <= (b.get("dd") or 1e9) + 5.0 and (g.get("trades") or 0) >= 30:
+        return True, f"damage-reduction@365D +{(g['gain'] - b['gain']):.2f}pp (both vomit)"
     return False, "generic-not-better"
 
 
@@ -160,27 +163,35 @@ def run_side(ss, outdir, verdict_dir, max_bisect=20):
     rep["candidates"] = C
     rep["n_evals_365"] = ev365[0]
     log(f"bisect done: {len(C)} candidate switches in {ev365[0]} 365D evals")
-    if not C:
-        rep["reason"] = "generic better but no single/small cause (diffuse/interaction)"
-        (outdir / f"{ss}_adopt.json").write_text(json.dumps(rep, indent=1, default=str))
-        return rep
+    block_mode = not C
+    if block_mode:
+        rep["reason"] = "generic better but no single/small cause (diffuse/interaction) — full-generic block reuses G30/G365 (zero new evals)"
+        C = [{"switch": k, "book": book.get(k), "generic": generic.get(k), "gain365": None} for k in D]
     ov = dict(book)
     for c in C:
         ov[c["switch"]] = c["generic"]
-    r = one(prep30, ov, 30, 120.0)
-    A30 = {"gain": (r or {}).get("gain_pct"), "trades": (r or {}).get("trades"), "tim": (r or {}).get("tim_pct"), "dd": (r or {}).get("max_dd_pct")}
+    if block_mode:
+        A30, A365 = dict(G30), dict(G365)
+    else:
+        r = one(prep30, ov, 30, 120.0)
+        A30 = {"gain": (r or {}).get("gain_pct"), "trades": (r or {}).get("trades"), "tim": (r or {}).get("tim_pct"), "dd": (r or {}).get("max_dd_pct")}
+        r = one(prep365, ov, 365, 300.0)
+        A365 = metrics365(r or {})
     rep["A30"] = A30
-    rep["n_evals_30"] = 2
+    rep["n_evals_30"] = 1 if block_mode else 2
     m = DR.metrics({"gain_pct": A30.get("gain"), "trades": A30.get("trades"), "tim_pct": A30.get("tim"), "max_dd_pct": A30.get("dd"), "valid": True}, None)
     ok30 = DR.compliant(m) and (A30.get("gain") or -1e9) >= (B30.get("gain") or -1e9) - REGRESS_30D
-    r = one(prep365, ov, 365, 300.0)
-    A365 = metrics365(r or {})
     rep["A365"] = A365
-    rep["n_evals_365"] = ev365[0] + 1
+    rep["n_evals_365"] = ev365[0] + (0 if block_mode else 1)
     log(f"adopt-set: 30D {B30.get('gain')}->{A30.get('gain')} 365D {B365.get('gain')}->{A365.get('gain')}")
-    if ok30 and (A365.get("gain") or -1e9) >= (B365.get("gain") or -1e9) + 0.3:
+    up365 = (A365.get("gain") or -1e9) >= (B365.get("gain") or -1e9) + 0.3
+    up30 = (A30.get("gain") or -1e9) >= (B30.get("gain") or -1e9) - 1e-9
+    if ok30 and up365:
         rep["verdict"] = "ADOPT"
-    elif (A365.get("gain") or -1e9) >= (B365.get("gain") or -1e9) + 0.3:
+    elif up365 and up30:
+        rep["verdict"] = "ADOPT_UNCOMPLIANT"
+        rep["reason"] = "both windows up, 30D still red (progress, needs more work)"
+    elif up365:
         rep["verdict"] = "TRADEOFF_30D_DOWN"
     else:
         rep["verdict"] = "KEEP_BOOK"
