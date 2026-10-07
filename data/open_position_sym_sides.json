@@ -1,5 +1,5 @@
 {
- "at": "2026-10-07T06:20:01.031398+00:00",
+ "at": "2026-10-07T06:40:01.484761+00:00",
  "source": "Mac {acct}/{long,short}_positions.json |positionAmt|>0",
  "sym_sides": [
   "1INCHUSDT_SHORT",
@@ -23,6 +23,7 @@
   "A_LONG",
   "BWXT_SHORT",
   "CLS_LONG",
+  "COMPUSDT_SHORT",
   "COTIUSDT_SHORT",
   "CRWD_LONG",
   "DASHUSDT_SHORT",
@@ -71,7 +72,6 @@
   "VT_LONG",
   "WDAY_SHORT",
   "XMRUSDT_SHORT",
-  "XRPUSDC_SHORT",
   "XTZUSDT_SHORT",
   "YFIUSDT_SHORT",
   "ZECUSDC_SHORT",
@@ -80,7 +80,6 @@
  "by_account": {
   "ang": [
    "ARKMUSDT_SHORT",
-   "ARPAUSDT_SHORT",
    "ATOMUSDT_SHORT",
    "DOTUSDT_SHORT",
    "NEARUSDC_LONG"
@@ -96,7 +95,6 @@
    "DASHUSDT_SHORT",
    "HYPEUSDT_LONG",
    "HYPEUSDT_SHORT",
-   "XRPUSDC_SHORT",
    "ZECUSDC_SHORT"
   ],
   "inf": [
@@ -115,6 +113,7 @@
    "ADAUSDC_LONG",
    "ADAUSDC_SHORT",
    "AXSUSDT_SHORT",
+   "COMPUSDT_SHORT",
    "DOTUSDT_SHORT",
    "GALAUSDT_SHORT",
    "KMNOUSDT_LONG",
