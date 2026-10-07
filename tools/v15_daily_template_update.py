@@ -383,6 +383,8 @@ def apply_tab(ws, stats, win, ledger_cs, round_changed, rep, ledger_out, cleared
             continue
         tgt = [r for r in rows if norm(ws.cell(row=r, column=2).value) == w[0]]
         if not tgt:
+            if allow_repair and cs is not None:
+                _repair_default(ws, tab, a, rows, c_isd, cs, rep)
             continue
         best = tgt[0]
         cur = [r for r in rows if str(ws.cell(row=r, column=c_isd).value or "").strip().upper() == "YES"]
