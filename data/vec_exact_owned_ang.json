@@ -90,5 +90,25 @@
  "ang:IOTAUSDT_LONG": {
   "at": "2026-10-07T15:55:35Z",
   "reason": "B12"
+ },
+ "ang:ADAUSDC_LONG": {
+  "at": "2026-10-07T17:30:27Z",
+  "reason": "ENTRY_SOURCE_UNKNOWN"
+ },
+ "ang:BNBUSDC_LONG": {
+  "at": "2026-10-07T17:30:27Z",
+  "reason": "B_DELTAENTRY"
+ },
+ "ang:EDUUSDT_LONG": {
+  "at": "2026-10-07T17:30:34Z",
+  "reason": "B_EMA20SLOPE"
+ },
+ "ang:AAPLUSDT_LONG": {
+  "at": "2026-10-07T17:30:44Z",
+  "reason": "DC_BREAKOUT_ENTRY"
+ },
+ "ang:RENDERUSDT_LONG": {
+  "at": "2026-10-07T17:30:47Z",
+  "reason": "LEGACY_PSR_REENTRY"
  }
 }

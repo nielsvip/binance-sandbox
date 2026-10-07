@@ -119,24 +119,12 @@
   "at": "2026-10-07T16:25:54Z",
   "reason": "B12"
  },
- "men:ENJUSDT_LONG": {
-  "at": "2026-10-07T16:38:07Z",
-  "reason": "VOL_SPIKE_REVERSAL"
- },
  "men:ADAUSDC_LONG": {
   "at": "2026-10-07T17:01:20Z",
   "reason": "B12"
  },
- "men:EGLDUSDT_SHORT": {
-  "at": "2026-10-07T17:15:53Z",
-  "reason": "DC_BREAKOUT_ENTRY"
- },
- "men:BTCUSDC_SHORT": {
-  "at": "2026-10-07T17:15:53Z",
-  "reason": "B_KZONE"
- },
- "men:BBUSDT_LONG": {
-  "at": "2026-10-07T17:16:22Z",
-  "reason": "B_SMA200DIST"
+ "men:BNBUSDC_LONG": {
+  "at": "2026-10-07T17:31:12Z",
+  "reason": "B_DELTAENTRY"
  }
 }
