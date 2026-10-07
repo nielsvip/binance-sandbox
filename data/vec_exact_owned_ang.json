@@ -43,10 +43,6 @@
   "at": "2026-10-07T00:16:23Z",
   "reason": "B_KZONE"
  },
- "ang:ASTSUSDT_LONG": {
-  "at": "2026-10-07T00:18:43Z",
-  "reason": "B14"
- },
  "ang:ARUSDT_LONG": {
   "at": "2026-10-07T00:46:16Z",
   "reason": "B_KZONE"
@@ -91,28 +87,12 @@
   "at": "2026-10-07T08:15:23Z",
   "reason": "B_SMA200DIST"
  },
- "ang:ACEUSDT_SHORT": {
-  "at": "2026-10-07T08:15:27Z",
-  "reason": "DC_BREAKOUT_ENTRY"
- },
- "ang:EGLDUSDT_SHORT": {
-  "at": "2026-10-07T08:16:15Z",
-  "reason": "DC_BREAKOUT_ENTRY"
- },
- "ang:APEUSDT_SHORT": {
-  "at": "2026-10-07T08:30:58Z",
-  "reason": "B_KZONE"
- },
- "ang:BNBUSDC_LONG": {
-  "at": "2026-10-07T08:45:06Z",
-  "reason": "B12"
- },
- "ang:RLCUSDT_LONG": {
-  "at": "2026-10-07T08:46:30Z",
-  "reason": "B_EMA20SLOPE"
- },
  "ang:ZECUSDC_LONG": {
   "at": "2026-10-07T08:46:34Z",
   "reason": "B_SRS_ENTRY"
+ },
+ "ang:SANDUSDT_LONG": {
+  "at": "2026-10-07T09:03:58Z",
+  "reason": "B_KZONE"
  }
 }
