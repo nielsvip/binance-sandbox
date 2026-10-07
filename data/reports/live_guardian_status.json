@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-07T02:46:42Z",
+ "ts": "2026-10-07T03:07:25Z",
  "dry_run": false,
  "regime_start": "2026-10-06T18:48:00Z",
  "thresholds": {
@@ -28,11 +28,11 @@
   "fin": {
    "fills_6h": 10,
    "open_positions": 5,
-   "unrealised_usd": -0.05,
+   "unrealised_usd": -0.22,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 3,
-    "state_divergent": 3,
+    "live_vec_decisions": 2,
+    "state_divergent": 2,
     "filled": 0,
     "refused_non_safety": 0,
     "safety_refusals": 0,
@@ -41,62 +41,62 @@
    }
   },
   "men": {
-   "fills_6h": 78,
-   "open_positions": 15,
-   "unrealised_usd": 0.93,
+   "fills_6h": 76,
+   "open_positions": 17,
+   "unrealised_usd": 1.22,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 14,
-    "state_divergent": 8,
-    "filled": 3,
+    "live_vec_decisions": 12,
+    "state_divergent": 7,
+    "filled": 2,
     "refused_non_safety": 0,
     "safety_refusals": 0,
     "not_filled_no_log": 3,
-    "vec_exact_fills_without_decision": 57
+    "vec_exact_fills_without_decision": 58
    }
   },
   "ang": {
-   "fills_6h": 33,
-   "open_positions": 13,
-   "unrealised_usd": 2.37,
+   "fills_6h": 35,
+   "open_positions": 10,
+   "unrealised_usd": -9.0,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 15,
-    "state_divergent": 9,
+    "live_vec_decisions": 11,
+    "state_divergent": 6,
     "filled": 1,
     "refused_non_safety": 0,
     "safety_refusals": 0,
-    "not_filled_no_log": 5,
-    "vec_exact_fills_without_decision": 23
+    "not_filled_no_log": 4,
+    "vec_exact_fills_without_decision": 25
    }
   },
   "inf": {
-   "fills_6h": 22,
-   "open_positions": 6,
-   "unrealised_usd": -4.6,
+   "fills_6h": 23,
+   "open_positions": 5,
+   "unrealised_usd": 0.59,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 15,
-    "state_divergent": 7,
+    "live_vec_decisions": 11,
+    "state_divergent": 6,
     "filled": 0,
     "refused_non_safety": 0,
     "safety_refusals": 0,
-    "not_filled_no_log": 8,
-    "vec_exact_fills_without_decision": 19
+    "not_filled_no_log": 5,
+    "vec_exact_fills_without_decision": 20
    }
   },
   "flz": {
    "fills_6h": 20,
    "open_positions": 2,
-   "unrealised_usd": -0.08,
+   "unrealised_usd": -0.1,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 4,
+    "live_vec_decisions": 3,
     "state_divergent": 1,
     "filled": 0,
     "refused_non_safety": 0,
     "safety_refusals": 0,
-    "not_filled_no_log": 3,
+    "not_filled_no_log": 2,
     "vec_exact_fills_without_decision": 19
    }
   }
@@ -105,1334 +105,1248 @@
  "process": {
   "fin": {
    "pids": [
-    "56164"
+    "79637"
    ],
-   "starts_30m": 1,
-   "log_age_s": 1.0
+   "starts_30m": 2,
+   "log_age_s": 6.0
   },
   "men": {
    "pids": [
     "72742"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 1.0
   },
   "ang": {
    "pids": [
     "68315"
    ],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 1.0
   },
   "inf": {
    "pids": [
-    "55584"
+    "68630"
    ],
-   "starts_30m": 1,
-   "log_age_s": 0.0
+   "starts_30m": 2,
+   "log_age_s": 5.0
   },
   "flz": {
    "pids": [
-    "55576"
+    "58053"
    ],
-   "starts_30m": 1,
-   "log_age_s": 1.0
+   "starts_30m": 2,
+   "log_age_s": 8.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 19330.0
+   "log_age_s": 20573.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 19330.0
+   "log_age_s": 20573.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "fin:COTIUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.53% bar=2026-10-06T20:45:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
-   "severity": "INFO",
-   "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
-   "key": "fin:COTIUSDT_LONG",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.53% bar=2026-10-06T20:45:00Z: live already flat (state divergence, no order needed)"
-  },
-  {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.02% bar=2026-10-06T21:45:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "AUGMENT 3.6 @ 2026-10-07T00:01:18Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:RLCUSDT_LONG",
    "evidence": "AUGMENT 21.3 @ 2026-10-07T01:16:16Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:SANDUSDT_LONG",
    "evidence": "AUGMENT 202 @ 2026-10-07T00:47:32Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:SANDUSDT_LONG",
    "evidence": "REDUCE 202 @ 2026-10-07T01:46:26Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:SANDUSDT_LONG",
    "evidence": "AUGMENT 258 @ 2026-10-07T02:16:40Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:ADAUSDC_SHORT",
    "evidence": "AUGMENT 50.2 @ 2026-10-06T22:13:04Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:DASHUSDT_SHORT",
    "evidence": "AUGMENT 0.287 @ 2026-10-07T00:16:24Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:DASHUSDT_SHORT",
    "evidence": "REDUCE 0.287 @ 2026-10-07T00:32:58Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:IOTXUSDT_LONG",
    "evidence": "AUGMENT 1586 @ 2026-10-07T02:31:29Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "NON_VEC_ENTRY_FILL",
    "key": "men:RENDERUSDT_LONG",
    "evidence": "AUGMENT 4.3 @ 2026-10-07T01:41:58Z reason=EXIT_VELOCITY_WT_1h_vel-25.2-against-long_g0.24 (must be 0 under PARITY_VEC_EXACT_MODE)"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "NON_VEC_ENTRY_FILL",
    "key": "men:GALAUSDT_SHORT",
    "evidence": "AUGMENT 828 @ 2026-10-07T01:43:05Z reason=EXIT_VELOCITY_WT_4h_vel41.6-against-short_g-0.66 (must be 0 under PARITY_VEC_EXACT_MODE)"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
-   "severity": "CRITICAL",
-   "kind": "RAPID_LOSS_KEY",
-   "key": "men:RENDERUSDT_LONG",
-   "evidence": "unrealised -4.86% (60-min high -0.42%), amt 4.3"
-  },
-  {
-   "ts": "2026-10-07T02:46:42Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "men:XRPUSDC_SHORT",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 113.204->339.612 = $495.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 113.204)"
-  },
-  {
-   "ts": "2026-10-07T02:46:42Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "men:XLMUSDT_SHORT",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 802.607->2407.82 = $495.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 802.607)"
-  },
-  {
-   "ts": "2026-10-07T02:46:42Z",
-   "severity": "INFO",
-   "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
-   "key": "men:SKYUSDT_LONG",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.66% bar=2026-10-06T20:45:00Z: live already flat (state divergence, no order needed)"
-  },
-  {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "men:ATOMUSDT_SHORT",
    "evidence": "OPEN B_KZONE decided 2026-10-06T21:26:25Z bar=2026-10-06T21:00:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "men:COMPUSDT_SHORT",
    "evidence": "OPEN B14 decided 2026-10-06T21:26:26Z bar=2026-10-06T21:00:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "men:LTCUSDC_SHORT",
    "evidence": "CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_ bar=2026-10-06T21:15:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "men:VETUSDT_SHORT",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.20% bar=2026-10-06T21:15:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "men:MANAUSDT_SHORT",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.42% bar=2026-10-06T21:15:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "men:ALGOUSDT_SHORT",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.27% decided 2026-10-07T01:33:38Z bar=2026-10-07T01:15:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "men:XRPUSDC_SHORT",
    "evidence": "CLOSE DAYTRADE_TARGET dc_15m_low +0.10% TARGET bar=2026-10-07T01:30:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "men:QTUMUSDT_SHORT",
    "evidence": "CLOSE DAYTRADE_TARGET dc_4h_low +0.10% TARGET_ bar=2026-10-07T01:30:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "men:IOTXUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.41% bar=2026-10-07T01:30:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "men:EGLDUSDT_SHORT",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.68% bar=2026-10-07T01:30:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:NEARUSDC_SHORT",
    "evidence": "AUGMENT 3 @ 2026-10-06T22:17:32Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:NEARUSDC_SHORT",
    "evidence": "AUGMENT 3 @ 2026-10-07T00:35:53Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:DOTUSDT_SHORT",
    "evidence": "AUGMENT 5.2 @ 2026-10-07T02:17:16Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:XTZUSDT_SHORT",
    "evidence": "AUGMENT 84.3 @ 2026-10-06T21:07:57Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:XTZUSDT_SHORT",
    "evidence": "AUGMENT 84.3 @ 2026-10-07T00:55:17Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:XTZUSDT_SHORT",
    "evidence": "AUGMENT 84.3 @ 2026-10-07T01:38:48Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:XTZUSDT_SHORT",
    "evidence": "AUGMENT 84.3 @ 2026-10-07T01:44:27Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
-   "severity": "CRITICAL",
-   "kind": "FILL_WITHOUT_VEC_DECISION",
-   "key": "men:XLMUSDT_SHORT",
-   "evidence": "AUGMENT 348 @ 2026-10-06T21:04:44Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
-  },
-  {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:XLMUSDT_SHORT",
    "evidence": "REDUCE 348 @ 2026-10-06T21:08:08Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:XLMUSDT_SHORT",
    "evidence": "AUGMENT 75 @ 2026-10-06T21:09:24Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:XLMUSDT_SHORT",
    "evidence": "AUGMENT 75 @ 2026-10-07T00:55:09Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:XLMUSDT_SHORT",
    "evidence": "AUGMENT 75 @ 2026-10-07T01:34:33Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:XLMUSDT_SHORT",
    "evidence": "AUGMENT 75 @ 2026-10-07T01:38:41Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:XLMUSDT_SHORT",
    "evidence": "REDUCE 75 @ 2026-10-07T01:54:17Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:SNXUSDT_LONG",
    "evidence": "AUGMENT 23.6 @ 2026-10-06T21:49:54Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:SNXUSDT_LONG",
    "evidence": "REDUCE 23.6 @ 2026-10-06T22:06:58Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:SNXUSDT_LONG",
    "evidence": "AUGMENT 23.5 @ 2026-10-06T22:23:47Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:SNXUSDT_LONG",
    "evidence": "AUGMENT 23.5 @ 2026-10-07T01:41:00Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
-   "severity": "CRITICAL",
-   "kind": "FILL_WITHOUT_VEC_DECISION",
-   "key": "men:EDUUSDT_LONG",
-   "evidence": "AUGMENT 1164 @ 2026-10-06T21:03:42Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
-  },
-  {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:EDUUSDT_LONG",
    "evidence": "AUGMENT 244 @ 2026-10-06T22:03:37Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:MELANIAUSDT_SHORT",
    "evidence": "AUGMENT 158.22 @ 2026-10-06T21:47:14Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:MELANIAUSDT_SHORT",
    "evidence": "REDUCE 158.22 @ 2026-10-06T22:07:30Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:KMNOUSDT_SHORT",
    "evidence": "AUGMENT 717 @ 2026-10-06T21:27:45Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:KSMUSDT_LONG",
    "evidence": "AUGMENT 2.4 @ 2026-10-06T21:47:59Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:KSMUSDT_LONG",
    "evidence": "REDUCE 2.4 @ 2026-10-06T22:06:56Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:ZROUSDT_LONG",
    "evidence": "AUGMENT 7.1 @ 2026-10-06T21:17:28Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:ZROUSDT_LONG",
    "evidence": "REDUCE 7.1 @ 2026-10-06T22:02:31Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "men:ZROUSDT_LONG",
+   "evidence": "AUGMENT 7.1 @ 2026-10-07T02:48:19Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
+  },
+  {
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:ENJUSDT_LONG",
    "evidence": "AUGMENT 484 @ 2026-10-06T21:47:35Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:ENJUSDT_LONG",
    "evidence": "REDUCE 484 @ 2026-10-06T22:35:02Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:ENJUSDT_LONG",
    "evidence": "AUGMENT 278 @ 2026-10-07T02:02:08Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:ENJUSDT_LONG",
    "evidence": "REDUCE 278 @ 2026-10-07T02:17:38Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:SANDUSDT_LONG",
    "evidence": "AUGMENT 611 @ 2026-10-06T21:18:01Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:SANDUSDT_LONG",
    "evidence": "REDUCE 611 @ 2026-10-06T21:23:42Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:SANDUSDT_LONG",
    "evidence": "AUGMENT 791 @ 2026-10-07T01:41:07Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:SANDUSDT_LONG",
    "evidence": "AUGMENT 400 @ 2026-10-07T02:32:02Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:ADAUSDC_LONG",
    "evidence": "AUGMENT 18.7 @ 2026-10-06T22:18:37Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:ADAUSDC_LONG",
    "evidence": "REDUCE 18.7 @ 2026-10-06T23:01:47Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:NMRUSDT_LONG",
    "evidence": "AUGMENT 0.9 @ 2026-10-07T02:17:22Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "men:NMRUSDT_LONG",
+   "evidence": "AUGMENT 0.9 @ 2026-10-07T02:47:14Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
+  },
+  {
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:XMRUSDT_SHORT",
    "evidence": "AUGMENT 0.028 @ 2026-10-06T22:20:59Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:LTCUSDC_SHORT",
    "evidence": "AUGMENT 0.464 @ 2026-10-06T23:47:09Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:LTCUSDC_SHORT",
    "evidence": "AUGMENT 0.464 @ 2026-10-07T00:35:50Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "men:ADAUSDC_SHORT",
+   "evidence": "AUGMENT 103.6 @ 2026-10-06T21:07:35Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
+  },
+  {
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:ADAUSDC_SHORT",
    "evidence": "AUGMENT 63 @ 2026-10-07T02:17:23Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:KMNOUSDT_LONG",
    "evidence": "AUGMENT 351 @ 2026-10-07T01:53:03Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:VETUSDT_SHORT",
    "evidence": "AUGMENT 1498 @ 2026-10-06T21:19:15Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
-   "severity": "CRITICAL",
-   "kind": "FILL_WITHOUT_VEC_DECISION",
-   "key": "men:RLCUSDT_SHORT",
-   "evidence": "AUGMENT 27.4 @ 2026-10-06T21:03:27Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
-  },
-  {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:RLCUSDT_SHORT",
    "evidence": "REDUCE 27.4 @ 2026-10-06T22:06:51Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:ARUSDT_SHORT",
    "evidence": "AUGMENT 3.5 @ 2026-10-07T02:03:26Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:ARUSDT_SHORT",
    "evidence": "REDUCE 3.5 @ 2026-10-07T02:17:31Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:MANAUSDT_SHORT",
    "evidence": "AUGMENT 194 @ 2026-10-07T02:17:20Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:MANAUSDT_SHORT",
    "evidence": "REDUCE 194 @ 2026-10-07T02:39:49Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:SKYUSDT_LONG",
    "evidence": "AUGMENT 57 @ 2026-10-06T21:28:22Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:SKYUSDT_LONG",
    "evidence": "AUGMENT 57 @ 2026-10-07T01:42:02Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:SKYUSDT_LONG",
    "evidence": "AUGMENT 57 @ 2026-10-07T01:43:00Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:SKYUSDT_LONG",
    "evidence": "REDUCE 11 @ 2026-10-07T01:51:47Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:ENJUSDT_SHORT",
    "evidence": "AUGMENT 285 @ 2026-10-06T21:39:37Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:KSMUSDT_SHORT",
    "evidence": "AUGMENT 4.8 @ 2026-10-06T21:22:35Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:KSMUSDT_SHORT",
    "evidence": "AUGMENT 4.8 @ 2026-10-07T01:41:04Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "men:XRPUSDC_SHORT",
+   "evidence": "AUGMENT 10.9 @ 2026-10-07T02:47:24Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
+  },
+  {
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "RAPID_LOSS_KEY",
    "key": "ang:EDUUSDT_LONG",
-   "evidence": "unrealised -8.53% (60-min high +0.29%), amt 1193"
+   "evidence": "unrealised -7.26% (60-min high +0.29%), amt 1193"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
-   "severity": "CRITICAL",
-   "kind": "ACCOUNT_EQUITY_DROP",
-   "key": "ang",
-   "evidence": "unrealised PnL of the same open positions fell $31.88 since 2026-10-07T02:26:16Z (now $+2.37)"
-  },
-  {
-   "ts": "2026-10-07T02:46:42Z",
-   "severity": "INFO",
-   "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
-   "key": "ang:AAPLUSDT_LONG",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.01% bar=2026-10-06T20:30:00Z: live already flat (state divergence, no order needed)"
-  },
-  {
-   "ts": "2026-10-07T02:46:42Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_NOT_FILLED",
-   "key": "ang:HYPEUSDT_LONG",
-   "evidence": "OPEN B12 decided 2026-10-06T20:56:48Z bar=2026-10-06T20:30:00Z: no fill in 600s and no refusal logged"
-  },
-  {
-   "ts": "2026-10-07T02:46:42Z",
-   "severity": "INFO",
-   "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
-   "key": "ang:HYPEUSDT_LONG",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.04% bar=2026-10-06T20:45:00Z: live already flat (state divergence, no order needed)"
-  },
-  {
-   "ts": "2026-10-07T02:46:42Z",
-   "severity": "INFO",
-   "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
-   "key": "ang:SKYUSDT_LONG",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.66% bar=2026-10-06T20:45:00Z: live already flat (state divergence, no order needed)"
-  },
-  {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "ang:TRBUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-1.00% bar=2026-10-06T20:45:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "ang:HYPEUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.04% bar=2026-10-06T20:45:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "ang:SKYUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.66% bar=2026-10-06T20:45:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "ang:TRBUSDT_LONG",
    "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-06T21:00:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "ang:TRBUSDT_LONG",
    "evidence": "CLOSE STATEFUL_PORTED_EXIT g0.38% age15m bar=2026-10-06T21:15:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "ang:GALAUSDT_SHORT",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.12% decided 2026-10-06T21:31:46Z bar=2026-10-06T21:15:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "ang:API3USDT_LONG",
    "evidence": "OPEN B12 decided 2026-10-06T21:31:47Z bar=2026-10-06T21:15:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "ang:ENSUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.15% bar=2026-10-06T21:45:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "ang:AAVEUSDC_LONG",
    "evidence": "OPEN B_KZONE decided 2026-10-06T22:05:25Z bar=2026-10-06T21:45:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "ang:GRAMUSDT_SHORT",
    "evidence": "OPEN B_KZONE decided 2026-10-06T22:05:26Z bar=2026-10-06T21:45:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:DOTUSDT_SHORT",
    "evidence": "AUGMENT 5.2 @ 2026-10-07T02:16:46Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:SNXUSDT_LONG",
    "evidence": "AUGMENT 23.6 @ 2026-10-06T21:46:41Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:SNXUSDT_LONG",
    "evidence": "REDUCE 23.6 @ 2026-10-07T00:02:51Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:KSMUSDT_LONG",
    "evidence": "AUGMENT 1.5 @ 2026-10-06T21:48:09Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:KSMUSDT_LONG",
    "evidence": "REDUCE 1.5 @ 2026-10-06T23:32:18Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:KSMUSDT_LONG",
    "evidence": "AUGMENT 4.2 @ 2026-10-07T00:01:26Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:ARKMUSDT_SHORT",
    "evidence": "AUGMENT 124 @ 2026-10-07T02:16:22Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:RLCUSDT_LONG",
    "evidence": "AUGMENT 21.3 @ 2026-10-07T01:16:14Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:RLCUSDT_LONG",
    "evidence": "REDUCE 21.3 @ 2026-10-07T02:02:02Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:RENDERUSDT_LONG",
    "evidence": "AUGMENT 3.8 @ 2026-10-06T22:35:01Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:ZECUSDC_LONG",
    "evidence": "AUGMENT 0.005 @ 2026-10-06T23:31:52Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
-   "severity": "CRITICAL",
-   "kind": "FILL_WITHOUT_VEC_DECISION",
-   "key": "ang:TRBUSDT_LONG",
-   "evidence": "REDUCE 1.8 @ 2026-10-06T21:06:12Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
-  },
-  {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:ENJUSDT_LONG",
    "evidence": "AUGMENT 479 @ 2026-10-07T00:51:25Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:ENJUSDT_LONG",
    "evidence": "REDUCE 479 @ 2026-10-07T01:48:19Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:SANDUSDT_LONG",
    "evidence": "AUGMENT 403 @ 2026-10-07T02:16:18Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:ATOMUSDT_SHORT",
    "evidence": "AUGMENT 9.39 @ 2026-10-07T02:18:12Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "ang:NMRUSDT_LONG",
+   "evidence": "REDUCE 24.9 @ 2026-10-07T03:02:14Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
+  },
+  {
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:ASTSUSDT_LONG",
    "evidence": "AUGMENT 0.09 @ 2026-10-07T00:20:40Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "ang:ASTSUSDT_LONG",
+   "evidence": "REDUCE 0.09 @ 2026-10-07T02:47:45Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
+  },
+  {
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:ARBUSDC_SHORT",
    "evidence": "AUGMENT 79.7 @ 2026-10-06T22:17:57Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:ADAUSDC_SHORT",
    "evidence": "AUGMENT 59.5 @ 2026-10-06T22:02:22Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:ARPAUSDT_SHORT",
    "evidence": "AUGMENT 726 @ 2026-10-06T23:43:26Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:ETHFIUSDC_LONG",
    "evidence": "AUGMENT 25.2 @ 2026-10-07T00:32:00Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "ang:ETHFIUSDC_LONG",
+   "evidence": "REDUCE 25.2 @ 2026-10-07T03:01:42Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
+  },
+  {
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:GALAUSDT_SHORT",
    "evidence": "AUGMENT 6589 @ 2026-10-06T21:17:19Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:SKYUSDT_LONG",
    "evidence": "AUGMENT 91 @ 2026-10-06T21:21:30Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:42Z",
-   "severity": "CRITICAL",
-   "kind": "RAPID_LOSS_KEY",
-   "key": "inf:ARUSDT_LONG",
-   "evidence": "unrealised -6.59% (60-min high +0.25%), amt 16.4"
-  },
-  {
-   "ts": "2026-10-07T02:46:43Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_NOT_FILLED",
-   "key": "inf:IOTAUSDT_LONG",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.29% decided 2026-10-06T21:05:15Z bar=2026-10-06T20:45:00Z: no fill in 600s and no refusal logged"
-  },
-  {
-   "ts": "2026-10-07T02:46:43Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_NOT_FILLED",
-   "key": "inf:ARPAUSDT_SHORT",
-   "evidence": "OPEN B_KZONE decided 2026-10-06T21:05:15Z bar=2026-10-06T20:45:00Z: no fill in 600s and no refusal logged"
-  },
-  {
-   "ts": "2026-10-07T02:46:43Z",
-   "severity": "INFO",
-   "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
-   "key": "inf:COTIUSDT_LONG",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.53% bar=2026-10-06T20:45:00Z: live already flat (state divergence, no order needed)"
-  },
-  {
-   "ts": "2026-10-07T02:46:43Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_NOT_FILLED",
-   "key": "inf:APEUSDT_SHORT",
-   "evidence": "OPEN B15 decided 2026-10-06T21:05:16Z bar=2026-10-06T20:45:00Z: no fill in 600s and no refusal logged"
-  },
-  {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:IOTAUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.29% decided 2026-10-06T21:11:16Z bar=2026-10-06T20:45:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:ARPAUSDT_SHORT",
    "evidence": "OPEN B_KZONE decided 2026-10-06T21:11:16Z bar=2026-10-06T20:45:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:APEUSDT_SHORT",
    "evidence": "OPEN B15 decided 2026-10-06T21:11:17Z bar=2026-10-06T20:45:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "inf:APEUSDT_SHORT",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.13% bar=2026-10-06T21:00:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "inf:ARPAUSDT_SHORT",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.30% bar=2026-10-06T21:00:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "inf:ZROUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.23% bar=2026-10-06T21:45:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:IOTAUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.03% decided 2026-10-06T22:05:27Z bar=2026-10-06T21:45:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:AAVEUSDC_LONG",
    "evidence": "OPEN B_KZONE decided 2026-10-06T22:05:27Z bar=2026-10-06T21:45:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "inf:AGLDUSDT_SHORT",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.00% bar=2026-10-06T21:45:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "inf:AIAUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.01% bar=2026-10-06T21:45:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "inf:KSMUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.02% bar=2026-10-06T21:45:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:ALGOUSDT_SHORT",
    "evidence": "AUGMENT 146.3 @ 2026-10-06T22:47:49Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:ALGOUSDT_SHORT",
    "evidence": "REDUCE 116.1 @ 2026-10-07T00:16:26Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:AGLDUSDT_SHORT",
    "evidence": "AUGMENT 76 @ 2026-10-07T01:31:30Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "inf:AIAUSDT_LONG",
+   "evidence": "AUGMENT 75 @ 2026-10-07T02:46:55Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
+  },
+  {
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:NEARUSDC_LONG",
    "evidence": "AUGMENT 2 @ 2026-10-06T23:17:22Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:KSMUSDT_LONG",
    "evidence": "AUGMENT 4.3 @ 2026-10-07T00:01:55Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:ARKMUSDT_SHORT",
    "evidence": "AUGMENT 124 @ 2026-10-07T02:17:15Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:RENDERUSDT_LONG",
    "evidence": "AUGMENT 4.1 @ 2026-10-06T22:35:07Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:RENDERUSDT_LONG",
    "evidence": "REDUCE 4.1 @ 2026-10-07T00:31:40Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
-   "severity": "CRITICAL",
-   "kind": "FILL_WITHOUT_VEC_DECISION",
-   "key": "inf:ARUSDT_LONG",
-   "evidence": "AUGMENT 16.4 @ 2026-10-06T20:47:21Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
-  },
-  {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:ZROUSDT_LONG",
    "evidence": "REDUCE 4.8 @ 2026-10-06T22:01:25Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:ZROUSDT_LONG",
    "evidence": "REDUCE 21.8 @ 2026-10-06T22:02:33Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:ZROUSDT_LONG",
    "evidence": "AUGMENT 7 @ 2026-10-06T22:47:04Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:NMRUSDT_LONG",
    "evidence": "REDUCE 4.4 @ 2026-10-07T00:16:29Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:ACEUSDT_SHORT",
    "evidence": "AUGMENT 81.75 @ 2026-10-07T00:01:31Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:ACEUSDT_SHORT",
    "evidence": "REDUCE 81.75 @ 2026-10-07T01:13:23Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:SOLUSDC_SHORT",
    "evidence": "AUGMENT 0.13 @ 2026-10-07T02:31:34Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "inf:SOLUSDC_SHORT",
+   "evidence": "REDUCE 0.13 @ 2026-10-07T02:47:29Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
+  },
+  {
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:ARBUSDC_SHORT",
    "evidence": "AUGMENT 79.7 @ 2026-10-06T22:16:59Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:ARBUSDC_SHORT",
    "evidence": "REDUCE 79.7 @ 2026-10-06T23:46:55Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:25Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:IOTXUSDT_LONG",
    "evidence": "AUGMENT 1531 @ 2026-10-07T00:49:51Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_NOT_FILLED",
-   "key": "flz:GRAMUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.13% decided 2026-10-06T21:05:16Z bar=2026-10-06T20:45:00Z: no fill in 600s and no refusal logged"
-  },
-  {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:26Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:HYPEUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.04% decided 2026-10-06T21:11:13Z bar=2026-10-06T20:45:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:26Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:GRAMUSDT_SHORT",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.13% decided 2026-10-06T21:11:14Z bar=2026-10-06T20:45:00Z: no fill in 600s and no refusal logged"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:26Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "flz:GRAMUSDT_SHORT",
    "evidence": "OPEN B_KZONE bar=2026-10-06T21:45:00Z: live already holds 55.4 (state divergence)"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:26Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:GRAMUSDT_SHORT",
    "evidence": "AUGMENT 10.5 @ 2026-10-07T00:31:26Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:26Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:GRAMUSDT_SHORT",
    "evidence": "REDUCE 10.5 @ 2026-10-07T01:15:21Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:26Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:GRAMUSDT_SHORT",
    "evidence": "AUGMENT 10.6 @ 2026-10-07T01:45:49Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:26Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:GRAMUSDT_SHORT",
    "evidence": "REDUCE 10.6 @ 2026-10-07T02:01:37Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:26Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:DOGEUSDC_LONG",
    "evidence": "AUGMENT 110 @ 2026-10-07T01:02:41Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
-   "severity": "CRITICAL",
-   "kind": "FILL_WITHOUT_VEC_DECISION",
-   "key": "flz:HYPEUSDT_LONG",
-   "evidence": "AUGMENT 0.78 @ 2026-10-06T20:48:22Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
-  },
-  {
-   "ts": "2026-10-07T02:46:43Z",
-   "severity": "CRITICAL",
-   "kind": "FILL_WITHOUT_VEC_DECISION",
-   "key": "flz:HYPEUSDT_LONG",
-   "evidence": "REDUCE 0.78 @ 2026-10-06T21:06:57Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
-  },
-  {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:26Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:ZECUSDC_LONG",
    "evidence": "AUGMENT 0.005 @ 2026-10-06T23:32:30Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:26Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:ZECUSDC_LONG",
    "evidence": "REDUCE 0.005 @ 2026-10-06T23:46:34Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:26Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:ZECUSDC_LONG",
    "evidence": "AUGMENT 0.005 @ 2026-10-07T01:16:20Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:26Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:ZECUSDC_LONG",
    "evidence": "REDUCE 0.005 @ 2026-10-07T02:16:38Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:26Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:DOGEUSDC_SHORT",
    "evidence": "AUGMENT 177 @ 2026-10-07T02:16:16Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:26Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:ETHUSDC_LONG",
    "evidence": "AUGMENT 0.008 @ 2026-10-07T01:02:23Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:26Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:ETHUSDC_LONG",
    "evidence": "REDUCE 0.008 @ 2026-10-07T01:14:30Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:26Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:SOLUSDC_SHORT",
    "evidence": "AUGMENT 0.13 @ 2026-10-07T01:16:59Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:26Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:SOLUSDC_SHORT",
    "evidence": "REDUCE 0.13 @ 2026-10-07T01:33:31Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:26Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:SOLUSDC_SHORT",
    "evidence": "AUGMENT 0.1 @ 2026-10-07T02:31:07Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:26Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:XRPUSDC_SHORT",
    "evidence": "AUGMENT 10.6 @ 2026-10-07T00:16:40Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-07T02:46:43Z",
+   "ts": "2026-10-07T03:07:26Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:XRPUSDC_SHORT",
    "evidence": "REDUCE 10.6 @ 2026-10-07T00:31:32Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
+  },
+  {
+   "ts": "2026-10-07T03:07:26Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "flz:XRPUSDC_SHORT",
+   "evidence": "AUGMENT 10.9 @ 2026-10-07T02:46:48Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
+  },
+  {
+   "ts": "2026-10-07T03:07:26Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "flz:XRPUSDC_SHORT",
+   "evidence": "REDUCE 10.9 @ 2026-10-07T03:03:10Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   }
  ],
  "alert_counts": {
-  "VEC_EXIT_WHILE_LIVE_FLAT": 27,
-  "FILL_WITHOUT_VEC_DECISION": 127,
+  "VEC_EXIT_WHILE_LIVE_FLAT": 21,
+  "FILL_WITHOUT_VEC_DECISION": 131,
   "NON_VEC_ENTRY_FILL": 2,
-  "RAPID_LOSS_KEY": 3,
-  "SIZE_ANOMALY": 2,
-  "VEC_DECISION_NOT_FILLED": 19,
-  "ACCOUNT_EQUITY_DROP": 1,
+  "VEC_DECISION_NOT_FILLED": 14,
+  "RAPID_LOSS_KEY": 1,
   "VEC_OPEN_WHILE_LIVE_IN": 1
  },
  "active_interventions": {
@@ -1572,7 +1486,21 @@
    "why": "SIZE_ANOMALY BREAKOUT_SIZE_LADDER qty 113.204->339.612 ($495) past 1.5x MAX_ORDER_VALUE",
    "undo": "redis-cli -p 6379 DEL open_blocked:men:XRPUSDC_SHORT",
    "dry_run": false
+  },
+  "key:men:MELANIAUSDT_SHORT": {
+   "ts": 1791341328.207683,
+   "until": 1791348528.2076852,
+   "why": "SIZE_ANOMALY BREAKOUT_SIZE_LADDER qty 1687.12->5061.35 ($495) past 1.5x MAX_ORDER_VALUE",
+   "undo": "redis-cli -p 6379 DEL open_blocked:men:MELANIAUSDT_SHORT",
+   "dry_run": false
+  },
+  "key:men:QTUMUSDT_SHORT": {
+   "ts": 1791341370.251841,
+   "until": 1791348570.251843,
+   "why": "SIZE_ANOMALY BREAKOUT_SIZE_LADDER qty 175.966->527.899 ($495) past 1.5x MAX_ORDER_VALUE",
+   "undo": "redis-cli -p 6379 DEL open_blocked:men:QTUMUSDT_SHORT",
+   "dry_run": false
   }
  },
- "sweep_s": 1.03
+ "sweep_s": 0.62
 }

@@ -521,5 +521,32 @@
     ],
     "timestamp": "2026-10-07T02:43:14.329830+00:00",
     "price": 13.75252131
+  },
+  {
+    "symbol": "RKLBUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-07T02:48:11.841826+00:00",
+    "price": 74.39
+  },
+  {
+    "symbol": "APPUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 19.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-07T02:51:29.068894+00:00",
+    "price": 278.87
+  },
+  {
+    "symbol": "LTCUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.4x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-07T02:54:10.780011+00:00",
+    "price": 67.68401035
   }
 ]

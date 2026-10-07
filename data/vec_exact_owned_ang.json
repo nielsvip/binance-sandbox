@@ -7,10 +7,6 @@
   "at": "06 20:04:49 - ",
   "reason": "seeded_from_log"
  },
- "ang:NMRUSDT_LONG": {
-  "at": "06 20:04:50 - ",
-  "reason": "seeded_from_log"
- },
  "ang:NEARUSDC_LONG": {
   "at": "06 20:15:57 - ",
   "reason": "seeded_from_log"
@@ -79,10 +75,6 @@
   "at": "2026-10-07T00:18:43Z",
   "reason": "B14"
  },
- "ang:ETHFIUSDC_LONG": {
-  "at": "2026-10-07T00:30:11Z",
-  "reason": "B14"
- },
  "ang:ARUSDT_LONG": {
   "at": "2026-10-07T00:46:16Z",
   "reason": "B_KZONE"
@@ -94,10 +86,6 @@
  "ang:VETUSDT_LONG": {
   "at": "2026-10-07T01:01:51Z",
   "reason": "B12"
- },
- "ang:AIAUSDT_LONG": {
-  "at": "2026-10-07T01:16:54Z",
-  "reason": "B_VWAPBOUNCE"
  },
  "ang:XTZUSDT_LONG": {
   "at": "2026-10-07T01:39:07Z",
@@ -134,5 +122,9 @@
  "ang:EGLDUSDT_SHORT": {
   "at": "2026-10-07T02:45:46Z",
   "reason": "DC_BREAKOUT_ENTRY"
+ },
+ "ang:AIAUSDT_LONG": {
+  "at": "2026-10-07T03:00:29Z",
+  "reason": "B_KZONE"
  }
 }
