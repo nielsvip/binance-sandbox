@@ -160,5 +160,258 @@
     ],
     "timestamp": "2026-10-07T02:03:54.299220+00:00",
     "price": 0.5264
+  },
+  {
+    "symbol": "KAVAUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 13.5x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-07T02:05:27.565773+00:00",
+    "price": 0.06771
+  },
+  {
+    "symbol": "LUNA2USDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 15.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-07T02:05:27.565773+00:00",
+    "price": 0.04755207
+  },
+  {
+    "symbol": "SKYUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.4x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-07T02:08:10.534286+00:00",
+    "price": 0.08605335
+  },
+  {
+    "symbol": "NOTUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 12.9x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-07T02:08:10.534286+00:00",
+    "price": 0.0004635
+  },
+  {
+    "symbol": "WENUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 13.5x normal (threshold 12.0x)",
+      "WICK_RATIO_3M: 25.1x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-07T02:08:10.534286+00:00",
+    "price": 6.19308107
+  },
+  {
+    "symbol": "GOOGLUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 15.1x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-07T02:08:46.784298+00:00",
+    "price": 347.33
+  },
+  {
+    "symbol": "HIVEUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 12.8x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-07T02:08:46.784298+00:00",
+    "price": 0.05484398
+  },
+  {
+    "symbol": "BSPUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 41.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-07T02:10:28.326155+00:00",
+    "price": 33.22433287
+  },
+  {
+    "symbol": "IOSTUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 118.8x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-07T02:10:28.326155+00:00",
+    "price": 0.00080949
+  },
+  {
+    "symbol": "LPTUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 152.2x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-07T02:10:28.326155+00:00",
+    "price": 1.7023551
+  },
+  {
+    "symbol": "ARKMUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 14.8x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-07T02:11:52.100167+00:00",
+    "price": 0.12947507
+  },
+  {
+    "symbol": "YFIUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.6x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-07T02:11:52.100167+00:00",
+    "price": 2459.0
+  },
+  {
+    "symbol": "GRASSUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.1x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-07T02:13:56.511477+00:00",
+    "price": 0.665265
+  },
+  {
+    "symbol": "CBRSUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 13.4x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-07T02:15:41.466988+00:00",
+    "price": 176.76
+  },
+  {
+    "symbol": "CRWVUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 12.7x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-07T02:15:41.466988+00:00",
+    "price": 91.22
+  },
+  {
+    "symbol": "CBRSUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 13.4x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-07T02:15:41.475220+00:00",
+    "price": 176.76
+  },
+  {
+    "symbol": "CRWVUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 12.7x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-07T02:15:41.475220+00:00",
+    "price": 91.22
+  },
+  {
+    "symbol": "SNDKUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 15.7x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-07T02:15:41.475220+00:00",
+    "price": 1640.59
+  },
+  {
+    "symbol": "1000SATSUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 14.7x normal"
+    ],
+    "timestamp": "2026-10-07T02:16:43.246029+00:00",
+    "price": 1.186e-05
+  },
+  {
+    "symbol": "UBERUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 14.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-10-07T02:16:43.246029+00:00",
+    "price": 69.13
+  },
+  {
+    "symbol": "BTCUSDC",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 12.0x normal"
+    ],
+    "timestamp": "2026-10-07T02:18:35.895327+00:00",
+    "price": 83854.6
+  },
+  {
+    "symbol": "BNBUSDC",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 10.6x normal"
+    ],
+    "timestamp": "2026-10-07T02:18:35.895327+00:00",
+    "price": 765.1
+  },
+  {
+    "symbol": "APEUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 13.8x normal"
+    ],
+    "timestamp": "2026-10-07T02:18:35.895327+00:00",
+    "price": 0.15154049
+  },
+  {
+    "symbol": "BABAUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 12.3x normal"
+    ],
+    "timestamp": "2026-10-07T02:18:35.895327+00:00",
+    "price": 106.26902268
+  },
+  {
+    "symbol": "HYPEUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 8.8x normal"
+    ],
+    "timestamp": "2026-10-07T02:18:35.895327+00:00",
+    "price": 90.11389583
+  },
+  {
+    "symbol": "IRENUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 10.4x normal"
+    ],
+    "timestamp": "2026-10-07T02:20:05.829949+00:00",
+    "price": 41.0
+  },
+  {
+    "symbol": "ONDSUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 8.1x normal"
+    ],
+    "timestamp": "2026-10-07T02:20:05.829949+00:00",
+    "price": 7.39458067
+  },
+  {
+    "symbol": "BITOUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 16.8x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-10-07T02:21:39.354120+00:00",
+    "price": 11.25
   }
 ]
