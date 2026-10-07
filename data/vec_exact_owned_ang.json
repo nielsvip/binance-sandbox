@@ -43,10 +43,6 @@
   "at": "2026-10-07T00:16:23Z",
   "reason": "B_KZONE"
  },
- "ang:ARUSDT_LONG": {
-  "at": "2026-10-07T00:46:16Z",
-  "reason": "B_KZONE"
- },
  "ang:TRBUSDT_LONG": {
   "at": "2026-10-07T01:00:50Z",
   "reason": "B_EMA20SLOPE"
@@ -79,20 +75,8 @@
   "at": "2026-10-07T05:45:32Z",
   "reason": "B_KZONE"
  },
- "ang:SNXUSDT_SHORT": {
-  "at": "2026-10-07T07:00:26Z",
-  "reason": "B_KZONE"
- },
  "ang:KMNOUSDT_LONG": {
   "at": "2026-10-07T08:15:23Z",
   "reason": "B_SMA200DIST"
- },
- "ang:GALAUSDT_SHORT": {
-  "at": "2026-10-07T09:32:13Z",
-  "reason": "GOLDEN_RULE_ENTRY"
- },
- "ang:ENJUSDT_SHORT": {
-  "at": "2026-10-07T09:43:43Z",
-  "reason": "DC_BREAKOUT_ENTRY"
  }
 }

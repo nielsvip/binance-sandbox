@@ -1,17 +1,17 @@
 # Exit-engine parity monitor
 
-generated: 2026-10-07T09:00:48.864115+00:00 · lookback: 48.0h
+generated: 2026-10-07T10:00:50.077687+00:00 · lookback: 48.0h
 
-**exit_engine rows in window: 1442** · since 2026-10-06T18:48:00+00:00 · last: 2026-10-07T09:00:38.209981+00:00
+**exit_engine rows in window: 1516** · since 2026-10-06T18:48:00+00:00 · last: 2026-10-07T10:00:05.826393+00:00
 
-VEC_EXACT-decided orders (the vec engine decided; not gate-judged): {'OPEN': 476, 'CLOSE': 248, 'REDUCE': 25} — every OTHER row below is a native live path firing under PARITY_VEC_EXACT_MODE
+VEC_EXACT-decided orders (the vec engine decided; not gate-judged): {'OPEN': 492, 'CLOSE': 258, 'REDUCE': 25} — every OTHER row below is a native live path firing under PARITY_VEC_EXACT_MODE
 
 ## 🔴 LEAKS (gate-disabled families that fired = illegal trades): 0
 - none — no gate-disabled family fired. ✅ parity holds for mapped exits.
 
-## ✅ GATE_ON (legitimately allowed live, has gate): 519
-- EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED): 464
-- DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED): 45
+## ✅ GATE_ON (legitimately allowed live, has gate): 559
+- EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED): 499
+- DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED): 50
 - CYCLE_TP (CYCLE_TP_TIERED_ENABLED): 6
 - GOLDEN_RULE: 3
 - CRYPTO_SPIKE_FADE (CRYPTO_SPIKE_FADE_ENABLED): 1
@@ -23,14 +23,15 @@ VEC_EXACT-decided orders (the vec engine decided; not gate-judged): {'OPEN': 476
 
 ## 🛟 SAFETY (exempt by design: broker sync / margin / liquidation): 0
 
-## ❔ UNMAPPED (family not in tools/forward_parity/families.py — add it): 173
+## ❔ UNMAPPED (family not in tools/forward_parity/families.py — add it): 181
 -    28  RSI2_EXIT_LIVE_rsi2=5.4_thr=10.0
 -    22  RSI2_EXIT_LIVE_rsi2=7.0_thr=10.0
 -     6  WT_CROSSUNDER_FINAL_L_k=95
 -     6  ORPHANED_HEDGE_PARENT_CLOSED
 -     5  SUBSTITUTION_FOR_men:COMPUSDT_SHORT
--     4  SUBSTITUTION_FOR_men:ETHUSDC_SHORT
--     4  SUBSTITUTION_FOR_men:RLCUSDT_LONG
+-     5  SUBSTITUTION_FOR_men:ETHUSDC_SHORT
+-     5  SUBSTITUTION_FOR_men:RLCUSDT_LONG
+-     4  SUBSTITUTION_FOR_men:AXSUSDT_SHORT
 -     3  SUBSTITUTION_FOR_men:ATOMUSDT_SHORT
 -     3  SUBSTITUTION_FOR_men:MELANIAUSDT_SHORT
 -     3  SUBSTITUTION_FOR_men:QTUMUSDT_SHORT
@@ -38,11 +39,10 @@ VEC_EXACT-decided orders (the vec engine decided; not gate-judged): {'OPEN': 476
 -     3  CB_HTF_EXHAUST_BAD_ENTRY: g=-2.26% age
 -     3  CB_HTF_EXHAUST_BAD_ENTRY: g=-2.28% age
 -     3  SUBSTITUTION_FOR_men:UNIUSDC_SHORT
--     3  SUBSTITUTION_FOR_men:AXSUSDT_SHORT
+-     3  SUBSTITUTION_FOR_men:ALGOUSDT_SHORT
+-     3  SUBSTITUTION_FOR_men:BTCUSDC_SHORT
+-     3  SUBSTITUTION_FOR_men:NMRUSDT_SHORT
 -     2  BB_TAKE_4h
 -     2  CB_HTF_EXHAUST_BAD_ENTRY: g=-0.66% age
--     2  WT_CROSSUNDER_FINAL_L_k=72
--     2  CB_HTF_EXHAUST_BAD_ENTRY: g=-0.51% age
--     2  CB_HTF_EXHAUST_BAD_ENTRY: g=-2.66% age
 
-## actions in window: {'OPEN': 480, 'CLOSE': 852, 'REDUCE': 32, 'QUICK_CLOSE': 78}
+## actions in window: {'OPEN': 496, 'CLOSE': 903, 'REDUCE': 32, 'QUICK_CLOSE': 85}
