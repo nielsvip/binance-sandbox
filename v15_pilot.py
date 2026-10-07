@@ -3165,12 +3165,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _ensure_365prep()
             if _SHUTDOWN["v"]:
                 raise V15Shutdown("shutdown before 365D batch")
-            _dl = min(deadline, _t.time() + max(60.0, 200.0 * (-(-len(items365) // 6) + 1)))
-            out365 = [(None, None)] * len(items365)
+            pairs365 = [(it if isinstance(it, (tuple, list)) else (it, None)) for it in items365]  # USER 2026-10-07: prefetch sends (ov,key) pairs, graph_search sends bare ovs — accept both
+            _dl = min(deadline, _t.time() + max(60.0, 200.0 * (-(-len(pairs365) // 6) + 1)))
+            out365 = [(None, None)] * len(pairs365)
             if _span.get("prep") is not None:
-                ex365 = _cf.ThreadPoolExecutor(max_workers=min(6, len(items365)))
+                ex365 = _cf.ThreadPoolExecutor(max_workers=min(6, len(pairs365)))
                 try:
-                    futs = [ex365.submit(_vp.evaluate_prepared_sanitized, _span["prep"], dict(ov), 365) for ov, _k in items365]
+                    futs = [ex365.submit(_vp.evaluate_prepared_sanitized, _span["prep"], dict(ov), 365) for ov, _k in pairs365]
                     for _i, _f in enumerate(futs):
                         try: out365[_i] = (_f.result(timeout=max(1.0, _dl - _t.time())), _span["v"])
                         except Exception: out365[_i] = (None, _span["v"])
@@ -3180,7 +3181,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     try: ex365.shutdown(wait=False, cancel_futures=True)
                     except Exception: pass
             else:
-                for _i, (ov, _k) in enumerate(items365):
+                for _i, (ov, _k) in enumerate(pairs365):
                     if _SHUTDOWN["v"]:
                         raise V15Shutdown("shutdown in 365D batch")
                     if _t.time() > _dl:
@@ -3195,6 +3196,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 if delta.get("memo"): progress.setdefault("diagnose_memo", {}).update(delta["memo"])
                 if delta.get("m365"): progress.setdefault("diagnose_m365", {}).update(delta["m365"])
                 if delta.get("autopsy"): progress["diagnose_autopsy"] = delta["autopsy"]
+                if delta.get("gs"): progress["diagnose_gs"] = delta["gs"]
                 progress["diagnose_npz"] = _run_npz_short
                 if _t.time() - _last_diag_ckpt["t"] >= 10.0:
                     _last_diag_ckpt["t"] = _t.time()
@@ -3262,7 +3264,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                    "shutdown_requested": lambda: _SHUTDOWN["v"], "checkpoint": _diag_ckpt, "eval_many_365": _eval_many_365,
                    "resume_memo": (progress.get("diagnose_memo") or {}) if progress.get("diagnose_npz") == _run_npz_short else {},
                    "resume_m365": (progress.get("diagnose_m365") or {}) if progress.get("diagnose_npz") == _run_npz_short else {},
-                   "resume_autopsy": (progress.get("diagnose_autopsy") or None) if (progress.get("diagnose_npz") == _run_npz_short and (progress.get("diagnose_autopsy") or {}).get("origin_key") == _sk(sanitize_overrides(dict(origin), defaults)[0])) else None}
+                   "resume_autopsy": (progress.get("diagnose_autopsy") or None) if (progress.get("diagnose_npz") == _run_npz_short and (progress.get("diagnose_autopsy") or {}).get("origin_key") == _sk(sanitize_overrides(dict(origin), defaults)[0])) else None,
+                   "resume_gs": (progress.get("diagnose_gs") or None) if progress.get("diagnose_npz") == _run_npz_short else None}
         if _dr_ctx["resume_memo"] or _dr_ctx["resume_m365"]:
             print(f"[DIAG] {new_symside} resuming with {len(_dr_ctx['resume_memo'])} memo + {len(_dr_ctx['resume_m365'])} m365 evals (replay, no recompute)", flush=True)
         elif progress.get("diagnose_npz") and progress.get("diagnose_npz") != _run_npz_short:
@@ -3444,7 +3447,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             progress["diagnose_repair"]["graph_search"] = {k: v for k, v in rep["graph_search"].items() if k not in ("steps", "ablation_top", "macro")}
         progress["diagnose_repair"]["row_recommendations_top"] = (rep.get("row_recommendations") or [])[:25]
         progress["diagnose_repair"].update({"mode": mode, "applied": applied, "complete": True, "result_key": _sk(cumulative_overrides), "steps": [{k: s_.get(k) for k in ("phase", "round", "applied", "gain", "trades", "tim", "dd", "valid")} for s_ in rep.get("steps", [])]})
-        progress.pop("diagnose_memo", None); progress.pop("diagnose_m365", None); progress.pop("diagnose_npz", None); progress.pop("diagnose_autopsy", None)  # USER 2026-10-07: checkpoint served, keep JSON lean
+        progress.pop("diagnose_memo", None); progress.pop("diagnose_m365", None); progress.pop("diagnose_npz", None); progress.pop("diagnose_autopsy", None); progress.pop("diagnose_gs", None)  # USER 2026-10-07: checkpoint served, keep JSON lean
         _maybe_write_json(force=True)
         print(f"[DIAG] {new_symside} {'APPLIED' if applied else 'kept origin'} gain {(rep.get('before') or {}).get('gain')} -> {cumulative_gain:.4f} changes={len(rep.get('changes') or [])} ({_t.time()-t0:.0f}s)", flush=True)
     # ── SEQUENTIAL FILL — USER 2026-09-29 late (BACKTEST_BIBLE §56 rev. 2026-09-29b), supersedes the R16/R17 tab-jump ──

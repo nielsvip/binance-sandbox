@@ -981,12 +981,22 @@ _recent_opens: Dict[
 # action, or is_hedge flag. Every OPEN/AUGMENT/HEDGE/ENTRY fails if prior fire was <60s ago.
 _ABSOLUTE_OPEN_LOCK: Dict[str, float] = {}  # (account:symbol_side) → expiry ts
 _ABSOLUTE_OPEN_LOCK_TTL: float = 300.0  # 2026-04-24 user directive: dedup at execute_now layer, not webhook. 5min = one open per (key:side) per 5min. Prevents NMR/TWT-style cascades where each cycle opens $5-10. Webhook lock removed; execute_now is the single gate.
-# 2026-05-28 EXECUTE_NOW SINGLE-GATE TRIPWIRE — stamped at the top of every
-# execute_now() call. The broker-wire sites (futures_create_order in
-# place_maker_order, Finandy session.post in send_webhook) check this; if a wire
-# fires long after the last execute_now() entry, a bypass is suspected. Shadow
-# (log-only) diagnostic — never blocks. CLAUDE.md: execute_now is the ONLY gate.
-_LAST_EXECUTE_NOW_ENTRY_TS: float = 0.0
+# 2026-10-07 USER: broker confirmation is the ONLY order criterion (no clock) — replaces
+# the 2026-05-28 lag-based EXECUTE_NOW SINGLE-GATE TRIPWIRE. Every wire must sanction
+# immediately before firing; the post-wire broker response decides everything:
+#   - no orderId in the response -> NO ORDER EXISTS (attempt only) -> no verdict, ever.
+#   - orderId + fresh sanction seq for this wire -> order EXISTS -> bound, tracked, must
+#     NOT be erased or re-placed until the broker confirms EXECUTION or CANCELLATION.
+#   - orderId + NO matching sanction -> broker-confirmed order outside execute_now -> BYPASS.
+# Orphan backstops (unchanged): EXCHANGE_OPEN_ORDER_CHECK queries live broker state before
+# every execute_now; NUKE/cleanup cancel+clear stale tracked orders; WS callbacks retire on
+# position change. Kill switch: WIRE_CONFIRM_GUARD_ENABLED=False restores legacy behavior.
+_EXEC_WIRE_SANCTIONS: Dict[str, Dict[str, Any]] = {}
+_EXEC_WIRE_SEQ: int = 0
+_WIRE_STATE_OPEN = "OPEN"
+_WIRE_EXECUTED = {"FILLED"}
+_WIRE_CANCELED = {"CANCELED", "CANCELLED", "EXPIRED", "REJECTED"}
+_WIRE_LIVE = {"NEW", "PARTIALLY_FILLED", "PENDING", "OPEN", "WORKING", "PENDING_NEW", "PENDING_CANCEL"}
 # ═══ 2026-06-04 COLD-START FLOOD GUARD state ═══
 # Process start time — used to suppress the opener MTF-bypasses during the cold-start window
 # (empty MTF armed-state → QUICK_OPEN/breakout/reentry bypasses flooded ~96 junk opens in seconds
@@ -1006,17 +1016,125 @@ def _ptruth_gain(position_side, entry, price):
     return (price - entry) / entry * 100.0 if str(position_side).upper() == "LONG" else (entry - price) / entry * 100.0
 
 
-def _exec_now_wire_tripwire(site: str, position_key=None, reason=None) -> None:
-    """Log-only tripwire: warn if a broker wire fires outside an execute_now() window."""
+def _wire_guard_enabled() -> bool:
     try:
-        if not bool(getattr(config, "EXECUTE_NOW_WIRE_TRIPWIRE_SHADOW", True)):
-            return
-        _max_lag = float(getattr(config, "EXECUTE_NOW_WIRE_TRIPWIRE_MAX_LAG_S", 5.0))
-        _lag = time.time() - _LAST_EXECUTE_NOW_ENTRY_TS
-        if _LAST_EXECUTE_NOW_ENTRY_TS <= 0.0 or _lag > _max_lag:
-            logger.critical(f"🚨 [EXEC_NOW_WIRE_TRIPWIRE] broker wire '{site}' fired {_lag:.1f}s after last execute_now (>{_max_lag}s) — possible execute_now bypass. pk={position_key} reason={(str(reason) if reason else '')[:80]}")
+        return bool(getattr(config, "WIRE_CONFIRM_GUARD_ENABLED", True))
+    except Exception:
+        return True
+
+
+def _sanction_execution(position_key, action="", side="", quantity=0.0, reason=""):
+    """Issue a wire sanction for ONE wire call. Refuses (None) while a broker order for
+    this key is still unconfirmed. MUST be called immediately before the wire; the returned
+    seq MUST be passed to _confirm_wire_result after. No clock involved."""
+    if not position_key or not _wire_guard_enabled():
+        return 0
+    try:
+        rec = _EXEC_WIRE_SANCTIONS.get(position_key) or {}
+        unconfirmed = [oid for oid, o in (rec.get("orders") or {}).items() if o.get("state") == _WIRE_STATE_OPEN]
+        if unconfirmed:
+            logger.critical(f"🛑 [WIRE_SANCTION_REFUSED] {position_key}: broker order(s) {unconfirmed} still unconfirmed — refusing re-place until execution/cancel confirms")
+            return None
     except Exception:
         pass
+    try:
+        global _EXEC_WIRE_SEQ
+        _EXEC_WIRE_SEQ += 1
+        _EXEC_WIRE_SANCTIONS[position_key] = {"seq": _EXEC_WIRE_SEQ, "action": action, "side": side, "orders": {}}
+        return _EXEC_WIRE_SEQ
+    except Exception:
+        return 0
+
+
+def _pending_unconfirmed(position_key):
+    """OrderIds for this key that exist at the broker but are not yet confirmed executed/canceled."""
+    try:
+        rec = _EXEC_WIRE_SANCTIONS.get(position_key) or {}
+        return [oid for oid, o in (rec.get("orders") or {}).items() if o.get("state") == _WIRE_STATE_OPEN]
+    except Exception:
+        return []
+
+
+def _confirm_wire_result(site, position_key, response, seq, action="", reason=""):
+    """Post-wire verdict. Returns the bound orderId, 'BYPASS', or None (no order/disabled).
+    THE rule: only a broker-confirmed orderId counts as an order."""
+    if not _wire_guard_enabled():
+        return None
+    try:
+        order_id = str((response or {}).get("orderId") or "") if isinstance(response, dict) else ""
+    except Exception:
+        order_id = ""
+    if not order_id or not order_id.isdigit():
+        return None
+    if seq == 0:
+        try:
+            _EXEC_WIRE_SANCTIONS.setdefault(position_key, {"seq": 0, "action": action, "side": "", "orders": {}})["orders"][order_id] = {"state": _WIRE_STATE_OPEN, "site": site}
+        except Exception:
+            pass
+        return order_id
+    try:
+        rec = _EXEC_WIRE_SANCTIONS.get(position_key) or {}
+        if rec.get("seq") != seq:
+            logger.critical(f"🚨 [EXEC_WIRE_BYPASS] broker-confirmed order {order_id} at '{site}' has NO sanction for {position_key} — order placed outside execute_now. action={action} reason={(str(reason) if reason else '')[:80]}")
+            try:
+                _EXEC_WIRE_SANCTIONS.setdefault(position_key, {"seq": 0, "action": action, "side": "", "orders": {}})["orders"][order_id] = {"state": _WIRE_STATE_OPEN, "site": site}
+            except Exception:
+                pass
+            return "BYPASS"
+        status = str((response or {}).get("status") or "").upper()
+        if status in _WIRE_EXECUTED or status in _WIRE_CANCELED:
+            return order_id
+        rec.setdefault("orders", {})[order_id] = {"state": _WIRE_STATE_OPEN, "site": site}
+        return order_id
+    except Exception:
+        return None
+
+
+def _retire_wire_order(position_key, order_id, how):
+    """Broker-confirmed terminal state (EXECUTED/CANCELED/ABSENT) -> legal erase."""
+    if not position_key or not order_id:
+        return
+    try:
+        rec = _EXEC_WIRE_SANCTIONS.get(position_key) or {}
+        orders = rec.get("orders") or {}
+        oid = str(order_id)
+        if oid in orders:
+            del orders[oid]
+    except Exception:
+        pass
+
+
+async def _verify_order_terminal(client, symbol, order_id):
+    """(confirmed: bool, how: str). Cancel-then-classify one broker order. how in
+    EXECUTED/CANCELED/ABSENT/LIVE/UNKNOWN. Anything but confirmed keeps pending (never erase blind)."""
+    try:
+        cxl = await asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=order_id)
+        cxl_err = None
+    except Exception as e:
+        cxl, cxl_err = None, e
+    if isinstance(cxl, dict):
+        st = str(cxl.get("status") or "").upper()
+        if st in _WIRE_EXECUTED:
+            return True, "EXECUTED"
+        if st in _WIRE_CANCELED:
+            return True, "CANCELED"
+    if cxl_err is not None and "-2011" in str(cxl_err):
+        return True, "ABSENT"
+    try:
+        qo = await asyncio.to_thread(client.futures_get_order, symbol=symbol, orderId=order_id)
+    except Exception as e2:
+        if "-2011" in str(e2):
+            return True, "ABSENT"
+        return False, "UNKNOWN"
+    if isinstance(qo, dict):
+        st = str(qo.get("status") or "").upper()
+        if st in _WIRE_EXECUTED:
+            return True, "EXECUTED"
+        if st in _WIRE_CANCELED:
+            return True, "CANCELED"
+        if st in _WIRE_LIVE:
+            return False, "LIVE"
+    return False, "UNKNOWN"
 _ABSOLUTE_WEBHOOK_LOCK: Dict[
     str, float
 ] = {}  # (account:symbol_side:orderside) → expiry
@@ -13188,7 +13306,7 @@ class PositionUpdateCallback:
                         logger.warning(
                             f"[WS_ORDER_CONFIRMED] {position_key}: Position changed from {prev_amt:.6f} to {amt_abs:.6f} - clearing active order lock"
                         )
-                        await self.trade_manager.clear_active_maker_order(position_key)
+                        await self.trade_manager.clear_active_maker_order(position_key, confirmed_how="EXECUTED")
                         logger.debug(
                             f"[KEEP_DEDUPE_EXECUTED] {position_key}: Order executed - keeping deduplication entry"
                         )
@@ -23990,15 +24108,17 @@ class MultiAccountTradeManager:
         for order in registry_checked:
             order_id = str(order.get("orderId") or "")
             try:
-                await asyncio.to_thread(
+                _cc_resp = await asyncio.to_thread(
                     client.futures_cancel_order, symbol=symbol, orderId=order_id
                 )
+                _cc_st = str((_cc_resp or {}).get("status") or "").upper() if isinstance(_cc_resp, dict) else ""
+                _cc_how = "EXECUTED" if _cc_st in _WIRE_EXECUTED else ("CANCELED" if _cc_st in _WIRE_CANCELED else None)
                 if self.stop_manager and order.get("type") == "STOP_MARKET":
                     self.stop_manager._managed_stop_ids.discard(order_id)
                     self.stop_manager._clear_stop(position_key, order_id)
                 elif order.get("type") == "LIMIT":
                     await self.clear_active_maker_order(
-                        position_key, int(order_id) if order_id.isdigit() else None
+                        position_key, int(order_id) if order_id.isdigit() else None, confirmed_how=_cc_how
                     )
             except Exception as exc:
                 success = False
@@ -29170,30 +29290,55 @@ class MultiAccountTradeManager:
             }
             self._track_price_band_order(position_key, order_id_str)
 
-    async def clear_active_maker_order(self, position_key: str, order_id: Optional[int] = None):
-        """Clear active maker order tracking - ONLY call this after order is confirmed canceled/filled on Binance"""
+    async def clear_active_maker_order(self, position_key: str, order_id: Optional[int] = None, confirmed_how: Optional[str] = None):
+        """Clear active maker order tracking - ERASE ONLY on broker-confirmed EXECUTED/CANCELED/ABSENT.
+        Pass confirmed_how when the caller already holds proof (WS position change = EXECUTED,
+        accepted cancel response = CANCELED); otherwise the order is cancel-verified here first
+        and KEPT (not erased) while its broker state is unverifiable. Kill switch
+        WIRE_CONFIRM_GUARD_ENABLED=False restores the legacy immediate clear."""
+        if _wire_guard_enabled() and confirmed_how is None:
+            async with self.dedupe_lock:
+                tracked = str((self.active_maker_orders.get(position_key) or {}).get("order_id", "") or "")
+            oid = tracked or (str(order_id) if order_id else "")
+            if oid and oid.isdigit():
+                account_key, symbol, _ = parse_position_key(position_key)
+                account = self.accounts.get(account_key)
+                client = getattr(account, "client", None) if account else None
+                if client is None:
+                    logger.critical(f"🛑 [CLEAR_REFUSED] {position_key}: no client to verify order {oid} — keeping pending, NOT erasing")
+                    return
+                ok, how = await _verify_order_terminal(client, symbol, oid)
+                if not ok:
+                    logger.critical(f"🛑 [CLEAR_REFUSED] {position_key}: order {oid} not terminal ({how}) — keeping pending, NOT erasing")
+                    return
+                confirmed_how = how
         async with self.dedupe_lock:
             if position_key in self.active_maker_orders:
                 tracked_order_id = str(
                     self.active_maker_orders[position_key].get("order_id", "")
                 )
-                if tracked_order_id and str(tracked_order_id).isdigit():
-                    account_key, symbol, _ = parse_position_key(position_key)
-                    account = self.accounts.get(account_key)
-                    if account and account.client:
-                        asyncio.create_task(
-                            asyncio.to_thread(
-                                account.client.futures_cancel_order,
-                                symbol=symbol,
-                                orderId=tracked_order_id,
+                if _wire_guard_enabled():
+                    _retire_wire_order(position_key, tracked_order_id, confirmed_how or "CANCELED")
+                else:
+                    if tracked_order_id and str(tracked_order_id).isdigit():
+                        account_key, symbol, _ = parse_position_key(position_key)
+                        account = self.accounts.get(account_key)
+                        if account and account.client:
+                            asyncio.create_task(
+                                asyncio.to_thread(
+                                    account.client.futures_cancel_order,
+                                    symbol=symbol,
+                                    orderId=tracked_order_id,
+                                )
                             )
-                        )
                 self.active_maker_orders.pop(position_key, None)
                 if tracked_order_id in self.managed_maker_order_registry:
                     self.managed_maker_order_registry.pop(tracked_order_id, None)
                 self._untrack_price_band_order(position_key, tracked_order_id)
             if order_id:
                 order_id_str = str(order_id)
+                if _wire_guard_enabled():
+                    _retire_wire_order(position_key, order_id_str, confirmed_how or "CANCELED")
                 if order_id_str in self.managed_maker_order_registry:
                     self.managed_maker_order_registry.pop(order_id_str, None)
                 self._untrack_price_band_order(position_key, order_id_str)
@@ -29201,12 +29346,30 @@ class MultiAccountTradeManager:
                 self.maker_price_retry_count.pop(position_key, None)
 
     async def cancel_and_clear_active_maker_order(self, position_key: str) -> bool:
-        """Aggressively clear orders to free up the system."""
+        """Cancel-verify then clear. Returns False (and KEEPS the pending record) while the
+        broker state is unverifiable — never erase blind. Kill switch restores legacy clear."""
         async with self.dedupe_lock:
             if position_key not in self.active_maker_orders:
                 return True
             order_info = self.active_maker_orders[position_key]
             order_id = order_info.get("order_id")
+        if _wire_guard_enabled():
+            if order_id and str(order_id).isdigit():
+                account_key, symbol, _ = parse_position_key(position_key)
+                account = self.accounts.get(account_key)
+                client = getattr(account, "client", None) if account else None
+                if client is None:
+                    logger.critical(f"🛑 [FORCE_CLEAR_REFUSED] {position_key}: no client to verify order {order_id} — keeping pending, NOT erasing")
+                    return False
+                ok, how = await _verify_order_terminal(client, symbol, str(order_id))
+                if not ok:
+                    logger.critical(f"🛑 [FORCE_CLEAR_REFUSED] {position_key}: order {order_id} not terminal ({how}) — keeping pending, NOT erasing")
+                    return False
+                _retire_wire_order(position_key, order_id, how)
+            async with self.dedupe_lock:
+                self.active_maker_orders.pop(position_key, None)
+            logger.info(f"🧹 [FORCE_CLEAR] Cleared active maker order for {position_key}")
+            return True
         if order_id and str(order_id).isdigit():
             account_key, symbol, _ = parse_position_key(position_key)
             account = self.accounts.get(account_key)
@@ -29357,8 +29520,12 @@ class MultiAccountTradeManager:
                 else:
                     await self.clear_active_lock(maker_lock_key)
                 async with self.dedupe_lock:
-                    self.active_maker_orders.pop(position_key, None)
-                    self.order_deduplication.pop(position_key, None)
+                    _rel_pending = _pending_unconfirmed(position_key) if _wire_guard_enabled() else []
+                    if not _rel_pending:
+                        self.active_maker_orders.pop(position_key, None)
+                        self.order_deduplication.pop(position_key, None)
+                    else:
+                        logger.critical(f"🛑 [RELEASE_KEPT] {position_key}: {_rel_pending} unconfirmed at broker — NOT erasing, NOT freeing re-place")
             except Exception as e:
                 logger.error(f"[LOCK_RELEASE_ERROR] {position_key}: {e}")
 
@@ -29635,9 +29802,13 @@ class MultiAccountTradeManager:
                                     # Force market fallback via remaining logic
                                     _qty_runaway = (Decimal(str(max(0.0, qty_abs - executed_qty))) // step) * step
                                     if not _qty_runaway.is_zero():
-                                        _exec_now_wire_tripwire("futures_create_order:maker_runaway_market", position_key, reason)
+                                        _wx_seq = _sanction_execution(position_key, ta, side, float(_qty_runaway), reason)
+                                        if _wx_seq is None:
+                                            logger.critical(f"🛑 [RUNAWAY_REFUSED] {position_key}: unconfirmed broker order pending — skipping runaway market wire")
+                                            break
                                         try:
-                                            await asyncio.to_thread(client.futures_create_order, symbol=symbol, side=side, positionSide=position_side, quantity=str(_qty_runaway), type=ORDER_TYPE_MARKET)
+                                            _wx_resp = await asyncio.to_thread(client.futures_create_order, symbol=symbol, side=side, positionSide=position_side, quantity=str(_qty_runaway), type=ORDER_TYPE_MARKET)
+                                            _confirm_wire_result("futures_create_order:maker_runaway_market", position_key, _wx_resp, _wx_seq, ta, reason)
                                             logger.critical(f"[MAKER_RUNAWAY_MARKET] {position_key} BUY MARKET {_qty_runaway} at runaway +{_runaway:.2f}%")
                                             executed_qty += float(_qty_runaway)
                                             filled = True
@@ -29655,9 +29826,13 @@ class MultiAccountTradeManager:
                                         active_order_id = None
                                     _qty_runaway = (Decimal(str(max(0.0, qty_abs - executed_qty))) // step) * step
                                     if not _qty_runaway.is_zero():
-                                        _exec_now_wire_tripwire("futures_create_order:maker_runaway_market", position_key, reason)
+                                        _wx_seq = _sanction_execution(position_key, ta, side, float(_qty_runaway), reason)
+                                        if _wx_seq is None:
+                                            logger.critical(f"🛑 [RUNAWAY_REFUSED] {position_key}: unconfirmed broker order pending — skipping runaway market wire")
+                                            break
                                         try:
-                                            await asyncio.to_thread(client.futures_create_order, symbol=symbol, side=side, positionSide=position_side, quantity=str(_qty_runaway), type=ORDER_TYPE_MARKET)
+                                            _wx_resp = await asyncio.to_thread(client.futures_create_order, symbol=symbol, side=side, positionSide=position_side, quantity=str(_qty_runaway), type=ORDER_TYPE_MARKET)
+                                            _confirm_wire_result("futures_create_order:maker_runaway_market", position_key, _wx_resp, _wx_seq, ta, reason)
                                             logger.critical(f"[MAKER_RUNAWAY_MARKET] {position_key} SELL MARKET {_qty_runaway} at runaway -{_runaway:.2f}%")
                                             executed_qty += float(_qty_runaway)
                                             filled = True
@@ -29730,6 +29905,7 @@ class MultiAccountTradeManager:
                         continue
                     if active_order_id:
                         _cxl_filled = 0.0
+                        _cxl_unknown = False
                         try:
                             _cxl = await asyncio.to_thread(
                                 client.futures_cancel_order,
@@ -29737,15 +29913,41 @@ class MultiAccountTradeManager:
                                 orderId=active_order_id,
                             )
                             _cxl_filled = float((_cxl or {}).get("executedQty", 0.0) or 0.0)
-                        except Exception:
+                            _cxl_st = str((_cxl or {}).get("status") or "").upper()
+                            if _cxl_st in _WIRE_EXECUTED:
+                                _retire_wire_order(position_key, active_order_id, "EXECUTED")
+                            elif _cxl_st in _WIRE_CANCELED:
+                                _retire_wire_order(position_key, active_order_id, "CANCELED")
+                        except Exception as _cxl_e:
+                            if "-2011" in str(_cxl_e):
+                                _retire_wire_order(position_key, active_order_id, "ABSENT")
                             # Cancel failed → the resting order most likely already FILLED and is gone.
                             # Query it so its fill is captured BEFORE we re-place — this is the exact race
                             # that stacked 3× full-qty fills on one OPEN. Never re-place a filled order's qty.
                             try:
                                 _qo = await asyncio.to_thread(client.futures_get_order, symbol=symbol, orderId=active_order_id)
                                 _cxl_filled = float((_qo or {}).get("executedQty", 0.0) or 0.0)
-                            except Exception:
-                                _cxl_filled = 0.0
+                                _qo_st = str((_qo or {}).get("status") or "").upper()
+                                if _qo_st in _WIRE_EXECUTED:
+                                    _retire_wire_order(position_key, active_order_id, "EXECUTED")
+                                elif _qo_st in _WIRE_CANCELED:
+                                    _retire_wire_order(position_key, active_order_id, "CANCELED")
+                                elif _qo_st in _WIRE_LIVE:
+                                    logger.critical(f"🛑 [CHASE_LIVE] {position_key}: order {active_order_id} still LIVE at broker (cancel failed) — keeping pending, retrying cancel next iteration")
+                                    await asyncio.sleep(POLL_INTERVAL)
+                                    continue
+                                else:
+                                    _cxl_unknown = True
+                            except Exception as _qo_e:
+                                if "-2011" in str(_qo_e):
+                                    _retire_wire_order(position_key, active_order_id, "ABSENT")
+                                else:
+                                    _cxl_filled = 0.0
+                                    _cxl_unknown = True
+                        if _cxl_unknown:
+                            logger.critical(f"🛑 [CHASE_UNKNOWN] {position_key}: order {active_order_id} state unverifiable (cancel+query failed) — keeping pending, NOT re-placing this iteration")
+                            await asyncio.sleep(POLL_INTERVAL)
+                            continue
                         if _cxl_filled > 0:
                             executed_qty += _cxl_filled
                         active_order_id = None
@@ -29757,7 +29959,11 @@ class MultiAccountTradeManager:
                             filled = True
                         break
                     qty_str = f"{_rem2_dec}"
-                    _exec_now_wire_tripwire("futures_create_order:place_maker_order", position_key, reason)
+                    _wx_seq = _sanction_execution(position_key, ta, side, float(_rem2_dec), reason)
+                    if _wx_seq is None:
+                        logger.critical(f"🛑 [MAKER_PLACE_REFUSED] {position_key}: unconfirmed broker order pending — NOT re-placing")
+                        await asyncio.sleep(POLL_INTERVAL)
+                        continue
                     new_order = await asyncio.to_thread(
                         client.futures_create_order,
                         symbol=symbol,
@@ -29769,6 +29975,7 @@ class MultiAccountTradeManager:
                         timeInForce="GTX",
                         newOrderRespType="RESULT",
                     )
+                    _confirm_wire_result("futures_create_order:place_maker_order", position_key, new_order, _wx_seq, ta, reason)
                     if new_order.get("status") == "FILLED":
                         executed_qty += float(new_order.get("executedQty", 0.0))
                         filled = True
@@ -29931,29 +30138,39 @@ class MultiAccountTradeManager:
                     # Cancel any lingering maker orders before market fallback
                     for _tid in tracked_order_ids or []:
                         try:
-                            await asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=_tid)
-                        except Exception:
-                            pass
+                            _fc = await asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=_tid)
+                            _fc_st = str((_fc or {}).get("status") or "").upper()
+                            if _fc_st in _WIRE_EXECUTED:
+                                _retire_wire_order(position_key, _tid, "EXECUTED")
+                            elif _fc_st in _WIRE_CANCELED:
+                                _retire_wire_order(position_key, _tid, "CANCELED")
+                        except Exception as _fce:
+                            if "-2011" in str(_fce):
+                                _retire_wire_order(position_key, _tid, "ABSENT")
                     _qty_market = (Decimal(str(remaining)) // step) * step
                     if not _qty_market.is_zero():
-                        _exec_now_wire_tripwire("futures_create_order:maker_fallback_market", position_key, reason)
-                        try:
-                            await asyncio.to_thread(
-                                client.futures_create_order,
-                                symbol=symbol,
-                                side=side,
-                                positionSide=position_side,
-                                quantity=str(_qty_market),
-                                type=ORDER_TYPE_MARKET,
-                            )
-                            logger.critical(f"[MAKER_FALLBACK_MARKET] {position_key} REDUCE MARKET {side} {_qty_market} sent")
-                        except Exception as _me:
-                            logger.error(f"[MAKER_FALLBACK_MARKET_FAIL] {position_key}: {_me}")
-                            # Last resort: try webhook (dead) for logging only
+                        _wx_seq = _sanction_execution(position_key, ta, side, float(_qty_market), reason)
+                        if _wx_seq is None:
+                            logger.critical(f"🛑 [FALLBACK_REFUSED] {position_key}: unconfirmed broker order pending — skipping fallback market wire")
+                        else:
                             try:
-                                await self.send_webhook(position_key, account_key, symbol, positionAmt, remaining, float(lp), side, position_side, f"{unique_id}:FALLBACK_EXIT", False, f"{reason}_TIMEOUT_EXIT", order_ids_to_cancel=tracked_order_ids)
-                            except Exception:
-                                pass
+                                _wx_resp = await asyncio.to_thread(
+                                    client.futures_create_order,
+                                    symbol=symbol,
+                                    side=side,
+                                    positionSide=position_side,
+                                    quantity=str(_qty_market),
+                                    type=ORDER_TYPE_MARKET,
+                                )
+                                _confirm_wire_result("futures_create_order:maker_fallback_market", position_key, _wx_resp, _wx_seq, ta, reason)
+                                logger.critical(f"[MAKER_FALLBACK_MARKET] {position_key} REDUCE MARKET {side} {_qty_market} sent")
+                            except Exception as _me:
+                                logger.error(f"[MAKER_FALLBACK_MARKET_FAIL] {position_key}: {_me}")
+                                # Last resort: try webhook (dead) for logging only
+                                try:
+                                    await self.send_webhook(position_key, account_key, symbol, positionAmt, remaining, float(lp), side, position_side, f"{unique_id}:FALLBACK_EXIT", False, f"{reason}_TIMEOUT_EXIT", order_ids_to_cancel=tracked_order_ids)
+                                except Exception:
+                                    pass
                 else:
                     logger.info(f"[MAKER_EXIT_DONE] {position_key} timeout but remaining {remaining:.6f} < step, considered filled")
             elif remaining > (qty_abs * 0.1):
@@ -29962,24 +30179,34 @@ class MultiAccountTradeManager:
                 )
                 for _tid in tracked_order_ids or []:
                     try:
-                        await asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=_tid)
-                    except Exception:
-                        pass
+                        _fc = await asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=_tid)
+                        _fc_st = str((_fc or {}).get("status") or "").upper()
+                        if _fc_st in _WIRE_EXECUTED:
+                            _retire_wire_order(position_key, _tid, "EXECUTED")
+                        elif _fc_st in _WIRE_CANCELED:
+                            _retire_wire_order(position_key, _tid, "CANCELED")
+                    except Exception as _fce:
+                        if "-2011" in str(_fce):
+                            _retire_wire_order(position_key, _tid, "ABSENT")
                 _qty_market = (Decimal(str(remaining)) // step) * step
                 if not _qty_market.is_zero():
-                    _exec_now_wire_tripwire("futures_create_order:maker_fallback_market_open", position_key, reason)
-                    try:
-                        await asyncio.to_thread(
-                            client.futures_create_order,
-                            symbol=symbol,
-                            side=side,
-                            positionSide=position_side,
-                            quantity=str(_qty_market),
-                            type=ORDER_TYPE_MARKET,
-                        )
-                        logger.critical(f"[MAKER_FALLBACK_MARKET] {position_key} OPEN MARKET {side} {_qty_market} sent")
-                    except Exception as _me:
-                        logger.error(f"[MAKER_FALLBACK_MARKET_FAIL] {position_key}: {_me}")
+                    _wx_seq = _sanction_execution(position_key, ta, side, float(_qty_market), reason)
+                    if _wx_seq is None:
+                        logger.critical(f"🛑 [FALLBACK_REFUSED] {position_key}: unconfirmed broker order pending — skipping fallback market wire")
+                    else:
+                        try:
+                            _wx_resp = await asyncio.to_thread(
+                                client.futures_create_order,
+                                symbol=symbol,
+                                side=side,
+                                positionSide=position_side,
+                                quantity=str(_qty_market),
+                                type=ORDER_TYPE_MARKET,
+                            )
+                            _confirm_wire_result("futures_create_order:maker_fallback_market_open", position_key, _wx_resp, _wx_seq, ta, reason)
+                            logger.critical(f"[MAKER_FALLBACK_MARKET] {position_key} OPEN MARKET {side} {_qty_market} sent")
+                        except Exception as _me:
+                            logger.error(f"[MAKER_FALLBACK_MARKET_FAIL] {position_key}: {_me}")
             await release_locks(success_fill=True)
             return True, qty_abs
         except Exception as e:
@@ -30490,8 +30717,7 @@ class MultiAccountTradeManager:
         logger.warning(
             f"🔍 [WH_TRACE_3] execute_now_top pk={position_key} act={action} side={side} qty={quantity:.6f}"
         )
-        global _LAST_EXECUTE_NOW_ENTRY_TS
-        _LAST_EXECUTE_NOW_ENTRY_TS = time.time()
+        # 2026-10-07: lag-based tripwire timestamp removed — broker confirmation is the only criterion now.
         # 2026-05-31 USER: SCALP_REDUCE OFF — CENTRAL gate at execute_now (the one chokepoint per CLAUDE.md). The
         # winner-cutting reduce bypassed BOTH queue_trade_action and execute_trade_action via the QUICK reduce path
         # (ez_positions_quick:13073 -> execute_now). Gating HERE blocks it on every route (men fired 06:13 post both
@@ -35947,7 +36173,10 @@ class MultiAccountTradeManager:
             qty_str = f"{qty_dec}"
             is_hedge_reason = any(k in str(reason or "").upper() for k in ["HEDGE_ELECTED_", "HEDGE_PROTECT_", "HEDGE_SAME_", "QUICK_HEDGE_"])
             logger.info(f"👷 [{position_key}] MARKET: {side}/{position_side} qty={qty_str} usd=${usd_value:.2f} reason={reason} is_aug={is_augmentation} hedge={is_hedge_reason}")
-            _exec_now_wire_tripwire("direct_market:send_webhook", position_key, reason)
+            _wx_seq = _sanction_execution(position_key, "DIRECT", side, float(qty_dec), reason)
+            if _wx_seq is None:
+                logger.critical(f"🛑 [DIRECT_REFUSED] {position_key}: unconfirmed broker order pending — skipping direct market wire")
+                return False
             order = await __import__("asyncio").to_thread(
                 client.futures_create_order,
                 symbol=symbol,
@@ -35956,6 +36185,7 @@ class MultiAccountTradeManager:
                 type=ORDER_TYPE_MARKET,
                 quantity=qty_str,
             )
+            _confirm_wire_result("direct_market:send_webhook", position_key, order, _wx_seq, "DIRECT", reason)
             logger.warning(f"👷 [{position_key}] MARKET_SENT qty={qty_str} orderId={order.get('orderId','?')} status={order.get('status','?')} avgPrice={order.get('avgPrice','?')}")
             # UNIVERSAL HEDGE PERSIST — preserved (was after webhook POST)
             try:
@@ -36042,7 +36272,7 @@ class MultiAccountTradeManager:
         # logger.info(f"👷 [{position_key}] WEBHOOK: {resolved_kind} ... payload=...")
         # logger.warning(f"🔍 [WH_TRACE_5] before_http_post pk={position_key} url={webhook_url[:60]} ...")
         # try:
-        #     _exec_now_wire_tripwire("finandy_webhook:send_webhook", position_key, reason)
+        #     (2026-10-07: lag tripwire retired; broker confirmation is the only criterion)
         #     async with self._webhook_semaphore:
         #         async with aiohttp.ClientSession(connector=...) as session:
         #             async with session.post(webhook_url, json=payload, timeout=...) as resp:
