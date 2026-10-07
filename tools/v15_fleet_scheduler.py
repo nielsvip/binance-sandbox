@@ -186,7 +186,7 @@ if mode == "probe":
     busy = round(100.0 * (1 - (_i1 - _i0) / max(1, _t1 - _t0)), 1)
     busy_nn = round(100.0 * (1 - ((_i1 - _i0) + (_n1 - _n0)) / max(1, _t1 - _t0)), 1)
     o = {"nproc": os.cpu_count(), "load1": float(open("/proc/loadavg").read().split()[0]), "busy_pct": busy, "busy_nonnice_pct": busy_nn, "mem_avail_mb": mem, "pdir": pdir,
-         "running": pilots(), "started": [], "done": [], "quarantined": [], "v365": {}, "repair": {}}
+         "running": pilots(), "started": [], "done": [], "quarantined": [], "v365": {}, "repair": {}, "gs": {}}
     if pdir and os.path.isdir(pdir):
         cache_p = "/tmp/v15_sched_done_cache.json"
         try:
@@ -230,6 +230,19 @@ if mode == "probe":
             v = verdict(f)
             if v:
                 o["repair"].setdefault(os.path.basename(f)[:-len("_365_cycle.json")], {})[int(re.search(r"repair_a(\d+)", f).group(1))] = v
+
+        def gs_verdict(f):  # USER 2026-10-07: GS-heal stage verdict (standalone {ss}.gs.json); ok = 365D gain>0 measured
+            try:
+                d = json.load(open(f))
+                a365 = d.get("after_365") or {}
+                g = a365.get("gain")
+                return {"ok": bool(g is not None and g > 0), "unverifiable": bool(not a365 and not (d.get("origin_365") or {}).get("m365"))}
+            except Exception:
+                return None
+        for f in glob.glob(os.path.join(w, "gs_a*", "*.gs.json")):
+            v = gs_verdict(f)
+            if v:
+                o["gs"].setdefault(os.path.basename(f)[:-len(".gs.json")], {})[int(re.search(r"gs_a(\d+)", f).group(1))] = v
     print(json.dumps(o))
 
 elif mode == "ready":
@@ -409,16 +422,16 @@ def _pair_gate_ok(sym, acts, owner, chain_state, attempts):
     """USER 2026-10-03 (drain stall): fresh (unowned) syms launch when EVERY launchable side has an
     action — terminal/capped sides don't block their sibling (half-quarantined pairs used to stall
     forever: the live side could never launch alone). Owned syms always pass (stickiness). Mirrors
-    pending_actions caps exactly (30D:3, 365D:2, REPAIR:1)."""
+    pending_actions caps exactly (30D:3, 365D:2, REPAIR:1, GS:1)."""
     if sym in owner:
         return True
-    caps = {"need30": ("30D", 3), "need365": ("365D", 2), "needrepair": ("REPAIR", 1)}
+    caps = {"need30": ("30D", 3), "need365": ("365D", 2), "needrepair": ("REPAIR", 1), "needgs": ("GS", 1)}
     needy = set()
     for side, (s, att) in (chain_state.get(sym) or {}).items():
         if s not in caps:
             continue
         w, cap = caps[s]
-        key = "%s_%s|%s%s" % (sym, side, w, att if w == "REPAIR" else "")
+        key = "%s_%s|%s%s" % (sym, side, w, att if w in ("REPAIR", "GS") else "")
         if attempts.get(key, 0) < cap:
             needy.add(side)
     return bool(needy) and {a["side"] for a in acts} == needy
@@ -469,6 +482,9 @@ def side_cmd(host, sym, side, window, pdir, attempt, workers):
     if window == "365D":
         return (f"mkdir -p {chain}/v365 && nice -n 10 .venv/bin/python -u tools/v15_365_cycle.py --sym-side {ss} --progress {pdir}/{ss}_v14_progress.json "
                 f"--template {t} --work {chain}/v365 --rounds 0 --workers {workers}")
+    if window == "GS":  # USER 2026-10-07: GS-heal adjuster stage (standalone runner, heal3+); gated by V15_GS_FLEET=1
+        return (f"mkdir -p {chain}/gs_a{attempt} && nice -n 10 .venv/bin/python -u tools/v15_graph_search.py --symsides {ss} --out {chain}/gs_a{attempt} "
+                f"--method gs --budget ${{V15_GS_BUDGET:-1200}} --workers {workers} --parallel 1 --progress-dirs {pdir},data/reports/lifecycle_pilot")
     prev = (f"{pdir}/{ss}_v14_progress.json" if attempt == 1 else
             f"$(.venv/bin/python -c \"import json;print(json.load(open('{chain}/repair_a{attempt-1}/{ss}_365_cycle.json'))['final_progress'])\")")
     return (f"mkdir -p {chain}/repair_a{attempt} && nice -n 10 .venv/bin/python -u tools/v15_365_cycle.py --sym-side {ss} --progress {prev} "
@@ -545,7 +561,7 @@ def tick(args, cfg, now):
     is_open, mto = us_market_open(now), minutes_to_open(now)
     vorder = venue_order(now)
     # ---- merge host views
-    running, owner, started, done, quar, v365, repair = {}, {}, set(), set(), set(), {}, {}
+    running, owner, started, done, quar, v365, repair, gs = {}, {}, set(), set(), set(), {}, {}, {}
     for n, s in stats.items():
         if not s:
             continue
@@ -559,6 +575,8 @@ def tick(args, cfg, now):
         v365.update(s["v365"])
         for ss, d in s["repair"].items():
             repair.setdefault(ss, {}).update({int(k): v for k, v in d.items()})
+        for ss, d in s.get("gs", {}).items():
+            gs.setdefault(ss, {}).update({int(k): v for k, v in d.items()})
     universe_syms = {"stocks": set(stocks), "crypto": set(crypto)}
     all_syms = stocks + crypto
     # ---- readiness (per host, only for symbols that could be placed there)
@@ -608,6 +626,13 @@ def tick(args, cfg, now):
             return "terminal_unverifiable", None
         if v["ok"]:
             return "terminal_ok", None
+        if os.environ.get("V15_GS_FLEET") == "1":  # USER 2026-10-07: GS-heal is the primary adjuster (repair = fallback)
+            g = gs.get(ss, {})
+            lastg = g[max(g)] if g else None
+            if lastg and lastg["ok"]:
+                return "terminal_ok", None
+            if not (lastg and lastg["unverifiable"]) and len(g) < 1:
+                return "needgs", len(g) + 1
         reps = repair.get(ss, {})
         last = reps[max(reps)] if reps else None
         if last and last["ok"]:
@@ -647,9 +672,9 @@ def tick(args, cfg, now):
     def pending_actions(sym, host_name):
         acts = []
         for side, (s, att) in chain_state[sym].items():
-            if s in ("need30", "need365", "needrepair"):
-                w = {"need30": "30D", "need365": "365D", "needrepair": "REPAIR"}[s]
-                key = f"{sym}_{side}|{w}{att if w == 'REPAIR' else ''}"
+            if s in ("need30", "need365", "needrepair", "needgs"):
+                w = {"need30": "30D", "need365": "365D", "needrepair": "REPAIR", "needgs": "GS"}[s]
+                key = f"{sym}_{side}|{w}{att if w in ('REPAIR', 'GS') else ''}"
                 if st["attempts"].get(key, 0) >= (6 if w == "30D" else 2 if w == "365D" else 1):  # USER 2026-10-07: 40-min fill slices + deaths resume free; 6 launches still bound runaways
                     continue
                 acts.append({"sym": sym, "side": side, "window": w, "attempt": att or 1, "key": key})
@@ -757,7 +782,7 @@ def tick(args, cfg, now):
             info["idle_reason"] = "slots full" if used >= cap else "mem guard" if proj_mem < est_pair else "no eligible ready symbol for this host"
         log["hosts"][h["name"]] = info
     # ---- summary per cat
-    cats = {c: {"sym_sides": 0, "done30": 0, "running": 0, "v365_ok": 0, "v365_bad": 0, "v365_unverifiable": 0, "repair_attempts": 0, "repair_ok": 0, "failing": []} for c in CATS}
+    cats = {c: {"sym_sides": 0, "done30": 0, "running": 0, "v365_ok": 0, "v365_bad": 0, "v365_unverifiable": 0, "repair_attempts": 0, "repair_ok": 0, "gs_attempts": 0, "gs_ok": 0, "failing": []} for c in CATS}
     for sym in all_syms:
         for side in ("LONG", "SHORT"):
             ss, c = f"{sym}_{side}", f"{'CRYPTO' if venue_of(sym) == 'crypto' else 'STOCKS'}_{side}"
@@ -772,6 +797,9 @@ def tick(args, cfg, now):
                 x["v365_ok"] += bool(v["ok"]); x["v365_bad"] += not v["ok"]
             x["repair_attempts"] += len(repair.get(ss, {}))
             x["repair_ok"] += s_ == "terminal_ok" and bool(v) and not v["ok"]
+            _gd = gs.get(ss, {})
+            x["gs_attempts"] += len(_gd)
+            x["gs_ok"] += bool(_gd) and bool(_gd[max(_gd)]["ok"])
             if s_ == "terminal_failing":
                 x["failing"].append(ss)
     for c in cats.values():

@@ -1329,6 +1329,7 @@ def run_symside(ss: str, out: Path, workers: int, budget: float, dirs: list, met
             abl_dir.mkdir(exist_ok=True)
             (abl_dir / f"{ss}.json").write_text(json.dumps({"symside": ss, "ablation": reports["gs"].get("ablation", [])}, default=str))
         summ["secs"] = round(time.time() - t0, 1)
+        summ["symside"] = ss  # USER 2026-10-07: resume skipped every line without this (KeyError) -> full double-calc on restart
         with open(out / "summary.jsonl", "a") as fh:
             fh.write(json.dumps(summ, default=str) + "\n")
         return summ
