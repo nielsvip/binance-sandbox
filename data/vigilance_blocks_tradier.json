@@ -129,6 +129,11 @@
       "blocked_at": "2026-09-28T19:56:51.871058+00:00",
       "reason": "DC4_15m_BREACH_g-1.58pct_px327.6850_lvl328.8050",
       "exit_price": 327.685
+    },
+    "USAR_SHORT": {
+      "blocked_at": "2026-10-07T13:41:08.752889+00:00",
+      "reason": "NON_TRADEABLE_WT15M_EXIT_wt85.1_g4.61",
+      "exit_price": 13.125
     }
   },
   "streaks": {
@@ -504,6 +509,16 @@
           "ts": "2026-09-28T19:59:12.744465+00:00",
           "gain_pct": 6.7016,
           "reason": "STRUCT_BREAK_DC_1h_HIGH_(0.00)_gain:6.24%_qty_999999"
+        }
+      ]
+    },
+    "COHR_LONG": {
+      "consec_losses": 1,
+      "last": [
+        {
+          "ts": "2026-10-07T13:49:28.763529+00:00",
+          "gain_pct": -3.4849,
+          "reason": "DC_HOPELESS_entry=329.5650_dc=[269.2200,313.3000]_g0.00_qty_999999"
         }
       ]
     }
