@@ -972,6 +972,31 @@ def ever_yellow_cells(cat_side: str) -> set:
     return _EVER_YELLOW_CACHE[cat_side]
 
 
+_NONE_PRIO_CACHE: dict = {}
+
+
+def none_priority_evidence(cat_side: str) -> dict:
+    """USER 2026-10-07 (NONE priority): data/cat_avg/priority_evidence_{cat}.json —
+    finalized-only tested keys {rows: {TAB!SW=cand: [n,pos,neg]}, cells: {TAB!SW=cand@HDR: [...]}}.
+    A cell key ABSENT here was never numeric in any finalized sheet (NONE) → must-calculate
+    priority inside computed rows (fail-open: missing/unreadable file = {} = old behavior)."""
+    if cat_side not in _NONE_PRIO_CACHE:
+        try:
+            _dir = Path(os.environ.get("V15_PRIORITY_DIR") or (ROOT / "data" / "cat_avg"))
+            _pj = json.loads((_dir / f"priority_evidence_{cat_side}.json").read_text())
+            _NONE_PRIO_CACHE[cat_side] = {"rows": _pj.get("rows") or {}, "cells": _pj.get("cells") or {}}
+        except Exception:
+            _NONE_PRIO_CACHE[cat_side] = {"rows": {}, "cells": {}}
+    return _NONE_PRIO_CACHE[cat_side]
+
+
+def _is_none_priority(prio, key: str) -> bool:
+    """True when priority evidence LOADED (non-empty rows) and this cell key was never tested."""
+    if not isinstance(prio, dict) or not prio.get("rows"):
+        return False
+    return key not in (prio.get("cells") or {})
+
+
 _TAB_LEVEL_CACHE: dict = {}
 
 
@@ -2469,9 +2494,13 @@ def _possym_decide(sym_side: str, tab: str, rkey: str, round_id: str, pos, n, ne
     try:
         pos = int(pos)
     except Exception:
-        return True, "no_pos_sym", None, None
+        pos = None
     if new:
         return True, "new_row", None, None
+    if pos is None:
+        p = _POSSYM_P[0]
+        u = _possym_draw(sym_side, tab, rkey, round_id)
+        return (u < p), "pos=None", p, u
     if pos >= 4 or pos < 0:
         return True, "pos>=4", None, None
     if n is None or int(n) < _POSSYM_MIN_N:
@@ -3708,6 +3737,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _ps_on = False
     _ps_cat = map_key_for_symside(new_symside)
     _ps_json = _possym_load_nsym(_ps_cat) if _ps_on else {}
+    _prio = none_priority_evidence(_ps_cat) if _ps_on else {"rows": {}, "cells": {}}
+    if _ps_on and _prio.get("rows"):
+        print(f"[NONE-PRIORITY] {new_symside} cat={_ps_cat} evidence rows={len(_prio['rows'])} cells={len(_prio['cells'])} — unevidenced yellow cells always calculated", flush=True)
     _zero_on = _zero_enabled()
     _zero_row_ev = _possym_load_nsym(_ps_cat) if _zero_on else {}
     _zero_cell_ev = _zero_load_cell_evidence(_ps_cat) if _zero_on else {}
@@ -3857,8 +3889,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                         info.update(kind="skip", reason=f"SKIPPED_SAMPLING(pos_sym={int(_pp)})", g=None)
                     else:
                         _kept = []
+                        from tools.v15_cat_avg_matrix import norm_cand as _prio_norm
+                        _prio_rk = f"{sname}!{str(switch).strip()}={_prio_norm(cand)}"
                         for _h in info["hdrs"]:
                             _f, _o = _h.split("=", 1)
+                            if _is_none_priority(_prio, f"{_prio_rk}@{_h}"):
+                                _ps_count(sname, "none_priority", True, "cell")
+                                _kept.append(_h)
+                                continue
                             _fp, _fn = _ps_filter_ev(sname, _f.strip(), _o.strip(), _pp, _nn)
                             _fgo, _fbk, _, _ = _possym_decide(new_symside, sname, f"{str(switch).strip()}={str(cand).strip()}@{_h}", _ps_round, _fp, _fn, (sname, _f.strip(), _o.strip()) in _ps_new or (sname, str(switch).strip(), str(cand).strip()) in _ps_new)
                             _ps_count(sname, _fbk, _fgo, "cell")
