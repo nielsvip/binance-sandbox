@@ -1,32 +1,56 @@
 {
- "generated_at": "2026-10-07 00:36 UTC",
- "total_capital_usd": 15.96,
+ "generated_at": "2026-10-07 01:06 UTC",
+ "total_capital_usd": 45.32,
  "tier_capital": {
   "A": 0.0,
-  "B": 15.96,
-  "C": 0.0
+  "B": 31.24,
+  "C": 14.07
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 2,
+  "C": 1
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "fin:SANDUSDT_LONG"
+ ],
  "mediocre": [
-  "flz:GRAMUSDT_SHORT"
+  "fin:KSMUSDT_LONG"
  ],
  "positions": [
   {
-   "pk": "flz:GRAMUSDT_SHORT",
-   "symbol": "GRAMUSDT",
-   "account": "flz",
-   "value_usd": 15.96,
-   "gain_pct": -0.132,
+   "pk": "fin:KSMUSDT_LONG",
+   "symbol": "KSMUSDT",
+   "account": "fin",
+   "value_usd": 17.87,
+   "gain_pct": -0.241,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 10.5,
-   "mark": 1.52
+   "amt": 3.6,
+   "mark": 4.9651
+  },
+  {
+   "pk": "fin:SANDUSDT_LONG",
+   "symbol": "SANDUSDT",
+   "account": "fin",
+   "value_usd": 14.07,
+   "gain_pct": 1.265,
+   "tier": "C",
+   "perf_mult": 0.37,
+   "amt": 202.0,
+   "mark": 0.06966
+  },
+  {
+   "pk": "fin:ADAUSDC_SHORT",
+   "symbol": "ADAUSDC",
+   "account": "fin",
+   "value_usd": 13.37,
+   "gain_pct": 0.783,
+   "tier": "B",
+   "perf_mult": 2.78,
+   "amt": 50.2,
+   "mark": 0.26632135
   }
  ]
 }

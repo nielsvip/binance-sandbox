@@ -2824,6 +2824,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         #      method (ALL positives reapply, even past the target); the target is a reported goal, never forced.
         # Dropped (never-positive) filters are _c_drop-ped from their original C cells so C == the final set (§56.0).
         # TIER-entry share is measured from the final ledger and reported (flag only — no auto-action).
+        # Self-improvement (USER 2026-10-07): NAKED/REAPPLY try-order follows cross-workbook EV (endgame_knowledge.json);
+        # every run appends endgame_ledger.jsonl + merges stats. No look-ahead: knowledge loads at entry, appends at exit.
+        # Greedy adoption is UNCHANGED (§14.2 — order only affects which positives land first under a binding budget).
         # Resume-safe (progress endgame result_key), budgeted (herd 90-min cap), V15_ENDGAME=0 disables. Never raises.
         nonlocal cumulative_gain, cumulative_overrides
         import hashlib as _eg_hl
@@ -2849,6 +2852,21 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if prev.get("complete") and prev.get("result_key") == _sk(cumulative_overrides):
                 print(f"[ENDGAME] {new_symside} already ran on this exact set — skip (resume)", flush=True)
                 return
+            _eg_entry_gain = float(cumulative_gain)
+            _eg_ev_on = os.environ.get("V15_ENDGAME_EV_ORDER", "1") == "1"
+            _eg_ledger_on = os.environ.get("V15_ENDGAME_LEDGER", "1") == "1"
+            _eg_know, _eg_know_n = {}, 0
+            if _eg_ev_on or _eg_ledger_on:
+                try:
+                    _eg_kp = PROGRESS_DIR / "endgame_knowledge.json"
+                    if _eg_kp.exists():
+                        _eg_know = json.loads(_eg_kp.read_text()) or {}
+                        _eg_know_n = int((_eg_know.get("workbooks") or {}).get("n", 0))
+                except Exception as _kerr:
+                    print(f"[ENDGAME-warn] {new_symside} knowledge load failed ({_kerr}) — alphabetical order", flush=True)
+                    _eg_know, _eg_know_n = {}, 0
+            if _eg_know_n:
+                print(f"[ENDGAME] {new_symside} EV-order from {_eg_know_n} prior workbooks (ev_on={_eg_ev_on})", flush=True)
             deadline = t0 + budget
             _n_eval = [0]
             def _eg_eval(label, ov, cum_before, switch="", cand=""):
@@ -2903,7 +2921,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             print(f"[ENDGAME] {new_symside} STRIP: {float(cumulative_gain):.4f} -> naked {base_gain:.4f} ({len(F)} filters out)", flush=True)
             # 4. NAKED RETEST each promoted switch leave-one-out vs the stripped base (ACTUAL marginal deltas)
             naked_rows = []
-            for k in sorted(S.keys()):
+            for k in _endgame_rank(list(S.keys()), _eg_know, _eg_ev_on):
                 if _t.time() > deadline or _n_eval[0] >= max_evals or _SHUTDOWN["v"]:
                     naked_rows.append((k, S[k], None, "BUDGET/SHUTDOWN"))
                     continue
@@ -2927,7 +2945,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             tgt = (float(bh) + target_pts) if bh is not None else None
             while remaining and _t.time() < deadline and _n_eval[0] < max_evals and not _SHUTDOWN["v"]:
                 best_f, best_g, best_res = None, None, None
-                for fk, fv in sorted(remaining.items()):
+                for fk in _endgame_rank(list(remaining.keys()), _eg_know, _eg_ev_on):
+                    fv = remaining[fk]
                     if _t.time() > deadline or _n_eval[0] >= max_evals:
                         break
                     cand_ov = dict(working)
@@ -2966,6 +2985,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     print(f"[ENDGAME] {new_symside} C-reconciled: {len(remaining)} never-positive filters dropped from C: {sorted(remaining.keys())[:10]}", flush=True)
             else:
                 print(f"[ENDGAME] {new_symside} ADOPT refused (valid={bool((ares or {}).get('valid'))} trades={(ares or {}).get('trades')} err={aerr}) — set unchanged", flush=True)
+            _eg_lift = float(cumulative_gain) - _eg_entry_gain
             # 7. TIER-entry share from the final ledger (report-only flag; no auto-action)
             tier_share, tier_n, open_n = None, 0, 0
             try:
@@ -3004,6 +3024,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _erow(["REAPPLY", i, fk, str(fv)[:40], g, tr])
                 _erow(["DROPPED_FILTERS", ",".join(sorted(remaining.keys()))[:900]])
                 _erow(["TIER_SHARE", f"{tier_n}/{open_n}={tier_share}", "DOMINANT>30%" if (tier_share or 0) > 0.30 else "ok", "report-only: no auto-action"])
+                _erow(["KNOWLEDGE", f"prior_workbooks={_eg_know_n}", f"ev_order={bool(_eg_ev_on)}", f"entry={_eg_entry_gain:.4f}", f"lift={_eg_lift:+.4f}"])
             except Exception as _ese:
                 print(f"[ENDGAME-warn] {new_symside} sheet write: {_ese}", flush=True)
             progress["endgame"] = {"complete": True, "result_key": _sk(dict(cumulative_overrides)), "switches": len(S), "filters": len(F),
@@ -3017,6 +3038,42 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _atomic_write_json(progress_path, progress)
             except Exception:
                 pass
+            if _eg_ledger_on:
+                try:
+                    _rec_key = f"{new_symside}|{_sk(dict(cumulative_overrides))}"
+                    _eg_lp = PROGRESS_DIR / "endgame_ledger.jsonl"
+                    _seen = False
+                    if _eg_lp.exists():
+                        try:
+                            with open(_eg_lp) as _lf:
+                                for _ln in _lf:
+                                    if _rec_key in _ln[:220]:
+                                        _seen = True
+                                        break
+                        except Exception:
+                            pass
+                    if not _seen:
+                        _step_prev = base_gain
+                        _seq = []
+                        for _fk, _fv, _g, _tr in applied:
+                            _seq.append({"filter": _fk, "step_delta": round(float(_g) - float(_step_prev), 6), "gain_after": float(_g), "trades": _tr})
+                            _step_prev = _g
+                        _rec = {"symside": new_symside, "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(), "key": _rec_key, "ev_order": bool(_eg_ev_on), "know_n": _eg_know_n, "entry_gain": _eg_entry_gain, "strip_gain": base_gain, "final_gain": float(cumulative_gain), "lift": _eg_lift, "adopted": adopted, "target_met": target_met,
+                                "naked": [{"switch": r[0], "value": str(r[1])[:60], "delta": r[2], "cause": r[3] if len(r) > 3 else ""} for r in naked_rows],
+                                "reapply_seq": _seq, "dropped": sorted(remaining.keys()), "tier_share": tier_share, "evals": _n_eval[0]}
+                        with open(_eg_lp, "a") as _lf:
+                            _lf.write(json.dumps(_rec) + "\n")
+                        _naked_items = []
+                        for r in naked_rows:
+                            _naked_items.append((r[0], r[2]))
+                            _naked_items.append((f"{r[0]}={str(r[1])[:60]}", r[2]))
+                        _endgame_merge_knowledge(_eg_know, _naked_items, [(_s["filter"], _s["step_delta"]) for _s in _seq], list(remaining.keys()), _eg_lift, target_met, adopted)
+                        _atomic_write_json(PROGRESS_DIR / "endgame_knowledge.json", _eg_know)
+                        _wb = _eg_know.get("workbooks") or {}
+                        _ml = (float(_wb.get("sum_lift", 0.0)) / _wb["n"]) if _wb.get("n") else 0.0
+                        print(f"[ENDGAME-PROOF] {new_symside} lift {_eg_lift:+.4f} (entry {_eg_entry_gain:.4f} -> final {float(cumulative_gain):.4f}); aggregate n={_wb.get('n', 0)} mean_lift={_ml:+.4f} P(lift>0)={_wb.get('pos_lift', 0)}/{_wb.get('n', 0)} targets={_wb.get('target_met', 0)} adopted={_wb.get('adopted', 0)}", flush=True)
+                except Exception as _le:
+                    print(f"[ENDGAME-warn] {new_symside} ledger/knowledge write: {_le}", flush=True)
             print(f"[ENDGAME] {new_symside} done in {round(_t.time()-t0,1)}s, {target_met=}, adopted={adopted}", flush=True)
         except V15Shutdown:
             raise
@@ -5224,6 +5281,62 @@ def _atomic_write_json(path: Path, data: dict):
                 _os.remove(tmp)
         except Exception:
             pass
+
+def _endgame_ev(key, know):
+    # USER 2026-10-07 ENDGAME self-improvement: mean historical marginal delta of one switch/filter key, or None until n>=3 (no fake EVs).
+    try:
+        st = (know.get("keys") or {}).get(key) or {}
+        n, s = int(st.get("n", 0)), float(st.get("sum", 0.0))
+        return (s / n) if n >= 3 else None
+    except Exception:
+        return None
+
+def _endgame_rank(keys, know, ev_on):
+    # Known-EV keys first (best mean delta first), unknown keys alphabetical after. Every key is still tried — order only, never skips (§14.2 greedy intact).
+    if not ev_on:
+        return sorted(keys)
+    known = [k for k in keys if _endgame_ev(k, know) is not None]
+    unk = [k for k in keys if _endgame_ev(k, know) is None]
+    known.sort(key=lambda k: -_endgame_ev(k, know))
+    return known + sorted(unk)
+
+def _endgame_merge_knowledge(know, naked_items, seq_items, dropped_keys, lift, target_met, adopted):
+    # Pure merge: naked (key, delta|None) + reapply (filter, step_delta) + dropped keys + workbook lift aggregate. Returns know.
+    ks = know.setdefault("keys", {})
+    for kk, d in naked_items:
+        if d is None:
+            continue
+        try:
+            st = ks.setdefault(kk, {"n": 0, "sum": 0.0, "pos": 0})
+            st["n"] += 1
+            st["sum"] = float(st["sum"]) + float(d)
+            st["pos"] += 1 if float(d) > 1e-9 else 0
+        except Exception:
+            pass
+    for kk, d in seq_items:
+        try:
+            st = ks.setdefault(kk, {"n": 0, "sum": 0.0, "pos": 0})
+            st["n"] += 1
+            st["sum"] = float(st["sum"]) + float(d)
+            st["pos"] += 1
+        except Exception:
+            pass
+    for kk in dropped_keys:
+        try:
+            st = ks.setdefault(kk, {"n": 0, "sum": 0.0, "pos": 0})
+            st["dropped"] = int(st.get("dropped", 0)) + 1
+        except Exception:
+            pass
+    wb = know.setdefault("workbooks", {"n": 0, "sum_lift": 0.0, "pos_lift": 0, "target_met": 0, "adopted": 0})
+    try:
+        wb["n"] += 1
+        wb["sum_lift"] = float(wb["sum_lift"]) + float(lift)
+        wb["pos_lift"] += 1 if float(lift) > 1e-9 else 0
+        wb["target_met"] += 1 if target_met else 0
+        wb["adopted"] += 1 if adopted else 0
+    except Exception:
+        pass
+    return know
 
 def _validate_e_chain_and_yellows(progress: dict, wb_path: Path | None = None):
     """Integrated from tests/test_v15_e_bland.py — ensures no E drop and F/Yellow/Orange are real.

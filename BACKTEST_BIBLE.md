@@ -1455,3 +1455,23 @@ Mon 2026-10-05 06:00 UTC: best (newest-round) 30D sheet of every sym_side → 36
 - Status 2026-10-06: crypto 5/5 and stocks 11/11 sample sym_sides at 1.0 in the isolated replay (live executing the vec
   decision through the real order path); live-equal builder applied (user unlock); large replay (80 crypto + 101 stock
   sym_sides × 30D/90D) running; NPZ fleet rebuild on the live-equal builder in progress → all sheets re-measured after it.
+
+## 69. ENDGAME FILTER CYCLE + SELF-IMPROVEMENT (USER 2026-10-07, AUTHORITATIVE — end of every workbook)
+- **Order**: per-row fill (filter DEFAULTS from moment 1, filter ALTERNATIVES orange after their switch) → `_final_filter_recheck`
+  → `_endgame_filter_cycle` → `_diagnose_repair` → compliance → DONE. `V15_ENDGAME=0` disables; never raises; herd-budgeted.
+- **Cycle**: (1) REPAIR illegal values (int-truncate float counts, drop `ABLATION_DISABLE_*=True` P0) + fresh re-eval.
+  (2) STRIP all promoted filters → naked switch-only base + fresh re-eval. (3) NAKED retest every promoted switch
+  leave-one-out vs the stripped base: ACTUAL marginal deltas; honest zeros cause-tagged (`NON_BINDING_ZERO`/`OFFSET_ZERO`,
+  §18 — never faked, §19). (4) REAPPLY filters one-by-one greedy toward gain > bh+10 (§14.2: ALL positives reapply, even
+  past the target — the target is a reported goal, never forced). (5) ADOPT = fresh NO-LIES eval of exactly the adopted
+  set; dropped filters `_c_drop`-ped so C == the final set (§56.0). (6) TIER-entry share reported, flag-only, no auto-action.
+- **Proof**: every run prints `[ENDGAME-PROOF] lift ±x (entry → final)` with the running aggregate
+  (`endgame_knowledge.json → workbooks`: n, mean_lift, P(lift>0), targets, adopted). Within-subject (same NPZ window, zero
+  extra compute) + herd A/B split (`V15_ENDGAME_EV_ORDER=0/1`) for the ordering benefit. Proven = mean lift > 0 with
+  sign consistency across workbooks — negatives reported honestly, never hidden.
+- **Self-improvement**: NAKED/REAPPLY try-order follows cross-workbook EV (mean marginal delta, n≥3, else alphabetical).
+  Order only — every candidate is still tried, greedy adoption unchanged (§14.2); under a binding eval budget best-first
+  banks the best positives first. Each run appends `endgame_ledger.jsonl` (entry/strip/final, naked deltas, reapply
+  sequence with step deltas, drops) and merges `endgame_knowledge.json`. No look-ahead: knowledge loads at cycle entry
+  from PRIOR workbooks only; the current run appends at exit. Resume-keyed `(symside|set-hash)`, corrupt files fall back
+  to alphabetical, never fatal. Guard tests: `tests/test_v15_endgame.py`.
