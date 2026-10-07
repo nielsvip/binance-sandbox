@@ -15321,6 +15321,129 @@ async def _queue_vec_exact_order(order_queue, trade_manager, position_key, actio
     return "SUCCESS"
 
 
+# 2026-10-07 USER: broker confirmation is the ONLY order criterion (no clock) — stocks mirror
+# of the ez_manage wire guard. Every wire must sanction immediately before firing; the post-wire
+# broker response decides: no order id = no order = no verdict; id + fresh sanction = order EXISTS
+# (no erase / no re-place until EXECUTED or CANCELED confirms); id without sanction = BYPASS.
+# Tradier response shapes are nested-or-flat ({order:{id,status}} or {id,status}), statuses
+# lowercase. Kill switch: WIRE_CONFIRM_GUARD_ENABLED=False restores legacy behavior.
+_EXEC_WIRE_SANCTIONS = {}
+_EXEC_WIRE_SEQ = 0
+_WIRE_STATE_OPEN = "OPEN"
+_WIRE_EXECUTED = {"filled"}
+_WIRE_CANCELED = {"canceled", "cancelled", "expired", "rejected"}
+_WIRE_LIVE = {"open", "pending", "submitted", "queued", "partially_filled", "calculated", "accepted_for_bidding"}
+
+
+def _wire_guard_enabled():
+    try:
+        return bool(getattr(config, "WIRE_CONFIRM_GUARD_ENABLED", True))
+    except Exception:
+        return True
+
+
+def _pk_for(account_key, symbol, position_side):
+    sym = str(symbol or "").upper().strip()
+    if position_side in ("LONG", "SHORT"):
+        return f"{account_key}:{sym}_{position_side}"
+    return f"{account_key}:{sym}"
+
+
+def _trad_id_status(response):
+    if not isinstance(response, dict):
+        return "", ""
+    o = response.get("order") if isinstance(response.get("order"), dict) else response
+    return str(o.get("id") or ""), str(o.get("status") or "").lower()
+
+
+def _sanction_execution(position_key, action="", side="", quantity=0.0, reason=""):
+    """Issue a wire sanction for ONE wire call. Refuses (None) while a broker order for
+    this key is still unconfirmed. MUST be called immediately before the wire; the returned
+    seq MUST be passed to _confirm_wire_result after. No clock involved."""
+    if not position_key or not _wire_guard_enabled():
+        return 0
+    try:
+        rec = _EXEC_WIRE_SANCTIONS.get(position_key) or {}
+        unconfirmed = [oid for oid, o in (rec.get("orders") or {}).items() if o.get("state") == _WIRE_STATE_OPEN]
+        if unconfirmed:
+            logger.critical(f"🛑 [WIRE_SANCTION_REFUSED] {position_key}: broker order(s) {unconfirmed} still unconfirmed — refusing re-place until execution/cancel confirms")
+            return None
+    except Exception:
+        pass
+    try:
+        global _EXEC_WIRE_SEQ
+        _EXEC_WIRE_SEQ += 1
+        _EXEC_WIRE_SANCTIONS[position_key] = {"seq": _EXEC_WIRE_SEQ, "action": action, "side": side, "orders": {}}
+        return _EXEC_WIRE_SEQ
+    except Exception:
+        return 0
+
+
+def _pending_unconfirmed(position_key):
+    """Order ids for this key that exist at the broker but are not yet confirmed executed/canceled."""
+    try:
+        rec = _EXEC_WIRE_SANCTIONS.get(position_key) or {}
+        return [oid for oid, o in (rec.get("orders") or {}).items() if o.get("state") == _WIRE_STATE_OPEN]
+    except Exception:
+        return []
+
+
+def _confirm_wire_result(site, position_key, response, seq, action="", reason=""):
+    """Post-wire verdict. Returns the bound order id, 'BYPASS', or None (no order/disabled).
+    THE rule: only a broker-confirmed order id counts as an order."""
+    if not _wire_guard_enabled():
+        return None
+    order_id, status = _trad_id_status(response)
+    if not order_id:
+        return None
+    if seq == 0:
+        try:
+            _EXEC_WIRE_SANCTIONS.setdefault(position_key, {"seq": 0, "action": action, "side": "", "orders": {}})["orders"][order_id] = {"state": _WIRE_STATE_OPEN, "site": site}
+        except Exception:
+            pass
+        return order_id
+    try:
+        rec = _EXEC_WIRE_SANCTIONS.get(position_key) or {}
+        if rec.get("seq") != seq:
+            logger.critical(f"🚨 [EXEC_WIRE_BYPASS] broker-confirmed order {order_id} at '{site}' has NO sanction for {position_key} — order placed outside execute_now. action={action} reason={(str(reason) if reason else '')[:80]}")
+            try:
+                _EXEC_WIRE_SANCTIONS.setdefault(position_key, {"seq": 0, "action": action, "side": "", "orders": {}})["orders"][order_id] = {"state": _WIRE_STATE_OPEN, "site": site}
+            except Exception:
+                pass
+            return "BYPASS"
+        if status in _WIRE_EXECUTED or status in _WIRE_CANCELED:
+            return order_id
+        rec.setdefault("orders", {})[order_id] = {"state": _WIRE_STATE_OPEN, "site": site}
+        return order_id
+    except Exception:
+        return None
+
+
+def _retire_wire_order(position_key, order_id, how):
+    """Broker-confirmed terminal state (EXECUTED/CANCELED/ABSENT) -> legal erase."""
+    if not position_key or not order_id:
+        return
+    try:
+        rec = _EXEC_WIRE_SANCTIONS.get(position_key) or {}
+        orders = rec.get("orders") or {}
+        oid = str(order_id)
+        if oid in orders:
+            del orders[oid]
+    except Exception:
+        pass
+
+
+def _close_order_terminal(status):
+    """Close-refire lifecycle: terminal statuses erase the record; live blocks resubmit;
+    unknown ('') KEEPS the record (never erase blind) but fails OPEN (exits never blocked)."""
+    s = str(status or "").lower()
+    if s in _WIRE_EXECUTED or s in _WIRE_CANCELED:
+        return "TERMINAL"
+    if s in _WIRE_LIVE:
+        return "LIVE"
+    return "UNKNOWN"
+
+
 async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_key: str, action: str, reason: str, conviction: float = 50.0, override_qty: float = None, record_decision: bool = True):
     try:
         _mandatory_reentry_qta = is_mandatory_reclaim_reason(reason)
@@ -15453,12 +15576,16 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
         # ⏳ CLOSE_REFIRE_GUARD [2026-07-03]: do not resubmit a CLOSE/REDUCE while the previous
         # close order for this key is still working at the broker (TXN logged 241 duplicate
         # "closes" of the same 2 shares — every resubmission was recorded as a trade).
+        # 2026-10-07: broker confirmation is the ONLY criterion — the 900s age bypass is gone
+        # (every prior close is re-queried regardless of age); the record is erased ONLY on a
+        # broker-terminal status, KEPT on unreadable state (never erase blind), and exits still
+        # fail OPEN on unknown (exits are never blocked by an unreadable broker).
         try:
             _cr_act = (action or '').upper()
             if 'CLOSE' in _cr_act or 'REDUCE' in _cr_act:
                 _cr_map = getattr(trade_manager, '_last_close_order', None) or {}
                 _cr_rec = _cr_map.get(position_key)
-                if _cr_rec and (time.time() - _cr_rec[1]) < 900.0:
+                if _cr_rec:
                     _cr_acct = position_key.split(':')[0]
                     _cr_status = ''
                     try:
@@ -15467,10 +15594,15 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                         _cr_status = str((_cr_res.get('order', _cr_res) or {}).get('status', _cr_res.get('status', ''))).lower()
                     except Exception:
                         _cr_status = ''
-                    if _cr_status in ('open', 'pending', 'submitted', 'queued', 'partially_filled', 'calculated', 'accepted_for_bidding'):
+                    _cr_life = _close_order_terminal(_cr_status)
+                    if _cr_life == "LIVE":
                         logger.info(f"⏳ [CLOSE_REFIRE_GUARD] {position_key}: prior close order {_cr_rec[0]} still '{_cr_status}' — not resubmitting. reason={(reason or '')[:60]}")
                         return False
-                    trade_manager._last_close_order.pop(position_key, None)
+                    if _cr_life == "TERMINAL":
+                        trade_manager._last_close_order.pop(position_key, None)
+                        _retire_wire_order(position_key, _cr_rec[0], "EXECUTED" if _cr_status == "filled" else "CANCELED")
+                    else:
+                        logger.warning(f"⏳ [CLOSE_REFIRE_GUARD] {position_key}: prior close order {_cr_rec[0]} unreadable ('{_cr_status}') — keeping record, allowing (fail-open, exits never blocked)")
         except Exception as _cr_e:
             logger.warning(f"[CLOSE_REFIRE_GUARD] check error (fail-open): {_cr_e}")
         # ═══════════════════════════════════════════════════════════════════════════
@@ -26022,9 +26154,10 @@ class TradierTradeManager:
             return None, None
             
     async def place_order(self, symbol: str, side: str, quantity: float, order_type: str = "limit",  price: float = None, stop: float = None, duration: str = "day",
-                          action: str = None, position_side: str = None, account_key: str="tra", reason: str = "") -> Dict:
+                          action: str = None, position_side: str = None, account_key: str="tra", reason: str = "", position_key: str = None) -> Dict:
         current_account.set(account_key)
         now = time.time()
+        _wx_pk = position_key or _pk_for(account_key, symbol, position_side)
         if symbol in self.rejection_cooldowns:            
             if now < self.rejection_cooldowns[symbol]:
                 wait_remaining = int(self.rejection_cooldowns[symbol] - now)
@@ -26216,14 +26349,19 @@ class TradierTradeManager:
 
                 logger.info(f"[{account_key}] Loop Attempt {attempt}: {tradier_side} {symbol} {remaining_to_fill} @ {limit_price}")
 
+                _wx_seq = _sanction_execution(_wx_pk, action, side, remaining_to_fill, reason)
+                if _wx_seq is None:
+                    logger.critical(f"🛑 [CHASE_PLACE_REFUSED] {_wx_pk}: unconfirmed broker order pending — NOT re-placing")
+                    return {"errors": {"error": ["WIRE_SANCTION_REFUSED"]}, "chase_order_id": None}
                 order_res = await client.place_order(
                     account_key=account_key, symbol=symbol, side=tradier_side,
                     quantity=remaining_to_fill, order_type="limit", price=limit_price, duration="day"
                 )
+                _confirm_wire_result("client.place_order:chase_limit", _wx_pk, order_res, _wx_seq, action, reason)
 
                 order_info = order_res.get('order', {})
                 order_id = order_info.get('id')
-                
+
                 if not order_id or order_info.get('status') == 'rejected':
                     logger.error(f"❌ Rejection on {symbol}. Reason: {order_res.get('errors')}")
                     self.rejection_cooldowns[symbol] = time.time() + 900
@@ -26235,9 +26373,10 @@ class TradierTradeManager:
                 status_res = await client.get_order_status(account_key, order_id)
                 status = status_res.get('status', '').lower()
                 exec_qty = float(status_res.get('exec_quantity', 0))
-                
+
                 if status == 'filled':
                     logger.info(f"✅ Filled {symbol} via aggressive limit.")
+                    _retire_wire_order(_wx_pk, order_id, "EXECUTED")
                     return status_res
                 
                 # If not filled, cancel and loop back for a better price
@@ -26256,6 +26395,11 @@ class TradierTradeManager:
                 if _cc_final is None:
                     logger.critical(f"🛑 [CHASE_CANCEL_UNCONFIRMED] {account_key}:{symbol} order {order_id}: broker never confirmed canceled/filled — NO re-place, NO market fallback (key stays frozen until the broker shows it final)")
                     return {"errors": {"error": ["CHASE_CANCEL_UNCONFIRMED"]}, "chase_order_id": order_id}
+                _cc_final_st = str(_cc_final.get('status', '') or '').lower()
+                if _cc_final_st == 'filled':
+                    _retire_wire_order(_wx_pk, order_id, "EXECUTED")
+                else:
+                    _retire_wire_order(_wx_pk, order_id, "CANCELED")
                 exec_qty = float(_cc_final.get('exec_quantity', 0) or 0)
                 if str(_cc_final.get('status', '')).lower() == 'filled' or exec_qty >= remaining_to_fill:
                     logger.warning(f"✅ [CHASE_FILLED_ON_CANCEL] {account_key}:{symbol} order {order_id} filled {exec_qty} before the cancel landed — no re-place")
@@ -26267,6 +26411,10 @@ class TradierTradeManager:
             # 5. FINAL FALLBACK: MARKET ORDER (If still not filled after 10s)
             if remaining_to_fill > 0:
                 logger.warning(f"🚨 Chase timeout for {symbol}. Executing MARKET ORDER for remaining {remaining_to_fill} qty.")
+                _wx_seq = _sanction_execution(_wx_pk, action, side, remaining_to_fill, reason)
+                if _wx_seq is None:
+                    logger.critical(f"🛑 [FALLBACK_REFUSED] {_wx_pk}: unconfirmed broker order pending — skipping market fallback wire")
+                    return {"errors": {"error": ["WIRE_SANCTION_REFUSED"]}}
                 market_res = await client.place_order(
                     account_key=account_key,
                     symbol=symbol,
@@ -26275,6 +26423,7 @@ class TradierTradeManager:
                     order_type="market",
                     duration="day"
                 )
+                _confirm_wire_result("client.place_order:market_fallback", _wx_pk, market_res, _wx_seq, action, reason)
                 return market_res
 
             return last_order_result
@@ -28641,7 +28790,7 @@ class TradierTradeManager:
                 return f"ORDER_DEDUPE_BLOCK_{_odg_dec.code}"
             result = await self.place_order(  symbol, side, quantity, "market", duration="day",
                 action=action, position_side=position_side, account_key=account_key,
-                reason=reason)
+                reason=reason, position_key=position_key)
             
             # --- 5. RESPONSE PARSING (THE FIX) ---
             if result and isinstance(result, dict):

@@ -1,19 +1,28 @@
-CAPITAL ALLOCATION REPORT — 2026-10-07 19:11 UTC
+CAPITAL ALLOCATION REPORT — 2026-10-07 19:15 UTC
 ================================================================================
-Total capital deployed: $58.78 across 3 positions
+Total capital deployed: $589.13 across 34 positions
 
 TIER DISTRIBUTION:
-  Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $     58.79 (100.0%) — 3 positions
-  Tier C: $      0.00 (  0.0%) — 0 positions
+  Tier A: $     15.36 (  2.6%) — 1 positions
+  Tier B: $    558.35 ( 94.8%) — 32 positions
+  Tier C: $     15.42 (  2.6%) — 1 positions
 
-  ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
+  ** A-tier UNDERWEIGHT: 3% vs target 50% — consider augmenting winners **
 
-WINNERS — augment these (A-tier, in gain) [0]:
-  (none)
+WINNERS — augment these (A-tier, in gain) [1]:
+                    men:XLMUSDT_SHORT  $   15.36  gain=+2.97%  mult=3.91
 
-LOSERS — reduce allocation (C-tier or losing) [0]:
-  (none)
+LOSERS — reduce allocation (C-tier or losing) [8]:
+                     men:SKYUSDT_LONG  $    3.68  gain=-9.83%  tier=B  mult=1.00
+                    men:EDUUSDT_SHORT  $   29.59  gain=-5.44%  tier=B  mult=0.45
+                   men:MANAUSDT_SHORT  $    2.95  gain=-3.45%  tier=B  mult=1.00
+                     men:ZROUSDT_LONG  $   15.42  gain=-2.23%  tier=C  mult=0.44
+                    men:AXSUSDT_SHORT  $   15.82  gain=-2.14%  tier=B  mult=1.00
+                men:MELANIAUSDT_SHORT  $   16.19  gain=-1.37%  tier=B  mult=1.00
+                   men:ALGOUSDT_SHORT  $   18.29  gain=-1.02%  tier=B  mult=5.50
+                   men:IOTXUSDT_SHORT  $   15.02  gain=-0.93%  tier=B  mult=1.42
 
-MEDIOCRE — capital sitting idle [1]:
-                   ang:ATOMUSDT_SHORT  $   15.98  gain=+0.21%  tier=B
+MEDIOCRE — capital sitting idle [3]:
+                    men:ETCUSDT_SHORT  $   27.93  gain=+0.01%  tier=B
+                   men:KMNOUSDT_SHORT  $   15.85  gain=+0.21%  tier=B
+                     men:BNBUSDC_LONG  $   15.44  gain=-0.02%  tier=B
