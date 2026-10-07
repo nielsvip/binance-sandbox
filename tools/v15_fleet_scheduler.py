@@ -2,12 +2,14 @@
 """v15_fleet_scheduler — N-server SYMBOL-PAIR scheduler for the daily 30D -> 365D -> REPAIR chain (USER 2026-09-30 rework).
 
 UNIT OF WORK = one SYMBOL = its LONG and SHORT side launched together on the same host. A symbol slot is HELD from 30D start through
-the whole chain (30D -> 365D verify -> REPAIR reruns) and released only when both sides are terminal (ok / UNVERIFIABLE / failing).
-365D/REPAIR run on the same host immediately, so the symbol's NPZ stays in page cache and no other symbol is admitted into the slot.
-Per host: max_pairs concurrent symbols (fleet_hosts*.json, default 3, clamped 2..6), workers_per_side (default 3 = pilot --workers).
+the whole chain (30D -> 365D verify -> REPAIR reruns incl. better-30D sheet + pos-365D gating) and released only when both sides are
+terminal (ok / UNVERIFIABLE / failing). Chain work prefers the 30D owner host; pass 2 STEALS 365D/REPAIR-a1 stages onto idle hosts
+(owner had first refusal; thief fetches the small inputs tick-side via S1 relay, no new fleet keys; slot held where the work RUNS).
+30D / GS / REPAIR-aN(N>=2) never steal (owner / rep-host sticky).
+Per host: max_pairs concurrent symbols (fleet_hosts*.json, default 3, clamped 2..12), workers_per_side (pilot --workers).
 Admission of a NEW symbol needs: free slot, MemAvailable - mem_reserve >= estimated pair memory (measured PSS of running pairs x1.2,
 else default_pair_mb, + its NPZ size), cpu < cpu_target_pct, NPZ readiness on that host, both templates present, and at most
---max-launch new pairs per host per tick (no ramp). Symbols whose data is not ready are SKIPPED and listed in the state.
+--max-launch new pairs per host per tick (no ramp, shared by pass 1 + steal pass). Symbols whose data is not ready are SKIPPED and listed in the state.
 
 UNIVERSE (tools/v15_universe.py, written to data/daily_universe/<date>.json): STOCKS = symbols that traded in the last 30d in the real
 ledger (data/history/{tra,trb,trc,inf}); CRYPTO = union of symbols_{flz,men,ang}_{long,short}.json. --extend-universe (off) adds the
@@ -472,6 +474,82 @@ def tmpl_path(host, venue, side):
     return f"{host['root']}/{host.get('template_dir', 'SPREADSHEETS')}/TEMPLATE_{'CRYPTO' if venue == 'crypto' else 'STOCKS'}_{side}.xlsx"
 
 
+def _held_host(sym, owner, running):
+    """Slot holder: the host where the symbol currently RUNS wins over the 30D owner
+    (stolen chain work holds its slot where it runs). Pure helper (unit-tested)."""
+    for sd in ("LONG", "SHORT"):
+        r = running.get(f"{sym}_{sd}")
+        if r:
+            return r["host"]
+    return owner.get(sym)
+
+
+def _fetch_specs(sym, acts, thief_pdir, done_host, pdirs):
+    """Pure: [(src_host, src_abs, dst_abs)] a thief must fetch before chain stages.
+    365D + REPAIR-a1 need the finished 30D progress from its exec host; REPAIR-aN (N>=2)
+    is rep-host-sticky (no fetch). Returns None when a source is unknown (fail-closed)."""
+    specs = []
+    for a in acts:
+        if not (a["window"] == "365D" or (a["window"] == "REPAIR" and a["attempt"] == 1)):
+            continue
+        ss = f"{sym}_{a['side']}"
+        src = done_host.get(ss)
+        if not src or not pdirs.get(src):
+            return None
+        specs.append((src, f"{pdirs[src]}/{ss}_v14_progress.json", f"{thief_pdir}/{ss}_v14_progress.json"))
+    seen, out = set(), []
+    for s in specs:
+        if (s[1], s[2]) not in seen:
+            seen.add((s[1], s[2]))
+            out.append(s)
+    return out
+
+
+def _repair_sticky_ok(act, rep_host, host_name):
+    """REPAIR-aN (N>=2) runs only where a{N-1} ran (its output is local there). Pure."""
+    if act.get("window") != "REPAIR" or int(act.get("attempt") or 1) < 2:
+        return True
+    ss = f"{act['sym']}_{act['side']}"
+    return rep_host.get((ss, int(act["attempt"]) - 1), host_name) == host_name
+
+
+def _steal_fetch(hosts, thief_host, sym, specs, log):
+    """Tick-side (S1-relayed) fetch of chain inputs to the thief. No new fleet keys:
+    S1 pulls each file from its exec host, pushes to the thief. Fail-closed."""
+    byhost = {x["name"]: x.get("_via", x["ssh"][0]) for x in hosts}
+    if thief_host["name"] not in byhost:
+        return False
+    tgt_thief = byhost[thief_host["name"]]
+    remote = [s for s in specs if s[0] != thief_host["name"]]
+    if not remote:
+        return True
+    try:
+        mk = subprocess.run(["ssh", "-o", "ConnectTimeout=8", "-o", "BatchMode=yes", tgt_thief, "mkdir -p %s" % shlex.quote(os.path.dirname(remote[0][2]))], capture_output=True, timeout=60)
+        if mk.returncode != 0:
+            log.setdefault("steal_fetch_fail", {})[sym] = f"thief {thief_host['name']} mkdir rc={mk.returncode}"
+            return False
+        for src_host, src, dst in remote:
+            if src_host not in byhost:
+                return False
+            tmp = f"/tmp/steal_{sym}_{os.path.basename(dst)}"
+            r1 = subprocess.run(["rsync", "-az", "-e", "ssh -o ConnectTimeout=8 -o BatchMode=yes", f"{byhost[src_host]}:{src}", tmp], capture_output=True, timeout=120)
+            if r1.returncode != 0 or not os.path.exists(tmp):
+                log.setdefault("steal_fetch_fail", {})[sym] = f"pull {src_host}:{src} rc={r1.returncode}"
+                return False
+            r2 = subprocess.run(["rsync", "-az", "-e", "ssh -o ConnectTimeout=8 -o BatchMode=yes", tmp, f"{tgt_thief}:{dst}"], capture_output=True, timeout=120)
+            try:
+                os.unlink(tmp)
+            except Exception:
+                pass
+            if r2.returncode != 0:
+                log.setdefault("steal_fetch_fail", {})[sym] = f"push {thief_host['name']}:{dst} rc={r2.returncode}"
+                return False
+    except Exception as e:
+        log.setdefault("steal_fetch_fail", {})[sym] = f"{e}"[:120]
+        return False
+    return True
+
+
 def side_cmd(host, sym, side, window, pdir, attempt, workers):
     """shell body for ONE side job (30D pilot | 365D verify | REPAIR loop). Detached by pair_launch_cmd."""
     r, ss, venue = host["root"], f"{sym}_{side}", venue_of(sym)
@@ -662,10 +740,7 @@ def tick(args, cfg, now):
     # ---- slots (held symbols per host): running + persisted-held, minus terminal
     held = {h["name"]: {} for h in hosts}
     for sym in all_syms:
-        hn = owner.get(sym)
-        _runhn = next((running[f"{sym}_{sd}"]["host"] for sd in ("LONG", "SHORT") if f"{sym}_{sd}" in running), None)
-        if _runhn:
-            hn = _runhn  # USER 2026-10-08: stolen chain work holds its slot where it RUNS, not on the 30D owner
+        hn = _held_host(sym, owner, running)  # running host wins over 30D owner (stolen chain work)
         if not hn or hn not in held:
             continue
         if any(f"{sym}_{sd}" in running for sd in ("LONG", "SHORT")) and not terminal(sym):
@@ -705,6 +780,7 @@ def tick(args, cfg, now):
     adopted = [s for s in all_syms if s in owner and not terminal(s)]
     adopted.sort(key=lambda s: sym_rank_key(s, vrank, all_syms, pri))
     mapped_unready = {}
+    HB, launched_keys = {}, set()
     for h in hosts:
         s = stats[h["name"]]
         if not s:
@@ -728,6 +804,7 @@ def tick(args, cfg, now):
         new_launched = 0
         chain_launched = 0
         running_cnt = sum(1 for v_ in held[h["name"]].values() if v_ == "running")  # concurrent pairs actually running: hard cap = cap (s1 OOM 13:48Z when 9 held pairs all ran)
+        HB[h["name"]] = {"cap": cap, "workers": workers, "cpu": cpu, "est_pair": est_pair}
         # continue chains of held symbols first (no new slot); then admit adopted-but-unheld; then new
         held_ordered = sorted(held[h["name"]], key=lambda s: sym_rank_key(s, vrank, all_syms, pri))
         order = [(sym, False) for sym in held_ordered] + [(sym, True) for sym in adopted if owner.get(sym) == h["name"] and sym not in held[h["name"]]] + \
@@ -750,6 +827,7 @@ def tick(args, cfg, now):
                 log["skipped_unready"][sym] = f"{h['name']}: {rd.get('reason')}"
                 continue
             acts = pending_actions(sym, h["name"])
+            acts = [a for a in acts if _repair_sticky_ok(a, rep_host, h["name"])]
             if not acts:
                 continue
             if needs_slot and not _pair_gate_ok(sym, acts, owner, chain_state, st["attempts"]):  # fresh syms: every launchable side covered; terminal/capped sides don't block siblings
@@ -762,6 +840,8 @@ def tick(args, cfg, now):
             tag = f"{h['name']}:{sym}:" + "+".join(f"{a['side'][0]}{a['window']}" + (f"#a{a['attempt']}" if a["window"] == "REPAIR" else "") for a in acts)
             if args.dry_run or sim:
                 log["launched"].append(tag + " (dry)")
+                for a in acts:
+                    launched_keys.add(a["key"])
             else:
                 pd = s.get("pdir") or cfg.get("fallback_pdir")
                 if not pd:
@@ -772,6 +852,7 @@ def tick(args, cfg, now):
                     print(f"[sched] launch ssh timeout {h['name']} {sym} (job may still have started; pgrep dedups)", flush=True)
                 for a in acts:
                     st["attempts"][a["key"]] = st["attempts"].get(a["key"], 0) + 1
+                    launched_keys.add(a["key"])
                 log["launched"].append(tag)
             if needs_slot:
                 used += 1; proj_mem -= est_pair + float(rd.get("size_mb") or 0)
@@ -788,9 +869,70 @@ def tick(args, cfg, now):
                     held[h["name"]][sym] = "running"
         info["launched_pairs"] = launched
         info["slots"] = f"{len(held[h['name']])}/{cap}"
+        HB[h["name"]].update(used=len(held[h["name"]]), proj_mem=proj_mem, launched=launched, new_launched=new_launched, held_syms=sorted(held[h["name"]]))
         if cpu < cfg.get("cpu_target_pct", 90) and launched == 0:
             info["idle_reason"] = "slots full" if used >= cap else "mem guard" if proj_mem < est_pair else "no eligible ready symbol for this host"
         log["hosts"][h["name"]] = info
+    # ---- pass 2 (USER 2026-10-08): steal adopted chain stages (365D, REPAIR-a1) onto hosts
+    # with free capacity. Owner had first refusal in pass 1; the thief fetches the small
+    # inputs tick-side (S1-relayed, no new keys) and holds the slot where the work RUNS.
+    # 30D / GS / REPAIR-aN(N>=2) never steal (owner / rep-host sticky).
+    pdirs = {n: (s.get("pdir") if s else None) for n, s in stats.items()}
+    for h in hosts:
+        s = stats[h["name"]]
+        if not s or h["name"] not in HB:
+            continue
+        B = HB[h["name"]]
+        for sym in adopted:
+            if sym in owner and owner[sym] == h["name"]:
+                continue
+            if terminal(sym):
+                continue
+            acts = [a for a in pending_actions(sym, h["name"]) if a["key"] not in launched_keys and (a["window"] == "365D" or (a["window"] == "REPAIR" and a["attempt"] == 1))]
+            if not acts:
+                continue
+            if B["new_launched"] >= args.max_launch or len(held[h["name"]]) >= B["cap"] or B["proj_mem"] < B["est_pair"] or B["cpu"] >= cfg.get("cpu_target_pct", 90):
+                break
+            if venue_of(sym) not in h["venues"]:
+                continue
+            rd = is_ready(h["name"], sym)
+            if not rd.get("ok"):
+                continue
+            if not _pair_gate_ok(sym, acts, owner, chain_state, st["attempts"]):
+                continue
+            pd = s.get("pdir") or cfg.get("fallback_pdir")
+            if not pd:
+                continue
+            specs = _fetch_specs(sym, acts, pd, done_host, pdirs)
+            if specs is None:
+                continue
+            tag = f"{h['name']}:{sym}:" + "+".join(f"{a['side'][0]}{a['window']}" for a in acts) + "[steal]"
+            if args.dry_run or sim:
+                log["launched"].append(tag + " (dry)")
+                for a in acts:
+                    launched_keys.add(a["key"])
+            else:
+                if specs and not _steal_fetch(hosts, h, sym, specs, log):
+                    continue
+                try:
+                    subprocess.run(["ssh", "-o", "BatchMode=yes", h.get("_via", h["ssh"][0]), pair_launch_cmd(h, acts, pd, B["workers"])], timeout=40)
+                except subprocess.TimeoutExpired:
+                    print(f"[sched] steal launch ssh timeout {h['name']} {sym} (job may still have started; pgrep dedups)", flush=True)
+                for a in acts:
+                    st["attempts"][a["key"]] = st["attempts"].get(a["key"], 0) + 1
+                    launched_keys.add(a["key"])
+                log["launched"].append(tag)
+            B["proj_mem"] -= B["est_pair"] + float(rd.get("size_mb") or 0)
+            held[h["name"]][sym] = "new"
+            st["held"].setdefault(h["name"], {})[sym] = now.isoformat()
+            owner[sym] = h["name"]
+            B["new_launched"] += 1
+            B["launched"] += 1
+            if isinstance(log["hosts"].get(h["name"]), dict):
+                log["hosts"][h["name"]]["launched_pairs"] = log["hosts"][h["name"]].get("launched_pairs", 0) + 1
+                log["hosts"][h["name"]]["slots"] = f"{len(held[h['name']])}/{B['cap']}"
+                log["hosts"][h["name"]].setdefault("held", []).append(sym)
+                log["hosts"][h["name"]].pop("idle_reason", None)
     # ---- summary per cat
     cats = {c: {"sym_sides": 0, "done30": 0, "running": 0, "v365_ok": 0, "v365_bad": 0, "v365_unverifiable": 0, "repair_attempts": 0, "repair_ok": 0, "gs_attempts": 0, "gs_ok": 0, "failing": []} for c in CATS}
     for sym in all_syms:

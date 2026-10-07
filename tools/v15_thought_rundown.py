@@ -175,6 +175,9 @@ def render(ss, verdict, gs):
              f"trades {before.get('trades', '?')} -> {after.get('trades', '?')}")
     if m365:
         L.append(f"365D: gain={_fmt(m365.get('gain'))} dd={_fmt(m365.get('dd'))} q365={g.get('q365_after')}")
+        if m365.get("trades") == after.get("trades") and m365.get("gain") == after.get("gain") and (after.get("trades") or 0) > 0:
+            L.append("SPAN_CONCENTRATED [DERIVED]: all 365D trades sit inside the recent 30D window (identical gain/trades; TIM diluted ×30/365) — "
+                     "passes the gain>0 gate but has zero out-of-window evidence; treat as regime-specific until monthly spread is proven")
     else:
         L.append("365D: NOT MEASURED for winner (m365=None) — 30D-only evidence" +
                  (" while base 365D VOMITS" if (w365.get("dd") or 0) >= 100 else ""))

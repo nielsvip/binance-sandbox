@@ -60,7 +60,7 @@ ABLATION_FLAGS = ("ABLATION_DISABLE_REENTRY", "ABLATION_DISABLE_AUGMENTATION", "
 # of deep_open()'s all-gates-at-once blast. Parent/user flips for reruns after
 # worst_first. Env override: V15_GS_FILTER_SERIES=1.
 FILTER_SERIES_ENABLED = os.environ.get("V15_GS_FILTER_SERIES", "0") == "1"
-BUILD = "heal3-20261007"  # USER 2026-10-07: bump on ANY behavior change; stamped into every report (gs_build)
+BUILD = "heal4-20261007"  # USER 2026-10-07: bump on ANY behavior change; stamped into every report (gs_build)
 PHASE_PLAN = (("ABLATE", 0.16, 60), ("CULPRITS", 0.16, 60), ("PATHS", 0.30, 90), ("REORDER", 0.09, 25), ("POLISH", 0.06, 15), ("HEAL", 0.23, 90))
 
 
@@ -1126,6 +1126,19 @@ def run(ctx: dict) -> dict:
     orig = verdicts[0]
     status_up = (DR.compliant(win["m"]), win["q365"]) > (DR.compliant(orig["m"]), orig["q365"])
     gain_up = (win["m"]["gain"] or -1e9) >= (orig["m"]["gain"] or -1e9) + float(ctx.get("min_improve_pp", 0.5)) and (DR.compliant(win["m"]), win["q365"]) >= (DR.compliant(orig["m"]), orig["q365"])
+    forced365 = []  # USER 2026-10-07: VERIFY always measures winner+origin 365D even when it1+ iterations ate the reserve (RVN left=-9.9 SKIP). Bounded: <=2 sync evals.
+    for _vv in ([win] if win is orig else [win, orig]):
+        if _vv.get("m365") is None and ctx.get("eval_365"):
+            try:
+                _r, _sp = ctx["eval_365"](S.sanitize(_vv["ov"]))
+            except Exception:
+                _r, _sp = None, None
+            if _r is not None:
+                _ok, _why = ctx["qualifies_365"](_r, _sp)
+                S.m365c[S._k(S.sanitize(_vv["ov"]))] = (DR.metrics(_r), bool(_ok), ["verify-forced"] + list(_why or []))
+                _vv["m365"], _vv["q365"], _vv["why365"] = DR.metrics(_r), bool(_ok), ["verify-forced"] + list(_why or [])
+                forced365.append(_vv.get("prov"))
+    rep["verify_forced_365"] = forced365
     rep["finalists"] = [{k: v[k] for k in ("changes", "prov", "m", "m365", "q365", "why365")} for v in verdicts]
     rep["accepted"] = bool(win is not orig and win["changes"] and (status_up or gain_up))
     rep["best_overrides"] = dict(win["ov"]) if rep["accepted"] else dict(origin)
