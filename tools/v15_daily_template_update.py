@@ -13,6 +13,10 @@ Per template / per SWITCH_SHEETS tab:
   2. PROMOTION (the only place defaults change): per switch NAME the value with the highest POSITIVE avg (pos_sym >= --min-pos-sym)
      becomes the single bold default (+ is_default YES) in every tab that has that value; previous default regular + NO. Same for
      every yellow filter header (one bold "FILTER=opt" per filter, DEFAULT comment). ONE default per switch / filter, no more, no less.
+     2c. DEFAULT REPAIR (2026-10-07): a white switch group with NO winner keeps its default — unless it is broken (0 or 2+ YES/bold),
+     in which case the writer heals it INSTEAD of failing verification forever: single-bold half-write -> YES completes it; else the
+     row matching the venue live default (config.Config / TradierConfig via venue_values); else the first row. Repairs are reported
+     as repaired_defaults (never in ledger/promoted_keys: they align the template TO config, nothing syncs back). --no-promote disables.
   3. worst_first: white switch groups by mean AVG_DELTA (most negative first, untested groups last), orange filter groups below;
      inside a group rows ascending by AVG_DELTA; whole rows (every cell, yellows, fonts, fills) move together.
 Verified before save (row multiset unchanged, no white below orange, one YES == bold per switch name per tab, one bold header per
@@ -269,7 +273,62 @@ def pick_winners(wb, stats: dict, min_pos: int, min_n: int, refused: list):
     return win
 
 
-def apply_tab(ws, stats, win, ledger_cs, round_changed, rep, ledger_out, cleared_total):
+_VENUE_CACHE = {}
+_PILOT_MOD = None
+
+
+def _venue_defaults(cs):
+    if cs not in _VENUE_CACHE:
+        sys.path.insert(0, str(ROOT / "tools"))
+        from build_cat_side_defaults_4 import venue_values
+        _VENUE_CACHE[cs] = venue_values(cs.startswith("STOCKS"))[0]
+    return _VENUE_CACHE[cs]
+
+
+def _pilot_mod():
+    global _PILOT_MOD
+    if _PILOT_MOD is None:
+        sys.path.insert(0, str(ROOT))
+        import v15_pilot as _P
+        _PILOT_MOD = _P
+    return _PILOT_MOD
+
+
+def _repair_default(ws, tab, a, rows, c_isd, cs, rep):
+    """Heal a winner-less white switch group with 0 or 2+ defaults (else the gate fails forever). Returns True if repaired."""
+    if is_orange(ws, rows[0]):
+        return False
+    yes = [r for r in rows if str(ws.cell(row=r, column=c_isd).value or "").strip().upper() == "YES"]
+    bold = [r for r in rows if ws.cell(row=r, column=2).font is not None and ws.cell(row=r, column=2).font.b]
+    if len(yes) == 1 and yes == bold:
+        return False
+    best, how = None, None
+    if len(bold) == 1 and not yes:
+        best, how = bold[0], "single-bold-completed"
+    else:
+        cfg = _venue_defaults(cs).get(a)
+        if cfg is not None:
+            _P = _pilot_mod()
+            for r in rows:
+                try:
+                    pv = _P._parse_opt_value(ws.cell(row=r, column=2).value, cfg)
+                except Exception:
+                    continue
+                if _P._same_default(pv, cfg):
+                    best, how = r, "config-default"
+                    break
+        if best is None:
+            best, how = rows[0], "first-row-fallback"
+    for r in rows:
+        y = r == best
+        set_bold(ws.cell(row=r, column=2), y)
+        ws.cell(row=r, column=c_isd).value = "YES" if y else "NO"
+        ws.cell(row=r, column=c_isd).font = Font(name="Arial", size=10, bold=y)
+    rep.setdefault("repaired_defaults", []).append([tab, a, how, ws.cell(row=best, column=2).value])
+    return True
+
+
+def apply_tab(ws, stats, win, ledger_cs, round_changed, rep, ledger_out, cleared_total, cs=None, allow_repair=True):
     tab = ws.title
     c_isd, c_avg, c_pos, c_vec = col_of(ws, "is_default"), col_of(ws, "AVG_DELTA"), col_of(ws, "POS_SYM"), col_of(ws, "VECTOR_DELTA")
     if not (c_isd and c_avg and c_pos and c_vec):
@@ -317,6 +376,8 @@ def apply_tab(ws, stats, win, ledger_cs, round_changed, rep, ledger_out, cleared
     for a, rows in groups_by_name(ws).items():
         w = win.get(("sw", a))
         if not w:
+            if allow_repair and cs is not None:
+                _repair_default(ws, tab, a, rows, c_isd, cs, rep)
             continue
         tgt = [r for r in rows if norm(ws.cell(row=r, column=2).value) == w[0]]
         if not tgt:
@@ -640,7 +701,7 @@ def main():
         POSMAP = POSMAP_ALL.get(cs) if POSMAP_ALL is not None else None
         for tab in SWITCH_SHEETS:
             if tab in wb.sheetnames:
-                apply_tab(wb[tab], stats, win, ledger_cs, round_changed, rep, ledger_out, cleared)
+                apply_tab(wb[tab], stats, win, ledger_cs, round_changed, rep, ledger_out, cleared, cs, not args.no_promote)
         _fg = _floor_guard(cs, {k: v.get("value") for k, v in rep["ledger"].items()}) if (rep["ledger"] and _os.environ.get("V15_PROMO_FLOOR_GUARD", "1") != "0") else None
         if _fg and _fg.get("refused_keys"):  # COMBINED trade-floor guard (director 2026-10-06): re-apply without the refused keys (old bolds kept)
             _drop = set(_fg["refused_keys"])
@@ -652,13 +713,13 @@ def main():
             ledger_out = {} if round_changed else dict(ledger_cs)
             for tab in SWITCH_SHEETS:
                 if tab in wb.sheetnames:
-                    apply_tab(wb[tab], stats, win, ledger_cs, round_changed, rep, ledger_out, cleared)
+                    apply_tab(wb[tab], stats, win, ledger_cs, round_changed, rep, ledger_out, cleared, cs, not args.no_promote)
         bad = verify(before, wb)
-        report[cs] = {"rows_with_stats": rep["rows_with_stats"], "cleared": dict(cleared), "promoted_switch": rep["promoted_switch"], "promoted_filter": rep["promoted_filter"], "violations": bad}
+        report[cs] = {"rows_with_stats": rep["rows_with_stats"], "cleared": dict(cleared), "promoted_switch": rep["promoted_switch"], "promoted_filter": rep["promoted_filter"], "repaired_defaults": rep.get("repaired_defaults", []), "violations": bad}
         if _fg is not None:
             report[cs]["floor_guard"] = {k: _fg.get(k) for k in ("ok", "refuse_all", "refused_keys", "reason", "samples", "candidate_fail", "eliminated", "single_key")}
             report[cs]["floor_guard"].update({f"{n}_median": {m: (_fg.get(n) or {}).get(m) for m in ("med_trades", "med_tim")} for n in ("baseline", "candidate", "final")})
-        print(f"[{cs}] stats={len(stats)} rows_with_stats={rep['rows_with_stats']} cleared={dict(cleared)} promoted switches={len(rep['promoted_switch'])} filters={len(rep['promoted_filter'])} violations={len(bad)} {bad[:3]}")
+        print(f"[{cs}] stats={len(stats)} rows_with_stats={rep['rows_with_stats']} cleared={dict(cleared)} promoted switches={len(rep['promoted_switch'])} filters={len(rep['promoted_filter'])} repaired={len(rep.get('repaired_defaults', []))} violations={len(bad)} {bad[:3]}")
         if not args.apply:
             continue
         if bad:
@@ -675,7 +736,7 @@ def main():
         saved_any = True
         saved_promos[cs] = list(rep["ledger"])
         print(f"[{cs}] saved {path}")
-    if args.apply and saved_any and tdir.resolve() == TPL.resolve():
+    if args.apply and saved_any and tdir.resolve() == SPREAD.resolve():
         PROMOTIONS.write_text(json.dumps(promos, indent=1, default=str))
         ROUND_LEDGER.write_text(json.dumps(rl, indent=1))
         # dual-write: JSON stays as generated view, SQL primary prevents silent fallback to globals on next promotion round

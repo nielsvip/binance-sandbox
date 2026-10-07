@@ -112,6 +112,8 @@ def render(ss, verdict, gs):
     for s in g.get("steps", []) or []:
         L.append(f"- [{s.get('phase')}] {s.get('applied')} gain={_fmt(s.get('gain'))} "
                  f"trades={s.get('trades')} tim={_fmt(s.get('tim'))} dd={_fmt(s.get('dd'))}")
+    for mac in g.get("macro", []) or []:
+        L.append(f"- [MACRO] {json.dumps(mac, default=str)[:220]}")
     L.append("")
     fins = g.get("finalists") or []
     L.append(f"## 4. SELECTION [{('RECORDED') if fins else 'NOT RECORDED'}]")
