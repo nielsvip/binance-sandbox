@@ -60,7 +60,7 @@ recent_list "$S1" "-o BatchMode=yes -o ConnectTimeout=10" "$SANDBOX_1M" "$LIST_1
 recent_list "$S1" "-o BatchMode=yes -o ConnectTimeout=10" "$SANDBOX_S6" "$LIST_S6"
 # progress board first (tiny, written every minute on S1 by tools/v15_progress_board.py) so Mac monitoring never waits on xlsx
 rsync -auz --timeout=30 --files-from="$LIST_SPREAD" --include='V15_PROGRESS.md' --include='V15_PROGRESS.csv' --exclude='*' -e "$RSYNC_SSH" "$S1:$RSYNC_SPREAD/" "$DST" 2>&1 | tail -n 3
-echo "[$(date)] Sync S1 -> Mac xls (new-only: max age ${MAX_AGE_MIN}min)... (TEMPLATE* excluded - Mac is source of truth, never S1->Mac)"
+echo "[$(date)] Sync S1 -> Mac xls (new-only: max age ${MAX_AGE_MIN}min)... (TEMPLATE* excluded here - templates pull ONLY via tools/v15_daily_chain_mac_apply.sh after the S1 done-stamp; S1 chain is the template writer since 2026-10-06)"
 rsync -auvz --progress --files-from="$LIST_SPREAD" --exclude='*TEMPLATE*' --exclude='*_20*.xlsx' --exclude='*pilot*.xlsx' --exclude='V15_AVG*' --include='*.xlsx' --exclude='*' -e "$RSYNC_SSH" "$S1:$RSYNC_SPREAD/" "$DST" 2>&1 | tail -n 20
 echo "[$(date)] Sync S1 -> Mac V15_V16_CELL_BY_CELL xls (live update + finals-once, new-only)..."
 rsync -auvz --progress --files-from="$LIST_CELL" --exclude='*_bh*_gain*_30d_matrix.xlsx' --exclude='*_bh*_gain*_30d_matrix.html' --exclude='*_bh*_gain*_manifest.json' --exclude='*_20*.xlsx' --exclude='*pilot*.xlsx' --exclude='V15_AVG*' --include='*.xlsx' --exclude='*' -e "$RSYNC_SSH" "$S1:$RSYNC_CELL/" "$DST_V15" 2>&1 | tail -n 20

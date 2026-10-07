@@ -1,5 +1,7 @@
 #!/bin/bash
-# template_push.sh — Mac is SOURCE OF TRUTH for TEMPLATE files, push to ALL servers every minute
+echo "REFUSED: Mac->S1 template push retired 2026-10-07 (USER: S1 daily chain is the template writer since 2026-10-06). Templates flow S1->Mac ONLY via tools/v15_daily_chain_mac_apply.sh after the S1 done-stamp. Never re-enable." >&2
+exit 1
+# template_push.sh — RETIRED 2026-10-07. Mac was source of truth until 2026-10-06; S1 daily chain owns templates now.
 # Fixes waste: S1/servers were overwriting Mac TEMPLATE.xlsx via pulls, losing days of work
 # This script is run via crontab * * * * * — pushes the 5 canonical templates Mac->all servers
 # Pull scripts (sync_s1_to_mac.sh, mac_pull_sheets_charts.sh, monitor_mega_sweep.sh) now

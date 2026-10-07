@@ -1,5 +1,7 @@
 #!/bin/bash
-# sync_mac_to_s1_30min.sh — REVERSE of sync_s1_to_mac.sh: Mac -> S1 every 30min via scp
+# sync_mac_to_s1_30min.sh — RETIRED 2026-10-07 (refuser below). Mac -> S1 template push ended 2026-10-06.
+echo "REFUSED: Mac->S1 template push retired 2026-10-07 (USER: S1 daily chain is the template writer). Templates flow S1->Mac ONLY via tools/v15_daily_chain_mac_apply.sh. Never re-enable." >&2
+exit 1
 # Pushes TEMPLATE_CRYPTO_LONG.xlsx (and all TEMPLATE_*.xlsx) from Mac to s1 (10.0.0.3 via gateway, s1-pub 157.180.125.52)
 # Request: "now reverse: Mac->S1 every 30min via scp"
 set -e

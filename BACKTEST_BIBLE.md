@@ -1481,23 +1481,43 @@ Mon 2026-10-05 06:00 UTC: best (newest-round) 30D sheet of every sym_side → 36
 
 ## 70. FOUR INDEPENDENT TEMPLATES — NEVER GENERIC (USER 2026-10-07, ARCHITECTURE LAW)
 
-The ONLY templates are the 4 `SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_{CRYPTO,STOCKS}_{LONG,SHORT}.xlsx`
+The fleet-live templates are the 4 `SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_{CRYPTO,STOCKS}_{LONG,SHORT}.xlsx`
 files — one per venue×side, independent, diverging by design (CRYPTO_LONG carried 3393 SWITCH rows on
 2026-10-07; counts differ per file and grow as switches are added — never pin exact counts in prose or
-tests; pin floors). The legacy generic `SPREADSHEETS/TEMPLATE_*.xlsx` set was archived 2026-10-07
-(`backups/archive_generic_templates_20261007/`, never restored over FINAL_NORM); `TEMPLATE.xlsx` no
-longer exists. Consequences:
+tests; pin floors). A SECOND set, `SPREADSHEETS/TEMPLATE_{CRYPTO,STOCKS}_{LONG,SHORT}.xlsx` (the "main"
+set, 3456 rows CRYPTO_LONG), also exists on S1+Mac and is still written daily by the chain (step 2
+"main" run — the ONLY run that writes `cat_side_promotions` + round ledger); it is NOT retired
+(corrected 2026-10-07 — an earlier draft of this section wrongly called it retired). `TEMPLATE.xlsx`
+no longer exists. Consequences:
 
 - **Resolution is exact:** `get_template_for_symside()` returns the run's own file or REFUSES
   (`SystemExit`) — there is NO cross-side fallback (a missing crypto file is never substituted with a
   stocks file). `--template` still overrides explicitly (fleet launches pass it).
 - **No symmetry assumptions:** tabs, rows, defaults and yellows differ per file. Any code that copies
   rows across files must map per-file tabs/headers; any test that asserts equal shape across files is wrong.
-- **Writer allowlist (LOCKED_FILES.md one-script rule):** ONLY these four writers touch the 4 files —
-  `tools/v15_daily_template_update.py` (avg/promotions), `tools/v15_template_bookkeeper.py` (books,
-  S1 cron 12:30 UTC), `tools/v15_switch_add.py` (new rows, §71), `tools/v15_template_staged_apply.py`
-  (verified restructures; currently refuses on the pre-existing violation backlog). Pilots write
-  ledgers/progress only. No hand edits, no other writers, no exceptions beyond §71.
+- **Writer allowlist (LOCKED_FILES.md one-script rule):** ONLY these four writers touch the template
+  files (both the main and the norm set) — `tools/v15_daily_template_update.py` (avg/promotions),
+  `tools/v15_template_bookkeeper.py` (books, S1 cron 12:30 UTC), `tools/v15_switch_add.py` (new rows,
+  §71), `tools/v15_template_staged_apply.py` (verified restructures; currently refuses on the
+  pre-existing violation backlog). Pilots write ledgers/progress only. No hand edits, no other
+  writers, no exceptions beyond §71.
+- **Daily rewrite (USER 2026-10-07 — the whole point of the templates):** every day before market
+  open the chain rewrites the 4 live files with new AVG_DELTA + POS_SYM, worst-first row reorder,
+  and promoted defaults, then applies the day's promotions to `config.py`/`QuickConfig`/
+  `config_tradier.py` (Mac follow-up, live processes pick it up at next restart — nothing is
+  restarted), to the SQL kv store + JSON state (`per_sym_store`, SQL-primary readers), and to future
+  tests (pos_sym sampling evidence + zero-skip cell maps). A day with no chain stamp = a day the
+  fleet sweeps on stale defaults — the Mac follow-up FAILS LOUD at step 1 and the miss must be
+  caught up the same day, never silently skipped (§68.3, §75).
+- **Sync direction (USER 2026-10-07 — the S1 move is COMPLETE and verified):** templates flow
+  S1→fleet+Mac ONLY. S1 chain pushes 8 files to s2/s5 (step 6, md5-verified); Mac pulls the stamped
+  set via `v15_daily_chain_mac_apply.sh` (13:00Z, md5-verified against the stamp). The minutely
+  `sync_s1_to_mac.sh` deliberately EXCLUDES templates (a 60s pull could grab a mid-chain partial
+  set — only the stamped pull is atomic). Code still flows Mac→fleet (edits on Mac, rsync + md5,
+  incl. Mac-apply step 4 pushing promoted config). Every old Mac→S1 template pusher
+  (`template_push.sh`, `sync_mac_to_s1_30min.sh`, `v15_cleaned_norm_sync.sh`) is not just
+  cron-disabled but a fail-closed REFUSER since 2026-10-07 — re-enabling one exits 1 without
+  touching anything, so stale Mac bytes can never overwrite S1's fresh templates again.
 
 ## 71. ADDING A SWITCH — THE ONE ROW-ADD PATH (USER 2026-10-06/07)
 
