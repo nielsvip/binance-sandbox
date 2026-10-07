@@ -1550,17 +1550,23 @@ evidence regen lifts the skip automatically. Never skips defaults or unevidenced
 kill switch `V15_ZERO_FORMULA_SKIP=0`. Measured effect 2026-10-07: 69–77% of evaluated cell evals hit
 condemned cells. Guard tests: `tests/test_v15_zero_formula.py`.
 
-## 73. POSSYM SAMPLING — CURRENT PROBABILITIES + PASS STRUCTURE (USER 2026-10-06)
+## 73. POSSYM SAMPLING — CURRENT PROBABILITIES + PASS STRUCTURE (USER 2026-10-06, AMENDED 2026-10-07)
 
 Sampling is ON fleet-wide (`V15_POSSYM_SAMPLING=1`; the 2026-10-03 full-compute suspension in §64 is
 itself suspended — sampling defers, never deletes). Per-round compute probabilities from
 `data/avg_delta_pos_sym.json` evidence (`pos_sym`/`n_sym`, min evidence `V15_POSSYM_MIN_N=3`):
-**0→1/20, 1→1/10, 2→1/6, 3→½, ≥4→every** (deterministic draw per sym|tab|row|round — same input
-re-skips identically within a round). Pass 1 evaluates winners; skipped rows/cells stay pending
-(`SKIPPED_SAMPLING`, blank); RULE#3 refuses publish while hollow, which schedules a sample-free
-REDO heal pass that evaluates every hole (holes-only, chain carried). Defaults and unevidenced rows
-are never sampled. Yellow sampling uses the filter's orange-row evidence as proxy (cell-level
-evidence now exists for the zero-skip, §72, but sampling still uses the proxy).
+**None→1/20, 0→1/20, 1→1/10, 2→1/6, 3→½, ≥4→every** (deterministic draw per sym|tab|row|round —
+same input re-skips identically within a round; 2026-10-07: rows with NO pos_sym at all are now
+sampled 1/20 like pos_sym 0 — previously always computed). Pass 1 evaluates winners; skipped
+rows/cells stay pending (`SKIPPED_SAMPLING`, blank); RULE#3 refuses publish while hollow, which
+schedules a sample-free REDO heal pass that evaluates every hole (holes-only, chain carried).
+Bold defaults and just-added (`new`) rows are never sampled. Yellow sampling uses the filter's
+orange-row evidence as proxy (cell-level evidence now exists for the zero-skip, §72, but sampling
+still uses the proxy) — EXCEPT unevidenced cells: a name-yellow cell with NO entry in
+`data/cat_avg/priority_evidence_{cat}.json` (NONE: never numeric in any finalized sheet) is
+must-calculate priority inside every computed row and is never sampled out (`none_priority`
+bucket; fail-open when the JSONs are absent). Row sampling still gates the row; the priority
+applies within computed rows. Full work order: `NONE_CELLS_PRIORITY_20261007.md`.
 
 ## 74. FLEET REALITY + WALL-TIME MATH (AUDITED 2026-10-07)
 

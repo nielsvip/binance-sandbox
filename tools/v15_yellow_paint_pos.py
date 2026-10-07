@@ -44,11 +44,31 @@ def is_yellow_fill(fill) -> bool:
         return False
 
 
+def chain_active() -> bool:
+    """True when the S1 daily chain holds its lock (non-blocking probe, never held).
+    Painting under a running chain is a read-modify-write race the chain wins."""
+    try:
+        import fcntl
+        _lk = open("/tmp/v15_daily_chain.lock", "w")
+        try:
+            fcntl.flock(_lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except (BlockingIOError, OSError):
+            return True
+        fcntl.flock(_lk, fcntl.LOCK_UN)
+        return False
+    except Exception:
+        return False
+
+
 def paint_file(path, rows_ev, cells_ev, cat, apply, stamp):
     import openpyxl
     from openpyxl.styles import PatternFill
     wb = openpyxl.load_workbook(path)
-    stats = {"bright": 0, "light": 0, "cleared": 0, "already": 0, "n_written": 0, "n_blanked": 0, "n_same": 0, "rows_missing_ev": 0}
+    stats = {"bright": 0, "light": 0, "cleared": 0, "already": 0, "n_written": 0, "n_blanked": 0, "n_same": 0, "rows_missing_ev": 0, "refused": False}
+    if apply and chain_active():
+        wb.close()
+        stats["refused"] = True
+        return stats
     try:
         for tab in TABS:
             if tab not in wb.sheetnames:
@@ -134,6 +154,9 @@ def main():
     a = ap.parse_args()
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d%H%M")
     dirs = {"main": ROOT / "SPREADSHEETS", "norm": ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM"}
+    if a.apply and chain_active():
+        print("[paint] REFUSED: daily chain is running (lock held) — repaint after it finishes", flush=True)
+        return
     for cat in [c.strip() for c in a.cats.split(",") if c.strip()]:
         ev = json.loads((Path(a.evidence_dir) / f"priority_evidence_{cat}.json").read_text())
         rows_ev, cells_ev = ev.get("rows") or {}, ev.get("cells") or {}
@@ -144,6 +167,9 @@ def main():
                 print(f"  {s}: missing {path}, skipped", flush=True)
                 continue
             st = paint_file(str(path), rows_ev, cells_ev, cat, a.apply, stamp)
+            if st.get("refused"):
+                print(f"  {s}/{path.name}: REFUSED (chain took the lock mid-run) — rerun after the chain", flush=True)
+                return
             print(f"  {s}/{path.name}: bright={st['bright']} light={st['light']} cleared={st['cleared']} already={st['already']} n_written={st['n_written']} n_blanked={st['n_blanked']} n_same={st['n_same']} rows_missing_ev={st['rows_missing_ev']}", flush=True)
     print("[paint] DRY-RUN (no writes)" if not a.apply else "[paint] APPLIED", flush=True)
 
