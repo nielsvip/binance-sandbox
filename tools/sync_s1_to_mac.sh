@@ -14,7 +14,10 @@ set -e
 # Deliberate one-shot catch-up of older files: run rsync without --files-from
 # by hand — never from a loop, cron, launchd, or agent.
 S1="niels@157.180.125.52"
+S2="s2"
+S5="s5"
 RSYNC_SSH="ssh -o BatchMode=yes -o ConnectTimeout=10"
+RSYNC_SSH_J="ssh -o BatchMode=yes -o ConnectTimeout=15"
 SANDBOX_SPREAD="~/binance-sandbox/SPREADSHEETS"
 SANDBOX_CELL="~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL"
 SANDBOX_1M="~/binance-sandbox/data/reports/charts_1M"
@@ -30,22 +33,26 @@ DST_V15="/Users/niels/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL/"
 DST_CHARTS="/Users/niels/Documents/binance/data/reports/charts_1M/"
 MAX_AGE_MIN="${V15_SYNC_MAX_AGE_MIN:-4320}"
 mkdir -p "$DST" "$DST_V15" "$DST_CHARTS"
-# recent_list <remote-dir> <list-file>: basenames in remote-dir modified within
-# MAX_AGE_MIN, one per line. Always exits 0 with the file present; empty on
-# ssh/find failure (fail-closed: the pull then transfers nothing).
+# recent_list <host> <ssh-opts> <remote-dir> <list-file>: basenames in remote-dir
+# modified within MAX_AGE_MIN, one per line. Always exits 0 with the file present;
+# empty on ssh/find failure (fail-closed: the pull then transfers nothing).
 recent_list() {
-  local rdir="$1" list="$2"
+  local host="$1" sopts="$2" rdir="$3" list="$4"
   : > "$list"
-  ssh -o BatchMode=yes -o ConnectTimeout=10 "$S1" "find $rdir -maxdepth 1 -type f -mmin -$MAX_AGE_MIN -printf '%f\n'" >> "$list" 2>/dev/null || true
+  ssh $sopts "$host" "find $rdir -maxdepth 1 -type f -mmin -$MAX_AGE_MIN -printf '%f\n'" >> "$list" 2>/dev/null || true
   return 0
 }
 LIST_SPREAD="$(mktemp /tmp/v15sync_spread.XXXXXX)"
 LIST_CELL="$(mktemp /tmp/v15sync_cell.XXXXXX)"
+LIST_CELL_S2="$(mktemp /tmp/v15sync_cell_s2.XXXXXX)"
+LIST_CELL_S5="$(mktemp /tmp/v15sync_cell_s5.XXXXXX)"
 LIST_1M="$(mktemp /tmp/v15sync_1m.XXXXXX)"
-trap 'rm -f "$LIST_SPREAD" "$LIST_CELL" "$LIST_1M"' EXIT
-recent_list "$SANDBOX_SPREAD" "$LIST_SPREAD"
-recent_list "$SANDBOX_CELL" "$LIST_CELL"
-recent_list "$SANDBOX_1M" "$LIST_1M"
+trap 'rm -f "$LIST_SPREAD" "$LIST_CELL" "$LIST_CELL_S2" "$LIST_CELL_S5" "$LIST_1M"' EXIT
+recent_list "$S1" "-o BatchMode=yes -o ConnectTimeout=10" "$SANDBOX_SPREAD" "$LIST_SPREAD"
+recent_list "$S1" "-o BatchMode=yes -o ConnectTimeout=10" "$SANDBOX_CELL" "$LIST_CELL"
+recent_list "$S2" "-o BatchMode=yes -o ConnectTimeout=15" "$SANDBOX_CELL" "$LIST_CELL_S2"
+recent_list "$S5" "-o BatchMode=yes -o ConnectTimeout=15" "$SANDBOX_CELL" "$LIST_CELL_S5"
+recent_list "$S1" "-o BatchMode=yes -o ConnectTimeout=10" "$SANDBOX_1M" "$LIST_1M"
 # progress board first (tiny, written every minute on S1 by tools/v15_progress_board.py) so Mac monitoring never waits on xlsx
 rsync -auz --timeout=30 --files-from="$LIST_SPREAD" --include='V15_PROGRESS.md' --include='V15_PROGRESS.csv' --exclude='*' -e "$RSYNC_SSH" "$S1:$RSYNC_SPREAD/" "$DST" 2>&1 | tail -n 3
 echo "[$(date)] Sync S1 -> Mac xls (new-only: max age ${MAX_AGE_MIN}min)... (TEMPLATE* excluded - Mac is source of truth, never S1->Mac)"
@@ -53,6 +60,12 @@ rsync -auvz --progress --files-from="$LIST_SPREAD" --exclude='*TEMPLATE*' --excl
 echo "[$(date)] Sync S1 -> Mac V15_V16_CELL_BY_CELL xls (live update + finals-once, new-only)..."
 rsync -auvz --progress --files-from="$LIST_CELL" --exclude='*_bh*_gain*_30d_matrix.xlsx' --exclude='*_bh*_gain*_30d_matrix.html' --exclude='*_bh*_gain*_manifest.json' --exclude='*_20*.xlsx' --exclude='*pilot*.xlsx' --exclude='V15_AVG*' --include='*.xlsx' --exclude='*' -e "$RSYNC_SSH" "$S1:$RSYNC_CELL/" "$DST_V15" 2>&1 | tail -n 20
 rsync -auvz --progress --files-from="$LIST_CELL" --ignore-existing --include='*_bh*_gain*_30d_matrix.xlsx' --include='*_bh*_gain*_30d_matrix.html' --include='*_bh*_gain*_manifest.json' --exclude='*' -e "$RSYNC_SSH" "$S1:$RSYNC_CELL/" "$DST_V15" 2>&1 | tail -n 20
+echo "[$(date)] Sync S2 -> Mac V15_V16_CELL_BY_CELL xls (live update + finals-once, new-only)..."
+rsync -auvz --progress --files-from="$LIST_CELL_S2" --exclude='*_bh*_gain*_30d_matrix.xlsx' --exclude='*_bh*_gain*_30d_matrix.html' --exclude='*_bh*_gain*_manifest.json' --exclude='*_20*.xlsx' --exclude='*pilot*.xlsx' --exclude='V15_AVG*' --include='*.xlsx' --exclude='*' -e "$RSYNC_SSH_J" "$S2:$RSYNC_CELL/" "$DST_V15" 2>&1 | tail -n 10
+rsync -auvz --progress --files-from="$LIST_CELL_S2" --ignore-existing --include='*_bh*_gain*_30d_matrix.xlsx' --include='*_bh*_gain*_30d_matrix.html' --include='*_bh*_gain*_manifest.json' --exclude='*' -e "$RSYNC_SSH_J" "$S2:$RSYNC_CELL/" "$DST_V15" 2>&1 | tail -n 10
+echo "[$(date)] Sync S5 -> Mac V15_V16_CELL_BY_CELL xls (live update + finals-once, new-only)..."
+rsync -auvz --progress --files-from="$LIST_CELL_S5" --exclude='*_bh*_gain*_30d_matrix.xlsx' --exclude='*_bh*_gain*_30d_matrix.html' --exclude='*_bh*_gain*_manifest.json' --exclude='*_20*.xlsx' --exclude='*pilot*.xlsx' --exclude='V15_AVG*' --include='*.xlsx' --exclude='*' -e "$RSYNC_SSH_J" "$S5:$RSYNC_CELL/" "$DST_V15" 2>&1 | tail -n 10
+rsync -auvz --progress --files-from="$LIST_CELL_S5" --ignore-existing --include='*_bh*_gain*_30d_matrix.xlsx' --include='*_bh*_gain*_30d_matrix.html' --include='*_bh*_gain*_manifest.json' --exclude='*' -e "$RSYNC_SSH_J" "$S5:$RSYNC_CELL/" "$DST_V15" 2>&1 | tail -n 10
 python3 /Users/niels/Documents/binance/tools/v15_final_sync_guard.py --audit "$DST_V15" 2>&1 | head -n 1 || true
 echo "[$(date)] Sync S1 -> Mac SPREADSHEET COMPLETE/FINAL charts (new-only)..."
 rsync -auvz --progress --files-from="$LIST_SPREAD" --exclude='*TEMPLATE*' --include='*COMPLETE_chart.html' --exclude='*' -e "$RSYNC_SSH" "$S1:$RSYNC_SPREAD/" "$DST" 2>&1 | tail -n 20

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.niels.mac-order-pulse</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/anaconda3/envs/binance_env/bin/python</string>
+        <string>-u</string>
+        <string>/Users/niels/Documents/binance/tools/mac_order_pulse.py</string>
+    </array>
+    <key>KeepAlive</key>
+    <true/>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/niels/logs/mac_order_pulse.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/niels/logs/mac_order_pulse.log</string>
+</dict>
+</plist>
