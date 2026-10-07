@@ -55,17 +55,9 @@
   "at": "2026-10-07T03:46:01Z",
   "reason": "B15"
  },
- "inf:APEUSDT_SHORT": {
-  "at": "2026-10-07T04:01:22Z",
-  "reason": "B15"
- },
  "inf:AGLDUSDT_SHORT": {
   "at": "2026-10-07T04:01:30Z",
   "reason": "B_KZONE"
- },
- "inf:ARBUSDC_SHORT": {
-  "at": "2026-10-07T04:16:34Z",
-  "reason": "B15"
  },
  "inf:ARPAUSDT_SHORT": {
   "at": "2026-10-07T04:47:19Z",
@@ -74,5 +66,13 @@
  "inf:API3USDT_SHORT": {
   "at": "2026-10-07T05:15:47Z",
   "reason": "B_KZONE"
+ },
+ "inf:ARBUSDC_SHORT": {
+  "at": "2026-10-07T05:31:00Z",
+  "reason": "B15"
+ },
+ "inf:IOTXUSDT_LONG": {
+  "at": "2026-10-07T05:31:31Z",
+  "reason": "B_EMADIST"
  }
 }
