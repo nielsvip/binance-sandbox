@@ -87,7 +87,8 @@ def render(ss, verdict, gs):
     L.append(f"30D: gain={_fmt(w30.get('gain'))} trades={w30.get('trades', '?')} "
              f"tim={_fmt(w30.get('tim'))} dd={_fmt(w30.get('dd'))}")
     L.append(f"365D: gain={_fmt(w365.get('gain'))} trades={w365.get('trades', '?')} "
-             f"tim={_fmt(w365.get('tim'))} dd={_fmt(w365.get('dd'))} q365={v.get('q365', '?')}")
+             f"tim={_fmt(w365.get('tim'))} dd={_fmt(w365.get('dd'))} q365={v.get('q365', '?')} span_365d={v.get('span_365', '?')}"
+             + (" SHORT_SPAN(<300d)" if isinstance(v.get("span_365"), (int, float)) and v["span_365"] < 300 else ""))
     for w in v.get("why365") or []:
         L.append(f"  why365: {w}")
     L.append("")
@@ -107,6 +108,8 @@ def render(ss, verdict, gs):
     L.append("")
     L.append("## 3. SEARCH TRACE [RECORDED]")
     L.append(f"n_evals={g.get('n_evals', '?')} n_365={g.get('n_evals_365', '?')} secs={g.get('secs', '?')}")
+    if g.get("phase_secs") or g.get("phase_skips"):
+        L.append(f"phase_secs={json.dumps(g.get('phase_secs'))} phase_skips={g.get('phase_skips')}")
     for it in iters:
         L.append(f"- it{it.get('it')}: faults={it.get('faults')} gain={_fmt(it.get('gain'))} trades={it.get('trades')}")
     for s in g.get("steps", []) or []:

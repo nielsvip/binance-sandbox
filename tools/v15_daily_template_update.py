@@ -750,9 +750,12 @@ def main():
             print(f"[kv] promos/ledger kv_put failed (JSON view still written): {_e}")
         try:  # INV 2026-10-01: keep the documentation tab WIRING_INVENTORY in the user finals (refreshed only when missing/stale; never read by pilots)
             import subprocess
-            subprocess.run([sys.executable, str(ROOT / "tools" / "v15_wiring_inventory.py"), "--ensure"], check=False, timeout=900)
+            _ir = subprocess.run([sys.executable, str(ROOT / "tools" / "v15_wiring_inventory.py"), "--ensure"], capture_output=True, text=True, check=False, timeout=900)
+            if _ir.returncode != 0:
+                _tail = " ".join(((_ir.stderr or "") + "\n" + (_ir.stdout or "")).split())[-300:]
+                print(f"[inventory] ensure rc={_ir.returncode} (non-fatal, output captured): {_tail}")
         except Exception as _e:
-            print(f"[inventory] ensure failed: {_e}")
+            print(f"[inventory] ensure failed: {' '.join(str(_e).split())}")
         if args.sync_defaults:
             import subprocess
             subprocess.run([sys.executable, str(ROOT / "tools" / "build_cat_side_defaults_4.py")], check=True)

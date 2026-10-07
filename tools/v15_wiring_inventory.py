@@ -359,6 +359,9 @@ def main():
     inplace = a.apply or a.ensure
     if inplace and tdir.resolve() == (ROOT / "SPREADSHEETS").resolve() and (ROOT / "SPREADSHEETS" / "TEMPLATES_FROZEN").exists() and not os.environ.get("TEMPLATES_UNFREEZE"):
         sys.exit("REFUSED: SPREADSHEETS/TEMPLATES_FROZEN exists (set TEMPLATES_UNFREEZE=1 only for an approved change)")
+    if not SRC["cover"].exists():
+        print(f"[inventory] skip: {SRC['cover']} missing (row-coverage --run has not produced latest.csv on this host) — docs tab left as-is")
+        return
     S = load_sources()
     stamp = input_stamp()
     ts = datetime.datetime.now().strftime("%Y%m%d%H%M")

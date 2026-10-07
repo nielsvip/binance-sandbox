@@ -60,7 +60,43 @@ ABLATION_FLAGS = ("ABLATION_DISABLE_REENTRY", "ABLATION_DISABLE_AUGMENTATION", "
 # of deep_open()'s all-gates-at-once blast. Parent/user flips for reruns after
 # worst_first. Env override: V15_GS_FILTER_SERIES=1.
 FILTER_SERIES_ENABLED = os.environ.get("V15_GS_FILTER_SERIES", "0") == "1"
-BUILD = "heal1-20261007"  # USER 2026-10-07: bump on ANY behavior change; stamped into every report (gs_build)
+BUILD = "heal2-20261007"  # USER 2026-10-07: bump on ANY behavior change; stamped into every report (gs_build)
+PHASE_PLAN = (("ABLATE", 0.16, 60), ("CULPRITS", 0.16, 60), ("PATHS", 0.30, 90), ("REORDER", 0.09, 25), ("POLISH", 0.06, 15), ("HEAL", 0.23, 90))
+
+
+class _box:
+    """USER 2026-10-07: absolute time box for one GS phase. Slow phases clip (never steal later phases);
+    early finishes flow forward automatically (ends are fixed, starts are now). Sets deadline AND budget so every
+    existing left()/fraction gate honors the box; driver deadline-honor propagates via the passed deadline."""
+
+    def __init__(self, S, seconds: float, name: str):
+        self.S, self.seconds, self.name = S, seconds, name
+
+    def __enter__(self):
+        self.saved = (self.S.deadline, self.S.budget)
+        self.t0 = time.time()
+        self.S.deadline = min(self.S.deadline, self.t0 + self.seconds)
+        self.S.budget = self.seconds
+        return self
+
+    def __exit__(self, *exc):
+        self.S.deadline, self.S.budget = self.saved
+        try:
+            self.S.rep.setdefault("phase_secs", {})[self.name] = round(time.time() - self.t0, 1)
+        except Exception:
+            pass
+        return False
+
+
+def _box_enter(S, box_ends: dict, name: str, rep: dict) -> float:
+    """seconds to run, or 0 to skip honestly (records skip + macro). Slosh-inclusive: skipped phases gift time forward."""
+    end, mn = box_ends[name]
+    left = end - time.time()
+    if left < mn:
+        rep.setdefault("phase_skips", []).append(name)
+        S.rep.setdefault("macro", []).append({"phase": name, "status": f"skipped: box {left:.0f}s < min {mn}s"})
+        return 0.0
+    return left
 FLAG_LIFECYCLES = (("HIGH_GAIN_AUGMENT", ("AUGMENT", "AUGMENT_GATE")), ("AUGMENTATION", ("AUGMENT", "AUGMENT_GATE")), ("AUGMENT", ("AUGMENT", "AUGMENT_GATE")),
                    ("REENTRY", ("REENTRY", "REENTRY_GATE")), ("DC_BREACH_REDUCE", ("REDUCE", "EXIT_CLOSE")), ("REDUCE", ("REDUCE",)),
                    ("FILTER_MTF_HTF", ("ENTRY_GATE", "REENTRY_GATE")), ("FILTER_ENTRY", ("ENTRY_GATE", "ENTRY_OPEN")), ("FILTER_REENTRY", ("REENTRY", "REENTRY_GATE")),
@@ -283,19 +319,19 @@ class GraphSearch(DR._Search):
     def ablate(self, state: dict, state_m: dict, tag: str) -> list:
         groups = self.G.get("groups", {})
         items, meta = [], []
-        for gname, members in groups.items():
+        for fl in ABLATION_FLAGS:  # USER 2026-10-07: FLAGS first (drill-down feeds on them; truncation-safe order)
+            if fl in self.defaults and not (state.get(fl, self.defaults.get(fl)) is True):
+                v = {**state, fl: True}
+                c = {"switch": fl, "cand": True, "tab": "ABLATION", "row": None, "ov": {fl: True}, "group": f"FLAG:{fl}", "mode": "TRUE", "changed": [fl], "measure_only": True}
+                items.append((f"ABLATE:{fl}", v, c, False))
+                meta.append(c)
+        for gname, members in sorted(groups.items(), key=lambda kv: 0 if kv[0].startswith("FAMILY:") else 1):
             for mode in ("OFF", "DEFAULT"):
                 v, changed = self.group_ov(state, members, mode)
                 if not changed:
                     continue
                 c = {"switch": f"GROUP[{gname}]", "cand": mode, "tab": "ABLATION", "row": None, "ov": {k: v.get(k, self.defaults.get(k)) for k in changed}, "group": gname, "mode": mode, "changed": changed}
                 items.append((f"ABLATE:{gname}|{mode}", v, c, False))  # investigation only: never a finalist (may hold forbidden members)
-                meta.append(c)
-        for fl in ABLATION_FLAGS:
-            if fl in self.defaults and not (state.get(fl, self.defaults.get(fl)) is True):
-                v = {**state, fl: True}
-                c = {"switch": fl, "cand": True, "tab": "ABLATION", "row": None, "ov": {fl: True}, "group": f"FLAG:{fl}", "mode": "TRUE", "changed": [fl], "measure_only": True}
-                items.append((f"ABLATE:{fl}", v, c, False))
                 meta.append(c)
         res = self.evaluate(items, f"ABLATE_{tag}", state_m["gain"])
         coarse = [(ov, m, c) for m, ov, c in res if m is not None and c["group"].startswith(COARSE + ("FLAG:",))]
@@ -1016,6 +1052,12 @@ def run(ctx: dict) -> dict:
     # 2 ABLATE (on the base) -> 3 CULPRITS -> 5 PATHS -> 4 REORDER; then repeat on the new state while it keeps improving
     state, state_m = origin, base_m
     scr, faults, mix = scr0, faults0, mix0
+    box_ends = {}  # USER 2026-10-07: absolute phase schedule (it0 guaranteed, slosh flows forward)
+    _r2, _te = S.deadline - time.time(), time.time()
+    for _nm, _fr, _mn in PHASE_PLAN:
+        _te += max(0.0, _r2) * _fr
+        box_ends[_nm] = (_te, _mn)
+    rep["phase_secs"], rep["phase_skips"] = {}, []
     for it in range(4):
         if S._shutdown_hit():
             S._flush_ckpt()
@@ -1028,17 +1070,39 @@ def run(ctx: dict) -> dict:
             S.m365_many([state])
             faults = S.faults(state_m, mix, S.m365c.get(S._k(S.sanitize(state))), {})
             scr = S.screen(state, state_m, f"GS_SCREEN{it + 1}", only=S.shortlist(None, 500))
-        abl = S.ablate(state, state_m, "BASE" if it == 0 else f"IT{it}")
-        state, state_m = S.culprits(state, state_m, abl)
-        state, state_m = S.paths(state, state_m, scr, state_m if it else base_m, faults, mix)
-        state, state_m = S.reorder(state, state_m, abl)
+            abl = S.ablate(state, state_m, f"IT{it}")
+            state, state_m = S.culprits(state, state_m, abl)
+            state, state_m = S.paths(state, state_m, scr, state_m, faults, mix)
+            state, state_m = S.reorder(state, state_m, abl)
+        else:
+            abl = []
+            _bl = _box_enter(S, box_ends, "ABLATE", rep)
+            if _bl:
+                with _box(S, _bl, "ABLATE"):
+                    abl = S.ablate(state, state_m, "BASE")
+            _bl = _box_enter(S, box_ends, "CULPRITS", rep)
+            if _bl:
+                with _box(S, _bl, "CULPRITS"):
+                    state, state_m = S.culprits(state, state_m, abl)
+            _bl = _box_enter(S, box_ends, "PATHS", rep)
+            if _bl:
+                with _box(S, _bl, "PATHS"):
+                    state, state_m = S.paths(state, state_m, scr, base_m, faults, mix)
+            _bl = _box_enter(S, box_ends, "REORDER", rep)
+            if _bl:
+                with _box(S, _bl, "REORDER"):
+                    state, state_m = S.reorder(state, state_m, abl)
         rep.setdefault("iterations", []).append({"it": it, "faults": faults, "gain": state_m["gain"], "trades": state_m["trades"], "t": round(time.time() - t0, 1)})
         if not S.key_of(state, state_m) > k_before:
             break
-    # 6 POLISH
-    if S.left() > 0.08 * S.budget:
-        state, state_m = S.climb(state, state_m, "POLISH", only=S.shortlist(None, 200), rounds=6, k365=6, frac_stop=0.05)
-    state, state_m = heal_365(S, ctx, state, state_m)  # USER 2026-10-07: 365D-red sides keep healing (bounded, 30D-safe)
+    _bl = _box_enter(S, box_ends, "POLISH", rep)
+    if _bl:
+        with _box(S, _bl, "POLISH"):
+            state, state_m = S.climb(state, state_m, "POLISH", only=S.shortlist(None, 200), rounds=6, k365=6, frac_stop=0.05)
+    _bl = _box_enter(S, box_ends, "HEAL", rep)
+    if _bl:
+        with _box(S, _bl, "HEAL"):
+            state, state_m = heal_365(S, ctx, state, state_m)  # USER 2026-10-07: 365D-red sides keep healing (bounded, 30D-safe)
     S.deadline += reserve
     if S.changes(state):
         state, state_m = prune(S, state, state_m)
