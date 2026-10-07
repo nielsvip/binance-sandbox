@@ -43,10 +43,6 @@
   "at": "07 05:57:38 - ",
   "reason": "seeded_from_log"
  },
- "men:ADAUSDC_LONG": {
-  "at": "2026-10-07T06:15:47Z",
-  "reason": "B12"
- },
  "men:ARUSDT_SHORT": {
   "at": "2026-10-07T07:03:13Z",
   "reason": "B_KZONE"
@@ -103,10 +99,6 @@
   "at": "2026-10-07T12:16:46Z",
   "reason": "B12"
  },
- "men:BNBUSDC_SHORT": {
-  "at": "2026-10-07T13:46:32Z",
-  "reason": "B14"
- },
  "men:MELANIAUSDT_SHORT": {
   "at": "2026-10-07T13:57:09Z",
   "reason": "DC_BREAKOUT_ENTRY"
@@ -131,16 +123,16 @@
   "at": "2026-10-07T16:25:54Z",
   "reason": "B12"
  },
- "men:CHRUSDT_SHORT": {
-  "at": "2026-10-07T16:31:42Z",
-  "reason": "B_KZONE"
- },
- "men:KMNOUSDT_SHORT": {
-  "at": "2026-10-07T16:33:12Z",
-  "reason": "B15"
- },
  "men:ENJUSDT_LONG": {
   "at": "2026-10-07T16:38:07Z",
   "reason": "VOL_SPIKE_REVERSAL"
+ },
+ "men:NMRUSDT_SHORT": {
+  "at": "2026-10-07T16:55:17Z",
+  "reason": "B_KZONE"
+ },
+ "men:SKYUSDT_SHORT": {
+  "at": "2026-10-07T16:56:20Z",
+  "reason": "B_KZONE"
  }
 }
