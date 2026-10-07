@@ -324,3 +324,41 @@
     - `JASMYUSDT_LONG` [s5] 1 cases — WICK_REJECT_ENTRY_ENABLED T=-2.122/F=+2.574
     - `THETAUSDT_LONG` [s5] 1 cases — WT_DIV_ENTRY_GATE_ENABLED T=+0.196/F=-5.499
 - **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-07T04:45Z · window 48.0h · 188 sym_sides (local+remote)
+- ⚠️ **14 sym_sides / 14 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `OI_CONFIRM_ENABLED`×3, `RZ_BREAKOUT_ENTRY_ENABLED`×1, `FUNDING_CROWD_ENTRY_ENABLED`×1, `EMA_BLANKET_FILTER_ENABLED`×1, `EMA_9_21_FILTER_ENABLED`×1, `WT_DIV_EXIT_ENABLED`×1, `CT_CHOP_4H_GATE_ENABLED`×1, `EXIT_VELOCITY_WT_ENABLED`×1, `HARDCODED_RALLY_SMA200_SIDE_ENABLED`×1, `HTF_GATE_SIGNALS_SMA200D`×1, `WICK_REJECT_ENTRY_ENABLED`×1, `WT_DIV_ENTRY_GATE_ENABLED`×1
+    - `BNBUSDC_LONG` [mac] 1 cases — RZ_BREAKOUT_ENTRY_ENABLED T=+1.049/F=+1.642
+    - `WLDUSDC_LONG` [mac] 1 cases — OI_CONFIRM_ENABLED T=+3.958/F=+0.617
+    - `RLCUSDT_LONG` [s2] 1 cases — FUNDING_CROWD_ENTRY_ENABLED T=-8.272/F=+12.442
+    - `XRPUSDC_LONG` [mac] 1 cases — EMA_BLANKET_FILTER_ENABLED T=+0.383/F=+1.381
+    - `BTCUSDC_LONG` [mac] 1 cases — EMA_9_21_FILTER_ENABLED T=+0.004/F=-0.066
+    - `SNXUSDT_LONG` [s5] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `RRC_LONG` [s2] 1 cases — CT_CHOP_4H_GATE_ENABLED T=-7.873/F=+0.073
+    - `UNIUSDC_LONG` [s2] 1 cases — EXIT_VELOCITY_WT_ENABLED T=+0.885/F=-4.426
+    - `ARUSDT_LONG` [s2] 1 cases — OI_CONFIRM_ENABLED T=+0.065/F=-1.941
+    - `ENSUSDT_SHORT` [s2] 1 cases — HARDCODED_RALLY_SMA200_SIDE_ENABLED T=+0.170/F=-2.467
+    - `TRBUSDT_LONG` [s5] 1 cases — OI_CONFIRM_ENABLED T=+0.406/F=-2.290
+    - `BSVUSDT_LONG` [s5] 1 cases — HTF_GATE_SIGNALS_SMA200D T=-4.101/F=+2.691
+    - `JASMYUSDT_LONG` [s5] 1 cases — WICK_REJECT_ENTRY_ENABLED T=-2.122/F=+2.574
+    - `THETAUSDT_LONG` [s5] 1 cases — WT_DIV_ENTRY_GATE_ENABLED T=+0.196/F=-5.499
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
+
+## 2026-10-07T05:00Z · window 48.0h · 188 sym_sides (local+remote)
+- ⚠️ **14 sym_sides / 14 switch×baseline cases** where a bool switch scored non-zero for BOTH True and False vs the same baseline (default-nonzero).
+- Worst switches (by # sym_sides): `OI_CONFIRM_ENABLED`×3, `RZ_BREAKOUT_ENTRY_ENABLED`×1, `FUNDING_CROWD_ENTRY_ENABLED`×1, `EMA_BLANKET_FILTER_ENABLED`×1, `EMA_9_21_FILTER_ENABLED`×1, `WT_DIV_EXIT_ENABLED`×1, `CT_CHOP_4H_GATE_ENABLED`×1, `EXIT_VELOCITY_WT_ENABLED`×1, `HARDCODED_RALLY_SMA200_SIDE_ENABLED`×1, `HTF_GATE_SIGNALS_SMA200D`×1, `WICK_REJECT_ENTRY_ENABLED`×1, `WT_DIV_ENTRY_GATE_ENABLED`×1
+    - `BNBUSDC_LONG` [mac] 1 cases — RZ_BREAKOUT_ENTRY_ENABLED T=+1.049/F=+1.642
+    - `WLDUSDC_LONG` [mac] 1 cases — OI_CONFIRM_ENABLED T=+3.958/F=+0.617
+    - `RLCUSDT_LONG` [s2] 1 cases — FUNDING_CROWD_ENTRY_ENABLED T=-8.272/F=+12.442
+    - `XRPUSDC_LONG` [mac] 1 cases — EMA_BLANKET_FILTER_ENABLED T=+0.383/F=+1.381
+    - `BTCUSDC_LONG` [mac] 1 cases — EMA_9_21_FILTER_ENABLED T=+0.004/F=-0.066
+    - `SNXUSDT_LONG` [s5] 1 cases — WT_DIV_EXIT_ENABLED T=-7.886/F=+0.154
+    - `RRC_LONG` [s2] 1 cases — CT_CHOP_4H_GATE_ENABLED T=-7.873/F=+0.073
+    - `UNIUSDC_LONG` [s2] 1 cases — EXIT_VELOCITY_WT_ENABLED T=+0.885/F=-4.426
+    - `ARUSDT_LONG` [s2] 1 cases — OI_CONFIRM_ENABLED T=+0.065/F=-1.941
+    - `ENSUSDT_SHORT` [s2] 1 cases — HARDCODED_RALLY_SMA200_SIDE_ENABLED T=+0.170/F=-2.467
+    - `TRBUSDT_LONG` [s5] 1 cases — OI_CONFIRM_ENABLED T=+0.406/F=-2.290
+    - `BSVUSDT_LONG` [s5] 1 cases — HTF_GATE_SIGNALS_SMA200D T=-4.101/F=+2.691
+    - `JASMYUSDT_LONG` [s5] 1 cases — WICK_REJECT_ENTRY_ENABLED T=-2.122/F=+2.574
+    - `THETAUSDT_LONG` [s5] 1 cases — WT_DIV_ENTRY_GATE_ENABLED T=+0.196/F=-5.499
+- **Fix:** the engine must return the frozen-baseline gain (delta 0) for the value that equals the running config. Trace `evaluate_prepared_sanitized` baseline handling; a `0.0` baseline_gain with identical non-zero True/False deltas = a DATA_ERROR baseline (dead NPZ) that must not be promoted. See memory v12_quick_engine_synthetic_distinctness.
