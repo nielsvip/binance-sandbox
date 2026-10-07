@@ -91,12 +91,24 @@
   "at": "2026-10-07T15:55:35Z",
   "reason": "B12"
  },
- "ang:EDUUSDT_LONG": {
-  "at": "2026-10-07T18:00:46Z",
-  "reason": "B_EMA20SLOPE"
- },
  "ang:APEUSDT_SHORT": {
   "at": "2026-10-07T18:00:53Z",
   "reason": "GOLDEN_RULE_ENTRY"
+ },
+ "ang:ETHFIUSDC_LONG": {
+  "at": "2026-10-07T18:15:18Z",
+  "reason": "B_SRS_ENTRY"
+ },
+ "ang:BNBUSDC_LONG": {
+  "at": "2026-10-07T18:16:05Z",
+  "reason": "B_VWAPBOUNCE"
+ },
+ "ang:GRAMUSDT_SHORT": {
+  "at": "2026-10-07T18:16:08Z",
+  "reason": "B_KZONE"
+ },
+ "ang:RENDERUSDT_LONG": {
+  "at": "2026-10-07T18:24:54Z",
+  "reason": "ENTRY_SOURCE_UNKNOWN"
  }
 }
