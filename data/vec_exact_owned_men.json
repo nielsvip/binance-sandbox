@@ -7,10 +7,6 @@
   "at": "2026-10-06T21:26:46Z",
   "reason": "ENTRY_SIGNAL"
  },
- "men:XMRUSDT_SHORT": {
-  "at": "2026-10-06T22:19:29Z",
-  "reason": "B12"
- },
  "men:DOTUSDT_SHORT": {
   "at": "2026-10-07T02:15:39Z",
   "reason": "DC_BREAKOUT_ENTRY"
@@ -107,10 +103,6 @@
   "at": "2026-10-07T11:35:33Z",
   "reason": "B_KZONE"
  },
- "men:NEARUSDC_SHORT": {
-  "at": "2026-10-07T11:50:07Z",
-  "reason": "B_KZONE"
- },
  "men:KMNOUSDT_LONG": {
   "at": "2026-10-07T11:50:24Z",
   "reason": "B_SMA200DIST"
@@ -123,24 +115,20 @@
   "at": "2026-10-07T12:03:17Z",
   "reason": "DC_BREAKOUT_ENTRY"
  },
- "men:BTCUSDC_SHORT": {
-  "at": "2026-10-07T12:06:56Z",
-  "reason": "B14"
- },
- "men:SANDUSDT_SHORT": {
-  "at": "2026-10-07T12:08:42Z",
-  "reason": "B12"
- },
  "men:IOTXUSDT_SHORT": {
   "at": "2026-10-07T12:16:30Z",
   "reason": "B12"
  },
- "men:EDUUSDT_LONG": {
-  "at": "2026-10-07T12:16:46Z",
-  "reason": "B_EMADIST"
- },
  "men:LTCUSDC_SHORT": {
   "at": "2026-10-07T12:16:46Z",
   "reason": "B12"
+ },
+ "men:NMRUSDT_SHORT": {
+  "at": "2026-10-07T12:33:10Z",
+  "reason": "DC_BREAKOUT_ENTRY"
+ },
+ "men:QTUMUSDT_SHORT": {
+  "at": "2026-10-07T12:36:46Z",
+  "reason": "B_KZONE"
  }
 }
