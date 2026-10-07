@@ -1,29 +1,22 @@
-CAPITAL ALLOCATION REPORT — 2026-10-07 06:16 UTC
+CAPITAL ALLOCATION REPORT — 2026-10-07 07:00 UTC
 ================================================================================
-Total capital deployed: $354.73 across 20 positions
+Total capital deployed: $52.96 across 4 positions
 
 TIER DISTRIBUTION:
   Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $    309.53 ( 87.3%) — 18 positions
-  Tier C: $     45.20 ( 12.7%) — 2 positions
+  Tier B: $     37.11 ( 70.1%) — 3 positions
+  Tier C: $     15.86 ( 29.9%) — 1 positions
 
   ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
+  ** C-tier OVERWEIGHT: 30% vs target <20% — reduce poor performers **
 
 WINNERS — augment these (A-tier, in gain) [0]:
   (none)
 
-LOSERS — reduce allocation (C-tier or losing) [4]:
-                     men:SKYUSDT_LONG  $    4.05  gain=-0.75%  tier=B  mult=1.00
-                   men:MANAUSDT_SHORT  $    2.88  gain=-0.74%  tier=B  mult=1.00
-                     men:ZROUSDT_LONG  $   15.76  gain=-0.10%  tier=C  mult=0.44
-                    men:SANDUSDT_LONG  $   29.44  gain=+1.78%  tier=C  mult=0.37
+LOSERS — reduce allocation (C-tier or losing) [3]:
+                   flz:DASHUSDT_SHORT  $   16.15  gain=-0.97%  tier=B  mult=2.46
+                   flz:HYPEUSDT_SHORT  $   15.49  gain=-0.51%  tier=B  mult=2.78
+                    flz:ZECUSDC_SHORT  $   15.86  gain=+0.28%  tier=C  mult=0.33
 
-MEDIOCRE — capital sitting idle [8]:
-                    men:LTCUSDC_SHORT  $   31.38  gain=+0.04%  tier=B
-                  men:THETAUSDT_SHORT  $   27.96  gain=+0.21%  tier=B
-                    men:UNIUSDC_SHORT  $   24.52  gain=-0.09%  tier=B
-                    men:AXSUSDT_SHORT  $   15.75  gain=-0.24%  tier=B
-                    men:XMRUSDT_SHORT  $   15.73  gain=-0.28%  tier=B
-                  men:1INCHUSDT_SHORT  $   14.62  gain=+0.10%  tier=B
-                    men:YFIUSDT_SHORT  $   14.62  gain=+0.29%  tier=B
-                    men:DOTUSDT_SHORT  $    5.85  gain=+0.01%  tier=B
+MEDIOCRE — capital sitting idle [0]:
+  (none)
