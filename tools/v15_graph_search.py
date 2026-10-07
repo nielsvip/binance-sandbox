@@ -155,13 +155,24 @@ class GraphSearch(DR._Search):
                         res.append((None, None))
                         continue
                     res.append(self.ctx["eval_365"](ov))
+            _stored = 0
             for (k, _ov), (r, span) in zip(todo, res):
                 if r is None:
                     continue
                 ok, why = self.ctx["qualifies_365"](r, span)
                 self.m365c[k] = (DR.metrics(r), ok, why)
                 self._m365[k] = (self.m365c[k][0], ok)
+                _stored += 1
+            try:
+                self.log(f"[m365] todo={len(todo)} stored={_stored} nones={len(todo) - _stored} left={round(self.left(), 1)}")
+            except Exception:
+                pass
             self._flush_ckpt()
+        else:
+            try:
+                self.log(f"[m365] SKIP todo={len(todo)} has_eval365={bool(self.ctx.get('eval_365'))} left={round(self.left(), 1)}")
+            except Exception:
+                pass
         return [self.m365c.get(k) for k in keys]
 
     def key_of(self, ov: dict, m30: dict) -> tuple:

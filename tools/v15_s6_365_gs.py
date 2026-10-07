@@ -107,7 +107,8 @@ def run_side(ss, outdir, gs_budget=600.0, workers=6, ckptdir=None):
         f = ex.submit(VP.evaluate_prepared_sanitized, prep, dict(ov), wd)
         try:
             return f.result(timeout=to)
-        except Exception:
+        except Exception as e:
+            log(f"EVAL_{wd}D_RAISED {type(e).__name__}: {str(e)[:160]}")
             try:
                 f.cancel()
             except Exception:
