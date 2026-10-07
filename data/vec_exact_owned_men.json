@@ -103,12 +103,20 @@
   "at": "2026-10-07T11:34:26Z",
   "reason": "B_KZONE"
  },
- "men:ETHUSDC_SHORT": {
-  "at": "2026-10-07T11:34:30Z",
-  "reason": "B_KZONE"
- },
  "men:KSMUSDT_SHORT": {
   "at": "2026-10-07T11:35:33Z",
   "reason": "B_KZONE"
+ },
+ "men:NEARUSDC_SHORT": {
+  "at": "2026-10-07T11:50:07Z",
+  "reason": "B_KZONE"
+ },
+ "men:KMNOUSDT_LONG": {
+  "at": "2026-10-07T11:50:24Z",
+  "reason": "B_SMA200DIST"
+ },
+ "men:EDUUSDT_SHORT": {
+  "at": "2026-10-07T11:51:33Z",
+  "reason": "B14"
  }
 }
