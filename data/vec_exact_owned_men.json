@@ -55,10 +55,6 @@
   "at": "2026-10-07T08:15:48Z",
   "reason": "B04"
  },
- "men:EGLDUSDT_SHORT": {
-  "at": "2026-10-07T08:15:49Z",
-  "reason": "DC_BREAKOUT_ENTRY"
- },
  "men:LINKUSDC_SHORT": {
   "at": "2026-10-07T08:16:57Z",
   "reason": "B04"
@@ -131,8 +127,12 @@
   "at": "2026-10-07T14:46:34Z",
   "reason": "B_KZONE"
  },
- "men:BTCUSDC_SHORT": {
-  "at": "2026-10-07T14:48:47Z",
+ "men:COMPUSDT_SHORT": {
+  "at": "2026-10-07T15:02:59Z",
   "reason": "B_KZONE"
+ },
+ "men:CHRUSDT_SHORT": {
+  "at": "2026-10-07T15:15:10Z",
+  "reason": "B_SRS_ENTRY"
  }
 }

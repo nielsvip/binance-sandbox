@@ -1,6 +1,6 @@
 # Forward parity — LIVE vs VECTOR (auto, read-only)
 
-generated 2026-10-07T14:54:02+00:00 · producers: tools/forward_parity/live_vs_vec.py (crypto hourly :07, stocks every 15 min RTH), tools/decisions_history_parity.py (:17), tools/exit_engine_parity_monitor.py (launchd hourly), tools/daily_parity_test.py (launchd daily)
+generated 2026-10-07T15:13:24+00:00 · producers: tools/forward_parity/live_vs_vec.py (crypto hourly :07, stocks every 15 min RTH), tools/decisions_history_parity.py (:17), tools/exit_engine_parity_monitor.py (launchd hourly), tools/daily_parity_test.py (launchd daily)
 
 **REGIME PARITY_VEC_EXACT since 2026-10-06T18:48:00Z** — all monitors reset at the switch; old-regime results archived in `data/forward_parity/archive/pre_vec_exact_until_20261006T1848Z`. Universe: tradeable_keys.json + open positions only.
 
@@ -10,11 +10,11 @@ PASS (legacy definition) = every vector decision on the judged 15m bars has a li
 
 ## LIVE GUARDIAN (every 20 s, both systems) — tools/forward_parity/live_guardian.py
 
-last sweep 2026-10-07T14:53:52Z (0 min ago) · 0.73 s · dry_run=False · RTH=True · regime start 2026-10-06T18:48:00Z
+last sweep 2026-10-07T15:13:23Z (0 min ago) · 0.67 s · dry_run=False · RTH=True · regime start 2026-10-06T18:48:00Z
 
 thresholds: STORM_KEY_FILLS=6, STORM_KEY_MIN=10, ATTEMPT_STORM=30, ATTEMPT_MIN=5, CHURN_ROUNDTRIPS=3, DUP_S=20, ACCOUNT_STORM_FILLS=25, ACCOUNT_STORM_MIN=10, ACCOUNT_DUP_PAIRS=3, FILL_WAIT_S=600, SIZE_MULT=3.0, LOSS_DROP_PP=4.0, LOSS_FLOOR_PCT=-3.0, EQUITY_DROP_USD=25.0, RESTARTS=3, STALE_LOG_S=120, NON_VEC_BLOCK_N=2, KEY_BLOCK_TTL_S=7200, POS_MISMATCH_PCT=5.0
 
-alerts this sweep: FILL_WITHOUT_VEC_DECISION 64, NON_VEC_ENTRY_FILL 2, ACCOUNT_EQUITY_DROP 1, SIZE_ANOMALY 1, VEC_EXIT_WHILE_LIVE_FLAT 1, VEC_DECISION_NOT_FILLED 1, VEC_OPEN_WHILE_LIVE_IN 1, RAPID_LOSS_KEY 1, STALE_LOG 1
+alerts this sweep: FILL_WITHOUT_VEC_DECISION 63, NON_VEC_ENTRY_FILL 2, ACCOUNT_EQUITY_DROP 1, VEC_EXIT_WHILE_LIVE_FLAT 1, VEC_DECISION_NOT_FILLED 1, VEC_OPEN_WHILE_LIVE_IN 1
 
 ### Active interventions (8) — exits are never blocked; positions are never closed by the guardian
 
@@ -33,51 +33,51 @@ alerts this sweep: FILL_WITHOUT_VEC_DECISION 64, NON_VEC_ENTRY_FILL 2, ACCOUNT_E
 
 | ts | severity | kind | key | evidence |
 |---|---|---|---|---|
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | ang:ARKMUSDT_SHORT | REDUCE 124 @ 2026-10-07T12:33:01Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | RAPID_LOSS_KEY | inf:SANDUSDT_SHORT | unrealised -4.79% (60-min high +0.89%), amt 191 |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:AGLDUSDT_SHORT | AUGMENT 81 @ 2026-10-07T11:40:26Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:AIAUSDT_LONG | AUGMENT 76 @ 2026-10-07T11:25:01Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:AIAUSDT_LONG | REDUCE 76 @ 2026-10-07T11:41:26Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:BNBUSDC_SHORT | AUGMENT 0.02 @ 2026-10-07T11:26:36Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:1INCHUSDT_SHORT | AUGMENT 162 @ 2026-10-07T12:27:53Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:ACEUSDT_SHORT | AUGMENT 4.19 @ 2026-10-07T11:23:41Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:ACEUSDT_SHORT | AUGMENT 90.68 @ 2026-10-07T11:25:42Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:ACEUSDT_SHORT | AUGMENT 90.68 @ 2026-10-07T11:26:06Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:SANDUSDT_SHORT | AUGMENT 191 @ 2026-10-07T12:14:13Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:APEUSDT_SHORT | AUGMENT 108 @ 2026-10-07T09:51:13Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:APEUSDT_SHORT | REDUCE 108 @ 2026-10-07T10:06:51Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:APEUSDT_SHORT | AUGMENT 109 @ 2026-10-07T12:50:26Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:ARPAUSDT_SHORT | AUGMENT 1451 @ 2026-10-07T11:24:15Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:GRAMUSDT_SHORT | REDUCE 10.8 @ 2026-10-07T10:02:38Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:GRAMUSDT_SHORT | AUGMENT 11 @ 2026-10-07T12:45:07Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:HYPEUSDT_SHORT | AUGMENT 0.17 @ 2026-10-07T12:45:42Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:HYPEUSDT_SHORT | REDUCE 0.17 @ 2026-10-07T13:03:39Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:HYPEUSDT_SHORT | AUGMENT 0.18 @ 2026-10-07T14:06:22Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:SOLUSDC_SHORT | REDUCE 0.13 @ 2026-10-07T13:01:56Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:DASHUSDT_SHORT | REDUCE 0.298 @ 2026-10-07T11:36:47Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:XRPUSDC_SHORT | AUGMENT 11 @ 2026-10-07T12:45:45Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:XRPUSDC_SHORT | REDUCE 11 @ 2026-10-07T13:03:40Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
-| 14:53:53 | CRITICAL | STALE_LOG | trc | tradier_manage_trc.log not written for 121s |
+| 15:13:23 | CRITICAL | FILL_WITHOUT_VEC_DECISION | men:XRPUSDC_SHORT | REDUCE 11 @ 2026-10-07T13:18:32Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:23 | CRITICAL | FILL_WITHOUT_VEC_DECISION | men:XRPUSDC_SHORT | REDUCE 11 @ 2026-10-07T13:19:22Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | ang:ARKMUSDT_SHORT | REDUCE 124 @ 2026-10-07T12:33:01Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:AGLDUSDT_SHORT | AUGMENT 81 @ 2026-10-07T11:40:26Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:AIAUSDT_LONG | AUGMENT 76 @ 2026-10-07T11:25:01Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:AIAUSDT_LONG | REDUCE 76 @ 2026-10-07T11:41:26Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:BNBUSDC_SHORT | AUGMENT 0.02 @ 2026-10-07T11:26:36Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:1INCHUSDT_SHORT | AUGMENT 162 @ 2026-10-07T12:27:53Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:ACEUSDT_SHORT | AUGMENT 4.19 @ 2026-10-07T11:23:41Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:ACEUSDT_SHORT | AUGMENT 90.68 @ 2026-10-07T11:25:42Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:ACEUSDT_SHORT | AUGMENT 90.68 @ 2026-10-07T11:26:06Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:SANDUSDT_SHORT | AUGMENT 191 @ 2026-10-07T12:14:13Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:APEUSDT_SHORT | AUGMENT 108 @ 2026-10-07T09:51:13Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:APEUSDT_SHORT | REDUCE 108 @ 2026-10-07T10:06:51Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:APEUSDT_SHORT | AUGMENT 109 @ 2026-10-07T12:50:26Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | inf:ARPAUSDT_SHORT | AUGMENT 1451 @ 2026-10-07T11:24:15Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:GRAMUSDT_SHORT | REDUCE 10.8 @ 2026-10-07T10:02:38Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:GRAMUSDT_SHORT | AUGMENT 11 @ 2026-10-07T12:45:07Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:HYPEUSDT_SHORT | AUGMENT 0.17 @ 2026-10-07T12:45:42Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:HYPEUSDT_SHORT | REDUCE 0.17 @ 2026-10-07T13:03:39Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:HYPEUSDT_SHORT | AUGMENT 0.18 @ 2026-10-07T14:06:22Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:SOLUSDC_SHORT | REDUCE 0.13 @ 2026-10-07T13:01:56Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:DASHUSDT_SHORT | REDUCE 0.298 @ 2026-10-07T11:36:47Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:XRPUSDC_SHORT | AUGMENT 11 @ 2026-10-07T12:45:45Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
+| 15:13:24 | CRITICAL | FILL_WITHOUT_VEC_DECISION | flz:XRPUSDC_SHORT | REDUCE 11 @ 2026-10-07T13:03:40Z tagged VEC_EXACT but no logged vec decision in the preceding 600s |
 
-live vec decisions since switch (per account): fin: {'live_vec_decisions': 0, 'state_divergent': 0, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 0, 'vec_exact_fills_without_decision': 3}; men: {'live_vec_decisions': 9, 'state_divergent': 2, 'filled': 6, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 1, 'vec_exact_fills_without_decision': 38}; ang: {'live_vec_decisions': 0, 'state_divergent': 0, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 0, 'vec_exact_fills_without_decision': 1}; inf: {'live_vec_decisions': 0, 'state_divergent': 0, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 0, 'vec_exact_fills_without_decision': 13}; flz: {'live_vec_decisions': 0, 'state_divergent': 0, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 0, 'vec_exact_fills_without_decision': 9}
+live vec decisions since switch (per account): fin: {'live_vec_decisions': 0, 'state_divergent': 0, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 0, 'vec_exact_fills_without_decision': 2}; men: {'live_vec_decisions': 9, 'state_divergent': 2, 'filled': 6, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 1, 'vec_exact_fills_without_decision': 38}; ang: {'live_vec_decisions': 0, 'state_divergent': 0, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 0, 'vec_exact_fills_without_decision': 1}; inf: {'live_vec_decisions': 0, 'state_divergent': 0, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 0, 'vec_exact_fills_without_decision': 13}; flz: {'live_vec_decisions': 0, 'state_divergent': 0, 'filled': 0, 'refused_non_safety': 0, 'safety_refusals': 0, 'not_filled_no_log': 0, 'vec_exact_fills_without_decision': 9}
 
-processes: fin pids=['79637'] starts30m=1 log_age=8.0s, men pids=['7966'] starts30m=1 log_age=1.0s, ang pids=['87375'] starts30m=1 log_age=1.0s, inf pids=['68630'] starts30m=1 log_age=15.0s, flz pids=['58053'] starts30m=1 log_age=7.0s, trb pids=['59940'] starts30m=1 log_age=84.0s, trc pids=['60336'] starts30m=1 log_age=121.0s
+processes: fin pids=['79637'] starts30m=1 log_age=10.0s, men pids=['7966'] starts30m=1 log_age=10.0s, ang pids=['87375'] starts30m=1 log_age=3.0s, inf pids=['68630'] starts30m=1 log_age=3.0s, flz pids=['58053'] starts30m=1 log_age=0.0s, trb pids=['59940'] starts30m=1 log_age=1.0s, trc pids=['60336'] starts30m=1 log_age=2.0s
 
 ## Test 1 - 15m LIVE vs VECTOR, CRYPTO
 
-run 2026-10-07T14:21:32+00:00 (33 min ago) · engine v12 0c621913 · NPZ sync full · window 24.0h from 2026-10-06T18:48Z · tol +-1 bars · 244 live keys / 139 sym_sides · 870.8 s
+run 2026-10-07T15:09:40+00:00 (4 min ago) · engine v12 0c621913 · NPZ sync full · window 24.0h from 2026-10-06T18:48Z · tol +-1 bars · 240 live keys / 137 sym_sides · 159.1 s
 
 **Regime PARITY_VEC_EXACT since 2026-10-06T18:48:00Z** (previous regime archived: `data/forward_parity/archive/pre_vec_exact_until_20261006T1848Z`). Rule: every live fill = a vec decision at the same 15m bar and side (fill may land up to 1 bar later); every vec decision = a live fill or a logged hard-safety refusal; quantity not compared.
 
-**Verdict: FAIL** — FAIL 135 · PASS with decisions 12 · IDLE (no decision either side, counts as pass) 81 · NO_DATA 16 · judged on a STALE-shifted window (S1 NPZ behind live) 0
+**Verdict: FAIL** — FAIL 133 · PASS with decisions 12 · IDLE (no decision either side, counts as pass) 79 · NO_DATA 16 · judged on a STALE-shifted window (S1 NPZ behind live) 0
 
-- vector fired, live did not (VEC_ONLY): MISSING_NO_LIVE_LOG 399, LIVE_ALREADY_FLAT 278, LIVE_ALREADY_IN_POSITION 137, REFUSED_NON_SAFETY:FLAT_NOT_AUGMENT 119, REFUSED_NON_SAFETY:UNTAGGED 6
+- vector fired, live did not (VEC_ONLY): MISSING_NO_LIVE_LOG 397, LIVE_ALREADY_FLAT 276, LIVE_ALREADY_IN_POSITION 137, REFUSED_NON_SAFETY:FLAT_NOT_AUGMENT 119, REFUSED_NON_SAFETY:UNTAGGED 6
 - live fired, vector did not (LIVE_ONLY): VEC_EXACT_FILL_NOT_IN_REPLAY 86, NATIVE_FILL_IN_EXACT_MODE:UNCLASSIFIED:CB_HTF_EXHAUST@15m 6, NATIVE_FILL_IN_EXACT_MODE:EXIT_VELOCITY_WT@1h 5, NATIVE_FILL_IN_EXACT_MODE:UNCLASSIFIED:SUBSTITUTION_FOR_MEN@15m 4, NATIVE_FILL_IN_EXACT_MODE:DC_DAYTRADE_TARGET@15m 2, NATIVE_FILL_IN_EXACT_MODE:UNCLASSIFIED:ORPHANED_HEDGE_PARENT@15m 2, NATIVE_FILL_IN_EXACT_MODE:WEBHOOK_HANDLE_SIGNAL@webhook 2, NATIVE_FILL_IN_EXACT_MODE:CYCLE_TP@tick 1
 - NPZ missing on S1 (no vector possible): 100PEPEUSDC, EDUUSDT, KMNOUSDT, MELANIAUSDT, NMRUSDT
-- vector replay made 0 trades in 30D for 10/139 sym_sides with the live set (engine md5 0c621913): every live fill on those keys is LIVE_ONLY by construction — engine/set problem, not live drift. e.g. ADAUSDC_LONG, ALGOUSDT_LONG, COMPUSDT_LONG, ENSUSDT_SHORT, GRTUSDT_LONG, GRTUSDT_SHORT, JASMYUSDT_LONG, RVNUSDT_SHORT
+- vector replay made 0 trades in 30D for 10/137 sym_sides with the live set (engine md5 0c621913): every live fill on those keys is LIVE_ONLY by construction — engine/set problem, not live drift. e.g. ADAUSDC_LONG, ALGOUSDT_LONG, COMPUSDT_LONG, ENSUSDT_SHORT, GRTUSDT_LONG, GRTUSDT_SHORT, JASMYUSDT_LONG, RVNUSDT_SHORT
 - vector errors: prepare failed: no npz 13
-- FAIL classes (sym_sides): NPZ_STALE 135, VEC_DECISION_NOT_FILLED_NO_LOG 125, STATE_CASCADE 123, VEC_DECISION_REFUSED_NON_SAFETY 62, VEC_EXACT_FILL_NOT_IN_REPLAY 51, NATIVE_FILL_IN_EXACT_MODE 20
-- since switch: live fills 336 (tagged |VEC_EXACT 279) · vec decisions 1021 · matched 82 · out-of-universe live fills (not judged, no CPU): 33
+- FAIL classes (sym_sides): NPZ_STALE 133, VEC_DECISION_NOT_FILLED_NO_LOG 123, STATE_CASCADE 121, VEC_DECISION_REFUSED_NON_SAFETY 62, VEC_EXACT_FILL_NOT_IN_REPLAY 51, NATIVE_FILL_IN_EXACT_MODE 20
+- since switch: live fills 339 (tagged |VEC_EXACT 282) · vec decisions 1017 · matched 82 · out-of-universe live fills (not judged, no CPU): 33
 
 ### Per sym_side with any decision since the switch
 
@@ -100,7 +100,6 @@ run 2026-10-07T14:21:32+00:00 (33 min ago) · engine v12 0c621913 · NPZ sync fu
 | ang:DOGEUSDC_SHORT | FAIL | 6 | 0 (0) | 0 | MISSING_NO_LIVE_LOG 3, LIVE_ALREADY_FLAT 3 | - |
 | ang:DOTUSDT_SHORT | FAIL | 4 | 1 (1) | 0 | MISSING_NO_LIVE_LOG 2, LIVE_ALREADY_FLAT 1, LIVE_ALREADY_IN_POSITION 1 | VEC_EXACT_FILL_NOT_IN_REPLAY 1 |
 | ang:EDUUSDT_LONG | NO_DATA | 0 | 4 (3) | 0 | - | - |
-| ang:EGLDUSDT_LONG | FAIL | 2 | 0 (0) | 0 | MISSING_NO_LIVE_LOG 1, LIVE_ALREADY_FLAT 1 | - |
 | ang:ENJUSDT_SHORT | FAIL | 13 | 0 (0) | 0 | LIVE_ALREADY_FLAT 6, REFUSED_NON_SAFETY:FLAT_NOT_AUGMENT 4, MISSING_NO_LIVE_LOG 3 | - |
 | ang:ETHFIUSDC_LONG | STALE_PASS | 0 | 2 (2) | 0 | - | - |
 | ang:ETHUSDC_LONG | FAIL | 4 | 0 (0) | 0 | MISSING_NO_LIVE_LOG 2, LIVE_ALREADY_FLAT 2 | - |
@@ -146,7 +145,6 @@ run 2026-10-07T14:21:32+00:00 (33 min ago) · engine v12 0c621913 · NPZ sync fu
 | flz:HYPEUSDT_LONG | FAIL | 4 | 4 (3) | 0 | MISSING_NO_LIVE_LOG 2, REFUSED_NON_SAFETY:FLAT_NOT_AUGMENT 1, LIVE_ALREADY_IN_POSITION 1 | VEC_EXACT_FILL_NOT_IN_REPLAY 3 |
 | flz:HYPEUSDT_SHORT | FAIL | 6 | 5 (4) | 1 | MISSING_NO_LIVE_LOG 3, LIVE_ALREADY_IN_POSITION 1, REFUSED_NON_SAFETY:FLAT_NOT_AUGMENT 1 | - |
 | flz:SOLUSDC_SHORT | FAIL | 8 | 6 (6) | 0 | MISSING_NO_LIVE_LOG 3, LIVE_ALREADY_IN_POSITION 3, LIVE_ALREADY_FLAT 2 | VEC_EXACT_FILL_NOT_IN_REPLAY 4 |
-| flz:WLDUSDC_SHORT | FAIL | 2 | 0 (0) | 0 | MISSING_NO_LIVE_LOG 1, LIVE_ALREADY_FLAT 1 | - |
 | flz:XRPUSDC_LONG | FAIL | 2 | 0 (0) | 0 | MISSING_NO_LIVE_LOG 1, LIVE_ALREADY_FLAT 1 | - |
 | flz:XRPUSDC_SHORT | FAIL | 8 | 8 (7) | 5 | MISSING_NO_LIVE_LOG 2, REFUSED_NON_SAFETY:FLAT_NOT_AUGMENT 1 | NATIVE_FILL_IN_EXACT_MODE:UNCLASSIFIED:CB_HTF_EXHAUST@15m 1 |
 | flz:ZECUSDC_LONG | FAIL | 11 | 6 (6) | 3 | LIVE_ALREADY_IN_POSITION 4, MISSING_NO_LIVE_LOG 3, REFUSED_NON_SAFETY:FLAT_NOT_AUGMENT 1 | VEC_EXACT_FILL_NOT_IN_REPLAY 3 |
@@ -203,6 +201,8 @@ run 2026-10-07T14:21:32+00:00 (33 min ago) · engine v12 0c621913 · NPZ sync fu
 | men:GALAUSDT_SHORT | FAIL | 14 | 1 (0) | 0 | MISSING_NO_LIVE_LOG 8, LIVE_ALREADY_IN_POSITION 6 | NATIVE_FILL_IN_EXACT_MODE:EXIT_VELOCITY_WT@1h 1 |
 | men:IOTXUSDT_LONG | FAIL | 10 | 0 (0) | 0 | MISSING_NO_LIVE_LOG 5, LIVE_ALREADY_FLAT 5 | - |
 | men:IOTXUSDT_SHORT | STALE_PASS | 0 | 2 (2) | 0 | - | - |
+| men:KMNOUSDT_LONG | NO_DATA | 0 | 6 (4) | 0 | - | - |
+| men:KMNOUSDT_SHORT | NO_DATA | 0 | 2 (1) | 0 | - | - |
 
 ### FAIL per sym_side
 
@@ -289,9 +289,9 @@ run 2026-10-07T14:21:32+00:00 (33 min ago) · engine v12 0c621913 · NPZ sync fu
 | inf:ALGOUSDT_SHORT | NPZ_STALE, STATE_CASCADE, VEC_DECISION_NOT_FILLED_NO_LOG, VEC_DECISION_REFUSED_NON_SAFETY, VEC_EXACT_FILL_NOT_IN_REPLAY | REFUSED_NON_SAFETY:FLAT_NOT_AUGMENT 2, LIVE_ALREADY_IN_POSITION 1, MISSING_NO_LIVE_LOG 1 | VEC_EXACT_FILL_NOT_IN_REPLAY 2 | None/None | last window | vec_driven:candidates:ed033e |
 | inf:ARBUSDC_SHORT | NATIVE_FILL_IN_EXACT_MODE, NPZ_STALE, STATE_CASCADE, VEC_DECISION_NOT_FILLED_NO_LOG, VEC_DECISION_REFUSED_NON_SAFETY, VEC_EXACT_FILL_NOT_IN_REPLAY | REFUSED_NON_SAFETY:FLAT_NOT_AUGMENT 1, LIVE_ALREADY_IN_POSITION 1, MISSING_NO_LIVE_LOG 1 | VEC_EXACT_FILL_NOT_IN_REPLAY 2, NATIVE_FILL_IN_EXACT_MODE:UNCLASSIFIED:CB_HTF_EXHAUST@15m 1 | None/None | last window | vec_driven:candidates:e54a26 |
 
-... 55 more FAIL rows in `data/forward_parity/crypto_latest.json`
+... 53 more FAIL rows in `data/forward_parity/crypto_latest.json`
 
-PASS with activity: -  ·  PASS_IDLE (no decision either side): 81
+PASS with activity: -  ·  PASS_IDLE (no decision either side): 79
 
 NO_DATA reasons: prepare failed: no npz 16
 
@@ -299,22 +299,22 @@ NO_DATA reasons: prepare failed: no npz 16
 
 | family | input TF | vec twin | gate switch | live attempts | live fills | vec events | matched | vec_only | live_only | status |
 |---|---|---|---|---|---|---|---|---|---|---|
-| EXIT_VELOCITY_WT | 1h | Y | EXIT_VELOCITY_WT_ENABLED | 802 | 77 | 401 | 20 | 381 | 29 | FAIL |
-| UNCLASSIFIED:B | 15m | Y | ? (switch not identified) | 184 | 68 | 169 | 15 | 154 | 26 | FAIL |
-| UNCLASSIFIED:B_KZONE | 15m | Y | ? (switch not identified) | 180 | 40 | 135 | 13 | 122 | 18 | FAIL |
-| DC_DAYTRADE_TARGET | 15m | Y | DC_DAYTRADE_ENABLED | 114 | 13 | 32 | 2 | 30 | 5 | FAIL |
-| UNCLASSIFIED:SUBSTITUTION_FOR_MEN | 15m | N | ? (switch not identified) | 121 | 10 | 0 | 0 | 0 | 4 | LIVE_ONLY(nonvec) |
+| EXIT_VELOCITY_WT | 1h | Y | EXIT_VELOCITY_WT_ENABLED | 819 | 77 | 399 | 20 | 379 | 29 | FAIL |
+| UNCLASSIFIED:B | 15m | Y | ? (switch not identified) | 188 | 68 | 168 | 15 | 153 | 26 | FAIL |
+| UNCLASSIFIED:B_KZONE | 15m | Y | ? (switch not identified) | 190 | 43 | 134 | 13 | 121 | 18 | FAIL |
+| DC_DAYTRADE_TARGET | 15m | Y | DC_DAYTRADE_ENABLED | 116 | 13 | 32 | 2 | 30 | 5 | FAIL |
+| UNCLASSIFIED:SUBSTITUTION_FOR_MEN | 15m | N | ? (switch not identified) | 126 | 10 | 0 | 0 | 0 | 4 | LIVE_ONLY(nonvec) |
 | UNCLASSIFIED:DC_BREAKOUT_ENTRY | 15m | Y | ? (switch not identified) | 48 | 19 | 63 | 9 | 54 | 5 | FAIL |
 | UNCLASSIFIED:RSI_EXIT_LIVE | 15m | N | ? (switch not identified) | 80 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
-| GOLDEN_RULE | 15m | Y | GOLDEN_RULE_ENABLED | 43 | 7 | 27 | 4 | 23 | 1 | FAIL |
-| UNCLASSIFIED:WT_CROSS_EXIT | 15m | Y | ? (switch not identified) | 31 | 1 | 45 | 0 | 45 | 1 | FAIL |
+| GOLDEN_RULE | 15m | Y | GOLDEN_RULE_ENABLED | 44 | 7 | 27 | 4 | 23 | 1 | FAIL |
+| UNCLASSIFIED:WT_CROSS_EXIT | 15m | Y | ? (switch not identified) | 32 | 1 | 45 | 0 | 45 | 1 | FAIL |
 | UNCLASSIFIED:B_SRS_ENTRY | 15m | Y | ? (switch not identified) | 24 | 5 | 42 | 6 | 36 | 1 | FAIL |
 | UNCLASSIFIED:CB_HTF_EXHAUST | 15m | N | ? (switch not identified) | 46 | 14 | 0 | 0 | 0 | 6 | LIVE_ONLY(nonvec) |
 | UNCLASSIFIED:B_EMASLOPE | 15m | Y | ? (switch not identified) | 23 | 4 | 11 | 0 | 11 | 0 | FAIL |
 | UNCLASSIFIED:ENTRY_SIGNAL | 15m | N | ? (switch not identified) | 17 | 13 | 0 | 0 | 0 | 4 | LIVE_ONLY(nonvec) |
-| QUICK_OPEN_STRONG | 3m | Y | QUICK_OPEN_STRONG_VEC_ENABLED | 16 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
 | PARTIAL_PROFIT_LOCK | tick | Y | PARTIAL_PROFIT_LOCK_ENABLED | 4 | 0 | 12 | 1 | 11 | 0 | FAIL |
 | UNCLASSIFIED:B_VWAPBOUNCE | 15m | Y | ? (switch not identified) | 7 | 1 | 7 | 2 | 5 | 1 | FAIL |
+| QUICK_OPEN_STRONG | 3m | Y | QUICK_OPEN_STRONG_VEC_ENABLED | 14 | 0 | 0 | 0 | 0 | 0 | LIVE_ONLY_ATTEMPTS |
 | UNCLASSIFIED:STATEFUL_PORTED_EXIT | 15m | Y | ? (switch not identified) | 3 | 1 | 9 | 1 | 8 | 1 | FAIL |
 | UNCLASSIFIED:ENTRY_SOURCE_UNKNOWN | 15m | Y | ? (switch not identified) | 5 | 1 | 6 | 3 | 3 | 0 | FAIL |
 | UNCLASSIFIED:B_DELTAENTRY | 15m | Y | ? (switch not identified) | 3 | 1 | 8 | 1 | 7 | 0 | FAIL |
@@ -325,9 +325,9 @@ NO_DATA reasons: prepare failed: no npz 16
 | HARDCODED_RALLY_REENTRY | 15m | Y | HARDCODED_RALLY_REENTRY_ENABLED | 7 | 2 | 0 | 0 | 0 | 1 | FAIL |
 | UNCLASSIFIED:WT_CROSSUNDER_FINAL | 15m | N | ? (switch not identified) | 8 | 1 | 0 | 0 | 0 | 0 | PASS |
 | MTF_BB_REJECT_EXIT | 1h | Y | MTF_BB_REJECT_EXIT_ENABLED | 1 | 0 | 8 | 0 | 8 | 0 | FAIL |
+| UNCLASSIFIED:B_EMADIST | 15m | N | ? (switch not identified) | 7 | 1 | 0 | 0 | 0 | 0 | PASS |
 | UNCLASSIFIED:WR_PULLBACK | 15m | Y | ? (switch not identified) | 1 | 0 | 7 | 1 | 6 | 0 | FAIL |
 | UNCLASSIFIED:LH_LL_TOP | 15m | Y | ? (switch not identified) | 0 | 0 | 8 | 0 | 8 | 0 | FAIL |
-| UNCLASSIFIED:B_EMADIST | 15m | N | ? (switch not identified) | 6 | 1 | 0 | 0 | 0 | 0 | PASS |
 | CYCLE_TP | tick | Y | CYCLE_TP_TIERED_ENABLED | 6 | 1 | 0 | 0 | 0 | 1 | LIVE_ONLY(nonvec) |
 | REENTRY_OTHER | 15m | Y | ABLATION_DISABLE_REENTRY | 2 | 1 | 4 | 1 | 3 | 0 | FAIL |
 | UNCLASSIFIED:MTF_DC_REJECT | 15m | Y | ? (switch not identified) | 4 | 0 | 3 | 0 | 3 | 0 | FAIL |
@@ -353,15 +353,15 @@ These decisions have no 15m vector counterpart by construction; listed so drift 
 
 | function family | input TF | attempts | fills | gate switch |
 |---|---|---|---|---|
-| UNCLASSIFIED:SUBSTITUTION_FOR_MEN | 15m | 121 | 10 | ? (switch not identified) |
+| UNCLASSIFIED:SUBSTITUTION_FOR_MEN | 15m | 126 | 10 | ? (switch not identified) |
 | UNCLASSIFIED:RSI_EXIT_LIVE | 15m | 80 | 0 | ? (switch not identified) |
 | UNCLASSIFIED:CB_HTF_EXHAUST | 15m | 46 | 14 | ? (switch not identified) |
 | UNCLASSIFIED:ENTRY_SIGNAL | 15m | 17 | 13 | ? (switch not identified) |
-| QUICK_OPEN_STRONG | 3m | 16 | 0 | QUICK_OPEN_STRONG_VEC_ENABLED |
+| QUICK_OPEN_STRONG | 3m | 14 | 0 | QUICK_OPEN_STRONG_VEC_ENABLED |
 | UNCLASSIFIED:B_SMADIST | 15m | 9 | 0 | ? (switch not identified) |
 | UNCLASSIFIED:WT_CROSSUNDER_FINAL | 15m | 8 | 1 | ? (switch not identified) |
+| UNCLASSIFIED:B_EMADIST | 15m | 7 | 1 | ? (switch not identified) |
 | UNCLASSIFIED:ORPHANED_HEDGE_PARENT | 15m | 6 | 4 | ? (switch not identified) |
-| UNCLASSIFIED:B_EMADIST | 15m | 6 | 1 | ? (switch not identified) |
 | CYCLE_TP | tick | 6 | 1 | CYCLE_TP_TIERED_ENABLED |
 | PARTIAL_PROFIT_LOCK | tick | 4 | 0 | PARTIAL_PROFIT_LOCK_ENABLED |
 | CRYPTO_SPIKE_FADE | 3m | 4 | 0 | CRYPTO_SPIKE_FADE_ENABLED |
@@ -374,7 +374,7 @@ These decisions have no 15m vector counterpart by construction; listed so drift 
 
 ## Test 1 - 15m LIVE vs VECTOR, STOCKS
 
-run 2026-10-07T14:54:01+00:00 (0 min ago) · engine v12 0c621913 · NPZ sync full · window 24.0h from 2026-10-06T18:48Z · tol +-1 bars · 40 live keys / 29 sym_sides · 119.6 s
+run 2026-10-07T15:10:18+00:00 (3 min ago) · engine v12 0c621913 · NPZ sync full · window 24.0h from 2026-10-06T18:48Z · tol +-1 bars · 40 live keys / 29 sym_sides · 36.6 s
 
 **Regime PARITY_VEC_EXACT since 2026-10-06T18:48:00Z** (previous regime archived: `data/forward_parity/archive/pre_vec_exact_until_20261006T1848Z`). Rule: every live fill = a vec decision at the same 15m bar and side (fill may land up to 1 bar later); every vec decision = a live fill or a logged hard-safety refusal; quantity not compared.
 
@@ -545,7 +545,7 @@ sizing factors seen on matched entries: BAND_SLOPE_SIZING_V2 52
 
 ## decisions -> history parity (switch intents vs live fills) — rows since 2026-10-06T18:48:00+00:00 only
 
-`DH_20261006_20261007.json` generated 2026-10-07T14:17:02.223839+00:00 (37 min ago) · intents 2543 · matched 348 · **missing 2195**
+`DH_20261006_20261007.json` generated 2026-10-07T14:17:02.223839+00:00 (56 min ago) · intents 2543 · matched 348 · **missing 2195**
 
 matched/intents per account: fin 25/206, men 154/1112, ang 61/410, inf 55/269, flz 53/82, trb 0/262, trc 0/202
 
@@ -615,7 +615,7 @@ Gap classes: NUKE_STALE_MAKER_ORDER = maker exit rested >60 s and was cancelled 
 
 ## Exit-engine gate parity (execute_now, all exits)
 
-generated 2026-10-07T14:00:55.029625+00:00 (53 min ago) · lookback 48.0h · exit rows 1896 · **LEAKS 0** · gate ON 670 · UNGATED 0 · safety 0 · unmapped 267
+generated 2026-10-07T15:00:56.735712+00:00 (12 min ago) · lookback 48.0h · exit rows 1945 · **LEAKS 0** · gate ON 677 · UNGATED 0 · safety 0 · unmapped 273
 
 ## 7-day rollup (tools/daily_parity_test.py)
 
