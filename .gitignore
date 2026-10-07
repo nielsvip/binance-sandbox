@@ -16,6 +16,24 @@
 tools/*
 !tools/contributor_preflight.py
 !tools/audit_artifact_guard.py
+!tools/*.py
+!tools/*.sh
+!tests/
+tests/*
+!tests/*.py
+!vec_decisions/
+vec_decisions/*
+!vec_decisions/*.py
+!vec_paths/
+vec_paths/*
+!vec_paths/*.py
+!scripts/
+scripts/*
+!scripts/*.py
+!scripts/*.sh
+!infra/
+infra/*
+!infra/*.py
 !data/
 data/*
 !data/reports/
@@ -84,6 +102,8 @@ data/inject_shadow_log.jsonl
 data/*.jsonl
 !data/reports/*.json
 !data/reports/*.jsonl
+data/reports/live_*.jsonl
+data/reports/live_*.json
 data/market_data_*.json
 data/hourly_reconfig/*.json
 

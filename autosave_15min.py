@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Autosave — every 15 minutes backup ALL critical files + git commit.
+"""Autosave — every 5 minutes backup ALL critical files + git commit.
 
 Runs forever. Survives reboots via launchd.
 """
@@ -230,7 +230,7 @@ def git_push():
             log(f"git push {remote} failed: {e}")
 
 
-log("AUTOSAVE STARTED — 15 min cycles, file backups + git commit")
+log("AUTOSAVE STARTED — 5 min cycles, file backups + git commit")
 while True:
     try:
         backup_cycle()
@@ -238,4 +238,4 @@ while True:
         git_push()
     except Exception as e:
         log(f"ERROR: {e}")
-    time.sleep(900)  # 15 minutes
+    time.sleep(300)  # 5 minutes — every save committed, no ancient restores
