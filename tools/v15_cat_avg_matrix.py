@@ -62,6 +62,21 @@ def norm_cand(v):
 def is_num(v):
     return isinstance(v, (int, float)) and not isinstance(v, bool)
 
+def cell_state(a):
+    """3-state of one [n, pos, neg] accumulator (or None when never numeric).
+    POS = >=1 positive | NEG0 = tested, never positive, >=1 negative |
+    ALLZERO = tested, every value exactly 0.0 | NONE = never numeric anywhere."""
+    if a is None:
+        return "NONE"
+    n, pos, neg = a
+    if pos > 0:
+        return "POS"
+    if n <= 0:
+        return "NONE"
+    if neg > 0:
+        return "NEG0"
+    return "ALLZERO"
+
 def stream_file(path, want_values):
     """Stream the 13 tabs. want_values=False -> counts only. Returns dict."""
     import openpyxl
@@ -274,7 +289,7 @@ def pick_template(cat, partial_keys):
 
 def do_build(args):
     import openpyxl
-    from openpyxl.styles import PatternFill
+    from openpyxl.styles import Alignment, PatternFill
     from openpyxl.utils import get_column_letter
     sel = json.loads((WORK / "selection.json").read_text())
     by_cat = collections.defaultdict(list)
@@ -290,8 +305,10 @@ def do_build(args):
                 continue
             by_cat[info["cat"]].append(ss)
     OUTDIR.mkdir(parents=True, exist_ok=True)
+    build_stats = {}
     GREEN = PatternFill("solid", fgColor="006100")
     RED = PatternFill("solid", fgColor="FFC7CE")
+    GREY = PatternFill("solid", fgColor="BFBFBF")
     EXTRA_HDR_FILL = PatternFill("solid", fgColor="D9D1F2")
     for cat in CAT_SIDES:
         sss = by_cat.get(cat, [])
@@ -314,16 +331,20 @@ def do_build(args):
                     rk = (tab, sw, cand)
                     pkeys.add(rk)
                     if g is not None:
-                        a = row_acc.setdefault(rk, [0, 0])
+                        a = row_acc.setdefault(rk, [0, 0, 0])
                         a[0] += 1
                         if g > POS_EPS:
                             a[1] += 1
+                        elif g < -POS_EPS:
+                            a[2] += 1
                     for j, y in yvals:
                         ck = (tab, sw, cand, hdrs[j])
-                        a = cell_acc.setdefault(ck, [0, 0])
+                        a = cell_acc.setdefault(ck, [0, 0, 0])
                         a[0] += 1
                         if y > POS_EPS:
                             a[1] += 1
+                        elif y < -POS_EPS:
+                            a[2] += 1
         print(f"[build] {cat}: rowkeys={len(row_acc)} cellkeys={len(cell_acc)}", flush=True)
         tpl_path = pick_template(cat, pkeys)
         twb = openpyxl.load_workbook(tpl_path)
@@ -333,7 +354,8 @@ def do_build(args):
         cov["A1"] = f"{cat} — avg/pos_sym matrix inventory"
         cov["A2"] = f"source template: {tpl_path} (picked by rowkey hit rate)"
         cov["A3"] = f"built: {t0} local; sym_sides={len(sss)}; rowkeys={len(row_acc)}; cellkeys={len(cell_acc)}"
-        cov["A4"] = "semantics: each trading tab = TEMPLATE grid with pos_sym COUNTS (N=row #sym_sides with VECTOR_DELTA>1e-9; every filter cell=#sym_sides with that cell delta>1e-9, same cell as the sym_side sheets). M left blank. blank=never numeric in any sym_side (never tested/skipped/invalid-text). exact 0=tested, never positive."
+        cov["A4"] = "semantics: each trading tab = TEMPLATE grid with pos_sym COUNTS (N=row #sym_sides with VECTOR_DELTA>1e-9; every filter cell=#sym_sides with that cell delta>1e-9, same cell as the sym_side sheets). M left blank. VALUE 0 + RED fill=tested, never positive, >=1 negative (NEG0). VALUE 0 + GREY fill=tested, every value exactly 0.0 (ALLZERO). BLANK=never numeric in any sym_side (NONE: never tested/skipped/invalid-text) — priority for the next round."
+        cov["A4"].alignment = Alignment(wrap_text=True)
         cov["A5"] = "selection: ONE finalized xlsx per sym_side (latest *_bh*_gain*_t*_30d_matrix.xlsx) from SPREADSHEETS/V15_V16_CELL_BY_CELL. Live working files never enter."
         try:
             uni = json.loads((ROOT / "data" / "tradeable_universe_20261006.json").read_text())
@@ -356,6 +378,7 @@ def do_build(args):
         for col in range(1, 7):
             cov.column_dimensions[get_column_letter(col)].width = 34 if col == 2 else 16
         unmatched = []
+        grid = {}
         for tab in TABS:
             if tab not in twb.sheetnames:
                 unmatched.append([tab, "TAB MISSING IN TEMPLATE", "", "", 0, 0])
@@ -391,6 +414,7 @@ def do_build(args):
             tpl_keys = {(x["sw"], x["cand"]) for x in trows}
             extra_rows = sorted({(ck[1], ck[2]) for ck in list(cell_acc) + [(t, s, d, "") for (t, s, d) in row_acc if t == tab] if ck[0] == tab} - tpl_keys)
             n_unseen = sum(1 for x in trows if (tab, x["sw"], x["cand"]) not in row_acc)
+            grid[tab] = {"rows": len(trows), "hdrs": len(yhdr_tpl), "unseen_rows": n_unseen, "tpl_keys": tpl_keys, "yhdr": set(yhdr_tpl)}
             unmatched.append([tab, f"tpl_rows={len(trows)} seen={len(trows)-n_unseen} unseen={n_unseen} extra_rows={len(extra_rows)} tpl_yhdr={len(yhdr_tpl)} extra_yhdr={len(extra_hdrs)}", "", "", 0, 0])
             for x in trows:
                 if (tab, x["sw"], x["cand"]) not in row_acc:
@@ -455,13 +479,15 @@ def do_build(args):
                 ws.cell(row=wr, column=12, value=l)
                 if ra is not None:
                     ncell = ws.cell(row=wr, column=14, value=ra[1])
-                    ncell.fill = GREEN if ra[1] > 0 else RED
+                    _st = cell_state(ra)
+                    ncell.fill = GREEN if _st == "POS" else (RED if _st == "NEG0" else GREY)
                 for j, h in enumerate(out_hdrs):
                     a = cell_acc.get((tab, sw, cand, h))
                     if a is None:
                         continue
                     cell = ws.cell(row=wr, column=15 + j, value=a[1])
-                    cell.fill = GREEN if a[1] > 0 else RED
+                    _st = cell_state(a)
+                    cell.fill = GREEN if _st == "POS" else (RED if _st == "NEG0" else GREY)
                 wr += 1
         un = nwb.create_sheet("UNMATCHED")
         un.append(["tab", "kind", "a", "b", "c", "d"])
@@ -480,6 +506,28 @@ def do_build(args):
         zf.close()
         os.replace(tmp, out)
         print(f"[build] {cat} -> {out} ({out.stat().st_size/1e6:.1f} MB)", flush=True)
+        ev = {"meta": {"at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "cat": cat, "sym_sides": sorted(sss), "files": {ss: sel[ss]["file"] for ss in sss}},
+            "rows": {f"{t}!{s}={d}": v for (t, s, d), v in row_acc.items()},
+            "cells": {f"{t}!{s}={d}@{h}": v for (t, s, d, h), v in cell_acc.items()}}
+        (WORK / f"priority_evidence_{cat}.json").write_text(json.dumps(ev, separators=(",", ":")))
+        tabstats = {}
+        for tab in TABS:
+            g = grid.get(tab) or {}
+            _tk, _yh = g.get("tpl_keys", set()), g.get("yhdr", set())
+            _cells = [v for k, v in cell_acc.items() if k[0] == tab and (k[1], k[2]) in _tk and k[3] in _yh]
+            _rows = [v for k, v in row_acc.items() if k[0] == tab and (k[1], k[2]) in _tk]
+            def _ct(items):
+                return {"pos": sum(1 for v in items if v[1] > 0), "neg0": sum(1 for v in items if v[1] == 0 and v[2] > 0),
+                    "allzero": sum(1 for v in items if v[1] == 0 and v[2] == 0), "tested": len(items)}
+            cc, rc = _ct(_cells), _ct(_rows)
+            cc["grid"] = g.get("rows", 0) * g.get("hdrs", 0)
+            cc["none"] = cc["grid"] - cc["tested"]
+            rc["grid"] = g.get("rows", 0)
+            rc["none"] = g.get("unseen_rows", 0)
+            tabstats[tab] = {"cells": cc, "rows": rc}
+        build_stats[cat] = {"sym_sides": len(sss), "tabs": tabstats}
+    (WORK / "build_stats.json").write_text(json.dumps({"meta": {"at": datetime.datetime.now(datetime.timezone.utc).isoformat()}, "cats": build_stats}, indent=1))
+    print(f"[build] stats + priority evidence -> {WORK}/build_stats.json + priority_evidence_*.json", flush=True)
 
 def main():
     ap = argparse.ArgumentParser()

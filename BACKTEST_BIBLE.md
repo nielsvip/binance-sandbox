@@ -1613,6 +1613,10 @@ Orange filter groups are not repaired (owned by tab-level appends; the gate stil
 groups on 2026-10-07 (STDEV_*/GOLDEN_RULE_*/VOL_SPIKE_*/REENTRY_TIER* — recent switches that landed
 without defaults and bricked the chain + fail-closed pilot baselines). Guard tests:
 `tests/test_v15_daily_template_update_repair.py`.
+**Ancillary hygiene:** the writer captures the docs-inventory subprocess output (a traceback there once
+failed the whole chain on the `^Traceback` grep AFTER all 4 templates had saved); the inventory
+`--ensure` skips clean (exit 0) when `data/rowcoverage/latest.csv` is absent on its host instead of
+tracebacking. Ancillary steps never fail the chain — only template/ledger/push steps do.
 **Persister:** of the chain's two writer runs, only the MAIN run persists `cat_side_promotions` +
 round ledger + `promoted_keys` (gate: `tdir == SPREADSHEETS`); the norm run writes xlsx only. The
 stamp reads the main report. (A 2026-10-07 repoint briefly flipped the gate to norm — restored same
