@@ -2002,9 +2002,30 @@ async def check_system_health() -> List[dict]:
     return issues
 
 
+_S1_FORBIDDEN_TRADERS = ("ez_manage.py", "tradier_manage.py")
+
+
+def _s1_trading_forbidden(script_name: str) -> bool:
+    # USER 2026-10-07: on S1 (non-Darwin) the copilot must never (re)start live traders — trading failover is owned
+    # by s1_failover_monitor.sh; the copilot caused S1 doubles vs healthy Mac (01:11-01:55Z). Mac unaffected (Darwin + no flag file).
+    if script_name not in _S1_FORBIDDEN_TRADERS:
+        return False
+    try:
+        import platform as _plat
+        if _plat.system() == "Darwin":
+            return False
+        from pathlib import Path as _P
+        return (_P(str(BASE_PATH)) / "data" / "S1_LIVE_TRADING_FORBIDDEN").exists()
+    except Exception:
+        return False
+
+
 def _try_restart_script(script_name: str):
     """Attempt to restart a crashed script via the watchdog."""
     import subprocess
+    if _s1_trading_forbidden(script_name):
+        logger.warning(f"[SUPERVISOR] Refusing {script_name} restart on S1 (S1_LIVE_TRADING_FORBIDDEN; failover owns traders)")
+        return
     watchdog = str(BASE_PATH / "run_with_watchdog.sh")
     try:
         subprocess.Popen(["bash", watchdog, script_name], cwd=str(BASE_PATH), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -2016,6 +2037,9 @@ def _try_restart_script(script_name: str):
 def _try_restart_script_with_args(script_name: str, *args):
     """Restart a script with arguments via watchdog."""
     import subprocess
+    if _s1_trading_forbidden(script_name):
+        logger.warning(f"[SUPERVISOR] Refusing {script_name} restart on S1 (S1_LIVE_TRADING_FORBIDDEN; failover owns traders)")
+        return
     watchdog = str(BASE_PATH / "run_with_watchdog.sh")
     cmd = ["bash", watchdog, script_name] + list(args)
     try:

@@ -3,7 +3,15 @@
 
 # Configuration
 WORKDIR="/Users/niels/Documents/binance"
-PYTHON="/opt/anaconda3/envs/binance_env/bin/python"
+# USER 2026-10-07: per-OS interpreter — S1 has no /opt/anaconda3 (was exit-127 loop since Oct06; men unmanaged 00:01-01:14Z).
+if [[ "$(uname)" == "Darwin" ]]; then
+    PYTHON="/opt/anaconda3/envs/binance_env/bin/python"
+else
+    PYTHON="/home/niels/binance/.venv/bin/python"
+    [ -x "$PYTHON" ] || PYTHON="/home/niels/.conda/envs/binance_env/bin/python"
+    [ -x "$PYTHON" ] || PYTHON="/usr/bin/python3"
+    [ -x "$PYTHON" ] || PYTHON="python3"
+fi
 
 # 2026-07-28: raise the file-descriptor ceiling. launchd hands children a soft
 # RLIMIT_NOFILE of 256, which tradier_manage (117 positions + Tradier HTTP +
@@ -523,9 +531,10 @@ main() {
                 ez_manage.py|tradier_manage.py|ez_positions_watchdog.py|ez_positions.py|ez_copilot.py|ez_reentry_daemon.py|tradier_positions.py) is_gated=1 ;;
             esac
             if [[ "$is_gated" -eq 1 ]]; then
-                local s1_pattern="$SCRIPT"
+                # USER 2026-10-07: anchor to the python WORKER (was: matched the S1 watchdog wrapper itself -> false FAILOVER_IDLE, men unmanaged 00:01-01:14Z). Bracket-trick (bash-3.2-safe ${arg#${arg%?}}) so the ssh probe never self-matches. No -u requirement: s1_failover_start.sh launches without it.
+                local s1_pattern="python.*$SCRIPT"
                 for arg in "${ARGS[@]}"; do
-                    if [[ "$arg" =~ ^(ang|inf|flz|men|fin|tra|trb|trc)$ ]]; then s1_pattern="$SCRIPT.*$arg"; break; fi
+                    if [[ "$arg" =~ ^(ang|inf|flz|men|fin|tra|trb|trc)$ ]]; then local a_last="${arg#${arg%?}}"; s1_pattern="python.*$SCRIPT.*${arg%?}[$a_last]"; break; fi
                 done
                 if ssh -o ConnectTimeout=3 -o BatchMode=yes -o StrictHostKeyChecking=no s1-int "pgrep -f \"$s1_pattern\"" >/dev/null 2>&1; then
                     log "[FAILOVER_IDLE] S1 is running $SCRIPT (pattern: $s1_pattern) — MacBook will NOT spawn. Retrying in 60s..."

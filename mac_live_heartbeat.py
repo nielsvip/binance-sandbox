@@ -1137,9 +1137,9 @@ def main():
     market_open = _market_open_now()
     accounts = {}
     for acct in CRYPTO_ACCOUNTS:
-        accounts[acct] = _pgrep_alive(f"python -u ez_manage.py --account {acct}")
+        accounts[acct] = _pgrep_alive(f"python -u ez_manage.py --account {acct[:-1]}[{acct[-1]}]")  # USER 2026-10-07: bracket-trick — exact-string probes self-matched and faked men:true (caused 01:35Z wrongful S1 stand-down)
     for acct in STOCK_ACCOUNTS:
-        accounts[acct] = _pgrep_alive(f"python -u tradier_manage.py --accounts {acct}")
+        accounts[acct] = _pgrep_alive(f"python -u tradier_manage.py --accounts {acct[:-1]}[{acct[-1]}]")
     _pos_min, _pos_max = _position_ages_s()
     payload = {
         "ts": datetime.now(timezone.utc).isoformat(),
