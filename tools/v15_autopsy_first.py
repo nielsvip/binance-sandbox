@@ -67,7 +67,11 @@ def run(ss, out, workers, base_json, dirs):
     rescued = bool(kept) and final_valid and combo_gain is not None and base_gain is not None and combo_gain > base_gain + 1e-9
     summary = {"symside": ss, "status": "RESCUED" if rescued else "NO_RESCUE", "base_src": src, "base_gain": base_gain, "base_trades": rep["base"]["trades"],
                "base_valid": rep["base"]["valid"], "combo_gain": combo_gain, "combo_trades": kept[-1]["trades"] if kept else rep["base"]["trades"], "combo_valid": final_valid,
-               "switches": [v["switch"] for v in kept], "n_base_overrides": len(base_ov), "secs": round(time.time() - t0, 1)}
+               "switches": [v["switch"] for v in kept], "n_base_overrides": len(base_ov), "secs": round(time.time() - t0, 1),
+               # effective = the engine touched >= 1 trade when the switch flipped on this base (+ every kept combo key); the pilot's
+               # AUTOPSY-INERT pruning keeps full yellow passes for these and naked-only (+1/25 rotating sample, revive on move) for the rest
+               "effective_switches": sorted({str(lab).split("=", 1)[0].strip() for lab in (rep.get("effective") or [])} | {str(v["switch"]).split("=", 1)[0].strip() for v in kept} | set(rep.get("combo_overrides") or {})),
+               "n_effective": rep.get("n_effective"), "n_candidates": rep.get("n_candidates")}
     if rescued:
         start = {**base_ov, **rep["combo_overrides"]}
         (out / f"{ss}_autopsy_base.json").write_text(json.dumps({"final": {"overrides": start}, "autopsy": summary}, indent=1, default=str))
@@ -83,6 +87,7 @@ def main(argv=None):
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--base-json", default=None, help="{switch: value} base set (default: this cat_side's TEMPLATE bold defaults = the pilot's baseline)")
     ap.add_argument("--progress-dirs", default="data/reports/lifecycle_pilot")
+    ap.add_argument("--force", action="store_true", help="recompute a base that already exists with effective_switches")
     a = ap.parse_args(argv)
     out = Path(os.path.expanduser(a.out))
     out.mkdir(parents=True, exist_ok=True)
@@ -92,6 +97,9 @@ def main(argv=None):
         dirs += glob.glob(os.path.expanduser(d.strip())) or [os.path.expanduser(d.strip())]
     results = []
     for ss in [s for s in a.symsides.split(",") if s]:
+        if not a.force and (out / f"{ss}_autopsy_base.json").exists() and "effective_switches" in (out / f"{ss}_autopsy_base.json").read_text():
+            print(f"[autopsy-first] {ss} base exists with effective_switches — skipped (--force to redo)", flush=True)
+            continue
         try:
             s = run(ss, out, a.workers, base_json, dirs)
         except Exception as e:

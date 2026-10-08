@@ -126,7 +126,7 @@ def run_one(ss: str, out: Path, workers: int, set_json: str | None, dirs: list) 
         nbad = {k: sum(1 for t in base if k in t["cls"]) for k in ("LOSER", "PREMATURE_EXIT", "GIVEBACK", "MISSED_AUGMENT")}
         rep = {"symside": ss, "set_src": src, "base": {k: b[k] for k in ("gain", "trades", "valid", "tim", "dd")}, "n_trades": len(base), "bad_counts": nbad,
                "fixed_counts": {k: sum(1 for t in base if k in t["cls"] and t["be"] in fixes) for k in nbad}, "units": "gain_pp", "missed_moves": moves,
-               "align_mismatch": mis, "n_candidates": len(items), "n_effective": len(attrs),
+               "align_mismatch": mis, "n_candidates": len(items), "n_effective": len(attrs), "effective": sorted(attrs),
                "trades": [{**{k: t[k] for k in ("be", "bx", "pnl", "pnl_pct", "entry_reason", "exit_reason", "n_aug", "mfe_pct", "post_pct", "cls")}, "fixes": fixes.get(t["be"], [])} for t in base],
                "top_switches": sorted(({"switch": k, **{kk: vv for kk, vv in v.items() if kk != "ov"}} for k, v in cards.items()), key=lambda x: -x["net"])[:40],
                "captures": sorted(({"switch": k, "captured": v["captured"], "added_pnl": v["added_pnl"]} for k, v in cards.items() if v["captured"]), key=lambda x: -x["added_pnl"])[:15],

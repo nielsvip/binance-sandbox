@@ -2405,6 +2405,27 @@ _ZERO_MIN_N_ROW = int(os.environ.get("V15_ZERO_MIN_N_ROW", "15"))
 _ZERO_MIN_N_CELL = int(os.environ.get("V15_ZERO_MIN_N_CELL", "10"))
 
 
+def inert_row_sampled(rr: int, sname: str, seq: int, every: int) -> bool:
+    """AUTOPSY-INERT rotating sample (USER 2026-10-08): an inert row gets its FULL yellow pass when
+    (row + round_seq + tab_hash) % every == 0 -> every inert row is fully re-tested once every `every` rounds,
+    a different 1/every slice each round. every <= 1 -> always full."""
+    if every <= 1:
+        return True
+    _th = sum(ord(c) for c in str(sname)) % max(1, every)
+    return (int(rr) + int(seq) + _th) % every == 0
+
+
+def inert_switches_from_start(path: str) -> set:
+    """effective switch names recorded by the autopsy in a V15_START_OVERRIDES base json ('autopsy.effective_switches');
+    empty set = no autopsy knowledge -> no pruning (every row full)."""
+    try:
+        _d = json.load(open(path))
+        _eff = ((_d.get("autopsy") or {}).get("effective_switches") if isinstance(_d, dict) else None) or []
+        return {str(x).split("=", 1)[0].strip() for x in _eff if x}
+    except Exception:
+        return set()
+
+
 def _zero_enabled() -> bool:
     return os.environ.get("V15_ZERO_FORMULA_SKIP", "1") == "1"
 
@@ -3815,6 +3836,19 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     elif _ps_on:
         print(f"[POSSYM] sampling ON round={_ps_round} cat={_ps_cat} json_rows={len(_ps_json)}", flush=True)
     _static_info: dict = {}
+    # AUTOPSY-INERT (USER 2026-10-08, approved): switches the autopsy found to touch no trade on this sym_side's base keep their
+    # NAKED eval (real G every row) but skip the ~231 yellow evals unless (a) rotating sample 1/V15_INERT_SAMPLE_EVERY rounds or
+    # (b) the naked eval moves the ledger (then the full yellow pass runs immediately: AUTOPSY-INERT-REVIVED). Never a fake 0.
+    _inert_effective = inert_switches_from_start(os.environ.get("V15_START_OVERRIDES", "")) if os.environ.get("V15_INERT_PRUNE", "1") == "1" else set()
+    _inert_every = int(os.environ.get("V15_INERT_SAMPLE_EVERY", "25") or 25)
+    try:
+        import re as _re_in
+        _inert_seq = int((_re_in.search(r"run(\d+)", os.environ.get("V15_DEFAULTS_ROUND", "") or "") or [None, None])[1] or 0) or int(datetime.datetime.utcnow().strftime("%j"))
+    except Exception:
+        _inert_seq = int(datetime.datetime.utcnow().strftime("%j"))
+    _inert_stats = {"pruned": 0, "sampled": 0, "revived": 0, "yellows_skipped": 0}
+    if _inert_effective:
+        print(f"[AUTOPSY-INERT] {new_symside}: {len(_inert_effective)} effective switches from the autopsy base; other rows naked-only, full yellows 1/{_inert_every} (seq {_inert_seq})", flush=True)
     def _row_static(sname: str, rr: int, switch, cand) -> dict:
         # structural class + this row's yellow cells (read once; the running set is applied at eval time)
         k = (sname, rr)
@@ -3877,6 +3911,15 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _mandatory_note(sname, _hdr_base, False)
                 info["hdrs"].append(hdr)
                 info["h2f"][hdr] = {"filter": filt.strip(), "opt": opt.strip()}
+        if _inert_effective and info["kind"] == "eval" and info["hdrs"] and str(switch).strip() not in _inert_effective:
+            if inert_row_sampled(rr, sname, _inert_seq, _inert_every):
+                info["inert_sampled"] = True
+                _inert_stats["sampled"] += 1
+            else:
+                info["inert_filters"] = list(info["hdrs"])
+                info["hdrs"] = []
+                _inert_stats["pruned"] += 1
+                _inert_stats["yellows_skipped"] += len(info["inert_filters"])
         if _ps_on and info["kind"] == "eval":
             try:
                 _pp, _nn, _isd = _ps_row_ev(ws, rr, sname, switch, cand)
@@ -4167,6 +4210,23 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _flag_to_md(flags_md, sname, rr, switch, cand, f"slow/failed naked: {nerr}", 0.0, 0.0, cumulative_before)
                 _red_retry.append({"sheet": sname, "row": rr, "col": cols["G"], "label": "naked", "ov": switch_variant, "cum_before": cumulative_before, "key": key})
                 _zr_log({"kind": "RED", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": "F/G", "reason": nerr, "cum_before": cumulative_before})
+        if st.get("inert_filters") and not is_running and naked_delta is not None and abs(float(naked_delta)) > 1e-9:
+            # AUTOPSY-INERT-REVIVED: the autopsy saw no trade touched on the BASE, but on the running set the naked eval moved
+            # the ledger -> this row is alive: run its full yellow pass right now (nothing dead-but-alive can hide).
+            st["hdrs"] = list(st["inert_filters"])
+            st["inert_filters"] = []
+            st["inert_revived"] = True
+            _inert_stats["revived"] += 1
+            _rv_deadline = _t.time() + YELLOW_TIMEOUT * (max(1, -(-len(st["hdrs"]) // max(1, _n_proc))) + 2)
+            for _rv_hdr in st["hdrs"]:
+                _rv_f = st["h2f"][_rv_hdr]
+                _rv_ov = dict(switch_variant)
+                _rv_ov[_rv_f["filter"]] = _parse_opt_value(_rv_f["opt"], defaults.get(_rv_f["filter"]))
+                _rv_ov = sanitize_overrides(_rv_ov, defaults)[0]
+                plan["items"].append((_rv_hdr, _rv_ov))
+                results[_rv_hdr] = _get(sname, rr, switch, cand, _rv_hdr, _rv_ov, _rv_deadline, cumulative_before)
+            n_items = len(plan["items"])
+            print(f"[AUTOPSY-INERT-REVIVED] {sname}!{rr} {switch}={cand} naked G={naked_delta} -> full yellow pass ({len(st['hdrs'])} cells)", flush=True)
         # USER 2026-10-03 hollow-fix: a deterministic engine verdict on naked (pre-eval rejection, invalid
         # with reason — tried, answered, cached) SETTLES the row like ZERO_TRADES does. Only a missing
         # verdict (timeout/exception) keeps the row pending. Short-circuit keeps nres/nerr safe.
@@ -4446,15 +4506,17 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         progress["cumulative_gain"] = float(cumulative_gain)
         div = _write_div(sname, rr, [row_gain])
         _uw_tag = "UNWIRED_CALCULATED: switch is in the vec_unwired audit (no engine read found) — 0.0 is the honest eval delta" if (row_delta == 0 and str(switch).strip() in UNWIRED_TAG_SW) else ""
-        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "zero_skipped_filters": st.get("zero_skipped") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", "") or _uw_tag, "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "ramfp": (str(_RUN_RAMFP.get(new_symside)) if os.environ.get("V15_RAMFP", "0") == "1" else None), "complete": (not missing_yellows and not (st.get("sampled_filters") or []) and not (st.get("excluded_tab_level") or []) and naked_settled and not _ramfp_stale)}
+        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "zero_skipped_filters": st.get("zero_skipped") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", "") or _uw_tag, "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "inert_filters": st.get("inert_filters") or [], "inert_sampled": bool(st.get("inert_sampled")), "inert_revived": bool(st.get("inert_revived")), "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "ramfp": (str(_RUN_RAMFP.get(new_symside)) if os.environ.get("V15_RAMFP", "0") == "1" else None), "complete": (not missing_yellows and not (st.get("sampled_filters") or []) and not (st.get("excluded_tab_level") or []) and naked_settled and not _ramfp_stale)}
         if st.get("sampled_filters") or st.get("excluded_tab_level"):
             print(f"[POLICY-CELLS-PENDING] {sname}!{rr} {switch}={cand} sampled={len(st.get('sampled_filters') or [])} tablevel={len(st.get('excluded_tab_level') or [])} — yellows uncalculated, row stays pending (RULE#3 refuses publish until refilled)", flush=True)
         _maybe_write_json(force=promote)
         _row_done(sname, rr, switch, cand, n_items + (1 if pos_hdrs else 0), row_delta, promote)
         _touch(f"cell {sname}!{rr} delta={row_delta}")
-        print(f"[spec-row] {sname}!{rr} {switch}={cand}{' (running)' if is_running else ''} yellows={len(st['hdrs'])} pos={len(pos_hdrs)} G={row_delta} vs {cumulative_before:.4f} -> {'POS ' + choice[3] + ' E_next=' + format(cumulative_gain, '.4f') if promote else 'no-promote'}", flush=True)
+        print(f"[spec-row] {sname}!{rr} {switch}={cand}{' (running)' if is_running else ''} yellows={len(st['hdrs'])}{' inert=' + str(len(st['inert_filters'])) if st.get('inert_filters') else ''}{' SAMPLED' if st.get('inert_sampled') else ''} pos={len(pos_hdrs)} G={row_delta} vs {cumulative_before:.4f} -> {'POS ' + choice[3] + ' E_next=' + format(cumulative_gain, '.4f') if promote else 'no-promote'}", flush=True)
         _maybe_save()
         processed += 1
+    if _inert_effective:
+        print(f"[AUTOPSY-INERT] {new_symside}: rows pruned={_inert_stats['pruned']} sampled-full={_inert_stats['sampled']} revived={_inert_stats['revived']} yellow evals skipped={_inert_stats['yellows_skipped']}", flush=True)
     # USER 2026-10-06 REDO-HEAL: the heal marker served its purpose once the fill completes (sampling
     # only affects the fill). Pop it so later fresh reruns sample normally. A kill before this point
     # resumes sample-free (marker persists) — correct, the refill is still incomplete.
