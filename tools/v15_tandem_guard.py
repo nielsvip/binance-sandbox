@@ -72,9 +72,16 @@ def pick_date(explicit):
     return today.strftime("%Y%m%d"), {}
 
 
+HARD_CLASSES = ("bold-vs-quick", "bold-vs-cat", "bold-vs-global", "not-in-configs")  # a surface lags the template bold
+INFO_CLASSES = ("side-split-cat-truth", "fallback-split")  # §67: one global cannot hold two side bolds; cat_side carries the side truth
+DEAD_ROWS_KEPT = {"REENTRY_TIER2_MAX_MINUTES", "REENTRY_TIER2_MAX_MINUTES_TRADIER"}  # USER 2026-10-08: code removed, template rows left alone
+
+
 def surfaces_ok(keys):
+    """ALL keys, every cat_side (not only the day's promoted keys): a hard class means a surface forgot the bold."""
     import switch_parity as SP
-    bad = []
+    fossil = getattr(SP, "FOSSIL_HELD", frozenset())  # builder P0-FOSSIL pins: cat_side deliberately != bold (template lane owns the bold)
+    bad, info = [], []
     for cs in CAT_SIDES:
         try:
             audit = SP.verify_default_surfaces(cs)
@@ -83,10 +90,14 @@ def surfaces_ok(keys):
             continue
         for m in audit.get("mismatches") or []:
             k = m.get("key")
-            if keys and k not in keys:
-                continue
-            bad.append({"cat_side": cs, **{kk: (str(vv)[:80] if vv is not None else None) for kk, vv in m.items() if kk in ("key", "bold", "cat", "global", "quick", "kind", "why")}})
-    return bad
+            row = {"cat_side": cs, **{kk: (str(vv)[:80] if vv is not None else None) for kk, vv in m.items() if kk in ("key", "class", "bold", "cat", "global", "quick", "other_bold")}, "promoted_today": k in keys}
+            informational = m.get("class") in INFO_CLASSES or (cs, k) in fossil or k in DEAD_ROWS_KEPT
+            if (cs, k) in fossil:
+                row["note"] = "builder P0-FOSSIL pin"
+            elif k in DEAD_ROWS_KEPT:
+                row["note"] = "dead switch, rows kept by USER 2026-10-08"
+            (info if informational else bad).append(row)
+    return bad, info
 
 
 def gates():
@@ -128,9 +139,12 @@ def main(argv=None):
         rep["failures"].append(f"S1 chain stamp {date} is {rep['s1_stamp']} — no defaults landed")
     if mac.get("status") != "DONE":
         rep["failures"].append(f"Mac follow-up stamp {date} is {rep['mac_stamp']} (step {mac.get('failed_step')}: {str(mac.get('why'))[:120]}) — config/QuickConfig NOT synced")
-    rep["surface_mismatches"] = surfaces_ok(keys)
+    rep["surface_mismatches"], rep["side_split_info"] = surfaces_ok(keys)
     if rep["surface_mismatches"]:
-        rep["failures"].append(f"{len(rep['surface_mismatches'])} promoted keys disagree across TEMPLATE/cat_side/config/QuickConfig")
+        by = {}
+        for m in rep["surface_mismatches"]:
+            by.setdefault(m.get("class") or "error", []).append(f"{m['cat_side']}:{m.get('key')}")
+        rep["failures"].append("surfaces lag the TEMPLATE bold: " + "; ".join(f"{c} {len(v)} ({', '.join(v[:6])}{'…' if len(v) > 6 else ''})" for c, v in by.items()))
     rep["gates"] = gates()
     hard = {cs: g["hard"] for cs, g in rep["gates"].items() if g["hard"]}
     if hard:

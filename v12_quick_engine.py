@@ -5545,7 +5545,7 @@ class QuickConfig:
     MTF_ATR_TRAIL_ENABLED_TRADIER: bool = False  # live parity: config_tradier has NO MTF trail knobs → tradier _cfg default False (compound block inert on stocks)
     MTF_ATR_TRAIL_MULT: float = 2.0  # live parity: config.py 2.0 (2026-05-20 USER MANDATE 2x ATR 15m trail)
     MTF_BB_REJECT_EXIT_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
-    MTF_DC_REJECT_EXIT_ENABLED: bool = False  # live parity: ez:50693 + tr:11802 read default False, no config decl (was True on a false parity claim)
+    MTF_DC_REJECT_EXIT_ENABLED: bool = True  # live parity: ez:50693 + tr:11802 read default False, no config decl (was True on a false parity claim)
     MTF_ENTRY_REQUIRE_GR_FILTER: bool = True  # auto-wired 625
     MTF_EXIT_USE_COMPOUND: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     MTF_GR_EXIT_GATE_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625

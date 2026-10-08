@@ -31,7 +31,7 @@ if [ "$OK" != "OK" ]; then
   exit 1
 fi
 # 5. fleet push (GS reads graph at job start; readers never block)
-for H in s2 s5 s6; do
+for H in niels@10.0.0.4 niels@10.0.0.5 niels@10.0.0.6; do  # IPs, never aliases (S1 alias s5 once pointed at .6)
   rsync -az -e "ssh -S none -o StrictHostKeyChecking=accept-new -o BatchMode=yes -o ConnectTimeout=15" data/encyclopedia_v2/graph.json "$H:~/binance-sandbox/data/encyclopedia_v2/graph.json" >> "$LOG" 2>&1 || echo "push $H FAILED" >> "$LOG"
 done
 echo "[$(date -u +%FT%TZ)] ency cycle done $(md5sum data/encyclopedia_v2/graph.json | cut -c1-8)" >> "$LOG"
