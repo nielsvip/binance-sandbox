@@ -1,43 +1,43 @@
 {
- "generated_at": "2026-10-08 16:58 UTC",
- "total_capital_usd": 48.24,
+ "generated_at": "2026-10-08 17:13 UTC",
+ "total_capital_usd": 30.79,
  "tier_capital": {
   "A": 0.0,
-  "B": 48.24,
-  "C": 0.0
+  "B": 15.73,
+  "C": 15.07
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
-  "C": 0
+  "B": 1,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "ang:NEARUSDC_LONG"
+  "flz:SOLUSDC_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:NEARUSDC_LONG",
-   "symbol": "NEARUSDC",
-   "account": "ang",
-   "value_usd": 32.53,
-   "gain_pct": -13.35,
+   "pk": "flz:DASHUSDT_SHORT",
+   "symbol": "DASHUSDT",
+   "account": "flz",
+   "value_usd": 15.73,
+   "gain_pct": 1.409,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 7.0,
-   "mark": 4.647
+   "perf_mult": 3.39,
+   "amt": 0.316,
+   "mark": 49.76883368
   },
   {
-   "pk": "ang:ATOMUSDT_SHORT",
-   "symbol": "ATOMUSDT",
-   "account": "ang",
-   "value_usd": 15.71,
-   "gain_pct": 4.126,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 9.39,
-   "mark": 1.673
+   "pk": "flz:SOLUSDC_SHORT",
+   "symbol": "SOLUSDC",
+   "account": "flz",
+   "value_usd": 15.07,
+   "gain_pct": 0.829,
+   "tier": "C",
+   "perf_mult": 0.48,
+   "amt": 0.14,
+   "mark": 107.61682598
   }
  ]
 }
