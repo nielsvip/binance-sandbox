@@ -9562,7 +9562,7 @@ def compute_entry_signals(npz, n, is_long, cfg):
     try:
         _csg = float(getattr(cfg, 'COMBINED_STOCH_GATE_TRADIER', 100.0))
         if _csg < 100.0:
-            k_5m = _safe(npz, 'stoch_k_5m', n, 50) if 'stoch_k_5m' in npz else k_3m
+            k_5m = _safe(npz, 'stoch_k_5m', n, 50) if 'stoch_k_5m' in npz else (_safe(npz, 'stoch_k_3m', n, 50) if 'stoch_k_3m' in npz else k_3m)  # 2026-10-08 parity: REAL 3m k (NPZ stoch_k_3m) like live check_entry_vetting; 15m fallback only when absent
             if is_long:
                 extra_ok = extra_ok & (k_5m < _csg)
             else:

@@ -1676,6 +1676,52 @@ def fabricate_3m(df_15m):
     return df
 
 
+def _inject_real_3m_stoch(merged: dict, symbol: str, ts_epoch_sec: np.ndarray) -> None:
+    """2026-10-08 PARITY (trade-level, ADAUSDC_LONG 45/303 vec-only opens = COMBINED_STOCH_GATE_k.._csg60 live vetoes): live
+    check_entry_vetting vets every open on the REAL 3m stoch k (COMBINED_STOCH_GATE_TRADIER=60); the NPZ carried no 3m arrays
+    (fabricate_3m is unused, tfs = 15m..M), so the vec gate fell back to the 15m k. Additive, crypto only: stoch_k_3m/stoch_d_3m
+    (+_prev) and bare k_3m/d_3m aliases = the last CLOSED 3m bar at or before each base-bar close (searchsorted on close-labelled ts).
+    Same stoch_rsi(close, 14, 7, 7) as every other TF. Missing 3m klines -> nothing emitted (engine keeps its 15m fallback)."""
+    try:
+        df = None
+        for d in (BASE_PATH / "klines_cache_backtest", BASE_PATH / "klines_cache", BASE_PATH / "klines_cache_gateway"):
+            p = d / f"{symbol}_3m.json"
+            if p.exists():
+                df = load_klines(p)
+                if df is not None and len(df) >= 50:
+                    break
+        if df is None or len(df) < 50:
+            return
+        from tradier_indicators import stoch_rsi
+        sd = stoch_rsi(df["close"].astype(float), 14, 7, 7)
+        if sd is None:
+            return
+        k = (sd["k"] if "k" in sd.columns else sd["%K"]).astype(float).fillna(50.0).values
+        dd = (sd["d"] if "d" in sd.columns else sd["%D"]).astype(float).fillna(50.0).values
+        ts3 = (df.index.values.astype("int64") // 10**9).astype(np.int64)
+        idx = np.searchsorted(ts3, np.asarray(ts_epoch_sec, dtype=np.int64), side="right") - 1
+        ok = idx >= 0
+        idx = np.clip(idx, 0, len(ts3) - 1)
+        prev_idx = np.clip(idx - 1, 0, len(ts3) - 1)
+        k_now = np.where(ok, k[idx], 50.0).astype(np.float32)
+        d_now = np.where(ok, dd[idx], 50.0).astype(np.float32)
+        k_prev = np.where(ok & (idx > 0), k[prev_idx], 50.0).astype(np.float32)
+        d_prev = np.where(ok & (idx > 0), dd[prev_idx], 50.0).astype(np.float32)
+        merged["stoch_k_3m"] = k_now
+        merged["stoch_d_3m"] = d_now
+        merged["stoch_k_3m_prev"] = k_prev
+        merged["stoch_d_3m_prev"] = d_prev
+        merged["k_3m"] = k_now
+        merged["d_3m"] = d_now
+        merged["k_3m_prev"] = k_prev
+        merged["d_3m_prev"] = d_prev
+    except Exception as _e:
+        try:
+            print(f"[npz] {symbol}: real 3m stoch not injected: {_e!r}", flush=True)
+        except Exception:
+            pass
+
+
 def _inject_funding_oi(merged: dict, symbol: str, ts_epoch_sec: np.ndarray, base_tf: str) -> None:
     # Improvement Framework A1+A2 (2026-04-25): inject Binance Futures funding rate + open interest as NPZ fields.
     # Cache populated by binance_funding_fetcher.py and binance_oi_fetcher.py.
@@ -2347,6 +2393,7 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
     if mode == "crypto":
         try:
             _inject_funding_oi(merged, symbol, ts_epoch, base_tf)
+            _inject_real_3m_stoch(merged, symbol, ts_epoch)  # 2026-10-08 parity: real 3m stoch for the COMBINED_STOCH gate
         except Exception as _e:
             logger.warning(f"[FUNDING_OI_INJECT] {symbol}: {_e}")
         try:

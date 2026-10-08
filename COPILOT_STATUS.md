@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-08 19:35:29 UTC
+# Copilot Status — 2026-10-08 19:45:42 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-08T19:33:56
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-08T19:33:56
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-08T19:34:27
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-08T19:34:27
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-08T19:34:27
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-08T19:34:58
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-08T19:34:58
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-08T19:35:28
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-08T19:35:28
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-08T19:35:28
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-08T19:44:09
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-08T19:44:09
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-08T19:44:39
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-08T19:44:39
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-08T19:44:40
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-08T19:45:10
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-08T19:45:10
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-08T19:45:40
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-08T19:45:40
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-08T19:45:41
 
 ## Missed Trades (trader comparison)
 
@@ -29,10 +29,10 @@ _None_
 
 **Held:** 4 | **Watching for reentry:** 4 | **Reentered:** 0
 
-- HELD: **RLCUSDT** LONG (crypto) peak +34.8%, now +-6.9%
-- HELD: **AIAUSDT** LONG (crypto) peak +29.8%, now +-4.8%
+- HELD: **RLCUSDT** LONG (crypto) peak +34.8%, now +-6.2%
+- HELD: **AIAUSDT** LONG (crypto) peak +29.8%, now +-4.6%
 - HELD: **UNIUSDC** SHORT (crypto) peak +13.8%, now +11.4%
-- HELD: **KSMUSDT** LONG (crypto) peak +3.2%, now +2.9%
+- HELD: **KSMUSDT** LONG (crypto) peak +3.2%, now +3.0%
 
 - WATCHING: **ARKMUSDT** SHORT (crypto) peaked +9.2%, exited 1m ago
 - WATCHING: **SOLUSDC** SHORT (crypto) peaked +8.9%, exited 1m ago
@@ -43,9 +43,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 19
-- [MEDIUM] tradier_positions.py running but log stale (18min)
-- [MEDIUM] tradier_positions.py running but log stale (19min)
-- [MEDIUM] tradier_positions.py running but log stale (20min)
-- [MEDIUM] tradier_positions.py running but log stale (21min)
-- [MEDIUM] tradier_positions.py running but log stale (22min)
+**Issues (last 1h):** 28
+- [HIGH] ez_rankings.py is NOT running
+- [MEDIUM] tradier_positions.py running but log stale (25min)
+- [HIGH] ez_rankings.py is NOT running
+- [HIGH] ez_market_data.py is NOT running
+- [HIGH] ez_rankings.py is NOT running
