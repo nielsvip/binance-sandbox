@@ -161,3 +161,80 @@ FINAL_NORM x 4 cat_sides, user-unlocked): pos 1-3 light, pos >3 bright, pos 0
 / NONE cleared to no-fill (data cells only, row 2 headers untouched), and
 copied row POS counts into each template's POS_SYM column by (switch, setting)
 key. Backups: `backups/before_yellow_paint_pos_*`.
+
+## 8. Wiring factory batch 2 (2026-10-08)
+
+6 filters archaeologized (3 read-only agents + inline verification). Rule held:
+no live predicate → no invention.
+
+**WIRED (2, pruned from ledger filters 20→18):**
+- `FROZEN_STOP_FILTER_TF` (52915 NONE): live crypto freeze-exit real
+  (ez:49984-50019). Twin existed but walk never captured the level
+  (`pos['ty_frozen_bb']` read, never written) and `_ty_fire` was never
+  consumed (dead for the pre-existing MTF_DC twin too). Fixed: 4-line
+  freeze-on-first-sight capture + post-chain consume
+  (`if not closed and _ty_fire`, after DC-daytrade per live order —
+  elif placement is dead under daytrade_on). E2E proof S1 ETH LONG +
+  s2 DOGE LONG: ON moves (4/8 frozen exits), 4h moves differently,
+  OFF==BASE bitwise. Master False both sides = zero default drift.
+- `FH_MOMENTUM_FILTER_TF` (53235 NONE): live threaded 10-06
+  (ez:46510 zero-scan + tr:14155 entry chain via twin_gates_sizing_a
+  core). Vec-inline mask verified at runtime (engine's own
+  B_FHMOMENTUM: 95 bars 15m / 511 OFF on ETH LONG — knob-sensitive).
+  Fixed 2 gaps: orange port hardcoded dc_position_15m → knob threaded
+  (OFF skips, unknown coerces 15m); strength weight default 1 → 6
+  (live fires standalone OPEN, same precedent as 10-06 B_STDEV fix).
+  Ledger-level pivotality is sym-dependent (allow-vote inside a 75%-
+  saturated OR+strength combiner; 0/7 sym-sides moved at ledger level
+  incl. master-off — honest negative, vetoes bind harder than allows).
+  Registry WIRED-VEC-INLINE, hook no-hook bucket pruned.
+
+**Collateral parity fixes (same deploy, all toward live truth):**
+- `MTF_DC_REJECT_EXIT_ENABLED` vec default True→False: live reads
+  default False both venues (ez:50693, tr:11802), no config decl — the
+  "live parity True" comment was false. The consume fix would otherwise
+  have activated a live-divergent exit. BASEs shift where MTF twin /
+  compound-dc fired (DOGE -52.14→-50.86); pinned by
+  `test_vec_master_defaults_match_live`.
+- Pre-existing finding (NOT fixed, flagged): w2atr/maxhold/erosion
+  elifs are unreachable under daytrade_on (DC-daytrade elif swallows
+  the chain). Needs operator call before touching.
+
+**WIRED-STOCKS-ONLY (1, stays in ledger for the crypto gap):**
+- `MANDATORY_REENTRY_WT_FILTER_TF_MODE` (20156 NONE): vec reads all 6
+  knobs incl. MODE (mandatory_reentry_wt_vec.wt_gate_ok) + engine calls
+  precompute/leg_ok in the stocks reentry lane; live stocks wired.
+  Crypto live pending (EZ-MANDATORY-CRYPTO) + crypto vec uncalled →
+  crypto NONE cells stay until the crypto live gate is operator-approved.
+
+**BLOCKED (3, registry + hook no-hook already correct, operator
+semantics needed before any twin):**
+- `LIVE_ENTRY_ENGINE_FILTER_TF`: knob read NOWHERE real (2 stub
+  discards); master is additive-only (score boost + size mult, no TF
+  term); sub-engines need NPZ-absent 3m/prev fields.
+- `GR_FILTER_VEC_FILTER_TF`: template-orphan stub family (dead farm,
+  `_=getattr` discards); the REAL GR gate is already wired under
+  GR_FILTER_ALL_ENTRIES (ported_entry.py:79). Scoping the GR TF set
+  would be new semantics.
+- `HAIKU_WINNER_FILTER_TF`: winner = TF-less indicator-less
+  position-state machine (already twinned as master via
+  haiku_augment.step); FILTER_TF knob maps to nothing; model half is
+  live-only by nature.
+
+Cut: v12 capture+consume+MTF default+FH weight (3 cuts preserved:
+Mac a24e→94c1, fleet e5f9→08d5, s1-live a24e→9e4f; peer ablation +
+TIER2 + parity-sync deltas untouched, verified 27 diff lines all-peer),
+twin registry flips (FH/MANDATORY/batch1×3) + frozen comment drift fix,
+orange knob thread, hook bucket 25→21, ledger 20→18. Deployed
+sandbox+live × S1/s2/s5/s6 md5-verified (s6-live stale cut untouched,
+flagged; live ledger lane untouched). Tests 10/10
+(`tests/test_v15_batch2_twins.py`) + 57-suite green. Backups
+`backups/before_frozen_capture_202610080015_*` (Mac) +
+`before_frozen_20261008/` (fleet).
+
+Remaining queue (18 names): EMERGENCY_BRAKE, EXIT_R1_R2,
+EXIT_TIGHT_BREAKOUT_SCORER, EXIT_TO_REDUCE_ADAPTER, FIRST_OPEN_THROTTLE,
+GOLDEN_RULE_*×2, GR_V5_STATE, LIVE_ONLY_SIGNALS_BATCH5,
+MTF_ARMED_ENTRIES, NEWBORN_PROTECT, NOLOSS_BYPASS (DEAD_VEC),
+OPEN_INTENT_SIZE_GATES, PARTIAL_PROFIT_LOCK_V2 (DEAD_VEC),
+MANDATORY (stocks done, crypto operator call).
