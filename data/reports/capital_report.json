@@ -1,54 +1,32 @@
 {
- "generated_at": "2026-10-08 03:58 UTC",
- "total_capital_usd": 59.56,
+ "generated_at": "2026-10-08 04:01 UTC",
+ "total_capital_usd": 15.03,
  "tier_capital": {
   "A": 0.0,
-  "B": 59.55,
-  "C": 0.0
+  "B": 0.0,
+  "C": 15.03
  },
  "tier_count": {
   "A": 0,
-  "B": 3,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
- "losers": [],
- "mediocre": [
-  "ang:ATOMUSDT_SHORT"
+ "losers": [
+  "flz:SOLUSDC_SHORT"
  ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "ang:NEARUSDC_LONG",
-   "symbol": "NEARUSDC",
-   "account": "ang",
-   "value_usd": 37.38,
-   "gain_pct": -0.415,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 7.0,
-   "mark": 5.34066828
-  },
-  {
-   "pk": "ang:ATOMUSDT_SHORT",
-   "symbol": "ATOMUSDT",
-   "account": "ang",
-   "value_usd": 16.41,
-   "gain_pct": -0.172,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 9.39,
-   "mark": 1.748
-  },
-  {
-   "pk": "ang:DOTUSDT_SHORT",
-   "symbol": "DOTUSDT",
-   "account": "ang",
-   "value_usd": 5.76,
-   "gain_pct": 0.958,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 5.2,
-   "mark": 1.10788643
+   "pk": "flz:SOLUSDC_SHORT",
+   "symbol": "SOLUSDC",
+   "account": "flz",
+   "value_usd": 15.03,
+   "gain_pct": 0.637,
+   "tier": "C",
+   "perf_mult": 0.54,
+   "amt": 0.13,
+   "mark": 115.5792791
   }
  ]
 }

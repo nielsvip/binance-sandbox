@@ -1,38 +1,39 @@
 {
- "now": "2026-10-08T03:01:25.028438+00:00",
+ "now": "2026-10-08T04:01:27.767199+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 4155,
- "last_exit_ts": "2026-10-08T03:01:26.713979+00:00",
- "n_leaks": 4,
- "n_gate_on": 2063,
+ "n_exit_rows": 4495,
+ "last_exit_ts": "2026-10-08T04:01:25.703526+00:00",
+ "n_leaks": 11,
+ "n_gate_on": 2353,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 445,
+ "n_unmapped": 449,
  "n_unverified": 2,
  "since": "2026-10-06T18:48:00+00:00",
  "vec_exact_by_action": {
-  "OPEN": 1137,
-  "CLOSE": 457,
+  "OPEN": 1167,
+  "CLOSE": 466,
   "REDUCE": 47
  },
- "native_rows": 2514,
+ "native_rows": 2815,
  "unverified_by_family": {
   "WEBHOOK_HANDLE_SIGNAL (None=None)": 1,
   "ULTIMATE_DC (None=None)": 1
  },
  "leaks_by_family": {
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED=False)": 4
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED=False)": 11
  },
  "leak_keys": {
+  "EXIT_VELOCITY_WT inf:NMRUSDT_LONG": 7,
   "EXIT_VELOCITY_WT inf:BTCUSDC_SHORT": 4
  },
  "gate_on_by_family": {
   "CRYPTO_SPIKE_FADE (CRYPTO_SPIKE_FADE_ENABLED)": 1,
   "GOLDEN_RULE": 3,
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 1824,
-  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 197,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 2056,
+  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 224,
   "CYCLE_TP (CYCLE_TP_TIERED_ENABLED)": 6,
-  "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 32
+  "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 63
  },
  "ungated_by_family": {},
  "safety_by_family": {},
@@ -67,6 +68,7 @@
   "SUBSTITUTION_FOR_men:ENJUSDT_LONG": 4,
   "SUBSTITUTION_FOR_men:YFIUSDT_LONG": 4,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.66% age": 3,
+  "CB_HTF_EXHAUST_BAD_ENTRY: g=-1.45% age": 3,
   "SUBSTITUTION_FOR_men:ATOMUSDT_SHORT": 3,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-2.26% age": 3,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-2.28% age": 3,
@@ -84,13 +86,12 @@
   "BB_TAKE_4h": 2,
   "WT_CROSSUNDER_FINAL_L_k=72": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.51% age": 2,
-  "CB_HTF_EXHAUST_BAD_ENTRY: g=-1.45% age": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-2.66% age": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-4.27% age": 2
  },
  "actions": {
-  "OPEN": 1141,
-  "CLOSE": 2740,
+  "OPEN": 1171,
+  "CLOSE": 3050,
   "REDUCE": 54,
   "QUICK_CLOSE": 220
  }
