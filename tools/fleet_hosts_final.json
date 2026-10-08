@@ -60,6 +60,21 @@
    "workers_per_side": 6,
    "oom_mb": 1500,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM"
+  },
+  {
+   "name": "s7",
+   "ssh": [
+    "10.0.0.7"
+   ],
+   "root": "~/binance-sandbox",
+   "venues": [
+    "stocks"
+   ],
+   "mem_reserve_mb": 4000,
+   "max_pairs": 2,
+   "workers_per_side": 3,
+   "oom_mb": 1500,
+   "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM"
   }
  ],
  "cpu_target_pct": 90,
@@ -79,5 +94,6 @@
  "_doc_all_stocks_20261008": "USER 2026-10-08: all hosts take stocks (crypto 30D 117/144, tail thin; s5 hit 0/3 idle; 234 stocks sides untouched). Crypto-first priority preserved via venue_order; stocks fill idle slots.",
  "_doc_stocks_hold_20261008": "HOLD 2026-10-08 01:15Z: stocks 30D pilots refuse fleet-wide (PARITY-GATE hard default disparity vs 00:23 chain bolds; 30D attempts cap 6 burns per churn cycle). Revert to crypto-only until peer parity-sync deploys, then flip back. See _doc_all_stocks_20261008.",
  "_doc_admit_20261008": "USER 2026-10-08: honest admission (est=max pair x1.25, floor 12000; reserve>=oom+2000; swap>40pc blocks launches; OOM victim=least-progress; reaps burn attempts; stall alert 60 ticks). Triage caps s1/s5=2 s2/s6=3 until memory converges, then restore.",
- "_doc_admit2_20261008": "Follow-up: growth-debt (young pairs reserve est until half-grown); s2 cap 3->2 (3x10GB steady does not fit 31GB)."
+ "_doc_admit2_20261008": "Follow-up: growth-debt (young pairs reserve est until half-grown); s2 cap 3->2 (3x10GB steady does not fit 31GB).",
+ "_doc_s7size_20261008": "s7 = 8C/31G (measured): pairs 5->2, workers 6->3 (70 procs on 8C + 60GB demand would OOM in minutes)."
 }

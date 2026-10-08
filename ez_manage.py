@@ -13595,6 +13595,14 @@ _AUGMENT_LOCK = {}  # {position_key: timestamp_of_last_augment}
 _AUGMENT_LOCK_MIN_SECONDS = 900  # 15 minutes minimum between augments
 
 
+def _cb_path_tag(reason):
+    """entry-path tag for the breaker (2026-10-08: first TWO underscore tokens — one token nuked whole families:
+    'B' killed B_KZONE/B_SRS/B_MOM5/B_EMADIST/B_SMA200DIST together, 'ENTRY' killed every entry strategy, and the
+    account went silent). record_entry and is_blocked MUST use this same function."""
+    parts = str(reason or "").split("_")
+    return "_".join(parts[:2]) if len(parts) > 1 else str(reason or "")[:20]
+
+
 class SmartCircuitBreaker:
     """Smart entry quality monitor. Records WT+DC state at entry time.
     When position is losing: check if entry was WRONG (WT/DC against trade) vs market event (WT/DC were correct).
@@ -13604,11 +13612,11 @@ class SmartCircuitBreaker:
     def __init__(self):
         self._entries = {}  # {pk: {ts, price, tag, is_long, wt_state, dc_state}}
         self._bad_entries = []  # [(ts, tag, pk, diagnosis)]
-        self._disabled_paths = set()
+        self._disabled_paths = {}  # {tag: disabled_ts} — a disable re-arms after the decay window (fresh judgment each day)
         self._log_path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "circuit_breaker_log.jsonl"
 
     def record_entry(self, pk, price, reason, indicators=None):
-        tag = reason.split("_")[0] if "_" in reason else reason[:20]
+        tag = _cb_path_tag(reason)
         is_long = pk.endswith("_LONG")
         wt_state = {}
         dc_state = {}
@@ -13736,19 +13744,35 @@ class SmartCircuitBreaker:
                         )
                 except Exception:
                     pass
-                recent_bad = [b for b in self._bad_entries[-10:] if b[1] == tag]
-                if len(recent_bad) >= 3 and tag not in self._disabled_paths:
-                    self._disabled_paths.add(tag)
+                recent_bad_pks = {b[2] for b in self._bad_entries[-10:] if b[1] == tag}
+                if len(recent_bad_pks) >= 3 and not self._path_disabled(tag):
+                    self._disabled_paths[tag] = time.time()
                     logger.critical(
-                        f"🛑 [CIRCUIT_BREAKER] AUTO-DISABLED entry path '{tag}' — {len(recent_bad)} bad entries in last 10. WT/DC were wrong at entry time."
+                        f"🛑 [CIRCUIT_BREAKER] AUTO-DISABLED entry path '{tag}' — {len(recent_bad_pks)} distinct bad entries in last 10 (re-arms after decay). WT/DC were wrong at entry time."
                     )
             if should_exit:
                 exits.append((pk, diag))
         return exits
 
+    def _path_disabled(self, tag):
+        """True while a disable is in force; a disable older than the decay window re-arms (fresh judgment each day)
+        and its strikes are purged so one new bad entry cannot instantly re-disable."""
+        ts = self._disabled_paths.get(tag)
+        if ts is None:
+            return False
+        try:
+            decay_h = float(getattr(config, "CIRCUIT_BREAKER_PATH_DECAY_HOURS", 24.0))
+        except Exception:
+            decay_h = 24.0
+        if (time.time() - ts) < decay_h * 3600.0:
+            return True
+        self._disabled_paths.pop(tag, None)
+        self._bad_entries = [b for b in self._bad_entries if b[1] != tag]
+        logger.critical(f"🟢 [CIRCUIT_BREAKER] RE-ARMED entry path '{tag}' after {decay_h:.0f}h decay — strikes purged, judging fresh entries on merit.")
+        return False
+
     def is_blocked(self, reason):
-        tag = reason.split("_")[0] if "_" in reason else reason[:20]
-        return tag in self._disabled_paths
+        return self._path_disabled(_cb_path_tag(reason))
 
 
 class MultiAccountTradeManager:

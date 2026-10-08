@@ -168,6 +168,19 @@ def main():
         blockers.append(f"NPZ stale: last bar {npz_last}")
     if len(done_last_h) == 0 and len(boards) > 0:
         blockers.append("0 boards finished in the last hour")
+    # self-heal (2026-10-08 05:3xZ incident: data/cat_side_defaults_4.json vanished fleet-wide; without it the pilot trusts every
+    # template bold incl. SHORT-entry killers). Restore from the sweep_defaults twin or the newest backup, and shout.
+    for rel in ("data/cat_side_defaults_4.json", "data/sweep_defaults/cat_side_defaults_4.json"):
+        tgt = ROOT / rel
+        if not tgt.exists():
+            twin = ROOT / ("data/sweep_defaults/cat_side_defaults_4.json" if rel.startswith("data/cat_side") else "data/cat_side_defaults_4.json")
+            src = twin if twin.exists() else (sorted(glob.glob(str(ROOT / "backups" / "*cat*side*4*.json")), key=os.path.getmtime) or [None])[-1]
+            if src:
+                tgt.parent.mkdir(parents=True, exist_ok=True)
+                tgt.write_bytes(Path(src).read_bytes())
+                blockers.append(f"{rel} was MISSING -> restored from {Path(src).name} (find the deleter)")
+            else:
+                blockers.append(f"{rel} MISSING and no restore source — pilots trust every bold (dead SHORT baselines)")
     status["blockers"] = blockers
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "DIRECTOR_STATUS.json").write_text(json.dumps(status, indent=1, default=str))
