@@ -1,0 +1,2521 @@
+{
+ "round_id": "0cfe80830b694f1a3a095458d84e9b51",
+ "agg": "/Users/niels/Documents/binance/SPREADSHEETS/v15_vector_delta_latest.xlsx",
+ "refused": {
+  "CRYPTO_LONG": [
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "WT_15M_BOUNCE_BB_MIN=0.05",
+    0.1028,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "WT_DIV_EXIT_ENABLED=False",
+    0.5266,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "WT_15M_BOUNCE_OPEN_ENABLED=False",
+    0.2116,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "HTF4_CONF=True",
+    0.5998,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "EMA_9_21_FILTER_FILTER_TF=15m",
+    0.4258,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "GR_FILTER_ALL_ENTRIES=False",
+    0.3613,
+    6,
+    8,
+    "type-uncoercible"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "LH_HL_FILTER_MODE=STRICT_2BAR",
+    0.4074,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "EMA_BLANKET_FILTER_MIN_TFS=1",
+    1.5778,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "EMA_9_21_FILTER_FILTER_TF=15m",
+    0.4258,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "WT_15M_BOUNCE_BB_MIN=0.05",
+    0.1028,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "GR_FILTER_ALL_ENTRIES=False",
+    0.3613,
+    6,
+    8,
+    "type-uncoercible"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "EXIT_TOP_FADE_FILTER_TF=OFF",
+    0.1901,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "ATR_LONG_WINDOW=50",
+    0.0596,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "f",
+    "EXIT_TOP_FADE_FILTER_TF=OFF",
+    0.1901,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "SMFI_DIV_ENTRY_ENABLED=False",
+    0.0469,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "STOCH_XTREME_ENTRY_ENABLED=False",
+    0.9103,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "WICK_REJECT_ENTRY_ENABLED=False",
+    2.5742,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED=False",
+    0.1121,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED=False",
+    0.0685,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "EMA20_SLOPE_ENTRY_ENABLED=True",
+    0.1055,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "WT_15M_BOUNCE_VOLUME_MODE=relvol",
+    0.0157,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "ENTRY_STOCH_PARENT_DIRECT_ENABLED=True",
+    0.0158,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "STOCH_ENTRY_ENABLED=True",
+    0.1308,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "MTF_GR_MIN_TFS=3",
+    0.1395,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "ENTRY_DC_TF=OFF",
+    0.2341,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "TRAILING_AUG_ENABLED_TRADIER=True",
+    0.225,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "BB_BREAKOUT_TF=15m",
+    0.0873,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "BB_BREAKOUT_TF=OFF",
+    0.3177,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "BB_BREAKOUT_TF=D",
+    0.5591,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "OI_SURGE_ENTRY_PCT=2",
+    0.225,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "OI_SURGE_ENTRY_PCT=3",
+    0.5394,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "WT_15M_BOUNCE_VOLUME_THRESHOLD=0.5",
+    0.0606,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "f",
+    "GR_FILTER_ALL_ENTRIES=False",
+    1.009,
+    11,
+    13,
+    "type-uncoercible"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "VEL_EXIT_ENABLED=False",
+    0.0864,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "MFI_FLIP_EXIT_ENABLED=False",
+    0.0204,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED=False",
+    0.4325,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "WT_EXIT_MIN_TFS=1",
+    0.0624,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "VEC_REENTRY_DC4_EXITPRICE_ENABLED=True",
+    0.2616,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY_GRACE_MINUTES=60",
+    0.0958,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY_FAVORABLE_HTF_MIN=4",
+    0.1591,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "HARDCODED_RALLY_MIN_AGE_MIN=15",
+    0.06,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "HARDCODED_RALLY_MIN_AGE_MIN=0",
+    0.3168,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY_FAVORABLE_MOVE_PCT=0.5",
+    0.2842,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY_15M_BB1H_LOW_BOUNCE_HTF_ENABLED=False",
+    0.0667,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY_B10_STOCH_REV_ENABLED=True",
+    0.2906,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "LEGACY_REENTRY_PSR_QUICK_RECOVERY=1.0",
+    0.3227,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "LEGACY_REENTRY_PSR_QUICK_RECOVERY=0",
+    0.3839,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "LEGACY_REENTRY_PSR_QUICK_RECOVERY=True",
+    0.4683,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED=True",
+    0.6906,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY2_DC_BREAK_FILTER_TF=3m",
+    2.7621,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY_15M_BB1H_LOW_BOUNCE_HTF_MIN_TFS=1",
+    0.4369,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY2_DC_BREAK_ALLOW_15M=True",
+    0.1807,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "HARDCODED_RALLY_MIN_AGE_MIN=0",
+    0.3168,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "HARDCODED_RALLY_MIN_AGE_MIN=15",
+    0.06,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "sw",
+    "HLR_REENTRY_MULT_D=2.5",
+    3.1154,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_TREND",
+    "sw",
+    "HAIKU_WINNER_AUGMENT_ENABLED=True",
+    1.5332,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "sw",
+    "ABLATION_DISABLE_DC_BREACH_REDUCE=False",
+    0.4914,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "HLR_TOP_VEL_4H_THRESH=-1.0",
+    5.0693,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "HLR_TOP_RECROSS_BYPASS_ENABLED=False",
+    0.7781,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "DC_HOPELESS_EXIT_MIN_AGE_S=900",
+    2.3476,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "WT_EXHAUST_EXIT_MIN_GAIN_PCT=0.5",
+    0.0693,
+    1,
+    4,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "EMA_DIST_LONG_THRESHOLD=-0.5",
+    0.0268,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ]
+  ],
+  "CRYPTO_SHORT": [
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "HTF4_CONF=True",
+    4.8235,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "WT_MOMENTUM_EXIT_THRESHOLD=1",
+    0.0,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "BB_PULLBACK_GATE_TF=15m",
+    0.0928,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "DC_BREAK_FILTER_TF=OFF",
+    0.8995,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "DC_BREAK_FILTER_TF=OFF",
+    0.8995,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "WT_15M_BOUNCE_BB_MIN=0.05",
+    0.003,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "MOM3_FILTER_TF=15m",
+    0.4876,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "DC_BREAK_FILTER_TF=4h",
+    0.149,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "f",
+    "DC_BREAK_FILTER_TF=4h",
+    0.149,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "f",
+    "MOM3_FILTER_TF=15m",
+    0.4876,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "MTF_GR_FILTER_ENABLED=True",
+    0.0338,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "VWAP_STRETCH_ENTRY_ENABLED=True",
+    0.4688,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "ABLATION_DISABLE_QUICK_ENTRY=False",
+    0.1621,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "DC_BREAK_FILTER_TF=OFF",
+    0.2541,
+    1,
+    7,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "f",
+    "DC_BREAK_FILTER_TF=OFF",
+    0.2541,
+    1,
+    7,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "f",
+    "ADX_REGIME_FILTER_ENABLED=False",
+    0.1755,
+    1,
+    4,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "ATR_ADAPTIVE_STOP_TF=4h",
+    0.0727,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "LH_LL_TOP_EXIT_STRUCT_TF=D",
+    0.2157,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "LH_LL_TOP_EXIT_DC1H_BUFFER_PCT=0.25",
+    0.2157,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "LH_LL_TOP_EXIT_ENABLED=True",
+    0.1493,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "f",
+    "LH_LL_TOP_EXIT_ENABLED=True",
+    0.1493,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "f",
+    "LH_LL_TOP_EXIT_STRUCT_TF=D",
+    0.2157,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "f",
+    "LH_LL_TOP_EXIT_DC1H_BUFFER_PCT=0.25",
+    0.2157,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "BTC_GUARANTEED_REENTRY_ENABLED=True",
+    0.047,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "HARDCODED_RALLY_DC_POS_MAX=0",
+    0.4498,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY_K_RESET_GR_ENABLED=False",
+    0.7016,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED=1",
+    0.0666,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "MOM3_FILTER_TF=OFF",
+    0.0147,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY2_DC_BREAK_FILTER_TF=3m",
+    0.0402,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "MOM3_FILTER_TF=OFF",
+    0.0147,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "HARDCODED_RALLY_DC_POS_MAX=0",
+    0.4498,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "sw",
+    "CRYPTO_REENTRY_PATHWAYS_ENABLED=True",
+    0.3288,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "sw",
+    "MOM3_FILTER_TF=OFF",
+    0.114,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "MOM3_FILTER_TF=OFF",
+    0.114,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_TREND",
+    "sw",
+    "SHORT_DC_LOW_BREAK_ENABLED=False",
+    0.0066,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_TOP_FADE_FILTER_TF=OFF",
+    1.8224,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_TOP_FADE_FILTER_TF=D",
+    1.8224,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_TOP_FADE_FILTER_TF=4h",
+    1.8224,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_TOP_FADE_FILTER_TF=1h",
+    1.8224,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_TOP_FADE_FILTER_TF=15m",
+    1.8224,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "WT_PERCENTILE_EXIT_OS_4H=25",
+    0.5329,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "WT_PERCENTILE_ENTRY_GATE_ENABLED=False",
+    0.0101,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "COUNTER_TREND_SMA200_BYPASS_ENABLED=True",
+    0.1034,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "GAP_PER_SYMBOL_AVG_THRESH_PCT=0.10",
+    0.0,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "TRADES_PER_SYM_PER_DAY_MAX=6",
+    0.0028,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "HARDCODED_RALLY_REENTRY_REQUIRE_WT=False",
+    0.0243,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ]
+  ],
+  "STOCKS_LONG": [
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "WT_DIV_EXIT_ENABLED=False",
+    1.8222,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "BB_PULLBACK_GATE_TF=OFF",
+    0.0023,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY=0.5",
+    0.1532,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "EMA_9_21_FILTER_MIN_TFS=2",
+    0.1215,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "EMA_9_21_FILTER_MIN_TFS=2",
+    0.1215,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "DC_BREAKOUT_SCORE=20",
+    0.0262,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "DC_BREAKOUT_TF=D",
+    0.0346,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "WT_COMPOSITE_ENTRY_STRONG=62.5",
+    0.0152,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "DC_BREAKOUT_TF_EXPANDED=W",
+    0.1895,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "f",
+    "HTF_DIRECTION_GATE_ENABLED=False",
+    0.0113,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "WT_CROSSUNDER_FINAL_ENABLED=False",
+    0.8403,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "WT_COMPOSITE_HTF_GATE=True",
+    0.0021,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "LR_BAND_ENTRY_ENABLED=True",
+    0.0056,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "WT_COMPOSITE_DELTA_GATE_ENABLED=False",
+    0.0048,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "WT_COMPOSITE_DELTA_GATE_ENABLED=True",
+    0.0553,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "BB_BREAKOUT_TF=OFF",
+    0.042,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED=False",
+    0.0467,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED=True",
+    4.6087,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "CT_CHOP_4H_GATE_ENABLED=False",
+    0.0729,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "CLENOW_GATE_ENABLED=False",
+    0.2026,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "f",
+    "WT_15M_BOUNCE_BB_MAX=0.95",
+    0.0467,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "f",
+    "WT_15M_BOUNCE_LOW_1H_GT_PREV=False",
+    0.0516,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "f",
+    "GR_FILTER_ALL_ENTRIES=True",
+    0.0002,
+    7,
+    18,
+    "type-uncoercible"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "f",
+    "GR_FILTER_ALL_ENTRIES=False",
+    0.4401,
+    3,
+    4,
+    "type-uncoercible"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "ATR_ADAPTIVE_STOP_TF=D",
+    0.0146,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "ATR_ADAPTIVE_STOP_TF=4h",
+    0.0984,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "GAP_MOC_FORCE_MOC_AT_CLOSE=False",
+    0.1584,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "TECHNICAL_DC_STOP_TF=4h",
+    0.0945,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "STDEV_REJECT_EXIT_TF=D",
+    0.5587,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "WICK_REJECT_EXIT_TF=15m",
+    0.0786,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "DC_HARD_STOP_TF=D=D",
+    0.5347,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "MI_WAVE_EXIT_ENABLED=True",
+    0.8827,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "MTF_ATR_TRAIL_ENABLED=True",
+    3.3719,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "HARDCODED_RALLY_MIN_MOVE_PCT=0",
+    0.2073,
+    1,
+    5,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "GUARANTEED_REENTRY_K_FAVORABLE_HIGH=52.5",
+    0.0692,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "MU_CORRECTION_REENTRY_ENABLED=True",
+    0.151,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY_POST_CONSOL_ATR_THRESHOLD=1.0",
+    0.0902,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY2_DC_BREAK_FILTER_TF=4h",
+    0.6975,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "HARDCODED_RALLY_REENTRY_ENABLED=True",
+    0.2125,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "HARDCODED_RALLY_REENTRY_REQUIRE_WT=True",
+    0.0721,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "HARDCODED_RALLY_MIN_MOVE_PCT=0",
+    0.2073,
+    1,
+    5,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "sw",
+    "BREAKOUT_LEASH_REENTRY_MULT=1.5",
+    0.4872,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "sw",
+    "BREAKOUT_LEASH_REENTRY_MULT=1.5",
+    0.4872,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_TREND",
+    "sw",
+    "PYRAMID_SIZE_MULT=0.75",
+    0.0036,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "sw",
+    "WT_15M_BOUNCE_HIGH_1H_GT_PREV=False",
+    0.7146,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "sw",
+    "NOLOSS_BYPASS_WT_5OF5_MIN_TFS=3",
+    1.8123,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "WT_15M_BOUNCE_HIGH_1H_GT_PREV=False",
+    0.7146,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "DYN_STRUCT_TRAIL_ENABLED=True",
+    0.0421,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "REGIME_RANGING_EXIT_GAIN_MIN=0.1875",
+    0.2019,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "GAP_PER_SYMBOL_AVG_THRESH_PCT=0.30",
+    0.001,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "GAP_MOC_DC_PROXIMITY_PCT=0.25",
+    0.0229,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "EXECUTE_NOW_MAX_MARK_AGE_S=30.0",
+    0.1337,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "GOLDEN_RULE_MIN_IND=3",
+    0.6254,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "CT_WT_VELOCITY_1H_MIN=4.5",
+    2.4196,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ]
+  ],
+  "STOCKS_SHORT": [
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "LH_HL_FILTER_REQUIRE_BOTH=False",
+    0.1271,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "LH_HL_FILTER_REQUIRE_BOTH=False",
+    0.1271,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "WT_15M_BOUNCE_BB_MIN=0.05",
+    1.5519,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "WT_15M_BOUNCE_BB_MIN=0.05",
+    1.5519,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "WT_15M_BOUNCE_BB_MIN=0.05",
+    1.5519,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "RZ_BREAKOUT_ENTRY_ENABLED=True",
+    0.9179,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "RZ_BREAKOUT_BAND=0",
+    3.4361,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "QUICK_REENTRY_60MIN_MIN_PCT=0.6",
+    2.1515,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "f",
+    "EMA_9_21_FILTER_MIN_TFS=2",
+    0.2226,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "VWAP_STRETCH_ENTRY_ENABLED=True",
+    0.0178,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "TRAILING_AUG_ENABLED_TRADIER=False",
+    0.0265,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "TRAILING_AUG_ENABLED_TRADIER=True",
+    0.2672,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "BB_BREAKOUT_TF=OFF",
+    0.3303,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "LH_HL_FILTER_DC_THRESHOLD_PCT=0.75",
+    0.4647,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "TECHNICAL_DC_STOP_TF=1h",
+    0.0098,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "TECHNICAL_DC_STOP_TF=15m",
+    0.0169,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "STOCH_CROSS_1H_EXIT_ENABLED=True",
+    0.0011,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "FORMATION_HEAD_SHOULDERS_EXIT_ENABLED=True",
+    0.4149,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "LH_HL_FILTER_TF_REQ=2",
+    0.3915,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "WT_EXIT_MIN_TFS=3",
+    0.4405,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "ATR_TRAIL_FILTER_TF=OFF",
+    0.1029,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "LH_HL_FILTER_TF_REQ=2",
+    0.3915,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "RULE_B_3M_EXIT_ENABLED=False",
+    1.3123,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "DELTA_EXIT_DC_FLOOR=False",
+    0.0419,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "DELTA_EXIT_DC_FLOOR=True",
+    0.1021,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "STDEV_REJECT_EXIT_TF=15m",
+    0.1649,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "LH_LL_TOP_EXIT_REQUIRE_PRICE_CONFIRM=True",
+    0.5579,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "MU_CORRECTION_EXIT_ENABLED=True",
+    0.2855,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "LH_LL_TOP_EXIT_STRUCT_TF=4h,D",
+    0.8526,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "LH_LL_TOP_EXIT_STRUCT_TF=4h",
+    1.2345,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "f",
+    "LH_LL_TOP_EXIT_STRUCT_TF=4h",
+    1.2345,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "f",
+    "LH_LL_TOP_EXIT_STRUCT_TF=4h,D",
+    0.8526,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "f",
+    "LH_LL_TOP_EXIT_REQUIRE_PRICE_CONFIRM=True",
+    0.5579,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "HARDCODED_RALLY_MIN_MOVE_PCT=0",
+    0.2421,
+    1,
+    6,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "HARDCODED_RALLY_HTF_TREND_TF=OFF",
+    0.3966,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "HARDCODED_RALLY_MIN_AGE_MIN=0",
+    1.0529,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "LEGACY_PROC_SINGLE_REENTRY=1.0",
+    0.0317,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY_WT15M_SIZE_MULT=0.5",
+    0.2572,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY2_DC_BREAK_FILTER_TF=1h",
+    0.0071,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY2_DC_BREAK_FILTER_TF=D",
+    0.0306,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "HARDCODED_RALLY_REENTRY_REQUIRE_WT=False",
+    0.463,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "HARDCODED_RALLY_MIN_MOVE_PCT=0",
+    0.2421,
+    1,
+    6,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "HARDCODED_RALLY_MIN_AGE_MIN=0",
+    1.0529,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "HARDCODED_RALLY_HTF_TREND_TF=OFF",
+    0.3966,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "TECHNICAL_DC_TARGET_TF=OFF",
+    2.6016,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "TECHNICAL_DC_TARGET_TF=15m",
+    2.6016,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "TECHNICAL_DC_TARGET_TF=1h",
+    2.6016,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "sw",
+    "REENTRY_APPLY_ENTRY_GATES_ENABLED=False",
+    0.0167,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "sw",
+    "REENTRY_MIN_GAP_MINUTES=0",
+    0.071,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "sw",
+    "PYRAMID_MIN_WT_VEL_1H=3.0",
+    0.1346,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "WT_15M_BOUNCE_BB_MIN=0.2",
+    0.0673,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "MI_DIV_EXIT_ENABLED=True",
+    0.0675,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "WT_EXHAUST_EXIT_REQUIRE_GAIN=1.0",
+    0.2091,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "WT_15M_BOUNCE_LOW_1H_GT_PREV=False",
+    0.321,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "WT_15M_BOUNCE_LOW_1H_GT_PREV=False",
+    0.321,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "WT_15M_BOUNCE_HIGH_1H_GT_PREV=True",
+    0.321,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "WT_15M_BOUNCE_LOW_1H_GT_PREV=True",
+    0.9585,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "WT_15M_BOUNCE_LOW_1H_GT_PREV=False",
+    0.321,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "COUNTER_TREND_SMA200_BYPASS_ENABLED=True",
+    0.001,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "SATOSHIT_ENABLED=False",
+    0.0104,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "ABLATION_DISABLE_AGGRESSIVE_HEDGE=True",
+    0.0,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ]
+  ]
+ },
+ "CRYPTO_LONG": {
+  "rows_with_stats": 1814,
+  "cleared": {},
+  "promoted_switch": [],
+  "promoted_filter": [],
+  "repaired_defaults": [],
+  "violations": [],
+  "floor_guard": {
+   "ok": false,
+   "refuse_all": false,
+   "refused_keys": [
+    "COUNTER_TREND_ADD_BLOCK_ENABLED",
+    "KINDERGARTEN_EMA_GATE_ENABLED"
+   ],
+   "reason": "refused 2 killer key(s); 19 promotion(s) kept",
+   "samples": [
+    "AAVEUSDC_LONG",
+    "AXSUSDT_LONG",
+    "COMPUSDT_LONG",
+    "IOTXUSDT_LONG",
+    "UNIUSDC_LONG"
+   ],
+   "candidate_fail": [
+    "median TIM 12.9 < 20% (baseline 15.5)"
+   ],
+   "eliminated": [],
+   "single_key": {
+    "EZ_MANAGE_THROTTLER_RATE": [
+     371,
+     15.52
+    ],
+    "MARKET_QUALITY_SCORE_ENABLED": [
+     371,
+     15.52
+    ],
+    "LH_HL_FILTER_TF_REQ": [
+     371,
+     15.52
+    ],
+    "KINDERGARTEN_EMA_GATE_ENABLED": [
+     324,
+     13.43
+    ],
+    "COUNTER_TREND_ADD_BLOCK_ENABLED": [
+     337,
+     14.09
+    ],
+    "TRADIER_RSI2_EXIT_THRESHOLD_SHORT": [
+     371,
+     15.52
+    ],
+    "TRAILING_AUG_ENABLED_TRADIER": [
+     371,
+     15.52
+    ],
+    "BB_BREAKOUT_TF": [
+     371,
+     15.52
+    ],
+    "FAST_RISER_DOUBLE_ENABLED": [
+     371,
+     15.52
+    ],
+    "BB_PROFIT_TAKE_TF": [
+     371,
+     15.52
+    ],
+    "STRUCTURAL_RANGE_SHIFT_EXIT": [
+     371,
+     15.52
+    ],
+    "DELTA_EXIT_ENABLED": [
+     371,
+     15.52
+    ],
+    "MTF_DC_REJECT_EXIT_ENABLED": [
+     371,
+     15.52
+    ],
+    "LH_LL_TOP_EXIT_STRUCT_TF": [
+     371,
+     15.52
+    ],
+    "LH_LL_TOP_EXIT_ENABLED": [
+     371,
+     15.52
+    ],
+    "REENTRY_POST_CONSOL_MULT": [
+     371,
+     15.52
+    ],
+    "BTC_GUARANTEED_REENTRY_ENABLED": [
+     371,
+     15.52
+    ],
+    "REENTRY_WT15M_SIZE_MULT": [
+     371,
+     15.52
+    ],
+    "REENTRY2_DC_BREAK_ALLOW_15M": [
+     371,
+     15.52
+    ],
+    "MIN_GAIN_TO_BUY_AGGRESSIVELY": [
+     371,
+     15.52
+    ],
+    "MAX_ORDER_VALUE": [
+     371,
+     15.52
+    ]
+   },
+   "baseline_median": {
+    "med_trades": 371,
+    "med_tim": 15.52
+   },
+   "candidate_median": {
+    "med_trades": 311,
+    "med_tim": 12.88
+   },
+   "final_median": {
+    "med_trades": 371,
+    "med_tim": 15.52
+   }
+  }
+ },
+ "CRYPTO_SHORT": {
+  "rows_with_stats": 1501,
+  "cleared": {},
+  "promoted_switch": [],
+  "promoted_filter": [],
+  "repaired_defaults": [],
+  "violations": [],
+  "floor_guard": {
+   "ok": false,
+   "refuse_all": false,
+   "refused_keys": [
+    "COUNTER_TREND_ADD_BLOCK_ENABLED",
+    "COUNTER_TREND_SMA200_BYPASS_ENABLED",
+    "DC_BREAK_FILTER_TF",
+    "EMA_9_21_FILTER_ENABLED",
+    "KINDERGARTEN_EMA_GATE_ENABLED",
+    "MOM3_FILTER_TF"
+   ],
+   "reason": "refused 6 killer key(s); 14 promotion(s) kept",
+   "samples": [
+    "ACEUSDT_SHORT",
+    "SNXUSDT_SHORT",
+    "SOLUSDC_SHORT",
+    "IOTXUSDT_SHORT",
+    "ZECUSDC_SHORT"
+   ],
+   "candidate_fail": [
+    "median trades 0 < 50% of baseline 101",
+    "median trades 0 < floor 10 (baseline 101)",
+    "median TIM 0.0 < 20% (baseline 6.9)"
+   ],
+   "eliminated": [],
+   "single_key": {
+    "BB_SQUEEZE_ENTRY_ENABLED": [
+     101,
+     6.87
+    ],
+    "EMA_BLANKET_FILTER_FILTER_TF": [
+     101,
+     6.87
+    ],
+    "EMA_9_21_FILTER_FILTER_TF": [
+     101,
+     6.87
+    ],
+    "MOMENTUM_BREAKOUT_FILTER_TF": [
+     101,
+     6.87
+    ],
+    "MOM3_FILTER_TF": [
+     0,
+     0.0
+    ],
+    "DC_BREAK_FILTER_TF": [
+     0,
+     0.0
+    ],
+    "LH_HL_FILTER_TF_REQ": [
+     101,
+     6.87
+    ],
+    "KINDERGARTEN_EMA_GATE_ENABLED": [
+     94,
+     6.42
+    ],
+    "EMA_9_21_FILTER_ENABLED": [
+     97,
+     6.66
+    ],
+    "COUNTER_TREND_ADD_BLOCK_ENABLED": [
+     94,
+     6.53
+    ],
+    "COUNTER_TREND_SMA200_BYPASS_ENABLED": [
+     94,
+     6.53
+    ],
+    "HTF_DIRECTION_GATE_ENABLED": [
+     101,
+     6.87
+    ],
+    "ADX_REGIME_FILTER_ENABLED": [
+     101,
+     6.87
+    ],
+    "REGIME_RANGING_WT_EXIT_VEL": [
+     101,
+     6.87
+    ],
+    "HARDCODED_RALLY_HTF_TREND_TF": [
+     101,
+     6.87
+    ],
+    "HARDCODED_RALLY_MIN_MOVE_PCT": [
+     101,
+     6.87
+    ],
+    "HARDCODED_RALLY_REENTRY_REQUIRE_WT": [
+     101,
+     6.87
+    ],
+    "DAYTRADE_DC_TARGET_TF": [
+     100,
+     7.74
+    ],
+    "SCALP_V3_AUG_BE_STOP_PCT": [
+     101,
+     6.87
+    ],
+    "DC_EDGE_SIZING_MAX_MULT": [
+     101,
+     6.87
+    ]
+   },
+   "baseline_median": {
+    "med_trades": 101,
+    "med_tim": 6.87
+   },
+   "candidate_median": {
+    "med_trades": 0,
+    "med_tim": 0.0
+   },
+   "final_median": {
+    "med_trades": 100,
+    "med_tim": 7.74
+   }
+  }
+ },
+ "STOCKS_LONG": {
+  "rows_with_stats": 1320,
+  "cleared": {},
+  "promoted_switch": [],
+  "promoted_filter": [],
+  "repaired_defaults": [],
+  "violations": [],
+  "floor_guard": {
+   "ok": true,
+   "refuse_all": false,
+   "refused_keys": [],
+   "reason": "combined promotions keep the trade floor",
+   "samples": [
+    "VLO_LONG",
+    "AAPL_LONG",
+    "SNDK_LONG",
+    "AVGO_LONG",
+    "CLS_LONG"
+   ],
+   "candidate_fail": null,
+   "eliminated": null,
+   "single_key": null,
+   "baseline_median": {
+    "med_trades": 11,
+    "med_tim": 41.47
+   },
+   "candidate_median": {
+    "med_trades": 10,
+    "med_tim": 33.54
+   },
+   "final_median": {
+    "med_trades": null,
+    "med_tim": null
+   }
+  }
+ },
+ "STOCKS_SHORT": {
+  "rows_with_stats": 1137,
+  "cleared": {},
+  "promoted_switch": [],
+  "promoted_filter": [],
+  "repaired_defaults": [],
+  "violations": [],
+  "floor_guard": {
+   "ok": true,
+   "refuse_all": false,
+   "refused_keys": [],
+   "reason": "combined promotions keep the trade floor",
+   "samples": [
+    "NKE_SHORT",
+    "BA_SHORT",
+    "ADBE_SHORT",
+    "USAR_SHORT",
+    "EQT_SHORT"
+   ],
+   "candidate_fail": null,
+   "eliminated": null,
+   "single_key": null,
+   "baseline_median": {
+    "med_trades": 18,
+    "med_tim": 55.17
+   },
+   "candidate_median": {
+    "med_trades": 16,
+    "med_tim": 49.71
+   },
+   "final_median": {
+    "med_trades": null,
+    "med_tim": null
+   }
+  }
+ },
+ "saved_promos": {
+  "CRYPTO_LONG": [
+   "EZ_MANAGE_THROTTLER_RATE",
+   "MARKET_QUALITY_SCORE_ENABLED",
+   "LH_HL_FILTER_TF_REQ",
+   "TRADIER_RSI2_EXIT_THRESHOLD_SHORT",
+   "TRAILING_AUG_ENABLED_TRADIER",
+   "BB_BREAKOUT_TF",
+   "FAST_RISER_DOUBLE_ENABLED",
+   "BB_PROFIT_TAKE_TF",
+   "STRUCTURAL_RANGE_SHIFT_EXIT",
+   "DELTA_EXIT_ENABLED",
+   "MTF_DC_REJECT_EXIT_ENABLED",
+   "LH_LL_TOP_EXIT_STRUCT_TF",
+   "LH_LL_TOP_EXIT_ENABLED",
+   "REENTRY_POST_CONSOL_MULT",
+   "BTC_GUARANTEED_REENTRY_ENABLED",
+   "REENTRY_WT15M_SIZE_MULT",
+   "REENTRY2_DC_BREAK_ALLOW_15M",
+   "MIN_GAIN_TO_BUY_AGGRESSIVELY",
+   "MAX_ORDER_VALUE"
+  ],
+  "CRYPTO_SHORT": [
+   "BB_SQUEEZE_ENTRY_ENABLED",
+   "EMA_BLANKET_FILTER_FILTER_TF",
+   "EMA_9_21_FILTER_FILTER_TF",
+   "MOMENTUM_BREAKOUT_FILTER_TF",
+   "LH_HL_FILTER_TF_REQ",
+   "HTF_DIRECTION_GATE_ENABLED",
+   "ADX_REGIME_FILTER_ENABLED",
+   "REGIME_RANGING_WT_EXIT_VEL",
+   "HARDCODED_RALLY_MIN_MOVE_PCT",
+   "HARDCODED_RALLY_HTF_TREND_TF",
+   "HARDCODED_RALLY_REENTRY_REQUIRE_WT",
+   "DAYTRADE_DC_TARGET_TF",
+   "SCALP_V3_AUG_BE_STOP_PCT",
+   "DC_EDGE_SIZING_MAX_MULT"
+  ],
+  "STOCKS_LONG": [
+   "BB_SQUEEZE_ENTRY_ENABLED",
+   "LR_BAND_LADDER_STOCH_EXTREME",
+   "MARKET_QUALITY_SCORE_ENABLED",
+   "ADX_REGIME_FILTER_ENABLED",
+   "EMA_BLANKET_FILTER_FILTER_TF",
+   "EMA_9_21_FILTER_MIN_TFS",
+   "MANDATORY_REENTRY_WT_FILTER_TF_MODE",
+   "KINDERGARTEN_EMA_GATE_ENABLED",
+   "KINDERGARTEN_FILTER_TF",
+   "KINDERGARTEN_CUMULATIVE_MIN_TFS",
+   "EMA_9_21_FILTER_ENABLED",
+   "COUNTER_TREND_ADD_BLOCK_ENABLED",
+   "COUNTER_TREND_SMA200_BYPASS_ENABLED",
+   "ATR_LONG_WINDOW",
+   "BB_BREAKOUT_TF",
+   "GOLDEN_RULE_REQUIRE_ACTIVATION",
+   "FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED",
+   "LH_LL_TOP_EXIT_ENABLED",
+   "LEGACY_REENTRY_PSR_DC_BOUNCE",
+   "LEGACY_REENTRY_PSR_FULL_DC",
+   "GUARANTEED_REENTRY_K_FAVORABLE_HIGH",
+   "REENTRY2_DC_BREAK_FILTER_TF",
+   "MAX_AUGMENTS_PER_POSITION",
+   "BB_PULLBACK_GATE_FILTER_TF"
+  ],
+  "STOCKS_SHORT": [
+   "BB_PULLBACK_GATE_TF",
+   "BB_PULLBACK_GATE_FILTER_TF",
+   "MANDATORY_REENTRY_WT_FILTER_TF_MODE",
+   "KINDERGARTEN_FILTER_TF",
+   "COUNTER_TREND_ADD_BLOCK_ENABLED",
+   "COUNTER_TREND_SMA200_BYPASS_ENABLED",
+   "ATR_ADAPTIVE_STOP_MULT",
+   "BREAKOUT_RETEST_FILTER_TF",
+   "PARABOLIC_PROTECTION_ENABLED",
+   "GOLDEN_RULE_REQUIRE_ACTIVATION",
+   "LH_HL_FILTER_DC_THRESHOLD_PCT",
+   "WT_DC_EXIT_ENABLED",
+   "MI_EXIT_ENABLED",
+   "FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED",
+   "LH_LL_TOP_EXIT_ENABLED",
+   "HARDCODED_RALLY_HTF_TREND_TF",
+   "HARDCODED_RALLY_DC_POS_MAX",
+   "HARDCODED_RALLY_MIN_AGE_MIN",
+   "GUARANTEED_REENTRY_TIGHT_STOP_ENABLED",
+   "REENTRY_TIER1_SIZE_MULT_TRADIER",
+   "REENTRY2_DC_BREAK_FILTER_TF",
+   "HARDCODED_RALLY_REENTRY_ENABLED",
+   "TECHNICAL_DC_TARGET_TF",
+   "REGIME_TRENDING_WT_REDUCE_FRAC_LOW",
+   "TRADIER_RSI2_ENABLED",
+   "GOLDEN_RULE_HTF_MIN_TFS"
+  ]
+ },
+ "promoted_keys": [
+  "ADX_REGIME_FILTER_ENABLED",
+  "ATR_ADAPTIVE_STOP_MULT",
+  "ATR_LONG_WINDOW",
+  "BB_BREAKOUT_TF",
+  "BB_PROFIT_TAKE_TF",
+  "BB_PULLBACK_GATE_FILTER_TF",
+  "BB_PULLBACK_GATE_TF",
+  "BB_SQUEEZE_ENTRY_ENABLED",
+  "BREAKOUT_RETEST_FILTER_TF",
+  "BTC_GUARANTEED_REENTRY_ENABLED",
+  "COUNTER_TREND_ADD_BLOCK_ENABLED",
+  "COUNTER_TREND_SMA200_BYPASS_ENABLED",
+  "DAYTRADE_DC_TARGET_TF",
+  "DC_EDGE_SIZING_MAX_MULT",
+  "DELTA_EXIT_ENABLED",
+  "EMA_9_21_FILTER_ENABLED",
+  "EMA_9_21_FILTER_FILTER_TF",
+  "EMA_9_21_FILTER_MIN_TFS",
+  "EMA_BLANKET_FILTER_FILTER_TF",
+  "EZ_MANAGE_THROTTLER_RATE",
+  "FAST_RISER_DOUBLE_ENABLED",
+  "FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED",
+  "GOLDEN_RULE_HTF_MIN_TFS",
+  "GOLDEN_RULE_REQUIRE_ACTIVATION",
+  "GUARANTEED_REENTRY_K_FAVORABLE_HIGH",
+  "GUARANTEED_REENTRY_TIGHT_STOP_ENABLED",
+  "HARDCODED_RALLY_DC_POS_MAX",
+  "HARDCODED_RALLY_HTF_TREND_TF",
+  "HARDCODED_RALLY_MIN_AGE_MIN",
+  "HARDCODED_RALLY_MIN_MOVE_PCT",
+  "HARDCODED_RALLY_REENTRY_ENABLED",
+  "HARDCODED_RALLY_REENTRY_REQUIRE_WT",
+  "HTF_DIRECTION_GATE_ENABLED",
+  "KINDERGARTEN_CUMULATIVE_MIN_TFS",
+  "KINDERGARTEN_EMA_GATE_ENABLED",
+  "KINDERGARTEN_FILTER_TF",
+  "LEGACY_REENTRY_PSR_DC_BOUNCE",
+  "LEGACY_REENTRY_PSR_FULL_DC",
+  "LH_HL_FILTER_DC_THRESHOLD_PCT",
+  "LH_HL_FILTER_TF_REQ",
+  "LH_LL_TOP_EXIT_ENABLED",
+  "LH_LL_TOP_EXIT_STRUCT_TF",
+  "LR_BAND_LADDER_STOCH_EXTREME",
+  "MANDATORY_REENTRY_WT_FILTER_TF_MODE",
+  "MARKET_QUALITY_SCORE_ENABLED",
+  "MAX_AUGMENTS_PER_POSITION",
+  "MAX_ORDER_VALUE",
+  "MIN_GAIN_TO_BUY_AGGRESSIVELY",
+  "MI_EXIT_ENABLED",
+  "MOMENTUM_BREAKOUT_FILTER_TF",
+  "MTF_DC_REJECT_EXIT_ENABLED",
+  "PARABOLIC_PROTECTION_ENABLED",
+  "REENTRY2_DC_BREAK_ALLOW_15M",
+  "REENTRY2_DC_BREAK_FILTER_TF",
+  "REENTRY_POST_CONSOL_MULT",
+  "REENTRY_TIER1_SIZE_MULT_TRADIER",
+  "REENTRY_WT15M_SIZE_MULT",
+  "REGIME_RANGING_WT_EXIT_VEL",
+  "REGIME_TRENDING_WT_REDUCE_FRAC_LOW",
+  "SCALP_V3_AUG_BE_STOP_PCT",
+  "STRUCTURAL_RANGE_SHIFT_EXIT",
+  "TECHNICAL_DC_TARGET_TF",
+  "TRADIER_RSI2_ENABLED",
+  "TRADIER_RSI2_EXIT_THRESHOLD_SHORT",
+  "TRAILING_AUG_ENABLED_TRADIER",
+  "WT_DC_EXIT_ENABLED"
+ ],
+ "parity_sync": {
+  "keys": 66,
+  "planned": 4,
+  "applied": [
+   {
+    "file": "v12_quick_engine.py",
+    "n": 4,
+    "backup": "before_parity_sync_20261008002735_v12_quick_engine.py"
+   }
+  ],
+  "manual": 0,
+  "error": ""
+ }
+}

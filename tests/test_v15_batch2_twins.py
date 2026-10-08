@@ -67,6 +67,13 @@ def test_registry_batch2_verdicts():
         assert G.FILTER_TF_MAP[n] == ("entry", "wt_cross_side")
 
 
+def test_vec_master_defaults_match_live():
+    import v12_quick_engine as V
+    assert V.QuickConfig.MTF_DC_REJECT_EXIT_ENABLED is False
+    assert V.QuickConfig.BB_FROZEN_STOP_ENABLED is False
+    assert V.QuickConfig.FH_MOMENTUM_ENABLED is True
+
+
 def test_hook_spec_bucket_pruned():
     h = json.load(open("hook_spec_yellow_filters.json"))
     wired = {"FH_MOMENTUM_FILTER_TF", "DELTA_ENGINE_FILTER_TF", "DC_MOMENTUM_BOTA_SCORER_FILTER_TF", "CIRCUIT_SHARPE_GATES_FILTER_TF"}

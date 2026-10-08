@@ -5212,6 +5212,10 @@ class QuickConfig:
         self.REGIME_TRENDING_WT_REDUCE_FRAC_LOW = 0.15
         self.WT_15M_BOUNCE_LOW_1H_GT_PREV = True
         self.WT_DC_TF_ENTRY = '15m'
+        # parity-sync 20261008: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
+        self.MOMENTUM_BREAKOUT_FILTER_TF = 'OFF'
+        self.REENTRY_TIER1_SIZE_MULT_TRADIER = 3.0
+        self.REGIME_RANGING_WT_EXIT_VEL = -1.5
     ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = False  # auto-wired 625
     ABLATION_DISABLE_AUGMENTATION: bool = False  # auto-wired 625
     ABLATION_DISABLE_CHECK_NOLOSS: bool = False  # auto-wired 625
@@ -5539,7 +5543,7 @@ class QuickConfig:
     MTF_ATR_TRAIL_ENABLED_TRADIER: bool = False  # live parity: config_tradier has NO MTF trail knobs → tradier _cfg default False (compound block inert on stocks)
     MTF_ATR_TRAIL_MULT: float = 2.0  # live parity: config.py 2.0 (2026-05-20 USER MANDATE 2x ATR 15m trail)
     MTF_BB_REJECT_EXIT_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
-    MTF_DC_REJECT_EXIT_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
+    MTF_DC_REJECT_EXIT_ENABLED: bool = False  # live parity: ez:50693 + tr:11802 read default False, no config decl (was True on a false parity claim)
     MTF_ENTRY_REQUIRE_GR_FILTER: bool = True  # auto-wired 625
     MTF_EXIT_USE_COMPOUND: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     MTF_GR_EXIT_GATE_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
@@ -6239,7 +6243,7 @@ class QuickConfig:
     MI_VELOCITY_EXIT_ENABLED: bool = True  # 2026-09-28 WAVE4 LIVE PARITY: ez_positions_quick.py:3726+ getattr default True (was auto-added False)
     MI_WAVE_EXIT_ENABLED: bool = True  # 2026-09-28 WAVE4 LIVE PARITY: ez_positions_quick.py:3726+ getattr default True (was auto-added False)
     MOM3_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE1: real gate (vec_decisions/filter_tf_gates); OFF default is behavior-neutral (field was never read before)
-    MOMENTUM_BREAKOUT_FILTER_TF: str = "OFF"  # 2026-09-28 WAVE1: real gate (vec_decisions/filter_tf_gates); OFF default is behavior-neutral (field was never read before)
+    MOMENTUM_BREAKOUT_FILTER_TF: str = "D"  # 2026-09-28 WAVE1: real gate (vec_decisions/filter_tf_gates); OFF default is behavior-neutral (field was never read before)
     MOVER_THRESHOLD: float = 5.0  # auto-added TEMPLATE
     MTF_ARMED_ENTRIES_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     MTF_ATR_TRAIL_FILTER_TF: str = "1h"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
@@ -14745,8 +14749,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 # NO fallback to fixed % when DC active — fixed % eliminated per user 2026-09-26
             except Exception:
                 pass
-        elif _ty_fire:
-            closed, reason = True, _ty_reason
         elif daytrade_on and _w2_atr15 is not None and _w2atr is not None:
             # w2-exits STAGED: DT_TARGET_ATR (ONE call site; fixed-% stays deleted per USER SPEC below).
             try:
@@ -14764,6 +14766,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         elif trail_erosion > 0 and pos['peak_pnl_pct'] > 0 and (pos['peak_pnl_pct'] - live_pnl_pct) >= pos['peak_pnl_pct'] * trail_erosion and (_gftf.get('erosion_confirm') is None or bool(_gftf['erosion_confirm'][i])):
             closed, reason = True, 'WIN_TRAIL_EROSION'
 
+        if (not closed) and _ty_fire:
+            closed, reason = True, _ty_reason
         if closed and vec_decisions.noloss_gate.noloss_blocks(cfg, reason, live_pnl_pct):
             closed = False  # [C2 b5b] live UNIVERSAL_NOLOSS_GATE (default OFF) blocks a technical close at a real loss
         if closed and _qta_eb_block is not None and bool(_qta_eb_block[i]):
