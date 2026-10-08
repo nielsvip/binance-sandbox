@@ -1,22 +1,22 @@
 {
- "now": "2026-10-08T22:37:33.729546+00:00",
+ "now": "2026-10-08T23:37:36.731341+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 7359,
- "last_exit_ts": "2026-10-08T22:36:48.867888+00:00",
+ "n_exit_rows": 7307,
+ "last_exit_ts": "2026-10-08T23:36:40.153453+00:00",
  "n_leaks": 27,
- "n_gate_on": 4783,
+ "n_gate_on": 4751,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 524,
+ "n_unmapped": 522,
  "n_unverified": 2,
- "since": "2026-10-06T22:37:33.729546+00:00",
+ "since": "2026-10-06T23:37:36.731341+00:00",
  "vec_exact_by_action": {
-  "CLOSE": 475,
-  "OPEN": 1501,
-  "REDUCE": 46,
+  "OPEN": 1488,
+  "CLOSE": 471,
+  "REDUCE": 45,
   "AUGMENT": 1
  },
- "native_rows": 5336,
+ "native_rows": 5302,
  "unverified_by_family": {
   "ULTIMATE_DC (None=None)": 2
  },
@@ -30,14 +30,14 @@
   "WT_LOWER_CROSS_EXIT men:EDUUSDT_LONG": 4
  },
  "gate_on_by_family": {
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 4115,
-  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 346,
-  "CYCLE_TP (CYCLE_TP_TIERED_ENABLED)": 9,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 4088,
+  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 345,
   "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 295,
   "DC_BASIS_3M_REDUCE (DC_BASIS_3M_REDUCE_ENABLED)": 2,
   "MTF_BB_REJECT_EXIT (MTF_BB_REJECT_EXIT_ENABLED)": 4,
   "DC_DAYTRADE_STOP (DC_DAYTRADE_ENABLED)": 3,
-  "PARTIAL_PROFIT_LOCK (PARTIAL_PROFIT_LOCK_ENABLED)": 9
+  "PARTIAL_PROFIT_LOCK (PARTIAL_PROFIT_LOCK_ENABLED)": 9,
+  "CYCLE_TP (CYCLE_TP_TIERED_ENABLED)": 5
  },
  "ungated_by_family": {},
  "safety_by_family": {},
@@ -52,9 +52,9 @@
   "RSI2_EXIT_LIVE_rsi2=2.7_thr=10.0": 11,
   "SUBSTITUTION_FOR_men:ETHUSDC_SHORT": 10,
   "RSI2_EXIT_LIVE_rsi2=7.7_thr=10.0": 10,
-  "ORPHANED_HEDGE_PARENT_CLOSED": 9,
   "SUBSTITUTION_FOR_men:COMPUSDT_SHORT": 9,
   "SUBSTITUTION_FOR_men:BNBUSDC_LONG": 9,
+  "ORPHANED_HEDGE_PARENT_CLOSED": 8,
   "SUBSTITUTION_FOR_men:EDUUSDT_LONG": 8,
   "SUBSTITUTION_FOR_men:SKYUSDT_SHORT": 8,
   "RSI2_EXIT_LIVE_rsi2=5.0_thr=10.0": 8,
@@ -94,10 +94,10 @@
   "CB_HTF_EXHAUST_HTF_EXHAUST: g=-0.67% a": 3
  },
  "actions": {
-  "CLOSE": 5575,
-  "OPEN": 1501,
-  "REDUCE": 57,
-  "QUICK_CLOSE": 216,
+  "CLOSE": 5543,
+  "OPEN": 1488,
+  "QUICK_CLOSE": 214,
+  "REDUCE": 52,
   "QUICK_REDUCE": 9,
   "AUGMENT": 1
  }
