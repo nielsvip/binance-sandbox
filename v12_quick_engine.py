@@ -14745,6 +14745,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 # NO fallback to fixed % when DC active — fixed % eliminated per user 2026-09-26
             except Exception:
                 pass
+        elif _ty_fire:
+            closed, reason = True, _ty_reason
         elif daytrade_on and _w2_atr15 is not None and _w2atr is not None:
             # w2-exits STAGED: DT_TARGET_ATR (ONE call site; fixed-% stays deleted per USER SPEC below).
             try:
