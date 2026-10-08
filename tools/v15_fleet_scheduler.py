@@ -887,7 +887,12 @@ def tick(args, cfg, now):
                 _afd = pathlib.Path(os.path.expanduser("~/v15_autopsy_first"))
                 _bp = _afd / f"{ss}_autopsy_base.json"
                 try:
-                    _ok = (_bp.exists() and "effective_switches" in _bp.read_text()) or ((_afd / f"{ss}_autopsy.json").exists() and not _bp.exists())
+                    _ok = _bp.exists() and "effective_switches" in _bp.read_text()
+                    if not _ok and not _bp.exists() and (_afd / f"{ss}_autopsy.json").exists():
+                        # NO_RESCUE report: launchable from the template only if the template base actually trades — 83 STOCKS_LONG
+                        # bases have 0 trades (2026-10-08 19:1xZ) and such a board is 3358 ZERO_TRADES rows for nothing (AAPL_SHORT).
+                        _rep = json.load(open(_afd / f"{ss}_autopsy.json"))
+                        _ok = int(((_rep.get("base") or {}).get("trades") or 0)) > 0
                 except Exception:
                     _ok = False
                 if not _ok:
