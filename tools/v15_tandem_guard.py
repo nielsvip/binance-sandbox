@@ -31,7 +31,7 @@ os.chdir(ROOT)
 CODE = ["config.py", "config_tradier.py", "v12_quick_engine.py"]
 CAT_SIDES = ["CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT"]
 S1 = os.environ.get("V15_CHAIN_S1", "s1-pub")
-FLEET = os.environ.get("V15_TANDEM_HOSTS", "s1-pub s2 s5").split()
+FLEET = os.environ.get("V15_TANDEM_HOSTS", "s1-pub s2 s5 s6").split()
 SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10"]
 
 

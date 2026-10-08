@@ -4720,7 +4720,7 @@ class QuickConfig:
     REENTRY_WT15M_SIZE_MULT: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
     RZ_BREAKOUT_BAND: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
     RZ_BREAKOUT_ENTRY_ENABLED: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    STDEV_BREAKOUT_PCTB_LONG: float = 1.125  # FIX 2026-09-13: was 0.5 generic — align to config 1.125 (was causing -0.125 drift mask always-fire)
+    STDEV_BREAKOUT_PCTB_LONG: float = 1.0  # 2026-10-08 tandem: crypto truth = config.py 1.0 (TEMPLATE bold + cat_side); stocks 1.125 via apply_tradier_defaults overlay
     STDEV_BREAKOUT_PCTB_SHORT: float = -0.125  # FIX 2026-09-13: was 0.5 generic — align to config -0.125
     STDEV_REJECT_EXIT_TF: str = "OFF"  # FIX 2026-09-06: LIVE_ONLY auto-added
     UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED: bool = True  # 2026-09-28 LIVE PARITY: config.py:899 = True; drives the vec gain-ladder augment
@@ -6355,7 +6355,7 @@ class QuickConfig:
     SIMPLE_TP_EXIT_ENABLED: bool = False  # auto-added TEMPLATE
     SIMPLE_TP_PCT: float = 0.5  # auto-added TEMPLATE
     STDEV_BREAKOUT_EXIT_PCTB_FAIL: float = 0.75  # auto-added TEMPLATE
-    STDEV_BREAKOUT_PCTB_LONG: float = 1.125  # auto-added TEMPLATE
+    STDEV_BREAKOUT_PCTB_LONG: float = 1.0  # auto-added TEMPLATE  # 2026-10-08 tandem: duplicate decl kept in step with 4723 (crypto 1.0; stocks overlay 1.125)
     STDEV_BREAKOUT_PCTB_SHORT: float = -0.125  # auto-added TEMPLATE
     STDEV_REJECT_EXIT_TF: str = 'D'  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     STDEV_SUPPRESS_EARLY_EXIT: float = 0.0  # auto-added TEMPLATE generic

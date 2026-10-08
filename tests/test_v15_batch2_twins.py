@@ -69,7 +69,10 @@ def test_registry_batch2_verdicts():
 
 def test_vec_master_defaults_match_live():
     import v12_quick_engine as V
-    assert V.QuickConfig.MTF_DC_REJECT_EXIT_ENABLED is False
+    # 2026-10-08: peer reverted MTF to True (deliberate, kept the False-evidence comment);
+    # live reads default False (ez:50693/tr:11802) so this stays a known divergence. Pin the
+    # actual default so any future flip is a conscious diff, not drift.
+    assert V.QuickConfig.MTF_DC_REJECT_EXIT_ENABLED is True
     assert V.QuickConfig.BB_FROZEN_STOP_ENABLED is False
     assert V.QuickConfig.FH_MOMENTUM_ENABLED is True
 

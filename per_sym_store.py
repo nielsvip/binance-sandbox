@@ -775,10 +775,15 @@ def upsert(
         json_path = CRYPTO_JSON if is_crypto else STOCKS_JSON
     try:
         json_path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            raw = json.loads(json_path.read_text()) if json_path.exists() else {}
-        except Exception:
-            raw = {}
+        raw = None
+        for _att in range(5):
+            try:
+                raw = json.loads(json_path.read_text()) if json_path.exists() else {}
+                break
+            except Exception:
+                time.sleep(0.5)
+        if raw is None:
+            raise RuntimeError(f"unreadable JSON book after retries: {json_path}")
         _meta = raw.pop("_meta", None) if isinstance(raw, dict) else None
         entry = dict(meta)
         entry["overrides"] = overrides
@@ -797,7 +802,7 @@ def upsert(
         raw[sym_side] = entry
         if _meta is not None:
             raw["_meta"] = _meta
-        tmp = json_path.with_suffix(".json.tmp")
+        tmp = json_path.with_suffix(f".json.tmp.{os.getpid()}")
         tmp.write_text(json.dumps(raw, indent=2, default=str))
         tmp.replace(json_path)
     except Exception as _e:
