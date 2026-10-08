@@ -8244,6 +8244,11 @@ def main():
                         print(f"[ROW-UNSETTLED] {new_symside} {sheet}!{r} {switch}={cand} yellow {hdr} gain-missing", flush=True)
                     continue
                 vg = float(_vg_raw); delta = vg - cumulative_before
+                if delta > 0 and not vec.get('valid'):
+                    # 2026-10-08 (USER gains lane, BIBLE §19 no fabricated deltas): an INVALID result (trades < floor / TIM / DD gate) is never a
+                    # positive delta — a 0-trade candidate vs a negative cumulative read as +gain and got promoted (MOM3_FILTER_TF=D killed 127/127 CRYPTO_SHORT boards)
+                    print(f"[INVALID-CANDIDATE] {new_symside} {sheet}!{r} {switch}={cand} {hdr if filt is not None else 'alone'}: delta {delta:+.4f} -> 0.0 ({str(vec.get('invalid_reason'))[:60]})", flush=True)
+                    delta = 0.0
                 if filt is not None and hdr in htc:
                     pending_lbI[hdr] = float(delta)
                     evaluated_hdrs.add(hdr)
@@ -8997,6 +9002,10 @@ def main():
                             continue
                         vg = float(_vg_raw)
                         delta = vg - cumulative_before
+                        if delta > 0 and not vec.get('valid'):
+                            # 2026-10-08 (USER gains lane, BIBLE §19): an INVALID result is never a positive delta (see the first guard above)
+                            print(f"[INVALID-CANDIDATE] {new_symside} {sheet}!{r} {switch}={cand} {hdr if filt is not None else 'alone'}: delta {delta:+.4f} -> 0.0 ({str(vec.get('invalid_reason'))[:60]})", flush=True)
+                            delta = 0.0
                         if filt is None:
                             print(f"[CANDIDATE] {sheet}!{r} {switch}={cand} alone vec_gain={vg:.4f} delta={delta:.4f} vs cum {cumulative_before:.4f} trades={vec.get('trades')} sharpe={float(vec.get('pool_sharpe') or 0):.4f}", flush=True)
                         else:
