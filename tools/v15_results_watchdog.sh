@@ -17,7 +17,7 @@ cd /home/niels/binance-sandbox || exit 1
 RESULT_WINDOW_MIN=${V15_RESULTS_WINDOW_MIN:-40}; PROGRESS_STALL_MIN=${V15_PROGRESS_STALL_MIN:-20}; SYM_STALL_MIN=${V15_SYM_STALL_MIN:-30}; BOOT_GRACE_MIN=${V15_BOOT_GRACE_MIN:-20}
 LOG=/tmp/v15_results_watchdog.log; ST=/tmp/v15_results_watchdog_state.json; AL=data/daily_chain
 log(){ echo "[$(date -u +%FT%TZ)] [results-wd] $*" >> $LOG; }
-[ -f $ST ] || echo '{}' > $ST
+[ -f $ST ] && python3 -c "import json;json.load(open('$ST'))" 2>/dev/null || echo '{}' > $ST  # unreadable (disk-full) state -> reset, never crash
 NOW=$(date +%s); TS=$(date -u +%Y%m%d%H%M)
 HOSTS=$(python3 -c "import json;print(' '.join(h['name']+':'+h['ssh'][0] for h in json.load(open('tools/fleet_hosts_final.json'))['hosts']))")
 for HS in $HOSTS; do
@@ -38,6 +38,12 @@ for HS in $HOSTS; do
     log "$H STUCK SYM_SIDE $ss (progress silent >= ${SYM_STALL_MIN}m) -> pilot killed (scheduler attempts++ -> skipped after max-attempts)"
   done
   if [ "$UP" -lt $((BOOT_GRACE_MIN*60)) ]; then log "$H booted $((UP/60))m ago -> grace"; continue; fi
+  # 2026-10-08 17:50Z misfire: a fresh round (new EMPTY progress dir) has no progress file yet -> NEWEST=0 -> "silent 29858030m" ->
+  # S1 pilots killed, s2/s5/s6 rebooted. An empty round dir is ROUND-FRESH, never a stall.
+  if [ "$NEWEST" -eq 0 ]; then
+    python3 -c "import json;s=json.load(open('$ST'));s['$H']={'strikes':0,'last_ok':$NOW};json.dump(s,open('$ST','w'))" 2>/dev/null
+    log "$H round-fresh (no progress file in the current round dir yet) pilots=$PIL -> ok"; continue
+  fi
   PROG_AGE=$(( (NOW - NEWEST) / 60 ))
   if [ "$PIL" -eq 0 ]; then
     python3 -c "import json;s=json.load(open('$ST'));s['$H']={'strikes':0,'last_ok':$NOW};json.dump(s,open('$ST','w'))"
