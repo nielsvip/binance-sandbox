@@ -119,6 +119,7 @@ def cleanup_temp_files():
     total_size=0
     removed=0
     for tmp_file in BASE_PATH.rglob("*.tmp"):
+        if not tmp_file.is_file(): continue
         try:
             size=tmp_file.stat().st_size
             total_size+=size
@@ -215,10 +216,14 @@ def cleanup_data_dir():
             except Exception: pass
     
     # 2. KEEP one file per 15min bin for backtesting (market_data_*.json, tradier_indicators_*.json, etc.)
+    # LIVE STATE DENYLIST (2026-10-08): never thin these — thinning cost us indicators_worker0/1/3.json
+    # + s2_365_progress_p1.json on 2026-10-08 (restored from snapshot). Thinning is for snapshots only.
+    STATE_KEEP=("indicators_worker","s2_365_progress","cat_side_defaults","scalper_monitor_","avg2_sources","direct_v8_digest_state","per_sym_bestsync","365d_holdup","latest_market_data")
     all_files = []
     now = time.time()
     for f in data_dir.glob("*"):
         if not f.is_file(): continue
+        if any(k in f.name for k in STATE_KEEP): continue
         if any(char.isdigit() for char in f.name) and (f.suffix in ['.json', '.txt']):
             all_files.append((f.stat().st_mtime, f))
     if not all_files:
@@ -332,6 +337,43 @@ def cleanup_reentry_queue_done(keep_hours=24):
     print(f"   ✅ Removed {removed} reentry done/ files ({format_size(total_size)})")
     return total_size
 
+def cleanup_safe_subset():
+    """Auto-mode subset: everything EXCEPT backups/ (standing policy: backups/ is the
+    only reliable history — never auto-deleted). Klines already disabled in code."""
+    total_freed=0
+    total_freed+=cleanup_backup_before_save()
+    total_freed+=cleanup_temp_files()
+    total_freed+=cleanup_old_logs(keep_days=7)
+    total_freed+=cleanup_old_klines(keep_days=30)
+    total_freed+=cleanup_pycache()
+    total_freed+=cleanup_data_dir()
+    total_freed+=cleanup_plots()
+    total_freed+=cleanup_reentry_queue_done(keep_hours=24)
+    return total_freed
+
+def auto_main(threshold_pct=85):
+    """Run cleanup_safe_subset() only when disk use >= threshold. For cron (live tree)."""
+    print("="*80)
+    print(f"DISK CLEANUP AUTO (threshold {threshold_pct}%) — {datetime.now(timezone.utc):%Y-%m-%dT%H:%M:%SZ}")
+    print("="*80)
+    print(f"Base path: {BASE_PATH}")
+    try:
+        usage=shutil.disk_usage(str(BASE_PATH))
+    except Exception as e:
+        print(f"ABORT: cannot stat disk for {BASE_PATH}: {e}")
+        return 2
+    used_pct=100.0*(usage.used/usage.total) if usage.total else 0.0
+    print(f"Disk: {format_size(usage.used)}/{format_size(usage.total)} ({used_pct:.1f}% used)")
+    if used_pct < threshold_pct:
+        print(f"Below threshold ({threshold_pct}%) — nothing to do.")
+        return 0
+    print(f"At/above threshold ({threshold_pct}%) — running safe subset (backups/ + klines excluded).")
+    freed=cleanup_safe_subset()
+    print("\n"+"="*80)
+    print(f"AUTO TOTAL FREED: {format_size(freed)}")
+    print("="*80)
+    return 0
+
 def main():
     print("="*80)
     print("DISK CLEANUP SCRIPT")
@@ -359,4 +401,8 @@ def main():
     print("\n✅ Cleanup complete!")
 
 if __name__=="__main__":
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--auto":
+        threshold=int(sys.argv[2]) if len(sys.argv) > 2 else 85
+        sys.exit(auto_main(threshold))
     main()
