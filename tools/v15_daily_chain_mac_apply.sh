@@ -21,6 +21,17 @@ DRYRUN=${DRYRUN:-0}
 S1=${V15_CHAIN_S1:-s1-pub}
 HOSTS=${V15_CHAIN_HOSTS:-"s1-pub s2 s5 s6"}
 SSH="ssh -o BatchMode=yes -o ConnectTimeout=10"
+# 2026-10-08 USER (QuickConfig tandem lane): a late S1 chain (landed after the 20:00Z retry, e.g. 2026-10-07 landed 00:04Z
+# next day) must still be applied at the next slot -> without CHAIN_DATE pick the NEWEST S1 DONE stamp (today, else
+# yesterday) that has no Mac DONE stamp yet. Today-without-stamp still waits as before.
+if [ -z "${CHAIN_DATE:-}" ]; then
+  for _D in $(date -u +%Y%m%d) $(date -u -v-1d +%Y%m%d 2>/dev/null || date -u -d yesterday +%Y%m%d); do
+    if $SSH "$S1" "grep -Eq '\"status\": ?\"DONE\"' ~/binance-sandbox/data/daily_chain/$_D.json" 2>/dev/null; then
+      if ! grep -q '"status":"DONE"' "$ROOT/data/daily_chain/${_D}_mac_apply.json" 2>/dev/null; then DATE=$_D; fi
+      break
+    fi
+  done
+fi
 CODE="config.py config_tradier.py v12_quick_engine.py"
 CS4="CRYPTO_LONG CRYPTO_SHORT STOCKS_LONG STOCKS_SHORT"
 TS=$(date -u +%Y%m%d%H%M)
