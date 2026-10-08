@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
-from v15_fleet_scheduler import _est_pair_mb, _growth_debt_mb, _progress_done_rows, _rank_oom_victim, _reap_attempt_keys, _stall_tick, _swap_admit_ok
+from v15_fleet_scheduler import _est_pair_mb, _growth_debt_mb, _progress_done_rows, _rank_oom_victim, _reap_burn_weight, _stall_tick, _swap_admit_ok
 
 
 class EstPairTest(unittest.TestCase):
@@ -89,16 +89,21 @@ class DoneRowsTest(unittest.TestCase):
         p.unlink()
 
 
-class ReapKeysTest(unittest.TestCase):
-    def test_nonorphan_consumes_last_act(self):
-        acts = [{"ss": "KSMUSDT_SHORT", "why": "wedged: blah (TERM)", "pids": [1]},
-                {"ss": "X_LONG", "why": "orphaned workers (parent gone)", "pids": [2]}]
-        self.assertEqual(_reap_attempt_keys(acts, {"KSMUSDT_SHORT": "KSMUSDT_SHORT|30D", "X_LONG": "X_LONG|30D"}), ["KSMUSDT_SHORT|30D"])
+class ReapBurnTest(unittest.TestCase):
+    def test_stall_wedge_hardcap_burn_3_on_30d(self):
+        self.assertEqual(_reap_burn_weight("wedged: blah (TERM)", "KSMUSDT_SHORT|30D"), 3)
+        self.assertEqual(_reap_burn_weight("stuck: no progress (TERM)", "A_LONG|30D"), 3)
+        self.assertEqual(_reap_burn_weight("hardcap 480min (TERM)", "A_LONG|30D"), 3)
 
-    def test_missing_last_act_fails_open(self):
-        acts = [{"ss": "KSMUSDT_SHORT", "why": "wedged (TERM)", "pids": [1]}]
-        self.assertEqual(_reap_attempt_keys(acts, {}), [])
-        self.assertEqual(_reap_attempt_keys([], {"A": "B"}), [])
+    def test_oom_and_chains_burn_1(self):
+        self.assertEqual(_reap_burn_weight("OOM guard: blah, least-progress victim (TERM)", "A_LONG|30D"), 1)
+        self.assertEqual(_reap_burn_weight("wedged: blah (TERM)", "A_LONG|365D"), 1)
+        self.assertEqual(_reap_burn_weight("stuck: blah (TERM)", "A_LONG|REPAIR1"), 1)
+
+    def test_orphan_burns_0_and_junk_safe(self):
+        self.assertEqual(_reap_burn_weight("orphaned workers (parent gone)", "X_LONG|30D"), 0)
+        self.assertEqual(_reap_burn_weight(None, None), 1)
+        self.assertEqual(_reap_burn_weight(42, 42), 1)
 
 
 class StallTickTest(unittest.TestCase):

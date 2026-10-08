@@ -564,20 +564,21 @@ def _rank_oom_victim(cands):
     return best
 
 
-def _reap_attempt_keys(actions, last_act):
-    """Non-orphan reaps consume the attempt of the act they were running (USER 2026-10-08:
-    the KSM wedge relaunched forever because kills never burned budget)."""
-    keys = []
-    for a in actions or []:
-        try:
-            if str(a.get("why") or "").startswith("orphaned"):
-                continue
-            k = (last_act or {}).get(a.get("ss"))
-            if k:
-                keys.append(k)
-        except Exception:
-            continue
-    return keys
+def _reap_burn_weight(why, key):
+    """Attempt burn per reap (USER 2026-10-08: stalled sides skip fast, OOM sides forgive).
+    Stall/wedge/hardcap on 30D = side-fault -> 3 (parks after 2 trips, ~4x faster than
+    before); OOM/chain stalls -> 1 (host pressure or slow act, deserves relaunch);
+    orphan hygiene -> 0. Never raises."""
+    try:
+        w = str(why or "")
+        k = str(key or "")
+    except Exception:
+        return 1
+    if w.startswith("orphaned"):
+        return 0
+    if k.endswith("|30D") and (w.startswith("stuck:") or w.startswith("wedged:") or w.startswith("hardcap")):
+        return 3
+    return 1
 
 
 def _stall_tick(prev_pending, prev_same, cur_pending, warn_ticks=60):
@@ -786,8 +787,10 @@ def tick(args, cfg, now):
                 gone = {a_["ss"] for a_ in r_["actions"] if not a_["why"].startswith("orphaned")}
                 for ss_ in gone:
                     stats[h_["name"]]["running"].pop(ss_, None)
-                for k_ in _reap_attempt_keys(r_["actions"], st.get("last_act")):
-                    st["attempts"][k_] = st["attempts"].get(k_, 0) + 1
+                for a_ in r_["actions"] or []:
+                    k_ = (st.get("last_act") or {}).get(a_.get("ss"))
+                    if k_:
+                        st["attempts"][k_] = st["attempts"].get(k_, 0) + _reap_burn_weight(a_.get("why"), k_)
                 for a_ in r_["actions"]:
                     print(f"[reap] {h_['name']} {a_['ss']} {a_['why']} pids={a_['pids']}", flush=True)
     cur_pdir = next((x["pdir"] for x in stats.values() if x and x.get("pdir")), None)
