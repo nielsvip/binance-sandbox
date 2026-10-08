@@ -194,15 +194,24 @@ def record_evaluated_at(rec):
         return None
 
 
+def _record_complete(rec):
+    """a copy counts as complete when it carries a final per-sym set plus fresh full-set metrics (2026-10-08: a fresh
+    campaign dir holds newer-but-partial copies that must not shadow the complete evaluation from the previous one)."""
+    dr = rec.get("diagnose_repair") or {}
+    after = dr.get("after") if isinstance(dr, dict) else None
+    return bool(rec.get("has_cumulative_overrides")) and isinstance(after, dict) and after.get("gain") is not None
+
+
 def dedupe_records(records):
-    """one record per sym_side across hosts (pilots fan progress copies out to peers; rsync keeps mtimes): newest file
-    mtime (the authoring host keeps writing after the copy was pushed), then biggest file. Unreadable copies lose."""
+    """one record per sym_side across hosts and campaign dirs (pilots fan progress copies out to peers; rsync keeps
+    mtimes): readable beats unreadable, complete beats partial, then newest file mtime (the authoring host keeps
+    writing after the copy was pushed), then biggest file."""
     best = {}
     for rec in records:
         ss = rec.get("sym_side")
         if not ss:
             continue
-        key = (0 if rec.get("error") else 1, float(rec.get("mtime") or 0), int(rec.get("size") or 0))
+        key = (0 if rec.get("error") else 1, 1 if _record_complete(rec) else 0, float(rec.get("mtime") or 0), int(rec.get("size") or 0))
         if ss not in best or key > best[ss][0]:
             best[ss] = (key, rec)
     return {ss: v[1] for ss, v in best.items()}

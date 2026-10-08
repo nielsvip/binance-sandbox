@@ -190,6 +190,18 @@ def test_dedupe_prefers_newest_mtime_and_readable():
     assert out["ALGOUSDT_LONG"]["fetched_from"] == "s5"
 
 
+def test_dedupe_prefers_complete_over_newer_partial():
+    # 2026-10-08: a fresh campaign dir's partial copy must not shadow the complete evaluation
+    old = rec("QTUMUSDT_LONG", gain=24.0)
+    old["mtime"] = NOW.timestamp() - 7200
+    new = rec("QTUMUSDT_LONG", gain=24.0, has_cumulative_overrides=False, diagnose_repair={"skipped": "fresh run"})
+    new["mtime"] = NOW.timestamp() - 100
+    assert U.dedupe_records([old, new])["QTUMUSDT_LONG"]["mtime"] == old["mtime"]
+    new2 = rec("QTUMUSDT_LONG", gain=25.0)
+    new2["mtime"] = NOW.timestamp() - 100
+    assert U.dedupe_records([old, new2])["QTUMUSDT_LONG"]["mtime"] == new2["mtime"]
+
+
 def test_open_inf_positions_reader(tmp_path):
     lp, sp, tr = tmp_path / "long_positions.json", tmp_path / "short_positions.json", tmp_path / "tracker.json"
     lp.write_text(json.dumps({"inf:AUSDT_LONG": {"positionAmt": 3.0}, "inf:BUSDT_LONG": {"positionAmt": 0.0}, "men:CUSDT_LONG": {"positionAmt": 1.0}}))

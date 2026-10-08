@@ -1438,11 +1438,15 @@ Mon 2026-10-05 06:00 UTC: best (newest-round) 30D sheet of every sym_side → 36
    within minutes via the positions service cleanup, and live `ez_manage --account inf` picks both up with no restart
    (symbols reload every 3 min, tradeable every 180 s). Tool: `tools/v15_daily_inf_universe.py --apply --top 15`, run as
    step 5d of the Mac chain follow-up (`tools/v15_daily_chain_mac_apply.sh`, right after the per-sym go-live + size
-   tiers, non-fatal, result in the DONE stamp) with the 15:05Z `V15_INF_UNIVERSE_APPLY` cron as backstop. Writer
-   ownership: the chain OWNS `symbols_inf_*.json` — `ez_rankings.py` `INF_BEST_SAVE` (rewrites both files every ~2.5 min
-   from `SPREADSHEETS/BEST`) and the `tradier_rankings.py` `INF_HOOK` (stock-twin mirror in market hours) must yield to
-   the chain books (OPEN as of 2026-10-08: both files are locked, unlock + redirect pending — until then a chain write is
-   clobbered within minutes and the live universe stays the BEST-15). News-scanner injections stay additive (TTL 48 h).
+   tiers, non-fatal, result in the DONE stamp) with the 15:05Z `V15_INF_UNIVERSE_APPLY` cron as backstop. Fetch unions
+   the pointer dir + every `~/v15_*` campaign dir + the lifecycle_pilot dir (pointers rotate fleet-wide; the day boundary
+   is the 36h evaluated filter, not the directory); `--apply` refuses on a thin fleet view (< `--min-records` 20 sym_sides);
+   dedupe prefers a complete evaluation over a newer partial copy. Writer ownership: the chain OWNS `symbols_inf_*.json` —
+   `ez_rankings.py` `INF_BEST_SAVE` is SUSPENDED since 2026-10-08 (USER order: short-term gainers had horrific results;
+   `INF_BEST_SAVE_SUSPENDED=True`, resume = flip + rankings restart; verified live: SUSPENDED marker, zero writes, pilot
+   books stick). The `tradier_rankings.py` `INF_HOOK` is OUT OF SCOPE per user ("tradier has nothing to do with this",
+   2026-10-08) — left untouched; it only fires when tradier_rankings runs in market hours, so if stock twins ever appear
+   in the books intraday, that hook is the source. News-scanner injections stay additive (TTL 48 h).
 4. **Live trades those settings with functions identical to the vectorized ones** (§68.1). Precedence everywhere:
    per-sym > cat_side > global, identical in live and vector.
 5. The fleet then sweeps on the new defaults (S1 coordinator; each sym_side baselined on its previous best) and the next
