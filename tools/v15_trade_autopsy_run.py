@@ -22,6 +22,8 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+AUTOPSY_DENY = {"MODE", "SIMPLE_PRICE_GT0_ENABLED", "VENUE", "IS_TRADIER"}
+AUTOPSY_DENY_PREFIX = ("ABLATION_",)
 sys.path.insert(0, str(ROOT))
 os.chdir(ROOT)
 PREP = None
@@ -75,7 +77,11 @@ def run_one(ss: str, out: Path, workers: int, set_json: str | None, dirs: list) 
         mis = sum(1 for t in base if 0 <= t["be"] < n and t["entry_price"] and abs(close[t["be"]] - t["entry_price"]) / t["entry_price"] > 0.02)
         moves = TA.missed_moves(base, close, is_long)
         # sizing multipliers scale $ and peak together — notional, not edge (v15_pilot SIZING_FALSE_ALPHA) → excluded
-        cands = [c for c in candidates_for(ss, defaults, P) if not c.get("blocked") and not any(t in c["switch"].upper() for t in ("SIZE_MULT", "SIZING", "POSITION_SIZE", "_SIZE"))]
+        # 2026-10-08 CONTAMINATION FIX: engine-level artefacts are never strategy candidates — MODE=crypto "rescued" 71 stocks
+        # bases (ABBV_LONG 0.43 -> 2.91 by running the stock in crypto engine mode), SIMPLE_PRICE_GT0 70 more. Denied here so no
+        # base, prior or board can carry them (v15_autopsy_priors has the same deny-list).
+        cands = [c for c in candidates_for(ss, defaults, P) if not c.get("blocked") and not any(t in c["switch"].upper() for t in ("SIZE_MULT", "SIZING", "POSITION_SIZE", "_SIZE"))
+                 and str(c["switch"]).strip() not in AUTOPSY_DENY and not str(c["switch"]).strip().startswith(AUTOPSY_DENY_PREFIX)]
         items = []
         for c in cands:
             v = dict(base_ov)

@@ -114,6 +114,15 @@ def main():
     selection = pathlib.Path(dated).with_suffix(".selection.json") if dry else ROOT / "data" / "avg_delta_selection.json"
     selection.parent.mkdir(parents=True, exist_ok=True)
     selection.write_text(json.dumps({s: {"host": r[6], "path": r[5], "real": r[1], "mtime": r[4]} for s, r in sel.items()}, indent=1))
+    # USER 2026-10-08 (#4 approved): cat_side PRIORS from the autopsy-first bases — engine-verified combo deltas for sym_sides
+    # that have NO board in this selection (never double-counted), same partial shape. V15_AUTOPSY_PRIORS=0 disables.
+    if os.environ.get("V15_AUTOPSY_PRIORS", "1") != "0":
+        _pp = tmp / "autopsy_priors.json"
+        _pr = subprocess.run([sys.executable, str(ROOT / "tools" / "v15_autopsy_priors.py"), "--bases", os.environ.get("V15_AUTOPSY_BASES", os.path.expanduser("~/v15_autopsy_first")),
+                              "--out", str(_pp), "--exclude-selection", str(selection)], capture_output=True, text=True, timeout=600)
+        print((_pr.stdout or "").strip()[-400:] or f"[autopsy-priors] rc={_pr.returncode} {(_pr.stderr or '')[-300:]}", flush=True)
+        if _pr.returncode == 0 and _pp.exists():
+            parts.append(str(_pp))
     agg, seen = R.merge_partials(parts)
     for cs in R.CAT_SIDES:
         print(f"[avg] {cs}: sym_sides={len(seen[cs])}")

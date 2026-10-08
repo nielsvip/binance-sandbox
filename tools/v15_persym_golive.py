@@ -37,6 +37,9 @@ REMOVED = {"EMA50_15M_ENTRY_FILTER_VEC_ONLY_ENABLED"}
 EV_KEYS = ("valid", "invalid_reason", "gain_pct", "trades", "tim_pct", "max_dd_pct", "pool_sharpe")
 
 
+ARTEFACT_KEYS = {"MODE", "SIMPLE_PRICE_GT0_ENABLED", "VENUE", "IS_TRADIER"}
+
+
 def migrate(overrides):
     out, renamed, dropped = {}, {}, []
     for k, v in (overrides or {}).items():
@@ -71,6 +74,12 @@ def _collect_one(path):
         rec["skip"] = "no cumulative_overrides"
         return ss, rec
     ov, rec["renamed"], rec["dropped"] = migrate(co)
+    # 2026-10-08 CONTAMINATION FIX: engine-level artefacts never go live — MODE (venue engine mode; 71 stocks sets were "rescued"
+    # by MODE=crypto), SIMPLE_PRICE_GT0_ENABLED (pseudo-gate), ABLATION_* (engine kills). Stripped BEFORE the fresh eval below, so
+    # the evidence that qualifies the set is measured without them (never the contaminated number).
+    rec["artefact_stripped"] = [k for k in ov if k in ARTEFACT_KEYS or k.startswith("ABLATION_")]
+    for k in rec["artefact_stripped"]:
+        ov.pop(k, None)
     rec["overrides"] = ov
     sg = rec["stored_final_gain"]
     finished = bool(d.get("verdict") or d.get("result_done_utc") or d.get("final_gain_fresh_vec") is not None)
