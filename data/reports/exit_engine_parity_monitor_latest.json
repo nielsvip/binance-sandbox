@@ -1,21 +1,21 @@
 {
- "now": "2026-10-08T11:01:44.295261+00:00",
+ "now": "2026-10-08T12:01:47.582079+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 6589,
- "last_exit_ts": "2026-10-08T11:01:14.274651+00:00",
+ "n_exit_rows": 6954,
+ "last_exit_ts": "2026-10-08T12:01:40.584524+00:00",
  "n_leaks": 11,
- "n_gate_on": 4091,
+ "n_gate_on": 4419,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 510,
+ "n_unmapped": 511,
  "n_unverified": 2,
  "since": "2026-10-06T18:48:00+00:00",
  "vec_exact_by_action": {
-  "OPEN": 1429,
-  "CLOSE": 498,
+  "OPEN": 1459,
+  "CLOSE": 504,
   "REDUCE": 48
  },
- "native_rows": 4614,
+ "native_rows": 4943,
  "unverified_by_family": {
   "WEBHOOK_HANDLE_SIGNAL (None=None)": 1,
   "ULTIMATE_DC (None=None)": 1
@@ -30,8 +30,8 @@
  "gate_on_by_family": {
   "CRYPTO_SPIKE_FADE (CRYPTO_SPIKE_FADE_ENABLED)": 1,
   "GOLDEN_RULE": 3,
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 3488,
-  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 309,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 3782,
+  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 343,
   "CYCLE_TP (CYCLE_TP_TIERED_ENABLED)": 6,
   "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 279,
   "DC_BASIS_3M_REDUCE (DC_BASIS_3M_REDUCE_ENABLED)": 1,
@@ -92,8 +92,8 @@
   "CB_HTF_EXHAUST_HTF_EXHAUST: g=-0.67% a": 3
  },
  "actions": {
-  "OPEN": 1433,
-  "CLOSE": 4880,
+  "OPEN": 1463,
+  "CLOSE": 5215,
   "REDUCE": 56,
   "QUICK_CLOSE": 220
  }
