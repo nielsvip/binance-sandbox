@@ -5004,9 +5004,6 @@ class QuickConfig:
         self.LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED = True  # 2026-10-04 parity cut: tradier overlay (verify vs config_tradier post-cut)
         self.LIVE_ENTRY_ENGINE_STOCH_ENABLED = True  # 2026-10-04 parity cut: tradier overlay (verify vs config_tradier post-cut)
         self.LIVE_ENTRY_ENGINE_WT_ENABLED = True  # 2026-10-04 parity cut: tradier overlay (verify vs config_tradier post-cut)
-        self.ABLATION_DISABLE_HEDGE = False  # C/003 (config_tradier False)
-        self.ABLATION_DISABLE_QUICK_ENTRY = False
-        self.ABLATION_DISABLE_QUICK_EXIT = False
         self.STRUCTURAL_RANGE_SHIFT_TF = "bb_1h"
         self.GAP_RISK_EXIT_ENABLED = True  # N2/007: live config_tradier True (2026-09-30)
         self.ENTRY_SCORE_THRESHOLD = 27.0
