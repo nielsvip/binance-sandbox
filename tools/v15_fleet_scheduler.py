@@ -491,6 +491,29 @@ def _est_pair_mb(pair_measure, floor_mb=12000):
     return max(floor, mx * 1.25)
 
 
+def _growth_debt_mb(pairs_pss, est_pair):
+    """Committed-but-not-yet-resident memory: young pairs grow toward est_pair.
+    USER 2026-10-08 follow-up: s2 admitted a 3rd pair across ticks (young RSS
+    understated growth) then collapsed 18GB -> 1GB in minutes. Never raises."""
+    try:
+        e = float(est_pair or 0)
+    except Exception:
+        return 0.0
+    debt = 0.0
+    try:
+        vals = pairs_pss.values() if isinstance(pairs_pss, dict) else (pairs_pss or [])
+        for v in vals:
+            try:
+                gap = e - float(v or 0)
+            except Exception:
+                continue
+            if gap > 0:
+                debt += gap
+    except Exception:
+        return 0.0
+    return debt
+
+
 def _swap_admit_ok(stats, pct_max=40.0):
     """Refuse new launches while the host is swap-drowning (USER 2026-10-08: s5 ran
     8/8GB swap full and kept admitting). Missing swap fields fail open (old probe)."""
@@ -929,7 +952,7 @@ def tick(args, cfg, now):
         pair_measure = [v for k, v in pairs.items() if k in universe_syms["stocks"] | universe_syms["crypto"] and v > 0]
         est_pair = _est_pair_mb(pair_measure, cfg.get("default_pair_mb", 12000))
         reserve = max(h.get("mem_reserve_mb", 3000), int(h.get("oom_mb", 500)) + 2000)
-        proj_mem = s["mem_avail_mb"] - reserve
+        proj_mem = s["mem_avail_mb"] - reserve - _growth_debt_mb(pairs, est_pair)
         swap_ok = _swap_admit_ok(s)
         used = len(held[h["name"]])
         info = {"cpu": round(cpu), "cpu_real": round(float(s.get("busy_pct") or 0)), "mem_avail_mb": s["mem_avail_mb"], "slots": f"{used}/{cap}", "held": sorted(held[h["name"]]), "est_pair_mb": round(est_pair),
