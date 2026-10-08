@@ -1,43 +1,89 @@
 {
- "generated_at": "2026-10-08 03:01 UTC",
- "total_capital_usd": 31.02,
+ "generated_at": "2026-10-08 03:08 UTC",
+ "total_capital_usd": 81.77,
  "tier_capital": {
   "A": 0.0,
-  "B": 15.88,
-  "C": 15.14
+  "B": 81.79,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 1
+  "B": 6,
+  "C": 0
  },
  "winners": [],
  "losers": [
-  "flz:SOLUSDC_SHORT"
+  "fin:IOTXUSDT_LONG"
  ],
- "mediocre": [],
+ "mediocre": [
+  "fin:COTIUSDT_SHORT"
+ ],
  "positions": [
   {
-   "pk": "flz:HYPEUSDT_SHORT",
-   "symbol": "HYPEUSDT",
-   "account": "flz",
-   "value_usd": 15.88,
-   "gain_pct": 0.718,
+   "pk": "fin:SANDUSDT_LONG",
+   "symbol": "SANDUSDT",
+   "account": "fin",
+   "value_usd": 19.65,
+   "gain_pct": 7.831,
    "tier": "B",
-   "perf_mult": 3.84,
-   "amt": 0.18,
-   "mark": 88.22584306
+   "perf_mult": 7.3,
+   "amt": 258.0,
+   "mark": 0.07615
   },
   {
-   "pk": "flz:SOLUSDC_SHORT",
-   "symbol": "SOLUSDC",
-   "account": "flz",
-   "value_usd": 15.14,
-   "gain_pct": -0.112,
-   "tier": "C",
-   "perf_mult": 0.54,
-   "amt": 0.13,
-   "mark": 116.44794485
+   "pk": "fin:COTIUSDT_SHORT",
+   "symbol": "COTIUSDT",
+   "account": "fin",
+   "value_usd": 18.0,
+   "gain_pct": 0.083,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 1357.0,
+   "mark": 0.013261
+  },
+  {
+   "pk": "fin:LINKUSDC_SHORT",
+   "symbol": "LINKUSDC",
+   "account": "fin",
+   "value_usd": 17.77,
+   "gain_pct": 0.762,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 1.35,
+   "mark": 13.16
+  },
+  {
+   "pk": "fin:ADAUSDC_SHORT",
+   "symbol": "ADAUSDC",
+   "account": "fin",
+   "value_usd": 12.78,
+   "gain_pct": -0.3,
+   "tier": "B",
+   "perf_mult": 3.08,
+   "amt": 50.2,
+   "mark": 0.2545
+  },
+  {
+   "pk": "fin:BNBUSDC_LONG",
+   "symbol": "BNBUSDC",
+   "account": "fin",
+   "value_usd": 7.72,
+   "gain_pct": -0.251,
+   "tier": "B",
+   "perf_mult": 1.45,
+   "amt": 0.01,
+   "mark": 771.91973939
+  },
+  {
+   "pk": "fin:IOTXUSDT_LONG",
+   "symbol": "IOTXUSDT",
+   "account": "fin",
+   "value_usd": 5.87,
+   "gain_pct": -1.379,
+   "tier": "B",
+   "perf_mult": 2.18,
+   "amt": 1586.0,
+   "mark": 0.00370102
   }
  ]
 }
