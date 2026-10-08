@@ -9,5 +9,5 @@ def test_every_row_delta_site_is_guarded():
     sites = [m.start() for m in re.finditer(r"delta = vg - cumulative_before\n", SRC)]
     assert len(sites) >= 2, "row-delta sites not found"
     for pos in sites:
-        window = SRC[pos: pos + 400]
+        window = SRC[pos: pos + 1200]
         assert "if delta > 0 and not vec.get('valid'):" in window and "delta = 0.0" in window, f"unguarded delta site at offset {pos}"

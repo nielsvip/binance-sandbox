@@ -33,7 +33,15 @@ def template_base(ss, out):
     """The pilot's own starting point: TEMPLATE bold defaults of this cat_side (v15_pilot.template_bold_defaults) —
     the autopsy must search on the SAME base the sweep starts from, or the rescue does not transfer 1:1."""
     import v15_pilot as P
-    bolds, bad = P.template_bold_defaults(P.get_template_for_symside(ss), P.get_defaults_for_symside(ss))
+    truth, promoted = None, set()
+    try:  # exactly what the pilot does (DEFAULTS-GATE): bolds that contradict the venue truth and are not promoted are placeholders
+        from tools.build_cat_side_defaults_4 import venue_values
+        truth = venue_values(P.map_key_for_symside(ss).startswith("STOCKS"))[0]
+        import per_sym_store as S
+        promoted = set(((S.get_cat_side_promotions() or {}).get(P.map_key_for_symside(ss)) or {}).keys())
+    except Exception as e:
+        print(f"[autopsy-first] {ss} truth/promotions load warn {e!r} — all bolds trusted", flush=True)
+    bolds, bad = P.template_bold_defaults(P.get_template_for_symside(ss), P.get_defaults_for_symside(ss), truth, promoted)
     p = out / f"{ss}_template_base.json"
     p.write_text(json.dumps(bolds, indent=1, default=str))
     return str(p), len(bolds), len(bad)

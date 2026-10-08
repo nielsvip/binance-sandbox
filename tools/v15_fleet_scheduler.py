@@ -331,7 +331,7 @@ elif mode == "reap":
                 ppid[p] = 1
         roots = [p for p in g["pids"] if ppid[p] not in g["pids"]]
         kids = {r: sum(1 for p in g["pids"] if ppid[p] == r) for r in roots}
-        info[ss] = {"pids": g["pids"], "age": age, "idle": now - max(mt) if mt else age, "roots": roots, "kids": kids}
+        info[ss] = {"pids": g["pids"], "age": age, "min_age": min([now - start_ts(p) for p in g["pids"]] or [0]), "idle": now - max(mt) if mt else age, "roots": roots, "kids": kids}
     acts = []
     _TERM_GRACE_S = 150  # USER 2026-10-07: THROTTLE instead of OOM — SIGTERM first (pilot checkpoints + exits <60s), SIGKILL only past grace
     for _sent in glob.glob("/tmp/v15_termed_*"):
@@ -377,8 +377,8 @@ elif mode == "reap":
         elif len(i["roots"]) > 1 and sum(1 for r in i["roots"] if i["kids"][r]) == 1:
             orph = [r for r in i["roots"] if not i["kids"][r]]
             kill(orph, "orphaned workers (parent gone)", ss)
-        elif i["roots"] and all(i["kids"].get(r, 0) == 0 for r in i["roots"]) and i["idle"] > 20 * 60:
-            kill(i["pids"], "wedged: no linked workers, no output for %.0fmin" % (i["idle"] / 60), ss); dead.add(ss)  # USER 2026-10-07: S1 UNI pair wedged 30+ min (0 CPU, slots held, nothing finished) — auto-clear instead of waiting for the 60-min stall trip
+        elif i["roots"] and all(i["kids"].get(r, 0) == 0 for r in i["roots"]) and i["idle"] > 20 * 60 and i.get("min_age", 0) > 15 * 60:
+            kill(i["pids"], "wedged: no linked workers, no output for %.0fmin" % (i["idle"] / 60), ss); dead.add(ss)  # USER 2026-10-07: S1 UNI pair wedged 30+ min (0 CPU, slots held, nothing finished) — auto-clear instead of waiting for the 60-min stall trip. 2026-10-08: min_age grace — piped/starting pilots have no kids + stale log cands for minutes; TERMing a 23s-old healthy pilot churns (KSMUSDT_SHORT).
     if mem < arg["oom_mb"]:
         live = [(i["age"], ss) for ss, i in info.items() if ss not in dead]
         if live:

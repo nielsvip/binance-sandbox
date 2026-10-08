@@ -288,6 +288,8 @@ def _red_fixer_daemon(new_symside: str, wb_path: Path, progress_path: Path, defa
                     delta = 0.0
                 else:
                     delta = vg - cumulative_before
+                    if delta > 0 and not vec.get('valid'):
+                        delta = 0.0  # 2026-10-08 BIBLE §19: an INVALID result is never a positive delta (red-fixer path, same guard as the row sites)
             else:
                 delta = 0.0
                 vg = cumulative_before + delta if vec else cumulative_before
