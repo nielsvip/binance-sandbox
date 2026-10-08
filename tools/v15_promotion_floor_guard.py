@@ -66,11 +66,16 @@ def _prepare(cat_side, n, cat_file):
     os.environ["CAT_SIDE_DEFAULTS_SQLITE_DISABLED"] = "1"
     os.environ["CAT_SIDE_DEFAULTS_PATH"] = str(cat_file)
     try:
-        import cat_side_defaults as csd
+        try:  # 2026-10-08: cat_side_defaults is a compat shim over per_sym_settings; the shim does not re-export _cache/PATH
+            import per_sym_settings as csd
+        except ImportError:
+            import cat_side_defaults as csd
         csd.PATH = Path(cat_file)
-        assert Path(csd.__file__).resolve().parent == ROOT, f"wrong cat_side_defaults module: {csd.__file__}"
-        csd._cache["mtime"] = None
-        csd._cache["mtime_sql"] = None
+        assert Path(csd.__file__).resolve().parent == ROOT, f"wrong per_sym_settings module: {csd.__file__}"
+        _c = getattr(csd, "_cache", None)
+        if isinstance(_c, dict):
+            _c["mtime"] = None
+            _c["mtime_sql"] = None
         preps = []
         for ss in _tradeable(cat_side):
             if len(preps) >= n:
