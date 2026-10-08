@@ -181,6 +181,20 @@ def main():
                 blockers.append(f"{rel} was MISSING -> restored from {Path(src).name} (find the deleter)")
             else:
                 blockers.append(f"{rel} MISSING and no restore source — pilots trust every bold (dead SHORT baselines)")
+    # self-heal 2: the scheduler's 30D launch env must carry V15_START_OVERRIDES (autopsy-first base); a fleet-wide redeploy of
+    # tools/v15_fleet_scheduler.py at 05:47Z dropped it once -> re-apply the one-line patch idempotently and shout.
+    sched = ROOT / "tools" / "v15_fleet_scheduler.py"
+    try:
+        src = sched.read_text()
+        anchor = 'env = f"V15_FRESH_RUN=1 V15_TEMPLATE_DEFAULTS=1 '
+        if "V15_START_OVERRIDES=$(test -f ~/v15_autopsy_first/" not in src and src.count(anchor) == 1:
+            (ROOT / "backups" / f"before_director_sched_reheal_{t.strftime('%Y%m%d%H%M')}.py").write_text(src)
+            sched.write_text(src.replace(anchor, 'env = f"V15_START_OVERRIDES=$(test -f ~/v15_autopsy_first/{ss}_autopsy_base.json && echo ~/v15_autopsy_first/{ss}_autopsy_base.json) V15_FRESH_RUN=1 V15_TEMPLATE_DEFAULTS=1 '))
+            blockers.append("scheduler lost V15_START_OVERRIDES (redeployed without it) -> re-applied (find the deployer)")
+        elif "V15_START_OVERRIDES=$(test -f ~/v15_autopsy_first/" not in src:
+            blockers.append("scheduler lacks V15_START_OVERRIDES and the anchor moved — boards start from template bolds, not autopsy bases")
+    except Exception as e:
+        blockers.append(f"scheduler self-heal check failed: {e}")
     status["blockers"] = blockers
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "DIRECTOR_STATUS.json").write_text(json.dumps(status, indent=1, default=str))

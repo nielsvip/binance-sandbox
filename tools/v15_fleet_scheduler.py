@@ -581,6 +581,29 @@ def _reap_burn_weight(why, key):
     return 1
 
 
+def _reap_burns(actions, last_act):
+    """{attempt-key: total burn} for one host's reap actions. Dedupes by side —
+    the reaper emits one entry per PID, and without this a 7-proc side burns 7
+    (NMR hit 16). Never raises."""
+    out = {}
+    seen = set()
+    for a in actions or []:
+        try:
+            ss = a.get("ss")
+        except Exception:
+            continue
+        if ss in seen:
+            continue
+        seen.add(ss)
+        try:
+            k = (last_act or {}).get(ss)
+        except Exception:
+            k = None
+        if k:
+            out[k] = out.get(k, 0) + _reap_burn_weight(a.get("why"), k)
+    return out
+
+
 def _stall_tick(prev_pending, prev_same, cur_pending, warn_ticks=60):
     """Pending-stuck counter. Returns (same_count, warn). 60 ticks ~= 2h of zero drain."""
     try:
@@ -712,7 +735,7 @@ def side_cmd(host, sym, side, window, pdir, attempt, workers):
     r, ss, venue = host["root"], f"{sym}_{side}", venue_of(sym)
     chain, t = f"{pdir}/../chain", tmpl_path(host, venue, side)
     if window == "30D":
-        env = f"V15_FRESH_RUN=1 V15_TEMPLATE_DEFAULTS=1 V15_SKIP_CAT_PERSYM_BASELINE=1 V15_ADAPT_BASELINE=0 V15_SKIP_LIVE_AT_DONE=1 V15_POSSYM_SAMPLING=1 V15_UNWIRED_SKIP=0 V12_NPZ_CACHE=8 V15_PROGRESS_DIR={pdir} V15_DEFAULTS_ROUND=$(cat ~/v15_defaults_round.txt 2>/dev/null) CAT_SIDE_DEFAULTS_PATH=$(test -f ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json && echo ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json)"
+        env = f"V15_START_OVERRIDES=$(test -f ~/v15_autopsy_first/{ss}_autopsy_base.json && echo ~/v15_autopsy_first/{ss}_autopsy_base.json) V15_FRESH_RUN=1 V15_TEMPLATE_DEFAULTS=1 V15_SKIP_CAT_PERSYM_BASELINE=1 V15_ADAPT_BASELINE=0 V15_SKIP_LIVE_AT_DONE=1 V15_POSSYM_SAMPLING=1 V15_UNWIRED_SKIP=0 V12_NPZ_CACHE=8 V15_PROGRESS_DIR={pdir} V15_DEFAULTS_ROUND=$(cat ~/v15_defaults_round.txt 2>/dev/null) CAT_SIDE_DEFAULTS_PATH=$(test -f ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json && echo ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json)"
         return f"{env} .venv/bin/python -u v15_pilot.py --sym-side {ss} --template {t} --seq-mode worst2best --window-days 30 --vector-only --workers {workers}"
     if window == "365D":
         return (f"mkdir -p {chain}/v365 && nice -n 10 .venv/bin/python -u tools/v15_365_cycle.py --sym-side {ss} --progress {pdir}/{ss}_v14_progress.json "
@@ -787,10 +810,8 @@ def tick(args, cfg, now):
                 gone = {a_["ss"] for a_ in r_["actions"] if not a_["why"].startswith("orphaned")}
                 for ss_ in gone:
                     stats[h_["name"]]["running"].pop(ss_, None)
-                for a_ in r_["actions"] or []:
-                    k_ = (st.get("last_act") or {}).get(a_.get("ss"))
-                    if k_:
-                        st["attempts"][k_] = st["attempts"].get(k_, 0) + _reap_burn_weight(a_.get("why"), k_)
+                for k_, w_ in _reap_burns(r_["actions"], st.get("last_act")).items():
+                    st["attempts"][k_] = st["attempts"].get(k_, 0) + w_
                 for a_ in r_["actions"]:
                     print(f"[reap] {h_['name']} {a_['ss']} {a_['why']} pids={a_['pids']}", flush=True)
     cur_pdir = next((x["pdir"] for x in stats.values() if x and x.get("pdir")), None)

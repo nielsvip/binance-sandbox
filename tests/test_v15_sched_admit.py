@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
-from v15_fleet_scheduler import _est_pair_mb, _growth_debt_mb, _progress_done_rows, _rank_oom_victim, _reap_burn_weight, _stall_tick, _swap_admit_ok
+from v15_fleet_scheduler import _est_pair_mb, _growth_debt_mb, _progress_done_rows, _rank_oom_victim, _reap_burn_weight, _reap_burns, _stall_tick, _swap_admit_ok
 
 
 class EstPairTest(unittest.TestCase):
@@ -104,6 +104,25 @@ class ReapBurnTest(unittest.TestCase):
         self.assertEqual(_reap_burn_weight("orphaned workers (parent gone)", "X_LONG|30D"), 0)
         self.assertEqual(_reap_burn_weight(None, None), 1)
         self.assertEqual(_reap_burn_weight(42, 42), 1)
+
+
+class ReapBurnsTest(unittest.TestCase):
+    def test_dedupes_per_pid_entries(self):
+        acts = [{"ss": "NMRUSDT_LONG", "why": "OOM guard: x (TERM)", "pids": [1]} for _ in range(7)]
+        self.assertEqual(_reap_burns(acts, {"NMRUSDT_LONG": "NMRUSDT_LONG|30D"}), {"NMRUSDT_LONG|30D": 1})
+
+    def test_two_sides_burn_separately(self):
+        acts = [{"ss": "A_LONG", "why": "wedged: x (TERM)", "pids": [1]},
+                {"ss": "A_LONG", "why": "wedged: x (TERM)", "pids": [2]},
+                {"ss": "B_LONG", "why": "OOM guard: x (TERM)", "pids": [3]}]
+        la = {"A_LONG": "A_LONG|30D", "B_LONG": "B_LONG|30D"}
+        self.assertEqual(_reap_burns(acts, la), {"A_LONG|30D": 3, "B_LONG|30D": 1})
+
+    def test_missing_last_act_skipped(self):
+        acts = [{"ss": "A_LONG", "why": "wedged: x (TERM)", "pids": [1]}]
+        self.assertEqual(_reap_burns(acts, {}), {})
+        self.assertEqual(_reap_burns([], {"A_LONG": "A_LONG|30D"}), {})
+        self.assertEqual(_reap_burns(None, None), {})
 
 
 class StallTickTest(unittest.TestCase):
