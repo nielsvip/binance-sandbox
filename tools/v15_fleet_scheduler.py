@@ -880,6 +880,18 @@ def tick(args, cfg, now):
         if _qt:
             return _qt
         if ss not in done:
+            # USER 2026-10-08 ("flying through the test"): V15_SCHED_REQUIRE_BASE=1 -> a 30D board launches only once its autopsy ran
+            # (pruned base with effective_switches = ~50x faster board, or an autopsy report = NO_RESCUE -> template start). Until then
+            # the side WAITS (re-checked every tick); the s7 backfill feeds ~/v15_autopsy_first on this host.
+            if os.environ.get("V15_SCHED_REQUIRE_BASE") == "1":
+                _afd = pathlib.Path(os.path.expanduser("~/v15_autopsy_first"))
+                _bp = _afd / f"{ss}_autopsy_base.json"
+                try:
+                    _ok = (_bp.exists() and "effective_switches" in _bp.read_text()) or ((_afd / f"{ss}_autopsy.json").exists() and not _bp.exists())
+                except Exception:
+                    _ok = False
+                if not _ok:
+                    return "waiting_base", None
             return "need30", 1
         if os.environ.get("V15_SCHED_NO_CHAIN") == "1" and not (ROOT / "data" / "autopilot" / "chain_mode.flag").exists():  # FINAL PHASE 2026-10-02: the autopilot creates this flag Mon 08:00Z -> 365D verify + REPAIR chains run
             return "terminal_ok", None  # USER 2026-10-01: 365D verify/REPAIR chains not needed now: release the slot after 30D
