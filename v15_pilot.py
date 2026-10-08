@@ -6657,8 +6657,9 @@ def main():
                     _recipe_only_overrides = dict(overrides)
         except Exception as _nr_e:
             print(f"[redo-start-warn] {_nr_e}", flush=True)
-    if os.environ.get("V15_TEMPLATE_DEFAULTS", "0") == "1":
+    if os.environ.get("V15_TEMPLATE_DEFAULTS", "0") == "1" and not os.environ.get("V15_START_OVERRIDES"):
         # USER 2026-09-29: live recipe makes 0 trades (impossible) -> start from the TEMPLATE_{CAT}_{SIDE} bold defaults (= live config defaults)
+        # 2026-10-08 (USER gains lane, system audit): a V15_START_OVERRIDES run is already template-defaults + the repaired/autopsy-first set (§58 step 5) — it must NOT be dropped here (it was, silently, under the fleet launcher).
         print(f"[TEMPLATE-DEFAULTS] {new_symside}: live recipe/best dropped ({len(overrides)} overrides) -> template defaults only", flush=True)
         overrides = dict(_tpl_defaults)
         _recipe_only_overrides = dict(_tpl_defaults)
