@@ -538,7 +538,9 @@ def _steal_fetch(hosts, thief_host, sym, specs, log):
                 return False
             try:
                 _jd = json.load(open(tmp))
-                assert isinstance(_jd.get("final_gain"), (int, float)), "no final_gain yet"
+                _ov = _jd.get("cumulative_overrides") or {}
+                _fg = _jd.get("final_gain")
+                assert (_ov and isinstance(_ov, dict)) or isinstance(_fg, (int, float)), "no overrides and no final_gain yet"
             except Exception as _je:
                 try:
                     os.unlink(tmp)
@@ -808,7 +810,7 @@ def tick(args, cfg, now):
         reserve = h.get("mem_reserve_mb", 3000)
         proj_mem = s["mem_avail_mb"] - reserve
         used = len(held[h["name"]])
-        info = {"cpu": round(cpu), "mem_avail_mb": s["mem_avail_mb"], "slots": f"{used}/{cap}", "held": sorted(held[h["name"]]), "est_pair_mb": round(est_pair),
+        info = {"cpu": round(cpu), "cpu_real": round(float(s.get("busy_pct") or 0)), "mem_avail_mb": s["mem_avail_mb"], "slots": f"{used}/{cap}", "held": sorted(held[h["name"]]), "est_pair_mb": round(est_pair),
                 "workers_per_side": workers, "launched_pairs": 0}
         launched = 0
         new_launched = 0

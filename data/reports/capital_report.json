@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-07 23:11 UTC",
- "total_capital_usd": 59.63,
+ "generated_at": "2026-10-08 00:01 UTC",
+ "total_capital_usd": 47.37,
  "tier_capital": {
   "A": 0.0,
-  "B": 59.64,
+  "B": 47.36,
   "C": 0.0
  },
  "tier_count": {
@@ -13,40 +13,43 @@
  },
  "winners": [],
  "losers": [],
- "mediocre": [],
+ "mediocre": [
+  "flz:DOGEUSDC_SHORT",
+  "flz:BNBUSDC_LONG"
+ ],
  "positions": [
   {
-   "pk": "ang:NEARUSDC_LONG",
-   "symbol": "NEARUSDC",
-   "account": "ang",
-   "value_usd": 37.78,
-   "gain_pct": 5.143,
+   "pk": "flz:DOGEUSDC_SHORT",
+   "symbol": "DOGEUSDC",
+   "account": "flz",
+   "value_usd": 16.0,
+   "gain_pct": -0.211,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 7.0,
-   "mark": 5.397
+   "amt": 180.0,
+   "mark": 0.08890698
   },
   {
-   "pk": "ang:ATOMUSDT_SHORT",
-   "symbol": "ATOMUSDT",
-   "account": "ang",
-   "value_usd": 16.08,
-   "gain_pct": -0.411,
+   "pk": "flz:HYPEUSDT_SHORT",
+   "symbol": "HYPEUSDT",
+   "account": "flz",
+   "value_usd": 15.91,
+   "gain_pct": 0.528,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 9.39,
-   "mark": 1.712
+   "perf_mult": 3.84,
+   "amt": 0.18,
+   "mark": 88.39456111
   },
   {
-   "pk": "ang:DOTUSDT_SHORT",
-   "symbol": "DOTUSDT",
-   "account": "ang",
-   "value_usd": 5.78,
-   "gain_pct": 1.176,
+   "pk": "flz:BNBUSDC_LONG",
+   "symbol": "BNBUSDC",
+   "account": "flz",
+   "value_usd": 15.45,
+   "gain_pct": 0.069,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 5.2,
-   "mark": 1.11073319
+   "amt": 0.02,
+   "mark": 772.55575284
   }
  ]
 }

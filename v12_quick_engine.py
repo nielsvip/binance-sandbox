@@ -4576,9 +4576,9 @@ class QuickConfig:
     VWAP_BOUNCE_DIST_PCT: float = 0.3
     VWAP_BOUNCE_ENTRY_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # 2026-04-16: off until sweep-proven
     WIN_TRAIL_EROSION_PCT: float = 0.0  # STRUCTURAL ONLY — was 0.5, now disabled (user 2026-08-14: never exit on percentage, only DC reject / WT 15m cross / HH+HL)
-    ABLATION_DISABLE_HEDGE: bool = True  # C/003 live-parity (config.py crypto True 2026-09-21); stocks False via apply_tradier_defaults
-    ABLATION_DISABLE_QUICK_ENTRY: bool = True  # C/003 live-parity (config.py crypto True 2026-09-21); stocks False via apply_tradier_defaults
-    ABLATION_DISABLE_QUICK_EXIT: bool = True  # C/003 live-parity (config.py crypto True 2026-09-21); stocks False via apply_tradier_defaults
+    ABLATION_DISABLE_HEDGE: bool = False  # 2026-10-08 USER: ablation never on outside a momentary test; = live config.py/config_tradier.py False
+    ABLATION_DISABLE_QUICK_ENTRY: bool = False  # 2026-10-08 USER: ablation never on outside a momentary test; = live config.py/config_tradier.py False
+    ABLATION_DISABLE_QUICK_EXIT: bool = False  # 2026-10-08 USER: ablation never on outside a momentary test; = live config.py/config_tradier.py False
     BASIS_CONDITION: bool = False
     BACKTEST_VALIDATED_GATES_TRADIER: bool = True
     REENTRY_EPQ_MODEL_ENABLED: bool = False  # [N3 q4] live ez_positions_quick reentry evaluators (DC breakout fast-path, B16 SMA200 pullback, mandatory price cross, size tiers) 15m+ twin
@@ -5225,9 +5225,9 @@ class QuickConfig:
     ABLATION_DISABLE_CHECK_NOLOSS: bool = False  # auto-wired 625
     ABLATION_DISABLE_DC_BREACH_REDUCE: bool = False  # auto-wired 625
     ABLATION_DISABLE_ENTRY_LEADERBOARD: bool = False  # auto-wired 625
-    ABLATION_DISABLE_ENTRY_RANKING: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
+    ABLATION_DISABLE_ENTRY_RANKING: bool = False  # 2026-10-08 USER: ablation never on outside a momentary test; = live config_tradier False  # auto-wired 625
     ABLATION_DISABLE_ENTRY_REVERSAL: bool = False  # auto-wired 625
-    ABLATION_DISABLE_ENTRY_TECHNICAL: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
+    ABLATION_DISABLE_ENTRY_TECHNICAL: bool = False  # 2026-10-08 USER: ablation never on outside a momentary test; = live config_tradier False  # auto-wired 625
     ABLATION_DISABLE_HIGH_GAIN_AUGMENT: bool = False  # auto-wired 625
     ABLATION_DISABLE_PERIODIC_REENTRY: bool = False  # auto-wired 625
     ABLATION_DISABLE_RATIO_REBALANCE: bool = False  # auto-wired 625
