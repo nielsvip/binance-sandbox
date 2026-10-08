@@ -1,5 +1,5 @@
 {
- "broken": 78,
+ "broken": 74,
  "checks": {
   "TEMPLATE_NO_CONFIG": [],
   "LINK_LOST": [],
@@ -26,10 +26,6 @@
    "vec_decisions/stock_live_frames.py: was reachable from simulate_one in the baseline, not any more"
   ],
   "NOT_IN_CAT_SIDE_DEFAULTS": [
-   "GAP_CLOSE_MOC_EXIT_ENABLED [STOCKS_LONG]",
-   "STDEV_BREAKOUT_PCTB_LONG [CRYPTO_LONG]",
-   "TRADIER_MFI_ENTRY_LONG_ENABLED [CRYPTO_LONG]",
-   "VIGILANCE_RECOVERY_REENTRY_ENABLED [CRYPTO_LONG]",
    "WT_15M_BOUNCE_BB_MAX [CRYPTO_LONG]",
    "WT_15M_BOUNCE_HIGH_1H_GT_PREV [CRYPTO_LONG]",
    "WT_15M_BOUNCE_LOW_1H_GT_PREV [CRYPTO_LONG]"
