@@ -4549,13 +4549,13 @@ class QuickConfig:
     TRADIER_FH_MOMENTUM_WINDOW_MINUTES: int = 60
     TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER: int = 35
     TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER: int = 65
-    TRADIER_MFI_ENTRY_LONG_ENABLED: bool = False
+    TRADIER_MFI_ENTRY_LONG_ENABLED: bool = True
     TRADIER_MFI_ENTRY_LONG_TRADIER: float = 60.0
     TRADIER_MI_ENTRY_ENABLED_TRADIER: bool = False
     TRADIER_MI_EXIT_ENABLED_TRADIER: bool = False
     TRADIER_MI_SUBSIGNAL_MIN_COUNT: int = 3
     TRADIER_RSI2_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # 2026-04-16: off until backtested tradier-only
-    TRADIER_RSI2_EXIT_THRESHOLD_LONG: float = 90.0
+    TRADIER_RSI2_EXIT_THRESHOLD_LONG: float = 135.0
     TRADIER_RSI2_EXIT_THRESHOLD_SHORT: float = 10.0
     TRADIER_RSI_ENTRY_LONG_TRADIER: float = -1.0
     TRADIER_RSI_ENTRY_SHORT_TRADIER: float = 70.0
@@ -5218,6 +5218,16 @@ class QuickConfig:
         self.MOMENTUM_BREAKOUT_FILTER_TF = 'OFF'
         self.REENTRY_TIER1_SIZE_MULT_TRADIER = 3.0
         self.REGIME_RANGING_WT_EXIT_VEL = -1.5
+        # parity-sync 20261008: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
+        self.STDEV_BREAKOUT_PCTB_LONG = 1.125
+        self.TRADIER_MFI_ENTRY_LONG_ENABLED = False
+        self.TRADIER_RSI2_EXIT_THRESHOLD_LONG = 90.0
+        self.VIGILANCE_RECOVERY_REENTRY_ENABLED = True
+        self.MFI_ENTRY_ENABLED = False
+        self.MFI_FLIP_EXIT_ENABLED = False
+        self.STOCH_CROSS_1H_EXIT_ENABLED = False
+        self.DC_HARD_STOP_REENTRY_COOLDOWN_HOURS = 0.0
+        self.GAP_CLOSE_MOC_EXIT_ENABLED = False
     ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = False  # auto-wired 625
     ABLATION_DISABLE_AUGMENTATION: bool = False  # auto-wired 625
     ABLATION_DISABLE_CHECK_NOLOSS: bool = False  # auto-wired 625
@@ -5840,7 +5850,7 @@ class QuickConfig:
     VIGILANCE_DC4_BREACH_TOLERANCE_PCT: float = 0.25  # breach depth beyond the dc4 level, % of level
     VIGILANCE_DC4_STOP_TF: str = "15m"       # losing position + px breach dc_low4_{TF}/dc_high4_{TF} → close+block; OFF disables
     VIGILANCE_CONSEC_LOSSES: int = 2         # losing closes in a row that block the sym_side
-    VIGILANCE_RECOVERY_REENTRY_ENABLED: bool = True  # USER 2026-09-28 2nd mandate: auto-unblock on recovery, KEEP TRADING
+    VIGILANCE_RECOVERY_REENTRY_ENABLED: bool = False  # USER 2026-09-28 2nd mandate: auto-unblock on recovery, KEEP TRADING
     VIGILANCE_RECOVERY_BOUNCE_OK: bool = True        # bounce (wt1_15m with side + 3m stoch confirm) also unblocks
     DC_HARD_STOP_REENTRY_COOLDOWN_HOURS: float = 4.0  # tradier only — reopen cooldown after ULTIMATE_DC hard stop (CHURN_FIX #2)
     WT_3M_FORCE_OPEN_BUILD_TO_TARGET: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
