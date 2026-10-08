@@ -1,21 +1,21 @@
 {
- "now": "2026-10-08T05:01:29.961388+00:00",
+ "now": "2026-10-08T06:01:31.663900+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 4734,
- "last_exit_ts": "2026-10-08T05:01:27.028464+00:00",
+ "n_exit_rows": 5077,
+ "last_exit_ts": "2026-10-08T06:01:33.624581+00:00",
  "n_leaks": 11,
- "n_gate_on": 2530,
+ "n_gate_on": 2815,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 476,
+ "n_unmapped": 480,
  "n_unverified": 2,
  "since": "2026-10-06T18:48:00+00:00",
  "vec_exact_by_action": {
-  "OPEN": 1198,
-  "CLOSE": 470,
-  "REDUCE": 47
+  "OPEN": 1245,
+  "CLOSE": 476,
+  "REDUCE": 48
  },
- "native_rows": 3019,
+ "native_rows": 3308,
  "unverified_by_family": {
   "WEBHOOK_HANDLE_SIGNAL (None=None)": 1,
   "ULTIMATE_DC (None=None)": 1
@@ -30,10 +30,11 @@
  "gate_on_by_family": {
   "CRYPTO_SPIKE_FADE (CRYPTO_SPIKE_FADE_ENABLED)": 1,
   "GOLDEN_RULE": 3,
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 2156,
-  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 263,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 2438,
+  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 265,
   "CYCLE_TP (CYCLE_TP_TIERED_ENABLED)": 6,
-  "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 101
+  "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 101,
+  "DC_BASIS_3M_REDUCE (DC_BASIS_3M_REDUCE_ENABLED)": 1
  },
  "ungated_by_family": {},
  "safety_by_family": {},
@@ -42,7 +43,7 @@
   "RSI2_EXIT_LIVE_rsi2=7.0_thr=10.0": 22,
   "RSI2_EXIT_LIVE_rsi2=3.0_thr=10.0": 21,
   "BB_TAKE_15m": 18,
-  "RSI2_EXIT_LIVE_rsi2=2.5_thr=10.0": 13,
+  "RSI2_EXIT_LIVE_rsi2=2.5_thr=10.0": 17,
   "SUBSTITUTION_FOR_men:BTCUSDC_SHORT": 12,
   "RSI2_EXIT_LIVE_rsi2=2.7_thr=10.0": 11,
   "ORPHANED_HEDGE_PARENT_CLOSED": 10,
@@ -90,9 +91,9 @@
   "WT_CROSSUNDER_FINAL_L_k=72": 2
  },
  "actions": {
-  "OPEN": 1202,
-  "CLOSE": 3258,
-  "REDUCE": 54,
+  "OPEN": 1249,
+  "CLOSE": 3552,
+  "REDUCE": 56,
   "QUICK_CLOSE": 220
  }
 }
