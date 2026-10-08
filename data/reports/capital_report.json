@@ -1,32 +1,88 @@
 {
- "generated_at": "2026-10-08 04:01 UTC",
- "total_capital_usd": 15.03,
+ "generated_at": "2026-10-08 04:08 UTC",
+ "total_capital_usd": 81.45,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 15.03
+  "B": 81.47,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
-  "C": 1
+  "B": 6,
+  "C": 0
  },
  "winners": [],
  "losers": [
-  "flz:SOLUSDC_SHORT"
+  "fin:IOTXUSDT_LONG",
+  "fin:BNBUSDC_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:SOLUSDC_SHORT",
-   "symbol": "SOLUSDC",
-   "account": "flz",
-   "value_usd": 15.03,
-   "gain_pct": 0.637,
-   "tier": "C",
-   "perf_mult": 0.54,
-   "amt": 0.13,
-   "mark": 115.5792791
+   "pk": "fin:SANDUSDT_LONG",
+   "symbol": "SANDUSDT",
+   "account": "fin",
+   "value_usd": 19.5,
+   "gain_pct": 7.003,
+   "tier": "B",
+   "perf_mult": 7.3,
+   "amt": 258.0,
+   "mark": 0.0755654
+  },
+  {
+   "pk": "fin:COTIUSDT_SHORT",
+   "symbol": "COTIUSDT",
+   "account": "fin",
+   "value_usd": 17.88,
+   "gain_pct": 0.732,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 1357.0,
+   "mark": 0.01317484
+  },
+  {
+   "pk": "fin:LINKUSDC_SHORT",
+   "symbol": "LINKUSDC",
+   "account": "fin",
+   "value_usd": 17.78,
+   "gain_pct": 0.709,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 1.35,
+   "mark": 13.167
+  },
+  {
+   "pk": "fin:ADAUSDC_SHORT",
+   "symbol": "ADAUSDC",
+   "account": "fin",
+   "value_usd": 12.77,
+   "gain_pct": -0.275,
+   "tier": "B",
+   "perf_mult": 3.08,
+   "amt": 50.2,
+   "mark": 0.2544362
+  },
+  {
+   "pk": "fin:BNBUSDC_LONG",
+   "symbol": "BNBUSDC",
+   "account": "fin",
+   "value_usd": 7.7,
+   "gain_pct": -0.539,
+   "tier": "B",
+   "perf_mult": 1.45,
+   "amt": 0.01,
+   "mark": 769.58889651
+  },
+  {
+   "pk": "fin:IOTXUSDT_LONG",
+   "symbol": "IOTXUSDT",
+   "account": "fin",
+   "value_usd": 5.84,
+   "gain_pct": -1.961,
+   "tier": "B",
+   "perf_mult": 2.18,
+   "amt": 1586.0,
+   "mark": 0.00367918
   }
  ]
 }
