@@ -1428,15 +1428,15 @@ Mon 2026-10-05 06:00 UTC: best (newest-round) 30D sheet of every sym_side → 36
 3. **Apply the new per-sym settings to live** — per sym_side best sets that pass the gates (30D valid + positive, 365D
    confirmed, `switch_parity.register_workbook_result`) are written to ALL live surfaces together: the config files, the
    SQLite store (`per_sym_store`) and the per-sym JSON book (+ trb overlay for stocks), post-verified by re-read.
-3b. **Refresh the inf account universe** (USER 2026-10-06, top 15 per USER 2026-10-08): `symbols_inf_long.json` /
-   `symbols_inf_short.json` are rewritten with the **15 best LONG and 15 best SHORT crypto sym_sides of that day's backtest**
+3b. **Refresh the inf account universe** (USER 2026-10-06, top 20 per USER 2026-10-08): `symbols_inf_long.json` /
+   `symbols_inf_short.json` are rewritten with the **20 best LONG and 20 best SHORT crypto sym_sides of that day's backtest**
    (ranked on the fresh 30D result of the final per-sym set; only sym_sides that pass the same gates as step 3: valid,
    gain > 0, TIM 20-80, DD ≤ 30, ≥10 trades, 365D confirmed when available; only tradeable symbols; never a
    SIMPLE_PRICE_GT0 set). Symbols with an OPEN inf position stay listed until that position is closed (no stranding).
    A symbol eligible on BOTH sides is listed only on its better-gain side (a both-sides listing is silently dropped by
    the hedge-pair cleanup, so it would trade neither). Backup + atomic write; `tradeable_keys.json` `inf:` keys follow
    within minutes via the positions service cleanup, and live `ez_manage --account inf` picks both up with no restart
-   (symbols reload every 3 min, tradeable every 180 s). Tool: `tools/v15_daily_inf_universe.py --apply --top 15`, run as
+   (symbols reload every 3 min, tradeable every 180 s). Tool: `tools/v15_daily_inf_universe.py --apply --top 20`, run as
    step 5d of the Mac chain follow-up (`tools/v15_daily_chain_mac_apply.sh`, right after the per-sym go-live + size
    tiers, non-fatal, result in the DONE stamp) with the 15:05Z `V15_INF_UNIVERSE_APPLY` cron as backstop. Fetch unions
    the pointer dir + every `~/v15_*` campaign dir + the lifecycle_pilot dir (pointers rotate fleet-wide; the day boundary

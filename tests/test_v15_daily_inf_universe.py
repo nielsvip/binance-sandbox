@@ -267,21 +267,21 @@ def test_main_apply_refuses_empty_side(tmp_path, monkeypatch):
     assert json.loads(books["SHORT"].read_text()) == []
 
 
-def test_build_books_default_top_is_15():
+def test_build_books_default_top_is_20():
     import inspect
-    assert inspect.signature(U.build_books).parameters["top"].default == 15
+    assert inspect.signature(U.build_books).parameters["top"].default == 20
 
 
-def test_cli_default_top_is_15(tmp_path, monkeypatch):
-    # USER 2026-10-08: the daily chain writes the top-15 30D gainers per side (was 25)
+def test_cli_default_top_is_20(tmp_path, monkeypatch):
+    # USER 2026-10-08: the daily chain writes the top-20 30D gainers per side (was 25, then 15)
     books = _sandbox(tmp_path, monkeypatch, [], [])
-    recs = [rec(f"L{i:02d}USDT_LONG", gain=float(30 - i)) for i in range(20)] + [rec(f"S{i:02d}USDT_SHORT", gain=float(30 - i)) for i in range(20)]
+    recs = [rec(f"L{i:02d}USDT_LONG", gain=float(30 - i)) for i in range(25)] + [rec(f"S{i:02d}USDT_SHORT", gain=float(30 - i)) for i in range(25)]
     monkeypatch.setattr(U, "allowed_sym_sides", lambda root=None: allowed_for(*recs))
     rp = tmp_path / "recs.json"
     rp.write_text(json.dumps(recs))
     assert U.main(["--records", str(rp), "--apply"]) == 0
-    assert len(json.loads(books["LONG"].read_text())) == 15
-    assert len(json.loads(books["SHORT"].read_text())) == 15
+    assert len(json.loads(books["LONG"].read_text())) == 20
+    assert len(json.loads(books["SHORT"].read_text())) == 20
 
 
 def test_remote_extract_sets_tools_sys_path():

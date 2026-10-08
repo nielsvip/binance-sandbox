@@ -2,7 +2,7 @@
 """v15_daily_inf_universe — daily refresh of the live 'inf' crypto account books (BACKTEST_BIBLE §68.3 step 3b, USER 2026-10-06).
 
 symbols_inf_long.json / symbols_inf_short.json (repo root on the Mac, plain JSON list of symbols) are rewritten with the
-15 best LONG and 15 best SHORT crypto sym_sides of that day's backtest (USER 2026-10-08), ranked on the FRESH 30D result of the final
+20 best LONG and 20 best SHORT crypto sym_sides of that day's backtest (USER 2026-10-08), ranked on the FRESH 30D result of the final
 per-sym set. Results are fetched from the servers (S1/s2/s5): the pointer ~/v15_current_progress_dir.txt PLUS every
 ~/v15_* campaign dir (top level and progress/ subdir) and the lifecycle_pilot dir — campaign dirs rotate fleet-wide
 (2026-10-08: pointer-only fetch saw 19 files while 124 fresh ones sat in the previous campaign), so the day boundary is
@@ -25,7 +25,7 @@ Safety:
   * a symbol eligible on BOTH sides goes only to its better-gain side by default (--both-sides resolve):
     ez_positions_service.cleanup_positions HEDGE PAIR CLEANUP drops both inf keys of a symbol listed on both sides with
     no open position unless the symbol is in the winners/losers lists, so listing both would silently trade neither;
-  * never pads with ineligible symbols (fewer than 15 eligible -> only the eligible ones);
+  * never pads with ineligible symbols (fewer than 20 eligible -> only the eligible ones);
   * --apply refuses when a host fetch failed (--allow-partial-hosts overrides), when positions files are stale or
     unreadable, when fewer than --min-records fresh sym_sides were fetched (--allow-thin-fetch overrides; a collapsed
     fleet view must keep yesterday's books, never write a retention-only skeleton), or when a side would become empty
@@ -35,7 +35,7 @@ Report: data/inf_universe/<YYYYMMDD>.json + .md (ranked table, kept-for-open-pos
 fetched records data/inf_universe/<YYYYMMDD>_records.json. All numbers are single-sym_side 30D vector backtests
 ([DIAGNOSTIC ONLY] under the CLAUDE.md sample floor); no Sharpe is emitted.
 
-usage: v15_daily_inf_universe.py [--apply] [--hosts s1-pub,s2,s5] [--top 15] [--max-age-hours 36] [--min-records 20]
+usage: v15_daily_inf_universe.py [--apply] [--hosts s1-pub,s2,s5] [--top 20] [--max-age-hours 36] [--min-records 20]
                                  [--records PATH] [--both-sides resolve|keep] [--allow-partial-hosts] [--allow-empty-side]
 """
 import argparse
@@ -353,7 +353,7 @@ def open_inf_positions(positions=None, tracker=None, max_age_s=POSITIONS_MAX_AGE
     return out, problems
 
 
-def build_books(evaluated, open_pos, top=15, both_sides="resolve"):
+def build_books(evaluated, open_pos, top=20, both_sides="resolve"):
     """evaluated: {sym_side: (eligible, reasons, metrics, flags)}. Returns dict with ranked lists per side, the final books
     (top-N eligible + open-position retention), both-side conflicts."""
     ranked = {"LONG": [], "SHORT": []}
@@ -456,7 +456,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--hosts", default=",".join(DEFAULT_HOSTS))
-    ap.add_argument("--top", type=int, default=15)
+    ap.add_argument("--top", type=int, default=20)
     ap.add_argument("--max-age-hours", type=float, default=36.0)
     ap.add_argument("--min-records", type=int, default=20)
     ap.add_argument("--allow-thin-fetch", action="store_true")
