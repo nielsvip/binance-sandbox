@@ -1,21 +1,21 @@
 {
- "now": "2026-10-08T04:01:27.767199+00:00",
+ "now": "2026-10-08T05:01:29.961388+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 4495,
- "last_exit_ts": "2026-10-08T04:01:25.703526+00:00",
+ "n_exit_rows": 4734,
+ "last_exit_ts": "2026-10-08T05:01:27.028464+00:00",
  "n_leaks": 11,
- "n_gate_on": 2353,
+ "n_gate_on": 2530,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 449,
+ "n_unmapped": 476,
  "n_unverified": 2,
  "since": "2026-10-06T18:48:00+00:00",
  "vec_exact_by_action": {
-  "OPEN": 1167,
-  "CLOSE": 466,
+  "OPEN": 1198,
+  "CLOSE": 470,
   "REDUCE": 47
  },
- "native_rows": 2815,
+ "native_rows": 3019,
  "unverified_by_family": {
   "WEBHOOK_HANDLE_SIGNAL (None=None)": 1,
   "ULTIMATE_DC (None=None)": 1
@@ -30,10 +30,10 @@
  "gate_on_by_family": {
   "CRYPTO_SPIKE_FADE (CRYPTO_SPIKE_FADE_ENABLED)": 1,
   "GOLDEN_RULE": 3,
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 2056,
-  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 224,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 2156,
+  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 263,
   "CYCLE_TP (CYCLE_TP_TIERED_ENABLED)": 6,
-  "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 63
+  "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 101
  },
  "ungated_by_family": {},
  "safety_by_family": {},
@@ -42,7 +42,9 @@
   "RSI2_EXIT_LIVE_rsi2=7.0_thr=10.0": 22,
   "RSI2_EXIT_LIVE_rsi2=3.0_thr=10.0": 21,
   "BB_TAKE_15m": 18,
+  "RSI2_EXIT_LIVE_rsi2=2.5_thr=10.0": 13,
   "SUBSTITUTION_FOR_men:BTCUSDC_SHORT": 12,
+  "RSI2_EXIT_LIVE_rsi2=2.7_thr=10.0": 11,
   "ORPHANED_HEDGE_PARENT_CLOSED": 10,
   "SUBSTITUTION_FOR_men:ETHUSDC_SHORT": 10,
   "SUBSTITUTION_FOR_men:COMPUSDT_SHORT": 9,
@@ -83,15 +85,13 @@
   "RSI2_EXIT_LIVE_rsi2=1.8_thr=10.0": 3,
   "SUBSTITUTION_FOR_men:ENSUSDT_LONG": 3,
   "CB_HTF_EXHAUST_HTF_EXHAUST: g=-0.67% a": 3,
+  "RSI2_EXIT_LIVE_rsi2=4.0_thr=10.0": 3,
   "BB_TAKE_4h": 2,
-  "WT_CROSSUNDER_FINAL_L_k=72": 2,
-  "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.51% age": 2,
-  "CB_HTF_EXHAUST_BAD_ENTRY: g=-2.66% age": 2,
-  "CB_HTF_EXHAUST_BAD_ENTRY: g=-4.27% age": 2
+  "WT_CROSSUNDER_FINAL_L_k=72": 2
  },
  "actions": {
-  "OPEN": 1171,
-  "CLOSE": 3050,
+  "OPEN": 1202,
+  "CLOSE": 3258,
   "REDUCE": 54,
   "QUICK_CLOSE": 220
  }

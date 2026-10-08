@@ -238,3 +238,51 @@ GOLDEN_RULE_*×2, GR_V5_STATE, LIVE_ONLY_SIGNALS_BATCH5,
 MTF_ARMED_ENTRIES, NEWBORN_PROTECT, NOLOSS_BYPASS (DEAD_VEC),
 OPEN_INTENT_SIZE_GATES, PARTIAL_PROFIT_LOCK_V2 (DEAD_VEC),
 MANDATORY (stocks done, crypto operator call).
+
+## 9. Wiring factory batch 3 (2026-10-08)
+
+6 filters archaeologized (3 read-only agents + full inline verification
+against live/vec/NPZ — every claim re-checked, one agent misread corrected:
+v12 master default False confirmed at runtime, not the __init__ True seen
+at v12:5170 which belongs to another class). Rule held: no live predicate
+→ no invention.
+
+**WIRED (1, ledger filters 18→17):**
+- `EXIT_R1_R2_FILTER_TF`: live R2 leg real both venues (ez:50118-50217,
+  tr:11580-11621; knob consumed via tyf.r2_eff_tfs live since hook
+  EZ-R2-TFS). Twin `r2_bar_fires` (gain/max gate + per-TF vel/decel +
+  crypto Daily veto; stocks vp=_prev-or-v, NPZ lacks _prev so stocks
+  decel mirrors live-dead) + v12 walk precompute/consume on the
+  `_ty_fire` chain after frozen (live order frozen 50019 < R2 50211),
+  post-chain consume shared. R1 explicitly out of scope (3m/5m-fixed +
+  entry-context, knob never gates it) → verdict WIRED-R2-ONLY.
+  Registry kind r2_vel_slow + master set, hook EZ-R2-TFS READY, docstring
+  NOD pruned. Tests `tests/test_v15_batch3_r2.py` 10/10, wiring suite
+  50/50. Prove + fleet deploy PENDING (deferred: fleet OOM-cascade +
+  4-host reboot 04:51-05:00Z; prove needs a stable window).
+- Known gaps (documented, not fixed): vec master default False vs live
+  True (pinned; flip = BASE shift, post-open call); stocks vec family
+  vs live ('1h','4h','D') depends on harness cfg; OFF≡family per live
+  resolver (OFF never disables, only narrows).
+
+**BLOCKED (5, registry + hook noop already correct, no code change):**
+- `EXIT_TIGHT_BREAKOUT_SCORER`: knob stub-only (grep-verified all 3
+  files); nearest live TF-less/NPZ-absent (rater hard legs, chre own
+  knobs, UVE sim-only).
+- `EXIT_TO_REDUCE_ADAPTER`: stub-only both venues; vec module exists
+  but UNCALLED in v12/backtest (legacy v11 only); vec-only label
+  adapter, TF-less.
+- `FIRST_OPEN_THROTTLE`: stub-only; vec module UNCALLED in v12 (v11
+  only); sim-start artifact, live explicitly has none; TF-less.
+- `NEWBORN_PROTECT`: real ez gate (wall-clock 900s + tracker +
+  reason-string bypass list) but TF-less (only leg hardcoded dc_3m =
+  NPZ-absent); tradier stubs only.
+- `OPEN_INTENT_SIZE_GATES`: real ez open-path gates (300s dedup +
+  60s intent lock + HARD_SIZE) with ZERO TF/indicator terms
+  (sed-verified both ranges); vacuous in bar walk; tradier none.
+
+Cut: tyf twins + v12 precompute/walk (Mac only, backups/
+before_batch3_r2_*), hook flip, ledger prune + _batch3 note.
+Remaining queue (17): batch-4 candidates EMERGENCY_BRAKE,
+GOLDEN_RULE_*×2, GR_V5_STATE, LIVE_ONLY_SIGNALS_BATCH5,
+MTF_ARMED_ENTRIES (+ 2 DEAD_VEC, MANDATORY-crypto, 3 batch2-BLOCKED).
