@@ -145,7 +145,7 @@ def test_short_base_fossils_live_truth():
     import json
     import config as C
     import config_tradier as CT
-    f = json.loads((ROOT / "data" / "cat_side_defaults_4.json").read_text())
+    f = json.loads((ROOT / "data" / "per_sym_settings.json").read_text())
     assert f["CRYPTO_SHORT"]["MOM3_FILTER_TF"] == "OFF" == C.Config.MOM3_FILTER_TF
     assert f["STOCKS_SHORT"]["MOM3_FILTER_TF"] == "OFF"
     assert f["CRYPTO_SHORT"]["VIGILANCE_GUARD_ENABLED"] is False and C.Config.VIGILANCE_GUARD_ENABLED is False

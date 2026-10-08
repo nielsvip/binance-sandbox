@@ -310,7 +310,7 @@ def test_startup_gate_off_switch(monkeypatch):
 
 
 def test_sync_cat_keys_fill_and_fossil_hold(iso):
-    cat_p = iso / "data" / "cat_side_defaults_4.json"
+    cat_p = iso / "data" / "per_sym_settings.json"
     cat_p.parent.mkdir(parents=True, exist_ok=True)
     cat_p.write_text(
         json.dumps(

@@ -62,7 +62,7 @@ def main():
     _ex = ROOT / "data" / "wiring" / "defaults" / "enforce_exclude_baseline_moving.json"
     skip_enforce = set()  # DEF2 2026-10-01: config is source of truth, enforce all (pilot already runs the config default; the old exclusion list only guarded template-value overrides)
     skip_enforce.add("AUGMENT_MIN_GAIN_PCT")
-    cat4 = json.loads((ROOT / "data" / "cat_side_defaults_4.json").read_text())
+    cat4 = json.loads((ROOT / "data" / "per_sym_settings.json").read_text())
     for cs in ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT"):
         src = Path(a.src) / f"TEMPLATE_{cs}.xlsx"
         if not src.exists():

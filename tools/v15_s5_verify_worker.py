@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("V12_NPZ_CACHE", "32")
 
 ENGINE_FILES = ("backtest_v12_engine.py", "v12_quick_engine.py", "ez_manage.py", "tradier_manage.py", "config.py", "config_tradier.py")
-PROV_FILES = ("data/hourly_reconfig/trb/active_config.json", "data/hourly_reconfig/per_sym_active_config.json", "data/cat_side_defaults_4.json", "data/cat_side_promotions.json", "data/sweep_cat_overrides.json")
+PROV_FILES = ("data/hourly_reconfig/trb/active_config.json", "data/hourly_reconfig/per_sym_active_config.json", "data/per_sym_settings.json", "data/cat_side_promotions.json", "data/sweep_cat_overrides.json")
 
 
 def md5_of(path):

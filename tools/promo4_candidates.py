@@ -18,7 +18,7 @@ def norm(v):
         return str(int(f)) if f == int(f) else repr(f)
     except Exception: return s
 d = json.load(open("data/avg_delta_pos_sym.json"))
-cat = json.load(open("data/cat_side_defaults_4.json"))
+cat = json.load(open("data/per_sym_settings.json"))
 sb = json.load(open("data/SWITCH_BIBLE.json"))["switches"]
 rc = collections.defaultdict(dict)
 for r in csv.DictReader(open("data/rowcoverage/latest.csv")):

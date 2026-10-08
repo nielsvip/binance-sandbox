@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Parity lane B 2026-10-06 — list (and with --apply, remove) STALE per-sym DEFAULTS-SNAPSHOT values for the switches newly
-wired into live crypto, so the current cat_side baseline (data/cat_side_defaults_4.json / per_sym_store kv_json, built from the
+wired into live crypto, so the current cat_side baseline (data/per_sym_settings.json / per_sym_store kv_json, built from the
 TEMPLATE_* bolds by v15_vector_delta / build_cat_side_defaults_4) is what live resolves.
 
 Why: ez_manage._psym_get returns per_sym_store full_config FIRST. full_config = defaults snapshot taken at promotion time +

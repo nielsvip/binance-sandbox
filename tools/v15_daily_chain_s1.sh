@@ -97,9 +97,9 @@ fi
 
 # 3. cat_side_defaults_4 (+ sweep copy); the builder dual-writes kv
 log "step3 build_cat_side_defaults_4"
-cp -p data/cat_side_defaults_4.json "backups/before_daily_chain_${DATE}_cat_side_defaults_4.json" 2>/dev/null
+cp -p data/per_sym_settings.json "backups/before_daily_chain_${DATE}_cat_side_defaults_4.json" 2>/dev/null
 timeout 600 "$PY" -u tools/build_cat_side_defaults_4.py || fail 3 "build_cat_side_defaults_4 rc=$?"
-mkdir -p data/sweep_defaults && cp data/cat_side_defaults_4.json data/sweep_defaults/cat_side_defaults_4.json || fail 3 "sweep copy"
+mkdir -p data/sweep_defaults && cp data/per_sym_settings.json data/sweep_defaults/per_sym_settings.json || fail 3 "sweep copy"
 "$PY" -u tools/v15_state_kv_sync.py --apply || fail 3 "kv sync on S1"
 STEPS_OK="$STEPS_OK,3"
 
@@ -125,7 +125,7 @@ STEPS_OK="$STEPS_OK,5"
 # 6. push to s2/s5 + kv sync + md5 verify
 FILES="SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx"
 FILES="$FILES SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx"
-FILES="$FILES data/cat_side_defaults_4.json data/sweep_defaults/cat_side_defaults_4.json data/avg_delta_pos_sym.json"
+FILES="$FILES data/per_sym_settings.json data/sweep_defaults/per_sym_settings.json data/avg_delta_pos_sym.json"
 FILES="$FILES data/avg_delta_pos_sym_cell.json data/cell_evidence/*.json"
 FILES="$FILES $AGG SPREADSHEETS/v15_avg_delta_latest.xlsx SPREADSHEETS/v15_vector_delta_latest.xlsx"
 FILES="$FILES data/reports/lifecycle_pilot/disabled_switches_never_pos_per_category.json data/cat_side_promotions.json data/avg_delta_round_ledger.json"

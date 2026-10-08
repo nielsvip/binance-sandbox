@@ -2,8 +2,8 @@
 """v15_autopilot — unattended round machine. Runs ON s1 from cron (*/5, flock singleton, resumable: every stage is idempotent, state in data/autopilot/state.json).
 
 USER 2026-10-02: "non stop run on all 3 servers of stocks and crypto that recalculates averages and defaults, resumed where it left off no matter what, coordinated by s1".
-Nothing here touches LIVE: sweep defaults live in data/sweep_defaults/cat_side_defaults_4.json (pilots read it through CAT_SIDE_DEFAULTS_PATH, set by the scheduler);
-the live data/cat_side_defaults_4.json is NEVER written. Read AUTOPILOT_RUNBOOK.md before changing anything.
+Nothing here touches LIVE: sweep defaults live in data/sweep_defaults/per_sym_settings.json (pilots read it through CAT_SIDE_DEFAULTS_PATH, set by the scheduler);
+the live data/per_sym_settings.json is NEVER written. Read AUTOPILOT_RUNBOOK.md before changing anything.
 
 Round = SWEEP (the fleet scheduler cron launches 30D sym_side pilots into the current progress dir) -> COLLECT (per-host partial aggregates -> merged workbook)
         -> TEMPLATE (v15_daily_template_update --apply: AVG_DELTA/POS_SYM, promotion, worst_first; NO --sync-defaults) -> NORMALISE (TEMPLATE_FINAL_NORM)
@@ -22,7 +22,7 @@ STATUS = AP / "STATUS.json"
 LOGMD = AP / "LOG.md"
 SNAP = AP / "sched_snapshot.json"
 HOSTS = ROOT / "tools" / "fleet_hosts_final.json"
-SWEEP_DEF = ROOT / "data" / "sweep_defaults" / "cat_side_defaults_4.json"
+SWEEP_DEF = ROOT / "data" / "sweep_defaults" / "per_sym_settings.json"
 TEMPLATES = [f"SPREADSHEETS/TEMPLATE_{v}_{s}.xlsx" for v in ("CRYPTO", "STOCKS") for s in ("LONG", "SHORT")]
 PY = str(ROOT / ".venv" / "bin" / "python")
 if not os.path.exists(PY):
@@ -332,7 +332,7 @@ def stage_normalise(st, dry):
 def stage_defaults(st, dry):
     SWEEP_DEF.parent.mkdir(parents=True, exist_ok=True)
     if not SWEEP_DEF.exists() and not dry:
-        shutil.copy2(ROOT / "data" / "cat_side_defaults_4.json", SWEEP_DEF)
+        shutil.copy2(ROOT / "data" / "per_sym_settings.json", SWEEP_DEF)
     if dry:
         return True
     if SWEEP_DEF.exists():
@@ -353,7 +353,7 @@ def stage_defaults(st, dry):
 def stage_sync(st, dry):
     if dry:
         return True
-    files = TEMPLATES + [f"SPREADSHEETS/TEMPLATE_FINAL_NORM/{Path(t).name}" for t in TEMPLATES] + ["data/sweep_defaults/cat_side_defaults_4.json", "data/cat_side_promotions.json"]
+    files = TEMPLATES + [f"SPREADSHEETS/TEMPLATE_FINAL_NORM/{Path(t).name}" for t in TEMPLATES] + ["data/sweep_defaults/per_sym_settings.json", "data/cat_side_promotions.json"]
     ok = True
     for h in hosts():
         if h["name"] == "s1":

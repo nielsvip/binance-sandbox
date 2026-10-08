@@ -4,7 +4,7 @@
 The template writer promotes each key on its own average delta; combined they can kill trading (2026-10-06 17:18: every crypto
 short zeroed). Before the writer saves, this evaluates the combined new defaults on 5 sample TRADEABLE sym_sides of the cat_side
 (real engine, 30D: tools.opt.v12_pilot prepare_batch + evaluate_prepared_sanitized). The base config is prepared with
-CAT_SIDE_DEFAULTS_SQLITE_DISABLED=1 and CAT_SIDE_DEFAULTS_PATH=<current cat_side_defaults_4.json> (the stale SQL kv must not
+CAT_SIDE_DEFAULTS_SQLITE_DISABLED=1 and CAT_SIDE_DEFAULTS_PATH=<current per_sym_settings.json> (the stale SQL kv must not
 leak in); the promoted values are applied as overrides on top (= the candidate defaults).
 FAIL when the candidate median (over the samples) has: trades < 50% of the baseline, or trades < 10 while below the baseline,
 or TIM < 20% while below the baseline. On FAIL it bisects: keys that fail alone are refused; if the rest still fails, greedy
@@ -114,7 +114,7 @@ def _fails(c, b):
 
 
 def check(cat_side, promoted, baseline=None, n=5, max_elim=12, cat_file=None):
-    cat_file = cat_file or os.environ.get("V15_GUARD_CAT_FILE") or str(ROOT / "data" / "cat_side_defaults_4.json")
+    cat_file = cat_file or os.environ.get("V15_GUARD_CAT_FILE") or str(ROOT / "data" / "per_sym_settings.json")
     promoted = {k: _norm(v, k) for k, v in (promoted or {}).items()}
     base_ov = {k: _norm(v, k) for k, v in (baseline or {}).items() if v is not None}
     rep = {"cat_side": cat_side, "n_promoted": len(promoted), "cat_file": cat_file, "refused_keys": [], "refuse_all": False, "ok": True}
@@ -173,7 +173,7 @@ def main():
     ap.add_argument("--cat-side", default=None)
     ap.add_argument("--n", type=int, default=5)
     ap.add_argument("--out", default=None)
-    ap.add_argument("--cat-file", default=None, help="baseline cat_side_defaults_4.json (the defaults in force before the replayed promotion)")
+    ap.add_argument("--cat-file", default=None, help="baseline per_sym_settings.json (the defaults in force before the replayed promotion)")
     ap.add_argument("--old-values", action="store_true", help="also reset promoted keys to the report's old template bolds (default: baseline = --cat-file as is)")
     a = ap.parse_args()
     if a.check_json:

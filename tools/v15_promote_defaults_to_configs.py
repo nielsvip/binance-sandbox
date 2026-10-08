@@ -3,7 +3,7 @@
 
 After tools/v15_daily_template_update.py has promoted every positive avg-delta value to the bold default of the four
 TEMPLATE_{CRYPTO,STOCKS}_{LONG,SHORT}.xlsx, this tool pushes the NEW defaults to every consumer:
-  (a) data/cat_side_defaults_4.json  — via tools/build_cat_side_defaults_4.py (its one-default rule refuses violations); this file is the
+  (a) data/per_sym_settings.json  — via tools/build_cat_side_defaults_4.py (its one-default rule refuses violations); this file is the
       LIVE effect (cat_side_defaults.py hot-reloads it: per-sym > cat_side > global). Per-sym overrides are never touched here.
   (b) config.py (crypto) / config_tradier.py (stocks) class defaults — ONLY where the venue's LONG and SHORT winners agree (a single global
       value cannot hold two different sides; the cat_side values stay in the JSON). Text edit of exactly one `    KEY: type = value` line.
@@ -39,7 +39,7 @@ sys.path.insert(0, str(ROOT))
 CAT_SIDES = ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")
 VENUE_FILE = {"CRYPTO": "config.py", "STOCKS": "config_tradier.py"}
 SECRET_RE = re.compile(r"API_KEY|SECRET|TOKEN|PASSWORD|PASSPHRASE|ACCOUNT_ID|PRIVATE", re.I)
-JSON_PATH = ROOT / "data" / "cat_side_defaults_4.json"
+JSON_PATH = ROOT / "data" / "per_sym_settings.json"
 PROMO_DIR = ROOT / "data" / "wiring" / "promo"
 QUEUE_DIR = ROOT / "data" / "wiring" / "queue" / "PROMO"
 LOG_MD = ROOT / "data" / "wiring" / "LOG.md"
@@ -377,7 +377,7 @@ def main():
         "baseline_shift": "BASELINE-SHIFT: promoted defaults (JSON already carries them for every sweep via apply_cat_side_defaults; this patch only aligns the class default)",
         "evidence": f"diff {csv_path.relative_to(ROOT)}; approved {n_app} (key,cat_side) changes"}, indent=1))
     with LOG_MD.open("a") as f:
-        f.write(f"\n- {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%MZ')} PROMO apply round {tag}: cat_side_defaults_4.json +{n_app} changes, config.py edits={len(cfg_edits['CRYPTO'])}, config_tradier.py edits={len(cfg_edits['STOCKS'])}, QuickConfig queue PROMO/{seq:03d} ({len(qc_edits)} keys). LOCKED_FILES.md immutable (uchg): unlock recorded here per user GO 2026-10-01. Backups backups/before_promo_{ts}_*.\n")
+        f.write(f"\n- {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%MZ')} PROMO apply round {tag}: per_sym_settings.json +{n_app} changes, config.py edits={len(cfg_edits['CRYPTO'])}, config_tradier.py edits={len(cfg_edits['STOCKS'])}, QuickConfig queue PROMO/{seq:03d} ({len(qc_edits)} keys). LOCKED_FILES.md immutable (uchg): unlock recorded here per user GO 2026-10-01. Backups backups/before_promo_{ts}_*.\n")
     print(f"[apply] done: JSON +{n_app}, config edits crypto={len(cfg_edits['CRYPTO'])} stocks={len(cfg_edits['STOCKS'])}, QuickConfig queue {qdir} ({len(qc_edits)} keys), backups before_promo_{ts}_*")
 
 

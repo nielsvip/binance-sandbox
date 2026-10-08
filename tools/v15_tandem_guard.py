@@ -6,7 +6,7 @@ does NOT forget QuickConfig so everything is in tandem before market open every 
 Checks, for the newest S1 chain stamp (today, else yesterday):
   1. the S1 stamp is DONE and the Mac follow-up stamp for the SAME date is DONE
   2. every promoted key of that stamp agrees on all four default surfaces per cat_side:
-     TEMPLATE bold == data/cat_side_defaults_4.json == venue config (config.py / config_tradier.py) == QuickConfig
+     TEMPLATE bold == data/per_sym_settings.json == venue config (config.py / config_tradier.py) == QuickConfig
      (switch_parity.verify_default_surfaces, the chain's own audit)
   3. switch_parity.startup_gate hard == [] for the four cat_sides on the Mac
   4. config.py / config_tradier.py / v12_quick_engine.py are byte-identical (md5) on the Mac and on every fleet

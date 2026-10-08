@@ -7,9 +7,9 @@ data/SWITCH_BIBLE_baseline.json). BROKEN checks:
   LINK_LOST                 (needs baseline) a switch that had a live read / reachable vec read in the baseline and now has none (name no longer referenced on that surface;
                             a moved file:line is fine, a vanished read is not)
   DEFAULT_MISMATCH          a template switch whose venue-config default and QuickConfig default differ and is not on the documented conflict list
-                            (data/cat_side_defaults_4.json _meta.conflicts_quick_vs_live)
+                            (data/per_sym_settings.json _meta.conflicts_quick_vs_live)
   VEC_MODULE_NOT_CALLED     (needs baseline) a vec_decisions module that is no longer reachable from simulate_one (new vs baseline). The legacy never-called set is reported as WARN.
-  NOT_IN_CAT_SIDE_DEFAULTS  a template switch present in the config but absent from data/cat_side_defaults_4.json for that template's cat_side
+  NOT_IN_CAT_SIDE_DEFAULTS  a template switch present in the config but absent from data/per_sym_settings.json for that template's cat_side
   DUPLICATE_SWITCH_ROWS     a white switch name that appears in more than one tab of the same template
   COVERAGE                  a switch the bible says is wired (live read + reachable vec read) that is in NO template (the coverage rule: every vectorized function >=1x across the 4 templates)
   TAB_FIRST_ROW_NOT_DEFAULT a tab whose first data row is not an is_default=YES row
@@ -46,7 +46,7 @@ def absent(v):
 
 def run_checks(cur, base):
     sw, meta = cur["switches"], cur["meta"]
-    csd = B.load_json(B.DATA / "cat_side_defaults_4.json", {})
+    csd = B.load_json(B.DATA / "per_sym_settings.json", {})
     conflicts = (csd.get("_meta", {}) or {}).get("conflicts_quick_vs_live", {})
     res = collections.OrderedDict((k, []) for k in ("TEMPLATE_NO_CONFIG", "LINK_LOST", "DEFAULT_MISMATCH", "VEC_MODULE_NOT_CALLED", "NOT_IN_CAT_SIDE_DEFAULTS", "DUPLICATE_SWITCH_ROWS", "COVERAGE", "TAB_FIRST_ROW_NOT_DEFAULT", "TAB_NO_ORANGE_ROWS"))
     warn = collections.OrderedDict()

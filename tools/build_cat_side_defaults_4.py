@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""build_cat_side_defaults_4 — build data/cat_side_defaults_4.json: the FOUR default sets (CRYPTO_LONG/CRYPTO_SHORT/STOCKS_LONG/
+"""build_cat_side_defaults_4 — build data/per_sym_settings.json: the FOUR default sets (CRYPTO_LONG/CRYPTO_SHORT/STOCKS_LONG/
 STOCKS_SHORT) read from the TEMPLATE_{cat_side}.xlsx defaults (USER 2026-09-30; consumed via cat_side_defaults.py).
 
 Per template: every non-grey (tab, switch) group's is_default=YES / bold row (v15_pilot.template_bold_defaults, fail-closed on

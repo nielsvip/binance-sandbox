@@ -5,7 +5,7 @@ Stages (state in data/daily_pipeline_state.json; each stage is idempotent and on
   1 finish_check   all sym_sides of the venue have a finished 30D progress JSON (or --deadline hit -> partial, flagged)
   2 collect        per host: newest *_v14_progress.json per sym_side -> v15_vector_delta_rebuild.py --scan/--emit-partial -> Mac merge
   3 template       tools/v15_daily_template_update.py --apply   (parent-owned: AVG_DELTA/POS_SYM, promote, worst_first, verify)
-  4 sync           rsync the 4 TEMPLATE_*.xlsx (+ data/cat_side_defaults_4.json, cat_side_promotions.json) to every host, md5-verify
+  4 sync           rsync the 4 TEMPLATE_*.xlsx (+ data/per_sym_settings.json, cat_side_promotions.json) to every host, md5-verify
   5 restart        new EMPTY progress dir on every host (~/v15_current_progress_dir.txt) so the pilot's ALREADY-FINISHED guard does
                    not fire; fleet scheduler then launches new-template 30D jobs. Running pilots are NOT killed.
   6 verify365      scheduler --windows 365D jobs (tools/v15_365_cycle.py) for finished winners
@@ -21,7 +21,7 @@ import v15_fleet_scheduler as FS  # noqa: E402
 
 STATE = ROOT / "data" / "daily_pipeline_state.json"
 TEMPLATES = [f"SPREADSHEETS/TEMPLATE_{v}_{s}.xlsx" for v in ("CRYPTO", "STOCKS") for s in ("LONG", "SHORT")]
-SYNC_EXTRA = ["data/cat_side_defaults_4.json", "data/cat_side_promotions.json"]  # MANDATORY (stage 4 fails without them)
+SYNC_EXTRA = ["data/per_sym_settings.json", "data/cat_side_promotions.json"]  # MANDATORY (stage 4 fails without them)
 STAGES = ["finish_check", "collect", "template", "sync", "restart", "verify365", "per_sym_apply"]
 PY = sys.executable
 
@@ -95,7 +95,7 @@ def stage_template(st, a):
     if not script.exists():
         print("  MISSING tools/v15_daily_template_update.py (parent-owned) — cannot advance")
         return a.dry_run
-    # USER 2026-09-30: bold defaults -> cat_side_defaults_4.json (live ez/tradier + sweep engine resolver) in the same step
+    # USER 2026-09-30: bold defaults -> per_sym_settings.json (live ez/tradier + sweep engine resolver) in the same step
     return run([PY, str(script)] + ([] if a.dry_run else ["--apply", "--sync-defaults"]), False) == 0
 
 

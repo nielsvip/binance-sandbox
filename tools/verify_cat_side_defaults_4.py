@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """verify_cat_side_defaults_4 — GUARD: every scalar non-secret field of the venue config (config.Config / config_tradier.TradierConfig)
-and QuickConfig must have an explicit entry in ALL FOUR cat_side maps of data/cat_side_defaults_4.json (USER 2026-09-30: four settings
+and QuickConfig must have an explicit entry in ALL FOUR cat_side maps of data/per_sym_settings.json (USER 2026-09-30: four settings
 per switch, ALWAYS). Fields whose live value and QuickConfig value disagree are listed in _meta.conflicts_quick_vs_live (curated
 decision, never auto-filled — BIBLE §17.3) and reported as WARN. Also flags stale snapshots: a non-template key whose stored value
 no longer equals the current config value (someone edited config.py; the file shadows it) -> --fix rebuilds (stage-only: live values

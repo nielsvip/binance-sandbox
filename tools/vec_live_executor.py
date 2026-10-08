@@ -52,7 +52,7 @@ PUBLISH_DIR = Path(os.path.expanduser("~/binance/data/vec_live"))
 STALE_SEC = 20 * 60
 REANCHOR_AGE_SEC = 86400
 MIN_BARS = 100
-ENGINE_FILES = ["v12_quick_engine.py", "tools/opt/evaluate_v12.py", "tools/opt/v12_pilot.py", "tools/opt/lifecycle_pilot.py", "min_decision_tf_guard.py", "cat_side_defaults.py", "data/cat_side_defaults_4.json", "data/sweep_cat_overrides.json", "data/switch_dependencies.json"]
+ENGINE_FILES = ["v12_quick_engine.py", "tools/opt/evaluate_v12.py", "tools/opt/v12_pilot.py", "tools/opt/lifecycle_pilot.py", "min_decision_tf_guard.py", "cat_side_defaults.py", "data/per_sym_settings.json", "data/sweep_cat_overrides.json", "data/switch_dependencies.json"]
 
 
 def _now() -> float:

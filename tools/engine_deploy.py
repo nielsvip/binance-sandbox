@@ -24,17 +24,17 @@ def main():
     for r in files:
         if r.endswith(".py"):
             import py_compile; py_compile.compile(os.path.join(stage, r), doraise=True)
-    # JSN2 guard: data/cat_side_defaults_4.json is hot-read by live; never deploy it from a stale copy: union-merge keys from the current Mac copy (staged values win on conflicts) and refuse a staged file that has no cat_side sections.
-    _cj = "data/cat_side_defaults_4.json"
+    # JSN2 guard: data/per_sym_settings.json is hot-read by live; never deploy it from a stale copy: union-merge keys from the current Mac copy (staged values win on conflicts) and refuse a staged file that has no cat_side sections.
+    _cj = "data/per_sym_settings.json"
     if _cj in files:
         _sp, _mp = os.path.join(stage, _cj), os.path.join(ROOT, _cj)
         _st = json.load(open(_sp)); _cur = json.load(open(_mp)) if os.path.exists(_mp) else {}
-        if not all(c in _st for c in ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")): sys.exit("REFUSED: staged cat_side_defaults_4.json lacks cat_side sections")
+        if not all(c in _st for c in ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")): sys.exit("REFUSED: staged per_sym_settings.json lacks cat_side sections")
         _added = 0
         for _c in ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT"):
             for _k, _v in (_cur.get(_c) or {}).items():
                 if _k not in _st[_c]: _st[_c][_k] = _v; _added += 1
-        if _added: json.dump(_st, open(_sp, "w"), indent=1); print(f"[JSN2 guard] cat_side_defaults_4.json: merged {_added} keys from the current copy into the staged file")
+        if _added: json.dump(_st, open(_sp, "w"), indent=1); print(f"[JSN2 guard] per_sym_settings.json: merged {_added} keys from the current copy into the staged file")
     bk = os.path.join(ROOT, "backups", f"before_engine_{ts}"); 
     for r in files:
         src = os.path.join(ROOT, r)

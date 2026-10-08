@@ -728,7 +728,7 @@ def verify_default_surfaces(
         "bolds": {},
     }
     try:
-        cat_file = json.loads((root / "data" / "cat_side_defaults_4.json").read_text())
+        cat_file = json.loads((root / "data" / "per_sym_settings.json").read_text())
     except Exception as _e:
         rep["error"] = f"cat_side file unreadable: {_e}"
         return rep
@@ -975,7 +975,7 @@ def sync_default_surfaces(
         )
 
     try:
-        _cat_all = json.loads((root / "data" / "cat_side_defaults_4.json").read_text())
+        _cat_all = json.loads((root / "data" / "per_sym_settings.json").read_text())
     except Exception:
         _cat_all = {}
     allb = audit.get("bolds", {})
@@ -1214,7 +1214,7 @@ def sync_cat_keys(
         rep["planned"].append({"cat_side": cs, "key": k, "value": bv})
     if not apply or not rep["planned"]:
         return rep
-    cat_path = root / "data" / "cat_side_defaults_4.json"
+    cat_path = root / "data" / "per_sym_settings.json"
     try:
         raw0 = cat_path.read_text()
         cat = json.loads(raw0)
@@ -1297,7 +1297,7 @@ def startup_gate(cat_side: str, template_path: str = None, root: Path = None) ->
             "config.py",
             "config_tradier.py",
             "v12_quick_engine.py",
-            "data/cat_side_defaults_4.json",
+            "data/per_sym_settings.json",
         ):
             p = root / f
             sig += hashlib.md5(p.read_bytes()).hexdigest() if p.exists() else "x"
@@ -1422,7 +1422,7 @@ def verify_live_order_switches(root: Path = None, cat_sides=("CRYPTO_LONG", "CRY
     root = Path(root) if root else _ROOT()
     live_vals, quick_vals = _venue_values(False, root)
     try:
-        cat_file = json.loads((root / "data" / "cat_side_defaults_4.json").read_text())
+        cat_file = json.loads((root / "data" / "per_sym_settings.json").read_text())
     except Exception as _e:
         return {"error": f"cat_side file unreadable: {_e}"}
     reads = {}

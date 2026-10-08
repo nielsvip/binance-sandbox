@@ -2,7 +2,7 @@
 """Parity lane C 2026-10-06 — STOCKS twin of tools/parity_persym_snapshot_cleanup.py (lane B rule, reused verbatim).
 
 Lists (and with --apply removes) STALE per-sym DEFAULTS-SNAPSHOT values for stock sym_sides so the current cat_side baseline
-(data/cat_side_defaults_4.json STOCKS_LONG/STOCKS_SHORT, else config_tradier global) is what tradier_manage._cfg resolves.
+(data/per_sym_settings.json STOCKS_LONG/STOCKS_SHORT, else config_tradier global) is what tradier_manage._cfg resolves.
 
 Decision rule per (store, sym_side, switch) — identical to lane B:
   PROMOTION  key in that row's overrides (SQLite overrides_json / active_config 'overrides')  -> KEEP (never touched)

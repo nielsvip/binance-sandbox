@@ -567,7 +567,7 @@ def side_cmd(host, sym, side, window, pdir, attempt, workers):
     r, ss, venue = host["root"], f"{sym}_{side}", venue_of(sym)
     chain, t = f"{pdir}/../chain", tmpl_path(host, venue, side)
     if window == "30D":
-        env = f"V15_FRESH_RUN=1 V15_TEMPLATE_DEFAULTS=1 V15_SKIP_CAT_PERSYM_BASELINE=1 V15_ADAPT_BASELINE=0 V15_SKIP_LIVE_AT_DONE=1 V15_POSSYM_SAMPLING=1 V15_UNWIRED_SKIP=0 V12_NPZ_CACHE=8 V15_PROGRESS_DIR={pdir} V15_DEFAULTS_ROUND=$(cat ~/v15_defaults_round.txt 2>/dev/null) CAT_SIDE_DEFAULTS_PATH=$(test -f ~/binance-sandbox/data/sweep_defaults/cat_side_defaults_4.json && echo ~/binance-sandbox/data/sweep_defaults/cat_side_defaults_4.json)"
+        env = f"V15_FRESH_RUN=1 V15_TEMPLATE_DEFAULTS=1 V15_SKIP_CAT_PERSYM_BASELINE=1 V15_ADAPT_BASELINE=0 V15_SKIP_LIVE_AT_DONE=1 V15_POSSYM_SAMPLING=1 V15_UNWIRED_SKIP=0 V12_NPZ_CACHE=8 V15_PROGRESS_DIR={pdir} V15_DEFAULTS_ROUND=$(cat ~/v15_defaults_round.txt 2>/dev/null) CAT_SIDE_DEFAULTS_PATH=$(test -f ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json && echo ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json)"
         return f"{env} .venv/bin/python -u v15_pilot.py --sym-side {ss} --template {t} --seq-mode worst2best --window-days 30 --vector-only --workers {workers}"
     if window == "365D":
         return (f"mkdir -p {chain}/v365 && nice -n 10 .venv/bin/python -u tools/v15_365_cycle.py --sym-side {ss} --progress {pdir}/{ss}_v14_progress.json "

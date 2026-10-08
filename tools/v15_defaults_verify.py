@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """v15_defaults_verify (DEF2 2026-10-01): per template tab group, exactly ONE bold default row, is_default YES only there, and its value == config default for the cat_side
-(data/cat_side_defaults_4.json, fallback config values). Read-only. Writes <dir>/DEFAULTS_VERIFY.csv.   python tools/v15_defaults_verify.py [DIR]"""
+(data/per_sym_settings.json, fallback config values). Read-only. Writes <dir>/DEFAULTS_VERIFY.csv.   python tools/v15_defaults_verify.py [DIR]"""
 import csv, json, sys, collections
 from pathlib import Path
 import openpyxl
@@ -9,7 +9,7 @@ sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "tools"))
 from v15_template_normalize_defaults import SW, norm
 import build_cat_side_defaults_4 as B
 d = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM"
-cat4 = json.loads((ROOT / "data" / "cat_side_defaults_4.json").read_text())
+cat4 = json.loads((ROOT / "data" / "per_sym_settings.json").read_text())
 out = []
 tot = collections.Counter()
 for cs in ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT"):

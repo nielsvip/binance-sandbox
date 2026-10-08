@@ -25,7 +25,7 @@ from tools.opt import v12_pilot as VP
 from tools import v15_diagnose_repair as DR
 
 BOOK_DB = ROOT / "data" / "hourly_reconfig" / "per_sym_store.db"
-CATDEF = ROOT / "data" / "cat_side_defaults_4.json"
+CATDEF = ROOT / "data" / "per_sym_settings.json"
 GAP_PP = 0.5
 DD_TOL = 2.0
 REGRESS_30D = 0.3

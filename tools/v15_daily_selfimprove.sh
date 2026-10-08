@@ -14,15 +14,15 @@ echo "AGG=$AGG"
 timeout 500 $VENV -u tools/v15_daily_template_update.py --agg "$AGG" --apply || exit 1
 timeout 500 $VENV -u tools/v15_daily_template_update.py --agg "$AGG" --template-dir SPREADSHEETS/TEMPLATE_FINAL_NORM --apply || exit 1
 timeout 300 $VENV -u tools/build_cat_side_defaults_4.py || exit 1
-cp data/cat_side_defaults_4.json data/sweep_defaults/cat_side_defaults_4.json
+cp data/per_sym_settings.json data/sweep_defaults/per_sym_settings.json
 cp "$AGG" SPREADSHEETS/v15_avg_delta_latest.xlsx
 cp "$AGG" SPREADSHEETS/v15_vector_delta_latest.xlsx
 timeout 500 $VENV -u tools/v15_zero_delta_watchdog.py --agg "$AGG" --apply || true
 for H in s1-pub niels@10.0.0.4; do
   rsync -az -e "ssh -o StrictHostKeyChecking=accept-new" SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx "$H:~/binance-sandbox/SPREADSHEETS/" || exit 1
   rsync -az -e "ssh -o StrictHostKeyChecking=accept-new" SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx "$H:~/binance-sandbox/SPREADSHEETS/TEMPLATE_FINAL_NORM/" || exit 1
-  rsync -az -e "ssh -o StrictHostKeyChecking=accept-new" data/cat_side_defaults_4.json "$H:~/binance-sandbox/data/cat_side_defaults_4.json" || exit 1
-  rsync -az -e "ssh -o StrictHostKeyChecking=accept-new" data/sweep_defaults/cat_side_defaults_4.json "$H:~/binance-sandbox/data/sweep_defaults/cat_side_defaults_4.json" || exit 1
+  rsync -az -e "ssh -o StrictHostKeyChecking=accept-new" data/per_sym_settings.json "$H:~/binance-sandbox/data/per_sym_settings.json" || exit 1
+  rsync -az -e "ssh -o StrictHostKeyChecking=accept-new" data/sweep_defaults/per_sym_settings.json "$H:~/binance-sandbox/data/sweep_defaults/per_sym_settings.json" || exit 1
   rsync -az -e "ssh -o StrictHostKeyChecking=accept-new" data/reports/lifecycle_pilot/disabled_switches_never_pos_per_category.json "$H:~/binance-sandbox/data/reports/lifecycle_pilot/disabled_switches_never_pos_per_category.json" || true
   rsync -az -e "ssh -o StrictHostKeyChecking=accept-new" "$AGG" SPREADSHEETS/v15_avg_delta_latest.xlsx SPREADSHEETS/v15_vector_delta_latest.xlsx "$H:~/binance-sandbox/SPREADSHEETS/" || true
 done

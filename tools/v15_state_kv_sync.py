@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 import per_sym_store as pss  # noqa: E402
 
-PAIRS = ((pss.KV_CAT_SIDE_DEFAULTS_4, ROOT / "data" / "cat_side_defaults_4.json"), (pss.KV_CAT_SIDE_PROMOTIONS, ROOT / "data" / "cat_side_promotions.json"), (pss.KV_AVG_DELTA_ROUND_LEDGER, ROOT / "data" / "avg_delta_round_ledger.json"))
+PAIRS = ((pss.KV_CAT_SIDE_DEFAULTS_4, ROOT / "data" / "per_sym_settings.json"), (pss.KV_CAT_SIDE_PROMOTIONS, ROOT / "data" / "cat_side_promotions.json"), (pss.KV_AVG_DELTA_ROUND_LEDGER, ROOT / "data" / "avg_delta_round_ledger.json"))
 
 
 def main():

@@ -655,7 +655,7 @@ def main():
     ap.add_argument("--pos-json", default=None, help="AVG2: data/avg_delta_pos_sym.json — POS_SYM of every row = history count (30D all runs + 365D evidence); AVG_DELTA stays from the aggregate")
     ap.add_argument("--no-promote", action="store_true", help="AVG2 2026-10-01: do NOT change any default (bold/is_default); only AVG_DELTA/POS_SYM columns and the worst_first row order")
     ap.add_argument("--fresh-pos", action="store_true", help="AVG2: POS_SYM = this aggregate's positive sym_side count (ledger ignored, bootstrap semantics); rows without stats get blank AVG_DELTA/POS_SYM")
-    ap.add_argument("--sync-defaults", action="store_true", help="after --apply also rebuild data/cat_side_defaults_4.json (tools/build_cat_side_defaults_4.py) = pushes the new bold defaults to LIVE + sweep engine; OFF by default, run deliberately")
+    ap.add_argument("--sync-defaults", action="store_true", help="after --apply also rebuild data/per_sym_settings.json (tools/build_cat_side_defaults_4.py) = pushes the new bold defaults to LIVE + sweep engine; OFF by default, run deliberately")
     args = ap.parse_args()
     if args.tab_level:
         return main_tab_level(args)

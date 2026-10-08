@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""csd4_fill_missing — add ONLY the missing config fields (current venue-config/QuickConfig value, never a template promotion) to data/cat_side_defaults_4.json.
+"""csd4_fill_missing — add ONLY the missing config fields (current venue-config/QuickConfig value, never a template promotion) to data/per_sym_settings.json.
 For when tools/build_cat_side_defaults_4.py refuses (template default violations) but new config fields appeared. Existing values are never touched. Atomic write + backup."""
 import json, shutil, sys, datetime
 from pathlib import Path

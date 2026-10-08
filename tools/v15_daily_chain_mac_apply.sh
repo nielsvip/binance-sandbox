@@ -63,7 +63,7 @@ if [ "$DRYRUN" = 1 ] && [ -n "${CHAIN_TEST_REPORT:-}" ]; then
   # DRYRUN test only: no S1 --apply stamp exists yet -> build a TEST_FIXTURE stamp from S1's CURRENT file md5s + a template report's promoted keys
   log "step1 DRYRUN TEST_FIXTURE stamp from S1 current md5s + $CHAIN_TEST_REPORT"
   TAGG=SPREADSHEETS/v15_avg_delta/v15_avg_delta_$DATE.xlsx
-  TF="SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx data/cat_side_defaults_4.json data/sweep_defaults/cat_side_defaults_4.json data/avg_delta_pos_sym.json $TAGG SPREADSHEETS/v15_avg_delta_latest.xlsx SPREADSHEETS/v15_vector_delta_latest.xlsx data/cat_side_promotions.json data/avg_delta_round_ledger.json"
+  TF="SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx data/per_sym_settings.json data/sweep_defaults/per_sym_settings.json data/avg_delta_pos_sym.json $TAGG SPREADSHEETS/v15_avg_delta_latest.xlsx SPREADSHEETS/v15_vector_delta_latest.xlsx data/cat_side_promotions.json data/avg_delta_round_ledger.json"
   $SSH "$S1" "cd ~/binance-sandbox && md5sum $TF" > "$DEST/s1_current.md5" || fail 1 "S1 md5sum (test fixture)"
   "$PY" - "$CHAIN_TEST_REPORT" "$DEST/s1_current.md5" "$DATE" "$TAGG" > "$SJ" <<'EOF' || fail 1 "test fixture stamp"
 import json, sys
@@ -91,7 +91,7 @@ KEYS=$("$PY" -c "import json,sys; print(','.join(json.load(open(sys.argv[1])).ge
 # 2. pull state (md5 must equal what S1 pushed)
 PULL="SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx"
 PULL="$PULL SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx"
-PULL="$PULL data/cat_side_defaults_4.json data/sweep_defaults/cat_side_defaults_4.json data/avg_delta_pos_sym.json"
+PULL="$PULL data/per_sym_settings.json data/sweep_defaults/per_sym_settings.json data/avg_delta_pos_sym.json"
 PULL="$PULL data/avg_delta_pos_sym_cell.json"
 PULL="$PULL $AGG SPREADSHEETS/v15_avg_delta_latest.xlsx SPREADSHEETS/v15_vector_delta_latest.xlsx data/cat_side_promotions.json data/avg_delta_round_ledger.json"
 if [ "$DRYRUN" != 1 ]; then

@@ -98,7 +98,7 @@ class Fields:
             self.qc.apply_tradier_defaults()
         self.known = {f.name for f in dataclasses.fields(V.QuickConfig)} | {k for k in dir(config.Config) if not k.startswith("_")} | {k for k in dir(config_tradier.TradierConfig) if not k.startswith("_")}
         try:
-            self.cs4 = (json.loads((ROOT / "data" / "cat_side_defaults_4.json").read_text()).get(cs) or {})
+            self.cs4 = (json.loads((ROOT / "data" / "per_sym_settings.json").read_text()).get(cs) or {})
         except Exception:
             self.cs4 = {}
 

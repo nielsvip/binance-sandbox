@@ -20,7 +20,7 @@ Storage:
 
   JSON (backup, always kept as generated views until cutover):
     per_sym_active_config.json (crypto), _stocks.json, trb/…, trc/…,
-    cat_side_defaults_4.json, cat_side_promotions.json,
+    per_sym_settings.json, cat_side_promotions.json,
     avg_delta_round_ledger.json, gain_pusher/universe_*.json
   Writers dual-write: JSON file (view) + kv_json (primary).
   Readers SQL-primary → JSON fallback.
@@ -65,7 +65,7 @@ _HISTORY_PRUNE_AFTER_DAYS = 35  # keep ≥30d, prune >35d to avoid churn
 _HISTORY_MAX_PER_SYM = 45  # safety cap without growing DB
 
 # Generic KV keys for JSONs that must survive cutover (writers dual-write, loaders SQL-primary)
-KV_CAT_SIDE_DEFAULTS_4 = "cat_side_defaults_4"
+KV_CAT_SIDE_DEFAULTS_4 = "per_sym_settings"  # renamed 2026-10-08: SQL primary, data/per_sym_settings.json is the identical backup
 KV_CAT_SIDE_PROMOTIONS = "cat_side_promotions"
 KV_AVG_DELTA_ROUND_LEDGER = "avg_delta_round_ledger"
 KV_GAIN_PUSHER_PRIORITY = "gain_pusher/PRIORITY_SWITCHES"

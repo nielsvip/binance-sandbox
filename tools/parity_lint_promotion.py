@@ -17,7 +17,7 @@ known vec-live divergence BEFORE upsert into per_sym_store:
       clamps them, live has no twin (values would diverge).
   M4  sweep-only overrides (data/sweep_cat_overrides.json) the set does not pin
       — vec proofs assumed the sweep value, live runs the live value.
-  M5  conflicts_quick_vs_live (data/cat_side_defaults_4.json _meta) intersecting
+  M5  conflicts_quick_vs_live (data/per_sym_settings.json _meta) intersecting
       the set — documented quick/live default disagreements.
   M6  dep-master completeness (data/switch_dependencies.json): every sub-knob in
       the set must bring the masters vec forced ON, else live runs the sub-knob
@@ -244,7 +244,7 @@ def main():
             warnings.append(f"M4 {k}: set pins {ov[k]!r}, vec sweep ran {v!r} underneath (proof ran pinned value — ok if sheet evals used the pin)")
 
     try:
-        meta = json.loads((ROOT / "data" / "cat_side_defaults_4.json").read_text()).get("_meta", {})
+        meta = json.loads((ROOT / "data" / "per_sym_settings.json").read_text()).get("_meta", {})
         conflicts = meta.get("conflicts_quick_vs_live", {})
     except Exception:
         conflicts = {}
@@ -262,7 +262,7 @@ def main():
     except Exception:
         masters = None
     try:
-        _csd = json.loads((ROOT / "data" / "cat_side_defaults_4.json").read_text())
+        _csd = json.loads((ROOT / "data" / "per_sym_settings.json").read_text())
     except Exception:
         _csd = {}
     def _live_default_on(master, sym_side):

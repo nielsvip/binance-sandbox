@@ -31,7 +31,7 @@ def cfg_vals(fn, cls_re):
         d.setdefault(m.group(1), norm(m.group(2).strip().strip("'\"")))
     return d
 def main():
-    cat = json.loads((ROOT / "data/cat_side_defaults_4.json").read_text())
+    cat = json.loads((ROOT / "data/per_sym_settings.json").read_text())
     cfgc, cfgt, qc = cfg_vals("config.py", 0), cfg_vals("config_tradier.py", 0), cfg_vals("v12_quick_engine.py", 0)
     rows = []
     for c in CS:
