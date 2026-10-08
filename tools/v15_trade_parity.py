@@ -406,7 +406,10 @@ def run(symside: str, ov: dict, window_days: int, tol_min: float, min_match: flo
     live_extra = {}
     if vec_exact:
         live_extra = {"PARITY_VEC_EXACT_MODE": True, "PARITY_VEC_EXACT_FAMILIES": os.environ.get("TRADE_PARITY_VEC_EXACT_FAMILIES", "ENTRY,EXIT,AUGMENT"),
-                      "VEC_DRIVEN_ENABLED": False, "VEC_DRIVEN_NATIVE_ENTRY_BLOCK_ALL": False}
+                      "VEC_DRIVEN_ENABLED": False, "VEC_DRIVEN_NATIVE_ENTRY_BLOCK_ALL": False,
+                      # 2026-10-08: config.py defaults the twin's data source to 'live_klines' (rebuilt in memory on live klines_cache,
+                      # wall-clock time) — in a frozen-NPZ parity run BOTH legs must read the same frozen store (CLAUDE.md: never mix live feed)
+                      "PARITY_VEC_EXACT_SOURCE": os.environ.get("TRADE_PARITY_VEC_EXACT_SOURCE", "npz")}
         both_notes["live_vec_exact"] = live_extra
     t0 = time.time()
     try:

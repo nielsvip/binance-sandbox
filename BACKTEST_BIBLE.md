@@ -1676,3 +1676,14 @@ would split sweep/live from pilot baselines; needs a director ruling, not a sile
 - ENGINE ARTEFACTS ARE NEVER CANDIDATES OR EVIDENCE: `MODE`, `SIMPLE_PRICE_GT0_ENABLED`, `VENUE`, `IS_TRADIER`, `ABLATION_*` — denied in the autopsy
   (`AUTOPSY_DENY`), the priors (`PRIOR_DENY`), go-live (`ARTEFACT_KEYS`, stripped before the fresh eval) and the pilot (`ABLATION_NEVER_ON` row skip).
   2026-10-08: 137 stocks bases "rescued" by `MODE=crypto`, and 75 LIVE per-sym sets (73 with ablation ON) had to be quarantined/stripped.
+
+## 78. OVERRIDE SETS ARE NOT KNOBS — RESTATED DEFAULTS NEVER FORCE MASTERS (2026-10-08)
+
+- `tools/opt/evaluate_v12._expand_dependencies` forces a candidate knob's master switches ON (and OR-peers OFF) so a single evaluated row is
+  binding. That rule applies to EVALUATED knobs only. A key whose override merely restates the prepared base value (`_restates_default`) is
+  part of a SET (template bolds, autopsy base, cumulative set) and forces nothing.
+- Why it is law: ABT_LONG engine defaults = 14 trades; the same 776 template keys passed explicitly at identical values = 0 trades (every
+  master of every sub-knob forced ON at once). 83 STOCKS_LONG, 12 STOCKS_SHORT and 8 crypto autopsy bases were "dead" for this reason, and
+  every dead-zero board of the last weeks that started from a full set is suspect.
+- Consequence: baselines computed before 2026-10-08 20:00Z from full sets understate trades for stocks; bases are re-autopsied; the scheduler
+  holds sym_sides whose template base still has 0 trades (`waiting_base`) instead of launching ZERO_TRADES boards.
