@@ -1,21 +1,21 @@
 {
- "now": "2026-10-08T06:01:31.663900+00:00",
+ "now": "2026-10-08T07:01:34.182875+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 5077,
- "last_exit_ts": "2026-10-08T06:01:33.624581+00:00",
+ "n_exit_rows": 5334,
+ "last_exit_ts": "2026-10-08T07:01:25.980622+00:00",
  "n_leaks": 11,
- "n_gate_on": 2815,
+ "n_gate_on": 3016,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 480,
+ "n_unmapped": 497,
  "n_unverified": 2,
  "since": "2026-10-06T18:48:00+00:00",
  "vec_exact_by_action": {
-  "OPEN": 1245,
-  "CLOSE": 476,
+  "OPEN": 1282,
+  "CLOSE": 478,
   "REDUCE": 48
  },
- "native_rows": 3308,
+ "native_rows": 3526,
  "unverified_by_family": {
   "WEBHOOK_HANDLE_SIGNAL (None=None)": 1,
   "ULTIMATE_DC (None=None)": 1
@@ -30,11 +30,12 @@
  "gate_on_by_family": {
   "CRYPTO_SPIKE_FADE (CRYPTO_SPIKE_FADE_ENABLED)": 1,
   "GOLDEN_RULE": 3,
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 2438,
-  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 265,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 2616,
+  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 268,
   "CYCLE_TP (CYCLE_TP_TIERED_ENABLED)": 6,
-  "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 101,
-  "DC_BASIS_3M_REDUCE (DC_BASIS_3M_REDUCE_ENABLED)": 1
+  "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 117,
+  "DC_BASIS_3M_REDUCE (DC_BASIS_3M_REDUCE_ENABLED)": 1,
+  "MTF_BB_REJECT_EXIT (MTF_BB_REJECT_EXIT_ENABLED)": 4
  },
  "ungated_by_family": {},
  "safety_by_family": {},
@@ -52,6 +53,7 @@
   "SUBSTITUTION_FOR_men:BNBUSDC_LONG": 9,
   "SUBSTITUTION_FOR_men:EDUUSDT_LONG": 8,
   "SUBSTITUTION_FOR_men:SKYUSDT_SHORT": 8,
+  "RSI2_EXIT_LIVE_rsi2=5.0_thr=10.0": 8,
   "SUBSTITUTION_FOR_men:CHRUSDT_SHORT": 7,
   "WT_CROSSUNDER_FINAL_L_k=95": 6,
   "SUBSTITUTION_FOR_men:EGLDUSDT_SHORT": 6,
@@ -87,12 +89,11 @@
   "SUBSTITUTION_FOR_men:ENSUSDT_LONG": 3,
   "CB_HTF_EXHAUST_HTF_EXHAUST: g=-0.67% a": 3,
   "RSI2_EXIT_LIVE_rsi2=4.0_thr=10.0": 3,
-  "BB_TAKE_4h": 2,
-  "WT_CROSSUNDER_FINAL_L_k=72": 2
+  "RSI2_EXIT_LIVE_rsi2=5.9_thr=10.0": 3
  },
  "actions": {
-  "OPEN": 1249,
-  "CLOSE": 3552,
+  "OPEN": 1286,
+  "CLOSE": 3772,
   "REDUCE": 56,
   "QUICK_CLOSE": 220
  }
