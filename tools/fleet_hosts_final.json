@@ -8,8 +8,7 @@
    ],
    "root": "~/binance-sandbox",
    "venues": [
-    "crypto",
-    "stocks"
+    "crypto"
    ],
    "mem_reserve_mb": 6000,
    "max_pairs": 3,
@@ -24,8 +23,7 @@
    ],
    "root": "~/binance-sandbox",
    "venues": [
-    "crypto",
-    "stocks"
+    "crypto"
    ],
    "mem_reserve_mb": 5000,
    "max_pairs": 3,
@@ -40,8 +38,7 @@
    ],
    "root": "~/binance-sandbox",
    "venues": [
-    "crypto",
-    "stocks"
+    "crypto"
    ],
    "mem_reserve_mb": 4000,
    "max_pairs": 3,
@@ -56,8 +53,7 @@
    ],
    "root": "~/binance-sandbox",
    "venues": [
-    "crypto",
-    "stocks"
+    "crypto"
    ],
    "mem_reserve_mb": 4000,
    "max_pairs": 3,
@@ -80,5 +76,6 @@
  "_doc_venues": "2026-10-06 director: crypto only until the stock NPZ fleet is rebuilt on the live-equal builder (frames A); then restore ['stocks','crypto']",
  "_doc_steal_20261008": "USER 2026-10-08: pass-2 chain stealing (365D/REPAIR-a1 onto idle hosts, S1-relayed fetch, slot where work runs); max_pairs 3 all hosts (cpu 90 + mem guard throttle, reserves/oom reaper/hardcap unchanged); s6 (10.0.0.6, 16C/30G) joins as 4th crypto worker. Chain sequence ON via data/autopilot/chain_mode.flag (NO_CHAIN env stays, flag wins). 30D->365D->corrections->better-30D+pos-365D per symbol before slot release; repair bounded (365Dx2 tries, REPAIR a1+a2) then terminal_failing parks (no gridlock).",
  "_doc_s6_stocks_20261008": "USER 2026-10-08: s6 takes stocks too (crypto 30D 117/144 done, tail thin; 116 stocks chains pending). Templates converged post-stamp + repainted; NPZs+code synced.",
- "_doc_all_stocks_20261008": "USER 2026-10-08: all hosts take stocks (crypto 30D 117/144, tail thin; s5 hit 0/3 idle; 234 stocks sides untouched). Crypto-first priority preserved via venue_order; stocks fill idle slots."
+ "_doc_all_stocks_20261008": "USER 2026-10-08: all hosts take stocks (crypto 30D 117/144, tail thin; s5 hit 0/3 idle; 234 stocks sides untouched). Crypto-first priority preserved via venue_order; stocks fill idle slots.",
+ "_doc_stocks_hold_20261008": "HOLD 2026-10-08 01:15Z: stocks 30D pilots refuse fleet-wide (PARITY-GATE hard default disparity vs 00:23 chain bolds; 30D attempts cap 6 burns per churn cycle). Revert to crypto-only until peer parity-sync deploys, then flip back. See _doc_all_stocks_20261008."
 }

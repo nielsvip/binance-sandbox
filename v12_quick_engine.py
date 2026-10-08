@@ -4228,6 +4228,8 @@ class QuickConfig:
     WT_DC_DIRECT_DC_TF: str = "1h"
     DC_BREAKOUT_TF_EXPANDED: str = "1h"
     EXIT_VELOCITY_WT_TFS: str = "1h,4h,D"
+    EXIT_VELOCITY_WT_MIN_TFS: int = 1  # 2026-10-08 USER gains: TFs that must be against before the velocity exit fires (1 = live today)
+    EXIT_VELOCITY_WT_MIN_HOLD_ENABLED: bool = False  # 2026-10-08 USER gains (crypto): velocity exit honours MIN_HOLD (False = live today)
     EXIT_VELOCITY_WT_ENABLED: bool = True  # lane-D 2026-10-06 director H9: live ez_manage:48387 + tradier_manage:10918 run EXIT_VELOCITY_WT always-on (no master) -> vec twin default ON; False = old vec (no exit) as a test row
     # lane-D 2026-10-06 parity switches: default = LIVE behaviour; the non-default value restores the old vec-only behaviour as a test row
     MULTI_TF_EXIT_ENABLED: bool = False  # lane-D 2026-10-06 director ruling: brand-new switch -> default = today-live (False); True = vec-only behaviour test row (lanes B/C build the live twin).  # crypto: ez_manage.evaluate_multi_tf_exit (:41642) has NO crypto caller -> vec MULTI_TF_EXIT is vec-only; True = old vec
@@ -12856,6 +12858,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # lane-D 2026-10-06 (director H9 decision: build twin, default ON like live): EXIT_VELOCITY_WT closes in the walk
     # (live: GREY_REWIRE chain, CLOSE via execute_now, no MIN_HOLD, any P&L; crypto ez_manage:48387, stocks tradier_manage:10918).
     _xvel_mask = None
+    _xvel_arrs = {}
     if bool(getattr(cfg, 'EXIT_VELOCITY_WT_ENABLED', True)):
         try:
             import vec_decisions.twin_exits_dead as _ted_xv
@@ -14394,7 +14397,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             pass
         # lane-D 2026-10-06 EXIT_VELOCITY_WT twin (live GREY_REWIRE order: WT_LOWER_CROSS -> DAYTRADE DC -> ... -> EXIT_VELOCITY_WT).
         # A bar where the DAYTRADE DC exit also hits is left to the DAYTRADE chain below (live priority + its TARGET cd=0 semantics).
-        if _xvel_mask is not None and bool(_xvel_mask[i]):
+        # 2026-10-08 USER gains (autopsy: 45-57% of all trades were 1-bar velocity-exit losers): EXIT_VELOCITY_WT_MIN_TFS
+        # (vec+ez+tradier, shared predicate) and crypto-only EXIT_VELOCITY_WT_MIN_HOLD_ENABLED (live: _min_hold_ok_for_exit at the ez call site).
+        if _xvel_mask is not None and bool(_xvel_mask[i]) and vec_decisions.twin_exits_dead.velocity_wt_fire_at(_xvel_arrs, i, is_long, lambda _k, _d: getattr(cfg, _k, _d)) and (is_tradier or not bool(getattr(cfg, 'EXIT_VELOCITY_WT_MIN_HOLD_ENABLED', False)) or held_bars >= min_hold):
             try:
                 _xv_dt = False
                 if daytrade_on and (_dd_stop_dcs or _dd_tgt_dcs):

@@ -624,7 +624,7 @@ def velocity_wt_min_tfs(get):
 
 
 def velocity_wt_hits(vals, is_long):
-    return [(tf, vel) for tf, vel in vals if (vel < 0) if is_long else (vel > 0)]
+    return [(tf, vel) for tf, vel in vals if ((vel < 0) if is_long else (vel > 0))]
 
 
 def velocity_wt_arrays(npz, n, get, safe):

@@ -84,6 +84,8 @@ class Config:
     WT_DC_DIRECT_DC_TF: str = "1h"  # direct-path DC TF: 15m|1h|4h|D
     DC_BREAKOUT_TF_EXPANDED: str = "1h"  # alias with expanded options: 15m|1h|4h|D|W — mirrors DC_BREAKOUT_TF
     EXIT_VELOCITY_WT_TFS: str = "1h,4h,D"  # EXIT_VELOCITY WT check T inn — 15m|1h|4h|D combinations
+    EXIT_VELOCITY_WT_MIN_TFS: int = 1  # 2026-10-08 USER gains: TFs that must be against before the velocity exit fires (1 = today)
+    EXIT_VELOCITY_WT_MIN_HOLD_ENABLED: bool = False  # 2026-10-08 USER gains: velocity exit deferred until MIN_HOLD_BARS_BEFORE_EXIT satisfied (False = today)
     DC_HARD_STOP_TF: str = "4h"  # ULTIMATE_DC HARD_STOP TF: 4h|D — per sym_side, D is wider so fewer stops; monitor if 4h kills results
     GR_HTF_DIRECT_ENTRY_SCORE_MIN: float = 12.0
     GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE: float = 27.0

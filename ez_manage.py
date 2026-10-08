@@ -49279,6 +49279,10 @@ async def process_position(
                         if _pp_shared_ind is None:
                             _pp_shared_ind = await ii(trade_manager, symbol) or {}
                             _ted_fire, _ted_reason = _twin_exits_dead.velocity_wt_exit_live_fire(_pp_shared_ind, _gx_is_long, lambda _k, _d: _psym_get(symbol, position_side, _k, _d))
+                        # 2026-10-08 USER gains: EXIT_VELOCITY_WT_MIN_HOLD_ENABLED defers the velocity exit until MIN_HOLD satisfied (vec twin: held_bars >= min_hold)
+                        if _ted_fire and bool(_psym_get(symbol, position_side, "EXIT_VELOCITY_WT_MIN_HOLD_ENABLED", getattr(config, "EXIT_VELOCITY_WT_MIN_HOLD_ENABLED", False))) and not _min_hold_ok_for_exit:
+                            _ted_fire = False
+                            logger.debug(f"[EXIT_VELOCITY_WT_MIN_HOLD] {position_key}: velocity exit deferred, hold not satisfied")
                         if _ted_fire:
                             _gx_fire, _gx_reason = True, _ted_reason
                 except Exception as _ted_e:
