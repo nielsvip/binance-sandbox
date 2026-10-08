@@ -1697,3 +1697,33 @@ would split sweep/live from pilot baselines; needs a director ruling, not a sile
   the only gap = 153/35/44 vec opens vetoed live by this gate, vec P&L +9.29/-0.71/+1.12 — rallies happen at high k; vetoing them loses the rally.
 - Parity procedure: harness forces `PARITY_VEC_EXACT_SOURCE=npz`; attribute vec-only opens via the live log (`[VEC_EXACT] … OPEN … -> <result>`)
   before touching engine code.
+
+## 80. MISSED-TREND REVISION ROUND — BEST_EFFORT BOARDS RE-CHECK ENTRIES/EXITS/FILTERS (USER 2026-10-08, AGLDUSDT_SHORT autopsy)
+
+- **Why:** `AGLDUSDT_SHORT_bhm12p30_gain2p_t17_30d_matrix` (s2, 2026-10-08) published gain +2.95% / TIM 1.94% / 17
+  one-bar scalps (median hold 1, `EXIT_VELOCITY_WT` 12/17) while price slid **-15.97% from the 0.2292 top (bar 1757,
+  2026-09-26 16:45) to 0.1926 (bar 2874)** with the first entry 201 bars (~50 h) late — plus three more 0%-covered
+  slides (+13.00/+10.90/+10.47%). The sweep found **0 positive rows in all ENTRY/REENTRY/EXIT tabs**, compliance
+  repair could not lift TIM with single-switch steps, the board published `BEST_EFFORT` — and the scheduler treats
+  `BEST_EFFORT` as **TERMINAL** (`tools/v15_fleet_scheduler.py:_quar_terminal`), so no revision round ever re-checked
+  entries, exits, filters or the missed move. Self-improvement existed only cross-sym (daily chain avg_delta); per-sym
+  trend misses were frozen forever.
+- **Tool:** `tools/v15_missed_trend.py` (NEW, zero locked-file edits). `scan` (Mac-safe, engine-free) parses a published
+  chart `.html` (or progress+NPZ) into non-overlapping favorable legs over the FULL series with per-leg cover,
+  `late_by_bars` and churn evidence; `revise` fires on TIM < 20 with a ≥8% leg covered <35%. `screen` (fleet only, full
+  NPZ) evaluates every `ENTRY_*` + `REENTRY_*` row + premature-exit HOLD rows (`MIN_HOLD/MIN_TFS/COOLDOWN/TARGET_TF/
+  STOP_TF/REQUIRE_PROFIT/REQUIRE_GAIN/MIN_GAIN/VELOCITY` in `EXIT_*`) + SOFTEN/ENTRY_PATH bools vs the published final
+  set, attributes each to the missed legs via `v15_trade_autopsy.attribute`, then keeps an engine-verified surgical
+  combo (valid AND gain up AND TIM not down — §19). A leg no switch captures becomes a `PROPOSED_NEW_SWITCH` spec
+  (e.g. SHORT trigger on the first lower high — LH_HL rows today are FILTERS, not triggers) for the §71 pipeline.
+- **Re-run includes the fix:** `screen` writes `{SS}_missed_trend_base.json` in the `V15_START_OVERRIDES` schema (same
+  as `v15_autopsy_first`, incl. `effective_switches` for AUTOPSY-INERT + the §64 TEMPLATE_DEFAULTS exemption); the
+  fixing switches ride IN the base, so sampling/zero-skip/inert can never hide them. `screen` also emits a priors
+  partial in the exact `merge_partials` shape (same contract as `v15_autopsy_priors`) so the daily chain learns the
+  verified deltas cross-sym. `requeue` (explicit, per-sym, reversible) archives the BEST_EFFORT final to
+  `SPREADSHEETS/V15_V16_HISTORY/`, archives the stale progress file (rows measured for the old set), optionally
+  installs the base into `~/v15_autopsy_first/` — the scheduler's existing launch env then starts a fresh `need30`
+  revision round from the repaired set. Refuses QUALIFIED/IMPOSSIBLE without a human decision; never deletes.
+- **Fleet procedure (S1/s2 shell):** `python tools/v15_missed_trend.py screen --symside SS --set-json <final-set> --out ~/v15_missed_trend --workers 6`
+  then `python tools/v15_missed_trend.py requeue --symside SS --progress <round-pdir>/SS_v14_progress.json --base ~/v15_missed_trend/SS_missed_trend_base.json --autopsy-dir ~/v15_autopsy_first`
+  (`--dry-run` first). Guard tests: `tests/test_v15_missed_trend.py` (incl. the AGLD bar-1757→2874 regression).
