@@ -372,6 +372,17 @@ def load_inventory() -> dict:
                     continue
                 if ok:
                     out[cat][fault][f"{lv['switch']}={lv['to']}"] = lv
+        for key, lv in (j.get("by_switch_365") or {}).items():  # USER 2026-10-08: measured single-change 365D flips -> FAIL_365D_GAIN levers
+            cat, _, rest = key.partition("|")
+            sw, _, to = rest.partition("|")
+            try:
+                to_v = json.loads(to)
+            except Exception:
+                to_v = to
+            n = lv.get("n", 0)
+            if n >= 5 and (lv.get("greens", 0) > 0 or (lv.get("med_dgain365") or 0) > 0):
+                out[cat]["FAIL_365D_GAIN"][f"{sw}={to_v}"] = {"n": n, "med_dgain": lv.get("med_dgain365"), "wins": lv.get("wins"),
+                                                              "status": lv.get("status"), "src": "flip365-measured"}
         return out
     return {}
 
@@ -743,7 +754,9 @@ def main():
     a = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     g, tpl = build(Path(a.ablation_dir), Path(a.runs_dir))
-    (OUT / "graph.json").write_text(json.dumps(g, default=str))
+    _tmp = OUT / "graph.json.tmp"  # USER 2026-10-08: atomic swap, fleet GS reads this file at job start
+    _tmp.write_text(json.dumps(g, default=str))
+    _tmp.replace(OUT / "graph.json")
     write_md(g, tpl)
     write_row_table(g, tpl)
     print(json.dumps({k: v for k, v in g["meta"].items() if k.startswith("n_") or k == "secs"}))
