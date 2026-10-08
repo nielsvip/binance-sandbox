@@ -97,7 +97,7 @@ fi
 
 # 3. cat_side_defaults_4 (+ sweep copy); the builder dual-writes kv
 log "step3 build_cat_side_defaults_4"
-cp -p data/per_sym_settings.json "backups/before_daily_chain_${DATE}_cat_side_defaults_4.json" 2>/dev/null
+cp -p data/per_sym_settings.json "backups/before_daily_chain_${DATE}_per_sym_settings.json" 2>/dev/null
 timeout 600 "$PY" -u tools/build_cat_side_defaults_4.py || fail 3 "build_cat_side_defaults_4 rc=$?"
 mkdir -p data/sweep_defaults && cp data/per_sym_settings.json data/sweep_defaults/per_sym_settings.json || fail 3 "sweep copy"
 "$PY" -u tools/v15_state_kv_sync.py --apply || fail 3 "kv sync on S1"

@@ -13,4 +13,4 @@ python3 -m pytest -q tests/test_batch4_configs.py | tail -2
 [ "$1" = "--apply" ] || { echo "dry-run only"; exit 0; }
 for f in config.py config_tradier.py ez_positions_quick.py ez_manage.py; do cp $f backups/before_batch4_${TS}_$f; cp $B/$f $f; python3 -c "import py_compile;py_compile.compile('$f',doraise=True)"; md5 -q $f; done
 python3 tools/build_cat_side_defaults_4.py --stage-only | tail -2; python3 tools/verify_cat_side_defaults_4.py
-echo "NEXT: rsync the 4 files + data/cat_side_defaults_4.json to s1/s2/s5 (md5), then restart the 5 ez_manage accounts (ez_positions_quick is imported by them) — NOT before the LG-03/LG-04 decision (batch2_lg03 also edits ez_manage.py: apply that FIRST or re-run make_batch4.py on top of it)."
+echo "NEXT: rsync the 4 files + data/per_sym_settings.json to s1/s2/s5 (md5), then restart the 5 ez_manage accounts (ez_positions_quick is imported by them) — NOT before the LG-03/LG-04 decision (batch2_lg03 also edits ez_manage.py: apply that FIRST or re-run make_batch4.py on top of it)."

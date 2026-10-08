@@ -176,9 +176,15 @@ def pilots():
 if mode == "probe":
     pdir = open(HOME + "/v15_current_progress_dir.txt").read().strip() if os.path.exists(HOME + "/v15_current_progress_dir.txt") else None
     mem = 0
+    swp_t, swp_f = 0, 0
     for l in open("/proc/meminfo"):
         if l.startswith("MemAvailable"):
             mem = int(l.split()[1]) // 1024
+        elif l.startswith("SwapTotal"):
+            swp_t = int(l.split()[1]) // 1024
+        elif l.startswith("SwapFree"):
+            swp_f = int(l.split()[1]) // 1024
+    swp_u = max(0, swp_t - swp_f)
     def _cpu_t():
         v = [int(x) for x in open("/proc/stat").readline().split()[1:]]
         return sum(v), v[3] + v[4], v[1]
@@ -187,7 +193,7 @@ if mode == "probe":
     _t1, _i1, _n1 = _cpu_t()
     busy = round(100.0 * (1 - (_i1 - _i0) / max(1, _t1 - _t0)), 1)
     busy_nn = round(100.0 * (1 - ((_i1 - _i0) + (_n1 - _n0)) / max(1, _t1 - _t0)), 1)
-    o = {"nproc": os.cpu_count(), "load1": float(open("/proc/loadavg").read().split()[0]), "busy_pct": busy, "busy_nonnice_pct": busy_nn, "mem_avail_mb": mem, "pdir": pdir,
+    o = {"nproc": os.cpu_count(), "load1": float(open("/proc/loadavg").read().split()[0]), "busy_pct": busy, "busy_nonnice_pct": busy_nn, "mem_avail_mb": mem, "pdir": pdir, "swap_total_mb": swp_t, "swap_used_mb": swp_u,
          "running": pilots(), "started": [], "done": [], "quarantined": [], "v365": {}, "repair": {}, "gs": {}}
     if pdir and os.path.isdir(pdir):
         cache_p = "/tmp/v15_sched_done_cache.json"
@@ -380,10 +386,30 @@ elif mode == "reap":
         elif i["roots"] and all(i["kids"].get(r, 0) == 0 for r in i["roots"]) and i["idle"] > 20 * 60 and i.get("min_age", 0) > 15 * 60:
             kill(i["pids"], "wedged: no linked workers, no output for %.0fmin" % (i["idle"] / 60), ss); dead.add(ss)  # USER 2026-10-07: S1 UNI pair wedged 30+ min (0 CPU, slots held, nothing finished) — auto-clear instead of waiting for the 60-min stall trip. 2026-10-08: min_age grace — piped/starting pilots have no kids + stale log cands for minutes; TERMing a 23s-old healthy pilot churns (KSMUSDT_SHORT).
     if mem < arg["oom_mb"]:
-        live = [(i["age"], ss) for ss, i in info.items() if ss not in dead]
-        if live:
-            ss = min(live)[1]
-            kill(info[ss]["pids"], "OOM guard: MemAvailable %dMB < %dMB, youngest pilot" % (mem, arg["oom_mb"]), ss)
+        _rov, _pdr = None, None
+        try:
+            sys.path.insert(0, os.path.join(HOME, "binance-sandbox", "tools"))
+            from v15_fleet_scheduler import _rank_oom_victim as _rov, _progress_done_rows as _pdr
+        except Exception:
+            _rov, _pdr = None, None
+        _victim = None
+        if _rov is not None and _pdr is not None:
+            try:
+                _cands = []
+                for _ss, _i in info.items():
+                    if _ss in dead:
+                        continue
+                    _pd = (groups.get(_ss) or {}).get("pdir") or ""
+                    _done = _pdr(os.path.join(_pd, _ss + "_v14_progress.json")) if _pd else None
+                    _cands.append((_ss, _done, _i["age"]))
+                _victim = _rov(_cands)
+            except Exception:
+                _victim = None
+        if _victim is None:
+            _live = [(i["age"], ss) for ss, i in info.items() if ss not in dead]
+            _victim = min(_live)[1] if _live else None
+        if _victim is not None:
+            kill(info[_victim]["pids"], "OOM guard: MemAvailable %dMB < %dMB, least-progress victim" % (mem, arg["oom_mb"]), _victim)
     print(json.dumps({"apply": bool(arg.get("apply")), "mem_avail_mb": mem, "actions": acts}))
 
 elif mode == "kill":
@@ -446,6 +472,99 @@ def _quar_terminal(ss, quar, no_chain):
     if ss not in quar:
         return None
     return ("terminal_ok", None) if no_chain else ("terminal_failing", None)
+
+
+def _est_pair_mb(pair_measure, floor_mb=12000):
+    """Honest pair estimate: biggest measured pair x1.25 (growth headroom) or the floor.
+    USER 2026-10-08: avg x1.2 + 4000 floor admitted 5 pairs/host (~50GB) on 31GB boxes;
+    the OOM guard then murdered high-progress sides (s6 RLC LONG at 3249 rows). A steady
+    pair peaks ~12-15GB (2 x 5GB parents + 12 workers). Never raises."""
+    try:
+        vals = [float(v) for v in (pair_measure or []) if v is not None]
+        mx = max([v for v in vals if v > 0] or [0.0])
+    except Exception:
+        mx = 0.0
+    try:
+        floor = float(floor_mb or 12000)
+    except Exception:
+        floor = 12000.0
+    return max(floor, mx * 1.25)
+
+
+def _swap_admit_ok(stats, pct_max=40.0):
+    """Refuse new launches while the host is swap-drowning (USER 2026-10-08: s5 ran
+    8/8GB swap full and kept admitting). Missing swap fields fail open (old probe)."""
+    try:
+        tot = float((stats or {}).get("swap_total_mb") or 0)
+        used = float((stats or {}).get("swap_used_mb") or 0)
+    except Exception:
+        return True
+    if tot <= 0:
+        return True
+    try:
+        return (100.0 * used / tot) <= float(pct_max)
+    except Exception:
+        return True
+
+
+def _progress_done_rows(path):
+    """len(done) of a progress JSON, None when unreadable (fail-open for OOM ranking)."""
+    try:
+        d = json.load(open(path))
+        return len(d.get("done") or {})
+    except Exception:
+        return None
+
+
+def _rank_oom_victim(cands):
+    """Least-progress OOM victim. cands: [(ss, done_or_None, age_s)]. A side with no
+    readable progress file and age < 30min counts as 0 rows (brand-new, least loss);
+    no-file + old counts last (unknown act, probably slow 365D — don't murder it).
+    Ties break youngest. Returns ss or None. Never raises."""
+    best, best_key = None, None
+    for c in cands or []:
+        try:
+            ss, done, age = c[0], c[1], float(c[2] or 0)
+        except Exception:
+            continue
+        if done is None:
+            key = (0, 0, age) if age < 1800 else (1, 0, age)
+        else:
+            try:
+                key = (0, int(done), age)
+            except Exception:
+                continue
+        if best_key is None or key < best_key:
+            best, best_key = ss, key
+    return best
+
+
+def _reap_attempt_keys(actions, last_act):
+    """Non-orphan reaps consume the attempt of the act they were running (USER 2026-10-08:
+    the KSM wedge relaunched forever because kills never burned budget)."""
+    keys = []
+    for a in actions or []:
+        try:
+            if str(a.get("why") or "").startswith("orphaned"):
+                continue
+            k = (last_act or {}).get(a.get("ss"))
+            if k:
+                keys.append(k)
+        except Exception:
+            continue
+    return keys
+
+
+def _stall_tick(prev_pending, prev_same, cur_pending, warn_ticks=60):
+    """Pending-stuck counter. Returns (same_count, warn). 60 ticks ~= 2h of zero drain."""
+    try:
+        same = int(prev_same or 0) + 1 if prev_pending == cur_pending else 0
+    except Exception:
+        same = 0
+    try:
+        return same, bool(same >= int(warn_ticks or 60))
+    except Exception:
+        return same, False
 
 
 def probe(host):
@@ -642,6 +761,8 @@ def tick(args, cfg, now):
                 gone = {a_["ss"] for a_ in r_["actions"] if not a_["why"].startswith("orphaned")}
                 for ss_ in gone:
                     stats[h_["name"]]["running"].pop(ss_, None)
+                for k_ in _reap_attempt_keys(r_["actions"], st.get("last_act")):
+                    st["attempts"][k_] = st["attempts"].get(k_, 0) + 1
                 for a_ in r_["actions"]:
                     print(f"[reap] {h_['name']} {a_['ss']} {a_['why']} pids={a_['pids']}", flush=True)
     cur_pdir = next((x["pdir"] for x in stats.values() if x and x.get("pdir")), None)
@@ -806,9 +927,10 @@ def tick(args, cfg, now):
             pairs.setdefault(ss.rsplit("_", 1)[0], 0.0)
             pairs[ss.rsplit("_", 1)[0]] += r["pss_mb"]
         pair_measure = [v for k, v in pairs.items() if k in universe_syms["stocks"] | universe_syms["crypto"] and v > 0]
-        est_pair = max(cfg.get("default_pair_mb", 4000), (sum(pair_measure) / len(pair_measure)) * 1.2 if pair_measure else 0)
-        reserve = h.get("mem_reserve_mb", 3000)
+        est_pair = _est_pair_mb(pair_measure, cfg.get("default_pair_mb", 12000))
+        reserve = max(h.get("mem_reserve_mb", 3000), int(h.get("oom_mb", 500)) + 2000)
         proj_mem = s["mem_avail_mb"] - reserve
+        swap_ok = _swap_admit_ok(s)
         used = len(held[h["name"]])
         info = {"cpu": round(cpu), "cpu_real": round(float(s.get("busy_pct") or 0)), "mem_avail_mb": s["mem_avail_mb"], "slots": f"{used}/{cap}", "held": sorted(held[h["name"]]), "est_pair_mb": round(est_pair),
                 "workers_per_side": workers, "launched_pairs": 0}
@@ -824,13 +946,13 @@ def tick(args, cfg, now):
         for sym, needs_slot in order:
             if needs_slot and new_launched >= args.max_launch:
                 break  # budget counts only NEW pairs; chain continuations (365D/REPAIR) of held symbols never starve new admissions
-            if needs_slot and (used >= cap or proj_mem < est_pair or cpu >= cfg.get("cpu_target_pct", 90)):
+            if needs_slot and (used >= cap or proj_mem < est_pair or cpu >= cfg.get("cpu_target_pct", 90) or not swap_ok):
                 break
             if venue_of(sym) not in h["venues"]:
                 continue
             if sym in owner and owner[sym] != h["name"]:
                 continue
-            if not needs_slot and (proj_mem < est_pair / 2 or cpu >= 120):
+            if not needs_slot and (proj_mem < est_pair / 2 or cpu >= 120 or not swap_ok):
                 continue
             if not needs_slot and held[h["name"]].get(sym) != "running" and (running_cnt >= cap or chain_launched >= max(args.max_launch, 4)):
                 continue
@@ -864,6 +986,7 @@ def tick(args, cfg, now):
                     print(f"[sched] launch ssh timeout {h['name']} {sym} (job may still have started; pgrep dedups)", flush=True)
                 for a in acts:
                     st["attempts"][a["key"]] = st["attempts"].get(a["key"], 0) + 1
+                    st.setdefault("last_act", {})[a["key"].split("|")[0]] = a["key"]
                     launched_keys.add(a["key"])
                 log["launched"].append(tag)
             if needs_slot:
@@ -932,6 +1055,7 @@ def tick(args, cfg, now):
                     print(f"[sched] steal launch ssh timeout {h['name']} {sym} (job may still have started; pgrep dedups)", flush=True)
                 for a in acts:
                     st["attempts"][a["key"]] = st["attempts"].get(a["key"], 0) + 1
+                    st.setdefault("last_act", {})[a["key"].split("|")[0]] = a["key"]
                     launched_keys.add(a["key"])
                 log["launched"].append(tag)
             B["proj_mem"] -= B["est_pair"] + float(rd.get("size_mb") or 0)
@@ -971,6 +1095,10 @@ def tick(args, cfg, now):
     log["cats"] = cats
     log["pending_symbols"] = sum(1 for s in all_syms if not terminal(s))
     log["stocks_chain_left"] = sum(1 for s in stocks if not terminal(s))
+    st["pend_same"], _stall_warn = _stall_tick(st.get("pend_last"), st.get("pend_same"), log["pending_symbols"])
+    st["pend_last"] = log["pending_symbols"]
+    if _stall_warn:
+        log["stall_warning"] = "pending %d unchanged %d ticks (~%.1fh of zero drain)" % (log["pending_symbols"], st["pend_same"], st["pend_same"] / 30.0)
     if not (sim or args.dry_run):
         try:  # AUTOPILOT 2026-10-02: compact per-tick snapshot for tools/v15_autopilot.py + tools/v15_npz_keeper.py (atomic)
             snap = {"at": now.isoformat(), "pdir": cur_pdir, "stocks": stocks, "crypto": crypto, "done": sorted(done), "running": sorted(running), "quarantined": sorted(quar),

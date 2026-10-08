@@ -11,7 +11,7 @@
     "crypto"
    ],
    "mem_reserve_mb": 6000,
-   "max_pairs": 3,
+   "max_pairs": 2,
    "workers_per_side": 6,
    "oom_mb": 2000,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM"
@@ -38,10 +38,10 @@
    ],
    "root": "~/binance-sandbox",
    "venues": [
-    "crypto"
+    "stocks"
    ],
    "mem_reserve_mb": 4000,
-   "max_pairs": 3,
+   "max_pairs": 2,
    "workers_per_side": 6,
    "oom_mb": 1500,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM"
@@ -53,7 +53,7 @@
    ],
    "root": "~/binance-sandbox",
    "venues": [
-    "crypto"
+    "stocks"
    ],
    "mem_reserve_mb": 4000,
    "max_pairs": 3,
@@ -65,7 +65,7 @@
  "cpu_target_pct": 90,
  "default_job_rss_mb": 3500,
  "order_dir": "data/reports/per_sym_recheck_20260929",
- "default_pair_mb": 4000,
+ "default_pair_mb": 12000,
  "_doc2": "max_pairs = concurrent SYMBOL pairs per host (clamped 2..6; s5 hybrid under memory pressure 2-3); workers_per_side = pilot --workers",
  "_doc3": "2026-10-01: venues stocks-only on all hosts until crypto NPZs are rebuilt (NPZ integrity audit: crypto NPZ affected by the 09-24..10-01 klines-tail issue); then restore s1 ['crypto'] and s5 ['crypto','stocks']",
  "_doc5": "2026-10-01 05:45Z: all hosts run the sweep on the user's FINAL templates (normalised copy TEMPLATE_FINAL_NORM, yellow painted); Agent Y discovery shares CPU",
@@ -77,5 +77,6 @@
  "_doc_steal_20261008": "USER 2026-10-08: pass-2 chain stealing (365D/REPAIR-a1 onto idle hosts, S1-relayed fetch, slot where work runs); max_pairs 3 all hosts (cpu 90 + mem guard throttle, reserves/oom reaper/hardcap unchanged); s6 (10.0.0.6, 16C/30G) joins as 4th crypto worker. Chain sequence ON via data/autopilot/chain_mode.flag (NO_CHAIN env stays, flag wins). 30D->365D->corrections->better-30D+pos-365D per symbol before slot release; repair bounded (365Dx2 tries, REPAIR a1+a2) then terminal_failing parks (no gridlock).",
  "_doc_s6_stocks_20261008": "USER 2026-10-08: s6 takes stocks too (crypto 30D 117/144 done, tail thin; 116 stocks chains pending). Templates converged post-stamp + repainted; NPZs+code synced.",
  "_doc_all_stocks_20261008": "USER 2026-10-08: all hosts take stocks (crypto 30D 117/144, tail thin; s5 hit 0/3 idle; 234 stocks sides untouched). Crypto-first priority preserved via venue_order; stocks fill idle slots.",
- "_doc_stocks_hold_20261008": "HOLD 2026-10-08 01:15Z: stocks 30D pilots refuse fleet-wide (PARITY-GATE hard default disparity vs 00:23 chain bolds; 30D attempts cap 6 burns per churn cycle). Revert to crypto-only until peer parity-sync deploys, then flip back. See _doc_all_stocks_20261008."
+ "_doc_stocks_hold_20261008": "HOLD 2026-10-08 01:15Z: stocks 30D pilots refuse fleet-wide (PARITY-GATE hard default disparity vs 00:23 chain bolds; 30D attempts cap 6 burns per churn cycle). Revert to crypto-only until peer parity-sync deploys, then flip back. See _doc_all_stocks_20261008.",
+ "_doc_admit_20261008": "USER 2026-10-08: honest admission (est=max pair x1.25, floor 12000; reserve>=oom+2000; swap>40pc blocks launches; OOM victim=least-progress; reaps burn attempts; stall alert 60 ticks). Triage caps s1/s5=2 s2/s6=3 until memory converges, then restore."
 }
