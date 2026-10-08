@@ -12931,6 +12931,25 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         _ty_frozen_bb_arr = _safe(npz, _tyf.frozen_bb_key(_ty_frozen_tf, _ty_frozen_field, is_long), n, 0.0)
             except Exception:
                 _ty_frozen_bb_arr = None
+        _ty_r2_arrs, _ty_r2_wt1d, _ty_r2_wt2d = None, None, None
+        try:
+            if bool(getattr(cfg, 'WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED', False)):
+                _r2_fam = tuple(getattr(cfg, 'R2_TF_LIST', ('15m',)) or ('15m',))
+                _ty_r2_arrs = {}
+                for _tf in _tyf.r2_eff_tfs(getattr(cfg, 'EXIT_R1_R2_FILTER_TF', '15m'), _r2_fam):
+                    _pp = None
+                    if _ty_is_tradier:
+                        try:
+                            if ('wt_velocity_%s_prev' % _tf) in npz:
+                                _pp = _safe(npz, 'wt_velocity_%s_prev' % _tf, n, 0.0)
+                        except Exception:
+                            _pp = None
+                    _ty_r2_arrs[_tf] = (_safe(npz, 'wt_velocity_%s' % _tf, n, 0.0), _safe(npz, 'wt_acceleration_%s' % _tf, n, 0.0), _pp)
+                if not _ty_is_tradier:
+                    _ty_r2_wt1d = _safe(npz, 'wt1_D', n, 0.0)
+                    _ty_r2_wt2d = _safe(npz, 'wt2_D', n, 0.0)
+        except Exception:
+            _ty_r2_arrs, _ty_r2_wt1d, _ty_r2_wt2d = None, None, None
     # 2026-09-30 PORTED-SWITCH DISPATCHER — collision-free wiring hook (SWITCH_WIRING_GUIDE.md).
     # Each vec_decisions/ported_<lifecycle>.py owns its switches as faithful numpy twins of ez_manage/
     # tradier_manage (15m floor, NO proxies/fabrication). apply() returns the (possibly modified) signal.
@@ -14743,6 +14762,19 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             pos['ty_frozen_bb'] = _ty_fz
                     if _tyf3.frozen_stop_fires(pos.get('ty_frozen_bb', 0.0), float(px), live_pnl_pct, is_long):
                         _ty_fire, _ty_reason = True, 'BB_FROZEN_STOP_BREACH_g%.2f%%' % live_pnl_pct
+            except Exception:
+                pass
+            try:
+                if (not _ty_fire) and '_ty_r2_arrs' in locals() and _ty_r2_arrs and bool(getattr(cfg, 'WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED', False)):
+                    import vec_decisions.twin_yellow_filters as _tyf4
+                    _r2_legs = []
+                    for _tf, (_vv, _aa, _pp) in _ty_r2_arrs.items():
+                        _r2_legs.append((float(_vv[i]) if i < len(_vv) else 0.0, float(_aa[i]) if i < len(_aa) else 0.0, (float(_pp[i]) if i < len(_pp) else 0.0) if _pp is not None else None, _tf))
+                    _r2_w1 = float(_ty_r2_wt1d[i]) if ('_ty_r2_wt1d' in locals() and _ty_r2_wt1d is not None and i < len(_ty_r2_wt1d)) else 0.0
+                    _r2_w2 = float(_ty_r2_wt2d[i]) if ('_ty_r2_wt2d' in locals() and _ty_r2_wt2d is not None and i < len(_ty_r2_wt2d)) else 0.0
+                    _r2_hit, _r2_tf, _r2_tag = _tyf4.r2_bar_fires(is_long, live_pnl_pct, float(pos.get('peak_pnl_pct', 0.0)), _r2_legs, _r2_w1, _r2_w2, cfg, _ty_is_tradier)
+                    if _r2_hit:
+                        _ty_fire, _ty_reason = True, 'R2_WT_VEL_SLOW_%s_%s_g%.3f%%' % (_r2_tag, _r2_tf, live_pnl_pct)
             except Exception:
                 pass
         closed = False

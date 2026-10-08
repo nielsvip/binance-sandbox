@@ -72,6 +72,9 @@ config = Config()
 # Remaining 5 SHORT slots padded with least-negative (EGLD -0.04 .. BNBUSDC -1.56) — still in list but flagged as non-profitable.
 INF_CRYPTO_LONG_BEST_15 = ["COTIUSDT", "ARUSDT", "XTZUSDT", "AAVEUSDC", "UNIUSDC", "GRTUSDT", "EGLDUSDT", "IOTXUSDT", "DOTUSDT", "WLDUSDC", "THETAUSDT", "KSMUSDT", "1000BONKUSDC", "IOTAUSDT", "AIAUSDT"]
 INF_CRYPTO_SHORT_BEST_15 = ["SANDUSDT", "ARBUSDC", "ZENUSDT", "ACEUSDT", "GOOGLUSDT", "SOLUSDC", "IOTXUSDT", "BTCDOMUSDT", "COTIUSDT", "DASHUSDT", "EGLDUSDT", "ARKMUSDT", "AGLDUSDT", "APEUSDT", "BNBUSDC"]
+INF_BEST_SAVE_SUSPENDED = True  # 2026-10-08 USER: rankings-owned short-term gainers SUSPENDED (horrific week-after-week results) — the daily v15 chain (step 5d tools/v15_daily_inf_universe.py --apply --top 15) OWNS symbols_inf_long/short.json now; the v15 pilot decides daily who is tradeable on inf. Set False to resume rankings writes (needs ez_rankings restart).
+class _InfSaveSuspended(Exception):
+    pass
 BACKTEST_SHARPE = {"COTIUSDT": 5855, "ARUSDT": 3194, "XTZUSDT": 3111, "AAVEUSDC": 3069, "UNIUSDC": 2945, "GRTUSDT": 2537, "EGLDUSDT": 2419, "IOTXUSDT": 2123, "DOTUSDT": 2022, "WLDUSDC": 1923, "THETAUSDT": 1784, "KSMUSDT": 1602, "1000BONKUSDC": 1511, "IOTAUSDT": 1374, "AIAUSDT": 1306, "SANDUSDT": 1878, "ARBUSDC": 449, "ZENUSDT": 400, "ACEUSDT": 383, "GOOGLUSDT": 346, "SOLUSDC": 338, "BTCDOMUSDT": 262, "DASHUSDT": 162, "ARKMUSDT": -80, "AGLDUSDT": -98}
 
 # ===== VOLUME FILTERING CONFIGURATION =====
@@ -5635,6 +5638,8 @@ async def save_market_data():
         # We refresh from SPREADSHEETS/BEST crypto backtests (INF_CRYPTO_*_BEST_15) and force USDC correction,
         # then write atomically. Live rescan fallback scans SPREADSHEETS for newer best if files changed.
         try:
+            if INF_BEST_SAVE_SUSPENDED:
+                raise _InfSaveSuspended()
             _inf_long_best = list(INF_CRYPTO_LONG_BEST_15)
             _inf_short_best = list(INF_CRYPTO_SHORT_BEST_15)
             # Live rescan: if SPREADSHEETS/BEST was updated since startup, pick up newer best (filename gain)
@@ -5689,6 +5694,10 @@ async def save_market_data():
             await _save_json_async(BASE_PATH / "symbols_inf_long.json", symbols_inf_long_list)
             await _save_json_async(BASE_PATH / "symbols_inf_short.json", symbols_inf_short_list)
             logger.info(f"✅ [INF_BEST_SAVE] symbols_inf_long={len(symbols_inf_long_list)} {symbols_inf_long_list[:5]}... short={len(symbols_inf_short_list)} {symbols_inf_short_list[:5]}... (from SPREADSHEETS/BEST crypto)")
+        except _InfSaveSuspended:
+            if not globals().get("_INF_SUSPEND_LOGGED"):
+                globals()["_INF_SUSPEND_LOGGED"] = True
+                logger.info("[INF_BEST_SAVE] SUSPENDED 2026-10-08 (USER order): chain owns symbols_inf_long/short.json — rankings INF write skipped (in-memory momentum lists untouched)")
         except Exception as _inf_e:
             logger.error(f"[INF_BEST_SAVE] failed: {_inf_e}", exc_info=True)
         # 2026-09-06: CRYPTO TESTS ONLY TRADEABLE KEYS — filter ang lists to tradeable before save

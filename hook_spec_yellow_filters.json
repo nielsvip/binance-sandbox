@@ -250,9 +250,9 @@
    "anchor_count_verified": 1,
    "code": "            from vec_decisions.twin_yellow_filters import r2_eff_tfs as _tyf_r2\n            _wzg_tfs = _tyf_r2(_psym_get(symbol, position_side, \"EXIT_R1_R2_FILTER_TF\", getattr(config, \"EXIT_R1_R2_FILTER_TF\", \"15m\")), tuple(_psym_get(symbol, position_side, \"R2_TF_LIST\", (\"15m\",)) or (\"15m\",)))",
    "id": "EZ-R2-TFS",
-   "notes": "PENDING scope decision: R1 is 3m-fixed with no TF knob, so this wires the R2 leg only; promoting it under the R1_R2 name needs operator blessing.",
+   "notes": "WIRED-R2-ONLY batch3 2026-10-08: live resolver in place (ez:50145-50146/tr:11597-11599) + vec r2_bar_fires walk consume; R1 stays out of scope (3m-fixed, knob never gates it).",
    "position": "replace_line",
-   "status": "PENDING-OPERATOR-DECISION",
+   "status": "READY",
    "switches": [
     "EXIT_R1_R2_FILTER_TF"
    ],

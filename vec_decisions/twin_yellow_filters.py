@@ -55,8 +55,9 @@ insertions on both sides; NEEDS-OPERATOR-DECISION = blocked, evidence cited):
      weight; live reads _TFS not _FILTER_TF; semantic collision)
   NOD  NEWBORN_LOSS_KILL_FILTER_TF (3-way TF default mismatch: live VEL_TF 3m
      ez:47012 vs vec/filter 15m v12:11990; vel-against core shipped PENDING)
-  NOD  EXIT_R1_R2_FILTER_TF (R1 is 3m-fixed ez:47080+, R2 has R2_TF_LIST
-     ez:47631; single-filter scope ambiguous; R2 resolver shipped PENDING)
+  WIRED-R2-ONLY  EXIT_R1_R2_FILTER_TF (batch3 2026-10-08: R2 vel-slow leg
+     twinned r2_bar_fires, walk consume; R1 stays out of scope — 3m-fixed
+     + entry-context, the knob never gates it)
   NOD  BREAKOUT_RETEST_FILTER_TF (live RULE_A_RETEST real both venues but uses
      5 hard TF legs D/W/15m/1h/3m; which leg the filter selects is undefined)
   NOD  EXIT_TOP_FADE / BREAKEVEN_GAIN_EROSION / CIRCUIT_SHARPE_GATES /
@@ -115,7 +116,7 @@ REGISTRY = {
     "WT_15M_BOUNCE_REL_VOL_GT_1": {"target": "entry", "kind": "wt_bounce", "master": "WT_15M_BOUNCE_OPEN_ENABLED", "family_tf_knob": None, "filter_default": False, "verdict": "NEEDS-OPERATOR-DECISION"},
     "EMA_9_21_FILTER_FILTER_TF": {"target": "entry", "kind": "ema921", "master": "EMA_9_21_FILTER_ENABLED", "family_tf_knob": "EMA_9_21_FILTER_TFS", "filter_default": "15m", "verdict": "NEEDS-OPERATOR-DECISION"},
     "NEWBORN_LOSS_KILL_FILTER_TF": {"target": "exit", "kind": "newborn_vel", "master": "NEWBORN_LOSS_KILL_ENABLED", "family_tf_knob": "NEWBORN_LOSS_KILL_VEL_TF", "filter_default": "15m", "verdict": "NEEDS-OPERATOR-DECISION"},
-    "EXIT_R1_R2_FILTER_TF": {"target": "exit", "kind": "r1_r2", "master": None, "family_tf_knob": "R2_TF_LIST", "filter_default": "15m", "verdict": "NEEDS-OPERATOR-DECISION"},
+    "EXIT_R1_R2_FILTER_TF": {"target": "exit", "kind": "r2_vel_slow", "master": "WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED", "family_tf_knob": "R2_TF_LIST", "filter_default": "15m", "verdict": "WIRED-R2-ONLY"},
     "BREAKOUT_RETEST_FILTER_TF": {"target": "entry", "kind": "retest", "master": "BREAKOUT_RETEST_ARMED_ENABLED", "family_tf_knob": None, "filter_default": "OFF", "verdict": "NEEDS-OPERATOR-DECISION"},
     "EXIT_TOP_FADE_FILTER_TF": {"target": "exit", "kind": "none", "master": None, "family_tf_knob": None, "filter_default": "OFF", "verdict": "NEEDS-OPERATOR-DECISION"},
     "BREAKEVEN_GAIN_EROSION_FILTER_TF": {"target": "reduce", "kind": "none", "master": "BREAKEVEN_GAIN_EROSION_ENABLED", "family_tf_knob": None, "filter_default": "OFF", "verdict": "NEEDS-OPERATOR-DECISION"},
@@ -1070,6 +1071,96 @@ def r2_eff_tfs(filter_raw, family_list=("15m",), filter_default="15m"):
     if r == str(filter_default):
         return tuple(family_list or ("15m",))
     return (r,)
+
+
+def r2_vel_prev(v, a, v_prev=None, is_tradier=False):
+    """R2 velocity-prev per venue. Crypto (ez:50167-50168): vp=v-a always
+    (_prev fields never exist in NPZ/live). Stocks (tr:11608): vp=_prev or v."""
+    try:
+        _v = float(v)
+    except (TypeError, ValueError):
+        _v = 0.0
+    if is_tradier:
+        if v_prev is None:
+            return _v
+        try:
+            return float(v_prev)
+        except (TypeError, ValueError):
+            return _v
+    try:
+        return _v - float(a)
+    except (TypeError, ValueError):
+        return _v
+
+
+def r2_leg_fires(v, vp, is_long, decel_ratio=0.5, decel_only=True, near_zero=0.1):
+    """One R2 TF leg (ez:50169-50178/tr:11609-11614). Returns (fired, tag)."""
+    try:
+        _v, _vp = float(v), float(vp)
+    except (TypeError, ValueError):
+        return False, ""
+    _against = (_v < 0) if is_long else (_v > 0)
+    try:
+        _decel = abs(_v) < abs(_vp) * float(decel_ratio) and abs(_vp) > 1e-6
+    except (TypeError, ValueError):
+        _decel = False
+    try:
+        _dying = (not decel_only) and abs(_v) <= float(near_zero)
+    except (TypeError, ValueError):
+        _dying = False
+    if _against and _decel:
+        return True, "DECEL"
+    if _against and _dying:
+        return True, "DYING"
+    return False, ""
+
+
+def r2_htf_hold_veto(wt1_D, wt2_D, is_long):
+    """Crypto Daily-WT hold veto (ez:50180-50188). True = suppress the fire."""
+    try:
+        _w1, _w2 = float(wt1_D), float(wt2_D)
+    except (TypeError, ValueError):
+        return False
+    if abs(_w1) <= 1e-9 or abs(_w2) <= 1e-9:
+        return False
+    return (_w1 > _w2) if is_long else (_w1 < _w2)
+
+
+def r2_bar_fires(is_long, gain, max_gain, legs, wt1_D, wt2_D, cfg, is_tradier=False):
+    """Full R2 per-bar check (ez:50128-50188/tr:11585-11616). legs = list of
+    (v, a, v_prev_or_None, tf). Returns (fired, tf_or_None, tag). R1 scope is
+    excluded: R1 is 3m/5m-fixed + entry-context, the knob never gates it."""
+    try:
+        _g = float(gain)
+    except (TypeError, ValueError):
+        return False, None, ""
+    try:
+        _mg = float(max_gain)
+    except (TypeError, ValueError):
+        return False, None, ""
+    try:
+        _peak = float(getattr(cfg, "R2_PEAK_MIN_PCT", 0.5))
+        _band = float(getattr(cfg, "WT_15M_VEL_SLOW_GAIN_BAND_PCT", 0.10))
+        _floor = float(getattr(cfg, "WT_15M_VEL_SLOW_GAIN_FLOOR_PCT", 0.01))
+        _ratio = float(getattr(cfg, "WT_VEL_DECEL_RATIO", 0.5))
+        _decel_only = bool(getattr(cfg, "WT_VEL_USE_DECEL_RATIO_ONLY", True))
+        _near_zero = float(getattr(cfg, "WT_15M_VEL_NEAR_ZERO_THRESHOLD", 0.1))
+    except (TypeError, ValueError):
+        return False, None, ""
+    if not (_mg >= _peak and _floor <= _g < _band):
+        return False, None, ""
+    _fired_tf, _fired_tag = None, ""
+    for _v, _a, _vp_raw, _tf in (legs or []):
+        _vp = r2_vel_prev(_v, _a, _vp_raw, is_tradier)
+        _hit, _tag = r2_leg_fires(_v, _vp, is_long, _ratio, _decel_only, _near_zero)
+        if _hit:
+            _fired_tf, _fired_tag = _tf, _tag
+            break
+    if _fired_tf is None:
+        return False, None, ""
+    if not is_tradier and r2_htf_hold_veto(wt1_D, wt2_D, is_long):
+        return False, None, ""
+    return True, _fired_tf, _fired_tag
 
 
 # ── Batch appliers (called by the hook_spec insertions) ───────────────────────
