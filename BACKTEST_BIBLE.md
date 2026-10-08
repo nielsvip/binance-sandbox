@@ -1687,3 +1687,13 @@ would split sweep/live from pilot baselines; needs a director ruling, not a sile
   every dead-zero board of the last weeks that started from a full set is suspect.
 - Consequence: baselines computed before 2026-10-08 20:00Z from full sets understate trades for stocks; bases are re-autopsied; the scheduler
   holds sym_sides whose template base still has 0 trades (`waiting_base`) instead of launching ZERO_TRADES boards.
+
+## 79. STOCH-K ENTRY VETO IS A SWITCH, OFF — WT IS THE FILTER (USER 2026-10-08)
+
+- `ENTRY_VET_COMBINED_STOCH_GATE_ENABLED` (default False, all four surfaces + template rows in ENTRY_CONFIRMATION_GATES) gates the
+  `COMBINED_STOCH_GATE_TRADIER` (k>=60 long / k<=40 short) veto in `ez_manage.check_entry_vetting`, both `tradier_manage` k5m sites and the
+  vec (`entry_sig & vec_stoch_gate_pass`, the earlier `extra_ok` copy never reached the opens).
+- Why OFF: trade-level parity on ADAUSDC_LONG/SHORT + AAVEUSDC_SHORT (npz twin source) showed every live trip in vec with identical exits and
+  the only gap = 153/35/44 vec opens vetoed live by this gate, vec P&L +9.29/-0.71/+1.12 — rallies happen at high k; vetoing them loses the rally.
+- Parity procedure: harness forces `PARITY_VEC_EXACT_SOURCE=npz`; attribute vec-only opens via the live log (`[VEC_EXACT] … OPEN … -> <result>`)
+  before touching engine code.
