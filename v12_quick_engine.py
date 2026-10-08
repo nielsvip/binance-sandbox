@@ -12860,6 +12860,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         try:
             import vec_decisions.twin_exits_dead as _ted_xv
             _xvel_mask = _ted_xv.velocity_wt_exit_mask(npz, n, is_long, lambda _k, _d: getattr(cfg, _k, _d), _safe)
+            _xvel_arrs = _ted_xv.velocity_wt_arrays(npz, n, lambda _k, _d: getattr(cfg, _k, _d), _safe)  # 2026-10-08 EXIT_VELOCITY_WT_MIN_TFS
         except Exception:
             _xvel_mask = None
     # ── YELLOW *_FILTER_TF twins (twin_yellow_filters.py): entry masks + reduce triggers + walk prep ──

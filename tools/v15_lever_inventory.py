@@ -105,6 +105,28 @@ def build(d):
             "mean_dgain": round(statistics.mean(dgs), 3),
             "changed": sorted({tuple(r.get("changed") or ()) for r in rr}, key=str)[:4],
             "status": _q(rr)}
+    flip365 = defaultdict(list)  # USER 2026-10-08: filter-flip single-change 365D evidence (own units: dg365, never mixed with 30D dg)
+    n_flip = 0
+    for p in sorted(d.glob("*_flip.json")):
+        fl = _load(p)
+        if not fl:
+            continue
+        n_flip += 1
+        cat = fl.get("cat_side", "?")
+        for t in fl.get("tried") or []:
+            if t.get("d365") is None:
+                continue
+            flip365[(cat, t.get("switch"), json.dumps(t.get("to"), default=str))].append(
+                {"dg365": t["d365"], "green": bool(t.get("ok365")), "ok30": t.get("ok30"), "ss": fl.get("symside"), "round": t.get("round")})
+    inv["by_switch_365"] = {}
+    for (cat, sw, to), rr in sorted(flip365.items()):
+        dgs = [r["dg365"] for r in rr]
+        greens = sum(1 for r in rr if r["green"])
+        inv["by_switch_365"][f"{cat}|{sw}|{to}"] = {
+            "n": len(rr), "wins": sum(1 for x in dgs if x > 0), "greens": greens,
+            "mean_dgain365": round(statistics.mean(dgs), 3), "med_dgain365": round(statistics.median(dgs), 3),
+            "sides": sorted({r["ss"] for r in rr if r["ss"]}), "status": _q(rr)}
+    inv["n_flip_sides"] = n_flip
     return inv
 
 
@@ -121,6 +143,12 @@ def render_md(inv):
     fam = sorted(inv["by_family"].items(), key=lambda kv: kv[1]["mean_abs_dgain"], reverse=True)
     for key, f in fam[:15]:
         L.append(f"- {key}: n={f['n']} mean|dg|={f['mean_abs_dgain']} via={f['changed']} [{f['status']}]")
+    f365 = sorted(inv.get("by_switch_365", {}).items(), key=lambda kv: (kv[1]["greens"], kv[1]["med_dgain365"]), reverse=True)
+    if f365:
+        L.append("")
+        L.append(f"## TOP FILTER FLIPS (measured single-change 365D, {inv.get('n_flip_sides', 0)} sides)")
+        for key, f in f365[:20]:
+            L.append(f"- {key}: n={f['n']} wins={f['wins']} greens={f['greens']} med_dg365={f['med_dgain365']:+} sides={len(f['sides'])} [{f['status']}]")
     return "\n".join(L) + "\n"
 
 

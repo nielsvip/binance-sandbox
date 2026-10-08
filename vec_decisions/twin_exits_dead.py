@@ -614,15 +614,35 @@ def velocity_wt_exit_mask(npz, n, is_long, get, safe):
     return fire
 
 
+def velocity_wt_min_tfs(get):
+    # 2026-10-08 USER gains: EXIT_VELOCITY_WT_MIN_TFS = how many of the EXIT_VELOCITY_WT_TFS must be against
+    # the position before the exit fires (1 = today's any-TF behaviour). Same read on vec + ez + tradier.
+    try:
+        return max(1, int(float(get("EXIT_VELOCITY_WT_MIN_TFS", 1) or 1)))
+    except Exception:
+        return 1
+
+
+def velocity_wt_hits(vals, is_long):
+    return [(tf, vel) for tf, vel in vals if (vel < 0) if is_long else (vel > 0)]
+
+
+def velocity_wt_arrays(npz, n, get, safe):
+    return {tf: np.asarray(safe(npz, "wt_velocity_%s" % tf, n, 0.0), dtype=float) for tf in velocity_wt_tfs(get)}
+
+
+def velocity_wt_fire_at(arrs, i, is_long, get):
+    vals = [(tf, float(a[i])) for tf, a in arrs.items() if i < len(a)]
+    return len(velocity_wt_hits(vals, is_long)) >= velocity_wt_min_tfs(get)
+
+
 def velocity_wt_exit_live_fire(ind, is_long, get):
     tfs = velocity_wt_tfs(get)
     if not tfs:
         return False, ""
     d = ind or {}
-    for tf in tfs:
-        vel = _f(d.get("wt_velocity_%s" % tf, 0), 0.0)
-        if is_long and vel < 0:
-            return True, "EXIT_VELOCITY_WT_%s_vel%.1f-against-long" % (tf, vel)
-        if (not is_long) and vel > 0:
-            return True, "EXIT_VELOCITY_WT_%s_vel%.1f-against-short" % (tf, vel)
-    return False, ""
+    hits = velocity_wt_hits([(tf, _f(d.get("wt_velocity_%s" % tf, 0), 0.0)) for tf in tfs], is_long)
+    if len(hits) < velocity_wt_min_tfs(get):
+        return False, ""
+    tf, vel = hits[0]
+    return True, "EXIT_VELOCITY_WT_%s_vel%.1f-against-%s" % (tf, vel, "long" if is_long else "short")
