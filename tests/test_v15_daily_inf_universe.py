@@ -232,7 +232,7 @@ def test_main_apply_end_to_end(tmp_path, monkeypatch):
     rp.write_text(json.dumps(recs))
     assert U.main(["--records", str(rp)]) == 0
     assert json.loads(books["LONG"].read_text()) == ["OLDUSDT", "KEEPUSDT"]
-    assert U.main(["--records", str(rp), "--apply"]) == 0
+    assert U.main(["--records", str(rp), "--apply", "--allow-thin-fetch"]) == 0
     assert json.loads(books["LONG"].read_text()) == ["XTZUSDT", "AAVEUSDC", "KEEPUSDT"]
     assert json.loads(books["SHORT"].read_text()) == ["ZENUSDT"]
     rep = json.loads((tmp_path / "data" / "inf_universe" / "20261006.json").read_text())
@@ -251,7 +251,7 @@ def test_main_apply_refuses_empty_side(tmp_path, monkeypatch):
     assert U.main(["--records", str(rp), "--apply"]) == 2
     assert json.loads(books["SHORT"].read_text()) == ["SOLUSDC"]
     assert json.loads(books["LONG"].read_text()) == ["OLDUSDT"]
-    assert U.main(["--records", str(rp), "--apply", "--allow-empty-side"]) == 0
+    assert U.main(["--records", str(rp), "--apply", "--allow-empty-side", "--allow-thin-fetch"]) == 0
     assert json.loads(books["SHORT"].read_text()) == []
 
 
@@ -276,6 +276,56 @@ def test_remote_extract_sets_tools_sys_path():
     # 2026-10-07: s2/s5 extracts died with ModuleNotFoundError (remote cwd=$HOME) -> 0 records -> refused apply
     assert "binance-sandbox/tools" in U.REMOTE_EXTRACT
     assert U.REMOTE_EXTRACT.index("sys.path.insert(0, _cand)") < U.REMOTE_EXTRACT.index("import v15_persym_golive")
+
+
+def test_thin_fetch_refuses_apply(tmp_path, monkeypatch):
+    # 2026-10-08: a collapsed fleet view (campaign rotation) must keep yesterday's books, never a skeleton
+    books = _sandbox(tmp_path, monkeypatch, ["OLDUSDT"], ["SOLUSDC"])
+    recs = [rec("XTZUSDT_LONG", gain=31.0), rec("ZENUSDT_SHORT", gain=18.0)]
+    monkeypatch.setattr(U, "allowed_sym_sides", lambda root=None: allowed_for(*recs))
+    rp = tmp_path / "recs.json"
+    rp.write_text(json.dumps(recs))
+    assert U.main(["--records", str(rp), "--apply"]) == 2
+    assert json.loads(books["LONG"].read_text()) == ["OLDUSDT"]
+    assert json.loads(books["SHORT"].read_text()) == ["SOLUSDC"]
+    rep = json.loads((tmp_path / "data" / "inf_universe" / "20261006.json").read_text())
+    assert "thin fleet view" in rep["apply_refused"]
+    assert U.main(["--records", str(rp), "--apply", "--allow-thin-fetch"]) == 0
+    assert json.loads(books["LONG"].read_text()) == ["XTZUSDT"]
+    assert json.loads(books["SHORT"].read_text()) == ["ZENUSDT"]
+
+
+def test_remote_extract_covers_all_campaign_dirs(tmp_path):
+    # 2026-10-08: pointers rotate fleet-wide; the extract must union pointer + all v15_* dirs + lifecycle_pilot
+    import subprocess
+    home = tmp_path / "home"
+    (home / "v15_old").mkdir(parents=True)
+    (home / "v15_new" / "progress").mkdir(parents=True)
+    (home / "binance-sandbox" / "data" / "reports" / "lifecycle_pilot").mkdir(parents=True)
+    tools = home / "binance-sandbox" / "tools"
+    tools.mkdir(parents=True)
+    (tools / "v15_persym_golive.py").write_text("def migrate(co):\n    return dict(co), {}, []\n")
+    for p in (home / "v15_old" / "AAVEUSDC_LONG_v14_progress.json", home / "v15_new" / "progress" / "ZENUSDT_SHORT_v14_progress.json",
+              home / "binance-sandbox" / "data" / "reports" / "lifecycle_pilot" / "DOTUSDT_LONG_v14_progress.json"):
+        p.write_text(json.dumps({"cumulative_overrides": {"X": 1}}))
+    (home / "v15_old" / "readme.txt").write_text("ignored")
+    env = dict(os.environ, HOME=str(home))
+    r = subprocess.run([sys.executable, "-", str(home / "v15_new" / "progress"), str(72 * 3600), json.dumps(list(U.KEEP_FIELDS))],
+                       input=U.REMOTE_EXTRACT, capture_output=True, text=True, timeout=60, cwd=str(tmp_path), env=env)
+    assert r.returncode == 0, r.stderr[-500:]
+    assert {rec["sym_side"] for rec in json.loads(r.stdout)} == {"AAVEUSDC_LONG", "ZENUSDT_SHORT", "DOTUSDT_LONG"}
+
+
+def test_report_rotation_keeps_previous(tmp_path, monkeypatch):
+    books = _sandbox(tmp_path, monkeypatch, [], [])
+    recs = [rec("XTZUSDT_LONG", gain=31.0), rec("ZENUSDT_SHORT", gain=18.0)]
+    monkeypatch.setattr(U, "allowed_sym_sides", lambda root=None: allowed_for(*recs))
+    rp = tmp_path / "recs.json"
+    rp.write_text(json.dumps(recs))
+    assert U.main(["--records", str(rp)]) == 0
+    assert U.main(["--records", str(rp)]) == 0
+    assert (tmp_path / "data" / "inf_universe" / "20261006.prev.json").exists()
+    assert (tmp_path / "data" / "inf_universe" / "20261006.prev.md").exists()
 
 
 def test_main_apply_refuses_stale_positions(tmp_path, monkeypatch):

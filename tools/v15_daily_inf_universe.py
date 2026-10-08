@@ -3,8 +3,10 @@
 
 symbols_inf_long.json / symbols_inf_short.json (repo root on the Mac, plain JSON list of symbols) are rewritten with the
 15 best LONG and 15 best SHORT crypto sym_sides of that day's backtest (USER 2026-10-08), ranked on the FRESH 30D result of the final
-per-sym set. Results are fetched from the servers (S1/s2/s5 ~/v15_current_progress_dir.txt -> *_v14_progress.json);
-nothing is recomputed here.
+per-sym set. Results are fetched from the servers (S1/s2/s5): the pointer ~/v15_current_progress_dir.txt PLUS every
+~/v15_* campaign dir (top level and progress/ subdir) and the lifecycle_pilot dir — campaign dirs rotate fleet-wide
+(2026-10-08: pointer-only fetch saw 19 files while 124 fresh ones sat in the previous campaign), so the day boundary is
+the per-record 36h evaluated filter, not the directory. Nothing is recomputed here.
 
 Metrics source (fail-closed): progress["diagnose_repair"]["after"] — the only fresh full-set record that carries gain,
 trades, TIM and DD. It is used only when its gain equals the progress final set's gain (cumulative_gain /
@@ -25,13 +27,15 @@ Safety:
     no open position unless the symbol is in the winners/losers lists, so listing both would silently trade neither;
   * never pads with ineligible symbols (fewer than 15 eligible -> only the eligible ones);
   * --apply refuses when a host fetch failed (--allow-partial-hosts overrides), when positions files are stale or
-    unreadable, or when a side would become empty (--allow-empty-side overrides);
+    unreadable, when fewer than --min-records fresh sym_sides were fetched (--allow-thin-fetch overrides; a collapsed
+    fleet view must keep yesterday's books, never write a retention-only skeleton), or when a side would become empty
+    (--allow-empty-side overrides);
   * dry-run by default; --apply = backup to backups/ + atomic write (tmp + fsync + os.replace) + re-read verify.
 Report: data/inf_universe/<YYYYMMDD>.json + .md (ranked table, kept-for-open-position, diff vs previous books) and the
 fetched records data/inf_universe/<YYYYMMDD>_records.json. All numbers are single-sym_side 30D vector backtests
 ([DIAGNOSTIC ONLY] under the CLAUDE.md sample floor); no Sharpe is emitted.
 
-usage: v15_daily_inf_universe.py [--apply] [--hosts s1-pub,s2,s5] [--top 15] [--max-age-hours 36]
+usage: v15_daily_inf_universe.py [--apply] [--hosts s1-pub,s2,s5] [--top 15] [--max-age-hours 36] [--min-records 20]
                                  [--records PATH] [--both-sides resolve|keep] [--allow-partial-hosts] [--allow-empty-side]
 """
 import argparse
@@ -70,8 +74,16 @@ REMOTE_EXTRACT = r'''
 import glob, hashlib, json, os, sys, time
 pdir, max_age_s = sys.argv[1], float(sys.argv[2])
 keep = json.loads(sys.argv[3])
+home = os.path.expanduser("~")
+patterns = [
+    os.path.join(pdir, "*_v14_progress.json"),
+    os.path.join(home, "v15_*", "*_v14_progress.json"),
+    os.path.join(home, "v15_*", "progress", "*_v14_progress.json"),
+    os.path.join(home, "binance-sandbox", "data", "reports", "lifecycle_pilot", "*_v14_progress.json"),
+]
+paths = sorted({p for pat in patterns for p in glob.glob(pat)})
 out = []
-for path in sorted(glob.glob(os.path.join(pdir, "*_v14_progress.json"))):
+for path in paths:
     sym_side = os.path.basename(path)[: -len("_v14_progress.json")]
     symbol = sym_side.rsplit("_", 1)[0]
     if not symbol.endswith(("USDT", "USDC")) or not sym_side.endswith(("_LONG", "_SHORT")):
@@ -397,6 +409,12 @@ def write_report(rep, stamp_date):
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     jp = OUT_DIR / f"{stamp_date}.json"
     mp = OUT_DIR / f"{stamp_date}.md"
+    for cur, prev in ((jp, OUT_DIR / f"{stamp_date}.prev.json"), (mp, OUT_DIR / f"{stamp_date}.prev.md")):
+        try:
+            if cur.exists():
+                shutil.copy2(cur, prev)
+        except Exception:
+            pass
     jp.write_text(json.dumps(rep, indent=1, default=str))
     L = [f"# inf universe {stamp_date} ({'APPLIED' if rep['applied'] else 'DRY-RUN'})", ""]
     L.append(f"- generated {rep['generated_utc']}; hosts {rep['hosts']}; host errors {rep['host_errors'] or 'none'}")
@@ -431,6 +449,8 @@ def main(argv=None):
     ap.add_argument("--hosts", default=",".join(DEFAULT_HOSTS))
     ap.add_argument("--top", type=int, default=15)
     ap.add_argument("--max-age-hours", type=float, default=36.0)
+    ap.add_argument("--min-records", type=int, default=20)
+    ap.add_argument("--allow-thin-fetch", action="store_true")
     ap.add_argument("--records", help="re-use a fetched records JSON instead of fetching")
     ap.add_argument("--report-tag", default="", help="suffix for the report file names (e.g. a variant dry-run)")
     ap.add_argument("--both-sides", choices=("resolve", "keep"), default="resolve")
@@ -477,6 +497,8 @@ def main(argv=None):
     refused = []
     if host_errors and not a.allow_partial_hosts:
         refused.append(f"host fetch errors: {host_errors}")
+    if len(deduped) < a.min_records and not a.allow_thin_fetch:
+        refused.append(f"thin fleet view: {len(deduped)} fresh sym_sides < --min-records {a.min_records} (campaign rotation or fleet outage? keeping yesterday's books)")
     if pos_problems:
         refused.append(f"open-position state not trustworthy: {pos_problems}")
     for side in ("LONG", "SHORT"):
@@ -484,7 +506,7 @@ def main(argv=None):
             refused.append(f"{side} book would be empty (0 eligible, 0 open) — pass --allow-empty-side to write an empty book")
     rep = {
         "generated_utc": now.isoformat(), "applied": False, "hosts": hosts, "host_errors": host_errors, "top": a.top,
-        "max_age_hours": a.max_age_hours, "both_sides": a.both_sides, "vec_only_false_ok": a.vec_only_false_ok, "n_records": len(records), "n_deduped": len(deduped),
+        "max_age_hours": a.max_age_hours, "min_records": a.min_records, "both_sides": a.both_sides, "vec_only_false_ok": a.vec_only_false_ok, "n_records": len(records), "n_deduped": len(deduped),
         "n_eligible": {s: sum(1 for ss, v in evaluated.items() if v[0] and ss.endswith("_" + s)) for s in ("LONG", "SHORT")},
         "ranked": ranked_rows, "books": res["books"], "kept_open": res["kept_open"], "open_positions": {k: sorted(v) for k, v in open_pos.items()},
         "position_problems": pos_problems, "conflicts": res["conflicts"], "previous_books": prev, "diff": diff_books(prev, res["books"]),
