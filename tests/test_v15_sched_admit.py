@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
-from v15_fleet_scheduler import _est_pair_mb, _progress_done_rows, _rank_oom_victim, _reap_attempt_keys, _stall_tick, _swap_admit_ok
+from v15_fleet_scheduler import _est_pair_mb, _growth_debt_mb, _progress_done_rows, _rank_oom_victim, _reap_attempt_keys, _stall_tick, _swap_admit_ok
 
 
 class EstPairTest(unittest.TestCase):
@@ -24,6 +24,21 @@ class EstPairTest(unittest.TestCase):
     def test_junk_safe(self):
         self.assertEqual(_est_pair_mb(["x", None], 12000), 12000)
         self.assertEqual(_est_pair_mb([5000], "bogus"), 12000)
+
+
+class GrowthDebtTest(unittest.TestCase):
+    def test_young_pairs_count(self):
+        self.assertEqual(_growth_debt_mb({"a": 3000, "b": 4000}, 12000), 17000)
+        self.assertEqual(_growth_debt_mb([2000], 12000), 10000)
+
+    def test_mature_pairs_exempt(self):
+        self.assertEqual(_growth_debt_mb({"a": 6000, "b": 12000}, 12000), 0)
+        self.assertEqual(_growth_debt_mb({}, 12000), 0)
+
+    def test_junk_safe(self):
+        self.assertEqual(_growth_debt_mb(None, 12000), 0)
+        self.assertEqual(_growth_debt_mb({"a": "x", "b": -5}, 12000), 0)
+        self.assertEqual(_growth_debt_mb({"a": 3000}, "bogus"), 0)
 
 
 class SwapAdmitTest(unittest.TestCase):

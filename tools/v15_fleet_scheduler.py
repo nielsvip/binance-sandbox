@@ -494,7 +494,9 @@ def _est_pair_mb(pair_measure, floor_mb=12000):
 def _growth_debt_mb(pairs_pss, est_pair):
     """Committed-but-not-yet-resident memory: young pairs grow toward est_pair.
     USER 2026-10-08 follow-up: s2 admitted a 3rd pair across ticks (young RSS
-    understated growth) then collapsed 18GB -> 1GB in minutes. Never raises."""
+    understated growth) then collapsed 18GB -> 1GB in minutes. Only pairs under
+    half est count (mature single-side stocks at ~6GB never grow a sibling).
+    Never raises."""
     try:
         e = float(est_pair or 0)
     except Exception:
@@ -504,11 +506,11 @@ def _growth_debt_mb(pairs_pss, est_pair):
         vals = pairs_pss.values() if isinstance(pairs_pss, dict) else (pairs_pss or [])
         for v in vals:
             try:
-                gap = e - float(v or 0)
+                m = float(v or 0)
             except Exception:
                 continue
-            if gap > 0:
-                debt += gap
+            if 0 < m < e * 0.5:
+                debt += e - m
     except Exception:
         return 0.0
     return debt
