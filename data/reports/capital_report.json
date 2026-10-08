@@ -1,43 +1,56 @@
 {
- "generated_at": "2026-10-08 18:13 UTC",
- "total_capital_usd": 30.61,
+ "generated_at": "2026-10-08 18:49 UTC",
+ "total_capital_usd": 47.1,
  "tier_capital": {
   "A": 0.0,
-  "B": 15.73,
-  "C": 14.87
+  "B": 15.96,
+  "C": 31.14
  },
  "tier_count": {
   "A": 0,
   "B": 1,
-  "C": 1
+  "C": 2
  },
  "winners": [],
  "losers": [
-  "flz:SOLUSDC_SHORT"
+  "flz:DASHUSDT_SHORT",
+  "flz:SOLUSDC_SHORT",
+  "flz:ZECUSDC_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
+   "pk": "flz:ZECUSDC_SHORT",
+   "symbol": "ZECUSDC",
+   "account": "flz",
+   "value_usd": 16.05,
+   "gain_pct": -0.548,
+   "tier": "C",
+   "perf_mult": 0.3,
+   "amt": 0.014,
+   "mark": 1146.11
+  },
+  {
    "pk": "flz:DASHUSDT_SHORT",
    "symbol": "DASHUSDT",
    "account": "flz",
-   "value_usd": 15.73,
-   "gain_pct": 1.362,
+   "value_usd": 15.96,
+   "gain_pct": -2.206,
    "tier": "B",
-   "perf_mult": 3.39,
+   "perf_mult": 3.46,
    "amt": 0.316,
-   "mark": 49.79257991
+   "mark": 50.5
   },
   {
    "pk": "flz:SOLUSDC_SHORT",
    "symbol": "SOLUSDC",
    "account": "flz",
-   "value_usd": 14.87,
-   "gain_pct": 2.091,
+   "value_usd": 15.09,
+   "gain_pct": -0.635,
    "tier": "C",
-   "perf_mult": 0.48,
+   "perf_mult": 0.46,
    "amt": 0.14,
-   "mark": 106.24798619
+   "mark": 107.8
   }
  ]
 }
