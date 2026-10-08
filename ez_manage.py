@@ -48707,7 +48707,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
             _stale_age = time.time() - float(_vx_st.get("bar_ts") or 0.0)
         except Exception:
             _stale_age = 0.0
-        if _stale_age > _stale_bars * 900.0:
+        if _stale_bars > 0 and _stale_age > _stale_bars * 900.0:
             _st_key = (position_key, _vx_st.get("bar_ts"))
             if _st_key not in _VEC_EXACT_STALE_LOGGED:
                 _VEC_EXACT_STALE_LOGGED.add(_st_key)
