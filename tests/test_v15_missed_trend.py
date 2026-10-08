@@ -198,3 +198,10 @@ def test_missing_spec_names_lower_high():
         and "lower high" in spec["rule"]
         and "1757->2874" in spec["rule"]
     )
+
+
+def test_screen_worker_is_pool_picklable():
+    import pickle
+
+    assert pickle.loads(pickle.dumps(MT._screen_w)) is MT._screen_w
+    assert "<locals>" not in MT._screen_w.__qualname__

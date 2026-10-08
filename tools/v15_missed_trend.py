@@ -51,6 +51,26 @@ TIM_FLOOR, TIM_CEIL = 20.0, 80.0
 MISSED_TREND_MIN_PCT = 8.0
 CAPTURE_COVER_MAX = 0.35
 REVISE_CAPTURE_RATIO = 0.35
+_SCREEN_PREP = None
+
+
+def _screen_w(ov):
+    """Fork-pool worker (MODULE level: a run_screen closure is unpicklable and fails
+    all 994 futures with 'Can't get local object' — proven on s2 2026-10-08)."""
+    from tools import v15_trade_autopsy as TA
+    from tools.opt import v12_pilot as VP
+
+    r = VP.evaluate_prepared_sanitized(_SCREEN_PREP, ov, 30, True)
+    return {
+        "gain": r.get("gain_pct"),
+        "trades": r.get("trades"),
+        "valid": r.get("valid"),
+        "tim": r.get("tim_pct"),
+        "dd": r.get("max_dd_pct"),
+        "rows": TA.scaled_rows(r),
+    }
+
+
 ENTRY_TABS = (
     "ENTRY_REVERSAL_BOUNCE",
     "ENTRY_BREAKOUT_CHANNEL",
@@ -457,21 +477,12 @@ def run_screen(
         P.get_defaults_for_symside(symside),
     )[0]
     is_long = symside.upper().endswith("_LONG")
-    prep = VP.prepare_batch(symside, 30)
+    global _SCREEN_PREP
+    _SCREEN_PREP = VP.prepare_batch(symside, 30)
+    prep = _SCREEN_PREP
     npz = prep.get("npz_prepared") or {}
 
-    def _w(ov):
-        r = VP.evaluate_prepared_sanitized(prep, ov, 30, True)
-        return {
-            "gain": r.get("gain_pct"),
-            "trades": r.get("trades"),
-            "valid": r.get("valid"),
-            "tim": r.get("tim_pct"),
-            "dd": r.get("max_dd_pct"),
-            "rows": TA.scaled_rows(r),
-        }
-
-    b = _w(base_ov)
+    b = _screen_w(base_ov)
     close = [float(x) for x in npz.get("close")]
     base_rows = TA.classify(b["rows"], close, is_long)
     rep = scan_report(
@@ -522,13 +533,17 @@ def run_screen(
     )
     list(pool.map(abs, range(workers * 2)))
     attrs, cards, meta = {}, {}, {}
+    eval_errors, eval_first_error = 0, ""
     try:
-        futs = {pool.submit(_w, v): (lab, c) for lab, v, c in items}
+        futs = {pool.submit(_screen_w, v): (lab, c) for lab, v, c in items}
         for f in cf.as_completed(futs):
             lab, c = futs[f]
             try:
                 r = f.result(timeout=120)
-            except Exception:
+            except Exception as e:
+                eval_errors += 1
+                if not eval_first_error:
+                    eval_first_error = f"{type(e).__name__}: {str(e)[:200]}"
                 continue
             a = TA.attribute(base_rows, r["rows"], moves)
             if not a["eff"] and not a["added"]:
@@ -558,7 +573,7 @@ def run_screen(
     )
 
     def _apply(full_ov):
-        r = _w(san(full_ov))
+        r = _screen_w(san(full_ov))
         return r["gain"], r["trades"], r["tim"], r["valid"]
 
     kept, combo_gain, combo_tim, log, final_ov = verify_combo(
@@ -574,6 +589,8 @@ def run_screen(
             "status": "RESCUED" if kept else "NO_CAPTURE",
             "n_candidates": len(items),
             "n_effective": len(attrs),
+            "n_eval_errors": eval_errors,
+            "eval_first_error": eval_first_error,
             "effective": sorted(attrs),
             "top_switches": sorted(
                 (
