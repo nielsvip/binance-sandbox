@@ -29,11 +29,24 @@ sys.path.insert(0, str(ROOT))
 os.chdir(ROOT)
 
 
+def template_base(ss, out):
+    """The pilot's own starting point: TEMPLATE bold defaults of this cat_side (v15_pilot.template_bold_defaults) —
+    the autopsy must search on the SAME base the sweep starts from, or the rescue does not transfer 1:1."""
+    import v15_pilot as P
+    bolds, bad = P.template_bold_defaults(P.get_template_for_symside(ss), P.get_defaults_for_symside(ss))
+    p = out / f"{ss}_template_base.json"
+    p.write_text(json.dumps(bolds, indent=1, default=str))
+    return str(p), len(bolds), len(bad)
+
+
 def run(ss, out, workers, base_json, dirs):
     from tools import v15_trade_autopsy_run as R
     import v15_pilot as P
     t0 = time.time()
     defaults = P.get_defaults_for_symside(ss)
+    if not base_json:
+        base_json, n_b, n_bad = template_base(ss, out)
+        print(f"[autopsy-first] {ss} base = template bold defaults ({n_b} keys, {n_bad} layout violations) -> {base_json}", flush=True)
     base_ov0, src = R.base_set(ss, base_json, dirs)
     base_ov = P.sanitize_overrides(base_ov0, defaults)[0]
     rep = R.run_one(ss, out, workers, base_json, dirs)
@@ -60,15 +73,12 @@ def main(argv=None):
     ap.add_argument("--symsides", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--workers", type=int, default=6)
-    ap.add_argument("--base-json", default=None, help="{switch: value} base set (default: template defaults = {})")
+    ap.add_argument("--base-json", default=None, help="{switch: value} base set (default: this cat_side's TEMPLATE bold defaults = the pilot's baseline)")
     ap.add_argument("--progress-dirs", default="data/reports/lifecycle_pilot")
     a = ap.parse_args(argv)
     out = Path(os.path.expanduser(a.out))
     out.mkdir(parents=True, exist_ok=True)
-    base_json = a.base_json
-    if not base_json:
-        base_json = str(out / "_defaults_base.json")
-        Path(base_json).write_text("{}")
+    base_json = a.base_json  # None -> per-sym_side TEMPLATE bold defaults (the pilot's own starting point)
     dirs = []
     for d in a.progress_dirs.split(","):
         dirs += glob.glob(os.path.expanduser(d.strip())) or [os.path.expanduser(d.strip())]
