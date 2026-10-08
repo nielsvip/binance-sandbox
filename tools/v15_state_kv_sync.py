@@ -3,7 +3,7 @@
 
 cat_side_defaults._load and v15_daily_template_update read SQL first (kv_json) and the JSON only as fallback, so a pushed/pulled
 JSON alone does NOT change what they read when a stale kv row exists. Every host that receives the chain's JSONs runs this after
-the copy. Keys: cat_side_defaults_4, cat_side_promotions, avg_delta_round_ledger.
+the copy. Keys: per_sym_settings, cat_side_promotions, avg_delta_round_ledger.
 
   python tools/v15_state_kv_sync.py            # report kv==json per key (exit 0)
   python tools/v15_state_kv_sync.py --apply    # kv_put every key whose JSON exists and differs, then re-read verify (exit 1 on mismatch)
