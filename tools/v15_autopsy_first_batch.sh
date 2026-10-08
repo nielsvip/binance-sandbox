@@ -8,10 +8,12 @@ set -u
 Q=$1; N=${2:-2}; W=${3:-4}; OUT=~/v15_autopsy_first; LOG=/tmp/v15_autopsy_first_batch.log
 cd ~/binance-sandbox || exit 1; mkdir -p $OUT
 log(){ echo "[$(date -u +%FT%TZ)] [af-batch] $*" >> $LOG; }
+exec 9>/tmp/v15_autopsy_first_batch.lock
+flock -n 9 || { log "another batch already running on this box, refusing to stack"; exit 0; }
 TOTAL=$(grep -c . "$Q"); log "queue $Q: $TOTAL sym_sides, $N streams x $W workers"
 for i in $(seq 0 $((N-1))); do
   awk -v n=$N -v i=$i 'NR%n==i' "$Q" | paste -sd, - > /tmp/af_stream_$i.txt
-  setsid nohup bash -c "V12_NPZ_CACHE=6 .venv/bin/python -u tools/v15_autopsy_first.py --symsides \$(cat /tmp/af_stream_$i.txt) --out $OUT --workers $W >> /tmp/v15_autopsy_first_stream_$i.log 2>&1" >/dev/null 2>&1 < /dev/null &
+  setsid nohup bash -c "V12_NPZ_CACHE=6 nice -n 10 .venv/bin/python -u tools/v15_autopsy_first.py --symsides \$(cat /tmp/af_stream_$i.txt) --out $OUT --workers $W >> /tmp/v15_autopsy_first_stream_$i.log 2>&1" >/dev/null 2>&1 < /dev/null &
   log "stream $i started ($(tr ',' '\n' < /tmp/af_stream_$i.txt | wc -l) sym_sides)"
 done
 # sync loop: bases + summaries to S1 (the scheduler reads them at every launch)
