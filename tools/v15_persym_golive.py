@@ -51,7 +51,6 @@ def migrate(overrides):
 
 
 ALL_FINISHED = os.environ.get("V15_COLLECT_ALL_FINISHED") == "1"  # USER 2026-10-06: every FINISHED set, any gain (pre-screen = unfinished / no set only)
-ALLOW_UNFINISHED = os.environ.get("V15_COLLECT_ALLOW_UNFINISHED") == "1"  # USER 2026-10-08 pre-open: decided-but-healing sets (needs_redo set, not mid-heal, set exists) — engine-verified identically, flagged waived_unfinished
 EVAL_ALL = os.environ.get("V15_COLLECT_EVAL_ALL") == "1"  # tradeable check: no pre-screen; evaluate the latest set (cumulative > initial > defaults)
 
 
@@ -76,14 +75,11 @@ def _collect_one(path):
     sg = rec["stored_final_gain"]
     finished = bool(d.get("verdict") or d.get("result_done_utc") or d.get("final_gain_fresh_vec") is not None)
     rec["finished"] = finished
-    decided = bool(d.get("needs_redo")) and not d.get("_redo_heal_run") and bool(co) and rec["n_promoted"] >= 1
     if EVAL_ALL:
         pass
     elif ALL_FINISHED:
-        if not finished and not (ALLOW_UNFINISHED and decided):
+        if not finished:
             rec["skip"] = "not finished (no verdict / result_done_utc / final_gain_fresh_vec)"
-        elif ALLOW_UNFINISHED and decided and not finished:
-            rec["waived_unfinished"] = True
     elif d.get("verdict") in ("IMPOSSIBLE", "NO_TRADES"):
         rec["skip"] = f"verdict {d.get('verdict')}"
     elif d.get("diagnostic_only"):

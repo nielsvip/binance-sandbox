@@ -15,9 +15,10 @@ def fetch(host, alias):
            "python3 -c \"import json,os,glob; "
            "out=[]; "
            "dd='%s'; "
+           "ok = lambda d: d.get('final_gain') is not None or (bool(d.get('needs_redo')) and not d.get('_redo_heal_run') and bool(d.get('cumulative_overrides')) and sum(1 for v in (d.get('done') or {}).values() if isinstance(v, dict) and v.get('promoted')) >= 1); "
            "[out.append((os.path.basename(f)[:-len('_v14_progress.json')], round(os.path.getmtime(f)), f)) "
            "for f in glob.glob(dd+'/*_v14_progress.json') "
-           "if (lambda d: d.get('final_gain') is not None)(json.load(open(f)))]; "
+           "if ok(json.load(open(f)))]; "
            "print(json.dumps(out))\" " % PDIR]
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
