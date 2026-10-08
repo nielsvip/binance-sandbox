@@ -107,7 +107,7 @@ REGISTRY = {
     "DC_BREACH_REDUCE_FILTER_TF": {"target": "reduce", "kind": "dc_breach", "master": "EXIT_DC_BREACH_REDUCE_ENABLED", "family_tf_knob": None, "filter_default": "OFF", "verdict": "WIRED-BOTH-SPEC"},
     "MTF_DC_REJECT_FILTER_TF": {"target": "exit", "kind": "mtf_dc_reject", "master": "MTF_DC_REJECT_EXIT_ENABLED", "family_tf_knob": "MTF_DC_REJECT_EXIT_TF", "filter_default": "15m", "verdict": "WIRED-BOTH-SPEC"},
     "FROZEN_STOP_FILTER_TF": {"target": "exit", "kind": "frozen_stop", "master": "BB_FROZEN_STOP_ENABLED", "family_tf_knob": "BB_FROZEN_STOP_TF", "filter_default": "15m", "verdict": "WIRED-BOTH-SPEC"},
-    "MANDATORY_REENTRY_WT_FILTER_TF_MODE": {"target": "reentry", "kind": "mandatory_wt", "master": "MANDATORY_REENTRY_WT_FILTER_ENABLED", "family_tf_knob": None, "filter_default": "15m_only", "verdict": "NEEDS-OPERATOR-DECISION"},
+    "MANDATORY_REENTRY_WT_FILTER_TF_MODE": {"target": "reentry", "kind": "mandatory_wt", "master": "MANDATORY_REENTRY_WT_FILTER_ENABLED", "family_tf_knob": None, "filter_default": "15m_only", "verdict": "WIRED-STOCKS-ONLY"},
     "WT_15M_BOUNCE_BB_MAX": {"target": "entry", "kind": "wt_bounce", "master": "WT_15M_BOUNCE_OPEN_ENABLED", "family_tf_knob": None, "filter_default": 0.95, "verdict": "NEEDS-OPERATOR-DECISION"},
     "WT_15M_BOUNCE_BB_MIN": {"target": "entry", "kind": "wt_bounce", "master": "WT_15M_BOUNCE_OPEN_ENABLED", "family_tf_knob": None, "filter_default": 0.05, "verdict": "NEEDS-OPERATOR-DECISION"},
     "WT_15M_BOUNCE_HIGH_1H_GT_PREV": {"target": "entry", "kind": "wt_bounce", "master": "WT_15M_BOUNCE_OPEN_ENABLED", "family_tf_knob": None, "filter_default": False, "verdict": "NEEDS-OPERATOR-DECISION"},
@@ -119,8 +119,8 @@ REGISTRY = {
     "BREAKOUT_RETEST_FILTER_TF": {"target": "entry", "kind": "retest", "master": "BREAKOUT_RETEST_ARMED_ENABLED", "family_tf_knob": None, "filter_default": "OFF", "verdict": "NEEDS-OPERATOR-DECISION"},
     "EXIT_TOP_FADE_FILTER_TF": {"target": "exit", "kind": "none", "master": None, "family_tf_knob": None, "filter_default": "OFF", "verdict": "NEEDS-OPERATOR-DECISION"},
     "BREAKEVEN_GAIN_EROSION_FILTER_TF": {"target": "reduce", "kind": "none", "master": "BREAKEVEN_GAIN_EROSION_ENABLED", "family_tf_knob": None, "filter_default": "OFF", "verdict": "NEEDS-OPERATOR-DECISION"},
-    "CIRCUIT_SHARPE_GATES_FILTER_TF": {"target": "filter", "kind": "none", "master": None, "family_tf_knob": None, "filter_default": "15m", "verdict": "NEEDS-OPERATOR-DECISION"},
-    "DC_MOMENTUM_BOTA_SCORER_FILTER_TF": {"target": "filter", "kind": "none", "master": None, "family_tf_knob": None, "filter_default": "15m", "verdict": "NEEDS-OPERATOR-DECISION"},
+    "CIRCUIT_SHARPE_GATES_FILTER_TF": {"target": "entry", "kind": "wt_cross_side", "master": None, "family_tf_knob": None, "filter_default": "15m", "verdict": "WIRED-VEC-MAP"},
+    "DC_MOMENTUM_BOTA_SCORER_FILTER_TF": {"target": "entry", "kind": "wt_cross_side", "master": None, "family_tf_knob": None, "filter_default": "15m", "verdict": "WIRED-VEC-MAP"},
     "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF": {"target": "filter", "kind": "none", "master": None, "family_tf_knob": None, "filter_default": "15m", "verdict": "NEEDS-OPERATOR-DECISION"},
     "EXIT_TO_REDUCE_ADAPTER_FILTER_TF": {"target": "filter", "kind": "none", "master": None, "family_tf_knob": None, "filter_default": "15m", "verdict": "NEEDS-OPERATOR-DECISION"},
     "FIRST_OPEN_THROTTLE_FILTER_TF": {"target": "filter", "kind": "none", "master": None, "family_tf_knob": None, "filter_default": "15m", "verdict": "NEEDS-OPERATOR-DECISION"},
@@ -133,13 +133,13 @@ REGISTRY = {
     "NOLOSS_BYPASS_WT5OF5_FILTER_TF": {"target": "filter", "kind": "none", "master": None, "family_tf_knob": None, "filter_default": "15m", "verdict": "NEEDS-OPERATOR-DECISION"},
     "OPEN_INTENT_SIZE_GATES_FILTER_TF": {"target": "filter", "kind": "none", "master": None, "family_tf_knob": None, "filter_default": "15m", "verdict": "NEEDS-OPERATOR-DECISION"},
     "PARTIAL_PROFIT_LOCK_V2_FILTER_TF": {"target": "reduce", "kind": "none", "master": None, "family_tf_knob": None, "filter_default": "15m", "verdict": "NEEDS-OPERATOR-DECISION"},
-    "DELTA_ENGINE_FILTER_TF": {"target": "filter", "kind": "none", "master": "DELTA_ENGINE_ENABLED", "family_tf_knob": None, "filter_default": "15m", "verdict": "NEEDS-OPERATOR-DECISION"},
+    "DELTA_ENGINE_FILTER_TF": {"target": "entry", "kind": "wt_cross_side", "master": "DELTA_ENGINE_ENABLED", "family_tf_knob": None, "filter_default": "15m", "verdict": "WIRED-VEC-MAP"},
     "LIVE_ENTRY_ENGINE_FILTER_TF": {"target": "entry", "kind": "none", "master": "LIVE_ENTRY_ENGINE_ENABLED", "family_tf_knob": None, "filter_default": "15m", "verdict": "NEEDS-OPERATOR-DECISION"},
     "EMERGENCY_BRAKE_FILTER_TF": {"target": "entry", "kind": "none", "master": None, "family_tf_knob": None, "filter_default": "15m", "verdict": "NEEDS-OPERATOR-DECISION"},
     "NEWBORN_PROTECT_FILTER_TF": {"target": "entry", "kind": "none", "master": None, "family_tf_knob": None, "filter_default": "15m", "verdict": "NEEDS-OPERATOR-DECISION"},
     "MTF_ATR_TRAIL_FILTER_TF": {"target": "entry", "kind": "mtf_atr_trail", "master": "MTF_ATR_TRAIL_ENABLED", "family_tf_knob": "MTF_ATR_TRAIL_TF", "filter_default": "15m", "verdict": "NEEDS-OPERATOR-DECISION"},
     "PEAK_GIVEBACK_BE_EROSION_FILTER_TF": {"target": "filter", "kind": "none", "master": "PEAK_GIVEBACK_PROTECTION_ENABLED", "family_tf_knob": None, "filter_default": "OFF", "verdict": "NEEDS-OPERATOR-DECISION"},
-    "FH_MOMENTUM_FILTER_TF": {"target": "filter", "kind": "none", "master": "CRYPTO_FH_MOMENTUM_ENABLED", "family_tf_knob": None, "filter_default": "15m", "verdict": "NEEDS-OPERATOR-DECISION"},
+    "FH_MOMENTUM_FILTER_TF": {"target": "entry", "kind": "fh_momentum_dc_leg", "master": "FH_MOMENTUM_ENABLED", "family_tf_knob": None, "filter_default": "15m", "verdict": "WIRED-VEC-INLINE"},
     "HAIKU_WINNER_FILTER_TF": {"target": "filter", "kind": "none", "master": "HAIKU_WINNER_ENABLED", "family_tf_knob": None, "filter_default": "15m", "verdict": "NEEDS-OPERATOR-DECISION"},
 }
 
@@ -815,16 +815,16 @@ def dc_reject_stocks_walk(ts_arr, px_arr, band_arr, lookback_bars, tf, is_long):
 
 
 # ── FROZEN_STOP (BB_FROZEN_STOP TF selector, crypto scope) ────────────────────
-# Live crypto exit (ez:47532-47563): TF knob BB_FROZEN_STOP_TF (default 1h),
+# Live crypto exit (ez:49984-50019): TF knob BB_FROZEN_STOP_TF (default 1h),
 # field knob BB_FROZEN_STOP_FIELD (default "lower"); field resolves to lower/
 # upper by side when the knob reads lower/upper, else verbatim; the level
 # bb_{field}_{TF} is frozen on first sight (position._frozen_bb_act) and fires
 # a full CLOSE when LONG gain<0 and price < frozen (SHORT mirror). Master
 # BB_FROZEN_STOP_ENABLED defaults False. FROZEN_STOP_FILTER_TF (default 15m)
-# selects the TF with R2 fallback to the 1h family knob. Vec (v12:12376 is a
-# `pass` stub) = walk twin: capture bb level at entry_bar, breach-vs-level
-# mask gated on live_pnl_pct < 0 at the hook site. Stocks base (tr:15489) is a
-# different hardcoded-4h/1h ENTRY block with no TF term -> out of scope.
+# selects the TF with R2 fallback to the 1h family knob. Vec = walk twin
+# (capture _ty_frozen_bb_arr + freeze-on-first-sight into pos['ty_frozen_bb'],
+# breach-vs-level scalar fires() gated on live_pnl_pct < 0 at the hook site).
+# Stocks (tr:16979 G2 probe) is a different ENTRY veto -> out of scope.
 
 def frozen_stop_tf(filter_raw, family_raw):
     return resolve_filter_tf(filter_raw, family_raw=family_raw, filter_default="15m")
@@ -839,7 +839,7 @@ def frozen_bb_key(tf, field_opt, is_long):
 
 
 def frozen_stop_fires(frozen_level, price, gain_pct, is_long):
-    """Scalar breach core (ez:47553-47556). frozen None/0 = no fire."""
+    """Scalar breach core (ez:50009-50010). frozen None/0 = no fire."""
     try:
         fr = float(frozen_level)
         px = float(price)

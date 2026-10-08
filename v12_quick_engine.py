@@ -2474,8 +2474,6 @@ AUTO_WIRED_PARAMS = [
     'REENTRY_SYMGATE_SPEED_MIN',
     'REENTRY_TIER1_SIZE_MULT',
     'REENTRY_TIER1_SIZE_MULT_TRADIER',
-    'REENTRY_TIER2_MAX_MINUTES',
-    'REENTRY_TIER2_MAX_MINUTES_TRADIER',
     'REENTRY_TIER2_MIN_MINUTES',
     'REENTRY_TIER2_MIN_MINUTES_TRADIER',
     'REENTRY_TIER2_PRICE_PCT',
@@ -3924,7 +3922,6 @@ AUTO_WIRED_PARAMS = [
     'REENTRY_RALLY_K15M_MAX',
     'REENTRY_SIZE_EXTENDED_K1H',
     'REENTRY_TIER1_SIZE_MULT',
-    'REENTRY_TIER2_MAX_MINUTES',
     'REENTRY_WT15M_SIZE_MULT',
     'RULE_B_3M_EXIT_ENABLED',
     'SCALP_V3_AUG_BE_STOP_ENABLED',
@@ -3997,7 +3994,6 @@ AUTO_WIRED_PARAMS = [
     'REENTRY_RALLY_K15M_MAX',
     'REENTRY_SIZE_EXTENDED_K1H',
     'REENTRY_TIER1_SIZE_MULT',
-    'REENTRY_TIER2_MAX_MINUTES',
     'REENTRY_WT15M_SIZE_MULT',
     'RULE_B_3M_EXIT_ENABLED',
     'SCALP_V3_AUG_BE_STOP_ENABLED',
@@ -5129,7 +5125,6 @@ class QuickConfig:
         self.REENTRY_LIVE_MONITOR_DC_BREAK_TF = '5m'
         self.REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR = False
         self.REENTRY_RALLY_K15M_MAX = 75.0
-        self.REENTRY_TIER2_MAX_MINUTES_TRADIER = 120.0
         self.REENTRY_TIER2_MIN_MINUTES_TRADIER = 10.0
         self.REENTRY_TIER2_PRICE_PCT_TRADIER = 0.003
         self.REENTRY_TIER2_SIZE_MULT_TRADIER = 0.8
@@ -5644,7 +5639,6 @@ class QuickConfig:
     REENTRY_STOCH_K_MIN_SHORT: float = 20.0  # was 60/30 — mirror fix (SAFE unless <20) — matches config.py
     REENTRY_SYMGATE_ENABLED: bool = False  # auto-wired 625
     REENTRY_SYMGATE_SPEED_MIN: float = 0.5  # auto-wired 625
-    REENTRY_TIER2_MAX_MINUTES_TRADIER: float = 60.0  # auto-wired 625
     REENTRY_TIER2_MIN_MINUTES_TRADIER: float = 5.0  # auto-wired 625
     REENTRY_TIER2_PRICE_PCT_TRADIER: float = 0.0015  # auto-wired 625
     REENTRY_TIER2_SIZE_MULT_TRADIER: float = 0.4  # auto-wired 625
@@ -6327,7 +6321,6 @@ class QuickConfig:
     REENTRY_SIZE_EXTENDED_K1H: float = 90.0  # auto-added TEMPLATE generic
     REENTRY_SIZE_EXTENDED_MULT: float = 1.0  # auto-added TEMPLATE
     REENTRY_TIER1_SIZE_MULT: float = 1.5  # auto-added TEMPLATE
-    REENTRY_TIER2_MAX_MINUTES: float = 120.0  # auto-added TEMPLATE generic
     REENTRY_WT15M_SIZE_MULT: float = 1.5  # auto-added TEMPLATE
     REVERSE_ON_EXIT_ENABLED: bool = False  # auto-added TEMPLATE
     RULE_B_3M_EXIT_ENABLED: bool = True  # auto-added TEMPLATE
@@ -11414,7 +11407,6 @@ _DEFAULTS_625 = {
     "REENTRY_SYMGATE_ENABLED": False,
     "REENTRY_SYMGATE_SPEED_MIN": 0.5,
     "REENTRY_TIER1_SIZE_MULT_TRADIER": 1.5,
-    "REENTRY_TIER2_MAX_MINUTES_TRADIER": 60.0,
     "REENTRY_TIER2_MIN_MINUTES_TRADIER": 5.0,
     "REENTRY_TIER2_PRICE_PCT_TRADIER": 0.0015,
     "REENTRY_TIER2_SIZE_MULT_TRADIER": 0.4,
@@ -14724,6 +14716,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             try:
                 if (not _ty_fire) and '_ty_frozen_bb_arr' in locals() and _ty_frozen_bb_arr is not None and bool(getattr(cfg, 'BB_FROZEN_STOP_ENABLED', False)):
                     import vec_decisions.twin_yellow_filters as _tyf3
+                    if not pos.get('ty_frozen_bb'):
+                        _ty_fz = float(_ty_frozen_bb_arr[i]) if i < len(_ty_frozen_bb_arr) else 0.0
+                        if _ty_fz not in (None, 0, 0.0):
+                            pos['ty_frozen_bb'] = _ty_fz
                     if _tyf3.frozen_stop_fires(pos.get('ty_frozen_bb', 0.0), float(px), live_pnl_pct, is_long):
                         _ty_fire, _ty_reason = True, 'BB_FROZEN_STOP_BREACH_g%.2f%%' % live_pnl_pct
             except Exception:

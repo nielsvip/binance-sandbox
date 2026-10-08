@@ -33,8 +33,11 @@ def test_registry_covers_all_44_with_verdicts():
     assert set(T.REGISTRY) == set(names)
     wired = [k for k, v in T.REGISTRY.items() if v["verdict"] == "WIRED-BOTH-SPEC"]
     nod = [k for k, v in T.REGISTRY.items() if v["verdict"] == "NEEDS-OPERATOR-DECISION"]
-    assert len(wired) == 10 and len(nod) == 34
+    assert len(wired) == 10 and len(nod) == 29
     assert set(wired) == {"MOM3_FILTER_TF", "MOMENTUM_BREAKOUT_FILTER_TF", "DC_BREAK_FILTER_TF", "FAST_RISER_FILTER_TF", "KINDERGARTEN_FILTER_TF", "GR_FILTER_ALL_ENTRIES", "EMA_BLANKET_FILTER_FILTER_TF", "DC_BREACH_REDUCE_FILTER_TF", "MTF_DC_REJECT_FILTER_TF", "FROZEN_STOP_FILTER_TF"}
+    assert {k for k, v in T.REGISTRY.items() if v["verdict"] == "WIRED-VEC-INLINE"} == {"FH_MOMENTUM_FILTER_TF"}
+    assert {k for k, v in T.REGISTRY.items() if v["verdict"] == "WIRED-STOCKS-ONLY"} == {"MANDATORY_REENTRY_WT_FILTER_TF_MODE"}
+    assert {k for k, v in T.REGISTRY.items() if v["verdict"] == "WIRED-VEC-MAP"} == {"DELTA_ENGINE_FILTER_TF", "DC_MOMENTUM_BOTA_SCORER_FILTER_TF", "CIRCUIT_SHARPE_GATES_FILTER_TF"}
 
 
 def test_resolve_filter_tf_rules():

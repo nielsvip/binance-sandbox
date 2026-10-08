@@ -390,9 +390,8 @@ def tradier_entry_score_threshold(ind: Mapping[str, Any] | None, is_long: bool, 
     return bool(m <= 60)
 
 
-# ── First-hour momentum (vec v12:8763-8785 B_FHMOMENTUM; stocks-live dead
-# stubs; ez crypto parent uses CRYPTO_FH_MOMENTUM_* keys in a daily-loop
-# structure that does not map per-bar → NEEDS-OPERATOR-DECISION).
+# ── First-hour momentum (vec v12 B_FHMOMENTUM inline; live threaded 10-06:
+# ez:46510 zero-scan + tr:14155 entry chain via twin_gates_sizing_a fh core).
 # Block-fire slice (True=block fires). ──
 
 def _fh_momentum_fires(ind: Mapping[str, Any] | None, is_long: bool, cfg: Any) -> Optional[bool]:
@@ -414,8 +413,12 @@ def _fh_momentum_fires(ind: Mapping[str, Any] | None, is_long: bool, cfg: Any) -
     confirm = True
     if _gb(cfg, "TRADIER_FH_MOMENTUM_DC_CONFIRM", True):
         dc_max = _gf(cfg, "TRADIER_FH_MOMENTUM_DC_MAX_LONG", 0.33)
-        pos = _num(ind, "dc_position_15m", 0.5)
-        confirm = confirm and ((pos <= dc_max) if is_long else (pos >= (1.0 - dc_max)))
+        _fh_tf = str(_gs(cfg, "FH_MOMENTUM_FILTER_TF", "15m") or "15m").lower()
+        if _fh_tf != "off":
+            if _fh_tf not in ("15m", "1h", "4h", "d"):
+                _fh_tf = "15m"
+            pos = _num(ind, "dc_position_%s" % _fh_tf, 0.5)
+            confirm = confirm and ((pos <= dc_max) if is_long else (pos >= (1.0 - dc_max)))
     if _gb(cfg, "TRADIER_FH_MOMENTUM_MFI_CONFIRM", True):
         mfi_min = _gf(cfg, "TRADIER_FH_MOMENTUM_MFI_MIN", 55.0)
         mfi = _num(ind, "mfi_1h", 50.0)

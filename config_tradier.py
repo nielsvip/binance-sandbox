@@ -2525,7 +2525,6 @@ class TradierConfig:
     REENTRY_SYMGATE_ENABLED: bool = False
     REENTRY_SYMGATE_SPEED_MIN: float = 0.5
     REENTRY_TIER1_SIZE_MULT: float = 1.5
-    REENTRY_TIER2_MAX_MINUTES: float = 120.0
     REENTRY_TIER2_MIN_MINUTES: float = 10.0
     REENTRY_TIER2_PRICE_PCT: float = 0.003
     REENTRY_TIER2_SIZE_MULT: float = 0.8
@@ -3532,7 +3531,6 @@ class TradierConfig:
     HTF_REGIME_SIZE_CAP: float = 3.0
     HTF_REGIME_VOL_TARGET: float = 0.0
     REENTRY_TIER2_MIN_MINUTES_TRADIER: float = 10.0  # Min minutes before Tier 2
-    REENTRY_TIER2_MAX_MINUTES_TRADIER: float = 120.0  # Force entry after 120min
     # RALLY REENTRY GATE (0-3h after exit): k5m+k15m rising + HTF WT aligned
     # REENTRY_RALLY_K15M_MAX: additional k15m level cap — 100=disabled, 40=moderate, 20=strict oversold. 2026-04-25 rapid-grid: K60+gap2 = +0.007 Sharpe +1 trade (marginal, not promoted). K40/50 neutral. K gate not the binding constraint for tradier trade count.
     # REENTRY_RALLY_HTF_MIN: min HTF TFs (1h/4h/D) aligned — 1=loose, 2=default, 3=strict

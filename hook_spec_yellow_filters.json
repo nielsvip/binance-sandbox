@@ -443,19 +443,15 @@
    ]
   },
   {
-   "reason": "no hook: 18 names have zero base logic in any live path (only `_ = 1` / `_=_v` / dead-_batch1 stubs) \u2014 inventing predicates would violate BACKTEST_BIBLE 19; plus DELTA/LIVE_ENTRY (17.3 live-only), EMERGENCY/NEWBORN_PROTECT (non-TF-able), BREAKOUT_RETEST (ambiguous leg), PEAK (gain-based), FH/HAIKU (loop/overseer), EXIT_TOP_FADE/BREAKEVEN/EMA_9_21 (no base/collision). Verdict NEEDS-OPERATOR-DECISION each; evidence in module header + report.",
+   "reason": "no hook: names below have zero base logic in any live path (only `_ = 1` / `_=_v` / dead-_batch1 stubs) \u2014 inventing predicates would violate BACKTEST_BIBLE 19; plus LIVE_ENTRY (17.3 live-only), EMERGENCY/NEWBORN_PROTECT (non-TF-able), BREAKOUT_RETEST (ambiguous leg), PEAK (gain-based), HAIKU (overseer), EXIT_TOP_FADE/BREAKEVEN/EMA_9_21 (no base/collision). Removed 2026-10-08: FH_MOMENTUM (vec-inline wired 10-06), DELTA_ENGINE/CIRCUIT_SHARPE_GATES/DC_MOMENTUM_BOTA_SCORER (vec-MAP batch1 10-07). Verdict NEEDS-OPERATOR-DECISION each; evidence in module header + report.",
    "switches": [
     "BREAKEVEN_GAIN_EROSION_FILTER_TF",
     "BREAKOUT_RETEST_FILTER_TF",
-    "CIRCUIT_SHARPE_GATES_FILTER_TF",
-    "DC_MOMENTUM_BOTA_SCORER_FILTER_TF",
-    "DELTA_ENGINE_FILTER_TF",
     "EMA_9_21_FILTER_FILTER_TF",
     "EMERGENCY_BRAKE_FILTER_TF",
     "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF",
     "EXIT_TOP_FADE_FILTER_TF",
     "EXIT_TO_REDUCE_ADAPTER_FILTER_TF",
-    "FH_MOMENTUM_FILTER_TF",
     "FIRST_OPEN_THROTTLE_FILTER_TF",
     "GOLDEN_RULE_ENFORCE_FILTER_TF",
     "GOLDEN_RULE_HTF_VOTE_FILTER_TF",

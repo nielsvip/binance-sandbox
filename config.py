@@ -659,7 +659,6 @@ class Config:
     HTF_REGIME_VOL_TARGET: float = 0.0         # 0=off; >0 de-levers when realized vol high
     REENTRY_TIER2_PRICE_PCT: float = 0.003  # 0.3% price move past exit triggers Tier 2
     REENTRY_TIER2_MIN_MINUTES: float = 10.0  # Minimum minutes before Tier 2 activates
-    REENTRY_TIER2_MAX_MINUTES: float = 120.0  # After this, Tier 2 forces entry at 50% size
     # === RECOVERY_AUGMENT — PARTIAL-CLOSE RECOVERY REENTRY (2026-05-20 → 2026-09-11 CLARIFIED) ===
     # SEMANTICS: This is a REENTRY / RE-OPEN, NOT an AUGMENT of a winning position.
     # It fires when positionAmt > 0 after a partial REDUCE (SENTIMENT_FADE / WT_BANDAID /

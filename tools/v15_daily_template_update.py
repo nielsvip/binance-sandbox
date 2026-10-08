@@ -740,7 +740,7 @@ def main():
         saved_any = True
         saved_promos[cs] = list(rep["ledger"])
         print(f"[{cs}] saved {path}")
-    if args.apply and saved_any and tdir.resolve() == SPREAD.resolve():
+    if args.apply and saved_any and tdir.resolve() in (SPREAD.resolve(), TPL.resolve()):
         PROMOTIONS.write_text(json.dumps(promos, indent=1, default=str))
         ROUND_LEDGER.write_text(json.dumps(rl, indent=1))
         # dual-write: JSON stays as generated view, SQL primary prevents silent fallback to globals on next promotion round
