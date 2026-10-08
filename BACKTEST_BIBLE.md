@@ -1498,7 +1498,8 @@ no longer exists. Consequences:
 - **Writer allowlist (LOCKED_FILES.md one-script rule):** ONLY these four writers touch the template
   files (both the main and the norm set) — `tools/v15_daily_template_update.py` (avg/promotions),
   `tools/v15_template_bookkeeper.py` (books, S1 cron 12:00 UTC — before the chain, §75), `tools/v15_switch_add.py` (new rows,
-  §71), `tools/v15_template_staged_apply.py` (verified restructures; currently refuses on the
+  §71), `tools/v15_switch_remove.py` (row removal of a switch whose config+QuickConfig fields are already
+  gone — USER 2026-10-08, same guards as the adder, run on the source host), `tools/v15_template_staged_apply.py` (verified restructures; currently refuses on the
   pre-existing violation backlog). Pilots write ledgers/progress only. No hand edits, no other
   writers, no exceptions beyond §71.
 - **Daily rewrite (USER 2026-10-07 — the whole point of the templates):** every day before market

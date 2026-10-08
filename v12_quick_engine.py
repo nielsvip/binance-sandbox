@@ -9427,6 +9427,7 @@ def compute_entry_signals(npz, n, is_long, cfg):
             "B_STDEV_BREAKOUT": 6,  # 2026-10-06 parity FIX (was default 1): live fires standalone (score 25/22)
             "B_STDEV_BOUNCE": 6,  # 2026-10-06 bounce twin: standalone (live score 22)
             "B_BBSQUEEZE": 6,  # 2026-10-06 parity FIX (was default 1): live fallback (score 18, wins only when alone)
+            "B_FHMOMENTUM": 6,  # 2026-10-08 parity FIX (was default 1, never pivotal): live fires standalone OPEN (ez:46510/tr:14155)
             "WR_PULLBACK": 6,  # 2026-10-06 WR twin: standalone (live score 22, list-gated; sweeps pass in_list=True)
             "FORMATION_ENTRY": 6,  # 2026-10-06 formation twin: standalone (live score 29; switches off = zeros)
             "B04": 3,       # DC retest (Sharpe 0.39)
