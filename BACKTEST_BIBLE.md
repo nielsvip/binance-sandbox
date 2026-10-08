@@ -1428,12 +1428,21 @@ Mon 2026-10-05 06:00 UTC: best (newest-round) 30D sheet of every sym_side → 36
 3. **Apply the new per-sym settings to live** — per sym_side best sets that pass the gates (30D valid + positive, 365D
    confirmed, `switch_parity.register_workbook_result`) are written to ALL live surfaces together: the config files, the
    SQLite store (`per_sym_store`) and the per-sym JSON book (+ trb overlay for stocks), post-verified by re-read.
-3b. **Refresh the inf account universe** (USER 2026-10-06): `symbols_inf_long.json` / `symbols_inf_short.json` are rewritten
-   with the **25 best LONG and 25 best SHORT crypto sym_sides of that day's backtest** (ranked on the fresh 30D result of the
-   final per-sym set; only sym_sides that pass the same gates as step 3: valid, gain > 0, TIM 20-80, DD ≤ 30, ≥10 trades,
-   365D confirmed when available; only tradeable symbols; never a SIMPLE_PRICE_GT0 set). Symbols with an OPEN inf position stay
-   listed until that position is closed (no stranding). Backup + atomic write; `tradeable_keys.json` follows via
-   ez_positions_service. Tool: `tools/v15_daily_inf_universe.py` (run inside the pre-market chain, after step 3).
+3b. **Refresh the inf account universe** (USER 2026-10-06, top 15 per USER 2026-10-08): `symbols_inf_long.json` /
+   `symbols_inf_short.json` are rewritten with the **15 best LONG and 15 best SHORT crypto sym_sides of that day's backtest**
+   (ranked on the fresh 30D result of the final per-sym set; only sym_sides that pass the same gates as step 3: valid,
+   gain > 0, TIM 20-80, DD ≤ 30, ≥10 trades, 365D confirmed when available; only tradeable symbols; never a
+   SIMPLE_PRICE_GT0 set). Symbols with an OPEN inf position stay listed until that position is closed (no stranding).
+   A symbol eligible on BOTH sides is listed only on its better-gain side (a both-sides listing is silently dropped by
+   the hedge-pair cleanup, so it would trade neither). Backup + atomic write; `tradeable_keys.json` `inf:` keys follow
+   within minutes via the positions service cleanup, and live `ez_manage --account inf` picks both up with no restart
+   (symbols reload every 3 min, tradeable every 180 s). Tool: `tools/v15_daily_inf_universe.py --apply --top 15`, run as
+   step 5d of the Mac chain follow-up (`tools/v15_daily_chain_mac_apply.sh`, right after the per-sym go-live + size
+   tiers, non-fatal, result in the DONE stamp) with the 15:05Z `V15_INF_UNIVERSE_APPLY` cron as backstop. Writer
+   ownership: the chain OWNS `symbols_inf_*.json` — `ez_rankings.py` `INF_BEST_SAVE` (rewrites both files every ~2.5 min
+   from `SPREADSHEETS/BEST`) and the `tradier_rankings.py` `INF_HOOK` (stock-twin mirror in market hours) must yield to
+   the chain books (OPEN as of 2026-10-08: both files are locked, unlock + redirect pending — until then a chain write is
+   clobbered within minutes and the live universe stays the BEST-15). News-scanner injections stay additive (TTL 48 h).
 4. **Live trades those settings with functions identical to the vectorized ones** (§68.1). Precedence everywhere:
    per-sym > cat_side > global, identical in live and vector.
 5. The fleet then sweeps on the new defaults (S1 coordinator; each sym_side baselined on its previous best) and the next

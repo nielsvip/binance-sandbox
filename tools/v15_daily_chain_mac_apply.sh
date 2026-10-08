@@ -7,7 +7,8 @@
 # avg_delta_pos_sym.json, agg files, cat_side_promotions, round ledger, reports), md5-verified against the stamp, backups first,
 # then kv sync (SQL-primary readers) -> 3 switch_parity sync-defaults for the stamp's promoted_keys ON THE MAC (backup, compile, md5)
 # -> 4 push changed config.py/config_tradier.py/v12_quick_engine.py to S1/s2/s5 (sandbox + ~/binance) md5 + import verified
-# -> 5 switch_parity gate for the 4 cat_sides on Mac/S1/s2/s5 (logged) -> 6 stamp data/daily_chain/<date>_mac_apply.json.
+# -> 5 switch_parity gate for the 4 cat_sides on Mac/S1/s2/s5 (logged) -> 5d inf universe refresh (BIBLE §68.3 step 3b,
+# top-15 30D gainers per side -> symbols_inf_long/short.json, non-fatal) -> 6 stamp data/daily_chain/<date>_mac_apply.json.
 # Live processes pick the config up at their next restart — this script restarts NOTHING.
 # DRYRUN=1: pull into /tmp only, report md5 differences + the sync PLAN (no --apply), no Mac file written, no push; gates still run (read-only).
 set -u
@@ -233,9 +234,30 @@ else
   log "step5c size tiers SKIPPED (no go-live report)"
 fi
 
+# 5d. STEP 3b inf universe (USER 2026-10-08): refresh symbols_inf_long/short.json with the top-15 30D gainers
+#     per side from this day's backtest, right after the per-sym go-live + size tiers. Non-fatal: a refused
+#     refresh keeps yesterday's books (still tradeable via PERSIST_INF); the 15:05Z V15_INF_UNIVERSE_APPLY
+#     cron is the backstop. DRYRUN: skipped (fetch health is covered by the cron's own runs).
+if [ "$DRYRUN" = 1 ]; then
+  INF_RES="skipped-dryrun"
+  INF_APPLIED="dryrun"
+  log "step5d inf universe SKIPPED (DRYRUN)"
+else
+  ILOG=$ROOT/data/daily_chain/inf_universe_$DATE.log
+  log "step5d inf universe --apply --top 15 (log $ILOG)"
+  if timeout 1500 "$PY" -u tools/v15_daily_inf_universe.py --apply --top 15 --report-tag chain_$DATE >"$ILOG" 2>&1; then
+    INF_RES="rc=0"
+  else
+    INF_RES="rc=$? (non-fatal)"
+  fi
+  INF_APPLIED=$("$PY" -c "import json,glob; fs=sorted(glob.glob('data/inf_universe/*_chain_$DATE.json')); print(json.load(open(fs[-1])).get('applied') if fs else 'no-report')" 2>/dev/null || echo unknown)
+  tail -n 3 "$ILOG" | sed 's/^/[mac-apply] step5d /'
+  log "step5d inf universe $INF_RES applied=$INF_APPLIED"
+fi
+
 # 6. stamp
 if [ "$DRYRUN" != 1 ]; then
-  printf '{"date":"%s","status":"DONE","at":"%s","promoted_keys":"%s","code_changed":"%s","gates":"%s","backups":"backups/daily_chain_mac_%s"}\n' "$DATE" "$(date -u +%FT%TZ)" "$KEYS" "${CHANGED# }" "${GATES# }" "$TS" > "$STAMP"
+  printf '{"date":"%s","status":"DONE","at":"%s","promoted_keys":"%s","code_changed":"%s","gates":"%s","inf_universe":"%s applied=%s","backups":"backups/daily_chain_mac_%s"}\n' "$DATE" "$(date -u +%FT%TZ)" "$KEYS" "${CHANGED# }" "${GATES# }" "$INF_RES" "$INF_APPLIED" "$TS" > "$STAMP"
   log "step6 stamp $STAMP"
 fi
 log "=== done (DRYRUN=$DRYRUN)"

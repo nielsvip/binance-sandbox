@@ -255,6 +255,29 @@ def test_main_apply_refuses_empty_side(tmp_path, monkeypatch):
     assert json.loads(books["SHORT"].read_text()) == []
 
 
+def test_build_books_default_top_is_15():
+    import inspect
+    assert inspect.signature(U.build_books).parameters["top"].default == 15
+
+
+def test_cli_default_top_is_15(tmp_path, monkeypatch):
+    # USER 2026-10-08: the daily chain writes the top-15 30D gainers per side (was 25)
+    books = _sandbox(tmp_path, monkeypatch, [], [])
+    recs = [rec(f"L{i:02d}USDT_LONG", gain=float(30 - i)) for i in range(20)] + [rec(f"S{i:02d}USDT_SHORT", gain=float(30 - i)) for i in range(20)]
+    monkeypatch.setattr(U, "allowed_sym_sides", lambda root=None: allowed_for(*recs))
+    rp = tmp_path / "recs.json"
+    rp.write_text(json.dumps(recs))
+    assert U.main(["--records", str(rp), "--apply"]) == 0
+    assert len(json.loads(books["LONG"].read_text())) == 15
+    assert len(json.loads(books["SHORT"].read_text())) == 15
+
+
+def test_remote_extract_sets_tools_sys_path():
+    # 2026-10-07: s2/s5 extracts died with ModuleNotFoundError (remote cwd=$HOME) -> 0 records -> refused apply
+    assert "binance-sandbox/tools" in U.REMOTE_EXTRACT
+    assert U.REMOTE_EXTRACT.index("sys.path.insert(0, _cand)") < U.REMOTE_EXTRACT.index("import v15_persym_golive")
+
+
 def test_main_apply_refuses_stale_positions(tmp_path, monkeypatch):
     books = _sandbox(tmp_path, monkeypatch, ["OLDUSDT"], ["SOLUSDC"])
     old = time.time() - 7200
