@@ -1727,3 +1727,13 @@ would split sweep/live from pilot baselines; needs a director ruling, not a sile
 - **Fleet procedure (S1/s2 shell):** `python tools/v15_missed_trend.py screen --symside SS --set-json <final-set> --out ~/v15_missed_trend --workers 6`
   then `python tools/v15_missed_trend.py requeue --symside SS --progress <round-pdir>/SS_v14_progress.json --base ~/v15_missed_trend/SS_missed_trend_base.json --autopsy-dir ~/v15_autopsy_first`
   (`--dry-run` first). Guard tests: `tests/test_v15_missed_trend.py` (incl. the AGLD bar-1757→2874 regression).
+- **AGLD outcome (s2, 2026-10-08 23:4xZ):** screen of the 788-key published set: 994 candidates, 55 effective, 0 errors —
+  `RESCUED` 2.95 (17t TIM 1.94) → **4.30 (21t TIM 2.50)** via `HTF_DIRECTION_GATE_ENABLED=False` (+1.04pp, 14 captured
+  move-trades — the HTF gate vetoed entries into the slide, §17 entry-blocker class) + `MIN_HOLD_BARS_BEFORE_EXIT=32`
+  (+0.30pp vs 1-bar churn). 9 REENTRY switches moved the ledger but captured nothing — no existing reentry re-enters
+  this slide; entries still start ~200 bars after the top, so a first-lower-high SHORT trigger remains a
+  `PROPOSED_NEW_SWITCH` for the §71 pipeline (needs user unlock: engine files are locked). Trend base beat the
+  pre-board autopsy base (3.37/17t) on the current engine and was installed for the requeue. Tool lesson: the fork-pool
+  worker MUST be module-level (`_screen_w` + `_SCREEN_PREP` global, autopsy_run pattern) — a `run_screen` closure fails
+  all futures with `Can't get local object` (first run: 994/994 errors swallowed, then surfaced via `n_eval_errors`;
+  pickle regression test pins it).
