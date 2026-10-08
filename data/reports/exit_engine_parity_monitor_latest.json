@@ -1,21 +1,21 @@
 {
- "now": "2026-10-08T16:02:06.025197+00:00",
+ "now": "2026-10-08T17:02:15.460725+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 7584,
- "last_exit_ts": "2026-10-08T15:59:52.190690+00:00",
+ "n_exit_rows": 7631,
+ "last_exit_ts": "2026-10-08T16:58:31.033978+00:00",
  "n_leaks": 27,
- "n_gate_on": 4900,
+ "n_gate_on": 4921,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 514,
+ "n_unmapped": 515,
  "n_unverified": 2,
  "since": "2026-10-06T18:48:00+00:00",
  "vec_exact_by_action": {
-  "OPEN": 1574,
-  "CLOSE": 519,
+  "OPEN": 1594,
+  "CLOSE": 524,
   "REDUCE": 48
  },
- "native_rows": 5443,
+ "native_rows": 5465,
  "unverified_by_family": {
   "WEBHOOK_HANDLE_SIGNAL (None=None)": 1,
   "ULTIMATE_DC (None=None)": 1
@@ -32,17 +32,19 @@
  "gate_on_by_family": {
   "CRYPTO_SPIKE_FADE (CRYPTO_SPIKE_FADE_ENABLED)": 1,
   "GOLDEN_RULE": 3,
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 4235,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 4243,
   "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 369,
-  "CYCLE_TP (CYCLE_TP_TIERED_ENABLED)": 6,
-  "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 281,
+  "CYCLE_TP (CYCLE_TP_TIERED_ENABLED)": 7,
+  "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 284,
   "DC_BASIS_3M_REDUCE (DC_BASIS_3M_REDUCE_ENABLED)": 1,
-  "MTF_BB_REJECT_EXIT (MTF_BB_REJECT_EXIT_ENABLED)": 4
+  "MTF_BB_REJECT_EXIT (MTF_BB_REJECT_EXIT_ENABLED)": 4,
+  "DC_DAYTRADE_STOP (DC_DAYTRADE_ENABLED)": 2,
+  "PARTIAL_PROFIT_LOCK (PARTIAL_PROFIT_LOCK_ENABLED)": 7
  },
  "ungated_by_family": {},
  "safety_by_family": {},
  "unmapped": {
-  "RSI2_EXIT_LIVE_rsi2=5.4_thr=10.0": 28,
+  "RSI2_EXIT_LIVE_rsi2=5.4_thr=10.0": 29,
   "RSI2_EXIT_LIVE_rsi2=7.0_thr=10.0": 22,
   "RSI2_EXIT_LIVE_rsi2=3.0_thr=10.0": 21,
   "BB_TAKE_15m": 18,
@@ -94,9 +96,10 @@
   "CB_HTF_EXHAUST_HTF_EXHAUST: g=-0.67% a": 3
  },
  "actions": {
-  "OPEN": 1578,
-  "CLOSE": 5730,
-  "REDUCE": 56,
-  "QUICK_CLOSE": 220
+  "OPEN": 1598,
+  "CLOSE": 5749,
+  "REDUCE": 57,
+  "QUICK_CLOSE": 220,
+  "QUICK_REDUCE": 7
  }
 }
