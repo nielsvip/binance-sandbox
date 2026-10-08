@@ -1,89 +1,54 @@
 {
- "generated_at": "2026-10-08 03:08 UTC",
- "total_capital_usd": 81.77,
+ "generated_at": "2026-10-08 03:58 UTC",
+ "total_capital_usd": 59.56,
  "tier_capital": {
   "A": 0.0,
-  "B": 81.79,
+  "B": 59.55,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 6,
+  "B": 3,
   "C": 0
  },
  "winners": [],
- "losers": [
-  "fin:IOTXUSDT_LONG"
- ],
+ "losers": [],
  "mediocre": [
-  "fin:COTIUSDT_SHORT"
+  "ang:ATOMUSDT_SHORT"
  ],
  "positions": [
   {
-   "pk": "fin:SANDUSDT_LONG",
-   "symbol": "SANDUSDT",
-   "account": "fin",
-   "value_usd": 19.65,
-   "gain_pct": 7.831,
-   "tier": "B",
-   "perf_mult": 7.3,
-   "amt": 258.0,
-   "mark": 0.07615
-  },
-  {
-   "pk": "fin:COTIUSDT_SHORT",
-   "symbol": "COTIUSDT",
-   "account": "fin",
-   "value_usd": 18.0,
-   "gain_pct": 0.083,
+   "pk": "ang:NEARUSDC_LONG",
+   "symbol": "NEARUSDC",
+   "account": "ang",
+   "value_usd": 37.38,
+   "gain_pct": -0.415,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 1357.0,
-   "mark": 0.013261
+   "amt": 7.0,
+   "mark": 5.34066828
   },
   {
-   "pk": "fin:LINKUSDC_SHORT",
-   "symbol": "LINKUSDC",
-   "account": "fin",
-   "value_usd": 17.77,
-   "gain_pct": 0.762,
+   "pk": "ang:ATOMUSDT_SHORT",
+   "symbol": "ATOMUSDT",
+   "account": "ang",
+   "value_usd": 16.41,
+   "gain_pct": -0.172,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 1.35,
-   "mark": 13.16
+   "amt": 9.39,
+   "mark": 1.748
   },
   {
-   "pk": "fin:ADAUSDC_SHORT",
-   "symbol": "ADAUSDC",
-   "account": "fin",
-   "value_usd": 12.78,
-   "gain_pct": -0.3,
+   "pk": "ang:DOTUSDT_SHORT",
+   "symbol": "DOTUSDT",
+   "account": "ang",
+   "value_usd": 5.76,
+   "gain_pct": 0.958,
    "tier": "B",
-   "perf_mult": 3.08,
-   "amt": 50.2,
-   "mark": 0.2545
-  },
-  {
-   "pk": "fin:BNBUSDC_LONG",
-   "symbol": "BNBUSDC",
-   "account": "fin",
-   "value_usd": 7.72,
-   "gain_pct": -0.251,
-   "tier": "B",
-   "perf_mult": 1.45,
-   "amt": 0.01,
-   "mark": 771.91973939
-  },
-  {
-   "pk": "fin:IOTXUSDT_LONG",
-   "symbol": "IOTXUSDT",
-   "account": "fin",
-   "value_usd": 5.87,
-   "gain_pct": -1.379,
-   "tier": "B",
-   "perf_mult": 2.18,
-   "amt": 1586.0,
-   "mark": 0.00370102
+   "perf_mult": 1.0,
+   "amt": 5.2,
+   "mark": 1.10788643
   }
  ]
 }
