@@ -13751,7 +13751,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         if _htf_count < _htf_align_req:
                             _htf_align_block = True
                     _stoch_gate_thr = float(_cfg_auto('COMBINED_STOCH_GATE_TRADIER', 100.0))
-                    if _stoch_gate_thr < 100.0:
+                    if _stoch_gate_thr < 100.0 and bool(_cfg_auto('ENTRY_VET_COMBINED_STOCH_GATE_ENABLED', False)):  # USER 2026-10-08: switch, OFF (WT is the filter)
                         _k5m_g = float((_entry_ind or {}).get('k_5m', 50) or 50)
                         if is_long and _k5m_g >= _stoch_gate_thr:
                             _stoch_gate_block = True
@@ -14587,7 +14587,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             elif (not is_long) and _rsi_g < _rsi_hi:
                                 _veto = f"RSI_GATE_S(rsi1h={_rsi_g:.0f}<{_rsi_hi:.0f})"
                         except Exception: pass
-                    if _veto is None and float(_cfg_auto('COMBINED_STOCH_GATE_TRADIER', 100.0)) < 100.0:
+                    if _veto is None and float(_cfg_auto('COMBINED_STOCH_GATE_TRADIER', 100.0)) < 100.0 and bool(_cfg_auto('ENTRY_VET_COMBINED_STOCH_GATE_ENABLED', False)):  # USER 2026-10-08: switch, OFF
                         try:
                             _csg = float(_cfg_auto('COMBINED_STOCH_GATE_TRADIER', 100.0))
                             _k5m_v = float(_entry_ind.get('k_5m', 50) or 50)

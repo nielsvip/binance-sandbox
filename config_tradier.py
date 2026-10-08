@@ -4031,6 +4031,7 @@ class TradierConfig:
     # ROLLBACK each to disabled value (commented inline).
     HTF_ALIGN_REQUIRED_TRADIER: int = 2     # CLAUDE.md stocks ≥2 (was 1 — crypto value; fixed 2026-05-27). ROLLBACK: 1
     COMBINED_STOCH_GATE_TRADIER: float = 60.0  # CLAUDE.md stocks=60 (was 40 — sub-crypto value; fixed 2026-05-27). ROLLBACK: 40.0
+    ENTRY_VET_COMBINED_STOCH_GATE_ENABLED: bool = False  # USER 2026-10-08: "we never filter by stoch k, we use WT" — the k>=60/k<=40 entry veto vetoed +9.29/-0.71/+1.12 pct of rally opens on ADAUSDC_L/S, AAVEUSDC_S; OFF everywhere, sweepable
     GR_HTF_GATE_ENABLED: bool = True       # RECONNECT 2026-09-01 GR HTF + WT cross both       # NEW. Adds GR HTF alignment gate (uses wt_bull_alignment/wt_bear_alignment). ROLLBACK: False (no change — gate stays off until validated)
     GR_HTF_REQUIRE_BULL: int = 1            # Used only when GR_HTF_GATE_ENABLED=True
     GR_HTF_REQUIRE_BEAR: int = 1            # Used only when GR_HTF_GATE_ENABLED=True

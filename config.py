@@ -4645,6 +4645,7 @@ class Config:
     CLENOW_TOP_N: int = 20  # Buy top N% of ranked symbols  # PORTED from TradierConfig 2026-08-17
     CLOSE_ZONE_SIZE_MULT: float = 1.5  # BACKTEST_CHANGE_T23 size multiplier in close zone  # PORTED from TradierConfig 2026-08-17
     COMBINED_STOCH_GATE_TRADIER: float = 60.0  # CLAUDE.md stocks=60 (was 40 — sub-crypto value; fixed 2026-05-27). ROLLBACK: 40.0  # PORTED from TradierConfig 2026-08-17
+    ENTRY_VET_COMBINED_STOCH_GATE_ENABLED: bool = False  # USER 2026-10-08: "we never filter by stoch k, we use WT" — the k>=60/k<=40 entry veto vetoed +9.29/-0.71/+1.12 pct of rally opens on ADAUSDC_L/S, AAVEUSDC_S; OFF everywhere, sweepable
     COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
     CONFLUENCE_MIN_BLOCKS: int = 2  # PORTED from TradierConfig 2026-08-17
     CONFLUENCE_MODE_ENABLED: bool = False  # vector 1177: N blocks must agree  # PORTED from TradierConfig 2026-08-17

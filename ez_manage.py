@@ -1491,7 +1491,11 @@ def check_entry_vetting(
         _csg = float(getattr(config, 'COMBINED_STOCH_GATE_TRADIER', 100.0))
     except Exception:
         _csg = 100.0
-    if _csg < 100.0:
+    try:  # USER 2026-10-08: stoch-k entry veto is a SWITCH, default OFF ("we never filter by stoch k, we use WT")
+        _csg_on = bool(_psym_get(symbol, side, 'ENTRY_VET_COMBINED_STOCH_GATE_ENABLED', getattr(config, 'ENTRY_VET_COMBINED_STOCH_GATE_ENABLED', False))) if symbol and side else bool(getattr(config, 'ENTRY_VET_COMBINED_STOCH_GATE_ENABLED', False))
+    except Exception:
+        _csg_on = bool(getattr(config, 'ENTRY_VET_COMBINED_STOCH_GATE_ENABLED', False))
+    if _csg < 100.0 and _csg_on:
         _csg_k = _twin_p0a.resolve_csg_k('k_5m' in indicators, _sf(indicators.get('k_5m'), 50), _sf(indicators.get('k_3m'), 50))
         if not _twin_p0a.stoch_gate_pass(_csg_k, config, is_long):
             return False, f'COMBINED_STOCH_GATE_k{_csg_k:.0f}_csg{_csg:.0f}'

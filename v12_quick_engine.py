@@ -5316,6 +5316,7 @@ class QuickConfig:
     CLENOW_POSITION_SIZE: float = 800.0  # auto-wired 625
     CLENOW_REGIME_FILTER: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     COMBINED_STOCH_GATE_TRADIER: float = 60.0  # auto-wired 625
+    ENTRY_VET_COMBINED_STOCH_GATE_ENABLED: bool = False  # USER 2026-10-08: stoch-k entry veto is a switch, OFF (WT is the filter); when ON the vec ANDs vec_stoch_gate_pass into entry_sig (the extra_ok copy below was inert)
     CONGRESS_CONVICTION_MIN_SOURCES: float = 2  # auto-wired 625
     CONGRESS_CONVICTION_SIZING_BOOST: float = 1.3  # auto-wired 625
     CONNORS_RSI2_REQUIRE_ABOVE_200SMA: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
@@ -9562,7 +9563,7 @@ def compute_entry_signals(npz, n, is_long, cfg):
     try:
         _csg = float(getattr(cfg, 'COMBINED_STOCH_GATE_TRADIER', 100.0))
         if _csg < 100.0:
-            k_5m = _safe(npz, 'stoch_k_5m', n, 50) if 'stoch_k_5m' in npz else (_safe(npz, 'stoch_k_3m', n, 50) if 'stoch_k_3m' in npz else k_3m)  # 2026-10-08 parity: REAL 3m k (NPZ stoch_k_3m) like live check_entry_vetting; 15m fallback only when absent
+            k_5m = _safe(npz, 'stoch_k_5m', n, 50) if 'stoch_k_5m' in npz else k_3m
             if is_long:
                 extra_ok = extra_ok & (k_5m < _csg)
             else:
@@ -12439,6 +12440,18 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         entry_sig = np.ones(n, dtype=bool)
     # every active ENTRY filter mask, kept so reentries can be filtered leniently (REENTRY_ENTRY_FILTER_*)
     _entry_filter_masks = []
+    # USER 2026-10-08: ENTRY_VET_COMBINED_STOCH_GATE_ENABLED (default OFF) — live check_entry_vetting / tradier k5m gate twin. The
+    # extra_ok copy in compute_entry_signals never reached the opens (csg=0 left 303/303 trades); this one does. k = stoch_k_5m if the
+    # NPZ has it, else the base-TF stoch k (= 15m; live substitutes 3m from 15m too).
+    try:
+        if bool(getattr(cfg, 'ENTRY_VET_COMBINED_STOCH_GATE_ENABLED', False)) and float(getattr(cfg, 'COMBINED_STOCH_GATE_TRADIER', 100.0)) < 100.0:
+            import vec_decisions.twin_p0_crypto_a as _csg_twin
+            _csg_k = _safe(npz, 'stoch_k_5m', n, 50) if 'stoch_k_5m' in npz else _base_safe(npz, 'stoch_k', n, cfg, 50)
+            _csg_mask = np.asarray(_csg_twin.vec_stoch_gate_pass(_csg_k, cfg, is_long), dtype=bool)
+            entry_sig = entry_sig & _csg_mask
+            _entry_filter_masks.append(_csg_mask)
+    except Exception:
+        pass
     # ═══ WAVE1 FILTER_TF real gates (2026-09-28) — replaces the deleted hash-proxy dispatcher;
     # per-family semantics + live refs in vec_decisions/filter_tf_gates.py. OFF (default) = inert.
     try:
