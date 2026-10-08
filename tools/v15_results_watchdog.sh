@@ -6,6 +6,8 @@
 #                   (scheduler relaunches; after --max-attempts the sym_side is terminal = skipped; the show goes on)
 #   STUCK SERVER  : 0 boards finished in the last RESULT_WINDOW_MIN AND no progress file written in the last PROGRESS_STALL_MIN
 #                   (a host mid-board that keeps writing rows is WORKING, never punished)
+#   Results = 30D progress JSONs with final_gain + chain verdicts (v365/repair/gs), by mtime — never /tmp logs (wiped on reboot).
+#   A host with zero pilots is IDLE (scheduler's choice), never stalled.
 #       strike 1 -> copy progress/sheets/logs to S1 ~/stalled_<host>_<ts>/ -> REBOOT (ssh sudo reboot; ALERT_REBOOT_<host> for the Mac hcloud fallback)
 #       strike 2 -> copy again -> ALERT_HOST_<host> (the Mac deleter destroys it via hcloud) -> out of rotation
 #   S1 itself: copy + kill pilots + ALERT only (never rebooted/deleted here; INFRA law). gateway never touched.
@@ -22,7 +24,7 @@ for HS in $HOSTS; do
   H=${HS%%:*}; IP=${HS#*:}
   R=$(ssh -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new "$IP" "
     PD=\$(cat ~/v15_current_progress_dir.txt 2>/dev/null); NOWR=\$(date +%s)
-    D=0; for f in /tmp/sweep_*_30D.log; do [ -f \$f ] && [ \$(stat -c %Y \$f) -gt \$((NOWR-${RESULT_WINDOW_MIN}*60)) ] && grep -q '\[spec-fill\] DONE' \$f && D=\$((D+1)); done
+    D=0; if [ -n "\$PD" ] && [ -d "\$PD" ]; then for f in "\$PD"/*_v14_progress.json; do [ -f "\$f" ] || continue; [ \$(stat -c %Y "\$f") -gt \$((NOWR-${RESULT_WINDOW_MIN}*60)) ] || continue; grep -q '\"final_gain\": [-0-9]' "\$f" && D=\$((D+1)); done; for f in "\$PD"/../chain/v365/*_365_cycle.json "\$PD"/../chain/repair_a*/*_365_cycle.json "\$PD"/../chain/gs_a*/*.gs.json; do [ -f "\$f" ] || continue; [ \$(stat -c %Y "\$f") -gt \$((NOWR-${RESULT_WINDOW_MIN}*60)) ] || continue; D=\$((D+1)); done; fi
     P=\$(ps -eo args | grep -c '[v]15_pilot.py --sym-side')
     NEW=\$(ls -t \$PD/*_v14_progress.json 2>/dev/null | head -1 | xargs -I{} stat -c %Y {} 2>/dev/null)
     UP=\$(cut -d. -f1 /proc/uptime)
@@ -37,6 +39,10 @@ for HS in $HOSTS; do
   done
   if [ "$UP" -lt $((BOOT_GRACE_MIN*60)) ]; then log "$H booted $((UP/60))m ago -> grace"; continue; fi
   PROG_AGE=$(( (NOW - NEWEST) / 60 ))
+  if [ "$PIL" -eq 0 ]; then
+    python3 -c "import json;s=json.load(open('$ST'));s['$H']={'strikes':0,'last_ok':$NOW};json.dump(s,open('$ST','w'))"
+    log "$H idle (0 pilots, scheduler's choice) done_${RESULT_WINDOW_MIN}m=$DONE progress_age=${PROG_AGE}m"; continue
+  fi
   if [ "$DONE" -ge 1 ] || [ "$PROG_AGE" -lt "$PROGRESS_STALL_MIN" ]; then
     python3 -c "import json;s=json.load(open('$ST'));s['$H']={'strikes':0,'last_ok':$NOW};json.dump(s,open('$ST','w'))"
     log "$H ok done_${RESULT_WINDOW_MIN}m=$DONE pilots=$PIL progress_age=${PROG_AGE}m"; continue

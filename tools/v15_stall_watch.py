@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""v15_stall_watch — every 10 min on s1: flag stalled/blocked pilots on s1/s2/s5 (log idle >20 min while its pilot runs, Traceback in the last 60 min,
+"""v15_stall_watch — every 10 min on s1: flag stalled/blocked pilots on s1/s2/s5/s6/s7 (log idle >20 min while its pilot runs, Traceback in the last 60 min,
 BadZip/DATA_ERROR/DEFAULTS-GATE refusals). Writes ~/binance-sandbox/logs/stall_watch.jsonl (one JSON line per run) and stall_watch_alert.log. Detection only."""
 import json, subprocess, time
-HOSTS = {"s1": None, "s2": "s2", "s5": "s5"}
+HOSTS = {"s1": None, "s2": "niels@10.0.0.4", "s5": "niels@10.0.0.5", "s6": "niels@10.0.0.6", "s7": "niels@10.0.0.7"}
 SCRIPT = r'''
 now=$(date +%s)
 for f in $(find /tmp -maxdepth 1 -name "sweep_*_30D.log" -mmin -180); do
@@ -17,7 +17,7 @@ done
 '''
 out = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "hosts": {}}
 for name, ssh in HOSTS.items():
-    cmd = ["bash", "-c", SCRIPT] if ssh is None else ["ssh", "-o", "ConnectTimeout=8", ssh, "bash -s"]
+    cmd = ["bash", "-c", SCRIPT] if ssh is None else ["ssh", "-o", "ConnectTimeout=8", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", ssh, "bash -s"]
     try:
         r = subprocess.run(cmd, input=None if ssh is None else SCRIPT, capture_output=True, text=True, timeout=60)
         out["hosts"][name] = [l for l in r.stdout.splitlines() if l.strip()]
