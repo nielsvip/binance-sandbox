@@ -116,7 +116,15 @@ def main():
     prio = []
     for b in need365:
         prio.append(b["symside"].rsplit("_", 1)[0])
-    prio += live_todo
+    # USER 2026-10-08 #1: symbols with an autopsy base carrying effective_switches run ~50x faster (AUTOPSY-INERT) -> they go first
+    _bases = set()
+    for _bp in glob.glob(str(HOME / "v15_autopsy_first" / "*_autopsy_base.json")):
+        try:
+            if "effective_switches" in Path(_bp).read_text():
+                _bases.add(Path(_bp).name.replace("_autopsy_base.json", "").rsplit("_", 1)[0])
+        except Exception:
+            pass
+    prio += [s for s in live_todo if s in _bases] + [s for s in live_todo if s not in _bases]
     prio += [b["symside"].rsplit("_", 1)[0] for b in bad365]
     seen, ordered = set(), []
     for s in prio:

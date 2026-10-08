@@ -976,7 +976,7 @@ def tick(args, cfg, now):
             pairs.setdefault(ss.rsplit("_", 1)[0], 0.0)
             pairs[ss.rsplit("_", 1)[0]] += r["pss_mb"]
         pair_measure = [v for k, v in pairs.items() if k in universe_syms["stocks"] | universe_syms["crypto"] and v > 0]
-        est_pair = _est_pair_mb(pair_measure, cfg.get("default_pair_mb", 12000))
+        est_pair = _est_pair_mb(pair_measure, cfg.get("pair_floor_mb", 12000))  # USER 2026-10-08 #2: AUTOPSY-INERT boards peak ~4GB/pair -> floor from cfg (measured max x1.25 still wins)
         reserve = max(h.get("mem_reserve_mb", 3000), int(h.get("oom_mb", 500)) + 2000)
         proj_mem = s["mem_avail_mb"] - reserve - _growth_debt_mb(pairs, est_pair)
         swap_ok = _swap_admit_ok(s)

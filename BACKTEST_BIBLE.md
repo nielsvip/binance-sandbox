@@ -1658,3 +1658,21 @@ stamp reads the main report. (A 2026-10-07 repoint briefly flipped the gate to n
 night; repoints must never flip behavioral gates.) OPEN DESIGN QUESTION (pre-existing, not changed):
 fleet defaults JSON is built from MAIN bolds while pilots read NORM bolds — main/norm bold drift
 would split sweep/live from pilot baselines; needs a director ruling, not a silent fix.
+
+## 77. AUTOPSY-INERT ROWS — NAKED EVERY ROW, YELLOWS ONLY WHERE THE ENGINE CAN MOVE (USER 2026-10-08, approved #1 "only the real useless/dead rows skipped … revise them 1 in 25")
+
+- A 30D board launched with `V15_START_OVERRIDES` whose base json carries `autopsy.effective_switches` (written by `tools/v15_autopsy_first.py`
+  from `tools/v15_trade_autopsy_run.py`: switches whose flip touched ≥1 trade on this sym_side's template-bold base, plus every kept combo key)
+  runs in AUTOPSY-INERT mode (`v15_pilot.py` spec-fill, `[AUTOPSY-INERT] <ss>: N effective switches …` in the log).
+- EVERY row still gets its NAKED candidate evaluated by the real engine → `G` (col G) is a real delta on every row, every board. Nothing is a fake 0.
+- A row whose switch is NOT effective skips its yellow (`L:BI`) evals — those cells stay BLANK (no value, no paint, no `yellows` entry in the
+  progress row; `inert_filters` lists the headers) — unless:
+  1. rotating sample: `(row + round_seq + tab_hash) % V15_INERT_SAMPLE_EVERY (25) == 0` → full yellow pass (`inert_sampled`, `SAMPLED` in `[spec-row]`), so
+     every inert row is fully re-tested once every 25 rounds, a different 4% slice each round; or
+  2. revive: the naked eval moved the ledger (`|G| > 1e-9`) → the full yellow pass runs on the spot (`[AUTOPSY-INERT-REVIVED]`, `inert_revived`).
+- Blank inert yellow cells are NOT missing cells: `complete` is unaffected, `v15_assure`/refill must not "repair" them, AVG_DELTA sees no value (never a 0).
+- `V15_INERT_PRUNE=0` disables (full board). Without `effective_switches` in the base (old bases) there is no pruning.
+- Measured 2026-10-08 (ADAUSDC_SHORT, 70/1197 effective): 436 rows in a 15-min slice (fleet boards: ~1–2 rows/min), 350 pruned, 14 sampled, 10 revived, 7 promotions, ~3.8 GB total RSS.
+- ENGINE ARTEFACTS ARE NEVER CANDIDATES OR EVIDENCE: `MODE`, `SIMPLE_PRICE_GT0_ENABLED`, `VENUE`, `IS_TRADIER`, `ABLATION_*` — denied in the autopsy
+  (`AUTOPSY_DENY`), the priors (`PRIOR_DENY`), go-live (`ARTEFACT_KEYS`, stripped before the fresh eval) and the pilot (`ABLATION_NEVER_ON` row skip).
+  2026-10-08: 137 stocks bases "rescued" by `MODE=crypto`, and 75 LIVE per-sym sets (73 with ablation ON) had to be quarantined/stripped.

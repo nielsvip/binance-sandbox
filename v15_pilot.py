@@ -3861,6 +3861,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             info.update(kind="skip", reason="NO_CANDIDATE: empty B cell in template row — nothing to test", g=None)
         elif str(switch).strip() in UNWIRED_SWITCHES or str(switch).strip() in UNWIRED_FILTERS:
             info.update(kind="skip", reason="NOT_WIRED_VEC: no reachable vectorized read and the ledger never moved (v15_zero_audit) — not calculated, never a fake 0", g=None)
+        elif str(switch).strip().startswith("ABLATION_") and str(cand).strip().lower() in ("true", "1", "yes", "on"):
+            # USER 2026-10-08: "ABLATION can never be on unless for a momentary test" — a sweep is not that; 73 live sym_sides had
+            # ABLATION_DISABLE_*=True promoted per-sym from these rows (stripped 17:4xZ). Never calculated, never promoted.
+            info.update(kind="skip", reason="ABLATION_NEVER_ON: ablation kills are engine artefacts, not strategy (USER 2026-10-08) — not calculated, never promoted", g=None)
         elif str(cand).strip().upper().endswith("_ALT"):
             info.update(kind="skip", reason="INVENTED_ALT: *_ALT option value exists in no config — grey, not calculated", g=None)
             ws.cell(row=rr, column=2).font = Font(name="Arial", size=10, color="FFBFBFBF")
