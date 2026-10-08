@@ -358,12 +358,15 @@ def auto_main(threshold_pct=85):
     print("="*80)
     print(f"Base path: {BASE_PATH}")
     try:
-        usage=shutil.disk_usage(str(BASE_PATH))
+        st=os.statvfs(str(BASE_PATH))
     except Exception as e:
         print(f"ABORT: cannot stat disk for {BASE_PATH}: {e}")
         return 2
-    used_pct=100.0*(usage.used/usage.total) if usage.total else 0.0
-    print(f"Disk: {format_size(usage.used)}/{format_size(usage.total)} ({used_pct:.1f}% used)")
+    total=st.f_blocks*st.f_frsize
+    avail=st.f_bavail*st.f_frsize
+    used=(st.f_blocks-st.f_bfree)*st.f_frsize
+    used_pct=100.0*(used/(used+avail)) if (used+avail) else 0.0
+    print(f"Disk: {format_size(used)}/{format_size(total)} ({used_pct:.1f}% used, df-style)")
     if used_pct < threshold_pct:
         print(f"Below threshold ({threshold_pct}%) — nothing to do.")
         return 0
