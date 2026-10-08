@@ -10460,13 +10460,108 @@ def detect_stdev_breakout_t(symbol: str, is_long: bool, i: dict) -> dict:
     return None
 
 
+_PRE_TWIN_STOP_FIRED_TS_TRADIER: dict = {}
+
+
+async def _pre_twin_hard_stops(account_key, position_key, symbol, position_side, order_queue, trade_manager, indicators_raw, position, current_price) -> bool:
+    """2026-10-08 USER FIX stocks mirror (crypto ARUSDThole): hard stops are NOT a twinnable family. Runs BEFORE the VEC_EXACT delegation in process_position, twin-driven or not. Predicates + reason tokens mirror the in-body VIGILANCE_DC4_STOP / ULTIMATE_DC_HARD_STOP blocks; the in-body blocks stay as backstop."""
+    try:
+        if not trade_manager or not position_key or position is None:
+            return False
+        if abs(safe_float(getattr(position, 'positionAmt', 0))) <= 0:
+            return False
+        if not indicators_raw:
+            return False
+        _now = time.time()
+        try:
+            if _now - float(_PRE_TWIN_STOP_FIRED_TS_TRADIER.get(position_key, 0.0)) < 120.0:
+                return False
+        except Exception:
+            pass
+        is_long = position_side == "LONG"
+        try:
+            i = trade_manager.strategy.parse_market_data(indicators_raw)
+        except Exception:
+            return False
+        _px = safe_fetch_float(current_price, 0.0)
+        if not _px or _px <= 0:
+            return False
+        _gain = safe_fetch_float(getattr(position, 'gain', 0), 0.0)
+        _fired = None
+        if bool(_cfg('VIGILANCE_GUARD_ENABLED', True, account_key, symbol, position_side)):
+            _vg_tf = str(_cfg('VIGILANCE_DC4_STOP_TF', '15m', account_key, symbol, position_side) or 'OFF').strip()
+            if _vg_tf.upper() != 'OFF' and _gain < 0:
+                _vg_lvl = safe_fetch_float(i.get(f"dc_low4_{_vg_tf}" if is_long else f"dc_high4_{_vg_tf}", 0), 0.0)
+                _vg_tol = safe_fetch_float(_cfg('VIGILANCE_DC4_BREACH_TOLERANCE_PCT', 0.25, account_key, symbol, position_side), 0.25)
+                if _vg_lvl > 0 and ((is_long and _px <= _vg_lvl * (1 - _vg_tol / 100.0)) or ((not is_long) and _px >= _vg_lvl * (1 + _vg_tol / 100.0))):
+                    _vg_side = 'LONG' if is_long else 'SHORT'
+                    vigilance_block(symbol, _vg_side, f"DC4_{_vg_tf}_BREACH_g{_gain:.2f}pct_px{_px:.4f}_lvl{_vg_lvl:.4f}", exit_price=_px)
+                    logger.critical(f"🚨 [PRE_TWIN_VIGILANCE_DC4_{_vg_tf}_STOP] {position_key}: g={_gain:.2f}% AND px {_px:.4f} breached {'dc_low4' if is_long else 'dc_high4'}_{_vg_tf} {_vg_lvl:.4f} → IMMEDIATE CLOSE + sym_side BLOCK")
+                    await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"VIGILANCE_DC4_{_vg_tf}_HARD_STOP_USER_{_vg_side}_g{_gain:.2f}_lvl{_vg_lvl:.4f}", 100.0, override_qty=999999)
+                    _fired = f"VIGILANCE_DC4_{_vg_tf}"
+        if _fired is None:
+            _hs_tf = str(_cfg('DC_HARD_STOP_TF', '4h', account_key, symbol, position_side) or '4h').strip().upper()
+            _hs_tf = 'D' if _hs_tf in ('D', '1D', 'DAILY') else '4h'
+            _hs_keys = ('dc_low_D', 'dc_high_D') if _hs_tf == 'D' else ('dc_low_4h', 'dc_high_4h')
+            _ult_dc_low = safe_fetch_float(i.get(_hs_keys[0], 0) or i.get('dc_low_4h', 0) or 0, 0.0)
+            _ult_dc_high = safe_fetch_float(i.get(_hs_keys[1], 0) or i.get('dc_high_4h', 0) or 0, 0.0)
+            _br = (is_long and _ult_dc_low > 0 and _px <= _ult_dc_low) or ((not is_long) and _ult_dc_high > 0 and _px >= _ult_dc_high)
+            if _br and bool(getattr(config, "BOTTOM_EXIT_HTF_WT_VETO_ENABLED", True)):
+                try:
+                    _w1h1 = safe_fetch_float(i.get("wt1_1h", 0), 0.0)
+                    _w1h2 = safe_fetch_float(i.get("wt2_1h", 0), 0.0)
+                    _w151 = safe_fetch_float(i.get("wt1_15m", 0), 0.0)
+                    _w152 = safe_fetch_float(i.get("wt2_15m", 0), 0.0)
+                    _w4h1 = safe_fetch_float(i.get("wt1_4h", 0), 0.0)
+                    _w4h2 = safe_fetch_float(i.get("wt2_4h", 0), 0.0)
+                    _with = (is_long and (_w1h1 > _w1h2 or _w151 > _w152 or _w4h1 > _w4h2)) or ((not is_long) and (_w1h1 < _w1h2 or _w151 < _w152 or _w4h1 < _w4h2))
+                    if _with:
+                        logger.warning(f"🛡️ [PRE_TWIN_BOTTOM_EXIT_HTF_WT_VETO_ULTIMATE_DC] {position_key}: DC_{_hs_tf} breached {_px:.6f} vs {(_ult_dc_low if is_long else _ult_dc_high):.6f} BUT HTF WT still WITH position → VETO bottom exit, hold for top exit")
+                        _br = False
+                except Exception:
+                    pass
+            if _br:
+                _ult_lvl = _ult_dc_low if is_long else _ult_dc_high
+                logger.critical(f"⛔ [PRE_TWIN_ULTIMATE_DC_{_hs_tf}_HARD_STOP] {position_key}: price {_px:.6f} breached {'dc_low' if is_long else 'dc_high'}_{_hs_tf} {_ult_lvl:.6f} g={_gain:.2f}% → HARD_STOP CLOSE TF={_hs_tf}")
+                dc_hardstop_cooldown_record(symbol, 'LONG' if is_long else 'SHORT')
+                await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"ULTIMATE_DC_{_hs_tf}_HARD_STOP_{'LONG' if is_long else 'SHORT'}_px{_px:.6f}_lvl{_ult_lvl:.6f}_g{_gain:.2f}", 100.0, override_qty=999999)
+                _fired = f"ULTIMATE_DC_{_hs_tf}"
+        if _fired is not None:
+            _PRE_TWIN_STOP_FIRED_TS_TRADIER[position_key] = _now
+            return True
+        return False
+    except Exception as _e:
+        try:
+            logger.warning(f"[PRE_TWIN_HARD_STOP] {position_key} probe err: {_e}")
+        except Exception:
+            pass
+        return False
+
+
 async def _vec_exact_process(account_key, position_key, symbol, position_side, order_queue, trade_manager, indicators_raw, position):
     """PARITY LOOP STOCKS 2026-10-06 PARITY_VEC_EXACT_MODE: the decision of this bar is the vec decision (tradier_vec_exact runs the real
     v12_quick_engine.simulate_one on the buffered live rows with the promoted per-sym set); every live-only path is suppressed.
     Orders still go queue_trade_action -> execute_trade_action -> execute_now (all execution gates live)."""
     import tradier_vec_exact as _tve
+    import time as _time
     _tve.ORACLE.ingest(symbol, indicators_raw)
-    _events = _tve.ORACLE.decide(symbol, position_side, _tve.overrides_for(symbol, position_side, set_dir=str(_cfg('PARITY_VEC_EXACT_SET_DIR', '', account_key, symbol, position_side) or '')))
+    try:
+        _stale_bars = float(_cfg('VEC_EXACT_STALE_FALLBACK_BARS', 4.0, account_key, symbol, position_side) or 4.0)
+    except Exception:
+        _stale_bars = 4.0
+    try:
+        _buf = _tve.ORACLE.buffers.get(str(symbol).upper())
+        _last_ts = float(_buf.ts[-1]) if _buf is not None and getattr(_buf, 'ts', None) else 0.0
+    except Exception:
+        _last_ts = 0.0
+    if _stale_bars > 0 and _time.time() - _last_ts > _stale_bars * 900.0:
+        logger.warning(f"[VEC_EXACT_STALE_FALLBACK] {position_key}: twin buffer last bar {int(_last_ts)} is {(_time.time() - _last_ts) / 60.0:.0f}m old (> {_stale_bars:.0f} bars) -> native exits run until twin is fresh")
+        return "VEC_EXACT_STALE"
+    try:
+        _events = _tve.ORACLE.decide(symbol, position_side, _tve.overrides_for(symbol, position_side, set_dir=str(_cfg('PARITY_VEC_EXACT_SET_DIR', '', account_key, symbol, position_side) or '')))
+    except Exception as _vx_e:
+        logger.warning(f"[VEC_EXACT_STALE_FALLBACK] {position_key}: twin decide error {_vx_e} -> native exits run")
+        return "VEC_EXACT_STALE"
     _amt = abs(float(getattr(position, 'positionAmt', 0) or 0)) if position else 0.0
     _out = []
     for _ev in _events:
@@ -10635,9 +10730,15 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         if not indicators_raw:
             if force: logger.info(f"[{account_key}] SKIP {symbol}: No indicators found.")
             return "NO_DATA"
+        # 2026-10-08 USER FIX (b-stocks): hard stops run BEFORE the VEC_EXACT delegation, twin-driven or not.
+        if has_position and await _pre_twin_hard_stops(account_key, position_key, symbol, position_side, order_queue, trade_manager, indicators_raw, position, current_price):
+            return "PRE_TWIN_HARD_STOP_CLOSED"
         # PARITY LOOP STOCKS 2026-10-06: PARITY_VEC_EXACT_MODE (default False = live byte-identical) -> the vec decision drives this bar.
         if bool(_cfg('PARITY_VEC_EXACT_MODE', False, account_key, symbol, position_side)):
-            return await _vec_exact_process(account_key, position_key, symbol, position_side, order_queue, trade_manager, indicators_raw, position)
+            _vx_res = await _vec_exact_process(account_key, position_key, symbol, position_side, order_queue, trade_manager, indicators_raw, position)
+            if _vx_res != "VEC_EXACT_STALE":
+                return _vx_res
+            # STALE twin -> fall through to native exits below until the twin buffer is fresh again.
 
         i = trade_manager.strategy.parse_market_data(indicators_raw)
         # Warm the shared Bottom-A trail history while flat.  Active-position

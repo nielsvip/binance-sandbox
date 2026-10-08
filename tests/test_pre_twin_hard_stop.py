@@ -120,6 +120,69 @@ def test_pre_twin_probe_cooldown_blocks_refire():
     assert len(calls) == 1
 
 
+def test_stocks_bar_stop_event():
+    import tradier_vec_exact as TVE
+    npz = {
+        "close": np.array([100.0, 99.0, 98.0]),
+        "dc_low_4h": np.array([99.0, 99.0, 99.0]),
+        "dc_high_4h": np.array([101.0, 101.0, 101.0]),
+        "wt1_1h": np.array([0.0, 0.0, -5.0]), "wt2_1h": np.array([0.0, 0.0, 5.0]),
+        "wt1_15m": np.array([0.0, 0.0, -5.0]), "wt2_15m": np.array([0.0, 0.0, 5.0]),
+        "wt1_4h": np.array([0.0, 0.0, -5.0]), "wt2_4h": np.array([0.0, 0.0, 5.0]),
+    }
+    e = TVE.bar_hard_stop_event(npz, "LONG", {})
+    assert e is not None and e["type"] == "CLOSE"
+    assert "ULTIMATE_DC_4h_HARD_STOP_LONG" in e["reason"]
+    npz["close"] = np.array([100.0, 99.5, 99.5])
+    assert TVE.bar_hard_stop_event(npz, "LONG", {}) is None
+    npz["close"] = np.array([100.0, 99.0, 98.0])
+    npz["wt1_1h"] = np.array([0.0, 0.0, 5.0])
+    npz["wt2_1h"] = np.array([0.0, 0.0, -5.0])
+    assert TVE.bar_hard_stop_event(npz, "LONG", {}) is None
+    assert TVE.bar_hard_stop_event(npz, "LONG", {"VEC_EXACT_BAR_HARD_STOP_ENABLED": False}) is None
+    assert TVE.bar_hard_stop_event({}, "LONG", {}) is None
+
+
+def test_stocks_pre_twin_probe_fires():
+    import tradier_manage as TM
+    TM._PRE_TWIN_STOP_FIRED_TS_TRADIER.clear()
+    pos = NS(positionAmt=10.0, gain=-3.0)
+    calls = []
+
+    async def _queue(order_queue, trade_manager, position_key, action, reason, conviction=100.0, override_qty=None, record_decision=True):
+        calls.append({"action": action, "reason": reason, "override_qty": override_qty})
+        return "QUEUED"
+
+    _orig_q, _orig_c = TM.queue_trade_action, TM.dc_hardstop_cooldown_record
+    TM.queue_trade_action, TM.dc_hardstop_cooldown_record = _queue, (lambda *a, **k: None)
+    try:
+        ind = {"dc_low_4h": 99.0, "dc_high_4h": 101.0, "wt1_1h": -5.0, "wt2_1h": 5.0, "wt1_15m": -5.0, "wt2_15m": 5.0, "wt1_4h": -5.0, "wt2_4h": 5.0, "dc_low4_15m": 97.0}
+        tm = NS(strategy=NS(parse_market_data=lambda raw: dict(ind)))
+        fired = asyncio.run(TM._pre_twin_hard_stops("trb", "trb:AAPL_LONG", "AAPL", "LONG", None, tm, {"ts": 1}, pos, 98.0))
+        assert fired is True
+        assert len(calls) == 1 and calls[0]["action"] == "CLOSE"
+        assert "ULTIMATE_DC_4h_HARD_STOP_LONG" in calls[0]["reason"]
+        assert calls[0]["override_qty"] == 999999
+        assert asyncio.run(TM._pre_twin_hard_stops("trb", "trb:AAPL_LONG", "AAPL", "LONG", None, tm, {"ts": 1}, pos, 98.0)) is False
+        assert len(calls) == 1
+    finally:
+        TM.queue_trade_action, TM.dc_hardstop_cooldown_record = _orig_q, _orig_c
+
+
+def test_stocks_delegation_order_and_stale_wired():
+    src = (ROOT / "tradier_manage.py").read_text()
+    i_probe = src.index("if has_position and await _pre_twin_hard_stops(")
+    i_deleg = src.index('_vx_res = await _vec_exact_process(')
+    assert i_probe < i_deleg, "stocks pre-twin probe must run BEFORE the VEC_EXACT delegation"
+    assert 'if _vx_res != "VEC_EXACT_STALE":' in src
+    assert "VEC_EXACT_STALE_FALLBACK" in src
+    tsrc = (ROOT / "tradier_vec_exact.py").read_text()
+    assert "bar_hard_stop_event(npz, side, overrides)" in tsrc
+    cfg = (ROOT / "config_tradier.py").read_text()
+    assert "VEC_EXACT_STALE_FALLBACK_BARS: float = 4.0" in cfg
+    assert "VEC_EXACT_BAR_HARD_STOP_ENABLED: bool = True" in cfg
+
+
 def test_delegation_order_and_stale_fallback_wired():
     src = (ROOT / "ez_manage.py").read_text()
     i_probe = src.index("if await _pp_unconditional_hard_stops(trade_manager, account_key, position_key):")

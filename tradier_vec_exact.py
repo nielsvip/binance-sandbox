@@ -192,6 +192,62 @@ def _ov_hash(ov: Dict[str, Any]) -> str:
     return hashlib.md5(json.dumps(ov or {}, sort_keys=True, default=str).encode()).hexdigest()
 
 
+def _tknob(name: str, default, overrides=None):
+    try:
+        if isinstance(overrides, dict) and name in overrides:
+            return overrides[name]
+        import config_tradier as _ct
+        return getattr(_ct.TradierConfig, name, default)
+    except Exception:
+        return default
+
+
+def _row_last(npz: Dict[str, Any], key: str) -> float:
+    try:
+        v = (npz or {}).get(key)
+        if isinstance(v, np.ndarray) and v.size:
+            f = float(v[-1])
+            return f if f == f else 0.0
+    except Exception:
+        pass
+    return 0.0
+
+
+def bar_hard_stop_event(npz: Dict[str, Any], side: str, overrides=None):
+    """2026-10-08 USER FIX (a-stocks): the twin carries the ULTIMATE_DC hard stop on the newest bar. Pure predicate on the prepared store (same TF switch + HTF-WT veto as live/vec); returns a synthetic CLOSE event or None. Independent of vec sim state. Kill switch VEC_EXACT_BAR_HARD_STOP_ENABLED (default True)."""
+    try:
+        _sw = _tknob("VEC_EXACT_BAR_HARD_STOP_ENABLED", True, overrides)
+        if not ((str(_sw).lower() in ("1", "true", "yes")) if isinstance(_sw, str) else bool(_sw)):
+            return None
+    except Exception:
+        pass
+    try:
+        is_long = str(side or "").upper() == "LONG"
+        tf = str(_tknob("DC_HARD_STOP_TF", "4h", overrides) or "4h").strip().upper()
+        tf = "D" if tf in ("D", "1D", "DAILY") else "4h"
+        px = _row_last(npz, "close")
+        if not px or px <= 0:
+            return None
+        lo = _row_last(npz, "dc_low_D" if tf == "D" else "dc_low_4h") or _row_last(npz, "dc_low_4h")
+        hi = _row_last(npz, "dc_high_D" if tf == "D" else "dc_high_4h") or _row_last(npz, "dc_high_4h")
+        breached = (is_long and lo > 0 and px <= lo) or ((not is_long) and hi > 0 and px >= hi)
+        if not breached:
+            return None
+        _vo = _tknob("BOTTOM_EXIT_HTF_WT_VETO_ENABLED", True, overrides)
+        veto_on = (str(_vo).lower() in ("1", "true", "yes")) if isinstance(_vo, str) else bool(_vo)
+        if veto_on:
+            h1, h2 = _row_last(npz, "wt1_1h"), _row_last(npz, "wt2_1h")
+            m1, m2 = _row_last(npz, "wt1_15m"), _row_last(npz, "wt2_15m")
+            f1, f2 = _row_last(npz, "wt1_4h"), _row_last(npz, "wt2_4h")
+            with_pos = (is_long and (h1 > h2 or m1 > m2 or f1 > f2)) or ((not is_long) and (h1 < h2 or m1 < m2 or f1 < f2))
+            if with_pos:
+                return None
+        lvl = lo if is_long else hi
+        return {"type": "CLOSE", "qty": 0.0, "price": px, "reason": f"ULTIMATE_DC_{tf}_HARD_STOP_{'LONG' if is_long else 'SHORT'}_px{px:.6f}_lvl{lvl:.6f}_TWINBAR", "ts": 0.0}
+    except Exception:
+        return None
+
+
 class VecExactOracle:
     """one per process (tradier_manage module global).  decide() returns the vec events stamped on the newest bar."""
 
@@ -268,6 +324,11 @@ class VecExactOracle:
                 continue
             out.append({"type": typ, "qty": float(e.get("qty") or 0.0), "price": float(e.get("price") or e.get("exit_price") or 0.0),
                         "reason": str(e.get("reason") or e.get("exit_reason") or typ), "ts": t})
+        if not any(e["type"] == "CLOSE" for e in out):
+            _hs = bar_hard_stop_event(npz, side, overrides)
+            if _hs is not None:
+                _hs["ts"] = ex_last
+                out.append(_hs)
         self.telemetry["events"] += len(out)
         return out
 
