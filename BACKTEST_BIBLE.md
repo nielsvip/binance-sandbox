@@ -1737,3 +1737,18 @@ would split sweep/live from pilot baselines; needs a director ruling, not a sile
   worker MUST be module-level (`_screen_w` + `_SCREEN_PREP` global, autopsy_run pattern) — a `run_screen` closure fails
   all futures with `Can't get local object` (first run: 994/994 errors swallowed, then surfaced via `n_eval_errors`;
   pickle regression test pins it).
+
+## 81. TIM_LOW_REPAIR — TIM<20 FINAL ROUND ADDS ENTRIES, LOOSENS FILTERS, FORCES REENTRIES (USER 2026-10-09)
+
+- **Trigger:** `tools/v15_diagnose_repair.py:run()` phase `1b`, after SOFTEN, before the ADD beam — only when the
+  post-worst2best state is valid with TIM<20 and budget left (`S.left()>0.30*work`). No pilot edit: the hook lives
+  inside `run()`, the ADD beam builds on the repaired state.
+- **Stages (each multi-pass to exhaustion, one verified apply per pass, stops at TIM≥20):** `TIM_LOW_ENTRY`
+  (ENTRY_* rows — add entries), `TIM_LOW_FILTER` (filter/gate rows — loosen filters), `TIM_LOW_REENTRY` (REENTRY_*
+  rows — mandatory: runs even when the other stages applied nothing). `TIM_LOW_PAIR`: one bounded round (top-8
+  reentry × top-8 entry/filter singles, ≤64 evals) when no single reentry verifies — the greedy blind spot.
+- **Acceptance (`_tim_accept`, NO-LIES verified, unit-tested):** validity-first, TIM-gap must strictly close
+  (or, gap held, trades AND gain strictly climb as a stepping stone); DD≤30, trades≥10; a profitable base must
+  stay profitable (dips allowed, red forbidden), a red base must strictly rise. Reverts/safety/forbidden never win.
+- **Proof:** `tests/test_v15_diagnose_repair.py` (AGLD-shaped 17t/TIM-1.9 synthetic origin through `DR.run()`:
+  all three stages fire, TIM 1.9→24.9, red-flip + safety never applied; pair synergy; skip when healthy).

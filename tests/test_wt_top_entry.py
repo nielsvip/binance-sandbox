@@ -159,7 +159,22 @@ def test_vec_scalar_parity_random():
     assert bad == 0, f"{bad} vec/scalar mismatches"
 
 
+def test_config_registration():
+    import config as cfg_mod
+    import config_tradier as trb_mod
+    import v12_quick_engine as V
+    want = {"WT_TOP_ENTRY_ENABLED": False, "WT_TOP_ENTRY_TF": "OFF", "WT_TOP_ENTRY_MODE": "TOPS_ONLY", "WT_TOP_ENTRY_DIV_MODE": "OFF", "WT_TOP_ENTRY_HTF_CONFIRM_TF": "OFF"}
+    for k, d in want.items():
+        assert getattr(cfg_mod.Config, k, None) == d, k
+        assert getattr(trb_mod.TradierConfig, k, None) == d, k
+        assert getattr(V.QuickConfig, k, None) == d, k
+        assert V.AUTO_WIRED_PARAMS.count(k) == 1, k
+    assert V._ENTRY_FAMILY_ALIASES.get("WT_TOP") == ["B_WT_TOP"]
+    assert V._ENTRY_FAMILY_MASTERS.get("WT_TOP") == ["WT_TOP_ENTRY_ENABLED"]
+
+
 if __name__ == "__main__":
+    test_config_registration()
     test_disabled_all_false()
     test_short_tops_only_fires_and_guards()
     test_long_mirror()

@@ -1,43 +1,76 @@
 {
- "generated_at": "2026-10-09 00:09 UTC",
- "total_capital_usd": 34.97,
+ "generated_at": "2026-10-09 00:21 UTC",
+ "total_capital_usd": 46.32,
  "tier_capital": {
   "A": 0.0,
-  "B": 34.97,
-  "C": 0.0
+  "B": 32.17,
+  "C": 14.15
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
-  "C": 0
+  "B": 4,
+  "C": 1
  },
  "winners": [],
- "losers": [],
- "mediocre": [
-  "flz:XRPUSDC_LONG"
+ "losers": [
+  "inf:SOLUSDC_SHORT"
  ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "flz:XRPUSDC_LONG",
-   "symbol": "XRPUSDC",
-   "account": "flz",
-   "value_usd": 19.09,
-   "gain_pct": 0.112,
+   "pk": "inf:ARKMUSDT_SHORT",
+   "symbol": "ARKMUSDT",
+   "account": "inf",
+   "value_usd": 15.15,
+   "gain_pct": 4.829,
    "tier": "B",
-   "perf_mult": 0.74,
-   "amt": 13.8,
-   "mark": 1.3832
+   "perf_mult": 1.0,
+   "amt": 124.0,
+   "mark": 0.1222
   },
   {
-   "pk": "flz:DASHUSDT_SHORT",
-   "symbol": "DASHUSDT",
-   "account": "flz",
-   "value_usd": 15.88,
-   "gain_pct": 0.52,
+   "pk": "inf:SOLUSDC_SHORT",
+   "symbol": "SOLUSDC",
+   "account": "inf",
+   "value_usd": 14.15,
+   "gain_pct": 6.26,
+   "tier": "C",
+   "perf_mult": 0.38,
+   "amt": 0.13,
+   "mark": 108.87
+  },
+  {
+   "pk": "inf:QTUMUSDT_SHORT",
+   "symbol": "QTUMUSDT",
+   "account": "inf",
+   "value_usd": 7.94,
+   "gain_pct": 0.779,
    "tier": "B",
-   "perf_mult": 0.93,
-   "amt": 0.314,
-   "mark": 50.56554341
+   "perf_mult": 1.0,
+   "amt": 8.6,
+   "mark": 0.92283854
+  },
+  {
+   "pk": "inf:ASTSUSDT_SHORT",
+   "symbol": "ASTSUSDT",
+   "account": "inf",
+   "value_usd": 5.52,
+   "gain_pct": 0.438,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 0.1,
+   "mark": 55.17730432
+  },
+  {
+   "pk": "inf:ALGOUSDT_SHORT",
+   "symbol": "ALGOUSDT",
+   "account": "inf",
+   "value_usd": 3.56,
+   "gain_pct": 4.684,
+   "tier": "B",
+   "perf_mult": 5.5,
+   "amt": 30.2,
+   "mark": 0.11789
   }
  ]
 }
