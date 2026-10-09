@@ -1,102 +1,44 @@
 {
- "generated_at": "2026-10-09 09:30 UTC",
- "total_capital_usd": 81.78,
+ "generated_at": "2026-10-09 10:10 UTC",
+ "total_capital_usd": 4.46,
  "tier_capital": {
-  "A": 7.27,
-  "B": 40.05,
-  "C": 34.46
+  "A": 0.0,
+  "B": 4.45,
+  "C": 0.0
  },
  "tier_count": {
-  "A": 1,
-  "B": 4,
-  "C": 2
+  "A": 0,
+  "B": 2,
+  "C": 0
  },
- "winners": [
-  "fin:RLCUSDT_LONG"
- ],
+ "winners": [],
  "losers": [
-  "fin:COTIUSDT_SHORT",
-  "fin:1INCHUSDT_LONG",
-  "fin:KSMUSDT_LONG"
+  "men:GALAUSDT_SHORT",
+  "men:MANAUSDT_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:1INCHUSDT_LONG",
-   "symbol": "1INCHUSDT",
-   "account": "fin",
-   "value_usd": 18.12,
-   "gain_pct": 0.595,
-   "tier": "C",
-   "perf_mult": 0.36,
-   "amt": 188.0,
-   "mark": 0.09637
-  },
-  {
-   "pk": "fin:COTIUSDT_SHORT",
-   "symbol": "COTIUSDT",
-   "account": "fin",
-   "value_usd": 17.68,
-   "gain_pct": -4.273,
+   "pk": "men:MANAUSDT_SHORT",
+   "symbol": "MANAUSDT",
+   "account": "men",
+   "value_usd": 2.6,
+   "gain_pct": -3.433,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 1357.0,
-   "mark": 0.013031
+   "amt": 28.0,
+   "mark": 0.09296198
   },
   {
-   "pk": "fin:KSMUSDT_LONG",
-   "symbol": "KSMUSDT",
-   "account": "fin",
-   "value_usd": 16.34,
-   "gain_pct": 5.696,
-   "tier": "C",
-   "perf_mult": 0.34,
-   "amt": 3.4,
-   "mark": 4.806
-  },
-  {
-   "pk": "fin:CHRUSDT_LONG",
-   "symbol": "CHRUSDT",
-   "account": "fin",
-   "value_usd": 8.88,
-   "gain_pct": 6.198,
+   "pk": "men:GALAUSDT_SHORT",
+   "symbol": "GALAUSDT",
+   "account": "men",
+   "value_usd": 1.85,
+   "gain_pct": -6.565,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 408.0,
-   "mark": 0.02176
-  },
-  {
-   "pk": "fin:BNBUSDC_LONG",
-   "symbol": "BNBUSDC",
-   "account": "fin",
-   "value_usd": 7.42,
-   "gain_pct": 1.579,
-   "tier": "B",
-   "perf_mult": 2.14,
-   "amt": 0.01,
-   "mark": 742.26322556
-  },
-  {
-   "pk": "fin:RLCUSDT_LONG",
-   "symbol": "RLCUSDT",
-   "account": "fin",
-   "value_usd": 7.27,
-   "gain_pct": 21.836,
-   "tier": "A",
-   "perf_mult": 9.1,
-   "amt": 6.5,
-   "mark": 1.1181122
-  },
-  {
-   "pk": "fin:IOTXUSDT_LONG",
-   "symbol": "IOTXUSDT",
-   "account": "fin",
-   "value_usd": 6.07,
-   "gain_pct": 5.947,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 1586.0,
-   "mark": 0.00383
+   "amt": 828.0,
+   "mark": 0.00224
   }
  ]
 }
