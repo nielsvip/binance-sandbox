@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-09T20:09:55Z",
+ "ts": "2026-10-09T20:17:45Z",
  "dry_run": false,
  "regime_start": "2026-10-06T18:48:00Z",
  "thresholds": {
@@ -28,7 +28,7 @@
   "fin": {
    "fills_6h": 0,
    "open_positions": 4,
-   "unrealised_usd": 1.07,
+   "unrealised_usd": 1.2,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,7 +43,7 @@
   "men": {
    "fills_6h": 0,
    "open_positions": 2,
-   "unrealised_usd": -0.16,
+   "unrealised_usd": -0.18,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -73,7 +73,7 @@
   "inf": {
    "fills_6h": 0,
    "open_positions": 2,
-   "unrealised_usd": 0.28,
+   "unrealised_usd": 0.2,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -114,62 +114,62 @@
    "pids": [
     "51389"
    ],
-   "starts_30m": 7,
-   "log_age_s": 8.0
+   "starts_30m": 4,
+   "log_age_s": 4.0
   },
   "ang": {
    "pids": [
     "53704"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 5.0
   },
   "inf": {
    "pids": [
     "88679"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 2.0
   },
   "flz": {
    "pids": [
     "57261"
    ],
-   "starts_30m": 7,
-   "log_age_s": 35.0
+   "starts_30m": 4,
+   "log_age_s": 5.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 531.0
+   "log_age_s": 1002.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 531.0
+   "log_age_s": 1001.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-09T20:09:55Z",
+   "ts": "2026-10-09T20:17:46Z",
    "severity": "CRITICAL",
    "kind": "RAPID_LOSS_KEY",
    "key": "men:GALAUSDT_SHORT",
-   "evidence": "unrealised -5.42% (60-min high +1.03%), amt 828"
+   "evidence": "unrealised -5.76% (60-min high +0.07%), amt 828"
   },
   {
-   "ts": "2026-10-09T20:09:55Z",
+   "ts": "2026-10-09T20:17:46Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "men",
-   "evidence": "7 new process ids in 30 min (['92744', '1618', '11373', '18176', '26391', '36616', '51389'])"
+   "evidence": "4 new process ids in 30 min (['18176', '26391', '36616', '51389'])"
   },
   {
-   "ts": "2026-10-09T20:09:55Z",
+   "ts": "2026-10-09T20:17:46Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "flz",
-   "evidence": "7 new process ids in 30 min (['92746', '2352', '12089', '21133', '28908', '38878', '57261'])"
+   "evidence": "4 new process ids in 30 min (['21133', '28908', '38878', '57261'])"
   }
  ],
  "alert_counts": {
@@ -216,5 +216,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.43
+ "sweep_s": 0.41
 }
