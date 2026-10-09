@@ -1,22 +1,22 @@
 {
- "now": "2026-10-09T00:37:40.902713+00:00",
+ "now": "2026-10-09T01:37:43.222691+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 7292,
- "last_exit_ts": "2026-10-09T00:35:40.356743+00:00",
+ "n_exit_rows": 7288,
+ "last_exit_ts": "2026-10-09T01:37:07.184965+00:00",
  "n_leaks": 27,
- "n_gate_on": 4743,
+ "n_gate_on": 4750,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 524,
+ "n_unmapped": 523,
  "n_unverified": 2,
- "since": "2026-10-07T00:37:40.902713+00:00",
+ "since": "2026-10-07T01:37:43.222691+00:00",
  "vec_exact_by_action": {
-  "CLOSE": 461,
-  "OPEN": 1489,
+  "OPEN": 1490,
+  "CLOSE": 450,
   "REDUCE": 45,
   "AUGMENT": 1
  },
- "native_rows": 5296,
+ "native_rows": 5302,
  "unverified_by_family": {
   "ULTIMATE_DC (None=None)": 2
  },
@@ -30,7 +30,7 @@
   "WT_LOWER_CROSS_EXIT men:EDUUSDT_LONG": 4
  },
  "gate_on_by_family": {
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 4080,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 4087,
   "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 345,
   "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 295,
   "DC_BASIS_3M_REDUCE (DC_BASIS_3M_REDUCE_ENABLED)": 2,
@@ -94,8 +94,8 @@
   "RSI2_EXIT_LIVE_rsi2=4.0_thr=10.0": 3
  },
  "actions": {
-  "CLOSE": 5527,
-  "OPEN": 1489,
+  "OPEN": 1490,
+  "CLOSE": 5522,
   "REDUCE": 52,
   "QUICK_CLOSE": 214,
   "QUICK_REDUCE": 9,

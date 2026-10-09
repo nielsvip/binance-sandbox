@@ -1767,3 +1767,28 @@ would split sweep/live from pilot baselines; needs a director ruling, not a sile
   Oct 6 files untouched (their F/L sources not redone — compare within-refresh). Hub stamped; prose chapters stay
   Oct 6. The v2 graph (what the pilot reads) cycles healthily on S1 (*/30, last build 01:01Z); note its
   `n_fresh_levers` is crypto-only right now (STOCKS 0 — evidence follows the runs).
+
+## 83. REDO START-SET PRECEDENCE — REPAIRED SET ALWAYS WINS (USER 2026-10-09, AGLDUSDT_SHORT proof)
+
+- **Bug:** a REDO re-fill silently discarded its repaired start set twice: `needs_redo` was ignored when
+  `V15_START_OVERRIDES` was set (stale autopsy base won), and dropped by `TEMPLATE_DEFAULTS` when it was not
+  (AGLD REDO re-filled from template defaults at -5.80/97t instead of the repaired +1.12/121t/TIM-25.9 set).
+  Every fleet REDO under the standard launcher env was affected.
+- **Fix (`v15_pilot.py`, backup `backups/before_redo_precedence_*`):** `needs_redo` ingests unconditionally and
+  sets `_nr_applied`; the TEMPLATE_DEFAULTS drop is skipped when set. Precedence: repaired set > start
+  overrides > priors/template. Pins: `tests/test_v15_redo_precedence.py`; live proof: reseeded REDO logged
+  baseline +1.0497/140t matching the pre-launch eval to the digit. Deployed S1+s2 (md5 `cfcacf11`).
+
+## 84. INVENTION LOOP — OBSERVATIONS BECOME TESTED SWITCHES (USER 2026-10-09)
+
+- **Gap closed:** the fleet produced invention observations (missed-trend specs, autopsy missing_functions,
+  diagnose gaps, verify COVERAGE) with no collector, ranker, or tracker — §71 ran per-incident by hand.
+- **Tool:** `tools/v15_invention_loop.py` (tested, `tests/test_v15_invention_loop.py`): `mine` scans all
+  sources into `data/invention/backlog.json` (dedup by signature, score = uncaptured %/frequency; cron
+  `V15_INVENT_MINE` every 30 min, reads + backlog write only); `spec <id>` renders a §71 Muse work order to
+  `data/invention/orders/` (measured evidence + nearest wired anchors with file:lines from SWITCH_BIBLE.json +
+  acceptance; the intelligence step is a Muse session — the script never touches locked code itself);
+  `ingest` validates WIRED (bible status + all three configs) and TESTED (ledger-flip proof with real flip);
+  `promote-check` moves TESTED→PROMOTED (pos_sym≥3, mean delta>0) or →RETIRED (≥10 syms, 0 pos) from done-row
+  evidence. RETIRED records the verdict; nothing is ever deleted. Seed: 72 proposals, top = AGLD SHORT
+  LH_TRIGGER (INV-0001, score 19.72).
