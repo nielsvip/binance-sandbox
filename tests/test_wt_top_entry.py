@@ -99,6 +99,16 @@ def test_div_and_htf_layers():
     assert w.check_wt_top_entry(_spec(htf=["D"]), _mk_scalar("15m", htf=True), False)[0] is True
 
 
+def test_resolve_htf_vocab():
+    from types import SimpleNamespace
+    base = {"WT_TOP_ENTRY_ENABLED": True, "WT_TOP_ENTRY_TF": "15m", "WT_TOP_ENTRY_MODE": "TOPS_ONLY", "WT_TOP_ENTRY_DIV_MODE": "OFF"}
+    assert w.resolve_wt_top_spec(SimpleNamespace(**dict(base, WT_TOP_ENTRY_HTF_CONFIRM_TF="BOTH")))["htf"] == ["4h", "D"]
+    assert w.resolve_wt_top_spec(SimpleNamespace(**dict(base, WT_TOP_ENTRY_HTF_CONFIRM_TF="4h,D")))["htf"] == ["4h", "D"]
+    assert w.resolve_wt_top_spec(SimpleNamespace(**dict(base, WT_TOP_ENTRY_HTF_CONFIRM_TF="OFF")))["htf"] == []
+    assert w.resolve_wt_top_spec(SimpleNamespace(**dict(base, WT_TOP_ENTRY_HTF_CONFIRM_TF="W")))["htf"] == []
+    assert w.resolve_wt_top_spec(SimpleNamespace(**dict(base, WT_TOP_ENTRY_TF="OFF")))["tf"] == "OFF"
+
+
 def test_bad_inputs_never_fire():
     for s in (_spec(tf="OFF"), _spec(tf="3m"), _spec(struct_mode="X"), _spec(div_mode="X"), _spec(htf=["W"])):
         assert w.check_wt_top_entry(s, _mk_scalar("15m"), False)[0] is False
@@ -175,6 +185,7 @@ def test_config_registration():
 
 if __name__ == "__main__":
     test_config_registration()
+    test_resolve_htf_vocab()
     test_disabled_all_false()
     test_short_tops_only_fires_and_guards()
     test_long_mirror()

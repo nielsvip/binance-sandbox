@@ -1,10 +1,10 @@
 {
- "generated_at": "2026-10-09 00:21 UTC",
- "total_capital_usd": 46.32,
+ "generated_at": "2026-10-09 00:29 UTC",
+ "total_capital_usd": 54.65,
  "tier_capital": {
   "A": 0.0,
-  "B": 32.17,
-  "C": 14.15
+  "B": 38.99,
+  "C": 15.66
  },
  "tier_count": {
   "A": 0,
@@ -13,64 +13,66 @@
  },
  "winners": [],
  "losers": [
-  "inf:SOLUSDC_SHORT"
+  "fin:COTIUSDT_SHORT",
+  "fin:CHRUSDT_LONG",
+  "fin:KSMUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:ARKMUSDT_SHORT",
-   "symbol": "ARKMUSDT",
-   "account": "inf",
-   "value_usd": 15.15,
-   "gain_pct": 4.829,
+   "pk": "fin:COTIUSDT_SHORT",
+   "symbol": "COTIUSDT",
+   "account": "fin",
+   "value_usd": 17.39,
+   "gain_pct": -2.55,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 124.0,
-   "mark": 0.1222
+   "amt": 1357.0,
+   "mark": 0.01281569
   },
   {
-   "pk": "inf:SOLUSDC_SHORT",
-   "symbol": "SOLUSDC",
-   "account": "inf",
-   "value_usd": 14.15,
-   "gain_pct": 6.26,
+   "pk": "fin:KSMUSDT_LONG",
+   "symbol": "KSMUSDT",
+   "account": "fin",
+   "value_usd": 15.66,
+   "gain_pct": 1.314,
    "tier": "C",
-   "perf_mult": 0.38,
-   "amt": 0.13,
-   "mark": 108.87
+   "perf_mult": 0.34,
+   "amt": 3.4,
+   "mark": 4.60675625
   },
   {
-   "pk": "inf:QTUMUSDT_SHORT",
-   "symbol": "QTUMUSDT",
-   "account": "inf",
-   "value_usd": 7.94,
-   "gain_pct": 0.779,
+   "pk": "fin:CHRUSDT_LONG",
+   "symbol": "CHRUSDT",
+   "account": "fin",
+   "value_usd": 8.31,
+   "gain_pct": -0.654,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 8.6,
-   "mark": 0.92283854
+   "amt": 408.0,
+   "mark": 0.02035597
   },
   {
-   "pk": "inf:ASTSUSDT_SHORT",
-   "symbol": "ASTSUSDT",
-   "account": "inf",
-   "value_usd": 5.52,
-   "gain_pct": 0.438,
+   "pk": "fin:BNBUSDC_LONG",
+   "symbol": "BNBUSDC",
+   "account": "fin",
+   "value_usd": 7.36,
+   "gain_pct": 0.707,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.1,
-   "mark": 55.17730432
+   "perf_mult": 2.14,
+   "amt": 0.01,
+   "mark": 735.89
   },
   {
-   "pk": "inf:ALGOUSDT_SHORT",
-   "symbol": "ALGOUSDT",
-   "account": "inf",
-   "value_usd": 3.56,
-   "gain_pct": 4.684,
+   "pk": "fin:IOTXUSDT_LONG",
+   "symbol": "IOTXUSDT",
+   "account": "fin",
+   "value_usd": 5.93,
+   "gain_pct": 3.498,
    "tier": "B",
-   "perf_mult": 5.5,
-   "amt": 30.2,
-   "mark": 0.11789
+   "perf_mult": 1.75,
+   "amt": 1586.0,
+   "mark": 0.00374146
   }
  ]
 }

@@ -55,8 +55,14 @@ def resolve_wt_top_spec(cfg):
     sm = sm if sm in STRUCT_MODES else "TOPS_ONLY"
     dm = str(getattr(cfg, "WT_TOP_ENTRY_DIV_MODE", "OFF") or "").strip().upper()
     dm = dm if dm in DIV_MODES else "OFF"
-    raw = str(getattr(cfg, "WT_TOP_ENTRY_HTF_CONFIRM_TF", "OFF") or "OFF").upper().replace(" ", "")
-    htf = [t for t in raw.split(",") if t in HTF_TFS] if raw != "OFF" else []
+    raw = str(getattr(cfg, "WT_TOP_ENTRY_HTF_CONFIRM_TF", "OFF") or "OFF").strip()
+    up = raw.upper().replace(" ", "")
+    if up == "BOTH":
+        htf = ["4h", "D"]
+    elif up in ("OFF", ""):
+        htf = []
+    else:
+        htf = [t for t in (p.upper().replace("4H", "4h") for p in raw.split(",")) if t in HTF_TFS]
     return {"enabled": enabled, "tf": tf, "struct_mode": sm, "div_mode": dm, "htf": htf}
 
 

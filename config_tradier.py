@@ -3844,7 +3844,7 @@ class TradierConfig:
     WT_TOP_ENTRY_TF: str = "OFF"  # "15m" | "1h" | "4h" — trigger TF for the cross+structure test.
     WT_TOP_ENTRY_MODE: str = "TOPS_ONLY"  # "TOPS_ONLY" | "TOPS_AND_LOWS" (long mirrors to higher-lows / lows+highs).
     WT_TOP_ENTRY_DIV_MODE: str = "OFF"  # "OFF" | "REG" | "HIDDEN" | "REG_OR_HIDDEN" — WT divergence layer, same TF.
-    WT_TOP_ENTRY_HTF_CONFIRM_TF: str = "OFF"  # "4h" | "D" | "4h,D" (OR) — HTF cross confirmation.
+    WT_TOP_ENTRY_HTF_CONFIRM_TF: str = "OFF"  # "4h" | "D" | "BOTH" (OR) — HTF cross confirmation ("4h,D" also accepted).
     # batch 3: BREAKEVEN_GAIN_EROSION stock live port (grey_wire_exits.breakeven_gain_erosion). OFF = today's stock live.
     BREAKEVEN_GAIN_EROSION_ENABLED: bool = False
     BREAKEVEN_GAIN_EROSION_MIN_GAIN: float = 50.0

@@ -104,31 +104,35 @@ def test_finalized_current_round_override(tmp_path):
 def _layout(root):
     live_pd = root / "live" / "progress"
     live_sheets = root / "live" / "sheets"
+    live_logs = root / "live" / "logs"
     live_pd.mkdir(parents=True)
     live_sheets.mkdir(parents=True)
+    live_logs.mkdir(parents=True)
     dump = root / "stalled_s1_202610082210"
     (dump / "progress").mkdir(parents=True)
     (dump / "sheets").mkdir(parents=True)
     (dump / "logs").mkdir(parents=True)
-    return live_pd, live_sheets, dump
+    return live_pd, live_sheets, live_logs, dump
 
 
-def _prune(dump, finalized, live_pd, live_sheets, progress_dirs, old_enough=False, dry_run=False):
+def _prune(dump, finalized, live_pd, live_sheets, live_logs, progress_dirs, old_enough=False, dry_run=False):
     index = P.live_sheet_index(live_sheets)
-    return P.prune_dump(dump, finalized, live_pd, live_sheets, index, progress_dirs, old_enough, dry_run)
+    return P.prune_dump(dump, finalized, live_pd, live_sheets, live_logs, index, progress_dirs, old_enough, dry_run)
 
 
 def test_prune_dump_finalized_only(tmp_path):
-    live_pd, live_sheets, dump = _layout(tmp_path)
+    live_pd, live_sheets, live_logs, dump = _layout(tmp_path)
     _write_progress(live_pd / "A_LONG_v14_progress.json", True)
     _write_progress(live_pd / "B_SHORT_v14_progress.json", False)
+    (live_sheets / "A_LONG_30d_matrix.xlsx").write_text("live")
+    (live_logs / "sweep_A_LONG_30D.log").write_text("live")
     (dump / "progress" / "A_LONG_v14_progress.json").write_text("{}")
     (dump / "progress" / "B_SHORT_v14_progress.json").write_text("{}")
     (dump / "sheets" / "A_LONG_30d_matrix.xlsx").write_text("x")
     (dump / "sheets" / "B_SHORT_30d_matrix.xlsx").write_text("x")
     (dump / "logs" / "sweep_A_LONG_30D.log").write_text("x")
     (dump / "logs" / "sweep_B_SHORT_30D.log").write_text("x")
-    removed_files, removed_bytes, backstop = _prune(dump, {"A_LONG"}, live_pd, live_sheets, [live_pd])
+    removed_files, removed_bytes, backstop = _prune(dump, {"A_LONG"}, live_pd, live_sheets, live_logs, [live_pd])
     assert (removed_files, backstop) == (3, 0)
     assert removed_bytes > 0
     assert not (dump / "progress" / "A_LONG_v14_progress.json").exists()
@@ -139,40 +143,52 @@ def test_prune_dump_finalized_only(tmp_path):
     assert (dump / "logs" / "sweep_B_SHORT_30D.log").exists()
 
 
+def test_prune_dump_requires_live_counterpart(tmp_path):
+    live_pd, live_sheets, live_logs, dump = _layout(tmp_path)
+    (dump / "progress" / "A_LONG_v14_progress.json").write_text("{}")
+    (dump / "sheets" / "A_LONG_30d_matrix.xlsx").write_text("x")
+    (dump / "logs" / "sweep_A_LONG_30D.log").write_text("x")
+    assert _prune(dump, {"A_LONG"}, live_pd, live_sheets, live_logs, [live_pd])[0] == 0
+    assert (dump / "progress" / "A_LONG_v14_progress.json").exists()
+    assert (dump / "sheets" / "A_LONG_30d_matrix.xlsx").exists()
+    assert (dump / "logs" / "sweep_A_LONG_30D.log").exists()
+
+
 def test_prune_dump_unattributed_supersedes(tmp_path):
-    live_pd, live_sheets, dump = _layout(tmp_path)
+    live_pd, live_sheets, live_logs, dump = _layout(tmp_path)
     old_copy = dump / "progress" / "endgame_knowledge.json"
     old_copy.write_text("{}")
     live_newer = live_pd / "endgame_knowledge.json"
     live_newer.write_text('{"v": 2, "pad": "...."}')
-    assert _prune(dump, set(), live_pd, live_sheets, [live_pd])[0] == 1
+    assert _prune(dump, set(), live_pd, live_sheets, live_logs, [live_pd])[0] == 1
     assert not old_copy.exists()
 
 
 def test_prune_dump_unattributed_without_live_is_kept(tmp_path):
-    live_pd, live_sheets, dump = _layout(tmp_path)
+    live_pd, live_sheets, live_logs, dump = _layout(tmp_path)
     orphan = dump / "progress" / "endgame_knowledge.json"
     orphan.write_text("{}")
-    assert _prune(dump, set(), live_pd, live_sheets, [live_pd])[0] == 0
+    assert _prune(dump, set(), live_pd, live_sheets, live_logs, [live_pd])[0] == 0
     assert orphan.exists()
 
 
 def test_prune_dump_dry_run_deletes_nothing(tmp_path):
-    live_pd, live_sheets, dump = _layout(tmp_path)
+    live_pd, live_sheets, live_logs, dump = _layout(tmp_path)
+    (live_sheets / "A_LONG_30d_matrix.xlsx").write_text("live")
     target = dump / "sheets" / "A_LONG_30d_matrix.xlsx"
     target.write_text("x")
-    removed_files, _, _ = _prune(dump, {"A_LONG"}, live_pd, live_sheets, [live_pd], dry_run=True)
+    removed_files, _, _ = _prune(dump, {"A_LONG"}, live_pd, live_sheets, live_logs, [live_pd], dry_run=True)
     assert removed_files == 1
     assert target.exists()
 
 
 def test_prune_dump_backstop_old_verified_sheets_only(tmp_path):
-    live_pd, live_sheets, dump = _layout(tmp_path)
+    live_pd, live_sheets, live_logs, dump = _layout(tmp_path)
     (live_sheets / "OLD_LONG_30d_matrix.xlsx").write_text("live")
     (dump / "sheets" / "OLD_LONG_30d_matrix.xlsx").write_text("x")
     (dump / "sheets" / "GONE_SHORT_30d_matrix.xlsx").write_text("x")
     (dump / "progress" / "OLD_LONG_v14_progress.json").write_text("{}")
-    removed_files, _, backstop = _prune(dump, set(), live_pd, live_sheets, [live_pd], old_enough=True)
+    removed_files, _, backstop = _prune(dump, set(), live_pd, live_sheets, live_logs, [live_pd], old_enough=True)
     assert removed_files == 1
     assert backstop == 1
     assert not (dump / "sheets" / "OLD_LONG_30d_matrix.xlsx").exists()
@@ -181,25 +197,25 @@ def test_prune_dump_backstop_old_verified_sheets_only(tmp_path):
 
 
 def test_prune_dump_backstop_tmp_expires(tmp_path):
-    live_pd, live_sheets, dump = _layout(tmp_path)
+    live_pd, live_sheets, live_logs, dump = _layout(tmp_path)
     stale_tmp = dump / "sheets" / "OLD_LONG_30d_matrix.tmp.3515088.1790209397599539902"
     stale_tmp.write_text("x")
-    removed_files, _, backstop = _prune(dump, set(), live_pd, live_sheets, [live_pd], old_enough=True)
+    removed_files, _, backstop = _prune(dump, set(), live_pd, live_sheets, live_logs, [live_pd], old_enough=True)
     assert (removed_files, backstop) == (1, 1)
     assert not stale_tmp.exists()
 
 
 def test_prune_dump_backstop_needs_age(tmp_path):
-    live_pd, live_sheets, dump = _layout(tmp_path)
+    live_pd, live_sheets, live_logs, dump = _layout(tmp_path)
     (live_sheets / "OLD_LONG_30d_matrix.xlsx").write_text("live")
     target = dump / "sheets" / "OLD_LONG_30d_matrix.xlsx"
     target.write_text("x")
-    assert _prune(dump, set(), live_pd, live_sheets, [live_pd], old_enough=False)[0] == 0
+    assert _prune(dump, set(), live_pd, live_sheets, live_logs, [live_pd], old_enough=False)[0] == 0
     assert target.exists()
 
 
 def test_dump_status_terminal_rules(tmp_path):
-    live_pd, _, dump = _layout(tmp_path)
+    live_pd, _, _, dump = _layout(tmp_path)
     (dump / "progress").mkdir(exist_ok=True)
     assert P.dump_status(dump, [live_pd])[0] == 0
     (dump / "progress" / "A_LONG_v14_progress.json").write_text("{}")
@@ -211,14 +227,16 @@ def test_dump_status_terminal_rules(tmp_path):
 
 
 def test_main_end_to_end(tmp_path, monkeypatch, capsys):
-    live_pd, live_sheets, dump = _layout(tmp_path)
+    live_pd, live_sheets, live_logs, dump = _layout(tmp_path)
     _write_progress(live_pd / "A_LONG_v14_progress.json", True)
+    (live_sheets / "A_LONG_30d_matrix.xlsx").write_text("live")
     (dump / "sheets" / "A_LONG_30d_matrix.xlsx").write_text("x")
     pointer = tmp_path / "v15_current_progress_dir.txt"
     pointer.write_text(str(live_pd))
     monkeypatch.setattr(P, "HOME", tmp_path)
     monkeypatch.setattr(P, "POINTER", pointer)
     monkeypatch.setattr(P, "SHEETS_DIR", live_sheets)
+    monkeypatch.setattr(P, "LIVE_LOGS", live_logs)
     monkeypatch.setattr(P, "CACHE_PATH", tmp_path / "cache.json")
     old_mtime = (dump / "sheets" / "A_LONG_30d_matrix.xlsx").stat().st_mtime - 7200
     os.utime(dump, (old_mtime, old_mtime))

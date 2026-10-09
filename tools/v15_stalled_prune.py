@@ -22,7 +22,13 @@ it is past max age, and every remaining progress file exists live (logs ride
 along).
 
 Safety (all fail-closed):
-  - Missing/unreadable live file -> keep the dumped copy (rescue purpose).
+  - No dump file is ever deleted unless a live same-name counterpart exists
+    (progress: any round dir; sheets: stripped basename in CELL_BY_CELL; logs:
+    /tmp). Every deleted byte exists live, so data loss is impossible.
+  - A sym_side counts as finalized ONLY when a live progress file proves it.
+    Missing/unreadable live file -> keep the dumped copy (rescue purpose).
+  - Files no sym_side can be attributed to are deleted only when a live
+    same-name file exists that is both newer and not smaller (superseded).
   - Dumps younger than --min-age-min (default 60) are never touched.
   - Nothing is ever deleted under --dry-run (also skips the mtime cache save).
 """
@@ -37,6 +43,7 @@ from pathlib import Path
 HOME = Path.home()
 POINTER = HOME / "v15_current_progress_dir.txt"
 SHEETS_DIR = HOME / "binance-sandbox" / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
+LIVE_LOGS = Path("/tmp")
 CACHE_PATH = Path("/tmp/v15_stalled_prune_cache.json")
 FINAL_RE = re.compile(rb'"final_gain": [-0-9]')
 SHEET_RE = re.compile(r"^(.+)_(LONG|SHORT)_(30d_matrix|bh[\dm])")
@@ -186,7 +193,26 @@ def progress_exists_live(progress_dirs, relpath):
     return False
 
 
-def prune_dump(dump, finalized, live_pd, live_sheets, sheet_index, progress_dirs, old_enough, dry_run=False):
+def counterpart_live(subdir, dump, path, live_logs, sheet_index, progress_dirs):
+    if subdir == "progress":
+        try:
+            relpath = str(path.relative_to(dump / "progress"))
+        except ValueError:
+            return False
+        return progress_exists_live(progress_dirs, relpath)
+    if subdir == "sheets":
+        return strip_suffixes(path.name) in sheet_index
+    if subdir == "logs":
+        if live_logs is None:
+            return False
+        try:
+            return (live_logs / path.name).is_file()
+        except OSError:
+            return False
+    return False
+
+
+def prune_dump(dump, finalized, live_pd, live_sheets, live_logs, sheet_index, progress_dirs, old_enough, dry_run=False):
     removed_files = 0
     removed_bytes = 0
     backstop_files = 0
@@ -203,25 +229,20 @@ def prune_dump(dump, finalized, live_pd, live_sheets, sheet_index, progress_dirs
             except OSError:
                 continue
             symside = attribute(path.name)
-            delete = False
             backstop = False
-            if symside is not None:
-                delete = symside in finalized
-            elif subdir == "progress":
-                delete = live_supersedes(live_pd, path.name, stat)
-            elif subdir == "sheets":
+            if subdir == "sheets" and (symside is None or symside not in finalized):
                 if live_supersedes(live_sheets, path.name, stat):
-                    delete = True
-                elif old_enough and strip_suffixes(path.name) in sheet_index:
-                    delete = True
+                    pass
+                elif old_enough and (strip_suffixes(path.name) in sheet_index or ".tmp" in path.name):
                     backstop = True
-            if subdir == "sheets" and not delete and old_enough and strip_suffixes(path.name) in sheet_index:
-                delete = True
-                backstop = True
-            if subdir == "sheets" and not delete and old_enough and ".tmp" in path.name:
-                delete = True
-                backstop = True
-            if not delete:
+                else:
+                    continue
+            elif symside is None:
+                if subdir != "progress" or not live_supersedes(live_pd, path.name, stat):
+                    continue
+            elif symside not in finalized:
+                continue
+            elif not counterpart_live(subdir, dump, path, live_logs, sheet_index, progress_dirs):
                 continue
             removed_files += 1
             removed_bytes += stat.st_size
@@ -284,6 +305,7 @@ def main(argv):
     print(f"[stalled-prune] finalized sym_sides live: {len(finalized)} across {len(progress_dirs)} progress dirs")
     live_pd = progress_dirs[0] if progress_dirs else None
     live_sheets = SHEETS_DIR if SHEETS_DIR.is_dir() else None
+    live_logs = LIVE_LOGS if LIVE_LOGS.is_dir() else None
     sheet_index = live_sheet_index(live_sheets) if live_sheets is not None else set()
     total_files = 0
     total_bytes = 0
@@ -297,7 +319,7 @@ def main(argv):
             print(f"[stalled-prune] {dump.name}: age {age_min:.0f}m < {min_age_min}m, skipped")
             continue
         old_enough = age_min >= max_age_days * 1440.0
-        removed_files, removed_bytes, backstop_files = prune_dump(dump, finalized, live_pd, live_sheets, sheet_index, progress_dirs, old_enough, dry_run)
+        removed_files, removed_bytes, backstop_files = prune_dump(dump, finalized, live_pd, live_sheets, live_logs, sheet_index, progress_dirs, old_enough, dry_run)
         total_files += removed_files
         total_bytes += removed_bytes
         total_backstop += backstop_files

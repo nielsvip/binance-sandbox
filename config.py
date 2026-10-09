@@ -2667,7 +2667,7 @@ class Config:
     WT_TOP_ENTRY_TF: str = "OFF"  # "15m" | "1h" | "4h" — trigger TF for the cross+structure test.
     WT_TOP_ENTRY_MODE: str = "TOPS_ONLY"  # "TOPS_ONLY" | "TOPS_AND_LOWS" (long mirrors to higher-lows / lows+highs).
     WT_TOP_ENTRY_DIV_MODE: str = "OFF"  # "OFF" | "REG" | "HIDDEN" | "REG_OR_HIDDEN" — WT divergence layer, same TF.
-    WT_TOP_ENTRY_HTF_CONFIRM_TF: str = "OFF"  # "4h" | "D" | "4h,D" (OR) — HTF cross confirmation.
+    WT_TOP_ENTRY_HTF_CONFIRM_TF: str = "OFF"  # "4h" | "D" | "BOTH" (OR) — HTF cross confirmation ("4h,D" also accepted).
     LH_LL_TOP_EXIT_BOTH_TOL_PCT: float = 0.30  # BOTH mode: WT cross counts only within tol of the 1h edge.
     LH_LL_TOP_EXIT_REQUIRE_PRICE_CONFIRM: bool = False  # WT leg additionally needs px<pxp (long) / px>pxp (short).
     # === BACKTEST SWEEP WINNERS (2026-03-16) ===
