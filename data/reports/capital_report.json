@@ -1,67 +1,44 @@
 {
- "generated_at": "2026-10-09 14:32 UTC",
- "total_capital_usd": 38.11,
+ "generated_at": "2026-10-09 15:13 UTC",
+ "total_capital_usd": 4.38,
  "tier_capital": {
-  "A": 6.74,
-  "B": 13.29,
-  "C": 18.08
+  "A": 0.0,
+  "B": 4.37,
+  "C": 0.0
  },
  "tier_count": {
-  "A": 1,
+  "A": 0,
   "B": 2,
-  "C": 1
+  "C": 0
  },
- "winners": [
-  "fin:RLCUSDT_LONG"
- ],
+ "winners": [],
  "losers": [
-  "fin:1INCHUSDT_LONG"
+  "men:GALAUSDT_SHORT",
+  "men:MANAUSDT_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:1INCHUSDT_LONG",
-   "symbol": "1INCHUSDT",
-   "account": "fin",
-   "value_usd": 18.08,
-   "gain_pct": 0.397,
-   "tier": "C",
-   "perf_mult": 0.36,
-   "amt": 188.0,
-   "mark": 0.09618
-  },
-  {
-   "pk": "fin:BNBUSDC_LONG",
-   "symbol": "BNBUSDC",
-   "account": "fin",
-   "value_usd": 7.41,
-   "gain_pct": 1.409,
-   "tier": "B",
-   "perf_mult": 2.14,
-   "amt": 0.01,
-   "mark": 741.01443073
-  },
-  {
-   "pk": "fin:RLCUSDT_LONG",
-   "symbol": "RLCUSDT",
-   "account": "fin",
-   "value_usd": 6.74,
-   "gain_pct": 12.949,
-   "tier": "A",
-   "perf_mult": 9.1,
-   "amt": 6.5,
-   "mark": 1.03655506
-  },
-  {
-   "pk": "fin:IOTXUSDT_LONG",
-   "symbol": "IOTXUSDT",
-   "account": "fin",
-   "value_usd": 5.88,
-   "gain_pct": 2.49,
+   "pk": "men:MANAUSDT_SHORT",
+   "symbol": "MANAUSDT",
+   "account": "men",
+   "value_usd": 2.54,
+   "gain_pct": -1.102,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 1586.0,
-   "mark": 0.003705
+   "amt": 28.0,
+   "mark": 0.09086745
+  },
+  {
+   "pk": "men:GALAUSDT_SHORT",
+   "symbol": "GALAUSDT",
+   "account": "men",
+   "value_usd": 1.83,
+   "gain_pct": -5.328,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 828.0,
+   "mark": 0.002214
   }
  ]
 }
