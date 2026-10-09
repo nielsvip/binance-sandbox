@@ -11,6 +11,11 @@ trending 30D window punishes (BIBLE §58). This phase:
   1. SOFTEN     — every template candidate is screened vs the current set; trade-adding softenings (filters/gates
                   off, entry/reentry/augment paths on) are applied one per round until the entry/reentry/augment
                   rows are LIVE (produce deltas) and trades reach the soften target. Gain may fall here — on purpose.
+  1b. TIM_LOW_REPAIR (USER 2026-10-09) — when TIM is still <20 after the worst2best fill: three exhaustive stages
+                  (ENTRY-BOOST adds entries, FILTER-LOOSEN loosens filters, REENTRY-FORCE makes reentries
+                  mandatory), each multi-pass to exhaustion, TIM-gap-first acceptance, validity/DD/floor-capped,
+                  profitability-guarded. REENTRY-FORCE falls back to a bounded pair round when no single
+                  reentry verifies.
   2. ADD        — beam search over all candidates (entries, exits, reentries, reduces) by quality key.
   3. TIGHTEN    — beam search restricted to filters/gates + reverts of every change, by quality key.
   4. POLISH     — hill-climb over everything until no single change improves the key or the budget ends.

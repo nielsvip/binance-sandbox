@@ -9166,6 +9166,7 @@ _ENTRY_FAMILY_ALIASES = {
     'BOUNCE_DEEP_TURN': ['B_BOUNCE_DEEP_TURN'], 'BOUNCE_DONCHIAN': ['B_BOUNCE_DONCHIAN'], 'STOCH_HHHL': ['B_STOCH_HHHL_DIRECT'], 'STOCH_PARENT': ['B_STOCH_PARENT_DIRECT'],
     'STOCH_ENTRY': ['B_STOCH_ENTRY'], 'WT_ENTRY': ['B_WT_ENTRY'], 'RSI2': ['B_RSI2_ENTRY'], 'CONNORS': ['B_CONNORS_ENTRY'], 'MOM3': ['B_MOM3'], 'MOM5': ['B_MOM5'],
     'EMA20_SLOPE': ['B_EMA20SLOPE'], 'EMA_DIST': ['B_EMADIST'], 'SMA200_DIST': ['B_SMA200DIST'], 'SRS': ['B_SRS_ENTRY'], 'WT_CROSS_B12': ['B12'], 'HA_STACK_B14': ['B14'], 'STDEV_BREAKOUT': ['B_STDEV_BREAKOUT'], 'STDEV_BOUNCE': ['B_STDEV_BOUNCE'],
+    'WT_TOP': ['B_WT_TOP'],
 }
 
 
@@ -9177,6 +9178,7 @@ _ENTRY_FAMILY_MASTERS = {
     'STOCH_ENTRY': ['STOCH_ENTRY_ENABLED'], 'WT_ENTRY': ['WT_ENTRY_ENABLED'], 'RSI2': ['RSI2_ENABLED'], 'CONNORS': ['CONNORS_RSI_ENABLED'], 'MOM3': ['MOM3_ENTRY_ENABLED'],
     'MOM5': ['MOM5_ENTRY_ENABLED'], 'EMA20_SLOPE': ['EMA20_SLOPE_ENTRY_ENABLED'], 'EMA_DIST': ['EMA_DIST_ENTRY_ENABLED'], 'SMA200_DIST': ['SMA200_DIST_ENTRY_ENABLED'],
     'WT_CROSS_B12': ['REENTRY_B12_WT_MOM_ENABLED'], 'HA_STACK_B14': ['REENTRY_B14_HA_TREND_ENABLED'], 'WT_DC': ['WT_DC_ENABLED'], 'STDEV_BREAKOUT': ['STDEV_BREAKOUT_ENABLED'], 'STDEV_BOUNCE': ['STDEV_BOUNCE_ENABLED'],
+    'WT_TOP': ['WT_TOP_ENTRY_ENABLED'],
 }
 
 
@@ -9461,6 +9463,7 @@ def compute_entry_signals(npz, n, is_long, cfg):
             "B_STDEV_BOUNCE": 6,  # 2026-10-06 bounce twin: standalone (live score 22)
             "B_BBSQUEEZE": 6,  # 2026-10-06 parity FIX (was default 1): live fallback (score 18, wins only when alone)
             "B_FHMOMENTUM": 6,  # 2026-10-08 parity FIX (was default 1, never pivotal): live fires standalone OPEN (ez:46510/tr:14155)
+            "B_WT_TOP": 6,  # 2026-10-08 WT-top twin: standalone (live ez flat-open + tradier shared-direct claim fire OPEN independently)
             "WR_PULLBACK": 6,  # 2026-10-06 WR twin: standalone (live score 22, list-gated; sweeps pass in_list=True)
             "FORMATION_ENTRY": 6,  # 2026-10-06 formation twin: standalone (live score 29; switches off = zeros)
             "B04": 3,       # DC retest (Sharpe 0.39)
