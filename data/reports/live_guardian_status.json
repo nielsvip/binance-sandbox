@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-09T17:58:22Z",
+ "ts": "2026-10-09T18:11:40Z",
  "dry_run": false,
  "regime_start": "2026-10-06T18:48:00Z",
  "thresholds": {
@@ -26,22 +26,22 @@
  "rth": true,
  "accounts": {
   "trb": {
-   "fills_6h": 68,
-   "open_positions": 2,
-   "unrealised_usd": -1.58,
-   "pos_mismatch": 1
+   "fills_6h": 83,
+   "open_positions": 1,
+   "unrealised_usd": 0.79,
+   "pos_mismatch": 0
   },
   "trc": {
    "fills_6h": 11,
    "open_positions": 1,
-   "unrealised_usd": -3.09,
+   "unrealised_usd": -2.79,
    "pos_mismatch": 0
   },
   "fin": {
    "fills_6h": 4,
-   "open_positions": 0,
-   "unrealised_usd": 0.0,
-   "pos_mismatch": 1,
+   "open_positions": 4,
+   "unrealised_usd": 0.18,
+   "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -54,8 +54,8 @@
   },
   "men": {
    "fills_6h": 0,
-   "open_positions": 2,
-   "unrealised_usd": -0.01,
+   "open_positions": 1,
+   "unrealised_usd": 0.0,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -85,7 +85,7 @@
   "inf": {
    "fills_6h": 2,
    "open_positions": 2,
-   "unrealised_usd": 0.39,
+   "unrealised_usd": 0.4,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -99,8 +99,8 @@
   },
   "flz": {
    "fills_6h": 0,
-   "open_positions": 1,
-   "unrealised_usd": 0.03,
+   "open_positions": 2,
+   "unrealised_usd": -1.23,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -119,35 +119,35 @@
     "54373"
    ],
    "starts_30m": 1,
-   "log_age_s": 15.0
+   "log_age_s": 2.0
   },
   "men": {
    "pids": [
     "97466"
    ],
    "starts_30m": 1,
-   "log_age_s": 40.0
+   "log_age_s": 54.0
   },
   "ang": {
    "pids": [
     "53704"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 1.0
   },
   "inf": {
    "pids": [
     "88679"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 12.0
   },
   "flz": {
    "pids": [
     "97467"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 2.0
   },
   "trb": {
    "pids": [
@@ -161,26 +161,19 @@
     "69500"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": -0.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-09T17:58:22Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "trb:EXEL_LONG",
-   "evidence": "positions file amt 4 vs fill-ledger amt 0"
+   "ts": "2026-10-09T18:11:41Z",
+   "severity": "CRITICAL",
+   "kind": "RAPID_LOSS_KEY",
+   "key": "fin:RLCUSDT_LONG",
+   "evidence": "unrealised -5.30% (60-min high -0.57%), amt 6.5"
   },
   {
-   "ts": "2026-10-09T17:58:22Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:KSMUSDT_LONG",
-   "evidence": "positions file amt 0 vs fill-ledger amt 0.2"
-  },
-  {
-   "ts": "2026-10-09T17:58:22Z",
+   "ts": "2026-10-09T18:11:41Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:CHRUSDT_LONG",
@@ -188,7 +181,7 @@
   }
  ],
  "alert_counts": {
-  "POSITION_STATE_MISMATCH": 2,
+  "RAPID_LOSS_KEY": 1,
   "FILL_WITHOUT_VEC_DECISION": 1
  },
  "active_interventions": {
@@ -205,9 +198,9 @@
    "dry_run": false
   },
   "key:fin:RLCUSDT_LONG": {
-   "ts": 1791561936.062911,
-   "until": 1791569136.062913,
-   "why": "RAPID_LOSS_KEY unrealised -3.37% (60-min high +6.65%), amt 6.5 (opens/augments blocked; exits untouched)",
+   "ts": 1791569186.561455,
+   "until": 1791576386.561457,
+   "why": "RAPID_LOSS_KEY unrealised -4.61% (60-min high -0.57%), amt 6.5 (opens/augments blocked; exits untouched)",
    "undo": "redis-cli -p 6379 DEL open_blocked:fin:RLCUSDT_LONG",
    "dry_run": false
   },
@@ -231,5 +224,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.6
+ "sweep_s": 0.51
 }
