@@ -53,6 +53,7 @@ def main():
     ap.add_argument("--min-mult", type=float, default=0.25)
     ap.add_argument("--neg30-mult", type=float, default=0.5)
     ap.add_argument("--max-mult", type=float, default=3.0)
+    ap.add_argument("--gain-cap", type=float, default=20.0)
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
     rep = json.loads(Path(a.report).read_text())
@@ -80,12 +81,9 @@ def main():
         pos = sorted([x for x in rows if x["venue"] == venue and x["g30"] > 0], key=lambda x: x["g30"])
         n = len(pos)
         for i, x in enumerate(pos):
-            pct = (i / (n - 1)) if n > 1 else 1.0
-            m = 1.0 + (a.max_mult - 1.0) * pct
-            tier = "RANKED"
-            if x["g365"] is not None and x["g365"] <= 0:
-                m, tier = min(m, 1.0), "RANKED_NEG365_CAP1"
-            tiers[x["ss"]] = dict(x, mult=round(m, 3), tier=tier, rank=f"{i + 1}/{n}")
+            m = _ranked_mult(x["g30"], x["g365"], a.max_mult, a.gain_cap)
+            tier = "RANKED_NEG365_CAP1" if (x["g365"] is not None and x["g365"] <= 0) else "RANKED"
+            tiers[x["ss"]] = dict(x, mult=m, tier=tier, rank=f"{i + 1}/{n}")
         for x in rows:
             if x["venue"] != venue or x["g30"] >= 0:
                 continue
@@ -103,14 +101,29 @@ def main():
                 continue
             try:
                 g = e.get("acc_gain_pct")
-                if g is not None and float(g) <= 0:
-                    tiers[ss] = {"venue": "crypto" if book.endswith("config.json") else "stocks", "g30": float(g), "g365": None, "src365": "book acc_gain_pct (no fresh row)", "trades_30d": e.get("trades"), "tim_30d": e.get("tim_pct"), "mult": a.min_mult, "tier": "BOOK_NEG"}
+                if g is None:
+                    continue
+                g = float(g)
+                if g <= 0:
+                    tiers[ss] = {"venue": "crypto" if book.endswith("config.json") else "stocks", "g30": g, "g365": None, "src365": "book acc_gain_pct (no fresh row)", "trades_30d": e.get("trades"), "tim_30d": e.get("tim_pct"), "mult": a.min_mult, "tier": "BOOK_NEG"}
+                else:
+                    tiers[ss] = {"venue": "crypto" if book.endswith("config.json") else "stocks", "g30": g, "g365": None, "src365": "book acc_gain_pct (no fresh row)", "trades_30d": e.get("trades"), "tim_30d": e.get("tim_pct"), "mult": 1.0, "tier": "BOOK_POS_HOLD"}
             except Exception:
                 continue
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import v15_universe as _U
+        _u, _how = _U.load_or_build(root=ROOT, write=False)
+        _allowed = set((_u or {}).get("allowed_sym_sides") or [])
+    except Exception:
+        _allowed = set()
+    for ss in sorted(_allowed):
+        if ss not in tiers:
+            tiers[ss] = {"venue": _venue_of(ss), "g30": 0.0, "g365": None, "src365": "tradeable universe (no evidence)", "trades_30d": 0, "tim_30d": None, "mult": a.min_mult, "tier": "UNLISTED_MIN"}
     for v in tiers.values():
         v.pop("ss", None)
-    out = {"_meta": {"at": dt.datetime.now(dt.timezone.utc).isoformat(), "report": str(a.report), "rules": {"min_mult": a.min_mult, "neg30_mult": a.neg30_mult, "max_mult": a.max_mult},
-                     "counts": {t: sum(1 for v in tiers.values() if v["tier"] == t) for t in ("MIN", "NEG30_POS365", "RANKED", "RANKED_NEG365_CAP1", "BOOK_NEG")}, "consumer": "perf_tier_sizing.py (PERF_TIER_SIZING_ENABLED)"}, "tiers": tiers}
+    out = {"_meta": {"at": dt.datetime.now(dt.timezone.utc).isoformat(), "report": str(a.report), "rules": {"min_mult": a.min_mult, "neg30_mult": a.neg30_mult, "max_mult": a.max_mult, "gain_cap": a.gain_cap},
+                     "counts": {t: sum(1 for v in tiers.values() if v["tier"] == t) for t in ("MIN", "NEG30_POS365", "RANKED", "RANKED_NEG365_CAP1", "BOOK_NEG", "BOOK_POS_HOLD", "UNLISTED_MIN")}, "consumer": "perf_tier_sizing.py (PERF_TIER_SIZING_ENABLED)"}, "tiers": tiers}
     srt = sorted(tiers.items(), key=lambda kv: -kv[1]["mult"])
     print(json.dumps(out["_meta"]["counts"]))
     print("TOP 10:")
