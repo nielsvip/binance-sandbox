@@ -901,6 +901,13 @@ def tick(args, cfg, now):
                     st["attempts"][k_] = st["attempts"].get(k_, 0) + w_
                 for a_ in r_["actions"]:
                     print(f"[reap] {h_['name']} {a_['ss']} {a_['why']} pids={a_['pids']}", flush=True)
+                for a_ in r_["actions"]:
+                    if a_["why"].startswith(("stuck:", "wedged:", "hardcap")):
+                        try:
+                            with open(ROOT / "data" / "reports" / "stuck_boards.jsonl", "a", encoding="utf-8") as _fq:
+                                _fq.write(json.dumps({"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "host": h_["name"], "ss": a_["ss"], "why": a_["why"], "pids": a_["pids"], "review": "pending-muse-agent"}) + "\n")
+                        except Exception:
+                            pass
     cur_pdir = next((x["pdir"] for x in stats.values() if x and x.get("pdir")), None)
     if cur_pdir and st.get("attempts_pdir") != cur_pdir:
         st["attempts"] = {}

@@ -510,8 +510,8 @@ class _Search:
         if not missing:
             return
         if (
-            len(missing) > 48
-        ):  # USER 2026-10-07: cap the prefetch (1600x365D ate the whole budget) — top-48 by 30D quality only
+            len(missing) > 16
+        ):  # USER 2026-10-09: 365D de-weighted — top-16 by 30D quality only (was 48; 365D evals ~1.5s each dominated the tail)
             _mkeys = {}
             for m, ov, c in results:
                 if m is not None:
@@ -523,7 +523,7 @@ class _Search:
                 key=lambda ko: _mkeys.get(ko[0], (False, False, 0, 0, -1e9, 0)),
                 reverse=True,
             )
-            missing = missing[:48]
+            missing = missing[:16]
         batched = self.ctx.get("eval_many_365")
         if batched is None:  # non-pilot callers keep today's exact serial behavior
             for k, ov in missing:
@@ -1035,6 +1035,26 @@ def run(ctx: dict) -> dict:
     log(
         f"[DIAG] before gain={base_m['gain']} bh={base_m['bh']} tr={base_m['trades']} TIM={base_m['tim']} DD={base_m['dd']} WR={base_m['wr']} valid={base_m['valid']} faults={[x[0] for x in rep['diagnosis_before']]}"
     )
+    # USER 2026-10-09: HOPELESS_365 — origin 365D catastrophic (DD>50 AND negative) = repair cannot save it
+    # (observed: thousands of evals, DD 64->66%, gains -52->-58). Park immediately, burn zero repair budget.
+    if o365 is not None and not o365["q365"] and o365["m365"] is not None:
+        _h_dd = o365["m365"].get("dd")
+        _h_g = o365["m365"].get("gain")
+        if _h_dd is not None and _h_g is not None and _h_dd > 50.0 and _h_g < 0:
+            log(f"[DIAG-HOPELESS] origin 365D dd={_h_dd:.1f} gain={_h_g:.2f} -> park IMPOSSIBLE, skip repair (0 evals)")
+            touch("diag-hopeless-365")
+            rep["accepted"] = False
+            rep["best_overrides"] = dict(origin)
+            rep["after"] = base_m
+            rep["changes"] = []
+            rep["accept_reason"] = f"HOPELESS_365(origin dd={_h_dd:.1f} gain={_h_g:.2f})"
+            rep["parked"] = "HOPELESS_365"
+            rep["mix_after"] = mix0
+            rep["diagnosis_after"] = diagnose(base_m, mix0, ctx.get("cat_side"))
+            rep["gaps"] = []
+            rep["n_evals"] = S.n_evals
+            rep["secs"] = round(time.time() - t0, 1)
+            return rep
     # ── screen 0: every candidate vs the final set = this sym_side's lever map ──
     # With a ledger evaluator (pilot fork pool) screen 0 IS the trade autopsy: every TEMPLATE row is related to the bad
     # trades it fixes (USER 2026-10-06: "relate every losing trade or exit before top to a switch …").

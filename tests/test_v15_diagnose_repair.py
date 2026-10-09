@@ -263,6 +263,36 @@ def test_repair_365_adds_stop_when_origin_fails_365d():
     assert any(s["phase"] == "REPAIR_365" for s in rep["steps"])
 
 
+def test_hopeless_365_parks_without_repair_burn():
+    # catastrophic origin (DD 65, gain -52): repair cannot save it -> park, ~0 evals, no phases run
+    def ev30(ov):
+        return {
+            "gain_pct": 8.0, "trades": 40, "tim_pct": 50.0, "max_dd_pct": 4.0,
+            "wr_pct": 55.0, "valid": True, "invalid_reason": "", "bh_pct": 20.0,
+            "behavior_fingerprint": "o",
+        }
+
+    def ev365(ov):
+        return {
+            "gain_pct": -52.0, "trades": 3400, "tim_pct": 50.0, "max_dd_pct": 65.0,
+            "valid": False, "invalid_reason": "DD 65% >30%", "behavior_fingerprint": "x",
+        }
+
+    ctx = _ctx(deadline_s=60.0)
+    ctx.update({
+        "base_res": ev30({}),
+        "eval_many": lambda items, phase, cum_before, deadline: [(ev30(ov), "") for _l, ov, _c in items],
+        "eval_365": lambda ov: (ev365(ov), 365.0),
+        "qualifies_365": lambda r, s: (False, ["DD"]),
+    })
+    rep = DR.run(ctx)
+    assert rep["origin_365"]["q365"] is False
+    assert rep["accepted"] is False
+    assert rep.get("parked") == "HOPELESS_365"
+    assert rep["steps"] == []
+    assert rep["n_evals"] == 0
+
+
 def test_autopsy_screen_and_surgical_apply_fixing_row():
     # base: 3 trades, the middle one a loser entered on bar 10; switch F filters exactly that entry -> real gain up
     def ledger_for(ov):
