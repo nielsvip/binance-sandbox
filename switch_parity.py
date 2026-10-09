@@ -286,6 +286,7 @@ def _quick_float_field(key: str) -> bool:
     try:
         import dataclasses as _dc
         import v12_quick_engine as _V
+
         if "_qff" not in _VENUE_CACHE:
             _VENUE_CACHE["_qff"] = {f.name: f.type for f in _dc.fields(_V.QuickConfig)}
         t = _VENUE_CACHE["_qff"].get(key)
@@ -365,8 +366,12 @@ def register_workbook_result(
         n_prom = 0
     ok_q, q_reasons = qualifies_30d(ev)
     rep["qualified_30d"] = bool(ok_q and n_prom >= 1)
-    if not require_qualified:  # USER 2026-10-06 (via director): register EVERY finished set; risk is carried by size, not by refusal
-        rep["unqualified_reasons"] = ([] if n_prom >= 1 else [f"n_promoted={n_prom}"]) + list(q_reasons)
+    if (
+        not require_qualified
+    ):  # USER 2026-10-06 (via director): register EVERY finished set; risk is carried by size, not by refusal
+        rep["unqualified_reasons"] = (
+            [] if n_prom >= 1 else [f"n_promoted={n_prom}"]
+        ) + list(q_reasons)
     elif n_prom < 1:
         rep["reason"] = f"n_promoted={n_prom} (no VALID positive branch this workbook)"
         return rep
@@ -401,13 +406,23 @@ def register_workbook_result(
         ref = snap[k] if k in snap else live_vals.get(k, _MISSING)
         if ref is _MISSING or isinstance(ref, (dict, list, tuple, set)):
             qd = quick_vals.get(k, _MISSING)
-            if (qd is not _MISSING and _same_val(v, qd)) or (ref is _MISSING and qd is _MISSING):  # equal to vec default, or read by NO surface (no live key, no QuickConfig field)
+            if (qd is not _MISSING and _same_val(v, qd)) or (
+                ref is _MISSING and qd is _MISSING
+            ):  # equal to vec default, or read by NO surface (no live key, no QuickConfig field)
                 noop.append(k)
             else:
-                bad[k] = "no live config ref (absent or dict-typed) and value != QuickConfig default"
+                bad[k] = (
+                    "no live config ref (absent or dict-typed) and value != QuickConfig default"
+                )
             continue
         ok_c, cv = coerce_like(v, ref)
-        if not ok_c and isinstance(ref, int) and not isinstance(ref, bool) and isinstance(v, float) and _quick_float_field(k):
+        if (
+            not ok_c
+            and isinstance(ref, int)
+            and not isinstance(ref, bool)
+            and isinstance(v, float)
+            and _quick_float_field(k)
+        ):
             ok_c, cv = True, float(v)
             floatkept.append(k)
         if not ok_c:
@@ -417,9 +432,18 @@ def register_workbook_result(
         else:
             coerced[k] = cv
     if diff_only:
-        rep["diff_only"] = {"n_in": len(overrides), "n_differs": len(coerced), "n_equal_default": len(same), "n_noop_nonlive": len(noop), "noop_nonlive": noop[:20], "float_kept_for_int": floatkept}
+        rep["diff_only"] = {
+            "n_in": len(overrides),
+            "n_differs": len(coerced),
+            "n_equal_default": len(same),
+            "n_noop_nonlive": len(noop),
+            "noop_nonlive": noop[:20],
+            "float_kept_for_int": floatkept,
+        }
         if not bad and not coerced:
-            rep["reason"] = "diff_only: no key differs from the effective default (nothing to register)"
+            rep["reason"] = (
+                "diff_only: no key differs from the effective default (nothing to register)"
+            )
             return rep
     if bad:
         rep["reason"] = (
@@ -873,6 +897,11 @@ def verify_default_surfaces(
     return rep
 
 
+def _multiline_paren_value(value_src: str) -> bool:
+    v = (value_src or "").strip()
+    return v.startswith("(") and v.count("(") != v.count(")")
+
+
 def _render_value(bold, old_src: str) -> str:
     if isinstance(bold, bool):
         return "True" if bold else "False"
@@ -897,7 +926,8 @@ def sync_default_surfaces(
     only_files: list = None,
 ) -> dict:
     """Plan (default) or apply template-bold -> global edits. Apply needs explicit unlock.
-    only_files: apply only edits to these file names (the rest stay in rep["planned_other_files"] for their owner)."""
+    only_files: apply only edits to these file names (the rest stay in rep["planned_other_files"] for their owner).
+    """
     root = Path(root) if root else _ROOT()
     rep = {"planned": [], "needs_manual": [], "applied": [], "error": ""}
     if apply and not confirm_unlocked:
@@ -958,6 +988,15 @@ def sync_default_surfaces(
             return
         i = hits[0]
         old = pat.match(lines[i].rstrip("\n"))
+        if _multiline_paren_value(old.group(2)):
+            seen.add(_sk)
+            rep["needs_manual"].append(
+                {
+                    **m,
+                    "why": f"{kind}: multi-line parenthesized value at {fpath.name}:{i + 1} — single-line rewrite would break indentation; sync by hand",
+                }
+            )
+            return
         new_val = _render_value(bv, old.group(2))
         if old.group(2).strip() == new_val.strip():
             return
@@ -993,14 +1032,26 @@ def sync_default_surfaces(
         if (v12.name, k, "overlay") in seen:
             return
         seen.add((v12.name, k, "overlay"))
-        rep["planned"].append({"file": v12.name, "line": 0, "key": k, "cat_side": cs, "kind": "quick-overlay-add", "old": "<raw>", "new": _render_value(val, "'")})
+        rep["planned"].append(
+            {
+                "file": v12.name,
+                "line": 0,
+                "key": k,
+                "cat_side": cs,
+                "kind": "quick-overlay-add",
+                "old": "<raw>",
+                "new": _render_value(val, "'"),
+            }
+        )
 
     rep["side_split_info"] = []
     for m in audit["mismatches"]:
         _cls = m.get("class")
         # 2026-10-06: a just-promoted key is still `bold-vs-cat` until build_cat_side_defaults_4 runs (the writer syncs before the cat build):
         # the promoted template bold is the truth, so explicitly requested keys are synced from that class too.
-        if _cls not in ("bold-vs-global", "bold-vs-quick") and not (_cls == "bold-vs-cat" and want and m.get("key") in want):
+        if _cls not in ("bold-vs-global", "bold-vs-quick") and not (
+            _cls == "bold-vs-cat" and want and m.get("key") in want
+        ):
             continue
         if want and m.get("key") not in want:
             continue
@@ -1009,10 +1060,20 @@ def sync_default_surfaces(
             rep["needs_manual"].append({**m, "why": "non-scalar bold"})
             continue
         stocks = cs.startswith("STOCKS")
-        venue = ("STOCKS_LONG", "STOCKS_SHORT") if stocks else ("CRYPTO_LONG", "CRYPTO_SHORT")
+        venue = (
+            ("STOCKS_LONG", "STOCKS_SHORT")
+            if stocks
+            else ("CRYPTO_LONG", "CRYPTO_SHORT")
+        )
         if _venue_split(venue, k):
             # §67 value-truth: one global cannot hold two side bolds -> cat_side_defaults_4 carries the side truth (informational)
-            rep["side_split_info"].append({"cat_side": cs, "key": k, "sides": {s2: _side_val(s2, k) for s2 in venue}})
+            rep["side_split_info"].append(
+                {
+                    "cat_side": cs,
+                    "key": k,
+                    "sides": {s2: _side_val(s2, k) for s2 in venue},
+                }
+            )
             continue
         if m.get("global_differs"):
             fpath = root / ("config_tradier.py" if stocks else "config.py")
@@ -1053,7 +1114,10 @@ def sync_default_surfaces(
             crypto_vals = [_side_val(s2, k) for s2 in ("CRYPTO_LONG", "CRYPTO_SHORT")]
             if stocks:
                 # raw carries the crypto truth; stocks-uniform value differs from it -> overlay line (was: needs_manual "needs overlay line")
-                if any(v != "<absent>" and not _same_val(v, bv) for v in crypto_vals) and a1 > a0:
+                if (
+                    any(v != "<absent>" and not _same_val(v, bv) for v in crypto_vals)
+                    and a1 > a0
+                ):
                     _plan_overlay_add(v12, m, cs, k, bv)
                     continue
             _plan_edit(
@@ -1065,14 +1129,25 @@ def sync_default_surfaces(
                 k,
                 bv,
             )
-            if not stocks and not has_overlay and a1 > a0 and not _venue_split(("STOCKS_LONG", "STOCKS_SHORT"), k):
+            if (
+                not stocks
+                and not has_overlay
+                and a1 > a0
+                and not _venue_split(("STOCKS_LONG", "STOCKS_SHORT"), k)
+            ):
                 sv = [_side_val(s2, k) for s2 in ("STOCKS_LONG", "STOCKS_SHORT")]
                 sv = [v for v in sv if v != "<absent>"]
-                if sv and not _same_val(sv[0], bv) and isinstance(sv[0], (bool, int, float, str)):
+                if (
+                    sv
+                    and not _same_val(sv[0], bv)
+                    and isinstance(sv[0], (bool, int, float, str))
+                ):
                     # the raw edit would move the stocks QuickConfig away from the stocks-uniform bold -> pin stocks with an overlay line
                     _plan_overlay_add(v12, m, "STOCKS_*", k, sv[0])
     if only_files:
-        rep["planned_other_files"] = [p for p in rep["planned"] if p["file"] not in set(only_files)]
+        rep["planned_other_files"] = [
+            p for p in rep["planned"] if p["file"] not in set(only_files)
+        ]
         rep["planned"] = [p for p in rep["planned"] if p["file"] in set(only_files)]
     if apply and rep["planned"]:
         by_file = {}
@@ -1080,7 +1155,11 @@ def sync_default_surfaces(
             by_file.setdefault(p["file"], []).append(p)
         for fname, edits in by_file.items():
             fpath = root / fname
-            bp = root / "backups" / f"before_parity_sync_{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d%H%M%S')}_{fname}"  # 2026-10-06: was per-day -> a 2nd run the same day overwrote the first backup
+            bp = (
+                root
+                / "backups"
+                / f"before_parity_sync_{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d%H%M%S')}_{fname}"
+            )  # 2026-10-06: was per-day -> a 2nd run the same day overwrote the first backup
             try:
                 shutil.copy2(fpath, bp)
                 lines = fpath.read_text().splitlines(keepends=True)
@@ -1103,12 +1182,18 @@ def sync_default_surfaces(
                     _overlay_cache.clear()
                     b0, b1 = _overlay_range(lines)
                     if b1 <= b0:
-                        raise RuntimeError("apply_tradier_defaults not found for overlay add")
+                        raise RuntimeError(
+                            "apply_tradier_defaults not found for overlay add"
+                        )
                     ins = b1
                     while ins - 1 > b0 and lines[ins - 1].strip() == "":
                         ins -= 1
-                    new_lines = [f"        # parity-sync {_today()}: stocks-uniform bold differs from the raw (crypto) value — §67 overlay\n"]
-                    new_lines += [f"        self.{p['key']} = {p['new']}\n" for p in _adds]
+                    new_lines = [
+                        f"        # parity-sync {_today()}: stocks-uniform bold differs from the raw (crypto) value — §67 overlay\n"
+                    ]
+                    new_lines += [
+                        f"        self.{p['key']} = {p['new']}\n" for p in _adds
+                    ]
                     lines[ins:ins] = new_lines
                 fpath.write_text("".join(lines))
                 import py_compile
@@ -1361,15 +1446,30 @@ def startup_gate(cat_side: str, template_path: str = None, root: Path = None) ->
     return rep
 
 
-ORDER_CALLS = ("queue_trade_action", "execute_trade_action", "execute_now", "_dispatch_reentry_guaranteed", "_ez_queue_trade_action", "_crypto_eta")
-CFG_NAMES = ("config", "config_obj", "_ezm_base_config", "cfg", "self.config", "trade_manager.config")
+ORDER_CALLS = (
+    "queue_trade_action",
+    "execute_trade_action",
+    "execute_now",
+    "_dispatch_reentry_guaranteed",
+    "_ez_queue_trade_action",
+    "_crypto_eta",
+)
+CFG_NAMES = (
+    "config",
+    "config_obj",
+    "_ezm_base_config",
+    "cfg",
+    "self.config",
+    "trade_manager.config",
+)
 LIVE_ORDER_FILES = ("ez_manage.py", "ez_positions_quick.py")
 
 
 def _order_function_switch_reads(path: Path) -> dict:
     """AST scan: {KEY: [function names]} for every config switch read inside a function that issues orders
     (calls queue_trade_action / execute_trade_action / execute_now / _dispatch_reentry_guaranteed).
-    Reads = getattr(<config-like>, 'KEY', ...), <config-like>.KEY, _psym_get/_psym_cs_get(sym, side, 'KEY', ...)."""
+    Reads = getattr(<config-like>, 'KEY', ...), <config-like>.KEY, _psym_get/_psym_cs_get(sym, side, 'KEY', ...).
+    """
     import ast
 
     tree = ast.parse(path.read_text(errors="ignore"))
@@ -1391,7 +1491,11 @@ def _order_function_switch_reads(path: Path) -> dict:
             continue
         keys = set()
         _fallback_ids = set()
-        for c in calls:  # getattr(config, K) used only as the default argument of _psym_get/_psym_cs_get is a fallback, not a global read
+        for (
+            c
+        ) in (
+            calls
+        ):  # getattr(config, K) used only as the default argument of _psym_get/_psym_cs_get is a fallback, not a global read
             if _name(c.func).split(".")[-1] in ("_psym_get", "_psym_cs_get"):
                 for a_ in c.args[3:]:
                     for sub in ast.walk(a_):
@@ -1400,12 +1504,27 @@ def _order_function_switch_reads(path: Path) -> dict:
             if id(c) in _fallback_ids:
                 continue
             f = _name(c.func)
-            if f == "getattr" and len(c.args) >= 2 and _name(c.args[0]) in CFG_NAMES and isinstance(c.args[1], ast.Constant) and isinstance(c.args[1].value, str):
+            if (
+                f == "getattr"
+                and len(c.args) >= 2
+                and _name(c.args[0]) in CFG_NAMES
+                and isinstance(c.args[1], ast.Constant)
+                and isinstance(c.args[1].value, str)
+            ):
                 keys.add((c.args[1].value, "global"))
-            elif f.split(".")[-1] in ("_psym_get", "_psym_cs_get") and len(c.args) >= 3 and isinstance(c.args[2], ast.Constant) and isinstance(c.args[2].value, str):
+            elif (
+                f.split(".")[-1] in ("_psym_get", "_psym_cs_get")
+                and len(c.args) >= 3
+                and isinstance(c.args[2], ast.Constant)
+                and isinstance(c.args[2].value, str)
+            ):
                 keys.add((c.args[2].value, "cat_side"))
         for n in ast.walk(fn):
-            if isinstance(n, ast.Attribute) and _name(n.value) in CFG_NAMES and n.attr.isupper():
+            if (
+                isinstance(n, ast.Attribute)
+                and _name(n.value) in CFG_NAMES
+                and n.attr.isupper()
+            ):
                 keys.add((n.attr, "global"))
         for k, kind in keys:
             if k.isupper() and len(k) > 2:
@@ -1413,12 +1532,15 @@ def _order_function_switch_reads(path: Path) -> dict:
     return out
 
 
-def verify_live_order_switches(root: Path = None, cat_sides=("CRYPTO_LONG", "CRYPTO_SHORT")) -> dict:
+def verify_live_order_switches(
+    root: Path = None, cat_sides=("CRYPTO_LONG", "CRYPTO_SHORT")
+) -> dict:
     """2026-10-06 director (parity hole): every config.py switch read by a live opener/closer (a function that issues orders in
     ez_manage / ez_positions_quick) must exist in QuickConfig AND in the TEMPLATE-bold layer (cat_side_defaults_4, built from the
     TEMPLATE bolds) with the same value as the live global. HARD findings: missing_in_quickconfig, missing_in_template,
     value_mismatch (live global vs QuickConfig effective value vs cat_side). Curated exclusions (secrets, infra, §64 ablation)
-    are reported separately, never as HARD. QuickConfig values are the effective dataclass values (duplicate field names: last wins)."""
+    are reported separately, never as HARD. QuickConfig values are the effective dataclass values (duplicate field names: last wins).
+    """
     root = Path(root) if root else _ROOT()
     live_vals, quick_vals = _venue_values(False, root)
     try:
@@ -1437,7 +1559,12 @@ def verify_live_order_switches(root: Path = None, cat_sides=("CRYPTO_LONG", "CRY
             rep["not_config"] += 1
             continue
         rep["order_switches"] += 1
-        ex = _excluded(k) or ("parity/bridge infra master (live-only by design)" if k.startswith(("PARITY_VEC_EXACT_", "VEC_DRIVEN_")) or k == "EXIT_ENGINE_PARITY_LOG_ENABLED" else "")
+        ex = _excluded(k) or (
+            "parity/bridge infra master (live-only by design)"
+            if k.startswith(("PARITY_VEC_EXACT_", "VEC_DRIVEN_"))
+            or k == "EXIT_ENGINE_PARITY_LOG_ENABLED"
+            else ""
+        )
         if ex:
             rep["excluded"].append({"key": k, "why": ex})
             continue
@@ -1446,9 +1573,19 @@ def verify_live_order_switches(root: Path = None, cat_sides=("CRYPTO_LONG", "CRY
             continue
         kinds = {x.rsplit("[", 1)[-1].rstrip("]") for x in reads[k]}
         prob = []
-        if k not in quick_vals and not all(k in (cat_file.get(cs) or {}) for cs in cat_sides):
+        if k not in quick_vals and not all(
+            k in (cat_file.get(cs) or {}) for cs in cat_sides
+        ):
             prob.append("missing_in_quickconfig_and_template")
-        if "global" in kinds and "cat_side" in kinds and any(k in (cat_file.get(cs) or {}) and not _same_val(lv, (cat_file.get(cs) or {})[k]) for cs in cat_sides):
+        if (
+            "global" in kinds
+            and "cat_side" in kinds
+            and any(
+                k in (cat_file.get(cs) or {})
+                and not _same_val(lv, (cat_file.get(cs) or {})[k])
+                for cs in cat_sides
+            )
+        ):
             prob.append("live_inconsistent_read(global+cat_side sites disagree)")
         for cs in cat_sides:
             cv = cat_file.get(cs) or {}
@@ -1457,7 +1594,14 @@ def verify_live_order_switches(root: Path = None, cat_sides=("CRYPTO_LONG", "CRY
             if not _same_val(live_eff, vec_eff):
                 prob.append(f"{cs}: live_eff={live_eff!r} vec_eff={vec_eff!r}")
         if prob:
-            rep["hard"].append({"key": k, "live": lv, "problems": prob, "read_in": sorted(reads[k])[:4]})
+            rep["hard"].append(
+                {
+                    "key": k,
+                    "live": lv,
+                    "problems": prob,
+                    "read_in": sorted(reads[k])[:4],
+                }
+            )
         elif k not in quick_vals:
             rep.setdefault("soft_missing_quickconfig", []).append(k)
     rep["n_hard"] = len(rep["hard"])
@@ -1503,13 +1647,20 @@ def main(argv=None) -> int:
     p_syn.add_argument(
         "--keys", default=None, help="comma-separated key filter for targeted sync"
     )
-    p_syn.add_argument("--only-files", default=None, help="comma-separated file names to apply (others reported in planned_other_files)")
+    p_syn.add_argument(
+        "--only-files",
+        default=None,
+        help="comma-separated file names to apply (others reported in planned_other_files)",
+    )
     p_syn.add_argument("--apply", action="store_true")
     p_syn.add_argument("--confirm-unlocked", action="store_true")
     p_lvs = sub.add_parser(
-        "verify-live-switches", help="every switch read by a live crypto opener/closer exists in QuickConfig + TEMPLATE with the live value"
+        "verify-live-switches",
+        help="every switch read by a live crypto opener/closer exists in QuickConfig + TEMPLATE with the live value",
     )
-    p_lvs.add_argument("--strict", action="store_true", help="exit 1 on any HARD finding")
+    p_lvs.add_argument(
+        "--strict", action="store_true", help="exit 1 on any HARD finding"
+    )
     p_lvs.add_argument("--show", type=int, default=40)
     p_lvs.add_argument("--json", default=None, help="write the full report here")
     p_cat = sub.add_parser(
@@ -1526,9 +1677,13 @@ def main(argv=None) -> int:
         rep = verify_live_order_switches()
         if a.json:
             Path(a.json).write_text(json.dumps(rep, indent=1, default=str))
-        print(f"LIVE_ORDER_SWITCHES order_switches={rep.get('order_switches')} hard={rep.get('n_hard')} excluded={len(rep.get('excluded') or [])}")
+        print(
+            f"LIVE_ORDER_SWITCHES order_switches={rep.get('order_switches')} hard={rep.get('n_hard')} excluded={len(rep.get('excluded') or [])}"
+        )
         for h in (rep.get("hard") or [])[: a.show]:
-            print(f"  HARD {h['key']} live={h['live']!r} {h['problems']} read_in={h['read_in']}")
+            print(
+                f"  HARD {h['key']} live={h['live']!r} {h['problems']} read_in={h['read_in']}"
+            )
         return 1 if (a.strict and rep.get("n_hard")) else 0
     if a.cmd == "register":
         rep = register_workbook_result(
