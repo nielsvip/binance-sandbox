@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-09 16:38:45 UTC
+# Copilot Status — 2026-10-09 16:53:48 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-09T16:37:01
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-09T16:37:01
-- **STALE_INDICATORS** [tradier]  — 2026-10-09T16:37:31
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-09T16:37:31
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-09T16:37:31
-- **STALE_INDICATORS** [tradier]  — 2026-10-09T16:38:03
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-09T16:38:03
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-09T16:38:03
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-09T16:38:33
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-09T16:38:33
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-09T16:51:34
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-09T16:51:34
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-09T16:52:04
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-09T16:52:04
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-09T16:52:36
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-09T16:52:36
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-09T16:53:06
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-09T16:53:06
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-09T16:53:38
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-09T16:53:38
 
 ## Missed Trades (trader comparison)
 
@@ -27,23 +27,23 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 3 | **Watching for reentry:** 3 | **Reentered:** 0
+**Held:** 1 | **Watching for reentry:** 5 | **Reentered:** 0
 
-- HELD: **RLCUSDT** LONG (crypto) peak +59.8%, now +-7.8%
-- HELD: **IOTXUSDT** LONG (crypto) peak +9.3%, now +2.2%
 - HELD: **MANAUSDT** SHORT (crypto) peak +7.3%, now +7.3%
 
-- WATCHING: **STRKUSDT** LONG (crypto) peaked +24.0%, exited 2m ago
-- WATCHING: **GALAUSDT** SHORT (crypto) peaked +8.0%, exited 34m ago
-- WATCHING: **ALGOUSDT** SHORT (crypto) peaked +6.8%, exited 0m ago
+- WATCHING: **RLCUSDT** LONG (crypto) peaked +59.8%, exited 1m ago
+- WATCHING: **STRKUSDT** LONG (crypto) peaked +24.0%, exited 1m ago
+- WATCHING: **IOTXUSDT** LONG (crypto) peaked +9.3%, exited 1m ago
+- WATCHING: **GALAUSDT** SHORT (crypto) peaked +8.0%, exited 49m ago
+- WATCHING: **ALGOUSDT** SHORT (crypto) peaked +6.8%, exited 1m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] tradier_positions.py running but log stale (42min)
-- [MEDIUM] tradier_positions.py running but log stale (43min)
 - [HIGH] ez_rankings.py is NOT running
-- [HIGH] ez_rankings.py is NOT running
-- [HIGH] ez_rankings.py is NOT running
+- [HIGH] ez_indicators.py is NOT running
+- [MEDIUM] tradier_positions.py running but log stale (11min)
+- [MEDIUM] tradier_positions.py running but log stale (12min)
+- [MEDIUM] tradier_positions.py running but log stale (13min)
