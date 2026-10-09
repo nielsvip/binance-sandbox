@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
-from v15_fleet_scheduler import _GAIN_TIER_DEFER_DAYS, _LAUNCH_CAPS, _gain_tiers, _place_order, _side_deferred, _side_tier, _sym_quota_hit, _sym_tier_rank
+from v15_fleet_scheduler import _GAIN_TIER_DEFER_DAYS, _LAUNCH_CAPS, _gain_tiers, _gs_allowed_for_tier, _place_order, _repair_allowed_for_tier, _side_deferred, _side_tier, _sym_quota_hit, _sym_tier_rank
 
 NOW = 1791500000.0
 
@@ -106,6 +106,20 @@ class PlaceOrderTest(unittest.TestCase):
         tiers = {"A_LONG": {"tier": "W", "gain": 9, "mtime": 1}, "B_LONG": {"tier": "W", "gain": 8, "mtime": 1}}
         got = _place_order(["A"], [], ["B"], tiers)
         self.assertEqual(got, [("A", False), ("B", True)])
+
+
+class TierChainGatesTest(unittest.TestCase):
+    def test_gs_winners_mid_discovery_only(self):
+        self.assertTrue(_gs_allowed_for_tier("W", True))
+        self.assertTrue(_gs_allowed_for_tier("M", True))
+        self.assertFalse(_gs_allowed_for_tier("L", True))
+        self.assertTrue(_gs_allowed_for_tier("M", False))
+
+    def test_repair_winners_discovery_only(self):
+        self.assertTrue(_repair_allowed_for_tier("W", True))
+        self.assertFalse(_repair_allowed_for_tier("M", True))
+        self.assertFalse(_repair_allowed_for_tier("L", True))
+        self.assertTrue(_repair_allowed_for_tier("M", False))
 
 
 if __name__ == "__main__":

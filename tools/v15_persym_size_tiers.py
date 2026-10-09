@@ -11,6 +11,8 @@ Rules (per venue, crypto / stocks ranked separately):
   no fresh row + book acc_gain > 0  -> BOOK_POS_HOLD  mult 1.0 (proven winner awaiting recalc keeps trading)
   no fresh row + book acc_gain <= 0 -> BOOK_NEG  mult = min-mult (monitored, minimal money)
   in tradeable universe, nowhere    -> UNLISTED_MIN  mult = min-mult (monitored, minimal money)
+  USER 2026-10-09: no per_sym_store.db row (live would trade DEFAULTS) -> NOSTORE_MIN mult = min-mult, regardless of
+  the tier above. Defaults are for testing the waters — defaults at max size is ridiculous. Original tier kept in was_tier.
 Live floors/caps (exchange minimum, 1 share, MAX_ORDER_VALUE) are applied by perf_tier_sizing at order time.
   python tools/v15_persym_size_tiers.py --report data/daily_chain/persym_golive_<date>.json [--out data/persym_size_tiers.json] [--dry-run]
 """
@@ -120,10 +122,23 @@ def main():
     for ss in sorted(_allowed):
         if ss not in tiers:
             tiers[ss] = {"venue": _venue_of(ss), "g30": 0.0, "g365": None, "src365": "tradeable universe (no evidence)", "trades_30d": 0, "tim_30d": None, "mult": a.min_mult, "tier": "UNLISTED_MIN"}
+    try:
+        sys.path.insert(0, str(ROOT))
+        import per_sym_store as _pss
+        _stored = set(_pss.all_sym_sides()) if hasattr(_pss, "all_sym_sides") else {_r[0] for _r in __import__("sqlite3").connect(str(_pss.DB_PATH)).execute("SELECT sym_side FROM per_sym_active")}
+        _nostore = sorted(ss for ss, v in tiers.items() if v["mult"] > a.min_mult and ss not in _stored)
+        for ss in _nostore:
+            tiers[ss]["was_tier"] = tiers[ss]["tier"]
+            tiers[ss]["tier"] = "NOSTORE_MIN"
+            tiers[ss]["mult"] = a.min_mult
+        print(f"[tiers] NOSTORE_MIN demotions (no per_sym_store row -> defaults test waters): {len(_nostore)} {','.join(_nostore[:12])}{'...' if len(_nostore) > 12 else ''}")
+    except Exception as _nse:
+        _nostore = []
+        print(f"[tiers] WARNING: per_sym_store check failed, keeping ranked sizes (fail-open): {_nse}")
     for v in tiers.values():
         v.pop("ss", None)
     out = {"_meta": {"at": dt.datetime.now(dt.timezone.utc).isoformat(), "report": str(a.report), "rules": {"min_mult": a.min_mult, "neg30_mult": a.neg30_mult, "max_mult": a.max_mult, "gain_cap": a.gain_cap},
-                     "counts": {t: sum(1 for v in tiers.values() if v["tier"] == t) for t in ("MIN", "NEG30_POS365", "RANKED", "RANKED_NEG365_CAP1", "BOOK_NEG", "BOOK_POS_HOLD", "UNLISTED_MIN")}, "consumer": "perf_tier_sizing.py (PERF_TIER_SIZING_ENABLED)"}, "tiers": tiers}
+                     "counts": {t: sum(1 for v in tiers.values() if v["tier"] == t) for t in ("MIN", "NEG30_POS365", "RANKED", "RANKED_NEG365_CAP1", "BOOK_NEG", "BOOK_POS_HOLD", "UNLISTED_MIN", "NOSTORE_MIN")}, "consumer": "perf_tier_sizing.py (PERF_TIER_SIZING_ENABLED)"}, "tiers": tiers}
     srt = sorted(tiers.items(), key=lambda kv: -kv[1]["mult"])
     print(json.dumps(out["_meta"]["counts"]))
     print("TOP 10:")

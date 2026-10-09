@@ -6982,6 +6982,54 @@ def main():
                 import traceback as _tb_bl
                 print(f"[BASELINE-CAT-PERSYM-warn] {new_symside} {_e_bl} {_tb_bl.format_exc()[:500]}", flush=True)
                 _cat_vs_persym_done = False
+        # USER 2026-10-09: defaults run at the beginning of EVERY NPZ load, even when the winner-select above is skipped
+        # (V15_START_OVERRIDES / V15_SKIP_CAT_PERSYM_BASELINE=1, e.g. TEMPLATE_DEFAULTS herd boards) — just in case they
+        # are better than the latest best per_sym settings. MEASURE-ONLY: logs + progress record, never changes E3/start
+        # selection (mode purity preserved: TEMPLATE_DEFAULTS never ingests, autopsy keeps its base). 2 hot evals ~0.15s.
+        if prepared is not None and not locals().get("_cat_vs_persym_done"):
+            try:
+                _dc_cat_ov, _ = sanitize_overrides(dict(_tpl_defaults), defaults)
+                _dc_per_ov, _dc_per_lbl = None, None
+                try:
+                    import per_sym_store as _pss_dc
+                    _dc_ent = _pss_dc.get(new_symside)
+                    if _dc_ent and (_dc_ent.get("full_config") or _dc_ent.get("overrides")):
+                        _dc_full = _dc_ent.get("full_config") or {}
+                        if not _dc_full:
+                            _dc_full = dict(_dc_ent.get("defaults_snapshot") or {})
+                            _dc_full.update(_dc_ent.get("overrides") or {})
+                        _dc_diff = {_k: _v for _k, _v in _dc_full.items() if not _same_default(_v, defaults.get(_k))}
+                        for _k, _v in (_dc_ent.get("overrides") or {}).items():
+                            if _k not in _dc_diff and not _same_default(_v, defaults.get(_k)):
+                                _dc_diff[_k] = _v
+                        _dc_per_ov, _ = sanitize_overrides(_dc_diff, defaults)
+                        _dc_per_lbl = "per_sym_last_best"
+                except Exception:
+                    pass
+                if _dc_per_ov is None and locals().get("_ingested_overrides"):
+                    _dc_per_ov, _ = sanitize_overrides(dict(_ingested_overrides), defaults)
+                    _dc_per_lbl = "per_sym_ingested"
+                import concurrent.futures as _cf_dc
+                with _cf_dc.ThreadPoolExecutor(max_workers=2) as _ex_dc:
+                    _dc_fut_c = _ex_dc.submit(evaluate_prepared_sanitized, prepared, _dc_cat_ov, window_days=args.window_days)
+                    _dc_fut_p = _ex_dc.submit(evaluate_prepared_sanitized, prepared, _dc_per_ov, window_days=args.window_days) if _dc_per_ov is not None else None
+                    try:
+                        _dc_cat = _dc_fut_c.result(timeout=60)
+                    except Exception as _e_dcc:
+                        _dc_cat = {"gain_pct": -1e9, "trades": 0, "valid": False, "invalid_reason": f"dc cat {type(_e_dcc).__name__}"}
+                    _dc_per = None
+                    if _dc_fut_p is not None:
+                        try:
+                            _dc_per = _dc_fut_p.result(timeout=60)
+                        except Exception as _e_dcp:
+                            _dc_per = {"gain_pct": -1e9, "trades": 0, "valid": False, "invalid_reason": f"dc per {type(_e_dcp).__name__}"}
+                _dc_cg = float(_dc_cat.get("gain_pct") or -1e9)
+                _dc_pg = float((_dc_per or {}).get("gain_pct") or -1e9)
+                _dc_cAdopt = "cat_side_defaults" if _dc_per is None or _dc_cg >= _dc_pg else _dc_per_lbl
+                print(f"[DEFAULTS-CHALLENGER] {new_symside} cat={_dc_cg:.2f}/{_dc_cat.get('trades')}t/{'V' if _dc_cat.get('valid') else 'x'} vs {_dc_per_lbl}={_dc_pg:.2f}/{(_dc_per or {}).get('trades')}t/{'V' if (_dc_per or {}).get('valid') else 'x'} -> would-be {_dc_cAdopt} (measure-only, start set unchanged)", flush=True)
+                _defaults_challenger_record = {"cat_gain": _dc_cat.get("gain_pct"), "cat_trades": _dc_cat.get("trades"), "cat_valid": _dc_cat.get("valid"), "persym_label": _dc_per_lbl, "persym_gain": (_dc_per or {}).get("gain_pct"), "persym_trades": (_dc_per or {}).get("trades"), "persym_valid": (_dc_per or {}).get("valid"), "would_be": _dc_cAdopt}
+            except Exception as _e_dc:
+                print(f"[DEFAULTS-CHALLENGER-warn] {new_symside} {_e_dc}", flush=True)
         # USER 2026-09-29: a sheet must start from the BEST previous settings — in FRESH mode always compare live recipe /
         # previous best / template defaults on the CURRENT engine and start from the best credible one (not only when the
         # recipe fails). A V15_START_OVERRIDES (365D-repaired) run keeps its set unless it is not credible.
@@ -7713,6 +7761,11 @@ def main():
             pass
     except Exception:
         progress = {"symside": new_symside, "baseline_gain": baseline_gain, "bh": bh, "done": {}, "window_days": args.window_days, "npz_id": _run_npz_id}
+    try:
+        if locals().get("_defaults_challenger_record") and isinstance(progress, dict):
+            progress["defaults_challenger"] = _defaults_challenger_record
+    except Exception:
+        pass
     # RESPECT s3/s5 shuffles and stdev: fetch latest progress from S1 peer if on s3/s5 to avoid overwriting better numbers
     try:
         import socket as _sock

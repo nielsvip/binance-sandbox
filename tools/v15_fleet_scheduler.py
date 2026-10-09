@@ -515,6 +515,16 @@ def _sym_quota_hit(sym, tiers):
     return any(t in ("M", "L") for t in ts) and not any(t == "W" for t in ts)
 
 
+def _gs_allowed_for_tier(tier, measured):
+    """USER 2026-10-09 (90% on winners): GS-heal for W/M/discovery; L gets verified, not rescued."""
+    return (tier in ("W", "M")) or not measured
+
+
+def _repair_allowed_for_tier(tier, measured):
+    """USER 2026-10-09 (90% on winners): repair rounds for W/discovery only; M got its GS shot, L gets none."""
+    return tier == "W" or not measured
+
+
 def _place_order(held_ordered, adopted_owned, new_syms, tiers):
     """USER 2026-10-09 (trb gainers absolute priority): W chains + W new before ALL M/L work. Stable sort
     keeps chain-first within a tier. Running pilots are never touched — this orders new launches only."""
@@ -959,7 +969,7 @@ def tick(args, cfg, now):
         return r or {"ok": False, "reason": "not probed"}
 
     # ---- per-symbol chain status
-    def side_state(sym, side, host_name):
+    def side_state(sym, side, host_name, _tiers=None):
         ss = f"{sym}_{side}"
         if ss in running:
             return "running", None
@@ -1005,6 +1015,8 @@ def tick(args, cfg, now):
             if lastg and lastg["ok"]:
                 return "terminal_ok", None
             if not (lastg and lastg["unverifiable"]) and len(g) < 1:
+                if not _gs_allowed_for_tier(_side_tier(ss, _tiers), ss in (_tiers or {})):
+                    return "terminal_failing", None
                 return "needgs", len(g) + 1
         reps = repair.get(ss, {})
         last = reps[max(reps)] if reps else None
@@ -1013,6 +1025,8 @@ def tick(args, cfg, now):
         venue = venue_of(sym)
         late = venue == "stocks" and not is_open and mto < args.repair_cutoff_min
         if len(reps) >= args.max_attempts or late or (last and last["unverifiable"]):
+            return "terminal_failing", None
+        if not _repair_allowed_for_tier(_side_tier(ss, _tiers), ss in (_tiers or {})):
             return "terminal_failing", None
         return "needrepair", len(reps) + 1
 
@@ -1034,7 +1048,7 @@ def tick(args, cfg, now):
     for sym in all_syms:
         h = owner.get(sym)
         _allowed = set(uni.get("allowed_sym_sides") or [])  # USER 2026-10-06: only tradeable keys are calculated
-        _st = {side: (("terminal_not_tradeable", None) if _allowed and f"{sym}_{side}" not in _allowed else side_state(sym, side, h)) for side in ("LONG", "SHORT")}
+        _st = {side: (("terminal_not_tradeable", None) if _allowed and f"{sym}_{side}" not in _allowed else side_state(sym, side, h, _gtiers)) for side in ("LONG", "SHORT")}
         for side, v in _st.items():
             if v[0] in ("need30", "waiting_base") and _side_deferred(f"{sym}_{side}", _gtiers, _now_ts):
                 _st[side] = ("terminal_deferred", None)
