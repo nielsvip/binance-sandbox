@@ -17,8 +17,8 @@ FIRE = ENABLED & (STRUCT | (DIVERG_ENABLED & DIVERG)). Missing/zero input -> NO 
 (NEUTRAL-on-missing, mirrors lh_hl_filter). Default OFF = inert.
 
 LIVE SITES (applied 2026-10-09 after unlock; all keys ride the live indicators dict in both venues):
-  crypto: ez_positions_quick.py entry worker between the DC gate and the VOL worker
-          (LAST-writer-wins; vec FIRST-wins places this block after VOL_SPIKE_REVERSAL).
+  crypto: ez_positions_quick.py::check_entry_candidates_for_account worker immediately before VOL
+          (both not-should_trade gated = FIRST-writer-wins; trade parity via vec OR-mode).
   stocks: tradier_manage.py should_enter_short / should_enter_long, beside the WT_15M_BOUNCE
           HL/HH scalar-_prev pattern.
   backtest_v12_engine needs NO separate code: it calls the live entry functions on frozen NPZ
