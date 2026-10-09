@@ -5040,7 +5040,9 @@ class TradierConfig:
     TRC_DC_DAYTRADE_START_SIZE: float = 1980.0  # was 990 / orig 1980
     TRC_DC_DAYTRADE_LONG_BUDGET: float = 9900.0  # was 4950 / orig 9900
     TRC_DC_DAYTRADE_SHORT_BUDGET: float = 9900.0  # was 4950 / orig 9900
-    ACCOUNT_TYPE_TRA: str = "cash"  # GFV guard
+    ACCOUNT_TYPE_TRA: str = "cash"  # GFV guard (tra = emergency close only)
+    ACCOUNT_TYPE_TRB: str = "margin"  # USER 2026-10-09: trb = real money, holds shorts -> margin, GFV impossible -> guard skipped
+    ACCOUNT_TYPE_TRC: str = "paper"  # USER 2026-10-09: trc = paper replication -> no real settlement -> guard skipped
     TRC_SWING_LONG_BUDGET: float = 100000.0  # was 50000 / orig 100000
     TRC_SWING_SHORT_BUDGET: float = 100000.0  # was 50000 / orig 100000
     TRC_SCALP_LONG_BUDGET: float = 1250.0  # was 2500 / orig 5000

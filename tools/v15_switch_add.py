@@ -17,6 +17,7 @@ Usage: python3 tools/v15_switch_add.py --switch NAME --tab TAB --candidates a,b
 import argparse
 import ast
 import copy
+import csv
 import datetime
 import json
 import os
@@ -211,6 +212,25 @@ def main():
             print(f"[{cs}] installed {len(opts)} rows -> {fn}!{a.tab}", flush=True)
         finally:
             wb.close()
+    try:
+        _al = ROOT / "data" / "reports" / "ALL_PATHS_ALLOWLIST.csv"
+        _rows = list(csv.DictReader(_al.open(newline="", encoding="utf-8")))
+        if sw not in {r.get("field", "").strip() for r in _rows}:
+            _role = "ENTRY" if "ENTRY" in a.tab else ("EXIT" if "EXIT" in a.tab else ("REENTRY" if "REENTRY" in a.tab else ("REDUCE" if "REDUCE" in a.tab else ("AUGMENT" if "AUGMENT" in a.tab else "FILTER"))))
+            _vec = str((e.get("vec_reads") or [""])[0])[:120] if isinstance(e.get("vec_reads"), list) else str(e.get("vec_reads", ""))[:120]
+            _live = ""
+            try:
+                _lr = e.get("live_reads") or {}
+                _live = str(next(iter(_lr.values()))[0])[:120] if isinstance(_lr, dict) and _lr else str(_lr)[:120]
+            except Exception:
+                _live = ""
+            with _al.open("a", newline="", encoding="utf-8") as _fh:
+                csv.writer(_fh).writerow([sw, _role, "", "HIGH_DIRECT_READ", f"bible:{e.get('status')};vec={_vec};live={_live};tab={a.tab}"[:300], "15m", "15m", _rows[0]["source_numbers_sha256"] if _rows else ""])
+            print(f"[allowlist] registered {sw} in ALL_PATHS_ALLOWLIST.csv (backtest override permission)", flush=True)
+        else:
+            print(f"[allowlist] {sw} already listed", flush=True)
+    except Exception as _ale:
+        die(f"allowlist registration failed for {sw}: {_ale}")
     if a.fleet:
         for h in FLEET:
             for _, fn in files:

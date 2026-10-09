@@ -251,7 +251,13 @@ else:
         except Exception as _ae:
             v8_logger.warning(f"AUTO_VECTOR_LOAD_FAILED: {_ae}")
 
+_explicit_keys = list((_overrides or {}).keys()) if _override_source and not str(_override_source).startswith("AUTO_VECTOR") else []
 _overrides = _curated_override_subset(_overrides)
+if _explicit_keys:
+    _dropped = [k for k in _explicit_keys if k not in (_overrides or {})]
+    if _dropped:
+        print(f"REFUSED: {len(_dropped)} explicit override(s) not in ALL_PATHS allowlist — refusing neutered run (no wasted compute): {_dropped}. Register via tools/v15_switch_add.py --apply (auto-registers) or append rows to data/reports/ALL_PATHS_ALLOWLIST.csv", file=sys.stderr, flush=True)
+        sys.exit(2)
 if _overrides:
     # 2026-08-25 INVENTORY FIX: hook all 3000+ switches (3012 crypto + 2295 tradier = 2892 TRADIER_FULL_COVERAGE) identically to v12 vector via generic setattr + QuickConfig hook. Ensures identical results for live trading scripts.
     for _k, _v in _overrides.items():

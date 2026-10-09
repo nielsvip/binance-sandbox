@@ -40542,6 +40542,16 @@ def _apply_trc_overrides(cfg):
 
 
 # ═══════════════════════════════════════════════════════════════
+def _gfv_guard_applies(account_key):
+    """USER 2026-10-09: GFV gates apply to CASH accounts only. trb is margin (holds shorts -> GFV
+    impossible), trc is paper (no real settlement). Unknown accounts fail closed (guard applies)."""
+    try:
+        t = str(_cfg_auto("ACCOUNT_TYPE_%s" % str(account_key or "").upper(), "cash") or "").lower()
+    except Exception:
+        return True
+    return t not in ("margin", "paper")
+
+
 # GFV (Good Faith Violation) PROTECTION — T+1 Settlement Tracker
 # ═══════════════════════════════════════════════════════════════
 # Cash accounts: if you sell Stock A → buy Stock B with unsettled proceeds → sell Stock B before A settles = GFV.
@@ -47755,7 +47765,8 @@ class TradierTradeManager:
                     await self.redis_manager.delete(exec_lock_key)
                 return "MARKET_CLOSED"
             # ═══ GFV PROTECTION 1: Block sells on positions bought with unsettled funds ═══
-            if is_reduce:
+            # USER 2026-10-09: cash accounts only (trb margin + trc paper skip: closes never refused there)
+            if is_reduce and _gfv_guard_applies(account_key):
                 _gfv_ok, _gfv_reason = self.gfv_tracker.can_sell(position_key)
                 if not _gfv_ok:
                     logger.critical(
@@ -47767,7 +47778,8 @@ class TradierTradeManager:
             # ═══ GFV PROTECTION 2: AUTHORITATIVE settled-cash gate — blocks buys using unsettled proceeds ═══
             # Internal GFV tracker can drift/lose state on restart. This gate queries Tradier directly.
             # Fail-closed: API error → return 0.0 → buy blocked. No exceptions. No bypasses.
-            if not is_reduce:
+            # USER 2026-10-09: cash accounts only (trb margin + trc paper skip the settled-cash buy gate)
+            if not is_reduce and _gfv_guard_applies(account_key):
                 _sc = await self._get_settled_cash_from_broker(account_key)
                 _buy_cost = float(quantity) * float(current_price)
                 if _buy_cost > _sc:
