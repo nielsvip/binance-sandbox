@@ -39,6 +39,71 @@ def test_parse_real_pilot_key_format():
     )
     assert cl._parse_cell_key("TAB!10:20=X") == ("", "", "", "")
     assert cl._parse_cell_key("not-a-key") == ("", "", "", "")
+    assert cl._parse_cell_key("ENTRY_REVERSAL_BOUNCE!WT_15M_BOUNCE_OPEN_ENABLED=True") == (
+        "ENTRY_REVERSAL_BOUNCE",
+        "WT_15M_BOUNCE_OPEN_ENABLED",
+        "True",
+        "",
+    )
+    assert cl._cell_key("ENTRY_REVERSAL_BOUNCE!WT_X=True", "H") == "ENTRY_REVERSAL_BOUNCE!WT_X=True@H"
+    assert cl._cell_key("ENTRY_REVERSAL_BOUNCE!7:WT_X=True", "H") == "ENTRY_REVERSAL_BOUNCE!WT_X=True@H"
+
+
+def test_rownum_reorder_same_lesson(tmp_path, monkeypatch):
+    monkeypatch.setattr(cl, "ROOT", tmp_path)
+    pd = tmp_path / "prog"
+    pd.mkdir()
+    (pd / "AAA_LONG_v14_progress.json").write_text(
+        json.dumps(
+            {
+                "symside": "AAA_LONG",
+                "done": {
+                    "ENTRY_REVERSAL_BOUNCE!3:RN_SW=True": {"naked_delta": -2.0, "yellows": {"H": -2.0}},
+                    "ENTRY_REVERSAL_BOUNCE!99:RN_SW=True": {"naked_delta": -2.5, "yellows": {"H": -2.5}},
+                },
+            }
+        )
+    )
+    db = str(tmp_path / "c.db")
+    r = cl.ingest_progress(str(pd), db)
+    assert r == {"lessons": 1, "causes": 2}, r
+    pd2 = tmp_path / "prog2"
+    pd2.mkdir()
+    (pd2 / "AAA_LONG_v14_progress.json").write_text(
+        json.dumps(
+            {
+                "symside": "AAA_LONG",
+                "done": {"ENTRY_REVERSAL_BOUNCE!5:RN_SW=True": {"naked_delta": -1.0, "yellows": {}}},
+            }
+        )
+    )
+    r2 = cl.ingest_progress(str(pd2), db)
+    assert r2 == {"lessons": 1, "causes": 1}, r2
+
+
+def test_rescue_shortlist(tmp_path, monkeypatch):
+    monkeypatch.setattr(cl, "ROOT", tmp_path)
+    pd = tmp_path / "prog"
+    pd.mkdir()
+    for i, ss in enumerate(["AAA_LONG", "BBB_LONG", "CCC_LONG"]):
+        cells = [("RS_SW", -4.0), ("RS_SW", -3.0)]
+        if i == 0:
+            cells.append(("RS_SW2", 0.0))
+        _progress(pd / f"{ss}_v14_progress.json", ss, cells)
+    (pd / "DDD_LONG_v14_progress.json").write_text(
+        json.dumps(
+            {
+                "symside": "DDD_LONG",
+                "done": {"ENTRY_REVERSAL_BOUNCE!0:RS_SW=True": {"naked_delta": 2.0, "yellows": {}}},
+            }
+        )
+    )
+    db = str(tmp_path / "c.db")
+    cl.ingest_progress(str(pd), db)
+    cl.export_condemned(db, str(tmp_path / "cond.json"))
+    p = json.loads(open(tmp_path / "cond.json").read())
+    assert any(r["switch"] == "RS_SW" and r["n_pos"] == 1 for r in p["rescue"]), p["rescue"]
+    assert "RS_SW" not in p["switches"].get("STOCKS_LONG", [])
 
 
 def test_sweep_negatives_confirm_fix(tmp_path, monkeypatch):

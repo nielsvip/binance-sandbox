@@ -185,16 +185,23 @@ _SW_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 
 
 def _parse_cell_key(k):
-    # Real pilot keys: TAB!<rownum>:SWITCH=cand (cand may be empty). Returns (tab, sw, cand, rkey).
+    # Real pilot keys: TAB!<rownum>:SWITCH=cand (cand may be empty). Also accepts canonical
+    # TAB!SWITCH=cand (row number already dropped). Returns (tab, sw, cand, rkey).
     try:
         tab, rest = str(k).split("!", 1)
-        left, right = rest.split(":", 1)
-        if "=" in right:
-            sw, cand = right.split("=", 1)
-            rkey = left
-        elif "=" in left:
-            sw, cand = left.split("=", 1)
-            rkey = right
+        if ":" in rest:
+            left, right = rest.split(":", 1)
+            if "=" in right:
+                sw, cand = right.split("=", 1)
+                rkey = left
+            elif "=" in left:
+                sw, cand = left.split("=", 1)
+                rkey = right
+            else:
+                return "", "", "", ""
+        elif "=" in rest:
+            sw, cand = rest.split("=", 1)
+            rkey = ""
         else:
             return "", "", "", ""
         sw = sw.strip()
@@ -240,20 +247,25 @@ def ingest_progress(pdirs, db_path=None, root=None):
                     deltas.append((str(h).strip(), float(dt)))
             if not deltas:
                 continue
+            # NAME IDENTITY (USER 2026-10-09): row order reshuffles daily, so the lesson
+            # key is canonical TAB!SW=cand (row number dropped) + campaign dir as the
+            # measurement epoch. Same logical row, any rownum, same campaign = one lesson.
+            ckey = f"{tab}!{sw}={cnd}"
+            epoch = os.path.basename(os.path.dirname(os.path.abspath(f))) or "root"
             lid = _add_lesson(
                 cx,
                 _now(),
                 "sweep_cell",
-                f"{ss}|{k}",
+                f"{ss}|{ckey}|{epoch}",
                 ss,
                 cat_of(ss),
-                {"tab": tab, "cand": cnd, "file": os.path.basename(f)},
+                {"tab": tab, "cand": cnd, "file": os.path.basename(f), "epoch": epoch},
             )
             if lid is None:
                 continue
             n_les += 1
             for h, dt in deltas:
-                _add_cause(cx, lid, sw, cnd, h, dt, dt, "direct_sweep", tab, k)
+                _add_cause(cx, lid, sw, cnd, h, dt, dt, "direct_sweep", tab, ckey)
                 n_cau += 1
     cx.commit()
     _propose_fixes(cx)
@@ -415,7 +427,7 @@ def rank_fixes(cx, scope=None, limit=50):
 def _cell_key(rowkey, header):
     try:
         tab, rest = str(rowkey).split("!", 1)
-        rkey = rest.split(":", 1)[1]
+        rkey = rest.split(":", 1)[1] if ":" in rest else rest
         return f"{tab.strip()}!{rkey.strip()}@{str(header).strip()}"
     except Exception:
         return ""
@@ -489,11 +501,30 @@ def export_condemned(db_path=None, out_path=None, merge_path=None):
             "avg_delta": round(float(avg), 4),
             "causal": True,
         }
+    # RESCUE shortlist (USER 2026-10-09): proposed switches that ALMOST confirm — heavy
+    # negative evidence but blocked by 1-2 positives or a thin margin. These are the interesting
+    # switches that deserve the ablation rerun (naked + selective filter-offs) instead of a kill.
+    rescue = []
+    for sw, w, nsyms, nneg, npos, davg in cx.execute(
+        "SELECT c.switch_key, SUM(c.weight), COUNT(DISTINCT l.sym_side), SUM(CASE WHEN c.attribution='direct_sweep' AND c.delta < -1e-9 THEN 1 ELSE 0 END), SUM(CASE WHEN c.attribution='direct_sweep' AND c.delta > 1e-9 THEN 1 ELSE 0 END), AVG(CASE WHEN c.attribution='direct_sweep' THEN c.delta END) FROM causes c JOIN lessons l ON l.id = c.lesson_id JOIN fixes f ON f.target = c.switch_key AND f.kind = 'disable_switch' WHERE c.switch_key != '__sym_context__' AND f.status = 'proposed' GROUP BY c.switch_key HAVING SUM(c.weight) <= -10.0 AND COUNT(DISTINCT l.sym_side) >= 3 AND SUM(CASE WHEN c.attribution='direct_sweep' AND c.delta < -1e-9 THEN 1 ELSE 0 END) >= 3 AND SUM(CASE WHEN c.attribution='direct_sweep' AND c.delta > 1e-9 THEN 1 ELSE 0 END) BETWEEN 1 AND 2"
+    ).fetchall():
+        rescue.append(
+            {
+                "switch": sw,
+                "net": round(float(w or 0.0), 2),
+                "n_syms": int(nsyms or 0),
+                "n_neg": int(nneg or 0),
+                "n_pos": int(npos or 0),
+                "avg_direct": round(float(davg or 0.0), 4),
+            }
+        )
+    rescue.sort(key=lambda r: r["net"])
     payload = {
         "meta": {"at": _now(), "engine": "v15_causal_learner"},
         "switches": switches,
         "cells": cells,
         "fixes_proposed": [f for f in rank_fixes(cx) if f["status"] == "proposed"][:50],
+        "rescue": rescue[:40],
     }
     if merge_path and os.path.exists(str(merge_path)):
         try:
