@@ -48,9 +48,9 @@ MAX_DD_PCT = 30.0
 def _load_json(path, default):
     try:
         with open(path) as f:
-            return json.load(f)
+            return json.load(f), True
     except Exception:
-        return default
+        return default, False
 
 
 def _gain_of(entry):
@@ -116,7 +116,7 @@ def validity(side_key, persym):
 def _open_keys():
     keep = set()
     for path in (LONG_POS, SHORT_POS):
-        data = _load_json(path, {})
+        data, _ = _load_json(path, {})
         if isinstance(data, dict):
             for k, v in data.items():
                 if isinstance(v, dict):
@@ -130,7 +130,7 @@ def _open_keys():
 
 def _hedge_keys():
     keep = set()
-    tracker = _load_json(TRACKER, {})
+    tracker, _ = _load_json(TRACKER, {})
     if not isinstance(tracker, dict):
         return keep
     hedges = tracker.get("hedges", {})
@@ -160,18 +160,20 @@ def _atomic_write_json(path, data):
 
 def run(apply=False):
     ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    persym = _load_json(PERSYM, {})
-    if not persym:
-        print(f"{ts} ABORT: cannot read {PERSYM}")
+    persym, persym_ok = _load_json(PERSYM, {})
+    if not persym_ok or not persym:
+        print(f"{ts} ABORT: cannot read {PERSYM} (no files written)")
         return 2
     safety = _open_keys() | _hedge_keys()
     safety_ang = {k for k in safety if k.startswith("ang:")}
-    longs = _load_json(ANG_LONG, [])
-    shorts = _load_json(ANG_SHORT, [])
-    if not isinstance(longs, list):
-        longs = []
-    if not isinstance(shorts, list):
-        shorts = []
+    longs, longs_ok = _load_json(ANG_LONG, [])
+    shorts, shorts_ok = _load_json(ANG_SHORT, [])
+    if not longs_ok or not isinstance(longs, list):
+        print(f"{ts} ABORT: cannot read {ANG_LONG} (no files written)")
+        return 2
+    if not shorts_ok or not isinstance(shorts, list):
+        print(f"{ts} ABORT: cannot read {ANG_SHORT} (no files written)")
+        return 2
     keep_long, drop_long = [], []
     for s in longs:
         ok, why = validity(f"{s}_LONG", persym)
@@ -196,12 +198,15 @@ def run(apply=False):
         else:
             keep_long.remove(s)
             drop_long.append((s, f"BOTH_SIDES_KEEP_SHORT_{gs:.2f}_vs_{gl:.2f}"))
-    tk = _load_json(TRADEABLE, [])
+    tk, tk_ok = _load_json(TRADEABLE, [])
     tk_list = (
         list(tk)
         if isinstance(tk, list)
         else list(tk.keys() if isinstance(tk, dict) else [])
     )
+    if not tk_ok or not tk_list:
+        print(f"{ts} ABORT: cannot read {TRADEABLE} (no files written)")
+        return 2
     keep_tk, drop_tk = [], []
     for k in tk_list:
         if not k.startswith("ang:"):
@@ -216,24 +221,24 @@ def run(apply=False):
             keep_tk.append(k)
         else:
             drop_tk.append((k, why))
-    up = _load_json(PERSIST, {})
+    up, up_ok = _load_json(PERSIST, {})
+    if not up_ok or not isinstance(up, dict) or not up:
+        print(f"{ts} ABORT: cannot read {PERSIST} (no files written)")
+        return 2
     keep_up, drop_up = {}, []
-    if isinstance(up, dict):
-        for k, v in up.items():
-            if not k.startswith("ang:"):
-                keep_up[k] = v
-                continue
-            if k in safety_ang:
-                keep_up[k] = v
-                continue
-            side = k.split(":", 1)[1] if ":" in k else k
-            ok, why = validity(side, persym)
-            if ok:
-                keep_up[k] = v
-            else:
-                drop_up.append((k, why))
-    else:
-        keep_up = up
+    for k, v in up.items():
+        if not k.startswith("ang:"):
+            keep_up[k] = v
+            continue
+        if k in safety_ang:
+            keep_up[k] = v
+            continue
+        side = k.split(":", 1)[1] if ":" in k else k
+        ok, why = validity(side, persym)
+        if ok:
+            keep_up[k] = v
+        else:
+            drop_up.append((k, why))
     mode = "APPLY" if apply else "DRYRUN"
     print(
         f"{ts} [{mode}] longs {len(longs)}->{len(keep_long)} shorts {len(shorts)}->{len(keep_short)} tradeable {len(tk_list)}->{len(keep_tk)} persist {len(up) if isinstance(up, dict) else '?'}->{len(keep_up) if isinstance(keep_up, dict) else '?'} safety_kept={len(safety_ang)}"
@@ -247,11 +252,15 @@ def run(apply=False):
     for k, why in drop_up:
         print(f"  DROP_PERSIST {k} {why}")
     if apply:
+        if len(keep_tk) < len(tk_list) // 2 or len(keep_up) < len(up) // 2:
+            print(
+                f"{ts} ABORT: kept<50% (tk {len(keep_tk)}/{len(tk_list)}, persist {len(keep_up)}/{len(up)}) — refusing wipe (no files written)"
+            )
+            return 2
         _atomic_write_json(ANG_LONG, keep_long)
         _atomic_write_json(ANG_SHORT, keep_short)
         _atomic_write_json(TRADEABLE, keep_tk)
-        if isinstance(keep_up, dict):
-            _atomic_write_json(PERSIST, keep_up)
+        _atomic_write_json(PERSIST, keep_up)
         print(f"{ts} [APPLY] wrote 4 files")
     return 0
 
