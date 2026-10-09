@@ -220,10 +220,9 @@ def ingest_progress(pdirs, db_path=None, root=None):
     cand = [
         f
         for p in pdirs
+        for pat in ("*_progress.json", os.path.join("progress", "*_progress.json"))
         for f in glob.glob(
-            os.path.join(
-                str(root / p) if not os.path.isabs(p) else p, "*_progress.json"
-            )
+            os.path.join(str(root / p) if not os.path.isabs(p) else p, pat)
         )
     ]
     for f in sorted(cand):
@@ -251,7 +250,10 @@ def ingest_progress(pdirs, db_path=None, root=None):
             # key is canonical TAB!SW=cand (row number dropped) + campaign dir as the
             # measurement epoch. Same logical row, any rownum, same campaign = one lesson.
             ckey = f"{tab}!{sw}={cnd}"
-            epoch = os.path.basename(os.path.dirname(os.path.abspath(f))) or "root"
+            _pd = os.path.dirname(os.path.abspath(f))
+            epoch = os.path.basename(_pd) or "root"
+            if epoch == "progress":
+                epoch = os.path.basename(os.path.dirname(_pd)) or "root"
             lid = _add_lesson(
                 cx,
                 _now(),

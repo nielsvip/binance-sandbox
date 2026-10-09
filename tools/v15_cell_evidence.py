@@ -10,6 +10,7 @@ progress_dir may be comma-separated (union, newest file wins per sym_side).
 """
 
 import glob
+import hashlib
 import json
 import os
 import sys
@@ -17,6 +18,18 @@ from collections import defaultdict
 from datetime import datetime, timezone
 
 CRYPTO_SUFFIX = ("USDT", "USDC", "USD1", "BUSD", "FDUSD", "TUSD", "DAI")
+
+
+def _rotate_release(cat, cellkey, every, daynum):
+    # Deterministic daily rotation: condemned cells are released from the runtime skip
+    # maps 1-in-`every` days so pilots retest them (naked + yellows) instead of freezing
+    # the skip forever. Keyed by NAME hash — immune to daily row reorder. Returns True
+    # when the cell is released (retested) today.
+    try:
+        h = int(hashlib.sha1(f"{cat}|{cellkey}".encode()).hexdigest()[:8], 16)
+        return every > 1 and (h % every) == (daynum % every)
+    except Exception:
+        return False
 
 
 def cat_of(symside):
@@ -30,7 +43,12 @@ def main():
     pdir = sys.argv[1] if len(sys.argv) > 1 else "data/reports/lifecycle_pilot"
     out = sys.argv[2] if len(sys.argv) > 2 else "data/avg_delta_pos_sym_cell.json"
     pdirs = [p.strip() for p in str(pdir).split(",") if p.strip()]
-    cand = [f for p in pdirs for f in glob.glob(os.path.join(p, "*_progress.json"))]
+    cand = [
+        f
+        for p in pdirs
+        for pat in ("*_progress.json", os.path.join("progress", "*_progress.json"))
+        for f in glob.glob(os.path.join(p, pat))
+    ]
     files, _seen = [], set()
     for f in sorted(
         cand,
@@ -104,6 +122,19 @@ def main():
         )
     except Exception:
         _causal = {}
+    _every = int(os.environ.get("V15_SKIP_ROTATE_EVERY", "25") or 25)
+    _rotate = os.environ.get("V15_SKIP_ROTATE", "1") == "1" and _every > 1
+    _daynum = datetime.now(timezone.utc).date().toordinal()
+    if "V15_SKIP_ROTATE_DAY" in os.environ:
+        try:
+            _daynum = (
+                datetime.strptime(os.environ["V15_SKIP_ROTATE_DAY"], "%Y%m%d")
+                .date()
+                .toordinal()
+            )
+        except Exception:
+            pass
+    _rot_meta = {"every": _every, "daynum": _daynum, "released": {}}
     for _cat, _cells in cats.items():
         _pruned = {
             k: {
@@ -124,12 +155,29 @@ def main():
                     "causal": True,
                 },
             )
+        _n_pre = len(_pruned)
+        if _rotate:
+            _rel = sorted(
+                k for k in _pruned if _rotate_release(_cat, k, _every, _daynum)
+            )
+            for k in _rel:
+                del _pruned[k]
+            _rot_meta["released"][_cat] = _rel
         _rp = os.path.join(rdir, f"{_cat}.json")
         json.dump({"meta": payload["meta"], "cells": _pruned}, open(_rp + ".tmp", "w"))
         os.replace(_rp + ".tmp", _rp)
         print(
             f"  runtime {_cat}: {len(_pruned)} condemned cells -> {_rp} ({os.path.getsize(_rp) // 1024}KB)"
+            + (
+                f" (rotation released {_n_pre - len(_pruned)}/{_n_pre} for retest)"
+                if _rotate
+                else ""
+            )
         )
+    if _rotate:
+        _rotp = os.path.join(rdir, "_rotated_release.json")
+        json.dump(_rot_meta, open(_rotp + ".tmp", "w"))
+        os.replace(_rotp + ".tmp", _rotp)
     for cat, cells in sorted(cats.items()):
         import collections as _c
 
