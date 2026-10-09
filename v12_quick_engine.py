@@ -1393,6 +1393,7 @@ AUTO_WIRED_PARAMS = [
     "ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED",
     "ENTRY_BOUNCE_DONCHIAN_DIRECT_RECOVERY_ONLY",
     "ENTRY_BOUNCE_DONCHIAN_DIRECT_TIMEFRAME",
+    "ENTRY_LH_TRIGGER_DIVERG_ENABLED",
     "ENTRY_LH_TRIGGER_ENABLED",
     "ENTRY_LH_TRIGGER_REGRESS_PCT",
     "ENTRY_MIN_ALIGNMENT",
@@ -5954,6 +5955,9 @@ class QuickConfig:
     )
     ENTRY_LH_TRIGGER_REGRESS_PCT: float = (
         5.0  # USER 2026-10-09 INV-0001 v4: distance below the 1h DC top (SHORT) / above the 1h DC bottom (LONG); AGLD density 2%->34.8 / 5%->14.4 / 8%->5.4 / 10%->3.3
+    )
+    ENTRY_LH_TRIGGER_DIVERG_ENABLED: bool = (
+        False  # USER 2026-10-09 INV-0001 v5: OR-branch — stoch rollover from OB/OS inside the regress gate (AGLD +40 net bars); OFF = v4 STRUCT only
     )
     CONGRESS_CONVICTION_MIN_SOURCES: float = 2  # auto-wired 625
     CONGRESS_CONVICTION_SIZING_BOOST: float = 1.3  # auto-wired 625
@@ -10542,9 +10546,9 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
             )
         except Exception:
             pass
-    # USER 2026-10-09 INV-0001 v4: lower-high SHORT trigger (LONG mirror). Pure scalars
-    # (1h DC top/bottom + 1h lower/higher print), identical inputs live (indicators dict) and vec
-    # (NPZ). ORDER: vec FIRST-wins, so this sits after VOL_SPIKE_REVERSAL mirroring the live
+    # USER 2026-10-09 INV-0001 v5: lower-high STRUCT + stoch-rollover DIVERG SHORT trigger
+    # (LONG mirror). Pure scalars, identical inputs live (indicators dict) and vec (NPZ).
+    # ORDER: vec FIRST-wins, so this sits after VOL_SPIKE_REVERSAL mirroring the live
     # LAST-writer-wins placement between the DC gate and the VOL worker (see replica spec
     # data/invention/orders/INV-0001-live-replica.md). OFF = inert.
     if bool(getattr(cfg, "ENTRY_LH_TRIGGER_ENABLED", False)):
@@ -10561,6 +10565,9 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
                     _safe(npz, "high_1h_prev", n),
                     _safe(npz, "low_1h", n),
                     _safe(npz, "low_1h_prev", n),
+                    _safe(npz, "k_1h", n, 50),
+                    _safe(npz, "d_1h", n, 50),
+                    _safe(npz, "k_1h_prev", n, 50),
                     is_long,
                 ),
                 dtype=bool,

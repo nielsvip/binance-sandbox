@@ -1,4 +1,4 @@
-"""test_check_entry_candidates_crypto__lh_trigger — scalar<->vec parity + AGLD-shape regression (INV-0001 v4)."""
+"""test_check_entry_candidates_crypto__lh_trigger — scalar<->vec parity + AGLD-shape regression (INV-0001 v5)."""
 
 import numpy as np
 
@@ -11,12 +11,16 @@ class Cfg:
 
 
 def _cfg(**kw):
-    d = {"ENTRY_LH_TRIGGER_ENABLED": True, "ENTRY_LH_TRIGGER_REGRESS_PCT": 5.0}
+    d = {
+        "ENTRY_LH_TRIGGER_ENABLED": True,
+        "ENTRY_LH_TRIGGER_REGRESS_PCT": 5.0,
+        "ENTRY_LH_TRIGGER_DIVERG_ENABLED": False,
+    }
     d.update(kw)
     return Cfg(**d)
 
 
-def _ind(h15, l15, dch, dcl, h1, h1p, l1, l1p):
+def _ind(h15, l15, dch, dcl, h1, h1p, l1, l1p, k1=50.0, d1=50.0, k1p=50.0):
     return {
         "high_15m": h15,
         "low_15m": l15,
@@ -26,10 +30,13 @@ def _ind(h15, l15, dch, dcl, h1, h1p, l1, l1p):
         "high_1h_prev": h1p,
         "low_1h": l1,
         "low_1h_prev": l1p,
+        "k_1h": k1,
+        "d_1h": d1,
+        "k_1h_prev": k1p,
     }
 
 
-def test_scalar_vec_parity_both_sides():
+def test_scalar_vec_parity_both_sides_both_branches():
     rng = np.random.default_rng(11)
     n = 1500
     h15 = rng.uniform(0.5, 3.0, n)
@@ -40,18 +47,37 @@ def test_scalar_vec_parity_both_sides():
     h1p = rng.uniform(0.5, 3.0, n)
     l1 = h1 - rng.uniform(0.01, 0.3, n)
     l1p = h1p - rng.uniform(0.01, 0.3, n)
+    k1 = rng.uniform(0, 100, n)
+    d1 = rng.uniform(0, 100, n)
+    k1p = rng.uniform(0, 100, n)
     for is_long in (True, False):
         for pct in (2.0, 5.0, 10.0):
-            cfg = _cfg(ENTRY_LH_TRIGGER_REGRESS_PCT=pct)
-            vec = LH.check_lh_trigger_entry_vec(
-                cfg, h15, l15, dch, dcl, h1, h1p, l1, l1p, is_long
-            )
-            assert vec.dtype == bool and vec.shape == (n,)
-            for i in range(0, n, 53):
-                ind = _ind(h15[i], l15[i], dch[i], dcl[i], h1[i], h1p[i], l1[i], l1p[i])
-                fire, reason = LH.check_lh_trigger_entry(cfg, ind, is_long)
-                assert fire == bool(vec[i]), (is_long, pct, i)
-                assert (reason == "") != fire
+            for div in (False, True):
+                cfg = _cfg(
+                    ENTRY_LH_TRIGGER_REGRESS_PCT=pct,
+                    ENTRY_LH_TRIGGER_DIVERG_ENABLED=div,
+                )
+                vec = LH.check_lh_trigger_entry_vec(
+                    cfg, h15, l15, dch, dcl, h1, h1p, l1, l1p, k1, d1, k1p, is_long
+                )
+                assert vec.dtype == bool and vec.shape == (n,)
+                for i in range(0, n, 53):
+                    ind = _ind(
+                        h15[i],
+                        l15[i],
+                        dch[i],
+                        dcl[i],
+                        h1[i],
+                        h1p[i],
+                        l1[i],
+                        l1p[i],
+                        k1[i],
+                        d1[i],
+                        k1p[i],
+                    )
+                    fire, reason = LH.check_lh_trigger_entry(cfg, ind, is_long)
+                    assert fire == bool(vec[i]), (is_long, pct, div, i)
+                    assert (reason == "") != fire
 
 
 def test_default_off_inert_strict_edges_and_missing():
@@ -59,24 +85,18 @@ def test_default_off_inert_strict_edges_and_missing():
     assert LH.check_lh_trigger_entry(Cfg(), ind, False) == (False, "")
     assert LH.check_lh_trigger_entry(Cfg(), ind, True) == (False, "")
     cfg = _cfg()
-    assert (
-        LH.check_lh_trigger_entry(
-            cfg, _ind(2.0, 1.0, 3.5, 0.5, 2.2, 2.4, 1.1, 1.0), False
-        )[0]
-        is True
-    )
+    assert LH.check_lh_trigger_entry(
+        cfg, _ind(2.0, 1.0, 3.5, 0.5, 2.2, 2.4, 1.1, 1.0), False
+    ) == (True, "LH_TRIGGER_ENTRY_SHORT")
     assert (
         LH.check_lh_trigger_entry(
             cfg, _ind(2.0, 1.0, 3.5, 0.5, 2.4, 2.2, 1.1, 1.0), False
         )[0]
         is False
     )
-    assert (
-        LH.check_lh_trigger_entry(
-            cfg, _ind(2.0, 1.0, 3.5, 0.5, 2.2, 2.4, 1.1, 1.0), True
-        )[0]
-        is True
-    )
+    assert LH.check_lh_trigger_entry(
+        cfg, _ind(2.0, 1.0, 3.5, 0.5, 2.2, 2.4, 1.1, 1.0), True
+    ) == (True, "LH_TRIGGER_ENTRY_LONG")
     assert (
         LH.check_lh_trigger_entry(
             cfg, _ind(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), False
@@ -85,6 +105,29 @@ def test_default_off_inert_strict_edges_and_missing():
     )
     assert LH.check_lh_trigger_entry(cfg, {}, False)[0] is False
     assert LH.check_lh_trigger_entry(cfg, {}, True)[0] is False
+
+
+def test_diverg_branch_needs_switch_and_rollover():
+    cfg = _cfg()
+    cfgd = _cfg(ENTRY_LH_TRIGGER_DIVERG_ENABLED=True)
+    div = _ind(2.0, 1.0, 3.5, 0.5, 2.4, 2.2, 1.0, 1.1, 60.0, 70.0, 85.0)
+    assert LH.check_lh_trigger_entry(cfg, div, False)[0] is False
+    assert LH.check_lh_trigger_entry(cfgd, div, False) == (
+        True,
+        "LH_TRIGGER_DIVERG_SHORT",
+    )
+    no_ob = _ind(2.0, 1.0, 3.5, 0.5, 2.4, 2.2, 1.0, 1.1, 60.0, 70.0, 75.0)
+    assert LH.check_lh_trigger_entry(cfgd, no_ob, False)[0] is False
+    divl = _ind(2.0, 1.0, 3.5, 0.5, 2.2, 2.4, 1.1, 1.0, 40.0, 30.0, 15.0)
+    assert LH.check_lh_trigger_entry(cfgd, divl, True) == (
+        True,
+        "LH_TRIGGER_ENTRY_LONG",
+    )
+    divl_only = _ind(2.0, 1.0, 3.5, 0.5, 2.2, 2.4, 1.0, 1.1, 40.0, 30.0, 15.0)
+    assert LH.check_lh_trigger_entry(cfgd, divl_only, True) == (
+        True,
+        "LH_TRIGGER_DIVERG_LONG",
+    )
 
 
 def test_strength_weight_standalone():
@@ -111,7 +154,7 @@ def test_agld_shape_fires_short_after_top_not_at_top():
     )
     assert (
         LH.check_lh_trigger_entry(
-            cfg, _ind(0.215, 0.21, top, 0.19, 0.216, 0.218, 0.21, 0.209), False
+            cfg, _ind(0.215, 0.21, top, 0.19, 0.216, 0.218, 0.21, 0.211), False
         )[0]
         is True
     )
