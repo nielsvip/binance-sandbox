@@ -486,6 +486,22 @@ def _side_tier(ss, tiers):
     return ((tiers or {}).get(ss) or {}).get("tier", "M")
 
 
+_REFRESH_W_STALE_SEC = 86400.0
+_REFRESH_MAX_RM_PER_TICK = 3
+
+
+def _refresh_due(ss, tiers, now_ts):
+    """USER 2026-10-09: True = W-tier (big gainer) side whose measured 30D gain is older than 24h.
+    The 30D window lacks longer-TF info so it goes stale fast — due sides get a FRESH 30D board."""
+    e = (tiers or {}).get(ss)
+    if not e or e.get("tier") != "W":
+        return False
+    try:
+        return (float(now_ts) - float(e.get("mtime", 0) or 0)) > _REFRESH_W_STALE_SEC
+    except (TypeError, ValueError):
+        return False
+
+
 def _sym_tier_rank(sym, tiers):
     return min(_TIER_RANK[_side_tier(f"{sym}_{sd}", tiers)] for sd in ("LONG", "SHORT"))
 
@@ -980,11 +996,41 @@ def tick(args, cfg, now):
         ss = f"{sym}_{side}"
         if ss in running:
             return "running", None
-        if side == "SHORT" and venue_of(sym) == "stocks" and sym in NON_SHORTABLE:
+        _no_chain = os.environ.get("V15_SCHED_NO_CHAIN") == "1" and not (ROOT / "data" / "autopilot" / "chain_mode.flag").exists()
+        _quar = _quar_terminal(ss, quar, _no_chain)
+        _non_short = side == "SHORT" and venue_of(sym) == "stocks" and sym in NON_SHORTABLE
+        if _refresh_due(ss, _tiers, _now_ts) and not _quar and not _non_short:
+            _rm_mtime = ((_tiers.get(ss) or {}).get("mtime"))
+            _rkey = f"{ss}|{_rm_mtime}"
+            _rd = st.setdefault("refresh_done", {})
+            if _rd.get(_rkey) != cur_pdir:
+                _rm_host = next((h for h in hosts if h["name"] == done_host.get(ss)), None)
+                if _rm_host is not None and _refresh_tick_n[0] < _REFRESH_MAX_RM_PER_TICK and cur_pdir:
+                    _pq = shlex.quote(cur_pdir)
+                    _sq = shlex.quote(ss)
+                    _rm_cmd = (f"rm -f {_pq}/{_sq}_v14_progress.json "
+                               f"{_pq}/../chain/v365/{_sq}_365_cycle.json "
+                               f"{_pq}/../chain/repair_a*/{_sq}_365_cycle.json "
+                               f"{_pq}/../chain/gs_a*/{_sq}*.json && echo RMDONE")
+                    _rm_out = None
+                    try:
+                        _rm_out = sh_ssh(_rm_host, _rm_cmd, 30)
+                    except Exception:
+                        _rm_out = None
+                    if _rm_out and "RMDONE" in _rm_out:
+                        _rd[_rkey] = cur_pdir
+                        _refresh_tick_n[0] += 1
+                        print(f"[sched] 30D-REFRESH {ss} on {_rm_host['name']} (W-tier, gain older than 24h) -> progress+chain cleared, requeue need30", flush=True)
+                        if len(_rd) > 2000:
+                            for _dk in list(_rd.keys())[:500]:
+                                _rd.pop(_dk, None)
+                        return "need30", 1
+                return "terminal_ok", None
+            return "need30", 1
+        if _non_short:
             return "terminal_ok", None  # USER 2026-10-02: config_tradier NON_SHORTABLE: no SHORT compute, ever
-        _qt = _quar_terminal(ss, quar, os.environ.get("V15_SCHED_NO_CHAIN") == "1" and not (ROOT / "data" / "autopilot" / "chain_mode.flag").exists())
-        if _qt:
-            return _qt
+        if _quar:
+            return _quar
         if ss not in done:
             # USER 2026-10-08 ("flying through the test"): V15_SCHED_REQUIRE_BASE=1 -> a 30D board launches only once its autopsy ran
             # (pruned base with effective_switches = ~50x faster board, or an autopsy report = NO_RESCUE -> template start). Until then
@@ -1016,6 +1062,23 @@ def tick(args, cfg, now):
             return "terminal_unverifiable", None
         if v["ok"]:
             return "terminal_ok", None
+        # USER 2026-10-09: 30D SUPERSEDES 365D ALWAYS. A bad 365D verdict is RECORDED (tiers + audit
+        # input) but never triggers REPAIR/GS adjusters and never blocks the 30D set — the 30D window
+        # is the tradeable truth (365D lacks current-regime relevance). Positive-30D -> terminal_ok;
+        # unmeasured-30D -> terminal_ok (board finished; golive gates on evidence). Non-positive-30D
+        # -> terminal_failing (nothing to supersede with). Golive still
+        # applies its own evidence gates (trades>0, engine-accept). In-flight repair/GS drain untouched;
+        # no NEW adjuster launches unless operator sets V15_SCHED_FORCE_REPAIR=1.
+        if os.environ.get("V15_SCHED_FORCE_REPAIR", "0") != "1":
+            try:
+                _g30 = (gains.get(ss) or {}).get("gain")
+                if _g30 is not None and float(_g30) > 0:
+                    return "terminal_ok", None
+            except Exception:
+                pass
+            if (gains.get(ss) or {}).get("gain") is None:
+                return "terminal_ok", None
+            return "terminal_failing", None
         if os.environ.get("V15_GS_FLEET") == "1":  # USER 2026-10-07: GS-heal is the primary adjuster (repair = fallback)
             g = gs.get(ss, {})
             lastg = g[max(g)] if g else None
@@ -1052,6 +1115,7 @@ def tick(args, cfg, now):
         _seen.pop(ss, None)
     _gtiers = _gain_tiers(_seen)  # winners-first scheduling; loser tiers defer fresh boards (chains still drain)
     _deferred_sides = []
+    _refresh_tick_n = [0]
     for sym in all_syms:
         h = owner.get(sym)
         _allowed = set(uni.get("allowed_sym_sides") or [])  # USER 2026-10-06: only tradeable keys are calculated
