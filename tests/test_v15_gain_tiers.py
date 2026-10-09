@@ -31,6 +31,14 @@ class GainTiersTest(unittest.TestCase):
         self.assertEqual(got_l, ["S07_LONG", "S08_LONG", "S09_LONG"])
         self.assertEqual(sorted(ss for ss, e in tiers.items() if e["tier"] == "M"), ["S04_LONG", "S05_LONG", "S06_LONG"])
 
+    def test_pools_independent_per_venue_side(self):
+        gains = {"AAA_LONG": _g(1.0), "BBB_LONG": _g(2.0), "CCCUSDT_LONG": _g(90.0), "DDDUSDT_LONG": _g(80.0)}
+        tiers = _gain_tiers(gains)
+        self.assertEqual(tiers["BBB_LONG"]["tier"], "W")
+        self.assertEqual(tiers["CCCUSDT_LONG"]["tier"], "W")
+        self.assertEqual(tiers["AAA_LONG"]["tier"], "L")
+        self.assertEqual(tiers["DDDUSDT_LONG"]["tier"], "L")
+
     def test_bad_gain_skipped_empty_ok(self):
         self.assertEqual(_gain_tiers({}), {})
         self.assertEqual(_gain_tiers({"A_LONG": {"gain": "nan-x", "mtime": NOW}}), {})

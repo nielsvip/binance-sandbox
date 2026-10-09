@@ -122,7 +122,12 @@ def test_rownum_reorder_same_lesson(tmp_path, monkeypatch):
         json.dumps(
             {
                 "symside": "AAA_LONG",
-                "done": {"ENTRY_REVERSAL_BOUNCE!5:RN_SW=True": {"naked_delta": -1.0, "yellows": {}}},
+                "done": {
+                    "ENTRY_REVERSAL_BOUNCE!5:RN_SW=True": {
+                        "naked_delta": -1.0,
+                        "yellows": {},
+                    }
+                },
             }
         )
     )
@@ -321,6 +326,28 @@ def test_mixed_evidence_stays_proposed(tmp_path, monkeypatch):
     cl.export_condemned(db, str(tmp_path / "cond.json"))
     p = json.loads(open(tmp_path / "cond.json").read())
     assert "MIX_SW" not in p["switches"].get("STOCKS_LONG", [])
+
+
+def test_protected_never_confirmed(tmp_path, monkeypatch):
+    monkeypatch.setattr(cl, "ROOT", tmp_path)
+    pd = tmp_path / "prog"
+    pd.mkdir()
+    for ss in ["AAA_LONG", "BBB_LONG", "CCC_LONG"]:
+        _progress(
+            pd / f"{ss}_v14_progress.json",
+            ss,
+            [
+                ("MODE", "crypto", -9.0),
+                ("MTF_GR_MIN_IND", "5", -9.0),
+                ("WT_CROSS", "True", -9.0),
+            ],
+        )
+    db = str(tmp_path / "c.db")
+    cl.ingest_progress(str(pd), db)
+    fixes = {f["target"]: f["status"] for f in cl.query("AAA_LONG", db)}
+    assert fixes.get("MODE") == "proposed", fixes
+    assert fixes.get("MTF_GR_MIN_IND") == "proposed", fixes
+    assert fixes.get("WT_CROSS") == "proposed", fixes
 
 
 def test_ablation_never_confirmed(tmp_path, monkeypatch):

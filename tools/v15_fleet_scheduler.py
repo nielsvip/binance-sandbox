@@ -458,10 +458,11 @@ _TIER_RANK = {"W": 0, "M": 1, "L": 2}
 
 
 def _gain_tiers(gains):
-    """Rank measured sym_sides by latest gain -> {ss: {"tier": W|M|L, "gain": g, "mtime": m}}.
-    Relative ranks (never empty tiers, never a full defer): W = top 40%, L = bottom third, M = rest. Sides with no
+    """Rank measured sym_sides by latest gain, separately per (venue, side) pool -> {ss: {"tier": W|M|L, ...}}.
+    USER 2026-10-09: pooled ranks buried stock winners under crypto (PLTR_LONG rank 201/255); each pool (stocks-long,
+    stocks-short, crypto-long, crypto-short) gets its own W = top 40%, L = bottom third, M = rest. Sides with no
     measured gain are absent (callers default them to M: new/unknown work is never starved)."""
-    rows = []
+    pools = {}
     for ss, g in (gains or {}).items():
         try:
             gv = float((g or {}).get("gain"))
@@ -471,14 +472,17 @@ def _gain_tiers(gains):
             mt = float((g or {}).get("mtime", 0) or 0)
         except (TypeError, ValueError):
             mt = 0.0
-        rows.append((str(ss), gv, mt))
-    rows.sort(key=lambda r: r[1], reverse=True)
-    n = len(rows)
-    nw = max(1, int(n * _GAIN_TIER_W_FRAC)) if n else 0
-    nl = max(1, int(n * _GAIN_TIER_L_FRAC)) if n else 0
+        ss = str(ss)
+        sym, _, side = ss.rpartition("_")
+        pools.setdefault((venue_of(sym), side), []).append((ss, gv, mt))
     out = {}
-    for i, (ss, gv, mt) in enumerate(rows):
-        out[ss] = {"tier": "W" if i < nw else ("L" if i >= n - nl else "M"), "gain": gv, "mtime": mt}
+    for rows in pools.values():
+        rows.sort(key=lambda r: r[1], reverse=True)
+        n = len(rows)
+        nw = max(1, int(n * _GAIN_TIER_W_FRAC)) if n else 0
+        nl = max(1, int(n * _GAIN_TIER_L_FRAC)) if n else 0
+        for i, (ss, gv, mt) in enumerate(rows):
+            out[ss] = {"tier": "W" if i < nw else ("L" if i >= n - nl else "M"), "gain": gv, "mtime": mt}
     return out
 
 

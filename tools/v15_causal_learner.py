@@ -182,6 +182,64 @@ def ingest_live(db_path=None, day=None, root=None):
 
 
 _SW_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
+# Never-condemn mirrors (provenance: tools/v15_trade_autopsy_run.py AUTOPSY_DENY + v15_pilot.py KG_NEVER_SKIP).
+_NEVER_CONDEMN_EXACT = {
+    "MODE",
+    "SIMPLE_PRICE_GT0_ENABLED",
+    "VENUE",
+    "IS_TRADIER",
+    "HTF_TREND_VETO_ENABLED",
+    "HTF_TREND_VETO_BYPASS_ENABLED",
+    "HTF_DIRECTION_GATE_ENABLED",
+    "HTF_EXIT_VETO_ENABLED",
+    "HTF_GATE_BYPASS_RZ",
+    "HTF_GATE_D_MANDATORY",
+    "HTF_GATE_MIN_CONFIRMATIONS",
+    "HTF4_CONF",
+    "MTF_ARMED_ENTRY_ENABLED",
+    "MTF_FILTER_STRONG_BUY_QUICK_BYPASS",
+    "MTF_GR_MIN_IND",
+    "MTS_GATE_ENABLED",
+    "TOP_OF_RANGE_BLOCK_ENABLED",
+    "GR_FILTER_ALL_ENTRIES",
+    "OPEN_RATE_BREAKER_ENABLED",
+    "COUNTER_TREND_ADD_BLOCK_ENABLED",
+    "DELTA_REENTRY_FILTER_ENABLED",
+    "EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED",
+    "MANDATORY_REENTRY_WT_FILTER_MIN_TFS",
+    "W15M",
+    "WT_15M",
+    "WT_CHAN_15m",
+    "WT_AVG_15m",
+    "WT_15M_BOUNCE",
+    "WT_DC",
+    "WT_CROSS",
+    "BB_SQUEEZE",
+    "ADX_RANGING_THRESHOLD",
+}
+_NEVER_CONDEMN_SUB = (
+    "HTF_",
+    "MTF_",
+    "MTS_",
+    "WT_",
+    "W15M",
+    "TOP_OF_RANGE",
+    "GR_FILTER",
+    "GR_",
+    "ADX_",
+    "BB_SQUEEZE",
+    "COUNTER_TREND",
+    "DELTA_REENTRY",
+    "EXIT_BLOCKER",
+    "MANDATORY_REENTRY",
+    "OPEN_RATE",
+)
+
+
+def _protected(sw):
+    if not sw or sw in _NEVER_CONDEMN_EXACT:
+        return True
+    return any(s in sw for s in _NEVER_CONDEMN_SUB)
 
 
 def _parse_cell_key(k):
@@ -306,6 +364,7 @@ def _propose_fixes(cx):
             and npos == 0
             and davg <= -0.5
             and not sw.startswith("ABLATION_")
+            and not _protected(sw)
             and sw not in hurt
         ):
             status = "confirmed"

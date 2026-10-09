@@ -1813,3 +1813,16 @@ would split sweep/live from pilot baselines; needs a director ruling, not a sile
   step 6 push; Mac apply step 5e ingests live losers and union-merges (union-only, never shrinks the S1 pull).
   Consumers: step 5 watchdog disable path + `v15_cell_evidence` runtime merge. First S1 seed: 29,671 lessons,
   877,804 causes, 27 final condemns (3 cats × 13 unique minus 4 aggregate vetoes).
+- **Amendment 2026-10-09 (USER: rescue round + name identity, never row numbers):** (1) NAME IDENTITY LAW —
+  lesson key is canonical `TAB!SW=cand` (row number dropped) + campaign dir as measurement epoch
+  (`progress/` subdir unwrapped to the run name); reorder-proof, verified by
+  `test_rownum_reorder_same_lesson`. (2) Discovery fixed: run progress files live in `progress/`
+  subdirs — both globs now scan top + `progress/` (sanctioned layout per avg-delta `LIST_CMD`); full
+  seed is 273,569 lessons / 4.42M causes → 18 condemns + 84,901 cells + 40 rescue. (3) RESCUE: export
+  carries a `rescue` shortlist (net ≤ −10, ≥3 syms, ≥3 neg, 1–2 pos — e.g. RSI2_XTREME_ENTRY_TF
+  −6506/135 syms/845neg/2pos) for the ablation rerun instead of a kill. (4) SKIP ROTATION: condemned
+  yellow cells were frozen forever (no resample); `v15_cell_evidence` now releases a deterministic
+  1-in-25 (name-hash × day, `V15_SKIP_ROTATE*`) of runtime skips daily for retest — no pilot edit needed;
+  audit in `data/cell_evidence/_rotated_release.json`; proof on run29+30: 1,810/44,818 released.
+  Naked still runs every row; disabled switches are NO-SKIP log-only in the pilot. (5) NEVER-CONDEMN
+  mirrors `AUTOPSY_DENY` + pilot `KG_NEVER_SKIP` (exact + substring) — MODE demoted on sight.
