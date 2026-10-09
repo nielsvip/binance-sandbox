@@ -38,13 +38,28 @@ def _lh_trigger_params(config):
 def _lh_trigger_fire(h15, l15, dch, dcl, h1, h1p, l1, l1p, is_long, regress):
     """PURE per-bar trigger (floats). Returns bool. Shared by scalar+vec."""
     if is_long:
-        return bool(dcl > 0 and l1 > 0 and l1p > 0 and l15 > 0 and l15 > dcl * (1.0 + regress) and l1 > l1p)
-    return bool(dch > 0 and h1 > 0 and h1p > 0 and h15 > 0 and h15 < dch * (1.0 - regress) and h1 < h1p)
+        return bool(
+            dcl > 0
+            and l1 > 0
+            and l1p > 0
+            and l15 > 0
+            and l15 > dcl * (1.0 + regress)
+            and l1 > l1p
+        )
+    return bool(
+        dch > 0
+        and h1 > 0
+        and h1p > 0
+        and h15 > 0
+        and h15 < dch * (1.0 - regress)
+        and h1 < h1p
+    )
 
 
 def check_lh_trigger_entry(config, indicators: dict, is_long: bool):
     """LIVE/scalar path. indicators carries high_15m/low_15m/high_1h/high_1h_prev/low_1h/
-    low_1h_prev/dc_high_1h/dc_low_1h in BOTH venues. Returns (fire, reason). Static reason."""
+    low_1h_prev/dc_high_1h/dc_low_1h in BOTH venues. Returns (fire, reason). Static reason.
+    """
     if not bool(getattr(config, "ENTRY_LH_TRIGGER_ENABLED", False)):
         return False, ""
     regress = _lh_trigger_params(config)
@@ -62,7 +77,18 @@ def check_lh_trigger_entry(config, indicators: dict, is_long: bool):
     return False, ""
 
 
-def check_lh_trigger_entry_vec(config, high_15m, low_15m, dc_high_1h, dc_low_1h, high_1h, high_1h_prev, low_1h, low_1h_prev, is_long):
+def check_lh_trigger_entry_vec(
+    config,
+    high_15m,
+    low_15m,
+    dc_high_1h,
+    dc_low_1h,
+    high_1h,
+    high_1h_prev,
+    low_1h,
+    low_1h_prev,
+    is_long,
+):
     """VECTORIZED fire mask. SAME comparisons as _lh_trigger_fire (strict, >0-guarded).
     Returns bool ndarray."""
     h15 = np.asarray(high_15m, dtype=float)
@@ -75,5 +101,19 @@ def check_lh_trigger_entry_vec(config, high_15m, low_15m, dc_high_1h, dc_low_1h,
     l1p = np.asarray(low_1h_prev, dtype=float)
     regress = _lh_trigger_params(config)
     if is_long:
-        return (dcl > 0) & (l1 > 0) & (l1p > 0) & (l15 > 0) & (l15 > dcl * (1.0 + regress)) & (l1 > l1p)
-    return (dch > 0) & (h1 > 0) & (h1p > 0) & (h15 > 0) & (h15 < dch * (1.0 - regress)) & (h1 < h1p)
+        return (
+            (dcl > 0)
+            & (l1 > 0)
+            & (l1p > 0)
+            & (l15 > 0)
+            & (l15 > dcl * (1.0 + regress))
+            & (l1 > l1p)
+        )
+    return (
+        (dch > 0)
+        & (h1 > 0)
+        & (h1p > 0)
+        & (h15 > 0)
+        & (h15 < dch * (1.0 - regress))
+        & (h1 < h1p)
+    )
