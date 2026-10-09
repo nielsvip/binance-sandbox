@@ -72,6 +72,7 @@ import vec_decisions.stocks_disaster_guard  # lane-D 2026-10-06
 import vec_decisions.check_entry_candidates_crypto__bb_squeeze_gate
 import vec_decisions.check_entry_candidates_crypto__compression_boost
 import vec_decisions.check_entry_candidates_crypto__dc_breakout_tiered
+import vec_decisions.check_entry_candidates_crypto__lh_trigger
 import vec_decisions.check_entry_candidates_crypto__pullback_augment
 import vec_decisions.check_entry_candidates_crypto__sba_gate
 import vec_decisions.check_entry_candidates_crypto__signal_entry_threshold
@@ -1277,6 +1278,9 @@ AUTO_WIRED_PARAMS = [
     'ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED',
     'ENTRY_BOUNCE_DONCHIAN_DIRECT_RECOVERY_ONLY',
     'ENTRY_BOUNCE_DONCHIAN_DIRECT_TIMEFRAME',
+    'ENTRY_LH_TRIGGER_DC_THRESHOLD_PCT',
+    'ENTRY_LH_TRIGGER_ENABLED',
+    'ENTRY_LH_TRIGGER_TF_REQ',
     'ENTRY_MIN_ALIGNMENT',
     'ENTRY_PRIMARY_TF',
     'ENTRY_STOCH_HHHL_DIRECT_ENABLED',
@@ -5322,6 +5326,9 @@ class QuickConfig:
     CLENOW_REGIME_FILTER: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     COMBINED_STOCH_GATE_TRADIER: float = 60.0  # auto-wired 625
     ENTRY_VET_COMBINED_STOCH_GATE_ENABLED: bool = False  # USER 2026-10-08: stoch-k entry veto is a switch, OFF (WT is the filter); when ON the vec ANDs vec_stoch_gate_pass into entry_sig (the extra_ok copy below was inert)
+    ENTRY_LH_TRIGGER_ENABLED: bool = False  # USER 2026-10-09 INV-0001: SHORT first-lower-high trigger (LONG mirror); OFF = inert. Live replica pending unlock (ez_positions_quick worker + tradier should_enter_*); config.py mirror patch ready.
+    ENTRY_LH_TRIGGER_TF_REQ: int = 1  # USER 2026-10-09 INV-0001: TFs (1h/4h) that must print LH+regress; 1 catches the first print
+    ENTRY_LH_TRIGGER_DC_THRESHOLD_PCT: float = 0.5  # USER 2026-10-09 INV-0001: regress depth vs channel extreme (mirrors LH_HL_FILTER)
     CONGRESS_CONVICTION_MIN_SOURCES: float = 2  # auto-wired 625
     CONGRESS_CONVICTION_SIZING_BOOST: float = 1.3  # auto-wired 625
     CONNORS_RSI2_REQUIRE_ABOVE_200SMA: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
@@ -8431,6 +8438,20 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
                 _safe(npz, 'low_15m', n), _safe(npz, 'open_15m', n), _safe(npz, 'close_15m', n),
                 _vs_align.compute_alignment_vec(npz, n, is_long), _safe(npz, 'dc_low4_15m', n),
                 _safe(npz, 'dc_high4_15m', n), close, is_long, True), dtype=bool)
+        except Exception:
+            pass
+    # USER 2026-10-09 INV-0001: first-lower-high SHORT trigger (LONG mirror). ORDER: vec FIRST-wins,
+    # so this sits after VOL_SPIKE_REVERSAL mirroring the live LAST-writer-wins placement between the DC
+    # gate and the VOL worker (see replica spec data/invention/orders/INV-0001-live-replica.md). OFF = inert.
+    if bool(getattr(cfg, 'ENTRY_LH_TRIGGER_ENABLED', False)):
+        try:
+            _lh_twin = vec_decisions.check_entry_candidates_crypto__lh_trigger
+            blocks["LH_TRIGGER_ENTRY"] = np.asarray(_lh_twin.check_lh_trigger_entry_vec(
+                cfg, _safe(npz, 'high_1h', n), _safe(npz, 'high_1h_prev', n),
+                _safe(npz, 'high_4h', n), _safe(npz, 'high_4h_prev', n),
+                _safe(npz, 'low_1h', n), _safe(npz, 'low_1h_prev', n),
+                _safe(npz, 'low_4h', n), _safe(npz, 'low_4h_prev', n),
+                dc_high_1h, dc_high_4h, dc_low_1h, dc_low_4h, is_long), dtype=bool)
         except Exception:
             pass
     # 2026-10-06 USER full-parity: tiered DC-breakout entry (shared twin of the EPQ DC path).
