@@ -6852,10 +6852,11 @@ def main():
         # (which carry the trade-generating exits) when they clear the 10-trade floor. Real eval, logged, never mixed.
         _adapt_report = None
         # ── USER 2026-10-02: every new test starts with cat_side defaults vs per_sym last-best, best as E3 baseline, C adjusted ──
+        # USER 2026-10-09 REDO exception: a needs_redo repaired set ALWAYS wins as baseline (never winner-selected away).
         # Bias-free baseline (backtest-expert: 80% breaking, no look-ahead): evaluate cat_side defaults first, then per_sym
         # full snapshot from last promotion, pick best credible as E3. Winning baseline's full set is diffed against
         # latest bold template defaults — every non-current default becomes an override in column C.
-        if prepared is not None and not os.environ.get("V15_START_OVERRIDES") and os.environ.get("V15_SKIP_CAT_PERSYM_BASELINE", "0") != "1":
+        if prepared is not None and not os.environ.get("V15_START_OVERRIDES") and not locals().get("_nr_applied") and os.environ.get("V15_SKIP_CAT_PERSYM_BASELINE", "0") != "1":
             try:
                 _cat_label, _cat_ov = "cat_side_defaults", dict(_tpl_defaults)
                 # _tpl_defaults is the current bold for this template; defaults dict is the 3314 full current cat_side layer

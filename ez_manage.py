@@ -48871,9 +48871,7 @@ async def _pp_ang_timing_exits(trade_manager, account_key, position_key) -> bool
             if _t not in _sys.path:
                 _sys.path.insert(0, _t)
             import ang_timing_core as _atc
-        min_g = float(getattr(config, "ANG_TIMING_TOP_MIN_GAIN_PCT", 1.0) or 1.0)
-        min_e = float(getattr(config, "ANG_TIMING_TOP_MIN_EXT_ATR", 2.0) or 2.0)
-        if not _atc.should_timing_trim(state, gain, ext, min_g, min_e):
+        if not _atc.should_timing_trim(state, gain):
             return False
         px = safe_fetch_float(getattr(pos, "mark_price", 0), 0.0)
         if px <= 0:

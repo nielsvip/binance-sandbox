@@ -5218,12 +5218,11 @@ class Config:
     ANG_TIMING_REBOUND_MULT: float = 1.5
     ANG_TIMING_MAX_AGE_S: int = 600
     # Exit timing: FAILED-breakout quick-exit trim ONLY (QUICK_REDUCE via
-    # execute_now, profit-guarded). BREAKOUTS ARE SACRED (USER 2026-10-09) —
-    # live EXTENDED/FRESH/REBOUND runners are never trimmed. Loss exits stay
+    # execute_now, green-vs-entry guard). BREAKOUTS ARE SACRED (USER 2026-10-09)
+    # — live EXTENDED/FRESH/REBOUND runners are never trimmed. NO fixed-%
+    # rules: only top/bottom breaks govern entries/exits. Loss exits stay
     # with technicals (hedges structurally banned).
     ANG_TIMING_TOP_TRIM_ENABLED: bool = True
-    ANG_TIMING_TOP_MIN_GAIN_PCT: float = 2.0
-    ANG_TIMING_TOP_MIN_EXT_ATR: float = 3.0
     # Tight stop: DISABLED 2026-10-09 — HEDGE_MODE=False is OFF LIMITS per user
     # (2026-08-18 re-affirmed; ZERO hedging anywhere 2026-05-29) after the
     # 2026-03-29 15,378-hedge cascade. FAILED timing still holds entries; the
