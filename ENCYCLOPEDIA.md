@@ -1,7 +1,8 @@
 # ENCYCLOPEDIA — what every function does, live and vectorized, and how to diagnose a sym_side
 
 > Built 2026-10-06 from a read-only code census (8 chapters, ~10k lines) + fleet evidence (523 finished sheets,
-> ~0.77M current-engine evals with trade counts). Hub document: start here, follow links into the chapters.
+> ~0.77M current-engine evals with trade counts). Evidence refreshed 2026-10-09 (ch 09b: 443 progress files,
+> 835k P_naked evals, 141 manifests — P_naked scope only, see chapter). Hub document: start here, follow links into the chapters.
 > **Line numbers drift — always grep the function/switch name.** Everything marked *unverified* in a chapter was not
 > proven in code. Rules of the house still apply: BACKTEST_BIBLE.md (§14, §18–§21, §56, §58, §64, §65) wins on conflict.
 
@@ -16,9 +17,10 @@
 | 07 | [v15_pilot map](docs/encyclopedia/07_v15_pilot_map.md) | main()/spec-fill/DONE flow, env vars, eval primitives, progress JSON schema, publish gates, landmines |
 | 08 | [results diagnosis](docs/encyclopedia/08_results_diagnosis.md) | where every metric lives, fleet fault census, diagnosis thresholds, data gaps |
 | 09 | [lever evidence summary](docs/encyclopedia/09_lever_evidence_summary.md) | top-40 trade adders/removers per cat_side (empirical, all sym_sides) — raw: `data/encyclopedia/lever_evidence.csv`, fleet table: `data/encyclopedia/fleet_diagnosis.csv` |
+| 09b | [lever evidence refresh 2026-10-09](docs/encyclopedia/09b_lever_evidence_refresh.md) | same shape, current mirror (P_naked only) — raw: `data/encyclopedia/lever_evidence_20261009.csv`, fleet: `data/encyclopedia/fleet_diagnosis_20261009.csv`; builder: `tools/v15_census_evidence.py` |
 
 Per-switch wiring (defaults ×4 cat_sides, live read sites, vec read sites, template rows, status) is NOT repeated here:
-it lives in `SWITCH_BIBLE.md` / `data/SWITCH_BIBLE.json` (3582 switches). Caveat from chapter 06: ~35 switches marked
+it lives in `SWITCH_BIBLE.md` / `data/SWITCH_BIBLE.json` (3641 names at the 2026-10-09 regen). Caveat from chapter 06: ~35 switches marked
 wired there are read only in vec modules that are never called, and ~25 are read-and-discarded — a SWITCH_BIBLE
 "WIRED" is necessary, not sufficient.
 

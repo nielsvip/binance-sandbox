@@ -1752,3 +1752,18 @@ would split sweep/live from pilot baselines; needs a director ruling, not a sile
   stay profitable (dips allowed, red forbidden), a red base must strictly rise. Reverts/safety/forbidden never win.
 - **Proof:** `tests/test_v15_diagnose_repair.py` (AGLD-shaped 17t/TIM-1.9 synthetic origin through `DR.run()`:
   all three stages fire, TIM 1.9→24.9, red-flip + safety never applied; pair synergy; skip when healthy).
+
+## 82. KNOWLEDGE REFRESH — BIBLE CYCLE HARDENED + CENSUS EVIDENCE REBUILT (USER 2026-10-09)
+
+- **Switch bible cycle:** the `md5: command not found` + killed-build log lines were STALE (Oct 6, pre-fix script;
+  log untouched since). Verified healthy (cycles completing, latest full cycle 1m55s, verify at the known
+  BROKEN≈74 backlog), then hardened: cron `PATH` export + fail-closed `md5` resolution, stale log truncated so
+  new failures surface. `tools/switch_bible_cycle.sh` backup in `backups/before_bible_cycle_pathfix_*`.
+- **Census evidence:** new `tools/v15_census_evidence.py` (tested, `tests/test_v15_census_evidence.py`) re-mines
+  the CURRENT mirror: 443 progress files / 835k P_naked evals (93% baselines via the Oct 6 zero-delta-mode rule,
+  both done-row schemas) → `data/encyclopedia/lever_evidence_20261009.csv` (12,549 levers: 537 ADD / 811 REMOVE /
+  265 MIXED) + `data/encyclopedia/fleet_diagnosis_20261009.csv` (141 manifests, manifest-only — Mac progress is a
+  different era, verdict join proven wrong) + `docs/encyclopedia/09b_lever_evidence_refresh.md` (top-40 tables).
+  Oct 6 files untouched (their F/L sources not redone — compare within-refresh). Hub stamped; prose chapters stay
+  Oct 6. The v2 graph (what the pilot reads) cycles healthily on S1 (*/30, last build 01:01Z); note its
+  `n_fresh_levers` is crypto-only right now (STOCKS 0 — evidence follows the runs).

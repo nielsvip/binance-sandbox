@@ -194,7 +194,7 @@ if mode == "probe":
     busy = round(100.0 * (1 - (_i1 - _i0) / max(1, _t1 - _t0)), 1)
     busy_nn = round(100.0 * (1 - ((_i1 - _i0) + (_n1 - _n0)) / max(1, _t1 - _t0)), 1)
     o = {"nproc": os.cpu_count(), "load1": float(open("/proc/loadavg").read().split()[0]), "busy_pct": busy, "busy_nonnice_pct": busy_nn, "mem_avail_mb": mem, "pdir": pdir, "swap_total_mb": swp_t, "swap_used_mb": swp_u,
-         "running": pilots(), "started": [], "done": [], "quarantined": [], "v365": {}, "repair": {}, "gs": {}}
+         "running": pilots(), "started": [], "done": [], "quarantined": [], "v365": {}, "repair": {}, "gs": {}, "gains": {}}
     if pdir and os.path.isdir(pdir):
         cache_p = "/tmp/v15_sched_done_cache.json"
         try:
@@ -207,13 +207,17 @@ if mode == "probe":
             try:
                 stt = os.stat(f)
                 key = "%s|%s|%s" % (f, stt.st_mtime, stt.st_size)
-                if key not in cache or key + "|q" not in cache:
+                if key not in cache or key + "|q" not in cache or key + "|g" not in cache:
                     cache = {k: v for k, v in cache.items() if not k.startswith(f + "|")}
                     _txt = open(f).read()
                     cache[key] = bool(re.search(r'"final_gain": [-0-9]', _txt))
                     cache[key + "|q"] = bool(_VERDICT_TERMINAL_RE.search(_txt))
+                    _gm = re.search(r'"final_gain":\s*(-?[0-9]+\.?[0-9]*(?:[eE][-+]?[0-9]+)?)', _txt)
+                    cache[key + "|g"] = float(_gm.group(1)) if _gm else None
                 if cache[key]:
                     o["done"].append(ss)
+                    if cache.get(key + "|g") is not None:
+                        o["gains"][ss] = {"gain": cache[key + "|g"], "mtime": stt.st_mtime}
                 if cache.get(key + "|q"):
                     o["quarantined"].append(ss)
             except Exception:
@@ -445,15 +449,67 @@ def host_py(host, mode, arg, timeout=90):
 
 _VERDICT_TERMINAL_RE = re.compile(r'"verdict":\s*"(IMPOSSIBLE|NO_TRADES|BEST_EFFORT)"')
 
+_LAUNCH_CAPS = {"30D": 3, "365D": 2, "REPAIR": 1, "GS": 1}  # USER 2026-10-09: single source of truth (gate + pending_actions); 30D 6->3, 40-min slices + free resume make more unnecessary
+_GAIN_TIER_W_FRAC = 0.4  # top 40% of measured syms = winners (recalculated every round with the latest NPZ)
+_GAIN_TIER_L_FRAC = 1.0 / 3.0  # bottom third = losers/low gainers (deferred, re-admitted after _GAIN_TIER_DEFER_DAYS)
+_GAIN_TIER_DEFER_DAYS = 7.0  # USER 2026-10-09: losers queue at most weekly; winners-first ordering keeps >=50% of compute on winners
+_TIER_RANK = {"W": 0, "M": 1, "L": 2}
+
+
+def _gain_tiers(gains):
+    """Rank measured sym_sides by latest gain -> {ss: {"tier": W|M|L, "gain": g, "mtime": m}}.
+    Relative ranks (never empty tiers, never a full defer): W = top 40%, L = bottom third, M = rest. Sides with no
+    measured gain are absent (callers default them to M: new/unknown work is never starved)."""
+    rows = []
+    for ss, g in (gains or {}).items():
+        try:
+            gv = float((g or {}).get("gain"))
+        except (TypeError, ValueError):
+            continue
+        try:
+            mt = float((g or {}).get("mtime", 0) or 0)
+        except (TypeError, ValueError):
+            mt = 0.0
+        rows.append((str(ss), gv, mt))
+    rows.sort(key=lambda r: r[1], reverse=True)
+    n = len(rows)
+    nw = max(1, int(n * _GAIN_TIER_W_FRAC)) if n else 0
+    nl = max(1, int(n * _GAIN_TIER_L_FRAC)) if n else 0
+    out = {}
+    for i, (ss, gv, mt) in enumerate(rows):
+        out[ss] = {"tier": "W" if i < nw else ("L" if i >= n - nl else "M"), "gain": gv, "mtime": mt}
+    return out
+
+
+def _side_tier(ss, tiers):
+    return ((tiers or {}).get(ss) or {}).get("tier", "M")
+
+
+def _sym_tier_rank(sym, tiers):
+    return min(_TIER_RANK[_side_tier(f"{sym}_{sd}", tiers)] for sd in ("LONG", "SHORT"))
+
+
+def _side_deferred(ss, tiers, now_ts, defer_days=_GAIN_TIER_DEFER_DAYS):
+    """True = loser-tier side whose last calc is younger than defer_days: skip its fresh board (chain
+    continuations still drain; staleness re-admits). Missing/bad evidence fails open (never deferred)."""
+    e = (tiers or {}).get(ss)
+    if not e or e.get("tier") != "L":
+        return False
+    try:
+        age_d = (float(now_ts) - float(e.get("mtime", 0) or 0)) / 86400.0
+    except (TypeError, ValueError):
+        return False
+    return age_d < float(defer_days)
+
 
 def _pair_gate_ok(sym, acts, owner, chain_state, attempts):
     """USER 2026-10-03 (drain stall): fresh (unowned) syms launch when EVERY launchable side has an
     action — terminal/capped sides don't block their sibling (half-quarantined pairs used to stall
     forever: the live side could never launch alone). Owned syms always pass (stickiness). Mirrors
-    pending_actions caps exactly (30D:3, 365D:2, REPAIR:1, GS:1)."""
+    pending_actions caps exactly via _LAUNCH_CAPS (30D:3, 365D:2, REPAIR:1, GS:1)."""
     if sym in owner:
         return True
-    caps = {"need30": ("30D", 3), "need365": ("365D", 2), "needrepair": ("REPAIR", 1), "needgs": ("GS", 1)}
+    caps = {"need30": ("30D", _LAUNCH_CAPS["30D"]), "need365": ("365D", _LAUNCH_CAPS["365D"]), "needrepair": ("REPAIR", _LAUNCH_CAPS["REPAIR"]), "needgs": ("GS", _LAUNCH_CAPS["GS"])}
     needy = set()
     for side, (s, att) in (chain_state.get(sym) or {}).items():
         if s not in caps:
@@ -821,7 +877,7 @@ def tick(args, cfg, now):
     is_open, mto = us_market_open(now), minutes_to_open(now)
     vorder = venue_order(now)
     # ---- merge host views
-    running, owner, started, done, quar, v365, repair, gs = {}, {}, set(), set(), set(), {}, {}, {}
+    running, owner, started, done, quar, v365, repair, gs, gains = {}, {}, set(), set(), set(), {}, {}, {}, {}
     done_host, v365_host, rep_host = {}, {}, {}
     for n, s in stats.items():
         if not s:
@@ -844,6 +900,18 @@ def tick(args, cfg, now):
                     repair.setdefault(ss, {})[int(k)] = v; rep_host[_kk] = n
         for ss, d in s.get("gs", {}).items():
             gs.setdefault(ss, {}).update({int(k): v for k, v in d.items()})
+        for ss, g in s.get("gains", {}).items():
+            try:
+                _gmt = float((g or {}).get("mtime", 0) or 0)
+            except (TypeError, ValueError):
+                continue
+            _cur = gains.get(ss)
+            try:
+                _curt = float((_cur or {}).get("mtime", 0) or 0)
+            except (TypeError, ValueError):
+                _curt = -1.0
+            if _cur is None or _gmt > _curt:
+                gains[ss] = {"gain": g.get("gain"), "mtime": _gmt}
     universe_syms = {"stocks": set(stocks), "crypto": set(crypto)}
     all_syms = stocks + crypto
     # ---- readiness (per host, only for symbols that could be placed there)
@@ -928,10 +996,29 @@ def tick(args, cfg, now):
         return "needrepair", len(reps) + 1
 
     chain_state = {}
+    _seen = st.setdefault("gain_seen", {})  # USER 2026-10-09: gain memory survives round rollover (latest mtime wins; >30d pruned)
+    for ss, g in gains.items():
+        _cur = _seen.get(ss)
+        try:
+            _curt = float((_cur or {}).get("mtime", 0) or 0)
+        except (TypeError, ValueError):
+            _curt = -1.0
+        if _cur is None or float(g.get("mtime", 0) or 0) > _curt:
+            _seen[ss] = {"gain": g.get("gain"), "mtime": g.get("mtime", 0)}
+    _now_ts = now.timestamp()
+    for ss in [k for k, v in _seen.items() if (_now_ts - float((v or {}).get("mtime", 0) or 0)) > 30 * 86400.0]:
+        _seen.pop(ss, None)
+    _gtiers = _gain_tiers(_seen)  # winners-first scheduling; loser tiers defer fresh boards (chains still drain)
+    _deferred_sides = []
     for sym in all_syms:
         h = owner.get(sym)
         _allowed = set(uni.get("allowed_sym_sides") or [])  # USER 2026-10-06: only tradeable keys are calculated
-        chain_state[sym] = {side: (("terminal_not_tradeable", None) if _allowed and f"{sym}_{side}" not in _allowed else side_state(sym, side, h)) for side in ("LONG", "SHORT")}
+        _st = {side: (("terminal_not_tradeable", None) if _allowed and f"{sym}_{side}" not in _allowed else side_state(sym, side, h)) for side in ("LONG", "SHORT")}
+        for side, v in _st.items():
+            if v[0] in ("need30", "waiting_base") and _side_deferred(f"{sym}_{side}", _gtiers, _now_ts):
+                _st[side] = ("terminal_deferred", None)
+                _deferred_sides.append(f"{sym}_{side}")
+        chain_state[sym] = _st
 
     def terminal(sym):
         return all(v[0].startswith("terminal") for v in chain_state[sym].values())
@@ -959,7 +1046,7 @@ def tick(args, cfg, now):
             if s in ("need30", "need365", "needrepair", "needgs"):
                 w = {"need30": "30D", "need365": "365D", "needrepair": "REPAIR", "needgs": "GS"}[s]
                 key = f"{sym}_{side}|{w}{att if w in ('REPAIR', 'GS') else ''}"
-                if st["attempts"].get(key, 0) >= (6 if w == "30D" else 2 if w == "365D" else 1):  # USER 2026-10-07: 40-min fill slices + deaths resume free; 6 launches still bound runaways
+                if st["attempts"].get(key, 0) >= _LAUNCH_CAPS[w]:  # USER 2026-10-09: 30D 6->3 (slices + free resume make more unnecessary); hopeless sides stop burning slots
                     continue
                 acts.append({"sym": sym, "side": side, "window": w, "attempt": att or 1, "key": key})
         return acts
@@ -975,9 +1062,10 @@ def tick(args, cfg, now):
     new_syms = [s for s in all_syms if s not in owner and not terminal(s)]
     vrank = {v: i for i, v in enumerate(vorder)}
     pri = priority_syms()
-    new_syms.sort(key=lambda s: sym_rank_key(s, vrank, all_syms, pri))
+    _trk = lambda s: (_sym_tier_rank(s, _gtiers), sym_rank_key(s, vrank, all_syms, pri))  # USER 2026-10-09: winners first, losers last
+    new_syms.sort(key=_trk)
     adopted = [s for s in all_syms if s in owner and not terminal(s)]
-    adopted.sort(key=lambda s: sym_rank_key(s, vrank, all_syms, pri))
+    adopted.sort(key=_trk)
     mapped_unready = {}
     HB, launched_keys = {}, set()
     for h in hosts:
@@ -1006,7 +1094,7 @@ def tick(args, cfg, now):
         running_cnt = sum(1 for v_ in held[h["name"]].values() if v_ == "running")  # concurrent pairs actually running: hard cap = cap (s1 OOM 13:48Z when 9 held pairs all ran)
         HB[h["name"]] = {"cap": cap, "workers": workers, "cpu": cpu, "est_pair": est_pair}
         # continue chains of held symbols first (no new slot); then admit adopted-but-unheld; then new
-        held_ordered = sorted(held[h["name"]], key=lambda s: sym_rank_key(s, vrank, all_syms, pri))
+        held_ordered = sorted(held[h["name"]], key=_trk)
         order = [(sym, False) for sym in held_ordered] + [(sym, True) for sym in adopted if owner.get(sym) == h["name"] and sym not in held[h["name"]]] + \
                 [(sym, True) for sym in new_syms if venue_of(sym) in h["venues"]]
         for sym, needs_slot in order:
@@ -1159,6 +1247,15 @@ def tick(args, cfg, now):
     for c in cats.values():
         c["unlocked_365"] = True
     log["cats"] = cats
+    _tl = {"W": 0, "M": 0, "L": 0}
+    for _t in log["launched"]:
+        try:
+            _tl[{0: "W", 1: "M", 2: "L"}[_sym_tier_rank(str(_t).split(":")[1], _gtiers)]] += 1
+        except Exception:
+            pass
+    log["tier_launched"] = _tl  # USER 2026-10-09: prove >=50% of launches go to winners
+    log["gain_tiers"] = {"measured_sides": len(_gtiers), **{t: sum(1 for e in _gtiers.values() if e["tier"] == t) for t in "WML"},
+                         "deferred_sides": len(_deferred_sides), "deferred_sample": _deferred_sides[:30]}
     log["pending_symbols"] = sum(1 for s in all_syms if not terminal(s))
     log["stocks_chain_left"] = sum(1 for s in stocks if not terminal(s))
     st["pend_same"], _stall_warn = _stall_tick(st.get("pend_last"), st.get("pend_same"), log["pending_symbols"])
