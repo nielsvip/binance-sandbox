@@ -118,8 +118,7 @@ def _live_set_switches(sym_side):
         sys.path.insert(0, str(ROOT))
         import per_sym_store as pss
 
-        cfg = pss.get_full_config(sym_side) or {}
-        ov = cfg.get("overrides") or cfg.get("winning_set") or {}
+        ov = pss.get_overrides(sym_side) or {}
         return sorted(ov.keys()) if isinstance(ov, dict) else []
     except Exception:
         return []

@@ -92,7 +92,7 @@ KEYS=$("$PY" -c "import json,sys; print(','.join(json.load(open(sys.argv[1])).ge
 PULL="SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx"
 PULL="$PULL SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx"
 PULL="$PULL data/per_sym_settings.json data/sweep_defaults/per_sym_settings.json data/avg_delta_pos_sym.json"
-PULL="$PULL data/avg_delta_pos_sym_cell.json"
+PULL="$PULL data/avg_delta_pos_sym_cell.json data/causal_condemned.json"
 PULL="$PULL $AGG SPREADSHEETS/v15_avg_delta_latest.xlsx SPREADSHEETS/v15_vector_delta_latest.xlsx data/cat_side_promotions.json data/avg_delta_round_ledger.json"
 if [ "$DRYRUN" != 1 ]; then
   mkdir -p "backups/daily_chain_mac_$TS"
@@ -253,6 +253,22 @@ else
   INF_APPLIED=$("$PY" -c "import json,glob; fs=sorted(glob.glob('data/inf_universe/*_chain_$DATE.json')); print(json.load(open(fs[-1])).get('applied') if fs else 'no-report')" 2>/dev/null || echo unknown)
   tail -n 3 "$ILOG" | sed 's/^/[mac-apply] step5d /'
   log "step5d inf universe $INF_RES applied=$INF_APPLIED"
+fi
+
+# 5e. causal learner live leg (USER 2026-10-09): every live losing trade becomes a weak live_context cause.
+#     S1 owns sweep lessons (step4c); the Mac owns live lessons. The union export never shrinks below the S1
+#     pull (switches union, cells setdefault), so this step can only add live corroboration. Non-fatal.
+if [ "$DRYRUN" = 1 ]; then
+  log "step5e causal live SKIPPED (DRYRUN)"
+else
+  log "step5e causal ingest-live --day $DATE"
+  timeout 600 "$PY" -u tools/v15_causal_learner.py ingest-live --day "$DATE" || log "step5e causal ingest-live rc=$? (non-fatal)"
+  if [ -s "$DEST/data/causal_condemned.json" ]; then
+    cp -p "$DEST/data/causal_condemned.json" "backups/daily_chain_mac_$TS/data_causal_condemned.json"
+    timeout 300 "$PY" -u tools/v15_causal_learner.py export --out "$DEST/data/causal_condemned.json" --merge "$DEST/data/causal_condemned.json" && log "step5e causal union export OK" || log "step5e causal export rc=$? (non-fatal; S1 pull kept)"
+  else
+    log "step5e causal export SKIPPED (no S1 pull to merge)"
+  fi
 fi
 
 # 6. stamp

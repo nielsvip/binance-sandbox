@@ -7,10 +7,12 @@
 # (each cat_side's promotions pass the COMBINED trade-floor guard tools/v15_promotion_floor_guard.py before saving; refused keys keep the old bold)
 # (code-surface sync DISABLED: S1 never edits config.py/config_tradier.py/v12_quick_engine.py; the Mac follow-up
 # tools/v15_daily_chain_mac_apply.sh syncs report promoted_keys at 13:20Z) -> 3 cat_side_defaults_4 (+ sweep copy)
-# -> 4 avg_delta_pos_sym.json -> 5 zero-delta watchdog (non-fatal) -> 6 push to s2/s5 + kv sync + md5 verify
+# -> 4 avg_delta_pos_sym.json -> 4c causal export -> 5 zero-delta watchdog (non-fatal) -> 6 push to s2/s5 + kv sync + md5 verify
 # -> 6b tradeable check (non-fatal; SYSTEM_ERROR rows for tradeable keys with <10 trades/30D or TIM<20%) -> 7 done-stamp json.
 # 4b (2026-10-07): cell-evidence regen (zero-skip maps) over ALL local progress dirs (campaign dirs move; glob, don't pin)
 # + push data/avg_delta_pos_sym_cell.json + data/cell_evidence/*.json to s2/s5 so every host's pilots skip condemned cells.
+# 4c (2026-10-09): causal learner ingest-progress + export data/causal_condemned.json (runs BEFORE 4b for same-day merge;
+# step5 watchdog + runtime cell merge consume it; live losers ingested on the Mac step5e).
 # Any failed step stops the chain (except 5). DRYRUN=1: rebuild into /tmp + template writer WITHOUT --apply, nothing else written/pushed.
 # Never relies on *latest* names: the dated aggregate is passed explicitly through every step.
 set -u
@@ -83,8 +85,11 @@ if [ "$DRYRUN" = 1 ]; then
   log "step3 cat_side_defaults_4 SKIPPED (DRYRUN)"
   log "step4 pos_sym json (DRYRUN -> $WORK/avg_delta_pos_sym.json)"
   timeout 300 "$PY" -u tools/v15_possym_json_from_agg.py "$AGG" "$WORK/avg_delta_pos_sym.json" || fail 4 "possym rc=$?"
-  log "step4b cell evidence (DRYRUN -> $WORK/avg_delta_pos_sym_cell.json)"
+  log "step4c causal learner (DRYRUN db+out under $WORK, prod untouched)"
   _pdirs=$(ls -d /home/niels/v15_*/ data/reports/lifecycle_pilot 2>/dev/null | tr '\n' ',' | sed 's/,$//')
+  timeout 900 "$PY" -u tools/v15_causal_learner.py ingest-progress "$_pdirs" --db "$WORK/causal_learner.db" || fail 4c "causal ingest-progress rc=$?"
+  timeout 300 "$PY" -u tools/v15_causal_learner.py export --db "$WORK/causal_learner.db" --out "$WORK/causal_condemned.json" || fail 4c "causal export rc=$?"
+  log "step4b cell evidence (DRYRUN -> $WORK/avg_delta_pos_sym_cell.json)"
   timeout 900 "$PY" -u tools/v15_cell_evidence.py "$_pdirs" "$WORK/avg_delta_pos_sym_cell.json" || fail 4b "cell_evidence rc=$?"
   log "step5 zero-delta watchdog (DRYRUN, report-only)"
   timeout 600 "$PY" -u tools/v15_zero_delta_watchdog.py --agg "$AGG" || log "step5 watchdog rc=$? (non-fatal)"
@@ -109,10 +114,20 @@ timeout 300 "$PY" -u tools/v15_possym_json_from_agg.py "$AGG" data/avg_delta_pos
 cp "$AGG" SPREADSHEETS/v15_avg_delta_latest.xlsx && cp "$AGG" SPREADSHEETS/v15_vector_delta_latest.xlsx || fail 4 "latest copies"
 STEPS_OK="$STEPS_OK,4"
 
+# 4c. causal learner (runs BEFORE 4b so today's export merges same-day into the cell maps + step5 watchdog).
+# Ingest is idempotent (content-hash); the export cross-checks the aggregate (pos_sym>0 veto) and auto-lifts
+# condemned switches on later positive sweep evidence. Live losers are ingested on the Mac (step5e) where they live.
+log "step4c causal learner"
+_pdirs=$(ls -d /home/niels/v15_*/ data/reports/lifecycle_pilot 2>/dev/null | tr '\n' ',' | sed 's/,$//')
+[ -n "$_pdirs" ] || fail 4c "no progress dirs found"
+[ -f data/causal_condemned.json ] && cp -p data/causal_condemned.json "backups/before_daily_chain_${DATE}_causal_condemned.json"
+timeout 900 "$PY" -u tools/v15_causal_learner.py ingest-progress "$_pdirs" || fail 4c "causal ingest-progress rc=$?"
+timeout 300 "$PY" -u tools/v15_causal_learner.py export --out data/causal_condemned.json || fail 4c "causal export rc=$?"
+[ -s data/causal_condemned.json ] || fail 4c "causal export not written"
+STEPS_OK="$STEPS_OK,4c"
+
 # 4b. cell-evidence regen (zero-skip runtime maps) + verify at least one cat_side map exists
 log "step4b v15_cell_evidence"
-_pdirs=$(ls -d /home/niels/v15_*/ data/reports/lifecycle_pilot 2>/dev/null | tr '\n' ',' | sed 's/,$//')
-[ -n "$_pdirs" ] || fail 4b "no progress dirs found"
 timeout 900 "$PY" -u tools/v15_cell_evidence.py "$_pdirs" data/avg_delta_pos_sym_cell.json || fail 4b "cell_evidence rc=$?"
 ls data/cell_evidence/*.json >/dev/null 2>&1 || fail 4b "no data/cell_evidence/*.json written"
 STEPS_OK="$STEPS_OK,4b"
@@ -126,7 +141,7 @@ STEPS_OK="$STEPS_OK,5"
 FILES="SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx"
 FILES="$FILES SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx"
 FILES="$FILES data/per_sym_settings.json data/sweep_defaults/per_sym_settings.json data/avg_delta_pos_sym.json"
-FILES="$FILES data/avg_delta_pos_sym_cell.json data/cell_evidence/*.json"
+FILES="$FILES data/avg_delta_pos_sym_cell.json data/cell_evidence/*.json data/causal_condemned.json"
 FILES="$FILES $AGG SPREADSHEETS/v15_avg_delta_latest.xlsx SPREADSHEETS/v15_vector_delta_latest.xlsx"
 FILES="$FILES data/reports/lifecycle_pilot/disabled_switches_never_pos_per_category.json data/cat_side_promotions.json data/avg_delta_round_ledger.json"
 for F in $FILES; do [ -f "$F" ] || fail 6 "push file missing: $F"; done
