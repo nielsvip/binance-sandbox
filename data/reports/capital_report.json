@@ -1,56 +1,65 @@
 {
- "generated_at": "2026-10-09 02:10 UTC",
- "total_capital_usd": 50.48,
+ "generated_at": "2026-10-09 02:21 UTC",
+ "total_capital_usd": 40.1,
  "tier_capital": {
   "A": 0.0,
-  "B": 35.16,
-  "C": 15.32
+  "B": 25.84,
+  "C": 14.26
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
+  "B": 3,
   "C": 1
  },
  "winners": [],
  "losers": [
-  "flz:SOLUSDC_SHORT"
+  "inf:SOLUSDC_SHORT"
  ],
- "mediocre": [
-  "flz:DASHUSDT_SHORT"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "flz:XRPUSDC_LONG",
-   "symbol": "XRPUSDC",
-   "account": "flz",
-   "value_usd": 19.17,
-   "gain_pct": 0.547,
+   "pk": "inf:STRKUSDT_LONG",
+   "symbol": "STRKUSDT",
+   "account": "inf",
+   "value_usd": 16.76,
+   "gain_pct": 4.143,
    "tier": "B",
-   "perf_mult": 0.74,
-   "amt": 13.8,
-   "mark": 1.3892
+   "perf_mult": 1.0,
+   "amt": 274.9,
+   "mark": 0.06095
   },
   {
-   "pk": "flz:DASHUSDT_SHORT",
-   "symbol": "DASHUSDT",
-   "account": "flz",
-   "value_usd": 15.99,
-   "gain_pct": -0.167,
-   "tier": "B",
-   "perf_mult": 0.93,
-   "amt": 0.314,
-   "mark": 50.91505372
-  },
-  {
-   "pk": "flz:SOLUSDC_SHORT",
+   "pk": "inf:SOLUSDC_SHORT",
    "symbol": "SOLUSDC",
-   "account": "flz",
-   "value_usd": 15.32,
-   "gain_pct": -0.706,
+   "account": "inf",
+   "value_usd": 14.26,
+   "gain_pct": 5.526,
    "tier": "C",
-   "perf_mult": 0.36,
-   "amt": 0.14,
-   "mark": 109.41105982
+   "perf_mult": 0.32,
+   "amt": 0.13,
+   "mark": 109.72158355
+  },
+  {
+   "pk": "inf:ASTSUSDT_SHORT",
+   "symbol": "ASTSUSDT",
+   "account": "inf",
+   "value_usd": 5.51,
+   "gain_pct": 0.595,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 0.1,
+   "mark": 55.08
+  },
+  {
+   "pk": "inf:ALGOUSDT_SHORT",
+   "symbol": "ALGOUSDT",
+   "account": "inf",
+   "value_usd": 3.57,
+   "gain_pct": 4.368,
+   "tier": "B",
+   "perf_mult": 5.5,
+   "amt": 30.2,
+   "mark": 0.11828
   }
  ]
 }
