@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-09 14:21:21 UTC
+# Copilot Status — 2026-10-09 14:46:42 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-09T14:18:51
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-09T14:18:51
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-09T14:19:25
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-09T14:19:26
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-09T14:19:56
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-09T14:19:56
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-09T14:20:29
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-09T14:20:29
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-09T14:20:59
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-09T14:20:59
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-09T14:45:06
+- **STALE_INDICATORS** [tradier]  — 2026-10-09T14:45:39
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-09T14:45:39
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-09T14:45:39
+- **STALE_INDICATORS** [tradier]  — 2026-10-09T14:46:09
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-09T14:46:09
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-09T14:46:09
+- **STALE_INDICATORS** [tradier]  — 2026-10-09T14:46:42
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-09T14:46:42
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-09T14:46:42
 
 ## Missed Trades (trader comparison)
 
@@ -37,9 +37,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 44
-- [MEDIUM] ez_market_data.py running but log stale (13min)
-- [MEDIUM] tradier_positions.py running but log stale (22min)
+**Issues (last 1h):** 50
+- [HIGH] ez_market_data.py is NOT running
 - [HIGH] ez_rankings.py is NOT running
-- [MEDIUM] ez_market_data.py running but log stale (14min)
-- [MEDIUM] tradier_positions.py running but log stale (23min)
+- [MEDIUM] ez_market_data.py running but log stale (11min)
+- [HIGH] ez_rankings.py is NOT running
+- [MEDIUM] ez_market_data.py running but log stale (12min)
