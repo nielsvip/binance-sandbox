@@ -1,78 +1,56 @@
 {
- "generated_at": "2026-10-09 00:29 UTC",
- "total_capital_usd": 54.65,
+ "generated_at": "2026-10-09 01:09 UTC",
+ "total_capital_usd": 50.21,
  "tier_capital": {
   "A": 0.0,
-  "B": 38.99,
-  "C": 15.66
+  "B": 34.96,
+  "C": 15.25
  },
  "tier_count": {
   "A": 0,
-  "B": 4,
+  "B": 2,
   "C": 1
  },
  "winners": [],
  "losers": [
-  "fin:COTIUSDT_SHORT",
-  "fin:CHRUSDT_LONG",
-  "fin:KSMUSDT_LONG"
+  "flz:SOLUSDC_SHORT"
  ],
- "mediocre": [],
+ "mediocre": [
+  "flz:XRPUSDC_LONG"
+ ],
  "positions": [
   {
-   "pk": "fin:COTIUSDT_SHORT",
-   "symbol": "COTIUSDT",
-   "account": "fin",
-   "value_usd": 17.39,
-   "gain_pct": -2.55,
+   "pk": "flz:XRPUSDC_LONG",
+   "symbol": "XRPUSDC",
+   "account": "flz",
+   "value_usd": 19.12,
+   "gain_pct": 0.279,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 1357.0,
-   "mark": 0.01281569
+   "perf_mult": 0.74,
+   "amt": 13.8,
+   "mark": 1.38550813
   },
   {
-   "pk": "fin:KSMUSDT_LONG",
-   "symbol": "KSMUSDT",
-   "account": "fin",
-   "value_usd": 15.66,
-   "gain_pct": 1.314,
+   "pk": "flz:DASHUSDT_SHORT",
+   "symbol": "DASHUSDT",
+   "account": "flz",
+   "value_usd": 15.84,
+   "gain_pct": 0.787,
+   "tier": "B",
+   "perf_mult": 0.93,
+   "amt": 0.314,
+   "mark": 50.43
+  },
+  {
+   "pk": "flz:SOLUSDC_SHORT",
+   "symbol": "SOLUSDC",
+   "account": "flz",
+   "value_usd": 15.25,
+   "gain_pct": -0.073,
    "tier": "C",
-   "perf_mult": 0.34,
-   "amt": 3.4,
-   "mark": 4.60675625
-  },
-  {
-   "pk": "fin:CHRUSDT_LONG",
-   "symbol": "CHRUSDT",
-   "account": "fin",
-   "value_usd": 8.31,
-   "gain_pct": -0.654,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 408.0,
-   "mark": 0.02035597
-  },
-  {
-   "pk": "fin:BNBUSDC_LONG",
-   "symbol": "BNBUSDC",
-   "account": "fin",
-   "value_usd": 7.36,
-   "gain_pct": 0.707,
-   "tier": "B",
-   "perf_mult": 2.14,
-   "amt": 0.01,
-   "mark": 735.89
-  },
-  {
-   "pk": "fin:IOTXUSDT_LONG",
-   "symbol": "IOTXUSDT",
-   "account": "fin",
-   "value_usd": 5.93,
-   "gain_pct": 3.498,
-   "tier": "B",
-   "perf_mult": 1.75,
-   "amt": 1586.0,
-   "mark": 0.00374146
+   "perf_mult": 0.38,
+   "amt": 0.14,
+   "mark": 108.95
   }
  ]
 }

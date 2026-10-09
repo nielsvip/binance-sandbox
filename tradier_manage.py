@@ -15869,6 +15869,26 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                             return False
         except Exception as _lege:
             logger.warning(f"[LIVE_ENTRY_GATES] check error (fail-open): {_lege}")
+        # ═══ FILTER_TF WT-ALIGN entry veto (USER 2026-10-08 ruling: LIVE IMITATES VEC) ═══
+        # Live twin of vec build_masks()['entry'] wt_cross_side legs (vec_decisions/generic_filter_tf.py,
+        # ANDed v12:12650): each mapped entry FILTER_TF with a real TF requires WT alignment on that TF.
+        # Kill switch: any leg OFF (per-sym OFF kills per sym via _cfg). SCOPE: wt_cross_side kind only;
+        # other FILTER_TF_MAP kinds need dedicated twins (all OFF at current defaults). Fail-open.
+        try:
+            _ft_act = (action or '').upper()
+            _ft_rsn = (reason or '').upper()
+            if ('OPEN' in _ft_act or _ft_act == 'BUY') and 'HEDGE' not in _ft_rsn and 'CLOSE' not in _ft_act and 'REDUCE' not in _ft_act and not _mandatory_reentry_qta:
+                _ft_acct, _ft_sym, _ft_side = parse_position_key(position_key)
+                _ft_c = lambda _k, _d=None: _cfg(_k, _d, _ft_acct, _ft_sym, _ft_side)
+                _ft_ind = (trade_manager.get_indicators(_ft_sym) if _ft_sym else {}) or {}
+                import live_filter_tf_gates as _ft_mod
+                _ft_blk, _ft_why = _ft_mod.check_filter_tf_wt_align(_ft_c, _ft_ind, _ft_side == 'LONG', _ft_act)
+                if _ft_blk:
+                    logger.warning(f"🚫 [FILTER_TF_WT_ALIGN] {position_key}: BLOCKED {action} — {_ft_why}. reason={(reason or '')[:60]}")
+                    _direct_queue_gate_note(trade_manager, position_key, reason, "FILTER_TF_WT_ALIGN")
+                    return False
+        except Exception as _fte:
+            logger.warning(f"[FILTER_TF_WT_ALIGN] check error (fail-open): {_fte}")
         # ═══ UNW-L 2026-10-01 live twins of vector-only regime switches (vec_decisions/live_unw_gates.py; all default OFF = neutral) ═══
         # AUGMENT_BULL_KILL_ENABLED (block AUGMENT on D-bull) / BULL_HOLD_EXIT_DELAY_BARS / BEAR_HOLD_EXIT_DELAY_BARS (hold technical CLOSE/REDUCE). Same predicates as v12_quick_engine.
         try:
