@@ -111,9 +111,14 @@ def _is_local(host, ssh):
     return host == "s1" and ssh == "127.0.0.1"
 
 
+def _local(p):
+    return os.path.expanduser(p)
+
+
 def rsync_push(src, host, ssh, dest):
     if _is_local(host, ssh):
-        cmd = ["rsync", "-az", "--remove-source-files", "--prune-empty-dirs", f"{src}/", dest]
+        os.makedirs(_local(dest), exist_ok=True)
+        cmd = ["rsync", "-az", "--remove-source-files", "--prune-empty-dirs", f"{src}/", _local(dest)]
     else:
         cmd = ["rsync", "-az", "--remove-source-files", "--prune-empty-dirs", "-e", "ssh -o BatchMode=yes -o ConnectTimeout=10", f"{src}/", f"{ssh}:{dest}"]
     return run(cmd)
@@ -121,7 +126,8 @@ def rsync_push(src, host, ssh, dest):
 
 def rsync_pull(host, ssh, src, dest):
     if _is_local(host, ssh):
-        cmd = ["rsync", "-az", "--remove-source-files", "--prune-empty-dirs", f"{src}/", f"{dest}/"]
+        os.makedirs(_local(src), exist_ok=True)
+        cmd = ["rsync", "-az", "--remove-source-files", "--prune-empty-dirs", f"{_local(src)}/", f"{dest}/"]
     else:
         cmd = ["rsync", "-az", "--remove-source-files", "--prune-empty-dirs", "-e", "ssh -o BatchMode=yes -o ConnectTimeout=10", f"{ssh}:{src}/", f"{dest}/"]
     return run(cmd)
@@ -129,7 +135,8 @@ def rsync_pull(host, ssh, src, dest):
 
 def rsync_sync(src, host, ssh, dest):
     if _is_local(host, ssh):
-        cmd = ["rsync", "-az", f"{src}/", dest]
+        os.makedirs(_local(dest), exist_ok=True)
+        cmd = ["rsync", "-az", f"{src}/", _local(dest)]
     else:
         cmd = ["rsync", "-az", "-e", "ssh -o BatchMode=yes -o ConnectTimeout=10", f"{src}/", f"{ssh}:{dest}"]
     return run(cmd)
@@ -377,14 +384,25 @@ def main():
     if a.seed:
         seed_import(base, st, pathlib.Path(a.seed_dir or (base / "seed")))
         save_state(base, st)
+    try:
+        manual_down = {l.strip() for l in (base / "down_hosts.txt").read_text().splitlines() if l.strip()}
+    except Exception:
+        manual_down = set()
     for h in hosts:
         probe_host(st, hosts, h)
-    down = set()
+    down = set(manual_down) & set(hosts)
+    for h in down:
+        host_down(st, base, h)
     for h in hosts:
         n = (st.get("host_err") or {}).get(h, {}).get("n", 0)
         if n >= DOWN_AFTER_ERRS:
-            down.add(h)
-            host_down(st, base, h)
+            rc, _ = pull_file(h, hosts[h], "~/v15_pusher/heartbeat.json", str(base / f"heartbeat_{h}.json"))
+            if rc == 0:
+                st.setdefault("host_err", {}).setdefault(h, {})["n"] = 0
+                log(f"host {h} recovered (heartbeat ok)")
+            else:
+                down.add(h)
+                host_down(st, base, h)
     universe = tradeable_symsides()
     log(f"tick: hosts={sorted(hosts)} down={sorted(down)} universe={len(universe)} rounds_complete={st.get('rounds_complete', 0)} units_done={st.get('units_done', 0)}")
     for h in hosts:
@@ -392,6 +410,14 @@ def main():
             continue
         ssh = hosts[h]
         fails = 0
+        rc, out = rsync_sync(str(base / "anchors"), h, ssh, "~/v15_pusher/anchors")
+        if rc != 0:
+            log(f"anchors {h} rc={rc} {out.strip()[-200:]}")
+            fails += 1
+        rc, out = rsync_sync(str(base / "registry"), h, ssh, "~/v15_pusher/registry")
+        if rc != 0:
+            log(f"registry {h} rc={rc} {out.strip()[-200:]}")
+            fails += 1
         rc, out = rsync_push(str(base / "outbox" / h), h, ssh, "~/v15_pusher/inbox/")
         if rc != 0:
             log(f"push {h} rc={rc} {out.strip()[-200:]}")
@@ -403,14 +429,6 @@ def main():
         rc, out = pull_file(h, ssh, "~/v15_pusher/heartbeat.json", str(base / f"heartbeat_{h}.json"))
         if rc != 0:
             log(f"heartbeat {h} rc={rc} {out.strip()[-200:]}")
-        rc, out = rsync_sync(str(base / "anchors"), h, ssh, "~/v15_pusher/anchors")
-        if rc != 0:
-            log(f"anchors {h} rc={rc} {out.strip()[-200:]}")
-            fails += 1
-        rc, out = rsync_sync(str(base / "registry"), h, ssh, "~/v15_pusher/registry")
-        if rc != 0:
-            log(f"registry {h} rc={rc} {out.strip()[-200:]}")
-            fails += 1
         he = st.setdefault("host_err", {}).setdefault(h, {"n": 0})
         if fails:
             he["n"] += 1

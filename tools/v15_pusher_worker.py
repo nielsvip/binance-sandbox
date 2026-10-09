@@ -46,7 +46,9 @@ def run_unit(unit_path, base):
     rnd, ss = int(unit["round"]), str(unit["symside"])
     anchor = base / "anchors" / f"{ss}.json"
     if not anchor.exists():
-        return {"symside": ss, "round": rnd, "error": "anchor missing, requeue"}, None
+        time.sleep(60)
+        if not anchor.exists():
+            return {"symside": ss, "round": rnd, "error": "anchor missing, requeue"}, None
     tmp = base / "running" / f"tmp_{rnd:04d}_{ss}_{os.getpid()}"
     if tmp.exists():
         shutil.rmtree(tmp, ignore_errors=True)
