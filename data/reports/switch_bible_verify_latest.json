@@ -1,5 +1,5 @@
 {
- "broken": 87,
+ "broken": 89,
  "checks": {
   "TEMPLATE_NO_CONFIG": [],
   "LINK_LOST": [],
@@ -35,6 +35,9 @@
    "WT_TOP_ENTRY_ENABLED [CRYPTO_SHORT]",
    "WT_TOP_ENTRY_ENABLED [STOCKS_LONG]",
    "WT_TOP_ENTRY_ENABLED [STOCKS_SHORT]",
+   "WT_TOP_ENTRY_HTF_CONFIRM_TF [CRYPTO_SHORT]",
+   "WT_TOP_ENTRY_HTF_CONFIRM_TF [STOCKS_LONG]",
+   "WT_TOP_ENTRY_HTF_CONFIRM_TF [STOCKS_SHORT]",
    "WT_TOP_ENTRY_MODE [CRYPTO_SHORT]",
    "WT_TOP_ENTRY_MODE [STOCKS_LONG]",
    "WT_TOP_ENTRY_MODE [STOCKS_SHORT]",
@@ -96,8 +99,7 @@
    "TRADIER_POST_CLOSE_COOLDOWN_MIN: wired live+vec (['tradier_manage.py:16008(queue_trade_action)'] / ['v12_quick_engine.py:13130(simulate_one)']) but in no template",
    "USE_1M_3M_SIGNALS_ENABLED: wired live+vec (['ez_manage.py:685(check_entry_alignment)'] / ['vec_decisions/check_entry_candidates_crypto__bb_squeeze_gate.py:67(check_bb_squeeze_gate)']) but in no template",
    "VOL_SPIKE_ENABLED: wired live+vec (['ez_positions_quick.py:11841(detect_volume_spike)'] / ['v12_quick_engine.py:8425(compute_reentry_blocks)']) but in no template",
-   "WR_PULLBACK_ENABLED: wired live+vec (['ez_positions_quick.py:16268(check_entry_candidates_for_account.worker)'] / ['v12_quick_engine.py:8454(compute_reentry_blocks)']) but in no template",
-   "WT_TOP_ENTRY_HTF_CONFIRM_TF: wired live+vec (['vec_decisions/wt_top_entry.py:58(resolve_wt_top_spec)'] / ['vec_decisions/wt_top_entry.py:58(resolve_wt_top_spec)']) but in no template"
+   "WR_PULLBACK_ENABLED: wired live+vec (['ez_positions_quick.py:16268(check_entry_candidates_for_account.worker)'] / ['v12_quick_engine.py:8454(compute_reentry_blocks)']) but in no template"
   ],
   "TAB_FIRST_ROW_NOT_DEFAULT": [],
   "TAB_NO_ORANGE_ROWS": []
