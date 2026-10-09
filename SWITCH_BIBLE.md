@@ -16,7 +16,7 @@
 6. **PARITY_PROVEN** is reserved for scalar-vs-vec parity evidence (list in `data/wiring/parity_proven.json`). `ledger_flip_proven` = a real NPZ ledger flip (data/wiring/wired_proven.json) only.
 
 
-_Generated 2026-10-09T02:30:52.697713Z · 3644 names · vec modules never reached from simulate_one: 129/281_
+_Generated 2026-10-09T02:36:13.365271Z · 3644 names · vec modules never reached from simulate_one: 129/281_
 
 ## Status counts (all names)
 
@@ -406,7 +406,7 @@ _Generated 2026-10-09T02:30:52.697713Z · 3644 names · vec modules never reache
 | `ABLATION_DISABLE_FILTER_REDUCE` | reduce | False / False / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:15359(simulate_one) |
 | `ABLATION_DISABLE_FILTER_REENTRY` | reentry | False / False / False | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:15356(simulate_one) |
 | `ABLATION_DISABLE_SCALP_GUARD` | unclassified | False / False / False | — | DEAD+STAGED_VEC | LIVE_ONLY+STAGED_VEC | — · tradier_manage.py:6645(<module>) | — |
-| `ACCOUNTS` | unclassified | <absent> / {'tra': {'id': '6YB69627', 'key': 'M7o5eDTG7IiPknfo2dpCwtIf | — | DEAD | LIVE_ONLY | — · tradier_manage.py:57989(main)<br>(+2) | — |
+| `ACCOUNTS` | unclassified | <absent> / {'tra': {'id': None, 'key': None, 'env': 'live'}, 'trb': {' | — | DEAD | LIVE_ONLY | — · tradier_manage.py:57989(main)<br>(+2) | — |
 | `ACCOUNT_KEYS` | unclassified | ['ang', 'inf', 'men', 'flz', 'fin'] / ['tra', 'trb', 'trc'] / ['ang',  | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:8592(check_server_heartbeat)<br>(+11) · ez_positions_quick.py:738(check_server_heartbeat)<br>(+11) | — |
 | `ACCOUNT_OVERRIDES` | unclassified | {'ang': {'NOLOSS_MIN_PROFIT_PCT': 0.0, 'HTF_STRICT': False, 'K3M_CAP': | — | DEAD | DEAD | — · — | — |
 | `ACCOUNT_SIDE_MAPPING` | unclassified | {'tra': ['LONG']} / {'tra': ['LONG']} / {'tra': ['LONG']} | — | DEAD | DEAD | — · — | — |
@@ -484,7 +484,7 @@ _Generated 2026-10-09T02:30:52.697713Z · 3644 names · vec modules never reache
 | `BB_SQUEEZE_ENTRY_TF` | entry | 1h / <absent> / 1h | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:21544(detect_bb_squeeze_breakout) · ez_positions_quick.py:21544(detect_bb_squeeze_breakout) | vec_decisions/check_entry_candidates_crypto__bb_squeeze_gate.py:160(bb_squeeze_entry_mask_vec) |
 | `BB_SQUEEZE_THRESHOLD_15M` | unclassified | 0.025 / 0.025 / 0.025 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26334(_apply_research_only_live_gates) | — |
 | `BB_SQUEEZE_THRESHOLD_1H` | unclassified | 0.03 / 0.03 / 0.03 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26347(_apply_research_only_live_gates) | — |
-| `BEAR_SCENARIO_SYMBOLS` | unclassified | <absent> / {'UCO', 'HL', 'VXX', 'NEM', 'GLD', 'AGI', 'GDX', 'UVXY', 'R | — | DEAD | LIVE_ONLY | — · tradier_manage.py:47442(TradierTradeManager.execute_now) | — |
+| `BEAR_SCENARIO_SYMBOLS` | unclassified | <absent> / {'UNG', 'MAG', 'HL', 'USO', 'VXX', 'AEM', 'NEM', 'EGO', 'GL | — | DEAD | LIVE_ONLY | — · tradier_manage.py:47442(TradierTradeManager.execute_now) | — |
 | `BINANCE_API_BASE` | unclassified | https://fapi.binance.com / <absent> / https://fapi.binance.com | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:98(<module>) · ez_rankings.py:98(<module>) | — |
 | `BLACKLIST` | unclassified | <absent> / ['SLV', 'COPX', 'PYPL', 'QBTS', 'DINO', 'RBLX', 'MPC'] / <a | — | DEAD | LIVE_ONLY | — · tradier_manage.py:40718(TradierTradeManager.__init__) | — |
 | `BLACKLIST_SYMBOLS` | unclassified | [] / [] / [] | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:24928(MultiAccountTradeManager.execute_trade_action)<br>(+1) · tradier_manage.py:21717(process_position) | vec_decisions/blacklist_strand.py:37(is_blacklisted) |
@@ -1574,7 +1574,7 @@ _Generated 2026-10-09T02:30:52.697713Z · 3644 names · vec modules never reache
 | `NOLOSS_BB1H_GATE_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:33851(StockStrategy.evaluate_stop) | vec_decisions/check_exit_candidates_stocks__noloss_bb1h.py:44(check_noloss_bb1h) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__noloss_bb1h.py:65(check_noloss_bb1h_vec) [UNREACHABLE] |
 | `NOLOSS_DC4H_GATE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:27224(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:27224(check_exit_candidates_for_account.process_single_exit) | — |
 | `NOLOSS_MIN_PROFIT_PCT_TRADIER_LIVE` | unclassified | <absent> / <absent> / 0.01 | — | VEC_ONLY | VEC_ONLY | — · — | vec_decisions/noloss_gate.py:20(noloss_blocks) |
-| `NON_SHORTABLE` | unclassified | <absent> / {'UCO', 'SMG', 'WEAT', 'FCN', 'XOP', 'ITA', 'ETHD', 'AXTI', | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30257(StockStrategy.__init__)<br>(+6) | — |
+| `NON_SHORTABLE` | unclassified | <absent> / {'ALMU', 'SMG', 'USO', 'ITA', 'HII', 'WEAT', 'XOP', 'FRO',  | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30257(StockStrategy.__init__)<br>(+6) | — |
 | `OBLIGATORY_EMA50_15M_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:37835(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
 | `OBLIGATORY_EMA50_15M_PCT` | unclassified | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | DEAD | ez_manage.py:37836(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
 | `OBLIGATORY_HEDGE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:33935(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:23993(execute_trade_wrapper) | — |
@@ -2518,9 +2518,9 @@ _Generated 2026-10-09T02:30:52.697713Z · 3644 names · vec modules never reache
 | `TRADEABLE_KEYS_MANDATORY_ENABLED` | unclassified | False / False / False | — | DEAD | DEAD | — · — | — |
 | `TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:46086(_process_single_override_check)<br>(+2) · — | — |
 | `TRADEABLE_KEYS_MANDATORY_SIZE_USD` | sizing | 9.0 / 9.0 / 9.0 | — | LIVE_ONLY | DEAD | ez_manage.py:46134(_process_single_override_check) · — | — |
-| `TRADIER_ACCOUNT_ID` | unclassified |  / VA11623260 / VA11623260 | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:7889(QuickConfig) |
+| `TRADIER_ACCOUNT_ID` | unclassified |  /  /  | — | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:7889(QuickConfig) |
 | `TRADIER_API_BASE_URL` | unclassified | https://api.tradier.com/v1 / https://api.tradier.com/v1 / https://api. | — | DEAD | DEAD | — · — | — |
-| `TRADIER_API_KEY` | unclassified |  / gDrr1UwivxxQPo6jUCyntP1hv7uk / gDrr1UwivxxQPo6jUCyntP1hv7uk | — | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:9763(AccountConfig.__post_init__ [dynamic key]) · — | v12_quick_engine.py:7892(QuickConfig)<br>v12_quick_engine.py:7899(QuickConfig) |
+| `TRADIER_API_KEY` | unclassified |  /  /  | — | WIRED_BOTH_UNPROVEN | VEC_ONLY | ez_manage.py:9763(AccountConfig.__post_init__ [dynamic key]) · — | v12_quick_engine.py:7892(QuickConfig)<br>v12_quick_engine.py:7899(QuickConfig) |
 | `TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES` | unclassified | 0 / 0 / 0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:28502(_apply_research_only_live_gates) | — |
 | `TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `TRADIER_INDICATORS_CYCLE_CONCURRENCY` | unclassified | 24 / 24 / 24 | — | LIVE_ONLY | LIVE_ONLY | tradier_indicators.py:2523(TradierIndicatorOrchestrator.__init__) · tradier_indicators.py:2523(TradierIndicatorOrchestrator.__init__) | — |
@@ -2697,7 +2697,7 @@ _Generated 2026-10-09T02:30:52.697713Z · 3644 names · vec modules never reache
 | `UNTESTED_FLAT_SPS_ENABLED` | unclassified | True / <absent> / <absent> | — | LIVE_ONLY | DEAD | ez_manage.py:35216(MultiAccountTradeManager.execute_now) · — | — |
 | `USE_1M_3M_SIGNALS_ENABLED` | unclassified | False / False / False | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:685(check_entry_alignment)<br>(+7) · ez_positions_quick.py:29474(check_entry_candidates_for_account.worker)<br>(+4) | vec_decisions/check_entry_candidates_crypto__bb_squeeze_gate.py:67(check_bb_squeeze_gate)<br>vec_decisions/check_entry_candidates_crypto__bb_squeeze_gate.py:172(bb_squeeze_entry_mask_vec)<br>(+6) |
 | `USE_INDICATOR_SNAPSHOT` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
-| `USE_SANDBOX` | unclassified | <absent> / True / True | — | DEAD | DEAD | — · — | — |
+| `USE_SANDBOX` | unclassified | <absent> / False / False | — | DEAD | DEAD | — · — | — |
 | `USE_WS_3M` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |
 | `V8Q_COOLDOWN_BARS` | unclassified | 3 / 3 / 3 | — | DEAD | DEAD | — · — | — |
 | `V8Q_D_TREND_REQUIRED` | unclassified | True / True / True | — | DEAD | DEAD | — · — | — |

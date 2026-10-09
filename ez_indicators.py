@@ -2367,6 +2367,19 @@ class IndicatorCalculator:
         else:
             result[f"wt_signal_{timeframe}"] = "NEUTRAL"
         try:
+            _done_n = len(close_series)
+            if _done_n >= 3 and wt1 is not None and wt2 is not None and len(wt1) == _done_n and len(wt2) == _done_n:
+                _d_a1, _d_b1 = float(wt1.iloc[-2]), float(wt2.iloc[-2])
+                _d_a0, _d_b0 = float(wt1.iloc[-3]), float(wt2.iloc[-3])
+                result[f"wt_cross_done_bull_{timeframe}"] = 1 if (_d_a1 > _d_b1 and _d_a0 <= _d_b0) else 0
+                result[f"wt_cross_done_bear_{timeframe}"] = 1 if (_d_a1 < _d_b1 and _d_a0 >= _d_b0) else 0
+                result[f"high_done_{timeframe}"] = float(high_series.iloc[-2])
+                result[f"high_done_prev_{timeframe}"] = float(high_series.iloc[-3])
+                result[f"low_done_{timeframe}"] = float(low_series.iloc[-2])
+                result[f"low_done_prev_{timeframe}"] = float(low_series.iloc[-3])
+        except Exception:
+            pass
+        try:
             if len(close_series) >= 30:
                 _bt_cl = close_series.values.astype(np.float64)
                 try:
@@ -2380,6 +2393,11 @@ class IndicatorCalculator:
                     result[f"div_reg_bear_wt_{timeframe}"] = int(_bt_be[-1])
                     result[f"div_hid_bull_wt_{timeframe}"] = int(_bt_hb[-1])
                     result[f"div_hid_bear_wt_{timeframe}"] = int(_bt_hbe[-1])
+                    if len(_bt_rb) >= 2:
+                        result[f"div_reg_done_bull_wt_{timeframe}"] = int(_bt_rb[-2])
+                        result[f"div_reg_done_bear_wt_{timeframe}"] = int(_bt_be[-2])
+                        result[f"div_hid_done_bull_wt_{timeframe}"] = int(_bt_hb[-2])
+                        result[f"div_hid_done_bear_wt_{timeframe}"] = int(_bt_hbe[-2])
                 _bt_tp = (high_series + low_series + close_series) / 3.0
                 _bt_rmf = _bt_tp * volume_series
                 _bt_pm = _bt_rmf.where(_bt_tp.diff() > 0, 0).rolling(14, min_periods=1).sum()

@@ -46018,7 +46018,7 @@ async def _parity_flat_open_check(trade_manager, position_key: str, position, or
                 import vec_decisions.wt_top_entry as _wte
                 from types import SimpleNamespace as _SNS
                 _wte_cfg = _SNS(**{k: _get_p(k, d) for k, d in (("WT_TOP_ENTRY_ENABLED", False), ("WT_TOP_ENTRY_TF", "OFF"), ("WT_TOP_ENTRY_MODE", "TOPS_ONLY"), ("WT_TOP_ENTRY_DIV_MODE", "OFF"), ("WT_TOP_ENTRY_HTF_CONFIRM_TF", "OFF"))})
-                _ok_p, _wt_why = _wte.check_wt_top_entry(_wte.resolve_wt_top_spec(_wte_cfg), _ind_p, _long_p)
+                _ok_p, _wt_why = _wte.check_wt_top_entry(_wte.resolve_wt_top_spec(_wte_cfg), _wte.completed_view(_ind_p), _long_p)
                 if _ok_p:
                     _why_p = f"WT_TOP_ENTRY_{_side_p}_{_wt_why}"
             except Exception:

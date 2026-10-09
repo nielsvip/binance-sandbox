@@ -1,22 +1,22 @@
 {
- "now": "2026-10-09T01:37:43.222691+00:00",
+ "now": "2026-10-09T02:37:46.924421+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 7288,
- "last_exit_ts": "2026-10-09T01:37:07.184965+00:00",
+ "n_exit_rows": 7233,
+ "last_exit_ts": "2026-10-09T02:36:56.956753+00:00",
  "n_leaks": 27,
- "n_gate_on": 4750,
+ "n_gate_on": 4716,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 523,
+ "n_unmapped": 513,
  "n_unverified": 2,
- "since": "2026-10-07T01:37:43.222691+00:00",
+ "since": "2026-10-07T02:37:46.924421+00:00",
  "vec_exact_by_action": {
-  "OPEN": 1490,
-  "CLOSE": 450,
-  "REDUCE": 45,
+  "CLOSE": 430,
+  "OPEN": 1501,
+  "REDUCE": 43,
   "AUGMENT": 1
  },
- "native_rows": 5302,
+ "native_rows": 5258,
  "unverified_by_family": {
   "ULTIMATE_DC (None=None)": 2
  },
@@ -30,8 +30,8 @@
   "WT_LOWER_CROSS_EXIT men:EDUUSDT_LONG": 4
  },
  "gate_on_by_family": {
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 4087,
-  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 345,
+  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 334,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 4064,
   "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 295,
   "DC_BASIS_3M_REDUCE (DC_BASIS_3M_REDUCE_ENABLED)": 2,
   "MTF_BB_REJECT_EXIT (MTF_BB_REJECT_EXIT_ENABLED)": 4,
@@ -52,9 +52,9 @@
   "RSI2_EXIT_LIVE_rsi2=2.7_thr=10.0": 11,
   "SUBSTITUTION_FOR_men:ETHUSDC_SHORT": 10,
   "RSI2_EXIT_LIVE_rsi2=7.7_thr=10.0": 10,
-  "ORPHANED_HEDGE_PARENT_CLOSED": 9,
   "SUBSTITUTION_FOR_men:COMPUSDT_SHORT": 9,
   "SUBSTITUTION_FOR_men:BNBUSDC_LONG": 9,
+  "ORPHANED_HEDGE_PARENT_CLOSED": 8,
   "SUBSTITUTION_FOR_men:EDUUSDT_LONG": 8,
   "SUBSTITUTION_FOR_men:SKYUSDT_SHORT": 8,
   "RSI2_EXIT_LIVE_rsi2=5.0_thr=10.0": 8,
@@ -76,8 +76,7 @@
   "SUBSTITUTION_FOR_men:ENJUSDT_LONG": 4,
   "SUBSTITUTION_FOR_men:YFIUSDT_LONG": 4,
   "SUBSTITUTION_FOR_men:BBUSDT_LONG": 4,
-  "CB_HTF_EXHAUST_BAD_ENTRY: g=-1.45% age": 3,
-  "SUBSTITUTION_FOR_men:ATOMUSDT_SHORT": 3,
+  "TECHNICAL_TARGET_dc_15m_high_-0.10%_TA": 4,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-2.26% age": 3,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-2.28% age": 3,
   "SUBSTITUTION_FOR_men:UNIUSDC_SHORT": 3,
@@ -91,13 +90,14 @@
   "RSI2_EXIT_LIVE_rsi2=1.8_thr=10.0": 3,
   "SUBSTITUTION_FOR_men:ENSUSDT_LONG": 3,
   "CB_HTF_EXHAUST_HTF_EXHAUST: g=-0.67% a": 3,
-  "RSI2_EXIT_LIVE_rsi2=4.0_thr=10.0": 3
+  "RSI2_EXIT_LIVE_rsi2=4.0_thr=10.0": 3,
+  "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.56% age": 3
  },
  "actions": {
-  "OPEN": 1490,
-  "CLOSE": 5522,
-  "REDUCE": 52,
-  "QUICK_CLOSE": 214,
+  "CLOSE": 5461,
+  "OPEN": 1501,
+  "QUICK_CLOSE": 211,
+  "REDUCE": 50,
   "QUICK_REDUCE": 9,
   "AUGMENT": 1
  }

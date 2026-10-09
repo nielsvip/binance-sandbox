@@ -793,6 +793,8 @@ def wavetrend_intelligence(wt1_series: pd.Series, wt2_series: pd.Series, close_s
     result[f"wt_cross_bars_ago_{tf}"] = bars_ago
     result[f"wt_cross_bull_{tf}"] = 1 if (recent_cross == "BULL" and bars_ago == 0) else 0
     result[f"wt_cross_bear_{tf}"] = 1 if (recent_cross == "BEAR" and bars_ago == 0) else 0
+    result[f"wt_cross_done_bull_{tf}"] = 1 if (recent_cross == "BULL" and bars_ago == 1) else 0
+    result[f"wt_cross_done_bear_{tf}"] = 1 if (recent_cross == "BEAR" and bars_ago == 1) else 0
     lookback = min(50, n - 1)
     start = n - 1 - lookback
     result[f"wt_cross_count_bull_{tf}"] = int(np.sum(cross_above[max(0, start - 1):]))
@@ -1707,6 +1709,11 @@ class IndicatorCalculator:
         result[f"low_{timeframe}"] = float(low_series.iloc[-1])
         result[f"high_{timeframe}_prev"] = float(high_series.iloc[-2]) if len(high_series) > 1 else float(high_series.iloc[-1])
         result[f"low_{timeframe}_prev"] = float(low_series.iloc[-2]) if len(low_series) > 1 else float(low_series.iloc[-1])
+        if len(high_series) >= 3:
+            result[f"high_done_{timeframe}"] = float(high_series.iloc[-2])
+            result[f"high_done_prev_{timeframe}"] = float(high_series.iloc[-3])
+            result[f"low_done_{timeframe}"] = float(low_series.iloc[-2])
+            result[f"low_done_prev_{timeframe}"] = float(low_series.iloc[-3])
         result[f"close_{timeframe}_prev"] = float(close_series.iloc[-2]) if len(close_series) > 1 else current_price
         # [2026-07-03] DG_10 SHORT-BLOCK FIX: open_{tf}/close_{tf} were never emitted, so the
         # disaster-guard HTF bias (close_D vs open_D, close_4h vs open_4h) was structurally 0 and
@@ -1840,6 +1847,11 @@ class IndicatorCalculator:
                     result[f"div_reg_bear_wt_{timeframe}"] = int(_bt_be[-1])
                     result[f"div_hid_bull_wt_{timeframe}"] = int(_bt_hb[-1])
                     result[f"div_hid_bear_wt_{timeframe}"] = int(_bt_hbe[-1])
+                    if len(_bt_rb) >= 2:
+                        result[f"div_reg_done_bull_wt_{timeframe}"] = int(_bt_rb[-2])
+                        result[f"div_reg_done_bear_wt_{timeframe}"] = int(_bt_be[-2])
+                        result[f"div_hid_done_bull_wt_{timeframe}"] = int(_bt_hb[-2])
+                        result[f"div_hid_done_bear_wt_{timeframe}"] = int(_bt_hbe[-2])
                 _bt_hi = _ensure_float_series(adjusted_df["high"])
                 _bt_lo = _ensure_float_series(adjusted_df["low"])
                 _bt_vo = _ensure_float_series(adjusted_df["volume"])

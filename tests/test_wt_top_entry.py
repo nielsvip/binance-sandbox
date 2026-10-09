@@ -201,7 +201,28 @@ def test_reor_survives_zone_block():
     assert int(s_off.sum()) == 0
 
 
+def test_completed_view_enforces_done_bars():
+    ind = _mk_scalar("15m", cross=True, bull=False)
+    ind.update({
+        "wt_cross_done_bear_15m": 0, "wt_cross_done_bull_15m": 0,
+        "high_done_15m": 100.0, "high_done_prev_15m": 101.0,
+        "low_done_15m": 99.0, "low_done_prev_15m": 98.0,
+        "div_reg_done_bear_wt_15m": 1, "div_hid_done_bear_wt_15m": 1,
+        "div_reg_done_bull_wt_15m": 1, "div_hid_done_bull_wt_15m": 1,
+        "wt_cross_done_bear_4h": 0, "wt_cross_done_bull_4h": 0,
+        "wt_cross_done_bear_D": 0, "wt_cross_done_bull_D": 0,
+        "wt_cross_done_bear_1h": 0, "wt_cross_done_bull_1h": 0,
+    })
+    s = _spec()
+    assert w.check_wt_top_entry(s, ind, False)[0] is True
+    assert w.check_wt_top_entry(s, w.completed_view(ind), False)[0] is False
+    ind["wt_cross_done_bear_15m"] = 1
+    assert w.check_wt_top_entry(s, w.completed_view(ind), False)[0] is True
+    assert w.check_wt_top_entry(s, w.completed_view({}), False)[0] is False
+
+
 if __name__ == "__main__":
+    test_completed_view_enforces_done_bars()
     test_reor_survives_zone_block()
     test_config_registration()
     test_resolve_htf_vocab()

@@ -33,6 +33,34 @@ def _flag(v):
         return False
 
 
+def completed_view(ind):
+    out = dict(ind or {})
+    for _tf in ("15m", "1h", "4h", "D"):
+        for _w, _b in (("bull", "bull"), ("bear", "bear")):
+            _dk = f"wt_cross_done_{_b}_{_tf}"
+            if _dk in out:
+                out[f"wt_cross_{_w}_{_tf}"] = out[_dk]
+            else:
+                out[f"wt_cross_{_w}_{_tf}"] = 0
+        if f"high_done_{_tf}" in out:
+            out[f"high_{_tf}"] = out[f"high_done_{_tf}"]
+            out[f"high_{_tf}_prev"] = out.get(f"high_done_prev_{_tf}")
+        else:
+            out[f"high_{_tf}"] = None
+            out[f"high_{_tf}_prev"] = None
+        if f"low_done_{_tf}" in out:
+            out[f"low_{_tf}"] = out[f"low_done_{_tf}"]
+            out[f"low_{_tf}_prev"] = out.get(f"low_done_prev_{_tf}")
+        else:
+            out[f"low_{_tf}"] = None
+            out[f"low_{_tf}_prev"] = None
+        for _dm in ("reg", "hid"):
+            for _w, _b in (("bull", "bull"), ("bear", "bear")):
+                _dk = f"div_{_dm}_done_{_b}_wt_{_tf}"
+                out[f"div_{_dm}_{_w}_wt_{_tf}"] = out.get(_dk, 0)
+    return out
+
+
 def _safe_get(npz, key, n, default=0.0):
     try:
         v = npz[key]

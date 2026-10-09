@@ -1892,8 +1892,11 @@ def _shared_direct_entry_claim(
                 }
             )
             _wte_spec = _wte.resolve_wt_top_spec(_wte_cfg)
+            _wte_ind = indicators or {}
+            if account_key != "trc":
+                _wte_ind = _wte.completed_view(_wte_ind)
             _wte_fire, _wte_why = _wte.check_wt_top_entry(
-                _wte_spec, indicators or {}, is_long
+                _wte_spec, _wte_ind, is_long
             )
             decision = _SNS(
                 eligible=bool(_wte_fire),
@@ -43972,35 +43975,21 @@ class TradierTradeManager:
                 )
                 return False
 
-        # 3c. 2026-07-20 USER: trc is a TEMPORARY live A/B control arm that must trade ONLY
-        #     trb's symbols that also have real per_sym + 7D-overlay results for trc itself
-        #     (data/hourly_reconfig/trc/active_config.json). symbols_trc_long/short.json
-        #     (step 3 above) is meant to mirror trb's fully-processed universe but the
-        #     ranking pipeline that maintains it has been stalling — that let trc hold a
-        #     tradeable symbol (e.g. UUUU) with no trc-specific per_sym+7D result behind it.
-        #     Gate NEW entries only; exits/reduces bypass is_symbol_tradeable so existing
-        #     positions can still be closed.
+        # 3c. USER 2026-10-09: 7D overlay is OBSOLETE — trc paper mirrors the trb
+        #     universe directly (no hourly_reconfig 7D approval) and runs the 5m +
+        #     non-vectorizable legs live (LIVE_5m_trading_ENABLED + forming-bar feeds
+        #     via _apply_trc_overrides) as the parallel paper arm. Gate NEW entries
+        #     only; exits/reduces bypass is_symbol_tradeable so existing positions
+        #     can still be closed.
         if account_key == "trc":
-            _base = Path(config.BASE_PATH) / "data"
-            _trb_cfgs = _load_tradier_per_sym_results(
-                _base / "hourly_reconfig" / "trb" / "active_config.json"
-            )
-            _trc_cfgs = _load_tradier_per_sym_results(
-                _base / "hourly_reconfig" / "trc" / "active_config.json"
-            )
-            # USER 2026-08-27: sym_side check — trb_symbols_long vs short, not just sym
             _trb_symbols = self._get_json_symbols(
                 "trb", "long" if side == "LONG" else "short"
             )
-            if not per_sym_overlay_is_approved(
-                symbol,
-                side,
-                trb_configs=_trb_cfgs,
-                trc_configs=_trc_cfgs,
-                trb_symbols=_trb_symbols,
-            ):
+            if str(symbol or "").upper().strip() not in {
+                str(v).upper().strip() for v in (_trb_symbols or ())
+            }:
                 logger.info(
-                    f"[trc] ⛔ {symbol} {side}: not in TRB universe — no new entry/reentry (TRC mirrors TRB all symbols with 7D overlay)"
+                    f"[trc] ⛔ {symbol} {side}: not in TRB universe — no new entry/reentry (TRC mirrors TRB universe, 5m/non-vec paper arm)"
                 )
                 return False
 
