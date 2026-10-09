@@ -107,21 +107,23 @@ def test_hold_only_failed_never_extended():
 
 
 def test_trim_never_touches_sacred_breakouts():
-    assert T.should_timing_trim(T.EXTENDED, 1.5, 2.5) is False
-    assert T.should_timing_trim(T.EXTENDED, 9.9, 9.9) is False
-    assert T.should_timing_trim(T.FRESH, 9.9, 0.1) is False
-    assert T.should_timing_trim(T.REBOUND, 9.9, 0.8) is False
+    assert T.should_timing_trim(T.EXTENDED, 1.5) is False
+    assert T.should_timing_trim(T.EXTENDED, 9.9) is False
+    assert T.should_timing_trim(T.FRESH, 9.9) is False
+    assert T.should_timing_trim(T.REBOUND, 9.9) is False
 
 
 def test_trim_fires_on_failed_profit():
-    assert T.should_timing_trim(T.FAILED, 1.2, -0.5) is True
-    assert T.should_timing_trim(T.FAILED, -0.5, -1.0) is False
+    assert T.should_timing_trim(T.FAILED, 1.2) is True
+    assert T.should_timing_trim(T.FAILED, 0.01) is True
+    assert T.should_timing_trim(T.FAILED, 0.0) is False
+    assert T.should_timing_trim(T.FAILED, -0.5) is False
 
 
 def test_trim_never_on_winners_riding_or_loss():
-    assert T.should_timing_trim(T.NONE, 5.0, 0.0) is False
-    assert T.should_timing_trim(T.FAILED, -2.0, -1.0) is False
-    assert T.should_timing_trim(T.FAILED, "x", None) is False
+    assert T.should_timing_trim(T.NONE, 5.0) is False
+    assert T.should_timing_trim(T.FAILED, -2.0) is False
+    assert T.should_timing_trim(T.FAILED, "x") is False
 
 
 def _stage_timing(tmp_path, states, updated_at):
