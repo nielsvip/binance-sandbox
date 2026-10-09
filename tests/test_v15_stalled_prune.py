@@ -231,6 +231,9 @@ def test_main_end_to_end(tmp_path, monkeypatch, capsys):
     _write_progress(live_pd / "A_LONG_v14_progress.json", True)
     (live_sheets / "A_LONG_30d_matrix.xlsx").write_text("live")
     (dump / "sheets" / "A_LONG_30d_matrix.xlsx").write_text("x")
+    worker_dump = tmp_path / "stalled_s2_202610082210"
+    (worker_dump / "sheets").mkdir(parents=True)
+    (worker_dump / "sheets" / "A_LONG_30d_matrix.xlsx").write_text("x")
     pointer = tmp_path / "v15_current_progress_dir.txt"
     pointer.write_text(str(live_pd))
     monkeypatch.setattr(P, "HOME", tmp_path)
@@ -240,7 +243,9 @@ def test_main_end_to_end(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(P, "CACHE_PATH", tmp_path / "cache.json")
     old_mtime = (dump / "sheets" / "A_LONG_30d_matrix.xlsx").stat().st_mtime - 7200
     os.utime(dump, (old_mtime, old_mtime))
+    os.utime(worker_dump, (old_mtime, old_mtime))
     assert P.main(["prog", "--min-age-min", "60"]) == 0
     assert not dump.exists()
+    assert not worker_dump.exists()
     out = capsys.readouterr().out
-    assert "TOTAL: 1 files" in out
+    assert "TOTAL: 2 files" in out

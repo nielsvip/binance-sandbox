@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""Prune ~/stalled_s1_* rescue dumps as their sym_sides finalize live.
+"""Prune ~/stalled_* rescue dumps as their sym_sides finalize live.
 
 Each results-watchdog strike copies 30D progress + sheets + sweep logs into a
-new ~/stalled_s1_<ts>/ dir (~3.7G). This pruner deletes dumped files by two
+new ~/stalled_<host>_<ts>/ dir (~3.7G), for S1 itself and every worker host
+(s2/s5/s6/s7 — all TEMP lane workers). Remote hosts' progress is merged into
+S1's live round dir at strike time, so S1-local truth (progress dirs +
+CELL_BY_CELL) is the finalize authority for every dump; no per-host probing.
+This pruner deletes dumped files by two
 rules, and removes dump dirs left with nothing worth keeping:
 
 FAST PATH (the point of this tool): a dumped file whose sym_side has
@@ -296,7 +300,7 @@ def main(argv):
     now = time.time()
     stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now))
     print(f"[{stamp}] [stalled-prune] start (dry_run={dry_run}, min_age_min={min_age_min}, max_age_days={max_age_days})")
-    dumps = sorted(path for path in HOME.glob("stalled_s1_*") if path.is_dir() and not path.is_symlink())
+    dumps = sorted(path for path in HOME.glob("stalled_*") if path.is_dir() and not path.is_symlink())
     if not dumps:
         print("[stalled-prune] no dumps, nothing to do")
         return 0
