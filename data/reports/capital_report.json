@@ -1,32 +1,54 @@
 {
- "generated_at": "2026-10-09 05:10 UTC",
- "total_capital_usd": 5.98,
+ "generated_at": "2026-10-09 05:21 UTC",
+ "total_capital_usd": 27.98,
  "tier_capital": {
   "A": 0.0,
-  "B": 5.98,
+  "B": 27.98,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 3,
   "C": 0
  },
  "winners": [],
  "losers": [],
  "mediocre": [
-  "flz:XRPUSDC_LONG"
+  "inf:ASTSUSDT_SHORT"
  ],
  "positions": [
   {
-   "pk": "flz:XRPUSDC_LONG",
-   "symbol": "XRPUSDC",
-   "account": "flz",
-   "value_usd": 5.98,
-   "gain_pct": -0.079,
+   "pk": "inf:STRKUSDT_LONG",
+   "symbol": "STRKUSDT",
+   "account": "inf",
+   "value_usd": 18.81,
+   "gain_pct": 16.888,
    "tier": "B",
-   "perf_mult": 0.74,
-   "amt": 4.3,
-   "mark": 1.3918
+   "perf_mult": 1.0,
+   "amt": 274.9,
+   "mark": 0.06840913
+  },
+  {
+   "pk": "inf:ASTSUSDT_SHORT",
+   "symbol": "ASTSUSDT",
+   "account": "inf",
+   "value_usd": 5.55,
+   "gain_pct": -0.217,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 0.1,
+   "mark": 55.54
+  },
+  {
+   "pk": "inf:ALGOUSDT_SHORT",
+   "symbol": "ALGOUSDT",
+   "account": "inf",
+   "value_usd": 3.62,
+   "gain_pct": 3.152,
+   "tier": "B",
+   "perf_mult": 3.04,
+   "amt": 30.2,
+   "mark": 0.11978364
   }
  ]
 }
