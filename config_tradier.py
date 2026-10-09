@@ -1065,6 +1065,9 @@ class TradierConfig:
     # Block CLOSE/sell-to-close orders during first N minutes after market open.
     # Wired in tradier_manage.evaluate_stop AND tradier_options_analyzer.auto_sell.
     OPENING_BUFFER_NO_CLOSE_MINUTES: float = 30.0
+    OPENING_BUFFER_DC4_INTRADAY_SKIP_ENABLED: bool = (
+        True  # USER 2026-10-09: in-buffer, skip intraday-TF (15m/1h/...) VIGILANCE_DC4 stops (levels meaningless on 0-2 open bars); 4h/D + ULTIMATE_DC stay live. Kill switch: False restores pre-open-bleed-fix behavior.
+    )
     # === PREMARKET NO-FIRE (2026-04-26 — no surprise BUYS while owner sleeps) ===
     # Default-on guard: premarket cron saves the adjusted plan but skips _place_gtc_buys.
     # Morning brief surfaces the held plan; owner re-runs manually without flag to fire.
@@ -5041,15 +5044,23 @@ class TradierConfig:
     TRC_DC_DAYTRADE_LONG_BUDGET: float = 9900.0  # was 4950 / orig 9900
     TRC_DC_DAYTRADE_SHORT_BUDGET: float = 9900.0  # was 4950 / orig 9900
     ACCOUNT_TYPE_TRA: str = "cash"  # GFV guard (tra = emergency close only)
-    ACCOUNT_TYPE_TRB: str = "margin"  # USER 2026-10-09: trb = real money, holds shorts -> margin, GFV impossible -> guard skipped
-    ACCOUNT_TYPE_TRC: str = "paper"  # USER 2026-10-09: trc = paper replication -> no real settlement -> guard skipped
+    ACCOUNT_TYPE_TRB: str = (
+        "margin"  # USER 2026-10-09: trb = real money, holds shorts -> margin, GFV impossible -> guard skipped
+    )
+    ACCOUNT_TYPE_TRC: str = (
+        "paper"  # USER 2026-10-09: trc = paper replication -> no real settlement -> guard skipped
+    )
     TRC_SWING_LONG_BUDGET: float = 100000.0  # was 50000 / orig 100000
     TRC_SWING_SHORT_BUDGET: float = 100000.0  # was 50000 / orig 100000
     TRC_SCALP_LONG_BUDGET: float = 1250.0  # was 2500 / orig 5000
     TRC_SCALP_SHORT_BUDGET: float = 1250.0  # was 2500 / orig 5000
     TRC_BEAR_MARKET_MODE: bool = False  # No bear penalty — test both directions equally
-    TRC_LIVE_5M_TRADING_ENABLED: bool = True  # USER 2026-10-09: trc paper runs real 5m legs (sizing/legs) in parallel; trb stays vec-parity
-    TRC_PARITY_DISABLE_NON_VECTORIZABLE: bool = False  # USER 2026-10-09: trc paper enables non-vectorizable legs; trb keeps them disabled
+    TRC_LIVE_5M_TRADING_ENABLED: bool = (
+        True  # USER 2026-10-09: trc paper runs real 5m legs (sizing/legs) in parallel; trb stays vec-parity
+    )
+    TRC_PARITY_DISABLE_NON_VECTORIZABLE: bool = (
+        False  # USER 2026-10-09: trc paper enables non-vectorizable legs; trb keeps them disabled
+    )
     TRC_ENTRY_ZONE_LONG: float = 30.0  # Local extremes: deeper oversold bottom (was 30)
     TRC_ENTRY_ZONE_SHORT: float = 70.0  # Local extremes: deeper overbought top (was 70)
     TRC_ENTRY_MIN_ALIGNMENT: int = 4  # 2026-06-09: 6→4. ROLLBACK: 6.

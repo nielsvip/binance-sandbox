@@ -1895,9 +1895,7 @@ def _shared_direct_entry_claim(
             _wte_ind = indicators or {}
             if account_key != "trc":
                 _wte_ind = _wte.completed_view(_wte_ind)
-            _wte_fire, _wte_why = _wte.check_wt_top_entry(
-                _wte_spec, _wte_ind, is_long
-            )
+            _wte_fire, _wte_why = _wte.check_wt_top_entry(_wte_spec, _wte_ind, is_long)
             decision = _SNS(
                 eligible=bool(_wte_fire),
                 episode_start=bool(_wte_fire),
@@ -10982,6 +10980,16 @@ def in_opening_buffer(min_minutes: float = None) -> tuple[bool, float]:
         return False, 0.0
 
 
+_DC4_BUFFER_HTF_TFS = frozenset({"4H", "D", "1D", "DAILY", "W", "1W"})
+
+
+def _dc4_intraday_skip_in_buffer(vg_tf: str) -> bool:
+    """USER 2026-10-09 (open bleed: SNDK_LONG -2.68% stopped 09:33 on a 15m DC4 level built from 1 open bar): inside the opening buffer, intraday-TF DC4 levels are meaningless — skip them until 30m of data exists. 4h/D ride prior-day data and stay live; ULTIMATE_DC guards catastrophes throughout. Pure TF classifier (no clock) for testability; unknown/empty TF = skip (fail-closed). Backtests (V12_PARITY_MODE) never skip: sims stay deterministic and conservative (all stops evaluated), live skips the noise."""
+    if os.environ.get("V12_PARITY_MODE") == "1":
+        return False
+    return str(vg_tf or "").strip().upper() not in _DC4_BUFFER_HTF_TFS
+
+
 def calculate_gain(position_side, current_price, entry_price):
     if entry_price <= 0:
         return 0.0
@@ -13574,7 +13582,24 @@ async def _pre_twin_hard_stops(
                 _cfg("VIGILANCE_DC4_STOP_TF", "15m", account_key, symbol, position_side)
                 or "OFF"
             ).strip()
-            if _vg_tf.upper() != "OFF" and _gain < 0:
+            _vg_buf_skip = (
+                bool(
+                    _cfg(
+                        "OPENING_BUFFER_DC4_INTRADAY_SKIP_ENABLED",
+                        True,
+                        account_key,
+                        symbol,
+                        position_side,
+                    )
+                )
+                and _dc4_intraday_skip_in_buffer(_vg_tf)
+                and in_opening_buffer()[0]
+            )
+            if _vg_buf_skip:
+                logger.debug(
+                    f"[DC4_BUFFER_SKIP] {position_key}: {_vg_tf} TF skipped in opening buffer (levels need 30m of data)"
+                )
+            if _vg_tf.upper() != "OFF" and _gain < 0 and not _vg_buf_skip:
                 _vg_lvl = safe_fetch_float(
                     i.get(f"dc_low4_{_vg_tf}" if is_long else f"dc_high4_{_vg_tf}", 0),
                     0.0,
@@ -14492,7 +14517,16 @@ async def process_position(
             ):
                 _vg_tf = str(_cfg_auto("VIGILANCE_DC4_STOP_TF", "15m") or "OFF").strip()
                 _vg_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
-                if _vg_tf.upper() != "OFF" and _vg_gain < 0:
+                _vg_buf_skip2 = (
+                    bool(_cfg_auto("OPENING_BUFFER_DC4_INTRADAY_SKIP_ENABLED", True))
+                    and _dc4_intraday_skip_in_buffer(_vg_tf)
+                    and in_opening_buffer()[0]
+                )
+                if _vg_buf_skip2:
+                    logger.debug(
+                        f"[DC4_BUFFER_SKIP] {position_key}: {_vg_tf} TF skipped in opening buffer (levels need 30m of data)"
+                    )
+                if _vg_tf.upper() != "OFF" and _vg_gain < 0 and not _vg_buf_skip2:
                     _vg_lvl = safe_fetch_float(
                         i.get(
                             f"dc_low4_{_vg_tf}" if is_long else f"dc_high4_{_vg_tf}", 0
@@ -18755,7 +18789,9 @@ async def process_position(
                             # BACK THROUGH exit in favorable direction. Within-band on the other
                             # side also allowed. 2026-10-09 rally parity: STRICT cross (>/<, not
                             # >=/<=) mirroring vec HARDCODED_RALLY_REENTRY px>last_exit.
-                            _xb_favorable = _mandatory_favorable_px(is_long, current_price, _xb_last_px)
+                            _xb_favorable = _mandatory_favorable_px(
+                                is_long, current_price, _xb_last_px
+                            )
                             _xb_within_band = (
                                 _xb_dist_pct <= _xb_band_pct
                                 if _xb_obligation is None
@@ -18826,8 +18862,12 @@ async def process_position(
                             # hold blocked 66/81 AAPL trigger bars live would otherwise share with vec.
                             # Stopping set on this path is now: DG + opening buffer + queue/exit gates.
                             _xb_in_buf, _xb_buf_mins = in_opening_buffer()
-                            _xb_obuf_on = bool(_cfg_auto("STOCKS_OPENING_BUFFER_ENTRY_ENABLED", True))
-                            if (_xb_favorable or _xb_within_band) and not (_xb_in_buf and _xb_obuf_on):
+                            _xb_obuf_on = bool(
+                                _cfg_auto("STOCKS_OPENING_BUFFER_ENTRY_ENABLED", True)
+                            )
+                            if (_xb_favorable or _xb_within_band) and not (
+                                _xb_in_buf and _xb_obuf_on
+                            ):
                                 # USER 2026-09-10 MANDATE: price cross back REENTERS 100% — WT and DC-break are
                                 # hard vetoes that blocked every GLD/NEM reclaim (WT HOLD + DC BREAK HOLD).
                                 # For CROSSED_BACK (cur beyond exit in favorable direction) we bypass both
@@ -40544,9 +40584,12 @@ def _apply_trc_overrides(cfg):
 # ═══════════════════════════════════════════════════════════════
 def _gfv_guard_applies(account_key):
     """USER 2026-10-09: GFV gates apply to CASH accounts only. trb is margin (holds shorts -> GFV
-    impossible), trc is paper (no real settlement). Unknown accounts fail closed (guard applies)."""
+    impossible), trc is paper (no real settlement). Unknown accounts fail closed (guard applies).
+    """
     try:
-        t = str(_cfg_auto("ACCOUNT_TYPE_%s" % str(account_key or "").upper(), "cash") or "").lower()
+        t = str(
+            _cfg_auto("ACCOUNT_TYPE_%s" % str(account_key or "").upper(), "cash") or ""
+        ).lower()
     except Exception:
         return True
     return t not in ("margin", "paper")
