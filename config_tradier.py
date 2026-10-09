@@ -3840,6 +3840,11 @@ class TradierConfig:
     LH_LL_TOP_EXIT_DC1H_BUFFER_PCT: float = 0.10  # touch band below dc_high_1h (long) / above dc_low_1h (short).
     LH_LL_TOP_EXIT_BOTH_TOL_PCT: float = 0.30  # BOTH mode: WT cross counts only within tol of the 1h edge.
     LH_LL_TOP_EXIT_REQUIRE_PRICE_CONFIRM: bool = False  # WT leg additionally needs px<pxp (long) / px>pxp (short).
+    WT_TOP_ENTRY_ENABLED: bool = False  # 2026-10-08 WT-top entries mirror (stocks): completed-bar WT cross + structure opens. Sweep-gated.
+    WT_TOP_ENTRY_TF: str = "OFF"  # "15m" | "1h" | "4h" — trigger TF for the cross+structure test.
+    WT_TOP_ENTRY_MODE: str = "TOPS_ONLY"  # "TOPS_ONLY" | "TOPS_AND_LOWS" (long mirrors to higher-lows / lows+highs).
+    WT_TOP_ENTRY_DIV_MODE: str = "OFF"  # "OFF" | "REG" | "HIDDEN" | "REG_OR_HIDDEN" — WT divergence layer, same TF.
+    WT_TOP_ENTRY_HTF_CONFIRM_TF: str = "OFF"  # "4h" | "D" | "4h,D" (OR) — HTF cross confirmation.
     # batch 3: BREAKEVEN_GAIN_EROSION stock live port (grey_wire_exits.breakeven_gain_erosion). OFF = today's stock live.
     BREAKEVEN_GAIN_EROSION_ENABLED: bool = False
     BREAKEVEN_GAIN_EROSION_MIN_GAIN: float = 50.0

@@ -2663,6 +2663,11 @@ class Config:
     LH_LL_TOP_EXIT_STRUCT_MODE: str = "LH_LL"  # "LH" | "LL" | "LH_LL" | "LH_AND_LL" (short mirrors to HH/HL).
     LH_LL_TOP_EXIT_MODE: str = "EITHER"  # "WT15M" | "DC1H" | "EITHER" | "BOTH" (BOTH = WT cross into 1h edge).
     LH_LL_TOP_EXIT_DC1H_BUFFER_PCT: float = 0.10  # touch band below dc_high_1h (long) / above dc_low_1h (short).
+    WT_TOP_ENTRY_ENABLED: bool = False  # 2026-10-08 WT-top entries (USER): completed-bar WT1/WT2 cross + lower-top (short) / higher-low (long) structure opens. Sweep-gated.
+    WT_TOP_ENTRY_TF: str = "OFF"  # "15m" | "1h" | "4h" — trigger TF for the cross+structure test.
+    WT_TOP_ENTRY_MODE: str = "TOPS_ONLY"  # "TOPS_ONLY" | "TOPS_AND_LOWS" (long mirrors to higher-lows / lows+highs).
+    WT_TOP_ENTRY_DIV_MODE: str = "OFF"  # "OFF" | "REG" | "HIDDEN" | "REG_OR_HIDDEN" — WT divergence layer, same TF.
+    WT_TOP_ENTRY_HTF_CONFIRM_TF: str = "OFF"  # "4h" | "D" | "4h,D" (OR) — HTF cross confirmation.
     LH_LL_TOP_EXIT_BOTH_TOL_PCT: float = 0.30  # BOTH mode: WT cross counts only within tol of the 1h edge.
     LH_LL_TOP_EXIT_REQUIRE_PRICE_CONFIRM: bool = False  # WT leg additionally needs px<pxp (long) / px>pxp (short).
     # === BACKTEST SWEEP WINNERS (2026-03-16) ===

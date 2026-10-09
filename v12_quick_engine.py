@@ -3336,6 +3336,11 @@ AUTO_WIRED_PARAMS = [
     'WT_REDUCE_FRAC_HIGH',
     'WT_REDUCE_FRAC_LOW',
     'WT_REDUCE_FRAC_MED',
+    'WT_TOP_ENTRY_DIV_MODE',
+    'WT_TOP_ENTRY_ENABLED',
+    'WT_TOP_ENTRY_HTF_CONFIRM_TF',
+    'WT_TOP_ENTRY_MODE',
+    'WT_TOP_ENTRY_TF',
     'WT_VEL_DECEL_RATIO',
     'WT_VEL_USE_DECEL_RATIO_ONLY',
     'WT_W_EXIT_ENABLED',
@@ -6191,6 +6196,11 @@ class QuickConfig:
     LH_LL_TOP_EXIT_DC1H_BUFFER_PCT: float = 0.10
     LH_LL_TOP_EXIT_BOTH_TOL_PCT: float = 0.30
     LH_LL_TOP_EXIT_REQUIRE_PRICE_CONFIRM: bool = False
+    WT_TOP_ENTRY_ENABLED: bool = False  # 2026-10-08 WT-top entries: completed-bar WT cross + structure opens. Inert until promoted.
+    WT_TOP_ENTRY_TF: str = "OFF"  # "15m" | "1h" | "4h".
+    WT_TOP_ENTRY_MODE: str = "TOPS_ONLY"  # "TOPS_ONLY" | "TOPS_AND_LOWS".
+    WT_TOP_ENTRY_DIV_MODE: str = "OFF"  # "OFF" | "REG" | "HIDDEN" | "REG_OR_HIDDEN".
+    WT_TOP_ENTRY_HTF_CONFIRM_TF: str = "OFF"  # "4h" | "D" | "4h,D" (OR).
     HLR_TOP_MIN_TFS: float = 2.0  # 2026-09-28 LIVE PARITY: config.py:2578 = 2 (min TFs confirming top, >=1 must be 4h+)
     HTF4_CONF: float = True  # auto-added TEMPLATE generic
     HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: float = 1.0  # 2026-09-10 FIX: require 4h confirm (was 0)
