@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-09T12:06:26Z",
+ "ts": "2026-10-09T12:15:24Z",
  "dry_run": false,
  "regime_start": "2026-10-06T18:48:00Z",
  "thresholds": {
@@ -28,7 +28,7 @@
   "fin": {
    "fills_6h": 2,
    "open_positions": 6,
-   "unrealised_usd": 2.6,
+   "unrealised_usd": 3.16,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -73,7 +73,7 @@
   "inf": {
    "fills_6h": 10,
    "open_positions": 3,
-   "unrealised_usd": 1.13,
+   "unrealised_usd": 0.09,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -108,99 +108,99 @@
     "54373"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": -0.0
   },
   "men": {
    "pids": [
     "97466"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 17.0
   },
   "ang": {
    "pids": [
     "53704"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 2.0
   },
   "inf": {
    "pids": [
     "88679"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 1.0
   },
   "flz": {
    "pids": [
     "97467"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 20.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 33819.0
+   "log_age_s": 34357.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 33819.0
+   "log_age_s": 34357.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-09T12:06:26Z",
+   "ts": "2026-10-09T12:15:24Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:COTIUSDT_SHORT",
    "evidence": "REDUCE 1357 @ 2026-10-09T10:52:22Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-09T12:06:26Z",
+   "ts": "2026-10-09T12:15:24Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:COTIUSDT_SHORT",
    "evidence": "REDUCE 1357 @ 2026-10-09T11:02:43Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-09T12:06:26Z",
+   "ts": "2026-10-09T12:15:24Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:AIAUSDT_LONG",
    "evidence": "AUGMENT 73 @ 2026-10-09T07:41:10Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-09T12:06:26Z",
+   "ts": "2026-10-09T12:15:24Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:AIAUSDT_LONG",
    "evidence": "AUGMENT 73 @ 2026-10-09T07:41:34Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-09T12:06:26Z",
+   "ts": "2026-10-09T12:15:24Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:ZROUSDT_LONG",
    "evidence": "AUGMENT 2.7 @ 2026-10-09T10:04:59Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-09T12:06:26Z",
+   "ts": "2026-10-09T12:15:24Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:ZROUSDT_LONG",
    "evidence": "AUGMENT 2.7 @ 2026-10-09T10:05:16Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-09T12:06:26Z",
+   "ts": "2026-10-09T12:15:24Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:STRKUSDT_LONG",
    "evidence": "AUGMENT 84.2 @ 2026-10-09T08:20:19Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-09T12:06:26Z",
+   "ts": "2026-10-09T12:15:24Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:STRKUSDT_LONG",
@@ -234,14 +234,7 @@
    "why": "ORDER_STORM_ACCOUNT 26 fills/10min",
    "undo": "rm /Users/niels/Documents/binance/data/HALT_TRADING_men",
    "dry_run": false
-  },
-  "key:men:GALAUSDT_SHORT": {
-   "ts": 1791540670.570745,
-   "until": 1791547870.570764,
-   "why": "RAPID_LOSS_KEY unrealised -6.57% (60-min high -0.00%), amt 828 (opens/augments blocked; exits untouched)",
-   "undo": "redis-cli -p 6379 DEL open_blocked:men:GALAUSDT_SHORT",
-   "dry_run": false
   }
  },
- "sweep_s": 0.52
+ "sweep_s": 0.56
 }
