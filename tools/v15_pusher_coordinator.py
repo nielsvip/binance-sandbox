@@ -33,13 +33,60 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
 
-HOSTS = {"s1": {"ssh": "127.0.0.1", "w": 1}, "s2": {"ssh": "10.0.0.4", "w": 14},
-         "s5": {"ssh": "10.0.0.5", "w": 7}, "s6": {"ssh": "10.0.0.6", "w": 7}, "s7": {"ssh": "10.0.0.7", "w": 3}}
+HOSTS_FALLBACK = {"s1": "127.0.0.1", "s2": "10.0.0.4", "s5": "10.0.0.5", "s6": "10.0.0.6", "s7": "10.0.0.7"}
 TARGET_ROUNDS = 500
 REQUEUE_MIN = 45
 P1_MIN_SYMS = 5
 P1_MAX_SWITCHES = 250
 P1_MAX_VALUES = 12
+DOWN_AFTER_ERRS = 2
+OUTBOX_CAP_MULT = 2
+
+
+def discover_hosts():
+    """Hosts are dynamic (workers get deleted/added): read the fleet file every
+    tick. USER 2026-10-09: use ANY compute found; s6/s7 deletion tonight must
+    be seamless (s1/s2/s5 carry on). Returns {name: ssh}."""
+    try:
+        fh = json.loads((ROOT / "tools" / "fleet_hosts_final.json").read_text())
+        out = {}
+        for h in fh.get("hosts", []):
+            name = h.get("name")
+            sshs = h.get("ssh") or []
+            if name and sshs:
+                out[name] = sshs[0]
+        if out:
+            return out
+    except Exception:
+        pass
+    return dict(HOSTS_FALLBACK)
+
+
+def host_weight(st, host):
+    """Cached nproc probe (hourly); s1 is scheduler home -> weight 1 (its
+    supervisor still fills it past 90% only when truly idle)."""
+    if host == "s1":
+        return 1
+    info = (st.get("hostinfo") or {}).get(host) or {}
+    if time.time() - float(info.get("ts", 0)) < 3600 and info.get("w"):
+        return int(info["w"])
+    return int(info.get("w") or 4)
+
+
+def probe_host(st, hosts, host):
+    try:
+        ssh = hosts[host]
+        if host == "s1" and ssh == "127.0.0.1":
+            n = os.cpu_count() or 8
+        else:
+            rc, out = run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", ssh, "nproc"], timeout=30)
+            n = int(out.strip().split()[0]) if rc == 0 else 0
+        if n > 0:
+            st.setdefault("hostinfo", {})[host] = {"w": max(1, n - 2), "nproc": n, "ts": time.time()}
+            return True
+    except Exception:
+        pass
+    return False
 
 
 def log(msg):
@@ -60,36 +107,36 @@ def run(cmd, timeout=300):
     return p.returncode, (p.stdout or "") + (p.stderr or "")
 
 
-def rsync_push(src, host, dest):
-    ssh = HOSTS[host]["ssh"]
-    if host == "s1" and ssh == "127.0.0.1":
+def _is_local(host, ssh):
+    return host == "s1" and ssh == "127.0.0.1"
+
+
+def rsync_push(src, host, ssh, dest):
+    if _is_local(host, ssh):
         cmd = ["rsync", "-az", "--remove-source-files", "--prune-empty-dirs", f"{src}/", dest]
     else:
         cmd = ["rsync", "-az", "--remove-source-files", "--prune-empty-dirs", "-e", "ssh -o BatchMode=yes -o ConnectTimeout=10", f"{src}/", f"{ssh}:{dest}"]
     return run(cmd)
 
 
-def rsync_pull(host, src, dest):
-    ssh = HOSTS[host]["ssh"]
-    if host == "s1" and ssh == "127.0.0.1":
+def rsync_pull(host, ssh, src, dest):
+    if _is_local(host, ssh):
         cmd = ["rsync", "-az", "--remove-source-files", "--prune-empty-dirs", f"{src}/", f"{dest}/"]
     else:
         cmd = ["rsync", "-az", "--remove-source-files", "--prune-empty-dirs", "-e", "ssh -o BatchMode=yes -o ConnectTimeout=10", f"{ssh}:{src}/", f"{dest}/"]
     return run(cmd)
 
 
-def rsync_sync(src, host, dest):
-    ssh = HOSTS[host]["ssh"]
-    if host == "s1" and ssh == "127.0.0.1":
+def rsync_sync(src, host, ssh, dest):
+    if _is_local(host, ssh):
         cmd = ["rsync", "-az", f"{src}/", dest]
     else:
         cmd = ["rsync", "-az", "-e", "ssh -o BatchMode=yes -o ConnectTimeout=10", f"{src}/", f"{ssh}:{dest}"]
     return run(cmd)
 
 
-def pull_file(host, remote, local):
-    ssh = HOSTS[host]["ssh"]
-    if host == "s1" and ssh == "127.0.0.1":
+def pull_file(host, ssh, remote, local):
+    if _is_local(host, ssh):
         try:
             import shutil
             shutil.copy2(os.path.expanduser(remote.replace("~", "~")), local)
@@ -222,6 +269,8 @@ def sym_counts(st, ss, r, now):
     s = st["syms"].get(ss, {})
     if s.get("done_round", 0) >= r:
         return True
+    if s.get("covered", 0) >= r:
+        return True
     t = s.get("terminal") or {}
     if t and now - float(t.get("ts", 0)) < TERMINAL_TTL:
         return True
@@ -229,6 +278,11 @@ def sym_counts(st, ss, r, now):
     if e.get("n", 0) >= 3 and now - float(e.get("ts", 0)) < 6 * 3600:
         return True
     return False
+
+
+def eff_done(st, ss):
+    s = st["syms"].get(ss, {})
+    return max(s.get("done_round", 0), s.get("covered", 0))
 
 
 def rounds_complete(st, universe, now=None):
@@ -239,13 +293,30 @@ def rounds_complete(st, universe, now=None):
     return r
 
 
-def pick_host(st):
-    out = {h: 0 for h in HOSTS}
+def pick_host(st, hosts, down):
+    out = {h: 0 for h in hosts}
     for u, info in (st.get("assigned") or {}).items():
         h = (info or {}).get("host")
         if h in out:
             out[h] += 1
-    return min(HOSTS, key=lambda h: (out[h] / HOSTS[h]["w"], h))
+    elig = [h for h in hosts if h not in down and out[h] < OUTBOX_CAP_MULT * host_weight(st, h)]
+    if not elig:
+        elig = [h for h in hosts if h not in down]
+    if not elig:
+        return None
+    return min(elig, key=lambda h: (out[h] / max(1, host_weight(st, h)), h))
+
+
+def host_down(st, base, host):
+    """Host lost (deleted/stalled): drop its assigned units + outbox files so
+    they regenerate onto healthy hosts next tick. Idempotent ingest dedupes
+    any straggler results if the host comes back."""
+    for u, info in list((st.get("assigned") or {}).items()):
+        if (info or {}).get("host") == host:
+            st["assigned"].pop(u, None)
+    for f in (base / "outbox" / host).glob("*.json"):
+        f.unlink(missing_ok=True)
+    log(f"host {host} DOWN: assigned+outbox requeued")
 
 
 def find_progress_anchor(ss):
@@ -273,9 +344,9 @@ def find_progress_anchor(ss):
     return {}, "empty"
 
 
-def pending_units(base, st):
+def pending_units(base, st, hosts):
     pend = set()
-    for h in HOSTS:
+    for h in list(hosts) + ["_retired"]:
         for f in (base / "outbox" / h).glob("*.json"):
             pend.add(f.stem)
     for u in (st.get("assigned") or {}):
@@ -296,35 +367,60 @@ def main():
     if a.build_seed:
         build_seed(pathlib.Path(a.mac_root), pathlib.Path(a.seed_dir or (pathlib.Path(a.mac_root) / "data" / "pusher_seed")))
         return
+    hosts = discover_hosts()
     for d in ("outbox", "done", "anchors", "registry", "reports", "logs"):
         (base / d).mkdir(parents=True, exist_ok=True)
         if d in ("outbox", "done"):
-            for h in HOSTS:
+            for h in hosts:
                 (base / d / h).mkdir(parents=True, exist_ok=True)
     st = load_state(base)
     if a.seed:
         seed_import(base, st, pathlib.Path(a.seed_dir or (base / "seed")))
         save_state(base, st)
+    for h in hosts:
+        probe_host(st, hosts, h)
+    down = set()
+    for h in hosts:
+        n = (st.get("host_err") or {}).get(h, {}).get("n", 0)
+        if n >= DOWN_AFTER_ERRS:
+            down.add(h)
+            host_down(st, base, h)
     universe = tradeable_symsides()
-    log(f"tick: universe={len(universe)} rounds_complete={st.get('rounds_complete', 0)} units_done={st.get('units_done', 0)}")
-    for h in HOSTS:
-        rc, out = rsync_push(str(base / "outbox" / h), h, "~/v15_pusher/inbox/")
+    log(f"tick: hosts={sorted(hosts)} down={sorted(down)} universe={len(universe)} rounds_complete={st.get('rounds_complete', 0)} units_done={st.get('units_done', 0)}")
+    for h in hosts:
+        if h in down:
+            continue
+        ssh = hosts[h]
+        fails = 0
+        rc, out = rsync_push(str(base / "outbox" / h), h, ssh, "~/v15_pusher/inbox/")
         if rc != 0:
             log(f"push {h} rc={rc} {out.strip()[-200:]}")
-        rc, out = rsync_pull(h, "~/v15_pusher/done/", str(base / "done" / h))
+            fails += 1
+        rc, out = rsync_pull(h, ssh, "~/v15_pusher/done/", str(base / "done" / h))
         if rc != 0:
             log(f"pull-done {h} rc={rc} {out.strip()[-200:]}")
-        rc, out = pull_file(h, "~/v15_pusher/heartbeat.json", str(base / f"heartbeat_{h}.json"))
+            fails += 1
+        rc, out = pull_file(h, ssh, "~/v15_pusher/heartbeat.json", str(base / f"heartbeat_{h}.json"))
         if rc != 0:
             log(f"heartbeat {h} rc={rc} {out.strip()[-200:]}")
-        rc, out = rsync_sync(str(base / "anchors"), h, "~/v15_pusher/anchors")
+        rc, out = rsync_sync(str(base / "anchors"), h, ssh, "~/v15_pusher/anchors")
         if rc != 0:
             log(f"anchors {h} rc={rc} {out.strip()[-200:]}")
-        rc, out = rsync_sync(str(base / "registry"), h, "~/v15_pusher/registry")
+            fails += 1
+        rc, out = rsync_sync(str(base / "registry"), h, ssh, "~/v15_pusher/registry")
         if rc != 0:
             log(f"registry {h} rc={rc} {out.strip()[-200:]}")
+            fails += 1
+        he = st.setdefault("host_err", {}).setdefault(h, {"n": 0})
+        if fails:
+            he["n"] += 1
+            if he["n"] >= DOWN_AFTER_ERRS:
+                down.add(h)
+                host_down(st, base, h)
+        else:
+            he["n"] = 0
     fresh = []
-    for h in HOSTS:
+    for h in hosts:
         for rf in sorted((base / "done" / h).glob("*_report.json")):
             try:
                 rep = json.loads(rf.read_text())
@@ -368,24 +464,29 @@ def main():
         if now - float((info or {}).get("ts", 0)) > REQUEUE_MIN * 60:
             log(f"requeue {u} (assigned {REQUEUE_MIN}m+, no result)")
             st["assigned"].pop(u, None)
-    pend = pending_units(base, st)
+    pend = pending_units(base, st, hosts)
     made = 0
     for ss in universe:
-        nxt = st["syms"].get(ss, {}).get("done_round", 0) + 1
+        nxt = eff_done(st, ss) + 1
         key = f"{nxt:04d}_{ss}"
         if key in pend:
             continue
         err = (st.get("errs") or {}).get(key)
         if err and err.get("n", 0) >= 3 and now - float(err.get("ts", 0)) < 6 * 3600:
+            st["syms"].setdefault(ss, {}).update({"covered": nxt, "covered_why": "err_backoff"})
             continue
         term = (st["syms"].get(ss, {}).get("terminal") or {})
         if term and now - float(term.get("ts", 0)) < TERMINAL_TTL:
+            st["syms"].setdefault(ss, {}).update({"covered": nxt, "covered_why": term.get("reason", "terminal")})
             continue
         if not (base / "anchors" / f"{ss}.json").exists():
             ov, src = find_progress_anchor(ss)
             (base / "anchors" / f"{ss}.json").write_text(json.dumps(ov, indent=1, default=str))
             log(f"new sym {ss}: anchor from {src} ({len(ov)} keys)")
-        h = pick_host(st)
+        h = pick_host(st, hosts, down)
+        if h is None:
+            log("no healthy host with capacity — units wait for next tick")
+            break
         (base / "outbox" / h / f"{key}.json").write_text(json.dumps({"round": nxt, "symside": ss, "anchor_rev": nxt - 1, "ts": utcnow()}))
         st["assigned"][key] = {"host": h, "ts": now}
         made += 1
@@ -398,35 +499,36 @@ def main():
             st["milestones"].append(TARGET_ROUNDS)
             log(f"MILESTONE: {TARGET_ROUNDS} complete rounds — continuing 24/7 (no cap)")
     save_state(base, st)
-    write_status(base, st, universe)
+    write_status(base, st, universe, hosts, down)
     log(f"tick done: +{made} units outbox rounds_complete={st.get('rounds_complete', 0)}")
 
 
-def write_status(base, st, universe):
-    hosts = {}
-    for h in HOSTS:
+def write_status(base, st, universe, hosts, down):
+    tab = {}
+    for h in hosts:
         hb = {}
         try:
             hb = json.loads((base / f"heartbeat_{h}.json").read_text())
         except Exception:
             pass
         out_n = len(list((base / "outbox" / h).glob("*.json")))
-        hosts[h] = {"cpu": hb.get("cpu"), "workers": hb.get("workers"), "avail_mb": hb.get("avail_mb"), "outbox": out_n,
-                    "age_s": round(time.time() - float(hb.get("ts", 0))) if hb.get("ts") else None}
+        tab[h] = {"cpu": hb.get("cpu"), "workers": hb.get("workers"), "avail_mb": hb.get("avail_mb"), "outbox": out_n,
+                  "down": h in (down or set),
+                  "age_s": round(time.time() - float(hb.get("ts", 0))) if hb.get("ts") else None}
     gains = [s.get("last_gain") for s in st["syms"].values() if isinstance(s.get("last_gain"), (int, float))]
     best = [s.get("best", {}).get("gain") for s in st["syms"].values() if isinstance(s.get("best", {}).get("gain"), (int, float))]
     status = {"at": utcnow(), "rounds_complete": st.get("rounds_complete", 0), "target": st.get("target", TARGET_ROUNDS),
               "universe": len(universe), "units_done": st.get("units_done", 0), "units_err": st.get("units_err", 0),
               "registry_version": st.get("registry_version", 0),
               "mean_last_gain": round(sum(gains) / len(gains), 3) if gains else None,
-              "mean_best_gain": round(sum(best) / len(best), 3) if best else None, "hosts": hosts}
+              "mean_best_gain": round(sum(best) / len(best), 3) if best else None, "hosts": tab}
     (base / "PUSHER_STATUS.json").write_text(json.dumps(status, indent=1, default=str))
     lines = [f"# Pusher fleet — {status['at']}", "",
              f"rounds complete **{status['rounds_complete']}** / target {status['target']} (no cap, 24/7) · universe {len(universe)} · units done {status['units_done']} (err {status['units_err']}) · registry v{status['registry_version']}",
              f"mean last gain {status['mean_last_gain']} · mean best gain {status['mean_best_gain']}", "",
-             "| host | cpu% | workers | outbox | hb age |", "|---|---|---|---|---|"]
-    for h, i in hosts.items():
-        lines.append(f"| {h} | {i['cpu']} | {i['workers']} | {i['outbox']} | {i['age_s']}s |")
+             "| host | cpu% | workers | outbox | down | hb age |", "|---|---|---|---|---|---|"]
+    for h, i in tab.items():
+        lines.append(f"| {h} | {i['cpu']} | {i['workers']} | {i['outbox']} | {i['down']} | {i['age_s']}s |")
     (base / "PUSHER_STATUS.md").write_text("\n".join(lines) + "\n")
 
 

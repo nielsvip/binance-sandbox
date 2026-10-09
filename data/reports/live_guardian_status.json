@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-09T19:59:57Z",
+ "ts": "2026-10-09T20:09:55Z",
  "dry_run": false,
  "regime_start": "2026-10-06T18:48:00Z",
  "thresholds": {
@@ -23,24 +23,12 @@
   "KEY_BLOCK_TTL_S": 7200,
   "POS_MISMATCH_PCT": 5.0
  },
- "rth": true,
+ "rth": false,
  "accounts": {
-  "trb": {
-   "fills_6h": 72,
-   "open_positions": 2,
-   "unrealised_usd": -1.44,
-   "pos_mismatch": 0
-  },
-  "trc": {
-   "fills_6h": 14,
-   "open_positions": 3,
-   "unrealised_usd": -7.88,
-   "pos_mismatch": 0
-  },
   "fin": {
    "fills_6h": 0,
    "open_positions": 4,
-   "unrealised_usd": 1.0,
+   "unrealised_usd": 1.07,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -55,7 +43,7 @@
   "men": {
    "fills_6h": 0,
    "open_positions": 2,
-   "unrealised_usd": -0.15,
+   "unrealised_usd": -0.16,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -85,7 +73,7 @@
   "inf": {
    "fills_6h": 0,
    "open_positions": 2,
-   "unrealised_usd": 1.2,
+   "unrealised_usd": 0.28,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -113,18 +101,21 @@
    }
   }
  },
+ "stocks": "market closed: stock checks idle",
  "process": {
   "fin": {
    "pids": [
     "54373"
    ],
    "starts_30m": 1,
-   "log_age_s": 14.0
+   "log_age_s": 4.0
   },
   "men": {
-   "pids": [],
-   "starts_30m": 9,
-   "log_age_s": 46.0
+   "pids": [
+    "51389"
+   ],
+   "starts_30m": 7,
+   "log_age_s": 8.0
   },
   "ang": {
    "pids": [
@@ -138,72 +129,52 @@
     "88679"
    ],
    "starts_30m": 1,
-   "log_age_s": 8.0
+   "log_age_s": 0.0
   },
   "flz": {
    "pids": [
-    "38878"
+    "57261"
    ],
-   "starts_30m": 9,
-   "log_age_s": 6.0
+   "starts_30m": 7,
+   "log_age_s": 35.0
   },
   "trb": {
-   "pids": [
-    "69159"
-   ],
-   "starts_30m": 1,
-   "log_age_s": -0.0
+   "pids": [],
+   "starts_30m": 0,
+   "log_age_s": 531.0
   },
   "trc": {
-   "pids": [
-    "69500"
-   ],
-   "starts_30m": 1,
-   "log_age_s": 0.0
+   "pids": [],
+   "starts_30m": 0,
+   "log_age_s": 531.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-09T19:59:57Z",
-   "severity": "CRITICAL",
-   "kind": "ACCOUNT_EQUITY_DROP",
-   "key": "trc",
-   "evidence": "unrealised PnL of the same open positions fell $61.56 since 2026-10-09T19:52:52Z (now $-7.88)"
-  },
-  {
-   "ts": "2026-10-09T19:59:57Z",
+   "ts": "2026-10-09T20:09:55Z",
    "severity": "CRITICAL",
    "kind": "RAPID_LOSS_KEY",
    "key": "men:GALAUSDT_SHORT",
-   "evidence": "unrealised -4.95% (60-min high +1.03%), amt 828"
+   "evidence": "unrealised -5.42% (60-min high +1.03%), amt 828"
   },
   {
-   "ts": "2026-10-09T19:59:58Z",
+   "ts": "2026-10-09T20:09:55Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "men",
-   "evidence": "9 new process ids in 30 min (['75457', '80885', '86521', '92744', '1618', '11373', '18176', '26391', '36616'])"
+   "evidence": "7 new process ids in 30 min (['92744', '1618', '11373', '18176', '26391', '36616', '51389'])"
   },
   {
-   "ts": "2026-10-09T19:59:58Z",
-   "severity": "CRITICAL",
-   "kind": "PROCESS_DOWN",
-   "key": "men",
-   "evidence": "no ez_manage.py --account men process"
-  },
-  {
-   "ts": "2026-10-09T19:59:58Z",
+   "ts": "2026-10-09T20:09:55Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "flz",
-   "evidence": "9 new process ids in 30 min (['75452', '80753', '86466', '92746', '2352', '12089', '21133', '28908', '38878'])"
+   "evidence": "7 new process ids in 30 min (['92746', '2352', '12089', '21133', '28908', '38878', '57261'])"
   }
  ],
  "alert_counts": {
-  "ACCOUNT_EQUITY_DROP": 1,
   "RAPID_LOSS_KEY": 1,
-  "RESTART_LOOP": 2,
-  "PROCESS_DOWN": 1
+  "RESTART_LOOP": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -216,13 +187,6 @@
    "ts": 1791314663.497563,
    "why": "ACCOUNT_EQUITY_DROP unrealised PnL of the same open positions fell $30.53 since 2026-10-06T19:19:51Z (now $+405.99)",
    "undo": "rm /Users/niels/Documents/binance/data/HALT_TRADING_trb",
-   "dry_run": false
-  },
-  "key:fin:RLCUSDT_LONG": {
-   "ts": 1791569186.561455,
-   "until": 1791576386.561457,
-   "why": "RAPID_LOSS_KEY unrealised -4.61% (60-min high -0.57%), amt 6.5 (opens/augments blocked; exits untouched)",
-   "undo": "redis-cli -p 6379 DEL open_blocked:fin:RLCUSDT_LONG",
    "dry_run": false
   },
   "acct:ang": {
@@ -252,5 +216,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.28
+ "sweep_s": 0.43
 }

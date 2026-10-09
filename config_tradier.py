@@ -1764,7 +1764,7 @@ class TradierConfig:
     OPEN_INTENT_SIZE_GATES_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     PEAK_GIVEBACK_BE_EROSION_FILTER_TF: str = "OFF"  # missing parity — added 2026-09-19
 
-    WT_15M_BOUNCE_BB_MIN: float = 0.1
+    WT_15M_BOUNCE_BB_MIN: float = 0.05
     WT_15M_BOUNCE_BB_MAX: float = 0.8
     WT_15M_BOUNCE_REQUIRE_BOTH_HTF: bool = False
     WT_15M_BOUNCE_FILTER_HL_ENABLED: bool = False
@@ -1773,7 +1773,7 @@ class TradierConfig:
     WT_15M_BOUNCE_VOLUME_FILTER_ENABLED: bool = False
     WT_15M_BOUNCE_VOLUME_MODE: str = "relvol"
     WT_15M_BOUNCE_VOLUME_THRESHOLD: float = 1.0
-    WT_15M_BOUNCE_LOW_1H_GT_PREV: bool = True  # alias for FILTER_HL
+    WT_15M_BOUNCE_LOW_1H_GT_PREV: bool = False  # alias for FILTER_HL
     WT_15M_BOUNCE_HIGH_1H_GT_PREV: bool = False  # alias for FILTER_HH
     WT_15M_BOUNCE_REL_VOL_GT_1: bool = False  # alias for VOLUME_FILTER
     WT_ACCEL_EXIT_ENABLED: bool = False  # FIX 2026-09-08: parity guard
@@ -2649,7 +2649,7 @@ class TradierConfig:
     DIRECTION_FAVORABLE_MAX_MINUTES: float = 30.0
     DIRECTION_FAVORABLE_REENTRY_ENABLED: bool = False
     DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED: bool = False
-    DISASTER_GUARD_ENABLED: bool = True
+    DISASTER_GUARD_ENABLED: bool = False
     DYNAMIC_SCORE_AUGMENT_ENABLED: bool = True
     DYN_STRUCT_TRAIL_ENABLED: bool = False
     DYN_STRUCT_TRAIL_MIN_GAIN_PCT: float = (

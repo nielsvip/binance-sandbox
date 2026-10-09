@@ -67,9 +67,17 @@ def test_rounds_complete_counts_full_rounds():
 def test_terminal_sym_counts_until_ttl():
     import time
     now = time.time()
-    st = {"syms": {"A": {"done_round": 5}, "B": {"done_round": 0, "terminal": {"reason": "npz missing/corrupt", "ts": now, "round": 1}}}}
+    st = {"syms": {"A": {"done_round": 1}, "B": {"done_round": 0, "terminal": {"reason": "npz missing/corrupt", "ts": now, "round": 1}}}}
     assert C.rounds_complete(st, ["A", "B"], now) == 1
     assert C.rounds_complete(st, ["A", "B"], now + C.TERMINAL_TTL + 1) == 0
+
+
+def test_covered_frontier_rejoins_without_blocking():
+    import time
+    now = time.time()
+    st = {"syms": {"A": {"done_round": 50}, "B": {"done_round": 0, "covered": 49, "terminal": {"reason": "npz missing/corrupt", "ts": now - C.TERMINAL_TTL - 1, "round": 1}}}}
+    assert C.eff_done(st, "B") == 49
+    assert C.rounds_complete(st, ["A", "B"], now) == 49
 
 
 def test_ingest_terminal_skip(tmp_path):
@@ -83,7 +91,23 @@ def test_ingest_terminal_skip(tmp_path):
 
 
 def test_pick_host_least_loaded_by_weight():
-    st = {"assigned": {f"u{i}": {"host": "s2", "ts": 0} for i in range(14)}}
-    assert C.pick_host(st) in ("s5", "s6", "s7", "s1")
+    hosts = {"s1": "127.0.0.1", "s2": "10.0.0.4", "s5": "10.0.0.5"}
+    st = {"assigned": {f"u{i}": {"host": "s2", "ts": 0} for i in range(14)},
+          "hostinfo": {"s2": {"w": 14, "ts": 9e12}, "s5": {"w": 7, "ts": 9e12}}}
+    assert C.pick_host(st, hosts, set()) in ("s5", "s1")
     st2 = {"assigned": {}}
-    assert C.pick_host(st2) == "s1"
+    assert C.pick_host(st2, hosts, set()) == "s1"
+    assert C.pick_host(st2, hosts, {"s1", "s2", "s5"}) is None
+    st3 = {"assigned": {f"u{i}": {"host": "s2", "ts": 0} for i in range(100)},
+           "hostinfo": {"s2": {"w": 14, "ts": 9e12}, "s5": {"w": 7, "ts": 9e12}}}
+    assert C.pick_host(st3, hosts, set()) != "s2"
+
+
+def test_host_down_requeues(tmp_path):
+    base = tmp_path / "p"
+    (base / "outbox" / "s6").mkdir(parents=True)
+    (base / "outbox" / "s6" / "0002_A.json").write_text("{}")
+    st = {"assigned": {"0002_A": {"host": "s6", "ts": 0}, "0002_B": {"host": "s2", "ts": 0}}}
+    C.host_down(st, base, "s6")
+    assert st["assigned"] == {"0002_B": {"host": "s2", "ts": 0}}
+    assert list((base / "outbox" / "s6").glob("*.json")) == []

@@ -5802,7 +5802,7 @@ class QuickConfig:
         self.PARTIAL_PROFIT_LOCK_V2_FILTER_TF = "OFF"
         self.REENTRY_SIZE_BREAKOUT_MULT = 0.5
         self.REGIME_TRENDING_WT_REDUCE_FRAC_LOW = 0.15
-        self.WT_15M_BOUNCE_LOW_1H_GT_PREV = True
+        self.WT_15M_BOUNCE_LOW_1H_GT_PREV = False
         self.WT_DC_TF_ENTRY = "15m"
         # parity-sync 20261008: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
         self.MOMENTUM_BREAKOUT_FILTER_TF = "OFF"
@@ -5818,6 +5818,9 @@ class QuickConfig:
         self.STOCH_CROSS_1H_EXIT_ENABLED = False
         self.DC_HARD_STOP_REENTRY_COOLDOWN_HOURS = 0.0
         self.GAP_CLOSE_MOC_EXIT_ENABLED = False
+        # parity-sync 20261009: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
+        self.DISASTER_GUARD_ENABLED = False
+        self.GAP_MOC_FORCE_MOC_AT_CLOSE = False
 
     ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = False  # auto-wired 625
     ABLATION_DISABLE_AUGMENTATION: bool = False  # auto-wired 625
