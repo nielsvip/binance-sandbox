@@ -5217,17 +5217,18 @@ class Config:
     ANG_TIMING_FRESH_MULT: float = 1.25
     ANG_TIMING_REBOUND_MULT: float = 1.5
     ANG_TIMING_MAX_AGE_S: int = 600
-    # Exit timing: profit-guarded top/failed-breakout trims (QUICK_REDUCE via
-    # execute_now). NEVER fires at a loss — loss exits stay with technicals.
-    # EXTENDED bar is deliberately high: extended breakouts are the biggest
-    # gains (USER 2026-10-09) — they ride with tight stops, not early trims.
+    # Exit timing: FAILED-breakout quick-exit trim ONLY (QUICK_REDUCE via
+    # execute_now, profit-guarded). BREAKOUTS ARE SACRED (USER 2026-10-09) —
+    # live EXTENDED/FRESH/REBOUND runners are never trimmed. Loss exits stay
+    # with technicals (hedges structurally banned).
     ANG_TIMING_TOP_TRIM_ENABLED: bool = True
     ANG_TIMING_TOP_MIN_GAIN_PCT: float = 2.0
     ANG_TIMING_TOP_MIN_EXT_ATR: float = 3.0
-    # Tight stop: FAILED timing on a fresh breakout position -> same-symbol
-    # hedge (never a loss close). Reentry is confirmation-mandatory: entries
-    # retry every cycle and fire full-size the moment timing re-confirms.
-    ANG_TIMING_STOP_HEDGE_ENABLED: bool = True
+    # Tight stop: DISABLED 2026-10-09 — HEDGE_MODE=False is OFF LIMITS per user
+    # (2026-08-18 re-affirmed; ZERO hedging anywhere 2026-05-29) after the
+    # 2026-03-29 15,378-hedge cascade. FAILED timing still holds entries; the
+    # hedge leg needs USER explicit unlock + Tier-2 900*900 proof first.
+    ANG_TIMING_STOP_HEDGE_ENABLED: bool = False
     ANG_TIMING_STOP_FRESH_HOURS: float = 6.0
     # R-Z4: continuous crash_mult gradient scaled by 0sentiment_strength
     CRASH_MULT_GRADIENT_ENABLED: bool = False

@@ -101,18 +101,16 @@ def should_timing_hold(state):
 
 
 def should_timing_trim(state, gain_pct, ext_atr, min_gain_pct=1.0, min_ext_atr=2.0):
-    """Exit-timing decision: trim ONLY at a profit. EXTENDED needs high
-    extension; FAILED (level lost) trims on profit alone before it erodes.
-    NEVER True at a loss — loss exits stay with technicals/hedges."""
+    """Exit-timing decision: trim ONLY at a profit. BREAKOUTS ARE SACRED —
+    live EXTENDED runners are never trimmed. Only FAILED (level lost) trims
+    on profit alone, as the quick exit before it erodes. NEVER True at a
+    loss — loss exits stay with technicals (hedges structurally banned)."""
     try:
         gain = float(gain_pct)
-        ext = float(ext_atr)
     except (TypeError, ValueError):
         return False
     if not gain >= float(min_gain_pct):
         return False
-    if state == EXTENDED:
-        return ext >= float(min_ext_atr)
     if state == FAILED:
         return True
     return False

@@ -48787,14 +48787,13 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
 
 
 async def _pp_ang_timing_exits(trade_manager, account_key, position_key) -> bool:
-    """Profit-guarded top/failed-breakout trim (USER 2026-10-09 smarter exits).
+    """FAILED-breakout quick exit (USER 2026-10-09 smarter exits; breakouts sacred).
 
-    EXTENDED_TOP + gain>=min + ext>=min -> take the top. FAILED + gain>=min ->
-    exit before profit erodes. NEVER fires at a loss (loss exits stay with
-    technicals/hedges). Hedges excluded. Fire-once per open position.
-    Tight stop: FAILED on a FRESH position -> same-symbol hedge (any PnL —
-    a hedge is not a close). Fail-open everywhere.
-    ROLLBACK: ANG_TIMING_TOP_TRIM_ENABLED=False / ANG_TIMING_STOP_HEDGE_ENABLED=False.
+    FAILED + gain>=min -> quick exit before profit erodes. Live EXTENDED /
+    FRESH / REBOUND runners are NEVER touched. NEVER fires at a loss (loss
+    exits stay with technicals; hedges structurally banned). Hedges excluded.
+    Fire-once per open position. Fail-open everywhere.
+    ROLLBACK: ANG_TIMING_TOP_TRIM_ENABLED=False.
     """
     try:
         if not bool(getattr(config, "ANG_TIMING_TOP_TRIM_ENABLED", True)):
@@ -48828,7 +48827,9 @@ async def _pp_ang_timing_exits(trade_manager, account_key, position_key) -> bool
         entry = ang_timing_entry_for(sym, side)
         state = entry.get("state", "NONE")
         ext = entry.get("extension_atr", 0.0)
-        if state == "FAILED" and bool(getattr(config, "ANG_TIMING_STOP_HEDGE_ENABLED", True)):
+        # STRUCTURAL BAN: requires BOTH the local switch AND master HEDGE_MODE
+        # (False/OFF LIMITS since 2026-08-18) — dead until user unlocks + proof.
+        if state == "FAILED" and bool(getattr(config, "ANG_TIMING_STOP_HEDGE_ENABLED", False)) and bool(getattr(config, "HEDGE_MODE", False)):
             try:
                 st = (getattr(trade_manager, "ang_timing_exit_state", {}) or {}).get(position_key, {})
                 if not (isinstance(st, dict) and st.get("stop_hedged")):
