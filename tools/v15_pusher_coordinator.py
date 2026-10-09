@@ -513,7 +513,7 @@ def write_status(base, st, universe, hosts, down):
             pass
         out_n = len(list((base / "outbox" / h).glob("*.json")))
         tab[h] = {"cpu": hb.get("cpu"), "workers": hb.get("workers"), "avail_mb": hb.get("avail_mb"), "outbox": out_n,
-                  "down": h in (down or set),
+                  "down": h in (down or set()),
                   "age_s": round(time.time() - float(hb.get("ts", 0))) if hb.get("ts") else None}
     gains = [s.get("last_gain") for s in st["syms"].values() if isinstance(s.get("last_gain"), (int, float))]
     best = [s.get("best", {}).get("gain") for s in st["syms"].values() if isinstance(s.get("best", {}).get("gain"), (int, float))]
