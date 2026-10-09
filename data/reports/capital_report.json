@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-09 07:10 UTC",
- "total_capital_usd": 4.51,
+ "generated_at": "2026-10-09 07:22 UTC",
+ "total_capital_usd": 23.03,
  "tier_capital": {
   "A": 0.0,
-  "B": 4.52,
+  "B": 23.02,
   "C": 0.0
  },
  "tier_count": {
@@ -12,33 +12,30 @@
   "C": 0
  },
  "winners": [],
- "losers": [
-  "men:GALAUSDT_SHORT",
-  "men:MANAUSDT_SHORT"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:MANAUSDT_SHORT",
-   "symbol": "MANAUSDT",
-   "account": "men",
-   "value_usd": 2.65,
-   "gain_pct": -5.155,
+   "pk": "inf:STRKUSDT_LONG",
+   "symbol": "STRKUSDT",
+   "account": "inf",
+   "value_usd": 19.41,
+   "gain_pct": 20.675,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 28.0,
-   "mark": 0.09451
+   "amt": 274.9,
+   "mark": 0.07062537
   },
   {
-   "pk": "men:GALAUSDT_SHORT",
-   "symbol": "GALAUSDT",
-   "account": "men",
-   "value_usd": 1.87,
-   "gain_pct": -7.564,
+   "pk": "inf:ALGOUSDT_SHORT",
+   "symbol": "ALGOUSDT",
+   "account": "inf",
+   "value_usd": 3.61,
+   "gain_pct": 3.301,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 828.0,
-   "mark": 0.002254
+   "perf_mult": 3.04,
+   "amt": 30.2,
+   "mark": 0.1195996
   }
  ]
 }
