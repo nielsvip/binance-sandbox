@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-09T17:46:08Z",
+ "ts": "2026-10-09T17:58:22Z",
  "dry_run": false,
  "regime_start": "2026-10-06T18:48:00Z",
  "thresholds": {
@@ -28,19 +28,19 @@
   "trb": {
    "fills_6h": 68,
    "open_positions": 2,
-   "unrealised_usd": 11.67,
+   "unrealised_usd": -1.58,
    "pos_mismatch": 1
   },
   "trc": {
    "fills_6h": 11,
    "open_positions": 1,
-   "unrealised_usd": -3.28,
+   "unrealised_usd": -3.09,
    "pos_mismatch": 0
   },
   "fin": {
    "fills_6h": 4,
-   "open_positions": 4,
-   "unrealised_usd": -0.02,
+   "open_positions": 0,
+   "unrealised_usd": 0.0,
    "pos_mismatch": 1,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -55,7 +55,7 @@
   "men": {
    "fills_6h": 0,
    "open_positions": 2,
-   "unrealised_usd": -0.17,
+   "unrealised_usd": -0.01,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -85,7 +85,7 @@
   "inf": {
    "fills_6h": 2,
    "open_positions": 2,
-   "unrealised_usd": 0.56,
+   "unrealised_usd": 0.39,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -100,7 +100,7 @@
   "flz": {
    "fills_6h": 0,
    "open_positions": 1,
-   "unrealised_usd": 0.02,
+   "unrealised_usd": 0.03,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -119,35 +119,35 @@
     "54373"
    ],
    "starts_30m": 1,
-   "log_age_s": 29.0
+   "log_age_s": 15.0
   },
   "men": {
    "pids": [
     "97466"
    ],
    "starts_30m": 1,
-   "log_age_s": 19.0
+   "log_age_s": 40.0
   },
   "ang": {
    "pids": [
     "53704"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 5.0
   },
   "inf": {
    "pids": [
     "88679"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 0.0
   },
   "flz": {
    "pids": [
     "97467"
    ],
    "starts_30m": 1,
-   "log_age_s": 24.0
+   "log_age_s": 5.0
   },
   "trb": {
    "pids": [
@@ -166,21 +166,21 @@
  },
  "alerts": [
   {
-   "ts": "2026-10-09T17:46:08Z",
+   "ts": "2026-10-09T17:58:22Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "trb:EXEL_LONG",
    "evidence": "positions file amt 4 vs fill-ledger amt 0"
   },
   {
-   "ts": "2026-10-09T17:46:08Z",
+   "ts": "2026-10-09T17:58:22Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "positions file amt 0 vs fill-ledger amt 0.2"
   },
   {
-   "ts": "2026-10-09T17:46:08Z",
+   "ts": "2026-10-09T17:58:22Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:CHRUSDT_LONG",
