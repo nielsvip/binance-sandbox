@@ -1,6 +1,7 @@
 #!/bin/bash
 # switch_bible_cycle — rebuild + verify the SWITCH BIBLE against the FINAL templates; run from cron every 10 min. Rebuilds when (a) templates changed,
 # (b) data/engine_deploy newest note / CURRENT.json changed, (c) older than 6h. macOS has no flock: mkdir lockdir. One line per cycle -> data/wiring/LOG.md.
+export PATH=/usr/bin:/bin:/usr/sbin:/sbin  # cron PATH lacks /sbin where md5 lives (Oct 6 "md5: command not found" storm)
 cd /Users/niels/Documents/binance || exit 3
 LOCK=/tmp/switch_bible_cycle.lockdir
 if ! mkdir "$LOCK" 2>/dev/null; then
@@ -19,7 +20,7 @@ echo $$ > "$LOCK/pid"
 trap 'rm -f "$LOCK/pid" 2>/dev/null; rmdir "$LOCK" 2>/dev/null' EXIT
 PY=.venv/bin/python; [ -x "$PY" ] || PY=python3
 STATE=data/switch_bible_cycle.state
-M5=$(command -v md5 2>/dev/null || echo /sbin/md5)
+M5=$(command -v md5 2>/dev/null); [ -x "$M5" ] || M5=/sbin/md5; [ -x "$M5" ] || { echo "FATAL: no md5 binary" >&2; exit 3; }
 SIG=$( ("$M5" -q SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx; \
       [ -f data/engine_deploy/CURRENT.json ] && "$M5" -q data/engine_deploy/CURRENT.json; ls data/engine_deploy 2>/dev/null; "$M5" -q v12_quick_engine.py) | "$M5" -q )
 OLD=$(cut -d' ' -f1 "$STATE" 2>/dev/null); AGE=$(( $(date +%s) - $(stat -f %m "$STATE" 2>/dev/null || echo 0) ))
