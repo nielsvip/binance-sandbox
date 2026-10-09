@@ -1,5 +1,5 @@
 {
- "broken": 75,
+ "broken": 78,
  "checks": {
   "TEMPLATE_NO_CONFIG": [],
   "LINK_LOST": [],
@@ -48,6 +48,9 @@
    "DG_MOMENTUM_BLOCK_RSI1H_FOR_SHORT: wired live+vec (['tradier_manage.py:45512(TradierTradeManager._disaster_guard_for_entry)'] / ['vec_decisions/stocks_disaster_guard.py:106(block_mask)']) but in no template",
    "DG_SMA200_SHORT_BYPASS: wired live+vec (['tradier_manage.py:45423(TradierTradeManager._disaster_guard_for_entry)'] / ['vec_decisions/stocks_disaster_guard.py:81(block_mask)']) but in no template",
    "DG_WT_3M_REQUIRE_HTF_CONFIRM: wired live+vec (['tradier_manage.py:45637(TradierTradeManager._disaster_guard_for_entry)'] / ['vec_decisions/stocks_disaster_guard.py:109(block_mask)']) but in no template",
+   "ENTRY_LH_TRIGGER_DIVERG_ENABLED: wired live+vec (['vec_decisions/check_entry_candidates_crypto__lh_trigger.py:39(_lh_trigger_params)'] / ['vec_decisions/check_entry_candidates_crypto__lh_trigger.py:39(_lh_trigger_params)']) but in no template",
+   "ENTRY_LH_TRIGGER_ENABLED: wired live+vec (['ez_positions_quick.py:30371(check_entry_candidates_for_account.worker)'] / ['v12_quick_engine.py:10554(compute_reentry_blocks)']) but in no template",
+   "ENTRY_LH_TRIGGER_REGRESS_PCT: wired live+vec (['vec_decisions/check_entry_candidates_crypto__lh_trigger.py:38(_lh_trigger_params)'] / ['vec_decisions/check_entry_candidates_crypto__lh_trigger.py:38(_lh_trigger_params)']) but in no template",
    "EXIT_SCORER_FULL_SCORE: wired live+vec (['wt_dc_exit_scorer.py:71(score_exit)'] / ['v12_quick_engine.py:15481(simulate_one)']) but in no template",
    "EXIT_SCORER_K_EXTREME: wired live+vec (['wt_dc_exit_scorer.py:68(score_exit)'] / ['v12_quick_engine.py:15494(simulate_one)']) but in no template",
    "EXIT_SCORER_MIN_CONDITIONS: wired live+vec (['wt_dc_exit_scorer.py:67(score_exit)'] / ['v12_quick_engine.py:15493(simulate_one)']) but in no template",
