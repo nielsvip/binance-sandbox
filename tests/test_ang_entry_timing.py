@@ -98,6 +98,14 @@ def test_too_few_bars_is_none():
     assert st == T.NONE
 
 
+def test_hold_only_failed_never_extended():
+    assert T.should_timing_hold(T.FAILED) is True
+    assert T.should_timing_hold(T.EXTENDED) is False
+    assert T.should_timing_hold(T.FRESH) is False
+    assert T.should_timing_hold(T.REBOUND) is False
+    assert T.should_timing_hold(T.NONE) is False
+
+
 def test_trim_fires_on_extended_profit():
     assert T.should_timing_trim(T.EXTENDED, 1.5, 2.5) is True
     assert T.should_timing_trim(T.EXTENDED, 1.5, 1.0) is False

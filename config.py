@@ -5219,9 +5219,16 @@ class Config:
     ANG_TIMING_MAX_AGE_S: int = 600
     # Exit timing: profit-guarded top/failed-breakout trims (QUICK_REDUCE via
     # execute_now). NEVER fires at a loss — loss exits stay with technicals.
+    # EXTENDED bar is deliberately high: extended breakouts are the biggest
+    # gains (USER 2026-10-09) — they ride with tight stops, not early trims.
     ANG_TIMING_TOP_TRIM_ENABLED: bool = True
-    ANG_TIMING_TOP_MIN_GAIN_PCT: float = 1.0
-    ANG_TIMING_TOP_MIN_EXT_ATR: float = 2.0
+    ANG_TIMING_TOP_MIN_GAIN_PCT: float = 2.0
+    ANG_TIMING_TOP_MIN_EXT_ATR: float = 3.0
+    # Tight stop: FAILED timing on a fresh breakout position -> same-symbol
+    # hedge (never a loss close). Reentry is confirmation-mandatory: entries
+    # retry every cycle and fire full-size the moment timing re-confirms.
+    ANG_TIMING_STOP_HEDGE_ENABLED: bool = True
+    ANG_TIMING_STOP_FRESH_HOURS: float = 6.0
     # R-Z4: continuous crash_mult gradient scaled by 0sentiment_strength
     CRASH_MULT_GRADIENT_ENABLED: bool = False
     CRASH_MULT_GRADIENT_MAX: float = 2.5  # upper clamp

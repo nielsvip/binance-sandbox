@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""ANG validity gatekeeper — enforce backtest-proven universe on ranking outputs.
+"""ANG validity gatekeeper — RETIRED 2026-10-09, AUDIT-ONLY (USER: tradeable_keys
+is not your domain; respect the lists). Reports what WOULD drop, writes nothing.
+
+Was: enforce backtest-proven universe on ranking outputs.
 
 ROOT CAUSE (2026-10-09): ez_rankings emits symbols_ang_long/short.json by raw
 momentum/linearity score with NO backtest-validity check. 2026-10-09 audit of the
@@ -257,11 +260,10 @@ def run(apply=False):
                 f"{ts} ABORT: kept<50% (tk {len(keep_tk)}/{len(tk_list)}, persist {len(keep_up)}/{len(up)}) — refusing wipe (no files written)"
             )
             return 2
-        _atomic_write_json(ANG_LONG, keep_long)
-        _atomic_write_json(ANG_SHORT, keep_short)
-        _atomic_write_json(TRADEABLE, keep_tk)
-        _atomic_write_json(PERSIST, keep_up)
-        print(f"{ts} [APPLY] wrote 4 files")
+        # RETIRED 2026-10-09 (USER: tradeable_keys is not your domain; respect
+        # the lists). Audit-only from here on: report what WOULD drop, write
+        # nothing. Cron stays off.
+        print(f"{ts} [APPLY] RETIRED — audit only, no files written (tradeable_keys not our domain)")
     return 0
 
 

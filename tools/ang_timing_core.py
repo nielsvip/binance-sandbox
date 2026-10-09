@@ -93,6 +93,13 @@ def short_state(closes, highs, lows, **kw):
     return st, (-lvl if lvl else 0.0), ext, bars
 
 
+def should_timing_hold(state):
+    """Entry-hold contract: ONLY FAILED holds (never average into a lost
+    level). EXTENDED breakouts are the biggest gains — they ENTER with tight
+    stops + mandatory reentries, they are never held."""
+    return state == FAILED
+
+
 def should_timing_trim(state, gain_pct, ext_atr, min_gain_pct=1.0, min_ext_atr=2.0):
     """Exit-timing decision: trim ONLY at a profit. EXTENDED needs high
     extension; FAILED (level lost) trims on profit alone before it erodes.

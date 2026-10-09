@@ -30816,8 +30816,10 @@ class MultiAccountTradeManager:
             logger.warning(f"[BALANCE_FLOOR_HALT] check error (fail-open): {_bf_e}")
         # ═══════════════════════════════════════════════════════════════════════════
         # ⏳ ANG ENTRY TIMING HOLD (USER 2026-10-09: breakouts not tops)
-        # Rankings publishes per-sym_side timing states; HOLD new exposure on
-        # EXTENDED_TOP (wait for rebound) and FAILED (no averaging down).
+        # Rankings publishes per-sym_side timing states; HOLD new exposure ONLY
+        # on FAILED (never average into a lost level). EXTENDED breakouts are
+        # the biggest gains — they ENTER with tight stops + mandatory reentries
+        # (contract: tools/ang_timing_core.should_timing_hold).
         # CLOSE/REDUCE/HEDGE always pass. Fail-open on any error/stale data.
         # Insist-safe: HOLD refusals never touch open_blocked counters (those
         # only trip on FAILED_VERIFICATION_AND_FALLBACK), so entries retry
@@ -30836,9 +30838,9 @@ class MultiAccountTradeManager:
                 and "HEDGE" not in _kill_act
             ):
                 _tm_state = ang_timing_state_for(symbol, position_side)
-                if _tm_state in ("EXTENDED_TOP", "FAILED"):
-                    logger.warning(f"⏳ [TIMING_HOLD] {position_key}: {action} held — timing={_tm_state} (wait for rebound; insist, retry next cycle)")
-                    return f"BLOCKED_TIMING_HOLD_{_tm_state}_{_tm_acct}"
+                if _tm_state == "FAILED":
+                    logger.warning(f"⏳ [TIMING_HOLD] {position_key}: {action} held — timing=FAILED (level lost; insist, retry on reclaim)")
+                    return f"BLOCKED_TIMING_HOLD_FAILED_{_tm_acct}"
         except Exception as _tm_e:
             logger.debug(f"[TIMING_HOLD] check error (fail-open): {_tm_e}")
         # ═══════════════════════════════════════════════════════════════════════════
@@ -48790,7 +48792,9 @@ async def _pp_ang_timing_exits(trade_manager, account_key, position_key) -> bool
     EXTENDED_TOP + gain>=min + ext>=min -> take the top. FAILED + gain>=min ->
     exit before profit erodes. NEVER fires at a loss (loss exits stay with
     technicals/hedges). Hedges excluded. Fire-once per open position.
-    Fail-open everywhere. ROLLBACK: ANG_TIMING_TOP_TRIM_ENABLED=False.
+    Tight stop: FAILED on a FRESH position -> same-symbol hedge (any PnL —
+    a hedge is not a close). Fail-open everywhere.
+    ROLLBACK: ANG_TIMING_TOP_TRIM_ENABLED=False / ANG_TIMING_STOP_HEDGE_ENABLED=False.
     """
     try:
         if not bool(getattr(config, "ANG_TIMING_TOP_TRIM_ENABLED", True)):
@@ -48824,6 +48828,38 @@ async def _pp_ang_timing_exits(trade_manager, account_key, position_key) -> bool
         entry = ang_timing_entry_for(sym, side)
         state = entry.get("state", "NONE")
         ext = entry.get("extension_atr", 0.0)
+        if state == "FAILED" and bool(getattr(config, "ANG_TIMING_STOP_HEDGE_ENABLED", True)):
+            try:
+                st = (getattr(trade_manager, "ang_timing_exit_state", {}) or {}).get(position_key, {})
+                if not (isinstance(st, dict) and st.get("stop_hedged")):
+                    opened = getattr(pos, "opened_at", None)
+                    age_h = (datetime.now(timezone.utc) - datetime.fromisoformat(str(opened).replace("Z", "+00:00"))).total_seconds() / 3600.0
+                    fresh_h = float(getattr(config, "ANG_TIMING_STOP_FRESH_HOURS", 6.0) or 6.0)
+                    if 0 <= age_h <= fresh_h:
+                        he = getattr(trade_manager, "hedge_engine", None)
+                        if he is not None:
+                            mark = safe_fetch_float(getattr(pos, "mark_price", 0), 0.0)
+                            if mark <= 0:
+                                try:
+                                    mark, _ = await get_current_price(sym)
+                                    mark = float(mark) if mark else 0.0
+                                except Exception:
+                                    mark = 0.0
+                            if mark > 0:
+                                logger.warning(f"🛡️ [ANG_TIMING_STOP] {position_key}: FAILED timing on fresh breakout (age {age_h:.1f}h, gain {gain:.2f}%) — hedging (tight stop, never a loss close)")
+                                if await he.execute_same_symbol_hedge(account_key or ak, pos, sym, str(side).upper(), float(amt), float(mark)):
+                                    try:
+                                        if not hasattr(trade_manager, "ang_timing_exit_state"):
+                                            trade_manager.ang_timing_exit_state = {}
+                                        cur = trade_manager.ang_timing_exit_state.get(position_key, {})
+                                        cur = dict(cur) if isinstance(cur, dict) else {}
+                                        cur.update({"stop_hedged": True, "ts": time.time()})
+                                        trade_manager.ang_timing_exit_state[position_key] = cur
+                                    except Exception:
+                                        pass
+                                    return True
+            except Exception as _tsh_e:
+                logger.debug(f"[ANG_TIMING_STOP] error (fail-open): {_tsh_e}")
         try:
             import tools.ang_timing_core as _atc
         except Exception:
