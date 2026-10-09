@@ -45954,20 +45954,21 @@ async def direct_high_gain_augmentation(
 
 
 def _parity_flat_open_switches(position_key: str):
-    """Parity lane B 2026-10-06: (symbol, side, getter, wt15_on, bb_bounce_on, vec_reentry_on) for a flat key; per-sym > cat_side > global."""
+    """Parity lane B 2026-10-06: (symbol, side, getter, wt15_on, bb_bounce_on, vec_reentry_on, wt_top_on) for a flat key; per-sym > cat_side > global."""
     _ak_p, _sym_p, _side_p = parse_position_key(position_key)
     _get_p = lambda _k, _d: _psym_cs_get(_sym_p, _side_p, _k, _d)
     _tb = lambda _v: (_v.strip().lower() in ("true", "1", "yes")) if isinstance(_v, str) else bool(_v)
     _w15 = _tb(_get_p("WT_15M_BOUNCE_OPEN_ENABLED", False))
     _bbt = str(_get_p("BB_BOUNCE_ENTRY_TF", "OFF") or "OFF").strip() in ("15m", "1h", "4h", "D")
     _vr = _tb(_get_p("CRYPTO_REENTRY_PATHWAYS_ENABLED", False))
-    return _sym_p, _side_p, _get_p, _w15, _bbt, _vr
+    _wtt = _tb(_get_p("WT_TOP_ENTRY_ENABLED", False))
+    return _sym_p, _side_p, _get_p, _w15, _bbt, _vr, _wtt
 
 
 def _parity_flat_open_enabled(position_key: str) -> bool:
     try:
-        _s, _sd, _g, _w15, _bbt, _vr = _parity_flat_open_switches(position_key)
-        return bool(_s) and _sd in ("LONG", "SHORT") and (_w15 or _bbt or _vr)
+        _s, _sd, _g, _w15, _bbt, _vr, _wtt = _parity_flat_open_switches(position_key)
+        return bool(_s) and _sd in ("LONG", "SHORT") and (_w15 or _bbt or _vr or _wtt)
     except Exception:
         return False
 
@@ -45997,8 +45998,8 @@ async def _parity_flat_open_check(trade_manager, position_key: str, position, or
     if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
         return None
     try:
-        _sym_p, _side_p, _get_p, _w15, _bbt, _vr = _parity_flat_open_switches(position_key)
-        if not (_w15 or _bbt or _vr):
+        _sym_p, _side_p, _get_p, _w15, _bbt, _vr, _wtt = _parity_flat_open_switches(position_key)
+        if not (_w15 or _bbt or _vr or _wtt):
             return
         _ind_p = await ii(trade_manager, _sym_p)
         if not isinstance(_ind_p, dict):
@@ -46012,6 +46013,16 @@ async def _parity_flat_open_check(trade_manager, position_key: str, position, or
             _ok_p, _why_p = _twin_entry_ports_b.wt_15m_bounce(lambda _k, _d: True if _k == "WT_15M_BOUNCE_OPEN_ENABLED" else _get_p(_k, _d), _long_p, _ind_p)
         if not _ok_p and _bbt and _twin_entry_ports_b is not None:
             _ok_p, _why_p = _twin_entry_ports_b.bb_bounce_entry(_get_p, _long_p, _ind_p)
+        if not _ok_p and _wtt:
+            try:
+                import vec_decisions.wt_top_entry as _wte
+                from types import SimpleNamespace as _SNS
+                _wte_cfg = _SNS(**{k: _get_p(k, d) for k, d in (("WT_TOP_ENTRY_ENABLED", False), ("WT_TOP_ENTRY_TF", "OFF"), ("WT_TOP_ENTRY_MODE", "TOPS_ONLY"), ("WT_TOP_ENTRY_DIV_MODE", "OFF"), ("WT_TOP_ENTRY_HTF_CONFIRM_TF", "OFF"))})
+                _ok_p, _wt_why = _wte.check_wt_top_entry(_wte.resolve_wt_top_spec(_wte_cfg), _ind_p, _long_p)
+                if _ok_p:
+                    _why_p = f"WT_TOP_ENTRY_{_side_p}_{_wt_why}"
+            except Exception:
+                pass
         if not _ok_p and _vr:
             from live_twins import vec_reentry as _lbvr
             _ex_px, _ex_rs, _ex_age = _parity_last_exit(trade_manager, position_key)

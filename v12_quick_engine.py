@@ -9309,6 +9309,16 @@ def compute_entry_signals(npz, n, is_long, cfg):
             blocks["B_WT_DC_DIRECT"] = _wtd_blk
     except Exception:
         pass
+    # 2026-10-08 WT-top entries (USER): completed-bar WT cross + lower-top/higher-low structure opens; OFF at default.
+    try:
+        import vec_decisions.wt_top_entry as _wte
+        _wte_spec = _wte.resolve_wt_top_spec(cfg)
+        if _wte_spec.get("enabled"):
+            _wte_blk = _wte.build_wt_top_mask(npz, n, is_long, _wte_spec, _safe)
+            if any(_wte_blk):
+                blocks["B_WT_TOP"] = np.array(_wte_blk, dtype=bool)
+    except Exception:
+        pass
     # WIRING LANE C L1f: HLR rally bypass-equivalent entry block; OFF at vec default.
     try:
         import vec_decisions.wirec_hlr_family as _wirec_hlr

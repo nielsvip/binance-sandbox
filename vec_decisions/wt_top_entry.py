@@ -48,16 +48,16 @@ def _safe_get(npz, key, n, default=0.0):
 
 
 def resolve_wt_top_spec(cfg):
-    g = lambda k, d: getattr(cfg, k, d)
-    tf = str(g("WT_TOP_ENTRY_TF", "OFF") or "OFF").strip().lower()
+    enabled = bool(getattr(cfg, "WT_TOP_ENTRY_ENABLED", False))
+    tf = str(getattr(cfg, "WT_TOP_ENTRY_TF", "OFF") or "OFF").strip().lower()
     tf = {"15m": "15m", "1h": "1h", "4h": "4h"}.get(tf, "OFF")
-    sm = str(g("WT_TOP_ENTRY_MODE", "TOPS_ONLY") or "").strip().upper()
+    sm = str(getattr(cfg, "WT_TOP_ENTRY_MODE", "TOPS_ONLY") or "").strip().upper()
     sm = sm if sm in STRUCT_MODES else "TOPS_ONLY"
-    dm = str(g("WT_TOP_ENTRY_DIV_MODE", "OFF") or "").strip().upper()
+    dm = str(getattr(cfg, "WT_TOP_ENTRY_DIV_MODE", "OFF") or "").strip().upper()
     dm = dm if dm in DIV_MODES else "OFF"
-    raw = str(g("WT_TOP_ENTRY_HTF_CONFIRM_TF", "OFF") or "OFF").upper().replace(" ", "")
+    raw = str(getattr(cfg, "WT_TOP_ENTRY_HTF_CONFIRM_TF", "OFF") or "OFF").upper().replace(" ", "")
     htf = [t for t in raw.split(",") if t in HTF_TFS] if raw != "OFF" else []
-    return {"enabled": bool(g("WT_TOP_ENTRY_ENABLED", False)), "tf": tf, "struct_mode": sm, "div_mode": dm, "htf": htf}
+    return {"enabled": enabled, "tf": tf, "struct_mode": sm, "div_mode": dm, "htf": htf}
 
 
 def check_wt_top_entry(spec, ind, is_long):

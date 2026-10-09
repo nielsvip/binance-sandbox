@@ -1382,6 +1382,21 @@ def _shared_direct_entry_claim(
         except (TypeError, ValueError) as exc:
             data_error(family, exc)
 
+    if bool(_cfg("WT_TOP_ENTRY_ENABLED", False, account_key, symbol, side)):
+        family = "WT_TOP_ENTRY"
+        try:
+            import vec_decisions.wt_top_entry as _wte
+            from types import SimpleNamespace as _SNS
+            _wte_cfg = _SNS(**{k: _cfg(k, d, account_key, symbol, side) for k, d in (("WT_TOP_ENTRY_ENABLED", False), ("WT_TOP_ENTRY_TF", "OFF"), ("WT_TOP_ENTRY_MODE", "TOPS_ONLY"), ("WT_TOP_ENTRY_DIV_MODE", "OFF"), ("WT_TOP_ENTRY_HTF_CONFIRM_TF", "OFF"))})
+            _wte_spec = _wte.resolve_wt_top_spec(_wte_cfg)
+            _wte_fire, _wte_why = _wte.check_wt_top_entry(_wte_spec, indicators or {}, is_long)
+            decision = _SNS(eligible=bool(_wte_fire), episode_start=bool(_wte_fire), next_state=None, blockers=[] if _wte_fire else ["WT_TOP_ENTRY"], score=0.0)
+            states[family] = decision.next_state
+            sources = {"15m": _completed_source(indicators, "15m"), "1h": _completed_source(indicators, "1h"), "4h": _completed_source(indicators, "4h")}
+            record(family, decision, sources, f"WT_TOP_ENTRY_{_wte_spec.get('tf')}_{_wte_spec.get('struct_mode')}_{_wte_why}")
+        except (TypeError, ValueError) as exc:
+            data_error(family, exc)
+
     return claims[0] if claims else None
 
 
