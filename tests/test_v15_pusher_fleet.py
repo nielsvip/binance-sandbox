@@ -109,7 +109,7 @@ def test_p2_topups_rank_and_parse():
         "S!A=True": {"kind": "switch", "pos_sym": 10, "avg_delta": 1.0},
         "S!B=0.95": {"kind": "switch", "pos_sym": 10, "avg_delta": 2.0},
         "S!C=1h": {"kind": "filter", "pos_sym": 99, "avg_delta": 9.0},
-        "S!D=7": {"kind": "switch", "pos_sym": 2, "avg_delta": 5.0}}}
+        "S!D=7": {"kind": "switch", "pos_sym": 2, "avg_delta": 5.0}}}}
     top = P.p2_topups(possym, "CRYPTO_LONG")
     assert [(t["switch"], t["value"]) for t in top] == [("B", 0.95), ("A", True)]
     assert top[0]["pos_sym"] == 10

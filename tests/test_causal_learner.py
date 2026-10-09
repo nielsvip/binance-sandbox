@@ -85,6 +85,60 @@ def test_live_loser_recorded_weak(tmp_path, monkeypatch):
     assert all(f["status"] == "proposed" for f in cl.query("A_LONG", db))
 
 
+def test_autolift_on_positive_sweep_evidence(tmp_path, monkeypatch):
+    monkeypatch.setattr(cl, "ROOT", tmp_path)
+    pd = tmp_path / "prog"
+    pd.mkdir()
+    for ss in ["AAA_LONG", "BBB_LONG", "CCC_LONG"]:
+        _progress(pd / f"{ss}_v14_progress.json", ss, [("BAD_SW", -2.0)])
+    db = str(tmp_path / "c.db")
+    monkeypatch.setattr(cl, "_now", lambda: "2026-10-08T00:00:00+00:00")
+    cl.ingest_progress(str(pd), db)
+    assert any(
+        f["target"] == "BAD_SW" and f["status"] == "confirmed"
+        for f in cl.query("AAA_LONG", db)
+    )
+    pd2 = tmp_path / "prog2"
+    pd2.mkdir()
+    _progress(pd2 / "DDD_LONG_v14_progress.json", "DDD_LONG", [("BAD_SW", 3.0)])
+    monkeypatch.setattr(cl, "_now", lambda: "2026-10-09T00:00:00+00:00")
+    cl.ingest_progress(str(pd2), db)
+    fixes = cl.query("AAA_LONG", db)
+    assert any(
+        f["target"] == "BAD_SW" and f["status"] == "rejected" for f in fixes
+    ), fixes
+    import sqlite3
+
+    v = (
+        sqlite3.connect(db)
+        .execute("SELECT DISTINCT verdict FROM fix_outcomes")
+        .fetchall()
+    )
+    assert v == [("hurt",)]
+
+
+def test_export_agg_pos_veto(tmp_path, monkeypatch):
+    monkeypatch.setattr(cl, "ROOT", tmp_path)
+    pd = tmp_path / "prog"
+    pd.mkdir()
+    for ss in ["AAA_LONG", "BBB_LONG", "CCC_LONG"]:
+        _progress(pd / f"{ss}_v14_progress.json", ss, [("BAD_SW", -2.0)])
+    db = str(tmp_path / "c.db")
+    cl.ingest_progress(str(pd), db)
+    (tmp_path / "avg_delta_pos_sym_cell.json").write_text(
+        json.dumps(
+            {
+                "cat_sides": {
+                    "STOCKS_LONG": {"ENTRY_REVERSAL_BOUNCE!r0@H0": {"pos_sym": 5}}
+                }
+            }
+        )
+    )
+    cl.export_condemned(db, str(tmp_path / "cond.json"))
+    p = json.loads(open(tmp_path / "cond.json").read())
+    assert "ENTRY_REVERSAL_BOUNCE!r0@H0" not in p["cells"].get("STOCKS_LONG", {})
+
+
 def test_export_merge_union(tmp_path, monkeypatch):
     monkeypatch.setattr(cl, "ROOT", tmp_path)
     db = str(tmp_path / "c.db")

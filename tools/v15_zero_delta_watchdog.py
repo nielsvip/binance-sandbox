@@ -11,6 +11,7 @@ sheet. This tool finds them from the cross-sym aggregate and:
     pilot's sanctioned skip list; KG switches are never added — pilot purges them anyway).
     Backup first. Does NOT touch templates.
 """
+
 import argparse
 import collections
 import datetime
@@ -24,11 +25,52 @@ import openpyxl
 ROOT = Path(__file__).resolve().parents[1]
 SPREAD = ROOT / "SPREADSHEETS"
 AGG_DEFAULT = SPREAD / "v15_vector_delta_latest.xlsx"
-TEMPLATES = {"CRYPTO_LONG": "TEMPLATE_CRYPTO_LONG.xlsx", "CRYPTO_SHORT": "TEMPLATE_CRYPTO_SHORT.xlsx", "STOCKS_LONG": "TEMPLATE_STOCKS_LONG.xlsx", "STOCKS_SHORT": "TEMPLATE_STOCKS_SHORT.xlsx"}
-SWITCH_SHEETS = ["STDEV_SLOPE_SIZING", "ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES", "EXIT_STRUCTURAL", "EXIT_VELOCITY", "REENTRY_WINDOWED", "REENTRY_ADAPTIVE", "AUGMENT_TREND", "AUGMENT_RISK_SIZING", "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER", "GLOBAL_RISK_GATES"]
-DISABLED = ROOT / "data" / "reports" / "lifecycle_pilot" / "disabled_switches_never_pos_per_category.json"
+TEMPLATES = {
+    "CRYPTO_LONG": "TEMPLATE_CRYPTO_LONG.xlsx",
+    "CRYPTO_SHORT": "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "STOCKS_LONG": "TEMPLATE_STOCKS_LONG.xlsx",
+    "STOCKS_SHORT": "TEMPLATE_STOCKS_SHORT.xlsx",
+}
+SWITCH_SHEETS = [
+    "STDEV_SLOPE_SIZING",
+    "ENTRY_REVERSAL_BOUNCE",
+    "ENTRY_BREAKOUT_CHANNEL",
+    "ENTRY_CONFIRMATION_GATES",
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY",
+    "REENTRY_WINDOWED",
+    "REENTRY_ADAPTIVE",
+    "AUGMENT_TREND",
+    "AUGMENT_RISK_SIZING",
+    "REDUCE_PROFIT_LOCK",
+    "REDUCE_SIGNAL_RATER",
+    "GLOBAL_RISK_GATES",
+]
+DISABLED = (
+    ROOT
+    / "data"
+    / "reports"
+    / "lifecycle_pilot"
+    / "disabled_switches_never_pos_per_category.json"
+)
 HDR = 2
-KG_SUBSTR = ("HTF_", "MTF_", "MTS_", "WT_", "W15M", "TOP_OF_RANGE", "GR_FILTER", "GR_", "ADX_", "BB_SQUEEZE", "COUNTER_TREND", "DELTA_REENTRY", "EXIT_BLOCKER", "MANDATORY_REENTRY", "OPEN_RATE")
+KG_SUBSTR = (
+    "HTF_",
+    "MTF_",
+    "MTS_",
+    "WT_",
+    "W15M",
+    "TOP_OF_RANGE",
+    "GR_FILTER",
+    "GR_",
+    "ADX_",
+    "BB_SQUEEZE",
+    "COUNTER_TREND",
+    "DELTA_REENTRY",
+    "EXIT_BLOCKER",
+    "MANDATORY_REENTRY",
+    "OPEN_RATE",
+)
 
 
 def _is_kg(sw):
@@ -48,21 +90,39 @@ def load_agg(path):
             imed = hdr.index("median_delta") if "median_delta" in hdr else None
             for r in rows:
                 if r and r[ix["name"]] is not None and r[ix[col]] is not None:
-                    med = float(r[imed]) if imed is not None and r[imed] is not None else None
-                    d[(str(r[ix["tab"]]).strip(), str(r[ix["name"]]).strip())] = (float(r[ix[col]]), int(r[ix["n"]] or 0), med)
+                    med = (
+                        float(r[imed])
+                        if imed is not None and r[imed] is not None
+                        else None
+                    )
+                    d[(str(r[ix["tab"]]).strip(), str(r[ix["name"]]).strip())] = (
+                        float(r[ix[col]]),
+                        int(r[ix["n"]] or 0),
+                        med,
+                    )
         out[cs] = d
     wb.close()
     return out
 
 
 def load_bolds(cs):
-    wb = openpyxl.load_workbook(str(SPREAD / TEMPLATES[cs]), read_only=True, data_only=True)
+    wb = openpyxl.load_workbook(
+        str(SPREAD / TEMPLATES[cs]), read_only=True, data_only=True
+    )
     bolds = {}
     for tab in SWITCH_SHEETS:
         if tab not in wb.sheetnames:
             continue
         ws = wb[tab]
-        ci = next((c for c in range(1, ws.max_column + 1) if str(ws.cell(row=HDR, column=c).value or "").strip().upper() == "IS_DEFAULT"), None)
+        ci = next(
+            (
+                c
+                for c in range(1, ws.max_column + 1)
+                if str(ws.cell(row=HDR, column=c).value or "").strip().upper()
+                == "IS_DEFAULT"
+            ),
+            None,
+        )
         for row in ws.iter_rows(min_row=HDR + 1, values_only=False):
             a = row[0].value
             if a in (None, ""):
@@ -93,7 +153,10 @@ def main():
             if "=" in name and (tab, name.split("=", 1)[0].strip()) in bolds:
                 sw = name.split("=", 1)[0].strip()
                 cur = bolds[(tab, sw)]
-                if str(cur) == name.split("=", 1)[1].strip() or repr(cur) == name.split("=", 1)[1].strip():
+                if (
+                    str(cur) == name.split("=", 1)[1].strip()
+                    or repr(cur) == name.split("=", 1)[1].strip()
+                ):
                     explained.append([tab, name, n])
                     continue
                 suspect.append([tab, name, n])
@@ -101,18 +164,45 @@ def main():
                 suspect.append([tab, name, n])
         by_sw = collections.defaultdict(list)
         for tab, name, n in suspect:
-            by_sw[name.split("=", 1)[0].strip() if "=" in name else name].append((tab, name, n))
-        disablable = sorted(s for s, rows in by_sw.items() if len(rows) >= 2 and not _is_kg(s))
-        kg_blocked = sorted(s for s, rows in by_sw.items() if len(rows) >= 2 and _is_kg(s))
-        report["cats"][cs] = {"systematic_zero_rows": len(explained) + len(suspect), "explained_honest": len(explained), "dead_suspect_rows": len(suspect), "disablable_switches": disablable, "kg_blocked": kg_blocked, "suspect_sample": suspect[:10]}
-        print(f"[{cs}] stats={len(stats)} syszero={len(explained) + len(suspect)} explained={len(explained)} suspect_rows={len(suspect)} disablable={len(disablable)} {disablable[:6]} kg_blocked={len(kg_blocked)}", flush=True)
+            by_sw[name.split("=", 1)[0].strip() if "=" in name else name].append(
+                (tab, name, n)
+            )
+        disablable = sorted(
+            s for s, rows in by_sw.items() if len(rows) >= 2 and not _is_kg(s)
+        )
+        kg_blocked = sorted(
+            s for s, rows in by_sw.items() if len(rows) >= 2 and _is_kg(s)
+        )
+        report["cats"][cs] = {
+            "systematic_zero_rows": len(explained) + len(suspect),
+            "explained_honest": len(explained),
+            "dead_suspect_rows": len(suspect),
+            "disablable_switches": disablable,
+            "kg_blocked": kg_blocked,
+            "suspect_sample": suspect[:10],
+        }
+        print(
+            f"[{cs}] stats={len(stats)} syszero={len(explained) + len(suspect)} explained={len(explained)} suspect_rows={len(suspect)} disablable={len(disablable)} {disablable[:6]} kg_blocked={len(kg_blocked)}",
+            flush=True,
+        )
     out = ROOT / "data" / "reports" / f"v15_zero_delta_{ts}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=1))
     print(f"[report] {out}", flush=True)
     if args.apply:
         cur = json.loads(DISABLED.read_text()) if DISABLED.exists() else {}
-        shutil.copy2(DISABLED, ROOT / "backups" / f"before_zero_watchdog_{ts}_disabled.json") if DISABLED.exists() else None
+        (
+            shutil.copy2(
+                DISABLED, ROOT / "backups" / f"before_zero_watchdog_{ts}_disabled.json"
+            )
+            if DISABLED.exists()
+            else None
+        )
+        try:
+            _cc = json.load(open(ROOT / "data" / "causal_condemned.json"))
+            causal_sw = _cc.get("switches") or {}
+        except Exception:
+            causal_sw = {}
         added = 0
         for cs, r in report["cats"].items():
             have = set(cur.get(cs) or [])
@@ -120,6 +210,13 @@ def main():
                 if s not in have:
                     have.add(s)
                     added += 1
+            for s in causal_sw.get(cs, []) + causal_sw.get("GLOBAL", []):
+                if s and s not in have:
+                    have.add(s)
+                    added += 1
+            report["cats"][cs]["causal_added"] = sorted(
+                set(causal_sw.get(cs, [])) | set(causal_sw.get("GLOBAL", []))
+            )
             cur[cs] = sorted(have)
         DISABLED.parent.mkdir(parents=True, exist_ok=True)
         DISABLED.write_text(json.dumps(cur, indent=1))

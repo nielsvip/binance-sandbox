@@ -8,6 +8,7 @@ counted over sym_sides with a REAL numeric evaluated delta (None skipped).
 Usage: python3 tools/v15_cell_evidence.py [progress_dir] [out_json]
 progress_dir may be comma-separated (union, newest file wins per sym_side).
 """
+
 import glob
 import json
 import os
@@ -31,7 +32,11 @@ def main():
     pdirs = [p.strip() for p in str(pdir).split(",") if p.strip()]
     cand = [f for p in pdirs for f in glob.glob(os.path.join(p, "*_progress.json"))]
     files, _seen = [], set()
-    for f in sorted(cand, key=lambda p: os.path.getmtime(p) if os.path.exists(p) else 0, reverse=True):
+    for f in sorted(
+        cand,
+        key=lambda p: os.path.getmtime(p) if os.path.exists(p) else 0,
+        reverse=True,
+    ):
         ss0 = os.path.basename(f).replace("_v14_progress.json", "")
         if ss0 in _seen:
             continue
@@ -71,22 +76,63 @@ def main():
         if n < 3:
             continue
         cat, cell = ck.split("\t", 1)
-        cats.setdefault(cat, {})[cell] = {"pos_sym": pos, "n_sym": n, "avg_delta": total / n}
-    payload = {"meta": {"at": datetime.now(timezone.utc).isoformat(), "source": pdir, "files": nfiles, "cells": sum(len(v) for v in cats.values())}, "cat_sides": cats}
+        cats.setdefault(cat, {})[cell] = {
+            "pos_sym": pos,
+            "n_sym": n,
+            "avg_delta": total / n,
+        }
+    payload = {
+        "meta": {
+            "at": datetime.now(timezone.utc).isoformat(),
+            "source": pdir,
+            "files": nfiles,
+            "cells": sum(len(v) for v in cats.values()),
+        },
+        "cat_sides": cats,
+    }
     tmp = out + ".tmp"
     json.dump(payload, open(tmp, "w"))
     os.replace(tmp, out)
     print(f"files={nfiles} cells={payload['meta']['cells']} -> {out}")
     rdir = os.path.join(os.path.dirname(out) or ".", "cell_evidence")
     os.makedirs(rdir, exist_ok=True)
+    _causal = {}
+    try:
+        _cp = os.path.join(os.path.dirname(out) or ".", "causal_condemned.json")
+        _causal = (
+            (json.load(open(_cp)).get("cells") or {}) if os.path.exists(_cp) else {}
+        )
+    except Exception:
+        _causal = {}
     for _cat, _cells in cats.items():
-        _pruned = {k: {"pos_sym": 0, "n_sym": v["n_sym"], "avg_delta": round(v["avg_delta"], 6)} for k, v in _cells.items() if v["pos_sym"] == 0 and v["n_sym"] >= 10}
+        _pruned = {
+            k: {
+                "pos_sym": 0,
+                "n_sym": v["n_sym"],
+                "avg_delta": round(v["avg_delta"], 6),
+            }
+            for k, v in _cells.items()
+            if v["pos_sym"] == 0 and v["n_sym"] >= 10
+        }
+        for _ck, _cv in (_causal.get(_cat) or {}).items():
+            _pruned.setdefault(
+                _ck,
+                {
+                    "pos_sym": 0,
+                    "n_sym": _cv.get("n_sym", 0),
+                    "avg_delta": _cv.get("avg_delta", 0.0),
+                    "causal": True,
+                },
+            )
         _rp = os.path.join(rdir, f"{_cat}.json")
         json.dump({"meta": payload["meta"], "cells": _pruned}, open(_rp + ".tmp", "w"))
         os.replace(_rp + ".tmp", _rp)
-        print(f"  runtime {_cat}: {len(_pruned)} condemned cells -> {_rp} ({os.path.getsize(_rp) // 1024}KB)")
+        print(
+            f"  runtime {_cat}: {len(_pruned)} condemned cells -> {_rp} ({os.path.getsize(_rp) // 1024}KB)"
+        )
     for cat, cells in sorted(cats.items()):
         import collections as _c
+
         t = _c.Counter()
         for v in cells.values():
             if v["pos_sym"] == 0:

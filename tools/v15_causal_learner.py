@@ -219,18 +219,10 @@ def ingest_progress(pdirs, db_path=None, root=None):
                 continue
             deltas = []
             nd = v.get("naked_delta", v.get("delta"))
-            if (
-                isinstance(nd, (int, float))
-                and not isinstance(nd, bool)
-                and float(nd) < -1e-9
-            ):
+            if isinstance(nd, (int, float)) and not isinstance(nd, bool):
                 deltas.append(("", float(nd)))
             for h, dt in (v.get("yellows") or {}).items():
-                if (
-                    isinstance(dt, (int, float))
-                    and not isinstance(dt, bool)
-                    and float(dt) < -1e-9
-                ):
+                if isinstance(dt, (int, float)) and not isinstance(dt, bool):
                     deltas.append((str(h).strip(), float(dt)))
             if not deltas:
                 continue
@@ -291,18 +283,35 @@ def _propose_fixes(cx):
 
 
 def _record_outcomes(cx):
-    for fid, sw in cx.execute(
-        "SELECT id, target FROM fixes WHERE kind = 'disable_switch' AND status = 'confirmed'"
+    for fid, sw, created in cx.execute(
+        "SELECT id, target, created FROM fixes WHERE kind = 'disable_switch' AND status = 'confirmed'"
     ).fetchall():
-        n = cx.execute(
-            "SELECT COUNT(*) FROM fix_outcomes WHERE fix_id = ?", (fid,)
-        ).fetchone()[0]
-        if n:
-            continue
-        cx.execute(
-            "INSERT INTO fix_outcomes(fix_id, ts, sym_side, metric_after, verdict) SELECT ?, MAX(l.ts), '', 0.0, 'neutral' FROM lessons l JOIN causes c ON c.lesson_id = l.id WHERE c.switch_key = ?",
-            (fid, sw),
-        )
+        pos = cx.execute(
+            "SELECT COUNT(*), MAX(l.ts) FROM causes c JOIN lessons l ON l.id = c.lesson_id WHERE c.switch_key = ? AND c.attribution = 'direct_sweep' AND c.delta > 1e-9 AND l.ts > ?",
+            (sw, created),
+        ).fetchone()
+        if (pos[0] or 0) > 0:
+            cx.execute(
+                "INSERT INTO fix_outcomes(fix_id, ts, sym_side, metric_after, verdict) VALUES (?,?,?,?,?)",
+                (fid, pos[1], "", float(pos[0]), "hurt"),
+            )
+            cx.execute(
+                "UPDATE fixes SET status = 'rejected', reason = reason || ' | auto-lifted: positive sweep evidence after condemn' WHERE id = ?",
+                (fid,),
+            )
+        else:
+            neg = cx.execute(
+                "SELECT COUNT(*) FROM causes c JOIN lessons l ON l.id = c.lesson_id WHERE c.switch_key = ? AND c.delta < -1e-9 AND l.ts > ?",
+                (sw, created),
+            ).fetchone()[0]
+            if (neg or 0) > 0 and cx.execute(
+                "SELECT COUNT(*) FROM fix_outcomes WHERE fix_id = ? AND verdict = 'helped'",
+                (fid,),
+            ).fetchone()[0] == 0:
+                cx.execute(
+                    "INSERT INTO fix_outcomes(fix_id, ts, sym_side, metric_after, verdict) VALUES (?,?,?,?,?)",
+                    (fid, _now(), "", float(neg), "helped"),
+                )
 
 
 def rank_fixes(cx, scope=None, limit=50):
@@ -361,8 +370,26 @@ def _cell_key(rowkey, header):
         return ""
 
 
+def _agg_pos_lookup(out_path):
+    try:
+        ap = os.path.join(
+            os.path.dirname(str(out_path)) if out_path else str(ROOT / "data"),
+            "avg_delta_pos_sym_cell.json",
+        )
+        d = json.load(open(ap)).get("cat_sides") or {}
+        return {
+            (cat, ck): (v.get("pos_sym") or 0)
+            for cat, cells in d.items()
+            for ck, v in (cells or {}).items()
+        }
+    except Exception:
+        return {}
+
+
 def export_condemned(db_path=None, out_path=None, merge_path=None):
     cx = connect(db_path)
+    out = str(out_path or (ROOT / "data" / "causal_condemned.json"))
+    agg = _agg_pos_lookup(out)
     sws = {}
     for sw, venue in cx.execute(
         "SELECT f.target, l.venue FROM fixes f JOIN causes c ON c.switch_key = f.target JOIN lessons l ON l.id = c.lesson_id WHERE f.kind = 'disable_switch' AND f.status = 'confirmed' GROUP BY f.target, l.venue"
@@ -370,11 +397,13 @@ def export_condemned(db_path=None, out_path=None, merge_path=None):
         sws.setdefault(venue or "GLOBAL", set()).add(sw)
     switches = {cat: sorted(v) for cat, v in sws.items()}
     cells = {}
-    for venue, rk, hdr, n, avg in cx.execute(
-        "SELECT l.venue, c.rowkey, c.header, COUNT(*), AVG(c.delta) FROM causes c JOIN lessons l ON l.id = c.lesson_id WHERE c.attribution = 'direct_sweep' AND c.header != '' AND c.rowkey != '' GROUP BY l.venue, c.rowkey, c.header HAVING COUNT(*) >= 3 AND AVG(c.delta) < 0"
+    for venue, rk, hdr, n, nsyms, avg in cx.execute(
+        "SELECT l.venue, c.rowkey, c.header, COUNT(*), COUNT(DISTINCT l.sym_side), AVG(c.delta) FROM causes c JOIN lessons l ON l.id = c.lesson_id WHERE c.attribution = 'direct_sweep' AND c.header != '' AND c.rowkey != '' GROUP BY l.venue, c.rowkey, c.header HAVING COUNT(*) >= 3 AND AVG(c.delta) < 0"
     ):
         ck = _cell_key(rk, hdr)
         if not ck:
+            continue
+        if agg.get((venue or "GLOBAL", ck), 0) > 0:
             continue
         sw = rk.split("!", 1)[1].split("=", 1)[0] if "!" in rk and "=" in rk else ""
         helpt = cx.execute(
@@ -385,7 +414,8 @@ def export_condemned(db_path=None, out_path=None, merge_path=None):
             continue
         cells.setdefault(venue or "GLOBAL", {})[ck] = {
             "pos_sym": 0,
-            "n_sym": n,
+            "n_sym": nsyms,
+            "n_evidence": n,
             "avg_delta": round(float(avg), 4),
             "causal": True,
         }
