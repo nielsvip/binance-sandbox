@@ -75,9 +75,28 @@ def main():
     inbox, running = base / "inbox", base / "running"
     for d in (inbox, running, base / "done", base / "logs", base / "anchors", base / "registry"):
         d.mkdir(parents=True, exist_ok=True)
+    def _pid_alive(p):
+        try:
+            with open(p) as fh:
+                pid = int(fh.read().strip())
+            os.kill(pid, 0)
+            return True
+        except Exception:
+            return False
+
     reclaimed = 0
     for f in running.glob("*.json"):
         if f.name.startswith("tmp_"):
+            continue
+        pf = running / (f.name + ".pid")
+        if pf.exists():
+            if _pid_alive(pf):
+                continue
+            try:
+                pf.unlink()
+            except Exception:
+                pass
+        elif time.time() - f.stat().st_mtime < 600:
             continue
         try:
             os.rename(f, inbox / f.name)

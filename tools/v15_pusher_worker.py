@@ -33,6 +33,10 @@ def claim_one(inbox, running):
         try:
             dest = running / c.name
             os.rename(c, dest)
+            try:
+                (running / (c.name + ".pid")).write_text(str(os.getpid()))
+            except Exception:
+                pass
             return dest
         except FileNotFoundError:
             continue
@@ -123,6 +127,10 @@ def main():
             log(f"write failed: {e}")
         try:
             unit_path.unlink()
+        except Exception:
+            pass
+        try:
+            (running / (unit_path.name + ".pid")).unlink()
         except Exception:
             pass
 
