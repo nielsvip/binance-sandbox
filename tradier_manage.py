@@ -44327,19 +44327,7 @@ class TradierTradeManager:
             or "TRUCK_LOAD" in _reason_upper
         )
         _is_proven_strategy = _is_rotation or _is_rsi2 or _is_gap_fill or _is_rz_entry
-        try:
-            from zoneinfo import ZoneInfo
-
-            _now_est = datetime.now(ZoneInfo("America/New_York")).time()
-        except ImportError:
-            import pytz
-
-            _now_est = datetime.now(pytz.timezone("America/New_York")).time()
-        _is_fast_window = (dt_time(9, 30) <= _now_est <= dt_time(10, 0)) or (
-            dt_time(14, 0) <= _now_est <= dt_time(16, 0)
-        )
-        _zone_k = k_15m if _is_fast_window else k_1h
-        _zone_tf = "15m" if _is_fast_window else "1h"
+        # USER 2026-10-09: ENTRY_ZONE gate REMOVED (not user code, anti-rally, vec has no twin) — live imitates vec.
         # USER 2026-06-03 "make trades HAPPEN": the with-trend WT_3M_FORCE_OPEN build (above 200MA +
         # WT-favor) must NOT be killed by the ZONE / 10-of-13 ALIGNMENT / DC4 entry gates — those are
         # what blocked MRVL et al. The force-open's own gate (above-MA + WT not-against) IS the entry test.
@@ -44356,22 +44344,6 @@ class TradierTradeManager:
             )
         )
         if _is_augment_or_entry and not is_hedge and not _is_wf_force:
-            _ez = getattr(self.config, "ENTRY_ZONE_LONG", 22.0)
-            _esz = getattr(self.config, "ENTRY_ZONE_SHORT", 100.0 - _ez)
-            if (
-                action in ("OPEN", "QUICK_OPEN")
-                and not _is_reentry
-                and not _is_rotation
-                and not _is_gap_fill
-                and not _is_rz_entry
-            ):
-                if vec_decisions.shared_zone.is_zone_blocked(
-                    is_long, _zone_k, _ez, _esz
-                ):
-                    logger.warning(
-                        f"[TRADIER_ZONE_BLOCK] {position_key}: k_{_zone_tf}={_zone_k:.0f} outside zone {_ez}/{_esz} ({'FAST' if _is_fast_window else 'SWING'})"
-                    )
-                    return f"BLOCKED_ZONE_k{_zone_tf}={_zone_k:.0f}"
             # Alignment: count conditions agreeing with direction
             _al = 0
             for _k, _d in [(k_15m, d_15m), (k_1h, d_1h), (k_4h, d_4h), (k_D, d_D)]:

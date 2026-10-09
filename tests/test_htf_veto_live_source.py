@@ -41,3 +41,9 @@ def test_indicator_fallback_when_unwired():
     blk = s[i:i + 1500]
     assert "_htfr_ti = getattr(self, \"tradier_indicators\", None)" in blk
     assert "_htfr_ind = self.get_indicators(symbol)" in blk
+
+
+def test_zone_gate_removed():
+    s = _src()
+    assert "BLOCKED_ZONE_" not in s
+    assert "is_zone_blocked" not in s
