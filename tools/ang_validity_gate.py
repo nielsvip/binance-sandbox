@@ -22,11 +22,13 @@ SAFETY: keys with open positions (positionAmt != 0) and tracker hedge keys are
 ALWAYS kept (must stay closeable/hedgeable). Only ang: keys are touched in
 shared files; other accounts pass through untouched.
 """
+
 import json
 import os
 import sys
 import time
 from pathlib import Path
+
 BASE = Path(__file__).resolve().parents[1]
 PERSYM = BASE / "data" / "hourly_reconfig" / "per_sym_active_config.json"
 ANG_LONG = BASE / "symbols_ang_long.json"
@@ -41,12 +43,16 @@ MIN_GAIN_PCT = 0.0
 MIN_POOL_SHARPE = 0.0
 WARN_SHARPE_BELOW = 0.2
 MAX_DD_PCT = 30.0
+
+
 def _load_json(path, default):
     try:
         with open(path) as f:
             return json.load(f)
     except Exception:
         return default
+
+
 def _gain_of(entry):
     for k in ("acc_gain_pct", "gain_30d"):
         v = entry.get(k)
@@ -56,6 +62,8 @@ def _gain_of(entry):
             except (TypeError, ValueError):
                 pass
     return 0.0
+
+
 def _sharpe_of(entry):
     for k in ("pool_sharpe", "wsharpe"):
         v = entry.get(k)
@@ -65,11 +73,15 @@ def _sharpe_of(entry):
             except (TypeError, ValueError):
                 pass
     return 0.0
+
+
 def _trades_of(entry):
     try:
         return int(entry.get("trades", 0) or 0)
     except (TypeError, ValueError):
         return 0
+
+
 def _dd_of(entry):
     v = entry.get("max_dd_pct")
     if v is None:
@@ -78,6 +90,8 @@ def _dd_of(entry):
         return float(v)
     except (TypeError, ValueError):
         return None
+
+
 def validity(side_key, persym):
     entry = persym.get(side_key)
     if not isinstance(entry, dict):
@@ -97,6 +111,8 @@ def validity(side_key, persym):
     if sharpe < WARN_SHARPE_BELOW:
         return True, f"WEAK_SHARPE_{sharpe:.3f}"
     return True, "ok"
+
+
 def _open_keys():
     keep = set()
     for path in (LONG_POS, SHORT_POS):
@@ -110,6 +126,8 @@ def _open_keys():
                     except (TypeError, ValueError):
                         pass
     return keep
+
+
 def _hedge_keys():
     keep = set()
     tracker = _load_json(TRACKER, {})
@@ -126,14 +144,20 @@ def _hedge_keys():
     exits = tracker.get("exit_candidates", {})
     if isinstance(exits, dict):
         for k, v in exits.items():
-            if isinstance(v, dict) and (v.get("is_hedge") is True or v.get("hedge_for")):
+            if isinstance(v, dict) and (
+                v.get("is_hedge") is True or v.get("hedge_for")
+            ):
                 keep.add(k)
     return keep
+
+
 def _atomic_write_json(path, data):
     tmp = path.with_suffix(path.suffix + f".gate.{os.getpid()}.tmp")
     with open(tmp, "w") as f:
         json.dump(data, f, indent=2)
     os.replace(tmp, path)
+
+
 def run(apply=False):
     ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     persym = _load_json(PERSYM, {})
@@ -173,7 +197,11 @@ def run(apply=False):
             keep_long.remove(s)
             drop_long.append((s, f"BOTH_SIDES_KEEP_SHORT_{gs:.2f}_vs_{gl:.2f}"))
     tk = _load_json(TRADEABLE, [])
-    tk_list = list(tk) if isinstance(tk, list) else list(tk.keys() if isinstance(tk, dict) else [])
+    tk_list = (
+        list(tk)
+        if isinstance(tk, list)
+        else list(tk.keys() if isinstance(tk, dict) else [])
+    )
     keep_tk, drop_tk = [], []
     for k in tk_list:
         if not k.startswith("ang:"):
@@ -207,7 +235,9 @@ def run(apply=False):
     else:
         keep_up = up
     mode = "APPLY" if apply else "DRYRUN"
-    print(f"{ts} [{mode}] longs {len(longs)}->{len(keep_long)} shorts {len(shorts)}->{len(keep_short)} tradeable {len(tk_list)}->{len(keep_tk)} persist {len(up) if isinstance(up, dict) else '?'}->{len(keep_up) if isinstance(keep_up, dict) else '?'} safety_kept={len(safety_ang)}")
+    print(
+        f"{ts} [{mode}] longs {len(longs)}->{len(keep_long)} shorts {len(shorts)}->{len(keep_short)} tradeable {len(tk_list)}->{len(keep_tk)} persist {len(up) if isinstance(up, dict) else '?'}->{len(keep_up) if isinstance(keep_up, dict) else '?'} safety_kept={len(safety_ang)}"
+    )
     for s, why in drop_long:
         print(f"  DROP_LONG {s} {why}")
     for s, why in drop_short:
@@ -224,5 +254,7 @@ def run(apply=False):
             _atomic_write_json(PERSIST, keep_up)
         print(f"{ts} [APPLY] wrote 4 files")
     return 0
+
+
 if __name__ == "__main__":
     sys.exit(run(apply="--apply" in sys.argv))
