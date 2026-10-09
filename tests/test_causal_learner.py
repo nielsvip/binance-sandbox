@@ -58,7 +58,10 @@ def test_sweep_negatives_confirm_fix(tmp_path, monkeypatch):
     p = json.loads(open(tmp_path / "cond.json").read())
     assert "BAD_SW" in p["switches"]["STOCKS_LONG"], out
     assert "ENTRY_REVERSAL_BOUNCE!BAD_SW=True@H0" in p["cells"]["STOCKS_LONG"]
-    assert p["cells"]["STOCKS_LONG"]["ENTRY_REVERSAL_BOUNCE!BAD_SW=True@H0"]["causal"] is True
+    assert (
+        p["cells"]["STOCKS_LONG"]["ENTRY_REVERSAL_BOUNCE!BAD_SW=True@H0"]["causal"]
+        is True
+    )
     assert any(
         f["target"] == "BAD_SW" and f["status"] == "confirmed"
         for f in cl.query("AAA_LONG", db)
@@ -152,14 +155,78 @@ def test_export_agg_pos_veto(tmp_path, monkeypatch):
         json.dumps(
             {
                 "cat_sides": {
-                    "STOCKS_LONG": {"ENTRY_REVERSAL_BOUNCE!BAD_SW=True@H0": {"pos_sym": 5}}
+                    "STOCKS_LONG": {
+                        "ENTRY_REVERSAL_BOUNCE!BAD_SW=True@H0": {"pos_sym": 5}
+                    }
                 }
             }
         )
     )
     cl.export_condemned(db, str(tmp_path / "cond.json"))
     p = json.loads(open(tmp_path / "cond.json").read())
-    assert "ENTRY_REVERSAL_BOUNCE!BAD_SW=True@H0" not in p["cells"].get("STOCKS_LONG", {})
+    assert "ENTRY_REVERSAL_BOUNCE!BAD_SW=True@H0" not in p["cells"].get(
+        "STOCKS_LONG", {}
+    )
+
+
+def test_mixed_evidence_stays_proposed(tmp_path, monkeypatch):
+    monkeypatch.setattr(cl, "ROOT", tmp_path)
+    pd = tmp_path / "prog"
+    pd.mkdir()
+    for ss in ["AAA_LONG", "BBB_LONG", "CCC_LONG"]:
+        _progress(
+            pd / f"{ss}_v14_progress.json", ss, [("MIX_SW", -4.0), ("MIX_SW", 1.0)]
+        )
+    db = str(tmp_path / "c.db")
+    cl.ingest_progress(str(pd), db)
+    fixes = cl.query("AAA_LONG", db)
+    assert any(
+        f["target"] == "MIX_SW" and f["status"] == "proposed" for f in fixes
+    ), fixes
+    cl.export_condemned(db, str(tmp_path / "cond.json"))
+    p = json.loads(open(tmp_path / "cond.json").read())
+    assert "MIX_SW" not in p["switches"].get("STOCKS_LONG", [])
+
+
+def test_ablation_never_confirmed(tmp_path, monkeypatch):
+    monkeypatch.setattr(cl, "ROOT", tmp_path)
+    pd = tmp_path / "prog"
+    pd.mkdir()
+    for ss in ["AAA_LONG", "BBB_LONG", "CCC_LONG"]:
+        _progress(pd / f"{ss}_v14_progress.json", ss, [("ABLATION_DISABLE_X", -9.0)])
+    db = str(tmp_path / "c.db")
+    cl.ingest_progress(str(pd), db)
+    fixes = cl.query("AAA_LONG", db)
+    assert any(
+        f["target"] == "ABLATION_DISABLE_X" and f["status"] == "proposed" for f in fixes
+    ), fixes
+
+
+def test_stale_confirm_demoted(tmp_path, monkeypatch):
+    import sqlite3
+
+    monkeypatch.setattr(cl, "ROOT", tmp_path)
+    pd = tmp_path / "prog"
+    pd.mkdir()
+    for ss in ["AAA_LONG", "BBB_LONG", "CCC_LONG"]:
+        _progress(pd / f"{ss}_v14_progress.json", ss, [("OLD_SW", -4.0)])
+    db = str(tmp_path / "c.db")
+    cl.ingest_progress(str(pd), db)
+    assert any(
+        f["target"] == "OLD_SW" and f["status"] == "confirmed"
+        for f in cl.query("AAA_LONG", db)
+    )
+    cx = sqlite3.connect(db)
+    cx.execute(
+        "UPDATE causes SET delta = 0.0, weight = 0.0 WHERE switch_key = 'OLD_SW'"
+    )
+    cx.commit()
+    cx.close()
+    cl.ingest_progress(str(pd), db)
+    fixes = cl.query("AAA_LONG", db)
+    assert any(
+        f["target"] == "OLD_SW" and f["status"] == "proposed" for f in fixes
+    ), fixes
 
 
 def test_export_merge_union(tmp_path, monkeypatch):

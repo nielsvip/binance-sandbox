@@ -264,24 +264,38 @@ def ingest_progress(pdirs, db_path=None, root=None):
 
 
 def _propose_fixes(cx):
+    # Confirm bar (calibrated 2026-10-09 on 877k run-dir causes: 1134 -> 13 condemns):
+    # net <= -10 over >=3 syms, >=3 strictly-negative direct, ZERO positive direct,
+    # avg direct <= -0.5. ABLATION_* harness flags are never condemned.
     rows = cx.execute(
-        "SELECT c.switch_key, SUM(c.weight), COUNT(DISTINCT l.sym_side), SUM(CASE WHEN c.attribution='direct_sweep' THEN 1 ELSE 0 END) FROM causes c JOIN lessons l ON l.id = c.lesson_id WHERE c.switch_key != '__sym_context__' GROUP BY c.switch_key"
+        "SELECT c.switch_key, SUM(c.weight), COUNT(DISTINCT l.sym_side), SUM(CASE WHEN c.attribution='direct_sweep' AND c.delta < -1e-9 THEN 1 ELSE 0 END), SUM(CASE WHEN c.attribution='direct_sweep' AND c.delta > 1e-9 THEN 1 ELSE 0 END), AVG(CASE WHEN c.attribution='direct_sweep' THEN c.delta END) FROM causes c JOIN lessons l ON l.id = c.lesson_id WHERE c.switch_key != '__sym_context__' GROUP BY c.switch_key"
     ).fetchall()
-    helped = {
+    hurt = {
         r[0]
         for r in cx.execute(
-            "SELECT f.target FROM fixes f JOIN fix_outcomes o ON o.fix_id = f.id WHERE o.verdict = 'helped'"
+            "SELECT f.target FROM fixes f JOIN fix_outcomes o ON o.fix_id = f.id WHERE o.verdict = 'hurt'"
         ).fetchall()
     }
-    for sw, w, nsyms, ndir in rows:
+    confirmed_now = set()
+    for sw, w, nsyms, nneg, npos, davg in rows:
         w = float(w or 0.0)
+        nneg = int(nneg or 0)
+        npos = int(npos or 0)
+        davg = float(davg) if davg is not None else 0.0
+        reason = (
+            f"net {w:.2f} over {nsyms} syms, {nneg}neg/{npos}pos direct, avg {davg:.3f}"
+        )
         if (
-            w <= -5.0
+            w <= -10.0
             and int(nsyms or 0) >= 3
-            and int(ndir or 0) >= 3
-            and sw not in helped
+            and nneg >= 3
+            and npos == 0
+            and davg <= -0.5
+            and not sw.startswith("ABLATION_")
+            and sw not in hurt
         ):
             status = "confirmed"
+            confirmed_now.add(sw)
         else:
             status = "proposed"
         cx.execute(
@@ -290,17 +304,33 @@ def _propose_fixes(cx):
                 "disable_switch",
                 "global",
                 sw,
-                json.dumps({"net_weight": round(w, 3), "n_syms": nsyms}),
+                json.dumps(
+                    {
+                        "net_weight": round(w, 3),
+                        "n_syms": nsyms,
+                        "n_neg": nneg,
+                        "n_pos": npos,
+                        "avg_direct": round(davg, 4),
+                    }
+                ),
                 status,
-                f"net causal weight {w:.2f} over {nsyms} syms",
+                reason,
                 _now(),
             ),
         )
         if status == "confirmed":
             cx.execute(
                 "UPDATE fixes SET status = 'confirmed', reason = ? WHERE kind = 'disable_switch' AND scope = 'global' AND target = ?",
-                (f"net causal weight {w:.2f} over {nsyms} syms", sw),
+                (reason, sw),
             )
+    # Demote stale confirms (e.g. bar tightened since confirmation). Guard: skip targets with
+    # post-confirm positive evidence — _record_outcomes owns those (hurt -> rejected with note).
+    q = "UPDATE fixes SET status = 'proposed', reason = reason || ' | auto-demoted: bar no longer met' WHERE kind = 'disable_switch' AND status = 'confirmed' AND NOT EXISTS (SELECT 1 FROM causes c JOIN lessons l ON l.id = c.lesson_id WHERE c.switch_key = fixes.target AND c.attribution = 'direct_sweep' AND c.delta > 1e-9 AND l.ts > fixes.created)"
+    params: tuple = ()
+    if confirmed_now:
+        q += f" AND target NOT IN ({','.join('?' for _ in confirmed_now)})"
+        params = tuple(confirmed_now)
+    cx.execute(q, params)
 
 
 def _record_outcomes(cx):
@@ -407,14 +437,31 @@ def _agg_pos_lookup(out_path):
         return {}
 
 
+def _agg_pos_switches(agg):
+    out = set()
+    for (cat, ck), n in agg.items():
+        if (n or 0) <= 0:
+            continue
+        try:
+            sw = ck.split("!", 1)[1].split("@", 1)[0].split("=", 1)[0].strip()
+        except Exception:
+            continue
+        if _SW_RE.match(sw):
+            out.add((cat, sw))
+    return out
+
+
 def export_condemned(db_path=None, out_path=None, merge_path=None):
     cx = connect(db_path)
     out = str(out_path or (ROOT / "data" / "causal_condemned.json"))
     agg = _agg_pos_lookup(out)
+    pos_sw = _agg_pos_switches(agg)
     sws = {}
     for sw, venue in cx.execute(
         "SELECT f.target, l.venue FROM fixes f JOIN causes c ON c.switch_key = f.target JOIN lessons l ON l.id = c.lesson_id WHERE f.kind = 'disable_switch' AND f.status = 'confirmed' GROUP BY f.target, l.venue"
     ):
+        if (venue or "GLOBAL", sw) in pos_sw:
+            continue
         sws.setdefault(venue or "GLOBAL", set()).add(sw)
     switches = {cat: sorted(v) for cat, v in sws.items()}
     helped = {
@@ -425,7 +472,7 @@ def export_condemned(db_path=None, out_path=None, merge_path=None):
     }
     cells = {}
     for venue, rk, hdr, n, nsyms, avg in cx.execute(
-        "SELECT l.venue, c.rowkey, c.header, COUNT(*), COUNT(DISTINCT l.sym_side), AVG(c.delta) FROM causes c JOIN lessons l ON l.id = c.lesson_id WHERE c.attribution = 'direct_sweep' AND c.header != '' AND c.rowkey != '' GROUP BY l.venue, c.rowkey, c.header HAVING COUNT(*) >= 3 AND AVG(c.delta) < 0"
+        "SELECT l.venue, c.rowkey, c.header, COUNT(*), COUNT(DISTINCT l.sym_side), AVG(c.delta) FROM causes c JOIN lessons l ON l.id = c.lesson_id WHERE c.attribution = 'direct_sweep' AND c.header != '' AND c.rowkey != '' GROUP BY l.venue, c.rowkey, c.header HAVING COUNT(*) >= 3 AND AVG(c.delta) <= -0.1 AND SUM(CASE WHEN c.delta > 1e-9 THEN 1 ELSE 0 END) = 0"
     ):
         ck = _cell_key(rk, hdr)
         if not ck:

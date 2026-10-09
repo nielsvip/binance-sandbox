@@ -1792,3 +1792,24 @@ would split sweep/live from pilot baselines; needs a director ruling, not a sile
   `promote-check` moves TESTED→PROMOTED (pos_sym≥3, mean delta>0) or →RETIRED (≥10 syms, 0 pos) from done-row
   evidence. RETIRED records the verdict; nothing is ever deleted. Seed: 72 proposals, top = AGLD SHORT
   LH_TRIGGER (INV-0001, score 19.72).
+
+## 85. CAUSAL LEARNER — EVERY LOSER + NEG-DELTA BECOMES A RANKED FIX (USER 2026-10-09)
+
+- **Tool:** `tools/v15_causal_learner.py` (tested, `tests/test_causal_learner.py` 9 tests): SQLite
+  `data/causal_learner.db` lessons→causes→fixes→fix_outcomes, ranked by `fix_ranking` view.
+  `ingest-progress` records every sweep cell delta (all deltas, not just negatives — positives are the
+  auto-lift fuel); `ingest-live` records every live losing trade (net<0) attributed weakly (0.2x) to the
+  sym's live override set (`per_sym_store.get_overrides`, NOT `get_full_config` — 28 switches, not 3518).
+- **Key format law:** pilot progress keys are `TAB!<rownum>:SWITCH=cand` — switch AFTER the colon.
+  `_parse_cell_key` validates `^[A-Z][A-Z0-9_]*$`; row numbers ('10','100') are rejected, never condemned.
+- **Confirm bar (calibrated 2026-10-09 on 877k run-dir causes, 1134→13):** net ≤ −10 over ≥3 syms,
+  ≥3 strictly-negative direct, ZERO positive direct, avg direct ≤ −0.5. ABLATION_* harness flags never
+  confirm. Live evidence alone can only propose, never confirm.
+- **Export guards:** `export` cross-checks the aggregate — any cell with pos_sym>0 vetoed, any switch
+  with an aggregate-positive cell vetoed (saved LH_LL_TOP_EXIT_STRUCT_TF crypto both sides on first run).
+  Stale confirms auto-demote; post-confirm positive sweep evidence auto-lifts (hurt→rejected with note).
+- **Schedule:** S1 chain step 4c ingests `v15_run*/` + `lifecycle_pilot` (production campaigns only — never
+  smoke/demo/autopsy/test dirs) and exports `data/causal_condemned.json` BEFORE 4b (same-day merge) and the
+  step 6 push; Mac apply step 5e ingests live losers and union-merges (union-only, never shrinks the S1 pull).
+  Consumers: step 5 watchdog disable path + `v15_cell_evidence` runtime merge. First S1 seed: 29,671 lessons,
+  877,804 causes, 27 final condemns (3 cats × 13 unique minus 4 aggregate vetoes).
