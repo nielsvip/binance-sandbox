@@ -11,11 +11,34 @@ import v15_causal_learner as cl
 def _progress(path, sym, cells):
     done = {}
     for i, (sw, dt) in enumerate(cells):
-        done[f"ENTRY_REVERSAL_BOUNCE!{sw}=True:r{i}"] = {
+        done[f"ENTRY_REVERSAL_BOUNCE!{i}:{sw}=True"] = {
             "naked_delta": dt,
             "yellows": {f"H{i}": dt},
         }
     path.write_text(json.dumps({"symside": sym, "done": done}))
+
+
+def test_parse_real_pilot_key_format():
+    assert cl._parse_cell_key(
+        "ENTRY_REVERSAL_BOUNCE!3:WT_15M_BOUNCE_OPEN_ENABLED=True"
+    ) == (
+        "ENTRY_REVERSAL_BOUNCE",
+        "WT_15M_BOUNCE_OPEN_ENABLED",
+        "True",
+        "3",
+    )
+    assert (
+        cl._parse_cell_key("ENTRY_CONFIRMATION_GATES!294:NEWBORN_LOSS_KILL_VEL_TF=")[1]
+        == "NEWBORN_LOSS_KILL_VEL_TF"
+    )
+    assert (
+        cl._parse_cell_key(
+            "ENTRY_REVERSAL_BOUNCE!10:MARKET_QUALITY_SCORE_ENABLED=True"
+        )[1]
+        == "MARKET_QUALITY_SCORE_ENABLED"
+    )
+    assert cl._parse_cell_key("TAB!10:20=X") == ("", "", "", "")
+    assert cl._parse_cell_key("not-a-key") == ("", "", "", "")
 
 
 def test_sweep_negatives_confirm_fix(tmp_path, monkeypatch):
@@ -34,8 +57,8 @@ def test_sweep_negatives_confirm_fix(tmp_path, monkeypatch):
     out = cl.export_condemned(db, str(tmp_path / "cond.json"))
     p = json.loads(open(tmp_path / "cond.json").read())
     assert "BAD_SW" in p["switches"]["STOCKS_LONG"], out
-    assert "ENTRY_REVERSAL_BOUNCE!r0@H0" in p["cells"]["STOCKS_LONG"]
-    assert p["cells"]["STOCKS_LONG"]["ENTRY_REVERSAL_BOUNCE!r0@H0"]["causal"] is True
+    assert "ENTRY_REVERSAL_BOUNCE!BAD_SW=True@H0" in p["cells"]["STOCKS_LONG"]
+    assert p["cells"]["STOCKS_LONG"]["ENTRY_REVERSAL_BOUNCE!BAD_SW=True@H0"]["causal"] is True
     assert any(
         f["target"] == "BAD_SW" and f["status"] == "confirmed"
         for f in cl.query("AAA_LONG", db)
@@ -129,14 +152,14 @@ def test_export_agg_pos_veto(tmp_path, monkeypatch):
         json.dumps(
             {
                 "cat_sides": {
-                    "STOCKS_LONG": {"ENTRY_REVERSAL_BOUNCE!r0@H0": {"pos_sym": 5}}
+                    "STOCKS_LONG": {"ENTRY_REVERSAL_BOUNCE!BAD_SW=True@H0": {"pos_sym": 5}}
                 }
             }
         )
     )
     cl.export_condemned(db, str(tmp_path / "cond.json"))
     p = json.loads(open(tmp_path / "cond.json").read())
-    assert "ENTRY_REVERSAL_BOUNCE!r0@H0" not in p["cells"].get("STOCKS_LONG", {})
+    assert "ENTRY_REVERSAL_BOUNCE!BAD_SW=True@H0" not in p["cells"].get("STOCKS_LONG", {})
 
 
 def test_export_merge_union(tmp_path, monkeypatch):

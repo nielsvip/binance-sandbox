@@ -46,10 +46,11 @@ CREATE TABLE IF NOT EXISTS fix_outcomes(id INTEGER PRIMARY KEY, fix_id INTEGER N
 CREATE INDEX IF NOT EXISTS idx_outcomes_fix ON fix_outcomes(fix_id);
 """
 RANK_VIEW = """
-CREATE VIEW IF NOT EXISTS fix_ranking AS SELECT f.id, f.kind, f.scope, f.target, f.status,
+DROP VIEW IF EXISTS fix_ranking;
+CREATE VIEW fix_ranking AS SELECT f.id, f.kind, f.scope, f.target, f.status,
  (SELECT COUNT(*) FROM fix_outcomes o WHERE o.fix_id = f.id AND o.verdict = 'helped') AS helps,
  (SELECT COUNT(*) FROM fix_outcomes o WHERE o.fix_id = f.id AND o.verdict = 'hurt') AS hurts,
- (SELECT COUNT(*) FROM causes c JOIN lessons l ON l.id = c.lesson_id WHERE c.switch_key = f.target OR f.target LIKE '%' || c.switch_key || '%') AS evidence_n,
+ (SELECT COUNT(*) FROM causes c WHERE c.switch_key = f.target) AS evidence_n,
  (SELECT MAX(o.ts) FROM fix_outcomes o WHERE o.fix_id = f.id) AS last_seen FROM fixes f
 """
 
@@ -180,12 +181,26 @@ def ingest_live(db_path=None, day=None, root=None):
     return {"lessons": n_les, "causes": n_cau}
 
 
+_SW_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
+
+
 def _parse_cell_key(k):
+    # Real pilot keys: TAB!<rownum>:SWITCH=cand (cand may be empty). Returns (tab, sw, cand, rkey).
     try:
         tab, rest = str(k).split("!", 1)
-        left, rkey = rest.split(":", 1)
-        sw, cand = (left.split("=", 1) + [""])[:2]
-        return tab.strip(), sw.strip(), cand.strip(), rkey.strip()
+        left, right = rest.split(":", 1)
+        if "=" in right:
+            sw, cand = right.split("=", 1)
+            rkey = left
+        elif "=" in left:
+            sw, cand = left.split("=", 1)
+            rkey = right
+        else:
+            return "", "", "", ""
+        sw = sw.strip()
+        if not _SW_RE.match(sw):
+            return "", "", "", ""
+        return tab.strip(), sw, cand.strip(), rkey.strip()
     except Exception:
         return "", "", "", ""
 
@@ -252,13 +267,20 @@ def _propose_fixes(cx):
     rows = cx.execute(
         "SELECT c.switch_key, SUM(c.weight), COUNT(DISTINCT l.sym_side), SUM(CASE WHEN c.attribution='direct_sweep' THEN 1 ELSE 0 END) FROM causes c JOIN lessons l ON l.id = c.lesson_id WHERE c.switch_key != '__sym_context__' GROUP BY c.switch_key"
     ).fetchall()
+    helped = {
+        r[0]
+        for r in cx.execute(
+            "SELECT f.target FROM fixes f JOIN fix_outcomes o ON o.fix_id = f.id WHERE o.verdict = 'helped'"
+        ).fetchall()
+    }
     for sw, w, nsyms, ndir in rows:
         w = float(w or 0.0)
-        helps = cx.execute(
-            "SELECT COUNT(*) FROM fixes f JOIN fix_outcomes o ON o.fix_id = f.id WHERE f.target = ? AND o.verdict = 'helped'",
-            (sw,),
-        ).fetchone()[0]
-        if w <= -5.0 and int(nsyms or 0) >= 3 and int(ndir or 0) >= 3 and helps == 0:
+        if (
+            w <= -5.0
+            and int(nsyms or 0) >= 3
+            and int(ndir or 0) >= 3
+            and sw not in helped
+        ):
             status = "confirmed"
         else:
             status = "proposed"
@@ -395,6 +417,12 @@ def export_condemned(db_path=None, out_path=None, merge_path=None):
     ):
         sws.setdefault(venue or "GLOBAL", set()).add(sw)
     switches = {cat: sorted(v) for cat, v in sws.items()}
+    helped = {
+        r[0]
+        for r in cx.execute(
+            "SELECT f.target FROM fixes f JOIN fix_outcomes o ON o.fix_id = f.id WHERE o.verdict = 'helped'"
+        ).fetchall()
+    }
     cells = {}
     for venue, rk, hdr, n, nsyms, avg in cx.execute(
         "SELECT l.venue, c.rowkey, c.header, COUNT(*), COUNT(DISTINCT l.sym_side), AVG(c.delta) FROM causes c JOIN lessons l ON l.id = c.lesson_id WHERE c.attribution = 'direct_sweep' AND c.header != '' AND c.rowkey != '' GROUP BY l.venue, c.rowkey, c.header HAVING COUNT(*) >= 3 AND AVG(c.delta) < 0"
@@ -404,12 +432,8 @@ def export_condemned(db_path=None, out_path=None, merge_path=None):
             continue
         if agg.get((venue or "GLOBAL", ck), 0) > 0:
             continue
-        sw = rk.split("!", 1)[1].split("=", 1)[0] if "!" in rk and "=" in rk else ""
-        helpt = cx.execute(
-            "SELECT COUNT(*) FROM fixes f JOIN fix_outcomes o ON o.fix_id = f.id WHERE f.target = ? AND o.verdict = 'helped'",
-            (sw,),
-        ).fetchone()[0]
-        if helpt:
+        sw = _parse_cell_key(rk)[1]
+        if sw in helped:
             continue
         cells.setdefault(venue or "GLOBAL", {})[ck] = {
             "pos_sym": 0,

@@ -86,8 +86,9 @@ if [ "$DRYRUN" = 1 ]; then
   log "step4 pos_sym json (DRYRUN -> $WORK/avg_delta_pos_sym.json)"
   timeout 300 "$PY" -u tools/v15_possym_json_from_agg.py "$AGG" "$WORK/avg_delta_pos_sym.json" || fail 4 "possym rc=$?"
   log "step4c causal learner (DRYRUN db+out under $WORK, prod untouched)"
+  _cpdirs=$(ls -d /home/niels/v15_run*/ data/reports/lifecycle_pilot 2>/dev/null | tr '\n' ',' | sed 's/,$//')
   _pdirs=$(ls -d /home/niels/v15_*/ data/reports/lifecycle_pilot 2>/dev/null | tr '\n' ',' | sed 's/,$//')
-  timeout 900 "$PY" -u tools/v15_causal_learner.py ingest-progress "$_pdirs" --db "$WORK/causal_learner.db" || fail 4c "causal ingest-progress rc=$?"
+  timeout 900 "$PY" -u tools/v15_causal_learner.py ingest-progress "$_cpdirs" --db "$WORK/causal_learner.db" || fail 4c "causal ingest-progress rc=$?"
   timeout 300 "$PY" -u tools/v15_causal_learner.py export --db "$WORK/causal_learner.db" --out "$WORK/causal_condemned.json" || fail 4c "causal export rc=$?"
   log "step4b cell evidence (DRYRUN -> $WORK/avg_delta_pos_sym_cell.json)"
   timeout 900 "$PY" -u tools/v15_cell_evidence.py "$_pdirs" "$WORK/avg_delta_pos_sym_cell.json" || fail 4b "cell_evidence rc=$?"
@@ -118,11 +119,11 @@ STEPS_OK="$STEPS_OK,4"
 # Ingest is idempotent (content-hash); the export cross-checks the aggregate (pos_sym>0 veto) and auto-lifts
 # condemned switches on later positive sweep evidence. Live losers are ingested on the Mac (step5e) where they live.
 log "step4c causal learner"
-_pdirs=$(ls -d /home/niels/v15_*/ data/reports/lifecycle_pilot 2>/dev/null | tr '\n' ',' | sed 's/,$//')
-[ -n "$_pdirs" ] || fail 4c "no progress dirs found"
+_cpdirs=$(ls -d /home/niels/v15_run*/ data/reports/lifecycle_pilot 2>/dev/null | tr '\n' ',' | sed 's/,$//')
+[ -n "$_cpdirs" ] || fail 4c "no production progress dirs found"
 [ -f data/causal_condemned.json ] && cp -p data/causal_condemned.json "backups/before_daily_chain_${DATE}_causal_condemned.json"
-timeout 900 "$PY" -u tools/v15_causal_learner.py ingest-progress "$_pdirs" || fail 4c "causal ingest-progress rc=$?"
-timeout 300 "$PY" -u tools/v15_causal_learner.py export --out data/causal_condemned.json || fail 4c "causal export rc=$?"
+timeout 900 "$PY" -u tools/v15_causal_learner.py ingest-progress "$_cpdirs" || fail 4c "causal ingest-progress rc=$?"
+timeout 600 "$PY" -u tools/v15_causal_learner.py export --out data/causal_condemned.json || fail 4c "causal export rc=$?"
 [ -s data/causal_condemned.json ] || fail 4c "causal export not written"
 STEPS_OK="$STEPS_OK,4c"
 
