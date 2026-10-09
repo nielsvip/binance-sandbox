@@ -6,6 +6,7 @@ Rankings computes these states per sym_side from 15m bars and publishes
 data/ranking_entry_timing.json; ez_manage holds extended-top entries and
 sizes rebound entries full. Ranking LISTS are untouched (respected).
 """
+
 import numpy as np
 
 FRESH = "BREAKOUT_FRESH"
@@ -30,7 +31,16 @@ def _atr14(highs, lows, closes):
     return float(sum(trs) / len(trs)) if trs else 0.0
 
 
-def long_state(closes, highs, lows, lookback=20, fresh_bars=3, tight_atr=0.5, hold_bars=12, hold_tol_atr=0.25):
+def long_state(
+    closes,
+    highs,
+    lows,
+    lookback=20,
+    fresh_bars=3,
+    tight_atr=0.5,
+    hold_bars=12,
+    hold_tol_atr=0.25,
+):
     """Classify LONG timing from oldest->newest 15m bars. Returns (state, level, ext_atr, bars_since)."""
     closes = np.asarray(closes, dtype=float)
     highs = np.asarray(highs, dtype=float)
@@ -52,7 +62,7 @@ def long_state(closes, highs, lows, lookback=20, fresh_bars=3, tight_atr=0.5, ho
     if broke_idx < 0:
         return NONE, 0.0, 0.0, -1
     level = float(np.max(highs[max(0, broke_idx - lookback) : broke_idx]))
-    if not level > 0:
+    if level == 0.0 or not np.isfinite(level):
         return NONE, 0.0, 0.0, -1
     bars_since = int(n - 1 - broke_idx)
     ext = (px - level) / atr
@@ -81,3 +91,21 @@ def short_state(closes, highs, lows, **kw):
     lows = np.asarray(lows, dtype=float)
     st, lvl, ext, bars = long_state(-closes, -lows, -highs, **kw)
     return st, (-lvl if lvl else 0.0), ext, bars
+
+
+def should_timing_trim(state, gain_pct, ext_atr, min_gain_pct=1.0, min_ext_atr=2.0):
+    """Exit-timing decision: trim ONLY at a profit. EXTENDED needs high
+    extension; FAILED (level lost) trims on profit alone before it erodes.
+    NEVER True at a loss — loss exits stay with technicals/hedges."""
+    try:
+        gain = float(gain_pct)
+        ext = float(ext_atr)
+    except (TypeError, ValueError):
+        return False
+    if not gain >= float(min_gain_pct):
+        return False
+    if state == EXTENDED:
+        return ext >= float(min_ext_atr)
+    if state == FAILED:
+        return True
+    return False

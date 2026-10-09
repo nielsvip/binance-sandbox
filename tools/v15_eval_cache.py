@@ -32,7 +32,7 @@ MAX_ROWS = int(os.environ.get("V15_EVAL_CACHE_MAX_ROWS", "2000000"))
 
 _stats = {"hits": 0, "miss": 0, "stored": 0, "verify_ok": 0, "verify_bad": 0, "errors": 0}
 _ver_cache: dict = {}
-_conn = None
+_CONN = None
 
 
 def enabled() -> bool:
@@ -40,17 +40,17 @@ def enabled() -> bool:
 
 
 def _conn():
-    global _conn
-    if _conn is not None:
-        return _conn
+    global _CONN
+    if _CONN is not None:
+        return _CONN
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     c = sqlite3.connect(str(DB_PATH), timeout=30.0, isolation_level=None)
     c.execute("PRAGMA journal_mode=WAL")
     c.execute("PRAGMA synchronous=NORMAL")
     c.execute("CREATE TABLE IF NOT EXISTS evals (key TEXT PRIMARY KEY, result TEXT NOT NULL, created REAL, hits INT DEFAULT 0)")
     c.execute("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)")
-    _conn = c
-    return _conn
+    _CONN = c
+    return _CONN
 
 
 def engine_versions() -> str:
@@ -87,25 +87,36 @@ def engine_versions() -> str:
 
 
 def npz_fingerprint(npz_prepared) -> str:
-    """sha1 over the sliced+compacted arrays actually simulated (bytes AND slicing covered)."""
+    """sha1 over the sliced+compacted arrays actually simulated (bytes AND slicing covered).
+
+    Object-dtype arrays (e.g. 0-d bar_*_codes) serialize POINTERS via tobytes() — they MUST be
+    canonicalized by value instead or the fingerprint differs per process and the cache never hits."""
     h = hashlib.sha1()
     try:
+        import numpy as _np
+    except Exception:
+        _np = None
+    try:
         if isinstance(npz_prepared, dict):
-            for k in sorted(npz_prepared.keys()):
+            for k in sorted(npz_prepared.keys(), key=str):
                 v = npz_prepared[k]
                 h.update(str(k).encode())
                 try:
-                    import numpy as _np
-                    if isinstance(v, _np.ndarray):
+                    if _np is not None and isinstance(v, _np.ndarray) and v.dtype != object:
                         h.update(str(v.shape).encode())
                         h.update(str(v.dtype).encode())
                         h.update(v.tobytes())
                         continue
+                    if _np is not None and isinstance(v, _np.ndarray):
+                        h.update(str(v.shape).encode())
+                        h.update(b"|obj:")
+                        h.update(_canon(v.tolist()).encode())
+                        continue
                 except Exception:
                     pass
-                h.update(repr(v)[:4000].encode())
+                h.update(_canon(v)[:8000].encode())
         else:
-            h.update(repr(npz_prepared)[:8000].encode())
+            h.update(_canon(npz_prepared)[:8000].encode())
     except Exception as e:
         h.update(f"ERR:{e}".encode())
     return h.hexdigest()[:32]
@@ -139,7 +150,7 @@ def _canon(obj) -> str:
     return json.dumps(obj, sort_keys=True, default=repr)
 
 
-def cache_key(prepared: dict, overrides: dict, include_ledger: bool) -> str:
+def cache_key(prepared: dict, overrides: dict, include_ledger: bool, targets=None) -> str:
     h = hashlib.sha1()
     h.update(b"v1|")
     h.update(str(prepared.get("_eval_cache_fp") or npz_fingerprint(prepared.get("npz_prepared"))).encode())
@@ -150,8 +161,27 @@ def cache_key(prepared: dict, overrides: dict, include_ledger: bool) -> str:
     h.update(b"|ov=")
     h.update(_canon(dict(overrides or {})).encode())
     h.update(f"|led={bool(include_ledger)}".encode())
+    h.update(b"|tgt=")
+    h.update(_canon(targets or {}).encode())
     h.update(f"|eng={engine_versions()}".encode())
     return h.hexdigest()
+
+
+_VERIFY_KEYS = ("gain_pct", "trades", "tim_pct", "max_dd_pct", "pool_sharpe", "valid", "bh_pct")
+
+
+def results_equal(a: dict, b: dict) -> bool:
+    try:
+        return all((a or {}).get(k) == (b or {}).get(k) for k in _VERIFY_KEYS)
+    except Exception:
+        return False
+
+
+def verify_due() -> bool:
+    try:
+        return random.random() < float(os.environ.get("V15_EVAL_CACHE_VERIFY", "0.01"))
+    except Exception:
+        return False
 
 
 def lookup(key: str):
@@ -204,6 +234,13 @@ def invalidate(key: str):
 
 def stats() -> dict:
     return dict(_stats)
+
+
+def bump_stat(name: str, n: int = 1):
+    try:
+        _stats[name] = int(_stats.get(name, 0)) + n
+    except Exception:
+        pass
 
 
 def maybe_log(tag: str):

@@ -4269,6 +4269,39 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
     if not final_ranking_data_scalars:
         return [], {}
 
+    # === ANG ENTRY TIMING (2026-10-09 USER: breakouts not tops) ===================
+    # Per-sym_side timing states (BREAKOUT_FRESH/REBOUND_GO/EXTENDED_TOP/FAILED/
+    # NONE) computed from 15m bars. Ranking LISTS untouched. Fail-open: any
+    # error skips timing for this cycle, never breaks rankings.
+    try:
+        try:
+            import tools.ang_timing_core as _atc
+        except Exception:
+            _tp_tools = str(Path(__file__).resolve().parent / "tools")
+            if _tp_tools not in sys.path:
+                sys.path.insert(0, _tp_tools)
+            import ang_timing_core as _atc
+        _tp_kw = dict(lookback=int(getattr(config, "ANG_TIMING_LOOKBACK", 20)), fresh_bars=int(getattr(config, "ANG_TIMING_FRESH_BARS", 3)), tight_atr=float(getattr(config, "ANG_TIMING_TIGHT_ATR", 0.5)), hold_bars=int(getattr(config, "ANG_TIMING_HOLD_BARS", 12)), hold_tol_atr=float(getattr(config, "ANG_TIMING_HOLD_TOL_ATR", 0.25)))
+        _tp_min = _tp_kw["lookback"] + _tp_kw["hold_bars"] + 2
+        for _e in final_ranking_data_scalars:
+            try:
+                _dfs = _e.get("dfs_for_calc", {}) or {}
+                _d15 = _dfs.get("15m")
+                if _d15 is None or _d15.empty or len(_d15) < _tp_min or not all(k in _d15.columns for k in ("close", "high", "low")):
+                    _e["_timing_long"] = ("NONE", 0.0, 0.0, -1)
+                    _e["_timing_short"] = ("NONE", 0.0, 0.0, -1)
+                    continue
+                _c = _d15["close"].to_numpy(dtype=float)
+                _h = _d15["high"].to_numpy(dtype=float)
+                _l = _d15["low"].to_numpy(dtype=float)
+                _e["_timing_long"] = _atc.long_state(_c, _h, _l, **_tp_kw)
+                _e["_timing_short"] = _atc.short_state(_c, _h, _l, **_tp_kw)
+            except Exception:
+                _e["_timing_long"] = ("NONE", 0.0, 0.0, -1)
+                _e["_timing_short"] = ("NONE", 0.0, 0.0, -1)
+    except Exception as _tim_e:
+        logger.warning(f"[ANG_TIMING] compute skipped: {_tim_e}")
+
     # === SCALP_V3 OUTLIER SCORING (2026-04-23 evening) =============================
     # User directive: "add outliers vs avg index at the end" — DON'T change the
     # regular calculate_final_scores calc. Compute per-symbol z-score on 15-min
@@ -4820,6 +4853,29 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
     # Save market data and rankings
     await save_market_data()
     await save_rankings_json(final_ranking_data_scalars)
+    # === ANG ENTRY TIMING publish (2026-10-09) ==================================
+    # Side-aware timing states for ez_manage entry gate. Atomic write. Fail-open.
+    try:
+        _tstates = {}
+        for _e in final_ranking_data_scalars:
+            _s = _e.get("symbol")
+            if not _s:
+                continue
+            _tl = _e.get("_timing_long", ("NONE", 0.0, 0.0, -1))
+            _ts = _e.get("_timing_short", ("NONE", 0.0, 0.0, -1))
+            try:
+                _tstates[f"{_s}_LONG"] = {"state": str(_tl[0]), "level": float(_tl[1]), "extension_atr": round(float(_tl[2]), 3), "bars_since_break": int(_tl[3])}
+                _tstates[f"{_s}_SHORT"] = {"state": str(_ts[0]), "level": float(_ts[1]), "extension_atr": round(float(_ts[2]), 3), "bars_since_break": int(_ts[3])}
+            except Exception:
+                continue
+        _tp_path = BASE_PATH / "data" / "ranking_entry_timing.json"
+        _tp_tmp = _tp_path.with_suffix(".json.tmp")
+        with open(_tp_tmp, "w") as _tpf:
+            json.dump({"updated_at": datetime.now(timezone.utc).isoformat(), "states": _tstates}, _tpf)
+        os.replace(_tp_tmp, _tp_path)
+        logger.info(f"[ANG_TIMING] published {len(_tstates)} sym_side states")
+    except Exception as _timw_e:
+        logger.warning(f"[ANG_TIMING] publish skipped: {_timw_e}")
     
     logger.info(f"✅ [initial_fetch_and_ranking] => Completed with 4x linearity emphasis. Processed {len(final_ranking_data_scalars)} symbols.")
     logger.info(f"📊 High linearity: {len([s for s in final_ranking_data_scalars if s.get('linearity_category') == 'HIGH'])} symbols")

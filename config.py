@@ -5203,6 +5203,25 @@ class Config:
     RANKING_MULT_ENABLED: bool = False
     RANKING_MULT_MIN: float = 0.3
     RANKING_MULT_MAX: float = 2.5
+    # ANG entry timing 2026-10-09 (USER: winners buy breakouts, not tops; tight
+    # stops; insist; full entry on rebound). Rankings publishes per-sym_side
+    # timing states; ez_manage holds extended-top entries, sizes rebound full.
+    # ROLLBACK: ANG_TIMING_GATE_ENABLED=False restores prior entry behavior.
+    ANG_TIMING_GATE_ENABLED: bool = True
+    ANG_TIMING_ACCOUNTS: list = field(default_factory=lambda: ["ang"])
+    ANG_TIMING_LOOKBACK: int = 20
+    ANG_TIMING_FRESH_BARS: int = 3
+    ANG_TIMING_TIGHT_ATR: float = 0.5
+    ANG_TIMING_HOLD_BARS: int = 12
+    ANG_TIMING_HOLD_TOL_ATR: float = 0.25
+    ANG_TIMING_FRESH_MULT: float = 1.25
+    ANG_TIMING_REBOUND_MULT: float = 1.5
+    ANG_TIMING_MAX_AGE_S: int = 600
+    # Exit timing: profit-guarded top/failed-breakout trims (QUICK_REDUCE via
+    # execute_now). NEVER fires at a loss — loss exits stay with technicals.
+    ANG_TIMING_TOP_TRIM_ENABLED: bool = True
+    ANG_TIMING_TOP_MIN_GAIN_PCT: float = 1.0
+    ANG_TIMING_TOP_MIN_EXT_ATR: float = 2.0
     # R-Z4: continuous crash_mult gradient scaled by 0sentiment_strength
     CRASH_MULT_GRADIENT_ENABLED: bool = False
     CRASH_MULT_GRADIENT_MAX: float = 2.5  # upper clamp

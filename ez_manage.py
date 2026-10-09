@@ -26574,6 +26574,16 @@ class MultiAccountTradeManager:
                     quantity = float(quantity) * ranking_multiplier
                 except Exception:
                     pass
+                try:
+                    _tm_accts2 = getattr(config, "ANG_TIMING_ACCOUNTS", ["ang"]) or ["ang"]
+                    if bool(getattr(config, "ANG_TIMING_GATE_ENABLED", True)) and account_key in _tm_accts2:
+                        _tm_state2 = ang_timing_state_for(symbol, position_side)
+                        if _tm_state2 == "REBOUND_GO":
+                            quantity = float(quantity) * float(getattr(config, "ANG_TIMING_REBOUND_MULT", 1.5) or 1.5)
+                        elif _tm_state2 == "BREAKOUT_FRESH":
+                            quantity = float(quantity) * float(getattr(config, "ANG_TIMING_FRESH_MULT", 1.25) or 1.25)
+                except Exception:
+                    pass
                 if config.SYMBOL_PERF_ENABLED:
                     try:
                         from utils import get_performance_multiplier
@@ -30804,6 +30814,33 @@ class MultiAccountTradeManager:
                     return f"BLOCKED_BALANCE_FLOOR_HALT_{_bf_acct}"
         except Exception as _bf_e:
             logger.warning(f"[BALANCE_FLOOR_HALT] check error (fail-open): {_bf_e}")
+        # ═══════════════════════════════════════════════════════════════════════════
+        # ⏳ ANG ENTRY TIMING HOLD (USER 2026-10-09: breakouts not tops)
+        # Rankings publishes per-sym_side timing states; HOLD new exposure on
+        # EXTENDED_TOP (wait for rebound) and FAILED (no averaging down).
+        # CLOSE/REDUCE/HEDGE always pass. Fail-open on any error/stale data.
+        # Insist-safe: HOLD refusals never touch open_blocked counters (those
+        # only trip on FAILED_VERIFICATION_AND_FALLBACK), so entries retry
+        # every cycle until the setup confirms. ROLLBACK: ANG_TIMING_GATE_ENABLED=False.
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            _tm_accts = getattr(config, "ANG_TIMING_ACCOUNTS", ["ang"]) or ["ang"]
+            _tm_acct = account_key or (position_key.split(":", 1)[0] if position_key and ":" in position_key else None)
+            if (
+                bool(getattr(config, "ANG_TIMING_GATE_ENABLED", True))
+                and _tm_acct in _tm_accts
+                and not bool(is_hedge)
+                and ("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act or _kill_act == "BUY")
+                and "CLOSE" not in _kill_act
+                and "REDUCE" not in _kill_act
+                and "HEDGE" not in _kill_act
+            ):
+                _tm_state = ang_timing_state_for(symbol, position_side)
+                if _tm_state in ("EXTENDED_TOP", "FAILED"):
+                    logger.warning(f"⏳ [TIMING_HOLD] {position_key}: {action} held — timing={_tm_state} (wait for rebound; insist, retry next cycle)")
+                    return f"BLOCKED_TIMING_HOLD_{_tm_state}_{_tm_acct}"
+        except Exception as _tm_e:
+            logger.debug(f"[TIMING_HOLD] check error (fail-open): {_tm_e}")
         # ═══════════════════════════════════════════════════════════════════════════
         # 🚨 VIGILANCE GUARD ENTRY BLOCK (USER EXTREME VIGILANCE 2026-09-28)
         # Blocked sym_sides refuse ALL new exposure (OPEN/ENTRY/REENTRY/AUGMENT/BUY);
@@ -48747,6 +48784,87 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
         return False
 
 
+async def _pp_ang_timing_exits(trade_manager, account_key, position_key) -> bool:
+    """Profit-guarded top/failed-breakout trim (USER 2026-10-09 smarter exits).
+
+    EXTENDED_TOP + gain>=min + ext>=min -> take the top. FAILED + gain>=min ->
+    exit before profit erodes. NEVER fires at a loss (loss exits stay with
+    technicals/hedges). Hedges excluded. Fire-once per open position.
+    Fail-open everywhere. ROLLBACK: ANG_TIMING_TOP_TRIM_ENABLED=False.
+    """
+    try:
+        if not bool(getattr(config, "ANG_TIMING_TOP_TRIM_ENABLED", True)):
+            return False
+        accts = getattr(config, "ANG_TIMING_ACCOUNTS", ["ang"]) or ["ang"]
+        try:
+            ak, sym, side = parse_position_key(position_key)
+        except Exception:
+            return False
+        if (account_key or ak) not in accts:
+            return False
+        pos = trade_manager.positions.get(position_key) if hasattr(trade_manager, "positions") else None
+        if pos is None:
+            return False
+        amt = abs(safe_fetch_float(getattr(pos, "positionAmt", 0), 0))
+        if amt <= 0:
+            try:
+                (getattr(trade_manager, "ang_timing_exit_state", {}) or {}).pop(position_key, None)
+            except Exception:
+                pass
+            return False
+        if bool(getattr(pos, "is_hedge", False)):
+            return False
+        try:
+            fired = (getattr(trade_manager, "ang_timing_exit_state", {}) or {}).get(position_key, {})
+        except Exception:
+            fired = {}
+        if isinstance(fired, dict) and fired.get("trimmed"):
+            return False
+        gain = safe_fetch_float(getattr(pos, "gain", 0), 0)
+        entry = ang_timing_entry_for(sym, side)
+        state = entry.get("state", "NONE")
+        ext = entry.get("extension_atr", 0.0)
+        try:
+            import tools.ang_timing_core as _atc
+        except Exception:
+            import sys as _sys
+            from pathlib import Path as _Path
+
+            _t = str(_Path(__file__).resolve().parent / "tools")
+            if _t not in _sys.path:
+                _sys.path.insert(0, _t)
+            import ang_timing_core as _atc
+        min_g = float(getattr(config, "ANG_TIMING_TOP_MIN_GAIN_PCT", 1.0) or 1.0)
+        min_e = float(getattr(config, "ANG_TIMING_TOP_MIN_EXT_ATR", 2.0) or 2.0)
+        if not _atc.should_timing_trim(state, gain, ext, min_g, min_e):
+            return False
+        px = safe_fetch_float(getattr(pos, "mark_price", 0), 0.0)
+        if px <= 0:
+            try:
+                px, _ = await get_current_price(sym)
+                px = float(px) if px else 0.0
+            except Exception:
+                px = 0.0
+        if px <= 0:
+            return False
+        side_ord = "SELL" if str(side).upper() == "LONG" else "BUY"
+        reason = f"ANG_TIMING_TRIM_{state}_g{gain:.2f}_ext{float(ext or 0.0):.2f}"
+        res = await trade_manager.execute_now(position_key, account_key or ak, sym, float(amt), side_ord, str(side).upper(), float(amt), px, f"ANGTM{int(time.time())}", reason, False, "QUICK_REDUCE", url_variant="2")
+        if "SUCCESS" in str(res or "").upper():
+            try:
+                if not hasattr(trade_manager, "ang_timing_exit_state"):
+                    trade_manager.ang_timing_exit_state = {}
+                trade_manager.ang_timing_exit_state[position_key] = {"trimmed": True, "ts": time.time(), "state": state}
+            except Exception:
+                pass
+            logger.warning(f"[ANG_TIMING_TRIM] {position_key}: {reason} fired -> {str(res)[:80]}")
+            return True
+        return False
+    except Exception as _tmx_e:
+        logger.debug(f"[ANG_TIMING_TRIM] error (fail-open): {_tmx_e}")
+        return False
+
+
 @timed_function("process_position")
 async def process_position(
     account_key: Optional[str] = None,
@@ -48771,6 +48889,10 @@ async def process_position(
     if bool(getattr(_ezm_base_config, "PARITY_VEC_EXACT_MODE", False)) or bool(getattr(getattr(trade_manager, "config", None), "PARITY_VEC_EXACT_MODE", False)):
         if await _vec_exact_process_position(account_key, position_key, trade_manager):
             return
+    # ANG TIMING EXITS (2026-10-09 USER smarter exits) — runs only when the twin
+    # did not act (parity respected). Profit-guarded trims only; never at a loss.
+    if await _pp_ang_timing_exits(trade_manager, account_key, position_key):
+        return f"{EvalStatus.ACTION_TAKEN}:ANG_TIMING_TRIM"
     # REAL: open reported positions must never be filtered by tradeable_keys
     _is_real_open_early = False
     try:
@@ -56257,6 +56379,63 @@ def _breakout_tf_size_mult(reason: str) -> tuple:
             _cap = float(getattr(config, "BREAKOUT_TF_SIZE_CAP_MULT", 5.0))
             return min(_mult, _cap), _lbl
     return 1.0, ""
+
+
+_ANG_TIMING_CACHE: dict = {"mtime": 0.0, "updated_at": 0.0, "states": {}}
+
+
+def _ang_timing_states() -> dict:
+    """Fresh timing states dict or {} (fail-open on missing/stale/corrupt)."""
+    try:
+        max_age = float(getattr(config, "ANG_TIMING_MAX_AGE_S", 600) or 600)
+        path = Path(getattr(config, "BASE_PATH", "/Users/niels/Documents/binance")) / "data" / "ranking_entry_timing.json"
+        try:
+            mtime = os.path.getmtime(path)
+        except Exception:
+            return {}
+        if mtime != _ANG_TIMING_CACHE.get("mtime"):
+            try:
+                with open(path) as f:
+                    payload = json.load(f)
+            except Exception:
+                return {}
+            states = payload.get("states", {}) if isinstance(payload, dict) else {}
+            upd = payload.get("updated_at", "") if isinstance(payload, dict) else ""
+            try:
+                upd_ts = datetime.fromisoformat(str(upd).replace("Z", "+00:00")).timestamp()
+            except Exception:
+                upd_ts = 0.0
+            _ANG_TIMING_CACHE.update({"mtime": mtime, "updated_at": upd_ts, "states": states if isinstance(states, dict) else {}})
+        if time.time() - float(_ANG_TIMING_CACHE.get("updated_at", 0.0) or 0.0) > max_age:
+            return {}
+        states = _ANG_TIMING_CACHE.get("states", {})
+        return states if isinstance(states, dict) else {}
+    except Exception:
+        return {}
+
+
+def ang_timing_state_for(symbol: str, position_side: str) -> str:
+    """ANG entry-timing state from rankings (BREAKOUT_FRESH/REBOUND_GO/EXTENDED_TOP/FAILED/NONE). Fail-open: missing/stale/corrupt -> NONE (allow)."""
+    try:
+        if not symbol or not position_side:
+            return "NONE"
+        key = f"{symbol}_{str(position_side).upper()}"
+        entry = _ang_timing_states().get(key, {})
+        state = entry.get("state", "NONE") if isinstance(entry, dict) else "NONE"
+        return str(state) if state in ("BREAKOUT_FRESH", "REBOUND_GO", "EXTENDED_TOP", "FAILED", "NONE") else "NONE"
+    except Exception:
+        return "NONE"
+
+
+def ang_timing_entry_for(symbol: str, position_side: str) -> dict:
+    """Full timing entry (state/level/extension_atr/bars_since_break) or {} (fail-open)."""
+    try:
+        if not symbol or not position_side:
+            return {}
+        entry = _ang_timing_states().get(f"{symbol}_{str(position_side).upper()}", {})
+        return dict(entry) if isinstance(entry, dict) else {}
+    except Exception:
+        return {}
 
 
 async def queue_trade_action(
