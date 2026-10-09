@@ -1,22 +1,22 @@
 {
- "now": "2026-10-09T22:12:02.932914+00:00",
+ "now": "2026-10-09T23:12:05.425127+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 5677,
- "last_exit_ts": "2026-10-09T22:11:51.039207+00:00",
+ "n_exit_rows": 5472,
+ "last_exit_ts": "2026-10-09T23:07:46.275088+00:00",
  "n_leaks": 39,
- "n_gate_on": 3985,
+ "n_gate_on": 3798,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 178,
+ "n_unmapped": 176,
  "n_unverified": 2,
- "since": "2026-10-07T22:12:02.932914+00:00",
+ "since": "2026-10-07T23:12:05.425127+00:00",
  "vec_exact_by_action": {
-  "CLOSE": 165,
-  "OPEN": 1300,
-  "REDUCE": 7,
+  "OPEN": 1298,
+  "REDUCE": 5,
+  "CLOSE": 153,
   "AUGMENT": 1
  },
- "native_rows": 4204,
+ "native_rows": 4015,
  "unverified_by_family": {
   "ULTIMATE_DC (None=None)": 2
  },
@@ -30,8 +30,8 @@
   "EXIT_VELOCITY_WT inf:RENDERUSDT_LONG": 5
  },
  "gate_on_by_family": {
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 3445,
-  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 246,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 3276,
+  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 228,
   "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 269,
   "DC_BASIS_3M_REDUCE (DC_BASIS_3M_REDUCE_ENABLED)": 2,
   "MTF_BB_REJECT_EXIT (MTF_BB_REJECT_EXIT_ENABLED)": 4,
@@ -64,8 +64,6 @@
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-1.83% age": 2,
   "NON_TRADEABLE_WT15M_EXIT_SHORT_wt9.2": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.58% age": 2,
-  "SUBSTITUTION_FOR_men:YFIUSDT_LONG": 1,
-  "SUBSTITUTION_FOR_men:CHRUSDT_SHORT": 1,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-4.76% age": 1,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-10.99% ag": 1,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.62% age": 1,
@@ -92,14 +90,16 @@
   "RSI2_EXIT_LIVE_rsi2=4.6_thr=10.0": 1,
   "BB_TAKE_15m_g3.89": 1,
   "ORPHANED_HEDGE_PARENT_CLOSED": 1,
-  "LR_BAND_HARVEST_4h_pb0.00": 1
+  "LR_BAND_HARVEST_4h_pb0.00": 1,
+  "CB_HTF_EXHAUST_BAD_ENTRY: g=-1.74% age": 1,
+  "DC_BB_D_BREAK_REVERSE_open_BB_BREAK_DO": 1
  },
  "actions": {
-  "CLOSE": 4349,
-  "QUICK_CLOSE": 3,
-  "OPEN": 1301,
-  "REDUCE": 14,
+  "CLOSE": 4150,
+  "OPEN": 1299,
+  "REDUCE": 12,
   "QUICK_REDUCE": 9,
-  "AUGMENT": 1
+  "AUGMENT": 1,
+  "QUICK_CLOSE": 1
  }
 }
