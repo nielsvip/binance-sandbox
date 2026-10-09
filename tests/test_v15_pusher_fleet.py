@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
 import v15_pusher_coordinator as C
+import v15_gain_pusher as P
 
 
 def _rep(ss, rnd, gain, moves=()):
@@ -101,6 +102,26 @@ def test_pick_host_least_loaded_by_weight():
     st3 = {"assigned": {f"u{i}": {"host": "s2", "ts": 0} for i in range(100)},
            "hostinfo": {"s2": {"w": 14, "ts": 9e12}, "s5": {"w": 7, "ts": 9e12}}}
     assert C.pick_host(st3, hosts, set()) != "s2"
+
+
+def test_p2_topups_rank_and_parse():
+    possym = {"cat_sides": {"CRYPTO_LONG": {
+        "S!A=True": {"kind": "switch", "pos_sym": 10, "avg_delta": 1.0},
+        "S!B=0.95": {"kind": "switch", "pos_sym": 10, "avg_delta": 2.0},
+        "S!C=1h": {"kind": "filter", "pos_sym": 99, "avg_delta": 9.0},
+        "S!D=7": {"kind": "switch", "pos_sym": 2, "avg_delta": 5.0}}}
+    top = P.p2_topups(possym, "CRYPTO_LONG")
+    assert [(t["switch"], t["value"]) for t in top] == [("B", 0.95), ("A", True)]
+    assert top[0]["pos_sym"] == 10
+    assert P.p2_topups(possym, "NOPE") == []
+    assert P.parse_candidate_value("False") is False
+    assert P.parse_candidate_value("1h") == "1h"
+    assert P.parse_candidate_value("7") == 7
+
+
+def test_ablation_keys_filters_in_set():
+    assert P.ablation_keys({"A": 1, "B": 2}, ["B", "C"]) == ["B"]
+    assert P.ablation_keys({"A": 1}, []) == []
 
 
 def test_host_down_requeues(tmp_path):

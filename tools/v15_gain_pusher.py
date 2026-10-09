@@ -332,6 +332,61 @@ def screen_all(symside, prep, cur, cands, effective, base_gain, base_labels):
     return scored
 
 
+def parse_candidate_value(v):
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return v
+    s = str(v).strip()
+    if s.lower() == "true":
+        return True
+    if s.lower() == "false":
+        return False
+    try:
+        return float(s) if "." in s else int(s)
+    except ValueError:
+        return s
+
+
+def p2_topups(possym, cat_side, k=40, floor=3):
+    """Top pos_sym SWITCH-kind (switch=value) trials for a cat_side: highest
+    pos_sym first, avg_delta breaks ties. USER 2026-10-09: second round tries
+    the highest pos_sym switches again (per-sym retest; fleet avg only ranks)."""
+    out = []
+    try:
+        entries = (possym.get("cat_sides") or {}).get(cat_side) or {}
+    except AttributeError:
+        return out
+    cands = []
+    for name, m in entries.items():
+        if (m or {}).get("kind") != "switch":
+            continue
+        ps = (m or {}).get("pos_sym", 0) or 0
+        if ps < floor:
+            continue
+        try:
+            sw, val = name.split("!", 1)[1].split("=", 1)
+        except ValueError:
+            continue
+        cands.append((ps, (m or {}).get("avg_delta") or 0, sw, parse_candidate_value(val)))
+    cands.sort(key=lambda t: (-t[0], -(t[1] or 0)))
+    seen = set()
+    for ps, ad, sw, val in cands:
+        if (sw, json.dumps(val, sort_keys=True)) in seen:
+            continue
+        seen.add((sw, json.dumps(val, sort_keys=True)))
+        out.append({"switch": sw, "value": val, "pos_sym": ps, "avg_delta": round(ad or 0, 3)})
+        if len(out) >= k:
+            break
+    return out
+
+
+def ablation_keys(cur, filter_keys):
+    """Filter-ablation candidates: filter-kind keys currently IN the set."""
+    fks = set(filter_keys or [])
+    return [k for k in cur if k in fks]
+
+
 def greedy_push(symside, prep, start_ov, registry, cat_side):
     uni_cands, uni_defaults = load_universe(cat_side)
     cur = dict(start_ov)
@@ -365,6 +420,10 @@ def greedy_push(symside, prep, start_ov, registry, cat_side):
                     c = (f"P1:{sw}={v}", {sw: v})
                     if c not in shortlist:
                         shortlist.append(c)
+            for t in (registry.get("P2_POSSYM_TOP") or {}).get(cat_side, [])[:40]:
+                c = (f"P2:{t['switch']}={t['value']}", {t["switch"]: t["value"]})
+                if c not in shortlist:
+                    shortlist.append(c)
         if not promotable:
             log(f"{symside} r{rnd}: converged (tested {tested} total)")
             converged = True
@@ -395,11 +454,25 @@ def greedy_push(symside, prep, start_ov, registry, cat_side):
             cur_gain = r["gain_pct"]
             moves.append({"round": "elim", "name": f"DROP:{k}", "flip": {}, "delta": round(d, 3), "gain": round(cur_gain, 3), "trades": r["trades"], "winrate": 0, "losers_killed": 0, "winners_killed": 0})
             log(f"{symside} elim: DROP {k} d={d:+.3f} -> {cur_gain:.3f} (order artifact removed)")
+    ablation = []
+    for k in ablation_keys(cur, registry.get("P2_FILTER_KEYS") or [])[:60]:
+        trial = dict(cur)
+        trial.pop(k, None)
+        r = timed_eval(prep, trial, 30)
+        tested += 1
+        d = r["gain_pct"] - cur_gain
+        keep = bool(r["valid"] and d > 1e-9)
+        if keep:
+            cur = trial
+            cur_gain = r["gain_pct"]
+            moves.append({"round": "ablate", "name": f"ABL:{k}", "flip": {}, "delta": round(d, 3), "gain": round(cur_gain, 3), "trades": r["trades"], "winrate": 0, "losers_killed": 0, "winners_killed": 0})
+            log(f"{symside} ablate: DROP {k} d={d:+.3f} -> {cur_gain:.3f} (filter not pulling weight)")
+        ablation.append({"key": k, "delta": round(d, 3), "dropped": keep})
     fin = timed_eval(prep, cur, 30, include_ledger=True)
     fin2 = timed_eval(prep, cur, 30)
     assert abs(fin["gain_pct"] - fin2["gain_pct"]) < 1e-9, f"determinism break {fin['gain_pct']} vs {fin2['gain_pct']}"
     fw = _trade_keys(fin.get("ledger"))
-    rep_diag = {"winrate": round(sum(1 for p in fw.values() if p > 0) / max(1, len(fw)), 3), "losers_left": sum(1 for p in fw.values() if p <= 0), "converged": converged}
+    rep_diag = {"winrate": round(sum(1 for p in fw.values() if p > 0) / max(1, len(fw)), 3), "losers_left": sum(1 for p in fw.values() if p <= 0), "converged": converged, "ablation": ablation}
     return cur, fin, moves, tested, rep_diag
 
 
@@ -561,6 +634,7 @@ def push_one(symside, runout, registry, workers, do_rerun, streamer=None, anchor
     rep["winrate"] = rep_diag["winrate"]
     rep["losers_left"] = rep_diag["losers_left"]
     rep["converged"] = rep_diag["converged"]
+    rep["ablation"] = rep_diag.get("ablation", [])
     try:
         prep365 = prepare_batch(symside, 365)
         r365 = timed_eval(prep365, cur, 365) if prep365 else None

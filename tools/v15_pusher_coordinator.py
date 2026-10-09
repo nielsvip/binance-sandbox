@@ -486,6 +486,7 @@ def main():
     if fresh:
         n = merge_registry(base, st, fresh)
         log(f"ingested {len(fresh)} reports, registry +{n} test_values (v{st.get('registry_version', 0)})")
+    refresh_p2(base, st)
     now = time.time()
     for u, info in list((st.get("assigned") or {}).items()):
         if now - float((info or {}).get("ts", 0)) > REQUEUE_MIN * 60:
@@ -528,6 +529,48 @@ def main():
     save_state(base, st)
     write_status(base, st, universe, hosts, down)
     log(f"tick done: +{made} units outbox rounds_complete={st.get('rounds_complete', 0)}")
+
+
+def refresh_p2(base, st):
+    """USER 2026-10-09: second round retests the highest pos_sym switches
+    (P2_POSSYM_TOP per cat_side) and ablates filter-kind keys (P2_FILTER_KEYS).
+    Rebuilds only when avg_delta_pos_sym.json changes; bumps registry version."""
+    src = ROOT / "data" / "avg_delta_pos_sym.json"
+    try:
+        mt = os.path.getmtime(src)
+    except OSError:
+        return False
+    if mt <= float(st.get("p2_mtime", 0) or 0):
+        return False
+    try:
+        sys.path.insert(0, str(ROOT / "tools"))
+        import v15_gain_pusher as P
+        possym = json.loads(open(src).read())
+        top = {}
+        for cs in ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT"):
+            top[cs] = P.p2_topups(possym, cs)
+        fkeys = set()
+        for entries in (possym.get("cat_sides") or {}).values():
+            for name, m in (entries or {}).items():
+                if (m or {}).get("kind") == "filter":
+                    try:
+                        fkeys.add(name.split("!", 1)[1].split("=", 1)[0])
+                    except ValueError:
+                        pass
+        rp = base / "registry" / "PRIORITY_SWITCHES.json"
+        reg = json.loads(rp.read_text())
+        reg["P2_POSSYM_TOP"] = top
+        reg["P2_FILTER_KEYS"] = sorted(fkeys)
+        reg["_version"] = int(reg.get("_version", 0)) + 1
+        rp.write_text(json.dumps(reg, indent=1, default=str))
+        st["registry_version"] = reg["_version"]
+        st["p2_mtime"] = mt
+        n = sum(len(v) for v in top.values())
+        log(f"P2 refresh: {n} topups + {len(fkeys)} filter keys (registry v{reg['_version']})")
+        return True
+    except Exception as e:
+        log(f"P2 refresh failed: {e}")
+        return False
 
 
 def write_status(base, st, universe, hosts, down):
