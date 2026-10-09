@@ -452,7 +452,7 @@ _VERDICT_TERMINAL_RE = re.compile(r'"verdict":\s*"(IMPOSSIBLE|NO_TRADES|BEST_EFF
 _LAUNCH_CAPS = {"30D": 3, "365D": 2, "REPAIR": 1, "GS": 1}  # USER 2026-10-09: single source of truth (gate + pending_actions); 30D 6->3, 40-min slices + free resume make more unnecessary
 _GAIN_TIER_W_FRAC = 0.4  # top 40% of measured syms = winners (recalculated every round with the latest NPZ)
 _GAIN_TIER_L_FRAC = 1.0 / 3.0  # bottom third = losers/low gainers (deferred, re-admitted after _GAIN_TIER_DEFER_DAYS)
-_GAIN_TIER_DEFER_DAYS = {"M": 0.5, "L": 1.0}  # USER 2026-10-09: no suffocation — mediocre re-run 2x/day, losers daily (less frequent than winners-every-pass, never starved); winners keep priority + slots
+_GAIN_TIER_DEFER_DAYS = {"M": 3.0, "L": 7.0}  # USER 2026-10-09: starve losers, feed winners — mediocre re-measured 2x/week (regime turns visible), losers weekly; winners every round + slot reservation -> ~90% of compute on winners
 _NONW_QUOTA_DIV = 4  # non-winner new pairs per host capped at max(1, cap//4); unknowns (discovery) exempt
 _TIER_RANK = {"W": 0, "M": 1, "L": 2}
 
@@ -491,7 +491,7 @@ def _sym_tier_rank(sym, tiers):
 
 
 def _side_deferred(ss, tiers, now_ts, windows=_GAIN_TIER_DEFER_DAYS):
-    """True = M/L-tier side whose last calc is younger than its window (M 12h, L 1d): skip its fresh board (chain
+    """True = M/L-tier side whose last calc is younger than its window (M 3d, L 7d): skip its fresh board (chain
     continuations still drain; staleness re-admits, so regime turns re-measure). W/unknown/missing/bad fails open."""
     e = (tiers or {}).get(ss)
     if not e:
