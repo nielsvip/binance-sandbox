@@ -54,7 +54,7 @@ def main():
     ap.add_argument("--out", default=str(ROOT / "data" / "persym_size_tiers.json"))
     ap.add_argument("--min-mult", type=float, default=0.25)
     ap.add_argument("--neg30-mult", type=float, default=0.5)
-    ap.add_argument("--max-mult", type=float, default=3.0)
+    ap.add_argument("--max-mult", type=float, default=4.0)
     ap.add_argument("--gain-cap", type=float, default=20.0)
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()

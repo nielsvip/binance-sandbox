@@ -46320,7 +46320,7 @@ class TradierTradeManager:
 
             # ERASED LONG_ENABLED/SHORT_ENABLED per user 2026-09-23: _SHORT means not is_long, no bare flag
             # PER_SYM_SIDE_DISABLED removed - suffix _LONG/_SHORT already means is_long
-            # ═══ PER_SYM_LIVE_GATE: gain>0 and beat bh (stocks & crypto, backtest still probes opposite side) ═══
+            # ═══ PER_SYM_LIVE_GATE (USER 2026-10-09: tier mode sizes instead of blocking — gain<=0/<bh trade small up to 4x, only explicit DISABLED/_NEG_BLOCK/NO_TRADES refuse) ═══
             # Even if disabled side becomes profitable later, backtest (v15_pilot, per_sym_engine_stocks_isolated dual) still probes opposite side periodically.
             # Live gate here blocks only live trading, not backtest exploration.
             # Handles both crypto (per_sym_active_config.json) and stocks (per_sym_active_config_stocks.json + SPREADSHEETS/BEST/STOCKS_{SIDE}).
@@ -46340,6 +46340,7 @@ class TradierTradeManager:
                 try:
                     _live_ok = True
                     _live_reason = "unknown"
+                    _tier_on = bool(getattr(config, "PERF_TIER_SIZING_ENABLED", False))
                     # Try crypto per_sym first (for USDT/USDC symbols traded via tradier crypto)
                     _key = f"{symbol}_{position_side}"
                     _raw = None
@@ -46422,11 +46423,11 @@ class TradierTradeManager:
                                             _bh = _pg(_m.group(3))
                                             _gain = _pg(_m.group(4))
                                             _found_best = True
-                                            if _gain <= 0 or _gain <= _bh:
+                                            if not _tier_on and (_gain <= 0 or _gain <= _bh):
                                                 _live_ok = False
                                                 _live_reason = f"BEST stock {_base2}_{position_side} gain {_gain} bh {_bh} not beating"
                                             break
-                            if not _found_best:
+                            if not _tier_on and not _found_best:
                                 # No BEST, check ps wsharpe/pnl via _raw which is placeholder, treat as ancient
                                 _live_ok = False
                                 _live_reason = (
@@ -46459,13 +46460,13 @@ class TradierTradeManager:
                             ):
                                 _live_ok = False
                                 _live_reason = f"disabled tag {str(tag)[:30]} w={w} trades={trades}"
-                            elif g is not None and g <= 0:
+                            elif not _tier_on and g is not None and g <= 0:
                                 _live_ok = False
                                 _live_reason = f"gain {g:.2f} <=0"
-                            elif gv is not None and gv <= 0:
+                            elif not _tier_on and gv is not None and gv <= 0:
                                 _live_ok = False
                                 _live_reason = f"gain_vs_bh {gv:.2f} <=0"
-                            elif g is not None and bh is not None and g <= bh:
+                            elif not _tier_on and g is not None and bh is not None and g <= bh:
                                 _live_ok = False
                                 _live_reason = f"gain {g:.2f} <= bh {bh:.2f}"
                     if not _live_ok:

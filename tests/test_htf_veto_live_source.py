@@ -47,3 +47,15 @@ def test_zone_gate_removed():
     s = _src()
     assert "BLOCKED_ZONE_" not in s
     assert "is_zone_blocked" not in s
+
+
+def test_tier_mode_sizes_instead_of_blocks():
+    t = _src()
+    assert "_tier_on = bool(getattr(config, \"PERF_TIER_SIZING_ENABLED\", False))" in t
+    assert "not _tier_on and g is not None and g <= 0" in t
+    assert "not _tier_on and gv is not None and gv <= 0" in t
+    assert "not _tier_on and g is not None and bh is not None and g <= bh" in t
+    e = (ROOT / "ez_manage.py").read_text()
+    assert 'not bool(getattr(config, "PERF_TIER_SIZING_ENABLED", False))' in e
+    w = (ROOT / "tools/v15_persym_size_tiers.py").read_text()
+    assert '"--max-mult", type=float, default=4.0' in w

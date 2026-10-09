@@ -393,6 +393,15 @@ def main():
     down = set(manual_down) & set(hosts)
     for h in down:
         host_down(st, base, h)
+    for u, info in list((st.get("assigned") or {}).items()):
+        if (info or {}).get("host") not in hosts:
+            st["assigned"].pop(u, None)
+            log(f"requeue {u} (host {(info or {}).get('host')} left discovery)")
+    for od in (base / "outbox").iterdir():
+        if od.is_dir() and od.name not in hosts and od.name != "_retired":
+            for f in od.glob("*.json"):
+                f.unlink(missing_ok=True)
+            log(f"cleared outbox for departed host {od.name}")
     for h in hosts:
         n = (st.get("host_err") or {}).get(h, {}).get("n", 0)
         if n >= DOWN_AFTER_ERRS:

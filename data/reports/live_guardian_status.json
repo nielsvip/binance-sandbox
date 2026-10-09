@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-09T21:24:58Z",
+ "ts": "2026-10-09T21:33:52Z",
  "dry_run": false,
  "regime_start": "2026-10-06T18:48:00Z",
  "thresholds": {
@@ -28,7 +28,7 @@
   "fin": {
    "fills_6h": 1,
    "open_positions": 3,
-   "unrealised_usd": 0.97,
+   "unrealised_usd": 0.92,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -46,7 +46,7 @@
    "unrealised_usd": -0.24,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 0,
+    "live_vec_decisions": 3,
     "state_divergent": 0,
     "filled": 0,
     "refused_non_safety": 0,
@@ -62,10 +62,10 @@
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 3,
-    "state_divergent": 0,
+    "state_divergent": 2,
     "filled": 0,
     "refused_non_safety": 0,
-    "safety_refusals": 0,
+    "safety_refusals": 1,
     "not_filled_no_log": 0,
     "vec_exact_fills_without_decision": 0
    }
@@ -73,7 +73,7 @@
   "inf": {
    "fills_6h": 3,
    "open_positions": 2,
-   "unrealised_usd": 0.23,
+   "unrealised_usd": 0.2,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -115,71 +115,78 @@
     "96236"
    ],
    "starts_30m": 1,
-   "log_age_s": 42.0
+   "log_age_s": 6.0
   },
   "ang": {
    "pids": [
     "96229"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 0.0
   },
   "inf": {
    "pids": [
     "95589"
    ],
    "starts_30m": 2,
-   "log_age_s": 0.0
+   "log_age_s": 5.0
   },
   "flz": {
    "pids": [
     "57261"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 8.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 5034.0
+   "log_age_s": 5568.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 5034.0
+   "log_age_s": 5568.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-09T21:24:58Z",
+   "ts": "2026-10-09T21:33:52Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:1INCHUSDT_LONG",
    "evidence": "REDUCE 188 @ 2026-10-09T21:21:38Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-09T21:24:58Z",
-   "severity": "CRITICAL",
-   "kind": "RAPID_LOSS_KEY",
-   "key": "men:MANAUSDT_SHORT",
-   "evidence": "unrealised -4.45% (60-min high -0.03%), amt 28"
+   "ts": "2026-10-09T21:33:52Z",
+   "severity": "INFO",
+   "kind": "VEC_DECISION_SAFETY_REFUSAL",
+   "key": "ang:1000PEPEUSDC_LONG",
+   "evidence": "OPEN B12 bar=2026-10-09T21:00:00Z: 09 21:24:36 - CRITICAL - [ang] \ud83d\udea8 [BALANCE_FLOOR_HALT] ang:1000PEPEUSDC_LONG: BLOCKED \u2014 /Users/niels/Documents/binance/data/HALT_TRADING_ang exists. action=OPEN reason=B12 |VEC_EXACT"
   },
   {
-   "ts": "2026-10-09T21:24:58Z",
-   "severity": "CRITICAL",
-   "kind": "RAPID_LOSS_KEY",
-   "key": "men:GALAUSDT_SHORT",
-   "evidence": "unrealised -7.55% (60-min high -0.05%), amt 828"
+   "ts": "2026-10-09T21:33:52Z",
+   "severity": "INFO",
+   "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
+   "key": "ang:AIAUSDT_LONG",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-long g0.29% bar=2026-10-09T21:00:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-09T21:24:58Z",
+   "ts": "2026-10-09T21:33:52Z",
+   "severity": "INFO",
+   "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
+   "key": "ang:AXSUSDT_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-09T20:45:00Z: live already flat (state divergence, no order needed)"
+  },
+  {
+   "ts": "2026-10-09T21:33:52Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:PUMPUSDT_SHORT",
    "evidence": "AUGMENT 3021 @ 2026-10-09T20:21:17Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-09T21:24:58Z",
+   "ts": "2026-10-09T21:33:52Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:PUMPUSDT_SHORT",
@@ -188,7 +195,8 @@
  ],
  "alert_counts": {
   "FILL_WITHOUT_VEC_DECISION": 3,
-  "RAPID_LOSS_KEY": 2
+  "VEC_DECISION_SAFETY_REFUSAL": 1,
+  "VEC_EXIT_WHILE_LIVE_FLAT": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -237,5 +245,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.45
+ "sweep_s": 0.5
 }

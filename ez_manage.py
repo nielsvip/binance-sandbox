@@ -8071,7 +8071,13 @@ def _ezm_is_live_side_enabled(symbol: str, side: str, account_key: str | None = 
     _tr = _row.get("trades")
     if _row.get("sample_tag", "") == "NO_TRADES" or (_tr == 0 and (_w == 0 or _w is None)):
         return False, f"no-trade row w={_w} trades={_tr}"
-    if _w is not None and _w <= 0 and _pnl is not None and _pnl <= 0:
+    if (
+        not bool(getattr(config, "PERF_TIER_SIZING_ENABLED", False))
+        and _w is not None
+        and _w <= 0
+        and _pnl is not None
+        and _pnl <= 0
+    ):
         return False, f"w {_w} pnl {_pnl} not profitable"
     return True, "sqlite per_sym enabled"
 
