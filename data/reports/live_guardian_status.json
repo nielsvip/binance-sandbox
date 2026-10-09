@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-09T18:26:22Z",
+ "ts": "2026-10-09T18:42:14Z",
  "dry_run": false,
  "regime_start": "2026-10-06T18:48:00Z",
  "thresholds": {
@@ -26,21 +26,21 @@
  "rth": true,
  "accounts": {
   "trb": {
-   "fills_6h": 83,
+   "fills_6h": 91,
    "open_positions": 1,
-   "unrealised_usd": 1.41,
+   "unrealised_usd": 3.36,
    "pos_mismatch": 0
   },
   "trc": {
    "fills_6h": 11,
    "open_positions": 1,
-   "unrealised_usd": -3.05,
+   "unrealised_usd": -4.23,
    "pos_mismatch": 0
   },
   "fin": {
    "fills_6h": 4,
    "open_positions": 4,
-   "unrealised_usd": 0.21,
+   "unrealised_usd": -0.09,
    "pos_mismatch": 1,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -83,9 +83,9 @@
    }
   },
   "inf": {
-   "fills_6h": 2,
+   "fills_6h": 0,
    "open_positions": 2,
-   "unrealised_usd": 0.43,
+   "unrealised_usd": 0.26,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -119,35 +119,35 @@
     "54373"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 20.0
   },
   "men": {
    "pids": [
     "97466"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 12.0
   },
   "ang": {
    "pids": [
     "53704"
    ],
    "starts_30m": 1,
-   "log_age_s": 12.0
+   "log_age_s": 4.0
   },
   "inf": {
    "pids": [
     "88679"
    ],
    "starts_30m": 1,
-   "log_age_s": 27.0
+   "log_age_s": 17.0
   },
   "flz": {
    "pids": [
     "97467"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 19.0
   },
   "trb": {
    "pids": [
@@ -166,31 +166,39 @@
  },
  "alerts": [
   {
-   "ts": "2026-10-09T18:26:22Z",
+   "ts": "2026-10-09T18:42:15Z",
    "severity": "CRITICAL",
-   "kind": "RAPID_LOSS_KEY",
-   "key": "fin:RLCUSDT_LONG",
-   "evidence": "unrealised -3.19% (60-min high +1.64%), amt 6.5"
+   "kind": "DUPLICATE_FILL",
+   "key": "trb:COHR_LONG",
+   "evidence": "CLOSE qty 3 at 2026-10-09T18:32:59Z and 2026-10-09T18:33:01Z (PRE_CLOSE 0.16% / GAP_MOC_EXIT_INTRADAY_trb:COHR_LONG_avg+)"
   },
   {
-   "ts": "2026-10-09T18:26:22Z",
+   "ts": "2026-10-09T18:42:15Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "positions file amt 0 vs fill-ledger amt 0.2"
   },
   {
-   "ts": "2026-10-09T18:26:22Z",
+   "ts": "2026-10-09T18:42:15Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:CHRUSDT_LONG",
    "evidence": "REDUCE 408 @ 2026-10-09T13:06:54Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
+  },
+  {
+   "ts": "2026-10-09T18:42:15Z",
+   "severity": "CRITICAL",
+   "kind": "RAPID_LOSS_KEY",
+   "key": "men:GALAUSDT_SHORT",
+   "evidence": "unrealised -5.33% (60-min high +0.05%), amt 828"
   }
  ],
  "alert_counts": {
-  "RAPID_LOSS_KEY": 1,
+  "DUPLICATE_FILL": 1,
   "POSITION_STATE_MISMATCH": 1,
-  "FILL_WITHOUT_VEC_DECISION": 1
+  "FILL_WITHOUT_VEC_DECISION": 1,
+  "RAPID_LOSS_KEY": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -232,5 +240,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.56
+ "sweep_s": 1.17
 }
