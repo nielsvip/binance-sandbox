@@ -10943,6 +10943,18 @@ async def safe_check_server_heartbeat_tradier(account_key: str) -> bool:
         return False
 
 
+def _mandatory_favorable_px(is_long, current_price, exit_px):
+    """Rally-parity trigger (USER 2026-10-09: LIVE IMITATES VEC): strict cross-back through
+    exit, mirroring vec HARDCODED_RALLY_REENTRY `px > last_exit` (v12 simulate_one).
+    Supersedes the 2026-05-21 >= mandate for the flat-mandatory path only."""
+    try:
+        if is_long:
+            return float(current_price) > float(exit_px)
+        return float(current_price) < float(exit_px)
+    except Exception:
+        return False
+
+
 def in_opening_buffer(min_minutes: float = None) -> tuple[bool, float]:
     """Return (is_in_buffer, mins_since_open). True means within OPENING_BUFFER_NO_CLOSE_MINUTES
     after the 9:30 ET open on a weekday. Used by evaluate_stop/open/augment/reentry to block
@@ -18740,11 +18752,10 @@ async def process_position(
                             # 2026-05-21 USER MANDATE — "IF YOU SELL BY ACCIDENT GET RIGHT BACK IN".
                             # Old logic required dist<=band AND favorable direction. SNDK rally
                             # beyond +0.3% band → NO reentry. Now: fire whenever price crossed
-                            # BACK THROUGH exit in favorable direction (LONG: cur>=exit,
-                            # SHORT: cur<=exit). Within-band on the other side also allowed.
-                            _xb_favorable = (
-                                is_long and current_price >= _xb_last_px
-                            ) or ((not is_long) and current_price <= _xb_last_px)
+                            # BACK THROUGH exit in favorable direction. Within-band on the other
+                            # side also allowed. 2026-10-09 rally parity: STRICT cross (>/<, not
+                            # >=/<=) mirroring vec HARDCODED_RALLY_REENTRY px>last_exit.
+                            _xb_favorable = _mandatory_favorable_px(is_long, current_price, _xb_last_px)
                             _xb_within_band = (
                                 _xb_dist_pct <= _xb_band_pct
                                 if _xb_obligation is None
@@ -18810,18 +18821,13 @@ async def process_position(
                                     _xb_dcb_ok = (
                                         is_long and current_price >= _xb_dclvl
                                     ) or ((not is_long) and current_price <= _xb_dclvl)
-                            if (
-                                (_xb_favorable or _xb_within_band)
-                                and len(_xb_opposed) > 1
-                                and not _xb_force_after_opposition
-                                and not _xb_follow_through
-                            ):
-                                logger.warning(
-                                    f"[MANDATORY_REENTRY_PENDING_OPPOSITION] {position_key}: "
-                                    f"opposed={','.join(_xb_opposed)} detail={_xb_opp_detail} "
-                                    f"overshoot={_xb_trace['max_overshoot_pct']:.3f}%"
-                                )
-                            elif _xb_favorable or _xb_within_band:
+                            # 2026-10-09 rally parity (LIVE IMITATES VEC): the opposition hold is
+                            # REMOVED — vec HARDCODED_RALLY_REENTRY has no opposition concept, and the
+                            # hold blocked 66/81 AAPL trigger bars live would otherwise share with vec.
+                            # Stopping set on this path is now: DG + opening buffer + queue/exit gates.
+                            _xb_in_buf, _xb_buf_mins = in_opening_buffer()
+                            _xb_obuf_on = bool(_cfg_auto("STOCKS_OPENING_BUFFER_ENTRY_ENABLED", True))
+                            if (_xb_favorable or _xb_within_band) and not (_xb_in_buf and _xb_obuf_on):
                                 # USER 2026-09-10 MANDATE: price cross back REENTERS 100% — WT and DC-break are
                                 # hard vetoes that blocked every GLD/NEM reclaim (WT HOLD + DC BREAK HOLD).
                                 # For CROSSED_BACK (cur beyond exit in favorable direction) we bypass both
@@ -40491,6 +40497,8 @@ def _apply_trc_overrides(cfg):
         "TRC_MAX_DAILY_LOSS_PCT": "MAX_DAILY_LOSS_PCT",
         "TRC_SCALP_TARGET_PCT": "SCALP_TARGET_PCT",
         "TRC_NOLOSS_MIN_PROFIT_PCT": "NOLOSS_MIN_PROFIT_PCT_TRADIER",
+        "TRC_LIVE_5M_TRADING_ENABLED": "LIVE_5m_trading_ENABLED",
+        "TRC_PARITY_DISABLE_NON_VECTORIZABLE": "PARITY_DISABLE_NON_VECTORIZABLE",
     }
     applied = []
     for src, dst in mapping.items():
@@ -46257,10 +46265,12 @@ class TradierTradeManager:
             # Only fires on fresh opens where the position is currently flat (positionAmt==0).
             # Augments on existing open positions are NOT gated here — they pass through.
             _dg_is_flat_open = abs(float(original_position_amt or 0)) < 0.0001
+            # 2026-10-09 rally parity (LIVE IMITATES VEC): DG BINDS on mandatory reclaim —
+            # vec applies its DG mask to HARDCODED_RALLY_REENTRY bars (no exemption). The
+            # 2026-05-11 exemption is removed. Flat opens only; augments still pass through.
             if (
                 account_key in {"trb", "trc", "tra"}
                 and is_entry_action
-                and not _is_mandatory_reclaim
                 and not _is_ladder_parity
                 and not _is_exit_or_reduce
                 and _dg_is_flat_open

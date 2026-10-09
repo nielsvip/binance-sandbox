@@ -5046,6 +5046,8 @@ class TradierConfig:
     TRC_SCALP_LONG_BUDGET: float = 1250.0  # was 2500 / orig 5000
     TRC_SCALP_SHORT_BUDGET: float = 1250.0  # was 2500 / orig 5000
     TRC_BEAR_MARKET_MODE: bool = False  # No bear penalty — test both directions equally
+    TRC_LIVE_5M_TRADING_ENABLED: bool = True  # USER 2026-10-09: trc paper runs real 5m legs (sizing/legs) in parallel; trb stays vec-parity
+    TRC_PARITY_DISABLE_NON_VECTORIZABLE: bool = False  # USER 2026-10-09: trc paper enables non-vectorizable legs; trb keeps them disabled
     TRC_ENTRY_ZONE_LONG: float = 30.0  # Local extremes: deeper oversold bottom (was 30)
     TRC_ENTRY_ZONE_SHORT: float = 70.0  # Local extremes: deeper overbought top (was 70)
     TRC_ENTRY_MIN_ALIGNMENT: int = 4  # 2026-06-09: 6→4. ROLLBACK: 6.

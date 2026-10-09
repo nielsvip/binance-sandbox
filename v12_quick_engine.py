@@ -10548,8 +10548,8 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
             pass
     # USER 2026-10-09 INV-0001 v5: lower-high STRUCT + stoch-rollover DIVERG SHORT trigger
     # (LONG mirror). Pure scalars, identical inputs live (indicators dict) and vec (NPZ).
-    # ORDER: vec FIRST-wins, so this sits after VOL_SPIKE_REVERSAL mirroring the live
-    # LAST-writer-wins placement between the DC gate and the VOL worker (see replica spec
+    # Live worker sits immediately before VOL (both not-should_trade gated = FIRST-writer-wins);
+    # trade parity via OR-mode (any fire opens); reason may differ on ties (see replica spec
     # data/invention/orders/INV-0001-live-replica.md). OFF = inert.
     if bool(getattr(cfg, "ENTRY_LH_TRIGGER_ENABLED", False)):
         try:
