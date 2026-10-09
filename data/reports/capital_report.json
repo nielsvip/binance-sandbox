@@ -1,54 +1,56 @@
 {
- "generated_at": "2026-10-09 22:09 UTC",
- "total_capital_usd": 20.15,
+ "generated_at": "2026-10-09 22:22 UTC",
+ "total_capital_usd": 24.87,
  "tier_capital": {
-  "A": 6.9,
-  "B": 13.26,
+  "A": 0.0,
+  "B": 24.86,
   "C": 0.0
  },
  "tier_count": {
-  "A": 1,
-  "B": 2,
+  "A": 0,
+  "B": 3,
   "C": 0
  },
- "winners": [
-  "fin:RLCUSDT_LONG"
+ "winners": [],
+ "losers": [
+  "inf:PUMPUSDT_SHORT"
  ],
- "losers": [],
- "mediocre": [],
+ "mediocre": [
+  "inf:AMATUSDT_SHORT"
+ ],
  "positions": [
   {
-   "pk": "fin:BNBUSDC_LONG",
-   "symbol": "BNBUSDC",
-   "account": "fin",
-   "value_usd": 7.42,
-   "gain_pct": 1.497,
-   "tier": "B",
-   "perf_mult": 2.14,
-   "amt": 0.01,
-   "mark": 741.66
-  },
-  {
-   "pk": "fin:RLCUSDT_LONG",
-   "symbol": "RLCUSDT",
-   "account": "fin",
-   "value_usd": 6.9,
-   "gain_pct": 15.632,
-   "tier": "A",
-   "perf_mult": 9.1,
-   "amt": 6.5,
-   "mark": 1.06117167
-  },
-  {
-   "pk": "fin:IOTXUSDT_LONG",
-   "symbol": "IOTXUSDT",
-   "account": "fin",
-   "value_usd": 5.84,
-   "gain_pct": 1.853,
+   "pk": "inf:PUMPUSDT_SHORT",
+   "symbol": "PUMPUSDT",
+   "account": "inf",
+   "value_usd": 16.39,
+   "gain_pct": -1.487,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 1586.0,
-   "mark": 0.003682
+   "amt": 3021.0,
+   "mark": 0.005427
+  },
+  {
+   "pk": "inf:AMATUSDT_SHORT",
+   "symbol": "AMATUSDT",
+   "account": "inf",
+   "value_usd": 5.07,
+   "gain_pct": -0.002,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 0.01,
+   "mark": 507.27486113
+  },
+  {
+   "pk": "inf:ALGOUSDT_SHORT",
+   "symbol": "ALGOUSDT",
+   "account": "inf",
+   "value_usd": 3.4,
+   "gain_pct": 8.847,
+   "tier": "B",
+   "perf_mult": 3.04,
+   "amt": 30.2,
+   "mark": 0.11274
   }
  ]
 }

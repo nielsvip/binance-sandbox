@@ -64,22 +64,6 @@
    "workers_per_side": 6,
    "oom_mb": 1500,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM"
-  },
-  {
-   "name": "s7",
-   "ssh": [
-    "10.0.0.7"
-   ],
-   "root": "~/binance-sandbox",
-   "venues": [
-    "stocks",
-    "crypto"
-   ],
-   "mem_reserve_mb": 4000,
-   "max_pairs": 2,
-   "workers_per_side": 3,
-   "oom_mb": 1500,
-   "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM"
   }
  ],
  "cpu_target_pct": 90,

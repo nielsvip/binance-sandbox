@@ -1269,6 +1269,62 @@ def tick(args, cfg, now):
                 if held[h["name"]].get(sym) != "running":
                     running_cnt += 1
                     held[h["name"]][sym] = "running"
+        if launched == 0 and used < cap and proj_mem >= est_pair and cpu < cfg.get("cpu_target_pct", 90) and swap_ok and new_launched < args.max_launch:
+            _bf_ts = st.setdefault("backfill_ts", {})
+            blo = []
+            for ss in _deferred_sides:
+                sym2, sd2 = ss.rsplit("_", 1)
+                if venue_of(sym2) not in h["venues"]:
+                    continue
+                if sym2 in owner and owner[sym2] != h["name"]:
+                    continue
+                if sym2 in held[h["name"]]:
+                    continue
+                if f"{sym2}_LONG" in running or f"{sym2}_SHORT" in running:
+                    continue
+                if _now_ts - float(_bf_ts.get(sym2, 0) or 0) < 3600:
+                    continue
+                key2 = f"{ss}|30D"
+                if st["attempts"].get(key2, 0) >= _LAUNCH_CAPS["30D"] or key2 in launched_keys:
+                    continue
+                try:
+                    t2 = ((_gtiers or {}).get(ss) or {}).get("tier", "M")
+                    g2 = float((_seen.get(ss) or {}).get("gain") or -1e18)
+                except (TypeError, ValueError):
+                    t2, g2 = "M", -1e18
+                blo.append((0 if t2 == "M" else 1, -g2, ss, sym2, sd2, key2))
+            blo.sort()
+            for _, _, ss, sym2, sd2, key2 in blo:
+                if used >= cap or proj_mem < est_pair or new_launched >= args.max_launch:
+                    break
+                rd = is_ready(h["name"], sym2)
+                if not rd.get("ok"):
+                    continue
+                acts = [{"sym": sym2, "side": sd2, "window": "30D", "attempt": 1, "key": key2}]
+                pd = s.get("pdir") or cfg.get("fallback_pdir")
+                if not pd:
+                    continue
+                tag = f"BACKFILL {h['name']}:{sym2}:{sd2[0]}30D"
+                if args.dry_run or sim:
+                    log["launched"].append(tag + " (dry)")
+                    launched_keys.add(key2)
+                else:
+                    try:
+                        subprocess.run(["ssh", "-o", "BatchMode=yes", h.get("_via", h["ssh"][0]), pair_launch_cmd(h, acts, pd, workers)], timeout=40)
+                    except subprocess.TimeoutExpired:
+                        print(f"[sched] backfill launch ssh timeout {h['name']} {sym2} (job may still have started; pgrep dedups)", flush=True)
+                    st["attempts"][key2] = st["attempts"].get(key2, 0) + 1
+                    st.setdefault("last_act", {})[ss] = key2
+                    _bf_ts[sym2] = _now_ts
+                    launched_keys.add(key2)
+                    log["launched"].append(tag)
+                used += 1
+                proj_mem -= est_pair + float(rd.get("size_mb") or 0)
+                held[h["name"]][sym2] = "new"
+                st["held"].setdefault(h["name"], {})[sym2] = now.isoformat()
+                owner[sym2] = h["name"]
+                launched += 1
+                new_launched += 1
         info["launched_pairs"] = launched
         info["slots"] = f"{len(held[h['name']])}/{cap}"
         HB[h["name"]].update(used=len(held[h["name"]]), proj_mem=proj_mem, launched=launched, new_launched=new_launched, held_syms=sorted(held[h["name"]]))
