@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-09T12:31:36Z",
+ "ts": "2026-10-09T12:39:09Z",
  "dry_run": false,
  "regime_start": "2026-10-06T18:48:00Z",
  "thresholds": {
@@ -28,7 +28,7 @@
   "fin": {
    "fills_6h": 2,
    "open_positions": 6,
-   "unrealised_usd": 2.8,
+   "unrealised_usd": 2.64,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -73,7 +73,7 @@
   "inf": {
    "fills_6h": 10,
    "open_positions": 3,
-   "unrealised_usd": -0.0,
+   "unrealised_usd": -0.05,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -108,99 +108,106 @@
     "54373"
    ],
    "starts_30m": 1,
-   "log_age_s": 12.0
+   "log_age_s": 3.0
   },
   "men": {
    "pids": [
     "97466"
    ],
    "starts_30m": 1,
-   "log_age_s": 17.0
+   "log_age_s": 3.0
   },
   "ang": {
    "pids": [
     "53704"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 3.0
   },
   "inf": {
    "pids": [
     "88679"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 1.0
   },
   "flz": {
    "pids": [
     "97467"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 8.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 35329.0
+   "log_age_s": 35782.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 35329.0
+   "log_age_s": 35782.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-09T12:31:36Z",
+   "ts": "2026-10-09T12:39:09Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:COTIUSDT_SHORT",
    "evidence": "REDUCE 1357 @ 2026-10-09T10:52:22Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-09T12:31:36Z",
+   "ts": "2026-10-09T12:39:09Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:COTIUSDT_SHORT",
    "evidence": "REDUCE 1357 @ 2026-10-09T11:02:43Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-09T12:31:36Z",
+   "ts": "2026-10-09T12:39:09Z",
+   "severity": "CRITICAL",
+   "kind": "RAPID_LOSS_KEY",
+   "key": "inf:ZROUSDT_LONG",
+   "evidence": "unrealised -4.32% (60-min high +1.52%), amt 2.7"
+  },
+  {
+   "ts": "2026-10-09T12:39:09Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:AIAUSDT_LONG",
    "evidence": "AUGMENT 73 @ 2026-10-09T07:41:10Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-09T12:31:36Z",
+   "ts": "2026-10-09T12:39:09Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:AIAUSDT_LONG",
    "evidence": "AUGMENT 73 @ 2026-10-09T07:41:34Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-09T12:31:36Z",
+   "ts": "2026-10-09T12:39:09Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:ZROUSDT_LONG",
    "evidence": "AUGMENT 2.7 @ 2026-10-09T10:04:59Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-09T12:31:36Z",
+   "ts": "2026-10-09T12:39:09Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:ZROUSDT_LONG",
    "evidence": "AUGMENT 2.7 @ 2026-10-09T10:05:16Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-09T12:31:36Z",
+   "ts": "2026-10-09T12:39:09Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:STRKUSDT_LONG",
    "evidence": "AUGMENT 84.2 @ 2026-10-09T08:20:19Z tagged VEC_EXACT but no logged vec decision in the preceding 600s"
   },
   {
-   "ts": "2026-10-09T12:31:36Z",
+   "ts": "2026-10-09T12:39:09Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:STRKUSDT_LONG",
@@ -208,7 +215,8 @@
   }
  ],
  "alert_counts": {
-  "FILL_WITHOUT_VEC_DECISION": 8
+  "FILL_WITHOUT_VEC_DECISION": 8,
+  "RAPID_LOSS_KEY": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -234,7 +242,14 @@
    "why": "ORDER_STORM_ACCOUNT 26 fills/10min",
    "undo": "rm /Users/niels/Documents/binance/data/HALT_TRADING_men",
    "dry_run": false
+  },
+  "key:inf:ZROUSDT_LONG": {
+   "ts": 1791549240.864695,
+   "until": 1791556440.8646982,
+   "why": "RAPID_LOSS_KEY unrealised -3.04% (60-min high +1.52%), amt 2.7 (opens/augments blocked; exits untouched)",
+   "undo": "redis-cli -p 6379 DEL open_blocked:inf:ZROUSDT_LONG",
+   "dry_run": false
   }
  },
- "sweep_s": 0.54
+ "sweep_s": 0.46
 }
