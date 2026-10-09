@@ -1,6 +1,7 @@
 #!/bin/bash
 # v15_results_watchdog — ZERO TOLERANCE enforcer (USER 2026-10-08: "stuck servers get rebooted, stuck sym_sides get (partially)
-# skipped, but the show goes on - worst case destroy any server except s1 and gateway if no final results come out of it for >40min").
+# skipped, but the show goes on - worst case destroy any server except s1 and gateway if no final results come out of it for >40min";
+# USER 2026-10-09: timeouts lengthened so slow-but-working pilots (25-90 min boards) finish — SYM 30->90, PROGRESS 20->60, WINDOW 40->120).
 # Runs on S1 every 10 min. For every host in tools/fleet_hosts_final.json:
 #   STUCK SYM_SIDE: a running pilot whose progress file has not changed for >= SYM_STALL_MIN -> kill that pilot tree
 #                   (scheduler relaunches; after --max-attempts the sym_side is terminal = skipped; the show goes on)
@@ -14,7 +15,7 @@
 #   A host booted < BOOT_GRACE_MIN ago gets no server verdict (pilots are still coming back).
 set -u
 cd /home/niels/binance-sandbox || exit 1
-RESULT_WINDOW_MIN=${V15_RESULTS_WINDOW_MIN:-40}; PROGRESS_STALL_MIN=${V15_PROGRESS_STALL_MIN:-20}; SYM_STALL_MIN=${V15_SYM_STALL_MIN:-30}; BOOT_GRACE_MIN=${V15_BOOT_GRACE_MIN:-20}
+RESULT_WINDOW_MIN=${V15_RESULTS_WINDOW_MIN:-120}; PROGRESS_STALL_MIN=${V15_PROGRESS_STALL_MIN:-60}; SYM_STALL_MIN=${V15_SYM_STALL_MIN:-90}; BOOT_GRACE_MIN=${V15_BOOT_GRACE_MIN:-20}
 LOG=/tmp/v15_results_watchdog.log; ST=/tmp/v15_results_watchdog_state.json; AL=data/daily_chain
 log(){ echo "[$(date -u +%FT%TZ)] [results-wd] $*" >> $LOG; }
 [ -f $ST ] && python3 -c "import json;json.load(open('$ST'))" 2>/dev/null || echo '{}' > $ST  # unreadable (disk-full) state -> reset, never crash
@@ -54,13 +55,18 @@ for HS in $HOSTS; do
     log "$H ok done_${RESULT_WINDOW_MIN}m=$DONE pilots=$PIL progress_age=${PROG_AGE}m"; continue
   fi
   STRIKES=$(python3 -c "import json;s=json.load(open('$ST'));e=s.setdefault('$H',{'strikes':0});e['strikes']=e.get('strikes',0)+1;json.dump(s,open('$ST','w'));print(e['strikes'])")
-  DEST=/home/niels/stalled_${H}_${TS}; mkdir -p "$DEST"
-  PD=$(ssh -o BatchMode=yes "$IP" "cat ~/v15_current_progress_dir.txt" 2>/dev/null)
-  rsync -az -e "ssh -o BatchMode=yes -o ConnectTimeout=8" "$IP:${PD:-/nonexistent}/" "$DEST/progress/" 2>/dev/null
-  rsync -az --update -e "ssh -o BatchMode=yes -o ConnectTimeout=8" "$IP:${PD:-/nonexistent}/" "${PD:-/nonexistent}/" 2>/dev/null
-  rsync -az -e "ssh -o BatchMode=yes -o ConnectTimeout=8" "$IP:/tmp/sweep_*_30D.log" "$DEST/logs/" 2>/dev/null
-  rsync -az -e "ssh -o BatchMode=yes -o ConnectTimeout=8" "$IP:binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/" "$DEST/sheets/" 2>/dev/null
-  log "$H STALLED (0 finished in ${RESULT_WINDOW_MIN}m, progress silent ${PROG_AGE}m, pilots=$PIL) strike=$STRIKES -> data copied to $DEST ($(du -sh $DEST 2>/dev/null | cut -f1))"
+  PREV=$(ls -dt /home/niels/stalled_${H}_* 2>/dev/null | head -1)
+  if [ -n "$PREV" ] && [ $((NOW - $(stat -c %Y "$PREV" 2>/dev/null || echo 0))) -lt ${V15_STRIKE_COPY_MIN_AGE_S:-21600} ]; then
+    DEST="$PREV"; log "$H STALLED (0 finished in ${RESULT_WINDOW_MIN}m, progress silent ${PROG_AGE}m, pilots=$PIL) strike=$STRIKES -> evidence fresh in $DEST, copy skipped (disk guard; 2026-10-09: 25 dumps filled S1)"
+  else
+    DEST=/home/niels/stalled_${H}_${TS}; mkdir -p "$DEST"
+    PD=$(ssh -o BatchMode=yes "$IP" "cat ~/v15_current_progress_dir.txt" 2>/dev/null)
+    rsync -az -e "ssh -o BatchMode=yes -o ConnectTimeout=8" "$IP:${PD:-/nonexistent}/" "$DEST/progress/" 2>/dev/null
+    rsync -az --update -e "ssh -o BatchMode=yes -o ConnectTimeout=8" "$IP:${PD:-/nonexistent}/" "${PD:-/nonexistent}/" 2>/dev/null
+    rsync -az -e "ssh -o BatchMode=yes -o ConnectTimeout=8" "$IP:/tmp/sweep_*_30D.log" "$DEST/logs/" 2>/dev/null
+    rsync -az -e "ssh -o BatchMode=yes -o ConnectTimeout=8" "$IP:binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/" "$DEST/sheets/" 2>/dev/null
+    log "$H STALLED (0 finished in ${RESULT_WINDOW_MIN}m, progress silent ${PROG_AGE}m, pilots=$PIL) strike=$STRIKES -> data copied to $DEST ($(du -sh $DEST 2>/dev/null | cut -f1))"
+  fi
   if [ "$H" = "s1" ]; then
     pkill -TERM -f '[v]15_pilot.py --sym-side'; echo "$(date -u +%FT%TZ) S1 stalled strike $STRIKES (never rebooted/deleted here): pilots killed, data in $DEST" > "$AL/ALERT_S1_STALL.txt"; log "s1: pilots killed + ALERT_S1_STALL (INFRA law)"; continue
   fi

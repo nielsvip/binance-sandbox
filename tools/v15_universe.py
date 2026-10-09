@@ -81,7 +81,11 @@ def tradeable_sym_sides(root):
             pass
         m = re.search(rf"TRADIER_MANDATORY_{side.upper()}_TRB\s*=\s*(\[[^\]]*\])", src)
         if m:
-            syms |= {str(s).upper() for s in json.loads(m.group(1).replace("'", '"'))}
+            txt = re.sub(r",\s*\]", "]", m.group(1).replace("'", '"'))
+            try:
+                syms |= {str(s).upper() for s in json.loads(txt)}
+            except Exception:
+                syms |= {s.upper() for s in re.findall(r'"([A-Za-z0-9._]+)"', m.group(1))}
         allowed |= {f"{s}_{side.upper()}" for s in syms}
     try:
         allowed -= {str(s).upper() for s in json.loads((root / "data" / "universe_exclude.json").read_text()).get("exclude_sym_sides", [])}

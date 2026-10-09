@@ -50,6 +50,13 @@ def valid_npz(sym):
 
 
 def load_registry():
+    # Fleet worker override (coordinator-merged master) wins over everything.
+    _ov = os.environ.get("V15_PUSHER_REGISTRY")
+    if _ov:
+        try:
+            return json.load(open(_ov))
+        except Exception:
+            pass
     # SQL-primary → JSON fallback
     if os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1":
         try:
@@ -492,21 +499,49 @@ def audit_xlsx(path):
     return {"zip_ok": True, "entries": entries, "tabs": tabs, "bad_tabs": bad}
 
 
-def push_one(symside, runout, registry, workers, do_rerun, streamer=None):
+_ENGINE_MD5 = None
+def engine_md5():
+    global _ENGINE_MD5
+    if _ENGINE_MD5 is None:
+        try:
+            import hashlib
+            _ENGINE_MD5 = hashlib.md5(open(ROOT / "v12_quick_engine.py", "rb").read()).hexdigest()[:12]
+        except Exception:
+            _ENGINE_MD5 = "unknown"
+    return _ENGINE_MD5
+
+
+def push_one(symside, runout, registry, workers, do_rerun, streamer=None, anchor_overrides=None, extra=None):
     from tools.opt.v12_pilot import prepare_batch
+    import socket
     sym = symside.rsplit("_", 1)[0]
     rep = {"symside": symside}
-    pj = PROG_DIR / f"{symside}_v14_progress.json"
-    if not pj.exists():
-        return {**rep, "skip": "no progress json"}
+    if extra:
+        rep.update(extra)
+    rep.setdefault("host", socket.gethostname())
+    rep["engine_md5"] = engine_md5()
+    if anchor_overrides is None:
+        pj = PROG_DIR / f"{symside}_v14_progress.json"
+        if not pj.exists():
+            return {**rep, "skip": "no progress json"}
     if streamer is not None:
         if not streamer.ensure(sym):
             return {**rep, "skip": "s1 pull failed"}
         rep["streamed"] = sym in streamer.fetched
     elif not valid_npz(sym):
         return {**rep, "skip": "npz missing/corrupt"}
-    d = json.load(open(pj))
-    start_ov = d.get("cumulative_overrides") or {}
+    if anchor_overrides is None:
+        d = json.load(open(pj))
+        start_ov = d.get("cumulative_overrides") or {}
+        rep["anchor_source"] = "progress_cumulative"
+    else:
+        start_ov = dict(anchor_overrides)
+        rep["anchor_source"] = "anchor_json"
+    try:
+        _np = NPZ_DIR / f"{sym}.npz"
+        rep["npz_id"] = {"mtime": int(_np.stat().st_mtime), "size": _np.stat().st_size}
+    except Exception:
+        rep["npz_id"] = {}
     prep = prepare_batch(symside, 30)
     if prep is None:
         return {**rep, "skip": "prepare failed"}
@@ -580,13 +615,36 @@ def main():
     ap.add_argument("--fetch-s1", action="store_true", help="stream missing NPZs from S1 one by one (prefetch next, delete after use)")
     ap.add_argument("--s1-host", default="s1-int")
     ap.add_argument("--resume", default=None, help="run dir to continue (skips syms with *_report.json, appends)")
+    ap.add_argument("--anchor-json", default=None, help="fleet worker mode: start overrides from this file instead of progress JSON (requires --sym)")
+    ap.add_argument("--report-out", default=None, help="fleet worker mode: write ONLY this report file (no TRACK_LOG/SUMMARY append)")
+    ap.add_argument("--no-lock", action="store_true", help="fleet worker mode: skip the single-instance flock (supervisor owns concurrency)")
+    ap.add_argument("--round", type=int, default=0, help="fleet worker mode: round number stamped into the report")
     a = ap.parse_args()
     import fcntl
-    _lockfh = open(PUSH_DIR / "gain_pusher.lock", "w")
-    try:
-        fcntl.flock(_lockfh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except (IOError, OSError):
-        print("[pusher] another instance holds the lock — exiting")
+    _lockfh = None
+    if not a.no_lock:
+        _lockfh = open(PUSH_DIR / "gain_pusher.lock", "w")
+        try:
+            fcntl.flock(_lockfh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except (IOError, OSError):
+            print("[pusher] another instance holds the lock — exiting")
+            return
+    if a.anchor_json:
+        if not a.sym:
+            print("[pusher] --anchor-json requires --sym", flush=True)
+            return
+        anchor = json.load(open(a.anchor_json))
+        registry = load_registry()
+        runout = pathlib.Path(a.out) if a.out else PUSH_DIR / "runs" / "FLEET_R"
+        runout.mkdir(parents=True, exist_ok=True)
+        try:
+            rep = push_one(a.sym, runout, registry, a.workers, a.rerun, None, anchor, {"round": a.round})
+        except Exception as e:
+            rep = {"symside": a.sym, "round": a.round, "error": f"{type(e).__name__}: {e}"[:200]}
+            log(f"{a.sym}: ERROR {rep['error']}")
+        dest = a.report_out or str(runout / f"{a.sym}_report.json")
+        json.dump(rep, open(dest, "w"), indent=1, default=str)
+        log(f"worker done: {a.sym} round={a.round} improved_by={rep.get('improved_by')} -> {dest}")
         return
     ts = time.strftime("%Y%m%d_%H%M%S")
     runout = pathlib.Path(a.resume) if a.resume else (pathlib.Path(a.out) if a.out else PUSH_DIR / "runs" / ts)

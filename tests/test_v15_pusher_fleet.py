@@ -1,0 +1,89 @@
+"""Fleet pusher coordinator logic — ingest, registry merge, round counting, host pick."""
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
+
+import v15_pusher_coordinator as C
+
+
+def _rep(ss, rnd, gain, moves=()):
+    return {"symside": ss, "round": rnd, "final": {"gain": gain, "trades": 20, "valid": True},
+            "moves": [{"flip": dict(m), "delta": 1.0} for m in moves],
+            "engine_md5": "abc", "host": "s2"}
+
+
+def test_ingest_advances_and_adopts_best(tmp_path):
+    base = tmp_path / "p"
+    (base / "anchors").mkdir(parents=True)
+    st = {"syms": {}, "assigned": {"0001_A_LONG": {"host": "s2", "ts": 0}}, "units_done": 0}
+    ok, adopted = C.ingest_report(st, base, _rep("A_LONG", 1, 5.0), {"K": 1})
+    assert ok and adopted
+    assert st["syms"]["A_LONG"]["done_round"] == 1
+    assert st["syms"]["A_LONG"]["best"] == {"gain": 5.0, "round": 1}
+    assert json.loads((base / "anchors" / "A_LONG.json").read_text()) == {"K": 1}
+    assert "0001_A_LONG" not in st["assigned"]
+    ok2, _ = C.ingest_report(st, base, _rep("A_LONG", 1, 9.0), {"K": 2})
+    assert not ok2
+    ok3, adopted3 = C.ingest_report(st, base, _rep("A_LONG", 2, 4.0), {"K": 3})
+    assert ok3 and not adopted3
+    assert json.loads((base / "anchors" / "A_LONG.json").read_text()) == {"K": 1}
+
+
+def test_ingest_rejects_error_and_below_round(tmp_path):
+    base = tmp_path / "p"
+    (base / "anchors").mkdir(parents=True)
+    st = {"syms": {"A_LONG": {"done_round": 2}}, "assigned": {}, "units_done": 0, "units_err": 0}
+    ok, _ = C.ingest_report(st, base, {"symside": "A_LONG", "round": 2, "error": "x"}, None)
+    assert not ok and st["units_err"] == 1
+    ok, _ = C.ingest_report(st, base, _rep("A_LONG", 1, 99.0), {})
+    assert not ok
+
+
+def test_merge_registry_adds_frequent_winners(tmp_path):
+    base = tmp_path / "p"
+    (base / "registry").mkdir(parents=True)
+    (base / "registry" / "PRIORITY_SWITCHES.json").write_text(json.dumps({"P1_MUST_TEST": {}, "_version": 1}))
+    st = {"rounds_complete": 3, "registry_version": 1}
+    reps = [_rep(f"S{i}_LONG", 4, 1.0, moves=[{"STOP_LOSS_PCT": 1}]) for i in range(6)]
+    reps.append(_rep("Z_LONG", 4, 1.0, moves=[{"RARE_K": 2}]))
+    n = C.merge_registry(base, st, reps)
+    assert n == 1
+    reg = json.loads((base / "registry" / "PRIORITY_SWITCHES.json").read_text())
+    assert reg["_version"] == 2
+    assert reg["P1_MUST_TEST"]["STOP_LOSS_PCT"]["test_values"] == [1]
+    assert "RARE_K" not in reg["P1_MUST_TEST"]
+
+
+def test_rounds_complete_counts_full_rounds():
+    st = {"syms": {"A": {"done_round": 3}, "B": {"done_round": 2}, "C": {"done_round": 9}}}
+    assert C.rounds_complete(st, ["A", "B", "C"]) == 2
+    assert C.rounds_complete({"syms": {}}, ["A"]) == 0
+    assert C.rounds_complete(st, []) == 0
+
+
+def test_terminal_sym_counts_until_ttl():
+    import time
+    now = time.time()
+    st = {"syms": {"A": {"done_round": 5}, "B": {"done_round": 0, "terminal": {"reason": "npz missing/corrupt", "ts": now, "round": 1}}}}
+    assert C.rounds_complete(st, ["A", "B"], now) == 1
+    assert C.rounds_complete(st, ["A", "B"], now + C.TERMINAL_TTL + 1) == 0
+
+
+def test_ingest_terminal_skip(tmp_path):
+    base = tmp_path / "p"
+    (base / "anchors").mkdir(parents=True)
+    st = {"syms": {}, "assigned": {"0001_Q_LONG": {"host": "s2", "ts": 0}}, "units_done": 0, "units_err": 0}
+    ok, _ = C.ingest_report(st, base, {"symside": "Q_LONG", "round": 1, "skip": "npz missing/corrupt"}, None)
+    assert not ok and st["units_err"] == 1
+    assert st["syms"]["Q_LONG"]["terminal"]["reason"] == "npz missing/corrupt"
+    assert "0001_Q_LONG" not in st["assigned"]
+
+
+def test_pick_host_least_loaded_by_weight():
+    st = {"assigned": {f"u{i}": {"host": "s2", "ts": 0} for i in range(14)}}
+    assert C.pick_host(st) in ("s5", "s6", "s7", "s1")
+    st2 = {"assigned": {}}
+    assert C.pick_host(st2) == "s1"

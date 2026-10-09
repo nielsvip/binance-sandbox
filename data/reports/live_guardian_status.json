@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-09T19:30:34Z",
+ "ts": "2026-10-09T19:59:57Z",
  "dry_run": false,
  "regime_start": "2026-10-06T18:48:00Z",
  "thresholds": {
@@ -26,21 +26,21 @@
  "rth": true,
  "accounts": {
   "trb": {
-   "fills_6h": 99,
+   "fills_6h": 72,
    "open_positions": 2,
-   "unrealised_usd": 2.58,
+   "unrealised_usd": -1.44,
    "pos_mismatch": 0
   },
   "trc": {
    "fills_6h": 14,
    "open_positions": 3,
-   "unrealised_usd": -4.86,
+   "unrealised_usd": -7.88,
    "pos_mismatch": 0
   },
   "fin": {
    "fills_6h": 0,
    "open_positions": 4,
-   "unrealised_usd": 0.62,
+   "unrealised_usd": 1.0,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -55,7 +55,7 @@
   "men": {
    "fills_6h": 0,
    "open_positions": 2,
-   "unrealised_usd": -0.18,
+   "unrealised_usd": -0.15,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -85,7 +85,7 @@
   "inf": {
    "fills_6h": 0,
    "open_positions": 2,
-   "unrealised_usd": 1.1,
+   "unrealised_usd": 1.2,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -99,8 +99,8 @@
   },
   "flz": {
    "fills_6h": 0,
-   "open_positions": 1,
-   "unrealised_usd": 0.02,
+   "open_positions": 0,
+   "unrealised_usd": 0.0,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -119,31 +119,33 @@
     "54373"
    ],
    "starts_30m": 1,
-   "log_age_s": 37.0
+   "log_age_s": 14.0
   },
   "men": {
    "pids": [],
-   "starts_30m": 0,
-   "log_age_s": 135.0
+   "starts_30m": 9,
+   "log_age_s": 46.0
   },
   "ang": {
    "pids": [
     "53704"
    ],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 2.0
   },
   "inf": {
    "pids": [
     "88679"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 8.0
   },
   "flz": {
-   "pids": [],
-   "starts_30m": 0,
-   "log_age_s": 129.0
+   "pids": [
+    "38878"
+   ],
+   "starts_30m": 9,
+   "log_age_s": 6.0
   },
   "trb": {
    "pids": [
@@ -157,50 +159,51 @@
     "69500"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 0.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-09T19:30:34Z",
+   "ts": "2026-10-09T19:59:57Z",
+   "severity": "CRITICAL",
+   "kind": "ACCOUNT_EQUITY_DROP",
+   "key": "trc",
+   "evidence": "unrealised PnL of the same open positions fell $61.56 since 2026-10-09T19:52:52Z (now $-7.88)"
+  },
+  {
+   "ts": "2026-10-09T19:59:57Z",
    "severity": "CRITICAL",
    "kind": "RAPID_LOSS_KEY",
    "key": "men:GALAUSDT_SHORT",
-   "evidence": "unrealised -5.86% (60-min high +0.05%), amt 828"
+   "evidence": "unrealised -4.95% (60-min high +1.03%), amt 828"
   },
   {
-   "ts": "2026-10-09T19:30:35Z",
+   "ts": "2026-10-09T19:59:58Z",
+   "severity": "CRITICAL",
+   "kind": "RESTART_LOOP",
+   "key": "men",
+   "evidence": "9 new process ids in 30 min (['75457', '80885', '86521', '92744', '1618', '11373', '18176', '26391', '36616'])"
+  },
+  {
+   "ts": "2026-10-09T19:59:58Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "men",
    "evidence": "no ez_manage.py --account men process"
   },
   {
-   "ts": "2026-10-09T19:30:35Z",
+   "ts": "2026-10-09T19:59:58Z",
    "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "men",
-   "evidence": "ez_manage_men.log not written for 135s"
-  },
-  {
-   "ts": "2026-10-09T19:30:35Z",
-   "severity": "CRITICAL",
-   "kind": "PROCESS_DOWN",
+   "kind": "RESTART_LOOP",
    "key": "flz",
-   "evidence": "no ez_manage.py --account flz process"
-  },
-  {
-   "ts": "2026-10-09T19:30:35Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 129s"
+   "evidence": "9 new process ids in 30 min (['75452', '80753', '86466', '92746', '2352', '12089', '21133', '28908', '38878'])"
   }
  ],
  "alert_counts": {
+  "ACCOUNT_EQUITY_DROP": 1,
   "RAPID_LOSS_KEY": 1,
-  "PROCESS_DOWN": 2,
-  "STALE_LOG": 2
+  "RESTART_LOOP": 2,
+  "PROCESS_DOWN": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -249,5 +252,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.38
+ "sweep_s": 1.28
 }

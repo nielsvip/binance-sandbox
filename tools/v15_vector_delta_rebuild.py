@@ -16,20 +16,34 @@ Because the freshest progress JSON for each sym_side is spread across s1/s2/s5, 
 Convenience: --progress-dir DIR (repeatable) aggregates locally (newest file wins per sym_side) and writes
 the workbook in one shot, same as the legacy tool.
 """
+
 import argparse, glob, json, os, pathlib, re, statistics
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 ARCHIVE = ROOT / "SPREADSHEETS" / "v15_avg_delta"
 LATEST = ROOT / "SPREADSHEETS" / "v15_avg_delta_latest.xlsx"
-COMPAT_LATEST = ROOT / "SPREADSHEETS" / "v15_vector_delta_latest.xlsx"  # same content; v15_daily_template_update.py default --agg
+COMPAT_LATEST = (
+    ROOT / "SPREADSHEETS" / "v15_vector_delta_latest.xlsx"
+)  # same content; v15_daily_template_update.py default --agg
 CAT_SIDES = ["CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT"]
 EPS = 1e-9
-SKIP_REASONS = ("DEAD_VEC", "LIVE_ONLY", "SKIPPED_GREY", "NO_CANDIDATE", "NOT_IN_CONFIG", "INVENTED_ALT", "NOT_WIRED_VEC", "ZERO_TRADES")
+SKIP_REASONS = (
+    "DEAD_VEC",
+    "LIVE_ONLY",
+    "SKIPPED_GREY",
+    "NO_CANDIDATE",
+    "NOT_IN_CONFIG",
+    "INVENTED_ALT",
+    "NOT_WIRED_VEC",
+    "ZERO_TRADES",
+)
 # 2026-10-06 short-zero fix: the pilot RECORDS the delta of a candidate that failed its own validity gates (BIBLE TIM 20-80 "G/F/Y still
 # recorded; only the promotion is blocked", trade floor, TIM/DD vomit) with delta_invalid=False. Counting those as promotion evidence
 # promoted ~35 CRYPTO_SHORT entry gates at 17:18Z (WICK_REJECT 10/10 pos, all TIM-guard) whose joint stack zeroed every crypto short.
 # Only the switch delta is dropped (it is not promotable evidence); the row's yellows keep their own per-header validity handling.
-INVALID_CANDIDATE_RE = re.compile(r"^(TIM-guard|trades \d+ < \d+|fewer than \d+ completed trades|TIM [\d.]+% >|DD [\d.]+% >|prepare failed)")
+INVALID_CANDIDATE_RE = re.compile(
+    r"^(TIM-guard|trades \d+ < \d+|fewer than \d+ completed trades|TIM [\d.]+% >|DD [\d.]+% >|prepare failed)"
+)
 
 
 def cat_side_of(symside):
@@ -38,7 +52,11 @@ def cat_side_of(symside):
     if not side:
         return None
     base = s[: -(len(side) + 1)]
-    venue = "CRYPTO" if base.endswith(("USDT", "USDC", "USD1", "BUSD", "FDUSD", "TUSD", "DAI")) else "STOCKS"
+    venue = (
+        "CRYPTO"
+        if base.endswith(("USDT", "USDC", "USD1", "BUSD", "FDUSD", "TUSD", "DAI"))
+        else "STOCKS"
+    )
     return f"{venue}_{side}"
 
 
@@ -50,7 +68,8 @@ def switch_name(key):
 
 def parse_key(key):
     """done key 'TAB!row:SWITCH=value' -> (TAB, 'SWITCH=value'). Tab matters: the SAME switch is a row in
-    up to ~15 tabs and each tab-row is its own test context, so deltas are aggregated PER (tab, switch)."""
+    up to ~15 tabs and each tab-row is its own test context, so deltas are aggregated PER (tab, switch).
+    """
     try:
         tab = key.split("!", 1)[0].strip()
         sw, val = key.split(":", 1)[1].split("=", 1)
@@ -80,7 +99,9 @@ def add_file(path, agg, seen):
     #  * noop yellows (filter changed nothing on top of the row) are not filter deltas
     #  * legacy files (no ref_fp): the same non-zero yellow value repeated over non-binding rows of one baseline epoch is the filter's
     #    STANDALONE effect copied onto unrelated switches -> counted once (modern pilots blank those cells themselves)
-    modern = any(isinstance(_e, dict) and "ref_fp" in _e for _e in list(done.values())[:50])
+    modern = any(
+        isinstance(_e, dict) and "ref_fp" in _e for _e in list(done.values())[:50]
+    )
     seen_nb = set()
     for key, e in done.items():
         if not isinstance(e, dict):
@@ -92,7 +113,12 @@ def add_file(path, agg, seen):
         if str(e.get("reason") or "").startswith(SKIP_REASONS):
             continue
         val = None
-        if isinstance(e.get("delta"), (int, float)) and not e.get("delta_invalid") and not e.get("is_running") and not INVALID_CANDIDATE_RE.match(str(e.get("reason") or "")):
+        if (
+            isinstance(e.get("delta"), (int, float))
+            and not e.get("delta_invalid")
+            and not e.get("is_running")
+            and not INVALID_CANDIDATE_RE.match(str(e.get("reason") or ""))
+        ):
             val = float(e["delta"])
             if abs(val) < 1e-12 and not (modern and e.get("naked_binding") is True):
                 val = None  # exact 0.0 = ledger identical to the baseline: non-binding, carries no information
@@ -101,7 +127,11 @@ def add_file(path, agg, seen):
             best[k] = val if k not in best else max(best[k], val)
         _bad = e.get("yellow_reasons") or {}
         _noop = set(e.get("noop_yellows") or [])
-        _nb_row = bool(e.get("is_running")) or e.get("naked_delta") == 0 or e.get("naked_binding") is False
+        _nb_row = (
+            bool(e.get("is_running"))
+            or e.get("naked_delta") == 0
+            or e.get("naked_binding") is False
+        )
         _ep = round(float(e.get("cumulative_before") or 0.0), 6)
         for hdr, d in (e.get("yellows") or {}).items():
             if not isinstance(d, (int, float)) or hdr in _bad or hdr in _noop:
@@ -123,15 +153,16 @@ def add_file(path, agg, seen):
 def scan_file(path):
     """Score one progress JSON for 'best result per sym_side' selection.
     real = count of done entries with a real (non-invalid, non-skipped) float delta OR a running-default 0;
-    is56 = §56.0-era (sequential fill) marker; returns (symside, real, is56, final_gain_present)."""
+    is56 = §56.0-era (sequential fill) marker; returns (symside, real, is56, final_gain_present, done_n).
+    """
     symside = os.path.basename(path)[: -len("_v14_progress.json")]
     try:
         d = json.load(open(path)) or {}
     except Exception:
-        return symside, 0, 0, 0
+        return symside, 0, 0, 0, 0
     done = d.get("done", {})
     if not isinstance(done, dict):
-        return symside, 0, 0, 0
+        return symside, 0, 0, 0, 0
     is56 = 1 if ("e3_default_base" in d or "initial_baseline_gain" in d) else 0
     fg = 1 if d.get("final_gain") is not None else 0
     real = 0
@@ -140,22 +171,35 @@ def scan_file(path):
             continue
         if str(e.get("reason") or "").startswith(SKIP_REASONS):
             continue
-        if isinstance(e.get("delta"), (int, float)) and not e.get("delta_invalid") and not e.get("is_running") and abs(float(e["delta"])) > 1e-12 and not INVALID_CANDIDATE_RE.match(str(e.get("reason") or "")):
+        if (
+            isinstance(e.get("delta"), (int, float))
+            and not e.get("delta_invalid")
+            and not e.get("is_running")
+            and abs(float(e["delta"])) > 1e-12
+            and not INVALID_CANDIDATE_RE.match(str(e.get("reason") or ""))
+        ):
             real += 1
-    return symside, real, is56, fg
+    return symside, real, is56, fg, len(done)
 
 
 FIX_CUTOFF_EPOCH = 1790582400  # 2026-09-28T08:00Z — earlier progress JSONs carry the abs()-flipped baseline (memory v15_baseline_sign_corruption)
 
 
-SELECT_FLAGS = {}  # symside -> 'clean'|'contaminated' (only filled when select_latest is given is_clean; EVID 2026-10-01)
+SELECT_FLAGS = (
+    {}
+)  # symside -> 'clean'|'contaminated' (only filled when select_latest is given is_clean; EVID 2026-10-01)
+
+
+DONE_COMPLETE_N = 2000  # 2026-10-09: a sweep that evaluated >= this many cells is complete — its zeros are verdicts, not gaps; exempt from the real-cell floor (run29 converged boards lost to stale exploratory files otherwise)
 
 
 def select_latest(rows, min_frac=0.5, is_clean=None):
-    """rows = [(symside, real, is56, fg, mtime, path, host)]. Per sym_side: LATEST (newest mtime) §56.0-era file written after the
+    """rows = [(symside, real, is56, fg, mtime, path, host, done_n)]. Per sym_side: LATEST (newest mtime) §56.0-era file written after the
     sign-fix cutoff whose real-cell count is >= min_frac * the best real-cell count of that sym_side's valid files (an
-    incomplete/garbage newest file falls back to the next newest). Returns {symside: row}.
-    is_clean(row)->bool (optional): prefer the newest CLEAN file over contaminated ones (look-ahead crypto results fall back only when no clean file reaches the floor); SELECT_FLAGS records which was used."""
+    incomplete/garbage newest file falls back to the next newest). Files with done_n >= DONE_COMPLETE_N are exempt from the
+    floor (a converged complete sweep has few nonzero deltas by nature). Returns {symside: row}.
+    is_clean(row)->bool (optional): prefer the newest CLEAN file over contaminated ones (look-ahead crypto results fall back only when no clean file reaches the floor); SELECT_FLAGS records which was used.
+    """
     by = {}
     for r in rows:
         by.setdefault(r[0], []).append(r)
@@ -165,13 +209,17 @@ def select_latest(rows, min_frac=0.5, is_clean=None):
         if not ok:
             continue
         floor = min_frac * max(r[1] for r in ok)
-        ok = [r for r in ok if r[1] >= floor]
+        ok = [
+            r for r in ok if r[1] >= floor or (len(r) > 7 and r[7] >= DONE_COMPLETE_N)
+        ]
         if is_clean is not None:
             cl = [r for r in ok if is_clean(r)]
             if cl:
-                out[ss] = max(cl, key=lambda r: r[4]); SELECT_FLAGS[ss] = "clean"
+                out[ss] = max(cl, key=lambda r: r[4])
+                SELECT_FLAGS[ss] = "clean"
             else:
-                out[ss] = max(ok, key=lambda r: r[4]); SELECT_FLAGS[ss] = "contaminated" if not is_clean(out[ss]) else "clean"
+                out[ss] = max(ok, key=lambda r: r[4])
+                SELECT_FLAGS[ss] = "contaminated" if not is_clean(out[ss]) else "clean"
             continue
         out[ss] = max(ok, key=lambda r: r[4])
     return out
@@ -195,7 +243,7 @@ def merge_partials(paths):
         for cs in CAT_SIDES:
             for k, lst in (part.get(cs) or {}).items():
                 agg[cs].setdefault(k, []).extend(lst)
-            for ss in (part.get("_symsides", {}).get(cs) or []):
+            for ss in part.get("_symsides", {}).get(cs) or []:
                 seen[cs].add(ss)
     return agg, seen
 
@@ -211,6 +259,7 @@ def summarize(deltas):
 def write_workbook(agg, seen, out):
     import openpyxl
     from openpyxl.styles import Font
+
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
     for cs in CAT_SIDES:
@@ -223,13 +272,19 @@ def write_workbook(agg, seen, out):
             tab, kind, name = k.split("\t", 2)
             pos, avg, med, n = summarize(deltas)
             rows.append([tab, name, kind, pos, round(avg, 6), round(med, 6), n])
-        rows.sort(key=lambda r: (r[0], r[2], r[4]))  # tab, then switch/filter, then vector_delta asc
+        rows.sort(
+            key=lambda r: (r[0], r[2], r[4])
+        )  # tab, then switch/filter, then vector_delta asc
         for r in rows:
             ws.append(r)
         nmax = max((r[6] for r in rows), default=0)
-        assert nmax <= len(seen[cs]), f"[{cs}] n_max {nmax} > #sym_sides {len(seen[cs])}: a sym_side was counted more than once"
+        assert nmax <= len(
+            seen[cs]
+        ), f"[{cs}] n_max {nmax} > #sym_sides {len(seen[cs])}: a sym_side was counted more than once"
         promote = sum(1 for r in rows if r[4] > EPS and r[3] >= 2)
-        print(f"[{cs}] symsides={len(seen[cs])} rows={len(rows)} n_max={nmax} | gated_promote(vec>0 & pos_sym>=2)={promote}")
+        print(
+            f"[{cs}] symsides={len(seen[cs])} rows={len(rows)} n_max={nmax} | gated_promote(vec>0 & pos_sym>=2)={promote}"
+        )
     pathlib.Path(out).parent.mkdir(parents=True, exist_ok=True)
     wb.save(out)
     print(f"[written] {out}")
@@ -237,13 +292,35 @@ def write_workbook(agg, seen, out):
 
 def main():
     import datetime, shutil
+
     ap = argparse.ArgumentParser()
-    ap.add_argument("--files", help="newline-list of progress JSON paths to aggregate (with --emit-partial)")
-    ap.add_argument("--scan", help="newline-list of progress JSON paths to score for best-per-sym_side; writes TSV here (symside real is56 final_gain mtime path) and stops")
-    ap.add_argument("--emit-partial", help="write the partial agg JSON here and stop (server-side phase 1)")
-    ap.add_argument("--merge", help="comma-separated partial JSONs to merge into the workbook (phase 2)")
-    ap.add_argument("--progress-dir", action="append", default=[], help="aggregate a whole dir locally (repeatable; newest file per sym_side wins)")
-    ap.add_argument("--out", default=None, help="workbook path; default = dated archive + _latest pointer")
+    ap.add_argument(
+        "--files",
+        help="newline-list of progress JSON paths to aggregate (with --emit-partial)",
+    )
+    ap.add_argument(
+        "--scan",
+        help="newline-list of progress JSON paths to score for best-per-sym_side; writes TSV here (symside real is56 final_gain mtime path done_n) and stops",
+    )
+    ap.add_argument(
+        "--emit-partial",
+        help="write the partial agg JSON here and stop (server-side phase 1)",
+    )
+    ap.add_argument(
+        "--merge",
+        help="comma-separated partial JSONs to merge into the workbook (phase 2)",
+    )
+    ap.add_argument(
+        "--progress-dir",
+        action="append",
+        default=[],
+        help="aggregate a whole dir locally (repeatable; newest file per sym_side wins)",
+    )
+    ap.add_argument(
+        "--out",
+        default=None,
+        help="workbook path; default = dated archive + _latest pointer",
+    )
     ap.add_argument("--date", default=datetime.datetime.utcnow().strftime("%Y%m%d"))
     args = ap.parse_args()
 
@@ -251,12 +328,12 @@ def main():
         files = [l.strip() for l in open(args.files) if l.strip()] if args.files else []
         with open(args.scan, "w") as out:
             for p in files:
-                ss, real, is56, fg = scan_file(p)
+                ss, real, is56, fg, done_n = scan_file(p)
                 try:
                     mt = os.path.getmtime(p)
                 except Exception:
                     mt = 0
-                out.write(f"{ss}\t{real}\t{is56}\t{fg}\t{mt}\t{p}\n")
+                out.write(f"{ss}\t{real}\t{is56}\t{fg}\t{mt}\t{p}\t{done_n}\n")
         print(f"[scan] {args.scan} files={len(files)}")
         return
 
@@ -271,7 +348,9 @@ def main():
         return
 
     if args.merge:
-        agg, seen = merge_partials([p.strip() for p in args.merge.split(",") if p.strip()])
+        agg, seen = merge_partials(
+            [p.strip() for p in args.merge.split(",") if p.strip()]
+        )
     elif args.progress_dir:
         # newest file per sym_side across the given dirs
         best = {}
