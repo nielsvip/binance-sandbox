@@ -452,7 +452,7 @@ _VERDICT_TERMINAL_RE = re.compile(r'"verdict":\s*"(IMPOSSIBLE|NO_TRADES|BEST_EFF
 _LAUNCH_CAPS = {"30D": 3, "365D": 2, "REPAIR": 1, "GS": 1}  # USER 2026-10-09: single source of truth (gate + pending_actions); 30D 6->3, 40-min slices + free resume make more unnecessary
 _GAIN_TIER_W_FRAC = 0.4  # top 40% of measured syms = winners (recalculated every round with the latest NPZ)
 _GAIN_TIER_L_FRAC = 1.0 / 3.0  # bottom third = losers/low gainers (deferred, re-admitted after _GAIN_TIER_DEFER_DAYS)
-_GAIN_TIER_DEFER_DAYS = {"M": 3.0, "L": 7.0}  # USER 2026-10-09: mediocre re-measured 2x/week (regime turns visible), losers weekly; winners every round + slot reservation -> ~90% of compute on winners
+_GAIN_TIER_DEFER_DAYS = {"M": 0.5, "L": 1.0}  # USER 2026-10-09: no suffocation — mediocre re-run 2x/day, losers daily (less frequent than winners-every-pass, never starved); winners keep priority + slots
 _NONW_QUOTA_DIV = 4  # non-winner new pairs per host capped at max(1, cap//4); unknowns (discovery) exempt
 _TIER_RANK = {"W": 0, "M": 1, "L": 2}
 
@@ -491,7 +491,7 @@ def _sym_tier_rank(sym, tiers):
 
 
 def _side_deferred(ss, tiers, now_ts, windows=_GAIN_TIER_DEFER_DAYS):
-    """True = M/L-tier side whose last calc is younger than its window (M 3d, L 7d): skip its fresh board (chain
+    """True = M/L-tier side whose last calc is younger than its window (M 12h, L 1d): skip its fresh board (chain
     continuations still drain; staleness re-admits, so regime turns re-measure). W/unknown/missing/bad fails open."""
     e = (tiers or {}).get(ss)
     if not e:
@@ -513,6 +513,14 @@ def _sym_quota_hit(sym, tiers):
     """True = pair consumes a non-winner slot: measured M/L present and no W side. Unknown/new pairs are discovery (exempt)."""
     ts = [((tiers or {}).get(f"{sym}_{sd}") or {}).get("tier") for sd in ("LONG", "SHORT")]
     return any(t in ("M", "L") for t in ts) and not any(t == "W" for t in ts)
+
+
+def _place_order(held_ordered, adopted_owned, new_syms, tiers):
+    """USER 2026-10-09 (trb gainers absolute priority): W chains + W new before ALL M/L work. Stable sort
+    keeps chain-first within a tier. Running pilots are never touched — this orders new launches only."""
+    seq = [(s, False) for s in held_ordered] + [(s, True) for s in adopted_owned] + [(s, True) for s in new_syms]
+    seq.sort(key=lambda t: _sym_tier_rank(t[0], tiers))
+    return seq
 
 
 def _pair_gate_ok(sym, acts, owner, chain_state, attempts):
@@ -1110,8 +1118,8 @@ def tick(args, cfg, now):
         held_ordered = sorted(held[h["name"]], key=_trk)
         nonw_used = sum(1 for s in held[h["name"]] if _sym_quota_hit(s, _gtiers))
         nonw_quota = max(1, cap // _NONW_QUOTA_DIV)  # USER 2026-10-09: winners own the host; non-winners get 1 new-pair slot (chains still drain, discovery exempt)
-        order = [(sym, False) for sym in held_ordered] + [(sym, True) for sym in adopted if owner.get(sym) == h["name"] and sym not in held[h["name"]]] + \
-                [(sym, True) for sym in new_syms if venue_of(sym) in h["venues"]]
+        order = _place_order(held_ordered, [sym for sym in adopted if owner.get(sym) == h["name"] and sym not in held[h["name"]]],
+                             [sym for sym in new_syms if venue_of(sym) in h["venues"]], _gtiers)
         for sym, needs_slot in order:
             if needs_slot and new_launched >= args.max_launch:
                 break  # budget counts only NEW pairs; chain continuations (365D/REPAIR) of held symbols never starve new admissions

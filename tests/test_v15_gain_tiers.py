@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
-from v15_fleet_scheduler import _GAIN_TIER_DEFER_DAYS, _LAUNCH_CAPS, _gain_tiers, _side_deferred, _side_tier, _sym_quota_hit, _sym_tier_rank
+from v15_fleet_scheduler import _GAIN_TIER_DEFER_DAYS, _LAUNCH_CAPS, _gain_tiers, _place_order, _side_deferred, _side_tier, _sym_quota_hit, _sym_tier_rank
 
 NOW = 1791500000.0
 
@@ -47,21 +47,21 @@ class GainTiersTest(unittest.TestCase):
 
 
 class DeferralTest(unittest.TestCase):
-    def _tiers(self):
-        gains = {f"S{i:02d}_LONG": _g(float(10 - i)) for i in range(10)}
+    def _tiers(self, age_days=0.1):
+        gains = {f"S{i:02d}_LONG": _g(float(10 - i), age_days=age_days) for i in range(10)}
         return _gain_tiers(gains)
 
     def test_young_loser_deferred(self):
         self.assertTrue(_side_deferred("S09_LONG", self._tiers(), NOW))
 
     def test_stale_loser_readmitted(self):
-        gains = {f"S{i:02d}_LONG": _g(float(10 - i), age_days=8.0) for i in range(10)}
+        gains = {f"S{i:02d}_LONG": _g(float(10 - i), age_days=1.5) for i in range(10)}
         self.assertFalse(_side_deferred("S09_LONG", _gain_tiers(gains), NOW))
 
-    def test_mid_window_three_days(self):
+    def test_mid_window_half_day(self):
         tiers = self._tiers()
         self.assertTrue(_side_deferred("S05_LONG", tiers, NOW))
-        gains = {f"S{i:02d}_LONG": _g(float(10 - i), age_days=4.0) for i in range(10)}
+        gains = {f"S{i:02d}_LONG": _g(float(10 - i), age_days=0.75) for i in range(10)}
         self.assertFalse(_side_deferred("S05_LONG", _gain_tiers(gains), NOW))
 
     def test_winners_new_never_deferred(self):
@@ -74,8 +74,8 @@ class DeferralTest(unittest.TestCase):
         tiers = {"X_LONG": {"tier": "L", "gain": -5.0, "mtime": "bogus"}}
         self.assertFalse(_side_deferred("X_LONG", tiers, NOW))
 
-    def test_defer_windows_mid_weekly_loser(self):
-        self.assertEqual(_GAIN_TIER_DEFER_DAYS, {"M": 3.0, "L": 7.0})
+    def test_defer_windows_mid_twicedaily_loser_daily(self):
+        self.assertEqual(_GAIN_TIER_DEFER_DAYS, {"M": 0.5, "L": 1.0})
 
 
 class QuotaTest(unittest.TestCase):
@@ -94,6 +94,18 @@ class QuotaTest(unittest.TestCase):
 
     def test_unknown_pair_is_discovery_exempt(self):
         self.assertFalse(_sym_quota_hit("ZZZ", self._tiers()))
+
+
+class PlaceOrderTest(unittest.TestCase):
+    def test_winners_before_all_mid_loser(self):
+        tiers = {"W1_LONG": {"tier": "W", "gain": 9, "mtime": 1}, "M1_LONG": {"tier": "M", "gain": 5, "mtime": 1}, "L1_LONG": {"tier": "L", "gain": -9, "mtime": 1}, "L1_SHORT": {"tier": "L", "gain": -8, "mtime": 1}}
+        got = _place_order(["M1", "L1"], ["L1"], ["W1", "M1"], tiers)
+        self.assertEqual([s for s, _ in got], ["W1", "M1", "M1", "L1", "L1"])
+
+    def test_chain_first_within_tier(self):
+        tiers = {"A_LONG": {"tier": "W", "gain": 9, "mtime": 1}, "B_LONG": {"tier": "W", "gain": 8, "mtime": 1}}
+        got = _place_order(["A"], [], ["B"], tiers)
+        self.assertEqual(got, [("A", False), ("B", True)])
 
 
 if __name__ == "__main__":
