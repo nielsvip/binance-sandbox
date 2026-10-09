@@ -6,9 +6,11 @@ Input: the day's per-sym go-live report (data/daily_chain/persym_golive_<date>*.
 Rules (per venue, crypto / stocks ranked separately):
   30D < 0 and 365D <= 0 or unknown  -> MIN      mult = --min-mult (default 0.25)
   30D < 0 and 365D > 0              -> NEG30    mult = --neg30-mult (default 0.5)
-  30D > 0                           -> RANKED   mult = 1 + (--max-mult - 1) * rank_pct (top gainer = max-mult, default 3.0);
-                                                capped at 1.0 when 365D <= 0
-  30D == 0 / no fresh evidence      -> not listed (multiplier 1.0 in live), EXCEPT per-sym book entries with acc_gain_pct <= 0 -> BOOK_NEG (min-mult)
+  30D > 0                           -> RANKED   mult = 1 + (--max-mult - 1) * min(g30, --gain-cap) / --gain-cap (default cap 20.0, max-mult 3.0);
+                                                bigger gain = bigger size; capped at 1.0 when 365D <= 0 (anti-overfit)
+  no fresh row + book acc_gain > 0  -> BOOK_POS_HOLD  mult 1.0 (proven winner awaiting recalc keeps trading)
+  no fresh row + book acc_gain <= 0 -> BOOK_NEG  mult = min-mult (monitored, minimal money)
+  in tradeable universe, nowhere    -> UNLISTED_MIN  mult = min-mult (monitored, minimal money)
 Live floors/caps (exchange minimum, 1 share, MAX_ORDER_VALUE) are applied by perf_tier_sizing at order time.
   python tools/v15_persym_size_tiers.py --report data/daily_chain/persym_golive_<date>.json [--out data/persym_size_tiers.json] [--dry-run]
 """
@@ -21,6 +23,27 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CRYPTO_SUFFIX = ("USDT", "USDC", "USD1", "BUSD", "FDUSD")
+
+
+def _ranked_mult(g30, g365, max_mult=3.0, gain_cap=20.0):
+    """USER 2026-10-09: magnitude-proportional size — bigger gain = bigger START_POSITION_SIZE.
+    scale = min(g30, cap)/cap; 365D <= 0 caps at 1.0 (a 30D gainer that loses on 365D is overfit, not a winner)."""
+    try:
+        scale = min(float(g30), float(gain_cap)) / float(gain_cap)
+    except (TypeError, ValueError, ZeroDivisionError):
+        return 1.0
+    scale = max(0.0, min(1.0, scale))
+    m = 1.0 + (float(max_mult) - 1.0) * scale
+    try:
+        if g365 is not None and float(g365) <= 0:
+            m = min(m, 1.0)
+    except (TypeError, ValueError):
+        pass
+    return round(m, 3)
+
+
+def _venue_of(ss):
+    return "crypto" if str(ss).rsplit("_", 1)[0].endswith(CRYPTO_SUFFIX) else "stocks"
 
 
 def main():

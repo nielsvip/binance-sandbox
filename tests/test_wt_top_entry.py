@@ -183,7 +183,26 @@ def test_config_registration():
     assert V._ENTRY_FAMILY_MASTERS.get("WT_TOP") == ["WT_TOP_ENTRY_ENABLED"]
 
 
+def test_reor_survives_zone_block():
+    import numpy as np
+    import v12_quick_engine as V
+    n = 300
+    npz = {"close": np.full(n, 100.0), "high_15m": np.full(n, 101.0), "low_15m": np.full(n, 99.0),
+           "wt_cross_bull_15m": np.zeros(n), "wt_cross_bear_15m": np.zeros(n)}
+    npz["wt_cross_bull_15m"][100] = 1.0
+    npz["low_15m"][100] = 99.5
+    npz["low_15m"][99] = 99.0
+    on = V.QuickConfig()
+    on.WT_TOP_ENTRY_ENABLED = True
+    on.WT_TOP_ENTRY_TF = "15m"
+    s_on = np.asarray(V.compute_entry_signals(npz, n, True, on), dtype=bool)
+    s_off = np.asarray(V.compute_entry_signals(npz, n, True, V.QuickConfig()), dtype=bool)
+    assert bool(s_on[100]) and int(s_on.sum()) == 1
+    assert int(s_off.sum()) == 0
+
+
 if __name__ == "__main__":
+    test_reor_survives_zone_block()
     test_config_registration()
     test_resolve_htf_vocab()
     test_disabled_all_false()
