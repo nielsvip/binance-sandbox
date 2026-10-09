@@ -7,7 +7,7 @@ This builds the signal from the live sources only (15m+ computable):
     queue_trade_action, NOT through the veto stack -> no extra_ok),
   WT_DC (12825; blocks['B_WT_DC_LIVE'] already carries its own HTF/BB-pullback/align/dc_pos gates when the stack is on),
   RSI2 13126 / CONNORS 13138 / STOCH 13084 / WT_ENTRY 13113 / K_ZONE 13099 / BOUNCE deep-turn 13040, donchian 13062 / SATOSHIT 12480 / BB_PCTB (blocks present only
-    when their switch is enabled) , RZ_BREAKOUT 12884, LR_PCTB_D 12894 — all through the veto stack (extra_ok).
+    when their switch is enabled) , RZ_BREAKOUT 12884, LR_PCTB_D 12894, WT_TOP_ENTRY shared-direct claim 1385 — all through the veto stack (extra_ok).
 Excluded on purpose: legacy B02..B15, B_PULL*, B_REENTRY2, B_BBSQUEEZE*, kindergarten OR (no live fresh-OPEN consumer), STRUCTURE_FLIP (a reentry: needs a prior exit),
 GR_HTF_DIRECT (dead at defaults: score_min 23 > reachable n_tfs*2), 3m/5m-dependent legs (inert by rule).
 """
@@ -17,7 +17,7 @@ import numpy as np
 
 SOURCE_BLOCKS = (
     'B_BOUNCE_DEEP_TURN', 'B_BOUNCE_DONCHIAN', 'B_STOCH_ENTRY', 'B_WT_ENTRY', 'B_RSI2_ENTRY', 'B_CONNORS_ENTRY',
-    'B_KZONE_TRADIER', 'B_SATOSHIT_ENTRY', 'B_BBPCTB',
+    'B_KZONE_TRADIER', 'B_SATOSHIT_ENTRY', 'B_BBPCTB', 'B_WT_TOP',
 )
 
 

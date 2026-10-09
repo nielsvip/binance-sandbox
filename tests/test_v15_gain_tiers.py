@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
-from v15_fleet_scheduler import _GAIN_TIER_DEFER_DAYS, _LAUNCH_CAPS, _gain_tiers, _side_deferred, _side_tier, _sym_tier_rank
+from v15_fleet_scheduler import _GAIN_TIER_DEFER_DAYS, _LAUNCH_CAPS, _gain_tiers, _side_deferred, _side_tier, _sym_quota_hit, _sym_tier_rank
 
 NOW = 1791500000.0
 
@@ -58,10 +58,15 @@ class DeferralTest(unittest.TestCase):
         gains = {f"S{i:02d}_LONG": _g(float(10 - i), age_days=8.0) for i in range(10)}
         self.assertFalse(_side_deferred("S09_LONG", _gain_tiers(gains), NOW))
 
-    def test_winners_mid_new_never_deferred(self):
+    def test_mid_window_three_days(self):
+        tiers = self._tiers()
+        self.assertTrue(_side_deferred("S05_LONG", tiers, NOW))
+        gains = {f"S{i:02d}_LONG": _g(float(10 - i), age_days=4.0) for i in range(10)}
+        self.assertFalse(_side_deferred("S05_LONG", _gain_tiers(gains), NOW))
+
+    def test_winners_new_never_deferred(self):
         tiers = self._tiers()
         self.assertFalse(_side_deferred("S00_LONG", tiers, NOW))
-        self.assertFalse(_side_deferred("S05_LONG", tiers, NOW))
         self.assertFalse(_side_deferred("NEW_SHORT", tiers, NOW))
         self.assertFalse(_side_deferred("S09_LONG", {}, NOW))
 
@@ -69,8 +74,26 @@ class DeferralTest(unittest.TestCase):
         tiers = {"X_LONG": {"tier": "L", "gain": -5.0, "mtime": "bogus"}}
         self.assertFalse(_side_deferred("X_LONG", tiers, NOW))
 
-    def test_defer_window_is_weekly(self):
-        self.assertEqual(_GAIN_TIER_DEFER_DAYS, 7.0)
+    def test_defer_windows_mid_weekly_loser(self):
+        self.assertEqual(_GAIN_TIER_DEFER_DAYS, {"M": 3.0, "L": 7.0})
+
+
+class QuotaTest(unittest.TestCase):
+    def _tiers(self):
+        gains = {f"S{i:02d}_LONG": _g(float(10 - i)) for i in range(10)}
+        return _gain_tiers(gains)
+
+    def test_measured_mid_loser_hit_quota(self):
+        tiers = self._tiers()
+        self.assertTrue(_sym_quota_hit("S05", tiers))
+        self.assertTrue(_sym_quota_hit("S09", tiers))
+
+    def test_winner_pair_exempt(self):
+        tiers = self._tiers()
+        self.assertFalse(_sym_quota_hit("S00", tiers))
+
+    def test_unknown_pair_is_discovery_exempt(self):
+        self.assertFalse(_sym_quota_hit("ZZZ", self._tiers()))
 
 
 if __name__ == "__main__":

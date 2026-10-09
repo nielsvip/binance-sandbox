@@ -452,7 +452,8 @@ _VERDICT_TERMINAL_RE = re.compile(r'"verdict":\s*"(IMPOSSIBLE|NO_TRADES|BEST_EFF
 _LAUNCH_CAPS = {"30D": 3, "365D": 2, "REPAIR": 1, "GS": 1}  # USER 2026-10-09: single source of truth (gate + pending_actions); 30D 6->3, 40-min slices + free resume make more unnecessary
 _GAIN_TIER_W_FRAC = 0.4  # top 40% of measured syms = winners (recalculated every round with the latest NPZ)
 _GAIN_TIER_L_FRAC = 1.0 / 3.0  # bottom third = losers/low gainers (deferred, re-admitted after _GAIN_TIER_DEFER_DAYS)
-_GAIN_TIER_DEFER_DAYS = 7.0  # USER 2026-10-09: losers queue at most weekly; winners-first ordering keeps >=50% of compute on winners
+_GAIN_TIER_DEFER_DAYS = {"M": 3.0, "L": 7.0}  # USER 2026-10-09: mediocre re-measured 2x/week (regime turns visible), losers weekly; winners every round + slot reservation -> ~90% of compute on winners
+_NONW_QUOTA_DIV = 4  # non-winner new pairs per host capped at max(1, cap//4); unknowns (discovery) exempt
 _TIER_RANK = {"W": 0, "M": 1, "L": 2}
 
 
@@ -489,17 +490,29 @@ def _sym_tier_rank(sym, tiers):
     return min(_TIER_RANK[_side_tier(f"{sym}_{sd}", tiers)] for sd in ("LONG", "SHORT"))
 
 
-def _side_deferred(ss, tiers, now_ts, defer_days=_GAIN_TIER_DEFER_DAYS):
-    """True = loser-tier side whose last calc is younger than defer_days: skip its fresh board (chain
-    continuations still drain; staleness re-admits). Missing/bad evidence fails open (never deferred)."""
+def _side_deferred(ss, tiers, now_ts, windows=_GAIN_TIER_DEFER_DAYS):
+    """True = M/L-tier side whose last calc is younger than its window (M 3d, L 7d): skip its fresh board (chain
+    continuations still drain; staleness re-admits, so regime turns re-measure). W/unknown/missing/bad fails open."""
     e = (tiers or {}).get(ss)
-    if not e or e.get("tier") != "L":
+    if not e:
+        return False
+    try:
+        win = float((windows or {}).get(e.get("tier"), 0) or 0)
+    except (TypeError, ValueError):
+        return False
+    if win <= 0:
         return False
     try:
         age_d = (float(now_ts) - float(e.get("mtime", 0) or 0)) / 86400.0
     except (TypeError, ValueError):
         return False
-    return age_d < float(defer_days)
+    return age_d < win
+
+
+def _sym_quota_hit(sym, tiers):
+    """True = pair consumes a non-winner slot: measured M/L present and no W side. Unknown/new pairs are discovery (exempt)."""
+    ts = [((tiers or {}).get(f"{sym}_{sd}") or {}).get("tier") for sd in ("LONG", "SHORT")]
+    return any(t in ("M", "L") for t in ts) and not any(t == "W" for t in ts)
 
 
 def _pair_gate_ok(sym, acts, owner, chain_state, attempts):
@@ -1095,6 +1108,8 @@ def tick(args, cfg, now):
         HB[h["name"]] = {"cap": cap, "workers": workers, "cpu": cpu, "est_pair": est_pair}
         # continue chains of held symbols first (no new slot); then admit adopted-but-unheld; then new
         held_ordered = sorted(held[h["name"]], key=_trk)
+        nonw_used = sum(1 for s in held[h["name"]] if _sym_quota_hit(s, _gtiers))
+        nonw_quota = max(1, cap // _NONW_QUOTA_DIV)  # USER 2026-10-09: winners own the host; non-winners get 1 new-pair slot (chains still drain, discovery exempt)
         order = [(sym, False) for sym in held_ordered] + [(sym, True) for sym in adopted if owner.get(sym) == h["name"] and sym not in held[h["name"]]] + \
                 [(sym, True) for sym in new_syms if venue_of(sym) in h["venues"]]
         for sym, needs_slot in order:
@@ -1105,6 +1120,9 @@ def tick(args, cfg, now):
             if venue_of(sym) not in h["venues"]:
                 continue
             if sym in owner and owner[sym] != h["name"]:
+                continue
+            if needs_slot and _sym_quota_hit(sym, _gtiers) and nonw_used >= nonw_quota:
+                log.setdefault("skipped_quota", []).append(f"{h['name']}:{sym}")
                 continue
             if not needs_slot and (proj_mem < est_pair / 2 or cpu >= 120 or not swap_ok):
                 continue
@@ -1145,6 +1163,8 @@ def tick(args, cfg, now):
                 log["launched"].append(tag)
             if needs_slot:
                 used += 1; proj_mem -= est_pair + float(rd.get("size_mb") or 0)
+                if _sym_quota_hit(sym, _gtiers):
+                    nonw_used += 1
                 held[h["name"]][sym] = "new"
                 st["held"].setdefault(h["name"], {})[sym] = now.isoformat()
                 owner[sym] = h["name"]
@@ -1253,7 +1273,7 @@ def tick(args, cfg, now):
             _tl[{0: "W", 1: "M", 2: "L"}[_sym_tier_rank(str(_t).split(":")[1], _gtiers)]] += 1
         except Exception:
             pass
-    log["tier_launched"] = _tl  # USER 2026-10-09: prove >=50% of launches go to winners
+    log["tier_launched"] = _tl  # USER 2026-10-09: prove ~90% of launches go to winners (M 3d / L 7d defer + slot quota)
     log["gain_tiers"] = {"measured_sides": len(_gtiers), **{t: sum(1 for e in _gtiers.values() if e["tier"] == t) for t in "WML"},
                          "deferred_sides": len(_deferred_sides), "deferred_sample": _deferred_sides[:30]}
     log["pending_symbols"] = sum(1 for s in all_syms if not terminal(s))

@@ -1278,9 +1278,8 @@ AUTO_WIRED_PARAMS = [
     'ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED',
     'ENTRY_BOUNCE_DONCHIAN_DIRECT_RECOVERY_ONLY',
     'ENTRY_BOUNCE_DONCHIAN_DIRECT_TIMEFRAME',
-    'ENTRY_LH_TRIGGER_DC_THRESHOLD_PCT',
     'ENTRY_LH_TRIGGER_ENABLED',
-    'ENTRY_LH_TRIGGER_TF_REQ',
+    'ENTRY_LH_TRIGGER_REGRESS_PCT',
     'ENTRY_MIN_ALIGNMENT',
     'ENTRY_PRIMARY_TF',
     'ENTRY_STOCH_HHHL_DIRECT_ENABLED',
@@ -5326,9 +5325,8 @@ class QuickConfig:
     CLENOW_REGIME_FILTER: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     COMBINED_STOCH_GATE_TRADIER: float = 60.0  # auto-wired 625
     ENTRY_VET_COMBINED_STOCH_GATE_ENABLED: bool = False  # USER 2026-10-08: stoch-k entry veto is a switch, OFF (WT is the filter); when ON the vec ANDs vec_stoch_gate_pass into entry_sig (the extra_ok copy below was inert)
-    ENTRY_LH_TRIGGER_ENABLED: bool = False  # USER 2026-10-09 INV-0001: SHORT first-lower-high trigger (LONG mirror); OFF = inert. Live replica pending unlock (ez_positions_quick worker + tradier should_enter_*); config.py mirror patch ready.
-    ENTRY_LH_TRIGGER_TF_REQ: int = 1  # USER 2026-10-09 INV-0001: TFs (1h/4h) that must print LH+regress; 1 catches the first print
-    ENTRY_LH_TRIGGER_DC_THRESHOLD_PCT: float = 0.5  # USER 2026-10-09 INV-0001: regress depth vs channel extreme (mirrors LH_HL_FILTER)
+    ENTRY_LH_TRIGGER_ENABLED: bool = False  # USER 2026-10-09 INV-0001: SHORT lower-high trigger (LONG mirror); OFF = inert. Live replica pending unlock (ez_positions_quick worker + tradier should_enter_*); config.py mirror patch ready.
+    ENTRY_LH_TRIGGER_REGRESS_PCT: float = 5.0  # USER 2026-10-09 INV-0001 v4: distance below the 1h DC top (SHORT) / above the 1h DC bottom (LONG); AGLD density 2%->34.8 / 5%->14.4 / 8%->5.4 / 10%->3.3
     CONGRESS_CONVICTION_MIN_SOURCES: float = 2  # auto-wired 625
     CONGRESS_CONVICTION_SIZING_BOOST: float = 1.3  # auto-wired 625
     CONNORS_RSI2_REQUIRE_ABOVE_200SMA: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
@@ -8440,18 +8438,18 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
                 _safe(npz, 'dc_high4_15m', n), close, is_long, True), dtype=bool)
         except Exception:
             pass
-    # USER 2026-10-09 INV-0001: first-lower-high SHORT trigger (LONG mirror). ORDER: vec FIRST-wins,
-    # so this sits after VOL_SPIKE_REVERSAL mirroring the live LAST-writer-wins placement between the DC
-    # gate and the VOL worker (see replica spec data/invention/orders/INV-0001-live-replica.md). OFF = inert.
+    # USER 2026-10-09 INV-0001 v4: lower-high SHORT trigger (LONG mirror). Pure scalars
+    # (1h DC top/bottom + 1h lower/higher print), identical inputs live (indicators dict) and vec
+    # (NPZ). ORDER: vec FIRST-wins, so this sits after VOL_SPIKE_REVERSAL mirroring the live
+    # LAST-writer-wins placement between the DC gate and the VOL worker (see replica spec
+    # data/invention/orders/INV-0001-live-replica.md). OFF = inert.
     if bool(getattr(cfg, 'ENTRY_LH_TRIGGER_ENABLED', False)):
         try:
             _lh_twin = vec_decisions.check_entry_candidates_crypto__lh_trigger
             blocks["LH_TRIGGER_ENTRY"] = np.asarray(_lh_twin.check_lh_trigger_entry_vec(
-                cfg, _safe(npz, 'high_1h', n), _safe(npz, 'high_1h_prev', n),
-                _safe(npz, 'high_4h', n), _safe(npz, 'high_4h_prev', n),
-                _safe(npz, 'low_1h', n), _safe(npz, 'low_1h_prev', n),
-                _safe(npz, 'low_4h', n), _safe(npz, 'low_4h_prev', n),
-                dc_high_1h, dc_high_4h, dc_low_1h, dc_low_4h, is_long), dtype=bool)
+                cfg, _safe(npz, 'high_15m', n), _safe(npz, 'low_15m', n),
+                dc_high_1h, dc_low_1h, _safe(npz, 'high_1h', n), _safe(npz, 'high_1h_prev', n),
+                _safe(npz, 'low_1h', n), _safe(npz, 'low_1h_prev', n), is_long), dtype=bool)
         except Exception:
             pass
     # 2026-10-06 USER full-parity: tiered DC-breakout entry (shared twin of the EPQ DC path).
@@ -9480,6 +9478,7 @@ def compute_entry_signals(npz, n, is_long, cfg):
             "GOLDEN_RULE_ENTRY": 6,  # 2026-10-06 golden twin: fires standalone (live loop is independent of other entries)
             "DC_BREAKOUT_ENTRY": 6,  # 2026-10-06 DC twin: standalone (live DC path overrides earlier triggers)
             "VOL_SPIKE_REVERSAL": 6,  # 2026-10-06 VOL twin: standalone (live score 20); alignment-dead both sides for now
+            "LH_TRIGGER_ENTRY": 6,  # 2026-10-09 INV-0001: standalone (live worker opens flat outright; sibling of VOL/DC)
             "B_STDEV_BREAKOUT": 6,  # 2026-10-06 parity FIX (was default 1): live fires standalone (score 25/22)
             "B_STDEV_BOUNCE": 6,  # 2026-10-06 bounce twin: standalone (live score 22)
             "B_BBSQUEEZE": 6,  # 2026-10-06 parity FIX (was default 1): live fallback (score 18, wins only when alone)
@@ -10170,6 +10169,8 @@ def compute_entry_signals(npz, n, is_long, cfg):
             _base_entry = _base_entry | blocks["B_BBSQUEEZE"]
         if "B_WT_DC_LIVE" in blocks:
             _base_entry = _base_entry | blocks["B_WT_DC_LIVE"]
+        if "B_WT_TOP" in blocks:
+            _base_entry = _base_entry | blocks["B_WT_TOP"]
     except Exception:
         pass
     # 2026-09-29 GREY-SWITCH REWIRE: RZ_BREAKOUT third entry path (tradier_manage process_position +
@@ -13651,6 +13652,16 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _sg_rth_off = ~_slsg2.rth_mask(np.asarray(ts, dtype=float), bmin)
         except Exception:
             _sg_rth_off = np.ones(n, dtype=bool)
+    try:
+        import vec_decisions.wt_top_entry as _wte_pre
+        _wte_pre_spec = _wte_pre.resolve_wt_top_spec(cfg)
+        if _wte_pre_spec.get("enabled"):
+            _wte_pre_mask = np.asarray(_wte_pre.build_wt_top_mask(npz, n, is_long, _wte_pre_spec, _safe), dtype=bool)
+            if bool(_wte_pre_mask.any()):
+                entry_sig = entry_sig | _wte_pre_mask
+                _entry_or_srcs.append(("B_WT_TOP", _wte_pre_mask))
+    except Exception:
+        pass
     for i in range(n):
         px = close[i]
         if px <= 0:
