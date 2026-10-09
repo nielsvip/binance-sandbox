@@ -6710,22 +6710,26 @@ def main():
         print(f"[START-OVERRIDES] {new_symside}: {len(_so)} overrides from {os.environ['V15_START_OVERRIDES']} (365D-repaired set)", flush=True)
         overrides = {**_tpl_defaults, **_so}
         _recipe_only_overrides = dict(overrides)
-    if not os.environ.get("V15_START_OVERRIDES"):
-        # USER 2026-10-02 (finish qualification REDO): a DONE stage that scheduled a re-fill left needs_redo
-        # in progress — the repaired set becomes this fill's baseline (§58 step 5), same as V15_START_OVERRIDES.
-        try:
-            _nr_pp = PROGRESS_DIR / f"{new_symside}_v14_progress.json"
-            if _nr_pp.exists():
-                _nr_pj = json.loads(_nr_pp.read_text())
-                _nr = _nr_pj.get("needs_redo") or {}
-                if _nr.get("overrides") and _nr_pj.get("verdict") != "IMPOSSIBLE":
-                    _so2 = dict(_nr["overrides"])
-                    print(f"[REDO-START] {new_symside}: {len(_so2)} overrides from needs_redo depth {_nr.get('depth')} ({(_nr.get('reason') or '')[:100]})", flush=True)
-                    overrides = {**_tpl_defaults, **_so2}
-                    _recipe_only_overrides = dict(overrides)
-        except Exception as _nr_e:
-            print(f"[redo-start-warn] {_nr_e}", flush=True)
-    if os.environ.get("V15_TEMPLATE_DEFAULTS", "0") == "1" and not os.environ.get("V15_START_OVERRIDES"):
+    # USER 2026-10-02 (finish qualification REDO): a DONE stage that scheduled a re-fill left needs_redo
+    # in progress — the repaired set becomes this fill's baseline (§58 step 5), same as V15_START_OVERRIDES.
+    # 2026-10-09 (USER revision audit, AGLDUSDT_SHORT proof): the fresh repaired set ALWAYS wins — it used to
+    # lose twice: ignored when V15_START_OVERRIDES was set (stale autopsy base won), and silently dropped by
+    # TEMPLATE_DEFAULTS when it was not (REDO re-filled from template defaults at -5.80 instead of +1.12/121t).
+    _nr_applied = False
+    try:
+        _nr_pp = PROGRESS_DIR / f"{new_symside}_v14_progress.json"
+        if _nr_pp.exists():
+            _nr_pj = json.loads(_nr_pp.read_text())
+            _nr = _nr_pj.get("needs_redo") or {}
+            if _nr.get("overrides") and _nr_pj.get("verdict") != "IMPOSSIBLE":
+                _so2 = dict(_nr["overrides"])
+                print(f"[REDO-START] {new_symside}: {len(_so2)} overrides from needs_redo depth {_nr.get('depth')} ({(_nr.get('reason') or '')[:100]})", flush=True)
+                overrides = {**_tpl_defaults, **_so2}
+                _recipe_only_overrides = dict(overrides)
+                _nr_applied = True
+    except Exception as _nr_e:
+        print(f"[redo-start-warn] {_nr_e}", flush=True)
+    if os.environ.get("V15_TEMPLATE_DEFAULTS", "0") == "1" and not os.environ.get("V15_START_OVERRIDES") and not _nr_applied:
         # USER 2026-09-29: live recipe makes 0 trades (impossible) -> start from the TEMPLATE_{CAT}_{SIDE} bold defaults (= live config defaults)
         # 2026-10-08 (USER gains lane, system audit): a V15_START_OVERRIDES run is already template-defaults + the repaired/autopsy-first set (§58 step 5) — it must NOT be dropped here (it was, silently, under the fleet launcher).
         print(f"[TEMPLATE-DEFAULTS] {new_symside}: live recipe/best dropped ({len(overrides)} overrides) -> template defaults only", flush=True)
