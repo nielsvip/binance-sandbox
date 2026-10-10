@@ -610,16 +610,14 @@ def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None):
     """USER 2026-10-09 (trb gainers absolute priority): W chains + W new before ALL M/L work. Stable sort
     keeps chain-first within a tier. Running pilots are never touched — this orders new launches only.
     USER 2026-10-10 (82 redo backlog): needs_redo RESUMES outrank everything (paid work finalises in
-    minutes). Key = (redo, native, tier): the order is the NEW-pair budget priority (first 4 win); held
+    minutes). Key = (redo, tier): the order is the NEW-pair budget priority (first 4 win); held
     chains are budget-free and the launch loop never BREAKS (continue skips over-cap/new-budget/dead
     pairs), so every held chain is evaluated every tick — a break-before-held froze the fleet 03:00-03:35Z.
-    TEMPORARY (revert when green fixes GAP_MOC parity or azure drops native names): suffixless
-    (native-stocks) names sort last — they parity-refuse at startup and were eating the 4/tick budget."""
+    USER 2026-10-10 22:30Z: temporary native-deprioritize REVERTED (GAP_MOC parity repaired, natives run)."""
     seq = [(s, False) for s in held_ordered] + [(s, True) for s in adopted_owned] + [(s, True) for s in new_syms]
     _rs = redo or set()
     _rk = lambda b: 0 if f"{b}_LONG" in _rs or f"{b}_SHORT" in _rs else 1
-    _nat = lambda b: 0 if b.endswith(("USDT", "USDC")) else 1
-    seq.sort(key=lambda t: (_rk(t[0]), _nat(t[0]), _sym_tier_rank(t[0], tiers)))
+    seq.sort(key=lambda t: (_rk(t[0]), _sym_tier_rank(t[0], tiers)))
     return seq
 
 

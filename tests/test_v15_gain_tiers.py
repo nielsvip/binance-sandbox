@@ -130,10 +130,10 @@ class PlaceOrderTest(unittest.TestCase):
         got = _place_order([], [], ["W1", "R1"], tiers, redo={"R1_LONG"})
         self.assertEqual([s for s, _ in got], ["R1", "W1"])
 
-    def test_native_names_last_within_budget(self):
+    def test_no_native_penalty_after_parity_fix(self):
         tiers = {"MSTR_LONG": {"tier": "M", "gain": 0, "mtime": 1}, "MSTR_SHORT": {"tier": "M", "gain": 0, "mtime": 1}, "AAVEUSDC_LONG": {"tier": "M", "gain": 0, "mtime": 1}}
         got = _place_order([], [], ["MSTR", "AAVEUSDC"], tiers)
-        self.assertEqual([s for s, _ in got], ["AAVEUSDC", "MSTR"])
+        self.assertEqual([s for s, _ in got], ["MSTR", "AAVEUSDC"])
 
 
 class TierChainGatesTest(unittest.TestCase):
