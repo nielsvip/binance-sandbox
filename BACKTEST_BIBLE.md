@@ -1865,3 +1865,9 @@ would split sweep/live from pilot baselines; needs a director ruling, not a sile
   (4 workers) + pair + live — backfill throttled to workers 2 / nice 15; several backfill sides ERROR
   (Nonet/missing NPZ → template-bold base only, may stay base-blocked until data exists). BB LONG
   forgiven 3→2 (last life before park).
+- **Pusher starvation (USER 2026-10-10: 0 sym_sides in 2h, need 20/hour or s2/s5/s6 shut down):**
+  `v15_gain_pusher` marathon polish jobs (5–7h old, round 10) consumed 59–69% of fleet CPU while
+  pilots crawled at ~30 rows/min (loads 30–42). Fix: SIGSTOPed all 40 pushers on s2/s5/s6 (resumable,
+  no state loss) + disabled the per-host `v15_pusher_supervisor` crons (backed up to
+  `/tmp/crontab_before_pushstop_20261010.txt` each host). Loads collapsed to 8–16 within 3 min.
+  Resume with `pkill -CONT -f 'v15_[g]ain_pusher.py'` + cron restore when board rate is safe.

@@ -1897,10 +1897,10 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
             if _sec is None or _df is None or len(_df) == 0:
                 continue
             _idx = pd.DatetimeIndex(pd.to_datetime(_df.index, utc=True))
-            _keep = _idx <= (_now_utc - pd.Timedelta(seconds=_sec + 75))
+            _keep = np.asarray(_idx <= (_now_utc - pd.Timedelta(seconds=_sec + 75)))
             if bool((~_keep).any()):
+                dfs[tf] = _df[_keep]
                 logger.info(f"  {symbol} {tf}: dropped {int((~_keep).sum())} forming bar(s)")
-                dfs[tf] = _df.loc[_keep.values]
     except Exception as _e:
         logger.warning(f"  {symbol}: forming-drop skipped: {_e}")
     if base_tf not in dfs:

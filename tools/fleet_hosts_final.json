@@ -29,10 +29,11 @@
     "crypto"
    ],
    "mem_reserve_mb": 5000,
-   "max_pairs": 4,
+   "max_pairs": 3,
    "workers_per_side": 4,
    "oom_mb": 1500,
-   "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM"
+   "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM",
+   "_note": "2026-10-10: 4->3 (s2 OOM-murdered APEUSDT_LONG at 02:38, 4x12GB peaks exceed 31GB)"
   },
   {
    "name": "s5",
