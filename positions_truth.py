@@ -289,6 +289,27 @@ def match_recent_order_reason(position_key, qty, now=None, window_s=300.0):
     return None
 
 
+def is_context_fresh(ctx, now=None, max_age_s=600.0):
+    """True when a decision-context payload timestamp is within max_age_s. Rejects 3-week-old Redis contexts that mis-tagged fills (proven 2026-10-10: Sep-21/Oct-8 contexts served for live fills). Unparseable/missing ts -> False."""
+    try:
+        if not isinstance(ctx, dict):
+            return False
+        _ts = ctx.get("timestamp")
+        if not _ts:
+            return False
+        _t = time.time() if now is None else now
+        _s = str(_ts)
+        try:
+            _dt = datetime.fromisoformat(_s.replace("Z", "+00:00"))
+        except Exception:
+            return False
+        if _dt.tzinfo is None:
+            _dt = _dt.replace(tzinfo=timezone.utc)
+        return 0 <= _t - _dt.timestamp() <= max_age_s
+    except Exception:
+        return False
+
+
 class AbandonTimeout(asyncio.TimeoutError):
     """await_abandonable timed out. Subclasses TimeoutError so existing handlers catch it unchanged."""
 
