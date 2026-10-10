@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """v15_pusher_supervisor — per-host worker pool: NEVER let compute sit idle (USER 2026-10-09).
 
-Every tick (cron */2, flock): reclaim orphaned running/ units to inbox, then
-spawn niced v15_pusher_worker procs while CPU busy < 90% AND free RAM covers
-reserve + headroom AND count < max_workers. Workers are never killed (units
-drain in minutes; overshoot self-corrects). Pilots (nice 0) always preempt
-pushers (nice 15), so filling to 90%+ cannot starve the sweep.
+Every tick (cron */2, flock): reclaim orphaned running/ units to inbox, reap
+stuck units (live PID, no progress 45min — units drain in minutes) with SIGKILL
+back to inbox, prune worker logs beyond newest 200, then spawn niced
+v15_pusher_worker procs while disk OK (>5GB free, fail-open) AND CPU busy < 90%
+AND free RAM covers reserve + headroom AND count < max_workers. Pilots (nice 0)
+always preempt pushers (nice 15), so filling to 90%+ cannot starve the sweep.
 
-Writes heartbeat.json for the S1 coordinator (workers, cpu, RAM, inbox depth).
+Writes heartbeat.json for the S1 coordinator (workers, cpu, RAM, disk, inbox depth).
 Local-only: no ssh (the S1 coordinator pushes inbox / pulls done+heartbeat).
 """
 import json
@@ -21,6 +22,61 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 CPU_TARGET = 90.0
 WORKER_RSS_GUARD_MB = 600
+DISK_MIN_AVAIL_MB = 5000
+STUCK_UNIT_MIN = 45
+LOGS_KEEP = 200
+
+
+def disk_avail_mb(path):
+    try:
+        st = os.statvfs(str(path))
+        return (st.f_bavail * st.f_frsize) // 1048576
+    except Exception:
+        return -1
+
+
+def _disk_admit_ok(path, minimum_mb=DISK_MIN_AVAIL_MB):
+    """False when disk is provably too full to spawn. Missing/unreadable fails open. Pure (tested)."""
+    avail = disk_avail_mb(path)
+    if avail < 0:
+        return True
+    return avail >= minimum_mb
+
+
+def _stuck_units(running, now_ts, stuck_min=STUCK_UNIT_MIN):
+    """Running units whose live PID made no progress for stuck_min (units drain in minutes). Pure (tested)."""
+    out = []
+    for f in sorted(running.glob("*.json")):
+        if f.name.startswith("tmp_"):
+            continue
+        try:
+            if now_ts - f.stat().st_mtime < stuck_min * 60:
+                continue
+        except Exception:
+            continue
+        pf = running / (f.name + ".pid")
+        try:
+            pid = int(pf.read_text().strip()) if pf.exists() else 0
+        except Exception:
+            pid = 0
+        if pid:
+            try:
+                os.kill(pid, 0)
+            except Exception:
+                pid = 0
+        out.append((f, pid))
+    return out
+
+
+def _logs_to_prune(logs_dir, keep=LOGS_KEEP):
+    """Oldest worker logs beyond keep (newest survive). Pure (tested)."""
+    try:
+        files = sorted(logs_dir.glob("worker_*.log"), key=lambda p: p.stat().st_mtime)
+    except Exception:
+        return []
+    if len(files) <= keep:
+        return []
+    return files[:len(files) - keep]
 
 
 def log(msg):
@@ -103,6 +159,30 @@ def main():
             reclaimed += 1
         except OSError:
             pass
+    reaped = 0
+    for f, pid in _stuck_units(running, time.time()):
+        if pid:
+            try:
+                os.kill(pid, 9)
+                reaped += 1
+            except Exception:
+                pass
+        try:
+            os.rename(f, inbox / f.name)
+            reclaimed += 1
+        except OSError:
+            pass
+        try:
+            (running / (f.name + ".pid")).unlink()
+        except Exception:
+            pass
+    pruned = 0
+    for old in _logs_to_prune(base / "logs"):
+        try:
+            old.unlink()
+            pruned += 1
+        except Exception:
+            pass
     for tmp in running.glob("tmp_*"):
         try:
             if time.time() - tmp.stat().st_mtime > 3600:
@@ -114,9 +194,10 @@ def main():
     maxw = a.max_workers or nproc
     busy, avail = cpu_busy(), mem_avail_mb()
     workers = worker_pids()
-    log(f"cpu={busy}% avail={avail}MB workers={len(workers)} inbox={len(list(inbox.glob('*.json')))} reclaimed={reclaimed}")
+    disk_ok = _disk_admit_ok(base)
+    log(f"cpu={busy}% avail={avail}MB workers={len(workers)} inbox={len(list(inbox.glob('*.json')))} reclaimed={reclaimed} reaped={reaped} pruned={pruned} disk_ok={disk_ok}")
     spawned = 0
-    while busy < CPU_TARGET and avail > a.reserve_mb + WORKER_RSS_GUARD_MB and len(workers) + spawned < maxw:
+    while disk_ok and busy < CPU_TARGET and avail > a.reserve_mb + WORKER_RSS_GUARD_MB and len(workers) + spawned < maxw:
         lf = open(base / "logs" / f"worker_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}_{spawned}.log", "a")
         subprocess.Popen(["nice", "-n", "15", sys.executable or "python3", "-u", str(ROOT / "tools" / "v15_pusher_worker.py"), "--root", str(base)],
                          stdout=lf, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True, cwd=str(ROOT))
@@ -128,7 +209,8 @@ def main():
     hb = {"ts": time.time(), "host": os.uname().nodename, "cpu": busy, "avail_mb": mem_avail_mb(),
           "workers": len(workers) + spawned, "spawned": spawned, "inbox": len(list(inbox.glob("*.json"))),
           "running": len([f for f in running.glob("*.json") if not f.name.startswith("tmp_")]),
-          "done": len(list((base / "done").glob("*.json")))}
+          "done": len(list((base / "done").glob("*.json"))),
+          "disk_avail_mb": disk_avail_mb(base), "disk_ok": disk_ok, "reaped": reaped, "pruned": pruned}
     (base / "heartbeat.json").write_text(json.dumps(hb, indent=1))
 
 
