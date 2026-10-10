@@ -1140,9 +1140,10 @@ def _apply_split_adjustments(symbol: str, dfs: Dict[str, pd.DataFrame]) -> Dict[
     return adjusted
 
 
-def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
+def compute_tf_arrays(df: pd.DataFrame, tf: str, last_only: bool = False) -> Dict[str, np.ndarray]:
     """Compute ALL indicators for one TF, returning FULL arrays (not scalars).
-    Uses the SAME functions from tradier_indicators.py."""
+    Uses the SAME functions from tradier_indicators.py.
+    last_only=True (per-step parity loop only): the slow rolling loops compute ONLY [-1], bit-identical there."""
     from tradier_indicators import (rsi_series, atr_series, mfi_value, stoch_result,
                                      donchian, heikin_ashi, wavetrend,
                                      relative_volume, wavetrend_intelligence,
@@ -1521,16 +1522,16 @@ def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
         out["pct_from_52w_low"] = ((c_arr / np.maximum(low_52w, 1e-10) - 1.0) * 100.0).astype(np.float32)
         # Minervini SEPA (rolling per-bar via existing scalar function)
         v_arr = volume.values.astype(np.float64)
-        sepa_pass, sepa_score = _rolling_sepa(c_arr, h_arr, l_arr, v_arr)
+        sepa_pass, sepa_score = _rolling_sepa(c_arr, h_arr, l_arr, v_arr, last_only=last_only)
         out["sepa_pass"] = sepa_pass
         out["sepa_score"] = sepa_score
         # Clenow score
-        cl_score, cl_slope, cl_r2 = _rolling_clenow(c_arr, lookback=90)
+        cl_score, cl_slope, cl_r2 = _rolling_clenow(c_arr, lookback=90, last_only=last_only)
         out["clenow_score"] = cl_score
         out["clenow_slope"] = cl_slope
         out["clenow_r2"] = cl_r2
         # Episodic Pivot — fires forward 30 days from detection
-        ep_det, ep_lvl, ep_dir = _rolling_episodic_pivot(o_arr, h_arr, l_arr, c_arr, v_arr, fwd_days=30)
+        ep_det, ep_lvl, ep_dir = _rolling_episodic_pivot(o_arr, h_arr, l_arr, c_arr, v_arr, fwd_days=30, last_only=last_only)
         out["ep_detected"] = ep_det
         out["ep_breakout_level"] = ep_lvl
         out["ep_direction"] = ep_dir

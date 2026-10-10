@@ -289,7 +289,7 @@ def stock_live_extras(df: pd.DataFrame, tf: str) -> Dict[str, float]:
 def builder_step_fn(compute_tf_arrays: Callable) -> Callable:
     """per-frame function for forming_values: the builder arrays + the live extras (as last-row values)."""
     def _fn(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
-        arrs = compute_tf_arrays(df, tf)
+        arrs = compute_tf_arrays(df, tf, last_only=True)
         n = len(df)
         for k, v in stock_live_extras(df, tf).items():
             if isinstance(v, (bool, np.bool_)):
