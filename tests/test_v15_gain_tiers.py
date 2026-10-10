@@ -130,6 +130,11 @@ class PlaceOrderTest(unittest.TestCase):
         got = _place_order([], [], ["W1", "R1"], tiers, redo={"R1_LONG"})
         self.assertEqual([s for s, _ in got], ["R1", "W1"])
 
+    def test_native_names_last_within_budget(self):
+        tiers = {"MSTR_LONG": {"tier": "M", "gain": 0, "mtime": 1}, "MSTR_SHORT": {"tier": "M", "gain": 0, "mtime": 1}, "AAVEUSDC_LONG": {"tier": "M", "gain": 0, "mtime": 1}}
+        got = _place_order([], [], ["MSTR", "AAVEUSDC"], tiers)
+        self.assertEqual([s for s, _ in got], ["AAVEUSDC", "MSTR"])
+
 
 class TierChainGatesTest(unittest.TestCase):
     def test_gs_winners_mid_discovery_only(self):
@@ -139,11 +144,12 @@ class TierChainGatesTest(unittest.TestCase):
         self.assertTrue(_gs_allowed_for_tier("M", False))
 
     def test_midnight_keeps_tier_memory(self):
-        st = {"date": "20261009", "attempts": {"A": 3}, "gain_seen": {"X_LONG": {"gain": 5.0, "mtime": 1.0}}}
+        st = {"date": "20261009", "attempts": {"A": 3}, "gain_seen": {"X_LONG": {"gain": 5.0, "mtime": 1.0}}, "launched_at": {"K": 123.0}}
         out = _fresh_daily_state(st, "20261010")
         self.assertEqual(out["date"], "20261010")
         self.assertEqual(out["attempts"], {})
         self.assertEqual(out["gain_seen"], {"X_LONG": {"gain": 5.0, "mtime": 1.0}})
+        self.assertEqual(out["launched_at"], {"K": 123.0})
 
     def test_same_day_untouched(self):
         st = {"date": "20261010", "attempts": {"A": 3}}

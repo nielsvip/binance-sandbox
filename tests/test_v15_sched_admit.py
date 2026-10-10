@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
-from v15_fleet_scheduler import _disk_admit_ok, _est_pair_mb, _growth_debt_mb, _progress_done_rows, _rank_oom_victim, _reap_burn_weight, _reap_burns, _stall_tick, _swap_admit_ok, tick
+from v15_fleet_scheduler import _disk_admit_ok, _est_pair_mb, _growth_debt_mb, _launched_recently, _progress_done_rows, _rank_oom_victim, _reap_burn_weight, _reap_burns, _stall_tick, _swap_admit_ok, tick
 
 
 class EstPairTest(unittest.TestCase):
@@ -74,6 +74,23 @@ class DiskAdmitTest(unittest.TestCase):
     def test_junk_safe(self):
         self.assertTrue(_disk_admit_ok({"disk_avail_mb": "x"}))
         self.assertTrue(_disk_admit_ok(42))
+
+
+class LaunchedRecentlyTest(unittest.TestCase):
+    def test_missing_never_recent(self):
+        self.assertFalse(_launched_recently("K", {}, 1000.0))
+        self.assertFalse(_launched_recently("K", None, 1000.0))
+        self.assertFalse(_launched_recently("K", {"K": None}, 1000.0))
+
+    def test_window(self):
+        self.assertTrue(_launched_recently("K", {"K": 990.0}, 1000.0))
+        self.assertTrue(_launched_recently("K", {"K": 821.0}, 1000.0))
+        self.assertFalse(_launched_recently("K", {"K": 819.0}, 1000.0))
+        self.assertFalse(_launched_recently("K", {"K": 100.0}, 1000.0))
+
+    def test_junk_safe(self):
+        self.assertFalse(_launched_recently("K", {"K": "x"}, 1000.0))
+        self.assertFalse(_launched_recently("K", 42, 1000.0))
 
 
 class VictimRankTest(unittest.TestCase):

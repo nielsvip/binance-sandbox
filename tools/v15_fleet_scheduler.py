@@ -586,7 +586,7 @@ def _fresh_daily_state(st, datestr):
     """Midnight rollover: fresh attempts/holds, but tier memory survives (own 30d prune). Without the carry-over,
     W/M/L + deferral evaporate daily (USER 2026-10-10: observed 255 -> 71 measured at 00:00Z)."""
     if (st or {}).get("date") != datestr:
-        return {"date": datestr, "held": {}, "attempts": {}, "ready": {}, "gain_seen": (st or {}).get("gain_seen", {})}
+        return {"date": datestr, "held": {}, "attempts": {}, "ready": {}, "gain_seen": (st or {}).get("gain_seen", {}), "launched_at": (st or {}).get("launched_at", {})}
     return st
 
 
@@ -604,13 +604,16 @@ def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None):
     """USER 2026-10-09 (trb gainers absolute priority): W chains + W new before ALL M/L work. Stable sort
     keeps chain-first within a tier. Running pilots are never touched — this orders new launches only.
     USER 2026-10-10 (82 redo backlog): needs_redo RESUMES outrank everything (paid work finalises in
-    minutes). Key = (redo, tier): the order is the NEW-pair budget priority (first 4 win); held chains
-    are budget-free and the launch loop never BREAKS (continue skips over-cap/new-budget/dead pairs),
-    so every held chain is evaluated every tick — a break-before-held froze the fleet 03:00-03:35Z."""
+    minutes). Key = (redo, native, tier): the order is the NEW-pair budget priority (first 4 win); held
+    chains are budget-free and the launch loop never BREAKS (continue skips over-cap/new-budget/dead
+    pairs), so every held chain is evaluated every tick — a break-before-held froze the fleet 03:00-03:35Z.
+    TEMPORARY (revert when green fixes GAP_MOC parity or azure drops native names): suffixless
+    (native-stocks) names sort last — they parity-refuse at startup and were eating the 4/tick budget."""
     seq = [(s, False) for s in held_ordered] + [(s, True) for s in adopted_owned] + [(s, True) for s in new_syms]
     _rs = redo or set()
     _rk = lambda b: 0 if f"{b}_LONG" in _rs or f"{b}_SHORT" in _rs else 1
-    seq.sort(key=lambda t: (_rk(t[0]), _sym_tier_rank(t[0], tiers)))
+    _nat = lambda b: 0 if b.endswith(("USDT", "USDC")) else 1
+    seq.sort(key=lambda t: (_rk(t[0]), _nat(t[0]), _sym_tier_rank(t[0], tiers)))
     return seq
 
 
@@ -711,6 +714,19 @@ def _disk_admit_ok(stats, min_mb=5000.0):
         return float(avail) >= float(min_mb)
     except Exception:
         return True
+
+
+def _launched_recently(key, launched_at, now_ts, grace_s=180.0):
+    """True when key launched within the grace window (USER 2026-10-10: fresh pilots are
+    probe-invisible for minutes under load; relaunching them spawns cross-host duplicates that
+    burn attempts to cap at birth). Missing/junk fails open (launch)."""
+    try:
+        ts = (launched_at or {}).get(key)
+        if ts is None:
+            return False
+        return (float(now_ts) - float(ts)) < float(grace_s)
+    except Exception:
+        return False
 
 
 def _progress_done_rows(path):
@@ -1004,7 +1020,12 @@ def tick(args, cfg, now):
         lst.sort(key=lambda s: (rank[v].get(s, 10 ** 6), s))  # worst-first per the previous order file, unknown last
     st = load_state()
     st = _fresh_daily_state(st, now.strftime("%Y%m%d"))
-    st.setdefault("held", {}); st.setdefault("attempts", {}); st.setdefault("ready", {})
+    st.setdefault("held", {}); st.setdefault("attempts", {}); st.setdefault("ready", {}); st.setdefault("launched_at", {})
+    try:
+        _now0 = now.timestamp()
+        st["launched_at"] = {k: v for k, v in st["launched_at"].items() if _now0 - float(v or 0) < 3600}
+    except Exception:
+        pass
     stats = {h["name"]: (sim["hosts"].get(h["name"]) if sim else probe(h)) for h in hosts}
     reaped = {}
     if not (args.dry_run or sim or args.no_reap):
@@ -1376,6 +1397,7 @@ def tick(args, cfg, now):
                 continue
             acts = pending_actions(sym, h["name"])
             acts = [a for a in acts if _repair_sticky_ok(a, rep_host, h["name"])]
+            acts = [a for a in acts if a["key"] not in launched_keys and not _launched_recently(a["key"], st.get("launched_at"), _now_ts)]
             if not acts:
                 continue
             if needs_slot and not _pair_gate_ok(sym, acts, owner, chain_state, st["attempts"]):  # fresh syms: every launchable side covered; terminal/capped sides don't block siblings
@@ -1401,6 +1423,7 @@ def tick(args, cfg, now):
                 for a in acts:
                     st["attempts"][a["key"]] = st["attempts"].get(a["key"], 0) + 1
                     st.setdefault("last_act", {})[a["key"].split("|")[0]] = a["key"]
+                    st["launched_at"][a["key"]] = _now_ts
                     launched_keys.add(a["key"])
                 log["launched"].append(tag)
             if needs_slot:
@@ -1495,7 +1518,7 @@ def tick(args, cfg, now):
                 continue
             if terminal(sym):
                 continue
-            acts = [a for a in pending_actions(sym, h["name"]) if a["key"] not in launched_keys and (a["window"] == "365D" or (a["window"] == "REPAIR" and a["attempt"] == 1))]
+            acts = [a for a in pending_actions(sym, h["name"]) if a["key"] not in launched_keys and not _launched_recently(a["key"], st.get("launched_at"), _now_ts) and (a["window"] == "365D" or (a["window"] == "REPAIR" and a["attempt"] == 1))]
             if not acts:
                 continue
             if B["new_launched"] >= args.max_launch or len(held[h["name"]]) >= B["cap"] or B["proj_mem"] < B["est_pair"] or B["cpu"] >= cfg.get("cpu_target_pct", 90) or not _disk_admit_ok(s):  # USER 2026-10-10: pass-2 steal must respect the disk guard
@@ -1528,6 +1551,7 @@ def tick(args, cfg, now):
                 for a in acts:
                     st["attempts"][a["key"]] = st["attempts"].get(a["key"], 0) + 1
                     st.setdefault("last_act", {})[a["key"].split("|")[0]] = a["key"]
+                    st["launched_at"][a["key"]] = _now_ts
                     launched_keys.add(a["key"])
                 log["launched"].append(tag)
             B["proj_mem"] -= B["est_pair"] + float(rd.get("size_mb") or 0)
