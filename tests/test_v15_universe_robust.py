@@ -36,3 +36,35 @@ def test_valid_tradeable_file_unchanged(tmp_path):
 def test_scheduler_screams_on_empty_allowlist():
     src = (ROOT / "tools" / "v15_fleet_scheduler.py").read_text()
     assert "filter DISABLED, entire fleet calculating" in src
+
+
+def test_quorum_collapse_serves_last_good(tmp_path):
+    import v15_universe as U
+
+    out = tmp_path / "data" / "daily_universe"
+    out.mkdir(parents=True)
+    lg = [f"SYM{i:03d}USDT_LONG" for i in range(300)]
+    (out / "last_good.json").write_text(json.dumps({"allowed_sym_sides": lg}))
+    (tmp_path / "tradeable_keys.json").write_text("GARBAGE{{not json at all")
+    u = U.build(root=tmp_path)
+    assert len(u["allowed_sym_sides"]) == 300, "collapsed build must serve last_good, got %d" % len(u["allowed_sym_sides"])
+    assert u["degraded"] and "last_good" in u["degraded"], u.get("degraded")
+
+
+def test_quorum_healthy_build_persists_last_good(tmp_path):
+    import v15_universe as U
+
+    good = [f"ang:SYM{i:03d}USDT_LONG" for i in range(10)]
+    (tmp_path / "tradeable_keys.json").write_text(json.dumps(good))
+    u = U.build(root=tmp_path)
+    assert u["degraded"] is None, u.get("degraded")
+    lg = json.loads((tmp_path / "data" / "daily_universe" / "last_good.json").read_text())
+    assert len(lg["allowed_sym_sides"]) >= 10
+
+
+def test_scheduler_autokill_fresh_gated_and_precise():
+    src = (ROOT / "tools" / "v15_fleet_scheduler.py").read_text()
+    assert 'how in ("file", "rebuilt-tradeable-changed")' in src, "autokill only on fresh universe"
+    assert "V15_SCHED_AUTOKILL_DEAD" in src, "autokill must have env opt-out"
+    assert '"sym_sides": sorted(' in src, "autokill must be sym_side-precise"
+    assert "rebuilt-tradeable-changed" in src, "universe must rebuild when keys file is newer"

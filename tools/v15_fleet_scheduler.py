@@ -438,17 +438,24 @@ elif mode == "reap":
     print(json.dumps({"apply": bool(arg.get("apply")), "mem_avail_mb": mem, "actions": acts}))
 
 elif mode == "kill":
-    # arg: {symbols:[...out-of-universe...], pdir:..., apply:bool}. Only processes that belong to the CURRENT progress dir
+    # arg: {symbols:[...out-of-universe...], pdir:..., apply:bool, sym_sides:[...exact...] (optional)}. Only processes that belong to the CURRENT progress dir
     # (env V15_PROGRESS_DIR or cmdline V15_PROGRESS_DIR=<pdir>) — old allcells pilots in other dirs are left alone.
-    pat = re.compile(r"--sym-side (%s)_(LONG|SHORT)(\s|$)" % "|".join(re.escape(s) for s in arg["symbols"])) if arg["symbols"] else None
+    # USER 2026-10-10 ZERO WASTE: sym_sides allows sym_side-precise kills (never kills the good side of a half-allowed symbol). Old callers send symbols only — unchanged behavior.
+    _syms = arg.get("symbols") or []
+    _sss = arg.get("sym_sides") or []
+    pat = re.compile(r"--sym-side (%s)_(LONG|SHORT)(\s|$)" % "|".join(re.escape(s) for s in _syms)) if _syms else None
+    pat2 = re.compile(r"--sym-side (%s)(\s|$)" % "|".join(re.escape(s) for s in _sss)) if _sss else None
     hit = []
     for pid, a in procs():
         line = " ".join(a)
-        if not pat or not pat.search(line) or not any(s in line for s in SCRIPTS):
+        m1 = pat.search(line) if pat else None
+        m2 = pat2.search(line) if pat2 else None
+        if (not m1 and not m2) or not any(s in line for s in SCRIPTS):
             continue
         if ("V15_PROGRESS_DIR=" + arg["pdir"]) not in line and environ(pid).get("V15_PROGRESS_DIR") != arg["pdir"]:
             continue
-        hit.append((pid, pat.search(line).group(1) + "_" + pat.search(line).group(2), os.path.basename(a[0])))
+        _hit_ss = m2.group(1) if m2 else (m1.group(1) + "_" + m1.group(2))
+        hit.append((pid, _hit_ss, os.path.basename(a[0])))
     if arg.get("apply"):
         for pid, _, _ in hit:
             try:
@@ -963,6 +970,16 @@ def tick(args, cfg, now):
     hosts = cfg["hosts"]
     sim = json.load(open(args.simulate)) if args.simulate else None
     uni, how = U.load_or_build(ROOT, now, write=not (args.dry_run or sim))
+    try:
+        _tk_mtime = (ROOT / "tradeable_keys.json").stat().st_mtime
+        _ub = datetime.datetime.fromisoformat(uni.get("built_utc", "")).timestamp()
+    except Exception:
+        _tk_mtime, _ub = 0, 0
+    if _tk_mtime > _ub:
+        # USER 2026-10-10: tradeable universe churns live — a universe older than the keys file
+        # schedules dead work. Rebuild in-tick (quorum-guarded: a bad build serves last_good).
+        uni = U.build(ROOT, now); how = "rebuilt-tradeable-changed"
+        print(f"[sched] universe rebuilt: tradeable_keys.json newer than universe build", flush=True)
     stocks, crypto = list(uni["stocks"]), list(uni["crypto"])
     rank = {v: legacy_rank(cfg, v) for v in ("stocks", "crypto")}
     for v, lst in (("stocks", stocks), ("crypto", crypto)):
@@ -1222,8 +1239,39 @@ def tick(args, cfg, now):
             held[hn][sym] = "chain"
     st["held"] = {hn: {s: st["held"].get(hn, {}).get(s, now.isoformat()) for s in d} for hn, d in held.items()}
     foreign = {ss: r for ss, r in running.items() if ss.rsplit("_", 1)[0] not in universe_syms["stocks"] | universe_syms["crypto"]}
+    # USER 2026-10-10 ZERO WASTE: auto-kill double-confirmed dead pilots — running sym_side absent from
+    # a FRESH universe allowlist (today's file or just-rebuilt; open positions are already IN allowed,
+    # so absence = dead). Sym_side-precise: never kills the good side of a half-allowed symbol, only
+    # current-pdir pilots. Stale universe / dry-run / sim / V15_SCHED_AUTOKILL_DEAD=0 = report only.
+    _ak_report, _ak_killed = {}, {}
+    _ak_fresh = how in ("file", "rebuilt-tradeable-changed")
+    _ak_on = os.environ.get("V15_SCHED_AUTOKILL_DEAD", "1") == "1"
+    _ak_allowed = set(uni.get("allowed_sym_sides") or [])
+    if _ak_allowed:
+        _dead_by_host = {}
+        for _ss, _r in running.items():
+            if _ss in _ak_allowed:
+                continue
+            _hn = (_r or {}).get("host")
+            _hp = (stats.get(_hn) or {}).get("pdir") if _hn else None
+            if not _hn or not _hp or (_r or {}).get("pdir") != _hp:
+                continue
+            _dead_by_host.setdefault(_hn, {"pdir": _hp, "ss": []})["ss"].append(_ss)
+        for _hn, _dd in _dead_by_host.items():
+            _ak_report[_hn] = sorted(_dd["ss"])
+        if _dead_by_host and _ak_fresh and _ak_on and not (args.dry_run or sim):
+            for _h in hosts:
+                _dd = _dead_by_host.get(_h["name"])
+                if not _dd:
+                    continue
+                _res = host_py(_h, "kill", {"symbols": [], "sym_sides": sorted(_dd["ss"]), "pdir": _dd["pdir"], "apply": True})
+                _ak_killed[_h["name"]] = _res
+                print(f"[autokill] {_h['name']} dead={sorted(_dd['ss'])} res={_res}", flush=True)
+        elif _dead_by_host:
+            print(f"[autokill] REPORT-ONLY (fresh={_ak_fresh} on={_ak_on} dry={bool(args.dry_run or sim)}): {json.dumps(_ak_report)}", flush=True)
     log = {"now": now.isoformat(), "market_open": is_open, "venue_order": vorder, "priority_syms": sorted(priority_syms()), "min_to_open": round(mto), "universe_source": how,
-           "universe": uni["counts"], "reaped": reaped, "hosts": {}, "launched": [], "skipped_unready": {}, "foreign_running": {k: v["host"] for k, v in foreign.items()}}
+           "universe": uni["counts"], "reaped": reaped, "hosts": {}, "launched": [], "skipped_unready": {}, "foreign_running": {k: v["host"] for k, v in foreign.items()},
+           "autokilled": _ak_killed, "autokill_report": _ak_report}
 
     # ---- candidate work
     # (A) adopted chain work: owner host known, not terminal, not currently running anything for that side; (B) brand-new symbols

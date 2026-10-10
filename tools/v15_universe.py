@@ -157,6 +157,21 @@ def build(root=ROOT, now=None):
     now = now or dt.datetime.now(dt.timezone.utc)
     allowed = tradeable_sym_sides(root)
     openpos = open_position_sym_sides(root)
+    degraded = None
+    ok, why = _quorum_check(allowed, root)
+    if ok:
+        if allowed:
+            _persist_last_good(allowed, root)
+    else:
+        try:
+            lg = json.loads((root / "data" / "daily_universe" / "last_good.json").read_text())
+            allowed = set(lg.get("allowed_sym_sides") or [])
+            openpos = set()
+            degraded = f"quorum-rejected fresh build ({why}); serving last_good ({len(allowed)}). Delete last_good.json to force a fresh take."
+            print(f"[universe] WARN {degraded}", file=sys.stderr)
+        except Exception:
+            degraded = f"quorum-rejected ({why}) and no last_good; shipping as-is"
+            print(f"[universe] WARN {degraded}", file=sys.stderr)
     st, cr_src = {}, {}
     for ss in allowed:
         sym, side = ss.rsplit("_", 1)
@@ -167,6 +182,7 @@ def build(root=ROOT, now=None):
     cr, newest = sorted(cr_src), None
     return {
         "allowed_sym_sides": sorted(allowed),
+        "degraded": degraded,
         "date": now.strftime("%Y%m%d"), "built_utc": now.isoformat(),
         "sources": {"stocks": "symbols_trb_long/short.json + TRADIER_MANDATORY_LONG/SHORT_TRB (USER 2026-10-06 tradeable only)",
                     "crypto": "tradeable_keys.json sym_sides (USER 2026-10-06 tradeable only)", "exclude": "data/universe_exclude.json",
