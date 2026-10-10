@@ -10,6 +10,11 @@ Safety: existing gateway bars are NEVER overwritten (merge adds decoded-only
 timestamps, after backups/). Every decoded TF is verified bar-for-bar against
 authentic overlap before merge; mismatch aborts that TF loudly.
 
+2026-10-10 FINDING: legacy NPZ 15m/HTF OHLCV does NOT match authentic futures
+klines (ENAUSDC: prices ~0.05% off, volume ~30x off — wrong venue/instrument
+at build time). Decode of 15m/1h/4h/D from legacy is UNSOUND — use only
+--only W,M (resample from authentic D) + fapi micro-backfill for the rest.
+
 usage: npz_legacy_decode.py SYM [SYM...] [--write] [--ind-dir D] [--gateway-dir D]
   (no --write = verify-only report, no files touched)
 """
@@ -84,9 +89,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("symbols", nargs="+")
     ap.add_argument("--write", action="store_true")
+    ap.add_argument("--only", default="", help="comma TF subset, e.g. W,M")
     ap.add_argument("--ind-dir", default=os.path.join(ROOT, "backtest_v8", "indicators"))
     ap.add_argument("--gateway-dir", default=os.path.join(ROOT, "klines_cache_gateway"))
     a = ap.parse_args()
+    only = {t.strip() for t in a.only.split(",") if t.strip()} if a.only else set()
     code = 0
     for sym in a.symbols:
         npz_path = os.path.join(a.ind_dir, sym + ".npz")
@@ -104,17 +111,21 @@ def main():
         l15 = np.asarray(z["low_15m"]).astype("float64")
         c15 = np.asarray(z["close_15m"]).astype("float64")
         v15 = np.asarray(z["volume_15m"]).astype("float64")
-        dec15 = {iso(t): (o15[i], h15[i], l15[i], c15[i], v15[i]) for i, t in enumerate(ts)}
-        exist15 = load_bars(os.path.join(a.gateway_dir, f"{sym}_15m.json"))
-        shared = sorted(set(dec15) & set(exist15))
-        if shared:
-            d = max(maxreldiff([dec15[k][j] for k in shared], [exist15[k][j] for k in shared]) for j in range(5))
-            print(f"  15m: overlap={len(shared)} maxreldiff={d:.2e} {'OK' if d < 1e-6 else 'MISMATCH-ABORT-TF'}")
-            ok15 = d < 1e-6
-        else:
-            print("  15m: no overlap (unverifiable, decode-only)"); ok15 = True
-        tf_dec = {"15m": (dec15, ok15, len(exist15))}
+        tf_dec = {}
+        if not only or "15m" in only:
+            dec15 = {iso(t): (o15[i], h15[i], l15[i], c15[i], v15[i]) for i, t in enumerate(ts)}
+            exist15 = load_bars(os.path.join(a.gateway_dir, f"{sym}_15m.json"))
+            shared = sorted(set(dec15) & set(exist15))
+            if shared:
+                d = max(maxreldiff([dec15[k][j] for k in shared], [exist15[k][j] for k in shared]) for j in range(5))
+                print(f"  15m: overlap={len(shared)} maxreldiff={d:.2e} {'OK' if d < 1e-6 else 'MISMATCH-ABORT-TF'}")
+                ok15 = d < 1e-6
+            else:
+                print("  15m: no overlap (unverifiable, decode-only)"); ok15 = True
+            tf_dec["15m"] = (dec15, ok15, len(exist15))
         for tf in ["1h", "4h", "D"]:
+            if only and tf not in only:
+                continue
             need = [f"timestamp_{tf}", f"open_{tf}", f"high_{tf}", f"low_{tf}", f"close_{tf}", f"volume_{tf}"]
             if any(k not in z.files for k in need):
                 print(f"  {tf}: legacy lacks HTF keys — will resample from 15m at build"); continue
@@ -152,6 +163,8 @@ def main():
             df = df.set_index("ts").sort_index()
             agg = {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
             for tf, rule in [("W", "W-MON"), ("M", "MS")]:
+                if only and tf not in only:
+                    continue
                 kw = {"label": "left", "closed": "left"} if tf == "W" else {}
                 rw = df.resample(rule, **kw).agg(agg).dropna()
                 dec = {t.strftime("%Y-%m-%dT%H:%M:%S.%fZ"): (r["open"], r["high"], r["low"], r["close"], r["volume"]) for t, r in rw.iterrows()}

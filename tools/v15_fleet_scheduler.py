@@ -214,7 +214,7 @@ if mode == "probe":
     o = {"nproc": os.cpu_count(), "load1": float(open("/proc/loadavg").read().split()[0]), "busy_pct": busy, "busy_nonnice_pct": busy_nn, "mem_avail_mb": mem, "pdir": pdir, "swap_total_mb": swp_t, "swap_used_mb": swp_u,
          "running": pilots(), "started": [], "done": [], "quarantined": [], "v365": {}, "repair": {}, "gs": {}, "gains": {}}
     if pdir and os.path.isdir(pdir):
-        cache_p = "/tmp/v15_sched_done_cache.json"
+        cache_p = "/tmp/v15_sched_done_cache_v2.json"  # v2 (2026-10-10): v1 cached flat-regex done verdicts poisoned by nested endgame.final_gain
         try:
             cache = json.load(open(cache_p))
         except Exception:
@@ -1163,7 +1163,10 @@ def tick(args, cfg, now):
         _allowed = set(uni.get("allowed_sym_sides") or [])  # USER 2026-10-06: only tradeable keys are calculated
         _st = {side: (("terminal_not_tradeable", None) if _allowed and f"{sym}_{side}" not in _allowed else side_state(sym, side, h, _gtiers)) for side in ("LONG", "SHORT")}
         for side, v in _st.items():
-            if v[0] in ("need30", "waiting_base") and _side_deferred(f"{sym}_{side}", _gtiers, _now_ts):
+            # USER 2026-10-10 (1-result-per-2h stall): deferral skips FRESH boards only — an
+            # already-started side (REDO refill / crashed resume) is a chain continuation and
+            # must drain, never defer. Starving resumes behind phantom tier memory froze the fleet.
+            if v[0] in ("need30", "waiting_base") and f"{sym}_{side}" not in started and _side_deferred(f"{sym}_{side}", _gtiers, _now_ts):
                 _st[side] = ("terminal_deferred", None)
                 _deferred_sides.append(f"{sym}_{side}")
         chain_state[sym] = _st

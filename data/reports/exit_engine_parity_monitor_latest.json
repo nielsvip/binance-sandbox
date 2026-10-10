@@ -1,37 +1,37 @@
 {
- "now": "2026-10-10T00:23:31.027212+00:00",
+ "now": "2026-10-10T01:23:36.798100+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 5182,
- "last_exit_ts": "2026-10-10T00:23:26.066423+00:00",
- "n_leaks": 39,
- "n_gate_on": 3562,
+ "n_exit_rows": 4970,
+ "last_exit_ts": "2026-10-10T01:23:21.479898+00:00",
+ "n_leaks": 15,
+ "n_gate_on": 3409,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 175,
- "n_unverified": 2,
- "since": "2026-10-08T00:23:31.027212+00:00",
+ "n_unmapped": 173,
+ "n_unverified": 1,
+ "since": "2026-10-08T01:23:36.798100+00:00",
  "vec_exact_by_action": {
-  "OPEN": 1250,
-  "CLOSE": 148,
+  "OPEN": 1226,
+  "CLOSE": 140,
   "REDUCE": 5,
   "AUGMENT": 1
  },
- "native_rows": 3778,
+ "native_rows": 3598,
  "unverified_by_family": {
-  "ULTIMATE_DC (None=None)": 2
+  "ULTIMATE_DC (None=None)": 1
  },
  "leaks_by_family": {
-  "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF=OFF)": 26,
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED=False)": 13
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED=False)": 13,
+  "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF=OFF)": 2
  },
  "leak_keys": {
-  "WT_LOWER_CROSS_EXIT men:LTCUSDC_SHORT": 26,
   "EXIT_VELOCITY_WT inf:SOLUSDC_SHORT": 8,
-  "EXIT_VELOCITY_WT inf:RENDERUSDT_LONG": 5
+  "EXIT_VELOCITY_WT inf:RENDERUSDT_LONG": 5,
+  "WT_LOWER_CROSS_EXIT men:LTCUSDC_SHORT": 2
  },
  "gate_on_by_family": {
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 3053,
-  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 215,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 2908,
+  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 207,
   "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 269,
   "DC_BASIS_3M_REDUCE (DC_BASIS_3M_REDUCE_ENABLED)": 2,
   "MTF_BB_REJECT_EXIT (MTF_BB_REJECT_EXIT_ENABLED)": 4,
@@ -43,7 +43,7 @@
  "ungated_by_family": {},
  "safety_by_family": {},
  "unmapped": {
-  "BB_TAKE_15m": 29,
+  "BB_TAKE_15m": 28,
   "RSI2_EXIT_LIVE_rsi2=2.5_thr=10.0": 15,
   "RSI2_EXIT_LIVE_rsi2=5.9_thr=10.0": 13,
   "RSI2_EXIT_LIVE_rsi2=2.7_thr=10.0": 11,
@@ -56,7 +56,6 @@
   "RSI2_EXIT_LIVE_rsi2=4.0_thr=10.0": 3,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.56% age": 3,
   "NON_TRADEABLE_WT15M_EXIT_SHORT_wt13.0": 3,
-  "CB_HTF_EXHAUST_BAD_ENTRY: g=-9.97% age": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-1.45% age": 2,
   "RSI2_EXIT_LIVE_rsi2=3.1_thr=10.0": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-1.80% age": 2,
@@ -64,8 +63,6 @@
   "NON_TRADEABLE_WT15M_EXIT_SHORT_wt9.2": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.52% age": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.58% age": 2,
-  "CB_HTF_EXHAUST_BAD_ENTRY: g=-10.99% ag": 1,
-  "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.62% age": 1,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.57% age": 1,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-1.30% age": 1,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.61% age": 1,
@@ -92,11 +89,14 @@
   "LR_BAND_HARVEST_4h_pb0.00": 1,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-1.74% age": 1,
   "DC_BB_D_BREAK_REVERSE_open_BB_BREAK_DO": 1,
-  "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.74% age": 1
+  "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.74% age": 1,
+  "NON_TRADEABLE_WT15M_EXIT_SHORT_wt19.1": 1,
+  "NON_TRADEABLE_WT15M_EXIT_SHORT_wt17.8": 1,
+  "NON_TRADEABLE_WT15M_EXIT_LONG_wt-6.8": 1
  },
  "actions": {
-  "CLOSE": 3908,
-  "OPEN": 1251,
+  "CLOSE": 3720,
+  "OPEN": 1227,
   "REDUCE": 12,
   "QUICK_REDUCE": 9,
   "AUGMENT": 1,
