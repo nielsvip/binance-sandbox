@@ -198,3 +198,16 @@ def test_history_append_file_anchored_against_cross_instance_doubles():
     region = "\n".join(lines[start:start + 130])
     assert "HISTORY_DEDUP_FILE" in region, "writer must file-anchor dedup (tail check) for cross-instance doubles"
     assert "st_size" in region and "seek" in region, "tail check must seek the existing file, not full-scan"
+
+
+def test_exit_dispatch_wait_for_logs_cancellation():
+    """ang BIO 2026-10-10: first VEC_STALE_FLATTEN firing logged then vanished — no EXEC, no
+    timeout line at +600s, no completion, no error. A sweep-supersede CancelledError slips past
+    `except TimeoutError`/`except Exception` (BaseException). All three EXIT-side wait_for
+    dispatches (EXIT acts, converge, stale-flatten) must log cancellation before re-raise."""
+    lines = (ROOT / "ez_manage.py").read_text().splitlines()
+    sites = [i for i, l in enumerate(lines) if "await asyncio.wait_for(trade_manager.execute_trade_action" in l]
+    assert len(sites) >= 3, f"expected EXIT+converge+stale dispatch sites, found {len(sites)}"
+    for s in sites:
+        window = "\n".join(lines[s:s + 8])
+        assert "except asyncio.CancelledError" in window, f"dispatch at ez_manage.py:{s + 1} must log cancellation before re-raise"

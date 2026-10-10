@@ -48958,6 +48958,9 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                 _vx_tmo = 600.0
             try:
                 _res = await asyncio.wait_for(trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_lq, current_price=_px, side=_oside, position_side=_side, unique_id=f"VX{int(_a['bar_ts'])}{_a['n']}", is_full_close=_full, action=_act, reason=_vx.tagged_reason(_a), override_qty=_lov, is_hedge=False), timeout=_vx_tmo)
+            except asyncio.CancelledError:
+                logger.warning(f"[VEC_EXACT] {position_key} {_act} {_a['reason'][:60]} CANCELLED_DISPATCH (sweep superseded mid-execution; in-flight broker order stays tracked; next fresh vec act governs)")
+                raise
             except asyncio.TimeoutError:
                 logger.warning(f"[VEC_EXACT] {position_key} {_act} {_a['reason'][:60]} BLOCKED_DISPATCH_TIMEOUT after {_vx_tmo:.0f}s (act consumed at hand-out, no auto-retry; next fresh vec act governs)")
                 _res = "BLOCKED_DISPATCH_TIMEOUT"
@@ -48990,6 +48993,9 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                     _vx_tmo_c = 600.0
                 try:
                     _res_c = await asyncio.wait_for(trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_end, current_price=_px_c, side=_oside_c, position_side=_side, unique_id=f"VXCVG{int(float(_vx_st.get('bar_ts') or 0))}", is_full_close=True, action="CLOSE", reason=_cvg_reason, override_qty=_amt_end, is_hedge=False), timeout=_vx_tmo_c)
+                except asyncio.CancelledError:
+                    logger.warning(f"[VEC_EXACT] {position_key} CLOSE VEC_CONVERGE_TO_FLAT CANCELLED_DISPATCH (sweep superseded mid-execution; in-flight broker order stays tracked)")
+                    raise
                 except asyncio.TimeoutError:
                     logger.warning(f"[VEC_EXACT] {position_key} CLOSE VEC_CONVERGE_TO_FLAT BLOCKED_DISPATCH_TIMEOUT after {_vx_tmo_c:.0f}s")
                     _res_c = "BLOCKED_DISPATCH_TIMEOUT"
@@ -49023,6 +49029,9 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                 _stf_oside = "SELL" if _side == "LONG" else "BUY"
                 try:
                     _res_s = await asyncio.wait_for(trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_end, current_price=_stf_px, side=_stf_oside, position_side=_side, unique_id=f"VXSTF{int(float(_vx_st.get('bar_ts') or 0))}", is_full_close=True, action="CLOSE", reason=_stf_reason, override_qty=_amt_end, is_hedge=False), timeout=_stf_tmo)
+                except asyncio.CancelledError:
+                    logger.warning(f"[VEC_EXACT] {position_key} CLOSE VEC_STALE_FLATTEN CANCELLED_DISPATCH (sweep superseded mid-execution; in-flight broker order stays tracked; re-arm governs retry)")
+                    raise
                 except asyncio.TimeoutError:
                     logger.warning(f"[VEC_EXACT] {position_key} CLOSE VEC_STALE_FLATTEN BLOCKED_DISPATCH_TIMEOUT after {_stf_tmo:.0f}s")
                     _res_s = "BLOCKED_DISPATCH_TIMEOUT"
