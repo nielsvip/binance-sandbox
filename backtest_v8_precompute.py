@@ -363,9 +363,10 @@ def _gk_vol(open_arr: np.ndarray, high_arr: np.ndarray, low_arr: np.ndarray,
 
 
 def _rolling_sepa(close_arr: np.ndarray, high_arr: np.ndarray, low_arr: np.ndarray,
-                  volume_arr: np.ndarray) -> tuple:
+                  volume_arr: np.ndarray, last_only: bool = False) -> tuple:
     """Rolling Minervini SEPA: per-bar pass/score using bars[:i+1].
-    Returns (sepa_pass int8, sepa_score int8). Daily TF only (slow loop)."""
+    Returns (sepa_pass int8, sepa_score int8). Daily TF only (slow loop).
+    last_only=True: compute ONLY [-1] (the per-step parity loop keeps v[-1]); bit-identical [-1]."""
     n = len(close_arr)
     sepa_pass = np.zeros(n, dtype=np.int8)
     sepa_score = np.zeros(n, dtype=np.int8)
@@ -375,6 +376,15 @@ def _rolling_sepa(close_arr: np.ndarray, high_arr: np.ndarray, low_arr: np.ndarr
     hl = high_arr.tolist()
     ll = low_arr.tolist()
     vl = volume_arr.tolist()
+    if last_only:
+        try:
+            res = _scalar_sepa(cl, hl, ll, vl)
+            if res:
+                sepa_pass[n - 1] = 1 if res.get("sepa_pass") else 0
+                sepa_score[n - 1] = int(res.get("sepa_score", 0))
+        except Exception:
+            pass
+        return sepa_pass, sepa_score
     for i in range(252, n):
         try:
             res = _scalar_sepa(cl[: i + 1], hl[: i + 1], ll[: i + 1], vl[: i + 1])
@@ -386,9 +396,9 @@ def _rolling_sepa(close_arr: np.ndarray, high_arr: np.ndarray, low_arr: np.ndarr
     return sepa_pass, sepa_score
 
 
-def _rolling_clenow(close_arr: np.ndarray, lookback: int = 90) -> tuple:
+def _rolling_clenow(close_arr: np.ndarray, lookback: int = 90, last_only: bool = False) -> tuple:
     """Rolling Clenow: per-bar slope_ann × R². Returns (score, slope, r2) float32 arrays.
-    Daily TF only (slow loop)."""
+    Daily TF only (slow loop). last_only=True: compute ONLY [-1]; bit-identical [-1]."""
     n = len(close_arr)
     score = np.zeros(n, dtype=np.float32)
     slope = np.zeros(n, dtype=np.float32)
@@ -396,6 +406,16 @@ def _rolling_clenow(close_arr: np.ndarray, lookback: int = 90) -> tuple:
     if n < lookback + 5 or _scalar_clenow is None:
         return score, slope, r2
     cl = close_arr.tolist()
+    if last_only:
+        try:
+            res = _scalar_clenow(cl, lookback=lookback)
+            if res:
+                score[n - 1] = float(res.get("clenow_score", 0.0))
+                slope[n - 1] = float(res.get("clenow_slope", 0.0))
+                r2[n - 1] = float(res.get("clenow_r2", 0.0))
+        except Exception:
+            pass
+        return score, slope, r2
     for i in range(lookback + 5, n):
         try:
             res = _scalar_clenow(cl[: i + 1], lookback=lookback)
@@ -410,17 +430,20 @@ def _rolling_clenow(close_arr: np.ndarray, lookback: int = 90) -> tuple:
 
 def _rolling_episodic_pivot(open_arr: np.ndarray, high_arr: np.ndarray,
                              low_arr: np.ndarray, close_arr: np.ndarray,
-                             volume_arr: np.ndarray, fwd_days: int = 30) -> tuple:
+                             volume_arr: np.ndarray, fwd_days: int = 30, last_only: bool = False) -> tuple:
     """Rolling Episodic Pivot detection (Daily TF). On bar i, run detect on bars[:i+1];
     if detected, mark ep_detected=1 on bars [i, i+fwd_days). Returns (ep_detected int8,
-    ep_breakout_level float32, ep_direction int8 +1/-1/0)."""
+    ep_breakout_level float32, ep_direction int8 +1/-1/0).
+    last_only=True: only index n-1 can be marked by detections i>=n-fwd_days, and the loop is
+    first-writer-wins ascending, so scan [max(20,n-fwd_days), n) and stop at the first hit; bit-identical [-1]."""
     n = len(close_arr)
     ep_det = np.zeros(n, dtype=np.int8)
     ep_lvl = np.zeros(n, dtype=np.float32)
     ep_dir = np.zeros(n, dtype=np.int8)
     if n < 30 or _scalar_ep is None:
         return ep_det, ep_lvl, ep_dir
-    for i in range(20, n):
+    _lo = max(20, n - fwd_days) if last_only else 20
+    for i in range(_lo, n):
         bars = []
         for j in range(max(0, i - 60), i + 1):
             bars.append({
@@ -438,6 +461,11 @@ def _rolling_episodic_pivot(open_arr: np.ndarray, high_arr: np.ndarray,
             lvl = float(res.get("ep_breakout_level", 0.0) or 0.0)
             d = res.get("ep_direction", "")
             d_int = 1 if d == "LONG" else (-1 if d == "SHORT" else 0)
+            if last_only:
+                ep_det[n - 1] = 1
+                ep_lvl[n - 1] = lvl
+                ep_dir[n - 1] = d_int
+                break
             for k in range(i, min(n, i + fwd_days)):
                 # Only fill if not already set by a more recent detection
                 if ep_det[k] == 0:
@@ -756,10 +784,10 @@ def _ha_streak_array(o: np.ndarray, h: np.ndarray, l_: np.ndarray, c: np.ndarray
     return streak
 
 
-def _rolling_linreg(close_arr: np.ndarray, length: int) -> tuple:
+def _rolling_linreg(close_arr: np.ndarray, length: int, last_only: bool = False) -> tuple:
     """Per-bar rolling linreg: returns (slope, linearity) arrays length n.
     Mirrors ez_indicators.linreg_features with y_fit = y_mean + slope*(x-x_mean)
-    (the 2026-04-29 bug-fixed formula)."""
+    (the 2026-04-29 bug-fixed formula). last_only=True: compute ONLY [-1]; bit-identical [-1]."""
     n = len(close_arr)
     slope = np.zeros(n, dtype=np.float32)
     lin = np.zeros(n, dtype=np.float32)
@@ -770,6 +798,17 @@ def _rolling_linreg(close_arr: np.ndarray, length: int) -> tuple:
     x_dev = x - x_mean
     x_var = (x_dev ** 2).sum()
     if x_var <= 0:
+        return slope, lin
+    if last_only:
+        y = close_arr[n - length:n].astype(np.float64)
+        if np.isfinite(y).all():
+            y_mean = y.mean()
+            sl = (x_dev * (y - y_mean)).sum() / x_var
+            y_fit = y_mean + sl * x_dev
+            ss_res = ((y - y_fit) ** 2).sum()
+            ss_tot = ((y - y_mean) ** 2).sum()
+            slope[n - 1] = sl
+            lin[n - 1] = (1 - ss_res / ss_tot) if ss_tot > 0 else 0.0
         return slope, lin
     for i in range(length - 1, n):
         y = close_arr[i - length + 1:i + 1].astype(np.float64)

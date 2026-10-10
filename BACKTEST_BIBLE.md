@@ -1846,3 +1846,11 @@ would split sweep/live from pilot baselines; needs a director ruling, not a sile
   publish at depth 1–2 — if RULE#3 refuses again with the same holes, the heal (possym-only) doesn't
   cover zero-skip/inert holes and the gate needs a sampled-cells exemption or the refill must go
   fully sample-free.
+- **Second killer found 01:50Z (same stall):** the OOM guard murdered ENAUSDC_SHORT's refill at 186 rows
+  (MemAvailable 1884MB) as "least-progress victim" — refills ALWAYS lose that contest, and each murder
+  burns 1 attempt (cap 3: ENA + BB LONG were already parked). S1 (31GB) carries live stack ~8GB + chain
+  + refresh + 2 sweep pairs ≈ 12–15GB → structural OOM. Fixes: (1) `_rank_oom_victim` spares refills
+  (`_progress_is_refill`: needs_redo/_redo_heal_run/redo_depth≥1 sorts last; tested); (2) s1
+  `max_pairs` 3→1 in `fleet_hosts_final.json` (honest capacity beside live); (3) forgave the proven
+  host-fault OOM burns (ENA SHORT 3→1, BB LONG 3→1, noted in state). Scheduler deployed fleet-wide
+  md5 `e2fc6ac8` (reap imports it on every host).
