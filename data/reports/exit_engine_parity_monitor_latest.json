@@ -1,22 +1,22 @@
 {
- "now": "2026-10-09T23:12:05.425127+00:00",
+ "now": "2026-10-10T00:23:31.027212+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 5472,
- "last_exit_ts": "2026-10-09T23:07:46.275088+00:00",
+ "n_exit_rows": 5182,
+ "last_exit_ts": "2026-10-10T00:23:26.066423+00:00",
  "n_leaks": 39,
- "n_gate_on": 3798,
+ "n_gate_on": 3562,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 176,
+ "n_unmapped": 175,
  "n_unverified": 2,
- "since": "2026-10-07T23:12:05.425127+00:00",
+ "since": "2026-10-08T00:23:31.027212+00:00",
  "vec_exact_by_action": {
-  "OPEN": 1298,
+  "OPEN": 1250,
+  "CLOSE": 148,
   "REDUCE": 5,
-  "CLOSE": 153,
   "AUGMENT": 1
  },
- "native_rows": 4015,
+ "native_rows": 3778,
  "unverified_by_family": {
   "ULTIMATE_DC (None=None)": 2
  },
@@ -30,8 +30,8 @@
   "EXIT_VELOCITY_WT inf:RENDERUSDT_LONG": 5
  },
  "gate_on_by_family": {
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 3276,
-  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 228,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 3053,
+  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 215,
   "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 269,
   "DC_BASIS_3M_REDUCE (DC_BASIS_3M_REDUCE_ENABLED)": 2,
   "MTF_BB_REJECT_EXIT (MTF_BB_REJECT_EXIT_ENABLED)": 4,
@@ -53,7 +53,6 @@
   "RSI2_EXIT_LIVE_rsi2=0.3_thr=10.0": 6,
   "DC_BB_D_BREAK_REVERSE_close_BB_BREAK_D": 5,
   "TECHNICAL_TARGET_dc_15m_high_-0.10%_TA": 4,
-  "CB_HTF_EXHAUST_HTF_EXHAUST: g=-0.67% a": 3,
   "RSI2_EXIT_LIVE_rsi2=4.0_thr=10.0": 3,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.56% age": 3,
   "NON_TRADEABLE_WT15M_EXIT_SHORT_wt13.0": 3,
@@ -63,8 +62,8 @@
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-1.80% age": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-1.83% age": 2,
   "NON_TRADEABLE_WT15M_EXIT_SHORT_wt9.2": 2,
+  "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.52% age": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.58% age": 2,
-  "CB_HTF_EXHAUST_BAD_ENTRY: g=-4.76% age": 1,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-10.99% ag": 1,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.62% age": 1,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.57% age": 1,
@@ -92,11 +91,12 @@
   "ORPHANED_HEDGE_PARENT_CLOSED": 1,
   "LR_BAND_HARVEST_4h_pb0.00": 1,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-1.74% age": 1,
-  "DC_BB_D_BREAK_REVERSE_open_BB_BREAK_DO": 1
+  "DC_BB_D_BREAK_REVERSE_open_BB_BREAK_DO": 1,
+  "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.74% age": 1
  },
  "actions": {
-  "CLOSE": 4150,
-  "OPEN": 1299,
+  "CLOSE": 3908,
+  "OPEN": 1251,
   "REDUCE": 12,
   "QUICK_REDUCE": 9,
   "AUGMENT": 1,

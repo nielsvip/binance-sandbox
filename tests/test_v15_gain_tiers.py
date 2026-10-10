@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
-from v15_fleet_scheduler import _GAIN_TIER_DEFER_DAYS, _LAUNCH_CAPS, _defer_windows, _gain_tiers, _gs_allowed_for_tier, _place_order, _repair_allowed_for_tier, _side_deferred, _side_tier, _sym_quota_hit, _sym_tier_rank
+from v15_fleet_scheduler import _GAIN_TIER_DEFER_DAYS, _LAUNCH_CAPS, _defer_windows, _fresh_daily_state, _gain_tiers, _gs_allowed_for_tier, _place_order, _repair_allowed_for_tier, _side_deferred, _side_tier, _sym_quota_hit, _sym_tier_rank
 
 NOW = 1791500000.0
 
@@ -132,6 +132,17 @@ class TierChainGatesTest(unittest.TestCase):
         self.assertTrue(_gs_allowed_for_tier("M", True))
         self.assertFalse(_gs_allowed_for_tier("L", True))
         self.assertTrue(_gs_allowed_for_tier("M", False))
+
+    def test_midnight_keeps_tier_memory(self):
+        st = {"date": "20261009", "attempts": {"A": 3}, "gain_seen": {"X_LONG": {"gain": 5.0, "mtime": 1.0}}}
+        out = _fresh_daily_state(st, "20261010")
+        self.assertEqual(out["date"], "20261010")
+        self.assertEqual(out["attempts"], {})
+        self.assertEqual(out["gain_seen"], {"X_LONG": {"gain": 5.0, "mtime": 1.0}})
+
+    def test_same_day_untouched(self):
+        st = {"date": "20261010", "attempts": {"A": 3}}
+        self.assertIs(_fresh_daily_state(st, "20261010"), st)
 
     def test_repair_winners_discovery_only(self):
         self.assertTrue(_repair_allowed_for_tier("W", True))

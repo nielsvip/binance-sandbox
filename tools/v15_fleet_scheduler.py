@@ -549,6 +549,14 @@ def _sym_quota_hit(sym, tiers):
     return any(t in ("M", "L") for t in ts) and not any(t == "W" for t in ts)
 
 
+def _fresh_daily_state(st, datestr):
+    """Midnight rollover: fresh attempts/holds, but tier memory survives (own 30d prune). Without the carry-over,
+    W/M/L + deferral evaporate daily (USER 2026-10-10: observed 255 -> 71 measured at 00:00Z)."""
+    if (st or {}).get("date") != datestr:
+        return {"date": datestr, "held": {}, "attempts": {}, "ready": {}, "gain_seen": (st or {}).get("gain_seen", {})}
+    return st
+
+
 def _gs_allowed_for_tier(tier, measured):
     """USER 2026-10-09 (90% on winners): GS-heal for W/M/discovery; L gets verified, not rescued."""
     return (tier in ("W", "M")) or not measured
@@ -916,8 +924,7 @@ def tick(args, cfg, now):
     for v, lst in (("stocks", stocks), ("crypto", crypto)):
         lst.sort(key=lambda s: (rank[v].get(s, 10 ** 6), s))  # worst-first per the previous order file, unknown last
     st = load_state()
-    if st.get("date") != now.strftime("%Y%m%d"):
-        st = {"date": now.strftime("%Y%m%d"), "held": {}, "attempts": {}, "ready": {}}
+    st = _fresh_daily_state(st, now.strftime("%Y%m%d"))
     st.setdefault("held", {}); st.setdefault("attempts", {}); st.setdefault("ready", {})
     stats = {h["name"]: (sim["hosts"].get(h["name"]) if sim else probe(h)) for h in hosts}
     reaped = {}
