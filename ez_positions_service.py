@@ -7601,6 +7601,23 @@ class PositionService:
             hist_dir = Path(self.config.DATA_DIR) / "history" / account_key
             hist_dir.mkdir(parents=True, exist_ok=True)
             filename = hist_dir / f"{symbol_side}.jsonl"
+            try:
+                _fsz = filename.stat().st_size if filename.exists() else 0
+                if _fsz > 0:
+                    with open(filename, "rb") as _tf:
+                        _tf.seek(max(0, _fsz - 2048))
+                        _tail = _tf.read().decode("utf-8", "replace").strip().splitlines()
+                    if _tail:
+                        _last = safe_json_loads(_tail[-1]) or {}
+                        try:
+                            _lts = datetime.fromisoformat(str(_last.get("ts", "")).replace("Z", "+00:00")).timestamp()
+                        except Exception:
+                            _lts = 0.0
+                        if str(_last.get("type")) == str(trade_type) and abs(float(_last.get("qty", -1.0)) - float(qty)) < 1e-9 and now_ts - _lts < self._HISTORY_DEDUP_WINDOW_S:
+                            logger.debug(f"[HISTORY_DEDUP_FILE] {dedup_key} suppressed (file tail identical within window — cross-instance phantom)")
+                            return
+            except Exception:
+                pass
             MAX_SIZE_BYTES = 200 * 1024
             if filename.exists():
                 try :

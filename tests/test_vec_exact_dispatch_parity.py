@@ -187,3 +187,14 @@ def test_history_append_dedups_parallel_close_completions():
     m = re.search(r"_HISTORY_DEDUP_WINDOW_S\s*=\s*([\d.]+)", src)
     assert m, "history writer needs a named dedup window covering parallel completions"
     assert float(m.group(1)) >= 420.0, f"dedup window {m.group(1)}s < observed 7-min phantom gap"
+
+
+def test_history_append_file_anchored_against_cross_instance_doubles():
+    """fin ZEN 2026-10-10: identical AUGMENT rows 26s apart even with a 900s in-memory window —
+    in-memory dedup cannot span instances/processes ( WS + poll dual-observation). Writer must
+    anchor on the file tail (shared truth) before appending."""
+    lines = (ROOT / "ez_positions_service.py").read_text().splitlines()
+    start = next(i for i, l in enumerate(lines) if "async def _append_to_history" in l)
+    region = "\n".join(lines[start:start + 130])
+    assert "HISTORY_DEDUP_FILE" in region, "writer must file-anchor dedup (tail check) for cross-instance doubles"
+    assert "st_size" in region and "seek" in region, "tail check must seek the existing file, not full-scan"
