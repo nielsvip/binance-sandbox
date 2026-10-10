@@ -3786,8 +3786,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if _coarse_expand:
             print(f"[COARSE-EXPAND] {new_symside} {len(_coarse_expand)} promoted rows earn full yellow matrix this pass", flush=True)
     _ps_cat = map_key_for_symside(new_symside)
-    _ps_json = _possym_load_nsym(_ps_cat) if _ps_on else {}
-    _prio = none_priority_evidence(_ps_cat) if _ps_on else {"rows": {}, "cells": {}}
+    _ps_json = _possym_load_nsym(_ps_cat) if (_ps_on or _redo_heal) else {}
+    _prio = none_priority_evidence(_ps_cat) if (_ps_on or _redo_heal) else {"rows": {}, "cells": {}}
     if _ps_on and _prio.get("rows"):
         print(f"[NONE-PRIORITY] {new_symside} cat={_ps_cat} evidence rows={len(_prio['rows'])} cells={len(_prio['cells'])} — unevidenced yellow cells always calculated", flush=True)
     _zero_on = _zero_enabled()
@@ -3951,11 +3951,37 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 info["hdrs"] = []
                 _inert_stats["pruned"] += 1
                 _inert_stats["yellows_skipped"] += len(info["inert_filters"])
-        if _ps_on and info["kind"] == "eval":
+        if info["kind"] == "eval" and (_ps_on or _redo_heal):
             try:
                 _pp, _nn, _isd = _ps_row_ev(ws, rr, sname, switch, cand)
                 if _isd:
                     _ps_count(sname, "default", True)
+                elif _redo_heal:
+                    # USER 2026-10-10 HEAL-COARSE: the heal runs sample-free (deterministic re-skip) but
+                    # evidence-capped (top-K prior-ranked yellows, rest deferred) — minutes, not hours.
+                    # Naked always evaluates; promoted rows earn the full matrix via _coarse_expand.
+                    from tools.v15_cat_avg_matrix import norm_cand as _prio_norm
+                    _prio_rk = f"{sname}!{str(switch).strip()}={_prio_norm(cand)}"
+                    _kept = []
+                    _kept_ev = {}
+                    for _h in info["hdrs"]:
+                        _f, _o = _h.split("=", 1)
+                        if _is_none_priority(_prio, f"{_prio_rk}@{_h}"):
+                            _kept.append(_h)
+                            _kept_ev[_h] = (9999, 9999)
+                            continue
+                        _fp, _fn = _ps_filter_ev(sname, _f.strip(), _o.strip(), _pp, _nn)
+                        _kept.append(_h)
+                        try:
+                            _kept_ev[_h] = (int(_fp), int(_fn))
+                        except Exception:
+                            _kept_ev[_h] = (0, 0)
+                    if _COARSE_ON and (sname, str(switch).strip(), str(cand).strip()) not in _ps_new and f"{sname}!{str(switch).strip()}={str(cand).strip()}" not in _coarse_expand and len(_kept) > _COARSE_CAP > 0:
+                        _kept, _deferred = _coarse_trim(_kept, _kept_ev, _COARSE_CAP)
+                        for _dh in _deferred:
+                            info.setdefault("coarse_deferred_filters", []).append(_dh)
+                            _ps_count(sname, "heal_coarse_deferred", False, "cell")
+                    info["hdrs"] = _kept
                 else:
                     _go, _bk, _pr, _uu = _possym_decide(new_symside, sname, f"{str(switch).strip()}={str(cand).strip()}", _ps_round, _pp, _nn, (sname, str(switch).strip(), str(cand).strip()) in _ps_new)
                     _ps_count(sname, _bk, _go)

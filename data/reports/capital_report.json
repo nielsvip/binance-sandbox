@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-10 03:24 UTC",
- "total_capital_usd": 17.8,
+ "generated_at": "2026-10-10 03:49 UTC",
+ "total_capital_usd": 5.33,
  "tier_capital": {
   "A": 0.0,
-  "B": 17.8,
+  "B": 5.33,
   "C": 0.0
  },
  "tier_count": {
@@ -12,21 +12,19 @@
   "C": 0
  },
  "winners": [],
- "losers": [
-  "fin:ADAUSDC_LONG"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:ADAUSDC_LONG",
-   "symbol": "ADAUSDC",
-   "account": "fin",
-   "value_usd": 17.8,
-   "gain_pct": -0.726,
+   "pk": "flz:XRPUSDC_LONG",
+   "symbol": "XRPUSDC",
+   "account": "flz",
+   "value_usd": 5.33,
+   "gain_pct": -0.363,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 71.0,
-   "mark": 0.2507
+   "perf_mult": 0.74,
+   "amt": 3.8,
+   "mark": 1.4017
   }
  ]
 }
