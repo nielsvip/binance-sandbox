@@ -149,21 +149,21 @@ def pss_mb(pid):
 
 
 def _progress_marks(path):
-    """(done, quarantined, gain) from a progress JSON. TOP-LEVEL ONLY (USER 2026-10-10,
+    """(done, quarantined, gain, redo) from a progress JSON. TOP-LEVEL ONLY (USER 2026-10-10,
     1-result-per-2h stall): the old flat "final_gain" regex matched endgame.final_gain (a
     mid-run STAGE gain), marking every endgame-reaching board done so its RULE#3 REDO refill
     never relaunched. needs_redo boards are never done: they must resume."""
     try:
         _jd = json.loads(open(path).read())
     except Exception:
-        return False, False, None
+        return False, False, None, False
     if not isinstance(_jd, dict):
-        return False, False, None
+        return False, False, None, False
     _fg = _jd.get("final_gain")
     _fg_ok = isinstance(_fg, (int, float)) and not isinstance(_fg, bool)
     _done = bool(_fg_ok and not _jd.get("needs_redo"))
     _q = _jd.get("verdict") in ("IMPOSSIBLE", "NO_TRADES", "BEST_EFFORT")
-    return _done, _q, (float(_fg) if _fg_ok else None)
+    return _done, _q, (float(_fg) if _fg_ok else None), bool(_jd.get("needs_redo"))
 
 
 def environ(pid):
@@ -212,7 +212,7 @@ if mode == "probe":
     busy = round(100.0 * (1 - (_i1 - _i0) / max(1, _t1 - _t0)), 1)
     busy_nn = round(100.0 * (1 - ((_i1 - _i0) + (_n1 - _n0)) / max(1, _t1 - _t0)), 1)
     o = {"nproc": os.cpu_count(), "load1": float(open("/proc/loadavg").read().split()[0]), "busy_pct": busy, "busy_nonnice_pct": busy_nn, "mem_avail_mb": mem, "pdir": pdir, "swap_total_mb": swp_t, "swap_used_mb": swp_u,
-         "running": pilots(), "started": [], "done": [], "quarantined": [], "v365": {}, "repair": {}, "gs": {}, "gains": {}}
+         "running": pilots(), "started": [], "done": [], "quarantined": [], "redo": [], "v365": {}, "repair": {}, "gs": {}, "gains": {}}
     if pdir and os.path.isdir(pdir):
         cache_p = "/tmp/v15_sched_done_cache_v2.json"  # v2 (2026-10-10): v1 cached flat-regex done verdicts poisoned by nested endgame.final_gain
         try:
@@ -225,18 +225,21 @@ if mode == "probe":
             try:
                 stt = os.stat(f)
                 key = "%s|%s|%s" % (f, stt.st_mtime, stt.st_size)
-                if key not in cache or key + "|q" not in cache or key + "|g" not in cache:
+                if key not in cache or key + "|q" not in cache or key + "|g" not in cache or key + "|r" not in cache:
                     cache = {k: v for k, v in cache.items() if not k.startswith(f + "|")}
-                    _done, _q, _g = _progress_marks(f)
+                    _done, _q, _g, _r = _progress_marks(f)
                     cache[key] = _done
                     cache[key + "|q"] = _q
                     cache[key + "|g"] = _g
+                    cache[key + "|r"] = _r
                 if cache[key]:
                     o["done"].append(ss)
                     if cache.get(key + "|g") is not None:
                         o["gains"][ss] = {"gain": cache[key + "|g"], "mtime": stt.st_mtime}
                 if cache.get(key + "|q"):
                     o["quarantined"].append(ss)
+                if cache.get(key + "|r"):
+                    o["redo"].append(ss)
             except Exception:
                 pass
         try:
@@ -585,11 +588,14 @@ def _repair_allowed_for_tier(tier, measured):
     return tier == "W" or not measured
 
 
-def _place_order(held_ordered, adopted_owned, new_syms, tiers):
+def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None):
     """USER 2026-10-09 (trb gainers absolute priority): W chains + W new before ALL M/L work. Stable sort
-    keeps chain-first within a tier. Running pilots are never touched — this orders new launches only."""
+    keeps chain-first within a tier. Running pilots are never touched — this orders new launches only.
+    USER 2026-10-10 (82 redo backlog): needs_redo RESUMES outrank everything (paid work finalises in
+    minutes; a refill unblocks done30 where a fresh 3h board cannot)."""
     seq = [(s, False) for s in held_ordered] + [(s, True) for s in adopted_owned] + [(s, True) for s in new_syms]
-    seq.sort(key=lambda t: _sym_tier_rank(t[0], tiers))
+    _rs = redo or set()
+    seq.sort(key=lambda t: (0 if f"{t[0]}_LONG" in _rs or f"{t[0]}_SHORT" in _rs else 1, _sym_tier_rank(t[0], tiers)))
     return seq
 
 
@@ -991,7 +997,7 @@ def tick(args, cfg, now):
     is_open, mto = us_market_open(now), minutes_to_open(now)
     vorder = venue_order(now)
     # ---- merge host views
-    running, owner, started, done, quar, v365, repair, gs, gains = {}, {}, set(), set(), set(), {}, {}, {}, {}
+    running, owner, started, done, quar, redo, v365, repair, gs, gains = {}, {}, set(), set(), set(), set(), {}, {}, {}, {}
     done_host, v365_host, rep_host = {}, {}, {}
     for n, s in stats.items():
         if not s:
@@ -1004,6 +1010,7 @@ def tick(args, cfg, now):
         for ss in s["done"]:
             done.add(ss); done_host.setdefault(ss, n)
         quar |= set(s.get("quarantined", []))
+        redo |= set(s.get("redo", []))
         for ss, v in s["v365"].items():
             if ss not in v365 or str(v.get("ts", "")) > str(v365[ss].get("ts", "")):
                 v365[ss] = v; v365_host[ss] = n
@@ -1092,6 +1099,8 @@ def tick(args, cfg, now):
         if _quar:
             return _quar
         if ss not in done:
+            if ss in redo:  # USER 2026-10-10 (82 redo backlog): paid board awaiting refill resumes directly — no base gate (it already ran), no deferral, no attempt cap
+                return "need30", 1
             # USER 2026-10-08 ("flying through the test"): V15_SCHED_REQUIRE_BASE=1 -> a 30D board launches only once its autopsy ran
             # (pruned base with effective_switches = ~50x faster board, or an autopsy report = NO_RESCUE -> template start). Until then
             # the side WAITS (re-checked every tick); the s7 backfill feeds ~/v15_autopsy_first on this host.
@@ -1184,7 +1193,9 @@ def tick(args, cfg, now):
             # USER 2026-10-10 (1-result-per-2h stall): deferral skips FRESH boards only — an
             # already-started side (REDO refill / crashed resume) is a chain continuation and
             # must drain, never defer. Starving resumes behind phantom tier memory froze the fleet.
-            if v[0] in ("need30", "waiting_base") and f"{sym}_{side}" not in started and _side_deferred(f"{sym}_{side}", _gtiers, _now_ts):
+            # USER 2026-10-10 (82 redo backlog): needs_redo sides are paid work awaiting finalise —
+            # never deferred at any tier (completion, not rescue).
+            if v[0] in ("need30", "waiting_base") and f"{sym}_{side}" not in started and f"{sym}_{side}" not in redo and _side_deferred(f"{sym}_{side}", _gtiers, _now_ts):
                 _st[side] = ("terminal_deferred", None)
                 _deferred_sides.append(f"{sym}_{side}")
         chain_state[sym] = _st
@@ -1215,8 +1226,9 @@ def tick(args, cfg, now):
             if s in ("need30", "need365", "needrepair", "needgs"):
                 w = {"need30": "30D", "need365": "365D", "needrepair": "REPAIR", "needgs": "GS"}[s]
                 key = f"{sym}_{side}|{w}{att if w in ('REPAIR', 'GS') else ''}"
-                if st["attempts"].get(key, 0) >= _LAUNCH_CAPS[w]:  # USER 2026-10-09: 30D 6->3 (slices + free resume make more unnecessary); hopeless sides stop burning slots
-                    continue
+                _is_redo_resume = w == "30D" and f"{sym}_{side}" in redo
+                if not _is_redo_resume and st["attempts"].get(key, 0) >= _LAUNCH_CAPS[w]:  # USER 2026-10-09: 30D 6->3 (slices + free resume make more unnecessary); hopeless sides stop burning slots
+                    continue  # USER 2026-10-10 (82 redo backlog): needs_redo resume is FREE (attempts already paid; pilot resumes + refills, never restarts)
                 acts.append({"sym": sym, "side": side, "window": w, "attempt": att or 1, "key": key})
         return acts
 
@@ -1267,7 +1279,7 @@ def tick(args, cfg, now):
         nonw_used = sum(1 for s in held[h["name"]] if _sym_quota_hit(s, _gtiers))
         nonw_quota = max(1, cap // _NONW_QUOTA_DIV)  # USER 2026-10-09: winners own the host; non-winners get 1 new-pair slot (chains still drain, discovery exempt)
         order = _place_order(held_ordered, [sym for sym in adopted if owner.get(sym) == h["name"] and sym not in held[h["name"]]],
-                             [sym for sym in new_syms if venue_of(sym) in h["venues"]], _gtiers)
+                             [sym for sym in new_syms if venue_of(sym) in h["venues"]], _gtiers, redo)
         for sym, needs_slot in order:
             if needs_slot and new_launched >= args.max_launch:
                 break  # budget counts only NEW pairs; chain continuations (365D/REPAIR) of held symbols never starve new admissions
@@ -1277,9 +1289,9 @@ def tick(args, cfg, now):
                 continue
             if sym in owner and owner[sym] != h["name"]:
                 continue
-            if needs_slot and _sym_quota_hit(sym, _gtiers) and nonw_used >= nonw_quota:
+            if needs_slot and _sym_quota_hit(sym, _gtiers) and nonw_used >= nonw_quota and f"{sym}_LONG" not in redo and f"{sym}_SHORT" not in redo:
                 log.setdefault("skipped_quota", []).append(f"{h['name']}:{sym}")
-                continue
+                continue  # USER 2026-10-10 (82 redo backlog): refills never consume winner quota
             if not needs_slot and (proj_mem < est_pair / 2 or cpu >= 120 or not swap_ok):
                 continue
             if not needs_slot and held[h["name"]].get(sym) != "running" and (running_cnt >= cap or chain_launched >= max(args.max_launch, 4)):
