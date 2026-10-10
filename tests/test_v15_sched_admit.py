@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
-from v15_fleet_scheduler import _est_pair_mb, _growth_debt_mb, _progress_done_rows, _rank_oom_victim, _reap_burn_weight, _reap_burns, _stall_tick, _swap_admit_ok
+from v15_fleet_scheduler import _disk_admit_ok, _est_pair_mb, _growth_debt_mb, _progress_done_rows, _rank_oom_victim, _reap_burn_weight, _reap_burns, _stall_tick, _swap_admit_ok
 
 
 class EstPairTest(unittest.TestCase):
@@ -53,6 +53,24 @@ class SwapAdmitTest(unittest.TestCase):
     def test_junk_safe(self):
         self.assertTrue(_swap_admit_ok(None))
         self.assertTrue(_swap_admit_ok({"swap_total_mb": "x"}))
+
+
+class DiskAdmitTest(unittest.TestCase):
+    def test_missing_fails_open(self):
+        self.assertTrue(_disk_admit_ok({}))
+        self.assertTrue(_disk_admit_ok(None))
+        self.assertTrue(_disk_admit_ok({"disk_avail_mb": None}))
+
+    def test_threshold(self):
+        self.assertTrue(_disk_admit_ok({"disk_avail_mb": 54000}))
+        self.assertTrue(_disk_admit_ok({"disk_avail_mb": 5000}))
+        self.assertFalse(_disk_admit_ok({"disk_avail_mb": 4999}))
+        self.assertFalse(_disk_admit_ok({"disk_avail_mb": 0}))
+        self.assertFalse(_disk_admit_ok({"disk_avail_mb": 797}))
+
+    def test_junk_safe(self):
+        self.assertTrue(_disk_admit_ok({"disk_avail_mb": "x"}))
+        self.assertTrue(_disk_admit_ok(42))
 
 
 class VictimRankTest(unittest.TestCase):

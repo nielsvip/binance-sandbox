@@ -203,6 +203,11 @@ if mode == "probe":
         elif l.startswith("SwapFree"):
             swp_f = int(l.split()[1]) // 1024
     swp_u = max(0, swp_t - swp_f)
+    try:
+        _sv = os.statvfs(HOME)
+        dsk = int(_sv.f_bavail * _sv.f_frsize / 1048576)
+    except Exception:
+        dsk = None
     def _cpu_t():
         v = [int(x) for x in open("/proc/stat").readline().split()[1:]]
         return sum(v), v[3] + v[4], v[1]
@@ -211,7 +216,7 @@ if mode == "probe":
     _t1, _i1, _n1 = _cpu_t()
     busy = round(100.0 * (1 - (_i1 - _i0) / max(1, _t1 - _t0)), 1)
     busy_nn = round(100.0 * (1 - ((_i1 - _i0) + (_n1 - _n0)) / max(1, _t1 - _t0)), 1)
-    o = {"nproc": os.cpu_count(), "load1": float(open("/proc/loadavg").read().split()[0]), "busy_pct": busy, "busy_nonnice_pct": busy_nn, "mem_avail_mb": mem, "pdir": pdir, "swap_total_mb": swp_t, "swap_used_mb": swp_u,
+    o = {"nproc": os.cpu_count(), "load1": float(open("/proc/loadavg").read().split()[0]), "busy_pct": busy, "busy_nonnice_pct": busy_nn, "mem_avail_mb": mem, "pdir": pdir, "swap_total_mb": swp_t, "swap_used_mb": swp_u, "disk_avail_mb": dsk,
          "running": pilots(), "started": [], "done": [], "quarantined": [], "redo": [], "v365": {}, "repair": {}, "gs": {}, "gains": {}}
     if pdir and os.path.isdir(pdir):
         cache_p = "/tmp/v15_sched_done_cache_v2.json"  # v2 (2026-10-10): v1 cached flat-regex done verdicts poisoned by nested endgame.final_gain
@@ -691,6 +696,19 @@ def _swap_admit_ok(stats, pct_max=40.0):
         return True
     try:
         return (100.0 * used / tot) <= float(pct_max)
+    except Exception:
+        return True
+
+
+def _disk_admit_ok(stats, min_mb=5000.0):
+    """Refuse launches while the host disk is nearly full (USER 2026-10-10: s5+s6 hit
+    100% and pilots died on Errno 28 mid-save, burning attempts in a relaunch loop).
+    Missing disk fields fail open (old probe)."""
+    try:
+        avail = (stats or {}).get("disk_avail_mb")
+        if avail is None:
+            return True
+        return float(avail) >= float(min_mb)
     except Exception:
         return True
 
@@ -1321,8 +1339,9 @@ def tick(args, cfg, now):
         reserve = max(h.get("mem_reserve_mb", 3000), int(h.get("oom_mb", 500)) + 2000)
         proj_mem = s["mem_avail_mb"] - reserve - _growth_debt_mb(pairs, est_pair)
         swap_ok = _swap_admit_ok(s)
+        disk_ok = _disk_admit_ok(s)
         used = len(held[h["name"]])
-        info = {"cpu": round(cpu), "cpu_real": round(float(s.get("busy_pct") or 0)), "mem_avail_mb": s["mem_avail_mb"], "slots": f"{used}/{cap}", "held": sorted(held[h["name"]]), "est_pair_mb": round(est_pair),
+        info = {"cpu": round(cpu), "cpu_real": round(float(s.get("busy_pct") or 0)), "mem_avail_mb": s["mem_avail_mb"], "disk_avail_mb": s.get("disk_avail_mb"), "slots": f"{used}/{cap}", "held": sorted(held[h["name"]]), "est_pair_mb": round(est_pair),
                 "workers_per_side": workers, "launched_pairs": 0}
         launched = 0
         new_launched = 0
@@ -1338,7 +1357,7 @@ def tick(args, cfg, now):
         for sym, needs_slot in order:
             if needs_slot and new_launched >= args.max_launch:
                 break  # budget counts only NEW pairs; chain continuations (365D/REPAIR) of held symbols never starve new admissions
-            if needs_slot and (used >= cap or proj_mem < est_pair or cpu >= cfg.get("cpu_target_pct", 90) or not swap_ok):
+            if needs_slot and (used >= cap or proj_mem < est_pair or cpu >= cfg.get("cpu_target_pct", 90) or not swap_ok or not disk_ok):
                 break
             if venue_of(sym) not in h["venues"]:
                 continue
@@ -1347,7 +1366,7 @@ def tick(args, cfg, now):
             if needs_slot and _sym_quota_hit(sym, _gtiers) and nonw_used >= nonw_quota and f"{sym}_LONG" not in redo and f"{sym}_SHORT" not in redo:
                 log.setdefault("skipped_quota", []).append(f"{h['name']}:{sym}")
                 continue  # USER 2026-10-10 (82 redo backlog): refills never consume winner quota
-            if not needs_slot and (proj_mem < est_pair / 2 or cpu >= 120 or not swap_ok):
+            if not needs_slot and (proj_mem < est_pair / 2 or cpu >= 120 or not swap_ok or not disk_ok):
                 continue
             if not needs_slot and held[h["name"]].get(sym) != "running" and (running_cnt >= cap or chain_launched >= max(args.max_launch, 4)):
                 continue
@@ -1459,7 +1478,7 @@ def tick(args, cfg, now):
         info["slots"] = f"{len(held[h['name']])}/{cap}"
         HB[h["name"]].update(used=len(held[h["name"]]), proj_mem=proj_mem, launched=launched, new_launched=new_launched, held_syms=sorted(held[h["name"]]))
         if cpu < cfg.get("cpu_target_pct", 90) and launched == 0:
-            info["idle_reason"] = "slots full" if used >= cap else "mem guard" if proj_mem < est_pair else "no eligible ready symbol for this host"
+            info["idle_reason"] = "disk guard" if not disk_ok else "slots full" if used >= cap else "mem guard" if proj_mem < est_pair else "no eligible ready symbol for this host"
         log["hosts"][h["name"]] = info
     # ---- pass 2 (USER 2026-10-08): steal adopted chain stages (365D, REPAIR-a1) onto hosts
     # with free capacity. Owner had first refusal in pass 1; the thief fetches the small
