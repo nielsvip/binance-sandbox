@@ -34535,6 +34535,7 @@ class MultiAccountTradeManager:
                         if not self._should_bypass_post_fill_lock(
                             position_key, account_key, side
                         ):
+                            logger.warning(f"[POST_FILL_COOLDOWN_BLOCK] {position_key}: exec lock held by recent fill ({lock_val}) — {action} refused, order NOT placed (safety, stays; now visible)")
                             return "BLOCK_SKIPPED_POST_FILL_COOLDOWN"
                         else:
                             await self.force_clear_execution_lock(position_key)
@@ -34561,6 +34562,7 @@ class MultiAccountTradeManager:
             if not is_sandbox_account(config, account_key):
                 _odg_dec = await _odg.binance_execute_now_preflight(getattr(self.accounts.get(account_key), "client", None), account_key, symbol, position_side, origin=f"{action}|{(reason or '')[:80]}", cfg=config, logger=logger)
                 if not _odg_dec.allowed:
+                    logger.critical(f"[ORDER_DEDUPE_BLOCK_CALLER] {position_key}: preflight refused code={_odg_dec.code} action={action} reason={(reason or '')[:80]} — order NOT placed (safety, stays; now visible)")
                     return f"ORDER_DEDUPE_BLOCK_{_odg_dec.code}"
             _rup = (reason or "").upper()
             _is_reentry_exec = (
