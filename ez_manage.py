@@ -2,6 +2,7 @@
 import argparse
 import asyncio
 import order_dedupe_guard as _odg  # 2026-10-06 USER ORDER_DEDUPE_GUARD: broker-confirmed final-state gate on every order
+import parity_exact_gate as _peg  # 2026-10-10 USER TOTAL PARITY: exact-mode native block + local dedup claim
 import positions_truth as _ptruth  # 2026-10-06 USER POSITIONS_TRUTH: stale->broker fallback, zero-qty refusal, broker-confirmed SUCCESS
 from live_rally_filters import rally_ok as _rally_ok, age_minutes as _rally_age
 import fnmatch
@@ -30646,6 +30647,30 @@ class MultiAccountTradeManager:
                         logger.warning(f"⚠️ [EXIT_ENGINE_LEAK] {position_key} action={action} fired family='{_fam}' but gate {_knob}={_gval} is DISABLED — illegal trade under parity (reason={_xr[:60]})")
             except Exception as _xe_err:
                 logger.debug(f"[EXIT_ENGINE_PARITY] {position_key}: instrumentation skipped ({_xe_err})")
+        # ─── TOTAL PARITY (USER 2026-10-10: vec-chart trades ONLY, nothing more nothing less) ───
+        # Local same-key exposure-increase claim: synchronous, race-proof inside this
+        # process. The wire guard keys on broker-confirmed fills (lag seconds); two
+        # signals ms apart both pass it. First claim wins; dup within TTL refused.
+        try:
+            _act_u = str(action or "").upper()
+            if _peg.is_entry_action(_act_u):
+                _ckey = position_key or f"{account_key}:{symbol}_{position_side}"
+                _claimed, _cage = _peg.try_claim(f"{_ckey}|INC")
+                if not _claimed:
+                    logger.critical(f"🛑 [PARITY_DEDUP] {position_key}: BLOCKED — same-key exposure increase {_cage:.1f}s after prior claim (ttl={_peg.CLAIM_TTL_S:.0f}s). action={action} reason={(reason or '')[:80]}")
+                    return f"BLOCKED_PARITY_DEDUP_{position_key}"
+        except Exception as _pcl_e:
+            logger.warning(f"[PARITY_DEDUP] {position_key}: claim check error (fail-open): {_pcl_e}")
+        # Exact-mode native block: only vec reasons trade; emergency/manual/sync exits
+        # exempt. Native entries AND native exits refused here, the chokepoint.
+        try:
+            if _vec_exact_mode_on():
+                _pok, _pcode = _peg.allows(reason, action, bool(is_full_close))
+                if not _pok:
+                    logger.critical(f"🛑 [PARITY_NATIVE_{_pcode}] {position_key}: BLOCKED — non-vec trade in exact mode. action={action} reason={(reason or '')[:100]}")
+                    return f"BLOCKED_PARITY_NATIVE_{_pcode}_{position_key}"
+        except Exception as _pn_e:
+            logger.warning(f"[PARITY_NATIVE] {position_key}: gate error (fail-open): {_pn_e}")
         # ─── X3 VEC-DRIVEN LIVE (2026-10-06 USER "THE SECOND A VECTORIZED TRADE WOULD OCCUR A LIVE TRADE OCCURS") ───
         # sym_side mode=live (VEC_DRIVEN_ENABLED + data/vec_live/vec_driven.json): only VEC_DRIVEN_* orders trade it
         # (they skip the discretionary gates flagged _vd_exempt below); every native decision is suppressed here, the
@@ -36033,6 +36058,12 @@ class MultiAccountTradeManager:
     async def _close_associated_hedge(
         self, account_key, symbol, closed_position_side, current_price
     ):
+        # USER 2026-10-10: hedging eradicated (HEDGE_MODE=False since 2026-08-18).
+        # The killer (incl. its implicit opposite-side fallback) murdered independent
+        # both-side positions as "orphans" (proven: men SNXUSDT_SHORT 2026-10-07).
+        # Inert unless hedging is explicitly re-enabled.
+        if not bool(getattr(config, "HEDGE_MODE", False)):
+            return
         closed_position_key = construct_position_key(
             account_key, symbol, closed_position_side
         )

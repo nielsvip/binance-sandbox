@@ -39,8 +39,16 @@ def gate(p, min_span=32.0, max_age_h=120.0):
         _sp = _d[1:] > 0.02
         _bk = np.abs(_c[3:] - _c[1:-2]) / np.maximum(_c[1:-2], 1e-9) < 0.01
         _k = min(len(_sp), len(_bk))
-        if int(np.sum(_sp[:_k] & _bk[:_k])) >= 15:
-            return {"ok": False, "reason": "interleaved two-series (sawtooth) pattern in the recent 3000 bars"}
+        _teeth = np.where(_sp[:_k] & _bk[:_k])[0]
+        # INTENT 2026-10-10: catch interleaved feeds (dense/clustered alternation), not real volatility.
+        # ALMU has 31 isolated V-teeth (gaps 25-267 bars, two-feed-confirmed real) — must pass. A true
+        # interleave alternates every bar/few bars (clustered) or at high density. Fail closed otherwise.
+        if len(_teeth) >= 15:
+            _gaps = np.diff(np.sort(_teeth))
+            _clustered = int((_gaps < 4).sum()) if len(_gaps) else 0
+            _density = len(_teeth) / max(len(_c), 1)
+            if _clustered >= 8 or _density >= 0.05:
+                return {"ok": False, "reason": f"interleaved two-series (sawtooth) pattern: {len(_teeth)} teeth, {_clustered} clustered, density {_density:.3f}"}
         k = 1000.0 if t[-1] > 1e11 else 1.0
         span = float((t[-1] - t[0]) / k / 86400.0); age_h = float((time.time() - t[-1] / k) / 3600.0)
         par = t15[(t15 > 0) & np.isfinite(t15)]

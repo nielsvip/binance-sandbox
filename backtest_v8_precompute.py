@@ -1886,6 +1886,23 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
         if merged_df is not None:
             dfs[tf] = merged_df
     dfs = _apply_split_adjustments(symbol, dfs)
+    # FORMING-BAR DROP 2026-10-10: a still-forming bar (partial OHLCV) poisons tail indicators and makes
+    # builds timing-dependent (mid-bar builds embed partials). Drop per-TF bars newer than TF+75s settle
+    # (mirrors the refresh loop's close+settle rule). Stocks on closed markets: no-op (last bar hours old).
+    try:
+        _now_utc = pd.Timestamp.now(tz="UTC")
+        for tf in list(dfs):
+            _sec = {"15m": 900, "1h": 3600, "4h": 14400, "D": 86400}.get(tf)
+            _df = dfs.get(tf)
+            if _sec is None or _df is None or len(_df) == 0:
+                continue
+            _idx = pd.DatetimeIndex(pd.to_datetime(_df.index, utc=True))
+            _keep = _idx <= (_now_utc - pd.Timedelta(seconds=_sec + 75))
+            if bool((~_keep).any()):
+                logger.info(f"  {symbol} {tf}: dropped {int((~_keep).sum())} forming bar(s)")
+                dfs[tf] = _df.loc[_keep.values]
+    except Exception as _e:
+        logger.warning(f"  {symbol}: forming-drop skipped: {_e}")
     if base_tf not in dfs:
         logger.warning(f"[SKIP] {symbol}: no {base_tf} klines")
         return False

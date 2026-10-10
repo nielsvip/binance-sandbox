@@ -1861,4 +1861,7 @@ would split sweep/live from pilot baselines; needs a director ruling, not a sile
   sample-free REDO refill. (2) s7's autopsy-first backfill moved to S1 (detached, workers 4, nice 10):
   35 fresh sides were `waiting_base`-blocked; dead `V15_AF_PULL` cron disabled (crontab backed up).
   s6 left at 5 pairs (9.2GB avail, no OOM — CPU contention only; tune to 4 if rate still <10 after
-  convergence). Monitor watches publish-count new highs.
+  convergence). Monitor watches publish-count new highs. 02:30Z: S1 OOMed again (1045MB) on backfill
+  (4 workers) + pair + live — backfill throttled to workers 2 / nice 15; several backfill sides ERROR
+  (Nonet/missing NPZ → template-bold base only, may stay base-blocked until data exists). BB LONG
+  forgiven 3→2 (last life before park).
