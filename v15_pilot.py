@@ -3892,6 +3892,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             # USER 2026-10-08: "ABLATION can never be on unless for a momentary test" — a sweep is not that; 73 live sym_sides had
             # ABLATION_DISABLE_*=True promoted per-sym from these rows (stripped 17:4xZ). Never calculated, never promoted.
             info.update(kind="skip", reason="ABLATION_NEVER_ON: ablation kills are engine artefacts, not strategy (USER 2026-10-08) — not calculated, never promoted", g=None)
+        elif str(switch).strip() == "MAX_AUGMENTS_PER_POSITION" and str(cand).strip() in ("0", "0.0"):
+            # USER 2026-10-10: "MAX_AUGMENTS_PER_POSITION=0 NOT MY CODE — we augment as rapidly and fast as we can"
+            # (2026-05-30 no-cap mandate, config 999999). A sweep delta is not a mandate override; never calculated, never promoted.
+            info.update(kind="skip", reason="MAXAUG_NEVER_ZERO: 0 augments contradicts the user no-cap mandate (config 999999) — not calculated, never promoted", g=None)
         elif str(cand).strip().upper().endswith("_ALT"):
             info.update(kind="skip", reason="INVENTED_ALT: *_ALT option value exists in no config — grey, not calculated", g=None)
             ws.cell(row=rr, column=2).font = Font(name="Arial", size=10, color="FFBFBFBF")
@@ -4228,6 +4232,70 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _r, _e = _get(_sname, _rr, _switch, _cand, _label, _ov, _t.time() + YELLOW_TIMEOUT * 2, _cum)
         return _r
     _start_t = _t.time()
+    _SACRED_PREFIXES = ("GOLDEN_RULE_", "ENTRY_DC_TF", "TECHNICAL_DC_", "DAYTRADE_DC_", "ULTIMATE_DC_4H", "WT_DC_", "DELTA_EXIT", "AUGMENT_", "MAX_AUGMENTS_PER_POSITION")
+    _sacred_on = os.environ.get("V15_SACRED_REPASS", "1") == "1"
+    _sacred_rows = [(s, r, sw, c) for (s, r, sw, c) in queue if str(sw).startswith(_SACRED_PREFIXES)]
+    _sacred_tab_order = list(dict.fromkeys(s for s, _, _, _ in queue))
+    def _sacred_repass(upto_tab_inclusive):
+        # USER 2026-10-10: sacred families (golden/DC/wt_dc/delta/augment) re-tested naked at every tab
+        # boundary vs the grown cumulative — golden gates suffocate downstream switches, so a 0 measured
+        # early can be positive later. Naked-only (yellows were measured in the main pass); the naked eval
+        # IS the fresh full-set eval (identical overrides = same cache key, no separate RECALC needed).
+        nonlocal cumulative_gain, cumulative_overrides, e_next, chain_tim
+        if not _sacred_on:
+            return 0
+        upto = _sacred_tab_order if upto_tab_inclusive is None else (_sacred_tab_order[:_sacred_tab_order.index(upto_tab_inclusive) + 1] if upto_tab_inclusive in _sacred_tab_order else [])
+        n_prom = 0
+        for (s, r, sw, c) in [t for t in _sacred_rows if t[0] in upto]:
+            if str(sw).strip() == "MAX_AUGMENTS_PER_POSITION" and str(c).strip() in ("0", "0.0"):
+                continue  # MAXAUG_NEVER_ZERO applies to the repass too
+            try:
+                sw_ov = _switch_overrides(str(sw).strip(), _parse_opt_value(c, defaults.get(str(sw).strip())))
+            except Exception:
+                continue
+            if all(_same_val(cumulative_overrides.get(k2, defaults.get(k2)), v2) for k2, v2 in sw_ov.items()):
+                continue  # identity: already running, delta 0 by construction
+            ov = dict(cumulative_overrides)
+            ov.update(sw_ov)
+            ov, _ = sanitize_overrides(ov, defaults)
+            cum_before = float(cumulative_gain)
+            res, err = _get(s, r, str(sw).strip(), str(c), "SACRED_REPASS", ov, _t.time() + YELLOW_TIMEOUT * 2, cum_before)
+            d, ok, why = _delta_vs(res, cum_before)
+            if err or d is None or float(d) <= 1e-9 or not ok:
+                continue
+            if not bool((res or {}).get("valid")) or int((res or {}).get("trades") or 0) <= 0:
+                continue
+            if promotion_block_reason(str(sw).strip(), s):
+                continue
+            try:
+                _ct = float((res or {}).get("tim_pct"))
+            except Exception:
+                _ct = None
+            if tim_guard_veto(_ct, chain_tim):
+                continue
+            cumulative_overrides = dict(ov)
+            cumulative_gain = float((res or {}).get("gain_pct"))
+            e_next = cumulative_gain
+            _spec_state["ver"] += 1
+            progress["cumulative_overrides"] = dict(cumulative_overrides)
+            progress["cumulative_gain"] = float(cumulative_gain)
+            try:
+                _ws = wb[s]
+                _cols = _resolve_cols(_ws)
+                _set_override(_ws, s, r, _cols, [f"{str(sw).strip()}={str(c).strip()}"])
+                _num_cell(_ws, r, _cols["G"], float(d), True)
+            except Exception as _se:
+                print(f"[SACRED-REPASS-WARN] {s}!{r} {sw}={c} C/G write failed: {_se}", flush=True)
+            progress.setdefault("done", {})[f"{s}!{r}:{str(sw).strip()}={str(c).strip()}:REPASS"] = {"delta": float(d), "promoted": True, "promoted_how": "sacred_repass_naked", "reason": "", "vec_gain": float(cumulative_gain), "trades": (res or {}).get("trades"), "yellows": {}, "cumulative_before": cum_before, "cumulative_after": float(cumulative_gain), "npz": _run_npz_short, "policy": _policy_stamp(s), "complete": True}
+            try:
+                chain_tim = float((res or {}).get("tim_pct"))
+            except Exception:
+                pass
+            n_prom += 1
+            print(f"[SACRED-REPASS] {s}!{r} {sw}={c} +{float(d):.4f} {cum_before:.4f}->{cumulative_gain:.4f}", flush=True)
+        _maybe_write_json(force=bool(n_prom))
+        return n_prom
+    _sacred_prev_tab = [None]
     for qi, (sname, rr, switch, cand) in enumerate(pending_queue):
         loop_guard += 1
         if loop_guard % 200 == 0:
@@ -4236,6 +4304,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         ws = wb[sname]
         cols = _resolve_cols(ws)
         cumulative_before = float(cumulative_gain)
+        if _sacred_on and sname != _sacred_prev_tab[0]:
+            if _sacred_prev_tab[0] is not None:
+                _sacred_repass(_sacred_prev_tab[0])
+                cumulative_before = float(cumulative_gain)
+            _sacred_prev_tab[0] = sname
         if e_next is None and _tab_first.get(sname, (None,))[0] == rr:
             e_next = cumulative_before
         if e_next is not None:
@@ -4603,6 +4676,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         print(f"[spec-row] {sname}!{rr} {switch}={cand}{' (running)' if is_running else ''} yellows={len(st['hdrs'])}{' inert=' + str(len(st['inert_filters'])) if st.get('inert_filters') else ''}{' SAMPLED' if st.get('inert_sampled') else ''} pos={len(pos_hdrs)} G={row_delta} vs {cumulative_before:.4f} -> {'POS ' + choice[3] + ' E_next=' + format(cumulative_gain, '.4f') if promote else 'no-promote'}", flush=True)
         _maybe_save()
         processed += 1
+    if _sacred_on:
+        _sacred_final_n = _sacred_repass(None)
+        print(f"[SACRED-REPASS] {new_symside} final pass: {_sacred_final_n} promotions, cumulative {float(cumulative_gain):.4f}", flush=True)
     if _inert_effective:
         print(f"[AUTOPSY-INERT] {new_symside}: rows pruned={_inert_stats['pruned']} sampled-full={_inert_stats['sampled']} revived={_inert_stats['revived']} yellow evals skipped={_inert_stats['yellows_skipped']}", flush=True)
     # USER 2026-10-06 REDO-HEAL: the heal marker served its purpose once the fill completes (sampling

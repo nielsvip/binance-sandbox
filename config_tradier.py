@@ -2842,6 +2842,7 @@ class TradierConfig:
     GOLDEN_RULE_MULT_4H: float = 2.0
     GOLDEN_RULE_MULT_D: float = 3.0
     GOLDEN_RULE_MULT_W: float = 4.0
+    GOLDEN_RULE_MULT_RETEST: float = 5.0
     GOLDEN_RULE_REQUIRE_ACTIVATION: bool = (
         False  # 2026-10-06 daily chain (director 17:2xZ stocks-uniform template bold)
     )

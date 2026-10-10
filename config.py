@@ -1853,6 +1853,9 @@ class Config:
     GOLDEN_RULE_MULT_W: float = (
         4.0  # 2026-05-17 USER: +W mult (cascade 1.0/1.5/2.0/3.0/4.0)
     )
+    GOLDEN_RULE_MULT_BREAKOUT: float = 0.1
+    GOLDEN_RULE_MULT_RETEST: float = 5.0
+    GOLDEN_RULE_RETEST_WINDOW_S: float = 14400.0
     # USER 2026-05-18: activation/entry TF split (mirrors STDEV_BREAKOUT_HTF_LIST + STDEV_BREAKOUT_RETEST_TF_LIST).
     # Previously GR scored all 6 TFs equally — a 3m wick contributed the same vote as a Daily bar.
     # New: breakout must HAPPEN on activation TF (D/4h), entry trigger must CONFIRM on entry TF (1h/15m/3m).

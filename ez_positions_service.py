@@ -9666,8 +9666,11 @@ class PositionService:
             add_key('men', s, 'LONG')
             add_key('men', s, 'SHORT')
         for s in fin:
-            if s in all_winners: add_key('fin', s, 'LONG')
-            if s in all_losers: add_key('fin', s, 'SHORT')
+            # 2026-10-10 USER (unlock ez_positions_service.py): fin trades its full universe
+            # (symbols_fin.json) BOTH sides, unconditionally — men-style. The winners/losers
+            # classification gate starved fin to ~8 keys and re-narrowed every rebuild.
+            add_key('fin', s, 'LONG')
+            add_key('fin', s, 'SHORT')
         for s in flz:
             # Use w20/l20 directly (not combined all_winners/all_losers) — flz classification
             # is based on 20-period rankings only. Checks are independent (symbol can be in
@@ -9803,13 +9806,14 @@ class PositionService:
 
             final_keys_set.update(valid_keys_for_this_account)
         external_keys = set()
+        _current_managed_counts = {}
         try :
             if tradeable_file.exists():
                 async with aiofiles.open(str(tradeable_file), 'rb') as f:
                     content = await f.read()
                     if content:
-                        d = orjson.loads(content) 
-                        if isinstance(d, list): 
+                        d = orjson.loads(content)
+                        if isinstance(d, list):
                             for k in d:
                                 k = str(k).strip()
                                 parts = k.split(':')
@@ -9817,6 +9821,8 @@ class PositionService:
                                 acc = parts[0]
                                 if acc not in managed_accounts:
                                     external_keys.add(k)
+                                else:
+                                    _current_managed_counts[acc] = _current_managed_counts.get(acc, 0) + 1
         except Exception as e:
             self.logger.error(f"[cleanup] Error reading old tradeable_keys: {e}")
         final_keys_set.update(external_keys)
@@ -9824,6 +9830,23 @@ class PositionService:
         if len(final_list) < 5 and len(external_keys) > 0:
              self.logger.warning(f"[cleanup] ⚠️ Generated list too small ({len(final_list)}). Aborting.")
              return
+        # 2026-10-10 USER (unlock ez_positions_service.py): BLIND-WRITER PROTECTION. A cleanup
+        # that loaded no state for an account (empty universe read, blank positions — proven
+        # 2026-10-10 03:30Z: men+flz written at 0 keys) must NEVER zero it or halve the file.
+        # Fail-open: refuse the write, keep the old file, the next healthy cleanup fixes it.
+        _new_counts = {}
+        for _k in final_list:
+            _a = _k.split(':')[0] if ':' in _k else ''
+            if _a:
+                _new_counts[_a] = _new_counts.get(_a, 0) + 1
+        for _acc in managed_accounts:
+            if _current_managed_counts.get(_acc, 0) > 0 and _new_counts.get(_acc, 0) == 0:
+                self.logger.error(f"[cleanup] 🛑 REFUSING to zero {_acc} (file has {_current_managed_counts[_acc]} keys, computed 0) — blind-writer protection, write aborted")
+                return
+        _current_total = sum(_current_managed_counts.values())
+        if _current_total > 0 and len(final_list) < _current_total * 0.5:
+            self.logger.error(f"[cleanup] 🛑 REFUSING to shrink file {_current_total} -> {len(final_list)} keys (>50% drop) — blind-writer protection, write aborted")
+            return
         try :
             final_persistence_to_save = {k: v for k, v in old_persistence.items() if k.split(':')[0] not in managed_accounts}
             final_persistence_to_save.update(final_local_persistence)

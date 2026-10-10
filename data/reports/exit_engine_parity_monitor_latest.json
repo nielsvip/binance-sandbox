@@ -1,38 +1,37 @@
 {
- "now": "2026-10-10T03:23:45.989349+00:00",
+ "now": "2026-10-10T04:23:50.184834+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 4602,
- "last_exit_ts": "2026-10-10T03:23:39.004164+00:00",
- "n_leaks": 5,
- "n_gate_on": 2976,
+ "n_exit_rows": 4527,
+ "last_exit_ts": "2026-10-10T04:22:21.692872+00:00",
+ "n_leaks": 3,
+ "n_gate_on": 2718,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 148,
+ "n_unmapped": 140,
  "n_unverified": 1,
- "since": "2026-10-08T03:23:45.989349+00:00",
+ "since": "2026-10-08T04:23:50.184834+00:00",
  "vec_exact_by_action": {
-  "CLOSE": 265,
-  "OPEN": 1202,
+  "OPEN": 1238,
+  "CLOSE": 422,
   "REDUCE": 4,
   "AUGMENT": 1
  },
- "native_rows": 3130,
+ "native_rows": 2862,
  "unverified_by_family": {
   "ULTIMATE_DC (None=None)": 1
  },
  "leaks_by_family": {
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED=False)": 3,
-  "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF=OFF)": 2
+  "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF=OFF)": 2,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED=False)": 1
  },
  "leak_keys": {
-  "EXIT_VELOCITY_WT inf:RENDERUSDT_LONG": 2,
   "WT_LOWER_CROSS_EXIT men:LTCUSDC_SHORT": 2,
-  "EXIT_VELOCITY_WT inf:SOLUSDC_SHORT": 1
+  "EXIT_VELOCITY_WT inf:RENDERUSDT_LONG": 1
  },
  "gate_on_by_family": {
-  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 182,
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 2519,
-  "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 250,
+  "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 217,
+  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 128,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 2348,
   "DC_BASIS_3M_REDUCE (DC_BASIS_3M_REDUCE_ENABLED)": 2,
   "MTF_BB_REJECT_EXIT (MTF_BB_REJECT_EXIT_ENABLED)": 4,
   "DC_DAYTRADE_STOP (DC_DAYTRADE_ENABLED)": 3,
@@ -45,24 +44,22 @@
  "unmapped": {
   "RSI2_EXIT_LIVE_rsi2=2.5_thr=10.0": 15,
   "RSI2_EXIT_LIVE_rsi2=5.9_thr=10.0": 13,
-  "RSI2_EXIT_LIVE_rsi2=2.7_thr=10.0": 11,
   "BB_TAKE_15m": 11,
   "RSI2_EXIT_LIVE_rsi2=7.7_thr=10.0": 10,
   "NON_TRADEABLE_WT15M_EXIT_LONG_wt-4.4": 9,
+  "RSI2_EXIT_LIVE_rsi2=2.7_thr=10.0": 8,
   "RSI2_EXIT_LIVE_rsi2=5.0_thr=10.0": 8,
   "RSI2_EXIT_LIVE_rsi2=0.3_thr=10.0": 6,
   "DC_BB_D_BREAK_REVERSE_close_BB_BREAK_D": 5,
   "TECHNICAL_TARGET_dc_15m_high_-0.10%_TA": 4,
-  "RSI2_EXIT_LIVE_rsi2=4.0_thr=10.0": 3,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.56% age": 3,
   "NON_TRADEABLE_WT15M_EXIT_SHORT_wt13.0": 3,
-  "RSI2_EXIT_LIVE_rsi2=3.1_thr=10.0": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-1.80% age": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-1.83% age": 2,
   "NON_TRADEABLE_WT15M_EXIT_SHORT_wt9.2": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.52% age": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.58% age": 2,
-  "RSI2_EXIT_LIVE_rsi2=0.9_thr=10.0": 1,
+  "RSI2_EXIT_LIVE_rsi2=3.1_thr=10.0": 1,
   "WT_CROSSUNDER_FINAL_S_k=10_g4.53": 1,
   "WT_CROSSUNDER_FINAL_S_k=10_g4.79": 1,
   "WT_CROSSUNDER_FINAL_S_k=12_g4.86": 1,
@@ -92,11 +89,13 @@
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-1.56% age": 1,
   "WT_CROSSUNDER_FINAL_S_k=12_g9.93": 1,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-1.54% age": 1,
-  "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.64% age": 1
+  "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.64% age": 1,
+  "BB_TAKE_15m_g2.45": 1,
+  "BB_TAKE_15m_g2.31": 1
  },
  "actions": {
-  "CLOSE": 3377,
-  "OPEN": 1203,
+  "CLOSE": 3266,
+  "OPEN": 1239,
   "REDUCE": 11,
   "QUICK_REDUCE": 9,
   "AUGMENT": 1,
