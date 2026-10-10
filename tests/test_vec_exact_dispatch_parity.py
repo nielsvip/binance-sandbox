@@ -84,6 +84,13 @@ def test_vec_maker_timeout_falls_back_to_market():
     src = (ROOT / "ez_manage.py").read_text()
     assert "_is_vec_exact_order" in src and "[VEC_MAKER_FALLBACK]" in src, "vec OPEN maker-timeout must verify + fall to MARKET (no silent flat)"
     assert "[VEC_MAKER_SUPPRESS]" in src, "any fill sign must suppress the fallback (no double-open)"
+    assert "[VEC_MAKER_SUPPRESS_UNKNOWN]" in src, "unverifiable-after-retries must suppress LOUD"
+
+
+def test_ground_rules_maker_120_and_verified_cancel():
+    src = (ROOT / "ez_manage.py").read_text()
+    assert "TIMEOUT = 120.0" in src, "maker chase must be 120s before MARKET fallback (ground rule)"
+    assert src.count("[RUNAWAY_UNVERIFIED]") >= 2, "BUY and SELL runaway must verify cancel before market (ground rule)"
 
 
 def test_converge_skips_twin_owned_keys():

@@ -29514,8 +29514,10 @@ class MultiAccountTradeManager:
             else "OPEN"
         )
         # 2026-09-24 FINANDY BANKRUPT — webhooks dead, fallback must be Binance MARKET order.
-        # Extend maker chase to 60-90s (user mandate) before taker fallback. Was 30s.
-        TIMEOUT = 90.0
+        # USER 2026-10-10 GROUND RULE (unbreakable): maker chases 120s, then MARKET fallback — an order is
+        # NEVER abandoned. And ANY order is confirmed canceled before another is added (see runaway +
+        # VEC_MAKER_FALLBACK verification). Was 90s.
+        TIMEOUT = 120.0
         POLL_INTERVAL = 0.1
         RETRY_DELAY = 0.05
         ak, symbol, p_side = parse_position_key(position_key)
@@ -29839,6 +29841,23 @@ class MultiAccountTradeManager:
                                         try:
                                             await asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=active_order_id)
                                         except: pass
+                                        # USER 2026-10-10 GROUND RULE: confirmed canceled before adding another —
+                                        # never market into a live/unknown order. Unverified → keep pending, retry.
+                                        _rw_ok = False
+                                        try:
+                                            _rw_q = await asyncio.to_thread(client.futures_get_order, symbol=symbol, orderId=active_order_id)
+                                            _rw_st = str((_rw_q or {}).get("status") or "").upper()
+                                            _rw_ex = float((_rw_q or {}).get("executedQty", 0) or 0)
+                                            if _rw_ex > 0:
+                                                executed_qty += _rw_ex
+                                            _rw_ok = _rw_st in ("CANCELED", "CANCELLED", "EXPIRED", "REJECTED")
+                                        except Exception as _rw_e:
+                                            if "-2011" in str(_rw_e):
+                                                _rw_ok = True
+                                        if not _rw_ok:
+                                            logger.critical(f"🛑 [RUNAWAY_UNVERIFIED] {position_key}: cancel of {active_order_id} unverified — NOT adding market, keeping pending")
+                                            await asyncio.sleep(POLL_INTERVAL)
+                                            continue
                                         active_order_id = None
                                     # Force market fallback via remaining logic
                                     _qty_runaway = (Decimal(str(max(0.0, qty_abs - executed_qty))) // step) * step
@@ -29864,6 +29883,23 @@ class MultiAccountTradeManager:
                                         try:
                                             await asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=active_order_id)
                                         except: pass
+                                        # USER 2026-10-10 GROUND RULE: confirmed canceled before adding another —
+                                        # never market into a live/unknown order. Unverified → keep pending, retry.
+                                        _rw_ok = False
+                                        try:
+                                            _rw_q = await asyncio.to_thread(client.futures_get_order, symbol=symbol, orderId=active_order_id)
+                                            _rw_st = str((_rw_q or {}).get("status") or "").upper()
+                                            _rw_ex = float((_rw_q or {}).get("executedQty", 0) or 0)
+                                            if _rw_ex > 0:
+                                                executed_qty += _rw_ex
+                                            _rw_ok = _rw_st in ("CANCELED", "CANCELLED", "EXPIRED", "REJECTED")
+                                        except Exception as _rw_e:
+                                            if "-2011" in str(_rw_e):
+                                                _rw_ok = True
+                                        if not _rw_ok:
+                                            logger.critical(f"🛑 [RUNAWAY_UNVERIFIED] {position_key}: cancel of {active_order_id} unverified — NOT adding market, keeping pending")
+                                            await asyncio.sleep(POLL_INTERVAL)
+                                            continue
                                         active_order_id = None
                                     _qty_runaway = (Decimal(str(max(0.0, qty_abs - executed_qty))) // step) * step
                                     if not _qty_runaway.is_zero():
@@ -30095,29 +30131,42 @@ class MultiAccountTradeManager:
                             pass
                 _is_vec_exact_order = "|VEC_EXACT" in (reason or "")
                 if _is_vec_exact_order:
-                    # USER 2026-10-10 PARITY: chart says OPEN → live must end OPEN. Maker timed out:
-                    # hedge-grade verification (every tracked order confirmed dead AND unfilled), then FALL
-                    # THROUGH to the MARKET fallback below with locks still held (sanction re-checks at the wire).
-                    # Any fill sign → suppress like everyone else (next bar's vec act self-heals).
-                    _vx_vf_ok = True
-                    for _tid in tracked_order_ids or []:
-                        try:
-                            _vs = await asyncio.to_thread(client.futures_get_order, symbol=symbol, orderId=_tid)
-                        except Exception:
-                            _vs = {}
-                        _vst = str((_vs or {}).get("status", "")).upper()
-                        _vex = float((_vs or {}).get("executedQty", 0) or 0)
-                        if _vex > 0 or _vst in ("FILLED", "PARTIALLY_FILLED"):
-                            _vx_vf_ok = False
-                            logger.warning(f"[VEC_MAKER_SUPPRESS] {position_key}: tracked {_tid} filled ({_vst} exec={_vex}) — suppressing market fallback, next vec act governs")
+                    # USER 2026-10-10 PARITY + GROUND RULES: chart says OPEN → live must end OPEN (never
+                    # abandoned), but ANY order is confirmed canceled before another is added. Hedge-grade
+                    # verification (every tracked order confirmed dead AND unfilled), retried 3× on unknown
+                    # (transient API failures must not strand the order); then FALL THROUGH to the MARKET
+                    # fallback below with locks still held (sanction re-checks at the wire). Any fill sign →
+                    # suppress (position holds — not abandoned). Unknown after retries → suppress LOUD
+                    # (no-double rule dominates no-abandon when the state is unknowable).
+                    _vx_vf_ok = False
+                    _vx_vf_filled = False
+                    for _att in range(3):
+                        _vx_vf_ok = True
+                        for _tid in tracked_order_ids or []:
+                            try:
+                                _vs = await asyncio.to_thread(client.futures_get_order, symbol=symbol, orderId=_tid)
+                            except Exception:
+                                _vs = {}
+                            _vst = str((_vs or {}).get("status", "")).upper()
+                            _vex = float((_vs or {}).get("executedQty", 0) or 0)
+                            if _vex > 0 or _vst in ("FILLED", "PARTIALLY_FILLED"):
+                                _vx_vf_filled = True
+                                _vx_vf_ok = False
+                                break
+                            if _vst not in ("CANCELED", "EXPIRED", "REJECTED"):
+                                _vx_vf_ok = False
+                                break
+                        if _vx_vf_filled or _vx_vf_ok:
                             break
-                        if _vst not in ("CANCELED", "EXPIRED", "REJECTED"):
-                            _vx_vf_ok = False
-                            logger.warning(f"[VEC_MAKER_SUPPRESS] {position_key}: tracked {_tid} not confirmed dead ({_vst}) — suppressing market fallback")
-                            break
+                        await asyncio.sleep(1.0)
+                    if _vx_vf_filled:
+                        logger.warning(f"[VEC_MAKER_SUPPRESS] {position_key}: tracked fill sign — suppressing market fallback (position holds), next vec act governs")
+                        await release_locks()
+                        return False, -1.0
                     if _vx_vf_ok:
                         logger.warning(f"[VEC_MAKER_FALLBACK] {position_key}: maker timed out, tracked dead+unfilled — falling through to MARKET to honor vec OPEN")
                     else:
+                        logger.critical(f"[VEC_MAKER_SUPPRESS_UNKNOWN] {position_key}: tracked state unverifiable after retries — suppressing (no-double dominates; needs eyes)")
                         await release_locks()
                         return False, -1.0
                 else:

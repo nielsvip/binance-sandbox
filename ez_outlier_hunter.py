@@ -90,23 +90,9 @@ def inject_symbol_into_tracking(sym):
                 logger.info(f"Injected {sym} into {fpath.name} (total={len(data)})")
         except Exception as e:
             logger.warning(f"Failed to inject {sym} into {fpath.name}: {e}")
-    try:
-        keys = json.loads(TRADEABLE_KEYS_FILE.read_text()) if TRADEABLE_KEYS_FILE.exists() else []
-        added = []
-        for side in ("LONG", "SHORT"):
-            k = f"{ACCT}:{sym}_{side}"
-            if k not in keys:
-                keys.append(k)
-                added.append(k)
-        if added:
-            keys.sort()
-            tmp = str(TRADEABLE_KEYS_FILE) + ".tmp"
-            Path(tmp).write_text(json.dumps(keys, indent=2))
-            os.replace(tmp, str(TRADEABLE_KEYS_FILE))
-            logger.info(f"Injected {len(added)} tradeable_keys for {sym}: {added}")
-            changed = True
-    except Exception as e:
-        logger.warning(f"Failed to inject tradeable_keys for {sym}: {e}")
+    # 2026-10-10 USER ORDER: ONLY ez_positions_service may touch tradeable_keys.json.
+    # Inject ELIMINATED — the service flows symbols_fin.json into tradeable_keys ≤3 min.
+    logger.warning(f"[NO-TOUCH] {sym} outlier inject into tradeable_keys REFUSED (ez_positions_service owns the file)")
     if changed:
         _INJECTED_SYMS.add(sym)
         _run_add_new_symbols()
@@ -130,22 +116,9 @@ def eject_symbol_from_tracking(sym):
                 logger.info(f"Ejected {sym} from {fpath.name} (total={len(data)})")
         except Exception as e:
             logger.warning(f"Failed to eject {sym} from {fpath.name}: {e}")
-    try:
-        keys = json.loads(TRADEABLE_KEYS_FILE.read_text()) if TRADEABLE_KEYS_FILE.exists() else []
-        removed = []
-        for side in ("LONG", "SHORT"):
-            k = f"{ACCT}:{sym}_{side}"
-            if k in keys:
-                keys.remove(k)
-                removed.append(k)
-        if removed:
-            tmp = str(TRADEABLE_KEYS_FILE) + ".tmp"
-            Path(tmp).write_text(json.dumps(keys, indent=2))
-            os.replace(tmp, str(TRADEABLE_KEYS_FILE))
-            logger.info(f"Ejected {len(removed)} tradeable_keys for {sym}: {removed}")
-            changed = True
-    except Exception as e:
-        logger.warning(f"Failed to eject tradeable_keys for {sym}: {e}")
+    # 2026-10-10 USER ORDER: ONLY ez_positions_service may touch tradeable_keys.json.
+    # Eject ELIMINATED — the service owns membership; hunter only manages symbols_fin.json.
+    logger.warning(f"[NO-TOUCH] {sym} eject from tradeable_keys REFUSED (ez_positions_service owns the file)")
     if changed:
         _INJECTED_SYMS.discard(sym)
         _run_add_new_symbols()

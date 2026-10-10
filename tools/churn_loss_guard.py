@@ -110,10 +110,12 @@ def check(enforce=False):
     for key, reason, n, churn, streak in offenders:
         print(f"   BLOCK {key}: {reason} (exits={n})")
     if enforce:
-        shutil.copy(TKEYS, os.path.join(ROOT, "backups", f"tradeable_keys.BEFORE_guard_{now.strftime('%Y%m%d%H%M%S')}.json"))
-        blocked = {o[0] for o in offenders}
-        remaining = [k for k in keys if k not in blocked]
-        json.dump(remaining, open(TKEYS, "w"), indent=1)
+        # 2026-10-10 USER ORDER: ONLY ez_positions_service may touch tradeable_keys.json.
+        # Enforcement write ELIMINATED — this tool is now report-only. Offenders are listed
+        # in the alert file for a human to act on; nothing is removed automatically.
+        print("[guard] ENFORCE REFUSED — report-only mode (ez_positions_service owns tradeable_keys.json)")
+        blocked = set()
+        remaining = list(keys)
         with open(ALERT, "a") as f:
             f.write(f"\n# 🔴🔴🔴 BLOCKED {len(offenders)} KEYS {now.isoformat()} — REVIEW BEFORE RE-ENABLING 🔴🔴🔴\n")
             for key, reason, n, churn, streak in offenders:

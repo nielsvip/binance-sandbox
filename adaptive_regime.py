@@ -806,53 +806,25 @@ class AdaptiveRegimeDaemon:
             sides.append("SHORT")
         if not sides:
             sides = ["LONG", "SHORT"]  # Both sides if unclear
-        # Read current tradeable_keys
-        tk_path = BASE_PATH / "tradeable_keys.json"
-        try:
-            with open(tk_path) as f:
-                current_keys = json.load(f)
-        except Exception:
-            return
-        added = []
+        # 2026-10-10 USER ORDER: ONLY ez_positions_service may write tradeable_keys.json /
+        # Redis tradeable_keys. This injector is ELIMINATED as a writer — the service flows
+        # universe symbols into tradeable_keys automatically within ~3 min. Keep in-memory
+        # bookkeeping only so our own regime decisions still see the symbol.
+        logger.warning(f"[NO-TOUCH] {sym} outlier noted ({sides}) — tradeable_keys write REFUSED (ez_positions_service owns the file)")
+        self._injected_syms.add(sym)
+        self._tradeable_syms.add(sym)
+        # Update our own tradeable dict
         for account in LIVE_ACCOUNTS:
-            for side in sides:
-                new_key = f"{account}:{sym}_{side}"
-                if new_key not in current_keys:
-                    current_keys.append(new_key)
-                    added.append(new_key)
-        if added:
-            # Write back atomically (temp + os.replace) — matches ez_positions_service.py /
-            # ez_outlier_hunter.py convention. 2026-07-22: direct `open(tk_path, "w")` here was
-            # the only non-atomic writer of this shared file and produced torn/concatenated JSON
-            # ("[KEYS] Error reading tradeable_keys.json: Extra data...") when racing the other
-            # writers' atomic os.replace().
-            try:
-                tmp_path = tk_path.with_suffix(".tmp")
-                with open(tmp_path, "w") as f:
-                    json.dump(sorted(set(current_keys)), f, indent=2)
-                    f.flush()
-                    os.fsync(f.fileno())
-                os.replace(tmp_path, tk_path)
-                # Also push to Redis for faster pickup
-                r = get_redis()
-                r.set("tradeable_keys", json.dumps(sorted(set(current_keys))))
-            except Exception as e:
-                logger.error(f"Failed to write tradeable_keys: {e}")
-                return
-            self._injected_syms.add(sym)
-            self._tradeable_syms.add(sym)
-            # Update our own tradeable dict
-            for account in LIVE_ACCOUNTS:
-                if account not in self.tradeable:
-                    self.tradeable[account] = {}
-                self.tradeable[account].setdefault(sym, set()).update(sides)
-            logger.warning(f"[INJECTED] {sym} → tradeable_keys: {added} (vs_btc={ss.vs_btc_1h:+.1f}%, dc_1h={ss.dc.get('1h', 0):.2f}, regime={ss.regime})")
-            # Log to file for tracking
-            try:
-                with open(DATA_DIR / "injected_symbols.jsonl", "a") as f:
-                    f.write(json.dumps({"ts": datetime.now(timezone.utc).isoformat(), "sym": sym,
-                        "added": added, "vs_btc": ss.vs_btc_1h, "regime": ss.regime, "dc": ss.dc}, default=str) + "\n")
-            except Exception:
+            if account not in self.tradeable:
+                self.tradeable[account] = {}
+            self.tradeable[account].setdefault(sym, set()).update(sides)
+        logger.warning(f"[NOTED] {sym} outlier sides={sides} (vs_btc={ss.vs_btc_1h:+.1f}%, dc_1h={ss.dc.get('1h', 0):.2f}, regime={ss.regime}) — file write refused")
+        # Log to file for tracking
+        try:
+            with open(DATA_DIR / "injected_symbols.jsonl", "a") as f:
+                f.write(json.dumps({"ts": datetime.now(timezone.utc).isoformat(), "sym": sym,
+                    "added": [], "sides": sides, "vs_btc": ss.vs_btc_1h, "regime": ss.regime, "dc": ss.dc}, default=str) + "\n")
+        except Exception:
                 pass
 
     # ── Identify which symbols need fast monitoring ───────────────────
