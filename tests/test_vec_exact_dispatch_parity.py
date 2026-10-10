@@ -87,6 +87,12 @@ def test_vec_maker_timeout_falls_back_to_market():
     assert "[VEC_MAKER_SUPPRESS_UNKNOWN]" in src, "unverifiable-after-retries must suppress LOUD"
 
 
+def test_dust_close_wires_market_dust_open_suppressed():
+    src = (ROOT / "ez_manage.py").read_text()
+    assert "[DUST_CLOSE_MARKET]" in src, "dust CLOSE/REDUCE must wire sanctioned MARKET (never abandoned)"
+    assert "never open dust" in src, "dust OPENs must stay suppressed"
+
+
 def test_ground_rules_maker_120_and_verified_cancel():
     src = (ROOT / "ez_manage.py").read_text()
     assert "TIMEOUT = 120.0" in src, "maker chase must be 120s before MARKET fallback (ground rule)"

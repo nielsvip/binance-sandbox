@@ -29620,8 +29620,36 @@ class MultiAccountTradeManager:
             qty_str = f"{qty_dec}"
             _mkr_notional = float(qty_dec) * float(current_price or 0.0)
             if _mkr_notional < 5.0:
+                # USER 2026-10-10 GROUND RULE (never abandoned) + forest-bellatrix dust report (men MANA $2.67 /
+                # GALA $2.00 stuck 70+ min): dust CLOSE/REDUCE still wires — exposure-reducing direction
+                # (LONG+SELL / SHORT+BUY, which ta==REDUCE always is) is exempt from MIN_NOTIONAL, so a
+                # sanctioned MARKET close goes straight out (no reduceOnly flag: hedge mode expresses it via
+                # positionSide+direction). If the exchange rejects anyway (-4164), we catch it → status quo.
+                # Dust OPENs stay suppressed below (never open dust).
+                if ta in ("REDUCE", "CLOSE"):
+                    try:
+                        _dseq = _sanction_execution(position_key, ta, side, float(qty_dec), reason)
+                        if _dseq is None:
+                            logger.critical(f"🛑 [DUST_CLOSE_REFUSED] {position_key}: unconfirmed broker order pending — skipping dust market wire")
+                        else:
+                            _dresp = await asyncio.to_thread(
+                                client.futures_create_order,
+                                symbol=symbol,
+                                side=side,
+                                positionSide=position_side,
+                                quantity=str(qty_dec),
+                                type=ORDER_TYPE_MARKET,
+                            )
+                            _confirm_wire_result("futures_create_order:dust_close_market", position_key, _dresp, _dseq, ta, reason)
+                            logger.critical(f"[DUST_CLOSE_MARKET] {position_key} dust ${_mkr_notional:.2f} → MARKET {side} {qty_dec} wired")
+                            await release_locks(success_fill=True)
+                            return True, float(qty_dec)
+                    except Exception as _de:
+                        logger.error(f"[DUST_CLOSE_MARKET_FAIL] {position_key}: {_de}")
+                    await release_locks()
+                    return False, -1.0
                 logger.critical(
-                    f"🚫 [MAKER_MIN_NOTIONAL] {position_key}: ${_mkr_notional:.2f} < $5.00 exchange minimum — ORDER NOT PLACED (no dust loop)"
+                    f"🚫 [MAKER_MIN_NOTIONAL] {position_key}: ${_mkr_notional:.2f} < $5.00 exchange minimum — ORDER NOT PLACED (never open dust)"
                 )
                 await release_locks()
                 return False, -1.0
