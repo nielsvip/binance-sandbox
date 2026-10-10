@@ -1,14 +1,17 @@
 """Scheduler admission honesty (USER 2026-10-08): no more OOM murder loops."""
 
+import datetime
 import json
 import sys
+import tempfile
+import types
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
-from v15_fleet_scheduler import _disk_admit_ok, _est_pair_mb, _growth_debt_mb, _progress_done_rows, _rank_oom_victim, _reap_burn_weight, _reap_burns, _stall_tick, _swap_admit_ok
+from v15_fleet_scheduler import _disk_admit_ok, _est_pair_mb, _growth_debt_mb, _progress_done_rows, _rank_oom_victim, _reap_burn_weight, _reap_burns, _stall_tick, _swap_admit_ok, tick
 
 
 class EstPairTest(unittest.TestCase):
@@ -151,6 +154,42 @@ class StallTickTest(unittest.TestCase):
     def test_resets_on_change(self):
         self.assertEqual(_stall_tick(188, 59, 187), (0, False))
         self.assertEqual(_stall_tick(None, None, 188), (0, False))
+
+
+class DiskGuardWiringTest(unittest.TestCase):
+    """USER 2026-10-10: the disk guard must hold at EVERY launch site (main loop,
+    chains, backfill, pass-2 steal) — a full disk idles the host, never relaunches."""
+
+    def _run_tick(self, disk):
+        uni = json.loads((ROOT / "data" / "daily_universe" / "20261010.json").read_text())
+        syms = uni["crypto"][:20] + uni["stocks"][:6]
+        stats = {"nproc": 8, "load1": 1.0, "busy_pct": 10.0, "busy_nonnice_pct": 10.0, "mem_avail_mb": 60000, "pdir": "/home/niels/v15_run30_20261009/progress", "swap_total_mb": 0, "swap_used_mb": 0, "running": {}, "started": [], "done": [], "quarantined": [], "redo": [], "v365": {}, "repair": {}, "gs": {}, "gains": {}}
+        if disk != "MISSING":
+            stats["disk_avail_mb"] = disk
+        ready = {s: {"ok": True, "size_mb": 0} for s in syms}
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        sim_p = str(Path(tmp.name) / "sim.json")
+        json.dump({"hosts": {"gatetest": stats}, "ready": {"gatetest": ready}}, open(sim_p, "w"))
+        args = types.SimpleNamespace(simulate=sim_p, dry_run=False, no_reap=True, max_launch=2, extend_universe=False)
+        cfg = {"cpu_target_pct": 90, "pair_floor_mb": 8000, "hosts": [{"name": "gatetest", "ssh": ["127.0.0.1"], "root": "~/binance-sandbox", "venues": ["stocks", "crypto"], "mem_reserve_mb": 6000, "max_pairs": 2, "workers_per_side": 4, "oom_mb": 2000}]}
+        now = datetime.datetime(2026, 10, 10, 8, 30, tzinfo=datetime.timezone.utc)
+        return tick(args, cfg, now)
+
+    def test_healthy_disk_not_blocked(self):
+        log = self._run_tick(54000)
+        self.assertNotEqual(log["hosts"]["gatetest"].get("idle_reason"), "disk guard")
+
+    def test_low_disk_blocks_all_launch_paths(self):
+        log = self._run_tick(797)
+        h = log["hosts"]["gatetest"]
+        self.assertEqual(h.get("launched_pairs"), 0)
+        self.assertEqual(h.get("idle_reason"), "disk guard")
+        self.assertEqual([t for t in log.get("launched", []) if t.startswith("gatetest:") or t.startswith("BACKFILL gatetest:")], [])
+
+    def test_missing_disk_fails_open(self):
+        log = self._run_tick("MISSING")
+        self.assertNotEqual(log["hosts"]["gatetest"].get("idle_reason"), "disk guard")
 
 
 if __name__ == "__main__":

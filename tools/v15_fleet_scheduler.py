@@ -1418,7 +1418,7 @@ def tick(args, cfg, now):
                 if held[h["name"]].get(sym) != "running":
                     running_cnt += 1
                     held[h["name"]][sym] = "running"
-        if launched == 0 and used < cap and proj_mem >= est_pair and cpu < cfg.get("cpu_target_pct", 90) and swap_ok and new_launched < args.max_launch:
+        if launched == 0 and used < cap and proj_mem >= est_pair and cpu < cfg.get("cpu_target_pct", 90) and swap_ok and disk_ok and new_launched < args.max_launch:  # USER 2026-10-10: backfill must respect the disk guard — it fires exactly when the guarded main loop correctly launches 0
             _bf_ts = st.setdefault("backfill_ts", {})
             blo = []
             for ss in _deferred_sides:
@@ -1498,7 +1498,7 @@ def tick(args, cfg, now):
             acts = [a for a in pending_actions(sym, h["name"]) if a["key"] not in launched_keys and (a["window"] == "365D" or (a["window"] == "REPAIR" and a["attempt"] == 1))]
             if not acts:
                 continue
-            if B["new_launched"] >= args.max_launch or len(held[h["name"]]) >= B["cap"] or B["proj_mem"] < B["est_pair"] or B["cpu"] >= cfg.get("cpu_target_pct", 90):
+            if B["new_launched"] >= args.max_launch or len(held[h["name"]]) >= B["cap"] or B["proj_mem"] < B["est_pair"] or B["cpu"] >= cfg.get("cpu_target_pct", 90) or not _disk_admit_ok(s):  # USER 2026-10-10: pass-2 steal must respect the disk guard
                 break
             if venue_of(sym) not in h["venues"]:
                 continue
