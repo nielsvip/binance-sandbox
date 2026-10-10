@@ -1,56 +1,32 @@
 {
- "generated_at": "2026-10-10 02:51 UTC",
- "total_capital_usd": 24.77,
+ "generated_at": "2026-10-10 03:24 UTC",
+ "total_capital_usd": 17.8,
  "tier_capital": {
   "A": 0.0,
-  "B": 24.78,
+  "B": 17.8,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 3,
+  "B": 1,
   "C": 0
  },
  "winners": [],
  "losers": [
-  "inf:PUMPUSDT_SHORT"
+  "fin:ADAUSDC_LONG"
  ],
- "mediocre": [
-  "inf:AMATUSDT_SHORT"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "inf:PUMPUSDT_SHORT",
-   "symbol": "PUMPUSDT",
-   "account": "inf",
-   "value_usd": 16.22,
-   "gain_pct": -1.061,
+   "pk": "fin:ADAUSDC_LONG",
+   "symbol": "ADAUSDC",
+   "account": "fin",
+   "value_usd": 17.8,
+   "gain_pct": -0.726,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 2946.0,
-   "mark": 0.00550414
-  },
-  {
-   "pk": "inf:AMATUSDT_SHORT",
-   "symbol": "AMATUSDT",
-   "account": "inf",
-   "value_usd": 5.08,
-   "gain_pct": -0.089,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.01,
-   "mark": 507.67135881
-  },
-  {
-   "pk": "inf:ALGOUSDT_SHORT",
-   "symbol": "ALGOUSDT",
-   "account": "inf",
-   "value_usd": 3.48,
-   "gain_pct": 6.867,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 30.2,
-   "mark": 0.11519
+   "amt": 71.0,
+   "mark": 0.2507
   }
  ]
 }
