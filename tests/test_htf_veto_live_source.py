@@ -59,3 +59,12 @@ def test_tier_mode_sizes_instead_of_blocks():
     assert 'not bool(getattr(config, "PERF_TIER_SIZING_ENABLED", False))' in e
     w = (ROOT / "tools/v15_persym_size_tiers.py").read_text()
     assert '"--max-mult", type=float, default=4.0' in w
+
+
+def test_dc_stops_prior_bar():
+    s = _src()
+    assert "def _dc_stop_prev_aware(ind, field, use_prior):" in s
+    assert s.count("_dc_stop_prev_aware(i, \"dc_low_") == 3
+    assert s.count("_dc_stop_prev_aware(i, \"dc_high_") == 3
+    assert "_gx_stopf = " in s and "_tx_stopf = " in s and "_dt_stopf = " in s
+    assert "_dc_stop_prev_aware(i, _f, _gx_prior) if _f in _gx_stopf" in s

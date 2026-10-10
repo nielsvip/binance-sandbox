@@ -20,7 +20,7 @@ PY=$ROOT/.venv/bin/python
 DATE=${CHAIN_DATE:-$(date -u +%Y%m%d)}
 DRYRUN=${DRYRUN:-0}
 S1=${V15_CHAIN_S1:-s1-pub}
-HOSTS=${V15_CHAIN_HOSTS:-"s1-pub s2 s5 s6 s7"}
+HOSTS=${V15_CHAIN_HOSTS:-"s1-pub s2 s5 s6"}
 SSH="ssh -o BatchMode=yes -o ConnectTimeout=10"
 # 2026-10-08 USER (QuickConfig tandem lane): a late S1 chain (landed after the 20:00Z retry, e.g. 2026-10-07 landed 00:04Z
 # next day) must still be applied at the next slot -> without CHAIN_DATE pick the NEWEST S1 DONE stamp (today, else

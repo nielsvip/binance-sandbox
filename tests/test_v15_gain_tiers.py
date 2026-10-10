@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
-from v15_fleet_scheduler import _GAIN_TIER_DEFER_DAYS, _LAUNCH_CAPS, _gain_tiers, _gs_allowed_for_tier, _place_order, _repair_allowed_for_tier, _side_deferred, _side_tier, _sym_quota_hit, _sym_tier_rank
+from v15_fleet_scheduler import _GAIN_TIER_DEFER_DAYS, _LAUNCH_CAPS, _defer_windows, _gain_tiers, _gs_allowed_for_tier, _place_order, _repair_allowed_for_tier, _side_deferred, _side_tier, _sym_quota_hit, _sym_tier_rank
 
 NOW = 1791500000.0
 
@@ -84,6 +84,16 @@ class DeferralTest(unittest.TestCase):
 
     def test_defer_windows_mid_weekly_loser(self):
         self.assertEqual(_GAIN_TIER_DEFER_DAYS, {"M": 3.0, "L": 7.0})
+
+    def test_defer_windows_env_override(self):
+        import os
+        from unittest.mock import patch
+        with patch.dict(os.environ, {"V15_TIER_DEFER_M_D": "1", "V15_TIER_DEFER_L_D": "2"}):
+            self.assertEqual(_defer_windows(), {"M": 1.0, "L": 2.0})
+        with patch.dict(os.environ, {"V15_TIER_DEFER_M_D": "bogus"}, clear=False):
+            if "V15_TIER_DEFER_L_D" in os.environ:
+                del os.environ["V15_TIER_DEFER_L_D"]
+            self.assertEqual(_defer_windows(), {"M": 3.0, "L": 7.0})
 
 
 class QuotaTest(unittest.TestCase):

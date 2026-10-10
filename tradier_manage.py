@@ -13814,6 +13814,15 @@ async def _vec_exact_process(
     return "VEC_EXACT" + (":" + ",".join(_out) if _out else "")
 
 
+def _dc_stop_prev_aware(ind, field, use_prior):
+    """USER 2026-10-10 live-imitates-vec: DC STOP levels read the prior bar (vec DC_PRIOR_BAR_CHANNEL default True) via *_prev; targets stay current. Missing/zero prev falls back to current (vec i==0 behavior)."""
+    if use_prior:
+        _pv = safe_fetch_float((ind or {}).get(field + "_prev", 0), 0.0)
+        if _pv > 0:
+            return _pv
+    return safe_fetch_float((ind or {}).get(field, 0), 0.0)
+
+
 async def process_position(
     account_key: str,
     position_key: str,
@@ -14382,8 +14391,9 @@ async def process_position(
                 _uh_px = safe_fetch_float(current_price, 0.0)
                 _uh_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
                 _uh_fire = ""
+                _uh_prior = bool(_cfg("DC_PRIOR_BAR_CHANNEL", True, account_key, symbol, position_side))
                 if is_long:
-                    _uh_l4 = safe_fetch_float(i.get("dc_low_4h", 0), 0.0)
+                    _uh_l4 = _dc_stop_prev_aware(i, "dc_low_4h", _uh_prior)
                     if _ftf_twins.long_dc_low_stop_fires(_uh_px, _uh_l4):
                         _uh_fire = f"DC_LOW_4H_UNCOND_px{_uh_px:.4f}_lvl{_uh_l4:.4f}"
                     if not _uh_fire and _ftf_twins.truthy(
@@ -14395,7 +14405,7 @@ async def process_position(
                             position_side,
                         )
                     ):
-                        _uh_l1 = safe_fetch_float(i.get("dc_low_1h", 0), 0.0)
+                        _uh_l1 = _dc_stop_prev_aware(i, "dc_low_1h", _uh_prior)
                         if _ftf_twins.long_dc_low_stop_fires(_uh_px, _uh_l1):
                             _uh_fire = (
                                 f"DC_LOW_1H_UNCOND_px{_uh_px:.4f}_lvl{_uh_l1:.4f}"
@@ -14409,13 +14419,13 @@ async def process_position(
                             position_side,
                         )
                     ):
-                        _uh_l15 = safe_fetch_float(i.get("dc_low_15m", 0), 0.0)
+                        _uh_l15 = _dc_stop_prev_aware(i, "dc_low_15m", _uh_prior)
                         if _ftf_twins.long_dc_low_stop_fires(_uh_px, _uh_l15):
                             _uh_fire = (
                                 f"DC_LOW_15M_UNCOND_px{_uh_px:.4f}_lvl{_uh_l15:.4f}"
                             )
                 else:
-                    _uh_h4 = safe_fetch_float(i.get("dc_high_4h", 0), 0.0)
+                    _uh_h4 = _dc_stop_prev_aware(i, "dc_high_4h", _uh_prior)
                     if _ftf_twins.short_dc_high_stop_fires(_uh_px, _uh_h4):
                         _uh_fire = f"DC_HIGH_4H_UNCOND_px{_uh_px:.4f}_lvl{_uh_h4:.4f}"
                     if not _uh_fire and _ftf_twins.truthy(
@@ -14427,7 +14437,7 @@ async def process_position(
                             position_side,
                         )
                     ):
-                        _uh_h1 = safe_fetch_float(i.get("dc_high_1h", 0), 0.0)
+                        _uh_h1 = _dc_stop_prev_aware(i, "dc_high_1h", _uh_prior)
                         if _ftf_twins.short_dc_high_stop_fires(_uh_px, _uh_h1):
                             _uh_fire = (
                                 f"DC_HIGH_1H_UNCOND_px{_uh_px:.4f}_lvl{_uh_h1:.4f}"
@@ -14441,7 +14451,7 @@ async def process_position(
                             position_side,
                         )
                     ):
-                        _uh_h15 = safe_fetch_float(i.get("dc_high_15m", 0), 0.0)
+                        _uh_h15 = _dc_stop_prev_aware(i, "dc_high_15m", _uh_prior)
                         if _ftf_twins.short_dc_high_stop_fires(_uh_px, _uh_h15):
                             _uh_fire = (
                                 f"DC_HIGH_15M_UNCOND_px{_uh_px:.4f}_lvl{_uh_h15:.4f}"
@@ -14683,23 +14693,27 @@ async def process_position(
                 if not _gx_fire and bool(_gx_c("TRADIER_DC_DAYTRADE_ENABLED", False)):
                     _gx_stop, _gx_tgt = _dc_channel_exits.resolve_daytrade_dc(_gx_c)
                     if _gx_stop or _gx_tgt:
+                        _gx_prior = bool(_gx_c("DC_PRIOR_BAR_CHANNEL", True))
+                        _gx_stopf = {_sp["field_long"] if is_long else _sp["field_short"] for _sp in _gx_stop}
                         _gx_fire, _gx_reason = _dc_channel_exits.daytrade_dc_exit(
                             current_price,
                             is_long,
                             _gx_stop,
                             _gx_tgt,
-                            lambda _f: safe_fetch_float(i.get(_f, 0), 0.0),
+                            lambda _f: _dc_stop_prev_aware(i, _f, _gx_prior) if _f in _gx_stopf else safe_fetch_float(i.get(_f, 0), 0.0),
                         )
                 # TECHNICAL-DC 2026-10-04 live twin of v12 EXIT_STRUCTURAL (no master gate in vec — OFF lists = inert): same shared predicate family.
                 if not _gx_fire:
                     _tx_stop, _tx_tgt = _dc_channel_exits.resolve_technical_dc(_gx_c)
                     if _tx_stop or _tx_tgt:
+                        _tx_prior = bool(_gx_c("DC_PRIOR_BAR_CHANNEL", True))
+                        _tx_stopf = {_sp["field_long"] if is_long else _sp["field_short"] for _sp in _tx_stop}
                         _gx_fire, _gx_reason = _dc_channel_exits.technical_dc_exit(
                             current_price,
                             is_long,
                             _tx_stop,
                             _tx_tgt,
-                            lambda _f: safe_fetch_float(i.get(_f, 0), 0.0),
+                            lambda _f: _dc_stop_prev_aware(i, _f, _tx_prior) if _f in _tx_stopf else safe_fetch_float(i.get(_f, 0), 0.0),
                         )
                 # PARITY LANE C 2026-10-06: vec exit_confirm (EXIT_TOP_FADE / CANDLE_PATTERN_STOPS FILTER_TF) gates exit_sig-block closes (TECHNICAL dc / WT final).
                 if _gx_fire:
@@ -57811,12 +57825,14 @@ class StockDaytradeWing:
                 _dt_get
             )
             if _dt_stop_specs or _dt_tgt_specs:
+                _dt_prior = bool(_dt_get("DC_PRIOR_BAR_CHANNEL", True))
+                _dt_stopf = {_sp["field_long"] if is_long else _sp["field_short"] for _sp in _dt_stop_specs}
                 should_exit, exit_reason = _dc_channel_exits.daytrade_dc_exit(
                     price,
                     is_long,
                     _dt_stop_specs,
                     _dt_tgt_specs,
-                    lambda _f, _d=_dt_sym_data: safe_fetch_float(_d.get(_f, 0), 0.0),
+                    lambda _f, _d=_dt_sym_data: _dc_stop_prev_aware(_d, _f, _dt_prior) if _f in _dt_stopf else safe_fetch_float(_d.get(_f, 0), 0.0),
                 )
             # P2-C: GR Phase 2 augment — if Phase 1 entry and price retest dc_basis + WT confirm
             if (

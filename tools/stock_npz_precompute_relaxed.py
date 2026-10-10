@@ -8,9 +8,9 @@ from pathlib import Path
 
 SRC = Path(__file__).resolve().parents[1] / "backtest_v8_precompute.py"
 text = SRC.read_text()
-GUARD = 'if mode == "tradier" and (n < 20000 or _span_days < 300) and symbol not in ['
+GUARD = 'if mode == "tradier" and (n < 20000 or _span_days < 300) and not _has_long_d and symbol not in ['
 assert text.count(GUARD) == 1, "guard line not found exactly once — the precompute changed, re-check before relaxing"
-text = text.replace(GUARD, 'if mode == "tradier" and (False) and symbol not in [')
+text = text.replace(GUARD, 'if mode == "tradier" and (False) and not _has_long_d and symbol not in [')  # USER 2026-10-10: track precompute guard (added not _has_long_d); relaxation unchanged
 ns = {"__name__": "backtest_v8_precompute_relaxed", "__file__": str(SRC)}
 sys.path.insert(0, str(SRC.parent))
 exec(compile(text, str(SRC), "exec"), ns)

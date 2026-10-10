@@ -4,7 +4,7 @@
 # scheduler's job). USER 2026-10-08: no server stalls, death penalty otherwise.
 ALERT=/tmp/stall_alert.log
 PEND=$(tail -1 /tmp/v15_fleet_sched.log 2>/dev/null | python3 -c "import json,sys;print(json.load(sys.stdin).get('pending_symbols',0))" 2>/dev/null)
-for H in 127.0.0.1 10.0.0.4 10.0.0.5 10.0.0.6 10.0.0.7; do
+for H in 127.0.0.1 10.0.0.4 10.0.0.5 10.0.0.6; do
   if [ "$H" = "127.0.0.1" ]; then
     AGE=$(find /tmp/sweep_*.log -mmin +25 2>/dev/null | head -1)
     NEW=$(ls -t /tmp/sweep_*.log 2>/dev/null | head -1)

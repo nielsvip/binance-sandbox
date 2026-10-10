@@ -452,7 +452,21 @@ _VERDICT_TERMINAL_RE = re.compile(r'"verdict":\s*"(IMPOSSIBLE|NO_TRADES|BEST_EFF
 _LAUNCH_CAPS = {"30D": 3, "365D": 2, "REPAIR": 1, "GS": 1}  # USER 2026-10-09: single source of truth (gate + pending_actions); 30D 6->3, 40-min slices + free resume make more unnecessary
 _GAIN_TIER_W_FRAC = 0.4  # top 40% of measured syms = winners (recalculated every round with the latest NPZ)
 _GAIN_TIER_L_FRAC = 1.0 / 3.0  # bottom third = losers/low gainers (deferred, re-admitted after _GAIN_TIER_DEFER_DAYS)
-_GAIN_TIER_DEFER_DAYS = {"M": 3.0, "L": 7.0}  # USER 2026-10-09: starve losers, feed winners — mediocre re-measured 2x/week (regime turns visible), losers weekly; winners every round + slot reservation -> ~90% of compute on winners
+def _defer_windows():
+    """Defer windows with env override (USER 2026-10-10 weekend push: V15_TIER_DEFER_M_D=1 V15_TIER_DEFER_L_D=2
+    recalculates everything before Monday; defaults restore 3d/7d steady state). Bad values fail to defaults."""
+    try:
+        m = float(os.environ.get("V15_TIER_DEFER_M_D", 3.0))
+    except (TypeError, ValueError):
+        m = 3.0
+    try:
+        dl = float(os.environ.get("V15_TIER_DEFER_L_D", 7.0))
+    except (TypeError, ValueError):
+        dl = 7.0
+    return {"M": m, "L": dl}
+
+
+_GAIN_TIER_DEFER_DAYS = _defer_windows()  # USER 2026-10-09: starve losers, feed winners — mediocre 2x/week, losers weekly; winners every round + slot reservation -> ~90% on winners
 _NONW_QUOTA_DIV = 4  # non-winner new pairs per host capped at max(1, cap//4); unknowns (discovery) exempt
 _TIER_RANK = {"W": 0, "M": 1, "L": 2}
 
