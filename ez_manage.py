@@ -48777,11 +48777,10 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
             return "ENTRY" in fams
         if "EXIT" not in fams:
             return False
-        if not _vx.owned_has(position_key):  # 2026-10-06 director (stranding, option b): not opened by the twin -> native exits manage it
+        if not _vx.owned_has(position_key):  # USER 2026-10-10 TOTAL PARITY: legacy positions are ADOPTED by the twin (take/catchup/convergence below). Native exits are refused at the chokepoint in exact mode, so returning False here would strand them.
             if position_key not in _VEC_EXACT_LEGACY_LOGGED:
                 _VEC_EXACT_LEGACY_LOGGED.add(position_key)
-                logger.warning(f"[VEC_EXACT_LEGACY_NATIVE] {position_key}: open position not opened by the vec twin -> native process_position exits run for it")
-            return False
+                logger.warning(f"[VEC_EXACT_LEGACY_ADOPTED] {position_key}: open position not opened by the vec twin -> twin manages exits to flat (native refused in exact mode)")
         # SAFETY: no twin decision available for this sym_side (no store / warm-up / error) -> native exits run (never strand a position)
         _vx_st = await __import__("positions_truth").offloop_serialized(_vx.actions_at, _sym, _side, time.time())  # 2026-10-06 director: off the event loop (men os._exit(42) PAU_TIMEOUT: ~20s compute blocked the loop)
         if _vx_st.get("status") != "OK":
@@ -48805,7 +48804,12 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                 logger.warning(f"[VEC_EXACT_STALE_FALLBACK] {position_key}: twin OK but bar {int(float(_vx_st.get('bar_ts') or 0))} is {_stale_age / 60.0:.0f}m old (> {_stale_bars:.0f} bars) -> native exits run until twin is fresh")
             return False
         want = ("CLOSE", "REDUCE") + (("AUGMENT",) if "AUGMENT" in fams else ())
-        for _a in await __import__("positions_truth").offloop_serialized(_vx.take, _sym, _side, time.time(), want):  # 2026-10-06 director: off the event loop
+        _now_vx = time.time()
+        _acts_now = await __import__("positions_truth").offloop_serialized(_vx.take, _sym, _side, _now_vx, want)  # 2026-10-06 director: off the event loop
+        _acts_catch = await __import__("positions_truth").offloop_serialized(_vx.take_catchup, _sym, _side, _now_vx)
+        await __import__("positions_truth").offloop_serialized(_vx.expire_old, _sym, _side, _now_vx)
+        _vx_exit_attempted = False
+        for _a in (_acts_now or []) + (_acts_catch or []):
             _amt = abs(safe_fetch_float(getattr(trade_manager.positions.get(position_key), "positionAmt", 0), 0))
             if _amt <= 0:
                 break
@@ -48815,8 +48819,23 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                 logger.warning(f"[VEC_EXACT] {position_key} {_act} {_a['reason'][:60]} SKIPPED zero qty (frac={_a.get('qty_frac')} to_flat={_a.get('to_flat')})")
                 continue
             _lq, _lov = _vx.live_sizing_args(_act, _qty, _px, config)
+            _vx_exit_attempted = True
             _res = await trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_lq, current_price=_px, side=_oside, position_side=_side, unique_id=f"VX{int(_a['bar_ts'])}{_a['n']}", is_full_close=_full, action=_act, reason=_vx.tagged_reason(_a), override_qty=_lov, is_hedge=False)
             logger.info(f"[VEC_EXACT] {position_key} {_act} {_a['reason'][:60]} qty={_qty:.6f} -> {str(_res)[:120]}")
+        # USER 2026-10-10 TOTAL PARITY convergence: live holds but the twin's paper
+        # is flat at a fresh OK bar and no exit was attempted above -> close to flat.
+        # Chart-flat must become live-flat; paper state is the chart's end state.
+        try:
+            _amt_end = abs(safe_fetch_float(getattr(trade_manager.positions.get(position_key), "positionAmt", 0), 0))
+            if _amt_end > 0 and not _vx_exit_attempted and _vx_st.get("status") == "OK" and _vx_st.get("vec_holds") is False:
+                _px_c = safe_fetch_float(getattr(_pos, "mark_price", 0), 0.0)
+                _oside_c = "SELL" if _side == "LONG" else "BUY"
+                _cvg_reason = _vx.tagged_reason({"reason": "VEC_CONVERGE_TO_FLAT paper-flat-live-holds"})
+                logger.warning(f"[VEC_EXACT_CONVERGE] {position_key}: live holds {_amt_end:.6f} but vec paper flat at bar {int(float(_vx_st.get('bar_ts') or 0))} -> CLOSE to flat")
+                _res_c = await trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_end, current_price=_px_c, side=_oside_c, position_side=_side, unique_id=f"VXCVG{int(float(_vx_st.get('bar_ts') or 0))}", is_full_close=True, action="CLOSE", reason=_cvg_reason, override_qty=_amt_end, is_hedge=False)
+                logger.info(f"[VEC_EXACT] {position_key} CLOSE VEC_CONVERGE_TO_FLAT qty={_amt_end:.6f} -> {str(_res_c)[:120]}")
+        except Exception as _cvg_e:
+            logger.warning(f"[VEC_EXACT_CONVERGE] {position_key} probe err: {_cvg_e}")
         return True
     except Exception as _vx_e:
         logger.error(f"[VEC_EXACT] process_position {position_key}: {_vx_e}")
