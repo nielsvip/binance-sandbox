@@ -125,6 +125,11 @@ class PlaceOrderTest(unittest.TestCase):
         got = _place_order(["A"], [], ["B"], tiers)
         self.assertEqual(got, [("A", False), ("B", True)])
 
+    def test_redo_new_before_winners(self):
+        tiers = {"W1_LONG": {"tier": "W", "gain": 9, "mtime": 1}, "R1_LONG": {"tier": "L", "gain": -9, "mtime": 1}, "R1_SHORT": {"tier": "L", "gain": -8, "mtime": 1}}
+        got = _place_order([], [], ["W1", "R1"], tiers, redo={"R1_LONG"})
+        self.assertEqual([s for s, _ in got], ["R1", "W1"])
+
 
 class TierChainGatesTest(unittest.TestCase):
     def test_gs_winners_mid_discovery_only(self):

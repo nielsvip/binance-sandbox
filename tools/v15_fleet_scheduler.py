@@ -603,14 +603,14 @@ def _repair_allowed_for_tier(tier, measured):
 def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None):
     """USER 2026-10-09 (trb gainers absolute priority): W chains + W new before ALL M/L work. Stable sort
     keeps chain-first within a tier. Running pilots are never touched — this orders new launches only.
-    USER 2026-10-10 (82 redo backlog): needs_redo RESUMES outrank everything WITHIN their
-    segment — but held chains (no slot) ALWAYS sort before new admissions: the launch loop
-    BREAKS at the first over-cap new sym, so a redo-new ahead of held chains froze the fleet
-    (launched=[] 03:00-03:35Z). Key = (needs_slot, redo, tier): held-redo, held, new-redo, new."""
+    USER 2026-10-10 (82 redo backlog): needs_redo RESUMES outrank everything (paid work finalises in
+    minutes). Key = (redo, tier): the order is the NEW-pair budget priority (first 4 win); held chains
+    are budget-free and the launch loop never BREAKS (continue skips over-cap/new-budget/dead pairs),
+    so every held chain is evaluated every tick — a break-before-held froze the fleet 03:00-03:35Z."""
     seq = [(s, False) for s in held_ordered] + [(s, True) for s in adopted_owned] + [(s, True) for s in new_syms]
     _rs = redo or set()
     _rk = lambda b: 0 if f"{b}_LONG" in _rs or f"{b}_SHORT" in _rs else 1
-    seq.sort(key=lambda t: (1 if t[1] else 0, _rk(t[0]), _sym_tier_rank(t[0], tiers)))
+    seq.sort(key=lambda t: (_rk(t[0]), _sym_tier_rank(t[0], tiers)))
     return seq
 
 
@@ -1356,9 +1356,9 @@ def tick(args, cfg, now):
                              [sym for sym in new_syms if venue_of(sym) in h["venues"]], _gtiers, redo)
         for sym, needs_slot in order:
             if needs_slot and new_launched >= args.max_launch:
-                break  # budget counts only NEW pairs; chain continuations (365D/REPAIR) of held symbols never starve new admissions
+                continue  # budget counts only NEW pairs; never break (a break skips held chains sorted later and froze the fleet 03:00-03:35Z)
             if needs_slot and (used >= cap or proj_mem < est_pair or cpu >= cfg.get("cpu_target_pct", 90) or not swap_ok or not disk_ok):
-                break
+                continue  # over-cap/exhausted host: skip this admission, keep evaluating (held chains need no slot)
             if venue_of(sym) not in h["venues"]:
                 continue
             if sym in owner and owner[sym] != h["name"]:
