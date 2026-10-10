@@ -48930,11 +48930,14 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
         for _a in (_acts_now or []) + (_acts_catch or []):
             _amt = abs(safe_fetch_float(getattr(trade_manager.positions.get(position_key), "positionAmt", 0), 0))
             if _amt <= 0:
+                # USER 2026-10-10 PARITY: never silent — vec CLOSE/REDUCE with live flat is a visible
+                # DIVERGENT_FLAT skip (one-shot: acts already consumed, no spam). Nothing to exit.
+                logger.warning(f"[VEC_EXACT] {position_key} {_a.get('type', 'ACT')} {_a['reason'][:60]} SKIPPED_BLOCKED_DIVERGENT_FLAT live flat (state converges on next OPEN)")
                 break
             _px = safe_fetch_float(getattr(_pos, "mark_price", 0), 0.0) or safe_fetch_float(_a.get("vec_price"), 0.0)
             _act, _oside, _qty, _full = _vx.order_args(_a, _side, _amt, _px)
             if _qty <= 0:  # vec action of zero size on the live position (e.g. a vec REDUCE fraction of 0) -> nothing to send, never a SUCCESS
-                logger.warning(f"[VEC_EXACT] {position_key} {_act} {_a['reason'][:60]} SKIPPED zero qty (frac={_a.get('qty_frac')} to_flat={_a.get('to_flat')})")
+                logger.warning(f"[VEC_EXACT] {position_key} {_act} {_a['reason'][:60]} SKIPPED_BLOCKED_ZERO_QTY (frac={_a.get('qty_frac')} to_flat={_a.get('to_flat')})")
                 continue
             _lq, _lov = _vx.live_sizing_args(_act, _qty, _px, config)
             _vx_exit_attempted = True

@@ -26,6 +26,16 @@ FILES = [
     "tradier_manage.py",
     "config.py",
     "config_tradier.py",
+    "tools/v15_candidate_extend.py",
+    "tools/stock_npz_refresh.py",
+    "data/sweep_defaults/per_sym_settings.json",
+    "data/cat_side_promotions.json",
+    "data/daily_chain/void_ledger.jsonl",
+    "data/reports/ALL_PATHS_ALLOWLIST.csv",
+    "SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx",
+    "SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx",
+    "SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx",
+    "SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx",
 ]
 HOSTS = ["10.0.0.4", "10.0.0.5", "10.0.0.6"]
 BASE = os.path.expanduser("~/binance-sandbox")

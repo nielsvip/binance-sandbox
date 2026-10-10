@@ -87,6 +87,12 @@ def test_vec_maker_timeout_falls_back_to_market():
     assert "[VEC_MAKER_SUPPRESS_UNKNOWN]" in src, "unverifiable-after-retries must suppress LOUD"
 
 
+def test_exit_skips_are_visible_not_silent():
+    src = (ROOT / "ez_manage.py").read_text()
+    assert "SKIPPED_BLOCKED_DIVERGENT_FLAT" in src, "flat-live exit skip must log BLOCKED (no ghost)"
+    assert "SKIPPED_BLOCKED_ZERO_QTY" in src, "zero-qty exit skip must log BLOCKED (no ghost)"
+
+
 def test_vec_final_floor_after_gauntlet():
     src = (ROOT / "ez_manage.py").read_text()
     assert "[VEC_EXACT_SIZE_FLOOR_FINAL]" in src, "vec OPEN/AUGMENT must re-floor after the last multiplier (veto impossible)"
