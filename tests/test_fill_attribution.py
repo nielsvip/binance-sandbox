@@ -85,3 +85,16 @@ def test_match_recent_reason_lot_floor():
     pk2 = _fresh_key("prefloor")
     pt.note_order_reason(pk2, 1.191319, "B_KZONE |VEC_EXACT", now=time.time() - 102.0)
     assert pt.match_recent_order_reason(pk2, 1.1) is None
+
+
+def test_is_context_fresh():
+    import datetime as _dt
+
+    now = time.time()
+    fresh = {"timestamp": _dt.datetime.fromtimestamp(now - 60, tz=_dt.timezone.utc).isoformat()}
+    assert pt.is_context_fresh(fresh, now=now) is True
+    stale = {"timestamp": _dt.datetime.fromtimestamp(now - 3600, tz=_dt.timezone.utc).isoformat()}
+    assert pt.is_context_fresh(stale, now=now) is False
+    assert pt.is_context_fresh({}, now=now) is False
+    assert pt.is_context_fresh({"timestamp": "not-a-time"}, now=now) is False
+    assert pt.is_context_fresh(None, now=now) is False

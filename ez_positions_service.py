@@ -7564,7 +7564,8 @@ class PositionService:
     async def _fetch_decision_context(self, position_key: str) -> dict:
         """Fetch decision context: Redis first, then JSONL fallback (in worker thread), then history fallback.
         2026-04-30: Disk scans moved to asyncio.to_thread. Each redis.get is bounded by asyncio.wait_for(timeout=0.5)."""
-        # 1. Try Redis (fastest, 5 min TTL) — bounded
+        # 1. Try Redis (fastest, 5 min TTL) — bounded + freshness-gated (2026-10-10: Redis
+        # served 3-week-stale contexts (TTL not enforced on old keys) -> false NON_VEC_ENTRY_FILL).
         if self.redis_manager:
             redis_key = f"decision:{position_key}"
             client = self.redis_manager.connections.get('local') if hasattr(self.redis_manager, 'connections') else None
@@ -7572,7 +7573,24 @@ class PositionService:
                 for _ in range(3):
                     try:
                         data = await asyncio.wait_for(client.get(redis_key), timeout=0.5)
-                        if data: return orjson.loads(data)
+                        if data:
+                            try:
+                                _ctx = orjson.loads(data)
+                            except Exception:
+                                _ctx = None
+                            if _ctx is not None:
+                                try:
+                                    import positions_truth as _ptruth
+                                    _fresh = _ptruth.is_context_fresh(_ctx)
+                                except Exception:
+                                    _fresh = True
+                                if _fresh:
+                                    return _ctx
+                                try:
+                                    await asyncio.wait_for(client.delete(redis_key), timeout=0.5)
+                                except Exception:
+                                    pass
+                                break
                     except Exception: pass
                     await asyncio.sleep(0.2)
         # 2/3. JSONL/history scans run in worker thread — never on event loop

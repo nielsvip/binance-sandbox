@@ -35070,6 +35070,15 @@ class MultiAccountTradeManager:
                 ), timeout=5.0)
             except asyncio.TimeoutError:
                 logger.warning(f"[DECCTX_TIMEOUT] {position_key}: decision-context audit >5s — abandoning (audit must never slow trades) {_xs_who}")
+                try:
+                    _dc_ts = datetime.now(timezone.utc)
+                    _dc_payload = {"timestamp": _dc_ts.isoformat(), "position_key": position_key, "account": account_key, "action": action, "reason": reason, "snapshot": {"price": i.get("current_price") or i.get("price")}, "extra": {"is_hedge": is_hedge, "hedge_for": hedge_for}}
+                    _dc_dir = Path("data/decisions")
+                    _dc_dir.mkdir(parents=True, exist_ok=True)
+                    with open(_dc_dir / f"decisions_{account_key}_{_dc_ts.strftime('%Y%m%d')}.jsonl", "a") as _dc_f:
+                        _dc_f.write(json.dumps(_dc_payload, default=str) + "\n")
+                except Exception:
+                    pass
             logger.info(f"[EXEC_TRACE] {position_key}: STEP3a_DECCTX {_xs_who} elapsed={time.time() - _xs_t0:.1f}s")
             # 2026-04-30 Job 3 (iii): per-trade returns audit logger — risk-zero additive.
             # Fires only for reduces/closes; never blocks the trade.
