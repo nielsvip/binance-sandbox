@@ -1350,6 +1350,7 @@ def tick(args, cfg, now):
     new_syms.sort(key=_trk)
     adopted = [s for s in all_syms if s in owner and not terminal(s)]
     adopted.sort(key=_trk)
+    _native_syms = {s for s in all_syms if venue_of(s) == "stocks"}  # TEMPORARY USER 2026-10-10: base-name set for the stocks-only gate (USDT stock variants pass)
     mapped_unready = {}
     HB, launched_keys = {}, set()
     for h in hosts:
@@ -1391,6 +1392,9 @@ def tick(args, cfg, now):
                 continue  # over-cap/exhausted host: skip this admission, keep evaluating (held chains need no slot)
             if venue_of(sym) not in h["venues"]:
                 continue
+            if needs_slot and not _venue_allowed(sym, _native_syms):
+                log.setdefault("skipped_venue_only", []).append(f"{h['name']}:{sym}")
+                continue  # TEMPORARY USER 2026-10-10: stocks-only weekend push — new crypto pairs blocked; held chains (needs_slot=False) drain untouched
             if sym in owner and owner[sym] != h["name"]:
                 continue
             if needs_slot and _sym_quota_hit(sym, _gtiers) and nonw_used >= nonw_quota and f"{sym}_LONG" not in redo and f"{sym}_SHORT" not in redo:
@@ -1457,6 +1461,8 @@ def tick(args, cfg, now):
                 sym2, sd2 = ss.rsplit("_", 1)
                 if venue_of(sym2) not in h["venues"]:
                     continue
+                if not _venue_allowed(sym2, _native_syms):
+                    continue  # TEMPORARY USER 2026-10-10: stocks-only weekend push — backfill takes new slots, crypto blocked
                 if sym2 in owner and owner[sym2] != h["name"]:
                     continue
                 if sym2 in held[h["name"]]:

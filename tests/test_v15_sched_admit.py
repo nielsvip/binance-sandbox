@@ -11,7 +11,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
-from v15_fleet_scheduler import _disk_admit_ok, _est_pair_mb, _growth_debt_mb, _launched_recently, _progress_done_rows, _rank_oom_victim, _reap_burn_weight, _reap_burns, _stall_tick, _swap_admit_ok, tick
+import v15_fleet_scheduler as _SCHED
+from v15_fleet_scheduler import _disk_admit_ok, _est_pair_mb, _growth_debt_mb, _launched_recently, _progress_done_rows, _rank_oom_victim, _reap_burn_weight, _reap_burns, _stall_tick, _swap_admit_ok, _venue_allowed, tick
 
 
 class EstPairTest(unittest.TestCase):
@@ -207,6 +208,40 @@ class DiskGuardWiringTest(unittest.TestCase):
     def test_missing_disk_fails_open(self):
         log = self._run_tick("MISSING")
         self.assertNotEqual(log["hosts"]["gatetest"].get("idle_reason"), "disk guard")
+
+
+class VenueOnlyTest(unittest.TestCase):
+    NATIVES = {"AAPL", "MSFT", "COIN"}
+
+    def setUp(self):
+        self._old = _SCHED._VENUE_ONLY
+
+    def tearDown(self):
+        _SCHED._VENUE_ONLY = self._old
+
+    def test_unset_allows_everything(self):
+        _SCHED._VENUE_ONLY = ""
+        self.assertTrue(_venue_allowed("BTCUSDC", self.NATIVES))
+        self.assertTrue(_venue_allowed("AAPL", self.NATIVES))
+
+    def test_stocks_gate_blocks_pure_crypto(self):
+        _SCHED._VENUE_ONLY = "stocks"
+        self.assertFalse(_venue_allowed("BTCUSDC", self.NATIVES))
+        self.assertFalse(_venue_allowed("ETHUSDT", self.NATIVES))
+
+    def test_stocks_gate_passes_natives(self):
+        _SCHED._VENUE_ONLY = "stocks"
+        self.assertTrue(_venue_allowed("AAPL", self.NATIVES))
+        self.assertTrue(_venue_allowed("MSFT", self.NATIVES))
+
+    def test_stocks_gate_passes_usdt_stock_variants(self):
+        _SCHED._VENUE_ONLY = "stocks"
+        self.assertTrue(_venue_allowed("AAPLUSDT", self.NATIVES))
+        self.assertTrue(_venue_allowed("COINUSDC", self.NATIVES))
+
+    def test_unknown_value_fails_open(self):
+        _SCHED._VENUE_ONLY = "bogus"
+        self.assertTrue(_venue_allowed("BTCUSDC", self.NATIVES))
 
 
 if __name__ == "__main__":
