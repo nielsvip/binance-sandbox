@@ -1,38 +1,38 @@
 {
- "now": "2026-10-10T01:23:36.798100+00:00",
+ "now": "2026-10-10T02:23:41.646089+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 4970,
- "last_exit_ts": "2026-10-10T01:23:21.479898+00:00",
- "n_leaks": 15,
- "n_gate_on": 3409,
+ "n_exit_rows": 4748,
+ "last_exit_ts": "2026-10-10T02:23:35.225858+00:00",
+ "n_leaks": 10,
+ "n_gate_on": 3237,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 173,
+ "n_unmapped": 156,
  "n_unverified": 1,
- "since": "2026-10-08T01:23:36.798100+00:00",
+ "since": "2026-10-08T02:23:41.646089+00:00",
  "vec_exact_by_action": {
-  "OPEN": 1226,
-  "CLOSE": 140,
+  "OPEN": 1201,
+  "CLOSE": 137,
   "REDUCE": 5,
   "AUGMENT": 1
  },
- "native_rows": 3598,
+ "native_rows": 3404,
  "unverified_by_family": {
   "ULTIMATE_DC (None=None)": 1
  },
  "leaks_by_family": {
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED=False)": 13,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED=False)": 8,
   "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF=OFF)": 2
  },
  "leak_keys": {
-  "EXIT_VELOCITY_WT inf:SOLUSDC_SHORT": 8,
-  "EXIT_VELOCITY_WT inf:RENDERUSDT_LONG": 5,
+  "EXIT_VELOCITY_WT inf:RENDERUSDT_LONG": 4,
+  "EXIT_VELOCITY_WT inf:SOLUSDC_SHORT": 4,
   "WT_LOWER_CROSS_EXIT men:LTCUSDC_SHORT": 2
  },
  "gate_on_by_family": {
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 2908,
-  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 207,
-  "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 269,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 2755,
+  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 192,
+  "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 265,
   "DC_BASIS_3M_REDUCE (DC_BASIS_3M_REDUCE_ENABLED)": 2,
   "MTF_BB_REJECT_EXIT (MTF_BB_REJECT_EXIT_ENABLED)": 4,
   "DC_DAYTRADE_STOP (DC_DAYTRADE_ENABLED)": 3,
@@ -43,10 +43,10 @@
  "ungated_by_family": {},
  "safety_by_family": {},
  "unmapped": {
-  "BB_TAKE_15m": 28,
   "RSI2_EXIT_LIVE_rsi2=2.5_thr=10.0": 15,
   "RSI2_EXIT_LIVE_rsi2=5.9_thr=10.0": 13,
   "RSI2_EXIT_LIVE_rsi2=2.7_thr=10.0": 11,
+  "BB_TAKE_15m": 11,
   "RSI2_EXIT_LIVE_rsi2=7.7_thr=10.0": 10,
   "NON_TRADEABLE_WT15M_EXIT_LONG_wt-4.4": 9,
   "RSI2_EXIT_LIVE_rsi2=5.0_thr=10.0": 8,
@@ -95,8 +95,8 @@
   "NON_TRADEABLE_WT15M_EXIT_LONG_wt-6.8": 1
  },
  "actions": {
-  "CLOSE": 3720,
-  "OPEN": 1227,
+  "CLOSE": 3523,
+  "OPEN": 1202,
   "REDUCE": 12,
   "QUICK_REDUCE": 9,
   "AUGMENT": 1,

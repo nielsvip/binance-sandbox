@@ -1854,3 +1854,11 @@ would split sweep/live from pilot baselines; needs a director ruling, not a sile
   `max_pairs` 3→1 in `fleet_hosts_final.json` (honest capacity beside live); (3) forgave the proven
   host-fault OOM burns (ENA SHORT 3→1, BB LONG 3→1, noted in state). Scheduler deployed fleet-wide
   md5 `e2fc6ac8` (reap imports it on every host).
+- **Throughput push (USER 2026-10-10: s7 destroyed, need >10 sym_sides/hour on s1/s2/s5/s6):**
+  (1) `V15_POSSYM_SAMPLING` 1→0 in the launch env (S1 md5 `ada54098`): sampled fills left ~700 holes and
+  holes-only splice failed 4/4 observed (promoted holes → full wipe), so every board paid ~1.6 fills; one
+  full fill publishes first try. Applies to new launches; running sampled boards publish via their
+  sample-free REDO refill. (2) s7's autopsy-first backfill moved to S1 (detached, workers 4, nice 10):
+  35 fresh sides were `waiting_base`-blocked; dead `V15_AF_PULL` cron disabled (crontab backed up).
+  s6 left at 5 pairs (9.2GB avail, no OOM — CPU contention only; tune to 4 if rate still <10 after
+  convergence). Monitor watches publish-count new highs.
