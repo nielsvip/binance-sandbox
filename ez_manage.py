@@ -30093,11 +30093,39 @@ class MultiAccountTradeManager:
                             )
                         except Exception:
                             pass
-                await release_locks()
-                if _is_scalp_v3_order:
-                    # Return False with executed_qty > -1 so outer path fires webhook fallback
-                    return False, 0.0
-                return False, -1.0
+                _is_vec_exact_order = "|VEC_EXACT" in (reason or "")
+                if _is_vec_exact_order:
+                    # USER 2026-10-10 PARITY: chart says OPEN → live must end OPEN. Maker timed out:
+                    # hedge-grade verification (every tracked order confirmed dead AND unfilled), then FALL
+                    # THROUGH to the MARKET fallback below with locks still held (sanction re-checks at the wire).
+                    # Any fill sign → suppress like everyone else (next bar's vec act self-heals).
+                    _vx_vf_ok = True
+                    for _tid in tracked_order_ids or []:
+                        try:
+                            _vs = await asyncio.to_thread(client.futures_get_order, symbol=symbol, orderId=_tid)
+                        except Exception:
+                            _vs = {}
+                        _vst = str((_vs or {}).get("status", "")).upper()
+                        _vex = float((_vs or {}).get("executedQty", 0) or 0)
+                        if _vex > 0 or _vst in ("FILLED", "PARTIALLY_FILLED"):
+                            _vx_vf_ok = False
+                            logger.warning(f"[VEC_MAKER_SUPPRESS] {position_key}: tracked {_tid} filled ({_vst} exec={_vex}) — suppressing market fallback, next vec act governs")
+                            break
+                        if _vst not in ("CANCELED", "EXPIRED", "REJECTED"):
+                            _vx_vf_ok = False
+                            logger.warning(f"[VEC_MAKER_SUPPRESS] {position_key}: tracked {_tid} not confirmed dead ({_vst}) — suppressing market fallback")
+                            break
+                    if _vx_vf_ok:
+                        logger.warning(f"[VEC_MAKER_FALLBACK] {position_key}: maker timed out, tracked dead+unfilled — falling through to MARKET to honor vec OPEN")
+                    else:
+                        await release_locks()
+                        return False, -1.0
+                else:
+                    await release_locks()
+                    if _is_scalp_v3_order:
+                        # Return False with executed_qty > -1 so outer path fires webhook fallback
+                        return False, 0.0
+                    return False, -1.0
             elif ta == "OPEN" and _is_hedge_order:
                 # 2026-04-16 DOUBLE-OPEN FIX: user reported QUICK_HEDGE_SAME_SYM_LAST_RESORT_TIMEOUT
                 # firing webhook 47s after maker order filled → two opens. Hedge timeout MUST:
@@ -48829,7 +48857,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
             try:
                 _res = await asyncio.wait_for(trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_lq, current_price=_px, side=_oside, position_side=_side, unique_id=f"VX{int(_a['bar_ts'])}{_a['n']}", is_full_close=_full, action=_act, reason=_vx.tagged_reason(_a), override_qty=_lov, is_hedge=False), timeout=_vx_tmo)
             except asyncio.TimeoutError:
-                logger.warning(f"[VEC_EXACT] {position_key} {_act} {_a['reason'][:60]} BLOCKED_DISPATCH_TIMEOUT after {_vx_tmo:.0f}s (exit retried next sweep via take_catchup)")
+                logger.warning(f"[VEC_EXACT] {position_key} {_act} {_a['reason'][:60]} BLOCKED_DISPATCH_TIMEOUT after {_vx_tmo:.0f}s (act consumed at hand-out, no auto-retry; next fresh vec act governs)")
                 _res = "BLOCKED_DISPATCH_TIMEOUT"
             logger.info(f"[VEC_EXACT] {position_key} {_act} {_a['reason'][:60]} qty={_qty:.6f} -> {str(_res)[:120]}")
         # USER 2026-10-10 TOTAL PARITY convergence: live holds but the twin's paper
@@ -48838,7 +48866,15 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
         # USER 2026-10-10 03:45Z: CONVERGE KILLED — open-when-vec-opens, close-when-vec-closes, NO EXCEPTIONS.
         # Absence of vec endorsement is NOT a close signal: only a real vec CLOSE/REDUCE act closes.
         # (Was flattening vec-opened positions ~15min after entry = pure churn.) ROLLBACK: VEC_CONVERGE_TO_FLAT_ENABLED=True.
+        # 2026-10-10 forest-bellatrix legacy compromise (peer holds VEC_CONVERGE_TO_FLAT_ENABLED=True transitionally
+        # until MANA/GALA land): converge NEVER touches twin-owned keys (vec opened them → only a real vec CLOSE
+        # act closes them). Legacy keys (vec never opened; chart silent) may still converge to flat = chart state.
         _cvg_on = bool(getattr(config, "VEC_CONVERGE_TO_FLAT_ENABLED", False))
+        try:
+            if _cvg_on and _vx.owned_has(position_key):
+                _cvg_on = False
+        except Exception:
+            pass
         try:
             _amt_end = abs(safe_fetch_float(getattr(trade_manager.positions.get(position_key), "positionAmt", 0), 0))
             if _cvg_on and _amt_end > 0 and not _vx_exit_attempted and _vx_st.get("status") == "OK" and _vx_st.get("vec_holds") is False:

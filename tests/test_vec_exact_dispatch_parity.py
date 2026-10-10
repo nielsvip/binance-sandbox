@@ -80,6 +80,17 @@ def test_no_native_trim_while_twin_owns_exit():
     assert "if not _vx_native_off() and await _pp_ang_timing_exits" in src, "native ANG trims must stay off while the twin owns EXIT (twin-idle = nobody acts)"
 
 
+def test_vec_maker_timeout_falls_back_to_market():
+    src = (ROOT / "ez_manage.py").read_text()
+    assert "_is_vec_exact_order" in src and "[VEC_MAKER_FALLBACK]" in src, "vec OPEN maker-timeout must verify + fall to MARKET (no silent flat)"
+    assert "[VEC_MAKER_SUPPRESS]" in src, "any fill sign must suppress the fallback (no double-open)"
+
+
+def test_converge_skips_twin_owned_keys():
+    src = (ROOT / "ez_manage.py").read_text()
+    assert "if _cvg_on and _vx.owned_has(position_key)" in src, "converge must never touch twin-owned keys (only legacy)"
+
+
 def test_converge_to_flat_killed_by_default():
     src = (ROOT / "ez_manage.py").read_text()
     assert 'VEC_CONVERGE_TO_FLAT_ENABLED", False' in src, "converge must default OFF: only a real vec CLOSE act closes"

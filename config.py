@@ -1744,6 +1744,9 @@ class Config:
     PARITY_VEC_EXACT_FAMILIES: str = (
         "ENTRY,EXIT,AUGMENT"  # comma list of twinned families under PARITY_VEC_EXACT_MODE: ENTRY (vec OPENs), EXIT (vec CLOSE/REDUCE), AUGMENT
     )
+    VEC_CONVERGE_TO_FLAT_ENABLED: bool = (
+        True  # 2026-10-10 TRANSITIONAL (forest-bellatrix): True until men MANA/GALA legacy shorts land + joint twin-disavow root-cause with green-centaurus concludes. Native exits are refused in exact mode, so paper-flat/live-holding legacy keys strand with this False (peer-agreed mechanics). Revisit: gate to legacy-only (not owned_has) so vec-opened keys are never converge-flattened, then default False once the twin never disavows.
+    )
     PARITY_VEC_EXACT_SOURCE: str = (
         "live_klines"  # 2026-10-06 twin data source: npz (15m NPZ store; servers/replay) | live_klines (NPZ builder in memory on live klines_cache; needs staged backtest_v8_precompute return_arrays) | live_snapshots (rolling buffer of live ii() dicts at closed 15m bars)
     )
