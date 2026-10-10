@@ -29673,6 +29673,14 @@ class MultiAccountTradeManager:
                                 await release_locks()
                                 return False, -1.0
                             _confirm_wire_result("futures_create_order:dust_close_market", position_key, _dresp, _dseq, ta, reason)
+                            try:
+                                _dror = self.__dict__.setdefault("_recent_order_reasons", {})
+                                _dror_list = _dror.setdefault(position_key, [])
+                                _dror_now = time.time()
+                                _dror_list[:] = [_r for _r in _dror_list if _dror_now - _r[0] <= 600.0]
+                                _dror_list.append((_dror_now, float(qty_dec), str(reason or "")))
+                            except Exception:
+                                pass
                             logger.critical(f"[DUST_CLOSE_MARKET] {position_key} dust ${_mkr_notional:.2f} → MARKET {side} {qty_dec} wired")
                             await release_locks(success_fill=True)
                             return True, float(qty_dec)
@@ -29693,7 +29701,7 @@ class MultiAccountTradeManager:
                 _ror_list = _ror.setdefault(position_key, [])
                 _ror_now = time.time()
                 _ror_list[:] = [_r for _r in _ror_list if _ror_now - _r[0] <= 600.0]
-                _ror_list.append((_ror_now, float(qty_abs), str(reason or "")))
+                _ror_list.append((_ror_now, float(qty_dec), str(reason or "")))
             except Exception:
                 pass
             placement_start_time = time.time()

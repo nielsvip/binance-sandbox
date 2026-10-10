@@ -71,3 +71,11 @@ def test_match_recent_reason_prunes_expired():
     ror = [(now - 400.0, 10.0, "OLD"), (now - 200.0, 10.0, "NEW |VEC_EXACT")]
     assert PositionService._match_recent_order_reason(ror, 10.0, now) == "NEW |VEC_EXACT"
     assert len(ror) == 1
+
+
+def test_match_recent_reason_lot_floor():
+    now = time.time()
+    ror = [(now - 102.0, 1.1, "B_KZONE |VEC_EXACT")]
+    assert PositionService._match_recent_order_reason(ror, 1.1, now) == "B_KZONE |VEC_EXACT"
+    ror_pre = [(now - 102.0, 1.191319, "B_KZONE |VEC_EXACT")]
+    assert PositionService._match_recent_order_reason(ror_pre, 1.1, now) is None
