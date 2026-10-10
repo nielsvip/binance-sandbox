@@ -908,7 +908,18 @@ async def offloop_serialized(fn: Callable[..., Any], *args, **kwargs) -> Any:
         with _OFFLOOP_LOCK:
             return fn(*args, **kwargs)
 
-    return await asyncio.to_thread(_run)
+    _t0 = time.time()
+    try:
+        return await asyncio.to_thread(_run)
+    finally:
+        _dt = time.time() - _t0
+        if _dt > 5.0:
+            try:
+                _fn = getattr(fn, "__name__", repr(fn))[:40]
+                _aa = ",".join([str(a)[:24] for a in list(args)[:3]])
+                _LOG.warning(f"[OFFLOOP_SLOW] {_fn}({_aa}) took {_dt:.1f}s (threadpool queue + _OFFLOOP_LOCK convoy + compute)")
+            except Exception:
+                pass
 
 
 def tradier_reader_written_at(wrapper: Any) -> Optional[float]:

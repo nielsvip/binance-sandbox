@@ -35026,6 +35026,7 @@ class MultiAccountTradeManager:
                 i,
                 extra_data={"is_hedge": is_hedge, "hedge_for": hedge_for},
             )
+            logger.info(f"[EXEC_TRACE] {position_key}: STEP3a_DECCTX {_xs_who} elapsed={time.time() - _xs_t0:.1f}s")
             # 2026-04-30 Job 3 (iii): per-trade returns audit logger — risk-zero additive.
             # Fires only for reduces/closes; never blocks the trade.
             try:
@@ -35151,6 +35152,7 @@ class MultiAccountTradeManager:
                 # if (_is_profitable_exit or _is_scalp_v3_reason or is_hedge or _safety_close or _finandy_circuit_open) and not _force_webhook_reduces:
                 # ALWAYS attempt maker first (mandate 2026-09-10).
                 if True:
+                    logger.info(f"[EXEC_TRACE] {position_key}: STEP3b_MAKER {_xs_who} elapsed={time.time() - _xs_t0:.1f}s")
                     logger.info(
                         f"💰 [MAKER_EXIT] {position_key}: gain={_pos_gain:.2f}% (after fees: {_gain_after_fees:.2f}%) is_hedge={is_hedge} — using maker order (direct Binance)"
                     )
@@ -35463,6 +35465,7 @@ class MultiAccountTradeManager:
                 #     executed_qty = 0
                 # else:
                 if True:
+                    logger.info(f"[EXEC_TRACE] {position_key}: STEP3b_MAKER {_xs_who} elapsed={time.time() - _xs_t0:.1f}s")
                     maker_success, executed_qty = await self.place_maker_order(
                         account_key,
                         position_key,
