@@ -147,3 +147,18 @@ def test_execute_now_step1_step2_blocks_are_logged():
             window = "\n".join(region[max(0, idx - 6):idx])
             assert "logger." in window and "position_key" in window, f"silent BLOCK return between STEP1 and STEP2: {s}"
     assert checked >= 2, "expected at least post-fill + dedupe BLOCK returns in STEP1->STEP2"
+
+
+def test_entry_run_all_results_logged_not_dropped():
+    """USER 2026-10-10: ang:ARUSDT_LONG vec OPEN was cancelled by the 600s ENTRY dispatch
+    timeout with ZERO log lines — _vec_exact_entries awaited run_all and dropped the
+    [(ok, result)] list, and _one had no CancelledError handler. Every non-ok dispatch
+    must log its key (safety may refuse, never silently)."""
+    lines = (ROOT / "ez_positions_quick.py").read_text().splitlines()
+    end = next(i for i, l in enumerate(lines) if "VEC_EXACT_ENTRY" in l and "run_all" in l)
+    starts = [i for i, l in enumerate(lines) if "async def _one(" in l and i < end]
+    assert starts, "ENTRY _one worker not found"
+    region = "\n".join(lines[starts[-1]:end + 8])
+    assert "= await _vd.run_all(" in region, "run_all result must be captured, not bare-awaited"
+    assert "ENTRY DISPATCH result=" in region, "non-ok ENTRY dispatches must log key + result"
+    assert "except asyncio.CancelledError" in region, "_one must log cancellation before re-raise"

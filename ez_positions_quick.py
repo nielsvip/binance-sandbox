@@ -28486,6 +28486,9 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
                     f"[VEC_EXACT] {_pk} {_act} {_a['reason'][:60]} qty={_qty:.6f} -> {str(_res)[:120]}"
                 )
             return f"DISPATCHED_{_pk}"
+        except asyncio.CancelledError:
+            logger.warning(f"[VEC_EXACT] {_pk} ENTRY worker CANCELLED (dispatch timeout/stale sweep) — in-flight broker order, if any, stays tracked for NUKE/ODG verify; next fresh vec act governs")
+            raise
         except Exception as _e:
             logger.error(f"[VEC_EXACT] {_pk}: {_e}")
             return f"ERROR_{type(_e).__name__}_{_pk}"
@@ -28499,7 +28502,10 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
         _tmo = float(getattr(config, "VEC_EXACT_DISPATCH_TIMEOUT_S", 600.0) or 600.0)
     except Exception:
         _tmo = 600.0
-    await _vd.run_all(_calls, limit=_lim, timeout_s=_tmo, label="VEC_EXACT_ENTRY")
+    _res_all = await _vd.run_all(_calls, limit=_lim, timeout_s=_tmo, label="VEC_EXACT_ENTRY")
+    for _rk, (_rok, _rres) in zip([c[0] for c in _calls], _res_all or []):
+        if not _rok:
+            logger.warning(f"[VEC_EXACT] {_rk} ENTRY DISPATCH result={str(_rres)[:120]} (act consumed at hand-out, no auto-retry; next fresh vec act governs)")
 
 
 async def check_entry_candidates_for_account(
