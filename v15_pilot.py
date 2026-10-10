@@ -3869,6 +3869,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     # (b) the naked eval moves the ledger (then the full yellow pass runs immediately: AUTOPSY-INERT-REVIVED). Never a fake 0.
     _inert_effective = inert_switches_from_start(os.environ.get("V15_START_OVERRIDES", "")) if os.environ.get("V15_INERT_PRUNE", "1") == "1" else set()
     _inert_every = int(os.environ.get("V15_INERT_SAMPLE_EVERY", "25") or 25)
+    _revive_min = float(os.environ.get("V15_REVIVE_MIN_DELTA", "-0.5"))
     try:
         import re as _re_in
         _inert_seq = int((_re_in.search(r"run(\d+)", os.environ.get("V15_DEFAULTS_ROUND", "") or "") or [None, None])[1] or 0) or int(datetime.datetime.utcnow().strftime("%j"))
@@ -4077,7 +4078,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         return {"static": st, "cand_parsed": cand_parsed, "sw_ov": sw_ov, "is_running": is_running, "switch_variant": sv, "items": items}
     inflight: dict = {}
     _slow_secs: dict = {}
-    _SLOW_RED_S = float(os.environ.get("V15_SLOW_CELL_S", "0.1"))
+    _SLOW_RED_S = float(os.environ.get("V15_SLOW_CELL_S", "2.0"))
     def _harvest():
         for ck in [c for c, (f, _) in inflight.items() if f.done()]:
             f, _ = inflight.pop(ck)
@@ -4362,9 +4363,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _flag_to_md(flags_md, sname, rr, switch, cand, f"slow/failed naked: {nerr}", 0.0, 0.0, cumulative_before)
                 _red_retry.append({"sheet": sname, "row": rr, "col": cols["G"], "label": "naked", "ov": switch_variant, "cum_before": cumulative_before, "key": key})
                 _zr_log({"kind": "RED", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": "F/G", "reason": nerr, "cum_before": cumulative_before})
-        if st.get("inert_filters") and not is_running and naked_delta is not None and abs(float(naked_delta)) > 1e-9:
+        if st.get("inert_filters") and not is_running and naked_delta is not None and abs(float(naked_delta)) > 1e-9 and (float(naked_delta) > _revive_min or str(switch).strip().startswith(SACRED_ZERO_EXEMPT_PREFIXES)):
             # AUTOPSY-INERT-REVIVED: the autopsy saw no trade touched on the BASE, but on the running set the naked eval moved
             # the ledger -> this row is alive: run its full yellow pass right now (nothing dead-but-alive can hide).
+            # USER 2026-10-10 throughput: a deeply negative naked (<= V15_REVIVE_MIN_DELTA, default -0.5pp) never promotes —
+            # skip its ~40 yellow evals (the 1/25 rotation still samples it). Sacred rows always revive (verified, never skipped).
             st["hdrs"] = list(st["inert_filters"])
             st["inert_filters"] = []
             st["inert_revived"] = True

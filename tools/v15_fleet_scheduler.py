@@ -908,7 +908,7 @@ def side_cmd(host, sym, side, window, pdir, attempt, workers):
     r, ss, venue = host["root"], f"{sym}_{side}", venue_of(sym)
     chain, t = f"{pdir}/../chain", tmpl_path(host, venue, side)
     if window == "30D":
-        env = f"V15_START_OVERRIDES=$(test -f ~/v15_autopsy_first/{ss}_autopsy_base.json && echo ~/v15_autopsy_first/{ss}_autopsy_base.json) V15_FRESH_RUN=1 V15_TEMPLATE_DEFAULTS=1 V15_ADAPT_BASELINE=0 V15_SKIP_LIVE_AT_DONE=1 V15_POSSYM_SAMPLING=1 V15_UNWIRED_SKIP=0 V12_NPZ_CACHE=8 V15_PROGRESS_DIR={pdir} V15_DEFAULTS_ROUND=$(cat ~/v15_defaults_round.txt 2>/dev/null) CAT_SIDE_DEFAULTS_PATH=$(test -f ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json && echo ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json)"  # USER 2026-10-09: V15_SKIP_CAT_PERSYM_BASELINE REMOVED — worst2best boards run defaults+best simultaneously and START from the best-gain set (Oct-2 winner-select). Boards with autopsy/REDO base keep it (Oct-9 REDO ruling); TEMPLATE_DEFAULTS still never ingests mid-run (§64), only the E3 start may be per_sym best. USER 2026-10-10 throughput: sampling stays ON (reverted 0->1 within the hour — sample-free fills run ~9 rows/min vs ~80 sampled; the 10-min board comes from a per-row yellow cap + prior-ranked selection in the pilot, not from disabling sampling).
+        env = f"V15_START_OVERRIDES=$(test -f ~/v15_autopsy_first/{ss}_autopsy_base.json && echo ~/v15_autopsy_first/{ss}_autopsy_base.json) V15_FRESH_RUN=1 V15_TEMPLATE_DEFAULTS=1 V15_ADAPT_BASELINE=0 V15_SKIP_LIVE_AT_DONE=1 V15_POSSYM_SAMPLING=1 V15_INERT_SAMPLE_EVERY=100 V15_POSSYM_MIN_N=1 V15_UNWIRED_SKIP=0 V12_NPZ_CACHE=8 V15_PROGRESS_DIR={pdir} V15_DEFAULTS_ROUND=$(cat ~/v15_defaults_round.txt 2>/dev/null) CAT_SIDE_DEFAULTS_PATH=$(test -f ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json && echo ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json)"  # USER 2026-10-09: V15_SKIP_CAT_PERSYM_BASELINE REMOVED — worst2best boards run defaults+best simultaneously and START from the best-gain set (Oct-2 winner-select). Boards with autopsy/REDO base keep it (Oct-9 REDO ruling); TEMPLATE_DEFAULTS still never ingests mid-run (§64), only the E3 start may be per_sym best. USER 2026-10-10 throughput: sampling stays ON (reverted 0->1 within the hour — sample-free fills run ~9 rows/min vs ~80 sampled; the 10-min board comes from a per-row yellow cap + prior-ranked selection in the pilot, not from disabling sampling). USER 2026-10-10 pace emergency (measured <6/hr strict over 03:00-05:00Z vs 10/hr demand; user ordered lower low-n test frequency): INERT yellows 1/100, n_sym 1-2 join pos sampling; naked evals untouched, running pilots unaffected (env read at pilot startup).
         return f"{env} .venv/bin/python -u v15_pilot.py --sym-side {ss} --template {t} --seq-mode worst2best --window-days 30 --vector-only --workers {workers}"
     if window == "365D":
         return (f"mkdir -p {chain}/v365 && nice -n 10 .venv/bin/python -u tools/v15_365_cycle.py --sym-side {ss} --progress {pdir}/{ss}_v14_progress.json "
@@ -1188,9 +1188,13 @@ def tick(args, cfg, now):
     _gtiers = _gain_tiers(_seen)  # winners-first scheduling; loser tiers defer fresh boards (chains still drain)
     _deferred_sides = []
     _refresh_tick_n = [0]
+    _allowed = set(uni.get("allowed_sym_sides") or [])  # USER 2026-10-06: only tradeable keys are calculated
+    if not _allowed:
+        # USER 2026-10-10: empty allowlist fail-OPENS the entire fleet (every sym_side calculated).
+        # Stay fail-open (never idle paid workers) but scream once per tick so the universe gets fixed.
+        print(f"[sched] CRITICAL: universe allowed_sym_sides EMPTY ({uni.get('date')}) — filter DISABLED, entire fleet calculating. Fix universe NOW.", flush=True)
     for sym in all_syms:
         h = owner.get(sym)
-        _allowed = set(uni.get("allowed_sym_sides") or [])  # USER 2026-10-06: only tradeable keys are calculated
         _st = {side: (("terminal_not_tradeable", None) if _allowed and f"{sym}_{side}" not in _allowed else side_state(sym, side, h, _gtiers)) for side in ("LONG", "SHORT")}
         for side, v in _st.items():
             # USER 2026-10-10 (1-result-per-2h stall): deferral skips FRESH boards only — an

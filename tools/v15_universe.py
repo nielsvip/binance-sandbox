@@ -12,6 +12,39 @@ import argparse, datetime as dt, glob, json, os, pathlib, subprocess, sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "daily_universe"
+LAST_GOOD = OUT / "last_good.json"
+
+
+def _quorum_check(allowed, root):
+    """USER 2026-10-10: no single bad read may EVER flip the fleet. A fresh build that collapses
+    to <50% of the last-good allowlist (or to empty while last-good exists) is corruption, not
+    signal — the tradeable universe moves a handful of keys per day, never halves. Returns
+    (ok, reason)."""
+    lgp = root / "data" / "daily_universe" / "last_good.json"
+    try:
+        lg = json.loads(lgp.read_text()) if lgp.exists() else {}
+    except Exception:
+        lg = {}
+    lg_allowed = set(lg.get("allowed_sym_sides") or [])
+    n, m = len(allowed), len(lg_allowed)
+    if n == 0 and m > 0:
+        return False, f"empty build vs last_good {m}"
+    if m > 0 and n < 0.5 * m:
+        return False, f"collapse {m}->{n} (<50% of last_good)"
+    return True, ""
+
+
+def _persist_last_good(allowed, root):
+    try:
+        out = root / "data" / "daily_universe"
+        out.mkdir(parents=True, exist_ok=True)
+        tmp = out / "last_good.tmp"
+        tmp.write_text(json.dumps({"allowed_sym_sides": sorted(allowed)}))
+        os.replace(tmp, out / "last_good.json")
+        return True
+    except Exception as e:
+        print(f"[universe] WARN last_good persist failed: {e}", file=sys.stderr)
+        return False
 STOCK_ACCOUNTS = ("tra", "trb", "trc", "inf")
 CRYPTO_ACCOUNTS = ("flz", "men", "ang")
 CRYPTO_SUFFIX = ("USDT", "USDC", "USD1", "BUSD", "FDUSD", "TUSD", "DAI")
@@ -69,9 +102,17 @@ def tradeable_sym_sides(root):
     import re
     allowed = set()
     try:
-        allowed |= {str(k).split(":", 1)[-1].upper() for k in json.loads((root / "tradeable_keys.json").read_text())}
-    except Exception:
-        pass
+        _tk_raw = (root / "tradeable_keys.json").read_text()
+        try:
+            _tk_data = json.loads(_tk_raw)
+        except Exception:
+            # USER 2026-10-10: the file is rewritten live and can be caught mid-write (concatenated/
+            # truncated tail). raw_decode salvages the first complete array instead of zeroing the
+            # whole crypto allowlist (which either idles crypto or fail-opens the entire fleet).
+            _tk_data, _ = json.JSONDecoder().raw_decode(_tk_raw.strip())
+        allowed |= {str(k).split(":", 1)[-1].upper() for k in _tk_data}
+    except Exception as e:
+        print(f"[universe] WARN tradeable_keys.json unreadable even robustly: {e} — crypto allowlist empty", file=sys.stderr)
     src = (root / "config_tradier.py").read_text() if (root / "config_tradier.py").exists() else ""
     for side in ("long", "short"):
         syms = set()
