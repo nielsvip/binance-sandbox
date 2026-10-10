@@ -68,3 +68,9 @@ def test_dc_stops_prior_bar():
     assert s.count("_dc_stop_prev_aware(i, \"dc_high_") == 3
     assert "_gx_stopf = " in s and "_tx_stopf = " in s and "_dt_stopf = " in s
     assert "_dc_stop_prev_aware(i, _f, _gx_prior) if _f in _gx_stopf" in s
+
+
+def test_parser_carries_dc_prev():
+    s = _src()
+    assert 'd[f"dc_low_{tf}_prev"]' in s
+    assert 'd[f"dc_high_{tf}_prev"]' in s

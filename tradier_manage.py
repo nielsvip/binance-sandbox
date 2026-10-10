@@ -31759,6 +31759,10 @@ class StockStrategy:
             d[f"dc_low_{tf}"] = self._get_val(i, f"dc_low_{tf}", 0)
             d[f"dc_high4_{tf}"] = self._get_val(i, f"dc_high4_{tf}", 0)
             d[f"dc_low4_{tf}"] = self._get_val(i, f"dc_low4_{tf}", 0)
+            d[f"dc_high_{tf}_prev"] = self._get_val(i, f"dc_high_{tf}_prev", 0)
+            d[f"dc_low_{tf}_prev"] = self._get_val(i, f"dc_low_{tf}_prev", 0)
+            d[f"dc_high4_{tf}_prev"] = self._get_val(i, f"dc_high4_{tf}_prev", 0)
+            d[f"dc_low4_{tf}_prev"] = self._get_val(i, f"dc_low4_{tf}_prev", 0)
             d[f"dc_basis_{tf}"] = self._get_val(i, f"dc_basis_{tf}", 0)
 
             # ATR & Vol & MFI
