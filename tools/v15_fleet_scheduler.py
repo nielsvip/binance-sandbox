@@ -148,6 +148,24 @@ def pss_mb(pid):
         return 0.0
 
 
+def _progress_marks(path):
+    """(done, quarantined, gain) from a progress JSON. TOP-LEVEL ONLY (USER 2026-10-10,
+    1-result-per-2h stall): the old flat "final_gain" regex matched endgame.final_gain (a
+    mid-run STAGE gain), marking every endgame-reaching board done so its RULE#3 REDO refill
+    never relaunched. needs_redo boards are never done: they must resume."""
+    try:
+        _jd = json.loads(open(path).read())
+    except Exception:
+        return False, False, None
+    if not isinstance(_jd, dict):
+        return False, False, None
+    _fg = _jd.get("final_gain")
+    _fg_ok = isinstance(_fg, (int, float)) and not isinstance(_fg, bool)
+    _done = bool(_fg_ok and not _jd.get("needs_redo"))
+    _q = _jd.get("verdict") in ("IMPOSSIBLE", "NO_TRADES", "BEST_EFFORT")
+    return _done, _q, (float(_fg) if _fg_ok else None)
+
+
 def environ(pid):
     try:
         return dict(x.split("=", 1) for x in open("/proc/%d/environ" % pid, "rb").read().decode("utf8", "replace").split("\0") if "=" in x)
@@ -209,11 +227,10 @@ if mode == "probe":
                 key = "%s|%s|%s" % (f, stt.st_mtime, stt.st_size)
                 if key not in cache or key + "|q" not in cache or key + "|g" not in cache:
                     cache = {k: v for k, v in cache.items() if not k.startswith(f + "|")}
-                    _txt = open(f).read()
-                    cache[key] = bool(re.search(r'"final_gain": [-0-9]', _txt))
-                    cache[key + "|q"] = bool(_VERDICT_TERMINAL_RE.search(_txt))
-                    _gm = re.search(r'"final_gain":\s*(-?[0-9]+\.?[0-9]*(?:[eE][-+]?[0-9]+)?)', _txt)
-                    cache[key + "|g"] = float(_gm.group(1)) if _gm else None
+                    _done, _q, _g = _progress_marks(f)
+                    cache[key] = _done
+                    cache[key + "|q"] = _q
+                    cache[key + "|g"] = _g
                 if cache[key]:
                     o["done"].append(ss)
                     if cache.get(key + "|g") is not None:
