@@ -258,6 +258,41 @@ def normalize_tradier(rows: List[Dict[str, Any]]) -> Tuple[Dict[Tuple[str, str],
     return amounts, entries
 
 
+class AbandonTimeout(asyncio.TimeoutError):
+    """await_abandonable timed out. Subclasses TimeoutError so existing handlers catch it unchanged."""
+
+
+async def await_abandonable(coro, timeout):
+    """Never-hang timeout: asyncio.wait + abandon the loser WITHOUT awaiting it.
+    asyncio.wait_for awaits inner-task cancellation, which hangs forever when the inner op swallows CancelledError during cleanup (proven 2026-10-10: Redis SET NX + wait_for(15s) parked 28.9s with zero TimeoutError). Returns the coro result; raises AbandonTimeout on timeout. The abandoned task is cancelled best-effort and left to die on its own."""
+    _t = asyncio.ensure_future(coro)
+    try:
+        _done, _pend = await asyncio.wait({_t}, timeout=timeout)
+    except BaseException:
+        try:
+            _t.cancel()
+        except Exception:
+            pass
+        raise
+    if _t in _done:
+        return _t.result()
+    try:
+        _t.cancel()
+    except Exception:
+        pass
+    def _swallow(_fut):
+        try:
+            if not _fut.cancelled():
+                _fut.exception()
+        except Exception:
+            pass
+    try:
+        _t.add_done_callback(_swallow)
+    except Exception:
+        pass
+    raise AbandonTimeout(f"abandoned after {timeout}s")
+
+
 class BrokerPositions:
     """Per (broker, account) broker snapshot. Single-flight (concurrent callers share one request), cached
     <= POSITIONS_BROKER_CACHE_S, refuses to call while an IP ban is active. fetch() returns the raw row list,
@@ -286,7 +321,13 @@ class BrokerPositions:
     async def snapshot(self, force: bool = False, reason: str = "") -> Optional[BrokerSnapshot]:
         if not force and self._fresh():
             return self.last
-        async with self._alock():
+        _slock = self._alock()
+        try:
+            await await_abandonable(_slock.acquire(), timeout=3.0)
+        except AbandonTimeout:
+            self.log.warning(f"[POSITIONS_SNAPSHOT_LOCK_BUSY] {self.broker}:{self.account} single-flight held >3s — using last (stale-or-None) reason={reason[:60]}")
+            return self.last
+        try:
             if not force and self._fresh():
                 return self.last
             try:
@@ -299,7 +340,7 @@ class BrokerPositions:
             t0 = self.clock()
             self.calls += 1
             try:
-                rows = await asyncio.wait_for(self.fetch(), timeout=float(cfg(self.config, "POSITIONS_BROKER_TIMEOUT_S")))
+                rows = await await_abandonable(self.fetch(), timeout=float(cfg(self.config, "POSITIONS_BROKER_TIMEOUT_S")))
             except Exception as e:
                 self.log.critical(f"🛑 [POSITIONS_BROKER_FETCH_FAILED] {self.broker}:{self.account} {e!r} reason={reason[:60]}")
                 return None
@@ -309,6 +350,11 @@ class BrokerPositions:
             amounts, entries = (normalize_binance if self.broker == "binance" else normalize_tradier)(rows)
             self.last = BrokerSnapshot(self.broker, self.account, t0, amounts, entries)
             return self.last
+        finally:
+            try:
+                _slock.release()
+            except Exception:
+                pass
 
 
 _CACHES: Dict[Tuple[str, str], BrokerPositions] = {}

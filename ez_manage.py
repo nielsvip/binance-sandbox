@@ -34523,18 +34523,23 @@ class MultiAccountTradeManager:
             await self.cleanup_old_dedupe_keys()
             logger.info(f"[EXEC_TRACE] {position_key}: STEP1a_CLEANUP {_xs_who} elapsed={time.time() - _xs_t0:.1f}s")
             try:
-                lock_acquired = await asyncio.wait_for(self.try_add_order_redis(exec_lock_key, expiry_seconds=MAX_EXECUTION_TIME), timeout=15.0)
+                lock_acquired = await _ptruth.await_abandonable(self.try_add_order_redis(exec_lock_key, expiry_seconds=MAX_EXECUTION_TIME), timeout=15.0)
             except asyncio.TimeoutError:
-                logger.warning(f"[LOCK_TIMEOUT] {position_key}: exec lock redis op >15s — treating as busy (existing LOCK_BLOCK path) {_xs_who}")
-                lock_acquired = False
+                logger.warning(f"[LOCK_TIMEOUT] {position_key}: exec lock redis op >15s — abandoning wedged op, local-lock fallback (trades NOW, never defers) {_xs_who}")
+                try:
+                    lock_acquired = await self._try_local_lock(exec_lock_key, MAX_EXECUTION_TIME)
+                except Exception:
+                    lock_acquired = False
             logger.info(f"[EXEC_TRACE] {position_key}: STEP1b_LOCK {_xs_who} acquired={bool(lock_acquired)} elapsed={time.time() - _xs_t0:.1f}s")
             if not lock_acquired:
                 try:
-                    lock_val = (
-                        await self.redis_manager.get(exec_lock_key)
-                        if self.redis_manager
-                        else None
-                    )
+                    if self.redis_manager:
+                        try:
+                            lock_val = await _ptruth.await_abandonable(self.redis_manager.get(exec_lock_key), timeout=3.0)
+                        except asyncio.TimeoutError:
+                            lock_val = None
+                    else:
+                        lock_val = None
                     if (
                         lock_val
                         and isinstance(lock_val, str)
@@ -34546,21 +34551,36 @@ class MultiAccountTradeManager:
                             logger.warning(f"[POST_FILL_COOLDOWN_BLOCK] {position_key}: exec lock held by recent fill ({lock_val}) — {action} refused, order NOT placed (safety, stays; now visible)")
                             return "BLOCK_SKIPPED_POST_FILL_COOLDOWN"
                         else:
-                            await self.force_clear_execution_lock(position_key)
                             try:
-                                lock_acquired = await asyncio.wait_for(self.try_add_order_redis(exec_lock_key, expiry_seconds=MAX_EXECUTION_TIME), timeout=15.0)
+                                await _ptruth.await_abandonable(self.force_clear_execution_lock(position_key), timeout=5.0)
                             except asyncio.TimeoutError:
-                                logger.warning(f"[LOCK_TIMEOUT] {position_key}: exec lock retry redis op >15s — treating as busy {_xs_who}")
-                                lock_acquired = False
+                                pass
+                            try:
+                                lock_acquired = await _ptruth.await_abandonable(self.try_add_order_redis(exec_lock_key, expiry_seconds=MAX_EXECUTION_TIME), timeout=15.0)
+                            except asyncio.TimeoutError:
+                                logger.warning(f"[LOCK_TIMEOUT] {position_key}: exec lock retry redis op >15s — abandoning wedged op, local-lock fallback {_xs_who}")
+                                try:
+                                    lock_acquired = await self._try_local_lock(exec_lock_key, MAX_EXECUTION_TIME)
+                                except Exception:
+                                    lock_acquired = False
                     elif is_reduce:
                         if self.redis_manager:
-                            await self.redis_manager.delete(exec_lock_key)
-                        await self.force_clear_execution_lock(position_key)
+                            try:
+                                await _ptruth.await_abandonable(self.redis_manager.delete(exec_lock_key), timeout=3.0)
+                            except asyncio.TimeoutError:
+                                pass
                         try:
-                            lock_acquired = await asyncio.wait_for(self.try_add_order_redis(exec_lock_key, expiry_seconds=MAX_EXECUTION_TIME), timeout=15.0)
+                            await _ptruth.await_abandonable(self.force_clear_execution_lock(position_key), timeout=5.0)
                         except asyncio.TimeoutError:
-                            logger.warning(f"[LOCK_TIMEOUT] {position_key}: exec lock reduce-retry redis op >15s — treating as busy {_xs_who}")
-                            lock_acquired = False
+                            pass
+                        try:
+                            lock_acquired = await _ptruth.await_abandonable(self.try_add_order_redis(exec_lock_key, expiry_seconds=MAX_EXECUTION_TIME), timeout=15.0)
+                        except asyncio.TimeoutError:
+                            logger.warning(f"[LOCK_TIMEOUT] {position_key}: exec lock reduce-retry redis op >15s — abandoning wedged op, local-lock fallback (exits never blocked) {_xs_who}")
+                            try:
+                                lock_acquired = await self._try_local_lock(exec_lock_key, MAX_EXECUTION_TIME)
+                            except Exception:
+                                lock_acquired = False
                 except Exception:
                     pass
                 if not lock_acquired:
@@ -34632,7 +34652,7 @@ class MultiAccountTradeManager:
             )
             real_notional = abs(current_real_amt) * old_price if old_price > 0 else 0.0
             try:
-                current_price = await asyncio.wait_for(quick_price(symbol), timeout=20.0)
+                current_price = await _ptruth.await_abandonable(quick_price(symbol), timeout=20.0)
             except asyncio.TimeoutError:
                 logger.warning(f"[PRICE_TIMEOUT] {position_key}: quick_price >20s — falling back to position/file price chain {_xs_who}")
                 current_price = 0.0
@@ -34707,7 +34727,7 @@ class MultiAccountTradeManager:
 
             if not current_price or current_price <= 0:
                 try:
-                    current_price, _ = await asyncio.wait_for(get_current_price(symbol), timeout=20.0)
+                    current_price, _ = await _ptruth.await_abandonable(get_current_price(symbol), timeout=20.0)
                 except asyncio.TimeoutError:
                     logger.warning(f"[PRICE_TIMEOUT] {position_key}: method get_current_price >20s — falling back to pos_mark {_xs_who}")
                     current_price = 0.0
