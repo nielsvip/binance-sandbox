@@ -150,10 +150,8 @@ def main():
         while memavail() < 4000:
             time.sleep(120)
         ts = time.strftime("%Y-%m-%dT%H:%MZ", time.gmtime())
-        if running(sym):
-            deferred.append(sym)
-            rec([ts, sym, "DEFER", "pilot/365 running", "", ""])
-            continue
+        # NO pilot defer (differs from NPZB): installs are atomic renames and pilots hold RAM copies,
+        # so a running pilot always sees one complete file; the scheduler re-admits syms on fresh inputs.
         out = SN / f"{sym}.npz"
         if out.exists():
             out.unlink()
@@ -169,10 +167,6 @@ def main():
         if not a.apply:
             rec([ts, sym, "VALIDATED_DRYRUN", detail, md5(out), n])
             done += 1
-            continue
-        if running(sym) or any(host_running(h, sym) for h in [x for x in a.push_hosts.split(",") if x]):
-            deferred.append(sym)
-            rec([ts, sym, "DEFER", "pilot/365 running on a host", "", n])
             continue
         bak.mkdir(exist_ok=True)
         live = LIVE / f"{sym}.npz"

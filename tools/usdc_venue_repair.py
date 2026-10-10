@@ -46,11 +46,15 @@ def main():
             bars = [b for b in json.load(open(sp)) if bar_ts(b["timestamp"]) <= cutoff]
             print(f"{sym} {tf}: src={len(bars)} closed bars {bars[0]['timestamp'][:16]} > {bars[-1]['timestamp'][:16]}")
             for d in DIRS:
+                if not os.path.isdir(os.path.join(ROOT, d)):
+                    print(f"  {d}: no such dir — skipped")
+                    continue
                 lp = os.path.join(ROOT, d, f"{sym}_{tf}.json")
                 n_local = len(json.load(open(lp))) if os.path.exists(lp) else 0
                 print(f"  {d}: local={n_local} -> src={len(bars)}")
                 if a.write:
                     if os.path.exists(lp):
+                        os.makedirs(os.path.join(ROOT, "backups"), exist_ok=True)
                         shutil.copy2(lp, os.path.join(ROOT, "backups", f"usdc_fossil_{sym}_{tf}_{d}_{stamp}.json"))
                     tmp = lp + ".tmp"
                     with open(tmp, "w") as f:
