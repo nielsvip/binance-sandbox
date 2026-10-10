@@ -1747,6 +1747,12 @@ class Config:
     VEC_CONVERGE_TO_FLAT_ENABLED: bool = (
         False  # 2026-10-10 (forest-bellatrix): transitional True served its purpose — men MANA filled 05:11:44Z + GALA filled 06:06:44Z via dust MARKET closes. Dropped to False per peer agreement; legacy-only gate (not owned_has) stays in code for any future stranded legacy key. Joint twin-disavow root-cause with green-centaurus still open.
     )
+    VEC_STALE_FLATTEN_ENABLED: bool = (
+        True  # 2026-10-10 USER TOTAL PARITY (forest-bellatrix): backstop for OWNED keys paper-flat + live-holds with NO vec act (missed transitions). Due only after VEC_STALE_FLATTEN_BARS of continuous flat+holds — never churns actives. Kill switch: False.
+    )
+    VEC_STALE_FLATTEN_BARS: float = (
+        8.0  # 2026-10-10 (forest-bellatrix): stale-flatten persistence — 8x15m bars (2h), far beyond pipeline p99 (~20min), far below churn timescales.
+    )
     PARITY_VEC_EXACT_SOURCE: str = (
         "live_klines"  # 2026-10-06 twin data source: npz (15m NPZ store; servers/replay) | live_klines (NPZ builder in memory on live klines_cache; needs staged backtest_v8_precompute return_arrays) | live_snapshots (rolling buffer of live ii() dicts at closed 15m bars)
     )

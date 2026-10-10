@@ -48996,6 +48996,37 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                 logger.info(f"[VEC_EXACT] {position_key} CLOSE VEC_CONVERGE_TO_FLAT qty={_amt_end:.6f} -> {str(_res_c)[:120]}")
         except Exception as _cvg_e:
             logger.warning(f"[VEC_EXACT_CONVERGE] {position_key} probe err: {_cvg_e}")
+        # USER 2026-10-10 TOTAL PARITY stale-flatten (forest-bellatrix): OWNED keys paper-flat +
+        # live-holds with NO vec act strand forever (missed transitions; converge is legacy-only/OFF).
+        # Fires only after VEC_STALE_FLATTEN_BARS of continuous flat+holds (helper re-arms +1 bar).
+        try:
+            _stf_on = bool(getattr(config, "VEC_STALE_FLATTEN_ENABLED", True))
+        except Exception:
+            _stf_on = True
+        if _stf_on and _amt_end > 0 and not _vx_exit_attempted and _vx_st.get("status") == "OK" and _vx_st.get("vec_holds") is False:
+            try:
+                _stf_bars = float(getattr(config, "VEC_STALE_FLATTEN_BARS", 8.0) or 8.0)
+            except Exception:
+                _stf_bars = 8.0
+            try:
+                _stf_due = bool(_vx.stale_flat_due(position_key, f"{_sym}_{_side}", False, _amt_end, float(_vx_st.get("bar_ts") or 0), _stf_bars))
+            except Exception:
+                _stf_due = False
+            if _stf_due:
+                _stf_reason = _vx.tagged_reason({"reason": "VEC_STALE_FLATTEN paper-flat-live-holds-no-act"})
+                logger.warning(f"[VEC_EXACT_STALE_FLATTEN] {position_key}: live holds {_amt_end:.6f} paper flat {_stf_bars:.0f}bars+ no act -> CLOSE to flat")
+                try:
+                    _stf_tmo = float(getattr(config, "VEC_EXACT_DISPATCH_TIMEOUT_S", 600.0) or 600.0)
+                except Exception:
+                    _stf_tmo = 600.0
+                _stf_px = safe_fetch_float(getattr(_pos, "mark_price", 0), 0.0)
+                _stf_oside = "SELL" if _side == "LONG" else "BUY"
+                try:
+                    _res_s = await asyncio.wait_for(trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_end, current_price=_stf_px, side=_stf_oside, position_side=_side, unique_id=f"VXSTF{int(float(_vx_st.get('bar_ts') or 0))}", is_full_close=True, action="CLOSE", reason=_stf_reason, override_qty=_amt_end, is_hedge=False), timeout=_stf_tmo)
+                except asyncio.TimeoutError:
+                    logger.warning(f"[VEC_EXACT] {position_key} CLOSE VEC_STALE_FLATTEN BLOCKED_DISPATCH_TIMEOUT after {_stf_tmo:.0f}s")
+                    _res_s = "BLOCKED_DISPATCH_TIMEOUT"
+                logger.info(f"[VEC_EXACT] {position_key} CLOSE VEC_STALE_FLATTEN qty={_amt_end:.6f} -> {str(_res_s)[:120]}")
         return True
     except Exception as _vx_e:
         logger.error(f"[VEC_EXACT] process_position {position_key}: {_vx_e}")
