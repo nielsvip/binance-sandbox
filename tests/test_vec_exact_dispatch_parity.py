@@ -175,3 +175,15 @@ def test_broker_wire_calls_timeboxed():
     assert "DUST_WIRE_TIMEOUT" in "\n".join(lines), "dust wire timeout must log its ambiguous state"
     cd = next(i for i, l in enumerate(lines) if "futures_countdown_cancel_all" in l)
     assert "wait_for" in "\n".join(lines[max(0, cd - 4):cd + 1]), "countdown wire must be wait_for-bounded"
+
+
+def test_history_append_dedups_parallel_close_completions():
+    """forest-bellatrix MANA 2026-10-10: converge CLOSE dispatched 4x in 90s while live held
+    (no in-flight guard); two completions 7 min apart each appended REDUCE 28 — the second is
+    a PHANTOM at stale price (broker filled once). Writer must dedup identical rows across
+    parallel completions, not just 10s."""
+    import re
+    src = (ROOT / "ez_positions_service.py").read_text()
+    m = re.search(r"_HISTORY_DEDUP_WINDOW_S\s*=\s*([\d.]+)", src)
+    assert m, "history writer needs a named dedup window covering parallel completions"
+    assert float(m.group(1)) >= 420.0, f"dedup window {m.group(1)}s < observed 7-min phantom gap"

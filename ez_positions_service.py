@@ -7582,16 +7582,18 @@ class PositionService:
             return {}
 
     _history_dedup = {}
+    _HISTORY_DEDUP_WINDOW_S = 900.0
     async def _append_to_history(self, position_key: str, trade_type: str, qty: float, price: float, decision_context: dict = None):
         try :
             dedup_key = f"{position_key}:{trade_type}:{round(float(qty),6)}"
             now_ts = time.time()
             last_ts = self._history_dedup.get(dedup_key, 0)
-            if now_ts - last_ts < 10.0:
+            if now_ts - last_ts < self._HISTORY_DEDUP_WINDOW_S:
+                logger.debug(f"[HISTORY_DEDUP] {dedup_key} suppressed ({now_ts - last_ts:.0f}s < {self._HISTORY_DEDUP_WINDOW_S:.0f}s window)")
                 return
             self._history_dedup[dedup_key] = now_ts
             if len(self._history_dedup) > 5000:
-                cutoff = now_ts - 60
+                cutoff = now_ts - self._HISTORY_DEDUP_WINDOW_S
                 self._history_dedup = {k: v for k, v in self._history_dedup.items() if v > cutoff}
             parts = position_key.split(':')
             account_key = parts[0] if len(parts) > 0 else "unknown"
