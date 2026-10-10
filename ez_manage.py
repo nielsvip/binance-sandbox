@@ -28288,6 +28288,19 @@ class MultiAccountTradeManager:
             logger.info(
                 f"[{position_key}] 📐 DC_POS_SIZE: 3m={_p3m:.2f} 15m={_p15m:.2f} 1h={_p1h:.2f} 4h={_p4h:.2f} D={_pD:.2f} cum={_pcum:.2f} mult={_dc_mult:.2f}x → qty=${quantity * current_price:.2f}"
             )
+        if _vec_exact_reason_ok(reason) and not is_reduce and not is_hedge:
+            # USER 2026-10-10 PARITY (10-06 ruling kept: live sizing may RESIZE, never veto): the mid-gauntlet
+            # floor fires BEFORE later multipliers (BAND_SLOPE/THMA/LS/DC) which re-shred below viability
+            # (live proof: vec $28 → $-32.76 → floor $6 → gauntlet $0.93 → dust-suppress = de facto veto).
+            # Re-floor here, after the last multiplier, so a vec OPEN/AUGMENT can never die as dust.
+            # ROLLBACK: delete block. Closes/reduces/hedges excluded (their qty is positional, never floored up).
+            try:
+                _vff_min = max(6 * float(config.MIN_POSITION_SIZE) / float(current_price), 1.2 * float(exchange_min_qty))
+            except Exception:
+                _vff_min = 0.0
+            if _vff_min > 0 and quantity < _vff_min:
+                logger.warning(f"[VEC_EXACT_SIZE_FLOOR_FINAL] {position_key}: post-gauntlet ${quantity * current_price:.2f} -> floored to ${_vff_min * current_price:.2f} (vec decision kept, veto impossible)")
+                quantity = _vff_min
         # ─────────────────────────────────────────────────────────────────────
         # SIZE_TIER cap: enforce tier sizing for OPEN trades (not augment/reduce/hedge)
         if (

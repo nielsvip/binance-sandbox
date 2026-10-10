@@ -87,6 +87,12 @@ def test_vec_maker_timeout_falls_back_to_market():
     assert "[VEC_MAKER_SUPPRESS_UNKNOWN]" in src, "unverifiable-after-retries must suppress LOUD"
 
 
+def test_vec_final_floor_after_gauntlet():
+    src = (ROOT / "ez_manage.py").read_text()
+    assert "[VEC_EXACT_SIZE_FLOOR_FINAL]" in src, "vec OPEN/AUGMENT must re-floor after the last multiplier (veto impossible)"
+    assert "if _vec_exact_reason_ok(reason) and not is_reduce and not is_hedge:" in src
+
+
 def test_dust_close_wires_market_dust_open_suppressed():
     src = (ROOT / "ez_manage.py").read_text()
     assert "[DUST_CLOSE_MARKET]" in src, "dust CLOSE/REDUCE must wire sanctioned MARKET (never abandoned)"

@@ -4965,7 +4965,7 @@ class TradierConfig:
     )
     AUGMENT_FALLBACK_GAIN_PCT: float = 1.0  # fallback threshold pct from peak
     MAX_AUGMENTS_PER_POSITION: int = (
-        0  # 2026-09-18 PARITY FIX: integer cap 0/1/2/5/10 sweep, 999999=no cap — mirrors crypto config.py:119 and is wired in backtest_v12_engine (augmented_count >= max, REENTRY exempt). Pilot 0/0.5/1/2 was fractional nonsense (0.5 augments impossible). Sweep 0-1-2-5-10 and keep 999999 baseline. ROLLBACK: remove line (falls back to uncapped).
+        999999  # USER 2026-10-10 no-cap mandate restored (was 0 since 2026-09-18 parity-fix: baseline error, candidates 0-1-2-5-10 were meant to be swept against a 999999 baseline, not to become the default). Mirrors crypto config.py no-cap: augment rapidly while favorable. ROLLBACK: 0.
     )
     # === HEDGE vs RATIO SWEEP (2026-03-21 — 65 configs, both systems) ===
     RATIO_MULTIPLIER_TRADIER: float = (

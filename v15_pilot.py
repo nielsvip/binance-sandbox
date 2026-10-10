@@ -2416,6 +2416,7 @@ def _coarse_trim(kept, ev, cap):
 _POSSYM_MIN_N = int(os.environ.get("V15_POSSYM_MIN_N", "3"))  # USER 2026-10-06: sampling must speed sheets ~70-80% -> min evidence 3 sym_sides (= template writer --min-n); was 20 (USER 2026-10-01)
 _ZERO_MIN_N_ROW = int(os.environ.get("V15_ZERO_MIN_N_ROW", "15"))
 _ZERO_MIN_N_CELL = int(os.environ.get("V15_ZERO_MIN_N_CELL", "10"))
+SACRED_ZERO_EXEMPT_PREFIXES = ("GOLDEN_RULE_", "ENTRY_DC_TF", "TECHNICAL_DC_", "DAYTRADE_DC_", "ULTIMATE_DC_4H", "WT_DC_", "DELTA_EXIT", "AUGMENT_", "MAX_AUGMENTS_PER_POSITION")
 
 
 def inert_row_sampled(rr: int, sname: str, seq: int, every: int) -> bool:
@@ -4032,7 +4033,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _zjr = (_zero_row_ev or {}).get(_zrkey)
                     if isinstance(_zjr, dict):
                         _zp, _zn = _zjr.get("pos_sym"), _zjr.get("n_sym")
-                if not _zisd and _zero_condemned(_zp, _zn, _ZERO_MIN_N_ROW):
+                if not _zisd and _zero_condemned(_zp, _zn, _ZERO_MIN_N_ROW) and not str(switch).strip().startswith(SACRED_ZERO_EXEMPT_PREFIXES):
                     _zjr2 = (_zero_row_ev or {}).get(_zrkey) or {}
                     info.update(kind="skip", reason=f"ZERO_FORMULA_ROW: pos_sym=0 in {_zn} syms, never positive — skipped, booked for formula fix (NOT obsolete)", g=None)
                     if _zero_book_enabled():

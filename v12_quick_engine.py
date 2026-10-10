@@ -5766,8 +5766,7 @@ class QuickConfig:
         self.WT_VEL_DECAY_EXIT_ENABLED = True
         # §17.4 order fix: original method code above overwrites these two — re-assert live values LAST
         self.ENTRY_SCORE_THRESHOLD = 27.0
-        # 2026-10-06 globals push: STOCKS unanimous 0 (CRYPTO base differs) — overlay carries stocks truth
-        self.MAX_AUGMENTS_PER_POSITION = 0
+        # 2026-10-10 VOIDED (USER no-cap mandate): STOCKS 0 was the voided 10-09 promotion, not truth — overlay removed, base 999999 governs both venues
         # 2026-10-06 globals push: CL-pushed base differs from SL truth — overlay restores stocks truth (MAX_ORDER excluded §17.3)
         self.COOLDOWN_BARS = 3
         self.EXIT_TOP_FADE_FILTER_TF = "15m"
