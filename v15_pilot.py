@@ -4045,6 +4045,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             items.append((hdr, sanitize_overrides(v, defaults)[0]))
         return {"static": st, "cand_parsed": cand_parsed, "sw_ov": sw_ov, "is_running": is_running, "switch_variant": sv, "items": items}
     inflight: dict = {}
+    _slow_secs: dict = {}
+    _SLOW_RED_S = float(os.environ.get("V15_SLOW_CELL_S", "0.1"))
     def _harvest():
         for ck in [c for c, (f, _) in inflight.items() if f.done()]:
             f, _ = inflight.pop(ck)
@@ -4084,6 +4086,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             try:
                 res, _secs = fut.result(timeout=max(0.01, deadline - _t.time()))
                 _EVAL_CACHE[ck] = res
+                try:
+                    _wsecs = float(_secs) if _secs is not None else 0.0
+                except Exception:
+                    _wsecs = 0.0
+                if _wsecs > _SLOW_RED_S:
+                    _slow_secs[(sname, rr, label)] = _wsecs
+                    if label in ("naked", "hustle") or str(label).startswith(("JOINT:", "RECALC", "RED_RETRY:")):
+                        print(f"[slow-cell] {sname}!{rr} {label} worker_secs={_wsecs:.3f} >{_SLOW_RED_S} (non-yellow: logged, no paint)", flush=True)
             except _cf.TimeoutError:
                 err = f"TIMEOUT {YELLOW_TIMEOUT:.0f}s"
                 fut.cancel()
@@ -4275,6 +4285,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _naked_verdict = (_tried_settled_fn(nres, nerr) if _tried_settled_fn is not None else (not nerr and nres is not None)) if not is_running else True
         naked_settled = is_running or naked_delta is not None or reasons.get("naked") == "ZERO_TRADES" or _naked_verdict
         yellows, promotable, noop_yellows = {}, {}, []
+        _row_slow: dict = {}
         missing_yellows = []  # USER 2026-10-03 RULE#3: yellows with no verdict (timeout/err) — row stays incomplete
         yellow_dups: dict = {}
         _run_ov = sanitize_overrides(dict(cumulative_overrides), defaults)[0]
@@ -4358,6 +4369,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             ycell.value = float(d)
             ycell.font = Font(name="Arial", size=10, bold=False, italic=noop, color=None if ok else "808080")
             ycell.alignment = VISUAL_ALIGN
+            _ssec = _slow_secs.get((sname, rr, hdr), 0.0)
+            if _ssec > _SLOW_RED_S:
+                _spec_mark_red(wb, sname, rr, col, reason="")
+                _red_retry.append({"sheet": sname, "row": rr, "col": col, "label": hdr, "ov": dict(plan["items"][[l for l, _ in plan["items"]].index(hdr)][1]), "cum_before": cumulative_before, "key": key, "slow": True, "slow_secs": _ssec})
+                _row_slow[hdr] = _ssec
+                _zr_log({"kind": "SLOW", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": hdr, "secs": _ssec, "cum_before": cumulative_before})
+                print(f"[slow-cell] {sname}!{rr} {hdr} worker_secs={_ssec:.3f} >{_SLOW_RED_S} -> RED + red-retry, value kept", flush=True)
             if not ok:
                 _flag_to_md(flags_md, sname, rr, switch, cand, f"INVALID {hdr}: {why}", d, 0.0, cumulative_before)
         pos_hdrs = [h for h, d in yellows.items() if d > 1e-9 and promotable.get(h)]
@@ -4549,6 +4567,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         div = _write_div(sname, rr, [row_gain])
         _uw_tag = "UNWIRED_CALCULATED: switch is in the vec_unwired audit (no engine read found) — 0.0 is the honest eval delta" if (row_delta == 0 and str(switch).strip() in UNWIRED_TAG_SW) else ""
         progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "coarse_deferred_filters": st.get("coarse_deferred_filters") or [], "zero_skipped_filters": st.get("zero_skipped") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", "") or _uw_tag, "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "inert_filters": st.get("inert_filters") or [], "inert_sampled": bool(st.get("inert_sampled")), "inert_revived": bool(st.get("inert_revived")), "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "ramfp": (str(_RUN_RAMFP.get(new_symside)) if os.environ.get("V15_RAMFP", "0") == "1" else None), "complete": (not missing_yellows and (not (st.get("sampled_filters") or []) or (_COARSE_ON and not _redo_heal)) and not (st.get("excluded_tab_level") or []) and naked_settled and not _ramfp_stale)}
+        if _row_slow:
+            progress["done"][key]["slow_cells"] = dict(_row_slow)
         if st.get("sampled_filters") or st.get("excluded_tab_level"):
             print(f"[POLICY-CELLS-PENDING] {sname}!{rr} {switch}={cand} sampled={len(st.get('sampled_filters') or [])} tablevel={len(st.get('excluded_tab_level') or [])} — yellows uncalculated, row stays pending (RULE#3 refuses publish until refilled)", flush=True)
         _maybe_write_json(force=promote)
@@ -4572,6 +4592,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _retry_s = float(os.environ.get("V15_RED_RETRY_S", "120"))
     for rc in _red_retry:
         ws = wb[rc["sheet"]]
+        if rc.get("slow"):
+            _EVAL_CACHE.pop(_ck(rc["ov"]), None)
         res, err = _get(rc["sheet"], rc["row"], "RED_RETRY", rc["label"], "RED_RETRY:" + rc["label"], rc["ov"], _t.time() + _retry_s, rc["cum_before"])
         d, ok, why = _delta_vs(res, rc["cum_before"])
         rec = progress.get("done", {}).get(rc["key"], {})
@@ -4599,6 +4621,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if not ok and rc["label"] != "naked":
             rec.setdefault("yellow_reasons", {})[rc["label"]] = why
         rec.setdefault("red_fixed", {})[rc["label"]] = d
+        _rs = _slow_secs.get((rc["sheet"], rc["row"], "RED_RETRY:" + rc["label"]), 0.0)
+        if _rs > _SLOW_RED_S:
+            _spec_mark_red(wb, rc["sheet"], rc["row"], rc["col"], reason="")
+            print(f"[RED-RETRY] {rc['sheet']}!{rc['row']} {rc['label']} still slow ({_rs:.3f}s) — stays RED, value kept", flush=True)
         if rc["label"] != "naked":
             rec.setdefault("yellows", {})[rc["label"]] = float(d)
         try:

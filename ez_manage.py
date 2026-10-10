@@ -48820,19 +48820,41 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                 continue
             _lq, _lov = _vx.live_sizing_args(_act, _qty, _px, config)
             _vx_exit_attempted = True
-            _res = await trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_lq, current_price=_px, side=_oside, position_side=_side, unique_id=f"VX{int(_a['bar_ts'])}{_a['n']}", is_full_close=_full, action=_act, reason=_vx.tagged_reason(_a), override_qty=_lov, is_hedge=False)
+            # USER 2026-10-10 TOTAL PARITY: time-boxed dispatch — a hung exit must surface as a logged
+            # BLOCKED_DISPATCH_TIMEOUT, never stall this position's exits silently (parity ghost class).
+            try:
+                _vx_tmo = float(getattr(config, "VEC_EXACT_DISPATCH_TIMEOUT_S", 600.0) or 600.0)
+            except Exception:
+                _vx_tmo = 600.0
+            try:
+                _res = await asyncio.wait_for(trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_lq, current_price=_px, side=_oside, position_side=_side, unique_id=f"VX{int(_a['bar_ts'])}{_a['n']}", is_full_close=_full, action=_act, reason=_vx.tagged_reason(_a), override_qty=_lov, is_hedge=False), timeout=_vx_tmo)
+            except asyncio.TimeoutError:
+                logger.warning(f"[VEC_EXACT] {position_key} {_act} {_a['reason'][:60]} BLOCKED_DISPATCH_TIMEOUT after {_vx_tmo:.0f}s (exit retried next sweep via take_catchup)")
+                _res = "BLOCKED_DISPATCH_TIMEOUT"
             logger.info(f"[VEC_EXACT] {position_key} {_act} {_a['reason'][:60]} qty={_qty:.6f} -> {str(_res)[:120]}")
         # USER 2026-10-10 TOTAL PARITY convergence: live holds but the twin's paper
         # is flat at a fresh OK bar and no exit was attempted above -> close to flat.
         # Chart-flat must become live-flat; paper state is the chart's end state.
+        # USER 2026-10-10 03:45Z: CONVERGE KILLED — open-when-vec-opens, close-when-vec-closes, NO EXCEPTIONS.
+        # Absence of vec endorsement is NOT a close signal: only a real vec CLOSE/REDUCE act closes.
+        # (Was flattening vec-opened positions ~15min after entry = pure churn.) ROLLBACK: VEC_CONVERGE_TO_FLAT_ENABLED=True.
+        _cvg_on = bool(getattr(config, "VEC_CONVERGE_TO_FLAT_ENABLED", False))
         try:
             _amt_end = abs(safe_fetch_float(getattr(trade_manager.positions.get(position_key), "positionAmt", 0), 0))
-            if _amt_end > 0 and not _vx_exit_attempted and _vx_st.get("status") == "OK" and _vx_st.get("vec_holds") is False:
+            if _cvg_on and _amt_end > 0 and not _vx_exit_attempted and _vx_st.get("status") == "OK" and _vx_st.get("vec_holds") is False:
                 _px_c = safe_fetch_float(getattr(_pos, "mark_price", 0), 0.0)
                 _oside_c = "SELL" if _side == "LONG" else "BUY"
                 _cvg_reason = _vx.tagged_reason({"reason": "VEC_CONVERGE_TO_FLAT paper-flat-live-holds"})
                 logger.warning(f"[VEC_EXACT_CONVERGE] {position_key}: live holds {_amt_end:.6f} but vec paper flat at bar {int(float(_vx_st.get('bar_ts') or 0))} -> CLOSE to flat")
-                _res_c = await trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_end, current_price=_px_c, side=_oside_c, position_side=_side, unique_id=f"VXCVG{int(float(_vx_st.get('bar_ts') or 0))}", is_full_close=True, action="CLOSE", reason=_cvg_reason, override_qty=_amt_end, is_hedge=False)
+                try:
+                    _vx_tmo_c = float(getattr(config, "VEC_EXACT_DISPATCH_TIMEOUT_S", 600.0) or 600.0)
+                except Exception:
+                    _vx_tmo_c = 600.0
+                try:
+                    _res_c = await asyncio.wait_for(trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_end, current_price=_px_c, side=_oside_c, position_side=_side, unique_id=f"VXCVG{int(float(_vx_st.get('bar_ts') or 0))}", is_full_close=True, action="CLOSE", reason=_cvg_reason, override_qty=_amt_end, is_hedge=False), timeout=_vx_tmo_c)
+                except asyncio.TimeoutError:
+                    logger.warning(f"[VEC_EXACT] {position_key} CLOSE VEC_CONVERGE_TO_FLAT BLOCKED_DISPATCH_TIMEOUT after {_vx_tmo_c:.0f}s")
+                    _res_c = "BLOCKED_DISPATCH_TIMEOUT"
                 logger.info(f"[VEC_EXACT] {position_key} CLOSE VEC_CONVERGE_TO_FLAT qty={_amt_end:.6f} -> {str(_res_c)[:120]}")
         except Exception as _cvg_e:
             logger.warning(f"[VEC_EXACT_CONVERGE] {position_key} probe err: {_cvg_e}")
@@ -48980,9 +49002,9 @@ async def process_position(
     if bool(getattr(_ezm_base_config, "PARITY_VEC_EXACT_MODE", False)) or bool(getattr(getattr(trade_manager, "config", None), "PARITY_VEC_EXACT_MODE", False)):
         if await _vec_exact_process_position(account_key, position_key, trade_manager):
             return
-    # ANG TIMING EXITS (2026-10-09 USER smarter exits) — runs only when the twin
-    # did not act (parity respected). Profit-guarded trims only; never at a loss.
-    if await _pp_ang_timing_exits(trade_manager, account_key, position_key):
+    # ANG TIMING EXITS (2026-10-09 USER smarter exits) — USER 2026-10-10 NO EXCEPTIONS: OFF while the vec
+    # twin owns EXIT. Twin-idle means NOBODY acts — a native trim without a vec CLOSE act is a parity violation.
+    if not _vx_native_off() and await _pp_ang_timing_exits(trade_manager, account_key, position_key):
         return f"{EvalStatus.ACTION_TAKEN}:ANG_TIMING_TRIM"
     # REAL: open reported positions must never be filtered by tradeable_keys
     _is_real_open_early = False

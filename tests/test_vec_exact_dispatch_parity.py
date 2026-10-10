@@ -73,3 +73,14 @@ def test_exit_dispatcher_timeboxed():
     src = (ROOT / "ez_manage.py").read_text()
     assert src.count("BLOCKED_DISPATCH_TIMEOUT") >= 2, "EXIT + converge CLOSE must both time-box dispatch"
     assert "VEC_EXACT_DISPATCH_TIMEOUT_S" in src
+
+
+def test_no_native_trim_while_twin_owns_exit():
+    src = (ROOT / "ez_manage.py").read_text()
+    assert "if not _vx_native_off() and await _pp_ang_timing_exits" in src, "native ANG trims must stay off while the twin owns EXIT (twin-idle = nobody acts)"
+
+
+def test_converge_to_flat_killed_by_default():
+    src = (ROOT / "ez_manage.py").read_text()
+    assert 'VEC_CONVERGE_TO_FLAT_ENABLED", False' in src, "converge must default OFF: only a real vec CLOSE act closes"
+    assert "if _cvg_on and _amt_end > 0" in src, "converge CLOSE must be gated on the master"
