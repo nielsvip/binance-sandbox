@@ -29542,7 +29542,14 @@ class MultiAccountTradeManager:
         lock_start_time = time.time()
         lp = current_price
         while time.time() - lock_start_time < 3.0:
-            if await self.try_add_order_redis(maker_lock_key, expiry_seconds=90):
+            try:
+                _mkr_locked = await _ptruth.await_abandonable(self.try_add_order_redis(maker_lock_key, expiry_seconds=90), timeout=2.0)
+            except asyncio.TimeoutError:
+                try:
+                    _mkr_locked = await self._try_local_lock(maker_lock_key, 90)
+                except Exception:
+                    _mkr_locked = False
+            if _mkr_locked:
                 lock_acquired = True
                 break
             val = None
@@ -29561,21 +29568,33 @@ class MultiAccountTradeManager:
                 f"[MAKER_BLOCK] {position_key}: Lock busy — suppressing webhook fallback (sentinel -1.0) to avoid double-order race"
             )
             return False, -1.0
-        await self.try_add_order_redis(active_lock_key, expiry_seconds=60)
+        try:
+            await _ptruth.await_abandonable(self.try_add_order_redis(active_lock_key, expiry_seconds=60), timeout=2.0)
+        except asyncio.TimeoutError:
+            pass
         tracked_order_ids = []
 
         async def release_locks(success_fill=False):
             try:
                 logger.info(f"[EXEC_TRACE] {position_key}: MKR_RELEASE_ENTER success_fill={bool(success_fill)}")
-                await self.clear_active_lock(active_lock_key)
+                try:
+                    await _ptruth.await_abandonable(self.clear_active_lock(active_lock_key), timeout=3.0)
+                except asyncio.TimeoutError:
+                    pass
                 if success_fill:
                     if self.redis_manager:
-                        await self.redis_manager.set(
-                            maker_lock_key, f"post_fill_{side}", ex=90
-                        )
+                        try:
+                            await _ptruth.await_abandonable(self.redis_manager.set(
+                                maker_lock_key, f"post_fill_{side}", ex=90
+                            ), timeout=3.0)
+                        except asyncio.TimeoutError:
+                            pass
                     asyncio.create_task(self._delayed_lock_cleanup(maker_lock_key, 90))
                 else:
-                    await self.clear_active_lock(maker_lock_key)
+                    try:
+                        await _ptruth.await_abandonable(self.clear_active_lock(maker_lock_key), timeout=3.0)
+                    except asyncio.TimeoutError:
+                        pass
                 async with self.dedupe_lock:
                     _rel_pending = _pending_unconfirmed(position_key) if _wire_guard_enabled() else []
                     if not _rel_pending:
@@ -35037,15 +35056,18 @@ class MultiAccountTradeManager:
                         quantity = current_real_amt - retention_qty
                 if quantity <= 0.0:
                     return f"NO QUANTITY LEFT TO REDUCE (Protected by retention_qty {retention_qty:.6f})"
-            await record_decision_context_crypto(
-                self.redis_manager,
-                account_key,
-                position_key,
-                action,
-                reason,
-                i,
-                extra_data={"is_hedge": is_hedge, "hedge_for": hedge_for},
-            )
+            try:
+                await _ptruth.await_abandonable(record_decision_context_crypto(
+                    self.redis_manager,
+                    account_key,
+                    position_key,
+                    action,
+                    reason,
+                    i,
+                    extra_data={"is_hedge": is_hedge, "hedge_for": hedge_for},
+                ), timeout=5.0)
+            except asyncio.TimeoutError:
+                logger.warning(f"[DECCTX_TIMEOUT] {position_key}: decision-context audit >5s — abandoning (audit must never slow trades) {_xs_who}")
             logger.info(f"[EXEC_TRACE] {position_key}: STEP3a_DECCTX {_xs_who} elapsed={time.time() - _xs_t0:.1f}s")
             # 2026-04-30 Job 3 (iii): per-trade returns audit logger — risk-zero additive.
             # Fires only for reduces/closes; never blocks the trade.
