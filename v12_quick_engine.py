@@ -5800,7 +5800,6 @@ class QuickConfig:
         self.LH_HL_FILTER_DC_THRESHOLD_PCT = 1.0
         self.PARTIAL_PROFIT_LOCK_V2_FILTER_TF = "OFF"
         self.REENTRY_SIZE_BREAKOUT_MULT = 0.5
-        self.REGIME_TRENDING_WT_REDUCE_FRAC_LOW = 0.2
         self.WT_15M_BOUNCE_LOW_1H_GT_PREV = False
         self.WT_DC_TF_ENTRY = "15m"
         # parity-sync 20261008: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
