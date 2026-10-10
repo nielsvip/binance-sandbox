@@ -407,12 +407,12 @@ elif mode == "reap":
         elif i["roots"] and all(i["kids"].get(r, 0) == 0 for r in i["roots"]) and i["idle"] > 20 * 60 and i.get("min_age", 0) > 15 * 60:
             kill(i["pids"], "wedged: no linked workers, no output for %.0fmin" % (i["idle"] / 60), ss); dead.add(ss)  # USER 2026-10-07: S1 UNI pair wedged 30+ min (0 CPU, slots held, nothing finished) — auto-clear instead of waiting for the 60-min stall trip. 2026-10-08: min_age grace — piped/starting pilots have no kids + stale log cands for minutes; TERMing a 23s-old healthy pilot churns (KSMUSDT_SHORT).
     if mem < arg["oom_mb"]:
-        _rov, _pdr = None, None
+        _rov, _pdr, _pir = None, None, None
         try:
             sys.path.insert(0, os.path.join(HOME, "binance-sandbox", "tools"))
-            from v15_fleet_scheduler import _rank_oom_victim as _rov, _progress_done_rows as _pdr
+            from v15_fleet_scheduler import _rank_oom_victim as _rov, _progress_done_rows as _pdr, _progress_is_refill as _pir
         except Exception:
-            _rov, _pdr = None, None
+            _rov, _pdr, _pir = None, None, None
         _victim = None
         if _rov is not None and _pdr is not None:
             try:
@@ -421,8 +421,9 @@ elif mode == "reap":
                     if _ss in dead:
                         continue
                     _pd = (groups.get(_ss) or {}).get("pdir") or ""
-                    _done = _pdr(os.path.join(_pd, _ss + "_v14_progress.json")) if _pd else None
-                    _cands.append((_ss, _done, _i["age"]))
+                    _pp = os.path.join(_pd, _ss + "_v14_progress.json") if _pd else ""
+                    _done = _pdr(_pp) if _pp else None
+                    _cands.append((_ss, _done, _i["age"], bool(_pir and _pp and _pir(_pp))))
                 _victim = _rov(_cands)
             except Exception:
                 _victim = None
@@ -687,18 +688,35 @@ def _progress_done_rows(path):
         return None
 
 
+def _progress_is_refill(path):
+    """True when the progress JSON is a REDO refill / heal resume (needs_redo set, heal
+    marker present, or redo_depth >= 1): closest to a publishable result, must survive
+    OOM triage."""
+    try:
+        d = json.load(open(path))
+        return bool(d.get("needs_redo") or d.get("_redo_heal_run") or (d.get("redo_depth") or 0) >= 1)
+    except Exception:
+        return False
+
+
 def _rank_oom_victim(cands):
-    """Least-progress OOM victim. cands: [(ss, done_or_None, age_s)]. A side with no
-    readable progress file and age < 30min counts as 0 rows (brand-new, least loss);
-    no-file + old counts last (unknown act, probably slow 365D — don't murder it).
-    Ties break youngest. Returns ss or None. Never raises."""
+    """Least-progress OOM victim. cands: [(ss, done_or_None, age_s)] or 4-tuples with a
+    refill flag appended. A side with no readable progress file and age < 30min counts
+    as 0 rows (brand-new, least loss); no-file + old counts last (unknown act, probably
+    slow 365D — don't murder it). REFILLS (REDO/heal resumes) sort after everything
+    killable: they are closest to a publishable result (USER 2026-10-10: the guard kept
+    murdering ENAUSDC_SHORT's refill at 186 rows while fresh boards survived). Ties break
+    youngest. Returns ss or None. Never raises."""
     best, best_key = None, None
     for c in cands or []:
         try:
             ss, done, age = c[0], c[1], float(c[2] or 0)
+            refill = bool(len(c) > 3 and c[3])
         except Exception:
             continue
-        if done is None:
+        if refill:
+            key = (2, 0, age)
+        elif done is None:
             key = (0, 0, age) if age < 1800 else (1, 0, age)
         else:
             try:

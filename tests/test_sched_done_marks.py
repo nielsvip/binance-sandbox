@@ -53,6 +53,33 @@ def test_needs_redo_never_done(tmp_path):
     assert m(f) == (False, False, 10.0)
 
 
+def test_oom_victim_spares_refills():
+    r = sched._rank_oom_victim(
+        [
+            ("REFILL_SHORT", 186, 900, True),
+            ("FRESH_LONG", 1500, 1800, False),
+            ("NEWER_LONG", 40, 300, False),
+        ]
+    )
+    assert r == "NEWER_LONG"
+    r2 = sched._rank_oom_victim(
+        [("REFILL_A", 10, 100, True), ("REFILL_B", 5000, 3000, True)]
+    )
+    assert r2 == "REFILL_A"
+    r3 = sched._rank_oom_victim([("A_LONG", 100, 500), ("B_LONG", 50, 600)])
+    assert r3 == "B_LONG"
+
+
+def test_progress_is_refill(tmp_path):
+    f1 = tmp_path / "r.json"
+    f1.write_text(json.dumps({"redo_depth": 1, "done": {}}))
+    assert sched._progress_is_refill(str(f1)) is True
+    f2 = tmp_path / "f.json"
+    f2.write_text(json.dumps({"done": {"k": {}}}))
+    assert sched._progress_is_refill(str(f2)) is False
+    assert sched._progress_is_refill(str(tmp_path / "nope.json")) is False
+
+
 def test_verdicts_and_garbage(tmp_path):
     m = _marks()
     assert m(_write(tmp_path, "e.json", {"verdict": "IMPOSSIBLE"}))[1] is True

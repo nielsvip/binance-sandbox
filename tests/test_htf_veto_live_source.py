@@ -84,3 +84,12 @@ def test_vec_cooldown_default_zero_ruling():
     v = (ROOT / "v12_quick_engine.py").read_text()
     assert "COOLDOWN_BARS_TRADIER: int = 0" in v
     assert '"COOLDOWN_BARS_TRADIER": 0' in v
+
+
+def test_cooldown_zero_all_layers():
+    import json
+    ct = (ROOT / "config_tradier.py").read_text()
+    assert "COOLDOWN_BARS_TRADIER: int = (\n        0" in ct
+    d = json.load(open(ROOT / "data/per_sym_settings.json"))
+    assert d["STOCKS_LONG"]["COOLDOWN_BARS_TRADIER"] == 0
+    assert d["STOCKS_SHORT"]["COOLDOWN_BARS_TRADIER"] == 0

@@ -1,43 +1,30 @@
 {
- "generated_at": "2026-10-10 01:34 UTC",
- "total_capital_usd": 8.58,
+ "generated_at": "2026-10-10 01:39 UTC",
+ "total_capital_usd": 28.39,
  "tier_capital": {
   "A": 0.0,
-  "B": 8.59,
+  "B": 28.39,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
+  "B": 1,
   "C": 0
  },
  "winners": [],
  "losers": [],
- "mediocre": [
-  "inf:AMATUSDT_SHORT"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "inf:AMATUSDT_SHORT",
-   "symbol": "AMATUSDT",
-   "account": "inf",
-   "value_usd": 5.08,
-   "gain_pct": -0.137,
+   "pk": "flz:WLDUSDC_LONG",
+   "symbol": "WLDUSDC",
+   "account": "flz",
+   "value_usd": 28.39,
+   "gain_pct": 0.861,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 0.01,
-   "mark": 507.90415988
-  },
-  {
-   "pk": "inf:ALGOUSDT_SHORT",
-   "symbol": "ALGOUSDT",
-   "account": "inf",
-   "value_usd": 3.51,
-   "gain_pct": 6.14,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 30.2,
-   "mark": 0.11608803
+   "amt": 55.2,
+   "mark": 0.51439272
   }
  ]
 }

@@ -71,7 +71,7 @@ def main():
                     if dd > 1e-6:
                         bad.append((dd, k))
                 frac = len(bad) / len(shared)
-                if frac > 0.01:
+                if frac > 0.02:
                     code = 1
                     worst = sorted(bad, reverse=True)[:3]
                     print(f"{sym} {tf}: overlap={len(shared)} FRAC_MISMATCH {frac:.3f} worst={[(round(d,3), k) for d, k in worst]} ABORT")

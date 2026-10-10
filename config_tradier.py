@@ -6092,7 +6092,7 @@ class TradierConfig:
         40  # 2026-04-20 sweep: 40 (200min) consistently wins over 32 (160min)
     )
     COOLDOWN_BARS_TRADIER: int = (
-        8  # 2026-04-08 SWEEP: 8 bars (40min) → Sharpe 8.22 (+1.30 vs 0 cooldown). Was 16 (80min). ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
+        0  # USER 2026-10-10: immediate DC-break reentry (profit-take 0.1% from edge). Was 8 per 2026-04-08 sweep (+1.30 vs 0); GLOBAL_RISK_GATES rows 4/8/12/16 re-promote if 0 measures worse.
     )
     HARDCODED_RALLY_REENTRY_ENABLED: bool = (
         True  # 2026-09-18 user: reenter if close>exit and wt1_15m>wt1_15m_prev — always tested

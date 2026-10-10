@@ -7081,7 +7081,7 @@ class Config:
         20  # BACKTEST_CHANGE_T9 min conviction score for short entries  # PORTED from TradierConfig 2026-08-17
     )
     COOLDOWN_BARS_TRADIER: int = (
-        8  # 2026-04-08 SWEEP: 8 bars (40min) → Sharpe 8.22 (+1.30 vs 0 cooldown). Was 16 (80min). ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+        0  # USER 2026-10-10: immediate DC-break reentry. Was 8 per 2026-04-08 sweep; sheet rows re-promote if 0 measures worse.  # PORTED from TradierConfig 2026-08-17
     )
     CRYPTO_ROUND_TRIP_COMMISSION_PCT: float = (
         0.0  # tradier commission-free; crypto 0.08% only  # PORTED from TradierConfig 2026-08-17
