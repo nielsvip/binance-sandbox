@@ -1447,7 +1447,7 @@ class AccountConfig:
         """Initialize the Binance client with a hard 10s timeout to prevent blocking bootstrap."""
         if not self.client:
             def _sync_init():
-                c = Client(api_key=self.api_key, api_secret=self.api_secret)
+                c = Client(api_key=self.api_key, api_secret=self.api_secret, requests_params={"timeout": 10})
                 _force_ipv4_for_client(c)
                 return c
             try :
@@ -1474,7 +1474,7 @@ class AccountConfig:
             if self.client:
                 return
             def _sync_init():
-                c = Client(api_key=self.api_key, api_secret=self.api_secret)
+                c = Client(api_key=self.api_key, api_secret=self.api_secret, requests_params={"timeout": 10})
                 _force_ipv4_for_client(c)
                 return c
             try:
@@ -2480,7 +2480,7 @@ class WebSocketManager:
 
     def _init_binance_client_blocking(self):
         try :
-            client = Client(api_key=self.api_key, api_secret=self.api_secret)
+            client = Client(api_key=self.api_key, api_secret=self.api_secret, requests_params={"timeout": 10})
             try :
                 from utils import _force_ipv4_for_client, orjson_default
                 _force_ipv4_for_client(client)
@@ -5133,7 +5133,7 @@ class PositionService:
             logger.warning(f"[positions_service] Missing API credentials for {account_key}, skipping client init")
             return None
         try :
-            client = Client(api_key=api_key, api_secret=api_secret)
+            client = Client(api_key=api_key, api_secret=api_secret, requests_params={"timeout": 10})
             _force_ipv4_for_client(client)
             account.client = client
             return client

@@ -9922,7 +9922,7 @@ class AccountConfig:
                 logger.info(
                     f"[{self.prefix}] Initializing Binance client with API key: {self.api_key[:8]}...{self.api_key[-4:]} (len: {len(self.api_key)})"
                 )
-                self.client = _odg.wrap_binance_client(Client(api_key=self.api_key, api_secret=self.api_secret), self.prefix, cfg=config, logger=logger)  # ORDER_DEDUPE_GUARD wire gate (every futures_create_order)
+                self.client = _odg.wrap_binance_client(Client(api_key=self.api_key, api_secret=self.api_secret, requests_params={"timeout": 10}), self.prefix, cfg=config, logger=logger)  # ORDER_DEDUPE_GUARD wire gate (every futures_create_order)
                 self._apply_ip_binding(self.client)
                 self.sync_binance_time()
                 logger.debug(
@@ -12050,7 +12050,7 @@ class WebSocketManager:
         return aiohttp.ClientSession(connector=connector, timeout=timeout)
 
     async def start(self):
-        self.client = Client(api_key=self.api_key, api_secret=self.api_secret)
+        self.client = Client(api_key=self.api_key, api_secret=self.api_secret, requests_params={"timeout": 10})
         self.sync_binance_time()
         self.session = await self._init_session()
         # User-data WS owned by ez_positions_service.WebSocketManager (canonical). Binance
