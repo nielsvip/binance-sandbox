@@ -48888,6 +48888,17 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
             return False
         _pos = trade_manager.positions.get(position_key) if hasattr(trade_manager, "positions") else None
         _amt = abs(safe_fetch_float(getattr(_pos, "positionAmt", 0), 0)) if _pos is not None else 0.0
+        if _amt <= 0:
+            # USER 2026-10-10: 300 tradeable is plenty — flat + non-tradeable keys get ZERO compute
+            # (no observe, no twin eval, no dispatch). Live holdings always keep their exits.
+            try:
+                _tk = set(await trade_manager.load_tradeable()) if hasattr(trade_manager, "load_tradeable") else None
+            except Exception:
+                _tk = None
+            if _tk and position_key not in _tk:
+                logger.debug(f"[VEC_EXACT] {position_key} prefilter: flat + non-tradeable, skipping twin eval")
+                _vx.owned_drop(position_key)
+                return "ENTRY" in fams
         if _vx.source() == "live_snapshots":
             _vx.observe(_sym, await ii(trade_manager, _sym), time.time())
         if _amt <= 0:

@@ -87,6 +87,14 @@ def test_vec_maker_timeout_falls_back_to_market():
     assert "[VEC_MAKER_SUPPRESS_UNKNOWN]" in src, "unverifiable-after-retries must suppress LOUD"
 
 
+def test_prefilter_skips_refused_before_compute():
+    epq = (ROOT / "ez_positions_quick.py").read_text()
+    ezm = (ROOT / "ez_manage.py").read_text()
+    assert "ENTRY prefilter: skipped" in epq, "ENTRY must prefilter non-tradeable before take/dispatch"
+    assert "prefilter: flat + non-tradeable, skipping twin eval" in ezm, "EXIT must skip twin eval when flat + refused"
+    assert epq.count("load_tradeable") >= 1 and ezm.count("load_tradeable") >= 1
+
+
 def test_exit_skips_are_visible_not_silent():
     src = (ROOT / "ez_manage.py").read_text()
     assert "SKIPPED_BLOCKED_DIVERGENT_FLAT" in src, "flat-live exit skip must log BLOCKED (no ghost)"

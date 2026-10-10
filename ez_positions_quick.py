@@ -28404,6 +28404,19 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
     _vx.set_cfg(config)
     if "ENTRY" not in _vx.families(config):
         return
+    # USER 2026-10-10: 300 tradeable is plenty — prefilter refused keys BEFORE any twin eval or
+    # dispatch (no decisions, no gate stacks, no broker polls burned on keys the gate would refuse).
+    # Empty/unreadable universe fails open (never block trading on infra failure).
+    try:
+        _tk = set(await trade_manager.load_tradeable()) if hasattr(trade_manager, "load_tradeable") else None
+    except Exception:
+        _tk = None
+    if _tk:
+        _pre_n = len(list(position_keys or []))
+        position_keys = [pk for pk in (position_keys or []) if pk in _tk]
+        _pre_skip = _pre_n - len(position_keys)
+        if _pre_skip > 0:
+            logger.debug(f"[VEC_EXACT] ENTRY prefilter: skipped {_pre_skip} non-tradeable keys (zero compute)")
 
     async def _one(_pk):
         try:
