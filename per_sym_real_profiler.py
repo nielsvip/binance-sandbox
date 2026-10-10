@@ -370,31 +370,68 @@ def load_account_syms(account: str) -> List[str]:
         'trb': ['symbols_trb_long.json', 'symbols_trb_short.json'],
     }.get(account, [])
     # 2026-09-06: CRYPTO TESTS ONLY TRADEABLE KEYS — filter to tradeable (defense in depth)
+    # 2026-10-10: single-bad-read hardening (USER: one bad read must never zero crypto filtering).
+    #   - per-entry parse: one corrupt entry is skipped, never nukes the whole set.
+    #   - fail-OPEN only when BOTH sources are unreadable: test the file universe (loud warning) instead of testing zero syms.
     _tradeable_keys: set[str] = set()
     _ps_tradeable: set[str] = set()
+    _tk_ok = False
+    _ps_ok = False
+    _ps_bad = 0
     try:
         _tk_p = ROOT / "tradeable_keys.json"
         if _tk_p.exists():
             _tk_raw = json.loads(_tk_p.read_text())
             if isinstance(_tk_raw, list):
                 _tradeable_keys = set(_tk_raw)
-    except Exception:
-        pass
+                _tk_ok = True
+    except Exception as e:
+        print(f"  [load_syms] tradeable_keys.json UNREADABLE ({e}) — per_sym side carries the filter")
     try:
         _ps_p = ROOT / "data" / "hourly_reconfig" / "per_sym_active_config.json"
         if _ps_p.exists():
             _ps_raw = json.loads(_ps_p.read_text())
-            _ps_tradeable = {k for k, v in _ps_raw.items() if not k.startswith("_") and isinstance(v, dict) and int(v.get("trades", 0) or 0) > 0 and v.get(k.rsplit("_", 1)[-1] + "_ENABLED", True) is not False}
-    except Exception:
-        pass
+            if isinstance(_ps_raw, dict):
+                for _k, _v in _ps_raw.items():
+                    if _k.startswith("_") or not isinstance(_v, dict):
+                        continue
+                    try:
+                        _t = int(_v.get("trades", 0) or 0)
+                    except (TypeError, ValueError):
+                        _ps_bad += 1
+                        continue
+                    if _t <= 0:
+                        continue
+                    try:
+                        _en = _v.get(_k.rsplit("_", 1)[-1] + "_ENABLED", True)
+                    except Exception:
+                        _en = True
+                    if _en is False:
+                        continue
+                    _ps_tradeable.add(_k)
+                _ps_ok = True
+    except Exception as e:
+        print(f"  [load_syms] per_sym_active_config.json UNREADABLE ({e}) — tradeable_keys side carries the filter")
+    if _ps_bad:
+        print(f"  [load_syms] per_sym_active_config.json: skipped {_ps_bad} corrupt entries (filter intact)")
+    _filter_open = not (_tk_ok or _ps_ok)
+    if _filter_open:
+        print("  [load_syms] WARNING: BOTH tradeable sources unreadable — filter OPEN (testing file universe, zero-syms forbidden)")
     def _is_tradeable_side(_side_key: str) -> bool:
+        if _filter_open:
+            return True
         return _side_key in _ps_tradeable or any(_k.endswith(f":{_side_key}") for _k in _tradeable_keys)
     seen = set(); out = []
     for f in files:
         p = ROOT / f
         if not p.exists(): continue
-        raw = re.sub(r',(\s*[\]}])', r'\1', p.read_text())
-        for s in json.loads(raw):
+        try:
+            raw = re.sub(r',(\s*[\]}])', r'\1', p.read_text())
+            _syms = json.loads(raw)
+        except Exception as e:
+            print(f"  [load_syms] {f} parse error: {e}")
+            continue
+        for s in _syms:
             if isinstance(s, str) and s not in seen and (NPZ_DIR / f'{s}.npz').exists():
                 if account in ("flz", "fin", "men", "ang", "inf"):
                     if f.endswith("_long.json"):

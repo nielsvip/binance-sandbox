@@ -3593,7 +3593,7 @@ class TradierConfig:
     REGIME_TRENDING_REENTRY_SIZE_MULT: float = 2.0
     REGIME_TRENDING_SLOT_RESERVE_PCT: float = 0.40
     REGIME_TRENDING_WT_EXIT_VEL: float = -12.0
-    REGIME_TRENDING_WT_REDUCE_FRAC_LOW: float = 0.15
+    REGIME_TRENDING_WT_REDUCE_FRAC_LOW: float = 0.2
     REGIME_TRENDING_WT_REDUCE_FRAC_MED: float = 0.15
     REVERSE_ON_EXIT_ENABLED: bool = False
     RE_2_PCT_OB: float = 95.0
@@ -4564,7 +4564,7 @@ class TradierConfig:
         True  # only exit longs at small top (WT down / HA flip), shorts at bottom
     )
     GAP_MOC_FORCE_MOC_AT_CLOSE: bool = (
-        True  # force MOC at deadline even if no top (gap safety)
+        False  # USER 2026-10-10: template-promoted (was True gap-safety); unblocks stocks parity gate
     )
     GAP_MORNING_REENTRY_ENABLED: bool = (
         True  # re-enter first hours if trend still right
