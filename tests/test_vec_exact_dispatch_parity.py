@@ -162,3 +162,16 @@ def test_entry_run_all_results_logged_not_dropped():
     assert "= await _vd.run_all(" in region, "run_all result must be captured, not bare-awaited"
     assert "ENTRY DISPATCH result=" in region, "non-ok ENTRY dispatches must log key + result"
     assert "except asyncio.CancelledError" in region, "_one must log cancellation before re-raise"
+
+
+def test_broker_wire_calls_timeboxed():
+    """forest-bellatrix 2026-10-10: dust MARKET wire hung on the broker response (no timeout) —
+    GALA filled server-side while the caller wedged (men needed SIGKILL). Order-wiring awaits
+    must be wait_for-bounded with a logged ambiguous-state path (never blind-retry: dupe risk)."""
+    lines = (ROOT / "ez_manage.py").read_text().splitlines()
+    dust = [i for i, l in enumerate(lines) if "_dresp = await asyncio" in l]
+    assert dust, "dust MARKET wire site not found"
+    assert any("wait_for" in lines[i] for i in dust), "dust MARKET wire must be wait_for-bounded"
+    assert "DUST_WIRE_TIMEOUT" in "\n".join(lines), "dust wire timeout must log its ambiguous state"
+    cd = next(i for i, l in enumerate(lines) if "futures_countdown_cancel_all" in l)
+    assert "wait_for" in "\n".join(lines[max(0, cd - 4):cd + 1]), "countdown wire must be wait_for-bounded"

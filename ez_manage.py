@@ -29645,14 +29645,12 @@ class MultiAccountTradeManager:
                         if _dseq is None:
                             logger.critical(f"🛑 [DUST_CLOSE_REFUSED] {position_key}: unconfirmed broker order pending — skipping dust market wire")
                         else:
-                            _dresp = await asyncio.to_thread(
-                                client.futures_create_order,
-                                symbol=symbol,
-                                side=side,
-                                positionSide=position_side,
-                                quantity=str(qty_dec),
-                                type=ORDER_TYPE_MARKET,
-                            )
+                            try:
+                                _dresp = await asyncio.wait_for(asyncio.to_thread(client.futures_create_order, symbol=symbol, side=side, positionSide=position_side, quantity=str(qty_dec), type=ORDER_TYPE_MARKET), timeout=15.0)
+                            except asyncio.TimeoutError:
+                                logger.critical(f"[DUST_WIRE_TIMEOUT] {position_key}: MARKET {side} {qty_dec} no broker response in 15s — server-side state AMBIGUOUS, suppressing fallback (no dupe risk); next fresh CLOSE act retries under ODG guard")
+                                await release_locks()
+                                return False, -1.0
                             _confirm_wire_result("futures_create_order:dust_close_market", position_key, _dresp, _dseq, ta, reason)
                             logger.critical(f"[DUST_CLOSE_MARKET] {position_key} dust ${_mkr_notional:.2f} → MARKET {side} {qty_dec} wired")
                             await release_locks(success_fill=True)
@@ -29810,11 +29808,9 @@ class MultiAccountTradeManager:
             # futures_symbol_ticker removed (mark price not needed; exact bid/ask comes from
             # futures_order_book per iteration). GTX cancel-replace is the proven design — do not revert.
             try:
-                await asyncio.to_thread(
-                    client.futures_countdown_cancel_all,
-                    symbol=symbol,
-                    countdownTime=int(TIMEOUT * 1000) + 2000,
-                )
+                await asyncio.wait_for(asyncio.to_thread(client.futures_countdown_cancel_all, symbol=symbol, countdownTime=int(TIMEOUT * 1000) + 2000), timeout=15.0)
+            except asyncio.TimeoutError:
+                logger.warning(f"[WIRE_TIMEOUT] {position_key}: countdown_cancel_all no response in 15s — proceeding (maker loop re-covers)")
             except Exception:
                 pass
             while time.time() - placement_start_time < TIMEOUT:

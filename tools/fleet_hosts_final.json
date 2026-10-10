@@ -12,8 +12,8 @@
     "crypto"
    ],
    "mem_reserve_mb": 6000,
-   "max_pairs": 1,
-   "workers_per_side": 6,
+   "max_pairs": 2,
+   "workers_per_side": 4,
    "oom_mb": 2000,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM",
    "_note": "2026-10-10: 1 pair (live stack ~8GB + chain + refresh share 31GB; 2 pairs OOM-murdered refills)"
@@ -46,8 +46,8 @@
     "crypto"
    ],
    "mem_reserve_mb": 4000,
-   "max_pairs": 4,
-   "workers_per_side": 6,
+   "max_pairs": 5,
+   "workers_per_side": 4,
    "oom_mb": 1500,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM"
   },
@@ -63,7 +63,7 @@
    ],
    "mem_reserve_mb": 4000,
    "max_pairs": 5,
-   "workers_per_side": 6,
+   "workers_per_side": 4,
    "oom_mb": 1500,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM"
   }
