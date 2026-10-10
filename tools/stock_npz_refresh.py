@@ -105,7 +105,7 @@ def main():
                 r["action"] = "dry-run"; rep[s] = r; continue
             t0 = time.time()
             p = subprocess.run(["nice", "-n", "10", sys.executable, str(ROOT / "tools" / "stock_npz_precompute_relaxed.py"), "--mode", "tradier", "--symbols", s, "--out-dir", str(stage / "indicators")],
-                               capture_output=True, text=True, cwd=str(ROOT), timeout=900, env=dict(os.environ, FORCE_TRADIER_15M_BASE="1"))
+                               capture_output=True, text=True, cwd=str(ROOT), timeout=3600, env=dict(os.environ, FORCE_TRADIER_15M_BASE="1"))
             new = stage / "indicators" / f"{s}.npz"
             g = gate(new)
             r["staged"] = g; r["precompute_s"] = round(time.time() - t0, 1)

@@ -1865,6 +1865,18 @@ would split sweep/live from pilot baselines; needs a director ruling, not a sile
   (4 workers) + pair + live — backfill throttled to workers 2 / nice 15; several backfill sides ERROR
   (Nonet/missing NPZ → template-bold base only, may stay base-blocked until data exists). BB LONG
   forgiven 3→2 (last life before park).
+- **10-MIN WORST_FIRST + 50-MIN PUSH (USER 2026-10-10: never stop mid-run work; make it faster):**
+  Pushers resumed (SIGCONT + crons restored, verified computing). Bottleneck measured: 14% of rows
+  evaluate 175–225 yellows each = 96% of all evals; sample-free fills run ~9 rows/min (6h/board).
+  Fix (1) COARSE SWEEP (`v15_pilot.py`, tests `tests/test_coarse_trim.py` 3/3, canary s1+s2 md5
+  `6528ef62`): `V15_COARSE_YELLOW_CAP=24` (kill-switch `V15_COARSE_SWEEP=0`) caps yellows/row to the
+  top-K by fleet pos_sym priors; overflow recorded as `coarse_deferred_filters` (NOT sampled/hollow);
+  new rows + REDO-heal passes exempt; promoted rows earn the full matrix next pass (`COARSE-EXPAND`);
+  RULE#3 + `complete` forgive pure sampled-cells rows in coarse mode (`COARSE-FORGIVE`, healed only for
+  genuine missing/policy holes). Naked still runs every row; chain stays conservative (coarse understates,
+  never overstates). Fix (2) PUSHER BUDGET (`tools/v15_gain_pusher.py`, tests
+  `tests/test_pusher_budget.py` 2/2, fleet md5 `71cf07ff`): `V15_PUSH_BUDGET_MIN=50` wall-clock deadline
+  pierces round loop + screen_all + elim + ablation; early stops report partial moves + `budget_hit`.
 - **Pusher starvation (USER 2026-10-10: 0 sym_sides in 2h, need 20/hour or s2/s5/s6 shut down):**
   `v15_gain_pusher` marathon polish jobs (5–7h old, round 10) consumed 59–69% of fleet CPU while
   pilots crawled at ~30 rows/min (loads 30–42). Fix: SIGSTOPed all 40 pushers on s2/s5/s6 (resumable,

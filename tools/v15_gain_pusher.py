@@ -27,6 +27,9 @@ PUSH_DIR = ROOT / "data" / "reports" / "gain_pusher"
 REGISTRY = PUSH_DIR / "PRIORITY_SWITCHES.json"
 TRACK_LOG = PUSH_DIR / "TRACKING_LOG.md"
 EVAL_TIMEOUT = 60
+# USER 2026-10-10: 50-min push phase — greedy_push stops after this wall-clock budget and
+# reports partial moves (every promotion is measured evidence, so early stops stay valid).
+_PUSH_BUDGET_S = float(os.environ.get("V15_PUSH_BUDGET_MIN", "50") or 50) * 60.0
 MAX_ROUNDS = 6
 _CRASHERS = []
 
@@ -305,9 +308,11 @@ def _trade_keys(ledger):
     return out
 
 
-def screen_all(symside, prep, cur, cands, effective, base_gain, base_labels):
+def screen_all(symside, prep, cur, cands, effective, base_gain, base_labels, deadline=None):
     scored = []
-    for name, flip in cands:
+    for i, (name, flip) in enumerate(cands):
+        if deadline and i % 10 == 0 and time.time() > deadline:
+            break
         skip = True
         for k, v in flip.items():
             if effective.get(k, None) != v and cur.get(k, None) != v:
@@ -395,12 +400,21 @@ def greedy_push(symside, prep, start_ov, registry, cat_side):
     log(f"{symside}: start gain={base['gain_pct']:.3f} tr={base['trades']} valid={base['valid']} wr={sum(1 for p in base_labels.values() if p > 0) / max(1, len(base_labels)):.2f}")
     moves, tested, shortlist, tabu, priors = [], 0, None, {}, {}
     converged = False
+    budget_hit = False
+    _t0 = time.time()
+    _deadline = (_t0 + _PUSH_BUDGET_S) if _PUSH_BUDGET_S > 0 else None
     for rnd in range(1, 11):
+        if _deadline and time.time() > _deadline:
+            budget_hit = True
+            log(f"{symside} r{rnd}: BUDGET EXCEEDED ({_PUSH_BUDGET_S / 60:.0f}min) — stopping with {len(moves)} moves")
+            break
         effective = dict(uni_defaults)
         effective.update(cur)
         pool = uni_cands if rnd == 1 else shortlist
-        scored = screen_all(symside, prep, cur, pool, effective, base["gain_pct"], base_labels)
+        scored = screen_all(symside, prep, cur, pool, effective, base["gain_pct"], base_labels, _deadline)
         tested += len(scored)
+        if _deadline and time.time() > _deadline:
+            budget_hit = True
         promotable = [s for s in scored if s["valid"] and s["delta"] > 1e-9]
         promotable.sort(key=lambda s: (s["delta"], s["winrate"], s["losers_killed"]), reverse=True)
         promotable = [s for s in promotable if rnd - tabu.get(next(iter(s["flip"])), -99) > 3]
@@ -439,7 +453,12 @@ def greedy_push(symside, prep, start_ov, registry, cat_side):
         base = {"gain_pct": best["gain"]}
         log(f"{symside} r{rnd}: PROMOTE {best['name']} d={best['delta']:+.3f} -> {best['gain']:.3f} wr={best['winrate']:.2f} lk={best['losers_killed']}/wk={best['winners_killed']}")
     cur_gain = timed_eval(prep, cur, 30)["gain_pct"]
+    if budget_hit:
+        log(f"{symside}: elim SKIPPED (budget exceeded)")
     for m in list(reversed(moves)):
+        if _deadline and time.time() > _deadline:
+            budget_hit = True
+            break
         k = next(iter(m["flip"]))
         trial = dict(cur)
         if priors.get(k, "__MISSING__") == "__MISSING__":
@@ -455,7 +474,12 @@ def greedy_push(symside, prep, start_ov, registry, cat_side):
             moves.append({"round": "elim", "name": f"DROP:{k}", "flip": {}, "delta": round(d, 3), "gain": round(cur_gain, 3), "trades": r["trades"], "winrate": 0, "losers_killed": 0, "winners_killed": 0})
             log(f"{symside} elim: DROP {k} d={d:+.3f} -> {cur_gain:.3f} (order artifact removed)")
     ablation = []
+    if budget_hit:
+        log(f"{symside}: ablation SKIPPED (budget exceeded)")
     for k in ablation_keys(cur, registry.get("P2_FILTER_KEYS") or [])[:60]:
+        if _deadline and time.time() > _deadline:
+            budget_hit = True
+            break
         trial = dict(cur)
         trial.pop(k, None)
         r = timed_eval(prep, trial, 30)
@@ -472,7 +496,7 @@ def greedy_push(symside, prep, start_ov, registry, cat_side):
     fin2 = timed_eval(prep, cur, 30)
     assert abs(fin["gain_pct"] - fin2["gain_pct"]) < 1e-9, f"determinism break {fin['gain_pct']} vs {fin2['gain_pct']}"
     fw = _trade_keys(fin.get("ledger"))
-    rep_diag = {"winrate": round(sum(1 for p in fw.values() if p > 0) / max(1, len(fw)), 3), "losers_left": sum(1 for p in fw.values() if p <= 0), "converged": converged, "ablation": ablation}
+    rep_diag = {"winrate": round(sum(1 for p in fw.values() if p > 0) / max(1, len(fw)), 3), "losers_left": sum(1 for p in fw.values() if p <= 0), "converged": converged, "ablation": ablation, "budget_hit": budget_hit, "push_seconds": round(time.time() - _t0, 1)}
     return cur, fin, moves, tested, rep_diag
 
 
@@ -635,6 +659,8 @@ def push_one(symside, runout, registry, workers, do_rerun, streamer=None, anchor
     rep["losers_left"] = rep_diag["losers_left"]
     rep["converged"] = rep_diag["converged"]
     rep["ablation"] = rep_diag.get("ablation", [])
+    rep["budget_hit"] = rep_diag.get("budget_hit", False)
+    rep["push_seconds"] = rep_diag.get("push_seconds", 0.0)
     try:
         prep365 = prepare_batch(symside, 365)
         r365 = timed_eval(prep365, cur, 365) if prep365 else None
