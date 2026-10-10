@@ -1,0 +1,75 @@
+"""VEC_EXACT dispatch parity (USER 2026-10-10 TOTAL PARITY: live trades EXACTLY what the chart shows).
+
+One stuck key used to stall the whole ENTRY sweep sequentially (no timeout), so later vec
+OPENs died silently (guardian VEC_DECISION_NOT_FILLED) and slow fills landed outside the 600s
+window. live_twins/vec_dispatch.run_all bounds concurrency + per-key timeout; both dispatchers
+must use it and must log every skip/block with a BLOCKED keyword (no silent ghosts).
+"""
+import asyncio
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+
+def test_run_all_hang_does_not_block_sweep():
+    import live_twins.vec_dispatch as vd
+
+    async def hang():
+        await asyncio.sleep(30)
+
+    async def fast():
+        await asyncio.sleep(0.01)
+        return "FILLED"
+
+    async def main():
+        return await vd.run_all([("k_hang", hang), ("k_fast", fast)], limit=2, timeout_s=0.2, label="TEST")
+
+    res = asyncio.run(main())
+    assert res[0] == (False, "BLOCKED_DISPATCH_TIMEOUT"), res
+    assert res[1] == (True, "FILLED"), res
+
+
+def test_run_all_error_captured_and_ordered():
+    import live_twins.vec_dispatch as vd
+
+    async def boom():
+        raise RuntimeError("ghost")
+
+    async def ok():
+        return "OK"
+
+    res = asyncio.run(vd.run_all([("a", boom), ("b", ok)], limit=2, timeout_s=5.0, label="TEST"))
+    assert res[0][0] is False and res[0][1].startswith("RuntimeError"), res
+    assert res[1] == (True, "OK"), res
+
+
+def test_run_all_bounded_concurrency():
+    import live_twins.vec_dispatch as vd
+
+    live = {"cur": 0, "peak": 0}
+
+    async def worker():
+        live["cur"] += 1
+        live["peak"] = max(live["peak"], live["cur"])
+        await asyncio.sleep(0.05)
+        live["cur"] -= 1
+        return "x"
+
+    res = asyncio.run(vd.run_all([(f"k{i}", worker) for i in range(6)], limit=2, timeout_s=5.0, label="TEST"))
+    assert all(ok for ok, _ in res), res
+    assert live["peak"] <= 2, live
+
+
+def test_entry_dispatcher_uses_bounded_dispatch_and_logs_skip():
+    src = (ROOT / "ez_positions_quick.py").read_text()
+    assert "vec_dispatch" in src and "run_all" in src, "ENTRY dispatcher must dispatch via vec_dispatch.run_all"
+    assert "SKIPPED_BLOCKED_DIVERGENT_HOLD" in src, "live-holds-but-vec-OPEN skip must be logged (no silent ghost)"
+    assert "VEC_EXACT_DISPATCH_TIMEOUT_S" in src, "ENTRY timeout must be tunable"
+
+
+def test_exit_dispatcher_timeboxed():
+    src = (ROOT / "ez_manage.py").read_text()
+    assert src.count("BLOCKED_DISPATCH_TIMEOUT") >= 2, "EXIT + converge CLOSE must both time-box dispatch"
+    assert "VEC_EXACT_DISPATCH_TIMEOUT_S" in src

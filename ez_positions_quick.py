@@ -28386,18 +28386,26 @@ def _vx_native_off() -> bool:
         return False
 
 
+_VX_HOLD_SKIP_LOGGED = set()  # (pk, bar_ts): live-holds-but-vec-OPEN skip logged once per bar (no per-sweep spam)
+
+
 async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> None:
     """PARITY_VEC_EXACT_MODE ENTRY family: flat keys open exactly where the vec engine opens (live_twins/vec_exact.py),
-    reason = vec reason + ' |VEC_EXACT', routed execute_trade_action -> execute_now."""
+    reason = vec reason + ' |VEC_EXACT', routed execute_trade_action -> execute_now.
+    USER 2026-10-10 TOTAL PARITY: per-key dispatch runs CONCURRENTLY (bounded) with a per-key timeout
+    (live_twins/vec_dispatch.run_all) — one stuck key used to stall the whole sweep sequentially, so later
+    vec OPENs died silently (guardian VEC_DECISION_NOT_FILLED) and slow fills landed outside the 600s window."""
     try:
         from live_twins import vec_exact as _vx
+        from live_twins import vec_dispatch as _vd
     except Exception as _e:
         logger.error(f"[VEC_EXACT] import failed: {_e}")
         return
     _vx.set_cfg(config)
     if "ENTRY" not in _vx.families(config):
         return
-    for _pk in list(position_keys or []):
+
+    async def _one(_pk):
         try:
             _acct, _sym, _side = (
                 _pk.split(":", 1)[0],
@@ -28405,7 +28413,7 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
                 _pk.rsplit("_", 1)[-1],
             )
             if _side not in ("LONG", "SHORT"):
-                continue
+                return f"SKIP_BAD_SIDE_{_pk}"
             _pos = (
                 trade_manager.positions.get(_pk)
                 if hasattr(trade_manager, "positions")
@@ -28419,7 +28427,24 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
             if _vx.source() == "live_snapshots":
                 _vx.observe(_sym, await _ez_ii(trade_manager, _sym), time.time())
             if _amt > 0:
-                continue
+                # live holds but vec may say OPEN (vec paper flat): never silent — log once per bar so the
+                # parity monitor counts a divergent hold, not a ghost. The OPEN stays unconsumed; the EXIT-side
+                # converge-close flattens live and the entry fires on a later sweep once flat. ROLLBACK: delete block.
+                try:
+                    _st = _vx.actions_at(_sym, _side, time.time())
+                    _bts = float(_st.get("bar_ts") or 0.0)
+                    _has_open = any((a.get("type") or "").upper() == "OPEN" for a in _st.get("actions") or [])
+                    if _has_open and _bts > 0:
+                        _tag = (_pk, _bts)
+                        if _tag not in _VX_HOLD_SKIP_LOGGED:
+                            _VX_HOLD_SKIP_LOGGED.add(_tag)
+                            if len(_VX_HOLD_SKIP_LOGGED) > 20000:
+                                for _old in list(_VX_HOLD_SKIP_LOGGED)[:10000]:
+                                    _VX_HOLD_SKIP_LOGGED.discard(_old)
+                            logger.warning(f"[VEC_EXACT] {_pk} OPEN SKIPPED_BLOCKED_DIVERGENT_HOLD live holds {_amt:.6f} but vec OPEN at bar {int(_bts)} (converge-close owns the fix; entry retried when flat)")
+                except Exception:
+                    pass
+                return f"SKIP_LIVE_HOLDS_{_pk}"
             for _a in await __import__("positions_truth").offloop_serialized(
                 _vx.take, _sym, _side, time.time(), ("OPEN",)
             ):  # 2026-10-06 director: off the event loop (men PAU_TIMEOUT)
@@ -28447,9 +28472,21 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
                 logger.info(
                     f"[VEC_EXACT] {_pk} {_act} {_a['reason'][:60]} qty={_qty:.6f} -> {str(_res)[:120]}"
                 )
-
+            return f"DISPATCHED_{_pk}"
         except Exception as _e:
             logger.error(f"[VEC_EXACT] {_pk}: {_e}")
+            return f"ERROR_{type(_e).__name__}_{_pk}"
+
+    _calls = [(_pk, (lambda _p: (lambda: _one(_p)))(_pk)) for _pk in list(position_keys or [])]
+    try:
+        _lim = int(getattr(config, "VEC_EXACT_DISPATCH_LIMIT", 8) or 8)
+    except Exception:
+        _lim = 8
+    try:
+        _tmo = float(getattr(config, "VEC_EXACT_DISPATCH_TIMEOUT_S", 600.0) or 600.0)
+    except Exception:
+        _tmo = 600.0
+    await _vd.run_all(_calls, limit=_lim, timeout_s=_tmo, label="VEC_EXACT_ENTRY")
 
 
 async def check_entry_candidates_for_account(

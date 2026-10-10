@@ -591,11 +591,14 @@ def _repair_allowed_for_tier(tier, measured):
 def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None):
     """USER 2026-10-09 (trb gainers absolute priority): W chains + W new before ALL M/L work. Stable sort
     keeps chain-first within a tier. Running pilots are never touched — this orders new launches only.
-    USER 2026-10-10 (82 redo backlog): needs_redo RESUMES outrank everything (paid work finalises in
-    minutes; a refill unblocks done30 where a fresh 3h board cannot)."""
+    USER 2026-10-10 (82 redo backlog): needs_redo RESUMES outrank everything WITHIN their
+    segment — but held chains (no slot) ALWAYS sort before new admissions: the launch loop
+    BREAKS at the first over-cap new sym, so a redo-new ahead of held chains froze the fleet
+    (launched=[] 03:00-03:35Z). Key = (needs_slot, redo, tier): held-redo, held, new-redo, new."""
     seq = [(s, False) for s in held_ordered] + [(s, True) for s in adopted_owned] + [(s, True) for s in new_syms]
     _rs = redo or set()
-    seq.sort(key=lambda t: (0 if f"{t[0]}_LONG" in _rs or f"{t[0]}_SHORT" in _rs else 1, _sym_tier_rank(t[0], tiers)))
+    _rk = lambda b: 0 if f"{b}_LONG" in _rs or f"{b}_SHORT" in _rs else 1
+    seq.sort(key=lambda t: (1 if t[1] else 0, _rk(t[0]), _sym_tier_rank(t[0], tiers)))
     return seq
 
 
