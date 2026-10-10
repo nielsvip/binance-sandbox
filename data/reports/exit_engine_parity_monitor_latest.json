@@ -1,24 +1,23 @@
 {
- "now": "2026-10-10T17:24:49.067552+00:00",
+ "now": "2026-10-10T18:24:52.822837+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 2522,
- "last_exit_ts": "2026-10-10T17:21:52.753211+00:00",
+ "n_exit_rows": 2531,
+ "last_exit_ts": "2026-10-10T18:23:30.331521+00:00",
  "n_leaks": 3,
- "n_gate_on": 213,
+ "n_gate_on": 203,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 195,
- "n_unverified": 53,
- "since": "2026-10-08T17:24:49.067552+00:00",
+ "n_unmapped": 197,
+ "n_unverified": 52,
+ "since": "2026-10-08T18:24:52.822837+00:00",
  "vec_exact_by_action": {
-  "OPEN": 1221,
-  "CLOSE": 821,
-  "AUGMENT": 1,
-  "REDUCE": 15
+  "OPEN": 1225,
+  "CLOSE": 832,
+  "REDUCE": 19
  },
- "native_rows": 464,
+ "native_rows": 455,
  "unverified_by_family": {
-  "ULTIMATE_DC (None=None)": 53
+  "ULTIMATE_DC (None=None)": 52
  },
  "leaks_by_family": {
   "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF=OFF)": 2,
@@ -29,12 +28,11 @@
   "EXIT_VELOCITY_WT inf:RENDERUSDT_LONG": 1
  },
  "gate_on_by_family": {
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 183,
-  "CYCLE_TP (CYCLE_TP_TIERED_ENABLED)": 4,
-  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 13,
-  "DC_DAYTRADE_STOP (DC_DAYTRADE_ENABLED)": 1,
+  "CYCLE_TP (CYCLE_TP_TIERED_ENABLED)": 1,
   "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 9,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 181,
   "DC_BASIS_3M_REDUCE (DC_BASIS_3M_REDUCE_ENABLED)": 1,
+  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 9,
   "ALL_TF_AGAINST": 2
  },
  "ungated_by_family": {},
@@ -42,18 +40,17 @@
  "unmapped": {
   "BB_TAKE_15m": 11,
   "NON_TRADEABLE_WT15M_EXIT_LONG_wt-4.4": 9,
-  "RSI2_EXIT_LIVE_rsi2=7.7_thr=10.0": 8,
   "SUBSTITUTION_FOR_men:BNBUSDC_LONG": 7,
-  "RSI2_EXIT_LIVE_rsi2=0.3_thr=10.0": 6,
+  "SUBSTITUTION_FOR_men:BTCUSDC_LONG": 6,
+  "SUBSTITUTION_FOR_men:AVAXUSDC_SHORT": 6,
   "SUBSTITUTION_FOR_men:ENJUSDT_LONG": 6,
   "DC_BB_D_BREAK_REVERSE_close_BB_BREAK_D": 5,
   "SUBSTITUTION_FOR_men:ETHUSDC_LONG": 5,
   "TECHNICAL_TARGET_dc_15m_high_-0.10%_TA": 4,
-  "SUBSTITUTION_FOR_men:BTCUSDC_LONG": 4,
-  "SUBSTITUTION_FOR_men:AVAXUSDC_SHORT": 4,
+  "SUBSTITUTION_FOR_men:GRTUSDT_SHORT": 4,
   "SUBSTITUTION_FOR_ang:ADAUSDC_LONG": 4,
+  "RSI2_EXIT_LIVE_rsi2=0.3_thr=10.0": 3,
   "NON_TRADEABLE_WT15M_EXIT_SHORT_wt13.0": 3,
-  "SUBSTITUTION_FOR_men:GRTUSDT_SHORT": 3,
   "SUBSTITUTION_FOR_men:SNXUSDT_LONG": 3,
   "SUBSTITUTION_FOR_men:SOLUSDC_LONG": 3,
   "SUBSTITUTION_FOR_men:COTIUSDT_SHORT": 3,
@@ -78,9 +75,10 @@
   "SUBSTITUTION_FOR_men:XLMUSDT_SHORT": 2,
   "SUBSTITUTION_FOR_men:IOTXUSDT_SHORT": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-1.77% age": 2,
-  "LR_BAND_HARVEST_4h_pb0.09_g12.90%": 1,
-  "CB_HTF_EXHAUST_BAD_ENTRY: g=-1.91% age": 1,
-  "DC_BASIS_PROFIT_EXIT": 1,
+  "SUBSTITUTION_FOR_men:LTCUSDC_LONG": 2,
+  "SUBSTITUTION_FOR_ang:ARKMUSDT_LONG": 2,
+  "SUBSTITUTION_FOR_ang:TRBUSDT_LONG": 2,
+  "RSI2_EXIT_LIVE_rsi2=7.7_thr=10.0": 1,
   "RSI2_EXIT_LIVE_rsi2=4.6_thr=10.0": 1,
   "BB_TAKE_15m_g3.89": 1,
   "ORPHANED_HEDGE_PARENT_CLOSED": 1,
@@ -92,10 +90,9 @@
   "NON_TRADEABLE_WT15M_EXIT_SHORT_wt17.8": 1
  },
  "actions": {
-  "CLOSE": 1172,
-  "OPEN": 1222,
-  "REDUCE": 20,
-  "AUGMENT": 1,
-  "QUICK_CLOSE": 107
+  "OPEN": 1226,
+  "CLOSE": 1162,
+  "REDUCE": 21,
+  "QUICK_CLOSE": 122
  }
 }
