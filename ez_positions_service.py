@@ -9759,9 +9759,12 @@ class PositionService:
                 except Exception:
                     pass
 
-            # HEDGE PAIR CLEANUP — only for ang/inf/fin (accounts that use winners/losers)
-            # flz/men symbols are intentionally added with BOTH sides — do NOT clean them up
-            _hedge_cleanup_accounts = {'ang', 'inf', 'fin'}
+            # HEDGE PAIR CLEANUP — only for ang/inf (accounts that use winners/losers)
+            # flz/men symbols are intentionally added with BOTH sides — do NOT clean them up.
+            # 2026-10-10 USER (unlock ez_positions_service.py): fin joins the exempt set —
+            # fin trades its full universe BOTH sides unconditionally (men-style); pair
+            # cleanup was discarding the unconditional keys and re-narrowing fin to ~13.
+            _hedge_cleanup_accounts = {'ang', 'inf'}
             if account_key in _hedge_cleanup_accounts:
                 for _sym, sides in symbols_in_account.items():
                     if 'LONG' in sides and 'SHORT' in sides:

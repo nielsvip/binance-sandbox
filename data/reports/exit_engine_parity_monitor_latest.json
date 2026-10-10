@@ -1,22 +1,22 @@
 {
- "now": "2026-10-10T05:23:54.705384+00:00",
+ "now": "2026-10-10T06:23:58.589283+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 4391,
- "last_exit_ts": "2026-10-10T05:23:22.779456+00:00",
+ "n_exit_rows": 4200,
+ "last_exit_ts": "2026-10-10T06:22:35.682393+00:00",
  "n_leaks": 3,
- "n_gate_on": 2512,
+ "n_gate_on": 2286,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 116,
+ "n_unmapped": 115,
  "n_unverified": 3,
- "since": "2026-10-08T05:23:54.705384+00:00",
+ "since": "2026-10-08T06:23:58.589283+00:00",
  "vec_exact_by_action": {
-  "OPEN": 1222,
-  "REDUCE": 4,
-  "CLOSE": 530,
-  "AUGMENT": 1
+  "OPEN": 1230,
+  "CLOSE": 558,
+  "AUGMENT": 1,
+  "REDUCE": 4
  },
- "native_rows": 2634,
+ "native_rows": 2407,
  "unverified_by_family": {
   "ULTIMATE_DC (None=None)": 3
  },
@@ -29,9 +29,9 @@
   "EXIT_VELOCITY_WT inf:RENDERUSDT_LONG": 1
  },
  "gate_on_by_family": {
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 2174,
-  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 118,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 1949,
   "MTF_BB_REJECT_EXIT (MTF_BB_REJECT_EXIT_ENABLED)": 4,
+  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 117,
   "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 196,
   "DC_DAYTRADE_STOP (DC_DAYTRADE_ENABLED)": 3,
   "PARTIAL_PROFIT_LOCK (PARTIAL_PROFIT_LOCK_ENABLED)": 9,
@@ -57,7 +57,6 @@
   "NON_TRADEABLE_WT15M_EXIT_SHORT_wt9.2": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.52% age": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.58% age": 2,
-  "WT_CROSSUNDER_FINAL_S_k=10_g4.53": 1,
   "WT_CROSSUNDER_FINAL_S_k=10_g4.79": 1,
   "WT_CROSSUNDER_FINAL_S_k=12_g4.86": 1,
   "WT_CROSSUNDER_FINAL_S_k=12_g4.55": 1,
@@ -93,10 +92,10 @@
   "BB_TAKE_15m_g1.71": 1
  },
  "actions": {
-  "CLOSE": 3147,
-  "OPEN": 1223,
-  "REDUCE": 10,
+  "CLOSE": 2948,
+  "OPEN": 1231,
   "QUICK_REDUCE": 9,
+  "REDUCE": 10,
   "AUGMENT": 1,
   "QUICK_CLOSE": 1
  }

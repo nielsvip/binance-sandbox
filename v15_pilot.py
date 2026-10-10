@@ -1737,6 +1737,20 @@ def _pool_eval(overrides: dict, window_days: int):
     t0 = _tp.time()
     return _eps(_POOL_PREPARED, overrides, window_days), _tp.time() - t0
 
+def _pool_eval_batch(items: list, window_days: int):
+    # batched worker: N evals per pool task (amortizes submit/pickle/collect overhead).
+    # Per-item isolation: one bad eval never poisons siblings (each wrapped).
+    import time as _tp
+    from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps
+    out = {}
+    for _ckey, _ov in items:
+        _t0 = _tp.time()
+        try:
+            out[_ckey] = (_eps(_POOL_PREPARED, _ov, window_days), _tp.time() - _t0, "")
+        except Exception as _be:
+            out[_ckey] = (None, _tp.time() - _t0, f"ERR {_be}"[:120])
+    return out
+
 def _pool_eval_ledger(overrides: dict, window_days: int):
     """forked worker for the DIAGNOSE_REPAIR trade autopsy: metrics + compact realised trade rows in gain-pp units."""
     import time as _tp
@@ -4078,19 +4092,45 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         return {"static": st, "cand_parsed": cand_parsed, "sw_ov": sw_ov, "is_running": is_running, "switch_variant": sv, "items": items}
     inflight: dict = {}
     _slow_secs: dict = {}
-    _SLOW_RED_S = float(os.environ.get("V15_SLOW_CELL_S", "2.0"))
+    _SLOW_RED_S = float(os.environ.get("V15_SLOW_CELL_S", "0.1"))
+    _BATCH_N = max(1, int(os.environ.get("V15_POOL_BATCH_N", "1")))
+    _pend_batch: list = []
     def _harvest():
         for ck in [c for c, (f, _) in inflight.items() if f.done()]:
-            f, _ = inflight.pop(ck)
+            f, _ = inflight.pop(ck, (None, None))
+            if f is None:
+                continue
             try:
-                res, _secs = f.result(timeout=0)
-                _EVAL_CACHE[ck] = res
+                _bres = f.result(timeout=0)
+                if isinstance(_bres, dict):
+                    for _k, (_r, _s, _e) in _bres.items():
+                        if not _e:
+                            _EVAL_CACHE[_k] = _r
+                        inflight.pop(_k, None)
+                else:
+                    _EVAL_CACHE[ck] = _bres[0]
             except Exception:
                 pass
+    def _flush_batch():
+        # submit pending evals as ONE pool task (shared future across its cks)
+        if _pool is None or not _pend_batch:
+            return
+        batch = _pend_batch[:]
+        del _pend_batch[:]
+        try:
+            fut = _pool.submit(_pool_eval_batch, batch, args.window_days)
+        except Exception:
+            return
+        _now = _t.time()
+        for _bck, _bov in batch:
+            if _bck not in _EVAL_CACHE and _bck not in inflight:
+                inflight[_bck] = (fut, _now)
     def _submit(ov: dict):
         ck = _ck(ov)
-        if _pool is not None and ck not in _EVAL_CACHE and ck not in inflight:
-            inflight[ck] = (_pool.submit(_pool_eval, ov, args.window_days), _t.time())
+        if _pool is not None and ck not in _EVAL_CACHE and ck not in inflight and all(c != ck for c, _ in _pend_batch):
+            _pend_batch.append((ck, ov))
+            if len(_pend_batch) >= _BATCH_N:
+                _flush_batch()
         return ck
     _spec_state = {"ptr": 0, "ver": 0, "ptr_ver": 0}
     def _prefetch(qi: int):
@@ -4114,10 +4154,21 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             res, cached = _EVAL_CACHE[ck], True
         elif _pool is not None:
             _submit(ov)
+            _flush_batch()
             fut, _ = inflight[ck]
             try:
-                res, _secs = fut.result(timeout=max(0.01, deadline - _t.time()))
-                _EVAL_CACHE[ck] = res
+                _bres = fut.result(timeout=max(0.01, deadline - _t.time()))
+                if isinstance(_bres, dict):
+                    for _k, (_r, _s, _e) in _bres.items():
+                        if not _e:
+                            _EVAL_CACHE[_k] = _r
+                    _it = _bres.get(ck, (None, 0.0, "ERR missing"))
+                    res, _secs, _berr = _it[0], _it[1], _it[2]
+                    if _berr:
+                        err = _berr[:120]
+                else:
+                    res, _secs = _bres
+                    _EVAL_CACHE[ck] = res
                 try:
                     _wsecs = float(_secs) if _secs is not None else 0.0
                 except Exception:
