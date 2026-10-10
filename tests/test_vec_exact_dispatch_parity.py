@@ -128,3 +128,22 @@ def test_converge_to_flat_killed_by_default():
     src = (ROOT / "ez_manage.py").read_text()
     assert 'VEC_CONVERGE_TO_FLAT_ENABLED", False' in src, "converge must default OFF: only a real vec CLOSE act closes"
     assert "if _cvg_on and _amt_end > 0" in src, "converge CLOSE must be gated on the master"
+
+
+def test_execute_now_step1_step2_blocks_are_logged():
+    """USER 2026-10-10: ang:ASTSUSDT_SHORT vec OPEN died silently between STEP1_LOCK and
+    STEP2_POS_FETCH (guardian VEC_DECISION_NOT_FILLED, zero refusal lines). Every BLOCK
+    return in that region must log position_key first — safety gates may refuse, never silently."""
+    lines = (ROOT / "ez_manage.py").read_text().splitlines()
+    step1 = next(i for i, l in enumerate(lines) if "STEP1_LOCK action=" in l)
+    step2 = next(i for i, l in enumerate(lines) if "STEP2_POS_FETCH action=" in l)
+    assert step1 < step2
+    region = lines[step1:step2]
+    checked = 0
+    for idx, line in enumerate(region):
+        s = line.strip()
+        if s.startswith("return ") and ("BLOCK" in s or "ORDER_DEDUPE" in s):
+            checked += 1
+            window = "\n".join(region[max(0, idx - 6):idx])
+            assert "logger." in window and "position_key" in window, f"silent BLOCK return between STEP1 and STEP2: {s}"
+    assert checked >= 2, "expected at least post-fill + dedupe BLOCK returns in STEP1->STEP2"
