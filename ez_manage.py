@@ -34512,10 +34512,20 @@ class MultiAccountTradeManager:
             logger.info(
                 f"[EXEC_TRACE] {position_key}: STEP1_LOCK action={action} is_aug={is_augment} is_red={_is_reduce}"
             )
+            _xs_t0 = time.time()
+            try:
+                _xs_task = asyncio.current_task()
+                _xs_who = f"pid={os.getpid()} task={_xs_task.get_name() if _xs_task else '?'}"
+            except Exception:
+                _xs_who = "pid=? task=?"
             await self.cleanup_old_dedupe_keys()
-            lock_acquired = await self.try_add_order_redis(
-                exec_lock_key, expiry_seconds=MAX_EXECUTION_TIME
-            )
+            logger.info(f"[EXEC_TRACE] {position_key}: STEP1a_CLEANUP {_xs_who} elapsed={time.time() - _xs_t0:.1f}s")
+            try:
+                lock_acquired = await asyncio.wait_for(self.try_add_order_redis(exec_lock_key, expiry_seconds=MAX_EXECUTION_TIME), timeout=15.0)
+            except asyncio.TimeoutError:
+                logger.warning(f"[LOCK_TIMEOUT] {position_key}: exec lock redis op >15s — treating as busy (existing LOCK_BLOCK path) {_xs_who}")
+                lock_acquired = False
+            logger.info(f"[EXEC_TRACE] {position_key}: STEP1b_LOCK {_xs_who} acquired={bool(lock_acquired)} elapsed={time.time() - _xs_t0:.1f}s")
             if not lock_acquired:
                 try:
                     lock_val = (
@@ -34535,16 +34545,20 @@ class MultiAccountTradeManager:
                             return "BLOCK_SKIPPED_POST_FILL_COOLDOWN"
                         else:
                             await self.force_clear_execution_lock(position_key)
-                            lock_acquired = await self.try_add_order_redis(
-                                exec_lock_key, expiry_seconds=MAX_EXECUTION_TIME
-                            )
+                            try:
+                                lock_acquired = await asyncio.wait_for(self.try_add_order_redis(exec_lock_key, expiry_seconds=MAX_EXECUTION_TIME), timeout=15.0)
+                            except asyncio.TimeoutError:
+                                logger.warning(f"[LOCK_TIMEOUT] {position_key}: exec lock retry redis op >15s — treating as busy {_xs_who}")
+                                lock_acquired = False
                     elif is_reduce:
                         if self.redis_manager:
                             await self.redis_manager.delete(exec_lock_key)
                         await self.force_clear_execution_lock(position_key)
-                        lock_acquired = await self.try_add_order_redis(
-                            exec_lock_key, expiry_seconds=MAX_EXECUTION_TIME
-                        )
+                        try:
+                            lock_acquired = await asyncio.wait_for(self.try_add_order_redis(exec_lock_key, expiry_seconds=MAX_EXECUTION_TIME), timeout=15.0)
+                        except asyncio.TimeoutError:
+                            logger.warning(f"[LOCK_TIMEOUT] {position_key}: exec lock reduce-retry redis op >15s — treating as busy {_xs_who}")
+                            lock_acquired = False
                 except Exception:
                     pass
                 if not lock_acquired:
@@ -34560,6 +34574,7 @@ class MultiAccountTradeManager:
                 if not _odg_dec.allowed:
                     logger.critical(f"[ORDER_DEDUPE_BLOCK_CALLER] {position_key}: preflight refused code={_odg_dec.code} action={action} reason={(reason or '')[:80]} — order NOT placed (safety, stays; now visible)")
                     return f"ORDER_DEDUPE_BLOCK_{_odg_dec.code}"
+            logger.info(f"[EXEC_TRACE] {position_key}: STEP1c_PREFLIGHT {_xs_who} elapsed={time.time() - _xs_t0:.1f}s")
             _rup = (reason or "").upper()
             _is_reentry_exec = (
                 "REENTRY" in _rup
@@ -34596,11 +34611,13 @@ class MultiAccountTradeManager:
                             return f"BLOCK_ALREADY_AUGMENTED_{_mins_ago:.1f}m"
                     except Exception as e:
                         logger.debug(f"CD err: {e}")
-            logger.info(f"[EXEC_TRACE] {position_key}: STEP2_POS_FETCH action={action}")
+            logger.info(f"[EXEC_TRACE] {position_key}: STEP1d_AUGCD {_xs_who} elapsed={time.time() - _xs_t0:.1f}s")
+            logger.info(f"[EXEC_TRACE] {position_key}: STEP2_POS_FETCH action={action} span1_elapsed={time.time() - _xs_t0:.1f}s {_xs_who}")
             if not is_sandbox_account(config, account_key):  # 2026-10-06 USER POSITIONS_TRUTH: local older than POSITIONS_MAX_AGE_S -> broker positionRisk; mismatch refuses entries
                 _pt_blk = await _ptruth.ez_pre_order_check(self, account_key, symbol, position_key, position_side, action, reason, config=config, logger=logger)
                 if _pt_blk:
                     return _pt_blk
+            logger.info(f"[EXEC_TRACE] {position_key}: STEP2a_SNAPSHOT {_xs_who} elapsed={time.time() - _xs_t0:.1f}s")
             position = await self.get_position(position_key)
             baseline_amt = (safe_fetch_float(position.positionAmt, 0.0))
             current_real_amt = (
@@ -34612,7 +34629,12 @@ class MultiAccountTradeManager:
                 else 0.0
             )
             real_notional = abs(current_real_amt) * old_price if old_price > 0 else 0.0
-            current_price = await quick_price(symbol)
+            try:
+                current_price = await asyncio.wait_for(quick_price(symbol), timeout=20.0)
+            except asyncio.TimeoutError:
+                logger.warning(f"[PRICE_TIMEOUT] {position_key}: quick_price >20s — falling back to position/file price chain {_xs_who}")
+                current_price = 0.0
+            logger.info(f"[EXEC_TRACE] {position_key}: STEP2b_PRICE {_xs_who} elapsed={time.time() - _xs_t0:.1f}s")
             # ABSOLUTE: > min_pos_qty? Then 3% gain or BLOCKED. Reentry ALWAYS allowed.
             _min_pos_val_exec = getattr(config, "MIN_POSITION_SIZE", 45.0)
             if is_augment and real_notional > 0 and real_gain < 3.0:
@@ -34682,7 +34704,12 @@ class MultiAccountTradeManager:
                 return "BLOCK_STALE_DATA_MISMATCH"
 
             if not current_price or current_price <= 0:
-                current_price, _ = await get_current_price(symbol)
+                try:
+                    current_price, _ = await asyncio.wait_for(get_current_price(symbol), timeout=20.0)
+                except asyncio.TimeoutError:
+                    logger.warning(f"[PRICE_TIMEOUT] {position_key}: method get_current_price >20s — falling back to pos_mark {_xs_who}")
+                    current_price = 0.0
+            logger.info(f"[EXEC_TRACE] {position_key}: STEP2c_PRICEFB {_xs_who} elapsed={time.time() - _xs_t0:.1f}s")
             pos_mark = (
                 safe_fetch_float(getattr(position, "mark_price", 0.0), 0.0)
                 if position
