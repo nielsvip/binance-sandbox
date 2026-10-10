@@ -46660,6 +46660,7 @@ class TradierTradeManager:
             # ═══════════════════════════════════════════════════════════════════════
             # HTF_TREND_VETO_ON_REDUCE — 2026-05-21 USER URGENT MANDATE
             # Block reduce/close when Daily WT still SUPPORTS position direction.
+            # USER 2026-10-10 live-imitates-vec: UNCOND_* bypasses (vec UNCOND site closes with NO gates; PPL_ = vec alias).
             # Mirror of HTF_TREND_VETO above, but for is_reduce: LONG+wt1_D>wt2_D → BLOCK; SHORT+wt1_D<wt2_D → BLOCK.
             # Stops EOD_SLIM_RATIO, SENTIMENT_FADE, SCALP_TIMEOUT, MTF_ATR_TRAIL etc. firing against the macro trend.
             # Bypass: R1_/R2_/HEDGE/PARTIAL_PROFIT_LOCK/EOD_FORCE_FLAT/EMERGENCY/LIQUIDATION/PARABOLIC_EXIT/LOSS_EXIT_TECHNICAL_BYPASS reasons.
@@ -46699,7 +46700,7 @@ class TradierTradeManager:
                 )
                 _htfr_bypass = any(
                     s in _htfr_reason_up for s in _htfr_bypass_substrings
-                ) or _htfr_reason_up.startswith("PPL_")
+                ) or _htfr_reason_up.startswith("PPL_") or _htfr_reason_up.startswith("UNCOND_")
                 if not _htfr_bypass:
                     # USER 2026-10-09 live-imitates-vec: self.tradier_indicators is never wired (None) so the veto silently passed everywhere while the vec twin (HTF_TREND_VETO_ON_REDUCE_ENABLED default True) blocked. Fall back to the manager's own snapshot (NPZ-complete in replay). PPL_ alias = vec VEC_REASON_ALIASES.
                     try:

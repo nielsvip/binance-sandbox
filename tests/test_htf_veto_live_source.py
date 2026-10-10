@@ -74,3 +74,7 @@ def test_parser_carries_dc_prev():
     s = _src()
     assert 'd[f"dc_low_{tf}_prev"]' in s
     assert 'd[f"dc_high_{tf}_prev"]' in s
+
+
+def test_uncond_bypasses_veto_like_vec():
+    assert '_htfr_reason_up.startswith("UNCOND_")' in _src()
