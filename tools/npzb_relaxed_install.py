@@ -81,6 +81,11 @@ def rec(row):
         w.writerow(row)
 
 
+CORE_KEYS = ["timestamps", "timestamp_15m", "htf_align"] + [f"{f}_{t}" for t in ("15m", "1h", "4h", "D") for f in ("open", "high", "low", "close", "volume")] + [
+    "dc_high_1h", "dc_low_1h", "dc_high_4h", "dc_low_4h", "dc_high_D", "dc_low_D", "close_1h", "close_4h", "close_D",
+]
+
+
 def validate(sym, ref_keys):
     import numpy as np
     fails = []
@@ -95,9 +100,12 @@ def validate(sym, ref_keys):
         fails.append(f"marker={marker}")
     if A.is_leaky(store):
         fails.append("is_leaky True")
-    missing = set(ref_keys) - set(store) - FUNDOI_OK
-    if missing:
-        fails.append("keys missing vs ref: %s" % sorted(missing)[:6])
+    # thin builds legitimately lack fossil/derived keys (formation_* derived on the fly by
+    # ensure_npz_formation_fields; *_M need 12+ monthlies; funding/oi applied by nightly fundoi).
+    # The REAL gate is sweep_loader_ok post-install (true engine reads) with rollback.
+    missing_core = [k for k in CORE_KEYS if k not in store]
+    if missing_core:
+        fails.append("core keys missing: %s" % missing_core[:8])
     t = np.asarray(store["timestamps"]).astype("float64")
     n = len(t)
     span = float((t[-1] - t[0]) / 86400.0)
