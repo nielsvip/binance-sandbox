@@ -1,22 +1,22 @@
 {
- "now": "2026-10-10T06:23:58.589283+00:00",
+ "now": "2026-10-10T07:24:01.854791+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 4200,
- "last_exit_ts": "2026-10-10T06:22:35.682393+00:00",
+ "n_exit_rows": 3968,
+ "last_exit_ts": "2026-10-10T07:24:06.431800+00:00",
  "n_leaks": 3,
- "n_gate_on": 2286,
+ "n_gate_on": 2051,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 115,
+ "n_unmapped": 109,
  "n_unverified": 3,
- "since": "2026-10-08T06:23:58.589283+00:00",
+ "since": "2026-10-08T07:24:01.854791+00:00",
  "vec_exact_by_action": {
-  "OPEN": 1230,
-  "CLOSE": 558,
+  "OPEN": 1227,
+  "CLOSE": 570,
   "AUGMENT": 1,
   "REDUCE": 4
  },
- "native_rows": 2407,
+ "native_rows": 2166,
  "unverified_by_family": {
   "ULTIMATE_DC (None=None)": 3
  },
@@ -29,10 +29,9 @@
   "EXIT_VELOCITY_WT inf:RENDERUSDT_LONG": 1
  },
  "gate_on_by_family": {
-  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 1949,
-  "MTF_BB_REJECT_EXIT (MTF_BB_REJECT_EXIT_ENABLED)": 4,
-  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 117,
-  "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 196,
+  "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF)": 175,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 1747,
+  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 109,
   "DC_DAYTRADE_STOP (DC_DAYTRADE_ENABLED)": 3,
   "PARTIAL_PROFIT_LOCK (PARTIAL_PROFIT_LOCK_ENABLED)": 9,
   "CYCLE_TP (CYCLE_TP_TIERED_ENABLED)": 5,
@@ -42,11 +41,9 @@
  "ungated_by_family": {},
  "safety_by_family": {},
  "unmapped": {
-  "RSI2_EXIT_LIVE_rsi2=5.9_thr=10.0": 13,
   "BB_TAKE_15m": 11,
   "RSI2_EXIT_LIVE_rsi2=7.7_thr=10.0": 10,
   "NON_TRADEABLE_WT15M_EXIT_LONG_wt-4.4": 9,
-  "RSI2_EXIT_LIVE_rsi2=5.0_thr=10.0": 8,
   "RSI2_EXIT_LIVE_rsi2=0.3_thr=10.0": 6,
   "DC_BB_D_BREAK_REVERSE_close_BB_BREAK_D": 5,
   "TECHNICAL_TARGET_dc_15m_high_-0.10%_TA": 4,
@@ -57,11 +54,6 @@
   "NON_TRADEABLE_WT15M_EXIT_SHORT_wt9.2": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.52% age": 2,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.58% age": 2,
-  "WT_CROSSUNDER_FINAL_S_k=10_g4.79": 1,
-  "WT_CROSSUNDER_FINAL_S_k=12_g4.86": 1,
-  "WT_CROSSUNDER_FINAL_S_k=12_g4.55": 1,
-  "WT_CROSSUNDER_FINAL_S_k=12_g4.65": 1,
-  "WT_CROSSUNDER_FINAL_S_k=12_g4.66": 1,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-1.13% age": 1,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.51% age": 1,
   "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.73% age": 1,
@@ -89,14 +81,23 @@
   "BB_TAKE_15m_g2.45": 1,
   "BB_TAKE_15m_g2.31": 1,
   "BB_TAKE_15m_g2.00": 1,
-  "BB_TAKE_15m_g1.71": 1
+  "BB_TAKE_15m_g1.71": 1,
+  "SUBSTITUTION_FOR_men:BBUSDT_SHORT": 1,
+  "SUBSTITUTION_FOR_men:XTZUSDT_SHORT": 1,
+  "CB_HTF_EXHAUST_BAD_ENTRY: g=-0.53% age": 1,
+  "SUBSTITUTION_FOR_men:GRTUSDT_SHORT": 1,
+  "SUBSTITUTION_FOR_men:SNXUSDT_LONG": 1,
+  "SUBSTITUTION_FOR_men:EGLDUSDT_SHORT": 1,
+  "SUBSTITUTION_FOR_men:SOLUSDC_LONG": 1,
+  "SUBSTITUTION_FOR_men:COTIUSDT_SHORT": 1,
+  "SUBSTITUTION_FOR_men:BTCUSDC_LONG": 1
  },
  "actions": {
-  "CLOSE": 2948,
-  "OPEN": 1231,
+  "CLOSE": 2700,
+  "OPEN": 1228,
   "QUICK_REDUCE": 9,
   "REDUCE": 10,
   "AUGMENT": 1,
-  "QUICK_CLOSE": 1
+  "QUICK_CLOSE": 20
  }
 }
