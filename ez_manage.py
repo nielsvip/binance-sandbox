@@ -29688,6 +29688,14 @@ class MultiAccountTradeManager:
             logger.critical(
                 f"📊 [MAKER_QTY] {position_key}: qty_abs={qty_abs:.6f} step={step} → qty_str={qty_str} side={side} reason={reason[:50]}"
             )
+            try:
+                _ror = self.__dict__.setdefault("_recent_order_reasons", {})
+                _ror_list = _ror.setdefault(position_key, [])
+                _ror_now = time.time()
+                _ror_list[:] = [_r for _r in _ror_list if _ror_now - _r[0] <= 600.0]
+                _ror_list.append((_ror_now, float(qty_abs), str(reason or "")))
+            except Exception:
+                pass
             placement_start_time = time.time()
             active_order_id = None
             active_price = None

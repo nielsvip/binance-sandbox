@@ -7561,6 +7561,21 @@ class PositionService:
         except Exception: pass
         return {}
 
+    @staticmethod
+    def _match_recent_order_reason(ror_list, qty, now, window_s=300.0):
+        """Qty-matched (±1%) in-memory order reason within window_s; prunes expired entries. Maker fills land 60-150s after placement, so the window must cover the chase (10s missed them all -> Redis fallback -> stale/MSD reasons)."""
+        try:
+            ror_list[:] = [_r for _r in ror_list if now - _r[0] <= window_s]
+            _q = float(qty or 0.0)
+            for _ts, _amt, _rs in reversed(ror_list):
+                if now - _ts > window_s:
+                    break
+                if _amt > 0 and _q > 0 and abs(_amt - _q) / max(_amt, 1e-9) < 0.01:
+                    return _rs
+        except Exception:
+            pass
+        return None
+
     async def _fetch_decision_context(self, position_key: str) -> dict:
         """Fetch decision context: Redis first, then JSONL fallback (in worker thread), then history fallback.
         2026-04-30: Disk scans moved to asyncio.to_thread. Each redis.get is bounded by asyncio.wait_for(timeout=0.5)."""
@@ -7631,21 +7646,14 @@ class PositionService:
             # 2026-05-08 CURSE FIX: prefer qty-matched recent-order reason on trade_manager.
             # The Redis `decision:<pkey>` key is overwritten by competing concurrent strategies
             # so the most-recent decision often belongs to a DIFFERENT order than this fill.
-            # Match by qty within 1% over the last 10s — a single-pkey ring populated by
-            # send_webhook at order placement time.
+            # Match by qty within 1% over the last 300s — a single-pkey ring populated by
+            # place_maker_order at order placement time (2026-10-10: was 10s, missed every maker
+            # fill at 60-150s -> Redis fallback -> stale/MSD reasons -> false NON_VEC_ENTRY_FILL).
             explicit_reason = None
             try:
                 tm = getattr(self, 'trade_manager', None)
                 if tm and hasattr(tm, '_recent_order_reasons'):
-                    _ror_list = tm._recent_order_reasons.get(position_key, [])
-                    _ror_now = time.time()
-                    _ror_qty = float(qty or 0.0)
-                    for _ror_ts, _ror_amt, _ror_reason in reversed(_ror_list):
-                        if _ror_now - _ror_ts > 10.0:
-                            break
-                        if _ror_amt > 0 and _ror_qty > 0 and abs(_ror_amt - _ror_qty) / max(_ror_amt, 1e-9) < 0.01:
-                            explicit_reason = _ror_reason
-                            break
+                    explicit_reason = PositionService._match_recent_order_reason(tm._recent_order_reasons.get(position_key, []), qty, time.time())
             except Exception:
                 pass
             redis_key = f"decision:{position_key}"
