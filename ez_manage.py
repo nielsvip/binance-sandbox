@@ -29566,6 +29566,7 @@ class MultiAccountTradeManager:
 
         async def release_locks(success_fill=False):
             try:
+                logger.info(f"[EXEC_TRACE] {position_key}: MKR_RELEASE_ENTER success_fill={bool(success_fill)}")
                 await self.clear_active_lock(active_lock_key)
                 if success_fill:
                     if self.redis_manager:
@@ -29582,6 +29583,7 @@ class MultiAccountTradeManager:
                         self.order_deduplication.pop(position_key, None)
                     else:
                         logger.critical(f"🛑 [RELEASE_KEPT] {position_key}: {_rel_pending} unconfirmed at broker — NOT erasing, NOT freeing re-place")
+                logger.info(f"[EXEC_TRACE] {position_key}: MKR_RELEASE_EXIT")
             except Exception as e:
                 logger.error(f"[LOCK_RELEASE_ERROR] {position_key}: {e}")
 
