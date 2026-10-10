@@ -8,7 +8,6 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import positions_truth as pt  # noqa: E402
-from ez_positions_service import PositionService  # noqa: E402
 
 
 def run(coro):
@@ -53,29 +52,36 @@ def test_abandonable_propagates_exception():
         run(pt.await_abandonable(_boom(), timeout=5.0))
 
 
+def _fresh_key(tag):
+    return f"t:KEY_{tag}_{time.time_ns()}"
+
+
 def test_match_recent_reason_maker_window():
-    now = time.time()
-    ror = [(now - 120.0, 10.0, "B12 |VEC_EXACT")]
-    assert PositionService._match_recent_order_reason(ror, 10.0, now) == "B12 |VEC_EXACT"
+    pk = _fresh_key("win")
+    pt.note_order_reason(pk, 10.0, "B12 |VEC_EXACT", now=time.time() - 120.0)
+    assert pt.match_recent_order_reason(pk, 10.0) == "B12 |VEC_EXACT"
 
 
 def test_match_recent_reason_qty_tolerance():
-    now = time.time()
-    ror = [(now - 5.0, 100.0, "R |VEC_EXACT")]
-    assert PositionService._match_recent_order_reason(ror, 100.5, now) == "R |VEC_EXACT"
-    assert PositionService._match_recent_order_reason(ror, 110.0, now) is None
+    pk = _fresh_key("tol")
+    pt.note_order_reason(pk, 100.0, "R |VEC_EXACT")
+    assert pt.match_recent_order_reason(pk, 100.5) == "R |VEC_EXACT"
+    assert pt.match_recent_order_reason(pk, 110.0) is None
 
 
 def test_match_recent_reason_prunes_expired():
+    pk = _fresh_key("prune")
     now = time.time()
-    ror = [(now - 400.0, 10.0, "OLD"), (now - 200.0, 10.0, "NEW |VEC_EXACT")]
-    assert PositionService._match_recent_order_reason(ror, 10.0, now) == "NEW |VEC_EXACT"
-    assert len(ror) == 1
+    pt.note_order_reason(pk, 10.0, "OLD", now=now - 400.0)
+    pt.note_order_reason(pk, 10.0, "NEW |VEC_EXACT", now=now - 200.0)
+    assert pt.match_recent_order_reason(pk, 10.0, now=now) == "NEW |VEC_EXACT"
+    assert len(pt._RECENT_ORDER_REASONS[pk]) == 1
 
 
 def test_match_recent_reason_lot_floor():
-    now = time.time()
-    ror = [(now - 102.0, 1.1, "B_KZONE |VEC_EXACT")]
-    assert PositionService._match_recent_order_reason(ror, 1.1, now) == "B_KZONE |VEC_EXACT"
-    ror_pre = [(now - 102.0, 1.191319, "B_KZONE |VEC_EXACT")]
-    assert PositionService._match_recent_order_reason(ror_pre, 1.1, now) is None
+    pk = _fresh_key("floor")
+    pt.note_order_reason(pk, 1.1, "B_KZONE |VEC_EXACT", now=time.time() - 102.0)
+    assert pt.match_recent_order_reason(pk, 1.1) == "B_KZONE |VEC_EXACT"
+    pk2 = _fresh_key("prefloor")
+    pt.note_order_reason(pk2, 1.191319, "B_KZONE |VEC_EXACT", now=time.time() - 102.0)
+    assert pt.match_recent_order_reason(pk2, 1.1) is None

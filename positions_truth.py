@@ -258,6 +258,37 @@ def normalize_tradier(rows: List[Dict[str, Any]]) -> Tuple[Dict[Tuple[str, str],
     return amounts, entries
 
 
+_RECENT_ORDER_REASONS = {}
+
+
+def note_order_reason(position_key, qty, reason, now=None, window_s=600.0):
+    """Record an order placement for fill attribution. Module-level (wiring-independent): the fill recorder reads it back by qty match, immune to Redis wedge/staleness that produced false NON_VEC_ENTRY_FILL."""
+    try:
+        _l = _RECENT_ORDER_REASONS.setdefault(position_key, [])
+        _t = time.time() if now is None else now
+        _l[:] = [_r for _r in _l if _t - _r[0] <= window_s]
+        _l.append((_t, float(qty), str(reason or "")))
+    except Exception:
+        pass
+
+
+def match_recent_order_reason(position_key, qty, now=None, window_s=300.0):
+    """Qty-matched (±1%) in-memory order reason within window_s; prunes expired entries. Maker fills land 60-150s after placement, so the window must cover the chase."""
+    try:
+        _l = _RECENT_ORDER_REASONS.get(position_key, [])
+        _t = time.time() if now is None else now
+        _l[:] = [_r for _r in _l if _t - _r[0] <= window_s]
+        _q = float(qty or 0.0)
+        for _ts, _amt, _rs in reversed(_l):
+            if _t - _ts > window_s:
+                break
+            if _amt > 0 and _q > 0 and abs(_amt - _q) / max(_amt, 1e-9) < 0.01:
+                return _rs
+    except Exception:
+        pass
+    return None
+
+
 class AbandonTimeout(asyncio.TimeoutError):
     """await_abandonable timed out. Subclasses TimeoutError so existing handlers catch it unchanged."""
 
