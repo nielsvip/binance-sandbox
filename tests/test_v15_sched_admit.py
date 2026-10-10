@@ -234,10 +234,10 @@ class VenueOnlyTest(unittest.TestCase):
         self.assertTrue(_venue_allowed("AAPL", self.NATIVES))
         self.assertTrue(_venue_allowed("MSFT", self.NATIVES))
 
-    def test_stocks_gate_passes_usdt_stock_variants(self):
+    def test_stocks_gate_blocks_usdt_stock_variants(self):
         _SCHED._VENUE_ONLY = "stocks"
-        self.assertTrue(_venue_allowed("AAPLUSDT", self.NATIVES))
-        self.assertTrue(_venue_allowed("COINUSDC", self.NATIVES))
+        self.assertFalse(_venue_allowed("AAPLUSDT", self.NATIVES))
+        self.assertFalse(_venue_allowed("COINUSDC", self.NATIVES))
 
     def test_unknown_value_fails_open(self):
         _SCHED._VENUE_ONLY = "bogus"

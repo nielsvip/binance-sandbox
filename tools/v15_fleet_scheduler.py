@@ -485,13 +485,10 @@ _VERDICT_TERMINAL_RE = re.compile(r'"verdict":\s*"(IMPOSSIBLE|NO_TRADES|BEST_EFF
 _LAUNCH_CAPS = {"30D": 3, "365D": 2, "REPAIR": 1, "GS": 1}  # USER 2026-10-09: single source of truth (gate + pending_actions); 30D 6->3, 40-min slices + free resume make more unnecessary
 _VENUE_ONLY = os.environ.get("V15_SCHED_VENUE_ONLY", "").strip().lower()  # TEMPORARY USER 2026-10-10: stocks-only weekend push (all stocks rereun before Monday) — gates NEW pairs only; held chains drain, running pilots untouched. Unset/unknown = no gate.
 def _venue_allowed(sym, native_syms=None):
-    """TEMPORARY stocks-only gate (USER 2026-10-10). True unless V15_SCHED_VENUE_ONLY=stocks and sym is pure crypto. USDT/USDC variants of native stock names (AAPLUSDT) count as stocks via base-name match. Pure (tested)."""
+    """TEMPORARY stocks-only gate (USER 2026-10-10). True unless V15_SCHED_VENUE_ONLY=stocks and sym is not native-stocks venue. USDT stock equivalents (AAPLUSDT) are NEVER stocks: user 2026-10-10 mandates actual Tradier info only (their klines+npz deleted fleet-wide). Pure (tested)."""
     if _VENUE_ONLY != "stocks":
         return True
-    if venue_of(sym) == "stocks":
-        return True
-    base = sym[:-4] if sym.endswith(("USDT", "USDC")) else sym
-    return bool(native_syms) and base in native_syms
+    return venue_of(sym) == "stocks"
 _GAIN_TIER_W_FRAC = 0.4  # top 40% of measured syms = winners (recalculated every round with the latest NPZ)
 _GAIN_TIER_L_FRAC = 1.0 / 3.0  # bottom third = losers/low gainers (deferred, re-admitted after _GAIN_TIER_DEFER_DAYS)
 def _defer_windows():
