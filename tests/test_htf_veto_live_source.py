@@ -78,3 +78,9 @@ def test_parser_carries_dc_prev():
 
 def test_uncond_bypasses_veto_like_vec():
     assert '_htfr_reason_up.startswith("UNCOND_")' in _src()
+
+
+def test_vec_cooldown_default_zero_ruling():
+    v = (ROOT / "v12_quick_engine.py").read_text()
+    assert "COOLDOWN_BARS_TRADIER: int = 0" in v
+    assert '"COOLDOWN_BARS_TRADIER": 0' in v

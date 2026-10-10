@@ -1826,3 +1826,23 @@ would split sweep/live from pilot baselines; needs a director ruling, not a sile
   audit in `data/cell_evidence/_rotated_release.json`; proof on run29+30: 1,810/44,818 released.
   Naked still runs every row; disabled switches are NO-SKIP log-only in the pilot. (5) NEVER-CONDEMN
   mirrors `AUTOPSY_DENY` + pilot `KG_NEVER_SKIP` (exact + substring) — MODE demoted on sight.
+
+## 86. SCHEDULER DONE-STALL — NESTED endgame.final_gain FROZE THE FLEET AT ~1 RESULT/2H (USER 2026-10-10)
+
+- **Symptom:** 4 hosts at 93–100% CPU, 94 RULE#3 REDO-refusals vs ~0 publishes in 12h; needs_redo boards
+  (625–758 hollow rows each) rotted 5–16h unrelaunched; `done_n` 88 with almost no real finals.
+- **Root cause (two poisons, one regex):** the probe's flat `"final_gain"` regex matched the NESTED
+  `endgame.final_gain` mid-run stage gain → (1) every endgame-reaching board marked DONE, so its REDO
+  refill never relaunched; (2) the same phantom values harvested as tier gains, and M-tier deferral
+  (1d window) then parked both sides as `terminal_deferred` — HYPEUSDT invisible 8h+ on an unpublished
+  "gain 19.3". AXTI parked correctly (not in universe/allowlist).
+- **Fix (`tools/v15_fleet_scheduler.py`, tests `tests/test_sched_done_marks.py` 4/4, S1 md5-verified):**
+  (1) `_progress_marks()` — TOP-LEVEL `final_gain` (numeric, non-bool) + no `needs_redo` = done;
+  top-level verdict = quarantine; probe cache versioned to v2 (v1 verdicts poisoned). (2) Tier deferral
+  exempts already-started sides (chain continuations drain, only fresh boards defer — the docstring's
+  own promise). (3) One-time purge of 88 phantom `gain_seen` entries (state backed up).
+- **Proof:** next ticks: done 88→8, ENAUSDC REDO relaunched, HYPE requeued pending, running 6→15.
+  Probes ship from S1 (`HOST_PY`), so the S1 file fixes all hosts. Watch: refills must converge to
+  publish at depth 1–2 — if RULE#3 refuses again with the same holes, the heal (possym-only) doesn't
+  cover zero-skip/inert holes and the gate needs a sampled-cells exemption or the refill must go
+  fully sample-free.

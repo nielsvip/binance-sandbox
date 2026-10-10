@@ -4641,7 +4641,7 @@ class QuickConfig:
     BB_SQUEEZE_THRESHOLD_1H: float = 0.03
     CHOP_RANGING_THRESHOLD: float = 61.8
     CHOP_TRENDING_THRESHOLD: float = 38.2
-    COOLDOWN_BARS_TRADIER: int = 8
+    COOLDOWN_BARS_TRADIER: int = 0  # USER 2026-10-10: reenter IMMEDIATELY on DC break (profit-take 0.1% from edge); stays a swept switch (GLOBAL_RISK_GATES row) so sheets re-promote 8 if 0 measures worse
     CT_CHOP_4H_MAX: float = 50.0
     CT_MFI_15M_LONG_MIN: float = 45.0
     CT_MFI_15M_SHORT_MAX: float = 55.0
@@ -14287,7 +14287,7 @@ _DEFAULTS_625 = {
     "CONVICTION_SHORT_THRESHOLD": 10,
     "CONVICTION_SIZING_ENABLED": False,
     "CONVICTION_SIZING_MAX": 4.0,
-    "COOLDOWN_BARS_TRADIER": 8,
+    "COOLDOWN_BARS_TRADIER": 0,  # USER 2026-10-10 mirror: immediate DC-break reentry; swept switch, backtest adjudicates
     "COUNTER_TREND_SMA200_BYPASS_ENABLED": False,
     "CT_15M_MOMENTUM_GATE_ENABLED": False,
     "CT_CHOP_4H_GATE_ENABLED": False,

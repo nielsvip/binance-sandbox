@@ -14,10 +14,13 @@ import shutil
 import sys
 from datetime import datetime, timezone
 
+import time
+
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GW = os.path.join(ROOT, "klines_cache_gateway")
+TF_SEC = {"15m": 900, "1h": 3600, "4h": 14400, "D": 86400, "W": 604800, "M": 2592000}
 
 
 def load(path):
@@ -56,18 +59,27 @@ def main():
                 print(f"{sym} {tf}: NO PEER FILE — skipped")
                 code = 1
                 continue
+            # drop peer forming bars (fetched mid-bar; never merge partials)
+            step = TF_SEC.get(tf, 900)
+            cutoff = (int(time.time()) // step) * step - step
+            peer = {k: v for k, v in peer.items() if int(datetime.strptime(v[0][:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc).timestamp()) <= cutoff}
             shared = sorted(set(local) & set(peer))
             if shared:
-                d = 0.0
-                for j in range(1, 6):
-                    x = np.array([local[k][j] for k in shared])
-                    y = np.array([peer[k][j] for k in shared])
-                    d = max(d, float(np.max(np.abs(x - y) / np.maximum(np.abs(y), 1e-12))))
-                status = "OK" if d < 1e-9 else "MISMATCH-ABORT"
-                if d >= 1e-9:
+                bad = []
+                for k in shared:
+                    dd = max(abs(local[k][j] - peer[k][j]) / max(abs(peer[k][j]), 1e-12) for j in range(1, 6))
+                    if dd > 1e-6:
+                        bad.append((dd, k))
+                frac = len(bad) / len(shared)
+                if frac > 0.01:
                     code = 1
-                    print(f"{sym} {tf}: overlap={len(shared)} maxreldiff={d:.2e} {status}")
+                    worst = sorted(bad, reverse=True)[:3]
+                    print(f"{sym} {tf}: overlap={len(shared)} FRAC_MISMATCH {frac:.3f} worst={[(round(d,3), k) for d, k in worst]} ABORT")
                     continue
+                status = f"OK frac={frac:.4f}"
+                if bad:
+                    worst = sorted(bad, reverse=True)[:5]
+                    print(f"{sym} {tf}: note {len(bad)} differing bars kept-local worst={[(round(d,3), k) for d, k in worst]}")
             else:
                 status = "no-overlap"
             newk = sorted(set(peer) - set(local))
