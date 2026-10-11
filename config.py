@@ -198,7 +198,7 @@ class Config:
         False  # 2026-09-03 KILLED per user: MAKER_PROFIT_EXIT_FORCE_REDUCE_OVERSIZE_81 firing on FLZ (maker wrapper at 81>$20). Finandy TP ladder bug guard causes commission churn, default OFF.
     )
     START_POSITION_SIZE: float = (
-        28.0  # parity 2026-09-26: crypto 28 vs tradier 500 — bold in TEMPLATE_CRYPTO_LONG, vec QuickConfig 28.0. Was 34.0 misaligned.
+        45.0  # USER 2026-10-11: 28 -> 45 base; gainers to 4x ($180 OPEN_CEIL), losers/unconfirmed small via tiers. Was parity 2026-09-26 28.0.
     )
     FIXED_QUANTITY_ENABLED: bool = (
         False  # 2026-09-27 parity audit: when True, live uses fixed notional = START_POSITION_SIZE for all opens (bypass all sizing mults). For second parallel forward test: 1/3m OFF + non-vector OFF + fixed qty → isolates signal vs sizing. Vector BEST backtest also uses fixed sizing path when this True.
@@ -1775,10 +1775,13 @@ class Config:
         True  # 2026-10-06 USER: hard ceiling per new OPEN / AUGMENT step = START_POSITION_SIZE(sym_side) x perf tier (vec or native); live multipliers apply inside it; MAX_ORDER_VALUE stays the absolute cap. Log [OPEN_CEIL_SPS]
     )
     OPEN_CEIL_HARD_MAX_USD: float = (
-        28.0  # 2026-10-06 USER: absolute USD clamp on the ceiling above (reentries included) — SPS x tier can never place more than $28 no matter the tier boost. Log [OPEN_CEIL_SPS].
+        180.0  # USER 2026-10-11: 28 -> 180 = 4x $45 SPS; gainers reach 4x, losers capped small by their tier. Was 2026-10-06 $28.
     )
     UNTESTED_FLAT_SPS_ENABLED: bool = (
         True  # 2026-10-06 USER: sym_side with no 30d matrix trades FLAT START_POSITION_SIZE (no multiplier stack, no ladder) — untested edge gets no leverage. Log [FLAT_SPS_UNTESTED].
+    )
+    UNTESTED_FLAT_SPS_MULT: float = (
+        0.25  # USER 2026-10-11: untested flat size = SPS x this (no 30d matrix = unconfirmed = small but trading, $11.25 at $45 SPS).
     )
     SIGNAL_IMMEDIATE_REDUCE_ENABLED: bool = (
         False  # 2026-10-06 USER churn audit: webhook _handle_signal_message EXIT_ON_ALL / IMMEDIATE_REDUCE signal exits (no vec twin) -> own switch OFF on both sides (QuickConfig mirror False)
@@ -5640,17 +5643,17 @@ class Config:
             # "MIN_GAIN": 1.2,#emergency mode
             # "MAX_POSITION_SIZE_MEN": 800.0,#emergency mode
             # "MAX_POSITION_SIZE_FIN": 900.0#emergency mode
-            "START_POSITION_SIZE": 16.0,  # emergency mode
-            "MAX_POSITION_SIZE": 155.0,
-            "MAX_ORDER_VALUE": 80.0,
+            "START_POSITION_SIZE": 45.0,  # USER 2026-10-11: 16 -> 45 (LIGHT is the live mode; must match base)
+            "MAX_POSITION_SIZE": 360.0,  # USER 2026-10-11: 155 -> 360 = 8x SPS, two full 4x gainer steps
+            "MAX_ORDER_VALUE": 180.0,  # USER 2026-10-11: 80 -> 180 = 4x SPS gainer step headroom
             "MAX_ORDER_VALUE_MEN": 440.0,
-            "MAX_ORDER_VALUE_FIN": 18.0,
+            "MAX_ORDER_VALUE_FIN": 180.0,  # USER 2026-10-11: 18 -> 180, fin gainers reach 4x too
             "HIGH_GAIN_AUGMENTATION_MIN_SIZE": 100,
             "REDUCTION_COOLDOWN_SECONDS": 30.0,
             "AUGMENTATION_COOLDOWN_SECONDS": 660.0,
             "MIN_GAIN": 3.0,  # was 5.0. 3.0% survives 1.5% reversal after 50% aug
-            "MAX_POSITION_SIZE_MEN": 220.0,
-            "MAX_POSITION_SIZE_FIN": 120.0,
+            "MAX_POSITION_SIZE_MEN": 360.0,  # USER 2026-10-11: 220 -> 360 (LIGHT two-step headroom)
+            "MAX_POSITION_SIZE_FIN": 360.0,  # USER 2026-10-11: 120 -> 360 (a $180 gainer step must fit)
         }
         base = {
             # "START_POSITION_SIZE": 15.0,#emergency mode
@@ -5664,7 +5667,7 @@ class Config:
             # "MIN_GAIN": 0.8,#emergency mode
             # "MAX_POSITION_SIZE_MEN": 160.0,#emergency mode
             # "MAX_POSITION_SIZE_FIN": 300.0#emergency mode
-            "START_POSITION_SIZE": 28.0,
+            "START_POSITION_SIZE": 45.0,  # USER 2026-10-11: 28 -> 45
             "MAX_POSITION_SIZE": 780.0,  # STDEV_SLOPE fix 2026-09-14: was 20 (1.11x START) capped 10x D ladder; now 18*10=180
             "MAX_ORDER_VALUE": 180.0,  # STDEV_SLOPE fix 2026-09-14: was 20 →180 for 10x ladder parity
             "MAX_ORDER_VALUE_MEN": 280.0,  # STDEV_SLOPE fix 2026-09-14: was 20 →180
@@ -5673,8 +5676,8 @@ class Config:
             "REDUCTION_COOLDOWN_SECONDS": 15.0,  # BACKTEST_CHANGE_42: was 30. Faster gain-taking on 3m
             "AUGMENTATION_COOLDOWN_SECONDS": 90.0,  # BACKTEST_CHANGE_41: was 160. 3m TF needs faster aug
             "MIN_GAIN": 3.0,  # was 5.0. 3.0% survives 1.5% reversal after 50% aug
-            "MAX_POSITION_SIZE_MEN": 280.0,  # STDEV_SLOPE fix 2026-09-14: was 20 →180 for 10x ladder
-            "MAX_POSITION_SIZE_FIN": 280.0,  # STDEV_SLOPE fix 2026-09-14: was 20 →180
+            "MAX_POSITION_SIZE_MEN": 360.0,  # USER 2026-10-11: 280 -> 360 two-step headroom for $180 gainer steps
+            "MAX_POSITION_SIZE_FIN": 360.0,  # USER 2026-10-11: 280 -> 360 two-step headroom for $180 gainer steps
         }
         extreme = {
             "START_POSITION_SIZE": 70.0,

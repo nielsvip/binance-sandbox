@@ -31,7 +31,7 @@ def test_parity_crypto_defaults_config_vec_template():
         "BOTTOM_EXIT_HTF_WT_VETO_ENABLED": "True",
         "HTF_WT_CHURN_REENTRY_ENABLED": "True",
         "HTF_WT_CHURN_REENTRY_MAX_AGE_MIN": "120.0",
-        "START_POSITION_SIZE": "28.0",
+        "START_POSITION_SIZE": "45.0",
         "MIN_POSITION_SIZE": "1.0",
     }
     for k, expected_str in flags.items():
@@ -53,10 +53,10 @@ def test_parity_crypto_defaults_config_vec_template():
 def test_no_tradier_contamination():
     # Crypto templates must not carry TRADIER 500 value; vec TRC_START is separate
     import v12_quick_engine as V
-    assert V.QuickConfig.START_POSITION_SIZE == 28.0
+    assert V.QuickConfig.START_POSITION_SIZE == 45.0
     assert V.QuickConfig.TRC_START_POSITION_SIZE == 500.0
     vals_long, _ = _template_values(ROOT / "SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx")
-    assert vals_long["START_POSITION_SIZE"] == "28.0"
+    assert vals_long["START_POSITION_SIZE"] == "45.0"
 
 def test_parity_stocks_defaults_config_vec_template():
     import config_tradier
@@ -72,7 +72,7 @@ def test_parity_stocks_defaults_config_vec_template():
         vv = getattr(V.QuickConfig, k)
         assert cv == vv, f"{k} tradier config {cv!r} != vec {vv!r}"
         assert str(cv) == expected_str, f"{k} tradier config {cv!r} != expected {expected_str}"
-    # Sizing is mode-split: crypto 28/1 vs tradier 500/100. Vec primary START 28 is crypto, TRC_START 500 is tradier
+    # Sizing is mode-split: crypto 45/1 vs tradier 500/100. Vec primary START 45 is crypto, TRC_START 500 is tradier
     assert str(getattr(config_tradier.TradierConfig, "START_POSITION_SIZE")) == "500.0"
     assert str(getattr(V.QuickConfig, "TRC_START_POSITION_SIZE")) == "500.0"
     assert str(getattr(config_tradier.TradierConfig, "MIN_POSITION_SIZE")) == "100"

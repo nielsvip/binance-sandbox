@@ -6,8 +6,10 @@ Input: the day's per-sym go-live report (data/daily_chain/persym_golive_<date>*.
 Rules (per venue, crypto / stocks ranked separately):
   30D < 0 and 365D <= 0 or unknown  -> MIN      mult = --min-mult (default 0.25)
   30D < 0 and 365D > 0              -> NEG30    mult = --neg30-mult (default 0.5)
-  30D > 0                           -> RANKED   mult = 1 + (--max-mult - 1) * min(g30, --gain-cap) / --gain-cap (default cap 20.0, max-mult 3.0);
-                                                bigger gain = bigger size; capped at 1.0 when 365D <= 0 (anti-overfit)
+  30D > 0 and 365D > 0 (confirmed) -> RANKED   mult = 1 + (--max-mult - 1) * min(g30, --gain-cap) / --gain-cap (default cap 20.0, max-mult 4.0);
+                                                bigger gain = bigger size, up to 4x. ONLY 365D-confirmed gainers reach above 1x.
+  30D > 0, 365D unknown/absent     -> RANKED_NO365_SMALL  mult = --unconfirmed-mult (default 0.5, USER 2026-10-11: trade always, small)
+  30D > 0 and 365D <= 0 (overfit)  -> RANKED_NEG365_SMALL mult = --unconfirmed-mult (default 0.5; was CAP1 1.0 — a 30D gainer that loses on 365D is not a winner)
   no fresh row + book acc_gain > 0  -> BOOK_POS_HOLD  mult 1.0 (proven winner awaiting recalc keeps trading)
   no fresh row + book acc_gain <= 0 -> BOOK_NEG  mult = min-mult (monitored, minimal money)
   in tradeable universe, nowhere    -> UNLISTED_MIN  mult = min-mult (monitored, minimal money)
@@ -48,6 +50,21 @@ def _venue_of(ss):
     return "crypto" if str(ss).rsplit("_", 1)[0].endswith(CRYPTO_SUFFIX) else "stocks"
 
 
+def _size_ranked(x, max_mult, gain_cap, unconfirmed_mult):
+    """USER 2026-10-11: (mult, tier) for a 30D-positive row. Above-1x size requires 365D confirmation (g365 > 0);
+    unconfirmed (g365 None) or 365D-negative rows trade always but small at unconfirmed_mult. Pure: unit-tested."""
+    g365 = x.get("g365")
+    try:
+        confirmed = g365 is not None and float(g365) > 0
+    except (TypeError, ValueError):
+        confirmed = False
+    if confirmed:
+        return _ranked_mult(x.get("g30"), g365, max_mult, gain_cap), "RANKED"
+    if g365 is None:
+        return float(unconfirmed_mult), "RANKED_NO365_SMALL"
+    return float(unconfirmed_mult), "RANKED_NEG365_SMALL"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--report", required=True)
@@ -55,6 +72,7 @@ def main():
     ap.add_argument("--min-mult", type=float, default=0.25)
     ap.add_argument("--neg30-mult", type=float, default=0.5)
     ap.add_argument("--max-mult", type=float, default=4.0)
+    ap.add_argument("--unconfirmed-mult", type=float, default=0.5)
     ap.add_argument("--gain-cap", type=float, default=20.0)
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
@@ -83,8 +101,7 @@ def main():
         pos = sorted([x for x in rows if x["venue"] == venue and x["g30"] > 0], key=lambda x: x["g30"])
         n = len(pos)
         for i, x in enumerate(pos):
-            m = _ranked_mult(x["g30"], x["g365"], a.max_mult, a.gain_cap)
-            tier = "RANKED_NEG365_CAP1" if (x["g365"] is not None and x["g365"] <= 0) else "RANKED"
+            m, tier = _size_ranked(x, a.max_mult, a.gain_cap, a.unconfirmed_mult)
             tiers[x["ss"]] = dict(x, mult=m, tier=tier, rank=f"{i + 1}/{n}")
         for x in rows:
             if x["venue"] != venue or x["g30"] >= 0:
@@ -137,8 +154,8 @@ def main():
         print(f"[tiers] WARNING: per_sym_store check failed, keeping ranked sizes (fail-open): {_nse}")
     for v in tiers.values():
         v.pop("ss", None)
-    out = {"_meta": {"at": dt.datetime.now(dt.timezone.utc).isoformat(), "report": str(a.report), "rules": {"min_mult": a.min_mult, "neg30_mult": a.neg30_mult, "max_mult": a.max_mult, "gain_cap": a.gain_cap},
-                     "counts": {t: sum(1 for v in tiers.values() if v["tier"] == t) for t in ("MIN", "NEG30_POS365", "RANKED", "RANKED_NEG365_CAP1", "BOOK_NEG", "BOOK_POS_HOLD", "UNLISTED_MIN", "NOSTORE_MIN")}, "consumer": "perf_tier_sizing.py (PERF_TIER_SIZING_ENABLED)"}, "tiers": tiers}
+    out = {"_meta": {"at": dt.datetime.now(dt.timezone.utc).isoformat(), "report": str(a.report), "rules": {"min_mult": a.min_mult, "neg30_mult": a.neg30_mult, "max_mult": a.max_mult, "gain_cap": a.gain_cap, "unconfirmed_mult": a.unconfirmed_mult},
+                     "counts": {t: sum(1 for v in tiers.values() if v["tier"] == t) for t in ("MIN", "NEG30_POS365", "RANKED", "RANKED_NO365_SMALL", "RANKED_NEG365_SMALL", "BOOK_NEG", "BOOK_POS_HOLD", "UNLISTED_MIN", "NOSTORE_MIN")}, "consumer": "perf_tier_sizing.py (PERF_TIER_SIZING_ENABLED)"}, "tiers": tiers}
     srt = sorted(tiers.items(), key=lambda kv: -kv[1]["mult"])
     print(json.dumps(out["_meta"]["counts"]))
     print("TOP 10:")

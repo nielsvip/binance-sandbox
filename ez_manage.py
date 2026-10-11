@@ -35480,16 +35480,17 @@ class MultiAccountTradeManager:
                         except Exception:
                             _oc_mult = 1.0
                         _oc_ceil = max(_oc_base * _oc_mult, float(getattr(config, "PERF_TIER_MIN_ORDER_USD", 6.0)))
-                        _oc_hard = float(getattr(config, "OPEN_CEIL_HARD_MAX_USD", 28.0))
+                        _oc_hard = float(getattr(config, "OPEN_CEIL_HARD_MAX_USD", 180.0))
                         if _oc_ceil > _oc_hard:
                             _oc_ceil = _oc_hard
                         if bool(getattr(config, "UNTESTED_FLAT_SPS_ENABLED", True)):
                             try:
                                 import untested_flat_sps as _ufs
                                 if not _ufs.is_backtested(symbol, _oc_side):
-                                    _oc_flat = _ufs.flat_sps_quantity(_oc_base, current_price)
+                                    _oc_fmult = float(getattr(config, "UNTESTED_FLAT_SPS_MULT", 0.25))
+                                    _oc_flat = _ufs.flat_sps_quantity(_oc_base * _oc_fmult, current_price)
                                     if 0 < _oc_flat < quantity:
-                                        logger.warning(f"[FLAT_SPS_UNTESTED] {position_key} {action}: ${quantity * current_price:.2f} -> ${_oc_base:.2f} flat SPS (no 30d matrix) reason={(reason or '')[:50]}")
+                                        logger.warning(f"[FLAT_SPS_UNTESTED] {position_key} {action}: ${quantity * current_price:.2f} -> ${_oc_base * _oc_fmult:.2f} flat SPS x{_oc_fmult} (no 30d matrix) reason={(reason or '')[:50]}")
                                         quantity = _oc_flat
                             except Exception as _ufs_e:
                                 logger.warning(f"[FLAT_SPS_UNTESTED] {position_key}: check error {_ufs_e}")

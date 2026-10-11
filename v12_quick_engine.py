@@ -4231,7 +4231,7 @@ class QuickConfig:
     )
     DC_RECOVERY_EXIT_TOLERANCE_PCT: float = 0.1
     START_POSITION_SIZE: float = (
-        28.0  # parity 2026-09-26: live Config 28.0 vs vec 500 caused 17x mismatch — align to config.Config crypto. Bold in TEMPLATE_CRYPTO_LONG.
+        45.0  # USER 2026-10-11: tandem with config.py 28 -> 45 (parity 2026-09-26 alignment kept). Bold in TEMPLATE_CRYPTO_LONG.
     )
     CRYPTO_ROUND_TRIP_COMMISSION_PCT: float = (
         0.04  # w2-hygiene fee harmony (USER ordered 0.08->0.04; was USER 2026-08-08 binance futures 0.08% round trip); tradier is commission-free
